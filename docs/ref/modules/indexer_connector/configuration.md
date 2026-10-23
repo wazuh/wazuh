@@ -47,36 +47,47 @@ List of Indexer node URLs, one per `<host>` child element.
 
 ### ssl
 
-TLS material of the connection. Relative paths are resolved from the manager home
-(`/var/wazuh-manager`).
+TLS material of the connection. The schema's defaults are empty (no CA file, no client
+certificate); the installer writes the `/etc/wazuh-manager/certs/` names shown above.
 
-The configuration check run before every start does **not** verify these files. A missing CA file
-makes the component that loads the connector fail when it starts; a client certificate or key that
-does not exist or cannot be read is only noticed when the connector opens a connection with it.
+**Every file must sit directly in `/etc/wazuh-manager/certs`.** The schema accepts any path (a
+relative one resolves against the manager home, `/var/wazuh-manager`), but the
+[credential resolver](../../getting-started/credentials.md#configured-file-names) checks these files
+before every start and refuses any other location, a relative path included:
+`INVALID indexer.ssl.certificate: /var/wazuh-manager/client.pem is outside /etc/wazuh-manager/certs, the only place the resolver checks (set in /etc/wazuh-manager/wazuh-manager.conf)`,
+and `wazuh-manager-control` stops with `Invalid credentials. Exiting` (error 22 in `-j` output).
+`wazuh-manager-conf validate` does not look at these files: the resolver owns them. A listed file that
+is absent, and that the resolver cannot import from a co-located indexer, refuses the start with
+`MISSING <path>` and `Unresolved credentials. Exiting` (error 21).
 
 #### certificate_authorities
 
 CA certificates used to verify the Indexer's certificate, one per `<ca>` child element.
 
 - **Default value:** empty list
-- **Allowed values:** paths to PEM-encoded CA certificates
-- **Note:** With a single CA, the file must exist when the connector starts (`The CA root
-  certificate file: '<path>' does not exist.`). With several, the connector concatenates them into
-  `/var/wazuh-manager/tmp/root-ca-merged.pem`.
+- **Allowed values:** paths of PEM files holding only CA certificates, directly in
+  `/etc/wazuh-manager/certs`
+- **Note:** With a single CA, the connector refuses to start when the file does not exist
+  (`The CA root certificate file: '<path>' does not exist.`). With several, it concatenates them into
+  `/var/wazuh-manager/tmp/root-ca-merged.pem`. Only `indexer-ca.pem` is imported from a co-located
+  indexer, and only while this list names it; any other listed file is yours to stage.
 
 #### certificate
 
 Client certificate the manager presents to the Indexer.
 
 - **Default value:** empty (no client certificate)
-- **Allowed values:** path to a PEM-encoded certificate
+- **Allowed values:** path of a PEM-encoded certificate directly in `/etc/wazuh-manager/certs`; set
+  together with `key` (one without the other is refused:
+  `INVALID indexer.ssl.key: must be set together with indexer.ssl.certificate …`)
 
 #### key
 
 Private key of `certificate`.
 
 - **Default value:** empty
-- **Allowed values:** path to a PEM-encoded private key
+- **Allowed values:** path of a PEM-encoded private key directly in `/etc/wazuh-manager/certs`; set
+  together with `certificate`
 
 ---
 
@@ -86,12 +97,12 @@ The connector always authenticates with HTTP basic authentication. The user and 
 part of `wazuh-manager.conf`: they are read from the `indexer` column family of the
 [keystore](../keystore/README.md), keys `username` and `password`.
 
-The credential resolver fills them in at installation and before every start: `username` defaults to
-`wazuh-manager` when it is not set, and `password` is taken from `WAZUH_INDEXER_MANAGER_PASSWORD` in the
-environment, in `/etc/wazuh-manager/local.env`, or in the indexer's `/etc/wazuh-indexer/export/credentials.env`
-when the indexer runs on the same host. There is no default password: when the keystore holds no password and
-none of them supplies one, the start is refused with `MISSING WAZUH_INDEXER_MANAGER_PASSWORD`. See
-[Credentials](../../getting-started/credentials.md).
+The credential resolver fills in what is missing at installation and before every start: `username` is
+set to `wazuh-manager` when it is not set, and, while the keystore holds no password, `password` is taken from
+`WAZUH_INDEXER_MANAGER_PASSWORD` (see [Credentials](../../getting-started/credentials.md#the-keys) for where it
+is looked up). There is no default password: when the keystore holds none and no source supplies one, the start
+is refused with `MISSING WAZUH_INDEXER_MANAGER_PASSWORD`. A password already in the keystore is never replaced
+from those sources, so changing `local.env` afterwards changes nothing.
 
 To change them by hand (as root):
 
@@ -140,7 +151,10 @@ All of them are set in `/etc/wazuh-manager/wazuh-manager-internal-options.conf`.
 
 ### Multiple CA Certificates
 
-If the Indexer nodes' certificates come from different CAs:
+If the Indexer nodes' certificates come from different CAs, either put them all in `indexer-ca.pem`
+or list several files. Files other than `indexer-ca.pem` are never imported: stage them in
+`/etc/wazuh-manager/certs` (`root:wazuh-manager 0640`) before the start. The client pair may chain to
+any of the listed CAs.
 
 ```xml
 <indexer>
@@ -150,8 +164,8 @@ If the Indexer nodes' certificates come from different CAs:
   </hosts>
   <ssl>
     <certificate_authorities>
-      <ca>/etc/wazuh-manager/certs/root-ca-1.pem</ca>
-      <ca>/etc/wazuh-manager/certs/root-ca-2.pem</ca>
+      <ca>/etc/wazuh-manager/certs/indexer-ca.pem</ca>
+      <ca>/etc/wazuh-manager/certs/indexer-ca-2.pem</ca>
     </certificate_authorities>
     <certificate>/etc/wazuh-manager/certs/indexer-connector.pem</certificate>
     <key>/etc/wazuh-manager/certs/indexer-connector-key.pem</key>
@@ -171,14 +185,18 @@ If the Indexer nodes' certificates come from different CAs:
 </indexer>
 ```
 
+Without `<ssl>` no CA file or client pair is required or imported, but the indexer password is still
+required in the keystore.
+
 ---
 
 ## Verifying Connectivity
 
-Validate the configuration:
+Validate the configuration, then the TLS files and their modes (as root):
 
 ```bash
 /var/wazuh-manager/bin/wazuh-manager-conf validate
+/var/wazuh-manager/bin/wazuh-manager-resolve-credentials --check
 ```
 
 Check that the Indexer accepts the manager's certificate and credentials, using the same files and
@@ -204,8 +222,9 @@ grep -E "Indexer node|Health check failed|indexer credentials" /var/wazuh-manage
 |---|---|
 | `Health check failed for '<host>' - Unauthorized - Check indexer credentials` | The Indexer answered `401`: wrong user or password in the keystore (logged only at debug level 2) |
 | `Health check failed for '<host>' - Forbidden - Check user permissions` | The Indexer answered `403` (logged only at debug level 2) |
-| `Indexer node '<host>' is no longer available. Reason: <reason>` | The node stopped answering `green`/`yellow` |
+| `Indexer node '<host>' is no longer available. Reason: <reason>` | The node stopped answering `green`/`yellow`; `<reason>` carries the cause above (for example `Unauthorized - Check indexer credentials`) |
 | `Indexer node '<host>' is available again.` | The node recovered |
+| `Indexer node '<host>' is throttling requests (<reason>); it stays in rotation and requests back off.` | The node answered `429` (for example a tripped circuit breaker) |
 | `No indexer credentials found in the keystore. ...` | The keystore has no `username` or `password` |
 
 ---
@@ -221,21 +240,15 @@ comes from the manager's own CA:
 | `/etc/wazuh-manager/certs/indexer-connector.pem` | root:wazuh-manager | 0640 |
 | `/etc/wazuh-manager/certs/indexer-connector-key.pem` | root:wazuh-manager | 0640 |
 
-When the indexer runs on the same host, the credential resolver imports them from `/etc/wazuh-indexer/export/`
-(`ca.pem`, `manager-client.pem`, `manager-client-key.pem`), records the import with a marker file, and imports them
-again when the indexer's files change. Otherwise stage them yourself under these names: files without a marker are
-validated at every start and never replaced. The client certificate must chain to a certificate of `indexer-ca.pem`
-(an intermediate CA that issued it goes in `indexer-connector.pem`, after the leaf), match its key, be inside its
-validity window and carry an `extendedKeyUsage` with `clientAuth`.
-See [Indexer trust](../../getting-started/credentials.md#indexer-trust).
-
-The daemons read them as `wazuh-manager`, so a replacement file must stay readable by that group.
+When the indexer runs on the same host, the credential resolver imports them from `/etc/wazuh-indexer/export/`;
+otherwise stage them yourself under these names. The owner and mode above are checked exactly before every start:
+a replacement file with any other is refused as `UNSAFE` (`Unsafe credentials. Exiting`). How imports, staged
+files, validity checks and rotation work is described once, in
+[Indexer trust](../../getting-started/credentials.md#indexer-trust).
 
 `/etc/wazuh-manager/certs/root-ca.pem` is not the connector's: it is the manager's own CA bundle, the default
 [`remote.https.ca_certificate`](../remoted/configuration.md#httpsca_certificate) that remoted serves to agents on
-`GET /cacerts`. To trust more than one indexer CA, put them all in `indexer-ca.pem`. Other files listed under
-[`certificate_authorities`](#certificate_authorities) widen what the connector trusts, but the credential resolver
-still requires `indexer-ca.pem` and checks the client pair against it.
+`GET /cacerts`.
 
 ---
 

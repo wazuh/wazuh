@@ -88,6 +88,8 @@ def get_endpoint(message: Message) -> Tuple[Optional[str], str, str]:
         endpoint = '_internal/tester/table/get'
     if isinstance(message, tester.RunPost_Request):
         endpoint = '_internal/tester/run/post'
+    if isinstance(message, tester.PublicRunPost_Request):
+        endpoint = 'logtest'
     if isinstance(message, tester.LogtestDelete_Request):
         endpoint = 'logtest'
         method = 'delete'

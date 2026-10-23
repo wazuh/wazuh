@@ -506,7 +506,8 @@ def main():
                              "unprefixed paths.")
     parser.add_argument("--agent-id", default="001", help="Agent id, as it appears in client.keys.")
     parser.add_argument("--manager-home", default=DEFAULT_MANAGER_HOME,
-                        help="Manager installation root (client.keys, global.db, etc/shared, var/upgrade).")
+                        help="Manager installation root (var/multigroups, var/upgrade). client.keys and "
+                             "shared/ are always read from /etc/wazuh-manager.")
     parser.add_argument("--resource-type", default="config", choices=("config", "wpk"))
     parser.add_argument("--resource-id", default=None,
                         help="Group name or WPK filename. Defaults to 'default' for --resource-type config; "

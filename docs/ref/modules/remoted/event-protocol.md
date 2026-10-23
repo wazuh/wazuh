@@ -146,9 +146,12 @@ The manager applies no per-event size limit of its own on the HTTPS path; what b
 there is the whole body: the transport limit is
 [`https.max_body_size`](configuration.md#httpsmax_body_size), 10 MiB by default, and the authentication
 limit is [`remoted.auth_max_body_size`](configuration.md#remotedauth_max_body_size), 5 MiB by default.
-Both limits apply to the bytes received on the wire. For zstd on `/stateless`, decoded output is
-charged to the shared [in-flight byte budget](configuration.md#remotedmax_inflight_bytes),
-not capped at 10 MiB; the decoder also limits its window to 8 MiB. `/stateless` separately limits
+Both limits apply to the bytes received on the wire. For zstd on `/stateless`, the decoded body is
+capped by [`remoted.auth_max_decoded_body_size`](configuration.md#remotedauth_max_decoded_body_size),
+32 MiB by default, and charged to the shared
+[in-flight byte budget](configuration.md#remotedmax_inflight_bytes) and to the agent's
+[share of it](configuration.md#remotedmax_inflight_bytes_per_agent); the decoder also limits its
+window to 8 MiB. `/stateless` separately limits
 the header JSON to 8 KiB. On the legacy
 TCP/UDP channel a single agent message is bounded by the receive buffer, `OS_MAXSTR` (64 KiB).
 

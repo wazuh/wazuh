@@ -26,7 +26,12 @@ paths:
       summary: Ingest enriched events (H/E batch protocol)
       description: |
         Accepts a batch of events using the H/E wire protocol over HTTP via Unix domain socket.
-        Socket path: /var/wazuh-manager/queue/sockets/engine-ingest-http.sock
+        Socket path: `/var/wazuh-manager/queue/sockets/engine-ingest-http.sock` (`analysisd.server_enriched_events_socket`).
+        The listener exists only while `analysisd.server_enable_event_processing` is `true` (the default).
+
+        The handler only splits the batch and queues each event; it answers 200 as soon as the batch is queued.
+        Each event line is parsed later by a router worker: a malformed event line does not fail the request,
+        it is dropped with the log line `Failed processing queued event in router worker: <reason>`.
 
         ## Wire Format
 
@@ -36,8 +41,10 @@ paths:
         E <queue>:<location>:<message>\n
         ```
 
-        - **Header line** (`H `): JSON object with agent and cluster metadata.
-        - **Event lines** (`E `): Legacy event format `<queue_byte>:<location>:<message>`.
+        - **Header line** (`H `): JSON object with agent and cluster metadata, merged into every event of the
+          batch. It must hold `wazuh.agent.id` as a non-empty string of digits.
+        - **Event lines** (`E `): Legacy event format `<queue_byte>:<location>:<message>`; a `:` inside the
+          location is escaped as `|:`.
         - **Event delimiter**: The 3-byte sequence `\nE ` (newline + E + space) separates events.
 
         ## Multi-line Events (Continuation-line Indentation)
@@ -99,7 +106,9 @@ paths:
         "200":
           description: Events accepted. (Empty body)
         "400":
-          description: Invalid payload.
+          description: |
+            Invalid batch framing or header. The body is a JSON object whose `error` string carries the
+            parser message (JSON-escaped).
           content:
             application/json:
               schema:
@@ -115,8 +124,12 @@ paths:
                   value: {"error":"NDJson parser error, Missing newline after header","code":400}
                 invalidHeader:
                   value: {"error":"NDJson parser error, Invalid header format, expected 'H {json}'","code":400}
-                invalidEvent:
-                  value: {"error":"NDJson parser error, Invalid format: event must be at least 5 bytes (\"<byte>:<location>:<message>\")","code":400}
+                missingAgentId:
+                  value: {"error":"NDJson parser error, AgentMetadataCache: missing or non-string /wazuh/agent/id in header","code":400}
+                invalidAgentId:
+                  value: {"error":"NDJson parser error, AgentMetadataCache: /wazuh/agent/id must be a non-empty positive numeric string","code":400}
+                missingEventMarker:
+                  value: {"error":"NDJson parser error, Expected 'E ' at event start","code":400}
         "500":
           description: Internal server error.
           content:

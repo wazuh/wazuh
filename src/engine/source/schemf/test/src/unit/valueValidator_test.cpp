@@ -35,23 +35,58 @@ TEST(ValueValidatorTest, Bool_RejectsString)
 }
 
 // ---------------------------------------------------------------------------
-// getShortValidator  (int8 range check)
+// getByteValidator  (int8 range check)
+// ---------------------------------------------------------------------------
+
+TEST(ValueValidatorTest, Byte_AcceptsInRange)
+{
+    auto v = getByteValidator();
+    EXPECT_FALSE(base::isError(v(json::Json {"0"})));
+    EXPECT_FALSE(base::isError(v(json::Json {"127"})));
+    EXPECT_FALSE(base::isError(v(json::Json {"-128"})));
+}
+
+TEST(ValueValidatorTest, Byte_RejectsOutOfRange)
+{
+    auto v = getByteValidator();
+    auto res = v(json::Json {"200"});
+    ASSERT_TRUE(base::isError(res));
+    EXPECT_THAT(base::getError(res).message, HasSubstr("range for byte"));
+
+    res = v(json::Json {"-129"});
+    ASSERT_TRUE(base::isError(res));
+}
+
+TEST(ValueValidatorTest, Byte_RejectsString)
+{
+    auto v = getByteValidator();
+    auto res = v(json::Json {"\"abc\""});
+    ASSERT_TRUE(base::isError(res));
+    EXPECT_THAT(base::getError(res).message, HasSubstr("integer"));
+}
+
+// ---------------------------------------------------------------------------
+// getShortValidator  (int16 range check)
 // ---------------------------------------------------------------------------
 
 TEST(ValueValidatorTest, Short_AcceptsInRange)
 {
     auto v = getShortValidator();
     EXPECT_FALSE(base::isError(v(json::Json {"0"})));
-    EXPECT_FALSE(base::isError(v(json::Json {"127"})));
-    EXPECT_FALSE(base::isError(v(json::Json {"-128"})));
+    EXPECT_FALSE(base::isError(v(json::Json {"200"})));
+    EXPECT_FALSE(base::isError(v(json::Json {"32767"})));
+    EXPECT_FALSE(base::isError(v(json::Json {"-32768"})));
 }
 
 TEST(ValueValidatorTest, Short_RejectsOutOfRange)
 {
     auto v = getShortValidator();
-    auto res = v(json::Json {"200"});
+    auto res = v(json::Json {"32768"});
     ASSERT_TRUE(base::isError(res));
-    EXPECT_THAT(base::getError(res).message, HasSubstr("range"));
+    EXPECT_THAT(base::getError(res).message, HasSubstr("range for short"));
+
+    res = v(json::Json {"-32769"});
+    ASSERT_TRUE(base::isError(res));
 }
 
 TEST(ValueValidatorTest, Short_RejectsString)

@@ -28,7 +28,7 @@ The library provides these classes:
 
 1. The caller instantiates a connector with a JSON configuration built from the `indexer` section of `wazuh-manager.conf` (see [Configuration](configuration.md)). A connector without `hosts` fails (`No hosts found in the configuration`), and so does one whose single CA file does not exist (`The CA root certificate file: '<path>' does not exist.`). With several CA files, they are concatenated into `tmp/root-ca-merged.pem` under the manager home.
 2. Credentials (`username`/`password`) are read once per process from the `indexer` column family of the [keystore](../keystore/README.md) and cached: changing them takes a restart. If either is empty, the connector fails with `No indexer credentials found in the keystore. ...`.
-3. A background health-monitor thread polls `GET /_cat/health` on every configured host (5-second timeout) every `monitoring_interval_seconds` (default 10; the engine sets it from `analysisd.indexer_monitoring_interval`, range 1–3600). A host answering `green` or `yellow` is available. A host answering HTTP 429 (for example a tripped circuit breaker) is throttled: it stays in rotation and the requests sent to it back off on their own 429s; this is logged once as `Indexer node '<host>' is throttling requests (<reason>); it stays in rotation and requests back off.`, with a warning when the breaker reports `PERMANENT` durability, and as `Indexer node '<host>' accepts requests again.` when it clears. Any other answer or error (a transport failure, 401/403, any other 4xx, a 5xx, a red cluster) marks it unavailable, logged once as `Indexer node '<host>' is no longer available. Reason: <reason>` (a `401` gives `Unauthorized - Check indexer credentials`) and again as `Indexer node '<host>' is available again.` when it recovers. An unreachable host does not fail the construction.
+3. A background health-monitor thread polls `GET /_cat/health` on every configured host (5-second timeout) every `monitoring_interval_seconds` (default 10; the engine sets it from `analysisd.indexer_monitoring_interval`, range 1–3600). A host answering `green` or `yellow` is available. A host answering HTTP 429 (for example a tripped circuit breaker) is throttled: it stays in rotation and the requests sent to it back off on their own 429s; this is logged once as `Indexer node '<host>' is throttling requests (<reason>); it stays in rotation and requests back off.`, with a warning when the breaker reports `PERMANENT` durability, and as `Indexer node '<host>' accepts requests again.` when it clears. Any other answer or error (a transport failure, 401/403, any other 4xx, a 5xx, a red cluster) marks it unavailable, logged once as `Indexer node '<host>' is no longer available. Reason: <reason>` (a `401` gives `Unauthorized - Check indexer credentials`, with the indexer's error type and reason in parentheses after `Unauthorized` when its answer carries them) and again as `Indexer node '<host>' is available again.` when it recovers. An unreachable host does not fail the construction.
 4. A server-selector performs round-robin load balancing across available nodes. Selection has no side effects: availability probes (`isAvailable()`, true while some host is not down, and the stricter `hasAvailableServer()`, true only while some host is neither down nor throttled) never advance the round-robin cursor, and a host is consumed from the rotation only by the request actually sent to it, so traffic distributes uniformly across healthy nodes. When every host is down, a request fails with `No available server. Unavailable nodes: <host>: <reason>` (an `IndexerConnectorException`, like every other connector failure); the background flush thread logs it as a warning, `Error processing bulk: No available server. …`.
 5. Documents are accumulated in memory (both sync and async) and flushed as OpenSearch Bulk API requests.
 
@@ -91,7 +91,7 @@ Example with the defaults (base = 1s, max = 15s):
 
 | Consecutive failure | Delay slept |
 |---|---|
-| 1st | exactly 1s |
+| 1st | random between 1s and 1.5s |
 | 2nd | random between 1s and 2s |
 | 3rd | random between 2s and 4s |
 | 4th | random between 4s and 8s |
@@ -160,7 +160,7 @@ achieve leaves documents nothing will ever overwrite:
 | Index | Used by |
 |-------|---------|
 | `wazuh-states-vulnerabilities` | Vulnerability Scanner (writes) |
-| `wazuh-states-inventory-*`, `wazuh-states-fim-*`, `wazuh-states-sca` | Inventory Sync Server (writes the indices agents synchronize; the allowed names are these prefixes) |
+| `wazuh-states-inventory-*`, `wazuh-states-fim-*`, `wazuh-states-sca`, `wazuh-states-sca-*` | Inventory Sync Server (writes the indices agents synchronize; an agent session may target only these names, plus `wazuh-states-vulnerabilities`, which it may clean but never write) |
 | `wazuh-agent-config`, `wazuh-agent-stats` | Inventory Sync Server (`POST /config`, `POST /stats`: one document per agent) |
 | `wazuh-states-*`, `wazuh-agent-config`, `wazuh-agent-stats` | Inventory Sync Server (on agent deletion: delete-by-query on `wazuh-states-*`, delete by document id on the two `wazuh-agent-*` indices) |
 | `.wazuh-threatintel-vulnerabilities`, `.wazuh-cti-consumers` | Content Manager (reads, for the Vulnerability Scanner) |

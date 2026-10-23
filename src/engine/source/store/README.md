@@ -11,7 +11,7 @@ The module follows a **driver-based architecture**: a thin `Store` facade implem
 ```
 ┌───────────────────────────────────────────────┐
 │                  Consumers                     │
-│  (router, builder, geo, iockvdb, iocsync, …)  │
+│ (main.cpp, router, builder, geo, iocsync, …)  │
 │                                                │
 │          std::shared_ptr<IStore>                │
 └──────────────────┬────────────────────────────┘
@@ -65,7 +65,9 @@ Defined in `idriver.hpp`:
 
 `Store::upsertDoc` checks document existence first and routes to `createDoc` or `updateDoc` accordingly. This logic lives in the `Store` layer, not in the driver (the `FileDriver` has its own `upsertDoc` that does the same, but `Store` uses the existence check + create/update path).
 
-### Utility: `jsonGenerator`
+### Utilities (`interface/store/utils.hpp`)
+
+`store::utils::updateStartStatus(store, timestamp)` (`src/utils.cpp`) maintains the `engine/status/0` document: it sets `last_start` on every call and `first_start` when the document is missing, unreadable or invalid (logging a warning in the last two cases). It returns `true` only when the document did not exist before and was written, which `main.cpp` uses as its first-start flag.
 
 The `store::utils::jsonGenerator` function wraps a JSON document with metadata:
 
@@ -89,11 +91,12 @@ store/
 ├── interface/store/
 │   ├── istore.hpp         # IStore – public document store interface
 │   ├── idriver.hpp         # IDriver – low-level storage backend interface
-│   └── utils.hpp           # jsonGenerator utility
+│   └── utils.hpp           # jsonGenerator, updateStartStatus
 ├── include/store/
 │   └── store.hpp           # Store – concrete IStore implementation
 ├── src/
-│   └── store.cpp           # Store implementation
+│   ├── store.cpp           # Store implementation
+│   └── utils.cpp           # updateStartStatus implementation
 ├── drivers/
 │   └── fileDriver/
 │       ├── include/store/drivers/
@@ -106,7 +109,7 @@ store/
     │   └── mockStore.hpp    # GMock for IStore
     └── src/unit/
         ├── fileDriver_test.cpp  # FileDriver unit tests
-        └── store_test.cpp       # Store unit tests (with mocked driver)
+        └── store_test.cpp       # Store and updateStartStatus unit tests (mocked driver/store)
 ```
 
 ## Public Interface
@@ -127,7 +130,7 @@ The primary interface consumed by the rest of the engine:
 
 ### `IDriver` (interface/store/idriver.hpp)
 
-Mirror of `IStore` — defines the same CRUD contract for backend implementations. The separation allows the `Store` layer to add cross-cutting logic (e.g. the upsert check) without touching driver internals.
+Mirror of `IStore` — defines the same CRUD contract for backend implementations (`Doc` and `Col` are declared here). The separation allows the `Store` layer to add cross-cutting logic (e.g. the upsert check) without touching driver internals.
 
 ## Implementation Details
 
@@ -135,7 +138,7 @@ Mirror of `IStore` — defines the same CRUD contract for backend implementation
 
 A thin facade that holds a `std::shared_ptr<IDriver>` and forwards every operation to it. The only added logic is in `upsertDoc`, which calls `existsDoc` → `createDoc` or `updateDoc` on the driver level.
 
-Constructor throws `std::runtime_error` if the driver pointer is null.
+Constructor throws `std::runtime_error` (`Store driver cannot be null`) if the driver pointer is null. The facade adds no locking; concurrency is whatever the driver provides.
 
 ### FileDriver (drivers/fileDriver/)
 
@@ -147,10 +150,10 @@ Maps `base::Name` to filesystem paths rooted at a configurable base directory.
 | **createDoc** | Validates for duplicate JSON keys, checks the file doesn't exist, creates parent directories, writes `prettyStr()` |
 | **readDoc** | Reads the file, parses it as JSON; fails if the path is a directory |
 | **updateDoc** | Validates for duplicate keys, checks the file exists and is not a directory, overwrites |
-| **deleteDoc** | Removes the file and then cleans up empty parent directories up to the base path |
-| **readCol** | Lists entries in a directory and constructs `base::Name` objects from each entry |
+| **deleteDoc** | Fails if `existsDoc` is false; removes the file and then cleans up empty parent directories up to the base path |
+| **readCol** | Fails if the path does not exist or is not a directory; otherwise lists its entries (files and subdirectories) as `<name>/<entry>` |
 | **existsDoc** | Returns `true` only if the path exists and is a regular file |
-| **Construction** | Optionally creates the base directory (`create = true`); validates it is a directory |
+| **Construction** | `FileDriver(path, create = false)`: optionally creates the base directory; throws if it is missing (and `create` is false) or not a directory |
 
 ### Error Handling
 
@@ -164,12 +167,12 @@ Read operations return `base::RespOrError<T>` (an `std::variant<T, base::Error>`
 
 | Target | Alias | Type | Description |
 |--------|-------|------|-------------|
-| `store_istore` | `store::istore` | INTERFACE | Public interfaces (`IStore`, `IDriver`, utils) |
+| `store_istore` | `store::istore` | INTERFACE | Public interfaces (`IStore`, `IDriver`, utils header) |
 | `store_fileDriver` | `store::fileDriver` | STATIC | FileDriver implementation |
-| `store` | — | STATIC | Store facade |
-| `store_mocks` | `store::mocks` | INTERFACE | GMock classes for IStore and IDriver |
-| `store_fileDriver_unit_test` | — | EXECUTABLE | FileDriver tests |
-| `store_utest` | — | EXECUTABLE | Store unit tests |
+| `store` | — | STATIC | Store facade + `updateStartStatus` |
+| `store_mocks` | `store::mocks` | INTERFACE | GMock classes for IStore and IDriver (test builds only) |
+| `store_fileDriver_unit_test` | — | EXECUTABLE | FileDriver tests (test builds only) |
+| `store_utest` | — | EXECUTABLE | Store unit tests (test builds only) |
 
 **Dependency graph:**
 
@@ -190,6 +193,7 @@ Use `MockDriver` to verify that `Store` correctly delegates to the driver. Cover
 - Null driver rejection (throws `std::runtime_error`)
 - All CRUD operations: `createDoc`, `readDoc`, `updateDoc`, `deleteDoc`, `readCol`, `existsDoc`
 - Upsert logic: verifies the `existsDoc` → `createDoc`/`updateDoc` routing
+- `updateStartStatus`: first start, preserved `first_start`, unreadable/invalid document recreated, persistence failure, null store
 
 ### FileDriver Tests (fileDriver_test.cpp)
 
@@ -202,34 +206,42 @@ Use a real temporary directory (`/tmp/fileDriver_test/<pid>_<tid>`). Covers:
 - Collection listing
 - Non-existing document/collection reads
 
-Both test suites clean up their temporary directories in `TearDown`.
+The FileDriver suite removes its temporary directory in `TearDown`; the Store suite uses mocks only.
 
 ## Consumers
 
-The store is instantiated once in `main.cpp` using `FileDriver` pointed at the configured storage path, then injected as `std::shared_ptr<IStore>` into:
+The store is instantiated once in `main.cpp` using `FileDriver` (without `create`) pointed at `analysisd.store_path` (default `<home>/data/store`, i.e. `/var/wazuh-manager/data/store`; `conf.cpp`), then injected as `std::shared_ptr<IStore>` into:
 
 | Consumer Module | Usage |
 |-----------------|-------|
 | **router** (Orchestrator) | Persists and restores router/tester configuration snapshots |
-| **builder** | Reads engine schema, allowed fields, and log parser overrides |
-| **geo** | Stores MMDB database hashes for GeoIP update detection |
+| **main.cpp** | Reads the engine schema, allowed fields and log parser overrides; writes the start status |
+| **builder** | Reads the geo and IOC enrichment configurations |
+| **geo** | Stores, per MMDB type, the database path, hash and timestamps for GeoIP update detection |
 | **iockvdb** | Persists IOC KVDB state |
 | **iocsync** | Stores IOC synchronization state |
-| **confremote** | Stores remote runtime configuration |
-| **streamlog** | Logger configuration persistence |
+| **cmsync** | Stores content synchronization state |
+| **confremote** | Caches the remote runtime configuration |
+| **streamlog** | Persists each channel's rotation state |
 | **api/ioccrud** | Updates IOC sync status documents |
 
 ### Known Document Paths
 
 | Path | Owner | Description |
 |------|-------|-------------|
-| `schema/engine-schema/0` | builder | Engine schema definition |
-| `schema/allowed-fields/0` | builder | Allowed fields restrictions |
-| `schema/wazuh-logpar-overrides/0` | builder | Log parser overrides |
+| `schema/engine-schema/0` | main.cpp → schemf | Engine schema definition (missing: warning, engine runs without schema) |
+| `schema/allowed-fields/0` | main.cpp → builder | Allowed fields restrictions |
+| `schema/wazuh-logpar-overrides/0` | main.cpp → hlp | Log parser overrides (missing: startup fails) |
+| `engine/status/0` | store utils | `first_start` / `last_start` timestamps |
+| `enrichment/geo/0`, `enrichment/ioc/0` | builder | Enrichment builder configurations (missing: builder registration throws) |
 | `router/router/0` | router | Router configuration snapshot |
 | `router/tester/0` | router | Tester configuration snapshot |
-| `geo/mmdb-hash/internal` | geo | GeoIP database hashes |
-| `kvdb/ioc/state/0` | iockvdb | IOC KVDB state |
-| `ioc/sync-state/0` | iocsync | IOC synchronization state |
+| `geo/mmdb/0` | geo | GeoIP database state |
+| `kvdb-ioc/status/0` | iockvdb | IOC KVDB state |
+| `iocsync/status/0` | iocsync | IOC synchronization state |
+| `cmsync/status/0` | cmsync | Content synchronization state |
 | `ioc/remote-status/0` | api/ioccrud | IOC sync status |
-| `confremote/*` | confremote | Remote configuration settings |
+| `remote-config/engine-cnf/0` | confremote | Cached remote configuration |
+| `streamlog/<channel>/0` | streamlog | Rotation state of a channel |
+
+The `schema/*` and `enrichment/*` documents are seeded at install by `installEngineStore()` in `src/init/inst-functions.sh`, copied from `src/engine/ruleset/schemas/` (`engine-schema.json` is regenerated first by `generateSchemaFiles()`).

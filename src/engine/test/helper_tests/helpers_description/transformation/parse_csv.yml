@@ -34,10 +34,6 @@ arguments:
     type: string  # Accept only string
     generate: string
     source: value # includes only values
-  out3:
-    type: string  # Accept only string
-    generate: string
-    source: value # includes only values
 
 skipped:
   - success_cases # parser failed
@@ -50,7 +46,7 @@ test:
       input_field: value1,value2,value3
       out1: out1
       out2: out2
-      out3: out3
+      out2_1: out3
     target_field: any_value
     should_pass: true
     expected:
@@ -62,7 +58,7 @@ test:
       input_field: value1,value2,value3
       out1: out1.key
       out2: out2/key
-      out3: out3.key/subkey
+      out2_1: out3.key/subkey
     target_field: any_value
     should_pass: true
     expected:
@@ -78,7 +74,7 @@ test:
       input_field: valu1=1 value2=2
       out1: out1
       out2: out2
-      out3: out3
+      out2_1: out3
     target_field: any_value
     should_pass: false
     description: Failure csv parse

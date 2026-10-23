@@ -48,7 +48,7 @@ private:
     void updateIocStatusSnapshot();
 
     /// Report a sync cycle that could not complete: types without a usable version yet (empty hash)
-    /// or that were mid-sync (RUNNING) are marked FAILED. Types with an existing version keep it
+    /// or that were mid-sync (UPDATING) are marked FAILED. Types with an existing version keep it
     /// (READY, old data still usable). Publishes the snapshot.
     void reportSyncFailure();
 

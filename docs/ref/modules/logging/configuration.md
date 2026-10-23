@@ -89,10 +89,11 @@ daemon names (`wazuh-agentd`, `wazuh-modulesd:<module>`, …).
 ```text
 2026/07/06 12:34:56 wazuh-manager-db: INFO: Started (pid: 12345).
 2026/07/06 12:34:56 wazuh-manager-modulesd:control: INFO: Starting control thread.
-2026/07/06 12:34:57 wazuh-manager-remoted: INFO: Started (pid: 12350). Listening on port 1514/TCP (secure).
+2026/07/06 12:34:57 wazuh-manager-remoted: INFO: Started (pid: 12350). Legacy listener disabled (remote.legacy.enabled is false).
 ```
 
-Levels are `DEBUG`, `INFO`, `WARNING`, `ERROR` and `CRITICAL`. A daemon running in debug mode (`-d`,
+Levels are `DEBUG`, `INFO`, `WARNING`, `ERROR` and `CRITICAL`; the engine
+(`wazuh-manager-analysisd`) writes its critical messages as `ERROR`. A daemon running in debug mode (`-d`,
 for example after `wazuh-manager-control enable debug` and a restart) adds
 `[<pid>] <file>:<line> at <function>():` after the tag.
 
@@ -103,7 +104,7 @@ for example after `wazuh-manager-control enable debug` and a restart) adds
 ```
 
 One object per line, with the keys `timestamp`, `tag`, `level` (`debug`, `info`, `warning`,
-`error`, `critical`) and `description`. In debug mode each object also carries `pid`, `file`, `line`
+`error`, `critical`; never `critical` from the engine) and `description`. In debug mode each object also carries `pid`, `file`, `line`
 and `routine`.
 
 ---
@@ -119,10 +120,11 @@ for further rotations of the same day). The schedule and its internal options ar
 
 ## Implementation Notes
 
-- **Reader:** `os_logging_config()` in `src/shared/src/debug_op.c`. On the manager it reads the
-  `logging` section of the effective configuration through the hook `libconfig` registers (the engine
-  registers the same hook, so it follows the setting too); with no configuration available it falls
-  back to `plain`. On an agent it reads `ossec.conf` directly.
+- **Reader:** `os_logging_config()` in `src/shared/src/debug_op.c`. On a manager C daemon it reads the
+  `logging` section of the effective configuration through the hook `libconfig` registers; with no
+  configuration available it falls back to `plain`. The engine has no such hook: it reads the same
+  setting through `base::managerConfig::logFormat()` at start-up and writes with its own sink
+  (`src/engine/source/base/src/managerLogSink.cpp`). On an agent it reads `ossec.conf` directly.
 - **Default file:** the installer writes the block from `etc/templates/config/generic/logging.template`
   (`plain`).
 

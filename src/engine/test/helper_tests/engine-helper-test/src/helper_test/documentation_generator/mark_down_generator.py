@@ -6,6 +6,7 @@ from collections import defaultdict
 from pathlib import Path
 from typing import List
 import json
+import re
 import yaml
 
 class MarkdownGenerator(IExporter):
@@ -16,14 +17,34 @@ class MarkdownGenerator(IExporter):
         self.helper_name = ""
 
     def create_signature(self, doc: Documentation):
+        # An optional argument is shown in brackets, like the variadic tail.
+        names = [f"[{name}]" if getattr(arg, "optional", False) else str(name)
+                 for name, arg in doc.arguments.items()]
         self.content.append(f"```\n")
         if not doc.is_variadic:
             self.content.append(
-                f"field: {doc.name}({', '.join(str(v) for v in doc.arguments)})")
+                f"field: {doc.name}({', '.join(names)})")
         else:
             self.content.append(
-                f"field: {doc.name}({', '.join(str(v) for v in doc.arguments)}, [...])")
+                f"field: {doc.name}({', '.join(names)}, [...])")
         self.content.append(f"```\n")
+
+    @staticmethod
+    def _ordered_example_arguments(doc: Documentation, arguments: dict) -> list:
+        """
+        Order an example's arguments as the test runner passes them to the helper
+        (RuntimeCases.order_argument_list): declared arguments in declaration order, then the
+        variadic extras ordered by their numeric `_<n>` suffix. The YAML key order is not the
+        call order, so rendering it verbatim would show a call the tests never make.
+        """
+        declared_order = {name: index for index, name in enumerate(doc.arguments)}
+        declared = sorted(((k, v) for k, v in arguments.items() if k in declared_order),
+                          key=lambda kv: declared_order[kv[0]])
+        suffix = re.compile(r'_(\d+)$')
+        extras = sorted(((k, v) for k, v in arguments.items()
+                         if k not in declared_order and suffix.search(k)),
+                        key=lambda kv: int(suffix.search(kv[0]).group(1)))
+        return declared + extras
 
     def _format_call_arg(self, v):
         """
@@ -54,6 +75,35 @@ class MarkdownGenerator(IExporter):
             pass
         return "'" + value.replace("'", "''") + "'"
 
+    @staticmethod
+    def _accepted_values(info) -> str:
+        """
+        Describe the values an unrestricted argument accepts. The declared type decides first:
+        the parser reports a `generate` subset of "string" for every argument that sets none
+        (booleans and arrays included), so the subset only refines a number or a string.
+        """
+        arg_type, generate = info.arg_type, info.generate
+        # A documentation-only `accepted_values` text overrides the one derived from the type.
+        if getattr(info, "accepted_values", None):
+            return info.accepted_values
+        if isinstance(arg_type, list):
+            return "Any value of the listed types"
+        if generate == "all":
+            return "[number, string, boolean, object, array]"
+        if arg_type == "object":
+            return "Any object"
+        if arg_type == "array":
+            return "Any array"
+        if arg_type == "boolean":
+            return "Any boolean"
+        if arg_type == "number":
+            return "Integers between `-2^63` and `2^63-1`" if generate == "integer" else "Any number"
+        return {
+            "ip": "Any IP",
+            "regex": "Any regex",
+            "hexadecimal": "Any hexadecimal",
+        }.get(generate, "Any string")
+
     def create_table(self, arguments: dict, headers: list):
         """
         Create a table in Markdown format.
@@ -68,7 +118,7 @@ class MarkdownGenerator(IExporter):
         rows = []
         for name, info in arguments.items():
             row = []
-            row.append(name)
+            row.append(f"{name} (optional)" if getattr(info, "optional", False) else name)
 
             if isinstance(info.arg_type, list):
                 row.append(', '.join(info.arg_type))
@@ -84,24 +134,7 @@ class MarkdownGenerator(IExporter):
                 row.append(', '.join(info.restrictions["allowed"]) if isinstance(
                     info.restrictions["allowed"], list) else str(info.restrictions["allowed"]))
             else:
-                if isinstance(info.arg_type, list):
-                    row.append("Any object")
-                elif info.arg_type == "object":
-                    row.append("Any object")
-                elif info.generate == "integer":
-                    row.append("Integers between `-2^63` and `2^63-1`")
-                elif info.generate == "string":
-                    row.append("Any string")
-                elif info.generate == "ip":
-                    row.append("Any IP")
-                elif info.generate == "regex":
-                    row.append("Any regex")
-                elif info.generate == "hexadecimal":
-                    row.append("Any hexadecimal")
-                elif info.generate == "boolean":
-                    row.append("Any boolean")
-                elif info.generate == "all":
-                    row.append("[number, string, boolean, object, array]")
+                row.append(self._accepted_values(info))
             rows.append(row)
         data_rows = ['| ' + ' | '.join(row) + ' |' for row in rows]
 
@@ -142,6 +175,15 @@ class MarkdownGenerator(IExporter):
                 row.append("Any hexadecimal")
             elif output.subset == "all":
                 row.append("[number, string, boolean, object, array]")
+            # No (or an unlisted) subset: fall back on the declared type so the row keeps its cell.
+            elif output.type_ == "boolean":
+                row.append("Any boolean")
+            elif output.type_ in ("number", "double", "float"):
+                row.append("Any number")
+            elif output.type_ == "array":
+                row.append("Any array")
+            else:
+                row.append("Any string")
         rows.append(row)
         data_rows = ['| ' + ' | '.join(row) + ' |' for row in rows]
 
@@ -171,7 +213,7 @@ class MarkdownGenerator(IExporter):
             event_data = {}
 
             if doc.arguments:
-                for key, arg in example.arguments.items():
+                for key, arg in self._ordered_example_arguments(doc, example.arguments or {}):
                     arg_key_for_source = key
                     if is_variadic and key.startswith(variadic_base_name):
                         arg_key_for_source = variadic_base_name + "..."
@@ -221,16 +263,21 @@ class MarkdownGenerator(IExporter):
                 result_msg = "The check was successful" if example.should_pass else "The check was performed with errors"
                 self.content.append(f"*{result_msg}*\n")
             else:
+                # An `expected` of "" is the test runner's "not asserted" marker (it checks only a
+                # truthy expected), not a value the helper writes: a failing example keeps the
+                # input event, and a passing one has no asserted outcome to show.
+                unasserted = isinstance(example.expected, str) and example.expected == ""
                 final_event = dict(event_data)
-                if example.expected is not None:
+                if example.expected is not None and not unasserted:
                     if example.should_pass or doc.helper_type == "transformation":
                         final_event[target_field_name] = example.expected
 
                 if all(v is None for v in final_event.values()):
                     final_event = {}
 
-                self.content.append("#### Outcome Event\n")
-                self.content.append("```json\n" + json.dumps(final_event, indent=2) + "\n```\n")
+                if not (unasserted and example.should_pass):
+                    self.content.append("#### Outcome Event\n")
+                    self.content.append("```json\n" + json.dumps(final_event, indent=2) + "\n```\n")
 
                 result_msg = "The operation was successful" if example.should_pass else "The operation was performed with errors"
                 self.content.append(f"*{result_msg}*\n")

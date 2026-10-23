@@ -2,9 +2,9 @@
 
 ## Introduction
 
-The **Wazuh Engine** is the decoding, enrichment and routing events of the Wazuh manager (it ships as the `wazuh-manager-analysisd` daemon). It receives raw events from `wazuh-manager-remoted`, normalizes them to the Wazuh Common Schema using user-defined decoders, enriches them (GeoIP, IOC, key-value lookups), evaluates them against one or more security policies, and forwards the resulting documents to `wazuh-indexer`.
+The **Wazuh Engine** is the decoding, enrichment and routing component of the Wazuh manager (it ships as the `wazuh-manager-analysisd` daemon). It receives raw events from `wazuh-manager-remoted`, normalizes them to the Wazuh Common Schema using user-defined decoders, enriches them (GeoIP, IOC, key-value lookups), evaluates them against one or more security policies, and forwards the resulting documents to `wazuh-indexer`.
 
-The engine never communicates with agents or with Wazuh CTI directly. Its only inbound peer for events is `remoted` and `vd`, and its only outbound peer for event/content flows is `wazuh-indexer`. The only external Internet connectivity it requires is downloading GeoIP/ASN databases from official Wazuh servers for geolocation updates. Content (decoders, integrations, policies, IOC databases) is also pulled from `wazuh-indexer` rather than from a CTI feed. For the runtime concepts referenced throughout this document — events, decoders, security policies, spaces, helper functions, assets — see the [quick-start](./README.md). For the API surface, see [api-reference.md](./api-reference.md).
+The engine never communicates with agents or with Wazuh CTI directly. Its only inbound peers for events are `wazuh-manager-remoted` and the vulnerability scanner of `wazuh-manager-modulesd`, and its only outbound peer for event/content flows is `wazuh-indexer`. The only external Internet connectivity it requires is downloading GeoIP/ASN databases from the manifest URL `analysisd.geo_manifest_url` (plus IANA time-zone updates, only when `analysisd.tzdb_auto_update` is enabled). Content (decoders, integrations, policies, IOC databases) is also pulled from `wazuh-indexer` rather than from a CTI feed. For the runtime concepts referenced throughout this document — events, decoders, security policies, spaces, helper functions, assets — see the [quick-start](./README.md). For the API surface, see [api-reference.md](./api-reference.md).
 
 
 > [!NOTE]
@@ -26,8 +26,8 @@ classDef ExternalClass font-size:14px,stroke-width:2px,fill:#3f51b5,color:#fff,r
 classDef ModuleClass font-size:14px,stroke-width:2px,rx:10,ry:10
 classDef HubClass font-size:14px,stroke-width:2px,fill:#e8eaf6,rx:10,ry:10
 
-remoted["wazuh-manager-remoted / vulnerability detector"]:::ExternalClass
-operator["Wazuh-indexer / Internal CLI"]:::ExternalClass
+remoted["wazuh-manager-remoted / vulnerability scanner"]:::ExternalClass
+operator["Server API, wazuh-manager-control, internal CLI<br/>(wazuh-indexer in standalone mode)"]:::ExternalClass
 indexer["wazuh-indexer"]:::ExternalClass
 
 subgraph engine["Wazuh Engine"]
@@ -94,7 +94,7 @@ The diagram shows the engine boundary and its relationships with the outside wor
 
 ### Server
 
-Two HTTP servers running on Unix Domain Sockets. The **events** socket receives raw events from `wazuh-manager-remoted` or `vulnerability dectector`. The **management API** socket exposes the operations used by internal client dev tools and the rest of the Wazuh manager: managing routes, running tester sessions, applying content changes, querying GeoIP/IOC state, toggling raw event indexing, and reading metrics. Both sockets speak HTTP with JSON bodies; the schema for every request and response is defined in protobuf.
+Two HTTP servers running on Unix Domain Sockets under `/var/wazuh-manager/queue/sockets/`. The **events** socket, `engine-ingest-http.sock`, receives raw events (`POST /events/enriched`) from `wazuh-manager-remoted` and the vulnerability scanner. The **management API** socket, `engine-api-http.sock`, exposes the operations used by the Server API (metrics and status), the readiness check of `wazuh-manager-control start`, and the internal development tools: managing routes, running tester sessions, applying content changes, querying GeoIP/IOC state, reading the raw-event indexer status, controlling the event dumper, and reading metrics. Both sockets speak HTTP with JSON bodies; the schema for every request and response is defined in protobuf. See [api-reference.md](./api-reference.md).
 
 ### Orchestrator
 
@@ -138,7 +138,7 @@ Stream Log provides asynchronous, rotating log channels with size-based and time
 
 ### Configuration
 
-The local configuration is loaded once at startup — `analysisd.*` internal options overridable by `WAZUH_*` environment variables, the `<indexer>` section of the XML `wazuh-manager.conf`, and the indexer credentials from the keystore (see [Engine configuration](./configuration.md#configuration-sources)); every module reads from it. A subset of runtime parameters is also pulled periodically from `wazuh-indexer` as **remote configuration**, so operators can tune behaviour without restarting the engine. Remote configuration changes are applied with rollback if a module rejects the new values.
+The local configuration is loaded once at startup — `analysisd.*` internal options overridable by `WAZUH_*` environment variables, the `<indexer>` section of the XML `wazuh-manager.conf`, and the indexer credentials from the keystore (see [Engine configuration](./configuration.md#configuration-sources)); every module reads from it. Runtime parameters are also pulled periodically (`analysisd.remote_conf_sync_interval`) from `wazuh-indexer` as **remote configuration**, so operators can tune behaviour without restarting the engine; in this version the only one is `index_raw_events`, which switches the raw-event indexer on or off. A value the consuming module rejects is discarded and the previous one kept.
 
 ---
 

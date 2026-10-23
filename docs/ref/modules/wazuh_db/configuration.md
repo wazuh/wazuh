@@ -177,8 +177,8 @@ These examples show only the `<wdb>` section; a real `wazuh-manager.conf` also c
 | File | Path |
 |---|---|
 | Global database | `/var/wazuh-manager/queue/db/global.db` (`wazuh-manager`, mode `0640`) |
-| MITRE database | `/var/wazuh-manager/var/db/mitre.db` |
-| Backups | `/var/wazuh-manager/backup/db/` |
+| MITRE database | `/var/wazuh-manager/var/db/mitre.db` (`root:wazuh-manager`, mode `0660`) |
+| Backups | `/var/wazuh-manager/backup/db/` (`wazuh-manager`, mode `0750`) |
 
 SQLite's temporary files (large sorts, `VACUUM`) go to the installation directory's `tmp/` (`/var/wazuh-manager/tmp`): `wazuh-manager-db` sets `SQLITE_TMPDIR` to it at startup. `wazuh-manager-control start` empties that directory before starting the daemons.
 
@@ -192,10 +192,11 @@ Each backup is written with SQLite's `VACUUM INTO` after committing the open tra
 gzip-compressed, as `backup/db/global.db-backup-<YYYY-MM-DD-hh:mm:ss>.gz`. A backup taken before a
 restore has the suffix `-pre_restore` before `.gz`.
 
-The first periodic backup is due `interval` seconds after the newest file already in `backup/db/`
-(or about one second after start when there is none). A successful backup is logged at debug level as
-`Created Global database backup "<path>"`, each deletion as `Deleted Global database backup: "<path>"`,
-and a failure as `Creating Global DB snapshot by interval failed: <reason>`.
+The first periodic backup is due `interval` seconds after the modification time of the newest file
+already in `backup/db/` (right after start when there is none). A successful backup is logged at debug
+level as `Created Global database backup "<path>"`; each deletion is logged at info level as
+`Deleted Global database backup: "<path>"`, and a failure as an error,
+`Creating Global DB snapshot by interval failed: <reason>`.
 
 ### View Backup Files
 
@@ -278,7 +279,9 @@ space in `backup/db/`, and look for `Creating Global DB snapshot by interval fai
 
 **Issue:** The daemon exits at start with `Invalid configuration block for Wazuh-DB.`
 **Solution:** Run `wazuh-manager-conf validate` and fix the option it names; it rejects every value
-of the `wdb` section the daemon would refuse, a zero `wdb.backup.global.interval` included.
+of the `wdb` section the daemon would refuse, a zero `wdb.backup.global.interval` included. As `root`,
+`/var/wazuh-manager/bin/wazuh-manager-db -t` runs the daemon's own check (see
+[Running the daemon](README.md#running-the-daemon)).
 
 **Issue:** The daemon exits at start with `(2302): Invalid definition for wazuh_db.…`
 **Solution:** Fix that key in `wazuh-manager-internal-options.conf` to an integer inside its range.

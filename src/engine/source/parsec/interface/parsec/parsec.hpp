@@ -177,7 +177,7 @@ public:
      * @pre success() == true
      * @throws std::bad_optional_access if success() == false
      */
-    const T& value() const { return *m_value; }
+    const T& value() const { return m_value.value(); }
 
     /**
      * @brief Get the value
@@ -187,7 +187,7 @@ public:
      * @pre success() == true
      * @throws std::bad_optional_access if success() == false
      */
-    T&& value() { return std::move(*m_value); }
+    T&& value() { return std::move(m_value.value()); }
 
     /**
      * @brief Get the error

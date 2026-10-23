@@ -1,12 +1,15 @@
 #!/bin/bash
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
+SCRIPT_DIR=$(dirname $(readlink -f $0))
+
 # Function to display help message
 usage() {
     echo "Usage: $0 [options] [arguments]"
     echo
     echo "Options:"
     echo "  -h, --help          Show this help message"
+    echo "  -b, --build-dir DIR Engine build directory (default: src/build/engine)"
     echo "  -e, --exclude DIRS  Colon-separated list of directories to exclude"
     echo "  -t, --test-dir DIR  Directory to search for tests (default: build directory)"
     echo "  -r, --regex PATTERN Optional regular expression to filter tests (default: no filtering)"
@@ -15,6 +18,7 @@ usage() {
 
 # Initialize variables
 EXCLUDE_DIRS=""
+BUILD_DIR=""
 TEST_DIR=""
 REGEX_FILTER=""
 OUTPUT_FILE=""
@@ -25,6 +29,10 @@ while [[ "$1" == -* ]]; do
         -h|--help)
             usage
             exit 0
+            ;;
+        -b|--build-dir)
+            BUILD_DIR=$2
+            shift 2
             ;;
         -e|--exclude)
             EXCLUDE_DIRS=$2
@@ -50,9 +58,10 @@ while [[ "$1" == -* ]]; do
     esac
 done
 
-# Set default values if not provided
-SCRIPT_DIR=$(dirname $(readlink -f $0))
-BUILD_DIR=$SCRIPT_DIR/../build
+# Set default values if not provided: the manager build configures the engine in src/build/engine
+if [ -z "$BUILD_DIR" ]; then
+    BUILD_DIR=$SCRIPT_DIR/../../build/engine
+fi
 BUILD_SRC_DIR=$(realpath "${BUILD_DIR}/source")
 
 # If no test directory is specified, use the default build directory
@@ -111,7 +120,7 @@ IFS=$'\n' read -d '' -r -a lib_arr <<< "${LIBS_LIST}"
 
 # Merge the arrays
 bin_arr=("${test_arr[@]}" "${lib_arr[@]}")
-bin_arr+=("${BUILD_DIR}/main")
+bin_arr+=("${BUILD_DIR}/wazuh-engine")
 
 # Check if the binary was compiled with ASAN
 for testAbs in "${bin_arr[@]}"
@@ -146,7 +155,7 @@ build_ctest_cmd() {
 }
 
 if [[ "$TEST_DIR" == "$BUILD_DIR" ]]; then
-    for test in ${TEST_DIRS}; do
+    for test in "${TEST_DIRS[@]}"; do
         cmd=$(build_ctest_cmd "${test}" "$REGEX_FILTER" "$OUTPUT_FILE")
         eval $cmd
     done

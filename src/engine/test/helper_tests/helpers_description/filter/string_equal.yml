@@ -31,9 +31,6 @@ target_field:
   type: string
   generate: string
 
-# Indicates whether the helper function supports a variable number of arguments
-variadic: false
-
 test:
   - arguments:
       any_string: hello world!

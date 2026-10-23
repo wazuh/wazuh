@@ -27,9 +27,10 @@ sudo rpm -ivh wazuh-manager-*.rpm
 ```
 
 The package refuses to install, even as a fresh installation, on a host that still carries a pre-5.0
-installation: an `/etc/ossec-init.conf` naming a version below 5, or a `/var/ossec` server installation
-whose `VERSION.json` does. Migrate it as
-described in [Migrating a 4.x manager](../../guide/migration/manager-4x-to-5x.md) instead.
+manager: an `/etc/ossec-init.conf` of type `server` or `local` naming a version below 5, or a `/var/ossec`
+installation that reports itself a server (`wazuh-control info -t`) and whose `VERSION.json` names a version
+below 5. A 4.x agent on the same host does not block it. A 4.x manager is not upgraded in place: move to 5.0 as
+described in [Migrating a 4.x manager](../../guide/migration/manager-4x-to-5x.md).
 
 #### Installed layout
 
@@ -37,13 +38,13 @@ The manager uses two directories, with no link between them:
 
 | Directory | Holds | Owner:group, mode |
 |---|---|---|
-| `/etc/wazuh-manager` | `wazuh-manager.conf`, `wazuh-manager-internal-options.conf`, `client.keys`, the agent groups under `shared/`, the enrollment password and token store | `root:wazuh-manager`, `0770` |
-| `/etc/wazuh-manager/certs` | every TLS certificate and key of the manager (see [Credentials and certificates](#credentials-and-certificates)) | `root:wazuh-manager`, `0750`; every file `root:wazuh-manager`, `0640` |
+| `/etc/wazuh-manager` | `wazuh-manager.conf`, `wazuh-manager-internal-options.conf`, `client.keys`, the agent groups under `shared/`, the enrollment password and token store; `ca/` and `export/`, root's only, hold the manager's CA and what it publishes for the dashboard ([Credentials](credentials.md#files-and-modes)) | `root:wazuh-manager`, `0770` |
+| `/etc/wazuh-manager/certs` | every TLS certificate and key the daemons read (see [Credentials and certificates](#credentials-and-certificates)) | `root:wazuh-manager`, `0750`; every file `root:wazuh-manager`, `0640` |
 | `/var/wazuh-manager` | binaries, the Server API, databases, queues, logs and detection content | `root:wazuh-manager`, `0750` |
 
 The configuration directory is fixed: a source installation with a custom installation directory
 (`USER_DIR`) moves `/var/wazuh-manager` only. A relative path written in `wazuh-manager.conf` still
-resolves against the installation directory. No daemon writes `certs/`; only root does (the installer, and `wazuh-manager-certs` for the CA bundle). What
+resolves against the installation directory. No daemon writes `certs/`; only root does (the credential resolver, and `wazuh-manager-certs` for the CA bundle). What
 `dpkg --purge` and `rpm -e` remove from each directory is described in [Uninstall](../uninstall.md).
 
 ### Installation variables
@@ -97,15 +98,18 @@ Write `WAZUH_REMOTE_HTTPS_MAX_BODY_SIZE` as the configuration accepts it — a b
 `WAZUH_REMOTE_HTTPS_GLOBAL_PREFIX` is the URL path every HTTPS endpoint is served under (for example, `/stateless` is exposed as `/wazuh-manager/stateless`). Set it to `/` to serve the endpoints unprefixed. Agents must be configured with the same prefix: the request signature covers the full request path exactly as sent, so a proxy in between must forward it untouched, and a prefix mismatch between agent and manager surfaces as `404`.
 
 > [!IMPORTANT]
-> `WAZUH_REMOTE_HTTPS_CERTIFICATE`, `WAZUH_REMOTE_HTTPS_KEY`, `WAZUH_REMOTE_HTTPS_CA_CERTIFICATE` and `WAZUH_REMOTE_HTTPS_CA` are best given as absolute paths in the configuration directory, such as `/etc/wazuh-manager/certs/remoted.crt`, as the defaults are; a relative path is resolved against the installation directory `/var/wazuh-manager` (every daemon runs with it as its working directory), not against `/etc/wazuh-manager`, so `wazuh-manager-remoted` opens a path exactly as `wazuh-manager-conf validate` checked it. Under the systemd unit (`ProtectHome=yes`, `PrivateTmp=yes`) only paths visible to the unit work: a file under `/home`, `/root`, `/run/user` or the host's `/tmp` is not visible and fails validation with the `(1244)` error below. The manager fails closed on them: when a file is missing, `wazuh-manager-control start` refuses to start anything (`(1244): Invalid configuration at '/remote/https/certificate': file not found: …`), and when it exists but the `wazuh-manager` user cannot read it, `wazuh-manager-remoted` exits at startup (`Cannot start the HTTPS agent listener: …`) for the certificate and key always, and for `WAZUH_REMOTE_HTTPS_CA` when `verification_mode` is `certificate` or `full`, and for `WAZUH_REMOTE_HTTPS_CA_CERTIFICATE` always, since 5.x agents bootstrap their trust in the manager from `GET /cacerts`. The files must exist and be readable by the `wazuh-manager` user before the manager is started. The credential resolver issues the default `/etc/wazuh-manager/certs/remoted.pem`/`remoted-key.pem` pair and fixes its ownership; a pair at any other path is yours to provision.
+> `WAZUH_REMOTE_HTTPS_CERTIFICATE`, `WAZUH_REMOTE_HTTPS_KEY` and `WAZUH_REMOTE_HTTPS_CA_CERTIFICATE` must name files directly in `/etc/wazuh-manager/certs`, given as absolute paths as the defaults are, such as `/etc/wazuh-manager/certs/remoted.crt`. The credential check that runs before every start refuses any other location, a relative path included (it resolves against the installation directory `/var/wazuh-manager`), with `Invalid credentials. Exiting` and `INVALID remote.https.certificate: … is outside /etc/wazuh-manager/certs, the only place the resolver checks …`; it also requires each file to be `root:wazuh-manager` `0640` (`Unsafe credentials. Exiting` otherwise). The credential resolver issues only the default `remoted.pem`/`remoted-key.pem` pair and `root-ca.pem` bundle: a file under another name is yours to provision before the manager is started, and while it is absent the start is refused with `Unresolved credentials. Exiting` (`MISSING …: configured as remote.https.certificate …; stage the pair …`). See [Configured file names](credentials.md#configured-file-names).
+>
+> `WAZUH_REMOTE_HTTPS_CA` is not checked by the resolver. Give it as an absolute path; a relative one resolves against `/var/wazuh-manager` (every daemon runs with it as its working directory), so `wazuh-manager-remoted` opens a path exactly as `wazuh-manager-conf validate` checked it. Under the systemd unit (`ProtectHome=yes`, `PrivateTmp=yes`) a file under `/home`, `/root`, `/run/user` or the host's `/tmp` is not visible. When the file is missing, `wazuh-manager-control start` refuses to start anything (`(1244): Invalid configuration at '/remote/https/ca': file not found: …`); when it exists but the `wazuh-manager` user cannot read it and `verification_mode` is `certificate` or `full`, `wazuh-manager-remoted` exits at startup (`Cannot start the HTTPS agent listener: …`).
 
 ### Configuration
 
 #### Credentials and certificates
 
-The manager sets up every credential it needs with its credential resolver, when the package is installed and
-again before every start: the two Server API passwords, the indexer password, its own CA and two server pairs, and
-its trust in the indexer. On a single host where the indexer is already installed there is nothing to configure:
+The manager sets up every credential it needs with its credential resolver: the two Server API passwords, the
+indexer password, its own CA and two server pairs, and its trust in the indexer. It runs when the package is
+installed, the only moment the CA is minted and the server pairs are issued, and again before every start, when it
+checks everything and completes the passwords and the indexer trust. On a single host where the indexer is already installed there is nothing to configure:
 the manager generates what it owns and imports the indexer's CA, client pair and password from
 `/etc/wazuh-indexer/export/`. Install order does not matter: what a component could not resolve at install time
 is resolved when it starts.
@@ -138,13 +142,17 @@ afterwards. Staged files are validated at every start and never replaced.
 
 The manager uses two server pairs of its own, issued by one CA, and the indexer's trust:
 
-| File in `/etc/wazuh-manager/certs/` | Content | Owner:group, mode |
-|---|---|---|
-| `remoted.pem`, `remoted-key.pem` | the agent listener's chain (a `serverAuth` leaf, followed by its CA) and key, served by `wazuh-manager-remoted` and reused by `wazuh-manager-authd` on port 1515 | `root:wazuh-manager`, `0640` |
-| `apid.pem`, `apid-key.pem` | the Server API's chain (a `serverAuth` leaf, `CA:FALSE`, with a SAN extension, followed by its CA) and key | `root:wazuh-manager`, `0640` |
-| `root-ca.pem` | the agents' CA bundle; must contain the CA in `/etc/wazuh-manager/ca/root-ca.pem` | `root:wazuh-manager`, `0640` |
-| `indexer-ca.pem` | the indexer's CA | `root:wazuh-manager`, `0640` |
-| `indexer-connector.pem`, `indexer-connector-key.pem` | the client pair the indexer issued for this manager (`clientAuth`) and its key | `root:wazuh-manager`, `0640` |
+| File in `/etc/wazuh-manager/certs/` | Content |
+|---|---|
+| `remoted.pem`, `remoted-key.pem` | the agent listener's chain (a `serverAuth` leaf, followed by its CA) and key, served by `wazuh-manager-remoted` and reused by `wazuh-manager-authd` on port 1515 |
+| `apid.pem`, `apid-key.pem` | the Server API's chain (a `serverAuth` leaf, `CA:FALSE`, with a SAN extension, followed by its CA) and key |
+| `root-ca.pem` | the agents' CA bundle; must contain the CA in `/etc/wazuh-manager/ca/root-ca.pem` |
+| `indexer-ca.pem` | the indexer's CA |
+| `indexer-connector.pem`, `indexer-connector-key.pem` | the client pair the indexer issued for this manager (`clientAuth`) and its key |
+
+When your PKI issued the server pairs from an intermediate CA, `apid.pem` carries the leaf followed by the
+intermediates, the intermediate that issued the remoted leaf is added to `certs/root-ca.pem` (agents receive that
+file alone), and `ca/root-ca.pem` stays the root; see [Server pairs](credentials.md#server-pairs).
 
 The CA that issued the two server pairs goes in `/etc/wazuh-manager/ca/root-ca.pem` (`root:root 0644` in a
 `root:root 0700` directory). Its key, `root-ca.key`, is only needed where the manager should issue pairs itself;
@@ -163,9 +171,9 @@ sudo install -m 0640 -o root -g wazuh-manager <node>-apid-key.pem /etc/wazuh-man
 ```
 
 If the install already minted a CA before you staged yours, remove `ca/root-ca.key` and
-`ca/.wazuh-manager-bootstrap-ca`, put your CA in `ca/root-ca.pem`, and run
-`sudo /var/wazuh-manager/bin/wazuh-manager-resolve-credentials --install` once so that
-`/etc/wazuh-manager/export/ca.pem` names it.
+`ca/.wazuh-manager-bootstrap-ca`, put your CA in `ca/root-ca.pem`, and replace `certs/root-ca.pem` and the pairs
+as above: the bundle is never rewritten, and pairs issued by the minted CA no longer chain. The next start
+publishes the new CA in `/etc/wazuh-manager/export/ca.pem`.
 
 Every file in `/etc/wazuh-manager/certs` is `root:wazuh-manager` `0640`, in a `root:wazuh-manager` `0750`
 directory: the daemons read their pairs after dropping privileges, through the group, but cannot replace or loosen
@@ -199,7 +207,9 @@ credential resolver. The installer generates this block:
 ```
 
 Replace `127.0.0.1` with your indexer IP address if it's running on a different host. The `<ssl>`
-paths are absolute; a relative path resolves against the installation directory `/var/wazuh-manager`. See the
+files must stay directly in `/etc/wazuh-manager/certs`, given as absolute paths: a relative path resolves against
+the installation directory `/var/wazuh-manager`, and the credential check refuses any file outside `certs/`
+([Configured file names](credentials.md#configured-file-names)). See the
 [indexer connector configuration](../modules/indexer_connector/configuration.md) for every option.
 
 ### Start the manager
@@ -212,9 +222,9 @@ none, and a resolver run stopped by an unsafe or invalid entry writes nothing), 
 resolution is incomplete and the command that completes it, and the command to start the service (and to
 enable it at boot, when systemd is running).
 
-Every start first validates the configuration, including that the agent-listener certificate files
-exist, and then resolves the passwords and the indexer credential; it starts no daemon when either
-step fails.
+Every start first validates the configuration file, then checks the credentials and certificates, the files the
+configuration names and each daemon's own test, and finally completes the passwords and the indexer credential;
+it starts no daemon when any step fails ([the order and the messages](credentials.md#when-the-manager-does-not-start)).
 
 ```bash
 sudo systemctl daemon-reload
@@ -232,11 +242,13 @@ sudo /var/wazuh-manager/bin/wazuh-manager-control status
 any of them is down. `wazuh-manager-apid` is listed only on a master node, and
 `wazuh-manager-authd` only when `auth.disabled` is not set.
 
-If it refuses to start, the journal shows `wazuh-manager.conf: Configuration error. Exiting` or `Unresolved credentials. Exiting`, and `/var/wazuh-manager/logs/wazuh-manager.log`
-records the reason: the `(1244)` verdict naming the option or file, or
-`wazuh-manager-control: ERROR: unresolved credentials` followed by the key that is missing and where
-to set it. Fix it and start the service again — there is no reinstall or repair command. See
-[When the manager does not start](credentials.md#when-the-manager-does-not-start).
+If it refuses to start, `wazuh-manager-control` (and so the journal) prints one line ending in `Exiting`:
+`wazuh-manager.conf: Configuration error.` or `<daemon>: Configuration error.` for the configuration, or
+`Unsafe credentials.`, `Invalid credentials.`, `Unresolved credentials.` or `Cannot check the credentials.` for the
+credentials. `/var/wazuh-manager/logs/wazuh-manager.log` records the reason: the `(1244)` verdict naming the
+option or file, or `wazuh-manager-control: ERROR: unresolved credentials` (or `unsafe`, `invalid`) followed by
+the resolver's lines naming the file or key and what to do. Fix it and start the service again; no reinstall is
+needed. See [When the manager does not start](credentials.md#when-the-manager-does-not-start).
 
 ### Server API users
 

@@ -1,12 +1,38 @@
 # Wazuh DB
 
 `wazuh-manager-db` is the manager's SQLite database daemon. It owns `global.db` (the agent registry and
-group assignments) and serves read-only queries on `mitre.db` (MITRE ATT&CK reference data).
+group assignments) and answers queries on `mitre.db` (MITRE ATT&CK reference data).
 
 Source: `src/wazuh_db/`
 
 For backup configuration and internal options see [Wazuh DB Configuration](configuration.md); for the
 HTTP routes see [the API reference](api-reference.md).
+
+## Running the daemon
+
+`wazuh-manager-control start` launches `/var/wazuh-manager/bin/wazuh-manager-db` (installed
+`root:root`, mode `0750`) with no arguments: it reads its configuration, daemonizes, drops to the
+`wazuh-manager` user and group, and serves until it receives `SIGTERM`, `SIGHUP` or `SIGINT`. Run by hand
+(as `root`), it accepts:
+
+```text
+wazuh-manager-db -[Vhdtf] [-c config]
+```
+
+| Flag | Effect |
+|------|--------|
+| `-V` | Print the version and license, exit `0` |
+| `-h` | Print the usage, exit `0` (an unknown flag does the same) |
+| `-d` | Debug output; repeat it (`-dd`) for more. When given, `wazuh_db.debug` is not read |
+| `-t` | Test the configuration and exit: `0` when valid; otherwise the error is logged and it exits `1` with `Invalid configuration block for Wazuh-DB.` Unlike a normal start, the test also requires the certificate files the configuration names to exist |
+| `-f` | Run in the foreground instead of daemonizing |
+| `-c <config>` | Read this configuration file instead of `/etc/wazuh-manager/wazuh-manager.conf` |
+
+The internal options (`wazuh_db.*`, see [Wazuh DB Configuration](configuration.md#internal-options)) are
+read before any of this, so an invalid one makes even `-t` exit with `(2302)`.
+
+The binary reads nothing from standard input: queries go to `wdb.sock` (below) or to the HTTP routes on
+`wdb-http.sock`.
 
 ## Architecture
 
@@ -17,7 +43,7 @@ The daemon runs these threads:
 | Dealer | Accepts connections on `wdb.sock` and hands each peer to the worker pool |
 | Worker pool (`wazuh_db.worker_pool_size`, 8 by default) | Reads one framed query from a peer, runs it, sends the framed answer |
 | HTTP server | Serves the REST routes on `wdb-http.sock` (see below) |
-| Garbage collector | Once a second: commits open transactions that have aged past `commit_time_min`/`commit_time_max`, runs the fragmentation check (and `VACUUM`) every `check_fragmentation_interval` seconds, and closes handles above `open_db_limit` (never `global.db`) |
+| Garbage collector | Once a second: commits open transactions that have aged past `commit_time_min`/`commit_time_max`, runs the fragmentation check (and `VACUUM`) every `check_fragmentation_interval` seconds (never on the read-only `mitre.db`), and closes handles above `open_db_limit` (never `global.db`) |
 | Backup | Started only when `wdb.backup.global.enabled` is true: writes periodic backups of `global.db` |
 
 An HTTP API (`queue/sockets/wdb-http.sock`) is also exposed for the framework and `clusterd`. If it
@@ -49,7 +75,9 @@ The text of a query is the target database, the command and its arguments:
 <database> <command> [<arguments>]
 ```
 
-`<database>` is `global` (every command below) or `mitre` (only `mitre sql <SELECT …>`). Responses are:
+`<database>` is `global` (every command below) or `mitre` (only `mitre sql <SELECT …>`; the database
+is opened read-only, so a statement that would modify it answers `err Cannot execute Mitre database
+query; attempt to write a readonly database`). Responses are:
 
 ```
 ok <JSON>
@@ -57,8 +85,11 @@ err <message>
 due <JSON>
 ```
 
-`due` is a partial page of a paginated answer (`get-group-agents`, `sync-agent-info-get`,
-`sync-agent-groups-get`); the caller asks again from the last id it received.
+`due` is a partial page of a paginated answer (`get-group-agents`, `get-all-agents last_id <id>`,
+`get-agents-by-connection-status`, `disconnect-agents`, `sync-agent-info-get`, `sync-agent-groups-get`,
+`get-distinct-groups`); the caller asks again from the last id (for `get-distinct-groups`, the last
+group hash) it received. `get-all-agents context` instead streams every row as its own `due` message
+on the same connection and ends with `ok []`.
 
 A message that starts with `{` is not a database query but a JSON command:
 `{"command":"getstats"}` returns the query counters and timings, and
@@ -115,7 +146,7 @@ global backup restore {"snapshot":"global.db-backup-2026-09-30-03:00:00.gz","sav
 | Database | Path | Purpose |
 |----------|------|---------|
 | `global.db` | `queue/db/global.db` | Agent registry, groups, connection status. Created by the daemon on first use from `schemas/schema_global.sql`, owned by `wazuh-manager`, mode `0640` |
-| `mitre.db` | `var/db/mitre.db` | MITRE ATT&CK Enterprise reference data (ATT&CK v19.2), generated at install time from `ruleset/mitre/enterprise-attack.json` by `tools/mitre/mitredb.py` |
+| `mitre.db` | `var/db/mitre.db` | MITRE ATT&CK Enterprise reference data (ATT&CK v19.2), generated at install time from `ruleset/mitre/enterprise-attack.json` by `tools/mitre/mitredb.py`. The daemon opens it read-only |
 
 Only these two databases exist; the daemon accepts no other `<database>` target.
 

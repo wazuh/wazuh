@@ -4,9 +4,15 @@ Real-time metrics dashboard and CLI tools for Wazuh Engine.
 
 ## Installation
 
+From `src/engine/`, after its dependency `tools/api-communication` (not published):
+
 ```bash
+pip install tools/api-communication
 pip install -e tools/engine-metrics
 ```
+
+`engine-metrics -v` prints the version. Every subcommand talks to the engine's `metrics/*` API endpoints
+(`metrics/dump`, `metrics/list`, `metrics/get`, `metrics/enable`) on the API socket.
 
 ## Usage
 
@@ -48,14 +54,14 @@ engine-metrics dump -s /var/wazuh-manager/queue/sockets/engine-api-http.sock
 
 ```bash
 engine-metrics list
-engine-metrics list --space wazuh
+engine-metrics list --space standard
 ```
 
 ### Get (get a single metric value)
 
 ```bash
 engine-metrics get router.events.processed
-engine-metrics get events.discarded --space wazuh
+engine-metrics get events.discarded --space standard
 ```
 
 ### Enable / Disable
@@ -67,12 +73,12 @@ engine-metrics disable router.eps.1m
 
 ## Common options
 
-All API subcommands (`dump`, `list`, `get`, `enable`, `disable`) accept:
+The API subcommands accept:
 
 | Option              | Default                                             | Description       |
 |---------------------|-----------------------------------------------------|-------------------|
 | `-s`, `--api-socket`| `/var/wazuh-manager/queue/sockets/engine-api-http.sock`         | Engine API socket |
-| `--space`           | *(none)*                                            | Per-space scope   |
+| `--space`           | *(none)*                                            | Per-space scope (`list`, `get`, `enable`, `disable`); the engine prefixes the name with `space.<space>.` |
 
 ## Adding or changing a metric
 
@@ -105,7 +111,8 @@ Unit details:
 
 ### Example — adding a new metric
 
-1. Register the metric in the engine C++ code (e.g. with `FASTMETRICS_PULL`).
+1. Register the metric in the engine C++ code, with its name in the catalog header
+   `src/engine/source/fastmetrics/interface/fastmetrics/metric_names.hpp` (e.g. with `FASTMETRICS_PULL`).
 2. Add one line to `metrics_meta.json`:
 
 ```json,fragment

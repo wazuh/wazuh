@@ -14,7 +14,8 @@
 #   * Requires root or sudo for service control.
 #   * indexer-security-init.sh is the first-run bootstrap; it must NOT be re-run
 #     on a working cluster. Use --force if you really want to.
-#   * Used by run_benchmark.sh for the indexer_down scenario.
+#   * A standalone helper: no script here calls it. Run it by hand around a run,
+#     e.g. `stop` during a run to observe the manager with the indexer down.
 # ---------------------------------------------------------------------------
 set -euo pipefail
 

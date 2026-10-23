@@ -7,7 +7,8 @@ metadata:
 
     ### Behavior:
     - **Object keys** are sanitized: all keys in the object are normalized.
-    - **Nested objects**: if `recursive` is true, keys inside nested objects are also sanitized.
+    - **Nested objects**: if `recursive` is true, keys inside nested objects are also sanitized
+      (`recursive` is optional and defaults to false).
     - **Arrays**:
       - Arrays that are **not values of JSON object keys** are processed element-wise.
       - Elements can be:
@@ -32,8 +33,9 @@ is_variadic: false
 # Arguments expected by the helper function
 arguments:
   recursive:
-    type: boolean  # Accept only string
+    type: boolean  # Accept only boolean
     source: value # includes only values
+    optional: true # defaults to false when omitted
 
 target_field:
   type:

@@ -8,16 +8,17 @@ This document explains how to compile and run the Wazuh unit tests for the suppo
 4. Configure and build the unit-test binaries under `src/unit_tests` with CMake.
 5. Run them — either all at once with `ctest`, with coverage via `make coverage`, or one binary at a time.
 
-The sections below walk through each target end-to-end. The one appendix at the bottom covers cleanup when switching between targets.
+The sections below walk through each target end-to-end. The one appendix at the bottom covers cleanup when switching between targets. [How CI runs them](#how-ci-runs-them) says what the lanes do, so a local run can be compared with a red check.
 
-> **Tip:** every `make` invocation in this document accepts `-j$(nproc)` to parallelize across all your CPU cores, which makes a big difference on the C++ link-heavy steps. For example: `make -j$(nproc) TARGET=agent TEST=1`.
+> **Tip:** every `make` invocation in this document accepts `-j` to parallelize, which makes a big difference on the C++ link-heavy steps. For `make TARGET=manager TEST=1` CI uses half the CPUs (`-j$(( $(nproc) / 2 ))`): the engine's test links run the runner out of memory at full `-j`.
 
 ## Index
 1. [Requirements](#requirements)
 2. [Compile and run unit tests for Linux targets](#compile-and-run-unit-tests-for-linux-targets)
 3. [Compile and run unit tests for Windows agent](#compile-and-run-unit-tests-for-windows-agent)
 4. [Compile and run unit tests for macOS agent](#compile-and-run-unit-tests-for-macos-agent)
-5. [Appendix: Cleaning the environment before building a different target](#appendix-cleaning-the-environment-before-building-a-different-target)
+5. [How CI runs them](#how-ci-runs-them)
+6. [Appendix: Cleaning the environment before building a different target](#appendix-cleaning-the-environment-before-building-a-different-target)
 
 ## Requirements
 1. **GCC 14** (`gcc-14` / `g++-14`) — the compiler CI builds every Linux target with (it installs GCC 14.3 under `/opt/gcc-14`). On macOS the build uses Apple Clang from Xcode Command Line Tools (Apple Clang 16 on macos-15).
@@ -71,13 +72,19 @@ make TARGET=manager|agent TEST=1
 ```
 
 ### 3. Build the unit tests
-Navigate into `wazuh/src/unit_tests` and run:
+Navigate into `wazuh/src/unit_tests` and run (with `GCOV_PATH` naming the `gcov` of the compiler that built the tree; see [Coverage run](#coverage-run)):
 ```
 mkdir build
 cd build
-cmake -DTARGET=manager|agent ..
+cmake -DTARGET=manager|agent -DGCOV_PATH=$(which gcov-14) ..
 make
 ```
+What the configure step refuses, and what it always does:
+- `TARGET` must be `manager`, `agent` or `winagent`, matching the one Wazuh was built with.
+- It links `libwazuh_test.a`, `libconfig.a`, `libwazuh_modulesd_lib.a` and `libwazuhext` from `src/build/lib` and aborts (`libwazuh_test.a not found in …`) when the main tree was not built with `TEST=1`. `TEST` accepts only `YES`, `yes`, `y`, `Y` or `1`.
+- It aborts without `lcov`, `gcov` and `genhtml` on the host, even if you never run coverage.
+- The manager and Linux agent suites are **always** compiled and linked with `-fsanitize=address -fsanitize=undefined` ([server.cmake](server.cmake), [agent.cmake](agent.cmake)); there is no unsanitized build of them.
+- After switching the main build tree (src/build) between a `TEST=1` and a plain build, rebuild it completely before relinking the tests: a stale library from the other mode links fine and fails at run time. Test binaries link some libraries by `-l` name, so a rebuilt library does not relink them; delete the binary before trusting a pass.
 
 ### 4. Run the tests
 There are several ways to run them:
@@ -96,10 +103,10 @@ If all tests pass, a `coverage-report/` directory with an HTML report will be ge
 **Note:** To get more accurate coverage mapping on the report, you'll have to add the `DEBUG=1` flag to the `make TARGET=manager|agent` command, so that it compiles without optimizations. Note that this build configuration can take twice as long as the regular test build.
 
 #### Running a specific test
-`ctest -R` matches test names, not directories; `ctest --test-dir <dir>` runs one directory. To run a single binary, navigate into the subdirectory where the test resides and run the binary directly. For example, to run tests on `create_db.c`:
+`ctest -R` matches test names, not directories (`-R remoted` misses `test_secure` and `test_manager`); `ctest --test-dir <dir>` runs one directory. To run a single binary, navigate into the subdirectory where the test resides and run the binary directly. For example, the remoted suite of `secure.c` (manager target):
 ```
-cd syscheckd
-./test_create_db
+cd remoted
+./test_secure
 ```
 
 ## Compile and run unit tests for Windows agent
@@ -296,7 +303,7 @@ make TARGET=agent deps
 ```
 
 ### 2. Compile Wazuh with the test flag
-Set the env vars and run from `wazuh/src`. There's no separate "build the unit tests" step — `make TARGET=agent TEST=1` produces the test binaries in the main build tree (src/build) alongside the main wazuh build:
+On macOS the CMocka project under `src/unit_tests` is not used: what runs are the tests the agent's `TEST=1` main tree registers (the GoogleTest suites of the agent modules, such as `data_provider`, `dbsync` and `syscheckd`), which is what [5_testunit_macos.yml](../../.github/workflows/5_testunit_macos.yml) runs. There's no separate "build the unit tests" step — `make TARGET=agent TEST=1` produces the test binaries in the main build tree (src/build) alongside the main wazuh build:
 
 ```
 export CMAKE_POLICY_VERSION_MINIMUM=3.5
@@ -315,17 +322,30 @@ The test binaries are under the main build tree (src/build). From `wazuh/src`:
 ```
 export DYLD_LIBRARY_PATH="/usr/local/lib:$DYLD_LIBRARY_PATH"
 cd build
-ctest -V
+ctest -V --no-tests=error
 ```
+`--no-tests=error` is what CI passes: a broken `UNIT_TEST` configure registers no test, and without it `ctest` exits 0.
 `DYLD_LIBRARY_PATH` is the Apple equivalent of Linux's `LD_LIBRARY_PATH` — Apple's runtime linker needs to find cmocka's dylib at test execution time.
 
 #### Running a specific test
-Test binaries live under `src/build/<module>/`. For example:
+Test binaries live under `src/build/<module>/`. List the registered tests and run one by name from the main build tree (src/build):
 ```
-cd src/build
 export DYLD_LIBRARY_PATH="/usr/local/lib:$DYLD_LIBRARY_PATH"
-./shared/test_url    # or wherever the binary you care about lives
+ctest -N              # list
+ctest -R <name> -V    # run the matching ones
 ```
+
+## How CI runs them
+[5_testunit_linux-win.yml](../../.github/workflows/5_testunit_linux-win.yml) runs the `manager`, `agent` and `winagent` targets on Ubuntu 24.04, as matrix legs that a `detect-targets` job picks from the pull request's diff (a manager-only change runs only the `manager` leg; an agent-only change runs all three; a change to the CI plumbing runs all three). Each leg installs its dependencies ([install_build_deps](../../.github/actions/install_build_deps/action.yml), CMake 3.31.6 through [reinstall_cmake](../../.github/actions/reinstall_cmake/action.yml) and GCC 14.3 under `/opt/gcc-14`), then runs the functions in [legacy_unit_tests.sh](../../.github/actions/legacy_unit_tests.sh):
+
+1. `make clean-deps`, `rm -rf src/external/* src/unit_tests/build` and `make clean`;
+2. `make deps TARGET=<target>` and `make TARGET=<target> TEST=1` (half the CPUs);
+3. the configure above with `-DGCOV_PATH=/opt/gcc-14/bin/gcov` (the Windows agent: the toolchain file and the gcov wrapper), then `make`;
+4. `ctest --output-on-failure || true`, then `make coverage || true` (the Windows agent with the `WINEARCH`/`WINEPATH` above).
+
+The job fails when the `ctest` output contains `FAILED`, or lacks an `N% tests passed, M tests failed out of K` summary with K ≥ 1, so a crashed or empty run fails too. Coverage is posted to the job summary and never compared against a threshold.
+
+The macOS agent runs in [5_testunit_macos.yml](../../.github/workflows/5_testunit_macos.yml) (macos-15) with the commands of the [macOS section](#compile-and-run-unit-tests-for-macos-agent).
 
 ## Appendix: Cleaning the environment before building a different target
 Build artifacts produced by `make TARGET=…` are not interchangeable across targets. The build tree, the coverage data and the fetched externals go stale when you switch (e.g. agent → winagent or agent → manager) and will cause confusing link errors or compiler-mismatch problems if you don't wipe them first:
@@ -333,7 +353,7 @@ Build artifacts produced by `make TARGET=…` are not interchangeable across tar
 Run these from `src/` before starting the per-target steps for the new target:
 ```
 make clean        # build/, unit_tests/build*, generated headers, *.gcda/*.gcno, external build artifacts
-make clean-deps   # external/* sources + tarballs (no TARGET needed — wipes the superset)
+make clean-deps   # external/* sources + tarballs, the http-request checkout and the WCS files (no TARGET needed — wipes the superset)
 ```
 
 Then start the new target's per-target section from step 1 (fetch external dependencies).

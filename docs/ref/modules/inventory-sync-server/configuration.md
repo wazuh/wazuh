@@ -654,12 +654,13 @@ never land.
 
 The path is fixed, so the fault is always on disk. Check `/var/wazuh-manager/queue/sockets/`:
 
-- `cannot use its socket path`: the parent directory is missing, or a file that is not a socket sits at
-  the path. `wazuh-manager-modulesd` exits instead of running without inventory ingress. This happens
-  after `wazuh-manager-control start` has already reported success, so it shows in `status` and in
+- `cannot use its socket path`: checked once when the module starts — the parent directory is
+  missing or not writable, or a file that is not a socket sits at the path.
+  `wazuh-manager-modulesd` exits instead of running without inventory ingress. This happens after
+  `wazuh-manager-control start` has already reported success, so it shows in `status` and in
   `logs/wazuh-manager.log`.
-- `could not bind`: the bind itself failed (for example, the directory is not writable). The module
-  keeps running and retries every 60 s.
+- `could not bind`: the start-time check passed but the bind itself failed later, when the socket
+  is opened (after the indexer objects are built). The module keeps running and retries every 60 s.
 
 ### `/stats` and `/config` answer 503
 
@@ -668,20 +669,25 @@ and that the indexer is running. This is expected while the indexer starts up af
 
 ### Requests are answered 503 under load
 
-Four gates shed with a `503`, in the order a request meets them — each with its own evidence in
-[`GET /metrics`](metrics.md):
+Five gates shed with a `503`, in the order a `POST /stateful` request meets them — each with its
+own evidence in [`GET /metrics`](metrics.md):
 
 1. **Connection cap** (`max_parallel_connections`) — too many simultaneous connections. No shed
    counter; `server.sessions.live` pinned at the cap is the signature.
 2. **In-flight byte budget** (`max_inflight_bytes`) — too many request bytes being read at once.
    Counted in `server.rejected.budget`; watch the `server.budget.*` levels alongside it (available
    near 0, inflight near the cap).
-3. **Pipeline admission queue** (`sync_queue_bytes`) — sessions accepted but waiting for an ingestion
+3. **Per-agent pending sessions** (`max_sessions_per_agent`) — the agent already has that many
+   sessions admitted and not yet answered; counted as `sync.agent_busy.total`. Usually a slow
+   indexer or scanner, not a reason to raise the cap.
+4. **Pipeline admission queue** (`sync_queue_bytes`) — sessions accepted but waiting for an ingestion
    worker exceed the global byte cap; counted as `sync.pipeline.shed.total`.
-4. **VD lane capacity** (`vd_scan_queue_slots`) — VD sessions only, when the scan queue is full;
+5. **VD lane capacity** (`vd_scan_queue_slots`) — VD sessions only, when the scan queue is full;
    counted as `vd.capacity.503.total`.
 
-All four are logged, throttled, with the current counts. Raise the matching option — but see the
+All five are logged, throttled, with the current counts. (The two `_internal` routes are not
+budget-charged; their own gate is the control class's session cap, `control_max_sessions`, counted
+in `server.rejected.session_cap`.) Raise the matching option — but see the
 descriptor-limit note on `max_parallel_connections`, and prefer raising `sync_workers` over
 `sync_queue_bytes` when the queue sheds while CPUs sit idle: the queue is a buffer, not throughput.
 
@@ -690,7 +696,10 @@ descriptor-limit note on `max_parallel_connections`, and prefer raising `sync_wo
 Enable `wazuh_modules.debug=1` and restart: the module logs, at debug level, the value read for every
 option above except `session_query_batch_size` (`0` meaning "the module default"). `getconfig wmodules` on the
 modulesd socket reports the same values, except `reserved_control_connections`,
-`control_max_body_bytes`, `control_max_sessions` and `session_query_batch_size`.
+`control_max_body_bytes`, `control_max_sessions`, `max_sessions_per_agent` and
+`session_query_batch_size`. Both report the value as read, not as resolved: `max_inflight_bytes`
+reads `0` when the option is absent (the 256 MiB default) and `-1` when it is explicitly `0`
+(unlimited).
 
 ## Related options in other daemons
 

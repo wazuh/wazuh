@@ -14,7 +14,12 @@ This README covers the library's interface and internals.
 - `wazuh-manager-modulesd` loads `libcontent_manager.so` through the `content_manager` module
   ([wm_content_manager.c](../../wazuh_modules/src/wm_content_manager.c)), which calls the exported
   `content_manager_start(callbackLog)` / `content_manager_stop()` ([content_manager.h](include/content_manager.h)).
-  Start only installs the log function; stop drops every registered provider.
+  Start only installs the log function; stop drops every registered provider. The module has no
+  configuration section and is registered unconditionally on a manager (`wm_config()` in
+  [wmodules.c](../../wazuh_modules/src/wmodules.c)).
+- `libvulnerability_scanner.so` also links `libcontent_manager.so` directly
+  ([its CMakeLists.txt](../../wazuh_modules/vulnerability_scanner/CMakeLists.txt)), so the scanner's
+  `ContentRegister` and the module's start/stop act on the same library instance.
 - A consumer creates a `ContentRegister(topicName, parameters, fileProcessingCallback, updateCallbacks)`
   ([contentRegister.hpp](include/contentRegister.hpp)). Destroying it unregisters the topic.
   - `interval` present: a scheduler thread runs the update **immediately**, then every `interval` seconds

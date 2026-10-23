@@ -24,7 +24,7 @@ The module exposes an HTTP/1.1 interface over `queue/sockets/task-http.sock` and
 Key properties:
 
 - **Two task kinds, one database.** An agent task is *stored and handed out*, and the manager never learns what came of it. A manager task is *claimed, executed and retired with an outcome*. They live in separate tables and share nothing but the file.
-- **Deterministic agent-task IDs**: the first 128 bits of `SHA-256("[source_id:]agent_id:task_type:create_time")`, formatted as a UUID (the `source_id:` segment is left out when it is empty), so the same logical request produced on different cluster nodes collapses to one row.
+- **Deterministic agent-task IDs**: the first 128 bits of `SHA-256("[source_id:]agent_id:task_type:create_time")`, formatted as a UUID (the `source_id:` segment is left out when it is empty), so the same logical request carries the same task id on every cluster node, and a repeated create on one node is one row. Each node keeps its own `tasks.db`: rows are not replicated, and only the node the agent polls hands its copy out.
 - **Fire-and-forget agent delivery.** `POST /v1/tasks/pending` marks everything it returns as `delivered` as a *read side effect*; delivery itself is the caller's job (remoted's legacy poller keeps its own retry list for pushes that got no answer).
 - **Negative cache.** Only the *absence* of pending tasks is cached, per agent, so an idle poll never reaches SQLite. Creating a task for an agent evicts its entry.
 - **No polling.** The scheduler sleeps until the earliest backed-off row becomes eligible, and producers wake it on insert. A task created through the socket starts immediately.
@@ -66,11 +66,9 @@ per-route contract (fields, limits, status codes, the upgrade envelope) is the
 exact-match with no path parameters, and the C clients that call these routes speak `POST` only; the
 two `GET`s have no C client and no body.
 
-**The upgrade routes behave unlike every other route here.** They are asynchronous — the handler
-hands the batch to a worker pool and the answer is sent when the batch finishes, because a batch reads
-wazuh-db once per agent and may download a 100 MB WPK, which on an I/O thread would block every
-agent's task polling — and they always answer `200` with a per-agent envelope, which the Server API
-turns into exception codes by adding 1810. See [Agent upgrade routes](api-reference.md#agent-upgrade-routes).
+**The upgrade routes behave unlike every other route here**: they are answered asynchronously, from
+a worker pool, and always with `200` and a per-agent envelope. See
+[Agent upgrade routes](api-reference.md#agent-upgrade-routes).
 
 ```bash
 curl --unix-socket /var/wazuh-manager/queue/sockets/task-http.sock http://localhost/v1/health
@@ -109,10 +107,9 @@ curl --unix-socket /var/wazuh-manager/queue/sockets/task-http.sock http://localh
   retention, returns the freed space to the filesystem a step at a time and reports stalls. It
   sleeps until the earliest of those is due rather than polling.
 - **The upgrade pool is separate from the executor**, and is the one place on this socket where a
-  request is answered later rather than inline. Its workers count *batches*, not agents: per-agent
-  work is one wazuh-db call on a shared socket plus arithmetic, so parallelising agents would only
-  multiply contention. It is also the only outbound connection this module makes to anything off
-  the machine.
+  request is answered later rather than inline. Its workers count *batches*, not agents (why:
+  [`upgrade_workers`](configuration.md#internal-options-the-upgrade-path-adds)). It is also the only
+  outbound connection this module makes to anything off the machine.
 
 **Threads, at the defaults:** 2 HTTP I/O (`manager_task_io_threads`) + `clamp(cores, 2, 8)` executor
 workers (`manager_task_executor_threads`) + 1 scheduler + `cores / 2` upgrade batch workers clamped to
@@ -147,7 +144,7 @@ alter an existing table, any change to a table's shape needs a real step in the 
 | `wazuh-manager-remoted` (legacy C poller and the C++ `TaskClient` behind `POST /control`) | `/v1/tasks/pending` |
 | `wazuh-manager-clusterd` (active-response poller) | `/v1/tasks`, via `wazuh.core.task_http` |
 | Server API / framework (agent restart and reload) | `/v1/tasks/bulk`, same client |
-| Server API / framework and the `agent_upgrade` CLI | `/v1/agents/upgrade`, `/v1/agents/upgrade-custom`, same client |
+| Server API / framework (the `agent_upgrade` CLI calls the same framework function) | `/v1/agents/upgrade`, `/v1/agents/upgrade-custom`, same client |
 | `wazuh-manager-authd` | `/v1/manager-tasks`, `/count`, `/by-agent` via `manager_task_op.h` |
 | Vulnerability scanner | `/v1/manager-tasks`, through a callback modulesd hands it at start |
 
@@ -172,7 +169,9 @@ For every option and default, see the [Task Manager Configuration Reference](con
 
 `<task-manager>` has these five options plus `<wpk_repository>`. Everything else is an internal
 option in the `wazuh_modules` namespace, resolved **before modulesd daemonizes**, so an out-of-range
-value fails `wazuh-manager-modulesd -t` rather than aborting a module thread later.
+value fails `wazuh-manager-modulesd -t` rather than aborting a module thread later. (The one
+exception, `manager_task_create_timeout`, is read by the vulnerability scanner at its own start; see
+[Per-type bounds](manager-tasks.md#per-type-bounds).)
 
 ---
 

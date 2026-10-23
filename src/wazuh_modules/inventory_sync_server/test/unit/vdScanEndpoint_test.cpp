@@ -313,7 +313,10 @@ TEST(VdScanEndpoint, AFullLaneQueueIs503)
 
     auto refused = std::make_shared<FutureResponder>();
     fixture.handler(scanRequest(R"({"agent_id":"9"})"), refused);
-    EXPECT_EQ(503, refused->get().status) << "the lane's bounded queue IS this route's capacity control";
+    const auto refusal {refused->get()};
+    EXPECT_EQ(503, refusal.status) << "the lane's bounded queue IS this route's capacity control";
+    // The same words /stateful answers for the same refusal.
+    EXPECT_NE(std::string::npos, refusal.body.find("scan capacity exhausted"));
 
     fixture.events->openScanGate();
     EXPECT_EQ(200, occupying->get().status);

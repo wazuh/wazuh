@@ -57,7 +57,7 @@ type Counters struct {
 // bucket is the counters plus latency histograms for one granularity.
 type bucket struct {
 	c     Counters
-	hists map[string]*Histogram // "session","stateless","notify","startup"
+	hists map[string]*Histogram // one per request kind, keyed as newBucket lists them
 }
 
 func newBucket() *bucket {
@@ -66,6 +66,7 @@ func newBucket() *bucket {
 		"stateless":    NewHistogram(),
 		"notify":       NewHistogram(),
 		"startup":      NewHistogram(),
+		"shutdown":     NewHistogram(),
 		"scan":         NewHistogram(),
 		"cacerts":      NewHistogram(),
 		"enroll_https": NewHistogram(),
@@ -273,7 +274,8 @@ func (r *Registry) RecordEnrollHTTPS(fleet, lane string, status int, latencyUS u
 	}
 }
 
-// RecordControl records a startup/notify/shutdown outcome and latency.
+// RecordControl records a startup/notify/shutdown outcome and latency. Each
+// kind has its own histogram in newBucket: observe drops a kind without one.
 func (r *Registry) RecordControl(fleet, kind string, ok bool, latencyUS uint64) {
 	r.observe(fleet, "", kind, latencyUS)
 	pick := map[[2]string]func(*Counters) *uint64{

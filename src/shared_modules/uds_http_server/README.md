@@ -19,11 +19,12 @@ What it deliberately is NOT: remoted's agent-facing TCP/TLS server (a protocol P
 library, not a layer of it), and not a general web framework — one request per connection,
 exact-match routing, no TLS, no keep-alive, no chunked encoding.
 
-Operator/integrator docs: `docs/ref/modules/utils/uds-http-server/` (status semantics,
-architecture, integration guide). This library has no configuration of its own. Each consumer
+Operator/integrator docs: `docs/ref/modules/utils/uds-http-server/` (library defaults, status
+semantics, log lines, architecture, integration guide). This library has no configuration of its own. Each consumer
 fills `UdsHttpServerConfig` in code. Only inventory sync (`wazuh_modules.inventory_sync_server_*`)
-and task_manager (`wazuh_modules.manager_task_io_threads`) expose any of the knobs as internal
-options, and those are documented on the consumer's own pages.
+and task_manager (`wazuh_modules.manager_task_io_threads`, plus the `task-manager`
+`max_payload_bytes` option sizing one route's body cap) expose any of
+the knobs, and those are documented on the consumer's own pages.
 
 ## Requirements
 
@@ -79,8 +80,8 @@ sequenceDiagram
     A->>S: accept (liveSessions++, over maxConnections ⇒ 503+close)
     S->>S: header timer armed, doRead
     P->>S: request head
-    Note over S: parser PAUSES at headers-complete
-    S->>S: match route (404/405) → reserve budget (503 / 413)
+    Note over S: parser PAUSES at headers-complete<br/>(411 chunked, 413 server-wide cap, 414, 431 decided here)
+    S->>S: match route (404/405) → class/route body cap (413)<br/>→ class/route session cap (503) → reserve budget, Data only (503)
     S->>S: resume, read body (chunks of bufferSize)
     S->>H: dispatch(request, responder)
     H->>W: enqueue work, return immediately
@@ -124,30 +125,13 @@ flowchart LR
     G --> D[read body → dispatch]
 ```
 
-The decisive mechanism is `reservedControlConnections`: Data's session cap resolves to
-`maxConnections − reserved`, so the data plane ALONE can never drive occupancy up to the
-accept-time cap — Control and Liveness always find a slot. The honest residual: class
-membership is unknowable before the head is read, so connections racing BETWEEN accept and
-classification occupy global slots class-blind; the hard "control always answers" guarantee
-holds while the concurrency of new data connects stays below the reserve (rejections beyond
-that are transient accept races). A Control route that does real work still sheds its own
-capacity module-side (bounded queue → 503); the class only guarantees the data plane cannot
-starve it.
-
-`RouteOptions` overrides the class policy per route: `maxBodyBytes`, `maxSessions` and
-`responseTimeoutSec`, each `0` meaning "defer to the policy". The last one is the response backstop
-(dispatch → `send()`), and it exists because that backstop is written around the peer's own deadline
-being the SHORTER one. A route whose peer waits longer than the server-wide value inverts that: the
-504 fires while the work is still succeeding, so the peer retries and hits the same wall every time.
-Raising the server-wide value to suit one such route would weaken the leak backstop for every other
-one, so it is raised per route instead.
-
-Threading: one shared `asio::io_context` wrapped in a `Runtime` co-owned by the server, every
-session and every responder (that shared ownership is what makes a posthumous `send()` defined);
-N I/O threads (`ioThreads`, default nproc) in a resume-on-exception loop; the acceptor on its
-own strand with `concurrentAccepts` chains; **every session on its own strand** with handlers
-explicitly re-bound — an accepted socket inherits the acceptor's strand, so without re-binding
-all connections would serialize (this comment is load-bearing; see `Session` in the source).
+The narrative behind these diagrams — admission order, the peer-gone watch, per-connection
+strands and the self-re-arming accept loop, the bounded shutdown waits, the reserved
+headroom and its residual, and the per-route `RouteOptions` overrides — is published in
+[architecture.md](../../../docs/ref/modules/utils/uds-http-server/architecture.md); it is
+not repeated here. The two load-bearing implementation comments behind it are `Session`'s
+(every socket handler re-bound to the session's strand) and `doAccept()`'s (every accept
+chain must re-arm itself), both in `src/asioUdsHttpServer.cpp`.
 
 ## Layout
 
@@ -163,25 +147,12 @@ all connections would serialize (this comment is load-bearing; see `Session` in 
 
 ## Consumer contract
 
-- **Link**: `target_link_libraries(<your_module> PRIVATE wazuh_uds_http_server)`. STATIC +
-  PIC; your `.so` must define its own `Log::GLOBAL_LOG_FUNCTION` (every module already does).
-- **Identity**: fill `logTag`, `serverName`, `serverHeader` and — if your capacity knobs are
-  internal options — the two hint fields, so diagnostics name YOUR module and YOUR options.
-- **Socket path**: no default; empty makes `start()` throw. Use a relative path (relative to
-  the installation directory, which is the working directory of remoted and modulesd).
-- **Handlers never block** (RNF-5): enqueue to your executor, reply via the responder. The
-  request `shared_ptr` carries the byte reservation — keep it alive exactly as long as you
-  need the payload, drop it before replying if you are done with the bytes.
-- **Route classes**: declare each route's `RouteClass` in `RouteOptions` (Data, Control,
-  Liveness). The `bool` overload maps `true` (its default) to Data and `false` to Liveness.
-  Register every route before `start()`; `addRoute()` afterwards throws `std::logic_error`.
-- **Shutdown order**: `stopAccepting()` FIRST, then tear down whatever handlers reach, then
-  `stop()`. That ordering is what S1/S2 exist for.
-- **Diagnostics as metrics**: publish `diagnostics()` fields as `wazuh_metrics` pull metrics.
-  Mind the pull lifetime rule (pulls cannot be unregistered): capture a `weak_ptr` resolved
-  under your own lock, register once, and let an expired target read as zeros — see
-  `registerTransportDiagnostics()` in inventory sync's facade for the reference wiring.
-- **Restarting**: build a fresh instance per start cycle; `start()` throws if reused.
+The contract a consuming module must obey — linking (and the `Log::assignLogFunction()` call
+the per-DSO log sink needs), identity, socket path, non-blocking handlers, route classes and
+the `RouteOptions` overrides, shutdown order, diagnostics as pull metrics, restarting — is
+published as the
+[integration guide](../../../docs/ref/modules/utils/uds-http-server/integration-guide.md).
+It is the single copy; the requirements above say why each rule exists.
 
 ## Test suite map
 

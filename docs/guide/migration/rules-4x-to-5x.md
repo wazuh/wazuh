@@ -304,7 +304,7 @@ The `normalization.output` section of the response is the fully decoded WCS docu
 | `<weekday>` | Not supported | Must be handled externally. |
 | **Rule chaining and correlation** | | |
 | `<if_sid>` / `<if_group>` / `<if_level>` | Not supported | Rules are self-contained. See [Step 10](#step-10-handle-rules-that-cannot-be-directly-migrated). |
-| `<if_matched_sid>` / `<if_matched_group>` | Not supported | Correlation handled separately. |
+| `<if_matched_sid>` / `<if_matched_group>` / `<if_matched_regex>` | Not supported | Correlation handled separately. |
 | `frequency` / `timeframe` | Not supported in rules | Correlation handled separately. |
 | `<same_*>` / `<different_*>` | Not supported in rules | Correlation handled separately. |
 | `<if_fts>` | Not supported in rules | First Time Seen logic and correlation handled separately. |

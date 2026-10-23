@@ -39,7 +39,9 @@ namespace task_manager::handlers
         std::chrono::seconds disconnectionTime {900};
         /// @brief Minutes past the disconnection window before an agent is deleted. 0 disables.
         int deleteOldAgents {0};
-        /// @brief Silences the per-agent disconnection log lines. The transition runs regardless.
+        /// @brief wazuh_modules.manager_task_monitor_agents. False disables the disconnection
+        ///        sweep's schedule (registry/builtinTypes.cpp), so this handler does not run; here it
+        ///        also gates the per-agent disconnection log lines.
         bool monitorAgents {true};
         /// @brief Per-agent diagnostic lookups allowed in one sweep.
         int disconnectLogMax {200};

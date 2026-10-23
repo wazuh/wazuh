@@ -882,8 +882,9 @@ adapter::RouteHandler resourceValidate(std::shared_ptr<cm::crud::ICrudService> c
             return;
         }
 
+        // Outputs are a known resource type but cannot be validated here (validateResource() refuses them)
         const auto rType = cm::store::resourceTypeFromString(protoReq.type());
-        if (rType == cm::store::ResourceType::UNDEFINED)
+        if (rType == cm::store::ResourceType::UNDEFINED || rType == cm::store::ResourceType::OUTPUT)
         {
             res = adapter::userErrorResponse<ResponseType>(MESSAGE_TYPE_UNSUPPORTED);
             return;

@@ -75,7 +75,7 @@ Agent restart and reload are `agent_restart` / `agent_reload` tasks handled by t
 | Where | What |
 |---|---|
 | Agent: `logs/active-responses.log` under the agent's installation directory (`/var/ossec`, `/Library/Ossec` on macOS); `C:\Program Files (x86)\ossec-agent\active-response\active-responses.log` on Windows | What each executable did, written by the executable |
-| Agent: `logs/ossec.log` (`ossec.log` on Windows), tag `wazuh-execd` | What `wazuh-execd` received, ran and reverted, and why a message was refused |
+| Agent: `logs/ossec.log`, tag `wazuh-execd`; on Windows `ossec.log`, tag `wazuh-agent` (execd runs inside the agent service) | What `wazuh-execd` received, ran and reverted, and why a message was refused |
 | Manager: `/var/wazuh-manager/logs/cluster.log`, tag `[Active Response]` | What the poller read, dispatched, held or discarded |
 
 The agent's default `ossec.conf` also monitors `logs/active-responses.log` with a `<localfile>`

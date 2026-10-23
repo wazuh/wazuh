@@ -16,11 +16,17 @@ The following table maps each `ossec.conf` element from Wazuh 4.x to the corresp
 
 | 4.x `ossec.conf`              | 5.x dashboard                                    | Guide                                                                         |
 | ----------------------------- | ------------------------------------------------ | ----------------------------------------------------------------------------- |
+| `global.email_notification`   | `---`                                            | No switch: email is sent while a monitor's action targets an email channel   |
 | `global.smtp_server`          | Notifications > Email Senders (SMTP host/port)   | [Step 1](#1-creating-an-email-sender)                                         |
 | `global.email_from`           | Notifications > Email Senders (outbound address) | [Step 1](#1-creating-an-email-sender)                                         |
+| `global.email_to`             | Notifications > Email Recipient Groups           | [Step 2](#2-creating-an-email-recipient-group)                                |
 | `email_alerts.email_to`       | Notifications > Email Recipient Groups           | [Step 2](#2-creating-an-email-recipient-group)                                |
 | `<email_alerts>` filter block | Alerting > Monitor > Query                       | [Step 4](#4-recreating-email-alerts-with-monitors)                            |
 | `<alerts><email_alert_level>` | `---`                                            | No direct equivalent - see [Step 4](#4-recreating-email-alerts-with-monitors) |
+
+The other 4.x `<global>` email options (`email_reply_to`, `email_idsname`, `email_maxperhour`, `email_log_source`)
+and the `<email_alerts>` delivery options (`format`, `do_not_delay`, `do_not_group`) have no counterpart to carry
+over: the message and its batching are whatever the monitor's action defines.
 
 ### Reports mapping
 
@@ -37,6 +43,7 @@ Below are the typical Wazuh 4.x configuration blocks you may have in your `ossec
 ```xml
 <!-- Wazuh 4.x ossec.conf -->
 <global>
+  <email_notification>yes</email_notification>
   <smtp_server>mail.example.com</smtp_server>
   <email_from>wazuh@example.com</email_from>
 </global>
@@ -174,7 +181,7 @@ In Wazuh 4.x, you used [`<email_alerts>`](#email-alerts-mapping) blocks in `osse
 
 > **Monitor data sources:** In Wazuh 4.x, alerts were stored in a dedicated alerts index (`wazuh-alerts-*`). In Wazuh 5.0, that index no longer exists. The manager indexes events into `wazuh-events-v5*`, and the Wazuh Indexer's Security Analytics detectors evaluate them against Sigma-based detection rules, indexing each match as a finding into `wazuh-findings-v5*` (the manager's engine has no rules). The Alerting plugin can query any index pattern you configure - for example, `wazuh-findings-v5*`, `wazuh-events-v5*`, or a custom index. If your query relies on rule metadata fields (`wazuh.rule.*`), you must target a findings index, since only findings carry those fields. For other use cases, you can create monitors against other index patterns.
 
-In Wazuh 4.x, alert severity was expressed as a numeric `rule.level`, and the `<level>` filter in `<email_alerts>` selected a threshold. In Wazuh 5.0, the monitor **query** determines which documents match, so a severity threshold is a query condition on `wazuh.rule.level` in a findings index - there is no separate severity filter on the trigger. The trigger severity level (1–Highest to 5–Lowest) sets the action severity, not the data filter.
+In Wazuh 4.x, alert severity was expressed as a numeric `rule.level`, and the `<level>` filter in `<email_alerts>` selected a threshold. In Wazuh 5.0, the monitor **query** determines which documents match, so a severity threshold is a query condition on `wazuh.rule.level` in a findings index - there is no separate severity filter on the trigger. That field is a keyword (`informational`, `low`, `medium`, `high`, `critical`), not a number, so a 4.x threshold becomes the list of levels you accept; [Map severity levels](rules-4x-to-5x.md#step-3-map-severity-levels) suggests a correspondence. The trigger severity level (1–Highest to 5–Lowest) sets the action severity, not the data filter.
 
 A Monitor evaluates documents against the configured query, and when the trigger condition is met, executes an action - for example, sending an email through your notification channel.
 

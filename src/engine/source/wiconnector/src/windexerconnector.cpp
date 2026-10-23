@@ -483,12 +483,12 @@ void WIndexerConnector::index(std::string_view index, std::string_view data)
         }
         catch (const IndexerConnectorException& e)
         {
-            LOG_WARNING("[indexer-connector] Error indexing data: %s", e.what());
+            LOG_WARNING("[indexer-connector] Error indexing data: {}", e.what());
             return;
         }
         catch (const std::exception& e)
         {
-            LOG_WARNING("[indexer-connector] Error indexing data: %s", e.what());
+            LOG_WARNING("[indexer-connector] Error indexing data: {}", e.what());
             return;
         }
     }
@@ -921,7 +921,7 @@ WIndexerConnector::getIocTypeHashes(const std::optional<std::string_view>& consu
         return std::nullopt;
     }
 
-    // Hashes document not found, is expected on fresh installs without any IOC indexed yet — return empty map
+    // Hashes document not found, is expected on fresh installs without any IOC indexed yet — return nullopt
     if (!hashesDoc.has_value())
     {
         LOG_DEBUG("[indexer-connector] Hash document '{}' not found in index '{}'", IOC_HASHES_DOC_ID, IOC_INDEX);

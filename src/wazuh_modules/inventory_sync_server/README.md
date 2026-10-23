@@ -155,14 +155,18 @@ inventory_sync_server/
 ├── src/
 │   ├── inventorySyncServer.cpp        # extern "C" entry points -> facade
 │   ├── inventorySyncServerFacade.hpp  # lifecycle: worker thread, startup gate, build/teardown order
+│   ├── inventorySyncServerTestHooks.cpp # the factory-override hooks declared in include/
 │   ├── schema/syncSchema.hpp          # THE binding to the generated FlatBuffers code (alias fb::)
-│   ├── common/                        # clusterIdentity, metricNames (D18), jsonNestingDepth (D24)
+│   ├── common/                        # agentId (canonical id), clusterIdentity, metricNames (D18),
+│   │                                  #   jsonNestingDepth (D24)
 │   ├── http_server/                   # udsHttpServerConfig: C-ABI config -> the shared transport's config
 │   ├── endpoints/                     # route policies: syncEndpoint (POST /stateful),
 │   │                                  #   deleteAgentEndpoint (POST /_internal/agents/delete),
-│   │                                  #   vdScanEndpoint (POST /_internal/vd/scan), stats, config
+│   │                                  #   vdScanEndpoint (POST /_internal/vd/scan), stats, config,
+│   │                                  #   metricsEndpoint (GET /metrics)
 │   ├── indexer/                       # seam over the shared indexer_connector: interfaces + adapters
 │   ├── sync/                          # the ingestion pipeline:
+│   │   ├── agentSessionLimiter.hpp    #   per-agent cap on pending sessions (D28)
 │   │   ├── fullSessionValidator.*     #   request-level validation (verifier, identity, shape)
 │   │   ├── sessionProcessor.*         #   per-session application (stage bulks, immediates, deletes)
 │   │   ├── syncPipeline.*             #   sharded workers + group commit + batch cut
@@ -339,7 +343,7 @@ sequenceDiagram
             S->>VQ: enqueue on the scan lane
             VQ->>VQ: scan (synchronous, gates everything)
             VQ->>IDX: stage inventory + flush (only if scan ok/skip)
-            VQ-->>R: 200, or 500 with NOTHING indexed
+            VQ-->>R: 200 · 409 version_mismatch · 503 (dispatch re-checks) · 500 with NOTHING indexed
         end
     else everything else
         alt pipeline admission queue over sync_queue_bytes (GLOBAL)
@@ -646,7 +650,8 @@ for `agent_delete_indexer` — at most four deletions in flight.
 ### What replaced what
 
 `DELETE /agents` and its `POST /agents/delete` alias stood here until authd stopped relaying deletions
-itself. They answered at ADMISSION — `200 {"status":"queued"}` — because authd relayed from the single
+itself. Both are removed — neither path is registered any more, so the transport answers either with
+`404` — and `POST /_internal/agents/delete` is their only successor. They answered at ADMISSION — `200 {"status":"queued"}` — because authd relayed from the single
 thread that persists `client.keys`, and on populated `wazuh-states-*` one `delete_by_query`
 legitimately outlives a 30 s budget: it timed out, retried into the very same running purge, and
 blocked every key write in between, so no agent could enroll until the batch drained.

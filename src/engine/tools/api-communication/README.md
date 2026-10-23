@@ -1,7 +1,8 @@
 # API communication
 
-The library provides a client interface to communicate locally with wazuh-engine. 
-
+The library provides a client interface to communicate locally with the engine (`wazuh-manager-analysisd`)
+over its HTTP API Unix socket. It is the transport used by the `engine-suite`, `engine-metrics` and
+`engine-test-utils` tools.
 
 1. [Directory structure](#directory-structure)
 2. [Install](#install)
@@ -9,65 +10,60 @@ The library provides a client interface to communicate locally with wazuh-engine
 
 # Directory structure
 
-```bash
-├── api-communication/
-|   └── src
-|     └── api-communication
-|           └── proto
-|               └── __init__.py
-|               └── components_pb2.py
-|               └── components_pb2.pyi
-|           └── __init_.py
-|           └── client.py
-|           └── command.py
-|     └── README.md
-|     └── setup.cfg
-|     └── setup.py
+```plaintext
+api-communication/
+├── pyproject.toml
+└── src/
+    └── api_communication/
+        ├── __init__.py
+        ├── client.py        # APIClient: send(), jsend(), send_recv()
+        ├── endpoints.py     # get_endpoint(): request message -> (error, endpoint, HTTP method)
+        └── proto/           # Generated Python protobuf modules (*_pb2.py, *_pb2.pyi)
 ```
+
+The `proto/` modules are generated from the engine's `.proto` files in `src/engine/source/proto/src/`.
 
 # Install
 
-To install the library, run the following command:
+From `src/engine/`:
 
 ```bash
-`pip3 install tools/api-communication/`
+pip3 install tools/api-communication/
 ```
 
+It requires Python 3.8 or newer and installs `protobuf` and `httpx` (`pyproject.toml`).
 
 # Usage
 
-The library provides a client interface to communicate with wazuh-engine.
+`APIClient(api_socket)` takes the path of the engine API socket; on an installed manager it is
+`/var/wazuh-manager/queue/sockets/engine-api-http.sock`. The endpoint and HTTP method are deduced from the
+type of the request message (`endpoints.py`); an unknown message type is returned as an error.
 
-For example, to get a resource from the engine, you can use the following code:
+- `send(request, response_type)` serializes a protobuf request message.
+- `jsend(json_body, request_type, response_type)` sends an already built dictionary.
+
+Both return a tuple `(error, response)`: `error` is `None` on success, and otherwise a string (a transport
+error, an unparsable response, or the `error` field of a response whose `status` is not `OK`), with an empty
+dictionary as `response`.
+
+For example, to get a resource from a namespace:
 
 ```python
-# Import the APIClient class
-from api_communication.client import APIClient 
-# Import the proto file, with the request and response messages
-from api_communication.proto.catalog_pb2 import ResourceGet_Request, ResourceGet_Response
+import json
+import sys
 
-client = APIClient()
-client.connect()
+from api_communication.client import APIClient
+from api_communication.proto.crud_pb2 import resourceGet_Request, resourceGet_Response
 
-    # Create the json request 
-    json_request = dict()
-    json_request['namespaceid'] = args['namespace']
-    json_request['name'] = args['asset']
-    json_request['format'] = args['format']
+client = APIClient('/var/wazuh-manager/queue/sockets/engine-api-http.sock')
 
-    # Create the api request
-    try:
-        client = APIClient(api_socket)
-        error, response = client.jsend(
-            json_request, ResourceGet_Request(), ResourceGet_Response())
+request = resourceGet_Request()
+request.space = 'standard'
+request.uuid = '<resource-uuid>'
 
-        if error:
-            sys.exit(f'Error getting asset or collection: {error}')
+error, response = client.send(request, resourceGet_Response())
+if error:
+    sys.exit(f'Error getting the resource: {error}')
 
-        print(json.dumps(response['jsonContent'], indent=4))
-
-    except Exception as e:
-        sys.exit(f'Error getting asset or collection: {e}')
-
-    return 0
+print(json.dumps(response['jsonContent'], indent=4))
 ```

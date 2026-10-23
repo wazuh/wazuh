@@ -4,11 +4,11 @@ name: kvdb_get_array
 metadata:
   description: |
     For each key in "array_key", looks up the value in the KVDB named "db_name"
-    and appends any found values to the target array field.
+    and appends the found values to the target array field.
     - "array_key" may be a literal array of strings or a reference to a field
       that contains such an array of strings.
-    - If some keys are not present in the DB, they are silently skipped
-      (best-effort behavior).
+    - If any key is not present in the DB, or the values found are not all of the
+      same type, the operation fails and nothing is appended.
     - If the DB does not exist, or if the target field cannot be treated as
       an array, the operation fails and the target field is left unchanged.
     This helper function is typically used in the map stage.
@@ -60,14 +60,14 @@ test:
     expected: [KDC_ERR_NONE, KDC_ERR_NAME_EXP]
     description: Appends values for each existing key in array_key
 
-  # Some keys do not exist, they are skipped
+  # Some keys do not exist: the operation fails and nothing is appended
   - arguments:
       db_name: windows_kerberos_status_code_to_code_name
       array_key: ["0x0", "0x99", "0x6"]
     target_field: []
     should_pass: false
-    expected: [KDC_ERR_NONE, KDC_ERR_C_PRINCIPAL_UNKNOWN]
-    description: Skips keys that are not present in the KVDB
+    expected: []
+    description: Fails when a key is not present in the KVDB, appending nothing
 
   # Append to a pre-populated array
   - arguments:
@@ -110,8 +110,8 @@ test:
         value: ["0x2", "0x99", "0x6"]
     target_field: []
     should_pass: false
-    expected: [KDC_ERR_SERVICE_EXP, KDC_ERR_C_PRINCIPAL_UNKNOWN]
-    description: Skips non-existing keys provided by reference
+    expected: []
+    description: Fails when a key provided by reference is not present in the KVDB, appending nothing
 
   # Array value from KVDB: bitmask_test_values -> appended as a single element
   - arguments:

@@ -3,8 +3,10 @@
 The Content Manager is the shared library (`libcontent_manager.so`) that downloads the vulnerability
 feed from the Wazuh Indexer and hands it, page by page, to the Vulnerability Scanner, which builds its
 local CVE database from it. It runs inside `wazuh-manager-modulesd`: the `content_manager` module
-(`src/wazuh_modules/src/wm_content_manager.c`) loads the library at start, and the Vulnerability
-Scanner registers its feed topic, `vulnerability_feed_manager`, with it.
+(`src/wazuh_modules/src/wm_content_manager.c`), which has no configuration section and is always
+loaded on a manager, loads the library at start, and the Vulnerability Scanner, which links the same
+library, registers its feed topic, `vulnerability_feed_manager`, with it. With
+`<vulnerability-detection>` disabled no topic is registered, so nothing is downloaded.
 
 Source: `src/shared_modules/content_manager/`. Implementation details (the pipeline stages, the
 callback contract, the internal configuration object) are in the developer README,
@@ -65,7 +67,8 @@ places:
 | `/var/wazuh-manager/queue/vd/vd_updater/rocksdb/updater_vulnerability_feed_manager_metadata/` | RocksDB database holding the cursor (`current_offset` column) |
 
 The Vulnerability Scanner deletes the whole `queue/vd/vd_updater/` directory when it finds its own
-feed database incomplete at start, which forces the next update to be an initial load.
+feed database (`queue/vd/feed`) incomplete or unreadable at start, which forces the next update to be
+an initial load.
 
 ## On-demand updates
 

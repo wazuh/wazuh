@@ -80,8 +80,9 @@ and every agent key. Against a loopback `--api-url` the tool trusts the CA the m
 `apid.pem` from at install, `certs/root-ca.pem` under `--target-conf-dir`; any other address needs
 `--api-ca`, and plain `http://` is accepted only on loopback.
 
-One consequence of `--with-rbac` is worth knowing before you use it: the manager never reseeds an
-existing `rbac.db`, so from the next start the `wazuh` and `wazuh-internal-client` passwords are the 4.x ones
+One consequence of `--with-rbac` is worth knowing before you use it: the manager never reseeds the
+passwords of an existing `rbac.db` (its version upgrade copies every user with its hash,
+`check_database_integrity()` in `framework/wazuh/rbac/orm.py`), so from the next start the `wazuh` and `wazuh-internal-client` passwords are the 4.x ones
 the database carries, and the two values in `credentials.env` are stale. The import says so. Either
 set both users back to the published values with `rbac_control change-password` after the restart,
 or keep the 4.x passwords and give `check` the 4.x one explicitly.
@@ -152,3 +153,7 @@ python3 tools/migration/test_wazuh_migrate_identity.py
 run against a stub of the manager's API that implements the endpoints the tool uses and records what
 it was asked to do, so the assertions are about the calls the tool makes rather than about files it
 no longer writes. The stub enforces the same content types the real endpoints do.
+
+The TLS case mints a certificate with `openssl` and is skipped without it; CI
+([5_testunit_migration.yml](../../.github/workflows/5_testunit_migration.yml)) fails the job when
+`openssl` is missing rather than let it skip.

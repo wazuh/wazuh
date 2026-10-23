@@ -30,7 +30,7 @@ and the underlying schema that defines the event structure.
 ## Overview
 
 Every helper function (e.g. `int_equal`, `parse_ip`, `map`, `concat`) is registered with a
-**validationintent** and an **operation builder**. The validation intent declares what type
+**validation intent** and an **operation builder**. The validation intent declares what type
 constraints the helper imposes on the target field. When a decoder uses a helper on a specific
 field, the engine validates – at **build time** if possible, otherwise at **runtime** – that
 the target field's schema type is compatible with what the helper expects.
@@ -41,7 +41,7 @@ The three pillars of the system are:
 |---------|---------|
 | **Target field classification** | Determines if the field belongs to the schema, is temporary (`_`-prefixed), or is invalid. |
 | **Build-time validation** | Uses the `ValidationToken` to check type compatibility against the schema *before* the pipeline runs. |
-| **Runtime validation** | Wraps the operation with a `ValueValidator` that checks the actual JSON value *during* event processing. |
+| **Runtime validation** | Wraps a map operation with a `ValueValidator` that checks the actual JSON value *during* event processing. |
 
 ---
 
@@ -66,11 +66,14 @@ using OpBuilderEntry = std::tuple<ValidationInfo, OpBuilder>;
 
 ## Registration: `OpBuilderEntry`
 
-Helpers are registered in `register.hpp` via `registerOpBuilders`. Each call follows the pattern:
+Helpers are registered in `builder/src/register.hpp` via `registerOpBuilders`. Each call follows the pattern:
 
 ```cpp
-registry->add<OpBuilderEntry>("helper_name", {validationInfo, builderFunction});
+registry->template add<builders::OpBuilderEntry>("helper_name", {validationInfo, builderFunction});
 ```
+
+The builder is an `OpBuilder`, a variant of `MapBuilder`, `TransformBuilder` and `FilterBuilder`
+(`builders.hpp`). Which alternative it holds matters below: only a `MapBuilder` gets runtime validation.
 
 The first element of the tuple (`validationInfo`) dictates **how** the target field is validated.
 
@@ -78,12 +81,12 @@ The first element of the tuple (`validationInfo`) dictates **how** the target fi
 
 ## Validation Tokens
 
-Validation tokens (defined in `schemf/ivalidator.hpp`) encode the **intent** of the operation — what
+Validation tokens (defined in `schemf/interface/schemf/ivalidator.hpp`) encode the **intent** of the operation — what
 it expects from the target field. They form a class hierarchy rooted at `BaseToken`:
 
 ```
 BaseToken                    (no type info – element-level validation / array check only)
- ├── JTypeToken              (expects a JSON type: String, Number, Boolean, Object)
+ ├── JTypeToken              (expects a JSON type: String, Number, Boolean, Object — never Array)
  ├── STypeToken              (expects a schema type: IP, LONG, DATE, KEYWORD, …)
  └── ValueToken              (carries a concrete JSON value for immediate validation)
 ```
@@ -92,7 +95,8 @@ A `nullptr` token means **runtime validation only** — no build-time check is p
 
 ### Static Tokens
 
-Used when the helper **always** expects the same type, regardless of its arguments:
+Used when the helper **always** expects the same type, regardless of its arguments. The factories in use
+include:
 
 | Factory | Token Type | Meaning |
 |---------|-----------|---------|
@@ -105,20 +109,25 @@ Used when the helper **always** expects the same type, regardless of its argumen
 | `schemf::STypeToken::create(schemf::Type::DATE)` | `STypeToken` | Target field must be schema type `DATE`. |
 | `schemf::STypeToken::create(schemf::Type::OBJECT)` | `STypeToken` | Target field must be schema type `OBJECT`. |
 
+"Must" means *exactly that type or a compatible one* — see the [Type Compatibility Matrix](#type-compatibility-matrix).
+
 ### Dynamic Tokens (`DynamicValToken`)
 
 Used when the validation depends on the **arguments** passed to the helper. The factory receives the
 parsed arguments and the validator, and returns a `ValidationToken` at build time.
 
-Example — the `map` and `filter` helpers:
+Example — the `map` and `filter` helpers (`opmap/map.cpp` `mapValidator()`, `opfilter/filter.cpp`
+`filterValidator()`, identical bodies):
 
 ```cpp
-// From map.cpp
+// From opmap/map.cpp
 DynamicValToken mapValidator()
 {
     return [](const std::vector<OpArg>& opArgs,
               const schemf::IValidator& validator) -> schemf::ValidationToken
     {
+        utils::assertSize(opArgs, 1);
+
         if (opArgs[0]->isValue())
         {
             // Literal value → create a ValueToken for immediate build-time validation
@@ -177,7 +186,9 @@ Before any type validation, the system classifies the target field via
 |---------------|-----------|
 | **`SCHEMA`** | Full build-time + possible runtime validation against the schema type. |
 | **`TEMPORARY`** | No validation. These are working fields (prefixed with `_`) that are never indexed. Variables/temporary fields can hold any type. |
-| **Error** | Build fails. Non-schema fields that don't start with `_` are rejected. |
+| **Error** | Build fails. Non-schema fields that don't start with `_` are rejected with `Field '<name>' is not defined in WCS schema and is not a temporary field (root must start with '_')`. |
+
+The root target `.` is classified as `TEMPORARY` too (e.g. merge operations into the event root).
 
 The `_`-prefixed convention allows decoders to use intermediate fields (e.g. `_tmp.parsed_value`)
 without requiring them to be defined in the schema.
@@ -186,16 +197,19 @@ without requiring them to be defined in the schema.
 
 ## Build-Time Validation
 
-Build-time validation occurs in `baseHelper.cpp → buildType()`. The flow is:
+Build-time validation occurs in `baseHelper.cpp → buildType()` and the dispatch in `schemf/src/validator.cpp`.
+The flow is:
 
-1. Call `validator.validate(targetField, validationToken)`.
-2. The validator first classifies the target field (see above).
+1. Call `validator.validate(targetField, validationToken)`; an error is thrown and fails the build.
+2. The validator first classifies the target field (see above); a `TEMPORARY` field ends validation with no
+   runtime validator.
 3. Depending on the token type, a **dispatch** occurs:
 
 ### `JTypeToken` dispatch
-Checks that the JSON type expected by the helper matches the JSON type of the schema field.
-For example, `int_equal` creates `JTypeToken(Number)`. If the target field is of schema type `IP`
-(which maps to JSON `String`), the build **fails**.
+Checks that the JSON type expected by the helper is one the schema field accepts (one JSON type per schema type,
+except `GEO_POINT`, which accepts `Object` and `String`). For example, `int_equal` creates `JTypeToken(Number)`.
+If the target field is of schema type `IP` (which maps to JSON `String`), the build **fails** with
+`Operation expects a JSON type 'number', but field '<name>' does not accept it. Accepted types: [string]`.
 
 If the JSON types match, any available `ValueValidator` for the schema type is returned for
 runtime validation (e.g. for a `LONG` field, the runtime validator checks that the number fits
@@ -206,19 +220,22 @@ Checks schema type compatibility:
 - If the schema type **matches exactly**, no runtime validator is needed.
 - If the types are **compatible** (see compatibility matrix), the validator for the target type
   is returned for runtime validation if the compatibility requires it.
-- If the types are **incompatible**, the build **fails**.
+- If the types are **incompatible**, the build **fails** (`Operation expects schema type '<t>', but field '<name>'
+  is of incompatible schema type '<t>'`).
 
 ### `ValueToken` dispatch
 Validates the actual JSON value against the target field's value validator **immediately at
-build time**. If valid, no runtime validator is needed (the value is already proven correct).
+build time**. If valid, no runtime validator is needed (the value is already proven correct). A `null` value is
+always accepted.
 
 ### `BaseToken` (element validation) dispatch
-Used for array operations. Does not perform type-level build validation beyond array mismatch
-detection. Returns the runtime validator wrapped with `asArray()` so that each array element is
-validated individually at runtime.
+Used for array operations. Performs no type check beyond the target field classification. Returns the target
+type's runtime validator wrapped with `asArray()`, so that each array element is validated individually at runtime.
 
 ### `nullptr` (runtime-only) dispatch
-No build-time check. The runtime validator is returned wrapped with `asArray()`.
+No build-time check beyond the classification. Returns the same runtime validator as `BaseToken`.
+
+Every runtime validator is wrapped with `asArray()` except `GEO_POINT`'s, which handles arrays itself.
 
 ---
 
@@ -241,15 +258,17 @@ Original MapOp
       ▼
   Run ValueValidator on value
       │
-      ├── Valid → return result
-      └── Invalid → return failure with "schema validation failed" trace
+      ├── null or Valid → return result
+      └── Invalid → return failure with "<opName> -> schema validation failed: <reason>" trace
 ```
 
 Each `ValueValidator` is a function `(const json::Json&) → base::OptError` that checks the concrete
 JSON value. When the target field is an array, the validator is wrapped via `asArray()` which applies
 the element validator to each element individually.
 
-Filter operations do **not** get runtime type wrapping (they read fields, they don't write to them).
+Filter and transform operations do **not** get runtime type wrapping: `runType()` returns any builder that is not a
+`MapBuilder` unchanged, even when the `ValidationResult` carries a validator. So `int_equal` (a filter),
+`parse_ip` and `array_append` (transforms) are checked only at build time.
 
 ---
 
@@ -269,6 +288,11 @@ The complete flow from helper invocation to execution:
                     ┌──────────────────▼────────────────────┐
                     │  2. Look up OpBuilderEntry from       │
                     │     registry by helper name           │
+                    └──────────────────┬────────────────────┘
+                                       │
+                    ┌──────────────────▼────────────────────┐
+                    │  2b. Check the builder kind matches   │
+                    │     the helper type (map / filter)    │
                     └──────────────────┬────────────────────┘
                                        │
                     ┌──────────────────▼────────────────────┐
@@ -302,27 +326,32 @@ The complete flow from helper invocation to execution:
                     └───────────────────────────────────┘
 ```
 
+`runType()` wraps only a `MapBuilder`; any other builder comes back unchanged. Step 1 replaces a reference argument
+that names a definition of the asset by the definition's value (see
+[`defs/README.md`](../../../defs/README.md)). In step 5, `toTransform()` of a `MapBuilder` also checks the asset
+type's allowed fields (`Map operation '<op>' not allowed on target field '<field>'`). Any failure is rethrown as
+`Failed to build operation '<name>': <reason>`.
+
 ---
 
 ## Schema Types and JSON Type Mapping
 
 Schema types are based on **OpenSearch data types** and are defined in the enum `schemf::Type`
-(`schemf/type.hpp`). They are loaded from the schema file:
+(`schemf/interface/schemf/type.hpp`). At startup the engine loads the field types from the store document
+`schema/engine-schema/0` (`main.cpp`; a missing document only logs a warning and runs without a schema). The
+installer generates `src/engine/ruleset/schemas/engine-schema.json` from the WCS flat files with `engine-schema`
+and copies it there (`generateSchemaFiles` and `installEngineStore` in `src/init/inst-functions.sh`).
 
-```
-src/engine/ruleset/schemas/engine-schema.json
-```
-
-Which defines fields like:
+It defines fields like:
 
 ```json
 {
   "fields": {
-    "source.ip":       { "type": "ip" },
-    "event.code":      { "type": "keyword" },
+    "source.ip":        { "type": "ip" },
+    "event.code":       { "type": "keyword" },
     "client.as.number": { "type": "long" },
-    "event.duration":  { "type": "float" },
-    "@timestamp":      { "type": "date" }
+    "event.duration":   { "type": "long" },
+    "@timestamp":       { "type": "date" }
   }
 }
 ```
@@ -360,6 +389,9 @@ Each schema type maps to a single JSON type via `typeToJType()`:
 | `GEO_POINT` | `Object` | Geographic point |
 | `JOIN` | `Object` | Join field |
 
+Every other `schemf::Type` (`KNN_VECTOR`, `SPARSE_VECTOR`, `RANK_FEATURE(S)`, `PERCOLATOR`, `STAR_TREE`, `DERIVED`
+and the `*_RANGE` types) maps to no JSON type and gets `getIncompatibleValidator()`: no helper can write it.
+
 > Multiple schema types share the same JSON type. For example, both `IP` and `KEYWORD` are JSON
 > `String`, but `IP` has a stricter validator that checks IP address format.
 
@@ -371,18 +403,21 @@ When a helper expects a schema type (via `STypeToken`) that differs from the tar
 type, the validator checks a **compatibility map**. Each schema type declares which other types are
 compatible, and whether additional runtime validation is needed.
 
-Key compatibility rules:
+The map is `registerCompatibles()` in `schemf/src/validator.cpp`. Key compatibility rules:
 
-| Target Field Type | Compatible Source Types (needs runtime validation?) |
+| Target Field Type | Compatible Helper Types (needs runtime validation?) |
 |-------------------|----------------------------------------------------|
 | `LONG` | `INTEGER` (no), `SHORT` (no), `BYTE` (no) |
 | `INTEGER` | `LONG` (yes), `SHORT` (no), `BYTE` (no) |
 | `SHORT` | `INTEGER` (yes), `LONG` (yes), `BYTE` (no) |
+| `BYTE` | `INTEGER` (yes), `LONG` (yes), `SHORT` (yes) |
 | `DOUBLE` | `FLOAT` (no), `HALF_FLOAT` (no), `SCALED_FLOAT` (no) |
 | `FLOAT` | `DOUBLE` (yes), `HALF_FLOAT` (no), `SCALED_FLOAT` (no) |
-| `IP` | `KEYWORD` (yes), `TEXT` (yes), `WILDCARD` (yes) |
-| `DATE` | `KEYWORD` (yes), `TEXT` (yes), `WILDCARD` (yes) |
-| `KEYWORD` | `TEXT` (no), `IP` (no), `DATE` (no), … (no) |
+| `HALF_FLOAT` | `FLOAT` (yes), `DOUBLE` (yes), `SCALED_FLOAT` (yes) |
+| `SCALED_FLOAT` | `FLOAT` (no), `HALF_FLOAT` (no), `DOUBLE` (yes) |
+| `IP`, `DATE`, `DATE_NANOS`, `BINARY` | `KEYWORD` (yes), `TEXT` (yes), `WILDCARD` (yes) |
+| `KEYWORD`, `TEXT`, `MATCH_ONLY_TEXT`, `WILDCARD`, `CONSTANT_KEYWORD`, `COMPLETION`, `SEARCH_AS_YOU_TYPE`, `SEMANTIC` | every other string type of this row, plus `DATE`, `DATE_NANOS`, `IP`, `BINARY` (all no) |
+| `BOOLEAN`, `UNSIGNED_LONG`, `TOKEN_COUNT`, object types, `GEO_POINT` | none |
 
 The "needs runtime validation" flag means that even though the types are structurally compatible,
 the value must be checked at runtime (e.g. a `KEYWORD` value stored in an `IP` field must actually
@@ -397,17 +432,19 @@ Defined in `schemf/src/valueValidators.hpp`, each validator checks the concrete 
 | Validator | Checks |
 |-----------|--------|
 | `getBoolValidator()` | `value.isBool()` |
-| `getShortValidator()` | Is integer, fits in int8 range |
+| `getByteValidator()` | Is integer, fits in int8 range (used for `BYTE`) |
+| `getShortValidator()` | Is integer, fits in int16 range (used for `SHORT`) |
 | `getIntegerValidator()` | `value.isInt()` |
 | `getLongValidator()` | `value.isInt64()` |
-| `getUnsignedLongValidator()` | `value.isUint64()` |
-| `getFloatValidator()` | `value.isFloat()` |
+| `getUnsignedLongValidator()` | `value.isUint64()` (used for `UNSIGNED_LONG` and `TOKEN_COUNT`) |
+| `getFloatValidator()` | `value.isFloat()` (used for `FLOAT`, `HALF_FLOAT`, `SCALED_FLOAT`) |
 | `getDoubleValidator()` | `value.isDouble()` |
-| `getStringValidator()` | `value.isString()` |
+| `getStringValidator()` | `value.isString()` (every string type without a stricter validator, `DATE_NANOS` included) |
 | `getDateValidator()` | Is string in the exact form `YYYY-MM-DDTHH:MM:SS[.fraction]Z` (two-digit fields, 1-9 fraction digits, zone `Z` or `Zulu` and nothing after it) that is a real calendar date and time (month 1-12, valid day of month, hour < 24, minute < 60, second < 60) |
 | `getIpValidator()` | Is string that `inet_pton` accepts as IPv4 or IPv6 (whole string; no embedded NUL, no zone id) |
 | `getBinaryValidator()` | Is string that is entirely Base64 (padding allowed, nothing after it) |
 | `getObjectValidator()` | `value.isObject()` |
+| `getGeoValidator()` | `{"lat":n,"lon":n}` or GeoJSON Point object; `"lat,lon"`, WKT `POINT(lon lat)` or geohash string; `[lon, lat]` or an array of geo points |
 | `getIncompatibleValidator()` | Always fails (type cannot be used in helpers) |
 
 ---
@@ -417,63 +454,56 @@ Defined in `schemf/src/valueValidators.hpp`, each validator checks the concrete 
 ### 1. Static `JTypeToken` — `int_equal`
 
 ```cpp
-registry->add<OpBuilderEntry>(
+registry->template add<builders::OpBuilderEntry>(
     "int_equal",
-    {schemf::JTypeToken::create(json::Json::Type::Number),
-     builders::opfilter::opBuilderHelperIntEqual});
+    {schemf::JTypeToken::create(json::Json::Type::Number), builders::opfilter::opBuilderHelperIntEqual});
 ```
 
 - **Build-time**: Checks that the target field's JSON type is `Number`.
-- **Runtime**: If the schema type has a validator (e.g. `LONG` → `getLongValidator()`), the value
-  is validated per-element (for arrays) or directly.
+- **Runtime**: None. The dispatch returns the target type's validator (e.g. `LONG` → `getLongValidator()`), but
+  `int_equal` is a `FilterBuilder`, which `runType()` does not wrap. A `MapBuilder` registered with a
+  `JTypeToken` (e.g. `concat`, `to_string`) would have its output validated per element (for arrays) or directly.
 
 ### 2. Static `STypeToken` — `parse_ip`
 
 ```cpp
-registry->add<OpBuilderEntry>(
-    "parse_ip",
-    {schemf::STypeToken::create(schemf::Type::IP),
-     builders::optransform::ipParseBuilder});
+registry->template add<builders::OpBuilderEntry>(
+    "parse_ip", {schemf::STypeToken::create(schemf::Type::IP), builders::optransform::ipParseBuilder});
 ```
 
-- **Build-time**: Checks that the target field's schema type is `IP`, or a compatible type like
-  `KEYWORD` (which is compatible but requires runtime validation).
-- **Runtime**: If the target is `KEYWORD` (compatible with validation), `getIpValidator()` runs on
-  each produced value.
+- **Build-time**: Checks that the target field's schema type is `IP`, or one whose compatibility map lists `IP`:
+  the `KEYWORD`/`TEXT` row of the matrix (not flagged for runtime validation). Any other target, `DATE` included,
+  fails the build.
+- **Runtime**: None — `ipParseBuilder` is a transform, and the `KEYWORD` → `IP` entry carries no runtime flag
+  anyway.
 
 ### 3. `runtimeValidation()` — `exists`
 
 ```cpp
-registry->add<OpBuilderEntry>(
-    "exists",
-    {schemf::runtimeValidation(),
-     builders::opfilter::existsBuilder});
+registry->template add<builders::OpBuilderEntry>("exists",
+                                                 {schemf::runtimeValidation(), builders::opfilter::existsBuilder});
 ```
 
 - **Build-time**: No type check. The field classification still runs (must be schema or `_`-prefixed).
-- **Runtime**: The runtime validator from the schema type is returned for map operations.
+- **Runtime**: None. The target type's validator is returned, but `exists` is a filter; only a map helper
+  registered with `runtimeValidation()` would be wrapped.
 
 ### 4. `elementValidationToken()` — `array_append`
 
 ```cpp
-registry->add<OpBuilderEntry>(
-    "array_append",
-    {schemf::elementValidationToken(),
-     builders::optransform::getArrayAppendBuilder(false, false)});
+registry->template add<builders::OpBuilderEntry>(
+    "array_append", {schemf::elementValidationToken(), builders::optransform::getArrayAppendBuilder(false, false)});
 ```
 
-- **Build-time**: `BaseToken` — performs element-level array validation (ensures the field is
-  appropriate for array operations).
-- **Runtime**: The element validator for the target field's schema type is applied to each appended
-  element.
+- **Build-time**: `BaseToken` — only the target field classification runs.
+- **Runtime**: None. The dispatch returns the element validator wrapped with `asArray()`, but
+  `getArrayAppendBuilder()` returns a `TransformBuilder`, which `runType()` does not wrap.
 
 ### 5. `DynamicValToken` — `map`
 
 ```cpp
-registry->add<OpBuilderEntry>(
-    "map",
-    {builders::opmap::mapValidator(),
-     builders::opmap::mapBuilder});
+registry->template add<builders::OpBuilderEntry>("map",
+                                                 {builders::opmap::mapValidator(), builders::opmap::mapBuilder});
 ```
 
 - At build time the `DynamicValToken` factory inspects the argument:
@@ -482,7 +512,10 @@ registry->add<OpBuilderEntry>(
   - **Reference** (e.g. `$source.ip`) → `tokenFromReference()` looks up the referenced field's
     schema type → `STypeToken` created → build-time compatibility check. Runtime validator added
     if the types are compatible but need value checking.
-  - **Reference to non-schema field** → falls back to `runtimeValidation()`.
+  - **Reference to non-schema field** → falls back to `runtimeValidation()`: the target type's validator checks
+    the mapped value at runtime.
+
+`map` is a `MapBuilder`, so it is the one helper in this list whose runtime validator is actually applied.
 
 ---
 
@@ -519,7 +552,7 @@ registry->add<OpBuilderEntry>(
                                │
                                ▼
 ┌──────────────────────────────────────────────────────────────────┐
-│                    Runtime Check (MapOp only)                     │
+│                    Runtime Check (MapBuilder only)                │
 │  If ValidationResult has a validator:                             │
 │    wrap MapOp → execute, then validate output value               │
 │    (for arrays, validate each element via asArray())              │

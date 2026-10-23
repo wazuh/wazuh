@@ -1,6 +1,7 @@
 // Package pacing wraps rate limiting. There is one shared session limiter for
-// the whole run and one per engine lane, so log volume and inventory volume are
-// dialed independently (docu/08-concurrency-and-pacing.md).
+// the whole run and one engine limiter per agent, engine lane and rate (each
+// agent's events_per_second is its own budget), so log volume and inventory
+// volume are dialed independently (docu/08-concurrency-and-pacing.md).
 package pacing
 
 import (
