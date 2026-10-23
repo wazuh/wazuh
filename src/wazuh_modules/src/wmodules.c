@@ -16,6 +16,8 @@
 #include "os_net.h"
 #ifndef CLIENT
 #include "mconf-config.h"
+#include "indexer-config.h"
+#include "wm_indexer_runtime.h"
 #endif
 #include <sys/types.h>
 
@@ -219,6 +221,13 @@ int wm_config() {
     // Inventory sync server: the POST /stateful ingestion pipeline plus the agent-deletion route.
     if ((module = wm_inventory_sync_server_read()))
         wm_add(module);
+
+    // indexer_client runtime: validates the wazuh_modules.indexer_client_* options against <indexer> before the fork
+    // (so "-t" fails on them too) and loads its library when a consumer exists (today, inventory sync). It logs why
+    // it fails.
+    if (wm_indexer_runtime_configure(indexer_config, wm_find_module(WM_INVENTORY_SYNC_SERVER_CONTEXT.name) != NULL) < 0) {
+        return OS_INVALID;
+    }
 
     // The database module won't be available on agents
     if ((module = wm_database_read()))
