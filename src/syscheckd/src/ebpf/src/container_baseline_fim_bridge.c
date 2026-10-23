@@ -12,6 +12,7 @@
 
 #include "container_doc_budget.h"
 
+#include "db.h"
 #include "file.h"
 #include "shared.h"
 #include "syscheck.h"
