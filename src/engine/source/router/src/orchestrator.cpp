@@ -811,6 +811,83 @@ base::OptError Orchestrator::renameTestEntry(const std::string& from, const std:
     return std::nullopt;
 }
 
+base::RespOrError<std::optional<test::Entry>> Orchestrator::replaceTestEntry(const std::string& from,
+                                                                             const std::string& to)
+{
+    if (from.empty() || to.empty())
+    {
+        return base::Error {"Name cannot be empty"};
+    }
+
+    if (from == to)
+    {
+        return base::Error {"Names must differ"};
+    }
+
+    std::unique_lock lock {m_syncMutex};
+
+    if (!m_testerWorker)
+    {
+        return base::Error {"Tester worker is not available"};
+    }
+    auto tester = m_testerWorker->get();
+
+    auto source = tester->getEntry(from);
+    if (base::isError(source))
+    {
+        return base::getError(source);
+    }
+
+    std::optional<test::Entry> replaced;
+    auto current = tester->getEntry(to);
+    if (!base::isError(current))
+    {
+        replaced = base::getResponse(current);
+        if (auto error = tester->removeEntry(to); error)
+        {
+            return *error;
+        }
+    }
+
+    if (auto error = tester->renameEntry(from, to); error)
+    {
+        return *error;
+    }
+
+    dumpTestersInternal();
+    return replaced;
+}
+
+base::RespOrError<std::optional<test::Entry>> Orchestrator::extractTestEntry(const std::string& name)
+{
+    if (name.empty())
+    {
+        return base::Error {"Name cannot be empty"};
+    }
+
+    std::unique_lock lock {m_syncMutex};
+
+    if (!m_testerWorker)
+    {
+        return base::Error {"Tester worker is not available"};
+    }
+    auto tester = m_testerWorker->get();
+
+    auto entry = tester->getEntry(name);
+    if (base::isError(entry))
+    {
+        return std::optional<test::Entry> {};
+    }
+
+    if (auto error = tester->removeEntry(name); error)
+    {
+        return *error;
+    }
+
+    dumpTestersInternal();
+    return std::optional<test::Entry> {base::getResponse(entry)};
+}
+
 std::list<test::Entry> Orchestrator::getTestEntries() const
 {
     std::shared_lock lock {m_syncMutex};
