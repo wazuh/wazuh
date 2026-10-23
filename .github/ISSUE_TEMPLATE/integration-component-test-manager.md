@@ -129,3 +129,5 @@ gh workflow run 5_testcomponent_vulnerability-scanner.yml --repo=wazuh/wazuh --r
 gh workflow run 5_testintegration_api-endpoints.yml --repo=wazuh/wazuh --ref <VERSION>
 gh workflow run 5_testintegration_manager.yml --repo=wazuh/wazuh --ref <VERSION> --field modules=all --field base_branch=<VERSION>
 -->
+
+DRI: @wazuh/devel-xdrsiem-server-div1
