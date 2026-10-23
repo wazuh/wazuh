@@ -55,7 +55,7 @@ static int teardown_group(void **state) {
 static int setup_syscheck_config(void **state) {
     syscheck_config *syscheck_conf = calloc(1, sizeof(syscheck_config));
 
-    syscheck_conf->file_entry_limit          = 100000;
+    syscheck_conf->file_entry_limit          = 300000;
 #ifdef WIN32
     syscheck_conf->db_entry_registry_limit   = 100000;
 #endif
@@ -223,7 +223,7 @@ void test_Start_win32_Syscheck_corrupted_config_file(void **state) {
 
     will_return(__wrap_rootcheck_init, 1);
 
-    expect_wrapper_fim_db_init(0, 100000, 100000);
+    expect_wrapper_fim_db_init(0, 300000, 100000);
 
     expect_string(__wrap_asp_create, module, "fim");
     will_return(__wrap_asp_create, (AgentSyncProtocolHandle*)0xABCD1234);
@@ -267,7 +267,7 @@ void test_Start_win32_Syscheck_syscheck_disabled_1(void **state) {
 
     will_return(__wrap_rootcheck_init, 0);
 
-    expect_wrapper_fim_db_init(0, 100000, 100000);
+    expect_wrapper_fim_db_init(0, 300000, 100000);
     expect_string(__wrap__minfo, formatted_msg, FIM_FILE_SIZE_LIMIT_DISABLED);
 
     expect_string(__wrap__minfo, formatted_msg, FIM_DISK_QUOTA_LIMIT_DISABLED);
@@ -315,7 +315,7 @@ void test_Start_win32_Syscheck_syscheck_disabled_2(void **state) {
 
     will_return(__wrap_rootcheck_init, 0);
 
-    expect_wrapper_fim_db_init(0, 100000, 100000);
+    expect_wrapper_fim_db_init(0, 300000, 100000);
     expect_string(__wrap__minfo, formatted_msg, FIM_FILE_SIZE_LIMIT_DISABLED);
 
     expect_string(__wrap__minfo, formatted_msg, FIM_DISK_QUOTA_LIMIT_DISABLED);
@@ -399,7 +399,7 @@ void test_Start_win32_Syscheck_dirs_and_registry(void **state) {
 
     expect_string(__wrap__mdebug1, formatted_msg, "(6004): No diff for file: 'Diff'");
 
-    expect_wrapper_fim_db_init(0, 100000, 100000);
+    expect_wrapper_fim_db_init(0, 300000, 100000);
 
     expect_string(__wrap_asp_create, module, "fim");
     will_return(__wrap_asp_create, (AgentSyncProtocolHandle*)0xABCD1234);
@@ -461,7 +461,7 @@ void test_Start_win32_Syscheck_whodata_active(void **state) {
 
     expect_string(__wrap__mdebug1, formatted_msg, "(6003): Monitoring path: 'c:\\dir1', with options 'whodata'.");
 
-    expect_wrapper_fim_db_init(0, 100000, 100000);
+    expect_wrapper_fim_db_init(0, 300000, 100000);
 
     expect_string(__wrap_asp_create, module, "fim");
     will_return(__wrap_asp_create, (AgentSyncProtocolHandle*)0xABCD1234);
