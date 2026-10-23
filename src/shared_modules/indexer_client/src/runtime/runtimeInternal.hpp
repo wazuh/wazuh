@@ -132,12 +132,19 @@ namespace indexer_client::detail
 
     struct TicketState final : Completion<OpResult>
     {
-        /// E3a (I62): the op's RESULT_RESERVE when it has no callback; its destructor returns the reserve to the
-        /// bucket, so the reserve lives as long as the last Ticket. Never dropped while holding a bucket mutex.
-        std::shared_ptr<void> resultReserve;
-        /// The submitting client, for the completion accounting of WritePath::resolve (outstandingCompletions and
-        /// the CloseReport counters). Weak: a ticket never keeps its client alive.
-        std::weak_ptr<ClientState> client;
+        TicketState() = default;
+        TicketState(const TicketState&) = delete;
+        TicketState& operator=(const TicketState&) = delete;
+        /// Returns the op's RESULT_RESERVE when `reserveArmed` (writer.cpp): to the bucket while it lives, else to the
+        /// global cap while the write path lives, else nothing (its budget is gone).
+        ~TicketState();
+
+        /// E3a (I62) / E6d: the RESULT_RESERVE of an accepted op without callback lives as long as the last Ticket (or
+        /// the resolution's local reference). Armed by submit once the reserve is charged; both references are weak
+        /// (the reserve never keeps the runtime alive). Never dropped while holding a bucket mutex.
+        std::weak_ptr<write::WritePath> reservePath;
+        std::weak_ptr<write::Bucket> reserveBucket;
+        bool reserveArmed {false};
     };
 
     struct CancelState final : Completion<Unit>

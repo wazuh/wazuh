@@ -31,6 +31,7 @@
 #include "runtime/runtimeInternal.hpp"
 #include "transport/seams.hpp"
 #include "transport/transport.hpp"
+#include "write/encoding.hpp"
 #include "write/response.hpp"
 #include "write/scheduler.hpp"
 #include "write/writer.hpp"
@@ -1107,7 +1108,7 @@ namespace indexer_client::detail::write
                         }
                         else
                         {
-                            bytes += op->lines.size();
+                            bytes += op->wire();
                             kept.push_back(std::move(op));
                         }
                     }
@@ -1137,13 +1138,13 @@ namespace indexer_client::detail::write
                 std::uint64_t size = 0;
                 for (const auto& op : batch->ops)
                 {
-                    size += op->lines.size();
+                    size += op->wire();
                 }
                 auto body = std::make_shared<std::string>();
                 body->reserve(size);
                 for (const auto& op : batch->ops)
                 {
-                    body->append(op->lines);
+                    appendWire(*body, op->headView(), op->body);
                 }
                 HttpRequest request;
                 request.method = HttpMethod::Post;

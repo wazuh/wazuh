@@ -54,8 +54,8 @@ namespace
     /// The key an op was submitted with (from its action line).
     std::uint64_t keyOf(const wr::OpState& op)
     {
-        const auto at = op.lines.find("\"_id\":\"k");
-        return at == std::string::npos ? ALL : std::stoull(op.lines.substr(at + 8, 7));
+        const auto at = op.head.find("\"_id\":\"k");
+        return at == std::string::npos ? ALL : std::stoull(op.head.substr(at + 8, 7));
     }
 
     std::vector<std::uint64_t> keysOf(const std::vector<OpPtr>& ops)
@@ -235,7 +235,7 @@ TEST_F(WriteRetryLaneTest, RequeueBackoffAndExhaust)
         EXPECT_GE(delay, d / 2 - 1);
         EXPECT_LE(delay, std::min<long long>(cap.count(), d * 3 / 2));
         EXPECT_FALSE(bucket->empty());
-        EXPECT_EQ(bucket->headBytes(op->notBefore), op->lines.size());
+        EXPECT_EQ(bucket->headBytes(op->notBefore), op->wire());
         const auto again = bucket->slice(op->notBefore);
         ASSERT_EQ(again.ops.size(), 1U);
         t = op->notBefore;
@@ -399,7 +399,7 @@ TEST_F(WriteRetryLaneTest, RequeueSpecs)
         EXPECT_EQ(op->lastReason, "primary shard is not active");
     }
 
-    EXPECT_EQ(bucket->headBytes(t + ms(1)), o[3]->lines.size());
+    EXPECT_EQ(bucket->headBytes(t + ms(1)), o[3]->wire());
     auto first = bucket->slice(t + ms(1));
     EXPECT_EQ(keysOf(first.ops), (std::vector<std::uint64_t> {3, 1, 2})) << "toHead first, then by notBefore (stable)";
     EXPECT_FALSE(bucket->eligible(t + ms(4999))) << "At(t) is not due before t";
@@ -424,7 +424,7 @@ TEST_F(WriteRetryLaneTest, SplitHalvesNeverRemerge)
     auto batch = deliver(writer, results, 0, 4);
     ASSERT_EQ(batch.ops.size(), 4U);
     auto bucket = batch.bucket;
-    const auto size = batch.ops[0]->lines.size();
+    const auto size = batch.ops[0]->wire();
     ASSERT_EQ(batch.bytes, 4 * size);
     const auto t = now();
 
@@ -614,13 +614,16 @@ TEST_F(WriteRetryLaneTest, LaneBeforePending)
                      bucketSpec("late", 1U << 20, ic::Overflow::Kind::Reject, 0, 1)});
     auto results = Results::create();
     auto writer = c->writer("b");
+    // The lane op is due at t0, taken before anything is submitted: a scheduler pass takes its `now` once, so a
+    // notBefore of the requeue's own now() could still be later than the `now` of a pass already running (D68).
+    const auto t0 = now();
     auto batch = deliver(writer, results, 0, 1);
     ASSERT_EQ(batch.ops.size(), 1U);
     auto bucket = batch.bucket;
     const auto laneOp = batch.ops[0];
 
     ASSERT_TRUE(writer->submit(indexOp(id(1)), results->callback(1)).accepted); // Pending and eligible (maxDocs 1).
-    const auto r = bucket->requeue(requeueOps({laneOp}), spec(true, Delay::Now), now());
+    const auto r = bucket->requeue(requeueOps({laneOp}), spec(true, Delay::At, t0), now());
     EXPECT_TRUE(r.notify);
     m_sink->grant(1);
     ASSERT_TRUE(m_sink->waitDispatched(2));

@@ -77,7 +77,7 @@ TEST_F(WriteTest, ChargeIsWireBytesPlusReserve)
         auto batches = sink->take();
         ASSERT_EQ(batches.size(), 1u);
         ASSERT_EQ(batches[0].ops.size(), 1u);
-        EXPECT_EQ(batches[0].ops[0]->lines.size(), size);
+        EXPECT_EQ(batches[0].ops[0]->wire(), size);
 
         ASSERT_TRUE(m_path->resolve(batches[0].ops[0], TestSink::ok()));
         EXPECT_EQ(stats("b").charge, R) << "the payload is released at resolution";
@@ -657,10 +657,12 @@ TEST_F(WriteTest, NoDropWithoutCounter)
         EXPECT_EQ(s.resolvedDropped, seen.droppedSeen.load());
         EXPECT_EQ(s.retained, 0u);
     }
-    // The pressure was real: each policy hit its quota.
+    // The pressure was real: each policy hit its quota. A DropOldest op that evicting every pending op would not make
+    // fit (the rest of the charge in flight or held by reserves) is dropped as the newest, so that bucket's pressure is
+    // either counter; the eviction itself is OverflowDropOldest's (D69).
     EXPECT_GT(stats("reject").rejectedQueueFull, 0u);
     EXPECT_GT(stats("dropNewest").droppedNewest, 0u);
-    EXPECT_GT(stats("dropOldest").droppedOldest, 0u);
+    EXPECT_GT(stats("dropOldest").droppedOldest + stats("dropOldest").droppedNewest, 0u);
 }
 
 // RF-27: with the quota full, a Block submit from a runtime thread (pool or network loop) returns Reentrancy at once
@@ -862,4 +864,198 @@ TEST_F(WriteTest, CallbackThrowsStillReleasesReserve)
     const auto report = c->awaitClosed(now() + 5s);
     ASSERT_TRUE(report.ok());
     EXPECT_EQ(report.value.callbacksInFlight, 0u);
+}
+
+// CA-E6d-2 (I122): 1 000 post() into a sink that resolves every op Ok: each is accepted (Posted carries no ticket); the
+// result exists only in the counters — the client's metrics count ok = 1 000 — and the charge, RESULT_RESERVE included,
+// is 0 once they are resolved (nobody else returns a post op's reserve). Mutant m2: resolve keeps a post op's reserve.
+TEST_F(WriteTest, PostResolvesInMetrics)
+{
+    constexpr std::size_t N = 1000;
+    ASSERT_NO_FATAL_FAILURE(start());
+    installSink(TestSink::Mode::ResolveOk);
+    auto c = client("c", {bucketSpec("b", 8u << 20, ic::Overflow::Kind::Reject, 64 * 1024, 100)});
+    auto writer = c->writer("b");
+    std::size_t accepted = 0;
+    for (std::size_t k = 0; k < N; ++k)
+    {
+        const auto posted = writer->post(indexOp(id(k)));
+        EXPECT_EQ(posted.cause, ic::Cause::None);
+        EXPECT_TRUE(posted.reason.empty()) << posted.reason;
+        accepted += posted.accepted ? 1 : 0;
+    }
+    EXPECT_EQ(accepted, N);
+    const auto okOf = [&c]() -> std::uint64_t
+    {
+        for (const auto& bucket : c->metrics().buckets)
+        {
+            if (bucket.bucket == "b")
+            {
+                return bucket.ok;
+            }
+        }
+        return 0;
+    };
+    EXPECT_TRUE(eventually([&] { return okOf() == N; }, 5s)) << "ok = " << okOf();
+    EXPECT_TRUE(eventually([&] { return stats("b").charge == 0 && globalCharge() == 0; }, 5s))
+        << describe(stats("b")) << " global " << globalCharge();
+    const auto s = stats("b");
+    EXPECT_EQ(s.accepted, N);
+    EXPECT_EQ(s.resolvedOk, N);
+    EXPECT_EQ(s.retained, 0u);
+    expectInvariants(s);
+}
+
+// CA-E6d-2 (I122): post() refuses exactly as submit(): a '\n' in the body is InvalidArgument with a reason that names
+// the field first; a full Reject bucket is QueueFull; a Block bucket from a runtime thread is Reentrancy (at once);
+// after requestClose() it is ClientClosed. A refusal charges nothing.
+TEST_F(WriteTest, PostRefusals)
+{
+    ASSERT_NO_FATAL_FAILURE(start());
+    installSink(TestSink::Mode::Hold, 0);
+    const auto one = chargeOf(indexOp(id(0), 1000)) + R;
+    auto c = client("c",
+                    {bucketSpec("reject", one + R, ic::Overflow::Kind::Reject),
+                     bucketSpec("block", one + R, ic::Overflow::Kind::Block)});
+    auto reject = c->writer("reject");
+    auto block = c->writer("block");
+
+    auto bad = indexOp(id(9));
+    bad.body = "{\"a\":\n1}";
+    const auto invalid = reject->post(std::move(bad));
+    EXPECT_FALSE(invalid.accepted);
+    EXPECT_EQ(invalid.cause, ic::Cause::InvalidArgument);
+    EXPECT_EQ(invalid.reason.rfind("body", 0), 0u) << invalid.reason;
+    EXPECT_EQ(stats("reject").charge, 0u);
+    EXPECT_EQ(stats("reject").invalidArgument, 1u);
+
+    ASSERT_TRUE(reject->post(indexOp(id(0), 1000)).accepted);
+    EXPECT_EQ(stats("reject").charge, one);
+    const auto full = reject->post(indexOp(id(1), 1000));
+    EXPECT_FALSE(full.accepted);
+    EXPECT_EQ(full.cause, ic::Cause::QueueFull);
+    EXPECT_EQ(stats("reject").charge, one) << "a refusal charges nothing";
+    EXPECT_EQ(stats("reject").rejectedQueueFull, 1u);
+
+    ASSERT_TRUE(block->post(indexOp(id(2), 1000)).accepted);
+    EXPECT_EQ(stats("block").charge, one);
+    auto answer = std::make_shared<std::promise<std::pair<ic::Cause, std::chrono::nanoseconds>>>();
+    auto future = answer->get_future();
+    ASSERT_TRUE(ic::detail::testing::postToPool(
+        [block, answer]
+        {
+            const auto t0 = now();
+            const auto cause = block->post(indexOp(id(3), 1000)).cause;
+            answer->set_value({cause, now() - t0});
+        }));
+    ASSERT_EQ(future.wait_for(2s), std::future_status::ready) << "the runtime thread slept";
+    const auto onPool = future.get();
+    EXPECT_EQ(onPool.first, ic::Cause::Reentrancy);
+    EXPECT_LT(onPool.second, 100ms);
+    EXPECT_EQ(stats("block").charge, one);
+    EXPECT_EQ(stats("block").reentrancy, 1u);
+
+    c->requestClose();
+    const auto closed = reject->post(indexOp(id(4)));
+    EXPECT_FALSE(closed.accepted);
+    EXPECT_EQ(closed.cause, ic::Cause::ClientClosed);
+    EXPECT_EQ(block->post(indexOp(id(5))).cause, ic::Cause::ClientClosed);
+    EXPECT_EQ(stats("reject").charge, one);
+    EXPECT_EQ(stats("block").charge, one);
+    EXPECT_EQ(stats("reject").rejectedClosed, 1u);
+    closeNow(*c);
+    expectInvariants(stats("reject"));
+    expectInvariants(stats("block"));
+}
+
+// CA-E6d-2 (I122): with DropNewest or DropOldest full, post() is accepted and the overflow is only counted
+// (droppedNewest / droppedOldest + 1): the producer is never told. Σ charge returns to 0 once the rest resolve.
+TEST_F(WriteTest, PostDropPolicies)
+{
+    ASSERT_NO_FATAL_FAILURE(start());
+    auto sink = installSink(TestSink::Mode::Hold, 0);
+    const auto one = chargeOf(indexOp(id(0), 1000)) + R;
+    auto c = client("c",
+                    {bucketSpec("newest", 3 * one + R, ic::Overflow::Kind::DropNewest, 0, 3),
+                     bucketSpec("oldest", 3 * one + R, ic::Overflow::Kind::DropOldest, 0, 3)});
+    std::uint64_t key = 0;
+    for (const char* name : {"newest", "oldest"})
+    {
+        SCOPED_TRACE(name);
+        auto writer = c->writer(name);
+        for (int k = 0; k < 3; ++k)
+        {
+            ASSERT_TRUE(writer->post(indexOp(id(key++), 1000)).accepted);
+        }
+        EXPECT_EQ(stats(name).charge, 3 * one);
+        const auto overflow = writer->post(indexOp(id(key++), 1000));
+        EXPECT_TRUE(overflow.accepted) << ic::toString(overflow.cause);
+        EXPECT_EQ(overflow.cause, ic::Cause::None);
+        EXPECT_TRUE(eventually([&] { return stats(name).charge == 3 * one; }, 5s)) << describe(stats(name));
+        EXPECT_EQ(stats(name).retained, 3u);
+    }
+    EXPECT_EQ(stats("newest").droppedNewest, 1u);
+    EXPECT_EQ(stats("newest").droppedOldest, 0u);
+    EXPECT_EQ(stats("oldest").droppedOldest, 1u);
+    EXPECT_EQ(stats("oldest").droppedNewest, 0u);
+
+    sink->grant(TestSink::UNLIMITED);
+    ASSERT_TRUE(sink->waitDispatched(2));
+    EXPECT_EQ(sink->resolveHeld(), 6u);
+    EXPECT_TRUE(eventually([&] { return globalCharge() == 0; }, 5s)) << describe(m_path->stats());
+    EXPECT_EQ(stats("newest").charge, 0u);
+    EXPECT_EQ(stats("oldest").charge, 0u);
+    expectInvariants(stats("newest"));
+    expectInvariants(stats("oldest"));
+}
+
+// CA-E6d-2 (I122, obj. 6): posted ops, some delivered to the sink and one still queued, when the client is destroyed
+// before any of them resolved: the close sweeps and resolves all of them while their bucket is still alive (a post op
+// has no ticket and no callback, so resolve returns its RESULT_RESERVE with its payload), the bucket then dies, the
+// sink's late answers find them already resolved (won == 0), and the global cap is back to 0. It does not reach the
+// branch of resolve without a bucket nor the reserve net of ~Bucket (G-diff E6d obj. 4; D66/D67).
+TEST_F(WriteTest, PostReserveReturnedOnClientDestroyed)
+{
+    ASSERT_NO_FATAL_FAILURE(start(1, 2, {{"drain_ms", "300"}}));
+    auto sink = installSink();
+    const auto one = chargeOf(indexOp(id(0), 300)) + R;
+    std::vector<std::shared_ptr<wr::OpState>> delivered;
+    {
+        auto c = client("c", {bucketSpec("b", 1u << 20, ic::Overflow::Kind::Reject, 64 * 1024, 2)});
+        auto writer = c->writer("b");
+        for (std::uint64_t k = 0; k < 5; ++k)
+        {
+            ASSERT_TRUE(writer->post(indexOp(id(k), 300)).accepted);
+        }
+        ASSERT_TRUE(sink->waitDispatched(2));
+        // The test keeps the delivered OpStates but not their batches: nothing but the client keeps the bucket.
+        for (auto& batch : sink->take())
+        {
+            for (auto& op : batch.ops)
+            {
+                delivered.push_back(op);
+            }
+        }
+        ASSERT_EQ(delivered.size(), 4u);
+        EXPECT_EQ(stats("b").retained, 5u);
+        EXPECT_EQ(globalCharge(), 5 * one);
+        writer.reset();
+    } // ~Client: requestClose + awaitClosed(now + drain_ms): the queued op and the delivered ones are swept.
+    for (auto& batch : sink->take()) // The close flushed the queued op into the sink (D43): keep only its OpState.
+    {
+        for (auto& op : batch.ops)
+        {
+            delivered.push_back(op);
+        }
+    }
+    EXPECT_GE(delivered.size(), 4u);
+    EXPECT_TRUE(eventually([&] { return m_path->stats().buckets.empty(); }, 2s)) << "the bucket is gone";
+    std::size_t won = 0;
+    for (const auto& op : delivered)
+    {
+        won += m_path->resolve(op, TestSink::ok()) ? 1 : 0; // The sink's late answer, after its bucket died.
+    }
+    EXPECT_EQ(won, 0u) << "the close had resolved them";
+    delivered.clear();
+    EXPECT_TRUE(eventually([&] { return globalCharge() == 0; }, 2s)) << "global " << globalCharge();
 }

@@ -20,6 +20,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <memory>
 #include <string>
 #include <string_view>
 
@@ -73,9 +74,39 @@ namespace indexer_client::detail::write
         "cur.put(p[last], k[1]); } "
         "} else { ctx.op = 'none' }";
 
+    /// The wire lines of one op (I121): the action line (and, for the update kinds and Delete, every line) in `head`
+    /// or, for IndexAutoId and IndexDataStream, in `sharedHead` (E6d I125: a per-thread cached line shared by every op
+    /// of that kind and index; `head` then stays empty), and `body` the moved-in document of the kinds that carry it
+    /// verbatim (empty otherwise). On the wire the op is headView() + `body` + '\n' (the '\n' only when `body` is not
+    /// empty).
+    struct Encoded final
+    {
+        std::string head;
+        std::shared_ptr<const std::string> sharedHead;
+        std::string body;
+
+        /// The shared head when there is one, else `head`. Every reader of the head goes through it.
+        std::string_view headView() const noexcept
+        {
+            return sharedHead ? std::string_view(*sharedHead) : std::string_view(head);
+        }
+        std::uint64_t wire() const noexcept;
+        /// I124b: the bytes charged against the quota: wire() plus the heap slack of `body` (capacity - size when the
+        /// body lives on the heap; 0 for an empty or SSO body). `head` is built with an exact reserve; a shared head
+        /// counts in wire() of every op that carries it, never apart.
+        std::uint64_t charge() const noexcept;
+    };
+
+    /// wire() and charge() of a (head, body) pair, shared by Encoded and OpState (`head` is their headView()).
+    std::uint64_t wireSize(std::string_view head, const std::string& body) noexcept;
+    std::uint64_t chargeSize(std::string_view head, const std::string& body) noexcept;
+    /// Appends the wire bytes of a (head, body) pair to `out`.
+    void appendWire(std::string& out, std::string_view head, const std::string& body);
+    void appendWire(std::string& out, const Encoded& encoded);
+
     /// Validates `op` (RF-4, I61, I73) against its effective conflict policy (`op.onConflict` when set, else the
     /// bucket's; the caller resolves it) and returns its NDJSON lines, each ending in '\n': the action line and, for
-    /// every kind but Delete, the body line. Byte for byte:
+    /// every kind but Delete, the body line. Byte for byte (appendWire of the result):
     ///   Index                {"index":{"_index":"<i>","_id":"<id>"}}\n<body>\n
     ///   IndexAutoId          {"index":{"_index":"<i>"}}\n<body>\n
     ///   IndexDataStream      {"create":{"_index":"<i>"}}\n<body>\n
@@ -94,14 +125,24 @@ namespace indexer_client::detail::write
     /// <R> = ,"retry_on_conflict":<n> only with an effective ConflictPolicy::Retry (update actions only: an index,
     /// create or delete line with it is a 400 for the whole request); with Success the line is today's (v1 parity).
     /// <P> = the preserved paths in the given order, each as an array of its segments: [["case"],["a","b"]] (the
-    /// segment alphabet needs no escaping). `_id` is escaped as the v1 escapes it. `op.body` is moved into the result
-    /// (one copy of the document; two for the update kinds, which is the wire format, I71); on success `op.body` is
-    /// left empty with its memory freed. Failures are Cause::InvalidArgument with the field first in `reason`
+    /// segment alphabet needs no escaping). `_id` is escaped as the v1 escapes it. The result splits those bytes in
+    /// two (I121): for Index (Replace) `head` is the action line with its '\n' (built with an exact reserve); for
+    /// IndexAutoId and IndexDataStream that line (it depends only on kind and index) is `sharedHead`, taken from a
+    /// one-entry thread_local cache {kind, index, line} (E6d I125): on a hit (same kind, index equal byte for byte)
+    /// neither isSafeIndexName runs nor a line is built; on a miss the index is validated as always and, once the op
+    /// is valid, the entry is replaced (an invalid index never enters it). For those three kinds `body` is `op.body`
+    /// itself, moved in with its buffer and capacity, never copied nor
+    /// re-reserved; for the update kinds and Delete `head` holds every line (the update kinds copy the document twice,
+    /// which is their wire format, I71) and `body` is empty. On success `op.body` is left empty (moved from, or its
+    /// memory freed for the update kinds); the rest of `op` is not consumed. Failures are Cause::InvalidArgument with
+    /// the field first in `reason`
     /// ("index: ...", "id: ...", "version: ...", "body: ...", "mode: ...", "onConflict.retryOnConflict: ..."):
     ///   - unsafe or empty index; missing `_id` where required (Index, Delete, IndexVersionedScript) or present
     ///     where the kind has none (IndexAutoId, IndexDataStream); `version` not a canonical integer in
     ///     [0, INT64_MAX] (no leading zero) for IndexVersionedScript or non-empty for any other kind; empty body or a
-    ///     '\n' in it for the kinds with a body, a non-empty body for Delete;
+    ///     '\n' in it for the kinds with a body (the '\n' is not searched with `trustedBody`,
+    ///     BucketSpec::trustedBodies: the producer guarantees compact JSON and a stray '\n' fails that bulk with 400),
+    ///     a non-empty body for Delete;
     ///   - `tag` (E3c-2 I80) longer than MAX_TAG_SIZE or with a byte below 0x20 or 0x7f ("tag: ...");
     ///   - effective Retry with retryOnConflict 0 or > MAX_RETRY_ON_CONFLICT;
     ///   - ReplacePreserving with a kind other than Index or IndexVersionedScript (I72); preservedPaths with Replace;
@@ -110,7 +151,7 @@ namespace indexer_client::detail::write
     ///     IndexVersionedScript `state`, `state.document_version` or a path under it (it would defeat the guard).
     /// A per-op Retry on Index/IndexAutoId/IndexDataStream/Delete is accepted and only changes how a 409 item is
     /// treated (futile for `create`: its 409 means "exists"). On failure `op` is untouched.
-    Outcome<std::string> encode(Op&& op, const ConflictPolicy& effective);
+    Outcome<Encoded> encode(Op&& op, const ConflictPolicy& effective, bool trustedBody = false);
 } // namespace indexer_client::detail::write
 
 #endif // _INDEXER_CLIENT_WRITE_ENCODING_HPP

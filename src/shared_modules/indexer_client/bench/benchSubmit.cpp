@@ -11,8 +11,9 @@
  */
 
 // Submit microbenchmark (plan 18, E6c, RNF-2, I119; contract-bench §2): what one event costs the producer that hands it
-// to the library, v1 (IndexerConnectorAsync::indexDataStream, string_view) against v2 (IWriter::submit of an
-// IndexDataStream Op whose body is moved in). One side per invocation, printed as one `SUBMIT,` row.
+// to the library, v1 (IndexerConnectorAsync::indexDataStream, string_view) against v2 (IWriter::post, the default, or
+// IWriter::submit, of an IndexDataStream Op whose body is moved in; `--api`, E6d I123). One side per invocation,
+// printed as one `SUBMIT,` row (column `api`: v1 for the v1 side).
 //
 // Regime: P producers run bursts of B ops at the same time (a generation counter under a mutex + cv releases them);
 // each one times its own burst (steady_clock and CLOCK_THREAD_CPUTIME_ID). When every producer is done, one
@@ -65,8 +66,11 @@ namespace
     constexpr const char* INDEX_NAME {"bench-submit"};
 
     constexpr const char* USAGE =
-        "usage: indexer_client_bench_submit --side v1|v2 [--producers N] [--cb none|noop] [--handover move|view]\n"
-        "                                   [--events N] [--pair N] [--csv-header]\n"
+        "usage: indexer_client_bench_submit --side v1|v2 [--api post|submit] [--producers N] [--cb none|noop]\n"
+        "                                   [--handover move|view] [--events N] [--pair N] [--csv-header]\n"
+        "  --api (v2 only; default post): IWriter::post (bucket with trustedBodies, the engine path, I125) or\n"
+        "  IWriter::submit (default bucket, the body is scanned); post has no callback, so it needs --cb none\n"
+        "  (usage error otherwise, exit 2). The v1 prints api=v1.\n"
         "  --events: per producer (multiple of 1000, > 5000; default 200000). Prints one 'SUBMIT,<csv>' line (see\n"
         "  --csv-header) and 'NOTE ...' lines. The v1 ignores --cb and --handover (no callback, always a view) and\n"
         "  prints them as given so that both sides of a pair carry the same row key. Exit 0 only when valid.\n";
@@ -179,9 +183,10 @@ namespace
     class V2Side final : public Side
     {
     public:
-        V2Side(std::shared_ptr<indexer_client::Client> client, bool callback, bool move)
+        V2Side(std::shared_ptr<indexer_client::Client> client, bool post, bool callback, bool move)
             : m_client(std::move(client))
             , m_writer(m_client->writer("bench"))
+            , m_post(post)
             , m_move(move)
         {
             if (callback)
@@ -208,7 +213,14 @@ namespace
                 {
                     op.body = ring[(offset + i) % RING_EVENTS];
                 }
-                accepted += m_writer->submit(std::move(op), m_callback).accepted ? 1 : 0;
+                if (m_post)
+                {
+                    accepted += m_writer->post(std::move(op)).accepted ? 1 : 0;
+                }
+                else
+                {
+                    accepted += m_writer->submit(std::move(op), m_callback).accepted ? 1 : 0;
+                }
             }
             return accepted;
         }
@@ -266,6 +278,7 @@ namespace
         std::shared_ptr<indexer_client::Client> m_client;
         std::shared_ptr<indexer_client::IWriter> m_writer;
         indexer_client::Callback m_callback;
+        bool m_post {true};
         bool m_move {true};
     };
 
@@ -409,7 +422,7 @@ namespace
 
     const char* csvHeader()
     {
-        return "side,producers,cb,handover,pair,events,ns_per_op,cpu_ns_per_op,proc_cpu_ns_per_op,B,W,quota,"
+        return "side,api,producers,cb,handover,pair,events,ns_per_op,cpu_ns_per_op,proc_cpu_ns_per_op,B,W,quota,"
                "backlog_max,accepted,server_docs,valid";
     }
 
@@ -439,13 +452,15 @@ namespace
             return 0;
         }
         const auto sideName = args.get("side", "");
+        const auto api = args.get("api", "post");
         const int producers = args.getInt("producers", 1);
         const auto cb = args.get("cb", "none");
         const auto handover = args.get("handover", "move");
         const int events = args.getInt("events", 200000);
         const int pair = args.getInt("pair", 0);
         args.rejectUnused();
-        if ((sideName != "v1" && sideName != "v2") || producers < 1 || producers > 64 ||
+        if ((sideName != "v1" && sideName != "v2") || (api != "post" && api != "submit") ||
+            (sideName == "v2" && api == "post" && cb != "none") || producers < 1 || producers > 64 ||
             (cb != "none" && cb != "noop") || (handover != "move" && handover != "view") || events % BURST_OPS != 0 ||
             events / BURST_OPS <= WARMUP_BURSTS)
         {
@@ -524,6 +539,9 @@ namespace
             spec.overflow.kind = indexer_client::Overflow::Kind::Reject;
             spec.bulk.maxBytes = BULK_BYTES;
             spec.onAmbiguous5xx = indexer_client::AmbiguousPolicy::Fail;
+            // I125: --api post measures the engine path, whose bucket trusts its compact JSON bodies; submit keeps the
+            // default scan of the body for a newline.
+            spec.trustedBodies = api == "post";
             auto created = started.value.client("bench", {spec});
             if (!created.ok())
             {
@@ -533,7 +551,7 @@ namespace
                 return 1;
             }
             quota = QUOTA_BYTES;
-            v2 = std::make_unique<V2Side>(created.value, cb == "noop", handover == "move");
+            v2 = std::make_unique<V2Side>(created.value, api == "post", cb == "noop", handover == "move");
             // The start probe round: no burst before the node is known available.
             const auto deadline = Clock::now() + std::chrono::seconds(10);
             while (!created.value->health().anyAvailable() && Clock::now() < deadline)
@@ -558,8 +576,9 @@ namespace
             const bool noDrops = !v1 || v1->dropped() == 0;
             const bool valid = result.totals.accepted == total && serverDocs == total && result.expiredMarks == 0 &&
                                result.drained && noDrops && result.timedOps > 0;
-            std::cout << "SUBMIT," << sideName << ',' << producers << ',' << cb << ',' << handover << ',' << pair << ','
-                      << events << ',' << bench::fixed(static_cast<double>(result.totals.wallNs) / ops, 1) << ','
+            std::cout << "SUBMIT," << sideName << ',' << (v1 ? "v1" : api) << ',' << producers << ',' << cb << ','
+                      << handover << ',' << pair << ',' << events << ','
+                      << bench::fixed(static_cast<double>(result.totals.wallNs) / ops, 1) << ','
                       << bench::fixed(static_cast<double>(result.totals.cpuNs) / ops, 1) << ','
                       << bench::fixed(static_cast<double>(result.procCpuNs) / ops, 1) << ',' << BURST_OPS << ','
                       << WATERMARK_BYTES << ',' << quota << ',' << result.backlogMax << ',' << result.totals.accepted

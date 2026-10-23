@@ -29,6 +29,7 @@ namespace indexer_client
     {
     public:
         MOCK_METHOD(Submit, submit, (Op op, Callback cb), (override));
+        MOCK_METHOD(Posted, post, (Op op), (override));
         MOCK_METHOD(Group, group, (), (override));
         MOCK_METHOD(CancelTicket, cancel, (std::string_view tag), (override));
     };

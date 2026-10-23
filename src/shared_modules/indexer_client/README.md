@@ -46,7 +46,7 @@ Headers are in `include/indexer_client/`; `indexerClient.hpp` is the umbrella.
 | | `OpResult` | Final result of one write; `itemErrorType` truncated to 64 B, `reason` to 512 B |
 | | `RetryPolicy`, `Overflow`, `BulkThresholds`, `ConflictPolicy`, `WriteMode` | Per-bucket / per-query policies |
 | | `Op`, `Callback` | One write (`Index`, `IndexAutoId`, `IndexDataStream`, `Delete`, `IndexVersionedScript`); completion callback that runs on the CPU pool |
-| | `BucketSpec` | A consumer-declared queue: name, weight, quota, retry, overflow, bulk, conflict policy, `ordered`, `onAmbiguous5xx` |
+| | `BucketSpec` | A consumer-declared queue: name, weight, quota, retry, overflow, bulk, conflict policy, `ordered`, `onAmbiguous5xx`, `trustedBodies` (default `false`: the producer guarantees compact JSON without a raw `\n`, so the per-op `\n` search is skipped; a stray `\n` is then not caught locally: it fails that whole bulk with 400, or, when what follows it is a valid action line, injects an operation, the batch is requeued and every retry runs it again and duplicates each `IndexAutoId`/`IndexDataStream` of the batch; only for producers that guarantee compact JSON, see [Encoding per kind](#encoding-per-kind)) |
 | | `AmbiguousPolicy` | `Retry` (default) or `Fail`: what a bucket does with a `_bulk` answered 500, 502 or 504 (see [Ambiguous 5xx](#ambiguous-5xx-e6a)) |
 | | `Slice`, `CursorQuery`, `PitOptions`, `DbqOptions`, `QueryOptions`, `PitPage` | Query and PIT parameters and page |
 | | `HealthView` | `nodes[]` (`url`, `state`, `reason`), `clusterRed`, `localFault`, `anyAvailable()`, `anyUsable()`; returned by `Client::health()` (see [Node health](#node-health-e2b)) |
@@ -66,12 +66,17 @@ Headers are in `include/indexer_client/`; `indexerClient.hpp` is the umbrella.
 | | `IClient`, `IWriter`, `IQuery` | Abstract interfaces for consumers' mocks |
 | | `Ticket`, `GroupTicket`, `CancelTicket` | Handles on a pending write, a group of writes and a cancel; `ready()` and `wait(Deadline)` |
 | | `Submit` | Result of `submit`: `accepted`, `cause`, `reason` (why it was refused; `InvalidArgument` names the field first, D42), `ticket` |
+| | `Posted` | Result of `post` (I122): `accepted`, `cause`, `reason`; no ticket |
 | | `Group` | Confirmable group of writes: `add(Op)` reserves its quota at once, `commit()` enqueues all together; dropped without commit it releases its reservation; `lastAddReason()` (see [Groups](#groups-e3c-1)) |
 | | `Pit`, `PitSession` | Shared PIT handle (`cursor`, `search`, `generation`) and its cursors (`next`, `exhausted`); see [Point in time](#point-in-time-e4b) |
 
 **Write handles.** `Writer::submit` validates, encodes, charges and queues the operation (see
 [Write path](#write-path-e3a)); a refusal carries its `reason` (D42: `InvalidArgument` names the field first, as the internal
-reason of `encode` does; `QueueFull`, `PayloadTooLarge` and the rest carry their own). `Writer::group()` returns a real
+reason of `encode` does; `QueueFull`, `PayloadTooLarge` and the rest carry their own). `Writer::post(Op)` (I122) is `submit` for a
+producer that never waits on a result (the engine): the same validation, admission, overflow policy and `Reentrancy`, but no
+`Ticket` and no callback, so it answers only `Posted{accepted, cause, reason}`. An accepted `post` has no per-operation result for
+its producer: its outcome is counted only in the bucket's snapshot and in the `CloseReport`, and in a `DropNewest` or `DropOldest`
+bucket it may still end `Dropped(QueueFull)` (dropped at once, or evicted later by a newer operation) without the producer knowing. `Writer::group()` returns a real
 [`Group`](#groups-e3c-1). `Writer::cancel(tag)` returns a [`CancelTicket`](#cancellation-e3c-2). `Client::writer(bucket)` returns the writer bound to that bucket of
 the client; once the runtime is gone it returns the E1 stub writer, which answers `Unavailable`.
 
@@ -456,10 +461,27 @@ that resolved every operation `Failed(Unavailable)`). The code is in `src/write/
 
 ### Encoding per kind
 
-`encode(Op&&, const ConflictPolicy&)` (`src/write/encoding.hpp`, normative for the details below) runs in `submit` and in `Group::add`, on the producer's thread, once. The result is the operation's NDJSON
-lines (each ends in `\n`); their size is exactly what goes on the wire, and a retry re-sends them without re-encoding. The body is
-moved into the lines: on success `op.body` is left empty with its memory freed. The shapes are byte-for-byte the v1's
-(`indexer_connector/src/indexerConnectorSyncImpl.hpp`):
+`encode(Op&&, const ConflictPolicy&, bool trustedBody = false)` (`src/write/encoding.hpp`, normative for the details below) runs
+in `submit`, `post` and in `Group::add`, on the producer's thread, once; those pass the bucket's `BucketSpec::trustedBodies`. The
+result is the operation's NDJSON lines (each ends in `\n`) as an `Encoded{head, sharedHead, body}` (I121, I125): on the wire the
+operation is `headView()` + `body` + `\n` (the `\n` only with a body; `appendWire`), `wire()` is its exact size on the wire, and a
+retry re-sends them without re-encoding. `headView()` is the shared head when there is one, else `head`; the wire size, the charge,
+the batch builder and the sender all read the head through it.
+
+- `Index` (`Replace`): `head` is the action line with its `\n`, built with an exact `reserve`; `body` is `op.body` itself, moved
+  in with its buffer: the document is never copied nor re-reserved on the producer's thread.
+- `IndexAutoId`, `IndexDataStream`: `body` as above; the action line depends only on kind and index, so it is **shared**
+  (`sharedHead`, a `shared_ptr<const std::string>`; `head` stays empty). `encoding.cpp` keeps a one-entry `thread_local` cache
+  {kind, index, line} per producer thread: on a hit (same kind, index equal byte for byte) the index is not validated again and no
+  line is built, the op just takes a reference; on a miss the op is validated as always and, once valid, its line replaces the
+  entry (an invalid index never enters the cache). The rest of the validation runs in the same order either way, so the first
+  failure still wins. The charge does not count the shared line apart: every op charges its own `wire()` (which includes it) plus
+  its body's heap slack, as any other op ([Charge and quota](#charge-and-quota)).
+- The update kinds (`IndexVersionedScript`, every `ReplacePreserving`) and `Delete`: `head` holds every line (the update kinds copy
+  the document twice, which is their wire format) and `body` is empty.
+
+On success `op.body` is left empty (moved from, or freed for the update kinds); on failure `op` is untouched. The shapes are
+byte-for-byte the v1's (`indexer_connector/src/indexerConnectorSyncImpl.hpp`):
 
 | Kind | Lines |
 |---|---|
@@ -501,7 +523,7 @@ field is first in the reason (`index: ...`, `id: ...`, `version: ...`, `body: ..
 | `index` | Non-empty and only `[a-zA-Z0-9._*-]` (the v1 allowlist, `isSafeIndexName`) |
 | `id` | Required for `Index`, `Delete` and `IndexVersionedScript`; must be empty for `IndexAutoId` and `IndexDataStream`. Escaped as the v1 does: `"`, `\`, the short escapes and any other control character below 0x20 as `\u00XX` |
 | `version` | Only for `IndexVersionedScript`, where it must be a canonical integer in [0, `INT64_MAX`] (digits only, no leading zero); empty for every other kind |
-| `body` | Required and free of `\n` for every kind but `Delete`; must be empty for `Delete` |
+| `body` | Required and free of `\n` for every kind but `Delete`; must be empty for `Delete`. With `BucketSpec::trustedBodies` the `\n` search is skipped (the producer vouches for compact JSON; a stray `\n` breaks the NDJSON framing: if what follows is not a valid action line the indexer answers 400 to that whole bulk; if it is one, the indexer runs the injected operation and answers 2xx with one item more than operations, the whole batch is requeued `{true, Backoff}` and every retry runs the injected operation again and duplicates each `IndexAutoId`/`IndexDataStream` of the batch until `Failed(RetryExhausted)`. Only for producers that guarantee compact JSON — the engine escapes every `\n`) |
 | `mode` | `ReplacePreserving` only with `Index` or `IndexVersionedScript` (I72); `preservedPaths` non-empty only with `ReplacePreserving` |
 | `preservedPaths` | With `ReplacePreserving`: 1 to 16 paths; each 1 to 8 segments of 1 to 64 characters from `[A-Za-z0-9_@-]` (written dot-separated); no two equal and none a segment prefix of another; with `IndexVersionedScript` none may be `state`, `state.document_version` or below it (it would defeat the guard) |
 | `onConflict` | Optional per-operation [conflict policy](#conflict-policy-e3c-1); `Retry` needs `retryOnConflict` in 1 to 100 (`MAX_RETRY_ON_CONFLICT`) |
@@ -562,14 +584,20 @@ for a set of writes first and release them to the scheduler all together.
 
 ### Charge and quota
 
-Every accepted operation is charged `encoded bytes + RESULT_RESERVE` (`RESULT_RESERVE` = 1792, `src/write/bucket.hpp`) against its
+Every accepted operation is charged `payload + RESULT_RESERVE` (`RESULT_RESERVE` = 2048, `src/write/bucket.hpp`) against its
 bucket's `quotaBytes` and against the runtime-wide `global_quota_bytes`.
 
-- **Wire bytes** (the payload) are what the operation holds in the queue and in a batch. They are released once, when the
-  operation resolves (or at once when `DropOldest` evicts it).
+- **The payload (I124b)** is what the operation holds in the queue and in a batch: its **wire** bytes plus the heap slack of the
+  moved-in body (`capacity - size` when the body lives on the heap; 0 for an empty body, a body in the small-string buffer, a
+  `Delete` and the update kinds, whose `head` is reserved exactly). `Encoded::charge()` / `OpState::payload`. The rule: the
+  **quota and the global cap** compare `payload + RESULT_RESERVE`; **`bulk.maxBytes`** (`PayloadTooLarge`), the bucket's
+  thresholds, `Batch::bytes`, the DRR credit and the 413 split compare the **wire** size (`wire()`), which is what the indexer
+  receives. A producer that moves in a body with spare capacity pays for it in quota, never in what is sent. The payload is
+  released once, when the operation resolves (or at once when `DropOldest` evicts it).
 - **`RESULT_RESERVE`** covers what the operation keeps after its lines are gone: its internal state, the ticket state, the callback
   slot and an `OpResult` with its strings at their caps. It is released after the callback has run (also when the callback throws)
-  and, for an operation without a callback, when the last `Ticket` is destroyed. `Ticket::wait()` does not consume it.
+  and, for an operation without a callback, when the last `Ticket` is destroyed. `Ticket::wait()` does not consume it. An
+  operation of `post` has neither: its reserve is returned at its resolution, together with its payload.
 - **How the constant was measured.** `ResultReserveMeasured` replaces the global `operator new` of the test executable with an
   allocation counter (usable size of every block) and measures the heap an accepted operation keeps besides its lines in six
   phases: retained with a callback; resolved with its completion queued behind a busy pool and its batch still held (the worst
@@ -580,8 +608,9 @@ bucket's `quotaBytes` and against the runtime-wide `global_quota_bytes`.
   that was never requeued; with the strings kept (the G-diff mutant) the composed case measured 1992.7 B. E3a measured 1308.5 B
   per operation in the worst phase (x 1.25 = 1636, rounded up to a multiple of 64: 1664); with the retry state of E3b-1 in
   `OpState`, E3b-2 measured 1404.1 B (x 1.25 = 1755.1: 1792); with the tag, key and pin of E3c-2, an `ordered` operation with a
-  256-byte tag pinned in the retry lane measured **1555.2 B**, x 1.25 = 1944.0, rounded up to **1984** (the resolution also frees the
-  tag). The case is a regression guard, skipped under
+  256-byte tag pinned in the retry lane measured 1555.2 B (x 1.25 = 1944.0: 1984; the resolution also frees the tag); with the
+  moved-in body and the shared action head of E6d in `OpState` (`body`, `sharedHead`), the same operation measured **1603.4 B**,
+  x 1.25 = 2004.3, rounded up to **2048**. The case is a regression guard, skipped under
   ASAN/TSAN (they own `operator new`), and the constant is re-measured when the internal state grows.
 - **What it does not cover.** Only the library's state: a callback whose captures exceed `std::function`'s small buffer (the
   measurement uses an 8-byte capture) allocates consumer memory that is not charged. `IWriter::submit(Op op, ...)` takes the
@@ -592,8 +621,8 @@ bucket's `quotaBytes` and against the runtime-wide `global_quota_bytes`.
 - **Global cap.** `GlobalBudget` reserves with a lock-free compare-and-swap loop (never add-then-roll-back, which would refuse
   other buckets spuriously). Buckets whose quotas add up to more than the cap compete for it, and the one that does not fit
   applies its overflow policy as if its own quota were full.
-- **Too large.** `Submit{false, PayloadTooLarge}` when the encoded size is above `bulk.maxBytes`, or the charge is above the
-  bucket's `quotaBytes` or above the global cap. It is counted (`payloadTooLarge`).
+- **Too large.** `Submit{false, PayloadTooLarge}` (or `Posted`) when the wire size is above `bulk.maxBytes`, or the charge
+  (`payload + RESULT_RESERVE`) is above the bucket's `quotaBytes` or above the global cap. It is counted (`payloadTooLarge`).
 - **Registration rule.** `RuntimeRef::client` rejects a bucket (`InvalidArgument`, field named in `reason`) unless
   `bulk.maxBytes + RESULT_RESERVE <= quotaBytes` (`validateBucket`, `src/runtime/runtime.cpp`), together with the older
   `bulk.maxBytes <= quotaBytes <= global_quota_bytes`. So the largest admissible operation always fits an empty bucket.
@@ -634,7 +663,7 @@ from network loop 0, as the `Prober` does; other threads only append to a notifi
 
 - **Thresholds.** A bucket is eligible when its pending bytes reach `bulk.maxBytes`, its pending operations reach `bulk.maxDocs`
   or its oldest pending operation is `bulk.maxAge` old, or its retry-lane head is due (`Bucket::eligible(now)`; see [the retry lane](#response-classification-and-retry-lane-e3b-1)).
-- **Notifications.** `enqueue` tells the scheduler when the bucket goes from empty to non-empty or crosses `maxBytes` or `maxDocs`
+- **Notifications.** `Bucket::admit` (and a group's `enqueueGroup`) tells the scheduler when the bucket goes from empty to non-empty or crosses `maxBytes` or `maxDocs`
   (`>=`), deduplicated by an atomic flag. Notifications posted while a pass is queued coalesce into that pass.
 - **`maxAge` timers.** Each bucket has an asio timer armed for its oldest pending operation plus `maxAge`, and re-armed after every
   pass. An expiry already due when the timer would be armed is not armed (it would spin while the sink has no capacity): the pass
@@ -679,12 +708,19 @@ Every operation resolves exactly once: the first of the sink, a close sweep or a
 rest are no-ops. The winner releases the payload, counts the status in the bucket and completes the ticket; the callback runs on
 the CPU pool (never on a network thread) after the ticket is completed, and the reserve is returned after it. A callback that
 throws is swallowed and does not skip the accounting. If the pool no longer accepts tasks (late in shutdown), the completion runs
-inline. `Dropped(ClientClosed)` and `Dropped(Shutdown)` are also counted per client for the `CloseReport`.
+inline. `Dropped(ClientClosed)` and `Dropped(Shutdown)` are also counted per client for the `CloseReport`; the client is the
+bucket's (one bucket belongs to one client), so a submitted, posted or group operation counts alike, and an operation whose bucket
+is gone has no client left to count. An operation of `post` (no ticket, no callback, no group) returns its `RESULT_RESERVE` at its
+resolution, in the same take of the bucket's mutex that releases its payload (`Bucket::releasePayload`), or to the global cap
+when its bucket is gone; one left queued in a dying bucket gets it back from `~Bucket`.
 
 ### Close and shutdown
 
 The close of a client and the runtime shutdown are described in [Closing and shutdown](#closing-and-shutdown-e5b). Before E5b
-`requestClose()` dropped the pending operations at once (E3a's stand-in, D43); it no longer does.
+`requestClose()` dropped the pending operations at once (E3a's stand-in, D43); it no longer does. `submit` and `post` reserve and
+queue under one take of the bucket's mutex (`Bucket::admit`, E6d), so there is no window between the reservation and the queue:
+an operation is queued before the close or refused with its cause. Only a group keeps such a window (it reserves at `add()` and
+queues at `commit()`).
 
 ### Response classification and retry lane (E3b-1)
 
@@ -1052,9 +1088,11 @@ note of `include/indexer_client/client.hpp`; this section is the summary.
 of its buckets (`Bucket::closeAdmission`): later `submit` calls return `ClientClosed`, `writer()` and `query()` return `nullptr`.
 What is already queued is not dropped: `flushSeq = nextSeq - 1` makes every pending operation eligible now, as a `commit()` does, the
 scheduler is notified, and the buckets stay in the DRR ring and keep draining. A requeue retries as usual (only `Bucket::close()` hands
-operations back as closed). It never blocks and is valid from any thread. A `submit` racing the close either was enqueued before it
-(and drains) or is refused: with the admission closed `enqueue` takes custody of the operation without queuing it and the writer
-resolves only that operation (`Dropped(ClientClosed)`); it never calls `close()`.
+operations back as closed). It never blocks and is valid from any thread. A `submit` or `post` racing the close either was queued
+before it (and drains) or is refused with `ClientClosed` (nothing charged, no ticket, no callback): `Bucket::admit` reserves and
+queues under one take of the bucket's mutex (E6d), so every `submit`/`post` that starts after `requestClose()` returns is refused.
+A group's `commit()` racing the close is the one window left: with the admission closed `enqueueGroup` takes custody of its
+operations without queuing them and the group resolves only those (`Dropped(ClientClosed)`); it never calls `close()`.
 
 **`awaitClosed(D)`** is for consumer threads (from a runtime thread it returns `Reentrancy` without draining). Calls are serialized
 per client: a concurrent call waits for the first one; a later one sweeps nothing, waits for the completions until its own `D`, moves
@@ -1095,7 +1133,7 @@ and `callbacksSkipped` grows. The contract for consumers: a consumer that needs 
 | `droppedClientClosed`, `droppedShutdown` | Operations of the client resolved `Dropped(ClientClosed)` and `Dropped(Shutdown)` |
 | `callbacksSkipped` | Completions past the cutoff: `Ticket` complete, callback not called |
 | `callbackOverruns` | Callbacks whose duration exceeded `callbackBudget` |
-| `drained` | Operations resolved after `requestClose()` that are not `Dropped(ClientClosed)` or `Dropped(Shutdown)` (those come only from a sweep, a refused enqueue or a requeue into a closed bucket), so `drained + droppedClientClosed + droppedShutdown` covers every operation resolved after `requestClose()` |
+| `drained` | Operations resolved after `requestClose()` that are not `Dropped(ClientClosed)` or `Dropped(Shutdown)` (those come only from a sweep, a refused group commit or a requeue into a closed bucket), so `drained + droppedClientClosed + droppedShutdown` covers every operation resolved after `requestClose()` |
 
 **Callback duration.** Every callback is timed; one longer than `callbackBudget` adds 1 to `callbackOverruns` and updates
 `ClientState::callbackMaxDurationMicros`. `callbackOverruns` is in the `CloseReport`; the maximum is only in `ClientState` (no
@@ -1735,15 +1773,17 @@ warm connection: the 10 s interval against an indexer that closes idle connectio
   **items mode** (one `201` item per action line, so the classifier sees a complete answer). The row is valid when the bucket's
   delta of `bulkBytes` equals the bytes the fake received; `NOTE bulk_mean=` is the mean bulk size the fake saw.
 - **`indexer_client_bench_submit`** (RNF-2) times what a producer pays per event: v1 `IndexerConnectorAsync::indexDataStream`
-  (a `string_view`) against v2 `IWriter::submit` of an `IndexDataStream` op with its body moved in. P producers fire bursts of
+  (a `string_view`) against v2 `IWriter::post` (`--api post`, the default, on a bucket with `trustedBodies` as the engine will use it; it requires `--cb none`, otherwise exit 2) or
+  `IWriter::submit` (`--api submit`) of an `IndexDataStream` op with its body moved in. P producers fire bursts of
   B = 1000 ops behind a barrier; between bursts one coordinator waits, off the clock, until the backlog (v1 `getQueueSize()`, v2 the
-  bucket's `charge`) is below W = 16 MiB. The first 5 bursts are discarded. Row: `SUBMIT,side,producers,cb,handover,pair,events,
+  bucket's `charge`) is below W = 16 MiB. The first 5 bursts are discarded. Row: `SUBMIT,side,api,producers,cb,handover,pair,events,
   ns_per_op,cpu_ns_per_op,proc_cpu_ns_per_op,B,W,quota,backlog_max,accepted,server_docs,valid`; valid when every op was accepted,
   the fake received `events x P` documents and no watermark wait timed out. The v1 side seeds a keystore in a temporary directory.
-- **`run.sh --suite submit --submit PATH --out PREFIX [--cpus L] [--cpus-p8 L] [--selfcheck]`**: P = 1/4/8 without callback, P = 1
-  with a no-op callback and P = 1 with `handover=view`, 5 alternated pairs each; ratio = v2/v1 `ns_per_op` (lower is better); the
-  gate is <= 1.05 at P = 1 and P = 8 (grey zone (1.00, 1.05]; at P = 8 a grey or failing wall-clock result is decided by
-  `cpu_ns_per_op`). Exit code 6: a gate failed.
+- **`run.sh --suite submit --submit PATH --out PREFIX [--cpus L] [--cpus-p8 L] [--selfcheck]`**: `api=post` at P = 1/4/8 (no
+  callback, `handover=move`) and `api=submit` at P = 1/4/8 without callback, P = 1 with a no-op callback and P = 1 with
+  `handover=view`, 5 alternated pairs each; ratio = v2/v1 `ns_per_op` (lower is better); the gate (`api=post` only, at P = 1 and
+  P = 8; every `api=submit` row and P = 4 are `gate=info`) is <= 1.05 (grey zone (1.00, 1.05]; at P = 8 a grey or failing
+  wall-clock result is decided by `cpu_ns_per_op`). `--selfcheck` runs one pair per row of both APIs. Exit code 6: a gate failed.
 
 ### Finding: `Expect: 100-continue`
 
@@ -1899,11 +1939,6 @@ completion after its slot was released (`testing_hooks::setBeforeCompletion`; a 
 `CompletionExceptionRequeues`); the second runs in the sender's `NodeSet` hook before it refreshes the `Down` mirror
 (`testing_hooks::setBeforeSenderMirror`; a blocking hook reproduces the mirror lag, `StaleDownMirrorDoesNotSpin`). The production
 build compiles both to nothing.
-
-**Seam `afterAdmission`.** `detail::seams::afterAdmission()` (`src/transport/seams.hpp`) runs in `Writer::submit` between the bucket
-reservation and the enqueue; in the test build `testing_hooks::setAfterAdmission(hook)` installs the hook (`resetAll()` clears it).
-`SubmitRacesClose` uses it to close the client or shut the runtime down exactly in that window; the production build compiles it
-to nothing.
 
 **Seams `afterPayloadReleased` and `inCallbackGate`** (G-diff E5b, `src/transport/seams.hpp`). The first runs in
 `WritePath::resolve` right after the operation's payload was released (`testing_hooks::setAfterPayloadReleased`; parking it proves

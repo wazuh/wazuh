@@ -260,6 +260,14 @@ namespace indexer_client
         /// retried. A transport timeout after the request left stays Retry under both (known asymmetry: it may still
         /// duplicate in buckets without `_id`).
         AmbiguousPolicy onAmbiguous5xx {AmbiguousPolicy::Retry};
+        /// The producer guarantees every body is compact JSON with no raw '\n': submit, post and Group::add skip the
+        /// per-op search for it (an empty body is still InvalidArgument). Risk: a stray '\n' is not caught locally;
+        /// it splits the NDJSON line. If what follows is not a valid action line, the indexer answers 400 to that whole
+        /// bulk (every op in it fails). If it is one, the indexer runs the injected operation and answers 2xx with one
+        /// item more than ops: the whole batch is requeued, so every retry runs the injected operation again and
+        /// duplicates each IndexAutoId/IndexDataStream of the batch, until RetryExhausted. Only for producers that
+        /// guarantee compact JSON (the engine escapes every '\n').
+        bool trustedBodies {false};
     };
 
     struct Slice final

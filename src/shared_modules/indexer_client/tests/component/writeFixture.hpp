@@ -306,11 +306,18 @@ namespace write_component
         std::map<std::uint64_t, ic::OpResult> m_last;
     };
 
-    /// A JSON body of exactly `bytes` bytes (>= 8): {"p":"xxx..."}.
+    /// A JSON body of exactly `bytes` bytes (>= 8): {"p":"xxx..."}, built with an exact capacity (std::string(n, c)
+    /// allocates n) so that the charge of an op carrying it has no heap slack (I124b): every exact charge of the
+    /// suites stays wire + RESULT_RESERVE.
     inline std::string body(std::size_t bytes)
     {
+        static constexpr char HEAD[] = R"({"p":")";
+        static constexpr char TAIL[] = R"("})";
         const std::size_t fill = bytes > 8 ? bytes - 8 : 0;
-        return R"({"p":")" + std::string(fill, 'x') + R"("})";
+        std::string out(fill + 8, 'x');
+        out.replace(0, 6, HEAD, 6);
+        out.replace(out.size() - 2, 2, TAIL, 2);
+        return out;
     }
 
     inline ic::Op indexOp(std::string id, std::size_t bodyBytes = 16, std::string index = "wazuh-states-test")
@@ -323,12 +330,36 @@ namespace write_component
         return op;
     }
 
+    /// The wire bytes of an encoded op or of an OpState (head + body + '\n', I121).
+    inline std::string wireOf(const wr::Encoded& encoded)
+    {
+        std::string out;
+        wr::appendWire(out, encoded);
+        return out;
+    }
+    inline std::string wireOf(const wr::OpState& op)
+    {
+        std::string out;
+        wr::appendWire(out, op.headView(), op.body);
+        return out;
+    }
+
     /// Wire size of `op` (its NDJSON lines).
     inline std::uint64_t wireSize(ic::Op op)
     {
         auto encoded = wr::encode(std::move(op), ic::ConflictPolicy {});
         EXPECT_TRUE(encoded.ok()) << encoded.reason;
-        return encoded.value.size();
+        return encoded.value.wire();
+    }
+
+    /// The charge of `op` without RESULT_RESERVE (I124b: wire + the heap slack of the body), on a copy of it. A copy's
+    /// body has an exact capacity: a case that needs an op's own slack builds that op and reads the bucket's charge.
+    inline std::uint64_t chargeOf(const ic::Op& op)
+    {
+        auto copy = op;
+        auto encoded = wr::encode(std::move(copy), ic::ConflictPolicy {});
+        EXPECT_TRUE(encoded.ok()) << encoded.reason;
+        return encoded.value.charge();
     }
 
     /// A bucket spec with large thresholds (no batch unless the case lowers one) and no age-based batch for a minute.

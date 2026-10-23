@@ -30,8 +30,8 @@ namespace indexer_client::detail
 {
     GroupState::~GroupState()
     {
-        // The RESULT_RESERVEs of the committed ops, through the weak pair exactly like the writer's ReserveHandle. The
-        // last holder (Group, GroupTicket or an OpState let go by WritePath::resolve) holds no mutex here.
+        // The RESULT_RESERVEs of the committed ops, through the weak pair exactly like a TicketState's armed reserve.
+        // The last holder (Group, GroupTicket or an OpState let go by WritePath::resolve) holds no mutex here.
         if (reservesHeld == 0)
         {
             return;
@@ -155,11 +155,11 @@ namespace indexer_client::detail::write
 
         // The effective conflict policy (I73), exactly as submit.
         const ConflictPolicy effective = op.onConflict ? *op.onConflict : bucket->spec().onConflict;
-        auto encoded = encode(std::move(op), effective);
-        if (!encoded.ok())
+        auto outcome = encode(std::move(op), effective, bucket->spec().trustedBodies);
+        if (!outcome.ok())
         {
             bucket->countInvalidArgument();
-            return refuse(*group, encoded.cause, std::move(encoded.reason));
+            return refuse(*group, outcome.cause, std::move(outcome.reason));
         }
         // As submit (writer.cpp): encode() only moved the body out, so the tag and the key fields are still `op`'s.
         std::string tag = std::move(op.tag);
@@ -169,8 +169,8 @@ namespace indexer_client::detail::write
         const auto& overflow = bucket->spec().overflow;
         const auto now = std::chrono::steady_clock::now();
         const auto blockUntil = overflow.kind == Overflow::Kind::Block ? now + overflow.blockTimeout : now;
-        const std::uint64_t payload = encoded.value.size();
-        const auto reservation = bucket->reserveForGroup(payload, groupReserved, blockUntil);
+        const std::uint64_t payload = outcome.value.charge();
+        const auto reservation = bucket->reserveForGroup(payload, outcome.value.wire(), groupReserved, blockUntil);
         if (reservation.cause != Cause::None)
         {
             return refuse(*group, reservation.cause, refusalReason(reservation.cause));
@@ -179,7 +179,9 @@ namespace indexer_client::detail::write
         // No ticket, no callback and no firstSubmit: enqueueGroup sets it (the age counts from the commit).
         auto state = std::make_shared<OpState>();
         state->payload = payload;
-        state->lines = std::move(encoded.value);
+        state->head = std::move(outcome.value.head);
+        state->sharedHead = std::move(outcome.value.sharedHead);
+        state->body = std::move(outcome.value.body);
         state->reserveCharged = true;
         state->conflictRetry = effective.kind == ConflictPolicy::Kind::Retry;
         state->tag = std::move(tag);
@@ -239,7 +241,8 @@ namespace indexer_client::detail::write
         }
 
         // No bucket or budget call without a live write path (group.hpp): the runtime is gone, and with it the budget
-        // the ops were charged against, so there is nothing to return (as the writer's ReserveHandle); every op drops.
+        // the ops were charged against, so there is nothing to return (as a TicketState's armed reserve); every op
+        // drops.
         auto path = group->path.lock();
         if (!path)
         {
@@ -269,8 +272,8 @@ namespace indexer_client::detail::write
         const bool notify = bucket->enqueueGroup(ops, reserved, &closedAtEnqueue);
         if (const auto& closed = closedAtEnqueue; closed)
         {
-            // As submit's closedAtEnqueue (I99, N2): refused, in the bucket's custody but not queued; only this
-            // group's ops are resolved, the rest of the bucket keeps draining.
+            // I99 (N2), the reservation→append window only a group has (add() reserves, commit() appends): refused,
+            // in the bucket's custody but not queued; only this group's ops are resolved, the rest keeps draining.
             for (const auto& op : ops)
             {
                 path->resolve(op, dropped(*closed)); // Not part of CloseReport::drained (a refusal).

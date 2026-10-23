@@ -70,6 +70,7 @@ namespace indexer_client::detail
     struct TicketState;
     struct GroupState;
     struct CancelState;
+    struct ClientState;
 } // namespace indexer_client::detail
 
 namespace indexer_client::detail::write
@@ -86,9 +87,10 @@ namespace indexer_client::detail::write
     /// G-diff E3b-2, an op requeued with that LastError, re-sliced and then resolved like the first keeps 1396.7, since
     /// the resolution frees OpState::last*; 1992.7 without that) => 1755.1 => 1792; E3c-2 step 6b, with the tag, key
     /// and pin of E3c-2 in OpState, 1555.2 (an op of an ordered bucket with a 256-byte tag, pinned in the retry lane; a
-    /// queued completion keeps 1516.0, since the resolution also frees OpState::tag) => 1944.0 => 1984. Registration
-    /// requires bulk.maxBytes + RESULT_RESERVE <= quotaBytes.
-    constexpr std::uint64_t RESULT_RESERVE = 1984;
+    /// queued completion keeps 1516.0, since the resolution also frees OpState::tag) => 1944.0 => 1984; E6d, with the
+    /// moved-in body and the shared action head of E6d in OpState (body, sharedHead), 1603.4 (the same ordered op
+    /// pinned in the retry lane) => 2004.3 => 2048. Registration requires bulk.maxBytes + RESULT_RESERVE <= quotaBytes.
+    constexpr std::uint64_t RESULT_RESERVE = 2048;
 
     /// I79: the key of an op of an ordered bucket (OpState::keyHash), computed by whoever builds the OpState: 64-bit
     /// FNV-1a over `index`, one '\0' byte and `id`. Stable across runs, builds and platforms; a collision only blocks
@@ -98,14 +100,30 @@ namespace indexer_client::detail::write
     /// One admitted write. Created by the writer, owned by the bucket's queue, then by a Batch, then by its resolution.
     struct OpState final
     {
-        std::string lines;           ///< Encoded NDJSON (encoding.hpp); its size is the wire size.
-        std::uint64_t payload {0};   ///< Charged payload = lines.size(); released once, at resolution.
+        /// The op's wire lines (encoding.hpp Encoded, I121): headView() + `body` + '\n' (the '\n' only with a body).
+        /// IndexAutoId and IndexDataStream carry their action line in `sharedHead` (E6d I125) and leave `head` empty.
+        std::string head;
+        std::shared_ptr<const std::string> sharedHead;
+        std::string body;
+        /// The shared head when there is one, else `head`. Every reader of the head goes through it.
+        std::string_view headView() const noexcept
+        {
+            return sharedHead ? std::string_view(*sharedHead) : std::string_view(head);
+        }
+        /// Charged payload = chargeSize(headView(), body) (I124b: the wire plus the body's heap slack); released once,
+        /// at resolution. Quota and global cap count it (+ RESULT_RESERVE); bulk.maxBytes and thresholds count wire().
+        std::uint64_t payload {0};
         bool reserveCharged {false}; ///< RESULT_RESERVE charged (released after the callback / last Ticket).
-        /// The payload is in the bucket's custody: set by Bucket::enqueue, cleared when the payload is released
-        /// (resolution or DropOldest eviction). Guarded by the bucket's mutex; makes releasePayload once-only.
+        /// The payload is in the bucket's custody: set by Bucket::admit / enqueueGroup, cleared when the payload is
+        /// released (resolution or DropOldest eviction). Guarded by the bucket's mutex; makes releasePayload once-only.
         bool payloadCharged {false};
         std::shared_ptr<TicketState> ticket;
         Callback callback;
+        /// The op's wire size (encoding.hpp wireSize): what thresholds, batches and the 413 split count.
+        std::uint64_t wire() const noexcept
+        {
+            return headView().size() + (body.empty() ? 0 : body.size() + 1);
+        }
         std::atomic<bool> claimed {false}; ///< Resolution is first-wins (sink, sweep, eviction).
         std::uint32_t attempts {0};        ///< Counted retries (E3b-1 I66).
         TimePoint firstSubmit {};
@@ -120,14 +138,14 @@ namespace indexer_client::detail::write
         std::string lastItemErrorType;
         std::string lastReason;
         std::weak_ptr<Bucket> bucket;
-        /// The effective ConflictPolicy is Retry (I73): a 409 item goes back to the retry lane. Set before enqueue,
+        /// The effective ConflictPolicy is Retry (I73): a 409 item goes back to the retry lane. Set before admit,
         /// immutable afterwards (read lock-free by the sender).
         bool conflictRetry {false};
         /// The group this op belongs to (I74, group.hpp): strong, so its result slot exists at resolution; null for a
         /// plain submit. `groupIndex` = its add position.
         std::shared_ptr<GroupState> group;
         std::uint32_t groupIndex {0};
-        /// Set by enqueue/enqueueGroup (per-bucket, monotonic): eligible() compares the pending head with flushSeq.
+        /// Set by admit/enqueueGroup (per-bucket, monotonic): eligible() compares the pending head with flushSeq.
         std::uint64_t seq {0};
         /// Op::tag (E3c-2 I80), moved in by submit / Group::add; empty = none.
         std::string tag;
@@ -222,7 +240,7 @@ namespace indexer_client::detail::write
     };
 
     /// Outcome of Bucket::reserve.
-    struct Reservation final
+    struct Reservation
     {
         /// None = reserved (payload + reserve). QueueFull, SubmitTimeout, Reentrancy, ClientClosed, Shutdown,
         /// PayloadTooLarge = refused, nothing charged.
@@ -234,6 +252,12 @@ namespace indexer_client::detail::write
         /// caller resolves each one Dropped(QueueFull) outside the bucket mutex. Evictions happen only when they make
         /// room for the new op; otherwise none is evicted and the op falls back to the DropNewest treatment.
         std::vector<std::shared_ptr<OpState>> evicted;
+    };
+
+    /// Outcome of Bucket::admit (E6d): a Reservation plus whether the scheduler must be told.
+    struct Admission final : Reservation
+    {
+        bool notify {false};
     };
 
     /// Per-bucket counters (I62, I74). Invariants: submitted = accepted + rejected* (+ invalidArgument); accepted =
@@ -315,7 +339,13 @@ namespace indexer_client::detail::write
     public:
         /// `owner`: the write path that owns `budget` (WritePath::registerClient); the ~Bucket net (I99, N6) returns
         /// charge only while it is alive. Empty for a bucket built directly (tests).
-        Bucket(std::string consumer, BucketSpec spec, GlobalBudget& budget, std::weak_ptr<WritePath> owner = {});
+        /// `client` (E6d): the client this bucket belongs to (1:1), for the CloseReport accounting of
+        /// WritePath::resolve without a per-op pointer; empty for a bucket built directly (tests).
+        Bucket(std::string consumer,
+               BucketSpec spec,
+               GlobalBudget& budget,
+               std::weak_ptr<WritePath> owner = {},
+               std::weak_ptr<ClientState> client = {});
         /// Fails the cancel(tag) waiters still registered with ClientClosed (I80). I99 (N6): asserts (debug) that
         /// nothing is queued; in release completes what is (tickets / group slots, Dropped(ClientClosed), no callback),
         /// returns its charge under `owner` and counts a usage error.
@@ -325,29 +355,36 @@ namespace indexer_client::detail::write
 
         const BucketSpec& spec() const noexcept;
         const std::string& consumer() const noexcept;
+        const std::weak_ptr<ClientState>& client() const noexcept;
 
         // ---- admission (producer threads; a Group uses reserveForGroup, then enqueueGroup or cancelGroupReservation)
 
-        /// Charges `payload` + RESULT_RESERVE against the quota and the global cap with the bucket's policy (I62). For
+        /// Charges `payload` + RESULT_RESERVE against the quota and the global cap with the bucket's policy (I62); the
+        /// component suite's entry point (submit and post go through admit(), which shares its body). For
         /// a DropNewest drop only RESULT_RESERVE is charged, and only when `withCallback` (QueueFull if even that does
         /// not fit; without a callback nothing is charged, so there is no reserve to release). Block waits until room,
         /// close/shutdown or `blockUntil`; from a runtime thread a submit that would wait returns Reentrancy instead. A
-        /// charge that can never fit (payload > bulk.maxBytes, charge > quotaBytes or > the global cap) is
+        /// charge that can never fit (wire > bulk.maxBytes — here wire = `payload` —, charge > quotaBytes or > the
+        /// global cap; I124b) is
         /// PayloadTooLarge. A closed bucket refuses with its close cause. Counts its outcome. The global cap is
         /// reserved with GlobalBudget::tryReserve (lock-free) under the bucket mutex; anything that releases or wakes
         /// runs after it is dropped.
         Reservation reserve(std::uint64_t payload, bool withCallback, TimePoint blockUntil);
 
-        /// Appends an op already reserved; returns true when the scheduler must be told (the bucket went from empty to
-        /// non-empty or crossed bulk.maxBytes / bulk.maxDocs, with >=) and the dedup flag was clear. Sets
-        /// `payloadCharged`, `bucket` (when unset) and `firstSubmit` (when unset, to now).
-        /// E5b (I99, N2): with the ADMISSION closed it refuses instead — takes custody without queuing (payloadCharged,
-        /// retained, seq) and sets `*closed` (the sweep's cause if close() ran, else the admission's); the caller
-        /// resolves only that op through WritePath::resolve, never close(). Every caller passes `closed`.
-        bool enqueue(std::shared_ptr<OpState> op, std::optional<Cause>* closed = nullptr);
+        /// submit / post (E6d, I121): reserve() + the append of one op under ONE take of the mutex, so there is no
+        /// window between the two (a close either refuses the op with its cause or finds it queued). Charges
+        /// `op->payload` + RESULT_RESERVE exactly as reserve() — same cause order (closed admission, PayloadTooLarge
+        /// with `op->wire()` against bulk.maxBytes, the charge, then the overflow policy: Reject, Block (Reentrancy
+        /// from a runtime thread), DropNewest, DropOldest), same counters; `withCallback` is `op->callback`. When
+        /// charged it appends the op: custody (payloadCharged, retained, seq, `bucket` when unset, `firstSubmit` when
+        /// unset, to `now`), pendingBytes += wire, and `notify` when the scheduler must be told (the bucket went from
+        /// empty to non-empty or crossed bulk.maxBytes / bulk.maxDocs, with >=, and the dedup flag was clear). The
+        /// bucket's queue takes the only copy of `op`. `evicted` (DropOldest) and a `dropNewest` op are resolved by the
+        /// caller outside the mutex; the global surplus is released and the edge lines emitted after it.
+        Admission admit(const std::shared_ptr<OpState>& op, TimePoint now, TimePoint blockUntil);
 
         /// Group::add (I74, group.hpp): charges `payload` + RESULT_RESERVE for an op of a Building group that already
-        /// holds `groupReserved`. In order: closed ⇒ its cause (rejectedClosed); payload > bulk.maxBytes or the charge
+        /// holds `groupReserved`. In order: closed ⇒ its cause (rejectedClosed); `wire` > bulk.maxBytes or the charge
         /// alone above the quota or the global cap ⇒ PayloadTooLarge; groupReserved + charge above the quota or the
         /// global cap ⇒ GroupTooLarge (rejectedGroupTooLarge); fits ⇒ charged; otherwise Reject, DropNewest and
         /// DropOldest ⇒ QueueFull with nothing evicted (I70), and Block ⇒ Reentrancy from a runtime thread, QueueFull
@@ -357,12 +394,17 @@ namespace indexer_client::detail::write
         /// global) and to groupBuilding, and wakes the bucket's blocked producers and, after the mutex is dropped, the
         /// global waiters (their building condition may now hold). Counts submitted and its outcome. Never returns
         /// dropNewest/evicted.
-        Reservation reserveForGroup(std::uint64_t payload, std::uint64_t groupReserved, TimePoint blockUntil);
+        Reservation
+        reserveForGroup(std::uint64_t payload, std::uint64_t wire, std::uint64_t groupReserved, TimePoint blockUntil);
         /// Group commit (I74): appends `ops` (reserved by reserveForGroup, `reserved` bytes in all) under one lock like
-        /// enqueue, takes `reserved` out of `building` (bucket and global) and groupBuilding, gives each op the next
+        /// admit, takes `reserved` out of `building` (bucket and global) and groupBuilding, gives each op the next
         /// seq and sets flushSeq to the last; returns true when the scheduler must be told: ALWAYS unless the dedup
         /// flag was already set (the group leaves now, whatever the thresholds); false for an empty `ops` (nothing to
-        /// flush; the `reserved` bytes still leave `building`). Closed: as enqueue (`closed`).
+        /// flush; the `reserved` bytes still leave `building`). E5b (I99, N2), the only reservation→append window left
+        /// (a group reserves at add() and appends at commit()): with the ADMISSION closed it refuses instead — takes
+        /// custody of every op without queuing (payloadCharged, retained, seq) and sets `*closed` (the sweep's cause if
+        /// close() ran, else the admission's); the caller resolves only those ops through WritePath::resolve, never
+        /// close(). Every caller passes `closed`.
         bool enqueueGroup(std::vector<std::shared_ptr<OpState>> ops,
                           std::uint64_t reserved,
                           std::optional<Cause>* closed = nullptr);
@@ -416,15 +458,16 @@ namespace indexer_client::detail::write
         /// Charge unchanged (RF-12). Exhausted: attempts >= maxAttempts or now - firstAttempt >= maxDuration (an unset
         /// bound never exhausts). A Backoff jitter is drawn once per call, so the ops of one batch stay together.
         RequeueResult requeue(std::vector<RequeueOp> ops, const RequeueSpec& spec, TimePoint now);
-        /// Clears the dedup flag set by enqueue (the scheduler consumed the notification).
+        /// Clears the dedup flag set by admit / enqueueGroup (the scheduler consumed the notification).
         void clearNotified() noexcept;
 
         // ---- resolution and close (any thread)
 
         /// Releases an op's payload (once per op) and wakes blocked producers; an op still in the retry lane leaves it.
         /// Also frees the op's last-error strings (under the mutex Bucket::requeue writes them with). Called by the
-        /// resolution path, after it won the op's claim.
-        void releasePayload(OpState& op);
+        /// resolution path, after it won the op's claim. `withReserve` (E6d): also returns the op's RESULT_RESERVE in
+        /// the same take of the mutex — an op of post (no ticket, callback nor group) has nobody else to return it.
+        void releasePayload(OpState& op, bool withReserve = false);
         /// Releases `count` RESULT_RESERVEs (after the callback ran, when the last Ticket died, or when a committed
         /// group's GroupState died).
         void releaseReserve(std::uint32_t count = 1);
@@ -433,7 +476,7 @@ namespace indexer_client::detail::write
         /// the caller to resolve Dropped(cause). Callable again: each call hands back what is queued then. Their
         /// payload stays charged until the resolution releases it.
         std::vector<std::shared_ptr<OpState>> close(Cause cause);
-        /// E5b (I99): closes only the admission with `cause` (reserve / reserveForGroup / enqueue / enqueueGroup refuse
+        /// E5b (I99): closes only the admission with `cause` (reserve / admit / reserveForGroup / enqueueGroup refuse
         /// with it; blocked producers wake), sets flushSeq = nextSeq - 1 so every pending op is eligible now, and keeps
         /// the bucket draining: requeue retries as usual. Idempotent (the first cause stays). close() also sets it.
         void closeAdmission(Cause cause);
@@ -489,6 +532,16 @@ namespace indexer_client::detail::write
             BucketFull,
             GlobalFull
         };
+        /// The body of reserve() and admit() (one take of m_mutex, held through `lock`; Block waits on it): counts
+        /// submitted and the outcome into `reservation`. `wire` is compared with bulk.maxBytes, `charge` (payload +
+        /// RESULT_RESERVE) with the quota and the cap. `globalSurplus` is released by the caller after the mutex.
+        void reserveLocked(std::unique_lock<std::mutex>& lock,
+                           std::uint64_t wire,
+                           std::uint64_t charge,
+                           bool withCallback,
+                           TimePoint blockUntil,
+                           Reservation& reservation,
+                           std::uint64_t& globalSurplus);
         /// Charges `charge` locally and globally if both fit; m_mutex held.
         Charge tryChargeLocked(std::uint64_t charge);
         /// The DropNewest treatment of a new op (also DropOldest's fallback); m_mutex held.
@@ -510,7 +563,7 @@ namespace indexer_client::detail::write
         std::optional<TimePoint> nextDueLocked(TimePoint now) const;
         /// Takes `op` into the bucket's custody (firstSubmit, bucket, payloadCharged, seq, retained); m_mutex held.
         void takeCustodyLocked(OpState& op, TimePoint now);
-        /// What a refused enqueue reports: the sweep's cause if close() ran, else the admission's; m_mutex held.
+        /// What a refused enqueueGroup reports: the sweep's cause if close() ran, else the admission's; m_mutex held.
         std::optional<Cause> refusalCauseLocked() const;
         /// Inserts a non-toHead op into the retry lane by notBefore (stable); m_mutex held.
         void insertLaneLocked(std::shared_ptr<OpState> op);
@@ -540,7 +593,8 @@ namespace indexer_client::detail::write
         const std::string m_consumer;
         const BucketSpec m_spec;
         GlobalBudget& m_budget;
-        const std::weak_ptr<WritePath> m_owner; ///< Keeps m_budget alive for the ~Bucket net (N6).
+        const std::weak_ptr<WritePath> m_owner;    ///< Keeps m_budget alive for the ~Bucket net (N6).
+        const std::weak_ptr<ClientState> m_client; ///< E6d: the owning client (1:1), for WritePath::resolve.
 
         mutable std::mutex m_mutex;
         std::condition_variable m_room;

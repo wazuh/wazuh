@@ -745,7 +745,7 @@ namespace indexer_client
             {
                 try
                 {
-                    state->writePath->registerClient(*clientState);
+                    state->writePath->registerClient(clientState);
                 }
                 catch (...)
                 {

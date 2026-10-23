@@ -17,6 +17,7 @@
 #include <charconv>
 #include <cstddef>
 #include <cstdio>
+#include <memory>
 #include <string>
 #include <utility>
 #include <vector>
@@ -155,22 +156,27 @@ namespace indexer_client::detail::write
             return "unknown";
         }
 
-        Outcome<std::string> invalid(std::string why)
+        Outcome<Encoded> invalid(std::string why)
         {
-            return Outcome<std::string>::failure(Cause::InvalidArgument, std::move(why));
+            return Outcome<Encoded>::failure(Cause::InvalidArgument, std::move(why));
         }
 
         /// Validation of I61 / RF-4; empty string when the op is valid, otherwise the reason (field first).
-        std::string validate(const Op& op)
+        /// `indexKnownSafe`: the index equals the cached one of a shared head (I125), already validated: its checks
+        /// are skipped (they would pass). `trustedBody`: BucketSpec::trustedBodies, the '\n' search is skipped.
+        std::string validate(const Op& op, bool indexKnownSafe, bool trustedBody)
         {
             const char* const kind = kindName(op.kind); // A literal: nothing is allocated unless a reason is built.
-            if (op.index.empty())
+            if (!indexKnownSafe)
             {
-                return "index: empty";
-            }
-            if (!isSafeIndexName(op.index))
-            {
-                return "index: contains characters outside [a-zA-Z0-9._*-]";
+                if (op.index.empty())
+                {
+                    return "index: empty";
+                }
+                if (!isSafeIndexName(op.index))
+                {
+                    return "index: contains characters outside [a-zA-Z0-9._*-]";
+                }
             }
 
             const bool needsId =
@@ -210,7 +216,7 @@ namespace indexer_client::detail::write
                 {
                     return std::string("body: empty for ") + kind;
                 }
-                if (op.body.find('\n') != std::string::npos)
+                if (!trustedBody && op.body.find('\n') != std::string::npos)
                 {
                     return "body: contains '\\n' (compact JSON expected)";
                 }
@@ -347,6 +353,21 @@ namespace indexer_client::detail::write
             return {};
         }
 
+        /// E6d I125: the one-entry, per-thread cache of the action line of the kinds without `_id` (IndexAutoId,
+        /// IndexDataStream), which depends only on kind and index. Only a fully valid op ever fills it.
+        struct SharedHeadCache final
+        {
+            Op::Kind kind {Op::Kind::IndexAutoId};
+            std::string index;
+            std::shared_ptr<const std::string> head;
+        };
+
+        SharedHeadCache& sharedHeadCache() noexcept
+        {
+            thread_local SharedHeadCache cache;
+            return cache;
+        }
+
         /// Size of <P>: [["a","b"],["c"]] (validated paths: no segment needs escaping).
         std::size_t pathsSize(const std::vector<std::string>& paths) noexcept
         {
@@ -409,10 +430,54 @@ namespace indexer_client::detail::write
         return true;
     }
 
-    Outcome<std::string> encode(Op&& op, const ConflictPolicy& effective)
+    std::uint64_t wireSize(std::string_view head, const std::string& body) noexcept
     {
+        return head.size() + (body.empty() ? 0 : body.size() + 1);
+    }
+
+    std::uint64_t chargeSize(std::string_view head, const std::string& body) noexcept
+    {
+        // An SSO body owns no heap: its inline capacity is not charged (I124b).
+        static const std::size_t inlineCapacity = std::string().capacity();
+        const std::uint64_t slack = body.capacity() > inlineCapacity ? body.capacity() - body.size() : 0;
+        return wireSize(head, body) + slack;
+    }
+
+    void appendWire(std::string& out, std::string_view head, const std::string& body)
+    {
+        out.append(head);
+        if (!body.empty())
+        {
+            out.append(body);
+            out.push_back('\n');
+        }
+    }
+
+    void appendWire(std::string& out, const Encoded& encoded)
+    {
+        appendWire(out, encoded.headView(), encoded.body);
+    }
+
+    std::uint64_t Encoded::wire() const noexcept
+    {
+        return wireSize(headView(), body);
+    }
+
+    std::uint64_t Encoded::charge() const noexcept
+    {
+        return chargeSize(headView(), body);
+    }
+
+    Outcome<Encoded> encode(Op&& op, const ConflictPolicy& effective, bool trustedBody)
+    {
+        // I125: the kinds without `_id` share their action line through the per-thread cache. A hit (same kind, the
+        // same index byte for byte) skips the index checks: the cached index passed them.
+        const bool sharedKind = op.kind == Op::Kind::IndexAutoId || op.kind == Op::Kind::IndexDataStream;
+        auto& cache = sharedHeadCache();
+        const bool hit = sharedKind && cache.head && cache.kind == op.kind && cache.index == op.index;
+
         // The first failure wins: the op's fields, then the effective policy, then the write mode.
-        if (auto why = validate(op); !why.empty())
+        if (auto why = validate(op, hit, trustedBody); !why.empty())
         {
             return invalid(std::move(why));
         }
@@ -423,6 +488,15 @@ namespace indexer_client::detail::write
         if (auto why = validateMode(op); !why.empty())
         {
             return invalid(std::move(why));
+        }
+
+        if (hit)
+        {
+            // Neither validated nor built again: the cached line is this op's, byte for byte.
+            Encoded encoded;
+            encoded.sharedHead = cache.head;
+            encoded.body = std::move(op.body);
+            return Outcome<Encoded>::success(std::move(encoded));
         }
 
         const bool preserving = op.mode.kind == WriteMode::Kind::ReplacePreserving;
@@ -463,8 +537,9 @@ namespace indexer_client::detail::write
             source = !preserving ? V1_GUARD_SOURCE : versioned ? PRESERVE_VERSIONED_SOURCE : PRESERVE_SOURCE;
         }
 
-        // Exact size first: one allocation, and the document copied once (twice for the update actions, whose wire
-        // format carries it as params.doc and as the upsert).
+        // Exact size first: one allocation for `head`. The kinds without a script keep only their action line in it
+        // and take the document by move (I121: no copy, no reserve); the update actions copy it twice into `head`,
+        // which is their wire format (params.doc and the upsert, I71).
         std::size_t size = prefix.size() + op.index.size();
         if (withId)
         {
@@ -484,10 +559,6 @@ namespace indexer_client::detail::write
             {
                 size += (versioned ? 1 : 0) + SCRIPT_PATHS.size() + pathsSize(op.mode.preservedPaths);
             }
-        }
-        else if (op.kind != Op::Kind::Delete)
-        {
-            size += op.body.size() + 1;
         }
 
         std::string lines;
@@ -536,15 +607,32 @@ namespace indexer_client::detail::write
             lines.append(op.body);
             lines.append(SCRIPT_TAIL);
         }
-        else if (op.kind != Op::Kind::Delete)
-        {
-            lines.append(op.body);
-            lines.push_back('\n');
-        }
         assert(lines.size() == size && "the exact size and the encoded lines disagree");
 
-        // The op's own copy dies here: the encoded lines are the only copy that stays charged.
-        std::string().swap(op.body);
-        return Outcome<std::string>::success(std::move(lines));
+        Encoded encoded;
+        if (sharedKind)
+        {
+            // Valid op (no retry digits, no script: a ReplacePreserving or Retry line is not reachable here).
+            auto shared = std::make_shared<const std::string>(std::move(lines));
+            cache.kind = op.kind;
+            cache.index.assign(op.index);
+            cache.head = shared;
+            encoded.sharedHead = std::move(shared);
+        }
+        else
+        {
+            encoded.head = std::move(lines);
+        }
+        if (scripted)
+        {
+            // The op's own copy dies here: the encoded lines are the only copy that stays charged.
+            std::string().swap(op.body);
+        }
+        else if (op.kind != Op::Kind::Delete)
+        {
+            // The document itself, by move: its buffer (and its heap slack, charged by I124b) goes on the wire.
+            encoded.body = std::move(op.body);
+        }
+        return Outcome<Encoded>::success(std::move(encoded));
     }
 } // namespace indexer_client::detail::write
