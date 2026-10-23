@@ -63,6 +63,7 @@ private:
     std::string m_hash;       ///< Hash of the deployed route/policy
 
     bool m_disabledByPolicy {false}; ///< Last policy read was disabled: no route by decision (persisted)
+    bool m_remoteMissing {false};    ///< The last check found no policy for this space in the indexer (not persisted)
 
     static constexpr std::string_view JPATH_ORIGIN = "/origin_space";       ///< JSON path for origin space
     static constexpr std::string_view JPATH_NAMESPACE_ID = "/namespace_id"; ///< JSON path for namespace ID
@@ -134,6 +135,8 @@ public:
     const std::string& getHash() const { return m_hash; }
     bool getDisabledByPolicy() const { return m_disabledByPolicy; }
     void setDisabledByPolicy(bool disabled) { m_disabledByPolicy = disabled; }
+    bool getRemoteMissing() const { return m_remoteMissing; }
+    void setRemoteMissing(bool missing) { m_remoteMissing = missing; }
     /// Cache the router-derived state reported by the status endpoint.
     void setRouteState(bool available, bool enabled, std::string hash)
     {
@@ -584,10 +587,36 @@ bool CMSync::synchronize()
 
             if (!existSpaceInRemote(nsState.getOriginSpace()))
             {
-                LOG_WARNING("[{}] Space '{}' does not exist in wazuh-indexer, skipping synchronization",
-                            LOG_MODULE_NAME,
-                            nsState.getOriginSpace());
+                // Logged once per absence: a warning when the engine serves content for the space (the deployed
+                // content is kept, nobody can refresh it), info for a space not published yet (bootstrap order).
+                if (nsState.getRemoteMissing())
+                {
+                    LOG_DEBUG("[{}] Space '{}' still does not exist in wazuh-indexer, skipping synchronization",
+                              LOG_MODULE_NAME,
+                              nsState.getOriginSpace());
+                }
+                else if (routeExists)
+                {
+                    LOG_WARNING("[{}] Space '{}' does not exist in wazuh-indexer, the deployed content is kept "
+                                "until the space is published again",
+                                LOG_MODULE_NAME,
+                                nsState.getOriginSpace());
+                }
+                else
+                {
+                    LOG_INFO("[{}] Space '{}' is not published in wazuh-indexer yet, skipping synchronization",
+                             LOG_MODULE_NAME,
+                             nsState.getOriginSpace());
+                }
+                nsState.setRemoteMissing(true);
                 continue;
+            }
+            if (nsState.getRemoteMissing())
+            {
+                nsState.setRemoteMissing(false);
+                LOG_INFO("[{}] Space '{}' is published in wazuh-indexer, resuming synchronization",
+                         LOG_MODULE_NAME,
+                         nsState.getOriginSpace());
             }
 
             // Get remote policy hash and enabled status (with consumer validation in PIT if configured)

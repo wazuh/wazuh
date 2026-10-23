@@ -118,6 +118,10 @@ Remote operations (`existsPolicy`, `getPolicy`, `getPolicyHashAndEnabled`) are w
 
 When a space ends a cycle without a route and its policy is not disabled (the indexer failed, or the content is not published or the CTI consumer not ready yet), `synchronize()` returns `true`. The `cm-sync-task` in `main.cpp` then runs the next cycle after `analysisd.cm_sync_retry_interval` seconds (default 30) instead of `analysisd.cm_sync_interval` (default 120), until every space has a route or a disabled policy. The retry interval is capped at `analysisd.cm_sync_interval`. "Disabled policy" is the last successful policy read (`disabled_by_policy` in the state document), so a cycle that fails before reading the policy does not change it. A space that keeps its previous route after a failed cycle does not trigger it: the old route keeps processing events.
 
+### Logging of a Missing Space
+
+A space the indexer has no policy for is logged once per absence, at the level its effect deserves: `WARNING` when the engine still serves a route for it (the deployed content is kept and nothing can refresh it until the space is published again), `INFO` when the space was never deployed (first start before the indexer loads its content). The following cycles log it at `DEBUG` until the space appears, which is logged at `INFO`. The absence flag lives in memory only; a restart logs the first miss again.
+
 ### Graceful Shutdown
 
 `CMSync` supports responsive shutdown via `requestShutdown()`:

@@ -1011,6 +1011,11 @@ two-step process for each:
 2. **Content fetch**: If the hashes differ, CMSync downloads the full content for that space from the Wazuh
    Indexer and applies it to the Engine's local store. The Engine then rebuilds the affected operational graphs.
 
+While the indexer has no policy for a space, the cycle logs it once: `WARNING` if the Engine still serves a route for
+that space (its content is kept until the space is published again), `INFO` if the space was never deployed (a fresh
+install whose indexer is still loading its content). The next cycles log the absence at `DEBUG`, and the space
+appearing again at `INFO`.
+
 The content synchronized per space includes:
 
 - **Policy configuration** — List of integration (order by priority of evaluation) and policy-level settings
