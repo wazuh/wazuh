@@ -25,7 +25,10 @@
 #include <json.hpp>
 
 #ifndef WIN32
+#include <fcntl.h>
+#include <sys/file.h>
 #include <sys/stat.h>
+#include <unistd.h>
 #endif
 
 namespace
@@ -206,6 +209,134 @@ namespace
         return std::make_error_code(std::errc::operation_not_supported);
 #endif
     }
+
+#ifndef WIN32
+    /// @brief An exclusive advisory lock, held for as long as the object lives.
+    ///
+    /// Taken around the whole read-modify-write of the store, so two writers cannot each
+    /// read the same document and each replace it with a version that misses the other's
+    /// key. The lock is a file next to the store rather than the store itself, because
+    /// the store is replaced by a rename and a lock on the replaced file guards nothing.
+    class StoreLock
+    {
+        public:
+            explicit StoreLock(const std::string& storePath)
+            {
+                m_descriptor = ::open((storePath + ".lock").c_str(), O_RDWR | O_CREAT | O_CLOEXEC, S_IRUSR | S_IWUSR);
+
+                if (m_descriptor < 0)
+                {
+                    m_error = {errno, std::generic_category()};
+                    return;
+                }
+
+                while (::flock(m_descriptor, LOCK_EX) != 0)
+                {
+                    if (errno == EINTR)
+                    {
+                        continue;
+                    }
+
+                    m_error = {errno, std::generic_category()};
+                    ::close(m_descriptor);
+                    m_descriptor = -1;
+                    return;
+                }
+            }
+
+            ~StoreLock()
+            {
+                if (m_descriptor >= 0)
+                {
+                    ::close(m_descriptor); // releases the lock
+                }
+            }
+
+            StoreLock(const StoreLock&) = delete;
+            StoreLock& operator=(const StoreLock&) = delete;
+
+            bool held() const
+            {
+                return m_descriptor >= 0;
+            }
+
+            const std::error_code& error() const
+            {
+                return m_error;
+            }
+
+        private:
+            int m_descriptor {-1};
+            std::error_code m_error;
+    };
+#endif
+
+    /// @brief A file next to the store that no other writer can be using, removed on
+    /// destruction unless it was renamed over the store.
+    ///
+    /// Created exclusively under a unique name, so two writers never share a temporary
+    /// and a failure path cannot leave one behind.
+    class TemporaryFile
+    {
+        public:
+            explicit TemporaryFile(const std::string& storePath)
+            {
+#ifndef WIN32
+                std::string pattern {storePath + ".XXXXXX"};
+                const auto descriptor {::mkstemp(pattern.data())};
+
+                if (descriptor < 0)
+                {
+                    m_error = {errno, std::generic_category()};
+                    return;
+                }
+
+                ::close(descriptor);
+                m_path = pattern;
+#else
+                // Nothing is written to the store on Windows, see restrictPermissions().
+                (void)storePath;
+                m_error = std::make_error_code(std::errc::operation_not_supported);
+#endif
+            }
+
+            ~TemporaryFile()
+            {
+                if (!m_path.empty())
+                {
+                    std::error_code ignored;
+                    std::filesystem::remove(m_path, ignored);
+                }
+            }
+
+            TemporaryFile(const TemporaryFile&) = delete;
+            TemporaryFile& operator=(const TemporaryFile&) = delete;
+
+            bool created() const
+            {
+                return !m_path.empty();
+            }
+
+            const std::string& path() const
+            {
+                return m_path;
+            }
+
+            const std::error_code& error() const
+            {
+                return m_error;
+            }
+
+            /// @brief The file is the store now, so it is not removed.
+            void release()
+            {
+                m_path.clear();
+            }
+
+        private:
+            std::string m_path;
+            std::error_code m_error;
+    };
 } // namespace
 
 namespace containerimages
@@ -287,19 +418,6 @@ namespace containerimages
         logWarn("Storing a credential is not supported on Windows agents, so nothing was written.");
         return false;
 #else
-        nlohmann::json document;
-
-        if (loadStore(m_path, document) == LoadOutcome::Unusable)
-        {
-            logWarn("The credential store at '" + m_path + "' could not be read, so it was not modified.");
-            return false;
-        }
-
-        if (!document.is_object())
-        {
-            document = nlohmann::json::object();
-        }
-
         std::error_code error;
         const auto directory {std::filesystem::path {m_path}.parent_path()};
 
@@ -312,6 +430,29 @@ namespace containerimages
                 logWarn("Could not create the credential store directory '" + directory.string() + "'.");
                 return false;
             }
+        }
+
+        // Held until the store is replaced, so a concurrent writer reads the document this
+        // one leaves rather than the one it started from.
+        const StoreLock lock {m_path};
+
+        if (!lock.held())
+        {
+            logWarn("Could not lock the credential store at '" + m_path + "' (" + lock.error().message() + ").");
+            return false;
+        }
+
+        nlohmann::json document;
+
+        if (loadStore(m_path, document) == LoadOutcome::Unusable)
+        {
+            logWarn("The credential store at '" + m_path + "' could not be read, so it was not modified.");
+            return false;
+        }
+
+        if (!document.is_object())
+        {
+            document = nlohmann::json::object();
         }
 
         std::vector<char> encrypted;
@@ -339,33 +480,29 @@ namespace containerimages
         // the caller is told the write failed while the damage is already done. A rename
         // within the same directory is atomic, so the store is either the old content or
         // the new one and never nothing.
-        const auto temporaryPath {m_path + ".new"};
+        TemporaryFile temporary {m_path};
 
+        if (!temporary.created())
         {
-            std::ofstream file {temporaryPath, std::ios::binary | std::ios::trunc};
-
-            if (!file.is_open())
-            {
-                logWarn("Could not open the credential store at '" + m_path + "' for writing.");
-                return false;
-            }
+            logWarn("Could not create a file next to the credential store at '" + m_path + "' (" +
+                    temporary.error().message() + ").");
+            return false;
         }
 
         // Restricted before the value is written into it, so the credential never exists
         // on disk under permissions wider than the final ones. When that cannot be done
         // the value is not written at all.
-        const auto restricted {restrictPermissions(temporaryPath)};
+        const auto restricted {restrictPermissions(temporary.path())};
 
         if (restricted)
         {
-            std::filesystem::remove(temporaryPath, error);
             logWarn("The credential was not stored: the permissions of the credential store at '" + m_path +
                     "' could not be restricted (" + restricted.message() + ").");
             return false;
         }
 
         {
-            std::ofstream file {temporaryPath, std::ios::binary | std::ios::trunc};
+            std::ofstream file {temporary.path(), std::ios::binary | std::ios::trunc};
 
             if (!file.is_open())
             {
@@ -378,22 +515,20 @@ namespace containerimages
 
             if (!file.good())
             {
-                file.close();
-                std::filesystem::remove(temporaryPath, error);
                 logWarn("Could not write the credential store at '" + m_path + "'.");
                 return false;
             }
         }
 
-        std::filesystem::rename(temporaryPath, m_path, error);
+        std::filesystem::rename(temporary.path(), m_path, error);
 
         if (error)
         {
-            std::error_code ignored;
-            std::filesystem::remove(temporaryPath, ignored);
             logWarn("Could not replace the credential store at '" + m_path + "'.");
             return false;
         }
+
+        temporary.release();
 
         return true;
 #endif
@@ -401,6 +536,24 @@ namespace containerimages
 
     RemoveOutcome AgentCredentialStore::remove(const std::string& family, const std::string& key) const
     {
+#ifndef WIN32
+        // Same lock as put(). Without a directory there is no store, which is the same
+        // answer as an absent store file; nothing is written on Windows, so nothing needs it.
+        const StoreLock lock {m_path};
+
+        if (!lock.held())
+        {
+            if (lock.error() == std::errc::no_such_file_or_directory)
+            {
+                return RemoveOutcome::Absent;
+            }
+
+            logWarn("Could not lock the credential store at '" + m_path + "' (" + lock.error().message() + ").");
+            return RemoveOutcome::Failed;
+        }
+
+#endif
+
         nlohmann::json document;
 
         switch (loadStore(m_path, document))
@@ -430,11 +583,18 @@ namespace containerimages
             document.erase(family);
         }
 
-        const auto temporaryPath {m_path + ".new"};
+        TemporaryFile temporary {m_path};
         std::error_code error;
 
+        if (!temporary.created())
         {
-            std::ofstream file {temporaryPath, std::ios::binary | std::ios::trunc};
+            logWarn("Could not create a file next to the credential store at '" + m_path + "' (" +
+                    temporary.error().message() + ").");
+            return RemoveOutcome::Failed;
+        }
+
+        {
+            std::ofstream file {temporary.path(), std::ios::binary | std::ios::trunc};
 
             if (!file.is_open())
             {
@@ -444,12 +604,10 @@ namespace containerimages
 
             // Same rule as put(): the remaining credentials are not written into a file whose
             // permissions could not be restricted, and the store is left as it was.
-            const auto restricted {restrictPermissions(temporaryPath)};
+            const auto restricted {restrictPermissions(temporary.path())};
 
             if (restricted)
             {
-                file.close();
-                std::filesystem::remove(temporaryPath, error);
                 logWarn("The credential was not removed: the permissions of the credential store at '" + m_path +
                         "' could not be restricted (" + restricted.message() + ").");
                 return RemoveOutcome::Failed;
@@ -460,22 +618,20 @@ namespace containerimages
 
             if (!file.good())
             {
-                file.close();
-                std::filesystem::remove(temporaryPath, error);
                 logWarn("Could not write the credential store at '" + m_path + "'.");
                 return RemoveOutcome::Failed;
             }
         }
 
-        std::filesystem::rename(temporaryPath, m_path, error);
+        std::filesystem::rename(temporary.path(), m_path, error);
 
         if (error)
         {
-            std::error_code ignored;
-            std::filesystem::remove(temporaryPath, ignored);
             logWarn("Could not replace the credential store at '" + m_path + "'.");
             return RemoveOutcome::Failed;
         }
+
+        temporary.release();
 
         return RemoveOutcome::Removed;
     }

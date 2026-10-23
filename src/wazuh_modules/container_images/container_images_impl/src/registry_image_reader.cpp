@@ -368,7 +368,7 @@ namespace containerimages
 
     bool RegistryImageReader::readAnonymously(const std::string& url,
                                               const std::string& challengeHeader,
-                                              bool rememberHost,
+                                              bool rememberScope,
                                               HttpResponse& response,
                                               std::string& error)
     {
@@ -383,13 +383,15 @@ namespace containerimages
         {
             const auto* configured {m_context.config->credentialsFor(m_reference.registry)};
 
-            // The reason is kept with the host only when the token endpoint refused the
-            // credential: a private reference that follows it in this scan no longer sends it
-            // and can still say why. A refusal at a manifest speaks for this repository, so
-            // the next reference on the host sends the credential again.
-            if (rememberHost && m_context.refusedCredentialHosts != nullptr)
+            // The reason is kept with the organization only when the token endpoint refused
+            // the credential: a private reference that follows it in this scan no longer sends
+            // it and can still say why. A refusal at a manifest speaks for this repository, so
+            // the next reference sends the credential again. Not kept per host: a registry can
+            // refuse per organization, and one refusal must not take the credential away from
+            // the others.
+            if (rememberScope && m_context.refusedCredentialScopes != nullptr)
             {
-                m_context.refusedCredentialHosts->emplace(m_reference.registry, credentialError);
+                m_context.refusedCredentialScopes->emplace(m_reference.refusalScope(), credentialError);
             }
 
             const auto firstReport {m_context.reportedRefusalHosts == nullptr ||
@@ -450,7 +452,8 @@ namespace containerimages
 
                 if (unauthorized)
                 {
-                    error = "the registry rejected the credential";
+                    error = m_credentialSent ? "the registry rejected the credential"
+                            : "the registry requires a credential for this reference";
                 }
 
                 // A token issued for the credential that the manifest then refuses, as a
@@ -467,8 +470,8 @@ namespace containerimages
                 }
                 else if (!answered || unauthorized)
                 {
-                    // A private reference on a host whose credential was refused earlier in
-                    // this scan is refused here for want of it, and the reason worth giving
+                    // A private reference whose credential was refused earlier in
+                    // this scan for its organization is refused here for want of it, and the reason worth giving
                     // is the one the registry gave then.
                     if (!m_hostRefusal.empty() && (unauthorized || forbidden))
                     {
@@ -623,8 +626,10 @@ namespace containerimages
                     return false;
                 }
 
-                if (!blob->failed() && !snapshot.complete && m_context.stopRequested != nullptr &&
-                        m_context.stopRequested->load())
+                // Whatever the snapshot says: a stop that cuts the layer between two tar
+                // entries reads as its end, and a truncated layer stored as complete deletes
+                // every package after the cut.
+                if (m_context.stopRequested != nullptr && m_context.stopRequested->load())
                 {
                     error = "the module was asked to stop";
                     return false;
@@ -760,17 +765,17 @@ namespace containerimages
                 return ImageReadResult::failed();
             }
 
-            if (m_context.refusedCredentialHosts != nullptr)
+            if (m_context.refusedCredentialScopes != nullptr)
             {
-                const auto refused {m_context.refusedCredentialHosts->find(m_reference.registry)};
+                const auto refused {m_context.refusedCredentialScopes->find(m_reference.refusalScope())};
 
-                if (refused != m_context.refusedCredentialHosts->end())
+                if (refused != m_context.refusedCredentialScopes->end())
                 {
                     // Refused earlier in this scan: asking again would cost two token requests
                     // per reference to hear the same answer.
                     m_credentialRefused = true;
                     m_hostRefusal = refused->second;
-                    logDebug("Reference '" + m_location + "': the credential for " + m_reference.registry +
+                    logDebug("Reference '" + m_location + "': the credential for " + m_reference.refusalScope() +
                              " was refused earlier in this scan, so it is not sent.");
                 }
             }

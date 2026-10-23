@@ -80,6 +80,16 @@ namespace containerimages
         {
             return "repository:" + repository + ":pull";
         }
+
+        /// @brief `registry/organization`: the registry and the first path segment of the repository.
+        ///
+        /// What a refusal of the credential at the token endpoint is remembered under for the
+        /// rest of a scan. A registry such as GHCR can answer per organization, so one
+        /// organization's refusal says nothing about another's on the same host.
+        std::string refusalScope() const
+        {
+            return registry + "/" + repository.substr(0, repository.find('/'));
+        }
     };
 
     /// @brief Parse a configured `<ref>` value.

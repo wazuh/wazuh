@@ -52,15 +52,17 @@ namespace containerimages
         /// that every module shares, which starves the others.
         const std::atomic<bool>* stopRequested {nullptr};
 
-        /// @brief Hosts whose token endpoint refused the configured credential earlier in
-        /// this scan, each with the reason it gave. Not owned.
+        /// @brief The registry and organization (`ghcr.io/owner`) whose token endpoint refused
+        /// the configured credential earlier in this scan, each with the reason it gave. Not owned.
         ///
-        /// Shared across the references of a scan so the later references on that host go
-        /// straight to the anonymous path instead of sending a credential that is bad. Only
-        /// the token endpoint answers for the credential itself: a refusal at a manifest
-        /// speaks for one repository, and is not recorded. The reason is what a private
-        /// reference on that host reports.
-        std::map<std::string, std::string>* refusedCredentialHosts {nullptr};
+        /// Shared across the references of a scan so the later references under that
+        /// organization go straight to the anonymous path instead of sending a credential that
+        /// is bad. Keyed by organization rather than host, because a registry can refuse per
+        /// organization and one refusal must not take the credential away from the others. Only
+        /// the token endpoint answers for the credential itself: a refusal at a manifest speaks
+        /// for one repository, and is not recorded. The reason is what a private reference
+        /// under that organization reports.
+        std::map<std::string, std::string>* refusedCredentialScopes {nullptr};
 
         /// @brief Hosts whose refusal of the credential, at the token endpoint or at a
         /// manifest, was already reported in this scan. Not owned.
@@ -139,12 +141,12 @@ namespace containerimages
             /// scan and host. Otherwise the token is dropped and @p error keeps the credential
             /// error it came in with.
             ///
-            /// @param rememberHost True for a refusal at the token endpoint, which condemns the
-            ///                     credential for the host. False for one at the manifest, which
-            ///                     speaks for this repository only.
+            /// @param rememberScope True for a refusal at the token endpoint, which condemns the
+            ///                      credential for the organization. False for one at the manifest,
+            ///                      which speaks for this repository only.
             bool readAnonymously(const std::string& url,
                                  const std::string& challengeHeader,
-                                 bool rememberHost,
+                                 bool rememberScope,
                                  HttpResponse& response,
                                  std::string& error);
 
@@ -178,8 +180,9 @@ namespace containerimages
             /// reference no longer sends it.
             bool m_credentialRefused {false};
 
-            /// @brief Why the registry refused the credential earlier in this scan, empty
-            /// when it did not. Set when this reference starts, so it never sent the credential.
+            /// @brief Why the registry refused the credential earlier in this scan for this
+            /// reference's organization, empty when it did not. Set when this reference starts,
+            /// so it never sent the credential.
             std::string m_hostRefusal;
 
             /// @brief True when the last token request carried the configured credential.

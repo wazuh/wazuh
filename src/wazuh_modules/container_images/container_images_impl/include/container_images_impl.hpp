@@ -96,7 +96,7 @@ namespace containerimages
             std::shared_ptr<ContainerImagesDB> m_db;
             std::shared_ptr<ICredentialProvider> m_credentials;
             std::uint64_t m_scanBytes {0};
-            std::map<std::string, std::string> m_refusedCredentialHosts;
+            std::map<std::string, std::string> m_refusedCredentialScopes;
             std::set<std::string> m_reportedRefusalHosts;
             bool m_running {false};
             bool m_stopRequested {false};

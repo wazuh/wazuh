@@ -375,6 +375,108 @@ void test_read_registry_with_a_repeated_host_keeps_the_first(void **state) {
     assert_string_equal(data->registries[0].passkey_key, "first_token");
 }
 
+void test_read_registry_host_is_lowercased(void **state) {
+    /* Host names are not case sensitive, and the module compares them in lower case, so
+     * the entry is stored in the form that will match the references. */
+    const char *string =
+        "<registry_auth>\n"
+        "  <registry>\n"
+        "    <host>GHCR.IO</host>\n"
+        "    <user_keystore_key>ghcr_user</user_keystore_key>\n"
+        "    <passkey_keystore_key>ghcr_token</passkey_keystore_key>\n"
+        "  </registry>\n"
+        "</registry_auth>\n";
+    test_structure *test = *state;
+    test->nodes = string_to_xml_node(string, &(test->xml));
+    assert_int_equal(wm_container_images_read(&(test->xml), test->nodes, test->module), 0);
+
+    wm_container_images_t *data = (wm_container_images_t *)test->module->data;
+    assert_int_equal(data->registries_count, 1);
+    assert_string_equal(data->registries[0].host, "ghcr.io");
+}
+
+void test_read_registry_host_differing_only_in_case_is_a_repeat(void **state) {
+    const char *string =
+        "<registry_auth>\n"
+        "  <registry>\n"
+        "    <host>ghcr.io</host>\n"
+        "    <user_keystore_key>first_user</user_keystore_key>\n"
+        "    <passkey_keystore_key>first_token</passkey_keystore_key>\n"
+        "  </registry>\n"
+        "  <registry>\n"
+        "    <host>GHCR.io</host>\n"
+        "    <user_keystore_key>second_user</user_keystore_key>\n"
+        "    <passkey_keystore_key>second_token</passkey_keystore_key>\n"
+        "  </registry>\n"
+        "</registry_auth>\n";
+    test_structure *test = *state;
+    test->nodes = string_to_xml_node(string, &(test->xml));
+    expect_any(__wrap__mtwarn, tag);
+    expect_string(__wrap__mtwarn, formatted_msg, "The 'registry' entry for 'ghcr.io' at module 'container_images' repeats a host already configured, ignoring it. The first entry is used.");
+    assert_int_equal(wm_container_images_read(&(test->xml), test->nodes, test->module), 0);
+
+    wm_container_images_t *data = (wm_container_images_t *)test->module->data;
+    assert_int_equal(data->registries_count, 1);
+    assert_string_equal(data->registries[0].user_key, "first_user");
+}
+
+void test_read_registry_host_with_a_scheme_is_skipped(void **state) {
+    const char *string =
+        "<registry_auth>\n"
+        "  <registry>\n"
+        "    <host>https://ghcr.io</host>\n"
+        "    <user_keystore_key>ghcr_user</user_keystore_key>\n"
+        "    <passkey_keystore_key>ghcr_token</passkey_keystore_key>\n"
+        "  </registry>\n"
+        "</registry_auth>\n";
+    test_structure *test = *state;
+    test->nodes = string_to_xml_node(string, &(test->xml));
+    expect_any(__wrap__mtwarn, tag);
+    expect_string(__wrap__mtwarn, formatted_msg, "The 'registry' entry for 'https://ghcr.io' at module 'container_images' must name a bare host such as 'ghcr.io', without a scheme, a path or whitespace, ignoring it.");
+    assert_int_equal(wm_container_images_read(&(test->xml), test->nodes, test->module), 0);
+
+    wm_container_images_t *data = (wm_container_images_t *)test->module->data;
+    assert_int_equal(data->registries_count, 0);
+}
+
+void test_read_registry_host_with_a_path_is_skipped(void **state) {
+    const char *string =
+        "<registry_auth>\n"
+        "  <registry>\n"
+        "    <host>ghcr.io/owner</host>\n"
+        "    <user_keystore_key>ghcr_user</user_keystore_key>\n"
+        "    <passkey_keystore_key>ghcr_token</passkey_keystore_key>\n"
+        "  </registry>\n"
+        "</registry_auth>\n";
+    test_structure *test = *state;
+    test->nodes = string_to_xml_node(string, &(test->xml));
+    expect_any(__wrap__mtwarn, tag);
+    expect_string(__wrap__mtwarn, formatted_msg, "The 'registry' entry for 'ghcr.io/owner' at module 'container_images' must name a bare host such as 'ghcr.io', without a scheme, a path or whitespace, ignoring it.");
+    assert_int_equal(wm_container_images_read(&(test->xml), test->nodes, test->module), 0);
+
+    wm_container_images_t *data = (wm_container_images_t *)test->module->data;
+    assert_int_equal(data->registries_count, 0);
+}
+
+void test_read_registry_host_with_whitespace_is_skipped(void **state) {
+    const char *string =
+        "<registry_auth>\n"
+        "  <registry>\n"
+        "    <host>ghcr .io</host>\n"
+        "    <user_keystore_key>ghcr_user</user_keystore_key>\n"
+        "    <passkey_keystore_key>ghcr_token</passkey_keystore_key>\n"
+        "  </registry>\n"
+        "</registry_auth>\n";
+    test_structure *test = *state;
+    test->nodes = string_to_xml_node(string, &(test->xml));
+    expect_any(__wrap__mtwarn, tag);
+    expect_string(__wrap__mtwarn, formatted_msg, "The 'registry' entry for 'ghcr .io' at module 'container_images' must name a bare host such as 'ghcr.io', without a scheme, a path or whitespace, ignoring it.");
+    assert_int_equal(wm_container_images_read(&(test->xml), test->nodes, test->module), 0);
+
+    wm_container_images_t *data = (wm_container_images_t *)test->module->data;
+    assert_int_equal(data->registries_count, 0);
+}
+
 void test_read_registry_without_host_is_skipped(void **state) {
     /* Skipped, not rejected: rejecting invalidates the whole module configuration and
      * stops wazuh-modulesd from starting, which is why every entry here is forgiving. */
@@ -513,6 +615,11 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_read_registry_with_only_a_passkey_is_skipped, setup_test_read, teardown_test_read),
         cmocka_unit_test_setup_teardown(test_read_registry_with_only_a_user_key_is_skipped, setup_test_read, teardown_test_read),
         cmocka_unit_test_setup_teardown(test_read_registry_with_a_repeated_host_keeps_the_first, setup_test_read, teardown_test_read),
+        cmocka_unit_test_setup_teardown(test_read_registry_host_is_lowercased, setup_test_read, teardown_test_read),
+        cmocka_unit_test_setup_teardown(test_read_registry_host_differing_only_in_case_is_a_repeat, setup_test_read, teardown_test_read),
+        cmocka_unit_test_setup_teardown(test_read_registry_host_with_a_scheme_is_skipped, setup_test_read, teardown_test_read),
+        cmocka_unit_test_setup_teardown(test_read_registry_host_with_a_path_is_skipped, setup_test_read, teardown_test_read),
+        cmocka_unit_test_setup_teardown(test_read_registry_host_with_whitespace_is_skipped, setup_test_read, teardown_test_read),
         cmocka_unit_test_setup_teardown(test_read_registry_without_host_is_skipped, setup_test_read, teardown_test_read),
         cmocka_unit_test_setup_teardown(test_read_registry_without_any_key_is_skipped, setup_test_read, teardown_test_read),
         cmocka_unit_test_setup_teardown(test_read_registry_unknown_tag_is_skipped, setup_test_read, teardown_test_read),
