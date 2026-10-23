@@ -54,6 +54,7 @@ def test_correct_builder_is_used(agent_version, builder_type):
     (1650, None, []),
     (1652, 'random', []),
     (1652, 'invalid_cmd', []),
+    (1653, 'custom-ar-t', []),
     (None, 'restart-wazuh0', []),
     (None, '!restart-wazuh0', []),
     (None, 'restart-wazuh0', ["arg1", "arg2"])
@@ -91,7 +92,8 @@ def test_create_message(expected_exception, command, arguments):
     (None, 'restart-wazuh0', [], None),
     (None, 'restart-wazuh0', [], None),
     (None, 'restart-wazuh0', ["arg1", "arg2"], None),
-    (1652, 'custom-ar', ["arg1", "arg2"], {"data": {"srcip": "1.1.1.1"}})
+    (1652, 'custom-ar1', ["arg1", "arg2"], {"data": {"srcip": "1.1.1.1"}}),
+    (1653, 'custom-ar-t', ["arg1", "arg2"], {"data": {"srcip": "1.1.1.1"}})
 ])
 @patch('wazuh.core.common.AR_CONF', new=test_data_path)
 def test_create_json_message(expected_exception, command, arguments, alert):
@@ -123,6 +125,38 @@ def test_create_json_message(expected_exception, command, arguments, alert):
             assert (arg in ret["parameters"]["extra_args"] for arg in arguments), f'Arguments not being added'
         if alert:
             assert alert == ret["parameters"]["alert"], f'Alert information not being added'
+
+
+@pytest.mark.parametrize('command, expected', [
+    ('custom-ar', 'custom-ar0'),
+    ('custom-ar0', 'custom-ar0'),
+    ('custom-ar-t60', 'custom-ar-t60'),
+    ('restart-wazuh', 'restart-wazuh0'),
+    ('!custom-ar', '!custom-ar')
+])
+@patch('wazuh.core.common.AR_CONF', new=test_data_path)
+def test_validate_command_resolves_name(command, expected):
+    """Check that the command is resolved to the name that ar.conf gives to the active response."""
+    assert active_response.ARStrMessage().validate_command(command) == expected
+    assert json.loads(active_response.ARJsonMessage().create_message(command=command))['command'] == expected
+    assert active_response.ARStrMessage().create_message(command=command).split()[0] == expected
+
+
+@patch('wazuh.core.common.AR_CONF', new=test_data_path)
+def test_validate_command_ambiguous_name():
+    """Check that error 1653 lists the names of ar.conf when the command has several timeouts."""
+    with pytest.raises(WazuhError, match=r'.* 1653 .*') as e:
+        active_response.ARStrMessage().validate_command('custom-ar-t')
+    assert 'custom-ar-t120, custom-ar-t60' in e.value.remediation
+
+
+@patch('wazuh.core.common.AR_CONF', new=test_data_path)
+def test_get_command_names():
+    """Check that the names of ar.conf are returned without duplicates and only for the exact command."""
+    assert active_response.get_command_names('restart-wazuh') == ['restart-wazuh0']
+    assert active_response.get_command_names('custom-ar-t') == ['custom-ar-t120', 'custom-ar-t60']
+    assert active_response.get_command_names('custom-ar-') == []
+    assert active_response.get_command_names('custom-ar-t6') == []
 
 
 @patch('wazuh.core.common.AR_CONF', new=test_data_path)
