@@ -32,6 +32,14 @@ base/
 └── benchmark/                  # base_benchmark (eventParser, json)
 ```
 
+## Object member inspection
+
+`Json::anyMemberName(predicate, path)` checks decoded, length-aware names of the selected object's
+immediate members without copying values or descending into them. It preserves repeated names and
+stops at the first match. Missing paths and non-objects return false. Predicate views borrow the
+immutable document; predicate exceptions propagate. Ingestion uses this to reject dotted aliases
+of its identity path while leaving generic JSON Pointer and merge semantics unchanged.
+
 ## Manager Log Sink
 
 Header: [include/base/managerLogSink.hpp](include/base/managerLogSink.hpp). Implementation: [src/managerLogSink.cpp](src/managerLogSink.cpp).

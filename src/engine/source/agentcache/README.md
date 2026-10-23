@@ -54,8 +54,12 @@ resolves defaults through `conf` and calls `validateCleanInterval()` before sche
 | Invalid JSON or identity | Throw; leave existing retention unchanged |
 
 The producer authenticates or otherwise establishes the trusted ID. The cache checks canonical
-spelling, a unique string at `/wazuh/agent/id`, and exact equality before admission. Capacity
-bypass never skips identity validation. Admission occurs before event-body validation, so a
+spelling, a unique string at `/wazuh/agent/id`, and exact equality before admission. It also rejects
+literal `wazuh.agent` and `wazuh.agent.id` members at the root, and `agent.id` under `wazuh`,
+regardless of their values. These decoded names would resolve to the same indexed identity path;
+trailing-dot forms along this path are rejected as well. Dots elsewhere remain ordinary JSON
+member-name bytes. Rejection happens before capacity admission and leaves any previously retained
+header unchanged. Capacity bypass never skips identity validation. Admission occurs before event-body validation, so a
 header-only or later-invalid batch can retain its valid header.
 
 ## Accounting model
@@ -93,7 +97,8 @@ uses the steady clock, not the injectable one, and never throws, so reporting ca
 
 ## Tests
 
-`test/src/unit/agentMetadataCache_test.cpp` covers canonical/unique/matching identity, exact-byte
+`test/src/unit/agentMetadataCache_test.cpp` covers canonical/unique/matching identity, dotted identity
+aliases (including escaped names, both member orders, warm caches and capacity bypass), exact-byte
 hits, replacement, independent/unlimited limits, exact fits, arithmetic overflow, exception
 safety, TTL/clear accounting, shared-document lifetime, bypass counters, pull lifetimes and
 concurrent mutations. Build and run in the configured engine-test tree:

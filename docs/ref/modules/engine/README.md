@@ -20,8 +20,12 @@ intelligence, and forwarding it to designated destinations (`wazuh-indexer`).
 
 `POST /events/enriched` on `engine-ingest-http.sock` requires exactly one canonical
 `X-Wazuh-Agent-Id`, supplied by the local producer. The H-line `/wazuh/agent/id` must be a string
-with that value, and every member along its path must occur exactly once. Violations return 400
-before enqueueing. The cache validates once per distinct (id, exact header bytes) pair.
+with that value, and every member along its path must occur exactly once. Literal `wazuh.agent`
+and `wazuh.agent.id` members at the root, and `agent.id` under `wazuh`, are rejected after name
+decoding, regardless of their values: these dotted names resolve to the same indexed identity path.
+Names with trailing dots along this path (including `wazuh.`, `agent.`, `id.` and dotted aliases
+with trailing dots) are rejected as well. Dotted names in unrelated paths remain accepted.
+Violations return 400 before enqueueing. The cache validates once per distinct (id, exact header bytes) pair.
 
 The socket is `0660 wazuh-manager`; the engine performs no peer-credential or JWT verification.
 Processes allowed to write to it are trusted to author the carrier from authenticated or server-side

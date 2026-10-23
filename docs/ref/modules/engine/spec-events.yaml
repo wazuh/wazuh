@@ -36,7 +36,12 @@ paths:
         Header names are case-insensitive; repeated fields, even identical ones, are rejected.
         The H line must contain exactly one `wazuh`, `wazuh.agent`, and `wazuh.agent.id` at
         their respective levels. The final value must be a string equal to the carrier.
-        Names are compared after JSON decoding and by length; off-path duplicates are accepted.
+        Names are compared after JSON decoding and by length. Literal `wazuh.agent` and
+        `wazuh.agent.id` members at the root, and `agent.id` under `wazuh`, are rejected regardless
+        of their values: these dotted names resolve to the same indexed identity path. This also
+        applies to escaped names such as `wazuh\u002eagent\u002eid`, and to names with trailing dots
+        along the identity path (`wazuh.`, `agent.`, `id.`, or dotted aliases with trailing dots).
+        Dotted names in unrelated paths and off-path duplicates are accepted.
         Violations return 400 before any event is enqueued. A cache hit reuses only a previously
         validated (agent id, exact header bytes) pair.
 
@@ -151,6 +156,8 @@ paths:
                   value: {"error":"NDJson parser error, X-Wazuh-Agent-Id must be canonical","code":400}
                 mismatchedIdentity:
                   value: {"error":"NDJson parser error, AgentMetadataCache: header agent ID does not match the trusted agent ID","code":400}
+                dottedIdentityAlias:
+                  value: {"error":"NDJson parser error, AgentMetadataCache: dotted alias of /wazuh/agent/id in header","code":400}
                 ambiguousIdentity:
                   value: {"error":"NDJson parser error, AgentMetadataCache: missing, repeated or non-string /wazuh/agent/id in header","code":400}
                 missingHeader:
