@@ -28,7 +28,6 @@ namespace
     std::function<void()> g_beforeRetryAfterParse;
     std::function<void(std::uint64_t, std::uint64_t)> g_onTimerHandler;
     std::function<std::optional<int>()> g_openSocket;
-    std::function<void()> g_afterAdmission;
     std::function<bool()> g_refuseSubmit;
     std::function<void()> g_beforeCompletion;
     std::function<void()> g_beforeSenderMirror;
@@ -96,14 +95,6 @@ namespace indexer_client::detail::seams
     {
         auto hook = copyOf(g_openSocket);
         return hook ? hook() : std::nullopt;
-    }
-
-    void afterAdmission()
-    {
-        if (auto hook = copyOf(g_afterAdmission))
-        {
-            hook();
-        }
     }
 
     bool refuseSubmit()
@@ -185,10 +176,6 @@ namespace indexer_client::testing_hooks
     {
         store(g_openSocket, std::move(hook));
     }
-    void setAfterAdmission(std::function<void()> hook)
-    {
-        store(g_afterAdmission, std::move(hook));
-    }
     void setRefuseSubmit(std::function<bool()> hook)
     {
         store(g_refuseSubmit, std::move(hook));
@@ -229,7 +216,6 @@ namespace indexer_client::testing_hooks
             g_beforeRetryAfterParse = {};
             g_onTimerHandler = {};
             g_openSocket = {};
-            g_afterAdmission = {};
             g_refuseSubmit = {};
             g_beforeCompletion = {};
             g_beforeSenderMirror = {};

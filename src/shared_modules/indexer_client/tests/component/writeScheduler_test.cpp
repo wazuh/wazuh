@@ -15,6 +15,7 @@
 
 #include <algorithm>
 #include <cstdio>
+#include <future>
 #include <iterator>
 #include <map>
 #include <set>
@@ -235,7 +236,7 @@ TEST_F(WriteTest, DocumentNeverSplitDebtCarries)
     ASSERT_EQ(batches.size(), 1u);
     ASSERT_EQ(batches[0].ops.size(), 1u);
     EXPECT_EQ(batches[0].bytes, size) << "whole";
-    EXPECT_EQ(batches[0].ops[0]->lines.size(), size);
+    EXPECT_EQ(batches[0].ops[0]->wire(), size);
     m_path->resolve(batches[0].ops[0], TestSink::ok());
 
     // The debt (size - quantum) is paid by skipped rounds before the small op leaves.
@@ -368,6 +369,107 @@ TEST_F(WriteTest, DrrDebtKeptWhenEmpty)
     ASSERT_TRUE(aAgain) << "A never sent again";
     EXPECT_GE(between, 6u) << "A's debt was forgiven when it emptied";
     std::printf("[  I118    ] DrrDebtKeptWhenEmpty: %zu batches of B between A's two\n", between);
+    EXPECT_EQ(m_path->scheduler()->stats().debtOverruns, 0u);
+    closeNow(*c);
+    expectInvariants(stats("A"));
+    expectInvariants(stats("B"));
+}
+
+// D65 (CA-E6d-6, I118): the debt is kept also when the bucket is found EMPTY AT THE HEAD OF ITS TURN (the ring site,
+// not the end-of-turn one of DrrDebtKeptWhenEmpty). A (maxDocs 1) sends one batch of its bulk.maxBytes (512 KiB) with
+// a 64 KiB quantum — a debt of 448 KiB — and keeps an op of tag "t" that cancel(tag) removes before A's next turn; B
+// takes that turn, empties, and the cursor reaches A empty. Then A gets 1 small op and B k ops: B sends exactly
+// ceil(debt / quantum) = 7 batches before A. Mutant «= 0» at the head-of-turn site (scheduler.cpp, the
+// `!bucket || bucket->empty() || !eligible` branch): A goes first. Loop-0 barriers fix the ring order (A, then B).
+TEST_F(WriteTest, DrrDebtKeptWhenEmptyAtTurnHead)
+{
+    ASSERT_NO_FATAL_FAILURE(start(1, 2, {{"drr_quantum_bytes", std::to_string(QUANTUM)}}));
+    auto sink = installSink(TestSink::Mode::Hold, 0);
+    const auto loopBarrier = []
+    {
+        auto done = std::make_shared<std::promise<void>>();
+        auto future = done->get_future();
+        if (!ic::detail::testing::postToIoLoop([done] { done->set_value(); }, 0))
+        {
+            return false;
+        }
+        return future.wait_for(5s) == std::future_status::ready; // Every pass posted before it has run.
+    };
+    const std::uint64_t aMaxBytes = 512 * 1024;
+    const auto overhead = wireSize(indexOp(id(0), 1000)) - 1000;
+    const std::size_t bigBody = aMaxBytes - overhead;
+    const std::size_t bodyBytes = 4096 - overhead;
+    ASSERT_EQ(wireSize(indexOp(id(0), bigBody)), aMaxBytes);
+    ASSERT_EQ(wireSize(indexOp(id(0), bodyBytes)), 4096u);
+    auto c = client("c",
+                    {bucketSpec("A", 4u << 20, ic::Overflow::Kind::Reject, aMaxBytes, 1),
+                     bucketSpec("B", 4u << 20, ic::Overflow::Kind::Reject, QUANTUM)});
+    auto writerA = c->writer("A");
+
+    // Ring (A, B): A with its 512 KiB op and the tagged one, then B with exactly one batch of its bulk.maxBytes.
+    ASSERT_TRUE(writerA->submit(indexOp(id(0), bigBody)).accepted);
+    auto taggedOp = indexOp(id(1), 100);
+    taggedOp.tag = "t";
+    ASSERT_TRUE(writerA->submit(std::move(taggedOp)).accepted);
+    ASSERT_TRUE(loopBarrier());
+    fill(c->writer("B"), QUANTUM / 4096, bodyBytes, 1000);
+    ASSERT_TRUE(loopBarrier());
+
+    // A's turn: one batch of 512 KiB (credit 64 KiB - 512 KiB); the cursor moves on to B, which has no capacity.
+    sink->grant(1);
+    ASSERT_TRUE(sink->waitDispatched(1));
+    ASSERT_TRUE(loopBarrier());
+    auto log = sink->log();
+    ASSERT_EQ(log[0].bucket, "A");
+    EXPECT_EQ(log[0].bytes, aMaxBytes);
+    const std::uint64_t debt = aMaxBytes - QUANTUM;
+
+    // cancel(t) empties A before its next turn.
+    const auto cancelled = writerA->cancel("t");
+    ASSERT_TRUE(cancelled.wait(now() + 5s).ok());
+    ASSERT_TRUE(loopBarrier());
+    ASSERT_EQ(stats("A").retained, 1u) << "only the batch held by the sink";
+
+    // B's turn: its only batch; B empties (end of turn), the cursor reaches A empty at the head of its turn.
+    sink->grant(1);
+    ASSERT_TRUE(sink->waitDispatched(2));
+    ASSERT_TRUE(loopBarrier());
+    log = sink->log();
+    ASSERT_EQ(log[1].bucket, "B");
+    EXPECT_EQ(log[1].bytes, QUANTUM);
+    sink->resolveHeld();
+
+    // A with one small op (eligible: maxDocs 1), then B with 10 batches: ring (A, B) again.
+    ASSERT_TRUE(writerA->submit(indexOp(id(2), 100)).accepted);
+    ASSERT_TRUE(loopBarrier());
+    fill(c->writer("B"), 10 * (QUANTUM / 4096), bodyBytes, 2000);
+    ASSERT_TRUE(loopBarrier());
+
+    std::size_t between = 0;
+    bool aAgain = false;
+    for (std::size_t step = 0; step < 12 && !aAgain; ++step)
+    {
+        const auto before = sink->dispatched();
+        sink->grant(1);
+        ASSERT_TRUE(sink->waitDispatched(before + 1)) << "step " << step;
+        log = sink->log();
+        if (log[before].bucket == "A")
+        {
+            aAgain = true;
+        }
+        else
+        {
+            ++between;
+        }
+        sink->resolveHeld();
+    }
+    ASSERT_TRUE(aAgain) << "A never sent again";
+    const std::uint64_t expected = (debt + QUANTUM - 1) / QUANTUM;
+    EXPECT_EQ(between, expected) << "B's batches before A (debt " << debt << ", quantum " << QUANTUM
+                                 << "): 0 = A's debt was forgiven at the head of its turn";
+    std::printf("[  D65     ] DrrDebtKeptWhenEmptyAtTurnHead: %zu batches of B before A (expected %llu)\n",
+                between,
+                static_cast<unsigned long long>(expected));
     EXPECT_EQ(m_path->scheduler()->stats().debtOverruns, 0u);
     closeNow(*c);
     expectInvariants(stats("A"));

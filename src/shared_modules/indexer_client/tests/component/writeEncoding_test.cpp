@@ -13,9 +13,11 @@
 // Per-operation encoding at submit (plan-E3a §Tests: EncodingPerKind, EncodingRejectsInvalid; I61, RF-4) and, from
 // E3c-1 (I73, D42), the conflict policy on the wire, ReplacePreserving and the reason of a refused submit.
 
+#include <atomic>
 #include <cstdint>
 #include <optional>
 #include <string>
+#include <thread>
 #include <utility>
 #include <vector>
 
@@ -154,22 +156,37 @@ TEST_F(WriteTest, EncodingPerKind)
         auto copy = c.op;
         const auto encoded = wr::encode(std::move(copy), ic::ConflictPolicy {});
         ASSERT_TRUE(encoded.ok()) << encoded.reason;
-        EXPECT_EQ(encoded.value, c.expected);
-        EXPECT_EQ(encoded.value.size(), c.expected.size());
+        EXPECT_EQ(wireOf(encoded.value), c.expected);
+        EXPECT_EQ(wireOf(encoded.value).size(), c.expected.size());
+        EXPECT_EQ(encoded.value.wire(), c.expected.size());
         EXPECT_TRUE(copy.body.empty()) << "the body is moved into the lines";
+        // I121: a kind without script carries its document as `body` (moved, not copied) and `head` is its action
+        // line; a script kind and Delete keep every line in `head` and an empty `body`.
+        const bool withBody = c.op.kind == ic::Op::Kind::Index || c.op.kind == ic::Op::Kind::IndexAutoId ||
+                              c.op.kind == ic::Op::Kind::IndexDataStream;
+        if (withBody)
+        {
+            EXPECT_EQ(encoded.value.body, doc);
+            EXPECT_EQ(std::string(encoded.value.headView()), c.expected.substr(0, c.expected.size() - doc.size() - 1));
+        }
+        else
+        {
+            EXPECT_TRUE(encoded.value.body.empty()) << encoded.value.body;
+            EXPECT_EQ(encoded.value.head, c.expected);
+        }
     }
     const auto versioned =
         wr::encode(make(ic::Op::Kind::IndexVersionedScript, "i", "1", doc, "3"), ic::ConflictPolicy {});
     ASSERT_TRUE(versioned.ok());
-    EXPECT_EQ(occurrences(versioned.value, doc), 2u) << "params.doc and the upsert";
-    EXPECT_NE(versioned.value.find(R"("upsert":)" + doc), std::string::npos);
-    EXPECT_NE(versioned.value.find(R"(,"scripted_upsert":true})"), std::string::npos);
+    EXPECT_EQ(occurrences(wireOf(versioned.value), doc), 2u) << "params.doc and the upsert";
+    EXPECT_NE(wireOf(versioned.value).find(R"("upsert":)" + doc), std::string::npos);
+    EXPECT_NE(wireOf(versioned.value).find(R"(,"scripted_upsert":true})"), std::string::npos);
 
     // The _id is escaped as the v1 escapes it (reflectiveJson's table): quote, backslash, short escapes, \u00XX.
     const std::string rawId = std::string("a\"b\\c\x01\td") + "\x7f" + "\xc3\xa9";
     const auto escaped = wr::encode(make(ic::Op::Kind::Delete, "i", rawId, ""), ic::ConflictPolicy {});
     ASSERT_TRUE(escaped.ok());
-    EXPECT_EQ(escaped.value,
+    EXPECT_EQ(wireOf(escaped.value),
               std::string("{\"delete\":{\"_index\":\"i\",\"_id\":\"a\\\"b\\\\c\\u0001\\td\x7f\xc3\xa9\"}}\n"));
 
     // Through submit: the sink receives exactly those lines, and the charge is their size plus the reserve.
@@ -188,7 +205,7 @@ TEST_F(WriteTest, EncodingPerKind)
         auto batches = sink->take();
         ASSERT_EQ(batches.size(), 1u);
         ASSERT_EQ(batches[0].ops.size(), 1u);
-        EXPECT_EQ(batches[0].ops[0]->lines, k.expected);
+        EXPECT_EQ(wireOf(*batches[0].ops[0]), k.expected);
         EXPECT_EQ(batches[0].ops[0]->payload, k.expected.size());
         EXPECT_EQ(batches[0].bytes, k.expected.size());
         EXPECT_EQ(stats("b").charge - before, k.expected.size() + wr::RESULT_RESERVE);
@@ -390,21 +407,22 @@ TEST_F(WriteTest, EncodingConflictRetryLine)
     {
         const auto encoded = wr::encode(ic::Op(versionedOp), retryPolicy(5));
         ASSERT_TRUE(encoded.ok()) << encoded.reason;
-        EXPECT_EQ(encoded.value.substr(0, retryLine.size()), retryLine);
-        EXPECT_EQ(encoded.value, withRetryOnConflict(v1, 5));
-        EXPECT_EQ(encoded.value.substr(retryLine.size()), v1.substr(v1.find('\n') + 1)) << "the body line is E3a's";
+        EXPECT_EQ(wireOf(encoded.value).substr(0, retryLine.size()), retryLine);
+        EXPECT_EQ(wireOf(encoded.value), withRetryOnConflict(v1, 5));
+        EXPECT_EQ(wireOf(encoded.value).substr(retryLine.size()), v1.substr(v1.find('\n') + 1))
+            << "the body line is E3a's";
     }
     {
         const auto encoded = wr::encode(ic::Op(versionedOp), retryPolicy(100));
         ASSERT_TRUE(encoded.ok()) << encoded.reason;
-        EXPECT_EQ(encoded.value, withRetryOnConflict(v1, 100));
+        EXPECT_EQ(wireOf(encoded.value), withRetryOnConflict(v1, 100));
     }
     {
         auto success = retryPolicy(5);
         success.kind = ic::ConflictPolicy::Kind::Success; // retryOnConflict is ignored without Retry.
         const auto encoded = wr::encode(ic::Op(versionedOp), success);
         ASSERT_TRUE(encoded.ok()) << encoded.reason;
-        EXPECT_EQ(encoded.value, v1) << "Success: the line of E3a (v1 parity)";
+        EXPECT_EQ(wireOf(encoded.value), v1) << "Success: the line of E3a (v1 parity)";
     }
     // The other kinds: a 409 follows the policy, the line never changes (an index/create/delete line with the
     // parameter is a 400 for the whole request).
@@ -417,8 +435,8 @@ TEST_F(WriteTest, EncodingConflictRetryLine)
         SCOPED_TRACE(c.name);
         const auto encoded = wr::encode(ic::Op(c.op), retryPolicy(5));
         ASSERT_TRUE(encoded.ok()) << encoded.reason;
-        EXPECT_EQ(encoded.value, c.expected);
-        EXPECT_EQ(encoded.value.find("retry_on_conflict"), std::string::npos);
+        EXPECT_EQ(wireOf(encoded.value), c.expected);
+        EXPECT_EQ(wireOf(encoded.value).find("retry_on_conflict"), std::string::npos);
     }
 
     // Through submit: the effective policy is the op's when set, else the bucket's, and it lands in the line and in
@@ -457,7 +475,7 @@ TEST_F(WriteTest, EncodingConflictRetryLine)
         auto batches = sink->take();
         ASSERT_EQ(batches.size(), 1u);
         ASSERT_EQ(batches[0].ops.size(), 1u);
-        EXPECT_EQ(batches[0].ops[0]->lines, t.expected);
+        EXPECT_EQ(wireOf(*batches[0].ops[0]), t.expected);
         EXPECT_EQ(batches[0].ops[0]->conflictRetry, t.conflictRetry);
         m_path->resolve(batches[0].ops[0], TestSink::ok());
     }
@@ -480,17 +498,20 @@ TEST_F(WriteTest, EncodingPreservingShapes)
             auto op = preserving_vectors::op(versioned);
             const auto encoded = wr::encode(std::move(op), retry ? retryPolicy(5) : ic::ConflictPolicy {});
             ASSERT_TRUE(encoded.ok()) << encoded.reason;
-            EXPECT_EQ(encoded.value, expected);
-            EXPECT_EQ(encoded.value.size(), expected.size());
+            EXPECT_EQ(wireOf(encoded.value), expected);
+            EXPECT_EQ(wireOf(encoded.value).size(), expected.size());
             EXPECT_TRUE(op.body.empty()) << "the body is moved into the lines";
-            EXPECT_EQ(occurrences(encoded.value, preserving_vectors::DOC), 2u) << "params.doc and the upsert";
+            EXPECT_EQ(occurrences(wireOf(encoded.value), preserving_vectors::DOC), 2u) << "params.doc and the upsert";
+            EXPECT_EQ(encoded.value.wire(), expected.size());
+            EXPECT_TRUE(encoded.value.body.empty()) << "a script kind keeps every line in head (I121)";
+            EXPECT_EQ(encoded.value.head, expected);
         }
     }
     // The source is the same constant whatever the paths: only params.paths changes, in the given order.
     auto reordered = preserving(make(ic::Op::Kind::Index, "i", "1", "{}"), {"a.b", "case"});
     const auto encoded = wr::encode(std::move(reordered), ic::ConflictPolicy {});
     ASSERT_TRUE(encoded.ok()) << encoded.reason;
-    EXPECT_EQ(encoded.value,
+    EXPECT_EQ(wireOf(encoded.value),
               std::string(R"({"update":{"_index":"i","_id":"1"}})"
                           "\n"
                           R"({"script":{"source":")") +
@@ -502,8 +523,9 @@ TEST_F(WriteTest, EncodingPreservingShapes)
     auto deep = preserving(make(ic::Op::Kind::Index, "i", "1", "{}"), {"a.b.c.d.e.f.g.h", "Z_9@-x"});
     const auto deepEncoded = wr::encode(std::move(deep), ic::ConflictPolicy {});
     ASSERT_TRUE(deepEncoded.ok()) << deepEncoded.reason;
-    EXPECT_NE(deepEncoded.value.find(R"("paths":[["a","b","c","d","e","f","g","h"],["Z_9@-x"]],)"), std::string::npos)
-        << deepEncoded.value;
+    EXPECT_NE(wireOf(deepEncoded.value).find(R"("paths":[["a","b","c","d","e","f","g","h"],["Z_9@-x"]],)"),
+              std::string::npos)
+        << wireOf(deepEncoded.value);
 
     // Through submit: the sink receives the vector and the bucket charges its size plus the reserve.
     ASSERT_NO_FATAL_FAILURE(start());
@@ -525,7 +547,7 @@ TEST_F(WriteTest, EncodingPreservingShapes)
         auto batches = sink->take();
         ASSERT_EQ(batches.size(), 1u);
         ASSERT_EQ(batches[0].ops.size(), 1u);
-        EXPECT_EQ(batches[0].ops[0]->lines, expected);
+        EXPECT_EQ(wireOf(*batches[0].ops[0]), expected);
         EXPECT_EQ(stats("b").charge - before, expected.size() + wr::RESULT_RESERVE);
         m_path->resolve(batches[0].ops[0], TestSink::ok());
     }
@@ -747,5 +769,329 @@ TEST_F(WriteTest, SubmitCarriesReason)
         },
         5s));
     EXPECT_EQ(results->total(), 2u) << "only the accepted ops call back";
+    expectInvariants(stats("b"));
+}
+
+namespace
+{
+    /// The action line (with its '\n') of a kind that carries its body verbatim: the frozen vector minus body + '\n'.
+    std::string actionLine(const std::string& vector, const std::string& doc)
+    {
+        return vector.substr(0, vector.size() - doc.size() - 1);
+    }
+} // namespace
+
+// I125 (a): the kinds without `_id` share their action line through a one-entry thread_local cache keyed by (kind,
+// index). On one thread: A, A again, B, an unsafe index, A, and A as the other kind without `_id`. Every encoding is
+// the frozen vector; the second A shares the first's head, B and the other kind do not; the unsafe index is still
+// refused (a hit never skips the validation of a different index). Mutant m7 (the cache hits without comparing the
+// index).
+TEST_F(WriteTest, SharedHeadIndexChange)
+{
+    const std::string doc = R"({"agent":{"id":"001"},"event":{"n":1}})";
+    const std::string a = "wazuh-events-shared-a";
+    const std::string b = "wazuh-events-shared-b";
+    const auto expectVector = [&](const wr::Encoded& encoded, const std::string& vector)
+    {
+        EXPECT_EQ(wireOf(encoded), vector);
+        EXPECT_EQ(encoded.wire(), vector.size());
+        EXPECT_EQ(std::string(encoded.headView()), actionLine(vector, doc));
+        EXPECT_EQ(encoded.body, doc);
+    };
+
+    const auto first = wr::encode(make(ic::Op::Kind::IndexDataStream, a, "", doc), ic::ConflictPolicy {});
+    ASSERT_TRUE(first.ok()) << first.reason;
+    expectVector(first.value, v1Create(a, doc));
+    ASSERT_NE(first.value.sharedHead, nullptr) << "a kind without _id shares its head";
+
+    const auto again = wr::encode(make(ic::Op::Kind::IndexDataStream, a, "", doc), ic::ConflictPolicy {});
+    ASSERT_TRUE(again.ok()) << again.reason;
+    expectVector(again.value, v1Create(a, doc));
+    EXPECT_EQ(again.value.sharedHead.get(), first.value.sharedHead.get()) << "the same index reuses the cached head";
+
+    const auto other = wr::encode(make(ic::Op::Kind::IndexDataStream, b, "", doc), ic::ConflictPolicy {});
+    ASSERT_TRUE(other.ok()) << other.reason;
+    expectVector(other.value, v1Create(b, doc));
+    ASSERT_NE(other.value.sharedHead, nullptr);
+    EXPECT_NE(other.value.sharedHead.get(), first.value.sharedHead.get()) << "another index has its own head";
+
+    for (const std::string unsafe : {std::string("wazuh-events/x"), std::string(""), std::string("a\"b")})
+    {
+        SCOPED_TRACE(unsafe);
+        auto op = make(ic::Op::Kind::IndexDataStream, unsafe, "", doc);
+        const auto refused = wr::encode(std::move(op), ic::ConflictPolicy {});
+        EXPECT_FALSE(refused.ok());
+        EXPECT_EQ(refused.cause, ic::Cause::InvalidArgument);
+        EXPECT_EQ(refused.reason.rfind("index:", 0), 0u) << refused.reason;
+        EXPECT_EQ(op.body, doc) << "on failure the op is untouched";
+    }
+
+    const auto back = wr::encode(make(ic::Op::Kind::IndexDataStream, a, "", doc), ic::ConflictPolicy {});
+    ASSERT_TRUE(back.ok()) << back.reason;
+    expectVector(back.value, v1Create(a, doc));
+    ASSERT_NE(back.value.sharedHead, nullptr);
+
+    // The kind is part of the key: IndexAutoId on the cached index is an `index` action, not the cached `create`.
+    const auto autoId = wr::encode(make(ic::Op::Kind::IndexAutoId, a, "", doc), ic::ConflictPolicy {});
+    ASSERT_TRUE(autoId.ok()) << autoId.reason;
+    expectVector(autoId.value, v1Index(a, "", doc));
+    ASSERT_NE(autoId.value.sharedHead, nullptr);
+    EXPECT_NE(autoId.value.sharedHead.get(), back.value.sharedHead.get());
+    const auto autoIdAgain = wr::encode(make(ic::Op::Kind::IndexAutoId, a, "", doc), ic::ConflictPolicy {});
+    ASSERT_TRUE(autoIdAgain.ok()) << autoIdAgain.reason;
+    expectVector(autoIdAgain.value, v1Index(a, "", doc));
+    EXPECT_EQ(autoIdAgain.value.sharedHead.get(), autoId.value.sharedHead.get());
+
+    // The shared head outlives the cache entry: the first encodings still give their bytes after the cache moved on.
+    expectVector(first.value, v1Create(a, doc));
+    expectVector(other.value, v1Create(b, doc));
+}
+
+// I125 (a), G-diff E6d obj. 3: a cache hit skips only the index checks, never the policy nor the mode. With the cache
+// warm for (IndexDataStream, A), an op on A with an invalid effective policy (Retry with retryOnConflict 0) and another
+// with an invalid mode (ReplacePreserving on IndexDataStream) are InvalidArgument naming their field, and a valid op
+// on A still hits afterwards. Mutant: the `if (hit)` shortcut moved above validatePolicy/validateMode.
+TEST_F(WriteTest, SharedHeadHitStillValidatesPolicyAndMode)
+{
+    const std::string doc = R"({"agent":{"id":"001"},"event":{"n":1}})";
+    const std::string a = "wazuh-events-shared-validate";
+    const auto warm = wr::encode(make(ic::Op::Kind::IndexDataStream, a, "", doc), ic::ConflictPolicy {});
+    ASSERT_TRUE(warm.ok()) << warm.reason;
+    ASSERT_NE(warm.value.sharedHead, nullptr) << "precondition: the cache holds (IndexDataStream, A)";
+
+    {
+        SCOPED_TRACE("invalid policy on a hit");
+        auto op = make(ic::Op::Kind::IndexDataStream, a, "", doc);
+        const auto refused = wr::encode(std::move(op), retryPolicy(0));
+        EXPECT_FALSE(refused.ok());
+        EXPECT_EQ(refused.cause, ic::Cause::InvalidArgument);
+        EXPECT_EQ(refused.reason.rfind("onConflict.retryOnConflict:", 0), 0u) << refused.reason;
+        EXPECT_EQ(op.body, doc) << "on failure the op is untouched";
+    }
+    {
+        SCOPED_TRACE("invalid mode on a hit");
+        auto op = preserving(make(ic::Op::Kind::IndexDataStream, a, "", doc), {"case"});
+        const auto refused = wr::encode(std::move(op), ic::ConflictPolicy {});
+        EXPECT_FALSE(refused.ok());
+        EXPECT_EQ(refused.cause, ic::Cause::InvalidArgument);
+        EXPECT_EQ(refused.reason.rfind("mode:", 0), 0u) << refused.reason;
+        EXPECT_EQ(op.body, doc) << "on failure the op is untouched";
+    }
+
+    const auto again = wr::encode(make(ic::Op::Kind::IndexDataStream, a, "", doc), ic::ConflictPolicy {});
+    ASSERT_TRUE(again.ok()) << again.reason;
+    EXPECT_EQ(again.value.sharedHead.get(), warm.value.sharedHead.get()) << "the refusals left the cache warm";
+    EXPECT_EQ(wireOf(again.value), v1Create(a, doc));
+}
+
+// I125 (a): only the kinds without `_id` share a head. Index (with `_id`), Delete and the script kinds on the index
+// just cached keep their own lines (`sharedHead` empty) and give the frozen vectors.
+TEST_F(WriteTest, SharedHeadOnlyWithoutId)
+{
+    const std::string doc = R"({"agent":{"id":"001"},"state":{"document_version":7}})";
+    const std::string index = "wazuh-states-shared";
+    const auto warm = wr::encode(make(ic::Op::Kind::IndexDataStream, index, "", doc), ic::ConflictPolicy {});
+    ASSERT_TRUE(warm.ok()) << warm.reason;
+    ASSERT_NE(warm.value.sharedHead, nullptr) << "precondition: the cache holds this index";
+
+    for (const auto& c : everyKind())
+    {
+        if (c.op.kind == ic::Op::Kind::IndexAutoId || c.op.kind == ic::Op::Kind::IndexDataStream)
+        {
+            continue;
+        }
+        SCOPED_TRACE(c.name);
+        auto op = c.op;
+        op.index = index;
+        std::string vector;
+        switch (c.op.kind)
+        {
+            case ic::Op::Kind::Index: vector = v1Index(index, c.op.id, doc); break;
+            case ic::Op::Kind::Delete: vector = v1Delete(index, c.op.id); break;
+            default: vector = v1ScriptedUpdate(index, c.op.id, c.op.version, doc); break;
+        }
+        const auto encoded = wr::encode(std::move(op), ic::ConflictPolicy {});
+        ASSERT_TRUE(encoded.ok()) << encoded.reason;
+        EXPECT_EQ(encoded.value.sharedHead, nullptr) << "a kind with _id never shares its head";
+        EXPECT_EQ(wireOf(encoded.value), vector);
+        EXPECT_EQ(encoded.value.wire(), vector.size());
+        EXPECT_EQ(std::string(encoded.value.headView()), encoded.value.head);
+    }
+
+    // ReplacePreserving (an update with a script) on the same index: no shared head either.
+    auto preservingOp = preserving(make(ic::Op::Kind::Index, index, "001_x", doc), {"case"});
+    const auto preserved = wr::encode(std::move(preservingOp), ic::ConflictPolicy {});
+    ASSERT_TRUE(preserved.ok()) << preserved.reason;
+    EXPECT_EQ(preserved.value.sharedHead, nullptr);
+    EXPECT_EQ(wireOf(preserved.value).rfind(R"({"update":{"_index":")" + index + R"(","_id":"001_x"}})" + "\n", 0), 0u)
+        << wireOf(preserved.value);
+}
+
+// I125 (a): the cache is per thread. Two threads encode 10 000 IndexDataStream ops each, at the same time, each into
+// its own index: every Encoded has the bytes of its own index (no head of the other thread), and within a thread they
+// all share one head.
+TEST_F(WriteTest, SharedHeadPerThread)
+{
+    constexpr std::size_t OPS = 10000;
+    const std::string doc = R"({"n":1})";
+    const std::vector<std::string> indices {"wazuh-events-thread-a", "wazuh-events-thread-b"};
+    std::atomic<int> ready {0};
+    std::atomic<bool> go {false};
+    std::vector<std::size_t> mismatches(indices.size(), 0);
+    std::vector<std::size_t> unshared(indices.size(), 0);
+    std::vector<const std::string*> heads(indices.size(), nullptr);
+    std::vector<std::thread> threads;
+    for (std::size_t t = 0; t < indices.size(); ++t)
+    {
+        threads.emplace_back(
+            [&, t]
+            {
+                const auto expected = v1Create(indices[t], doc);
+                std::vector<wr::Encoded> kept;
+                kept.reserve(OPS);
+                ++ready;
+                while (!go.load())
+                {
+                    std::this_thread::yield();
+                }
+                for (std::size_t i = 0; i < OPS; ++i)
+                {
+                    auto encoded =
+                        wr::encode(make(ic::Op::Kind::IndexDataStream, indices[t], "", doc), ic::ConflictPolicy {});
+                    if (!encoded.ok() || wireOf(encoded.value) != expected)
+                    {
+                        ++mismatches[t];
+                        continue;
+                    }
+                    kept.push_back(std::move(encoded.value));
+                }
+                // Checked after both threads are done encoding (the heads are kept alive): no mix between threads.
+                for (const auto& encoded : kept)
+                {
+                    if (wireOf(encoded) != expected)
+                    {
+                        ++mismatches[t];
+                    }
+                    if (encoded.sharedHead == nullptr || encoded.sharedHead.get() != kept.front().sharedHead.get())
+                    {
+                        ++unshared[t];
+                    }
+                }
+                heads[t] = kept.empty() ? nullptr : kept.front().sharedHead.get();
+            });
+    }
+    while (ready.load() < static_cast<int>(indices.size()))
+    {
+        std::this_thread::yield();
+    }
+    go = true;
+    for (auto& thread : threads)
+    {
+        thread.join();
+    }
+    for (std::size_t t = 0; t < indices.size(); ++t)
+    {
+        SCOPED_TRACE(indices[t]);
+        EXPECT_EQ(mismatches[t], 0u) << "an Encoded with the bytes of the other thread's index";
+        EXPECT_EQ(unshared[t], 0u) << "one index on one thread shares one head";
+        EXPECT_NE(heads[t], nullptr);
+    }
+    EXPECT_NE(heads[0], heads[1]) << "each thread builds its own head";
+}
+
+// I125 (b): BucketSpec::trustedBodies (default false). A body with a raw '\n' is InvalidArgument ("body:") in a default
+// bucket through post, submit and Group::add, and accepted as is in a trusted bucket (its lines carry the body
+// verbatim); an empty body is InvalidArgument either way. The same on wr::encode's trustedBody argument. Mutant m8
+// (trustedBodies ignored: always scans).
+TEST_F(WriteTest, TrustedBodiesSkipScan)
+{
+    const std::string newline = "{\"a\":1}\n{\"b\":2}";
+    const std::string index = "wazuh-events-trusted";
+    EXPECT_FALSE(ic::BucketSpec {}.trustedBodies) << "the default scans the body";
+
+    {
+        auto op = make(ic::Op::Kind::IndexDataStream, index, "", newline);
+        const auto scanned = wr::encode(std::move(op), ic::ConflictPolicy {});
+        EXPECT_EQ(scanned.cause, ic::Cause::InvalidArgument);
+        EXPECT_EQ(scanned.reason.rfind("body:", 0), 0u) << scanned.reason;
+        EXPECT_EQ(op.body, newline) << "on failure the op is untouched";
+        const auto trusted =
+            wr::encode(make(ic::Op::Kind::IndexDataStream, index, "", newline), ic::ConflictPolicy {}, true);
+        ASSERT_TRUE(trusted.ok()) << trusted.reason;
+        EXPECT_EQ(wireOf(trusted.value), v1Create(index, newline));
+        const auto trustedIndex =
+            wr::encode(make(ic::Op::Kind::Index, index, "1", newline), ic::ConflictPolicy {}, true);
+        ASSERT_TRUE(trustedIndex.ok()) << trustedIndex.reason;
+        EXPECT_EQ(wireOf(trustedIndex.value), v1Index(index, "1", newline));
+        const auto empty = wr::encode(make(ic::Op::Kind::IndexDataStream, index, "", ""), ic::ConflictPolicy {}, true);
+        EXPECT_EQ(empty.cause, ic::Cause::InvalidArgument);
+        EXPECT_EQ(empty.reason.rfind("body:", 0), 0u) << empty.reason;
+    }
+
+    ASSERT_NO_FATAL_FAILURE(start());
+    auto sink = installSink();
+    auto scanning = bucketSpec("b", 1u << 20, ic::Overflow::Kind::Reject, 64 * 1024, 1);
+    auto trusted = bucketSpec("t", 1u << 20, ic::Overflow::Kind::Reject, 64 * 1024, 1);
+    trusted.trustedBodies = true;
+    auto c = client("c", {scanning, trusted});
+    auto bw = c->writer("b");
+    auto tw = c->writer("t");
+
+    const auto refused = bw->post(make(ic::Op::Kind::IndexDataStream, index, "", newline));
+    EXPECT_FALSE(refused.accepted);
+    EXPECT_EQ(refused.cause, ic::Cause::InvalidArgument);
+    EXPECT_EQ(refused.reason.rfind("body:", 0), 0u) << refused.reason;
+    const auto refusedSubmit = bw->submit(make(ic::Op::Kind::Index, index, "1", newline));
+    EXPECT_FALSE(refusedSubmit.accepted);
+    EXPECT_EQ(refusedSubmit.cause, ic::Cause::InvalidArgument);
+    EXPECT_EQ(refusedSubmit.reason.rfind("body:", 0), 0u) << refusedSubmit.reason;
+    {
+        auto group = bw->group();
+        EXPECT_EQ(group.add(make(ic::Op::Kind::IndexAutoId, index, "", newline)), ic::Cause::InvalidArgument);
+        EXPECT_EQ(group.lastAddReason().rfind("body:", 0), 0u) << group.lastAddReason();
+    }
+    EXPECT_EQ(stats("b").invalidArgument, 3u);
+    EXPECT_EQ(stats("b").accepted, 0u);
+
+    const auto emptyPost = tw->post(make(ic::Op::Kind::IndexDataStream, index, "", ""));
+    EXPECT_FALSE(emptyPost.accepted);
+    EXPECT_EQ(emptyPost.cause, ic::Cause::InvalidArgument);
+    EXPECT_EQ(emptyPost.reason.rfind("body:", 0), 0u) << emptyPost.reason;
+
+    // Trusted: post, submit and Group::add accept the body as is; the sink receives it verbatim.
+    std::size_t batches = 0;
+    const auto expectDispatched = [&](const std::string& vector)
+    {
+        ASSERT_TRUE(sink->waitDispatched(++batches));
+        auto taken = sink->take();
+        ASSERT_EQ(taken.size(), 1u);
+        ASSERT_EQ(taken[0].ops.size(), 1u);
+        EXPECT_EQ(wireOf(*taken[0].ops[0]), vector);
+        for (const auto& op : taken[0].ops)
+        {
+            m_path->resolve(op, TestSink::ok());
+        }
+    };
+    const auto posted = tw->post(make(ic::Op::Kind::IndexDataStream, index, "", newline));
+    ASSERT_TRUE(posted.accepted) << ic::toString(posted.cause) << ": " << posted.reason;
+    EXPECT_TRUE(posted.reason.empty()) << posted.reason;
+    ASSERT_NO_FATAL_FAILURE(expectDispatched(v1Create(index, newline)));
+    {
+        // Scoped: without a callback the reserve is held while the Ticket lives.
+        const auto submitted = tw->submit(make(ic::Op::Kind::Index, index, "1", newline));
+        ASSERT_TRUE(submitted.accepted) << ic::toString(submitted.cause) << ": " << submitted.reason;
+        ASSERT_NO_FATAL_FAILURE(expectDispatched(v1Index(index, "1", newline)));
+    }
+    {
+        auto group = tw->group();
+        ASSERT_EQ(group.add(make(ic::Op::Kind::IndexAutoId, index, "", newline)), ic::Cause::None)
+            << group.lastAddReason();
+        auto ticket = group.commit();
+        ASSERT_NO_FATAL_FAILURE(expectDispatched(v1Index(index, "", newline)));
+    }
+    EXPECT_EQ(stats("t").invalidArgument, 1u) << "only the empty body";
+    EXPECT_EQ(stats("t").accepted, 3u);
+    EXPECT_TRUE(component::eventually([&] { return stats("t").charge == 0; }, 5s)) << describe(stats("t"));
+    expectInvariants(stats("t"));
     expectInvariants(stats("b"));
 }

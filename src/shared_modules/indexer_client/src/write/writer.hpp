@@ -22,6 +22,12 @@
 //     ADMISSION of its buckets (Bucket::closeAdmission: flushSeq = nextSeq - 1, so everything pending is eligible now,
 //     plus Scheduler::notify). The buckets stay in the DRR ring and keep draining: a requeue retries as usual (only
 //     Bucket::close() hands ops back as closed). Never blocks; any thread.
+//   submit / post against the close (E6d): Bucket::admit reserves and appends under ONE take of the bucket's mutex, so
+//     there is no window between the two: an op either was queued before closeAdmission (and drains like any other)
+//     or is refused with the close cause (nothing charged, never resolved, no callback); every submit / post that
+//     starts after requestClose() returns is refused ClientClosed. The reservation→append window (N2: refused at the
+//     append, custody without queuing, resolved Dropped(cause) by the caller alone) exists only for a group, which
+//     reserves at add() and appends at commit() (Bucket::enqueueGroup).
 //   awaitClosed(D), consumer threads only, serialized per client (ClientState::closeMutex; a concurrent call waits for
 //     the first one; a later one sweeps nothing, waits for the completions until its own D, moves the cutoff to now
 //     again and returns the live counters, so callbacksSkipped, callbackOverruns and drained may have grown):
@@ -39,7 +45,7 @@
 //     Then waits for the completions until D and sets the client's cutoff to now. The sweep and cancelBucket run
 //     outside completionsMutex.
 //   CloseReport::drained counts the resolutions after requestClose() that are not Dropped(ClientClosed) or
-//     Dropped(Shutdown) (those come only from a sweep, a refused enqueue or a requeue into a closed bucket), so
+//     Dropped(Shutdown) (those come only from a sweep, a refused group commit or a requeue into a closed bucket), so
 //     drained + droppedClientClosed + droppedShutdown covers every op resolved after requestClose().
 //   Callback cutoff: CallbackCompletion::run takes ClientState::completionsMutex, compares now with
 //     min(client cutoff, WritePath::callbackCutoff()), marks itself started (or skipped) and releases it before
@@ -100,7 +106,7 @@ namespace indexer_client::detail::write
                    std::shared_ptr<Transport> transport);
 
         /// Creates the client's buckets (owned by its ClientState) and registers them weakly for the scheduler.
-        void registerClient(ClientState& client);
+        void registerClient(const std::shared_ptr<ClientState>& client);
 
         GlobalBudget& budget() noexcept;
         std::shared_ptr<Scheduler> scheduler() const;
@@ -168,10 +174,12 @@ namespace indexer_client::detail::write
         std::atomic<TimePoint::rep> m_callbackCutoff {TimePoint::max().time_since_epoch().count()};
     };
 
-    /// The writer bound to one bucket of one client (Client::writer). submit: effective conflict policy + encode
-    /// (InvalidArgument, Submit::reason) → reserve → enqueue (+ Scheduler::notify) or the drop/refusal;
-    /// seams::afterAdmission() sits between reserve and enqueue. group(): a Building group of this bucket (group.hpp,
-    /// E3c-1). cancel(tag): Bucket::cancel and the resolution of what it removes (E3c-2 I80, bucket.hpp).
+    /// The writer bound to one bucket of one client (Client::writer). submit / post (E6d): effective conflict policy +
+    /// encode (InvalidArgument, Submit::reason / Posted::reason) → the OpState built outside any lock (one clock read)
+    /// → Bucket::admit, reserve and append under one take of the bucket's mutex (+ Scheduler::notify) or the
+    /// drop/refusal; post creates no Ticket and returns its RESULT_RESERVE at the resolution. group(): a Building group
+    /// of this bucket (group.hpp, E3c-1). cancel(tag): Bucket::cancel and the resolution of what it removes (E3c-2 I80,
+    /// bucket.hpp).
     std::shared_ptr<IWriter>
     makeWriter(std::shared_ptr<ClientState> client, std::shared_ptr<Bucket> bucket, std::shared_ptr<WritePath> path);
 

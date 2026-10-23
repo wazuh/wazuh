@@ -139,7 +139,7 @@ TEST_F(BulkTest, BulkBodyIsTheEncodedLines)
     {
         auto encoded = wr::encode(ic::Op(op), ic::ConflictPolicy {});
         ASSERT_TRUE(encoded.ok()) << encoded.reason;
-        expected += encoded.value;
+        expected += wireOf(encoded.value);
     }
     auto results = Results::create();
     for (std::uint64_t k = 0; k < ops.size(); ++k)

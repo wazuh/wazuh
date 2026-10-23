@@ -130,11 +130,16 @@ namespace indexer_client::detail::write
         return hash;
     }
 
-    Bucket::Bucket(std::string consumer, BucketSpec spec, GlobalBudget& budget, std::weak_ptr<WritePath> owner)
+    Bucket::Bucket(std::string consumer,
+                   BucketSpec spec,
+                   GlobalBudget& budget,
+                   std::weak_ptr<WritePath> owner,
+                   std::weak_ptr<ClientState> client)
         : m_consumer(std::move(consumer))
         , m_spec(std::move(spec))
         , m_budget(budget)
         , m_owner(std::move(owner))
+        , m_client(std::move(client))
         , m_threshold80(percentOf(m_spec.quotaBytes, 80))
         , m_threshold70(percentOf(m_spec.quotaBytes, 70))
     {
@@ -145,11 +150,12 @@ namespace indexer_client::detail::write
     Bucket::~Bucket()
     {
         // No other reference exists, so no lock.
-        // I99 (N6), the last net: with the close fixed (the racing enqueue refuses, a Client destroyed on a runtime
-        // thread sweeps) nothing is still queued here. A debug build asserts it; a release build completes what is
-        // left (ticket or group slot; the callback is not called) and returns its charge to the global cap while the
-        // write path, owner of that budget, is alive. Only the ops' own charge: a ticket's reserve handle and a
-        // GroupState return theirs.
+        // I99 (N6), the last net: with the close fixed (admit has no window, a racing enqueueGroup refuses, a Client
+        // destroyed on a runtime thread sweeps) nothing is still queued here. A debug build asserts it; a release build
+        // completes what is left (ticket or group slot; the callback is not called) and returns its charge to the
+        // global cap while the write path, owner of that budget, is alive. Only the ops' own charge: a ticket's armed
+        // reserve and a GroupState return theirs; an op with a callback or one of post (no ticket, no group) has nobody
+        // else to.
         const bool leftovers = !m_pending.empty() || !m_lane.empty();
         assert(!leftovers && "a bucket destroyed with queued operations");
         if (leftovers)
@@ -170,9 +176,9 @@ namespace indexer_client::detail::write
                         op->payloadCharged = false;
                         charge += op->payload;
                     }
-                    if (op->callback && op->reserveCharged)
+                    if (op->reserveCharged && (op->callback || (!op->ticket && !op->group)))
                     {
-                        charge += RESULT_RESERVE; // No callback runs to return it.
+                        charge += RESULT_RESERVE; // No callback runs to return it, or a post op's (E6d).
                     }
                     OpResult result;
                     result.status = Status::Dropped;
@@ -213,6 +219,48 @@ namespace indexer_client::detail::write
     const std::string& Bucket::consumer() const noexcept
     {
         return m_consumer;
+    }
+
+    const std::weak_ptr<ClientState>& Bucket::client() const noexcept
+    {
+        return m_client;
+    }
+
+    Admission Bucket::admit(const std::shared_ptr<OpState>& op, TimePoint now, TimePoint blockUntil)
+    {
+        Admission admission;
+        std::uint64_t globalSurplus = 0;
+        const EmitPendingOnExit emit {*this}; // Destroyed after the lock below: no line under the bucket mutex.
+        {
+            std::unique_lock<std::mutex> lock(m_mutex);
+            reserveLocked(lock,
+                          op->wire(),
+                          op->payload + RESULT_RESERVE,
+                          static_cast<bool>(op->callback),
+                          blockUntil,
+                          admission,
+                          globalSurplus);
+            if (admission.cause == Cause::None && !admission.dropNewest)
+            {
+                // Charged under this same take of the mutex: the admission is open, so the op is queued (I99: no
+                // reservation→append window for submit / post; a close after this point finds it pending).
+                const bool wasEmpty = m_pending.empty();
+                const std::uint64_t bytesBefore = m_pendingBytes;
+                const std::size_t docsBefore = m_pending.size();
+
+                takeCustodyLocked(*op, now);
+                m_pendingBytes += op->wire();
+                m_pending.push_back(op); // The only copy of the op's shared_ptr the bucket takes.
+
+                const auto maxBytes = static_cast<std::uint64_t>(m_spec.bulk.maxBytes);
+                const auto maxDocs = m_spec.bulk.maxDocs;
+                const bool crossed = wasEmpty || (bytesBefore < maxBytes && m_pendingBytes >= maxBytes) ||
+                                     (docsBefore < maxDocs && m_pending.size() >= maxDocs);
+                admission.notify = crossed && !m_notified.exchange(true);
+            }
+        }
+        m_budget.release(globalSurplus);
+        return admission;
     }
 
     void Bucket::addChargeLocked(std::uint64_t bytes) noexcept
@@ -370,7 +418,7 @@ namespace indexer_client::detail::write
         {
             auto op = std::move(m_pending.front());
             m_pending.pop_front();
-            m_pendingBytes -= op->lines.size();
+            m_pendingBytes -= op->wire();
             op->payloadCharged = false;
             --m_stats.retained;
             reservation.evicted.push_back(std::move(op));
@@ -386,107 +434,121 @@ namespace indexer_client::detail::write
 
     Reservation Bucket::reserve(std::uint64_t payload, bool withCallback, TimePoint blockUntil)
     {
-        const std::uint64_t charge = payload + RESULT_RESERVE;
         Reservation reservation;
         std::uint64_t globalSurplus = 0;
         const EmitPendingOnExit emit {*this}; // Destroyed after the lock below: no line under the bucket mutex.
         {
             std::unique_lock<std::mutex> lock(m_mutex);
-            ++m_stats.submitted;
-            if (m_admission)
-            {
-                countClosedRefusal(m_stats, *m_admission);
-                reservation.cause = *m_admission;
-                return reservation;
-            }
-            if (payload > m_spec.bulk.maxBytes || charge > m_spec.quotaBytes || charge > m_budget.cap())
-            {
-                ++m_stats.payloadTooLarge;
-                reservation.cause = Cause::PayloadTooLarge;
-                return reservation;
-            }
-            const auto refused = tryChargeLocked(charge);
-            if (refused == Charge::Ok)
-            {
-                ++m_stats.accepted;
-                return reservation;
-            }
-
-            switch (m_spec.overflow.kind)
-            {
-                case Overflow::Kind::Reject:
-                    overflowLocked(refused);
-                    ++m_stats.rejectedQueueFull;
-                    reservation.cause = Cause::QueueFull;
-                    break;
-
-                case Overflow::Kind::Block:
-                {
-                    if (indexer_client::detail::testing::onRuntimeThread())
-                    {
-                        // RF-27: a runtime thread never sleeps on a quota it may be the one to free.
-                        ++m_stats.reentrancy;
-                        reservation.cause = Cause::Reentrancy;
-                        break;
-                    }
-                    overflowLocked(refused); // A Block that has to wait.
-                    // Registered before the predicate's first re-check (see GlobalBudget::addWaiter).
-                    if (m_waiting++ == 0)
-                    {
-                        m_budget.addWaiter(shared_from_this());
-                    }
-                    bool charged = false;
-                    m_room.wait_until(lock,
-                                      blockUntil,
-                                      [&]
-                                      {
-                                          if (m_admission)
-                                          {
-                                              return true;
-                                          }
-                                          charged = tryChargeLocked(charge) == Charge::Ok;
-                                          return charged;
-                                      });
-                    if (--m_waiting == 0)
-                    {
-                        m_budget.removeWaiter(this);
-                    }
-                    if (charged)
-                    {
-                        ++m_stats.accepted;
-                    }
-                    else if (m_admission)
-                    {
-                        countClosedRefusal(m_stats, *m_admission);
-                        reservation.cause = *m_admission;
-                    }
-                    else
-                    {
-                        ++m_stats.submitTimeout;
-                        reservation.cause = Cause::SubmitTimeout;
-                    }
-                    break;
-                }
-
-                case Overflow::Kind::DropNewest:
-                    overflowLocked(refused);
-                    dropNewestLocked(withCallback, reservation);
-                    break;
-
-                case Overflow::Kind::DropOldest:
-                    overflowLocked(refused);
-                    if (!evictOldestLocked(charge, reservation, globalSurplus))
-                    {
-                        dropNewestLocked(withCallback, reservation);
-                    }
-                    break;
-            }
+            reserveLocked(
+                lock, payload, payload + RESULT_RESERVE, withCallback, blockUntil, reservation, globalSurplus);
         }
         m_budget.release(globalSurplus);
         return reservation;
     }
 
-    Reservation Bucket::reserveForGroup(std::uint64_t payload, std::uint64_t groupReserved, TimePoint blockUntil)
+    void Bucket::reserveLocked(std::unique_lock<std::mutex>& lock,
+                               std::uint64_t wire,
+                               std::uint64_t charge,
+                               bool withCallback,
+                               TimePoint blockUntil,
+                               Reservation& reservation,
+                               std::uint64_t& globalSurplus)
+    {
+        ++m_stats.submitted;
+        if (m_admission)
+        {
+            countClosedRefusal(m_stats, *m_admission);
+            reservation.cause = *m_admission;
+            return;
+        }
+        if (wire > m_spec.bulk.maxBytes || charge > m_spec.quotaBytes || charge > m_budget.cap())
+        {
+            ++m_stats.payloadTooLarge;
+            reservation.cause = Cause::PayloadTooLarge;
+            return;
+        }
+        const auto refused = tryChargeLocked(charge);
+        if (refused == Charge::Ok)
+        {
+            ++m_stats.accepted;
+            return;
+        }
+
+        switch (m_spec.overflow.kind)
+        {
+            case Overflow::Kind::Reject:
+                overflowLocked(refused);
+                ++m_stats.rejectedQueueFull;
+                reservation.cause = Cause::QueueFull;
+                break;
+
+            case Overflow::Kind::Block:
+            {
+                if (indexer_client::detail::testing::onRuntimeThread())
+                {
+                    // RF-27: a runtime thread never sleeps on a quota it may be the one to free.
+                    ++m_stats.reentrancy;
+                    reservation.cause = Cause::Reentrancy;
+                    break;
+                }
+                overflowLocked(refused); // A Block that has to wait.
+                // Registered before the predicate's first re-check (see GlobalBudget::addWaiter).
+                if (m_waiting++ == 0)
+                {
+                    m_budget.addWaiter(shared_from_this());
+                }
+                bool charged = false;
+                m_room.wait_until(lock,
+                                  blockUntil,
+                                  [&]
+                                  {
+                                      if (m_admission)
+                                      {
+                                          return true;
+                                      }
+                                      charged = tryChargeLocked(charge) == Charge::Ok;
+                                      return charged;
+                                  });
+                if (--m_waiting == 0)
+                {
+                    m_budget.removeWaiter(this);
+                }
+                if (charged)
+                {
+                    ++m_stats.accepted;
+                }
+                else if (m_admission)
+                {
+                    countClosedRefusal(m_stats, *m_admission);
+                    reservation.cause = *m_admission;
+                }
+                else
+                {
+                    ++m_stats.submitTimeout;
+                    reservation.cause = Cause::SubmitTimeout;
+                }
+                break;
+            }
+
+            case Overflow::Kind::DropNewest:
+                overflowLocked(refused);
+                dropNewestLocked(withCallback, reservation);
+                break;
+
+            case Overflow::Kind::DropOldest:
+                overflowLocked(refused);
+                if (!evictOldestLocked(charge, reservation, globalSurplus))
+                {
+                    dropNewestLocked(withCallback, reservation);
+                }
+                break;
+        }
+    }
+
+    Reservation Bucket::reserveForGroup(std::uint64_t payload,
+                                        std::uint64_t wire,
+                                        std::uint64_t groupReserved,
+                                        TimePoint blockUntil)
     {
         const std::uint64_t charge = payload + RESULT_RESERVE;
         Reservation reservation;
@@ -501,7 +563,7 @@ namespace indexer_client::detail::write
                 reservation.cause = *m_admission;
                 return reservation;
             }
-            if (payload > m_spec.bulk.maxBytes || charge > m_spec.quotaBytes || charge > m_budget.cap())
+            if (wire > m_spec.bulk.maxBytes || charge > m_spec.quotaBytes || charge > m_budget.cap())
             {
                 ++m_stats.payloadTooLarge;
                 reservation.cause = Cause::PayloadTooLarge;
@@ -627,40 +689,6 @@ namespace indexer_client::detail::write
         return m_closed ? m_closed : m_admission;
     }
 
-    bool Bucket::enqueue(std::shared_ptr<OpState> op, std::optional<Cause>* closed)
-    {
-        std::lock_guard<std::mutex> lock(m_mutex);
-        const auto now = std::chrono::steady_clock::now();
-        if (m_admission)
-        {
-            // I99 (N2): refused, never queued. The payload passes to the bucket's custody exactly as an accepted op's
-            // (payloadCharged, retained), so the caller's WritePath::resolve releases it through releasePayload.
-            takeCustodyLocked(*op, now);
-            if (closed)
-            {
-                *closed = refusalCauseLocked();
-            }
-            return false;
-        }
-        if (closed)
-        {
-            closed->reset();
-        }
-        const bool wasEmpty = m_pending.empty();
-        const std::uint64_t bytesBefore = m_pendingBytes;
-        const std::size_t docsBefore = m_pending.size();
-
-        takeCustodyLocked(*op, now);
-        m_pendingBytes += op->lines.size();
-        m_pending.push_back(std::move(op));
-
-        const auto maxBytes = static_cast<std::uint64_t>(m_spec.bulk.maxBytes);
-        const auto maxDocs = m_spec.bulk.maxDocs;
-        const bool crossed = wasEmpty || (bytesBefore < maxBytes && m_pendingBytes >= maxBytes) ||
-                             (docsBefore < maxDocs && m_pending.size() >= maxDocs);
-        return crossed && !m_notified.exchange(true);
-    }
-
     bool Bucket::enqueueGroup(std::vector<std::shared_ptr<OpState>> ops,
                               std::uint64_t reserved,
                               std::optional<Cause>* closed)
@@ -680,7 +708,9 @@ namespace indexer_client::detail::write
         const auto now = std::chrono::steady_clock::now();
         if (m_admission)
         {
-            // I99 (N2): as enqueue, custody without queuing; the `building` transfer above happened all the same.
+            // I99 (N2): refused, never queued. Each payload passes to the bucket's custody exactly as an accepted op's
+            // (payloadCharged, retained), so the caller's WritePath::resolve releases it through releasePayload; the
+            // `building` transfer above happened all the same.
             for (auto& op : ops)
             {
                 takeCustodyLocked(*op, now);
@@ -690,7 +720,7 @@ namespace indexer_client::detail::write
         for (auto& op : ops)
         {
             takeCustodyLocked(*op, now);
-            m_pendingBytes += op->lines.size();
+            m_pendingBytes += op->wire();
             m_pending.push_back(std::move(op));
         }
         m_flushSeq = m_nextSeq - 1;
@@ -786,7 +816,7 @@ namespace indexer_client::detail::write
             if (op->notBefore <= now && !scan.due)
             {
                 scan.due = true;
-                scan.head = op->lines.size();
+                scan.head = op->wire();
             }
         }
         return scan;
@@ -845,10 +875,10 @@ namespace indexer_client::detail::write
         }
         if (laneDueLocked(now))
         {
-            return m_lane.front()->lines.size();
+            return m_lane.front()->wire();
         }
         const auto first = firstTakeablePendingLocked();
-        return first ? m_pending[*first]->lines.size() : 0;
+        return first ? m_pending[*first]->wire() : 0;
     }
 
     std::optional<TimePoint> Bucket::orderedNextDueLocked(TimePoint now) const
@@ -933,9 +963,9 @@ namespace indexer_client::detail::write
         }
         if (laneDueLocked(now))
         {
-            return m_lane.front()->lines.size();
+            return m_lane.front()->wire();
         }
-        return m_pending.empty() ? 0 : m_pending.front()->lines.size();
+        return m_pending.empty() ? 0 : m_pending.front()->wire();
     }
 
     bool Bucket::empty() const
@@ -961,7 +991,7 @@ namespace indexer_client::detail::write
         // whether the turn emits, not how large the batch is; `cap`, the sink's batch limit, never refuses it either).
         const auto fits = [&](const OpState& op)
         {
-            const std::uint64_t size = op.lines.size();
+            const std::uint64_t size = op.wire();
             if (batch.ops.empty())
             {
                 return true;
@@ -981,7 +1011,7 @@ namespace indexer_client::detail::write
             {
                 op->firstAttempt = now;
             }
-            batch.bytes += op->lines.size();
+            batch.bytes += op->wire();
             m_delivered.emplace(op.get(), op);
             batch.ops.push_back(std::move(op));
         };
@@ -1051,7 +1081,7 @@ namespace indexer_client::detail::write
                     {
                         break;
                     }
-                    m_pendingBytes -= op->lines.size();
+                    m_pendingBytes -= op->wire();
                     if (op->hasKey)
                     {
                         taken.insert(op->keyHash);
@@ -1090,7 +1120,7 @@ namespace indexer_client::detail::write
             }
             auto op = std::move(m_pending.front());
             m_pending.pop_front();
-            m_pendingBytes -= op->lines.size();
+            m_pendingBytes -= op->wire();
             take(std::move(op));
         }
         if (!batch.ops.empty())
@@ -1105,7 +1135,7 @@ namespace indexer_client::detail::write
         m_notified.store(false);
     }
 
-    void Bucket::releasePayload(OpState& op)
+    void Bucket::releasePayload(OpState& op, bool withReserve)
     {
         std::shared_ptr<OpState> keep; // Dropped after the mutex: the op (and its TicketState) never dies under it.
         std::uint64_t released = 0;
@@ -1135,19 +1165,20 @@ namespace indexer_client::detail::write
                     m_lane.erase(lane);
                 }
             }
+            const auto before = m_charge;
+            if (withReserve)
+            {
+                // E6d: a post op's RESULT_RESERVE, in this same take of the mutex.
+                released = RESULT_RESERVE;
+                m_charge -= RESULT_RESERVE;
+            }
             if (op.payloadCharged)
             {
                 op.payloadCharged = false;
-                released = op.payload;
-                const auto before = m_charge;
-                m_charge -= released;
-                chargeMovedLocked(before); // Only re-arms: a release never queues a line.
+                released += op.payload;
+                m_charge -= op.payload;
                 --m_stats.retained;
-                m_stats.retainedBytes -= released;
-                if (m_waiting != 0)
-                {
-                    m_room.notify_all();
-                }
+                m_stats.retainedBytes -= op.payload;
                 // I80: the single decrement point, once per op (payloadCharged); only a marked op counted at its
                 // waiter's registration (seq < seqLimit) decrements it.
                 if (!m_cancelWaiters.empty() && op.cancelled.load() && !op.tag.empty())
@@ -1164,6 +1195,14 @@ namespace indexer_client::detail::write
                             ++it;
                         }
                     }
+                }
+            }
+            if (released != 0)
+            {
+                chargeMovedLocked(before); // Only re-arms: a release never queues a line.
+                if (m_waiting != 0)
+                {
+                    m_room.notify_all();
                 }
             }
             // The tag is only read while the op is queued or delivered (cancel, the decrement above): a resolved op
@@ -1406,7 +1445,7 @@ namespace indexer_client::detail::write
                 }
                 else
                 {
-                    m_pendingBytes -= (*it)->lines.size();
+                    m_pendingBytes -= (*it)->wire();
                 }
                 result.removed.push_back(std::move(*it));
             }
@@ -1566,7 +1605,7 @@ namespace indexer_client::detail::write
         {
             if (entry.op)
             {
-                batchBytes += entry.op->lines.size();
+                batchBytes += entry.op->wire();
             }
         }
         const std::uint64_t halfCap = (batchBytes + 1) / 2;
