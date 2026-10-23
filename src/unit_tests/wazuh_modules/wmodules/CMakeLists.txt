@@ -39,20 +39,33 @@ list(APPEND wmodules_names "test_wmcom")
 list(APPEND wmodules_flags "-Wl,--wrap,getModulesConfig -Wl,--wrap,getModulesInternalOptions \
                             -Wl,--wrap,w_query_agentd -Wl,--wrap,_merror -Wl,--wrap,_mdebug1")
 
-# wm_handler() and wm_setup() live in main.c, which WMODULES_O leaves out: the test includes it.
-if(${TARGET} STREQUAL "agent")
-    list(APPEND wmodules_names "test_wm_main")
-    list(APPEND wmodules_flags "-Wl,--wrap,sleep -Wl,--wrap,exit -Wl,--wrap,wm_config -Wl,--wrap,wm_check \
-                                -Wl,--wrap,w_read_agent_batch -Wl,--wrap,getDefine_Int_default \
-                                -Wl,--wrap,Privsep_GetGroup -Wl,--wrap,Privsep_SetGroup -Wl,--wrap,CreatePID \
-                                -Wl,--wrap,wm_children_pool_init")
+# The shutdown sequence and wm_setup() live in main.c, which WMODULES_O leaves out: the test includes it. It is built
+# for both targets (the manager without CLIENT, additionally wrapping the runtime's begin_shutdown/shutdown; the agent
+# additionally wrapping wm_setup()'s collaborators for the -t test).
+set(wm_main_wrap "-Wl,--wrap,clock_gettime -Wl,--wrap,nanosleep -Wl,--wrap,exit -Wl,--wrap,pthread_timedjoin_np \
+                  -Wl,--wrap,write -Wl,--wrap,startup_gate_wait_for_ready -Wl,--wrap,_merror -Wl,--wrap,_mdebug1")
+if(${TARGET} STREQUAL "manager")
+    set(wm_main_wrap "${wm_main_wrap} -Wl,--wrap,wm_indexer_runtime_begin_shutdown \
+                      -Wl,--wrap,wm_indexer_runtime_shutdown -Wl,--wrap,wm_kill_children -Wl,--wrap,DeletePID")
+else()
+    set(wm_main_wrap "${wm_main_wrap} -Wl,--wrap,wm_config -Wl,--wrap,wm_check -Wl,--wrap,w_read_agent_batch \
+                      -Wl,--wrap,getDefine_Int_default -Wl,--wrap,Privsep_GetGroup -Wl,--wrap,Privsep_SetGroup \
+                      -Wl,--wrap,CreatePID -Wl,--wrap,wm_children_pool_init")
 endif()
+list(APPEND wmodules_names "test_wm_main")
+list(APPEND wmodules_flags "${wm_main_wrap}")
 
 # The task manager's reader of the sections it borrows (`global`, `remote`): a refusal is reported to
 # wm_config(), which makes `-t` fail. Manager only.
 if(${TARGET} STREQUAL "manager")
     list(APPEND wmodules_names "test_wm_task_manager_read_json")
     list(APPEND wmodules_flags "-Wl,--wrap,_merror -Wl,--wrap,_mwarn -Wl,--wrap,_mdebug1")
+
+    # The C side of the indexer runtime bridge (manager only: the agent's source is a stub).
+    list(APPEND wmodules_names "test_wm_indexer_runtime")
+    list(APPEND wmodules_flags "-Wl,--wrap,wfopen -Wl,--wrap,so_get_module_handle -Wl,--wrap,so_get_function_sym \
+                                -Wl,--wrap,so_free_library -Wl,--wrap,_mterror -Wl,--wrap,_mtinfo \
+                                -Wl,--wrap,_mtdebug1 -Wl,--wrap,_mtwarn")
 endif()
 
 # The listener loop, in its own binary so that wrapping close and accept does not reach the
@@ -89,7 +102,7 @@ foreach(counter RANGE ${count})
     add_test(NAME ${test_name} COMMAND ${test_name})
 endforeach()
 
-if(TARGET test_wm_main)
-    # main.c has to be built as CLIENT, like the agent's WMODULES_O objects.
+if(TARGET test_wm_main AND ${TARGET} STREQUAL "agent")
+    # main.c has to be built as CLIENT, like the agent's WMODULES_O objects (the manager's is not).
     target_compile_definitions(test_wm_main PRIVATE CLIENT)
 endif()

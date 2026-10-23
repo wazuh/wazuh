@@ -56,12 +56,12 @@ static HANDLE sync_worker_thread = NULL;
 static bool sync_worker_thread_initialized = false;
 pthread_mutex_t sys_reconnect_mutex = PTHREAD_MUTEX_INITIALIZER;
 // volatile sig_atomic_t, not a plain bool: this is written from wm_sys_stop(), which on
-// POSIX runs inside the SIGTERM handler (wm_handler, wazuh_modules/src/main.c), and read
-// from the module thread's polling loops below. sig_atomic_t is what a signal handler is
-// allowed to write, and volatile is what stops the compiler from hoisting the reads out of
-// those loops -- is_shutdown_process_started() is static and trivially inlinable, so the
-// function call is no barrier. Same idiom as wm_shutdown_requested (wmodules.h) and as
-// sync_module_running above.
+// POSIX runs on modulesd's main thread in the shutdown sequence (wm_shutdown_run,
+// wazuh_modules/src/main.c; the SIGTERM handler only raises a flag and wakes it), and read
+// from the module thread's polling loops below. volatile is what stops the compiler from
+// hoisting the reads out of those loops -- is_shutdown_process_started() is static and
+// trivially inlinable, so the function call is no barrier. Same idiom as
+// wm_shutdown_requested (wmodules.h) and as sync_module_running above.
 volatile sig_atomic_t shutdown_process_started = 0;
 
 static size_t wm_sys_query_handler(void* data, char* query, char** output); // Query handler

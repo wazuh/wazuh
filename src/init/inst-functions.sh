@@ -1671,6 +1671,22 @@ InstallServer()
             chcon -t textrel_shlib_t ${INSTALLDIR}/lib/libindexer_connector.so
         fi
     fi
+    if [ -f build/lib/libindexer_client.so ]
+    then
+        ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} build/lib/libindexer_client.so ${INSTALLDIR}/lib
+
+        if ([ "X${DIST_NAME}" = "Xrhel" ] || [ "X${DIST_NAME}" = "Xcentos" ] || [ "X${DIST_NAME}" = "XCentOS" ]); then
+            chcon -t textrel_shlib_t ${INSTALLDIR}/lib/libindexer_client.so
+        fi
+    fi
+    if [ -f build/lib/libwm_indexer_runtime.so ]
+    then
+        ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} build/lib/libwm_indexer_runtime.so ${INSTALLDIR}/lib
+
+        if ([ "X${DIST_NAME}" = "Xrhel" ] || [ "X${DIST_NAME}" = "Xcentos" ] || [ "X${DIST_NAME}" = "XCentOS" ]); then
+            chcon -t textrel_shlib_t ${INSTALLDIR}/lib/libwm_indexer_runtime.so
+        fi
+    fi
     if [ -f external/rocksdb/build/librocksdb.so.8 ]
     then
         ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} external/rocksdb/build/librocksdb.so.8 ${INSTALLDIR}/lib
