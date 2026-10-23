@@ -31,6 +31,7 @@
 #include <memory>
 #include <stdexcept>
 #include <string>
+#include <functional>
 #include <future>
 #include <thread>
 #include <vector>
@@ -125,16 +126,22 @@ class SyscollectorIdentityTest : public ::testing::Test
 
         /// @brief init() with only the collectors a case needs. packages and os ride the VD
         /// lane, users the plain one, which is what makes the routing observable with two mocks.
-        static void initModule(bool packages, bool users, bool os = false)
+        static void initModule(bool packages, bool users, bool os = false,
+                               std::function<void(const modules_log_level_t, const std::string&)> log = {})
         {
             const auto spInfoWrapper {std::make_shared<MockSysInfo>()};
             EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(::testing::AnyNumber());
+
+            if (!log)
+            {
+                log = [](const modules_log_level_t, const std::string&) {};
+            }
 
             Syscollector::instance().init(spInfoWrapper,
             [](const std::string&) {},
             [](const std::string&, Operation_t, const std::string&,
                const std::string&, uint64_t) {},
-            [](const modules_log_level_t, const std::string&) {},
+            log,
             IDENTITY_DB_PATH,
             "",
             "",
@@ -1450,4 +1457,107 @@ TEST_F(SyscollectorIdentityTest, RecoveryInterruptedByStopLeavesTheTableUnstampe
 
     EXPECT_EQ(integrityClock(USERS_TABLE), 1);
     EXPECT_TRUE(warnings.empty());
+}
+
+// An agent upgraded from a version that stored host.os.distribution.release keeps its persistent
+// database: the column is renamed in place and its value is kept, instead of every OS insert
+// failing on the missing os_display_version column.
+TEST_F(SyscollectorIdentityTest, OsInfoDistributionReleaseColumnIsRenamedOnUpgrade)
+{
+    initModule(false, false);
+    Syscollector::instance().destroy();
+
+    // Turn the database back into the previous schema, with one row stored by it.
+    sqlite3* db = nullptr;
+    ASSERT_EQ(sqlite3_open_v2(IDENTITY_DB_PATH, &db, SQLITE_OPEN_READWRITE, nullptr), SQLITE_OK);
+    ASSERT_EQ(sqlite3_exec(db,
+                           "ALTER TABLE dbsync_osinfo RENAME COLUMN os_display_version TO os_distribution_release;"
+                           "INSERT INTO dbsync_osinfo (os_name, os_version, os_distribution_release, checksum) "
+                           "VALUES ('Microsoft Windows 10 Pro', '10.0.19045', '2009', 'oldchecksum');"
+                           "PRAGMA user_version = 1;",
+                           nullptr, nullptr, nullptr), SQLITE_OK);
+    sqlite3_close(db);
+
+    std::vector<std::string> warnings;
+    initModule(false, false, false, [&warnings](const modules_log_level_t level, const std::string & msg)
+    {
+        if (level == LOG_WARNING)
+        {
+            warnings.push_back(msg);
+        }
+    });
+    Syscollector::instance().destroy();
+
+    // Upgraded in place: nothing was lost, so nothing to warn about.
+    EXPECT_TRUE(warnings.empty());
+
+    db = nullptr;
+    ASSERT_EQ(sqlite3_open_v2(IDENTITY_DB_PATH, &db, SQLITE_OPEN_READONLY, nullptr), SQLITE_OK);
+
+    sqlite3_stmt* stmt = nullptr;
+    ASSERT_EQ(sqlite3_prepare_v2(db, "PRAGMA user_version;", -1, &stmt, nullptr), SQLITE_OK);
+    ASSERT_EQ(sqlite3_step(stmt), SQLITE_ROW);
+    EXPECT_EQ(sqlite3_column_int(stmt, 0), static_cast<int>(UPGRADE_SQL_STATEMENTS.size() + 1));
+    sqlite3_finalize(stmt);
+
+    ASSERT_EQ(sqlite3_prepare_v2(db, "SELECT os_display_version FROM dbsync_osinfo;", -1, &stmt, nullptr), SQLITE_OK);
+    ASSERT_EQ(sqlite3_step(stmt), SQLITE_ROW);
+    EXPECT_STREQ(reinterpret_cast<const char*>(sqlite3_column_text(stmt, 0)), "2009");
+    sqlite3_finalize(stmt);
+
+    sqlite3_close(db);
+}
+
+// A version 1 database whose schema the upgrade does not match (e.g. a development build that
+// already had os_display_version) must not keep the module from starting: it is created again.
+TEST_F(SyscollectorIdentityTest, OsInfoUnexpectedSchemaIsRecreatedOnUpgrade)
+{
+#ifdef WIN32
+    // The rejected upgrade is an exception thrown and caught inside DBSync.
+    GTEST_SKIP() << "Skipping OsInfoUnexpectedSchemaIsRecreatedOnUpgrade test on Windows due to exception handling issues in Wine environment";
+#endif
+    initModule(false, false);
+    Syscollector::instance().destroy();
+
+    // The current schema, stamped with the previous version, so the rename has nothing to rename.
+    sqlite3* db = nullptr;
+    ASSERT_EQ(sqlite3_open_v2(IDENTITY_DB_PATH, &db, SQLITE_OPEN_READWRITE, nullptr), SQLITE_OK);
+    ASSERT_EQ(sqlite3_exec(db,
+                           "INSERT INTO dbsync_osinfo (os_name, os_version, os_display_version, checksum) "
+                           "VALUES ('Microsoft Windows 10 Pro', '10.0.19045', '22H2', 'oldchecksum');"
+                           "PRAGMA user_version = 1;",
+                           nullptr, nullptr, nullptr), SQLITE_OK);
+    sqlite3_close(db);
+
+    std::vector<std::string> warnings;
+    ASSERT_NO_THROW(initModule(false, false, false, [&warnings](const modules_log_level_t level, const std::string & msg)
+    {
+        if (level == LOG_WARNING)
+        {
+            warnings.push_back(msg);
+        }
+    }));
+    Syscollector::instance().destroy();
+
+    // Logged by syscollector itself, at a level the default configuration shows: the shared
+    // DBSync callback belongs to whichever module registered first.
+    ASSERT_EQ(warnings.size(), 1u);
+    EXPECT_NE(warnings[0].find("could not be upgraded from version 1 and was created again"), std::string::npos);
+
+    db = nullptr;
+    ASSERT_EQ(sqlite3_open_v2(IDENTITY_DB_PATH, &db, SQLITE_OPEN_READONLY, nullptr), SQLITE_OK);
+
+    sqlite3_stmt* stmt = nullptr;
+    ASSERT_EQ(sqlite3_prepare_v2(db, "PRAGMA user_version;", -1, &stmt, nullptr), SQLITE_OK);
+    ASSERT_EQ(sqlite3_step(stmt), SQLITE_ROW);
+    EXPECT_EQ(sqlite3_column_int(stmt, 0), static_cast<int>(UPGRADE_SQL_STATEMENTS.size() + 1));
+    sqlite3_finalize(stmt);
+
+    // Recreated, so the row stored with the unexpected schema is gone.
+    ASSERT_EQ(sqlite3_prepare_v2(db, "SELECT COUNT(*) FROM dbsync_osinfo;", -1, &stmt, nullptr), SQLITE_OK);
+    ASSERT_EQ(sqlite3_step(stmt), SQLITE_ROW);
+    EXPECT_EQ(sqlite3_column_int(stmt, 0), 0);
+    sqlite3_finalize(stmt);
+
+    sqlite3_close(db);
 }

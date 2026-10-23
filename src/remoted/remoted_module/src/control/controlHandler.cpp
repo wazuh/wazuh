@@ -143,7 +143,7 @@ namespace remoted::control
 
             const bool versionMalformed = !isValidVersion(data.version);
             const bool versionTooHigh = !versionMalformed && !m_config.allowHigherVersions &&
-                                        compareVersions(m_config.managerVersion, data.version) < 0;
+                                        isAgentVersionTooNew(m_config.managerVersion, data.version);
 
             if (versionMalformed || versionTooHigh)
             {

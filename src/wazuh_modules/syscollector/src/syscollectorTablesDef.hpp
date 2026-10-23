@@ -9,6 +9,9 @@
 
 #pragma once
 
+#include <string>
+#include <vector>
+
 constexpr auto OS_SQL_STATEMENT
 {
     R"(CREATE TABLE dbsync_osinfo (
@@ -26,12 +29,21 @@ constexpr auto OS_SQL_STATEMENT
     os_kernel_name TEXT,
     os_kernel_release TEXT,
     os_kernel_version TEXT,
-    os_distribution_release TEXT,
+    os_display_version TEXT,
     os_full TEXT,
     sync INTEGER DEFAULT 0,
     checksum TEXT,
     version INTEGER NOT NULL DEFAULT 1,
     PRIMARY KEY (os_name, os_version)) WITHOUT ROWID;)"
+};
+
+// Upgrades of a persistent database created with an older schema, applied in order. Entry N moves
+// a database from schema version N + 1 to N + 2 (a database with no entries is version 1). The
+// create statements above always describe the latest schema.
+static const std::vector<std::string> UPGRADE_SQL_STATEMENTS
+{
+    // host.os.distribution.release was replaced by host.os.display_version.
+    "ALTER TABLE dbsync_osinfo RENAME COLUMN os_distribution_release TO os_display_version;",
 };
 
 constexpr auto HW_SQL_STATEMENT

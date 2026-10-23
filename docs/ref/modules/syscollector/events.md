@@ -90,11 +90,15 @@ All Syscollector events share a common structure:
 | `os_build` | `host.os.build` |
 | `os_platform` | `host.os.platform` |
 | `os_type` | `host.os.type` |
-| `os_kernel_name` | `host.os.kernel.name` |
-| `os_kernel_release` | `host.os.kernel.release` |
-| `os_kernel_version` | `host.os.kernel.version` |
-| `os_distribution_release` | `host.os.distribution.release` |
+| `os_kernel_release` | `host.os.kernel` |
+| `os_display_version` | `host.os.display_version` |
 | `os_full` | `host.os.full` |
+
+`os_kernel_name` and `os_kernel_version` are collected by the data provider but are neither stored nor sent. Agents upgraded from an earlier 5.0.0 package keep the values stored before the upgrade in those columns, which are no longer updated.
+
+- `host.os.kernel` is the kernel release, as reported by `uname -r` (e.g. `6.8.0-31-generic`). On Windows it is the OS version.
+- `host.os.display_version` is only set on Windows. It is the `DisplayVersion` registry value (e.g. `22H2`), used from Windows 10 20H2 on. Without it, the agent uses `ReleaseId` (e.g. `1607`), then a table of known builds, then the service pack (e.g. `sp1`).
+- `host.os.full` is the OS name with its version: name and version on Linux, BSD and Unix (e.g. `Ubuntu 24.04 LTS (Noble Numbat)`), the `System Version` line of `system_profiler` on macOS (e.g. `macOS 26.6.2 (25G83)`, or name and version when it cannot be read), and name and display version on Windows (e.g. `Microsoft Windows 11 Pro 23H2`).
 
 ```json
 {
@@ -112,15 +116,9 @@ All Syscollector events share a common structure:
             "os": {
                 "build": null,
                 "codename": "noble",
-                "distribution": {
-                    "release": null
-                },
+                "display_version": null,
                 "full": "Ubuntu 24.04 LTS (Noble Numbat)",
-                "kernel": {
-                    "name": "Linux",
-                    "release": "6.8.0-31-generic",
-                    "version": "#31-Ubuntu SMP PREEMPT_DYNAMIC Sat Apr 20 00:40:06 UTC 2024"
-                },
+                "kernel": "6.8.0-31-generic",
                 "major": "24",
                 "minor": "04",
                 "name": "Ubuntu",

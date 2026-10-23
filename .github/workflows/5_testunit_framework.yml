@@ -20,11 +20,12 @@ on:
       - 'src/external/CMakeLists.txt'
       - 'src/Makefile'
       - 'tools/get_git_refs.sh'
+      - 'src/deps.lock.mk'
       # API unit tests (5_testunit_api.yml) and manager_config's C++ suites (5_testunit_managerconfig.yml)
       - '!api/api/**/test/**'
       - '!src/shared_modules/manager_config/tests/**'
       # Neither collected nor imported by `pytest framework`: the embedded-Python build
-      # (5_builderpackage_embedded-python.yml), the example, the installer's wrapper, Makefile and
+      # (the cpython job of 5_builderpackage_externals.yml), the example, the installer's wrapper, Makefile and
       # setup.py, and the wodles' requirements (5_testunit_wodles.yml)
       - '!framework/cpython/**'
       - '!framework/examples/**'

@@ -69,6 +69,7 @@ DBSYNC_HANDLE dbsync_create_(const HostType     host_type,
             }
 
             retVal = DBSyncImplementation::instance().initialize(host_type, db_type, path, sql_statement, db_management, upgradeStatements);
+            log_message(DBSyncImplementation::instance().recreateReason(retVal));
         }
         catch (const DbSync::dbsync_error& ex)
         {
@@ -741,6 +742,11 @@ DBSync::DBSync(const DBSYNC_HANDLE dbsyncHandle)
     : m_dbsyncHandle { dbsyncHandle }
     , m_shouldBeRemoved{ false }
 { }
+
+std::string DBSync::recreateReason() const
+{
+    return DBSyncImplementation::instance().recreateReason(m_dbsyncHandle);
+}
 
 DBSync::~DBSync()
 {

@@ -28,6 +28,7 @@
 #include "json.hpp"
 #include "syscollector.hpp"
 #include "syscollector.h"
+#include "schemaValidator.hpp"
 #include <mock_sysinfo.hpp>
 
 using ::testing::_;
@@ -67,6 +68,10 @@ class SyscollectorVDTest : public ::testing::Test
         {
             // Clean up singleton instance
             Syscollector::instance().destroy();
+
+            // initSyncProtocol() loads the embedded schemas into this singleton. Left loaded, it
+            // validates the events of whichever suite runs next.
+            SchemaValidator::SchemaValidatorFactory::getInstance().reset();
         }
 
         // Helper function for log callback

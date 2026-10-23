@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Builds output/<arch>/libbpf-bootstrap.tar.gz (modern.bpf.o + libbpf.so) from this branch.
-# Requires (Ubuntu 24.04): clang-20 from apt.llvm.org, zig, libelf-dev, zlib1g-dev, git, make.
+# Requires (Ubuntu 24.04): clang-20 from apt.llvm.org, zig, libelf-dev, zlib1g-dev, git, make, curl, python3.
 
 set -euo pipefail
 
@@ -34,7 +34,19 @@ PREFIX_MAP="-ffile-prefix-map=${TMP}=/build -ffile-prefix-map=${REPO_ROOT}=/wazu
 git init -q "${TMP}/vmlinux.h"
 git -C "${TMP}/vmlinux.h" fetch -q --depth 1 https://github.com/libbpf/vmlinux.h.git "${VMLINUX_H_COMMIT}"
 git -C "${TMP}/vmlinux.h" checkout -q FETCH_HEAD
-git -c advice.detachedHead=false clone -q --depth 1 --branch "${LIBBPF_TAG}" https://github.com/libbpf/libbpf.git "${TMP}/libbpf"
+# The release tarball of the inventory entry, checked against its upstream_sha256: a tag can move.
+read -r LIBBPF_URL LIBBPF_SHA256 < <(python3 - "${REPO_ROOT}/packages/externals/dependencies.json" "${LIBBPF_TAG}" <<'PY'
+import json, sys
+entry = next(e for e in json.load(open(sys.argv[1]))["entries"] if e["name"] == "libbpf-bootstrap")
+if entry["revision"] != sys.argv[2]:
+    sys.exit("libbpf-bootstrap: revision %s in the inventory, LIBBPF_TAG %s" % (entry["revision"], sys.argv[2]))
+print(entry["url"].replace("{version}", entry["version"]).replace("{revision}", entry["revision"]), entry["upstream_sha256"])
+PY
+)
+curl -fsSL --retry 3 -o "${TMP}/libbpf.tar.gz" "${LIBBPF_URL}"
+[ "$(sha256sum "${TMP}/libbpf.tar.gz" | cut -d' ' -f1)" = "${LIBBPF_SHA256}" ] || fail "sha256 mismatch for ${LIBBPF_URL}"
+mkdir -p "${TMP}/libbpf"
+tar -xzf "${TMP}/libbpf.tar.gz" -C "${TMP}/libbpf" --strip-components=1
 mkdir -p "${TMP}/libbpf-headers" "${TMP}/headers"
 ln -s "${TMP}/libbpf/src" "${TMP}/libbpf-headers/bpf"
 cp /usr/include/libelf.h /usr/include/gelf.h /usr/include/zlib.h /usr/include/zconf.h "${TMP}/headers/"
