@@ -109,6 +109,7 @@ by both packages, run by `postinst`/`%post`, `install.sh` and `src/init/wazuh-se
 | remoted, authd, apid | `certs/remoted.pem`, `apid.pem`, `root-ca.pem`, or the names configured in `wazuh-manager.conf` and `api.yaml` (directly in `certs/`) | `root:wazuh-manager 0640`; the leaf, then its intermediates and optionally the root (what `--install` writes: leaf + CA); each daemon sends the whole file |
 | indexer connector, clusterd | `certs/indexer-ca.pem`, `indexer-connector.pem`, `indexer-connector-key.pem`; keystore `indexer` family | `root:wazuh-manager 0640` |
 | `wazuh-manager-control` | exit status and stderr of `--check` / `--prestart` | non-zero refuses the start; for `--check` the message follows the relayed lines: `UNSAFE` → unsafe, `INVALID` → invalid, neither → cannot check (error 22); `--prestart` → unresolved (error 21) |
+| DEB `postinst`, RPM `%post` | exit status and stderr of `--install` / `--upgrade`, and whether `export/credentials.env` exists afterwards | stderr is captured and relayed after stdout; on a fresh install the saved-password hint is printed only when the file exists, and a non-zero exit or any `MISSING`, `INVALID` or `UNSAFE` line prints that the resolution is incomplete and names `--install` as the command to repeat. The problem-line grammar is therefore read by two consumers |
 | the indexer (producer) | — | `/etc/wazuh-indexer/export/{credentials.env,ca.pem,manager-client.pem,manager-client-key.pem}`, root-owned, not group- or world-writable |
 
 ## Tests

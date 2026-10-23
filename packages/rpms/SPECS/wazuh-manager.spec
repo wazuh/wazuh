@@ -494,13 +494,28 @@ rm -f ${CONF_DIR}/shared/merged.mg  >/dev/null 2>&1
 # they could not resolve. The service refuses to start and names what is missing; that is where the
 # check belongs, because the answer changes between these two moments and only the answer at start
 # matters.
+#
+# Its standard error is relayed as is, after its progress lines, and kept: every problem is one
+# `MISSING|INVALID|UNSAFE <subject>: <reason>` line there (the contract wazuh-manager-control reads
+# too), and an unsafe entry stops the run before anything is written. The next-steps block below
+# must not claim what the resolver did not do, so it reads the outcome from that output and from
+# the files, never from the mode alone.
+CRED_STATUS=0
+CRED_ERR=""
+CRED_INCOMPLETE="no"
 if [ -x %{_localstatedir}/bin/wazuh-manager-resolve-credentials ]; then
   if [ "$1" -eq 1 ]; then
     CRED_MODE="--install"
   else
     CRED_MODE="--upgrade"
   fi
-  %{_localstatedir}/bin/wazuh-manager-resolve-credentials ${CRED_MODE} -H %{_localstatedir} || true
+  { CRED_ERR=$(%{_localstatedir}/bin/wazuh-manager-resolve-credentials ${CRED_MODE} -H %{_localstatedir} 2>&1 1>&3) || CRED_STATUS=$?; } 3>&1
+  if [ -n "${CRED_ERR}" ]; then
+    printf '%%s\n' "${CRED_ERR}" >&2
+  fi
+  if [ "${CRED_STATUS}" -ne 0 ] || printf '%%s\n' "${CRED_ERR}" | grep -q -E '^(MISSING|INVALID|UNSAFE) '; then
+    CRED_INCOMPLETE="yes"
+  fi
 fi
 
 # Delete the installation files used to configure the manager
@@ -510,8 +525,19 @@ rm -rf %{_localstatedir}/packages_files
 # package neither starts nor enables the service, and nothing else says where the Server API passwords
 # went. Only on a fresh install ($1 = 1): an upgrade or a reinstall finds the passwords already set.
 # install.sh prints its own start hint, so this lives in the package only.
+#
+# The password hint is printed only when the resolver published the file: a worker publishes nothing
+# (the Server API runs on the master), and a run stopped by an unsafe or invalid entry writes nothing
+# at all. When the resolver reported a problem, the manager refuses to start until it is fixed, and
+# only --install issues what the install could not, so that is the command to repeat.
 if [ "$1" -eq 1 ]; then
-  echo "Server API passwords saved in ${CONF_DIR}/export/credentials.env (readable by root only)."
+  if [ -f "${CONF_DIR}/export/credentials.env" ]; then
+    echo "Server API passwords saved in ${CONF_DIR}/export/credentials.env (readable by root only)."
+  fi
+  if [ "${CRED_INCOMPLETE}" = "yes" ]; then
+    echo "Credential resolution is incomplete: the manager does not start until every MISSING, INVALID or UNSAFE entry reported above is resolved."
+    echo "Fix them, then run: %{_localstatedir}/bin/wazuh-manager-resolve-credentials --install -H %{_localstatedir}"
+  fi
   if command -v systemctl > /dev/null 2>&1 && systemctl > /dev/null 2>&1; then
     echo "Start the manager and enable it at boot: systemctl enable --now wazuh-manager"
   else
