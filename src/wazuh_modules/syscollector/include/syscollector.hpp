@@ -513,8 +513,11 @@ class EXPORTED Syscollector final
          * The set a per-container budget has to iterate: taken from the rows
          * themselves rather than from the live container list, so a container
          * that still holds rows is still accounted for even once it is gone.
+         *
+         * @param unsyncedOnly Only containers with at least one withheld
+         *                     (sync=0) row: the ones post-scan promotion can act on.
          */
-        std::set<std::string> containersWithRowsIn(const std::string& tableName);
+        std::set<std::string> containersWithRowsIn(const std::string& tableName, bool unsyncedOnly = false);
 
         /**
          * @brief How many collected rows are being held back in one scope.

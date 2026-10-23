@@ -4898,7 +4898,7 @@ size_t Syscollector::unsyncedCountFor(const std::string& tableName,
     return count;
 }
 
-std::set<std::string> Syscollector::containersWithRowsIn(const std::string& tableName)
+std::set<std::string> Syscollector::containersWithRowsIn(const std::string& tableName, bool unsyncedOnly)
 {
     std::set<std::string> ids;
 
@@ -4910,11 +4910,11 @@ std::set<std::string> Syscollector::containersWithRowsIn(const std::string& tabl
     // DISTINCT so the engine returns one row per container, not one per stored
     // inventory row.
     auto selectQuery = SelectQuery::builder()
-                       .table(tableName)
-                       .columnList({CONTAINER_ID_COLUMN})
-                       .rowFilter("WHERE container_id != ''")
-                       .distinctOpt(true)
-                       .build();
+                           .table(tableName)
+                           .columnList({CONTAINER_ID_COLUMN})
+                           .rowFilter(unsyncedOnly ? "WHERE sync=0 AND container_id != ''" : "WHERE container_id != ''")
+                           .distinctOpt(true)
+                           .build();
 
     m_spDBSync->selectRows(selectQuery.query(),
                            [&ids](ReturnTypeCallback, const nlohmann::json & row)
@@ -5542,41 +5542,10 @@ size_t Syscollector::promoteUnsyncedItems(const std::string& index,
     // cap and leaving the container's own backlog untouched.
     const std::string scoped{scopeFilter(scope, containerId)};
 
-    // Count items with sync=0
-    size_t unsyncedCount = 0;
-    auto countQuery = SelectQuery::builder()
-                      .table(tableName)
-                      .columnList({"COUNT(*)"})
-                      .rowFilter("WHERE sync=0" + scoped)
-                      .build();
-
-    m_spDBSync->selectRows(countQuery.query(),
-                           [&unsyncedCount](ReturnTypeCallback, const nlohmann::json & result)
-    {
-        if (result.contains("COUNT(*)") && result["COUNT(*)"].is_number())
-        {
-            unsyncedCount = result["COUNT(*)"].get<size_t>();
-        }
-    });
-
-    if (unsyncedCount == 0)
-    {
-        if (m_logFunction)
-        {
-            m_logFunction(LOG_DEBUG_VERBOSE, reason + ": No unsynced items available to promote for index '" + index + "'");
-        }
-
-        return 0;
-    }
-
-    // Determine how many to promote
-    size_t toPromote = std::min(maxToPromote, unsyncedCount);
-
-    if (m_logFunction)
-    {
-        m_logFunction(LOG_DEBUG, reason + ": Promoting " + std::to_string(toPromote) +
-                      " unsynced items for index '" + index + "'");
-    }
+    // No COUNT(sync=0) first: the LIMITed SELECT below already returns at most
+    // what is withheld, and this runs once per container per index every scan
+    // under m_limitsMutex (#37532 / #9).
+    const size_t toPromote = std::min<size_t>(maxToPromote, std::numeric_limits<uint32_t>::max());
 
     // Get ordering fields
     std::string orderFields = getFirstPrimaryKeyField(tableName);
@@ -5614,6 +5583,24 @@ size_t Syscollector::promoteUnsyncedItems(const std::string& index,
     {
         recordsToPromote.push_back(result);
     });
+
+    if (recordsToPromote.empty())
+    {
+        if (m_logFunction)
+        {
+            m_logFunction(LOG_DEBUG_VERBOSE,
+                          reason + ": No unsynced items available to promote for index '" + index + "'");
+        }
+
+        return 0;
+    }
+
+    if (m_logFunction)
+    {
+        m_logFunction(LOG_DEBUG,
+                      reason + ": Promoting " + std::to_string(recordsToPromote.size()) +
+                          " unsynced items for index '" + index + "'");
+    }
 
     // Generate INSERT events and mark as sync=1
     std::vector<std::pair<std::string, nlohmann::json>> itemsToMarkSynced;
@@ -5696,7 +5683,19 @@ void Syscollector::promoteItemsAfterScanLocked(LimitScope scope)
         }
         else
         {
-            targets = containersWithRowsIn(tableName);
+            // Only containers with something withheld: promotion has nothing to
+            // do for the rest, and walking every container cost two queries
+            // per container per index on each scan (#37532 / #9). A container
+            // with no backlog withholds nothing, so its saturation notice is
+            // re-armed and will fire again once rows are actually held back.
+            targets = containersWithRowsIn(tableName, true);
+
+            for (auto it = m_limitReported.begin(); it != m_limitReported.end();)
+            {
+                it = (it->second == index && !it->first.empty() && targets.count(it->first) == 0)
+                         ? m_limitReported.erase(it)
+                         : std::next(it);
+            }
         }
 
         for (const auto& containerId : targets)

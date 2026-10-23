@@ -34,6 +34,7 @@
     friend class SyscollectorIdentityTest;                                                                             \
     FRIEND_TEST(SyscollectorImpTest, AdmissionRetractsAndRestoresRetainedRows);                                        \
     FRIEND_TEST(SyscollectorImpTest, DocumentBudgetsShrinkPromoteAndReleasePerContainer);                              \
+    FRIEND_TEST(SyscollectorImpTest, PostScanPromotionVisitsOnlyContainersWithBacklog);                                \
     FRIEND_TEST(SyscollectorImpTest, ContainerBaselineAdmissionAndCleanup);                                            \
     FRIEND_TEST(SyscollectorIdentityTest, AbsentMarkerIsAdoptedWithoutResync);                                         \
     FRIEND_TEST(SyscollectorIdentityTest, UnchangedIdIsANoOp);                                                         \
