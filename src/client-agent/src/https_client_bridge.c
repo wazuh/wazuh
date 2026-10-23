@@ -309,12 +309,29 @@ static bool bridge_get_required_int(const cJSON *parent, const char *name, int *
     return true;
 }
 
+/* For a field that is OPTIONAL inside a REQUIRED object: a manager older than
+ * the field sends the object without it, and bridge_get_required_int() would
+ * fail the whole block rather than the one field. Leaves *value untouched, so
+ * the caller's initialised default stands. */
+static void bridge_get_optional_int(const cJSON *parent, const char *name, int *value)
+{
+    cJSON *field = cJSON_GetObjectItem(parent, name);
+    if (field && cJSON_IsNumber(field)) {
+        *value = field->valueint;
+    }
+}
+
 static bool bridge_parse_fim_limits(const cJSON *limits_obj, fim_limits_t *fim)
 {
     cJSON *module = cJSON_GetObjectItem(limits_obj, "fim");
     if (!module || !cJSON_IsObject(module)) {
         return false;
     }
+
+    /* Optional, and deliberately so: a manager that predates the per-container
+     * cap (#37532 / O10) sends "fim" without it, and failing the whole FIM block
+     * over a field it has never heard of would break every such pairing. */
+    bridge_get_optional_int(module, "container_file", &fim->container_file);
 
     return bridge_get_required_int(module, "file", &fim->file) &&
            bridge_get_required_int(module, "registry_key", &fim->registry_key) &&
@@ -327,6 +344,22 @@ static bool bridge_parse_syscollector_limits(const cJSON *limits_obj, syscollect
     if (!module || !cJSON_IsObject(module)) {
         return false;
     }
+
+    /* Optional, and deliberately so: a manager that predates the per-container
+     * caps (#37532 / O10) sends "syscollector" without them, and failing the
+     * whole block over fields it has never heard of would break every such
+     * pairing. Unlimited is the behaviour those managers already produce. */
+    bridge_get_optional_int(module, "container_processes", &syscollector->container_processes);
+    bridge_get_optional_int(module, "container_ports", &syscollector->container_ports);
+    bridge_get_optional_int(module, "container_packages", &syscollector->container_packages);
+    bridge_get_optional_int(module, "container_users", &syscollector->container_users);
+    bridge_get_optional_int(module, "container_groups", &syscollector->container_groups);
+    bridge_get_optional_int(module, "container_os_info", &syscollector->container_os_info);
+    bridge_get_optional_int(module, "container_network_iface", &syscollector->container_network_iface);
+    bridge_get_optional_int(module, "container_network_protocol", &syscollector->container_network_protocol);
+    bridge_get_optional_int(module, "container_network_address", &syscollector->container_network_address);
+    bridge_get_optional_int(module, "container_hardware", &syscollector->container_hardware);
+    bridge_get_optional_int(module, "container_services", &syscollector->container_services);
 
     return bridge_get_required_int(module, "hotfixes", &syscollector->hotfixes) &&
            bridge_get_required_int(module, "packages", &syscollector->packages) &&
@@ -343,26 +376,6 @@ static bool bridge_parse_syscollector_limits(const cJSON *limits_obj, syscollect
            bridge_get_required_int(module, "browser_extensions", &syscollector->browser_extensions);
 }
 
-static bool bridge_parse_syscollector_containers_limits(const cJSON *limits_obj,
-                                                        syscollector_containers_limits_t *containers)
-{
-    cJSON *module = cJSON_GetObjectItem(limits_obj, "syscollector_containers");
-    if (!module || !cJSON_IsObject(module)) {
-        return false;
-    }
-
-    return bridge_get_required_int(module, "processes", &containers->processes) &&
-           bridge_get_required_int(module, "ports", &containers->ports) &&
-           bridge_get_required_int(module, "packages", &containers->packages) &&
-           bridge_get_required_int(module, "users", &containers->users) &&
-           bridge_get_required_int(module, "groups", &containers->groups) &&
-           bridge_get_required_int(module, "os_info", &containers->os_info) &&
-           bridge_get_required_int(module, "network_iface", &containers->network_iface) &&
-           bridge_get_required_int(module, "network_protocol", &containers->network_protocol) &&
-           bridge_get_required_int(module, "network_address", &containers->network_address) &&
-           bridge_get_required_int(module, "hardware", &containers->hardware);
-}
-
 static bool bridge_parse_sca_limits(const cJSON *limits_obj, sca_limits_t *sca)
 {
     cJSON *module = cJSON_GetObjectItem(limits_obj, "sca");
@@ -371,6 +384,24 @@ static bool bridge_parse_sca_limits(const cJSON *limits_obj, sca_limits_t *sca)
     }
 
     return bridge_get_required_int(module, "checks", &sca->checks);
+}
+
+/* The whole object is optional, not just the field inside it.
+ *
+ * Every other block here is required because every manager that speaks this
+ * contract sends it. This one is newer than the contract, so a manager that
+ * predates it sends no "containers" key at all -- and treating that as a parse
+ * failure would reject the ENTIRE limits payload, leaving the agent with no
+ * limits whatsoever rather than with one fewer. The caller's initialised
+ * default (unlimited) stands instead. */
+static void bridge_parse_containers_limits(const cJSON *limits_obj, containers_limits_t *containers)
+{
+    cJSON *module = cJSON_GetObjectItem(limits_obj, "containers");
+    if (!module || !cJSON_IsObject(module)) {
+        return;
+    }
+
+    bridge_get_optional_int(module, "synced", &containers->synced);
 }
 
 static bool bridge_parse_limits(const cJSON *root, module_limits_t *limits)
@@ -386,13 +417,7 @@ static bool bridge_parse_limits(const cJSON *root, module_limits_t *limits)
         return false;
     }
 
-    /* OPTIONAL, unlike the three above: a manager older than #37532 sends no
-     * "syscollector_containers" object, and failing the whole handshake over a
-     * field it has never heard of would break every such pairing. The struct is
-     * already initialised to unlimited, which is the right answer in that case. */
-    if (!bridge_parse_syscollector_containers_limits(limits_obj, &limits->syscollector_containers)) {
-        mdebug1("Handshake carries no 'syscollector_containers' limits; container inventory stays unlimited.");
-    }
+    bridge_parse_containers_limits(limits_obj, &limits->containers);
 
     limits->limits_received = true;
     return true;

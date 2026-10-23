@@ -86,7 +86,9 @@ bool fim_recovery_persist_table_and_resync(char* table_name, AgentSyncProtocolHa
         merror("Failed to increase version for each entry in %s", table_name);
         return false;
     }
-    // Get all synced items from the table
+    // sync=1 is the authoritative set of documents currently reported to the manager.
+    // Container FIM writes this flag after a successful report, so recovery restores
+    // admitted container rows while leaving rows withheld by the reporting limit out.
     cJSON* items = fim_db_get_every_element(table_name, "WHERE sync=1");
     if (!items) {
         merror("Failed to retrieve elements from table: %s", table_name);
@@ -162,7 +164,14 @@ bool fim_recovery_persist_table_and_resync(char* table_name, AgentSyncProtocolHa
         char* value = NULL;
 #endif
         if (strcmp(table_name, FIMDB_FILE_TABLE_NAME) == 0) {
-            id_str = strdup(path);
+            const char* container_id = cJSON_GetStringValue(cJSON_GetObjectItem(item_copy, "container_id"));
+            if (container_id && *container_id) {
+                size_t id_len = strlen(container_id) + strlen(path) + 2;
+                os_calloc(id_len, sizeof(char), id_str);
+                snprintf(id_str, id_len, "%s:%s", container_id, path);
+            } else {
+                id_str = strdup(path);
+            }
             index = FIM_FILES_SYNC_INDEX;
         }
 #ifdef WIN32

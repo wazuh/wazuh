@@ -58,6 +58,23 @@ namespace wazuh::container_instances_client
         /// so on a 100-container node this is the difference between 101
         /// connections and 1.
         nlohmann::json record;
+
+        /// Whether this container may report to the manager.
+        ///
+        /// TRUE by default, and that default is load-bearing in two directions.
+        /// A server older than the key says nothing, and must read as "report
+        /// everything" — the alternative silently stops a working agent from
+        /// reporting at all. A `resolve` reply also says nothing, because
+        /// admission is a question about reporting and a resolve asks about
+        /// identity; read this from a `list` reply, which is where every
+        /// consumer already gets its container set.
+        ///
+        /// A container with `synced == false` still EXISTS and must still be
+        /// counted as known. Dropping it from the caller's known set is not a
+        /// smaller version of withholding it — the stale sweeps delete on
+        /// absence from that set, so it would delete the container's rows
+        /// instead of holding them back.
+        bool synced {true};
     };
 
     /// One transition of the published container set.
@@ -532,6 +549,10 @@ namespace wazuh::container_instances_client
             else if (it = item.find("cgroup_id"); it != item.end() && it->is_string())
             {
                 ref.cgroupId = parseDecimalU64(*it);
+            }
+            if (const auto it = item.find("synced"); it != item.end() && it->is_boolean())
+            {
+                ref.synced = it->get<bool>();
             }
             if (ref.containerId.empty())
             {

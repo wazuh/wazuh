@@ -30,6 +30,8 @@
  */
 
 #include "container_baseline_fim.h"
+
+#include "container_row_budget.h"
 #include "container_baseline.h"
 #include "container_baseline_fim_bridge.h"
 #include "container_event_drain.hpp"
@@ -43,21 +45,26 @@
 #include <climits>
 #include <cstdio>
 #include <cstdlib>
+#include <map>
 #include <memory>
+#include <mutex>
 #include <set>
 #include <string>
+#include <unordered_set>
 #include <vector>
 
 namespace {
 
-/// Plain pass-through for a message that needs no formatting. Preferred over
-/// the templates below by overload resolution, so a literal message skips
-/// snprintf entirely — no 512-byte truncation, and no -Wformat-security
-/// diagnostic for a "format" string that was never a format string.
-void LogDebug(const char* msg)
-{
-    fim_container_baseline_log_debug(msg);
-}
+    std::recursive_mutex container_state_mutex;
+
+    /// Plain pass-through for a message that needs no formatting. Preferred over
+    /// the templates below by overload resolution, so a literal message skips
+    /// snprintf entirely — no 512-byte truncation, and no -Wformat-security
+    /// diagnostic for a "format" string that was never a format string.
+    void LogDebug(const char* msg)
+    {
+        fim_container_baseline_log_debug(msg);
+    }
 
 void LogWarn(const char* msg)
 {
@@ -79,6 +86,14 @@ void LogDebug(const char* fmt, Args... args)
 }
 
 template <typename... Args>
+void LogWarn(const char* fmt, Args... args)
+{
+    char buffer[512];
+    std::snprintf(buffer, sizeof(buffer), fmt, args...);
+    fim_container_baseline_log_warn(buffer);
+}
+
+template <typename... Args>
 void LogError(const char* fmt, Args... args)
 {
     char buffer[512];
@@ -90,7 +105,37 @@ struct ContainerTxnCtx {
     std::string container_id;
     /// cb_fim_origin_t: what the stateless alert reports as its "mode".
     int origin{CB_FIM_ORIGIN_SCAN};
+    std::map<std::string, std::pair<uint64_t, int>> pending_sync {};
 };
+
+void writeSyncFlag(const cJSON* row, int sync)
+{
+    pending_sync_item_t item {};
+    item.json = const_cast<cJSON*>(row);
+    item.sync_value = sync;
+    if (fim_db_set_sync_flag(const_cast<char*>(FIMDB_FILE_TABLE_NAME), &item, sync) != 0)
+    {
+        LogError("Container FIM: could not persist a reporting flag.");
+    }
+}
+
+void flushSyncFlags(ContainerTxnCtx& ctx)
+{
+    for (const auto& [path, update] : ctx.pending_sync)
+    {
+        const auto& [version, sync] = update;
+        std::unique_ptr<cJSON, decltype(&cJSON_Delete)> json {cJSON_CreateObject(), cJSON_Delete};
+        if (!json || !cJSON_AddStringToObject(json.get(), "path", path.c_str()) ||
+            !cJSON_AddStringToObject(json.get(), "container_id", ctx.container_id.c_str()) ||
+            !cJSON_AddNumberToObject(json.get(), "version", static_cast<double>(version)))
+        {
+            LogError("Container FIM: could not allocate a pending reporting flag.");
+            continue;
+        }
+        writeSyncFlag(json.get(), sync);
+    }
+    ctx.pending_sync.clear();
+}
 
 // C-compatible txn callback — called by DBSync for INSERTED / MODIFIED / DELETED.
 void container_txn_callback(ReturnTypeCallback result_type, const cJSON* result_json, void* user_data)
@@ -142,7 +187,18 @@ void container_txn_callback(ReturnTypeCallback result_type, const cJSON* result_
 
     char* row_str = cJSON_PrintUnformatted(row_data);
     if (!row_str) return;
-    fim_persist_baseline_row(id.c_str(), static_cast<int>(op), "wazuh-states-fim-files", row_str, version);
+    const int sync =
+        fim_persist_baseline_row(id.c_str(), static_cast<int>(op), "wazuh-states-fim-files", row_str, version);
+    const cJSON* stored_sync = cJSON_GetObjectItem(row_data, "sync");
+    const int previous_sync = cJSON_IsNumber(stored_sync) ? stored_sync->valueint : 0;
+    if (op != OPERATION_DELETE && sync >= 0 && sync != previous_sync)
+    {
+        ctx->pending_sync[cJSON_GetStringValue(path_json)] = {version, sync};
+    }
+    else if (op == OPERATION_DELETE)
+    {
+        ctx->pending_sync.erase(cJSON_GetStringValue(path_json));
+    }
     free(row_str);
 }
 
@@ -156,8 +212,14 @@ void container_txn_callback(ReturnTypeCallback result_type, const cJSON* result_
 class ScopedContainerTxn {
     public:
         ScopedContainerTxn(const std::string& container_id, int origin)
-            : m_ctx{container_id, origin}
+            : m_ctx {container_id, origin}
+            , m_limit {fim_container_baseline_row_limit()}
         {
+            fim_container_doc_budget_initialize(container_id.c_str());
+            if (m_limit > 0)
+            {
+                loadStoredPaths();
+            }
             nlohmann::json txn_json;
             txn_json["tables"] = nlohmann::json::array({"file_entry"});
             txn_json["scope"]  = {{"column", FIMDB_FILE_CONTAINER_ID_COLUMN},
@@ -180,6 +242,7 @@ class ScopedContainerTxn {
             if (m_txn) {
                 fim_db_transaction_close(m_txn);
                 m_txn = nullptr;
+                flushSyncFlags(m_ctx);
             }
         }
 
@@ -188,14 +251,64 @@ class ScopedContainerTxn {
 
         [[nodiscard]] bool valid() const { return m_txn != nullptr; }
 
-        void syncRow(const std::string& row_json)
+        /// Stores one row, subject to this container's own row ceiling.
+        ///
+        /// The ceiling is measured against what the container HOLDS: the rows
+        /// stored before this pass plus the new ones stored since. Counting only
+        /// this pass let a capped pass, which kept its unrefreshed rows, be
+        /// followed by another that stored up to the limit again (#37532).
+        ///
+        /// Two refusals are possible and they mean different things. The
+        /// per-container cap is refused here, and only for a row the container
+        /// does not hold yet, so it never stops a stored row from being
+        /// refreshed. The NODE ceiling is refused by dbsync underneath (max_rows
+        /// on file_entry), and used to be swallowed by the LogDebug below —
+        /// measured on a real node, 8,643 rows were refused that way while the
+        /// scan reported "0 partial scan(s)". That one can hit any row, so it
+        /// leaves the row set incomplete; rowsBlockingDeletes() carries it.
+        bool syncRow(const nlohmann::json& row)
         {
-            if (!m_txn) return;
+            if (!m_txn) return false;
 
-            if (fim_db_transaction_sync_row_json(m_txn, "file_entry", row_json.c_str()) != FIMDB_OK) {
+            const auto path_it = row.find("path");
+            const std::string path = (path_it != row.end() && path_it->is_string()) ? path_it->get<std::string>() : "";
+            const bool stored = m_stored_known && m_stored.count(path) != 0;
+
+            if (!container_row_admitted(m_limit, m_stored_known ? m_held : m_synced, stored))
+            {
+                ++m_capped;
+                return false;
+            }
+
+            if (fim_db_transaction_sync_row_json(m_txn, "file_entry", row.dump().c_str()) != FIMDB_OK)
+            {
+                ++m_unstored;
                 LogDebug("Container FIM baseline: failed to sync a row for container '%s'.",
                         m_ctx.container_id.c_str());
+                return false;
             }
+
+            ++m_synced;
+            if (m_stored_known && !stored)
+            {
+                m_stored.insert(path);
+                ++m_held;
+            }
+            return true;
+        }
+
+        [[nodiscard]] size_t rowsSynced() const { return m_synced; }
+        [[nodiscard]] size_t rowsRefused() const
+        {
+            return m_capped + m_unstored;
+        }
+
+        /// Refusals after which delete detection would remove files that still
+        /// exist. Without the stored path set, the cap cannot tell a refresh from
+        /// a new row, so its refusals count too.
+        [[nodiscard]] size_t rowsBlockingDeletes() const
+        {
+            return m_unstored + (m_stored_known ? 0 : m_capped);
         }
 
         /// @param detect_deletions false for an incomplete scan: the rows this
@@ -215,11 +328,44 @@ class ScopedContainerTxn {
             }
 
             m_txn = nullptr; // closed either way
+            flushSyncFlags(m_ctx);
         }
 
     private:
+        /// Read before the scoped transaction opens, like the document count.
+        void loadStoredPaths()
+        {
+            std::unique_ptr<cJSON, decltype(&cJSON_Delete)> paths {
+                fim_db_get_container_paths(m_ctx.container_id.c_str()), cJSON_Delete};
+            if (!paths)
+            {
+                LogWarn("Container FIM baseline: could not read the rows stored for container '%s'; "
+                        "its row limit counts this pass only, and suppresses delete detection when it bites.",
+                        m_ctx.container_id.c_str());
+                return;
+            }
+
+            const cJSON* item = nullptr;
+            cJSON_ArrayForEach(item, paths.get())
+            {
+                if (cJSON_IsString(item) && item->valuestring)
+                {
+                    m_stored.insert(item->valuestring);
+                }
+            }
+            m_held = m_stored.size();
+            m_stored_known = true;
+        }
+
         ContainerTxnCtx m_ctx;
-        TXN_HANDLE      m_txn{nullptr};
+        const int m_limit;
+        TXN_HANDLE m_txn {nullptr};
+        std::unordered_set<std::string> m_stored;
+        bool m_stored_known {false};
+        std::size_t m_held {0};
+        std::size_t m_synced {0};
+        std::size_t m_capped {0};
+        std::size_t m_unstored {0};
 };
 
 /// Streams the baseline into per-container transactions.
@@ -285,8 +431,19 @@ class BaselineDriver {
             beginContainer(container_id);
             if (!m_txn || !m_txn->valid()) return;
 
-            m_txn->syncRow(row.dump());
-            ++m_rows;
+            // m_rows counts rows the database KEPT, not rows handed to it.
+            // Counting the latter is what let a baseline report 100,063 rows
+            // while the table held 91,420 -- the shortfall appeared in no
+            // counter and no log line (23.4). A total that cannot be wrong in
+            // that direction is the whole point of reporting one.
+            if (m_txn->syncRow(row))
+            {
+                ++m_rows;
+            }
+            else
+            {
+                ++m_refused;
+            }
         }
 
         void onStatus(const cb_container_status_t& status)
@@ -308,7 +465,39 @@ class BaselineDriver {
             // so previously-stored rows for this container age out as DELETED.
             beginContainer(id);
 
-            const bool partial = status.partial != 0;
+            // status.partial is the WALKER's verdict, reached before a single
+            // row touches the database. A row the database refused is just as
+            // missing, and until now nothing carried that back: measured on a
+            // real node, 8,643 rows were refused while every scan in the window
+            // reported "0 partial scan(s)". Suppressing deletions on it is D11
+            // rule 4 — never let a partial view delete.
+            const bool current = m_txn && m_current == id;
+            const std::size_t refused = current ? m_txn->rowsRefused() : 0;
+            const std::size_t blocking = current ? m_txn->rowsBlockingDeletes() : 0;
+            const bool partial = container_scan_is_partial(status.partial != 0, blocking);
+
+            if (blocking > 0)
+            {
+                LogWarn("Container FIM baseline: container '%s' stored %zu row(s) and %zu were refused "
+                        "(per-container limit %d, node limit %d). Its file state is incomplete, so "
+                        "delete detection is suppressed for it this pass.",
+                        id.c_str(),
+                        m_txn ? m_txn->rowsSynced() : 0,
+                        refused,
+                        fim_container_baseline_row_limit(),
+                        fim_container_baseline_node_row_limit());
+            }
+            else if (refused > 0)
+            {
+                // Every refused row is one the container never stored, so files
+                // that vanished still age out and free room for the next pass.
+                LogWarn("Container FIM baseline: container '%s' is at its limit of %d stored row(s); "
+                        "%zu new file(s) were not stored. Stored files are still refreshed and deletions "
+                        "still detected.",
+                        id.c_str(),
+                        fim_container_baseline_row_limit(),
+                        refused);
+            }
 
             if (partial) {
                 // D17: each reason is named, because they are not equally
@@ -368,7 +557,10 @@ class BaselineDriver {
                     if (!cJSON_IsString(item) || !item->valuestring || item->valuestring[0] == '\0') continue;
 
                     const std::string id{item->valuestring};
-                    if (known.find(id) == known.end()) {
+                    // The listing precedes the walk; a container discovered
+                    // during it is still live even if absent from that snapshot.
+                    if (known.find(id) == known.end() && m_scanned.find(id) == m_scanned.end())
+                    {
                         stale.insert(id);
                     }
                 }
@@ -380,12 +572,19 @@ class BaselineDriver {
                         id.c_str());
                 ScopedContainerTxn txn{id, m_origin};
                 txn.finish(true); // no rows synced -> every stored row becomes DELETED
+
+                // After the rows are gone, not before: the DELETEs above run
+                // through container_txn_callback and decrement the very count
+                // being released, so releasing first would drop a map entry
+                // that the sweep then re-creates and leaves non-zero.
+                fim_container_doc_budget_release(id.c_str());
             }
 
             m_stale = stale.size();
         }
 
         [[nodiscard]] size_t rows() const { return m_rows; }
+        [[nodiscard]] size_t refused() const { return m_refused; }
         [[nodiscard]] size_t scanned() const { return m_scanned.size(); }
         [[nodiscard]] size_t partial() const { return m_partial; }
         [[nodiscard]] size_t stale() const { return m_stale; }
@@ -399,13 +598,45 @@ class BaselineDriver {
             m_direct_ctx.container_id = container_id;
             m_direct_ctx.origin       = m_origin;
 
+            if (!directRowAdmitted(container_id, row))
+            {
+                ++m_refused;
+                return;
+            }
+
+            fim_container_doc_budget_initialize(container_id.c_str());
+
             if (fim_db_container_file_sync(row.dump().c_str(), container_txn_callback, &m_direct_ctx) != FIMDB_OK) {
                 LogDebug("Container FIM reconcile: failed to persist a row for container '%s'.",
                         container_id.c_str());
                 return;
             }
 
+            flushSyncFlags(m_direct_ctx);
             ++m_rows;
+        }
+
+        /// The row ceiling on the reconcile path, which stores rows between
+        /// baselines and used to bypass it entirely. A failed lookup admits the
+        /// row: the node-wide ceiling still bounds the table.
+        static bool directRowAdmitted(const std::string& container_id, const nlohmann::json& row)
+        {
+            const int limit = fim_container_baseline_row_limit();
+            const auto path = row.find("path");
+            if (limit <= 0 || path == row.end() || !path->is_string())
+            {
+                return true;
+            }
+
+            const int stored =
+                fim_db_count_container_rows(container_id.c_str(), path->get_ref<const std::string&>().c_str());
+            if (stored != 0)
+            {
+                return true;
+            }
+
+            const int held = fim_db_count_container_rows(container_id.c_str(), nullptr);
+            return held < 0 || container_row_admitted(limit, static_cast<size_t>(held), false);
         }
 
         void beginContainer(const std::string& container_id)
@@ -435,7 +666,8 @@ class BaselineDriver {
         std::unique_ptr<ScopedContainerTxn> m_txn;
         std::string                          m_current;
         std::set<std::string>                m_scanned;
-        size_t                               m_rows{0};
+        size_t                               m_rows{0};     // stored
+        size_t                               m_refused{0};  // offered and turned away
         size_t                               m_partial{0};
         size_t                               m_stale{0};
         size_t                               m_malformed_rows{0};
@@ -457,10 +689,28 @@ void status_sink(const cb_container_status_t* status, void* user_data)
     static_cast<BaselineDriver*>(user_data)->onStatus(*status);
 }
 
-void container_id_sink(const char* container_id, void* user_data)
+/// Collects every known container and, separately, the ones allowed to report.
+///
+/// Both halves come from one reply deliberately. `known` is what authorises
+/// deletions, so it must hold EVERY container -- a withheld one has not been
+/// removed, and leaving it out would delete the rows the cap is holding back.
+/// `admitted` is the subset whose rows may still be offered upward.
+struct ContainerListing
+{
+    std::set<std::string> known;
+    std::set<std::string> admitted;
+};
+
+void container_id_sink(const char* container_id, int synced, void* user_data)
 {
     if (!container_id || !user_data) return;
-    static_cast<std::set<std::string>*>(user_data)->insert(container_id);
+
+    auto* listing = static_cast<ContainerListing*>(user_data);
+    listing->known.insert(container_id);
+
+    if (synced != 0) {
+        listing->admitted.insert(container_id);
+    }
 }
 
 
@@ -582,6 +832,7 @@ void DeleteUnlinkedPaths(const fim_container_events::ReconcileRequest& request,
 /// nothing here may throw out of it.
 void ReconcileBatch(const fim_container_events::ReconcileRequest& request)
 {
+    std::lock_guard<std::recursive_mutex> lock(container_state_mutex);
     using fim_container_events::ReconcileMode;
 
     if (request.mode == ReconcileMode::rebaselineAll) {
@@ -659,6 +910,15 @@ void ReconcileBatch(const fim_container_events::ReconcileRequest& request)
 
                 LogDebug("Container FIM reconcile: re-read %zu path(s) for container '%s', %zu row(s).",
                          selected.size(), request.container_id.c_str(), driver.rows());
+
+                if (driver.refused() > 0)
+                {
+                    LogWarn("Container FIM reconcile: container '%s' is at its limit of %d stored row(s); "
+                            "%zu new file(s) were not stored.",
+                            request.container_id.c_str(),
+                            fim_container_baseline_row_limit(),
+                            driver.refused());
+                }
             }
         }
     } catch (const std::exception& err) {
@@ -667,13 +927,86 @@ void ReconcileBatch(const fim_container_events::ReconcileRequest& request)
         LogError("Container FIM reconcile failed with an unknown error.");
     }
 
+    fim_container_doc_budget_report();
     fim_free_container_monitored_paths(paths);
 }
 
 } // namespace
 
+namespace
+{
+
+    using JsonPtr = std::unique_ptr<cJSON, decltype(&cJSON_Delete)>;
+
+    void updateContainerReporting(bool promote)
+    {
+        JsonPtr ids {fim_db_get_distinct_container_ids(FIMDB_FILE_TABLE_NAME), cJSON_Delete};
+        if (!ids)
+        {
+            LogError("Container FIM: could not read containers for reporting reconciliation.");
+            return;
+        }
+
+        const cJSON* id_json = nullptr;
+        cJSON_ArrayForEach(id_json, ids.get())
+        {
+            const char* container_id = cJSON_GetStringValue(id_json);
+            if (!container_id || !*container_id)
+                continue;
+            const bool admitted = fim_container_is_admitted(container_id) != 0;
+            if (admitted != promote)
+                continue;
+
+            fim_container_doc_budget_initialize(container_id);
+            JsonPtr rows {fim_db_get_container_rows(container_id, promote ? 0 : 1), cJSON_Delete};
+            if (!rows)
+            {
+                LogError("Container FIM: could not read reporting rows for container '%s'.", container_id);
+                continue;
+            }
+            const cJSON* row = nullptr;
+            cJSON_ArrayForEach(row, rows.get())
+            {
+                const char* path = cJSON_GetStringValue(cJSON_GetObjectItem(row, "path"));
+                if (!path)
+                {
+                    LogError("Container FIM: reporting row for '%s' has no path.", container_id);
+                    continue;
+                }
+                const auto version = static_cast<uint64_t>(cJSON_GetNumberValue(cJSON_GetObjectItem(row, "version")));
+                const std::string id = std::string(container_id) + ":" + path;
+                std::unique_ptr<char, decltype(&free)> plain {cJSON_PrintUnformatted(row), free};
+                if (!plain)
+                {
+                    LogError("Container FIM: could not serialize reporting row '%s'.", id.c_str());
+                    continue;
+                }
+                const int granted = fim_persist_baseline_row(id.c_str(),
+                                                             promote ? OPERATION_CREATE : OPERATION_DELETE,
+                                                             "wazuh-states-fim-files",
+                                                             plain.get(),
+                                                             version);
+                if (granted >= 0 && (!promote || granted > 0))
+                {
+                    writeSyncFlag(row, promote ? 1 : 0);
+                }
+            }
+            if (!promote)
+                fim_container_doc_budget_release(container_id);
+        }
+    }
+
+} // namespace
+
+extern "C" void fim_container_reconcile_admission(void)
+{
+    std::lock_guard<std::recursive_mutex> lock(container_state_mutex);
+    updateContainerReporting(false);
+}
+
 extern "C" void fim_run_container_baseline(void)
 {
+    std::lock_guard<std::recursive_mutex> lock(container_state_mutex);
     cb_monitored_path_t* paths = nullptr;
     size_t path_count = 0;
 
@@ -688,6 +1021,20 @@ extern "C" void fim_run_container_baseline(void)
     // Nothing below may throw into main(): this runs on syscheckd's main
     // thread, which has no handler of its own.
     try {
+        ContainerListing listing;
+        const int listed = cbaseline_list_containers(CB_DEFAULT_CONNECTOR_SOCKET_PATH, container_id_sink, &listing);
+        const std::set<std::string>& known = listing.known;
+        if (listed >= 0)
+        {
+            std::vector<const char*> admitted;
+            admitted.reserve(listing.admitted.size());
+            for (const auto& id : listing.admitted)
+            {
+                admitted.push_back(id.c_str());
+            }
+            fim_container_set_admitted(admitted.data(), admitted.size());
+        }
+
         BaselineDriver driver;
 
         // check_max_fps() is FIM's own files-per-second token bucket, driven by
@@ -707,9 +1054,6 @@ extern "C" void fim_run_container_baseline(void)
         // this distinction a container restart would delete all of its FIM
         // state and re-create it — a false-positive flood on exactly the event
         // that must be reported accurately.
-        std::set<std::string> known;
-        const int listed = cbaseline_list_containers(CB_DEFAULT_CONNECTOR_SOCKET_PATH, container_id_sink, &known);
-
         // A negative count means the connector never answered, so `known` is
         // empty for want of an answer rather than for want of containers.
         // Sweeping against it would delete every container's FIM state. Skip
@@ -723,15 +1067,19 @@ extern "C" void fim_run_container_baseline(void)
             driver.sweepStale(known);
         }
 
+        updateContainerReporting(true);
+
         if (driver.malformedRows() > 0) {
             LogDebug("Container FIM baseline: discarded %zu malformed row(s).", driver.malformedRows());
         }
 
         fim_report_container_baseline_result(baselined,
                                              driver.rows(),
+                                             driver.refused(),
                                              driver.partial(),
                                              driver.stale(),
-                                             known.size());
+                                             known.size(),
+                                             known.size() - listing.admitted.size());
     } catch (const std::exception& err) {
         LogError("Container FIM baseline failed: %s", err.what());
     } catch (...) {

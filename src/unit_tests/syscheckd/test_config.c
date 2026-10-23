@@ -548,7 +548,7 @@ void test_getSyscheckConfig_no_directories(void **state)
     cJSON *file_limit_enabled = cJSON_GetObjectItem(file_limit, "enabled");
     assert_string_equal(cJSON_GetStringValue(file_limit_enabled), "yes");
     cJSON *file_limit_entries = cJSON_GetObjectItem(file_limit, "entries");
-    assert_int_equal(file_limit_entries->valueint, 100000);
+    assert_int_equal(file_limit_entries->valueint, 300000);
 
     cJSON *registry_limit = cJSON_GetObjectItem(sys_items, "registry_limit");
     cJSON *registry_limit_enabled = cJSON_GetObjectItem(registry_limit, "enabled");

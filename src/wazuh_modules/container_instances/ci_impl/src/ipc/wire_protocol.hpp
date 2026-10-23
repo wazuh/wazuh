@@ -5,6 +5,7 @@
 #include "json.hpp"
 
 #include <optional>
+#include <set>
 #include <string>
 #include <string_view>
 #include <variant>
@@ -235,7 +236,18 @@ namespace wazuh::container_instances::wire
     }
 
     /// Docker records omit the Kubernetes-only keys entirely (absent, not null).
-    [[nodiscard]] inline nlohmann::json recordToJson(const ContainerRecord& record, KeyKind keyKind)
+    ///
+    /// `admitted` is the synchronization decision for this reply, or null when
+    /// the caller has none to give. Null OMITS the `synced` key rather than
+    /// defaulting it, for the same reason `cgroup_id` is omitted below: a
+    /// consumer that reads a key it was handed treats it as an answer, and the
+    /// only honest thing to say on a reply that never consulted the decision is
+    /// nothing. Only `list` replies carry it — every consumer takes admission
+    /// from the list, and a `resolve` exists to attribute one event to one
+    /// container, which is a question about identity rather than reporting.
+    [[nodiscard]] inline nlohmann::json recordToJson(const ContainerRecord& record,
+                                                     KeyKind keyKind,
+                                                     const std::set<std::string>* admitted = nullptr)
     {
         nlohmann::json data;
         data["runtime"] = (record.runtime == ContainerRuntime::kubernetes) ? "kubernetes" : "docker";
@@ -272,6 +284,11 @@ namespace wazuh::container_instances::wire
         if (keyKind == KeyKind::cgroupInode)
         {
             data["cgroup_id"] = std::to_string(record.hostKey);
+        }
+
+        if (admitted != nullptr)
+        {
+            data["synced"] = admitted->count(record.containerId) != 0;
         }
 
         if (record.runtime == ContainerRuntime::kubernetes)
@@ -340,7 +357,10 @@ namespace wazuh::container_instances::wire
 
     /// Adds the delta keys to a `list` reply. Everything here is additive: a
     /// client that does not know these keys reads the reply exactly as before.
-    inline void serialiseDelta(const LifecycleDelta& delta, nlohmann::json& body, KeyKind keyKind)
+    inline void serialiseDelta(const LifecycleDelta& delta,
+                               nlohmann::json& body,
+                               KeyKind keyKind,
+                               const std::set<std::string>* admitted = nullptr)
     {
         // The cursor to come back with. Decimal strings for the 2^53 reason
         // above; its presence is also how a client detects that this server
@@ -380,7 +400,7 @@ namespace wazuh::container_instances::wire
             }
             if (event.record)
             {
-                entry["data"] = recordToJson(*event.record, keyKind);
+                entry["data"] = recordToJson(*event.record, keyKind, admitted);
             }
 
             events.push_back(std::move(entry));
@@ -442,7 +462,7 @@ namespace wazuh::container_instances::wire
                     {
                         if (record)
                         {
-                            containers.push_back(recordToJson(*record, response.keyKind));
+                            containers.push_back(recordToJson(*record, response.keyKind, &response.admitted));
                         }
                     }
                     body["containers"] = std::move(containers);
@@ -450,7 +470,7 @@ namespace wazuh::container_instances::wire
 
                 if (response.delta)
                 {
-                    serialiseDelta(*response.delta, body, response.keyKind);
+                    serialiseDelta(*response.delta, body, response.keyKind, &response.admitted);
                 }
                 break;
             }

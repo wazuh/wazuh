@@ -289,8 +289,8 @@ extern "C" int cbaseline_list_containers(const char* connector_socket_path, cb_c
     if (connector_socket_path == nullptr) return -1;
     return ListContainers(
         connector_socket_path,
-        [sink, user_data](const std::string& containerId) {
+        [sink, user_data](const std::string& containerId, bool synced) {
             if (sink == nullptr) return;
-            sink(containerId.c_str(), user_data);
+            sink(containerId.c_str(), synced ? 1 : 0, user_data);
         });
 }

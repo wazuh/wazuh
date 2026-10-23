@@ -8,13 +8,14 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
  */
-#include "syscollector.h"
-#include "syscollector.hpp"
+#include "defs.h"
+#include "hashHelper.h"
 #include "json.hpp"
 #include "stringHelper.h"
-#include "hashHelper.h"
+#include "syscollector.h"
+#include "syscollector.hpp"
 #include "timeHelper.h"
-#include "defs.h"
+#include <limits>
 #if defined(__linux__)
 // Container lifecycle notifications are a Linux-only path, and this include has
 // to say so: the socket helper reaches for <sys/socket.h>, <sys/un.h> and the
@@ -589,12 +590,16 @@ Syscollector::Syscollector()
     // Initialize document limits to 0 (unlimited) for all indices, in both
     // scopes: a container row must find its own entry rather than fall through
     // to the host's.
+    //
+    // Container COUNTS are deliberately not seeded here: they key on the
+    // container first, and which containers exist is not knowable at
+    // construction. Each is created at zero on first use, and
+    // initializeDocumentCounts() fills in those that already hold rows.
     for (const auto& [table, index] : INDEX_MAP)
     {
         m_documentLimits[index] = 0;
         m_documentCounts[index] = 0;
         m_containerDocumentLimits[index] = 0;
-        m_containerDocumentCounts[index] = 0;
     }
 }
 
@@ -796,18 +801,6 @@ void Syscollector::start()
         }
     }
 
-    // Container-inventory caps, if this manager knows about them. Fetched
-    // separately and non-blocking on purpose: a manager older than #37532 has
-    // no such agcom module, and "unlimited" is the correct answer there.
-    auto containerLimits = fetchContainerDocumentLimitsFromAgentd();
-
-    if (containerLimits.has_value() && !setContainerDocumentLimits(containerLimits.value()))
-    {
-        if (m_logFunction)
-        {
-            m_logFunction(LOG_ERROR, "Failed to apply container document limits obtained from agentd");
-        }
-    }
 
     // Only when the container baseline is enabled: with it off there is no
     // pass to bring forward, so the thread and its socket would be pure cost.
@@ -2242,6 +2235,7 @@ std::size_t Syscollector::sweepContainerRowsNotIn(const std::set<std::string>& k
         }
 
         m_knownContainerIds.erase(staleId);
+        releaseContainerCounts(staleId);
     }
 
     return staleIds.size();
@@ -2271,6 +2265,13 @@ std::size_t Syscollector::sweepContainerRows(const std::vector<std::string>& con
         }
 
         m_knownContainerIds.erase(containerId);
+
+        // The same release the whole-list sweep does. Omitting it here leaked
+        // an entry per container removed through the delta path -- the rows
+        // were gone, but the budget they had spent was never returned, so a
+        // node that churns containers drifts toward a cap that reports no
+        // space while holding none.
+        releaseContainerCounts(containerId);
         ++swept;
     }
 
@@ -2709,17 +2710,39 @@ void Syscollector::scanContainerBaseline(const std::vector<std::string>& only_th
     // merely stopped is still reported here even though it produced no rows
     // above — this is what lets the stale sweep below tell "stopped" apart
     // from "gone" instead of conflating them.
-    std::set<std::string> discoveredIds;
-    const auto idSink = [](const char* containerId, void* userData)
+    // id -> may this container report to the manager. Both answers come from
+    // the same reply on purpose: listing the containers and then asking about
+    // admission separately could straddle a reconcile and attribute one
+    // container's verdict to another.
+    std::map<std::string, bool> discovered;
+    const auto idSink = [](const char* containerId, int synced, void* userData)
     {
-        auto* ids = static_cast<std::set<std::string>*>(userData);
+        auto* ids = static_cast<std::map<std::string, bool>*>(userData);
 
         if (ids && containerId)
         {
-            ids->insert(containerId);
+            (*ids)[containerId] = (synced != 0);
         }
     };
-    const int listed = cbaseline_list_containers(CB_DEFAULT_CONNECTOR_SOCKET_PATH, idSink, &discoveredIds);
+    const int listed = cbaseline_list_containers(CB_DEFAULT_CONNECTOR_SOCKET_PATH, idSink, &discovered);
+
+    // EVERY known container, admitted or not. The sweep below deletes what is
+    // absent from this set, and a container whose rows are merely withheld has
+    // not been removed -- leaving it out here would delete the very rows the
+    // cap is holding back, turning "do not report this yet" into "this is
+    // gone". That distinction is the whole reason the cap withholds instead of
+    // shortening the list.
+    std::set<std::string> discoveredIds;
+
+    for (const auto& entry : discovered)
+    {
+        discoveredIds.insert(entry.first);
+    }
+
+    if (listed >= 0)
+    {
+        setAdmittedContainers(discovered);
+    }
 
     // Containers still in the DB but no longer known to container_instances
     // at all (genuinely removed, not merely stopped): an empty scoped sync
@@ -3676,9 +3699,8 @@ std::vector<nlohmann::json> Syscollector::fetchAllFromTable(const std::string& t
         else if (indexIt != INDEX_MAP.end())
         {
             const std::string& index = indexIt->second;
-            size_t documentLimit = getDocumentLimit(index);
 
-            if (documentLimit > 0)
+            if (syncFilterRequired(index))
             {
                 // With limits: only include items with sync=1 (within document limits)
                 rowFilterClause = "WHERE sync=1";
@@ -4661,12 +4683,152 @@ std::string Syscollector::query(const std::string& jsonQuery)
     }
 }
 
-const char* Syscollector::scopeFilter(LimitScope scope)
+std::string Syscollector::scopeFilter(LimitScope scope, const std::string& containerId)
 {
     // CONTAINER_ID_COLUMN is part of every table's primary key and is stamped
     // '' for host rows (updateChanges() only fills it for container rows), so
     // equality against the empty string is what separates the two populations.
-    return (scope == LimitScope::host) ? " AND container_id=''" : " AND container_id<>''";
+    if (scope == LimitScope::host)
+    {
+        return " AND container_id=''";
+    }
+
+    // A budget is PER CONTAINER (#37532 / O10), so a scoped query names one.
+    // Without an id the caller wants every container's rows — which is right
+    // for "how many container rows exist at all" and wrong for anything that
+    // spends a budget.
+    if (containerId.empty())
+    {
+        return " AND container_id<>''";
+    }
+
+    // Spliced, not bound, because the SelectQuery builder takes a row filter
+    // string. Container ids are lowercase hex by construction, so anything else
+    // is either a bug or an attempt to reach the query — refuse it rather than
+    // quote it, and fall back to the whole-population filter, which is a
+    // superset and therefore cannot under-report a budget.
+    const bool safe = !containerId.empty()
+                      && std::all_of(containerId.begin(), containerId.end(), [](unsigned char c)
+    {
+        return std::isalnum(c) != 0 || c == '-' || c == '_';
+    });
+
+    if (!safe)
+    {
+        return " AND container_id<>''";
+    }
+
+    return " AND container_id='" + containerId + "'";
+}
+
+void Syscollector::setAdmittedContainers(const std::map<std::string, bool>& discovered)
+{
+    std::set<std::string> admitted;
+
+    for (const auto& [containerId, isAdmitted] : discovered)
+    {
+        if (isAdmitted)
+        {
+            admitted.insert(containerId);
+        }
+    }
+
+    std::lock_guard<std::mutex> lock(m_limitsMutex);
+    m_containerAdmissionWithholding = (admitted.size() != discovered.size());
+    const bool lostAdmission = std::any_of(m_admittedContainers.begin(),
+                                           m_admittedContainers.end(),
+                                           [&admitted](const auto& id) { return admitted.count(id) == 0; });
+    m_admittedContainers = std::move(admitted);
+    m_admissionKnown = true;
+
+    // A container that just lost admission always needs retracting. A cap that is
+    // merely still biting does not: once the stored flags have been reconciled,
+    // nothing can have reported a withheld row since -- every path that sets sync=1
+    // asks isContainerAdmittedLocked() first. Without that latch a biting cap would
+    // re-read every container row of all thirteen tables on every single scan, under
+    // m_limitsMutex, to find the nothing it found last time.
+    //
+    // The obligation is remembered rather than acted on directly, because this runs
+    // after the admitted set has already been replaced: see m_admissionRetractionPending.
+    m_admissionRetractionPending =
+        m_admissionRetractionPending || lostAdmission || (m_containerAdmissionWithholding && !m_admissionReconciled);
+
+    if (!m_admissionRetractionPending || !m_spDBSync)
+    {
+        return;
+    }
+
+    if (!m_persistDiffFunction)
+    {
+        if (m_logFunction)
+        {
+            m_logFunction(LOG_ERROR, "Cannot retract de-admitted container inventory without persistence.");
+        }
+
+        // Deliberately still pending: the rows are reported and must not stay that way.
+        return;
+    }
+
+    m_admissionReconciled = true;
+    m_admissionRetractionPending = false;
+
+    // Inspect stored flags as well as the previous set: after restart an
+    // already-reported container may never have been admitted in this process.
+    for (const auto& [table, index] : INDEX_MAP)
+    {
+        std::vector<nlohmann::json> records;
+        auto query = SelectQuery::builder()
+                         .table(table)
+                         .columnList({"*"})
+                         .rowFilter("WHERE sync=1 AND container_id<>''")
+                         .build();
+        m_spDBSync->selectRows(query.query(),
+                               [&records, this](ReturnTypeCallback type, const nlohmann::json& row)
+                               {
+                                   if (type == SELECTED &&
+                                       !isContainerAdmittedLocked(row.at(CONTAINER_ID_COLUMN).get<std::string>()))
+                                   {
+                                       records.push_back(row);
+                                   }
+                               });
+
+        std::vector<std::pair<std::string, nlohmann::json>> demoted;
+        for (const auto& record : records)
+        {
+            auto [data, version] = ecsData(record, table);
+            m_persistDiffFunction(calculateHashId(record, table), OPERATION_DELETE, index, data.dump(), version);
+            demoted.emplace_back(table, record);
+        }
+        updateSyncFlagInDB(demoted, 0);
+    }
+
+    for (auto it = m_containerDocumentCounts.begin(); it != m_containerDocumentCounts.end();)
+    {
+        it = isContainerAdmittedLocked(it->first) ? std::next(it) : m_containerDocumentCounts.erase(it);
+    }
+    for (auto it = m_limitReported.begin(); it != m_limitReported.end();)
+    {
+        it = isContainerAdmittedLocked(it->first) ? std::next(it) : m_limitReported.erase(it);
+    }
+}
+
+bool Syscollector::isContainerAdmittedLocked(const std::string& containerId) const
+{
+    // The host is not a container and never spends this budget.
+    if (containerId.empty())
+    {
+        return true;
+    }
+
+    // Nothing heard yet: report, do not withhold. The alternative makes an
+    // agent that has not yet reached the connector look exactly like one whose
+    // every container was capped.
+    if (!m_admissionKnown)
+    {
+        return true;
+    }
+
+    return m_admittedContainers.count(containerId) != 0;
 }
 
 std::map<std::string, size_t>& Syscollector::limitsFor(LimitScope scope)
@@ -4674,9 +4836,101 @@ std::map<std::string, size_t>& Syscollector::limitsFor(LimitScope scope)
     return (scope == LimitScope::host) ? m_documentLimits : m_containerDocumentLimits;
 }
 
-std::map<std::string, size_t>& Syscollector::countsFor(LimitScope scope)
+size_t& Syscollector::countFor(LimitScope scope, const std::string& index, const std::string& containerId)
 {
-    return (scope == LimitScope::host) ? m_documentCounts : m_containerDocumentCounts;
+    // Host counts are keyed by index alone; container counts by (container,
+    // index), because the budget they spend is each container's own.
+    return (scope == LimitScope::host) ? m_documentCounts[index]
+           : m_containerDocumentCounts[containerId][index];
+}
+
+void Syscollector::releaseContainerCounts(const std::string& containerId)
+{
+    if (containerId.empty())
+    {
+        return;
+    }
+
+    // Called once a container's rows are gone. Without it the map keeps an
+    // entry for every container the node has ever run, and on a host that
+    // churns containers that is a slow leak — of memory, and of the budget
+    // those stale entries still appear to hold.
+    std::lock_guard<std::mutex> lock(m_limitsMutex);
+    m_containerDocumentCounts.erase(containerId);
+
+    // Its saturation state goes with it, or a container id that is reused would
+    // inherit a "already reported" flag it never earned.
+    for (auto it = m_limitReported.begin(); it != m_limitReported.end();)
+    {
+        it = (it->first == containerId) ? m_limitReported.erase(it) : std::next(it);
+    }
+}
+
+size_t Syscollector::unsyncedCountFor(const std::string& tableName,
+                                      LimitScope scope,
+                                      const std::string& containerId)
+{
+    size_t count = 0;
+
+    if (!m_spDBSync)
+    {
+        return count;
+    }
+
+    // Only ever called on the saturated path, and only when that scope newly
+    // saturated, so this costs one COUNT(*) per saturation event rather than
+    // one per scan.
+    auto selectQuery = SelectQuery::builder()
+                       .table(tableName)
+                       .columnList({"COUNT(*)"})
+                       .rowFilter("WHERE sync=0" + scopeFilter(scope, containerId))
+                       .build();
+
+    m_spDBSync->selectRows(selectQuery.query(),
+                           [&count](ReturnTypeCallback, const nlohmann::json & result)
+    {
+        if (result.contains("COUNT(*)") && result["COUNT(*)"].is_number())
+        {
+            count = result["COUNT(*)"].get<size_t>();
+        }
+    });
+
+    return count;
+}
+
+std::set<std::string> Syscollector::containersWithRowsIn(const std::string& tableName, bool unsyncedOnly)
+{
+    std::set<std::string> ids;
+
+    if (!m_spDBSync)
+    {
+        return ids;
+    }
+
+    // DISTINCT so the engine returns one row per container, not one per stored
+    // inventory row.
+    auto selectQuery = SelectQuery::builder()
+                           .table(tableName)
+                           .columnList({CONTAINER_ID_COLUMN})
+                           .rowFilter(unsyncedOnly ? "WHERE sync=0 AND container_id != ''" : "WHERE container_id != ''")
+                           .distinctOpt(true)
+                           .build();
+
+    m_spDBSync->selectRows(selectQuery.query(),
+                           [&ids](ReturnTypeCallback, const nlohmann::json & row)
+    {
+        if (row.contains(CONTAINER_ID_COLUMN) && row[CONTAINER_ID_COLUMN].is_string())
+        {
+            auto id = row[CONTAINER_ID_COLUMN].get<std::string>();
+
+            if (!id.empty())
+            {
+                ids.insert(std::move(id));
+            }
+        }
+    });
+
+    return ids;
 }
 
 namespace
@@ -4699,9 +4953,10 @@ namespace
 void Syscollector::applyDocumentLimit(const std::string& index,
                                       const std::string& tableName,
                                       size_t newLimit,
-                                      LimitScope scope)
+                                      LimitScope scope,
+                                      const std::string& containerId)
 {
-    const std::string scoped{scopeFilter(scope)};
+    const std::string scoped{scopeFilter(scope, containerId)};
 
     // A SUFFIX, not spliced into the message. These strings are asserted on
     // verbatim by syscollectorImp_test.cpp and are the kind of thing an
@@ -4740,8 +4995,8 @@ void Syscollector::applyDocumentLimit(const std::string& index,
         if (m_persistDiffFunction)
         {
             std::string reason = "Document limit changed to unlimited" + scopeSuffix;
-            size_t promoted = promoteUnsyncedItems(index, tableName, INT_MAX, reason, scope);
-            countsFor(scope)[index] = currentCount + promoted;
+            size_t promoted = promoteUnsyncedItems(index, tableName, INT_MAX, reason, scope, containerId);
+            countFor(scope, index, containerId) = currentCount + promoted;
 
             if (m_logFunction)
             {
@@ -4844,7 +5099,7 @@ void Syscollector::applyDocumentLimit(const std::string& index,
             updateSyncFlagInDB(itemsToReset, 0);
         }
 
-        countsFor(scope)[index] = newLimit;
+        countFor(scope, index, containerId) = newLimit;
         return;
     }
 
@@ -4856,12 +5111,12 @@ void Syscollector::applyDocumentLimit(const std::string& index,
         std::string reason = "Document limit increased from " + std::to_string(currentCount) +
                              " to " + std::to_string(newLimit) + scopeSuffix;
 
-        size_t promoted = promoteUnsyncedItems(index, tableName, availableSpace, reason, scope);
-        countsFor(scope)[index] = currentCount + promoted;
+        size_t promoted = promoteUnsyncedItems(index, tableName, availableSpace, reason, scope, containerId);
+        countFor(scope, index, containerId) = currentCount + promoted;
     }
     else
     {
-        countsFor(scope)[index] = currentCount;
+        countFor(scope, index, containerId) = currentCount;
 
         if (m_logFunction)
         {
@@ -4884,8 +5139,25 @@ bool Syscollector::applyLimitsForScope(const nlohmann::json& limits, LimitScope 
         // Convert agentd short names to full index names
         nlohmann::json normalizedLimits = nlohmann::json::object();
 
-        for (auto& [shortName, limit] : limits.items())
+        // One reply carries both scopes, split on the "container_" prefix
+        // (#37532 / O10). A second query bought nothing: the two sets arrive
+        // from the same handshake and are applied in the same pass, and keeping
+        // them apart meant an agcom module that could silently not exist.
+        static const std::string CONTAINER_PREFIX {"container_"};
+
+        for (auto& [rawName, limit] : limits.items())
         {
+            const bool isContainerKey =
+                rawName.rfind(CONTAINER_PREFIX, 0) == 0;
+
+            if (isContainerKey != (scope == LimitScope::container))
+            {
+                continue; // Belongs to the other scope's pass.
+            }
+
+            const std::string shortName =
+                isContainerKey ? rawName.substr(CONTAINER_PREFIX.size()) : rawName;
+
             if (!limit.is_number_unsigned())
             {
                 if (m_logFunction)
@@ -4902,7 +5174,7 @@ bool Syscollector::applyLimitsForScope(const nlohmann::json& limits, LimitScope 
             {
                 if (m_logFunction)
                 {
-                    m_logFunction(LOG_ERROR, "Unknown index from agentd: " + shortName);
+                    m_logFunction(LOG_ERROR, "Unknown index from agentd: " + rawName);
                 }
 
                 return false;
@@ -4922,7 +5194,21 @@ bool Syscollector::applyLimitsForScope(const nlohmann::json& limits, LimitScope 
                 continue;
             }
 
-            applyDocumentLimit(index, tableName, limit.get<size_t>(), scope);
+            if (scope == LimitScope::host)
+            {
+                applyDocumentLimit(index, tableName, limit.get<size_t>(), scope);
+            }
+            else
+            {
+                // A changed limit has to be applied to each container's own
+                // budget. Applied once across the population it would promote
+                // or demote against a count that belongs to no container, and
+                // the per-container counts would then disagree with the rows.
+                for (const auto& containerId : containersWithRowsIn(tableName))
+                {
+                    applyDocumentLimit(index, tableName, limit.get<size_t>(), scope, containerId);
+                }
+            }
         }
 
         return true;
@@ -4940,61 +5226,13 @@ bool Syscollector::applyLimitsForScope(const nlohmann::json& limits, LimitScope 
 
 bool Syscollector::setDocumentLimits(const nlohmann::json& limits)
 {
-    return applyLimitsForScope(limits, LimitScope::host);
+    // Both scopes come from one reply, so both are applied here. Splitting them
+    // into two calls would let an agent apply the host caps and silently skip
+    // the container ones if the second call were ever forgotten.
+    return applyLimitsForScope(limits, LimitScope::host)
+           && applyLimitsForScope(limits, LimitScope::container);
 }
 
-bool Syscollector::setContainerDocumentLimits(const nlohmann::json& limits)
-{
-    return applyLimitsForScope(limits, LimitScope::container);
-}
-std::optional<nlohmann::json> Syscollector::fetchContainerDocumentLimitsFromAgentd()
-{
-    if (!m_agentdQuery)
-    {
-        return std::nullopt;
-    }
-
-    constexpr auto REQUEST_COMMAND = "getdoclimits syscollector_containers";
-
-    // ONE attempt, unlike the host limits' retry-until-success loop. An older
-    // manager answers "err Module limits not configured" forever, and blocking
-    // startup on a module that may legitimately not exist would be a hang, not
-    // a safeguard. Unlimited is the pre-container-inventory behaviour.
-    std::string response_buffer;
-    response_buffer.resize(OS_MAXSTR);
-
-    if (!m_agentdQuery(REQUEST_COMMAND, response_buffer.data(), response_buffer.size()))
-    {
-        if (m_logFunction)
-        {
-            m_logFunction(LOG_DEBUG,
-                          "No container document limits from agentd; container inventory stays unlimited.");
-        }
-
-        return std::nullopt;
-    }
-
-    try
-    {
-        auto limitsJson = nlohmann::json::parse(response_buffer);
-
-        if (m_logFunction)
-        {
-            m_logFunction(LOG_DEBUG, "Container document limits received: " + limitsJson.dump());
-        }
-
-        return limitsJson;
-    }
-    catch (const nlohmann::json::exception& ex)
-    {
-        if (m_logFunction)
-        {
-            m_logFunction(LOG_ERROR, "Failed to parse container document limits JSON: " + std::string(ex.what()));
-        }
-
-        return std::nullopt;
-    }
-}
 
 std::optional<nlohmann::json> Syscollector::fetchDocumentLimitsFromAgentd()
 {
@@ -5098,15 +5336,12 @@ void Syscollector::initializeDocumentCounts()
             // Once per scope: host and container rows live in the same table and
             // the same sync index, so one COUNT(*) would credit the host budget
             // with every container row already reported.
-            for (const auto scope :
-                    {
-                        LimitScope::host, LimitScope::container
-                    })
+            // The host's own budget: one count per index.
             {
                 auto selectQuery = SelectQuery::builder()
                                    .table(table)
                                    .columnList({"COUNT(*)"})
-                                   .rowFilter(std::string{"WHERE sync=1"} + scopeFilter(scope))
+                                   .rowFilter(std::string{"WHERE sync=1"} + scopeFilter(LimitScope::host))
                                    .build();
 
                 size_t count = 0;
@@ -5120,13 +5355,44 @@ void Syscollector::initializeDocumentCounts()
                     }
                 });
 
-                countsFor(scope)[index] = count;
+                countFor(LimitScope::host, index, {}) = count;
 
                 if (m_logFunction)
                 {
                     m_logFunction(LOG_DEBUG, "Initialized document count for index '" + index +
-                                  "': " + std::to_string(count) +
-                                  ((scope == LimitScope::host) ? "" : " [container]"));
+                                  "': " + std::to_string(count));
+                }
+            }
+
+            // One count per CONTAINER per index (#37532 / O10). Counting every
+            // container's rows into one total would restore exactly the shared
+            // budget this scope exists to end, and a restart would then hand a
+            // busy container the whole allowance before any other was read.
+            for (const auto& containerId : containersWithRowsIn(table))
+            {
+                auto selectQuery = SelectQuery::builder()
+                                   .table(table)
+                                   .columnList({"COUNT(*)"})
+                                   .rowFilter(std::string{"WHERE sync=1"}
+                                              + scopeFilter(LimitScope::container, containerId))
+                                   .build();
+
+                size_t count = 0;
+                m_spDBSync->selectRows(selectQuery.query(),
+                                       [&count](ReturnTypeCallback, const nlohmann::json & result)
+                {
+                    if (result.contains("COUNT(*)") && result["COUNT(*)"].is_number())
+                    {
+                        count = result["COUNT(*)"].get<size_t>();
+                    }
+                });
+
+                countFor(LimitScope::container, index, containerId) = count;
+
+                if (m_logFunction)
+                {
+                    m_logFunction(LOG_DEBUG_VERBOSE, "Initialized document count for index '" + index +
+                                  "': " + std::to_string(count) + " [container " + containerId + "]");
                 }
             }
         }
@@ -5163,6 +5429,10 @@ bool Syscollector::checkDocumentLimit(const std::string& table,
                                 data[CONTAINER_ID_COLUMN].is_string() &&
                                 !data[CONTAINER_ID_COLUMN].get<std::string>().empty();
     const LimitScope scope = isContainerRow ? LimitScope::container : LimitScope::host;
+    // Which container's budget this row spends. Empty for host rows, and the
+    // key the container counts are stored under (#37532 / O10).
+    const std::string containerId =
+        isContainerRow ? data[CONTAINER_ID_COLUMN].get<std::string>() : std::string {};
 
     std::lock_guard<std::mutex> lock(m_limitsMutex);
 
@@ -5182,6 +5452,21 @@ bool Syscollector::checkDocumentLimit(const std::string& table,
     if (data.contains("sync") && data["sync"].is_number())
     {
         isAlreadySynced = (data["sync"].get<int>() == 1);
+    }
+
+    // Whether this container may report AT ALL -- a question the per-dimension
+    // budget above never asks. A container that is not admitted withholds every
+    // row in every dimension, and spends no budget doing it: counting a row
+    // nobody can see would let an invisible container hold slots against a
+    // visible one.
+    //
+    // Deletes are deliberately not gated here. A DELETE is only ever emitted
+    // for a row the manager already holds, and withdrawing one it holds is
+    // safe; suppressing it would strand that row on the manager with nothing
+    // left that could remove it.
+    if ((result == INSERTED || result == MODIFIED) && !isContainerAdmittedLocked(containerId))
+    {
+        return false;
     }
 
     if (result == INSERTED || result == MODIFIED)
@@ -5216,9 +5501,9 @@ bool Syscollector::checkDocumentLimit(const std::string& table,
         if (isAlreadySynced)  // sync=1
         {
             // Decrement counter immediately to free up slot
-            if (limit > 0 && countsFor(scope)[index] > 0)
+            if (limit > 0 && countFor(scope, index, containerId) > 0)
             {
-                countsFor(scope)[index]--;
+                countFor(scope, index, containerId)--;
             }
 
             return true;  // Generate DELETE event
@@ -5244,9 +5529,10 @@ size_t Syscollector::promoteUnsyncedItems(const std::string& index,
                                           const std::string& tableName,
                                           size_t maxToPromote,
                                           const std::string& reason,
-                                          LimitScope scope)
+                                          LimitScope scope,
+                                          const std::string& containerId)
 {
-    if (maxToPromote == 0 || !m_spDBSync)
+    if (maxToPromote == 0 || !m_spDBSync || (scope == LimitScope::container && !isContainerAdmittedLocked(containerId)))
     {
         return 0;
     }
@@ -5254,43 +5540,12 @@ size_t Syscollector::promoteUnsyncedItems(const std::string& index,
     // Scoped, and it matters: without the predicate a host budget with space
     // would promote CONTAINER rows into it, reporting them against the host's
     // cap and leaving the container's own backlog untouched.
-    const std::string scoped{scopeFilter(scope)};
+    const std::string scoped{scopeFilter(scope, containerId)};
 
-    // Count items with sync=0
-    size_t unsyncedCount = 0;
-    auto countQuery = SelectQuery::builder()
-                      .table(tableName)
-                      .columnList({"COUNT(*)"})
-                      .rowFilter("WHERE sync=0" + scoped)
-                      .build();
-
-    m_spDBSync->selectRows(countQuery.query(),
-                           [&unsyncedCount](ReturnTypeCallback, const nlohmann::json & result)
-    {
-        if (result.contains("COUNT(*)") && result["COUNT(*)"].is_number())
-        {
-            unsyncedCount = result["COUNT(*)"].get<size_t>();
-        }
-    });
-
-    if (unsyncedCount == 0)
-    {
-        if (m_logFunction)
-        {
-            m_logFunction(LOG_DEBUG_VERBOSE, reason + ": No unsynced items available to promote for index '" + index + "'");
-        }
-
-        return 0;
-    }
-
-    // Determine how many to promote
-    size_t toPromote = std::min(maxToPromote, unsyncedCount);
-
-    if (m_logFunction)
-    {
-        m_logFunction(LOG_DEBUG, reason + ": Promoting " + std::to_string(toPromote) +
-                      " unsynced items for index '" + index + "'");
-    }
+    // No COUNT(sync=0) first: the LIMITed SELECT below already returns at most
+    // what is withheld, and this runs once per container per index every scan
+    // under m_limitsMutex (#37532 / #9).
+    const size_t toPromote = std::min<size_t>(maxToPromote, std::numeric_limits<uint32_t>::max());
 
     // Get ordering fields
     std::string orderFields = getFirstPrimaryKeyField(tableName);
@@ -5328,6 +5583,24 @@ size_t Syscollector::promoteUnsyncedItems(const std::string& index,
     {
         recordsToPromote.push_back(result);
     });
+
+    if (recordsToPromote.empty())
+    {
+        if (m_logFunction)
+        {
+            m_logFunction(LOG_DEBUG_VERBOSE,
+                          reason + ": No unsynced items available to promote for index '" + index + "'");
+        }
+
+        return 0;
+    }
+
+    if (m_logFunction)
+    {
+        m_logFunction(LOG_DEBUG,
+                      reason + ": Promoting " + std::to_string(recordsToPromote.size()) +
+                          " unsynced items for index '" + index + "'");
+    }
 
     // Generate INSERT events and mark as sync=1
     std::vector<std::pair<std::string, nlohmann::json>> itemsToMarkSynced;
@@ -5385,7 +5658,7 @@ void Syscollector::promoteItemsAfterScanLocked(LimitScope scope)
     // For each index with a limit, promote items to fill available slots
     for (const auto& [index, limit] : limitsFor(scope))
     {
-        if (limit == 0)
+        if (limit == 0 && scope == LimitScope::host)
         {
             continue;  // No limit, skip
         }
@@ -5397,44 +5670,111 @@ void Syscollector::promoteItemsAfterScanLocked(LimitScope scope)
             continue;
         }
 
-        // Current count is already updated by DELETEs during scan
-        size_t currentCount = countsFor(scope)[index];
+        // One budget per container, so one promotion pass per container — and
+        // exactly one pass, with an empty id, for the host (#37532 / O10).
+        // Promoting the container population as a whole is what let one
+        // container consume another's allowance, with value-ordered promotion
+        // (package name, pid) deciding which rows survived.
+        std::set<std::string> targets;
 
-        // Calculate available space
-        size_t availableSpace = (currentCount < limit) ? (limit - currentCount) : 0;
-
-        if (availableSpace == 0)
+        if (scope == LimitScope::host)
         {
-            if (m_logFunction)
+            targets.insert(std::string {});
+        }
+        else
+        {
+            // Only containers with something withheld: promotion has nothing to
+            // do for the rest, and walking every container cost two queries
+            // per container per index on each scan (#37532 / #9). A container
+            // with no backlog withholds nothing, so its saturation notice is
+            // re-armed and will fire again once rows are actually held back.
+            targets = containersWithRowsIn(tableName, true);
+
+            for (auto it = m_limitReported.begin(); it != m_limitReported.end();)
             {
-                m_logFunction(LOG_DEBUG_VERBOSE, "Index '" + index + "' is at limit (" +
-                              std::to_string(limit) + "), no items to promote");
+                it = (it->second == index && !it->first.empty() && targets.count(it->first) == 0)
+                         ? m_limitReported.erase(it)
+                         : std::next(it);
+            }
+        }
+
+        for (const auto& containerId : targets)
+        {
+            // A container that may not report keeps its rows at sync=0. Without
+            // this, post-scan promotion would walk straight past the withholding
+            // decision checkDocumentLimit() just made and promote the very rows
+            // it declined -- the cap would appear to do nothing, intermittently,
+            // depending on whether a scan had run.
+            if (!isContainerAdmittedLocked(containerId))
+            {
+                continue;
             }
 
-            continue;
-        }
+            // Current count is already updated by DELETEs during scan
+            size_t currentCount = countFor(scope, index, containerId);
 
-        if (m_logFunction)
-        {
-            m_logFunction(LOG_DEBUG_VERBOSE, "Index '" + index + "' has " +
-                          std::to_string(availableSpace) + " available slots (current: " +
-                          std::to_string(currentCount) + ", limit: " + std::to_string(limit) +
-                          "). Promoting items with deterministic ordering.");
-        }
+            // Calculate available space
+            size_t availableSpace = limit == 0               ? std::numeric_limits<uint32_t>::max()
+                                    : (currentCount < limit) ? (limit - currentCount)
+                                                             : 0;
 
-        // Promote first availableSpace items with sync=0 using deterministic order
-        std::string reason = std::string{"Post-scan promotion"} +
-                             ((scope == LimitScope::host) ? "" : " [container]");
-        size_t promoted = promoteUnsyncedItems(index, tableName, availableSpace, reason, scope);
+            const std::string scopeSuffix = (scope == LimitScope::host)
+                                            ? std::string {}
+                                            : " [container "
+                                            + containerId + "]";
 
-        // Update counter with promoted items
-        countsFor(scope)[index] = currentCount + promoted;
+            if (availableSpace == 0)
+            {
+                // Saturation is reported at a level an operator will see, and
+                // ONCE per (scope, index, container) until it clears. A limit
+                // nobody can observe is not a limit; a limit that says so every
+                // scan is a limit nobody reads. The previous message was
+                // LOG_DEBUG_VERBOSE, which is to say invisible.
+                const auto key = std::make_pair(containerId, index);
 
-        if (m_logFunction && promoted > 0)
-        {
-            m_logFunction(LOG_DEBUG_VERBOSE, "Successfully promoted " + std::to_string(promoted) +
-                          " items for index '" + index + "' (new count: " +
-                          std::to_string(countsFor(scope)[index]) + ")");
+                if (m_limitReported.insert(key).second)
+                {
+                    const size_t withheld = unsyncedCountFor(tableName, scope, containerId);
+
+                    if (m_logFunction)
+                    {
+                        m_logFunction(LOG_INFO,
+                                      "Inventory limit reached for '" + index + "' (" +
+                                      std::to_string(limit) + " documents)" + scopeSuffix +
+                                      ". " + std::to_string(withheld) +
+                                      " collected row(s) are held back and will not reach the "
+                                      "manager until the limit is raised or rows are freed.");
+                    }
+                }
+
+                continue;
+            }
+
+            // Below the limit again: let it report once more if it saturates.
+            m_limitReported.erase(std::make_pair(containerId, index));
+
+            if (m_logFunction)
+            {
+                m_logFunction(LOG_DEBUG_VERBOSE, "Index '" + index + "' has " +
+                              std::to_string(availableSpace) + " available slots (current: " +
+                              std::to_string(currentCount) + ", limit: " + std::to_string(limit) +
+                              "). Promoting items with deterministic ordering." + scopeSuffix);
+            }
+
+            // Promote first availableSpace items with sync=0 using deterministic order
+            std::string reason = std::string{"Post-scan promotion"} +
+                                 ((scope == LimitScope::host) ? "" : " [container]");
+            size_t promoted = promoteUnsyncedItems(index, tableName, availableSpace, reason, scope, containerId);
+
+            // Update counter with promoted items
+            countFor(scope, index, containerId) = currentCount + promoted;
+
+            if (m_logFunction && promoted > 0)
+            {
+                m_logFunction(LOG_DEBUG_VERBOSE, "Successfully promoted " + std::to_string(promoted) +
+                              " items for index '" + index + "' (new count: " +
+                              std::to_string(countFor(scope, index, containerId)) + ")" + scopeSuffix);
+            }
         }
     }
 }
@@ -5769,10 +6109,19 @@ void Syscollector::clearTablesForIndices(const std::vector<std::string>& indices
     }
 }
 
-size_t Syscollector::getDocumentLimit(const std::string& index)
+bool Syscollector::syncFilterRequired(const std::string& index)
 {
     std::lock_guard<std::mutex> limitsLock(m_limitsMutex);
-    return m_documentLimits[index];
+
+    if (m_documentLimits[index] > 0 || m_containerDocumentLimits[index] > 0)
+    {
+        return true;
+    }
+
+    // A withheld container leaves every one of its rows at sync=0 whatever the
+    // per-dimension budgets say, so the filter is required even when no budget
+    // is configured at all.
+    return m_containerAdmissionWithholding;
 }
 
 // LCOV_EXCL_START
@@ -5788,14 +6137,13 @@ bool Syscollector::checkIfFullSyncRequired(const std::string& tableName)
     if (indexIt != INDEX_MAP.end())
     {
         const std::string& index = indexIt->second;
-        size_t documentLimit = getDocumentLimit(index);
 
-        if (documentLimit > 0)
+        if (syncFilterRequired(index))
         {
             // With limits: only include items with sync=1 in checksum
             // This matches what the manager has (only synced items were sent)
             rowFilter = "WHERE sync=1";
-            m_logFunction(LOG_DEBUG, "Calculating checksum with filter 'sync=1' (limit=" + std::to_string(documentLimit) + ")");
+            m_logFunction(LOG_DEBUG, "Calculating checksum with filter 'sync=1'");
         }
         else
         {
@@ -6027,15 +6375,13 @@ bool Syscollector::resyncTableToManager(const std::string& tableName, const std:
 
     std::vector<nlohmann::json> items;
 
-    // Determine if we need to filter by sync=1
-    // Only filter when document limits are configured (limit > 0)
-    // If limit == 0 (unlimited), recover all items without filtering
-    size_t documentLimit = getDocumentLimit(index);
+    // Determine if we need to filter by sync=1: whenever anything can leave a
+    // row at sync=0, including a withheld container.
     std::string rowFilterClause;
 
     try
     {
-        if (documentLimit > 0)
+        if (syncFilterRequired(index))
         {
             // With limits: only recover items with sync=1
             // Items with sync=0 exceeded the document limit and should not be recovered

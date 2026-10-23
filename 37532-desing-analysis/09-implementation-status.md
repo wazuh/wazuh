@@ -282,9 +282,12 @@ cmocka was available and they could actually be run) — and four steps turned o
 lives entirely in `container_live_fim.cpp` and the Model B reconciler, neither of which this branch
 imports, or was already here in a stronger form.
 
-Two parts of the tail are **decision-blocked, not skipped**: seam S1 (per-table `partial`) and the
+Two parts of the tail were **decision-blocked, not skipped**: seam S1 (per-table `partial`) and the
 per-dimension container row limits both define what an incomplete scan authorises, which is exactly
-what [D17](12-blocking-decisions.md) is open on.
+what [D17](12-blocking-decisions.md) was open on. **Both are resolved.** D17 landed in `e56d57b41b`
+(the status facts are separated), and the limits landed on `37532-nfr3-container-limits` — where a
+row refused by a cap now sets `row_cap_hit` for *that container*, so its deletions are suppressed.
+That is the answer to what an incomplete scan authorises: nothing. See [23](23-nfr3-container-limits.md).
 
 ### Validated end to end on 2026-09-07, and what still is not
 
@@ -451,10 +454,11 @@ window, which is [D15](12-blocking-decisions.md) at single-row granularity.
 | 30 | Consumer-side tests | The orchestrator is covered, and the *scoped-transaction contract* is pinned against the real `libfimdb` (`ce231b2c6c`, extended in `9b068abb04` with the `MODIFIED` payload shape and what `close()` does to untouched rows, and in `ccf47ab93c` with the non-transactional upsert that replaces it). What is still untested is the consumers' own transaction *handling* — the `BaselineDriver` state machine and its error branches, which is where [C26](03-findings-correctness.md) and [C27](03-findings-correctness.md) both lived. Neither would have been caught by a test that reads `fim.db` back: C27's damage sat in an uncommitted transaction (see [12 §12.16](12-blocking-decisions.md#1216-the-lifecycle-question-answered-by-measurement-2026-09-08)) |
 | — | ~~Stateless alerts for container FIM~~ | **Done, `3d55895056`** ([14](14-spike-integration-plan.md) WP2). Both questions it had to settle are answered there: a container path resolves against container-tagged `<directories>` entries only, and the whole-node baseline does not alert |
 | — | `rt_file.bpf.o` is not yet supplied | **Newly identified**, [14 §14.6](14-spike-integration-plan.md). Route decided (a committed per-architecture prebuilt) and the lookup path is in place (`94d697c39d`); what remains is fetching the portable vendored `vmlinux.h`, compiling, and **load-testing on a real kernel** before a binary is committed. Until then the container event path does not run on a package |
-| — | ~~Per-dimension container row limits~~ | **Done, `ce04396e50`** ([14](14-spike-integration-plan.md) WP4), and the premise it was deferred on was wrong: container rows already traverse `checkDocumentLimit()` on this branch, so the enforcement had somewhere to land. The spike needed its Model B reconciler because *its* path bypassed dbsync. Validated on the node: 32 container package rows collected against a container budget of 2, 2 promoted, host counts untouched |
+| — | ~~Per-dimension container row limits~~ | **Done, `ce04396e50`** ([14](14-spike-integration-plan.md) WP4), and the premise it was deferred on was wrong: container rows already traverse `checkDocumentLimit()` on this branch, so the enforcement had somewhere to land. The spike needed its Model B reconciler because *its* path bypassed dbsync. Validated on the node: 32 container package rows collected against a container budget of 2, 2 promoted, host counts untouched. **Superseded on `37532-nfr3-container-limits` ([23](23-nfr3-container-limits.md), O10 / [#40097](https://github.com/wazuh/wazuh/issues/40097)):** `ce04396e50` shipped them in a namespace of their own and as **one allowance shared across every container**; both are now wrong. They are spelled `syscollector.container_<dim>_limit` inside the existing namespace, the dimension set is **derived** from `CONTAINER_BASELINE_TABLES` (which adds `services`) instead of hand-kept, and each applies **per container**. Container FIM gained the document limit it never had, and both scopes gained a **row** cap above dbsync — a document limit gates `sync` and never bounded the database |
 | 31 | Module boundaries and naming | `container_baseline` is still a library that looks like a wmodule, and the FIM driver still lives under `src/ebpf/` |
 | 33 | Remove `IsOverlayWhiteout` / `OsBaselineRow::family` | Kept and documented instead: the whiteout helper is the one piece an M1 lower-layer fallback would need |
-| 39–40 | Node-level benchmark and hash-vs-oracle validation | Require a real multi-container node; cannot be done in WSL |
+| 39 | ~~Node-level benchmark~~ | **Done 2026-10-08 on `wazuh_manager`, [23](23-nfr3-container-limits.md)** — N = 6 / 16 / 56 containers. It found three defects the micro-benchmark could not: container FIM fills the host's scope-blind `file_entry` table silently, coverage at the ceiling is decided by walk order, and a saturated table stays saturated for up to 12 hours ([#40329](https://github.com/wazuh/wazuh/issues/40329)) |
+| 40 | Hash-vs-oracle validation | Still owed. Requires a real multi-container node; not done in [22](22-container-e2e-validation-report.md) either, and listed there as not-run |
 
 ## Environment notes found while verifying
 

@@ -10,11 +10,13 @@
 
 #if defined(__linux__)
 
+#include "agentd_query.h"
 #include "container_instances.h"
 #include "sym_load.h"
 #include "wmodules.h"
 #include "wm_container_instances.h"
 #include <cJSON.h>
+#include <limits.h>
 
 static void* wm_container_instances_main(wm_container_instances_t* data);
 static void wm_container_instances_destroy(wm_container_instances_t* data);
@@ -67,6 +69,45 @@ static cJSON* wm_container_instances_build_config(const wm_container_instances_t
     return config;
 }
 
+/* How many containers may report to the manager (#37532).
+ *
+ * Read here rather than inside the module because this is modulesd, where
+ * w_query_agentd already lives; the module itself is a shared object loaded by
+ * symbol and would otherwise need its own link against the agent's query
+ * socket for one integer.
+ *
+ * Wait for the initial handshake, just like the other limit consumers.
+ * The first received limits do not restart the agent, so a one-shot query
+ * would otherwise leave discovery unlimited until the next restart.
+ */
+static int wm_container_instances_sync_limit(void)
+{
+    while (!wm_shutdown_requested)
+    {
+        char json_buffer[OS_MAXSTR] = {0};
+        if (w_query_agentd(WM_CONTAINER_INSTANCES_LOGTAG, "getdoclimits containers", json_buffer, sizeof(json_buffer)))
+        {
+            cJSON* root = cJSON_Parse(json_buffer);
+            const cJSON* synced = cJSON_GetObjectItem(root, "synced");
+            if (cJSON_IsNumber(synced) && synced->valuedouble >= 0 &&
+                synced->valuedouble <= INT_MAX && synced->valuedouble == synced->valueint)
+            {
+                const int limit = synced->valueint;
+                cJSON_Delete(root);
+                return limit;
+            }
+            cJSON_Delete(root);
+            mtwarn(WM_CONTAINER_INSTANCES_LOGTAG, "Invalid getdoclimits containers reply; retrying.");
+        }
+        else
+        {
+            mtdebug1(WM_CONTAINER_INSTANCES_LOGTAG, "Document limits are not available yet; retrying.");
+        }
+        sleep(1);
+    }
+    return -1;
+}
+
 void* wm_container_instances_main(wm_container_instances_t* data)
 {
     if (!data || !data->enabled)
@@ -86,6 +127,13 @@ void* wm_container_instances_main(wm_container_instances_t* data)
     if (container_instances_start_ptr)
     {
         cJSON* config = wm_container_instances_build_config(data);
+        const int limit = wm_container_instances_sync_limit();
+        if (limit < 0)
+        {
+            cJSON_Delete(config);
+            return NULL;
+        }
+        cJSON_AddNumberToObject(config, "synced_container_limit", limit);
         container_instances_start_ptr(mtLoggingFunctionsWrapper, config);
         cJSON_Delete(config);
     }

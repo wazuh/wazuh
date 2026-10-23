@@ -487,6 +487,19 @@ bool fetch_document_limits_from_agentd(){
         }
     }
 
+    /* Optional within the fim reply: a manager that predates the per-container
+     * cap (#37532 / O10) simply does not send it, and container FIM stays
+     * unlimited, which is what it did before the cap existed. */
+    cJSON* container_file = cJSON_GetObjectItem(root, "container_file");
+    if (container_file && cJSON_IsNumber(container_file))
+    {
+        const double value = cJSON_GetNumberValue(container_file);
+        if (value >= 0)
+        {
+            syscheck.container_file_limit = (int)value;
+        }
+    }
+
     cJSON* registry_key = cJSON_GetObjectItem(root, "registry_key");
     if (registry_key && cJSON_IsNumber(registry_key))
     {
@@ -508,6 +521,7 @@ bool fetch_document_limits_from_agentd(){
     }
 
     cJSON_Delete(root);
+
     return true;
 }
 

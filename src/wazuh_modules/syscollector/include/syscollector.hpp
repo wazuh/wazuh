@@ -424,12 +424,20 @@ class EXPORTED Syscollector final
         bool recoveryIntervalHasEllapsed(const std::string& tableName, int64_t integrityInterval);
 
         /**
-         * @brief Get the configured document limit for a given index, thread-safely.
+         * @brief Whether a re-send of this index must be restricted to sync=1.
          *
-         * @param index Index name to look up (e.g. "wazuh-states-inventory-packages").
-         * @return The configured limit, or 0 if unlimited/not configured.
+         * The three paths that re-send an index wholesale -- the data-context
+         * fetch, the checksum, and the recovery resync -- have to withhold the
+         * same rows the scan withheld, or a row that was deliberately never
+         * reported reaches the manager by the back door, and the cap holds only
+         * until the next checksum mismatch.
+         *
+         * True when ANY mechanism can leave a row at sync=0: the host budget,
+         * the per-container budget, or the container-count cap. Asking only the
+         * host budget was the defect -- it ships at 0, so these paths took the
+         * unfiltered branch on exactly the default configuration.
          */
-        size_t getDocumentLimit(const std::string& index);
+        bool syncFilterRequired(const std::string& index);
 
         /**
          * @brief Which population of rows a document limit applies to.
@@ -452,10 +460,38 @@ class EXPORTED Syscollector final
          * @brief SQL predicate selecting one scope's rows, to be appended to an
          *        existing WHERE clause.
          *
+         * A container budget is PER CONTAINER (#37532 / O10), so a query that
+         * spends one must name its container. Omitting the id selects every
+         * container's rows, which is right for "how many container rows exist"
+         * and wrong for anything that spends a budget.
+         *
          * @param scope Scope to filter for.
-         * @return " AND container_id=''" or " AND container_id<>''".
+         * @param containerId One container, or empty for the whole scope.
+         * @return " AND container_id=''", " AND container_id<>''" or
+         *         " AND container_id='<id>'".
          */
-        static const char* scopeFilter(LimitScope scope);
+        static std::string scopeFilter(LimitScope scope, const std::string& containerId = {});
+
+        /**
+         * @brief Record which containers may report, from one connector reply.
+         *
+         * @param discovered Every known container, mapped to its verdict.
+         *
+         * Call only when the connector actually answered. A failed query
+         * reports no containers, and taking that as "nothing is admitted"
+         * would withhold every container's rows on a momentary blip -- the
+         * same class of mistake as sweeping against an empty list, differing
+         * only in being recoverable.
+         */
+        void setAdmittedContainers(const std::map<std::string, bool>& discovered);
+
+        /**
+         * @brief Whether a container may report. Caller must hold m_limitsMutex.
+         *
+         * True for the host scope (an empty id is not a container) and true
+         * for every container until a connector reply says otherwise.
+         */
+        bool isContainerAdmittedLocked(const std::string& containerId) const;
 
         /**
          * @brief The limits map for a scope. Caller must hold m_limitsMutex.
@@ -463,9 +499,43 @@ class EXPORTED Syscollector final
         std::map<std::string, size_t>& limitsFor(LimitScope scope);
 
         /**
-         * @brief The counts map for a scope. Caller must hold m_limitsMutex.
+         * @brief One scope's count for one index. Caller must hold m_limitsMutex.
+         *
+         * Host counts key on the index alone; container counts key on
+         * (container, index), because the budget each row spends is its own
+         * container's.
          */
-        std::map<std::string, size_t>& countsFor(LimitScope scope);
+        size_t& countFor(LimitScope scope, const std::string& index, const std::string& containerId);
+
+        /**
+         * @brief Container ids with at least one row in a table.
+         *
+         * The set a per-container budget has to iterate: taken from the rows
+         * themselves rather than from the live container list, so a container
+         * that still holds rows is still accounted for even once it is gone.
+         *
+         * @param unsyncedOnly Only containers with at least one withheld
+         *                     (sync=0) row: the ones post-scan promotion can act on.
+         */
+        std::set<std::string> containersWithRowsIn(const std::string& tableName, bool unsyncedOnly = false);
+
+        /**
+         * @brief How many collected rows are being held back in one scope.
+         *
+         * Rows with sync=0: collected, stored, and not reported to the manager
+         * because the scope is at its limit. Caller must hold m_limitsMutex.
+         */
+        size_t unsyncedCountFor(const std::string& tableName,
+                                LimitScope scope,
+                                const std::string& containerId);
+
+        /**
+         * @brief Drops a container's document counts once its rows are gone.
+         *
+         * Takes m_limitsMutex itself, so it must NOT be called with the lock
+         * already held.
+         */
+        void releaseContainerCounts(const std::string& containerId);
 
         /**
          * @brief Validates a JSON message against schema and logs validation errors
@@ -520,7 +590,8 @@ class EXPORTED Syscollector final
                                     const std::string& tableName,
                                     size_t maxToPromote,
                                     const std::string& reason,
-                                    LimitScope scope);
+                                    LimitScope scope,
+                                    const std::string& containerId = {});
 
         /**
          * @brief Promotes items after scan to fill available slots
@@ -571,20 +642,6 @@ class EXPORTED Syscollector final
         bool setDocumentLimits(const nlohmann::json& limits);
 
         /**
-         * @brief Sets the container-inventory document limits.
-         *
-         * Same short-name keys as setDocumentLimits(), applied to the container
-         * scope's own budget. Unknown keys are an error, as they are for the
-         * host — but the container scanner collects ten of the thirteen
-         * dimensions, so a manager sending `hotfixes`, `services` or
-         * `browser_extensions` here is misconfigured, not merely verbose.
-         *
-         * @param limits JSON object mapping short dimension names to limits.
-         * @return true if the limits were applied.
-         */
-        bool setContainerDocumentLimits(const nlohmann::json& limits);
-
-        /**
          * @brief Applies one index's new limit within one scope: adjusts the
          *        stored count, promotes unsynced rows into new space, and emits
          *        DELETE events for rows a reduced limit no longer admits.
@@ -596,13 +653,17 @@ class EXPORTED Syscollector final
         void applyDocumentLimit(const std::string& index,
                                 const std::string& tableName,
                                 size_t newLimit,
-                                LimitScope scope);
+                                LimitScope scope,
+                                const std::string& containerId = {});
 
         /**
-         * @brief Shared body of setDocumentLimits() and
-         *        setContainerDocumentLimits(): normalises agentd's short
-         *        dimension names to sync index names, then applies each to one
-         *        scope's budget.
+         * @brief Applies one scope's share of agentd's reply.
+         *
+         * One reply carries both scopes: container caps are spelled
+         * `container_<dimension>` and host caps are not, so each pass takes the
+         * keys belonging to its own scope and ignores the rest. Short names are
+         * then normalised to sync index names and applied to that scope's
+         * budget (#37532 / O10).
          */
         bool applyLimitsForScope(const nlohmann::json& limits, LimitScope scope);
 
@@ -623,17 +684,6 @@ class EXPORTED Syscollector final
          * @return Optional JSON with limits if available, empty optional otherwise
          */
         std::optional<nlohmann::json> fetchDocumentLimitsFromAgentd();
-
-        /**
-         * @brief Fetches the container-inventory document limits from agentd.
-         *
-         * Sends "getdoclimits syscollector_containers". Unlike its host
-         * counterpart this does NOT retry forever: a manager older than #37532
-         * has no such module, so an error is the expected steady state and
-         * blocking on it would stall startup. An empty optional means
-         * "unlimited", which is the pre-container-inventory behaviour.
-         */
-        std::optional<nlohmann::json> fetchContainerDocumentLimitsFromAgentd();
 
         /**
          * @brief Initializes document counts from database for all tables
@@ -788,7 +838,50 @@ class EXPORTED Syscollector final
         // The same two, for rows attributed to a container. Separate budget, so
         // container inventory cannot consume the host's — see LimitScope.
         std::map<std::string, size_t>                                            m_containerDocumentLimits;
-        std::map<std::string, size_t>                                            m_containerDocumentCounts;
+        // Counts key on the CONTAINER first: one budget each (#37532 / O10).
+        std::map<std::string, std::map<std::string, size_t>>                     m_containerDocumentCounts;
+
+        // (container, index) pairs already reported as saturated, so the
+        // message is emitted once per saturation rather than once per scan.
+        std::set<std::pair<std::string, std::string>>                            m_limitReported;
+
+        // Containers container_instances says may report to the manager.
+        //
+        // A SEPARATE question from the per-dimension budgets beside it: those
+        // bound how much one container reports, this bounds how many report at
+        // all. Empty means "not told yet", which reads as admit-everything --
+        // the connector is queried per pass, and an agent that has not heard an
+        // answer must keep reporting rather than go quiet.
+        std::set<std::string>                                                    m_admittedContainers;
+        bool                                                                     m_admissionKnown {false};
+
+        // True when at least one known container is being withheld, i.e. the
+        // cap is actually biting. Kept separately because the re-send paths
+        // need to know that SOMETHING can hold a row at sync=0 without having
+        // a container id in hand to ask about.
+        bool                                                                     m_containerAdmissionWithholding {false};
+
+        // Whether the stored reporting flags have already been reconciled against
+        // the admission set in THIS process.
+        //
+        // The reconciliation has to run once at startup even when no container has
+        // just lost admission, because the previous admission set died with the last
+        // process and a row reported before a restart carries sync=1 with nothing in
+        // memory to say the container may no longer report it. After that first pass
+        // only an actual admission loss can create such a row, so this latch keeps a
+        // biting cap from re-reading every container row of every table on every scan.
+        bool m_admissionReconciled {false};
+
+        // Whether rows are still owed a retraction.
+        //
+        // Separate from the latch above because the two answer different questions,
+        // and the difference is load-bearing: setAdmittedContainers() replaces the
+        // admitted set before it retracts anything, so "a container just lost
+        // admission" is observable exactly once, while the retraction it demands can
+        // fail -- there may be no persistence callback yet. Holding the obligation
+        // here means a failed retraction is retried on the next pass instead of being
+        // dropped along with the signal that raised it.
+        bool m_admissionRetractionPending {false};
 
         // Mutex for thread-safe access to limits and counts
         std::mutex                                                               m_limitsMutex;
