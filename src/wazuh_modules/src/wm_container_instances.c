@@ -16,6 +16,7 @@
 #include "wmodules.h"
 #include "wm_container_instances.h"
 #include <cJSON.h>
+#include <limits.h>
 
 static void* wm_container_instances_main(wm_container_instances_t* data);
 static void wm_container_instances_destroy(wm_container_instances_t* data);
@@ -75,43 +76,36 @@ static cJSON* wm_container_instances_build_config(const wm_container_instances_t
  * symbol and would otherwise need its own link against the agent's query
  * socket for one integer.
  *
- * Returns 0 (unlimited) when the answer is not available. Waiting for it would
- * hold container discovery behind the manager handshake, and a cap nobody has
- * configured is the default anyway. A limit that CHANGES restarts the agent --
- * module_limits_changed() drives that -- so this value is re-read at the only
- * moment it can differ.
+ * Wait for the initial handshake, just like the other limit consumers.
+ * The first received limits do not restart the agent, so a one-shot query
+ * would otherwise leave discovery unlimited until the next restart.
  */
 static int wm_container_instances_sync_limit(void)
 {
-    char json_buffer[OS_MAXSTR] = {0};
-
-    if (!w_query_agentd(WM_CONTAINER_INSTANCES_LOGTAG, "getdoclimits containers", json_buffer, sizeof(json_buffer)))
+    while (!wm_shutdown_requested)
     {
-        mtdebug1(WM_CONTAINER_INSTANCES_LOGTAG,
-                 "Document limits are not available yet; every container may report.");
-        return 0;
-    }
-
-    cJSON* root = cJSON_Parse(json_buffer);
-    if (!root)
-    {
-        mtdebug1(WM_CONTAINER_INSTANCES_LOGTAG, "Could not parse the getdoclimits containers reply.");
-        return 0;
-    }
-
-    int limit = 0;
-    cJSON* synced = cJSON_GetObjectItem(root, "synced");
-    if (synced && cJSON_IsNumber(synced))
-    {
-        const double value = cJSON_GetNumberValue(synced);
-        if (value >= 0)
+        char json_buffer[OS_MAXSTR] = {0};
+        if (w_query_agentd(WM_CONTAINER_INSTANCES_LOGTAG, "getdoclimits containers", json_buffer, sizeof(json_buffer)))
         {
-            limit = (int)value;
+            cJSON* root = cJSON_Parse(json_buffer);
+            const cJSON* synced = cJSON_GetObjectItem(root, "synced");
+            if (cJSON_IsNumber(synced) && synced->valuedouble >= 0 &&
+                synced->valuedouble <= INT_MAX && synced->valuedouble == synced->valueint)
+            {
+                const int limit = synced->valueint;
+                cJSON_Delete(root);
+                return limit;
+            }
+            cJSON_Delete(root);
+            mtwarn(WM_CONTAINER_INSTANCES_LOGTAG, "Invalid getdoclimits containers reply; retrying.");
         }
+        else
+        {
+            mtdebug1(WM_CONTAINER_INSTANCES_LOGTAG, "Document limits are not available yet; retrying.");
+        }
+        sleep(1);
     }
-
-    cJSON_Delete(root);
-    return limit;
+    return -1;
 }
 
 void* wm_container_instances_main(wm_container_instances_t* data)
@@ -133,7 +127,13 @@ void* wm_container_instances_main(wm_container_instances_t* data)
     if (container_instances_start_ptr)
     {
         cJSON* config = wm_container_instances_build_config(data);
-        cJSON_AddNumberToObject(config, "synced_container_limit", wm_container_instances_sync_limit());
+        const int limit = wm_container_instances_sync_limit();
+        if (limit < 0)
+        {
+            cJSON_Delete(config);
+            return NULL;
+        }
+        cJSON_AddNumberToObject(config, "synced_container_limit", limit);
         container_instances_start_ptr(mtLoggingFunctionsWrapper, config);
         cJSON_Delete(config);
     }
