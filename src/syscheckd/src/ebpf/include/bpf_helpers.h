@@ -26,8 +26,13 @@ typedef __attribute__((aligned(4))) unsigned int __u32;
 
 #define TASK_COMM_LEN 32
 
+// Operation of an event, see modern.bpf.c
+#define OP_OPEN   1
+#define OP_DONE   5
 
 struct file_event {
+    __u32 op;
+    __u32 tid;
     __u32 pid;
     __u32 ppid;
     __u32 uid;
@@ -41,6 +46,12 @@ struct file_event {
     char cwd[PATH_MAX];
     char parent_cwd[PATH_MAX];
     char parent_comm[TASK_COMM_LEN];
+};
+
+struct op_done {
+    __u32 op;
+    __u32 tid;
+    int64_t ret;
 };
 
 struct dynamic_file_event {

@@ -32,10 +32,23 @@
 #define statfunc static inline
 
 /*
+* Operation that produced an event. User space holds OP_ATTRIB, OP_UNLINK
+* and OP_RENAME events until an OP_DONE record from the same thread
+* reports how the operation ended.
+*/
+#define OP_OPEN   1
+#define OP_ATTRIB 2
+#define OP_UNLINK 3
+#define OP_RENAME 4
+#define OP_DONE   5
+
+/*
 * Used to hold all file-related event information
 * when writing to the ring buffer.
 */
 struct file_event {
+    __u32 op;
+    __u32 tid;
     __u32 pid;
     __u32 ppid;
     __u32 uid;
@@ -49,6 +62,13 @@ struct file_event {
     char cwd[MAX_PATH_LEN];
     char parent_cwd[MAX_PATH_LEN];
     char parent_name[TASK_COMM_LEN];
+};
+
+/* Sent by the exit probes when a held operation ends. */
+struct op_done {
+    __u32 op;
+    __u32 tid;
+    __s64 ret;
 };
 
 /*
@@ -107,6 +127,17 @@ struct {
     __type(value, u64);
     __uint(max_entries, 1 << 14);
 } write_mnt_map SEC(".maps");
+
+/*
+* Operation each thread is in the middle of, keyed by pid_tgid, set when its
+* event is sent and cleared by the exit probe that sends OP_DONE.
+*/
+struct {
+    __uint(type, BPF_MAP_TYPE_LRU_HASH);
+    __type(key, u64);
+    __type(value, u32);
+    __uint(max_entries, 1 << 14);
+} inflight_map SEC(".maps");
 
 /*
 * Directories FIM monitors with whodata, filled by user space. Events for
@@ -378,7 +409,8 @@ statfunc bool is_monitored(const char *filename)
 */
 statfunc void submit_event(const char *filename,
                            __u64 ino,
-                           __u64 dev)
+                           __u64 dev,
+                           __u32 op)
 {
     if (!is_monitored(filename))
         return;
@@ -389,6 +421,10 @@ statfunc void submit_event(const char *filename,
 
     /* Read current task to fill metadata */
     struct task_struct *current_task = (struct task_struct *)bpf_get_current_task();
+    u64 id = bpf_get_current_pid_tgid();
+
+    evt->op = op;
+    evt->tid = id;
 
     /* PID and UID/GID */
     evt->pid = BPF_CORE_READ(current_task, tgid);
@@ -446,6 +482,41 @@ statfunc void submit_event(const char *filename,
     }
 
     bpf_ringbuf_submit(evt, 0);
+
+    if (op != OP_OPEN)
+        bpf_map_update_elem(&inflight_map, &id, &op, BPF_ANY);
+}
+
+/* Sends OP_DONE if the current thread has an op event waiting for it. */
+statfunc int submit_done(__u32 op, long ret)
+{
+    u64 id = bpf_get_current_pid_tgid();
+    u32 *pending = bpf_map_lookup_elem(&inflight_map, &id);
+    if (!pending || *pending != op)
+        return 0;
+
+    bpf_map_delete_elem(&inflight_map, &id);
+    struct op_done done = { .op = OP_DONE, .tid = id, .ret = ret };
+    bpf_ringbuf_output(&rb, &done, sizeof(done), 0);
+    return 0;
+}
+
+SEC("kretprobe/notify_change")
+int kretprobe__notify_change(struct pt_regs *ctx)
+{
+    return submit_done(OP_ATTRIB, PT_REGS_RC(ctx));
+}
+
+SEC("kretprobe/vfs_unlink")
+int kretprobe__vfs_unlink(struct pt_regs *ctx)
+{
+    return submit_done(OP_UNLINK, PT_REGS_RC(ctx));
+}
+
+SEC("kretprobe/vfs_rename")
+int kretprobe__vfs_rename(struct pt_regs *ctx)
+{
+    return submit_done(OP_RENAME, PT_REGS_RC(ctx));
 }
 
 /*
@@ -512,7 +583,7 @@ int kprobe__vfs_open(struct pt_regs *ctx)
     get_inode_dev(d_inode, &inode, &dev);
 
     /* Report file creation event. */
-    submit_event((const char *)full_path, inode, dev);
+    submit_event((const char *)full_path, inode, dev, OP_OPEN);
     return 0;
 }
 
@@ -622,7 +693,7 @@ int kprobe__security_inode_setattr(struct pt_regs *ctx)
     get_inode_dev(d_inode, &inode, &dev);
 
     // Submit event
-    submit_event((const char *)full_path, inode, dev);
+    submit_event((const char *)full_path, inode, dev, OP_ATTRIB);
 
     return 0;
 }
@@ -685,7 +756,7 @@ int kprobe__vfs_unlink(struct pt_regs *ctx)
     __u64 inode = 0, dev = 0;
     get_inode_dev(d_inode, &inode, &dev);
 
-    submit_event((const char *)full_path, inode, dev);
+    submit_event((const char *)full_path, inode, dev, OP_UNLINK);
     return 0;
 }
 
@@ -762,7 +833,7 @@ int kprobe__vfs_rename(struct pt_regs *ctx)
     };
 
     if (get_path_str_from_path(&full_path, &new_path, string_buf) >= 0)
-        submit_event((const char *)full_path, inode, dev);
+        submit_event((const char *)full_path, inode, dev, OP_RENAME);
 
     return 0;
 }
@@ -835,7 +906,7 @@ int BPF_PROG(file_open_dpath, struct file *file)
     __u64 inode = 0, dev = 0;
     get_inode_dev(f_inode, &inode, &dev);
 
-    submit_event((const char *)full_path, inode, dev);
+    submit_event((const char *)full_path, inode, dev, OP_OPEN);
     return 0;
 }
 
@@ -857,7 +928,7 @@ int BPF_PROG(file_open_walk, struct file *file)
     __u64 inode = 0, dev = 0;
     get_inode_dev(f_inode, &inode, &dev);
 
-    submit_event((const char *)full_path, inode, dev);
+    submit_event((const char *)full_path, inode, dev, OP_OPEN);
     return 0;
 }
 
@@ -924,7 +995,7 @@ int BPF_PROG(path_unlink_dpath, struct path *path, struct dentry *dentry)
     __u64 inode = 0, dev = 0;
     get_inode_dev(d_inode, &inode, &dev);
 
-    submit_event((const char *)full_path, inode, dev);
+    submit_event((const char *)full_path, inode, dev, OP_UNLINK);
     return 0;
 }
 
@@ -963,7 +1034,7 @@ int BPF_PROG(path_unlink_walk, struct path *path, struct dentry *dentry)
     __u64 inode = 0, dev = 0;
     get_inode_dev(d_inode, &inode, &dev);
 
-    submit_event((const char *)full_path, inode, dev);
+    submit_event((const char *)full_path, inode, dev, OP_UNLINK);
     return 0;
 }
 
@@ -1035,7 +1106,7 @@ int BPF_PROG(path_rename_dpath, struct path *old_dir, struct dentry *old_dentry,
         if (file_name_ptr) {
             ret = concat_strings_bpf(&full_path, dir_path, file_name_ptr, string_buf);
             if (ret >= 0)
-                submit_event((const char *)full_path, inode, dev);
+                submit_event((const char *)full_path, inode, dev, OP_RENAME);
         }
     }
 
@@ -1072,7 +1143,7 @@ int BPF_PROG(path_rename_walk, struct path *old_dir, struct dentry *old_dentry,
 
     u8 *full_path = NULL;
     if (get_path_str_from_path(&full_path, &new_path, string_buf) >= 0)
-        submit_event((const char *)full_path, inode, dev);
+        submit_event((const char *)full_path, inode, dev, OP_RENAME);
 
     return 0;
 }

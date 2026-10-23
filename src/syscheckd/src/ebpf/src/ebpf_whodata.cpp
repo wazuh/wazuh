@@ -258,17 +258,74 @@ static int get_login_gid(unsigned int uid)
                           });
 }
 
+static void queue_event(std::unique_ptr<dynamic_file_event> event)
+{
+    if (!kernelEventQueue.push(std::move(event)) && !ebpf_kernel_queue_full_reported)
+    {
+        fimebpf::instance().m_loggingFunction(LOG_WARNING, FIM_FULL_EBPF_KERNEL_QUEUE);
+        ebpf_kernel_queue_full_reported = 1;
+    }
+}
+
+/*
+ * Events of setattr, unlink and rename are sent before the operation runs. They wait here, by thread, for the
+ * OP_DONE record sent when it returns, so FIM sees the final state, and are dropped if it failed. Events whose
+ * OP_DONE never arrives (missed exit probe) are processed after PENDING_TIMEOUT, as if they had no wait.
+ */
+#define PENDING_TIMEOUT std::chrono::seconds(1)
+struct pending_event
+{
+    std::chrono::steady_clock::time_point since;
+    std::unique_ptr<dynamic_file_event> event;
+};
+static std::unordered_multimap<uint32_t, pending_event> g_pending;
+
+static void flush_pending(bool all)
+{
+    const auto now = std::chrono::steady_clock::now();
+    for (auto it = g_pending.begin(); it != g_pending.end();)
+    {
+        if (all || now - it->second.since >= PENDING_TIMEOUT)
+        {
+            queue_event(std::move(it->second.event));
+            it = g_pending.erase(it);
+        }
+        else
+        {
+            ++it;
+        }
+    }
+}
+
+static void complete_pending(const op_done* done)
+{
+    const auto range = g_pending.equal_range(done->tid);
+    for (auto it = range.first; done->ret == 0 && it != range.second; ++it)
+    {
+        queue_event(std::move(it->second.event));
+    }
+    g_pending.erase(range.first, range.second);
+}
+
 /* Callback for normal whodata events */
 int handle_event(void* ctx, void* data, size_t data_sz)
 {
     (void)ctx;
-    (void)data_sz;
 
     auto e = static_cast<file_event*>(data);
     auto logFn = fimebpf::instance().m_loggingFunction;
     auto confFn = fimebpf::instance().m_fim_configuration_directory;
     if (!logFn || !confFn)
     {
+        return 0;
+    }
+
+    if (e->op == OP_DONE)
+    {
+        if (data_sz >= sizeof(op_done))
+        {
+            complete_pending(static_cast<op_done*>(data));
+        }
         return 0;
     }
 
@@ -288,13 +345,13 @@ int handle_event(void* ctx, void* data, size_t data_sz)
                                                                      .login_uid = e->login_uid,
                                                                      .inode = e->inode,
                                                                      .dev = e->dev});
-        if (!kernelEventQueue.push(std::move(event)))
+        if (e->op == OP_OPEN)
         {
-            if (!ebpf_kernel_queue_full_reported)
-            {
-                logFn(LOG_WARNING, FIM_FULL_EBPF_KERNEL_QUEUE);
-                ebpf_kernel_queue_full_reported = 1;
-            }
+            queue_event(std::move(event));
+        }
+        else
+        {
+            g_pending.emplace(e->tid, pending_event {std::chrono::steady_clock::now(), std::move(event)});
         }
     }
 
@@ -308,7 +365,7 @@ int healthcheck_event(void* ctx, void* data, size_t data_sz)
     (void)data_sz;
     auto e = static_cast<file_event*>(data);
 
-    if (strstr(e->filename, EBPF_HC_FILE))
+    if (e->op != OP_DONE && strstr(e->filename, EBPF_HC_FILE))
     {
         event_received = true;
     }
@@ -1036,7 +1093,9 @@ extern "C"
                 logFn(LOG_ERROR, FIM_ERROR_EBPF_RINGBUFF_CONSUME);
                 break;
             }
+            flush_pending(false);
         }
+        flush_pending(true);
 
         bpf_helpers->ring_buffer_free(rb);
         release_bpf();
