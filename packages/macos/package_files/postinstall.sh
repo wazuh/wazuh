@@ -95,27 +95,30 @@ chmod 1750 ${DIR}/tmp
 
 chmod 770 ${DIR}/etc
 chown ${USER}:${GROUP} ${DIR}/etc
-# etc/ is owned by the wazuh account, so a file in it may be a symlink that account planted. -h
-# acts on the link itself: on a regular file it behaves exactly as before, on a link it leaves the
-# target's mode and owner untouched, so none of these can be turned into a read of a root-only file.
-chmod -h 640 ${DIR}/etc/internal_options.conf
-chown -h root:${GROUP} ${DIR}/etc/internal_options.conf
-chmod -h 640 ${DIR}/etc/local_internal_options.conf
-chown -h root:${GROUP} ${DIR}/etc/local_internal_options.conf
-chmod -h 640 ${DIR}/etc/client.keys
-chown -h root:${GROUP} ${DIR}/etc/client.keys
-chmod -h 640 ${DIR}/etc/localtime
-# Only touch etc/shared when it is a real directory: a trailing-slash find follows a symlinked
-# shared into its target, and chmod/chown -R would act on files there.
+# etc/ is owned by the wazuh account, so a file in it may be a link that account planted. Set the
+# mode and owner only on a regular file with a single hard link that is not a symlink, so a planted
+# symlink or a hard link to a root-only file (macOS has no protected_hardlinks) leaves its target
+# untouched and cannot be turned into a read.
+harden_etc_file() {
+    if [ -f "$2" ] && [ ! -L "$2" ] && [ -n "$(find "$2" -prune -links 1 2>/dev/null)" ]; then
+        chmod "$1" "$2"
+        [ "${3:-}" = nochown ] || chown root:${GROUP} "$2"
+    fi
+}
+harden_etc_file 640 ${DIR}/etc/internal_options.conf
+harden_etc_file 640 ${DIR}/etc/local_internal_options.conf
+harden_etc_file 640 ${DIR}/etc/client.keys
+harden_etc_file 640 ${DIR}/etc/localtime nochown
+# etc/shared only when it is a real directory (a trailing-slash find would follow a symlinked
+# shared into its target); inside it skip a symlink and a hard-linked file, so chown/chmod cannot
+# reach a file outside the installation.
 if [ -d ${DIR}/etc/shared ] && [ ! -L ${DIR}/etc/shared ]; then
     chmod 770 ${DIR}/etc/shared # ossec must be able to write to it
-    chown -R root:${GROUP} ${DIR}/etc/shared
-    find ${DIR}/etc/shared/ -type f -exec chmod 660 {} \;
+    find ${DIR}/etc/shared ! -type l ! \( -type f ! -links 1 \) -exec chown root:${GROUP} {} +
+    find ${DIR}/etc/shared -type f -links 1 -exec chmod 660 {} +
 fi
-chown -h root:${GROUP} ${DIR}/etc/ossec.conf
-chmod -h 660 ${DIR}/etc/ossec.conf
-chown -h root:${GROUP} ${DIR}/etc/wpk_root.pem
-chmod -h 640 ${DIR}/etc/wpk_root.pem
+harden_etc_file 660 ${DIR}/etc/ossec.conf
+harden_etc_file 640 ${DIR}/etc/wpk_root.pem
 
 chmod 770 ${DIR}/.ssh
 
