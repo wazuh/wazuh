@@ -42,10 +42,8 @@ struct file_event {
     uint64_t inode;
     uint64_t dev;
     char comm[TASK_COMM_LEN];
-    char filename[PATH_MAX];
-    char cwd[PATH_MAX];
-    char parent_cwd[PATH_MAX];
     char parent_comm[TASK_COMM_LEN];
+    char paths[3 * PATH_MAX]; // filename, cwd and parent_cwd, each NUL-terminated; only the used part is sent
 };
 
 struct op_done {

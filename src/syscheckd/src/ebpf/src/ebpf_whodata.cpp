@@ -307,6 +307,25 @@ static void complete_pending(const op_done* done)
     g_pending.erase(range.first, range.second);
 }
 
+/* Splits the NUL-terminated filename, cwd and parent_cwd of an event of data_sz bytes */
+static bool unpack_paths(const file_event* e, size_t data_sz, const char* (&paths)[3])
+{
+    const char* p = e->paths;
+    const char* end = reinterpret_cast<const char*>(e) + data_sz;
+
+    for (auto& path : paths)
+    {
+        const char* nul = p < end ? static_cast<const char*>(memchr(p, '\0', end - p)) : nullptr;
+        if (!nul)
+        {
+            return false;
+        }
+        path = p;
+        p = nul + 1;
+    }
+    return true;
+}
+
 /* Callback for normal whodata events */
 int handle_event(void* ctx, void* data, size_t data_sz)
 {
@@ -315,6 +334,7 @@ int handle_event(void* ctx, void* data, size_t data_sz)
     auto e = static_cast<file_event*>(data);
     auto logFn = fimebpf::instance().m_loggingFunction;
     auto confFn = fimebpf::instance().m_fim_configuration_directory;
+    const char* paths[3];
     if (!logFn || !confFn)
     {
         return 0;
@@ -329,12 +349,17 @@ int handle_event(void* ctx, void* data, size_t data_sz)
         return 0;
     }
 
-    if (confFn(e->filename))
+    if (!unpack_paths(e, data_sz, paths))
+    {
+        return 0;
+    }
+
+    if (confFn(paths[0]))
     {
         auto event =
-            std::make_unique<dynamic_file_event>(dynamic_file_event {.filename = std::string(e->filename),
-                                                                     .cwd = std::string(e->cwd),
-                                                                     .parent_cwd = std::string(e->parent_cwd),
+            std::make_unique<dynamic_file_event>(dynamic_file_event {.filename = std::string(paths[0]),
+                                                                     .cwd = std::string(paths[1]),
+                                                                     .parent_cwd = std::string(paths[2]),
                                                                      .comm = std::string(e->comm),
                                                                      .parent_comm = std::string(e->parent_comm),
                                                                      .pid = e->pid,
@@ -362,10 +387,10 @@ int handle_event(void* ctx, void* data, size_t data_sz)
 int healthcheck_event(void* ctx, void* data, size_t data_sz)
 {
     (void)ctx;
-    (void)data_sz;
     auto e = static_cast<file_event*>(data);
+    const char* paths[3];
 
-    if (e->op != OP_DONE && strstr(e->filename, EBPF_HC_FILE))
+    if (unpack_paths(e, data_sz, paths) && strstr(paths[0], EBPF_HC_FILE))
     {
         event_received = true;
     }
