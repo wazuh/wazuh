@@ -950,25 +950,25 @@ namespace indexer_client::detail::write
         return nextDueLocked(now);
     }
 
-    Batch Bucket::slice(std::uint64_t credit, TimePoint now, std::uint64_t cap)
+    Batch Bucket::slice(TimePoint now, std::uint64_t cap)
     {
         Batch batch;
         std::lock_guard<std::mutex> lock(m_mutex);
         const auto maxBytes = static_cast<std::uint64_t>(m_spec.bulk.maxBytes);
         const auto maxDocs = m_spec.bulk.maxDocs;
         std::uint64_t opsCap = 0; // Smallest batchCap of the ops taken (0 = none): split halves never merge again.
-        // Whether `op` joins the batch; a document is never split: the head goes alone whenever the credit covers it
-        // (`cap`, the sink's batch limit, never refuses the first op).
+        // Whether `op` joins the batch; a document is never split: the head always goes (I118: the DRR credit decides
+        // whether the turn emits, not how large the batch is; `cap`, the sink's batch limit, never refuses it either).
         const auto fits = [&](const OpState& op)
         {
             const std::uint64_t size = op.lines.size();
             if (batch.ops.empty())
             {
-                return size <= credit;
+                return true;
             }
             const std::uint64_t opCap =
                 op.batchCap == 0 ? opsCap : (opsCap == 0 ? op.batchCap : std::min(opsCap, op.batchCap));
-            return batch.bytes + size <= credit && batch.bytes + size <= maxBytes && batch.ops.size() < maxDocs &&
+            return batch.bytes + size <= maxBytes && batch.ops.size() < maxDocs &&
                    (opCap == 0 || batch.bytes + size <= opCap) && (cap == 0 || batch.bytes + size <= cap);
         };
         const auto take = [&](std::shared_ptr<OpState> op)

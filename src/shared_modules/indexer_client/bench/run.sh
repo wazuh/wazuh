@@ -4,6 +4,7 @@
 # both already built in Release with -DINDEXER_CLIENT_BENCH=ON. Never builds anything.
 #
 #   run.sh --v1 PATH --v2 PATH --cpus LIST|none --out PREFIX [--selfcheck] [--fake-status N] [--wazuhext-sha256 SHA]
+#   run.sh --suite submit --submit PATH --out PREFIX [--cpus LIST] [--cpus-p8 LIST] [--selfcheck] [--wazuhext-sha256 SHA]
 #
 # Writes PREFIX.csv (header + one row per run), PREFIX-summary.txt and PREFIX.log (provenance and every binary's
 # output). Normative (default), per mode plain and tls: 5 pairs v1 (normative headers) / v2 c = 1 of 20 s after a 3 s
@@ -13,16 +14,28 @@
 # --selfcheck: 2 s per side and mode plus the header check on the wire; exit 0 only when every sample is valid and
 # the headers match. Exit codes: 0 ok, 1 invalid sample / failed check, 2 usage, 3 another libwazuhext loaded, 4 host
 # load never fell to load1 <= 2, 5 a mode stayed unreliable after its repetition (the summary still says so).
+#
+# --suite submit (E6c, RNF-2, I119; the transport suite above is the default and does not change): the submit
+# microbenchmark (indexer_client_bench_submit). Rows P = 1, 4, 8 x cb none (handover move), P = 1 x cb noop and
+# P = 1 x handover view; per row 5 pairs v1/v2 alternating which side goes first, ratio = ns_per_op v2/v1 (lower is
+# better). Gate CA-E6c-8 on P = 1 and P = 8 (cb none, move): median <= 1.05 passes, (1.00, 1.05] is grey; IQR of the
+# ratios > 0.04 or < 4 valid pairs => the row is repeated once. At P = 8 a grey or failing clock ratio is settled by
+# the median cpu_ns_per_op ratio (noted in the summary). --cpus pins every row, --cpus-p8 the P = 8 row (default
+# --cpus; both default none). --selfcheck: 1 pair per row with --events 20000; exit 0 only when every sample is valid.
+# Extra exit code: 6 a gate failed.
 set -u
 
 usage() {
-  sed -n '6p' "$0" | sed 's/^# *//' >&2
+  sed -n '6,7p' "$0" | sed 's/^# *//' >&2
   exit 2
 }
 
-V1="" V2="" CPUS="" OUT="" SELFCHECK=0 FAKE_STATUS=200 WANT_SHA=""
+V1="" V2="" CPUS="" OUT="" SELFCHECK=0 FAKE_STATUS=200 WANT_SHA="" SUITE=transport SUBMIT="" CPUS_P8=""
 while [ $# -gt 0 ]; do
   case $1 in
+    --suite) SUITE=${2:-}; shift 2 ;;
+    --submit) SUBMIT=${2:-}; shift 2 ;;
+    --cpus-p8) CPUS_P8=${2:-}; shift 2 ;;
     --v1) V1=${2:-}; shift 2 ;;
     --v2) V2=${2:-}; shift 2 ;;
     --cpus) CPUS=${2:-}; shift 2 ;;
@@ -33,7 +46,11 @@ while [ $# -gt 0 ]; do
     *) echo "run.sh: unknown argument '$1'" >&2; usage ;;
   esac
 done
-{ [ -x "$V1" ] && [ -x "$V2" ] && [ -n "$CPUS" ] && [ -n "$OUT" ]; } || usage
+case $SUITE in
+  transport) { [ -x "$V1" ] && [ -x "$V2" ] && [ -n "$CPUS" ] && [ -n "$OUT" ]; } || usage ;;
+  submit) { [ -x "$SUBMIT" ] && [ -n "$OUT" ]; } || usage; CPUS=${CPUS:-none}; CPUS_P8=${CPUS_P8:-$CPUS} ;;
+  *) usage ;;
+esac
 case $FAKE_STATUS in '' | *[!0-9]*) usage ;; esac
 
 CSV="$OUT.csv"
@@ -42,7 +59,8 @@ LOG="$OUT.log"
 mkdir -p "$(dirname "$OUT")"
 : >"$SUM"
 : >"$LOG"
-"$V2" --csv-header >"$CSV" || { echo "run.sh: $V2 --csv-header failed" >&2; exit 2; }
+if [ "$SUITE" = submit ]; then HEADER_BIN=$SUBMIT; else HEADER_BIN=$V2; fi
+"$HEADER_BIN" --csv-header >"$CSV" || { echo "run.sh: $HEADER_BIN --csv-header failed" >&2; exit 2; }
 
 if [ "$CPUS" = none ]; then PIN=(); else PIN=(taskset -c "$CPUS"); fi
 # I58 values. The BENCH_* overrides exist only to exercise this script quickly; a measurement never sets them (they
@@ -97,8 +115,7 @@ idle_mark() { # idle_mark <label>: logs the idle % of the pinned CPUs since the 
   local now; now=$(cpu_idle)
   if [ -n "$IDLE0" ]; then
     awk -v a="$IDLE0" -v b="$now" -v l="$1" 'BEGIN{split(a,x," "); split(b,y," "); d=y[2]-x[2];
-      printf "# %s: pinned CPUs idle %.1f %% of the interval (busy = the measurement itself)
-", l, d>0 ? 100*(y[1]-x[1])/d : 0}' | tee -a "$LOG"
+      printf "# %s: pinned CPUs idle %.1f %% of the interval (busy = the measurement itself)\n", l, d>0 ? 100*(y[1]-x[1])/d : 0}' | tee -a "$LOG"
   fi
   IDLE0=$now
 }
@@ -117,6 +134,130 @@ wait_load() { # wait_load <mode>: refuse to start a mode while load1 > LOAD_MAX 
   # Idle of the pinned CPUs over the 2 s before the mode: what the host leaves on the measured cores.
   IDLE0=""; idle_mark "$1 (pre)"; sleep 2; idle_mark "$1: 2 s before the mode"
 }
+
+# ---- suite submit (E6c contract §3)
+if [ "$SUITE" = submit ]; then
+  if [ "$CPUS_P8" = none ]; then PIN8=(); else PIN8=(taskset -c "$CPUS_P8"); fi
+  # The BENCH_SUBMIT_* overrides exist only to exercise this script quickly (written to the log).
+  SUBMIT_PAIRS=${BENCH_SUBMIT_PAIRS:-5} SUBMIT_EVENTS=${BENCH_SUBMIT_EVENTS:-200000}
+  [ $SELFCHECK -eq 1 ] && SUBMIT_PAIRS=1 SUBMIT_EVENTS=20000
+  log "# run.sh --suite submit $(date -u +%FT%TZ) selfcheck=$SELFCHECK pairs=$SUBMIT_PAIRS events=$SUBMIT_EVENTS cpus=$CPUS cpus_p8=$CPUS_P8"
+  log "# host: $(lscpu | sed -n 's/^Model name: *//p' | head -1); nproc $(nproc)"
+  for c in /sys/devices/system/cpu/cpu[0-9]*/cpufreq/scaling_governor; do cat "$c"; done 2>/dev/null | sort | uniq -c |
+    sed 's/^ */# governor: /' | tee -a "$LOG"
+  log "# affinity: ${PIN[*]:-none} (P = 8: ${PIN8[*]:-none}); shell Cpus_allowed_list $(sed -n 's/^Cpus_allowed_list:\t*//p' /proc/self/status)"
+  log "# sha256 submit $(sha "$SUBMIT") $SUBMIT"
+  log "# load $(cut -d' ' -f1-3 /proc/loadavg)"
+
+  # run_submit <label> <producers> <args...>: one run; sets SVALID, SNS (ns_per_op) and SCPU (cpu_ns_per_op).
+  run_submit() {
+    local label=$1 producers=$2; shift 2
+    n_run=$((n_run + 1))
+    local out="$TMP/run$n_run.out" rc row got
+    if [ "$producers" = 8 ]; then
+      "${PIN8[@]}" "$SUBMIT" --producers "$producers" "$@" >"$out" 2>&1
+    else
+      "${PIN[@]}" "$SUBMIT" --producers "$producers" "$@" >"$out" 2>&1
+    fi
+    rc=$?
+    { echo "## $label: $(basename "$SUBMIT") --producers $producers $* (exit $rc)"; cat "$out"; } >>"$LOG"
+    row=$(sed -n 's/^SUBMIT,//p' "$out" | head -1)
+    if [ -z "$row" ]; then
+      SVALID=0 SNS=0 SCPU=0
+      log "!! $label: no row (exit $rc)"
+      return
+    fi
+    echo "$row" >>"$CSV"
+    SVALID=$(echo "$row" | awk -F, '{print $NF}')
+    SNS=$(echo "$row" | cut -d, -f7)
+    SCPU=$(echo "$row" | cut -d, -f8)
+    got=$(sed -n 's/.* wazuhext_sha256=\([0-9a-f]*\).*/\1/p' "$out" | head -1)
+    if [ -n "$WANT_SHA" ] && [ "$got" != "$WANT_SHA" ]; then
+      log "!! $label: loaded libwazuhext $got, expected $WANT_SHA: refusing to measure"
+      exit 3
+    fi
+  }
+
+  # submit_attempt <P> <cb> <handover> <pairs> <tag>: sets SSTATS ("median iqr valid cpu_v1 cpu_v2 cpu_ratio").
+  submit_attempt() {
+    local p=$1 cb=$2 ho=$3 pairs=$4 tag=$5 i side ok1 ok2 n1 n2 c1 c2 ratios="" cratios="" cpu1="" cpu2=""
+    for i in $(seq 1 "$pairs"); do
+      if [ $((i % 2)) -eq 1 ]; then order="v1 v2"; else order="v2 v1"; fi
+      for side in $order; do
+        run_submit "$tag P=$p cb=$cb $ho pair $i $side" "$p" --side $side --cb "$cb" --handover "$ho" \
+          --events "$SUBMIT_EVENTS" --pair "$i"
+        if [ $side = v1 ]; then ok1=$SVALID n1=$SNS c1=$SCPU; else ok2=$SVALID n2=$SNS c2=$SCPU; fi
+      done
+      if [ "$ok1" = 1 ] && [ "$ok2" = 1 ]; then
+        r=$(awk -v a="$n1" -v b="$n2" 'BEGIN{printf "%.6f", (a>0)?b/a:0}')
+        cr=$(awk -v a="$c1" -v b="$c2" 'BEGIN{printf "%.6f", (a>0)?b/a:0}')
+        ratios="$ratios $r" cratios="$cratios $cr" cpu1="$cpu1 $c1" cpu2="$cpu2 $c2"
+        log "# $tag P=$p cb=$cb $ho pair $i: v1 $n1 ns/op, v2 $n2 ns/op, ratio $r (cpu $c1 / $c2, ratio $cr)"
+      else
+        log "# $tag P=$p cb=$cb $ho pair $i: annulled (v1 valid=$ok1, v2 valid=$ok2)"
+      fi
+    done
+    SSTATS=$(python3 -I -c '
+import statistics, sys
+lists = [[float(x) for x in a.split()] for a in sys.argv[1:5]]
+r, c1, c2, cr = lists
+if not r:
+    print("0.000 0.000 0 0.0 0.0 0.000"); sys.exit()
+q = statistics.quantiles(r, n=4, method="inclusive") if len(r) >= 2 else [r[0], r[0], r[0]]
+print("%.3f %.3f %d %.1f %.1f %.3f" % (statistics.median(r), q[2] - q[0], len(r), statistics.median(c1),
+                                       statistics.median(c2), statistics.median(cr)))
+' "$ratios" "$cpu1" "$cpu2" "$cratios")
+    [ -n "$SSTATS" ] || { log "!! python3 missing or failed: cannot compute the medians"; exit 2; }
+    log "# $tag P=$p cb=$cb $ho: ratios [${ratios# }] => median iqr valid cpu_v1 cpu_v2 cpu_ratio = $SSTATS"
+  }
+
+  ok=1
+  for spec in "1 none move gate" "4 none move info" "8 none move gate" "1 noop move info" "1 none view info"; do
+    read -r p cb ho kind <<<"$spec"
+    [ $SELFCHECK -eq 1 ] || wait_load "submit P=$p cb=$cb $ho"
+    repeated=0 tag=submit
+    while :; do
+      submit_attempt "$p" "$cb" "$ho" "$SUBMIT_PAIRS" "$tag"
+      read -r med iqr vp cpu1 cpu2 cratio <<<"$SSTATS"
+      reliable=yes
+      # IQR relative to the median (the ratios of this suite may be far from 1; E6c G-diff obj. 5).
+      awk -v q="$iqr" -v m="$med" -v n="$vp" -v want="$SUBMIT_PAIRS" 'BEGIN{exit !((m>0 ? q/m : 1)>0.04 || n<(want<4?want:4))}' && reliable=no
+      if [ $reliable = no ] && [ $repeated -eq 0 ] && [ $SELFCHECK -eq 0 ]; then
+        log "# submit P=$p cb=$cb $ho: unreliable (iqr $iqr, valid $vp): repeating once"
+        repeated=1 tag=submit-repeat
+        wait_load "submit P=$p cb=$cb $ho (repeat)"
+        continue
+      fi
+      break
+    done
+    if [ $SELFCHECK -eq 1 ] && [ "$vp" != "$SUBMIT_PAIRS" ]; then ok=0; fi
+    gate=info
+    if [ "$kind" = gate ] && [ $SELFCHECK -eq 0 ] && [ "$vp" -eq 0 ]; then
+      gate=invalid # No valid pair: nothing was measured (E6c G-diff obj. 1).
+      RC=6
+    elif [ "$kind" = gate ] && [ $SELFCHECK -eq 0 ]; then
+      gate=$(awk -v m="$med" 'BEGIN{print (m<=1.00) ? "pass" : (m<=1.05) ? "grey" : "fail"}')
+      if [ "$p" = 8 ] && [ "$gate" != pass ]; then
+        tie=$(awk -v m="$cratio" 'BEGIN{print (m<=1.05) ? "pass" : "fail"}')
+        log "# submit P=8: clock ratio $med is $gate; tie-break by cpu_ns_per_op ratio $cratio => $tie"
+        gate="$gate,cpu_tiebreak=$tie"
+        [ "$tie" = pass ] || RC=6
+      elif [ "$gate" = fail ]; then
+        RC=6
+      fi
+    fi
+    [ $reliable = yes ] || { [ $RC -eq 0 ] && RC=5; }
+    echo "SUBMIT_ROW,producers=$p,cb=$cb,handover=$ho,median=$med,iqr=$iqr,valid_pairs=$vp,pairs=$SUBMIT_PAIRS,cpu_v1=$cpu1,cpu_v2=$cpu2,cpu_ratio=$cratio,reliable=$reliable,gate=$gate" >>"$SUM"
+  done
+  log "# load at the end $(cut -d' ' -f1-3 /proc/loadavg)"
+  if [ $SELFCHECK -eq 1 ]; then
+    echo "SELFCHECK,suite=submit,result=$([ $ok = 1 ] && echo pass || echo fail)" >>"$SUM"
+    cat "$SUM"
+    [ $ok = 1 ] && exit 0 || exit 1
+  fi
+  cat "$SUM"
+  exit $RC
+fi
 
 # ---- provenance
 log "# run.sh $(date -u +%FT%TZ) selfcheck=$SELFCHECK fake_status=$FAKE_STATUS cpus=$CPUS"

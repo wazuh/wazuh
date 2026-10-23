@@ -164,7 +164,7 @@ protected:
         const auto far = now() + std::chrono::hours(24);
         for (int i = 0; i < 10000 && !bucket->empty(); ++i)
         {
-            for (const auto& op : bucket->slice(ALL, far).ops)
+            for (const auto& op : bucket->slice(far).ops)
             {
                 resolve(op);
             }
@@ -236,7 +236,7 @@ TEST_F(WriteRetryLaneTest, RequeueBackoffAndExhaust)
         EXPECT_LE(delay, std::min<long long>(cap.count(), d * 3 / 2));
         EXPECT_FALSE(bucket->empty());
         EXPECT_EQ(bucket->headBytes(op->notBefore), op->lines.size());
-        const auto again = bucket->slice(ALL, op->notBefore);
+        const auto again = bucket->slice(op->notBefore);
         ASSERT_EQ(again.ops.size(), 1U);
         t = op->notBefore;
     }
@@ -270,7 +270,7 @@ TEST_F(WriteRetryLaneTest, RequeueBackoffAndExhaust)
                 ASSERT_GE(delay, d / 2 - 1) << "attempt " << attempt;
                 ASSERT_LE(delay, cap.count()) << "attempt " << attempt;
             }
-            ASSERT_EQ(bucket->slice(ALL, one->notBefore).ops.size(), 1U) << "attempt " << attempt;
+            ASSERT_EQ(bucket->slice(one->notBefore).ops.size(), 1U) << "attempt " << attempt;
             t = one->notBefore;
         }
         EXPECT_EQ(one->attempts, 40U);
@@ -308,11 +308,11 @@ TEST_F(WriteRetryLaneTest, MaxDurationCountsFromFirstSend)
     auto result =
         bucket->requeue(requeueOps({op}), spec(true, Delay::Now), firstAttempt + std::chrono::milliseconds(1));
     EXPECT_TRUE(result.exhausted.empty()) << "the first retry still has its maxDuration budget";
-    ASSERT_EQ(bucket->slice(ALL, firstAttempt + std::chrono::milliseconds(2)).ops.size(), 1U);
+    ASSERT_EQ(bucket->slice(firstAttempt + std::chrono::milliseconds(2)).ops.size(), 1U);
     EXPECT_EQ(op->firstAttempt, firstAttempt) << "a later slice keeps the first send";
     result = bucket->requeue(requeueOps({op}), spec(false, Delay::Now), firstAttempt + std::chrono::milliseconds(299));
     EXPECT_TRUE(result.exhausted.empty()) << "299 ms after the first send";
-    ASSERT_EQ(bucket->slice(ALL, firstAttempt + std::chrono::milliseconds(299)).ops.size(), 1U);
+    ASSERT_EQ(bucket->slice(firstAttempt + std::chrono::milliseconds(299)).ops.size(), 1U);
     result = bucket->requeue(requeueOps({op}), spec(false, Delay::Now), firstAttempt + std::chrono::milliseconds(300));
     EXPECT_EQ(result.exhausted.size(), 1U) << "300 ms after the first send, also without a counted attempt";
 
@@ -340,7 +340,7 @@ TEST_F(WriteRetryLaneTest, RequeueWithoutErrorKeepsLastError)
 
     auto result = bucket->requeue(requeueOps({op}), spec(false, Delay::Now), t + std::chrono::milliseconds(1));
     ASSERT_TRUE(result.exhausted.empty());
-    ASSERT_EQ(bucket->slice(ALL, t + std::chrono::milliseconds(1)).ops.size(), 1U);
+    ASSERT_EQ(bucket->slice(t + std::chrono::milliseconds(1)).ops.size(), 1U);
     std::vector<wr::RequeueOp> noError;
     noError.push_back(wr::RequeueOp {op, wr::LastError {}});
     result = bucket->requeue(std::move(noError), spec(false, Delay::Now), t + std::chrono::milliseconds(300));
@@ -400,12 +400,12 @@ TEST_F(WriteRetryLaneTest, RequeueSpecs)
     }
 
     EXPECT_EQ(bucket->headBytes(t + ms(1)), o[3]->lines.size());
-    auto first = bucket->slice(ALL, t + ms(1));
+    auto first = bucket->slice(t + ms(1));
     EXPECT_EQ(keysOf(first.ops), (std::vector<std::uint64_t> {3, 1, 2})) << "toHead first, then by notBefore (stable)";
     EXPECT_FALSE(bucket->eligible(t + ms(4999))) << "At(t) is not due before t";
-    EXPECT_TRUE(bucket->slice(ALL, t + ms(4999)).ops.empty());
+    EXPECT_TRUE(bucket->slice(t + ms(4999)).ops.empty());
     EXPECT_TRUE(bucket->eligible(t + ms(5000)));
-    auto second = bucket->slice(ALL, t + ms(5000));
+    auto second = bucket->slice(t + ms(5000));
     EXPECT_EQ(keysOf(second.ops), (std::vector<std::uint64_t> {0}));
 
     drain(bucket, o);
@@ -439,7 +439,7 @@ TEST_F(WriteRetryLaneTest, SplitHalvesNeverRemerge)
     }
     ASSERT_TRUE(writer->submit(indexOp(id(4)), results->callback(4)).accepted); // A pending op behind the lane.
 
-    auto h1 = bucket->slice(ALL, t);
+    auto h1 = bucket->slice(t);
     EXPECT_EQ(keysOf(h1.ops), (std::vector<std::uint64_t> {0, 1})) << "first half only";
     r = bucket->requeue(
         requeueOps(h1.ops, ic::Cause::PayloadTooLarge, 413), spec(false, Delay::Now, {}, true, true), t);
@@ -447,7 +447,7 @@ TEST_F(WriteRetryLaneTest, SplitHalvesNeverRemerge)
     std::vector<std::vector<std::uint64_t>> next;
     for (int i = 0; i < 4; ++i)
     {
-        next.push_back(keysOf(bucket->slice(ALL, t).ops));
+        next.push_back(keysOf(bucket->slice(t).ops));
     }
     EXPECT_EQ(next, (std::vector<std::vector<std::uint64_t>> {{0}, {1}, {2, 3}, {4}}))
         << "quarters, then the second half, then the pending op";
@@ -553,7 +553,7 @@ TEST_F(WriteRetryLaneTest, DropOldestSparesRetryLane)
     EXPECT_EQ(results->count(1), 0) << "lane op evicted";
     EXPECT_EQ(results->countWith(ic::Status::Dropped, ic::Cause::QueueFull), 3U);
     EXPECT_EQ(stats("b").droppedOldest, 3U);
-    const auto lane = bucket->slice(ALL, t + std::chrono::hours(1));
+    const auto lane = bucket->slice(t + std::chrono::hours(1));
     EXPECT_EQ(keysOf(lane.ops), (std::vector<std::uint64_t> {0, 1})) << "the lane is intact";
 
     drain(bucket, batch.ops);
@@ -589,7 +589,7 @@ TEST_F(WriteRetryLaneTest, NextDueAndEmpty)
     const auto after = now();
     EXPECT_TRUE(bucket->nextDue(t) == t + std::chrono::seconds(10)) << "the lane head is earlier";
 
-    ASSERT_EQ(keysOf(bucket->slice(ALL, t + std::chrono::seconds(10)).ops), (std::vector<std::uint64_t> {0}));
+    ASSERT_EQ(keysOf(bucket->slice(t + std::chrono::seconds(10)).ops), (std::vector<std::uint64_t> {0}));
     bucket->requeue(requeueOps({op}), spec(true, Delay::At, t + std::chrono::seconds(120)), t);
     const auto due = bucket->nextDue(t);
     ASSERT_TRUE(due.has_value());
@@ -723,7 +723,7 @@ TEST_F(WriteRetryLaneTest, RetryLaneInvariantsUnderRace)
                 while (!stop.load())
                 {
                     const auto t = now();
-                    auto slice = bucket->slice(maxBytes, t);
+                    auto slice = bucket->slice(t);
                     if (slice.ops.empty())
                     {
                         std::this_thread::yield();
@@ -827,7 +827,7 @@ TEST_F(WriteRetryLaneTest, ToHeadIsAlwaysDueNow)
     bucket->requeue(requeueOps({o[1]}), spec(false, Delay::At, t + std::chrono::hours(1), true), t);
     EXPECT_EQ(o[1]->notBefore, t) << "toHead forces Now";
     EXPECT_TRUE(bucket->eligible(t));
-    EXPECT_EQ(keysOf(bucket->slice(ALL, t).ops), (std::vector<std::uint64_t> {1, 0}));
+    EXPECT_EQ(keysOf(bucket->slice(t).ops), (std::vector<std::uint64_t> {1, 0}));
     for (const auto& op : o)
     {
         resolve(op);
@@ -851,6 +851,6 @@ TEST_F(WriteRetryLaneTest, ResolveWhileInLaneLeavesIt)
     EXPECT_FALSE(bucket->empty()) << "waiting in the lane";
     ASSERT_TRUE(resolve(op));
     EXPECT_TRUE(bucket->empty()) << "the resolved op left the lane";
-    EXPECT_TRUE(bucket->slice(ALL, t + std::chrono::hours(2)).ops.empty()) << "never sent again";
+    EXPECT_TRUE(bucket->slice(t + std::chrono::hours(2)).ops.empty()) << "never sent again";
     EXPECT_EQ(stats("b", "c").retained, 0U);
 }

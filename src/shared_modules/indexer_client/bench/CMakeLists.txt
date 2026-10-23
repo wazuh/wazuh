@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: GPL-2.0-only OR AGPL-3.0-or-later
 # Benchmark harness (plan 18, E2c): the v1 bulk transport (HTTPRequest::post, SINGLE) and the v2 transport over the same
-# in-process fake and the same libwazuhext. Built only with -DINDEXER_CLIENT_BENCH=ON, in Release. See README "Benchmark".
+# in-process fake and the same libwazuhext (indexer_client_bench_v2 --path client: the whole Client/bucket path, E6c).
+# Built only with -DINDEXER_CLIENT_BENCH=ON, in Release. See README "Benchmark".
 
 set(HTTP_REQUEST_DIR ${SRC_FOLDER}/shared_modules/http-request)
 
@@ -35,6 +36,20 @@ target_compile_definitions(indexer_client_bench_classify PRIVATE ASIO_STANDALONE
 target_compile_features(indexer_client_bench_classify PRIVATE cxx_std_17)
 target_link_libraries(indexer_client_bench_classify PRIVATE wazuhext ext_asio Threads::Threads ${INDEXER_CLIENT_SIMDJSON})
 
-# D40 (plan 18, E6b): one target that builds the three harnesses (the CI bench job builds this one).
+# E6c (RNF-2, I119): the submit microbenchmark, v1 (IndexerConnectorAsync) against v2 (IWriter::submit) in one
+# executable. indexer_connector keeps its dependencies PRIVATE, so keystore, urlrequest and wazuhext are linked here.
+set(INDEXER_CONNECTOR_DIR ${SRC_FOLDER}/shared_modules/indexer_connector)
+add_executable(indexer_client_bench_submit benchSubmit.cpp $<TARGET_OBJECTS:indexer_client_objects>)
+target_include_directories(
+  indexer_client_bench_submit
+  PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/../include ${CMAKE_CURRENT_SOURCE_DIR}/../src
+          ${INDEXER_CONNECTOR_DIR}/include ${SRC_FOLDER}/shared_modules/keystore/include ${SRC_FOLDER}/external/nlohmann
+          ${SRC_FOLDER}/external/curl/include ${SRC_FOLDER} ${SRC_FOLDER}/external/openssl/include)
+target_compile_definitions(indexer_client_bench_submit PRIVATE CPPHTTPLIB_OPENSSL_SUPPORT ASIO_STANDALONE)
+target_compile_features(indexer_client_bench_submit PRIVATE cxx_std_17)
+target_link_libraries(indexer_client_bench_submit PRIVATE indexer_connector keystore urlrequest wazuhext ext_asio
+                                                          Threads::Threads ${INDEXER_CLIENT_SIMDJSON})
+
+# D40 (plan 18, E6b): one target that builds the four harnesses (the CI bench job builds this one).
 add_custom_target(indexer_client_bench DEPENDS indexer_client_bench_v1 indexer_client_bench_v2
-                                               indexer_client_bench_classify)
+                                               indexer_client_bench_classify indexer_client_bench_submit)

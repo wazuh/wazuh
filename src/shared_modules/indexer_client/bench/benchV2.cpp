@@ -14,7 +14,9 @@
 // started with K = 1, M = 2 and a one-hour probe interval (one round at start, before the warm-up); `c` chains each
 // keep one POST /_bulk in flight, and every result callback (on the CPU pool) submits the chain's next request. One run
 // per invocation, printed as one CSV row (`ROW,` + the I58 columns). `--probe` answers D37 instead: 50 consecutive
-// probe rounds on a live TLS runtime and the connections they cost.
+// probe rounds on a live TLS runtime and the connections they cost. `--path client` (E6c, D53) measures the whole
+// Client/bucket write path instead of the transport: one bucket, `c` chains that each keep 4 MiB of 1.5 KiB documents
+// queued and replace every resolved one from its callback; the fake answers one item per document (items mode).
 
 #include <asio/executor_work_guard.hpp>
 #include <asio/io_context.hpp>
@@ -58,6 +60,12 @@ namespace
         "  the first measured /_bulk. --probe prints one 'PROBE,...' line. Exit 0 only when the result is valid.\n";
 
     constexpr int PROBE_INTERVAL_MS {3600000};
+
+    // --path client (E6c contract §4).
+    constexpr std::size_t CLIENT_DOC_BYTES {1536};
+    constexpr std::size_t CLIENT_BULK_BYTES {4u * 1024u * 1024u};
+    constexpr std::size_t CLIENT_QUOTA_BYTES {256u * 1024u * 1024u};
+    constexpr const char* CLIENT_INDEX {"bench-client"};
 
     /// Everything one measured window shares with its callbacks; held by shared_ptr, so a callback that outlives a
     /// timed-out drain never writes into a dead frame.
@@ -179,12 +187,13 @@ namespace
     }
 
     /// The runtime's configuration: one host (the fake), its CA in TLS, K = 1, M = 2, a one-hour probe interval.
-    indexer_client::KeyValueConfigSource makeSource(const std::string& host, const std::string& caFile)
+    indexer_client::KeyValueConfigSource
+    makeSource(const std::string& host, const std::string& caFile, const std::string& extraOptions = {})
     {
         const std::string options = "analysisd.indexer_client_network_threads=1\n"
                                     "analysisd.indexer_client_cpu_threads=2\n"
                                     "analysisd.indexer_client_probe_interval_ms=" +
-                                    std::to_string(PROBE_INTERVAL_MS) + "\n";
+                                    std::to_string(PROBE_INTERVAL_MS) + "\n" + extraOptions;
         const std::string section =
             "{\"hosts\":[\"" + host + "\"]" +
             (caFile.empty() ? std::string() : ",\"ssl\":{\"certificate_authorities\":[\"" + caFile + "\"]}") + "}";
@@ -333,6 +342,268 @@ namespace
                    : 1;
     }
 
+    /// --path client: the chains of one measured window, shared with the op callbacks (held by shared_ptr for the
+    /// same reason as Window).
+    struct Chains final
+    {
+        std::shared_ptr<indexer_client::IWriter> writer;
+        std::string doc;
+        std::atomic<bool> stopping {false};
+        std::atomic<std::uint64_t> ok {0};
+        std::atomic<std::uint64_t> errors {0};
+        std::mutex mutex;
+        std::condition_variable drained;
+        std::uint64_t inFlight {0}; ///< Under `mutex`; starts at 1, the driver's hold.
+        std::string lastError;
+
+        void fail(std::string why)
+        {
+            ++errors;
+            std::lock_guard<std::mutex> lock(mutex);
+            lastError = std::move(why);
+        }
+
+        void release()
+        {
+            std::lock_guard<std::mutex> lock(mutex);
+            if (--inFlight == 0)
+            {
+                drained.notify_all();
+            }
+        }
+    };
+
+    /// Submits one document; its callback (on the CPU pool, never blocking: Reject) submits the replacement.
+    void submitDoc(const std::shared_ptr<Chains>& chains)
+    {
+        {
+            std::lock_guard<std::mutex> lock(chains->mutex);
+            ++chains->inFlight;
+        }
+        indexer_client::Op op;
+        op.kind = indexer_client::Op::Kind::IndexDataStream;
+        op.index = CLIENT_INDEX;
+        op.body = chains->doc;
+        const auto submitted =
+            chains->writer->submit(std::move(op),
+                                   [chains](const indexer_client::OpResult& result)
+                                   {
+                                       if (result.status == indexer_client::Status::Ok)
+                                       {
+                                           ++chains->ok;
+                                       }
+                                       else
+                                       {
+                                           chains->fail(std::string("op ") + indexer_client::toString(result.cause) +
+                                                        " http=" + std::to_string(result.httpStatus));
+                                       }
+                                       if (!chains->stopping.load())
+                                       {
+                                           submitDoc(chains);
+                                       }
+                                       chains->release();
+                                   });
+        if (!submitted.accepted)
+        {
+            chains->fail(std::string("submit refused: ") + indexer_client::toString(submitted.cause) + " " +
+                         submitted.reason);
+            chains->release();
+        }
+    }
+
+    struct ChainsResult final
+    {
+        std::shared_ptr<Chains> chains;
+        double secs {0}; ///< Start to stop: the time the chains kept the bucket full (the drain is not included).
+        double drainMs {0};
+        bool drained {false};
+    };
+
+    /// `c` chains of CLIENT_BULK_BYTES of documents each for `seconds`; then no replacement, wait for what is queued.
+    /// `onStop` runs right at the stop, before the drain. The drain is left out of `secs`: its last partial bulk waits
+    /// for the bucket's maxAge (5 s by default), idle time that is not throughput.
+    ChainsResult runChains(const std::shared_ptr<indexer_client::IWriter>& writer,
+                           const std::string& doc,
+                           int c,
+                           int seconds,
+                           const std::function<void()>& onStart,
+                           const std::function<void()>& onStop)
+    {
+        ChainsResult out;
+        out.chains = std::make_shared<Chains>();
+        auto& chains = *out.chains;
+        chains.writer = writer;
+        chains.doc = doc;
+        chains.inFlight = 1;
+        onStart();
+        const auto t0 = Clock::now();
+        const auto perChain = CLIENT_BULK_BYTES / doc.size();
+        for (std::size_t i = 0; i < perChain * static_cast<std::size_t>(c); ++i)
+        {
+            submitDoc(out.chains);
+        }
+        std::this_thread::sleep_for(std::chrono::seconds(seconds));
+        chains.stopping = true;
+        const auto stopAt = Clock::now();
+        onStop();
+        chains.release();
+        {
+            std::unique_lock<std::mutex> lock(chains.mutex);
+            out.drained = chains.drained.wait_for(
+                lock, std::chrono::seconds(bench::DRAIN_SECONDS), [&] { return chains.inFlight == 0; });
+        }
+        const auto end = Clock::now();
+        out.secs = std::chrono::duration<double>(stopAt - t0).count();
+        out.drainMs = std::chrono::duration<double, std::milli>(end - stopAt).count();
+        return out;
+    }
+
+    indexer_client::BucketMetrics bucketMetrics(const indexer_client::Client& client)
+    {
+        const auto metrics = client.metrics();
+        return metrics.buckets.empty() ? indexer_client::BucketMetrics {} : metrics.buckets.front();
+    }
+
+    /// --path client (contract §4): K = 1, M = 2, one bucket (maxBytes 4 MiB, quota 256 MiB, Reject, Retry). The
+    /// warm-up window drains before the fake's counters are reset and the bucket's snapshot taken, so every bulk of the
+    /// measured window is counted on both sides: valid <=> bytes (delta bulkBytes) == server_bytes, 0 errors, drained.
+    int runClient(bench::BenchFake& fake,
+                  const indexer_client::RuntimeRef& ref,
+                  const std::string& mode,
+                  int chainsCount,
+                  int secs,
+                  int warmup,
+                  int pair,
+                  bool printHeaders)
+    {
+        indexer_client::BucketSpec spec;
+        spec.name = "bench";
+        spec.quotaBytes = CLIENT_QUOTA_BYTES;
+        spec.overflow.kind = indexer_client::Overflow::Kind::Reject;
+        spec.bulk.maxBytes = CLIENT_BULK_BYTES;
+        spec.onAmbiguous5xx = indexer_client::AmbiguousPolicy::Retry;
+        auto created = ref.client("bench", {spec});
+        if (!created.ok())
+        {
+            std::cerr << "indexer_client_bench_v2: client: " << indexer_client::toString(created.cause) << ": "
+                      << created.reason << std::endl;
+            return 1;
+        }
+        auto client = std::move(created.value);
+        auto writer = client->writer("bench");
+        // A compact JSON document of exactly CLIENT_DOC_BYTES.
+        const std::string head = R"({"agent":{"id":"001","name":"bench"},"message":")";
+        const std::string doc = head + std::string(CLIENT_DOC_BYTES - head.size() - 2, 'x') + "\"}";
+
+        if (warmup > 0)
+        {
+            const auto warm = runChains(writer, doc, chainsCount, warmup, [] {}, [] {});
+            if (warm.chains->errors != 0 || !warm.drained)
+            {
+                std::cerr << "v2 client warm-up: " << warm.chains->errors.load() << " errors, drained=" << warm.drained
+                          << ", last: " << warm.chains->lastError << std::endl;
+            }
+        }
+
+        const auto ioThreads = bench::threadsNamed("ic-io-");
+        std::vector<long long> io0;
+        long long proc0 = -1;
+        long long proc1 = -1;
+        indexer_client::BucketMetrics m0;
+        indexer_client::BucketMetrics mStop;
+        std::vector<long long> io1;
+        const auto measured = runChains(
+            writer,
+            doc,
+            chainsCount,
+            secs,
+            [&]
+            {
+                fake.resetCounters();
+                m0 = bucketMetrics(*client);
+                for (const int tid : ioThreads)
+                {
+                    io0.push_back(bench::cpuTicks(tid));
+                }
+                proc0 = bench::cpuTicks(0);
+            },
+            [&]
+            {
+                proc1 = bench::cpuTicks(0);
+                for (const int tid : ioThreads)
+                {
+                    io1.push_back(bench::cpuTicks(tid));
+                }
+                mStop = bucketMetrics(*client);
+            });
+        double ioCpu = ioThreads.empty() ? -1 : 0;
+        for (std::size_t i = 0; i < ioThreads.size(); ++i)
+        {
+            const double percent = bench::cpuPercent(io0[i], io1[i], measured.secs);
+            ioCpu = percent < 0 || ioCpu < 0 ? -1 : ioCpu + percent;
+        }
+        // The last op callback can run before its bulk is counted, and the charge is released after the results: wait
+        // (bounded) for the snapshot to account for every bulk the fake saw and for an empty bucket.
+        indexer_client::BucketMetrics m1;
+        const bool settled = waitUntil(
+            [&]
+            {
+                m1 = bucketMetrics(*client);
+                return m1.bulkRequests - m0.bulkRequests >= fake.bulkRequests() && m1.charge == 0;
+            },
+            std::chrono::seconds(5));
+        const auto& chains = *measured.chains;
+
+        bench::Row row;
+        row.mode = mode;
+        row.headers = "normative";
+        row.side = "v2-client";
+        row.c = chainsCount;
+        row.pair = pair;
+        row.requests = m1.bulkRequests - m0.bulkRequests;
+        row.bytes = m1.bulkBytes - m0.bulkBytes;
+        row.secs = measured.secs;
+        const auto samples = m1.latency.count - m0.latency.count;
+        row.reqMsMean = static_cast<double>(m1.latency.sumMicros - m0.latency.sumMicros) / 1000.0 /
+                        static_cast<double>(samples ? samples : 1);
+        row.threadCpu = ioCpu;
+        row.procCpu = bench::cpuPercent(proc0, proc1, measured.secs);
+        row.cpus = bench::cpusAllowed();
+        const auto wazuhext = bench::loadedWazuhext();
+        row.wazuhextSha256 = bench::sha256Of(wazuhext);
+        row.errors = chains.errors.load();
+        row.serverBytes = fake.bulkBytes();
+        row.valid = measured.drained && settled && row.errors == 0 && chains.ok.load() > 0 && row.bytes > 0 &&
+                    row.serverBytes == row.bytes && row.threadCpu >= 0 && row.procCpu >= 0;
+        bench::printRow(row);
+        if (printHeaders)
+        {
+            bench::printHeaders(fake);
+        }
+        const auto serverBulks = fake.bulkRequests();
+        std::uint64_t retries = 0;
+        for (std::size_t i = 0; i < m1.retries.size(); ++i)
+        {
+            retries += m1.retries[i] - m0.retries[i];
+        }
+        std::cout << "NOTE bulk_mean=" << (serverBulks ? row.serverBytes / serverBulks : 0)
+                  << " server_bulks=" << serverBulks << " server_bytes=" << row.serverBytes
+                  << " server_docs=" << fake.bulkDocs() << " ops_ok=" << chains.ok.load() << " mib_s_at_stop="
+                  << bench::fixed(static_cast<double>(mStop.bulkBytes - m0.bulkBytes) / 1048576.0 / measured.secs, 3)
+                  << " drain_ms=" << bench::fixed(measured.drainMs, 1) << " drained=" << measured.drained
+                  << " settled=" << settled << " charge_after=" << m1.charge << " retries=" << retries
+                  << " connections=" << fake.distinctConnections() << " io_threads=" << ioThreads.size()
+                  << " wazuhext=" << wazuhext << std::endl;
+        if (row.errors != 0)
+        {
+            std::lock_guard<std::mutex> lock(measured.chains->mutex);
+            std::cout << "NOTE last_error=" << chains.lastError << std::endl;
+        }
+        writer.reset();
+        client.reset(); // requestClose() + awaitClosed() on the owner thread, before RuntimeOwner::shutdown().
+        return row.valid ? 0 : 1;
+    }
+
     int run(bench::Args& args)
     {
         if (args.flag("csv-header"))
@@ -358,14 +629,8 @@ namespace
             std::cerr << USAGE;
             return 2;
         }
-        if (path == "client")
-        {
-            std::cerr << "indexer_client_bench_v2: --path client is not implemented yet: the Client/bucket path "
-                         "(RuntimeRef::client, DRR, AIMD) arrives with plan 18 stage E5; use --path transport"
-                      << std::endl;
-            return 2;
-        }
         const bool tls = mode == "tls";
+        const bool clientPath = path == "client";
 
         std::unique_ptr<indexer_client::testing::TlsMaterialFactory> material;
         std::unique_ptr<bench::BenchFake> fake;
@@ -378,9 +643,14 @@ namespace
         {
             fake = std::make_unique<bench::BenchFake>(fakeStatus);
         }
+        fake->setItems(clientPath);
         fake->start();
 
-        const auto source = makeSource(fake->baseUrl(), tls ? material->caCertificate() : std::string());
+        const auto source = makeSource(
+            fake->baseUrl(),
+            tls ? material->caCertificate() : std::string(),
+            clientPath ? "analysisd.indexer_client_global_quota_bytes=" + std::to_string(CLIENT_QUOTA_BYTES) + "\n"
+                       : std::string());
         const auto started = indexer_client::RuntimeOwner::start(indexer_client::ProcessId::Analysisd, source);
         if (!started.ok())
         {
@@ -401,6 +671,10 @@ namespace
         if (probe)
         {
             rc = startRound ? runProbe(*fake, rounds) : 1;
+        }
+        else if (clientPath)
+        {
+            rc = runClient(*fake, started.value, mode, chains, secs, warmup, pair, printHeaders);
         }
         else
         {

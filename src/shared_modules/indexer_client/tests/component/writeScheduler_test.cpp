@@ -11,9 +11,10 @@
  */
 
 // The scheduler: batches by threshold, DRR by weight, whole documents, and the thread budget with buckets
-// (plan-E3a §Tests: I63, I23, RF-3, T3a, CA-1/T1).
+// (plan-E3a §Tests: I63, I23, RF-3, T3a, CA-1/T1), and the DRR credit with debt (plan-E6c §Tests: I118, CA-E6c-1…4).
 
 #include <algorithm>
+#include <cstdio>
 #include <iterator>
 #include <map>
 #include <set>
@@ -208,9 +209,11 @@ TEST_F(WriteTest, DrrShareByWeight)
     }
 }
 
-// I23: a document larger than the quantum is never split: it leaves whole once its bucket has accumulated the credit
-// over several turns (the credit carries over).
-TEST_F(WriteTest, DocumentNeverSplitCreditCarries)
+// I23/I118 (CA-E6c-4): a document larger than three quanta is never split and leaves whole in its bucket's first turn
+// (any positive credit emits; no round is skipped before it); the debt it leaves (size - quantum) is kept while the
+// bucket is empty, so the next 100 B op leaves only after DRR fast-forwards the rounds that pay it, within 3 s.
+// Mutant: «slice bounded by the credit» (the head never fits, nothing leaves) or «emptying => credit = 0».
+TEST_F(WriteTest, DocumentNeverSplitDebtCarries)
 {
     ASSERT_NO_FATAL_FAILURE(start(1, 2, {{"drr_quantum_bytes", std::to_string(QUANTUM)}}));
     auto sink = installSink();
@@ -226,6 +229,8 @@ TEST_F(WriteTest, DocumentNeverSplitCreditCarries)
         c->requestClose(); // A scheduler that never covers the head spins on loop 0: closing empties the bucket.
     }
     ASSERT_TRUE(sent) << "the document never left";
+    EXPECT_EQ(m_path->scheduler()->stats().fastForwards, 0u)
+        << "the document left on the first turn (I118: credit > 0 suffices)";
     auto batches = sink->take();
     ASSERT_EQ(batches.size(), 1u);
     ASSERT_EQ(batches[0].ops.size(), 1u);
@@ -233,11 +238,140 @@ TEST_F(WriteTest, DocumentNeverSplitCreditCarries)
     EXPECT_EQ(batches[0].ops[0]->lines.size(), size);
     m_path->resolve(batches[0].ops[0], TestSink::ok());
 
-    // The credit left after it (4 quanta - size) still serves the next small op in the same way.
+    // The debt (size - quantum) is paid by skipped rounds before the small op leaves.
+    const auto fastForwards = m_path->scheduler()->stats().fastForwards;
+    const auto submitted = std::chrono::steady_clock::now();
     ASSERT_TRUE(writer->submit(indexOp(id(1), 100)).accepted);
     ASSERT_TRUE(sink->waitDispatched(2, 3s));
+    EXPECT_LT(std::chrono::steady_clock::now() - submitted, 3s);
+    EXPECT_GT(m_path->scheduler()->stats().fastForwards, fastForwards) << "the debt was not paid by skipped rounds";
+    EXPECT_EQ(m_path->scheduler()->stats().debtOverruns, 0u);
     EXPECT_EQ(sink->resolveHeld(), 1u);
     expectInvariants(stats("big"));
+}
+
+// I118 (CA-E6c-1): the credit decides whether a turn emits, not the batch size: with a 64 KiB quantum and bulk.maxBytes
+// 512 KiB, the first batch of a bucket holding 2 MiB of 4 KiB documents reaches bulk.maxBytes (within one op).
+// Mutant: «slice bounded by the credit» (the batch stays <= 64 KiB).
+TEST_F(WriteTest, DrrDebtBulkReachesMaxBytes)
+{
+    ASSERT_NO_FATAL_FAILURE(start(1, 2, {{"drr_quantum_bytes", std::to_string(QUANTUM)}}));
+    auto sink = installSink(TestSink::Mode::Hold, 0);
+    const std::uint64_t maxBytes = 512 * 1024;
+    const auto size = wireSize(indexOp(id(0), 4096));
+    auto c = client("c", {bucketSpec("b", 8u << 20, ic::Overflow::Kind::Reject, maxBytes)});
+    fill(c->writer("b"), 512, 4096, 0);
+
+    sink->grant(1);
+    ASSERT_TRUE(sink->waitDispatched(1));
+    const auto log = sink->log();
+    EXPECT_GE(log[0].bytes, maxBytes - size + 1) << "the batch stopped short of bulk.maxBytes";
+    EXPECT_LE(log[0].bytes, maxBytes);
+    EXPECT_EQ(m_path->scheduler()->stats().debtOverruns, 0u);
+    sink->resolveHeld();
+    closeNow(*c); // The backlog left: Dropped(ClientClosed) at the sweep (the sink has no capacity).
+    expectInvariants(stats("b"));
+}
+
+// I118 (CA-E6c-2): with batches of two quanta (bulk.maxBytes 128 KiB, quantum 64 KiB) the bytes sent still follow the
+// weights 1:3 within 10 %, because a batch's bytes are charged in full (the credit may go negative) and the debt is
+// paid in later turns; no batch leaves a debt of bulk.maxBytes. Mutant: «credit = max(0, credit - bytes)» (≈ 2:1).
+TEST_F(WriteTest, DrrDebtShareByWeight)
+{
+    ASSERT_NO_FATAL_FAILURE(start(
+        1, 2, {{"drr_quantum_bytes", std::to_string(QUANTUM)}, {"global_quota_bytes", std::to_string(256u << 20)}}));
+    auto sink = installSink(TestSink::Mode::Hold, 0);
+    const std::size_t maxBytes = 128 * 1024;
+    ASSERT_EQ(maxBytes, 2 * QUANTUM);
+    auto light = bucketSpec("light", 64u << 20, ic::Overflow::Kind::Reject, maxBytes);
+    light.weight = 1;
+    auto heavy = bucketSpec("heavy", 64u << 20, ic::Overflow::Kind::Reject, maxBytes);
+    heavy.weight = 3;
+    auto c = client("c", {light, heavy});
+    // 20 x 16 batches of ~127 KiB at 1:3: ~10 MiB light and ~30 MiB heavy, with a margin.
+    fill(c->writer("light"), 3000, 4000, 0);
+    fill(c->writer("heavy"), 9000, 4000, 100000);
+
+    const auto first = sink->dispatched();
+    constexpr std::size_t WINDOWS = 20;
+    constexpr std::size_t PER_WINDOW = 16;
+    for (std::size_t w = 0; w < WINDOWS; ++w)
+    {
+        const auto before = sink->dispatched();
+        sink->grant(PER_WINDOW);
+        ASSERT_TRUE(sink->waitDispatched(before + PER_WINDOW));
+        sink->resolveHeld();
+    }
+    const auto share = shareOf(sink->log(), first, first + WINDOWS * PER_WINDOW);
+    ASSERT_EQ(share.bytes.size(), 2u);
+    const double ratio = static_cast<double>(share.bytes.at("heavy")) / share.bytes.at("light");
+    EXPECT_NEAR(ratio, 3.0, 0.3) << "light " << share.bytes.at("light") << " heavy " << share.bytes.at("heavy");
+    EXPECT_EQ(m_path->scheduler()->stats().debtOverruns, 0u);
+    EXPECT_GT(stats("heavy").retained, 4u) << "the backlog lasted the whole measurement";
+    EXPECT_GT(stats("light").retained, 4u);
+    closeNow(*c);
+    expectInvariants(stats("light"));
+    expectInvariants(stats("heavy"));
+}
+
+// I118 (CA-E6c-3): a bucket that empties keeps its debt (credit = min(credit, 0)): A sends one 512 KiB batch with a
+// 64 KiB quantum and empties; refilled, it waits until its turns pay the debt, so B (batches of one quantum) sends >= 6
+// batches between A's two (traced: 7-8). Mutant: «emptying => credit = 0» (A leaves again after <= 2 of B's batches).
+TEST_F(WriteTest, DrrDebtKeptWhenEmpty)
+{
+    ASSERT_NO_FATAL_FAILURE(start(1, 2, {{"drr_quantum_bytes", std::to_string(QUANTUM)}}));
+    auto sink = installSink(TestSink::Mode::Hold, 0);
+    const std::uint64_t aMaxBytes = 512 * 1024;
+    // Ops of exactly 4 KiB on the wire: 128 of them reach A's bulk.maxBytes exactly, 16 B's.
+    const auto overhead = wireSize(indexOp(id(0), 1000)) - 1000;
+    const std::size_t bodyBytes = 4096 - overhead;
+    ASSERT_EQ(wireSize(indexOp(id(0), bodyBytes)), 4096u);
+    auto c = client("c",
+                    {bucketSpec("A", 4u << 20, ic::Overflow::Kind::Reject, aMaxBytes),
+                     bucketSpec("B", 4u << 20, ic::Overflow::Kind::Reject, QUANTUM)});
+
+    fill(c->writer("A"), aMaxBytes / 4096, bodyBytes, 0);
+    sink->grant(1);
+    ASSERT_TRUE(sink->waitDispatched(1));
+    auto held = sink->take();
+    ASSERT_EQ(held.size(), 1u);
+    EXPECT_EQ(held[0].bytes, aMaxBytes);
+    const auto bucketA = held[0].bucket;
+    ASSERT_TRUE(bucketA);
+    ASSERT_TRUE(eventually([&] { return bucketA->empty(); }, 2s)) << "A did not empty";
+    for (const auto& op : held[0].ops)
+    {
+        m_path->resolve(op, TestSink::ok());
+    }
+
+    // A refilled with >= bulk.maxBytes, B with 16 x its bulk.maxBytes.
+    fill(c->writer("A"), aMaxBytes / 4096 + 16, bodyBytes, 10000);
+    fill(c->writer("B"), 16 * (QUANTUM / 4096), bodyBytes, 20000);
+    std::size_t between = 0;
+    bool aAgain = false;
+    for (std::size_t step = 0; step < 24 && !aAgain; ++step)
+    {
+        const auto before = sink->dispatched();
+        sink->grant(1);
+        ASSERT_TRUE(sink->waitDispatched(before + 1)) << "step " << step;
+        const auto log = sink->log();
+        if (log[before].bucket == "A")
+        {
+            aAgain = true;
+        }
+        else
+        {
+            ++between;
+        }
+        sink->resolveHeld();
+    }
+    ASSERT_TRUE(aAgain) << "A never sent again";
+    EXPECT_GE(between, 6u) << "A's debt was forgiven when it emptied";
+    std::printf("[  I118    ] DrrDebtKeptWhenEmpty: %zu batches of B between A's two\n", between);
+    EXPECT_EQ(m_path->scheduler()->stats().debtOverruns, 0u);
+    closeNow(*c);
+    expectInvariants(stats("A"));
+    expectInvariants(stats("B"));
 }
 
 // CA-1/T1: C clients x B buckets writing through the scheduler and the production sink (the bulk sender, E3b-2, to a

@@ -43,7 +43,9 @@ namespace indexer_client::detail::write
         std::uint64_t posts {0};        ///< notify/notifyAll calls, counted before they coalesce (E6a, I109b).
         std::uint64_t batches {0};      ///< Batches dispatched.
         std::uint64_t timerFires {0};   ///< maxAge timers that fired.
-        std::uint64_t fastForwards {0}; ///< Idle DRR cycles skipped at once (quantum small against the documents).
+        std::uint64_t fastForwards {0}; ///< Idle DRR rounds skipped at once: a quantum small against the documents, or
+                                        ///< a debt being paid back (I118).
+        std::uint64_t debtOverruns {0}; ///< Batches that left a credit <= -bulk.maxBytes (never expected; I118).
     };
 
     class Scheduler
@@ -62,13 +64,16 @@ namespace indexer_client::detail::write
         virtual void stop() = 0;
         virtual SchedulerStats stats() const = 0;
 
-        /// DRR (I63): ring of eligible buckets with a persistent cursor; a turn adds weight x quantum to the bucket's
-        /// credit and emits batches (Bucket::slice, each at most the credit) while credit >= headBytes() and
-        /// capacity() > 0; the turn ends when the credit does not cover the head (credit kept), the bucket empties
-        /// (credit = 0), capacity is exhausted (cursor stays on the bucket) or, after weight x DRR_MAX_BATCHES_PER_TURN
-        /// batches, when another bucket of the ring is eligible (I97b: the cursor moves on, the leftover credit is kept
-        /// capped at weight x quantum, and the next turn adds its quantum as usual; with no other eligible bucket the
-        /// turn goes on). A maxAge timer per bucket is armed from its oldest pending op and re-armed after each batch.
+        /// DRR (I63, I118): ring of eligible buckets with a persistent cursor; a turn adds weight x quantum to the
+        /// bucket's credit and emits batches (Bucket::slice, each up to bulk.maxBytes and the sink's batchLimit(),
+        /// whatever the credit) while credit > 0 and capacity() > 0; each batch takes its bytes from the credit with no
+        /// floor, so the excess is a debt (bounded by bulk.maxBytes) that the next turns pay back, and the long-run
+        /// share still follows the weights. The turn ends when the credit is <= 0 (credit kept), the bucket empties (a
+        /// debt is kept, a positive credit drops to 0), capacity is exhausted (cursor stays on the bucket) or, after
+        /// weight x DRR_MAX_BATCHES_PER_TURN batches, when another bucket of the ring is eligible (I97b: the cursor
+        /// moves on, the leftover credit is kept capped at weight x quantum, and the next turn adds its quantum as
+        /// usual; with no other eligible bucket the turn goes on). A maxAge timer per bucket is armed from its oldest
+        /// pending op and re-armed after each batch.
         static std::shared_ptr<Scheduler>
         create(std::weak_ptr<WritePath> path, asio::io_context& loop0, std::uint64_t quantumBytes);
     };
