@@ -83,16 +83,6 @@ protected:
         return ::fcntl(fd, cmd, arg);
     }
 
-    inline int fchmod(int fd, mode_t mode)
-    {
-        return ::fchmod(fd, mode);
-    }
-
-    inline int chmod(const char* path, mode_t mode)
-    {
-        return ::chmod(path, mode);
-    }
-
     inline FILE* fopen(const char* filename, const char* mode)
     {
         return ::fopen(filename, mode);

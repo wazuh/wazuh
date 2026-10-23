@@ -392,6 +392,60 @@ private:
     std::queue<Packet> m_unsentPacketList {};
     std::mutex m_mutex;
 
+    // Binds inside a private directory, sets the mode through a pinned descriptor and moves the socket into place.
+    void bindUnix(const sockaddr_un& addr)
+    {
+        const std::string path {addr.sun_path};
+        const auto slash {path.rfind('/')};
+        std::string tmpDir {(slash == std::string::npos ? std::string {} : path.substr(0, slash + 1)) + ".wXXXXXX"};
+
+        if (::mkdtemp(tmpDir.data()) == nullptr)
+        {
+            const auto savedErrno {errno};
+            closeSocket();
+            throw std::runtime_error {"Failed to create bind directory " + std::string(std::strerror(savedErrno))};
+        }
+
+        const auto dirFd {::open(tmpDir.c_str(), O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_NONBLOCK | O_CLOEXEC)};
+        struct stat dirStat {};
+        bool success {false};
+
+        if (dirFd >= 0 && ::fstat(dirFd, &dirStat) == 0)
+        {
+            if (!S_ISDIR(dirStat.st_mode) || dirStat.st_uid != ::geteuid() ||
+                (dirStat.st_mode & (S_IRWXG | S_IRWXO)) != 0)
+            {
+                errno = EPERM;
+            }
+            else
+            {
+                // There is no bindat(): bind through the descriptor so a renamed directory cannot redirect it.
+                sockaddr_un tmpAddr {};
+                tmpAddr.sun_family = AF_UNIX;
+                std::snprintf(tmpAddr.sun_path, sizeof(tmpAddr.sun_path), "/proc/self/fd/%d/s", dirFd);
+                success = T::bind(m_sock, reinterpret_cast<const sockaddr*>(&tmpAddr), sizeof(tmpAddr)) == 0 &&
+                          ::fchmodat(dirFd, "s", 0666, 0) == 0 && ::renameat(dirFd, "s", AT_FDCWD, path.c_str()) == 0;
+            }
+        }
+
+        const auto savedErrno {errno};
+        if (dirFd >= 0)
+        {
+            if (!success)
+            {
+                ::unlinkat(dirFd, "s", 0);
+            }
+            ::close(dirFd);
+        }
+        ::rmdir(tmpDir.c_str());
+
+        if (!success)
+        {
+            closeSocket();
+            throw std::runtime_error {"Failed to bind socket " + std::string(std::strerror(savedErrno))};
+        }
+    }
+
 public:
     explicit Socket(const int sock = INVALID_SOCKET)
         : m_sock {sock}
@@ -761,27 +815,12 @@ public:
 
             if (connectInfo.type == SocketType::UNIX)
             {
-                if (T::fchmod(m_sock, 0666) != 0)
-                {
-                    closeSocket();
-                    throw std::runtime_error {"Failed to fchmod socket " + std::string(std::strerror(errno))};
-                }
+                bindUnix(*reinterpret_cast<const sockaddr_un*>(connectInfo.addr));
             }
-
-            if (T::bind(m_sock, connectInfo.addr, connectInfo.addrSize) != 0)
+            else if (T::bind(m_sock, connectInfo.addr, connectInfo.addrSize) != 0)
             {
                 closeSocket();
                 throw std::runtime_error {"Failed to bind socket " + std::string(std::strerror(errno))};
-            }
-
-            if (connectInfo.type == SocketType::UNIX)
-            {
-                auto sunAddr = reinterpret_cast<const sockaddr_un*>(connectInfo.addr);
-                if (T::chmod(sunAddr->sun_path, 0666) != 0)
-                {
-                    closeSocket();
-                    throw std::runtime_error {"Failed to chmod socket " + std::string(std::strerror(errno))};
-                }
             }
 
             if (T::listen(m_sock, SOMAXCONN) != 0)
