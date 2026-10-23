@@ -39,10 +39,12 @@ def send_msg_to_wdb(msg, raw=False):
 @pytest.mark.parametrize('message_exception, send_exception, agent_list, command, arguments, alert', [
     (1650, None, ['001'], None, [], None),
     (1652, None, ['002'], 'random', [], None),
+    (1653, None, ['002'], 'custom-ar-t', [], None),
     (1701, None, ['999'], 'random', [], None),
     (None, 1707, ['004'], 'restart-wazuh0', [], None),
     (None, None, ['006'], 'restart-wazuh0', [], None),
     (None, None, ['006'], '!custom-ar', [], None),
+    (None, None, ['006'], 'custom-ar', [], None),
     (None, None, ['007'], 'restart-wazuh0', ["arg1", "arg2"], None),
     (None, None, ['001', '002', '003', '004', '005', '006'], 'restart-wazuh0', [], None),
     (None, None, ['001'], 'restart-wazuh0', ["arg1", "arg2"], None),

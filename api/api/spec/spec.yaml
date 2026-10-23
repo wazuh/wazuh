@@ -1456,8 +1456,10 @@ components:
           items:
             type: string
         command:
-          description: "Command running in the agent. If this value starts with `!`, then it refers to a script name
-          instead of a command name"
+          description: "Command running in the agent. It can be the name of a command defined in the configuration, if
+          it is used by a single active response, or the name that the active response has in `etc/shared/ar.conf`,
+          which is the command name followed by its timeout (for example `restart-wazuh0`). If this value starts
+          with `!`, then it refers to a script name instead of a command name"
           type: string
           format: active_response_command
         alert:
