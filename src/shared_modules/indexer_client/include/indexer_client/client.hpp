@@ -80,6 +80,16 @@ namespace indexer_client
         Ticket ticket;
     };
 
+    /// What IWriter::post answers (I122): Submit without a ticket. An accepted op has no per-op result for its
+    /// producer; its final outcome is counted only in the bucket's snapshot and in CloseReport, and a DropNewest or
+    /// DropOldest bucket may still resolve it Dropped(QueueFull) after `accepted` (see README § Public API).
+    struct Posted final
+    {
+        bool accepted {false};
+        Cause cause {Cause::None};
+        std::string reason; ///< Why it was refused; InvalidArgument names the field first (D42).
+    };
+
     class INDEXER_CLIENT_API Group final
     {
     public:
@@ -138,6 +148,9 @@ namespace indexer_client
     public:
         virtual ~IWriter() = default;
         virtual Submit submit(Op op, Callback cb = {}) = 0;
+        /// Fire-and-forget write for producers that never wait on a result (the engine, I120/I122): same validation,
+        /// admission, overflow and Reentrancy as submit, no Ticket and no callback.
+        virtual Posted post(Op op) = 0;
         virtual Group group() = 0;
         virtual CancelTicket cancel(std::string_view tag) = 0;
     };

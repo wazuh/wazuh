@@ -47,6 +47,13 @@ namespace indexer_client
                 return result;
             }
 
+            Posted post(Op /*op*/) override
+            {
+                Posted result;
+                result.cause = Cause::Unavailable;
+                return result;
+            }
+
             Group group() override
             {
                 return Group(std::make_shared<detail::GroupState>());
@@ -72,7 +79,7 @@ namespace indexer_client
         /// resolves what is queued now (WritePath::closeClient). Never blocks; takes no close mutex.
         void closeState(detail::ClientState& state, bool sweep)
         {
-            // The flag first: a submit racing this close either is refused at its enqueue or was queued before.
+            // The flag first: a submit / post racing this close either is refused at its admit or was queued before.
             state.closeRequested.store(true);
             if (state.queryGate)
             {

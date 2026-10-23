@@ -400,10 +400,11 @@ TEST_F(CloseDrainTest, CloseDrainRetriesDuringDrain)
     expectInvariants(stats("b"));
 }
 
-// I99 obj. 2 (N2): 50 pending ops (maxAge 1 h; node_window_max 1 and another bucket's batch held, so they cannot
-// leave) and a submit parked between its reservation and its enqueue while requestClose() runs: the racing op is
-// refused at the enqueue (Dropped(ClientClosed), once) and only it; the 50 drain Ok once the window frees; the charge
-// and the retained ops end at 0. Mutant: the racing enqueue closes the bucket (the old sweep of E3a).
+// I99 obj. 2 (N2), CA-E6d-5: 50 pending ops (maxAge 1 h; node_window_max 1 and another bucket's batch held, so they
+// cannot leave) and one submit racing requestClose() from another thread, with no seam: the racing op is either
+// refused (ClientClosed, no callback) or accepted and then drained Ok like the 50 — never dropped, and never closing
+// the bucket (the old sweep of E3a) — so drained + droppedClientClosed == 51 + accepted(50). A submit or post started
+// after requestClose() returned is ClientClosed. The charge and the retained ops end at 0.
 TEST_F(CloseDrainTest, SubmitRacesCloseKeepsDrain)
 {
     const auto a = startNode();
@@ -419,69 +420,93 @@ TEST_F(CloseDrainTest, SubmitRacesCloseKeepsDrain)
         ASSERT_TRUE(writer->submit(indexOp(id(k)), results->callback(k)).accepted);
     }
 
-    struct Gate final
-    {
-        std::mutex mutex;
-        std::condition_variable cv;
-        bool held {false};
-        bool open {false};
-        bool used {false};
-    };
-    auto gate = std::make_shared<Gate>();
-    hooks::setAfterAdmission(
-        [gate]
-        {
-            std::unique_lock<std::mutex> lock(gate->mutex);
-            if (gate->used)
-            {
-                return;
-            }
-            gate->used = true;
-            gate->held = true;
-            gate->cv.notify_all();
-            gate->cv.wait_for(lock, 10s, [&] { return gate->open; });
-        });
+    auto go = std::make_shared<std::atomic<bool>>(false);
     auto racing = std::make_shared<ic::Submit>();
     {
-        AsyncCall producer([writer, results, racing]
-                           { *racing = writer->submit(indexOp(id(50)), results->callback(50)); });
-        {
-            std::unique_lock<std::mutex> lock(gate->mutex);
-            ASSERT_TRUE(gate->cv.wait_for(lock, 5s, [&] { return gate->held; }));
-        }
+        AsyncCall producer(
+            [writer, results, racing, go]
+            {
+                while (!go->load())
+                {
+                    std::this_thread::yield();
+                }
+                *racing = writer->submit(indexOp(id(50)), results->callback(50));
+            });
+        go->store(true);
         c->requestClose();
-        {
-            std::lock_guard<std::mutex> lock(gate->mutex);
-            gate->open = true;
-        }
-        gate->cv.notify_all();
         ASSERT_TRUE(producer.wait(5s));
     }
-    hooks::setAfterAdmission({});
-    ASSERT_TRUE(racing->accepted) << "the racing submit had passed its reservation";
-    ASSERT_TRUE(results->waitTotal(1, scaled(2000ms))) << "the racing op was never resolved";
-    ASSERT_TRUE(results->result(50).has_value()) << "the first resolution was not the racing op";
-    EXPECT_EQ(results->result(50)->status, ic::Status::Dropped);
-    EXPECT_EQ(results->result(50)->cause, ic::Cause::ClientClosed);
-    EXPECT_EQ(results->total(), 1u) << "the race resolved more than its own op";
-    EXPECT_EQ(stats("b").retained, 50u) << "the pending ops left the bucket";
+    const std::size_t accepted50 = racing->accepted ? 1 : 0;
+    if (!racing->accepted)
+    {
+        EXPECT_EQ(racing->cause, ic::Cause::ClientClosed);
+    }
+    const auto late = writer->submit(indexOp(id(51)), results->callback(51));
+    EXPECT_FALSE(late.accepted);
+    EXPECT_EQ(late.cause, ic::Cause::ClientClosed) << "a submit started after requestClose() returned";
+    const auto latePost = writer->post(indexOp(id(52)));
+    EXPECT_FALSE(latePost.accepted);
+    EXPECT_EQ(latePost.cause, ic::Cause::ClientClosed) << "a post started after requestClose() returned";
+    EXPECT_EQ(stats("b").retained, 50 + accepted50) << "the pending ops left the bucket";
 
     a.fake->releaseHeld();
     const auto report = c->awaitClosed(in(10s));
     ASSERT_TRUE(report.ok());
-    ASSERT_TRUE(results->waitTotal(52, scaled(2000ms)));
+    ASSERT_TRUE(results->waitTotal(51 + accepted50, scaled(2000ms)));
     for (std::uint64_t k = 0; k < 50; ++k)
     {
         EXPECT_EQ(results->count(k), 1) << k;
         EXPECT_EQ(results->result(k)->status, ic::Status::Ok) << k << " " << ic::toString(results->result(k)->cause);
     }
     EXPECT_EQ(results->result(100)->status, ic::Status::Ok);
-    EXPECT_EQ(results->count(50), 1);
-    EXPECT_EQ(report.value.droppedClientClosed, 1u) << describe(report.value);
-    EXPECT_EQ(report.value.drained, 51u) << "50 + the x op; the refusal is not drained";
+    EXPECT_EQ(results->count(50), static_cast<int>(accepted50)) << "refused ⇒ no callback; accepted ⇒ one result";
+    if (accepted50 == 1)
+    {
+        EXPECT_EQ(results->result(50)->status, ic::Status::Ok)
+            << "the accepted racing op was not drained: " << ic::toString(results->result(50)->cause);
+    }
+    EXPECT_EQ(results->count(51), 0);
+    EXPECT_EQ(report.value.drained + report.value.droppedClientClosed, 51 + accepted50) << describe(report.value);
+    EXPECT_EQ(report.value.droppedShutdown, 0u);
     EXPECT_EQ(stats("b").retained, 0u);
     ASSERT_TRUE(eventually([this] { return globalCharge() == 0; }, scaled(5000ms)));
     expectInvariants(stats("b"));
+}
+
+// CA-E6d-3 (I122): 205 posted ops (the last 5 under every threshold, the two full batches held by the fake), then
+// requestClose() + awaitClosed(): CloseReport::drained counts all 205 although no Ticket or callback ties them to the
+// client, and the snapshot leaves none without a result (ok = 205, retained 0). Mutant m3: resolve finds no client
+// for a post op (drained 0).
+TEST_F(CloseDrainTest, PostDrainedOnClose)
+{
+    const auto a = startNode(BulkScript::items().held());
+    ASSERT_NO_FATAL_FAILURE(startOn({a.url()}));
+    auto c = client("c", {heldBack("b", 100)});
+    auto writer = c->writer("b");
+    for (std::uint64_t k = 0; k < 205; ++k)
+    {
+        ASSERT_TRUE(writer->post(indexOp(id(k))).accepted);
+    }
+    ASSERT_TRUE(a.fake->waitHeld(2, scaled(5000ms))) << "the two maxDocs batches never left";
+    EXPECT_EQ(stats("b").retained, 205u);
+
+    c->requestClose();
+    a.fake->releaseHeld();
+    const auto report = c->awaitClosed(in(10s));
+    ASSERT_TRUE(report.ok()) << ic::toString(report.cause);
+    EXPECT_EQ(report.value.drained, 205u) << describe(report.value);
+    EXPECT_EQ(report.value.droppedClientClosed, 0u);
+    EXPECT_EQ(report.value.droppedShutdown, 0u);
+    EXPECT_EQ(a.bulk->opCount(), 205u);
+    const auto metrics = c->metrics();
+    ASSERT_EQ(metrics.buckets.size(), 1u);
+    EXPECT_EQ(metrics.buckets[0].accepted, 205u);
+    EXPECT_EQ(metrics.buckets[0].ok, 205u);
+    const auto s = stats("b");
+    EXPECT_EQ(s.resolvedOk, 205u);
+    EXPECT_EQ(s.retained, 0u);
+    expectInvariants(s);
+    ASSERT_TRUE(eventually([this] { return globalCharge() == 0; }, scaled(5000ms)));
 }
 
 // I99 obj. 3: two Clients destroyed from callbacks (runtime threads) with 20 pending ops each, whose `_bulk` the fake

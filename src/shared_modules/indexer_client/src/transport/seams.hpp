@@ -33,7 +33,6 @@ namespace indexer_client::detail::seams
     std::optional<int> openSocket();                                      ///< CURL_SOCKET_BAD forces a connect failure.
     void onRuntimeThreadStart(pid_t tid);                                 ///< Each runtime thread, at start.
     void onPostRejected();                                                ///< A post refused by a closed loop.
-    void afterAdmission(); ///< E3a: in Writer::submit, between the bucket reservation and the enqueue.
     /// E3b-2: true makes the bulk sender treat its Transport::submit as refused (InvalidState) without submitting.
     bool refuseSubmit();
     /// G-diff E3b-2: in a bulk completion, after the slot was released (may throw: the completion's fallback).
@@ -65,7 +64,6 @@ namespace indexer_client::detail::seams
     }
     [[gnu::always_inline]] inline void onRuntimeThreadStart(pid_t) {}
     [[gnu::always_inline]] inline void onPostRejected() {}
-    [[gnu::always_inline]] inline void afterAdmission() {}
     [[gnu::always_inline]] inline bool refuseSubmit()
     {
         return false;

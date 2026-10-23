@@ -87,43 +87,6 @@ namespace indexer_client::detail::write
             return result;
         }
 
-        /// The RESULT_RESERVE of an op without callback (TicketState::resultReserve): returned to the bucket when the
-        /// last holder of the TicketState lets it go. Both references are weak: the reserve never keeps the runtime
-        /// alive, and once the write path is gone (its budget with it) there is nothing to return.
-        struct ReserveHandle final
-        {
-            std::weak_ptr<WritePath> path;
-            std::weak_ptr<Bucket> bucket;
-
-            ReserveHandle(std::weak_ptr<WritePath> writePath, std::weak_ptr<Bucket> owner)
-                : path(std::move(writePath))
-                , bucket(std::move(owner))
-            {
-            }
-
-            ReserveHandle(const ReserveHandle&) = delete;
-            ReserveHandle& operator=(const ReserveHandle&) = delete;
-
-            ~ReserveHandle()
-            {
-                auto alive = path.lock(); // Keeps the budget alive while the bucket returns the reserve.
-                if (!alive)
-                {
-                    return;
-                }
-                if (auto owner = bucket.lock())
-                {
-                    owner->releaseReserve();
-                }
-                else
-                {
-                    // The bucket died first (its Client and writers are gone, a Ticket outlived them): its own charge
-                    // no longer matters, but the runtime-wide cap must get the reserve back (G-diff E3a obj. 1).
-                    alive->budget().release(RESULT_RESERVE);
-                }
-            }
-        };
-
         /// One completion with a callback, run on the CPU pool (or inline once the pool is gone).
         struct CallbackCompletion final
         {
@@ -247,44 +210,26 @@ namespace indexer_client::detail::write
             Submit submit(Op request, Callback cb) override
             {
                 Submit submit;
-                // The effective conflict policy (I73): the op's when set, else the bucket's.
-                const ConflictPolicy effective = request.onConflict ? *request.onConflict : m_bucket->spec().onConflict;
-                auto encoded = encode(std::move(request), effective);
-                if (!encoded.ok())
+                auto op = prepare(std::move(request), submit.cause, submit.reason);
+                if (!op)
                 {
-                    m_bucket->countInvalidArgument();
-                    submit.cause = encoded.cause;
-                    submit.reason = std::move(encoded.reason); // The field first (D42).
                     return submit;
                 }
-                // encode() only moved the body out: the tag and the key fields are still the request's (I79, I80).
-                std::string tag = std::move(request.tag);
-                const bool hasKey = m_bucket->spec().ordered && !request.id.empty(); // `_id` iff the kind has one.
-                const std::uint64_t keyHash = hasKey ? orderedKeyHash(request.index, request.id) : 0;
                 const bool withCallback = static_cast<bool>(cb);
-                const auto now = std::chrono::steady_clock::now();
-                const auto& overflow = m_bucket->spec().overflow;
-                const auto blockUntil = overflow.kind == Overflow::Kind::Block ? now + overflow.blockTimeout : now;
+                auto ticket = std::make_shared<TicketState>();
+                op->ticket = ticket;
+                op->callback = std::move(cb);
 
-                auto reservation = m_bucket->reserve(encoded.value.size(), withCallback, blockUntil);
-                // DropOldest: the evicted ops are resolved outside the bucket's mutex, whatever this submit's outcome.
-                for (const auto& evicted : reservation.evicted)
+                const auto admission = admit(op);
+                if (admission.cause != Cause::None)
                 {
-                    m_path->resolve(evicted, dropped(Cause::QueueFull));
-                }
-                if (reservation.cause != Cause::None)
-                {
-                    submit.cause = reservation.cause;
-                    submit.reason = refusalReason(reservation.cause);
+                    submit.cause = admission.cause;
+                    submit.reason = refusalReason(admission.cause);
                     return submit;
                 }
-
-                auto ticket = std::make_shared<TicketState>();
-                ticket->client = m_client;
                 submit.accepted = true;
                 submit.ticket = Ticket(ticket);
-
-                if (reservation.dropNewest)
+                if (admission.dropNewest)
                 {
                     if (!withCallback)
                     {
@@ -294,53 +239,46 @@ namespace indexer_client::detail::write
                         return submit;
                     }
                     // Only RESULT_RESERVE was charged; it is returned after the callback, through the single path.
-                    auto op = std::make_shared<OpState>();
-                    op->reserveCharged = true;
-                    op->ticket = std::move(ticket);
-                    op->callback = std::move(cb);
-                    op->firstSubmit = now;
-                    op->bucket = m_bucket;
                     m_path->resolve(op, dropped(Cause::QueueFull));
                     return submit;
                 }
-
-                auto op = std::make_shared<OpState>();
-                op->payload = encoded.value.size();
-                op->lines = std::move(encoded.value);
-                op->reserveCharged = true;
                 if (!withCallback)
                 {
-                    ticket->resultReserve = std::make_shared<ReserveHandle>(m_path, m_bucket);
-                }
-                op->ticket = std::move(ticket);
-                op->callback = std::move(cb);
-                op->firstSubmit = now;
-                op->bucket = m_bucket;
-                op->conflictRetry = effective.kind == ConflictPolicy::Kind::Retry;
-                op->tag = std::move(tag);
-                op->hasKey = hasKey;
-                op->keyHash = keyHash;
-
-                seams::afterAdmission();
-
-                std::optional<Cause> closedAtEnqueue;
-                const bool notify = m_bucket->enqueue(op, &closedAtEnqueue);
-                // A close or a shutdown between the reservation and the enqueue (SubmitRacesClose): the bucket refused
-                // the op and took custody of its payload without queuing it (I99, N2), so only this op is resolved
-                // here; the rest of the bucket keeps draining. Both sides order on the bucket's mutex.
-                if (const auto& closed = closedAtEnqueue; closed)
-                {
-                    m_path->resolve(op, dropped(*closed)); // Not part of CloseReport::drained (a refusal).
-                    return submit;
-                }
-                if (notify)
-                {
-                    if (auto scheduler = m_path->scheduler())
-                    {
-                        scheduler->notify(m_bucket);
-                    }
+                    // The reserve is charged: the TicketState returns it when the last Ticket lets it go. Armed while
+                    // this producer still holds the ticket, so its destructor (on whichever thread drops the last
+                    // reference) sees the flag.
+                    ticket->reservePath = m_path;
+                    ticket->reserveBucket = m_bucket;
+                    ticket->reserveArmed = true;
                 }
                 return submit;
+            }
+
+            /// I122: submit without a Ticket and without a callback. Its RESULT_RESERVE goes back at its resolution
+            /// (WritePath::resolve, inside Bucket::releasePayload); its outcome is only counted (bucket snapshot,
+            /// CloseReport).
+            Posted post(Op request) override
+            {
+                Posted posted;
+                auto op = prepare(std::move(request), posted.cause, posted.reason);
+                if (!op)
+                {
+                    return posted;
+                }
+                const auto admission = admit(op);
+                if (admission.cause != Cause::None)
+                {
+                    posted.cause = admission.cause;
+                    posted.reason = refusalReason(admission.cause);
+                    return posted;
+                }
+                posted.accepted = true;
+                if (admission.dropNewest)
+                {
+                    // Nothing charged (no callback) and nobody to tell: counted as submit counts it without callback.
+                    m_bucket->countResolved(Status::Dropped, Cause::QueueFull);
+                }
+                return posted;
             }
 
             Group group() override
@@ -384,6 +322,60 @@ namespace indexer_client::detail::write
             }
 
         private:
+            /// submit / post, before the bucket (E6d): the effective conflict policy (I73: the op's when set, else the
+            /// bucket's) and encode(); then the whole OpState (payload = charge, I124b; head, body, firstSubmit with
+            /// the call's only clock read, bucket, conflict, tag and key, I79/I80) built outside the bucket's mutex.
+            /// Null with `cause` and `reason` (the field first, D42) on InvalidArgument.
+            std::shared_ptr<OpState> prepare(Op&& request, Cause& cause, std::string& reason)
+            {
+                const auto& spec = m_bucket->spec();
+                const ConflictPolicy effective = request.onConflict ? *request.onConflict : spec.onConflict;
+                auto outcome = encode(std::move(request), effective, spec.trustedBodies);
+                if (!outcome.ok())
+                {
+                    m_bucket->countInvalidArgument();
+                    cause = outcome.cause;
+                    reason = std::move(outcome.reason);
+                    return nullptr;
+                }
+                auto op = std::make_shared<OpState>();
+                op->head = std::move(outcome.value.head);
+                op->sharedHead = std::move(outcome.value.sharedHead); // I125: the cached action line, if any.
+                op->body = std::move(outcome.value.body);             // The moved-in document (I121): no copy.
+                op->payload = chargeSize(op->headView(), op->body);
+                op->reserveCharged = true;
+                op->firstSubmit = std::chrono::steady_clock::now();
+                op->bucket = m_bucket;
+                op->conflictRetry = effective.kind == ConflictPolicy::Kind::Retry;
+                // encode() only moved the body out: the tag and the key fields are still the request's (I79, I80).
+                op->tag = std::move(request.tag);
+                op->hasKey = spec.ordered && !request.id.empty(); // `_id` iff the kind has one.
+                op->keyHash = op->hasKey ? orderedKeyHash(request.index, request.id) : 0;
+                return op;
+            }
+
+            /// Bucket::admit (one take of its mutex), then, outside it, the DropOldest evictions resolved
+            /// Dropped(QueueFull) whatever this op's outcome, and the scheduler told when the bucket asks.
+            Admission admit(const std::shared_ptr<OpState>& op)
+            {
+                const auto now = op->firstSubmit;
+                const auto& overflow = m_bucket->spec().overflow;
+                const auto blockUntil = overflow.kind == Overflow::Kind::Block ? now + overflow.blockTimeout : now;
+                auto admission = m_bucket->admit(op, now, blockUntil);
+                for (const auto& evicted : admission.evicted)
+                {
+                    m_path->resolve(evicted, dropped(Cause::QueueFull));
+                }
+                if (admission.notify)
+                {
+                    if (auto scheduler = m_path->scheduler())
+                    {
+                        scheduler->notify(m_bucket);
+                    }
+                }
+                return admission;
+            }
+
             std::shared_ptr<ClientState> m_client;
             std::shared_ptr<Bucket> m_bucket;
             std::shared_ptr<WritePath> m_path;
@@ -424,13 +416,14 @@ namespace indexer_client::detail::write
         }
     }
 
-    void WritePath::registerClient(ClientState& client)
+    void WritePath::registerClient(const std::shared_ptr<ClientState>& clientState)
     {
+        auto& client = *clientState;
         std::vector<std::shared_ptr<Bucket>> created;
         created.reserve(client.buckets.size());
         for (const auto& spec : client.buckets)
         {
-            created.push_back(std::make_shared<Bucket>(client.consumer, spec, m_budget, weak_from_this()));
+            created.push_back(std::make_shared<Bucket>(client.consumer, spec, m_budget, weak_from_this(), clientState));
         }
         bool stopped = false;
         {
@@ -510,15 +503,12 @@ namespace indexer_client::detail::write
         auto ticket = std::move(op->ticket);
         auto callback = std::move(op->callback);
         const bool reserveCharged = op->reserveCharged;
-        std::shared_ptr<ClientState> client;
-        if (ticket)
-        {
-            client = ticket->client.lock();
-        }
-        else if (op->group)
-        {
-            client = op->group->client.lock(); // A group op counts in the CloseReport like a submitted one.
-        }
+        // E6d: an op of post (no ticket, callback nor group) returns its RESULT_RESERVE here; the others through the
+        // callback's completion, the last Ticket or the GroupState.
+        const bool returnReserve = reserveCharged && !ticket && !callback && !op->group;
+        // The client of the CloseReport accounting is its bucket's (1:1): a submitted, posted or group op alike. A
+        // dead bucket has no client left to count.
+        std::shared_ptr<ClientState> client = bucket ? bucket->client().lock() : nullptr;
 
         if (result.reason.size() > OpResult::MAX_REASON)
         {
@@ -571,7 +561,7 @@ namespace indexer_client::detail::write
             {
                 bucket->countCancelled(1); // I80: also under resolvedDropped.
             }
-            bucket->releasePayload(*op);
+            bucket->releasePayload(*op, returnReserve);
             seams::afterPayloadReleased(); // ResolutionOutstandingBeforeReleased.
         }
         else
@@ -580,6 +570,10 @@ namespace indexer_client::detail::write
             std::string().swap(op->lastReason);
             std::string().swap(op->lastItemErrorType);
             std::string().swap(op->tag);
+            if (returnReserve)
+            {
+                m_budget.release(RESULT_RESERVE); // The bucket's own charge died with it; the global cap's did not.
+            }
         }
         if (closing)
         {
@@ -602,8 +596,8 @@ namespace indexer_client::detail::write
 
         if (!callback)
         {
-            // No pool task: the ticket is completed here; its reserve lives in TicketState::resultReserve and is
-            // returned when the last Ticket (or this local reference) lets it go.
+            // No pool task: the ticket is completed here; its armed reserve is returned when the last Ticket (or this
+            // local reference) lets it go. A post op's went back above.
             if (ticket)
             {
                 ticket->complete(Outcome<OpResult>::success(std::move(result)));
@@ -774,3 +768,29 @@ namespace indexer_client::detail::write
         return path ? path->stats() : WriteStats {};
     }
 } // namespace indexer_client::detail::write
+
+namespace indexer_client::detail
+{
+    TicketState::~TicketState()
+    {
+        if (!reserveArmed)
+        {
+            return;
+        }
+        auto alive = reservePath.lock(); // Keeps the budget alive while the bucket returns the reserve.
+        if (!alive)
+        {
+            return;
+        }
+        if (auto owner = reserveBucket.lock())
+        {
+            owner->releaseReserve();
+        }
+        else
+        {
+            // The bucket died first (its Client and writers are gone, a Ticket outlived them): its own charge no
+            // longer matters, but the runtime-wide cap must get the reserve back (G-diff E3a obj. 1).
+            alive->budget().release(write::RESULT_RESERVE);
+        }
+    }
+} // namespace indexer_client::detail

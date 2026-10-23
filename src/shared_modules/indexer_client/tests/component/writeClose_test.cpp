@@ -24,7 +24,6 @@
 using namespace write_component;
 using component::AsyncCall;
 using component::eventually;
-namespace hooks = indexer_client::testing_hooks;
 
 namespace
 {
@@ -34,84 +33,167 @@ namespace
         return "c" + std::string(7 - digits.size(), '0') + digits;
     }
 
-    /// Holds the first submit that reaches the afterAdmission() seam (between reserve and enqueue) until opened.
-    struct SeamGate final : std::enable_shared_from_this<SeamGate>
+    /// One call of a race round (CA-E6d-5).
+    struct RaceCall final
     {
-        std::mutex mutex;
-        std::condition_variable cv;
-        bool held {false};
-        bool open {false};
-        bool used {false};
-
-        std::function<void()> hook()
-        {
-            return [self = shared_from_this()]
-            {
-                std::unique_lock<std::mutex> lock(self->mutex);
-                if (self->used)
-                {
-                    return;
-                }
-                self->used = true;
-                self->held = true;
-                self->cv.notify_all();
-                self->cv.wait_for(lock, 10s, [&] { return self->open; });
-            };
-        }
-
-        bool waitHeld(std::chrono::milliseconds timeout)
-        {
-            std::unique_lock<std::mutex> lock(mutex);
-            return cv.wait_for(lock, timeout, [this] { return held; });
-        }
-
-        void release()
-        {
-            {
-                std::lock_guard<std::mutex> lock(mutex);
-                open = true;
-            }
-            cv.notify_all();
-        }
+        std::uint64_t key {0};
+        bool post {false};
+        bool afterClose {false}; ///< Started after requestClose() / shutdown() had returned.
+        bool accepted {false};
+        ic::Cause cause {ic::Cause::None};
     };
+
+    /// The producer of a race round: submit() with a callback (even keys) and post() (odd keys) alternately, until it
+    /// has made one call that started after `closed` was set (set right after requestClose() / shutdown() returned).
+    /// `made` counts the calls finished. No seam: where the close lands in the admission is the scheduler's choice.
+    void raceProducer(const std::shared_ptr<ic::IWriter>& writer,
+                      const std::shared_ptr<Results>& results,
+                      const std::atomic<bool>& closed,
+                      std::atomic<std::size_t>& made,
+                      std::vector<RaceCall>& calls)
+    {
+        constexpr std::uint64_t MAX_BEFORE_CLOSE = 64;
+        for (std::uint64_t key = 0;; ++key)
+        {
+            if (key == MAX_BEFORE_CLOSE)
+            {
+                while (!closed.load(std::memory_order_acquire))
+                {
+                    std::this_thread::yield();
+                }
+            }
+            RaceCall call;
+            call.key = key;
+            call.post = key % 2 == 1;
+            call.afterClose = closed.load(std::memory_order_acquire);
+            if (call.post)
+            {
+                const auto posted = writer->post(indexOp(id(key)));
+                call.accepted = posted.accepted;
+                call.cause = posted.cause;
+            }
+            else
+            {
+                const auto submitted = writer->submit(indexOp(id(key)), results->callback(key));
+                call.accepted = submitted.accepted;
+                call.cause = submitted.cause;
+            }
+            calls.push_back(call);
+            made.fetch_add(1, std::memory_order_release);
+            if (call.afterClose)
+            {
+                return;
+            }
+        }
+    }
 } // namespace
 
-// I63: a submit that passed the reservation and has not enqueued yet when requestClose() / shutdown() sweeps its
-// bucket is still resolved, exactly once (Dropped with the close cause); refused submits never call back; many
-// producers racing a close: every accepted op resolves once. Charge 0 afterwards.
+// I63, CA-E6d-5 (no seam): submit() and post() from one thread racing requestClose() (200 rounds) or shutdown() (20
+// rounds) from another, the close landing after 0-3 calls. Oracle, every round: an accepted call has exactly one
+// result, Ok or Dropped(ClientClosed|Shutdown) (submit: its callback; post: the bucket's counters); a refused one has
+// the close cause and no callback; every call started after requestClose() returned is ClientClosed (after shutdown():
+// Shutdown); retained 0, Σ charge 0 and drained + droppedClientClosed + droppedShutdown == accepted. Between the two,
+// many producers racing a close: every accepted op resolves once. Mutant m4: admit enqueues after closeAdmission.
 TEST_F(WriteTest, SubmitRacesClose)
 {
     ASSERT_NO_FATAL_FAILURE(start());
     auto sink = installSink();
     const auto spec = bucketSpec("b", 8u << 20, ic::Overflow::Kind::Reject, 0, 1); // 1600 racing ops fit.
 
-    // requestClose() while the submit sits in the seam.
+    /// Checks one round once everything it accepted is resolved; `closeCause` is the cause of a late call.
+    const auto checkRound = [this](const std::string& consumer,
+                                   const std::vector<RaceCall>& calls,
+                                   const Results& results,
+                                   const ic::CloseReport& report,
+                                   ic::Cause closeCause)
     {
-        auto gate = std::make_shared<SeamGate>();
-        hooks::setAfterAdmission(gate->hook());
-        auto c = client("closing", {spec});
+        std::size_t accepted = 0;
+        for (const auto& call : calls)
+        {
+            SCOPED_TRACE((call.post ? "post " : "submit ") + std::to_string(call.key));
+            if (call.afterClose)
+            {
+                EXPECT_FALSE(call.accepted) << "started after the close returned";
+                EXPECT_EQ(call.cause, closeCause) << ic::toString(call.cause);
+            }
+            if (call.accepted)
+            {
+                ++accepted;
+            }
+            else
+            {
+                EXPECT_TRUE(call.cause == closeCause || call.cause == ic::Cause::ClientClosed)
+                    << ic::toString(call.cause);
+            }
+            if (!call.post)
+            {
+                EXPECT_EQ(results.count(call.key), call.accepted ? 1 : 0);
+                const auto result = results.result(call.key);
+                if (call.accepted && result)
+                {
+                    const bool closedDrop =
+                        result->status == ic::Status::Dropped &&
+                        (result->cause == ic::Cause::ClientClosed || result->cause == ic::Cause::Shutdown);
+                    EXPECT_TRUE(result->status == ic::Status::Ok || closedDrop)
+                        << "status " << static_cast<int>(result->status) << " " << ic::toString(result->cause);
+                }
+            }
+        }
+        const auto s = stats("b", consumer);
+        EXPECT_EQ(s.accepted, accepted) << describe(s);
+        EXPECT_EQ(s.resolvedOk + s.resolvedDropped, accepted) << describe(s);
+        EXPECT_EQ(s.resolvedFailed, 0u) << describe(s);
+        EXPECT_EQ(s.retained, 0u) << describe(s);
+        expectInvariants(s);
+        EXPECT_EQ(report.drained + report.droppedClientClosed + report.droppedShutdown, accepted)
+            << "drained " << report.drained << " droppedClientClosed " << report.droppedClientClosed
+            << " droppedShutdown " << report.droppedShutdown;
+        EXPECT_TRUE(eventually([this] { return globalCharge() == 0; }, 5s)) << describe(m_path->stats());
+    };
+
+    // requestClose() racing the producer, 200 rounds. The held sink resolves nothing before the close, so every
+    // accepted op is resolved after it: by the test (Ok, drained) or swept.
+    constexpr std::size_t CLOSE_ROUNDS = 200;
+    for (std::size_t round = 0; round < CLOSE_ROUNDS && !HasFailure(); ++round)
+    {
+        SCOPED_TRACE("requestClose round " + std::to_string(round));
+        const auto consumer = "closing" + std::to_string(round);
+        auto c = client(consumer, {spec});
         auto writer = c->writer("b");
+        ASSERT_NE(writer, nullptr);
         auto results = Results::create();
-        auto accepted = std::make_shared<std::atomic<int>>(-1);
-        AsyncCall producer([writer, results, accepted]
-                           { *accepted = writer->submit(indexOp(id(0)), results->callback(0)).accepted ? 1 : 0; });
-        ASSERT_TRUE(gate->waitHeld(5s));
+        std::atomic<bool> closed {false};
+        std::atomic<std::size_t> made {0};
+        std::vector<RaceCall> calls;
+        calls.reserve(128);
+        std::thread producer([&] { raceProducer(writer, results, closed, made, calls); });
+        const std::size_t lead = round % 4;
+        while (made.load(std::memory_order_acquire) < lead)
+        {
+            std::this_thread::yield();
+        }
         c->requestClose();
-        gate->release();
-        ASSERT_TRUE(producer.wait(5s));
-        EXPECT_EQ(*accepted, 1);
-        ASSERT_TRUE(results->waitTotal(1, 3s)) << "the op admitted across the close was never resolved";
-        EXPECT_EQ(results->count(0), 1);
-        EXPECT_EQ(results->result(0)->status, ic::Status::Dropped);
-        EXPECT_EQ(results->result(0)->cause, ic::Cause::ClientClosed);
-        const auto late = writer->submit(indexOp(id(1)), results->callback(1));
-        EXPECT_FALSE(late.accepted);
-        EXPECT_EQ(late.cause, ic::Cause::ClientClosed);
-        EXPECT_EQ(sink->dispatched(), 0u) << "nothing of a closed bucket reaches the sink";
-        ASSERT_TRUE(eventually([this] { return globalCharge() == 0; }, 5s));
-        EXPECT_EQ(results->total(), 1u);
-        expectInvariants(stats("b", "closing"));
-        hooks::setAfterAdmission({});
+        closed.store(true, std::memory_order_release);
+        producer.join();
+        // D43: the bucket keeps draining into the held sink; resolve Ok until nothing of the round is retained.
+        EXPECT_TRUE(eventually(
+            [&]
+            {
+                sink->resolveHeld();
+                return stats("b", consumer).retained == 0;
+            },
+            5s))
+            << describe(stats("b", consumer));
+        const auto report = c->awaitClosed(now() + 1s);
+        ASSERT_TRUE(report.ok());
+        std::size_t acceptedSubmits = 0;
+        for (const auto& call : calls)
+        {
+            acceptedSubmits += (!call.post && call.accepted) ? 1 : 0;
+        }
+        EXPECT_TRUE(results->waitTotal(acceptedSubmits, 5s));
+        checkRound(consumer, calls, *results, report.value, ic::Cause::ClientClosed);
+        EXPECT_EQ(results->total(), acceptedSubmits);
     }
 
     // Many producers racing requestClose().
@@ -196,27 +278,45 @@ TEST_F(WriteTest, SubmitRacesClose)
         expectInvariants(stats("b", "racing"));
     }
 
-    // shutdown() while the submit sits in the seam.
+    // shutdown() racing the producer, 20 rounds, each on a runtime of its own (the first on the one above).
+    constexpr std::size_t SHUTDOWN_ROUNDS = 20;
+    for (std::size_t round = 0; round < SHUTDOWN_ROUNDS && !HasFailure(); ++round)
     {
-        auto gate = std::make_shared<SeamGate>();
-        hooks::setAfterAdmission(gate->hook());
-        auto c = client("shutting", {spec});
+        SCOPED_TRACE("shutdown round " + std::to_string(round));
+        if (round > 0)
+        {
+            ASSERT_NO_FATAL_FAILURE(start());
+            sink = installSink();
+        }
+        const auto consumer = "shutting" + std::to_string(round);
+        auto c = client(consumer, {spec});
         auto writer = c->writer("b");
+        ASSERT_NE(writer, nullptr);
         auto results = Results::create();
-        auto accepted = std::make_shared<std::atomic<int>>(-1);
-        AsyncCall producer([writer, results, accepted]
-                           { *accepted = writer->submit(indexOp(id(0)), results->callback(0)).accepted ? 1 : 0; });
-        ASSERT_TRUE(gate->waitHeld(5s));
+        std::atomic<bool> closed {false};
+        std::atomic<std::size_t> made {0};
+        std::vector<RaceCall> calls;
+        calls.reserve(128);
+        std::thread producer([&] { raceProducer(writer, results, closed, made, calls); });
+        const std::size_t lead = round % 4;
+        while (made.load(std::memory_order_acquire) < lead)
+        {
+            std::this_thread::yield();
+        }
         EXPECT_EQ(ic::RuntimeOwner::shutdown(), ic::Cause::None);
-        gate->release();
-        ASSERT_TRUE(producer.wait(5s));
-        EXPECT_EQ(*accepted, 1);
-        ASSERT_TRUE(results->waitTotal(1, 3s)) << "the op admitted across the shutdown was never resolved";
-        EXPECT_EQ(results->count(0), 1);
-        EXPECT_EQ(results->result(0)->cause, ic::Cause::Shutdown);
-        EXPECT_EQ(writer->submit(indexOp(id(1)), results->callback(1)).cause, ic::Cause::Shutdown);
-        EXPECT_EQ(results->total(), 1u);
-        expectInvariants(stats("b", "shutting"));
+        closed.store(true, std::memory_order_release);
+        producer.join();
+        std::size_t acceptedSubmits = 0;
+        for (const auto& call : calls)
+        {
+            acceptedSubmits += (!call.post && call.accepted) ? 1 : 0;
+        }
+        EXPECT_TRUE(results->waitTotal(acceptedSubmits, 5s));
+        const auto report = c->awaitClosed(now() + 100ms);
+        ASSERT_TRUE(report.ok());
+        EXPECT_EQ(sink->resolveHeld(), 0u) << "the shutdown resolved every op the sink held";
+        checkRound(consumer, calls, *results, report.value, ic::Cause::Shutdown);
+        EXPECT_EQ(results->total(), acceptedSubmits);
     }
 }
 
@@ -387,6 +487,8 @@ TEST_F(BulkTest, DefaultSinkIsTheBulkSender)
 
     EXPECT_EQ(node.bulk->opCount(), 25u);
     EXPECT_EQ(node.bulk->answered(), 3u) << "10 + 10 by maxDocs, 5 by maxAge";
+    // The dispatching loop counts `sent` after transport->submit returns: the bulk may be answered and resolved first.
+    ASSERT_TRUE(eventually([] { return wr::senderStats().sent == 3u; }, 5s)) << wr::senderStats().sent;
     const auto sender = wr::senderStats();
     EXPECT_EQ(sender.sent, 3u);
     ASSERT_EQ(sender.nodes.size(), 1u);

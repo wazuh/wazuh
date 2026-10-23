@@ -44,6 +44,12 @@ namespace
 {
     /// Live heap bytes (usable size of every block) obtained through operator new, process-wide.
     std::atomic<std::int64_t> g_liveBytes {0};
+
+    /// E6d (CA-E6d-1, CA-E6d-4): calls to operator new and the bytes they asked for (not the live ones), counted only
+    /// on a thread whose AllocationWindow is open. Constant-initialized thread_locals: reading them allocates nothing.
+    thread_local bool t_counting = false;
+    thread_local std::uint64_t t_calls = 0;
+    thread_local std::uint64_t t_requested = 0;
 } // namespace
 
 #if WRITE_RESERVE_COUNTER
@@ -55,6 +61,11 @@ void* operator new(std::size_t size)
         throw std::bad_alloc();
     }
     g_liveBytes.fetch_add(static_cast<std::int64_t>(malloc_usable_size(block)), std::memory_order_relaxed);
+    if (t_counting)
+    {
+        ++t_calls;
+        t_requested += size;
+    }
     return block;
 }
 
@@ -121,6 +132,58 @@ namespace
         return result;
     }
 
+    /// RAII: counts the operator new calls and requested bytes of the CURRENT thread (the producer) while alive.
+    class AllocationWindow final
+    {
+    public:
+        AllocationWindow()
+        {
+            t_calls = 0;
+            t_requested = 0;
+            t_counting = true;
+        }
+
+        ~AllocationWindow()
+        {
+            t_counting = false;
+        }
+
+        AllocationWindow(const AllocationWindow&) = delete;
+        AllocationWindow& operator=(const AllocationWindow&) = delete;
+
+        std::uint64_t calls() const
+        {
+            return t_calls;
+        }
+
+        std::uint64_t requested() const
+        {
+            return t_requested;
+        }
+    };
+
+    constexpr std::size_t WINDOW_OPS = 1024;
+    constexpr std::size_t WINDOW_BODY = 1500;
+    constexpr std::uint64_t DEQUE_CALLS = 64; ///< The bucket's queue blocks and the first op's scheduler wake-up.
+
+    /// An op of WINDOW_BODY bytes whose other strings fit the small-string buffer, built before the window opens.
+    ic::Op windowOp(std::size_t n)
+    {
+        ic::Op op;
+        op.kind = ic::Op::Kind::Index;
+        op.index = "w-states";
+        op.id = "i" + std::to_string(100000 + n);
+        op.body = body(WINDOW_BODY);
+        return op;
+    }
+
+    /// A bucket that cannot become eligible during the window: maxBytes 8 MiB (the ops add up to ~1.6 MB), maxDocs
+    /// above the op count, maxAge 1 h; with the sink at capacity 0 nothing leaves it either (as ResultReserveMeasured).
+    ic::BucketSpec windowBucket()
+    {
+        return bucketSpec("b", 16u << 20, ic::Overflow::Kind::Reject, 8u << 20, WINDOW_OPS + 1, ic::Duration {3600000});
+    }
+
     std::uint64_t linesOf(const std::vector<wr::Batch>& batches)
     {
         std::uint64_t total = 0;
@@ -128,7 +191,7 @@ namespace
         {
             for (const auto& op : batch.ops)
             {
-                total += op->lines.size();
+                total += op->wire();
             }
         }
         return total;
@@ -512,5 +575,218 @@ TEST_F(WriteTest, ResultReserveMeasured)
         static_cast<unsigned long long>(wr::RESULT_RESERVE));
     EXPECT_GT(measured, 0.0) << "the counter saw nothing: is the replacement operator new linked?";
     EXPECT_LE(measured, static_cast<double>(wr::RESULT_RESERVE)) << "RESULT_RESERVE is below what an op keeps";
+#endif
+}
+
+// CA-E6d-1 (I121, I122): 1 024 post() of a 1 500 B body into a bucket that cannot form a batch: the producer thread
+// asks operator new for < 1 024 B per op (the body is moved, never copied: m1 makes it >= 1 500) in <= 2 calls per op
+// (the OpState and the head) + 64 in total (the bucket's queue). The ops are built before the window opens.
+TEST_F(WriteTest, PostBodyNotCopied)
+{
+#if !WRITE_RESERVE_COUNTER
+    GTEST_SKIP() << "the allocation counter is compiled out under ASAN/TSAN (they own operator new)";
+#else
+    ASSERT_NO_FATAL_FAILURE(start(1, 1));
+    installSink(TestSink::Mode::Hold, 0);
+    auto c = client("c", {windowBucket()});
+    auto writer = c->writer("b");
+    std::vector<ic::Op> ops;
+    ops.reserve(WINDOW_OPS);
+    for (std::size_t i = 0; i < WINDOW_OPS; ++i)
+    {
+        ops.push_back(windowOp(i));
+    }
+    std::vector<char> accepted(WINDOW_OPS, 0);
+    std::uint64_t calls = 0;
+    std::uint64_t requested = 0;
+    {
+        AllocationWindow window;
+        for (std::size_t i = 0; i < WINDOW_OPS; ++i)
+        {
+            accepted[i] = writer->post(std::move(ops[i])).accepted ? 1 : 0;
+        }
+        calls = window.calls();
+        requested = window.requested();
+    }
+    EXPECT_EQ(std::count(accepted.begin(), accepted.end(), 1), static_cast<std::ptrdiff_t>(WINDOW_OPS));
+    EXPECT_EQ(stats("b").retained, WINDOW_OPS) << "the bucket formed a batch during the window";
+    const double perOp = static_cast<double>(requested) / WINDOW_OPS;
+    std::printf("[  E6d     ] PostBodyNotCopied: %llu calls (%.2f per op), %llu bytes requested (%.1f per op)\n",
+                static_cast<unsigned long long>(calls),
+                static_cast<double>(calls) / WINDOW_OPS,
+                static_cast<unsigned long long>(requested),
+                perOp);
+    EXPECT_GT(calls, 0u) << "the counter saw nothing: is the replacement operator new linked?";
+    EXPECT_LT(perOp, 1024.0) << "the producer copied the body";
+    EXPECT_LE(calls, 2 * WINDOW_OPS + DEQUE_CALLS);
+    closeNow(*c);
+    expectInvariants(stats("b"));
+#endif
+}
+
+// I125 (a): 1 024 post() of an IndexDataStream op of 1 500 B into one index, with the window and bucket of
+// PostBodyNotCopied: the action line is the cached shared head, so the producer asks operator new for <= 1 call per op
+// (the OpState) + 64 in total (the bucket's queue and the first op's head). The ops are built before the window opens.
+TEST_F(WriteTest, PostSharedHeadSingleAllocation)
+{
+#if !WRITE_RESERVE_COUNTER
+    GTEST_SKIP() << "the allocation counter is compiled out under ASAN/TSAN (they own operator new)";
+#else
+    ASSERT_NO_FATAL_FAILURE(start(1, 1));
+    installSink(TestSink::Mode::Hold, 0);
+    auto c = client("c", {windowBucket()});
+    auto writer = c->writer("b");
+    std::vector<ic::Op> ops;
+    ops.reserve(WINDOW_OPS);
+    for (std::size_t i = 0; i < WINDOW_OPS; ++i)
+    {
+        ic::Op op;
+        op.kind = ic::Op::Kind::IndexDataStream;
+        op.index = "w-events";
+        op.body = body(WINDOW_BODY);
+        ops.push_back(std::move(op));
+    }
+    std::vector<char> accepted(WINDOW_OPS, 0);
+    std::uint64_t calls = 0;
+    std::uint64_t requested = 0;
+    {
+        AllocationWindow window;
+        for (std::size_t i = 0; i < WINDOW_OPS; ++i)
+        {
+            accepted[i] = writer->post(std::move(ops[i])).accepted ? 1 : 0;
+        }
+        calls = window.calls();
+        requested = window.requested();
+    }
+    EXPECT_EQ(std::count(accepted.begin(), accepted.end(), 1), static_cast<std::ptrdiff_t>(WINDOW_OPS));
+    EXPECT_EQ(stats("b").retained, WINDOW_OPS) << "the bucket formed a batch during the window";
+    std::printf("[  E6d     ] PostSharedHeadSingleAllocation: %llu calls (%.2f per op), %llu bytes requested (%.1f per "
+                "op)\n",
+                static_cast<unsigned long long>(calls),
+                static_cast<double>(calls) / WINDOW_OPS,
+                static_cast<unsigned long long>(requested),
+                static_cast<double>(requested) / WINDOW_OPS);
+    EXPECT_GT(calls, 0u) << "the counter saw nothing: is the replacement operator new linked?";
+    EXPECT_LE(calls, WINDOW_OPS + DEQUE_CALLS) << "the action line is allocated per op";
+    closeNow(*c);
+    expectInvariants(stats("b"));
+#endif
+}
+
+// CA-E6d-4: submit() without a callback with the same window and ops: <= 3 operator new calls per op + 64 (E6c: 4 —
+// the lines, TicketState, ReserveHandle, OpState; E6d fuses the reserve handle into the TicketState and moves the
+// body).
+TEST_F(WriteTest, SubmitAllocationsFused)
+{
+#if !WRITE_RESERVE_COUNTER
+    GTEST_SKIP() << "the allocation counter is compiled out under ASAN/TSAN (they own operator new)";
+#else
+    ASSERT_NO_FATAL_FAILURE(start(1, 1));
+    installSink(TestSink::Mode::Hold, 0);
+    auto c = client("c", {windowBucket()});
+    auto writer = c->writer("b");
+    std::vector<ic::Op> ops;
+    ops.reserve(WINDOW_OPS);
+    for (std::size_t i = 0; i < WINDOW_OPS; ++i)
+    {
+        ops.push_back(windowOp(i));
+    }
+    std::vector<ic::Submit> submits; // Reserved: keeping the tickets alive allocates nothing in the window.
+    submits.reserve(WINDOW_OPS);
+    std::uint64_t calls = 0;
+    std::uint64_t requested = 0;
+    {
+        AllocationWindow window;
+        for (std::size_t i = 0; i < WINDOW_OPS; ++i)
+        {
+            submits.push_back(writer->submit(std::move(ops[i])));
+        }
+        calls = window.calls();
+        requested = window.requested();
+    }
+    for (const auto& submit : submits)
+    {
+        ASSERT_TRUE(submit.accepted) << ic::toString(submit.cause);
+    }
+    EXPECT_EQ(stats("b").retained, WINDOW_OPS) << "the bucket formed a batch during the window";
+    std::printf("[  E6d     ] SubmitAllocationsFused: %llu calls (%.2f per op), %llu bytes requested (%.1f per op)\n",
+                static_cast<unsigned long long>(calls),
+                static_cast<double>(calls) / WINDOW_OPS,
+                static_cast<unsigned long long>(requested),
+                static_cast<double>(requested) / WINDOW_OPS);
+    EXPECT_GT(calls, 0u) << "the counter saw nothing: is the replacement operator new linked?";
+    EXPECT_LE(calls, 3 * WINDOW_OPS + DEQUE_CALLS);
+    closeNow(*c);
+    submits.clear();
+    expectInvariants(stats("b"));
+#endif
+}
+
+// CA-E6d-4 (I124b): the charge of a posted op is its wire size + the heap slack of its body + RESULT_RESERVE: a 1 500 B
+// body with reserve(3 000) charges wire + 1 500 + R; a Delete and an SSO body charge wire + R (so no exact charge of
+// the other suites changes). The sink receives the wire bytes only, and the charge returns to 0 at resolution. Mutant
+// m6: charge = wire.
+TEST_F(WriteTest, PostChargesCapacity)
+{
+#if !WRITE_RESERVE_COUNTER
+    GTEST_SKIP() << "with the allocation counter: compiled out under ASAN/TSAN";
+#else
+    constexpr std::uint64_t R = wr::RESULT_RESERVE;
+    ASSERT_NO_FATAL_FAILURE(start());
+    auto sink = installSink(TestSink::Mode::Hold, 0);
+    auto c = client("c", {bucketSpec("b", 1u << 20, ic::Overflow::Kind::Reject, 64 * 1024, 3, ic::Duration {3600000})});
+    auto writer = c->writer("b");
+
+    ic::Op heap;
+    heap.kind = ic::Op::Kind::Index;
+    heap.index = "w-states";
+    heap.id = "heap";
+    {
+        const auto content = body(WINDOW_BODY);
+        std::string reserved;
+        reserved.reserve(2 * WINDOW_BODY);
+        reserved.assign(content.data(), content.size());
+        heap.body = std::move(reserved);
+    }
+    ASSERT_EQ(heap.body.size(), WINDOW_BODY);
+    ASSERT_EQ(heap.body.capacity(), 2 * WINDOW_BODY) << "precondition: 1 500 B of heap slack";
+    const auto heapWire = wireSize(heap);
+
+    ic::Op del;
+    del.kind = ic::Op::Kind::Delete;
+    del.index = "w-states";
+    del.id = "gone";
+    const auto delWire = wireSize(del);
+    EXPECT_EQ(chargeOf(del), delWire);
+
+    ic::Op sso;
+    sso.kind = ic::Op::Kind::Index;
+    sso.index = "w-states";
+    sso.id = "sso";
+    sso.body = R"({"a":1})";
+    ASSERT_LE(sso.body.capacity(), std::string().capacity()) << "precondition: the body fits the SSO buffer";
+    const auto ssoWire = wireSize(sso);
+    EXPECT_EQ(chargeOf(sso), ssoWire);
+
+    ASSERT_TRUE(writer->post(std::move(heap)).accepted);
+    EXPECT_EQ(stats("b").charge, heapWire + WINDOW_BODY + R) << "wire + the body's heap slack + RESULT_RESERVE";
+    EXPECT_EQ(globalCharge(), heapWire + WINDOW_BODY + R);
+    auto before = stats("b").charge;
+    ASSERT_TRUE(writer->post(std::move(del)).accepted);
+    EXPECT_EQ(stats("b").charge - before, delWire + R) << "Delete: wire + RESULT_RESERVE";
+    before = stats("b").charge;
+    ASSERT_TRUE(writer->post(std::move(sso)).accepted);
+    EXPECT_EQ(stats("b").charge - before, ssoWire + R) << "SSO body: wire + RESULT_RESERVE";
+
+    sink->grant(1);
+    ASSERT_TRUE(sink->waitDispatched(1));
+    auto log = sink->log();
+    ASSERT_EQ(log.size(), 1u);
+    EXPECT_EQ(log[0].ops, 3u);
+    EXPECT_EQ(log[0].bytes, heapWire + delWire + ssoWire) << "the bulk carries the wire bytes, not the charge";
+    EXPECT_EQ(sink->resolveHeld(), 3u);
+    EXPECT_TRUE(component::eventually([&] { return stats("b").charge == 0 && globalCharge() == 0; }, 5s))
+        << describe(stats("b"));
+    expectInvariants(stats("b"));
 #endif
 }

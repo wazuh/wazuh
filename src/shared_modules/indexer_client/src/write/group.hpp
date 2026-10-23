@@ -22,12 +22,13 @@
 // held across the call): the bucket references its budget, which the WritePath owns, and a Group may outlive
 // RuntimeOwner::shutdown() while its Client lives. Without a path: add ⇒ Shutdown; commit ⇒ every op resolves
 // Dropped(Shutdown) without touching the bucket; abandonment ⇒ the ops and counters are cleared, nothing is returned
-// (as ~GroupState and the writer's ReserveHandle). With a live path the bucket may still be gone: see each step below.
+// (as ~GroupState and a TicketState's armed reserve). With a live path the bucket may still be gone: see each step
+// below.
 //
 // add(op), Building only (else InvalidState); no path ⇒ Shutdown; no bucket (its client is gone) ⇒ Unavailable; then
 // the effective conflict policy and encode() exactly as submit (failure ⇒ InvalidArgument, reason kept for
-// Group::lastAddReason()); then Bucket::reserveForGroup(payload, reservedBytes, blockUntil) (bucket.hpp). On success a
-// new OpState (no ticket, no callback, `group` = this GroupState (strong), `groupIndex` = its position,
+// Group::lastAddReason()); then Bucket::reserveForGroup(payload, wire, reservedBytes, blockUntil) (bucket.hpp). On
+// success a new OpState (no ticket, no callback, `group` = this GroupState (strong), `groupIndex` = its position,
 // `conflictRetry`, `reserveCharged`) is appended to GroupState::ops; reservedBytes += payload + RESULT_RESERVE;
 // reservesHeld += 1. The op stays charged and outside the bucket's queue until commit. GroupState holds the ops ONLY
 // while Building (commit moves them out): an OpState → GroupState reference never cycles.
@@ -36,10 +37,10 @@
 // an empty vector. Otherwise Committed: results.resize(n), remaining = n, then Bucket::enqueueGroup(ops, reservedBytes)
 // (one lock: out of `building`, a sequence number per op, flushSeq = the last, and a scheduler notification asked for
 // whatever the thresholds — the group leaves now, RF-7) and Scheduler::notify when it says so. A bucket closed by
-// then hands the ops back as submit's closedAtEnqueue does and they resolve Dropped(cause) through WritePath::resolve.
-// With the bucket gone (path alive) the global `building` and payload go back to the budget and every op resolves
-// Dropped(ClientClosed) through WritePath::resolve. The returned GroupTicket shares this GroupState. A null state (a
-// moved-from or default Group) yields a ready ticket with InvalidState ("empty group handle").
+// then hands the ops back (I99, N2: the only reservation→append window left) and they resolve Dropped(cause) through
+// WritePath::resolve. With the bucket gone (path alive) the global `building` and payload go back to the budget and
+// every op resolves Dropped(ClientClosed) through WritePath::resolve. The returned GroupTicket shares this GroupState.
+// A null state (a moved-from or default Group) yields a ready ticket with InvalidState ("empty group handle").
 //
 // Resolution: WritePath::resolve, after winning the op's claim and releasing its payload (bucket mutex, then dropped),
 // calls resolveInGroup: results[groupIndex] = result and --remaining under groupMutex; the resolution that takes
@@ -51,7 +52,7 @@
 //
 // Reserves: payload is released per op by its resolution, as for submit. The reservesHeld × RESULT_RESERVE return
 // when the GroupState dies (last of Group, GroupTicket and the OpStates), through the weak path/bucket pair exactly
-// like the writer's ReserveHandle (bucket gone ⇒ the global budget gets them back; path gone ⇒ nothing to return).
+// like a TicketState's armed reserve (bucket gone ⇒ the global budget gets them back; path gone ⇒ nothing to return).
 //
 // Abandonment: ~Group() (or move-assignment over it) of a Building group ⇒ abandonGroup: Abandoned, then one
 // Bucket::cancelGroupReservation(reservedBytes, ops.size()) (charge, `building` bucket and global, the global cap,
