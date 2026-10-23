@@ -58,14 +58,24 @@ if [ -d "${DIR}" ]; then
         restart="true"
     fi
 
-    # etc/ is owned by the wazuh account, so an entry under it may be a symlink that account
-    # planted. Start from an empty, root-owned backup directory: a stale entry left as a symlink by
-    # an interrupted earlier run would otherwise be the destination this cp writes through. And
-    # cp -R (not -r) copies a planted link as a link instead of following it to the file it names.
+    # etc/ is owned by the wazuh account, so an entry under it may be a link that account planted.
+    # Start from an empty, root-owned backup directory: a stale entry left as a symlink by an
+    # interrupted earlier run would otherwise be the destination this cp writes through.
     echo "Backing up configuration files to ${DIR}/config_files/"
     rm -rf ${DIR}/config_files/
     mkdir -p ${DIR}/config_files/
-    cp -R ${DIR}/etc/{ossec.conf,client.keys,local_internal_options.conf,shared} ${DIR}/config_files/
+    # Back up only a regular file with a single hard link. cp -R (not -r) keeps a planted symlink a
+    # symlink instead of following it; the link-count check rejects a hard link to a root-only file,
+    # which cp would otherwise copy by content (macOS has no protected_hardlinks).
+    for conf in ossec.conf client.keys local_internal_options.conf; do
+        if [ -f ${DIR}/etc/${conf} ] && [ ! -L ${DIR}/etc/${conf} ] && [ -n "$(find ${DIR}/etc/${conf} -prune -links 1)" ]; then
+            cp -R ${DIR}/etc/${conf} ${DIR}/config_files/
+        fi
+    done
+    # etc/shared only when it is a real directory with no hard-linked file inside it.
+    if [ -d ${DIR}/etc/shared ] && [ ! -L ${DIR}/etc/shared ] && [ -z "$(find ${DIR}/etc/shared -type f ! -links 1)" ]; then
+        cp -R ${DIR}/etc/shared ${DIR}/config_files/
+    fi
 
     # logs/ is writable by the wazuh account; rename only a real source, and only into a name that
     # is absent and not a symlink, so a planted logs/wazuh link cannot send the move outside logs/.
