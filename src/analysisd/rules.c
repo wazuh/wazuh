@@ -3324,7 +3324,7 @@ STATIC size_t w_rule_tree_read_threshold(const char * option, char ** configured
                 merror_exit(INV_DEF, "analysisd", option, value);
             }
         }
-        if (percent == 0) {
+        if (percent < 1 || percent > 100) {
             merror_exit(INV_DEF, "analysisd", option, value);
         }
 
@@ -3360,9 +3360,11 @@ STATIC size_t w_rule_tree_read_threshold(const char * option, char ** configured
     if (nodes == 0) {
         nodes = 1;
     }
+#if SIZE_MAX < UINT64_MAX
     if (nodes > SIZE_MAX) {
         nodes = SIZE_MAX;
     }
+#endif
 
     minfo("Rule tree threshold 'analysisd.%s' set to %" PRIu64 " nodes: %s, %zu bytes per node.", option, nodes,
           description, node_size);

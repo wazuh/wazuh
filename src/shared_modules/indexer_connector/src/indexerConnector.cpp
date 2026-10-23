@@ -1539,8 +1539,8 @@ IndexerConnector::IndexerConnector(
 
             for (const auto& [isQuery, payload] : requests)
             {
-                const auto url = isQuery ? serverUrl + "/" + m_indexName + "/_delete_by_query?ignore_unavailable=true"
-                                         : serverUrl + "/_bulk?refresh=wait_for";
+                const auto& url = isQuery ? serverUrl + "/" + m_indexName + "/_delete_by_query?ignore_unavailable=true"
+                                          : serverUrl + "/_bulk?refresh=wait_for";
                 processData(payload, url);
             }
         },
