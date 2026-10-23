@@ -19,7 +19,9 @@ The following operating systems are recommended for Wazuh 5.x:
 
 #### Storage Requirements
 
-Disk space requirements depend on:
+Right after installation, before any agent connects, each manager node takes about 8 GB under `/var/wazuh-manager` (measured on 5.0.0 with the default configuration). Almost all of it is the vulnerability detection feed in `queue/vd/feed`, about 7.6 GB: every node downloads its own copy from the indexer once the indexer's vulnerability feed is ready, and it grows as the feed does. Count it on top of the operating system and keep free space for logs and agent data.
+
+Beyond that baseline, disk space requirements depend on:
 - Alert generation rate
 - Retention period (days of storage)
 
