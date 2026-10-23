@@ -22,4 +22,22 @@ function fetchRaw(repo, ref, path) {
   });
 }
 
-module.exports = { fetchRaw };
+// Tries each ref in order, returning the first successful fetch (plus which ref it came from, so
+// callers can report it). Throws only if every candidate fails, with all their errors attached.
+async function fetchRawWithFallback(repo, refs, filePath) {
+  const errors = [];
+  for (const ref of refs) {
+    try {
+      const body = await fetchRaw(repo, ref, filePath);
+      return { body, ref };
+    } catch (err) {
+      errors.push(err);
+    }
+  }
+  throw new Error(
+    `All ${refs.length} ref(s) failed for ${repo}:${filePath} (tried ${refs.join(', ')}): ` +
+      errors.map(e => e.message).join('; '),
+  );
+}
+
+module.exports = { fetchRaw, fetchRawWithFallback };

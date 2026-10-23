@@ -8,8 +8,8 @@ const path = require('path');
 const esbuild = require('esbuild');
 const { JSDOM } = require('jsdom');
 const createDOMPurify = require('dompurify');
-const { fetchRaw } = require('./fetch-raw');
-const { PLUGIN_REPO, pluginRef } = require('./dashboard-ref');
+const { fetchRawWithFallback } = require('./fetch-raw');
+const { PLUGIN_REPO, pluginRefCandidates } = require('./dashboard-ref');
 
 const RENDERER_PATH =
   'plugins/main/public/components/common/util/markdown/markdown-renderer.ts';
@@ -38,16 +38,17 @@ let renderMarkdown = null;
 async function init() {
   if (renderMarkdown) return;
 
-  const ref = pluginRef();
-  let source;
+  const candidates = pluginRefCandidates();
+  let source, ref;
   try {
-    source = await fetchRaw(PLUGIN_REPO, ref, RENDERER_PATH);
+    ({ body: source, ref } = await fetchRawWithFallback(PLUGIN_REPO, candidates, RENDERER_PATH));
   } catch (err) {
     throw new Error(
-      `Could not fetch the dashboard's renderer from ${PLUGIN_REPO}@${ref}:${RENDERER_PATH} — ` +
+      `Could not fetch the dashboard's renderer from ${PLUGIN_REPO}:${RENDERER_PATH} — ` +
         `refusing to validate against a stale local copy. (${err.message})`,
     );
   }
+  console.log(`renderer.js: using ${PLUGIN_REPO}@${ref}`);
   if (!OSD_I18N_IMPORT_RE.test(source)) {
     throw new Error(
       `Fetched markdown-renderer.ts from ${PLUGIN_REPO}@${ref} but it no longer imports ` +

@@ -5,22 +5,22 @@
 // This checks that drift directly, instead of hoping the source-fetch catches everything.
 'use strict';
 
-const { fetchRaw } = require('./fetch-raw');
-const { PLUGIN_REPO, PLATFORM_REPO, pluginRef, PLATFORM_REF } = require('./dashboard-ref');
+const { fetchRawWithFallback } = require('./fetch-raw');
+const { PLUGIN_REPO, PLATFORM_REPO, pluginRefCandidates, platformRefCandidates } = require('./dashboard-ref');
 
 const ours = require('./package.json').dependencies;
 
 // dompurify and markdown-it-link-attributes come from the plugin's own package.json; the plugin
 // doesn't pin markdown-it itself, so its effective version is the platform's.
 const CHECKS = [
-  { name: 'dompurify', repo: PLUGIN_REPO, ref: pluginRef(), path: 'plugins/main/package.json' },
+  { name: 'dompurify', repo: PLUGIN_REPO, refs: pluginRefCandidates(), path: 'plugins/main/package.json' },
   {
     name: 'markdown-it-link-attributes',
     repo: PLUGIN_REPO,
-    ref: pluginRef(),
+    refs: pluginRefCandidates(),
     path: 'plugins/main/package.json',
   },
-  { name: 'markdown-it', repo: PLATFORM_REPO, ref: PLATFORM_REF, path: 'package.json' },
+  { name: 'markdown-it', repo: PLATFORM_REPO, refs: platformRefCandidates(), path: 'package.json' },
 ];
 
 function extractVersion(packageJsonText, name) {
@@ -37,21 +37,22 @@ async function main() {
   let hadFetchError = false;
 
   for (const check of CHECKS) {
-    let theirRaw;
+    let theirRaw, ref;
     try {
-      const text = await fetchRaw(check.repo, check.ref, check.path);
-      theirRaw = extractVersion(text, check.name);
+      const result = await fetchRawWithFallback(check.repo, check.refs, check.path);
+      ref = result.ref;
+      theirRaw = extractVersion(result.body, check.name);
     } catch (err) {
-      console.error(`Could not read ${check.name}'s version from ${check.repo}@${check.ref}:${check.path} — ${err.message}`);
+      console.error(`Could not read ${check.name}'s version from ${check.repo}:${check.path} — ${err.message}`);
       hadFetchError = true;
       continue;
     }
     if (!theirRaw) {
-      console.error(`${check.name} not found in ${check.repo}@${check.ref}:${check.path}`);
+      console.error(`${check.name} not found in ${check.repo}@${ref}:${check.path}`);
       hadFetchError = true;
       continue;
     }
-    rows.push({ name: check.name, ours: ours[check.name], theirs: theirRaw });
+    rows.push({ name: check.name, ours: ours[check.name], theirs: theirRaw, ref });
   }
 
   if (hadFetchError) {
@@ -59,12 +60,14 @@ async function main() {
     return 1;
   }
 
-  console.log('package                      | this repo | dashboard');
-  console.log('-----------------------------|-----------|----------');
+  console.log('package                      | this repo | dashboard         | ref');
+  console.log('-----------------------------|-----------|-------------------|----');
   let mismatched = [];
   for (const row of rows) {
     const match = stripCaret(row.ours) === stripCaret(row.theirs);
-    console.log(`${row.name.padEnd(28)} | ${String(row.ours).padEnd(9)} | ${row.theirs}${match ? '' : '  <-- MISMATCH'}`);
+    console.log(
+      `${row.name.padEnd(28)} | ${String(row.ours).padEnd(9)} | ${String(row.theirs).padEnd(17)} | ${row.ref}${match ? '' : '  <-- MISMATCH'}`,
+    );
     if (!match) mismatched.push(row);
   }
 

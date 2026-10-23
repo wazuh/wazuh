@@ -1,22 +1,39 @@
 // Where this tool gets "the dashboard" from — the live source, not a frozen copy.
 //
-// PR #9381 (the Markdown remediation renderer) is not merged yet, so its code isn't on
-// wazuh-dashboard-plugins' 5.0.0 branch. Once it merges, change DEFAULT_PLUGIN_REF to '5.0.0'
-// (or whatever ref this repo's VERSION.json maps to at the time) in the same commit that updates
-// this comment — there is no way to detect "has it merged yet" automatically from here.
+// The primary ref is this repo's own release line (VERSION.json's "version", e.g. "5.0.0"), since
+// that's the dashboard branch this repo's content is actually meant to match — not a frozen commit
+// that can't see future changes. `main` is a fallback for when the release branch has been archived
+// or removed (e.g. after the release ships and the dashboard repo cleans up old release branches),
+// not the primary target: resolveRefCandidates() tries the release ref first and only falls back
+// to `main` if that one 404s.
 //
-// DASHBOARD_REF overrides the plugin ref for a one-off check against a different branch/commit
-// (set as a workflow_dispatch input in CI, or an env var locally).
+// DASHBOARD_REF overrides the plugin ref outright (no fallback) for a one-off check against a
+// specific branch/commit — set as a workflow_dispatch input in CI, or an env var locally.
 'use strict';
 
-const DEFAULT_PLUGIN_REF = 'enhancement/9380-sca-remediation-structured-render';
-const PLATFORM_REF = process.env.DASHBOARD_PLATFORM_REF || 'main';
+const path = require('path');
 
 const PLUGIN_REPO = 'wazuh/wazuh-dashboard-plugins';
 const PLATFORM_REPO = 'wazuh/wazuh-dashboard';
 
-function pluginRef() {
-  return process.env.DASHBOARD_REF || DEFAULT_PLUGIN_REF;
+function releaseRef() {
+  const version = require(path.join(__dirname, '..', '..', '..', 'VERSION.json')).version;
+  if (!version) {
+    throw new Error("VERSION.json has no 'version' field — can't derive the dashboard ref from it.");
+  }
+  return version;
 }
 
-module.exports = { PLUGIN_REPO, PLATFORM_REPO, pluginRef, PLATFORM_REF };
+// Returns the refs to try, in order. An explicit override is the only ref tried — if someone asked
+// for a specific branch/commit, silently falling back to something else would defeat the point.
+function pluginRefCandidates() {
+  if (process.env.DASHBOARD_REF) return [process.env.DASHBOARD_REF];
+  return [releaseRef(), 'main'];
+}
+
+function platformRefCandidates() {
+  if (process.env.DASHBOARD_PLATFORM_REF) return [process.env.DASHBOARD_PLATFORM_REF];
+  return [releaseRef(), 'main'];
+}
+
+module.exports = { PLUGIN_REPO, PLATFORM_REPO, pluginRefCandidates, platformRefCandidates };
