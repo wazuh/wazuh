@@ -647,12 +647,12 @@ foreach (<>) {
 	$line = $_;
 	if ($stackreverse) {
 		# there may be an extra samples column for differentials
-		# XXX todo: redo these REs as one. It's repeated below.
-		my($stack, $samples) = (/^(.*)\s+?(\d+(?:\.\d*)?)$/);
+		my $re = qr/^(.*)\s+?(\d+(?:\.\d*)?)$/;
+		my($stack, $samples) = $line =~ $re;
 		my $samples2 = undef;
-		if ($stack =~ /^(.*)\s+?(\d+(?:\.\d*)?)$/) {
+		if (defined $stack && $stack =~ $re) {
 			$samples2 = $samples;
-			($stack, $samples) = $stack =~ (/^(.*)\s+?(\d+(?:\.\d*)?)$/);
+			($stack, $samples) = $stack =~ $re;
 			unshift @Data, join(";", reverse split(";", $stack)) . " $samples $samples2";
 		} else {
 			unshift @Data, join(";", reverse split(";", $stack)) . " $samples";
