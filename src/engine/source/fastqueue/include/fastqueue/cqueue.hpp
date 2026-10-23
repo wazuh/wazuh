@@ -45,7 +45,7 @@ namespace fastqueue
  * It provides a simple interface to use the queue with optimized block size and index settings.
  *
  * @note IMPORTANT: Minimum queue capacity is MIN_QUEUE_CAPACITY (8192 elements).
- *       This is required for optimal performance with BLOCK_SIZE=4096.
+ *       This is required for optimal performance with BLOCK_SIZE=512 (16 blocks).
  *       Attempting to create a queue with smaller capacity will throw std::runtime_error.
  *
  * @tparam T The type of the data to be stored in the queue.

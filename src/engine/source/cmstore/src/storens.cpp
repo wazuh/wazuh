@@ -265,7 +265,8 @@ bool CMStoreNS::assetExistsByUUID(const std::string& uuid) const
     }
 
     const auto& [name, rType] = opt.value();
-    if (rType == ResourceType::KVDB)
+    // KVDBs and integrations are stored under a single-part name (no type prefix to cross-check)
+    if (rType == ResourceType::KVDB || rType == ResourceType::INTEGRATION)
     {
         return true;
     }

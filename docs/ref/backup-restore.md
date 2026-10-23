@@ -397,7 +397,7 @@ sudo chown -R wazuh-manager:wazuh-manager \
     /var/wazuh-manager/queue/keystore \
     /var/wazuh-manager/queue/authd \
     /var/wazuh-manager/data
-sudo chmod 660 /var/wazuh-manager/queue/db/global.db
+sudo chmod 640 /var/wazuh-manager/queue/db/global.db
 sudo chmod 640 /var/wazuh-manager/queue/tasks/tasks.db
 # The two GeoIP directories the installer keeps root-owned, which the recursive chown takes
 sudo chown root:wazuh-manager /var/wazuh-manager/data/mmdb /var/wazuh-manager/data/store/geo/mmdb
@@ -467,7 +467,7 @@ sudo systemctl start wazuh-manager
 sudo systemctl stop wazuh-manager
 sudo cp wazuh-global-db-YYYYMMDD.db /var/wazuh-manager/queue/db/global.db
 sudo chown wazuh-manager:wazuh-manager /var/wazuh-manager/queue/db/global.db
-sudo chmod 660 /var/wazuh-manager/queue/db/global.db
+sudo chmod 640 /var/wazuh-manager/queue/db/global.db
 sudo systemctl start wazuh-manager
 ```
 
@@ -625,13 +625,13 @@ sudo tail -f /var/wazuh-manager/logs/cluster.log
 
 ### Container Deployments
 
-The procedures above assume a package or source installation. They cannot be run as written in a container deployment: the manager image ships neither `tar` nor `sqlite3` nor `gzip`, and the service is not controlled with `systemctl`.
+The procedures above assume a package or source installation: they need `tar`, `gzip` and `sqlite3` on the manager's host and control the service with `systemctl`. In a container deployment the service is the container, and the image may lack those tools; check what it carries:
 
 ```bash
-docker compose exec wazuh.manager sh -c 'command -v tar sqlite3 gzip' # prints nothing
+docker compose exec wazuh.manager sh -c 'command -v tar sqlite3 gzip'
 ```
 
-The paths inside the container are the same `/var/wazuh-manager` and `/etc/wazuh-manager`, so the set of paths to back up does not change. Drive the copy from the host instead, and stop the manager first so the databases are copied in a consistent state.
+When it lacks any of them, use the procedure below. The paths inside the container are the same `/var/wazuh-manager` and `/etc/wazuh-manager`, so the set of paths to back up does not change. Drive the copy from the host instead, and stop the manager first so the databases are copied in a consistent state.
 
 #### Container Backup
 
@@ -639,8 +639,8 @@ The paths inside the container are the same `/var/wazuh-manager` and `/etc/wazuh
 BACKUP_DIR="./wazuh-manager-backup-$(date +%Y%m%d-%H%M%S)"
 PATHS="api/configuration queue/db queue/tasks queue/keystore queue/authd data"
 
-# Stop the manager: without sqlite3 in the image there is no way to take a
-# consistent copy of a database that is being written
+# Stop the manager: a plain copy of a database that is being written is not
+# consistent
 docker compose stop wazuh.manager
 
 for P in $PATHS; do
@@ -676,8 +676,8 @@ docker compose cp -a "$BACKUP_DIR/etc-wazuh-manager/." "wazuh.manager:/etc/wazuh
 docker compose start wazuh.manager
 
 # Copying in does not restore ownership: the files arrive owned by the host user
-# that took the backup, and the image's init only remaps ids from older versions.
-# Re-apply the ownership and modes, then restart so every daemon sees them.
+# that took the backup. Re-apply the ownership and modes, then restart so every
+# daemon sees them.
 docker compose exec -u root wazuh.manager sh -c '
     chown -R root:wazuh-manager /etc/wazuh-manager
     chmod 770 /etc/wazuh-manager /etc/wazuh-manager/shared
@@ -693,7 +693,7 @@ docker compose exec -u root wazuh.manager sh -c '
         /var/wazuh-manager/queue/authd \
         /var/wazuh-manager/data
     chmod 660 /etc/wazuh-manager/client.keys
-    chmod 660 /var/wazuh-manager/queue/db/global.db
+    chmod 640 /var/wazuh-manager/queue/db/global.db
     chmod 750 /etc/wazuh-manager/certs
     chmod 640 /etc/wazuh-manager/certs/*
     for D in ca export; do [ -d "/etc/wazuh-manager/$D" ] && chown -R root:root "/etc/wazuh-manager/$D" && chmod 700 "/etc/wazuh-manager/$D"; done
@@ -755,8 +755,8 @@ sudo tar -czf $BACKUP_DIR/wazuh-agent-etc.tar.gz -C /var/ossec etc/
 # Optional: Backup local databases
 sudo tar -czf $BACKUP_DIR/wazuh-agent-db.tar.gz -C /var/ossec queue/fim/db/ queue/syscollector/db/ queue/sca/ 2>/dev/null || true
 
-# Set proper permissions. These archives carry agent keys, API password hashes and
-# the indexer credential store, so close them to other local users first.
+# Set proper permissions. The archive carries the agent's key, so close it to
+# other local users first.
 sudo chmod -R go-rwx $BACKUP_DIR
 sudo chown -R $(whoami):$(whoami) $BACKUP_DIR
 ```
@@ -934,8 +934,10 @@ sudo tail -100 /var/wazuh-manager/logs/wazuh-manager.log
 # Verify client.keys was restored
 sudo ls -l /etc/wazuh-manager/client.keys
 
-# Check global database
-sudo sqlite3 /var/wazuh-manager/queue/db/global.db "SELECT id, name FROM agent"
+# Check global database (guarded: sqlite3 would create a missing one)
+sudo sh -c '[ -f /var/wazuh-manager/queue/db/global.db ] \
+  && sqlite3 /var/wazuh-manager/queue/db/global.db "SELECT id, name FROM agent" \
+  || echo "MISSING: /var/wazuh-manager/queue/db/global.db"'
 
 # Restart manager
 sudo systemctl restart wazuh-manager
@@ -947,8 +949,10 @@ sudo tail -f /var/wazuh-manager/logs/wazuh-manager.log | grep remoted
 **Issue: Database corruption after restore**
 
 ```bash
-# Check database integrity
-sudo sqlite3 /var/wazuh-manager/queue/db/global.db "PRAGMA integrity_check"
+# Check database integrity (guarded: sqlite3 would create a missing one)
+sudo sh -c '[ -f /var/wazuh-manager/queue/db/global.db ] \
+  && sqlite3 /var/wazuh-manager/queue/db/global.db "PRAGMA integrity_check" \
+  || echo "MISSING: /var/wazuh-manager/queue/db/global.db"'
 
 # If corrupted, restore from backup again. Copy over the live database rather than
 # removing it first, and only once the replacement is known to be there: an unset
@@ -957,7 +961,7 @@ sudo systemctl stop wazuh-manager
 if [ -f "$BACKUP_DIR/db/global.db" ]; then
     sudo cp $BACKUP_DIR/db/global.db /var/wazuh-manager/queue/db/global.db
     sudo chown wazuh-manager:wazuh-manager /var/wazuh-manager/queue/db/global.db
-    sudo chmod 660 /var/wazuh-manager/queue/db/global.db
+    sudo chmod 640 /var/wazuh-manager/queue/db/global.db
     sudo systemctl start wazuh-manager
 else
     echo "No backup at '$BACKUP_DIR/db/global.db' - leaving the live database alone"
@@ -972,7 +976,7 @@ sudo systemctl stop wazuh-manager
 sudo gunzip -c /var/wazuh-manager/backup/db/global.db-backup-YYYY-MM-DD-HH:MM:SS.gz > /tmp/global.db
 sudo cp /tmp/global.db /var/wazuh-manager/queue/db/global.db
 sudo chown wazuh-manager:wazuh-manager /var/wazuh-manager/queue/db/global.db
-sudo chmod 660 /var/wazuh-manager/queue/db/global.db
+sudo chmod 640 /var/wazuh-manager/queue/db/global.db
 sudo systemctl start wazuh-manager
 ```
 

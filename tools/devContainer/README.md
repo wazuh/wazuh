@@ -103,7 +103,7 @@ chmod +x download_devContainer.sh
 
 In order:
 
-1. Checks the prerequisites.
+1. Checks that the `-c` package, when given, is a `claude-portable.sh` export (it carries `PORTABLE-MANIFEST.txt`), that the destination does not exist, and the prerequisites.
 2. Clones the branch given with `-b` into a temporary directory.
 3. Checks the clone, **before the registry access and the pull**: that `devcontainer.json` and `VERSION.json` exist, and that `devcontainer.json` has an `"image"` line. Branches without the prebuilt image (for example `4.14.10`, with no `.devcontainer/devcontainer.json`, or any branch whose `devcontainer.json` still builds the Dockerfile instead of naming an `"image"`) stop here with an error.
 4. Computes the image: the repository of the `"image"` line (or `$WAZUH_DEVCONTAINER_IMAGE`) plus the tag `<major>.<minor>` of `VERSION.json` (`5.0` for `5.0.0`).
@@ -166,7 +166,7 @@ To change the image (the Dockerfile, the `*.sh` it copies, or the features in `i
 .devcontainer/build-image.sh
 ```
 
-The script builds for your host's platform with the devcontainer CLI and leaves `<repository>:<tag>` of the `"image"` line of `devcontainer.json` in your local Docker. Then run **Dev Containers: Rebuild Container**: the container uses your image, and the startup line says `devContainer image: local`. Options: `--platform`, `--image`, `--tag` (see `build-image.sh --help`).
+The script builds for your host's platform with the devcontainer CLI and leaves `<repository>:<tag>` of the `"image"` line of `devcontainer.json` in your local Docker. Then run **Dev Containers: Rebuild Container**: the container uses your image, and the startup line says `devContainer image: local`. Options: `--platform`, `--image`, `--tag`, and `--push-by-digest <file>` for the CI flow (see `build-image.sh --help`).
 
 To go back to the published image, pull it again (`docker pull ghcr.io/wazuh/wazuh-devcontainer:5.0`) and rebuild the container.
 
@@ -260,6 +260,9 @@ from the tree root:
 cmake --build $WAZUH_REPO/src/build -j"$(nproc)" --target wazuh-engine
 ```
 
+The build flags, their stickiness in the CMake cache and the build traps are in
+[Build from Sources](../../docs/dev/build-sources.md); installing and starting what you built, in
+[Run from Sources](../../docs/dev/run-sources.md); the test lanes, in [Test execution](../../docs/dev/test-execution.md).
 
 ## Development Utilities (scripts/)
 
@@ -269,26 +272,28 @@ cmake --build $WAZUH_REPO/src/build -j"$(nproc)" --target wazuh-engine
 The `scripts/` directory contains various utilities to facilitate engine development and testing:
 
 ### create_struct_standalone.sh
-Creates the directory structure required for running the engine in standalone mode:
-- Sets up store directories for schemas and configurations
-- Creates log, timezone database (tzdb), and key-value database (kvdb) directories
-- Initializes queue and output directories for connectors
-- Copies necessary schema files from the engine source
+Creates the directory structure for running the engine in standalone mode under `$ENGINE_STANDALONE_DIR`
+(both it and `$ENGINE_SRC` must be set; `devcontainer.json` sets them):
+- `store/schema/{engine-schema,wazuh-logpar-overrides,allowed-fields}/0`, copied from
+  `src/engine/ruleset/schemas/{engine-schema,wazuh-logpar-overrides,allowed-fields}.json`
+- the empty `logs/`, `tzdb/`, `kvdb/`, `queue/indexer/` and `outputs/` directories
+
+VS Code task: "Scripts: Create standalone structure".
 
 ### mount_wazuh_proc.sh
-Mounts the `/proc` filesystem inside the Wazuh installation directory for development and testing purposes.
+Mounts a `proc` filesystem at `$WAZUH_HOME/proc` (default `/var/wazuh-manager/proc`) when it is not mounted yet; run it as root. `tools/purge_wazuh.sh` unmounts it. VS Code task: "Scripts: Mount proc".
 
 ### toggle_event_dumper.sh
-Enables, disables or reports (`enable|disable|status`) the engine's event dumper, through the engine API socket (`queue/sockets/engine-api-http.sock`).
+Enables, disables or reports (`enable|disable|status`) the engine's event dumper with a `POST` to `/_internal/event-dumper/{activate,deactivate,status}` on the engine API socket, `/var/wazuh-manager/queue/sockets/engine-api-http.sock` (a fixed path; run it as root).
 
 ### pr-clang.sh
-Formats (or checks the formatting of) the `.cpp`/`.hpp` files under `src/` that the current PR changes — committed against the PR's base branch (`gh` finds it; without a PR, against the inferred base branch), staged, unstaged and untracked. `--check` only verifies and exits 1 when a file needs formatting. It uses the `clang-format` on `PATH` (override with `CLANG_FORMAT`), so its result can differ from the CI format check, whose binary is not reproducible on every host.
+Formats (or checks the formatting of) the `.cpp`/`.hpp` files under `src/` that the current PR changes — committed against the PR's base branch (`gh` finds it, and the script refuses to run without `gh`; without a PR, against the inferred base branch), staged, unstaged and untracked. `--check` only verifies and exits 1 when a file needs formatting. It uses the `clang-format` on `PATH` (override with `CLANG_FORMAT`): in the image, one built from `llvmorg-22.1.1` (`.devcontainer/Dockerfile`). The CI format check uses its own x86-64 binary and checks every file of a touched module tree, not only the changed ones, so a green local run does not guarantee a green CI one. VS Code tasks: "PR: clang-format (format)" and "PR: clang-format (check)".
 
 ### wazuh-certs-tool.sh / wazuh-certs-tool.yml
 Devcontainer copy of the installation assistant's certificate tool (`wazuh-certs-tool-5.0.0-beta5.sh`). The script header records the origin URL, its sha256 and the numbered list of local changes; every changed hunk is marked `# DEVCONTAINER:`, so `diff <(curl -sSL <origin URL>) wazuh-certs-tool.sh` is a readable patch. Driven by `wazuh-certs-tool.yml` (`nodes.indexer|manager|dashboard[] {name, ip, dns}`, the same shape as the assistant's `config.yml`), it issues:
 - `root-ca.pem` / `root-ca.key` — or reuses the pair passed after `-A` — and `admin.pem` / `admin-key.pem`
 - `<name>.pem` / `<name>-key.pem` per indexer, manager and dashboard node, with the assistant's unchanged DNs (the indexer package pins `CN=node-1,OU=Wazuh,O=Wazuh,L=California,C=US`)
-- per manager node, additionally **`<name>-remoted.pem`** — the agent-listener leaf followed by the CA (`basicConstraints critical CA:FALSE`, `keyUsage critical digitalSignature,keyEncipherment`, `extendedKeyUsage serverAuth`, SAN = `ip` + `dns` + `<name>`, RSA 2048, SHA-256, 3650 days) — and **`<name>-remoted-key.pem`**, verified with `openssl verify -CAfile root-ca.pem` before the tool exits
+- per manager node, `<name>.pem` is signed with `extendedKeyUsage clientAuth` added (it becomes the manager's indexer client pair), and additionally **`<name>-remoted.pem`** — the agent-listener leaf followed by the CA (`basicConstraints critical CA:FALSE`, `keyUsage critical digitalSignature,keyEncipherment`, `extendedKeyUsage serverAuth`, SAN = `ip` + `dns` + `<name>` when the name is a DNS label, RSA 2048, SHA-256, 3650 days) — and **`<name>-remoted-key.pem`**, verified with `openssl verify -CAfile root-ca.pem` before the tool exits
 
 ```bash
 bash scripts/wazuh-certs-tool.sh -A -v -c scripts/wazuh-certs-tool.yml -o /path/to/out                  # new CA
@@ -298,22 +303,19 @@ bash scripts/wazuh-certs-tool.sh -A ca.pem ca.key -c scripts/wazuh-certs-tool.ym
 The output directory is 755 with private keys 600 and certificates 644, plus `config.yml` (LF copy of the input YAML) and `wazuh-certificates-tool.log`; a non-empty output directory is refused unless `-f` is given. The node names in the YAML are load-bearing (`node-1` for the indexer's `nodes_dn` and entrypoint, `dashboard` for its entrypoint, the first manager node for `e2e/wazuh_copy_certs.sh`); the comments in the file name the consumer that pins each one. `e2e/init.sh` is the normal caller.
 
 ### Other utilities
-- `event_sock_v2.go`: sends a log file (or one message) to the engine's ingest socket, `queue/sockets/engine-ingest-http.sock`, over HTTP (`-f` file, `-m` message, `-l` loops, `-s` socket)
-- `wazuh_stream_socket.go`: sends a raw message to a Unix socket (`-f`) or a TCP/UDP address (`-s`, `-p`)
-- `wazuh_sec_socket.go`: sends a message to a framed Unix socket and prints the answer, for example `-f /var/wazuh-manager/queue/sockets/remote.sock -m '{"command": "getstats"}'`
-- `monitor.py`, `setup_monitor.sh`, `monitor_graphics_generator.py`, `bench_collect.py`, `bench_samples.py`: resource monitoring and metrics collection for the manager benchmark (`tools/manager_benchmark/`); `tests/` holds their unit tests
+- `event_sock_v2.go`: posts a log file line by line (or one message, `-m`) to `POST /events/enriched` on the engine's ingest socket, `/var/wazuh-manager/queue/sockets/engine-ingest-http.sock` (`-s` to change it). Each line is wrapped in the `H`/`E` format with a synthetic agent header unless `-r` sends it as is; `-f` file (default `test_logs_base.txt`), `-l` loops, `-c` Content-Type (default `application/x-ndjson`)
+- `wazuh_sec_socket.go` and `wazuh_stream_socket.go` (the same program): send one message (`-m`, default `#ping`) to a Unix socket (`-f`) or a TCP/UDP address (`-s IP:PORT`, `-p tcp|udp`) and print the answer. By default the message is framed with a 4-byte little-endian length and the answer read the same way; `-h=false` sends and reads it raw. Example: `go run ./wazuh_sec_socket.go -f /var/wazuh-manager/queue/sockets/remote.sock -m '{"command": "getstats"}'`
+- `monitor.py`, `setup_monitor.sh`, `monitor_graphics_generator.py`, `bench_collect.py`, `bench_samples.py`: resource monitoring and metrics collection for the manager benchmark ([tools/manager_benchmark/](../manager_benchmark/README.md)); `setup_monitor.sh` creates the venv `monitor.py` needs (`/opt/wazuh-monitor-venv`, `VENV_DIR` overrides it). `tests/` holds their unit tests, which CI runs in [5_testunit_dev-tools.yml](../../.github/workflows/5_testunit_dev-tools.yml) (`python -m pytest -rs tests` from `scripts/`, after `pip install pytest psutil pandas matplotlib`; the job fails on any skipped case)
 - `clean-unused-containers.sh`: lists stopped containers (all with `--all`) and deletes the ones you choose, after confirmation
 
 ### purge_wazuh.sh
-Located at `tools/purge_wazuh.sh` (Wazuh repository root), this script provides a comprehensive cleanup for local Wazuh manager/agent installations:
-- Removes Wazuh packages via apt-get or yum
-- Supports `dnf`, `yum`, `zypper`, and `rpm`-based package removal
-- Unmounts proc filesystem if mounted for development
-- Stops and removes Wazuh services
-- Cleans up all Wazuh-related files and directories, including the manager configuration directory `/etc/wazuh-manager`, which lives outside the installation directory
-- Removes Wazuh user and group from the system
-- Falls back to a full filesystem cleanup when the installation was created from sources instead of packages
-- Leaves `/etc/wazuh` alone: no 5.0 package writes there any more (each one keeps its credentials in its own `/etc/wazuh-<component>`), and a host may still carry it from an earlier build
+Located at `tools/purge_wazuh.sh` (Wazuh repository root); run it as root. It removes **every** Wazuh manager and agent on the host, not only the one you were working on:
+- Stops the services and the daemons, and purges the `wazuh-manager` and `wazuh-agent` packages when they are installed (`apt-get`, `dnf`, `yum`, `zypper` or `rpm`)
+- Unmounts a development `proc` mount (see `mount_wazuh_proc.sh`)
+- Removes `/var/wazuh-manager`, the agent's `/var/ossec`, `$WAZUH_HOME` and any directory a service unit names, plus the manager configuration directory `/etc/wazuh-manager` (outside the installation directory, and holding the CA key)
+- Removes the service units and the `wazuh` and `wazuh-manager` users and groups
+- Runs the same cleanup when no package is installed (an installation from sources)
+- Never touches `/etc/wazuh`
 
 ## E2E Testing Environment
 
@@ -326,10 +328,10 @@ The `e2e/` directory provides scripts to deploy a complete Wazuh ecosystem for e
 ### init.sh
 Initializes the E2E environment by running these steps in order:
 
-1. **Package download** (skipped with `--certs-only`) — downloads the Wazuh Indexer and Dashboard `.deb` packages into `wazuh-indexer/` and `wazuh-dashboard/` respectively. By default, package URLs are resolved from the staging nightly manifest, falling back to the nightly backup manifest when a package is missing. Use `--from-wf` to download from the latest successful GitHub Actions workflows instead.
+1. **Package download** (skipped with `--certs-only`) — downloads the Wazuh Indexer and Dashboard `.deb` packages for this machine's architecture (`WAZUH_ARCH=amd64|arm64` overrides the detection) into `wazuh-indexer/` and `wazuh-dashboard/`, as `wazuh-indexer_5.0.0-latest.deb` and `wazuh-dashboard_5.0.0-latest.deb`. By default, package URLs are resolved from the staging nightly manifest (`WAZUH_5X_PRIMARY_MANIFEST_URL`), falling back to the nightly backup manifest (`WAZUH_5X_FALLBACK_MANIFEST_URL`) when a package is missing. Use `--from-wf` to download from the latest successful `main` runs of the indexer and dashboard package workflows instead.
 2. **Certificate generation** — runs `scripts/wazuh-certs-tool.sh -A -v -c scripts/wazuh-certs-tool.yml -o certs/` (see [wazuh-certs-tool.sh](#wazuh-certs-toolsh--wazuh-certs-toolyml)) and post-checks the result: the files the docker entrypoints and `wazuh_copy_certs.sh` copy by name exist, every leaf passes `openssl verify -CAfile certs/root-ca.pem`, and the SAN/EKU/KU/BC of the agent-listener leaf are printed. If `certs/` already exists the script prompts before replacing it (`--regen-certs` skips the prompt). The existing `certs/root-ca.pem` / `root-ca.key` are **reused** so the indexer/dashboard containers and the installed manager keep trusting the same CA; `--rotate-ca` issues a new CA instead, after which everything that trusted the old one must be redeployed (`docker compose down -v && docker compose up -d`, `sudo ./wazuh_copy_certs.sh`).
-3. **Manager listeners** — unless `--no-listeners` is given and when a manager is installed under `WAZUH_MANAGER_HOME` (default `/var/wazuh-manager`), binds both remoted listeners to `0.0.0.0` in `/etc/wazuh-manager/wazuh-manager.conf` (fixed, whatever the home) so containerised agents can reach it, and resets the file to `root:wazuh-manager 660`.
-4. **Credentials** — generates `.credentials.env` with `wazuh_credentials.sh`, also on `--certs-only` re-runs; see [e2e/README.md](e2e/README.md).
+3. **Manager listeners** — unless `--no-listeners` is given, and only when `/etc/wazuh-manager/wazuh-manager.conf` exists (a fixed path, whatever `WAZUH_MANAGER_HOME` says), replaces a `127.0.0.1` `<local_ip>` or `<bind_addr>` inside `<remote>` with `0.0.0.0` so containerised agents can reach the listeners (both already default to `0.0.0.0`; `<cluster>` is not touched), resets the file to `root:wazuh-manager 660`, and prints the restart command: the change applies on the next `wazuh-manager-control restart`.
+4. **Credentials** — runs `wazuh_credentials.sh`, which creates `.credentials.env` when it is missing, also on `--certs-only` re-runs; see [e2e/README.md](e2e/README.md).
 5. **Logging** — all output is appended to `init.log` in the same directory.
 
 Without a TTY (another script, a task), pass `--reuse-certs` or `--regen-certs`: with `certs/` present, the question it asks otherwise fails.
@@ -346,10 +348,13 @@ cd e2e
 ./init.sh --from-wf
 ./init.sh --certs-only --regen-certs   # re-issue every leaf, keep the CA (VS Code task "E2E Scripts: [Manager] Regenerate certs (keep CA)")
 ./init.sh --certs-only --rotate-ca     # new CA: redeploy everything that trusts it afterwards
+./init.sh --certs-only --no-listeners  # certificates only; never edits /etc/wazuh-manager/wazuh-manager.conf
 ```
 
+VS Code tasks: "E2E Scripts: [Manager] Init setup (certs && pkg)" runs `./init.sh`; "E2E Scripts: [Manager] Up (reset & start containers)" runs `docker compose down -v && docker compose up -d`.
+
 ### docker-compose.yml
-Orchestrates the E2E environment. Both images are **built locally** from their subdirectories (`./wazuh-indexer`, `./wazuh-dashboard`) using the packages downloaded by `init.sh` — they are not pulled from a registry.
+Orchestrates the E2E environment (compose project `dev-env-engine`, network `dev-env-engine_default`). Both images are **built locally** from their subdirectories (`./wazuh-indexer`, `./wazuh-dashboard`) using the packages downloaded by `init.sh` — they are not pulled from a registry.
 
 **wazuh-indexer**
 - OpenSearch-based search and analytics engine
@@ -363,76 +368,35 @@ Orchestrates the E2E environment. Both images are **built locally** from their s
 - Exposed on port `443` (HTTPS)
 - Resolves `host.docker.internal` to the host gateway for engine communication
 - Mounts certificates from `./certs` (read-only) and takes its passwords from `./.credentials.env` (`env_file:`)
-- At start, the entrypoint stages the e2e CA as `certs/indexer-ca.pem` and `certs/manager-ca.pem` and the dashboard pair (all `root:wazuh-dashboard 0640`), then runs the package's `resolve-credentials --prestart`, which stores the kibanaserver and Server API passwords in its keystore
+- At start, the entrypoint stages the e2e CA as `certs/indexer-ca.pem` and `certs/manager-ca.pem` and the dashboard pair (all `root:wazuh-dashboard 0640`), then runs the package's `resolve-credentials --prestart`, which stores the kibanaserver and Server API (`wazuh-internal-client`) passwords in its keystore
 - Depends on `wazuh-indexer`
 
 **Starting the environment:**
 ```bash
 cd e2e
-docker-compose up -d
+docker compose up -d
 ```
 
 >[!NOTE]
 > If you need to update the Indexer or Dashboard packages, re-run `./init.sh` to fetch the latest artifacts before starting the services:
 > ```bash
-> docker-compose down
+> docker compose down
 > ./init.sh
-> docker-compose up -d # This rebuilds services with updated packages
+> docker compose up -d # This rebuilds services with updated packages
 > ```
 > The containers copy the certificates from `./certs` at start: after `./init.sh --certs-only --regen-certs` (same CA, re-issued leaves) a plain `docker compose down && docker compose up -d` loads them. After `./init.sh --certs-only --rotate-ca` use `docker compose down -v && docker compose up -d` instead — `-v` drops the indexer volumes so its security index is re-initialised with the new admin certificate.
 
 ### agents/
 
-The `agents/` subdirectory provides a self-contained environment to run Wazuh agents inside containers connected to a manager running on the devContainer host.
-
-#### agents/init.sh
-
-Downloads the four agent installer packages required by the compose services before the first build:
-
-- `4.x .deb` (Ubuntu) and `4.x .rpm` (CentOS) — from the official Wazuh 4.x repository
-- `5.x .deb` (Ubuntu) and `5.x .rpm` (CentOS) — resolved from the staging nightly manifest
-
-Packages are saved into `agents/pkgs/` and are picked up automatically by `docker-compose` at build time.
-
-**Prerequisites:** `curl` and `yq` must be installed.
-
-**Usage:**
-```bash
-cd e2e/agents
-./init.sh           # download missing packages
-./init.sh --force   # re-download even if already present
-```
-
-#### agents/docker-compose.yml
-
-Defines four agent services, all connecting to the manager on the host via `host.docker.internal`:
-
-| Service | Image base | Agent version | Enrollment and connection |
-|---|---|---|---|
-| `agent_4x_centos` | CentOS | 4.x | authd on 1515 with the shared password, events on 1514 |
-| `agent_4x_ubuntu` | Ubuntu | 4.x | authd on 1515 with the shared password, events on 1514 |
-| `agent_5x_centos` | CentOS | 5.x | enrollment token, `POST /enroll` and events on 1517 |
-| `agent_5x_ubuntu` | Ubuntu | 5.x | enrollment token, `POST /enroll` and events on 1517 |
-
-The credentials come from an env file that `create_token.sh` writes (the token for 5.x, the authd password for 4.x). Each service mounts a persistent volume for `/var/ossec`. There is no restart policy: like the indexer and the dashboard, the agents stay stopped when the devContainer restarts, and `docker compose start` brings them back with their keys once the manager is running. Use `docker compose down -v` for a clean start that discards agent state.
-
-**Usage:**
-```bash
-cd e2e/agents
-sudo ./create_token.sh --env-file /tmp/wazuh-e2e-agents.env
-docker compose --env-file /tmp/wazuh-e2e-agents.env -f docker-compose.yml up -d --build                  # start all agents
-docker compose --env-file /tmp/wazuh-e2e-agents.env -f docker-compose.yml up -d --build agent_5x_ubuntu  # start a single agent
-sudo ./verify_agents.sh --api
-```
-
-For full details, see [agents/README.md](e2e/agents/README.md).
+The `agents/` subdirectory runs real 4.x and 5.x agents (Ubuntu and CentOS, built from the official packages that `agents/init.sh` downloads) in containers, enrolled against the manager on the devContainer host through `host.docker.internal`: the 4.x ones through authd on 1515 with the shared password, the 5.x ones with an enrollment token through `POST /enroll` on 1517. `create_token.sh` mints the token and writes the env file the compose project reads, and `verify_agents.sh` checks the result. Packages, enrollment, the quick start and troubleshooting: [agents/README.md](e2e/agents/README.md).
 
 ### wazuh_copy_certs.sh
-Deploys the certificates issued by `init.sh` into an existing wazuh-manager installation (`WAZUH_MANAGER_HOME`, default `/var/wazuh-manager`). It must run as **root** (`sudo ./wazuh_copy_certs.sh`) and requires the `wazuh-manager` user and group to exist:
+Deploys the certificates issued by `init.sh` into an existing wazuh-manager installation (`WAZUH_MANAGER_HOME`, default `/var/wazuh-manager`), replacing the PKI the installation issued. It must run as **root** (`sudo ./wazuh_copy_certs.sh`), requires the `wazuh-manager` user and group to exist, and **refuses to run while the manager is running** (`wazuh-manager-control status` reports a daemon running): stop it first, deploy, then start it.
 
 | Source (`e2e/certs/`) | Destination (`/etc/wazuh-manager/certs/`) | Owner | Mode |
 |---|---|---|---|
 | `root-ca.pem` | `root-ca.pem` | `root:wazuh-manager` | 640 |
+| `root-ca.pem` | `indexer-ca.pem` | `root:wazuh-manager` | 640 |
 | `<node>.pem` | `indexer-connector.pem` | `root:wazuh-manager` | 640 |
 | `<node>-key.pem` | `indexer-connector-key.pem` | `root:wazuh-manager` | 640 |
 | `<node>-remoted.pem` | `remoted.pem` | `root:wazuh-manager` | 640 |
@@ -440,14 +404,24 @@ Deploys the certificates issued by `init.sh` into an existing wazuh-manager inst
 | `<node>-remoted.pem` | `apid.pem` | `root:wazuh-manager` | 640 |
 | `<node>-remoted-key.pem` | `apid-key.pem` | `root:wazuh-manager` | 640 |
 
-`<node>` is the first `- name:` under `manager:` in `scripts/wazuh-certs-tool.yml` (`wazuh-1`), overridable with `MANAGER_NODE_NAME`. `/etc/wazuh-manager/certs` is created as `0750 root:wazuh-manager`, like the installer does; `root-ca.key` is never copied. Every daemon opens its certificate and key after dropping privileges, through the group, so the files stay root-owned and the service user cannot rewrite them (the Server API gets the listener pair, since the installer issues `apid.pem` with the profile of `remoted.pem`). The script then verifies the deployed files (`openssl verify -CAfile root-ca.pem`, expiry check) and prints the `<remote><https>` certificate settings of `/etc/wazuh-manager/wazuh-manager.conf` for review — it **does not edit** the configuration: the defaults already point at `/etc/wazuh-manager/certs/remoted.pem`, `/etc/wazuh-manager/certs/remoted-key.pem` and `/etc/wazuh-manager/certs/root-ca.pem`.
+`<node>` is the first `- name:` under `manager:` in `scripts/wazuh-certs-tool.yml` (`wazuh-1`), overridable with `MANAGER_NODE_NAME` (`CERTS_DIR` and `CERTS_CONFIG` override the source directory and the YAML). `/etc/wazuh-manager/certs` is created as `0750 root:wazuh-manager`, like the installer does. The e2e indexer's certificates come from the same CA, so it is also the indexer CA, and the Server API gets the listener pair. Then the script:
 
-**Important:** run it after installing wazuh-manager and before starting the service, or restart it afterwards (`wazuh-manager-control restart`).
+1. replaces the installation's CA: `/etc/wazuh-manager/ca/root-ca.pem` becomes the e2e CA's certificate (`root:root 644` in a `root:root 700` directory) and the installation's `ca/root-ca.key` is deleted, so this node can no longer issue pairs; `root-ca.key` of `e2e/certs/` is never copied;
+2. when `/etc/wazuh-manager/export/` exists, issues a new dashboard client pair (`CN=wazuh-dashboard`, `clientAuth`) from the e2e CA into `export/dashboard-client.pem` / `dashboard-client-key.pem`, in place of the one the installation issued from its own CA;
+3. verifies the deployed files (`openssl verify`, an expiry check of `remoted.pem`);
+4. runs `bin/wazuh-manager-resolve-credentials --install` (which republishes the new CA in `export/ca.pem`) and `--check`;
+5. prints the `<remote><https>` certificate settings of `/etc/wazuh-manager/wazuh-manager.conf` for review — it **does not edit** the configuration: the defaults already point at `/etc/wazuh-manager/certs/remoted.pem`, `/etc/wazuh-manager/certs/remoted-key.pem` and `/etc/wazuh-manager/certs/root-ca.pem`.
+
+Which files a manager needs and how the start checks them: [Provision certificates](../../docs/dev/run-sources.md#provision-certificates) and [Credentials](../../docs/ref/getting-started/credentials.md).
 
 **VS Code Tasks:** "E2E Scripts: [Manager] Copy wazuh-manager certs" and, to re-issue the leaves while keeping the CA, "E2E Scripts: [Manager] Regenerate certs (keep CA)" (`Ctrl+Shift+P` → `Tasks: Run Task`)
 
 ### wazuh_install_manager.sh / wazuh_verify_manager.sh
-`wazuh_install_manager.sh` is an unattended install of the manager from this checkout (mode `fresh` purges the manager at `--dir` first; it refuses to run without `--yes`), with the certificates and the credentials of the E2E stack, a start and a verification. `wazuh_verify_manager.sh` is the verification on its own: one `PASS|FAIL|SKIP` line per check and an exit status of 0 only when nothing failed. VS Code tasks: "E2E Scripts: [Manager] Fresh install from branch (purge!)" and "E2E Scripts: [Manager] Verify installed manager".
+`wazuh_install_manager.sh` (root) is an unattended install of the manager from this checkout, with the certificates and the credentials of the E2E stack, a start and a verification; evidence goes to `--out` (default `$TMPDIR/wazuh-e2e-evidence/<timestamp>`). It refuses to run without `--yes`, because it is destructive: `--mode fresh` (the default, into `--dir`, default `/var/wazuh-manager`) stops the manager and runs `tools/purge_wazuh.sh`, which removes **every** Wazuh installation on the host and `/etc/wazuh-manager` (see [purge_wazuh.sh](#purge_wazuhsh)), plus a custom `--dir` (handed to it as `WAZUH_HOME`) — which must be absent, empty or a manager installation (`bin/wazuh-manager-control`), or the script refuses before touching anything; `--mode sandbox` installs into a directory named `wazuh-manager` (default `$TMP_CLEAN_ENV/wazuh-manager`), removing an existing one first, without registering the service, but still shares `/etc/wazuh-manager`. It refuses a `$WAZUH_REPO/src/build` configured as a test or sanitizer tree. The manager passwords of `.credentials.env` reach `install.sh` through its environment; the certificates are deployed with `init.sh --certs-only` and `wazuh_copy_certs.sh`. It records what it installed (commit, branch, merge-base, binary SHA-256s) in `<dir>/.install-provenance`, read back as the "before" of the next run and by `wazuh_verify_manager.sh`'s manifest: a dev-only marker beside the binaries it describes, which no package installs and `manager_base.csv` does not list (an earlier version wrote it to `/etc/wazuh-manager`, shared by every `--dir`; the script removes that copy). Options: `--before-hook`, `--snapshot`, `--skip-build` (`install.sh binary-install`), `--no-start`, `--api`, `--https-port`/`--legacy-port` (sandbox only); see `--help`.
+
+`wazuh_verify_manager.sh` (root) is the verification on its own: `wazuh-manager-control status` (7 daemons by default, `--daemons`), `wazuh-manager-conf validate`, `GET <prefix>/cacerts` on the HTTPS listener, no new `ERROR`/`CRITICAL` line in `logs/wazuh-manager.log` since `--start-mark`, and with `--api` a Server API login. It prints one `PASS|FAIL|SKIP` line per check and exits 0 only when nothing failed.
+
+VS Code tasks: "E2E Scripts: [Manager] Fresh install from branch (purge!)" and "E2E Scripts: [Manager] Verify installed manager".
 
 ### cluster/
 An opt-in compose project (`dev-env-cluster`, on the E2E network) that turns the host manager into a cluster master and runs worker managers in containers, with `cluster.sh up|down`; see [cluster/README.md](e2e/cluster/README.md).
@@ -465,4 +439,5 @@ Use the repo-level `tools/purge_wazuh.sh` script before re-running the E2E setup
 
 - **VS Code Tasks**: Pre-configured build, test, and utility tasks are available in `.vscode/tasks.json`
 - **Launch Configurations**: Debug configurations available in `.vscode/launch.json`
-- **Engine Documentation**: See `wazuh/src/engine/docs/` for detailed engine architecture and API documentation
+- **Engine Documentation**: the engine reference is [docs/ref/modules/engine/](../../docs/ref/modules/engine/README.md); each engine module's developer README lives under `src/engine/source/<module>/`
+- **Development guides**: [Development Environment Setup](../../docs/dev/setup.md), [Build from Sources](../../docs/dev/build-sources.md), [Run from Sources](../../docs/dev/run-sources.md), [Test execution](../../docs/dev/test-execution.md)

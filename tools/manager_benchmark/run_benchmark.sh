@@ -288,7 +288,12 @@ if [[ "$EFFECTIVE_MODE" == "agent" ]]; then
              "previous kept run will fail enrollment with 'Duplicate agent name'."
     else
         echo "Cleaning up stale bench-* agents..."
-        "$SCRIPT_DIR/cleanup_agents.sh" 2>/dev/null || echo "  (skipped — API not reachable)"
+        # Its error says why (no password, wrong password, API down); a skipped cleanup leaves the
+        # previous fleet registered, so this run's enrollment fails with "Duplicate agent name".
+        if ! "$SCRIPT_DIR/cleanup_agents.sh"; then
+            echo "  WARNING: pre-run cleanup FAILED (see the error above); stale bench-* agents" \
+                 "from a previous run will fail this run's enrollment with 'Duplicate agent name'." >&2
+        fi
     fi
 fi
 
@@ -407,7 +412,10 @@ fi
 if $CLEANUP_AFTER && [[ "$EFFECTIVE_MODE" == "agent" ]]; then
     echo ""
     echo "Deleting bench-* agents (--cleanup-after)..."
-    "$SCRIPT_DIR/cleanup_agents.sh" 2>/dev/null || true
+    if ! "$SCRIPT_DIR/cleanup_agents.sh"; then
+        echo "  WARNING: post-run cleanup FAILED (see the error above); this run's bench-* agents" \
+             "are still registered. Run ./cleanup_agents.sh by hand." >&2
+    fi
 elif $KEEP_AGENTS && [[ "$EFFECTIVE_MODE" == "agent" ]]; then
     echo ""
     echo "--keep-agents: this run's bench-* agents (and their indexed documents) were left" \

@@ -55,6 +55,9 @@ On `503` the body names what is missing:
 {"status":"unavailable","module":"wazuh-db","global":{"available":false,"missing_tables":["belongs","group"]}}
 ```
 
+When the database could not be opened or queried at all, `missing_tables` is the empty list `[]`, and
+the daemon logs `Status endpoint could not query the database: <reason>` when the query itself failed.
+
 It checks that the `agent`, `belongs` and `group` tables exist — the tables agent-group lookups
 read. `remoted` reads an agent's groups from the `agent` table with `global select-agent-group` on
 `wdb.sock`, and a failure there makes it answer `503 dependency_unavailable` on `POST /control`;
@@ -127,7 +130,9 @@ why it is classified as a data-plane route and can be shed under back-pressure.
 ## `POST /v1/agents/summary`
 
 Counts for the server API's agent overview. The body is optional: empty, it counts every agent; a JSON
-array of agent ids (for example `[1,2,7]`), it counts only those. Answers three maps:
+array of agent ids (for example `[1,2,7]`), it counts only those, so `[]` counts nothing and answers
+`{}`. The id list is not parsed as JSON: every run of digits in the body is taken as an id. Answers
+three maps:
 
 ```json
 {"agents_by_status":{"active":42,"disconnected":3},

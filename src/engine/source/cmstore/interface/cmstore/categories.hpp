@@ -11,9 +11,10 @@ namespace cm::store::categories
 /**
  * @brief Special category for unclassified events.
  *
- * Events are tagged with this category by the root decoder when no integration
- * decoder matches. Output routing and metrics behavior for these events depend
- * on the policy flag `index_unclassified_events`.
+ * Every decoder that matches an event sets `wazuh.integration.category` to the category of its
+ * integration, so an event is tagged with this category when the last decoder that matched it belongs
+ * to an integration of category `unclassified` (the catch-all integration). Output routing and metrics
+ * behavior for these events depend on the policy flag `index_unclassified_events`.
  */
 inline constexpr std::string_view UNCLASSIFIED_CATEGORY = "unclassified";
 

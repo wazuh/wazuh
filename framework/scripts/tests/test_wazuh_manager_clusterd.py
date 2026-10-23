@@ -22,6 +22,46 @@ def test_set_logging():
             tag='%(asctime)s %(levelname)s: [%(tag)s] [%(subtag)s] %(message)s')
 
 
+@pytest.mark.parametrize('option_value, cmd_level, expected', [
+    (None, None, 0),
+    (None, 1, 1),
+    (None, 2, 2),
+    (0, 2, 2),
+    (0, None, 0),
+    (1, None, 1),
+    (2, 1, 2),
+])
+def test_get_debug_level(option_value, cmd_level, expected):
+    """Check that an absent or zero internal option leaves the command-line level in effect."""
+    from wazuh.core.exception import WazuhInternalError
+
+    side_effect = WazuhInternalError(1108) if option_value is None else None
+    with patch('wazuh.core.configuration.get_internal_options_value', return_value=option_value,
+               side_effect=side_effect) as get_option_mock:
+        assert wazuh_manager_clusterd.get_debug_level(cmd_level) == expected
+        get_option_mock.assert_called_once_with('wazuh_clusterd', 'debug', 2, 0)
+
+
+def test_get_debug_level_missing_file():
+    """Check that a missing internal options file leaves the command-line level in effect."""
+    from wazuh.core.exception import WazuhInternalError
+
+    with patch('wazuh.core.configuration.get_internal_options_value', side_effect=WazuhInternalError(1107)):
+        assert wazuh_manager_clusterd.get_debug_level(2) == 2
+
+
+@pytest.mark.parametrize('error_code', [1109, 1110])
+def test_get_debug_level_invalid_value(error_code, capsys):
+    """Check that a non-digit or out-of-range internal option is reported and stops the daemon."""
+    from wazuh.core.exception import WazuhError
+
+    with patch('wazuh.core.configuration.get_internal_options_value', side_effect=WazuhError(error_code)):
+        with pytest.raises(SystemExit) as exit_info:
+            wazuh_manager_clusterd.get_debug_level(1)
+    assert exit_info.value.code == 1
+    assert 'wazuh_clusterd.debug' in capsys.readouterr().err
+
+
 @patch('builtins.print')
 def test_print_version(print_mock):
     """Set the scheme to be printed."""

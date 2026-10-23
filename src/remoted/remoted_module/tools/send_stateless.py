@@ -384,10 +384,11 @@ def scenario_malformed_zstd(agent_id, agent_key):
 
 
 def scenario_zstd_body_beyond_the_auth_cap(agent_id, agent_key):
-    # auth_max_body_size (5 MiB) bounds the WIRE body only. A DECOMPRESSED body is bounded by the
-    # server's live in-flight capacity instead (max_inflight_bytes, 256 MiB by default), so a batch
-    # that decompresses well past 5 MiB is accepted -- that is the behavior change zstd support
-    # introduced, and what this scenario pins down.
+    # auth_max_body_size (5 MiB) bounds the WIRE body only. A DECOMPRESSED body has its own cap,
+    # remoted.auth_max_decoded_body_size (32 MiB by default), and draws on the server's live
+    # in-flight capacity (max_inflight_bytes, 256 MiB by default), so a batch that decompresses to
+    # ~6 MiB -- past the wire cap, well under the decoded one -- is accepted. That is the behavior
+    # change zstd support introduced, and what this scenario pins down.
     #
     # There is deliberately no e2e scenario for the 413 that capacity exhaustion produces: with the
     # default 256 MiB budget a single request cannot realistically reach it, and forcing it would

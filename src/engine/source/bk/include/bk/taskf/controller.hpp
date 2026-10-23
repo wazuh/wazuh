@@ -80,9 +80,9 @@ public:
     void stop() override {};
 
     /**
-     * @copydoc bk::IController::isAviable
+     * @copydoc bk::IController::isAvailable
      */
-    inline bool isAviable() const override { return true; }
+    inline bool isAvailable() const override { return true; }
 
     /**
      * @copydoc bk::IController::printGraph

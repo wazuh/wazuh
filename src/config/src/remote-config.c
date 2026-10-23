@@ -386,8 +386,11 @@ int Read_Remote_JSON(const struct cJSON *remote, void *d1)
             logr->https.max_body_size = max_body_size;
         }
 
+        /* The schema defaults dual_stack to false, so an explicit `no` and an absent option are the same value
+         * here. Both keep the module default (IPv6-only, the same socket option _NO would set) and stay UNSET,
+         * so the "only applies to an IPv6 bind_addr" warning below fires only for a `yes` that has no effect. */
         if (item = cJSON_GetObjectItem(https, "dual_stack"), cJSON_IsBool(item)) {
-            logr->https.dual_stack = cJSON_IsTrue(item) ? REMOTED_HTTPS_DUAL_STACK_YES : REMOTED_HTTPS_DUAL_STACK_NO;
+            logr->https.dual_stack = cJSON_IsTrue(item) ? REMOTED_HTTPS_DUAL_STACK_YES : REMOTED_HTTPS_DUAL_STACK_UNSET;
         }
 
         /* Rate limits of the two unauthenticated routes (POST /enroll, GET /cacerts). */

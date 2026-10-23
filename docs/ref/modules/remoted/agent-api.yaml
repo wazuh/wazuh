@@ -109,7 +109,7 @@ paths:
       summary: The CA that signs the listener certificate (unauthenticated)
       description: |
         Returns the `CERTIFICATE` blocks found in the file configured as
-        `<remote><https><ca_certificate>` (by default `etc/certs/root-ca.pem`: the CA that signs the
+        `<remote><https><ca_certificate>` (by default `/etc/wazuh-manager/certs/root-ca.pem`: the CA that signs the
         listener certificate, both installed at installation by the credential resolver or
         provided by the operator), re-serialised by the manager -- never the file's raw bytes, and never a private
         key or any other non-certificate material the file might also carry --
@@ -209,9 +209,10 @@ paths:
                   value: { error: "not_found" }
         "503":
           description: |
-            Refused: the configured CA does not sign the certificate this listener serves, so handing
-            it out would break every agent that trusted it. Fix the manager's `ca_certificate` /
-            `certificate` pair and restart remoted; the manager logs the mismatch as an ERROR.
+            Refused: the certificate this listener serves does not chain to the configured CA (the
+            leaf's issuer, a still-valid self-signed `CA:TRUE` anchor), so handing it out would break
+            every agent that trusted it. A corrected CA file is served from the next request; a new
+            certificate needs a restart of remoted to load. The manager logs the mismatch as an ERROR.
           content:
             application/json:
               schema:
@@ -447,12 +448,10 @@ paths:
         higher `vd_feed_offset` (request a re-scan via `POST /scan/vd`), and `tasks` when the manager
         has work to dispatch.
 
-        `ca_generation` carries one of four states, and they are NOT interchangeable: a timestamp
+        `ca_generation` carries one of three states, and they are NOT interchangeable: a timestamp
         once a guard vouched for the bundle; `0` when there is a bundle to serve and none did (an
         unstamped file, or one a guard refused); `null` when there is no servable bundle at all
-        (nothing configured, or the configured file yields no certificate); and the key itself
-        **absent** on a manager whose build predates this feature -- absent means *unknown*, not
-        the same as the confirmed-empty `null`. `nlohmann::json` serialises object keys in
+        (nothing configured, or the configured file yields no certificate). `nlohmann::json` serialises object keys in
         alphabetical order, so on the wire `ca_generation` lands between `agent` and `settings_hash`;
         nothing in this contract depends on that order, and neither should a client.
 
@@ -522,7 +521,7 @@ paths:
                     ca_generation: 1758000000
                     settings_hash: "d7a8fbb3..."
                     tasks:
-                      - task_id: "42"
+                      - task_id: a3f5e2d1-4c6b-8a9e-1f2d-3c4b5a6e7d8f
                         task_type: active_response
                         payload: {}
                     vd_feed_offset: 12345678
@@ -690,11 +689,15 @@ paths:
         "503":
           description: |
             Out of capacity, the sync server was unreachable or did not answer in time, or it shed
-            the session itself. The only route whose `503` may carry a `Retry-After`, relayed from the
-            sync server when it sends a digits-only value of at most 6 digits.
+            the session itself. The only route whose `503` may carry a `Retry-After`: relayed from the
+            sync server when it sends a digits-only value of at most 6 digits, or set by remoted to
+            `remoted.downstream_stateful_retry_after` (20 s by default, `0` omits it) when
+            `remoted.downstream_stateful_response_timeout` elapsed.
           headers:
             Retry-After:
-              description: Seconds to wait before retrying. Relayed from the sync server only.
+              description: |
+                Seconds to wait before retrying: the sync server's own value, or
+                `remoted.downstream_stateful_retry_after` on a response timeout.
               schema: { type: integer, minimum: 0 }
           content:
             application/json:
@@ -723,7 +726,7 @@ paths:
 
         | `resource_type` | `resource_id` | Resolves to |
         | --- | --- | --- |
-        | `config` | one group name | `etc/shared/<group>/merged.mg` |
+        | `config` | one group name | `/etc/wazuh-manager/shared/<group>/merged.mg` |
         | `config` | several, comma-separated | `var/multigroups/<sha256(resource_id)[0..32)>/merged.mg` |
         | `wpk` | a package filename | `var/upgrade/<filename>` |
 
@@ -853,8 +856,16 @@ paths:
           application/json:
             schema:
               type: object
-              minProperties: 1
-              description: Any non-empty JSON object. Not interpreted by remoted.
+              required: [modules]
+              description: |
+                Not interpreted by remoted, which only refuses an empty body. The Inventory Sync
+                Server requires a non-empty `modules` object whose values are objects, and rejects
+                the whole document (`400`) otherwise; other root members are dropped.
+              properties:
+                modules:
+                  type: object
+                  minProperties: 1
+                  additionalProperties: { type: object }
       responses:
         "200":
           description: Accepted for indexing. Fixed body.
@@ -895,24 +906,34 @@ paths:
         (`<agent><config_report>`, interval 3600 s) -- the manager needs a configuration snapshot even
         from an agent whose configuration nobody has touched.
 
-        It differs from `/stats` in exactly one way: a success passes the sync server's **enriched
-        document** back (it stamps `wazuh.agent.id` and `@timestamp` onto what the agent sent).
-        Failures are still collapsed to a fixed local message, so an arbitrary downstream string is
-        never reflected to an agent.
+        It differs from `/stats` in exactly one way: a success passes the sync server's own body
+        through (today `{}`) instead of a fixed one. Failures are still collapsed to a fixed local
+        message, so an arbitrary downstream string is never reflected to an agent.
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
-              minProperties: 1
-              description: Any non-empty JSON object. Not interpreted by remoted.
+              required: [modules]
+              description: |
+                Not interpreted by remoted, which only refuses an empty body. The Inventory Sync
+                Server requires a non-empty `modules` object whose values are objects, and rejects
+                the whole document (`400`) otherwise; other root members are dropped.
+              properties:
+                modules:
+                  type: object
+                  minProperties: 1
+                  additionalProperties: { type: object }
       responses:
         "200":
-          description: Accepted for indexing. Body is the enriched document.
+          description: Accepted for indexing. Body passed through from the sync server.
           content:
             application/json:
               schema: { type: object }
+              examples:
+                accepted:
+                  value: {}
         "400":
           description: Empty body, or the sync server rejected the document.
           content:
@@ -1061,7 +1082,7 @@ paths:
         certificate nor `use_password` configured, a request that presents no `kid` credential needs no
         credential at all -- matching `authd`'s own behavior on port 1515 in that configuration.
 
-        `protocol-version` is validated first after the rate limit and the disabled check, exactly as
+        `protocol-version` is validated first after the disabled check, exactly as
         on every other authenticated route, and in every mode -- including the credential-less one,
         since the version is a property of the protocol rather than of the credential.
 
@@ -1307,7 +1328,7 @@ components:
 
         | `kid` | Credential | IKM / `info` label | Verified by |
         |---|---|---|---|
-        | none | the shared enrollment password | `authd`'s enrollment password (`etc/authd.pass`) / `WAZUH-ENROLL-JWT-KEY` | the manager the request reaches. Required whenever `authd`'s `use_password` is enabled; with it off, a shared-key bearer -- or none -- is ignored and the request passes |
+        | none | the shared enrollment password | `authd`'s enrollment password (`/etc/wazuh-manager/authd.pass`) / `WAZUH-ENROLL-JWT-KEY` | the manager the request reaches. Required whenever `authd`'s `use_password` is enabled; with it off, a shared-key bearer -- or none -- is ignored and the request passes |
         | 22 base64url characters: a 16-byte enrollment token id | an enrollment token minted by the operator | the token's 16-byte secret / `WAZUH-ENROLL-TOKEN-KEY` | the manager the request reaches, in **every** mode (`use_password` or not), against its replica of `authd`'s token store; lookup, signature, expiry, revocation in that order, so the token's state is only disclosed to a holder of its secret. `authd` on the master then consumes one use (`403` 9022/9023/9024 when it will not) |
         | the agent's canonical id (`001`) | re-enrollment: the agent's own `reenroll_secret` (returned by its enrollment) | the 32-byte secret / `WAZUH-REENROLL-KEY` | `authd` on the **master node** only -- the secret exists nowhere else -- so the manager forwards the bearer verbatim and unverified and maps `authd`'s verdict (9026/9027/9028) onto `unknown_agent` / `invalid_signature` / `stale_token`. On success the agent keeps its id and receives a new `key` and `reenroll_secret` |
 
@@ -1315,7 +1336,7 @@ components:
         missing, unreadable or invalid password file fails **closed** for the shared-key form
         (`enrollment_key_unavailable`): every such request is rejected, never treated as if no
         password were required. The token store fails closed too: an absent
-        `etc/enrollment_tokens.json` is an empty store (every token bearer is `token_unknown`), a
+        `/etc/wazuh-manager/enrollment_tokens.json` is an empty store (every token bearer is `token_unknown`), a
         malformed one keeps the previously loaded tokens. When neither a password nor a client
         certificate is configured, `/enroll` accepts a request with no credential at all; an
         enrollment token or a re-enrollment bearer is still checked whenever presented.
@@ -1490,7 +1511,8 @@ components:
             code:
               description: |
                 `authd`'s own numeric code when the failure came from `authd`, `0` for non-authentication
-                failures `/enroll` produced itself, `-1` when `authd` could not be reached or understood;
+                failures `/enroll` produced itself, `-1` when the request never reached `authd`, `-2`
+                when it reached `authd` but no well-formed answer came back in time;
                 for a `401`, the authentication failure class (string) -- the same value the
                 `WWW-Authenticate` challenge carries as `error_description`.
               oneOf:
@@ -1512,9 +1534,10 @@ components:
         version:
           type: string
           description: |
-            The agent's product version. Rejected with `409 invalid_version` if newer than the
-            manager's and `<remote><agents><allow_higher_versions>` is `no`, or with
-            `400 invalid_version` if it is not a well-formed `MAJOR.MINOR.PATCH`.
+            The agent's product version. Rejected with `409 invalid_version` if its major or minor
+            is higher than the manager's and `<remote><agents><allow_higher_versions>` is `no`, or
+            with `400 invalid_version` if it is malformed (empty, over 64 characters, or not
+            `[v]MAJOR[.MINOR[.PATCH[.EXTRA]]]` with an optional `+`/`-` suffix).
           example: "5.0.0"
 
     ControlNotify:
@@ -1647,9 +1670,10 @@ components:
         version:
           type: string
           description: |
-            Rejected if newer than the manager's unless
-            `<remote><agents><allow_higher_versions>` is `yes`. `authd`'s local socket performs no
-            version check of its own, so this endpoint enforces it.
+            Rejected with `400` if its major or minor is higher than the manager's (a higher patch
+            alone is accepted) unless `authd`'s `<auth><agents><allow_higher_versions>` is `yes` --
+            not `remote`'s, which governs `/control`. `authd`'s local socket performs no version
+            check of its own, so this endpoint enforces it.
           example: "5.0.0"
         groups:
           type: string
@@ -1671,7 +1695,7 @@ components:
 
     EnrollResponse:
       type: object
-      required: [id, name, ip, key, reenroll_secret]
+      required: [id, name, ip, key]
       description: |
         Verbatim from `authd`. On a re-enrollment `id` is the one the bearer named and `key` /
         `reenroll_secret` are the rotated pair.

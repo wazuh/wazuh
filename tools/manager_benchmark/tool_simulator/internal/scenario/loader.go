@@ -19,6 +19,23 @@ var validKinds = map[string]bool{
 	"scan_vd": true, "cacerts": true, "enroll_https": true,
 }
 
+// Known session options (Start.option), in the schema's spelling and lower
+// case. Anything else is refused at load: the session builder would otherwise
+// send it as Sync, so a typo'd "VDFrist" would measure a plain sync and never
+// trigger the scan the scenario was written for.
+var validOptions = map[string]bool{
+	"Sync": true, "sync": true,
+	"VDFirst": true, "vdfirst": true,
+	"VDSync": true, "vdsync": true,
+}
+
+func checkOption(option string) error {
+	if option != "" && !validOptions[option] {
+		return fmt.Errorf("option must be \"Sync\", \"VDFirst\" or \"VDSync\" (or absent), got %q", option)
+	}
+	return nil
+}
+
 // Load reads and strictly validates a scenario file. Unknown fields and unknown
 // step kinds are refused: a typo must not silently produce a different
 // measurement (docu/07). modeOverride, when non-empty, replaces the file's mode.
@@ -89,6 +106,9 @@ func (s *Scenario) validate() error {
 	default:
 		return fmt.Errorf("compression must be \"zstd\", \"none\" or absent, got %q", s.Defaults.Compression)
 	}
+	if err := checkOption(s.Defaults.Option); err != nil {
+		return fmt.Errorf("defaults: %w", err)
+	}
 	// Absent degrades to plain in uds mode on its own (CompressionFor); only an
 	// EXPLICIT zstd is a contradiction worth refusing.
 	if s.Defaults.Compression == "zstd" && s.Mode != "agent" {
@@ -122,6 +142,9 @@ func (s *Scenario) validateStep(fleet, lane string, i int, step Step) error {
 	where := fmt.Sprintf("fleet %q lane %q step %d", fleet, lane, i)
 	if !validKinds[step.Kind] {
 		return fmt.Errorf("%s: unknown kind %q", where, step.Kind)
+	}
+	if err := checkOption(step.Option); err != nil {
+		return fmt.Errorf("%s: %w", where, err)
 	}
 	if step.Kind == "engine" {
 		if s.Mode != "agent" {

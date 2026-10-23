@@ -6,9 +6,10 @@
 `/etc/wazuh-manager/wazuh-manager.conf` is a strict XML document whose root `<wazuh_config>` holds one
 element per section below. Sections and options marked **required** have no default and must be set
 explicitly; every other option takes its default when absent, and `bin/wazuh-manager-conf dump` prints the
-effective document. The file is validated against `/etc/wazuh-manager/wazuh-manager.schema.json` (this reference is
-generated from that schema) by `wazuh-manager-control` before any daemon starts and by
-`bin/wazuh-manager-conf validate`; an invalid value is reported with the JSON pointer of the offending
+effective document. The file is validated against the JSON schema this reference is generated from (each
+manager binary embeds its own copy; `/etc/wazuh-manager/wazuh-manager.schema.json` is the copy installed for the
+Python framework) by `wazuh-manager-control` before any daemon starts and by `bin/wazuh-manager-conf validate`;
+an invalid value is reported with the JSON pointer of the offending
 option (`(1244): Invalid configuration at '/remote/legacy/port': ...`). Unknown options are rejected in
 every section.
 
@@ -66,14 +67,14 @@ wazuh-manager-remoted listeners.
 | `https.port` | integer | `1517` | 1-65535 | Listening port. |
 | `https.bind_addr` | string | `0.0.0.0` | not empty | Bind address (IPv4 or IPv6). |
 | `https.global_prefix` | string | `/wazuh-manager/` | `^/([A-Za-z0-9._~-]+/)*[A-Za-z0-9._~-]*$` | Path prefix of every HTTPS route. Must start with '/', may only contain A-Z a-z 0-9 . _ ~ - and '/', no empty, '.' or '..' segments. |
-| `https.certificate` | string | `/etc/wazuh-manager/certs/remoted.pem` |  | Server certificate (PEM). |
-| `https.key` | string | `/etc/wazuh-manager/certs/remoted-key.pem` |  | Server private key (PEM). Must be set together with 'certificate'. |
+| `https.certificate` | string | `/etc/wazuh-manager/certs/remoted.pem` |  | Server certificate (PEM). Absolute path directly inside /etc/wazuh-manager/certs: the credential check of wazuh-manager-control start refuses any other location, a relative path included. |
+| `https.key` | string | `/etc/wazuh-manager/certs/remoted-key.pem` |  | Server private key (PEM). Must be set together with 'certificate'. Absolute path directly inside /etc/wazuh-manager/certs: the credential check of wazuh-manager-control start refuses any other location, a relative path included. |
 | `https.ca` | string | `""` |  | CA bundle used to verify agent certificates. Empty = client certificate verification disabled, unless 'verification_mode' is set explicitly, in which case /etc/wazuh-manager/certs/root-ca.pem is used. |
-| `https.ca_certificate` | string | `/etc/wazuh-manager/certs/root-ca.pem` | not empty | CA certificate that signs the listener certificate; served on GET /cacerts and pinned by enrollment tokens. Not the client-verification CA ('ca'). |
+| `https.ca_certificate` | string | `/etc/wazuh-manager/certs/root-ca.pem` | not empty | CA certificate that signs the listener certificate; served on GET /cacerts and pinned by enrollment tokens. Not the client-verification CA ('ca'). Absolute path directly inside /etc/wazuh-manager/certs: the credential check of wazuh-manager-control start refuses any other location, a relative path included. |
 | `https.verification_mode` | enum |  | one of `none`, `certificate`, `full` | Agent certificate verification. Absent: 'certificate' when 'ca' is set, 'none' otherwise. |
-| `https.ciphers` | string |  | `^TLS_[A-Z0-9_]+(:TLS_[A-Z0-9_]+)*$` | TLS 1.3 cipher suites. Absent: library default. |
-| `https.max_body_size` | integer or string |  | >= 1; `^[0-9]+[bBkKmMgG]?$` | Maximum HTTP request body. Absent: module default. |
-| `https.dual_stack` | boolean |  |  | Accept IPv4 on an IPv6 bind address. Absent: module default. |
+| `https.ciphers` | string | `TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256` | `^(TLS_AES_128_GCM_SHA256\|TLS_AES_256_GCM_SHA384\|TLS_CHACHA20_POLY1305_SHA256\|TLS_AES_128_CCM_SHA256\|TLS_AES_128_CCM_8_SHA256)(:(TLS_AES_128_GCM_SHA256\|TLS_AES_256_GCM_SHA384\|TLS_CHACHA20_POLY1305_SHA256\|TLS_AES_128_CCM_SHA256\|TLS_AES_128_CCM_8_SHA256))*$` | TLS 1.3 cipher suites the HTTPS listener negotiates. |
+| `https.max_body_size` | integer or string | `10M` | >= 1; `^[0-9]+[bBkKmMgG]?$` | Maximum HTTP request body the transport accepts; a larger request is dropped without a response. Keep it above remoted.auth_max_body_size (internal option, 5 MiB by default). |
+| `https.dual_stack` | boolean | `false` |  | Accept IPv4 clients on an IPv6 bind address (clears IPV6_V6ONLY). Only applies when bind_addr is an IPv6 address; 'no' keeps the socket IPv6-only. |
 | `https.enroll_rate_limit` | integer | `100` | 0-100000 | Sustained POST /enroll requests per second this manager forwards to authd, counted for the node as a whole and not per agent. 0 disables the limit. Applied after the credential check, so a request that fails it never spends it (a verified enrollment also after its body checks), and kept as two buckets of this rate: one for enrollments whose password or enrollment token (with uses left) was verified, one for re-enrollments, enrollments without a credential and enrollment tokens with no uses left. Requests over it get 429 without reaching authd. Short bursts are absorbed: each bucket may serve twice this value back to back before the rate paces it. |
 | `https.cacerts_rate_limit` | integer | `50` | 0-100000 | Sustained GET /cacerts requests per second this manager serves, counted for the endpoint as a whole and not per agent. 0 disables the limit. Requests over it get 429. Short bursts are absorbed: the endpoint may serve twice this value back to back before the rate paces it. |
 | `agents` | mapping |  |  | Agent version policy of the connection handlers. |
@@ -86,7 +87,7 @@ wazuh-manager-authd enrollment service (also read by remoted for HTTPS enrollmen
 | Option | Type | Default | Constraints | Description |
 |---|---|---|---|---|
 | `disabled` | boolean | `false` |  | Do not start authd. |
-| `port` | integer | `1515` | 1-65535 | Enrollment listening port. |
+| `port` | integer | `1515` | 1-65535 | Enrollment listening port. Bound only while legacy enrollment is active (authd enabled, remote_enrollment and legacy_enrollment, which follows remote.legacy.enabled when unset); only then does it count against the other listener ports. |
 | `ipv6` | boolean | `false` |  | Listen on IPv6. |
 | `use_source_ip` | boolean | `false` |  | Register the agent with its source IP instead of 'any'. |
 | `force` | mapping |  |  | Re-enrollment policy for agents that already exist. |
@@ -98,11 +99,11 @@ wazuh-manager-authd enrollment service (also read by remoted for HTTPS enrollmen
 | `force.after_registration_time` | integer or string | `1h` | >= 0; `^[0-9]+[smhd]?$` | Do not force within this time after the previous registration. |
 | `purge` | boolean | `false` |  | Purge removed agents from the key store. |
 | `use_password` | boolean | `false` |  | Require the shared password (/etc/wazuh-manager/authd.pass). |
-| `ciphers` | string | `TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256` | `^TLS_[A-Z0-9_]+(:TLS_[A-Z0-9_]+)*$` | TLS 1.3 cipher suites accepted for enrollment. |
+| `ciphers` | string | `TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256` | `^(TLS_AES_128_GCM_SHA256\|TLS_AES_256_GCM_SHA384\|TLS_CHACHA20_POLY1305_SHA256\|TLS_AES_128_CCM_SHA256\|TLS_AES_128_CCM_8_SHA256)(:(TLS_AES_128_GCM_SHA256\|TLS_AES_256_GCM_SHA384\|TLS_CHACHA20_POLY1305_SHA256\|TLS_AES_128_CCM_SHA256\|TLS_AES_128_CCM_8_SHA256))*$` | TLS 1.3 cipher suites accepted for enrollment. |
 | `ssl_agent_ca` | string | `""` |  | CA used to verify agent certificates during enrollment. Empty = disabled. |
 | `ssl_verify_host` | boolean | `false` |  | Verify the agent certificate host name. |
-| `ssl_manager_cert` | string | `/etc/wazuh-manager/certs/remoted.pem` |  | Manager certificate (PEM). |
-| `ssl_manager_key` | string | `/etc/wazuh-manager/certs/remoted-key.pem` |  | Manager private key (PEM). |
+| `ssl_manager_cert` | string | `/etc/wazuh-manager/certs/remoted.pem` |  | Manager certificate (PEM). Absolute path directly inside /etc/wazuh-manager/certs (checked unless auth.disabled): the credential check of wazuh-manager-control start refuses any other location, a relative path included. |
+| `ssl_manager_key` | string | `/etc/wazuh-manager/certs/remoted-key.pem` |  | Manager private key (PEM). Absolute path directly inside /etc/wazuh-manager/certs (checked unless auth.disabled): the credential check of wazuh-manager-control start refuses any other location, a relative path included. |
 | `remote_enrollment` | boolean | `true` |  | Accept enrollment through the HTTPS listener. |
 | `legacy_enrollment` | boolean |  |  | Accept enrollment through the legacy TLS port (1515), used only by 4.x agents. No default of its own: when absent it follows remote.legacy.enabled, so a configuration without the remote.legacy block has no legacy enrollment either. An explicit value always wins. |
 | `agents` | mapping |  |  | Agent version policy of the enrollment service. |
@@ -127,7 +128,7 @@ Vulnerability scanner module (modulesd).
 | Option | Type | Default | Constraints | Description |
 |---|---|---|---|---|
 | `enabled` | boolean | `true` |  | Whether the vulnerability scanner module runs. |
-| `feed-update-interval` | integer or string | `60m` | >= 0; `^[0-9]+[smhd]?$` | Time between CTI feed updates. |
+| `feed-update-interval` | integer or string | `60m` | >= 1; `^0*[1-9][0-9]*[smhd]?$` | Time between CTI feed updates (minimum 1 second; 0 is rejected). |
 | `pageSize` | integer | `100` | 1-10000 | Indexer page size used by the scanner. |
 | `numSlices` | integer | `2` | 1-32 | Parallel indexer slices. |
 
@@ -140,7 +141,7 @@ Wazuh indexer connection shared by modulesd, the engine and the cluster. Mandato
 | Option | Type | Default | Constraints | Description |
 |---|---|---|---|---|
 | `hosts` | list of string |  | items match `^https?://`; at least 1 item; unique; **required** | Indexer URLs (scheme://host:port). |
-| `ssl` | mapping |  |  | TLS material of the indexer connection (paths relative to the manager home unless absolute). |
+| `ssl` | mapping |  |  | TLS material of the indexer connection. Every path must be absolute and directly inside /etc/wazuh-manager/certs: the credential check of wazuh-manager-control start refuses any other location, a relative path included. |
 | `ssl.certificate_authorities` | list of string | `[]` |  | CA bundles (PEM). |
 | `ssl.certificate` | string | `""` |  | Client certificate (PEM). Empty = no client certificate. |
 | `ssl.key` | string | `""` |  | Client private key (PEM). |

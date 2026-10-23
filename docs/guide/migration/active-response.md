@@ -8,10 +8,10 @@ Active Response (AR) is rebuilt in 5.x. The 4.x XML in `ossec.conf`, the agent-s
 
 - The 4.x **manager's** `<command>` / `<active-response>` blocks have no 5.x equivalent: the manager reads `/etc/wazuh-manager/wazuh-manager.conf`, where an unknown section such as `<active-response>` is a configuration error that stops the start. `ar.conf` is gone.
 - The **agent's** local `ossec.conf` keeps an `<active-response>` block: `wazuh-execd` still reads `<disabled>` and `<repeated_offenders>` from it, plus the new `<allowlist>` (see the [agent configuration reference](../../ref/modules/active-response/configuration.md#agent-configuration)). A `<command>` block left in an agent's `ossec.conf` or `agent.conf` is ignored with `(1223): 'command' is no longer supported and will be ignored. Active Response commands are not defined in the configuration file.`
-- AR is created under **Explore → Active Responses**. Each channel carries `name`, `description`, `enabled`, `executable`, `extra_arguments`, `type` (`stateful` / `stateless`), `stateful_timeout` (default `180s`), `location` (`local` / `defined-agent` / `all`), `agent_id`.
+- AR is created under **Explore → Active Responses**. Each channel carries `name`, `description`, `enabled`, `executable`, `extra_arguments`, `type` (`stateful` / `stateless`), `stateful_timeout` (seconds), `location` (`local` / `defined-agent` / `all`), `agent_id`.
 - Matching (`<rules_id>` / `<level>` / `<rules_group>`) moves to the query of an Alerting monitor of type **Active Response**.
 - `PUT /active-response` is removed with no replacement. Dispatch is document-driven: a monitor action writes into `wazuh-active-responses`; `wazuh-manager-clusterd` on every node reads the stream every 30 s (up to 1000 documents per read, `active_response_polling` / `active_response_page_size` in the [settings](../../ref/modules/active-response/architecture.md#settings)) and creates one Task Manager task per target agent. Agents below 5.0 never receive a response: documents whose `wazuh.agent.version` is `v0`–`v4` are not read, and the legacy channel on 1514 drops `active_response` tasks.
-- Each triggered response is recorded as a structured document in the `wazuh-active-responses` data stream (backing indices `.ds-wazuh-active-responses-*`; retention is the indexer's ISM policy `stream-active-responses-policy`, shipped by the indexer, not by the manager).
+- Each triggered response is recorded as a structured document in the `wazuh-active-responses` data stream (backing indices `.ds-wazuh-active-responses-*`; retention is an ISM policy shipped by the indexer, not by the manager).
 - The JSON delivered to scripts changed shape: `command` ∈ `enable` / `disable` (was `add` / `delete`); the triggering event's fields travel at their WCS paths (`source.ip`, `user.name`, …); AR metadata sits under `wazuh.active_response.*`.
 - Default firewall scripts (`firewall-drop`, `firewalld-drop`, `pf`, `npf`, `ipfw`, `netsh`, `route-null`, `host-deny`) are folded into a single `block-ip` executable. `restart-wazuh` moves to the Control Module. `wazuh-slack` is removed. The agent upgrade deletes the old executables.
 - `<location>server</location>` and `<timeout_allowed>` have no equivalent.
@@ -65,7 +65,7 @@ If you need long-term records, export them from your 4.x indexer using your stan
 | `<command><timeout_allowed>`                                | _(no replacement)_                  | Reversal is driven by `type = Stateful` + **Stateful timeout**.                                     |
 | `<active-response><location>` = `local`                     | **Location** = `Local`              | Default.                                                                                            |
 | `<active-response><location>` = `defined-agent`             | **Location** = `Defined agent`      | Reveals **Agent ID**.                                                                               |
-| `<active-response><location>` = `all`                       | **Location** = `All`                | Pushes the action to every connected agent.                                                         |
+| `<active-response><location>` = `all`                       | **Location** = `All`                | Pushes the action to every registered agent; a disconnected one gets it on its next poll.           |
 | `<active-response><location>` = `server`                    | _(no replacement)_                  | Manager-side execution does not exist in 5.x. See [`Location = server`](#location--server-from-4x). |
 | `<active-response><agent_id>`                               | **Agent ID**                        | Only when `Location = Defined agent`.                                                               |
 | `<active-response><rules_id>` / `<level>` / `<rules_group>` | Alerting monitor query              | Matching moves to the monitor — see [Triggering model](#triggering-model).                          |
@@ -81,7 +81,7 @@ If you need long-term records, export them from your 4.x indexer using your stan
 | Aspect              | 4.x                                                               | 5.x                                                                            |
 | ------------------- | ----------------------------------------------------------------- | ------------------------------------------------------------------------------ |
 | Where matching runs | Manager rules engine                                              | Alerting monitor (indexer / dashboard plane)                                   |
-| How to express it   | `<rules_id>` / `<level>` / `<rules_group>` in `<active-response>` | Monitor of type **Active Response** with a query against `wazuh-findings-v5-*` |
+| How to express it   | `<rules_id>` / `<level>` / `<rules_group>` in `<active-response>` | Monitor of type **Active Response** with a query against `wazuh-findings-v5-*` (or `wazuh-events-v5-*`; the manager discards a response whose event lives in any other index) |
 | What invokes the AR | The alert fires the AR directly                                   | The trigger's **Add active response** action invokes the channel               |
 | Visibility          | Manager logs                                                      | Alerting evaluation + execution record in `wazuh-active-responses*`            |
 
@@ -103,7 +103,7 @@ The 4.x numeric IDs (`5763`, `5760`, …) have no 1:1 equivalent — locate the 
 | Responses recorded in | `/var/ossec/logs/active-responses.log` + events from the `active_response` rule group in `wazuh-alerts-*` | `wazuh-active-responses` data stream, one document per triggered response, written before delivery: it does not confirm execution. The agent's `active-responses.log` is unchanged and is the only record of what ran. |
 | Structured fields     | Free text                                                                                                 | `wazuh.active_response.{name,type,executable,extra_arguments,stateful_timeout,location,agent_id}` + `event.doc_id` / `event.index`.                        |
 | `@timestamp`          | Event time                                                                                                | Indexing time. For event-time correlation use the linked alert via `event.doc_id`.                                                                         |
-| Default retention     | Alerts ILM policy                                                                                         | The indexer's ISM policy `stream-active-responses-policy`. Adjust the policy for longer retention.                                                         |
+| Default retention     | Alerts ILM policy                                                                                         | The ISM policy the indexer ships for the stream. Adjust that policy for longer retention.                                                                  |
 | Pivot to source alert | Manual                                                                                                    | Each execution record carries `event.doc_id` + `event.index`; switch Discover to that index and filter `_id:<event.doc_id>` in the search bar to open the triggering alert. |
 
 ## API change
@@ -144,6 +144,7 @@ The discovery path is unchanged on Unix agents (`/var/ossec/active-response/bin/
     "active_response": {
       "name": "block-ip",
       "executable": "block-ip",
+      "extra_arguments": null,
       "location": "defined-agent",
       "agent_id": "001",
       "type": "stateless"
@@ -271,6 +272,12 @@ fi
 exit 0
 ```
 
+This script sends an empty `keys` array, as many 4.x scripts did. For a stateful channel that makes
+every response of the script one action to `wazuh-execd`: a second response arriving while the first
+is pending is answered `abort` whatever its source IP. Put the value the action protects in `keys`
+(here `"$ar_srcip"`) to keep responses apart; see
+[Deduplication and timeouts](../../ref/modules/active-response/architecture.md#deduplication-and-timeouts).
+
 Ownership and permissions are unchanged:
 
 ```bash
@@ -380,7 +387,7 @@ What this does in 4.x: when rule `5763` (composite SSH brute force — fires aft
 
 **Expected outcome after Step 5:**
 
-1. Agent's `/var/ossec/logs/active-responses.log` shows two lines for the same source IP: a BLOCK at firing time, then an UNBLOCK ~60 s later.
+1. Agent's `/var/ossec/logs/active-responses.log` shows `IP <ip> successfully blocked` at firing time, then `IP <ip> successfully unblocked` ~60 s later, each in a `Method=<method> Action=success` line.
 2. The indexer's `wazuh-active-responses*` data stream gets one document per triggered response (the reversal is run by the agent and writes no document). It looks like:
 
    ```json
@@ -701,7 +708,7 @@ Pick the rows that match your 4.14 inventory and validate those scenarios before
 
 - Every 4.x `<active-response>` block has a matching entity in **Explore → Active Responses** with the values from the inventory.
 - Custom scripts under `/var/ossec/active-response/bin/` use the 5.x JSON contract (no references to `parameters.alert.data.*` or the `add` / `delete` inbound commands).
-- `wazuh-manager.conf` passes `/var/wazuh-manager/bin/wazuh-manager-conf validate` (no 4.x `<command>` or `<active-response>` section carried over). Agents keep only `<disabled>` and `<repeated_offenders>` (plus the installer's `<ca_store>` / `<ca_verification>`) in their `<active-response>` block.
+- `wazuh-manager.conf` passes `/var/wazuh-manager/bin/wazuh-manager-conf validate` (no 4.x `<command>` or `<active-response>` section carried over). Agents keep only `<disabled>`, `<repeated_offenders>` and `<allowlist>` (plus the installer's `<ca_store>` / `<ca_verification>`) in their `<active-response>` block.
 - The smoke test from [Migration steps](#migration-steps) (step 5) passes for at least one migrated AR.
 
 ---

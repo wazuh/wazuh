@@ -253,6 +253,22 @@ TEST_F(CMStoreComponentTest, IntegrationCreateAndRetrieve)
     EXPECT_EQ(integByUUID.getName(), "windows");
 }
 
+TEST_F(CMStoreComponentTest, IntegrationExistsByUUID)
+{
+    auto store = createStore();
+    auto ns = store->createNamespace(cm::store::NamespaceId("integexists"));
+
+    // Integrations have a single-part name ("windows"): the existence check must not require a type prefix
+    const std::string intUUID = "a47ac10b-58cc-4372-a567-0e02b2c3d479";
+    EXPECT_FALSE(ns->assetExistsByUUID(intUUID));
+
+    ns->createResource("windows", cm::store::ResourceType::INTEGRATION, makeIntegrationJson("windows", intUUID));
+    EXPECT_TRUE(ns->assetExistsByUUID(intUUID));
+
+    ns->deleteResourceByUUID(intUUID);
+    EXPECT_FALSE(ns->assetExistsByUUID(intUUID));
+}
+
 // ======================================================================
 //  KVDB lifecycle
 // ======================================================================
@@ -309,6 +325,33 @@ TEST_F(CMStoreComponentTest, PolicyUpsertGetDelete)
     // Delete
     EXPECT_NO_THROW(ns->deletePolicy());
     EXPECT_THROW(ns->getPolicy(), std::runtime_error);
+}
+
+// ======================================================================
+//  Loading: directories that are not a valid namespace name are skipped
+// ======================================================================
+
+TEST_F(CMStoreComponentTest, InvalidNamespaceDirectoryIsSkipped)
+{
+    {
+        auto store = createStore();
+        store->createNamespace(cm::store::NamespaceId("valid_ns"));
+    }
+
+    // Directories whose names are not valid namespace IDs ('-' and '.' are not allowed)
+    std::filesystem::create_directories(basePath() / "not-a-namespace");
+    std::filesystem::create_directories(basePath() / ".hidden");
+
+    std::unique_ptr<cm::store::CMStore> store;
+    ASSERT_NO_THROW(store = createStore());
+
+    EXPECT_TRUE(store->existsNamespace(cm::store::NamespaceId("valid_ns")));
+    const auto namespaces = store->getNamespaces();
+    EXPECT_EQ(namespaces.size(), 1u);
+
+    // The skipped directories are left untouched on disk
+    EXPECT_TRUE(std::filesystem::exists(basePath() / "not-a-namespace"));
+    EXPECT_TRUE(std::filesystem::exists(basePath() / ".hidden"));
 }
 
 // ======================================================================

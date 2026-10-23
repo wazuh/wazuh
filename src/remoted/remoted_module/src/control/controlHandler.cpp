@@ -76,9 +76,9 @@ namespace remoted::control
 
         // One window per condition, so a total is attributable. A notify that cannot resolve groups
         // and has nothing cached is a third condition, distinct from the startup failure above and
-        // from a notify that still serves its cached membership: it is the only one of the three
-        // that answers the agent 500, and sharing a window with startup made the two totals
-        // indistinguishable.
+        // from a notify that still serves its cached membership: unlike the cached notify it answers
+        // the agent 503 dependency_unavailable, as startup does, and sharing a window with startup
+        // made the two totals indistinguishable.
         remoted::common::LogThrottle& notifyUncachedWdbErrorThrottle()
         {
             static remoted::common::LogThrottle instance;
@@ -549,9 +549,9 @@ namespace remoted::control
                     // The generation the served CA bundle is published under (RF-3), so a 5.x agent
                     // learns about a rotation on the notify it was already making: a timestamp when
                     // a guard vouched for the bundle, 0 when there is one and none did, `null` when
-                    // there is no servable bundle at all. Absent -- no provider -- is the fourth
-                    // state and NOT the same as `null`: it is what a manager without the HTTPS
-                    // listener behind this handler answers, and the agent reads it as "unknown".
+                    // there is no servable bundle at all. The facade always installs the provider,
+                    // so on a running manager the member is always present (one of those three
+                    // states); the guard only covers a handler built without one (unit tests).
                     // Costs no read here: the provider goes to a cache the source revalidates at
                     // most once a second (C8/C18).
                     if (m_config.caGenerationProvider)

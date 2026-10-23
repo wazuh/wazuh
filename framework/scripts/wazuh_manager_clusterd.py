@@ -41,6 +41,38 @@ def set_logging(foreground_mode=False, debug_mode=0) -> WazuhLogger:
     return cluster_logger
 
 
+def get_debug_level(cmd_debug_level: int = None) -> int:
+    """Resolve the cluster debug level.
+
+    A non-zero `wazuh_clusterd.debug` internal option takes precedence over the command-line level; an absent
+    option (or an unreadable internal options file) leaves the command-line level in effect. A value that is
+    not a digit or is outside 0-2 is an error: it is printed to stderr and the daemon exits with 1.
+
+    Parameters
+    ----------
+    cmd_debug_level : int
+        Level given with `-d` (one per flag), or None when the flag was not used.
+
+    Returns
+    -------
+    int
+        Debug level to set the logger with.
+    """
+    from wazuh.core import configuration
+    from wazuh.core.exception import WazuhError
+
+    cmd_debug_level = cmd_debug_level or 0
+    try:
+        option_debug_level = configuration.get_internal_options_value('wazuh_clusterd', 'debug', 2, 0)
+    except WazuhError as e:
+        print(f"Invalid 'wazuh_clusterd.debug' internal option: {e}", file=sys.stderr)
+        sys.exit(1)
+    except Exception:
+        return cmd_debug_level
+
+    return option_debug_level or cmd_debug_level
+
+
 def print_version():
     """Print Wazuh metadata."""
     from wazuh.core.cluster import __author__, __licence__, __version__, __wazuh_name__
@@ -266,10 +298,7 @@ if __name__ == '__main__':
         sys.exit(0)
 
     # Set logger
-    try:
-        debug_mode_ = configuration.get_internal_options_value('wazuh_clusterd', 'debug', 2, 0) or args.debug_level
-    except Exception:
-        debug_mode_ = 0
+    debug_mode_ = get_debug_level(args.debug_level)
 
     main_logger = set_logging(foreground_mode=args.foreground, debug_mode=debug_mode_)
     main()

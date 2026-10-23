@@ -131,7 +131,7 @@ fixed allowlist policy — no knob).
 | Metric | Type | Unit | Meaning |
 |---|---|---|---|
 | `sync.docs.indexed` | counter | count | Documents staged into bulk operations — upserts **and** deletes; the by-query paths (cleans, whole-agent deletion, metadata/group updates) count no documents |
-| `sync.docs.skipped` | counter | count | Documents dropped by the per-document allowlist policy (bulk path only) |
+| `sync.docs.skipped` | counter | count | Documents dropped by the per-document policy, each with a WARN (bulk path only): an index outside the `wazuh-states-*` allowlist, a write to `wazuh-states-vulnerabilities`, a missing `id` or upsert `data`, an `_id` over 512 bytes, or upsert `data` that is not a JSON object, nests deeper than 256 levels or cannot be serialized |
 | `sync.bytes.ingested` | counter | bytes | Serialized document bytes staged for indexing (upserts only; counted at staging, so a later flush failure does not roll it back) |
 
 ### Vulnerability-detection lane — `vd.*`
@@ -162,9 +162,8 @@ attributable record of a shed: the answer comes from the transport rather than f
 nothing shed here ever reaches `sync.requests.total.*`, and the throttled WARN in the log reports
 only the occurrences of its own window. A throttled line is a floor, not a census: it reports only
 what is pending when it is emitted, so a burst that starts and ends inside one window is reported
-as `1` and the rest is never printed. Where a cumulative counter exists it is the figure to trust;
-where it does not, as with the wazuh-db error throttles in the control plane, the line's own total
-is all there is and it under-reports. Three of the four are decided before any route runs;
+as `1` and the rest is never printed. Where a cumulative counter exists it is the figure to trust.
+Three of the four are decided before any route runs;
 `server.rejected.no_response` is the exception, counted after a handler returned without answering.
 
 | Metric | Type | Unit | Meaning | Tuning |

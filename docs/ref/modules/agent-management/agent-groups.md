@@ -33,8 +33,11 @@ groups at once, up to 128.
     └── agent.conf
 ```
 
-A group name may contain `a-z`, `A-Z`, `0-9`, `_`, `-` and `.`, up to 128 characters through the API;
-`.`, `..` and `all` are refused, and so is `default`, which always exists and cannot be deleted.
+A group name may contain `a-z`, `A-Z`, `0-9`, `_`, `-` and `.`, up to 128 characters through the API
+and up to 255 with `agent_groups`;
+`.`, `..` and `all` are refused, and so is `default`, which always exists
+and cannot be deleted. A new group directory is created `wazuh-manager:wazuh-manager`, mode `0700`,
+with its `agent.conf` at mode `0660`.
 
 ## Managing groups with the Wazuh API
 
@@ -44,12 +47,14 @@ A group name may contain `a-z`, `A-Z`, `0-9`, `_`, `-` and `.`, up to 128 charac
 | List groups | `GET /groups` | `group:read` |
 | List a group's agents | `GET /groups/<GROUP_NAME>/agents` | `group:read`, `agent:read` |
 | List a group's files | `GET /groups/<GROUP_NAME>/files` | `group:read` |
+| Read one of a group's files | `GET /groups/<GROUP_NAME>/files/<FILE_NAME>` | `group:read` |
 | Read a group's `agent.conf` | `GET /groups/<GROUP_NAME>/configuration` | `group:read` |
 | Replace a group's `agent.conf` | `PUT /groups/<GROUP_NAME>/configuration` with an `application/xml` body | `group:update_config` |
 | Assign an agent to a group | `PUT /agents/<AGENT_ID>/group/<GROUP_NAME>` (`force_single_group=true` removes it from its other groups) | `agent:modify_group`, `group:modify_assignments` |
 | Assign several agents | `PUT /agents/group?group_id=<GROUP_NAME>&agents_list=<ID>,<ID>` | `agent:modify_group`, `group:modify_assignments` |
 | Remove an agent from a group | `DELETE /agents/<AGENT_ID>/group/<GROUP_NAME>` | `agent:modify_group`, `group:modify_assignments` |
 | Remove an agent from several groups | `DELETE /agents/<AGENT_ID>/group?groups_list=<GROUP>,<GROUP>` | `agent:modify_group`, `group:modify_assignments` |
+| Remove several agents from a group | `DELETE /agents/group?group_id=<GROUP_NAME>&agents_list=<ID>,<ID>` | `agent:modify_group`, `group:modify_assignments` |
 | List agents without a group | `GET /agents/no_group` | `agent:read` |
 | Delete groups | `DELETE /groups?groups_list=<GROUP_NAME>` (`all` for every group but `default`) | `group:delete` |
 | Restart / reload a group's agents | `PUT /agents/group/<GROUP_NAME>/restart`, `.../reload` | `agent:restart`, `agent:reload` |
@@ -69,7 +74,8 @@ curl -k -X PUT "https://<MANAGER_IP>:55000/agents/001/group/web-servers" \
 ```
 
 Errors you may meet: `1710` the group does not exist, `1711` it already exists, `1712` `default`
-cannot be deleted, `1713` the name is reserved, `1722` invalid name, `1734` the agent is not in that
+cannot be deleted, `1713` the name is taken by a file in `/etc/wazuh-manager/shared/` (such as
+`agent-template.conf`), `1722` invalid name, `1734` the agent is not in that
 group, `1737` the agent already has 128 groups, `1745` the agent's only group is `default`, `1751` the
 agent already belongs to the group.
 
@@ -108,7 +114,9 @@ unless `-q` is given.
 | `-d` | `--debug` (re-raise errors with a traceback) |
 | `-u` | `--usage` |
 
-Only one of `-l`, `-c`, `-a`, `-s`, `-r` may be given. Errors are printed as `Error <code>: <message>`.
+Only one of `-l`, `-c`, `-a`, `-s`, `-r` may be given (otherwise it prints
+`Invalid options: Bad argument combination.` and exits `1`); `-h` prints argparse's help. Errors are
+printed as `Error <code>: <message>`.
 
 ## Verifying assignments
 
@@ -126,7 +134,7 @@ for that combination of groups, stored under `/var/wazuh-manager/var/multigroups
 
 ### Configuration merge order
 
-When an agent belongs to multiple groups, the configurations are merged in the order the groups were assigned to the agent, not by group name. Each group's `agent.conf` is appended to the merged `agent.conf` in that order, and the agent reads it top to bottom. If a conflict occurs (the same setting defined in multiple groups), the value from the group assigned last takes precedence. Other shared files with the same name in several groups are overwritten the same way, so the copy from the group assigned last is the one distributed.
+When an agent belongs to multiple groups, the configurations are merged in the order the groups were assigned to the agent, not by group name. Each group's `agent.conf` is appended to the merged `agent.conf` in that order, preceded by the comment `<!-- Source file: <GROUP_NAME>/agent.conf -->`, and the agent reads it top to bottom. If a conflict occurs (the same setting defined in multiple groups), the value from the group assigned last takes precedence. Other shared files with the same name in several groups are overwritten the same way, so the copy from the group assigned last is the one distributed.
 
 ### Example
 
@@ -141,5 +149,8 @@ If `web-servers` and `database-servers` set the same option, the `database-serve
 ## Shared files
 
 Every file placed in a group's directory, not only `agent.conf`, is included in the group's
-`merged.mg` and written into the agent's shared directory (`/var/ossec/etc/shared/` on Linux agents).
-`merged.mg` itself is generated and must not be edited: `wazuh-manager-remoted` rewrites it.
+`merged.mg` and written into the agent's shared directory (`/var/ossec/etc/shared/` on Linux agents),
+with two exceptions: hidden files (names starting with `.`) are skipped, and a file that is not text is
+left out with the error `Invalid shared file '<file>'. Ignoring it.` in the manager log until it is
+modified into a valid one. `merged.mg` itself is generated and must not be edited:
+`wazuh-manager-remoted` rewrites it.

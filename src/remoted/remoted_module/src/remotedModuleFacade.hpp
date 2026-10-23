@@ -326,10 +326,10 @@ public:
             // Phase 1b: tear down the /control and /scan/vd state. The /control handler's dtor
             // stops the eviction thread, then drops the wdb/task async clients -- their dtors
             // join workers and fail any pending callbacks, which invoke the endpoint's
-            // responder->send() with a 500 body. The HTTP server's I/O runtime is still alive
-            // (phase 4 hasn't run), so those late sends are safe. This runs BEFORE the downstream
-            // client stop so that its own stop() does not race with wdb-worker joins that touch
-            // the same io_context runtime via the response send path.
+            // responder->send() with a 503 dependency_unavailable body. The HTTP server's I/O
+            // runtime is still alive (phase 4 hasn't run), so those late sends are safe. This runs BEFORE the
+            // downstream client stop so that its own stop() does not race with wdb-worker joins that touch the same
+            // io_context runtime via the response send path.
             m_controlHandler.reset();
             m_scanVdHandler.reset();
             // /enroll has no async callback machinery of its own to race with a wdb-worker join
@@ -1069,7 +1069,8 @@ private:
     }
 
     /**
-     * @brief Publishes both endpoint rate limiters as remoted.<endpoint>.rate_limit.* pulls.
+     * @brief Publishes the three endpoint rate limiters (enroll, enroll.unverified, cacerts) as
+     * remoted.<endpoint>.rate_limit.* pulls.
      *
      * The REFUSALS are not here: those are the plain remoted.enroll.rate_limited /
      * remoted.cacerts.rate_limited counters the gate bumps, which belong with the rest of each
@@ -1293,12 +1294,13 @@ private:
     }
 
     /**
-     * @brief Bring up the LOCAL admin socket (GET / + GET /metrics + GET /status) -- best effort.
+     * @brief Bring up the LOCAL admin socket (GET / + GET /metrics + GET /status + GET /tls) -- best
+     * effort.
      *
      * Sibling of startHttpServer(), called after it: this is the module's management plane
      * (shared_modules/uds_http_server over REMOTED_MODULE_ADMIN_SOCKET_PATH), reachable only
      * from the local host -- agents can never reach it, and the public HTTPS server must never
-     * grow these routes (it is agent-facing, not an admin plane). All three routes are Liveness
+     * grow these routes (it is agent-facing, not an admin plane). All four routes are Liveness
      * class: answered inline from resident state, exempt from the byte budget, so they respond
      * under any pressure.
      *

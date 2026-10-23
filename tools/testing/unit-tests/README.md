@@ -15,6 +15,14 @@ Docker-based runner for Wazuh's C unit test suites and the agent RTR checks, wit
 
 Each step writes `result-*.txt` and a `*.log` into `src/`, and the report is generated from the result files.
 
+The run works on the checkout itself, mounted into the container: it deletes `src/external/*` and
+cleans the main build tree (src/build) before the manager build and again before the Windows one, and each
+`build.py -r` runs `make clean` first, so any build tree you had is gone afterwards.
+
+This is a local convenience, not a reproduction of CI: the CMocka suites run in CI in
+[5_testunit_linux-win.yml](../../../.github/workflows/5_testunit_linux-win.yml), described in
+[src/unit_tests/Readme.md](../../../src/unit_tests/Readme.md).
+
 ## Prerequisites
 
 - Docker with permission to run containers

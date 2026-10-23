@@ -30,7 +30,7 @@ void Schema::Validator::registerCompatibles()
                           ValidationInfo {{json::Json::Type::Boolean}, validators::getBoolValidator(), {}});
     m_compatibles.emplace(Type::BYTE,
                           ValidationInfo {{json::Json::Type::Number},
-                                          validators::getShortValidator(),
+                                          validators::getByteValidator(),
                                           {{Type::INTEGER, true}, {Type::LONG, true}, {Type::SHORT, true}}});
     m_compatibles.emplace(Type::SHORT,
                           ValidationInfo {{json::Json::Type::Number},

@@ -44,7 +44,7 @@ This route is how the fleet itself comes into being. `--bootstrap enroll-token` 
 what lets the harness run against a manager whose `<use_password>` is the installed default: the
 token bearer is verified in every mode, so no `<auth>` flip is needed and `prepare_manager.sh`
 changes no policy. `--bootstrap 1515` selects the legacy authd listener instead (`wire.Enroll`,
-docu/04), which carries no credential and therefore needs `prepare_manager.sh --open-1515`; it is
+[04](04-wire-protocol.md#enrollment-agent-mode-only)), which carries no credential and therefore needs `prepare_manager.sh --open-1515`; it is
 kept for comparing the two first-contact paths on one manager, and each run records which it used in
 `meta.bootstrap`.
 
@@ -56,7 +56,8 @@ happen before the measurement clock starts, and folding one request per agent in
 would corrupt both the numbers and any `expected` block over them. Both paths keep the `bench-`
 prefix, which is what lets `cleanup_agents.sh` remove everything a run created.
 
-A bootstrap answered anything but `200` fails the run as a setup error (exit 2) naming the remedy:
+A bootstrap answered anything but a `200` carrying the agent record fails the run as a setup error
+(exit 2) naming the remedy:
 `401` a token that is unknown, expired or revoked (or a clock outside the window), `403` a token out
 of uses or revoked (or enrollment disabled), `409` a previous run's agents still registered —
 `./cleanup_agents.sh`. The fleet enrolls one agent at a time, so a 100-agent bootstrap is 100
@@ -65,18 +66,23 @@ sequential round trips before the clock starts.
 ## The token is environment config, not scenario content
 
 The token is a credential minted on the manager under test, so it never lives in a committed
-scenario file. `prepare_manager.sh` mints one for the fleet and writes it to `.enrollment_token`
-(gitignored) next to itself, which `run_benchmark.sh` reads by default; **`--enroll-token-file
-<file>`** and the **`WAZUH_ENROLLMENT_TOKEN`** environment variable override that, in that order. A
-run that needs a token and has none is refused **before any traffic** (`setup:` error, exit 2), and
-so is a token minted without a credential (`--no-credential`: it can pin the CA but cannot
-authenticate).
+scenario file. The sender reads it from **`--enroll-token-file <file>`** (surrounding whitespace
+trimmed), else from the **`WAZUH_ENROLLMENT_TOKEN`** environment variable. `prepare_manager.sh`
+mints one for the fleet and writes it to `.enrollment_token` (gitignored) next to itself, and
+`run_benchmark.sh` passes that file when neither is given. A run needs a token when it bootstraps
+with `enroll-token` in agent mode or when any lane of the scenario has an `enroll_https` step; one
+that needs a token and has none is refused **before any traffic** (`setup:` error, exit 2), and so
+is a token that does not decode (`ParseEnrollmentToken()` in `internal/wire/enrolltoken.go`:
+unpadded base64url of a JSON object with exactly the members `ver` = `1`, a non-empty `adr`,
+exactly one of `pin`/`ca`, and `key`, 32 bytes of id + secret) — in particular a token minted
+without a credential (`--no-credential`: no `key`, so it can pin the CA but cannot authenticate).
 
 Mint it with enough uses for the run — leave `--max-uses` unset (unlimited), which is what
 `prepare_manager.sh` does: the bootstrap consumes one use per agent and
 `scenarios/enroll_https.json` another 100 on top. `--address` must be a SAN of the listener
-certificate (authd `9025`), but the token's own `adr` is informational to the sender, which targets
-`--manager`/`--port` like every other route and skips TLS verification (docu/04).
+certificate (authd refuses the mint otherwise, `9025`), but the token's own `adr` is informational
+to the sender, which targets
+`--manager`/`--port` like every other route and skips TLS verification ([04](04-wire-protocol.md)).
 
 ```bash
 sudo ./prepare_manager.sh                     # mints it; run_benchmark.sh finds it
@@ -101,8 +107,9 @@ Content-Type: application/json
 
 The bearer is minted fresh per request (`internal/wire/enrolltoken.go`: `SignEnrollWithKid`), header
 exactly `{alg, kid, typ}` and claims exactly `{exp, iat, jti, nbf}` — no `iss`/`sub`, there is no
-identity yet. No `ip` is sent: the manager resolves it as `any` (or the peer address, if it is
-configured with `use_source_ip`). The global prefix applies like on every route. **agent mode only**
+identity yet. The body is exactly `{"name","version"}`: `version` is the fleet's
+`start.agentversion`, else `5.0.0`. No `ip` is sent: the manager resolves it as `any` (or the peer
+address, if it is configured with `use_source_ip`). The global prefix applies like on every route. **agent mode only**
 — the module's Unix socket has no `/enroll`; a `uds` scenario carrying the step is refused at load
 time. The step takes **only** the timing fields; anything describing a payload is a load-time error.
 
@@ -115,7 +122,7 @@ time. The step takes **only** the timing fields; anything describing a payload i
 | `authd` refused the use of a bearer remoted had verified: no uses left (`9024`), or revoked/expired between remoted's check and `authd`'s (`9022`/`9023`). Also enrollment disabled on the manager (`<auth><disabled>` or `remote_enrollment` off), `code` `0` | `403 {"error":{"code":…,…}}` | `enroll_https_403` | no |
 | Duplicate name (`9008`) | `409` | `enroll_https_409` | no |
 | The route's rate limit refused it before `authd` was contacted (`remote.https.enroll_rate_limit`, `100` req/s for the whole endpoint by default) | `429 {"error":{"code":0,…}}` + `Retry-After` | `enroll_https_429` | no |
-| A `200` without the agent record (or for another name) | `200` | `enroll_https_other` | **yes** |
+| A `200` without the agent record (no `id` or `key`, or another `name`) | `200` | `enroll_https_200` | **yes** |
 | Any other status: `400` (the sender built a body remoted rejects), `503` (`max_agents` reached, a worker that cannot reach its master, authd unable to journal the key, authd unreachable), `500` | — | `enroll_https_other` | **yes** |
 
 `401`/`403`/`409`/`429` are **ordinary results**: they are what a fleet meets with a stale or
@@ -130,8 +137,8 @@ must not be read as a slow or failing enrollment — its latency is kept out of
 scenario's 100 requests currently fit inside the default burst (twice the `100` req/s rate), so it
 passes as written, but with no margin — a larger fleet or a higher `repeat_count` crosses it.
 `prepare_manager.sh` clears the limit by default; `--keep-rate-limits` keeps it, and `s429` is then
-the counter to assert. The `other` bucket is different: the sender is
-not exercising the path it claims to, and the measurement is invalid (docu/10). The step never
+the counter to assert. The invalidating answers are different: the sender is
+not exercising the path it claims to, and the measurement is invalid ([10](10-error-handling-and-shutdown.md)). The step never
 retries, so requests and attempts are the same number.
 
 ## Metrics

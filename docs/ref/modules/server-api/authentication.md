@@ -94,7 +94,7 @@ Once a change goes through:
 - It is written to the **master** node's `rbac.db`. `check_user` and `update_user` are `local_master` requests, so a worker forwards every authentication and needs no action while it stays a worker. The cluster does not synchronize `rbac.db` (`cluster.json` shares `client.keys`, `authd.pass` and `enrollment_tokens.json`, `/etc/wazuh-manager/shared/` and `var/multigroups/` only), and a worker does not seed one at all — the credential resolver creates it only on a master. A worker promoted to master therefore seeds at its next start: with the values supplied through `WAZUH_MANAGER_API_PASSWORD` / `WAZUH_MANAGER_WUI_PASSWORD` if they are set on that node, and with freshly generated ones otherwise, which are not the master's. Set those keys on every node that may take the role, and repeat this change there.
 - **No daemon restart** is required. The next `POST /security/user/authenticate` already uses the new password.
 - Every token held by the modified user is **revoked immediately** (`update_user` calls `invalid_users_tokens`), so a script that changes its own user's password must authenticate again before its next call. Tokens of other users are untouched; `PUT /security/user/revoke` revokes all of them at once.
-- A client left with the old password — typically a dashboard whose stored copy was not updated — is counted against `max_login_attempts` (50) and its IP is then blocked for `block_time` (300 seconds), answering `403`. The block is lifted when that time elapses, not when the password is corrected.
+- A client left with the old password — typically a dashboard whose stored copy was not updated — is counted against `max_login_attempts` (50) and its IP is then blocked, answering `403`, until `block_time` (300 seconds) has passed since the first failed attempt counted. The block is lifted when that time elapses, not when the password is corrected.
 - No manager component authenticates with `wazuh` or `wazuh-internal-client`, so the keystore and the manager configuration files are unaffected. The only copy outside the manager is the dashboard's `wazuh_core.hosts.<host>.password`, which is why changing `wazuh-internal-client` — and only that user — needs the dashboard updated and restarted.
 
 The step-by-step procedure, including the dashboard side and the container variants, is in [Installation](../../getting-started/installation.md#server-api-users). The certificate the dashboard verifies the API with is covered in [What the dashboard takes from the manager](../../getting-started/credentials.md#what-the-dashboard-takes-from-the-manager).
@@ -111,12 +111,15 @@ RBAC is enforced **before** any core logic is executed.
 - Two RBAC modes: **white** (deny by default) and **black** (allow by default)
 - A `403 Forbidden` usually indicates RBAC blocking, not auth failure
 - Current user, RBAC mode, and cluster context are stored in `contextvars` for request-scoped access
+- The actions, resources and default roles are described in [RBAC](../rbac/README.md); the files that implement it in [RBAC Sub-module](architecture.md#rbac-sub-module)
 
 ### Sensitive configuration values
 
 `GET /cluster/local/config` and the two node-configuration endpoints answer with the enrollment
-password (`authd.pass`) and the cluster key in them. Those two values come back masked as `*****`
-unless the caller holds **`cluster:read_secrets`**, an action of its own: being allowed to change the
+password (`authd.pass`) and the cluster key in them. Those two values, and any field named like a
+credential (`password`, `api_key`, `client_secret` and the other names in `SENSITIVE_FIELD_NAMES` of
+`framework/wazuh/rbac/decorators.py`), come back masked as `*****` unless the caller holds
+**`cluster:read_secrets`**, an action of its own: being allowed to change the
 configuration does not entitle anyone to read the secrets inside it. It is granted by the default
 policy `secrets_read`, which only the `administrator` role carries.
 
@@ -171,21 +174,12 @@ It lands in `logs/api.log` for `GET /cluster/local/config`, which the API proces
 agents served rather than a field. If the masking itself fails, the request fails: a response nobody could
 mask is not served.
 
-### RBAC Components
-
-| File | Role |
-|------|------|
-| `rbac/decorators.py` | `expose_resources` decorator that enforces action/resource permissions |
-| `rbac/orm.py` | ORM models for roles, policies, and user-role mappings |
-| `rbac/preprocessor.py` | Resource preprocessing before permission checks |
-| `rbac/default/*.yaml` | Built-in default RBAC data, loaded via `insert_default_resources` in `rbac/orm.py` |
-| `rbac/auth_context.py` | Authentication context handling |
-
 ---
 
 ## Rate Limiting & Brute-Force Protection
 
-- **Brute-force protection**: every request to `POST /security/user/authenticate` or `POST /security/user/authenticate/run_as` counts as a login attempt for its client IP, and a successful login gives its attempt back. When an IP reaches `access.max_login_attempts` (50) failed attempts, its logins answer `403` with error `6000` until `access.block_time` (300 seconds) has passed since its last attempt.
+- **Brute-force protection**: every request to `POST /security/user/authenticate` or `POST /security/user/authenticate/run_as` counts as a login attempt for its client IP, and a successful login gives its attempt back. When an IP (an IPv6 client by its `/64`) reaches `access.max_login_attempts` (50) failed attempts, its logins answer `403` with error `6000` until `access.block_time` (300 seconds) has passed since the first attempt counted.
+- **Login queue**: password checks are bounded per API process by [`authentication_pool_size`](configuration.md#authentication_pool_size); a login that finds the queue full answers `429` with error `6006`.
 - **Request rate**: each client address may make `access.max_request_per_minute` (300) authenticated requests per minute, and `access.max_unauthenticated_request_per_minute` (10) unauthenticated or failed-authentication ones. Beyond them the API answers `429` with error `6001` or `6005`. See [Configuration](configuration.md#request-rate-limiting).
 - The state is kept in memory by `api/api/middlewares.py`, so it is lost when `wazuh-manager-apid` restarts.
 
@@ -195,13 +189,20 @@ mask is not served.
 
 The API sets the following security headers on all responses:
 
-| Header | Value | Purpose |
-|--------|-------|---------|
-| `Content-Security-Policy` | `none` | Restricts resource loading |
-| `X-Frame-Options` | `DENY` | Prevents clickjacking |
-| `Server` | `Wazuh` | Masks underlying server technology |
+| Header | Value |
+|--------|-------|
+| `Server` | `Wazuh` |
+| `Strict-Transport-Security` | `max-age=63072000; includeSubdomains` |
+| `X-Frame-Options` | `deny` |
+| `X-XSS-Protection` | `0` |
+| `X-Content-Type-Options` | `nosniff` |
+| `Content-Security-Policy` | `none` |
+| `Referrer-Policy` | `no-referrer, strict-origin-when-cross-origin` |
+| `Cache-Control` | `no-store` |
 
-These are applied via the `secure` Python library in `middlewares.py`.
+They are applied by `SecureHeadersMiddleware` in `api/api/middlewares.py` with the `secure` Python
+library (pinned at `0.3.0` in `framework/requirements.txt`): `Server`, `Content-Security-Policy` and
+`X-Frame-Options` are set explicitly, the others are that library's defaults.
 
 ---
 

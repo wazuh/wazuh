@@ -592,7 +592,7 @@ void IocSync::synchronize()
         }
         LOG_WARNING("[IOC::Sync] Synchronization cycle failed: {}", e.what());
         // Mark in-progress and never-synced types as failed (the failure may have occurred during the
-        // pre-flight, before any type was set RUNNING).
+        // pre-flight, before any type was set UPDATING).
         reportSyncFailure();
         return;
     }

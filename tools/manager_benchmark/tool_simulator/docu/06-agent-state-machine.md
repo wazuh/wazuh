@@ -3,8 +3,10 @@
 ## The simulated agent
 
 An agent goes through enrollment and startup once, then runs its lanes and its keepalive loop
-concurrently until drain. In `uds` mode enrollment, startup, keepalives and shutdown are all
-skipped — there is no remoted in the path, and the agent id is assigned by the scenario.
+concurrently until its lanes finish or the run drains. In `uds` mode enrollment, startup,
+keepalives and shutdown are all skipped — there is no remoted in the path, and the agent id is
+`first_id + i`. In `agent` mode the whole fleet is enrolled first, one agent at a time, and the
+first failure aborts the run (exit `2`).
 
 Two timing rules the transitions depend on, both learned against a real manager:
 
@@ -13,10 +15,13 @@ Two timing rules the transitions depend on, both learned against a real manager:
   minute were measured), so an agent that signs a request the instant it enrolls is answered `401`:
   its key is simply not in the transport's keystore yet. The sender does not sleep a guessed
   interval. Once the whole fleet is enrolled it probes with the first agent's `POST /control`
-  `startup`, every 2 s, until it is not a `401`. The budget is `--enroll-settle` with a 30 s floor
-  (the 12 s default therefore means 30 s). Each agent's own `startup` retries a `401` the same way
-  within the same budget. The run clock restarts after the probe: enrollment and settling are setup,
-  not load, and counting them would deflate every throughput figure.
+  `startup`, every 2 s, until it is answered `200` (whether or not the scenario enables control).
+  The budget is `--enroll-settle` with a 30 s floor (the 12 s default therefore means 30 s); a `401`
+  past the budget, or any other answer (a transport error included), aborts the run with exit `2`.
+  The probe is not recorded in any counter. Each agent's own `startup` retries a `401` the same way
+  within the same budget. The run clock (`meta.start_time`, and the `repeat_until` deadline)
+  restarts after the probe: enrollment and settling are setup, not load, and counting them would
+  deflate every throughput figure.
 - **The keepalive loop ends when the lanes do.** It is periodic and has no end of its own, so it is
   bound to a context cancelled once that agent's lanes finish. Otherwise a one-pass run
   (`repeat_until: 0`) would never return on its own and its measured duration would only reflect
@@ -53,24 +58,25 @@ Rules:
   runs its FIM, SCA, syscollector, VD and engine lanes simultaneously — the realistic shape.
 - **`startup` failure is fatal for the run** (`400`/`409 invalid_version` or `401` means the run
   is misconfigured — a malformed version, a version above the manager's `allow_higher_versions`
-  policy, or bad signing); it **MUST** be reported as failed, not silently kept sending. As
-  implemented, any non-`200` `startup` (after the `401` retries above) invalidates the run.
-- **A keepalive failure is not fatal**: it is counted (`control_notify_err`) and the loop continues,
-  because a manager that starts failing keepalives under load is precisely a thing to observe.
-  **Not implemented as written:** only a transport error is counted and survived. Any `notify`
-  answered with a status other than `200`, a wazuh-db `503` included, invalidates the run (exit `1`)
-  and stops that agent's keepalive loop.
-- **`notify` without `startup` is legal** on the manager side, so a scenario **MAY** model
-  keepalive-only fleets; when it does it **MUST** say so, since the response contents differ even
-  though the sender ignores them.
+  policy, or bad signing): any non-`200` answer (after the `401` retries above), a non-JSON `200`
+  or a transport error is counted in `control_startup_err` and invalidates the run (exit `1`); that
+  agent runs no lanes.
+- **A keepalive transport error is not fatal**: it is counted (`control_notify_err`) and the loop
+  continues. Any `notify` answered with a status other than `200` — a wazuh-db `503` included — or
+  a non-JSON `200` invalidates the run (exit `1`) and stops that agent's keepalive loop; it is not
+  counted in `control_notify_err` or the `notify` histogram (`notify()` returns before recording it).
+- **`notify` without `startup` is legal** on the manager side, but the sender never sends it: with
+  control enabled every agent's `startup` comes first.
 
 ## A lane
 
-Each lane is one goroutine walking its steps in order. A step may repeat with delays
-([07](07-scenario-schema.md)); a session step is a single request/response (a `full_resync` is two,
-`Cleans` then `Delta`), an engine step ships the whole sample file as one or more H/E batches
-([13](13-engine-event-streams.md)). With `pacing.repeat_until` set, the lane starts over from its
-first step until that deadline; otherwise it walks its steps once.
+Each lane is one goroutine walking its steps in order (`laneLoop()` in `internal/runner/agent.go`).
+A step may repeat with delays ([07](07-scenario-schema.md#per-step-timing)); a session step is a
+single request/response (a `full_resync` is two, `Cleans` then `Delta`), an engine step ships the
+whole sample file as one or more H/E batches ([13](13-engine-event-streams.md)). With
+`pacing.repeat_until` set, the lane starts over from its first step after each full pass until
+that deadline; otherwise it walks its steps once. Reaching the deadline also cancels the run, which
+starts the drain wherever each lane is.
 
 ```mermaid
 flowchart TD
@@ -94,11 +100,12 @@ CVE feed is not ready, so the buffer goes back through `build request` after the
 `--feed-timeout`) rather than straight to `send`. A bare `503` (backpressure) re-sends the same
 bytes after `defaults.retry.interval`, up to `max_attempts` sends (see
 [07](07-scenario-schema.md#retry-defaultsretry)); scenarios that count sheds set
-`retry.enabled: false`. Every attempt is recorded before the decision. Every other status, and
-every answer to the other step kinds, ends the step.
+`retry.enabled: false`. Every attempt waits for a `requests_per_second` token and is recorded before
+the decision. Every other status, a transport error, and every answer to the other step kinds, ends
+the request (a transport error on an engine batch also ends that pass over the file).
 
 For a VDFirst/VDSync step specifically, that trip back through `build request` is not a no-op:
-`Start.feed_offset` is re-read from the sender's own tracked value (step override, `-vd-feed-offset`,
+`Start.feed_offset` is re-read from the sender's own tracked value (step override, `--vd-feed-offset`,
 or whatever the keepalive loop has learned by then — [05](05-flatbuffers-messages.md)) before
 re-encoding, since the feed can finish loading, and the server's current offset can therefore
 change, during a wait this long. Every OTHER field of the rebuilt buffer is identical to the first
@@ -125,17 +132,24 @@ Two properties the sender **MUST** preserve so scenarios mean what they claim:
 
 ## Drain
 
-Drain is bounded by the `--drain-timeout` flag when it is set (> 0), else by the scenario's
-`pacing.drain_timeout`, else by 60 s:
+A one-pass run whose agents all finish ends without a drain. Drain starts when the run's context is
+cancelled — `repeat_until` reached, SIGINT/SIGTERM, or the first run-invalidating error — and is
+bounded by the `--drain-timeout` flag when it is set (> 0), else by the scenario's
+`pacing.drain_timeout`, else by 60 s (`Run()` in `internal/runner/runner.go`):
 
-1. stop starting new steps and stop the keepalive loops;
-2. wait for in-flight responses, up to the timeout;
-3. in `agent` mode send `shutdown` per agent (best-effort, counted);
-4. flush the artifacts and print the summary.
+1. no further agent is admitted: one still waiting for a `concurrent_agents` slot never starts
+   (no `startup`, no lanes, no `shutdown`);
+2. every lane stops at its next step, repetition or delay (a request already on the wire is not
+   interrupted; it ends with its answer or `--timeout`);
+3. each agent whose lanes have returned stops its keepalive loop and, in `agent` mode with control
+   enabled, sends `shutdown` (counted, with its latency in the `shutdown` histogram; never fatal);
+4. the runner waits for every admitted agent to get there, up to the drain window;
+5. the artifacts are flushed and the summary printed.
 
-Requests still in flight when the timeout expires are counted as `abandoned_on_drain` (in the
-global totals only: at that point the sender knows how many are left, not whose they were) and
-reported — not failures of the manager, but a signal the window was shorter than intended. Cleanup
-of the enrolled fleet is the orchestration's job (F9c-3), not the sender's. An agent's keepalive
-loop and `shutdown` wait for **all** of its lanes, engine lanes included, so a long-running engine
-lane keeps its agent connected (which is how `real_inspect_fleet` stays visible in the dashboard).
+Requests (other than `/control`) still in flight when the window expires are counted as
+`abandoned_on_drain` (in the global totals only: at that point the sender knows how many are left,
+not whose they were) — not failures of the manager, but a signal the window was shorter than
+intended. Cleanup of the enrolled fleet is the orchestration's job (F9c-3), not the sender's. An
+agent's keepalive loop and `shutdown` wait for **all** of its lanes, engine lanes included, so a
+long-running engine lane keeps its agent connected (which is how `real_inspect_fleet` stays visible
+in the dashboard).

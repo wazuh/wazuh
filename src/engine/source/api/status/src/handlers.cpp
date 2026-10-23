@@ -15,9 +15,12 @@ adapter::RouteHandler getStatus(const std::shared_ptr<cm::sync::ICMSync>& cmSync
                                 const std::shared_ptr<ioc::sync::IIocSync>& iocSync,
                                 const std::shared_ptr<::geo::IManager>& geoManager)
 {
+    // cmSync and iocSync are null when event processing is disabled: report their sections as absent
     return [weakCmSync = std::weak_ptr(cmSync),
             weakIocSync = std::weak_ptr(iocSync),
-            weakGeo = std::weak_ptr(geoManager)](const auto& req, auto& res)
+            weakGeo = std::weak_ptr(geoManager),
+            hasCmSync = cmSync != nullptr,
+            hasIocSync = iocSync != nullptr](const auto& req, auto& res)
     {
         using ResponseType = eStatus::StatusGet_Response;
 
@@ -26,7 +29,7 @@ adapter::RouteHandler getStatus(const std::shared_ptr<cm::sync::ICMSync>& cmSync
         auto iocSyncPtr = weakIocSync.lock();
         auto geoPtr = weakGeo.lock();
 
-        if (!cmSyncPtr || !iocSyncPtr || !geoPtr)
+        if ((hasCmSync && !cmSyncPtr) || (hasIocSync && !iocSyncPtr) || !geoPtr)
         {
             LOG_ERROR("Status handler: one or more providers are unavailable");
             res.status = httplib::StatusCode::InternalServerError_500;
@@ -34,46 +37,54 @@ adapter::RouteHandler getStatus(const std::shared_ptr<cm::sync::ICMSync>& cmSync
             return;
         }
 
-        bool ready = true;
+        // Without content and IOC synchronization (event processing disabled) the engine processes no events
+        bool ready = hasCmSync && hasIocSync;
+
+        ResponseType eResponse;
 
         // Build spaces state
-        ResponseType eResponse;
-        auto* spacesMap = eResponse.mutable_spaces();
-        for (const auto& space : cmSyncPtr->getSpacesStatus())
+        if (cmSyncPtr)
         {
-            eStatus::SpaceState protoSpace;
-            protoSpace.set_available(space.available);
-            protoSpace.set_enabled(space.enabled);
-            protoSpace.set_status(base::syncStatusToStr(space.status));
-            protoSpace.set_hash(space.hash);
-            protoSpace.set_last_successful_update(space.lastSuccessfulUpdate);
-
-            // Readiness check: enabled spaces must be available
-            if (space.enabled && !space.available)
+            auto* spacesMap = eResponse.mutable_spaces();
+            for (const auto& space : cmSyncPtr->getSpacesStatus())
             {
-                ready = false;
-            }
+                eStatus::SpaceState protoSpace;
+                protoSpace.set_available(space.available);
+                protoSpace.set_enabled(space.enabled);
+                protoSpace.set_status(base::syncStatusToStr(space.status));
+                protoSpace.set_hash(space.hash);
+                protoSpace.set_last_successful_update(space.lastSuccessfulUpdate);
 
-            (*spacesMap)[space.name] = std::move(protoSpace);
+                // Readiness check: enabled spaces must be available
+                if (space.enabled && !space.available)
+                {
+                    ready = false;
+                }
+
+                (*spacesMap)[space.name] = std::move(protoSpace);
+            }
         }
 
         // Build IOC state
-        auto* iocMap = eResponse.mutable_ioc();
-        for (const auto& iocType : iocSyncPtr->getIocStatus())
+        if (iocSyncPtr)
         {
-            eStatus::ResourceState protoIoc;
-            protoIoc.set_available(iocType.available);
-            protoIoc.set_status(base::syncStatusToStr(iocType.status));
-            protoIoc.set_hash(iocType.hash);
-            protoIoc.set_last_successful_update(iocType.lastSuccessfulUpdate);
-
-            // Readiness check: all IOC types must be available
-            if (!iocType.available)
+            auto* iocMap = eResponse.mutable_ioc();
+            for (const auto& iocType : iocSyncPtr->getIocStatus())
             {
-                ready = false;
-            }
+                eStatus::ResourceState protoIoc;
+                protoIoc.set_available(iocType.available);
+                protoIoc.set_status(base::syncStatusToStr(iocType.status));
+                protoIoc.set_hash(iocType.hash);
+                protoIoc.set_last_successful_update(iocType.lastSuccessfulUpdate);
 
-            (*iocMap)[iocType.type] = std::move(protoIoc);
+                // Readiness check: all IOC types must be available
+                if (!iocType.available)
+                {
+                    ready = false;
+                }
+
+                (*iocMap)[iocType.type] = std::move(protoIoc);
+            }
         }
 
         // Build Geo state

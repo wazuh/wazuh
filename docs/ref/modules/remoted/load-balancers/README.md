@@ -205,8 +205,9 @@ flowchart LR
   out. If you raise it, raise ② with it.
 
 One more clock runs on the backend connection itself: remoted closes an idle keep-alive connection
-after `remoted.http_read_timeout` (10 s by default), and closes the connection after every `404` or
-`403`. Keep the proxy's idle time for reusable backend connections below 10 s (NGINX:
+after `remoted.http_read_timeout` (10 s by default). It also closes the connection after a `404` for a
+path no route matches, the `403` of `verification_mode` `full`, and a `503` shed by its in-flight byte
+budget; every other answer leaves it open. Keep the proxy's idle time for reusable backend connections below 10 s (NGINX:
 `keepalive_timeout 5s;` in the `upstream`), or a request sent on a connection remoted has already
 closed fails with `502`.
 
@@ -273,8 +274,9 @@ flowchart LR
 
 ## 6. `verification_mode`: read this before enabling it
 
-`<remote><https><verification_mode>` controls whether remoted requires a **client certificate**. It
-has three values: `none` (default), `certificate` and `full`. All three are meant for a manager that
+[`<remote><https><verification_mode>`](../configuration.md#httpsverification_mode) controls whether
+remoted requires a **client certificate**. It has three values: `none`, `certificate` and `full`; when
+it is absent, it is `certificate` if `<remote><https><ca>` is set and `none` otherwise. All three are meant for a manager that
 agents reach **directly**; this section is about what changes once a balancer sits in between.
 
 The key to understanding it: **remoted demands the certificate from whoever opens the connection.**

@@ -43,7 +43,7 @@ namespace invsync::vd
         std::size_t queueSlots {0};
         /// Retry-After attached to the 503 a lane worker answers when the feed became unready
         /// between admission and dispatch (D17 re-check).
-        int retryAfterSeconds {60};
+        int retryAfterSeconds {10};
     };
 
     /**

@@ -343,7 +343,7 @@ static void service_local_client(int peer) {
 }
 
 // Runs on its own detached thread so one slow dispatch -- typically a worker's cluster-forwarded
-// "add", which can take seconds -- never blocks other callers (manage_agents, the API, another
+// "add", which can take seconds -- never blocks other callers (the server API, another
 // /enroll request) behind it. Safe concurrently: local_add()/local_remove()/local_get() already
 // serialize the `keys` keystore and write_pending/cond_pending through mutex_keys.
 static void* handle_local_client(void *arg) {
@@ -629,7 +629,7 @@ char* local_dispatch(const char *input) {
 
             if (config.worker_node) {
                 if (id || key) {
-                    // An admin/restore-style add (manage_agents/the API; self-enrollment never
+                    // An admin/restore-style add (the server API; self-enrollment never
                     // sends these). No cluster RPC can honor a caller-chosen id/key on a worker,
                     // and local_add_clustered() has no parameters for them -- forwarding anyway
                     // would report success having created a DIFFERENT agent than was asked for.
@@ -1333,7 +1333,7 @@ cJSON* local_get(const char *id) {
         response = local_create_error_response(ERRORS[ENOAGENT].code, ERRORS[ENOAGENT].message);
     }
     else {
-        // Never the re-enrollment secret: `get` serves manage_agents/the API, and the secret is the
+        // Never the re-enrollment secret: `get` serves the server API, and the secret is the
         // agent's alone (the writer only ever holds it until global.db has it).
         response = local_create_agent_response(id, keys.keyentries[index]->name, keys.keyentries[index]->ip->ip, keys.keyentries[index]->raw_key, NULL);
     }

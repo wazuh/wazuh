@@ -223,6 +223,10 @@ flowchart LR
     S2 --> S3["3. Remove the old CA<br/>from the bundle"]
 ```
 
+This is the agent-facing order only. The node-side steps (staging the new CA in each node's `ca/`,
+reissuing the listener and Server API pairs, pulling the bundle on workers, restarting) are in the
+[CA rotation runbook](../remoted/ca-rotation.md#the-procedure).
+
 Replacing a node's certificate does **not** disconnect agents that are already connected under
 passthrough, because the connection is already established. It affects agents that connect or
 reconnect during the window.

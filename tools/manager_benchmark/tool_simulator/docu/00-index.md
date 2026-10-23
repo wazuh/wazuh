@@ -1,21 +1,18 @@
 # benchmark_sender — design documentation
 
-Design set for the load-generation tool of `inventory_sync_server`. It was written **before** the
-implementation: F9c-2 implemented against these documents, so a disagreement between code and
-document is a bug in one of them, to be resolved rather than tolerated.
+Design set for the load-generation tool of `inventory_sync_server` and the agent-facing routes of
+remoted. It was written before the implementation (F9c-1, implemented by F9c-2) and is kept in step
+with the sender as built (`cmd/` and `internal/`): every behaviour described here is what the code
+on this branch does, and where the two disagree the code wins and this set is the one to fix.
 
-The set has since been checked against the implemented sender (`cmd/` and `internal/`). Where the
-sender does something the original design did not say, the documents describe what it does. Where
-it still does not meet a stated requirement, the requirement is kept and marked **Not implemented**
-next to it, so the gap stays visible instead of being quietly rewritten away.
-
-Requirement levels follow RFC 2119: **MUST**, **MUST NOT**, **SHOULD**, **MAY**.
+Requirement levels follow RFC 2119: **MUST**, **MUST NOT**, **SHOULD**, **MAY**. They state the
+contract the sender keeps; a requirement the sender does not meet is not kept here.
 
 ## Reading order
 
 | Doc | Read it for |
 |---|---|
-| [01-overview.md](01-overview.md) | What the tool measures, its two modes, and what it deliberately does not do |
+| [01-overview.md](01-overview.md) | What the tool measures, its two modes, its command line, and what it deliberately does not do |
 | [02-functional-requirements.md](02-functional-requirements.md) | The HTTP contract the sender must honor (FR-1…FR-18) |
 | [03-control-protocol.md](03-control-protocol.md) | `POST /control`: startup, keepalives, shutdown — shapes, auth, cadence |
 | [04-wire-protocol.md](04-wire-protocol.md) | Enrollment, the `wazuh-agent+jwt` bearer token, HTTPS and UDS transports |
@@ -26,7 +23,7 @@ Requirement levels follow RFC 2119: **MUST**, **MUST NOT**, **SHOULD**, **MAY**.
 | [09-metrics-and-output.md](09-metrics-and-output.md) | **The** definition of the output artifacts |
 | [10-error-handling-and-shutdown.md](10-error-handling-and-shutdown.md) | Error matrix, drain, what fails a run |
 | [11-go-implementation-notes.md](11-go-implementation-notes.md) | Libraries and package layout |
-| [12-acceptance-criteria.md](12-acceptance-criteria.md) | AC-A…AC-L: when the tool is done |
+| [12-acceptance-criteria.md](12-acceptance-criteria.md) | AC-A…AC-S: how a person checks the tool does what this set says |
 | [13-engine-event-streams.md](13-engine-event-streams.md) | `POST /stateless`: the log-event batch a lane can stream, alongside inventory |
 | [14-scan-vd.md](14-scan-vd.md) | `POST /scan/vd`: the feed-update re-scan request, and how it differs from a VDFirst session's scan |
 | [15-cacerts.md](15-cacerts.md) | `GET /cacerts`: the CA-distribution request an agent uses to bootstrap trust in the manager |
@@ -45,16 +42,16 @@ the **client**, and cites those where the contract originates.
 | **Sender** | The `benchmark_sender` binary: the whole load generator |
 | **Mode** | Which transport the run exercises: `uds` (the server alone) or `agent` (through remoted) |
 | **Agent** | One simulated agent: an identity (id + key), a keepalive loop, and its fleet's lanes running in parallel |
-| **Fleet** | A group of agents (named `bench-<fleet>-<NNNN>`) that share a lane set and a metadata profile — a run may have several (a Windows fleet and a Linux fleet at once) |
+| **Fleet** | A group of agents (named `bench-<fleet>-<NNNN>`, `<NNNN>` being `first_id + i` zero-padded to four digits) that share a lane set and a metadata profile — a run may have several (a Windows fleet and a Linux fleet at once) |
 | **Lane** | A named, ordered list of steps one agent runs. An agent runs all of its fleet's lanes **in parallel** (FIM, SCA, syscollector, VD, engine…), the way a real agent does |
 | **Scenario** | A JSON file describing a run: mode, lanes, fleets, pacing |
 | **Session** | ONE `POST /stateful` request carrying one whole `Message{FullSession}`, and its response |
-| **Keepalive** | A `POST /control` of type `notify`, sent periodically per agent (default every 10 s) |
+| **Keepalive** | A `POST /control` of type `notify`, sent periodically per agent (default every 10 s) when the scenario enables control traffic |
 | **Engine stream** | A lane that ships log events to `POST /stateless` (the engine ingress) instead of inventory sessions |
 | **Re-scan request** | A `POST /scan/vd` (`kind: "scan_vd"`): asks the manager to re-scan the inventory it ALREADY holds for that agent, against a newer CVE feed — not the scan a VDFirst/VDSync session triggers over the inventory it carries |
 | **EPS** | A rate target enforced by a leaky bucket: `requests_per_second` for the shared request bucket, `events_per_second` for an engine lane |
 | **Drain** | The bounded shutdown window: stop starting work, let in-flight responses land, then report |
-| **Artifacts** | The files a run produces: `bench.csv`, `sender_summary.json`, `samples/metrics.ndjson`, … |
+| **Artifacts** | The two files the sender writes, `bench.csv` and `sender_summary.json` ([09](09-metrics-and-output.md)); the orchestration adds the rest of a results directory (`samples/metrics.ndjson`, `summary.json`, …) |
 
 ## What is NOT here
 

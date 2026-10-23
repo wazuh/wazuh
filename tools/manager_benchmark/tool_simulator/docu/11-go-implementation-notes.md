@@ -1,18 +1,19 @@
 # 11 — Go implementation notes
 
-Guidance for F9c-2, kept in step with what was built (`go.mod`: Go 1.26.2). The retired simulator's
-choices that still apply are kept deliberately, so the two tools read alike where they do the same
-thing.
+What was built (`go.mod`: Go 1.26.2; module dependencies `github.com/google/flatbuffers`
+v23.5.26, `golang.org/x/time` v0.15.0, `github.com/klauspost/compress` v1.19.2). The retired
+simulator's choices that still apply are kept deliberately, so the two tools read alike where they
+do the same thing.
 
 ## Libraries
 
 | Need | Choice | Why |
 |---|---|---|
-| CLI | stdlib `flag` | Same dashed-flag style as the retired sender; no dependency for a dozen knobs |
-| HTTP client | stdlib `net/http` | HTTPS to 1517 with the default transport, and a custom `DialContext` for the Unix socket; per-agent client for identity isolation |
+| CLI | stdlib `flag` | Same dashed-flag style as the retired sender; no dependency for its 21 flags ([01](01-overview.md#command-line)) |
+| HTTP client | stdlib `net/http` | One `http.Transport` per agent (HTTPS to 1517; keep-alive per `--no-reuse`), and a custom `DialContext` for the Unix socket; per-agent client for identity isolation |
 | TLS | stdlib `crypto/tls` with `InsecureSkipVerify` | Test managers are self-signed; no client certificate is required |
 | `wazuh-agent+jwt` bearer | stdlib `crypto/hmac` + `crypto/sha256` + `encoding/json` + `encoding/base64` (`RawURLEncoding`) | No JWT library: the profile is six fixed claims and HS256, and a library's tolerance is exactly what the manager rejects. **MUST** reproduce the frozen vector in `internal/wire/testdata/jwt_vectors.json` byte for byte (shared with the manager's C++ library and the Python tools) |
-| FlatBuffers | `github.com/google/flatbuffers/go` + `flatc --go` at build time | Bindings generated, never committed (see [05](05-flatbuffers-messages.md)) |
+| FlatBuffers | `github.com/google/flatbuffers/go` + `flatc --go` at build time | Bindings generated, never committed (see [05](05-flatbuffers-messages.md#generated-bindings)) |
 | Pacing | `golang.org/x/time/rate` | Leaky bucket, same as the retired sender |
 | zstd | `github.com/klauspost/compress/zstd` | `Content-Encoding: zstd` request bodies (remoted's contract) and the `.json.zst` dump corpus. Pure Go: the no-cgo rule below rules out binding the repo's vendored C zstd |
 | Goroutine groups | stdlib `sync.WaitGroup` + `context` | Fleet supervision; the first run-invalidating error is kept by a `sync.Once` and cancels the run's context (`runner.fatalf`) |
@@ -41,7 +42,7 @@ tool_simulator/
 │   ├── metrics/     # counters + per-kind histograms, sliced by lane and fleet; bench.csv + summary JSON
 │   ├── verdict/     # the optional `expected` block: validation and evaluation
 │   └── pacing/      # shared request limiter + per-agent engine limiters
-├── Makefile         # generate / build / vet / test / clean
+├── Makefile         # all (generate + build) / generate / build / vet / test / clean
 └── docu/            # this documentation set
 ```
 
@@ -67,12 +68,14 @@ path, not three.
   the report rather than fixed with a lock on the hot path.
 - **Deterministic document generation** from a seed recorded in `meta`: two runs of the same scenario
   must send byte-identical payloads, or the comparison is not one.
-- **`go vet ./...` clean** and `gofmt`-formatted; a `Makefile` target regenerates the FlatBuffers
-  bindings and builds.
+- **`go vet ./...` clean** and `gofmt`-formatted (`make vet`); `make all` regenerates the
+  FlatBuffers bindings and builds `./benchmark_sender`. `make build` does not stamp a version, so
+  `meta.sender_version` reads `dev` unless the binary is built with
+  `-ldflags "-X main.senderVersion=<version>"`.
 
 ## Verifying the wire without a manager
 
-The sender **SHOULD** ship two self-tests that need nothing running:
+Two self-tests need nothing running:
 
 1. a JWT vector test (fixed key, agent id, `iat`, `jti` → the exact frozen token), the same vector
    the manager's C++ tests and the Python tools use;
@@ -80,7 +83,10 @@ The sender **SHOULD** ship two self-tests that need nothing running:
    the mode/option/payload and the document count.
 
 Both ship (`internal/wire/jwt_test.go`, `internal/fbbuild/session_test.go`), alongside unit tests
-for the enrollment token, the global prefix, zstd, the HTTP client, pacing, the scenario loader,
-document and dump generation, metrics snapshots, the verdict and the bootstrap. `make test` runs
-them all (`go test ./...`); the FlatBuffers test needs `make generate` first. Everything else needs
-a manager, and belongs to F9c-2's smoke and F9c-3's scenarios.
+for the enrollment token (`internal/wire/enrolltoken_test.go`), the `POST /enroll` request
+(`internal/enrollhttps/`), the global prefix, zstd, the HTTP client, pacing, the scenario loader,
+document and dump generation, metrics snapshots, the verdict and the bootstrap
+(`internal/runner/bootstrap_test.go`). `control`, `scanvd`, `cacerts` and `engine` have none.
+`make test` runs them all (`go test ./...`); run `make generate` first, since `fbbuild` — and
+`runner` and `cmd/` through it — do not compile without the generated bindings. Everything else
+needs a manager, and belongs to F9c-2's smoke and F9c-3's scenarios.

@@ -6,7 +6,8 @@
 # wazuh-manager-resolve-credentials: sets up the manager's passwords and trust material at
 # installation and checks them before every start. Runs as root, on the bundled interpreter, in
 # isolated mode (-I: no user site, no PYTHON* variables, no script directory on sys.path), with the
-# standard library and `cryptography` only. It calls no host tool and never touches /etc/wazuh.
+# standard library, `cryptography` and PyYAML (imported only to read api.yaml) only. It calls no host
+# tool and never touches /etc/wazuh.
 #
 # This must stay the first statement: OpenSSL probes the CPU when its library loads, and some arm64
 # hypervisors advertise SVE they do not implement, so the probe dies with SIGILL. Every other Python

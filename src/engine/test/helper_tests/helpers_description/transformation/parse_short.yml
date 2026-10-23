@@ -53,4 +53,4 @@ test:
     target_field: any_value
     should_pass: false
     expected: any_value
-    description: Failure unsigned long parse
+    description: Failure short parse (non-numeric)

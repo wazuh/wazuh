@@ -2,7 +2,7 @@
 
 ## Overview
 
-The Wazuh Engine exposes an internal HTTP API over a **Unix Domain Socket (UDS)**. This API is the control plane for the engine: it handles routing, testing, content management, event dumping, geolocation, IOC synchronization, and more.
+The Wazuh Engine exposes an internal HTTP API over a **Unix Domain Socket (UDS)**. This API is the control plane for the engine: it handles routing, testing, content management, event dumping, geolocation, IOC synchronization, metrics, status, and more. Event ingestion (`POST /events/enriched`) is served by a second server on its own socket and is described in [Event ingestion](#event-ingestion).
 
 The API system spans five tightly-coupled locations in the repository:
 
@@ -12,19 +12,19 @@ The API system spans five tightly-coupled locations in the repository:
 | **C++ Handlers** | `src/engine/source/api/` | C++ | HTTP handler implementations (this directory) |
 | **Python transport library** | `src/engine/tools/api-communication/` | Python | Low-level client: proto→JSON over UDS |
 | **Python CLI tools** | `src/engine/tools/engine-suite/` | Python | CLI commands that exercise the API |
-| **OpenAPI specs** | `docs/ref/modules/engine/{public-api,private-api}.yaml` | YAML | Public and private API documentation (OpenAPI 3.0.3) |
+| **OpenAPI specs** | `docs/ref/modules/engine/{public-api,private-api,spec-events}.yaml` | YAML | Public, private and event-ingestion API contracts (OpenAPI 3.0.3) |
 
 ### Communication Architecture
 
 ```
-┌──────────────────────┐     HTTP/JSON over UDS      ┌──────────────────────┐
-│  Python CLI tools    │  ─────────────────────────►  │   wazuh-engine       │
-│  (engine-suite)      │  ◄─────────────────────────  │   (C++ HTTP server)  │
-│                      │                               │                      │
-│  Uses APIClient      │   Unix socket path            │  httplib server on  │
-│  from                │                               │  UDS, routes to     │
-│  api-communication   │                               │  handler functions   │
-└──────────────────────┘                               └──────────────────────┘
+┌──────────────────────┐     HTTP/JSON over UDS      ┌───────────────────────────┐
+│  Python CLI tools    │  ─────────────────────────► │  wazuh-manager-analysisd  │
+│  (engine-suite)      │  ◄───────────────────────── │  (httpsrv::Server)        │
+│                      │                             │                           │
+│  Uses APIClient      │   Unix socket path          │  httplib server on UDS,   │
+│  from                │                             │  routes to handler        │
+│  api-communication   │                             │  functions                │
+└──────────────────────┘                             └───────────────────────────┘
 ```
 
 On a manager the socket is `/var/wazuh-manager/queue/sockets/engine-api-http.sock` (setting
@@ -42,13 +42,16 @@ On a manager the socket is `/var/wazuh-manager/queue/sockets/engine-api-http.soc
 api/
 ├── CMakeLists.txt                              # INTERFACE library linking all sub-modules
 ├── README.md                                   # This document
+├── include/api/handlers.hpp                    # Umbrella header (status has its own: api/status/handlers.hpp)
 │
 ├── adapter/                                    # Core framework (header-only)
 │   ├── include/api/adapter/
 │   │   ├── adapter.hpp                         # RouteHandler typedef, proto↔HTTP helpers
-│   │   └── helpers.hpp                         # tryGetProperty helper
-│   └── test/include/api/adapter/
-│       └── baseHandler_test.hpp                # GTest base fixture for handler tests
+│   │   └── helpers.hpp                         # tryGetProperty, getJsonFieldFromBody, buildJsonContentResponse
+│   └── test/
+│       ├── include/api/adapter/
+│       │   └── baseHandler_test.hpp            # GTest base fixture for handler tests
+│       └── src/                                # generic_request.proto (+ generated code), unit/adapter_test.cpp
 │
 ├── router/                                     # Router route management handlers
 │   ├── include/api/router/handlers.hpp
@@ -65,12 +68,21 @@ api/
 │   ├── src/handlers.cpp
 │   └── test/src/unit/handlers_test.cpp
 │
-├── event/                                      # Event ingestion handlers + NDJson parser
+├── event/                                      # Event ingestion handler (pushEvent) + NDJson parser
 │   ├── include/api/event/
 │   │   ├── handlers.hpp
 │   │   └── ndJsonParser.hpp
 │   ├── src/handlers.cpp
-│   └── test/src/unit/
+│   └── test/src/unit/                          # handlers_test.cpp, ndJsonParser_test.cpp
+│
+├── metrics/                                    # Metrics enable/get/list/dump handlers (no unit tests)
+│   ├── include/api/metrics/handlers.hpp
+│   └── src/handlers.cpp
+│
+├── status/                                     # GET /status (content, IOC and GeoIP sync state)
+│   ├── include/api/status/handlers.hpp
+│   ├── src/handlers.cpp
+│   └── test/src/unit/handlers_test.cpp
 │
 ├── dumper/                                 # Event Dumper enable/disable/status handlers
 │   ├── include/api/dumper/handlers.hpp
@@ -87,7 +99,7 @@ api/
 │   ├── src/handlers.cpp
 │   └── test/src/unit/handlers_test.cpp
 │
-└── ioccrud/                                    # IOC (Indicator of Compromise) sync handlers
+└── ioccrud/                                    # IOC (Indicator of Compromise) update and state handlers
     ├── include/api/ioccrud/handlers.hpp
     ├── src/handlersSync.cpp
     └── test/src/unit/handlers_test.cpp
@@ -113,11 +125,12 @@ The `adapter` module (header-only) provides template helpers for the proto↔HTT
 
 | Utility | Purpose |
 |---------|---------|
-| `parseRequest<Req, Res>(req)` | Deserialize JSON body → protobuf `Req`. Returns `ResOrErrorResp<pair<Handler, Req>>` |
+| `parseRequest<Req, Res>(req)` | Deserialize JSON body → protobuf `Req`. Returns `ResOrErrorResp<Req>` (a 400 `Failed to parse protobuff json request: …` on failure) |
 | `userResponse<Res>(res)` | Serialize protobuf `Res` → 200 JSON response |
 | `userErrorResponse<Res>(msg)` | 400 error with protobuf error envelope |
 | `internalErrorResponse<Res>(msg)` | 500 error with protobuf error envelope |
-| `getReqAndHandler<Req, Res, IHandler>(req, weakPtr)` | Combines `weak_ptr` lock + request parse (most common entry point) |
+| `getReqAndHandler<Req, Res, IHandler>(req, weakPtr)` | Combines `weak_ptr` lock + request parse (most common entry point). Returns `ResOrErrorResp<std::tuple<std::shared_ptr<IHandler>, Req>>` |
+| `isError` / `getErrorResp` / `getRes` | Inspect a `ResOrErrorResp<T>`: test for error, build the error `httplib::Response`, take the value |
 | `createRequest<Req>(req)` | Protobuf → `httplib::Request` (for testing) |
 | `parseResponse<Res>(res)` | `httplib::Response` → protobuf (for testing) |
 
@@ -176,7 +189,7 @@ adapter::RouteHandler activateDumper(const std::shared_ptr<::dumper::IDumper>& d
 
 ### 4. Build Structure
 
-- The root `CMakeLists.txt` creates an **INTERFACE** target `api` that links all sub-modules.
+- The root `CMakeLists.txt` adds each sub-module with `add_subdirectory(<module>)` and creates an **INTERFACE** target `api` that links all of them (`api::metrics`, `api::geo`, `api::router`, `api::tester`, `api::event`, `api::dumper`, `api::cmcrud`, `api::rawevtindexer`, `api::ioccrud`, `api::status`).
 - Each sub-module is a **STATIC** library (except `adapter`, which is INTERFACE/header-only).
 - Each sub-module links `api::adapter` and its domain interface library (e.g., `dumper::iface`).
 - Test targets link the module + `GTest::gtest_main` + `api::adapter::test` + domain mocks.
@@ -202,9 +215,10 @@ add_library(api::dumper ALIAS api_dumper)
 | `geo.proto` | `com.wazuh.api.engine.geo` | GeoIP database queries |
 | `event_dumper.proto` | `com.wazuh.api.engine.event_dumper` | Event Dumper activate/deactivate/status |
 | `rawevtindexer.proto` | `com.wazuh.api.engine.rawevtindexer` | Raw event indexer status |
+| `status.proto` | `com.wazuh.api.engine.status` | Content, IOC and GeoIP synchronization state (`GET /status`) |
 | `crud.proto` | `com.wazuh.api.engine.content` | Namespace, policy, and resource CRUD |
 | `ioc.proto` | `com.wazuh.api.engine.ioc` | IOC sync: update and state |
-| `metrics.proto` | `com.wazuh.api.engine.metrics` | Metrics dump/get/enable/list |
+| `metrics.proto` | `com.wazuh.api.engine.metrics` | Metrics dump/get/enable/list (`Enable_Request`, `Get_Request`, `List_Request`, `Dump_Request` and their `_Response`) |
 | `request_response.proto` | `com.wazuh.api.engine.test` | Generic test request/response |
 
 ### Naming Convention
@@ -219,6 +233,8 @@ Examples:
 - `RoutePost_Request` / `RouteGet_Response`
 - `SessionPost_Request` / `SessionGet_Response`
 
+Older files deviate: `crud.proto` uses lower-camel names (`namespaceGet_Request`, `resourcePost_Request`) and `metrics.proto` omits the resource (`Get_Request`, `Dump_Response`).
+
 When an endpoint returns only a status, it uses the shared `GenericStatus_Response` from `engine.proto`.
 
 ### Code Generation
@@ -229,25 +245,22 @@ Proto files are the **single source of truth**. Both C++ and Python code are gen
 - **C++**: `src/engine/source/proto/include/eMessages/*.pb.{cc,h}` (committed to the repo)
 - **Python**: `src/engine/tools/api-communication/src/api_communication/proto/*_pb2.{py,pyi}` (committed to the repo)
 
-**How to regenerate:**
+**How to regenerate** (from the repository root, in the single CMake tree under `src/` — build directory src/build, see the `wazuh-build` skill; the engine has no CMake presets of its own):
 
 ```bash
-cd src/engine
-cmake --preset debug -DENGINE_GENERATE_PROTO=ON
-cmake --build ./build --target generate_protobuf_code
+cmake -S src -B src/build -DENGINE_GENERATE_PROTO=ON
+cmake --build src/build --target generate_protobuf_code
+cmake -S src -B src/build -DENGINE_GENERATE_PROTO=OFF   # the option sticks in the cache; while ON, eMessages regenerates on every build
 ```
 
-Or via the top-level Makefile:
-```bash
-/usr/bin/make --directory ./src TARGET=server  # with ENGINE_GENERATE_PROTO=ON in CMake
-```
+The `generate_protobuf_code` target exists only when `ENGINE_GENERATE_PROTO` is `ON` **and** `src/external/protobuf/build/protoc` exists (`PROTOBUF_DIR` in `src/engine/CMakeLists.txt`); otherwise CMake prints a notice and skips it (`src/engine/source/proto/CMakeLists.txt`). The top-level Makefile does not pass the option.
 
 **What `generateCode.sh` does:**
-1. Runs `protoc` with `--cpp_out` → generates `.pb.cc` and `.pb.h` in `source/proto/include/eMessages/`
-2. Runs `protoc` with `--python_out` and `--pyi_out` → generates `_pb2.py` and `.pyi` in `tools/api-communication/src/api_communication/proto/`
-3. Cleans old generated files first (preserves `eMessage.h`, `readme.md`, and `__init__.py`)
-4. Runs `clang-format` on `.proto` sources
-5. Post-processes Python imports: rewrites `import foo_pb2 as ...` → `import api_communication.proto.foo_pb2 as ...`
+1. Runs `clang-format` (`clang-format-11`, `-10` or plain, skipped when none is found) on the `.proto` sources
+2. Cleans old generated files (preserves `eMessage.h`, `readme.md`, and `__init__.py`)
+3. Runs `protoc` with `--cpp_out` → generates `.pb.cc` and `.pb.h` in `source/proto/include/eMessages/`
+4. Runs `protoc` with `--python_out` and `--pyi_out` → generates `_pb2.py` and `.pyi` in `tools/api-communication/src/api_communication/proto/`
+5. Post-processes Python imports: rewrites `import foo_pb2 as ...` → `import api_communication.proto.foo_pb2 as _foo_pb2`
 
 > **Important**: After modifying any `.proto` file, you **must** regenerate the code. Both the C++ `.pb.h/.pb.cc` files and Python `_pb2.py/.pyi` files are committed to the repository.
 
@@ -299,8 +312,9 @@ A static dispatch table mapping protobuf request message types to HTTP endpoints
 def get_endpoint(message: Message) -> Tuple[Optional[str], str, str]:
     """Returns (error, endpoint_path, http_method)"""
     if isinstance(message, event_dumper.EventDumperActivate_Request):
-        endpoint = 'event-dumper/activate'
-    # ... isinstance checks for all message types
+        endpoint = '_internal/event-dumper/activate'
+    # ... isinstance checks for all message types; method defaults to 'post'
+    #     ('get' for content/ioc/state and status, 'delete' for logtest)
 ```
 
 ---
@@ -313,10 +327,10 @@ Provides 5 CLI entry points that exercise the API via `api-communication`:
 
 | CLI Command | Module | Domain |
 |------------|--------|--------|
-| `engine-router` | `engine_router` | Route CRUD, table, ingest |
+| `engine-router` | `engine_router` | Route CRUD, table, `ingest` (sends a `QueuePost_Request`, which `get_endpoint` does not map — the command fails; the engine has no such route) |
 | `engine-test` | `engine_test` | Tester sessions, integration test runs |
 | `engine-event-dumper` | `engine_event_dumper` | Event Dumper activate/deactivate/status |
-| `engine-public` | `engine_public` | Content validation, IOC, logtest cleanup |
+| `engine-public` | `engine_public` | Content validation, IOC, logtest cleanup, status |
 | `engine-private` | `engine_private` | Internal CRUD: namespaces, resources, policies, geo, rawevt |
 
 **Installation:**
@@ -375,15 +389,16 @@ def main():
 
 ---
 
-## OpenAPI Specifications (`docs/ref/modules/engine/{public-api,private-api}.yaml`)
+## OpenAPI Specifications (`docs/ref/modules/engine/{public-api,private-api,spec-events}.yaml`)
 
-The engine API is split into two OpenAPI 3.0.3 contracts:
+The engine API is split into three OpenAPI 3.0.3 contracts, published in the [API reference](../../../../docs/ref/modules/engine/api-reference.md):
 
 - `public-api.yaml`: public-facing endpoints consumed by supported external integrations.
 - `private-api.yaml`: internal-only endpoints used by development tooling, testing, and maintenance workflows.
+- `spec-events.yaml`: the event-ingestion endpoint (`POST /events/enriched`).
 
 ### Tags (Domains)
-`Router`, `Tester`, `Geo`, `Event Dumper`, `Raw Event Indexer`, `Content`, `Logtest`, `Metrics`
+`public-api.yaml`: `Content`, `Logtest`, `Metrics`, `Status`. `private-api.yaml`: `Router`, `Tester`, `Geo`, `Event Dumper`, `Raw Event Indexer`, `Content`. `spec-events.yaml`: `Events`.
 
 ### Schema Conventions
 
@@ -394,7 +409,7 @@ The engine API is split into two OpenAPI 3.0.3 contracts:
 | Empty request | `EmptyRequest` schema: `{}` |
 | Proto `google.protobuf.Struct` | `type: object` (free-form JSON) |
 | Proto `repeated X` | `type: array, items: {$ref: X}` |
-| Response codes | 200 (success or domain response), 400 (validation error), 500 (internal) |
+| Response codes | 200 (success or domain response), 400 (validation error), 500 (internal); `/content/validate/resource` also answers 413 when the resource exceeds `analysisd.api_resource_payload_max_bytes` / `analysisd.api_resource_kvdb_payload_max_bytes`, and the server answers 413 for a body over `analysisd.server_api_payload_max_bytes` |
 
 ### Proto ↔ Spec Mapping
 
@@ -410,6 +425,8 @@ The engine API is split into two OpenAPI 3.0.3 contracts:
 
 ## Complete Endpoint Reference
 
+Route → proto mapping, from the `registerHandlers()` functions. The operator contract (bodies, status codes) is the OpenAPI specs above.
+
 ### Public Endpoints
 
 | Domain | Path | Method | Request Proto | Response Proto |
@@ -417,13 +434,14 @@ The engine API is split into two OpenAPI 3.0.3 contracts:
 | **Content** | `/content/validate/policy` | POST | `policyValidate_Request` | `GenericStatus_Response` |
 | **Content** | `/content/validate/resource` | POST | `resourceValidate_Request` | `GenericStatus_Response` |
 | **Content** | `/content/ioc/update` | POST | `UpdateIoc_Request` | `GenericStatus_Response` |
-| **Content** | `/content/ioc/state` | GET | `GetIocState_Request` | `GetIocState_Response` |
+| **Content** | `/content/ioc/state` | GET | — (no body; `GetIocState_Request` in the Python client) | `GetIocState_Response` |
 | **Logtest** | `/logtest` | POST | `PublicRunPost_Request` | `RunPost_Response` |
 | **Logtest** | `/logtest` | DELETE | `LogtestDelete_Request` | `GenericStatus_Response` |
-| **Metrics** | `/metrics/enable` | POST | `MetricsEnable_Request` | `GenericStatus_Response` |
-| **Metrics** | `/metrics/get` | POST | `MetricsGet_Request` | `MetricsGet_Response` |
-| **Metrics** | `/metrics/list` | POST | `MetricsList_Request` | `MetricsList_Response` |
-| **Metrics** | `/metrics/dump` | POST | `EmptyRequest` | `MetricsDump_Response` |
+| **Metrics** | `/metrics/enable` | POST | `Enable_Request` | `Enable_Response` |
+| **Metrics** | `/metrics/get` | POST | `Get_Request` | `Get_Response` |
+| **Metrics** | `/metrics/list` | POST | `List_Request` | `List_Response` |
+| **Metrics** | `/metrics/dump` | POST | `Dump_Request` | `Dump_Response` |
+| **Status** | `/status` | GET | — (no body; `StatusGet_Request` in the Python client) | `StatusGet_Response` |
 
 ### Internal Endpoints (prefixed with `/_internal/`)
 
@@ -457,6 +475,14 @@ The engine API is split into two OpenAPI 3.0.3 contracts:
 | **Content Resource** | `/_internal/content/get` | POST | `resourceGet_Request` | `resourceGet_Response` |
 | **Content Resource** | `/_internal/content/upsert` | POST | `resourcePost_Request` | `GenericStatus_Response` |
 | **Content Resource** | `/_internal/content/delete` | POST | `resourceDelete_Request` | `GenericStatus_Response` |
+
+### Event ingestion
+
+| Path | Method | Body | Handler |
+|------|--------|------|---------|
+| `/events/enriched` | POST | NDJSON (parsed by `api::event::protocol::parseNDJson`, `event/include/api/event/ndJsonParser.hpp`) | `api::event::handlers::pushEvent(orchestrator, dumper, agentMetadataCache)` |
+
+This route is the exception to the conventions above: it is not protobuf-based (errors are `{"error": "...", "code": 400|500}`), it has no `registerHandlers()` (`main.cpp` adds it directly with `addRoute`), and it lives on the second `httpsrv::Server` ("Event services", socket setting `analysisd.server_enriched_events_socket`, default `engine-ingest-http.sock`), created only when `analysisd.server_enable_event_processing` is true. Its contract is `docs/ref/modules/engine/spec-events.yaml`.
 
 ---
 
@@ -493,12 +519,11 @@ message ExampleAction_Response {
 ### Step 2: Regenerate Proto Code
 
 ```bash
-cd src/engine
-cmake --preset debug -DENGINE_GENERATE_PROTO=ON
-cmake --build ./build --target generate_protobuf_code
+cmake -S src -B src/build -DENGINE_GENERATE_PROTO=ON
+cmake --build src/build --target generate_protobuf_code
 ```
 
-This generates:
+(see [Code Generation](#code-generation) for the preconditions and for switching the option back off). This generates:
 - `source/proto/include/eMessages/example.pb.{cc,h}` (C++)
 - `tools/api-communication/src/api_communication/proto/example_pb2.{py,pyi}` (Python)
 
@@ -524,7 +549,7 @@ adapter::RouteHandler exampleAction(const std::shared_ptr<::example::IExample>& 
 inline void registerHandlers(const std::shared_ptr<::example::IExample>& example,
                              const std::shared_ptr<httpsrv::Server>& server)
 {
-    server->addRoute(httpsrv::Method::POST, "/example/action", exampleAction(example));
+    server->addRoute(httpsrv::Method::POST, "/_internal/example/action", exampleAction(example));
 }
 
 } // namespace api::example::handlers
@@ -598,7 +623,7 @@ endif()
 
 #### Register in the root `api/CMakeLists.txt`
 
-Add `add_subdirectory(${ENGINE_SOURCE_DIR}/api/example)` and link `api::example` to the `api` INTERFACE target.
+Add `add_subdirectory(example)` and link `api::example` to the `api` INTERFACE target. If `main.cpp` includes the umbrella `api/handlers.hpp`, add the new header there too.
 
 ### Step 4: Add the Python Endpoint Route
 
@@ -610,7 +635,7 @@ import api_communication.proto.example_pb2 as example
 # Inside get_endpoint():
     # Example
     if isinstance(message, example.ExampleAction_Request):
-        endpoint = 'example/action'
+        endpoint = '_internal/example/action'
 ```
 
 ### Step 5: Create the Python CLI Command
@@ -638,7 +663,7 @@ The `shared.dumpers` module provides:
 
 #### Command Module: Write-Only Example (no response data)
 
-`src/engine/tools/engine-suite/src/engine_public/cmds/<module>/action.py`
+`src/engine/tools/engine-suite/src/engine_private/cmds/<module>/action.py`
 
 ```python
 import sys
@@ -686,7 +711,7 @@ def configure(subparsers):
 
 #### Command Module: Read Example (returns data, YAML/JSON output)
 
-`src/engine/tools/engine-suite/src/engine_public/cmds/<module>/get.py`
+`src/engine/tools/engine-suite/src/engine_private/cmds/<module>/get.py`
 
 ```python
 import sys
@@ -795,8 +820,8 @@ def configure(subparsers):
 For a **flat CLI** (e.g., `engine-event-dumper`, `engine-router`) register directly on the root subparsers:
 
 ```python
-from engine_public.cmds.example.action import configure as configure_example_action
-from engine_public.cmds.example.get import configure as configure_example_get
+from engine_router.cmds.example_action import configure as configure_example_action
+from engine_router.cmds.example_get import configure as configure_example_get
 
 # Inside parse_args(), after creating subparsers:
 configure_example_action(subparsers)
@@ -960,7 +985,7 @@ INSTANTIATE_TEST_SUITE_P(
 Use this checklist when adding or modifying an endpoint:
 
 - [ ] **Proto**: Define/update messages in `src/engine/source/proto/src/<domain>.proto`
-- [ ] **Proto regen**: Run `cmake --build ./build --target generate_protobuf_code`
+- [ ] **Proto regen**: Run `cmake --build src/build --target generate_protobuf_code` (configured with `-DENGINE_GENERATE_PROTO=ON`)
 - [ ] **C++ handler**: Create factory function returning `adapter::RouteHandler`
 - [ ] **C++ registration**: Add route in `registerHandlers()` inline function
 - [ ] **C++ CMake**: Add/update `CMakeLists.txt` for the handler module
@@ -985,5 +1010,5 @@ Use this checklist when adding or modifying an endpoint:
 | Python endpoint routing | `src/engine/tools/api-communication/src/api_communication/endpoints.py` |
 | Python API client | `src/engine/tools/api-communication/src/api_communication/client.py` |
 | Default socket path | `src/engine/tools/engine-suite/src/shared/default_settings.py` |
-| OpenAPI specs | `docs/ref/modules/engine/{public-api,private-api}.yaml` |
+| OpenAPI specs | `docs/ref/modules/engine/{public-api,private-api,spec-events}.yaml` |
 | CMake proto option | `src/engine/CMakeLists.txt` (`ENGINE_GENERATE_PROTO`) |

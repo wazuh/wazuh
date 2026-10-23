@@ -44,6 +44,7 @@ relayed back to the agent IS the session result — no acks, no retransmission, 
   scan lane, agent deletion, transport, startup gate, shutdown, and the design decisions
 - [API Reference](api-reference.md) - the routes, their statuses and their bodies
 - [Configuration](configuration.md) - the internal options, their ranges and their defaults
+- [Metrics](metrics.md) - the `GET /metrics` catalog, each metric with the option it helps size
 - [Schemas](flatbuffers.md) - the FullSession FlatBuffers contract
 - [Test Tools](test-tools.md) - the UDS drivers (smoke sender, agent-deletion driver), the
   integration test driver and the QA suite
@@ -97,9 +98,9 @@ agent's documents). The situations an operator will recognize:
 
 ## FAQ (operations)
 
-- **Why am I seeing `503`s under load?** Four gates shed on purpose rather than queueing
-  unboundedly: the connection cap, the in-flight byte budget, the pipeline's admission queue, and
-  the VD lane's capacity — see the
+- **Why am I seeing `503`s under load?** Five gates shed on purpose rather than queueing
+  unboundedly: the connection cap, the in-flight byte budget, the per-agent cap on pending
+  sessions, the pipeline's admission queue, and the VD lane's capacity — see the
   [503 troubleshooting entry](configuration.md#requests-are-answered-503-under-load) for which
   option matches which gate. Sheds are expected backpressure: agents retry on their own.
 - **What does `Retry-After` mean?** Only one `503` carries it: the CVE feed is still downloading,
@@ -150,7 +151,7 @@ agent's documents). The situations an operator will recognize:
 Two in-repo companions to these pages (plain paths — they live outside this book):
 
 - `src/wazuh_modules/inventory_sync_server/README.md` — the developer's map of the module: the
-  functional/non-functional requirements catalog, the full set of design decisions (D1–D24), the
+  functional/non-functional requirements catalog, the full set of design decisions (D1–D30), the
   annotated schema, the developer FAQ, and where to touch what.
 - `tools/manager_benchmark/` — the load harness: the same wire as a real fleet over UDS or
   through remoted, the `contract_*` scenarios that pin this module's `400`/`413`/`503` contracts,

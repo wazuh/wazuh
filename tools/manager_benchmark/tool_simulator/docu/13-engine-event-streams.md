@@ -13,9 +13,11 @@ Source of truth: `src/remoted/remoted_module/src/endpoints/statelessEndpoint.{hp
 
 `POST /stateless`, HTTPS/1517, authenticated by the same gateway as everything else (see
 [04-wire-protocol.md](04-wire-protocol.md)): `protocol-version: 1` plus the `wazuh-agent+jwt`
-bearer `Authorization` (identity only; the body is not part of authentication). It exists **only in
-`agent` mode** — there is no Unix-socket equivalent, because the engine ingress is remoted's own
-downstream, not this module's.
+bearer `Authorization` (identity only; the body is not part of authentication). remoted relays the
+batch to the engine's ingest socket (`queue/sockets/engine-ingest-http.sock`, `ANLSYS_ENRICH_SOCK`
+in `src/shared/include/defs.h`; `POST /events/enriched`). It exists **only in `agent` mode** — the
+sender has no Unix-socket equivalent, because the engine ingress is remoted's own downstream, not
+`inventory_sync_server`'s. Its body is never compressed.
 
 ## The body: an H/E batch
 
@@ -29,9 +31,10 @@ E 1:/var/log/syslog:Oct  6 14:02:12 host sudo: pam_unix(sudo:session): session o
 ```
 
 - The **`H ` line** carries a JSON object whose `/wazuh/agent/id` remoted cross-checks against the
-  authenticated identity: a mismatch is `400`, exactly like a `/stateful` identity mismatch is
-  `403`. The sender **MUST** put the agent's own id there, or the batch is rejected before it
-  reaches the engine.
+  authenticated identity, as the same string byte for byte (`001` is not `1`): a mismatch is `400`,
+  as a `/stateful` identity mismatch is `403`. The sender writes exactly
+  `H {"wazuh":{"agent":{"id":"<id>"}}}` with the id it signs with, so the batch reaches the
+  engine.
 - Each **`E ` line** is one event: `E <location-id>:<location>:<raw log line>`. The `<location>` is
   the source path the events belong to (`/var/log/syslog`, a Windows channel name, …), and the
   remainder is the raw line verbatim. A lane's engine source (a sample log file) provides these
@@ -47,8 +50,12 @@ smaller set of codes than `/stateful`:
 |---|---|---|
 | `202` | The engine enqueued the batch (empty body). NOT "fully processed" | Count as success; record latency and the event count (`stateless_*` has no byte counter) |
 | `400` | Invalid batch (missing/malformed `H` line, identity mismatch) | Count, then invalidate the run: no scenario sends a deliberately invalid batch, so it is a sender bug |
-| `413` | Batch over the body cap | Count; the sender **MUST** size batches under the cap: remoted's authenticated-body cap, `remoted.auth_max_body_size` (5 MiB default). Past the 10 MiB transport cap there is no `413`, only a closed connection (a transport error) |
+| `413` | Batch over the body cap | Count. The sender does not size batches: `events_per_batch` must keep each one under remoted's authenticated-body cap, `remoted.auth_max_body_size` (5 MiB default). Past the 10 MiB transport cap there is no `413`, only a closed connection (a transport error) |
 | `503` | Engine unreachable, downstream timeout, or a 5xx from it | Count as backpressure; **MUST NOT** retry |
+| any other | Not in remoted's contract for this route | Count in `stateless_other` |
+
+A transport error is counted in `transport_errors` and ends that pass over the file (the rest of its
+batches are not sent).
 
 Note the success code is **`202`**, not `200`: the engine ingest is fire-and-forget from the agent's
 point of view, so a `202` says "accepted", and the sender **MUST** count it as its own success
@@ -80,5 +87,7 @@ Three rules keep an event lane honest:
 
 The step needs `engine` (the sample file, relative to the scenario file) and `location`;
 `events_per_second` and `events_per_batch` default to `0` (unlimited, and the whole file in one
-batch). A sample file that cannot be read sends nothing and is not reported, so check `events_sent`
-(`--validate` does catch a path that does not exist).
+batch; negative values are refused, and both fields are refused on any other step kind). The file is
+read once per run and cached, one line per event (lines up to 1 MiB). A sample file that cannot be
+read, or is empty, sends nothing and is not reported, so check `events_sent` (the loader does refuse
+a path that does not exist).
