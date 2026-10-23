@@ -132,6 +132,9 @@
 | [#39407](https://github.com/wazuh/wazuh/issues/39407) | Added Enroll and Update CA actions to the Windows agent tray GUI (`win32ui`), enrolling or refreshing the trust anchor from a pasted token. |
 | [#40349](https://github.com/wazuh/wazuh/pull/40349) | Added the `wazuh_modules.socket_timeout` internal option (default 1 s), bounding how long a local client of `wazuh-modulesd` can stay silent while sending its request or reading the reply. |
 | [#37844](https://github.com/wazuh/wazuh/issues/37844) | The FIM synchronization queue flush batch size, flush interval and WAL auto-checkpoint threshold can now be set through internal options; the defaults are unchanged. |
+| [#37532](https://github.com/wazuh/wazuh/issues/37532) | Added a limit on how many files each container may keep in the file integrity database. |
+| [#37532](https://github.com/wazuh/wazuh/issues/37532) | Added a limit on how much each container reports to the manager. |
+| [#37532](https://github.com/wazuh/wazuh/issues/37532) | Added an optional limit on how many containers report to the manager. |
 
 #### Changed
 
@@ -164,6 +167,7 @@
 | [#40121](https://github.com/wazuh/wazuh/issues/40121) | Windows installer lines in `ossec.log` use the agent's `yyyy/mm/dd hh:mm:ss` timestamp. |
 | [#40349](https://github.com/wazuh/wazuh/pull/40349) | Changed the AWS module to pass inline `access_key`/`secret_key` to its script through the environment instead of the command line. |
 | [#40531](https://github.com/wazuh/wazuh/issues/40531) | Aligned `host.os.kernel`, `host.os.display_version` and `host.os.full` in the syscollector system inventory with the inventory schema. |
+| [#37532](https://github.com/wazuh/wazuh/issues/37532) | Raised the default file integrity database ceiling from 100,000 to 300,000 entries, so database-full warnings now appear later. |
 | [#37532](https://github.com/wazuh/wazuh/issues/37532) | Moved every container runtime security setting into a single `container_security` configuration block. |
 | [#37532](https://github.com/wazuh/wazuh/issues/37532) | Stopped scanning container monitored directories on the host filesystem as well. |
 | [#37532](https://github.com/wazuh/wazuh/issues/37532) | Made container file monitoring and container inventory opt-in and independently switchable. |

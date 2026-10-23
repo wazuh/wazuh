@@ -390,6 +390,23 @@ Capping the list would therefore **delete** each withheld container's data rathe
 and re-create it the moment the cap moved. Withholding and deleting are opposite outcomes reached
 by one plausible shortcut, so it is pinned by a test that fails if anyone takes it.
 
+**Admission loss retracts the manager copy, not local collection.** This is not the
+list-shortening shortcut above: the full known-container list is preserved, no local
+rows are removed, and no lifecycle `removed` event is fabricated. FIM and syscollector
+explicitly send stateful DELETEs for reported rows of de-admitted containers, then
+demote their local flags to `sync=0` and release their document counts. At startup,
+stored flags are reconciled too, since the previous in-memory admission set is gone.
+Re-admission promotes the retained rows again, including unchanged rows and unlimited
+document budgets. Admission is resolved before the first FIM walk using one connector
+listing, reused for stale-container cleanup so its one-shot warm-up guard is not spent twice.
+
+**FIM reporting flags are durable.** Granted rows are marked `sync=1` after their
+scoped transaction closes (immediately after a direct reconcile upsert). Container
+counts start from committed container-scoped flags, independently of host counts.
+Recovery uses `container_id:path` ids for container files and bare paths for host files.
+The post-baseline promotion pass fills freed document slots without requiring another
+file change, and a per-pass warning exposes reporting attempts refused by the document budget.
+
 **How the containers are chosen.** Sticky, with the lowest id filling free slots. There is no
 creation time anywhere in the record to rank by — `startedAt` is the start of the *current* run, it
 resets on restart, and it is absent for a stopped Kubernetes container — and walk order is
@@ -420,3 +437,23 @@ loss, not as a cap working, so it is opt-in until product states a supported num
 cap says, so `file_entry_limit` (300000) and `container_file_entry_limit` (30000) remain the only
 ceilings on storage. A cap of N containers bounds the *sync* volume, not the database — and it does
 not reduce scan cost either, since withheld containers are still walked.
+
+### Remaining follow-ups after review triage
+
+- Recovery's whole-index DataClean followed by a `WHERE sync=1` resend needs a
+  separate container recovery policy; the id collision fix does not redesign recovery.
+- A truncated baseline suppresses delete detection but resets its per-pass row count.
+  Unrefreshed rows can survive and accumulate beyond the per-container row ceiling;
+  the node-wide file-entry ceiling remains the backstop. Fixing this must retain
+  incomplete-scan delete safety rather than deleting and refilling blindly.
+- Measure syscollector's per-scan promotion queries and time under `m_limitsMutex`
+  before optimizing. Startup document-count initialization is not a per-scan cost.
+- A baseline-pipeline regression probe also exposed a pre-existing syscollector
+  partial-scan defect: `updateChanges(..., detectDeletions=false)` still opens a
+  scoped DBSync transaction. Closing it can remove unrefreshed rows without
+  DELETE callbacks. This needs its own incomplete-scan safety fix; it is not
+  caused by admission retraction.
+- Publish operator documentation for `fim.container_file_limit`, the eleven
+  `syscollector.container_*_limit` options, `containers.synced_limit`, and the local
+  `syscheck.container_file_entry_limit` storage ceiling. Reporting limits do not
+  reduce local collection or scanning cost; zero reporting limits mean unlimited.
