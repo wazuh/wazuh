@@ -1017,6 +1017,43 @@ TEST_F(ContainerImagesDBTest, AStopMidScanStoresNothing)
     EXPECT_EQ(storedPackages(m_dbPath), 8U);
 }
 
+TEST_F(ContainerImagesDBTest, AStopAfterTheLastReferenceStoresNothing)
+{
+    // The stop lands while the last reference is being read, so no check before a
+    // reference is left to catch it. What the scan collected still has to stay out of the
+    // store, or the inventory it replaces is reported as deleted.
+    ContainerImagesConfig config;
+    config.references = {{ReferenceType::Archive, "/images/a"}};
+
+    const auto db {std::make_shared<ContainerImagesDB>(m_dbPath)};
+
+    {
+        ContainerImagesImpl seed(config, [](const ConfiguredReference & reference, const std::string&, const ReaderContext&)
+        {
+            return std::unique_ptr<IImageReader>(
+                       std::make_unique<OutcomeReader>(ImageReadResult::success({recordAt(reference.location, 4)})));
+        }, db);
+        seed.scanOnce();
+    }
+
+    ASSERT_EQ(storedPackages(m_dbPath), 4U);
+
+    ContainerImagesImpl* self {nullptr};
+    auto stopping = [&](const ConfiguredReference & reference, const std::string&, const ReaderContext&) -> std::unique_ptr<IImageReader>
+    {
+        self->stop();
+
+        return std::make_unique<OutcomeReader>(ImageReadResult::success({recordAt(reference.location, 1)}));
+    };
+
+    ContainerImagesImpl impl(config, stopping, db);
+    self = &impl;
+
+    EXPECT_EQ(impl.scanOnce(), 0U);
+    EXPECT_EQ(storedReferences(m_dbPath), 1U);
+    EXPECT_EQ(storedPackages(m_dbPath), 4U);
+}
+
 TEST_F(ContainerImagesDBTest, ImplUsesInjectedReaderFactory)
 {
     std::vector<ConfiguredReference> factoryReferences;
@@ -1430,4 +1467,17 @@ TEST_F(ContainerImagesDBTest, CreatedTablesEnforceTheDocumentedPrimaryKeys)
 
     db.syncReferences({reference, makeReference("ubuntu:24.04", {})}, DeltaTally().callback());
     EXPECT_EQ(storedRows(m_dbPath, REFERENCES_TABLE, {"reference_value"}).size(), 2U);
+}
+
+TEST(ContainerImagesConfigTest, TheCredentialLookupIgnoresTheCaseOfTheHost)
+{
+    ContainerImagesConfig config;
+    config.registryAuth.push_back({"GHCR.IO", "ghcr_user", "ghcr_token"});
+
+    const auto* found {config.credentialsFor("ghcr.io")};
+
+    ASSERT_NE(found, nullptr);
+    EXPECT_EQ(found->userKey, "ghcr_user");
+    EXPECT_EQ(config.credentialsFor("ghcr.io.evil"), nullptr);
+    EXPECT_EQ(config.credentialsFor("ghcr"), nullptr);
 }

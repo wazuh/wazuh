@@ -118,7 +118,7 @@ namespace containerimages
 
         // Reset per scan: the ceiling bounds one scan, not the lifetime of the module.
         m_scanBytes = 0;
-        m_refusedCredentialHosts.clear();
+        m_refusedCredentialScopes.clear();
         m_reportedRefusalHosts.clear();
 
         std::vector<ImageReferenceRecord> references;
@@ -126,28 +126,30 @@ namespace containerimages
         std::size_t unreadable {0};
         std::size_t unchanged {0};
 
+        const auto stopRequested = [this]
+        {
+            std::lock_guard<std::mutex> lock {m_mutex};
+            return m_stopRequested;
+        };
+
         for (const auto& configured : m_config.references)
         {
+            // Checked before each reference, and once more after the last one. A remote
+            // reader streaming when the stop arrives fails its own reference, and an
+            // archive reader runs to completion (its work is bounded by its own caps), so
+            // a stop landing after the last reference still has to keep the scan from
+            // syncing what it collected.
+            if (stopRequested())
             {
-                // Checked once per reference rather than continuously inside a reader: a
-                // reader already in progress runs to completion (bounded work is the
-                // reader's own job, see the caps in ArchiveImageReader), but a stop that
-                // lands mid-scan stops the scan from starting any reference it has not
-                // reached yet, instead of reading every configured source regardless.
-                std::lock_guard<std::mutex> lock {m_mutex};
-
-                if (m_stopRequested)
-                {
-                    // Abandoned, not finished. What was collected so far describes only the
-                    // references the scan reached, and storing it would report every
-                    // reference it never got to as deleted.
-                    logDebug("Stop requested, abandoning the scan without storing its partial result.");
-                    return 0;
-                }
+                // Abandoned, not finished. What was collected so far describes only the
+                // references the scan reached, and storing it would report every
+                // reference it never got to as deleted.
+                logDebug("Stop requested, abandoning the scan without storing its partial result.");
+                return 0;
             }
 
             auto stored {m_db->loadStored(referenceTypeName(configured.type), configured.location)};
-            const ReaderContext context {&m_config, m_credentials.get(), &m_scanBytes, &m_stopFlag, &m_refusedCredentialHosts, &m_reportedRefusalHosts};
+            const ReaderContext context {&m_config, m_credentials.get(), &m_scanBytes, &m_stopFlag, &m_refusedCredentialScopes, &m_reportedRefusalHosts};
             const auto reader {m_readerFactory(configured, stored ? stored->configDigest : std::string {}, context)};
 
             if (!reader)
@@ -201,6 +203,12 @@ namespace containerimages
                          ") digest=" + reference.configDigest + ".");
                 references.push_back(std::move(reference));
             }
+        }
+
+        if (stopRequested())
+        {
+            logDebug("Stop requested, abandoning the scan without storing its result.");
+            return 0;
         }
 
         const auto deltaCallback = [this](ReturnTypeCallback operation,

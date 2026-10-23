@@ -15,7 +15,9 @@
 
 #include <filesystem>
 #include <fstream>
+#include <set>
 #include <string>
+#include <thread>
 #include <vector>
 
 #ifndef WIN32
@@ -102,6 +104,105 @@ TEST_F(CredentialStoreTest, ReplacingAKeyKeepsTheLatestValue)
     ASSERT_TRUE(store.put(FAMILY, TOKEN_KEY, Secret {"second"}));
 
     EXPECT_EQ(store.get(FAMILY, TOKEN_KEY)->value(), "second");
+}
+#endif
+
+#ifndef WIN32
+TEST_F(CredentialStoreTest, ConcurrentWritersOfDifferentKeysLoseNone)
+{
+    // Each writer reads the store, adds its own key and replaces the store. Without the
+    // lock around that sequence two writers read the same document and the later rename
+    // drops the other's key, while both report success.
+    constexpr int WRITERS {8};
+    constexpr int ROUNDS {10};
+
+    for (int round = 0; round < ROUNDS; ++round)
+    {
+        const auto path {(m_directory / ("round" + std::to_string(round)) / "credentials.json").string()};
+        std::vector<std::thread> threads;
+        std::vector<int> stored(WRITERS, 0);
+
+        for (int writer = 0; writer < WRITERS; ++writer)
+        {
+            threads.emplace_back([&path, &stored, writer]
+            {
+                const AgentCredentialStore store {path};
+                stored[writer] = store.put(FAMILY, "key" + std::to_string(writer), Secret {"value" + std::to_string(writer)}) ? 1 : 0;
+            });
+        }
+
+        for (auto& thread : threads)
+        {
+            thread.join();
+        }
+
+        const AgentCredentialStore store {path};
+
+        for (int writer = 0; writer < WRITERS; ++writer)
+        {
+            ASSERT_EQ(stored[writer], 1) << "round " << round << ", writer " << writer;
+            const auto credential {store.get(FAMILY, "key" + std::to_string(writer))};
+
+            ASSERT_TRUE(credential.has_value()) << "round " << round << ": key" << writer << " was lost";
+            EXPECT_EQ(credential->value(), "value" + std::to_string(writer));
+        }
+    }
+}
+
+TEST_F(CredentialStoreTest, ConcurrentRemovalsAndWritesLoseNoSurvivingKey)
+{
+    const AgentCredentialStore seed {m_path.string()};
+
+    for (int index = 0; index < 4; ++index)
+    {
+        ASSERT_TRUE(seed.put(FAMILY, "old" + std::to_string(index), Secret {"old"}));
+    }
+
+    std::vector<std::thread> threads;
+
+    for (int index = 0; index < 4; ++index)
+    {
+        threads.emplace_back([this, index]
+        {
+            const AgentCredentialStore store {m_path.string()};
+            EXPECT_EQ(store.remove(FAMILY, "old" + std::to_string(index)), RemoveOutcome::Removed);
+        });
+        threads.emplace_back([this, index]
+        {
+            const AgentCredentialStore store {m_path.string()};
+            EXPECT_TRUE(store.put(FAMILY, "new" + std::to_string(index), Secret {"new"}));
+        });
+    }
+
+    for (auto& thread : threads)
+    {
+        thread.join();
+    }
+
+    for (int index = 0; index < 4; ++index)
+    {
+        EXPECT_FALSE(seed.get(FAMILY, "old" + std::to_string(index)).has_value()) << "old" << index;
+        EXPECT_TRUE(seed.get(FAMILY, "new" + std::to_string(index)).has_value()) << "new" << index;
+    }
+}
+
+TEST_F(CredentialStoreTest, NoTemporaryFileIsLeftBehindByAWrite)
+{
+    const AgentCredentialStore store {m_path.string()};
+
+    ASSERT_TRUE(store.put(FAMILY, USER_KEY, Secret {"owner"}));
+    ASSERT_TRUE(store.put(FAMILY, TOKEN_KEY, Secret {TOKEN_VALUE}));
+    ASSERT_EQ(store.remove(FAMILY, USER_KEY), RemoveOutcome::Removed);
+
+    std::set<std::string> names;
+
+    for (const auto& entry : std::filesystem::directory_iterator {m_directory})
+    {
+        names.insert(entry.path().filename().string());
+    }
+
+    EXPECT_EQ(names, (std::set<std::string> {"credentials.json", "credentials.json.lock"}));
+    EXPECT_FALSE(std::filesystem::exists(m_directory / "credentials.json.new"));
 }
 #endif
 

@@ -11,6 +11,7 @@
 #include "wmodules.h"
 #include "wm_container_images.h"
 
+#include <ctype.h>
 #include <errno.h>
 #include <limits.h>
 
@@ -117,6 +118,26 @@ static void parse_registry(const OS_XML *xml, xml_node *registry_node, wm_contai
         mwarn("A '%s' entry at module '%s' names no host, ignoring it.", XML_CI_REGISTRY, WM_CONTAINER_IMAGES_CONTEXT.name);
         OS_ClearNode(children);
         return;
+    }
+
+    // The host is compared with the registry each reference names, so a value that cannot
+    // be a host (a URL, a path, spaces) would be accepted here and never match anything.
+    // A scheme always carries a '/', so one test covers it and a path.
+    bool bare_host = !strchr(host, '/');
+
+    for (const char *c = host; bare_host && *c; c++) {
+        bare_host = !isspace((unsigned char) *c);
+    }
+
+    if (!bare_host) {
+        mwarn("The '%s' entry for '%s' at module '%s' must name a bare host such as 'ghcr.io', without a scheme, a path or whitespace, ignoring it.", XML_CI_REGISTRY, host, WM_CONTAINER_IMAGES_CONTEXT.name);
+        OS_ClearNode(children);
+        return;
+    }
+
+    // Host names are not case sensitive, and the module compares them in lower case.
+    for (char *c = host; *c; c++) {
+        *c = (char) tolower((unsigned char) *c);
     }
 
     // Both keys are needed to authenticate, so an entry with one can never work and is

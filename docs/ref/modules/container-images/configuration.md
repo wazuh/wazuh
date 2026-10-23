@@ -153,7 +153,7 @@ A public repository needs no credential. A private one is read with a user name 
 
 | Element | Meaning |
 |---------|---------|
-| `host` | Registry host the entry applies to. |
+| `host` | Registry host the entry applies to, written as a bare host name such as `ghcr.io`. Stored in lower case, so `GHCR.IO` is read as `ghcr.io`. An entry whose host carries a scheme (`https://ghcr.io`), a path (`ghcr.io/owner`) or whitespace is reported and skipped. |
 | `user_keystore_key` | Name of the key holding the user name. |
 | `passkey_keystore_key` | Name of the key holding the access token. |
 
@@ -182,11 +182,11 @@ wazuh-modulesd:container_images: WARNING: The credential configured for ghcr.io 
 
 The same applies when the registry issues a token for the credential and then answers the manifest request with `401` or `403`, for example because the token lacks the scope the repository needs. The reference is tried once more anonymously, with the same success rule and the same warning.
 
-If the anonymous attempt fails as well, as it does for a private repository, the reference is reported with the error the credential produced, for example `the token request failed: the registry answered 403`. Nothing else triggers the retry: an unreachable registry, throttling, a missing image and a platform mismatch are reported as they are. The anonymous token is used for that reference only and never for another one.
+If the anonymous attempt fails as well, as it does for a private repository, the reference is reported with the error the credential produced, for example `the token request failed: the registry answered 403`. Nothing else triggers the retry: an unreachable registry, throttling, a missing image and a platform mismatch are reported as they are. A manifest answered with `401` is reported as `the registry rejected the credential` when a credential was sent, and as `the registry requires a credential for this reference` when the token was anonymous. The anonymous token is used for that reference only and never for another one.
 
-Once the token endpoint has refused the credential for a host, the later references on that host in the same scan are not sent it. They ask for an anonymous token straight away, so a scan of N public references costs N token requests instead of 2N. A private reference on that host is reported with the reason the registry gave when it refused the credential. The next scan sends the credential again.
+Once the token endpoint has refused the credential for a registry and organization (the first path segment of the repository, `ghcr.io/owner`), the later references under that organization in the same scan are not sent it. They ask for an anonymous token straight away, so a scan of N public references of one organization costs N token requests instead of 2N. A private reference under that organization is reported with the reason the registry gave when it refused the credential. A reference under another organization on the same host still sends the credential, because a registry can answer per organization and one organization's refusal says nothing about another's. The next scan sends the credential again.
 
-A refusal at the manifest, after a token was issued for the credential, is not remembered. It speaks for that one repository, as it does when the credential is not authorized for the organization that owns it, and the same credential may read the other repositories on the host. Each reference on the host still sends the credential and, when its manifest is refused, is tried once more anonymously. The warning above is logged once per scan and host for either kind of refusal.
+A refusal at the manifest, after a token was issued for the credential, is not remembered. It speaks for that one repository, as it does when the credential is not authorized for the organization that owns it, and the same credential may read the other repositories on the host. Each reference on the host still sends the credential and, when its manifest is refused, is tried once more anonymously. The warning above is logged once per scan and host for either kind of refusal, whatever the organization.
 
 No credential value is written to the log at any level, and the configuration dump reports the key names only.
 
@@ -197,6 +197,8 @@ The store keeps the credential out of `ossec.conf`, and therefore out of configu
 It is not encryption at rest. The stored bytes are produced by the same mechanism the manager keystore uses, which keeps the key alongside the value, so anyone able to read the file can recover the credential. What protects it locally is the file's permissions: `queue/credentials/credentials.json`, mode `0640`, owned by root. An attacker who already has root on the agent can read it, exactly as they could read the manager keystore.
 
 Storing a credential is not supported on Windows agents. The module is built there, but its registry support is not, and the store refuses to write a value whose permissions it cannot restrict rather than leaving it readable by every local user. That holds on every platform: when the permissions of the file about to receive the value cannot be restricted, the temporary file is removed, nothing is stored and the keystore tool reports the reason.
+
+Two keystore runs at the same time keep each other's keys. Each run takes an exclusive advisory lock on `queue/credentials/credentials.json.lock` for its whole read, change and replace, writes the new content to a temporary file created exclusively under a unique name in the same directory, and renames it over the store. The temporary file is removed on every failure path. The lock file stays in the directory. Windows takes no lock, since no value is written there.
 
 ### Certificate Verification
 
@@ -234,7 +236,7 @@ A remote reference is bounded so one slow or hostile registry cannot hold the mo
 | Time without progress per layer | 5 min | A registry that accepts a layer request and then stops sending. The wait restarts whenever bytes arrive and does not run while the transfer is suspended for the agent to catch up, so a large layer is bounded by its byte ceiling and not by the time it takes. A transfer that stays under 1 KiB/s for 30 s is ended earlier by the stall detector. |
 | Attempts per request | 4 | With a doubling back-off from one second, honouring `Retry-After` when the registry sends one. Applies to manifests, to the token exchange and to layers: a layer that fails after its transfer began is started again from its first byte, and the bytes each attempt delivered count against the image's byte ceiling. A transfer ended by a stop request, by the no-progress bound or by the byte ceiling is not retried. A manifest, token or other metadata request that fails the same way on every attempt is attempted once: a certificate that does not verify against the configured bundle, a bundle that cannot be loaded, a response over the 16 MiB limit, a redirect loop, or an address or protocol that cannot be used. Connection, name resolution, timeout, send and receive errors and partial transfers are retried. A layer whose size in the manifest exceeds what is left of the image's byte ceiling is not transferred: the reference fails at once, naming the layer size and the ceiling. A retry that would need more than what is left is not started, and the reference is reported with the cause of the failed attempt. |
 
-A scan that is asked to stop abandons what it is reading, including a layer transfer in progress and a layer being decompressed. This matters because every module shares one shutdown budget: a reference that would not return would delay every other module's clean stop.
+A scan that is asked to stop abandons what it is reading, including a layer transfer in progress and a layer being decompressed. The reference being read fails whatever point its layer had reached, including a stop that lands between two entries of the last layer, and a stop that arrives after the last reference has been read still keeps the scan from storing anything. The stored inventory stays as the previous scan left it, so a stop never turns into packages reported as deleted. This matters because every module shares one shutdown budget: a reference that would not return would delay every other module's clean stop.
 
 ### Network Requirements
 
@@ -328,7 +330,7 @@ An invalid module setting, meaning `enabled`, `scan_on_start` or `interval`, cau
 
 Anything wrong with a single entry inside `<references>` costs that entry only: it is logged with a warning and ignored, and the remaining references are still configured. This covers an entry name that is not one of the three types, and an entry whose value is empty. Unknown elements directly inside `<container_images>` are also logged with a warning and ignored.
 
-The same holds inside `<registry_auth>`: an entry naming no host, an entry naming no keystore key, and an unrecognised element are each reported and skipped, and the rest of the block is still applied.
+The same holds inside `<registry_auth>`: an entry naming no host, an entry whose host is not a bare host name (it carries a scheme, a path or whitespace), an entry naming no keystore key, and an unrecognised element are each reported and skipped, and the rest of the block is still applied.
 
 A reference entry is skipped rather than rejected because rejecting it invalidates the whole module configuration, which stops `wazuh-modulesd` from starting; since the control script tests every daemon's configuration before starting any of them, a single empty entry would otherwise leave the agent with no daemon running.
 

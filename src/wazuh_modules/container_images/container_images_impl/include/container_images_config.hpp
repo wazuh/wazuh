@@ -11,6 +11,8 @@
 #ifndef _CONTAINER_IMAGES_CONFIG_HPP
 #define _CONTAINER_IMAGES_CONFIG_HPP
 
+#include <algorithm>
+#include <cctype>
 #include <cstdint>
 #include <string>
 #include <vector>
@@ -147,11 +149,19 @@ namespace containerimages
         std::string dbPath {"queue/container_images/db/container_images.db"}; ///< Local inventory DB.
 
         /// @brief The credential entry for a registry host, or nothing when it has none.
+        ///
+        /// Host names are not case sensitive. The parser already lowercases what it reads, so
+        /// this is the second line of defence for an entry that reached the model another way.
         const RegistryCredentials* credentialsFor(const std::string& host) const
         {
+            const auto sameCharacter = [](const char left, const char right)
+            {
+                return std::tolower(static_cast<unsigned char>(left)) == std::tolower(static_cast<unsigned char>(right));
+            };
+
             for (const auto& entry : registryAuth)
             {
-                if (entry.host == host)
+                if (entry.host.size() == host.size() && std::equal(host.begin(), host.end(), entry.host.begin(), sameCharacter))
                 {
                     return &entry;
                 }

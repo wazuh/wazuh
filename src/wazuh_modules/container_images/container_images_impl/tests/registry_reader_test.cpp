@@ -157,6 +157,8 @@ namespace
         std::string retryAfter;
         std::string content;         ///< What the blob serves, an empty tar when left empty.
         std::function<void()> onEnd; ///< Called once the last byte of @ref content was served.
+        std::size_t atOffset {0};    ///< Where @ref onOffset fires, counted in bytes of @ref content.
+        std::function<void()> onOffset; ///< Called once, when the bytes served reach @ref atOffset.
     };
 
     /// @brief A layer blob that needs no network: an empty tar, a scripted body or a scripted failure.
@@ -183,6 +185,13 @@ namespace
 
                     std::copy_n(m_outcome.content.data() + m_sent, served, buffer);
                     m_sent += served;
+
+                    if (m_outcome.onOffset && m_sent >= m_outcome.atOffset)
+                    {
+                        const auto fire {std::move(m_outcome.onOffset)};
+                        m_outcome.onOffset = nullptr;
+                        fire();
+                    }
 
                     if (served > 0 && m_sent == m_outcome.content.size() && m_outcome.onEnd)
                     {
@@ -388,7 +397,7 @@ class RegistryReaderTest : public ::testing::Test
         std::unique_ptr<RegistryImageReader> reader(const std::string& location,
                                                     const std::string& knownDigest = {})
         {
-            const ReaderContext context {&m_config, &m_credentials, &m_scanBytes, &m_stop, &m_refusedHosts, &m_reportedHosts};
+            const ReaderContext context {&m_config, &m_credentials, &m_scanBytes, &m_stop, &m_refusedScopes, &m_reportedHosts};
             auto instance {std::make_unique<RegistryImageReader>(location, knownDigest, context)};
             instance->setTransport(std::unique_ptr<IRegistryTransport>(m_transport));
 
@@ -409,7 +418,7 @@ class RegistryReaderTest : public ::testing::Test
         ContainerImagesConfig m_config;
         StubCredentials m_credentials;
         std::uint64_t m_scanBytes {0};
-        std::map<std::string, std::string> m_refusedHosts; ///< What one scan shares across its references.
+        std::map<std::string, std::string> m_refusedScopes; ///< The registry and organization pairs one scan shares across its references.
         std::set<std::string> m_reportedHosts; ///< The hosts whose refusal the scan already reported.
         std::atomic<bool> m_stop {false};
         ScriptedTransport* m_transport {nullptr}; ///< Owned by the reader once injected.
@@ -1149,7 +1158,7 @@ TEST_F(RegistryCredentialFallbackTest, AManifestRefusedAfterATokenWasIssuedStill
     {
         m_warnings.clear();
         m_transport = new ScriptedTransport();
-        m_refusedHosts.clear();
+        m_refusedScopes.clear();
         m_reportedHosts.clear();
 
         m_transport->sequences.push_back(
@@ -1224,6 +1233,23 @@ TEST_F(RegistryCredentialFallbackTest, APrivateReferenceRefusedWith401AtTheManif
             << m_warnings.front();
 }
 
+TEST_F(RegistryCredentialFallbackTest, AnAnonymousRequestRefusedWith401AtTheManifestSaysACredentialIsRequired)
+{
+    // Nothing was sent, so the registry cannot have rejected a credential.
+    m_config.registryAuth.clear();
+    m_transport->sequences.push_back({"/manifests/1.0", {challenge()}, 0});
+    m_transport->answers.push_back({"/token", json(200, R"({"token":"anonymous-token"})")});
+
+    const auto instance = reader("ghcr.io/owner/app:1.0");
+
+    EXPECT_EQ(instance->discover().status, ReadStatus::Failed);
+    ASSERT_EQ(m_warnings.size(), 1u);
+    EXPECT_NE(m_warnings.front().find("could not be resolved: the registry requires a credential for this reference."),
+              std::string::npos)
+            << m_warnings.front();
+    EXPECT_EQ(m_warnings.front().find("rejected the credential"), std::string::npos) << m_warnings.front();
+}
+
 TEST_F(RegistryCredentialFallbackTest, AManifestRefusedForAnAnonymousTokenIsNotAnotherFallback)
 {
     // No credential is configured, so there is nothing that was refused to take back.
@@ -1271,7 +1297,7 @@ TEST_F(RegistryCredentialFallbackTest, TheRefusalIsReportedOncePerScanAndHost)
     EXPECT_EQ(warningsMentioning("The credential configured for ghcr.io"), 1u);
 
     // The next scan starts with a clean slate and says it again.
-    m_refusedHosts.clear();
+    m_refusedScopes.clear();
     m_reportedHosts.clear();
     m_transport = new ScriptedTransport();
     scriptPublicReference(json(403, ""));
@@ -1282,11 +1308,11 @@ TEST_F(RegistryCredentialFallbackTest, TheRefusalIsReportedOncePerScanAndHost)
     EXPECT_EQ(warningsMentioning("The credential configured for ghcr.io"), 2u);
 }
 
-TEST_F(RegistryCredentialFallbackTest, ARefusedCredentialIsNotSentAgainToTheHostInTheSameScan)
+TEST_F(RegistryCredentialFallbackTest, ARefusedCredentialIsNotSentAgainToTheOrganizationInTheSameScan)
 {
-    // Five public references on one host. Only the first one pays for the refusal, with one
-    // credentialed token request. Every other reference asks for its anonymous token only.
-    constexpr std::size_t REFERENCES {5};
+    // Three public references under one organization. Only the first one pays for the
+    // refusal, with one credentialed token request. The others ask for their anonymous token only.
+    constexpr std::size_t REFERENCES {3};
     std::size_t credentialed {0};
     std::size_t anonymous {0};
 
@@ -1303,7 +1329,7 @@ TEST_F(RegistryCredentialFallbackTest, ARefusedCredentialIsNotSentAgainToTheHost
             scriptPublicReferenceWithoutCredential();
         }
 
-        const auto instance = reader("ghcr.io/owner/app:1.0");
+        const auto instance = reader("ghcr.io/owner/app" + std::to_string(index) + ":1.0");
 
         EXPECT_EQ(instance->discover().status, ReadStatus::Success) << index;
         credentialed += credentialedTokenCalls();
@@ -1313,6 +1339,35 @@ TEST_F(RegistryCredentialFallbackTest, ARefusedCredentialIsNotSentAgainToTheHost
     EXPECT_EQ(credentialed, 1u);
     EXPECT_EQ(anonymous, REFERENCES);
     EXPECT_EQ(warningsMentioning("The credential configured for ghcr.io"), 1u);
+    ASSERT_EQ(m_refusedScopes.size(), 1u);
+    EXPECT_EQ(m_refusedScopes.begin()->first, "ghcr.io/owner");
+}
+
+TEST_F(RegistryCredentialFallbackTest, ARefusalForOneOrganizationDoesNotStopTheCredentialForAnotherOnTheSameHost)
+{
+    scriptPublicReference(json(403, ""));
+
+    {
+        const auto first = reader("ghcr.io/orga/public:1.0");
+        ASSERT_EQ(first->discover().status, ReadStatus::Success);
+    }
+
+    ASSERT_EQ(m_refusedScopes.size(), 1u);
+    EXPECT_EQ(m_refusedScopes.begin()->first, "ghcr.io/orga");
+
+    // A private reference under another organization of the same host still sends it.
+    m_warnings.clear();
+    m_transport = new ScriptedTransport();
+    m_transport->sequences.push_back({"/manifests/1.0", {challenge(), json(200, MANIFEST)}, 0});
+    m_transport->answers.push_back({"/token", json(200, R"({"token":"private-token"})")});
+    m_transport->answers.push_back({"/blobs/sha256:cccc3333", json(200, configBlob())});
+
+    const auto second = reader("ghcr.io/orgb/private:1.0");
+
+    EXPECT_EQ(second->discover().status, ReadStatus::Success);
+    EXPECT_EQ(credentialedTokenCalls(), 1u);
+    EXPECT_EQ(anonymousTokenCalls(), 0u);
+    EXPECT_TRUE(m_warnings.empty());
 }
 
 TEST_F(RegistryCredentialFallbackTest, ThePresentedCredentialIsRememberedPerScanOnly)
@@ -1325,7 +1380,7 @@ TEST_F(RegistryCredentialFallbackTest, ThePresentedCredentialIsRememberedPerScan
     }
 
     // The next scan starts with nothing refused, so the credential is presented again.
-    m_refusedHosts.clear();
+    m_refusedScopes.clear();
     m_reportedHosts.clear();
     m_transport = new ScriptedTransport();
     m_transport->sequences.push_back({"/manifests/1.0", {challenge(), json(200, MANIFEST)}, 0});
@@ -1391,7 +1446,7 @@ TEST_F(RegistryCredentialFallbackTest, ARefusalAtTheManifestDoesNotStopThePrivat
         ASSERT_EQ(first->discover().status, ReadStatus::Success);
     }
 
-    EXPECT_TRUE(m_refusedHosts.empty());
+    EXPECT_TRUE(m_refusedScopes.empty());
 
     // The same credential reads the private repository of another owner.
     m_warnings.clear();
@@ -1933,6 +1988,49 @@ TEST_F(RegistryLayerContentTest, AStopDuringALongDecompressedReadEndsTheReferenc
     const auto result {instance->discover()};
 
     EXPECT_EQ(result.status, ReadStatus::Failed);
+    EXPECT_EQ(warningsMentioning("could not be read: the module was asked to stop."), 1u);
+}
+
+TEST_F(RegistryLayerContentTest, AStopBetweenTwoTarEntriesOfTheLastLayerFailsTheReference)
+{
+    // The stop lands exactly where the first entry ends. The cut reads as the end of the
+    // layer, which then looks complete with only the entries before it, so the reference
+    // is failed on the stop alone.
+    const auto first {imagefixtures::tarMember("var/lib/dpkg/status", imagefixtures::dpkgStanza("bash", "5.2.15"))};
+    const auto layer {first + imagefixtures::tarMember("etc/hostname", "host\n") + imagefixtures::tarEnd()};
+
+    auto blob {serving(layer)};
+    blob.atOffset = first.size();
+    blob.onOffset = [this]
+    {
+        m_stop = true;
+    };
+
+    const auto instance = layerReader({blob});
+    const auto result {instance->discover()};
+
+    EXPECT_EQ(result.status, ReadStatus::Failed);
+    EXPECT_TRUE(result.records.empty()) << "no inventory is produced for a stopped reference";
+    EXPECT_EQ(warningsMentioning("could not be read: the module was asked to stop."), 1u);
+}
+
+TEST_F(RegistryLayerContentTest, AStopThatLandsAsTheLayerEndsFailsTheReference)
+{
+    // The stop lands as the closing block of the layer is read, so nothing was cut and the
+    // layer is complete. The reference is failed all the same: a stop is never followed by
+    // a stored result.
+    const auto member {imagefixtures::tarMember("var/lib/dpkg/status", imagefixtures::dpkgStanza("bash", "5.2.15"))};
+
+    auto blob {serving(member + imagefixtures::tarEnd())};
+    blob.atOffset = member.size() + imagefixtures::TAR_BLOCK;
+    blob.onOffset = [this]
+    {
+        m_stop = true;
+    };
+
+    const auto instance = layerReader({blob});
+
+    EXPECT_EQ(instance->discover().status, ReadStatus::Failed);
     EXPECT_EQ(warningsMentioning("could not be read: the module was asked to stop."), 1u);
 }
 
