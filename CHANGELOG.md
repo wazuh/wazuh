@@ -28,12 +28,16 @@
 
 | Issue | Comment |
 |-------|---------|
+| [#37532](https://github.com/wazuh/wazuh/issues/37532) | Added a limit on how many files each container may keep in the file integrity database. |
+| [#37532](https://github.com/wazuh/wazuh/issues/37532) | Added a limit on how much each container reports to the manager. |
+| [#37532](https://github.com/wazuh/wazuh/issues/37532) | Added an optional limit on how many containers report to the manager. |
 
 #### Changed
 
 | Issue | Comment |
 |-------|---------|
 | [#38171](https://github.com/wazuh/wazuh/issues/38171) | Compiled syscollector normalizer and data_provider parser regex once instead of on every call. |
+| [#37532](https://github.com/wazuh/wazuh/issues/37532) | Raised the default file integrity database ceiling from 100,000 to 300,000 entries, so database-full warnings now appear later. |
 | [#37532](https://github.com/wazuh/wazuh/issues/37532) | Moved every container runtime security setting into a single `container_security` configuration block. |
 | [#37532](https://github.com/wazuh/wazuh/issues/37532) | Stopped scanning container monitored directories on the host filesystem as well. |
 | [#37532](https://github.com/wazuh/wazuh/issues/37532) | Made container file monitoring and container inventory opt-in and independently switchable. |
