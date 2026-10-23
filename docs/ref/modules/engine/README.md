@@ -2545,9 +2545,12 @@ Total number of unclassified events for a given space.
 
 ##### `space.<space>.events.discarded`
 
-Total number of discarded events for a given space.
+Total number of events of a given space dropped by the discarded events filter in pre-enrichment: events a
+decoder marked with the `discard_events` helper while the policy's `index_discarded_events` is `false`. Events
+marked while it is `true` are indexed and not counted; events rejected by pre- or post-filters are counted only in
+the two metrics below.
 
-**Used for:** measuring overall event loss at the space level.
+**Used for:** measuring how many events the space's decoders deliberately discard.
 
 ---
 
