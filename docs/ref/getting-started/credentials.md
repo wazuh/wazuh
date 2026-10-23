@@ -236,6 +236,15 @@ The installer never fails the package transaction: what it cannot resolve at ins
 time you start the service, so the start is where the verdict counts. A DEB reinstall from the config-files state
 (after `apt remove`) runs as an install when `certs/remoted.pem` is missing.
 
+A fresh package install relays the resolver's problem lines after its progress lines and ends with its next
+steps, which follow what the resolver did rather than what it was asked: `Server API passwords saved in
+/etc/wazuh-manager/export/credentials.env (readable by root only).` only when that file exists (a worker publishes
+none, and a run stopped by an `UNSAFE` or `INVALID` entry writes nothing at all), then, when any `MISSING`,
+`INVALID` or `UNSAFE` line was reported or the resolver did not exit `0`, `Credential resolution is incomplete: the
+manager does not start until every MISSING, INVALID or UNSAFE entry reported above is resolved.` with the command
+to repeat once they are fixed, `sudo /var/wazuh-manager/bin/wazuh-manager-resolve-credentials --install`: it
+is the only mode that issues what the install could not, and on material already in place it only validates.
+
 A fresh install with no indexer on the host:
 
 ```text
