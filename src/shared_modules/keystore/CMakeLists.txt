@@ -6,7 +6,7 @@ enable_testing()
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_CXX_FLAGS "-fPIC")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC")
 
 if(FSANITIZE)
   set(CMAKE_CXX_FLAGS_DEBUG "-g -fsanitize=address,leak,undefined")
@@ -45,6 +45,10 @@ target_link_libraries(keystore rocksdb wazuhext)
 add_executable(wazuh-keystore src/main.cpp)
 
 target_link_libraries(wazuh-keystore keystore)
+
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND CMAKE_POSITION_INDEPENDENT_CODE)
+    set_property(TARGET wazuh-keystore APPEND_STRING PROPERTY LINK_FLAGS " -pie")
+endif()
 
 set_target_properties(wazuh-keystore PROPERTIES
     BUILD_RPATH_USE_ORIGIN TRUE

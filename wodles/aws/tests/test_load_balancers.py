@@ -5,7 +5,9 @@
 import csv
 import os
 import sys
-from unittest.mock import patch, mock_open
+from unittest.mock import MagicMock, patch, mock_open
+
+import pytest
 
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '.'))
 import aws_utils as utils
@@ -222,3 +224,96 @@ def test_aws_nlb_bucket_load_information_from_file(mock_sts_client):
         result = instance.load_information_from_file(utils.TEST_LOG_KEY)
         assert result[0]['client_ip'] == tsv_reader[0]['client_port']
         assert result[0]['destination_ip'] == tsv_reader[0]['destination_port']
+
+
+@pytest.mark.parametrize('retain_db_records, expected_deleted_keys', [
+    (0, ['eu-west-1/2019/03/29', 'eu-west-1/2019/03/30', 'us-east-1/2019/03/30', 'us-east-1/2019/03/31']),
+    (5, ['eu-west-1/2019/03/29', 'eu-west-1/2019/03/30']),
+    (9, []),
+])
+@patch('wazuh_integration.WazuhIntegration.get_sts_client')
+def test_aws_lb_bucket_db_maintenance_keeps_late_arrival_window(mock_sts, custom_database, retain_db_records,
+                                                                expected_deleted_keys):
+    """Test 'db_maintenance' keeps the rows inside the rewound marker window of each region, even when other
+    regions of the bucket sort after them."""
+    instance = utils.get_mocked_bucket(class_=load_balancers.AWSALBBucket)
+    instance.db_connector = custom_database
+    instance.db_cursor = custom_database.cursor()
+    instance.db_cursor.execute(instance.sql_create_table.format(table_name=instance.db_table_name))
+    instance.retain_db_records = retain_db_records
+
+    service_prefix = instance.get_service_prefix(utils.TEST_ACCOUNT_ID)
+    keys = {f'{region_day}': f'{service_prefix}{region_day}/{utils.TEST_ACCOUNT_ID}_elb_{region_day[-2:]}.log.gz'
+            for region_day in ['eu-west-1/2019/03/29', 'eu-west-1/2019/03/30', 'eu-west-1/2019/03/31',
+                               'eu-west-1/2019/04/01', 'us-east-1/2019/03/30', 'us-east-1/2019/03/31',
+                               'us-east-1/2019/04/01', 'us-east-1/2019/04/02']}
+    # A key of another bucket with the same path, out of this service prefix, is never deleted
+    keys['other'] = f'AWSLogs/other/{utils.TEST_ACCOUNT_ID}/elasticloadbalancing/eu-west-1/2019/03/01/other.log.gz'
+    for key in keys.values():
+        instance.db_cursor.execute(instance.sql_mark_complete.format(table_name=instance.db_table_name), {
+            'bucket_path': instance.bucket_path, 'aws_account_id': utils.TEST_ACCOUNT_ID,
+            'log_key': key, 'created_date': ''})
+
+    instance.db_maintenance(aws_account_id=utils.TEST_ACCOUNT_ID, aws_region=utils.TEST_REGION)
+
+    remaining_keys = {row[0] for row in instance.db_cursor.execute(f'SELECT log_key FROM {instance.db_table_name}')}
+    assert remaining_keys == {key for region_day, key in keys.items() if region_day not in expected_deleted_keys}
+
+
+@patch('wazuh_integration.WazuhIntegration.get_sts_client')
+@patch('aws_tools.error')
+def test_aws_lb_bucket_db_maintenance_handles_exceptions(mock_error, mock_sts):
+    """Test 'db_maintenance' handles the exceptions raised by the database."""
+    instance = utils.get_mocked_bucket(class_=load_balancers.AWSALBBucket)
+    instance.db_cursor = MagicMock()
+    instance.db_cursor.execute.side_effect = Exception
+
+    instance.db_maintenance(aws_account_id=utils.TEST_ACCOUNT_ID)
+
+    mock_error.assert_called_once()
+
+
+@patch('wazuh_integration.WazuhIntegration.get_sts_client')
+def test_aws_lb_bucket_already_processed_uses_log_account(mock_sts, custom_database):
+    """Test 'already_processed' looks for the account of the log path, which is the one 'mark_complete' stores,
+    instead of the account of the credentials."""
+    instance = utils.get_mocked_bucket(class_=load_balancers.AWSALBBucket)
+    instance.aws_account_id = '999999999999'
+    instance.db_connector = custom_database
+    instance.db_cursor = custom_database.cursor()
+    instance.db_cursor.execute(instance.sql_create_table.format(table_name=instance.db_table_name))
+
+    with patch.object(instance, 'get_creation_date', return_value=0):
+        instance.mark_complete(utils.TEST_ACCOUNT_ID, utils.TEST_REGION, {'Key': utils.TEST_LOG_KEY})
+
+    assert instance.already_processed(utils.TEST_LOG_KEY, utils.TEST_ACCOUNT_ID, utils.TEST_REGION)
+    assert not instance.already_processed(utils.TEST_LOG_KEY, instance.aws_account_id, utils.TEST_REGION)
+
+
+@patch('aws_tools.get_script_arguments')
+@patch('wazuh_integration.WazuhIntegration.get_sts_client')
+def test_aws_lb_bucket_db_maintenance_then_build_s3_filter_args_keeps_late_arrival_window(
+        mock_sts, mock_get_script_arguments, custom_database):
+    """Test the marker of the fetch after 'db_maintenance' still starts at the day before the last key processed of
+    the region, so a late file of that day from a load balancer sorting first is listed."""
+    mock_get_script_arguments.return_value.type = 'alb'
+    instance = utils.get_mocked_bucket(class_=load_balancers.AWSALBBucket, bucket=utils.TEST_BUCKET)
+    instance.db_connector = custom_database
+    instance.db_cursor = custom_database.cursor()
+    instance.db_cursor.execute(instance.sql_create_table.format(table_name=instance.db_table_name))
+
+    full_prefix = instance.get_full_prefix(utils.TEST_ACCOUNT_ID, utils.TEST_REGION)
+    for day in ['2019/03/30', '2019/03/31', '2019/04/01']:
+        for index in range(instance.retain_db_records // 2):
+            with patch.object(instance, 'get_creation_date', return_value=0):
+                instance.mark_complete(utils.TEST_ACCOUNT_ID, utils.TEST_REGION, {
+                    'Key': f'{full_prefix}{day}/{utils.TEST_ACCOUNT_ID}_elasticloadbalancing_{utils.TEST_REGION}_'
+                           f'app.bbb.{index:04d}.log.gz'})
+
+    instance.db_maintenance(aws_account_id=utils.TEST_ACCOUNT_ID, aws_region=utils.TEST_REGION)
+    filter_args = instance.build_s3_filter_args(utils.TEST_ACCOUNT_ID, utils.TEST_REGION)
+
+    assert instance.db_count_custom(utils.TEST_ACCOUNT_ID) < instance.retain_db_records // 2 * 3
+    assert filter_args['StartAfter'] == f'{full_prefix}2019/03/31'
+    late_key = f'{full_prefix}2019/03/31/{utils.TEST_ACCOUNT_ID}_elasticloadbalancing_{utils.TEST_REGION}_app.aaa.log.gz'
+    assert late_key > filter_args['StartAfter']

@@ -30,6 +30,25 @@
 int wm_task_manager_init(wm_task_manager *task_config);
 void* wm_task_manager_main(wm_task_manager* task_config);
 void wm_task_manager_destroy(wm_task_manager* task_config);
+
+// Records closed descriptors, so the listener tests can check the client is closed exactly once.
+static int closed_fds[4];
+static size_t closed_fds_count;
+
+int __wrap_close(int fd) {
+    if (closed_fds_count < sizeof(closed_fds) / sizeof(closed_fds[0])) {
+        closed_fds[closed_fds_count] = fd;
+    }
+
+    closed_fds_count++;
+    return 0;
+}
+
+static void assert_client_and_socket_closed(int peer, int sock) {
+    assert_int_equal(closed_fds_count, 2);
+    assert_int_equal(closed_fds[0], peer);
+    assert_int_equal(closed_fds[1], sock);
+}
 cJSON* wm_task_manager_dump(const wm_task_manager* task_config);
 
 // Setup / teardown
@@ -564,6 +583,7 @@ void test_wm_task_manager_dispatch_parse_err(void **state)
 
 void test_wm_task_manager_main_ok(void **state)
 {
+    closed_fds_count = 0;
     wm_task_manager *config = *state;
     int sock = 555;
     int peer = 1111;
@@ -669,10 +689,13 @@ void test_wm_task_manager_main_ok(void **state)
     will_return(__wrap_OS_SendSecureTCP, 0);
 
     wm_task_manager_main(config);
+
+    assert_client_and_socket_closed(peer, sock);
 }
 
 void test_wm_task_manager_main_recv_max_err(void **state)
 {
+    closed_fds_count = 0;
     wm_task_manager *config = *state;
     int sock = 555;
     int peer = 1111;
@@ -719,10 +742,13 @@ void test_wm_task_manager_main_recv_max_err(void **state)
     expect_string(__wrap__mterror, formatted_msg, "(8256): Received message > '4194304'");
 
     wm_task_manager_main(config);
+
+    assert_client_and_socket_closed(peer, sock);
 }
 
 void test_wm_task_manager_main_recv_empty_err(void **state)
 {
+    closed_fds_count = 0;
     wm_task_manager *config = *state;
     int sock = 555;
     int peer = 1111;
@@ -769,10 +795,13 @@ void test_wm_task_manager_main_recv_empty_err(void **state)
     expect_string(__wrap__mtdebug1, formatted_msg, "(8203): Empty message from local client.");
 
     wm_task_manager_main(config);
+
+    assert_client_and_socket_closed(peer, sock);
 }
 
 void test_wm_task_manager_main_recv_err(void **state)
 {
+    closed_fds_count = 0;
     wm_task_manager *config = *state;
     int sock = 555;
     int peer = 1111;
@@ -819,10 +848,13 @@ void test_wm_task_manager_main_recv_err(void **state)
     expect_string(__wrap__mterror, formatted_msg, "(8254): Error in recv(): 'Success'");
 
     wm_task_manager_main(config);
+
+    assert_client_and_socket_closed(peer, sock);
 }
 
 void test_wm_task_manager_main_sockterr_err(void **state)
 {
+    closed_fds_count = 0;
     wm_task_manager *config = *state;
     int sock = 555;
     int peer = 1111;
@@ -869,6 +901,8 @@ void test_wm_task_manager_main_sockterr_err(void **state)
     expect_string(__wrap__mterror, formatted_msg, "(8255): Response size is bigger than expected.");
 
     wm_task_manager_main(config);
+
+    assert_client_and_socket_closed(peer, sock);
 }
 
 void test_wm_task_manager_main_accept_err(void **state)

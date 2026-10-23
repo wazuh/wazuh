@@ -118,15 +118,13 @@ void* run_local_server(__attribute__((unused)) void *arg) {
             continue;
         }
 
-        if (config.timeout_sec || config.timeout_usec) {
-            if (OS_SetRecvTimeout(peer, config.timeout_sec, config.timeout_usec) < 0) {
-                static int reported = 0;
+        if (OS_SetRecvTimeout(peer, 1, 0) < 0) {
+            static int reported = 0;
 
-                if (!reported) {
-                    int error = errno;
-                    merror("Could not set timeout to internal socket: %s (%d)", strerror(error), error);
-                    reported = 1;
-                }
+            if (!reported) {
+                int error = errno;
+                merror("Could not set timeout to internal socket: %s (%d)", strerror(error), error);
+                reported = 1;
             }
         }
 

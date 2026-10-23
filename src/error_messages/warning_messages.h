@@ -168,6 +168,7 @@
 #define LOGCOLLECTOR_JOURNAL_CONFG_EMPTY_FILTER_EXPR  "(8020): The expression for the journal filter cannot be empty."
 #define LOGCOLLECTOR_JOURNAL_CONFG_FILTER_EXP_FAIL    "(8021): Error compiling the PCRE2 expression '%s' for field '%s' in journal filter."
 #define LOGCOLLECTOR_JOURNAL_CONFG_DISABLE_FILTER    "(8022): The filters of the journald log will be disabled in the merge, because one of the configuration does not have filters."
+#define LOGCOLLECTOR_STATUS_PARSE_FAIL "(8023): Could not parse the last read positions in '%s'. Files will be read from their end."
 
 /* Remoted */
 #define REMOTED_NET_PROTOCOL_ERROR              "(9000): Error getting protocol. Default value (%s) will be used."

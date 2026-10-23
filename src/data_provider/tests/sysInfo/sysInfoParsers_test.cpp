@@ -140,6 +140,306 @@ TEST_F(SysInfoParsersTest, UnixAlpine)
     EXPECT_EQ("1", output["os_patch"]);
 }
 
+TEST_F(SysInfoParsersTest, UnixRhcosRhelVersion)
+{
+    constexpr auto UNIX_RELEASE_FILE
+    {
+        R"(
+        NAME="Red Hat Enterprise Linux CoreOS"
+        ID="rhcos"
+        ID_LIKE="rhel fedora"
+        VERSION="418.94.202602022246-0"
+        VERSION_ID="4.18"
+        VARIANT="CoreOS"
+        VARIANT_ID=coreos
+        PLATFORM_ID="platform:el9"
+        CPE_NAME="cpe:/o:redhat:enterprise_linux:9::baseos::coreos"
+        REDHAT_SUPPORT_PRODUCT="OpenShift Container Platform"
+        REDHAT_SUPPORT_PRODUCT_VERSION="4.18"
+        OPENSHIFT_VERSION="4.18"
+        RHEL_VERSION=9.4
+        OSTREE_VERSION="418.94.202602022246-0"
+        )"
+    };
+    nlohmann::json output;
+    std::stringstream info{UNIX_RELEASE_FILE};
+    const auto spParser{FactorySysOsParser::create("unix")};
+    EXPECT_TRUE(spParser->parseFile(info, output));
+    EXPECT_EQ("9.4", output["os_version"]);
+    EXPECT_EQ("Red Hat Enterprise Linux CoreOS", output["os_name"]);
+    EXPECT_EQ("rhcos", output["os_platform"]);
+    EXPECT_EQ("9", output["os_major"]);
+    EXPECT_EQ("4", output["os_minor"]);
+    EXPECT_FALSE(output.contains("os_patch"));
+    EXPECT_FALSE(output.contains("rhel_version"));
+    EXPECT_FALSE(output.contains("version_id"));
+}
+
+TEST_F(SysInfoParsersTest, UnixRhcosRhelVersionQuoted)
+{
+    constexpr auto UNIX_RELEASE_FILE
+    {
+        R"os(
+        NAME="Red Hat Enterprise Linux CoreOS"
+        ID="rhcos"
+        ID_LIKE="rhel fedora"
+        VERSION="412.86.202308081039-0"
+        VERSION_ID="4.12"
+        PLATFORM_ID="platform:el8"
+        PRETTY_NAME="Red Hat Enterprise Linux CoreOS 412.86.202308081039-0 (Ootpa)"
+        ANSI_COLOR="0;31"
+        CPE_NAME="cpe:/o:redhat:enterprise_linux:8::coreos"
+        HOME_URL="https://www.redhat.com/"
+        DOCUMENTATION_URL="https://docs.openshift.com/container-platform/4.12/"
+        BUG_REPORT_URL="https://access.redhat.com/labs/rhir/"
+        REDHAT_BUGZILLA_PRODUCT="OpenShift Container Platform"
+        REDHAT_BUGZILLA_PRODUCT_VERSION="4.12"
+        REDHAT_SUPPORT_PRODUCT="OpenShift Container Platform"
+        REDHAT_SUPPORT_PRODUCT_VERSION="4.12"
+        OPENSHIFT_VERSION="4.12"
+        RHEL_VERSION="8.6"
+        OSTREE_VERSION="412.86.202308081039-0"
+        )os"
+    };
+    nlohmann::json output;
+    std::stringstream info{UNIX_RELEASE_FILE};
+    const auto spParser{FactorySysOsParser::create("unix")};
+    EXPECT_TRUE(spParser->parseFile(info, output));
+    EXPECT_EQ("8.6", output["os_version"]);
+    EXPECT_EQ("rhcos", output["os_platform"]);
+    EXPECT_EQ("8", output["os_major"]);
+    EXPECT_EQ("6", output["os_minor"]);
+    EXPECT_FALSE(output.contains("os_patch"));
+}
+
+TEST_F(SysInfoParsersTest, UnixRhcosParsedTwice)
+{
+    // The agent parses /etc/os-release and /usr/lib/os-release into the same object.
+    constexpr auto UNIX_RELEASE_FILE
+    {
+        R"(
+        NAME="Red Hat Enterprise Linux CoreOS"
+        ID="rhcos"
+        VERSION="418.94.202602022246-0"
+        VERSION_ID="4.18"
+        RHEL_VERSION=9.4
+        )"
+    };
+    nlohmann::json output;
+    const auto spParser{FactorySysOsParser::create("unix")};
+    std::stringstream etcInfo{UNIX_RELEASE_FILE};
+    EXPECT_TRUE(spParser->parseFile(etcInfo, output));
+    std::stringstream usrLibInfo{UNIX_RELEASE_FILE};
+    EXPECT_TRUE(spParser->parseFile(usrLibInfo, output));
+    EXPECT_EQ("9.4", output["os_version"]);
+    EXPECT_EQ("rhcos", output["os_platform"]);
+    EXPECT_EQ("9", output["os_major"]);
+    EXPECT_EQ("4", output["os_minor"]);
+    EXPECT_FALSE(output.contains("os_patch"));
+    EXPECT_FALSE(output.contains("rhel_version"));
+    EXPECT_FALSE(output.contains("version_id"));
+}
+
+TEST_F(SysInfoParsersTest, UnixRhcosHostOsReleaseOverContainerImage)
+{
+    // Containerized agent: /etc/os-release comes from the RHCOS host, /usr/lib/os-release from the image.
+    constexpr auto HOST_RELEASE_FILE
+    {
+        R"(
+        NAME="Red Hat Enterprise Linux CoreOS"
+        ID="rhcos"
+        ID_LIKE="rhel fedora"
+        VERSION="418.94.202602022246-0"
+        VERSION_ID="4.18"
+        PLATFORM_ID="platform:el9"
+        OPENSHIFT_VERSION="4.18"
+        RHEL_VERSION=9.4
+        OSTREE_VERSION="418.94.202602022246-0"
+        )"
+    };
+    constexpr auto IMAGE_RELEASE_FILE
+    {
+        R"os(
+        PRETTY_NAME="Ubuntu 24.04.1 LTS"
+        NAME="Ubuntu"
+        VERSION_ID="24.04"
+        VERSION="24.04.1 LTS (Noble Numbat)"
+        VERSION_CODENAME=noble
+        ID=ubuntu
+        ID_LIKE=debian
+        )os"
+    };
+    nlohmann::json output;
+    const auto spParser{FactorySysOsParser::create("unix")};
+    std::stringstream hostInfo{HOST_RELEASE_FILE};
+    EXPECT_TRUE(spParser->parseFile(hostInfo, output));
+    std::stringstream imageInfo{IMAGE_RELEASE_FILE};
+    EXPECT_TRUE(spParser->parseFile(imageInfo, output));
+    EXPECT_EQ("9.4", output["os_version"]);
+    EXPECT_EQ("Red Hat Enterprise Linux CoreOS", output["os_name"]);
+    EXPECT_EQ("rhcos", output["os_platform"]);
+    EXPECT_EQ("9", output["os_major"]);
+    EXPECT_EQ("4", output["os_minor"]);
+    EXPECT_FALSE(output.contains("os_patch"));
+    EXPECT_FALSE(output.contains("rhel_version"));
+    EXPECT_FALSE(output.contains("version_id"));
+}
+
+TEST_F(SysInfoParsersTest, UnixRhcosRhelVersionMajorOnly)
+{
+    constexpr auto UNIX_RELEASE_FILE
+    {
+        R"(
+        NAME="Red Hat Enterprise Linux CoreOS"
+        ID="rhcos"
+        VERSION="418.94.202602022246-0"
+        VERSION_ID="4.18"
+        RHEL_VERSION=9
+        )"
+    };
+    nlohmann::json output;
+    const auto spParser{FactorySysOsParser::create("unix")};
+    std::stringstream etcInfo{UNIX_RELEASE_FILE};
+    EXPECT_TRUE(spParser->parseFile(etcInfo, output));
+    std::stringstream usrLibInfo{UNIX_RELEASE_FILE};
+    EXPECT_TRUE(spParser->parseFile(usrLibInfo, output));
+    EXPECT_EQ("9", output["os_version"]);
+    EXPECT_EQ("9", output["os_major"]);
+    EXPECT_FALSE(output.contains("os_minor"));
+    EXPECT_FALSE(output.contains("os_patch"));
+}
+
+TEST_F(SysInfoParsersTest, UnixRhcosOpenShift410)
+{
+    constexpr auto UNIX_RELEASE_FILE
+    {
+        R"os(
+        NAME="Red Hat Enterprise Linux CoreOS"
+        VERSION="410.84.202210040010-0"
+        ID="rhcos"
+        ID_LIKE="rhel fedora"
+        VERSION_ID="4.10"
+        PLATFORM_ID="platform:el8"
+        PRETTY_NAME="Red Hat Enterprise Linux CoreOS 410.84.202210040010-0 (Ootpa)"
+        ANSI_COLOR="0;31"
+        CPE_NAME="cpe:/o:redhat:enterprise_linux:8::coreos"
+        HOME_URL="https://www.redhat.com/"
+        DOCUMENTATION_URL="https://docs.openshift.com/container-platform/4.10/"
+        BUG_REPORT_URL="https://bugzilla.redhat.com/"
+        REDHAT_BUGZILLA_PRODUCT="OpenShift Container Platform"
+        REDHAT_BUGZILLA_PRODUCT_VERSION="4.10"
+        REDHAT_SUPPORT_PRODUCT="OpenShift Container Platform"
+        REDHAT_SUPPORT_PRODUCT_VERSION="4.10"
+        OPENSHIFT_VERSION="4.10"
+        RHEL_VERSION="8.4"
+        OSTREE_VERSION='410.84.202210040010-0'
+        )os"
+    };
+    nlohmann::json output;
+    std::stringstream info{UNIX_RELEASE_FILE};
+    const auto spParser{FactorySysOsParser::create("unix")};
+    EXPECT_TRUE(spParser->parseFile(info, output));
+    EXPECT_EQ("8.4", output["os_version"]);
+    EXPECT_EQ("rhcos", output["os_platform"]);
+    EXPECT_EQ("8", output["os_major"]);
+    EXPECT_EQ("4", output["os_minor"]);
+    EXPECT_FALSE(output.contains("os_patch"));
+}
+
+TEST_F(SysInfoParsersTest, UnixRhcosWithoutRhelVersion)
+{
+    constexpr auto UNIX_RELEASE_FILE
+    {
+        R"(
+        NAME="Red Hat Enterprise Linux CoreOS"
+        ID="rhcos"
+        VERSION="418.94.202602022246-0"
+        VERSION_ID="4.18"
+        PLATFORM_ID="platform:el9"
+        OPENSHIFT_VERSION="4.18"
+        )"
+    };
+    nlohmann::json output;
+    std::stringstream info{UNIX_RELEASE_FILE};
+    const auto spParser{FactorySysOsParser::create("unix")};
+    EXPECT_TRUE(spParser->parseFile(info, output));
+    EXPECT_EQ("418.94.202602022246-0", output["os_version"]);
+    EXPECT_EQ("rhcos", output["os_platform"]);
+    EXPECT_EQ("418", output["os_major"]);
+    EXPECT_EQ("94", output["os_minor"]);
+    EXPECT_EQ("202602022246", output["os_patch"]);
+}
+
+TEST_F(SysInfoParsersTest, UnixRhcosInvalidRhelVersion)
+{
+    constexpr auto UNIX_RELEASE_FILE
+    {
+        R"(
+        NAME="Red Hat Enterprise Linux CoreOS"
+        ID="rhcos"
+        VERSION="418.94.202602022246-0"
+        VERSION_ID="4.18"
+        RHEL_VERSION="unknown"
+        )"
+    };
+    nlohmann::json output;
+    std::stringstream info{UNIX_RELEASE_FILE};
+    const auto spParser{FactorySysOsParser::create("unix")};
+    EXPECT_TRUE(spParser->parseFile(info, output));
+    EXPECT_EQ("418.94.202602022246-0", output["os_version"]);
+    EXPECT_EQ("418", output["os_major"]);
+    EXPECT_EQ("94", output["os_minor"]);
+    EXPECT_EQ("202602022246", output["os_patch"]);
+    EXPECT_FALSE(output.contains("rhel_version"));
+}
+
+TEST_F(SysInfoParsersTest, UnixRhcosEmptyRhelVersion)
+{
+    constexpr auto UNIX_RELEASE_FILE
+    {
+        R"(
+        NAME="Red Hat Enterprise Linux CoreOS"
+        ID="rhcos"
+        VERSION="418.94.202602022246-0"
+        VERSION_ID="4.18"
+        RHEL_VERSION=""
+        )"
+    };
+    nlohmann::json output;
+    std::stringstream info{UNIX_RELEASE_FILE};
+    const auto spParser{FactorySysOsParser::create("unix")};
+    EXPECT_TRUE(spParser->parseFile(info, output));
+    EXPECT_EQ("418.94.202602022246-0", output["os_version"]);
+    EXPECT_EQ("418", output["os_major"]);
+    EXPECT_EQ("94", output["os_minor"]);
+    EXPECT_EQ("202602022246", output["os_patch"]);
+    EXPECT_FALSE(output.contains("rhel_version"));
+}
+
+TEST_F(SysInfoParsersTest, UnixRhelVersionIgnoredOnOtherPlatform)
+{
+    constexpr auto UNIX_RELEASE_FILE
+    {
+        R"os(
+        NAME="Red Hat Enterprise Linux"
+        VERSION="9.6 (Plow)"
+        ID="rhel"
+        ID_LIKE="fedora"
+        VERSION_ID="9.6"
+        RHEL_VERSION=8.10
+        )os"
+    };
+    nlohmann::json output;
+    std::stringstream info{UNIX_RELEASE_FILE};
+    const auto spParser{FactorySysOsParser::create("unix")};
+    EXPECT_TRUE(spParser->parseFile(info, output));
+    EXPECT_EQ("9.6 (Plow)", output["os_version"]);
+    EXPECT_EQ("rhel", output["os_platform"]);
+    EXPECT_EQ("9", output["os_major"]);
+    EXPECT_EQ("6", output["os_minor"]);
+    EXPECT_FALSE(output.contains("rhel_version"));
+}
+
 
 TEST_F(SysInfoParsersTest, Ubuntu)
 {

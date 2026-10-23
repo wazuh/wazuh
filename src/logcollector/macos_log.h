@@ -28,6 +28,8 @@
 
 #define STYLE_OPT_STR           "--style"       ///< This precedes the logs' output style to be used by "log stream"
 #define SYSLOG_STR              "syslog"        ///< This is the style chosen to show the "log stream" output
+#define NDJSON_STR              "ndjson"        ///< One escaped JSON object per event, used when supported
+#define MACOS_NDJSON_MIN_DARWIN 19              ///< Darwin release of the oldest macOS validated with ndjson (10.15)
 
 #define PREDICATE_OPT_STR       "--predicate"   ///< This precedes the "query" filter to be used by "log stream"
 #define TYPE_OPT_STR            "--type"        ///< This precedes a "type" filter to be used by "log stream"
@@ -145,6 +147,13 @@ void w_macos_set_status_from_JSON(cJSON * global_json);
  * @return true if Sierra. false otherwise
  */
 bool w_is_macos_sierra();
+
+/**
+ * @brief Check if `log` output is read in ndjson style
+ *
+ * @return true if ndjson. false if syslog
+ */
+bool w_macos_log_is_ndjson(void);
 
 /**
  * @brief Get first child process found

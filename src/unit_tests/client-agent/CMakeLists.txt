@@ -125,6 +125,10 @@ list(APPEND client-agent_flags "${DEBUG_OP_WRAPPERS} \
 
 list(APPEND client-agent_names "test_request")
 list(APPEND client-agent_flags "${DEBUG_OP_WRAPPERS} ${HASH_OP_WRAPPERS} -Wl,--wrap,send_msg -Wl,--wrap,getDefine_Int")
+
+list(APPEND client-agent_names "test_rotate_log")
+list(APPEND client-agent_flags "${DEBUG_OP_WRAPPERS} -Wl,--wrap,time -Wl,--wrap,IsDir -Wl,--wrap,IsFile -Wl,--wrap,FileSize \
+                                -Wl,--wrap,rename_ex -Wl,--wrap,wfopen -Wl,--wrap,OS_CompressLog -Wl,--wrap,wopendir")
 endif()
 
 list(LENGTH client-agent_names count)

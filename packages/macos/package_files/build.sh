@@ -57,6 +57,9 @@ function build() {
 
     find ${DESTINATION_PATH}/ruleset/sca/ -type f -exec rm -f {} \;
 
+    # Don't ship the empty JSON log placeholder; the agent creates it when JSON logging is enabled.
+    rm -f ${DESTINATION_PATH}/logs/ossec.json
+
     # Add the auxiliar script used while installing the package
     mkdir -p ${INSTALLATION_SCRIPTS_DIR}/
     cp ${SOURCES_PATH}/gen_ossec.sh ${INSTALLATION_SCRIPTS_DIR}/
