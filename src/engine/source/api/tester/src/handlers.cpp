@@ -12,6 +12,7 @@
 #include <api/adapter/helpers.hpp>
 #include <api/tester/handlers.hpp>
 #include <base/dotPath.hpp>
+#include <base/logging.hpp>
 
 namespace api::tester::handlers
 {
@@ -980,17 +981,6 @@ adapter::RouteHandler logtestDelete(const std::shared_ptr<::router::ITesterAPI>&
             return;
         }
 
-        auto cleanupSession = [&](const std::string& name) -> base::OptError
-        {
-            auto err = tester->deleteTestEntry(name);
-            if (base::isError(err))
-            {
-                return base::Error {
-                    fmt::format("Cleanup: failed deleting session '{}': {}", name, base::getError(err).message)};
-            }
-            return std::nullopt;
-        };
-
         auto cleanupNamespace = [&](const cm::store::NamespaceId& nsId) -> base::OptError
         {
             try
@@ -1004,8 +994,17 @@ adapter::RouteHandler logtestDelete(const std::shared_ptr<::router::ITesterAPI>&
             }
         };
 
-        auto entry = tester->getTestEntry(sessionName);
-        if (base::isError(entry))
+        // Remove the session first: whoever extracts it owns the namespace cleanup.
+        auto extracted = tester->extractTestEntry(sessionName);
+        if (base::isError(extracted))
+        {
+            res = adapter::userErrorResponse<ResponseType>(fmt::format(
+                "Cleanup: failed deleting session '{}': {}", sessionName, base::getError(extracted).message));
+            return;
+        }
+
+        const auto& entry = base::getResponse(extracted);
+        if (!entry)
         {
             ResponseType eResponse;
             eResponse.set_status(eEngine::ReturnStatus::OK);
@@ -1013,21 +1012,19 @@ adapter::RouteHandler logtestDelete(const std::shared_ptr<::router::ITesterAPI>&
             return;
         }
 
-        const auto nsId = base::getResponse(entry).namespaceId();
+        const auto nsId = entry->namespaceId();
 
         if (storeLocked->existsNamespace(nsId))
         {
             if (auto nerr = cleanupNamespace(nsId))
             {
+                LOG_WARNING("Session '{}' deleted but its namespace '{}' was not deleted: {}",
+                            sessionName,
+                            nsId.toStr(),
+                            nerr->message);
                 res = adapter::userErrorResponse<ResponseType>(nerr->message);
                 return;
             }
-        }
-
-        if (auto serr = cleanupSession(sessionName))
-        {
-            res = adapter::userErrorResponse<ResponseType>(serr->message);
-            return;
         }
 
         ResponseType eResponse;

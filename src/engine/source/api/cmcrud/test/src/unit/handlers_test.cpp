@@ -9,6 +9,7 @@
 #include <api/cmcrud/handlers.hpp>
 
 #include <cmcrud/mockcmcrud.hpp>
+#include <router/mockTester.hpp>
 
 using namespace api::adapter;
 using namespace api::test;
@@ -720,3 +721,196 @@ INSTANTIATE_TEST_SUITE_P(
                 return userResponse<eEngine::GenericStatus_Response>(protoRes);
             },
             [](auto& mock) { EXPECT_CALL(mock, validateResource(cm::store::ResourceType::KVDB, ::testing::_)); })));
+
+/*******************************************************************************
+ * policyValidate: tester session replacement and deletion
+ ******************************************************************************/
+
+namespace
+{
+using ::testing::_;
+using ::testing::Return;
+using ::testing::Throw;
+using ::testing::Truly;
+
+constexpr const char* kDecoderUuid = "a1f330f4-8012-48ab-9949-c5d76edaf9b1";
+constexpr const char* kIntegUuid = "a1f330f4-8012-48ab-9949-c5d76edaf9b2";
+
+std::string policyJson(bool enabled, bool withIntegration)
+{
+    return fmt::format(R"({{"metadata":{{"title":"t"}},"enabled":{},"root_decoder":"{}","integrations":[{}],)"
+                       R"("filters":[],"enrichments":[],"index_unclassified_events":false,)"
+                       R"("index_discarded_events":false,"outputs":[]}})",
+                       enabled ? "true" : "false",
+                       kDecoderUuid,
+                       withIntegration ? fmt::format("\"{}\"", kIntegUuid) : "");
+}
+
+httplib::Request policyValidateRequest(bool loadInTester, bool enabled, bool withIntegration, const std::string& space)
+{
+    httplib::Request req;
+    req.body = fmt::format(R"({{"load_in_tester":{},"space":"{}","full_policy":{{"policy":{},"resources":{{}}}}}})",
+                           loadInTester ? "true" : "false",
+                           space,
+                           policyJson(enabled, withIntegration));
+    req.set_header("Content-Type", "plain/text");
+    return req;
+}
+
+cm::store::dataType::Policy policyOf(bool enabled, bool withIntegration)
+{
+    return cm::store::dataType::Policy::fromJson(json::Json {policyJson(enabled, withIntegration).c_str()});
+}
+
+::router::test::Entry entryOn(const std::string& name, const std::string& ns)
+{
+    return ::router::test::Entry {::router::test::EntryPost {name, cm::store::NamespaceId {ns}, 0}};
+}
+
+auto isTempNs = [](const cm::store::NamespaceId& ns)
+{
+    return ns.toStr().rfind("logtest_", 0) == 0;
+};
+auto isNs = [](const std::string& expected)
+{
+    return [expected](const cm::store::NamespaceId& ns)
+    {
+        return ns.toStr() == expected;
+    };
+};
+
+class PolicyValidateHandlerTest : public ::testing::Test
+{
+protected:
+    std::shared_ptr<cm::crud::MockCrudService> m_crud;
+    std::shared_ptr<::tester::mocks::MockTesterAPI> m_tester;
+
+    void SetUp() override
+    {
+        logging::testInit();
+        m_crud = std::make_shared<cm::crud::MockCrudService>();
+        m_tester = std::make_shared<::tester::mocks::MockTesterAPI>();
+    }
+
+    httplib::Response run(const httplib::Request& req)
+    {
+        httplib::Response res;
+        policyValidate(m_crud, m_tester)(req, res);
+        return res;
+    }
+
+    static void expectOk(const httplib::Response& res)
+    {
+        eEngine::GenericStatus_Response protoRes;
+        protoRes.set_status(eEngine::ReturnStatus::OK);
+        const auto expected = userResponse<eEngine::GenericStatus_Response>(protoRes);
+        EXPECT_EQ(res.status, expected.status);
+        EXPECT_EQ(res.body, expected.body);
+    }
+
+    static void expectError(const httplib::Response& res, const std::string& message)
+    {
+        const auto expected = userErrorResponse<eEngine::GenericStatus_Response>(message);
+        EXPECT_EQ(res.status, expected.status);
+        EXPECT_EQ(res.body, expected.body);
+    }
+};
+} // namespace
+
+TEST_F(PolicyValidateHandlerTest, PromoteReplacesPreviousSessionAndDeletesItsNamespace)
+{
+    EXPECT_CALL(*m_crud, importNamespace(Truly(isTempNs), _, _, true)).WillOnce(Return(policyOf(true, true)));
+    EXPECT_CALL(*m_tester, postTestEntry(_)).WillOnce(Return(base::noError()));
+    EXPECT_CALL(*m_tester, replaceTestEntry(_, "s"))
+        .WillOnce(Return(std::optional<::router::test::Entry> {entryOn("s", "logtest_old")}));
+    EXPECT_CALL(*m_crud, deleteNamespace(Truly(isNs("logtest_old")))).Times(1);
+    EXPECT_CALL(*m_tester, deleteTestEntry(_)).Times(0);
+
+    expectOk(run(policyValidateRequest(true, true, true, "s")));
+}
+
+TEST_F(PolicyValidateHandlerTest, PromoteWithoutPreviousSessionDeletesNothing)
+{
+    EXPECT_CALL(*m_crud, importNamespace(Truly(isTempNs), _, _, true)).WillOnce(Return(policyOf(true, true)));
+    EXPECT_CALL(*m_tester, postTestEntry(_)).WillOnce(Return(base::noError()));
+    EXPECT_CALL(*m_tester, replaceTestEntry(_, "s")).WillOnce(Return(std::optional<::router::test::Entry> {}));
+    EXPECT_CALL(*m_crud, deleteNamespace(_)).Times(0);
+    EXPECT_CALL(*m_tester, deleteTestEntry(_)).Times(0);
+
+    expectOk(run(policyValidateRequest(true, true, true, "s")));
+}
+
+TEST_F(PolicyValidateHandlerTest, PromoteFailureCleansTempResources)
+{
+    EXPECT_CALL(*m_crud, importNamespace(Truly(isTempNs), _, _, true)).WillOnce(Return(policyOf(true, true)));
+    EXPECT_CALL(*m_tester, postTestEntry(_)).WillOnce(Return(base::noError()));
+    EXPECT_CALL(*m_tester, replaceTestEntry(_, "s")).WillOnce(Return(base::Error {"swap failed"}));
+    EXPECT_CALL(*m_tester, deleteTestEntry(::testing::StartsWith("logtest_"))).WillOnce(Return(base::noError()));
+    EXPECT_CALL(*m_crud, deleteNamespace(Truly(isTempNs))).Times(1);
+
+    expectError(run(policyValidateRequest(true, true, true, "s")), "swap failed");
+}
+
+TEST_F(PolicyValidateHandlerTest, PromoteSucceedsWhenPreviousNamespaceCannotBeDeleted)
+{
+    EXPECT_CALL(*m_crud, importNamespace(Truly(isTempNs), _, _, true)).WillOnce(Return(policyOf(true, true)));
+    EXPECT_CALL(*m_tester, postTestEntry(_)).WillOnce(Return(base::noError()));
+    EXPECT_CALL(*m_tester, replaceTestEntry(_, "s"))
+        .WillOnce(Return(std::optional<::router::test::Entry> {entryOn("s", "logtest_old")}));
+    EXPECT_CALL(*m_crud, deleteNamespace(Truly(isNs("logtest_old"))))
+        .WillOnce(Throw(std::runtime_error {"active references detected"}));
+    EXPECT_CALL(*m_tester, deleteTestEntry(_)).Times(0);
+
+    expectOk(run(policyValidateRequest(true, true, true, "s")));
+}
+
+TEST_F(PolicyValidateHandlerTest, DisabledPolicyExtractsPreviousSessionAndDeletesItsNamespace)
+{
+    EXPECT_CALL(*m_crud, importNamespace(Truly(isTempNs), _, _, true)).WillOnce(Return(policyOf(false, true)));
+    EXPECT_CALL(*m_tester, postTestEntry(_)).WillOnce(Return(base::noError()));
+    EXPECT_CALL(*m_tester, deleteTestEntry(::testing::StartsWith("logtest_"))).WillOnce(Return(base::noError()));
+    EXPECT_CALL(*m_crud, deleteNamespace(Truly(isTempNs))).Times(1);
+    EXPECT_CALL(*m_tester, extractTestEntry("s"))
+        .WillOnce(Return(std::optional<::router::test::Entry> {entryOn("s", "logtest_old")}));
+    EXPECT_CALL(*m_crud, deleteNamespace(Truly(isNs("logtest_old")))).Times(1);
+    EXPECT_CALL(*m_tester, replaceTestEntry(_, _)).Times(0);
+
+    expectOk(run(policyValidateRequest(true, false, true, "s")));
+}
+
+TEST_F(PolicyValidateHandlerTest, DisabledPolicyNamespaceDeleteFailureIsAnError)
+{
+    EXPECT_CALL(*m_crud, importNamespace(Truly(isTempNs), _, _, true)).WillOnce(Return(policyOf(false, true)));
+    EXPECT_CALL(*m_tester, postTestEntry(_)).WillOnce(Return(base::noError()));
+    EXPECT_CALL(*m_tester, deleteTestEntry(::testing::StartsWith("logtest_"))).WillOnce(Return(base::noError()));
+    EXPECT_CALL(*m_crud, deleteNamespace(Truly(isTempNs))).Times(1);
+    EXPECT_CALL(*m_tester, extractTestEntry("s"))
+        .WillOnce(Return(std::optional<::router::test::Entry> {entryOn("s", "logtest_old")}));
+    EXPECT_CALL(*m_crud, deleteNamespace(Truly(isNs("logtest_old")))).WillOnce(Throw(std::runtime_error {"boom"}));
+
+    expectError(run(policyValidateRequest(true, false, true, "s")),
+                "Cleanup: failed deleting namespace 'logtest_old': boom");
+}
+
+TEST_F(PolicyValidateHandlerTest, DisabledPolicyWithoutPreviousSessionIsOk)
+{
+    EXPECT_CALL(*m_crud, importNamespace(Truly(isTempNs), _, _, true)).WillOnce(Return(policyOf(false, true)));
+    EXPECT_CALL(*m_tester, postTestEntry(_)).WillOnce(Return(base::noError()));
+    EXPECT_CALL(*m_tester, deleteTestEntry(::testing::StartsWith("logtest_"))).WillOnce(Return(base::noError()));
+    EXPECT_CALL(*m_crud, deleteNamespace(Truly(isTempNs))).Times(1);
+    EXPECT_CALL(*m_tester, extractTestEntry("s")).WillOnce(Return(std::optional<::router::test::Entry> {}));
+
+    expectOk(run(policyValidateRequest(true, false, true, "s")));
+}
+
+TEST_F(PolicyValidateHandlerTest, DisabledPolicyExtractFailureIsAnError)
+{
+    EXPECT_CALL(*m_crud, importNamespace(Truly(isTempNs), _, _, true)).WillOnce(Return(policyOf(false, true)));
+    EXPECT_CALL(*m_tester, postTestEntry(_)).WillOnce(Return(base::noError()));
+    EXPECT_CALL(*m_tester, deleteTestEntry(::testing::StartsWith("logtest_"))).WillOnce(Return(base::noError()));
+    EXPECT_CALL(*m_crud, deleteNamespace(Truly(isTempNs))).Times(1);
+    EXPECT_CALL(*m_tester, extractTestEntry("s")).WillOnce(Return(base::Error {"worker gone"}));
+
+    expectError(run(policyValidateRequest(true, false, true, "s")),
+                "Cleanup: failed deleting session 's': worker gone");
+}

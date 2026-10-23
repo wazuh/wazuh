@@ -237,6 +237,17 @@ public:
     base::OptError renameTestEntry(const std::string& from, const std::string& to) override;
 
     /**
+     * @copydoc router::ITesterAPI::replaceTestEntry
+     */
+    base::RespOrError<std::optional<test::Entry>> replaceTestEntry(const std::string& from,
+                                                                   const std::string& to) override;
+
+    /**
+     * @copydoc router::ITesterAPI::extractTestEntry
+     */
+    base::RespOrError<std::optional<test::Entry>> extractTestEntry(const std::string& name) override;
+
+    /**
      * @copydoc router::ITesterAPI::getTestEntries
      */
     std::list<test::Entry> getTestEntries() const override;

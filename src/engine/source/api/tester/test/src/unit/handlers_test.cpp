@@ -1184,7 +1184,8 @@ INSTANTIATE_TEST_SUITE_P(
             "SessionMissingReturnsOk",
             [](auto& tester, auto& store)
             {
-                EXPECT_CALL(tester, getTestEntry("test")).WillOnce(::testing::Return(base::Error {"not found"}));
+                EXPECT_CALL(tester, extractTestEntry("test"))
+                    .WillOnce(::testing::Return(std::optional<::router::test::Entry> {}));
                 EXPECT_CALL(store, existsNamespace(::testing::_)).Times(0);
                 EXPECT_CALL(store, deleteNamespace(::testing::_)).Times(0);
                 EXPECT_CALL(tester, deleteTestEntry(::testing::_)).Times(0);
@@ -1192,14 +1193,15 @@ INSTANTIATE_TEST_SUITE_P(
             []() { return makeOkResponse(); },
         },
         LogtestDeleteCase {
-            "NamespaceExistsDeletesNamespaceAndSession",
+            "NamespaceExistsDeletesSessionThenNamespace",
             [](auto& tester, auto& store)
             {
                 const auto entry = makeEntry("test", "policy_validate_x");
-                EXPECT_CALL(tester, getTestEntry("test")).WillOnce(::testing::Return(entry));
+                ::testing::InSequence seq;
+                EXPECT_CALL(tester, extractTestEntry("test"))
+                    .WillOnce(::testing::Return(std::optional<::router::test::Entry> {entry}));
                 EXPECT_CALL(store, existsNamespace(::testing::_)).WillOnce(::testing::Return(true));
                 EXPECT_CALL(store, deleteNamespace(::testing::_)).WillOnce(::testing::Return());
-                EXPECT_CALL(tester, deleteTestEntry("test")).WillOnce(::testing::Return(base::noError()));
             },
             []() { return makeOkResponse(); },
         },
@@ -1208,10 +1210,10 @@ INSTANTIATE_TEST_SUITE_P(
             [](auto& tester, auto& store)
             {
                 const auto entry = makeEntry("test", "policy_validate_x");
-                EXPECT_CALL(tester, getTestEntry("test")).WillOnce(::testing::Return(entry));
+                EXPECT_CALL(tester, extractTestEntry("test"))
+                    .WillOnce(::testing::Return(std::optional<::router::test::Entry> {entry}));
                 EXPECT_CALL(store, existsNamespace(::testing::_)).WillOnce(::testing::Return(false));
                 EXPECT_CALL(store, deleteNamespace(::testing::_)).Times(0);
-                EXPECT_CALL(tester, deleteTestEntry("test")).WillOnce(::testing::Return(base::noError()));
             },
             []() { return makeOkResponse(); },
         },
@@ -1220,11 +1222,11 @@ INSTANTIATE_TEST_SUITE_P(
             [](auto& tester, auto& store)
             {
                 const auto entry = makeEntry("test", "policy_validate_x");
-                EXPECT_CALL(tester, getTestEntry("test")).WillOnce(::testing::Return(entry));
+                EXPECT_CALL(tester, extractTestEntry("test"))
+                    .WillOnce(::testing::Return(std::optional<::router::test::Entry> {entry}));
                 EXPECT_CALL(store, existsNamespace(::testing::_)).WillOnce(::testing::Return(true));
                 EXPECT_CALL(store, deleteNamespace(::testing::_))
                     .WillOnce(::testing::Throw(std::runtime_error {"boom"}));
-                EXPECT_CALL(tester, deleteTestEntry(::testing::_)).Times(0);
             },
             []()
             {
@@ -1236,12 +1238,10 @@ INSTANTIATE_TEST_SUITE_P(
             "SessionDeleteFailsReturnsError",
             [](auto& tester, auto& store)
             {
-                const auto entry = makeEntry("test", "policy_validate_x");
-                EXPECT_CALL(tester, getTestEntry("test")).WillOnce(::testing::Return(entry));
-                EXPECT_CALL(store, existsNamespace(::testing::_)).WillOnce(::testing::Return(true));
-                EXPECT_CALL(store, deleteNamespace(::testing::_)).WillOnce(::testing::Return());
-                EXPECT_CALL(tester, deleteTestEntry("test"))
+                EXPECT_CALL(tester, extractTestEntry("test"))
                     .WillOnce(::testing::Return(base::Error {"session locked"}));
+                EXPECT_CALL(store, existsNamespace(::testing::_)).Times(0);
+                EXPECT_CALL(store, deleteNamespace(::testing::_)).Times(0);
             },
             []()
             {
