@@ -277,6 +277,69 @@ static void test_fim_recovery_persist_table_and_resync_success(void **state) {
     check_fim_recovery_file_id("abc123");
 }
 
+static void test_fim_recovery_resync_preserves_host_and_container_ids(void **state) {
+    (void)state;
+    AgentSyncProtocolHandle* handle = (AgentSyncProtocolHandle*)0x1234;
+    const char* path = "/tmp/shared.txt";
+    const char* container_id = "abc123";
+    os_sha1 hashed_ids[2];
+    char container_document_id[256];
+    OS_SHA1_Str(path, -1, hashed_ids[0]);
+    snprintf(container_document_id, sizeof(container_document_id), "%s:%s", container_id, path);
+    OS_SHA1_Str(container_document_id, -1, hashed_ids[1]);
+    expect_any_always(__wrap__mdebug1, formatted_msg);
+
+    cJSON* test_items = cJSON_CreateArray();
+    cJSON* host_item = cJSON_CreateObject();
+    cJSON_AddStringToObject(host_item, "path", path);
+    cJSON_AddStringToObject(host_item, "checksum", "host-sha");
+    cJSON_AddNumberToObject(host_item, "version", 1);
+    cJSON_AddNumberToObject(host_item, "inode", 11111);
+    cJSON_AddItemToArray(test_items, host_item);
+
+    cJSON* container_item = cJSON_CreateObject();
+    cJSON_AddStringToObject(container_item, "path", path);
+    cJSON_AddStringToObject(container_item, "container_id", container_id);
+    cJSON_AddStringToObject(container_item, "checksum", "container-sha");
+    cJSON_AddNumberToObject(container_item, "version", 1);
+    cJSON_AddNumberToObject(container_item, "inode", 22222);
+    cJSON_AddItemToArray(test_items, container_item);
+
+    expect_string(__wrap_fim_db_increase_each_entry_version, table_name, FIMDB_FILE_TABLE_NAME);
+    will_return(__wrap_fim_db_increase_each_entry_version, 0);
+    expect_string(__wrap_fim_db_get_every_element, table_name, FIMDB_FILE_TABLE_NAME);
+    expect_string(__wrap_fim_db_get_every_element, row_filter, "WHERE sync=1");
+    will_return(__wrap_fim_db_get_every_element, test_items);
+
+    expect_value(__wrap_asp_notify_data_clean, handle, handle);
+    expect_any(__wrap_asp_notify_data_clean, indices);
+    expect_value(__wrap_asp_notify_data_clean, indices_count, 1);
+    will_return(__wrap_asp_notify_data_clean, true);
+
+    for (int i = 0; i < 2; ++i) {
+        expect_string(__wrap_fim_configuration_directory, path, path);
+        will_return(__wrap_fim_configuration_directory, &mock_directory_config);
+        expect_string(__wrap_build_stateful_event_file, path, path);
+        cJSON* mock_event = cJSON_CreateObject();
+        cJSON_AddStringToObject(mock_event, "type", "file");
+        will_return(__wrap_build_stateful_event_file, mock_event);
+        will_return(__wrap_schema_validator_is_initialized, false);
+
+        expect_value(__wrap_asp_persist_diff, handle, handle);
+        expect_string(__wrap_asp_persist_diff, id, hashed_ids[i]);
+        expect_value(__wrap_asp_persist_diff, operation, OPERATION_CREATE);
+        expect_string(__wrap_asp_persist_diff, index, FIM_FILES_SYNC_INDEX);
+        expect_any(__wrap_asp_persist_diff, data);
+        expect_value(__wrap_asp_persist_diff, version, 1);
+    }
+
+    expect_value(__wrap_asp_sync_module, handle, handle);
+    expect_value(__wrap_asp_sync_module, mode, MODE_DELTA);
+    will_return(__wrap_asp_sync_module, true);
+
+    assert_true(fim_recovery_persist_table_and_resync(FIMDB_FILE_TABLE_NAME, handle, &mock_directories));
+}
+
 // Test: Persist and resync with failed synchronization
 static void test_fim_recovery_persist_table_and_resync_failure(void **state) {
     (void) state;
@@ -1414,6 +1477,7 @@ int main(void) {
         cmocka_unit_test(test_fim_recovery_integrity_interval_has_elapsed_not_elapsed),
         cmocka_unit_test(test_fim_recovery_integrity_interval_has_elapsed_elapsed),
         cmocka_unit_test(test_fim_recovery_persist_table_and_resync_success),
+        cmocka_unit_test(test_fim_recovery_resync_preserves_host_and_container_ids),
         cmocka_unit_test(test_fim_recovery_persist_table_and_resync_failure),
         cmocka_unit_test(test_fim_recovery_persist_table_and_resync_version_increase_failure),
         cmocka_unit_test(test_fim_recovery_persist_table_and_resync_null_items),
