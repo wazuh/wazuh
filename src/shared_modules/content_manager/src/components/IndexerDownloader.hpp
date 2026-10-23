@@ -17,8 +17,11 @@
 #include "updaterContext.hpp"
 #include "utils/chainOfResponsability.hpp"
 #include "utils/timeHelper.h"
+#include <algorithm>
 #include <atomic>
 #include <chrono>
+#include <cinttypes>
+#include <limits>
 #include <memory>
 #include <mutex>
 #include <optional>
@@ -787,6 +790,26 @@ private:
      * @return true if this call caused (or coincided with) a durable flush of the feed
      *         database, i.e. it is now safe to persist a cursor up to and including this page.
      */
+    /**
+     * @brief The stored cursor when it is a usable resume point (a positive integer), else empty.
+     */
+    std::string getResumeCursor(const UpdaterContext& context) const
+    {
+        const auto stored = getStoredCursor(context);
+        if (stored.empty())
+        {
+            return {};
+        }
+        try
+        {
+            return std::stoull(stored) > 0 ? stored : std::string {};
+        }
+        catch (const std::exception&)
+        {
+            return {};
+        }
+    }
+
     bool processPage(UpdaterContext& context, const nlohmann::json& hits, const std::string& cursor) const
     {
         nlohmann::json message;
@@ -1041,6 +1064,15 @@ private:
         std::atomic<size_t> totalProcessed {0};
         std::string maxCursor = startCursor;
         std::mutex cursorMutex;
+        // Resume bookkeeping, all under cursorMutex: the last offset each slice delivered and which
+        // slices ran out of documents. Every slice pages in offset order, so every document with an
+        // offset at or below the lowest unfinished frontier was delivered by every slice; once the
+        // consumer answers "flushed" that frontier is durable and becomes the cursor an interrupted
+        // load resumes from (a slice that was ahead re-reads at most what it read since the flush).
+        const uint64_t startOffset = startCursor.empty() ? 0ULL : std::stoull(startCursor);
+        std::vector<uint64_t> sliceFrontier(numSlices, startOffset);
+        std::vector<bool> sliceFinished(numSlices, false);
+        uint64_t persistedOffset = startOffset;
         std::vector<std::thread> threads;
         std::vector<std::string> errors;
         std::mutex errorsMutex;
@@ -1089,8 +1121,41 @@ private:
                         sliceCursor = std::to_string(lastHit.at("_source").at("offset").get<uint64_t>());
                     }
 
-                    processPage(context, hitArray, sliceCursor);
+                    const bool flushed = processPage(context, hitArray, sliceCursor);
                     sliceProcessed += hitArray.size();
+
+                    {
+                        std::lock_guard<std::mutex> lock(cursorMutex);
+                        if (!sliceCursor.empty())
+                        {
+                            sliceFrontier[sliceId] = std::stoull(sliceCursor);
+                        }
+                        if (flushed)
+                        {
+                            uint64_t safe = std::numeric_limits<uint64_t>::max();
+                            bool anyUnfinished = false;
+                            for (size_t i = 0; i < numSlices; ++i)
+                            {
+                                if (!sliceFinished[i])
+                                {
+                                    safe = std::min(safe, sliceFrontier[i]);
+                                    anyUnfinished = true;
+                                }
+                            }
+                            if (!anyUnfinished)
+                            {
+                                safe = *std::max_element(sliceFrontier.begin(), sliceFrontier.end());
+                            }
+                            if (safe > persistedOffset)
+                            {
+                                persistedOffset = safe;
+                                persistCursor(context, std::to_string(safe));
+                                logDebug2(WM_CONTENTUPDATER,
+                                          "IndexerDownloader: Safe resume point persisted at offset %" PRIu64 ".",
+                                          safe);
+                            }
+                        }
+                    }
 
                     if (hitArray.size() < pageSize)
                     {
@@ -1101,6 +1166,12 @@ private:
                 }
 
                 totalProcessed += sliceProcessed;
+
+                if (!context.spUpdaterBaseContext->spStopCondition->check())
+                {
+                    std::lock_guard<std::mutex> lock(cursorMutex);
+                    sliceFinished[sliceId] = true;
+                }
 
                 // Update global max cursor
                 {
@@ -1174,9 +1245,10 @@ private:
         if (interrupted.load())
         {
             logInfo(WM_CONTENTUPDATER,
-                    "IndexerDownloader: Initial load interrupted by stop request — cursor not persisted, %zu "
-                    "documents processed this cycle will be re-fetched on the next initial load.",
-                    totalProcessed.load());
+                    "IndexerDownloader: Initial load interrupted by stop request — %zu documents processed this "
+                    "cycle; the next initial load resumes from offset %" PRIu64 ".",
+                    totalProcessed.load(),
+                    persistedOffset);
             return totalProcessed.load();
         }
 
@@ -1198,7 +1270,6 @@ private:
      */
     size_t initialLoad(UpdaterContext& context) const
     {
-        const nlohmann::json query = {{"match_all", nlohmann::json::object()}};
         const size_t numSlices = m_config.at("indexer").value("numSlices", 2u);
         size_t attempt = 0;
 
@@ -1206,14 +1277,30 @@ private:
         {
             notifyUpdateStarted(context);
 
-            if (attempt == 0)
+            // Resume point: the cursor a previous attempt (or a previous run of this load) persisted
+            // on a "flushed" answer. Empty means nothing durable yet: read from the beginning.
+            const auto resumeFrom = getResumeCursor(context);
+            const nlohmann::json query =
+                resumeFrom.empty() ? nlohmann::json {{"match_all", nlohmann::json::object()}}
+                                   : nlohmann::json {{"range", {{"offset", {{"gt", std::stoull(resumeFrom)}}}}}};
+
+            if (attempt == 0 && resumeFrom.empty())
             {
                 logInfo(WM_CONTENTUPDATER, "IndexerDownloader: Starting initial full load (slices=%zu)", numSlices);
             }
+            else if (attempt == 0)
+            {
+                logInfo(WM_CONTENTUPDATER,
+                        "IndexerDownloader: Resuming initial full load from offset %s (slices=%zu)",
+                        resumeFrom.c_str(),
+                        numSlices);
+            }
             else
             {
-                logInfo(
-                    WM_CONTENTUPDATER, "IndexerDownloader: Retrying initial full load (attempt %zu) ...", attempt + 1);
+                logInfo(WM_CONTENTUPDATER,
+                        "IndexerDownloader: Retrying initial full load (attempt %zu) from offset %s ...",
+                        attempt + 1,
+                        resumeFrom.empty() ? "0" : resumeFrom.c_str());
             }
 
             // Stay at INFO/DEBUG for the first attempts, escalate to WARNING/ERROR afterwards.
@@ -1226,33 +1313,50 @@ private:
             {
                 if (numSlices > 1)
                 {
-                    totalProcessed = fetchWithSlicedPit(context, query, "", numSlices, escalate);
+                    totalProcessed = fetchWithSlicedPit(context, query, resumeFrom, numSlices, escalate);
                 }
                 else
                 {
-                    totalProcessed = fetchWithPit(context, query, "", escalate);
+                    totalProcessed = fetchWithPit(context, query, resumeFrom, escalate);
                 }
             }
             catch (const std::exception& e)
             {
                 exceptionOccurred = true;
+                // The reason is visible from the first attempt: an operator reading the log must not
+                // wait for the third failure to learn why the feed is not loading.
+                const auto nextResume = getResumeCursor(context);
                 if (escalate)
                 {
-                    logWarn(WM_CONTENTUPDATER,
-                            "IndexerDownloader: Initial load failed (%s) — retrying in %zus.",
-                            e.what(),
-                            retryIntervalSeconds());
+                    logWarn(
+                        WM_CONTENTUPDATER,
+                        "IndexerDownloader: Initial load attempt %zu failed (%s) — retrying in %zus from offset %s.",
+                        attempt + 1,
+                        e.what(),
+                        retryIntervalSeconds(),
+                        nextResume.empty() ? "0" : nextResume.c_str());
                 }
                 else
                 {
-                    logDebug2(WM_CONTENTUPDATER,
-                              "IndexerDownloader: Indexer not available yet (%s) — retrying in %zus "
-                              "(attempt %zu/%zu).",
-                              e.what(),
-                              retryIntervalSeconds(),
-                              attempt + 1,
-                              INDEXER_WARN_AFTER_ATTEMPTS);
+                    logInfo(
+                        WM_CONTENTUPDATER,
+                        "IndexerDownloader: Initial load attempt %zu failed (%s) — retrying in %zus from offset %s.",
+                        attempt + 1,
+                        e.what(),
+                        retryIntervalSeconds(),
+                        nextResume.empty() ? "0" : nextResume.c_str());
                 }
+            }
+
+            if (totalProcessed == 0 && !exceptionOccurred && !resumeFrom.empty())
+            {
+                // Nothing after the resume point: the previous attempt had delivered everything before
+                // it failed (or the completion was accepted but not recorded). The load is complete.
+                context.data["cursor"] = resumeFrom;
+                logInfo(WM_CONTENTUPDATER,
+                        "IndexerDownloader: Initial load download phase complete — no documents after offset %s.",
+                        resumeFrom.c_str());
+                return 0;
             }
 
             if (totalProcessed > 0)
