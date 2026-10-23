@@ -32,6 +32,9 @@
 
 #define SYSCOLLECTOR_FRIEND_TEST_DECLARATIONS                                                                          \
     friend class SyscollectorIdentityTest;                                                                             \
+    FRIEND_TEST(SyscollectorImpTest, AdmissionRetractsAndRestoresRetainedRows);                                        \
+    FRIEND_TEST(SyscollectorImpTest, DocumentBudgetsShrinkPromoteAndReleasePerContainer);                              \
+    FRIEND_TEST(SyscollectorImpTest, ContainerBaselineAdmissionAndCleanup);                                            \
     FRIEND_TEST(SyscollectorIdentityTest, AbsentMarkerIsAdoptedWithoutResync);                                         \
     FRIEND_TEST(SyscollectorIdentityTest, UnchangedIdIsANoOp);                                                         \
     FRIEND_TEST(SyscollectorIdentityTest, UnknownIdIsANoOp);                                                           \
@@ -48,7 +51,7 @@
     FRIEND_TEST(SyscollectorIdentityTest, DeferredVDRecoveryDoesNotAttachContext);                                     \
     FRIEND_TEST(SyscollectorImpTest, SyncModule_LocalTransportUnavailableWithinToleranceLogsDeferred);                 \
     FRIEND_TEST(SyscollectorImpTest, SyncModule_LocalTransportUnavailableAtToleranceLogsDeferred);                     \
-    FRIEND_TEST(SyscollectorImpTest, SyncModule_LocalTransportUnavailablePastToleranceLogsWarning);                   \
+    FRIEND_TEST(SyscollectorImpTest, SyncModule_LocalTransportUnavailablePastToleranceLogsWarning);                    \
     FRIEND_TEST(SyscollectorImpTest, SweepContainerRowsNotInKeepsEverythingWhenThereAreNoContainerRows);               \
     FRIEND_TEST(SyscollectorImpTest, OrderingFieldsAreTableSpecificAndUnknownTablesHaveNone);                          \
     FRIEND_TEST(SyscollectorImpTest, AnOrderByClauseSplitsEveryFieldAndCarriesTheDirection)
