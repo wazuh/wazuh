@@ -6806,6 +6806,96 @@ TEST_F(SyscollectorImpTest, DocumentBudgetsShrinkPromoteAndReleasePerContainer)
     EXPECT_EQ(module.m_limitReported.count({"b", index}), 0u);
 }
 
+TEST_F(SyscollectorImpTest, PostScanPromotionVisitsOnlyContainersWithBacklog)
+{
+    const auto info = std::make_shared<MockSysInfo>();
+    EXPECT_CALL(*info, releaseThreadResources()).Times(testing::AnyNumber());
+    auto& module = Syscollector::instance();
+    std::vector<Operation_t> events;
+    std::vector<std::string> notices;
+    module.init(
+        info,
+        reportFunction,
+        [&events](const std::string&, Operation_t op, const std::string&, const std::string&, uint64_t)
+        { events.push_back(op); },
+        [&notices](const modules_log_level_t level, const std::string& message)
+        {
+            if (level == LOG_INFO && message.find("Inventory limit reached") != std::string::npos)
+            {
+                notices.push_back(message);
+            }
+        },
+        SYSCOLLECTOR_DB_PATH,
+        "",
+        "",
+        3600,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false);
+    const std::string index = "wazuh-states-inventory-processes";
+    const auto store = [&module](const std::string& id, int pid, int sync)
+    {
+        const nlohmann::json row = {{"container_id", id},
+                                    {"pid", std::to_string(pid)},
+                                    {"name", "test"},
+                                    {"checksum", "sum"},
+                                    {"version", 1},
+                                    {"sync", sync}};
+        auto query = SyncRowQuery::builder().table(PROCESSES_TABLE).data(row).build();
+        module.m_spDBSync->syncRow(query.query(), [](ReturnTypeCallback, const nlohmann::json&) {});
+    };
+    // a: saturated with one row held back. b: room and one row held back.
+    // c: saturated with nothing held back.
+    store("a", 1, 1);
+    store("a", 2, 1);
+    store("a", 3, 0);
+    store("b", 1, 1);
+    store("b", 2, 0);
+    store("c", 1, 1);
+    store("c", 2, 1);
+    module.initializeDocumentCounts();
+    module.setAdmittedContainers({{"a", true}, {"b", true}, {"c", true}});
+    module.m_containerDocumentLimits[index] = 2;
+    EXPECT_EQ(module.containersWithRowsIn(PROCESSES_TABLE, true), (std::set<std::string> {"a", "b"}));
+    EXPECT_EQ(module.containersWithRowsIn(PROCESSES_TABLE), (std::set<std::string> {"a", "b", "c"}));
+
+    // A stale notice for c, left from when it last withheld something.
+    module.m_limitReported.insert({"c", index});
+    module.promoteItemsAfterScan();
+
+    ASSERT_EQ(events.size(), 1u);
+    EXPECT_EQ(events[0], OPERATION_CREATE);
+    EXPECT_EQ(module.m_containerDocumentCounts["b"][index], 2u);
+    EXPECT_EQ(module.unsyncedCountFor(PROCESSES_TABLE, Syscollector::LimitScope::container, "b"), 0u);
+    EXPECT_EQ(module.m_limitReported.count({"a", index}), 1u);
+    EXPECT_EQ(module.m_limitReported.count({"c", index}), 0u) << "nothing held back, so the notice is re-armed";
+    ASSERT_EQ(notices.size(), 1u);
+    EXPECT_NE(notices[0].find("[container a]"), std::string::npos);
+    EXPECT_NE(notices[0].find(" 1 collected row(s)"), std::string::npos);
+
+    module.promoteItemsAfterScan();
+    EXPECT_EQ(events.size(), 1u);
+    EXPECT_EQ(notices.size(), 1u) << "a saturation notice fires once until it clears";
+
+    store("c", 3, 0);
+    module.promoteItemsAfterScan();
+    EXPECT_EQ(events.size(), 1u) << "c is at its limit; its new row stays held back";
+    ASSERT_EQ(notices.size(), 2u);
+    EXPECT_NE(notices[1].find("[container c]"), std::string::npos);
+    EXPECT_EQ(module.m_limitReported.count({"c", index}), 1u);
+}
+
 TEST_F(SyscollectorImpTest, ContainerBaselineAdmissionAndCleanup)
 {
 #if defined(__linux__)
