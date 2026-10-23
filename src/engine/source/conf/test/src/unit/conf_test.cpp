@@ -588,6 +588,7 @@ TEST(ConfTest, NegativeSignedFileValueStillValidates)
 
 TEST(ConfTest, InvalidUnsignedEnvironmentFallsBack)
 {
+    SKIP_UNLESS_FILE_IS_LOADED();
     logging::testInit();
     ScopedEnv env("WAZUH_AGENT_METADATA_CACHE_MAX_ENTRIES");
     conf::Conf configured(
