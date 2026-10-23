@@ -31,6 +31,8 @@ All notable changes to this project will be documented in this file.
 
 #### Fixed
 
+- Fixed the FIM eBPF whodata device ID not matching the file device. ([#32502](https://github.com/wazuh/wazuh/issues/32502))
+- Fixed wrong paths in FIM eBPF whodata events for `fchown` and `ftruncate` on non-root mounts. ([#32502](https://github.com/wazuh/wazuh/issues/32502))
 - Hardened how the agent handles requests received from the manager. ([#40467](https://github.com/wazuh/wazuh/pull/40467))
 - Fixed `agent-auth` failing at random with `SSL error (2)` because it did not set the receive timeout of its enrollment socket. ([#40468](https://github.com/wazuh/wazuh/pull/40468))
 - Fixed `wazuh-execd` keeping a local request connection open when the request could not be read, and not terminating a request of the maximum size. ([#40529](https://github.com/wazuh/wazuh/pull/40529))

@@ -13,6 +13,7 @@
 #include <chrono>
 #include <cstdio>
 #include <cstdlib>
+#include <filesystem>
 #include <fstream>
 #include <iostream>
 #include <memory>
@@ -20,7 +21,9 @@
 
 #include <mutex>
 #include <string>
+#include <string_view>
 #include <sys/stat.h>
+#include <sys/sysmacros.h>
 #include <thread>
 #include <unistd.h>
 #include <unordered_map>
@@ -126,6 +129,16 @@ template<typename T>
 static char* num_to_str(T num)
 {
     return strdup(std::to_string(num).c_str());
+}
+
+static dev_t get_st_dev(std::string_view path, uint64_t kernel_dev)
+{
+    struct stat dir_stat;
+    if (stat(std::filesystem::path(path).parent_path().c_str(), &dir_stat) == 0)
+    {
+        return dir_stat.st_dev;
+    }
+    return makedev(kernel_dev >> 20, kernel_dev & 0xfffff);
 }
 
 constexpr auto ID_CACHE_TTL = std::chrono::seconds(1);
@@ -806,7 +819,7 @@ void ebpf_pop_events(fim::BoundedQueue<std::unique_ptr<dynamic_file_event>>& loc
                 }
             }
             w_evt->inode = num_to_str(event->inode);
-            w_evt->dev = num_to_str(event->dev);
+            w_evt->dev = num_to_str(get_st_dev(event->filename, event->dev));
             w_evt->process_id = event->pid;
             w_evt->ppid = event->ppid;
             w_evt->cwd = strdup(event->cwd.c_str());
