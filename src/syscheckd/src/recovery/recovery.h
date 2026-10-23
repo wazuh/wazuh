@@ -49,6 +49,26 @@ typedef bool (*SynchronizeModuleCallback)(void);
 #endif
 
 /**
+ * @brief Re-sends one reported container file row during a recovery resync.
+ *
+ * @param row The file_entry row, as read from the database (container_id non-empty).
+ * @return 1 when the row was queued, 0 when it was skipped (not covered by the container
+ *         configuration, or its container is withheld), -1 on error.
+ */
+typedef int (*fim_recovery_container_row_handler_t)(const cJSON* row);
+
+/**
+ * @brief Registers how recovery re-sends container file rows.
+ *
+ * A container row is identified, shaped and admitted by the container FIM layer, which recovery
+ * cannot link against directly. Until a handler is registered -- container file monitoring is
+ * off -- container rows are skipped as orphans: nothing is configured to monitor them.
+ *
+ * @param handler The handler, or NULL to clear it.
+ */
+EXPORTED void fim_recovery_set_container_row_handler(fim_recovery_container_row_handler_t handler);
+
+/**
  * @brief Persists a table's contents in memory and triggers a full resync
  * @param table_name The table to resync
  * @param handle Sync Protocol handle

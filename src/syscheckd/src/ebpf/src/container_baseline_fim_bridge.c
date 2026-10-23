@@ -898,6 +898,48 @@ int fim_persist_baseline_row(const char* id, int operation, const char* index, c
     return sync_flag;
 }
 
+int fim_container_recover_row(const cJSON* row)
+{
+    const char* container_id = cJSON_GetStringValue(cJSON_GetObjectItem(row, "container_id"));
+    const char* path = cJSON_GetStringValue(cJSON_GetObjectItem(row, "path"));
+    const cJSON* version = cJSON_GetObjectItem(row, "version");
+
+    if (container_id == NULL || *container_id == '\0' || path == NULL || !cJSON_IsNumber(version)) {
+        mdebug1("Container FIM recovery: skipping a row with missing fields.");
+        return -1;
+    }
+
+    /* The counterpart of recovery's host orphan guard, resolved against the
+     * container list for the reason fim_container_configuration_directory()
+     * gives. */
+    if (fim_container_configuration_directory(path) == NULL) {
+        mdebug2("Container FIM recovery: skipping '%s:%s', no longer covered by the container configuration.",
+                container_id, path);
+        return 0;
+    }
+
+    char* json = cJSON_PrintUnformatted(row);
+    if (json == NULL) {
+        return -1;
+    }
+
+    const size_t id_len = strlen(container_id) + strlen(path) + 2;
+    char* id = NULL;
+    os_calloc(id_len, sizeof(char), id);
+    snprintf(id, id_len, "%s:%s", container_id, path);
+
+    /* A sync=1 row is a refresh to the document budget, so re-sending it
+     * charges nothing; a container that lost admission is still withheld. */
+    const int result = fim_persist_baseline_row(id,
+                                                OPERATION_CREATE,
+                                                "wazuh-states-fim-files",
+                                                json,
+                                                (uint64_t)cJSON_GetNumberValue(version));
+    os_free(id);
+    cJSON_free(json);
+    return result;
+}
+
 /* Host FIM's own alert vocabulary. Duplicated from file.c's static table
  * rather than exported from it: three string literals are not worth widening
  * that file's interface for, and the schema they name is fixed. */

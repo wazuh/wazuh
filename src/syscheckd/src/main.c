@@ -22,7 +22,9 @@
 #include "startup_gate_op.h"
 #ifdef __linux__
 #include "container_baseline_fim.h"
+#include "container_baseline_fim_bridge.h"
 #include "container_baseline_host_api.h"
+#include "recovery.h"
 #endif
 
 #ifndef WIN32
@@ -515,6 +517,7 @@ int main(int argc, char **argv)
             .validate_and_persist = validate_and_persist_fim_event,
         };
         fim_container_baseline_set_host_api(&container_host_api);
+        fim_recovery_set_container_row_handler(fim_container_recover_row);
 
         // Subscribe BEFORE walking (#37396 / #37532). The drain stages container
         // file events from here on, so a file changed while the walk is running
