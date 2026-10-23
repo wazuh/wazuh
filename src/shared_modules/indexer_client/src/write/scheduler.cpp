@@ -12,6 +12,7 @@
 
 #include "write/scheduler.hpp"
 
+#include <algorithm>
 #include <atomic>
 #include <chrono>
 #include <future>
@@ -45,7 +46,8 @@ namespace indexer_client::detail::write
         struct Entry final
         {
             BucketKey bucket;
-            std::uint64_t credit {0};    ///< DRR deficit; kept across turns, 0 when the bucket empties.
+            /// DRR deficit; may go negative (debt, I118), kept across turns and when the bucket empties.
+            std::int64_t credit {0};
             bool inTurn {false};         ///< The turn was cut by the sink's capacity: resume it without new credit.
             std::size_t turnBatches {0}; ///< Batches of the current turn (weight x DRR_MAX_BATCHES_PER_TURN, I97b).
             bool inRing {false};
@@ -71,6 +73,8 @@ namespace indexer_client::detail::write
             std::atomic<std::uint64_t> batches {0};
             std::atomic<std::uint64_t> timerFires {0};
             std::atomic<std::uint64_t> fastForwards {0};
+            /// I118 invariant violations (credit <= -maxBytes after a batch).
+            std::atomic<std::uint64_t> debtOverruns {0};
 
             std::mutex mutex; ///< Guards the three members below.
             bool stopped {false};
@@ -179,13 +183,11 @@ namespace indexer_client::detail::write
             }
         }
 
-        /// Loop 0 only. DRR over the ring (I63): returns when the ring is exhausted (nothing eligible can be covered)
-        /// or when the sink has no capacity (the cursor stays on the bucket whose turn was cut).
-        /// Loop 0 only: every bucket in the ring had a turn and none could cover its head (a quantum small against the
-        /// documents). Adds at once the credit of the k - 1 empty rounds classic DRR would still spin through, k being
-        /// the fewest rounds after which some bucket covers its head; the next turn adds the k-th. Same outcome, no
-        /// spin.
-        void fastForward(SchedulerShared& shared, TimePoint now)
+        /// Loop 0 only: every bucket in the ring had a turn and none could emit (credit <= 0: a quantum small against
+        /// the documents, or a debt being paid back, I118). Adds at once the credit of the k - 1 empty rounds classic
+        /// DRR would still spin through, k being the fewest rounds after which some bucket has credit > 0; the next
+        /// turn adds the k-th. Same outcome, no spin.
+        void fastForward(SchedulerShared& shared)
         {
             std::uint64_t rounds = 0;
             for (const auto& key : shared.ring)
@@ -196,13 +198,14 @@ namespace indexer_client::detail::write
                 {
                     continue;
                 }
-                const auto head = bucket->headBytes(now);
-                const auto perRound = static_cast<std::uint64_t>(bucket->spec().weight) * shared.quantum;
-                if (head <= it->second.credit || perRound == 0)
+                const auto perRound =
+                    static_cast<std::int64_t>(bucket->spec().weight) * static_cast<std::int64_t>(shared.quantum);
+                if (it->second.credit > 0 || perRound == 0)
                 {
                     return; // Some bucket can already emit: nothing to skip.
                 }
-                const auto needed = (head - it->second.credit + perRound - 1) / perRound;
+                // credit <= 0, so the numerator is >= 1.
+                const auto needed = static_cast<std::uint64_t>((1 - it->second.credit + perRound - 1) / perRound);
                 rounds = rounds == 0 ? needed : std::min(rounds, needed);
             }
             if (rounds <= 1)
@@ -215,8 +218,9 @@ namespace indexer_client::detail::write
                 {
                     if (auto bucket = it->second.bucket.lock())
                     {
-                        it->second.credit +=
-                            (rounds - 1) * static_cast<std::uint64_t>(bucket->spec().weight) * shared.quantum;
+                        it->second.credit += static_cast<std::int64_t>(rounds - 1) *
+                                             static_cast<std::int64_t>(bucket->spec().weight) *
+                                             static_cast<std::int64_t>(shared.quantum);
                     }
                 }
             }
@@ -243,6 +247,8 @@ namespace indexer_client::detail::write
             return false;
         }
 
+        /// Loop 0 only. DRR over the ring (I63, I118): returns when the ring is exhausted (no eligible bucket left) or
+        /// when the sink has no capacity (the cursor stays on the bucket whose turn was cut).
         void drr(const std::shared_ptr<SchedulerShared>& shared, BatchSink& sink, TimePoint now)
         {
             std::size_t idleTurns = 0; ///< Consecutive complete turns that emitted nothing.
@@ -259,7 +265,7 @@ namespace indexer_client::detail::write
                 {
                     if (bucket && bucket->empty() && it != shared->entries.end())
                     {
-                        it->second.credit = 0;
+                        it->second.credit = std::min<std::int64_t>(it->second.credit, 0); // The debt is kept (I118).
                     }
                     removeFromRing(*shared, index);
                     continue;
@@ -275,7 +281,7 @@ namespace indexer_client::detail::write
                 {
                     entry.inTurn = true;
                     entry.turnBatches = 0;
-                    entry.credit += perTurn;
+                    entry.credit += static_cast<std::int64_t>(perTurn);
                 }
                 bool capacityExhausted = false;
                 bool stuck = false;
@@ -284,7 +290,7 @@ namespace indexer_client::detail::write
                 for (;;)
                 {
                     const auto head = bucket->headBytes(now);
-                    if (head == 0 || entry.credit < head || !bucket->eligible(now))
+                    if (head == 0 || entry.credit <= 0 || !bucket->eligible(now))
                     {
                         break;
                     }
@@ -298,13 +304,22 @@ namespace indexer_client::detail::write
                         capacityExhausted = true;
                         break;
                     }
-                    auto batch = bucket->slice(entry.credit, now, sink.batchLimit());
+                    // Up to bulk.maxBytes (and the sink's batchLimit), whatever the credit (I118).
+                    auto batch = bucket->slice(now, sink.batchLimit());
                     if (batch.ops.empty())
                     {
-                        stuck = true; // Never expected (slice takes the head when the credit covers it).
+                        stuck = true; // Never expected (slice always takes the head of an eligible bucket).
                         break;
                     }
-                    entry.credit -= std::min(entry.credit, batch.bytes);
+                    // No floor: the excess over the credit is a debt the next turns pay back (I118). Every document
+                    // fits in bulk.maxBytes (admission) and the turn emits only with credit > 0, so the debt stays
+                    // above -bulk.maxBytes; reaching it is a bug, counted (the tests require 0) and never corrected in
+                    // silence. No assert: the manager's Release builds keep asserts live (no NDEBUG).
+                    entry.credit -= static_cast<std::int64_t>(batch.bytes);
+                    if (entry.credit <= -static_cast<std::int64_t>(bucket->spec().bulk.maxBytes))
+                    {
+                        shared->debtOverruns.fetch_add(1);
+                    }
                     ++entry.turnBatches;
                     shared->batches.fetch_add(1);
                     sink.dispatch(std::move(batch));
@@ -320,13 +335,13 @@ namespace indexer_client::detail::write
                 entry.inTurn = false;
                 if (yielded)
                 {
-                    entry.credit = std::min(entry.credit, perTurn);
+                    entry.credit = std::min<std::int64_t>(entry.credit, static_cast<std::int64_t>(perTurn));
                     shared->cursor = index + 1;
                     idleTurns = 0;
                 }
                 else if (bucket->empty())
                 {
-                    entry.credit = 0;
+                    entry.credit = std::min<std::int64_t>(entry.credit, 0); // The debt is kept (I118).
                     removeFromRing(*shared, index);
                 }
                 else if (stuck || !bucket->eligible(now))
@@ -335,14 +350,14 @@ namespace indexer_client::detail::write
                 }
                 else
                 {
-                    shared->cursor = index + 1; // The credit does not cover the head: next bucket, credit kept.
+                    shared->cursor = index + 1; // Credit <= 0 (a debt being paid back): next bucket, credit kept.
                     if (shared->batches.load() != batchesBefore)
                     {
                         idleTurns = 0;
                     }
                     else if (++idleTurns >= shared->ring.size())
                     {
-                        fastForward(*shared, now);
+                        fastForward(*shared);
                         idleTurns = 0;
                     }
                 }
@@ -546,6 +561,7 @@ namespace indexer_client::detail::write
                 stats.batches = m_shared->batches.load();
                 stats.timerFires = m_shared->timerFires.load();
                 stats.fastForwards = m_shared->fastForwards.load();
+                stats.debtOverruns = m_shared->debtOverruns.load();
                 return stats;
             }
 

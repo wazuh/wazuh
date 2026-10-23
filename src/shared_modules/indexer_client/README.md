@@ -640,12 +640,14 @@ from network loop 0, as the `Prober` does; other threads only append to a notifi
   pass. An expiry already due when the timer would be armed is not armed (it would spin while the sink has no capacity): the pass
   runs once more instead, when the sink has capacity; otherwise `sinkReady()` resumes the scheduler.
 - **The DRR loop.** Eligible buckets form a ring with a persistent cursor. On its turn a bucket's `credit` grows by
-  `weight x drr_quantum_bytes` and it emits batches while `credit >= bytes of its head operation` and `sink.capacity() > 0`. A batch
-  takes whole operations from the head, at most `bulk.maxBytes` and `bulk.maxDocs`, within the credit; the head goes alone
-  whenever the credit covers it, so a document is never split. The credit also bounds the size of each batch: with many small
-  documents a batch is at most `bulk.maxBytes` and about `weight x drr_quantum_bytes` (1 MiB by default; up to twice that right
-  after a yielded turn, below). The turn ends when the credit does not cover the head (credit kept), when the bucket empties
-  (credit reset to 0), when it falls below every threshold again (its timer brings it back) or, **after
+  `weight x drr_quantum_bytes` and it emits batches while `credit > 0` and `sink.capacity() > 0` (I118). A batch takes whole
+  operations from the head, up to `bulk.maxBytes` (and the limiter's `batchLimit()`) and `bulk.maxDocs`, whatever the credit; the
+  head always goes, so a document is never split. Each batch takes its bytes from the credit with no floor: the excess is a
+  **debt** (a negative credit) that the next turns pay back before the bucket emits again. Admission refuses any document larger
+  than `bulk.maxBytes` and a turn emits only with `credit > 0`, so the debt stays above `-bulk.maxBytes` (a batch that reaches it
+  is a bug: counted in `SchedulerStats::debtOverruns`, never aborted on). Over many turns each bucket's share of
+  the bytes still follows its weight. The turn ends when the credit is `<= 0` (credit kept), when the bucket empties (a debt is
+  kept, a positive credit drops to 0), when it falls below every threshold again (its timer brings it back) or, **after
   `weight x DRR_MAX_BATCHES_PER_TURN` (8) batches, when another bucket of the ring is eligible** (I97b; scaled by the weight so
   that the shares still follow the weights): the cursor moves on and the leftover credit is kept, capped at
   `weight x drr_quantum_bytes` (the next turn adds its quantum as usual); with no other eligible bucket the turn goes on. If the
@@ -653,9 +655,10 @@ from network loop 0, as the `Prober` does; other threads only append to a notifi
 - **One wake per completion (E6a, I109).** A bulk completion posts the scheduler **once**: the notify of each of its requeues is deferred to
   the completion's final wake, together with the pinned buckets whose node is usable (`Scheduler::notifyAll(buckets)`, one post). Deferring
   costs nothing: every pass re-arms the timer of every known bucket, a `Backoff` requeue's due included.
-- **Fast-forward.** If a complete round emits nothing because the quantum is small against the documents, the scheduler adds at once
-  the credit of the `k - 1` empty rounds classic DRR would still spin through (`k` = fewest rounds after which some bucket covers
-  its head) instead of looping (`SchedulerStats::fastForwards`). Same outcome, no spin on loop 0.
+- **Fast-forward.** If a complete round emits nothing (every bucket of the ring has `credit <= 0`: a quantum small against the
+  documents, or a debt being paid back), the scheduler adds at once the credit of the `k - 1` empty rounds classic DRR would still
+  spin through (`k` = fewest rounds after which some bucket has `credit > 0`) instead of looping (`SchedulerStats::fastForwards`).
+  Same outcome, no spin on loop 0.
 
 ### Internal sink
 
@@ -796,7 +799,7 @@ stage 2) or moving to the dispatched DOM with a bounded parser.
   `batchCap = ceil(batch bytes / 2)` on the requeued operations, and `slice` stops before exceeding the smallest `batchCap` of what it
   has taken (`SplitHalvesNeverRemerge`).
 - **Lane before pending.** The lane is ordered by `notBefore` and goes **before** the pending queue. `eligible(now)` is the
-  thresholds or a due lane head; `headBytes(now)` and `slice(credit, now)` take the due lane first and then the pending queue (a
+  thresholds or a due lane head; `headBytes(now)` and `slice(now)` take the due lane first and then the pending queue (a
   batch may hold both); `empty()` means no pending operation and an empty lane; `nextDue(now)` is the minimum of the oldest
   pending operation plus `maxAge` and the lane head. A lane that is not yet due makes the bucket neither eligible nor stuck in the
   ring (`LaneBeforePending`, through the real scheduler). The scheduler's `maxAge` timer is armed on `nextDue()` (E3b-2
@@ -919,7 +922,7 @@ earlier operation of the same key has a final outcome (from the indexer or a loc
 - **A key at most once per bulk.** `slice` takes the due retry lane first and then scans the pending queue in order, at most
   `bulk.maxDocs` operations: a pending operation whose key is already blocked (a key in the lane, one already taken into the batch or one
   of an operation skipped earlier in the scan) is skipped and keeps its place; the scan **stops** at the first takeable operation that does
-  not fit (credit, `maxBytes`, `maxDocs`, `batchCap`). Skipped operations leave in a later bulk, and one that is alone leaves by `maxAge`.
+  not fit (`maxBytes`, `maxDocs`, `batchCap`, the sink's `batchLimit()`; the DRR credit never bounds a batch, I118). Skipped operations leave in a later bulk, and one that is alone leaves by `maxAge`.
 - **Only the key is blocked (I75).** An operation in the retry lane (item `Retry`, a 409 under a `Retry` policy, backoff) blocks its own
   key and nothing else: operations of other keys keep flowing in the following bulks, and the successors of the key wait until it resolves.
 - **No idle spin.** With nothing takeable `nextDue` is the `notBefore` of the lane head (not `now`), so loop 0 does not run in empty
@@ -1680,10 +1683,10 @@ bench/run.sh --v1 <bench_v1> --v2 <bench_v2> --cpus 0,2,4,6 --out <prefix> [--se
 | `--wazuhext-sha256 SHA` | Refuse to measure when a binary maps another `libwazuhext` |
 
 Each binary takes `--mode plain|tls`, `--secs`, `--warmup`, `--pair`, `--fake-status`, `--print-headers` and `--csv-header`; the v1
-also `--headers normative|shipped`, the v2 `--c 1|2|4|8`, `--path transport|client` (`client` is reserved for E6) and
+also `--headers normative|shipped`, the v2 `--c 1|2|4|8`, `--path transport|client` (`client`: [below](#client-path-and-submit-microbenchmark-e6c)) and
 `--probe [--rounds N]`. Exit codes of `run.sh`: 0 ok, 1 an invalid informative row, a failed probe or a failed selfcheck (an invalid normative
 sample annuls its pair and counts through the reliability rule), 2 usage, 3 another `libwazuhext` loaded,
-4 host load never fell to load1 <= 2, 5 a mode stayed unreliable after its repetition.
+4 host load never fell to load1 <= 2, 5 a mode stayed unreliable after its repetition, 6 a gate of `--suite submit` failed or had no valid pair.
 
 **Method.**
 
@@ -1724,6 +1727,23 @@ not measured (E6).
 repeatedly: `PROBE,connections=1,failures=0,appconnect_nonzero=0,rounds=50,applied=50,...`: 50 rounds over the one connection the
 runtime's start round opened (so even round 1 does no handshake; `connections` is the oracle). The rounds run back to back over a
 warm connection: the 10 s interval against an indexer that closes idle connections is E6's.
+
+### Client path and submit microbenchmark (E6c)
+
+- **`indexer_client_bench_v2 --path client --c N`** measures the whole `Client`/bucket write path (buckets, DRR, limiter): one bucket
+  (4 MiB bulks, 256 MiB quota, `Reject`) kept at N x 4 MiB of 1.5 KiB documents, refilled from the result callbacks. The fake runs in
+  **items mode** (one `201` item per action line, so the classifier sees a complete answer). The row is valid when the bucket's
+  delta of `bulkBytes` equals the bytes the fake received; `NOTE bulk_mean=` is the mean bulk size the fake saw.
+- **`indexer_client_bench_submit`** (RNF-2) times what a producer pays per event: v1 `IndexerConnectorAsync::indexDataStream`
+  (a `string_view`) against v2 `IWriter::submit` of an `IndexDataStream` op with its body moved in. P producers fire bursts of
+  B = 1000 ops behind a barrier; between bursts one coordinator waits, off the clock, until the backlog (v1 `getQueueSize()`, v2 the
+  bucket's `charge`) is below W = 16 MiB. The first 5 bursts are discarded. Row: `SUBMIT,side,producers,cb,handover,pair,events,
+  ns_per_op,cpu_ns_per_op,proc_cpu_ns_per_op,B,W,quota,backlog_max,accepted,server_docs,valid`; valid when every op was accepted,
+  the fake received `events x P` documents and no watermark wait timed out. The v1 side seeds a keystore in a temporary directory.
+- **`run.sh --suite submit --submit PATH --out PREFIX [--cpus L] [--cpus-p8 L] [--selfcheck]`**: P = 1/4/8 without callback, P = 1
+  with a no-op callback and P = 1 with `handover=view`, 5 alternated pairs each; ratio = v2/v1 `ns_per_op` (lower is better); the
+  gate is <= 1.05 at P = 1 and P = 8 (grey zone (1.00, 1.05]; at P = 8 a grey or failing wall-clock result is decided by
+  `cpu_ns_per_op`). Exit code 6: a gate failed.
 
 ### Finding: `Expect: 100-continue`
 
@@ -1785,7 +1805,7 @@ installed through `WritePath::setSink`, a callback result log). Every case ends 
 |---|---|
 | `writeEncoding_test.cpp` | `EncodingPerKind`, `EncodingRejectsInvalid`, `EncodingConflictRetryLine`, `EncodingPreservingShapes` (the frozen byte vectors E6 reuses), `EncodingPreservingRejects`, `SubmitCarriesReason` |
 | `writeAdmission_test.cpp` | `ChargeIsWireBytesPlusReserve`, `GlobalCapAcrossBuckets`, `OverflowReject`, `OverflowBlockTimeout`, `OverflowDropNewest`, `OverflowDropOldest`, `OverflowBlockWakes`, `BlockedProducerWakesOnClose`, `NoDropWithoutCounter`, `BlockFromRuntimeThreadIsReentrancy`, `PayloadTooLargeAtSubmit` |
-| `writeScheduler_test.cpp` | `ThresholdsFormBatches`, `DrrNoStarvation`, `DrrShareByWeight`, `DocumentNeverSplitCreditCarries`, `ThreadsStayKPlusMWithBuckets`, `DrrTinyQuantumFastForwards`, `MaxAgeExpiringDuringAPassIsServed` |
+| `writeScheduler_test.cpp` | `ThresholdsFormBatches`, `DrrNoStarvation`, `DrrShareByWeight`, `DocumentNeverSplitDebtCarries`, `ThreadsStayKPlusMWithBuckets`, `DrrTinyQuantumFastForwards`, `MaxAgeExpiringDuringAPassIsServed`, `DrrDebtBulkReachesMaxBytes`, `DrrDebtShareByWeight`, `DrrDebtKeptWhenEmpty` |
 | `writeClose_test.cpp` | `SubmitRacesClose`, `CloseAndShutdownResolveRetained`, `ShutdownWithHeldBatch`, `DefaultSinkIsTheBulkSender` |
 | `writeReserve_test.cpp` | `ResultReserveMeasured` (allocation counter, five phases; skipped under ASAN/TSAN) |
 

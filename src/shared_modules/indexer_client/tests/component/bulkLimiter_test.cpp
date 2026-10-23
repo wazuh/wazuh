@@ -1137,39 +1137,42 @@ TEST_F(BulkLimiterTest, DefaultQuantumYieldsSoon)
     EXPECT_EQ(results->countWith(ic::Status::Ok, ic::Cause::None), FIRST + SECOND);
 }
 
-// I97b (G-diff E5a obj. 2): one bucket, ~2 MiB of ~2 KB documents pending at once (maxAge 2 s, maxBytes and maxDocs out
-// of the way) and the default configuration: the batches are bounded by the 1 MiB quantum, not by the old 64 KiB one —
-// some batch is larger than 64 KiB, none larger than the quantum plus one op (credit left from a previous turn is
-// below the head's size).
-TEST_F(BulkLimiterTest, DefaultBulkNotCappedByOldQuantum)
+// I118 (CA-E6c-6, D61): one bucket with the default bulk thresholds (4 MiB, maxAge 2 s) and the default configuration
+// (1 MiB quantum), 8 MiB of 2 KiB documents pending at once: the DRR credit decides whether a turn emits, not the batch
+// size, so the bodies reach bulk.maxBytes — at least two, the largest over 2 quanta, none over 4 MiB. Mutant: «slice
+// bounded by the credit» (every body <= quantum + one op).
+TEST_F(BulkLimiterTest, DefaultBulkReachesMaxBytes)
 {
-    constexpr std::uint64_t OPS = 1000;
-    constexpr std::size_t OLD_QUANTUM = 64 * 1024;
+    constexpr std::uint64_t OPS = 4096;
     const auto quantum = ic::RuntimeConfig {}.drrQuantumBytes;
     ASSERT_EQ(quantum, 1u << 20);
+    const auto maxBytes = ic::BulkThresholds {}.maxBytes;
+    ASSERT_EQ(maxBytes, 4u << 20);
     const auto a = startNode();
     ASSERT_NO_FATAL_FAILURE(startOn({a.url()}));
-    auto c = client("c", {loadBucket("b", 100000, ic::Duration {2000})});
+    auto spec = bucketSpec("b", 32u << 20, ic::Overflow::Kind::Reject);
+    spec.bulk = ic::BulkThresholds {}; // The fixture's bulk.maxBytes is the quota's; the case wants the default.
+    spec.bulk.maxAge = ic::Duration {2000};
+    auto c = client("c", {spec});
     auto writer = c->writer("b");
     auto results = Results::create();
     for (std::uint64_t k = 0; k < OPS; ++k)
     {
-        ASSERT_TRUE(writer->submit(indexOp(id(k), 2000), results->callback(k)).accepted);
+        ASSERT_TRUE(writer->submit(indexOp(id(k), 2048), results->callback(k)).accepted);
     }
     ASSERT_TRUE(results->waitTotal(OPS, scaled(10000ms)));
     EXPECT_EQ(results->countWith(ic::Status::Ok, ic::Cause::None), OPS);
 
     const auto requests = bulkRequests(a);
-    ASSERT_FALSE(requests.empty());
+    EXPECT_GE(requests.size(), 2u);
     std::size_t largest = 0;
     for (const auto& request : requests)
     {
         largest = std::max(largest, request.bodySize);
-        EXPECT_LE(request.bodySize, quantum + 4096) << "a batch over the DRR quantum";
+        EXPECT_LE(request.bodySize, maxBytes) << "a body over bulk.maxBytes";
     }
-    std::printf(
-        "[  I97b    ] DefaultBulkNotCappedByOldQuantum: %zu requests, largest %zu bytes\n", requests.size(), largest);
-    EXPECT_GT(largest, OLD_QUANTUM) << "every batch within the old 64 KiB quantum";
+    std::printf("[  I118    ] DefaultBulkReachesMaxBytes: %zu requests, largest %zu bytes\n", requests.size(), largest);
+    EXPECT_GT(largest, 2 * quantum) << "the batches stayed within the DRR quantum";
 }
 
 // I97b (G-diff E5a obj. 2): two weight-1 buckets of one-op batches, node_window_max = 1 so the sender takes one batch
@@ -1270,7 +1273,7 @@ protected:
         std::vector<std::size_t> sizes;
         for (int i = 0; i < 100 && !bucket->empty(); ++i)
         {
-            auto batch = bucket->slice(ALL, now(), cap);
+            auto batch = bucket->slice(now(), cap);
             sizes.push_back(batch.ops.size());
             resolveAll(batch.ops);
         }
@@ -1278,7 +1281,7 @@ protected:
     }
 };
 
-// I98: cap = 0 is the slice of before E5a (bulk.maxDocs, the credit), the same as a cap no batch reaches.
+// I98/I118: cap = 0 => only bulk.maxDocs/maxBytes bound the batch, the same as a cap no batch reaches.
 TEST_F(BulkLimiterSliceTest, SliceCapZeroUnchanged)
 {
     ASSERT_NO_FATAL_FAILURE(start());
@@ -1297,15 +1300,14 @@ TEST_F(BulkLimiterSliceTest, SliceCapZeroUnchanged)
         ASSERT_TRUE(c->writer("zero")->submit(indexOp(id(10 + k)), results->callback(10 + k)).accepted);
         ASSERT_TRUE(c->writer("huge")->submit(indexOp(id(110 + k)), results->callback(110 + k)).accepted);
     }
-    const auto w = wireSize(indexOp(id(0)));
-    const auto credited = zero.bucket->slice(5 * w / 2, now(), 0);
-    EXPECT_EQ(credited.ops.size(), 2u) << "the credit still limits";
-    resolveAll(credited.ops);
-    const auto creditedHuge = huge.bucket->slice(5 * w / 2, now(), ALL);
-    EXPECT_EQ(creditedHuge.ops.size(), 2u);
-    resolveAll(creditedHuge.ops);
-    EXPECT_EQ(drainSizes(zero.bucket, 0), (std::vector<std::size_t> {4, 4}));
-    EXPECT_EQ(drainSizes(huge.bucket, ALL), (std::vector<std::size_t> {4, 4}));
+    const auto uncapped = zero.bucket->slice(now(), 0);
+    EXPECT_EQ(uncapped.ops.size(), 4u) << "bulk.maxDocs bounds the batch";
+    resolveAll(uncapped.ops);
+    const auto uncappedHuge = huge.bucket->slice(now(), ALL);
+    EXPECT_EQ(uncappedHuge.ops.size(), 4u);
+    resolveAll(uncappedHuge.ops);
+    EXPECT_EQ(drainSizes(zero.bucket, 0), (std::vector<std::size_t> {4, 2}));
+    EXPECT_EQ(drainSizes(huge.bucket, ALL), (std::vector<std::size_t> {4, 2}));
     ASSERT_TRUE(results->waitTotal(28));
 }
 
@@ -1329,7 +1331,7 @@ TEST_F(BulkLimiterSliceTest, SliceFirstOpOverCapGoesAlone)
     }
     const auto cap = 5 * w / 2;
     ASSERT_GT(big, cap);
-    const auto alone = first.bucket->slice(ALL, now(), cap);
+    const auto alone = first.bucket->slice(now(), cap);
     ASSERT_EQ(alone.ops.size(), 1u) << "the head op over the cap must leave alone";
     EXPECT_EQ(alone.bytes, big);
     resolveAll(alone.ops);
