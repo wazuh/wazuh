@@ -38,6 +38,7 @@ All notable changes to this project will be documented in this file.
 - Fixed FIM `<diff>` options parsing, whodata event loss, audit socket leak and bookmark double fclose. ([#39812](https://github.com/wazuh/wazuh/pull/39812))
 - Fixed `wazuh-logcollector` keeping a local request connection open when the request could not be read, and not terminating a request of the maximum size. ([#40537](https://github.com/wazuh/wazuh/pull/40537))
 - Fixed `wazuh-execd` keeping every repeated offender for the life of the process, so its memory grew with each new source that triggered an active response. ([#40540](https://github.com/wazuh/wazuh/pull/40540))
+- Hardened how `wazuh-logcollector` opens the files it checks for binary content. ([#40664](https://github.com/wazuh/wazuh/pull/40664))
 - Fixed the `azure-logs` configuration reported by the Server API leaving out the requests and containers of each source. ([#40579](https://github.com/wazuh/wazuh/pull/40579))
 - Fixed a memory leak in `wazuh-modulesd` each time the `azure-logs` configuration was requested. ([#40579](https://github.com/wazuh/wazuh/pull/40579))
 - Fixed the Windows agent reporting the wrong release for builds 15063 and 16299 when the registry has no `ReleaseId`. ([#40489](https://github.com/wazuh/wazuh/pull/40489))
