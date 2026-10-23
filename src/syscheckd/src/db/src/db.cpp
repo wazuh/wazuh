@@ -231,7 +231,8 @@ int DB::countSyncedDocs(const std::string& tableName)
         }
     }};
 
-    const std::string filter = "WHERE sync = 1";
+    const std::string filter =
+        "WHERE sync = 1" + std::string(tableName == FIMDB_FILE_TABLE_NAME ? " AND container_id = ''" : "");
     auto selectQuery {SelectQuery::builder()
                       .table(tableName)
                       .columnList(COUNT_SELECT_TYPE_MAP.at(COUNT_SELECT_TYPE::COUNT_ALL))
@@ -845,6 +846,74 @@ void fim_db_update_last_sync_time_value(const char* table_name, int64_t timestam
     {
         FIMDB::instance().logFunction(LOG_ERROR, err.what());
     }
+}
+
+/// The row filter selecting one container's rows at one reporting state.
+///
+/// The SelectQuery builder takes a filter string rather than bound parameters, so
+/// the id is spliced in and its quotes are doubled here. Every caller that scopes a
+/// query to a single container goes through this, so there is one escaping rule in
+/// the file rather than one per call site.
+static std::string containerScopeFilter(const std::string& containerId, int sync)
+{
+    std::string quotedId;
+
+    for (const char c : containerId)
+    {
+        quotedId += c;
+
+        if (c == '\'')
+        {
+            quotedId += c;
+        }
+    }
+
+    return "WHERE sync=" + std::to_string(sync) + " AND container_id='" + quotedId + "'";
+}
+
+int fim_db_count_synced_container_docs(const char* container_id)
+{
+    if (!container_id || !*container_id)
+    {
+        FIMDB::instance().logFunction(LOG_ERROR, "Missing container id when counting synced documents");
+        return -1;
+    }
+
+    try
+    {
+        int count = 0;
+        auto query = SelectQuery::builder()
+                         .table(FIMDB_FILE_TABLE_NAME)
+                         .columnList({"COUNT(*) AS count"})
+                         .rowFilter(containerScopeFilter(container_id, 1))
+                         .build();
+        FIMDB::instance().executeQuery(query.query(),
+                                       [&count](ReturnTypeCallback type, const nlohmann::json& row)
+                                       {
+                                           if (type == SELECTED)
+                                           {
+                                               count = row.at("count").get<int>();
+                                           }
+                                       });
+        return count;
+    }
+    catch (const std::exception& ex)
+    {
+        FIMDB::instance().logFunction(LOG_ERROR, ex.what());
+        return -1;
+    }
+}
+
+cJSON* fim_db_get_container_rows(const char* container_id, int sync)
+{
+    if (!container_id || !*container_id || (sync != 0 && sync != 1))
+    {
+        FIMDB::instance().logFunction(LOG_ERROR, "Invalid parameters when reading a container's rows");
+        return nullptr;
+    }
+
+    const auto filter = containerScopeFilter(container_id, sync);
+    return fim_db_get_every_element(FIMDB_FILE_TABLE_NAME, filter.c_str());
 }
 
 int fim_db_count_synced_docs(const char* table_name)

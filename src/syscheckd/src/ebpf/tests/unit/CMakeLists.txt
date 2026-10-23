@@ -143,3 +143,25 @@ target_link_libraries(container_row_budget_test
 
 add_test(NAME container_row_budget_test
          COMMAND container_row_budget_test)
+
+add_executable(container_reporting_test
+    container_reporting_test.cpp
+    container_reporting_test_host.c
+    ../../src/container_baseline_fim.cpp
+    ../../src/container_baseline_fim_bridge.c
+    ../../src/container_event_drain.cpp)
+target_link_libraries(container_reporting_test
+    debug gtestd debug gtest_maind
+    optimized gtest optimized gtest_main
+    wazuh container_baseline rt_engine fimdb pthread)
+target_link_options(container_reporting_test PRIVATE
+    -Wl,--wrap=fim_collect_container_monitored_paths
+    -Wl,--wrap=fim_free_container_monitored_paths
+    -Wl,--wrap=fim_container_baseline_available
+    -Wl,--wrap=cbaseline_list_containers
+    -Wl,--wrap=cbaseline_run_fim_dbsync
+    -Wl,--wrap=_mdebug1
+    -Wl,--wrap=_minfo
+    -Wl,--wrap=_mwarn
+    -Wl,--wrap=_merror)
+add_test(NAME container_reporting_test COMMAND container_reporting_test)

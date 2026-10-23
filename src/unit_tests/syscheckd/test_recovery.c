@@ -175,16 +175,14 @@ static void test_fim_recovery_integrity_interval_has_elapsed_elapsed(void **stat
 }
 
 // Test: Persist and resync with successful synchronization
-static void test_fim_recovery_persist_table_and_resync_success(void **state) {
-    (void) state;
+static void check_fim_recovery_file_id(const char* container_id) {
     AgentSyncProtocolHandle* handle = (AgentSyncProtocolHandle*)0x1234; // Mock handle
-
-    expect_any_always(__wrap__mdebug1, formatted_msg);
 
     // Create test data - simple file entry
     cJSON* test_items = cJSON_CreateArray();
     cJSON* item = cJSON_CreateObject();
     cJSON_AddStringToObject(item, "path", "/tmp/test.txt");
+    cJSON_AddStringToObject(item, "container_id", container_id);
     cJSON_AddStringToObject(item, "checksum", "abc123");
     cJSON_AddNumberToObject(item, "version", 1);
     cJSON_AddNumberToObject(item, "inode", 12345);
@@ -221,7 +219,11 @@ static void test_fim_recovery_persist_table_and_resync_success(void **state) {
 
     // Expect asp_persist_diff call - validate all parameters
     expect_value(__wrap_asp_persist_diff, handle, handle);
-    expect_any(__wrap_asp_persist_diff, id);
+    char document_id[128];
+    os_sha1 hashed_id;
+    snprintf(document_id, sizeof(document_id), "%s%s/tmp/test.txt", container_id, *container_id ? ":" : "");
+    OS_SHA1_Str(document_id, -1, hashed_id);
+    expect_string(__wrap_asp_persist_diff, id, hashed_id);
     expect_value(__wrap_asp_persist_diff, operation, OPERATION_CREATE);
     expect_string(__wrap_asp_persist_diff, index, FIM_FILES_SYNC_INDEX);
     expect_any(__wrap_asp_persist_diff, data);
@@ -237,6 +239,13 @@ static void test_fim_recovery_persist_table_and_resync_success(void **state) {
 
     // The function should complete successfully
     // Note: test_items is freed by the function, so don't free it here
+}
+
+static void test_fim_recovery_persist_table_and_resync_success(void **state) {
+    (void)state;
+    expect_any_always(__wrap__mdebug1, formatted_msg);
+    check_fim_recovery_file_id("");
+    check_fim_recovery_file_id("abc123");
 }
 
 // Test: Persist and resync with failed synchronization

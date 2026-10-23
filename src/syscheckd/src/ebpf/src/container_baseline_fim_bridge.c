@@ -342,6 +342,21 @@ void fim_free_container_monitored_paths(cb_monitored_path_t* paths)
 #define CONTAINER_BASELINE_SOCKET_WAIT_TOTAL_MS 5000
 #define CONTAINER_BASELINE_SOCKET_POLL_INTERVAL_MS 200
 
+static size_t container_docs_refused = 0;
+
+void fim_container_doc_budget_report(void)
+{
+    synced_docs_lock();
+    const size_t refused = container_docs_refused;
+    container_docs_refused = 0;
+    synced_docs_unlock();
+    if (refused > 0) {
+        mwarn("Container FIM: %zu reporting attempt(s) withheld by fim.container_file_limit. "
+              "Their file state remains stored locally; reporting resumes when space is available.",
+              refused);
+    }
+}
+
 int fim_container_baseline_available(const char* socket_path)
 {
     if (socket_path == NULL) {
@@ -375,6 +390,8 @@ void fim_report_container_baseline_result(int baselined,
           "%zu row(s) refused, %zu partial scan(s), %zu stale container(s) cleaned, "
           "%zu container(s) known.",
           baselined, rows, refused, partial, stale, known);
+
+    fim_container_doc_budget_report();
 
     if (refused > 0) {
         /* The number an operator needs to act on, at a level they will see.
@@ -589,6 +606,36 @@ void fim_container_doc_budget_release(const char* container_id)
     synced_docs_unlock();
 }
 
+void fim_container_doc_budget_initialize(const char* container_id)
+{
+    synced_docs_lock();
+    const int initialized = container_doc_counts != NULL && OSHash_Get(container_doc_counts, container_id) != NULL;
+    synced_docs_unlock();
+    if (initialized) {
+        return;
+    }
+
+    /* Read before opening a scoped transaction, never from its row callback. */
+    const int count = fim_db_count_synced_container_docs(container_id);
+    if (count < 0) {
+        merror("Container FIM: could not initialize document count for '%s'.", container_id);
+        return;
+    }
+
+    synced_docs_lock();
+    if (container_doc_counts != NULL && OSHash_Get(container_doc_counts, container_id) != NULL) {
+        synced_docs_unlock();
+        return;
+    }
+    int* slot = container_doc_count_slot(container_id);
+    if (slot != NULL) {
+        *slot = count;
+    } else {
+        merror("Container FIM: could not initialize document count for '%s'.", container_id);
+    }
+    synced_docs_unlock();
+}
+
 /* Containers allowed to report, as a set. NULL means "not told yet", which
  * reads as admit-everything -- see fim_container_is_admitted().
  *
@@ -607,6 +654,7 @@ void fim_container_set_admitted(const char** container_ids, size_t count)
     if (replacement == NULL) {
         /* Fail OPEN. A set we could not build is not grounds for silencing
          * every container -- the same reasoning as the count slot below. */
+        merror("Container FIM: could not build the admitted container set; retaining previous admission.");
         return;
     }
     OSHash_SetFreeDataPointer(replacement, free);
@@ -633,6 +681,8 @@ void fim_container_set_admitted(const char** container_ids, size_t count)
     if (previous != NULL) {
         OSHash_Free(previous);
     }
+
+    fim_container_reconcile_admission();
 }
 
 int fim_container_is_admitted(const char* container_id)
@@ -676,6 +726,12 @@ static int container_row_sync_flag(const cJSON* row, int operation)
 
     const int limit = (host_config() != NULL) ? host_config()->container_file_limit : 0;
 
+    const cJSON* sync_json = cJSON_GetObjectItem(row, "sync");
+    const int stored_sync = cJSON_IsNumber(sync_json) ? sync_json->valueint : 0;
+    if (has_container && operation == OPERATION_DELETE && stored_sync == 0) {
+        return 0;
+    }
+
     if (limit <= 0) {
         return 1; /* Unlimited: today's behaviour, and the default. */
     }
@@ -688,12 +744,6 @@ static int container_row_sync_flag(const cJSON* row, int operation)
 
     /* The stored row's own flag, where DBSync gave us one: absent on a fresh
      * insert, present on rows a scoped transaction reports as deleted. */
-    int stored_sync = 0;
-    const cJSON* sync_json = cJSON_GetObjectItem(row, "sync");
-    if (sync_json != NULL && cJSON_IsNumber(sync_json)) {
-        stored_sync = sync_json->valueint;
-    }
-
     /* Check-then-apply must be atomic for the same reason it must be on the
      * host path: the scheduled baseline and an event-driven reconcile reach
      * this concurrently. */
@@ -710,6 +760,9 @@ static int container_row_sync_flag(const cJSON* row, int operation)
             *slot = 0;
         }
         granted = decision.sync_flag;
+        if (!granted && operation != OPERATION_DELETE) {
+            ++container_docs_refused;
+        }
     }
     /* slot == NULL means the table could not be grown. Fail OPEN: a counter we
      * could not keep is not grounds for withholding a container's state. */
@@ -718,12 +771,16 @@ static int container_row_sync_flag(const cJSON* row, int operation)
     return granted;
 }
 
-void fim_persist_baseline_row(const char* id, int operation, const char* index, const char* json, uint64_t version)
+int fim_persist_baseline_row(const char* id, int operation, const char* index, const char* json, uint64_t version)
 {
+    if (g_host.validate_and_persist == NULL) {
+        merror("Container FIM: persistence API is not registered.");
+        return -1;
+    }
     cJSON* msg = cJSON_Parse(json);
     if (msg == NULL) {
         mdebug1("Container FIM baseline: dropping row '%s' - failed to parse JSON.", id);
-        return;
+        return -1;
     }
 
     /* BEFORE normalisation: the stored row's own "sync" column is what the
@@ -796,24 +853,48 @@ void fim_persist_baseline_row(const char* id, int operation, const char* index, 
 
     char item_desc[128];
     snprintf(item_desc, sizeof(item_desc), "container FIM baseline row %s", id ? id : "<null>");
-    if (g_host.validate_and_persist == NULL) {
-        // The call below is followed by cJSON_Delete(msg); returning here skips it.
+    /* Not "was it persisted": validate_and_persist() returns whether the document
+     * passed its index schema, and a row the budget withheld passes and returns
+     * true. False means the document was rejected, which is the one case where the
+     * decision below must not be written back. */
+    const bool validated = g_host.validate_and_persist(msg,
+                                                       id,
+                                                       (Operation_t)operation,
+                                                       index,
+                                                       version,
+                                                       item_desc,
+                                                       false,
+                                                       NULL,
+                                                       NULL,
+                                                       sync_flag);
+
+    if (!validated) {
+        /* The schema failure itself is already logged, with its errors, by
+         * validate_and_persist(). What is not logged anywhere else is that the
+         * budget charged for a row the manager never saw, so say that and undo it:
+         * a slot spent on a rejected document is a slot the cap can never return. */
+        cJSON* original = cJSON_Parse(json);
+        const cJSON* stored = cJSON_GetObjectItem(original, "sync");
+        const int previous_sync = cJSON_IsNumber(stored) ? stored->valueint : 0;
+        const char* container_id = cJSON_GetStringValue(cJSON_GetObjectItem(original, "container_id"));
+        mdebug1("Container FIM: returning the budget charged for rejected row '%s'.", id);
+        if (container_id && host_config() && host_config()->container_file_limit > 0) {
+            const int delta = operation == OPERATION_DELETE ? (previous_sync ? -1 : 0)
+                              : (sync_flag && !previous_sync ? 1 : 0);
+            synced_docs_lock();
+            int* slot = container_doc_counts ? OSHash_Get(container_doc_counts, container_id) : NULL;
+            if (slot) {
+                *slot -= delta;
+            }
+            synced_docs_unlock();
+        }
+        cJSON_Delete(original);
         cJSON_Delete(msg);
-        return;
+        return -1;
     }
 
-    g_host.validate_and_persist(msg,
-                                id,
-                                (Operation_t)operation,
-                                index,
-                                version,
-                                item_desc,
-                                false,
-                                NULL,
-                                NULL,
-                                sync_flag);
-
     cJSON_Delete(msg);
+    return sync_flag;
 }
 
 /* Host FIM's own alert vocabulary. Duplicated from file.c's static table

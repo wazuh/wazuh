@@ -98,6 +98,39 @@ int fim_container_baseline_node_row_limit(void);  /* the whole file_entry table 
 void fim_container_doc_budget_release(const char* container_id);
 
 /**
+ * @brief Seed a container's document count from what it has already reported.
+ *
+ * The count lives in memory, so without this a restart hands every container a
+ * fresh budget while its rows are still on the manager, and the cap bounds
+ * nothing across the restarts an agent actually performs.
+ *
+ * Reads the database, so it must be called BEFORE opening a scoped transaction
+ * for that container, never from a row callback inside one. Already-seeded
+ * containers are a no-op, so a caller may call it on every pass.
+ *
+ * @param container_id The container whose count to seed.
+ */
+void fim_container_doc_budget_initialize(const char* container_id);
+
+/**
+ * @brief Report, once per pass, what the document budget withheld.
+ *
+ * A budget that silently drops reports is indistinguishable from a quiet node,
+ * which is how the original scope-blind fill stayed invisible (23.4). Logs
+ * nothing when nothing was refused, and clears the tally either way.
+ */
+void fim_container_doc_budget_report(void);
+
+/**
+ * @brief Withdraw from the manager the rows of containers that may no longer report.
+ *
+ * Their rows stay in the local database and keep being walked: this retracts the
+ * manager's copy only, so re-admission can report them again without re-reading
+ * the filesystem. Called when the admitted set changes.
+ */
+void fim_container_reconcile_admission(void);
+
+/**
  * @brief Record which containers may report to the manager (#37532).
  *
  * A different question from the document budget above: that one bounds how much
@@ -123,11 +156,19 @@ void fim_container_set_admitted(const char** container_ids, size_t count);
  */
 int fim_container_is_admitted(const char* container_id);
 
-void fim_persist_baseline_row(const char* id,
-                              int operation,
-                              const char* index,
-                              const char* json,
-                              uint64_t version);
+/**
+ * @brief Build one container row's stateful document and offer it to the manager.
+ *
+ * @return The reporting decision -- 1 reported, 0 withheld by the budget -- which
+ *         the caller writes back to the row's sync column once the transaction
+ *         holding it has closed. -1 when the document could not be built or did
+ *         not validate, in which case nothing must be written back.
+ */
+int fim_persist_baseline_row(const char* id,
+                             int operation,
+                             const char* index,
+                             const char* json,
+                             uint64_t version);
 
 /* Where a reconciled row came from, which is what the alert's "mode" field
  * reports.
