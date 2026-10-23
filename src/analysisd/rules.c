@@ -3324,7 +3324,7 @@ STATIC size_t w_rule_tree_read_threshold(const char * option, char ** configured
                 merror_exit(INV_DEF, "analysisd", option, value);
             }
         }
-        if (percent < 1 || percent > 100) {
+        if (percent == 0) {
             merror_exit(INV_DEF, "analysisd", option, value);
         }
 
