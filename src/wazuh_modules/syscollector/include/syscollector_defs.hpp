@@ -32,6 +32,9 @@
 
 #define SYSCOLLECTOR_FRIEND_TEST_DECLARATIONS                                                                          \
     friend class SyscollectorIdentityTest;                                                                             \
+    FRIEND_TEST(SyscollectorImpTest, AdmissionRetractsAndRestoresRetainedRows);                                        \
+    FRIEND_TEST(SyscollectorImpTest, DocumentBudgetsShrinkPromoteAndReleasePerContainer);                              \
+    FRIEND_TEST(SyscollectorImpTest, ContainerBaselineAdmissionAndCleanup);                                            \
     FRIEND_TEST(SyscollectorIdentityTest, AbsentMarkerIsAdoptedWithoutResync);                                         \
     FRIEND_TEST(SyscollectorIdentityTest, UnchangedIdIsANoOp);                                                         \
     FRIEND_TEST(SyscollectorIdentityTest, UnknownIdIsANoOp);                                                           \
