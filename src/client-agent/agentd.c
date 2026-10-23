@@ -36,6 +36,21 @@ void AgentdStart(int uid, int gid, const char *user, const char *group)
     /* Initialize sender */
     sender_init();
 
+#if defined(__APPLE__)
+    /* Resolve every configured server address while still in the parent:
+     * getaddrinfo() is not fork-safe on macOS — its NAT64-synthesis path
+     * calls into Network.framework/os_log and SIGSEGVs in a daemonized
+     * child that never exec()s (wazuh/wazuh-agent#886). Pinning each name
+     * now lets the child's connect_server()/w_enrollment_connect() lookups
+     * be answered by OS_GetHost() without touching getaddrinfo() again. */
+    for (int i = 0; i < agt->server_count; i++) {
+        OS_PrefetchHost(agt->server[i].rip, 3);
+    }
+    if (agt->enrollment_cfg && agt->enrollment_cfg->target_cfg) {
+        OS_PrefetchHost(agt->enrollment_cfg->target_cfg->manager_name, 3);
+    }
+#endif
+
     /* Going Daemon */
     if (!run_foreground) {
         nowDaemon();
