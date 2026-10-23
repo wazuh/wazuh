@@ -60,13 +60,15 @@ CREATE TABLE dbsync_osinfo (
     os_kernel_name TEXT,
     os_kernel_release TEXT,
     os_kernel_version TEXT,
-    os_distribution_release TEXT,
+    os_display_version TEXT,
     os_full TEXT,
     sync INTEGER DEFAULT 0,
     checksum TEXT,
     version INTEGER NOT NULL DEFAULT 1,
     PRIMARY KEY (os_name, os_version)) WITHOUT ROWID;
 ```
+
+`os_display_version` replaced `os_distribution_release`. The database is persistent, so an agent upgraded from an earlier 5.0.0 package renames the column in place on start (`UPGRADE_SQL_STATEMENTS` in `syscollectorTablesDef.hpp`, applied by DBSync through `PRAGMA user_version`) and keeps its stored rows. A database the upgrade cannot be applied to is created again instead, Syscollector logs the reason as a warning, and the next scan fills it. A transient error (a busy or locked database, a full disk) keeps the database for the next start to upgrade. A database written by a newer version is also created again, but only by agents that include this handling: downgrading to an earlier 5.0.0 package keeps the newer database, and its OS inventory fails until `local.db` is deleted.
 
 **Key Fields:**
 - `os_name`, `os_version`: Composite primary key identifying the operating system

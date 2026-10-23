@@ -2,7 +2,9 @@
 #include <atomic>
 #include <chrono>
 #include <filesystem>
+#include <functional>
 #include <memory>
+#include <stdexcept>
 #include <thread>
 
 #include <gtest/gtest.h>
@@ -26,6 +28,45 @@ protected:
             scheduler->stop();
         }
         scheduler.reset();
+    }
+
+    /**
+     * @brief Queue a task at the very front that keeps one worker busy until @p done holds.
+     *
+     * The scheduler always runs at least two workers, so two tasks dequeued in the right order can
+     * still finish in the wrong one. With one worker parked here, the other runs everything behind
+     * it one at a time, in exactly the order it was dequeued -- which is what the ordering tests
+     * mean to check. Bounded, so a broken scheduler fails the test instead of hanging it.
+     *
+     * @param done Returns true once the tasks under test have run. Call after every other
+     *             scheduleTaskFirst(): the last call wins the front.
+     */
+    void scheduleBlockerFirst(std::function<bool()> done)
+    {
+        scheduler::TaskConfig config;
+        config.interval = 0;
+        config.runImmediately = false;
+        config.CPUPriority = 0;
+        config.taskFunction = [done = std::move(done)]()
+        {
+            const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(2);
+            while (!done() && std::chrono::steady_clock::now() < deadline)
+            {
+                std::this_thread::sleep_for(std::chrono::milliseconds(1));
+            }
+        };
+        scheduler->scheduleTask("blocker", std::move(config));
+        scheduler->scheduleTaskFirst("blocker");
+    }
+
+    /// Wait (bounded) until @p done holds.
+    static void waitFor(const std::function<bool()>& done)
+    {
+        const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(3);
+        while (!done() && std::chrono::steady_clock::now() < deadline)
+        {
+            std::this_thread::sleep_for(std::chrono::milliseconds(5));
+        }
     }
 
     std::unique_ptr<scheduler::Scheduler> scheduler;
@@ -154,6 +195,63 @@ TEST_F(SchedulerTest, RunImmediately_ThenRecurresAtInterval)
     scheduler->stop();
 }
 
+TEST_F(SchedulerTest, NextInterval_OverridesIntervalForNextRun)
+{
+    std::atomic<int> executionCount {0};
+
+    scheduler::TaskConfig config;
+    config.interval = 60;
+    config.runImmediately = true;
+    config.CPUPriority = 0;
+    config.taskFunction = [&executionCount]()
+    {
+        executionCount.fetch_add(1);
+    };
+    // Short retry after the first run only, then back to the 60 s interval
+    config.nextInterval = [&executionCount]() -> std::size_t
+    {
+        return executionCount.load() < 2 ? 1 : 0;
+    };
+
+    scheduler->start();
+    scheduler->scheduleTask("nextIntervalTask", std::move(config));
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(1500));
+    EXPECT_EQ(executionCount.load(), 2); // immediate run + one run 1 s later instead of 60 s
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(1500));
+    EXPECT_EQ(executionCount.load(), 2); // nextInterval returned 0: next run falls back to 60 s
+
+    scheduler->stop();
+}
+
+TEST_F(SchedulerTest, NextInterval_ThrowFallsBackToInterval)
+{
+    std::atomic<int> executionCount {0};
+
+    scheduler::TaskConfig config;
+    config.interval = 1;
+    config.runImmediately = true;
+    config.CPUPriority = 0;
+    config.taskFunction = [&executionCount]()
+    {
+        executionCount.fetch_add(1);
+    };
+    config.nextInterval = []() -> std::size_t
+    {
+        throw std::runtime_error("nextInterval failure");
+    };
+
+    scheduler->start();
+    scheduler->scheduleTask("throwingNextIntervalTask", std::move(config));
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(1500));
+    EXPECT_GE(executionCount.load(), 2); // rescheduled at the regular 1 s interval, worker still alive
+    EXPECT_EQ(scheduler->getActiveTasksCount(), 1);
+
+    scheduler->stop();
+}
+
 TEST_F(SchedulerTest, RunImmediately_NoEffectOnOneTimeTask)
 {
     std::atomic<int> executionCount {0};
@@ -209,8 +307,15 @@ TEST_F(SchedulerTest, ScheduleTaskFirst_ExecutesBeforeOtherPendingTasks)
     // Reprioritize: "priorityTask" must now execute before "regularTask"
     scheduler->scheduleTaskFirst("priorityTask");
 
+    const auto bothRan = [&]()
+    {
+        std::lock_guard<std::mutex> lock(orderMutex);
+        return executionOrder.size() == 2;
+    };
+    scheduleBlockerFirst(bothRan);
+
     scheduler->start();
-    std::this_thread::sleep_for(std::chrono::milliseconds(200));
+    waitFor(bothRan);
 
     std::lock_guard<std::mutex> lock(orderMutex);
     ASSERT_EQ(executionOrder.size(), 2u);
@@ -242,8 +347,15 @@ TEST_F(SchedulerTest, ScheduleTaskFirst_LastCallIsFirst)
     scheduler->scheduleTaskFirst("taskA"); // A goes to front
     scheduler->scheduleTaskFirst("taskB"); // B goes to front, A pushed to position 1
 
+    const auto bothRan = [&]()
+    {
+        std::lock_guard<std::mutex> lock(orderMutex);
+        return executionOrder.size() == 2;
+    };
+    scheduleBlockerFirst(bothRan);
+
     scheduler->start();
-    std::this_thread::sleep_for(std::chrono::milliseconds(200));
+    waitFor(bothRan);
 
     std::lock_guard<std::mutex> lock(orderMutex);
     ASSERT_EQ(executionOrder.size(), 2u);

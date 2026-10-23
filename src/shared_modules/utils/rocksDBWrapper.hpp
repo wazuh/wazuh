@@ -398,11 +398,12 @@ namespace Utils
          *
          * @param columnName Column name from where to get. If empty, the default column will be used.
          *
-         * @return std::pair<std::string, rocksdb::Slice> Last key-value pair.
+         * @return std::pair<std::string, std::string> Last key-value pair, both copied out of the
+         *         iterator, which does not outlive this call.
          *
          * @note The first element of the pair is the key, the second element is the value.
          */
-        std::pair<std::string, rocksdb::Slice> getLastKeyValue(const std::string& columnName = "")
+        std::pair<std::string, std::string> getLastKeyValue(const std::string& columnName = "")
         {
             std::unique_ptr<rocksdb::Iterator> it(
                 m_db->NewIterator(rocksdb::ReadOptions(), getColumnFamilyBasedOnName(columnName).handle()));
@@ -410,7 +411,7 @@ namespace Utils
             it->SeekToLast();
             if (it->Valid())
             {
-                return {it->key().ToString(), it->value()};
+                return {it->key().ToString(), it->value().ToString()};
             }
 
             throw std::runtime_error {"Error getting last key-value pair"};

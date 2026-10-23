@@ -66,6 +66,15 @@ namespace DbSync
 
             virtual void closeAndDeleteDatabase(const std::string& path) = 0;
 
+            /**
+             * @brief Why opening the persistent database deleted it and created it again, or empty
+             *        when it did not.
+             */
+            virtual std::string recreateReason() const
+            {
+                return {};
+            }
+
         protected:
             IDbEngine() = default;
     };

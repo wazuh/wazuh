@@ -2,131 +2,104 @@
 
 ## Overview
 
-The **cmsync** module is the **Content Manager Synchronization Service**. It keeps the engine's local content (namespaces, policies, decoders, integrations, KVDBs) in sync with the wazuh-indexer. On each synchronization cycle it:
+`cmsync` keeps the Engine's ruleset in step with the wazuh-indexer. It tracks two spaces, `standard`
+and `custom`, each as one content topic whose sink ([`cmcontent::RulesetSpaceSink`](../cmcontent/README.md))
+deploys the space: imports a namespace, points the space's route at it, retires the old one.
 
-1. Checks whether each configured remote *space* has changed (comparing SHA-256 hashes).
-2. Downloads updated content from the wazuh-indexer via `wiconnector`.
-3. Imports it into a new local namespace via `cmcrud`.
-4. Hot-swaps the router route to point at the fresh namespace.
-5. Cleans up the old namespace.
-
-The module persists its own state (which spaces are tracked and their current namespace IDs) in the internal `store`, so it survives engine restarts. By default it tracks the `standard` and `custom` spaces.
+This module decides **when** the topics run and **what their outcome means**: it runs each space
+once per `synchronize()`, turns the outcome into the per-space status `GET /status` reports, and
+persists what the router does not record — when each space last updated and whether its remote
+policy is enabled.
 
 ## Architecture
 
 ```
-                    ┌─────────────────────────┐
-                    │        main.cpp          │
-                    │   (periodic scheduler)   │
-                    └────────────┬─────────────┘
-                                 │  synchronize()
-                                 ▼
-                    ┌─────────────────────────┐
-                    │         CMSync           │
-                    │                          │
-                    │  • SyncedNamespace state │
-                    │  • Hash-based diffing    │
-                    │  • Download & enrich     │
-                    │  • Route hot-swap        │
-                    │  • Rollback on failure   │
-                    └──┬────┬────┬────┬────────┘
-                       │    │    │    │
-          ┌────────────┘    │    │    └──────────────┐
-          ▼                 ▼    ▼                   ▼
-  ┌──────────────┐  ┌──────────┐ ┌──────────┐ ┌──────────┐
-  │ wiconnector  │  │  cmcrud  │ │  router  │ │  store   │
-  │ (indexer     │  │ (CRUD    │ │ (route   │ │ (persist │
-  │  queries)    │  │  service)│ │  mgmt)   │ │  state)  │
-  └──────────────┘  └──────────┘ └──────────┘ └──────────┘
-         │
-         ▼
-  ┌──────────────┐
-  │wazuh-indexer │
-  └──────────────┘
+   main.cpp: TriggerableTask "cm-sync-task"  ◄── POST /content/ruleset/update (trigger)
+                     │ synchronize()
+                     ▼
+            ┌──────────────────┐
+            │      CMSync      │── status snapshot ──► GET /status
+            │  one Space per   │── record ───────────► store  cmsync/status/0
+            │  tracked space   │
+            └────────┬─────────┘
+                     │ runWithRetries(topic)
+                     ▼
+            ContentRegister (content_manager) ──► wazuh-indexer
+                     │ IContentSink / IContentTokenStore
+                     ▼
+            RulesetSpaceSink (cmcontent) ──► cmcrud, router
 ```
 
-## Key Concepts
+## Behaviour
 
-### Consumer Validation for Consistency
+### One runner
 
-To prevent partial policy downloads when the wazuh-indexer is mid-update, `CMSync` implements **consumer validation via Point-In-Time (PIT)**:
+`synchronize()` is the only thing that runs the topics, one call at a time (`m_syncMutex`). It
+runs from the scheduler task `cm-sync-task` (a `scheduler::TriggerableTask`): on
+`analysisd.cm_sync_interval`, at startup before any other task, and whenever
+`POST /content/ruleset/update` triggers it. A request that arrives during a run makes the task run
+once more right after, so every request is served by a run that started after it.
 
-1. **Hash check phase**: `getPolicyHashAndEnabledFromRemote()` passes `STANDARD_RULESET_CONSUMER_ID` to the indexer connector.
-   - The connector creates a multi-index PIT (policy indices + `.wazuh-cti-consumers`).
-   - It validates the consumer is in the `idle` status within that PIT snapshot.
-   - If idle: returns the hash and enabled status (and the check is consistent).
-   - If not idle: returns `std::nullopt` → sync cycle is skipped.
+### Per space, per run
 
-2. **Download phase**: `downloadAndEnrichNamespace()` → `downloadNamespace()` calls `getPolicy()` with the same consumer ID.
-   - The connector again validates the consumer is idle within a NEW PIT snapshot.
-   - If idle: retrieves full policy resources within that PIT.
-   - If not idle: returns `std::nullopt` → download is skipped, partial namespace is rolled back.
+The cycle compares the remote policy hash with the hash of the deployed route (the sink is the
+topic's token store) and, when it moved, downloads and deploys the space. The outcome becomes the
+space's status:
 
-This two-phase validation ensures the indexer is NOT actively updating policy/decoder/KVDB assets before or during the download.
+| Cycle status | Space status | Record |
+|---|---|---|
+| `Updated` | READY | `last_successful_update` = now |
+| `Unchanged` | READY | — |
+| `SkippedConsumerNotReady`, `SkippedPreconditionUnmet` | READY (the deployed ruleset is still in force) | — |
+| `FailedTransport`, `FailedSink` (after the retries), `FailedConfig` | FAILED | — |
+| `SkippedStopRequested`, `SkippedAlreadyRunning` | unchanged (nothing ran) | — |
 
-### Synchronization Lifecycle
+After each cycle the space's `available` and `hash` are read back from the sink's deployment, and
+`enabled` from the policy's metadata when the cycle probed it. A change to `enabled` is persisted.
 
-The `synchronize()` method iterates through all tracked spaces and handles four cases:
+`FailedTransport` and `FailedSink` are retried within the run by `cmcontent::runWithRetries`, up to
+`analysisd.cmsync_indexer_connector_max_retries` attempts,
+`analysisd.cmsync_indexer_connector_retry_interval` seconds apart.
 
-| Case | Remote State | Local Route | Action |
-|---|---|---|---|
-| **1** | Policy **disabled** | Route exists | Delete route and namespace, set dummy ID |
-| **2** | Policy enabled, hash **unchanged** | Route enabled | Skip (no-op) |
-| **3** | Policy enabled | No route exists | Download → enrich → create route |
-| **4** | Policy enabled, hash **changed** | Route exists | Download → enrich → hot-swap → delete old NS |
+### Early retry while a space has no route
 
-Failures at any step are caught per-namespace so that one space's error does not block synchronization of the others.
+`synchronize()` returns `true` when a run ends with a space that has no route and whose policy is
+not known to be disabled (the indexer was unreachable, or the content is not published or the CTI
+consumer not ready yet). The `cm-sync-task` then runs the next cycle after
+`analysisd.cm_sync_retry_interval` seconds (default 30, `0` disables it, capped at
+`analysisd.cm_sync_interval`) instead of `analysisd.cm_sync_interval`, until every space has a route
+or a disabled policy. The task passes that choice to the scheduler through
+`TriggerableTask`'s `nextInterval`.
 
-### SyncedNamespace
+"Disabled" comes only from a policy read, now or persisted in the record, so a cycle that fails
+before reading the policy does not change it, and an unread policy is never persisted as disabled.
+A space that keeps an older route after a failed cycle does not ask for the retry: that route keeps
+processing events. A run ended by `requestShutdown()` returns `false`.
 
-An internal class (defined in `cmsync.cpp`) that tracks the state of a single synchronized space:
+### Startup
 
-| Field | Description |
-|---|---|
-| `m_originSpace` | Remote space name in the wazuh-indexer (e.g. `"standard"`, `"custom"`) |
-| `m_routeName` | Derived router route name (`"cmsync_<space>"`) |
-| `m_nsId` | Local `NamespaceId` in `cmstore` (or `DUMMY_NAMESPACE_ID` before first sync) |
+The constructor builds one sink and one topic per tracked space, deletes the space's namespaces no
+route serves (`collectOrphanNamespaces`), reads the deployment from the router and the record from
+the store, and publishes the status — so a restart reports the deployed ruleset before the first
+run.
 
-`SyncedNamespace` serializes to/from JSON for persistence in the internal store under the key `cmsync/status/0`.
+### The record
 
-### Download and Enrich
+`cmsync/status/0` is an array with one entry per space:
 
-`downloadAndEnrichNamespace()` performs a two-phase operation with consumer validation:
+```json
+{ "origin_space": "standard", "last_successful_update": 1700000000, "enabled": true }
+```
 
-1. **Download** — fetches KVDBs, decoders, integrations, and the policy from the wazuh-indexer via `wiconnector::getPolicy(consumerIdToValidate=STANDARD_RULESET_CONSUMER_ID)`, then imports them into a new namespace via `cmcrud::importNamespace()` with `softValidation = true`.
-   - If the consumer is not idle (returns `std::nullopt`), download is skipped and `std::nullopt` is returned (sync cycle aborts gracefully).
-2. **Enrich** — placeholder for adding local-only assets (outputs, default filters) that don't come from the indexer.
+Everything else about a space — the namespace in force, its hash, whether a route serves it — is
+read from the router, which is the record of what is deployed.
 
-The target namespace gets a unique random ID (`cmsync_<space>_<hex4>`) to avoid collisions. On failure the namespace is rolled back.
+### Shutdown
 
-### Route Management
-
-`syncNamespaceInRoute()` ensures the router has an up-to-date entry:
-
-- If the route **already exists** → `hotSwapNamespace()` atomically replaces the backing namespace.
-- If the route **does not exist** → finds the first available priority and creates a new `EntryPost`.
-
-### Retry With Back-off
-
-Remote operations (`existsPolicy`, `getPolicy`, `getPolicyHashAndEnabled`) are wrapped in `base::utils::executeWithRetry()`, which retries up to `m_attempts` times with `m_waitSeconds` between each attempt. The shutdown flag `m_shutdownRequested` is passed to `executeWithRetry`, which checks it before each attempt and splits inter-retry sleep into 1-second chunks for responsive cancellation.
-
-### Graceful Shutdown
-
-`CMSync` supports responsive shutdown via `requestShutdown()`:
-
-- Sets `m_shutdownRequested` (`std::atomic<bool>`) to `true`.
-- `synchronize()` checks the flag at multiple points: before starting, before each namespace iteration, and before download.
-- `executeWithRetry` aborts early when the flag is set.
-- If the underlying indexer throws during `getPolicy()` (due to `WIndexerConnector::requestShutdown()`), CMSync catches the exception, rolls back the partial namespace, and aborts the sync loop.
-- The module is registered in the exit handler in `main.cpp`; on SIGINT/SIGTERM, `requestShutdown()` is called and the sync cycle aborts within one batch round-trip.
-
-### Weak-Pointer Resource Model
-
-All four dependencies (`IWIndexerConnector`, `ICrudService`, `IStore`, `IRouterAPI`) are stored as `std::weak_ptr` and locked on entry via `base::utils::lockWeakPtr()`, throwing if the underlying object has been destroyed.
-
-### State Persistence
-
-The sync state (array of `SyncedNamespace` objects) is persisted in the internal `store` at key `cmsync/status/0`. On construction, `CMSync` either loads existing state or initializes with the default spaces (`"standard"`, `"custom"`) and writes the initial state.
+`requestShutdown()` sets the shutdown flag, which ends the run before the next space and the retry
+waits, and stops every topic, so an in-flight download winds down at its next page. Each `Space`
+declares its topic after its sink, so destroying the service waits for an in-flight cycle before the
+sink it is using goes away.
 
 ## Directory Structure
 
@@ -134,130 +107,64 @@ The sync state (array of `SyncedNamespace` objects) is persisted in the internal
 cmsync/
 ├── CMakeLists.txt
 ├── README.md
-├── interface/cmsync/
-│   └── icmsync.hpp                  # ICMSync base interface
-├── include/cmsync/
-│   └── cmsync.hpp                   # CMSync concrete implementation header
-├── src/
-│   └── cmsync.cpp                   # Full implementation (~560 lines) + SyncedNamespace class
+├── interface/cmsync/icmsync.hpp     # ICMSync + SpaceStatus
+├── include/cmsync/cmsync.hpp        # CMSync
+├── src/cmsync.cpp
 └── test/
-    ├── mocks/cmsync/
-    │   └── mockcmsync.hpp           # GMock mocks
-    ├── src/unit/
-    │   └── cmsync_test.cpp          # Unit tests
-    └── src/component/
-        └── cmsync_test.cpp          # Component tests (currently disabled)
+    ├── mocks/cmsync/mockCMSync.hpp  # MockCMSync
+    └── src/
+        ├── unit/cmsync_test.cpp       # Orchestration, through a scripted topic
+        └── component/cmsync_test.cpp  # Real registrations, far ends faked
 ```
 
 ## Public Interface
 
-### `ICMSync` (namespace `cm::sync`)
-
 ```cpp
+namespace cm::sync
+{
 class ICMSync
 {
 public:
-    virtual ~ICMSync() = default;
-    virtual void requestShutdown() = 0;
+    virtual bool synchronize() = 0;                              // one cycle per tracked space; true = early retry
+    virtual void requestShutdown() = 0;                          // idempotent, thread-safe
+    virtual std::vector<SpaceStatus> getSpacesStatus() const = 0; // wait-free snapshot
 };
-```
 
-Base interface with a single lifecycle method for signaling abort.
-
-### `CMSync`
-
-```cpp
-class CMSync : public ICMSync
+class CMSync final : public ICMSync
 {
 public:
-    CMSync(const std::shared_ptr<wiconnector::IWIndexerConnector>& indexerPtr,
-           const std::shared_ptr<cm::crud::ICrudService>& cmcrudPtr,
+    CMSync(const std::shared_ptr<cm::crud::ICrudService>& cmcrudPtr,
            const std::shared_ptr<store::IStore>& storePtr,
            const std::shared_ptr<router::IRouterAPI>& routerPtr,
-           size_t attempts,
-           size_t waitSeconds);
-    ~CMSync() override;
-
-    /**
-     * @brief Perform synchronization of all configured namespaces.
-     *
-     * Iterates each tracked space, checks for remote changes, downloads
-     * updated content, enriches it, and updates the router routes.
-     */
-    void synchronize();
-
-    /**
-     * @brief Signal the module to abort as soon as possible.
-     *
-     * Idempotent, thread-safe. Sets an internal flag checked at multiple
-     * checkpoints within synchronize().
-     */
-    void requestShutdown();
+           const cmcontent::TopicFactory& topicFactory,
+           const cmcontent::Options& contentOptions,
+           cmcontent::RetryPolicy retry);
 };
+}
 ```
-
-## Implementation Details
-
-### Constructor
-
-1. Checks if the store document `cmsync/status/0` exists.
-2. **If yes** → calls `loadStateFromStore()` to restore `m_namespacesState`.
-3. **If no** (first setup) → adds `"standard"` and `"custom"` spaces and dumps state to store.
-
-### `synchronize()` — Main Loop
-
-```
-for each SyncedNamespace in m_namespacesState:
-  1. existSpaceInRemote(space)           → skip if not found
-  2. getPolicyHashAndEnabledFromRemote() → get (hash, enabled)
-  3. Check current route config          → get (enabled, nsId, routeHash) or nullopt
-  4. Evaluate case (1-4) based on remote/local state
-  5. If sync needed:
-     a. downloadAndEnrichNamespace()     → new NamespaceId
-     b. syncNamespaceInRoute()           → hot-swap or create route
-     c. Update nsState, dump to store
-     d. Delete old namespace
-```
-
-### Private Methods
-
-| Method | Purpose |
-|---|---|
-| `existSpaceInRemote(space)` | Checks policy existence in indexer with retry |
-| `downloadNamespace(origin, dst)` | Downloads policy resources via `getPolicy(consumerIdToValidate)` and imports into namespace. Returns `bool` (false if consumer not idle). |
-| `getPolicyHashAndEnabledFromRemote(space)` | Gets SHA-256 hash and enabled flag with retry, passing consumer validation. Returns `std::optional` (nullopt if consumer not idle). |
-| `downloadAndEnrichNamespace(origin)` | Generates unique NS ID, downloads, enriches (placeholder), returns NS ID |
-| `syncNamespaceInRoute(nsState, newNsId)` | Hot-swaps or creates router route |
-| `addSpaceToSync(space)` | Adds a space to the tracked list |
-| `removeSpaceFromSync(space)` | Removes a space from the tracked list |
-| `loadStateFromStore()` | Deserializes `SyncedNamespace` array from store |
-| `dumpStateToStore()` | Serializes `SyncedNamespace` array to store |
-
-### Anonymous-Namespace Helpers
-
-| Helper | Purpose |
-|---|---|
-| `generateNamespaceId(space)` | Returns `"cmsync_<space>_<random_hex4>"` |
 
 ## CMake Targets
 
 | Target | Type | Alias | Links |
 |---|---|---|---|
 | `cmsync_icmsync` | INTERFACE | `cmsync::icmsync` | `base` |
-| `cmsync_cmsync` | STATIC | `cmsync::cmsync` | `base`, `cmsync::icmsync`, `cmcrud::icmcrud`, `store::istore`, `router::irouter`, `wIndexerConnector::iwIndexerConnector` |
+| `cmsync_cmsync` | STATIC | `cmsync::cmsync` | `base`, `cmsync::icmsync`, `cmcrud::icmcrud`, `store::istore`, `router::irouter`, `cmcontent::cmcontent` |
 | `cmsync_mocks` | INTERFACE | `cmsync::mocks` | `GTest::gmock`, `cmsync::icmsync` |
-| `cmsync_utest` | Executable | — | `GTest::gtest_main`, `GTest::gmock`, `cmsync::cmsync`, `router::mocks`, `store::mocks`, `wIndexerConnector::mocks`, `cmcrud::mocks` |
-
-Component tests (`cmsync_ctest`) are defined but currently commented out in the CMakeLists.
+| `cmsync_utest` | Executable | — | `cmsync::cmsync`, `router::mocks`, `store::mocks`, `cmcrud::mocks`, `cmcontent::mocks`, GTest |
+| `cmsync_ctest` | Executable | — | `cmsync::cmsync`, `router::mocks`, `store::mocks`, `cmcrud::mocks`, GTest |
 
 ## Testing
 
-- **Unit tests** (`test/src/unit/cmsync_test.cpp`) — test the full lifecycle with all four dependencies mocked (strict mocks): constructor initialisation (first-setup vs. restore), state serialisation to/from store, the `synchronize()` flow for each of the four cases, and `requestShutdown()` abort behaviour (before loop, mid-loop, before download, hot-swap failure rollback).
-- **Component tests** (`test/src/component/cmsync_test.cpp`) — exist in the tree but are currently disabled in the build.
-- **Mock** (`test/mocks/cmsync/mockcmsync.hpp`) — provides `MockICMSync` for downstream consumers that need to mock the `ICMSync` interface.
+- **Unit** — one topic per tracked space whose sink is also its token store, orphan collection at
+  startup, the record and the deployment read back, a malformed record rejected, the status table
+  above, retries, shutdown.
+- **Component** — `CMSync` over real registrations with the router and stores faked: a cycle
+  against an empty indexer defers or finds nothing without failing, and shutdown stops the run.
+- The download and deployment are covered by `cmcontent_utest` and `content_manager_utest`.
 
 ## Consumers
 
 | Module | Dependency | Role |
 |---|---|---|
-| `main.cpp` | `cmsync::cmsync` | Creates the `CMSync` instance and invokes `synchronize()` on a periodic schedule |
+| `main.cpp` | `cmsync::cmsync` | Builds `CMSync` and the `cm-sync-task` that runs it |
+| `api::status` | `cmsync::icmsync` | Reports per-space status through `GET /status` |

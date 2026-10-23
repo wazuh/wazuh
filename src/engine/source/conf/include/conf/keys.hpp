@@ -19,6 +19,7 @@ constexpr std::string_view OUTPUTS_PATH = "analysisd.output_path";
 
 constexpr std::string_view CM_RULESET_PATH = "analysisd.cm_ruleset_path";
 constexpr std::string_view CM_SYNC_INTERVAL = "analysisd.cm_sync_interval";
+constexpr std::string_view CM_SYNC_RETRY_INTERVAL = "analysisd.cm_sync_retry_interval";
 
 constexpr std::string_view IOC_SYNC_INTERVAL = "analysisd.ioc_sync_interval";
 
@@ -48,6 +49,13 @@ constexpr std::string_view CMSYNC_INDEXER_CONNECTOR_RETRY_INTERVAL =
     "analysisd.cmsync_indexer_connector_retry_interval";
 constexpr std::string_view CMSYNC_INDEXER_CONNECTOR_SYNC_BATCH_SIZE =
     "analysisd.cmsync_indexer_connector_sync_batch_size";
+// Content manager: settings shared by every content topic the engine registers (ruleset and IOC).
+// The per-consumer page size keeps its existing *_indexer_connector_sync_batch_size key, so there is
+// no second knob for the same thing.
+constexpr std::string_view CONTENT_PIT_KEEP_ALIVE = "analysisd.content_pit_keep_alive";
+constexpr std::string_view CONTENT_CONSUMER_CACHE_SECONDS = "analysisd.content_consumer_cache_seconds";
+constexpr std::string_view CONTENT_CONSUMER_RETRY_INTERVAL = "analysisd.content_consumer_retry_interval";
+
 constexpr std::string_view REMOTE_CONF_INDEXER_CONNECTOR_MAX_RETRIES =
     "analysisd.remote_conf_indexer_connector_max_retries";
 constexpr std::string_view REMOTE_CONF_INDEXER_CONNECTOR_RETRY_INTERVAL =

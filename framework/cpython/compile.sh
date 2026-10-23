@@ -19,8 +19,15 @@ main() {
     parse_args "$@" || exit 1
     # Get wazuh repository
     get_wazuh_repo
-    # Download wazuh precompiled dependencies
-    make -C "$WAZUH_ROOT_DIR/src" PYTHON_SOURCE=y deps -j
+    # Download wazuh precompiled dependencies. When cpython is built here its pool
+    # ref may not exist yet, so it is left out of the download.
+    if $BUILD_CPYTHON; then
+        local external_res
+        external_res="$(make -s -C "$WAZUH_ROOT_DIR/src" print-EXTERNAL_RES | sed -E 's/(^| )cpython( |$)/ /')"
+        make -C "$WAZUH_ROOT_DIR/src" PYTHON_SOURCE=y deps -j EXTERNAL_RES="$external_res"
+    else
+        make -C "$WAZUH_ROOT_DIR/src" PYTHON_SOURCE=y deps -j
+    fi
 
     PYTHON_VERSION=$(cat $WAZUH_ROOT_DIR/framework/.python-version)
 
@@ -38,21 +45,42 @@ main() {
 
     mimic_full_wazuh_installation
     generate_artifacts
+    record_toolchain
 }
 
 get_wazuh_repo() {
     if [ -z "${WAZUH_BRANCH:-}" ]; then
         cp -rf $WAZUH_HOST_DIR $WAZUH_ROOT_DIR
         # Clean previous builds
-        find "$WAZUH_ROOT_DIR/src/external" -mindepth 1 ! -name 'CMakeLists.txt' -exec rm -rf {} +
+        find "$WAZUH_ROOT_DIR/src/external" -mindepth 1 -maxdepth 1 ! -name 'CMakeLists.txt' -exec rm -rf {} +
         make clean -j -C "$WAZUH_ROOT_DIR/src"
     else
         git clone --branch "$WAZUH_BRANCH" --depth 1 https://github.com/wazuh/wazuh.git  "$WAZUH_ROOT_DIR"
     fi
 }
 
+# The release tarball of the inventory entry, checked against its upstream_sha256: a tag can move.
 download_cpython() {
-    git clone --branch "v$PYTHON_VERSION" --depth 1 https://github.com/python/cpython.git "$CPYTHON_DIR"
+    command -v python3 >/dev/null 2>&1 || yum install python3 -y
+    local url sha256 got
+    read -r url sha256 < <(python3 - "$WAZUH_ROOT_DIR/packages/externals/dependencies.json" <<'PY'
+import json, sys
+entry = next(e for e in json.load(open(sys.argv[1]))["entries"] if e["name"] == "cpython")
+url = entry["url"].replace("{version}", entry["version"]).replace("{revision}", entry["revision"])
+if "{" in url:
+    sys.exit("cpython: unexpanded placeholder in " + url)
+print(url, entry["upstream_sha256"])
+PY
+    )
+    curl -fsSL --retry 3 -o "$WAZUH_ROOT_DIR/cpython-src.tar.gz" "$url"
+    got="$(sha256sum "$WAZUH_ROOT_DIR/cpython-src.tar.gz" | cut -d' ' -f1)"
+    if [ "$got" != "$sha256" ]; then
+        echo "sha256 mismatch for $url: expected $sha256, got $got" >&2
+        exit 1
+    fi
+    mkdir -p "$CPYTHON_DIR"
+    tar -xzf "$WAZUH_ROOT_DIR/cpython-src.tar.gz" -C "$CPYTHON_DIR" --strip-components=1
+    rm -f "$WAZUH_ROOT_DIR/cpython-src.tar.gz"
 }
 
 customize_cpython() {
@@ -79,6 +107,16 @@ generate_artifacts() {
     cd $WAZUH_ROOT_DIR/src/external && tar -zcf "$OUTPUT_DIR/cpython_$ARCH.tar.gz" --owner=0 --group=0 cpython
     # Compress ready-to-use CPython
     cd $WAZUH_INSTALLDIR/framework/python && tar -zcf "$OUTPUT_DIR/cpython.tar.gz" --owner=0 --group=0 .
+}
+
+# What the build installed on the fly; the pool manifest of cpython records it.
+record_toolchain() {
+    {
+        echo "gcc: $(gcc --version 2>/dev/null | head -n1)"
+        echo "python3: $(python3 --version 2>&1)"
+        echo "pip: $(python3 -m pip --version 2>/dev/null)"
+        echo "piprepo: $(python3 -m pip show piprepo 2>/dev/null | sed -n 's/^Version: //p')"
+    } > "$OUTPUT_DIR/toolchain.txt"
 }
 
 download_wheels() {

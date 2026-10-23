@@ -25,7 +25,7 @@ target_link_libraries(cmsync_cmsync
     cmcrud::icmcrud
     store::istore
     router::irouter
-    wIndexerConnector::iwIndexerConnector
+    cmcontent::cmcontent
 )
 add_library(cmsync::cmsync ALIAS cmsync_cmsync)
 
@@ -53,25 +53,26 @@ target_link_libraries(cmsync_utest
     cmsync::cmsync
     router::mocks
     store::mocks
-    wIndexerConnector::mocks
     cmcrud::mocks
+    cmcontent::mocks
 )
 target_include_directories(cmsync_utest PRIVATE ${SRC_DIR})
 gtest_discover_tests(cmsync_utest)
 
-# add_executable(cmsync_ctest
-#     ${COMPONENT_SRC_DIR}/cmsync_test.cpp
-#     ${COMPONENT_SRC_DIR}/storecti_test.cpp
-# )
-# 
-# target_link_libraries(cmsync_ctest
-#     PRIVATE
-#     cmsync::cmsync
-#     GTest::gtest_main
-#     GTest::gmock
-#     ctistore::mocks
-# )
-# target_include_directories(cmsync_ctest PRIVATE ${SRC_DIR})
-# gtest_discover_tests(cmsync_ctest)
+add_executable(cmsync_ctest
+    ${COMPONENT_SRC_DIR}/cmsync_test.cpp
+)
+
+target_link_libraries(cmsync_ctest
+    PRIVATE
+    cmsync::cmsync
+    GTest::gtest_main
+    GTest::gmock
+    router::mocks
+    store::mocks
+    cmcrud::mocks
+)
+target_include_directories(cmsync_ctest PRIVATE ${SRC_DIR})
+gtest_discover_tests(cmsync_ctest)
 
 endif(ENGINE_BUILD_TEST)

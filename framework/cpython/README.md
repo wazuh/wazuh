@@ -1,7 +1,8 @@
 # Wazuh server embedded Python Builder Script
 
 `generate-cpython.sh` builds the **embedded CPython for the Wazuh manager and/or its Python dependencies** inside a
-preconfigured Docker container.
+preconfigured Docker container. In CI, the `cpython` job of `5_builderpackage_externals.yml` runs `compile.sh` against
+the dependency pool tree of the same run.
 
 It detects the host architecture, pulls the matching builder image from **GitHub Container Registry (GHCR)**, and runs
 `compile.sh` inside the container.

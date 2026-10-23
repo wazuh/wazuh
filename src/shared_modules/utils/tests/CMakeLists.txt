@@ -39,6 +39,7 @@ file(
   "byteArrayHelper_test.cpp"
   "cmdHelper_test.cpp"
   "cacheLRU_test.cpp"
+  "conditionSync_test.cpp"
   "mapWrapperSafe_test.cpp"
   "msgDispatcher_test.cpp"
   "pipelineNodes_test.cpp"

@@ -5,7 +5,8 @@
 Scope:
   src/engine/**                                   -> AGPL-3.0-or-later
   src/shared_modules/{utils,manager_config,
-      keystore,indexer_connector,common}/**       -> GPL-2.0-only OR AGPL-3.0-or-later
+      keystore,indexer_connector,common,
+      content_manager}/**                         -> GPL-2.0-only OR AGPL-3.0-or-later
   everything else                                 -> out of scope
 
 In scope, code whose comment style is known (`//` or `#`, by extension, name or shebang) is checked
@@ -34,7 +35,7 @@ AGPL = "AGPL-3.0-or-later"
 DUAL = "GPL-2.0-only OR AGPL-3.0-or-later"
 
 ENGINE_PREFIX = "src/engine/"
-DUAL_DIRS = ("utils", "manager_config", "keystore", "indexer_connector", "common")
+DUAL_DIRS = ("utils", "manager_config", "keystore", "indexer_connector", "common", "content_manager")
 DUAL_PREFIXES = tuple("src/shared_modules/%s/" % d for d in DUAL_DIRS)
 
 SLASH_EXT = {

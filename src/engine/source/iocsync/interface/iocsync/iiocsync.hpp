@@ -3,6 +3,7 @@
 #define IOCSYNC_IIOCSYNC_HPP
 
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include <base/syncStatus.hpp>
@@ -17,7 +18,7 @@ struct IocTypeStatus
 {
     std::string type;                                  ///< IOC type (e.g., "connection", "url_domain", "hash_md5", ...)
     bool available {false};                            ///< Has a version available for processing
-    base::SyncStatus status {base::SyncStatus::READY}; ///< Current state: ready, running, or failed
+    base::SyncStatus status {base::SyncStatus::READY}; ///< Current state: ready, updating, or failed
     std::string hash;                                  ///< Last known data hash
     uint32_t lastSuccessfulUpdate {0};                 ///< Unix timestamp of last successful sync (0 if never)
 };
@@ -28,20 +29,10 @@ public:
     virtual ~IIocSync() = default;
 
     /**
-     * @brief Perform synchronization of all configured IOC databases
+     * @brief Run one content cycle per IOC type and record what came of it.
      *
-     * This method iterates through all IOC types configured for synchronization,
-     * checking for updates in the wazuh-indexer. If changes are detected, it
-     * downloads the updated IOCs, creates a new database, and performs an atomic
-     * hot-swap to ensure readers transparently switch to the new data.
-     *
-     * Key operations:
-     * - Compare local hash vs remote hash for each IOC type
-     * - Download full database only if hash has changed
-     * - Atomic hot-swap of the active database
-     * - Safe cleanup of old database versions
-     *
-     * @throws std::runtime_error if any step of the synchronization process fails
+     * A type whose remote hash moved is downloaded into a staging database and hot-swapped into
+     * place, so readers switch to the new data atomically.
      */
     virtual void synchronize() = 0;
 

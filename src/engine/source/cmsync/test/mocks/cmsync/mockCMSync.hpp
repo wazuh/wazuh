@@ -12,6 +12,7 @@ namespace cm::sync::mocks
 class MockCMSync : public ICMSync
 {
 public:
+    MOCK_METHOD(bool, synchronize, (), (override));
     MOCK_METHOD(void, requestShutdown, (), (override));
     MOCK_METHOD(std::vector<SpaceStatus>, getSpacesStatus, (), (const, override));
 };
