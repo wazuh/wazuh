@@ -15,8 +15,13 @@
 
 // In-process fake indexer shared by both benchmark executables (plan 18, E2c, I58; port of the E0b spike fake).
 // It counts bytes, requests and distinct TCP connections without keeping any body, answers `/_cluster/health` with
-// `green`, keeps the headers of the first `/_bulk` after each resetCounters() and answers `/_bulk` with a fixed status.
-// The test fake (tests/fake/fakeIndexer.hpp) is not reused: it records every request under a mutex.
+// `green` and `/_cat/health` with `[{"status":"green"}]` (the v1 health monitor), keeps the headers of the first
+// `/_bulk` after each resetCounters() and answers `/_bulk` with a fixed status. Two `/_bulk` bodies (E6c, contract
+// §1): the fixed `items:[]` (default, the transport benches) or, with setItems(true), one `{"<action>":{"status":201,
+// "result":"created"}}` item per action line of the request (the even lines, counted without parsing JSON), which the
+// v2 write path needs to resolve its ops; only the items mode counts the documents (action lines) received, so the
+// fixed mode of E2c costs what it cost. The test fake (tests/fake/fakeIndexer.hpp) is not reused: it records every
+// request under a mutex.
 
 #include <external/cpp-httplib/httplib.h>
 
@@ -31,6 +36,7 @@
 #include <set>
 #include <stdexcept>
 #include <string>
+#include <string_view>
 #include <thread>
 #include <utility>
 
@@ -115,6 +121,18 @@ namespace bench
             return m_requests.load();
         }
 
+        /// Documents (action lines of `/_bulk` bodies) received since the last reset; items mode only (0 otherwise).
+        std::uint64_t bulkDocs() const
+        {
+            return m_bulkDocs.load();
+        }
+
+        /// Items mode (true) or the fixed `items:[]` answer (false, the default). Call it before start().
+        void setItems(bool items)
+        {
+            m_items = items;
+        }
+
         /// Distinct client (address, port) pairs seen since the last reset = distinct TCP connections served.
         std::size_t distinctConnections() const
         {
@@ -135,6 +153,7 @@ namespace bench
             std::lock_guard<std::mutex> lock(m_mutex);
             m_bulkRequests = 0;
             m_bulkBytes = 0;
+            m_bulkDocs = 0;
             m_requests = 0;
             m_peers.clear();
             m_firstBulkHeaders.clear();
@@ -142,6 +161,35 @@ namespace bench
         }
 
     private:
+        /// Appends one item per action line (lines 0, 2, 4, ... of the NDJSON body) to `items`, named after the
+        /// action (`create`, `index`, ...); returns the number of action lines.
+        static std::uint64_t itemsFor(const std::string& body, std::string& items)
+        {
+            std::uint64_t docs = 0;
+            std::size_t line = 0;
+            std::size_t pos = 0;
+            while (pos < body.size())
+            {
+                auto end = body.find('\n', pos);
+                end = end == std::string::npos ? body.size() : end;
+                if (line % 2 == 0 && end > pos)
+                {
+                    // {"<action>":{...}}: the action is the first key.
+                    const auto open = body.find('"', pos);
+                    const auto close = open < end ? body.find('"', open + 1) : std::string::npos;
+                    const auto action =
+                        close < end ? std::string_view(body).substr(open + 1, close - open - 1) : std::string_view();
+                    items += docs == 0 ? "{\"" : ",{\"";
+                    items.append(action.empty() ? std::string_view("index") : action);
+                    items += R"(":{"status":201,"result":"created"}})";
+                    ++docs;
+                }
+                ++line;
+                pos = end + 1;
+            }
+            return docs;
+        }
+
         void notePeer(const httplib::Request& req, bool bulk)
         {
             std::lock_guard<std::mutex> lock(m_mutex);
@@ -191,13 +239,27 @@ namespace bench
                    {
                        notePeer(req, true);
                        res.status = m_bulkStatus;
-                       res.set_content(R"({"took":1,"errors":false,"items":[]})", "application/json");
+                       if (!m_items)
+                       {
+                           res.set_content(R"({"took":1,"errors":false,"items":[]})", "application/json");
+                           return;
+                       }
+                       std::string answer = R"({"took":1,"errors":false,"items":[)";
+                       m_bulkDocs += itemsFor(req.body, answer);
+                       answer += "]}";
+                       res.set_content(answer, "application/json");
                    });
             s.Get("/_cluster/health",
                   [this](const httplib::Request& req, httplib::Response& res)
                   {
                       notePeer(req, false);
                       res.set_content(R"({"cluster_name":"bench","status":"green"})", "application/json");
+                  });
+            s.Get("/_cat/health",
+                  [this](const httplib::Request& req, httplib::Response& res)
+                  {
+                      notePeer(req, false);
+                      res.set_content(R"([{"status":"green"}])", "application/json");
                   });
         }
 
@@ -209,6 +271,8 @@ namespace bench
         std::atomic<std::uint64_t> m_bulkRequests {0};
         std::atomic<std::uint64_t> m_bulkBytes {0};
         std::atomic<std::uint64_t> m_requests {0};
+        std::atomic<std::uint64_t> m_bulkDocs {0};
+        std::atomic<bool> m_items {false};
         mutable std::mutex m_mutex;
         std::set<std::pair<std::string, int>> m_peers;
         std::multimap<std::string, std::string> m_firstBulkHeaders;

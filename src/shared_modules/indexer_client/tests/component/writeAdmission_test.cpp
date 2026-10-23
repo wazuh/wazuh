@@ -781,7 +781,9 @@ TEST_F(WriteTest, ReserveReturnedWhenBucketDies)
         EXPECT_EQ(globalCharge(), wr::RESULT_RESERVE) << "payload released, reserve in the ticket";
         writer.reset();
     } // ~Client: requestClose + awaitClosed; then the ClientState and its Bucket die (only the ticket is left).
-    EXPECT_EQ(m_path->stats().buckets.size(), 0u) << "the bucket is gone";
+    // A scheduler pass on loop 0 holds the bucket (weak_ptr::lock) for its duration: it may outlive ~Client by a pass
+    // (E6c matrix: 1 failure in 463 under load). The bucket must go, not necessarily at once.
+    EXPECT_TRUE(eventually([&] { return m_path->stats().buckets.empty(); }, 2s)) << "the bucket is gone";
     EXPECT_EQ(globalCharge(), wr::RESULT_RESERVE) << "the ticket still holds the reserve";
     ticket = ic::Ticket {};
     EXPECT_EQ(globalCharge(), 0u) << "the last Ticket returns the reserve to the global cap";

@@ -31,8 +31,8 @@
 //     takeable nextDue is the lane head's notBefore; the committed-group TimePoint::min() applies only when that head
 //     is takeable. headBytes() = the first takeable op.
 //   - slice(): the due lane first; then the pending queue in order, scanning at most bulk.maxDocs ops: blocked ones are
-//     skipped (they keep their place), and the scan STOPS at the first takeable op that does not fit (credit, maxBytes,
-//     maxDocs, batchCap).
+//     skipped (they keep their place), and the scan STOPS at the first takeable op that does not fit (maxBytes,
+//     maxDocs, batchCap, the sink's cap; the first takeable op always goes, I118).
 //   - Ambiguous pin: requeue with RequeueSpec::Pin::Set gives every op of the batch the same {node, until} (a batch
 //     whose ops are already pinned keeps their `until`, even an expired one: the sender clears an expired pin at
 //     dispatch) and counts orderedAmbiguous per op; Pin::Keep leaves it; Pin::Clear removes it. So the window bounds
@@ -401,12 +401,12 @@ namespace indexer_client::detail::write
         /// the pending head is a committed group's (seq <= flushSeq) — returned as TimePoint::min(), which every `now`
         /// reaches (Scheduler::armTimer arms no timer and reports it due); nullopt if empty.
         std::optional<TimePoint> nextDue(TimePoint now) const;
-        /// Takes whole ops, the due retry lane first and then the pending queue (one batch may mix both), while their
-        /// wire bytes fit in `credit`, bulk.maxBytes, bulk.maxDocs, `cap` (the sink's batchLimit, 0 = none; I98) and
-        /// the smallest batchCap of the ops taken; at least one op if `credit >= headBytes(now)` (`cap` never refuses
-        /// the first op). Sets firstAttempt (when unset) to `now`. The ops move to the delivered set (counted as
-        /// retained).
-        Batch slice(std::uint64_t credit, TimePoint now, std::uint64_t cap = 0);
+        /// Takes whole ops, the due retry lane first and then the pending queue (one batch may mix both): the head
+        /// always (when eligible), then the next ones while their wire bytes fit in bulk.maxBytes, bulk.maxDocs, `cap`
+        /// (the sink's batchLimit, 0 = none; I98) and the smallest batchCap of the ops taken (`cap` never refuses the
+        /// first op). The DRR credit decides whether a turn emits, not the batch size (I118). Sets firstAttempt (when
+        /// unset) to `now`. The ops move to the delivered set (counted as retained).
+        Batch slice(TimePoint now, std::uint64_t cap = 0);
 
         // ---- retry lane (E3b-1 I66; any thread, one lock per call)
 
