@@ -5,6 +5,7 @@
 'use strict';
 
 const path = require('path');
+const vm = require('vm');
 const esbuild = require('esbuild');
 const { JSDOM } = require('jsdom');
 const createDOMPurify = require('dompurify');
@@ -15,10 +16,16 @@ const RENDERER_PATH =
   'plugins/main/public/components/common/util/markdown/markdown-renderer.ts';
 const OSD_I18N_IMPORT_RE = /from\s+(['"])@osd\/i18n\1/g;
 
-// The fetched file is remote, third-party-controlled source run via new Function() below, not
-// require()'d normally — so it never gets the real `require` and can only reach the exact modules
-// markdown-renderer.ts is known to need. A require for anything else (fs, child_process, https, a
-// different package entirely) throws instead of silently succeeding.
+// The fetched file is remote, third-party-controlled source run inside a fresh vm context below,
+// not require()'d normally — so it never gets the real `require` and can only reach the exact
+// modules markdown-renderer.ts is known to need. A require for anything else (fs, child_process,
+// https, a different package entirely) throws instead of silently succeeding. This matters because
+// a bare `new Function(...)` would NOT be enough on its own: it only creates a new function scope,
+// not a new realm, so the executed code would still close over the real `process`/`global`/`Buffer`
+// and could reach a real `require` through them (e.g. `process.mainModule.require(...)`) regardless
+// of what name we pass as the `require` parameter. Running it in a `vm.createContext()` instead
+// gives it its own global object with none of that — `process`, `global`, `Buffer`, `globalThis`
+// simply don't exist in there unless explicitly added, and they are not.
 const ALLOWED_REQUIRES = new Set(['markdown-it', 'markdown-it-link-attributes', 'dompurify']);
 function restrictedRequire(request) {
   if (ALLOWED_REQUIRES.has(request)) return require(request);
@@ -66,9 +73,17 @@ async function init() {
     throw new Error(`Could not transpile the fetched markdown-renderer.ts: ${err.message}`);
   }
 
+  const filename = path.join(__dirname, 'markdown-renderer.fetched.js');
   const mod = { exports: {} };
-  const moduleFn = new Function('module', 'exports', 'require', '__dirname', '__filename', code);
-  moduleFn(mod, mod.exports, restrictedRequire, __dirname, path.join(__dirname, 'markdown-renderer.fetched.js'));
+  const sandbox = {
+    module: mod,
+    exports: mod.exports,
+    require: restrictedRequire,
+    __dirname,
+    __filename: filename,
+  };
+  const context = vm.createContext(sandbox);
+  vm.runInContext(code, context, { filename });
 
   if (typeof mod.exports.renderMarkdown !== 'function') {
     throw new Error(

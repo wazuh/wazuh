@@ -15,6 +15,7 @@
     "js-yaml": "4.1.0",
     "jsdom": "24.1.1",
     "markdown-it": "14.1.1",
-    "markdown-it-link-attributes": "4.0.1"
+    "markdown-it-link-attributes": "4.0.1",
+    "semver": "7.6.3"
   }
 }
