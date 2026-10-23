@@ -144,22 +144,6 @@ public:
         m_byId.reserve(CACHE_INITIAL_CAPACITY);
     }
 
-    /**
-     * @brief Look up or parse a header bound to a canonical, trusted agent ID.
-     *
-     * A hit requires the same ID and identical bytes. On a miss, the identity path must be unique
-     * and its string value must equal the trusted ID before anything is stored. Dotted aliases of
-     * that indexed identity path are rejected. Parsing and validation run outside the lock;
-     * admission is double-checked under the exclusive lock.
-     *
-     * @param trustedAgentId Canonical identity supplied by the authenticated or local producer.
-     * @param headerStr Raw JSON after "H " in the NDJson batch.
-     * @return Parsed header and Retrieved, Inserted, Updated or BypassedCapacity outcome.
-     * Capacity bypass still parses and validates identity; it never returns an older header.
-     * @throws IdentityError On a non-canonical ID or an absent, ambiguous, non-string or mismatched
-     *         identity in the header. Existing entries remain unchanged.
-     * @throws std::runtime_error On invalid JSON.
-     */
     /// Outcome of the byte-limit check for one admission.
     struct ByteFit
     {
@@ -187,6 +171,22 @@ public:
         return {*total <= maxBytes, *total > maxBytes};
     }
 
+    /**
+     * @brief Look up or parse a header bound to a canonical, trusted agent ID.
+     *
+     * A hit requires the same ID and identical bytes. On a miss, the identity path must be unique
+     * and its string value must equal the trusted ID before anything is stored. Dotted aliases of
+     * that indexed identity path are rejected. Parsing and validation run outside the lock;
+     * admission is double-checked under the exclusive lock.
+     *
+     * @param trustedAgentId Canonical identity supplied by the authenticated or local producer.
+     * @param headerStr Raw JSON after "H " in the NDJson batch.
+     * @return Parsed header and Retrieved, Inserted, Updated or BypassedCapacity outcome.
+     * Capacity bypass still parses and validates identity; it never returns an older header.
+     * @throws IdentityError On a non-canonical ID or an absent, ambiguous, non-string or mismatched
+     *         identity in the header, including dotted aliases. Existing entries remain unchanged.
+     * @throws std::runtime_error On invalid JSON.
+     */
     GetResult getOrParse(std::string_view trustedAgentId, std::string_view headerStr)
     {
         if (!isCanonicalAgentId(trustedAgentId))

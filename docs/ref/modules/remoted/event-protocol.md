@@ -177,8 +177,8 @@ TCP/UDP channel a single agent message is bounded by the receive buffer, `OS_MAX
 
 ```
 H {"wazuh":{"agent":{"id":"001","name":"web-01","version":"v5.0.0","groups":["web"],"host":{"os":{"type":"linux"}}}}}
-E {"timestamp":"2026-01-05T10:00:00Z","log":"Connection from 192.168.1.100"}
-E {"timestamp":"2026-01-05T10:00:01Z","log":"Authentication successful"}
+E 1:syslog:{"timestamp":"2026-01-05T10:00:00Z","log":"Connection from 192.168.1.100"}
+E 1:syslog:{"timestamp":"2026-01-05T10:00:01Z","log":"Authentication successful"}
 ```
 
 ### Full Batch
@@ -187,14 +187,15 @@ E {"timestamp":"2026-01-05T10:00:01Z","log":"Authentication successful"}
 POST /events/enriched HTTP/1.1
 Host: localhost
 Content-Type: application/x-wev1
-Content-Length: 655
+X-Wazuh-Agent-Id: 001
+Content-Length: 682
 User-Agent: wazuh-manager-remoted/1.0
 Connection: keep-alive
 
 H {"wazuh":{"agent":{"id":"001","name":"web-server-01","version":"v5.0.0","groups":["web","production"],"host":{"architecture":"x86_64","hostname":"web-server-01","os":{"name":"Ubuntu","version":"22.04","platform":"ubuntu","type":"linux"}}},"cluster":{"name":"production","node":"master-node"}}}
-E {"timestamp":"2026-01-05T10:00:00.000Z","log":"sshd[1234]: Connection from 192.168.1.100 port 54321"}
-E {"timestamp":"2026-01-05T10:00:01.123Z","log":"sshd[1234]: Accepted publickey for admin from 192.168.1.100"}
-E {"timestamp":"2026-01-05T10:00:02.456Z","log":"sudo: admin : TTY=pts/0 ; PWD=/home/admin ; USER=root ; COMMAND=/bin/systemctl restart nginx"}
+E 1:syslog:{"timestamp":"2026-01-05T10:00:00.000Z","log":"sshd[1234]: Connection from 192.168.1.100 port 54321"}
+E 1:syslog:{"timestamp":"2026-01-05T10:00:01.123Z","log":"sshd[1234]: Accepted publickey for admin from 192.168.1.100"}
+E 1:syslog:{"timestamp":"2026-01-05T10:00:02.456Z","log":"sudo: admin : TTY=pts/0 ; PWD=/home/admin ; USER=root ; COMMAND=/bin/systemctl restart nginx"}
 ```
 
 ## Parsing
@@ -207,13 +208,18 @@ Trailing newlines are trimmed from each event; blank lines between events are sk
 ## Engine Responses
 
 - `200`: the batch was parsed and its events queued for processing.
-- `400`: the batch could not be parsed (`{"error": "<parser message>", "code": 400}`); nothing of it
-  is ingested. The engine logs `[API::Event] Failed to parse request: '<message>'`.
+- `400`: the identity carrier is missing, repeated or noncanonical; the H-line identity is missing,
+  ambiguous, mismatched or has a dotted alias; or the H/E batch is malformed. The response is
+  `{"error": "<validation message>", "code": 400}`. Identity failures are rejected before any event
+  is enqueued and increment `agent.cache.rejected.identity`. Identity and parse warnings are
+  independently throttled to one per 90 seconds; their prefixes are `[API::Event] Identity rejected`
+  and `[API::Event] Failed to parse request`, respectively.
 - `500`: internal error in the engine.
 
 The engine's event server sets no request-size limit of its own. On the HTTPS path, remoted maps these
 answers onto what the agent receives (see [HTTPS Agent API](https-events-api.md#error-responses));
-the legacy dispatcher does not retry a failed batch.
+the legacy dispatcher does not retry a failed batch. For an engine `400`, remoted preserves the
+HTTP status but replaces the body with `{"error":"Invalid event batch","code":400}`.
 
 ## Security
 
