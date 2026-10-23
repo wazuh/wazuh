@@ -351,6 +351,16 @@ static void test_clean_rules(void **state) {
     assert_int_equal(whodata_directories->currently_size, 0);
 }
 
+static void test_clean_rules_list_not_initialized(void **state) {
+    OSList *directories = whodata_directories;
+    whodata_directories = NULL;
+
+    // Returns before taking any lock or deleting any rule
+    clean_rules();
+
+    whodata_directories = directories;
+}
+
 static void test_fim_audit_reload_rules(void **state) {
     char log_messages[7][OS_SIZE_512];
     int initial_rules = whodata_directories->currently_size;
@@ -480,6 +490,7 @@ int main(void) {
         cmocka_unit_test(test_rules_initial_load_max_audit_entries),
 
         cmocka_unit_test_setup(test_clean_rules, setup_add_directories_to_whodata_list),
+        cmocka_unit_test(test_clean_rules_list_not_initialized),
 
         cmocka_unit_test_setup_teardown(test_fim_audit_reload_rules, setup_add_directories_to_whodata_list,
                                         teardown_reload_rules),
