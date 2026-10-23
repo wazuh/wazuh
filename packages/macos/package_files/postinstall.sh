@@ -25,9 +25,42 @@ if [ -f "${UPGRADE_FILE_FLAG}" ]; then
     upgrade="true"
     rm -f ${UPGRADE_FILE_FLAG}
     echo "Restoring configuration files from ${DIR}/config_files/ to ${DIR}/etc/"
-    rm -rf ${DIR}/etc/{ossec.conf,client.keys,local_internal_options.conf,shared}
-    cp -rf ${DIR}/config_files/{ossec.conf,client.keys,local_internal_options.conf,shared} ${DIR}/etc/
-    rm -rf ${DIR}/config_files/
+
+    # The backup was taken with cp -R, so a config the wazuh account had replaced with a symlink is
+    # a symlink here too. Restore only a regular backup, and move it with mv -fh so a link planted
+    # at the destination in etc/ is replaced instead of written through. A link backup is dropped
+    # and the package default kept. Anything not restored leaves config_files/ in place to recover.
+    restore_failed=""
+    for conf in ossec.conf client.keys local_internal_options.conf; do
+        if [ -L ${DIR}/config_files/${conf} ]; then
+            echo "WARNING: ${DIR}/config_files/${conf} is a symbolic link; not restored, keeping the package default." >&2
+            rm -f ${DIR}/config_files/${conf}
+        elif [ -f ${DIR}/config_files/${conf} ]; then
+            if ! mv -fh ${DIR}/config_files/${conf} ${DIR}/etc/${conf}; then
+                echo "WARNING: could not restore ${DIR}/etc/${conf}; its backup is kept at ${DIR}/config_files/${conf}." >&2
+                restore_failed="yes"
+            fi
+        fi
+    done
+
+    # etc/shared is a directory: restore only a real directory backup. Remove the destination (a
+    # link or the package copy) and move the backup in; a directory link re-planted at the
+    # destination makes mv fail without writing through, and the backup is kept.
+    if [ -L ${DIR}/config_files/shared ]; then
+        echo "WARNING: ${DIR}/config_files/shared is a symbolic link; not restored, keeping the package default." >&2
+        rm -rf ${DIR}/config_files/shared
+    elif [ -d ${DIR}/config_files/shared ]; then
+        rm -rf ${DIR}/etc/shared
+        if ! mv -fh ${DIR}/config_files/shared ${DIR}/etc/shared; then
+            echo "WARNING: could not restore ${DIR}/etc/shared; its backup is kept at ${DIR}/config_files/shared." >&2
+            restore_failed="yes"
+        fi
+    fi
+
+    # Drop the backup only once every entry was restored or deliberately dropped.
+    if [ -z "${restore_failed}" ]; then
+        rm -rf ${DIR}/config_files/
+    fi
 fi
 
 # Default for all directories
