@@ -263,12 +263,23 @@ std::optional<std::string> ReporterStream::stampedDocument(std::optional<std::st
 
 std::optional<std::string> ReporterStream::currentAgentMetadata()
 {
-    // A block read under another identity must not be stamped under this one.
+    // A block read under another identity must not be stamped under this one, and the
+    // new identity's /config must be sent with its own groups as soon as they are read:
+    // the empty marker makes the first block count as a change.
     if (auto agentId = m_signer.agentId(); agentId != m_metadataAgentId)
     {
+        const auto firstIdentity = m_metadataAgentId.empty();
         m_lastAgent.reset();
-        m_seenGroups.reset();
         m_metadataAgentId = std::move(agentId);
+
+        if (firstIdentity)
+        {
+            m_seenGroups.reset();
+        }
+        else
+        {
+            m_seenGroups.emplace();
+        }
     }
 
     // Read fresh every time so a group change shows up in the next report. A miss falls
