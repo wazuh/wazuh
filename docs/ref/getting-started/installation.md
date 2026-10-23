@@ -271,11 +271,11 @@ password invalidates every token that user holds, so once `wazuh`'s own password
 obtained below stops working.
 
 ```bash
-TOKEN=$(curl -s -k -u wazuh:<WAZUH_PASSWORD> -X POST "https://localhost:55000/security/user/authenticate?raw=true")
+TOKEN=$(curl -s -k -u wazuh:<WAZUH_MANAGER_API_PASSWORD> -X POST "https://localhost:55000/security/user/authenticate?raw=true")
 curl -s -k -X PUT -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
-    -d '{"password":"<NEW_WAZUH_WUI_PASSWORD>"}' "https://localhost:55000/security/users/2"
+    -d '{"password":"<NEW_WAZUH_MANAGER_WUI_PASSWORD>"}' "https://localhost:55000/security/users/2"
 curl -s -k -X PUT -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
-    -d '{"password":"<NEW_WAZUH_PASSWORD>"}' "https://localhost:55000/security/users/1"
+    -d '{"password":"<NEW_WAZUH_MANAGER_API_PASSWORD>"}' "https://localhost:55000/security/users/1"
 ```
 
 See [Default users](../modules/server-api/authentication.md#default-users) for the `allow_run_as` semantics, the endpoint rules that apply to these reserved users, and [what a password change does and does not do](../modules/server-api/authentication.md#what-a-password-change-does-and-does-not-do).
@@ -529,10 +529,10 @@ The agent keeps running without module verification. To enable it, install the r
 
 ### Verifying the agent connected
 
-Check from the manager side. The Server API runs on the master node; list the agent by name and look at its `status`, which reads `active` once it is connected (`pending`, `never_connected` or `disconnected` otherwise):
+Check from the manager side. The Server API runs on the master node; list the agent by name and look at its `status`, which reads `active` once it is connected (`pending`, `never_connected` or `disconnected` otherwise). `<WAZUH_MANAGER_API_PASSWORD>` is the current password of the `wazuh` user. Until you change it, that is the `WAZUH_MANAGER_API_PASSWORD` line of `/etc/wazuh-manager/export/credentials.env` on the master (see [The published passwords](credentials.md#the-published-passwords)); the file keeps the install-time value, so after a change use the new password:
 
 ```bash
-TOKEN=$(curl -s -k -u wazuh:<WAZUH_PASSWORD> -X POST "https://localhost:55000/security/user/authenticate?raw=true")
+TOKEN=$(curl -s -k -u wazuh:<WAZUH_MANAGER_API_PASSWORD> -X POST "https://localhost:55000/security/user/authenticate?raw=true")
 curl -s -k -X GET "https://localhost:55000/agents?name=web-server-01&select=id,name,status,ip&pretty=true" \
     -H "Authorization: Bearer $TOKEN"
 ```
