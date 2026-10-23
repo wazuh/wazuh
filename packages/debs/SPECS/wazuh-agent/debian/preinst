@@ -144,15 +144,22 @@ EOF
         # Back up the configuration files postinst restores. etc/ is writable by the wazuh group: a
         # link there is not ours to back up, and cp would carry its target's content into the
         # restored file. -P keeps one swapped in after the check a link, which postinst skips.
+        # An interrupted upgrade leaves the unpack placeholders in ${DIR}/etc (an empty
+        # client.keys, an ossec.conf without a <client> block); re-running dpkg -i runs this
+        # script again and must not copy them over the backup taken by the first run (#40246):
+        # the first backup wins, and postinst consumes it on restore.
         for CONF_FILE in client.keys local_internal_options.conf ossec.conf; do
-            if [ -f ${DIR}/etc/${CONF_FILE} ] && [ ! -L ${DIR}/etc/${CONF_FILE} ]; then
+            if [ -f ${DIR}/etc/${CONF_FILE} ] && [ ! -L ${DIR}/etc/${CONF_FILE} ] \
+                && [ ! -e ${WAZUH_TMP_DIR}/${CONF_FILE} ]; then
                 cp -fpP ${DIR}/etc/${CONF_FILE} ${WAZUH_TMP_DIR}/${CONF_FILE}
             fi
         done
 
         # etc/shared/ sits in etc/, so it may be a link to another directory: its files are copied
         # from inside it, once no link led there. cp -a keeps a link found among them a link.
-        if [ -d ${DIR}/etc/shared ]; then
+        # The same first-backup-wins rule applies: a re-run after an interrupted upgrade must
+        # not overwrite ${WAZUH_TMP_DIR}/group either (#40246).
+        if [ -d ${DIR}/etc/shared ] && [ ! -d ${WAZUH_TMP_DIR}/group ]; then
             in_dir ${DIR}/etc/shared backup_shared_files \
                 || echo "WARNING: ${DIR}/etc/shared was not backed up: it is a link, or it could not be copied." >&2
         fi
