@@ -25,15 +25,59 @@ if [ -f "${UPGRADE_FILE_FLAG}" ]; then
     upgrade="true"
     rm -f ${UPGRADE_FILE_FLAG}
     echo "Restoring configuration files from ${DIR}/config_files/ to ${DIR}/etc/"
-    rm -rf ${DIR}/etc/{ossec.conf,client.keys,local_internal_options.conf,shared}
-    cp -rf ${DIR}/config_files/{ossec.conf,client.keys,local_internal_options.conf,shared} ${DIR}/etc/
-    rm -rf ${DIR}/config_files/
+
+    # The backup was taken with cp -R, so a config the wazuh account had replaced with a symlink is
+    # a symlink here too. Restore only a regular file, and move it with mv -fh so a link planted at
+    # the destination in etc/ is replaced instead of written through. Anything else (a symlink, or
+    # a directory/FIFO/other) is dropped and whatever the package installed at that path is left.
+    restore_failed=""
+    for conf in ossec.conf client.keys local_internal_options.conf; do
+        if [ ! -e ${DIR}/config_files/${conf} ] && [ ! -L ${DIR}/config_files/${conf} ]; then
+            continue
+        elif [ -f ${DIR}/config_files/${conf} ] && [ ! -L ${DIR}/config_files/${conf} ]; then
+            if ! mv -fh ${DIR}/config_files/${conf} ${DIR}/etc/${conf}; then
+                echo "WARNING: could not restore ${DIR}/etc/${conf}; a copy is kept for recovery." >&2
+                restore_failed="yes"
+            fi
+        else
+            echo "WARNING: ${DIR}/config_files/${conf} is not a regular file; not restored, the package-installed ${DIR}/etc/${conf} is left in place." >&2
+            rm -rf ${DIR}/config_files/${conf}
+        fi
+    done
+
+    # etc/shared is a directory: restore only a real directory. Remove the destination (a link or
+    # the package copy) and move the backup in; a directory link re-planted at the destination
+    # makes mv fail without writing through, and the backup is kept.
+    if [ -d ${DIR}/config_files/shared ] && [ ! -L ${DIR}/config_files/shared ]; then
+        rm -rf ${DIR}/etc/shared
+        if ! mv -fh ${DIR}/config_files/shared ${DIR}/etc/shared; then
+            echo "WARNING: could not restore ${DIR}/etc/shared; a copy is kept for recovery." >&2
+            restore_failed="yes"
+        fi
+    elif [ -e ${DIR}/config_files/shared ] || [ -L ${DIR}/config_files/shared ]; then
+        echo "WARNING: ${DIR}/config_files/shared is not a directory; not restored, the package-installed ${DIR}/etc/shared is left in place." >&2
+        rm -rf ${DIR}/config_files/shared
+    fi
+
+    # Drop the backup once everything was restored or deliberately dropped. If a restore failed,
+    # keep what is left under a name the next upgrade's preinstall will not wipe, so an operator
+    # can still recover it after re-running the installer.
+    if [ -z "${restore_failed}" ]; then
+        rm -rf ${DIR}/config_files/
+    elif [ ! -e ${DIR}/config_files.unrestored ]; then
+        mv ${DIR}/config_files ${DIR}/config_files.unrestored \
+            && echo "WARNING: configuration that could not be restored is kept at ${DIR}/config_files.unrestored for recovery." >&2
+    fi
 fi
 
-# Default for all directories
+# Default for all directories.
+# This baseline walks the whole tree, parts of which (etc/, logs/, var/, tmp/, queue/ sub-dirs) the
+# wazuh account can write. A plain chmod -R / chown -R would act on a hard link that account planted
+# to a root-only file (macOS has no protected_hardlinks), changing that external inode. Set
+# directories and single-link files, and skip a symlink and a regular file with more than one link.
 echo "Seting permissions and ownership for directories and files"
-chmod -R 750 ${DIR}/
-chown -R root:${GROUP} ${DIR}/
+find ${DIR} ! -type l ! \( -type f ! -links 1 \) -exec chmod 750 {} +
+find ${DIR} ! -type l ! \( -type f ! -links 1 \) -exec chown root:${GROUP} {} +
 
 chown -R root:wheel ${DIR}/bin
 chown -R root:wheel ${DIR}/lib
@@ -55,20 +99,30 @@ chmod 1750 ${DIR}/tmp
 
 chmod 770 ${DIR}/etc
 chown ${USER}:${GROUP} ${DIR}/etc
-chmod 640 ${DIR}/etc/internal_options.conf
-chown root:${GROUP} ${DIR}/etc/internal_options.conf
-chmod 640 ${DIR}/etc/local_internal_options.conf
-chown root:${GROUP} ${DIR}/etc/local_internal_options.conf
-chmod 640 ${DIR}/etc/client.keys
-chown root:${GROUP} ${DIR}/etc/client.keys
-chmod 640 ${DIR}/etc/localtime
-chmod 770 ${DIR}/etc/shared # ossec must be able to write to it
-chown -R root:${GROUP} ${DIR}/etc/shared
-find ${DIR}/etc/shared/ -type f -exec chmod 660 {} \;
-chown root:${GROUP} ${DIR}/etc/ossec.conf
-chmod 660 ${DIR}/etc/ossec.conf
-chown root:${GROUP} ${DIR}/etc/wpk_root.pem
-chmod 640 ${DIR}/etc/wpk_root.pem
+# etc/ is owned by the wazuh account, so a file in it may be a link that account planted. Set the
+# mode and owner only on a regular file with a single hard link that is not a symlink, so a planted
+# symlink or a hard link to a root-only file (macOS has no protected_hardlinks) leaves its target
+# untouched and cannot be turned into a read.
+harden_etc_file() {
+    if [ -f "$2" ] && [ ! -L "$2" ] && [ -n "$(find "$2" -prune -links 1 2>/dev/null)" ]; then
+        chmod "$1" "$2"
+        [ "${3:-}" = nochown ] || chown root:${GROUP} "$2"
+    fi
+}
+harden_etc_file 640 ${DIR}/etc/internal_options.conf
+harden_etc_file 640 ${DIR}/etc/local_internal_options.conf
+harden_etc_file 640 ${DIR}/etc/client.keys
+harden_etc_file 640 ${DIR}/etc/localtime nochown
+# etc/shared only when it is a real directory (a trailing-slash find would follow a symlinked
+# shared into its target); inside it skip a symlink and a hard-linked file, so chown/chmod cannot
+# reach a file outside the installation.
+if [ -d ${DIR}/etc/shared ] && [ ! -L ${DIR}/etc/shared ]; then
+    chmod 770 ${DIR}/etc/shared # ossec must be able to write to it
+    find ${DIR}/etc/shared ! -type l ! \( -type f ! -links 1 \) -exec chown root:${GROUP} {} +
+    find ${DIR}/etc/shared -type f -links 1 -exec chmod 660 {} +
+fi
+harden_etc_file 660 ${DIR}/etc/ossec.conf
+harden_etc_file 640 ${DIR}/etc/wpk_root.pem
 
 chmod 770 ${DIR}/.ssh
 

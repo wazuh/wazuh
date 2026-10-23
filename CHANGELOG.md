@@ -32,6 +32,7 @@ All notable changes to this project will be documented in this file.
 
 #### Fixed
 
+- Fixed the macOS agent package upgrade following a symlink planted under `etc/` by the `wazuh` account, which let it read a root-only file. ([#40696](https://github.com/wazuh/wazuh/pull/40696))
 - Hardened how the agent handles requests received from the manager. ([#40467](https://github.com/wazuh/wazuh/pull/40467))
 - Fixed `agent-auth` failing at random with `SSL error (2)` because it did not set the receive timeout of its enrollment socket. ([#40468](https://github.com/wazuh/wazuh/pull/40468))
 - Fixed whodata dropping `chmod`, `chown` and write events without `O_CREAT` on paths under a symbolic link not configured with `follow_symbolic_link`. ([#39763](https://github.com/wazuh/wazuh/issues/39763))
