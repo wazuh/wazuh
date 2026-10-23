@@ -296,6 +296,7 @@ char * w_tolower_str(const char *string);
 
 /* b64 function prototypes */
 char *decode_base64(const char *src);
+char *decode_base64_len(const char *src, size_t *len);
 char *encode_base64(int size, const char *src);
 
 /**

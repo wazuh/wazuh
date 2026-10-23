@@ -41,6 +41,7 @@ extern void wm_sca_send_policies_scanned(wm_sca_t * data);
 extern int wm_sca_test_positive_minterm(const char * const pattern, const char * const str, char ** reason, w_expression_t * regex_engine);
 extern int wm_sca_regex_numeric_comparison(const char * const pattern, const char * const str, char ** reason, w_expression_t * regex_engine);
 extern int wm_sca_apply_numeric_partial_comparison(const char * const partial_comparison, const long int number, char ** reason, w_expression_t * regex_engine);
+extern int wm_sca_check_file_contents(const char * const file, const char * const pattern, char ** reason, w_expression_t * regex_engine);
 
 extern w_queue_t * request_queue;
 extern char **last_sha256;
@@ -893,6 +894,131 @@ void test_wm_sca_apply_numeric_partial_comparison_no_operation_supported_with_re
     w_free_expression_t(&regex);
 }
 
+/* wm_sca_check_file_contents */
+
+typedef struct {
+    char dir[PATH_MAX];
+    char regular[PATH_MAX];
+    char fifo[PATH_MAX];
+    char missing[PATH_MAX];
+    w_expression_t * regex;
+    char * reason;
+} file_contents_state_t;
+
+static int setup_file_contents(void **state) {
+    file_contents_state_t * st = NULL;
+    os_calloc(1, sizeof(file_contents_state_t), st);
+
+    snprintf(st->dir, sizeof(st->dir), "/tmp/test_wm_sca_XXXXXX");
+    if (mkdtemp(st->dir) == NULL) {
+        os_free(st);
+        return -1;
+    }
+
+    snprintf(st->regular, sizeof(st->regular), "%s/regular", st->dir);
+    snprintf(st->fifo, sizeof(st->fifo), "%s/fifo", st->dir);
+    snprintf(st->missing, sizeof(st->missing), "%s/missing", st->dir);
+
+    FILE * fp = fopen(st->regular, "w");
+    if (fp == NULL) {
+        return -1;
+    }
+    fputs("first line\nsecond line\n", fp);
+    fclose(fp);
+
+    if (mkfifo(st->fifo, 0600) != 0) {
+        return -1;
+    }
+
+    w_calloc_expression_t(&st->regex, EXP_TYPE_OSREGEX);
+    *state = st;
+    return 0;
+}
+
+static int teardown_file_contents(void **state) {
+    file_contents_state_t * st = *state;
+
+    unlink(st->regular);
+    unlink(st->fifo);
+    rmdir(st->dir);
+    w_free_expression_t(&st->regex);
+    os_free(st->reason);
+    os_free(st);
+    return 0;
+}
+
+void test_wm_sca_check_file_contents_regular_file_match(void **state) {
+    file_contents_state_t * st = *state;
+
+    expect_string(__wrap_realpath, path, "/etc/policy_target");
+    will_return(__wrap_realpath, st->regular);
+
+    assert_int_equal(wm_sca_check_file_contents("/etc/policy_target", "second line", &st->reason, st->regex), 1);
+    assert_null(st->reason);
+}
+
+void test_wm_sca_check_file_contents_regular_file_no_match(void **state) {
+    file_contents_state_t * st = *state;
+
+    expect_string(__wrap_realpath, path, "/etc/policy_target");
+    will_return(__wrap_realpath, st->regular);
+
+    assert_int_equal(wm_sca_check_file_contents("/etc/policy_target", "third line", &st->reason, st->regex), 0);
+    assert_null(st->reason);
+}
+
+void test_wm_sca_check_file_contents_fifo(void **state) {
+    file_contents_state_t * st = *state;
+
+    // No writer is ever attached: a blocking open would never return.
+    expect_string(__wrap_realpath, path, "/etc/policy_target");
+    will_return(__wrap_realpath, st->fifo);
+
+    assert_int_equal(wm_sca_check_file_contents("/etc/policy_target", "second line", &st->reason, st->regex), 2);
+    assert_string_equal(st->reason, "Could not open file '/etc/policy_target': Not a regular file");
+}
+
+void test_wm_sca_check_file_contents_character_device(void **state) {
+    file_contents_state_t * st = *state;
+
+    // An endless device would keep the read loop from ever reaching end of file.
+    expect_string(__wrap_realpath, path, "/etc/policy_target");
+    will_return(__wrap_realpath, "/dev/zero");
+
+    assert_int_equal(wm_sca_check_file_contents("/etc/policy_target", "second line", &st->reason, st->regex), 2);
+    assert_string_equal(st->reason, "Could not open file '/etc/policy_target': Not a regular file");
+}
+
+void test_wm_sca_check_file_contents_directory(void **state) {
+    file_contents_state_t * st = *state;
+
+    expect_string(__wrap_realpath, path, "/etc/policy_target");
+    will_return(__wrap_realpath, st->dir);
+
+    assert_int_equal(wm_sca_check_file_contents("/etc/policy_target", "second line", &st->reason, st->regex), 2);
+    assert_string_equal(st->reason, "Could not open file '/etc/policy_target': Not a regular file");
+}
+
+void test_wm_sca_check_file_contents_open_error(void **state) {
+    file_contents_state_t * st = *state;
+
+    expect_string(__wrap_realpath, path, "/etc/policy_target");
+    will_return(__wrap_realpath, st->missing);
+
+    assert_int_equal(wm_sca_check_file_contents("/etc/policy_target", "second line", &st->reason, st->regex), 2);
+    assert_string_equal(st->reason, "Could not open file '/etc/policy_target': No such file or directory");
+}
+
+void test_wm_sca_check_file_contents_path_not_resolved(void **state) {
+    file_contents_state_t * st = *state;
+
+    expect_string(__wrap_realpath, path, "/etc/policy_target");
+    will_return(__wrap_realpath, NULL);
+
+    assert_int_equal(wm_sca_check_file_contents("/etc/policy_target", "second line", &st->reason, st->regex), 2);
+    assert_non_null(st->reason);
+}
+
 /* main */
 
 int main(void) {
@@ -942,7 +1068,14 @@ int main(void) {
         cmocka_unit_test(test_wm_sca_apply_numeric_partial_comparison_no_capture_number_with_reason_null),
         cmocka_unit_test(test_wm_sca_apply_numeric_partial_comparison_no_capture_number_with_reason_not_null),
         cmocka_unit_test(test_wm_sca_apply_numeric_partial_comparison_no_operation_supported_with_reason_null),
-        cmocka_unit_test(test_wm_sca_apply_numeric_partial_comparison_no_operation_supported_with_reason_not_null)
+        cmocka_unit_test(test_wm_sca_apply_numeric_partial_comparison_no_operation_supported_with_reason_not_null),
+        cmocka_unit_test_setup_teardown(test_wm_sca_check_file_contents_regular_file_match, setup_file_contents, teardown_file_contents),
+        cmocka_unit_test_setup_teardown(test_wm_sca_check_file_contents_regular_file_no_match, setup_file_contents, teardown_file_contents),
+        cmocka_unit_test_setup_teardown(test_wm_sca_check_file_contents_fifo, setup_file_contents, teardown_file_contents),
+        cmocka_unit_test_setup_teardown(test_wm_sca_check_file_contents_character_device, setup_file_contents, teardown_file_contents),
+        cmocka_unit_test_setup_teardown(test_wm_sca_check_file_contents_directory, setup_file_contents, teardown_file_contents),
+        cmocka_unit_test_setup_teardown(test_wm_sca_check_file_contents_open_error, setup_file_contents, teardown_file_contents),
+        cmocka_unit_test_setup_teardown(test_wm_sca_check_file_contents_path_not_resolved, setup_file_contents, teardown_file_contents)
     };
     int result;
     result = cmocka_run_group_tests(tests_with_startup, setup_module, teardown_module);

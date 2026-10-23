@@ -59,8 +59,6 @@ typedef struct authd_config_t {
     char *agent_ca;
     char *manager_cert;
     char *manager_key;
-    long timeout_sec;
-    long timeout_usec;
     bool worker_node;
     bool ipv6;
     bool allow_higher_versions;

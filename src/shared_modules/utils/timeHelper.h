@@ -160,11 +160,13 @@ namespace Utils
         return ss.str();
     }
 
+    static std::string normalizeTimestampISO8601(const std::string& timestamp);
+
     /**
      * @brief Convert a timestamp to ISO8601 format.
      *
-     * @param timestamp Timestamp to convert. Format: "YYYY/MM/DD hh:mm:ss".
-     * @return std::string ISO8601 timestamp.
+     * @param timestamp Timestamp to convert. Format: "YYYY/MM/DD hh:mm:ss", or ISO8601, which is returned normalized.
+     * @return std::string ISO8601 timestamp or empty string.
      */
     static std::string timestampToISO8601(const std::string& timestamp)
     {
@@ -173,7 +175,7 @@ namespace Utils
         ss >> std::get_time(&tm, "%Y/%m/%d %H:%M:%S");
         if (ss.fail())
         {
-            return "";
+            return normalizeTimestampISO8601(timestamp);
         }
         std::time_t time = std::mktime(&tm);
 
@@ -313,7 +315,13 @@ namespace Utils
         else if constexpr (std::is_same_v<std::decay_t<T>, double>)
         {
             std::time_t time = timestamp;
-            auto itt = std::chrono::system_clock::from_time_t(time);
+            auto milliseconds = static_cast<int>(std::round((timestamp - static_cast<int>(timestamp)) * 1000));
+            // A fraction of .9995 or more rounds to 1000 ms and carries over to the next second.
+            if (milliseconds >= 1000)
+            {
+                ++time;
+                milliseconds -= 1000;
+            }
             std::ostringstream output;
             struct tm buf
             {
@@ -324,29 +332,14 @@ namespace Utils
                 return "";
             }
             output << std::put_time(localTime, "%FT%T");
-            if (std::abs(timestamp - static_cast<int>(timestamp)) < 1e-9)
-            {
-                // Get milliseconds from the current time
-                auto milliseconds =
-                    std::chrono::duration_cast<std::chrono::milliseconds>(itt.time_since_epoch()).count() % 1000;
-                // ISO 8601
-                output << '.' << std::setfill('0') << std::setw(3) << milliseconds << 'Z';
-            }
-            else
-            {
-                output << '.' << std::setfill('0') << std::setw(3)
-                       << static_cast<int>(std::round((timestamp - static_cast<int>(timestamp)) * 1000)) << 'Z';
-            }
+            output << '.' << std::setfill('0') << std::setw(3) << milliseconds << 'Z';
             return output.str();
         }
         else if constexpr (std::is_same_v<std::decay_t<T>, std::string>)
         {
             if (timestamp.empty() || !Utils::isNumber(timestamp))
             {
-                // Check if timestamp has the format "YYYY/MM/DD hh:mm:ss"
-                // if not, check if it is already ISO8601.
-                auto ISO8601Timestamp = timestampToISO8601(timestamp);
-                return ISO8601Timestamp.empty() ? normalizeTimestampISO8601(timestamp) : std::move(ISO8601Timestamp);
+                return timestampToISO8601(timestamp);
             }
             std::time_t time = std::stoi(timestamp);
             auto itt = std::chrono::system_clock::from_time_t(time);
@@ -371,10 +364,7 @@ namespace Utils
         {
             if (timestamp.empty() || !Utils::isNumber(timestamp))
             {
-                // Check if timestamp has the format "YYYY/MM/DD hh:mm:ss"
-                // if not, check if it is already ISO8601.
-                auto ISO8601Timestamp = timestampToISO8601(std::string(timestamp));
-                return ISO8601Timestamp.empty() ? normalizeTimestampISO8601(std::string(timestamp)) : std::move(ISO8601Timestamp);
+                return timestampToISO8601(std::string(timestamp));
             }
             std::time_t time;
             auto [ptr, ec] = std::from_chars(timestamp.data(), timestamp.data() + timestamp.size(), time);

@@ -348,10 +348,14 @@ list(APPEND shared_tests_flags "-Wl,--wrap,pthread_mutex_lock -Wl,--wrap,pthread
 endif()
 
 list(APPEND shared_tests_names "test_url")
-list(APPEND shared_tests_flags "-Wl,--wrap,curl_slist_free_all -Wl,--wrap,curl_easy_cleanup \
-                                -Wl,--wrap,curl_easy_init -Wl,--wrap,curl_easy_setopt -Wl,--wrap,wfopen \
-                                -Wl,--wrap,curl_slist_append -Wl,--wrap,curl_easy_perform \
-                                -Wl,--wrap,curl_easy_getinfo -Wl,--wrap,FileSize ${DEBUG_OP_WRAPPERS}")
+set(url_flags "-Wl,--wrap,curl_slist_free_all -Wl,--wrap,curl_easy_cleanup \
+               -Wl,--wrap,curl_easy_init -Wl,--wrap,curl_easy_setopt -Wl,--wrap,wfopen \
+               -Wl,--wrap,curl_slist_append -Wl,--wrap,curl_easy_perform \
+               -Wl,--wrap,curl_easy_getinfo -Wl,--wrap,FileSize ${DEBUG_OP_WRAPPERS}")
+if(NOT ${TARGET} STREQUAL "winagent")
+    string(APPEND url_flags " -Wl,--wrap,OS_ConnectUnixDomain -Wl,--wrap,send -Wl,--wrap,recv -Wl,--wrap,close -Wl,--wrap,getpid")
+endif()
+list(APPEND shared_tests_flags "${url_flags}")
 
 list(APPEND shared_tests_names "test_sysinfo_utils")
 

@@ -542,6 +542,11 @@ void audit_rules_to_realtime();
 int set_auditd_config(void);
 
 /**
+ * @brief Removes the Audit plugin configuration file, if present.
+ */
+void audit_remove_plugin_config(void);
+
+/**
  * @brief Initialize Audit evsents socket
  *
  * @return File descriptor of the socket, -1 on error

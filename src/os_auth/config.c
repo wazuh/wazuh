@@ -39,9 +39,6 @@ int authd_read_config(const char *path) {
         config.flags.disabled = 0;
     }
 
-    config.timeout_sec = getDefine_Int("auth", "timeout_seconds", 0, INT_MAX);
-    config.timeout_usec = getDefine_Int("auth", "timeout_microseconds", 0, 999999);
-
     return 0;
 }
 

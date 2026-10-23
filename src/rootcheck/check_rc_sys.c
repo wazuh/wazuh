@@ -13,6 +13,7 @@
 #include <errno.h>
 
 #define RC_ENOENT_SUSPECT (-2)
+#define RC_SYS_MAX_DEPTH 256
 
 /* Prototypes */
 static int read_sys_file(const char *file_name, int do_read);
@@ -30,6 +31,7 @@ static void rc_verify_suspects(const char *dir_name, char **suspects,
 /* Global variables */
 static int   _sys_errors;
 static int   _sys_total;
+static int   _sys_depth;
 static dev_t did;
 static FILE *_wx;
 static FILE *_ww;
@@ -75,7 +77,15 @@ static int read_sys_file(const char *file_name, int do_read)
             return (0);
         }
 
-        return (read_sys_dir(file_name, do_read));
+        if (_sys_depth >= RC_SYS_MAX_DEPTH) {
+            mtdebug1(ARGV0, "Maximum depth reached, skipping directory '%s'.", file_name);
+            return (0);
+        }
+
+        _sys_depth++;
+        int ret = read_sys_dir(file_name, do_read);
+        _sys_depth--;
+        return (ret);
     }
 
     /* Check if the size from stats is the same as when we read the file */
@@ -556,6 +566,7 @@ void check_rc_sys(const char *basedir)
 
     _sys_errors = 0;
     _sys_total = 0;
+    _sys_depth = 0;
     did = 0; /* device id */
 
     snprintf(file_path, OS_SIZE_1024, "%s", basedir);

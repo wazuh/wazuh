@@ -1329,7 +1329,7 @@ void set_read(logreader *current, int i, int j) {
         current->read = read_snortfull;
     }
 #ifndef WIN32
-    if (strcmp("ossecalert", current->logformat) == 0) {
+    else if (strcmp("ossecalert", current->logformat) == 0) {
         current->read = read_ossecalert;
     }
 #endif
@@ -2682,25 +2682,44 @@ STATIC void w_initialize_file_status() {
 
     OSHash_SetFreeDataPointer(files_status, (void (*)(void *))free_files_status_data);
 
-    /* Read json file to load last read positions */
+    /* Read json file to load last read positions, whole: it can be larger than OS_MAXSTR */
     FILE * fd = NULL;
 
-    if (fd = wfopen(LOCALFILE_STATUS, "r"), fd != NULL) {
-        char str[OS_MAXSTR] = {0};
+    if (fd = wfopen(LOCALFILE_STATUS, "r"), fd == NULL) {
+        if (errno != ENOENT) {
+            merror(FOPEN_ERROR, LOCALFILE_STATUS, errno, strerror(errno));
+        }
+        return;
+    }
 
-        if (fread(str, 1, OS_MAXSTR - 1, fd) < 1) {
-            merror(FREAD_ERROR, LOCALFILE_STATUS, errno, strerror(errno));
-            clearerr(fd);
+    struct stat stat_fd;
+
+    if (fstat(fileno(fd), &stat_fd) == -1) {
+        merror(FSTAT_ERROR, LOCALFILE_STATUS, errno, strerror(errno));
+        fclose(fd);
+        return;
+    }
+
+    size_t size = (size_t) stat_fd.st_size;
+    char * str = NULL;
+    os_calloc(size + 1, sizeof(char), str);
+
+    if (fread(str, 1, size, fd) < 1) {
+        merror(FREAD_ERROR, LOCALFILE_STATUS, errno, strerror(errno));
+        clearerr(fd);
+    } else {
+        cJSON * global_json = cJSON_Parse(str);
+
+        if (global_json == NULL) {
+            mwarn(LOGCOLLECTOR_STATUS_PARSE_FAIL, LOCALFILE_STATUS);
         } else {
-            cJSON * global_json = cJSON_Parse(str);
             w_load_files_status(global_json);
             cJSON_Delete(global_json);
         }
-
-        fclose(fd);
-    } else if (errno != ENOENT) {
-        merror(FOPEN_ERROR, LOCALFILE_STATUS, errno, strerror(errno));
     }
+
+    os_free(str);
+    fclose(fd);
 }
 
 STATIC void w_save_file_status() {
@@ -2714,14 +2733,32 @@ STATIC void w_save_file_status() {
     FILE * fd = NULL;
     size_t size_str = strlen(str);
 
-    if (fd = wfopen(LOCALFILE_STATUS, "w"), fd != NULL) {
-        if (fwrite(str, 1, size_str, fd) == 0) {
-            merror(FWRITE_ERROR, LOCALFILE_STATUS, errno, strerror(errno));
-            clearerr(fd);
-        }
-        fclose(fd);
-    } else {
-        merror_exit(FOPEN_ERROR, LOCALFILE_STATUS, errno, strerror(errno));
+    /* Write a temporary file and rename it over the status file, so a failed or
+     * interrupted write never replaces the last complete one */
+    if (fd = wfopen(LOCALFILE_STATUS_TMP, "w"), fd == NULL) {
+        merror_exit(FOPEN_ERROR, LOCALFILE_STATUS_TMP, errno, strerror(errno));
+    }
+
+    bool written = fwrite(str, 1, size_str, fd) == size_str;
+
+    if (!written) {
+        merror(FWRITE_ERROR, LOCALFILE_STATUS_TMP, errno, strerror(errno));
+        clearerr(fd);
+    }
+
+    if (fclose(fd) != 0 && written) {
+        merror(FWRITE_ERROR, LOCALFILE_STATUS_TMP, errno, strerror(errno));
+        written = false;
+    }
+
+    if (!written) {
+        remove(LOCALFILE_STATUS_TMP);
+    } else if (rename_ex(LOCALFILE_STATUS_TMP, LOCALFILE_STATUS) != 0) {
+#ifdef WIN32
+        DWORD error = GetLastError();
+        merror(RENAME_ERROR, LOCALFILE_STATUS_TMP, LOCALFILE_STATUS, (int) error, win_strerror(error));
+#endif
+        remove(LOCALFILE_STATUS_TMP);
     }
 
     os_free(str);
@@ -2796,7 +2833,7 @@ STATIC void w_load_files_status(cJSON * global_json) {
             mdebug1(LOGCOLLECTOR_FILE_NOT_EXIST, path_str);
             EVP_MD_CTX_free(context);
             os_free(data);
-            return;
+            continue;
         }
         data->context = context;
 
