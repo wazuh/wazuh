@@ -1927,8 +1927,9 @@ static cJSON *bridge_utf8_string(const char *value)
  * Writes an empty string when metadata is not yet available, so the module
  * falls back to an H line carrying only agent.id. Runs on the module's
  * stateless sender thread, once per flush (not per event), and on its reporter
- * thread before each /stats and /config push; a shared-memory read, fast,
- * non-blocking and safe to run on both threads at once. */
+ * thread on every tick; a shared-memory read, fast and non-blocking. Readers
+ * never block each other, and one that overlaps a writer gets "not available"
+ * rather than a mixed record (metadata_provider_get()'s seqlock). */
 static void bridge_on_collect_stateless_host(char *json_out, size_t cap, void *user_data)
 {
     (void)user_data;
