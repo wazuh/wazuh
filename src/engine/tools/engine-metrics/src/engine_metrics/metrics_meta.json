@@ -79,5 +79,25 @@
   "agent.cache.bypass.max_bytes": {
     "category": "cache",
     "unit": "count"
+  },
+  "agent.cache.entries": {
+    "category": "cache",
+    "unit": "items"
+  },
+  "agent.cache.hits": {
+    "category": "cache",
+    "unit": "count"
+  },
+  "agent.cache.insertions": {
+    "category": "cache",
+    "unit": "count"
+  },
+  "agent.cache.updates": {
+    "category": "cache",
+    "unit": "count"
+  },
+  "agent.cache.evictions": {
+    "category": "cache",
+    "unit": "count"
   }
 }

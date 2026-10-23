@@ -31,6 +31,9 @@ The dashboard organises global metrics into sections automatically:
 
 - **Events** — metrics whose `category` is `"events"` in `metrics_meta.json`
 - **Bytes** — metrics whose `category` is `"bytes"` in `metrics_meta.json`
+- **Cache** — agent metadata cache occupancy, limits, hits, insertions, updates, evictions and
+  capacity bypasses. Ingestion identity rejections (`agent.cache.rejected.identity`) remain in
+  **Events**, because they count rejected requests rather than cache operations.
 - Any other category creates its own section on the fly.
 - Per-space metrics always get their own section, one per space.
 
