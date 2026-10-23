@@ -233,6 +233,13 @@ paths:
           example, are unique per type within the imported policy, so a policy carrying two decoders with
           the same name is refused here (`import_failed_duplicate_name`), even though the Wazuh Indexer
           accepted both while they were edited.
+
+        ## Concurrency
+        - The replacement of the `space` session is atomic: concurrent requests that replace or delete the
+          session of the same space never fail because of each other, the last swap wins and every replaced
+          namespace is deleted once.
+        - If the swap succeeds but the previous namespace cannot be deleted, the request still returns **OK**
+          and the Engine logs a warning.
       requestBody:
         required: true
         content:
@@ -708,6 +715,10 @@ paths:
         then the session itself.
 
         This operation is idempotent: if there is no session named `space`, it returns **OK**.
+
+        The session is removed first and its namespace afterwards, atomically with respect to other
+        requests on the same space: concurrent deletes or replacements of the same space never fail
+        because of each other.
       requestBody:
         required: true
         content:
