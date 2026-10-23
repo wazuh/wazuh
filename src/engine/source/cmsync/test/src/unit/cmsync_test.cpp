@@ -720,6 +720,40 @@ TEST_F(CMSyncSynchronizeTest, NotPendingWhenFailedSpaceKeepsItsRoute)
     EXPECT_FALSE(sync.synchronize());
 }
 
+// A cycle that fails on the indexer leaves the space FAILED; the next cycle with the content unchanged clears it
+TEST_F(CMSyncSynchronizeTest, ClearsFailedStatusWhenNextCycleFindsNoChanges)
+{
+    auto state = createStoredStateWithNs("standard", "current_ns");
+    EXPECT_CALL(*store, existsDoc(STORE_NAME_CMSYNC)).WillOnce(::testing::Return(true));
+    EXPECT_CALL(*store, readDoc(STORE_NAME_CMSYNC)).WillOnce(::testing::Return(store::mocks::storeReadDocResp(state)));
+    EXPECT_CALL(*router, existsEntry("cmsync_standard")).WillRepeatedly(::testing::Return(true));
+    auto entry = makeRouterEntry("cmsync_standard", "current_ns", 1, router::env::State::ENABLED, "same_hash");
+    EXPECT_CALL(*router, getEntry("cmsync_standard"))
+        .WillRepeatedly(::testing::Return(base::RespOrError<router::prod::Entry>(entry)));
+    cm::sync::CMSync sync {indexer, crud, store, router, 1U, 0U};
+
+    ::testing::InSequence seq;
+    EXPECT_CALL(*indexer, existsPolicy(::testing::Eq("standard")))
+        .WillOnce(::testing::Throw(std::runtime_error("No available server")));
+    EXPECT_CALL(*indexer, existsPolicy(::testing::Eq("standard"))).WillOnce(::testing::Return(true));
+    EXPECT_CALL(*indexer, isConsumerReadyForSync(::testing::_)).WillOnce(::testing::Return(true));
+    EXPECT_CALL(*indexer, getPolicyHashAndEnabled(::testing::Eq("standard"), ::testing::_))
+        .WillOnce(::testing::Return(std::optional(std::make_pair(std::string("same_hash"), true))));
+
+    logging::setLevel(logging::Level::Debug);
+    auto logs = captureLogs([&]() { EXPECT_FALSE(sync.synchronize()); });
+    EXPECT_EQ(sync.getSpacesStatus()[0].status, base::SyncStatus::FAILED);
+    EXPECT_NE(logs.warn.find("Failed to synchronize namespace for space 'standard'"), std::string::npos);
+    logs = captureLogs([&]() { EXPECT_FALSE(sync.synchronize()); });
+    EXPECT_EQ(sync.getSpacesStatus()[0].status, base::SyncStatus::READY);
+    EXPECT_TRUE(sync.getSpacesStatus()[0].available);
+    // The recovery is reported at INFO, not at DEBUG
+    EXPECT_NE(logs.info.find("Space 'standard' is back in sync with wazuh-indexer, the deployed content is current"),
+              std::string::npos);
+    EXPECT_EQ(logs.info.find("No changes detected"), std::string::npos);
+    logging::setLevel(logging::Level::Warn);
+}
+
 // A policy disabled in an earlier cycle is not pending when a later cycle fails on the indexer
 TEST_F(CMSyncSynchronizeTest, NotPendingWhenDisabledSpaceFailsLaterCycle)
 {

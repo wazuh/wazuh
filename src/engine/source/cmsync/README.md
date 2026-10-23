@@ -122,6 +122,8 @@ When a space ends a cycle without a route and its policy is not disabled (the in
 
 A space the indexer has no policy for is logged once per absence, at the level its effect deserves: `WARNING` when the engine still serves a route for it (the deployed content is kept and nothing can refresh it until the space is published again), `INFO` when the space was never deployed (first start before the indexer loads its content). The following cycles log it at `DEBUG` until the space appears, which is logged at `INFO`. The absence flag lives in memory only; a restart logs the first miss again.
 
+A cycle that fails on the indexer (for example the 3 attempts of the space check after a boot, before the indexer is up) leaves the space `FAILED` in the status snapshot and keeps the deployed route. The next cycle that reaches the indexer clears it: `INFO` "back in sync ... the deployed content is current" when the hash is unchanged, or the usual "Changes detected ... Successfully synchronized" lines when it is not.
+
 ### Graceful Shutdown
 
 `CMSync` supports responsive shutdown via `requestShutdown()`:

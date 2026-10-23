@@ -769,9 +769,18 @@ bool CMSync::synchronize()
                 const auto& [enabledRoute, nsId, routeHash] = *routeConfig;
                 if (enabledRoute && routeHash == remoteHash)
                 {
-                    LOG_DEBUG("[{}] No changes detected for space '{}', skipping synchronization",
-                              LOG_MODULE_NAME,
-                              nsState.getOriginSpace());
+                    if (nsState.getSyncStatus() == base::SyncStatus::FAILED)
+                    {
+                        LOG_INFO("[{}] Space '{}' is back in sync with wazuh-indexer, the deployed content is current",
+                                 LOG_MODULE_NAME,
+                                 nsState.getOriginSpace());
+                    }
+                    else
+                    {
+                        LOG_DEBUG("[{}] No changes detected for space '{}', skipping synchronization",
+                                  LOG_MODULE_NAME,
+                                  nsState.getOriginSpace());
+                    }
                     // The check succeeded and the deployed namespace is current: clear a FAILED left by an
                     // earlier check (e.g. indexer unreachable), otherwise it sticks until the next content change.
                     nsState.setSyncStatus(base::SyncStatus::READY);
