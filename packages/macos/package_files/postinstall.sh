@@ -88,20 +88,27 @@ chmod 1750 ${DIR}/tmp
 
 chmod 770 ${DIR}/etc
 chown ${USER}:${GROUP} ${DIR}/etc
-chmod 640 ${DIR}/etc/internal_options.conf
-chown root:${GROUP} ${DIR}/etc/internal_options.conf
-chmod 640 ${DIR}/etc/local_internal_options.conf
-chown root:${GROUP} ${DIR}/etc/local_internal_options.conf
-chmod 640 ${DIR}/etc/client.keys
-chown root:${GROUP} ${DIR}/etc/client.keys
-chmod 640 ${DIR}/etc/localtime
-chmod 770 ${DIR}/etc/shared # ossec must be able to write to it
-chown -R root:${GROUP} ${DIR}/etc/shared
-find ${DIR}/etc/shared/ -type f -exec chmod 660 {} \;
-chown root:${GROUP} ${DIR}/etc/ossec.conf
-chmod 660 ${DIR}/etc/ossec.conf
-chown root:${GROUP} ${DIR}/etc/wpk_root.pem
-chmod 640 ${DIR}/etc/wpk_root.pem
+# etc/ is owned by the wazuh account, so a file in it may be a symlink that account planted. -h
+# acts on the link itself: on a regular file it behaves exactly as before, on a link it leaves the
+# target's mode and owner untouched, so none of these can be turned into a read of a root-only file.
+chmod -h 640 ${DIR}/etc/internal_options.conf
+chown -h root:${GROUP} ${DIR}/etc/internal_options.conf
+chmod -h 640 ${DIR}/etc/local_internal_options.conf
+chown -h root:${GROUP} ${DIR}/etc/local_internal_options.conf
+chmod -h 640 ${DIR}/etc/client.keys
+chown -h root:${GROUP} ${DIR}/etc/client.keys
+chmod -h 640 ${DIR}/etc/localtime
+# Only touch etc/shared when it is a real directory: a trailing-slash find follows a symlinked
+# shared into its target, and chmod/chown -R would act on files there.
+if [ -d ${DIR}/etc/shared ] && [ ! -L ${DIR}/etc/shared ]; then
+    chmod 770 ${DIR}/etc/shared # ossec must be able to write to it
+    chown -R root:${GROUP} ${DIR}/etc/shared
+    find ${DIR}/etc/shared/ -type f -exec chmod 660 {} \;
+fi
+chown -h root:${GROUP} ${DIR}/etc/ossec.conf
+chmod -h 660 ${DIR}/etc/ossec.conf
+chown -h root:${GROUP} ${DIR}/etc/wpk_root.pem
+chmod -h 640 ${DIR}/etc/wpk_root.pem
 
 chmod 770 ${DIR}/.ssh
 
