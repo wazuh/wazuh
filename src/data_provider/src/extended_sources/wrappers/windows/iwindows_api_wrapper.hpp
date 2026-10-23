@@ -186,6 +186,24 @@ class IWindowsApiWrapper
             LPDWORD entriesread,
             LPDWORD totalentries) = 0;
 
+        /// @brief Wrapper for NetUserGetGroups (global/domain group memberships).
+        /// @param servername Server name or NULL.
+        /// @param username Name of the user.
+        /// @param level Information level.
+        /// @param bufptr Receives buffer with group data.
+        /// @param prefmaxlen Preferred max length.
+        /// @param entriesread Number of groups read.
+        /// @param totalentries Total number of groups.
+        /// @return Windows API status code.
+        virtual DWORD NetUserGetGroupsWrapper(
+            LPCWSTR servername,
+            LPCWSTR username,
+            DWORD level,
+            LPBYTE* bufptr,
+            DWORD prefmaxlen,
+            LPDWORD entriesread,
+            LPDWORD totalentries) = 0;
+
         /// @brief Wrapper for GetSidSubAuthorityCount.
         /// @param sid Pointer to the SID.
         /// @return Pointer to the sub-authority count.
