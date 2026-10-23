@@ -14,6 +14,7 @@
 #define TIME_HELPER_TESTS_H
 
 #include <gtest/gtest.h>
+#include <string>
 
 class TimeUtilsTest : public ::testing::Test
 {
@@ -24,6 +25,9 @@ class TimeUtilsTest : public ::testing::Test
 
         void SetUp() override;
         void TearDown() override;
+
+        bool m_hadTimezone {false};
+        std::string m_timezone;
 };
 
 #endif // TIME_HELPER_TESTS_H

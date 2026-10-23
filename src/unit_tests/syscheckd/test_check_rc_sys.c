@@ -13,6 +13,7 @@
 #include <cmocka.h>
 #include <errno.h>
 #include <string.h>
+#include <stdint.h>
 #include <dirent.h>
 #include <sys/stat.h>
 
@@ -794,6 +795,62 @@ static void test_subdir_path_building(void **state)
 }
 
 /* ===================================================================
+ * Test 8: Nested directories deeper than the limit are not entered.
+ * =================================================================== */
+
+#define TEST_MAX_DEPTH 256
+
+static void test_max_depth_not_exceeded(void **state)
+{
+    (void)state;
+    init_dot_entries();
+
+    static char paths[TEST_MAX_DEPTH + 2][2 * (TEST_MAX_DEPTH + 2) + 1];
+    static struct dirent sub_entry;
+    memset(&sub_entry, 0, sizeof(sub_entry));
+    strncpy(sub_entry.d_name, "a", sizeof(sub_entry.d_name) - 1);
+
+    struct stat dir_stat = {0};
+    dir_stat.st_mode = S_IFDIR | 0755;
+    dir_stat.st_nlink = 3;
+    dir_stat.st_size = 4096;
+    dir_stat.st_dev = 1;
+
+    strcpy(paths[0], "/");
+    strcpy(paths[1], "/a");
+    for (int k = 2; k <= TEST_MAX_DEPTH + 1; k++) {
+        strcpy(paths[k], paths[k - 1]);
+        strcat(paths[k], "/a");
+    }
+
+    /* Levels 0..TEST_MAX_DEPTH are opened, the child of the last one is only stat'ed */
+    for (int k = 0; k <= TEST_MAX_DEPTH; k++) {
+        DIR *dp = (DIR *)(uintptr_t)(0x1000 + k * 0x10);
+
+        expect_lstat(paths[k], &dir_stat, 0, 0);
+        expect_wopendir(paths[k], dp);
+        expect_readdir(dp, &dot_entry);
+        expect_readdir(dp, &dotdot_entry);
+        expect_readdir(dp, &sub_entry);
+        expect_lstat(paths[k + 1], &dir_stat, 0, 0);
+        expect_check_ignore(paths[k + 1], 0);
+        expect_lstat(paths[k + 1], &dir_stat, 0, 0);
+    }
+
+    for (int k = TEST_MAX_DEPTH; k >= 0; k--) {
+        DIR *dp = (DIR *)(uintptr_t)(0x1000 + k * 0x10);
+
+        expect_readdir(dp, NULL);
+        expect_skipFS(paths[k], 0);
+        expect_closedir(dp);
+    }
+
+    expect_notify_rk(ALERT_OK);
+
+    check_rc_sys("/");
+}
+
+/* ===================================================================
  * Main
  * =================================================================== */
 
@@ -807,6 +864,7 @@ int main(void)
         cmocka_unit_test_setup(test_multiple_suspects_mixed, setup),
         cmocka_unit_test_setup(test_wopendir_fail_fallback_alerts_all, setup),
         cmocka_unit_test_setup(test_subdir_path_building, setup),
+        cmocka_unit_test_setup(test_max_depth_not_exceeded, setup),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

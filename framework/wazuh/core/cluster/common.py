@@ -384,6 +384,8 @@ class Handler(asyncio.Protocol):
         self.in_msg = InBuffer()
         # Stores incoming file information from file commands.
         self.in_file = {}
+        # Full paths of files whose transfer completed with a valid checksum and that no task has claimed yet.
+        self.received_files = set()
         # Stores incoming string information from string commands.
         self.in_str = {}
         # Maximum message length to send in a single request.
@@ -1232,7 +1234,7 @@ class Handler(asyncio.Protocol):
         if not any(os.path.commonpath([dst, root]) == root for root in _ALLOWED_PREFIXES):
             return b"err", b"Write path not allowed"
 
-        self.in_file[data] = {"fd": open(dst, "wb"), "checksum": hashlib.sha256()}
+        self.in_file[data] = {"fd": open(dst, "wb"), "checksum": hashlib.sha256(), "path": dst}
 
         return b"ok ", b"Ready to receive new file"
 
@@ -1274,6 +1276,7 @@ class Handler(asyncio.Protocol):
         name, checksum = data.split(b' ', 1)
         self.in_file[name]['fd'].close()
         if self.in_file[name]['checksum'].digest() == checksum:
+            self.received_files.add(self.in_file[name]['path'])
             del self.in_file[name]
             return b"ok", b"File received correctly"
         else:
@@ -1592,6 +1595,11 @@ class WazuhCommon:
             self.get_logger(logger_tag).error(f"Task {task_id} not found in sync_tasks")
             raise exception.WazuhClusterError(3027, extra_message=task_id)
 
+        if safe_path not in self.received_files:
+            self.get_logger(logger_tag).error(f"File {safe_path} was not received for task {task_id}")
+            raise exception.WazuhClusterError(3027, extra_message=task_id)
+        self.received_files.discard(safe_path)
+
         # Set full path to file for task 'task_id' and notify it is ready to be read, so the lock is released.
         self.sync_tasks[task_id].filename = safe_path
         self.sync_tasks[task_id].received_information.set()
@@ -1619,7 +1627,14 @@ class WazuhCommon:
         """
         task_id, error_details = task_id_and_error_details.split(' ', 1)
         error_details_json = json.loads(error_details, object_hook=as_wazuh_object)
+        if not isinstance(error_details_json, Exception):
+            self.get_logger(logger_tag).error(f"Invalid error details received for task {task_id}")
+            return b'ok', b'Error received'
         if task_id in self.sync_tasks:
+            if not isinstance(self.sync_tasks[task_id].filename, str):
+                self.get_logger(logger_tag).error(f"Task {task_id} already holds an error, ignoring additional report")
+                return b'ok', b'Error received'
+
             # Remove filename if exists
             if os.path.exists(self.sync_tasks[task_id].filename):
                 try:

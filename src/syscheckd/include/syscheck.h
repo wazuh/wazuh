@@ -581,6 +581,11 @@ int configure_and_connect_audit_socket(void);
 int set_auditd_config_template(const char *plugin_dir, const char *audisp_config);
 
 /**
+ * @brief Removes the Audit plugin configuration file, if present.
+ */
+void audit_remove_plugin_config(void);
+
+/**
  * @brief Initialize Audit evsents socket
  *
  * @return File descriptor of the socket, -1 on error
@@ -646,10 +651,10 @@ void audit_parse(char* buffer);
 /**
  * @brief Generate the audit event that the healthcheck thread should read
  *
- * @param audit_socket The audit socket to read the events from
+ * @param audit_socket The audit socket to read the events from. Updated if the healthcheck reconnects
  * @return 0 on success, -1 on error
  */
-int audit_health_check(int audit_socket);
+int audit_health_check(int *audit_socket);
 
 /**
  * @brief Deletes all the existing audit rules added by FIM

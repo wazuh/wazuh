@@ -35,6 +35,11 @@ if(${TARGET} STREQUAL "winagent")
     list(APPEND logcollector_flags "-Wl,--wrap,wstr_split -Wl,--wrap=syscom_dispatch -Wl,--wrap=Start_win32_Syscheck \
                                     -Wl,--wrap=is_fim_shutdown -Wl,--wrap,convert_windows_string -Wl,--wrap=SendMSG \
                                     -Wl,--wrap,w_query_agentd ${DEBUG_OP_WRAPPERS}")
+
+    list(APPEND logcollector_names "test_read_ucs2")
+    list(APPEND logcollector_flags "-Wl,--wrap,can_read -Wl,--wrap,w_get_hash_context -Wl,--wrap,w_update_file_status \
+                                    -Wl,--wrap,w_msg_hash_queues_push -Wl,--wrap=syscom_dispatch \
+                                    -Wl,--wrap=Start_win32_Syscheck -Wl,--wrap=is_fim_shutdown -Wl,--wrap,_merror")
 else()
     list(APPEND logcollector_names "test_logcollector")
     list(APPEND logcollector_flags "-Wl,--wrap,OS_SHA1_Stream -Wl,--wrap,merror_exit \
@@ -89,6 +94,13 @@ else()
                                     -Wl,--wrap,cJSON_Delete -Wl,--wrap,_mwarn -Wl,--wrap,stat -Wl,--wrap,_mdebug2 \
                                     -Wl,--wrap,difftime -Wl,--wrap,strftime ${DEBUG_OP_WRAPPERS}")
 
+    # The local request listener, in its own binary so that wrapping close and accept does not
+    # reach the other logcollector tests.
+    list(APPEND logcollector_names "test_lccom_main")
+    list(APPEND logcollector_flags "-Wl,--wrap,close -Wl,--wrap,accept -Wl,--wrap,select -Wl,--wrap,FOREVER \
+                                    -Wl,--wrap,OS_BindUnixDomain -Wl,--wrap,OS_RecvSecureTCP \
+                                    -Wl,--wrap,OS_SendSecureTCP ${DEBUG_OP_WRAPPERS}")
+
     list(APPEND logcollector_names "test_macos_log")
     list(APPEND logcollector_flags "-Wl,--wrap,wpopenv -Wl,--wrap,fileno -Wl,--wrap,fcntl -Wl,--wrap,_merror \
                                     -Wl,--wrap,fclose -Wl,--wrap,fflush -Wl,--wrap,fgets -Wl,--wrap,fgetpos \
@@ -97,7 +109,7 @@ else()
                                     -Wl,--wrap,getpid -Wl,--wrap,_minfo -Wl,--wrap,pthread_rwlock_wrlock \
                                     -Wl,--wrap,pthread_rwlock_unlock -Wl,--wrap,pthread_rwlock_rdlock \
                                     -Wl,--wrap,so_get_function_sym -Wl,--wrap,so_get_module_handle -Wl,--wrap,wfopen \
-                                    -Wl,--wrap,_mdebug1 -Wl,--wrap,w_get_os_codename -Wl,--wrap,w_get_process_childs -Wl,--wrap,popen")
+                                    -Wl,--wrap,_mdebug1 -Wl,--wrap,w_get_os_codename -Wl,--wrap,w_get_process_childs -Wl,--wrap,popen -Wl,--wrap,uname")
 
     list(APPEND logcollector_names "test_read_macos")
     list(APPEND logcollector_flags "-Wl,--wrap,w_expression_match -Wl,--wrap,can_read -Wl,--wrap,fgets \
@@ -109,7 +121,7 @@ else()
                                     -Wl,--wrap,time -Wl,--wrap,so_get_function_sym -Wl,--wrap,so_get_module_handle \
                                     -Wl,--wrap,isDebug -Wl,--wrap,w_get_first_child -Wl,--wrap,w_is_macos_sierra \
                                     -Wl,--wrap,w_macos_set_log_settings -Wl,--wrap,w_macos_set_last_log_timestamp \
-                                    -Wl,--wrap,w_macos_set_is_valid_data -Wl,--wrap,wfopen")
+                                    -Wl,--wrap,w_macos_set_is_valid_data -Wl,--wrap,wfopen -Wl,--wrap,_mwarn")
 
     list(APPEND logcollector_names "test_read_multiline")
     list(APPEND logcollector_flags "-Wl,--wrap,fopen -Wl,--wrap,popen -Wl,--wrap,fclose -Wl,--wrap,fflush -Wl,--wrap,fgets \

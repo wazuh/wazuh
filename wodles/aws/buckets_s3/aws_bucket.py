@@ -173,6 +173,26 @@ class AWSBucket(wazuh_integration.WazuhAWSDatabase):
                     LIMIT 1
                     OFFSET :retain_db_records);"""
 
+        self.sql_db_maintenance_before_marker = """
+            DELETE FROM {table_name}
+            WHERE
+                bucket_path=:bucket_path AND
+                aws_account_id=:aws_account_id AND
+                aws_region=:aws_region AND
+                log_key LIKE :prefix AND
+                log_key < :marker AND
+                log_key <= (SELECT log_key
+                    FROM
+                        {table_name}
+                    WHERE
+                        bucket_path=:bucket_path AND
+                        aws_account_id=:aws_account_id AND
+                        aws_region=:aws_region
+                    ORDER BY
+                        log_key DESC
+                    LIMIT 1
+                    OFFSET :retain_db_records);"""
+
         self.sql_count_region = """
             SELECT
                 count(*)
@@ -265,7 +285,9 @@ class AWSBucket(wazuh_integration.WazuhAWSDatabase):
         Rewind the S3 StartAfter marker to the beginning of the previous day folder (YYYY/MM/DD)
         to catch late-arriving objects uploaded out of order (e.g. CloudTrail / ALB).
         """
-        date_match = self.date_regex.search(marker)
+        # Look for the date after the full prefix only, as the configured prefix could have one too
+        full_prefix = self.get_full_prefix(aws_account_id, aws_region)
+        date_match = self.date_regex.search(marker, len(full_prefix)) if marker.startswith(full_prefix) else None
         if not date_match:
             return marker
 
@@ -299,11 +321,31 @@ class AWSBucket(wazuh_integration.WazuhAWSDatabase):
         aws_tools.debug("+++ DB Maintenance", 1)
         try:
             if self.db_count_region(aws_account_id, aws_region) > self.retain_db_records:
-                self.db_cursor.execute(self.sql_db_maintenance.format(table_name=self.db_table_name), {
+                query = self.sql_db_maintenance
+                params = {
                     'bucket_path': self.bucket_path,
                     'aws_account_id': aws_account_id,
                     'aws_region': aws_region,
-                    'retain_db_records': self.retain_db_records})
+                    'retain_db_records': self.retain_db_records}
+
+                if self.db_table_name in LATE_ARRIVAL_LOG_TABLES:
+                    # Keep the files of the rewound marker window, or the next fetch would list them again
+                    # and process them as new. Only the keys of this prefix are deleted, as other buckets with
+                    # the same path, such as an organization trail, keep their own window
+                    prefix = f'{self.get_full_prefix(aws_account_id, aws_region)}%'
+                    last_key = self.db_cursor.execute(
+                        self.sql_find_last_key_processed.format(table_name=self.db_table_name), {
+                            'bucket_path': self.bucket_path,
+                            'aws_account_id': aws_account_id,
+                            'aws_region': aws_region,
+                            'prefix': prefix}).fetchone()
+                    if last_key:
+                        query = self.sql_db_maintenance_before_marker
+                        params['prefix'] = prefix
+                        params['marker'] = self.rewind_marker_to_day_folder(last_key[0], aws_account_id,
+                                                                            aws_region)
+
+                self.db_cursor.execute(query.format(table_name=self.db_table_name), params)
         except Exception as e:
             aws_tools.error(f"Failed to execute DB cleanup - AWS Account ID: {aws_account_id}  Region: {aws_region}: {e}")
 

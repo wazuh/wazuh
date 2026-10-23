@@ -539,7 +539,11 @@ EXTERNAL_DIR := $(EXTERNAL_RES:%=external/%)
 EXTERNAL_TAR := $(EXTERNAL_RES:%=external/%.tar.gz)
 
 # Shared tools like dependencies
+# http-request is only built by the manager and the Linux agent (data_provider),
+# and the native tar on AIX, HP-UX and Solaris lacks --strip-components
+ifeq (,$(filter ${uname_S},AIX HP-UX SunOS))
 SHARED_RES := http-request
+endif
 SHARED_TAR := $(SHARED_RES:%=shared_modules/%.tar.gz)
 
 # Indexer plugin templates
@@ -702,11 +706,11 @@ CACERT_OPT := $(shell test -f $(CA_BUNDLE) && echo "--cacert $(CA_BUNDLE)" || ec
 
 shared_modules/http-request.tar.gz:
 	 @echo "[-] Downloading dependency $(notdir $(patsubst %.tar.gz,%,$@)) ..."
-	@find $(patsubst %.tar.gz,%,$@) -type f -exec false {} + &&\
-	((test -e $(patsubst %.gz,%,$@) || $(CURL) $@ $(CACERT_OPT) -L $(HTTP_REQUEST_URL)) &&\
-	($(GUNZIP) $@ || (rm -f $@ && printf "\033[31m[-] Error decompressing %s, maybe wrong branch was supplied\033[0m\n" "$@" && false)) &&\
-	$(TAR) $(patsubst %.gz,%,$@) --strip-components=1 -C $(patsubst %.tar.gz,%,$@) &&\
-	rm $(patsubst %.gz,%,$@)) || true
+	@test -f $(patsubst %.tar.gz,%,$@)/CMakeLists.txt ||\
+	(mkdir -p $(patsubst %.tar.gz,%,$@) && $(FETCH_CURL) $@ $(CACERT_OPT) -L $(HTTP_REQUEST_URL) && $(GUNZIP) -f $@ &&\
+	$(TAR) $(patsubst %.gz,%,$@) --strip-components=1 -C $(patsubst %.tar.gz,%,$@) && rm $(patsubst %.gz,%,$@)) &&\
+	test -f $(patsubst %.tar.gz,%,$@)/CMakeLists.txt ||\
+	{ rm -f $@ $(patsubst %.gz,%,$@); printf "\033[31m[-] Error installing dependency http-request from %s\033[0m\n" "$(HTTP_REQUEST_URL)" >&2; exit 1; }
 	@printf "\033[32m[+] Dependency %s installed successfully\033[0m\n" "$(notdir $(patsubst %.tar.gz,%,$@))"
 
 # Ref list for every ref-based download below. get_git_refs.sh reports THIS repository's branch and
