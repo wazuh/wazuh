@@ -61,6 +61,35 @@ The `engine-suite` package is a comprehensive tool designed to manage, clean, an
 pip3 install tools/engine-suite
 ```
 
+## Enriched-event sender
+
+`write_message.go` posts H/E batches to the engine ingest socket. `-r -m` sends one complete raw
+batch; `-r -f` reads a batch file, starting a new request at each unindented `H ` line. Event
+continuations must remain space-indented. Raw batches keep their metadata and event bytes (a final
+newline is appended if missing). The sender obtains `X-Wazuh-Agent-Id` from each batch's canonical
+`wazuh.agent.id`; `-a` is optional in raw mode and checks that every batch names that agent.
+A missing, malformed, noncanonical or conflicting ID fails locally; raw mode never invents an ID.
+The engine still performs full identity and payload validation. HTTP failures include the engine's
+response body in the error message.
+
+```bash
+go run src/engine/tools/write_message.go -r -f batches.wev
+go run src/engine/tools/write_message.go -r -a 7 -m $'H {"wazuh":{"agent":{"id":"007"}}}\nE 1:syslog:hello\n'
+```
+
+Without `-r`, `-m` wraps a single log using `-a` (default `1`), and `-f` retains the line-based dataset
+behavior with synthetic agent IDs. `-s` selects another ingest socket; `-l` repeats the file.
+The standalone devcontainer sender `tools/devContainer/scripts/event_sock_v2.go` supports the same
+raw behavior; its generated single-message default ID remains `123`.
+
+Run the isolated Go tests with explicit source files, since these directories contain unrelated
+standalone programs:
+
+```bash
+go test src/engine/tools/write_message.go src/engine/tools/write_message_test.go
+go test tools/devContainer/scripts/event_sock_v2.go tools/devContainer/scripts/event_sock_v2_test.go
+```
+
 ## EVTX to XML
 
 This module converts event files in EVTX format (used by Windows for event logs) to XML format. This allows you to view and work with Windows event logs in a more accessible and standard format. For more information see the [evtx2xml README](./evtx2xml/README.md).
