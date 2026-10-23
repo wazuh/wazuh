@@ -21,6 +21,7 @@
 
 | Issue | Comment |
 |-------|---------|
+| [#38916](https://github.com/wazuh/wazuh/issues/38916) | The initial vulnerability-feed download resumes from the last durable cursor after a failed request or a manager restart instead of starting again from the first document, and logs the reason of every failed attempt. |
 
 ### Agent
 
