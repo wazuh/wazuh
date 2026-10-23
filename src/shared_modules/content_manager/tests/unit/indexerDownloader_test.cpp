@@ -184,31 +184,61 @@ TEST_F(IndexerDownloaderTest, SlicedLoadDeliversEveryDocumentOnce)
     EXPECT_EQ(m_index->pitsCreated, 1u);
 }
 
-TEST_F(IndexerDownloaderTest, FailedPageRestartsFromOffsetZeroToday)
+TEST_F(IndexerDownloaderTest, FailedPageResumesFromTheLastSafeCursorSliced)
 {
+    // Pages 1-6 are delivered (flushes after pages 3 and 6), request 7 fails: the surviving slice
+    // finishes its half, the attempt is discarded, and the retry must start after the lowest offset
+    // both slices had delivered when the consumer last answered "flushed".
     m_index->failAtRequest = 7;
 
     run(2);
 
     EXPECT_EQ(m_delivered->completions, 1u);
     EXPECT_EQ(deliveredSet().size(), GLOBAL_DOCS + CVE_DOCS) << "nothing is lost";
-    EXPECT_GT(m_delivered->ids.size(), GLOBAL_DOCS + CVE_DOCS) << "the first attempt's pages are read again";
     EXPECT_EQ(m_index->pitsCreated, 2u) << "one PIT per attempt";
     const auto& retry = firstSearchOf("pit-2");
-    EXPECT_TRUE(retry.query.contains("match_all")) << retry.query.dump();
+    ASSERT_TRUE(retry.query.contains("range")) << retry.query.dump();
+    const auto resumeOffset = retry.query.at("range").at("offset").at("gt").get<uint64_t>();
+    EXPECT_GT(resumeOffset, 0u);
+    EXPECT_LT(resumeOffset, FIRST_CVE_OFFSET + CVE_DOCS - 1);
     EXPECT_FALSE(retry.hasSearchAfter);
+    EXPECT_LT(m_delivered->ids.size(), 2 * (GLOBAL_DOCS + CVE_DOCS)) << "re-reads are bounded by the flush";
     EXPECT_EQ(storedCursor(), std::to_string(FIRST_CVE_OFFSET + CVE_DOCS - 1));
 }
 
-TEST_F(IndexerDownloaderTest, StopDuringSlicedLoadPersistsNoCursor)
+TEST_F(IndexerDownloaderTest, FailedPageResumesFromTheLastFlushedCursorSequential)
 {
+    // Pages 1-6 delivered, flushed after page 6 (its last document is the 597th CVE), request 7
+    // fails: the retry reads only what follows, so every document is delivered exactly once.
+    m_index->failAtRequest = 7;
+
+    run(1);
+
+    EXPECT_EQ(m_delivered->completions, 1u);
+    const auto& retry = firstSearchOf("pit-2");
+    ASSERT_TRUE(retry.query.contains("range")) << retry.query.dump();
+    EXPECT_EQ(retry.query.at("range").at("offset").at("gt").get<uint64_t>(), FIRST_CVE_OFFSET + 596);
+    EXPECT_FALSE(retry.hasSearchAfter);
+    EXPECT_EQ(m_delivered->ids.size(), GLOBAL_DOCS + CVE_DOCS);
+    EXPECT_EQ(deliveredSet().size(), GLOBAL_DOCS + CVE_DOCS);
+    // Sequential mode persists on flushes only (page 9 here); the final cursor travels in the context
+    // for UpdateIndexerCursor, which is not part of this chain.
+    EXPECT_EQ(storedCursor(), std::to_string(FIRST_CVE_OFFSET + 896));
+    EXPECT_EQ(m_context->data.at("cursor").get<std::string>(), std::to_string(FIRST_CVE_OFFSET + CVE_DOCS - 1));
+}
+
+TEST_F(IndexerDownloaderTest, StopDuringSlicedLoadKeepsTheLastSafeCursor)
+{
+    // Four pages delivered (one flush after page 3) before the stop: the safe cursor of that flush
+    // stays persisted, nothing is completed.
     m_index->stopAtRequest = 5;
 
     run(2);
 
     EXPECT_TRUE(m_stop->check());
     EXPECT_EQ(m_delivered->completions, 0u);
-    EXPECT_EQ(storedCursor(), "0");
+    EXPECT_NE(storedCursor(), "0");
+    EXPECT_LE(std::stoull(storedCursor()), FIRST_CVE_OFFSET + CVE_DOCS - 1);
     EXPECT_LT(m_delivered->ids.size(), GLOBAL_DOCS + CVE_DOCS);
 }
 
