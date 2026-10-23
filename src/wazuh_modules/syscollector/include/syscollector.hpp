@@ -906,6 +906,28 @@ class EXPORTED Syscollector final
         // a container id in hand to ask about.
         bool                                                                     m_containerAdmissionWithholding {false};
 
+        // Whether the stored reporting flags have already been reconciled against
+        // the admission set in THIS process.
+        //
+        // The reconciliation has to run once at startup even when no container has
+        // just lost admission, because the previous admission set died with the last
+        // process and a row reported before a restart carries sync=1 with nothing in
+        // memory to say the container may no longer report it. After that first pass
+        // only an actual admission loss can create such a row, so this latch keeps a
+        // biting cap from re-reading every container row of every table on every scan.
+        bool m_admissionReconciled {false};
+
+        // Whether rows are still owed a retraction.
+        //
+        // Separate from the latch above because the two answer different questions,
+        // and the difference is load-bearing: setAdmittedContainers() replaces the
+        // admitted set before it retracts anything, so "a container just lost
+        // admission" is observable exactly once, while the retraction it demands can
+        // fail -- there may be no persistence callback yet. Holding the obligation
+        // here means a failed retraction is retried on the next pass instead of being
+        // dropped along with the signal that raised it.
+        bool m_admissionRetractionPending {false};
+
         // Mutex for thread-safe access to limits and counts
         std::mutex                                                               m_limitsMutex;
 

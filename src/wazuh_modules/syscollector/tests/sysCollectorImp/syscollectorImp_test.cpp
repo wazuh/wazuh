@@ -24,6 +24,7 @@
 // everywhere else -- but an include is not covered by a skip inside the test
 // body, and Windows has none of these headers. Same guard, same reason, as the
 // notification include in syscollectorImp.cpp.
+#include "container_baseline.h"
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <unistd.h>
@@ -40,6 +41,32 @@
 
 constexpr auto SYSCOLLECTOR_DB_PATH {":memory:"};
 constexpr auto SYSCOLLECTOR_TEST_DB_PATH {"syscollector_test.db"};
+
+#if defined(__linux__)
+namespace
+{
+    std::function<int(cb_dbsync_row_sink_t, cb_container_status_sink_t, void*)> containerScanHook;
+    std::function<int(cb_container_id_sink_t, void*)> containerListHook;
+} // namespace
+
+extern "C" int
+__real_cbaseline_run_syscollector_dbsync(const char*, cb_dbsync_row_sink_t, cb_container_status_sink_t, void*);
+extern "C" int __real_cbaseline_list_containers(const char*, cb_container_id_sink_t, void*);
+
+extern "C" int __wrap_cbaseline_run_syscollector_dbsync(const char* socket,
+                                                        cb_dbsync_row_sink_t sink,
+                                                        cb_container_status_sink_t status,
+                                                        void* ctx)
+{
+    return containerScanHook ? containerScanHook(sink, status, ctx)
+                             : __real_cbaseline_run_syscollector_dbsync(socket, sink, status, ctx);
+}
+
+extern "C" int __wrap_cbaseline_list_containers(const char* socket, cb_container_id_sink_t sink, void* ctx)
+{
+    return containerListHook ? containerListHook(sink, ctx) : __real_cbaseline_list_containers(socket, sink, ctx);
+}
+#endif
 
 // Mock SchemaValidatorEngine for dependency injection in tests
 class MockSchemaValidatorEngine : public SchemaValidator::ISchemaValidatorEngine
@@ -6596,6 +6623,329 @@ TEST_F(SyscollectorImpTest, DocumentLimits_EndToEnd_Summary)
 
     EXPECT_TRUE(logCapture->contains(LOG_DEBUG_VERBOSE, "Document limit increased from 0 to 10"))
             << "Expected hotfixes limit to be set to 10";
+}
+
+TEST_F(SyscollectorImpTest, AdmissionRetractsAndRestoresRetainedRows)
+{
+    const auto info = std::make_shared<MockSysInfo>();
+    EXPECT_CALL(*info, releaseThreadResources()).Times(testing::AnyNumber());
+    auto& module = Syscollector::instance();
+    std::vector<std::pair<std::string, Operation_t>> events;
+    module.init(
+        info,
+        reportFunction,
+        [&events](const std::string& id, Operation_t op, const std::string&, const std::string&, uint64_t)
+        { events.emplace_back(id, op); },
+        logFunction,
+        SYSCOLLECTOR_DB_PATH,
+        "",
+        "",
+        3600,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false);
+
+    const std::string index = "wazuh-states-inventory-processes";
+    for (const size_t limit : {size_t {2}, size_t {0}})
+    {
+        module.m_containerDocumentLimits[index] = limit;
+        module.setAdmittedContainers({{"a", true}, {"b", true}});
+        for (const std::string id : {"", "a", "b"})
+        {
+            const nlohmann::json row = {{"container_id", id},
+                                        {"pid", "123"},
+                                        {"name", "test"},
+                                        {"checksum", "checksum"},
+                                        {"version", 1},
+                                        {"sync", 1}};
+            auto query = SyncRowQuery::builder().table(PROCESSES_TABLE).data(row).build();
+            module.m_spDBSync->syncRow(query.query(), [](ReturnTypeCallback, const nlohmann::json&) {});
+        }
+        module.initializeDocumentCounts();
+        events.clear();
+
+        // Also model restart: the previous admission set need not contain b, and
+        // the record of having reconciled the stored flags does not survive either.
+        // Both have to go, or the second pass through this loop is a continuing
+        // process rather than the fresh one it is standing in for.
+        module.m_admittedContainers.erase("b");
+        module.m_admissionReconciled = false;
+        module.setAdmittedContainers({{"a", true}, {"b", false}});
+        ASSERT_EQ(events.size(), 1u);
+        EXPECT_EQ(events[0].second, OPERATION_DELETE);
+        EXPECT_EQ(module.m_containerDocumentCounts.count("b"), 0u);
+
+        auto flags = [&module]()
+        {
+            std::map<std::string, int> result;
+            auto query = SelectQuery::builder().table(PROCESSES_TABLE).columnList({"container_id", "sync"}).build();
+            module.m_spDBSync->selectRows(query.query(),
+                                          [&result](ReturnTypeCallback, const nlohmann::json& row) {
+                                              result[row.at("container_id").get<std::string>()] =
+                                                  row.at("sync").get<int>();
+                                          });
+            return result;
+        };
+        EXPECT_EQ(flags(), (std::map<std::string, int> {{"", 1}, {"a", 1}, {"b", 0}}));
+        EXPECT_TRUE(module.m_admissionReconciled);
+        module.setAdmittedContainers({{"a", true}, {"b", false}});
+        EXPECT_EQ(events.size(), 1u) << "unchanged admission must not repeat DELETEs";
+        EXPECT_FALSE(module.m_admissionRetractionPending)
+            << "a cap that is merely still biting owes no second pass over every table";
+        module.applyDocumentLimit(index, PROCESSES_TABLE, 0, Syscollector::LimitScope::container, "b");
+        EXPECT_EQ(events.size(), 1u) << "an unlimited document budget must not bypass admission";
+        module.m_containerDocumentLimits[index] = limit;
+
+        module.setAdmittedContainers({{"a", true}, {"b", true}});
+        module.promoteItemsAfterScan();
+        ASSERT_EQ(events.size(), 2u);
+        EXPECT_EQ(events[1].first, events[0].first);
+        EXPECT_EQ(events[1].second, OPERATION_CREATE);
+        EXPECT_EQ(flags().at("b"), 1);
+    }
+}
+
+TEST_F(SyscollectorImpTest, DocumentBudgetsShrinkPromoteAndReleasePerContainer)
+{
+    const auto info = std::make_shared<MockSysInfo>();
+    EXPECT_CALL(*info, releaseThreadResources()).Times(testing::AnyNumber());
+    auto& module = Syscollector::instance();
+    std::vector<Operation_t> events;
+    module.init(
+        info,
+        reportFunction,
+        [&events](const std::string&, Operation_t op, const std::string&, const std::string&, uint64_t)
+        { events.push_back(op); },
+        logFunction,
+        SYSCOLLECTOR_DB_PATH,
+        "",
+        "",
+        3600,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false);
+    const std::string index = "wazuh-states-inventory-processes";
+    for (const std::string id : {"", "a", "b"})
+    {
+        for (int pid = 1; pid <= 3; ++pid)
+        {
+            const nlohmann::json row = {{"container_id", id},
+                                        {"pid", std::to_string(pid)},
+                                        {"name", "test"},
+                                        {"checksum", "sum"},
+                                        {"version", 1},
+                                        {"sync", 1}};
+            auto query = SyncRowQuery::builder().table(PROCESSES_TABLE).data(row).build();
+            module.m_spDBSync->syncRow(query.query(), [](ReturnTypeCallback, const nlohmann::json&) {});
+        }
+    }
+    module.initializeDocumentCounts();
+    module.setAdmittedContainers({{"a", true}, {"b", true}});
+    EXPECT_TRUE(
+        module.applyLimitsForScope(nlohmann::json {{"container_processes", 1u}}, Syscollector::LimitScope::container));
+    EXPECT_EQ(events.size(), 4u);
+    EXPECT_TRUE(std::all_of(events.begin(), events.end(), [](Operation_t op) { return op == OPERATION_DELETE; }));
+    EXPECT_EQ(module.m_documentCounts[index], 3u);
+    EXPECT_EQ(module.m_containerDocumentCounts["a"][index], 1u);
+    EXPECT_EQ(module.m_containerDocumentCounts["b"][index], 1u);
+    EXPECT_EQ(module.unsyncedCountFor(PROCESSES_TABLE, Syscollector::LimitScope::container, "a"), 2u);
+
+    module.promoteItemsAfterScan();
+    EXPECT_EQ(events.size(), 4u);
+    EXPECT_EQ(module.m_limitReported.count({"a", index}), 1u);
+    EXPECT_EQ(module.m_limitReported.count({"b", index}), 1u);
+    EXPECT_EQ(module.scopeFilter(Syscollector::LimitScope::container, ""), " AND container_id<>''");
+    EXPECT_EQ(module.scopeFilter(Syscollector::LimitScope::container, "'"), " AND container_id<>''");
+
+    nlohmann::json row = {{"container_id", "a"}, {"sync", 1}};
+    EXPECT_TRUE(module.checkDocumentLimit(PROCESSES_TABLE, row, MODIFIED));
+    EXPECT_TRUE(module.checkDocumentLimit(PROCESSES_TABLE, row, DELETED));
+    module.m_spDBSync->deleteRows(
+        {{"table", PROCESSES_TABLE},
+         {"query",
+          {{"data", nlohmann::json::array({{{"container_id", "a"}, {"pid", "1"}}})}, {"where_filter_opt", ""}}}});
+    EXPECT_EQ(module.m_containerDocumentCounts["a"][index], 0u);
+    row["sync"] = 0;
+    EXPECT_FALSE(module.checkDocumentLimit(PROCESSES_TABLE, row, DELETED));
+    EXPECT_FALSE(module.checkDocumentLimit(PROCESSES_TABLE, row, INSERTED));
+    module.promoteItemsAfterScan();
+    EXPECT_EQ(module.m_containerDocumentCounts["a"][index], 1u);
+    EXPECT_EQ(module.m_containerDocumentCounts["b"][index], 1u);
+
+    events.clear();
+    EXPECT_TRUE(
+        module.applyLimitsForScope(nlohmann::json {{"container_processes", 3u}}, Syscollector::LimitScope::container));
+    EXPECT_EQ(module.m_containerDocumentCounts["b"][index], 3u);
+    EXPECT_FALSE(events.empty());
+    EXPECT_TRUE(std::all_of(events.begin(), events.end(), [](Operation_t op) { return op == OPERATION_CREATE; }));
+    module.applyDocumentLimit(index, PROCESSES_TABLE, 3, Syscollector::LimitScope::container, "b");
+    module.releaseContainerCounts("b");
+    EXPECT_EQ(module.m_containerDocumentCounts.count("b"), 0u);
+    EXPECT_EQ(module.m_limitReported.count({"b", index}), 0u);
+}
+
+TEST_F(SyscollectorImpTest, ContainerBaselineAdmissionAndCleanup)
+{
+#if defined(__linux__)
+    struct ResetHooks
+    {
+        ~ResetHooks()
+        {
+            containerScanHook = {};
+            containerListHook = {};
+        }
+    } resetHooks;
+    const auto info = std::make_shared<MockSysInfo>();
+    EXPECT_CALL(*info, releaseThreadResources()).Times(testing::AnyNumber());
+    auto& module = Syscollector::instance();
+    std::vector<Operation_t> events;
+    module.init(
+        info,
+        reportFunction,
+        [&events](const std::string&, Operation_t op, const std::string&, const std::string&, uint64_t)
+        { events.push_back(op); },
+        logFunction,
+        SYSCOLLECTOR_DB_PATH,
+        "",
+        "",
+        3600,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false);
+    module.m_containerBaseline = true;
+    module.m_containerRowsPurged = false;
+    module.m_containerDocumentCounts.clear();
+    module.m_knownContainerIds.clear();
+    module.m_admittedContainers.clear();
+    module.m_admissionKnown = false;
+    module.m_containerDocumentLimits["wazuh-states-inventory-processes"] = 1;
+    std::map<std::string, bool> admitted = {{"a", true}, {"b", false}};
+    std::map<std::string, bool> scanned = {{"a", true}, {"b", true}};
+    bool available = true;
+    bool partial = false;
+    containerListHook = [&](cb_container_id_sink_t sink, void* ctx)
+    {
+        if (!available)
+            return -1;
+        for (const auto& [id, allowed] : admitted) sink(id.c_str(), allowed, ctx);
+        return static_cast<int>(admitted.size());
+    };
+    containerScanHook = [&](cb_dbsync_row_sink_t sink, cb_container_status_sink_t status, void* ctx)
+    {
+        for (const auto& [id, hasRows] : scanned)
+        {
+            if (hasRows)
+            {
+                const nlohmann::json row = {{"container_id", id}, {"pid", "123"}, {"name", "worker"}};
+                sink(id.c_str(), PROCESSES_TABLE, row.dump().c_str(), ctx);
+            }
+            cb_container_status_t outcome {};
+            outcome.container_id = id.c_str();
+            outcome.partial = partial;
+            outcome.netns_host_scoped = partial;
+            outcome.netns_unreadable = partial;
+            status(&outcome, ctx);
+        }
+        return static_cast<int>(scanned.size());
+    };
+    auto flags = [&]()
+    {
+        std::map<std::string, int> rows;
+        auto query = SelectQuery::builder().table(PROCESSES_TABLE).columnList({"container_id", "sync"}).build();
+        module.m_spDBSync->selectRows(query.query(),
+                                      [&](ReturnTypeCallback, const nlohmann::json& row)
+                                      { rows[row.at("container_id").get<std::string>()] = row.at("sync").get<int>(); });
+        return rows;
+    };
+    module.runContainerBaselinePass();
+    ASSERT_EQ(events, (std::vector<Operation_t> {OPERATION_CREATE}));
+    EXPECT_EQ(flags(), (std::map<std::string, int> {{"a", 1}, {"b", 0}}));
+    events.clear();
+    admitted = {{"a", false}, {"b", true}};
+    module.runContainerBaselinePass();
+    EXPECT_EQ(events, (std::vector<Operation_t> {OPERATION_DELETE, OPERATION_CREATE}));
+    EXPECT_EQ(flags(), (std::map<std::string, int> {{"a", 0}, {"b", 1}}));
+
+    scanned.erase("a");
+    module.runContainerBaselinePass();
+    EXPECT_EQ(flags().count("a"), 1u) << "a stopped container is still known";
+    admitted.erase("a");
+    module.runContainerBaselinePass();
+    EXPECT_EQ(flags().count("a"), 0u);
+    EXPECT_EQ(flags().at("b"), 1);
+    available = false;
+    scanned.clear();
+    module.runContainerBaselinePass();
+    EXPECT_EQ(flags().at("b"), 1) << "connector failure cannot authorize cleanup";
+    available = true;
+    scanned["b"] = true;
+    partial = true;
+    module.runContainerBaselinePass();
+    EXPECT_EQ(flags().at("b"), 1) << "a partial scan still processes the observed rows";
+    module.m_paused = true;
+    module.runContainerBaselinePass();
+    module.m_paused = false;
+    module.m_stopping = true;
+    module.runContainerBaselinePass();
+    module.m_stopping = false;
+    auto persist = module.m_persistDiffFunction;
+    module.m_persistDiffFunction = {};
+    module.setAdmittedContainers({{"b", false}});
+    EXPECT_EQ(flags().at("b"), 1) << "failed retraction must retain the local reporting flag";
+    module.m_persistDiffFunction = persist;
+    module.setAdmittedContainers({{"b", false}});
+    EXPECT_EQ(flags().at("b"), 0);
+    module.m_containerDocumentLimits["unknown-index"] = 1;
+    module.promoteItemsAfterScan();
+    module.m_containerBaseline = false;
+    module.runContainerBaselinePass();
+    EXPECT_TRUE(flags().empty());
+    module.runContainerBaselinePass();
+    module.destroy();
+    EXPECT_EQ(module.unsyncedCountFor(PROCESSES_TABLE, Syscollector::LimitScope::container, "b"), 0u);
+    module.initializeDocumentCounts();
+    module.m_containerDocumentLimits.clear();
+    module.m_containerDocumentCounts.clear();
+    module.m_admittedContainers.clear();
+    module.m_admissionKnown = false;
+    module.m_containerAdmissionWithholding = false;
+    module.m_containerRowsPurged = false;
+#else
+    GTEST_SKIP() << "Container baseline transport is Linux-only";
+#endif
 }
 
 TEST_F(SyscollectorImpTest, queryCommandGetVDFirstSyncCompletedDefaultsToFalse)
