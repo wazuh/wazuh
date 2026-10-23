@@ -33,6 +33,16 @@ private:
     std::unique_ptr<SocketServer<Socket<OSPrimitives>, EpollWrapper>> m_socketServer {};
     std::unique_ptr<MsgDispatcher> m_msgDispatcher {};
 
+    static const std::string& validEndpointName(const std::string& endpointName)
+    {
+        if (endpointName.empty() || endpointName == "." || endpointName == ".." ||
+            endpointName.find('/') != std::string::npos)
+        {
+            throw std::runtime_error("Invalid endpoint name");
+        }
+        return endpointName;
+    }
+
 public:
     /**
      * @brief Class constructor. Initializes server socket and listen from it.
@@ -41,7 +51,8 @@ public:
      * @param socketPath Server's socket path.
      */
     explicit Publisher(const std::string& endpointName, const std::string& socketPath)
-        : m_socketServer(std::make_unique<SocketServer<Socket<OSPrimitives>, EpollWrapper>>(socketPath + endpointName))
+        : m_socketServer(std::make_unique<SocketServer<Socket<OSPrimitives>, EpollWrapper>>(
+              socketPath + validEndpointName(endpointName)))
         , m_msgDispatcher(std::make_unique<MsgDispatcher>([this, endpointName](const std::vector<char>& data)
                                                           { this->call(data); },
                                                           nullptr,
