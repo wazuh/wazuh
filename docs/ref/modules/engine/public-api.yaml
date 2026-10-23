@@ -182,7 +182,7 @@ paths:
       - Content
       summary: Validate a policy JSON payload
       description: "Validates a complete **policy JSON document** by importing it into a temporary namespace.\n\nThe payload must include a `policy` definition and its associated `resources`\n(decoders, integrations, kvdbs).\n\n## Validation strategy\n\nValidation has two phases depending on whether the policy contains integrations:\n\n- **Policy without integrations** (`policy.integrations` is empty): validated by\n  import alone. No tester entry is created or posted.\n- **Policy with integrations**: after import, a temporary tester entry is created\n  and posted to verify the policy can be fully instantiated by the Engine.\n\n## Effect on the persistent `\"testing\"` session\n\nThe `load_in_tester` flag and the policy `enabled` field jointly control what\nhappens to the persistent tester session named **\"testing\"**:\n\n| `load_in_tester` | Has integrations | `enabled` | Outcome |\n|------------------|-----------------|-----------|---------|\n| `false`          | any             | any\
-        \       | Existing `\"testing\"` session is **not touched**. Temp resources are cleaned up. |\n| `true`           | no              | any       | Existing `\"testing\"` session and its namespace are **deleted**. No new session is created. |\n| `true`           | yes             | `true`    | Temp session is **promoted** to `\"testing\"`, replacing the old one (old namespace deleted). |\n| `true`           | yes             | `false`   | Temp session+namespace **and** the existing `\"testing\"` session+namespace are **deleted**. |\n\n## Notes\n- A unique temporary namespace and tester session are generated per request.\n- If the Tester API is not available, the request fails immediately.\n"
+        \       | Existing `\"testing\"` session is **not touched**. Temp resources are cleaned up. |\n| `true`           | no              | any       | Existing `\"testing\"` session and its namespace are **deleted**. No new session is created. |\n| `true`           | yes             | `true`    | Temp session is **promoted** to `\"testing\"`, replacing the old one (old namespace deleted). |\n| `true`           | yes             | `false`   | Temp session+namespace **and** the existing `\"testing\"` session+namespace are **deleted**. |\n\n## Notes\n- A unique temporary namespace and tester session are generated per request.\n- If the Tester API is not available, the request fails immediately.\n\n## Concurrency\n\nThe replacement of the persistent session is atomic: concurrent requests that promote or delete the session of the same space never fail because of each other, the last swap wins and every replaced namespace is deleted once. If the swap succeeds but the previous namespace cannot be deleted, the request still returns **OK** and the Engine logs a warning.\n"
       requestBody:
         required: true
         content:
@@ -598,6 +598,13 @@ paths:
         This operation is safe and idempotent. If there is no active session or
 
         namespace to delete for the given space, it returns **OK**.
+
+
+        The session is removed first and its namespace afterwards, atomically with
+
+        respect to other requests on the same space: concurrent cleanups or promotes
+
+        of the same space never fail because of each other.
 
         '
       requestBody:
