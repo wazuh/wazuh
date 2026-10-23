@@ -36,8 +36,14 @@ Primary key `(reference_type, reference_value)`. Columns: the key, `image_config
 `manifest_digest`, `image_name`, `tag`, `tags`, `platform_os`, `platform_architecture`,
 `platform_variant`, `platform_os_version`, plus `checksum`, `version`, `sync`.
 
-`tag` is the display name. `tags` holds every tag the image answers to, serialized as a JSON
-array, for sources that report more than one.
+`manifest_digest` is metadata only. A reference resolved through an index holds the digest of the selected index entry. A reference that named a manifest directly holds the digest the registry reported for it in `Docker-Content-Digest`, else the digest the reference is pinned to, else the sha256 of the manifest as served.
+
+`image_name` and `tag` hold the same display name: the whole reference the image is known by, so the
+same image is named alike whichever source read it. An archive carries it as `io.containerd.image.name`
+(for example `ghcr.io/owner/app:1.0`), and a remote reference as `registry/repository[:tag][@digest]`,
+with the tag kept when a digest follows it and the repository always present, so the same tag in two
+repositories is two names. `tags` holds every tag the image answers to, serialized as a JSON array: the
+names an archive lists, or `registry/repository:tag` for a remote reference that carries a tag.
 
 ### `dbsync_container_image_packages`
 

@@ -52,3 +52,16 @@ CB_REFERENCE_NOT_IMPLEMENTED = fr"{PREFIX}WARNING: NOT IMPLEMENTED: the '<{{0}}>
 # A package format that is recognized but not parsed yet: the image is still inventoried, with
 # zero packages.
 CB_UNSUPPORTED_PACKAGE_FORMAT = fr"{PREFIX}WARNING: NOT IMPLEMENTED: image at '.*' uses the package format\(s\) .*, which are recognized but not supported yet\. Reporting zero packages\."
+
+
+# Remote references (GHCR).
+# "No credential is configured for ghcr.io, requesting an anonymous token."
+CB_ANONYMOUS_TOKEN = fr'{PREFIX}DEBUG: No credential is configured for .*, requesting an anonymous token\.'
+# "Reference '<ref>' still reports <digest>, so no image contents were retrieved."
+CB_REFERENCE_UNCHANGED = fr'{PREFIX}DEBUG: Reference .* so no image contents were retrieved\.'
+# "Reference '<ref>' was not inventoried: no image variant matches <platform>, ..."
+CB_NO_MATCHING_VARIANT = fr'{PREFIX}WARNING: Reference .* no image variant matches .*'
+# "Reference '<ref>' could not be resolved: the credential configured for <host> is missing ..."
+CB_CREDENTIAL_MISSING = fr'{PREFIX}WARNING: Reference .* is missing from the agent credential store\.'
+# "Reference '<ref>' cannot be verified: <reason>."
+CB_CANNOT_VERIFY = fr'{PREFIX}WARNING: Reference .* cannot be verified: .*'

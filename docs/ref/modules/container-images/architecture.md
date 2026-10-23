@@ -81,11 +81,37 @@ Digest values and member names read from image metadata are validated before bei
 
 A saved archive is read twice: a tar is sequential, while the layer order comes from the metadata inside it. The first pass collects the metadata documents, the second reads the layers those documents named.
 
+### **Registry Reader**
+
+Reads an image from GitHub Container Registry. It implements the same reader interface as the archive reader, so the scan loop does not know which kind of source it is talking to.
+
+The sequence is the one the registry advertises rather than one assumed of it:
+
+1. An unauthenticated manifest request is answered with `401` and a `WWW-Authenticate` header naming the token endpoint, the service and the scope.
+2. A token is obtained from that endpoint: anonymously for a public repository, or with HTTP Basic and a credential read from the agent credential store for a private one. When the registry answers `401` or `403` to the token request that carries the credential, the reference is tried once more with an anonymous token, so a wrong credential does not fail the public references on the same host. If the registry serves the manifest that way, the reference is inventoried and one warning per scan and host reports the refusal. Otherwise the reference fails with the error of the credential. The same retry applies when a token is issued for the credential and the manifest request is then answered with `401` or `403`, as it is for a token without the scope the repository needs. A credential missing from the store, a transport failure and throttling get no anonymous retry. The token belongs to one reader, which is one reference, so the anonymous token cannot reach another reference. Only a refusal at the token endpoint is remembered for the rest of the scan, with the reason the registry gave, because it is the credential itself that was refused: the later references under the same registry and organization (`ghcr.io/owner`) are not sent the credential and ask for an anonymous token at once, and a private one among them is reported with the remembered reason. The memory is keyed by organization rather than host because a registry can answer per organization, so a refusal for one organization leaves the credential in use for the others on the same host. A refusal at the manifest speaks for one repository, so it is not remembered and the next reference sends the credential again. A manifest answered with `401` is reported as a rejected credential only when one was sent; with an anonymous token the registry is reported as requiring a credential for the reference. The warning is deduplicated separately and is logged once per scan and host for either kind. The scan's next run starts with nothing remembered.
+3. The image index is fetched and the matching variant is selected: the architecture is the agent's, and the operating system is always `linux`, because an image is a Linux image whatever runs the engine. Build attestation entries, which carry no image content, are skipped.
+4. The configuration digest is compared against the one already stored. When they match, nothing further is retrieved.
+5. The configuration blob supplies the platform metadata, and each layer is streamed. A layer with a recognized compression this module cannot decompress is skipped with a warning, as the archive reader does, and the decompressed bytes read out of one layer are bounded at 8 GiB, which fails the reference when exceeded. The stop request is checked on every read of the decompressed bytes, so it does not wait for a large layer to finish.
+
+The transport owns its own cURL handle rather than using the shared HTTP wrapper, because the registry flow needs two things that wrapper does not provide: the response headers, without which the advertised authentication method and `Retry-After` cannot be read, and incremental delivery, without which a layer would have to be held in memory in full.
+
+Its security posture is set explicitly in one place: the peer and the host name are verified against a resolved certificate bundle, only `https` is allowed for a request and for anything it is redirected to, and the access token is not carried across a redirect to another host. That last one matters because a layer request is redirected off the registry to a content host which neither needs the token nor should receive it.
+
+A request that produces no response is retried unless it would fail the same way again. The transport reports that on the response, and the reader attempts such a request once: peer verification and certificate bundle errors, a response over the size limit, a redirect loop and an unusable address or protocol. Every network-level failure stays retryable. A layer blob is requested as stored, with no content decoding by libcurl, so the bytes counted against the image ceiling are the bytes of the blob.
+
+### **Registry Byte Stream**
+
+Bridges libcurl, which pushes received bytes into a callback, to the byte-stream interface, which is pulled by the layer reader. The cURL multi interface is driven from inside `read()`, and the write callback answers `CURL_WRITEFUNC_PAUSE` once its buffer is full, suspending the transfer until the caller drains it. Everything happens on the caller's thread: no second thread and no locking.
+
+The consequence is that memory is bounded by the suspend threshold rather than by the image size. Reading a 68 MB image measured 17 MB of peak resident memory.
+
+A blob transfer carries no total wall-clock timeout, on purpose: the transfer is suspended whenever the caller is slower than the network, so a total ceiling would abort a healthy read of a large layer. It is bounded instead by a byte ceiling, by libcurl's stall detection, and by a no-progress bound that counts only time spent waiting for the network: it restarts whenever bytes arrive and does not run while the transfer is suspended or while the caller is parsing.
+
 ### **Layer Reader and Composition**
 
 The layer reader consumes an `IByteStream` rather than a path, so the same code reads a layer from a file, from inside an archive, and later from a remote blob. `LayerByteStream` decides the compression from the blob's own first bytes rather than from the media type the image declares, which is metadata the image itself supplies. It decompresses the gzip and zstd layers the OCI image specification defines, and passes a plain tar through unchanged.
 
-A blob compressed with something else that can be recognized from its signature, `xz`, `bzip2` or `lz4`, yields no bytes at all. That is deliberate: handing the compressed bytes to the tar reader would fail its header checksum and report a well-formed layer as malformed, so the stream stays empty and the reader reports the compression by name instead.
+A blob compressed with something else that can be recognized from its signature, `xz`, `bzip2` or `lz4`, yields no bytes at all. That is deliberate: handing the compressed bytes to the tar reader would fail its header checksum and report a well-formed layer as malformed, so the stream stays empty and the reader reports the compression by name instead. Both readers check the compression before reading a layer, and both bound its decompressed size with the same constant. The archive reader treats a layer that reaches the bound as truncated and keeps what it read, and the registry reader fails the reference, since a remote image has no complete state to keep.
 
 The reader parses the tar inline and supports the `ustar` prefix field, pax extended headers and GNU long names. Each entry is reported with a stream bounded to its content, and whatever the caller does not read is skipped, so an image costs the size of its package databases and nothing more.
 
@@ -157,7 +183,10 @@ reference, so a reference left out of that set is reported as deleted.
 | Still holds the stored digest | What is already stored, unchanged |
 
 A scan cut short by a stop is abandoned rather than stored, for the same reason: it describes
-only the references it reached.
+only the references it reached. The stop is checked before each reference and again after the last
+one, and a remote reference being read when it arrives fails whatever point its layer had reached
+(a cut between two tar entries reads as the end of the layer), so no truncated inventory is synced
+as complete.
 
 ---
 
@@ -191,14 +220,14 @@ Discovered images are represented with `ImageReferenceRecord` entries:
 |-------|-------------|
 | `source.sourceType` | Reference type, `archive` at this stage. |
 | `source.location` | Source location, such as the configured path. |
-| `tag` | Name the image is known by. A saved image carries the whole reference in `io.containerd.image.name` and only the tag in `org.opencontainers.image.ref.name`, so the first is preferred. |
+| `tag` | Name the image is known by. A saved image carries the whole reference in `io.containerd.image.name` and only the tag in `org.opencontainers.image.ref.name`, so the first is preferred. A remote reference is named `registry/repository[:tag][@digest]`, with the tag kept when a digest follows it. |
 | `configDigest` | Image configuration blob digest. |
 | `manifestDigest` | Manifest digest. |
 | `os` | Operating system from the image configuration. |
 | `architecture` | Architecture from the image configuration. |
 | `variant` | Architecture variant, when present. |
 | `osVersion` | Operating system version, when present. |
-| `tags` | Every tag the image is known by, when the source lists more than one. |
+| `tags` | Every tag the image is known by, when the source lists more than one. A remote reference with a tag lists `registry/repository:tag`. |
 | `packages` | The packages found in the image layers. |
 
 ---

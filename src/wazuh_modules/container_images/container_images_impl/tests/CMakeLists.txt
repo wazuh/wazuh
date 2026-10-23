@@ -9,6 +9,7 @@ include_directories(
   ${SRC_FOLDER}/external/zlib/
   ${SRC_FOLDER}/external/zstd/lib/
   ${SRC_FOLDER}/external/sqlite/
+  ${SRC_FOLDER}/external/curl/include/
   ${SRC_FOLDER}/data_provider/src/packages/
   ${SRC_FOLDER}/shared_modules/dbsync/include/
   ${SRC_FOLDER}/wazuh_modules/container_images/container_images_impl/include
@@ -47,7 +48,12 @@ if(NOT DBSYNC_LIB)
 endif()
 
 add_executable(container_images_unit_test container_images_test.cpp
-                                          package_extraction_test.cpp)
+                                          package_extraction_test.cpp
+                                          credential_store_test.cpp
+                                          platform_test.cpp
+                                          registry_reader_test.cpp
+                                          registry_test.cpp
+                                          transport_test.cpp)
 # The DB tests exercise a real DBSync instance, so the real libraries are linked
 # (not mocks). wazuhext provides the hash/string helpers.
 target_link_libraries(container_images_unit_test

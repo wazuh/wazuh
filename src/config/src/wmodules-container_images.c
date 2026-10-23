@@ -11,6 +11,7 @@
 #include "wmodules.h"
 #include "wm_container_images.h"
 
+#include <ctype.h>
 #include <errno.h>
 #include <limits.h>
 
@@ -24,6 +25,19 @@ static const char *XML_CI_REFERENCES = "references";
 static const char *XML_CI_REF = "ref";           // Remote registry reference.
 static const char *XML_CI_ARCHIVE = "archive";   // Saved image archive or OCI image layout on disk.
 static const char *XML_CI_LOCAL = "local";       // Image in the local container engine store.
+
+// Registry credentials. Only key names appear here: the values live in the agent
+// credential store, so no credential is ever written into ossec.conf.
+static const char *XML_CI_REGISTRY_AUTH = "registry_auth";
+static const char *XML_CI_REGISTRY = "registry";
+static const char *XML_CI_HOST = "host";
+static const char *XML_CI_USER_KEY = "user_keystore_key";
+static const char *XML_CI_PASSKEY_KEY = "passkey_keystore_key";
+
+// Certificate bundle used to verify a registry. Detected at run time when unset,
+// because the bundle compiled into the HTTP library is the path that existed on the
+// machine that built the package, not necessarily one that exists on this host.
+static const char *XML_CI_CA_BUNDLE = "ca_bundle";
 
 #ifdef WAZUH_UNIT_TESTING
 #define static
@@ -57,6 +71,126 @@ static void add_reference(wm_container_images_t *container_images, const char *t
     os_strdup(type, container_images->references[container_images->references_count].type);
     os_strdup(value, container_images->references[container_images->references_count].value);
     container_images->references_count++;
+}
+
+// Append one registry credential entry to the module configuration.
+static void add_registry(wm_container_images_t *container_images, const char *host, const char *user_key, const char *passkey_key) {
+    os_realloc(container_images->registries, (container_images->registries_count + 1) * sizeof(wm_container_images_registry_t), container_images->registries);
+    os_strdup(host, container_images->registries[container_images->registries_count].host);
+    os_strdup(user_key ? user_key : "", container_images->registries[container_images->registries_count].user_key);
+    os_strdup(passkey_key ? passkey_key : "", container_images->registries[container_images->registries_count].passkey_key);
+    container_images->registries_count++;
+}
+
+// Parse one <registry> entry of the <registry_auth> block.
+//
+// Skipped rather than rejected on anything wrong, for the same reason a reference entry
+// is: rejecting invalidates the whole module configuration, which stops wazuh-modulesd
+// from starting, and the control script tests every daemon before starting any of them.
+static void parse_registry(const OS_XML *xml, xml_node *registry_node, wm_container_images_t *container_images) {
+    xml_node **children = OS_GetElementsbyNode(xml, registry_node);
+    char *host = NULL;
+    char *user_key = NULL;
+    char *passkey_key = NULL;
+
+    if (!children) {
+        mwarn("Empty '%s' entry at module '%s', ignoring it.", XML_CI_REGISTRY, WM_CONTAINER_IMAGES_CONTEXT.name);
+        return;
+    }
+
+    for (int i = 0; children[i]; i++) {
+        if (!children[i]->element) {
+            continue;
+        }
+
+        if (!strcmp(children[i]->element, XML_CI_HOST)) {
+            host = children[i]->content;
+        } else if (!strcmp(children[i]->element, XML_CI_USER_KEY)) {
+            user_key = children[i]->content;
+        } else if (!strcmp(children[i]->element, XML_CI_PASSKEY_KEY)) {
+            passkey_key = children[i]->content;
+        } else {
+            mwarn("No such tag '%s' inside '%s' at module '%s', ignoring it.", children[i]->element, XML_CI_REGISTRY, WM_CONTAINER_IMAGES_CONTEXT.name);
+        }
+    }
+
+    if (!host || !strlen(host)) {
+        mwarn("A '%s' entry at module '%s' names no host, ignoring it.", XML_CI_REGISTRY, WM_CONTAINER_IMAGES_CONTEXT.name);
+        OS_ClearNode(children);
+        return;
+    }
+
+    // The host is compared with the registry each reference names, so a value that cannot
+    // be a host (a URL, a path, spaces) would be accepted here and never match anything.
+    // A scheme always carries a '/', so one test covers it and a path.
+    bool bare_host = !strchr(host, '/');
+
+    for (const char *c = host; bare_host && *c; c++) {
+        bare_host = !isspace((unsigned char) *c);
+    }
+
+    if (!bare_host) {
+        mwarn("The '%s' entry for '%s' at module '%s' must name a bare host such as 'ghcr.io', without a scheme, a path or whitespace, ignoring it.", XML_CI_REGISTRY, host, WM_CONTAINER_IMAGES_CONTEXT.name);
+        OS_ClearNode(children);
+        return;
+    }
+
+    // Host names are not case sensitive, and the module compares them in lower case.
+    for (char *c = host; *c; c++) {
+        *c = (char) tolower((unsigned char) *c);
+    }
+
+    // Both keys are needed to authenticate, so an entry with one can never work and is
+    // reported here, where the operator is editing it, rather than at scan time as a
+    // credential missing from the store.
+    if (!user_key || !strlen(user_key)) {
+        mwarn("The '%s' entry for '%s' at module '%s' names no '%s', ignoring it.", XML_CI_REGISTRY, host, WM_CONTAINER_IMAGES_CONTEXT.name, XML_CI_USER_KEY);
+        OS_ClearNode(children);
+        return;
+    }
+
+    if (!passkey_key || !strlen(passkey_key)) {
+        mwarn("The '%s' entry for '%s' at module '%s' names no '%s', ignoring it.", XML_CI_REGISTRY, host, WM_CONTAINER_IMAGES_CONTEXT.name, XML_CI_PASSKEY_KEY);
+        OS_ClearNode(children);
+        return;
+    }
+
+    // The first entry for a host is the one the module uses, so a later one would be
+    // dropped silently, unlike every other repeated element, where the last wins.
+    for (int i = 0; i < container_images->registries_count; i++) {
+        if (!strcmp(container_images->registries[i].host, host)) {
+            mwarn("The '%s' entry for '%s' at module '%s' repeats a host already configured, ignoring it. The first entry is used.", XML_CI_REGISTRY, host, WM_CONTAINER_IMAGES_CONTEXT.name);
+            OS_ClearNode(children);
+            return;
+        }
+    }
+
+    add_registry(container_images, host, user_key, passkey_key);
+    OS_ClearNode(children);
+}
+
+// Parse the <registry_auth> block.
+static void parse_registry_auth(const OS_XML *xml, xml_node *auth_node, wm_container_images_t *container_images) {
+    xml_node **children = OS_GetElementsbyNode(xml, auth_node);
+
+    if (!children) {
+        return;
+    }
+
+    for (int i = 0; children[i]; i++) {
+        if (!children[i]->element) {
+            continue;
+        }
+
+        if (strcmp(children[i]->element, XML_CI_REGISTRY)) {
+            mwarn("No such tag '%s' inside '%s' at module '%s', ignoring it.", children[i]->element, XML_CI_REGISTRY_AUTH, WM_CONTAINER_IMAGES_CONTEXT.name);
+            continue;
+        }
+
+        parse_registry(xml, children[i], container_images);
+    }
+
+    OS_ClearNode(children);
 }
 
 // Parse the <references> block. Every entry type of the grammar is accepted here, and
@@ -114,6 +248,9 @@ int wm_container_images_read(const OS_XML *xml, xml_node **nodes, wmodule *modul
         container_images->interval = WM_CONTAINER_IMAGES_DEFAULT_INTERVAL;
         container_images->references = NULL;
         container_images->references_count = 0;
+        container_images->registries = NULL;
+        container_images->registries_count = 0;
+        container_images->ca_bundle = NULL;
 
         module->context = &WM_CONTAINER_IMAGES_CONTEXT;
         os_strdup(module->context->name, module->tag);
@@ -195,6 +332,15 @@ int wm_container_images_read(const OS_XML *xml, xml_node **nodes, wmodule *modul
         } else if (!strcmp(nodes[i]->element, XML_CI_REFERENCES)) {
             if (parse_references(xml, nodes[i], container_images) < 0) {
                 return OS_INVALID;
+            }
+        } else if (!strcmp(nodes[i]->element, XML_CI_REGISTRY_AUTH)) {
+            parse_registry_auth(xml, nodes[i], container_images);
+        } else if (!strcmp(nodes[i]->element, XML_CI_CA_BUNDLE)) {
+            if (!nodes[i]->content || !strlen(nodes[i]->content)) {
+                mwarn("Empty '%s' at module '%s', ignoring it.", XML_CI_CA_BUNDLE, WM_CONTAINER_IMAGES_CONTEXT.name);
+            } else {
+                os_free(container_images->ca_bundle);
+                os_strdup(nodes[i]->content, container_images->ca_bundle);
             }
         } else {
             mwarn("No such tag '%s' at module '%s'.", nodes[i]->element, WM_CONTAINER_IMAGES_CONTEXT.name);

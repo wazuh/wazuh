@@ -9,6 +9,8 @@
  */
 
 #include "container_images_impl.hpp"
+
+#include "agent_credential_store.hpp"
 #include "archive_image_reader.hpp"
 #include "ci_logging_helper.hpp"
 
@@ -53,7 +55,8 @@ namespace
 namespace containerimages
 {
     std::unique_ptr<IImageReader> makeReader(const ConfiguredReference& reference,
-                                            const std::string& knownConfigDigest)
+                                            const std::string& knownConfigDigest,
+                                            const ReaderContext& context)
     {
         switch (reference.type)
         {
@@ -61,9 +64,7 @@ namespace containerimages
                 return std::make_unique<ArchiveImageReader>(reference.location, knownConfigDigest);
 
             case ReferenceType::Registry:
-                logWarn("NOT IMPLEMENTED: the '<ref>' reference '" + reference.location +
-                        "' needs remote registry support, which is not available yet. Skipping it.");
-                return nullptr;
+                return std::make_unique<RegistryImageReader>(reference.location, knownConfigDigest, context);
 
             case ReferenceType::EngineStore:
                 logWarn("NOT IMPLEMENTED: the '<local>' reference '" + reference.location +
@@ -77,11 +78,12 @@ namespace containerimages
     }
 
     ContainerImagesImpl::ContainerImagesImpl(ContainerImagesConfig config,
-                                             std::function<std::unique_ptr<IImageReader>(const ConfiguredReference&, const std::string&)> readerFactory,
+                                             std::function<std::unique_ptr<IImageReader>(const ConfiguredReference&, const std::string&, const ReaderContext&)> readerFactory,
                                              std::shared_ptr<ContainerImagesDB> db)
         : m_config {std::move(config)}
         , m_readerFactory {std::move(readerFactory)}
         , m_db {db ? std::move(db) : std::make_shared<ContainerImagesDB>(m_config.dbPath)}
+        , m_credentials {std::make_shared<AgentCredentialStore>()}
     {
     }
 
@@ -114,33 +116,41 @@ namespace containerimages
 
         logInfo("Scan started.");
 
+        // Reset per scan: the ceiling bounds one scan, not the lifetime of the module.
+        m_scanBytes = 0;
+        m_refusedCredentialScopes.clear();
+        m_reportedRefusalHosts.clear();
+
         std::vector<ImageReferenceRecord> references;
 
         std::size_t unreadable {0};
         std::size_t unchanged {0};
 
+        const auto stopRequested = [this]
+        {
+            std::lock_guard<std::mutex> lock {m_mutex};
+            return m_stopRequested;
+        };
+
         for (const auto& configured : m_config.references)
         {
+            // Checked before each reference, and once more after the last one. A remote
+            // reader streaming when the stop arrives fails its own reference, and an
+            // archive reader runs to completion (its work is bounded by its own caps), so
+            // a stop landing after the last reference still has to keep the scan from
+            // syncing what it collected.
+            if (stopRequested())
             {
-                // Checked once per reference rather than continuously inside a reader: a
-                // reader already in progress runs to completion (bounded work is the
-                // reader's own job, see the caps in ArchiveImageReader), but a stop that
-                // lands mid-scan stops the scan from starting any reference it has not
-                // reached yet, instead of reading every configured source regardless.
-                std::lock_guard<std::mutex> lock {m_mutex};
-
-                if (m_stopRequested)
-                {
-                    // Abandoned, not finished. What was collected so far describes only the
-                    // references the scan reached, and storing it would report every
-                    // reference it never got to as deleted.
-                    logDebug("Stop requested, abandoning the scan without storing its partial result.");
-                    return 0;
-                }
+                // Abandoned, not finished. What was collected so far describes only the
+                // references the scan reached, and storing it would report every
+                // reference it never got to as deleted.
+                logDebug("Stop requested, abandoning the scan without storing its partial result.");
+                return 0;
             }
 
             auto stored {m_db->loadStored(referenceTypeName(configured.type), configured.location)};
-            const auto reader {m_readerFactory(configured, stored ? stored->configDigest : std::string {})};
+            const ReaderContext context {&m_config, m_credentials.get(), &m_scanBytes, &m_stopFlag, &m_refusedCredentialScopes, &m_reportedRefusalHosts};
+            const auto reader {m_readerFactory(configured, stored ? stored->configDigest : std::string {}, context)};
 
             if (!reader)
             {
@@ -193,6 +203,12 @@ namespace containerimages
                          ") digest=" + reference.configDigest + ".");
                 references.push_back(std::move(reference));
             }
+        }
+
+        if (stopRequested())
+        {
+            logDebug("Stop requested, abandoning the scan without storing its result.");
+            return 0;
         }
 
         const auto deltaCallback = [this](ReturnTypeCallback operation,
@@ -291,6 +307,12 @@ namespace containerimages
 
     void ContainerImagesImpl::stop()
     {
+        // Set before the lock is taken, so a reader streaming a layer sees the request
+        // immediately rather than waiting on a mutex it must not take. The guarded flags
+        // below stay guarded: m_running is part of the condition the run loop waits on,
+        // and moving it out of the lock would risk a lost wake-up.
+        m_stopFlag.store(true);
+
         {
             std::lock_guard<std::mutex> lock {m_mutex};
             m_stopRequested = true;

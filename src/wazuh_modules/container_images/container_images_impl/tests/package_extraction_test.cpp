@@ -1377,12 +1377,47 @@ TEST_F(PackageExtractionTest, ReferenceTypeNamesMatchTheConfigurationGrammar)
     EXPECT_FALSE(parseReferenceType("registry", type));
 }
 
-TEST_F(PackageExtractionTest, OnlyTheArchiveReferenceTypeBuildsAReader)
+TEST_F(PackageExtractionTest, ArchiveAndRegistryReferenceTypesBuildAReader)
 {
-    EXPECT_NE(makeReader({ReferenceType::Archive, "/some/image.tar"}, {}), nullptr);
-    // Accepted by the configuration, reported as unimplemented here.
-    EXPECT_EQ(makeReader({ReferenceType::Registry, "docker.io/library/alpine:latest"}, {}), nullptr);
-    EXPECT_EQ(makeReader({ReferenceType::EngineStore, "alpine:latest"}, {}), nullptr);
+    EXPECT_NE(makeReader({ReferenceType::Archive, "/some/image.tar"}, {}, {}), nullptr);
+
+    // A registry reference now builds a reader. Whether the reference itself is usable is
+    // decided by the reader, not by the factory: an unsupported registry is reported with
+    // its own reason at read time rather than being indistinguishable here from a type
+    // the module cannot handle at all.
+    EXPECT_NE(makeReader({ReferenceType::Registry, "ghcr.io/owner/app:1.0"}, {}, {}), nullptr);
+    EXPECT_NE(makeReader({ReferenceType::Registry, "docker.io/library/alpine:latest"}, {}, {}), nullptr);
+
+    // Still accepted by the configuration and reported as unimplemented here.
+    EXPECT_EQ(makeReader({ReferenceType::EngineStore, "alpine:latest"}, {}, {}), nullptr);
+}
+
+TEST_F(PackageExtractionTest, ARegistryReaderWithNoConfigurationFailsItsRead)
+{
+    // Built with an empty context, which is what a caller that forgot the configuration
+    // hands it. The read fails rather than dereferencing nothing.
+    const auto reader {makeReader({ReferenceType::Registry, "ghcr.io/owner/app:1.0"}, {}, {})};
+
+    ASSERT_NE(reader, nullptr);
+    EXPECT_EQ(reader->sourceType(), "ref");
+
+    const auto result {reader->discover()};
+
+    EXPECT_EQ(result.status, ReadStatus::Failed);
+    EXPECT_TRUE(result.records.empty());
+}
+
+TEST_F(PackageExtractionTest, ARegistryReaderRejectsAnUnsupportedRegistryWithoutNetwork)
+{
+    // Rejected while parsing the reference, so no request is attempted and the outcome
+    // does not depend on anything being reachable.
+    ContainerImagesConfig config;
+    const ReaderContext context {&config, nullptr, nullptr};
+
+    const auto reader {makeReader({ReferenceType::Registry, "docker.io/library/alpine:latest"}, {}, context)};
+
+    ASSERT_NE(reader, nullptr);
+    EXPECT_EQ(reader->discover().status, ReadStatus::Failed);
 }
 
 TEST_F(PackageExtractionTest, WholeImageNameIsPreferredOverTheTagOnlyAnnotation)

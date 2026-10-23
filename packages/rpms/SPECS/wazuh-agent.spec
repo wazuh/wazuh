@@ -827,6 +827,7 @@ rm -fr %{buildroot}
 %dir %attr(750, wazuh, wazuh) %{_localstatedir}/queue/sca/db
 %dir %attr(750, wazuh, wazuh) %{_localstatedir}/queue/container_images
 %dir %attr(750, wazuh, wazuh) %{_localstatedir}/queue/container_images/db
+%dir %attr(750, root, root) %{_localstatedir}/queue/credentials
 %dir %attr(750, wazuh, wazuh) %{_localstatedir}/queue/agent_info
 %dir %attr(750, wazuh, wazuh) %{_localstatedir}/queue/agent_info/db
 %attr(640, root, wazuh) %{_localstatedir}/queue/syscollector/norm_config.json
