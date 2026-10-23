@@ -51,4 +51,28 @@ if(ENGINE_BUILD_TEST)
 
   gtest_discover_tests(api_cmcrud_utest)
 
+  set(COMPONENT_SRC_DIR ${TEST_SRC_DIR}/component)
+
+  add_executable(api_cmcrud_ctest
+    ${COMPONENT_SRC_DIR}/policyValidate_test.cpp
+  )
+
+  target_link_libraries(api_cmcrud_ctest
+    PRIVATE
+      api::cmcrud
+      api::tester
+      cmcrud::cmcrud
+      cmstore::cmstore
+      router::router
+      builder::mocks
+      bk::mocks
+      fastqueue::mocks
+      rawevtindexer::mocks
+      fastmetrics::mocks
+      store::mocks
+      GTest::gtest_main
+  )
+
+  gtest_discover_tests(api_cmcrud_ctest)
+
 endif()
