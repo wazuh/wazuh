@@ -10,6 +10,7 @@
 
 #include "statelessEndpoint.hpp"
 
+#include "httpsHeaderLine.hpp"
 #include <rapidjson/document.h>
 
 #include <charconv>
@@ -63,8 +64,9 @@ namespace remoted::endpoints::stateless
         // H-line is metadata (agent id, name, cluster labels, ...), never bulk event data -- a real
         // one is realistically a few hundred bytes. Capped well before parsing so a pathologically
         // large/nested JSON blob (still comfortably inside the 10 MiB body cap) is rejected outright
-        // instead of costing CPU/heap proportional to its size.
-        constexpr std::size_t kMaxHeaderLineJsonSize = 8U * 1024U;
+        // instead of costing CPU/heap proportional to its size. The agent trims its H line to the
+        // same shared limit, so the two cannot drift apart.
+        constexpr std::size_t kMaxHeaderLineJsonSize = HTTPS_HEADER_LINE_JSON_MAX_BYTES;
 
         // Slices the H-line's JSON substring out of the whole H/E body. Per the event-protocol's own
         // parsing rule ("split by \n, check first char, extract payload after space (index 2)"): the

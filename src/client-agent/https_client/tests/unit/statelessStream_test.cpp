@@ -15,6 +15,7 @@
 #include "statelessStream.hpp"
 
 #include "external/nlohmann/json.hpp"
+#include "httpsHeaderLine.hpp"
 
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -360,7 +361,7 @@ TEST_F(StatelessStreamTest, HeaderLineDropsGroupsThatWouldExceedRemotedCap)
     stream.tick(m_waiter, true);
 
     const auto headerJson = sentBody.substr(2, sentBody.find('\n') - 2);
-    EXPECT_LE(headerJson.size(), 8U * 1024U);
+    EXPECT_LE(headerJson.size(), HTTPS_HEADER_LINE_JSON_MAX_BYTES);
     const auto wazuh = parseWazuhHeader(sentBody);
     EXPECT_EQ("001", wazuh.at("agent").at("id").get<std::string>());
     EXPECT_FALSE(wazuh.at("agent").contains("groups"));
