@@ -511,7 +511,8 @@ statfunc void submit_event(const char *filename,
     off = append_task_cwd(evt, off, parent_task);
 
     __u64 size = offsetof(struct file_event, paths) + off;
-    if (size > sizeof(*evt) || bpf_ringbuf_output(&rb, evt, size, 0))
+    /* Held events wake the consumer through their OP_DONE */
+    if (size > sizeof(*evt) || bpf_ringbuf_output(&rb, evt, size, op == OP_OPEN ? 0 : BPF_RB_NO_WAKEUP))
         return;
 
     if (op != OP_OPEN)
@@ -528,7 +529,8 @@ statfunc int submit_done(__u32 op, long ret)
 
     bpf_map_delete_elem(&inflight_map, &id);
     struct op_done done = { .op = OP_DONE, .tid = id, .ret = ret };
-    bpf_ringbuf_output(&rb, &done, sizeof(done), 0);
+    /* Forced: the held event before it did not wake the consumer */
+    bpf_ringbuf_output(&rb, &done, sizeof(done), BPF_RB_FORCE_WAKEUP);
     return 0;
 }
 
