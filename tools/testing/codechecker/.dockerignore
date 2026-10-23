@@ -1,0 +1,5 @@
+# Runtime directories — never part of the image build context.
+# These mirror the entries in .gitignore.
+workspace/
+results/
+cc-db/
