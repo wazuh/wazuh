@@ -42,8 +42,11 @@ namespace
     /// Built through the JSON library rather than concatenated, so a value
     /// carrying a quote, a backslash or a newline cannot escape the string it
     /// sits in -- controlStream.cpp builds its payloads the same way.
-    std::string buildHeaderLine(const std::string& agentId, const std::function<std::string()>& collectHost)
+    std::string buildHeaderLine(const std::string& agentId,
+                                const std::function<std::string()>& collectHost,
+                                HeaderLineTrim& trim)
     {
+        trim = HeaderLineTrim::None;
         nlohmann::json extra;
 
         if (collectHost)
@@ -88,12 +91,14 @@ namespace
         {
             header["wazuh"]["agent"].erase("groups");
             json = header.dump();
+            trim = HeaderLineTrim::Groups;
         }
 
         if (json.size() > HEADER_LINE_JSON_MAX_BYTES)
         {
             header["wazuh"]["agent"] = {{"id", agentId}};
             json = header.dump();
+            trim = HeaderLineTrim::AllButId;
         }
 
         return "H " + json + "\n";
@@ -126,10 +131,11 @@ StatelessStream::StatelessStream(const ModuleConfig& config,
                config.serverEndpoint)
     , m_sink(sink)
     , m_collectHost(std::move(collectHost))
-    , m_headerLine(buildHeaderLine(signer.agentId(), m_collectHost))
+    , m_headerLine(buildHeaderLine(signer.agentId(), m_collectHost, m_headerTrim))
     , m_headerAgentId(signer.agentId())
     , m_lastFlush(clock.steadyNow())
     , m_ladder(config.bufferWarnLevel, config.bufferNormalLevel, config.bufferFloodToleranceS)
+    , m_headerTrimLimiter(clock)
 {
 }
 
@@ -400,5 +406,20 @@ uint64_t StatelessStream::eventBytesBudgetLocked() const
 void StatelessStream::refreshHeaderLineLocked()
 {
     m_headerAgentId = m_signer.agentId();
-    m_headerLine = buildHeaderLine(m_headerAgentId, m_collectHost);
+    m_headerLine = buildHeaderLine(m_headerAgentId, m_collectHost, m_headerTrim);
+
+    // Events then reach the manager without the agent's groups, which group-scoped rules
+    // and DLS roles depend on: say so, without a line per flush.
+    if (m_headerTrim != HeaderLineTrim::None)
+    {
+        if (const auto decision = m_headerTrimLimiter.record())
+        {
+            LOGFN_DEBUG1(m_logFn,
+                         "The /stateless H line would exceed %zu bytes; sent %llu time(s) %s.",
+                         HEADER_LINE_JSON_MAX_BYTES,
+                         static_cast<unsigned long long>(decision.total),
+                         m_headerTrim == HeaderLineTrim::Groups ? "without the agent groups"
+                         : "with only the agent id");
+        }
+    }
 }
