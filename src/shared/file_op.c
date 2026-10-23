@@ -5554,7 +5554,7 @@ int is_ascii_utf8(const char * file, unsigned int max_lines_ascii, unsigned int 
     fpos_t begin;
     FILE *fp;
 
-    fp = wfopen(file, "r");
+    fp = w_fopen_vetted_follow(file, "r");
 
     if (!fp) {
         mdebug1(OPEN_UNABLE, file);
