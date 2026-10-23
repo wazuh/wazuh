@@ -754,6 +754,10 @@ void audit_read_events(int *audit_sock, atomic_int_t *running) {
                     cache_i = 0;
                 }
 
+                if (cache_id && strcmp(cache_id, id)) {
+                    os_free(event_too_long_id);
+                }
+
                 // Append to cache
                 len = endline - line;
                 if (cache_i + len + 1 < BUF_SIZE) {

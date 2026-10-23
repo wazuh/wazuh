@@ -1395,6 +1395,69 @@ void test_audit_read_events_select_success_recv_success_cache_boundary(void **st
     os_free(line2);
 }
 
+void test_audit_read_events_too_long_does_not_discard_following_event(void **state) {
+    int *audit_sock = *state;
+    audit_thread_active.data = 1;
+
+    ignore_function_calls(__wrap_pthread_mutex_lock);
+    ignore_function_calls(__wrap_pthread_mutex_unlock);
+
+    char *stale;
+    while (audit_queue->elements > 0) {
+        stale = queue_pop_ex(audit_queue);
+        os_free(stale);
+    }
+
+    expect_value_count(__wrap_atomic_int_get, atomic, &audit_thread_active, 4);
+    will_return_count(__wrap_atomic_int_get, 1, 4);
+
+    expect_value(__wrap_atomic_int_get, atomic, &audit_thread_active);
+    will_return(__wrap_atomic_int_get, 0);
+
+    // Chunk 1: event A fills the cache up to a few bytes from the limit
+    char *a1 = "type=SYSCALL msg=audit(1571914029.306:3004254): a\n";
+    size_t len_a2 = OS_MAXSTR - 100 - strlen(a1);
+    char *a2 = malloc(len_a2 + 2);
+    memset(a2, 'a', len_a2);
+    const char *hdr = "type=CWD msg=audit(1571914029.306:3004254): ";
+    memcpy(a2, hdr, strlen(hdr));
+    a2[len_a2] = '\n';
+    a2[len_a2 + 1] = '\0';
+    char *chunk1 = malloc(strlen(a1) + strlen(a2) + 1);
+    strcpy(chunk1, a1);
+    strcat(chunk1, a2);
+
+    // Chunk 2: A overflows, then B is complete and C starts
+    char *chunk2 =
+        "type=PATH msg=audit(1571914029.306:3004254): item=0 name=\"/root/test/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"\n"
+        "type=SYSCALL msg=audit(1571914029.306:3004255): b\n"
+        "type=EOE msg=audit(1571914029.306:3004255):\n"
+        "type=SYSCALL msg=audit(1571914029.306:3004256): c\n";
+
+    will_return(__wrap_select, 1);
+    expect_value(__wrap_recv, __fd, *audit_sock);
+    will_return(__wrap_recv, strlen(chunk1));
+    will_return(__wrap_recv, chunk1);
+
+    will_return(__wrap_select, 1);
+    expect_value(__wrap_recv, __fd, *audit_sock);
+    will_return(__wrap_recv, strlen(chunk2));
+    will_return(__wrap_recv, chunk2);
+
+    expect_string(__wrap__mwarn, formatted_msg, "(6929): Caching Audit message: event too long. Event with ID: '1571914029.306:3004254' will be discarded.");
+
+    audit_read_events(audit_sock, &audit_thread_active);
+
+    assert_int_equal(audit_queue->elements, 1);
+    char *queued = queue_pop_ex(audit_queue);
+    assert_non_null(queued);
+    assert_non_null(strstr(queued, "3004255"));
+    assert_int_equal(queue_push_ex(audit_queue, queued), 0);
+
+    os_free(a2);
+    os_free(chunk1);
+}
+
 void test_audit_parse_thread(void **state) {
     audit_parse_thread_active.data = 1;
 
@@ -1790,6 +1853,7 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_audit_read_events_select_success_recv_success_no_id, test_audit_read_events_setup, test_audit_read_events_teardown),
         cmocka_unit_test_setup_teardown(test_audit_read_events_select_success_recv_success_too_long, test_audit_read_events_setup, test_audit_read_events_teardown),
         cmocka_unit_test_setup_teardown(test_audit_read_events_select_success_recv_success_cache_boundary, test_audit_read_events_setup, test_audit_read_events_teardown),
+        cmocka_unit_test_setup_teardown(test_audit_read_events_too_long_does_not_discard_following_event, test_audit_read_events_setup, test_audit_read_events_teardown),
         cmocka_unit_test(test_audit_parse_thread),
         cmocka_unit_test_setup_teardown(test_audit_rules_to_realtime, setup_syscheck_dir_links, teardown_rules_to_realtime),
         cmocka_unit_test_setup_teardown(test_audit_rules_to_realtime_first_search_audit_rule_fail, setup_syscheck_dir_links, teardown_rules_to_realtime),
