@@ -438,16 +438,31 @@ cap says, so `file_entry_limit` (300000) and `container_file_entry_limit` (30000
 ceilings on storage. A cap of N containers bounds the *sync* volume, not the database — and it does
 not reduce scan cost either, since withheld containers are still walked.
 
+### Fixed after review triage
+
+- **The per-container row ceiling now holds across passes.** Previously a capped
+  baseline counted only the rows synced in the current pass. Reaching the cap marked
+  the scan partial, so delete detection was skipped and the next pass stored up to
+  the limit again. The baseline now loads the container's stored paths before its
+  transaction. A stored file is always refreshed, and a new file is admitted only
+  while holdings are below `container_file_entry_limit`. Path reconcile applies the
+  same rule. A per-container cap refusal is therefore always a file that is not
+  stored yet, so delete detection stays enabled and a vanished file frees its slot.
+  Walker truncation and database or node-ceiling refusals still suppress deletes.
+  Lowering the limit evicts nothing: stored files are not reported as deleted.
+- **Post-scan promotion visits only containers with withheld rows.** It previously
+  ran a `COUNT(sync=0)` and a `SELECT` for every container in every limited index,
+  even when nothing was withheld. It now selects only containers with `sync=0` rows
+  and relies on the `SELECT`'s `LIMIT`. A container with nothing withheld re-arms
+  its saturation notice. Measured with 50 containers × 200 processes and 13 limits,
+  the time under `m_limitsMutex` per scan with nothing withheld fell from about
+  1.37 ms to 0.35 ms. When saturated it is about the same (0.54 ms before,
+  0.58 ms after).
+
 ### Remaining follow-ups after review triage
 
 - Recovery's whole-index DataClean followed by a `WHERE sync=1` resend needs a
   separate container recovery policy; the id collision fix does not redesign recovery.
-- A truncated baseline suppresses delete detection but resets its per-pass row count.
-  Unrefreshed rows can survive and accumulate beyond the per-container row ceiling;
-  the node-wide file-entry ceiling remains the backstop. Fixing this must retain
-  incomplete-scan delete safety rather than deleting and refilling blindly.
-- Measure syscollector's per-scan promotion queries and time under `m_limitsMutex`
-  before optimizing. Startup document-count initialization is not a per-scan cost.
 - A baseline-pipeline regression probe also exposed a pre-existing syscollector
   partial-scan defect: `updateChanges(..., detectDeletions=false)` still opens a
   scoped DBSync transaction. Closing it can remove unrefreshed rows without
