@@ -20,7 +20,10 @@
 #include "ebpf/include/ebpf_whodata.h"
 
 // Global variables
-syscheck_config syscheck;
+// fim_scan_mutex is initialized here: the shutdown handler can use it before fim_initialize() runs
+syscheck_config syscheck = {
+    .fim_scan_mutex = PTHREAD_MUTEX_INITIALIZER,
+};
 int sys_debug_level;
 int audit_queue_full_reported = 0;
 
@@ -116,7 +119,6 @@ void fim_initialize() {
     }
 
     w_rwlock_init(&syscheck.directories_lock, NULL);
-    w_mutex_init(&syscheck.fim_scan_mutex, NULL);
     w_mutex_init(&syscheck.fim_realtime_mutex, NULL);
 #ifndef WIN32
     w_mutex_init(&syscheck.fim_symlink_mutex, NULL)

@@ -143,7 +143,12 @@ void FIMDB::updateItem(const nlohmann::json& item, ResultCallbackData callbackDa
 
 void FIMDB::executeQuery(const nlohmann::json& item, ResultCallbackData callbackData)
 {
-    m_dbsyncHandler->selectRows(item, callbackData);
+    std::shared_lock<std::shared_timed_mutex> lock(m_handlersMutex);
+
+    if (!m_stopping)
+    {
+        m_dbsyncHandler->selectRows(item, callbackData);
+    }
 }
 
 void FIMDB::runIntegrity()

@@ -48,8 +48,21 @@ static void fim_shutdown(int sig)
     /* Close sync thread and release dbsync and rsync */
     minfo(SK_SHUTDOWN);
     is_fim_shutdown = true;
-    fim_db_teardown();
-    HandleSIG(sig);
+
+    /* The scan may still be running on another thread: don't free the database under it */
+    if (pthread_mutex_trylock(&syscheck.fim_scan_mutex) == 0) {
+        fim_db_teardown();
+    } else {
+        mdebug1("Skipping the FIM database teardown: a scan is in progress.");
+    }
+
+    /* Not HandleSIG(): exit() would run the atexit handlers and static destructors under the running threads */
+    minfo(SIGNAL_RECV, sig, strsignal(sig));
+#ifdef ENABLE_AUDIT
+    clean_rules();
+#endif
+    DeletePID(ARGV0);
+    _exit(1);
 }
 
 /* Syscheck unix main */
