@@ -2,6 +2,7 @@
 import json
 import os
 import subprocess
+from concurrent.futures import ThreadPoolExecutor
 from typing import Optional, Tuple
 
 from behave import given, when, then
@@ -288,9 +289,8 @@ def step_impl(context, policy_name: str):
     delete_policy(policy_name)
 
 
-@when("I validate a full policy with load_in_tester enabled")
-def step_impl(context):
-    full_policy = {
+def _logtest_full_policy() -> dict:
+    return {
         "policy": {
             "metadata": {"title": "test"},
             "enabled": True,
@@ -327,14 +327,35 @@ def step_impl(context):
         },
     }
 
+
+def _promote_logtest_policy(client: APIClient) -> Optional[str]:
     body = {
         "load_in_tester": True,
         "space": LOGTEST_SPACE,
-        "full_policy": full_policy,
+        "full_policy": _logtest_full_policy(),
     }
-    err, resp, _ = send_recv_json(body, api_crud.policyValidate_Request(), api_engine.GenericStatus_Response())
+    error, response = client.jsend(body, api_crud.policyValidate_Request(), api_engine.GenericStatus_Response())
+    if error is not None:
+        return error
+    parsed = ParseDict(response, api_engine.GenericStatus_Response())
+    if parsed.status != api_engine.OK:
+        return parsed.error
+    return None
+
+
+@when("I validate a full policy with load_in_tester enabled")
+def step_impl(context):
+    err = _promote_logtest_policy(api_client)
     assert err is None, f"{err}"
-    assert resp.status == api_engine.OK, f"{resp}"
+
+
+@when("I validate a full policy with load_in_tester enabled {count:d} times concurrently")
+def step_impl(context, count: int):
+    # One client per request so the requests really overlap inside the engine.
+    with ThreadPoolExecutor(max_workers=count) as pool:
+        errors = list(pool.map(lambda _: _promote_logtest_policy(APIClient(SOCKET_PATH)), range(count)))
+    failures = [e for e in errors if e is not None]
+    assert not failures, f"{len(failures)}/{count} concurrent promotes failed: {failures}"
 
 
 @when("I request logtest cleanup")
@@ -451,6 +472,24 @@ def step_impl(context, session_name: str):
     assert err is not None, "Expected session to be missing"
     expected_error = f"The '{session_name}' environment does not exist."
     assert err == expected_error, f"Unexpected error: {err}"
+
+
+@then('the "{session_name}" session should exist')
+def step_impl(context, session_name: str):
+    req = api_tester.SessionGet_Request()
+    req.name = session_name
+    err, resp, _ = send_recv(req, api_tester.SessionGet_Response())
+    assert err is None, f"{err}"
+    assert resp.session.name == session_name, f"{resp}"
+
+
+@then('exactly one "logtest_" namespace should exist')
+def step_impl(context):
+    req = api_crud.namespaceGet_Request()
+    err, resp, _ = send_recv(req, api_crud.namespaceGet_Response())
+    assert err is None, f"{err}"
+    temp = [space for space in resp.spaces if space.startswith("logtest_")]
+    assert len(temp) == 1, f"Expected one temp namespace, found: {temp}"
 
 
 @then('no "logtest_" namespaces should exist')
