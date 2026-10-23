@@ -442,11 +442,12 @@ not reduce scan cost either, since withheld containers are still walked.
 
 - **Recovery restores reported container FIM documents.** The recovery path
   clears the FIM index and rebuilds it from rows marked `sync=1`. Container
-  FIM now writes that marker after reporting, and recovery uses
-  `container_id:path` as the document id (host rows retain bare paths). Rows
-  withheld by the reporting budget remain `sync=0` and are not reintroduced
-  by recovery. A regression test exercises one clean-and-rebuild containing
-  a host file and a container file at the same path, verifying both ids.
+  FIM now writes that marker after reporting. Recovery hands container rows to a
+  handler registered by `main.c` (`fim_container_recover_row`), which re-persists
+  them through the live path: same unhashed `container_id:path` id, same document
+  shape, same admission and budget. Host rows keep the host builder and hashed id.
+  Rows withheld by the reporting budget remain `sync=0` and are not reintroduced.
+  §23.11 records why the first version of this fix had to be redone.
 - **Syscollector meets the coverage gate.** The normalizer test target compiled
   production code without coverage instrumentation, so its passing tests did not
   contribute counters. It now uses the shared coverage helper. A clean local run
@@ -483,3 +484,61 @@ not reduce scan cost either, since withheld containers are still walked.
   `syscollector.container_*_limit` options, `containers.synced_limit`, and the local
   `syscheck.container_file_entry_limit` storage ceiling. Reporting limits do not
   reduce local collection or scanning cost; zero reporting limits mean unlimited.
+
+## 23.11 End-to-end validation after review triage (2026-10-23)
+
+The branch was packaged and installed as agent 017 on the `wazuh_manager` VM (5.0 manager and
+indexer on the same host). The setup used:
+
+- eight `alpine` containers with files under `/data`;
+- `<container_security>` with docker, syscheck `/data` and `file_limit=5`, plus syscollector;
+- sync intervals of 30s, and `containers.synced_limit=3` on the manager.
+
+The environment needed scaffolding that the product does not ship yet. The indexer mappings
+lack a `container` object, so one was added to `wazuh-states-fim-files` and eleven inventory
+indices, with `enabled:false`. The agent's schema validator rejects the `container` block, so
+`libschema_validator.so` was patched to stop rejecting it. Both are the #37203 schema gap, not
+defects of this branch.
+
+| Check | Result |
+|---|---|
+| First scan withholds the containers beyond `synced_limit` | PASS |
+| A deleted file removes its stateful document | PASS |
+| `synced_limit` 3→1→5→3 retracts and restores FIM and inventory documents | PASS |
+| Inventory per-container limit (10) is applied | PASS |
+| Row ceiling from an empty `fim.db` (6 containers × 10 files): 30 stored, 30 refused; a new container and a new file in an at-limit container are refused | PASS |
+| Restart displacement: lower-id containers created at run time are admitted on restart; the displaced container's FIM and inventory documents are retracted and its rows set to `sync=0` | PASS |
+| Recovery: one container and one host document deleted from the index; recovery restores all 8587 ids unchanged, and the next checks report the checksum valid | PASS after the two fixes below |
+
+### Two defects found by the recovery check
+
+1. **Recovery dropped every container document.** After the manager reported a checksum
+   mismatch, recovery sent DataClean and re-persisted only the host rows. The cause was that it
+   ran container rows through the host path:
+   - the host orphan guard, which only knows host directories, skipped each container row as
+     "orphaned path";
+   - past the guard, the host builder emits no `container` block, and the id it used was
+     `SHA1("cid:path")`, which never matches the live, unhashed `cid:path` id.
+
+   The earlier unit test asserted the hashed id, so it held the defect in place. Fixed by
+   `0e19b68a17`: container rows are delegated to a handler that uses the live path (see §23.10).
+2. **Container documents broke the integrity checksum.** The agent hashes the rows' `checksum`
+   column. The manager hashes each document's `checksum.hash.sha1`. Container documents carried
+   the file's content SHA1 in that field. So once any container document was indexed, every
+   integrity interval mismatched and ran a full recovery, forever.
+
+   This was measured, not inferred: substituting the content hash for the container rows
+   reproduced the index checksum exactly. The code predates this branch (`684f531de0`).
+   Fixed by `8bdbd0fbde`: the document carries the row checksum, as host documents do.
+   Stale documents converge after one recovery.
+
+### Behaviour worth documenting
+
+- A stopped container keeps its admission slot while the agent runs.
+- Admission is held in memory. A restart recomputes it by lowest container id, so it can
+  displace a container admitted earlier. That container's documents are then retracted.
+- Lowering `file_limit` does not trim rows already stored.
+- The inventory limit message is logged for withheld containers too.
+- The container document id is `wazuh_<agent>_<cid>:<path>`, unhashed. OpenSearch caps `_id`
+  at 512 bytes, so a very long container path would fail to index. Hashing it would change the
+  id scheme on both the live and recovery paths, and that was left as a follow-up.
