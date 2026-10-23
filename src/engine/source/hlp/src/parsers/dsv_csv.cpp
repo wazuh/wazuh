@@ -57,6 +57,16 @@ inline Parser dsvParserFunction(std::string name,
         throw std::runtime_error(fmt::format("CSV/DSV parser needs a stop string"));
     }
 
+    for (const auto& header : headers)
+    {
+        if (hasInvalidPointerEscape(header))
+        {
+            throw std::runtime_error(fmt::format(
+                "CSV/DSV header '{}' has an invalid JSON Pointer escape ('~' must be followed by '0' or '1')",
+                header.substr(1)));
+        }
+    }
+
     const auto toStopP = syntax::parsers::toEnd(endTokens);
     // Headers come from the asset but the depth limit is enforced anyway; the closure owns the trace because a
     // failure result only keeps a view of it

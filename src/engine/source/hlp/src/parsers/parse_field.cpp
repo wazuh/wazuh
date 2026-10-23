@@ -88,6 +88,18 @@ void unescape(bool is_escaped, std::string& vs, std::string_view escape)
     }
 }
 
+bool hasInvalidPointerEscape(std::string_view key)
+{
+    for (auto pos = key.find('~'); pos != std::string_view::npos; pos = key.find('~', pos + 2))
+    {
+        if (pos + 1 >= key.size() || (key[pos + 1] != '0' && key[pos + 1] != '1'))
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
 // TODO: evaluate which is the most suitable site for this functionality
 std::string convertDotToSlash(std::string_view key)
 {

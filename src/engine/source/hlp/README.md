@@ -286,6 +286,7 @@ Used by DSV/CSV and KV parsers to split delimited fields while respecting quotin
 - `getField()` — parses a single field from input with configurable delimiter, quote, and escape characters
 - `unescape()` — removes escape characters from parsed values
 - `updateDoc()` — adds a key-value to the JSON (`setNullAsMembers` for an empty value, `setStringAsMembers` otherwise); the dots of the key nest the value in both cases (`a.b=` maps to `{"a":{"b":null}}`); rejects destination paths deeper than the nesting cap. Every token of the key is written as an object member, never as an array index: `123=v` maps to `{"123":"v"}` and `a.5=v` to `{"a":{"5":"v"}}`, and the cost does not depend on the value of a numeric key
+- `hasInvalidPointerEscape()` — true when a key has a `~` not followed by `0` or `1` (or a trailing `~`): such a key is not a valid JSON Pointer token and `updateDoc()` would throw on it. `kvmap` fails the parse on it; `dsv_csv` rejects such an output name when the parser is built
 
 ### External Libraries
 
