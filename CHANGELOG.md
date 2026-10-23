@@ -34,10 +34,12 @@ All notable changes to this project will be documented in this file.
 - Fixed `wazuh-execd` keeping every repeated offender for the life of the process, so its memory grew with each new source that triggered an active response. ([#40540](https://github.com/wazuh/wazuh/pull/40540))
 - Fixed the `azure-logs` configuration reported by the Server API leaving out the requests and containers of each source. ([#40579](https://github.com/wazuh/wazuh/pull/40579))
 - Fixed a memory leak in `wazuh-modulesd` each time the `azure-logs` configuration was requested. ([#40579](https://github.com/wazuh/wazuh/pull/40579))
+- Fixed FIM eBPF whodata missing renames, deletions and attribute changes processed before the operation completed. ([#40662](https://github.com/wazuh/wazuh/pull/40662))
 
 #### Changed
 
 - FIM eBPF whodata now drops events for unmonitored paths in the kernel. ([#40633](https://github.com/wazuh/wazuh/pull/40633))
+- FIM eBPF whodata now sends only the used part of each event, so many more events fit in the ring buffer. ([#40662](https://github.com/wazuh/wazuh/pull/40662))
 
 ## [v4.14.10]
 
