@@ -63,6 +63,24 @@ public:
     virtual base::OptError reloadTestEntry(const std::string& name) = 0;
     virtual base::OptError renameTestEntry(const std::string& from, const std::string& to) = 0;
 
+    /**
+     * @brief Atomically replace the session `to` with the session `from`.
+     *
+     * Removes `to` if it exists, renames `from` to `to` and persists the table once, all under a single lock.
+     * `to` is removed only once `from` is known to exist, so a missing `from` leaves the table untouched.
+     *
+     * @return The replaced entry, std::nullopt when `to` did not exist, or an error.
+     */
+    virtual base::RespOrError<std::optional<test::Entry>> replaceTestEntry(const std::string& from,
+                                                                           const std::string& to) = 0;
+
+    /**
+     * @brief Atomically remove a session and return it.
+     *
+     * @return The removed entry, std::nullopt when the session does not exist, or an error.
+     */
+    virtual base::RespOrError<std::optional<test::Entry>> extractTestEntry(const std::string& name) = 0;
+
     // Testing: Table
     virtual std::list<test::Entry> getTestEntries() const = 0;
 

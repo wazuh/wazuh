@@ -123,6 +123,8 @@ class IOrchestratorAPI : public IRouterAPI, public ITesterAPI {};
 | `getTestEntry(name)` / `getTestEntries()` | Query test session metadata |
 | `reloadTestEntry(name)` | Rebuild the test environment |
 | `renameTestEntry(from, to)` | Rename a test session |
+| `replaceTestEntry(from, to)` | Atomically replace session `to` with `from`; returns the replaced entry, if any |
+| `extractTestEntry(name)` | Atomically remove a test session and return it, if it existed |
 | `ingestTest(event, options)` | Process a test event (async via future) |
 | `ingestTest(event, options, callback)` | Process a test event (callback-based) |
 | `getAssets(name)` | List traceable assets in a test session |
