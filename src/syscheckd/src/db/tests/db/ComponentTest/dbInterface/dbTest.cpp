@@ -97,6 +97,16 @@ TEST_F(DBTestFixture, ContainerSyncFlagsAndCountsAreScopedByPrimaryKey)
     EXPECT_EQ(fim_db_count_synced_container_docs("a"), 1);
     EXPECT_EQ(fim_db_count_synced_container_docs("a'b"), 1);
     EXPECT_EQ(fim_db_count_synced_container_docs("missing"), 0);
+    EXPECT_EQ(fim_db_count_container_rows("a'b", nullptr), 1);
+    EXPECT_EQ(fim_db_count_container_rows("a'b", insertFileStatement["path"].get<std::string>().c_str()), 1);
+    EXPECT_EQ(fim_db_count_container_rows("a'b", "/missing'path"), 0);
+    EXPECT_EQ(fim_db_count_container_rows("", nullptr), -1);
+    cJSON* paths = fim_db_get_container_paths("a'b");
+    ASSERT_NE(paths, nullptr);
+    ASSERT_EQ(cJSON_GetArraySize(paths), 1);
+    EXPECT_STREQ(cJSON_GetArrayItem(paths, 0)->valuestring, insertFileStatement["path"].get<std::string>().c_str());
+    cJSON_Delete(paths);
+    EXPECT_EQ(fim_db_get_container_paths(nullptr), nullptr);
 }
 
 TEST_F(DBTestFixture, TestTransactionsFile)

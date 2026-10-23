@@ -2,25 +2,29 @@
 
 #include <gtest/gtest.h>
 
+#include <set>
+#include <string>
+#include <vector>
+
 /// Unlimited is the default, and must stay the default: an agent whose operator
 /// has set no container ceiling must behave exactly as it did before one
 /// existed.
 TEST(ContainerRowBudget, AnUnsetCeilingAdmitsEverything)
 {
-    EXPECT_TRUE(container_row_admitted(0, 0));
-    EXPECT_TRUE(container_row_admitted(0, 1000000));
-    EXPECT_TRUE(container_row_admitted(-1, 1000000));
+    EXPECT_TRUE(container_row_admitted(0, 0, false));
+    EXPECT_TRUE(container_row_admitted(0, 1000000, false));
+    EXPECT_TRUE(container_row_admitted(-1, 1000000, false));
 }
 
 TEST(ContainerRowBudget, RowsAreAdmittedUpToTheCeilingAndRefusedAtIt)
 {
-    EXPECT_TRUE(container_row_admitted(3, 0));
-    EXPECT_TRUE(container_row_admitted(3, 2));
+    EXPECT_TRUE(container_row_admitted(3, 0, false));
+    EXPECT_TRUE(container_row_admitted(3, 2, false));
 
     // AT the ceiling, not one past it. An off-by-one here stores exactly one row
     // more than the operator asked for, per container, on every agent.
-    EXPECT_FALSE(container_row_admitted(3, 3));
-    EXPECT_FALSE(container_row_admitted(3, 4));
+    EXPECT_FALSE(container_row_admitted(3, 3, false));
+    EXPECT_FALSE(container_row_admitted(3, 4, false));
 }
 
 /// A container fills its own ceiling and stops; the count is its own, so a
@@ -37,7 +41,7 @@ TEST(ContainerRowBudget, EachContainerFillsItsOwnCeiling)
     // assertion to read. Found by mutating this very rule.
     for (size_t i = 0; i < offered; ++i)
     {
-        if (container_row_admitted(limit, busy))
+        if (container_row_admitted(limit, busy, false))
         {
             ++busy;
         }
@@ -45,8 +49,8 @@ TEST(ContainerRowBudget, EachContainerFillsItsOwnCeiling)
 
     EXPECT_EQ(busy, static_cast<size_t>(limit))
             << "offering 100 rows against a ceiling of 4 must store exactly 4";
-    EXPECT_FALSE(container_row_admitted(limit, busy));
-    EXPECT_TRUE(container_row_admitted(limit, 0)) << "another container is unaffected";
+    EXPECT_FALSE(container_row_admitted(limit, busy, false));
+    EXPECT_TRUE(container_row_admitted(limit, 0, false)) << "another container is unaffected";
 }
 
 /// D11 rule 4. The walker's own verdict is not the only way a row set becomes
@@ -109,7 +113,7 @@ TEST(ContainerRowBudget, StoredPlusRefusedAccountsForEveryRowOffered)
 
         for (size_t i = 0; i < c.offered; ++i)
         {
-            if (container_row_admitted(c.limit, stored))
+            if (container_row_admitted(c.limit, stored, false))
             {
                 ++stored;
             }
@@ -127,4 +131,61 @@ TEST(ContainerRowBudget, StoredPlusRefusedAccountsForEveryRowOffered)
         EXPECT_LE(stored, c.offered);
         EXPECT_TRUE(c.limit <= 0 || stored <= static_cast<size_t>(c.limit));
     }
+}
+
+/// A refresh never grows the container, so the ceiling never refuses one --
+/// not at the limit, and not above it after the limit was lowered.
+TEST(ContainerRowBudget, AStoredRowIsAlwaysRefreshed)
+{
+    EXPECT_TRUE(container_row_admitted(3, 3, true));
+    EXPECT_TRUE(container_row_admitted(3, 10, true));
+    EXPECT_FALSE(container_row_admitted(3, 3, false));
+}
+
+/// The review's scenario, across passes: with limit L, a new file sorted before
+/// the cut used to leave the container holding L+1 rows, then more each pass,
+/// because a capped pass kept its unrefreshed rows and the next counted from
+/// zero. Holdings must stay within L while files come and go, and a vanished
+/// file must free its slot.
+TEST(ContainerRowBudget, HoldingsNeverExceedTheCeilingAcrossPasses)
+{
+    constexpr int limit = 3;
+    std::set<std::string> stored;
+    std::vector<std::string> files {"f2", "f3", "f4", "f5"};
+
+    const auto pass = [&]()
+    {
+        std::set<std::string> refreshed;
+        size_t held = stored.size();
+        for (const auto& file : files)
+        {
+            const bool known = stored.count(file) != 0;
+            if (container_row_admitted(limit, held, known))
+            {
+                refreshed.insert(file);
+                held += known ? 0 : 1;
+                EXPECT_LE(held, static_cast<size_t>(limit));
+            }
+        }
+        // Cap refusals do not make the scan partial, so unrefreshed rows age out.
+        EXPECT_FALSE(container_scan_is_partial(false, 0));
+        stored = refreshed;
+    };
+
+    pass();
+    EXPECT_EQ(stored, (std::set<std::string> {"f2", "f3", "f4"}));
+
+    for (const auto& added : {"f0", "f1", "e9"})
+    {
+        files.insert(files.begin(), added);
+        pass();
+        EXPECT_EQ(stored.size(), static_cast<size_t>(limit)) << "after adding " << added;
+    }
+    EXPECT_EQ(stored, (std::set<std::string> {"f2", "f3", "f4"})) << "stored files keep their slots";
+
+    files.erase(files.begin() + 3); // f2 is deleted
+    pass();
+    EXPECT_EQ(stored, (std::set<std::string> {"f3", "f4"})) << "a vanished file ages out first";
+    pass();
+    EXPECT_EQ(stored, (std::set<std::string> {"e9", "f3", "f4"})) << "and its slot goes to a new file";
 }

@@ -15,6 +15,7 @@
 #include <vector>
 
 extern "C" void container_reporting_test_host(int limit);
+extern "C" void container_reporting_test_row_limit(int limit);
 
 namespace
 {
@@ -257,4 +258,38 @@ TEST_F(ContainerReportingTest, AContainerDiscoveredDuringTheWalkIsNotSwept)
     files["c"] = {"/etc/one"};
     fim_run_container_baseline();
     EXPECT_EQ(syncFlag("c", "/etc/one"), 0);
+}
+
+TEST_F(ContainerReportingTest, RowCeilingHoldsAcrossCappedPassesAndFreesVanishedSlots)
+{
+    container_reporting_test_host(0);
+    container_reporting_test_row_limit(2);
+    files["a"] = {"/etc/b", "/etc/c", "/etc/d"};
+    fim_run_container_baseline();
+    EXPECT_EQ(fim_db_count_container_rows("a", nullptr), 2);
+    EXPECT_EQ(fim_db_count_container_rows("a", "/etc/d"), 0);
+
+    // A new file sorted before the cut used to displace nothing and add a row.
+    files["a"].insert(files["a"].begin(), "/etc/a");
+    persisted.clear();
+    listed = false;
+    fim_run_container_baseline();
+    EXPECT_EQ(fim_db_count_container_rows("a", nullptr), 2);
+    EXPECT_EQ(fim_db_count_container_rows("a", "/etc/a"), 0);
+    EXPECT_TRUE(persisted.empty()) << "refreshing stored rows reports nothing";
+
+    // The cap bit, yet delete detection still ran: the vanished file is retracted.
+    files["a"] = {"/etc/a", "/etc/c", "/etc/d"};
+    listed = false;
+    fim_run_container_baseline();
+    ASSERT_EQ(persisted.size(), 1u);
+    EXPECT_EQ(persisted[0], (std::pair<std::string, int> {"a:/etc/b", OPERATION_DELETE}));
+    EXPECT_EQ(fim_db_count_container_rows("a", nullptr), 1);
+
+    persisted.clear();
+    listed = false;
+    fim_run_container_baseline();
+    ASSERT_EQ(persisted.size(), 1u);
+    EXPECT_EQ(persisted[0], (std::pair<std::string, int> {"a:/etc/a", OPERATION_CREATE}));
+    EXPECT_EQ(fim_db_count_container_rows("a", nullptr), 2);
 }

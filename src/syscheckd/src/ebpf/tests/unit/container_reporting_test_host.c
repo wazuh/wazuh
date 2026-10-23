@@ -41,3 +41,8 @@ void container_reporting_test_host(int limit)
     api.validate_and_persist = persist;
     fim_container_baseline_set_host_api(&api);
 }
+
+void container_reporting_test_row_limit(int limit)
+{
+    config.container_file_entry_limit = limit;
+}
