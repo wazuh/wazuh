@@ -92,11 +92,15 @@ def test_start_storage(
         account_key=key,
         container=container_name,
         storage_time_offset=offset,
+        prefix='prefix/',
+        blobs='.json',
     )
     mock_create.return_value = MagicMock(min_processed_date=PRESENT_DATE, max_processed_date=PRESENT_DATE)
     mock_auth.return_value = (name, key)
+    listed_container = MagicMock()
+    listed_container.name = 'listed_container'
     m = MagicMock()
-    m.list_containers.return_value = [MagicMock(name=container_name)]
+    m.list_containers.return_value = [listed_container]
     mock_blob.return_value = m
     start_storage(args)
 
@@ -105,14 +109,17 @@ def test_start_storage(
     else:
         mock_auth.assert_not_called()
 
-    md5_hash = md5(name.encode()).hexdigest()
+    container = listed_container.name if container_name == '*' else container_name
+    md5_hash = orm.create_pk(account=name, container=container, prefix='prefix/', blobs='.json')
     mock_blob.assert_called_with(
         account_url=f'https://{name}.blob.core.windows.net/',
         credential={'account_name': name, 'account_key': key}
     )
     mock_get_row.assert_called_with(orm.Storage, md5=md5_hash)
-    mock_create.assert_called_with(table=orm.Storage, query=name, md5_hash=md5_hash, offset=offset)
+    mock_create.assert_called_with(table=orm.Storage, query=container, md5_hash=md5_hash, offset=offset)
     mock_get_blobs.assert_called_once()
+    assert mock_get_blobs.call_args.kwargs['md5_hash'] == md5_hash
+    assert mock_get_blobs.call_args.kwargs['account_md5_hash'] == md5(name.encode()).hexdigest()
 
 
 @pytest.mark.parametrize(
@@ -333,6 +340,7 @@ def test_get_blobs(
         container_name=container_name,
         service_client=service_client,
         md5_hash=md5_hash,
+        account_md5_hash=md5_hash,
         min_datetime=parse(min_date),
         max_datetime=parse(max_date),
         desired_datetime=parse(desired_date),
@@ -399,6 +407,7 @@ def test_that_empty_blobs_are_omitted(mock_logging):
         container_name=container_name,
         service_client=service_client,
         md5_hash=md5_hash,
+        account_md5_hash=md5_hash,
         min_datetime=parse(PRESENT_DATE),
         max_datetime=parse(FUTURE_DATE),
         desired_datetime=parse(FUTURE_DATE),
@@ -450,6 +459,7 @@ def test_get_blobs_only_with_prefix(mock_send, mock_update):
         container_name=container_name,
         service_client=service_client,
         md5_hash=md5_hash,
+        account_md5_hash=md5_hash,
         min_datetime=parse(PAST_DATE),
         max_datetime=parse(PRESENT_DATE),
         desired_datetime=parse(FUTURE_DATE),
@@ -480,6 +490,7 @@ def test_get_blobs_list_blobs_ko(mock_logging):
             container_name=None,
             service_client=service_client,
             md5_hash=None,
+            account_md5_hash=None,
             min_datetime=None,
             max_datetime=None,
             desired_datetime=None,
@@ -521,6 +532,7 @@ def test_get_blobs_blob_data_ko(mock_update, mock_logging, exception):
         container_name=None,
         service_client=service_client,
         md5_hash=None,
+        account_md5_hash=None,
         min_datetime=None,
         max_datetime=None,
         desired_datetime=None,
@@ -560,6 +572,7 @@ def test_get_blobs_json_ko(mock_update, mock_loads, mock_logging, exception):
         container_name=None,
         service_client=service_client,
         md5_hash=None,
+        account_md5_hash=None,
         min_datetime=None,
         max_datetime=None,
         desired_datetime=None,
@@ -674,6 +687,8 @@ class FakeContainer:
     def list_blobs(self, name_starts_with=None):
         listed = []
         for name, blob in self.blobs.items():
+            if name_starts_with and not name.startswith(name_starts_with):
+                continue
             item = create_mocked_blob(name, last_modified=blob['last_modified'], content_length=len(blob['data']))
             item.blob_type = blob['type']
             item.creation_time = blob['creation_time']
@@ -705,18 +720,19 @@ def audit_records(*event_ids: str) -> str:
 
 
 def run_storage(container: FakeContainer, json_inline: bool = True, json_file: bool = False,
-                reparse: bool = False) -> list:
+                reparse: bool = False, container_name: str = 'insights-logs-auditlogs', prefix: str = None,
+                blobs: str = '.json') -> list:
     """Run the Storage integration once against the given container and return the ids of the events sent."""
     args = MagicMock(
         storage_auth_path='auth_path',
-        container='insights-logs-auditlogs',
+        container=container_name,
         storage_time_offset='24h',
-        prefix=None,
+        prefix=prefix,
         storage_tag='tag',
         reparse=reparse,
         json_file=json_file,
         json_inline=json_inline,
-        blobs='.json',
+        blobs=blobs,
     )
     service_client = MagicMock(name='service_client_mock')
     service_client.get_container_client.return_value = container
@@ -828,3 +844,92 @@ def test_append_blob_json_file_is_read_whole(in_memory_db):
 
     assert container.downloads == [None, None]
 
+
+@pytest.mark.parametrize('blob_type', [BlobType.APPENDBLOB, BlobType.BLOCKBLOB])
+def test_containers_of_the_same_account_keep_their_own_bookmark(in_memory_db, blob_type):
+    """Test the blobs of a container are not skipped because another container of the same storage account sent
+    newer ones first."""
+    sign_in_logs, audit_logs = FakeContainer(), FakeContainer()
+    sign_in_logs.write(HOURLY_BLOB, audit_records('S1'), blob_type=blob_type)
+    audit_logs.clock = sign_in_logs.clock
+    audit_logs.write(HOURLY_BLOB, audit_records('A1'), blob_type=blob_type)
+
+    assert run_storage(audit_logs, container_name='insights-logs-auditlogs') == ['A1']
+    assert run_storage(sign_in_logs, container_name='insights-logs-signinlogs') == ['S1']
+
+
+@pytest.mark.parametrize('first, second', [
+    ({'prefix': 'access/', 'blobs': '.json'}, {'prefix': 'firewall/', 'blobs': '.json'}),
+    ({'prefix': None, 'blobs': '.json'}, {'prefix': None, 'blobs': '.log'}),
+], ids=['path', 'blobs'])
+def test_blocks_of_a_container_with_other_filters_keep_their_own_bookmark(in_memory_db, first, second):
+    """Test the blobs of a container are not skipped because another block of the same container, with another path
+    or blob extension, sent newer ones first."""
+    container = FakeContainer()
+    container.write(f"{second['prefix'] or ''}PT1H{second['blobs']}", audit_records('S1'))
+    container.write(f"{first['prefix'] or ''}PT1H{first['blobs']}", audit_records('F1'))
+
+    assert run_storage(container, **first) == ['F1']
+    assert run_storage(container, **second) == ['S1']
+
+
+def test_append_blob_offsets_kept_after_upgrading(in_memory_db):
+    """Test append blobs processed by previous versions, which stored their offsets under the storage account, only
+    send what was appended since."""
+    container = FakeContainer()
+    container.write(HOURLY_BLOB, audit_records('E1'))
+    blob = container.blobs[HOURLY_BLOB]
+    orm.set_blob_offset(md5=md5(b'account').hexdigest(), container='insights-logs-auditlogs', blob=HOURLY_BLOB,
+                        creation_time=str(blob['creation_time']), processed_bytes=len(blob['data']))
+    container.write(HOURLY_BLOB, audit_records('E2'))
+
+    assert run_storage(container) == ['E2']
+
+
+def test_json_file_records_that_are_not_objects_are_skipped(in_memory_db):
+    """Test the records of a JSON file that are not objects are skipped with a single warning, and the rest of the
+    blob is sent once."""
+    container = FakeContainer()
+    records = [{'properties': {'id': 'E1'}}, 'E2', 3, None, ['E4'], {'properties': {'id': 'E5'}}]
+    container.write(HOURLY_BLOB, json.dumps({'records': records}))
+    container.write(HOURLY_BLOB.replace('/h=08/', '/h=09/'), json.dumps({'records': [{'properties': {'id': 'E6'}}]}))
+
+    with patch('azure_services.storage.logging.warning') as mock_warning:
+        assert run_storage(container, json_inline=False, json_file=True) == ['E1', 'E5', 'E6']
+    mock_warning.assert_called_once_with(
+        f'Storage: Skipped records of the blob "{HOURLY_BLOB}" that are not JSON objects: 4.'
+    )
+    assert run_storage(container, json_inline=False, json_file=True) == []
+
+
+@pytest.mark.parametrize('records', [{'properties': {'id': 'E1'}}, 'E1', 1, None])
+def test_json_file_records_that_are_not_a_list_skip_the_blob(in_memory_db, records):
+    """Test a JSON file whose records are not a list is skipped without stopping the blobs that follow."""
+    container = FakeContainer()
+    container.write(HOURLY_BLOB, json.dumps({'records': records}))
+    container.write(HOURLY_BLOB.replace('/h=08/', '/h=09/'), json.dumps({'records': [{'properties': {'id': 'E2'}}]}))
+
+    assert run_storage(container, json_inline=False, json_file=True) == ['E2']
+
+
+def test_json_file_records_that_are_not_a_list_do_not_move_the_bookmark(in_memory_db):
+    """Test a JSON file whose records are not a list is not marked as processed."""
+    container = FakeContainer()
+    container.write(HOURLY_BLOB, json.dumps({'records': 'E1'}))
+    run_storage(container, json_inline=False, json_file=True)
+    run_storage(container, json_inline=False, json_file=True)
+
+    assert container.downloads == [None, None]
+
+
+@pytest.mark.parametrize('contents', [
+    '{"records": ' + '[' * 5000 + ']' * 5000 + '}',
+    '{"records": [{"properties": {"id": "E1"}, "value": ' + '9' * 5000 + '}]}',
+], ids=['nested_too_deeply', 'integer_too_long'])
+def test_json_file_that_cannot_be_parsed_skips_the_blob(in_memory_db, contents):
+    """Test a JSON file that cannot be parsed is skipped without stopping the blobs that follow."""
+    container = FakeContainer()
+    container.write(HOURLY_BLOB, contents)
+    container.write(HOURLY_BLOB.replace('/h=08/', '/h=09/'), json.dumps({'records': [{'properties': {'id': 'E2'}}]}))
+
+    assert run_storage(container, json_inline=False, json_file=True) == ['E2']
