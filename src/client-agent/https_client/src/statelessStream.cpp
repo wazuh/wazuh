@@ -11,16 +11,12 @@
 #include "statelessStream.hpp"
 
 #include "external/nlohmann/json.hpp"
+#include "httpsHeaderLine.hpp"
 
 #include <cstddef>
 
 namespace
 {
-    /// Mirrors remoted's kMaxHeaderLineJsonSize (statelessEndpoint.cpp): a larger
-    /// H-line JSON gets the whole batch rejected as permanent, so its events
-    /// would be dropped.
-    constexpr std::size_t HEADER_LINE_JSON_MAX_BYTES = 8 * 1024;
-
     /// Builds the H metadata line that opens every /stateless body (#37732).
     ///
     /// Always carries wazuh.agent.id -- statelessEndpoint.cpp's
@@ -87,14 +83,14 @@ namespace
 
         // A long group list can push the line past remoted's cap. Groups go first,
         // then everything but the id: events without them still beat no events.
-        if (json.size() > HEADER_LINE_JSON_MAX_BYTES)
+        if (json.size() > HTTPS_HEADER_LINE_JSON_MAX_BYTES)
         {
             header["wazuh"]["agent"].erase("groups");
             json = header.dump();
             trim = HeaderLineTrim::Groups;
         }
 
-        if (json.size() > HEADER_LINE_JSON_MAX_BYTES)
+        if (json.size() > HTTPS_HEADER_LINE_JSON_MAX_BYTES)
         {
             header["wazuh"]["agent"] = {{"id", agentId}};
             json = header.dump();
@@ -416,7 +412,7 @@ void StatelessStream::refreshHeaderLineLocked()
         {
             LOGFN_DEBUG1(m_logFn,
                          "The /stateless H line would exceed %zu bytes; sent %llu time(s) %s.",
-                         HEADER_LINE_JSON_MAX_BYTES,
+                         HTTPS_HEADER_LINE_JSON_MAX_BYTES,
                          static_cast<unsigned long long>(decision.total),
                          m_headerTrim == HeaderLineTrim::Groups ? "without the agent groups"
                          : "with only the agent id");
