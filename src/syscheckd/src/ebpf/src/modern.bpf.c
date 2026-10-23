@@ -38,6 +38,9 @@
 /*
 * Used to hold all file-related event information
 * when writing to the ring buffer.
+*
+* filename, cwd and parent_cwd are stored back to back in paths, each one
+* NUL-terminated, and only the used part of paths is sent.
 */
 struct file_event {
     __u32 op;
@@ -51,10 +54,8 @@ struct file_event {
     __u64 inode;
     __u64 dev;
     char comm[TASK_COMM_LEN];
-    char filename[MAX_PATH_LEN];
-    char cwd[MAX_PATH_LEN];
-    char parent_cwd[MAX_PATH_LEN];
     char parent_name[TASK_COMM_LEN];
+    char paths[3 * MAX_PATH_LEN];
 };
 
 /* Sent by the exit probes when a held operation ends. */
@@ -80,6 +81,16 @@ struct {
     __uint(type, BPF_MAP_TYPE_RINGBUF);
     __uint(max_entries, 1 << 23);
 } rb SEC(".maps");
+
+/*
+* Per-CPU array used to build each event before it is copied to the ring buffer.
+*/
+struct {
+    __uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
+    __type(key, u32);
+    __type(value, struct file_event);
+    __uint(max_entries, 1);
+} event_heap SEC(".maps");
 
 /*
 * Per-CPU array used for storing paths during path reconstruction.
@@ -367,9 +378,10 @@ statfunc void get_inode_dev(struct inode *inode_ptr, __u64 *inode, __u64 *dev) {
 
 /*
 * Retrieves the current working directory path for the given task_struct.
-* Stores the resulting path in 'dest' on success.
+* Stores the resulting path in 'dest' on success and returns its length,
+* including the NUL.
 */
-statfunc int get_task_cwd(char *dest, int size, struct task_struct *task) {
+statfunc long get_task_cwd(char *dest, int size, struct task_struct *task) {
     if (!task)
         return -1;
 
@@ -386,8 +398,24 @@ statfunc int get_task_cwd(char *dest, int size, struct task_struct *task) {
     if (get_path_str_from_path(&cwd_path, &pwd, buf) < 0)
         return -1;
 
-    bpf_probe_read_kernel_str(dest, size, (const char *)cwd_path);
-    return 0;
+    return bpf_probe_read_kernel_str(dest, size, (const char *)cwd_path);
+}
+
+/*
+* Appends the cwd of task to evt->paths at off, or an empty string if it
+* cannot be read. Returns the offset after it.
+*/
+statfunc __u32 append_task_cwd(struct file_event *evt, __u32 off, struct task_struct *task)
+{
+    if (off > 2 * MAX_PATH_LEN)
+        return off;
+
+    long len = task ? get_task_cwd(&evt->paths[off], MAX_PATH_LEN, task) : -1;
+    if (len <= 0) {
+        evt->paths[off] = '\0';
+        len = 1;
+    }
+    return off + len;
 }
 
 /* Returns true if filename starts with a monitored directory prefix. */
@@ -406,8 +434,8 @@ statfunc bool is_monitored(const char *filename)
 }
 
 /*
-* Reserves space in the ring buffer for a file_event struct,
-* populates it with file info, and submits it to user space.
+* Builds a file_event in event_heap with file info and copies its used
+* part to the ring buffer.
 */
 statfunc void submit_event(const char *filename,
                            __u64 ino,
@@ -417,7 +445,7 @@ statfunc void submit_event(const char *filename,
     if (!is_monitored(filename))
         return;
 
-    struct file_event *evt = bpf_ringbuf_reserve(&rb, sizeof(*evt), 0);
+    struct file_event *evt = bpf_map_lookup_elem(&event_heap, &(u32){0});
     if (!evt)
         return;
 
@@ -452,7 +480,10 @@ statfunc void submit_event(const char *filename,
     bpf_probe_read_kernel_str(evt->comm, TASK_COMM_LEN, (const char *)BPF_CORE_READ(current_task, comm));
 
     /* Copy the path/filename */
-    bpf_probe_read_kernel_str(evt->filename, MAX_PATH_LEN, filename);
+    long len = bpf_probe_read_kernel_str(evt->paths, MAX_PATH_LEN, filename);
+    if (len <= 0)
+        return;
+    __u32 off = len;
 
     /* Inode and device */
     evt->inode = ino;
@@ -464,12 +495,10 @@ statfunc void submit_event(const char *filename,
      * section, leaving the BPF object internally corrupted and causing a
      * crash on subsequent load.  The effect is identical: both approaches
      * write a single null byte to the first element of the destination. */
-    evt->cwd[0]         = '\0';
-    evt->parent_cwd[0]  = '\0';
     evt->parent_name[0] = '\0';
 
     /* Get process cwd */
-    get_task_cwd(evt->cwd, MAX_PATH_LEN, current_task);
+    off = append_task_cwd(evt, off, current_task);
 
     /* Parent process info */
     evt->ppid = 0;
@@ -479,11 +508,12 @@ statfunc void submit_event(const char *filename,
 
         bpf_probe_read_kernel_str(evt->parent_name, TASK_COMM_LEN,
                                   (const char *)BPF_CORE_READ(parent_task, comm));
-
-        get_task_cwd(evt->parent_cwd, MAX_PATH_LEN, parent_task);
     }
+    off = append_task_cwd(evt, off, parent_task);
 
-    bpf_ringbuf_submit(evt, 0);
+    __u64 size = offsetof(struct file_event, paths) + off;
+    if (size > sizeof(*evt) || bpf_ringbuf_output(&rb, evt, size, 0))
+        return;
 
     if (op != OP_OPEN)
         bpf_map_update_elem(&inflight_map, &id, &op, BPF_ANY);

@@ -294,6 +294,7 @@ static void complete_pending(const op_done* done)
 int handle_event(void* ctx, void* data, size_t data_sz)
 {
     (void)ctx;
+    (void)data_sz;
 
     auto e = static_cast<file_event*>(data);
     auto logFn = fimebpf::instance().m_loggingFunction;
@@ -305,19 +306,20 @@ int handle_event(void* ctx, void* data, size_t data_sz)
 
     if (e->op == OP_DONE)
     {
-        if (data_sz >= sizeof(op_done))
-        {
-            complete_pending(static_cast<op_done*>(data));
-        }
+        complete_pending(static_cast<op_done*>(data));
         return 0;
     }
 
-    if (confFn(e->filename))
+    const char* filename = e->paths;
+    const char* cwd = filename + strlen(filename) + 1;
+    const char* parent_cwd = cwd + strlen(cwd) + 1;
+
+    if (confFn(filename))
     {
         auto event =
-            std::make_unique<dynamic_file_event>(dynamic_file_event {.filename = std::string(e->filename),
-                                                                     .cwd = std::string(e->cwd),
-                                                                     .parent_cwd = std::string(e->parent_cwd),
+            std::make_unique<dynamic_file_event>(dynamic_file_event {.filename = std::string(filename),
+                                                                     .cwd = std::string(cwd),
+                                                                     .parent_cwd = std::string(parent_cwd),
                                                                      .comm = std::string(e->comm),
                                                                      .parent_comm = std::string(e->parent_comm),
                                                                      .pid = e->pid,
@@ -348,7 +350,7 @@ int healthcheck_event(void* ctx, void* data, size_t data_sz)
     (void)data_sz;
     auto e = static_cast<file_event*>(data);
 
-    if (e->op != OP_DONE && strstr(e->filename, EBPF_HC_FILE))
+    if (e->op != OP_DONE && strstr(e->paths, EBPF_HC_FILE))
     {
         event_received = true;
     }
