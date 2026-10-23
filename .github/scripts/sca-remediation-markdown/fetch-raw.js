@@ -1,13 +1,17 @@
 // Fetches a file from a GitHub repo at a given ref via raw.githubusercontent.com. Fails closed:
-// throws on a network error or a non-200 response, never returns a partial or stale result.
+// throws on a network error, a non-200 response, or a connection that just hangs (no response,
+// not even a clean refusal) past REQUEST_TIMEOUT_MS — never returns a partial or stale result, and
+// never leaves the CI job to time out an hour later instead of failing fast with a clear reason.
 'use strict';
 
 const https = require('https');
 
+const REQUEST_TIMEOUT_MS = 10_000;
+
 function fetchRaw(repo, ref, path) {
   const url = `https://raw.githubusercontent.com/${repo}/${ref}/${path}`;
   return new Promise((resolve, reject) => {
-    https
+    const req = https
       .get(url, { headers: { 'User-Agent': 'wazuh-sca-remediation-validator' } }, res => {
         if (res.statusCode !== 200) {
           res.resume();
@@ -19,6 +23,9 @@ function fetchRaw(repo, ref, path) {
         res.on('end', () => resolve(body));
       })
       .on('error', err => reject(new Error(`GET ${url} -> ${err.message}`)));
+    req.setTimeout(REQUEST_TIMEOUT_MS, () => {
+      req.destroy(new Error(`GET ${url} -> timed out after ${REQUEST_TIMEOUT_MS}ms`));
+    });
   });
 }
 
