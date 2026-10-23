@@ -447,6 +447,12 @@ not reduce scan cost either, since withheld containers are still walked.
   withheld by the reporting budget remain `sync=0` and are not reintroduced
   by recovery. A regression test exercises one clean-and-rebuild containing
   a host file and a container file at the same path, verifying both ids.
+- **Syscollector meets the coverage gate.** The normalizer test target compiled
+  production code without coverage instrumentation, so its passing tests did not
+  contribute counters. It now uses the shared coverage helper. A clean local run
+  of both syscollector-labelled suites, measured with the CI source filters,
+  reaches 90.5% line coverage (2570/2840) and 98.1% function coverage (158/161).
+  The 90% thresholds and coverage exclusions are unchanged.
 - **The per-container row ceiling now holds across passes.** Previously a capped
   baseline counted only the rows synced in the current pass. Reaching the cap marked
   the scan partial, so delete detection was skipped and the next pass stored up to
