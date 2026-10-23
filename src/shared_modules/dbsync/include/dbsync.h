@@ -110,6 +110,19 @@ EXPORTED TXN_HANDLE dbsync_create_txn(const DBSYNC_HANDLE handle,
 EXPORTED int dbsync_close_txn(const TXN_HANDLE txn);
 
 /**
+ * @brief Closes the \p txn database transaction keeping the rows it did not synchronize.
+ *
+ * Unlike \ref dbsync_close_txn, the rows the transaction never reached are not
+ * deleted. Meant for a transaction cut short before it saw every row.
+ *
+ * @param txn     Database transaction to be closed.
+ *
+ * @return 0 if succeeded,
+ *         specific error code (OS dependent) otherwise.
+ */
+EXPORTED int dbsync_close_txn_keep_rows(const TXN_HANDLE txn);
+
+/**
  * @brief Synchronizes the \p js_input data using the \p txn current
  *  database transaction.
  *
