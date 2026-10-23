@@ -73,6 +73,8 @@ private:
     };
 
     static constexpr std::chrono::seconds INDEXER_RETRY_INTERVAL {30};
+    /// Minimum spacing of the download progress lines
+    static constexpr std::chrono::seconds PROGRESS_LOG_INTERVAL {60};
 
     /// Consecutive failures tolerated below WARNING before escalating (indexer settling after restart).
     static constexpr std::size_t INDEXER_WARN_AFTER_ATTEMPTS {3};
@@ -908,6 +910,8 @@ private:
         std::optional<nlohmann::json> searchAfter = std::nullopt;
         size_t totalProcessed = 0;
         bool stopRequested = false;
+        const auto t0 = std::chrono::steady_clock::now();
+        auto lastProgressLog = t0;
 
         while (true)
         {
@@ -934,6 +938,15 @@ private:
 
             const bool flushed = processPage(context, hitArray, currentCursor);
             totalProcessed += hitArray.size();
+            if (const auto now = std::chrono::steady_clock::now(); now - lastProgressLog >= PROGRESS_LOG_INTERVAL)
+            {
+                lastProgressLog = now;
+                logInfo(WM_CONTENTUPDATER,
+                        "IndexerDownloader: Download in progress — %zu documents so far, cursor '%s', %lds elapsed",
+                        totalProcessed,
+                        currentCursor.c_str(),
+                        static_cast<long>(std::chrono::duration_cast<std::chrono::seconds>(now - t0).count()));
+            }
 
             if (flushed)
             {
@@ -1052,6 +1065,7 @@ private:
                 size_t sliceProcessed = 0;
                 std::string sliceCursor = startCursor;
                 auto t0 = std::chrono::steady_clock::now();
+                auto lastProgressLog = t0;
 
                 while (true)
                 {
@@ -1079,6 +1093,20 @@ private:
 
                     processPage(context, hitArray, sliceCursor);
                     sliceProcessed += hitArray.size();
+                    if (const auto now = std::chrono::steady_clock::now();
+                        now - lastProgressLog >= PROGRESS_LOG_INTERVAL)
+                    {
+                        lastProgressLog = now;
+                        logInfo(WM_CONTENTUPDATER,
+                                "IndexerDownloader: Slice %zu (%zu/%zu) in progress — %zu documents so far, cursor "
+                                "'%s', %lds elapsed",
+                                sliceId,
+                                sliceId + 1,
+                                numSlices,
+                                sliceProcessed,
+                                sliceCursor.c_str(),
+                                static_cast<long>(std::chrono::duration_cast<std::chrono::seconds>(now - t0).count()));
+                    }
 
                     if (hitArray.size() < pageSize)
                     {
