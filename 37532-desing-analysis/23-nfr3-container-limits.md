@@ -440,6 +440,13 @@ not reduce scan cost either, since withheld containers are still walked.
 
 ### Fixed after review triage
 
+- **Recovery restores reported container FIM documents.** The recovery path
+  clears the FIM index and rebuilds it from rows marked `sync=1`. Container
+  FIM now writes that marker after reporting, and recovery uses
+  `container_id:path` as the document id (host rows retain bare paths). Rows
+  withheld by the reporting budget remain `sync=0` and are not reintroduced
+  by recovery. A regression test exercises one clean-and-rebuild containing
+  a host file and a container file at the same path, verifying both ids.
 - **The per-container row ceiling now holds across passes.** Previously a capped
   baseline counted only the rows synced in the current pass. Reaching the cap marked
   the scan partial, so delete detection was skipped and the next pass stored up to
@@ -461,8 +468,6 @@ not reduce scan cost either, since withheld containers are still walked.
 
 ### Remaining follow-ups after review triage
 
-- Recovery's whole-index DataClean followed by a `WHERE sync=1` resend needs a
-  separate container recovery policy; the id collision fix does not redesign recovery.
 - A baseline-pipeline regression probe also exposed a pre-existing syscollector
   partial-scan defect: `updateChanges(..., detectDeletions=false)` still opens a
   scoped DBSync transaction. Closing it can remove unrefreshed rows without
