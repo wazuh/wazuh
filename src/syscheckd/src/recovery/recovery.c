@@ -103,6 +103,12 @@ cJSON* buildRegistryValueStatefulEvent(const char* path, char* value, cJSON* val
 }
 #endif // WIN32
 
+static fim_recovery_container_row_handler_t container_row_handler = NULL;
+
+void fim_recovery_set_container_row_handler(fim_recovery_container_row_handler_t handler) {
+    container_row_handler = handler;
+}
+
 bool fim_recovery_persist_table_and_resync(char* table_name, AgentSyncProtocolHandle* handle, const OSList *directories_list,
                                            const char* retry_note){
     int increase_result = fim_db_increase_each_entry_version(table_name);
@@ -183,14 +189,22 @@ bool fim_recovery_persist_table_and_resync(char* table_name, AgentSyncProtocolHa
         char* value = NULL;
 #endif
         if (strcmp(table_name, FIMDB_FILE_TABLE_NAME) == 0) {
+            // A container row is not a host row with a prefix. The host directory list does
+            // not cover it, so the orphan guard below dropped every one of them, and the host
+            // builder lacks its container block and its unhashed container_id:path id. Hand it
+            // to the layer that sent it in the first place.
             const char* container_id = cJSON_GetStringValue(cJSON_GetObjectItem(item_copy, "container_id"));
             if (container_id && *container_id) {
-                size_t id_len = strlen(container_id) + strlen(path) + 2;
-                os_calloc(id_len, sizeof(char), id_str);
-                snprintf(id_str, id_len, "%s:%s", container_id, path);
-            } else {
-                id_str = strdup(path);
+                if (!container_row_handler) {
+                    mdebug2("Skipping recovery of container file (container monitoring is off): %s:%s",
+                            container_id, path);
+                } else if (container_row_handler(item_copy) < 0) {
+                    merror("Failed to recover container file %s:%s", container_id, path);
+                }
+                cJSON_Delete(item_copy);
+                continue;
             }
+            id_str = strdup(path);
         }
 #ifdef WIN32
         else if (strcmp(table_name, FIMDB_REGISTRY_KEY_TABLENAME) == 0) {

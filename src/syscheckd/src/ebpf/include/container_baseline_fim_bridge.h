@@ -170,6 +170,22 @@ int fim_persist_baseline_row(const char* id,
                              const char* json,
                              uint64_t version);
 
+/**
+ * @brief Re-send one reported container row during a FIM recovery resync.
+ *
+ * Recovery clears the manager's FIM index and re-sends every sync=1 row. A
+ * container row has to come back exactly as the live path sent it: under the
+ * unhashed container_id:path id, as the normalised document with its container
+ * block, and only while its container is admitted. It is skipped when no
+ * <container_security><syscheck> directory covers its path any more.
+ *
+ * Registered with fim_recovery_set_container_row_handler(), so recovery does
+ * not link against this library.
+ *
+ * @return 1 queued, 0 skipped (not covered, or withheld), -1 on error.
+ */
+int fim_container_recover_row(const cJSON* row);
+
 /* Where a reconciled row came from, which is what the alert's "mode" field
  * reports.
  *
