@@ -30,8 +30,8 @@ if(TARGET compile_schemas_input)
   add_dependencies(inventory_sync_server_testtool compile_schemas_input)
 endif()
 
-target_link_libraries(inventory_sync_server_testtool inventory_sync_server vulnerability_scanner indexer_connector wazuhext
-                      pthread)
+target_link_libraries(inventory_sync_server_testtool inventory_sync_server vulnerability_scanner indexer_connector
+                      indexer_client wazuhext pthread)
 
 set_target_properties(
   inventory_sync_server_testtool PROPERTIES RUNTIME_OUTPUT_DIRECTORY

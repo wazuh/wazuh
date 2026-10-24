@@ -131,12 +131,26 @@ Sessions divide into two scheduling kinds:
   effects (deletes, a checksum read) must not overtake bulk writes of an EARLIER session of the
   same agent.
 
-The `200` contract is strict on purpose: it is only sent after a successful `flush()`, so "the
-agent saw 200" always means "the indexer accepted the data". A failed flush fails the whole open
-batch; the status is picked by connector availability — `503` when the indexer is the problem
-(the agent retries, exactly like any other not-ready condition), `500` otherwise (same retry, but
-the log line is operator-actionable). Re-applying a session is idempotent (deterministic document
-ids, versioned upserts), which is what makes "just re-POST it" the whole recovery story.
+The `200` contract is strict on purpose: it is only sent after the sessions' operations were
+confirmed by the indexer, so "the agent saw 200" always means "the indexer accepted the data".
+Each session of a group commit is answered for **its own** operations: a failure in one session
+does not fail the healthy sessions batched with it. The status of a failed session is decided by
+the cause of the failure alone (the indexer's availability is not queried again afterwards), see
+[Failure causes and HTTP answers](#failure-causes-and-http-answers). Re-applying a session is
+idempotent (deterministic document ids, versioned upserts), which is what makes "just re-POST it"
+the whole recovery story.
+
+### Failure causes and HTTP answers
+
+| Cause (`indexer_client`) | Answer to the agent | Failure metric |
+|---|---|---|
+| `Unavailable`, `Throttled`, `QueueFull`, `SubmitTimeout`, `RetryExhausted`, `Transport*`, `Server5xx`, `Shutdown`, `ClientClosed`, `Cancelled`, `WaitTimeout` | `503` | `unavailable`; `exhausted` for `RetryExhausted` |
+| `VersionConflict` of a by-query (allowance exhausted) | `503` + `{"reason":"version_conflicts"}` + `Retry-After`; also counts `sync.indexer.conflict.exhausted` | `documents` |
+| `ItemPermanent`, `Client4xx`, `PayloadTooLarge`, `GroupTooLarge`, `Ambiguous` and any other cause | `500` | `documents` for the first four, `other` for the rest |
+
+A session whose operations failed with several classes is answered with the transient one (`503`).
+The metric suffix is the `sync.bulk.flush.failures.<suffix>` counter ([catalog](metrics.md#group-commit--syncbulk)),
+now counted per failed session.
 
 Because each worker owns its connector outright, all cross-thread contention in the ingestion
 path funnels into one mutex per connector with a single legitimate owner. Two ordering rules keep

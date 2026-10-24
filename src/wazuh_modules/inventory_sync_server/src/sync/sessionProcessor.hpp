@@ -99,7 +99,8 @@ namespace invsync::sync
                                         indexer::IIndexerConnectorSync& connector) const;
 
         /// @brief Deletes @p agentId's documents across AGENT_DELETION_SCOPE_BY_QUERY (this
-        ///        cluster's `wazuh-states-*`) and flushes -- the SYNC half of the whole-agent
+        ///        cluster's `wazuh-states-*`) with the long deletion budget (deleteAgentByQuery,
+        ///        after every pending write resolved) -- the SYNC half of the whole-agent
         ///        deletion behind POST /_internal/agents/delete (design doc 04). The other half, the two
         ///        AGENT_DELETION_SCOPE_BY_ID documents, is queued by the endpoint on the async
         ///        connector that writes them; it does not pass through here. Immediate-style: the

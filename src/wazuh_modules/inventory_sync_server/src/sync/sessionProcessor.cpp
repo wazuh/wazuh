@@ -382,10 +382,13 @@ namespace invsync::sync
             return noop();
         }
 
-        // deleteByQuery STAGES into the connector (it is flushed, not immediate), so the flush
-        // right here is what makes "200 answered" mean "deletes applied" -- and what keeps a
-        // follow-up SyncData of the same agent (a full resync's second request) from being
-        // reordered ahead of the deletes.
+        // deleteByQuery is IMMEDIATE, not staged: it returns once the indexer applied it, so "200
+        // answered" means "deletes applied" -- and, since the worker serves this agent's sessions
+        // in order, a follow-up SyncData of the same agent (a full resync's second request) cannot
+        // overtake the deletes. The connector first waits for every write it still has pending
+        // (D49), so neither can the deletes overtake an earlier session's documents. The flush()
+        // below sends nothing then; it stays as a harmless no-op so a connector that does stage
+        // keeps the same durability contract.
         for (const auto& index : indices)
         {
             connector.deleteByQuery(index, session.agentId, m_managerClusterName);
@@ -406,9 +409,12 @@ namespace invsync::sync
         // deleteAgentEndpoint.hpp for why a by-query pass from here could not order against a report
         // that queue had accepted but not yet pushed.
         //
-        // deleteByQuery stages; the flush is the durability of the 200, exactly like
-        // executeCleans() -- a 404 for a not-yet-created index counts as success inside the
-        // connector, so re-running a delete is harmless (that is authd's retry contract).
+        // deleteAgentByQuery is immediate, exactly like executeCleans()'s deleteByQuery: it returns
+        // once applied (the durability of the 200), after the connector waited for every write it
+        // still had pending (D49), and with the longer budget of the deletion route's caller (I145)
+        // instead of an agent request's. A 404 for a not-yet-created index counts as success inside
+        // the connector, so re-running a delete is harmless (that is authd's retry contract). The
+        // trailing flush() is the same harmless no-op as in executeCleans().
         //
         // KNOWN LIMITATION, deliberate, and confined to this half: a _delete_by_query is a SEARCH,
         // so it only sees refreshed segments. This deletion arrives behind the agent's last session
@@ -421,7 +427,7 @@ namespace invsync::sync
         std::string scope;
         for (const auto& index : AGENT_DELETION_SCOPE_BY_QUERY)
         {
-            connector.deleteByQuery(std::string {index}, agentId, m_managerClusterName);
+            connector.deleteAgentByQuery(std::string {index}, agentId, m_managerClusterName);
             scope += scope.empty() ? "" : ", ";
             scope += index;
         }

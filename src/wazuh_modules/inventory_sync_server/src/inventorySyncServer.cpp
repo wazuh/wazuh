@@ -44,7 +44,9 @@ extern "C"
     {
         try
         {
-            // Defaults when modulesd passes no configuration.
+            // Defaults when modulesd passes no configuration. The copy carries every field, the
+            // opaque `indexer_runtime` included: the RuntimeRef it points at is modulesd's and
+            // outlives the module (wm_indexer_runtime_ref(), I130).
             inventory_sync_server_config_t config {};
             if (configuration)
             {
@@ -132,8 +134,9 @@ extern "C"
         catch (...)
         {
             // Same reasoning as inventory_sync_server_start(): nothing may cross back into C.
-            // This one runs from modulesd's signal handler (wazuh_modules/src/main.c), where a
-            // terminate would turn a clean shutdown into a crash. Unreachable for the same reason,
+            // This one runs from modulesd's orderly shutdown on its main thread
+            // (wm_shutdown_run(), wazuh_modules/src/main.c), where a terminate would turn a clean
+            // shutdown into a crash. Unreachable for the same reason,
             // and excluded for the same reason.
             LOGFN_ERROR(invsync::moduleLogFn(), "Error stopping inventory sync server: non-standard exception.");
         }

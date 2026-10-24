@@ -385,13 +385,21 @@ wazuh_modules.inventory_sync_server_session_query_batch_size=0
 
 ### Indexer connectors (`indexer_sync_*` and `indexer_async_*`)
 
-The module builds BOTH a synchronous and an asynchronous connector over one shared indexer session, and
-each has its own tunables. The two families are not interchangeable: `IndexerConnectorSync` reads
-`max_bulk_size` while `IndexerConnectorAsync` reads `bulk_max_bytes` for the same concept, and handing
-either family the other's key is ignored silently. Keep the `indexer_sync_` / `indexer_async_` prefixes
-intact.
+The module reaches the indexer through two families of options that are **not interchangeable**:
 
-#### Synchronous connector
+- `indexer_sync_*` feeds the `indexer_client` runtime (the `inventory` bucket of the
+  `inventory_sync_server` consumer): everything the ingestion pipeline, the VD scan lane and the
+  by-query operations send. The module builds one `Client` and every worker shares its bucket.
+- `indexer_async_*` and `indexer_monitoring_interval_seconds` still configure the previous
+  asynchronous connector, which serves `GET /stats`, `GET /config` and the by-id agent deletion
+  until the next stage migrates them.
+
+Keep the `indexer_sync_` / `indexer_async_` prefixes intact. The per-request timeout of the
+`inventory` bucket is not an `indexer_sync_*` option: it is
+`wazuh_modules.indexer_client_request_timeout_ms`, part of the `indexer_client_*` family that is
+documented with the shared library (not covered on this page).
+
+#### Synchronous connector (`indexer_client`)
 
 #### wazuh_modules.inventory_sync_server_indexer_sync_max_bulk_size
 
@@ -404,18 +412,16 @@ wazuh_modules.inventory_sync_server_indexer_sync_max_bulk_size=10485760
 
 - **Default value:** `10485760` (10 MiB)
 - **Allowed values:** 4096 to 104857600
-- **Note:** This option no longer reaches the Indexer Connector: the size of the actual `_bulk`
-  requests is capped separately by
-  `inventory_sync_server_indexer_sync_connector_max_bulk_size` below, so raising the group-commit
-  threshold cannot push a single request past the indexer's `http.max_content_length` anymore. The
-  group-commit behavior this option drives is visible as `sync.bulk.*` in
+- **Note:** Unchanged in meaning. It does not reach the indexer client: the size of the actual
+  `_bulk` requests is capped separately by
+  `inventory_sync_server_indexer_sync_connector_max_bulk_size` below. The group-commit behavior this
+  option drives is visible as `sync.bulk.*` in
   [`GET /metrics`](metrics.md#group-commit--syncbulk); the real request traffic is
   `sync.indexer.bulk.*`.
 
 #### wazuh_modules.inventory_sync_server_indexer_sync_connector_max_bulk_size
 
-Forwarded to the Indexer Connector as `max_bulk_size`: the serialized NDJSON bytes the connector
-stages before it cuts a `_bulk` request.
+`bulk.maxBytes` of the `inventory` bucket: the serialized NDJSON bytes of one `_bulk` request.
 
 ```ini
 wazuh_modules.inventory_sync_server_indexer_sync_connector_max_bulk_size=10485760
@@ -423,61 +429,18 @@ wazuh_modules.inventory_sync_server_indexer_sync_connector_max_bulk_size=1048576
 
 - **Default value:** `10485760` (10 MiB)
 - **Allowed values:** 4096 to 104857600
-- **Note:** Distinct from the group-commit threshold above on purpose, and measured in a different
-  unit (serialized NDJSON, which the manager's metadata overlay inflates past the wire FlatBuffer
-  size). Keep it at or below the indexer's `http.max_content_length`; an oversized request costs a
-  `413` round-trip plus a split retry. One group commit can therefore produce several `_bulk`
-  requests — `sync.indexer.bulk.requests` vs `sync.bulk.flushes` in
-  [`GET /metrics`](metrics.md#group-commit--syncbulk) shows exactly how many.
-
-#### wazuh_modules.inventory_sync_server_indexer_sync_flush_interval_seconds
-
-**No effect.** The value is accepted for compatibility but the module overrides the connector's
-periodic flush to `0` regardless, which means the connector never starts its background flush
-thread: the ingestion workers own every flush (a timer-driven flush that fails discards the buffer
-silently and has no responder to report to, which would let a worker answer `200` for lost data).
-
-```ini
-wazuh_modules.inventory_sync_server_indexer_sync_flush_interval_seconds=20
-```
-
-- **Default value:** `20` (ignored)
-- **Allowed values:** 1 to 3600
-- **Note:** Kept only so existing configurations do not abort the daemon; slated for removal. A
-  value other than the default logs a startup `WARNING` naming the option, so a tuned-but-dead
-  knob is visible instead of silently ignored.
-
-#### wazuh_modules.inventory_sync_server_indexer_sync_max_retry_delay_seconds
-
-Forwarded as `max_retry_delay_seconds`.
-
-```ini
-wazuh_modules.inventory_sync_server_indexer_sync_max_retry_delay_seconds=15
-```
-
-- **Default value:** `15`
-- **Allowed values:** 1 to 3600
-- **Note:** Forwarded as `max_retry_delay_seconds`. The minimum is 1 because the connector rejects anything below its base retry delay.
-
-#### wazuh_modules.inventory_sync_server_indexer_sync_request_timeout_seconds
-
-Forwarded as `request_timeout_seconds`.
-
-```ini
-wazuh_modules.inventory_sync_server_indexer_sync_request_timeout_seconds=60
-```
-
-- **Default value:** `60`
-- **Allowed values:** 1 to 3600
-- **Note:** Upper bound, in seconds, on one HTTP request against the indexer. This is what catches a
-  host that accepted the connection and then never answers, which otherwise blocks the caller
-  indefinitely. The connector reads `0` as "no bound" — exactly the unbounded blocking this option
-  exists to prevent — so `0` is rejected here rather than forwarded. A timed-out bulk request is
-  retried with backoff, not discarded.
+- **Note:** Measured in a different unit from the group-commit threshold above (serialized NDJSON,
+  which the manager's metadata overlay inflates past the wire FlatBuffer size). Keep it at or below
+  the indexer's `http.max_content_length`. The bucket's memory quota is derived from it:
+  `max(64 MiB, bulk + 2 KiB + 1 MiB)`, clamped to
+  `wazuh_modules.indexer_client_global_quota_bytes`. If even the global quota cannot hold one bulk,
+  the bulk size is clipped to fit and a `WARNING` is logged at startup. One group commit can still
+  produce several `_bulk` requests: compare `sync.indexer.bulk.requests` with `sync.bulk.flushes`
+  in [`GET /metrics`](metrics.md#group-commit--syncbulk).
 
 #### wazuh_modules.inventory_sync_server_indexer_sync_max_retry_attempts
 
-Forwarded as `max_retry_attempts`.
+Retry policy of the `inventory` bucket and of the module's queries: maximum attempts.
 
 ```ini
 wazuh_modules.inventory_sync_server_indexer_sync_max_retry_attempts=5
@@ -485,20 +448,13 @@ wazuh_modules.inventory_sync_server_indexer_sync_max_retry_attempts=5
 
 - **Default value:** `5`
 - **Allowed values:** 0 to 1000
-- **Note:** Failed attempts allowed to one connector operation (a bulk flush with its `413` split
-  chunks, a delete-by-query, an update-by-query, a search) before it gives up and the session fails.
-  Together with `max_retry_duration_seconds` below — whichever is spent first — this bounds the
-  retry loops that would otherwise let a persistent `429` (or `502`/`503`/`504` on a bulk flush), or an unreachable indexer, block the
-  flushing worker, and the shard behind it, forever. `0` disables the attempts bound (retries are
-  then limited only by `max_retry_duration_seconds`); setting both to `0` makes retries fully
-  unbounded and logs a startup `WARNING`. Use `1` for a single attempt with no retry. This does not
-  cover a by-query version conflict: that has its own fixed allowance of 3 attempts, bounded only by
-  `max_retry_duration_seconds`, so a delete-by-query or update-by-query can still be re-sent with
-  `max_retry_attempts` at `1` (see the [connector reference](../indexer_connector/README.md)).
+- **Note:** `0` means no attempts bound (retries are then limited only by
+  `max_retry_duration_seconds`); `1` is a single attempt with no retry. The by-query version-conflict
+  allowance is separate and is bounded by the retry duration.
 
 #### wazuh_modules.inventory_sync_server_indexer_sync_max_retry_duration_seconds
 
-Forwarded as `max_retry_duration_seconds`.
+Retry policy of the bucket and of its queries: wall-clock retry duration, `d` below.
 
 ```ini
 wazuh_modules.inventory_sync_server_indexer_sync_max_retry_duration_seconds=15
@@ -506,16 +462,56 @@ wazuh_modules.inventory_sync_server_indexer_sync_max_retry_duration_seconds=15
 
 - **Default value:** `15`
 - **Allowed values:** 0 to 3600
-- **Note:** Wall-clock deadline, in seconds, for one connector operation's retries: no retry sleep is
-  started that would cross it. The default stays below `remoted.downstream_stateful_response_timeout`
-  (default 20 s) so a flush fails while its caller is still listening, instead of finishing work the
-  agent already gave up on. One in-flight request can still overshoot the deadline by up to
-  `request_timeout_seconds`. `0` disables the deadline (retries are then limited only by
-  `max_retry_attempts`); setting both to `0` makes retries fully unbounded and logs a startup
-  `WARNING`. It is also the `Retry-After` the server attaches to the `503` it answers when a
-  by-query's version-conflict allowance runs out (15 when the deadline is disabled): the competing
-  writer cannot keep the conflict alive longer than its own allowance, so a re-send after that
-  delay finds the documents free.
+- **Note:** every call stays bounded by its budget, so `0` here behaves like the default: retries of
+  writes and immediate queries last `min(d, budget - 3 s)` (at most 15 s), those of the deletion
+  by-query `min(d, deletion budget - 3 s)`, and `0` uses 15 s for both. Besides the retries, `d`
+  fixes the module's time budgets:
+  - `/stateful` batches and each query of an immediate session: `clamp(d + 3 s, 5 s, 18 s)`
+    (18 s when `d` is `0`). The cap keeps the answer under remoted's 20 s response window, so a
+    larger `d` does not make the agent wait longer.
+  - Whole-agent deletion by-query: `min(3 * d + 25 s, 540 s)` (70 s by default and when `d` is
+    `0`).
+  - The `Retry-After` of the `503` answered when a by-query's version-conflict allowance runs out is
+    `d` (15 when the deadline is disabled), as before.
+
+  When a budget expires, the sessions of the batch that were not yet resolved are answered `503`;
+  those already resolved keep their code. Time spent queued does not count.
+
+#### wazuh_modules.inventory_sync_server_indexer_sync_max_retry_delay_seconds
+
+Retry policy of the bucket and of its queries: ceiling of the backoff delay.
+
+```ini
+wazuh_modules.inventory_sync_server_indexer_sync_max_retry_delay_seconds=15
+```
+
+- **Default value:** `15`
+- **Allowed values:** 1 to 3600
+
+#### wazuh_modules.inventory_sync_server_indexer_sync_flush_interval_seconds
+
+**Ignored.** The workers own every flush; the value has no effect.
+
+```ini
+wazuh_modules.inventory_sync_server_indexer_sync_flush_interval_seconds=20
+```
+
+- **Default value:** `20` (ignored)
+- **Allowed values:** 1 to 3600
+- **Note:** Kept so existing configurations do not abort the daemon. A value other than the default
+  logs a `WARNING` once at startup.
+
+#### wazuh_modules.inventory_sync_server_indexer_sync_request_timeout_seconds
+
+**Ignored.** The per-request timeout is `wazuh_modules.indexer_client_request_timeout_ms`.
+
+```ini
+wazuh_modules.inventory_sync_server_indexer_sync_request_timeout_seconds=60
+```
+
+- **Default value:** `60` (ignored)
+- **Allowed values:** 1 to 3600
+- **Note:** A value other than the default logs a `WARNING` once at startup.
 
 #### Asynchronous connector
 
@@ -617,7 +613,8 @@ wazuh_modules.inventory_sync_server_indexer_monitoring_interval_seconds=10
 
 - **Default value:** `10`
 - **Allowed values:** 1 to 3600
-- **Note:** Polling period of the health monitor that marks each indexer host as available or
+- **Note:** Applies to the asynchronous connector's session (`/stats`, `/config`, by-id agent
+  deletion) until the next stage; not verified whether the `indexer_client` runtime reads it. Polling period of the health monitor that marks each indexer host as available or
   unavailable. One option, not a sync/async pair: both connectors share the session's single
   monitor, so there is exactly one polling cadence per module. The connector rejects `0` (a zero
   period would busy-loop the monitor thread), so `0` is rejected here rather than forwarded.

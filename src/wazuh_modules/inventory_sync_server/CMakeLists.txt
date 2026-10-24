@@ -58,7 +58,7 @@ endif()
 target_link_libraries(
   inventory_sync_server
   PUBLIC wazuh_metrics
-  PRIVATE pthread wazuh_uds_http_server wazuhext indexer_connector vulnerability_scanner)
+  PRIVATE pthread wazuh_uds_http_server wazuhext indexer_connector indexer_client vulnerability_scanner)
 
 set_target_properties(inventory_sync_server PROPERTIES BUILD_RPATH_USE_ORIGIN TRUE
                                                       BUILD_RPATH "$ORIGIN/../lib")

@@ -81,7 +81,7 @@ pipeline satisfies it structurally rather than by discipline:
 
 | # | Requirement | How |
 |---|---|---|
-| REQ-SYNC-1 | Locking contract explicit and verifiable, not a caller convention | one PRIVATE connector per worker — no shared staging to lock |
+| REQ-SYNC-1 | Locking contract explicit and verifiable, not a caller convention | one PRIVATE adapter per worker over one shared `indexer_client` Client — no shared staging to lock |
 | REQ-SYNC-2 | Never HTTP nor sleeps under the staging mutex | staging and I/O both live on the worker; nothing else contends |
 | REQ-SYNC-3 | Completion notifies with per-session ownership, not a global vector + flag | `registerNotify` is NOT used at all; `flush()` returning is the signal |
 | REQ-SYNC-4 | Ack only after the WHOLE session is durable | group commit answers after its flush; "200 means flushed" |
@@ -259,64 +259,74 @@ touching freed state. Two details of that order are non-obvious and load-bearing
 - The registry is reset only after both consumers are joined; resetting it earlier would leave
   release listeners with dangling `this` pointers across a stop/start cycle.
 
-### The connector flush-interval override
+### The indexer adapter (`indexer_client`)
 
-The pipeline's and the lane's sync connectors are created with `flush_interval_seconds` forced to
-`0`, regardless of configuration (`PIPELINE_CONNECTOR_FLUSH_INTERVAL_SECS`), and `0` means the
-connector never starts its background flush thread. This is correctness, not tuning: a TIMER flush
-that fails discards the buffer and has **no responder to report to**, so the worker's own `flush()`
-would then find an empty buffer, return cleanly, and answer `200` for data that never reached the
-indexer. The workers own every flush — that is the entire durability contract behind "200 means
-flushed", and with no timer thread there is no second owner of the staging buffer for it to race.
-The `..._indexer_sync_flush_interval_seconds` internal option is therefore accepted-but-ignored for
-these connectors (documented as such).
+Sync I/O goes through `IndexerClientSyncAdapter` (`src/indexer/indexerClientSyncAdapter.*`), an
+`IIndexerConnectorSync` over the shared `indexer_client` library. The v1 connector remains only for
+`/stats`, `/config` and the by-id half of the agent deletion (the async connector and its session).
 
-What the override prevents, with the timer thread drawn as the second owner it used to be:
+- **One `Client`, one bucket.** The module registers the consumer `inventory_sync_server` with its
+  single bucket `inventory`; one adapter per pipeline or scan-lane worker shares it. Each adapter
+  takes `writer("inventory")` and `query()` once at construction (they are null after
+  `requestClose()`, in which case construction throws).
+- **Bucket spec** (`inventoryBucketSpec`): `bulk.maxBytes` = `indexer_sync_connector_max_bulk_size`;
+  `quotaBytes = clamp(max(64 MiB, bulk + 2048 + 1 MiB), <= global quota)`, with the bulk clipped
+  and a WARN when it does not fit; retry attempts/duration/delay from the `indexer_sync_max_retry_*`
+  options; overflow `Block` (2 s in production); 409 is success; ambiguous 5xx is retried; not ordered.
+- **Chunks.** A worker stages adds in an open `Group`; before the add that would pass the per-worker
+  cap (`chunkCap` = 0.8 * quota / (2 * (pipeline + lane workers))) the chunk is committed. At most one
+  committed-or-abandoned chunk is unresolved per worker besides the open one; its results are
+  harvested (ticket and Group dropped) before the next commit. Two operations on the same
+  `(index, _id)` are never unresolved at once (I139).
+- **Result per session.** `endSession()` and `flushSessions(n)` return a `SessionOutcome` for each
+  session of the batch, built from the ranges of its own adds. Healthy sessions get `200` even when
+  another session of the batch fails (I136). An add refused by the library marks only its session
+  failed, without throwing (I142). `flushSessions` defaults to all-or-nothing over `flush()` for
+  fakes that do not override it.
+- **Deadlines.** A batch's deadline starts at its first add and is `statefulBudget =
+  clamp(d + 3 s, 5 s, 18 s)`; each query of an immediate session gets the same budget; the
+  whole-agent by-query (`deleteAgentByQuery`) gets `deleteBudget = min(3 * d + 25 s, 540 s)`.
+  `d` is `indexer_sync_max_retry_duration_seconds`; the retry duration of writes and of immediate
+  queries is `min(d, statefulBudget - 3 s)` (so at most 15 s; 15 s when `d` is `0`), and the
+  deletion by-query's is `min(d, deleteBudget - 3 s)`, so a by-query's version conflict surfaces
+  before the deadline. On expiry, only unresolved sessions fail
+  (`503`); the open chunk is abandoned (`cancel(tag)` without waiting) and the next add opens a new
+  deadline (I145, I145b).
+- **Stop.** The module sets a `closing` flag before `requestClose()`; every wait slices (250 ms) and
+  returns when it flips. After the workers are joined the module calls `awaitClosed(now + 1 s)`;
+  what remains belongs to sessions already answered `503` (I141b).
+- **Failure mapping.** `translateCause` maps each library cause to one of the seam's classes, and
+  `failureResponse`/`failureMetric` (`src/indexer/connectorFailure.hpp`) turn the class into the HTTP
+  answer and the `sync.bulk.flush.failures.*` suffix. The table is in the operator reference:
+  [Failure causes and HTTP answers](../../../docs/ref/modules/inventory-sync-server/architecture.md#failure-causes-and-http-answers).
+- **Metrics.** The 51 bucket metrics are published by pull in the module's `GET /metrics`;
+  `sync.indexer.bulk.*` come from the bucket (0 again if the Client is rebuilt) and
+  `sync.indexer.conflict.retries` from the process-wide query metrics.
 
-```mermaid
-sequenceDiagram
-    participant W as pipeline worker
-    participant BUF as connector buffer<br/>(m_bulkData + its mutex)
-    participant T as connector TIMER thread<br/>(only if flush_interval_seconds > 0)
-    participant IDX as indexer
-    W->>BUF: stage session S1
-    W->>BUF: stage session S2
-    Note over W,BUF: S1 and S2 are staged and UNANSWERED
-    T->>BUF: timer expires, takes the mutex, sends the buffer
-    BUF->>IDX: POST /_bulk
-    IDX-->>BUF: 500
-    BUF->>BUF: buffer cleared, exception thrown
-    T->>T: caught and logged ("Error processing bulk")
-    Note over T: there is no responder on this thread:<br/>the failure ends here
-    W->>BUF: flush()
-    BUF-->>W: buffer empty, returns CLEANLY
-    W-->>W: answers 200 to S1 and S2
-    Note over W: "200 means flushed" violated — both agents<br/>drop their outbox for data that never landed
-```
+### The connector flush-interval override (previous connector)
 
-With `flush_interval_seconds = 0` the `T` lane does not exist, so the interleaving above is not
-merely unlikely — it is unrepresentable.
+Before E7b the pipeline's and the lane's sync connectors were created with `flush_interval_seconds`
+forced to `0` so that no timer flush could discard a buffer behind a worker's back. The indexer_client
+adapter has no timer flush at all: every chunk is committed by the worker that staged it and its
+results are harvested by that worker, so "200 means confirmed" holds by construction. The
+`..._indexer_sync_flush_interval_seconds` internal option is accepted but ignored (a WARN says so).
 
-Two config families feed the connectors and must not be crossed: the `<indexer>` block (hosts,
-TLS, credentials — owned by the shared connector) and the module's `indexer_sync_*` /
-`indexer_async_*` internal-option overlays (buffer sizes, retry ceilings — owned here). The
-adapter in `src/indexer/indexerConnectorConfig.*` is where the overlay is applied.
+Two config families feed the indexer side and must not be crossed: the `<indexer>` block (hosts and
+TLS, read by the process's `indexer_client` runtime and by the remaining v1 async connector) and the
+module's `indexer_sync_*` / `indexer_async_*` internal options. Since E7b the `indexer_sync_*` ones feed
+the `inventory` bucket (`inventoryBucketSpec()` and `budgets()` in `src/indexer/indexerClientSyncAdapter.*`);
+the `indexer_async_*` overlay is still applied in `src/indexer/indexerConnectorConfig.*` for `/stats`,
+`/config` and the by-id half of the agent deletion.
 
-Both families include a `..._request_timeout_seconds` option (60 s default, range 1–3600),
-mapped to the connectors' `request_timeout_seconds`: the cap on any single HTTP request against
-the indexer. The connectors themselves also accept `0` (no bound), but that is the
-unbounded-blocking behavior the cap exists to prevent, so `0` is deliberately not reachable
-through these internal options.
+`..._indexer_sync_request_timeout_seconds` no longer applies: the per-request timeout of the indexer
+client is the runtime's `wazuh_modules.indexer_client_request_timeout_ms` (a WARN says so when the old
+option is set). `..._indexer_async_request_timeout_seconds` (60 s default, range 1–3600) still caps any
+single HTTP request of the async connector; `0` is deliberately unreachable.
 
-A third, session-level option — `inventory_sync_server_indexer_monitoring_interval_seconds`
-(10 s default, range 1–3600, mapped to `monitoring_interval_seconds`) — sets how often the
-shared session's health monitor polls each host with `GET /_cat/health`. It is one option, not a
-sync/async pair, because both connectors share the session's single monitor. It bounds how stale
-the availability verdict behind the `503` admission gate can be: a host's death or recovery is
-noticed within roughly one interval (plus up to 5 s of probe timeout per unresponsive host, as
-the round is sequential). Lowering it tightens detection at the cost of more health-check
-traffic; `0` (which would busy-loop the monitor thread) is rejected by the connector and
-unreachable here.
+`inventory_sync_server_indexer_monitoring_interval_seconds` (10 s default, range 1–3600) still sets how
+often the v1 session's health monitor polls each host; since E7b it only drives the async connector's
+availability (`/stats`, `/config`). The sync half asks `indexer_client`'s own node health
+(`health().anyUsable()`), probed by the runtime.
 
 ## The request path
 
@@ -325,7 +335,7 @@ sequenceDiagram
     participant R as remoted
     participant S as connection strand
     participant Q as shard worker (SyncPipeline)
-    participant IDX as indexer (worker's connector)
+    participant IDX as indexer (worker's adapter)
     participant VQ as VD scan lane
     R->>S: POST /stateful + X-Wazuh-Agent-Id
     Note over S: admission: in-flight byte budget (max_inflight_bytes) /<br/>connection cap → 503 declares > TOTAL budget → 413
@@ -387,7 +397,7 @@ it: the agent serializes `Start.agentid` canonically whatever its `client.keys` 
 
 ### The pipeline (`sync/syncPipeline.*`, `sync/sessionProcessor.*`)
 
-One worker (and ONE private `IndexerConnectorSync`) per shard; a session lands on
+One worker (and ONE private `IndexerClientSyncAdapter`, over the module's single Client) per shard; a session lands on
 `hash(agentId) % workers`. Per-agent ordering is therefore a property of the topology, not of a
 lock: two requests of the same agent traverse the same FIFO. Sessions classify into two kinds:
 
@@ -447,11 +457,11 @@ sequenceDiagram
     W-->>C: 200
 ```
 
-Failure mapping is centralized in the worker: a connector failure answers `503` when
-`isAvailable()` says the indexer is the problem (agent retries, like any not-ready), `503` with
-`Retry-After` when a by-query ran out of its version-conflict allowance (D30: retryable contention,
-the agent re-sends after the delay) and `500` otherwise (agent still retries; the log is
-operator-actionable). A staging failure poisons the
+Failure mapping is centralized in the worker and decided by the failure's cause alone, with no
+second `isAvailable()` query (I135): `503` for transient causes, `503` with `Retry-After` when a
+by-query ran out of its version-conflict allowance (D30: retryable contention, the agent re-sends
+after the delay) and `500` otherwise (agent still retries; the log is operator-actionable). See
+[the adapter section](#the-indexer-adapter-indexer_client) and the operator table. A staging failure poisons the
 open batch — everything is answered through the same mapping and the connector buffer drained —
 because a half-staged session inside a shared buffer is unrecoverable state; idempotent re-POSTs
 are what make that safe.
@@ -902,10 +912,11 @@ target); and `Item::enqueuedAt` is stamped by the endpoint, so a default (epoch)
   logs and `GET /metrics` — and the agent's reaction is identical: retry later. The two VD gates
   differ because the AGENT reacts differently: `Retry-After` schedules the re-POST, and "scan
   capacity exhausted" is a normal-cycle retry.
-- **Why one connector per worker + group commit?** A shared connector is a shared staging buffer,
-  which is a lock, which is REQ-SYNC-2's root cause (HTTP under the staging mutex — the legacy's
-  deadlock family). Private connectors make ordering topological, and the group commit amortizes
-  `_bulk` overhead under load while degrading to flush-per-request when idle.
+- **Why one adapter per worker + group commit?** A shared staging buffer is a lock, which is
+  REQ-SYNC-2's root cause (HTTP under the staging mutex — the legacy's deadlock family). Each worker
+  stages into its own adapter (its own open chunk and key barrier) over the one shared Client, so
+  ordering stays topological, and the group commit amortizes `_bulk` overhead under load while
+  degrading to flush-per-request when idle.
 - **Why is `sync_queue_bytes` GLOBAL and not per shard?** It bounds total memory awaiting workers
   — the failure it prevents (a flood of accepted sessions exhausting RAM) is process-wide, and a
   per-shard split would let a skewed fleet blow the total while every individual shard looks fine.
@@ -917,8 +928,8 @@ target); and `Item::enqueuedAt` is stamped by the endpoint, so a default (epoch)
   outbox on `200`. The deletion route holds to it too, and that is what changed: its `200` means the
   delete-by-query flushed, so the Task Manager row behind it can read `completed` and mean purged.
   Anything weaker (accepted, staged, timer-flushed-later) makes data loss invisible to the only
-  party that can retry — that is also why the connectors' timer flush is overridden
-  ([the flush-interval override](#the-connector-flush-interval-override)).
+  party that can retry — that is also why the adapter has no timer flush at all
+  ([the flush-interval override](#the-connector-flush-interval-override-previous-connector)).
 
 ## Operational notes
 

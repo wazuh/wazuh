@@ -14,8 +14,9 @@
 #include "indexer/IIndexerConnectorAsync.hpp"
 #include "indexer/IIndexerConnectorSync.hpp"
 #include "indexer/IIndexerSession.hpp"
+#include "indexer/indexerClientSyncAdapter.hpp"
 #include "indexer/indexerConnectorAsyncAdapter.hpp"
-#include "indexer/indexerConnectorSyncAdapter.hpp"
+#include "indexer/indexerFactories.hpp"
 #include "indexer/indexerSessionAdapter.hpp"
 #include "inventorySyncServerTestHooks.hpp"
 #include "vd/IVdScanner.hpp"
@@ -25,6 +26,9 @@
 // fakes and then reach for wazuh::uds_http types (HttpRequest/HttpResponse/...) unqualified,
 // relying on it transitively -- removing it breaks their build, not this file's.
 #include <uds_http_server/IUdsHttpServer.hpp>
+
+#include <indexer_client/client.hpp>
+#include <indexer_client/runtime.hpp>
 
 #include <json.hpp>
 
@@ -57,6 +61,19 @@ namespace invsync::test
         std::atomic<int> m_sessionBuilds {0}; ///< Times the session factory was invoked.
         std::atomic<int> m_syncBuilds {0};    ///< Times the sync connector factory was invoked.
         std::atomic<int> m_asyncBuilds {0};   ///< Times the async connector factory was invoked.
+        std::atomic<int> m_clientBuilds {0};  ///< Times the (fake) indexer client factory was invoked.
+        /// The cancellation tag and the chunk cap each sync connector was built with, in build order
+        /// (the fake sync factory records them). Guarded by m_mutex.
+        std::vector<std::string> m_syncTags;
+        std::vector<std::size_t> m_syncCaps;
+        /// Times the sync fake's endSession() ran (one per staged session of a batch).
+        std::atomic<int> m_endSessions {0};
+        /// Times the sync fake's discard() ran (the poisoned-batch and failed-staging paths).
+        std::atomic<int> m_discards {0};
+        /// When set, the sync fake's flushSessions(n) answers THESE outcomes for a batch of exactly
+        /// their size (any other batch size falls through to the seam's all-or-nothing default).
+        /// Guarded by m_mutex.
+        std::optional<std::vector<invsync::indexer::SessionOutcome>> m_scriptedOutcomes;
         /// What the async fake reports from isAvailable(). Lets a test drive the endpoints' 503 gate
         /// without an unreachable host, since the fake never touches a network.
         std::atomic<bool> m_asyncAvailable {true};
@@ -89,6 +106,10 @@ namespace invsync::test
         /// "executeSearchQuery"/"flush") the sync fake must throw from; empty disables.
         /// Guarded by m_mutex.
         std::string m_syncThrowOn;
+        /// When non-empty, an injected failure of an operation that carries a document id (bulkIndex,
+        /// bulkDelete) only fires for ids containing this text -- lets a test poison ONE session of a
+        /// batch. Guarded by m_mutex.
+        std::string m_syncThrowOnIdContaining;
         /// While true, the sync fake's flush() BLOCKS until openFlushGate(). Lets a test hold a
         /// worker inside its batch flush deterministically (group-commit accumulation).
         bool m_flushGateClosed {false};
@@ -177,10 +198,28 @@ namespace invsync::test
             return m_searchResponse;
         }
 
-        void throwIfInjected(const char* op)
+        std::optional<std::vector<invsync::indexer::SessionOutcome>> scriptedOutcomes(std::size_t sessions)
         {
             std::lock_guard<std::mutex> lock(m_mutex);
-            if (m_syncThrowOn == op)
+            if (m_scriptedOutcomes && m_scriptedOutcomes->size() == sessions)
+            {
+                return m_scriptedOutcomes;
+            }
+            return std::nullopt;
+        }
+
+        void recordSyncBuild(const std::string& tag, std::size_t capBytes)
+        {
+            std::lock_guard<std::mutex> lock(m_mutex);
+            m_syncTags.push_back(tag);
+            m_syncCaps.push_back(capBytes);
+        }
+
+        void throwIfInjected(const char* op, std::string_view id = {})
+        {
+            std::lock_guard<std::mutex> lock(m_mutex);
+            if (m_syncThrowOn == op &&
+                (m_syncThrowOnIdContaining.empty() || id.find(m_syncThrowOnIdContaining) != std::string_view::npos))
             {
                 if (m_syncThrowCause)
                 {
@@ -302,7 +341,7 @@ namespace invsync::test
         {
             if (m_events)
             {
-                m_events->throwIfInjected("bulkIndex");
+                m_events->throwIfInjected("bulkIndex", id);
                 m_events->recordSyncOp("bulkIndex", std::string {id}, std::string {index}, std::string {data}, {});
             }
         }
@@ -312,7 +351,7 @@ namespace invsync::test
         {
             if (m_events)
             {
-                m_events->throwIfInjected("bulkIndex");
+                m_events->throwIfInjected("bulkIndex", id);
                 m_events->recordSyncOp(
                     "bulkIndex", std::string {id}, std::string {index}, std::string {data}, std::string {version});
             }
@@ -322,7 +361,7 @@ namespace invsync::test
         {
             if (m_events)
             {
-                m_events->throwIfInjected("bulkDelete");
+                m_events->throwIfInjected("bulkDelete", id);
                 m_events->recordSyncOp("bulkDelete", std::string {id}, std::string {index}, {}, {});
             }
         }
@@ -373,6 +412,39 @@ namespace invsync::test
             }
         }
 
+        /// Counted, so a test can pin that every staged session's range was closed.
+        void endSession() override
+        {
+            if (m_events)
+            {
+                m_events->m_endSessions.fetch_add(1);
+            }
+        }
+
+        /// With scripted outcomes of the batch's size: those, behind the same gate as flush() so a
+        /// test can still park the worker; otherwise the seam's all-or-nothing default over flush().
+        std::vector<invsync::indexer::SessionOutcome> flushSessions(std::size_t sessions) override
+        {
+            if (m_events)
+            {
+                if (auto scripted = m_events->scriptedOutcomes(sessions))
+                {
+                    m_events->waitAtFlushGate();
+                    m_events->m_syncFlushes.fetch_add(1);
+                    return *scripted;
+                }
+            }
+            return invsync::indexer::IIndexerConnectorSync::flushSessions(sessions);
+        }
+
+        void discard() override
+        {
+            if (m_events)
+            {
+                m_events->m_discards.fetch_add(1);
+            }
+        }
+
         BulkRequestStats takeBulkRequestStats() override
         {
             if (!m_events)
@@ -388,6 +460,86 @@ namespace invsync::test
         std::shared_ptr<ConnectorEvents> m_events;
         const char* m_name;
     };
+
+    /**
+     * @brief Stand-in for the module's indexer Client (I144): no writer, no query, one Available node.
+     *
+     * The facade's sync stage builds a Client through the IndexerClientFactory and hands it to every
+     * sync connector factory; the fake sync connectors never touch it, so all it has to do is exist,
+     * report a healthy node and close without ceremony. A test that needs the real thing (runtime,
+     * bucket, metrics) installs the production factory over a real RuntimeRef instead.
+     */
+    class FakeIndexerClient final : public indexer_client::IClient
+    {
+    public:
+        std::shared_ptr<indexer_client::IWriter> writer(std::string_view) override
+        {
+            return nullptr;
+        }
+
+        std::shared_ptr<indexer_client::IQuery> query() override
+        {
+            return nullptr;
+        }
+
+        indexer_client::HealthView health() const override
+        {
+            indexer_client::HealthView view;
+            indexer_client::HealthView::Node node;
+            node.url = "http://127.0.0.1:9200";
+            node.state = indexer_client::HealthView::NodeState::Available;
+            view.nodes.push_back(std::move(node));
+            return view;
+        }
+
+        void requestClose() override {}
+
+        indexer_client::Outcome<indexer_client::CloseReport> awaitClosed(indexer_client::Deadline) override
+        {
+            return indexer_client::Outcome<indexer_client::CloseReport>::success({});
+        }
+
+        indexer_client::ClientMetrics metrics() const override
+        {
+            return {};
+        }
+    };
+
+    /// The production IndexerClientFactory as the facade wires it: a null runtime or a refused
+    /// RuntimeRef::client() throws, which is what fails the sync stage of the startup gate (I131).
+    /// Kept here so a test can wrap it (IndexerGating.StopReleasesClient) and so the reset restores it.
+    inline invsync::indexer::IndexerClientFactory productionIndexerClientFactory()
+    {
+        return [](const void* runtime,
+                  const indexer_client::BucketSpec& bucket) -> std::shared_ptr<indexer_client::IClient>
+        {
+            if (runtime == nullptr)
+            {
+                throw std::runtime_error("no indexer_client runtime was published to the module");
+            }
+            auto client = static_cast<const indexer_client::RuntimeRef*>(runtime)->client(
+                invsync::indexer::INDEXER_CLIENT_CONSUMER, std::vector<indexer_client::BucketSpec> {bucket});
+            if (!client.ok())
+            {
+                throw std::runtime_error(std::string {"the indexer client was refused: "} +
+                                         indexer_client::toString(client.cause) + ": " + client.reason);
+            }
+            return client.value;
+        };
+    }
+
+    /// The production IndexerConnectorSyncFactory: one IndexerClientSyncAdapter per worker.
+    inline invsync::indexer::IndexerConnectorSyncFactory productionIndexerConnectorSyncFactory()
+    {
+        return [](std::shared_ptr<indexer_client::IClient> client,
+                  const invsync::indexer::AdapterOptions& options,
+                  std::shared_ptr<const std::atomic<bool>> closing,
+                  const std::string& tag) -> std::unique_ptr<invsync::indexer::IIndexerConnectorSync>
+        {
+            return std::make_unique<invsync::indexer::IndexerClientSyncAdapter>(
+                std::move(client), options, std::move(closing), tag);
+        };
+    }
 
     /**
      * @brief Async connector fake.
@@ -531,10 +683,20 @@ namespace invsync::test
                 events->m_sessionBuilds.fetch_add(1);
                 return std::make_unique<FakeIndexerSession>(events, "session");
             });
+        invsync::test_hooks::setIndexerClientFactoryForTests(
+            [events](const void*, const indexer_client::BucketSpec&) -> std::shared_ptr<indexer_client::IClient>
+            {
+                events->m_clientBuilds.fetch_add(1);
+                return std::make_shared<FakeIndexerClient>();
+            });
         invsync::test_hooks::setIndexerConnectorSyncFactoryForTests(
-            [events](const nlohmann::json&, const invsync::indexer::IIndexerSession&, LoggingContext)
+            [events](std::shared_ptr<indexer_client::IClient>,
+                     const invsync::indexer::AdapterOptions& options,
+                     std::shared_ptr<const std::atomic<bool>>,
+                     const std::string& tag) -> std::unique_ptr<invsync::indexer::IIndexerConnectorSync>
             {
                 events->m_syncBuilds.fetch_add(1);
+                events->recordSyncBuild(tag, options.capBytes);
                 return std::make_unique<FakeIndexerConnectorSync>(events, "sync");
             });
         invsync::test_hooks::setIndexerConnectorAsyncFactoryForTests(
@@ -567,9 +729,10 @@ namespace invsync::test
         auto events = installAlwaysAvailableFakeIndexers();
         invsync::test_hooks::setIndexerConnectorSyncFactoryForTests(
             [events,
-             reason = std::move(reason)](const nlohmann::json&,
-                                         const invsync::indexer::IIndexerSession&,
-                                         LoggingContext) -> std::unique_ptr<invsync::indexer::IIndexerConnectorSync>
+             reason = std::move(reason)](std::shared_ptr<indexer_client::IClient>,
+                                         const invsync::indexer::AdapterOptions&,
+                                         std::shared_ptr<const std::atomic<bool>>,
+                                         const std::string&) -> std::unique_ptr<invsync::indexer::IIndexerConnectorSync>
             {
                 events->m_syncBuilds.fetch_add(1);
                 throw std::runtime_error(reason);
@@ -613,8 +776,20 @@ namespace invsync::test
         return events;
     }
 
+    /// Fake session and async connector (their own network I/O is not under test) over the REAL sync
+    /// stage: the production Client factory and the production IndexerClientSyncAdapter per worker.
+    /// The caller publishes a started RuntimeRef through `config.indexer_runtime`.
+    inline std::shared_ptr<ConnectorEvents> installFakeIndexersOverRealClient()
+    {
+        auto events = installAlwaysAvailableFakeIndexers();
+        invsync::test_hooks::setIndexerClientFactoryForTests(productionIndexerClientFactory());
+        invsync::test_hooks::setIndexerConnectorSyncFactoryForTests(productionIndexerConnectorSyncFactory());
+        return events;
+    }
+
     /**
-     * @brief Restores the real, production factories for all three slots.
+     * @brief Restores the real, production factories for every slot (session, indexer client, sync, async
+     *        and the scanner).
      *
      * Call from TearDown(): an override made by one test must never leak into the next, and this is
      * the only reset point. Resetting only some of them would leave the others faked for the rest of
@@ -625,13 +800,8 @@ namespace invsync::test
         invsync::test_hooks::setIndexerSessionFactoryForTests(
             [](const nlohmann::json& config, LoggingContext logging)
             { return std::make_unique<invsync::indexer::IndexerSessionAdapter>(config, std::move(logging)); });
-        invsync::test_hooks::setIndexerConnectorSyncFactoryForTests(
-            [](const nlohmann::json& config, const invsync::indexer::IIndexerSession& session, LoggingContext logging)
-            {
-                const auto& adapter = dynamic_cast<const invsync::indexer::IndexerSessionAdapter&>(session);
-                return std::make_unique<invsync::indexer::IndexerConnectorSyncAdapter>(
-                    config, adapter.session(), std::move(logging));
-            });
+        invsync::test_hooks::setIndexerClientFactoryForTests(productionIndexerClientFactory());
+        invsync::test_hooks::setIndexerConnectorSyncFactoryForTests(productionIndexerConnectorSyncFactory());
         invsync::test_hooks::setIndexerConnectorAsyncFactoryForTests(
             [](const nlohmann::json& config, const invsync::indexer::IIndexerSession& session, LoggingContext logging)
             {
