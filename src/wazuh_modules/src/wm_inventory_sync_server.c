@@ -12,6 +12,7 @@
 #include "indexer-config.h"
 #include "inventory_sync_server.h"
 #include "sym_load.h"
+#include "wm_indexer_runtime.h"
 #include "wm_vulnerability_scanner.h"
 #include <cJSON.h>
 
@@ -430,6 +431,11 @@ void* wm_inventory_sync_server_main(wm_inventory_sync_server_t* data)
              * thread runs -- wm_config() reads the configuration before main() creates them. */
             cJSON* indexer_json = indexer_config ? cJSON_Duplicate(indexer_config, TRUE) : cJSON_CreateObject();
             config.indexer = indexer_json;
+
+            /* The process's indexer_client runtime, published by the main thread before any module
+             * thread exists (I128, I130); NULL without one, and the module's sync stage then fails
+             * and retries on its heartbeat. Stable for the life of the process. */
+            config.indexer_runtime = wm_indexer_runtime_ref();
 
             /* Race-free to read here: wm_vulnerability_scanner_main() only ever reads
              * data->vulnerability_detection (never mutates it in place -- see

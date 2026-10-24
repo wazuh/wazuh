@@ -119,7 +119,8 @@ namespace invsync::vd
     private:
         void workerLoop(std::size_t index);
         void respond(Item& item, int status, const std::string& body);
-        void respondConnectorFailure(Item& item, indexer::IIndexerConnectorSync& connector);
+        /// Answers @p item for an indexing failure by its cause alone (I135, failureResponse()).
+        void respondConnectorFailure(Item& item, indexer::ConnectorError::Cause cause);
         /// One vd.lane.time sample for @p item (no-op on an unstamped enqueuedAt). Split out of
         /// respond() so the one send that cannot go through it -- the feed-not-ready 503, which
         /// carries a Retry-After header -- still lands in the histogram like every other outcome.

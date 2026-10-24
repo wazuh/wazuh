@@ -29,8 +29,7 @@ namespace invsync::indexer
      * WHY group commits fail without depending on the connector library's exception type. The
      * adapter translates; fakes can throw it directly. Callers that do not care still catch it as
      * std::exception. The recovery is always the agent sending the session again; the cause decides
-     * what the operator should look at and, for ConflictsExhausted and IndexerUnavailable, which
-     * retryable answer the agent gets.
+     * what the operator should look at and which answer the agent gets.
      */
     class ConnectorError final : public std::runtime_error
     {
@@ -39,13 +38,11 @@ namespace invsync::indexer
         {
             Other,              ///< Hard rejection or unexpected state.
             DocumentRejected,   ///< The indexer answered but rejected documents or confirmed nothing.
-            RetryExhausted,     ///< The retry budget ran out on a retryable condition: 429 or a transport
-                                ///< failure everywhere, and also 502/503/504 for the bulk request, the bulk
-                                ///< chunk, the update by query and the search.
+            RetryExhausted,     ///< The retry budget ran out on a retryable condition (429, transport).
             ConflictsExhausted, ///< A by-query's version-conflict allowance ran out against a competing
                                 ///< writer: the documents are consistent and the caller may retry later.
-            IndexerUnavailable  ///< The indexer answered a read with a 5xx: it could not answer over
-                                ///< every shard, so nothing was computed and the caller may retry later.
+            Unavailable         ///< The indexer could not take the work now (no usable node, throttled, queue full,
+                                ///< transport, 5xx, closing): the caller answers 503 and the agent retries.
         };
 
         ConnectorError(const std::string& what, Cause cause)
@@ -61,6 +58,20 @@ namespace invsync::indexer
 
     private:
         Cause m_cause;
+    };
+
+    /**
+     * @brief The outcome of one session of a group commit (I136).
+     *
+     * `ok` is true only when every operation the session staged was confirmed; otherwise `cause` is
+     * the session's class (Unavailable wins over the permanent ones: a transient failure is the one a
+     * re-POST can fix) and `reason` the first failure's text.
+     */
+    struct SessionOutcome
+    {
+        bool ok {true};
+        ConnectorError::Cause cause {ConnectorError::Cause::Other};
+        std::string reason;
     };
 
     /**
@@ -111,18 +122,60 @@ namespace invsync::indexer
         virtual void
         deleteByQuery(const std::string& index, const std::string& agentId, const std::string& clusterName) = 0;
 
+        /**
+         * @brief The same delete-by-query, for a whole-agent deletion: its caller (the Task Manager,
+         *        through the deletion route) waits far longer than an agent's `/stateful` request, so
+         *        the implementation may give it a longer budget (I145). Defaults to deleteByQuery().
+         */
+        virtual void
+        deleteAgentByQuery(const std::string& index, const std::string& agentId, const std::string& clusterName)
+        {
+            deleteByQuery(index, agentId, clusterName);
+        }
+
         /// @brief Immediate _update_by_query ("query" + "script") over the given indices.
         virtual void executeUpdateByQuery(const std::vector<std::string>& indices,
                                           const nlohmann::json& updateQuery) = 0;
 
-        /// @brief Immediate _search against one index; returns the raw response body. The indexer is
-        ///        asked to refuse an answer that does not cover every shard. A connector failure
-        ///        leaves as ConnectorError: IndexerUnavailable when the indexer answered 5xx,
-        ///        otherwise the cause of the failure's category.
+        /// @brief Immediate _search against one index; returns the raw response body. A failure
+        ///        leaves as ConnectorError with the cause of its category (Unavailable for a 5xx).
         virtual nlohmann::json executeSearchQuery(const std::string& index, const nlohmann::json& searchQuery) = 0;
 
         /// @brief Sends the staged bulk operations now, on the caller's thread. Throws on failure.
         virtual void flush() = 0;
+
+        /// @brief Closes the range of the session staged since the previous call (I136). A session
+        ///        that staged nothing is never closed. Default: nothing to track.
+        virtual void endSession() {}
+
+        /**
+         * @brief Sends what is staged and answers one outcome per closed session, in endSession()
+         *        order (I136). Never throws for an indexer failure: that is in the outcomes.
+         *
+         * The default keeps a connector without per-session results all-or-nothing, as flush() is:
+         * every session succeeds or every one carries the flush's cause.
+         */
+        virtual std::vector<SessionOutcome> flushSessions(std::size_t sessions)
+        {
+            try
+            {
+                flush();
+                return std::vector<SessionOutcome>(sessions);
+            }
+            catch (const ConnectorError& e)
+            {
+                return std::vector<SessionOutcome>(sessions, SessionOutcome {false, e.cause(), e.what()});
+            }
+            catch (const std::exception& e)
+            {
+                return std::vector<SessionOutcome>(sessions,
+                                                   SessionOutcome {false, ConnectorError::Cause::Other, e.what()});
+            }
+        }
+
+        /// @brief Drops what is staged and not yet sent, and the session ranges, after the caller
+        ///        already answered those sessions (the poisoned-batch path). Default: nothing to drop.
+        virtual void discard() {}
 
         /**
          * @brief The `_bulk` HTTP requests the connector actually sent -- attempts, splits and

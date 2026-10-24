@@ -103,7 +103,7 @@ namespace invsync::common
      * @brief Reads the fixed-size buffer out of the module's config.
      *
      * Same "C-ABI struct -> typed value" shape as buildServerConfig() (http_server/) and
-     * buildSyncConnectorConfig()/buildAsyncConnectorConfig() (indexer/): a free function next to the
+     * buildAsyncConnectorConfig() and inventoryBucketSpec() (indexer/): a free function next to the
      * type it builds, independently testable, no facade state involved.
      *
      * An empty buffer stays an empty string -- inventory_sync_server_config_t documents empty as

@@ -43,7 +43,8 @@ namespace invsync::metrics
     constexpr auto INDEXER_BULK_BYTES {"sync.indexer.bulk.bytes.total"};
     constexpr auto INDEXER_CONFLICT_RETRIES {"sync.indexer.conflict.retries"};
     constexpr auto INDEXER_CONFLICT_EXHAUSTED {"sync.indexer.conflict.exhausted"};
-    constexpr auto BULK_FLUSH_FAILURES_PREFIX {"sync.bulk.flush.failures."}; ///< + documents/exhausted/other
+    /// + documents/exhausted/unavailable/other (failureMetric(), I140): one per failed session.
+    constexpr auto BULK_FLUSH_FAILURES_PREFIX {"sync.bulk.flush.failures."};
     constexpr auto BULK_SESSIONS_FAILED {"sync.bulk.sessions.failed"};
 
     // -- session application ----------------------------------------------------------------

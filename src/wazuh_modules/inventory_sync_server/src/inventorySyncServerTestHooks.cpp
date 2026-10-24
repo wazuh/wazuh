@@ -22,6 +22,11 @@ namespace invsync::test_hooks
         invsync::InventorySyncServerFacade::instance().setIndexerSessionFactoryForTests(std::move(factory));
     }
 
+    void setIndexerClientFactoryForTests(IndexerClientFactory factory)
+    {
+        invsync::InventorySyncServerFacade::instance().setIndexerClientFactoryForTests(std::move(factory));
+    }
+
     void setIndexerConnectorSyncFactoryForTests(IndexerConnectorSyncFactory factory)
     {
         invsync::InventorySyncServerFacade::instance().setIndexerConnectorSyncFactoryForTests(std::move(factory));

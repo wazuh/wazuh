@@ -188,28 +188,20 @@ extern "C"
                                          ///< across the pipeline and the scan lane; over it -> 503.
                                          ///< Range 1..1024. <=0 -> 2.
 
-        /* ---- SYNC indexer connector (IndexerConnectorSync) tuning. Overlaid onto the <indexer>
-         *      block below by buildSyncConnectorConfig() before construction. This is the same
-         *      connector class inventory_sync (the module this one will eventually replace) uses,
-         *      so these mirror its own tunables exactly.
-         *
-         *      Each field is named `indexer_sync_<the connector's own key name>`, so comparing this
-         *      block against the builder shows the mapping 1:1 and crossing the two families
-         *      produces a visible name mismatch instead of a silent no-op. <=0 -> connector
-         *      default. ---- */
-        int indexer_sync_max_bulk_size;           ///< Bulk size threshold, bytes, before a flush is
-                                                  ///< forced. -> `max_bulk_size`. <=0 -> 10 MiB.
-        int indexer_sync_flush_interval_seconds;  ///< Periodic flush interval, seconds, forced even if
-                                                  ///< the size threshold was not reached.
-                                                  ///< -> `flush_interval_seconds`. <=0 -> 20 s.
-        int indexer_sync_max_retry_delay_seconds; ///< Ceiling for the exponential retry backoff.
-                                                  ///< -> `max_retry_delay_seconds`. <=0 -> 15 s.
-                                                  ///< The connector's constructor REJECTS a value
-                                                  ///< below its base retry delay of 1, so modulesd
-                                                  ///< also enforces a minimum of 1 on the option.
-                                                  ///< Between that and the <=0 sentinel above, a
-                                                  ///< rejecting value cannot reach the connector
-                                                  ///< from configuration at all.
+        /* ---- SYNC half tuning. Since E7b these feed the indexer_client `inventory` bucket
+         *      (indexer/indexerClientSyncAdapter.hpp: inventoryBucketSpec(), budgets()):
+         *      max_bulk_size stays the pipeline's group-commit threshold, connector_max_bulk_size is
+         *      the bucket's bytes per _bulk, the retry fields its retry policy and the module's time
+         *      budgets; flush_interval_seconds and request_timeout_seconds are accepted but ignored
+         *      (a WARN names the replacement). <=0 -> default, except where a field says 0 is a
+         *      real setting. ---- */
+        int indexer_sync_max_bulk_size;           ///< Group-commit threshold of the pipeline, request
+                                                  ///< bytes, before a batch is flushed. <=0 -> 10 MiB.
+        int indexer_sync_flush_interval_seconds;  ///< Accepted but ignored since E7b (the adapter has no
+                                                  ///< timer flush); a non-default value is WARNed.
+        int indexer_sync_max_retry_delay_seconds; ///< Ceiling of the `inventory` bucket's retry backoff
+                                                  ///< (`retry.cap`). <=0 -> 15 s. modulesd enforces a
+                                                  ///< minimum of 1 on the option.
 
         /* ---- ASYNC indexer connector (IndexerConnectorAsync) tuning. Overlaid by
          *      buildAsyncConnectorConfig().
@@ -342,6 +334,12 @@ extern "C"
                                     ///< window before the scanner's start() has run, instead
                                     ///< of treating "hasn't started yet" the same as "will
                                     ///< never run here".
+
+        /* ---- The process's indexer_client runtime -- APPENDED, same ABI rule as above. ---- */
+        const void* indexer_runtime; ///< Opaque `const indexer_client::RuntimeRef*` published by
+                                     ///< modulesd (wm_indexer_runtime_ref()); stable for the life of
+                                     ///< the process. NULL = no runtime: the sync stage of the
+                                     ///< startup gate fails and retries on the heartbeat.
     } inventory_sync_server_config_t;
 
     /**

@@ -13,6 +13,12 @@
 #include "testIndexerConnectorFakes.hpp"
 #include "testLogRecorder.hpp"
 
+#include <indexer_client/keyValueConfigSource.hpp>
+#include <indexer_client/runtime.hpp>
+
+#include "fakeIndexer.hpp"
+#include "healthRules.hpp"
+
 #include <gtest/gtest.h>
 
 #include <atomic>
@@ -21,6 +27,7 @@
 #include <filesystem>
 #include <memory>
 #include <mutex>
+#include <optional>
 #include <string>
 #include <thread>
 #include <unistd.h>
@@ -66,6 +73,63 @@ namespace
     }
 } // namespace
 
+/// A real indexer_client runtime on an in-process fake indexer (health only): what modulesd publishes to
+/// the module through `indexer_runtime`. Started and shut down on the test's own thread, the owner thread.
+class RealRuntime
+{
+public:
+    RealRuntime()
+        : m_fake(std::make_unique<indexer_client::testing::FakeIndexer>())
+    {
+        m_fake->addRule(indexer_client::testing::healthRule("green"));
+        m_fake->start();
+        const std::string text = "wazuh_modules.indexer_client_network_threads=1\n"
+                                 "wazuh_modules.indexer_client_cpu_threads=2\n"
+                                 "wazuh_modules.indexer_client_probe_interval_ms=200\n";
+        const std::string json = "{\"hosts\":[\"" + m_fake->baseUrl() + "\"]}";
+        auto source = indexer_client::KeyValueConfigSource::parse(text, json, indexer_client::Credentials {"a", "b"});
+        auto started = indexer_client::RuntimeOwner::start(indexer_client::ProcessId::Modulesd, source.value);
+        if (started.ok())
+        {
+            m_ref = started.value;
+            m_started = true;
+        }
+    }
+
+    ~RealRuntime()
+    {
+        if (m_started)
+        {
+            indexer_client::RuntimeOwner::beginShutdown(std::chrono::steady_clock::now() + std::chrono::seconds {5});
+            indexer_client::RuntimeOwner::shutdown();
+        }
+    }
+
+    RealRuntime(const RealRuntime&) = delete;
+    RealRuntime& operator=(const RealRuntime&) = delete;
+
+    bool started() const
+    {
+        return m_started;
+    }
+
+    /// What goes into `config.indexer_runtime`.
+    const void* published() const
+    {
+        return &m_ref;
+    }
+
+    const indexer_client::RuntimeRef& ref() const
+    {
+        return m_ref;
+    }
+
+private:
+    std::unique_ptr<indexer_client::testing::FakeIndexer> m_fake;
+    indexer_client::RuntimeRef m_ref;
+    bool m_started {false};
+};
+
 class IndexerGatingTest : public ::testing::Test
 {
 protected:
@@ -77,9 +141,13 @@ protected:
     void TearDown() override
     {
         inventory_sync_server_stop();
+        // The runtime outlives the module that borrowed it: shut down only after the stop above.
+        m_runtime.reset();
         // An override made by one test must never leak into the next.
         invsync::test::resetIndexerConnectorFactoriesToProduction();
     }
+
+    std::optional<RealRuntime> m_runtime;
 };
 
 /**
@@ -132,6 +200,8 @@ TEST_F(IndexerGatingTest, SessionAndBothConnectorsAreConstructedBeforeTheSocketO
     ASSERT_TRUE(LogRecorder::waitForMessageContaining("listening on"));
 
     EXPECT_EQ(1, events->m_sessionBuilds.load());
+    // The sync half's Client is built once, before every connector that runs on it.
+    EXPECT_EQ(1, events->m_clientBuilds.load());
     // 2 = the facade's slot (admission checks + pipeline worker 0) + the VD scan lane's own worker.
     EXPECT_EQ(2, events->m_syncBuilds.load());
     EXPECT_EQ(1, events->m_asyncBuilds.load());
@@ -406,38 +476,38 @@ TEST_F(IndexerGatingTest, TheEscalationLadderErrorsOnceThenWarnsOncePerHourAndDe
 }
 
 /**
- * The lane-only-fails permutation: the first attempt publishes session + sync + async + pipeline
- * and leaves ONLY the lane missing, so the retry exercises the config-building path with every
- * other slot flag false. The lane's connector factory must still be handed a usable configuration.
+ * The lane-only-fails permutation: the first attempt publishes session + client + sync + async + pipeline
+ * and leaves ONLY the lane missing, so the retry exercises the construction path with every other slot
+ * flag false. The lane's connector factory must still be handed a live Client and a usable chunk cap.
  */
-TEST_F(IndexerGatingTest, TheLaneRetriesWithAUsableConnectorConfig)
+TEST_F(IndexerGatingTest, TheLaneRetriesWithAUsableClientAndCap)
 {
     auto events = invsync::test::installAlwaysAvailableFakeIndexers();
 
-    // A sync factory with the real connector's first validation (hosts must be present),
-    // recording every config it is handed.
-    auto recordedConfigs = std::make_shared<std::vector<nlohmann::json>>();
-    auto recordedMutex = std::make_shared<std::mutex>();
+    struct Seen
+    {
+        bool client {false};
+        std::size_t cap {0};
+        std::string tag;
+    };
+    auto seen = std::make_shared<std::vector<Seen>>();
+    auto seenMutex = std::make_shared<std::mutex>();
     invsync::test_hooks::setIndexerConnectorSyncFactoryForTests(
-        [events, recordedConfigs, recordedMutex](
-            const nlohmann::json& config,
-            const invsync::indexer::IIndexerSession&,
-            LoggingContext) -> std::unique_ptr<invsync::indexer::IIndexerConnectorSync>
+        [events, seen, seenMutex](std::shared_ptr<indexer_client::IClient> client,
+                                  const invsync::indexer::AdapterOptions& options,
+                                  std::shared_ptr<const std::atomic<bool>>,
+                                  const std::string& tag) -> std::unique_ptr<invsync::indexer::IIndexerConnectorSync>
         {
             {
-                std::lock_guard<std::mutex> lock(*recordedMutex);
-                recordedConfigs->push_back(config);
+                std::lock_guard<std::mutex> lock(*seenMutex);
+                seen->push_back({client != nullptr, options.capBytes, tag});
             }
             events->m_syncBuilds.fetch_add(1);
-            if (!config.contains("hosts"))
-            {
-                throw std::runtime_error("No hosts found in the configuration");
-            }
             return std::make_unique<invsync::test::FakeIndexerConnectorSync>(events, "sync");
         });
 
     // The scanner factory fails the FIRST lane attempt only. The scanner is built before the
-    // lane's own connectors, so attempt 1 fails the lane stage without consuming the sync config.
+    // lane's own connectors, so attempt 1 fails the lane stage without consuming the sync stage.
     auto scannerAttempts = std::make_shared<std::atomic<int>>(0);
     invsync::test_hooks::setVdScannerFactoryForTests(
         [events, scannerAttempts](bool) -> std::shared_ptr<invsync::vd::IVdScanner>
@@ -452,71 +522,169 @@ TEST_F(IndexerGatingTest, TheLaneRetriesWithAUsableConnectorConfig)
     const auto path = uniqueSocketPath("laneretry");
     auto config = makeConfig(path);
 
-    // A real <indexer> block: its hosts must reach every connector factory call.
-    cJSON* indexer = cJSON_CreateObject();
-    cJSON* hosts = cJSON_CreateArray();
-    cJSON_AddItemToArray(hosts, cJSON_CreateString("https://127.0.0.1:9200"));
-    cJSON_AddItemToObject(indexer, "hosts", hosts);
-    config.indexer = indexer;
-
     inventory_sync_server_start(testLogCallback, &config);
-    cJSON_Delete(indexer); // borrowed for the duration of start() only
     ASSERT_TRUE(LogRecorder::waitForMessageContaining("could not start"));
 
     invsync::test_hooks::forceRetryForTests();
 
     // The lane comes up on the retry and the socket opens.
     ASSERT_TRUE(LogRecorder::waitForMessageContaining("listening on"))
-        << "a lane-only retry must succeed: the lane's connector factory needs a usable config";
+        << "a lane-only retry must succeed: the lane's connector factory needs the Client and a cap";
     EXPECT_TRUE(std::filesystem::exists(path));
+    EXPECT_EQ(1, events->m_clientBuilds.load()) << "the Client built on attempt 1 is not rebuilt on the retry";
 
-    // Every connector build -- the lane's retry included -- received a config with hosts.
-    std::lock_guard<std::mutex> lock(*recordedMutex);
-    ASSERT_FALSE(recordedConfigs->empty());
-    for (const auto& recorded : *recordedConfigs)
+    // Every connector build -- the lane's retry included -- received a Client and a positive cap.
+    std::lock_guard<std::mutex> lock(*seenMutex);
+    ASSERT_EQ(2U, seen->size());
+    for (const auto& build : *seen)
     {
-        EXPECT_TRUE(recorded.contains("hosts")) << "a connector was handed a config with no hosts: " << recorded.dump();
+        EXPECT_TRUE(build.client) << "a connector was built without a Client (" << build.tag << ")";
+        EXPECT_GT(build.cap, 0U) << "a connector was built without a chunk cap (" << build.tag << ")";
     }
 }
 
 /**
- * Every sync connector the module builds -- the admission slot, the pipeline workers' and the VD
- * lane's -- must be configured with flush_interval_seconds = 0: the workers own every flush, and
- * a timer flush failure would have no responder to report to.
+ * Every sync connector the module builds -- the admission slot (and pipeline worker 0) and the VD lane's --
+ * gets its own cancellation tag and the same chunk cap: the bucket's quota shared out over the pipeline
+ * and scan-lane workers (I137b). There is no flush timer to configure any more: the workers own every
+ * flush and the client library owns the transport.
  */
-TEST_F(IndexerGatingTest, PipelineConnectorsAreBuiltWithNoFlushTimer)
+TEST_F(IndexerGatingTest, PipelineConnectorsAreBuiltWithATagAndTheLaneShareOfTheQuota)
 {
     auto events = invsync::test::installAlwaysAvailableFakeIndexers();
 
-    auto recordedConfigs = std::make_shared<std::vector<nlohmann::json>>();
-    auto recordedMutex = std::make_shared<std::mutex>();
-    invsync::test_hooks::setIndexerConnectorSyncFactoryForTests(
-        [events, recordedConfigs, recordedMutex](
-            const nlohmann::json& config,
-            const invsync::indexer::IIndexerSession&,
-            LoggingContext) -> std::unique_ptr<invsync::indexer::IIndexerConnectorSync>
-        {
-            {
-                std::lock_guard<std::mutex> lock(*recordedMutex);
-                recordedConfigs->push_back(config);
-            }
-            events->m_syncBuilds.fetch_add(1);
-            return std::make_unique<invsync::test::FakeIndexerConnectorSync>(events, "sync");
-        });
-
-    const auto path = uniqueSocketPath("notimer");
+    const auto path = uniqueSocketPath("chunkcap");
     const auto config = makeConfig(path);
 
     inventory_sync_server_start(testLogCallback, &config);
     ASSERT_TRUE(LogRecorder::waitForMessageContaining("listening on"));
 
-    std::lock_guard<std::mutex> lock(*recordedMutex);
+    std::lock_guard<std::mutex> lock(events->m_mutex);
     // 2 = the facade's slot (admission checks + pipeline worker 0) + the VD scan lane's worker.
-    ASSERT_EQ(2U, recordedConfigs->size());
-    for (const auto& recorded : *recordedConfigs)
+    ASSERT_EQ(2U, events->m_syncTags.size());
+    EXPECT_EQ("w0", events->m_syncTags[0]);
+    EXPECT_EQ("vd0", events->m_syncTags[1]);
+    // The default bucket (64 MiB: no runtime is published, so the fallback global quota applies) over
+    // one pipeline worker plus one lane worker.
+    const auto expected = invsync::indexer::chunkCap(64U * 1024U * 1024U, 2);
+    for (const auto cap : events->m_syncCaps)
     {
-        ASSERT_TRUE(recorded.contains("flush_interval_seconds")) << recorded.dump();
-        EXPECT_EQ(0, recorded.at("flush_interval_seconds").get<int>())
-            << "a pipeline connector was built with a live flush timer: " << recorded.dump();
+        EXPECT_EQ(expected, cap);
     }
+}
+
+/**
+ * CA-E7b-10: with no runtime published (`indexer_runtime` NULL) the sync stage of the gate fails with a
+ * log line that names it; nothing after it is built, the socket never opens, and the heartbeat retries.
+ */
+TEST_F(IndexerGatingTest, NullRuntimeFailsSyncGate)
+{
+    auto events = invsync::test::installAlwaysAvailableFakeIndexers();
+    // The production Client factory over a NULL runtime: the check the facade's own factory makes.
+    invsync::test_hooks::setIndexerClientFactoryForTests(invsync::test::productionIndexerClientFactory());
+
+    const auto path = uniqueSocketPath("noruntime");
+    const auto config = makeConfig(path); // indexer_runtime stays NULL
+
+    ASSERT_EQ(0, inventory_sync_server_start(testLogCallback, &config))
+        << "a missing runtime is not fatal: the heartbeat retries";
+    ASSERT_TRUE(LogRecorder::waitForMessageContaining("could not start"));
+    EXPECT_TRUE(LogRecorder::sawMessageContaining("sync indexer connector"));
+    EXPECT_FALSE(LogRecorder::sawMessageContaining("async indexer connector"));
+    EXPECT_FALSE(std::filesystem::exists(path));
+
+    // Nothing downstream of the failing stage was attempted.
+    EXPECT_EQ(0, events->m_syncBuilds.load());
+    EXPECT_EQ(0, events->m_asyncBuilds.load());
+
+    // One ERROR for the incident, then the heartbeat keeps trying.
+    EXPECT_EQ(1U, LogRecorder::countMessagesContaining("could not start"));
+    invsync::test_hooks::forceRetryForTests();
+    EXPECT_EQ(1U, LogRecorder::countMessagesContaining("start attempt 2 failed"));
+    EXPECT_FALSE(std::filesystem::exists(path));
+}
+
+/**
+ * D73, D78: stop() lets go of the Client. The test installs an IndexerClientFactory that wraps the
+ * production one and keeps a weak_ptr to what it built; the sync connectors are the real adapters, so any
+ * holder of the Client left alive after stop() -- an adapter, the metrics slot, the facade -- shows.
+ */
+TEST_F(IndexerGatingTest, StopReleasesClient)
+{
+    m_runtime.emplace();
+    ASSERT_TRUE(m_runtime->started());
+
+    invsync::test::installFakeIndexersOverRealClient();
+    auto built = std::make_shared<std::weak_ptr<indexer_client::IClient>>();
+    auto production = invsync::test::productionIndexerClientFactory();
+    invsync::test_hooks::setIndexerClientFactoryForTests(
+        [production, built](const void* runtime,
+                            const indexer_client::BucketSpec& bucket) -> std::shared_ptr<indexer_client::IClient>
+        {
+            auto client = production(runtime, bucket);
+            *built = client;
+            return client;
+        });
+
+    const auto path = uniqueSocketPath("release");
+    auto config = makeConfig(path);
+    config.indexer_runtime = m_runtime->published();
+
+    inventory_sync_server_start(testLogCallback, &config);
+    ASSERT_TRUE(LogRecorder::waitForMessageContaining("listening on"));
+    ASSERT_FALSE(built->expired()) << "the module never built its Client";
+
+    const auto usageErrorsBefore = indexer_client::detail::testing::usageErrors();
+    inventory_sync_server_stop();
+
+    EXPECT_TRUE(built->expired()) << "something still holds the module's Client after stop()";
+
+    // The consumer name is free again: a second client() on the same runtime is accepted.
+    auto again =
+        m_runtime->ref().client(invsync::indexer::INDEXER_CLIENT_CONSUMER,
+                                std::vector<indexer_client::BucketSpec> {invsync::indexer::inventoryBucketSpec(
+                                    inventory_sync_server_config_t {}, 256ULL << 20, std::chrono::seconds {2})});
+    EXPECT_TRUE(again.ok()) << indexer_client::toString(again.cause) << ": " << again.reason;
+    if (again.value)
+    {
+        again.value->requestClose();
+        again.value->awaitClosed(std::chrono::steady_clock::now() + std::chrono::seconds {3});
+    }
+    again.value.reset();
+
+    EXPECT_EQ(usageErrorsBefore, indexer_client::detail::testing::usageErrors())
+        << "stopping the module closed the Client in a way the library counts as a usage error";
+}
+
+/**
+ * I138: the sync request timeout is the client runtime's now, so a value other than modulesd's default
+ * is an option that does nothing -- the operator is told ONCE, at start, not on every heartbeat.
+ */
+TEST_F(IndexerGatingTest, IgnoredSyncOptionWarns)
+{
+    invsync::test::installAlwaysAvailableFakeIndexers();
+
+    auto config = makeConfig(uniqueSocketPath("ignored"));
+    config.indexer_sync_request_timeout_seconds = 99;
+
+    inventory_sync_server_start(testLogCallback, &config);
+    ASSERT_TRUE(LogRecorder::waitForMessageContaining("listening on"));
+
+    EXPECT_EQ(1U, LogRecorder::countMessagesContaining("indexer_sync_request_timeout_seconds"));
+    EXPECT_TRUE(LogRecorder::sawMessageContaining("has no effect"));
+
+    invsync::test_hooks::forceRetryForTests();
+    invsync::test_hooks::forceRetryForTests();
+    EXPECT_EQ(1U, LogRecorder::countMessagesContaining("indexer_sync_request_timeout_seconds"))
+        << "the warning belongs to start(), not to each retry";
+
+    // The default value is left alone: nothing to warn about.
+    inventory_sync_server_stop();
+    LogRecorder::clear();
+    config.indexer_sync_request_timeout_seconds = 60;
+    config.socket_path[0] = '\0';
+    std::snprintf(config.socket_path, sizeof(config.socket_path), "%s", uniqueSocketPath("ignored2").c_str());
+    inventory_sync_server_start(testLogCallback, &config);
+    ASSERT_TRUE(LogRecorder::waitForMessageContaining("listening on"));
+    EXPECT_FALSE(LogRecorder::sawMessageContaining("indexer_sync_request_timeout_seconds"));
 }
