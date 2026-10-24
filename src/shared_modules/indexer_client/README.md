@@ -1366,7 +1366,7 @@ with the body:
 | Member | Value |
 |---|---|
 | `size` | `CursorQuery.pageSize` |
-| `query` | `CursorQuery.query` |
+| `query` | `CursorQuery.query`; defaults to `{"match_all":{}}` (an empty query is a 400 in OpenSearch 3.6, D60) |
 | `sort` | `CursorQuery.sort`; empty means `[{"_shard_doc":"asc"}]` |
 | `_source` | `CursorQuery.source`, only when not null |
 | `slice` | `{id, max}` when a `Slice` was given |
@@ -1960,9 +1960,9 @@ Check each binary's mtime before trusting a PASSED. The component executable lin
 (it interposes `getaddrinfo` for the hung-resolver case) and writes a link map,
 `indexer_client_component_test.map`, that shows no static curl or OpenSSL entered it.
 
-**Sanitizers.** Both suites run in a **sibling worktree**, not in `src/build`: the sanitizer flags
+**Sanitizers.** Both suites run in a **sibling worktree**, not in the main tree (`$WAZUH_REPO/src/build`): the sanitizer flags
 rewrite `CMAKE_CXX_FLAGS_DEBUG` tree-wide and `libwazuhext.so` is written to `src/build/lib`, which
-would be clobbered (I47b). Configure it outside `src/build` with `-DCMAKE_BUILD_TYPE=Debug`
+would be clobbered (I47b). Configure it outside the main tree with `-DCMAKE_BUILD_TYPE=Debug`
 and, for TSAN, `-DTSANITIZE=ON`; for ASAN, the CI mechanism
 (`-DCMAKE_C_FLAGS`/`-DCMAKE_CXX_FLAGS="-g -fsanitize=address -fsanitize=undefined -fsanitize=leak"`,
 `.github/actions/build_target_cpp/action.yml`). Rebuild `wazuhext` there before each sanitized run, check
