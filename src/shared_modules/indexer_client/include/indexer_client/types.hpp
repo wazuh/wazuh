@@ -278,7 +278,8 @@ namespace indexer_client
 
     struct CursorQuery final
     {
-        nlohmann::json query = nlohmann::json::object();
+        nlohmann::json query = {
+            {"match_all", nlohmann::json::object()}}; ///< `{}` is a 400 in OpenSearch 3.6 (D60, I156).
         nlohmann::json sort = nlohmann::json::array();
         nlohmann::json source; ///< `_source` filter; null means "all".
         std::uint32_t pageSize {1000};

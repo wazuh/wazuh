@@ -337,7 +337,7 @@ asio 1.38.2
 ==============================================================================
 License:     BSL-1.0
 Homepage:    https://github.com/chriskohlhoff/asio
-Included in: manager
+Included in: manager, standalone
 
 ------------------------------------------------------------------------------
 [ asio/LICENSE_1_0.txt ]

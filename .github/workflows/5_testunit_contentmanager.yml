@@ -18,6 +18,12 @@ on:
       - "src/shared_modules/indexer_connector/**/CMakeLists.txt"
       - "src/shared_modules/indexer_connector/include/**"
       - "src/shared_modules/indexer_connector/src/**"
+      # indexer_client: linked by the library (the v2 adapter, CMakeLists.txt) and the suites, whose
+      # fake indexer lives in its tests/fake.
+      - "src/shared_modules/indexer_client/**/CMakeLists.txt"
+      - "src/shared_modules/indexer_client/include/**"
+      - "src/shared_modules/indexer_client/src/**"
+      - "src/shared_modules/indexer_client/tests/fake/**"
       - "src/shared_modules/keystore/**"
       - "!src/shared_modules/keystore/qa/**"
       # Headers from shared_modules/utils (rocksDBWrapper.hpp, loggerHelper.h, timeHelper.h) and
