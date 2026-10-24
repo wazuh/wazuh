@@ -75,7 +75,10 @@ function(indexer_client_objects name)
   # ASIO_DISABLE_VISIBILITY is set (measured in the E0 spike: 159 asio symbols exported without it).
   target_compile_options(${name} PRIVATE -fvisibility=hidden -fvisibility-inlines-hidden)
   target_compile_definitions(${name} PRIVATE ASIO_STANDALONE ASIO_DISABLE_VISIBILITY)
-  target_link_libraries(${name} PRIVATE ext_asio)
+  # wazuhext on an OBJECT library links nothing: it brings the vendored OpenSSL's include path (and the build order) to
+  # these sources. Without it a builder's older system headers turn sk_X509_INFO_* into sk_* symbols that the vendored
+  # libcrypto does not export (D85).
+  target_link_libraries(${name} PRIVATE ext_asio wazuhext)
 endfunction()
 
 indexer_client_objects(indexer_client_objects)
