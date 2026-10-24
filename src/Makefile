@@ -121,6 +121,9 @@ endif
 ifneq (,$(filter ${EXTERNAL_SANITIZE},YES yes y Y 1))
 CMAKE_OPTS+=-DEXTERNAL_SANITIZE=ON
 endif
+ifneq (,$(filter ${ENGINE_TSAN},YES yes y Y 1))
+CMAKE_OPTS+=-DENGINE_ENABLE_TSAN=ON
+endif
 ifneq (,$(filter ${DISABLE_JEMALLOC},YES yes y Y 1))
 CMAKE_OPTS+=-DDISABLE_JEMALLOC=ON
 endif

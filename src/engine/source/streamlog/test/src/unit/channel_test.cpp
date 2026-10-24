@@ -4,6 +4,7 @@
 #include <filesystem>
 #include <fstream>
 #include <memory>
+#include <mutex>
 #include <sys/stat.h>
 #include <thread>
 
@@ -708,6 +709,7 @@ TEST_F(ChannelHandlerTest, StoreContentAfterRotation)
     config.shouldCompress = false;
     config.pattern = "${name}-${counter}";
 
+    std::mutex capturedMutex; // upsertDoc runs on the channel worker thread
     std::vector<json::Json> capturedJsons;
 
     EXPECT_CALL(*mockStore, readDoc(_)).WillRepeatedly(Return(store::mocks::storeReadError<json::Json>()));
@@ -715,8 +717,9 @@ TEST_F(ChannelHandlerTest, StoreContentAfterRotation)
     EXPECT_CALL(*mockStore, upsertDoc(_, _))
         .Times(AtLeast(2))
         .WillRepeatedly(
-            [&capturedJsons](const base::Name&, const store::Doc& doc) -> base::OptError
+            [&capturedMutex, &capturedJsons](const base::Name&, const store::Doc& doc) -> base::OptError
             {
+                std::lock_guard<std::mutex> lock(capturedMutex);
                 capturedJsons.push_back(doc);
                 return std::nullopt;
             });
@@ -728,6 +731,7 @@ TEST_F(ChannelHandlerTest, StoreContentAfterRotation)
     (*writer)(std::string(config.maxSize + 1, 'R'));
     std::this_thread::sleep_for(std::chrono::milliseconds(300));
 
+    std::lock_guard<std::mutex> lock(capturedMutex);
     ASSERT_GE(capturedJsons.size(), 2u) << "Expected at least 2 store writes (creation + rotation)";
 
     // First write (creation): counter=0
