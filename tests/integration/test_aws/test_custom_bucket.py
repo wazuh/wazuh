@@ -135,7 +135,8 @@ configurator.configure_test(configuration_file='custom_bucket_configuration.yaml
                          zip(configurator.test_configuration_template, configurator.metadata),
                          ids=configurator.cases_ids)
 def test_custom_bucket_logs(
-        test_configuration, metadata, create_test_bucket, set_test_sqs_queue, manage_bucket_files, set_wazuh_configuration,
+        test_configuration, metadata, create_test_bucket, set_test_sqs_queue, manage_bucket_files,
+        send_sqs_upload_notification, set_wazuh_configuration,
         configure_local_internal_options_function, truncate_monitored_files, daemons_handler,
         file_monitoring
 ):
@@ -150,6 +151,7 @@ def test_custom_bucket_logs(
             - Truncate wazuh logs.
             - Restart wazuh-manager service to apply configuration changes.
             - Uploads a file to the S3 Bucket.
+            - Sends the uploaded file's S3 notification to the SQS queue.
         - test:
             - Check in the log that the module was called with correct parameters.
             - Check that the module retrieved a message from the SQS Queue.
@@ -176,6 +178,9 @@ def test_custom_bucket_logs(
         - manage_bucket_files:
             type: fixture
             brief: S3 buckets manager.
+        - send_sqs_upload_notification:
+            type: fixture
+            brief: Send the uploaded file's S3 notification to the SQS queue.
         - set_wazuh_configuration:
             type: fixture
             brief: Apply changes to the ossec.conf configuration.

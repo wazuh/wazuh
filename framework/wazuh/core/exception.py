@@ -293,6 +293,10 @@ class WazuhException(Exception):
                               'see the detail for its answer, check that wazuh-manager-modulesd is running, '
                               'then send the request again'
                },
+        1776: {'message': 'The operative system of the agent is unknown',
+               'remediation': 'The agent has not reported its operative system yet. Please, use `GET /agents?select='
+                              'id,name,status` to check whether it has ever connected'
+               },
 
         # Manager:
         1901: {'message': 'Control socket has not been created'

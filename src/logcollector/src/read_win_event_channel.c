@@ -283,6 +283,7 @@ int update_bookmark(EVT_HANDLE evt, os_channel *channel)
     }
 
     fclose(fp);
+    fp = NULL;
 
     /* Success */
     status = 1;

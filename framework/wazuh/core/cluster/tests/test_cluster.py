@@ -118,6 +118,19 @@ def test_get_node():
         assert get_node["type"] == test_dict["node_type"]
 
 
+@pytest.mark.parametrize('filename, expected', [
+    ('ossec.conf', True),
+    ('x.swp', True),
+    ('x.tmp', True),
+    ('x.txt~', True),
+    ('rules.xml', False),
+    ('swp', False),
+])
+def test_is_excluded(filename, expected):
+    """Check that a file is excluded by its name or by its extension."""
+    assert cluster.is_excluded(filename, ['ar.conf', 'ossec.conf'], ['~', '.tmp', '.lock', '.swp']) is expected
+
+
 @patch('os.path.getmtime', return_value=45)
 @patch('wazuh.core.cluster.cluster.blake2b', return_value="hash")
 @patch("wazuh.core.cluster.cluster.path.join", return_value="/mock/foo/bar")
