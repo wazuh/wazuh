@@ -60,7 +60,7 @@ DELETE_PATH = "/_internal/agents/delete"
 
 # Mirror the union of invsync::sync::AGENT_DELETION_SCOPE_BY_QUERY (the states pattern, deleted by
 # query on the sync connector) and AGENT_DELETION_SCOPE_BY_ID (the two wazuh-agent-* documents,
-# deleted by document id on the async connector that writes them). Source of truth:
+# deleted by document id on the agent-state bucket that writes them). Source of truth:
 # src/wazuh_modules/inventory_sync_server/src/sync/stateIndexAllowlist.hpp
 DELETION_SCOPE = ("wazuh-states-*", "wazuh-agent-config", "wazuh-agent-stats")
 

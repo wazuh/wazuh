@@ -27,9 +27,10 @@
 namespace invsync::indexer
 {
 
-    /// The consumer name invsync registers with the process runtime, and its one bucket.
+    /// The consumer name invsync registers with the process runtime, and its two buckets (I148).
     constexpr auto INDEXER_CLIENT_CONSUMER {"inventory_sync_server"};
     constexpr auto INVENTORY_BUCKET {"inventory"};
+    constexpr auto AGENT_STATE_BUCKET {"agent-state"};
 
     /// Bytes the library charges per operation besides its payload (`IC/src/write/bucket.hpp` RESULT_RESERVE).
     constexpr std::size_t RESULT_RESERVE_BYTES {2048};
@@ -61,22 +62,40 @@ namespace invsync::indexer
     /**
      * @brief The `inventory` bucket (I138, I137b, I142b, I145b).
      *
-     * quotaBytes = clamp(max(64 MiB, bulk.maxBytes + RESULT_RESERVE_BYTES + 1 MiB), <= globalQuotaBytes); when even
-     * the global quota cannot hold one bulk, bulk.maxBytes is clipped to fit and `warning` says so. bulk.maxBytes =
+     * quotaBytes = clamp(max(64 MiB, bulk.maxBytes + RESULT_RESERVE_BYTES + 1 MiB), <= quotaBudget); when even
+     * the budget cannot hold one bulk, bulk.maxBytes is clipped to fit and `warning` says so. bulk.maxBytes =
      * `indexer_sync_connector_max_bulk_size` (<= 0 -> 10 MiB, the v1 default); retry.maxAttempts =
      * `indexer_sync_max_retry_attempts` (0 -> unlimited, < 0 -> 5); retry.maxDuration = Budgets::statefulRetry;
      * retry.cap = `indexer_sync_max_retry_delay_seconds` (<= 0 -> 15 s); overflow Block with `blockTimeout`; 409
      * Success; ambiguous 5xx Retry (I105); not ordered.
      *
      * @param config Module configuration.
-     * @param globalQuotaBytes The runtime's `global_quota_bytes` (RuntimeRef::snapshot()).
+     * @param quotaBudget What the runtime's `global_quota_bytes` leaves once `agent-state` took its quota (I149c):
+     *                    `snapshot().globalQuotaBytes − agentStateBucketSpec(...).quotaBytes`.
      * @param blockTimeout How long an add may wait for quota (2 s in production).
      * @param warning Set when bulk.maxBytes had to be clipped; may be null.
      */
     indexer_client::BucketSpec inventoryBucketSpec(const inventory_sync_server_config_t& config,
-                                                   std::uint64_t globalQuotaBytes,
+                                                   std::uint64_t quotaBudget,
                                                    std::chrono::milliseconds blockTimeout,
                                                    std::string* warning = nullptr);
+
+    /**
+     * @brief The `agent-state` bucket of POST /stats, POST /config and the deletion's by-id deletes (I148, I149,
+     *        I149b, I149c).
+     *
+     * ordered; overflow Reject (503 to the agent); ambiguous 5xx Retry; 409 Success; retry without an attempt or a
+     * duration bound (the v1 async queue buffered through outages too; the quota bounds it), cap =
+     * `indexer_async_max_retry_delay_seconds` (<= 0 -> 15 s). bulk.maxBytes = `indexer_async_bulk_max_bytes`
+     * (<= 0 -> 4 MiB). quotaBytes = min(max(requested, bulk + 6 KiB, 16 KiB), top) with requested =
+     * `indexer_async_max_queue_bytes` (0 -> global / 4) and top = max(global / 4, min(16 KiB, global / 2)): the
+     * floor lets the two deletes of a deletion share one Group; the top leaves `inventory` the rest. When the bulk
+     * does not fit it is clipped to quota − 6 KiB (or quota / 2) and `warning` says so; a capped request warns too.
+     * Valid for every option value with a global quota of 8 KiB or more.
+     */
+    indexer_client::BucketSpec agentStateBucketSpec(const inventory_sync_server_config_t& config,
+                                                    std::uint64_t globalQuotaBytes,
+                                                    std::string* warning = nullptr);
 
     /// Per-worker chunk cap: 0.8 · quota / (2 · lanes), lanes = pipeline + scan-lane workers (I137b, I145).
     std::size_t chunkCap(std::size_t quotaBytes, std::size_t lanes);

@@ -30,6 +30,10 @@ if(TARGET compile_schemas_input)
   add_dependencies(inventory_sync_server_testtool compile_schemas_input)
 endif()
 
+# indexer_connector: seedCredentials() still writes the indexer credentials to queue/keystore for the
+# vulnerability scanner, which stays on the v1 connector until E8 (the server no longer reads them). Its
+# shared library is what exports Keystore here: the static keystore target defines Log::GLOBAL_LOG_FUNCTION a
+# second time next to this executable's own. Goes with the scanner's migration.
 target_link_libraries(inventory_sync_server_testtool inventory_sync_server vulnerability_scanner indexer_connector
                       indexer_client wazuhext pthread)
 

@@ -31,13 +31,10 @@ target_link_libraries(
   # inventorySyncServerModule_test.cpp builds a real cJSON tree to exercise the C-ABI's borrow
   # contract; wazuhext is where cJSON lives (see the module's CMakeLists.txt).
   wazuhext
-  # indexerGating_test.cpp's file-local fake connectors implement IIndexerConnector directly and
-  # need no indexer_connector symbols themselves, but inventorySyncServerModule_test.cpp's default
-  # (unmocked) startup path resolves into the real IndexerConnectorSync inside the linked .so.
-  indexer_connector
-  # indexerClientSyncAdapter_test.cpp, indexerGating_test.cpp and metricsEndpoint_test.cpp drive the real
-  # adapter on a real runtime of the client library; the .so is shared with the module's own use of
-  # it, so the process still holds a single runtime.
+  # indexerClientSyncAdapter_test.cpp, indexerGating_test.cpp, metricsEndpoint_test.cpp,
+  # agentDeleteSweeper_test.cpp and agentStateOrdering_test.cpp drive the real adapter on a real runtime of
+  # the client library; the .so is shared with the module's own use of it, so the process still holds a
+  # single runtime.
   indexer_client)
 
 target_include_directories(

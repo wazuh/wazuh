@@ -543,9 +543,15 @@ namespace invsync::sync
                 // first or the delete-then-reinsert order would invert.
                 flushAndRespond(batch, batchBytes, connector);
 
+                // The deletion's budget starts once the batch is answered, not at admission: it bounds
+                // this deletion's own I/O (the by-query and the by-id wait share it, I145), not the time
+                // the item spent queued or the flush of earlier sessions.
+                const auto until = std::chrono::steady_clock::now() + m_config.agentDeletion.budget;
+
                 try
                 {
-                    auto outcome = m_processor.executeDeleteAgent(item.session.agentId, connector);
+                    auto outcome =
+                        m_processor.executeDeleteAgent(item.session.agentId, connector, m_config.agentDeletion, until);
                     respond(item, outcome.status, outcome.body);
                 }
                 catch (const std::exception& e)

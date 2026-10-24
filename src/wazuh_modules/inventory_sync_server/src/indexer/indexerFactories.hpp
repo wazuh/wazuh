@@ -21,12 +21,14 @@
 #include <functional>
 #include <memory>
 #include <string>
+#include <vector>
 
 namespace invsync::indexer
 {
 
     /**
-     * @brief Builds the module's Client on the process runtime (I130, I144).
+     * @brief Builds the module's Client, with its `inventory` and `agent-state` buckets, on the process runtime (I130,
+     *        I144, I148).
      *
      * `runtime` is the opaque `const indexer_client::RuntimeRef*` modulesd publishes in the C config
      * (`indexer_runtime`). The production factory throws when it is null or when RuntimeRef::client()
@@ -34,7 +36,7 @@ namespace invsync::indexer
      * returns a stand-in, so the gate's other stages keep their own fakes.
      */
     using IndexerClientFactory = std::function<std::shared_ptr<indexer_client::IClient>(
-        const void* runtime, const indexer_client::BucketSpec& bucket)>;
+        const void* runtime, const std::vector<indexer_client::BucketSpec>& buckets)>;
 
     /// Builds one worker's sync connector over the shared Client (I144).
     using IndexerConnectorSyncFactory =

@@ -12,11 +12,9 @@
 
 #include "common/agentId.hpp"
 #include "loggerHelper.h"
-#include "sync/stateIndexAllowlist.hpp" // AGENT_DELETION_SCOPE_BY_ID
 #include <uds_http_server/logThrottle.hpp>
 
 #include <cstdint>
-#include <exception>
 #include <json.hpp>
 #include <optional>
 #include <string>
@@ -175,8 +173,7 @@ namespace invsync::endpoints::delete_agent
             }
 
             const auto pipeline = deps.pipeline.lock();
-            const auto asyncIndexer = deps.asyncIndexer.lock();
-            if (!pipeline || !asyncIndexer)
+            if (!pipeline)
             {
                 deps.requestCounters.count(503);
                 responder->send(errorResponse(503, "Service unavailable"));
@@ -187,9 +184,8 @@ namespace invsync::endpoints::delete_agent
             item.request = request;
             // The responder rides along, and that is the whole contract: the pipeline's own
             // respond() answers the caller after executeDeleteAgent() has flushed its
-            // delete-by-query, which is what lets a manager-task row read `completed` and mean
-            // purged. The worker needed no change for it -- it has always answered a DeleteAgent
-            // item, there has just never been anyone to answer.
+            // delete-by-query AND resolved its by-id deletes, which is what lets a manager-task row
+            // read `completed` and mean purged.
             item.responder = responder;
             item.kind = invsync::sync::SyncPipeline::Item::Kind::DeleteAgent;
             // Canonical like every document `_id` and query -- the deletion must match what indexing
@@ -198,51 +194,12 @@ namespace invsync::endpoints::delete_agent
             const auto& agentId = *callerAgentId;
             item.session.agentId = agentId;
 
-            /*
-             * The BY-ID half, and it goes FIRST.
-             *
-             * AGENT_DELETION_SCOPE_BY_ID holds one document per agent whose `_id` IS the agent id --
-             * the canonical form below, which is what POST /config and POST /stats write because
-             * remoted authenticates and forwards the canonical id (common/agentId.hpp). They are written
-             * through the async connector's accumulating queue, so queueing their deletes on that
-             * same queue is what orders them after a report it has already accepted: the queue is
-             * FIFO, so anything enqueued before this point is applied before it. First rather than
-             * after the pipeline enqueue for exactly that reason -- every microsecond of delay here
-             * is a microsecond in which one more report could slip in behind the deletion.
-             *
-             * A by-id delete also needs no index refresh (unlike the pipeline's delete-by-query), so
-             * a report the queue pushed moments ago is still deletable, and deleting a document that
-             * is not there is a no-op the whole chain ignores -- which is what makes the
-             * dispatcher's retry of an already-purged agent free.
-             *
-             * If the pipeline then refuses the item below, these deletes have already been queued.
-             * That is harmless: they are idempotent, the agent is gone from client.keys so nothing
-             * will write those documents again, and the dispatcher retries the whole deletion until
-             * it is accepted -- this type has no attempt budget. Each retry re-queues this pair for
-             * the same reason, which is bounded and free.
-             */
-            try
-            {
-                for (const auto& index : invsync::sync::AGENT_DELETION_SCOPE_BY_ID)
-                {
-                    asyncIndexer->bulkDelete(agentId, index);
-                }
-            }
-            catch (const std::exception& e)
-            {
-                // Unreachable with the compile-time index names in that scope (the connector only
-                // rejects an empty index or id), so this is the branch that keeps a future change
-                // honest: the caller must hear about a deletion that was not fully queued.
-                LOGFN_ERROR(logFn(),
-                            "Could not queue the deletion of agent %s's configuration and statistics "
-                            "documents: %s. The caller must retry.",
-                            agentId.c_str(),
-                            e.what());
-                deps.requestCounters.count(503);
-                responder->send(errorResponse(503, "Service unavailable"));
-                return;
-            }
-
+            // Only the enqueue happens here. Both halves of the deletion run on the agent's shard worker
+            // (SessionProcessor::executeDeleteAgent, I147c): the by-id deletes of AGENT_DELETION_SCOPE_BY_ID
+            // on the `agent-state` bucket -- after cancel(agent) and ordered behind the agent's earlier
+            // /stats and /config writes -- and the by-query over this cluster's `wazuh-states-*`. The
+            // answer comes from the worker once both are done, so two deletions of one agent never
+            // overlap and a refused enqueue below has queued nothing at all.
             if (!pipeline->enqueue(std::move(item)))
             {
                 if (const auto decision = capacityThrottle.record())

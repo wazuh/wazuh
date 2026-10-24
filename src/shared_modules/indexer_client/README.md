@@ -132,6 +132,11 @@ RuntimeOwner::shutdown()                  owner thread, joins every runtime thre
   static destruction, at `exit()`. In E1 its threads always leave, but from E2 on a thread blocked
   in I/O or in a long callback can hang that `exit()`: the owner must call `shutdown()` before the
   process exits.
+  Measured for a fatal `exit()` from any thread with a `Client` held in a static and a `_bulk` the
+  indexer never answers (E7c, D71): the process does not hang, but `~Client` first waits for its
+  drain, `drain_ms − 2·callback_budget_ms` (about 9.6 s with the defaults), then the leftover
+  transfer is cancelled and the runtime threads are joined in milliseconds. Each such static client
+  adds its own wait.
 - **`requestClose()` / `awaitClosed(deadline)`.** `Client::requestClose()` never blocks and is
   valid from any thread; it closes admission and the queued writes keep draining. `Client::awaitClosed()` blocks and is for consumer
   threads only: it waits for the drain up to `deadline`, resolves what is left and returns a `CloseReport` (see
@@ -1512,7 +1517,7 @@ fastmetrics (the adapters are E7–E10). The contract is `include/indexer_client
 | Call | Returns | Holds |
 |---|---|---|
 | `Client::metrics()` (also `IClient::metrics()`, mocked) | `ClientMetrics` | `consumer`, the `BucketMetrics` of **that consumer's** buckets, `callbacksSkipped`, `callbackOverruns`, `callbackMaxDurationMs`. A default-constructed or moved-from `Client` returns an empty `ClientMetrics` |
-| `RuntimeRef::snapshot()` | `MetricsSnapshot` | `networkThreads`, `cpuThreads`, `clients`, `globalCharge`, `globalQuotaBytes`, `retainedBytes`, `queries` (`QueryMetrics`), `pit` (`PitMetrics`), `nodes[]` (`NodeMetrics`), `usageErrors`; **no bucket** |
+| `RuntimeRef::snapshot()` | `MetricsSnapshot` | `networkThreads`, `cpuThreads`, `clients`, `globalCharge`, `globalQuotaBytes`, `retainedBytes`, `queries` (`QueryMetrics`), `pit` (`PitMetrics`), `nodes[]` (`NodeMetrics`), `usageErrors`, `requestTimeout` (the runtime's `request_timeout_ms`, I150, not a metric); **no bucket** |
 
 **Lifetimes.** Buckets and nodes belong to the runtime: they start at 0 with each `start()`. `QueryMetrics`, `PitMetrics` and `usageErrors`
 are process-wide and never reset (they survive `shutdown()` + `start()`; one runtime per process in production).

@@ -12,12 +12,17 @@
 // up-front availability gate, and the deferred execution on the target agent's pipeline shard --
 // with a REAL SyncPipeline over the fake connector, so what runs here is what runs in production.
 //
-// The route answers AT COMPLETION: the 200 means the delete-by-query has run AND flushed, which is
-// what lets the Task Manager record the deletion as `completed` and have that mean purged.
+// The route only gates and enqueues (I147c): both halves of the deletion -- the by-id deletes on the `agent-state`
+// bucket and the by-query -- run on the agent's shard worker, which answers AT COMPLETION. The 200 means the
+// delete-by-query has run AND flushed and the by-id deletes resolved, which is what lets the Task Manager record
+// the deletion as `completed` and have that mean purged. The by-id half itself is syncPipeline_test.cpp's
+// (a real runtime: a Group's tickets cannot be faked).
 #include "endpoints/deleteAgentEndpoint.hpp"
 
+#include "sync/fullSessionValidator.hpp"
 #include "sync/syncPipeline.hpp"
 #include "testIndexerConnectorFakes.hpp"
+#include "testSessionBuilder.hpp"
 
 #include <wazuh_metrics/manager.hpp>
 
@@ -30,15 +35,19 @@
 #include <future>
 #include <memory>
 #include <mutex>
+#include <stdexcept>
 #include <string>
 #include <thread>
 #include <utility>
+#include <variant>
 #include <vector>
 
 using invsync::sync::SyncPipeline;
 using invsync::sync::SyncPipelineConfig;
 using invsync::test::ConnectorEvents;
 using invsync::test::FakeIndexerConnectorSync;
+using invsync::test::SessionSpec;
+using invsync::test::ValueSpec;
 using wazuh::uds_http::HttpRequest;
 using wazuh::uds_http::HttpResponse;
 using wazuh::uds_http::IHttpResponder;
@@ -83,38 +92,44 @@ namespace
         std::atomic<bool> m_sent {false};
     };
 
-    /// A real single-worker pipeline over the shared fake-connector event log, plus the handler
-    /// wired exactly like the facade wires it.
+    /// A real single-worker pipeline over the shared fake-connector event log, plus the handler wired exactly
+    /// like the facade wires it.
     ///
-    /// The ASYNC connector is here because the deletion has a half that belongs to it: the
-    /// AGENT_DELETION_SCOPE_BY_ID documents (`wazuh-agent-config`, `wazuh-agent-stats`) are written
-    /// by POST /config and POST /stats through that connector's accumulating queue, so their deletes
-    /// are queued there -- the only way to order them after a report the queue has accepted but not
-    /// yet pushed. Both fakes share one event log, so a test can read the two halves from one
-    /// fixture.
+    /// The deletion's by-id half runs on that worker through `AgentDeletionDeps`; by default it is off
+    /// (by-query only), and a test that wants the by-id half hands the pipeline a scripted writer.
     struct EndpointUnderTest
     {
         std::shared_ptr<ConnectorEvents> events {std::make_shared<ConnectorEvents>()};
         /// The one behind the up-front availability gate; the pipeline holds its own.
         std::shared_ptr<FakeIndexerConnectorSync> admissionConnector;
-        std::shared_ptr<invsync::test::FakeIndexerConnectorAsync> asyncConnector;
         std::shared_ptr<SyncPipeline> pipeline;
         wazuh::uds_http::RouteHandler handler;
 
-        EndpointUnderTest()
+        explicit EndpointUnderTest(SyncPipelineConfig config = {})
         {
             admissionConnector = std::make_shared<FakeIndexerConnectorSync>(events, "sync");
-            asyncConnector = std::make_shared<invsync::test::FakeIndexerConnectorAsync>(events, "async");
             std::vector<std::shared_ptr<invsync::indexer::IIndexerConnectorSync>> connectors {
                 std::make_shared<FakeIndexerConnectorSync>(events, "sync")};
-            pipeline = std::make_shared<SyncPipeline>(SyncPipelineConfig {}, std::move(connectors), CLUSTER);
-            handler =
-                delete_agent::makeHandler(delete_agent::Dependencies {pipeline, admissionConnector, asyncConnector});
+            pipeline = std::make_shared<SyncPipeline>(std::move(config), std::move(connectors), CLUSTER);
+            handler = delete_agent::makeHandler(delete_agent::Dependencies {pipeline, admissionConnector});
         }
     };
 
-    /// For the halves the response does NOT wait on -- the by-id deletes ride a fire-and-forget
-    /// queue -- and for pinning that a refused request queued nothing.
+    /// A session item for agent 001, to park the worker inside flush() while the test looks at the deletion's queue.
+    invsync::sync::SyncPipeline::Item sessionItem(const std::shared_ptr<FutureResponder>& responder)
+    {
+        auto request = std::make_shared<HttpRequest>();
+        request->body = invsync::test::buildSyncDataSession(SessionSpec {}, {ValueSpec {}});
+        auto result = invsync::sync::validateFullSession(request->body, "001", CLUSTER);
+        auto* session = std::get_if<invsync::sync::ValidatedSession>(&result);
+        if (session == nullptr)
+        {
+            throw std::runtime_error {"test session failed validation"};
+        }
+        return SyncPipeline::Item {request, responder, std::move(*session)};
+    }
+
+    /// For facts that hold only once the worker got somewhere (parked in flush(), flushed).
     bool waitFor(const std::function<bool()>& condition)
     {
         const auto deadline = std::chrono::steady_clock::now() + WAIT;
@@ -160,10 +175,7 @@ TEST(DeleteAgentEndpoint, TheAdmissionConnectorGoneIs503)
     EndpointUnderTest fixture;
     std::shared_ptr<invsync::indexer::IIndexerConnectorSync> admission {
         std::make_shared<FakeIndexerConnectorSync>(fixture.events, "admission")};
-    // The async connector stays live on purpose: with it left expired too, the handler would refuse
-    // on THAT gate and this case would pass without the admission weak_ptr ever being consulted.
-    auto handler =
-        delete_agent::makeHandler(delete_agent::Dependencies {fixture.pipeline, admission, fixture.asyncConnector});
+    auto handler = delete_agent::makeHandler(delete_agent::Dependencies {fixture.pipeline, admission});
     admission.reset(); // stop() clearing the connector
 
     auto responder = std::make_shared<FutureResponder>();
@@ -171,91 +183,61 @@ TEST(DeleteAgentEndpoint, TheAdmissionConnectorGoneIs503)
 
     EXPECT_EQ(503, responder->get().status);
     EXPECT_TRUE(fixture.events->syncOps().empty()) << "a terminal 503 queues nothing";
-    EXPECT_TRUE(fixture.events->asyncOps().empty()) << "including the by-id half";
 }
 
 TEST(DeleteAgentEndpoint, ExpiredPipelineIs503)
 {
     EndpointUnderTest fixture;
-    wazuh::uds_http::RouteHandler handler = delete_agent::makeHandler(delete_agent::Dependencies {
-        std::weak_ptr<SyncPipeline> {}, fixture.admissionConnector, fixture.asyncConnector});
+    wazuh::uds_http::RouteHandler handler = delete_agent::makeHandler(
+        delete_agent::Dependencies {std::weak_ptr<SyncPipeline> {}, fixture.admissionConnector});
 
     auto responder = std::make_shared<FutureResponder>();
     handler(executionRequest(R"({"agent_id":"7"})"), responder);
     EXPECT_EQ(503, responder->get().status);
-    EXPECT_TRUE(fixture.events->asyncOps().empty()) << "the gate runs before either half is queued";
+    EXPECT_TRUE(fixture.events->syncOps().empty()) << "the gate runs before anything is queued";
 }
 
-/// The other weak capture: the facade's phase-2 teardown has already dropped the async connector, so
-/// the by-id half could not be queued. That is a `503`, not a half-done purge.
-TEST(DeleteAgentEndpoint, ExpiredAsyncConnectorIs503)
+/**
+ * CA-E7c-2: the route validates, gates and enqueues -- nothing else. The by-id half (cancel, the Group of two
+ * deletes) is the WORKER's, so while the worker is parked behind an earlier session's flush the writer has seen
+ * nothing and the caller has no answer; once the worker gets to the item it cancels, asks for its Group and --
+ * the scripted writer's Group refuses every add -- cancels again and answers a failure.
+ */
+TEST(DeleteAgentEndpoint, OnlyGatesAndEnqueues)
 {
-    EndpointUnderTest fixture;
-    wazuh::uds_http::RouteHandler handler = delete_agent::makeHandler(delete_agent::Dependencies {
-        fixture.pipeline, fixture.admissionConnector, std::weak_ptr<invsync::indexer::IIndexerConnectorAsync> {}});
+    SyncPipelineConfig config;
+    auto events = std::make_shared<ConnectorEvents>();
+    config.agentDeletion.byId = true;
+    config.agentDeletion.agentState = events->m_agentStateWriter;
+    config.agentDeletion.budget = std::chrono::seconds {5};
+
+    std::vector<std::shared_ptr<invsync::indexer::IIndexerConnectorSync>> connectors {
+        std::make_shared<FakeIndexerConnectorSync>(events, "sync")};
+    auto pipeline = std::make_shared<SyncPipeline>(config, std::move(connectors), CLUSTER);
+    auto admission = std::make_shared<FakeIndexerConnectorSync>(events, "admission");
+    auto handler = delete_agent::makeHandler(delete_agent::Dependencies {pipeline, admission});
+
+    // Park the worker inside the flush of an earlier session of the same shard.
+    events->closeFlushGate();
+    auto session = std::make_shared<FutureResponder>();
+    ASSERT_TRUE(pipeline->enqueue(sessionItem(session)));
+    ASSERT_TRUE(waitFor([&] { return events->m_flushEntered.load() == 1; }));
 
     auto responder = std::make_shared<FutureResponder>();
     handler(executionRequest(R"({"agent_id":"7"})"), responder);
-    EXPECT_EQ(503, responder->get().status);
-    EXPECT_TRUE(fixture.events->syncOps().empty()) << "and the by-query half must not run on its own";
-}
 
-// --- The by-id half: AGENT_DELETION_SCOPE_BY_ID ---------------------------------------------------
+    // The handler returned: the deletion is queued, and neither half has run nor answered.
+    EXPECT_FALSE(responder->answered());
+    EXPECT_TRUE(events->m_agentStateWriter->calls().empty()) << "the route must not touch the agent-state writer";
+    EXPECT_TRUE(events->m_query->dbqs().empty());
 
-/**
- * The two `wazuh-agent-*` documents are deleted BY ID, on the connector that WROTE them.
- *
- * They are deliberately no longer in the by-query scope: those documents come from POST /config and
- * POST /stats through the async connector's accumulating queue, and a by-query pass on the sync
- * connector can neither drain that queue nor -- being a SEARCH -- see a document that has not been
- * refreshed yet.
- */
-TEST(DeleteAgentEndpoint, TheConfigAndStatsDocumentsAreDeletedByIdOnTheAsyncQueue)
-{
-    EndpointUnderTest fixture;
+    events->openFlushGate();
 
-    auto responder = std::make_shared<FutureResponder>();
-    fixture.handler(executionRequest(R"({"agent_id":"7"})"), responder);
-    ASSERT_EQ(200, responder->get().status);
-
-    const auto ops = fixture.events->asyncOps();
-    ASSERT_EQ(2U, ops.size());
-
-    EXPECT_EQ("bulkDelete", std::get<0>(ops[0]));
-    EXPECT_EQ("007", std::get<1>(ops[0])) << "the agent id IS the document id in these two indices";
-    EXPECT_EQ("wazuh-agent-config", std::get<2>(ops[0]));
-
-    EXPECT_EQ("bulkDelete", std::get<0>(ops[1]));
-    EXPECT_EQ("007", std::get<1>(ops[1]));
-    EXPECT_EQ("wazuh-agent-stats", std::get<2>(ops[1]));
-}
-
-/**
- * THE reported bug: a `/config` report the async queue had accepted but not yet pushed used to land
- * AFTER the deletion and resurrect the document -- permanently, since with the agent gone from
- * client.keys nothing overwrites it and nothing re-runs a deletion.
- *
- * The fix is that the deletion joins that same queue, which is FIFO: the report is applied first and
- * the deletes behind it. Here the report is the `index` op already on the timeline when the deletion
- * arrives, and what this pins is that both deletes land after it.
- */
-TEST(DeleteAgentEndpoint, ADeletionIsQueuedBehindAReportTheAsyncConnectorHasAlreadyAccepted)
-{
-    EndpointUnderTest fixture;
-
-    // What POST /config does, verbatim: hand the document to the async connector, whose queue may
-    // not push it for another flush interval.
-    fixture.asyncConnector->index("007", "wazuh-agent-config", R"({"wazuh":{"agent":{"id":"007"}}})");
-
-    auto responder = std::make_shared<FutureResponder>();
-    fixture.handler(executionRequest(R"({"agent_id":"7"})"), responder);
-    ASSERT_EQ(200, responder->get().status);
-
-    const auto ops = fixture.events->asyncOps();
-    ASSERT_EQ(3U, ops.size());
-    EXPECT_EQ("index", std::get<0>(ops[0])) << "the report was accepted first...";
-    EXPECT_EQ("bulkDelete", std::get<0>(ops[1])) << "...so the deletion has to be queued behind it";
-    EXPECT_EQ("bulkDelete", std::get<0>(ops[2]));
+    const auto response = responder->get();
+    EXPECT_GE(response.status, 500) << "the scripted Group refuses every add: the by-id half fails the deletion";
+    EXPECT_EQ((std::vector<std::string> {"cancel:007", "group", "cancel:007"}), events->m_agentStateWriter->calls())
+        << "cancel(agent), the Group, and a second cancel(agent) on the refusal";
+    EXPECT_EQ(200, session->get().status);
 }
 
 // --- Answered AT COMPLETION -----------------------------------------------------------------------
@@ -304,14 +286,6 @@ TEST(DeleteAgentEndpoint, TheRouteReadsTheAgentIdFromTheBody)
     ASSERT_EQ(1U, ops.size());
     EXPECT_EQ("deleteByQuery", std::get<0>(ops[0]));
     EXPECT_EQ("007", std::get<1>(ops[0]));
-
-    const auto asyncOps = fixture.events->asyncOps();
-    ASSERT_EQ(2U, asyncOps.size()) << "the by-id half runs on this route too";
-    for (const auto& op : asyncOps)
-    {
-        EXPECT_EQ("bulkDelete", std::get<0>(op));
-        EXPECT_EQ("007", std::get<1>(op));
-    }
 }
 
 /// Both JSON spellings of the same small integer. Tolerated rather than rejected because this type's
@@ -378,7 +352,6 @@ TEST(DeleteAgentEndpoint, TheRouteRejectsABodyThatNamesNoAgent)
     }
 
     EXPECT_TRUE(fixture.events->syncOps().empty()) << "nothing may reach the connector on a 400";
-    EXPECT_TRUE(fixture.events->asyncOps().empty()) << "and nothing may be queued on the async half either";
 }
 
 /// The body is the ONLY channel on this route. The dispatcher POSTs a row's payload and sets no
@@ -394,7 +367,6 @@ TEST(DeleteAgentEndpoint, TheRouteIgnoresTheAgentIdHeader)
     auto responder = std::make_shared<FutureResponder>();
     fixture.handler(request, responder);
     EXPECT_EQ(400, responder->get().status);
-    EXPECT_TRUE(fixture.events->asyncOps().empty());
 }
 
 TEST(DeleteAgentEndpoint, TheRouteRefusesAtAdmissionWhenTheIndexerIsUnavailable)
@@ -409,7 +381,6 @@ TEST(DeleteAgentEndpoint, TheRouteRefusesAtAdmissionWhenTheIndexerIsUnavailable)
     // than letting the worker re-check keeps a lane slot and a shard slot free.
     EXPECT_EQ(503, responder->get().status);
     EXPECT_TRUE(fixture.events->syncOps().empty());
-    EXPECT_TRUE(fixture.events->asyncOps().empty());
 }
 
 /// A refused enqueue does not consume the item, so the responder it was carrying is still the
@@ -433,8 +404,8 @@ TEST(DeleteAgentEndpoint, TheRouteCountsOnlyTheResponsesItSendsItself)
     const auto counters = invsync::metrics::RequestCounters::make(*metrics);
 
     EndpointUnderTest fixture;
-    auto handler = delete_agent::makeHandler(
-        delete_agent::Dependencies {fixture.pipeline, fixture.admissionConnector, fixture.asyncConnector, counters});
+    auto handler =
+        delete_agent::makeHandler(delete_agent::Dependencies {fixture.pipeline, fixture.admissionConnector, counters});
 
     {
         auto responder = std::make_shared<FutureResponder>();

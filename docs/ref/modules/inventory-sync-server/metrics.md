@@ -124,12 +124,35 @@ group commits; `sync.indexer.bulk.*` counts the real requests those commits prod
 | `sync.bulk.flush.failures.other` | counter | count | Failed sessions (per session) for any other reason; answered `500` | — |
 | `sync.bulk.sessions.failed` | counter | count | Sessions answered `500`/`503` because their own operations failed. A failure no longer fails the whole batch: healthy sessions of the same group commit are answered `200`. Compare against `sync.bulk.sessions.total` | — |
 
-### Indexer client bucket — `indexer_client.bucket.inventory_sync_server.inventory.*`
+### Indexer client buckets — `indexer_client.bucket.inventory_sync_server.<bucket>.*`
 
-The module publishes, by pull, the 51 metrics of its `inventory` bucket next to its own. Their
-names, types and meaning are the library's catalog:
-`src/shared_modules/indexer_client/README.md` section "Metrics". They are not copied here, and
-they return to 0 if the `Client` is rebuilt.
+The module publishes, by pull, the 51 metrics of each of its two buckets next to its own, under the
+bucket name sanitized for a metric name (`-` becomes `_`, `src/shared_modules/indexer_client/src/metrics.cpp`):
+
+| Prefix | Bucket | What travels in it |
+|---|---|---|
+| `indexer_client.bucket.inventory_sync_server.inventory.*` | `inventory` | `/stateful` ingestion, the VD scan lane and the queries |
+| `indexer_client.bucket.inventory_sync_server.agent_state.*` | `agent-state` | `POST /stats`, `POST /config` and the by-id deletes of an agent deletion |
+
+Both carry the same families (names, types and meaning are the library's catalog:
+`src/shared_modules/indexer_client/README.md` section "Metrics"); they are not copied here, and they
+return to 0 if the `Client` is rebuilt. On `agent_state`, look at `rejected.<cause>` and `quota_bytes`
+when `/stats` or `/config` answer `503`: the bucket refuses new work when its quota is full
+(see [`…indexer_async_max_queue_bytes`](configuration.md#wazuh_modulesinventory_sync_server_indexer_async_max_queue_bytes)).
+
+### Post-deletion sweep — `sync.agent_delete.sweep.*`
+
+After an agent deletion succeeds, the module notes the agent and, once the sweep window has passed,
+removes from `wazuh-agent-config` and `wazuh-agent-stats` what a late write may have left behind
+(see [the sweep](architecture.md#the-post-deletion-sweep)). All counters, cumulative for the process.
+`residual` counts documents; the others count passes, chunks or agents.
+
+| Metric | Type | Unit | Meaning | Tuning |
+|---|---|---|---|---|
+| `sync.agent_delete.sweep.runs` | counter | count | Sweep passes that had at least one agent due | the window is `indexer_client_request_timeout_ms + 5 s`: [`…request_timeout_ms`](configuration.md#the-wazuh_modulesindexer_client_-family) |
+| `sync.agent_delete.sweep.failures` | counter | count | Delete-by-query chunks of a pass that failed (the agents of a failed chunk are retried once on the next pass) | diagnostic — check the indexer and the logs |
+| `sync.agent_delete.sweep.residual` | counter | documents | Documents the sweeps found and deleted: the late write the deletion could not order behind. Non-zero is the sweep doing its job | diagnostic |
+| `sync.agent_delete.sweep.dropped` | counter | count | Agents abandoned without being swept: pending when the module stopped, or in a chunk that failed twice | diagnostic — the sweep is best effort and does not guarantee zero residue |
 
 ### Documents — `sync.docs.*`, `sync.bytes.ingested`
 

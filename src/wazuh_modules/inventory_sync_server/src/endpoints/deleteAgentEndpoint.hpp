@@ -12,7 +12,6 @@
 #define _INVSYNC_ENDPOINTS_DELETE_AGENT_ENDPOINT_HPP
 
 #include "common/metricNames.hpp" // invsync::metrics::RequestCounters
-#include "indexer/IIndexerConnectorAsync.hpp"
 #include "indexer/IIndexerConnectorSync.hpp"
 #include "sync/syncPipeline.hpp"
 #include <uds_http_server/IUdsHttpServer.hpp>
@@ -32,17 +31,17 @@ namespace invsync::endpoints::delete_agent
      * shard, so it orders FIFO against any in-flight session of that same agent -- the legacy path
      * raced them on a lock (RF-10's footgun), and lost deletions were silent.
      *
-     * TWO HALVES, ONE PER WRITER (see AGENT_DELETION_SCOPE_BY_QUERY / _BY_ID):
+     * TWO HALVES, ONE PER WRITER (see AGENT_DELETION_SCOPE_BY_QUERY / _BY_ID), both run by the worker:
      *
      *  - `wazuh-states-*` is written by the sync pipeline, so the pipeline item deletes it by query,
      *    ordered behind that agent's in-flight sessions by the shard FIFO.
      *  - `wazuh-agent-config` and `wazuh-agent-stats` are written by POST /config and POST /stats
-     *    through the ASYNC connector, which accumulates reports and pushes them in batches. This
-     *    route queues a by-id delete for each of them ON THAT SAME QUEUE, which is the only way to
-     *    order them after a report the queue has accepted but not yet pushed: it is FIFO. Deleting
-     *    them from the pipeline instead is what let a report in flight outlive the agent -- the
-     *    delete-by-query could neither drain that queue nor, being a SEARCH, see a document that had
-     *    not been refreshed yet.
+     *    through the indexer client's `agent-state` bucket, which is `ordered`: an op is never sent
+     *    before an earlier op of its (index, _id) has a final outcome. The worker cancel()s the agent's
+     *    pending writes there, then commits the two by-id deletes as one Group on that same bucket and
+     *    waits for their results (I147c, I147d). The ordering is what keeps a report the bucket had
+     *    already admitted from outliving the agent; a by-id delete also needs no refresh, unlike a
+     *    delete-by-query that could not see a document not yet refreshed.
      *
      * WHAT REPLACED WHAT. `DELETE /agents` and its `POST /agents/delete` alias stood here until
      * authd stopped relaying deletions itself. They answered AT ADMISSION -- the 200 meant "queued,
@@ -61,7 +60,8 @@ namespace invsync::endpoints::delete_agent
      * would record a purge that has not happened -- and a modulesd crash right after it would lose
      * the queued deletion while the row already read `completed`. The item therefore carries its
      * responder, and the pipeline's own respond() answers after executeDeleteAgent() has run its
-     * delete-by-query AND flushed it. That is what makes `completed` mean purged.
+     * delete-by-query, flushed it AND waited for its by-id deletes. That is what makes `completed`
+     * mean purged.
      *
      * It needed no pipeline change: the worker has always answered a `DeleteAgent` item, there has
      * just never been anyone to answer.
@@ -75,25 +75,16 @@ namespace invsync::endpoints::delete_agent
      * The header is ignored here deliberately: honouring it would hide a producer that forgot to
      * write the id into the payload, and would work in a test while failing in production.
      *
-     * WHAT `completed` DOES NOT COVER. The by-id half (`wazuh-agent-config`, `wazuh-agent-stats`)
-     * is queued on the async connector at admission and is fire-and-forget by construction: that
-     * queue is FIFO, which is the only thing that can order those deletes after a report it has
-     * already accepted, and it exposes no seam to wait on. So a 200 promises the state documents
-     * were deleted and flushed, and promises only that the other two deletions were queued. Closing
-     * that would mean giving up the ordering property the by-id half exists for.
+     * WHAT `completed` COVERS. Both halves: the state documents were deleted and flushed, and the
+     * two by-id deletes resolved (a missing index counts as deleted, I147b). There is no FIFO left to
+     * fire and forget into: a by-id failure, the deletion budget running out or the module closing
+     * answers 503 and the dispatcher retries -- deleting an absent document is a no-op everywhere in
+     * the chain, so a retry of an already-purged agent is free.
      *
-     * Idempotency limits the exposure only while something still retries: a deletion that is
-     * retried re-queues both deletes, and deleting an absent document is a no-op everywhere in the
-     * chain. It does NOT cover the residual case, which is worth naming rather than implying --
-     * that queue is an in-memory deque with no disk backing, so if modulesd stops between this
-     * 200 and the flush, the two by-id deletes are lost while the manager-task row already reads
-     * `completed`, and nothing revisits it. The agent's state documents are gone; its
-     * `wazuh-agent-config` and `wazuh-agent-stats` documents survive their agent.
-     *
-     * That is a narrower promise than "a task reaches `completed` only once the work is done", and
-     * the gap is deliberate for now: closing it needs either a durable queue, a completion that
-     * waits on an unacknowledgeable send, or a periodic sweep for documents whose agent no longer
-     * exists. The sweep is the only one of the three that costs nothing here.
+     * The residual worth naming: cancel(agent) lifts the ambiguous-retry pin of a report that timed
+     * out on a node (IC README § Ordered buckets), so that node may still apply the report after the
+     * delete reached another one. A sweeper (indexer/agentDeleteSweeper.hpp) deletes such late
+     * documents by id one window later, best effort; nothing guarantees zero residue.
      *
      * CAPACITY. RouteClass::Control requires a route doing real work to shed its own capacity
      * module-side. This one has no queue of its own; the bound is the dispatcher's delete-lane depth
@@ -139,12 +130,10 @@ namespace invsync::endpoints::delete_agent
      * @brief Everything the handler needs, captured by value at registration.
      *
      * All weak, like every other route: the facade's stop() resets them and the weak capture keeps
-     * that reset destructive. `indexer` is only the admission availability check; the pipeline
-     * worker re-checks its own at dispatch. `asyncIndexer` is the connector that WROTE the two
-     * AGENT_DELETION_SCOPE_BY_ID documents, and the only one whose queue can order their deletion
-     * after a report it has already accepted -- it is not availability-checked, because that queue
-     * is designed to buffer through an outage and the check above already covers "the indexer is
-     * unreachable".
+     * that reset destructive. `indexer` is only the admission availability check (its isAvailable()
+     * is the client's health().anyUsable()); the pipeline worker re-checks its own at dispatch. The
+     * `agent-state` writer the by-id half needs is the worker's (AgentDeletionDeps), not the route's:
+     * the route only enqueues.
      *
      * requestCounters is the same sync.requests.total.* family the sync route holds (dedupe by
      * name on one manager). The handler counts only what IT sends -- the inline 400/503 rejections;
@@ -156,14 +145,13 @@ namespace invsync::endpoints::delete_agent
     {
         std::weak_ptr<invsync::sync::SyncPipeline> pipeline;
         std::weak_ptr<invsync::indexer::IIndexerConnectorSync> indexer;
-        std::weak_ptr<invsync::indexer::IIndexerConnectorAsync> asyncIndexer;
         invsync::metrics::RequestCounters requestCounters;
     };
 
     /**
      * @brief Build the route handler: validate the body (400), gate on availability (503), enqueue
      *        a DeleteAgent item WITH its responder, and answer nothing -- the pipeline answers once
-     *        the purge has flushed.
+     *        both halves of the purge are done.
      */
     wazuh::uds_http::RouteHandler makeHandler(Dependencies dependencies);
 

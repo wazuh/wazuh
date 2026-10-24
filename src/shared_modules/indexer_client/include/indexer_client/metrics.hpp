@@ -221,6 +221,9 @@ namespace indexer_client
         PitMetrics pit;
         std::vector<NodeMetrics> nodes;
         std::uint64_t usageErrors {0};
+        /// The runtime's `request_timeout_ms`, echoed so a consumer can size waits that must outlast one request
+        /// (I150).
+        Duration requestTimeout {0};
     };
 
     enum class MetricKind : std::uint8_t
