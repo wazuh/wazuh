@@ -28,6 +28,10 @@
  * open until SIGTERM/SIGINT (no inputs), and --no-vd skips the vulnerability scanner facade --
  * the server's scanner seam degrades gracefully (feedReady() passes, scans report a legitimate
  * skip), so plain ingestion scenarios run without paying the CVE feed bring-up.
+ *
+ * Like modulesd, it owns the process's indexer_client runtime on its main thread: started from the
+ * config's <indexer> hosts/ssl and credentials before the server, handed over as the server's
+ * `indexer_runtime`, and shut down after the server stopped (the sync half writes through it).
  */
 
 #include "flatbuffers/include/inventorySync_generated.h"
@@ -37,6 +41,8 @@
 
 #include "external/nlohmann/json.hpp"
 #include <cJSON.h>
+#include <indexer_client/keyValueConfigSource.hpp>
+#include <indexer_client/runtime.hpp>
 
 #include <csignal>
 #include <sys/socket.h>
@@ -517,8 +523,9 @@ namespace
         return false;
     }
 
-    /// The indexer connector reads its credentials from queue/keystore and refuses to start without
-    /// them. The manager's resolver stores them there; this tool takes them from its config.
+    /// The async (v1) indexer connector reads its credentials from queue/keystore and refuses to
+    /// start without them. The manager's resolver stores them there; this tool takes them from its
+    /// config.
     void seedCredentials(const nlohmann::json& config)
     {
         if (config.contains("username") && config["username"].is_string())
@@ -530,10 +537,63 @@ namespace
             Keystore::put("indexer", "password", config["password"].get<std::string>());
         }
     }
+
+    /// Starts the process's indexer_client runtime on this (the main) thread, as modulesd does after
+    /// its startup gate: the config's <indexer> hosts/ssl, its credentials, default internal options.
+    indexer_client::RuntimeRef startIndexerRuntime(const nlohmann::json& config)
+    {
+        // Installed before start(): the library ignores a log function set while a runtime runs.
+        indexer_client::setLogFunction(logSink);
+
+        nlohmann::json section = nlohmann::json::object();
+        if (config.contains("indexer") && config["indexer"].is_object())
+        {
+            const auto& indexer = config["indexer"];
+            for (const auto* key : {"hosts", "ssl"})
+            {
+                if (indexer.contains(key))
+                {
+                    section[key] = indexer[key];
+                }
+            }
+        }
+
+        indexer_client::Credentials credentials;
+        credentials.user = config.value("username", std::string());
+        credentials.password = config.value("password", std::string());
+
+        auto source = indexer_client::KeyValueConfigSource::parse("", section.dump(), std::move(credentials));
+        if (!source.ok())
+        {
+            throw std::runtime_error("Invalid indexer client configuration (" +
+                                     std::string(indexer_client::toString(source.cause)) + "): " + source.reason);
+        }
+        auto started = indexer_client::RuntimeOwner::start(indexer_client::ProcessId::Modulesd, source.value);
+        if (!started.ok())
+        {
+            throw std::runtime_error("Could not start the indexer client runtime (" +
+                                     std::string(indexer_client::toString(started.cause)) + "): " + started.reason);
+        }
+        return started.value;
+    }
+
+    /// After inventory_sync_server_stop(): the server's Client is gone, so this only drains and joins.
+    void stopIndexerRuntime()
+    {
+        if (indexer_client::RuntimeOwner::running())
+        {
+            indexer_client::RuntimeOwner::beginShutdown(std::chrono::steady_clock::now() + std::chrono::seconds(5));
+            indexer_client::RuntimeOwner::shutdown();
+        }
+    }
 } // namespace
 
 int main(int argc, char* argv[])
 {
+    // Outside the try: the server keeps a pointer to it until inventory_sync_server_stop(), which
+    // the failure path below still calls.
+    indexer_client::RuntimeRef indexerRuntime;
+
     // RAII-less by design: on any failure we print and exit non-zero; the QA treats a missing
     // log.out or a non-zero exit as the test failure it is.
     try
@@ -561,6 +621,7 @@ int main(int argc, char* argv[])
 
         std::filesystem::create_directories("queue/sockets");
         seedCredentials(moduleConfig);
+        indexerRuntime = startIndexerRuntime(moduleConfig);
 
         // VD first: the server's start registers its scan coordinator and resolves the production
         // scanner adapter against the running facade. Under --no-vd the facade never starts and
@@ -578,6 +639,7 @@ int main(int argc, char* argv[])
         std::cout << "[INFO] Starting inventory sync server..." << std::endl;
         inventory_sync_server_config_t serverConfig {};
         std::snprintf(serverConfig.cluster_name, sizeof(serverConfig.cluster_name), "%s", clusterName.c_str());
+        serverConfig.indexer_runtime = &indexerRuntime;
         cJSON* indexerJson = nullptr;
         if (moduleConfig.contains("indexer"))
         {
@@ -612,6 +674,7 @@ int main(int argc, char* argv[])
             {
                 vulnerabilityScanner.stop();
             }
+            stopIndexerRuntime();
             if (indexerJson != nullptr)
             {
                 cJSON_Delete(indexerJson);
@@ -683,6 +746,7 @@ int main(int argc, char* argv[])
         {
             vulnerabilityScanner.stop();
         }
+        stopIndexerRuntime();
         if (indexerJson != nullptr)
         {
             cJSON_Delete(indexerJson);
@@ -694,6 +758,9 @@ int main(int argc, char* argv[])
     catch (const std::exception& e)
     {
         std::cerr << "\n[ERROR] " << e.what() << std::endl;
+        // The server's Client must be closed before the runtime it lives on is joined.
+        inventory_sync_server_stop();
+        stopIndexerRuntime();
         return 1;
     }
 }

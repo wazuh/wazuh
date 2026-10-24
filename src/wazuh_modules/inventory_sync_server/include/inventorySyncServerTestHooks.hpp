@@ -20,6 +20,7 @@
 #include "indexer/IIndexerConnectorAsync.hpp"
 #include "indexer/IIndexerConnectorSync.hpp"
 #include "indexer/IIndexerSession.hpp"
+#include "indexer/indexerFactories.hpp"
 #include "vd/IVdScanner.hpp"
 
 #include <indexerConnector.hpp>
@@ -49,20 +50,24 @@ namespace invsync::test_hooks
 
     using IndexerSessionFactory =
         std::function<std::unique_ptr<invsync::indexer::IIndexerSession>(const nlohmann::json&, LoggingContext)>;
-    using IndexerConnectorSyncFactory = std::function<std::unique_ptr<invsync::indexer::IIndexerConnectorSync>(
-        const nlohmann::json&, const invsync::indexer::IIndexerSession&, LoggingContext)>;
+    /// The Client the sync half runs on (I144): (opaque runtime, `inventory` bucket spec) -> IClient.
+    using IndexerClientFactory = invsync::indexer::IndexerClientFactory;
+    /// One worker's sync connector over that Client: (client, adapter options, closing flag, tag).
+    using IndexerConnectorSyncFactory = invsync::indexer::IndexerConnectorSyncFactory;
     using IndexerConnectorAsyncFactory = std::function<std::unique_ptr<invsync::indexer::IIndexerConnectorAsync>(
         const nlohmann::json&, const invsync::indexer::IIndexerSession&, LoggingContext)>;
     using VdScannerFactory = std::function<std::shared_ptr<invsync::vd::IVdScanner>(bool)>;
 
     /*
-     * Override how each of the three indexer objects is constructed, so a test can drive the startup
-     * gate deterministically without the real per-host health-check I/O (5 s timeout per host).
+     * Override how each of the indexer objects is constructed, so a test can drive the startup gate
+     * deterministically without the real per-host health-check I/O (5 s timeout per host).
      *
-     * Three separate setters: a gate test needs to fail exactly one of the three while leaving the
-     * others healthy.
+     * Separate setters: a gate test needs to fail exactly one of them while leaving the others
+     * healthy. A test that needs to observe the production Client (e.g. a weak_ptr to it) installs
+     * an IndexerClientFactory that wraps the production path itself (RuntimeRef::client()).
      */
     EXPORTED void setIndexerSessionFactoryForTests(IndexerSessionFactory factory);
+    EXPORTED void setIndexerClientFactoryForTests(IndexerClientFactory factory);
     EXPORTED void setIndexerConnectorSyncFactoryForTests(IndexerConnectorSyncFactory factory);
     EXPORTED void setIndexerConnectorAsyncFactoryForTests(IndexerConnectorAsyncFactory factory);
     EXPORTED void setVdScannerFactoryForTests(VdScannerFactory factory);

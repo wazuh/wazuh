@@ -10,6 +10,7 @@
 
 #include "vd/vdScanLane.hpp"
 
+#include "indexer/connectorFailure.hpp"
 #include "json.hpp"
 #include "loggerHelper.h"
 
@@ -241,20 +242,13 @@ namespace invsync::vd
         }
     }
 
-    void VdScanLane::respondConnectorFailure(Item& item, indexer::IIndexerConnectorSync& connector)
+    void VdScanLane::respondConnectorFailure(Item& item, indexer::ConnectorError::Cause cause)
     {
-        bool available {false};
-        try
-        {
-            available = connector.isAvailable();
-        }
-        catch (...) // LCOV_EXCL_LINE -- isAvailable() does not throw in the real connector
-        {
-        }
-        respond(item,
-                available ? 500 : 503,
-                available ? R"({"error":"Internal error","code":500})"
-                          : R"({"error":"Service unavailable","code":503})");
+        // Decided by the cause alone (I135), never by re-asking isAvailable() after the fact. The
+        // lane only stages and flushes documents, so the by-query contention answer (the one with a
+        // Retry-After) cannot come out of here; its status and body still follow the table.
+        const auto failure = indexer::failureResponse(cause, m_config.retryAfterSeconds);
+        respond(item, failure.status, failure.body);
     }
 
     void VdScanLane::workerLoop(std::size_t index)
@@ -498,6 +492,8 @@ namespace invsync::vd
                 auto outcome = m_processor.stageBulk(item.session, connector);
                 if (outcome.staged)
                 {
+                    // One session: flush() throws the session's ConnectorError when any of its
+                    // operations failed.
                     connector.flush();
                     outcome.staged = false;
                 }
@@ -509,14 +505,18 @@ namespace invsync::vd
                            "Indexing the inventory of agent %s after its scan failed: %s. The agent will retry.",
                            item.session.agentId.c_str(),
                            e.what());
+                // Drop whatever part of the session a failed staging left staged instead of sending
+                // it (after a failed flush() there is nothing left and this is a no-op); the re-POST
+                // redoes the whole session.
                 try
                 {
-                    connector.flush(); // drain any partial staging; the re-POST overwrites it
+                    connector.discard();
                 }
-                catch (...)
+                catch (...) // LCOV_EXCL_LINE -- discard() drops local state only
                 {
                 }
-                respondConnectorFailure(item, connector);
+                const auto* typed = dynamic_cast<const indexer::ConnectorError*>(&e);
+                respondConnectorFailure(item, typed ? typed->cause() : indexer::ConnectorError::Cause::Other);
                 // Same contract as the feed-not-ready path above: the reset keeps finish(0, "")
                 // from counting a bogus sync.requests.total.other / duplicate lane-time sample.
                 item.responder.reset();

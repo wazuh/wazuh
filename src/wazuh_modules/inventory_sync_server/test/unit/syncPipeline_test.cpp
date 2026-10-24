@@ -169,34 +169,9 @@ TEST(SyncPipelineTest, ABulkSessionIsStagedFlushedAndAnswered200)
     EXPECT_EQ(0, responder->extraSends());
 }
 
-/**
- * R-08 observability: sync.bulk.flushes counts group commits, but one group commit can be several
- * real `_bulk` requests (splits, retries, auto-flushes). The pipeline drains the connector's own
- * request counts after every flush so the metrics carry the real traffic too.
- */
-TEST(SyncPipelineTest, TheConnectorsRealBulkRequestsReachTheMetrics)
-{
-    auto metrics = std::make_shared<wazuh::metrics::Manager>();
-    auto events = std::make_shared<ConnectorEvents>();
-    events->m_bulkStatsRequests = 3;
-    events->m_bulkStatsBytes = 4096;
-    events->m_bulkStatsConflictRetries = 2;
-
-    std::vector<std::shared_ptr<invsync::indexer::IIndexerConnectorSync>> connectors {
-        std::make_shared<FakeIndexerConnectorSync>(events, "sync")};
-    SyncPipeline pipeline {SyncPipelineConfig {}, std::move(connectors), CLUSTER, nullptr, metrics};
-
-    auto responder = std::make_shared<FutureResponder>();
-    ASSERT_TRUE(pipeline.enqueue(makeItem(deltaBody("doc-1"), responder)));
-    EXPECT_EQ(200, responder->get().status);
-
-    const auto requests = metrics->getOrCreateCounter(invsync::metrics::INDEXER_BULK_REQUESTS, "", "count");
-    const auto bytes = metrics->getOrCreateCounter(invsync::metrics::INDEXER_BULK_BYTES, "", "bytes");
-    const auto conflictRetries = metrics->getOrCreateCounter(invsync::metrics::INDEXER_CONFLICT_RETRIES, "", "count");
-    EXPECT_EQ(3U, requests->get());
-    EXPECT_EQ(4096U, bytes->get());
-    EXPECT_EQ(2U, conflictRetries->get());
-}
+// The connector's real `_bulk` request counts are no longer drained by the pipeline: with indexer_client
+// they are read by pull at GET /metrics from the bucket's own counters (I140); metricsEndpoint_test.cpp's
+// PublishesBucketMetrics pins that.
 
 TEST(SyncPipelineTest, GroupCommitBatchesWhateverQueuedBehindABlockedFlush)
 {
@@ -309,7 +284,8 @@ TEST(SyncPipelineTest, FailedGroupCommitsAreCountedByCauseAndBlastRadius)
     }
     auto first = std::make_shared<FutureResponder>();
     ASSERT_TRUE(pipeline.enqueue(makeItem(deltaBody("doc-1"), first)));
-    EXPECT_EQ(500, first->get().status);
+    // The retry budget ran out on a retryable condition: the agent is told to come back (I135).
+    EXPECT_EQ(503, first->get().status);
 
     // An untyped connector failure lands in the "other" bucket.
     {
@@ -344,7 +320,33 @@ TEST(SyncPipelineTest, FailedGroupCommitsAreCountedByCauseAndBlastRadius)
     EXPECT_EQ(3U, counter(invsync::metrics::BULK_SESSIONS_FAILED));
 }
 
-TEST(SyncPipelineTest, FlushFailureMapsTo503WhenTheConnectorIsUnavailable)
+TEST(SyncPipelineTest, FlushFailureMapsTo503WhenTheCauseIsUnavailable)
+{
+    PipelineUnderTest fixture;
+    fixture.events->closeFlushGate();
+
+    auto responder = std::make_shared<FutureResponder>();
+    ASSERT_TRUE(fixture.pipeline->enqueue(makeItem(deltaBody("doc-1"), responder)));
+    ASSERT_TRUE(waitFor([&] { return fixture.events->m_flushEntered.load() == 1; }));
+
+    {
+        std::lock_guard<std::mutex> lock(fixture.events->m_mutex);
+        fixture.events->m_syncThrowOn = "flush";
+        fixture.events->m_syncThrowCause = invsync::indexer::ConnectorError::Cause::Unavailable;
+    }
+    fixture.events->openFlushGate();
+
+    EXPECT_EQ(503, responder->get().status) << "an indexer outage is retriable, so 503, not 500";
+    EXPECT_EQ(1U,
+              fixture.metrics
+                  ->getOrCreateCounter(
+                      std::string {invsync::metrics::BULK_FLUSH_FAILURES_PREFIX} + "unavailable", "", "count")
+                  ->get());
+}
+
+/// isAvailable() no longer decides the code after a failure (I135): the cause alone does. An untyped
+/// failure answers 500 whatever the connector reports about itself.
+TEST(SyncPipelineTest, FlushFailureIgnoresWhatTheConnectorReportsAboutItself)
 {
     PipelineUnderTest fixture;
     fixture.events->closeFlushGate();
@@ -360,7 +362,7 @@ TEST(SyncPipelineTest, FlushFailureMapsTo503WhenTheConnectorIsUnavailable)
     fixture.events->m_syncAvailable.store(false);
     fixture.events->openFlushGate();
 
-    EXPECT_EQ(503, responder->get().status) << "an indexer outage is retriable, so 503, not 500";
+    EXPECT_EQ(500, responder->get().status);
 }
 
 TEST(SyncPipelineTest, AnUnavailableConnectorAtDispatchAnswers503WithoutStaging)
@@ -375,7 +377,7 @@ TEST(SyncPipelineTest, AnUnavailableConnectorAtDispatchAnswers503WithoutStaging)
     EXPECT_TRUE(fixture.events->syncOps().empty()) << "nothing may be staged into a connector that cannot flush";
 }
 
-TEST(SyncPipelineTest, AnImmediateSessionFailureMapsByAvailability)
+TEST(SyncPipelineTest, AnImmediateSessionFailureMapsByCause)
 {
     PipelineUnderTest fixture;
     {
@@ -415,6 +417,18 @@ TEST(SyncPipelineTest, AnImmediateSessionFailureMapsByAvailability)
         1U,
         fixture.metrics->getOrCreateCounter(std::string {invsync::metrics::REQUESTS_TOTAL_PREFIX} + "503", "", "count")
             ->get());
+
+    // A transient failure of the by-query itself: the generic 503, no delay attached.
+    {
+        std::lock_guard<std::mutex> lock(fixture.events->m_mutex);
+        fixture.events->m_syncThrowCause = invsync::indexer::ConnectorError::Cause::Unavailable;
+    }
+    auto transient = std::make_shared<FutureResponder>();
+    ASSERT_TRUE(fixture.pipeline->enqueue(makeItem(invsync::test::buildBareSession(spec), transient)));
+    const auto transientResponse = transient->get();
+    EXPECT_EQ(503, transientResponse.status);
+    EXPECT_EQ(R"({"error":"Service unavailable","code":503})", transientResponse.body);
+    EXPECT_EQ("", headerValue(transientResponse, "Retry-After"));
 
     fixture.events->m_syncAvailable.store(false);
     // The dispatch gate now rejects before the processor runs; that is the generic 503 the agent
@@ -620,4 +634,159 @@ TEST(SyncPipelineTest, ADeleteFailureIsVisibleToTheCaller)
     auto second = std::make_shared<FutureResponder>();
     ASSERT_TRUE(fixture.pipeline->enqueue(makeDeleteItem("006", second)));
     EXPECT_EQ(503, second->get().status) << "indexer unavailable at dispatch -> 503, nothing executed";
+}
+
+// --- Per-session outcomes of a group commit (I136, I135) ------------------------------------------
+
+namespace
+{
+    /// A batch of exactly @p count sessions behind a parked first one: the first session enters flush()
+    /// and waits at the gate, the others queue behind it and are staged as one batch once it opens.
+    /// Returns the responders of the @p count batched sessions; the parked one is `parked`.
+    std::vector<std::shared_ptr<FutureResponder>> queueABatchBehindAParkedFlush(
+        PipelineUnderTest& fixture, std::shared_ptr<FutureResponder>& parked, std::size_t count)
+    {
+        fixture.events->closeFlushGate();
+        parked = std::make_shared<FutureResponder>();
+        EXPECT_TRUE(fixture.pipeline->enqueue(makeItem(deltaBody("doc-parked"), parked)));
+        EXPECT_TRUE(waitFor([&] { return fixture.events->m_flushEntered.load() == 1; }));
+
+        std::vector<std::shared_ptr<FutureResponder>> batched;
+        for (std::size_t i = 0; i < count; ++i)
+        {
+            batched.push_back(std::make_shared<FutureResponder>());
+            EXPECT_TRUE(fixture.pipeline->enqueue(makeItem(deltaBody("doc-" + std::to_string(i)), batched.back())));
+        }
+        return batched;
+    }
+
+    std::uint64_t counterOf(const PipelineUnderTest& fixture, const std::string& name)
+    {
+        return fixture.metrics->getOrCreateCounter(name, "", "count")->get();
+    }
+} // namespace
+
+/**
+ * One flush, three sessions, three different results: the healthy one is answered 200 although the
+ * indexer failed its batch-mates, the transient failure 503 and the rejection 500 (I135, I136).
+ */
+TEST(SyncPipelineTest, PerSessionOutcome)
+{
+    PipelineUnderTest fixture;
+    std::shared_ptr<FutureResponder> parked;
+    const auto batched = queueABatchBehindAParkedFlush(fixture, parked, 3);
+    {
+        std::lock_guard<std::mutex> lock(fixture.events->m_mutex);
+        fixture.events->m_scriptedOutcomes = std::vector<invsync::indexer::SessionOutcome> {
+            {true, invsync::indexer::ConnectorError::Cause::Other, ""},
+            {false, invsync::indexer::ConnectorError::Cause::Unavailable, "no usable node"},
+            {false, invsync::indexer::ConnectorError::Cause::DocumentRejected, "mapper_parsing_exception"}};
+    }
+    fixture.events->openFlushGate();
+
+    EXPECT_EQ(200, parked->get().status) << "the parked batch had one session: not the scripted size";
+    EXPECT_EQ(200, batched[0]->get().status);
+    const auto transient = batched[1]->get();
+    EXPECT_EQ(503, transient.status);
+    EXPECT_EQ(R"({"error":"Service unavailable","code":503})", transient.body);
+    const auto rejected = batched[2]->get();
+    EXPECT_EQ(500, rejected.status);
+    EXPECT_EQ(R"({"error":"Internal error","code":500})", rejected.body);
+
+    EXPECT_EQ(2U, counterOf(fixture, invsync::metrics::BULK_SESSIONS_FAILED));
+    EXPECT_EQ(1U, counterOf(fixture, std::string {invsync::metrics::BULK_FLUSH_FAILURES_PREFIX} + "unavailable"));
+    EXPECT_EQ(1U, counterOf(fixture, std::string {invsync::metrics::BULK_FLUSH_FAILURES_PREFIX} + "documents"));
+    EXPECT_EQ(4, fixture.events->m_endSessions.load()) << "every staged session closes its range";
+}
+
+/**
+ * A connector without per-session results keeps the all-or-nothing contract of flush(): the seam's
+ * default flushSessions() answers every session with the flush's own outcome, and a connector that
+ * throws fails them all with its cause (I136).
+ */
+TEST(SyncPipelineTest, DefaultFlushSessionsAllOrNothing)
+{
+    // The default itself: nothing thrown -> every session succeeds; a typed throw -> every session
+    // carries its cause; an untyped one -> Other.
+    auto events = std::make_shared<ConnectorEvents>();
+    FakeIndexerConnectorSync connector {events, "sync"};
+    for (const auto& outcome : connector.flushSessions(3))
+    {
+        EXPECT_TRUE(outcome.ok);
+    }
+    {
+        std::lock_guard<std::mutex> lock(events->m_mutex);
+        events->m_syncThrowOn = "flush";
+        events->m_syncThrowCause = invsync::indexer::ConnectorError::Cause::Unavailable;
+    }
+    auto typed = connector.flushSessions(3);
+    ASSERT_EQ(3U, typed.size());
+    for (const auto& outcome : typed)
+    {
+        EXPECT_FALSE(outcome.ok);
+        EXPECT_EQ(invsync::indexer::ConnectorError::Cause::Unavailable, outcome.cause);
+    }
+    {
+        std::lock_guard<std::mutex> lock(events->m_mutex);
+        events->m_syncThrowCause.reset();
+    }
+    for (const auto& outcome : connector.flushSessions(2))
+    {
+        EXPECT_FALSE(outcome.ok);
+        EXPECT_EQ(invsync::indexer::ConnectorError::Cause::Other, outcome.cause);
+    }
+
+    // Through the pipeline: a flush that throws fails the whole batch, each session with that cause.
+    PipelineUnderTest fixture;
+    std::shared_ptr<FutureResponder> parked;
+    const auto batched = queueABatchBehindAParkedFlush(fixture, parked, 3);
+    {
+        std::lock_guard<std::mutex> lock(fixture.events->m_mutex);
+        fixture.events->m_syncThrowOn = "flush";
+        fixture.events->m_syncThrowCause = invsync::indexer::ConnectorError::Cause::Unavailable;
+    }
+    fixture.events->openFlushGate();
+
+    EXPECT_EQ(503, parked->get().status);
+    for (const auto& responder : batched)
+    {
+        EXPECT_EQ(503, responder->get().status);
+    }
+    EXPECT_EQ(4U, counterOf(fixture, invsync::metrics::BULK_SESSIONS_FAILED));
+    EXPECT_EQ(4U, counterOf(fixture, std::string {invsync::metrics::BULK_FLUSH_FAILURES_PREFIX} + "unavailable"));
+}
+
+/**
+ * An exception foreign to the connector while staging leaves the open batch in an unknown state: every
+ * session of it is answered 500 and the staged operations are DISCARDED, never sent (I142).
+ */
+TEST(SyncPipelineTest, PoisonedBatchDiscards)
+{
+    PipelineUnderTest fixture;
+    fixture.events->closeFlushGate();
+
+    auto parked = std::make_shared<FutureResponder>();
+    ASSERT_TRUE(fixture.pipeline->enqueue(makeItem(deltaBody("doc-parked"), parked)));
+    ASSERT_TRUE(waitFor([&] { return fixture.events->m_flushEntered.load() == 1; }));
+
+    // Behind the parked flush: a healthy session that stages into the open batch, then one whose
+    // staging throws a plain runtime_error.
+    auto healthy = std::make_shared<FutureResponder>();
+    auto poisoned = std::make_shared<FutureResponder>();
+    ASSERT_TRUE(fixture.pipeline->enqueue(makeItem(deltaBody("doc-healthy"), healthy)));
+    ASSERT_TRUE(fixture.pipeline->enqueue(makeItem(deltaBody("doc-poison"), poisoned)));
+    {
+        std::lock_guard<std::mutex> lock(fixture.events->m_mutex);
+        fixture.events->m_syncThrowOn = "bulkIndex";
+        fixture.events->m_syncThrowOnIdContaining = "doc-poison";
+    }
+    fixture.events->openFlushGate();
+
+    EXPECT_EQ(200, parked->get().status);
+    EXPECT_EQ(500, healthy->get().status) << "the batch around the poison is answered with it";
+    EXPECT_EQ(500, poisoned->get().status);
+
+    EXPECT_EQ(1, fixture.events->m_discards.load());
+    EXPECT_EQ(1, fixture.events->m_syncFlushes.load()) << "only the parked batch flushed; the poisoned one was dropped";
+    EXPECT_EQ(2U, counterOf(fixture, invsync::metrics::BULK_SESSIONS_FAILED));
 }
