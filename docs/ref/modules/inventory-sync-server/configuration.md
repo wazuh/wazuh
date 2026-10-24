@@ -10,7 +10,7 @@ tuned through internal options.
 |---|---|
 | `<indexer>` in the manager configuration | Indexer hosts and TLS material |
 | `<cluster>` in the manager configuration | The cluster name stamped onto every document |
-| Internal options | Every transport and connector tunable listed below |
+| Internal options | Every transport and indexer-bucket tunable listed below, plus the `indexer_client_*` family of the shared runtime |
 
 Three values are deliberately NOT configurable:
 
@@ -383,23 +383,42 @@ wazuh_modules.inventory_sync_server_session_query_batch_size=0
 
 ---
 
-### Indexer connectors (`indexer_sync_*` and `indexer_async_*`)
+### Indexer client buckets (`indexer_sync_*` and `indexer_async_*`)
 
-The module reaches the indexer through two families of options that are **not interchangeable**:
+The module reaches the indexer through **one** `indexer_client` `Client` (the library's runtime,
+configured by the [`indexer_client_*` family](#the-wazuh_modulesindexer_client_-family) below) with
+two buckets. The two option prefixes of the module configure one bucket each and are **not
+interchangeable**:
 
-- `indexer_sync_*` feeds the `indexer_client` runtime (the `inventory` bucket of the
-  `inventory_sync_server` consumer): everything the ingestion pipeline, the VD scan lane and the
-  by-query operations send. The module builds one `Client` and every worker shares its bucket.
-- `indexer_async_*` and `indexer_monitoring_interval_seconds` still configure the previous
-  asynchronous connector, which serves `GET /stats`, `GET /config` and the by-id agent deletion
-  until the next stage migrates them.
+- `indexer_sync_*` feeds the `inventory` bucket: everything the ingestion pipeline, the VD scan lane
+  and the by-query operations send. Every worker shares it.
+- `indexer_async_*` feeds the `agent-state` bucket: `POST /stats`, `POST /config` and the by-id
+  deletes of an agent deletion. It is an *ordered* bucket (a delete is not sent before the earlier
+  operations of the same agent resolve), a full quota is refused with a `503` instead of waiting, and
+  retries have **no** limit of attempts or duration (an indexer outage is buffered, bounded by the
+  quota): the behavior of the previous asynchronous queue.
+- Since 5.x there is no separate asynchronous connector or session. The option names are kept so that
+  existing configurations do not abort the daemon; the ones that no longer have an effect are marked
+  **Ignored** below.
 
-Keep the `indexer_sync_` / `indexer_async_` prefixes intact. The per-request timeout of the
-`inventory` bucket is not an `indexer_sync_*` option: it is
-`wazuh_modules.indexer_client_request_timeout_ms`, part of the `indexer_client_*` family that is
-documented with the shared library (not covered on this page).
+Keep the `indexer_sync_` / `indexer_async_` prefixes intact. The per-request timeout of both buckets is
+not an option of either family: it is `wazuh_modules.indexer_client_request_timeout_ms`.
 
-#### Synchronous connector (`indexer_client`)
+**How the two buckets share the memory quota.** The runtime has one byte quota,
+`wazuh_modules.indexer_client_global_quota_bytes` (256 MiB by default), that every bucket of every
+consumer draws from. `agent-state` is sized first and `inventory` gets what is left:
+
+- `agent-state` quota = `max_queue_bytes` (`0` means a quarter of the global quota), raised to at least
+  `bulk_max_bytes + 6 KiB` and 16 KiB (so the two deletes of an agent deletion fit together), and
+  **capped at a quarter of the global quota** (at least 16 KiB, never above half of it).
+- `inventory` quota = `max(64 MiB, connector_max_bulk_size + 2 KiB + 1 MiB)`, clamped to the global
+  quota minus the `agent-state` quota. A full `agent-state` can therefore never leave `/stateful`
+  without quota.
+- A value that does not fit is clipped and the module logs a `WARNING` at startup naming the value it
+  used instead. With the default global quota (256 MiB) and the default `max_queue_bytes` (64 MiB) the
+  two coincide and nothing is clipped.
+
+#### `inventory` bucket (`indexer_sync_*`)
 
 #### wazuh_modules.inventory_sync_server_indexer_sync_max_bulk_size
 
@@ -433,8 +452,9 @@ wazuh_modules.inventory_sync_server_indexer_sync_connector_max_bulk_size=1048576
   which the manager's metadata overlay inflates past the wire FlatBuffer size). Keep it at or below
   the indexer's `http.max_content_length`. The bucket's memory quota is derived from it:
   `max(64 MiB, bulk + 2 KiB + 1 MiB)`, clamped to
-  `wazuh_modules.indexer_client_global_quota_bytes`. If even the global quota cannot hold one bulk,
-  the bulk size is clipped to fit and a `WARNING` is logged at startup. One group commit can still
+  `wazuh_modules.indexer_client_global_quota_bytes` **minus the quota of the `agent-state` bucket**
+  (see the sharing rule above). If what is left cannot hold one bulk, the bulk size is clipped to fit
+  and a `WARNING` is logged at startup. One group commit can still
   produce several `_bulk` requests: compare `sync.indexer.bulk.requests` with `sync.bulk.flushes`
   in [`GET /metrics`](metrics.md#group-commit--syncbulk).
 
@@ -513,11 +533,14 @@ wazuh_modules.inventory_sync_server_indexer_sync_request_timeout_seconds=60
 - **Allowed values:** 1 to 3600
 - **Note:** A value other than the default logs a `WARNING` once at startup.
 
-#### Asynchronous connector
+#### `agent-state` bucket (`indexer_async_*`)
+
+Since 5.x only three of these options act; the rest are **ignored** and, when set to anything but their
+default, make the module log one `WARNING` at startup.
 
 #### wazuh_modules.inventory_sync_server_indexer_async_bulk_max_bytes
 
-Forwarded as `bulk_max_bytes`.
+`bulk.maxBytes` of the `agent-state` bucket: the serialized NDJSON bytes of one `_bulk` request.
 
 ```ini
 wazuh_modules.inventory_sync_server_indexer_async_bulk_max_bytes=4194304
@@ -525,23 +548,32 @@ wazuh_modules.inventory_sync_server_indexer_async_bulk_max_bytes=4194304
 
 - **Default value:** `4194304` (4 MiB)
 - **Allowed values:** 4096 to 104857600
-- **Note:** Forwarded as `bulk_max_bytes`. Note the different key name from the synchronous family.
+- **Note:** Clipped to `quota - 6 KiB` (or half the quota when the quota is smaller than 6 KiB) when it
+  does not fit the bucket's quota, with a `WARNING`. A `/stats` or `/config` document is a few KiB, so
+  this rarely matters; the by-id deletes of an agent deletion travel in the same bucket.
 
-#### wazuh_modules.inventory_sync_server_indexer_async_flush_interval_seconds
+#### wazuh_modules.inventory_sync_server_indexer_async_max_queue_bytes
 
-Forwarded as `flush_interval_seconds`.
+The memory quota of the `agent-state` bucket: how many bytes of `/stats`, `/config` and by-id delete
+operations can be waiting (queued or in flight) before the bucket refuses more.
 
 ```ini
-wazuh_modules.inventory_sync_server_indexer_async_flush_interval_seconds=20
+wazuh_modules.inventory_sync_server_indexer_async_max_queue_bytes=67108864
 ```
 
-- **Default value:** `20`
-- **Allowed values:** 1 to 3600
-- **Note:** Forwarded as `flush_interval_seconds`.
+- **Default value:** `67108864` (64 MiB)
+- **Allowed values:** `0` or 1 to 2147483647
+- **Note:** `0` no longer means "unlimited": it means a quarter of
+  `wazuh_modules.indexer_client_global_quota_bytes`. Whatever the value, the quota is raised to at
+  least `bulk_max_bytes + 6 KiB` and 16 KiB, and **capped at a quarter of the global quota** (a
+  `WARNING` says so when the request is cut), because the `inventory` bucket uses everything else
+  (see the sharing rule above). When the quota is full the module answers `/stats` and `/config` with
+  `503` (the agent re-sends its next report) and an agent deletion with `503` (the dispatcher retries).
+  This is the only bound of the bucket's memory: its retries have no limit.
 
 #### wazuh_modules.inventory_sync_server_indexer_async_max_retry_delay_seconds
 
-Forwarded as `max_retry_delay_seconds`.
+Ceiling of the backoff delay of the `agent-state` bucket.
 
 ```ini
 wazuh_modules.inventory_sync_server_indexer_async_max_retry_delay_seconds=15
@@ -549,75 +581,136 @@ wazuh_modules.inventory_sync_server_indexer_async_max_retry_delay_seconds=15
 
 - **Default value:** `15`
 - **Allowed values:** 1 to 3600
-- **Note:** Forwarded as `max_retry_delay_seconds`.
+- **Note:** The bucket retries a failed `_bulk` (or an ambiguous `5xx`) **without a limit of attempts or
+  duration**, as the previous asynchronous queue did; this value is only the longest wait between two
+  attempts. Operations the retry cannot clear are bounded by the quota and, for a deletion, by its
+  [budget](architecture.md#agent-deletion).
 
-#### wazuh_modules.inventory_sync_server_indexer_async_logger_queue_size
+#### wazuh_modules.inventory_sync_server_indexer_async_flush_interval_seconds
 
-Forwarded as `logger_queue_size`.
-
-```ini
-wazuh_modules.inventory_sync_server_indexer_async_logger_queue_size=8
-```
-
-- **Default value:** `8`
-- **Allowed values:** 1 to 65536
-- **Note:** Forwarded as `logger_queue_size`.
-
-#### wazuh_modules.inventory_sync_server_indexer_async_logger_threads
-
-Forwarded as `logger_threads`.
+**Ignored.** The bucket sends when its `_bulk` fills or after its fixed maximum age of 5 s; there is no
+setting for it.
 
 ```ini
-wazuh_modules.inventory_sync_server_indexer_async_logger_threads=1
+wazuh_modules.inventory_sync_server_indexer_async_flush_interval_seconds=20
 ```
 
-- **Default value:** `1`
-- **Allowed values:** 1 to 64
-- **Note:** Forwarded as `logger_threads`.
+- **Default value:** `20` (ignored)
+- **Allowed values:** 1 to 3600
+- **Note:** Kept so existing configurations do not abort the daemon. A value other than the default
+  logs a `WARNING` once at startup.
 
 #### wazuh_modules.inventory_sync_server_indexer_async_request_timeout_seconds
 
-Forwarded as `request_timeout_seconds`.
+**Ignored.** The per-request timeout is `wazuh_modules.indexer_client_request_timeout_ms`.
 
 ```ini
 wazuh_modules.inventory_sync_server_indexer_async_request_timeout_seconds=60
 ```
 
-- **Default value:** `60`
+- **Default value:** `60` (ignored)
 - **Allowed values:** 1 to 3600
-- **Note:** Same meaning as the synchronous family's `request_timeout_seconds`, for the asynchronous
-  connector. `0` (the connector's "no bound") is rejected here rather than forwarded. A timed-out
-  batch is requeued and retried, not discarded.
+- **Note:** A value other than the default logs a `WARNING` once at startup.
 
-#### wazuh_modules.inventory_sync_server_indexer_async_max_queue_bytes
+#### wazuh_modules.inventory_sync_server_indexer_async_logger_queue_size
 
-Forwarded as `max_queue_bytes`.
+**Ignored.** The indexer client has no logging queue to size.
 
 ```ini
-wazuh_modules.inventory_sync_server_indexer_async_max_queue_bytes=67108864
+wazuh_modules.inventory_sync_server_indexer_async_logger_queue_size=8
 ```
 
-- **Default value:** `67108864` (64 MiB)
-- **Allowed values:** `0` (unlimited) or 1 to 2147483647
-- **Note:** Forwarded as `max_queue_bytes`. An unbounded queue is the only unbounded allocation this module can be configured to make, so the shipped default is deliberately finite.
+- **Default value:** `8` (ignored)
+- **Allowed values:** 1 to 65536
+- **Note:** A value other than the default logs a `WARNING` once at startup.
+
+#### wazuh_modules.inventory_sync_server_indexer_async_logger_threads
+
+**Ignored.** The indexer client has no logging threads; its threads are
+`wazuh_modules.indexer_client_network_threads` and `wazuh_modules.indexer_client_cpu_threads`, shared
+by every consumer of modulesd.
+
+```ini
+wazuh_modules.inventory_sync_server_indexer_async_logger_threads=1
+```
+
+- **Default value:** `1` (ignored)
+- **Allowed values:** 1 to 64
+- **Note:** A value other than the default logs a `WARNING` once at startup.
 
 #### Shared session
 
 #### wazuh_modules.inventory_sync_server_indexer_monitoring_interval_seconds
 
-Forwarded to the shared indexer session as `monitoring_interval_seconds`.
+**Ignored.** There is no shared session or health monitor of the module any more: the runtime probes
+every indexer host itself, every `wazuh_modules.indexer_client_probe_interval_ms`.
 
 ```ini
 wazuh_modules.inventory_sync_server_indexer_monitoring_interval_seconds=10
 ```
 
-- **Default value:** `10`
+- **Default value:** `10` (ignored)
 - **Allowed values:** 1 to 3600
-- **Note:** Applies to the asynchronous connector's session (`/stats`, `/config`, by-id agent
-  deletion) until the next stage; not verified whether the `indexer_client` runtime reads it. Polling period of the health monitor that marks each indexer host as available or
-  unavailable. One option, not a sync/async pair: both connectors share the session's single
-  monitor, so there is exactly one polling cadence per module. The connector rejects `0` (a zero
-  period would busy-loop the monitor thread), so `0` is rejected here rather than forwarded.
+- **Note:** A value other than the default logs a `WARNING` once at startup. The module's availability
+  gate (`/stateful`, `/stats`, `/config`, the deletion) is the runtime's node health: the answer is
+  `503` when no host is usable.
+
+### The `wazuh_modules.indexer_client_*` family
+
+**Internal Options prefix:** `wazuh_modules.indexer_client_*`
+
+The `indexer_client` runtime is owned by `wazuh-manager-modulesd` and shared by every module that
+reaches the indexer through it (today this one). Its tunables are not options of this module: they are
+this family, read from the same file as the rest of this page,
+`/etc/wazuh-manager/wazuh-manager-internal-options.conf`, together with the `<indexer>` block of the
+manager configuration (hosts and TLS), which is the only place the connection itself is configured.
+
+- Every value is an unsigned decimal integer; a leading zero does not mean octal. The shipped file
+  carries none of them: the defaults are compiled in, and a line is only needed to override one.
+- **The family is validated in full** by `wazuh-manager-modulesd -t` and again at startup, before any
+  module thread exists, and a failure is logged with the offending key: a value outside its range, a
+  value that is not an unsigned decimal integer, an empty value, **or a key under the prefix that is not
+  listed here (a typo is an error, not an ignored line)**. In every case modulesd refuses to start. A
+  key that is not under the `wazuh_modules.indexer_client_` prefix is not read.
+- The runtime starts only when a consumer exists (inventory sync); with none, the options are still
+  validated but no threads or probes are created.
+- The library reference (`src/shared_modules/indexer_client/README.md`) owns the semantics; this table
+  is the operator's copy of its schema, `kSchema` in `src/shared_modules/indexer_client/src/config/runtimeConfig.cpp`.
+  Every minimum is 1 except `log_summary_interval_ms`, whose minimum is 1000; bounds are inclusive.
+
+| Name (after the prefix) | Unit | Allowed values | Default |
+|---|---|---|---|
+| `network_threads` | count | 1 to 64 | 1 |
+| `cpu_threads` | count | 1 to 64 | 2 |
+| `global_quota_bytes` | bytes | 1 to 68719476736 (64 GiB) | 268435456 (256 MiB) |
+| `max_response_bytes` | bytes | 1 to 1073741824 (1 GiB) | 67108864 (64 MiB) |
+| `drr_quantum_bytes` | bytes | 1 to 67108864 (64 MiB) | 1048576 (1 MiB) |
+| `request_timeout_ms` | ms | 1 to 3600000 (1 h) | 60000 |
+| `probe_timeout_ms` | ms | 1 to 300000 (5 min) | 5000 |
+| `probe_interval_ms` | ms | 1 to 3600000 (1 h) | 10000 |
+| `drain_ms` | ms | 1 to 600000 (10 min) | 10000 |
+| `ambiguous_retry_window_ms` | ms | 1 to 3600000 (1 h) | 30000 |
+| `latency_target_ms` | ms | 1 to 600000 (10 min) | 2000 |
+| `pace_initial_ms` | ms | 1 to 60000 (1 min) | 100 |
+| `pace_relax_after` | count | 1 to 1000000 | 20 |
+| `retry_after_max_ms` | ms | 1 to 3600000 (1 h) | 60000 |
+| `callback_budget_ms` | ms | 1 to 60000 (1 min) | 200 |
+| `max_open_pits` | count | 1 to 10000 | 64 |
+| `log_summary_interval_ms` | ms | 1000 to 3600000 (1 h) | 60000 |
+| `node_window_max` | count | 1 to 64 | 4 |
+| `bulk_min_bytes` | bytes | 1 to 33554432 (32 MiB) | 65536 (64 KiB) |
+
+The ones this module's operator reaches for:
+
+- `request_timeout_ms` — the per-request timeout of every bucket; it also sets the window of the
+  [post-deletion sweep](architecture.md#the-post-deletion-sweep) (`request_timeout_ms + 5 s`).
+- `global_quota_bytes` — the memory ceiling that `max_queue_bytes` and the `inventory` quota are carved
+  from (see the sharing rule at the top of this section).
+- `ambiguous_retry_window_ms` — the longest an `agent-state` bucket stays pinned to one indexer node
+  after an ambiguous `5xx`, during which it sends only the pinned operations (see
+  [Effects to know](architecture.md#effects-to-know)).
+- `probe_interval_ms`, `probe_timeout_ms` — the host health probe that replaces the module's
+  `indexer_monitoring_interval_seconds`.
 
 ---
 
@@ -661,8 +754,12 @@ The path is fixed, so the fault is always on disk. Check `/var/wazuh-manager/que
 
 ### `/stats` and `/config` answer 503
 
-No configured indexer host is healthy. The module keeps serving and retries; check the `<indexer>` hosts
-and that the indexer is running. This is expected while the indexer starts up after the manager.
+Either no configured indexer host is healthy (check the `<indexer>` hosts and that the indexer is
+running; expected while the indexer starts up after the manager), or the `agent-state` bucket refused
+the report because its quota is full or the module is stopping. Before 5.x a report the queue could not
+take was acknowledged with `200` and lost; it is now a `503` and the agent re-sends. Raise
+`indexer_async_max_queue_bytes` only if the indexer is up and the refusals persist (the bucket is
+capped at a quarter of `indexer_client_global_quota_bytes`).
 
 ### Requests are answered 503 under load
 

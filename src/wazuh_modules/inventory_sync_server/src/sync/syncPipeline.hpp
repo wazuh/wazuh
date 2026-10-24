@@ -51,6 +51,8 @@ namespace invsync::sync
         /// the competing writer cannot keep the conflict alive longer than its own allowance, so
         /// the facade feeds the connector's `max_retry_duration_seconds` here.
         int conflictRetryAfterSeconds {15};
+        /// The by-id half of a whole-agent deletion; default = by-query only (I147c).
+        AgentDeletionDeps agentDeletion;
     };
 
     /**

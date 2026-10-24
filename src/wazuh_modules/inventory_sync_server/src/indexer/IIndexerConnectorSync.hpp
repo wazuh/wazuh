@@ -77,17 +77,8 @@ namespace invsync::indexer
     /**
      * @brief Seam over the real IndexerConnectorSync.
      *
-     * Deliberately NOT a shared base with IIndexerConnectorAsync, even though both expose
-     * isAvailable(). Two reasons:
-     *
-     *  - The library classes diverge completely past that point. Sync has the staged-bulk/query API
-     *    below; async has index/indexDataStream/getQueueSize/getDroppedEvents. A common base would
-     *    have to become the union of both (every implementer stubbing half) or force a downcast at
-     *    every write site.
-     *  - A common base invites a `std::vector<IIndexerConnector*>` or a single `bool indexerOk`, which
-     *    is exactly what loses connector identity. The two keep independent round-robin cursors, so
-     *    isAvailable() can legitimately disagree between them; the type system should force the caller
-     *    to say which one it is asking.
+     * The only connector seam left in the module (E7c): POST /stats, POST /config and the by-id half of a deletion
+     * write through the Client's `agent-state` bucket directly, and keep no seam of their own.
      *
      * The seam exposes exactly what the sync pipeline needs and nothing more: `scopeLock`,
      * `registerNotify` and `invokePendingCallbacks` deliberately do NOT cross it. Each pipeline worker
@@ -175,26 +166,6 @@ namespace invsync::indexer
         /// @brief Drops what is staged and not yet sent, and the session ranges, after the caller
         ///        already answered those sessions (the poisoned-batch path). Default: nothing to drop.
         virtual void discard() {}
-
-        /**
-         * @brief The `_bulk` HTTP requests the connector actually sent -- attempts, splits and
-         *        retries included -- accumulated since the previous call, which resets the counts.
-         *
-         * Defaulted to zeros rather than pure so fakes that do not model request traffic need no
-         * override; a group commit's own flush accounting under-counts precisely when splits or
-         * retries happen, which is what these numbers exist to expose.
-         */
-        struct BulkRequestStats
-        {
-            std::uint64_t requests {0};        ///< `_bulk` POSTs sent.
-            std::uint64_t bytes {0};           ///< NDJSON payload bytes those POSTs carried.
-            std::uint64_t conflictRetries {0}; ///< conflict waits spent; a cleared one fails no flush.
-        };
-
-        virtual BulkRequestStats takeBulkRequestStats()
-        {
-            return {};
-        }
     };
 
 } // namespace invsync::indexer

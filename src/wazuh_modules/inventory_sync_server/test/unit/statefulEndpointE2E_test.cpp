@@ -13,6 +13,7 @@
 
 #include "testIndexerConnectorFakes.hpp"
 #include "testLogRecorder.hpp"
+#include "testRealIndexer.hpp"
 #include "testSessionBuilder.hpp"
 #include "udsTestClient.hpp"
 
@@ -331,78 +332,92 @@ static std::string deleteRequestFor(const std::string& body)
            std::to_string(body.size()) + "\r\nConnection: close\r\n\r\n" + body;
 }
 
+/*
+ * A deletion has TWO halves, and this E2E is where the facade's wiring of both is proved end to end over the REAL
+ * transport, the real Client and its two buckets (see AGENT_DELETION_SCOPE_BY_QUERY / _BY_ID); only the indexer is
+ * the library's fake, which keeps no documents, so the oracle is the wire:
+ *
+ *  - by query, on the `inventory` bucket's connector, on the agent's pipeline shard: the states pattern only --
+ *    one delete-by-query per deletion;
+ *  - by document id, on the `agent-state` bucket's Group, committed by the same worker: ONE `_bulk` holding the
+ *    deletes of `wazuh-agent-config` and `wazuh-agent-stats` per deletion.
+ *
+ * Both halves are done before the 200: the response is the pipeline's, sent at completion.
+ */
 TEST_F(StatefulEndpointE2ETest, DeleteAgentsWipesTheAgentAcrossBothHalves)
 {
-    const auto response = wazuh::uds_http::test::sendRaw(m_path, deleteRequestFor(R"({"agent_id":"9"})"));
-    EXPECT_EQ(200, response.status) << response.body;
-    // Answered at COMPLETION: "ok" is the pipeline's own answer, sent after the flush, which is what
-    // lets the dispatcher record its task row `completed` and have that mean purged.
-    EXPECT_EQ(R"({"status":"ok"})", response.body);
+    inventory_sync_server_stop();
+    invsync::test::resetIndexerConnectorFactoriesToProduction();
 
-    EXPECT_EQ(200, wazuh::uds_http::test::sendRaw(m_path, deleteRequestFor(R"({"agent_id":"10"})")).status);
+    invsync::test::RealIndexer real;
+    real.startRuntime();
+    ASSERT_TRUE(real.runtimeStarted) << real.startError;
+    invsync::test::installFakeIndexersOverRealClient();
 
-    /*
-     * A deletion has TWO halves, one per writer, and this E2E is where the facade's wiring of both
-     * is proved end to end (see AGENT_DELETION_SCOPE_BY_QUERY / _BY_ID):
-     *
-     *  - by query, on the sync connector, deferred to the agent's pipeline shard: the states pattern
-     *    only -- one per deletion, so two here;
-     *  - by document id, on the ASYNC connector that writes `wazuh-agent-config` and
-     *    `wazuh-agent-stats`, queued at admission -- two per deletion, so four here.
-     *
-     * Neither half has to be waited for any more: the by-query half flushed before the response was
-     * sent, and the by-id half was queued on the handler's own thread before that. The wait below is
-     * kept because the by-id ops are recorded on a shared log the pipeline worker also writes to.
-     */
-    const auto deleteByQueries = [this]
+    LogRecorder::clear();
+    const auto path = uniqueSocketPath("deleteboth");
+    auto config = makeConfig(path);
+    config.indexer_runtime = &real.ref;
+    ASSERT_EQ(0, inventory_sync_server_start(testLogCallback, &config));
+    ASSERT_TRUE(LogRecorder::waitForMessageContaining("listening on"));
+
+    // Until the first health probe lands every write answers 503: retry like the dispatcher would.
+    const auto deleteUntilOk = [&](const std::string& body)
     {
-        std::size_t count = 0;
-        for (const auto& op : m_events->syncOps())
+        wazuh::uds_http::test::Response response;
+        const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds {10};
+        do
         {
-            count += (std::get<0>(op) == "deleteByQuery") ? 1 : 0;
-        }
-        return count;
+            response = wazuh::uds_http::test::sendRaw(path, deleteRequestFor(body));
+            if (response.status == 200)
+            {
+                break;
+            }
+            std::this_thread::sleep_for(std::chrono::milliseconds {50});
+        } while (std::chrono::steady_clock::now() < deadline);
+        return response;
     };
-    const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds {10};
-    while (deleteByQueries() < 2U && std::chrono::steady_clock::now() < deadline)
-    {
-        std::this_thread::sleep_for(std::chrono::milliseconds {5});
-    }
-    ASSERT_EQ(2U, deleteByQueries()) << "both queued deletions must still reach the indexer";
 
-    std::vector<std::string> deletedIndices;
-    std::vector<std::string> deletedAgents;
-    for (const auto& op : m_events->syncOps())
+    // Answered at COMPLETION: "ok" is the pipeline's own answer, sent after the flush and the by-id tickets,
+    // which is what lets the dispatcher record its task row `completed` and have that mean purged.
+    const auto first = deleteUntilOk(R"({"agent_id":"9"})");
+    EXPECT_EQ(200, first.status) << first.body;
+    EXPECT_EQ(R"({"status":"ok"})", first.body);
+    EXPECT_EQ(200, deleteUntilOk(R"({"agent_id":"10"})").status);
+
+    // The by-query half: the states pattern, and NOT the two wazuh-agent-* indices (they are the by-id half's).
+    // Canonical like every document _id: the first deletion is agent 9, the second agent 10.
+    EXPECT_EQ(0U, real.dbqRequests("wazuh-agent-config").size());
+    EXPECT_EQ(0U, real.dbqRequests("wazuh-agent-stats").size());
+    const auto byQuery = real.dbqRequests("wazuh-states-*");
+    ASSERT_EQ(2U, byQuery.size()) << "one delete-by-query per deletion";
+    EXPECT_NE(std::string::npos, byQuery[0].body.find("009")) << byQuery[0].body;
+    EXPECT_NE(std::string::npos, byQuery[1].body.find("010")) << byQuery[1].body;
+
+    // The by-id half: each deletion sent its two deletes in ONE `_bulk`, config first, then stats.
+    std::vector<std::vector<indexer_client::testing::BulkOp>> byIdBulks;
+    for (const auto& request : real.bulk->received())
     {
-        if (std::get<0>(op) == "deleteByQuery")
+        if (!request.empty() && request.front().action == "delete")
         {
-            deletedIndices.push_back(std::get<2>(op));
-            deletedAgents.push_back(std::get<1>(op));
+            byIdBulks.push_back(request);
         }
     }
-
-    // The states pattern, and NOT the two wazuh-agent-* indices: a by-query pass on this connector
-    // could not order against a report still sitting in the async connector's queue, which is why
-    // those two moved to the by-id half below.
-    EXPECT_EQ(std::vector<std::string>({"wazuh-states-*", "wazuh-states-*"}), deletedIndices);
-    // Canonical like every document _id: the first deletion is agent 9, the second agent 10.
-    EXPECT_EQ(std::vector<std::string>({"009", "010"}), deletedAgents);
-    EXPECT_GE(m_events->m_syncFlushes.load(), 2) << "each queued delete must end in its own flush";
-
-    // The by-id half, on the connector that WROTE those two documents. Queued at admission, so it is
-    // already recorded -- no waiting, which is itself part of the contract.
-    const auto asyncOps = m_events->asyncOps();
-    ASSERT_EQ(4U, asyncOps.size()) << "two deletions x AGENT_DELETION_SCOPE_BY_ID";
-    const std::vector<std::tuple<std::string, std::string, std::string>> expectedAsyncOps {
-        {"bulkDelete", "009", "wazuh-agent-config"},
-        {"bulkDelete", "009", "wazuh-agent-stats"},
-        {"bulkDelete", "010", "wazuh-agent-config"},
-        {"bulkDelete", "010", "wazuh-agent-stats"}};
-    EXPECT_EQ(expectedAsyncOps, asyncOps);
+    ASSERT_EQ(2U, byIdBulks.size());
+    ASSERT_EQ(2U, byIdBulks[0].size());
+    EXPECT_EQ("wazuh-agent-config", byIdBulks[0][0].index);
+    EXPECT_EQ("wazuh-agent-stats", byIdBulks[0][1].index);
+    EXPECT_EQ("009", byIdBulks[0][0].id.value_or(""));
+    EXPECT_EQ("009", byIdBulks[0][1].id.value_or(""));
+    ASSERT_EQ(2U, byIdBulks[1].size());
+    EXPECT_EQ("010", byIdBulks[1][0].id.value_or(""));
+    EXPECT_EQ("010", byIdBulks[1][1].id.value_or(""));
 
     // A body naming no usable agent. The header is NOT a fallback -- setting one here would still be
     // a 400, which is the point: the dispatcher never sends one.
-    EXPECT_EQ(400, wazuh::uds_http::test::sendRaw(m_path, deleteRequestFor(R"({"agent_id":"nope"})")).status);
+    EXPECT_EQ(400, wazuh::uds_http::test::sendRaw(path, deleteRequestFor(R"({"agent_id":"nope"})")).status);
+
+    inventory_sync_server_stop();
 }
 
 TEST_F(StatefulEndpointE2ETest, TheProvisionalPathIsGone)

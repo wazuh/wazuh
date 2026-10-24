@@ -166,7 +166,7 @@ inventory_sync_server/
 │   │                                  #   vdScanEndpoint (POST /_internal/vd/scan), stats, config
 │   │                                  #   (+ reportedAgentMetadata: the agent's groups/host they copy),
 │   │                                  #   metricsEndpoint (GET /metrics)
-│   ├── indexer/                       # seam over the shared indexer_connector: interfaces + adapters
+│   ├── indexer/                       # seam over the shared indexer_client: interfaces, adapters, the deletion sweeper
 │   ├── sync/                          # the ingestion pipeline:
 │   │   ├── agentSessionLimiter.hpp    #   per-agent cap on pending sessions (D28)
 │   │   ├── fullSessionValidator.*     #   request-level validation (verifier, identity, shape)
@@ -240,11 +240,12 @@ memoised so a retry never rebuilds what already works:
 
 1. `AgentInFlightRegistry` — created FIRST (in the attempt's configuration snapshot) and reset
    LAST, because both the pipeline and the lane hold release listeners pointing into it.
-2. `IndexerSession` (shared by both connectors) — its constructor validates the `<indexer>`
-   configuration synchronously and throws on nonsense, but does NOT require the indexer to be
-   reachable. That split is the startup gate's contract: **gate on "configuration is valid",
+2. The `indexer_client` runtime handle — owned by modulesd's main thread (I128) and validated against
+   `<indexer>` before the fork; building the `Client` throws on nonsense but does NOT require the
+   indexer to be reachable. That split is the startup gate's contract: **gate on "configuration is valid",
    never on "host is up"**, so the indexer is free to start after modulesd.
-3. The **sync** connector, then the **async** connector (used by `/stats` and `/config`).
+3. The `indexer_client` `Client` (one consumer, two buckets: `inventory` and `agent-state`, used by
+   `/stats`, `/config` and the by-id deletes) and the `AgentDeleteSweeper` over its query handle.
 4. `SyncPipeline` (with the registry): ONE sync connector PER WORKER, worker 0 reusing the sync
    connector above, which also serves as the admission-check slot the endpoint sees. Then the
    `VdScanLane` with its own `vd_workers` connectors and the production `IVdScanner` adapter, and
@@ -264,11 +265,12 @@ touching freed state. Two details of that order are non-obvious and load-bearing
 ### The indexer adapter (`indexer_client`)
 
 Sync I/O goes through `IndexerClientSyncAdapter` (`src/indexer/indexerClientSyncAdapter.*`), an
-`IIndexerConnectorSync` over the shared `indexer_client` library. The v1 connector remains only for
-`/stats`, `/config` and the by-id half of the agent deletion (the async connector and its session).
+`IIndexerConnectorSync` over the shared `indexer_client` library. Since E7c the module no longer links `indexer_connector` (the vulnerability scanner still does, until E8).
 
-- **One `Client`, one bucket.** The module registers the consumer `inventory_sync_server` with its
-  single bucket `inventory`; one adapter per pipeline or scan-lane worker shares it. Each adapter
+- **One `Client`, two buckets.** The module registers the consumer `inventory_sync_server` with the
+  buckets `inventory` and `agent-state` (the runtime rejects a second `Client` of one consumer, so both
+  specs go in one `IndexerClientFactory(…, std::vector<BucketSpec>)` call, I148); one adapter per
+  pipeline or scan-lane worker shares `inventory`. Each adapter
   takes `writer("inventory")` and `query()` once at construction (they are null after
   `requestClose()`, in which case construction throws).
 - **Bucket spec** (`inventoryBucketSpec`): `bulk.maxBytes` = `indexer_sync_connector_max_bulk_size`;
@@ -301,7 +303,24 @@ Sync I/O goes through `IndexerClientSyncAdapter` (`src/indexer/indexerClientSync
   `failureResponse`/`failureMetric` (`src/indexer/connectorFailure.hpp`) turn the class into the HTTP
   answer and the `sync.bulk.flush.failures.*` suffix. The table is in the operator reference:
   [Failure causes and HTTP answers](../../../docs/ref/modules/inventory-sync-server/architecture.md#failure-causes-and-http-answers).
-- **Metrics.** The 51 bucket metrics are published by pull in the module's `GET /metrics`;
+- **The `agent-state` bucket** (`agentStateBucketSpec`, I148, I149, I149b, I149c). Carries `POST /stats`,
+  `POST /config` (one `post` each, by the endpoints) and the two by-id deletes of an agent deletion.
+  `ordered`, overflow `Reject` (a full quota is a `503`, not a wait), 409 success, ambiguous 5xx `Retry`, and retry
+  with **no** attempt or duration limit (the v1 async queue buffered through outages too; the quota bounds it).
+  `retry.cap` = `indexer_async_max_retry_delay_seconds` (<= 0 → 15 s); `bulk.maxBytes` =
+  `indexer_async_bulk_max_bytes` (<= 0 → 4 MiB); `quotaBytes = min(max(requested, bulk + 6 KiB, 16 KiB), top)` with
+  `requested` = `indexer_async_max_queue_bytes` (0 → global / 4) and `top = max(global / 4, min(16 KiB, global / 2))`.
+  The 16 KiB floor lets the two deletes of a deletion share one `Group`; the top leaves `inventory` the rest. When the
+  bulk does not fit it is clipped to `quota - 6 KiB` (or `quota / 2`); a clipped bulk or a capped request logs a WARN.
+  `inventoryBucketSpec` then receives the **remainder** `global - agent-state quota` as its `quotaBudget` (I149c), so a
+  full `agent-state` can never starve `/stateful`. `agent-state` is built first. The options that no longer have an
+  effect (`indexer_async_flush_interval_seconds`, `_request_timeout_seconds`, `_logger_queue_size`, `_logger_threads`,
+  `indexer_monitoring_interval_seconds`) log one WARN at startup when they are not at their default.
+- **Health.** `IClient::health().anyUsable()` gates `/stateful`, `/stats`, `/config` and the deletion, and drives the
+  heartbeat's availability transitions log (I151). A `post` the bucket refuses (`QueueFull`, `Unavailable`, closing)
+  answers `503` with a throttled log per cause; `/stats` and `/config` still have no `sync.requests.total.*`.
+- **Metrics.** The 51 metrics of each bucket (`…inventory.*` and `…agent_state.*`; the name is sanitized, `-` → `_`)
+  are published by pull in the module's `GET /metrics`;
   `sync.indexer.bulk.*` come from the bucket (0 again if the Client is rebuilt) and
   `sync.indexer.conflict.retries` from the process-wide query metrics.
 
@@ -314,21 +333,19 @@ results are harvested by that worker, so "200 means confirmed" holds by construc
 `..._indexer_sync_flush_interval_seconds` internal option is accepted but ignored (a WARN says so).
 
 Two config families feed the indexer side and must not be crossed: the `<indexer>` block (hosts and
-TLS, read by the process's `indexer_client` runtime and by the remaining v1 async connector) and the
-module's `indexer_sync_*` / `indexer_async_*` internal options. Since E7b the `indexer_sync_*` ones feed
-the `inventory` bucket (`inventoryBucketSpec()` and `budgets()` in `src/indexer/indexerClientSyncAdapter.*`);
-the `indexer_async_*` overlay is still applied in `src/indexer/indexerConnectorConfig.*` for `/stats`,
-`/config` and the by-id half of the agent deletion.
+TLS, read by the process's `indexer_client` runtime) and the module's `indexer_sync_*` / `indexer_async_*`
+internal options. `indexer_sync_*` feed the `inventory` bucket (`inventoryBucketSpec()` and `budgets()` in
+`src/indexer/indexerClientSyncAdapter.*`); `indexer_async_*` feed the `agent-state` bucket
+(`agentStateBucketSpec()`, same files). The runtime itself is tuned by the `wazuh_modules.indexer_client_*`
+family (19 keys, `kSchema` in `src/shared_modules/indexer_client/src/config/runtimeConfig.cpp`), validated by
+modulesd's `wm_indexer_runtime_configure` before the fork, so `-t` fails on it too; a key under that prefix that
+is not in the schema is an error. The operator tables are in
+[configuration.md](../../../docs/ref/modules/inventory-sync-server/configuration.md).
 
-`..._indexer_sync_request_timeout_seconds` no longer applies: the per-request timeout of the indexer
-client is the runtime's `wazuh_modules.indexer_client_request_timeout_ms` (a WARN says so when the old
-option is set). `..._indexer_async_request_timeout_seconds` (60 s default, range 1–3600) still caps any
-single HTTP request of the async connector; `0` is deliberately unreachable.
-
-`inventory_sync_server_indexer_monitoring_interval_seconds` (10 s default, range 1–3600) still sets how
-often the v1 session's health monitor polls each host; since E7b it only drives the async connector's
-availability (`/stats`, `/config`). The sync half asks `indexer_client`'s own node health
-(`health().anyUsable()`), probed by the runtime.
+`..._indexer_sync_request_timeout_seconds` and `..._indexer_async_request_timeout_seconds` no longer apply: the
+per-request timeout is the runtime's `wazuh_modules.indexer_client_request_timeout_ms` (a WARN says so when the old
+option is set). `..._indexer_monitoring_interval_seconds` no longer applies either: the runtime probes the hosts
+(`indexer_client_probe_interval_ms`) and the module asks `health().anyUsable()`.
 
 ## The request path
 
@@ -612,43 +629,30 @@ this task type's `4xx` comes back to the dispatcher as *retryable* — rejecting
 re-queue the deletion forever rather than fail it.
 
 The handler validates that body (→ `400`) and gates on indexer availability (→ `503`; the caller
-retries rather than losing the deletion). Then it queues
-**two halves, one per writer** — a document can only be deleted in the right ORDER by the connector
-that writes it, which is why the scope is split into `AGENT_DELETION_SCOPE_BY_QUERY` and
-`AGENT_DELETION_SCOPE_BY_ID`:
+retries rather than losing the deletion), then **enqueues** a `SyncPipeline::Item` with `Kind::DeleteAgent` on the
+TARGET agent's shard. The whole deletion runs in that shard's **worker** (`SessionProcessor::executeDeleteAgent`,
+I147c), as an immediate: the batch is cut and answered first, then `until = now + deleteBudget` is fixed
+(`min(3 * d + 25 s, 540 s)`, I145) and, with `AgentDeletionDeps::byId` set by the facade:
 
-1. **By id, on the ASYNC connector, first.** One `bulkDelete(agentId, index)` for each of
-   `wazuh-agent-config` and `wazuh-agent-stats` — the two documents `POST /config` and `POST /stats`
-   write through that connector's accumulating queue, keyed by the agent id. Queueing the deletes on
-   that same queue is the only way to order them after a report it has already accepted: the queue is
-   FIFO. It also needs no index refresh, unlike a search-based delete. First, before the enqueue
-   below, because every microsecond of delay is one more microsecond in which a report could slip in
-   behind the deletion.
-2. **By query, on the pipeline.** A `SyncPipeline::Item` with `Kind::DeleteAgent` on the TARGET
-   agent's shard — the deletion orders FIFO against that agent's in-flight sessions, and respects a
-   scan in flight through the same registry. The worker treats it like an immediate: batch cut, then
-   one `deleteByQuery(index, agent, cluster)` per entry in `AGENT_DELETION_SCOPE_BY_QUERY`
-   (`wazuh-states-*`), and one `flush()`.
+1. `cancel(agent)` on the `agent-state` bucket (drops the agent's queued `/stats` and `/config` writes);
+2. **one `Group`** with the deletes of `AGENT_DELETION_SCOPE_BY_ID` (`wazuh-agent-config`, `wazuh-agent-stats`) tagged
+   with the agent and committed at once (I147d) — two loose `submit`s would each wait `bulk.maxAge` (5 s);
+3. the by-query over `AGENT_DELETION_SCOPE_BY_QUERY` (`wazuh-states-*`) through `deleteAgentByQuery`, which fixes its
+   own `now + deleteBudget` (I145b);
+4. `Ticket::wait` on the Group until `until`, in slices of at most 250 ms that watch `closing` and `ready()`.
 
-A missing index counts as success inside the connector, and deleting a document that is not there is
-a no-op the whole chain ignores, so repeating a deletion is harmless and stays quiet — the callers'
-whole retry contract.
+By-id and by-query share the one absolute `until` (I147b). A by-id result `Failed(ItemPermanent)` with 404
+`index_not_found_exception` counts as success (parity with the by-query's missing-index rule,
+`sessionProcessor.cpp`), without changing the library's classification. A refusal, a failure, the deadline or
+`closing` calls `cancel(agent)` without waiting and throws `ConnectorError` with the I135 class (→ `failureResponse`).
+On success the agent is `note()`d to the `AgentDeleteSweeper`. A missing index counts as success on both halves, so
+repeating a deletion is harmless and stays quiet — the callers' whole retry contract. Two overlapping deletions of
+one agent run one after the other on the same shard; `Item::byIdDeletes` no longer exists.
 
-**This route answers at COMPLETION: the `200` means the delete-by-query has run AND flushed.** The
-dispatcher records its manager-task row `completed` on that 200, so a 200 meaning "queued" would
-record a purge that has not happened — and a modulesd crash right after it would lose the queued
-deletion while the row already read `completed`. The item therefore carries its responder onto the
-`Item` and the pipeline's own `respond()` answers. That is what makes `completed` mean purged.
-
-It needed no pipeline change: the worker has always answered a `DeleteAgent` item, there has just
-never been anyone to answer.
-
-**What `completed` does not cover:** the by-id half. Those two deletes are queued on the async
-connector and are fire-and-forget by construction — that queue is FIFO, which is the only thing that
-can order them behind a report it has already accepted, and it exposes nothing to wait on. So the 200
-promises the state documents were deleted and flushed, and promises only that the other two deletions
-were queued. Closing that would mean giving up the ordering property the by-id half exists for; what
-limits it is idempotency, since a retried deletion re-queues them.
+**This route answers at COMPLETION: the `200` means the by-query ran and flushed AND the by-id deletes were
+confirmed.** The dispatcher records its manager-task row `completed` on that 200, so a 200 meaning "queued" would
+record a purge that has not happened — and a modulesd crash right after it would lose the queued deletion while the
+row already read `completed`. The item carries its responder and the pipeline's own `respond()` answers.
 
 **Its own response backstop, 900 s** (`RouteOptions::responseTimeoutSec`). The transport's server-wide
 backstop is 300 s and is written around the peer's deadline being the shorter one; the Task Manager
@@ -661,6 +665,25 @@ globally keeps the leak backstop intact for everyone else. It must stay above
 **Capacity is the caller's.** `RouteClass::Control` requires a route doing real work to shed its own
 capacity module-side; this one has no queue, so the bound is the Task Manager's concurrency cap of 4
 for `agent_delete_indexer` — at most four deletions in flight.
+
+### The post-deletion sweep (`indexer/agentDeleteSweeper.*`, I146, I146b, I146c)
+
+`cancel(agent)` lifts the ambiguous-retry **pin** (D38) of a report that timed out on a node (IC README § Ordered
+buckets), so that node may still apply it after the delete reached another one: strict order is not claimed for the
+by-id half, and the sweeper covers the residue. `AgentDeleteSweeper(IQuery, window, deadline, closing)` has its own
+thread and condvar; the worker calls `note(agentId)` once the by-id deletes succeeded. A **fixed tick** runs at most
+one pass per `window` (= `MetricsSnapshot::requestTimeout + 5 s`, I150: margin for a 1–5 s `refresh_interval`), over
+the ids whose note is at least one window old (each waits between W and 2W). A pass issues **one delete-by-query per
+index** (a missing index does not void the other) with `terms` on `_id`, `proceedOnConflicts`, ids in chunks of at
+most 10 000, **without `refresh`** (P21: the role may lack `indices:admin/refresh`), each with `deadline` =
+`deleteBudget`. `residual` = the documents deleted. A failed chunk's ids return once to the next pass, then are
+dropped (`dropped`); nothing is sent without due ids (at most `2 * ceil(n / 10 000)` DBQs per pass). `stop()` wakes,
+joins and drops what is pending (counted). Counters: `sync.agent_delete.sweep.{runs,failures,residual,dropped}`
+(`common/metricNames.hpp`). Best effort (I36): zero residue is not guaranteed.
+
+**Effects** (G-plan E7c obj. 11–12): a pin freezes the `agent-state` bucket for at most
+`ambiguous_retry_window_ms`; with a full quota the deletes compete with `/stats` and `/config` (a refused deletion
+is a `503` the dispatcher retries); an idle bucket waits `bulk.maxAge` (5 s) to send, except the deletion's Group.
 
 ### What replaced what
 
@@ -687,22 +710,18 @@ not make the deletion report failure — that is what makes it worth knowing:
   EVERY deletion failed with `403`. The refresh was removed until the privilege is granted; restoring
   it is a follow-up. `authd.purge_delay` (default 120 s) is what makes it a non-event in practice.
 
-**The window that used to sit next to it**, and how it was closed: a `POST /config` or `POST /stats`
-report still in the async connector's queue when the deletion ran landed AFTER the delete-by-query and
-recreated that agent's document — permanently, since nothing overwrites it and nothing re-runs a
-deletion. The by-query pass could neither drain that queue (it runs on the other connector) nor, being
-a SEARCH, see a document that had not been refreshed yet. Those two indices are now deleted by id on
-the async queue itself, so the report is applied first and the delete behind it. Pinned by
-`test_a_report_in_flight_does_not_survive_the_deletion` in the qa suite and by
-`ADeletionIsQueuedBehindAReportTheAsyncConnectorHasAlreadyAccepted` in the unit suite.
+**The window that used to sit next to it**, and how it is closed: a `POST /config` or `POST /stats` report still
+queued when the deletion ran could land AFTER the delete-by-query and recreate that agent's document — permanently,
+since nothing overwrites it and nothing re-runs a deletion. The by-query pass could neither drain that queue nor,
+being a SEARCH, see a document that had not been refreshed yet. Those two indices are deleted **by id on the
+`agent-state` bucket itself**: `cancel(agent)` drops what is queued, and the ordered bucket sends no delete before
+the earlier operations of its key resolve. One residue remains — the pin lifted by `cancel` — and the sweep above
+covers it, best effort.
 
-Two properties the by-query pass had are deliberately given up for those two indices, both without
-loss: cluster scoping (their `_id` carries no cluster prefix, so two clusters sharing one indexer
-already collide on WRITE — the scoping was never real) and reaching a document whose `_id` is not the
-form this manager writes today (only ever produced by a caller that bypasses remoted, which
-normalizes the agent id). What is genuinely traded away is the belt-and-braces: if the async queue
-sheds the delete (over `max_queue_bytes`), nothing else deletes those two documents — the same
-exposure their WRITES already have. What was NOT done, deliberately: moving the reports onto the
+Two properties the by-query pass had are deliberately given up for those two indices, both without loss: cluster
+scoping (their `_id` carries no cluster prefix, so two clusters sharing one indexer already collide on WRITE) and
+reaching a document whose `_id` is not the form this manager writes today (only ever produced by a caller that
+bypasses remoted, which normalizes the agent id). What was NOT done, deliberately: moving the reports onto the
 pipeline. They accumulate and push in batches by design.
 
 ## Transport (`src/http_server/`)

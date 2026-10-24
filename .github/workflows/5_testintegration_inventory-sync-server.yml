@@ -4,9 +4,9 @@ on:
     types: [synchronize, opened, reopened, ready_for_review]
     paths:
       - ".github/workflows/5_testintegration_inventory-sync-server.yml"
-      # inventory_sync_server_testtool (testtool/CMakeLists.txt:12,33) links the inventory_sync_server
-      # library built from src/ and include/ (CMakeLists.txt:12), vulnerability_scanner and
-      # indexer_connector; the qa/ suite drives it. Every CMakeLists.txt of the module is on the
+      # inventory_sync_server_testtool (testtool/CMakeLists.txt:12,37) links the inventory_sync_server
+      # library built from src/ and include/ (CMakeLists.txt:12), vulnerability_scanner, indexer_connector
+      # (its Keystore, until E8) and indexer_client; the qa/ suite drives it. Every CMakeLists.txt of the module is on the
       # configure path (CMakeLists.txt:69,74). Not the unit tests (test/), tools/ or the READMEs.
       - "src/wazuh_modules/inventory_sync_server/**/CMakeLists.txt"
       - "src/wazuh_modules/inventory_sync_server/include/**"
@@ -22,8 +22,9 @@ on:
       - "src/wazuh_modules/vulnerability_scanner/src/**"
       - "src/wazuh_modules/vulnerability_scanner/schemas/**"
       # ...which links content_manager, indexer_connector, urlrequest, schema_validator,
-      # wazuh_uds_http_server and wazuh_metrics (vulnerability_scanner/CMakeLists.txt:156-167;
-      # indexer_connector is also linked directly, inventory_sync_server/CMakeLists.txt:61).
+      # wazuh_uds_http_server and wazuh_metrics (vulnerability_scanner/CMakeLists.txt:156-167).
+      # indexer_connector stays here for the scanner until E8; the module itself links indexer_client
+      # (inventory_sync_server/CMakeLists.txt:61), covered whole below.
       # schema_validator embeds the indexer templates `make deps` downloads (its CMakeLists.txt:25-27),
       # covered by src/Makefile and tools/get_git_refs.sh below.
       - "src/shared_modules/content_manager/**/CMakeLists.txt"
@@ -32,6 +33,8 @@ on:
       - "src/shared_modules/indexer_connector/**/CMakeLists.txt"
       - "src/shared_modules/indexer_connector/include/**"
       - "src/shared_modules/indexer_connector/src/**"
+      # indexer_client: linked by the module and the testtool (testtool/CMakeLists.txt:37).
+      - "src/shared_modules/indexer_client/**"
       - "src/shared_modules/schema_validator/**/CMakeLists.txt"
       - "src/shared_modules/schema_validator/include/**"
       - "src/shared_modules/schema_validator/src/**"

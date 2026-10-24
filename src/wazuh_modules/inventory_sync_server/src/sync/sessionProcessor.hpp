@@ -13,8 +13,13 @@
 
 #include "common/metricNames.hpp"
 #include "indexer/IIndexerConnectorSync.hpp"
+#include "indexer/agentDeleteSweeper.hpp"
 #include "sync/fullSessionValidator.hpp"
 
+#include "indexer_client/client.hpp"
+
+#include <atomic>
+#include <chrono>
 #include <memory>
 #include <string>
 #include <utility>
@@ -39,6 +44,23 @@ namespace invsync::sync
     };
 
     SessionKind classify(const ValidatedSession& session) noexcept;
+
+    /**
+     * @brief The by-id half of a whole-agent deletion (I147, I147b, I147c, I147d), handed to every worker.
+     *
+     * Default-constructed (`byId == false`) the deletion runs only its by-query half -- what unit tests built on the
+     * sync fakes alone exercise. In production the facade sets `byId` and the weak handles: an expired `agentState`
+     * then fails the deletion 503 (the module is stopping), never skips the half.
+     */
+    struct AgentDeletionDeps
+    {
+        bool byId {false};
+        std::weak_ptr<indexer_client::IWriter> agentState;  ///< The `agent-state` bucket's writer (I148).
+        std::weak_ptr<indexer::AgentDeleteSweeper> sweeper; ///< note()d once the by-id deletes succeeded (I146).
+        std::shared_ptr<const std::atomic<bool>> closing;   ///< The module's closing flag (I141); null = never.
+        std::chrono::milliseconds budget {70000};           ///< Budgets::deletion: by-query + by-id wait (I145).
+        std::chrono::milliseconds slice {250};              ///< Granularity of the by-id wait (closing, ready()).
+    };
 
     /// What a processing step decided. `staged == true` means bulk operations are sitting in the
     /// worker's connector and the (already `status`/`body`-filled) response must be delivered only
@@ -98,17 +120,25 @@ namespace invsync::sync
         ProcessOutcome executeImmediate(const ValidatedSession& session,
                                         indexer::IIndexerConnectorSync& connector) const;
 
-        /// @brief Deletes @p agentId's documents across AGENT_DELETION_SCOPE_BY_QUERY (this
-        ///        cluster's `wazuh-states-*`) with the long deletion budget (deleteAgentByQuery,
-        ///        after every pending write resolved) -- the SYNC half of the whole-agent
-        ///        deletion behind POST /_internal/agents/delete (design doc 04). The other half, the two
-        ///        AGENT_DELETION_SCOPE_BY_ID documents, is queued by the endpoint on the async
-        ///        connector that writes them; it does not pass through here. Immediate-style: the
-        ///        caller must have cut the batch first. An index that does not exist counts as
-        ///        success (404-as-success), same as the legacy delete. State documents written
-        ///        inside the index refresh interval can survive it: see the note on the
-        ///        implementation.
-        ProcessOutcome executeDeleteAgent(const std::string& agentId, indexer::IIndexerConnectorSync& connector) const;
+        /**
+         * @brief The whole-agent deletion behind POST /_internal/agents/delete (design doc 04), run on the agent's
+         *        shard worker so two deletions of one agent never overlap (I147c). Immediate-style: the caller must
+         *        have cut and answered the batch first, and computes `until` (= now + deletion.budget) right after.
+         *
+         * With `deletion.byId`: cancel(agent) on `agent-state` (drops the agent's pending /stats and /config writes),
+         * then ONE Group with the deletes of AGENT_DELETION_SCOPE_BY_ID tagged with the agent and committed at once
+         * (I147d). Then the by-query over AGENT_DELETION_SCOPE_BY_QUERY (this cluster's `wazuh-states-*`) through
+         * deleteAgentByQuery, which bounds itself (I145b). Then the Group's ticket is waited until `until`, in slices
+         * that watch `closing` and ready(). A by-id result Failed(ItemPermanent) with 404 index_not_found_exception
+         * counts as success (I147b), like a missing index on the by-query half. On a refusal, a failure, the
+         * deadline or closing it cancel(agent)s without waiting and throws ConnectorError with the I135 class; on
+         * success it note()s the agent to the sweeper. State documents written inside the index refresh interval
+         * can survive the by-query: see the note on the implementation.
+         */
+        ProcessOutcome executeDeleteAgent(const std::string& agentId,
+                                          indexer::IIndexerConnectorSync& connector,
+                                          const AgentDeletionDeps& deletion = {},
+                                          std::chrono::steady_clock::time_point until = {}) const;
 
     private:
         ProcessOutcome executeCleans(const ValidatedSession& session, indexer::IIndexerConnectorSync& connector) const;

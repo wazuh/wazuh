@@ -120,12 +120,13 @@ namespace
 namespace invsync::endpoints::config
 {
 
-    wazuh::uds_http::RouteHandler makeHandler(std::weak_ptr<invsync::indexer::IIndexerConnectorAsync> connector,
+    wazuh::uds_http::RouteHandler makeHandler(std::weak_ptr<indexer_client::IClient> client,
+                                              std::weak_ptr<indexer_client::IWriter> writer,
                                               invsync::common::ClusterIdentity cluster)
     {
-        return [connector = std::move(connector),
-                cluster = std::move(cluster)](std::shared_ptr<const wazuh::uds_http::HttpRequest> request,
-                                              std::shared_ptr<wazuh::uds_http::IHttpResponder> responder)
+        return [client = std::move(client), writer = std::move(writer), cluster = std::move(cluster)](
+                   std::shared_ptr<const wazuh::uds_http::HttpRequest> request,
+                   std::shared_ptr<wazuh::uds_http::IHttpResponder> responder)
         {
             // Throttled and function-local: how often these fire is driven by how often agents report,
             // so one line per request would be a log-amplification vector against wazuh-manager.log.
@@ -134,6 +135,7 @@ namespace invsync::endpoints::config
             static wazuh::uds_http::LogThrottle goneThrottle;
             static wazuh::uds_http::LogThrottle unavailableThrottle;
             static wazuh::uds_http::LogThrottle metadataThrottle;
+            static wazuh::uds_http::LogThrottle refusedThrottle;
 
             if (!request)
             {
@@ -194,15 +196,16 @@ namespace invsync::endpoints::config
              * never going to work. Parsing a document we are about to drop is the cheaper mistake --
              * the 503 is the rare path.
              */
-            const auto indexer = connector.lock();
-            if (!indexer)
+            const auto indexerClient = client.lock();
+            const auto agentState = writer.lock();
+            if (!indexerClient || !agentState)
             {
-                // The facade cleared the connector: stop() is running. Distinct from an outage.
+                // The facade released the client or the writer: stop() is running. Distinct from an outage.
                 if (const auto decision = goneThrottle.record())
                 {
                     LOGFN_DEBUG1(logFn(),
                                  "Rejected %llu config document(s) with 503 %s: the module is shutting "
-                                 "down and the indexer connector is already gone.",
+                                 "down and the indexer client is already gone.",
                                  static_cast<unsigned long long>(decision.total),
                                  decision.period().c_str());
                 }
@@ -210,7 +213,7 @@ namespace invsync::endpoints::config
                 return;
             }
 
-            if (!indexer->isAvailable())
+            if (!indexerClient->health().anyUsable())
             {
                 // WARN rather than debug: no healthy indexer host is an operator-actionable condition,
                 // and it is the reason agents are being turned away.
@@ -279,20 +282,29 @@ namespace invsync::endpoints::config
                 }
             }
 
-            try
+            // The document id IS the agent id, so each report replaces the previous one; the tag is the agent
+            // too, so a whole-agent deletion's cancel(agent) drops this write if it is still pending (RF-26).
+            indexer_client::Op op;
+            op.kind = indexer_client::Op::Kind::Index;
+            op.index = std::string {AGENT_CONFIG_INDEX_NAME};
+            op.id = agentIdIt->second;
+            op.body = std::move(serializedDocument);
+            op.tag = agentIdIt->second;
+
+            if (const auto posted = agentState->post(std::move(op)); !posted.accepted)
             {
-                // Indexed under the agent id as _id: each report replaces the previous one for that
-                // agent by upsert, nothing else to do.
-                indexer->index(agentIdIt->second, AGENT_CONFIG_INDEX_NAME, serializedDocument);
-            }
-            catch (const std::exception& e)
-            {
-                // The body was fine; the write to storage was not. A 400 here would tell the agent
-                // to fix a payload that was never wrong; 503 correctly tells it to retry.
-                LOGFN_DEBUG1(logFn(),
-                             "Could not index agent config document for agent '%s': %s.",
-                             agentIdIt->second.c_str(),
-                             e.what());
+                // The body was fine; the client did not admit the write (bucket full, no usable node, closing).
+                // A 400 would tell the agent to fix a payload that was never wrong; 503 tells it to retry. Before
+                // the indexer client this was a silent 200 (the async queue dropped the write later), I151.
+                if (const auto decision = refusedThrottle.record())
+                {
+                    LOGFN_WARN(logFn(),
+                               "Rejected %llu config document(s) with 503 %s: the indexer client did not "
+                               "admit the write (last cause: %s).",
+                               static_cast<unsigned long long>(decision.total),
+                               decision.period().c_str(),
+                               indexer_client::toString(posted.cause));
+                }
                 responder->send(serviceUnavailable());
                 return;
             }
@@ -300,7 +312,7 @@ namespace invsync::endpoints::config
             if (const auto decision = acceptedThrottle.record())
             {
                 LOGFN_DEBUG1(logFn(),
-                             "Indexed %llu agent config document(s) %s.",
+                             "Queued %llu agent config document(s) for indexing %s.",
                              static_cast<unsigned long long>(decision.total),
                              decision.period().c_str());
             }

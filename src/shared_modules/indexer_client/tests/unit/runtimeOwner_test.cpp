@@ -517,6 +517,15 @@ TEST_F(RuntimeOwnerTest, DoubleStartKeepsRuntime)
     ran.get_future().wait();
 }
 
+TEST_F(RuntimeOwnerTest, SnapshotEchoesRequestTimeout)
+{
+    auto ref =
+        RuntimeOwner::start(ProcessId::Analysisd, MapSource({{"analysisd.indexer_client_request_timeout_ms", "1234"}}));
+    ASSERT_TRUE(ref.ok()) << toString(ref.cause) << ": " << ref.reason;
+    EXPECT_EQ(ref.value.snapshot().requestTimeout, Duration {1234});
+    EXPECT_EQ(RuntimeRef {}.snapshot().requestTimeout, Duration {0});
+}
+
 TEST_F(RuntimeOwnerTest, DoubleShutdownIsNoop)
 {
     const auto before = settledTasks();
