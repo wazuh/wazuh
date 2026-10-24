@@ -332,9 +332,9 @@ TEST_F(InventorySyncServerModuleTest, AUsableSocketPathStartsSuccessfully)
  */
 TEST_F(InventorySyncServerModuleTest, IndexerConfigIsCopiedAndNotRetained)
 {
-    // This test is about the C-ABI's borrow contract, not about really constructing an
-    // IndexerConnectorSync (whose CA-file-must-exist check would otherwise reject the fake path
-    // used below) -- bypass real construction so it stays fast and deterministic.
+    // This test is about the C-ABI's borrow contract, not about really building the indexer Client
+    // (the module takes its hosts and TLS material from the process runtime, not from the block
+    // below) -- bypass real construction so it stays fast and deterministic.
     invsync::test::installAlwaysAvailableFakeIndexers();
 
     const auto path = uniqueSocketPath("indexer");
@@ -409,7 +409,7 @@ TEST_F(InventorySyncServerModuleTest, IndexerSummaryLogsCountsNotSecrets)
  */
 TEST_F(InventorySyncServerModuleTest, TheRegisteredRoutesAreReachableOnTheModulesOwnSocket)
 {
-    invsync::test::installAlwaysAvailableFakeIndexers();
+    auto events = invsync::test::installAlwaysAvailableFakeIndexers();
 
     const auto path = uniqueSocketPath("routes");
     auto config = makeConfig(path);
@@ -445,8 +445,53 @@ TEST_F(InventorySyncServerModuleTest, TheRegisteredRoutesAreReachableOnTheModule
         EXPECT_EQ("{}", response.body);
     }
 
+    // Both documents reached the `agent-state` writer the facade took from the Client, tagged with the agent
+    // (what a deletion's cancel(agent) drops), each under its own index.
+    const auto posted = events->m_agentStateWriter->posted();
+    ASSERT_EQ(2U, posted.size());
+    EXPECT_EQ("wazuh-agent-stats", posted[0].index);
+    EXPECT_EQ("wazuh-agent-config", posted[1].index);
+    for (const auto& op : posted)
+    {
+        EXPECT_EQ("007", op.id);
+        EXPECT_EQ("007", op.tag);
+    }
+
     // An unknown path is a 404, which proves routing is matching rather than answering everything.
     EXPECT_EQ(404, sendModuleRequest(path, "POST", "/nope", "x", "007").status);
+
+    inventory_sync_server_stop();
+}
+
+/**
+ * A write the Client refuses, or an indexer with no usable node, is a 503 the agent retries -- never the silent
+ * 200 of the former async queue (I151). The log line that says why is throttled per process (one per 90 s per
+ * cause), so whether an earlier test already spent it makes it unobservable here: not asserted.
+ */
+TEST_F(InventorySyncServerModuleTest, StatsAndConfigAnswer503WhenTheClientRefusesOrNoNodeIsUsable)
+{
+    auto events = invsync::test::installAlwaysAvailableFakeIndexers();
+
+    const auto path = uniqueSocketPath("refused");
+    auto config = makeConfig(path);
+
+    ASSERT_EQ(0, inventory_sync_server_start(testLogCallback, &config));
+    ASSERT_TRUE(LogRecorder::waitForMessageContaining("listening on"));
+
+    // The bucket refuses the write: the document was fine, the answer is 503.
+    events->m_agentStateWriter->refuseWith(indexer_client::Cause::QueueFull);
+    EXPECT_EQ(503, sendModuleRequest(path, "POST", "/stats", R"({"modules":{"agent":{"a":1}}})", "007").status);
+    EXPECT_EQ(503, sendModuleRequest(path, "POST", "/stats", R"({"modules":{"agent":{"a":1}}})", "007").status);
+    EXPECT_EQ(503, sendModuleRequest(path, "POST", "/config", R"({"modules":{"agent":{"cpu":42}}})", "007").status);
+
+    // No node the client would use: refused up front, and the 400s still come first.
+    events->m_agentStateWriter->accept();
+    events->m_clientUsable.store(false);
+    EXPECT_EQ(503, sendModuleRequest(path, "POST", "/stats", R"({"modules":{"agent":{"a":1}}})", "007").status);
+    EXPECT_EQ(400, sendModuleRequest(path, "POST", "/stats", "not json", "007").status);
+
+    events->m_clientUsable.store(true);
+    EXPECT_EQ(200, sendModuleRequest(path, "POST", "/stats", R"({"modules":{"agent":{"a":1}}})", "007").status);
 
     inventory_sync_server_stop();
 }

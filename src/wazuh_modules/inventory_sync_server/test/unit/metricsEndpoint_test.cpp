@@ -21,12 +21,9 @@
 #include "testSessionBuilder.hpp"
 #include "udsTestClient.hpp"
 
-#include <indexer_client/keyValueConfigSource.hpp>
-#include <indexer_client/runtime.hpp>
+#include "testRealIndexer.hpp"
 
-#include "bulkResponder.hpp"
-#include "fakeIndexer.hpp"
-#include "healthRules.hpp"
+#include <indexer_client/runtime.hpp>
 
 #include <wazuh_metrics/manager.hpp>
 
@@ -146,13 +143,15 @@ TEST(MetricsEndpointTest, AnswersServiceUnavailableWhenTheManagerIsGone)
     EXPECT_EQ(503, responder->response().status);
 }
 
-// ---- The bucket's metrics through the module's real GET /metrics (CA-E7b-8) ---------------------------
+// ---- The buckets' metrics through the module's real GET /metrics (CA-E7b-8, CA-E7c-6) ---------------------------
 
 namespace
 {
     using namespace std::chrono_literals;
 
+    // The exact prefixes: the bucket name `agent-state` is published sanitized, as `agent_state`.
     constexpr auto BUCKET_PREFIX {"indexer_client.bucket.inventory_sync_server.inventory."};
+    constexpr auto AGENT_STATE_PREFIX {"indexer_client.bucket.inventory_sync_server.agent_state."};
 
     /// The first `value` of the metric named @p name in a /metrics document, and how many entries carry it.
     struct Reading
@@ -210,6 +209,39 @@ namespace
         return false;
     }
 
+    /// POST /stats of agent 001 (the `agent-state` bucket's write route) and an agent deletion, over the real socket.
+    int postStats(const std::string& socketPath)
+    {
+        const std::string body = R"({"modules":{"agent":{"messages":{"count":1}}}})";
+        return wazuh::uds_http::test::sendRaw(socketPath,
+                                              "POST /stats HTTP/1.1\r\nHost: localhost\r\nX-Wazuh-Agent-Id: 001\r\n"
+                                              "Content-Type: application/json\r\nContent-Length: " +
+                                                  std::to_string(body.size()) + "\r\nConnection: close\r\n\r\n" + body)
+            .status;
+    }
+
+    int deleteAgent(const std::string& socketPath, const std::string& agentId)
+    {
+        const std::string body = "{\"agent_id\":\"" + agentId + "\"}";
+        return wazuh::uds_http::test::sendRaw(
+                   socketPath,
+                   "POST /_internal/agents/delete HTTP/1.1\r\nHost: localhost\r\nContent-Type: application/json\r\n"
+                   "Content-Length: " +
+                       std::to_string(body.size()) + "\r\nConnection: close\r\n\r\n" + body)
+            .status;
+    }
+
+    /// How many entries of a /metrics document start with @p prefix.
+    std::size_t entriesWithPrefix(const nlohmann::json& document, const std::string& prefix)
+    {
+        std::size_t count {0};
+        for (const auto& entry : document.at("metrics"))
+        {
+            count += entry.at("name").get<std::string>().rfind(prefix, 0) == 0 ? 1 : 0;
+        }
+        return count;
+    }
+
     inventory_sync_server_config_t moduleConfig(const std::string& socketPath, const void* runtime)
     {
         inventory_sync_server_config_t config {};
@@ -225,36 +257,26 @@ namespace
 } // namespace
 
 /**
- * With the real Client behind the module, GET /metrics publishes the 51 metrics of the `inventory`
- * bucket by pull, plus the sync.indexer.* totals read from the same bucket (I140): after one session
- * the bucket accepted its ops and `sync.indexer.bulk.requests` IS its `bulk_requests`. Each name is
- * registered once; a restart rebuilds the Client, so its counters read 0 again until traffic arrives.
+ * With the real Client behind the module, GET /metrics publishes the 51 metrics of EACH of the two buckets by
+ * pull -- `inventory` and `agent-state`, under the exact prefixes `indexer_client.bucket.inventory_sync_server.
+ * {inventory,agent_state}.` -- plus the sync.indexer.* totals read from the `inventory` bucket (I140): after one
+ * session, one /stats and one deletion each bucket accepted its ops and `sync.indexer.bulk.requests` IS the
+ * `inventory` bucket's `bulk_requests`. Each name is registered once; a restart rebuilds the Client, so its
+ * counters read 0 again until traffic arrives, and nothing registers twice.
  */
-TEST(MetricsEndpointTest, PublishesBucketMetrics)
+TEST(MetricsEndpointTest, PublishesBothBuckets)
 {
-    indexer_client::testing::FakeIndexer fake;
-    auto bulk = std::make_shared<indexer_client::testing::BulkResponder>();
-    fake.addRule(indexer_client::testing::healthRule("green"));
-    fake.addRule(indexer_client::testing::bulkRule(bulk));
-    fake.start();
+    invsync::test::RealIndexer real;
+    real.startRuntime();
+    ASSERT_TRUE(real.runtimeStarted) << real.startError;
+    const indexer_client::RuntimeRef ref = real.ref;
 
-    const std::string text = "wazuh_modules.indexer_client_network_threads=1\n"
-                             "wazuh_modules.indexer_client_cpu_threads=2\n"
-                             "wazuh_modules.indexer_client_probe_interval_ms=200\n";
-    auto source = indexer_client::KeyValueConfigSource::parse(
-        text, "{\"hosts\":[\"" + fake.baseUrl() + "\"]}", indexer_client::Credentials {"a", "b"});
-    auto started = indexer_client::RuntimeOwner::start(indexer_client::ProcessId::Modulesd, source.value);
-    ASSERT_TRUE(started.ok()) << indexer_client::toString(started.cause) << ": " << started.reason;
-    const indexer_client::RuntimeRef ref = started.value;
-
-    // The module first, then the runtime it borrowed, then the factories -- also on an early return.
+    // The module first, then the factories -- also on an early return; the runtime goes with `real`.
     struct Cleanup
     {
         ~Cleanup()
         {
             inventory_sync_server_stop();
-            indexer_client::RuntimeOwner::beginShutdown(std::chrono::steady_clock::now() + 5s);
-            indexer_client::RuntimeOwner::shutdown();
             invsync::test::resetIndexerConnectorFactoriesToProduction();
         }
     } cleanup;
@@ -266,50 +288,119 @@ TEST(MetricsEndpointTest, PublishesBucketMetrics)
 
     inventory_sync_server_start(invsync::test::testLogCallback, &config);
     const bool listening = LogRecorder::waitForMessageContaining("listening on");
-    if (listening && postASession(socketPath))
+    ASSERT_TRUE(listening) << "the module never started listening";
+    ASSERT_TRUE(postASession(socketPath)) << "no session was accepted (the indexer never looked available)";
+    EXPECT_EQ(200, postStats(socketPath));
+    EXPECT_EQ(200, deleteAgent(socketPath, "7"));
+
+    // One scrape is one Client::metrics() call and the snapshot is served for up to 250 ms (I141b).
+    std::this_thread::sleep_for(400ms);
+    const auto document = scrape(socketPath);
+    ASSERT_TRUE(document.is_object());
+
+    const auto accepted = reading(document, std::string {BUCKET_PREFIX} + "accepted");
+    const auto bucketRequests = reading(document, std::string {BUCKET_PREFIX} + "bulk_requests");
+    const auto syncRequests = reading(document, invsync::metrics::INDEXER_BULK_REQUESTS);
+    EXPECT_EQ(1U, accepted.entries) << "the inventory bucket's counters are registered once";
+    EXPECT_GE(accepted.value, 1) << "the session's document was accepted by the bucket";
+    EXPECT_GE(bucketRequests.value, 1);
+    EXPECT_EQ(1U, syncRequests.entries);
+    EXPECT_EQ(bucketRequests.value, syncRequests.value) << "sync.indexer.bulk.requests reads the inventory bucket";
+
+    const auto agentAccepted = reading(document, std::string {AGENT_STATE_PREFIX} + "accepted");
+    EXPECT_EQ(1U, agentAccepted.entries) << "the agent-state bucket's counters are registered once";
+    EXPECT_GE(agentAccepted.value, 3) << "the /stats document and the two by-id deletes were accepted";
+    EXPECT_EQ(entriesWithPrefix(document, BUCKET_PREFIX), entriesWithPrefix(document, AGENT_STATE_PREFIX))
+        << "the same catalog under each bucket's own prefix";
+    EXPECT_GT(entriesWithPrefix(document, AGENT_STATE_PREFIX), 0U);
+    EXPECT_EQ(0U, entriesWithPrefix(document, "indexer_client.bucket.inventory_sync_server.agent-state."))
+        << "the bucket name is published sanitized";
+
+    // A restart builds a new Client: same names, one registration each, counters from 0.
+    inventory_sync_server_stop();
+    LogRecorder::clear();
+    inventory_sync_server_start(invsync::test::testLogCallback, &config);
+    ASSERT_TRUE(LogRecorder::waitForMessageContaining("listening on"))
+        << "the module did not come back after a restart";
+    const auto fresh = scrape(socketPath);
+    ASSERT_TRUE(fresh.is_object());
+    EXPECT_EQ(1U, reading(fresh, std::string {BUCKET_PREFIX} + "accepted").entries)
+        << "a restart must not register the inventory bucket's metrics again";
+    EXPECT_EQ(1U, reading(fresh, std::string {AGENT_STATE_PREFIX} + "accepted").entries)
+        << "a restart must not register the agent-state bucket's metrics again";
+    EXPECT_EQ(0, reading(fresh, std::string {BUCKET_PREFIX} + "accepted").value)
+        << "a rebuilt Client starts its counters from 0";
+    EXPECT_EQ(0, reading(fresh, std::string {AGENT_STATE_PREFIX} + "accepted").value);
+    EXPECT_EQ(1U, reading(fresh, invsync::metrics::INDEXER_BULK_REQUESTS).entries);
+
+    EXPECT_TRUE(postASession(socketPath));
+    EXPECT_EQ(200, postStats(socketPath));
+    std::this_thread::sleep_for(400ms);
+    const auto after = scrape(socketPath);
+    ASSERT_TRUE(after.is_object());
+    EXPECT_GE(reading(after, std::string {BUCKET_PREFIX} + "accepted").value, 1);
+    EXPECT_GE(reading(after, std::string {AGENT_STATE_PREFIX} + "accepted").value, 1);
+    EXPECT_EQ(reading(after, std::string {BUCKET_PREFIX} + "bulk_requests").value,
+              reading(after, invsync::metrics::INDEXER_BULK_REQUESTS).value);
+}
+
+/**
+ * The post-deletion sweeper's four counters are published by pull under their frozen names, once each, after a
+ * deletion and across a stop + start (the sweeper is rebuilt; the registrations are not).
+ */
+TEST(MetricsEndpointTest, PublishesSweep)
+{
+    invsync::test::RealIndexer real;
+    real.startRuntime();
+    ASSERT_TRUE(real.runtimeStarted) << real.startError;
+    const indexer_client::RuntimeRef ref = real.ref;
+
+    struct Cleanup
     {
-        const auto document = scrape(socketPath);
-        ASSERT_TRUE(document.is_object());
-        const auto accepted = reading(document, std::string {BUCKET_PREFIX} + "accepted");
-        const auto bucketRequests = reading(document, std::string {BUCKET_PREFIX} + "bulk_requests");
-        const auto syncRequests = reading(document, invsync::metrics::INDEXER_BULK_REQUESTS);
-        EXPECT_EQ(1U, accepted.entries) << "the bucket's counters are registered once";
-        EXPECT_GE(accepted.value, 1) << "the session's document was accepted by the bucket";
-        EXPECT_GE(bucketRequests.value, 1);
-        EXPECT_EQ(1U, syncRequests.entries);
-        EXPECT_EQ(bucketRequests.value, syncRequests.value) << "sync.indexer.bulk.requests reads the bucket";
-
-        // A restart builds a new Client: same names, one registration each, counters from 0.
-        inventory_sync_server_stop();
-        LogRecorder::clear();
-        inventory_sync_server_start(invsync::test::testLogCallback, &config);
-        if (LogRecorder::waitForMessageContaining("listening on"))
+        ~Cleanup()
         {
-            const auto fresh = scrape(socketPath);
-            ASSERT_TRUE(fresh.is_object());
-            const auto freshAccepted = reading(fresh, std::string {BUCKET_PREFIX} + "accepted");
-            EXPECT_EQ(1U, freshAccepted.entries) << "a restart must not register the bucket's metrics again";
-            EXPECT_EQ(0, freshAccepted.value) << "a rebuilt Client starts its counters from 0";
-            EXPECT_EQ(1U, reading(fresh, invsync::metrics::INDEXER_BULK_REQUESTS).entries);
+            inventory_sync_server_stop();
+            invsync::test::resetIndexerConnectorFactoriesToProduction();
+        }
+    } cleanup;
 
-            EXPECT_TRUE(postASession(socketPath));
-            // One scrape is one Client::metrics() call and the snapshot is served for up to 250 ms (I141b):
-            // let the one taken by the scrape above expire.
-            std::this_thread::sleep_for(400ms);
-            const auto after = scrape(socketPath);
-            ASSERT_TRUE(after.is_object());
-            EXPECT_GE(reading(after, std::string {BUCKET_PREFIX} + "accepted").value, 1);
-            EXPECT_EQ(reading(after, std::string {BUCKET_PREFIX} + "bulk_requests").value,
-                      reading(after, invsync::metrics::INDEXER_BULK_REQUESTS).value);
-        }
-        else
-        {
-            ADD_FAILURE() << "the module did not come back after a restart";
-        }
+    LogRecorder::clear();
+    invsync::test::installFakeIndexersOverRealClient();
+    const auto socketPath = wazuh::uds_http::test::uniqueSocketPath("sweepmetrics");
+    const auto config = moduleConfig(socketPath, &ref);
+
+    const std::vector<std::string> names {invsync::metrics::AGENT_DELETE_SWEEP_RUNS,
+                                          invsync::metrics::AGENT_DELETE_SWEEP_FAILURES,
+                                          invsync::metrics::AGENT_DELETE_SWEEP_RESIDUAL,
+                                          invsync::metrics::AGENT_DELETE_SWEEP_DROPPED};
+    EXPECT_EQ(std::vector<std::string>({"sync.agent_delete.sweep.runs",
+                                        "sync.agent_delete.sweep.failures",
+                                        "sync.agent_delete.sweep.residual",
+                                        "sync.agent_delete.sweep.dropped"}),
+              names)
+        << "the names are frozen";
+
+    inventory_sync_server_start(invsync::test::testLogCallback, &config);
+    ASSERT_TRUE(LogRecorder::waitForMessageContaining("listening on"));
+    ASSERT_TRUE(postASession(socketPath));
+    ASSERT_EQ(200, deleteAgent(socketPath, "7"));
+
+    const auto document = scrape(socketPath);
+    ASSERT_TRUE(document.is_object());
+    for (const auto& name : names)
+    {
+        EXPECT_EQ(1U, reading(document, name).entries) << name;
+        EXPECT_EQ(0, reading(document, name).value) << name << ": nothing is due inside the first window";
     }
-    else
+
+    inventory_sync_server_stop();
+    LogRecorder::clear();
+    inventory_sync_server_start(invsync::test::testLogCallback, &config);
+    ASSERT_TRUE(LogRecorder::waitForMessageContaining("listening on"));
+    const auto fresh = scrape(socketPath);
+    ASSERT_TRUE(fresh.is_object());
+    for (const auto& name : names)
     {
-        ADD_FAILURE() << (listening ? "no session was accepted (the indexer never looked available)"
-                                    : "the module never started listening");
+        EXPECT_EQ(1U, reading(fresh, name).entries) << name << " must be registered once across a restart";
     }
 }

@@ -13,6 +13,7 @@
 #include "common/metricNames.hpp"
 #include "sync/fullSessionValidator.hpp"
 #include "testIndexerConnectorFakes.hpp"
+#include "testRealIndexer.hpp"
 #include "testSessionBuilder.hpp"
 
 #include <wazuh_metrics/manager.hpp>
@@ -555,12 +556,11 @@ TEST(SyncPipelineTest, ADeleteAgentItemWipesTheByQueryScopeAndFlushes)
     EXPECT_EQ(R"({"status":"ok"})", response.body);
 
     /*
-     * AGENT_DELETION_SCOPE_BY_QUERY, and NOTHING else. Exactly one op is the assertion that matters
-     * here: `wazuh-agent-config` and `wazuh-agent-stats` are deliberately NOT deleted from this
-     * connector -- they are written by the async one, and a delete-by-query issued here could
-     * neither drain its queue nor see an unrefreshed document, which is how a report in flight used
-     * to outlive the agent. The endpoint queues their deletes by id on that connector instead
-     * (deleteAgentEndpoint_test.cpp pins it).
+     * AGENT_DELETION_SCOPE_BY_QUERY, and NOTHING else from the connector. Exactly one op is the assertion that
+     * matters here: `wazuh-agent-config` and `wazuh-agent-stats` are deliberately NOT deleted through the sync
+     * connector -- a delete-by-query could not see an unrefreshed document, which is how a report in flight used
+     * to outlive the agent. The worker deletes them by id on the `agent-state` bucket instead (the by-id cases
+     * below; this pipeline has no by-id deps, so it runs the by-query half alone).
      *
      * The deletion also does NOT refresh first (that needs a privilege the manager's indexer role
      * lacks), which is why a STATE document written inside the index refresh interval can survive.
@@ -634,6 +634,341 @@ TEST(SyncPipelineTest, ADeleteFailureIsVisibleToTheCaller)
     auto second = std::make_shared<FutureResponder>();
     ASSERT_TRUE(fixture.pipeline->enqueue(makeDeleteItem("006", second)));
     EXPECT_EQ(503, second->get().status) << "indexer unavailable at dispatch -> 503, nothing executed";
+}
+
+// --- The by-id half of a whole-agent deletion (I147, I147b, I147c, I147d; CA-E7c-2) -----------------
+//
+// A Group and its tickets cannot be faked, so these run a REAL pipeline worker over a real runtime on the
+// library's fake indexer, with the module's Client and `agent-state` bucket (testRealIndexer.hpp). The fake keeps
+// no documents: the oracles are the answers (status, timing) and the wire (which requests arrived, in which order,
+// holding what).
+
+namespace
+{
+    using indexer_client::testing::BulkItem;
+    using indexer_client::testing::BulkScript;
+    using indexer_client::testing::Rule;
+    using invsync::test::dbqBody;
+    using invsync::test::RealIndexer;
+
+    constexpr auto STATES_DBQ_PATH {"/wazuh-states-.*/_delete_by_query"};
+
+    /// A worker over the real Client: connector = the production adapter, `agent-state` writer and sweeper wired like
+    /// the facade wires them. The sweeper's window is long (nothing is swept): what it was note()d is read from
+    /// stop()'s `dropped`.
+    class ByIdPipeline
+    {
+    public:
+        ByIdPipeline() = default;
+
+        ~ByIdPipeline()
+        {
+            stop();
+        }
+
+        /// Starts runtime, Client, sweeper and pipeline. @p budget is Budgets::deletion (by-query + by-id wait).
+        void start(std::chrono::milliseconds budget = std::chrono::seconds {5},
+                   const std::function<void(RealIndexer::Specs&)>& tune = {})
+        {
+            real.startRuntime();
+            ASSERT_TRUE(real.runtimeStarted) << real.startError;
+            auto specs = RealIndexer::specs();
+            if (tune)
+            {
+                tune(specs);
+            }
+            ASSERT_TRUE(real.makeClient(specs)) << real.startError;
+
+            sweeper = std::make_shared<invsync::indexer::AgentDeleteSweeper>(
+                real.client->query(), std::chrono::hours {1}, std::chrono::seconds {5}, real.closing);
+
+            // Held strongly here, as the facade holds it: the deps only keep it weakly.
+            writer = real.agentStateWriter();
+            ASSERT_NE(nullptr, writer);
+            SyncPipelineConfig config;
+            config.agentDeletion = invsync::sync::AgentDeletionDeps {
+                true, writer, sweeper, real.closing, budget, std::chrono::milliseconds {250}};
+            std::vector<std::shared_ptr<invsync::indexer::IIndexerConnectorSync>> connectors {
+                std::shared_ptr<invsync::indexer::IIndexerConnectorSync> {real.makeAdapter()}};
+            pipeline = std::make_unique<SyncPipeline>(config, std::move(connectors), CLUSTER);
+        }
+
+        void stop()
+        {
+            if (pipeline)
+            {
+                pipeline->stop();
+                pipeline.reset();
+            }
+            if (sweeper)
+            {
+                sweeper->stop();
+            }
+            writer.reset();
+            real.shutdown();
+        }
+
+        /// Enqueues a deletion of @p agent and returns its responder.
+        std::shared_ptr<FutureResponder> deleteAgent(const std::string& agent)
+        {
+            auto responder = std::make_shared<FutureResponder>();
+            EXPECT_TRUE(pipeline->enqueue(makeDeleteItem(agent, responder)));
+            return responder;
+        }
+
+        /// Delete-by-query requests received on the states pattern.
+        std::size_t statesDbqs() const
+        {
+            return real.dbqRequests("wazuh-states-*").size();
+        }
+
+        /// What the sweeper dropped after stop(): the agents it was note()d and never swept.
+        std::uint64_t notedAgents()
+        {
+            sweeper->stop();
+            return sweeper->stats().dropped;
+        }
+
+        RealIndexer real;
+        std::shared_ptr<indexer_client::IWriter> writer;
+        std::shared_ptr<invsync::indexer::AgentDeleteSweeper> sweeper;
+        std::unique_ptr<SyncPipeline> pipeline;
+    };
+
+    std::int64_t millisSince(std::chrono::steady_clock::time_point start)
+    {
+        return std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start).count();
+    }
+
+    /// Whether the ops of one `_bulk` are exactly the two by-id deletes of @p agent, in scope order.
+    bool isByIdDeletePair(const std::vector<indexer_client::testing::BulkOp>& ops, const std::string& agent)
+    {
+        return ops.size() == 2 && ops[0].action == "delete" && ops[0].index == "wazuh-agent-config" &&
+               ops[0].id == agent && ops[1].action == "delete" && ops[1].index == "wazuh-agent-stats" &&
+               ops[1].id == agent;
+    }
+} // namespace
+
+/// Admission refused by the library (here: the Client is closing) is a 503 -- the I135 class of ClientClosed --
+/// and nothing of the by-query half runs: the Group is refused before it.
+TEST(SyncPipelineTest, SubmitRefusedIs503)
+{
+    ByIdPipeline fixture;
+    fixture.start();
+    fixture.real.client->requestClose();
+
+    const auto response = fixture.deleteAgent("007")->get();
+
+    EXPECT_EQ(503, response.status) << response.body;
+    EXPECT_EQ(0U, fixture.statesDbqs()) << "a refused by-id half stops the deletion before the by-query";
+    EXPECT_EQ(0U, fixture.real.bulk->answered());
+    EXPECT_EQ(0U, fixture.notedAgents()) << "a failed deletion is not handed to the sweeper";
+}
+
+/**
+ * The wait: the worker cancels, commits ONE `_bulk` holding both deletes (one Group, I147d), runs the by-query, and
+ * answers 200 only once the by-id tickets resolved. The bulk is held, the by-query has run, and the caller still has
+ * no answer.
+ */
+TEST(SyncPipelineTest, DeleteWaitsByIdTickets)
+{
+    ByIdPipeline fixture;
+    fixture.real.bulk->push(BulkScript::items().held());
+    fixture.start();
+
+    auto responder = fixture.deleteAgent("007");
+
+    ASSERT_TRUE(invsync::test::waitUntil([&] { return fixture.real.bulk->answered() == 1; }));
+    ASSERT_TRUE(invsync::test::waitUntil([&] { return fixture.statesDbqs() == 1; }));
+    EXPECT_FALSE(responder->answered()) << "a 200 before the by-id tickets would record a purge that has not happened";
+
+    // On the wire: the two deletes travelled together in the one `_bulk` (the Group, I147d); which of the bulk and
+    // the by-query reaches the indexer first is up to the runtime threads, and is not the contract.
+    const auto received = fixture.real.bulk->received();
+    ASSERT_EQ(1U, received.size());
+    EXPECT_TRUE(isByIdDeletePair(received.front(), "007"));
+
+    fixture.real.fake->releaseHeld();
+
+    EXPECT_EQ(200, responder->get().status);
+    EXPECT_EQ(1U, fixture.notedAgents()) << "an accepted deletion is note()d to the sweeper";
+}
+
+/// A by-id failure the library resolves Unavailable-class (the bucket's retries ran out) answers 503, and the
+/// agent is not handed to the sweeper.
+TEST(SyncPipelineTest, ByIdFailureIs503)
+{
+    ByIdPipeline fixture;
+    fixture.real.bulk->setDefault(BulkScript::serverError(503));
+    fixture.start(std::chrono::seconds {10}, [](RealIndexer::Specs& specs) { specs.agentState.retry.maxAttempts = 2; });
+
+    const auto response = fixture.deleteAgent("007")->get();
+
+    EXPECT_EQ(503, response.status) << response.body;
+    EXPECT_EQ(1U, fixture.statesDbqs()) << "the by-query half ran before the ticket was waited";
+    EXPECT_EQ(0U, fixture.notedAgents());
+}
+
+/// The budget runs out with the by-id bulk still held: 503 at the deadline (not before, not later than one slice),
+/// the by-query already done inside it.
+TEST(SyncPipelineTest, ByIdDeadlineCancels)
+{
+    ByIdPipeline fixture;
+    fixture.real.bulk->push(BulkScript::items().held());
+    fixture.start(std::chrono::seconds {1});
+
+    const auto start = std::chrono::steady_clock::now();
+    const auto response = fixture.deleteAgent("007")->get();
+    const auto elapsed = millisSince(start);
+
+    EXPECT_EQ(503, response.status) << response.body;
+    EXPECT_GE(elapsed, 900) << "answered before the deletion budget";
+    EXPECT_LE(elapsed, 1500) << "budget + one wait slice is the most it may take";
+    EXPECT_EQ(1U, fixture.statesDbqs());
+    EXPECT_EQ(0U, fixture.notedAgents());
+}
+
+/// A by-id delete of a missing index (404 index_not_found_exception) is a success, like the by-query half's 404
+/// (I147b).
+TEST(SyncPipelineTest, ByIdIndexMissingIsOk)
+{
+    ByIdPipeline fixture;
+    fixture.real.bulk->setDefault(BulkScript::all(BulkItem::failed(404, "index_not_found_exception")));
+    fixture.start();
+
+    const auto response = fixture.deleteAgent("007")->get();
+
+    EXPECT_EQ(200, response.status) << response.body;
+    EXPECT_EQ(1U, fixture.notedAgents());
+}
+
+/// One deadline for both halves: a slow by-query leaves the by-id wait only what remains of the budget.
+TEST(SyncPipelineTest, ByIdAndByQueryShareOneDeadline)
+{
+    ByIdPipeline fixture;
+    fixture.real.bulk->push(BulkScript::items().held());
+    Rule slowDbq;
+    slowDbq.method = "POST";
+    slowDbq.pathRegex = STATES_DBQ_PATH;
+    slowDbq.body = dbqBody(0);
+    slowDbq.latency = std::chrono::milliseconds {1500};
+    fixture.real.fake->addRule(std::move(slowDbq));
+    fixture.start(std::chrono::seconds {2});
+
+    const auto start = std::chrono::steady_clock::now();
+    const auto response = fixture.deleteAgent("007")->get();
+    const auto elapsed = millisSince(start);
+
+    EXPECT_EQ(503, response.status) << response.body;
+    EXPECT_GE(elapsed, 1900);
+    EXPECT_LE(elapsed, 2500) << "by-query + by-id wait must fit one budget, not add two";
+}
+
+/// stop() cannot hang for a whole budget behind a held ticket: `closing` is noticed within a slice.
+TEST(SyncPipelineTest, ByIdWaitHonoursClosing)
+{
+    ByIdPipeline fixture;
+    fixture.real.bulk->push(BulkScript::items().held());
+    fixture.start(std::chrono::seconds {30});
+
+    auto responder = fixture.deleteAgent("007");
+    ASSERT_TRUE(invsync::test::waitUntil([&] { return fixture.real.bulk->answered() == 1; }));
+    ASSERT_TRUE(invsync::test::waitUntil([&] { return fixture.statesDbqs() == 1; }));
+    ASSERT_FALSE(responder->answered());
+
+    const auto start = std::chrono::steady_clock::now();
+    fixture.real.closing->store(true);
+    const auto response = responder->get();
+
+    EXPECT_EQ(503, response.status) << response.body;
+    EXPECT_LE(millisSince(start), 500) << "the wait must notice closing within one slice";
+}
+
+/// With `closing` set while the by-id bulk is held, the deletion answers 503 AND cancels the agent: the held bulk,
+/// answered 503 afterwards, is not retried by the library (without the cancel it would be resent).
+TEST(SyncPipelineTest, ByIdClosingCancelsHeldDeletes)
+{
+    ByIdPipeline fixture;
+    fixture.real.bulk->push(BulkScript::serverError(503).held());
+    fixture.start(std::chrono::seconds {30});
+
+    auto responder = fixture.deleteAgent("007");
+    ASSERT_TRUE(invsync::test::waitUntil([&] { return fixture.real.bulk->answered() == 1; }));
+    ASSERT_TRUE(invsync::test::waitUntil([&] { return fixture.statesDbqs() == 1; }));
+    ASSERT_FALSE(responder->answered());
+
+    fixture.real.closing->store(true);
+    EXPECT_EQ(503, responder->get().status);
+
+    fixture.real.fake->releaseHeld(); // The held bulk fails with a 503 the library would retry.
+    std::this_thread::sleep_for(std::chrono::milliseconds {600});
+    EXPECT_EQ(1U, fixture.real.bulk->received().size()) << "the cancelled deletes must not be resent";
+}
+
+/// The same when the budget runs out: 503 and the held deletes are cancelled, not retried after the answer.
+TEST(SyncPipelineTest, ByIdDeadlineCancelsHeldDeletes)
+{
+    ByIdPipeline fixture;
+    fixture.real.bulk->push(BulkScript::serverError(503).held());
+    fixture.start(std::chrono::seconds {1});
+
+    auto responder = fixture.deleteAgent("007");
+    ASSERT_TRUE(invsync::test::waitUntil([&] { return fixture.real.bulk->answered() == 1; }));
+    EXPECT_EQ(503, responder->get().status);
+
+    fixture.real.fake->releaseHeld();
+    std::this_thread::sleep_for(std::chrono::milliseconds {600});
+    EXPECT_EQ(1U, fixture.real.bulk->received().size()) << "the cancelled deletes must not be resent";
+}
+
+/// A 404 that is NOT index_not_found_exception is a failure of the by-id half, never a success (I135 class).
+TEST(SyncPipelineTest, ByIdOther404Is503)
+{
+    ByIdPipeline fixture;
+    fixture.real.bulk->setDefault(BulkScript::all(BulkItem::failed(404, "document_missing_exception")));
+    fixture.start();
+
+    const auto response = fixture.deleteAgent("007")->get();
+
+    EXPECT_TRUE(response.status == 503 || response.status == 500) << response.status << " " << response.body;
+    EXPECT_EQ(0U, fixture.notedAgents()) << "a failed deletion is not handed to the sweeper";
+}
+
+/// Two deletions of one agent, back to back: they run in order on the agent's worker, and the second's cancel(agent)
+/// cannot take the first's by-id deletes with it.
+TEST(SyncPipelineTest, OverlappingDeletesBothSucceed)
+{
+    ByIdPipeline fixture;
+    fixture.start();
+
+    auto first = fixture.deleteAgent("007");
+    auto second = fixture.deleteAgent("007");
+
+    EXPECT_EQ(200, first->get().status);
+    EXPECT_EQ(200, second->get().status);
+    EXPECT_EQ(2U, fixture.statesDbqs());
+    std::size_t pairs {0};
+    for (const auto& request : fixture.real.bulk->received())
+    {
+        pairs += isByIdDeletePair(request, "007") ? 1 : 0;
+    }
+    EXPECT_EQ(2U, pairs) << "each deletion sent its own pair of by-id deletes";
+    EXPECT_EQ(2U, fixture.notedAgents());
+}
+
+/// The Group is committed at once, so a deletion does not sit for the bucket's `maxAge` (5 s) like two loose submits.
+TEST(SyncPipelineTest, DeleteDoesNotWaitMaxAge)
+{
+    ByIdPipeline fixture;
+    fixture.start(std::chrono::seconds {10},
+                  [](RealIndexer::Specs& specs)
+                  { ASSERT_EQ(std::chrono::seconds {5}, specs.agentState.bulk.maxAge) << "the production maxAge"; });
+
+    const auto start = std::chrono::steady_clock::now();
+    const auto response = fixture.deleteAgent("007")->get();
+
+    EXPECT_EQ(200, response.status) << response.body;
+    EXPECT_LT(millisSince(start), 1000);
 }
 
 // --- Per-session outcomes of a group commit (I136, I135) ------------------------------------------

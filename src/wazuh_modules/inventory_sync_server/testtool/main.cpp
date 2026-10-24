@@ -31,7 +31,17 @@
  *
  * Like modulesd, it owns the process's indexer_client runtime on its main thread: started from the
  * config's <indexer> hosts/ssl and credentials before the server, handed over as the server's
- * `indexer_runtime`, and shut down after the server stopped (the sync half writes through it).
+ * `indexer_runtime`, and shut down after the server stopped (every server write goes through it).
+ *
+ * --config <file> is a JSON object; the keys this tool reads (the vulnerability scanner reads the
+ * same object for its own):
+ *   clusterName       cluster name stamped on documents (default "cluster01").
+ *   indexer           the <indexer> block: hosts[] and ssl.* start the runtime; the whole block is
+ *                     also handed to the server and to the vulnerability scanner.
+ *   username/password indexer credentials, for the runtime and for queue/keystore.
+ *   internal_options  optional string of `key=value` lines, parsed like
+ *                     etc/wazuh-manager-internal-options.conf for the runtime (e.g.
+ *                     "wazuh_modules.indexer_client_request_timeout_ms=2000\n"); default: none.
  */
 
 #include "flatbuffers/include/inventorySync_generated.h"
@@ -523,9 +533,10 @@ namespace
         return false;
     }
 
-    /// The async (v1) indexer connector reads its credentials from queue/keystore and refuses to
-    /// start without them. The manager's resolver stores them there; this tool takes them from its
-    /// config.
+    /// The vulnerability scanner's indexer_connector (v1, until E8) reads its credentials from
+    /// queue/keystore and refuses to start without them. The manager's resolver stores them there;
+    /// this tool takes them from its config. The server itself no longer reads the keystore: its
+    /// Client gets the credentials from the runtime (startIndexerRuntime()).
     void seedCredentials(const nlohmann::json& config)
     {
         if (config.contains("username") && config["username"].is_string())
@@ -539,7 +550,8 @@ namespace
     }
 
     /// Starts the process's indexer_client runtime on this (the main) thread, as modulesd does after
-    /// its startup gate: the config's <indexer> hosts/ssl, its credentials, default internal options.
+    /// its startup gate: the config's <indexer> hosts/ssl, its credentials, and its optional
+    /// `internal_options` text (`key=value` lines; none = the runtime's defaults).
     indexer_client::RuntimeRef startIndexerRuntime(const nlohmann::json& config)
     {
         // Installed before start(): the library ignores a log function set while a runtime runs.
@@ -562,7 +574,12 @@ namespace
         credentials.user = config.value("username", std::string());
         credentials.password = config.value("password", std::string());
 
-        auto source = indexer_client::KeyValueConfigSource::parse("", section.dump(), std::move(credentials));
+        const auto internalOptions = config.contains("internal_options") && config["internal_options"].is_string()
+                                         ? config["internal_options"].get<std::string>()
+                                         : std::string();
+
+        auto source =
+            indexer_client::KeyValueConfigSource::parse(internalOptions, section.dump(), std::move(credentials));
         if (!source.ok())
         {
             throw std::runtime_error("Invalid indexer client configuration (" +
@@ -634,7 +651,7 @@ int main(int argc, char* argv[])
         }
 
         // The server: cluster identity + the <indexer> block, verbatim, as cJSON. The socket only
-        // opens once its indexer session and connectors are up, so waiting for the file IS the
+        // opens once its indexer client and lanes are up, so waiting for the file IS the
         // readiness probe.
         std::cout << "[INFO] Starting inventory sync server..." << std::endl;
         inventory_sync_server_config_t serverConfig {};

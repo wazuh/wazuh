@@ -35,6 +35,10 @@ namespace invsync::indexer
         constexpr std::chrono::milliseconds DELETION_UNBOUNDED {70000};
         constexpr std::chrono::milliseconds RETRY_MARGIN {3000};
         constexpr std::uint32_t DEFAULT_RETRY_ATTEMPTS {5};
+        constexpr std::uint64_t KIB {1024};
+        constexpr std::uint64_t AGENT_STATE_FLOOR {16 * KIB};
+        constexpr std::uint64_t AGENT_STATE_SLACK {RESULT_RESERVE_BYTES + 4 * KIB}; // reserve + headroom (I149b)
+        constexpr std::uint64_t DEFAULT_ASYNC_BULK_MAX_BYTES {4 * MIB};
     } // namespace
 
     Budgets budgets(const inventory_sync_server_config_t& config)
@@ -61,7 +65,7 @@ namespace invsync::indexer
     }
 
     indexer_client::BucketSpec inventoryBucketSpec(const inventory_sync_server_config_t& config,
-                                                   std::uint64_t globalQuotaBytes,
+                                                   std::uint64_t quotaBudget,
                                                    std::chrono::milliseconds blockTimeout,
                                                    std::string* warning)
     {
@@ -72,7 +76,7 @@ namespace invsync::indexer
                                     ? static_cast<std::uint64_t>(config.indexer_sync_connector_max_bulk_size)
                                     : DEFAULT_BULK_MAX_BYTES;
         std::uint64_t quota = std::max(QUOTA_FLOOR, bulkMax + RESULT_RESERVE_BYTES + QUOTA_HEADROOM);
-        quota = std::min(quota, globalQuotaBytes);
+        quota = std::min(quota, quotaBudget);
         if (bulkMax + RESULT_RESERVE_BYTES + QUOTA_HEADROOM > quota)
         {
             const auto clipped = quota > RESULT_RESERVE_BYTES + QUOTA_HEADROOM
@@ -81,9 +85,9 @@ namespace invsync::indexer
             if (warning)
             {
                 *warning = "the indexer _bulk cap (" + std::to_string(bulkMax) +
-                           " bytes) does not fit the runtime's "
-                           "global quota (" +
-                           std::to_string(globalQuotaBytes) + " bytes); using " + std::to_string(clipped) + " bytes";
+                           " bytes) does not fit what the runtime's global quota leaves the inventory bucket after "
+                           "agent-state (" +
+                           std::to_string(quotaBudget) + " bytes); using " + std::to_string(clipped) + " bytes";
             }
             bulkMax = clipped;
         }
@@ -107,6 +111,60 @@ namespace invsync::indexer
         spec.onConflict.kind = indexer_client::ConflictPolicy::Kind::Success;
         spec.onAmbiguous5xx = indexer_client::AmbiguousPolicy::Retry;
         spec.ordered = false;
+        return spec;
+    }
+
+    indexer_client::BucketSpec agentStateBucketSpec(const inventory_sync_server_config_t& config,
+                                                    std::uint64_t globalQuotaBytes,
+                                                    std::string* warning)
+    {
+        indexer_client::BucketSpec spec;
+        spec.name = AGENT_STATE_BUCKET;
+
+        const std::uint64_t top = std::max(globalQuotaBytes / 4, std::min(AGENT_STATE_FLOOR, globalQuotaBytes / 2));
+        std::uint64_t bulkMax = config.indexer_async_bulk_max_bytes > 0
+                                    ? static_cast<std::uint64_t>(config.indexer_async_bulk_max_bytes)
+                                    : DEFAULT_ASYNC_BULK_MAX_BYTES;
+        const std::uint64_t requested = config.indexer_async_max_queue_bytes > 0
+                                            ? static_cast<std::uint64_t>(config.indexer_async_max_queue_bytes)
+                                            : globalQuotaBytes / 4;
+        std::string notes;
+        std::uint64_t quota = std::max({requested, bulkMax + AGENT_STATE_SLACK, AGENT_STATE_FLOOR});
+        quota = std::min(quota, top);
+        if (requested > quota)
+        {
+            notes = "the agent-state queue (" + std::to_string(requested) +
+                    " bytes) is capped by the runtime's global quota (a quarter of it, or 16 KiB within half "
+                    "of it): using " +
+                    std::to_string(quota) + " bytes";
+        }
+        if (bulkMax + AGENT_STATE_SLACK > quota)
+        {
+            const auto clipped = quota > AGENT_STATE_SLACK ? quota - AGENT_STATE_SLACK : quota / 2;
+            notes += std::string(notes.empty() ? "" : "; ") + "the agent-state _bulk cap (" + std::to_string(bulkMax) +
+                     " bytes) does not fit its quota: using " + std::to_string(clipped) + " bytes";
+            bulkMax = clipped;
+        }
+        if (warning)
+        {
+            *warning = notes;
+        }
+        spec.quotaBytes = static_cast<std::size_t>(quota);
+        spec.bulk.maxBytes = static_cast<std::size_t>(bulkMax);
+
+        spec.retry.maxAttempts = std::nullopt;
+        spec.retry.maxDuration = std::nullopt;
+        spec.retry.cap =
+            config.indexer_async_max_retry_delay_seconds > 0
+                ? std::chrono::milliseconds {static_cast<std::int64_t>(config.indexer_async_max_retry_delay_seconds) *
+                                             1000}
+                : DEFAULT_RETRY_CAP;
+        spec.retry.base = std::min(spec.retry.base, spec.retry.cap);
+
+        spec.overflow.kind = indexer_client::Overflow::Kind::Reject;
+        spec.onConflict.kind = indexer_client::ConflictPolicy::Kind::Success;
+        spec.onAmbiguous5xx = indexer_client::AmbiguousPolicy::Retry;
+        spec.ordered = true;
         return spec;
     }
 
@@ -210,7 +268,7 @@ namespace invsync::indexer
             return bytes;
         }
 
-        /// Same filter as the v1 (`indexer_connector/src/indexerConnectorSyncImpl.hpp` deleteByQuery).
+        /// Same filter as the v1 connector's deleteByQuery (`indexerConnectorSyncImpl.hpp`).
         bool isSafeIndexName(std::string_view index)
         {
             if (index.empty())

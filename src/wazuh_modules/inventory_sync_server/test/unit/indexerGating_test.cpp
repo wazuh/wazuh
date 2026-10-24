@@ -12,18 +12,17 @@
 #include "inventory_sync_server.h"
 #include "testIndexerConnectorFakes.hpp"
 #include "testLogRecorder.hpp"
+#include "testRealIndexer.hpp"
+#include "udsTestClient.hpp"
 
-#include <indexer_client/keyValueConfigSource.hpp>
 #include <indexer_client/runtime.hpp>
-
-#include "fakeIndexer.hpp"
-#include "healthRules.hpp"
 
 #include <gtest/gtest.h>
 
 #include <atomic>
 #include <chrono>
 #include <cstdio>
+#include <dirent.h>
 #include <filesystem>
 #include <memory>
 #include <mutex>
@@ -73,36 +72,15 @@ namespace
     }
 } // namespace
 
-/// A real indexer_client runtime on an in-process fake indexer (health only): what modulesd publishes to
-/// the module through `indexer_runtime`. Started and shut down on the test's own thread, the owner thread.
+/// A real indexer_client runtime on an in-process fake indexer (health, `_bulk` and the by-query routes answered):
+/// what modulesd publishes to the module through `indexer_runtime`. Started and shut down on the test's own
+/// thread, the owner thread. @p extraOptions are more internal-options lines (e.g. a small global quota).
 class RealRuntime
 {
 public:
-    RealRuntime()
-        : m_fake(std::make_unique<indexer_client::testing::FakeIndexer>())
+    explicit RealRuntime(const std::string& extraOptions = "")
     {
-        m_fake->addRule(indexer_client::testing::healthRule("green"));
-        m_fake->start();
-        const std::string text = "wazuh_modules.indexer_client_network_threads=1\n"
-                                 "wazuh_modules.indexer_client_cpu_threads=2\n"
-                                 "wazuh_modules.indexer_client_probe_interval_ms=200\n";
-        const std::string json = "{\"hosts\":[\"" + m_fake->baseUrl() + "\"]}";
-        auto source = indexer_client::KeyValueConfigSource::parse(text, json, indexer_client::Credentials {"a", "b"});
-        auto started = indexer_client::RuntimeOwner::start(indexer_client::ProcessId::Modulesd, source.value);
-        if (started.ok())
-        {
-            m_ref = started.value;
-            m_started = true;
-        }
-    }
-
-    ~RealRuntime()
-    {
-        if (m_started)
-        {
-            indexer_client::RuntimeOwner::beginShutdown(std::chrono::steady_clock::now() + std::chrono::seconds {5});
-            indexer_client::RuntimeOwner::shutdown();
-        }
+        m_real.startRuntime(extraOptions);
     }
 
     RealRuntime(const RealRuntime&) = delete;
@@ -110,25 +88,52 @@ public:
 
     bool started() const
     {
-        return m_started;
+        return m_real.runtimeStarted;
     }
 
     /// What goes into `config.indexer_runtime`.
     const void* published() const
     {
-        return &m_ref;
+        return &m_real.ref;
     }
 
     const indexer_client::RuntimeRef& ref() const
     {
-        return m_ref;
+        return m_real.ref;
+    }
+
+    invsync::test::RealIndexer& real()
+    {
+        return m_real;
     }
 
 private:
-    std::unique_ptr<indexer_client::testing::FakeIndexer> m_fake;
-    indexer_client::RuntimeRef m_ref;
-    bool m_started {false};
+    invsync::test::RealIndexer m_real;
 };
+
+/// POST /_internal/agents/delete with the bytes the Task Manager's dispatcher puts on the wire.
+static std::string deleteRequestFor(const std::string& agentId)
+{
+    const std::string body = "{\"agent_id\":\"" + agentId + "\"}";
+    return "POST /_internal/agents/delete HTTP/1.1\r\nHost: localhost\r\n"
+           "Content-Type: application/json\r\nContent-Length: " +
+           std::to_string(body.size()) + "\r\nConnection: close\r\n\r\n" + body;
+}
+
+/// Threads of this process: a sweeper thread that outlives stop() would show here.
+static std::size_t threadCount()
+{
+    std::size_t count {0};
+    if (auto* dir = ::opendir("/proc/self/task"))
+    {
+        while (const auto* entry = ::readdir(dir))
+        {
+            count += entry->d_name[0] != '.' ? 1 : 0;
+        }
+        ::closedir(dir);
+    }
+    return count;
+}
 
 class IndexerGatingTest : public ::testing::Test
 {
@@ -150,31 +155,6 @@ protected:
     std::optional<RealRuntime> m_runtime;
 };
 
-/**
- * No fake injected: the REAL IndexerSession constructor validates config synchronously and throws
- * "No hosts found in the configuration" for the default, empty <indexer> block. That check now runs
- * before anything else, so this stays fast AND never opens `queue/keystore`.
- *
- * The socket must never open, and the failure must be attributed to the indexer, not the socket path.
- */
-TEST_F(IndexerGatingTest, BadIndexerConfigWithNoHostsBlocksSocketFromOpening)
-{
-    const auto path = uniqueSocketPath("nohosts");
-    const auto config = makeConfig(path);
-
-    inventory_sync_server_start(testLogCallback, &config);
-
-    EXPECT_FALSE(LogRecorder::waitForMessageContaining("listening on", std::chrono::milliseconds {500}))
-        << "the socket must never open with an invalid indexer configuration";
-    EXPECT_FALSE(std::filesystem::exists(path));
-
-    ASSERT_TRUE(LogRecorder::waitForMessageContaining("could not start"));
-    EXPECT_TRUE(LogRecorder::sawMessageContaining("indexer session"))
-        << "the failure must name the indexer session, not the socket";
-    EXPECT_FALSE(LogRecorder::sawMessageContaining("socket_path"))
-        << "a config-validity failure must not be blamed on the socket";
-}
-
 TEST_F(IndexerGatingTest, ValidIndexerConfigUnblocksTheSocket)
 {
     invsync::test::installAlwaysAvailableFakeIndexers();
@@ -188,42 +168,158 @@ TEST_F(IndexerGatingTest, ValidIndexerConfigUnblocksTheSocket)
     EXPECT_TRUE(std::filesystem::exists(path));
 }
 
-/// All three objects must exist before the socket accepts anything -- catches "only some got wired up".
-TEST_F(IndexerGatingTest, SessionAndBothConnectorsAreConstructedBeforeTheSocketOpens)
+/**
+ * CA-E7c-7: ONE Client with TWO bucket specs -- `inventory` and `agent-state` -- is built before the socket
+ * accepts anything, and both sync connectors (the facade's slot and the VD lane's) run on it.
+ */
+TEST_F(IndexerGatingTest, OneClientTwoBuckets)
 {
     auto events = invsync::test::installAlwaysAvailableFakeIndexers();
 
-    const auto path = uniqueSocketPath("allthree");
+    const auto path = uniqueSocketPath("onetwo");
     const auto config = makeConfig(path);
 
     inventory_sync_server_start(testLogCallback, &config);
     ASSERT_TRUE(LogRecorder::waitForMessageContaining("listening on"));
 
-    EXPECT_EQ(1, events->m_sessionBuilds.load());
-    // The sync half's Client is built once, before every connector that runs on it.
     EXPECT_EQ(1, events->m_clientBuilds.load());
     // 2 = the facade's slot (admission checks + pipeline worker 0) + the VD scan lane's own worker.
     EXPECT_EQ(2, events->m_syncBuilds.load());
-    EXPECT_EQ(1, events->m_asyncBuilds.load());
+
+    std::lock_guard<std::mutex> lock(events->m_mutex);
+    ASSERT_EQ(1U, events->m_clientBucketSpecs.size());
+    const auto& specs = events->m_clientBucketSpecs.front();
+    ASSERT_EQ(2U, specs.size());
+    EXPECT_EQ(invsync::indexer::INVENTORY_BUCKET, specs[0].name);
+    EXPECT_FALSE(specs[0].ordered);
+    EXPECT_EQ(invsync::indexer::AGENT_STATE_BUCKET, specs[1].name);
+    EXPECT_TRUE(specs[1].ordered) << "the agent-state bucket orders a delete behind the reports of its key";
+    EXPECT_EQ(indexer_client::Overflow::Kind::Reject, specs[1].overflow.kind);
 }
 
-TEST_F(IndexerGatingTest, SessionFailureBlocksTheSocketAndNamesTheSession)
+/**
+ * CA-E7c-7: whatever the operator set, the `agent-state` spec the facade derives is one the library accepts and
+ * in which a whole-agent deletion's Group of two deletes fits (no GroupTooLarge). Each case runs a REAL
+ * RuntimeRef::client() on a runtime with that global quota, the module's own derivation (agent-state first,
+ * inventory from the rest), and one by-id delete Group on it.
+ */
+TEST_F(IndexerGatingTest, AgentStateSpecAlwaysValid)
 {
-    auto events = invsync::test::installFakeIndexersWithFailingSession("simulated session failure");
+    struct Case
+    {
+        const char* name;
+        std::uint64_t global;
+        long long maxQueueBytes;
+        int bulkMaxBytes;
+        bool warns;
+    };
+    constexpr std::uint64_t MIB {1024ULL * 1024ULL};
+    const std::vector<Case> cases {
+        {"defaults", 256 * MIB, 0, -1, false},
+        {"bulk 100 MiB", 256 * MIB, 0, 100 * 1024 * 1024, true},
+        // The queue is raised to hold one bulk, silently: nothing the operator asked for was cut.
+        {"queue smaller than the bulk", 256 * MIB, 1 * 1024 * 1024, 4 * 1024 * 1024, false},
+        {"max_queue_bytes 1024", 256 * MIB, 1024, -1, false},
+        {"global 16 KiB", 16 * 1024, 0, -1, true},
+        {"global 64 MiB", 64 * MIB, 0, -1, false},
+    };
 
-    const auto path = uniqueSocketPath("sessionfail");
+    for (const auto& testCase : cases)
+    {
+        SCOPED_TRACE(testCase.name);
+        RealRuntime runtime {"wazuh_modules.indexer_client_global_quota_bytes=" + std::to_string(testCase.global) +
+                             "\n"};
+        ASSERT_TRUE(runtime.started()) << runtime.real().startError;
+
+        auto config = invsync::test::RealIndexer::noOpinionConfig();
+        config.indexer_async_max_queue_bytes = testCase.maxQueueBytes;
+        config.indexer_async_bulk_max_bytes = testCase.bulkMaxBytes;
+
+        std::string warning;
+        invsync::test::RealIndexer::Specs specs;
+        specs.agentState = invsync::indexer::agentStateBucketSpec(config, testCase.global, &warning);
+        EXPECT_EQ(testCase.warns, !warning.empty()) << "warning: " << warning;
+        std::string inventoryWarning;
+        specs.inventory = invsync::indexer::inventoryBucketSpec(
+            config, testCase.global - specs.agentState.quotaBytes, std::chrono::seconds {2}, &inventoryWarning);
+
+        ASSERT_TRUE(runtime.real().makeClient(specs)) << runtime.real().startError;
+
+        // A deletion's by-id half: one Group of the two deletes, tagged with the agent.
+        auto writer = runtime.real().agentStateWriter();
+        ASSERT_NE(nullptr, writer);
+        auto group = writer->group();
+        for (const auto* index : {"wazuh-agent-config", "wazuh-agent-stats"})
+        {
+            indexer_client::Op op;
+            op.kind = indexer_client::Op::Kind::Delete;
+            op.index = index;
+            op.id = "007";
+            op.tag = "007";
+            ASSERT_EQ(indexer_client::Cause::None, group.add(std::move(op))) << group.lastAddReason();
+        }
+        const auto results = group.commit().wait(std::chrono::steady_clock::now() + std::chrono::seconds {5});
+        ASSERT_TRUE(results.ok()) << indexer_client::toString(results.cause) << ": " << results.reason;
+        for (const auto& result : results.value)
+        {
+            EXPECT_EQ(indexer_client::Status::Ok, result.status) << indexer_client::toString(result.cause);
+        }
+    }
+}
+
+/**
+ * CA-E7c-7: a Client that hands out no `agent-state` writer, or no query, fails the gate -- named, retried by the
+ * heartbeat, the socket never opened -- instead of passing it with nothing to write through.
+ */
+TEST_F(IndexerGatingTest, ClientWithoutWriterOrQueryFailsTheGate)
+{
+    {
+        auto events = invsync::test::installAlwaysAvailableFakeIndexers();
+        events->m_agentStateWriter.reset(); // writer("agent-state") answers nullptr
+
+        const auto path = uniqueSocketPath("nowriter");
+        const auto config = makeConfig(path);
+        inventory_sync_server_start(testLogCallback, &config);
+
+        ASSERT_TRUE(LogRecorder::waitForMessageContaining("could not start"));
+        EXPECT_TRUE(LogRecorder::sawMessageContaining("the indexer client configuration is invalid"));
+        EXPECT_FALSE(std::filesystem::exists(path));
+        EXPECT_EQ(0, events->m_syncBuilds.load()) << "nothing downstream of the writer may be built";
+        inventory_sync_server_stop();
+    }
+
+    LogRecorder::clear();
+    {
+        auto events = invsync::test::installAlwaysAvailableFakeIndexers();
+        events->m_query.reset(); // query() answers nullptr
+
+        const auto path = uniqueSocketPath("noquery");
+        const auto config = makeConfig(path);
+        inventory_sync_server_start(testLogCallback, &config);
+
+        ASSERT_TRUE(LogRecorder::waitForMessageContaining("could not start"));
+        EXPECT_TRUE(LogRecorder::sawMessageContaining("the indexer client configuration is invalid"));
+        EXPECT_FALSE(std::filesystem::exists(path));
+        EXPECT_EQ(0, events->m_syncBuilds.load()) << "nothing downstream of the query may be built";
+    }
+}
+
+TEST_F(IndexerGatingTest, ClientFailureBlocksTheSocketAndNamesTheSyncConnector)
+{
+    auto events = invsync::test::installFakeIndexersWithFailingClient("simulated client failure");
+
+    const auto path = uniqueSocketPath("clientfail");
     const auto config = makeConfig(path);
 
     inventory_sync_server_start(testLogCallback, &config);
 
     ASSERT_TRUE(LogRecorder::waitForMessageContaining("could not start"));
-    EXPECT_TRUE(LogRecorder::sawMessageContaining("indexer session"));
-    EXPECT_TRUE(LogRecorder::sawMessageContaining("simulated session failure"));
+    EXPECT_TRUE(LogRecorder::sawMessageContaining("the indexer client configuration is invalid"));
+    EXPECT_TRUE(LogRecorder::sawMessageContaining("simulated client failure"));
     EXPECT_FALSE(std::filesystem::exists(path));
 
     // Nothing downstream of the failing stage may be attempted.
     EXPECT_EQ(0, events->m_syncBuilds.load());
-    EXPECT_EQ(0, events->m_asyncBuilds.load());
 }
 
 TEST_F(IndexerGatingTest, SyncConnectorFailureBlocksTheSocketAndNamesTheSyncConnector)
@@ -236,43 +332,21 @@ TEST_F(IndexerGatingTest, SyncConnectorFailureBlocksTheSocketAndNamesTheSyncConn
     inventory_sync_server_start(testLogCallback, &config);
 
     ASSERT_TRUE(LogRecorder::waitForMessageContaining("could not start"));
-    EXPECT_TRUE(LogRecorder::sawMessageContaining("sync indexer connector"));
-    EXPECT_FALSE(LogRecorder::sawMessageContaining("async indexer connector"))
-        << "the failing half must be named exactly";
+    EXPECT_TRUE(LogRecorder::sawMessageContaining("the indexer client configuration is invalid"));
+    EXPECT_TRUE(LogRecorder::sawMessageContaining("simulated sync failure"));
     EXPECT_FALSE(std::filesystem::exists(path));
 
-    EXPECT_EQ(0, events->m_asyncBuilds.load()) << "the async half must not be attempted after sync failed";
-}
-
-/**
- * The second half of the gate: a healthy session and sync connector are NOT enough. Without this,
- * a broken async configuration would silently let the module serve traffic it cannot handle.
- */
-TEST_F(IndexerGatingTest, AsyncConnectorFailureBlocksTheSocketAndNamesTheAsyncConnector)
-{
-    auto events = invsync::test::installFakeIndexersWithFailingAsync("simulated async failure");
-
-    const auto path = uniqueSocketPath("asyncfail");
-    const auto config = makeConfig(path);
-
-    inventory_sync_server_start(testLogCallback, &config);
-
-    ASSERT_TRUE(LogRecorder::waitForMessageContaining("could not start"));
-    EXPECT_TRUE(LogRecorder::sawMessageContaining("async indexer connector"));
-    EXPECT_FALSE(std::filesystem::exists(path)) << "a failing async connector must still gate the socket";
-
-    EXPECT_EQ(1, events->m_sessionBuilds.load());
-    EXPECT_EQ(1, events->m_syncBuilds.load());
+    EXPECT_EQ(1, events->m_clientBuilds.load()) << "the Client built before it is published and kept";
 }
 
 /**
  * reportFailedStart() increments one shared attempt counter that drives the escalation cadence
  * ("60 attempts is about an hour"). Reporting more than once per attempt would halve that clock.
  */
-/// The heartbeat's health poll is the only production caller of isAvailable(); its TRANSITIONS are
+/// The heartbeat's health poll reads the Client's HealthView (health().anyUsable(), I151); its TRANSITIONS are
 /// the operator's only record of the indexer going away and coming back. Steady state must stay
 /// silent, or sixty lines an hour would say nothing new.
-TEST_F(IndexerGatingTest, IndexerAvailabilityTransitionsAreLoggedOncePerChange)
+TEST_F(IndexerGatingTest, HealthLogFromClient)
 {
     auto events = invsync::test::installAlwaysAvailableFakeIndexers();
 
@@ -282,13 +356,13 @@ TEST_F(IndexerGatingTest, IndexerAvailabilityTransitionsAreLoggedOncePerChange)
     inventory_sync_server_start(testLogCallback, &config);
     ASSERT_TRUE(LogRecorder::waitForMessageContaining("listening on"));
 
-    // First observation: available -> one INFO (the worker's own first heartbeat may already have
+    // First observation: usable -> one INFO (the worker's own first heartbeat may already have
     // emitted it; either way it must be there).
     invsync::test_hooks::pollIndexerHealthForTests();
     ASSERT_TRUE(LogRecorder::waitForMessageContaining("indexer is reachable"));
 
     LogRecorder::clear();
-    events->m_asyncAvailable.store(false);
+    events->m_clientUsable.store(false);
     invsync::test_hooks::pollIndexerHealthForTests();
     ASSERT_TRUE(LogRecorder::waitForMessageContaining("No configured indexer host is currently reachable"));
 
@@ -297,7 +371,7 @@ TEST_F(IndexerGatingTest, IndexerAvailabilityTransitionsAreLoggedOncePerChange)
     invsync::test_hooks::pollIndexerHealthForTests();
     EXPECT_FALSE(LogRecorder::sawMessageContaining("No configured indexer host"));
 
-    events->m_asyncAvailable.store(true);
+    events->m_clientUsable.store(true);
     invsync::test_hooks::pollIndexerHealthForTests();
     EXPECT_TRUE(LogRecorder::waitForMessageContaining("indexer is reachable"))
         << "recovery must be as visible as the outage";
@@ -305,7 +379,7 @@ TEST_F(IndexerGatingTest, IndexerAvailabilityTransitionsAreLoggedOncePerChange)
 
 TEST_F(IndexerGatingTest, OneHeartbeatProducesExactlyOneFailedAttempt)
 {
-    invsync::test::installFakeIndexersWithFailingAsync("simulated async failure");
+    invsync::test::installFakeIndexersWithFailingSync("simulated sync failure");
 
     const auto path = uniqueSocketPath("onereport");
     const auto config = makeConfig(path);
@@ -340,51 +414,48 @@ TEST_F(IndexerGatingTest, EachSlotIsConstructedOnlyOnceAcrossRetries)
     auto config = makeConfig(uniqueSocketPath("memo"));
 
     ASSERT_EQ(0, inventory_sync_server_start(testLogCallback, &config));
-    ASSERT_TRUE(waitForCount(events->m_asyncBuilds, 1));
+    ASSERT_TRUE(waitForCount(events->m_clientBuilds, 1));
+    ASSERT_TRUE(LogRecorder::waitForMessageContaining("listening on"));
 
     // Two more full retries, forced synchronously instead of waiting out the real 60 s heartbeat.
     invsync::test_hooks::forceRetryForTests();
     invsync::test_hooks::forceRetryForTests();
 
-    EXPECT_EQ(1, events->m_sessionBuilds.load()) << "a successful construction must never be repeated";
+    EXPECT_EQ(1, events->m_clientBuilds.load()) << "a successful construction must never be repeated";
     // 2 = the slot + the VD scan lane's worker; both memoised, neither repeated across retries.
     EXPECT_EQ(2, events->m_syncBuilds.load());
-    EXPECT_EQ(1, events->m_asyncBuilds.load());
 }
 
-/// Per-slot memoisation: the slots that already succeeded stay put while the failing one retries,
-/// and the socket opens as soon as it finally succeeds.
+/// Per-slot memoisation: the slots that already succeeded (the Client, the writer, the sweeper) stay put while
+/// the failing one retries, and the socket opens as soon as it finally succeeds.
 TEST_F(IndexerGatingTest, TheSucceedingSlotsAreNotRebuiltWhileAnotherRetries)
 {
-    auto events = invsync::test::installFakeIndexersWithAsyncFailingTimes(2);
+    auto events = invsync::test::installFakeIndexersWithSyncFailingTimes(2);
 
     const auto path = uniqueSocketPath("partialretry");
     const auto config = makeConfig(path);
 
     inventory_sync_server_start(testLogCallback, &config);
     ASSERT_TRUE(LogRecorder::waitForMessageContaining("could not start"));
-    ASSERT_TRUE(waitForCount(events->m_asyncBuilds, 1));
+    ASSERT_TRUE(waitForCount(events->m_syncBuilds, 1));
 
-    invsync::test_hooks::forceRetryForTests(); // async attempt 2: still fails
-    invsync::test_hooks::forceRetryForTests(); // async attempt 3: succeeds
+    invsync::test_hooks::forceRetryForTests(); // sync attempt 2: still fails
+    invsync::test_hooks::forceRetryForTests(); // sync attempt 3: succeeds
 
-    EXPECT_EQ(1, events->m_sessionBuilds.load());
-    // The slot built on attempt 1 and stayed put; the lane's worker connector only builds after
-    // the async slot finally succeeds (attempt 3) -- hence 2, not 3+.
-    EXPECT_EQ(2, events->m_syncBuilds.load());
-    EXPECT_EQ(3, events->m_asyncBuilds.load());
+    EXPECT_EQ(1, events->m_clientBuilds.load()) << "the Client built on attempt 1 is not rebuilt";
+    // Attempts 1 and 2 failed, attempt 3 built the slot and the lane's worker connector followed: 4, not 6+.
+    EXPECT_EQ(4, events->m_syncBuilds.load());
 
     ASSERT_TRUE(LogRecorder::waitForMessageContaining("listening on"));
     EXPECT_TRUE(std::filesystem::exists(path));
 }
 
 /**
- * Also guards the /stats and /config handlers' WEAK hold on the async connector, which is not obvious
- * from the assertion. This test waits for "listening on", so the routes are registered and their
- * captures are live inside the transport's route table by the time stop() runs. If a handler captured
- * the connector strongly, phase 2's reset would no longer destroy it -- the route table would keep it
- * alive until phase 3 -- and the recorded order would come out {"sync", "session", "async"} instead.
- * Verified by mutation: making the capture strong fails exactly this test plus two endpoint ones.
+ * Also guards the endpoint handlers' WEAK hold on the Client and the writer, which is not obvious from the
+ * assertion. This test waits for "listening on", so the routes are registered and their captures are live inside
+ * the transport's route table by the time stop() runs. If a handler captured the Client strongly, phase 2's reset
+ * would no longer destroy it -- the route table would keep it alive until phase 3 -- and the recorded order would
+ * come out with the Client last of a later phase instead of right after the connectors.
  */
 TEST_F(IndexerGatingTest, StopTearsDownEverythingInReverseOrder)
 {
@@ -398,16 +469,16 @@ TEST_F(IndexerGatingTest, StopTearsDownEverythingInReverseOrder)
 
     inventory_sync_server_stop();
 
-    // The scan lane goes down FIRST (its worker connector with it), then the async slot, the sync
-    // slot and the session -- reverse construction order with the lane on top.
-    const std::vector<std::string> expected {"sync", "async", "sync", "session"};
+    // The scan lane goes down FIRST (its worker connector with it), then the sync slot, then the Client --
+    // reverse construction order with the lane on top.
+    const std::vector<std::string> expected {"sync", "sync", "client"};
     EXPECT_EQ(expected, events->destroyed());
 }
 
 /**
- * The leak scenario a single-slot suite cannot express: the gate legitimately leaves only SOME of the
- * three built, and stop() must still tear down what exists. Gating one reset on another's pointer
- * would leak that object's background threads on every stop() in this state.
+ * The leak scenario a single-slot suite cannot express: the gate legitimately leaves only SOME slots built (here
+ * the Client, the writer and the sweeper's thread), and stop() must still tear down what exists. Gating one reset
+ * on another's pointer would leak that object's background threads on every stop() in this state.
  */
 TEST_F(IndexerGatingTest, StopTearsDownWhatExistsEvenWhenLaterStagesNeverRan)
 {
@@ -418,12 +489,13 @@ TEST_F(IndexerGatingTest, StopTearsDownWhatExistsEvenWhenLaterStagesNeverRan)
 
     inventory_sync_server_start(testLogCallback, &config);
     ASSERT_TRUE(LogRecorder::waitForMessageContaining("could not start"));
-    ASSERT_TRUE(waitForCount(events->m_sessionBuilds, 1));
+    ASSERT_TRUE(waitForCount(events->m_clientBuilds, 1));
 
     inventory_sync_server_stop();
 
-    const std::vector<std::string> expected {"session"};
-    EXPECT_EQ(expected, events->destroyed()) << "the session was built and must be torn down";
+    const std::vector<std::string> expected {"client"};
+    EXPECT_EQ(expected, events->destroyed()) << "the Client was built and must be torn down";
+    EXPECT_GE(events->m_clientCloses.load(), 1) << "stop() closes the Client's admission before anything else";
 }
 
 /**
@@ -441,7 +513,11 @@ TEST_F(IndexerGatingTest, TheEscalationLadderErrorsOnceThenWarnsOncePerHourAndDe
     // ATTEMPTS_PER_ESCALATION in the facade. The 60th failure is the one that must escalate.
     constexpr int ATTEMPTS_PER_ESCALATION {60};
 
-    auto events = invsync::test::installFakeIndexersWithFailingAsync("permanently broken");
+    // The scan lane is the LAST stage of the gate: the Client, the writer, the sweeper, the sync connector and the
+    // pipeline all succeed on attempt 1 and must not be rebuilt across the 59 retries that follow.
+    auto events = invsync::test::installAlwaysAvailableFakeIndexers();
+    invsync::test_hooks::setVdScannerFactoryForTests([](bool) -> std::shared_ptr<invsync::vd::IVdScanner>
+                                                     { throw std::runtime_error("permanently broken"); });
 
     auto config = makeConfig(uniqueSocketPath("ladder"));
 
@@ -449,7 +525,7 @@ TEST_F(IndexerGatingTest, TheEscalationLadderErrorsOnceThenWarnsOncePerHourAndDe
     ASSERT_EQ(0, inventory_sync_server_start(testLogCallback, &config))
         << "an indexer failure must NOT be fatal: the indexer may come up after modulesd";
     ASSERT_TRUE(LogRecorder::waitForMessageContaining("could not start"));
-    EXPECT_TRUE(LogRecorder::sawMessageContaining("async indexer connector"))
+    EXPECT_TRUE(LogRecorder::sawMessageContaining("VD scan lane"))
         << "the first failure must name which stage is blocking";
     EXPECT_EQ(0U, LogRecorder::countMessagesContaining("still not running after"))
         << "the hourly WARN must not fire on the first attempt";
@@ -469,14 +545,14 @@ TEST_F(IndexerGatingTest, TheEscalationLadderErrorsOnceThenWarnsOncePerHourAndDe
         << "the ERROR is emitted once per incident, not once per attempt";
 
     // A successful construction is still never repeated, even across 60 failures of a later stage.
-    EXPECT_EQ(1, events->m_sessionBuilds.load());
+    EXPECT_EQ(1, events->m_clientBuilds.load());
     EXPECT_EQ(1, events->m_syncBuilds.load());
 
     inventory_sync_server_stop();
 }
 
 /**
- * The lane-only-fails permutation: the first attempt publishes session + client + sync + async + pipeline
+ * The lane-only-fails permutation: the first attempt publishes client + writer + sweeper + sync + pipeline
  * and leaves ONLY the lane missing, so the retry exercises the construction path with every other slot
  * flag false. The lane's connector factory must still be handed a live Client and a usable chunk cap.
  */
@@ -574,10 +650,10 @@ TEST_F(IndexerGatingTest, PipelineConnectorsAreBuiltWithATagAndTheLaneShareOfThe
 }
 
 /**
- * CA-E7b-10: with no runtime published (`indexer_runtime` NULL) the sync stage of the gate fails with a
- * log line that names it; nothing after it is built, the socket never opens, and the heartbeat retries.
+ * CA-E7b-10, CA-E7c-7: with no runtime published (`indexer_runtime` NULL) the gate fails with a log line that
+ * names the stage; nothing after it is built, the socket never opens, and the heartbeat retries.
  */
-TEST_F(IndexerGatingTest, NullRuntimeFailsSyncGate)
+TEST_F(IndexerGatingTest, NullRuntimeFailsGate)
 {
     auto events = invsync::test::installAlwaysAvailableFakeIndexers();
     // The production Client factory over a NULL runtime: the check the facade's own factory makes.
@@ -589,13 +665,12 @@ TEST_F(IndexerGatingTest, NullRuntimeFailsSyncGate)
     ASSERT_EQ(0, inventory_sync_server_start(testLogCallback, &config))
         << "a missing runtime is not fatal: the heartbeat retries";
     ASSERT_TRUE(LogRecorder::waitForMessageContaining("could not start"));
-    EXPECT_TRUE(LogRecorder::sawMessageContaining("sync indexer connector"));
-    EXPECT_FALSE(LogRecorder::sawMessageContaining("async indexer connector"));
+    EXPECT_TRUE(LogRecorder::sawMessageContaining("the indexer client configuration is invalid"));
+    EXPECT_TRUE(LogRecorder::sawMessageContaining("no indexer_client runtime was published"));
     EXPECT_FALSE(std::filesystem::exists(path));
 
     // Nothing downstream of the failing stage was attempted.
     EXPECT_EQ(0, events->m_syncBuilds.load());
-    EXPECT_EQ(0, events->m_asyncBuilds.load());
 
     // One ERROR for the incident, then the heartbeat keeps trying.
     EXPECT_EQ(1U, LogRecorder::countMessagesContaining("could not start"));
@@ -618,10 +693,10 @@ TEST_F(IndexerGatingTest, StopReleasesClient)
     auto built = std::make_shared<std::weak_ptr<indexer_client::IClient>>();
     auto production = invsync::test::productionIndexerClientFactory();
     invsync::test_hooks::setIndexerClientFactoryForTests(
-        [production, built](const void* runtime,
-                            const indexer_client::BucketSpec& bucket) -> std::shared_ptr<indexer_client::IClient>
+        [production, built](const void* runtime, const std::vector<indexer_client::BucketSpec>& buckets)
+            -> std::shared_ptr<indexer_client::IClient>
         {
-            auto client = production(runtime, bucket);
+            auto client = production(runtime, buckets);
             *built = client;
             return client;
         });
@@ -687,4 +762,64 @@ TEST_F(IndexerGatingTest, IgnoredSyncOptionWarns)
     inventory_sync_server_start(testLogCallback, &config);
     ASSERT_TRUE(LogRecorder::waitForMessageContaining("listening on"));
     EXPECT_FALSE(LogRecorder::sawMessageContaining("indexer_sync_request_timeout_seconds"));
+}
+
+/**
+ * I149: the `indexer_async_*` and monitoring options that no longer act warn ONCE, at start, naming each tuned one;
+ * a default (or <= 0) value is silent.
+ */
+TEST_F(IndexerGatingTest, IgnoredAsyncOptionWarns)
+{
+    invsync::test::installAlwaysAvailableFakeIndexers();
+
+    auto config = makeConfig(uniqueSocketPath("asyncignored"));
+    config.indexer_async_flush_interval_seconds = 99;
+    config.indexer_monitoring_interval_seconds = 33;
+    config.indexer_async_request_timeout_seconds = 60; // its default: not named
+
+    inventory_sync_server_start(testLogCallback, &config);
+    ASSERT_TRUE(LogRecorder::waitForMessageContaining("listening on"));
+
+    EXPECT_EQ(1U, LogRecorder::countMessagesContaining("indexer_async_flush_interval_seconds"));
+    EXPECT_EQ(1U, LogRecorder::countMessagesContaining("indexer_monitoring_interval_seconds"));
+    EXPECT_FALSE(LogRecorder::sawMessageContaining("indexer_async_request_timeout_seconds"));
+    EXPECT_TRUE(LogRecorder::sawMessageContaining("no effect since the indexer client replaced"));
+
+    invsync::test_hooks::forceRetryForTests();
+    invsync::test_hooks::forceRetryForTests();
+    EXPECT_EQ(1U, LogRecorder::countMessagesContaining("indexer_async_flush_interval_seconds"))
+        << "the warning belongs to start(), not to each retry";
+
+    // Every option at its default: nothing to warn about.
+    inventory_sync_server_stop();
+    LogRecorder::clear();
+    auto quiet = makeConfig(uniqueSocketPath("asyncquiet"));
+    quiet.indexer_async_flush_interval_seconds = 20;
+    quiet.indexer_async_logger_queue_size = 8;
+    quiet.indexer_monitoring_interval_seconds = 10;
+    inventory_sync_server_start(testLogCallback, &quiet);
+    ASSERT_TRUE(LogRecorder::waitForMessageContaining("listening on"));
+    EXPECT_FALSE(LogRecorder::sawMessageContaining("no effect since the indexer client replaced"));
+}
+
+/**
+ * CA-E7c-7: stop() stops the sweeper and joins its thread. The sweeper owns a thread from construction, so one
+ * left behind would outlive the module (and its Client, whose query it holds): the process's thread count after
+ * stop() is the one before start().
+ */
+TEST_F(IndexerGatingTest, StopStopsSweeper)
+{
+    invsync::test::installAlwaysAvailableFakeIndexers();
+
+    const auto before = threadCount();
+    const auto path = uniqueSocketPath("sweeperstop");
+    const auto config = makeConfig(path);
+    inventory_sync_server_start(testLogCallback, &config);
+    ASSERT_TRUE(LogRecorder::waitForMessageContaining("listening on"));
+    EXPECT_GT(threadCount(), before) << "the module's threads are up";
+
+    inventory_sync_server_stop();
+
+    EXPECT_TRUE(invsync::test::waitUntil([&] { return threadCount() <= before; }, std::chrono::seconds {3}))
+        << "threads before start: " << before << ", after stop: " << threadCount();
 }

@@ -15,7 +15,6 @@ import json
 import os
 import pathlib
 import shutil
-import signal
 import subprocess
 import sys
 import time
@@ -49,6 +48,7 @@ sys.path.insert(0, str(GENERATED))
 sys.path.insert(0, str(QA_DIR))
 
 from helpers.indexer import Indexer  # noqa: E402  (needs sys.path above)
+from helpers.testtool import start_server, stop_server, testtool_path  # noqa: E402
 from helpers.uds_client import ServerClient  # noqa: E402
 
 CONFIG = json.loads((QA_DIR / "config.json").read_text())
@@ -170,58 +170,17 @@ def indexer():
 
 @pytest.fixture(scope="session")
 def server(indexer, tmp_path_factory):
-    """The real module pair booted by the testtool's --serve mode.
-
-    --no-vd keeps the vulnerability scanner facade down: the server's scanner
-    seam then reports feed-ready and answers every scan as a legitimate skip
-    (D22's skip row), so VD-flagged sessions still index deterministically.
-    """
-    testtool = os.environ.get("INVSYNC_TESTTOOL", str(SRC_DIR / "build" / "bin" / "inventory_sync_server_testtool"))
+    """The real module pair booted by the testtool's --serve mode (see helpers/testtool.py)."""
     workdir = tmp_path_factory.mktemp("server")
 
     config = dict(CONFIG)
-    # Override only the host, keeping whatever else config.json declares -- `flush_interval_seconds`
-    # in particular, without which the ASYNC connector (POST /config, POST /stats) holds a write for
-    # its 20 s default and every test that reads one back has to outwait it.
+    # Override only the host, keeping whatever else config.json declares.
     config["indexer"] = {**CONFIG["indexer"],
                          "hosts": [os.environ.get("INDEXER_URL", CONFIG["indexer"]["hosts"][0])]}
-    config_path = workdir / "config.json"
-    config_path.write_text(json.dumps(config))
 
-    # Output goes to a FILE, never a pipe: the server logs every bulk response,
-    # and an unread pipe buffer would eventually block a worker mid-flush.
-    log_path = workdir / "server.log"
-    with open(log_path, "w") as log_file:
-        process = subprocess.Popen(
-            [testtool, "--serve", "--no-vd", "--config", str(config_path)],
-            cwd=workdir,
-            stdout=log_file,
-            stderr=subprocess.STDOUT,
-            text=True,
-        )
-
-    socket_path = workdir / SOCKET_RELPATH
-    if len(str(socket_path)) > 100:  # AF_UNIX sun_path budget
-        process.kill()
-        raise RuntimeError(f"socket path too long for AF_UNIX: {socket_path}")
-    deadline = time.monotonic() + 90
-    while time.monotonic() < deadline:
-        if process.poll() is not None:
-            raise RuntimeError(f"testtool died during startup:\n{log_path.read_text()[-4000:]}")
-        if socket_path.exists():
-            break
-        time.sleep(0.2)
-    else:
-        process.kill()
-        raise RuntimeError(f"the server socket never appeared; log tail:\n{log_path.read_text()[-4000:]}")
-
+    process, socket_path = start_server(testtool_path(), workdir, config)
     yield {"socket": str(socket_path), "cluster": config["clusterName"]}
-
-    process.send_signal(signal.SIGTERM)
-    try:
-        process.wait(timeout=30)
-    except subprocess.TimeoutExpired:
-        process.kill()
+    stop_server(process)
 
 
 @pytest.fixture()

@@ -791,6 +791,7 @@ namespace indexer_client
         }
         snapshot.networkThreads = state->networkThreads;
         snapshot.cpuThreads = state->cpuThreads;
+        snapshot.requestTimeout = state->config.requestTimeout;
         {
             std::lock_guard<std::mutex> lock(state->mutex);
             snapshot.clients = static_cast<std::uint32_t>(state->clients.size());
