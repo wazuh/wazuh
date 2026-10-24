@@ -256,6 +256,12 @@ TEST_F(ClientTest, MoveAssignment)
     EXPECT_EQ(m_ref.snapshot().clients, 1u);
 }
 
+// An empty query is a 400 in OpenSearch 3.6 (D60): the default must be a valid one.
+TEST(CursorQuery, DefaultQueryIsMatchAll)
+{
+    EXPECT_EQ(CursorQuery {}.query, nlohmann::json::parse(R"({"match_all":{}})"));
+}
+
 // The names end up in logs and metric labels (E5): every cause has its own stable, lowercase name.
 TEST(TypesTest, CauseNamesStableAndUnique)
 {

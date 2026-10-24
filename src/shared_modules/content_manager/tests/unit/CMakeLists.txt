@@ -34,7 +34,20 @@ target_link_libraries(
   wazuhext
   rocksdb
   indexer_connector
+  # contentIndexerClientAdapter_test.cpp and contentCycleOnClientAdapter_test.cpp drive the real adapter on a real
+  # runtime of the client library; the .so is the one content_manager links, so the process holds a single runtime.
+  # Never indexer_client_testing.
+  indexer_client
   pthread)
+
+# The client library's public headers (RuntimeOwner, Client, Pit) and its in-process fake indexer (header-only test
+# fixture: rules, PIT responder, node health), which the adapter suites serve their runtime from. httplib is what the
+# fake is written on.
+target_include_directories(
+  ${PROJECT_NAME}
+  PRIVATE ${SRC_FOLDER}/shared_modules/indexer_client/include
+          ${SRC_FOLDER}/shared_modules/indexer_client/tests/fake
+          ${SRC_FOLDER}/external/cpp-httplib)
 
 add_test(NAME ${PROJECT_NAME} COMMAND ${PROJECT_NAME})
 set_tests_properties(${PROJECT_NAME} PROPERTIES LABELS ${PROJECT_NAME})

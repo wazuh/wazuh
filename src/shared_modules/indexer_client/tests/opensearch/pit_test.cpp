@@ -25,8 +25,8 @@ using namespace std::chrono_literals;
 
 namespace
 {
-    // CursorQuery's default query ({}) is refused by OpenSearch 3.6 (400 "query malformed, empty clause found"): the
-    // cursors name match_all explicitly.
+    // OpenSearch 3.6 refuses an empty query (400 "query malformed, empty clause found"); CursorQuery defaults to
+    // match_all since D60, and the cursors here still name it explicitly.
     const nlohmann::json MATCH_ALL = {{"match_all", nlohmann::json::object()}};
 
     /// Indexes `count` documents (raw bulk, refresh=true) with ids d0000…

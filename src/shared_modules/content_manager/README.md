@@ -50,7 +50,7 @@ consequences the library handles:
 | `PitPaginator` | `search_after` pagination, optionally sliced, with sink calls serialised. No domain knowledge. |
 | `FactoryContentUpdater` | Turns a validated `TopicSpec` into a `ContentCycle`. |
 | `RocksDbTokenStore` | The built-in token store, one RocksDB per topic under `state.databasePath`. |
-| `IContentIndexer` | The host's indexer: the four read operations the cycle needs (`contentIndexer.hpp`), with adapters over both connectors (D1). |
+| `IContentIndexer` | The host's indexer: the four read operations the cycle needs (`contentIndexer.hpp`), with adapters over both connectors and over an `indexer_client::IClient` (D1). |
 | `IContentSink` | Where the content goes, and who decides it is safe to keep. Implemented by the host. |
 | `IContentTokenStore` | Where the change-detection token lives, when the host keeps it. |
 
@@ -76,6 +76,36 @@ const auto outcome = registration.runOnce();
 registration.requestRun({/*forceFullReload=*/false},
                         [](content_manager::OnDemandResult result) { /* map result.code */ });
 ```
+
+A host that already owns an `indexer_client::Client` passes it instead of a connector. When to use which:
+the connector overloads serve the hosts that still run on `indexer_connector`; the `IClient` overload is
+for a host on `indexer_client`. Both kinds coexist in the library until the connector is removed (E11).
+
+```cpp
+// The host's Client — its one connection to the indexer (D1). Time budgets are optional.
+content_manager::ContentIndexerOptions options;   // callDeadline 120 s, pageDeadline 90 s, probeDeadline 10 s
+const auto indexer = content_manager::makeContentIndexer(myClient, options);
+```
+
+| Option | Default | Bounds |
+|---|---|---|
+| `callDeadline` | 120 s | A whole `openPit` or `search` call. Above the client's request timeout (60 s by default), so a hung attempt can time out, mark its node and still be retried on another one inside the call. |
+| `pageDeadline` | 90 s | One page, from its first attempt. |
+| `probeDeadline` | 10 s | The pre-flight `searchIndex` probe, and any call made while no indexer node is usable. |
+
+The PIT is managed by the library: a page retried after a transient failure reuses the same PIT and
+cursor, and `closePit` only drops the adapter's handle — the library deletes the PIT in the
+background once the last handle is released. A `keepAlive` is `<n>` plus one of
+`nanos|micros|ms|s|m|h|d` and at least 1 ms; anything else throws `std::invalid_argument`. A `Client`
+that is null, or whose `query()` is null (a closed one), and a `ContentIndexerOptions` deadline that is not
+positive are rejected with `std::invalid_argument`.
+A failure reaches the cycle as a `std::runtime_error` carrying the library's cause; so does a search
+response without `hits`.
+
+While no indexer node is usable (at host start every node is `Down` until the first round of health
+probes) a call does not fail at once: its deadline becomes `min(callDeadline, probeDeadline)` and the
+library waits for a node without sending anything. The error that comes out, if none appears, is the
+library's own (`Unavailable`, `Shutdown`, `ClientClosed`).
 
 `runOnce` is bounded: every gate is single-pass, and a deferred cycle reports
 `CycleOutcome::retryAfter` instead of parking the calling thread. The driver thread honours
@@ -185,6 +215,19 @@ destroyed under a running cycle whatever order the host tears down in.
 instead of including `indexerConnector.hpp`, so the C++17 public-header guard compiles with the
 include directories a foreign host gets. A future host uses one of these or implements the interface.
 
+The third overload, `makeContentIndexer(std::shared_ptr<indexer_client::IClient>, ContentIndexerOptions)`,
+serves a host on `indexer_client` (`indexer_client::IClient` is forward-declared in the same header). It
+keeps the `Client` alive for as long as any registration holds the adapter, and so keeps the host's
+consumer name reserved. The host owes it two things:
+
+- **Call `requestClose()` on its `Client` before it stops its content registrations.** A call in flight then
+  returns at once instead of at its deadline.
+- **Drop every registration before creating a new `Client` with the same consumer name.** The adapters
+  and sessions hold the old `Client`, which holds the name; until they are released the new `Client` is
+  rejected.
+
+The connector overloads and this one coexist until E11.
+
 **Why sharing is safe.** Checked in the code, not assumed:
 
 - A search takes no connector lock. `IndexerConnectorSync::search` and `executeSearchQuery` use only
@@ -278,6 +321,8 @@ Automated, and run by CI:
 |---|---|
 | `content_manager_utest` | Every component through `IContentIndexer`: the full `CycleStatus` matrix, which paths write the token, `retryAfter` per status, slicing, the consumer gate and its cache, the driver (thread, requests, codes, backoff, run slot), spec validation, the token store. |
 | `content_manager_ctest` | Whole registrations through the public API against a scripted indexer: the consumer-flip race, forced reloads, requested runs, destruction waiting for a cycle. |
+| `ContentIndexerClientAdapter*` (in `content_manager_utest`) | The `IClient` adapter against a real `indexer_client` runtime and the fake indexer of `indexer_client`'s tests: PIT lifecycle and slices, bounded wait without a usable node (`NoUsableNodeBoundedByProbe`, `FirstCallWaitsForFirstProbe`), `requestClose()` waking a held search, a closed `Client`, releasing the consumer name. `ContentIndexerClientAdapterReal.SlicesCoverOnce` runs against a real OpenSearch when `INDEXER_URL` is set. |
+| `ContentCycleOnClientAdapter*` (in `content_manager_utest`) | `PitSession` → `PitPaginator` → `ContentCycle` over that adapter: full download, abort midway, restart from the token, resume after an expired PIT. |
 | `content_manager_public_abi_c17` | The public headers alone, under C++17, with only the include directories a foreign host gets. Fails on a C++20 construct in a public header, and on a private header leaking into `include/`. |
 
 Two properties are asserted here rather than left to an integration run, because both would otherwise
@@ -289,6 +334,10 @@ surface only in production:
   stops answers `Deferred`, so a handler cannot answer "ok" for a download that did not happen.
 
 ### Against a live cluster
+
+`ContentIndexerClientAdapterReal.SlicesCoverOnce` runs the adapter against a real OpenSearch: it is
+gated by the `INDEXER_URL` environment variable and skipped without it. It checks that two slices over
+one PIT return every document once, and that the PIT is created and deleted once.
 
 The query contract — the sort surviving the consumer index joining the PIT, and slicing over that
 PIT neither losing nor duplicating documents — is automated in
