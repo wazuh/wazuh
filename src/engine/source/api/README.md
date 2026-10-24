@@ -30,11 +30,21 @@ The API system spans five tightly-coupled locations in the repository:
 On a manager the socket is `/var/wazuh-manager/queue/sockets/engine-api-http.sock` (setting
 `analysisd.server_api_socket`, env `WAZUH_SERVER_API_SOCKET`).
 
-**Wire format**: All messages are serialized as **JSON** (not binary protobuf). Protobuf is used as a **schema and validation layer** on both sides:
+**Control-plane wire format**: Messages are serialized as **JSON** (not binary protobuf). Protobuf is used as a **schema and validation layer** on both sides:
 - **C++ side**: `eMessage::eMessageFromJson` / `eMessageToJson` converts between protobuf objects and JSON strings. Use `eMessageToJson` for response serialization; request handlers that need a `json::Json` payload should parse `req.body` and extract the relevant subtree directly.
 - **Python side**: `google.protobuf.json_format.MessageToDict` / `ParseDict` converts between protobuf objects and Python dicts, which are then JSON-serialized via `json.dumps`.
 
 ---
+
+## Raw event ingestion
+
+The separate `engine-ingest-http.sock` serves `POST /events/enriched` using raw H/E batches,
+implemented by `event/src/handlers.cpp` and `event/include/api/event/ndJsonParser.hpp`.
+Every producer supplies exactly one canonical `X-Wazuh-Agent-Id`; the parser passes it to the cache
+and never derives it from the body. Identity failures preserve their typed exception through parser
+wrapping and are counted once at the HTTP boundary. Other parse/hook failures remain ordinary 400s.
+See the [events specification](../../../../docs/ref/modules/engine/spec-events.yaml) for the contract,
+local trust assumptions and migration requirements. This route does not use protobuf messages.
 
 ## Directory Structure (this directory)
 

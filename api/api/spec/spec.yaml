@@ -2183,7 +2183,7 @@ components:
                     payload_mismatch:
                       type: integer
                       format: int64
-                      description: "The request body does not match what its authenticated header declares"
+                      description: "The request body has no valid H line for this endpoint: it does not start with 'H ', or its header line exceeds the size limit. Identity mismatches between the H line and the authenticated agent are rejected by the engine and are counted in the engine's agent.cache.rejected.identity metric, not here"
                     body_too_large:
                       type: integer
                       format: int64

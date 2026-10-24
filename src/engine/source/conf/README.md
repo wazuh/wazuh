@@ -143,13 +143,19 @@ conf/
 
 All keys are `constexpr std::string_view` constants under the `conf::key` namespace, following the pattern `"analysisd.<option_name>"`. They are grouped by module (logging, store, geo, indexer, streamlog, etc.) and may change as the engine evolves.
 
+Agent metadata retention uses `size_t` keys `AGENT_METADATA_CACHE_MAX_ENTRIES` (default 50000)
+and `AGENT_METADATA_CACHE_MAX_BYTES` (default 134217728). Each zero limit independently means
+unlimited. The cache validates upper bounds; startup also validates TTL and cleanup intervals.
+See the [engine settings](../../../../docs/ref/modules/engine/README.md#agent-metadata-cache).
+
 ## Implementation Details
 
 ### Validation
 
 On `load()`, the file-loaded `OptionMap` is validated against the declared units. For each key present in the file:
 
-- **INTEGER**: parsed with `std::stoll`, checked for trailing characters
+- **INTEGER**: parsed with `std::stoll`, checked for trailing characters. Unsigned (`size_t`) units refuse a leading
+  `-` (after whitespace) and are parsed with `std::stoull`, so a negative file value stops start-up instead of wrapping
 - **STRING**: always valid
 - **STRING_LIST**: bracket notation `[...]` is rejected
 - **BOOL**: must be `"true"` or `"false"` (case-insensitive)
@@ -160,7 +166,7 @@ Invalid values cause `load()` to throw `std::runtime_error`, preventing the engi
 
 `UConf<T>::getEnvValue()` handles per-type parsing:
 
-- **Integers**: Uses `std::stoll`/`std::stoull` with strict validation (no whitespace, no trailing chars, range checks)
+- **Integers**: Unsigned values reject negative environment inputs before conversion. Uses `std::stoll`/`std::stoull` with strict validation (no whitespace, no trailing chars, range checks)
 - **Strings**: Direct passthrough
 - **String lists**: Comma-separated with backslash escaping (`\,` for literal commas); bracket notation rejected
 - **Booleans**: Case-insensitive `"true"`/`"false"`
@@ -197,10 +203,12 @@ conf  ←── base (PUBLIC), urlrequest (PRIVATE)
 
 ### Unit Tests (conf_test.cpp, unitconf_test.cpp)
 
-- **conf_test.cpp** (~449 lines): Tests `Conf` lifecycle (build, addUnit, load, get) with priority resolution.  Parameterized tests cover all type combinations × all three sources × valid/invalid values.
-- **unitconf_test.cpp** (~536 lines): Tests `UConf<T>` environment variable parsing for all supported types, including edge cases (overflow, whitespace, invalid format).
+- **conf_test.cpp**: Tests `Conf` lifecycle (build, addUnit, load, get) with priority resolution.  Parameterized tests cover all type combinations × all three sources × valid/invalid values.
+- **unitconf_test.cpp**: Tests `UConf<T>` environment variable parsing for all supported types, including `size_t` boundaries, negative-to-unsigned rejection, overflow, whitespace and invalid formats.
 
-Both use `MockFileLoader` to isolate from filesystem.
+Configuration tests also pin cache defaults, ENV/file/default precedence, independent zero limits
+and fallback after invalid unsigned environment values. `Conf` tests use `MockFileLoader` to
+isolate from the filesystem. New environment regressions restore the caller's original values.
 
 ### Component Tests (fileLoader_test.cpp)
 

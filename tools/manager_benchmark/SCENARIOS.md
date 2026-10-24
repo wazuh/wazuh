@@ -39,13 +39,16 @@ These put one module's traffic on the socket in isolation — the cleanest read 
 | `mixed_fleet_windows_linux_only_stateful` (agent) | The flagship without the engine lane, doubled to 50 + 50 agents: the stateful sync path alone under `/control` keepalives |
 | `mixed_fleet_windows_linux_only_stateless` (agent) | The flagship's engine lane alone (50 + 50 agents at 250 events/s each), repeated for 20 min (`repeat_until`) under `/control` keepalives |
 
-## Engine event streams (agent)
+## Engine event streams
 
 | Scenario | Exercises |
 |---|---|
-| `engine_smoke` | One small fleet streaming a short syslog file to `POST /stateless` |
-| `engine_fleet_load` | A larger fleet looping a syslog file at a sustained EPS |
-| `engine_with_inventory` | An engine lane running **while** inventory lanes are active on the same agents — the cross-path case |
+| `engine_smoke` (agent) | One small fleet streaming a short syslog file to `POST /stateless` |
+| `engine_fleet_load` (agent) | A larger fleet looping a syslog file at a sustained EPS |
+| `engine_with_inventory` (agent) | An engine lane running **while** inventory lanes are active on the same agents — the cross-path case |
+| `engine_header_shapes` (agent) | Stable H lines padded to 256 / 2048 / 8000 bytes next to one that changes every batch: the cost of the identity check and the engine metadata cache's update path |
+| `engine_cache_fleet` (agent) | 1000 enrolled agents × 1 event/s, one event per batch, each with the stable H line a real agent sends (`header.profile: agent`): fills the engine metadata cache through the full relay at a low total rate. Scale the fleet and divide the rate to keep 1000 events/s |
+| `engine_direct_flood` (uds) | 5000 distinct agent ids, one batch each, straight to the engine's `POST /events/enriched` (`--socket` = the engine ingest socket): the metadata cache's insertion path with no enrollment |
 
 ## Control (agent)
 

@@ -380,7 +380,7 @@ src/endpoints/
 ├── authGateway.hpp/.cpp     # runs the auth middleware, then hands the verified request + responder
 │                            #   to the endpoint handler. Authentication only — body decoding is an
 │                            #   injected IBodyDecoder it knows nothing about
-├── statelessEndpoint.hpp/.cpp # /stateless policy: identity check + downstream target + post-processing
+├── statelessEndpoint.hpp/.cpp # /stateless policy: H-line slice/cap + downstream target + post-processing
 ├── statefulEndpoint.hpp/.cpp # /stateful policy: opaque inventory-sync sessions, contract passthrough
 ├── statsEndpoint.hpp/.cpp    # /stats policy: forwards to modulesd's inventory sync server
 ├── configEndpoint.hpp/.cpp   # /config policy: near-duplicate of statsEndpoint, on purpose
@@ -554,47 +554,32 @@ src/endpoints/
   never learns which encodings exist, how one is decoded, or how the memory that costs is accounted
   for — only that the step can fail with an `AuthError`. The
   facade registers **`POST /stateless`** with `stateless::makeHandler(forwarder, socketPath, metrics)`: once
-  auth succeeds it cross-checks the payload's identity, then forwards the H/E batch to the engine
+  auth succeeds it checks the H-line prefix and size, then forwards the H/E batch to the engine
   over UDS (see *Deferred forwarding*) and replies from the downstream result
   (`202`/`400`/`413`/`503`); `400`/`401`/`413` auth rejections come straight from the gateway.
 - **Per-endpoint policy (`statelessEndpoint.hpp/.cpp`):** each endpoint owns *what* it forwards and
-  *how* it maps the answer, kept out of the generic `downstream/` machinery. `stateless::target(socket)`
-  builds the engine ingest `DownstreamTarget` (`POST /events/enriched`, `application/x-ndjson`) and
+  *how* it maps the answer, kept out of the generic `downstream/` machinery. `stateless::target(socket,
+  agentId)` builds the engine ingest `DownstreamTarget` (`POST /events/enriched`, `application/x-ndjson`,
+  plus `X-Wazuh-Agent-Id: <agentId>`, the authenticated id, written by remoted and never by the agent) and
   `stateless::postProcess(err, resp)` is the `PostProcessor` (the mapping above). A new endpoint adds
   its own `target`/`postProcess`.
-  `stateless::validatePayloadIdentity(req)` is a pure, pre-forward check: it parses the body's `H
-  <json>` line with RapidJSON (`rapidjson::Document::Parse(data, length)` — non-in-situ, since the
-  payload is a `string_view` into a shared, non-NUL-terminated buffer), then resolves
-  `/wazuh/agent/id` with `agentIdFromHeader()`, walking `wazuh` → `agent` → `id`. Each step must
-  exist **exactly once** and the two containers must be objects; the id must then be **the same
-  string** as the authenticated `agentId`, compared byte for byte, so `"001"`, `"01"` and `"1"` are
-  three different identities even though they are one number. Member names are
-  compared **decoded and by length** — `"\u0077azuh"` *is* `wazuh`, while a name with an embedded NUL is
-  a different, longer name. Anything unclean — a repeated step, a missing/malformed header, a
-  non-object container, a non-numeric id, or any difference from the authenticated id — collapses to
-  `AuthError::PayloadAgentMismatch`.
+  `stateless::validatePayloadIdentity(req)` is a pure pre-forward slice check: the body must
+  start with literal `H `, and the bytes after it before the first LF (or end of body) must not
+  exceed 8 KiB. A missing prefix or oversized slice returns `AuthError::PayloadAgentMismatch`.
+  It does not parse JSON or read the claimed agent id. Empty or malformed JSON and header-only
+  bodies that pass this check are left to the engine's batch parser.
 
-  **Why "exactly once" and not just "present".** JSON permits repeated member
-  names, and the two parsers this payload meets disagree about which repetition counts: a lookup
-  here takes the **first**, the engine's merge keeps the **last**, and this module forwards the body
-  byte for byte in between. A header repeating `wazuh`, `agent` or `id` would therefore authorise
-  one agent and ingest another. Refusing the repetition is what keeps "validated" and "ingested"
-  the same identity.
+  The engine requires a unique `/wazuh/agent/id` equal byte for byte to the trusted carrier.
+  Validation runs on cache misses; hits reuse validation of the same id and exact header bytes.
+  Repeated identity members cannot select a different id during the later merge. Off-path members
+  remain literal keys because the engine escapes JSON Pointer tokens. The full contract is in
+  [Event protocol](../../../docs/ref/modules/remoted/event-protocol.md#rules).
 
-  **Why the check stops at the identity path.** A repetition elsewhere in the header cannot move the
-  identity, so paying to scan the whole document on every request would buy nothing. That holds
-  because of a matching fix on the other side: the engine escapes the member name when it builds the
-  JSON Pointer its merge recurses with (`src/engine/source/base/src/json.cpp`, via
-  `Json::formatJsonPath(name, skipDot=true)`). Before that fix a member literally called
-  `wazuh/agent` was pasted into the pointer raw, so it stopped being one token and landed on the
-  *real* `/wazuh/agent`, overwriting the id that had just been validated — from a key that is not on
-  the identity path at all. Now such a member stays an inert literal sibling. It may survive into
-  the ingested event; that is harmless, and it is rejected at index time by the template. **The two
-  halves are load-bearing together**: narrowing this check without the engine's escaping reopens the
-  bypass, which is exactly how it was found.
-  `stateless::makeHandler(forwarder, socketPath, metrics)` wires `validatePayloadIdentity` in front of
-  `forwarder.forward(...)`: on failure it answers via `errorResponseFor()` and never forwards; this is
-  the single `AuthenticatedHandler` the facade registers for `/stateless`.
+  `stateless::makeHandler(forwarder, socketPath, metrics)` applies the slice check before
+  `forwarder.forward(...)`: on local failure it answers via `errorResponseFor()` without forwarding.
+  Otherwise it forwards the unchanged body with the authenticated carrier, and maps an engine 400
+  to the same neutral `400 Invalid event batch`. Identity rejections count in the engine's
+  `agent.cache.rejected.identity`; remoted's `payload_mismatch` counts only local slice failures.
 - **`POST /stats` and `POST /config` (`statsEndpoint`, `configEndpoint`).** Same authenticated
   pipeline as `/stateless`, but forwarded to **modulesd's inventory sync server**
   (`queue/sockets/inventory-sync-http.sock`) instead of the engine. Nothing on THIS side interprets either
@@ -608,11 +593,12 @@ src/endpoints/
   indexer-side rejection is invisible from here. `wazuh-agent-stats` is `dynamic: true`, so an
   undeclared metric is indexed like any other field rather than rejected. Three things differ from
   `/stateless`:
-  - **They forward the authenticated agent id as an `X-Wazuh-Agent-Id` header.** Unlike an H/E batch,
-    these documents do not carry the id, and modulesd is what writes it in — so it has to receive it.
-    That is why `DownstreamTarget`/`DownstreamRequest` grew a `headers` field. The value comes from the
-    Authorization header the gateway already verified, never from the body, so a document claiming a
-    different agent cannot override it.
+  - **They forward the authenticated agent id as an `X-Wazuh-Agent-Id` header, and here it is the only
+    id.** These documents do not carry the id, and modulesd is what writes it in, so it has to receive
+    it. That is why `DownstreamTarget`/`DownstreamRequest` grew a `headers` field. `/stateless` now sends
+    the same header next to an H line that also names the agent. The value comes from the Authorization
+    header the gateway already verified, never from the body, so a document claiming a different agent
+    cannot override it.
   - **They differ from each other only in what a success carries back.** `/config`'s `postProcess`
     passes the downstream body through (`200` + modulesd's JSON), unlike `/stateless` which discards it;
     `/stats` answers a fixed `{}` instead, since the agent has nothing to read back and a constant keeps
@@ -2098,9 +2084,9 @@ sequenceDiagram
    (synchronous — CPU, off the I/O threads). On failure it replies `400`/`401`/`413`. On success it
    builds an `AuthenticatedRequest` whose `payload` is a **zero-copy view** into the single buffer plus
    a keep-alive to the context, and calls the `/stateless` handler (`stateless::makeHandler`'s
-   closure), which first runs `validatePayloadIdentity()` (parses the `H` line, cross-checks
-   `wazuh.agent.id` against the authenticated agent id — `400` on a mismatch/malformed header,
-   without ever calling `forward()`), then calls `DeferredForwarder::forward(...)`.
+   closure), which first runs `validatePayloadIdentity()` (literal `H ` prefix and 8 KiB slice
+   limit — local `400` on failure), then calls `DeferredForwarder::forward(...)` with the verified
+   id as `X-Wazuh-Agent-Id`. The engine validates JSON and identity before enqueueing.
 3. **[B] forward().** Acquires a `DeferredWorkLimiter` slot (plain `503` if full), then
    `client->sendAsync(dreq, keepAlive = std::move(authReq), completion)`. `forward()` returns and the
    **worker thread is free** — the request is now in flight holding only the byte reservation (via the
@@ -2344,8 +2330,8 @@ to change (`"…Consider increasing the value of 'max_deferred_requests'."`). Th
   deferred slots exhausted (`max_deferred_requests`), each downstream failure kind
   (`downstream_connect_timeout` / `_write_timeout` / `_response_timeout` /
   `_max_response_body_size`), clock skew (`jwt_max_age` / `jwt_clock_skew`), body cap
-  (`auth_max_body_size`), an unusable `client.keys` key, and an authenticated agent claiming a
-  different agent id.
+  (`auth_max_body_size`), an unusable `client.keys` key, and an authenticated agent sending a
+  batch without the H-line prefix or over its 8 KiB limit.
 - **Client-fault 4xx → `LOGFN_DEBUG2`, unthrottled.** Malformed/unauthenticated requests. An
   unauthenticated peer controls how many of these it triggers, so logging them at WARN would be a
   log-amplification vector against `wazuh-manager.log ` — and a bad MAC from an internet scanner is noise.
@@ -2443,7 +2429,7 @@ the first — the handler never ran, yet it counts BOTH as `responses.429` and i
 `remoted.<endpoint>.rate_limited`, and in none of that endpoint's outcome cells (nothing was
 decoded, verified or forwarded for it to have an outcome about). Auth-gateway rejections happen before any handler
 and appear only in `remoted.auth.reject.*`; a handler's own pre-forward rejection (empty body,
-payload identity) counts in its `responses.*` (the "what") and, where it is an AuthError, in
+H-line prefix/size) counts in its `responses.*` (the "what") and, where it is an AuthError, in
 `remoted.auth.reject.*` too (the "why"). EPS/rates are deliberately NOT computed in-process —
 the scraper (`tools/devContainer/scripts/monitor.py`) derives rates by diffing counters
 per interval, and `tools/devContainer/scripts/bench_samples.py`'s
@@ -2742,9 +2728,9 @@ and the `UNSET` sentinel both mean module defaults while a configured `0` means 
 `deferredForwarder_test.cpp` (mock client: slot-full→503,
 target/body forwarded, post-processor result delivered + slot released, keep-alive release),
 `statelessEndpoint_test.cpp` (endpoint policy: `target()` + `postProcess()` mapping 202/400/413/503;
-`validatePayloadIdentity()` mismatch/malformed-header/non-numeric/leading-zero-normalization cases;
-`makeHandler()` short-circuits before `forward()` on a validation failure and still forwards +
-post-processes on success), `statsEndpoint_test.cpp` and `configEndpoint_test.cpp` (the two
+`validatePayloadIdentity()` literal-prefix and exact 8 KiB boundaries, opaque-header forwarding;
+`makeHandler()` short-circuits on local slice failures, relays engine 400 with the neutral body,
+and distinguishes local/relayed rejection metrics), `statsEndpoint_test.cpp` and `configEndpoint_test.cpp` (the two
 forwarding endpoints, one file each mirroring their near-duplicate implementations: the target's
 socket/path/content-type, the `X-Wazuh-Agent-Id` header, the `serviceName` used in failure logs, the
 full `postProcess` mapping table, **that no downstream body is ever reflected to an agent** — `/stats`
@@ -3000,7 +2986,7 @@ the target; a mismatch is a `404`); pass `/` to force the unprefixed paths.
 python3 tools/send_stateless.py            # one valid signed request -> 202
 python3 tools/send_stateless.py --tamper   # corrupted token signature -> 401 (invalid_signature)
 python3 tools/send_stateless.py --all      # every success/failure scenario with expected codes,
-                                            # incl. payload_agent_mismatch -> 400 (PayloadAgentMismatch)
+                                            # incl. payload_agent_mismatch -> 400 (engine identity check, relayed)
 # options: --url (default https://127.0.0.1:1517), --agent-id, --body, --client-keys, --global-prefix
 ```
 

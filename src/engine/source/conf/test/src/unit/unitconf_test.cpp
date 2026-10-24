@@ -534,4 +534,26 @@ INSTANTIATE_TEST_SUITE_P(UConfGetEnv,
                                            BoolTestParams("TEST_ENV_BOOL", "10 ", IGNORE_EXPECTED, true),
                                            BoolTestParams("TEST_ENV_BOOL", " 10", IGNORE_EXPECTED, true)));
 
+TEST(UConfUnsignedTest, RejectsNegativeUnsignedEnvironment)
+{
+    ScopedEnv env("TEST_ENV_UNSIGNED");
+    const auto unit = UConf<size_t>::make("TEST_ENV_UNSIGNED", size_t {0});
+    for (const auto invalid : {"-1", "-0", "-18446744073709551615", " 1", "1 ", "1x", "", "18446744073709551616"})
+    {
+        SCOPED_TRACE(invalid);
+        setEnv("TEST_ENV_UNSIGNED", invalid);
+        EXPECT_THROW(unit->getEnvValue(), std::runtime_error);
+    }
+    for (const auto valid : {size_t {0}, size_t {1}, std::numeric_limits<size_t>::max()})
+    {
+        setEnv("TEST_ENV_UNSIGNED", std::to_string(valid));
+        EXPECT_EQ(unit->getEnvValue(), valid);
+    }
+    setEnv("TEST_ENV_UNSIGNED", "+1");
+    EXPECT_EQ(unit->getEnvValue(), 1u);
+    setEnv("TEST_ENV_UNSIGNED", "-1");
+    EXPECT_EQ(UConf<int>::make("TEST_ENV_UNSIGNED", 0)->getEnvValue(), -1);
+    EXPECT_EQ(UConf<int64_t>::make("TEST_ENV_UNSIGNED", int64_t {0})->getEnvValue(), -1);
+}
+
 } // namespace

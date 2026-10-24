@@ -32,6 +32,8 @@ const (
 	SocketPath = "/var/wazuh-manager/queue/sockets/engine-ingest-http.sock"
 	// Inline JSON header sent with every batch
 	HeaderJSON = `{"wazuh":{"cluster": {"name": "wazuh", "node": "123"},"agent":{"id":"001","name":"test-agent"}}}`
+	// Agent the batches belong to, sent as X-Wazuh-Agent-Id: the same id HeaderJSON carries
+	AgentID = "001"
 	// HTTP endpoint for event ingestion
 	Endpoint = "/events/enriched"
 	// Fixed queue identifier in event format
@@ -307,11 +309,13 @@ func buildPayload(batch []string) string {
 // postBatch sends a batch via HTTP POST to /events/enrichment.
 func postBatch(client *http.Client, batch []string) error {
 	body := buildPayload(batch)
-	resp, err := client.Post(
-		"http://localhost"+Endpoint,
-		"application/x-ndjson",
-		strings.NewReader(body),
-	)
+	req, err := http.NewRequest(http.MethodPost, "http://localhost"+Endpoint, strings.NewReader(body))
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Content-Type", "application/x-ndjson")
+	req.Header.Set("X-Wazuh-Agent-Id", AgentID)
+	resp, err := client.Do(req)
 	if err != nil {
 		return err
 	}

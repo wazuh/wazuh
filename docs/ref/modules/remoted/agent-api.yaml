@@ -291,20 +291,20 @@ paths:
         `remoted.http_content_encoding_enabled` is `0`); a missing header is treated as an
         uncompressed body, unchanged from today.
 
-        Before forwarding, the module parses the H line's JSON and resolves `wazuh` -> `agent` ->
-        `id`, requiring each step to appear **exactly once** and `wazuh` and `wazuh.agent` to be
-        objects. Names are compared after JSON unescaping, so `"wazuh"` and `"\u0077azuh"` are the same
-        member. `wazuh.agent.id` is then cross-checked against the authenticated `agent-id` as a
-        **string**, compared byte for byte: `"001"`, `"01"` and `"1"` are three different identities
-        even though they are one number, and only the exact form the token carries is accepted. Send
-        the id exactly as it appears in the token's `sub`. A repeated step of that path, a
-        missing/malformed H line, a non-numeric `wazuh.agent.id`, or any difference from the
-        authenticated id -- including zero padding -- is rejected with `400 Invalid event batch`
-        (`PayloadAgentMismatch`) and the batch is never forwarded.
-        Repetitions elsewhere in the header are not rejected here. Once those checks pass, the
-        module forwards the exact request body to the engine's event ingress over a Unix-domain
-        socket; the engine validates the H/E batch and a bad batch surfaces as the same
-        `400 Invalid event batch`.
+        Before forwarding, the module requires the literal `H ` prefix and limits the following
+        bytes before the first LF (or end of body) to 8 KiB. Failure returns
+        `400 Invalid event batch` (`PayloadAgentMismatch`). No JSON is parsed here. Otherwise the
+        decoded body is forwarded unchanged over a Unix-domain socket with `X-Wazuh-Agent-Id`
+        authored by remoted from the JWT's verified canonical `sub`.
+
+        The engine parses the H line and requires `wazuh`, `wazuh.agent` and `wazuh.agent.id` each
+        to appear exactly once, with object containers and a string id equal byte for byte to the
+        carrier. Names are compared after JSON unescaping; off-path repetitions are not rejected
+        by the identity check. A cache hit reuses validation of the same id and exact header bytes.
+        Send the H-line id exactly as it appears in the token's `sub`; different zero padding
+        is rejected. Invalid H-line JSON and ambiguous or mismatched identity are rejected by the
+        engine before enqueueing. The engine also validates H/E framing. Its 400 is relayed as
+        the same neutral `400 Invalid event batch` response.
       requestBody:
         required: true
         content:
@@ -331,12 +331,12 @@ paths:
             for processing, NOT that they were fully processed.
         "400":
           description: |
-            Either the `protocol-version` header is missing/unsupported, the payload's
-            `wazuh.agent.id` doesn't match the authenticated `agent-id` (or the H line is
-            missing/malformed/non-numeric), `Content-Encoding: zstd` is set but the body isn't a
-            valid/complete zstd frame, or the downstream engine rejected the forwarded H/E batch as
-            invalid. The agent-id mismatch and the engine rejection share the same
-            `Invalid event batch` message by design; the zstd case answers `Malformed compressed body`.
+            Either the `protocol-version` header is missing/unsupported, the body lacks the literal
+            `H ` prefix or its H-line slice exceeds 8 KiB, `Content-Encoding: zstd` is set but the
+            body is not a valid/complete zstd frame, or the engine rejected the forwarded H/E batch
+            (including malformed JSON, missing/repeated/mismatched identity). Local H-line failures
+            and engine rejections share the same `Invalid event batch` message; the zstd case
+            answers `Malformed compressed body`.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/ErrorResponse" }
@@ -346,7 +346,7 @@ paths:
                 unsupportedProtocolVersion:
                   value: { error: "Unsupported protocol-version", code: 400 }
                 invalidEventBatch:
-                  summary: Payload agent-id mismatch, OR the engine rejected the H/E batch
+                  summary: Missing `H ` prefix or oversized H line, OR the engine rejected the H/E batch (including its agent identity)
                   value: { error: "Invalid event batch", code: 400 }
                 malformedContentEncoding:
                   summary: "Content-Encoding: zstd set, but the body isn't a valid zstd frame"

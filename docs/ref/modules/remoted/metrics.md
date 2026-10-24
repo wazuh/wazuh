@@ -266,7 +266,7 @@ a disallowed peer address); the operator keeps the distinction here. All counter
 | `remoted.auth.reject.unusable_key` | The agent's `client.keys` entry does not decode to a usable AES key | diagnostic — re-enroll the agent |
 | `remoted.auth.reject.address_not_allowed` | The peer address does not satisfy the agent's [registered address](https-events-api.md#registered-address-ip-column) (`client.keys` `ip` column) | diagnostic — re-enroll the agent with the address it connects from, or with `any` |
 | `remoted.auth.reject.enrollment_key_unavailable` | Password-mode `/enroll` could not use the enrollment password key: `/etc/wazuh-manager/authd.pass` missing, unreadable, invalid, or not yet synced to this worker — or the HKDF key derivation unavailable manager-wide. **Not** an agent credential fault: no agent exists yet, so re-enrolling fixes nothing | diagnostic — fix/sync `/etc/wazuh-manager/authd.pass` |
-| `remoted.auth.reject.payload_mismatch` | An **authenticated** agent submitted a payload claiming another agent's id — a security signal, not a tuning problem | diagnostic — investigate the agent |
+| `remoted.auth.reject.payload_mismatch` | An **authenticated** `/stateless` batch lacks the literal `H ` prefix or its H-line slice exceeds 8 KiB; identity rejections are counted by the engine in `agent.cache.rejected.identity` | diagnostic — investigate the agent |
 | `remoted.auth.reject.body_too_large` | Body over the authenticated cap, a zstd body that would decode past the decoded cap or did not fit the in-flight budget, or (on `/enroll`) a decoded body over that endpoint's own 16 KiB ceiling | [`remoted.auth_max_body_size`](configuration.md#remotedauth_max_body_size); for compressed bodies also [`remoted.auth_max_decoded_body_size`](configuration.md#remotedauth_max_decoded_body_size) (on `/stateful`, [`remoted.max_inflight_bytes_per_agent`](configuration.md#remotedmax_inflight_bytes_per_agent)) and [`remoted.max_inflight_bytes`](configuration.md#remotedmax_inflight_bytes) |
 | `remoted.auth.reject.agent_busy` | An authenticated agent already held its share: [`remoted.max_requests_per_agent`](configuration.md#remotedmax_requests_per_agent) requests open, or decoded bodies filling [`remoted.max_inflight_bytes_per_agent`](configuration.md#remotedmax_inflight_bytes_per_agent); answered `503`. Never moves for an honest agent with the defaults | diagnostic — investigate the agent; only raise a limit if a legitimate agent is hitting it |
 | `remoted.auth.reject.bad_encoding` | Unsupported or undecodable `Content-Encoding` (zstd) | [`remoted.http_content_encoding_enabled`](configuration.md#remotedhttp_content_encoding_enabled) |
@@ -642,7 +642,7 @@ These rules say what sums to what — read them before comparing families:
   address is not told apart on the wire — it shares the `invalid_signature` class with a bad
   MAC, a malformed token, an identity mismatch and an unusable key, since none of them is fixed
   by re-enrolling — which makes `remoted.auth.reject.address_not_allowed` the only place it can be told apart. An endpoint's own pre-forward
-  rejection (empty body, payload identity) counts in its `responses.*` (the *what*) and, when
+  rejection (empty body, H-line prefix/size) counts in its `responses.*` (the *what*) and, when
   it is an authentication error, in `remoted.auth.reject.*` too (the *why*).
 - `remoted.http.<endpoint>.responses.*` therefore reads as "every response this endpoint
   sent", and `remoted.forwarder.*` as "why the forwarded ones failed".

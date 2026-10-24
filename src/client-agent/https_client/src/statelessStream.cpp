@@ -16,10 +16,10 @@ namespace
 {
     /// Builds the H metadata line that opens every /stateless body (#37732).
     ///
-    /// Always carries wazuh.agent.id -- statelessEndpoint.cpp's
-    /// validatePayloadIdentity() reads exactly that pointer to cross-check the
-    /// payload against the authenticated connection, so this key must never
-    /// move or disappear. When collectHost is set and returns a parseable
+    /// Always carries wazuh.agent.id -- the engine compares that identity with
+    /// X-Wazuh-Agent-Id, which remoted authors from the verified JWT, before
+    /// enqueueing the batch. This key must never move or disappear.
+    /// When collectHost is set and returns a parseable
     /// JSON object (see bridge_on_collect_stateless_host()), its "agent" keys
     /// (name/version/groups/host, already nested the way the manager's
     /// strict_allow_templates wazuh.* mapping requires) are merged into
@@ -312,8 +312,8 @@ void StatelessStream::handleOutcome(OutcomeClass outcome,
         {
             // hc_set_agent_identity() landed while this batch was in flight (the
             // re-enroll path, #38465): the retry was signed by the new agent but
-            // the H line still named the old one, which the manager rejects with
-            // 400 (PayloadAgentMismatch). The events are fine -- keep them and let
+            // the H line still named the old one, which the engine rejects with
+            // 400 (relayed by remoted). The events are fine -- keep them and let
             // the next flush re-stamp the header with the live id.
             LOGFN_DEBUG2(m_logFn,
                          "Keeping a /stateless batch rejected with 4xx: the agent identity "

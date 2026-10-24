@@ -28,6 +28,33 @@ paths:
         Accepts a batch of events using the H/E wire protocol over HTTP via Unix domain socket.
         Socket path: /var/wazuh-manager/queue/sockets/engine-ingest-http.sock
 
+        ## Trusted identity
+
+        Every local producer must send exactly one `X-Wazuh-Agent-Id` header. Its value is the
+        canonical uint32 agent id: ASCII digits, zero-padded only to three characters (`000`
+        through `999`), otherwise no leading zero, and no greater than `4294967295`.
+        Header names are case-insensitive; repeated fields, even identical ones, are rejected.
+        The H line must contain exactly one `wazuh`, `wazuh.agent`, and `wazuh.agent.id` at
+        their respective levels. The final value must be a string equal to the carrier.
+        Names are compared after JSON decoding and by length. Literal `wazuh.agent` and
+        `wazuh.agent.id` members at the root, and `agent.id` under `wazuh`, are rejected regardless
+        of their values: these dotted names resolve to the same indexed identity path. This also
+        applies to escaped names such as `wazuh\u002eagent\u002eid`, and to names with trailing dots
+        along the identity path (`wazuh.`, `agent.`, `id.`, or dotted aliases with trailing dots).
+        Dotted names in unrelated paths and off-path duplicates are accepted.
+        Violations return 400 before any event is enqueued. A cache hit reuses only a previously
+        validated (agent id, exact header bytes) pair.
+
+        The socket is local, mode 0660 for wazuh-manager. There is no peer-credential check or
+        JWT validation here: every process allowed to write to it is a trusted producer and
+        must author the carrier from authenticated or server-side identity. This comparison
+        checks consistency with that assertion; it does not authenticate local writers.
+        Out-of-tree writers must add the carrier; there is no fallback to the H-line id.
+        The separate tester metadata path is not covered by this ingest contract.
+
+        Producers use `application/x-ndjson` or `application/x-wev1`; the engine does not use
+        Content-Type to select the parser. The existing JSON nesting limit still applies.
+
         ## Wire Format
 
         ```
@@ -61,10 +88,21 @@ paths:
 
         See the `examples` section below for more detailed scenarios.
 
+      parameters:
+        - in: header
+          name: X-Wazuh-Agent-Id
+          required: true
+          description: Locally authored canonical agent id, at most 4294967295; must equal the H-line id. Exactly one field is allowed.
+          schema:
+            type: string
+            minLength: 3
+            maxLength: 10
+            pattern: '^(?:[0-9]{3}|[1-9][0-9]{3,9})$'
+          example: '001'
       requestBody:
         required: true
         content:
-          application/x-ndjson:
+          application/x-ndjson: &EnrichedBatch
             schema:
               type: string
               description: |
@@ -95,11 +133,12 @@ paths:
                 value: |-
                   H {"wazuh":{"agent":{"id":"001","name":"srv1"},"cluster":{"name":"wazuh","node":"node01"}}}
                   E v:vulnerability-scanner:{"collector":"packages","module":"vulnerability-scanner","data":{"event":{"created":"2026-05-07T10:00:00Z","type":"upsert"},"vulnerability":{"id":"CVE-2024-1234"}}}
+          application/x-wev1: *EnrichedBatch
       responses:
         "200":
           description: Events accepted. (Empty body)
         "400":
-          description: Invalid payload.
+          description: Invalid carrier, ambiguous or mismatched H-line identity, or malformed H/E payload.
           content:
             application/json:
               schema:
@@ -111,12 +150,22 @@ paths:
                     type: integer
                 required: [error, code]
               examples:
+                invalidCarrier:
+                  value: {"error":"NDJson parser error, Expected exactly one X-Wazuh-Agent-Id header","code":400}
+                noncanonicalCarrier:
+                  value: {"error":"NDJson parser error, X-Wazuh-Agent-Id must be canonical","code":400}
+                mismatchedIdentity:
+                  value: {"error":"NDJson parser error, AgentMetadataCache: header agent ID does not match the trusted agent ID","code":400}
+                dottedIdentityAlias:
+                  value: {"error":"NDJson parser error, AgentMetadataCache: dotted alias of /wazuh/agent/id in header","code":400}
+                ambiguousIdentity:
+                  value: {"error":"NDJson parser error, AgentMetadataCache: missing, repeated or non-string /wazuh/agent/id in header","code":400}
                 missingHeader:
                   value: {"error":"NDJson parser error, Missing newline after header","code":400}
                 invalidHeader:
                   value: {"error":"NDJson parser error, Invalid header format, expected 'H {json}'","code":400}
-                invalidEvent:
-                  value: {"error":"NDJson parser error, Invalid format: event must be at least 5 bytes (\"<byte>:<location>:<message>\")","code":400}
+                invalidEventMarker:
+                  value: {"error":"NDJson parser error, Expected 'E ' at event start","code":400}
         "500":
           description: Internal server error.
           content:

@@ -658,8 +658,9 @@ private:
             /*countAgainstBudget=*/false);
 
         // /stateless: the gateway runs the full bearer-token validation and only calls this handler once
-        // auth succeeds; makeHandler() then cross-checks the payload's claimed wazuh.agent.id against
-        // the authenticated agent id (400 PayloadAgentMismatch on mismatch/malformed header), and on
+        // auth succeeds; makeHandler() then only slices the H line (400 PayloadAgentMismatch when the
+        // `H ` prefix is missing or the slice exceeds its cap; the engine rejects an id other than the
+        // authenticated one, sent as X-Wazuh-Agent-Id, and that 400 is relayed), and on
         // success the forwarder acquires a deferred-work slot (plain 503 when full), forwards the H/E
         // batch to the engine's event ingress over UDS, and replies from the downstream result (202
         // accepted / 400 bad batch / 413 / 503). The payload + byte budget are freed once the send
@@ -689,9 +690,10 @@ private:
         // the wazuh-db socket, deadlines and the refresh interval from it.
 
         // /stateless takes the client's default response deadline (its target leaves the override
-        // at 0), so that is what gets checked against the transport's request cap.
+        // at 0), so that is what gets checked against the transport's request cap. Only the
+        // deadline of this target is read, so it is built without an agent id.
         warnIfDownstreamBudgetExceedsRequestTimeout(
-            "/stateless", downstreamConfig, config, remoted::endpoints::stateless::target(eventsSocketPath));
+            "/stateless", downstreamConfig, config, remoted::endpoints::stateless::target(eventsSocketPath, {}));
 
         // /stats and /config: same authenticated pipeline as /stateless, but forwarded to modulesd's
         // inventory sync server instead of the engine.

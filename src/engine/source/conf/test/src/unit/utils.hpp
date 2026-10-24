@@ -2,8 +2,10 @@
 #ifndef _CONFIG_TEST_UTILS_HPP
 #define _CONFIG_TEST_UTILS_HPP
 
+#include <optional>
 #include <stdexcept>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <unistd.h>
@@ -40,5 +42,37 @@ inline void unsetEnv(const std::string& env)
         FAIL() << "Failed to unset environment variable: " << env;
     }
 }
+
+// Restore the caller's environment even when a test assertion exits early.
+class ScopedEnv
+{
+public:
+    explicit ScopedEnv(std::string name)
+        : m_name(std::move(name))
+    {
+        if (const auto value = std::getenv(m_name.c_str()))
+        {
+            m_original = value;
+        }
+        unsetenv(m_name.c_str());
+    }
+    ~ScopedEnv()
+    {
+        if (m_original)
+        {
+            setenv(m_name.c_str(), m_original->c_str(), 1);
+        }
+        else
+        {
+            unsetenv(m_name.c_str());
+        }
+    }
+    ScopedEnv(const ScopedEnv&) = delete;
+    ScopedEnv& operator=(const ScopedEnv&) = delete;
+
+private:
+    std::string m_name;
+    std::optional<std::string> m_original;
+};
 
 #endif // _CONFIG_TEST_UTILS_HPP

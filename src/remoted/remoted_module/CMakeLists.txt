@@ -26,7 +26,7 @@ target_include_directories(
           ${SRC_FOLDER}/external/nlohmann) # nlohmann/json.hpp
 
 # ext_restinio pulls in ssl/crypto transitively (the shared jwt/ headers' EVP_MAC/EVP_KDF), so no explicit OpenSSL link
-# is needed here. ext_rapidjson: header-only, used to parse the /stateless payload's H line.
+# is needed here. ext_rapidjson: header-only, used to parse /download request bodies.
 # ext_zstd: zstdDecoder.cpp, for Content-Encoding: zstd request bodies.
 # ext_jwt_cpp: header-only JWT (HS256) library behind the agent authentication profile.
 # wazuh_metrics: the shared metric registry (shared_modules/metrics) behind control/metrics.hpp

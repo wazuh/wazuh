@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/wazuh/wazuh/tools/manager_benchmark/tool_simulator/internal/control"
+	"github.com/wazuh/wazuh/tools/manager_benchmark/tool_simulator/internal/engine"
 	"github.com/wazuh/wazuh/tools/manager_benchmark/tool_simulator/internal/scenario"
 	"github.com/wazuh/wazuh/tools/manager_benchmark/tool_simulator/internal/wire"
 )
@@ -26,6 +27,18 @@ type agent struct {
 	// agent names it enrolls (`<name>-tk-<n>`).
 	enroll    *wire.Client
 	enrollSeq atomic.Uint64
+
+	// engineBatches counts the engine batches this agent has sent, across
+	// lanes and passes; it drives a header's change_every.
+	engineBatches atomic.Uint64
+	// headerInfo is what this agent reports about itself in an "agent"
+	// profile H line, fixed for the run (agentHeaderInfo).
+	headerInfo engine.AgentInfo
+
+	// streams holds each engine lane's own state (start jitter, and the buffer
+	// of an "agent"-batching step), created on the lane's first pass.
+	streams   map[string]*engineStream
+	streamsMu sync.Mutex
 
 	// vdFeedOffset is the last vd_feed_offset a notify reported (agent mode
 	// only; stays 0 in uds mode, which has no /control to learn it from).

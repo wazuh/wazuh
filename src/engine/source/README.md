@@ -101,6 +101,7 @@ Used by virtually every other module.
 
 - [httpsrv/](httpsrv/README.md) — UDS HTTP server (cpp-httplib). Two instances are created in `main`: the management API and the optional remote-event-receiver.
 - [api/](api/README.md) — Per-domain handler factories: `router`, `tester`, `cmcrud`, `geo`, `ioccrud`, `dumper`, `rawevtindexer`, `metrics`, `event`. They translate JSON↔protobuf and delegate to the corresponding domain interface.
+- [agentcache/](agentcache/README.md) — Bounded, identity-validated cache of parsed agent `H`-line metadata, keyed by the trusted `X-Wazuh-Agent-Id` the `event` handler requires.
 
 ### Entry point
 

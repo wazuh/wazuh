@@ -58,6 +58,9 @@ list(APPEND remoted_flags "-Wl,--wrap,_merror -Wl,--wrap,_mwarn -Wl,--wrap,accep
                             -Wl,--wrap,rem_msgpush -Wl,--wrap,rem_setCounter -Wl,--wrap,remove \
                             -Wl,--wrap,save_controlmsg -Wl,--wrap,validate_control_msg -Wl,--wrap,sleep -Wl,--wrap,stat -Wl,--wrap,time \
                             -Wl,--wrap,agent_meta_from_agent_info -Wl,--wrap,agent_meta_upsert_locked \
+                            -Wl,--wrap,agent_meta_snapshot_str \
+                            -Wl,--wrap,uhttp_client_reset_headers -Wl,--wrap,uhttp_client_add_header \
+                            -Wl,--wrap,uhttp_post \
                             -Wl,--wrap,batch_queue_enqueue_ex \
                             -Wl,--wrap,w_mutex_lock -Wl,--wrap,w_mutex_unlock -Wl,--wrap,getDefine_Int -Wl,--wrap,getDefine_Int_default \
                             -Wl,--wrap,wnotify_add -Wl,--wrap,SendMSG -Wl,--wrap,rem_inc_recv_events \

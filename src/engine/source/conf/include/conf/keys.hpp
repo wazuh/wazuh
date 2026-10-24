@@ -60,6 +60,8 @@ constexpr std::string_view EVENT_QUEUE_SIZE = "analysisd.event_queue_size";
 constexpr std::string_view EVENT_QUEUE_EPS = "analysisd.event_queue_eps";
 constexpr std::string_view EVENT_QUEUE_MAX_BYTES = "analysisd.event_queue_max_bytes";
 
+constexpr std::string_view AGENT_METADATA_CACHE_MAX_ENTRIES = "analysisd.agent_metadata_cache_max_entries";
+constexpr std::string_view AGENT_METADATA_CACHE_MAX_BYTES = "analysisd.agent_metadata_cache_max_bytes";
 constexpr std::string_view AGENT_METADATA_CACHE_TTL = "analysisd.agent_metadata_cache_ttl";
 constexpr std::string_view AGENT_METADATA_CACHE_CLEAN_INTERVAL = "analysisd.agent_metadata_cache_clean_interval";
 

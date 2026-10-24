@@ -16,6 +16,24 @@
 The engine is responsible for transforming raw data into standardized schema documents, enriching it with threat
 intelligence, and forwarding it to designated destinations (`wazuh-indexer`).
 
+## Event ingestion identity
+
+`POST /events/enriched` on `engine-ingest-http.sock` requires exactly one canonical
+`X-Wazuh-Agent-Id`, supplied by the local producer. The H-line `/wazuh/agent/id` must be a string
+with that value, and every member along its path must occur exactly once. Literal `wazuh.agent`
+and `wazuh.agent.id` members at the root, and `agent.id` under `wazuh`, are rejected after name
+decoding, regardless of their values: these dotted names resolve to the same indexed identity path.
+Names with trailing dots along this path (including `wazuh.`, `agent.`, `id.` and dotted aliases
+with trailing dots) are rejected as well. Dotted names in unrelated paths remain accepted.
+Violations return 400 before enqueueing. The cache validates once per distinct (id, exact header bytes) pair.
+
+The socket is `0660 wazuh-manager`; the engine performs no peer-credential or JWT verification.
+Processes allowed to write to it are trusted to author the carrier from authenticated or server-side
+identity. External local writers must add the header; the H line is never an identity fallback.
+The agent-facing HTTPS protocol is unchanged: remoted verifies the JWT and writes the carrier.
+The tester's separate `agent_metadata` path does not enforce this ingestion contract.
+See the [events specification](spec-events.yaml) for canonical ids, error cases and both content types.
+
 ## Data flow
 
 Events are received from `wazuh-manager-remoted`, which is responsible for receiving events from the agents.
@@ -2454,13 +2472,53 @@ Total number of events received by the server.
 
 #### Agent cache metrics
 
-These metrics track the agent metadata cache, which deduplicates the per-batch agent header JSON so it is parsed only once per agent instead of once per batch.
+These metrics track the agent metadata cache, which deduplicates the per-batch agent header JSON and reuses previously validated (trusted id, exact header bytes) pairs.
 
 ##### `agent.cache.entries`
 
 Current number of agent metadata entries held in the cache (one per agent).
 
 **Used for:** observing cache footprint and how many distinct agents are active.
+
+---
+
+##### `agent.cache.bytes`
+
+Pull metric: accounted bytes retained by the cache. This includes raw header and ID lengths,
+allocated JSON pool capacity and a fixed entry overhead. It excludes allocator rounding, spare
+string capacity, map buckets, pool bookkeeping, concurrent parsing, and documents kept alive by
+queued events or callers after removal. It is not an RSS or process-memory bound.
+
+**Used for:** comparing retention against `agent.cache.max_bytes` and tuning the byte limit.
+
+---
+
+##### `agent.cache.max_entries` and `agent.cache.max_bytes`
+
+Pull metrics reporting the configured entry and accounted-byte limits. Each `0` independently
+means unlimited. See [Agent metadata cache settings](#agent-metadata-cache).
+
+---
+
+##### `agent.cache.bypass.max_entries` and `agent.cache.bypass.max_bytes`
+
+Counters of valid header admissions that did not fit the respective limit. Both increment when
+both constraints fail. A replacement that exceeds the byte limit increments the byte counter and
+releases the agent's old entry. No unrelated entry is evicted, and a bypass is not a TTL eviction.
+Invalid JSON and identity failures do not increment these counters.
+
+The parsed header is still returned for normal batch processing; capacity does not reject the
+request. Continued bypasses mean repeated parsing and validation for headers that cannot be
+retained, trading CPU savings for bounded retention. Increase the corresponding limit when that
+tradeoff warrants more retained memory.
+
+While bypasses happen, the engine also logs at most one warning every 90 seconds, with the number of
+headers parsed without being retained since the previous report, the occupancy against both limits
+(`0` limits show as `unlimited`) and the setting that refused them:
+
+```text
+WARNING: [AgentMetadataCache] Cache full: 1532 agent header(s) parsed without being retained since the previous report (entries 50000/50000, accounted bytes 127550000/134217728). Each such batch parses and validates its header again. Consider raising 'analysisd.agent_metadata_cache_max_entries'.
+```
 
 ---
 
@@ -2493,6 +2551,19 @@ Total number of cache entries replaced because the agent's header changed.
 Total number of entries removed by the periodic TTL cleanup.
 
 **Used for:** tracking cache turnover and TTL/interval tuning.
+
+---
+
+##### `agent.cache.rejected.identity`
+
+Number of HTTP batches rejected for a missing, repeated or noncanonical identity carrier, or a
+missing, ambiguous, non-string or mismatched H-line identity. Each rejected batch increments once,
+including when the cache is warm. Malformed JSON, other framing errors and hook failures are not
+identity rejections. Capacity is unrelated to this counter.
+
+Warnings are emitted immediately and then at most once per 90 seconds across the ingress handler's
+threads; suppression does not suppress the counter. Query it with `POST /metrics/dump` on the API
+socket. A successful batch leaves this counter unchanged.
 
 ---
 
@@ -2777,8 +2848,8 @@ output:
   the default apply.
 - The shipped file has no `analysisd.*` lines — every setting starts at its default until an operator adds one.
 - Boolean settings only accept `true`/`false` (case-insensitive). A value in the file that does not match the
-  setting's type (for example `analysisd.dumper_enabled=yes` or `analysisd.event_queue_size=10k`) stops the engine at
-  start-up; an invalid environment variable is logged as a warning and the file value or the default is used.
+  setting's type (for example `analysisd.dumper_enabled=yes`, `analysisd.event_queue_size=10k`, or a negative value
+  for an unsigned setting such as `analysisd.agent_metadata_cache_max_bytes=-1`) stops the engine at start-up; an invalid environment variable is logged as a warning and the file value or the default is used.
 - `Mode` tells where a setting is read: `both`, `manager` (only when the engine runs inside `wazuh-manager`) or
   `standalone` (only in standalone mode, so only its environment variable can set it).
 - `analysisd.indexer_username`/`analysisd.indexer_password` no longer exist — indexer credentials are stored in the
@@ -2822,10 +2893,37 @@ reads); they must remain owned by `wazuh-manager` (see [Process Privileges](conf
 
 ### Agent metadata cache
 
+The cache keeps one validated header per trusted agent ID and reuses it only when its bytes are
+identical. These internal options resolve environment → internal-options file → default. Malformed
+unsigned environment values (including negatives) log a warning and fall back to the next source;
+resolved values outside the supported ranges fail start-up when event processing is enabled.
+
 | Setting | Env var | Description | Default | Mode |
 |:--|:--|:--|:--:|:--:|
-| `analysisd.agent_metadata_cache_ttl` | `WAZUH_AGENT_METADATA_CACHE_TTL` | Time-to-live in seconds for cached agent metadata. | `300` | both |
-| `analysisd.agent_metadata_cache_clean_interval` | `WAZUH_AGENT_METADATA_CACHE_CLEAN_INTERVAL` | Interval in seconds between best-effort evictions of stale agent metadata cache entries. | `60` | both |
+| `analysisd.agent_metadata_cache_max_entries` | `WAZUH_AGENT_METADATA_CACHE_MAX_ENTRIES` | Maximum retained entries. `0` disables this constraint; range `0..4294967296` on 64-bit systems, limited to `SIZE_MAX` on smaller platforms. | `50000` | both |
+| `analysisd.agent_metadata_cache_max_bytes` | `WAZUH_AGENT_METADATA_CACHE_MAX_BYTES` | Maximum accounted retained bytes. `0` disables this constraint; range `0..1099511627776` on 64-bit systems, limited to `SIZE_MAX` on smaller platforms. | `134217728` (128 MiB) | both |
+| `analysisd.agent_metadata_cache_ttl` | `WAZUH_AGENT_METADATA_CACHE_TTL` | Time-to-live in seconds since the last matching lookup. Range `1..86400`; outside it, start-up fails when event processing is enabled. | `300` | both |
+| `analysisd.agent_metadata_cache_clean_interval` | `WAZUH_AGENT_METADATA_CACHE_CLEAN_INTERVAL` | Interval in seconds between best-effort TTL sweeps. Range `1..86400`; `0` and larger values stop start-up when event processing is enabled. | `60` | both |
+
+Admission checks both enabled limits without scanning or evicting other agents. For a changed
+header, the check subtracts that agent's old cost before adding the new one. If it still does not
+fit, the old entry is removed and the new parsed header is used without retention. Stale entries
+are removed only by the periodic TTL sweep, so an expired entry can still occupy capacity until
+that sweep runs. Setting both limits to `0` restores unlimited retention.
+
+A valid header is admitted before the batch's events are validated. Header-only batches and
+batches whose event bodies later fail with HTTP 400 can therefore populate the cache. Limits
+bound retained state only: queued events and callers can hold shared metadata beyond removal,
+and router queue-byte accounting counts raw events separately from these headers.
+
+The defaults were sized from measured real-agent headers (about 270–285 bytes): each entry accounts
+about 2,550 bytes, so 50,000 entries account about 128 MB, 95% of the byte limit. The process's
+memory grows by about 1.09 times the accounted bytes (allocator rounding and index buckets are not
+accounted), so a full cache adds about 140 MB to analysisd with real headers, and never more than
+about 148 MB with the default byte limit, whatever the header size. Larger headers reach the byte
+limit sooner; this is a sizing rationale, not a guarantee of capacity for every 50,000-agent
+deployment. Use the
+[cache metrics](#agent-cache-metrics) to observe usage and bypasses.
 
 ### Orchestrator
 
