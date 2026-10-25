@@ -9,7 +9,7 @@
 <group name="amazon_security_lake,">
 
   <rule id="99000" level="0">
-    <decoded_as>json</decoded_as>
+    <decoded_as>json-security-lake</decoded_as>
     <field name="activity_id">\.+</field>
     <field name="category_uid">\.+</field>
     <description>Amazon Security Lake rules grouped.</description>
@@ -48,7 +48,7 @@
 
   <rule id="99020" level="3">
     <if_sid>99001</if_sid>
-    <field name="api.response.error" negate="yes">null</field>
+    <field name="api.response.error" negate="yes">^null$</field>
     <description>Amazon Security Lake - CloudTrail - Failed API Operation "$(api.operation)" with error "$(api.response.error)" from $(src_endpoint.ip) by user $(identity.user.name).</description>
     <mitre>
       <id>T1098.003</id>
@@ -68,27 +68,24 @@
     <group>asl_cloudtrail,gdpr_IV_32.2,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AC.7,nist_800_53_AU.14,nist_800_53_AU.6,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_10.6.1,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
+  <!--
+  99020 above already consumed every event with a real api.response.error, so none of the
+  following four siblings need to test that field at all: reaching them already means the
+  call succeeded, whether api.response.error arrived as the literal text "null" or, once the
+  null-OCSF-field fix lands, is simply absent from the event (see #40419). For the same
+  reason, identity.user.name and src_endpoint.ip are only ever checked for a *present, real*
+  value, never for "null" or absence: they are tried from most to least specific, and
+  analysisd stops at the first sibling of the same if_sid/level that matches, so a field
+  left unchecked here is guaranteed to be null/absent by elimination rather than by a check
+  that would break the moment it stops arriving as the text "null".
+  -->
+
   <rule id="99022" level="3">
     <if_sid>99001</if_sid>
-    <field name="api.response.error">null</field>
     <field name="api.operation">\.*</field>
-    <field name="identity.user.name" negate="yes">null</field>
-    <field name="src_endpoint.ip" negate="yes">null</field>
+    <field name="identity.user.name" negate="yes">^null$</field>
+    <field name="src_endpoint.ip" negate="yes">^null$</field>
     <description>Amazon Security Lake - CloudTrail - Successful API Operation "$(api.operation)" by user $(identity.user.name) from $(src_endpoint.ip) ip.</description>
-    <mitre>
-      <id>T1098.003</id>
-      <id>T1078.004</id>
-    </mitre>
-    <group>asl_api_operation,asl_cloudtrail,gdpr_IV_32.2,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AC.7,nist_800_53_AU.14,nist_800_53_AU.6,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_10.6.1,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
-  </rule>
-
-  <rule id="99023" level="3">
-    <if_sid>99001</if_sid>
-    <field name="api.response.error">null</field>
-    <field name="api.operation">\.*</field>
-    <field name="identity.user.name">null</field>
-    <field name="src_endpoint.ip">null</field>
-    <description>Amazon Security Lake - CloudTrail - Successful API Operation "$(api.operation)".</description>
     <mitre>
       <id>T1098.003</id>
       <id>T1078.004</id>
@@ -98,10 +95,8 @@
 
   <rule id="99024" level="3">
     <if_sid>99001</if_sid>
-    <field name="api.response.error">null</field>
     <field name="api.operation">\.*</field>
-    <field name="identity.user.name">null</field>
-    <field name="src_endpoint.ip" negate="yes">null</field>
+    <field name="src_endpoint.ip" negate="yes">^null$</field>
     <description>Amazon Security Lake - CloudTrail - Successful API Operation "$(api.operation)" from $(src_endpoint.ip) ip.</description>
     <mitre>
       <id>T1098.003</id>
@@ -112,11 +107,20 @@
 
   <rule id="99025" level="3">
     <if_sid>99001</if_sid>
-    <field name="api.response.error">null</field>
     <field name="api.operation">\.*</field>
-    <field name="identity.user.name" negate="yes">null</field>
-    <field name="src_endpoint.ip">null</field>
+    <field name="identity.user.name" negate="yes">^null$</field>
     <description>Amazon Security Lake - CloudTrail - Successful API Operation "$(api.operation)" by user $(identity.user.name).</description>
+    <mitre>
+      <id>T1098.003</id>
+      <id>T1078.004</id>
+    </mitre>
+    <group>asl_api_operation,asl_cloudtrail,gdpr_IV_32.2,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AC.7,nist_800_53_AU.14,nist_800_53_AU.6,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_10.6.1,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
+  </rule>
+
+  <rule id="99023" level="3">
+    <if_sid>99001</if_sid>
+    <field name="api.operation">\.*</field>
+    <description>Amazon Security Lake - CloudTrail - Successful API Operation "$(api.operation)".</description>
     <mitre>
       <id>T1098.003</id>
       <id>T1078.004</id>
