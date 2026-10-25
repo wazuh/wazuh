@@ -31,6 +31,32 @@ def get_commands() -> list:
     return commands
 
 
+def get_command_names(command: str) -> list:
+    """Get the names that ar.conf gives to the active responses that use a command.
+
+    ar.conf names each active response as the command name followed by its timeout, so a command used by several
+    active responses with different timeouts has several names.
+
+    Parameters
+    ----------
+    command : str
+        Command name as defined in the configuration, without the timeout.
+
+    Returns
+    -------
+    list
+        Sorted list with the names of ar.conf for the command.
+    """
+    names = set()
+    with open(common.AR_CONF) as f:
+        for line in f:
+            fields = line.split(" - ")
+            if fields[0] == command + fields[-1].strip():
+                names.add(fields[0])
+
+    return sorted(names)
+
+
 def shell_escape(command: str) -> str:
     """Escape some characters in the command before sending it.
 
@@ -116,14 +142,20 @@ class ARMessageBuilder:
 
         raise WazuhError(1000, "No suitable message builder found for agent version: {}".format(agent_version))
 
-    def validate_command(self, command: str):
-        """Validate the command for Active Response.
+    def validate_command(self, command: str) -> str:
+        """Validate the command for Active Response and resolve the name to send to the agent.
 
         Parameters
         ----------
         command : str
-            Command running in the agent. If this value starts with !, then it refers to a script name instead of a command
-            name.
+            Command running in the agent. It can be the name that ar.conf gives to the active response (command name
+            followed by its timeout), the name of a command defined in the configuration if it is used by a single
+            active response, or a script name preceded by !.
+
+        Returns
+        -------
+        str
+            Command name that the agent resolves.
 
         Raises
         ------
@@ -131,14 +163,22 @@ class ARMessageBuilder:
             If the command is not specified.
         WazuhError(1652)
             If the command is not custom and the command is not one of the available commands.
+        WazuhError(1653)
+            If the command is used by several active responses with different timeouts.
         """
         if not command:
             raise WazuhError(1650)
 
-        if not command.startswith('!'):
-            commands = get_commands()
-            if command not in commands:
-                raise WazuhError(1652)
+        if command.startswith('!') or command in get_commands():
+            return command
+
+        names = get_command_names(command)
+        if not names:
+            raise WazuhError(1652)
+        if len(names) > 1:
+            raise WazuhError(1653, extra_remediation=', '.join(names))
+
+        return names[0]
 
 
 class ARStrMessage(ARMessageBuilder):
@@ -177,13 +217,15 @@ class ARStrMessage(ARMessageBuilder):
             If the command is not specified.
         WazuhError(1652)
             If the command is not custom and the command is not one of the available commands.
+        WazuhError(1653)
+            If the command is used by several active responses with different timeouts.
 
         Returns
         -------
         str
             Message that will be sent to the socket.
         """
-        self.validate_command(command)
+        command = self.validate_command(command)
 
         msg_queue = command
         msg_queue += " " + " ".join(shell_escape(str(x)) for x in arguments) if arguments else " - -"
@@ -227,13 +269,15 @@ class ARJsonMessage(ARMessageBuilder):
             If the command is not specified.
         WazuhError(1652)
             If the command is not custom and the command is not one of the available commands.
+        WazuhError(1653)
+            If the command is used by several active responses with different timeouts.
 
         Returns
         -------
         str
             Message that will be sent to the socket.
         """
-        self.validate_command(command)
+        command = self.validate_command(command)
 
         cluster_enabled = not read_cluster_config()['disabled']
         node_name = get_node().get('node') if cluster_enabled else None

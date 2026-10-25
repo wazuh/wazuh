@@ -27,6 +27,7 @@ All notable changes to this project will be documented in this file.
 - Fixed the Azure Log Analytics integration never collecting the records ingested after a run with a `TimeGenerated` older than the newest record processed. ([#40538](https://github.com/wazuh/wazuh/pull/40538))
 - Fixed the Azure Log Analytics integration skipping new records for up to a day after reading a record with a `TimeGenerated` ahead of the current time. ([#40538](https://github.com/wazuh/wazuh/pull/40538))
 - Fixed the `ms-graph` configuration reported by the Server API leaving out the name of each resource and all its relationships but the last. `api_auth` is now an array with one item per block, and each resource lists its `name` and a `relationships` array. ([#40580](https://github.com/wazuh/wazuh/pull/40580))
+- Fixed `PUT /active-response` rejecting with error 1652 the name of a command defined in the configuration. The name is now accepted when a single active response uses the command, and error 1653 lists the accepted names when several do with different timeouts. ([#40570](https://github.com/wazuh/wazuh/issues/40570))
 
 ### Agent
 
