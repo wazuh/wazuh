@@ -15,6 +15,8 @@
 
 #include "vulnerabilityScannerSync.hpp"
 
+#include <algorithm>
+#include <atomic>
 #include <chrono>
 #include <memory>
 #include <string>
@@ -43,23 +45,37 @@ namespace invsync::vd
         {
         }
 
-        bool pauseAgent(const std::string& agentId, const std::string& /*reason*/) override
+        bool
+        pauseAgent(const std::string& agentId, const std::string& /*reason*/, const std::atomic<bool>* cancel) override
         {
             m_registry->pause(agentId);
             // Fenced means QUIESCED: whatever was already being applied must finish first. The
             // bound keeps a scan-length wait from stalling the whole fleet pass; on timeout the
-            // fence comes off and the caller skips this agent.
+            // fence comes off and the caller skips this agent. The wait goes in short slices so a
+            // scanner that is stopping (cancel raised) is not held for the whole bound (I177b):
+            // nothing notifies the registry's condition variable when cancel is raised.
             //
             // The caller's OWN scan-lane hold is not "in flight": an on-demand rescan reaches this
             // fence from the very lane worker that holds the agent, and that hold already keeps
             // every pipeline session of the agent out. Counting it made every on-demand scan wait
             // the whole bound for itself. Another thread's hold is still waited for.
-            if (!m_registry->waitUntilIdle(agentId, m_pauseQuiesceTimeout, /*ignoreCallersScanHold=*/true))
+            const auto deadline = std::chrono::steady_clock::now() + m_pauseQuiesceTimeout;
+            while (cancel == nullptr || !cancel->load(std::memory_order_acquire))
             {
-                m_registry->resume(agentId);
-                return false;
+                const auto remaining =
+                    std::chrono::ceil<std::chrono::milliseconds>(deadline - std::chrono::steady_clock::now());
+                const auto slice = std::clamp(remaining, std::chrono::milliseconds::zero(), QUIESCE_SLICE);
+                if (m_registry->waitUntilIdle(agentId, slice, /*ignoreCallersScanHold=*/true))
+                {
+                    return true;
+                }
+                if (std::chrono::steady_clock::now() >= deadline)
+                {
+                    break;
+                }
             }
-            return true;
+            m_registry->resume(agentId);
+            return false;
         }
 
         void resumeAgent(const std::string& agentId) override
@@ -68,6 +84,9 @@ namespace invsync::vd
         }
 
     private:
+        /// Longest single wait between two looks at the caller's cancel flag (I177b).
+        static constexpr std::chrono::milliseconds QUIESCE_SLICE {50};
+
         std::shared_ptr<AgentInFlightRegistry> m_registry;
         std::chrono::seconds m_pauseQuiesceTimeout;
     };
