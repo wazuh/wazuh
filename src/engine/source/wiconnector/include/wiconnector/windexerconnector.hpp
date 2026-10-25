@@ -2,6 +2,7 @@
 #ifndef _WINDEXER_CONNECTOR_HPP
 #define _WINDEXER_CONNECTOR_HPP
 
+#include <chrono>
 #include <functional>
 #include <memory>
 #include <optional>
@@ -12,6 +13,7 @@
 #include <unordered_map>
 #include <vector>
 
+#include <indexer_client/client.hpp>
 #include <wiconnector/iindexerConnectorAsync.hpp>
 #include <wiconnector/iwindexerconnector.hpp>
 
@@ -60,6 +62,9 @@ class WIndexerConnector : public IWIndexerConnector
 
 private:
     std::unique_ptr<IIndexerConnectorAsync> m_indexerConnectorAsync;
+    /// The engine's Client for the reads (E10a); null with the v1-only constructors.
+    std::shared_ptr<indexer_client::IClient> m_reader;
+    std::chrono::milliseconds m_requestTimeout {60000};
     std::shared_mutex m_mutex;
 
 public:
@@ -95,6 +100,29 @@ public:
      * @throws std::runtime_error if @p connector is null
      */
     explicit WIndexerConnector(std::shared_ptr<IndexerConnectorAsync> connector);
+
+    /**
+     * @brief Writes through the v1 connector, reads through the engine's indexer_client Client (E10a, I184).
+     *
+     * getEngineRemoteConfig() searches `.wazuh-settings` with the Client's query interface: one attempt, a page
+     * deadline of the runtime's request timeout, and an immediate failure when every node was probed and none is
+     * usable (I190, I190b); ClientClosed and every other failure throw, as the v1 did. @ref shutdown releases both.
+     *
+     * @param connector The shared v1 connector for index(). Must not be null.
+     * @param reader The engine's Client. Must not be null.
+     * @param requestTimeout The runtime's `request_timeout_ms` (RuntimeConfig::requestTimeout).
+     * @throws std::runtime_error if @p connector or @p reader is null
+     */
+    WIndexerConnector(std::shared_ptr<IndexerConnectorAsync> connector,
+                      std::shared_ptr<indexer_client::IClient> reader,
+                      std::chrono::milliseconds requestTimeout);
+
+    /**
+     * @brief Test-only constructor: a custom IIndexerConnectorAsync for the writes and a Client for the reads.
+     */
+    WIndexerConnector(std::unique_ptr<IIndexerConnectorAsync> async,
+                      std::shared_ptr<indexer_client::IClient> reader,
+                      std::chrono::milliseconds requestTimeout);
 
     /**
      * @brief Test-only constructor: inject a custom IIndexerConnectorAsync (e.g. a gMock).

@@ -487,6 +487,102 @@ TEST(ContentIndexerClientAdapter, FirstCallWaitsForFirstProbe)
     adapter->closePit(pit);
 }
 
+TEST(ContentIndexerClientAdapter, FailFastWithoutNode)
+{
+    RealIndexerOptions options;
+    options.health = indexer_client::testing::healthStatusRule(503); // the node is Down for good
+    RealIndexer env {options};
+    env.startRuntime();
+    ASSERT_TRUE(env.makeClient(false)) << env.startError;
+
+    ContentIndexerOptions adapterOptions;
+    adapterOptions.probeDeadline = 5s;
+    adapterOptions.callDeadline = 10s;
+    adapterOptions.pageDeadline = 10s;
+    adapterOptions.failFastWithoutNode = true;
+    auto adapter = env.adapter(adapterOptions);
+
+    // The first probe round must be over: every node Down with its reason (I190b).
+    ASSERT_TRUE(waitUntil(
+        [&env]
+        {
+            const auto health = env.client->health();
+            return !health.nodes.empty() && !health.nodes.front().reason.empty();
+        }));
+    ASSERT_FALSE(env.client->health().anyUsable());
+    const auto reason = env.client->health().nodes.front().reason;
+
+    auto started = std::chrono::steady_clock::now();
+    try
+    {
+        adapter->openPit({"idx"}, "5m", false);
+        FAIL() << "a call with every node probed and down must fail";
+    }
+    catch (const std::runtime_error& e)
+    {
+        EXPECT_NE(std::string {e.what()}.find(reason), std::string::npos) << e.what();
+    }
+    EXPECT_LT(std::chrono::steady_clock::now() - started, 100ms);
+
+    started = std::chrono::steady_clock::now();
+    EXPECT_THROW(adapter->searchIndex("consumers", 1, matchAll(), std::nullopt), std::runtime_error);
+    EXPECT_LT(std::chrono::steady_clock::now() - started, 100ms);
+    EXPECT_EQ(env.nonProbeRequests(), 0U) << "nothing is sent while no node is usable";
+}
+
+TEST(ContentIndexerClientAdapter, WaitsBeforeFirstProbe)
+{
+    RealIndexerOptions options;
+    options.health.latency = 600ms; // every node is Down, without a reason, until the first probe answers
+    RealIndexer env {options};
+    env.startRuntime();
+    ASSERT_TRUE(env.makeClient(false)) << env.startError;
+
+    ContentIndexerOptions adapterOptions;
+    adapterOptions.probeDeadline = 5s;
+    adapterOptions.callDeadline = 10s;
+    adapterOptions.failFastWithoutNode = true;
+    auto adapter = env.adapter(adapterOptions);
+
+    ASSERT_FALSE(env.client->health().anyUsable()) << "the call must start before the first probe answered";
+    ContentPit pit;
+    ASSERT_NO_THROW(pit = adapter->openPit({"idx"}, "5m", false)) << "before the first probe the I158b wait applies";
+    EXPECT_TRUE(env.client->health().anyUsable());
+    adapter->closePit(pit);
+}
+
+TEST(ContentIndexerOptionsFor, ScalesAboveTheHostTimeouts)
+{
+    for (const auto timeout : {std::chrono::milliseconds {60000}, std::chrono::milliseconds {3600000}})
+    {
+        const auto options = content_manager::contentIndexerOptionsFor(timeout, timeout);
+        EXPECT_GT(options.callDeadline, timeout);
+        EXPECT_GT(options.pageDeadline, timeout);
+        EXPECT_GT(options.probeDeadline, timeout);
+    }
+    const auto big = content_manager::contentIndexerOptionsFor(3600s, 3600s);
+    EXPECT_EQ(big.callDeadline, 7200s);
+    EXPECT_FALSE(big.failFastWithoutNode) << "the host opts in";
+}
+
+TEST(ContentIndexerOptionsFor, NeverBelowTheDefaults)
+{
+    const ContentIndexerOptions defaults;
+    for (const auto timeout : {std::chrono::milliseconds {0},
+                               std::chrono::milliseconds {1},
+                               std::chrono::milliseconds {100},
+                               std::chrono::milliseconds {5000}})
+    {
+        const auto options = content_manager::contentIndexerOptionsFor(timeout, timeout);
+        EXPECT_GE(options.callDeadline, defaults.callDeadline) << timeout.count();
+        EXPECT_GE(options.pageDeadline, defaults.pageDeadline) << timeout.count();
+        EXPECT_GE(options.probeDeadline, defaults.probeDeadline) << timeout.count();
+    }
+    const auto options = content_manager::contentIndexerOptionsFor(60s, 10s);
+    EXPECT_GE(options.callDeadline, 120s);
+    EXPECT_EQ(options.probeDeadline, 20s);
+}
+
 TEST(ContentIndexerClientAdapter, RequestCloseWakesSearch)
 {
     RealIndexer env;

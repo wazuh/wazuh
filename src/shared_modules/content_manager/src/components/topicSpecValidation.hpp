@@ -14,6 +14,7 @@
 #define _TOPIC_SPEC_VALIDATION_HPP
 
 #include "contentTopicSpec.hpp"
+#include "keepAlive.hpp"
 #include <stdexcept>
 #include <string>
 #include <variant>
@@ -81,6 +82,14 @@ inline void validateTopicSpec(const content_manager::TopicSpec& spec)
     if (spec.source.pitKeepAlive.empty())
     {
         fail("source.pitKeepAlive: must not be empty");
+    }
+    try
+    {
+        content_manager::detail::parseKeepAlive(spec.source.pitKeepAlive);
+    }
+    catch (const std::invalid_argument& e)
+    {
+        fail("source.pitKeepAlive: " + std::string {e.what()});
     }
 
     if (spec.readiness.has_value())

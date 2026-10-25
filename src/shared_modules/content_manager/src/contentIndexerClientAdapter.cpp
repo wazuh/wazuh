@@ -10,6 +10,7 @@
  * SPDX-License-Identifier: GPL-2.0-only OR AGPL-3.0-or-later
  */
 
+#include "components/keepAlive.hpp"
 #include "contentIndexerAdapters.hpp"
 #include "indexer_client/client.hpp"
 #include "indexer_client/types.hpp"
@@ -30,81 +31,6 @@ namespace
 {
     using indexer_client::Cause;
     using indexer_client::Duration;
-
-    /// `<n><unit>` with the units OpenSearch accepts, in milliseconds (I159, I159b). Throws std::invalid_argument
-    /// for anything else, and for a lease under 1 ms (the library refuses a zero keep-alive).
-    Duration parseKeepAlive(std::string_view keepAlive)
-    {
-        const auto invalid = [&keepAlive](const char* why)
-        {
-            return std::invalid_argument {"Invalid PIT keepAlive '" + std::string {keepAlive} + "': " + why};
-        };
-
-        std::size_t digits {0};
-        std::uint64_t value {0};
-        constexpr auto MAX_VALUE = static_cast<std::uint64_t>(std::numeric_limits<Duration::rep>::max());
-        while (digits < keepAlive.size() && keepAlive[digits] >= '0' && keepAlive[digits] <= '9')
-        {
-            const auto digit = static_cast<std::uint64_t>(keepAlive[digits] - '0');
-            if (value > (MAX_VALUE - digit) / 10)
-            {
-                throw invalid("out of range");
-            }
-            value = value * 10 + digit;
-            ++digits;
-        }
-        if (digits == 0)
-        {
-            throw invalid("expected <n>(nanos|micros|ms|s|m|h|d)");
-        }
-
-        // Sub-millisecond units divide (and truncate); the others multiply.
-        const auto unit = keepAlive.substr(digits);
-        std::uint64_t divisor {1};
-        std::uint64_t multiplier {1};
-        if (unit == "nanos")
-        {
-            divisor = 1000000;
-        }
-        else if (unit == "micros")
-        {
-            divisor = 1000;
-        }
-        else if (unit == "ms")
-        {
-        }
-        else if (unit == "s")
-        {
-            multiplier = 1000;
-        }
-        else if (unit == "m")
-        {
-            multiplier = 60ULL * 1000;
-        }
-        else if (unit == "h")
-        {
-            multiplier = 60ULL * 60 * 1000;
-        }
-        else if (unit == "d")
-        {
-            multiplier = 24ULL * 60 * 60 * 1000;
-        }
-        else
-        {
-            throw invalid("expected <n>(nanos|micros|ms|s|m|h|d)");
-        }
-
-        if (value > MAX_VALUE / multiplier)
-        {
-            throw invalid("out of range");
-        }
-        const auto millis = value * multiplier / divisor;
-        if (millis < 1)
-        {
-            throw invalid("must be at least 1ms");
-        }
-        return Duration {static_cast<Duration::rep>(millis)};
-    }
 
     std::uint64_t nowMillis()
     {
@@ -157,7 +83,7 @@ namespace
         openPit(const std::vector<std::string>& indices, std::string_view keepAlive, bool expandWildcards) override
         {
             indexer_client::PitOptions pitOptions;
-            pitOptions.keepAlive = parseKeepAlive(keepAlive);
+            pitOptions.keepAlive = content_manager::detail::parseKeepAlive(keepAlive);
             pitOptions.expandWildcardsAll = expandWildcards;
 
             auto outcome = m_query->pit(indices, pitOptions, queryOptions(), deadline(m_options.callDeadline));
@@ -293,14 +219,38 @@ namespace
         }
 
         /// The deadline of one call. With no usable node it is cut to probeDeadline: the library waits for a node
-        /// without sending anything and returns its own cause (I158b).
+        /// without sending anything and returns its own cause (I158b). With failFastWithoutNode, once every node was
+        /// probed (a Down node with a reason) and none is usable, the call fails at once instead (I190, I190b).
         indexer_client::Deadline deadline(std::chrono::milliseconds budget) const
         {
-            if (!m_client->health().anyUsable())
+            const auto health = m_client->health();
+            if (!health.anyUsable())
             {
+                if (m_options.failFastWithoutNode && allProbed(health))
+                {
+                    std::string message {"No usable indexer node: "};
+                    message += indexer_client::toString(Cause::Unavailable);
+                    for (const auto& node : health.nodes)
+                    {
+                        message += "; ";
+                        message += node.url;
+                        message += ": ";
+                        message += node.reason;
+                    }
+                    logDebug2(WM_CONTENTUPDATER, "%s", message.c_str());
+                    throw std::runtime_error {message};
+                }
                 budget = std::min(budget, m_options.probeDeadline);
             }
             return std::chrono::steady_clock::now() + budget;
+        }
+
+        /// Every node already went through a probe round: a node is born Down with an empty reason (I190b).
+        static bool allProbed(const indexer_client::HealthView& health)
+        {
+            return !health.nodes.empty() && std::all_of(health.nodes.begin(),
+                                                        health.nodes.end(),
+                                                        [](const auto& node) { return !node.reason.empty(); });
         }
 
         std::shared_ptr<indexer_client::IClient> m_client;
@@ -317,5 +267,22 @@ namespace content_manager
                                                         ContentIndexerOptions options)
     {
         return std::make_shared<ClientIndexer>(std::move(client), options);
+    }
+
+    ContentIndexerOptions contentIndexerOptionsFor(std::chrono::milliseconds requestTimeout,
+                                                   std::chrono::milliseconds probeTimeout)
+    {
+        // The defaults are the floor: a host with shorter timeouts keeps the budgets the adapter was tuned with.
+        ContentIndexerOptions options;
+        if (requestTimeout.count() > 0)
+        {
+            options.callDeadline = std::max(options.callDeadline, requestTimeout * 2);
+            options.pageDeadline = std::max(options.pageDeadline, requestTimeout * 3 / 2);
+        }
+        if (probeTimeout.count() > 0)
+        {
+            options.probeDeadline = std::max(options.probeDeadline, probeTimeout * 2);
+        }
+        return options;
     }
 } // namespace content_manager

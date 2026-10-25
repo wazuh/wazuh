@@ -68,6 +68,10 @@ on:
       # wiconnector links indexer_connector (target_link_libraries(wIndexerConnector_wIndexerConnector));
       # its .so is shipped in the package
       - 'src/shared_modules/indexer_connector/**'
+      # indexer_client: the engine's runtime and Client; its tests, bench and fake feed no target this job builds.
+      - 'src/shared_modules/indexer_client/**/CMakeLists.txt'
+      - 'src/shared_modules/indexer_client/include/**'
+      - 'src/shared_modules/indexer_client/src/**'
       # linked by indexer_connector (target_link_libraries(indexer_connector))
       - 'src/shared_modules/keystore/**'
       # cmcontent links content_manager (source/cmcontent/CMakeLists.txt:37); its .so is shipped in
