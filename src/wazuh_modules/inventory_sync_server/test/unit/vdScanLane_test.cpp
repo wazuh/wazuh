@@ -868,3 +868,99 @@ TEST(VdScanLaneTest, TheFenceStillWaitsForAnotherThreadsScanOfTheAgent)
     EXPECT_TRUE(coordinator.pauseAgent("001", "test"));
     coordinator.resumeAgent("001");
 }
+
+// --- A stopping scanner (E8a, I167c) -----------------------------------------------------------
+//
+// VulnerabilityScannerFacade::stop() lowers isInitialized() first; from then on the adapter's scan() throws "VD
+// stopping" and its scanAgent() answers NotReady. The lane has to turn the first into a failed session (500, nothing
+// indexed: a skip would index an inventory that was never scanned) and the second into a retryable 503, without
+// taking its worker thread down.
+
+namespace
+{
+    /// The adapter's behaviour once its scanner is stopping.
+    class StoppedVdScanner final : public invsync::vd::IVdScanner
+    {
+    public:
+        bool feedReady() const override
+        {
+            return true;
+        }
+
+        bool scannerRunning() const override
+        {
+            return true;
+        }
+
+        std::uint64_t currentFeedOffset() const override
+        {
+            return 0;
+        }
+
+        invsync::vd::ScanVerdict scan(const invsync::sync::ValidatedSession&) override
+        {
+            scans.fetch_add(1);
+            throw std::runtime_error("VD stopping");
+        }
+
+        invsync::vd::AgentScanOutcome scanAgent(const std::string&) override
+        {
+            agentScans.fetch_add(1);
+            return invsync::vd::AgentScanOutcome::NotReady;
+        }
+
+        std::atomic<int> scans {0};
+        std::atomic<int> agentScans {0};
+    };
+
+    struct StoppedLaneUnderTest
+    {
+        std::shared_ptr<ConnectorEvents> events {std::make_shared<ConnectorEvents>()};
+        std::shared_ptr<AgentInFlightRegistry> registry {std::make_shared<AgentInFlightRegistry>()};
+        std::shared_ptr<StoppedVdScanner> scanner {std::make_shared<StoppedVdScanner>()};
+        std::shared_ptr<VdScanLane> lane {
+            std::make_shared<VdScanLane>(VdScanLaneConfig {},
+                                         scanner,
+                                         std::vector<std::shared_ptr<invsync::indexer::IIndexerConnectorSync>> {
+                                             std::make_shared<FakeIndexerConnectorSync>(events, "sync")},
+                                         registry,
+                                         CLUSTER,
+                                         nullptr)};
+    };
+} // namespace
+
+TEST(VdScanLaneTest, StoppedScannerFailsSession)
+{
+    StoppedLaneUnderTest fixture;
+    auto responder = std::make_shared<FutureResponder>();
+
+    ASSERT_EQ(VdScanLane::Admission::Accepted, fixture.lane->tryEnqueue(makeItem(vdDeltaBody(), responder)));
+
+    const auto response = responder->get();
+    EXPECT_EQ(500, response.status);
+    EXPECT_NE(std::string::npos, response.body.find("vulnerability scan failed"));
+    EXPECT_EQ(1, fixture.scanner->scans.load());
+    EXPECT_TRUE(fixture.events->syncOps().empty()) << "a session cut by stop() must index NOTHING";
+    EXPECT_EQ(0, fixture.events->m_syncFlushes.load());
+}
+
+TEST(VdScanLaneTest, StoppedScannerOnDemandIs503)
+{
+    StoppedLaneUnderTest fixture;
+    auto first = std::make_shared<FutureResponder>();
+
+    ASSERT_EQ(VdScanLane::Admission::Accepted, fixture.lane->tryEnqueue(makeScanRequest(first)));
+    EXPECT_EQ(503, first->get().status);
+
+    // The worker thread is still alive: the next request (another agent, then a session) is answered too.
+    auto second = std::make_shared<FutureResponder>();
+    ASSERT_EQ(VdScanLane::Admission::Accepted, fixture.lane->tryEnqueue(makeScanRequest(second, "002")));
+    EXPECT_EQ(503, second->get().status);
+
+    auto session = std::make_shared<FutureResponder>();
+    ASSERT_EQ(VdScanLane::Admission::Accepted, fixture.lane->tryEnqueue(makeItem(vdDeltaBody(), session)));
+    EXPECT_EQ(500, session->get().status);
+
+    EXPECT_EQ(2, fixture.scanner->agentScans.load());
+    EXPECT_TRUE(fixture.events->syncOps().empty());
+}

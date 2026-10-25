@@ -647,7 +647,8 @@ int main(int argc, char* argv[])
         if (!config.noVd)
         {
             std::cout << "[INFO] Starting vulnerability scanner..." << std::endl;
-            vulnerabilityScanner.start(logSink, moduleConfig, true, true);
+            // Its own Client from the same runtime (consumer `vulnerability_scanner`), as modulesd does.
+            vulnerabilityScanner.start(logSink, moduleConfig, true, true, &indexerRuntime);
         }
 
         // The server: cluster identity + the <indexer> block, verbatim, as cJSON. The socket only
@@ -775,8 +776,12 @@ int main(int argc, char* argv[])
     catch (const std::exception& e)
     {
         std::cerr << "\n[ERROR] " << e.what() << std::endl;
-        // The server's Client must be closed before the runtime it lives on is joined.
+        // The server's and the scanner's Clients must be closed before the runtime they live on is joined.
         inventory_sync_server_stop();
+        if (VulnerabilityScannerFacade::instance().hasStarted())
+        {
+            VulnerabilityScannerFacade::instance().stop();
+        }
         stopIndexerRuntime();
         return 1;
     }

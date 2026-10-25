@@ -9,10 +9,13 @@
  */
 
 #include "vd/vdScannerFactory.hpp"
+#include "vd/vdStopping.hpp"
 
 #include "vulnerabilityScannerFacade.hpp"
 #include "vulnerabilityScannerSync.hpp"
 
+#include <functional>
+#include <stdexcept>
 #include <string_view>
 #include <vector>
 
@@ -31,6 +34,24 @@ namespace invsync::vd
             return true;
         }
         return initialized && feedReady;
+    }
+
+    bool vdStopping(bool started, bool enabled, bool startFailed, bool initialized)
+    {
+        return started && enabled && !startFailed && !initialized;
+    }
+
+    AgentScanOutcome onDemandVerdict(bool stopping, bool initialized, const std::function<AgentScanOutcome()>& scan)
+    {
+        if (stopping)
+        {
+            return AgentScanOutcome::NotReady;
+        }
+        if (!initialized)
+        {
+            return AgentScanOutcome::Skipped;
+        }
+        return scan();
     }
 
     /**
@@ -99,7 +120,16 @@ namespace invsync::vd
         {
             auto& scanner = VulnerabilityScannerFacade::instance();
 
-            if (!scanner.isInitialized())
+            // A scanner that is stopping fails the session (500, the agent retries) instead of
+            // skipping it: Skipped would index the inventory without scanning it (I167c).
+            // hasStarted() first: its acquire load orders the reads after it.
+            const bool started = scanner.hasStarted();
+            const bool initialized = scanner.isInitialized();
+            if (vdStopping(started, scanner.isEnabled(), scanner.startFailed(), initialized))
+            {
+                throw std::runtime_error("VD stopping");
+            }
+            if (!initialized)
             {
                 return ScanVerdict::Skipped;
             }
@@ -139,29 +169,37 @@ namespace invsync::vd
         {
             auto& scanner = VulnerabilityScannerFacade::instance();
 
-            if (!scanner.isInitialized())
-            {
-                // Reached for "never going to run here" (disabled, or a harness that never
-                // started it) and for a scanner whose start() failed outright: the lane's
-                // feedReady() re-check, one level up, already deferred the enabled-but-starting
-                // case with a retryable 503 before calling scanAgent() at all. Skipped, not
-                // NotReady: this gate is what the QA suite, the operator WARN and
-                // vd.scans.skipped hang off.
-                return AgentScanOutcome::Skipped;
-            }
+            // Not initialized is Skipped when the scanner never runs here (disabled, a harness that
+            // never started it, or a start() that failed outright: the lane's feedReady() re-check,
+            // one level up, already deferred the enabled-but-starting case with a retryable 503
+            // before calling scanAgent() at all) -- Skipped, not NotReady: this gate is what the QA
+            // suite, the operator WARN and vd.scans.skipped hang off. A scanner that is stopping
+            // is NotReady instead (I167c): it does not throw, its caller has no `try`.
+            const bool started = scanner.hasStarted();
+            const bool initialized = scanner.isInitialized();
+            return onDemandVerdict(vdStopping(started, scanner.isEnabled(), scanner.startFailed(), initialized),
+                                   initialized,
+                                   [&scanner, &agentId] { return translate(scanner.triggerAgentScan(agentId)); });
+        }
 
-            // LCOV_EXCL_START - integration-only, same as scan() above: everything below drives
-            // the REAL facade. The gate above stays measured.
+    private:
+        /// Set once at construction from this node's own configuration; see feedGateOpen().
+        bool m_configuredEnabled;
+
+        static AgentScanOutcome translate(VulnerabilityScannerFacade::ScanTriggerResult result)
+        {
+            // LCOV_EXCL_START - integration-only, same as scan() above: reached only with the REAL
+            // facade initialized.
             //
             // triggerAgentScan() re-runs its own readiness guards, so this translation is the only
             // thing here: the scanner's vocabulary is richer than the seam's, and each of its
             // values has exactly one right answer for a caller deciding whether to retry.
-            switch (scanner.triggerAgentScan(agentId))
+            switch (result)
             {
                 case VulnerabilityScannerFacade::ScanTriggerResult::Success: return AgentScanOutcome::Ok;
 
                 // All transient, and all for reasons outside this request. NotInitialized cannot
-                // actually occur here -- the `!isInitialized()` guard above already returns Skipped
+                // actually occur here -- onDemandVerdict() already answers Skipped or NotReady
                 // for that case, and this is triggerAgentScan()'s only production call site -- but
                 // it is listed defensively since triggerAgentScan() is public and a future direct
                 // caller (or a unit test, which does call it directly) can still hit it. The other
@@ -182,10 +220,6 @@ namespace invsync::vd
             }
             // LCOV_EXCL_STOP
         }
-
-    private:
-        /// Set once at construction from this node's own configuration; see feedGateOpen().
-        bool m_configuredEnabled;
 
         static std::vector<vd_sync::SyncItemView> buildItems(const sync::ValidatedSession& session)
         {
