@@ -50,6 +50,12 @@ on:
       # wiconnector links indexer_connector (source/wiconnector/CMakeLists.txt:24); its .so is
       # uploaded and loaded by the engine at test time
       - 'src/shared_modules/indexer_connector/**'
+      # indexer_client: the engine's runtime and Client; its tests, bench and fake feed no target this job builds.
+      - 'src/shared_modules/indexer_client/**/CMakeLists.txt'
+      - 'src/shared_modules/indexer_client/include/**'
+      - 'src/shared_modules/indexer_client/src/**'
+      # content_manager: linked by cmcontent and the engine (source/cmcontent/CMakeLists.txt)
+      - 'src/shared_modules/content_manager/**'
       # linked by indexer_connector (indexer_connector/CMakeLists.txt:52); wazuh-manager-keystore
       # (keystore/CMakeLists.txt:42) is run by setupEnvironment.py:52-57
       - 'src/shared_modules/keystore/**'
@@ -63,6 +69,8 @@ on:
       - '!src/shared_modules/indexer_connector/tests/**'
       - '!src/shared_modules/indexer_connector/qa/**'
       - '!src/shared_modules/indexer_connector/testtool/**'
+      - '!src/shared_modules/content_manager/tests/**'
+      - '!src/shared_modules/content_manager/testtool/**'
       - '!src/shared_modules/keystore/tests/**'
       - '!src/shared_modules/keystore/qa/**'
       - '!src/shared_modules/keystore/testtool/**'

@@ -65,7 +65,17 @@ namespace content_manager
         std::chrono::milliseconds pageDeadline {90000};
         /// The pre-flight searchIndex probe, and any call while no indexer node is usable (I158b).
         std::chrono::milliseconds probeDeadline {10000};
+        /// When every node was already probed and none is usable, fail a call at once with the library's cause
+        /// instead of waiting `probeDeadline` for one (I190, I190b). Before the first probe round the wait applies.
+        bool failFastWithoutNode {false};
     };
+
+    /**
+     * @brief The call budgets for a host's runtime timeouts (D83, I158b, I159b): `callDeadline` and `pageDeadline`
+     *        above @p requestTimeout, `probeDeadline` above @p probeTimeout; never below the defaults.
+     */
+    EXPORTED ContentIndexerOptions contentIndexerOptionsFor(std::chrono::milliseconds requestTimeout,
+                                                            std::chrono::milliseconds probeTimeout);
 
     /**
      * @brief Use a host's indexer_client Client as the content manager's indexer (I154).
