@@ -1587,7 +1587,7 @@ checks:
       - tsc: ["CC5.2"]
     condition: none
     rules:
-      - 'f:/boot/grub/grub.cfg -> r:^\s*linux && !r:ipv6.disable=1'
+      - 'f:/boot/grub/grub.cfg -> r:^\s*\t*\s*linux && !r:ipv6.disable=1'
 
   - id: 19594
     title: "Install TCP Wrappers"

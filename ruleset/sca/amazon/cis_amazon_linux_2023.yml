@@ -1046,8 +1046,8 @@ checks:
       - mitre_mitigations: ["M1026"]
     condition: none
     rules:
-      - 'f:/boot/grub2/grub.cfg -> r:^\s*linux\.+selinux=0|linux\.+enforcing=0'
-      - 'f:/boot/grub2/grubenv -> r:^\s*linux\.+selinux=0|linux\.+enforcing=0'
+      - 'f:/boot/grub2/grub.cfg -> r:^\s*\t*\s*linux\.+selinux=0|linux\.+enforcing=0'
+      - 'f:/boot/grub2/grubenv -> r:^\s*\t*\s*linux\.+selinux=0|linux\.+enforcing=0'
 
   # 1.6.1.3 Ensure SELinux policy is configured. (Automated)
   - id: 31039
@@ -4194,8 +4194,8 @@ checks:
       - mitre_techniques: ["T1078", "T1078.001", "T1078.002", "T1078.003", "T1078.004", "T1110", "T1110.004"]
     condition: all
     rules:
-      - 'f:/etc/pam.d/system-auth -> !r:^\s*\t*# && r:password\s*\t*requisite\s*\t*pam_pwhistory.so && n:remember\s*\t*=\s*\t*(\d+) compare => 5'
-      - 'f:/etc/pam.d/system-auth -> !r:^\s*\t*# && r:password\s*\t*sufficient\s*\t*pam_unix.so && n:remember\s*\t*=\s*\t*(\d+) compare => 5'
+      - 'f:/etc/pam.d/system-auth -> !r:^\s*\t*# && r:password\s*\t*requisite\s*\t*pam_pwhistory.so && n:remember\s*\t*=\s*\t*(\d+) compare >= 5'
+      - 'f:/etc/pam.d/system-auth -> !r:^\s*\t*# && r:password\s*\t*sufficient\s*\t*pam_unix.so && n:remember\s*\t*=\s*\t*(\d+) compare >= 5'
 
   # 5.5.4 Ensure password hashing algorithm is SHA-512. (Automated)
   - id: 31164

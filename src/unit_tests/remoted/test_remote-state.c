@@ -17,7 +17,9 @@
 #include "../../remoted/remoted.h"
 #include "../../remoted/state.h"
 
+#include "../wrappers/libc/stdio_wrappers.h"
 #include "../wrappers/posix/time_wrappers.h"
+#include "../wrappers/wazuh/shared/file_op_wrappers.h"
 #include "../wrappers/wazuh/remoted/queue_wrappers.h"
 
 #include "../wrappers/common.h"
@@ -35,13 +37,21 @@ extern remoted_state_t remoted_state;
 extern OSHash *remoted_agents_state;
 
 remoted_agent_state_t * get_node(const char *agent_id);
+int rem_write_state();
 void w_remoted_clean_agents_state(int *sock);
 
 /* setup/teardown */
 
+// The stdio wrappers are also hit by the gcov dump at exit, so leave test_mode off.
+static int test_group_teardown(void ** state) {
+    test_mode = 0;
+    return 0;
+}
+
 static int test_setup(void ** state) {
     remoted_state.uptime = 123456789;
     remoted_state.tcp_sessions = 5;
+    remoted_state.tcp_sessions_unassociated = 3;
     remoted_state.recv_bytes = 123456;
     remoted_state.sent_bytes = 234567;
     remoted_state.keys_reload_count = 15;
@@ -220,6 +230,8 @@ void test_rem_create_state_json(void ** state) {
 
     assert_non_null(cJSON_GetObjectItem(metrics, "tcp_sessions"));
     assert_int_equal(cJSON_GetObjectItem(metrics, "tcp_sessions")->valueint, 5);
+    assert_non_null(cJSON_GetObjectItem(metrics, "tcp_sessions_unassociated"));
+    assert_int_equal(cJSON_GetObjectItem(metrics, "tcp_sessions_unassociated")->valueint, 3);
     assert_non_null(cJSON_GetObjectItem(metrics, "keys_reload_count"));
     assert_int_equal(cJSON_GetObjectItem(metrics, "keys_reload_count")->valueint, 15);
 
@@ -233,6 +245,58 @@ void test_rem_create_state_json(void ** state) {
     assert_int_equal(cJSON_GetObjectItem(received, "size")->valueint, 100000);
 
     cJSON_Delete(state_json);
+}
+
+static int check_contains(const LargestIntegralType value, const LargestIntegralType check_value_data) {
+    return strstr((const char *)value, (const char *)check_value_data) != NULL;
+}
+
+void test_rem_write_state_tcp_sessions(void ** state) {
+    const char *local_name = __local_name;
+    __local_name = "wazuh-remoted";
+    test_mode = 1;
+
+    expect_any(__wrap_wfopen, path);
+    expect_string(__wrap_wfopen, mode, "w");
+    will_return(__wrap_wfopen, (FILE *)1);
+
+    will_return(__wrap_rem_get_qsize, 789);
+    will_return(__wrap_rem_get_tsize, 100000);
+
+    expect_value(__wrap_fprintf, __stream, (FILE *)1);
+    expect_check(__wrap_fprintf, formatted_msg, check_contains,
+                 "# TCP sessions\n"
+                 "tcp_sessions='5'\n"
+                 "\n"
+                 "# TCP sessions not yet associated with an agent\n"
+                 "tcp_sessions_unassociated='3'\n"
+                 "\n"
+                 "# Events sent to Analysisd\n");
+    will_return(__wrap_fprintf, 0);
+
+    expect_value(__wrap_fclose, _File, (FILE *)1);
+    will_return(__wrap_fclose, 0);
+
+    expect_any(__wrap_rename, __old);
+    expect_any(__wrap_rename, __new);
+    will_return(__wrap_rename, 0);
+
+    assert_int_equal(rem_write_state(), 0);
+
+    test_mode = 0;
+    __local_name = local_name;
+}
+
+void test_rem_inc_dec_tcp_unassociated(void ** state) {
+    remoted_state.tcp_sessions_unassociated = 0;
+
+    rem_inc_tcp_unassociated();
+    rem_inc_tcp_unassociated();
+    assert_int_equal(remoted_state.tcp_sessions_unassociated, 2);
+
+    rem_dec_tcp_unassociated();
+    rem_dec_tcp_unassociated();
+    assert_int_equal(remoted_state.tcp_sessions_unassociated, 0);
 }
 
 void test_rem_create_agents_state_json(void ** state) {
@@ -417,6 +481,10 @@ int main(void) {
     const struct CMUnitTest tests[] = {
         // Test rem_create_state_json
         cmocka_unit_test_setup(test_rem_create_state_json, test_setup),
+        // Test rem_write_state
+        cmocka_unit_test_setup(test_rem_write_state_tcp_sessions, test_setup),
+        // Test rem_inc_tcp_unassociated / rem_dec_tcp_unassociated
+        cmocka_unit_test(test_rem_inc_dec_tcp_unassociated),
         // Test rem_create_agents_state_json
         cmocka_unit_test_setup_teardown(test_rem_create_agents_state_json, test_setup_agent, test_teardown_agent),
         // Test get_node
@@ -429,5 +497,5 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_w_remoted_clean_agents_state_query_fail, test_setup_agent, test_teardown_agent),
     };
 
-    return cmocka_run_group_tests(tests, NULL, NULL);
+    return cmocka_run_group_tests(tests, NULL, test_group_teardown);
 }

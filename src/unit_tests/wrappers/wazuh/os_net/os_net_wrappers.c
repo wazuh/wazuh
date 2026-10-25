@@ -11,6 +11,7 @@
 #include <stdarg.h>
 #include <setjmp.h>
 #include <cmocka.h>
+#include <errno.h>
 #include "../../headers/shared.h"
 #include "os_net_wrappers.h"
 
@@ -57,6 +58,15 @@ int __wrap_OS_SendSecureTCP(int sock, uint32_t size, const void * msg) {
     return mock();
 }
 
+int __wrap_OS_SendSecureTCPTimeout(int sock, uint32_t size, const void * msg, int timeout) {
+    check_expected(sock);
+    check_expected(size);
+    check_expected(msg);
+    check_expected(timeout);
+
+    return mock();
+}
+
 int __wrap_OS_SendUnix(int socket, const char *msg, int size) {
     check_expected(socket);
     check_expected(msg);
@@ -75,6 +85,16 @@ void expect_OS_SendUnix_call(int socket, const char *msg, int size, int ret) {
 int __wrap_OS_RecvSecureTCP(int sock, char * ret, uint32_t size) {
     check_expected(sock);
     check_expected(size);
+
+    strncpy(ret, mock_type(char*), size);
+
+    return mock();
+}
+
+int __wrap_OS_RecvSecureTCPTimeout(int sock, char * ret, uint32_t size, int timeout) {
+    check_expected(sock);
+    check_expected(size);
+    check_expected(timeout);
 
     strncpy(ret, mock_type(char*), size);
 
@@ -108,14 +128,24 @@ int __wrap_OS_ConnectUDP(__attribute__((unused)) u_int16_t _port,
     return mock();
 }
 
+int wrap_sockopt_errno = 0;
+
 int __wrap_OS_SetRecvTimeout(__attribute__((unused)) int socket,
                              __attribute__((unused)) long seconds,
                              __attribute__((unused)) long useconds) {
+    if (wrap_sockopt_errno) {
+        errno = wrap_sockopt_errno;
+    }
+
     return mock();
 }
 
 int __wrap_OS_SetSendTimeout(__attribute__((unused)) int socket,
                              __attribute__((unused)) int seconds) {
+    if (wrap_sockopt_errno) {
+        errno = wrap_sockopt_errno;
+    }
+
     return mock();
 }
 

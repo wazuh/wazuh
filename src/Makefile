@@ -119,7 +119,7 @@ DISABLE_JEMALLOC?=no
 DISABLE_SYSC?=no
 DISABLE_CISCAT?=no
 IMAGE_TRUST_CHECKS?=1
-CA_NAME?=DigiCert Assured ID Root CA
+CA_NAME?=Microsoft Identity Verification Root Certificate Authority 2020
 HTTP_REQUEST_BRANCH?=cd50797cfe03c27f3759bdc243fecca6f7535d35
 
 ifeq (${TARGET},winagent)
@@ -317,8 +317,8 @@ ifeq (${uname_S},HP-UX)
 		DEFINES+=-DHIGHFIRST
 		DEFINES+=-DOS_BIG_ENDIAN
 		OSSEC_CFLAGS+=-pthread
-		OSSEC_LDFLAGS+=-lrt -pthread -L. -lwazuhext
-		AR_LDFLAGS+=-lrt -pthread -L. -lwazuhext -lwazuhshared
+		OSSEC_LDFLAGS+=-lrt -pthread -L. -lwazuhext -lxnet
+		AR_LDFLAGS+=-lrt -pthread -L. -lwazuhext -lwazuhshared -lxnet
 ifeq ($(INSTALLDIR),)
 	INSTALLDIR = /var/ossec
 endif
@@ -654,7 +654,7 @@ help: failtarget
 	@echo "   make OPTIMIZE_CPYTHON=yes    						Enable this flag to optimize the python interpreter build, which is performed when used PYTHON_SOURCE. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
 	@echo "   make PYTHON_SOURCE=yes       						Used along the deps target. Downloads the sources needed to build the python interpreter. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
 	@echo "   make IMAGE_TRUST_CHECKS=1     					This flag controls the dll and exe files signature verification mechanism. Allowed values are 0 (disabled), 1 (warning only) and 2 (full enforce). The default value is 1."
-	@echo "   make CA_NAME="DigiCert Assured ID Root CA" 		This flag controls the CA name used to verify the dll and exe files signature. The default value is DigiCert Assured ID Root CA."
+	@echo "   make CA_NAME="Microsoft Identity Verification Root Certificate Authority 2020" 		This flag controls the CA name used to verify the dll and exe files signature. The default value is Microsoft Identity Verification Root Certificate Authority 2020."
 	@echo "   make deps HTTP_REQUEST_BRANCH=main 				Build dependencies for http-request tool from selected branch/tag only if submodule isn't checked out, valid at make deps stage. Allowed values are any existing branch/tag.
 	@echo
 	@echo "Geoip support: "
@@ -747,10 +747,15 @@ endif
 endif
 
 ${WAZUH_LIB_OUTPUT_PATH}${LIBSTDCPP_NAME}: ${libstdc++_path}
-	cp $< $@
+	cp $< $@.tmp
 ifneq (${uname_S},AIX)
-	${STRIP_TOOL} -x $@
+	${STRIP_TOOL} -x $@.tmp
 endif
+ifeq (${uname_S},SunOS)
+# Bundled libstdc++ has no RUNPATH, so ld.so.1 loads a second libgcc_s.so.1 from /usr/lib and every C++ throw aborts.
+	elfedit -e 'dyn:runpath $$ORIGIN' $@.tmp
+endif
+	mv $@.tmp $@
 
 ${WAZUH_LIB_OUTPUT_PATH}${LIBGCC_S_NAME}: ${libgcc_s_path}
 	cp $< $@
@@ -1413,7 +1418,11 @@ EXTERNAL_DIR := $(EXTERNAL_RES:%=external/%)
 EXTERNAL_TAR := $(EXTERNAL_RES:%=external/%.tar.gz)
 
 # Shared tools like dependencies
+# http-request is only built by the manager and the Linux agent (data_provider),
+# and the native tar on AIX, HP-UX and Solaris lacks --strip-components
+ifeq (,$(filter ${uname_S},AIX HP-UX SunOS))
 SHARED_RES := http-request
+endif
 SHARED_TAR := $(SHARED_RES:%=shared_modules/%.tar.gz)
 
 .PHONY: deps
@@ -1510,11 +1519,11 @@ CA_BUNDLE := /etc/ssl/certs/ca-certificates.crt
 CACERT_OPT := $(shell test -f $(CA_BUNDLE) && echo "--cacert $(CA_BUNDLE)" || echo "")
 
 shared_modules/http-request.tar.gz:
-	find $(patsubst %.tar.gz,%,$@) -type f -exec false {} + &&\
-	((test -e $(patsubst %.gz,%,$@) || $(CURL) $@ $(CACERT_OPT) -L $(HTTP_REQUEST_URL)) &&\
-	($(GUNZIP) $@ || (rm -f $@ && echo "Error decompressing $@ maybe wrong branch was supplied!" && false)) &&\
-	$(TAR) $(patsubst %.gz,%,$@) --strip-components=1 -C $(patsubst %.tar.gz,%,$@) &&\
-	rm $(patsubst %.gz,%,$@)) || true
+	test -f $(patsubst %.tar.gz,%,$@)/CMakeLists.txt ||\
+	(mkdir -p $(patsubst %.tar.gz,%,$@) && curl -fsS --retry 5 --retry-delay 2 --connect-timeout 20 --max-time 300 $(CACERT_OPT) -L -o $@ $(HTTP_REQUEST_URL) && $(GUNZIP) -f $@ &&\
+	$(TAR) $(patsubst %.gz,%,$@) --strip-components=1 -C $(patsubst %.tar.gz,%,$@) && rm $(patsubst %.gz,%,$@)) &&\
+	test -f $(patsubst %.tar.gz,%,$@)/CMakeLists.txt ||\
+	{ rm -f $@ $(patsubst %.gz,%,$@); echo "Error installing dependency http-request from $(HTTP_REQUEST_URL)"; exit 1; }
 
 ####################
 #### OSSEC Libs ####
@@ -2079,7 +2088,7 @@ endif
 
 ifeq (${TARGET}, winagent)
 ifneq (,$(filter ${TEST},YES yes y Y 1))
-AR_PROGRAMS_DEPS += unit_tests/wrappers/common.o unit_tests/wrappers/windows/handleapi_wrappers.o unit_tests/wrappers/windows/fileapi_wrappers.o unit_tests/wrappers/windows/stat64_wrappers.o unit_tests/wrappers/windows/processthreadsapi_wrappers.o unit_tests/wrappers/windows/libc/stdio_wrappers.o unit_tests/wrappers/windows/system_calls_wrappers.o
+AR_PROGRAMS_DEPS += unit_tests/wrappers/common.o unit_tests/wrappers/windows/handleapi_wrappers.o unit_tests/wrappers/windows/fileapi_wrappers.o unit_tests/wrappers/windows/stat64_wrappers.o unit_tests/wrappers/windows/processthreadsapi_wrappers.o unit_tests/wrappers/windows/libc/stdio_wrappers.o unit_tests/wrappers/windows/system_calls_wrappers.o unit_tests/wrappers/windows/wincrypt_wrappers.o
 endif
 endif
 
@@ -2642,7 +2651,7 @@ win32/restart-wazuh.exe: win32/restart_wazuh_resource.o win32/version-app.o acti
 	${OSSEC_CCBIN} -DARGV0=\"restart-wazuh\" ${AR_LDFLAGS} $^ -lws2_32 -lwintrust -lpsapi -lcrypt32 -lshlwapi -o $@
 
 win32/route-null.exe: win32/route_null_resource.o win32/version-app.o active-response/active_responses.o active-response/route-null.o shared/cryptography.o shared/dll_load_notify.o shared/debug_op_proc.o shared/time_op.o shared/file_op_proc.o shared/utf8_winapi_wrapper.o shared/utf8_op.o ${WAZUH_LIB} ${WAZUHEXT_LIB}
-	${OSSEC_CCBIN} -DARGV0=\"route-null\" ${AR_LDFLAGS} $^ -lws2_32 -lwintrust -lpsapi -lcrypt32 -lshlwapi -o $@
+	${OSSEC_CCBIN} -DARGV0=\"route-null\" ${AR_LDFLAGS} $^ -lws2_32 -liphlpapi -lwintrust -lpsapi -lcrypt32 -lshlwapi -o $@
 
 win32/netsh.exe: win32/netsh_resource.o win32/version-app.o active-response/active_responses.o active-response/netsh.o shared/cryptography.o shared/dll_load_notify.o shared/debug_op_proc.o shared/time_op.o shared/file_op_proc.o shared/utf8_winapi_wrapper.o shared/utf8_op.o ${WAZUH_LIB} ${WAZUHEXT_LIB}
 	${OSSEC_CCBIN} -DARGV0=\"netsh\" ${AR_LDFLAGS} $^ -lws2_32 -lwintrust -lpsapi -lcrypt32 -lshlwapi -o $@
@@ -2679,7 +2688,6 @@ ifneq ($(wildcard external/*/*),)
 	rm -rf $(EXTERNAL_GOOGLE_BENCHMARK)build
 	rm -rf $(EXTERNAL_ROCKSDB)build
 	rm -rf $(EXTERNAL_SIMDJSON)build
-	rm -rf $(EXTERNAL_LIBBPF)build
 	rm -rf $(EXTERNAL_FLATBUFFERS)build
 	rm -rf $(EXTERNAL_LZMA)build
 	-cd ${EXTERNAL_LIBPLIST} && ${MAKE} clean && rm -rf bin/*

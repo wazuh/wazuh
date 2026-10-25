@@ -25,7 +25,9 @@
 #include <map>
 #include <mutex>
 #include <pwd.h>
+#include <set>
 #include <unistd.h>
+#include <vector>
 
 constexpr auto USER_GROUP {"wazuh"};
 constexpr auto DEFAULT_PATH {"tmp/root-ca-merged.pem"};
@@ -37,6 +39,7 @@ constexpr auto ELEMENTS_PER_BULK {25000};
 constexpr auto MINIMAL_ELEMENTS_PER_BULK {5};
 
 constexpr auto HTTP_BAD_REQUEST {400};
+constexpr auto HTTP_NOT_FOUND {404};
 constexpr auto HTTP_CONTENT_LENGTH {413};
 constexpr auto HTTP_VERSION_CONFLICT {409};
 constexpr auto HTTP_TOO_MANY_REQUESTS {429};
@@ -345,7 +348,7 @@ static inline void logBulkItemErrors(const nlohmann::json& responseJson, const s
                     auto& rejection = rejections[std::make_pair(type, reason)];
                     if (rejection.first++ == 0)
                     {
-                        rejection.second = id;
+                        rejection.second = std::move(id);
                     }
                 }
                 catch (const nlohmann::json::exception&)
@@ -679,11 +682,11 @@ void IndexerConnector::diff(const nlohmann::json& responseJson,
     // Iterate over the database and check if the element is in the status vector. The trailing separator keeps
     // this an exact per-agent scan: without it, a shorter agent ID prefix-matches a longer sibling's keys too
     // (RocksDBIterator::valid() is a raw prefix check with no key-boundary awareness).
-    std::size_t mirrorEntryCount {0};
     // Named local, not passed inline: seek() takes the key as a non-owning string_view and RocksDBIterator
     // only reads through it lazily (on the range-for's begin()), so a temporary here would already be destroyed
     // by the time it's read.
     const auto agentPrefix = agentId + "_";
+    std::size_t mirrorEntryCount {0};
     for (const auto& [key, value] : m_db->seek(agentPrefix))
     {
         ++mirrorEntryCount;
@@ -708,26 +711,27 @@ void IndexerConnector::diff(const nlohmann::json& responseJson,
 
     // Iterate over the status vector and check if the element is marked as not found.
     // This means that the element is in the indexer but not in the database. To solve this, the element will be
-    // deleted. Skip entirely when the mirror scan came back completely empty while the index reports documents for this
-    // agent: that combination is the signature of a corrupted/gapped local mirror, not proof the
-    // agent's real documents should be deleted. A partially-populated mirror is trusted as before.
-    if (mirrorEntryCount == 0 && !status.empty())
+    // deleted. An empty mirror is no exception: on a node that has never processed the agent (it has just moved
+    // there from another cluster node) this removes the previous node's documents, and the full sync the agent is
+    // sending to this node reinserts the current ones. The same deletion on a node that did process the agent means
+    // the mirror was lost, so the event is worth a log line either way.
+    std::size_t deletions {0};
+    for (const auto& [id, data] : status)
+    {
+        if (!data)
+        {
+            actions.emplace_back(id, true);
+            ++deletions;
+        }
+    }
+
+    if (mirrorEntryCount == 0 && deletions > 0)
     {
         logWarn(IC_NAME,
-                "Skipping deletion for agent '%s': local mirror is empty but the index reports %zu document(s) - "
-                "assuming a corrupted mirror instead of deleting real data.",
+                "Local mirror holds no entry for agent '%s': deleting the %zu document(s) the index reports for it. "
+                "Expected when the agent has just moved to this node; otherwise the mirror was lost.",
                 agentId.c_str(),
-                status.size());
-    }
-    else
-    {
-        for (const auto& [id, data] : status)
-        {
-            if (!data)
-            {
-                actions.emplace_back(id, true);
-            }
-        }
+                deletions);
     }
 
     auto url = selector->getNext();
@@ -780,10 +784,94 @@ void IndexerConnector::validateMappings(const nlohmann::json& templateData,
             throw std::runtime_error("Couldn't retrieve current mappings.");
         }
 
+        // The backup is looked up by its own name, which only needs access to that index.
+        const auto backupIndexUrl = [&]()
+        {
+            return selector->getNext() + "/" + m_indexName + "-backup";
+        };
+        const auto backupExists = [&]()
+        {
+            auto exists = true;
+            const auto onLookupError =
+                [&exists, &onError](const std::string& error, const long statusCode, const std::string& body)
+            {
+                if (statusCode != HTTP_NOT_FOUND)
+                {
+                    onError(error, statusCode, body);
+                }
+                exists = false;
+            };
+            HTTPRequest::instance().get(
+                RequestParameters {.url = HttpURL(backupIndexUrl() + "/_settings?filter_path=*.settings.index.uuid"),
+                                   .secureCommunication = secureCommunication},
+                PostRequestParameters {.onSuccess = onSuccess, .onError = onLookupError},
+                ConfigurationParameters {});
+            return exists;
+        };
+        const auto documentCount = [&](const std::string& indexName)
+        {
+            nlohmann::json countResponse;
+            HTTPRequest::instance().get(
+                RequestParameters {.url = HttpURL(selector->getNext() + "/" + indexName + "/_count?filter_path=count"),
+                                   .secureCommunication = secureCommunication},
+                PostRequestParameters {.onSuccess = [&countResponse](const std::string& response)
+                                       { countResponse = nlohmann::json::parse(response, nullptr, false); },
+                                       .onError = onError},
+                ConfigurationParameters {});
+
+            if (countResponse.is_discarded() || !countResponse.contains("count"))
+            {
+                throw std::runtime_error("Couldn't retrieve the document count of '" + indexName + "'.");
+            }
+            return countResponse.at("count").get<uint64_t>();
+        };
+
         // Calculating hashes.
         auto hashTemplateMappings = hashMappings(templateMappings.dump());
         auto hashCurrentMappings = hashMappings(currentMappings[m_indexName]["mappings"].dump());
-        if (hashTemplateMappings != hashCurrentMappings)
+        if (hashTemplateMappings == hashCurrentMappings)
+        {
+            // Matching mappings only prove that the index was recreated, not that the reindex from the backup
+            // finished, so the backup is deleted only when it holds no more documents than the index.
+            const auto removeOrphanBackup = [&]()
+            {
+                if (!backupExists())
+                {
+                    return;
+                }
+
+                const auto backupDocuments = documentCount(m_indexName + "-backup");
+                const auto indexDocuments = documentCount(m_indexName);
+                if (backupDocuments > indexDocuments)
+                {
+                    logWarn(IC_NAME,
+                            "Keeping backup index '%s-backup' with %llu documents: index '%s' holds %llu, so a "
+                            "migration may not have finished.",
+                            m_indexName.c_str(),
+                            static_cast<unsigned long long>(backupDocuments),
+                            m_indexName.c_str(),
+                            static_cast<unsigned long long>(indexDocuments));
+                    return;
+                }
+
+                logInfo(IC_NAME, "Deleting orphan backup index '%s-backup'.", m_indexName.c_str());
+                HTTPRequest::instance().delete_(
+                    RequestParameters {.url = HttpURL(backupIndexUrl()), .secureCommunication = secureCommunication},
+                    PostRequestParameters {.onSuccess = onSuccess, .onError = onError},
+                    ConfigurationParameters {});
+            };
+
+            // The cleanup is optional: a failure in it is not a failure of the mappings validation.
+            try
+            {
+                removeOrphanBackup();
+            }
+            catch (const std::exception& e)
+            {
+                logWarn(IC_NAME, "Unable to clean up the backup index '%s-backup': %s.", m_indexName.c_str(), e.what());
+            }
+        }
+        else
         {
             logDebug2(IC_NAME,
                       "Current mappings '%s' do not match the expected mappings '%s'.",
@@ -823,21 +911,11 @@ void IndexerConnector::validateMappings(const nlohmann::json& templateData,
                 R"(}}})";
 
             // Remove any previous backup if exists.
-            std::string currentIndices;
-            HTTPRequest::instance().get(
-                RequestParameters {.url = HttpURL(selector->getNext() + "/_cat/indices/"),
-                                   .secureCommunication = secureCommunication},
-                PostRequestParameters {.onSuccess = [&currentIndices](const std::string& response)
-                                       { currentIndices = response; },
-                                       .onError = onError},
-                ConfigurationParameters {});
-
-            if (currentIndices.find(m_indexName + "-backup") != std::string::npos)
+            if (backupExists())
             {
                 logDebug2(IC_NAME, "Deleting previous backup index '%s-backup'.", m_indexName.c_str());
                 HTTPRequest::instance().delete_(
-                    RequestParameters {.url = HttpURL(selector->getNext() + "/" + m_indexName + "-backup"),
-                                       .secureCommunication = secureCommunication},
+                    RequestParameters {.url = HttpURL(backupIndexUrl()), .secureCommunication = secureCommunication},
                     PostRequestParameters {.onSuccess = onSuccess, .onError = onError},
                     ConfigurationParameters {});
             }
@@ -1139,12 +1217,6 @@ IndexerConnector::IndexerConnector(
         {
             std::scoped_lock lock(m_syncMutex);
 
-            if (!m_initialized && m_initializeThread.joinable())
-            {
-                logDebug2(IC_NAME, "Waiting for initialization thread to process events.");
-                m_initializeThread.join();
-            }
-
             if (m_stopping.load())
             {
                 logDebug2(IC_NAME, "IndexerConnector is stopping, event processing will be skipped.");
@@ -1156,6 +1228,36 @@ IndexerConnector::IndexerConnector(
 
             // Accumulator for data to be sent to the indexer via query requests.
             nlohmann::json queryData;
+
+            // Requests in the order they have to reach the indexer (true: delete by query). Only the operations of
+            // the same agent have to keep their order: a delete by query must not run after the bulk that follows it,
+            // which would remove the documents that bulk has just indexed. So the pending queries are sent before the
+            // pending bulk, and the requests are cut only when a query arrives for an agent that already has
+            // operations in the bulk. The agent is the first field of an id, which is the node name for the manager
+            // agent in a cluster.
+            std::vector<std::pair<bool, std::string>> requests;
+            std::set<std::string> bulkAgents;
+            const auto agentOf = [](const std::string& id)
+            {
+                return id.substr(0, id.find('_'));
+            };
+            const auto flushBulk = [&bulkData, &bulkAgents, &requests]()
+            {
+                if (!bulkData.empty())
+                {
+                    requests.emplace_back(false, std::move(bulkData));
+                    bulkData.clear();
+                }
+                bulkAgents.clear();
+            };
+            const auto flushQuery = [&queryData, &requests]()
+            {
+                if (!queryData.empty())
+                {
+                    requests.emplace_back(true, queryData.dump());
+                    queryData.clear();
+                }
+            };
 
             while (!dataQueue.empty())
             {
@@ -1189,31 +1291,49 @@ IndexerConnector::IndexerConnector(
                 {
                     if (m_useSeekDelete)
                     {
-                        // The id here is already the full composite key (every element's deleteElement() builds
-                        // it as agentId + "_" + itemId) - no separator needed. seek() is a plain byte-prefix
-                        // scan though, so a longer sibling key starting with this id (e.g. CVE-2023-100 when
-                        // deleting CVE-2023-1) would also match. The default comparator visits the exact match
-                        // first, so stop as soon as the key stops being exactly the id.
-                        for (const auto& [key, _] : m_db->seek(id))
+                        // Seek-delete publishers send the id without the version suffix their documents were
+                        // indexed with ("<id>_<suffix>", see InventorySync::updateElementID in the vulnerability
+                        // scanner), so the match is the exact id plus every key under "<id>_". A plain seek(id)
+                        // would also sweep siblings sharing the byte prefix (CVE-2023-100 when deleting
+                        // CVE-2023-1), and those sort before "<id>_", so the prefix scan has to be its own seek.
+                        const auto deleteKey = [&](const std::string& key)
                         {
-                            if (key != id)
-                            {
-                                break;
-                            }
-
                             logDebug2(IC_NAME, "Added document for deletion with id: %s.", key.c_str());
                             if (!noIndex)
                             {
+                                bulkAgents.insert(agentOf(key));
                                 builderBulkDelete(bulkData, key, m_indexName);
                             }
 
                             m_db->delete_(key);
+                        };
+
+                        if (id.empty())
+                        {
+                            // An empty id would match every key under "_"; the exact lookup rejects it anyway.
+                            logWarn(IC_NAME, "Ignoring DELETED event with an empty id: %s", data.c_str());
+                        }
+                        else
+                        {
+                            if (std::string value; m_db->get(id, value))
+                            {
+                                deleteKey(id);
+                            }
+
+                            // Named local: seek() only borrows the key as a string_view, read lazily on the
+                            // loop's begin() - a temporary here would already be gone by then.
+                            const auto idPrefix = id + "_";
+                            for (const auto& [key, _] : m_db->seek(idPrefix))
+                            {
+                                deleteKey(key);
+                            }
                         }
                     }
                     else
                     {
                         if (!noIndex)
                         {
+                            bulkAgents.insert(agentOf(id));
                             builderBulkDelete(bulkData, id, m_indexName);
                         }
 
@@ -1225,6 +1345,11 @@ IndexerConnector::IndexerConnector(
                     logDebug2(IC_NAME, "Added document for deletion by query with id: %s.", id.c_str());
                     if (!noIndex)
                     {
+                        if (bulkAgents.count(agentOf(id)))
+                        {
+                            flushQuery();
+                            flushBulk();
+                        }
                         builderDeleteByQuery(queryData, id);
                     }
 
@@ -1249,6 +1374,7 @@ IndexerConnector::IndexerConnector(
                     const auto dataString = parsedData.at("data").dump();
                     if (!noIndex)
                     {
+                        bulkAgents.insert(agentOf(id));
                         builderBulkIndex(bulkData, id, m_indexName, dataString);
                     }
                     m_db->put(id, dataString);
@@ -1387,18 +1513,35 @@ IndexerConnector::IndexerConnector(
                     {});
             };
 
-            const auto serverUrl = selector->getNext();
+            flushQuery();
+            flushBulk();
 
-            if (!bulkData.empty())
+            // Only what goes to the indexer needs it: the operations flagged no-index have already been applied to the
+            // local mirror, so they neither wait for its initialization nor for an available server.
+            if (requests.empty())
             {
-                const auto url = serverUrl + "/_bulk?refresh=wait_for";
-                processData(bulkData, url);
+                return;
             }
 
-            if (!queryData.empty())
+            if (!m_initialized && m_initializeThread.joinable())
             {
-                const auto url = serverUrl + "/" + m_indexName + "/_delete_by_query";
-                processData(queryData.dump(), url);
+                logDebug2(IC_NAME, "Waiting for initialization thread to process events.");
+                m_initializeThread.join();
+            }
+
+            if (m_stopping.load())
+            {
+                logDebug2(IC_NAME, "IndexerConnector is stopping, event processing will be skipped.");
+                throw std::runtime_error("IndexerConnector is stopping, event processing will be skipped.");
+            }
+
+            const auto serverUrl = selector->getNext();
+
+            for (const auto& [isQuery, payload] : requests)
+            {
+                const auto url = isQuery ? serverUrl + "/" + m_indexName + "/_delete_by_query?ignore_unavailable=true"
+                                         : serverUrl + "/_bulk?refresh=wait_for";
+                processData(payload, url);
             }
         },
         DATABASE_BASE_PATH + m_indexName,
@@ -1533,17 +1676,24 @@ IndexerConnector::IndexerConnector(
                 {
                     if (m_useSeekDelete)
                     {
-                        // Same as the index-enabled constructor's DELETED branch: id is already the full
-                        // composite key, no separator appended - stop as soon as the key stops being exactly
-                        // the id, so a longer sibling key sharing the same byte-prefix isn't also deleted.
-                        for (const auto& [key, _] : m_db->seek(id))
+                        // Same match as the index-enabled constructor's DELETED branch: the exact id plus every
+                        // versioned key under "<id>_", never a sibling that merely shares the byte prefix. With no
+                        // bulk request to build, deleting a key that is not there is a harmless no-op.
+                        if (id.empty())
                         {
-                            if (key != id)
-                            {
-                                break;
-                            }
+                            logWarn(IC_NAME, "Ignoring DELETED event with an empty id: %s", data.c_str());
+                        }
+                        else
+                        {
+                            m_db->delete_(id);
 
-                            m_db->delete_(key);
+                            // Named local: seek() only borrows the key as a string_view, read lazily on the
+                            // loop's begin() - a temporary here would already be gone by then.
+                            const auto idPrefix = id + "_";
+                            for (const auto& [key, _] : m_db->seek(idPrefix))
+                            {
+                                m_db->delete_(key);
+                            }
                         }
                     }
                     else

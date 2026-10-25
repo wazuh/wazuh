@@ -288,6 +288,15 @@ else()
                                      -Wl,--wrap,StartMQPredicated -Wl,--wrap,SendMSG")
 endif()
 
+# syscom.c listener loop, in its own binary so that wrapping close and accept does not reach the
+# other syscom tests. The listener does not exist on Windows.
+if(NOT ${TARGET} STREQUAL "winagent")
+  list(APPEND syscheckd_tests_names "syscom_main")
+  list(APPEND syscheckd_tests_flags "${FIM_SYSCOM_BASE_FLAGS} -Wl,--wrap,close -Wl,--wrap,accept -Wl,--wrap,select -Wl,--wrap,FOREVER \
+                                     -Wl,--wrap,OS_BindUnixDomain -Wl,--wrap,OS_RecvSecureTCP \
+                                     -Wl,--wrap,OS_SendSecureTCP")
+endif()
+
 # Compiling tests
 list(LENGTH syscheckd_tests_names count)
 math(EXPR count "${count} - 1")
@@ -361,6 +370,18 @@ if(NOT ${TARGET} STREQUAL "winagent")
   target_include_directories(test_check_rc_sys PRIVATE ${SRC_FOLDER}/rootcheck)
   target_link_libraries(test_check_rc_sys SYSCHECK_O ${TEST_DEPS} "${CHECK_RC_SYS_FLAGS}")
   add_test(NAME test_check_rc_sys COMMAND test_check_rc_sys)
+
+  set(CHECK_RC_IF_FLAGS "-Wl,--wrap,socket \
+                          -Wl,--wrap,close \
+                          -Wl,--wrap,ioctl \
+                          -Wl,--wrap,system \
+                          -Wl,--wrap,notify_rk \
+                          -Wl,--wrap,_mterror")
+
+  add_executable(test_check_rc_if test_check_rc_if.c)
+  target_include_directories(test_check_rc_if PRIVATE ${SRC_FOLDER}/rootcheck)
+  target_link_libraries(test_check_rc_if SYSCHECK_O ${TEST_DEPS} "${CHECK_RC_IF_FLAGS}")
+  add_test(NAME test_check_rc_if COMMAND test_check_rc_if)
 
   set(COMMON_FLAGS "-Wl,--wrap,wopendir \
                     -Wl,--wrap,closedir \

@@ -496,6 +496,32 @@ void test_get_process_parent_info_failed(void **state) {
     }
 }
 
+void test_get_process_parent_info_long_path(void **state) {
+    (void) state;
+
+    char *parent_name;
+    char *parent_cwd;
+
+    // One extra byte to detect a terminator written past OS_FLSIZE
+    parent_name = malloc(OS_FLSIZE + 1);
+    parent_cwd = malloc(OS_FLSIZE + 1);
+    parent_name[OS_FLSIZE] = 'X';
+    parent_cwd[OS_FLSIZE] = 'X';
+
+    will_return(__wrap_readlink, OS_FLSIZE + 10);
+    will_return(__wrap_readlink, OS_FLSIZE + 10);
+
+    get_parent_process_info("1515", &parent_name, &parent_cwd);
+
+    assert_int_equal(parent_name[OS_FLSIZE - 1], '\0');
+    assert_int_equal(parent_cwd[OS_FLSIZE - 1], '\0');
+    assert_int_equal(parent_name[OS_FLSIZE], 'X');
+    assert_int_equal(parent_cwd[OS_FLSIZE], 'X');
+
+    free(parent_name);
+    free(parent_cwd);
+}
+
 void test_get_process_parent_info_passsed(void **state) {
     (void) state;
 
@@ -970,6 +996,8 @@ void test_audit_parse_chmod(void **state) {
     expect_string(__wrap__mdebug2, formatted_msg,
         "(6247): audit_event: uid=user99, auid=lp, euid=user29, gid=, pid=58280, ppid=3211, inode=19, path=/root/test/file, pname=/usr/bin/chmod");
 
+    expect_string(__wrap_realpath, path, "/root/test/file");
+    will_return(__wrap_realpath, strdup("/root/test/file"));
 
     expect_value(__wrap_fim_whodata_event, w_evt->process_id, 58280);
     expect_string(__wrap_fim_whodata_event, w_evt->user_id, "99");
@@ -1341,6 +1369,7 @@ int main(void) {
         cmocka_unit_test_teardown(test_gen_audit_path8, free_string),
         cmocka_unit_test(test_get_process_parent_info_failed),
         cmocka_unit_test(test_get_process_parent_info_passsed),
+        cmocka_unit_test(test_get_process_parent_info_long_path),
         cmocka_unit_test(test_audit_parse),
         cmocka_unit_test(test_audit_parse3),
         cmocka_unit_test(test_audit_parse4),

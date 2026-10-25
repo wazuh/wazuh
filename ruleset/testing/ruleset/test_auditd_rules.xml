@@ -1,0 +1,52 @@
+<group name="qa,test">
+
+<!-- Auditd field tests. The fields under test are matched exactly, so each rule fires only when the decoder extracted the right value. -->
+
+<!-- CONFIG_CHANGE combined with the SYSCALL record of auditctl: key, list and res come from CONFIG_CHANGE. -->
+<rule id="999930" level="3">
+  <if_sid>80705</if_sid>
+  <field name="audit.key">^t39786_key$</field>
+  <field name="audit.list">^4$</field>
+  <field name="audit.res">^1$</field>
+  <description>Testing auditd CONFIG_CHANGE key, list and res from a combined event</description>
+</rule>
+
+<!-- CONFIG_CHANGE without a key, combined with the SYSCALL record of auditctl: res is kept. -->
+<rule id="999931" level="3">
+  <if_sid>80705</if_sid>
+  <field name="audit.id">^397861$</field>
+  <field name="audit.res">^1$</field>
+  <description>Testing auditd CONFIG_CHANGE res without a key</description>
+</rule>
+
+<!-- CONFIG_CHANGE with subj= between ses= and an unquoted op=. -->
+<rule id="999932" level="3">
+  <if_sid>80705</if_sid>
+  <field name="audit.auid">^39786$</field>
+  <field name="audit.session">^51$</field>
+  <field name="audit.op">^add_rule$</field>
+  <description>Testing auditd CONFIG_CHANGE auid, session and op</description>
+</rule>
+
+<!-- ENRICHED format: the last field stops at the 0x1d separator. -->
+<rule id="999933" level="3">
+  <if_sid>80700</if_sid>
+  <field name="audit.type">^LOGIN$</field>
+  <field name="audit.session">^39786$</field>
+  <field name="audit.res">^1$</field>
+  <description>Testing auditd LOGIN res in ENRICHED format</description>
+</rule>
+
+<rule id="999934" level="3">
+  <if_sid>80710</if_sid>
+  <field name="audit.session">^39786$</field>
+  <description>Testing auditd ANOM_PROMISCUOUS session in ENRICHED format</description>
+</rule>
+
+<rule id="999935" level="3">
+  <if_sid>80731</if_sid>
+  <field name="audit.session">^39786$</field>
+  <description>Testing auditd MAC_STATUS session in ENRICHED format</description>
+</rule>
+
+</group>

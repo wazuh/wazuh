@@ -47,7 +47,7 @@ else()
                              -Wl,--wrap,ReadExecConfig -Wl,--wrap,GetCommandbyName -Wl,--wrap,wpopenv -Wl,--wrap,wpclose -Wl,--wrap,fwrite \
                              -Wl,--wrap,fopen -Wl,--wrap,fclose -Wl,--wrap,fflush -Wl,--wrap,fgets -Wl,--wrap,fread -Wl,--wrap,fseek \
                              -Wl,--wrap,remove -Wl,--wrap,fgetpos -Wl,--wrap=fgetc -Wl,--wrap,fwrite \
-                             -Wl,--wrap,fprintf -Wl,--wrap,popen ${DEBUG_OP_WRAPPERS}")
+                             -Wl,--wrap,fprintf -Wl,--wrap,popen -Wl,--wrap,w_fopen_nofollow -Wl,--wrap,w_get_timestamp ${DEBUG_OP_WRAPPERS}")
 
     list(APPEND execd_names "test_get_command_by_name")
     list(APPEND execd_flags "${DEBUG_OP_WRAPPERS}")

@@ -13,6 +13,7 @@
 #include <setjmp.h>
 #include <cmocka.h>
 #include <string.h>
+#include <errno.h>
 #include <stdlib.h>
 #include "../common.h"
 
@@ -53,7 +54,13 @@ int __wrap_accept(__attribute__((unused))int __fd, struct sockaddr * __addr, __a
     return mock();
 }
 
+int wrap_send_errno = 0;
+
 ssize_t __wrap_send(__attribute__((unused))int __fd, __attribute__((unused))const void *__buf, __attribute__((unused))size_t __n, __attribute__((unused))int __flags) {
+    if (wrap_send_errno) {
+        errno = wrap_send_errno;
+    }
+
     return mock();
 }
 

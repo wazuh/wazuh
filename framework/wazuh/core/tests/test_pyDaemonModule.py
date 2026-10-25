@@ -2,7 +2,7 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 import pytest
 
 from wazuh.core.pyDaemonModule import *
@@ -64,3 +64,41 @@ def test_delete_pid():
         tmpfile = NamedTemporaryFile(dir=tmpdirname, delete=False, suffix='-255.pid')
         with patch('wazuh.core.pyDaemonModule.common.OS_PIDFILE_PATH', new=tmpdirname.split('/')[2]):
             delete_pid(tmpfile.name.split('/')[3].split('-')[0], '255')
+
+
+@pytest.mark.parametrize('kill_effect, log_level, expected', [
+    (None, None, None),
+    (psutil.NoSuchProcess(16), 'debug', None),
+    (psutil.AccessDenied(16), 'error', 'ID 16: psutil.AccessDenied(pid=16)'),
+    (ValueError('unexpected'), 'error', 'ID 16: unexpected'),
+])
+@patch('wazuh.core.pyDaemonModule.common.OS_PIDFILE_PATH', new='')
+@patch('wazuh.core.pyDaemonModule.psutil.Process')
+def test_delete_child_pids(mock_process, kill_effect, log_level, expected):
+    """Check that a child that already exited is logged at debug level, other errors at error level,
+    and the child's pidfile is removed in every case."""
+    logger = MagicMock()
+    child = MagicMock(pid=16)
+    child.kill.side_effect = kill_effect
+    mock_process.return_value.children.return_value = [child]
+
+    with TemporaryDirectory() as tmpdirname:
+        pidfile = os.path.join(tmpdirname, 'wazuh-apid_exec-16.pid')
+        open(pidfile, 'w').close()
+
+        with patch('wazuh.core.pyDaemonModule.common.WAZUH_PATH', new=tmpdirname):
+            delete_child_pids('wazuh-apid', 1234, logger)
+
+        assert not os.path.exists(pidfile)
+
+    mock_process.assert_called_once_with(1234)
+    child.kill.assert_called_once()
+    if log_level == 'debug':
+        logger.debug.assert_called_once_with('Process with ID 16 had already exited.')
+        logger.error.assert_not_called()
+    elif log_level == 'error':
+        logger.error.assert_called_once()
+        assert expected in logger.error.call_args[0][0]
+    else:
+        logger.debug.assert_not_called()
+        logger.error.assert_not_called()

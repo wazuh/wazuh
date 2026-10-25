@@ -19,6 +19,7 @@
 #include "../../analysisd/analysisd.h"
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../wrappers/wazuh/os_xml/os_xml_wrappers.h"
+#include "../wrappers/wazuh/shared/validate_op_wrappers.h"
 
 char *loadmemory(char *at, const char *str, OSList* log_msg);
 int get_info_attributes(char **attributes, char **values, OSList* log_msg);
@@ -42,6 +43,11 @@ void __wrap__os_analysisd_add_logmsg(OSList * list, int level, int line, const c
     check_expected(level);
     check_expected_ptr(list);
     check_expected(formatted_msg);
+}
+
+uint64_t __wrap_w_get_memory_size(bool * cgroup_limited) {
+    *cgroup_limited = mock_type(bool);
+    return mock_type(uint64_t);
 }
 
 /* tests */
@@ -857,6 +863,180 @@ void w_free_rules_tmp_params_null(void ** state){
     w_free_rules_tmp_params(NULL);
 }
 
+// w_rule_tree_build_init
+void test_w_rule_tree_build_init(void ** state)
+{
+    w_rule_tree_build_t build;
+    OSList list_msg = {0};
+    memset(&build, 0xff, sizeof(build));
+
+    Config.rule_tree_node_warning = 10;
+    Config.rule_tree_node_limit = 20;
+
+    w_rule_tree_build_init(&build, &list_msg);
+
+    assert_int_equal(build.node_count, 0);
+    assert_int_equal(build.rule_node_count, 0);
+    assert_int_equal(build.node_warning, 10);
+    assert_int_equal(build.node_limit, 20);
+    assert_false(build.warning_emitted);
+    assert_false(build.limit_reached);
+    assert_ptr_equal(build.log_msg, &list_msg);
+}
+
+// w_rule_tree_read_config
+static void expect_threshold(const char * option, char * value)
+{
+    expect_string(__wrap_getDefine_String, low_name, option);
+    will_return(__wrap_getDefine_String, value);
+}
+
+static void expect_memory_size(bool cgroup_limited, uint64_t memory)
+{
+    will_return(__wrap_w_get_memory_size, cgroup_limited);
+    will_return(__wrap_w_get_memory_size, memory);
+}
+
+void test_w_rule_tree_read_config_disabled(void ** state)
+{
+    expect_threshold("rule_tree_memory_warning", "0");
+    expect_threshold("rule_tree_memory_limit", "0");
+
+    w_rule_tree_read_config();
+
+    assert_int_equal(Config.rule_tree_node_warning, 0);
+    assert_int_equal(Config.rule_tree_node_limit, 0);
+    assert_string_equal(Config.rule_tree_memory_warning, "0");
+    assert_string_equal(Config.rule_tree_memory_limit, "0");
+}
+
+void test_w_rule_tree_read_config_size(void ** state)
+{
+    // Sizes use the format of w_parse_size(): bytes, or a number followed by K, M or G
+    expect_threshold("rule_tree_memory_warning", "512M");
+    expect_string(__wrap__minfo, formatted_msg,
+                  "Rule tree threshold 'analysisd.rule_tree_memory_warning' set to 16777216 nodes: 536870912 bytes, "
+                  "32 bytes per node.");
+    expect_threshold("rule_tree_memory_limit", "2G");
+    expect_string(__wrap__minfo, formatted_msg,
+                  "Rule tree threshold 'analysisd.rule_tree_memory_limit' set to 67108864 nodes: 2147483648 bytes, "
+                  "32 bytes per node.");
+
+    w_rule_tree_read_config();
+
+    assert_int_equal(Config.rule_tree_node_warning, 16777216);
+    assert_int_equal(Config.rule_tree_node_limit, 67108864);
+    assert_string_equal(Config.rule_tree_memory_warning, "512M");
+    assert_string_equal(Config.rule_tree_memory_limit, "2G");
+}
+
+void test_w_rule_tree_read_config_percentage_physical(void ** state)
+{
+    // 25% of 8 GiB with 32-byte nodes
+    expect_threshold("rule_tree_memory_warning", "25%");
+    expect_memory_size(false, 8ULL << 30);
+    expect_string(__wrap__minfo, formatted_msg,
+                  "Rule tree threshold 'analysisd.rule_tree_memory_warning' set to 67108864 nodes: 25% of 8192 MiB "
+                  "of physical memory, 32 bytes per node.");
+    expect_threshold("rule_tree_memory_limit", "0");
+
+    w_rule_tree_read_config();
+
+    assert_int_equal(Config.rule_tree_node_warning, 67108864);
+    assert_int_equal(Config.rule_tree_node_limit, 0);
+}
+
+void test_w_rule_tree_read_config_percentage_cgroup(void ** state)
+{
+    // 10% and 50% of a 2 GiB cgroup limit
+    expect_threshold("rule_tree_memory_warning", "10%");
+    expect_memory_size(true, 2ULL << 30);
+    expect_string(__wrap__minfo, formatted_msg,
+                  "Rule tree threshold 'analysisd.rule_tree_memory_warning' set to 6710886 nodes: 10% of 2048 MiB "
+                  "of cgroup memory, 32 bytes per node.");
+    expect_threshold("rule_tree_memory_limit", "50%");
+    expect_memory_size(true, 2ULL << 30);
+    expect_string(__wrap__minfo, formatted_msg,
+                  "Rule tree threshold 'analysisd.rule_tree_memory_limit' set to 33554432 nodes: 50% of 2048 MiB "
+                  "of cgroup memory, 32 bytes per node.");
+
+    w_rule_tree_read_config();
+
+    assert_int_equal(Config.rule_tree_node_warning, 6710886);
+    assert_int_equal(Config.rule_tree_node_limit, 33554432);
+}
+
+void test_w_rule_tree_read_config_percentage_unknown_memory(void ** state)
+{
+    // Without a memory size, a percentage disables the threshold instead of stopping analysisd
+    expect_threshold("rule_tree_memory_warning", "25%");
+    expect_memory_size(false, 0);
+    expect_string(__wrap__mwarn, formatted_msg,
+                  "(7622): Could not determine the memory size. 'analysisd.rule_tree_memory_warning' (25%) "
+                  "is disabled.");
+    expect_threshold("rule_tree_memory_limit", "0");
+
+    w_rule_tree_read_config();
+
+    assert_int_equal(Config.rule_tree_node_warning, 0);
+}
+
+void test_w_rule_tree_read_config_tiny_size(void ** state)
+{
+    // A threshold that rounds down to 0 nodes must not be disabled
+    expect_threshold("rule_tree_memory_warning", "1");
+    expect_string(__wrap__minfo, formatted_msg,
+                  "Rule tree threshold 'analysisd.rule_tree_memory_warning' set to 1 nodes: 1 bytes, "
+                  "32 bytes per node.");
+    expect_threshold("rule_tree_memory_limit", "0");
+
+    w_rule_tree_read_config();
+
+    assert_int_equal(Config.rule_tree_node_warning, 1);
+}
+
+void test_w_rule_tree_read_config_invalid(void ** state)
+{
+    char * values[] = {"25 %", "0%", "101%", "1.5%", "-1%", "abc", "1.5G", "-1", "2T", NULL};
+
+    for (int i = 0; values[i] != NULL; i++) {
+        char expected[OS_SIZE_256];
+        snprintf(expected, sizeof(expected),
+                 "(2302): Invalid definition for analysisd.rule_tree_memory_warning: '%s'.", values[i]);
+
+        expect_threshold("rule_tree_memory_warning", values[i]);
+        expect_string(__wrap__merror_exit, formatted_msg, expected);
+
+        expect_assert_failure(w_rule_tree_read_config());
+    }
+}
+
+void test_w_rule_tree_read_config_warning_not_lower(void ** state)
+{
+    expect_threshold("rule_tree_memory_warning", "2G");
+    expect_string(__wrap__minfo, formatted_msg,
+                  "Rule tree threshold 'analysisd.rule_tree_memory_warning' set to 67108864 nodes: 2147483648 bytes, "
+                  "32 bytes per node.");
+    expect_threshold("rule_tree_memory_limit", "2G");
+    expect_string(__wrap__minfo, formatted_msg,
+                  "Rule tree threshold 'analysisd.rule_tree_memory_limit' set to 67108864 nodes: 2147483648 bytes, "
+                  "32 bytes per node.");
+
+    expect_string(__wrap__merror_exit, formatted_msg,
+                  "(5109): Invalid rule tree thresholds: 'analysisd.rule_tree_memory_warning' (67108864 nodes) "
+                  "must be lower than 'analysisd.rule_tree_memory_limit' (67108864 nodes).");
+
+    expect_assert_failure(w_rule_tree_read_config());
+}
+
+// w_rule_tree_node_size
+void test_w_rule_tree_node_size(void ** state)
+{
+    // A 24-byte RuleNode takes a 32-byte glibc chunk on 64-bit systems
+    assert_int_equal(sizeof(RuleNode), 3 * sizeof(void *));
+    assert_int_equal(w_rule_tree_node_size(), 4 * sizeof(size_t));
+}
+
 int main(void)
 {
     const struct CMUnitTest tests[] = {
@@ -898,6 +1078,19 @@ int main(void)
         cmocka_unit_test(w_free_rules_tmp_params_only_rule_arr),
         cmocka_unit_test(w_free_rules_tmp_params_only_params),
         cmocka_unit_test(w_free_rules_tmp_params_null),
+        // Test w_rule_tree_build_init
+        cmocka_unit_test(test_w_rule_tree_build_init),
+        // Test w_rule_tree_read_config
+        cmocka_unit_test(test_w_rule_tree_read_config_disabled),
+        cmocka_unit_test(test_w_rule_tree_read_config_size),
+        cmocka_unit_test(test_w_rule_tree_read_config_percentage_physical),
+        cmocka_unit_test(test_w_rule_tree_read_config_percentage_cgroup),
+        cmocka_unit_test(test_w_rule_tree_read_config_percentage_unknown_memory),
+        cmocka_unit_test(test_w_rule_tree_read_config_tiny_size),
+        cmocka_unit_test(test_w_rule_tree_read_config_invalid),
+        cmocka_unit_test(test_w_rule_tree_read_config_warning_not_lower),
+        // Test w_rule_tree_node_size
+        cmocka_unit_test(test_w_rule_tree_node_size),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

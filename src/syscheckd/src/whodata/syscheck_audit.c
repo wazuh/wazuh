@@ -253,6 +253,18 @@ end:
     return retval;
 }
 
+void audit_remove_plugin_config(void) {
+    const char *plugin_paths[] = { PLUGINS_DIR_AUDIT "/" AUDIT_CONF_LINK, PLUGINS_OLD_DIR_AUDISP "/" AUDIT_CONF_LINK };
+
+    for (size_t i = 0; i < array_size(plugin_paths); i++) {
+        if (unlink(plugin_paths[i]) == 0) {
+            minfo(FIM_AUDIT_PLUGIN_REMOVED, plugin_paths[i]);
+        } else if (errno != ENOENT) {
+            merror(UNLINK_ERROR, plugin_paths[i], errno, strerror(errno));
+        }
+    }
+}
+
 
 // Init Audit events socket
 int init_auditd_socket(void) {
@@ -756,7 +768,7 @@ void audit_read_events(int *audit_sock, atomic_int_t *running) {
 
                 // Append to cache
                 len = endline - line;
-                if (cache_i + len + 1 <= BUF_SIZE) {
+                if (cache_i + len + 1 < BUF_SIZE) {
                     strncpy(cache + cache_i, line, len);
                     cache_i += len;
                     cache[cache_i++] = '\n';

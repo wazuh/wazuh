@@ -1633,10 +1633,11 @@ void replace_device_path(char **path) {
         mdebug2(FIM_WHODATA_DEVICE_PATH, syscheck.wdata.device[iterator], *path);
 
         if (!strncmp(*path, syscheck.wdata.device[iterator], dev_size)) {
-            size_t new_path_size = strlen(syscheck.wdata.drive[iterator]) + (size_t) (*path - dev_size);
+            // The prefix matched, so the path is at least dev_size long
+            size_t new_path_size = strlen(syscheck.wdata.drive[iterator]) + strlen(*path) - dev_size;
 
             os_calloc(new_path_size + 1, sizeof(char), new_path);
-            snprintf(new_path, new_path_size, "%s%s", syscheck.wdata.drive[iterator], *path + dev_size);
+            snprintf(new_path, new_path_size + 1, "%s%s", syscheck.wdata.drive[iterator], *path + dev_size);
             mdebug2(FIM_WHODATA_DEVICE_REPLACE, *path, new_path);
 
             os_free(*path);

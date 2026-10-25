@@ -133,7 +133,11 @@ getPreinstalledDirByType()
             # extraction in this function — if that ever changes, PREINSTALLEDDIR could
             # capture multiple newline-joined paths and this test would just fail closed.
             PREINSTALLEDDIR=`sed -n 's/^[[:space:]]*<string>\(.*\)\/Wazuh-launcher<\/string>$/\1/p' /Library/LaunchDaemons/com.wazuh.agent.plist`
-            if [ -d "$PREINSTALLEDDIR" ]; then
+            # Packages older than 4.14.9 point the plist at a launcher in
+            # /Library/StartupItems/WAZUH, which is not the installation directory.
+            # Only accept the path if it holds an installation, otherwise fall
+            # through to the legacy StartupItems script below.
+            if [ -d "$PREINSTALLEDDIR" ] && isWazuhInstalled "$PREINSTALLEDDIR"; then
                 return 0;
             fi
         fi

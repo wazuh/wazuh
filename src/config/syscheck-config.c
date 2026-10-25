@@ -1302,9 +1302,13 @@ int read_data_unit(const char *content) {
     int read_value = 0;
     char *value_str;
 
+    if (len_value_str == 0) {
+        return -1;
+    }
+
     // Check that the last character is a 'B' or a 'b', if it is, translate data unit
     // Else, use written value as KB
-    if (content[len_value_str - 1] == 'B' || content[len_value_str - 1] == 'b') {
+    if (len_value_str > 1 && (content[len_value_str - 1] == 'B' || content[len_value_str - 1] == 'b')) {
         if (isalpha(content[len_value_str - 2])){
             os_calloc(len_value_str, sizeof(char), value_str);
             memcpy(value_str, content, len_value_str - 2);

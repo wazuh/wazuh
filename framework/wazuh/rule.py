@@ -499,14 +499,16 @@ def upload_rule_file(filename: str, content: str, relative_dirname: str = None,
 
         upload_file(content, to_relative_path(full_path))
 
-        # After uploading the file, validate it using a logtest dummy msg
+        # After uploading the file, validate it using a logtest dummy msg.
+        # On any failure, including socket errors when analysisd stops during the validation, remove the file if
+        # there was no previous version. A previous version is restored from the backup.
         try:
             validate_dummy_logtest()
-        except WazuhError as exc:
-            if not overwrite and exists(full_path):
+        except Exception:
+            if not backup_file and exists(full_path):
                 delete_rule_file(filename=filename, relative_dirname=relative_dirname)
 
-            raise exc
+            raise
 
         result.affected_items.append(to_relative_path(full_path))
         result.total_affected_items = len(result.affected_items)

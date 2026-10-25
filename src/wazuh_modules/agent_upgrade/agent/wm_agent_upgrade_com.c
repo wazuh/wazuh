@@ -282,8 +282,10 @@ STATIC char * wm_agent_upgrade_com_write(const cJSON* json_object) {
         return wm_agent_upgrade_command_ack(ERROR_TARGET_FILE_NOT_MATCH, error_messages[ERROR_TARGET_FILE_NOT_MATCH]);
     }
 
-    char *base64_string = decode_base64(buffer_obj->valuestring);
-    if (value_obj && (value_obj->type == cJSON_Number) && base64_string && fwrite(base64_string, 1, value_obj->valueint, file.fp) == (unsigned)value_obj->valueint) {
+    size_t decoded_len = 0;
+    char *base64_string = cJSON_IsString(buffer_obj) ? decode_base64_len(buffer_obj->valuestring, &decoded_len) : NULL;
+    if (value_obj && (value_obj->type == cJSON_Number) && base64_string && value_obj->valueint >= 0 && (size_t)value_obj->valueint <= decoded_len
+        && fwrite(base64_string, 1, value_obj->valueint, file.fp) == (unsigned)value_obj->valueint) {
         os_free(base64_string);
         return wm_agent_upgrade_command_ack(ERROR_OK, error_messages[ERROR_OK]);
     } else {
@@ -370,8 +372,8 @@ STATIC char * wm_agent_upgrade_com_upgrade(const cJSON* json_object) {
         return wm_agent_upgrade_command_ack(ERROR_CLEAN_DIRECTORY, error_messages[ERROR_CLEAN_DIRECTORY]);
     }
 
-    //Unmerge
-    if (UnmergeFiles(merged, UPGRADE_DIR, OS_BINARY, NULL) == 0) {
+    // Unmerge, requiring every file of the package
+    if (UnmergeFiles(merged, UPGRADE_DIR, OS_BINARY, NULL) != UNMERGE_COMPLETE) {
         unlink(merged);
         mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_UNMERGING_FILE_ERROR, "upgrade", merged);
         return wm_agent_upgrade_command_ack(ERROR_UNMERGE, error_messages[ERROR_UNMERGE]);

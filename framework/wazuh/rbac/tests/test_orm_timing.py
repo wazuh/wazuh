@@ -5,15 +5,17 @@
 
 import time
 import statistics
-from unittest.mock import MagicMock
-from werkzeug.security import generate_password_hash
+from unittest.mock import MagicMock, patch
+from sqlalchemy.exc import OperationalError
+from werkzeug.security import check_password_hash, generate_password_hash
 
 import pytest
 
 
 class MockUser:
     """Mock User object for testing."""
-    def __init__(self, username, password_hash):
+    def __init__(self, username, password_hash, user_id=1):
+        self.id = user_id
         self.username = username
         self.password = password_hash
 
@@ -144,3 +146,167 @@ class TestCheckUserConsistency:
         assert _DUMMY_HASH is not None
         assert isinstance(_DUMMY_HASH, str)
         assert len(_DUMMY_HASH) > 50, "_DUMMY_HASH should be a bcrypt hash"
+
+
+LEGACY_METHODS = ['pbkdf2:sha256:150000', 'pbkdf2:sha256:260000']
+
+
+def _manager_returning(user):
+    manager = MagicMock()
+    manager.session.scalars.return_value.first.return_value = user
+    return manager
+
+
+class TestCheckUserLegacyHashRehash:
+    """Test suite to verify check_user() upgrades legacy password hashes on login."""
+
+    @pytest.mark.parametrize('method', LEGACY_METHODS)
+    def test_legacy_hash_rehashed_on_successful_login(self, method):
+        """A legacy hash is rehashed to the current default once the password is verified.
+
+        The UPDATE is conditioned on the exact hash that was just verified, so it cannot overwrite a password
+        change committed concurrently by another process.
+        """
+        from wazuh.rbac.orm import AuthenticationManager, _DEFAULT_HASH_PREFIX
+
+        real_password = "correct_password"
+        legacy_hash = generate_password_hash(real_password, method=method)
+        manager = _manager_returning(MockUser("legacy_user", legacy_hash, user_id=42))
+
+        result = AuthenticationManager.check_user(manager, "legacy_user", real_password)
+
+        assert result is True
+        manager.session.query.return_value.filter_by.assert_called_once_with(
+            id=42, password=legacy_hash)
+        update_call = manager.session.query.return_value.filter_by.return_value.update
+        update_call.assert_called_once()
+        new_hash = update_call.call_args[0][0]['password']
+        assert new_hash.startswith(f"{_DEFAULT_HASH_PREFIX}$")
+        assert check_password_hash(new_hash, real_password)
+        manager.session.commit.assert_called_once()
+
+    def test_legacy_hash_not_rehashed_on_failed_login(self):
+        """A legacy hash is left untouched when the password does not match."""
+        from wazuh.rbac.orm import AuthenticationManager
+        import wazuh.rbac.orm as orm_module
+
+        legacy_hash = generate_password_hash("correct_password", method=LEGACY_METHODS[0])
+        manager = _manager_returning(MockUser("legacy_user", legacy_hash))
+
+        with patch.object(orm_module, "sleep"):
+            result = AuthenticationManager.check_user(manager, "legacy_user", "wrong_password")
+
+        assert result is False
+        manager.session.query.assert_not_called()
+        manager.session.commit.assert_not_called()
+
+    def test_default_hash_not_rehashed(self):
+        """A hash already using the current default method is not rewritten on login."""
+        from wazuh.rbac.orm import AuthenticationManager
+
+        real_password = "correct_password"
+        manager = _manager_returning(MockUser("current_user", generate_password_hash(real_password)))
+
+        result = AuthenticationManager.check_user(manager, "current_user", real_password)
+
+        assert result is True
+        manager.session.query.assert_not_called()
+        manager.session.commit.assert_not_called()
+
+    def test_legacy_hash_login_succeeds_despite_rehash_write_failure(self):
+        """A successful login is not turned into a failure by a rehash write error.
+
+        The rehash is opportunistic; if the database can't be written right now (disk full, rbac.db locked past
+        SQLite's busy timeout, read-only file), the login that already passed the real hash check must still succeed.
+        """
+        from wazuh.rbac.orm import AuthenticationManager
+
+        real_password = "correct_password"
+        legacy_hash = generate_password_hash(real_password, method=LEGACY_METHODS[0])
+        manager = _manager_returning(MockUser("legacy_user", legacy_hash, user_id=42))
+        manager.session.commit.side_effect = OperationalError("UPDATE", {}, Exception("database is locked"))
+
+        result = AuthenticationManager.check_user(manager, "legacy_user", real_password)
+
+        assert result is True
+        manager.session.rollback.assert_called_once()
+
+
+class TestCheckUserFailedCheckFloor:
+    """Test suite to verify every failed check_user() call lasts the same calibrated floor."""
+
+    @pytest.mark.parametrize('stored', [None, 'default', *LEGACY_METHODS])
+    def test_failed_login_is_padded_to_floor(self, stored):
+        """A missing user and a wrong password against any stored format sleep up to the same floor."""
+        from wazuh.rbac.orm import AuthenticationManager
+        import wazuh.rbac.orm as orm_module
+
+        if stored is None:
+            user = None
+        else:
+            method = {} if stored == 'default' else {'method': stored}
+            user = MockUser("user", generate_password_hash("correct_password", **method))
+        manager = _manager_returning(user)
+
+        # 0.02s elapsed against a 0.05s floor: sleep until 2 ms before the deadline, then spin until 10.05
+        with patch.object(orm_module, "perf_counter", side_effect=[10.0, 10.02, 10.049, 10.05]), \
+                patch.object(orm_module, "_failed_check_floor", return_value=0.05), \
+                patch.object(orm_module, "sleep") as mock_sleep:
+            result = AuthenticationManager.check_user(manager, "user", "wrong_password")
+
+        assert result is False
+        mock_sleep.assert_called_once_with(pytest.approx(0.028))
+        manager.session.query.assert_not_called()
+
+    @pytest.mark.parametrize('elapsed', [0.049, 0.08])
+    def test_failed_login_near_or_past_floor_does_not_sleep(self, elapsed):
+        """A check that ends within 2 ms of the floor only spins, and one that ends past it returns at once."""
+        from wazuh.rbac.orm import AuthenticationManager
+        import wazuh.rbac.orm as orm_module
+
+        manager = _manager_returning(None)
+
+        clock = [10.0, 10.0 + elapsed, 10.0 + elapsed, 10.05]
+        with patch.object(orm_module, "perf_counter", side_effect=clock) as mock_clock, \
+                patch.object(orm_module, "_failed_check_floor", return_value=0.05), \
+                patch.object(orm_module, "sleep") as mock_sleep:
+            assert AuthenticationManager.check_user(manager, "user", "wrong_password") is False
+
+        mock_sleep.assert_not_called()
+        assert mock_clock.call_count == (4 if elapsed < 0.05 else 3)
+
+    @pytest.mark.parametrize('method', [None, *LEGACY_METHODS])
+    def test_successful_login_is_not_padded(self, method):
+        """A successful login returns as soon as the check (and any rehash) is done."""
+        from wazuh.rbac.orm import AuthenticationManager
+        import wazuh.rbac.orm as orm_module
+
+        kwargs = {'method': method} if method else {}
+        manager = _manager_returning(MockUser("user", generate_password_hash("correct_password", **kwargs)))
+
+        with patch.object(orm_module, "sleep") as mock_sleep:
+            assert AuthenticationManager.check_user(manager, "user", "correct_password") is True
+
+        mock_sleep.assert_not_called()
+
+    def test_floor_covers_slowest_format_and_is_calibrated_once(self):
+        """The floor is 1.5 times the median cost of the slowest known format, even when a legacy format costs
+        more than the current default, and it is measured only once per process.
+        """
+        import wazuh.rbac.orm as orm_module
+
+        # Three samples per format, in order: current default, 150000, 260000
+        durations = [0.05, 0.05, 0.05, 0.03, 0.03, 0.03, 0.07, 0.09, 0.08]
+        clock = []
+        for d in durations:
+            clock += [0.0, d]
+
+        with patch.object(orm_module, "_failed_check_seconds", None), \
+                patch.object(orm_module, "perf_counter", side_effect=clock), \
+                patch.object(orm_module, "check_password_hash") as mock_check:
+            assert orm_module._failed_check_floor() == pytest.approx(1.5 * 0.08)
+            assert orm_module._failed_check_floor() == pytest.approx(1.5 * 0.08)
+
+        assert mock_check.call_count == len(durations)
+        checked_methods = {c.args[0].split('$', 1)[0] for c in mock_check.call_args_list}
+        assert checked_methods == {orm_module._DEFAULT_HASH_PREFIX, *LEGACY_METHODS}

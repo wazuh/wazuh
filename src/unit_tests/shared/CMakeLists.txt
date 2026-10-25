@@ -45,6 +45,13 @@ endif()
 list(APPEND shared_tests_names "test_integrity_op")
 list(APPEND shared_tests_flags " ")
 
+if(${TARGET} STREQUAL "winagent")
+list(APPEND shared_tests_names "test_cryptography")
+list(APPEND shared_tests_flags "-Wl,--wrap,syscom_dispatch -Wl,--wrap,Start_win32_Syscheck -Wl,--wrap=is_fim_shutdown \
+                                -Wl,--wrap=_imp__dbsync_initialize -Wl,--wrap=_imp__rsync_initialize \
+                                -Wl,--wrap=fim_db_teardown ${DEBUG_OP_WRAPPERS}")
+endif()
+
 list(APPEND shared_tests_names "test_rbtree_op")
 if(${TARGET} STREQUAL "winagent")
 list(APPEND shared_tests_flags "-Wl,--wrap,syscom_dispatch -Wl,--wrap,Start_win32_Syscheck ${DEBUG_OP_WRAPPERS}")
@@ -61,7 +68,7 @@ list(APPEND shared_tests_flags "${VALIDATE_OP_FLAGS} -Wl,--wrap,syscom_dispatch 
                                 -Wl,--wrap=is_fim_shutdown -Wl,--wrap=_imp__dbsync_initialize \
                                 -Wl,--wrap=_imp__rsync_initialize -Wl,--wrap=fim_db_teardown ${DEBUG_OP_WRAPPERS}")
 else()
-list(APPEND shared_tests_flags "${VALIDATE_OP_FLAGS}")
+list(APPEND shared_tests_flags "${VALIDATE_OP_FLAGS} -Wl,--wrap,_merror_exit")
 endif()
 
 list(APPEND shared_tests_names "test_string_op")
@@ -312,6 +319,9 @@ list(APPEND shared_tests_flags "${DEBUG_OP_WRAPPERS}")
 list(APPEND shared_tests_names "test_yaml2json_op")
 list(APPEND shared_tests_flags "${DEBUG_OP_WRAPPERS}")
 
+list(APPEND shared_tests_names "test_file_op_unmerge")
+list(APPEND shared_tests_flags "-Wl,--wrap,fopen,--wrap,fwrite,--wrap,fclose,--wrap,fread ${DEBUG_OP_WRAPPERS}")
+
 endif()
 
 if(${TARGET} STREQUAL "server")
@@ -338,10 +348,14 @@ list(APPEND shared_tests_flags "-Wl,--wrap,pthread_mutex_lock -Wl,--wrap,pthread
 endif()
 
 list(APPEND shared_tests_names "test_url")
-list(APPEND shared_tests_flags "-Wl,--wrap,curl_slist_free_all -Wl,--wrap,curl_easy_cleanup \
-                                -Wl,--wrap,curl_easy_init -Wl,--wrap,curl_easy_setopt -Wl,--wrap,wfopen \
-                                -Wl,--wrap,curl_slist_append -Wl,--wrap,curl_easy_perform \
-                                -Wl,--wrap,curl_easy_getinfo -Wl,--wrap,FileSize ${DEBUG_OP_WRAPPERS}")
+set(url_flags "-Wl,--wrap,curl_slist_free_all -Wl,--wrap,curl_easy_cleanup \
+               -Wl,--wrap,curl_easy_init -Wl,--wrap,curl_easy_setopt -Wl,--wrap,wfopen \
+               -Wl,--wrap,curl_slist_append -Wl,--wrap,curl_easy_perform \
+               -Wl,--wrap,curl_easy_getinfo -Wl,--wrap,FileSize ${DEBUG_OP_WRAPPERS}")
+if(NOT ${TARGET} STREQUAL "winagent")
+    string(APPEND url_flags " -Wl,--wrap,OS_ConnectUnixDomain -Wl,--wrap,send -Wl,--wrap,recv -Wl,--wrap,close -Wl,--wrap,getpid")
+endif()
+list(APPEND shared_tests_flags "${url_flags}")
 
 list(APPEND shared_tests_names "test_sysinfo_utils")
 
@@ -417,3 +431,26 @@ foreach(counter RANGE ${count})
     endif()
     add_test(NAME ${test_name} COMMAND ${test_name})
 endforeach()
+
+# Rebuild file_op.c as on AIX 6.1 (no O_NOFOLLOW, no *at()) so the forked walk and emulated O_NOFOLLOW run on Linux; the
+# local object overrides the library copy.
+if(NOT ${TARGET} STREQUAL "winagent")
+    list(FIND shared_tests_names "test_file_op" file_op_index)
+    list(GET shared_tests_flags ${file_op_index} file_op_flags)
+
+    add_executable(test_file_op_no_o_nofollow test_file_op.c ${SRC_FOLDER}/shared/file_op.c)
+    target_compile_definitions(test_file_op_no_o_nofollow PRIVATE W_VETTED_TEST_NO_O_NOFOLLOW)
+    if(${TARGET} STREQUAL "server")
+        target_link_libraries(test_file_op_no_o_nofollow ${WAZUHLIB} ${WAZUHEXT} ANALYSISD_O ${TEST_DEPS})
+    else()
+        target_link_libraries(test_file_op_no_o_nofollow ${TEST_DEPS})
+    endif()
+    # The emulation calls the real lstat(), so drop its wrapper: only the mocked tests excluded from this variant use it.
+    string(REPLACE ",--wrap,lstat" "" file_op_flags "${file_op_flags}")
+    string(FIND "${file_op_flags}" "--wrap,lstat" lstat_wrapped)
+    if(NOT lstat_wrapped EQUAL -1)
+        message(FATAL_ERROR "test_file_op_no_o_nofollow: the lstat wrapper is still linked")
+    endif()
+    target_link_libraries(test_file_op_no_o_nofollow ${file_op_flags})
+    add_test(NAME test_file_op_no_o_nofollow COMMAND test_file_op_no_o_nofollow)
+endif()

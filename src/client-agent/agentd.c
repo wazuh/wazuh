@@ -262,6 +262,7 @@ void AgentdStart(int uid, int gid, const char *user, const char *group)
             if (agt->flags.remote_conf) {
                 ReadConfig(CLABELS | CBUFFER | CAGENT_CONFIG, AGENTCONFIG, &new_labels, agt);
                 minfo("Buffer agent.conf updated, enable: %i size: %i ", agt->buffer, agt->buflength);
+                w_agentd_reload_force_reconnect_interval(AGENTCONFIG);
             }
             #endif
 

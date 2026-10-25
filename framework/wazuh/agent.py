@@ -1444,7 +1444,7 @@ def get_agents_sync_group(agent_list: list = None) -> AffectedItemsWazuhResult:
                 # Check if it has a multigroup
                 if len(agent_info['group']) > 1:
                     multi_group = ','.join(agent_info['group'])
-                    multi_group = hashlib.sha256(multi_group.encode()).hexdigest()[:8]
+                    multi_group = hashlib.sha256(multi_group.encode()).hexdigest()[:32]
                     group_merged_path = path.join(common.MULTI_GROUPS_PATH, multi_group, "merged.mg")
                 else:
                     group_merged_path = path.join(common.SHARED_PATH, agent_info['group'][0], "merged.mg")
@@ -1462,6 +1462,7 @@ def get_agents_sync_group(agent_list: list = None) -> AffectedItemsWazuhResult:
     return result
 
 
+@mask_sensitive_config(update_actions=["group:update_config"], update_resources=["group:id:{group_list}"])
 @expose_resources(actions=["group:read"], resources=["group:id:{group_list}"], post_proc_func=None)
 def get_file_conf(group_list: list = None, type_conf: str = None, raw: bool = False,
                   filename: str = None) -> WazuhResult:
@@ -1491,6 +1492,7 @@ def get_file_conf(group_list: list = None, type_conf: str = None, raw: bool = Fa
                                                             raw=raw)})
 
 
+@mask_sensitive_config(update_actions=["group:update_config"], update_resources=["group:id:{group_list}"])
 @expose_resources(actions=["group:read"], resources=["group:id:{group_list}"], post_proc_func=None)
 def get_agent_conf(group_list: list = None, filename: str = 'agent.conf', offset: int = 0,
                    limit: int = common.DATABASE_LIMIT) -> WazuhResult:

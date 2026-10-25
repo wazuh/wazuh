@@ -13,6 +13,23 @@
 #include "os_crypto/sha1/sha1_op.h"
 
 
+/**
+ * @brief Mark the current position as the start of the next group
+ *
+ * Keeps a copy of the hash context at that position, so the lines of a group that is not complete
+ * when the read stops can be rolled back out of the hash.
+ *
+ * @param group_context Copy of the hash context at the start of the group. NULL if there is no hash.
+ * @param context Current hash context.
+ * @param group_pending Set to false: no line of the next group has been hashed yet.
+ */
+static void multiline_mark_group(EVP_MD_CTX * group_context, EVP_MD_CTX * context, bool * group_pending) {
+    if (group_context != NULL) {
+        EVP_MD_CTX_copy(group_context, context);
+    }
+    *group_pending = false;
+}
+
 /* Read multiline logs */
 void *read_multiline(logreader *lf, int *rc, int drop_it) {
     int __ms = 0;
@@ -33,6 +50,16 @@ void *read_multiline(logreader *lf, int *rc, int drop_it) {
     int64_t current_position = w_ftell(lf->fp);
     bool is_valid_context_file = w_get_hash_context(lf, &context, current_position);
 
+    /* Hash context at current_position, the start of the group being collected */
+    EVP_MD_CTX *group_context = NULL;
+    bool group_pending = false;
+    bool rewound = false;
+
+    if (is_valid_context_file) {
+        group_context = EVP_MD_CTX_new();
+        EVP_MD_CTX_copy(group_context, context);
+    }
+
     for (offset = w_ftell(lf->fp); can_read() && (!maximum_lines || lines < maximum_lines) && offset >= 0 && fgets(str, OS_MAX_LOG_SIZE, lf->fp); offset += rbytes) {
         rbytes = w_ftell(lf->fp) - offset;
         lines++;
@@ -46,13 +73,19 @@ void *read_multiline(logreader *lf, int *rc, int drop_it) {
         /* Get the last occurrence of \n */
         if (str[rbytes - 1] == '\n') {
             if (is_valid_context_file) {
-                OS_SHA1_Stream(context, NULL, str);
+                OS_SHA1_Stream_Bytes(context, str, (size_t) rbytes);
             }
+            group_pending = true;
             str[rbytes - 1] = '\0';
 
             if ((int64_t)strlen(str) != rbytes - 1)
             {
                 mdebug2("Line in '%s' contains some zero-bytes (valid=" FTELL_TT " / total=" FTELL_TT "). Dropping line.", lf->file, FTELL_INT64 strlen(str), FTELL_INT64 rbytes - 1);
+                /* Keep the rewind point at the start of a group still being collected */
+                if (buffer[0] == '\0') {
+                    current_position = offset + rbytes;
+                    multiline_mark_group(group_context, context, &group_pending);
+                }
                 continue;
             }
         }
@@ -63,8 +96,9 @@ void *read_multiline(logreader *lf, int *rc, int drop_it) {
         else if (rbytes == OS_MAX_LOG_SIZE - 1) {
             /* Message size > maximum allowed */
             if (is_valid_context_file) {
-                OS_SHA1_Stream(context, NULL, str);
+                OS_SHA1_Stream_Bytes(context, str, (size_t) rbytes);
             }
+            group_pending = true;
             __ms = 1;
         } else if (feof(lf->fp)) {
             /* Message not complete. Return. */
@@ -72,6 +106,7 @@ void *read_multiline(logreader *lf, int *rc, int drop_it) {
             if(current_position >= 0) {
                 w_fseek(lf->fp, current_position, SEEK_SET);
             }
+            rewound = true;
             break;
         }
 
@@ -129,7 +164,7 @@ void *read_multiline(logreader *lf, int *rc, int drop_it) {
                 }
 
                 if (is_valid_context_file) {
-                    OS_SHA1_Stream(context, NULL, str);
+                    OS_SHA1_Stream_Bytes(context, str, (size_t) rbytes);
                 }
 
                 /* Get the last occurrence of \n */
@@ -141,7 +176,25 @@ void *read_multiline(logreader *lf, int *rc, int drop_it) {
         }
 
         current_position = w_ftell(lf->fp);
+        multiline_mark_group(group_context, context, &group_pending);
     }
+
+    /* Lines of a group that is not complete yet were hashed beyond the stored offset */
+    if (group_pending) {
+        if (maximum_lines && lines >= maximum_lines && !rewound) {
+            /* Stopped by the line limit: the stored offset covers the lines already read */
+            current_position = w_ftell(lf->fp);
+        } else {
+            /* Stopped at the end of the file: the group is read again, from its first line, next time */
+            if (!rewound && current_position >= 0) {
+                w_fseek(lf->fp, current_position, SEEK_SET);
+            }
+            if (group_context != NULL) {
+                EVP_MD_CTX_copy(context, group_context);
+            }
+        }
+    }
+    EVP_MD_CTX_free(group_context);
 
     if (is_valid_context_file) {
         w_update_file_status(lf->file, current_position, context);

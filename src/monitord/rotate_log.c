@@ -140,7 +140,8 @@ void w_rotate_log(int compress, int keep_log_days, int new_day, int rotate_json,
 
     }
 
-    if (new_day || (!new_day && rotate_json)) {
+    // An empty JSON log (e.g. the install placeholder under plain logging) has nothing to archive.
+    if ((new_day || (!new_day && rotate_json)) && FileSize(old_path_json) > 0) {
 
         os_snprintf(compressed_path, PATH_MAX, "%s.gz", new_path_json);
 

@@ -34,6 +34,7 @@
 
 /* Client configuration */
 int ClientConf(const char *cfgfile);
+void w_agentd_reload_force_reconnect_interval(const char *shared_cfg);
 
 /* Parse read config into JSON format */
 cJSON *getClientConfig(void);
@@ -114,6 +115,14 @@ void sender_init();
 
 /* Send message to server */
 int send_msg(const char *msg, ssize_t msg_length);
+
+/* Bound TCP sends with poll() for this many seconds, for sockets where
+ * SO_SNDTIMEO is unsupported (ENOPROTOOPT). 0 disables it.
+ * The caller must hold the send mutex. */
+void send_set_poll_timeout(int seconds);
+
+/* poll() timeout in seconds for TCP receives when SO_RCVTIMEO is unsupported; 0 otherwise. */
+extern atomic_int_t recv_poll_timeout;
 
 /* Acquire/release the same mutex send_msg() uses around agt->sock, so
  * connect_server() can mutate agt->sock without racing a concurrent sender. */
@@ -234,6 +243,7 @@ extern int size_rotate_read;
 extern int timeout;
 extern int interval;
 extern int remote_conf;
+extern long local_force_reconnect_interval;
 extern int min_eps;
 
 

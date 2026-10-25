@@ -13,6 +13,7 @@
 #include "state.h"
 #include "remoted_op.h"
 #include "../wazuh_db/helpers/wdb_global_helpers.h"
+#include "../wazuh_db/wdb.h"
 #include "../os_net/os_net.h"
 #include "shared_download.h"
 #include "../os_crypto/sha256/sha256_op.h"
@@ -1201,7 +1202,7 @@ STATIC void process_deleted_multi_groups(bool initial_scan) {
             multigroup->exists = false;
         } else {
             OS_SHA256_String(multigroup->name, multi_group_hash);
-            snprintf(multi_path, PATH_MAX,"%s/%.8s", MULTIGROUPS_DIR, multi_group_hash);
+            snprintf(multi_path, PATH_MAX,"%s/%.*s", MULTIGROUPS_DIR, WDB_GROUP_HASH_SIZE, multi_group_hash);
             rmdir_ex(multi_path);
             OSHash_Delete_ex(multi_groups, key);
             OSHash_Clean(multigroup->f_time, free_file_time);
@@ -1662,7 +1663,7 @@ static int send_file_toagent(const char *agent_id, const char *group, const char
     /* Check if it is multigroup */
     if (strchr(group, MULTIGROUP_SEPARATOR)) {
         OS_SHA256_String(group, multi_group_hash);
-        snprintf(file, OS_SIZE_1024, "%s/%.8s/%s", sharedcfg_dir, multi_group_hash, name);
+        snprintf(file, OS_SIZE_1024, "%s/%.*s/%s", sharedcfg_dir, WDB_GROUP_HASH_SIZE, multi_group_hash, name);
     } else {
         snprintf(file, OS_SIZE_1024, "%s/%s/%s", sharedcfg_dir, group, name);
     }

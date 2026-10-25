@@ -19,8 +19,13 @@
 #include "threadSafeMultiQueue.hpp"
 #include "threadSafeQueue.h"
 #include <atomic>
+#include <chrono>
+#include <functional>
 #include <iostream>
 #include <thread>
+
+// Number of queued elements from which a queue is reported as growing.
+constexpr size_t QUEUE_SIZE_WARNING {100000};
 
 template<typename T,
          typename U,
@@ -34,10 +39,13 @@ public:
                                     const std::string& dbPath,
                                     const uint64_t bulkSize = 1,
                                     const size_t maxQueueSize = UNLIMITED_QUEUE_SIZE,
-                                    bool useSharedBuffers = false)
+                                    bool useSharedBuffers = false,
+                                    std::function<void(const std::string&)> onDiscard = {})
         : m_functor {std::move(functor)}
+        , m_name {dbPath}
         , m_maxQueueSize {maxQueueSize}
         , m_bulkSize {bulkSize}
+        , m_onDiscard {std::move(onDiscard)}
         , m_queue {std::make_unique<TSafeQueueType>(TQueueType(dbPath, useSharedBuffers))}
     {
         m_thread = std::thread {&TThreadEventDispatcher<T, U, Functor, TQueueType, TSafeQueueType>::dispatch, this};
@@ -45,9 +53,12 @@ public:
 
     explicit TThreadEventDispatcher(const std::string& dbPath,
                                     const uint64_t bulkSize = 1,
-                                    const size_t maxQueueSize = UNLIMITED_QUEUE_SIZE)
-        : m_maxQueueSize {maxQueueSize}
+                                    const size_t maxQueueSize = UNLIMITED_QUEUE_SIZE,
+                                    std::function<void(const std::string&)> onDiscard = {})
+        : m_name {dbPath}
+        , m_maxQueueSize {maxQueueSize}
         , m_bulkSize {bulkSize}
+        , m_onDiscard {std::move(onDiscard)}
         , m_queue {std::make_unique<TSafeQueueType>(TQueueType(dbPath))}
     {
     }
@@ -69,9 +80,27 @@ public:
     {
         if constexpr (!std::is_same_v<Utils::TSafeMultiQueue<T, U, RocksDBQueueCF<T, U>>, TSafeQueueType>)
         {
-            if (m_running && (UNLIMITED_QUEUE_SIZE == m_maxQueueSize || m_queue->size() < m_maxQueueSize))
+            if (m_running)
             {
-                m_queue->push(value);
+                const auto queueSize = m_queue->size();
+                if (UNLIMITED_QUEUE_SIZE == m_maxQueueSize || queueSize < m_maxQueueSize)
+                {
+                    try
+                    {
+                        m_queue->push(value);
+                    }
+                    catch (const std::exception& ex)
+                    {
+                        reportPushError(ex);
+                        return;
+                    }
+                    rearmDiscardReport(queueSize);
+                    warnQueueSize(queueSize + 1);
+                }
+                else
+                {
+                    reportDiscard(queueSize, "");
+                }
             }
         }
         else
@@ -86,9 +115,26 @@ public:
     {
         if constexpr (std::is_same_v<Utils::TSafeMultiQueue<T, U, RocksDBQueueCF<T, U>>, TSafeQueueType>)
         {
-            if (m_running && (UNLIMITED_QUEUE_SIZE == m_maxQueueSize || m_queue->size(prefix) < m_maxQueueSize))
+            if (m_running)
             {
-                m_queue->push(prefix, value);
+                const auto queueSize = m_queue->size(prefix);
+                if (UNLIMITED_QUEUE_SIZE == m_maxQueueSize || queueSize < m_maxQueueSize)
+                {
+                    try
+                    {
+                        m_queue->push(prefix, value);
+                    }
+                    catch (const std::exception& ex)
+                    {
+                        reportPushError(ex);
+                        return;
+                    }
+                    rearmDiscardReport(queueSize);
+                }
+                else
+                {
+                    reportDiscard(queueSize, prefix);
+                }
             }
         }
         else
@@ -179,6 +225,9 @@ public:
 private:
     void dispatch()
     {
+        // Starts one interval back so that the first error is logged at once, even right after the system boots.
+        auto lastErrorLog = std::chrono::steady_clock::now() - std::chrono::minutes(1);
+
         while (m_running)
         {
             try
@@ -218,13 +267,74 @@ private:
                 if (m_running)
                 {
                     std::this_thread::sleep_for(std::chrono::seconds(1));
-                    std::cerr << "Dispatch handler error, " << ex.what() << "\n";
+
+                    // The same batch is retried every second: log the first error at once and at most one per minute
+                    // after that, since the text of the error can change on every retry.
+                    const auto now = std::chrono::steady_clock::now();
+                    if (now - lastErrorLog >= std::chrono::minutes(1))
+                    {
+                        logWarn(
+                            LOGGER_DEFAULT_TAG, "Queue '%s': dispatch handler error, %s", m_name.c_str(), ex.what());
+                        lastErrorLog = now;
+                    }
                 }
                 else
                 {
                     std::cout << "ThreadEventDispatcher dispatch end.\n";
                 }
             }
+        }
+    }
+
+    // Reports the first discard of an overflow through the injected callback (silent without one). The report is
+    // re-armed once the queue is found empty, so a queue that hovers around its limit is reported once per overflow.
+    void reportDiscard(const size_t queueSize, std::string_view prefix)
+    {
+        if (m_onDiscard && !m_discardReported.exchange(true))
+        {
+            m_onDiscard((prefix.empty() ? std::string {"Queue"} : "Queue '" + std::string {prefix} + "'") +
+                        " is full (size: " + std::to_string(queueSize) + ", max: " + std::to_string(m_maxQueueSize) +
+                        "). Starting to discard events.");
+        }
+    }
+
+    // A queue that keeps growing means its consumer is not draining it. It is reported at QUEUE_SIZE_WARNING elements
+    // and every time it doubles the size it was reported at, and the report is re-armed once the queue falls under
+    // half of the first threshold, so a queue that hovers around it is not reported on every cycle.
+    void warnQueueSize(const size_t queueSize)
+    {
+        auto threshold = m_nextSizeWarning.load();
+        if (queueSize >= threshold && m_nextSizeWarning.compare_exchange_strong(threshold, queueSize * 2))
+        {
+            logWarn(LOGGER_DEFAULT_TAG,
+                    "Queue '%s' holds %llu elements and keeps growing. Check that its consumer is draining it.",
+                    m_name.c_str(),
+                    static_cast<unsigned long long>(queueSize));
+        }
+        else if (queueSize < QUEUE_SIZE_WARNING / 2)
+        {
+            m_nextSizeWarning = QUEUE_SIZE_WARNING;
+        }
+    }
+
+    // A push that fails drops its element, so that the callers, which do not expect an exception, keep working. The
+    // failure is reported at most once a minute.
+    void reportPushError(const std::exception& ex)
+    {
+        constexpr auto INTERVAL = std::chrono::steady_clock::duration(std::chrono::minutes(1)).count();
+        const auto now = std::chrono::steady_clock::now().time_since_epoch().count();
+        auto last = m_lastPushErrorLog.load();
+        if ((last == 0 || now - last >= INTERVAL) && m_lastPushErrorLog.compare_exchange_strong(last, now))
+        {
+            logWarn(LOGGER_DEFAULT_TAG, "Queue '%s': element dropped, %s", m_name.c_str(), ex.what());
+        }
+    }
+
+    void rearmDiscardReport(const size_t queueSize)
+    {
+        if (queueSize == 0)
+        {
+            m_discardReported = false;
         }
     }
 
@@ -238,11 +348,17 @@ private:
 
     // Keep this order to avoid warnings during compilation
     Functor m_functor;
+    const std::string m_name;
     const size_t m_maxQueueSize;
     std::atomic<uint64_t> m_bulkSize;
+    std::function<void(const std::string&)> m_onDiscard;
     std::unique_ptr<TSafeQueueType> m_queue;
     std::thread m_thread;
     std::atomic_bool m_running = true;
+
+    std::atomic_bool m_discardReported {false};
+    std::atomic<size_t> m_nextSizeWarning {QUEUE_SIZE_WARNING};
+    std::atomic<std::chrono::steady_clock::rep> m_lastPushErrorLog {0};
 };
 
 template<typename Type, typename Functor>

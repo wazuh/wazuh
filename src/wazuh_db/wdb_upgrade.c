@@ -120,6 +120,7 @@ wdb_t * wdb_upgrade_global(wdb_t *wdb) {
         schema_global_upgrade_v5_sql,
         schema_global_upgrade_v6_sql,
         schema_global_upgrade_v7_sql,
+        schema_global_upgrade_v8_sql,
     };
 
     char output[OS_MAXSTR + 1] = { 0 };
@@ -330,6 +331,7 @@ int wdb_adjust_upgrade(wdb_t *wdb, int upgrade_step) {
 int wdb_adjust_global_upgrade(wdb_t *wdb, int upgrade_step) {
     switch (upgrade_step) {
         case 3:
+        case 7:
             return wdb_global_adjust_v4(wdb);
         default:
             return 0;

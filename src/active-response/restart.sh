@@ -27,13 +27,18 @@ else
     exit 1;
 fi
 
+log_error()
+{
+    if command -v logger >/dev/null 2>&1; then
+        logger -t wazuh-restart "$1"
+    fi
+    echo "$1" >&2
+}
+
 LOCAL=`dirname $0`;
 cd $LOCAL
 cd ../../
 PWD=`pwd`
-
-# Logging the call
-echo "$(date '+%Y/%m/%d %H:%M:%S') $0 $1 $2 $3 $4 $5" >> ${PWD}/logs/active-responses.log
 
 # Rules and decoders test
 if [ "$TYPE" = "manager" ]; then
@@ -54,7 +59,7 @@ if command -v systemctl >/dev/null 2>&1 && [ -d /run/systemd/system ] && [ "$(ca
             # Exit immediately if service is in a failed or stopped state
             case "$STATE" in
                 inactive|failed)
-                    echo "Service wazuh-$TYPE is in state '$STATE', cannot reload" >> ${PWD}/logs/active-responses.log
+                    log_error "Service wazuh-$TYPE is in state '$STATE', cannot reload"
                     exit 1
                     ;;
                 active)
@@ -68,7 +73,7 @@ if command -v systemctl >/dev/null 2>&1 && [ -d /run/systemd/system ] && [ "$(ca
 
         # Check if service is now active
         if ! systemctl is-active --quiet wazuh-$TYPE; then
-            echo "Service wazuh-$TYPE is not active after waiting $TIMEOUT seconds" >> ${PWD}/logs/active-responses.log
+            log_error "Service wazuh-$TYPE is not active after waiting $TIMEOUT seconds"
             exit 1
         fi
     fi

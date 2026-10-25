@@ -123,7 +123,7 @@ size_t wcom_unmerge(const char *file_path, char ** output) {
         return strlen(*output);
     }
 
-    if (UnmergeFiles(final_path, INCOMING_DIR, OS_BINARY, NULL) == 0) {
+    if (UnmergeFiles(final_path, INCOMING_DIR, OS_BINARY, NULL) != UNMERGE_COMPLETE) {
         merror("At WCOM unmerge: Error unmerging file '%s.'", final_path);
         os_strdup("err Cannot unmerge file", *output);
         return strlen(*output);
@@ -218,6 +218,7 @@ size_t wcom_restart(char ** output) {
 #else
             exec_cmd[1] = "manager";
 #endif
+            ExecdLogRestart(exec_cmd);
         } else {
             exec_cmd[0] = "bin/wazuh-control";
             exec_cmd[1] = "restart";
@@ -276,6 +277,7 @@ size_t wcom_reload(char ** output) {
             exec_cmd[1] = "manager";
 #endif
             exec_cmd[2] = "reload";
+            ExecdLogRestart(exec_cmd);
         } else {
             exec_cmd[0] = "bin/wazuh-control";
             exec_cmd[1] = "reload";

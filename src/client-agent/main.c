@@ -217,7 +217,9 @@ int main(int argc, char **argv)
         mlerror_exit(LOGLEVEL_ERROR, CLIENT_ERROR);
     }
 
-    if (!Validate_IPv6_Link_Local_Interface(agt->server)){
+    /* Resolve the server address only when the process won't fork: on macOS 26, getaddrinfo() crashed
+     * in the forked agent when this process had already called it. wazuh-control runs -t before starting */
+    if ((test_config || run_foreground) && !Validate_IPv6_Link_Local_Interface(agt->server)){
         merror(AG_INV_INT);
         mlerror_exit(LOGLEVEL_ERROR, CLIENT_ERROR);
     }

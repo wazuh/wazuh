@@ -908,8 +908,12 @@ void expandFromRegistry(const HKEY key, const std::string& subKey, const std::st
         {
             // Get install path from registry, based on version key.
             const auto dir {Utils::Registry {key, versionKey, KEY_READ | KEY_WOW64_64KEY}.string(field)};
+
             // Add install path to dirList.
-            postAction(dir);
+            if (Utils::isLocalFixedPath(dir))
+            {
+                postAction(dir);
+            }
         }
         catch (const std::exception& e)
         {
@@ -1361,7 +1365,14 @@ nlohmann::json SysInfo::getBrowserExtensions() const
 
             result.push_back(std::move(extensionItem));
         }
+    }
+    catch (const std::exception&)
+    {
+        // Keep collecting the remaining browsers
+    }
 
+    try
+    {
         // Collect Firefox extensions
         FirefoxAddonsProvider firefoxProvider;
         auto collectedFirefoxExtensions = firefoxProvider.collect();
@@ -1395,7 +1406,14 @@ nlohmann::json SysInfo::getBrowserExtensions() const
 
             result.push_back(std::move(extensionItem));
         }
+    }
+    catch (const std::exception&)
+    {
+        // Keep collecting the remaining browsers
+    }
 
+    try
+    {
         // Collect Internet Explorer extensions
         IEExtensionsProvider ieProvider;
         auto collectedIEExtensions = ieProvider.collect();

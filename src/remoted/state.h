@@ -55,6 +55,7 @@ typedef struct _remoted_state_t {
     uint64_t recv_bytes;
     uint64_t sent_bytes;
     uint32_t tcp_sessions;
+    uint32_t tcp_sessions_unassociated;
     uint32_t keys_reload_count;
     recv_msgs_t recv_breakdown;
     sent_msgs_t sent_breakdown;
@@ -90,6 +91,16 @@ void rem_inc_tcp();
  * @brief Decrement TCP sessions counter
  */
 void rem_dec_tcp();
+
+/**
+ * @brief Increment counter of TCP sessions not yet associated with an agent
+ */
+void rem_inc_tcp_unassociated();
+
+/**
+ * @brief Decrement counter of TCP sessions not yet associated with an agent
+ */
+void rem_dec_tcp_unassociated();
 
 
 /**

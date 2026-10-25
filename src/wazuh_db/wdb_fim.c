@@ -269,6 +269,11 @@ int wdb_fim_insert_entry2(wdb_t * wdb, const cJSON * data) {
         return -1;
     }
 
+    if (!cJSON_IsString(json_path)) {
+        merror("DB(%s) fim/save request with no valid path argument.", wdb->id);
+        return -1;
+    }
+
     path = cJSON_GetStringValue(json_path);
     cJSON * timestamp = cJSON_GetObjectItem(data, "timestamp");
 
@@ -370,8 +375,8 @@ int wdb_fim_insert_entry2(wdb_t * wdb, const cJSON * data) {
             // Differents components for keys and values.
             cJSON *json_index = cJSON_GetObjectItem(data, "index");
 
-            if (!json_index) {
-                merror("DB(%s) version 3.0 fim/save request with no index argument.", wdb->id);
+            if (!cJSON_IsString(json_index)) {
+                merror("DB(%s) version 3.0 fim/save request with no valid index argument.", wdb->id);
                 return -1;
             }
 

@@ -83,6 +83,15 @@ int doDiff(RuleInfo *rule, struct _Eventinfo *lf)
         }
 
 #ifndef TESTRULE
+        if (!w_is_bare_filename(lf->hostname + 1)) {
+            merror("Invalid hostname for diff: '%s'.", lf->hostname + 1);
+            if (htpt) {
+                *htpt = ')';
+            }
+            return (0);
+        }
+
+        // +1 skips the '(' checked above
         snprintf(flastfile, OS_SIZE_2048, "%s/%s/%d/%s", DIFF_DIR, lf->hostname + 1, rule->sigid, DIFF_LAST_FILE);
 #else
         snprintf(flastfile, OS_SIZE_2048, "%s/%s/%d/%s", DIFF_DIR, DIFF_TEST_HOST, rule->sigid, DIFF_LAST_FILE);
@@ -94,6 +103,11 @@ int doDiff(RuleInfo *rule, struct _Eventinfo *lf)
         htpt = NULL;
     } else {
 #ifndef TESTRULE
+        if (!w_is_bare_filename(lf->hostname)) {
+            merror("Invalid hostname for diff: '%s'.", lf->hostname);
+            return (0);
+        }
+
         snprintf(flastfile, OS_SIZE_2048, "%s/%s/%d/%s", DIFF_DIR, lf->hostname, rule->sigid, DIFF_LAST_FILE);
 #else
         snprintf(flastfile, OS_SIZE_2048, "%s/%s/%d/%s", DIFF_DIR, DIFF_TEST_HOST, rule->sigid, DIFF_LAST_FILE);

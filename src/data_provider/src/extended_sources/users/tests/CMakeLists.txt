@@ -17,6 +17,9 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 else()
     list(APPEND TEST_SRC test_sudoers_unix.cpp)
     if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+        list(APPEND TEST_SRC test_auth_failures_linux.cpp)
+        list(APPEND TEST_SRC test_last_login_linux.cpp)
+        list(APPEND TEST_SRC test_last_login_resolution.cpp)
         list(APPEND TEST_SRC test_logged_in_users_linux.cpp)
         list(APPEND TEST_SRC test_shadow_linux.cpp)
         list(APPEND TEST_SRC test_users_linux.cpp)
@@ -51,6 +54,10 @@ else()
         gmock_maind
         pthread
     )
+
+    if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+        target_link_libraries(extended_sources_users_unit_test sqlite3)
+    endif()
 endif()
 
 add_test(NAME LoggedInUsersTests COMMAND extended_sources_users_unit_test)

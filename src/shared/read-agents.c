@@ -46,6 +46,11 @@ void delete_diff(const char *name)
         return;
     }
 
+    if (strchr(name, '/') != NULL || strcmp(name, ".") == 0 || strcmp(name, "..") == 0) {
+        mwarn("Refusing to remove diff folder for invalid agent name '%s'.", name);
+        return;
+    }
+
     char tmp_folder[513] = {0};
     snprintf(tmp_folder, 512, "%s/%s",
              DIFF_DIR,

@@ -385,7 +385,7 @@ Generated when system user accounts are created, modified, or removed.
 - `user_type` - User account type
 - `user_is_hidden` - Hidden account flag
 - `user_is_remote` - Remote account flag
-- `user_last_login` - Last login timestamp
+- `user_last_login` - Last login timestamp. On Linux it is the newest of the `lastlog` record, the `lastlog2` database and any session open at scan time, and is absent where the host records none
 - `user_password_status` - Password status
 - `user_password_expiration_date` - Password expiration date
 - `user_password_hash_algorithm` - Password hash algorithm
@@ -395,8 +395,8 @@ Generated when system user accounts are created, modified, or removed.
 - `user_password_min_days_between_changes` - Minimum days between password changes
 - `user_password_warning_days_before_expiration` - Warning days before expiration
 - `user_roles` - User roles
-- `user_auth_failed_count` - Failed authentication count
-- `user_auth_failed_timestamp` - Last failed authentication timestamp
+- `user_auth_failed_count` - Failed authentication count. On Linux it counts the `btmp` records, including the rotated generation, that are newer than the account's last login, and is absent where the host keeps no usable record of either
+- `user_auth_failed_timestamp` - Last failed authentication timestamp, absent when no failure is counted
 - `host_ip` - Host IP address
 - `login_status` - Login status
 - `login_tty` - Login terminal

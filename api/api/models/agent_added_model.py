@@ -85,13 +85,18 @@ class AgentForce(Model):
         self._after_registration_time = after_registration_time
 
 
+class AgentAddForce(AgentForce):
+    def __init__(self, enabled=False, disconnected_time=None, after_registration_time="1h"):
+        super().__init__(enabled, disconnected_time, after_registration_time)
+
+
 class AgentAddedModel(Body):
 
     def __init__(self, name: str = None, ip: str = None):
         self.swagger_types = {
             'name': str,
             'ip': str,
-            'force': AgentForce
+            'force': AgentAddForce
         }
 
         self.attribute_map = {
@@ -102,7 +107,7 @@ class AgentAddedModel(Body):
 
         self._name = name
         self._ip = ip
-        self._force = AgentForce(enabled=False)
+        self._force = AgentAddForce()
 
     @property
     def name(self) -> str:

@@ -24,7 +24,7 @@
 remoted_state_t remoted_state = {0};
 static pthread_mutex_t state_mutex = PTHREAD_MUTEX_INITIALIZER;
 static pthread_mutex_t agents_state_mutex = PTHREAD_MUTEX_INITIALIZER;
-static int rem_write_state();
+STATIC int rem_write_state();
 static char *refresh_time;
 
 extern OSHash *remoted_agents_state;
@@ -184,6 +184,9 @@ int rem_write_state() {
         "# TCP sessions\n"
         "tcp_sessions='%u'\n"
         "\n"
+        "# TCP sessions not yet associated with an agent\n"
+        "tcp_sessions_unassociated='%u'\n"
+        "\n"
         "# Events sent to Analysisd\n"
         "evt_count='%lu'\n"
         "\n"
@@ -211,6 +214,7 @@ int rem_write_state() {
         "ctrl_msg_queue_processed='%u'\n"
         "\n",
         __local_name, refresh_time, rem_get_qsize(), rem_get_tsize(), state_cpy.tcp_sessions,
+        state_cpy.tcp_sessions_unassociated,
         state_cpy.recv_breakdown.evt_count, state_cpy.recv_breakdown.ctrl_count, state_cpy.recv_breakdown.discarded_count,
         state_cpy.sent_bytes, state_cpy.recv_bytes, state_cpy.recv_breakdown.dequeued_count,
         control_msg_queue ? indexed_queue_size(control_msg_queue) : 0,
@@ -376,6 +380,18 @@ void rem_inc_tcp() {
 void rem_dec_tcp() {
     w_mutex_lock(&state_mutex);
     remoted_state.tcp_sessions--;
+    w_mutex_unlock(&state_mutex);
+}
+
+void rem_inc_tcp_unassociated() {
+    w_mutex_lock(&state_mutex);
+    remoted_state.tcp_sessions_unassociated++;
+    w_mutex_unlock(&state_mutex);
+}
+
+void rem_dec_tcp_unassociated() {
+    w_mutex_lock(&state_mutex);
+    remoted_state.tcp_sessions_unassociated--;
     w_mutex_unlock(&state_mutex);
 }
 
@@ -627,6 +643,7 @@ cJSON* rem_create_state_json() {
     cJSON_AddNumberToObject(_received_q, "usage", rem_get_qsize());
 
     cJSON_AddNumberToObject(_metrics, "tcp_sessions", state_cpy.tcp_sessions);
+    cJSON_AddNumberToObject(_metrics, "tcp_sessions_unassociated", state_cpy.tcp_sessions_unassociated);
 
     cJSON_AddNumberToObject(_metrics, "control_messages_queue_usage", control_msg_queue ? indexed_queue_size(control_msg_queue) : 0);
 

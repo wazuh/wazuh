@@ -153,6 +153,7 @@ static int teardown_process(void **state) {
     os_free(stream_backup);
     os_free(show_backup);
     os_free(local_macos_processes);
+    macos_log_shutdown = 0;
 
     return 0;
 }
@@ -280,6 +281,65 @@ void test_w_get_hash_context_done(void ** state) {
     bool ret = w_get_hash_context (lf, &context, position);
 
     assert_false(ret);
+}
+
+/* w_hash_read_line */
+
+/* Hex SHA1 of what the context has hashed so far */
+static void hash_read_line_digest(EVP_MD_CTX *context, os_sha1 output) {
+    unsigned char md[SHA_DIGEST_LENGTH];
+    EVP_MD_CTX *aux = EVP_MD_CTX_new();
+
+    EVP_MD_CTX_copy(aux, context);
+    EVP_DigestFinal(aux, md, NULL);
+    OS_SHA1_Hexdigest(md, output);
+    EVP_MD_CTX_free(aux);
+}
+
+void test_w_hash_read_line_hashes_bytes_after_nul(void ** state) {
+    logreader lf = { .fp = (FILE *) 1 };
+    const char line[] = { 'a', 'b', '\0', 'c', 'd', '\n', '\0' };
+    int64_t position = 10;
+    EVP_MD_CTX *context = EVP_MD_CTX_new();
+    os_sha1 output;
+
+    EVP_DigestInit(context, EVP_sha1());
+
+    expect_any(__wrap_w_ftell, x);
+    will_return(__wrap_w_ftell, (int64_t) 16);
+
+    w_hash_read_line(&lf, context, line, &position);
+
+    hash_read_line_digest(context, output);
+    /* SHA1 of the 6 bytes "ab\0cd\n" */
+    assert_string_equal(output, "d59c6b01e724cf9549f485e1847090b0208f1221");
+    assert_int_equal(position, 16);
+    EVP_MD_CTX_free(context);
+    /* OpenSSL initialisation can leave errno set, and later tests print it */
+    errno = 0;
+}
+
+void test_w_hash_read_line_ftell_fail(void ** state) {
+    logreader lf = { .fp = (FILE *) 1 };
+    const char line[] = { 'a', 'b', '\0', 'c', 'd', '\n', '\0' };
+    int64_t position = 10;
+    EVP_MD_CTX *context = EVP_MD_CTX_new();
+    os_sha1 output;
+
+    EVP_DigestInit(context, EVP_sha1());
+
+    expect_any(__wrap_w_ftell, x);
+    will_return(__wrap_w_ftell, (int64_t) -1);
+
+    w_hash_read_line(&lf, context, line, &position);
+
+    hash_read_line_digest(context, output);
+    /* Without a position the line is hashed up to its first NUL: SHA1 of "ab" */
+    assert_string_equal(output, "da23614e02469a0d7c7bd1bdab5c9c474b1904dc");
+    assert_int_equal(position, -1);
+    EVP_MD_CTX_free(context);
+    /* OpenSSL initialisation can leave errno set, and later tests print it */
+    errno = 0;
 }
 
 /* w_update_file_status */
@@ -826,11 +886,11 @@ void test_w_save_file_status_wfopen_error(void ** state) {
 
     expect_function_call(__wrap_cJSON_Delete);
 
-    expect_string(__wrap_wfopen, path, "queue/logcollector/file_status.json");
+    expect_string(__wrap_wfopen, path, "queue/logcollector/file_status.json.tmp");
     expect_string(__wrap_wfopen, mode, "w");
     will_return(__wrap_wfopen, 0);
 
-    expect_string(__wrap__merror_exit, formatted_msg, "(1103): Could not open file 'queue/logcollector/file_status.json' due to [(0)-(Success)].");
+    expect_string(__wrap__merror_exit, formatted_msg, "(1103): Could not open file 'queue/logcollector/file_status.json.tmp' due to [(0)-(Success)].");
     expect_assert_failure(w_save_file_status());
 }
 
@@ -893,19 +953,23 @@ void test_w_save_file_status_fwrite_error(void ** state) {
 
     expect_function_call(__wrap_cJSON_Delete);
 
-    expect_string(__wrap_wfopen, path, "queue/logcollector/file_status.json");
+    expect_string(__wrap_wfopen, path, "queue/logcollector/file_status.json.tmp");
     expect_string(__wrap_wfopen, mode, "w");
     will_return(__wrap_wfopen, "test");
 
     will_return(__wrap_fwrite, 0);
 
-    expect_string(__wrap__merror, formatted_msg, "(1110): Could not write file 'queue/logcollector/file_status.json' due to [(0)-(Success)].");
+    expect_string(__wrap__merror, formatted_msg, "(1110): Could not write file 'queue/logcollector/file_status.json.tmp' due to [(0)-(Success)].");
 
     expect_function_call(__wrap_clearerr);
     expect_string(__wrap_clearerr, __stream, "test");
 
     expect_value(__wrap_fclose, _File, "test");
-    will_return(__wrap_fclose, 1);
+    will_return(__wrap_fclose, 0);
+
+    // The status file is left untouched
+    expect_string(__wrap_remove, filename, "queue/logcollector/file_status.json.tmp");
+    will_return(__wrap_remove, 0);
 
     w_save_file_status();
 }
@@ -968,14 +1032,248 @@ void test_w_save_file_status_OK(void ** state) {
 
     expect_function_call(__wrap_cJSON_Delete);
 
-    expect_string(__wrap_wfopen, path, "queue/logcollector/file_status.json");
+    expect_string(__wrap_wfopen, path, "queue/logcollector/file_status.json.tmp");
     expect_string(__wrap_wfopen, mode, "w");
     will_return(__wrap_wfopen, "test");
 
-    will_return(__wrap_fwrite, 1);
+    will_return(__wrap_fwrite, strlen("test_1234"));
 
     expect_value(__wrap_fclose, _File, "test");
-    will_return(__wrap_fclose, 1);
+    will_return(__wrap_fclose, 0);
+
+    expect_rename_ex("queue/logcollector/file_status.json.tmp", "queue/logcollector/file_status.json", 0);
+
+    w_save_file_status();
+}
+
+void test_w_save_file_status_short_write(void ** state) {
+    test_logcollector_t *test_data = *state;
+
+    os_file_status_t * data = test_data->status;
+    OSHashNode *hash_node = test_data->node;
+
+    strcpy(data->hash,"test1234");
+    data->offset = 5;
+
+    hash_node->key = "test";
+    hash_node->data = data;
+
+    expect_function_call(__wrap_pthread_rwlock_rdlock);
+    strcpy(macos_log_vault.timestamp,"hi 123");
+    macos_log_vault.settings = "my settings";
+
+    expect_value(__wrap_OSHash_Begin, self, files_status);
+    will_return(__wrap_OSHash_Begin, hash_node);
+
+    will_return(__wrap_cJSON_CreateObject, (cJSON *) 1);
+
+    expect_string(__wrap_cJSON_AddArrayToObject, name, "files");
+    will_return(__wrap_cJSON_AddArrayToObject, (cJSON *) 1);
+
+    will_return(__wrap_cJSON_CreateObject, (cJSON *) 1);
+
+    expect_string(__wrap_cJSON_AddStringToObject, name, "path");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "test");
+    will_return(__wrap_cJSON_AddStringToObject, (cJSON *)1);
+
+    expect_string(__wrap_cJSON_AddStringToObject, name, "hash");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "test1234");
+    will_return(__wrap_cJSON_AddStringToObject, (cJSON *)1);
+
+    expect_string(__wrap_cJSON_AddStringToObject, name, "offset");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "5");
+    will_return(__wrap_cJSON_AddStringToObject, (cJSON *)1);
+
+    expect_function_call(__wrap_cJSON_AddItemToArray);
+    will_return(__wrap_cJSON_AddItemToArray, true);
+
+    expect_value(__wrap_OSHash_Next, self, files_status);
+    will_return(__wrap_OSHash_Next, NULL);
+    expect_function_call(__wrap_pthread_rwlock_unlock);
+
+    expect_function_call(__wrap_pthread_rwlock_rdlock);
+    expect_function_call(__wrap_pthread_rwlock_unlock);
+
+    expect_function_call(__wrap_pthread_rwlock_rdlock);
+    expect_function_call(__wrap_pthread_rwlock_unlock);
+
+    expect_function_call(__wrap_pthread_rwlock_rdlock);
+    expect_function_call(__wrap_pthread_rwlock_unlock);
+
+    will_return(__wrap_cJSON_PrintUnformatted, strdup("test_1234"));
+
+    expect_function_call(__wrap_cJSON_Delete);
+
+    expect_string(__wrap_wfopen, path, "queue/logcollector/file_status.json.tmp");
+    expect_string(__wrap_wfopen, mode, "w");
+    will_return(__wrap_wfopen, "test");
+
+    // A partial write must not replace the status file
+    will_return(__wrap_fwrite, strlen("test_1234") - 1);
+
+    errno = 0;
+    expect_string(__wrap__merror, formatted_msg, "(1110): Could not write file 'queue/logcollector/file_status.json.tmp' due to [(0)-(Success)].");
+
+    expect_function_call(__wrap_clearerr);
+    expect_string(__wrap_clearerr, __stream, "test");
+
+    expect_value(__wrap_fclose, _File, "test");
+    will_return(__wrap_fclose, 0);
+
+    expect_string(__wrap_remove, filename, "queue/logcollector/file_status.json.tmp");
+    will_return(__wrap_remove, 0);
+
+    w_save_file_status();
+}
+
+void test_w_save_file_status_fclose_error(void ** state) {
+    test_logcollector_t *test_data = *state;
+
+    os_file_status_t * data = test_data->status;
+    OSHashNode *hash_node = test_data->node;
+
+    strcpy(data->hash,"test1234");
+    data->offset = 5;
+
+    hash_node->key = "test";
+    hash_node->data = data;
+
+    expect_function_call(__wrap_pthread_rwlock_rdlock);
+    strcpy(macos_log_vault.timestamp,"hi 123");
+    macos_log_vault.settings = "my settings";
+
+    expect_value(__wrap_OSHash_Begin, self, files_status);
+    will_return(__wrap_OSHash_Begin, hash_node);
+
+    will_return(__wrap_cJSON_CreateObject, (cJSON *) 1);
+
+    expect_string(__wrap_cJSON_AddArrayToObject, name, "files");
+    will_return(__wrap_cJSON_AddArrayToObject, (cJSON *) 1);
+
+    will_return(__wrap_cJSON_CreateObject, (cJSON *) 1);
+
+    expect_string(__wrap_cJSON_AddStringToObject, name, "path");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "test");
+    will_return(__wrap_cJSON_AddStringToObject, (cJSON *)1);
+
+    expect_string(__wrap_cJSON_AddStringToObject, name, "hash");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "test1234");
+    will_return(__wrap_cJSON_AddStringToObject, (cJSON *)1);
+
+    expect_string(__wrap_cJSON_AddStringToObject, name, "offset");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "5");
+    will_return(__wrap_cJSON_AddStringToObject, (cJSON *)1);
+
+    expect_function_call(__wrap_cJSON_AddItemToArray);
+    will_return(__wrap_cJSON_AddItemToArray, true);
+
+    expect_value(__wrap_OSHash_Next, self, files_status);
+    will_return(__wrap_OSHash_Next, NULL);
+    expect_function_call(__wrap_pthread_rwlock_unlock);
+
+    expect_function_call(__wrap_pthread_rwlock_rdlock);
+    expect_function_call(__wrap_pthread_rwlock_unlock);
+
+    expect_function_call(__wrap_pthread_rwlock_rdlock);
+    expect_function_call(__wrap_pthread_rwlock_unlock);
+
+    expect_function_call(__wrap_pthread_rwlock_rdlock);
+    expect_function_call(__wrap_pthread_rwlock_unlock);
+
+    will_return(__wrap_cJSON_PrintUnformatted, strdup("test_1234"));
+
+    expect_function_call(__wrap_cJSON_Delete);
+
+    expect_string(__wrap_wfopen, path, "queue/logcollector/file_status.json.tmp");
+    expect_string(__wrap_wfopen, mode, "w");
+    will_return(__wrap_wfopen, "test");
+
+    will_return(__wrap_fwrite, strlen("test_1234"));
+
+    // A failed flush on close must not replace the status file
+    expect_value(__wrap_fclose, _File, "test");
+    will_return(__wrap_fclose, EOF);
+
+    errno = 0;
+    expect_string(__wrap__merror, formatted_msg, "(1110): Could not write file 'queue/logcollector/file_status.json.tmp' due to [(0)-(Success)].");
+
+    expect_string(__wrap_remove, filename, "queue/logcollector/file_status.json.tmp");
+    will_return(__wrap_remove, 0);
+
+    w_save_file_status();
+}
+
+void test_w_save_file_status_rename_error(void ** state) {
+    test_logcollector_t *test_data = *state;
+
+    os_file_status_t * data = test_data->status;
+    OSHashNode *hash_node = test_data->node;
+
+    strcpy(data->hash,"test1234");
+    data->offset = 5;
+
+    hash_node->key = "test";
+    hash_node->data = data;
+
+    expect_function_call(__wrap_pthread_rwlock_rdlock);
+    strcpy(macos_log_vault.timestamp,"hi 123");
+    macos_log_vault.settings = "my settings";
+
+    expect_value(__wrap_OSHash_Begin, self, files_status);
+    will_return(__wrap_OSHash_Begin, hash_node);
+
+    will_return(__wrap_cJSON_CreateObject, (cJSON *) 1);
+
+    expect_string(__wrap_cJSON_AddArrayToObject, name, "files");
+    will_return(__wrap_cJSON_AddArrayToObject, (cJSON *) 1);
+
+    will_return(__wrap_cJSON_CreateObject, (cJSON *) 1);
+
+    expect_string(__wrap_cJSON_AddStringToObject, name, "path");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "test");
+    will_return(__wrap_cJSON_AddStringToObject, (cJSON *)1);
+
+    expect_string(__wrap_cJSON_AddStringToObject, name, "hash");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "test1234");
+    will_return(__wrap_cJSON_AddStringToObject, (cJSON *)1);
+
+    expect_string(__wrap_cJSON_AddStringToObject, name, "offset");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "5");
+    will_return(__wrap_cJSON_AddStringToObject, (cJSON *)1);
+
+    expect_function_call(__wrap_cJSON_AddItemToArray);
+    will_return(__wrap_cJSON_AddItemToArray, true);
+
+    expect_value(__wrap_OSHash_Next, self, files_status);
+    will_return(__wrap_OSHash_Next, NULL);
+    expect_function_call(__wrap_pthread_rwlock_unlock);
+
+    expect_function_call(__wrap_pthread_rwlock_rdlock);
+    expect_function_call(__wrap_pthread_rwlock_unlock);
+
+    expect_function_call(__wrap_pthread_rwlock_rdlock);
+    expect_function_call(__wrap_pthread_rwlock_unlock);
+
+    expect_function_call(__wrap_pthread_rwlock_rdlock);
+    expect_function_call(__wrap_pthread_rwlock_unlock);
+
+    will_return(__wrap_cJSON_PrintUnformatted, strdup("test_1234"));
+
+    expect_function_call(__wrap_cJSON_Delete);
+
+    expect_string(__wrap_wfopen, path, "queue/logcollector/file_status.json.tmp");
+    expect_string(__wrap_wfopen, mode, "w");
+    will_return(__wrap_wfopen, "test");
+
+    will_return(__wrap_fwrite, strlen("test_1234"));
+
+    expect_value(__wrap_fclose, _File, "test");
+    will_return(__wrap_fclose, 0);
+
+    expect_rename_ex("queue/logcollector/file_status.json.tmp", "queue/logcollector/file_status.json", -1);
+
+    expect_string(__wrap_remove, filename, "queue/logcollector/file_status.json.tmp");
+    will_return(__wrap_remove, 0);
 
     w_save_file_status();
 }
@@ -1446,6 +1744,7 @@ void test_w_load_files_status_update_add_fail(void ** state) {
 
 void test_w_load_files_status_update_hash_fail (void ** state) {
     char * file = "test";
+    char * file2 = "test2";
 
     cJSON *global_json = (cJSON*)1;
 
@@ -1456,14 +1755,23 @@ void test_w_load_files_status_update_hash_fail (void ** state) {
 
     will_return(__wrap_cJSON_GetObjectItem, NULL);
 
-    will_return(__wrap_cJSON_GetArraySize, 1);
+    // The second entry replaces this one, so the mock hash table owns and frees it
+    expect_function_call(__wrap_pthread_rwlock_wrlock);
+    expect_function_call(__wrap_pthread_rwlock_unlock);
+    os_file_status_t * old_data;
+    os_malloc(sizeof(os_file_status_t), old_data);
+    old_data->context = EVP_MD_CTX_new();
+    __real_OSHash_Add_ex(mock_hashmap, file2, old_data);
+
+    // Two entries: the first one cannot be hashed, the second one must still be loaded
+    will_return(__wrap_cJSON_GetArraySize, 2);
 
     will_return(__wrap_cJSON_GetArrayItem, NULL);
 
     //Path
     will_return(__wrap_cJSON_GetObjectItem, 1);
 
-    will_return(__wrap_cJSON_GetStringValue, "test");
+    will_return(__wrap_cJSON_GetStringValue, file);
 
     expect_string(__wrap_stat, __file, file);
     will_return(__wrap_stat, &stat_buf);
@@ -1486,6 +1794,51 @@ void test_w_load_files_status_update_hash_fail (void ** state) {
     will_return(__wrap_OS_SHA1_File_Nbytes, -1);
 
     expect_string(__wrap__mdebug1, formatted_msg, "(9000): File 'test' no longer exists.");
+
+    // Second entry
+    will_return(__wrap_cJSON_GetArrayItem, NULL);
+
+    will_return(__wrap_cJSON_GetObjectItem, 1);
+
+    will_return(__wrap_cJSON_GetStringValue, file2);
+
+    expect_string(__wrap_stat, __file, file2);
+    will_return(__wrap_stat, &stat_buf);
+    will_return(__wrap_stat, 0);
+
+    will_return(__wrap_cJSON_GetObjectItem, 1);
+
+    will_return(__wrap_cJSON_GetStringValue, "32bb98743e298dee0a654a654765c765d765ae80");
+
+    will_return(__wrap_cJSON_GetObjectItem, 1);
+
+    will_return(__wrap_cJSON_GetStringValue, "1");
+
+    expect_string(__wrap_OS_SHA1_File_Nbytes, fname, file2);
+    expect_value(__wrap_OS_SHA1_File_Nbytes, mode, mode);
+    expect_value(__wrap_OS_SHA1_File_Nbytes, nbytes, 1);
+    will_return(__wrap_OS_SHA1_File_Nbytes, "32bb98743e298dee0a654a654765c765d765ae80");
+    will_return(__wrap_OS_SHA1_File_Nbytes, 1);
+
+    will_return(__wrap_OSHash_Update_ex, 1);
+
+    //w_macos_set_status_from_JSON
+    will_return(__wrap_cJSON_GetObjectItem, NULL);
+
+    will_return(__wrap_cJSON_GetObjectItem, NULL);
+
+    will_return(__wrap_cJSON_GetStringValue, NULL);
+
+    will_return(__wrap_cJSON_GetObjectItem, NULL);
+
+    will_return(__wrap_cJSON_GetStringValue, NULL);
+
+    //w_journald_set_status_from_JSON
+    will_return(__wrap_cJSON_GetObjectItem, NULL);
+
+    will_return(__wrap_cJSON_GetObjectItem, NULL);
+
+    will_return(__wrap_cJSON_GetStringValue, NULL);
 
     w_load_files_status(global_json);
 }
@@ -1876,7 +2229,58 @@ void test_w_initialize_file_status_fopen_fail(void ** state) {
     expect_string(__wrap_wfopen, mode, "r");
     will_return(__wrap_wfopen, NULL);
 
+    errno = 0;
     expect_string(__wrap__merror, formatted_msg, "(1103): Could not open file 'queue/logcollector/file_status.json' due to [(0)-(Success)].");
+
+    w_initialize_file_status();
+}
+
+void test_w_initialize_file_status_not_found(void ** state) {
+    expect_function_call(__wrap_OSHash_Create);
+    will_return(__wrap_OSHash_Create, 1);
+
+    will_return(__wrap_OSHash_setSize, 1);
+
+    expect_function_call(__wrap_OSHash_SetFreeDataPointer);
+    will_return(__wrap_OSHash_SetFreeDataPointer, 1);
+
+    expect_string(__wrap_wfopen, path, LOCALFILE_STATUS);
+    expect_string(__wrap_wfopen, mode, "r");
+    will_return(__wrap_wfopen, NULL);
+
+    errno = ENOENT;
+
+    w_initialize_file_status();
+
+    errno = 0;
+}
+
+void test_w_initialize_file_status_fstat_fail(void ** state) {
+    expect_function_call(__wrap_OSHash_Create);
+    will_return(__wrap_OSHash_Create, 1);
+
+    will_return(__wrap_OSHash_setSize, 1);
+
+    expect_function_call(__wrap_OSHash_SetFreeDataPointer);
+    will_return(__wrap_OSHash_SetFreeDataPointer, 1);
+
+    expect_string(__wrap_wfopen, path, LOCALFILE_STATUS);
+    expect_string(__wrap_wfopen, mode, "r");
+    will_return(__wrap_wfopen, "test");
+
+    expect_value(__wrap_fileno, __stream, "test");
+    will_return(__wrap_fileno, 1);
+
+    expect_value(__wrap_fstat, __fd, 1);
+    will_return(__wrap_fstat, 0);
+    will_return(__wrap_fstat, 0);
+    will_return(__wrap_fstat, -1);
+
+    errno = 0;
+    expect_string(__wrap__merror, formatted_msg, "(1118): Could not retrieve information of file 'queue/logcollector/file_status.json' due to [(0)-(Success)].");
+
+    expect_value(__wrap_fclose, _File, "test");
+    will_return(__wrap_fclose, 0);
 
     w_initialize_file_status();
 }
@@ -1894,18 +2298,91 @@ void test_w_initialize_file_status_fread_fail(void ** state) {
     expect_string(__wrap_wfopen, mode, "r");
     will_return(__wrap_wfopen, "test");
 
+    expect_value(__wrap_fileno, __stream, "test");
+    will_return(__wrap_fileno, 1);
+
+    expect_value(__wrap_fstat, __fd, 1);
+    will_return(__wrap_fstat, 0);
+    will_return(__wrap_fstat, 4);
+    will_return(__wrap_fstat, 0);
+
     will_return(__wrap_fread, "test");
     will_return(__wrap_fread, 0);
 
+    errno = 0;
     expect_string(__wrap__merror, formatted_msg, "(1115): Could not read from file 'queue/logcollector/file_status.json' due to [(0)-(Success)].");
 
     expect_function_call(__wrap_clearerr);
     expect_string(__wrap_clearerr, __stream, "test");
 
     expect_value(__wrap_fclose, _File, "test");
-    will_return(__wrap_fclose, 1);
+    will_return(__wrap_fclose, 0);
 
     w_initialize_file_status();
+}
+
+void test_w_initialize_file_status_parse_fail(void ** state) {
+    char * content = "{\"files\":[{\"path\":\"/var/log/test.log\",";
+    expect_function_call(__wrap_OSHash_Create);
+    will_return(__wrap_OSHash_Create, 1);
+
+    will_return(__wrap_OSHash_setSize, 1);
+
+    expect_function_call(__wrap_OSHash_SetFreeDataPointer);
+    will_return(__wrap_OSHash_SetFreeDataPointer, 1);
+
+    expect_string(__wrap_wfopen, path, LOCALFILE_STATUS);
+    expect_string(__wrap_wfopen, mode, "r");
+    will_return(__wrap_wfopen, "test");
+
+    expect_value(__wrap_fileno, __stream, "test");
+    will_return(__wrap_fileno, 1);
+
+    expect_value(__wrap_fstat, __fd, 1);
+    will_return(__wrap_fstat, 0);
+    will_return(__wrap_fstat, strlen(content));
+    will_return(__wrap_fstat, 0);
+
+    will_return(__wrap_fread, content);
+    will_return(__wrap_fread, strlen(content));
+
+    expect_string(__wrap__mwarn, formatted_msg, "(8023): Could not parse the last read positions in 'queue/logcollector/file_status.json'. Files will be read from their end.");
+
+    expect_value(__wrap_fclose, _File, "test");
+    will_return(__wrap_fclose, 0);
+
+    w_initialize_file_status();
+}
+
+/* cJSON allocations made by the real parser, freed by the test because cJSON_Delete is wrapped */
+static void * cjson_allocs[64];
+
+static void * cjson_tracked_malloc(size_t size) {
+    void * ptr = malloc(size);
+    for (size_t i = 0; ptr != NULL && i < sizeof(cjson_allocs) / sizeof(cjson_allocs[0]); i++) {
+        if (cjson_allocs[i] == NULL) {
+            cjson_allocs[i] = ptr;
+            break;
+        }
+    }
+    return ptr;
+}
+
+static void cjson_tracked_free(void * ptr) {
+    for (size_t i = 0; ptr != NULL && i < sizeof(cjson_allocs) / sizeof(cjson_allocs[0]); i++) {
+        if (cjson_allocs[i] == ptr) {
+            cjson_allocs[i] = NULL;
+        }
+    }
+    free(ptr);
+}
+
+static void cjson_tracked_release(void) {
+    for (size_t i = 0; i < sizeof(cjson_allocs) / sizeof(cjson_allocs[0]); i++) {
+        free(cjson_allocs[i]);
+        cjson_allocs[i] = NULL;
+    }
+    cJSON_InitHooks(NULL);
 }
 
 void test_w_initialize_file_status_OK(void ** state) {
@@ -1929,12 +2406,31 @@ void test_w_initialize_file_status_OK(void ** state) {
     expect_function_call(__wrap_OSHash_SetFreeDataPointer);
     will_return(__wrap_OSHash_SetFreeDataPointer, 1);
 
+    // A status file larger than OS_MAXSTR must be read whole: a truncated JSON would not parse
+    cJSON_Hooks hooks = { .malloc_fn = cjson_tracked_malloc, .free_fn = cjson_tracked_free };
+    cJSON_InitHooks(&hooks);
+
+    size_t pad_len = OS_MAXSTR + 1024;
+    char * content = NULL;
+    os_calloc(pad_len + 64, sizeof(char), content);
+    strcpy(content, "{\"files\":[],\"pad\":\"");
+    memset(content + strlen(content), 'x', pad_len);
+    strcat(content, "\"}");
+
     expect_string(__wrap_wfopen, path, LOCALFILE_STATUS);
     expect_string(__wrap_wfopen, mode, "r");
     will_return(__wrap_wfopen, "test");
 
-    will_return(__wrap_fread, "test");
-    will_return(__wrap_fread, 1);
+    expect_value(__wrap_fileno, __stream, "test");
+    will_return(__wrap_fileno, 1);
+
+    expect_value(__wrap_fstat, __fd, 1);
+    will_return(__wrap_fstat, 0);
+    will_return(__wrap_fstat, strlen(content));
+    will_return(__wrap_fstat, 0);
+
+    will_return(__wrap_fread, content);
+    will_return(__wrap_fread, strlen(content));
 
     //w_load_files_status
 
@@ -1981,12 +2477,22 @@ void test_w_initialize_file_status_OK(void ** state) {
 
     will_return(__wrap_cJSON_GetStringValue, NULL);
 
+    //w_journald_set_status_from_JSON
+    will_return(__wrap_cJSON_GetObjectItem, NULL);
+
+    will_return(__wrap_cJSON_GetObjectItem, NULL);
+
+    will_return(__wrap_cJSON_GetStringValue, NULL);
+
     expect_function_call(__wrap_cJSON_Delete);
 
     expect_value(__wrap_fclose, _File, "test");
-    will_return(__wrap_fclose, 1);
+    will_return(__wrap_fclose, 0);
 
     w_initialize_file_status();
+
+    os_free(content);
+    cjson_tracked_release();
 }
 
 /* w_update_hash_node */
@@ -2503,6 +3009,11 @@ void test_w_macos_release_log_execution_log_stream_and_show_not_launched(void **
 
 }
 
+/* The reader must see the shutdown flag before the child is killed */
+static int check_sigterm_after_shutdown(const LargestIntegralType value, __attribute__((unused)) const LargestIntegralType data) {
+    return value == SIGTERM && macos_log_shutdown == 1;
+}
+
 void test_w_macos_release_log_execution_log_stream_and_show_launched_and_running(void ** state) {
 
     macos_processes = *state;
@@ -2510,7 +3021,7 @@ void test_w_macos_release_log_execution_log_stream_and_show_launched_and_running
     macos_processes->stream.wfd->pid = 11;
 
     expect_string(__wrap__mdebug1, formatted_msg, "macOS ULS: Releasing macOS `log show` resources.");
-    expect_value(__wrap_kill, sig, SIGTERM);
+    expect_check(__wrap_kill, sig, check_sigterm_after_shutdown, 0);
     expect_value(__wrap_kill, pid, 10);
     will_return(__wrap_kill, 0);
     will_return(__wrap_wpclose, 0);
@@ -2677,6 +3188,10 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_w_get_hash_context_NULL_file_not_exist, setup_log_context, teardown_log_context),
         cmocka_unit_test_setup_teardown(test_w_get_hash_context_done, setup_log_context, teardown_log_context),
 
+        // Test w_hash_read_line
+        cmocka_unit_test(test_w_hash_read_line_hashes_bytes_after_nul),
+        cmocka_unit_test(test_w_hash_read_line_ftell_fail),
+
         // Test w_update_file_status
         cmocka_unit_test_setup_teardown(test_w_update_file_status_fail_update_add_table_hash, setup_local_hashmap, teardown_local_hashmap),
         cmocka_unit_test_setup_teardown(test_w_update_file_status_update_fail_add_OK, setup_local_hashmap, teardown_local_hashmap),
@@ -2704,6 +3219,9 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_w_save_file_status_wfopen_error, setup_log_context, teardown_log_context),
         cmocka_unit_test_setup_teardown(test_w_save_file_status_fwrite_error, setup_log_context, teardown_log_context),
         cmocka_unit_test_setup_teardown(test_w_save_file_status_OK, setup_log_context, teardown_log_context),
+        cmocka_unit_test_setup_teardown(test_w_save_file_status_short_write, setup_log_context, teardown_log_context),
+        cmocka_unit_test_setup_teardown(test_w_save_file_status_fclose_error, setup_log_context, teardown_log_context),
+        cmocka_unit_test_setup_teardown(test_w_save_file_status_rename_error, setup_log_context, teardown_log_context),
 
         // Test w_load_files_status
         cmocka_unit_test(test_w_load_files_status_empty_array),
@@ -2735,7 +3253,10 @@ int main(void) {
         cmocka_unit_test(test_w_initialize_file_status_OSHash_Create_fail),
         cmocka_unit_test(test_w_initialize_file_status_OSHash_setSize_fail),
         cmocka_unit_test(test_w_initialize_file_status_fopen_fail),
+        cmocka_unit_test(test_w_initialize_file_status_not_found),
+        cmocka_unit_test(test_w_initialize_file_status_fstat_fail),
         cmocka_unit_test(test_w_initialize_file_status_fread_fail),
+        cmocka_unit_test(test_w_initialize_file_status_parse_fail),
         cmocka_unit_test_setup_teardown(test_w_initialize_file_status_OK, setup_local_hashmap, teardown_local_hashmap),
 
         // Test w_update_hash_node

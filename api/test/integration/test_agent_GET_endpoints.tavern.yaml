@@ -1559,26 +1559,9 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
-      status_code: 200
+      status_code: 400
       json:
-        error: 0
-        data:
-          global:
-            alerts_log: !anystr
-            email_notification: !anystr
-            host_information: !anyint
-            integrity_checking: !anyint
-            jsonout_output: !anystr
-            logall: !anystr
-            logall_json: !anystr
-            max_output_size: !anyint
-            memory_size: !anyint
-            prelude_output: !anystr
-            rootkit_detection: !anyint
-            rotate_interval: !anyint
-            stats: !anyint
-            white_list: !anything
-            zeromq_output: !anystr
+        error: 1703
 
   - name: Get active_response configuration from analysis component
     request:
@@ -1588,11 +1571,9 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
-      status_code: 200
+      status_code: 400
       json:
-        error: 0
-        data:
-          active-response: !anything
+        error: 1703
 
   - name: Get alerts configuration from analysis component
     request:
@@ -1602,13 +1583,9 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
-      status_code: 200
+      status_code: 400
       json:
-        error: 0
-        data:
-          alerts:
-            email_alert_level: !anyint
-            log_alert_level: !anyint
+        error: 1703
 
   - name: Get command configuration from analysis component
     request:
@@ -1618,11 +1595,9 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
-      status_code: 200
+      status_code: 400
       json:
-        error: 0
-        data:
-          command: !anything
+        error: 1703
 
   - name: Get internal configuration from analysis component
     request:
@@ -1632,25 +1607,9 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
-      status_code: 200
+      status_code: 400
       json:
-        error: 0
-        data:
-          internal:
-            analysisd:
-              debug: !anyint
-              decoder_order_size: !anyint
-              default_timeframe: !anyint
-              fts_list_size: !anyint
-              fts_min_size_for_str: !anyint
-              label_cache_maxage: !anyint
-              log_fw: !anyint
-              min_rotate_interval: !anyint
-              rlimit_nofile: !anyint
-              show_hidden_labels: !anyint
-              stats_maxdiff: !anyint
-              stats_mindiff: !anyint
-              stats_percent_diff: !anyint
+        error: 1703
 
   - name: Get auth configuration from auth component
     request:
@@ -1660,22 +1619,9 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
-      status_code: 200
+      status_code: 400
       json:
-        error: 0
-        data:
-          auth:
-            ciphers: !anystr
-            disabled: !anystr
-            force: !anything
-            port: !anyint
-            purge: !anystr
-            ssl_auto_negotiate: !anystr
-            ssl_manager_cert: !anystr
-            ssl_manager_key: !anystr
-            ssl_verify_host: !anystr
-            use_password: !anystr
-            use_source_ip: !anystr
+        error: 1703
 
   - name: Get active-response configuration from com component (Manager)
     request:
@@ -1685,12 +1631,9 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
-      status_code: 200
+      status_code: 400
       json:
-        error: 0
-        data:
-          active-response:
-            disabled: !anystr
+        error: 1703
 
   - name: Get active-response configuration from com component (Agent)
     request:
@@ -1715,14 +1658,9 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
-      status_code: 200
+      status_code: 400
       json:
-        error: 0
-        data:
-          internal:
-            execd:
-              request_timeout: !anyint
-              max_restart_lock: !anyint
+        error: 1703
 
   - name: Get internal configuration from com component (Agent)
     request:
@@ -1749,11 +1687,9 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
-      status_code: 200
+      status_code: 400
       json:
-        error: 0
-        data:
-          localfile: !anything
+        error: 1703
 
   - name: Get localfile configuration from logcollector component (Agent)
     request:
@@ -1777,7 +1713,9 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
-      status_code: 200
+      status_code: 400
+      json:
+        error: 1703
 
   - name: Get socket configuration from logcollector component (Agent)
     request:
@@ -1797,27 +1735,9 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
-      status_code: 200
+      status_code: 400
       json:
-        error: 0
-        data:
-          internal:
-            logcollector:
-              debug: !anyint
-              force_reload: !anyint
-              input_threads: !anyint
-              loop_timeout: !anyint
-              max_files: !anyint
-              max_lines: !anyint
-              open_attempts: !anyint
-              queue_size: !anyint
-              reload_delay: !anyint
-              reload_interval: !anyint
-              remote_commands: !anyint
-              rlimit_nofile: !anyint
-              sample_log_length: !anyint
-              sock_fail_time: !anyint
-              vcheck_files: !anyint
+        error: 1703
 
   - name: Get internal configuration from logcollector component (Agent)
     request:
@@ -1857,20 +1777,9 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
-      status_code: 200
+      status_code: 400
       json:
-        error: 0
-        data:
-          monitord:
-            compress: !anyint
-            daily_rotations: !anyint
-            day_wait: !anyint
-            delete_old_agents: !anyint
-            keep_log_days: !anyint
-            monitor_agents: !anyint
-            rotate_log: !anyint
-            sign: !anyint
-            size_rotate: !anyint
+        error: 1703
 
   - name: Get remote configuration from request component
     request:
@@ -1880,16 +1789,9 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
-      status_code: 200
+      status_code: 400
       json:
-        error: 0
-        data:
-          remote:
-            - connection: !anystr
-              ipv6: !anystr
-              port: !anystr
-              protocol: !anylist
-              queue_size: !anystr
+        error: 1703
 
   - name: Get internal configuration from request component
     request:
@@ -1899,30 +1801,9 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
-      status_code: 200
+      status_code: 400
       json:
-        error: 0
-        data:
-          internal:
-            remoted:
-              buffer_relax: !anyint
-              comp_average_printout: !anyint
-              guess_agent_group: !anyint
-              max_attempts: !anyint
-              merge_shared: !anyint
-              pass_empty_keyfile: !anyint
-              receive_chunk: !anyint
-              recv_counter_flush: !anyint
-              recv_timeout: !anyint
-              request_pool: !anyint
-              request_rto_msec: !anyint
-              request_rto_sec: !anyint
-              request_timeout: !anyint
-              response_timeout: !anyint
-              rlimit_nofile: !anyint
-              sender_pool: !anyint
-              shared_reload: !anyint
-              verify_msg_id: !anyint
+        error: 1703
 
   - name: Get syscheck configuration from syscheck component (Manager)
     request:
@@ -1932,19 +1813,9 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
-      status_code: 200
+      status_code: 400
       json:
-        error: 0
-        data:
-          syscheck:
-            directories: !anything
-            disabled: !anystr
-            frequency: !anyint
-            ignore: !anything
-            nodiff: !anything
-            scan_on_start: !anystr
-            skip_nfs: !anystr
-            whodata: !anything
+        error: 1703
 
   - name: Get syscheck configuration from syscheck component (Agent)
     request:
@@ -1976,25 +1847,9 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
-      status_code: 200
+      status_code: 400
       json:
-        error: 0
-        data:
-          rootcheck:
-            check_dev: !anystr
-            check_files: !anystr
-            check_if: !anystr
-            check_pids: !anystr
-            check_ports: !anystr
-            check_sys: !anystr
-            check_trojans: !anystr
-            check_unixaudit: !anystr
-            disabled: !anystr
-            frequency: !anyint
-            rootkit_files: !anystr
-            rootkit_trojans: !anystr
-            scanall: !anystr
-            skip_nfs: !anystr
+        error: 1703
 
   - name: Get rootcheck configuration from syscheck component (Agent)
     request:
@@ -2032,20 +1887,9 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
-      status_code: 200
+      status_code: 400
       json:
-        error: 0
-        data:
-          internal:
-            rootcheck:
-              sleep: !anyint
-            syscheck:
-              debug: !anyint
-              default_max_depth: !anyint
-              max_audit_entries: !anyint
-              rt_delay: !anyint
-              file_max_size: !anyint
-              symlink_scan_interval: !anyint
+        error: 1703
 
   - name: Get internal configuration from syscheck component (Agent)
     request:
@@ -2078,15 +1922,9 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
-      status_code: 200
+      status_code: 400
       json:
-        error: 0
-        data:
-          wazuh_db:
-            commit_time_max: !anyint
-            commit_time_min: !anyint
-            open_db_limit: !anyint
-            worker_pool_size: !anyint
+        error: 1703
 
   - name: Get wdb configuration from wazuh-db component
     request:
@@ -2096,16 +1934,9 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
-      status_code: 200
+      status_code: 400
       json:
-        error: 0
-        data:
-          wdb:
-            backup:
-              - database: !anystr
-                enabled: !anybool
-                interval: !anyint
-                max_files: !anyint
+        error: 1703
 
   - name: Get wmodules configuration from wmodules component (Manager)
     request:
@@ -2115,11 +1946,9 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
-      status_code: 200
+      status_code: 400
       json:
-        error: 0
-        data:
-          wmodules: !anything
+        error: 1703
 
   - name: Get wmodules configuration from wmodules component (Agent)
     request:
@@ -2223,19 +2052,9 @@ stages:
     headers:
       Authorization: "Bearer {test_login_token}"
   response:
-    status_code: 200
+    status_code: 400
     json:
-      error: 0
-      data:
-        bind_addr: !anystr
-        disabled: !anybool
-        hidden: !anystr
-        key: !anystr
-        name: !anystr
-        node_name: !anystr
-        node_type: !anystr
-        nodes: !anything
-        port: !anyint
+      error: 1703
 
 ---
 test_name: GET /agents/{agent_id}/group/is_sync

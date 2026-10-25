@@ -58,6 +58,16 @@ static void getFirewallProfile(const char * output_buf, firewallData_t *firewall
 */
 static void getStatusFirewallProfile(const char * output_buf, firewallData_t *firewallData);
 
+/**
+ * @brief Resolve a fixed Windows system tool directly under the system directory
+ * (e.g. C:\Windows\System32), instead of searching PATH. On failure, falls back to
+ * the bare binary name, matching get_binary_path()'s own fallback convention.
+ * @param binary Name of the binary to resolve
+ * @param validated_comm Output parameter for the resolved path (caller must free)
+ * @return OS_SUCCESS if resolved under the system directory, OS_INVALID otherwise
+ */
+static int resolve_system_tool(const char *binary, char **validated_comm);
+
 int main (int argc, char **argv) {
     // This must be always the first instruction
     enable_dll_verification();
@@ -114,11 +124,16 @@ int main (int argc, char **argv) {
     snprintf(name, OS_MAXSTR -1, "name=\"%s\"", RULE_NAME);
     snprintf(remoteip, OS_MAXSTR -1, "remoteip=%s/32", srcip);
 
-    // Checking if netsh.exe is present
-    if (get_binary_path("netsh.exe", &netsh_path) < 0) {
+    // Checking if netsh.exe is present under the system directory. Fail closed:
+    // falling back to the bare name would let CreateProcess resolve it via %PATH%
+    // again, which this change avoids.
+    if (resolve_system_tool("netsh.exe", &netsh_path) < 0) {
         memset(log_msg, '\0', OS_MAXSTR);
-        snprintf(log_msg, OS_MAXSTR -1, "Binary '%s' not found in default paths, the full path will not be used.", netsh_path);
+        snprintf(log_msg, OS_MAXSTR -1, "Could not resolve 'netsh.exe' under the system directory, aborting to avoid PATH-based execution.");
         write_debug_file(argv[0], log_msg);
+        os_free(netsh_path);
+        cJSON_Delete(input_json);
+        return OS_INVALID;
     }
 
     char *exec_args_delete[8] = { netsh_path, "advfirewall", "firewall", "delete", "rule", name, remoteip, NULL };
@@ -142,7 +157,12 @@ int main (int argc, char **argv) {
                 snprintf(log_msg, OS_MAXSTR -1, "Unable to run netsh, action: 'ADD dir=in', rule: '%s'", RULE_NAME);
                 write_debug_file(argv[0], log_msg);
             } else {
-                wpclose(wfd);
+                int rc = wpclose(wfd);
+                if (rc != 0) {
+                    memset(log_msg, '\0', OS_MAXSTR);
+                    snprintf(log_msg, OS_MAXSTR -1, "netsh returned exit code %d", rc);
+                    write_debug_file(argv[0], log_msg);
+                }
             }
 
             wfd = wpopenv(netsh_path, exec_args_add_out, W_BIND_STDERR);
@@ -151,7 +171,12 @@ int main (int argc, char **argv) {
                 snprintf(log_msg, OS_MAXSTR -1, "Unable to run netsh, action: 'ADD dir=out', rule: '%s'", RULE_NAME);
                 write_debug_file(argv[0], log_msg);
             } else {
-                wpclose(wfd);
+                int rc = wpclose(wfd);
+                if (rc != 0) {
+                    memset(log_msg, '\0', OS_MAXSTR);
+                    snprintf(log_msg, OS_MAXSTR -1, "netsh returned exit code %d", rc);
+                    write_debug_file(argv[0], log_msg);
+                }
             }
         } else {
             wfd = wpopenv(netsh_path, exec_args_delete, W_BIND_STDERR);
@@ -160,7 +185,12 @@ int main (int argc, char **argv) {
                 snprintf(log_msg, OS_MAXSTR -1, "Unable to run netsh, action: 'DELETE', rule: '%s'", RULE_NAME);
                 write_debug_file(argv[0], log_msg);
             } else {
-                wpclose(wfd);
+                int rc = wpclose(wfd);
+                if (rc != 0) {
+                    memset(log_msg, '\0', OS_MAXSTR);
+                    snprintf(log_msg, OS_MAXSTR -1, "netsh returned exit code %d", rc);
+                    write_debug_file(argv[0], log_msg);
+                }
             }
         }
     } else {
@@ -180,7 +210,12 @@ int main (int argc, char **argv) {
                 snprintf(log_msg, OS_MAXSTR -1, "Unable to run netsh, action: 'ADD', 'wazuh_filter'");
                 write_debug_file(argv[0], log_msg);
             } else {
-                wpclose(wfd);
+                int rc = wpclose(wfd);
+                if (rc != 0) {
+                    memset(log_msg, '\0', OS_MAXSTR);
+                    snprintf(log_msg, OS_MAXSTR -1, "netsh returned exit code %d", rc);
+                    write_debug_file(argv[0], log_msg);
+                }
             }
 
             wfd = wpopenv(netsh_path, exec_args_faction, W_BIND_STDERR);
@@ -189,7 +224,12 @@ int main (int argc, char **argv) {
                 snprintf(log_msg, OS_MAXSTR -1, "Unable to run netsh, action: 'ADD', 'wazuh_action'");
                 write_debug_file(argv[0], log_msg);
             } else {
-                wpclose(wfd);
+                int rc = wpclose(wfd);
+                if (rc != 0) {
+                    memset(log_msg, '\0', OS_MAXSTR);
+                    snprintf(log_msg, OS_MAXSTR -1, "netsh returned exit code %d", rc);
+                    write_debug_file(argv[0], log_msg);
+                }
             }
 
             wfd = wpopenv(netsh_path, exec_args_policy, W_BIND_STDERR);
@@ -198,7 +238,12 @@ int main (int argc, char **argv) {
                 snprintf(log_msg, OS_MAXSTR -1, "Unable to run netsh, action: 'ADD', 'wazuh_policy'");
                 write_debug_file(argv[0], log_msg);
             } else {
-                wpclose(wfd);
+                int rc = wpclose(wfd);
+                if (rc != 0) {
+                    memset(log_msg, '\0', OS_MAXSTR);
+                    snprintf(log_msg, OS_MAXSTR -1, "netsh returned exit code %d", rc);
+                    write_debug_file(argv[0], log_msg);
+                }
             }
 
             wfd = wpopenv(netsh_path, exec_args_rule, W_BIND_STDERR);
@@ -207,7 +252,12 @@ int main (int argc, char **argv) {
                 snprintf(log_msg, OS_MAXSTR -1, "Unable to run netsh, action: 'ADD', 'wazuh_rule'");
                 write_debug_file(argv[0], log_msg);
             } else {
-                wpclose(wfd);
+                int rc = wpclose(wfd);
+                if (rc != 0) {
+                    memset(log_msg, '\0', OS_MAXSTR);
+                    snprintf(log_msg, OS_MAXSTR -1, "netsh returned exit code %d", rc);
+                    write_debug_file(argv[0], log_msg);
+                }
             }
         } else {
             wfd = wpopenv(netsh_path, exec_args_delete, W_BIND_STDERR);
@@ -216,7 +266,12 @@ int main (int argc, char **argv) {
                 snprintf(log_msg, OS_MAXSTR -1, "Unable to run netsh, action: 'DELETE', rule: 'wazuh_rule'");
                 write_debug_file(argv[0], log_msg);
             } else {
-                wpclose(wfd);
+                int rc = wpclose(wfd);
+                if (rc != 0) {
+                    memset(log_msg, '\0', OS_MAXSTR);
+                    snprintf(log_msg, OS_MAXSTR -1, "netsh returned exit code %d", rc);
+                    write_debug_file(argv[0], log_msg);
+                }
             }
         }
     }
@@ -243,11 +298,14 @@ static int getAllProfilesStatus(const char *argv) {
     char *reg_path = NULL;
 
 
-    // Checking if reg.exe is present
-    if (get_binary_path("reg.exe", &reg_path) < 0) {
+    // Checking if reg.exe is present under the system directory. Fail closed:
+    // falling back to the bare name would let CreateProcess search %PATH% again.
+    if (resolve_system_tool("reg.exe", &reg_path) < 0) {
         memset(log_msg, '\0', OS_MAXSTR);
-        snprintf(log_msg, OS_MAXSTR -1, "Binary '%s' not found in default paths, the full path will not be used.", reg_path);
+        snprintf(log_msg, OS_MAXSTR -1, "Could not resolve 'reg.exe' under the system directory, aborting to avoid PATH-based execution.");
         write_debug_file(argv, log_msg);
+        os_free(reg_path);
+        return OS_INVALID;
     }
 
     char *exec_args_show_profile[6] = { reg_path, "query", pathFirewallProfilesReg, "/v", "EnableFirewall", NULL };
@@ -343,6 +401,32 @@ static void getStatusFirewallProfile(const char * output_buf, firewallData_t *fi
     } else {
         firewallData->isEnabled = false;
     }
+}
+
+static int resolve_system_tool(const char *binary, char **validated_comm) {
+    char sys_dir[MAX_PATH];
+    char full_path[OS_MAXSTR];
+
+    if (GetSystemDirectoryA(sys_dir, sizeof(sys_dir)) == 0) {
+        if (validated_comm) {
+            *validated_comm = strdup(binary);
+        }
+        return OS_INVALID;
+    }
+
+    snprintf(full_path, OS_MAXSTR - 1, "%s\\%s", sys_dir, binary);
+
+    if (IsFile(full_path) != 0) {
+        if (validated_comm) {
+            *validated_comm = strdup(binary);
+        }
+        return OS_INVALID;
+    }
+
+    if (validated_comm) {
+        *validated_comm = strdup(full_path);
+    }
+    return OS_SUCCESS;
 }
 
 #endif

@@ -406,14 +406,14 @@ void get_parent_process_info(char *ppid, char **const parent_name, char **const 
     snprintf(slinkexe, tam_slink, "/proc/%s/exe", ppid);
     snprintf(slinkcwd, tam_slink, "/proc/%s/cwd", ppid);
 
-    if (tam_ppname = readlink(slinkexe, *parent_name, OS_FLSIZE), tam_ppname < 0) {
+    if (tam_ppname = readlink(slinkexe, *parent_name, OS_FLSIZE - 1), tam_ppname < 0) {
         mdebug1("Failure to obtain the name of the process: '%s'. Error: %s", ppid, strerror(errno));
         parent_name[0][0] = '\0';
     } else {
         parent_name[0][tam_ppname] = '\0';
     }
 
-    if (tam_pcwd = readlink(slinkcwd, *parent_cwd, OS_FLSIZE), tam_pcwd < 0) {
+    if (tam_pcwd = readlink(slinkcwd, *parent_cwd, OS_FLSIZE - 1), tam_pcwd < 0) {
         mdebug1("Failure to obtain the cwd of the process: '%s'. Error: %s", ppid, strerror(errno));
         parent_cwd[0][0] = '\0';
     } else {
@@ -759,13 +759,23 @@ void audit_parse(char *buffer) {
             case 1:
                 if (w_evt->cwd && path0) {
                     if (file_path = gen_audit_path(w_evt->cwd, path0, NULL), file_path) {
-                        w_evt->path = file_path;
                         mdebug2(FIM_AUDIT_EVENT(w_evt->user_name) ? w_evt->user_name : "",
                                 (w_evt->audit_name) ? w_evt->audit_name : "",
                                 (w_evt->effective_name) ? w_evt->effective_name : "",
                                 (w_evt->group_name) ? w_evt->group_name : "", w_evt->process_id, w_evt->ppid,
-                                (w_evt->inode) ? w_evt->inode : "", (w_evt->path) ? w_evt->path : "",
+                                (w_evt->inode) ? w_evt->inode : "", (file_path) ? file_path : "",
                                 (w_evt->process_name) ? w_evt->process_name : "");
+
+                        // Resolve the path like the items=2 case below: when the operation is
+                        // performed through a monitored symbolic link, the kernel reports the
+                        // symlink path, which does not match the resolved path FIM stores.
+                        w_evt->path = realpath(file_path, NULL);
+                        if (w_evt->path == NULL) {
+                            os_strdup(file_path, w_evt->path);
+                            mdebug1(FIM_CHECK_LINK_REALPATH, w_evt->path); // LCOV_EXCL_LINE
+                        }
+
+                        free(file_path);
 
                         if (w_evt->inode) {
                             fim_whodata_event(w_evt);

@@ -923,6 +923,47 @@ static void test_wm_gcp_pubsub_run_logged_error_on_failure_is_not_duplicated(voi
     wm_gcp_pubsub_run(gcp_config);
 }
 
+static void test_wm_gcp_pubsub_run_empty_token_segments(void **state) {
+    wm_gcp_pubsub *gcp_config = *state;
+
+    snprintf(gcp_config->project_id, OS_SIZE_1024, "wazuh-gcp-test");
+    snprintf(gcp_config->subscription_name, OS_SIZE_1024, "wazuh-subscription-test");
+    snprintf(gcp_config->credentials_file, OS_SIZE_1024, "/wazuh/credentials/test.json");
+
+    gcp_config->max_messages = 10;
+    gcp_config->num_threads = 2;
+
+    expect_string(__wrap__mtdebug2, tag, WM_GCP_PUBSUB_LOGTAG);
+    expect_string(__wrap__mtdebug2, formatted_msg, "Create argument list");
+    will_return(__wrap_isDebug, 0);
+
+    expect_string(__wrap__mtdebug1, tag, WM_GCP_PUBSUB_LOGTAG);
+    expect_string(__wrap__mtdebug1, formatted_msg, "Launching command: "
+        "wodles/gcloud/gcloud --integration_type pubsub --project wazuh-gcp-test --subscription_id wazuh-subscription-test "
+        "--credentials_file /wazuh/credentials/test.json --max_messages 10 --num_threads 2");
+
+    expect_string(__wrap_wm_exec, command,
+        "wodles/gcloud/gcloud --integration_type pubsub --project wazuh-gcp-test --subscription_id wazuh-subscription-test "
+        "--credentials_file /wazuh/credentials/test.json --max_messages 10 --num_threads 2");
+    expect_value(__wrap_wm_exec, secs, 0);
+    expect_value(__wrap_wm_exec, add_path, NULL);
+
+    // Adjacent tokens and a trailing token both yield empty segments (cp_length == 1).
+    will_return(__wrap_wm_exec, ":gcloud_wodle::gcloud_wodle:Test output - ERROR - This is the real error\n:gcloud_wodle:");
+    will_return(__wrap_wm_exec, 1);
+    will_return(__wrap_wm_exec, 0);
+
+    expect_string(__wrap__mtwarn, tag, WM_GCP_PUBSUB_LOGTAG);
+    expect_string(__wrap__mtwarn, formatted_msg, "Command returned exit code 1");
+
+    will_return(__wrap_isDebug, 0);
+
+    expect_string(__wrap__mterror, tag, WM_GCP_PUBSUB_LOGTAG);
+    expect_string(__wrap__mterror, formatted_msg, "This is the real error");
+
+    wm_gcp_pubsub_run(gcp_config);
+}
+
 static void test_wm_gcp_pubsub_run_logging_warning_message_warning(void **state) {
     wm_gcp_pubsub *gcp_config = *state;
 
@@ -2871,6 +2912,7 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_wm_gcp_pubsub_run_surfaces_tail_of_oversized_crash, setup_group_pubsub, teardown_group_pubsub),
         cmocka_unit_test_setup_teardown(test_wm_gcp_pubsub_run_no_output_on_success_is_not_logged, setup_group_pubsub, teardown_group_pubsub),
         cmocka_unit_test_setup_teardown(test_wm_gcp_pubsub_run_logged_error_on_failure_is_not_duplicated, setup_group_pubsub, teardown_group_pubsub),
+        cmocka_unit_test_setup_teardown(test_wm_gcp_pubsub_run_empty_token_segments, setup_group_pubsub, teardown_group_pubsub),
         cmocka_unit_test_setup_teardown(test_wm_gcp_pubsub_run_logging_warning_message_warning, setup_group_pubsub, teardown_group_pubsub),
         cmocka_unit_test_setup_teardown(test_wm_gcp_pubsub_run_logging_warning_multiline_message_error, setup_group_pubsub, teardown_group_pubsub),
         cmocka_unit_test_setup_teardown(test_wm_gcp_pubsub_run_logging_warning_multimessage_message_error, setup_group_pubsub, teardown_group_pubsub),

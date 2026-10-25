@@ -328,6 +328,10 @@
 #define RL_NO_OPT       "(5106): Rule '%d' without any options. "\
                         "It may lead to false positives. Exiting. "
 #define RL_REGEX_SYNTAX "(5107): Syntax error on tag '%s' in rule %d"
+#define RL_TREE_NODE_LIMIT  "(5108): Rule '%d' in '%s' exceeds the rule tree node limit " \
+                            "(%zu nodes in the tree, %zu added by this rule, limit %zu). Ruleset loading aborted."
+#define RL_TREE_NODE_THRESHOLDS "(5109): Invalid rule tree thresholds: 'analysisd.rule_tree_memory_warning' " \
+                                "(%zu nodes) must be lower than 'analysisd.rule_tree_memory_limit' (%zu nodes)."
 
 /* Syslog output */
 #define XML_INV_CSYSLOG    "(5301): Invalid client-syslog configuration."
@@ -492,7 +496,6 @@
 #define FIM_ERROR_EBPF_RINGBUFF_CONSUME             "(6977): Consuming ring buffer failed."
 #define FIM_ERROR_EBPF_HEALTHCHECK_TIMEOUT          "(6978): eBPF healthcheck timeout."
 #define FIM_ERROR_EBPF_HEALTHCHECK_FILE_DEL         "(6979): Healthcheck file can't be removed. Path: %s"
-#define FIM_ERROR_EBPF_INVALID_KERNEL               "(6980): Invalid Kernel version detected. Must be +5.8."
 #define FIM_ERROR_EBPF_HEALTHCHECK_ACTION_FAILED    "(6981): eBPF healthcheck action failed: %s. %s"
 #define FIM_ERROR_EBPF_HEALTHCHECK_ACTION_SKIPPED   "(6982): eBPF healthcheck action skipped: %s. %s"
 #define FIM_ERROR_EBPF_OBJ_ATTACH_DETAIL            "(6983): Attaching BPF program '%s' failed (errno=%d: %s)."

@@ -67,6 +67,20 @@ def test_read_config_wrapper_key_visibility(has_perms, expected_key):
     assert result.affected_items[0]['key'] == expected_key
 
 
+def test_read_config_wrapper_masking_keeps_cached_config():
+    """Masking a readonly response must not alter the cached config later returned to an admin."""
+    cached_config = {**_cluster_config_with_key(),
+                     'haproxy_helper': {'haproxy_user': 'user', 'haproxy_password': 'REAL_HAPROXY_SECRET'}}
+    with patch('wazuh.cluster.read_config', return_value=cached_config):
+        with patch('wazuh.rbac.decorators._has_update_permissions', return_value=False):
+            readonly = cluster.read_config_wrapper()
+        with patch('wazuh.rbac.decorators._has_update_permissions', return_value=True):
+            admin = cluster.read_config_wrapper()
+    assert readonly.affected_items[0]['haproxy_helper']['haproxy_password'] == '*****'
+    assert admin.affected_items[0]['haproxy_helper']['haproxy_password'] == 'REAL_HAPROXY_SECRET'
+    assert cached_config['haproxy_helper']['haproxy_password'] == 'REAL_HAPROXY_SECRET'
+
+
 @patch('wazuh.rbac.decorators._has_update_permissions', return_value=False)
 def test_read_config_wrapper_masking_preserves_other_fields(mock_perms):
     """Masking only touches the key field, not other config fields."""

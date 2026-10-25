@@ -110,6 +110,13 @@ int wm_osquery_monitor_read(xml_node **nodes, wmodule *module)
                 return OS_INVALID;
             }
 
+#ifdef WIN32
+            if (is_network_path(nodes[i]->content)) {
+                mwarn(NETWORK_PATH_CONFIGURED, nodes[i]->element, nodes[i]->content);
+                continue;
+            }
+#endif
+
             os_malloc(sizeof(wm_osquery_pack_t), pack);
             os_strdup(*nodes[i]->values, pack->name);
             os_strdup(nodes[i]->content, pack->path);
