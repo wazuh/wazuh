@@ -148,8 +148,8 @@ agent's documents). The situations an operator will recognize:
 - [Vulnerability Scanner](../vulnerability-scanner/README.md) - executed synchronously by the scan
   lane for VD sessions; coordinates feed-update scans through a shared per-agent registry.
 - [Keystore](../keystore/README.md) - the encrypted credential store the indexer connectors read.
-- [Indexer Connector](../indexer_connector/README.md) - the previous library to reach the indexer (the
-  vulnerability scanner still uses it); this module reaches the indexer through the `indexer_client`
+- [Indexer Connector](../indexer_connector/README.md) - the previous library to reach the indexer (neither
+  this module nor the vulnerability scanner uses it); this module reaches the indexer through the `indexer_client`
   runtime, configured by the
   [`indexer_client_*` options](configuration.md#the-wazuh_modulesindexer_client_-family).
 

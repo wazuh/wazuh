@@ -140,6 +140,30 @@ return to 0 if the `Client` is rebuilt. On `agent_state`, look at `rejected.<cau
 when `/stats` or `/config` answer `503`: the bucket refuses new work when its quota is full
 (see [`…indexer_async_max_queue_bytes`](configuration.md#wazuh_modulesinventory_sync_server_indexer_async_max_queue_bytes)).
 
+### Indexer client runtime — `indexer_client.{runtime,node,query,pit}.*`
+
+The process's indexer client runtime is shared by every consumer in `wazuh-manager-modulesd`
+(this module, the vulnerability scanner and its feed), so its metrics are published **once per
+process, here only** — the vulnerability scanner's `/metrics` publishes its own bucket and nothing
+of these. They are read by pull from the runtime's snapshot, not from this module's `Client`: they
+are there, with real values, whether or not the module's `Client` is alive, and they do not return
+to 0 when the `Client` is rebuilt (the query and PIT counters are process-wide and never reset).
+
+| Prefix | What it counts |
+|---|---|
+| `indexer_client.runtime.*` | Threads, clients, the global queue charge against `global_quota_bytes`, usage errors |
+| `indexer_client.node.<i>.*` | One family per configured indexer host, `<i>` = its position in `<indexer><hosts>` (state, window, throttling, failures, latency) |
+| `indexer_client.query.*` | Every query of the process (searches, by-query calls, PIT pages): attempts, failovers, throttles, `conflict_retries`, response bytes in flight |
+| `indexer_client.pit.*` | Point-in-time contexts: open, reserved, created, deletes pending/confirmed/expired |
+
+The names, types and meaning are the library's catalog (`src/shared_modules/indexer_client/README.md`
+section "Metrics"). The node families are registered once, from the hosts the runtime started with.
+The vulnerability scanner's reads — its own scans' searches and the content feed's — have no bucket
+of their own: they show up here, in `indexer_client.query.*` and `indexer_client.pit.*`. Tuning:
+the [`wazuh_modules.indexer_client_*`](configuration.md#the-wazuh_modulesindexer_client_-family)
+family; otherwise diagnostic. `sync.indexer.conflict.retries` is `indexer_client.query.conflict_retries`
+under this module's own name.
+
 ### Post-deletion sweep — `sync.agent_delete.sweep.*`
 
 After an agent deletion succeeds, the module notes the agent and, once the sweep window has passed,

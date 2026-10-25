@@ -14,8 +14,10 @@
 
 #include <gtest/gtest.h>
 
+#include <atomic>
 #include <chrono>
 #include <memory>
+#include <thread>
 
 using invsync::vd::AgentInFlightRegistry;
 using invsync::vd::ServerScanCoordinator;
@@ -45,7 +47,7 @@ TEST(ServerScanCoordinatorTest, TheFenceQuiescesTheAgentAndComesOffOnResume)
 {
     CoordinatorUnderTest fixture;
 
-    EXPECT_TRUE(fixture.coordinator->pauseAgent("001", "feed update full scan in progress"));
+    EXPECT_TRUE(fixture.coordinator->pauseAgent("001", "feed update full scan in progress", nullptr));
     EXPECT_TRUE(fixture.registry->isPaused("001"));
     EXPECT_FALSE(fixture.registry->isFree("001")) << "a fenced agent must not dispatch";
 
@@ -63,7 +65,7 @@ TEST(ServerScanCoordinatorTest, AFenceThatCannotQuiesceInTimeIsRefusedAndLeavesN
     CoordinatorUnderTest fixture {std::chrono::seconds {0}};
     ASSERT_TRUE(fixture.registry->tryAcquire("001", AgentInFlightRegistry::Lane::Pipeline, true));
 
-    EXPECT_FALSE(fixture.coordinator->pauseAgent("001", "feed update full scan in progress"));
+    EXPECT_FALSE(fixture.coordinator->pauseAgent("001", "feed update full scan in progress", nullptr));
     EXPECT_FALSE(fixture.registry->isPaused("001")) << "a refused fence must not leave the agent parked";
 
     fixture.registry->release("001", AgentInFlightRegistry::Lane::Pipeline);
@@ -81,11 +83,66 @@ TEST(ServerScanCoordinatorTest, TheCallersOwnScanHoldDoesNotDelayTheFence)
     ASSERT_TRUE(fixture.registry->tryAcquire("001", AgentInFlightRegistry::Lane::Scan, false));
 
     const auto start = std::chrono::steady_clock::now();
-    EXPECT_TRUE(fixture.coordinator->pauseAgent("001", "on-demand scan"));
+    EXPECT_TRUE(fixture.coordinator->pauseAgent("001", "on-demand scan", nullptr));
     EXPECT_LT(std::chrono::steady_clock::now() - start, std::chrono::seconds {1});
     EXPECT_TRUE(fixture.registry->isPaused("001"));
 
     fixture.coordinator->resumeAgent("001");
     fixture.registry->release("001", AgentInFlightRegistry::Lane::Scan);
+    EXPECT_TRUE(fixture.registry->isFree("001"));
+}
+
+/**
+ * A scanner that is stopping must not sit out the whole quiesce bound on an agent that stays busy
+ * (I177b): the wait gives up within a slice of the cancel flag going up, and leaves no fence behind.
+ */
+TEST(ServerScanCoordinatorTest, CancelWakesPause)
+{
+    CoordinatorUnderTest fixture {std::chrono::seconds {30}};
+    ASSERT_TRUE(fixture.registry->tryAcquire("001", AgentInFlightRegistry::Lane::Pipeline, true));
+
+    std::atomic<bool> cancel {false};
+    std::atomic<std::chrono::steady_clock::rep> raisedAt {0};
+    std::thread stopper(
+        [&]
+        {
+            std::this_thread::sleep_for(std::chrono::milliseconds {200});
+            raisedAt.store(std::chrono::steady_clock::now().time_since_epoch().count());
+            cancel.store(true);
+        });
+
+    const bool paused = fixture.coordinator->pauseAgent("001", "feed update full scan in progress", &cancel);
+    const auto returnedAt = std::chrono::steady_clock::now();
+    stopper.join();
+
+    EXPECT_FALSE(paused);
+    const auto afterCancel =
+        returnedAt - std::chrono::steady_clock::time_point {std::chrono::steady_clock::duration {raisedAt.load()}};
+    EXPECT_LE(afterCancel, std::chrono::seconds {1}) << "the pause must wake on the cancel flag, not on its bound";
+    EXPECT_FALSE(fixture.registry->isPaused("001")) << "a cancelled fence must not leave the agent parked";
+
+    fixture.registry->release("001", AgentInFlightRegistry::Lane::Pipeline);
+    EXPECT_TRUE(fixture.registry->isFree("001"));
+}
+
+/// Without a cancel the bound still decides: the slices add up to it, and the fence comes off on timeout.
+TEST(ServerScanCoordinatorTest, TimeoutStillResumes)
+{
+    CoordinatorUnderTest fixture {std::chrono::seconds {1}};
+    ASSERT_TRUE(fixture.registry->tryAcquire("001", AgentInFlightRegistry::Lane::Pipeline, true));
+
+    const std::atomic<bool> cancel {false};
+    const auto start = std::chrono::steady_clock::now();
+    EXPECT_FALSE(fixture.coordinator->pauseAgent("001", "feed update full scan in progress", &cancel));
+    const auto waited = std::chrono::steady_clock::now() - start;
+
+    EXPECT_GE(waited, std::chrono::seconds {1}) << "the slices must add up to the whole bound";
+    EXPECT_LT(waited, std::chrono::seconds {3});
+    EXPECT_FALSE(fixture.registry->isPaused("001")) << "a timed-out fence must not leave the agent parked";
+
+    // An agent that drains within the bound is fenced, cancel or not.
+    fixture.registry->release("001", AgentInFlightRegistry::Lane::Pipeline);
+    EXPECT_TRUE(fixture.coordinator->pauseAgent("001", "feed update full scan in progress", &cancel));
+    fixture.coordinator->resumeAgent("001");
     EXPECT_TRUE(fixture.registry->isFree("001"));
 }

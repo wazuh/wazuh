@@ -23,6 +23,7 @@
 
 #include "testRealIndexer.hpp"
 
+#include <indexer_client/metrics.hpp>
 #include <indexer_client/runtime.hpp>
 
 #include <wazuh_metrics/manager.hpp>
@@ -33,9 +34,11 @@
 
 #include <atomic>
 #include <chrono>
+#include <cstdint>
 #include <cstdio>
 #include <memory>
 #include <string>
+#include <string_view>
 #include <thread>
 #include <unistd.h>
 #include <utility>
@@ -403,4 +406,94 @@ TEST(MetricsEndpointTest, PublishesSweep)
     {
         EXPECT_EQ(1U, reading(fresh, name).entries) << name << " must be registered once across a restart";
     }
+}
+
+namespace
+{
+    /// The process-wide families of the catalog (RuntimeRef::snapshot()), which only this module publishes (I168).
+    std::vector<std::string> processNames(const indexer_client::RuntimeRef& ref)
+    {
+        std::vector<std::string> names;
+        indexer_client::forEachMetric(ref.snapshot(),
+                                      [&names](std::string_view name, indexer_client::MetricKind, double)
+                                      { names.emplace_back(name); });
+        return names;
+    }
+
+    std::size_t processEntries(const nlohmann::json& document)
+    {
+        return entriesWithPrefix(document, invsync::metrics::INDEXER_CLIENT_RUNTIME_PREFIX) +
+               entriesWithPrefix(document, invsync::metrics::INDEXER_CLIENT_NODE_PREFIX) +
+               entriesWithPrefix(document, invsync::metrics::INDEXER_CLIENT_QUERY_PREFIX) +
+               entriesWithPrefix(document, invsync::metrics::INDEXER_CLIENT_PIT_PREFIX);
+    }
+} // namespace
+
+/**
+ * GET /metrics publishes the process's runtime -- `indexer_client.{runtime,query,pit}.*` and
+ * `indexer_client.node.<i>.*`
+ * -- once each, read from RuntimeRef::snapshot() and not from the Client (I168): with the real Client, and with a
+ * Client that publishes nothing of its own (the snapshot is taken before the no-Client early return), and across a
+ * restart without registering anything twice. The node family is the runtime's one host, `node.0`.
+ */
+TEST(MetricsEndpointTest, PublishesProcessOnce)
+{
+    invsync::test::RealIndexer real;
+    real.startRuntime();
+    ASSERT_TRUE(real.runtimeStarted) << real.startError;
+    const indexer_client::RuntimeRef ref = real.ref;
+
+    struct Cleanup
+    {
+        ~Cleanup()
+        {
+            inventory_sync_server_stop();
+            invsync::test::resetIndexerConnectorFactoriesToProduction();
+        }
+    } cleanup;
+
+    const auto names = processNames(ref);
+    ASSERT_FALSE(names.empty());
+    const auto expectProcess = [&names](const nlohmann::json& document, const std::string& when)
+    {
+        for (const auto& name : names)
+        {
+            EXPECT_EQ(1U, reading(document, name).entries) << name << " (" << when << ")";
+        }
+        EXPECT_EQ(names.size(), processEntries(document)) << "nothing else under the process prefixes (" << when << ")";
+        EXPECT_EQ(1, reading(document, "indexer_client.runtime.network_threads").value) << when;
+        EXPECT_EQ(2, reading(document, "indexer_client.runtime.cpu_threads").value) << when;
+        EXPECT_GT(entriesWithPrefix(document, "indexer_client.node.0."), 0U) << when;
+        EXPECT_EQ(0U, entriesWithPrefix(document, "indexer_client.node.1.")) << "one host, one node (" << when << ")";
+        EXPECT_EQ(0U, entriesWithPrefix(document, "indexer_client.client.")) << when;
+        EXPECT_EQ(0U, entriesWithPrefix(document, "indexer_client.bucket.vulnerability_scanner."))
+            << "VD's bucket is VD's to publish (" << when << ")";
+    };
+
+    // The real Client.
+    LogRecorder::clear();
+    invsync::test::installFakeIndexersOverRealClient();
+    const auto socketPath = wazuh::uds_http::test::uniqueSocketPath("processmetrics");
+    const auto config = moduleConfig(socketPath, &ref);
+    inventory_sync_server_start(invsync::test::testLogCallback, &config);
+    ASSERT_TRUE(LogRecorder::waitForMessageContaining("listening on"));
+    const auto document = scrape(socketPath);
+    ASSERT_TRUE(document.is_object());
+    expectProcess(document, "real client");
+
+    // A Client with no metrics of its own (the fake answers an empty ClientMetrics): the process's values are
+    // still there, from the snapshot, and the buckets read 0.
+    inventory_sync_server_stop();
+    LogRecorder::clear();
+    invsync::test::installAlwaysAvailableFakeIndexers();
+    inventory_sync_server_start(invsync::test::testLogCallback, &config);
+    ASSERT_TRUE(LogRecorder::waitForMessageContaining("listening on"));
+    std::this_thread::sleep_for(300ms); // past the 250 ms the slot serves a snapshot for
+    const auto noClient = scrape(socketPath);
+    ASSERT_TRUE(noClient.is_object());
+    expectProcess(noClient, "no client metrics, after a restart");
+    EXPECT_EQ(0, reading(noClient, std::string {BUCKET_PREFIX} + "quota_bytes").value);
+    EXPECT_EQ(ref.snapshot().queries.conflictRetries,
+              static_cast<std::uint64_t>(reading(noClient, invsync::metrics::INDEXER_CONFLICT_RETRIES).value))
+        << "sync.indexer.conflict.retries is process-wide too";
 }

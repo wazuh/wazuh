@@ -436,12 +436,12 @@ TEST(VdScanLaneTest, AnAgentMidScanCannotBeQuiescedInstantlyButPauseSucceedsOnce
         fixture.lane->tryEnqueue(makeItem(vdDeltaBody("doc-1", invsync::test::fb::Option_VDFirst, "001"), vdFirst)));
     ASSERT_TRUE(waitFor([&] { return fixture.events->m_scanEntered.load() == 1; }));
 
-    EXPECT_FALSE(coordinator.pauseAgent("001", "test")) << "an agent mid-scan cannot be quiesced instantly";
+    EXPECT_FALSE(coordinator.pauseAgent("001", "test", nullptr)) << "an agent mid-scan cannot be quiesced instantly";
 
     fixture.events->openScanGate();
     EXPECT_EQ(200, vdFirst->get().status);
 
-    EXPECT_TRUE(coordinator.pauseAgent("001", "test"));
+    EXPECT_TRUE(coordinator.pauseAgent("001", "test", nullptr));
     EXPECT_FALSE(fixture.registry->isFree("001")) << "a paused agent must not dispatch";
     coordinator.resumeAgent("001");
     EXPECT_TRUE(fixture.registry->isFree("001"));
@@ -832,7 +832,7 @@ TEST(VdScanLaneTest, AnOnDemandScanFencesItsOwnAgentWithoutWaitingForItsOwnLaneH
     fixture.events->m_scanAgentHook = [&](const std::string& agentId)
     {
         const auto start = std::chrono::steady_clock::now();
-        fenced.store(coordinator->pauseAgent(agentId, "on-demand scan"));
+        fenced.store(coordinator->pauseAgent(agentId, "on-demand scan", nullptr));
         fenceMs.store(
             std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start).count());
         coordinator->resumeAgent(agentId);
@@ -860,12 +860,12 @@ TEST(VdScanLaneTest, TheFenceStillWaitsForAnotherThreadsScanOfTheAgent)
     ASSERT_EQ(VdScanLane::Admission::Accepted, fixture.lane->tryEnqueue(makeScanRequest(scan)));
     ASSERT_TRUE(waitFor([&] { return fixture.events->m_scanEntered.load() == 1; }));
 
-    EXPECT_FALSE(coordinator.pauseAgent("001", "test")) << "the lane worker's hold is not this thread's";
+    EXPECT_FALSE(coordinator.pauseAgent("001", "test", nullptr)) << "the lane worker's hold is not this thread's";
 
     fixture.events->openScanGate();
     EXPECT_EQ(200, scan->get().status);
     EXPECT_TRUE(waitFor([&] { return fixture.registry->isFree("001"); }));
-    EXPECT_TRUE(coordinator.pauseAgent("001", "test"));
+    EXPECT_TRUE(coordinator.pauseAgent("001", "test", nullptr));
     coordinator.resumeAgent("001");
 }
 

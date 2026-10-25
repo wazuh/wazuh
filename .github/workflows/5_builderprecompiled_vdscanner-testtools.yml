@@ -6,7 +6,7 @@ on:
     paths:
       - ".github/workflows/5_builderprecompiled_vdscanner-testtools.yml"
       # The bundle is inventory_sync_server_testtool (testtool/CMakeLists.txt:12,33) plus the
-      # libraries it links -- inventory_sync_server, vulnerability_scanner, indexer_connector,
+      # libraries it links -- inventory_sync_server, vulnerability_scanner, indexer_client,
       # content_manager, schema_validator, wazuhext -- the VD flatbuffer schemas and
       # vulnerability_scanner/testtool/scanner/vd_reduced_feed.json ("Prepare vdscanner tools").
       # Every CMakeLists.txt of both modules is on the configure path. Not the unit tests, the other
@@ -20,7 +20,7 @@ on:
       - "src/wazuh_modules/vulnerability_scanner/src/**"
       - "src/wazuh_modules/vulnerability_scanner/schemas/**"
       - "src/wazuh_modules/vulnerability_scanner/testtool/scanner/vd_reduced_feed.json"
-      # vulnerability_scanner links content_manager, indexer_connector, urlrequest, schema_validator,
+      # vulnerability_scanner links content_manager, indexer_client, urlrequest, schema_validator,
       # wazuh_uds_http_server, wazuh_metrics (vulnerability_scanner/CMakeLists.txt:156-167).
       # schema_validator embeds the indexer templates `make deps` downloads (its CMakeLists.txt:25-27),
       # covered by src/Makefile and tools/get_git_refs.sh below.
@@ -30,6 +30,9 @@ on:
       - "src/shared_modules/indexer_connector/**/CMakeLists.txt"
       - "src/shared_modules/indexer_connector/include/**"
       - "src/shared_modules/indexer_connector/src/**"
+      - "src/shared_modules/indexer_client/**/CMakeLists.txt"
+      - "src/shared_modules/indexer_client/include/**"
+      - "src/shared_modules/indexer_client/src/**"
       - "src/shared_modules/schema_validator/**/CMakeLists.txt"
       - "src/shared_modules/schema_validator/include/**"
       - "src/shared_modules/schema_validator/src/**"
@@ -87,7 +90,7 @@ on:
     paths:
       - ".github/workflows/5_builderprecompiled_vdscanner-testtools.yml"
       # The bundle is inventory_sync_server_testtool (testtool/CMakeLists.txt:12,33) plus the
-      # libraries it links -- inventory_sync_server, vulnerability_scanner, indexer_connector,
+      # libraries it links -- inventory_sync_server, vulnerability_scanner, indexer_client,
       # content_manager, schema_validator, wazuhext -- the VD flatbuffer schemas and
       # vulnerability_scanner/testtool/scanner/vd_reduced_feed.json ("Prepare vdscanner tools").
       # Every CMakeLists.txt of both modules is on the configure path. Not the unit tests, the other
@@ -101,7 +104,7 @@ on:
       - "src/wazuh_modules/vulnerability_scanner/src/**"
       - "src/wazuh_modules/vulnerability_scanner/schemas/**"
       - "src/wazuh_modules/vulnerability_scanner/testtool/scanner/vd_reduced_feed.json"
-      # vulnerability_scanner links content_manager, indexer_connector, urlrequest, schema_validator,
+      # vulnerability_scanner links content_manager, indexer_client, urlrequest, schema_validator,
       # wazuh_uds_http_server, wazuh_metrics (vulnerability_scanner/CMakeLists.txt:156-167).
       # schema_validator embeds the indexer templates `make deps` downloads (its CMakeLists.txt:25-27),
       # covered by src/Makefile and tools/get_git_refs.sh below.
@@ -111,6 +114,9 @@ on:
       - "src/shared_modules/indexer_connector/**/CMakeLists.txt"
       - "src/shared_modules/indexer_connector/include/**"
       - "src/shared_modules/indexer_connector/src/**"
+      - "src/shared_modules/indexer_client/**/CMakeLists.txt"
+      - "src/shared_modules/indexer_client/include/**"
+      - "src/shared_modules/indexer_client/src/**"
       - "src/shared_modules/schema_validator/**/CMakeLists.txt"
       - "src/shared_modules/schema_validator/include/**"
       - "src/shared_modules/schema_validator/src/**"
@@ -222,6 +228,7 @@ jobs:
             libinventory_sync_server.so \
             libvulnerability_scanner.so \
             libindexer_connector.so \
+            libindexer_client.so \
             libwazuhext.so \
             libcontent_manager.so \
             libschema_validator.so; do

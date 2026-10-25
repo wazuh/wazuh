@@ -49,8 +49,8 @@ Every hop is HTTP/1.1. Remoted relays only the agent-facing routes (`POST /state
 downstream route to them, by design. `/stats` and `/config` index one document per agent: the handler
 `post`s it to the `agent-state` bucket of the module's `indexer_client` `Client`, an **ordered** bucket
 (operations on the same document id are never in flight together, and the per-agent order is the order
-of arrival). The module no longer links the previous `indexer_connector` library (the vulnerability
-scanner still does, until it migrates); it holds one `Client` with two buckets, `inventory` for the
+of arrival). Neither this module nor the vulnerability scanner links the previous `indexer_connector`
+library; it holds one `Client` with two buckets, `inventory` for the
 ingestion pipeline and the VD lane and `agent-state` for `/stats`, `/config` and the by-id deletes.
 
 `/stats` and `/config` answer `200` when the bucket **accepted** the report (it is then buffered and

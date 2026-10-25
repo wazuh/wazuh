@@ -265,7 +265,7 @@ touching freed state. Two details of that order are non-obvious and load-bearing
 ### The indexer adapter (`indexer_client`)
 
 Sync I/O goes through `IndexerClientSyncAdapter` (`src/indexer/indexerClientSyncAdapter.*`), an
-`IIndexerConnectorSync` over the shared `indexer_client` library. Since E7c the module no longer links `indexer_connector` (the vulnerability scanner still does, until E8).
+`IIndexerConnectorSync` over the shared `indexer_client` library. Neither this module nor the vulnerability scanner links `indexer_connector`.
 
 - **One `Client`, two buckets.** The module registers the consumer `inventory_sync_server` with the
   buckets `inventory` and `agent-state` (the runtime rejects a second `Client` of one consumer, so both
@@ -860,6 +860,8 @@ ctest --test-dir src/build -L inventory_sync_server_utest -V     # or run the bi
   session's `Start.feed_offset` from the scanner's actual current offset unless the input JSON
   sets one explicitly — queried fresh on every `503`-retry attempt, not just once, so a session
   built before the feed finished loading never goes stale by the time it's resent.
+  The indexer credentials come from the top-level `username`/`password` of the input config,
+  handed to the runtime as `indexer_client::Credentials`; the tool seeds no keystore.
 
 ## Load & benchmarking
 
