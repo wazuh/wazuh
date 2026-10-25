@@ -2,6 +2,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include <mockIndexerClient.hpp>
 #include <wiconnector/mockIndexerConnectorAsync.hpp>
 #include <wiconnector/windexerconnector.hpp>
 
@@ -35,6 +36,18 @@ bool seedIndexerCredentials()
 const bool g_credentialsSeeded = seedIndexerCredentials();
 } // namespace
 
+/// The remote configuration timeout handed to the Client-backed constructor in the RemoteConf* cases.
+constexpr std::chrono::milliseconds REMOTE_CONF_REQUEST_TIMEOUT {45000};
+
+/// A two-node health view, every node in @p state with @p reason.
+static indexer_client::HealthView healthOf(indexer_client::HealthView::NodeState state, std::string reason)
+{
+    indexer_client::HealthView view;
+    view.nodes.push_back({"http://node-1:9200", state, reason});
+    view.nodes.push_back({"http://node-2:9200", state, std::move(reason)});
+    return view;
+}
+
 class WIndexerConnectorTest : public ::testing::Test
 {
 protected:
@@ -42,6 +55,11 @@ protected:
     {
         logging::testInit(logging::Level::Debug);
         logFunction = logging::createStandaloneLogFunction();
+        client = std::make_shared<::testing::NiceMock<indexer_client::MockClient>>();
+        query = std::make_shared<::testing::NiceMock<indexer_client::MockQuery>>();
+        ON_CALL(*client, query()).WillByDefault(::testing::Return(query));
+        ON_CALL(*client, health())
+            .WillByDefault(::testing::Return(healthOf(indexer_client::HealthView::NodeState::Available, "")));
     }
 
     void TearDown() override
@@ -49,7 +67,24 @@ protected:
         // Clean up any resources if needed
     }
 
+    /// A connector that writes to a mock and reads through the mock Client (RemoteConf* cases).
+    std::unique_ptr<wiconnector::WIndexerConnector> makeReaderConnector()
+    {
+        return std::make_unique<wiconnector::WIndexerConnector>(
+            std::make_unique<::testing::NiceMock<wiconnector::mocks::MockIndexerConnectorAsync>>(),
+            client,
+            REMOTE_CONF_REQUEST_TIMEOUT);
+    }
+
+    void searchAnswers(indexer_client::Outcome<nlohmann::json> outcome)
+    {
+        EXPECT_CALL(*query, search(::testing::_, ::testing::_, ::testing::_, ::testing::_))
+            .WillOnce(::testing::Return(std::move(outcome)));
+    }
+
     wiconnector::LogFunctionType logFunction;
+    std::shared_ptr<::testing::NiceMock<indexer_client::MockClient>> client;
+    std::shared_ptr<::testing::NiceMock<indexer_client::MockQuery>> query;
 };
 
 // Test Config class functionality
@@ -440,4 +475,198 @@ TEST_F(WIndexerConnectorMockTest, GetEngineRemoteConfigAfterShutdownThrows)
     auto connector = makeConnector();
     connector->shutdown();
     EXPECT_THROW(connector->getEngineRemoteConfig(), std::runtime_error);
+}
+
+/****************************************************************************************
+ * getEngineRemoteConfig through the engine's indexer_client Client (E10a)
+ ****************************************************************************************/
+
+using ::testing::Invoke;
+using ::testing::SaveArg;
+
+namespace
+{
+nlohmann::json responseWith(nlohmann::json hits)
+{
+    return {{"took", 1}, {"timed_out", false}, {"hits", std::move(hits)}};
+}
+} // namespace
+
+TEST_F(WIndexerConnectorTest, RemoteConfReadsThroughTheClient)
+{
+    std::string index;
+    nlohmann::json body;
+    indexer_client::QueryOptions options;
+    indexer_client::Deadline deadline;
+    const auto before = std::chrono::steady_clock::now();
+    EXPECT_CALL(*query, search(_, _, _, _))
+        .WillOnce(Invoke(
+            [&](std::string_view i,
+                const nlohmann::json& b,
+                const indexer_client::QueryOptions& o,
+                indexer_client::Deadline d)
+            {
+                index = i;
+                body = b;
+                options = o;
+                deadline = d;
+                return indexer_client::Outcome<nlohmann::json>::success(
+                    responseWith({{"total", {{"value", 1}, {"relation", "eq"}}},
+                                  {"hits", {{{"_source", {{"engine", {{"index_raw_events", true}}}}}}}}}));
+            }));
+
+    auto connector = makeReaderConnector();
+    const auto cfg = connector->getEngineRemoteConfig();
+    EXPECT_EQ(cfg.getBool("/index_raw_events"), true);
+
+    // The v1 body, unchanged.
+    EXPECT_EQ(index, ".wazuh-settings");
+    const nlohmann::json expected = {{"size", 1},
+                                     {"track_total_hits", true},
+                                     {"stored_fields", nlohmann::json::array()},
+                                     {"query", {{"match_all", nlohmann::json::object()}}},
+                                     {"_source", {{"includes", {"engine"}}, {"excludes", nlohmann::json::array()}}}};
+    EXPECT_EQ(body, expected);
+
+    // One attempt; the page bounded by the request timeout; the call a margin above it.
+    ASSERT_TRUE(options.retry.maxAttempts.has_value());
+    EXPECT_EQ(*options.retry.maxAttempts, 1U);
+    EXPECT_EQ(options.pageDeadline, REMOTE_CONF_REQUEST_TIMEOUT);
+    EXPECT_GT(deadline, before + REMOTE_CONF_REQUEST_TIMEOUT);
+    EXPECT_LE(deadline, std::chrono::steady_clock::now() + REMOTE_CONF_REQUEST_TIMEOUT + std::chrono::seconds(10));
+}
+
+TEST_F(WIndexerConnectorTest, RemoteConfZeroHitsThrows)
+{
+    searchAnswers(indexer_client::Outcome<nlohmann::json>::success(
+        responseWith({{"total", {{"value", 0}}}, {"hits", nlohmann::json::array()}})));
+    auto connector = makeReaderConnector();
+    EXPECT_THROW(connector->getEngineRemoteConfig(), IndexerConnectorException);
+}
+
+TEST_F(WIndexerConnectorTest, RemoteConfMultipleHitsThrows)
+{
+    searchAnswers(indexer_client::Outcome<nlohmann::json>::success(
+        responseWith({{"total", {{"value", 2}}},
+                      {"hits", {{{"_source", {{"engine", {{"a", 1}}}}}}, {{"_source", {{"engine", {{"b", 2}}}}}}}}})));
+    auto connector = makeReaderConnector();
+    EXPECT_THROW(connector->getEngineRemoteConfig(), IndexerConnectorException);
+}
+
+TEST_F(WIndexerConnectorTest, RemoteConfMissingEngineThrows)
+{
+    searchAnswers(indexer_client::Outcome<nlohmann::json>::success(
+        responseWith({{"total", {{"value", 1}}}, {"hits", {{{"_source", {{"other", "value"}}}}}}})));
+    auto connector = makeReaderConnector();
+    EXPECT_THROW(connector->getEngineRemoteConfig(), IndexerConnectorException);
+}
+
+TEST_F(WIndexerConnectorTest, RemoteConfResponseWithoutHitsThrows)
+{
+    searchAnswers(indexer_client::Outcome<nlohmann::json>::success(nlohmann::json {{"took", 1}}));
+    auto connector = makeReaderConnector();
+    EXPECT_THROW(connector->getEngineRemoteConfig(), IndexerConnectorException);
+}
+
+TEST_F(WIndexerConnectorTest, RemoteConfFailureThrowsWithTheCause)
+{
+    searchAnswers(indexer_client::Outcome<nlohmann::json>::failure(
+        indexer_client::Cause::NotFound, "index_not_found_exception", 404));
+    auto connector = makeReaderConnector();
+    try
+    {
+        connector->getEngineRemoteConfig();
+        FAIL() << "expected an exception";
+    }
+    catch (const IndexerConnectorException& e)
+    {
+        EXPECT_NE(std::string {e.what()}.find("not_found"), std::string::npos) << e.what();
+    }
+}
+
+TEST_F(WIndexerConnectorTest, RemoteConfClientClosedThrows)
+{
+    // A search cut by requestClose() is a failure, never "no remote configuration".
+    searchAnswers(indexer_client::Outcome<nlohmann::json>::failure(indexer_client::Cause::ClientClosed, "closed"));
+    auto connector = makeReaderConnector();
+    EXPECT_THROW(connector->getEngineRemoteConfig(), IndexerConnectorException);
+}
+
+TEST_F(WIndexerConnectorTest, RemoteConfClosedClientThrowsWithoutSearching)
+{
+    EXPECT_CALL(*client, query()).WillOnce(Return(nullptr));
+    EXPECT_CALL(*query, search(_, _, _, _)).Times(0);
+    auto connector = makeReaderConnector();
+    try
+    {
+        connector->getEngineRemoteConfig();
+        FAIL() << "expected an exception";
+    }
+    catch (const IndexerConnectorException& e)
+    {
+        EXPECT_NE(std::string {e.what()}.find("client_closed"), std::string::npos) << e.what();
+    }
+}
+
+TEST_F(WIndexerConnectorTest, RemoteConfNoUsableNodeFailsAtOnce)
+{
+    ON_CALL(*client, health())
+        .WillByDefault(Return(healthOf(indexer_client::HealthView::NodeState::Down, "connect: refused")));
+    EXPECT_CALL(*query, search(_, _, _, _)).Times(0);
+    auto connector = makeReaderConnector();
+
+    const auto t0 = std::chrono::steady_clock::now();
+    EXPECT_THROW(connector->getEngineRemoteConfig(), IndexerConnectorException);
+    EXPECT_LT(std::chrono::steady_clock::now() - t0, std::chrono::milliseconds(100));
+}
+
+TEST_F(WIndexerConnectorTest, RemoteConfWaitsForTheFirstProbe)
+{
+    // Before the first probe round every node is Down without a reason: the call goes to the library, which waits.
+    ON_CALL(*client, health()).WillByDefault(Return(healthOf(indexer_client::HealthView::NodeState::Down, "")));
+    searchAnswers(indexer_client::Outcome<nlohmann::json>::success(
+        responseWith({{"total", {{"value", 1}}}, {"hits", {{{"_source", {{"engine", nlohmann::json::object()}}}}}}})));
+    auto connector = makeReaderConnector();
+    EXPECT_NO_THROW(connector->getEngineRemoteConfig());
+}
+
+TEST_F(WIndexerConnectorTest, RemoteConfWaitBeforeTheFirstProbeIsCapped)
+{
+    // Before the first probe round the wait for a node is capped like the content adapter's probeDeadline (I158b),
+    // so one read does not hold a scheduler thread for a whole request timeout (45 s here).
+    ON_CALL(*client, health()).WillByDefault(Return(healthOf(indexer_client::HealthView::NodeState::Down, "")));
+    indexer_client::Deadline deadline;
+    const auto before = std::chrono::steady_clock::now();
+    EXPECT_CALL(*query, search(_, _, _, _))
+        .WillOnce(Invoke(
+            [&](std::string_view,
+                const nlohmann::json&,
+                const indexer_client::QueryOptions&,
+                indexer_client::Deadline d)
+            {
+                deadline = d;
+                return indexer_client::Outcome<nlohmann::json>::success(responseWith(
+                    {{"total", {{"value", 1}}}, {"hits", {{{"_source", {{"engine", nlohmann::json::object()}}}}}}}));
+            }));
+    auto connector = makeReaderConnector();
+    EXPECT_NO_THROW(connector->getEngineRemoteConfig());
+    EXPECT_LE(deadline - before, std::chrono::milliseconds {10000} + std::chrono::milliseconds {500});
+}
+
+TEST_F(WIndexerConnectorTest, RemoteConfAfterShutdownThrows)
+{
+    auto connector = makeReaderConnector();
+    connector->shutdown();
+    EXPECT_CALL(*query, search(_, _, _, _)).Times(0);
+    EXPECT_THROW(connector->getEngineRemoteConfig(), std::runtime_error);
+    EXPECT_EQ(client.use_count(), 1); // shutdown() released the Client.
+}
+
+TEST_F(WIndexerConnectorTest, RemoteConfNullReaderIsRejected)
+{
+    EXPECT_THROW(
+        wiconnector::WIndexerConnector(std::make_unique<NiceMock<wiconnector::mocks::MockIndexerConnectorAsync>>(),
+                                       nullptr,
+                                       REMOTE_CONF_REQUEST_TIMEOUT),
+        std::runtime_error);
 }

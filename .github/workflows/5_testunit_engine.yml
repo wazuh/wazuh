@@ -33,6 +33,15 @@ on:
       - 'src/shared_modules/manager_config/**'
       # wiconnector links indexer_connector (target_link_libraries(wIndexerConnector_wIndexerConnector))
       - 'src/shared_modules/indexer_connector/**'
+      # indexer_client: the engine's runtime and Client; wIndexerConnector_utest also builds its mocks and fake (the
+      # bench feeds no engine target).
+      - 'src/shared_modules/indexer_client/**/CMakeLists.txt'
+      - 'src/shared_modules/indexer_client/include/**'
+      - 'src/shared_modules/indexer_client/src/**'
+      - 'src/shared_modules/indexer_client/tests/mocks/**'
+      - 'src/shared_modules/indexer_client/tests/fake/**'
+      # content_manager: linked by cmcontent and the engine (its target_link_libraries in source/cmcontent/CMakeLists.txt)
+      - 'src/shared_modules/content_manager/**'
       # linked by indexer_connector (target_link_libraries(indexer_connector)); keyStore.hpp in
       # wIndexerConnector_utest (its target_include_directories in source/wiconnector/CMakeLists.txt)
       - 'src/shared_modules/keystore/**'
@@ -46,6 +55,8 @@ on:
       - '!src/shared_modules/indexer_connector/tests/**'
       - '!src/shared_modules/indexer_connector/qa/**'
       - '!src/shared_modules/indexer_connector/testtool/**'
+      - '!src/shared_modules/content_manager/tests/**'
+      - '!src/shared_modules/content_manager/testtool/**'
       - '!src/shared_modules/keystore/tests/**'
       - '!src/shared_modules/keystore/qa/**'
       - '!src/shared_modules/keystore/testtool/**'
