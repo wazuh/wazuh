@@ -22,6 +22,7 @@
 #include <stdexcept>
 #include <string>
 #include <thread>
+#include <type_traits>
 #include <unordered_map>
 #include <utility>
 #include <vector>
@@ -728,10 +729,11 @@ namespace invsync
          * Same shape as registerTransportDiagnostics(): the pulls are registered once per registry (it is never
          * reset and has no unregister), behind a slot holding the Client WEAKLY plus a copy of the RuntimeRef --
          * never a shared_ptr<IClient>, which would keep a stopped Client alive inside the registry. Every start
-         * repoints the slot; with no live Client every value reads 0, and a rebuilt Client starts its bucket
+         * repoints the slot; with no live Client every bucket value reads 0, and a rebuilt Client starts its bucket
          * counters again from 0. One scrape costs one Client::metrics() call: the snapshot is cached for
          * INDEXER_METRICS_MAX_AGE and every getter reads from it. The sweep's four counters read the sweeper through
-         * its own weak slot (0 without a live sweeper; a rebuilt sweeper starts again from 0).
+         * its own weak slot (0 without a live sweeper; a rebuilt sweeper starts again from 0). The process's runtime
+         * metrics go through the same slot: registerIndexerRuntimeMetrics().
          *
          * Called under m_lifecycleMutex (from startHttpServer()); the getters never take it.
          */
@@ -744,6 +746,8 @@ namespace invsync
             }
             m_indexerMetricsSlot->repoint(m_indexerClient, std::move(runtime));
             m_sweeperMetricsSlot->repoint(m_agentDeleteSweeper);
+
+            registerIndexerRuntimeMetrics();
 
             if (m_indexerClientPullsRegistered)
             {
@@ -840,6 +844,84 @@ namespace invsync
                 [sweeper] { return sweeper->read().dropped; },
                 "Agents the sweep abandoned: pending at stop, or in a chunk that failed twice",
                 "count");
+        }
+
+        /**
+         * @brief Publish the process's indexer_client runtime -- `indexer_client.{runtime,query,pit}.*` and
+         *        `indexer_client.node.<i>.*` from RuntimeRef::snapshot() -- as pull metrics (I168, D77).
+         *
+         * Only this module publishes them (it is always present in the manager; VD publishes its bucket alone), so
+         * they appear once per process. Registered once, the first time a runtime was published to the module; the
+         * node family is sized by that snapshot's node count, fixed for the life of the runtime (the catalog's
+         * contract, metrics.hpp). They read the same slot as the buckets, refreshed by its refreshLocked(), whose
+         * snapshot() is taken whether or not a Client is alive: these values do not depend on one.
+         *
+         * Called under m_lifecycleMutex; the getters never take it.
+         */
+        void registerIndexerRuntimeMetrics()
+        {
+            if (m_indexerRuntimePullsRegistered || m_config.indexer_runtime == nullptr)
+            {
+                return;
+            }
+            m_indexerRuntimePullsRegistered = true;
+
+            const auto slot = m_indexerMetricsSlot;
+
+            std::vector<std::pair<std::string, indexer_client::MetricKind>> names;
+            indexer_client::forEachMetric(
+                static_cast<const indexer_client::RuntimeRef*>(m_config.indexer_runtime)->snapshot(),
+                [&names](std::string_view name, indexer_client::MetricKind kind, double)
+                {
+                    for (const std::string_view prefix : {invsync::metrics::INDEXER_CLIENT_RUNTIME_PREFIX,
+                                                          invsync::metrics::INDEXER_CLIENT_NODE_PREFIX,
+                                                          invsync::metrics::INDEXER_CLIENT_QUERY_PREFIX,
+                                                          invsync::metrics::INDEXER_CLIENT_PIT_PREFIX})
+                    {
+                        if (name.substr(0, prefix.size()) == prefix)
+                        {
+                            names.emplace_back(std::string(name), kind);
+                            return;
+                        }
+                    }
+                });
+
+            for (const auto& [name, kind] : names)
+            {
+                const auto description = std::string("indexer_client ") +
+                                         (kind == indexer_client::MetricKind::Counter ? "counter" : "gauge") +
+                                         " of the process's indexer runtime (published by this module only)";
+                if (kind == indexer_client::MetricKind::Counter)
+                {
+                    m_metricsManager->registerPullMetric(
+                        name,
+                        [slot, name = name]
+                        {
+                            return slot->read(
+                                [&name](const IndexerClientMetricsSlot& snapshot)
+                                {
+                                    const auto it = snapshot.values.find(name);
+                                    return it == snapshot.values.end() ? std::uint64_t {0}
+                                                                       : static_cast<std::uint64_t>(it->second);
+                                });
+                        },
+                        description);
+                    continue;
+                }
+                // Gauges can be fractions (a node's breaker window, for one): no truncation to an integer.
+                m_metricsManager->registerPullMetricDouble(
+                    name,
+                    [slot, name = name]
+                    {
+                        return slot->read(
+                            [&name](const IndexerClientMetricsSlot& snapshot)
+                            {
+                                const auto it = snapshot.values.find(name);
+                                return it == snapshot.values.end() ? 0.0 : it->second;
+                            });
+                    },
+                    description);
+            }
         }
 
         /**
@@ -1676,7 +1758,8 @@ namespace invsync
             std::optional<indexer_client::RuntimeRef> runtime;
             bool fresh {false};
             std::chrono::steady_clock::time_point refreshedAt;
-            std::unordered_map<std::string, double> values; ///< forEachMetric(ClientMetrics), by name.
+            /// forEachMetric of the RuntimeRef snapshot and of the ClientMetrics, by name.
+            std::unordered_map<std::string, double> values;
             std::uint64_t bulkRequests {0};
             std::uint64_t bulkBytes {0};
             std::uint64_t conflictRetries {0};
@@ -1691,7 +1774,7 @@ namespace invsync
             }
 
             template<typename TRead>
-            std::uint64_t read(TRead&& reader)
+            std::invoke_result_t<TRead&, const IndexerClientMetricsSlot&> read(TRead&& reader)
             {
                 std::lock_guard<std::mutex> lock {mutex};
                 refreshLocked();
@@ -1713,6 +1796,17 @@ namespace invsync
                 bulkBytes = 0;
                 conflictRetries = 0;
 
+                // The process's runtime first: its values do not depend on a live Client (I168).
+                if (runtime)
+                {
+                    const auto snapshot = runtime->snapshot();
+                    conflictRetries = snapshot.queries.conflictRetries;
+                    indexer_client::forEachMetric(
+                        snapshot,
+                        [this](std::string_view name, indexer_client::MetricKind, double value)
+                        { values[std::string(name)] = value; });
+                }
+
                 // Scoped: the strong reference lives only for this one call.
                 const auto metrics = [this]
                 {
@@ -1721,7 +1815,7 @@ namespace invsync
                 }();
                 if (!metrics)
                 {
-                    return; // no live Client: everything reads 0
+                    return; // no live Client: the buckets read 0
                 }
 
                 indexer_client::forEachMetric(*metrics,
@@ -1735,15 +1829,12 @@ namespace invsync
                         bulkBytes = bucket.bulkBytes;
                     }
                 }
-                if (runtime)
-                {
-                    conflictRetries = runtime->snapshot().queries.conflictRetries;
-                }
             }
         };
         const std::shared_ptr<IndexerClientMetricsSlot> m_indexerMetricsSlot {
             std::make_shared<IndexerClientMetricsSlot>()};
         bool m_indexerClientPullsRegistered {false};
+        bool m_indexerRuntimePullsRegistered {false};
 
         /// What the sweep's pull metrics read: the sweeper WEAKLY, under its own mutex (never m_lifecycleMutex).
         struct SweeperMetricsSlot final

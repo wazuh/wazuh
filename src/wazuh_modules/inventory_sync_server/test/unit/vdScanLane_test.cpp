@@ -436,12 +436,12 @@ TEST(VdScanLaneTest, AnAgentMidScanCannotBeQuiescedInstantlyButPauseSucceedsOnce
         fixture.lane->tryEnqueue(makeItem(vdDeltaBody("doc-1", invsync::test::fb::Option_VDFirst, "001"), vdFirst)));
     ASSERT_TRUE(waitFor([&] { return fixture.events->m_scanEntered.load() == 1; }));
 
-    EXPECT_FALSE(coordinator.pauseAgent("001", "test")) << "an agent mid-scan cannot be quiesced instantly";
+    EXPECT_FALSE(coordinator.pauseAgent("001", "test", nullptr)) << "an agent mid-scan cannot be quiesced instantly";
 
     fixture.events->openScanGate();
     EXPECT_EQ(200, vdFirst->get().status);
 
-    EXPECT_TRUE(coordinator.pauseAgent("001", "test"));
+    EXPECT_TRUE(coordinator.pauseAgent("001", "test", nullptr));
     EXPECT_FALSE(fixture.registry->isFree("001")) << "a paused agent must not dispatch";
     coordinator.resumeAgent("001");
     EXPECT_TRUE(fixture.registry->isFree("001"));

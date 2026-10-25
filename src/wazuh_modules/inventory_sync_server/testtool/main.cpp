@@ -38,7 +38,7 @@
  *   clusterName       cluster name stamped on documents (default "cluster01").
  *   indexer           the <indexer> block: hosts[] and ssl.* start the runtime; the whole block is
  *                     also handed to the server and to the vulnerability scanner.
- *   username/password indexer credentials, for the runtime and for queue/keystore.
+ *   username/password indexer credentials, handed to the runtime (startIndexerRuntime()).
  *   internal_options  optional string of `key=value` lines, parsed like
  *                     etc/wazuh-manager-internal-options.conf for the runtime (e.g.
  *                     "wazuh_modules.indexer_client_request_timeout_ms=2000\n"); default: none.
@@ -46,7 +46,6 @@
 
 #include "flatbuffers/include/inventorySync_generated.h"
 #include "inventory_sync_server.h"
-#include "keyStore.hpp"
 #include "vulnerabilityScannerFacade.hpp"
 
 #include "external/nlohmann/json.hpp"
@@ -533,22 +532,6 @@ namespace
         return false;
     }
 
-    /// The vulnerability scanner's indexer_connector (v1, until E8) reads its credentials from
-    /// queue/keystore and refuses to start without them. The manager's resolver stores them there;
-    /// this tool takes them from its config. The server itself no longer reads the keystore: its
-    /// Client gets the credentials from the runtime (startIndexerRuntime()).
-    void seedCredentials(const nlohmann::json& config)
-    {
-        if (config.contains("username") && config["username"].is_string())
-        {
-            Keystore::put("indexer", "username", config["username"].get<std::string>());
-        }
-        if (config.contains("password") && config["password"].is_string())
-        {
-            Keystore::put("indexer", "password", config["password"].get<std::string>());
-        }
-    }
-
     /// Starts the process's indexer_client runtime on this (the main) thread, as modulesd does after
     /// its startup gate: the config's <indexer> hosts/ssl, its credentials, and its optional
     /// `internal_options` text (`key=value` lines; none = the runtime's defaults).
@@ -637,7 +620,6 @@ int main(int argc, char* argv[])
         const auto clusterName = moduleConfig.value("clusterName", std::string("cluster01"));
 
         std::filesystem::create_directories("queue/sockets");
-        seedCredentials(moduleConfig);
         indexerRuntime = startIndexerRuntime(moduleConfig);
 
         // VD first: the server's start registers its scan coordinator and resolves the production
