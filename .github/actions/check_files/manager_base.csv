@@ -586,7 +586,7 @@ full_filename,owner_name,group_name,mode,type,prot_permissions,size_bytes,size_e
 /var/ossec/templates/wazuh-states-inventory-groups-update.json,root,wazuh,440,file,-r--r-----,,
 /var/ossec/templates/wazuh-states-inventory-browser-extensions-update.json,root,wazuh,440,file,-r--r-----,,
 /var/ossec/templates/wazuh-states-inventory-services-update.json,root,wazuh,440,file,-r--r-----,,
-/var/ossec/tmp/vd_1.0.0_vd_4.13.0.tar.xz,wazuh,wazuh,640,file,-rw-r-----,,
+/var/ossec/tmp/vd_1.0.0_vd_4.14.0.tar.xz,wazuh,wazuh,640,file,-rw-r-----,,
 /var/ossec/var/db/mitre.db,root,wazuh,660,file,-rw-rw----,,
 /var/ossec/var/selinux/wazuh.pp,root,wazuh,640,file,-rw-r-----,,
 /var/ossec/VERSION.json,wazuh,wazuh,440,file,-r--r-----,,

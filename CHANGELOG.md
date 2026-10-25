@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 
 ### Manager
 
+#### Added
+
+- Added the `vulnerability.vendor_severity` field to vulnerability alerts and indexed vulnerabilities, carrying the vendor's own severity label for the CVE as stored in the feed. ([#40582](https://github.com/wazuh/wazuh/pull/40582))
+
+#### Changed
+
+- Updated the vulnerability detection database content shipped with the manager to version 4.14.0, which stores the vendor severity label. ([#40582](https://github.com/wazuh/wazuh/pull/40582))
+
 #### Fixed
 
 - Fixed the validation of `group_id` when reading and writing group configuration files, rejecting values that are not a valid group name. ([#40363](https://github.com/wazuh/wazuh/pull/40363))
