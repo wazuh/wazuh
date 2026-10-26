@@ -1058,6 +1058,7 @@ void Syscollector::init(const std::shared_ptr<ISysInfo>& spInfo,
 
     std::unique_lock<std::mutex> lock{m_scan_mutex};
 
+    forgetContainerContexts();
     m_spInfo = spInfo;
     m_reportDiffFunction = std::move(reportDiffFunction);
     m_persistDiffFunction = std::move(persistDiffFunction);
@@ -1393,6 +1394,7 @@ void Syscollector::releaseResources()
     // and prevent use-after-free when Syscollector singleton destructs
     // after static dependencies have already been destroyed
     m_spDBSync.reset();
+    forgetContainerContexts();
     m_spNormalizer.reset();
     m_spSyncProtocol.reset();
     m_spSyncProtocolVD.reset();
@@ -1446,9 +1448,13 @@ void Syscollector::destroy()
 /// Not guarded by a mutex: every ecsData() call site runs under m_scan_mutex.
 nlohmann::json Syscollector::containerContextBlock(const std::string& containerId)
 {
-    if (containerId == m_lastContainerId)
     {
-        return m_lastContainerBlock;
+        std::lock_guard<std::mutex> lock {m_containerContextMutex};
+
+        if (containerId == m_lastContainerId)
+        {
+            return m_lastContainerBlock;
+        }
     }
 
     nlohmann::json block;
@@ -1488,6 +1494,7 @@ nlohmann::json Syscollector::containerContextBlock(const std::string& containerI
 
 #endif
 
+    std::lock_guard<std::mutex> lock {m_containerContextMutex};
     m_lastContainerId = containerId;
     m_lastContainerBlock = block;
     return block;
@@ -2832,10 +2839,8 @@ void Syscollector::dropContainerContext(const std::string& containerId)
                       "Could not delete the stored context for container '" + containerId + "': " + e.what());
     }
 
-    {
-        std::lock_guard<std::mutex> lock {m_containerContextMutex};
-        m_containerContexts.erase(containerId);
-    }
+    std::lock_guard<std::mutex> lock {m_containerContextMutex};
+    m_containerContexts.erase(containerId);
 
     if (m_lastContainerId == containerId)
     {
@@ -2846,6 +2851,21 @@ void Syscollector::dropContainerContext(const std::string& containerId)
 #else
     (void)containerId;
 #endif
+}
+
+/// Forgets what this process remembers about stored contexts.
+///
+/// Both memos describe one particular database: m_containerContexts says what
+/// it already holds, so an unchanged context is not rewritten. Once that
+/// database is closed, deleted or replaced, keeping them would skip writing a
+/// context the new database does not have, and its rows would be emitted
+/// without one.
+void Syscollector::forgetContainerContexts()
+{
+    std::lock_guard<std::mutex> lock {m_containerContextMutex};
+    m_containerContexts.clear();
+    m_lastContainerId.clear();
+    m_lastContainerBlock = nlohmann::json {};
 }
 
 /// Deletes every stored context whose container is not in `keep`.
@@ -4923,6 +4943,8 @@ void Syscollector::deleteDatabaseUnlocked()
     {
         m_spDBSync->closeAndDeleteDatabase();
     }
+
+    forgetContainerContexts();
 }
 // LCOV_EXCL_STOP
 

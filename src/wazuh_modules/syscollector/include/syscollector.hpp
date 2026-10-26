@@ -172,6 +172,10 @@ class EXPORTED Syscollector final
         /// through a live connector to observe that is not a unit test.
         bool storeContainerContext(const std::string& containerId, const std::string& contextJson);
 
+        /// Forgets both context memos. Called whenever the database they
+        /// describe is closed, deleted or replaced.
+        void forgetContainerContexts();
+
         /// Deletes one container's stored context. Call only after that
         /// container's rows are gone and their events emitted.
         void dropContainerContext(const std::string& containerId);
@@ -986,20 +990,18 @@ class EXPORTED Syscollector final
         // entry rather than a map: a flush visits one container at a time, so
         // a second entry would never be hit before being replaced.
         //
-        // Not guarded by a mutex: all six ecsData() call sites run under
-        // m_scan_mutex. syncLoop() holds it across scan(), and the recovery
-        // path takes it through syscollector_lock_scan_mutex() before calling
-        // in. A caller that reaches ecsData() without it would need its own
-        // synchronisation here.
-        // Last context written per container, so an unchanged one is not
-        // rewritten every scan. Guarded because the baseline runs on the scan
-        // thread while the sweeps that erase entries can run from the
-        // container-cadence path.
-        std::mutex                                                               m_containerContextMutex;
-        std::map<std::string, std::string>                                       m_containerContexts;
-
+        // Both memos are guarded by m_containerContextMutex: the baseline runs
+        // on the scan thread, the sweeps that erase entries can run from the
+        // container-cadence path, and deleteDatabase() forgets them without
+        // holding m_scan_mutex. Both are forgotten whenever the database they
+        // describe is closed, deleted or replaced.
         std::string                                                              m_lastContainerId;
         nlohmann::json                                                           m_lastContainerBlock;
+
+        // Last context written per container, so an unchanged one is not
+        // rewritten every scan.
+        std::mutex                                                               m_containerContextMutex;
+        std::map<std::string, std::string>                                       m_containerContexts;
 };
 
 
