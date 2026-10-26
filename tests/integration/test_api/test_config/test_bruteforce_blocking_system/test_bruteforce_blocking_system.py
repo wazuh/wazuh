@@ -61,7 +61,7 @@ import pytest
 from pathlib import Path
 
 from . import CONFIGURATIONS_FOLDER_PATH, TEST_CASES_FOLDER_PATH
-from wazuh_testing.constants.api import CONFIGURATION_TYPES
+from wazuh_testing.constants.api import CONFIGURATION_TYPES, WAZUH_API_USER
 from wazuh_testing.constants.daemons import API_DAEMONS_REQUIREMENTS
 from wazuh_testing.modules.api.patterns import API_LOGIN_ERROR_MSG
 from wazuh_testing.modules.api.utils import login
@@ -104,7 +104,7 @@ def test_bruteforce_blocking_system(test_configuration, test_metadata, add_confi
             - Restart daemons defined in `daemons_handler_configuration` in this module
             - Wait until the API is ready to receive requests
         - test:
-            - Provoke a block from an unknown IP
+            - Provoke a block for the API user with a wrong password
             - Try to login to check if the IP is blocked during the block time
             - Try to login after the block time to check if the IP was removed from the blocked IP addresses
         - teardown:
@@ -145,7 +145,7 @@ def test_bruteforce_blocking_system(test_configuration, test_metadata, add_confi
 
     expected_output:
         - Could not get the login token.
-        - Limit of login attempts reached. The current IP has been blocked due to a high number of login attempts
+        - Limit of login attempts reached. The current IP has been blocked for this user due to a high number of login attempts
         - 6000
 
     tags:
@@ -156,10 +156,10 @@ def test_bruteforce_blocking_system(test_configuration, test_metadata, add_confi
     expected_message = test_metadata['expected_message'].rstrip()
     expected_error = test_metadata['expected_error']
 
-    # Provoke a block from an unknown IP (N attempts (N=max_login_attempts) with incorrect credentials).
+    # Provoke a block for the API user (N attempts (N=max_login_attempts) with a wrong password).
     for _ in range(max_login_attempts):
         with pytest.raises(RuntimeError):
-            login(user='wrong', password='wrong')
+            login(user=WAZUH_API_USER, password='wrong')
 
     # Verify that the IP address is still blocked even when using the correct credentials within the "block time"
     with pytest.raises(RuntimeError) as login_exception:

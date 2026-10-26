@@ -80,6 +80,13 @@ RATE_LIMIT_WINDOW_SECONDS = 60
 # Prefix length an IPv6 client is grouped by in the pre-authentication limiters
 CLIENT_IPV6_PREFIX = 64
 
+# Longest user name the login lockout keys on, the API's own limit for a user name
+LOGIN_USERNAME_MAX_LENGTH = 64
+
+# How many times `max_login_attempts` a client may fail across all user names before it is blocked
+# for all of them
+LOGIN_CLIENT_ATTEMPTS_FACTOR = 10
+
 
 def get_client_key(host: str) -> str:
     """Return the key the pre-authentication limiters charge `host` under.
@@ -316,16 +323,56 @@ async def access_log(request: ConnexionRequest, response: Response, prev_time: t
     if response.status_code == 403 and \
         path in {LOGIN_ENDPOINT, RUN_AS_LOGIN_ENDPOINT} and \
             method in {'GET', 'POST'}:
-        logger.warning(f'IP blocked due to exceeded number of logins attempts: {host}')
+        logger.warning(f'IP blocked due to exceeded number of logins attempts: {host}. User: {user!r}.')
     if response.status_code == 429:
         logger.warning(f'Maximum number of requests per minute reached. IP: {host}. User: {user}.')
 
 
-async def check_blocked_ip(request: Request):
-    """Blocks/unblocks the IPs that are requesting an API token, counting the attempt.
+def get_login_attempt_key(request: Request) -> tuple:
+    """Return the key the login lockout counts `request` under: its client key and the user it names.
 
-    Attempts are counted per client key (see `get_client_key`), so an IPv6 client is limited by
-    its /64 rather than by each address it can rotate through.
+    Every client on the manager host, the dashboard included, logs in from the same address, so
+    keying on the address alone let failures for any user lock out all of them. The user is the one
+    in the Basic credentials, as sent, since no attempt has been authenticated yet; it is truncated so
+    that a caller varying it cannot grow an entry, and a request without readable Basic credentials
+    is counted under an empty name.
+
+    Parameters
+    ----------
+    request : Request
+        HTTP request.
+
+    Returns
+    -------
+    tuple
+        Client key (see `get_client_key`) and user name.
+    """
+    user = ''
+    try:
+        auth_type, credentials = AbstractSecurityHandler.get_auth_header_value(request)
+        if auth_type == 'basic':
+            user = base64.b64decode(credentials).decode('latin1').split(':', 1)[0]
+    except (KeyError, IndexError, ValueError, OAuthProblem):
+        pass
+    return get_client_key(request.client.host), user[:LOGIN_USERNAME_MAX_LENGTH]
+
+
+def _login_attempt_limits(request: Request, max_login_attempts: int) -> dict:
+    """Map each lockout key `request` is counted under to its limit: the client and user (see
+    `get_login_attempt_key`), and the client across all users (user `None`)."""
+    client, user = get_login_attempt_key(request)
+    return {(client, user): max_login_attempts,
+            (client, None): max_login_attempts * LOGIN_CLIENT_ATTEMPTS_FACTOR}
+
+
+async def check_blocked_ip(request: Request):
+    """Blocks/unblocks the clients that are requesting an API token, counting the attempt.
+
+    Attempts are counted per client key and user (see `get_login_attempt_key`), so an IPv6 client
+    is limited by its /64 rather than by each address it can rotate through, and failures for one
+    user do not block another one logging in from the same address. They are also counted per
+    client key across all users, under a limit `LOGIN_CLIENT_ATTEMPTS_FACTOR` times higher, which
+    bounds what a client trying many user names can guess and keep in memory.
 
     The attempt is counted in the same locked section that checks the block, before the
     request is dispatched to authentication, so concurrent requests observe each other's
@@ -335,25 +382,20 @@ async def check_blocked_ip(request: Request):
     ----------
     request : Request
         HTTP request.
-    block_time : int
-        Block time used to decide if the IP is going to be unlocked.
-
     """
     global ip_block, ip_stats
     access_conf = configuration.api_conf['access']
     block_time = access_conf['block_time']
-    max_login_attempts = access_conf['max_login_attempts']
-    host = get_client_key(request.client.host)
+    limits = _login_attempt_limits(request, access_conf['max_login_attempts'])
 
     async with ip_lock:
-        try:
-            if get_utc_now().timestamp() - block_time >= ip_stats[host]['timestamp']:
-                del ip_stats[host]
-                ip_block.remove(host)
-        except (KeyError, ValueError):
-            pass
+        now = get_utc_now().timestamp()
+        for key in limits:
+            if key in ip_stats and now - block_time >= ip_stats[key]['timestamp']:
+                del ip_stats[key]
+                ip_block.discard(key)
 
-        if host in ip_block:
+        if any(key in ip_block for key in limits):
             raise BlockedIPException(
                 status=403,
                 title="Permission Denied",
@@ -361,14 +403,15 @@ async def check_blocked_ip(request: Request):
                        "to a high number of login attempts"
             )
 
-        # The timestamp is only set when the entry is created so `block_time` counts from the first attempt.
-        if host not in ip_stats:
-            ip_stats[host] = {'attempts': 1, 'timestamp': get_utc_now().timestamp()}
-        else:
-            ip_stats[host]['attempts'] += 1
+        for key, limit in limits.items():
+            # The timestamp is only set when the entry is created so `block_time` counts from the first attempt.
+            if key not in ip_stats:
+                ip_stats[key] = {'attempts': 1, 'timestamp': now}
+            else:
+                ip_stats[key]['attempts'] += 1
 
-        if ip_stats[host]['attempts'] >= max_login_attempts:
-            ip_block.add(host)
+            if ip_stats[key]['attempts'] >= limit:
+                ip_block.add(key)
 
 
 async def settle_login_attempt(request: Request):
@@ -384,21 +427,21 @@ async def settle_login_attempt(request: Request):
         HTTP request.
     """
     global ip_block, ip_stats
-    max_login_attempts = configuration.api_conf['access']['max_login_attempts']
-    host = get_client_key(request.client.host)
+    limits = _login_attempt_limits(request, configuration.api_conf['access']['max_login_attempts'])
 
     async with ip_lock:
-        if host not in ip_stats:
-            return
+        for key, limit in limits.items():
+            if key not in ip_stats:
+                continue
 
-        attempts = ip_stats[host]['attempts'] - 1
-        # An entry with no outstanding attempts is dropped so the next window starts at the next attempt.
-        if attempts > 0:
-            ip_stats[host]['attempts'] = attempts
-        else:
-            del ip_stats[host]
-        if attempts < max_login_attempts:
-            ip_block.discard(host)
+            attempts = ip_stats[key]['attempts'] - 1
+            # An entry with no outstanding attempts is dropped so the next window starts at the next attempt.
+            if attempts > 0:
+                ip_stats[key]['attempts'] = attempts
+            else:
+                del ip_stats[key]
+            if attempts < limit:
+                ip_block.discard(key)
 
 
 async def charge_unauthenticated_request(request: Request, max_requests: int, error_code: int) -> int:
