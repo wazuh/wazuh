@@ -452,6 +452,9 @@ sudo WAZUH_ENROLLMENT_TOKEN='<TOKEN>' WAZUH_AGENT_NAME='web-server-01' rpm -ivh 
 
 #### Starting the agent
 
+> [!NOTE]
+> An agent installed without `WAZUH_ENROLLMENT_TOKEN` does not start until it is registered. Register it first, as described in [Installing without a token](#installing-without-a-token).
+
 After installation, start and enable the agent service:
 
 ```bash
@@ -488,7 +491,7 @@ macOS takes its deployment variables from `/tmp/wazuh_envs`, one `NAME='value'` 
 echo "WAZUH_ENROLLMENT_TOKEN='<TOKEN>'" > /tmp/wazuh_envs && echo "WAZUH_AGENT_NAME='macbook-01'" >> /tmp/wazuh_envs && sudo installer -pkg wazuh-agent-*.pkg -target /
 ```
 
-Start the agent service:
+Start the agent service. An agent installed without `WAZUH_ENROLLMENT_TOKEN` does not start until it is registered; register it first, as described in [Installing without a token](#installing-without-a-token).
 
 ```bash
 sudo launchctl bootstrap system /Library/LaunchDaemons/com.wazuh.agent.plist
@@ -518,7 +521,7 @@ The deployment variables are MSI properties:
 
 For interactive installation, double-click the MSI file and follow the installation wizard.
 
-Start the Wazuh Agent service:
+Start the Wazuh Agent service. An agent installed without `WAZUH_ENROLLMENT_TOKEN` does not start until it is registered; register it first with **Manage** > **Enroll** in the agent GUI, or as described in [Installing without a token](#installing-without-a-token).
 
 ```powershell
 Start-Service -Name WazuhSvc
@@ -629,20 +632,30 @@ On Windows the same properties are removed under their unprefixed MSI spellings 
 
 #### Installing without a token
 
-A package install with no `WAZUH_ENROLLMENT_TOKEN` completes, and the installer records that the agent has nowhere to connect:
+A package install with no `WAZUH_ENROLLMENT_TOKEN` completes, and the installer records that the agent has nowhere to connect and how to register it:
 
 ```console
-wazuh-agent: no manager configured [INFO_NO_MANAGER]: WAZUH_ENROLLMENT_TOKEN was not supplied, so the agent does not know where to connect.
+wazuh-agent: no manager configured [INFO_NO_MANAGER]: WAZUH_ENROLLMENT_TOKEN was not supplied, so the agent does not know where to connect. Enroll it with '/var/ossec/bin/wazuh-agent-auth --token-file <file>' before starting it.
 ```
 
-That is the **Package** and **From sources** methods: the agent is installed but not yet registered. A package install leaves the placeholder `<endpoint>MANAGER_IP</endpoint>`, and the agent refuses to start with it until it is registered:
+That is the **Package** and **From sources** methods: the agent is installed but not yet registered. A package install leaves the placeholder `<endpoint>MANAGER_IP</endpoint>` (`0.0.0.0:1517/wazuh-manager/` on Windows), and the agent refuses to start with it until it is registered:
 
 ```console
 wazuh-agentd: ERROR: (4112): Invalid server address found: 'MANAGER_IP'
+wazuh-agentd: ERROR: (4128): This agent is not enrolled yet. Enroll it with 'wazuh-agent-auth --token-file <file>', then start the agent.
 wazuh-agentd: ERROR: (1215): No client configured. Exiting.
 ```
 
-Register it with [`wazuh-agent-auth`](../modules/client/README.md#enrolling-or-re-pointing-an-agent), which installs the trust anchor, enrolls, and writes the manager address the token names. The variables that are not about registration — `WAZUH_AGENT_NAME`, `WAZUH_AGENT_GROUP`, the timers and `WAZUH_SSL_VERIFICATION` — already applied during the install, and the command reads the name and groups back out of `ossec.conf`, so the agent registers with the ones the install set.
+Register it with [`wazuh-agent-auth`](../modules/client/README.md#enrolling-or-re-pointing-an-agent), which installs the trust anchor, enrolls, and writes the manager address the token names. Save the token to a file only root can read, then run:
+
+```bash
+sudo /var/ossec/bin/wazuh-agent-auth --token-file /root/token
+sudo systemctl start wazuh-agent
+```
+
+On macOS the command is `/Library/Ossec/bin/wazuh-agent-auth`. On Windows, use **Manage** > **Enroll** in the agent GUI, or `wazuh-agent-auth.exe` from the agent's installation folder.
+
+The variables that are not about registration — `WAZUH_AGENT_NAME`, `WAZUH_AGENT_GROUP`, the timers and `WAZUH_SSL_VERIFICATION` — already applied during the install, and the command reads the name and groups back out of `ossec.conf`, so the agent registers with the ones the install set.
 
 ### Migrating agents already running
 
