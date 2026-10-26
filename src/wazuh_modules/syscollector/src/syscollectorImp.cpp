@@ -657,6 +657,13 @@ std::string Syscollector::getCreateStatement() const
 /// Host rows keep their checksums: getRowChecksum() erases container_id before
 /// digesting, so no upgraded agent re-syncs its inventory.
 ///
+/// Each rebuild starts with a guard. The copy assigns container_id = '' and is
+/// only correct for the published schema, which has no such column. A
+/// development database that already has container_id would collide on the
+/// primary key or silently turn container rows into host rows.
+/// json('container_id') is malformed JSON, so in that case the guard raises
+/// SQLITE_ERROR, and DBSync recreates the database instead of migrating it.
+///
 /// The create statement above must keep producing the same schema this list
 /// builds up to, because fresh databases take that path and never replay these.
 std::vector<std::string> Syscollector::getUpgradeStatements() const
@@ -675,7 +682,8 @@ std::vector<std::string> Syscollector::getUpgradeStatements() const
     ) WITHOUT ROWID;)",
 
         // v3 -> v4: dbsync_osinfo (20 columns)
-        R"(DROP TABLE IF EXISTS dbsync_osinfo_upgrade_v4_old;
+        R"(SELECT json(name) FROM pragma_table_info('dbsync_osinfo') WHERE name = 'container_id';
+DROP TABLE IF EXISTS dbsync_osinfo_upgrade_v4_old;
 ALTER TABLE dbsync_osinfo RENAME TO dbsync_osinfo_upgrade_v4_old;
 CREATE TABLE dbsync_osinfo (
     container_id TEXT DEFAULT '',
@@ -704,7 +712,8 @@ INSERT INTO dbsync_osinfo (container_id,hostname,architecture,os_name,os_version
 DROP TABLE dbsync_osinfo_upgrade_v4_old;)",
 
         // v4 -> v5: dbsync_hwinfo (11 columns)
-        R"(DROP TABLE IF EXISTS dbsync_hwinfo_upgrade_v5_old;
+        R"(SELECT json(name) FROM pragma_table_info('dbsync_hwinfo') WHERE name = 'container_id';
+DROP TABLE IF EXISTS dbsync_hwinfo_upgrade_v5_old;
 ALTER TABLE dbsync_hwinfo RENAME TO dbsync_hwinfo_upgrade_v5_old;
 CREATE TABLE dbsync_hwinfo (
     container_id TEXT DEFAULT '',
@@ -724,7 +733,8 @@ INSERT INTO dbsync_hwinfo (container_id,serial_number,cpu_name,cpu_cores,cpu_spe
 DROP TABLE dbsync_hwinfo_upgrade_v5_old;)",
 
         // v5 -> v6: dbsync_hotfixes (5 columns)
-        R"(DROP TABLE IF EXISTS dbsync_hotfixes_upgrade_v6_old;
+        R"(SELECT json(name) FROM pragma_table_info('dbsync_hotfixes') WHERE name = 'container_id';
+DROP TABLE IF EXISTS dbsync_hotfixes_upgrade_v6_old;
 ALTER TABLE dbsync_hotfixes RENAME TO dbsync_hotfixes_upgrade_v6_old;
 CREATE TABLE dbsync_hotfixes(
     container_id TEXT DEFAULT '',
@@ -738,7 +748,8 @@ INSERT INTO dbsync_hotfixes (container_id,hotfix_name,sync,checksum,version)
 DROP TABLE dbsync_hotfixes_upgrade_v6_old;)",
 
         // v6 -> v7: dbsync_packages (17 columns)
-        R"(DROP TABLE IF EXISTS dbsync_packages_upgrade_v7_old;
+        R"(SELECT json(name) FROM pragma_table_info('dbsync_packages') WHERE name = 'container_id';
+DROP TABLE IF EXISTS dbsync_packages_upgrade_v7_old;
 ALTER TABLE dbsync_packages RENAME TO dbsync_packages_upgrade_v7_old;
 CREATE TABLE dbsync_packages(
     container_id TEXT DEFAULT '',
@@ -764,7 +775,8 @@ INSERT INTO dbsync_packages (container_id,name,version_,vendor,installed,path,ar
 DROP TABLE dbsync_packages_upgrade_v7_old;)",
 
         // v7 -> v8: dbsync_processes (14 columns)
-        R"(DROP TABLE IF EXISTS dbsync_processes_upgrade_v8_old;
+        R"(SELECT json(name) FROM pragma_table_info('dbsync_processes') WHERE name = 'container_id';
+DROP TABLE IF EXISTS dbsync_processes_upgrade_v8_old;
 ALTER TABLE dbsync_processes RENAME TO dbsync_processes_upgrade_v8_old;
 CREATE TABLE dbsync_processes (
     container_id TEXT DEFAULT '',
@@ -787,7 +799,8 @@ INSERT INTO dbsync_processes (container_id,pid,name,state,parent_pid,utime,stime
 DROP TABLE dbsync_processes_upgrade_v8_old;)",
 
         // v8 -> v9: dbsync_ports (15 columns)
-        R"(DROP TABLE IF EXISTS dbsync_ports_upgrade_v9_old;
+        R"(SELECT json(name) FROM pragma_table_info('dbsync_ports') WHERE name = 'container_id';
+DROP TABLE IF EXISTS dbsync_ports_upgrade_v9_old;
 ALTER TABLE dbsync_ports RENAME TO dbsync_ports_upgrade_v9_old;
 CREATE TABLE dbsync_ports (
        container_id TEXT DEFAULT '',
@@ -811,7 +824,8 @@ INSERT INTO dbsync_ports (container_id,network_transport,source_ip,source_port,d
 DROP TABLE dbsync_ports_upgrade_v9_old;)",
 
         // v9 -> v10: dbsync_network_iface (18 columns)
-        R"(DROP TABLE IF EXISTS dbsync_network_iface_upgrade_v10_old;
+        R"(SELECT json(name) FROM pragma_table_info('dbsync_network_iface') WHERE name = 'container_id';
+DROP TABLE IF EXISTS dbsync_network_iface_upgrade_v10_old;
 ALTER TABLE dbsync_network_iface RENAME TO dbsync_network_iface_upgrade_v10_old;
 CREATE TABLE dbsync_network_iface (
        container_id TEXT DEFAULT '',
@@ -838,7 +852,8 @@ INSERT INTO dbsync_network_iface (container_id,interface_name,interface_alias,in
 DROP TABLE dbsync_network_iface_upgrade_v10_old;)",
 
         // v10 -> v11: dbsync_network_protocol (9 columns)
-        R"(DROP TABLE IF EXISTS dbsync_network_protocol_upgrade_v11_old;
+        R"(SELECT json(name) FROM pragma_table_info('dbsync_network_protocol') WHERE name = 'container_id';
+DROP TABLE IF EXISTS dbsync_network_protocol_upgrade_v11_old;
 ALTER TABLE dbsync_network_protocol RENAME TO dbsync_network_protocol_upgrade_v11_old;
 CREATE TABLE dbsync_network_protocol (
        container_id TEXT DEFAULT '',
@@ -856,7 +871,8 @@ INSERT INTO dbsync_network_protocol (container_id,interface_name,network_type,ne
 DROP TABLE dbsync_network_protocol_upgrade_v11_old;)",
 
         // v11 -> v12: dbsync_network_address (9 columns)
-        R"(DROP TABLE IF EXISTS dbsync_network_address_upgrade_v12_old;
+        R"(SELECT json(name) FROM pragma_table_info('dbsync_network_address') WHERE name = 'container_id';
+DROP TABLE IF EXISTS dbsync_network_address_upgrade_v12_old;
 ALTER TABLE dbsync_network_address RENAME TO dbsync_network_address_upgrade_v12_old;
 CREATE TABLE dbsync_network_address (
        container_id TEXT DEFAULT '',
@@ -874,7 +890,8 @@ INSERT INTO dbsync_network_address (container_id,interface_name,network_type,net
 DROP TABLE dbsync_network_address_upgrade_v12_old;)",
 
         // v12 -> v13: dbsync_users (35 columns)
-        R"(DROP TABLE IF EXISTS dbsync_users_upgrade_v13_old;
+        R"(SELECT json(name) FROM pragma_table_info('dbsync_users') WHERE name = 'container_id';
+DROP TABLE IF EXISTS dbsync_users_upgrade_v13_old;
 ALTER TABLE dbsync_users RENAME TO dbsync_users_upgrade_v13_old;
 CREATE TABLE dbsync_users (
         container_id TEXT DEFAULT '',
@@ -918,7 +935,8 @@ INSERT INTO dbsync_users (container_id,user_name,user_full_name,user_home,user_i
 DROP TABLE dbsync_users_upgrade_v13_old;)",
 
         // v13 -> v14: dbsync_groups (11 columns)
-        R"(DROP TABLE IF EXISTS dbsync_groups_upgrade_v14_old;
+        R"(SELECT json(name) FROM pragma_table_info('dbsync_groups') WHERE name = 'container_id';
+DROP TABLE IF EXISTS dbsync_groups_upgrade_v14_old;
 ALTER TABLE dbsync_groups RENAME TO dbsync_groups_upgrade_v14_old;
 CREATE TABLE dbsync_groups (
     container_id TEXT DEFAULT '',
@@ -938,7 +956,8 @@ INSERT INTO dbsync_groups (container_id,group_id,group_name,group_description,gr
 DROP TABLE dbsync_groups_upgrade_v14_old;)",
 
         // v14 -> v15: dbsync_services (36 columns)
-        R"(DROP TABLE IF EXISTS dbsync_services_upgrade_v15_old;
+        R"(SELECT json(name) FROM pragma_table_info('dbsync_services') WHERE name = 'container_id';
+DROP TABLE IF EXISTS dbsync_services_upgrade_v15_old;
 ALTER TABLE dbsync_services RENAME TO dbsync_services_upgrade_v15_old;
 CREATE TABLE dbsync_services (
         container_id TEXT DEFAULT '',
@@ -983,7 +1002,8 @@ INSERT INTO dbsync_services (container_id,service_id,service_name,service_descri
 DROP TABLE dbsync_services_upgrade_v15_old;)",
 
         // v15 -> v16: dbsync_browser_extensions (26 columns)
-        R"(DROP TABLE IF EXISTS dbsync_browser_extensions_upgrade_v16_old;
+        R"(SELECT json(name) FROM pragma_table_info('dbsync_browser_extensions') WHERE name = 'container_id';
+DROP TABLE IF EXISTS dbsync_browser_extensions_upgrade_v16_old;
 ALTER TABLE dbsync_browser_extensions RENAME TO dbsync_browser_extensions_upgrade_v16_old;
 CREATE TABLE dbsync_browser_extensions (
         container_id TEXT DEFAULT '',
