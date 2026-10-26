@@ -198,8 +198,6 @@ include_directories(${CMAKE_SOURCE_DIR}/external/cJSON)
 include_directories(${CMAKE_SOURCE_DIR}/external/cpp-httplib)
 include_directories(${CMAKE_SOURCE_DIR}/external/nlohmann)
 
-# Set the indexer connector build directory
-set(INDEXERCONNECTOR_LIB_BUILD_DIR "${CMAKE_SOURCE_DIR}/build/lib")
 
 ####################################################################################################
 # Rocksdb dynamic link
@@ -237,7 +235,6 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug" OR FSANITIZE)
   list(PREPEND _new_paths
     ${CMAKE_SOURCE_DIR}/build/lib
     ${ROCKSDB_LIB_BUILD_DIR}
-    ${INDEXERCONNECTOR_LIB_BUILD_DIR}
     ${CMAKE_SOURCE_DIR}/external/jemalloc/lib
   )
 endif()

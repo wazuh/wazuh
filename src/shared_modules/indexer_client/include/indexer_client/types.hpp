@@ -369,6 +369,33 @@ namespace indexer_client
             }
             return false;
         }
+
+        /// Why a call should not wait for a node (I190, I190b): every node already went through a probe round (Down
+        /// with a reason) and none is usable. Then "url: reason" of each node in order, joined by "; ". Nullopt with no
+        /// node, with a usable one, or before the first probe round (a node is born Down with an empty reason).
+        std::optional<std::string> noUsableAfterProbes() const
+        {
+            if (nodes.empty() || anyUsable())
+            {
+                return std::nullopt;
+            }
+            std::string reasons;
+            for (const auto& node : nodes)
+            {
+                if (node.reason.empty())
+                {
+                    return std::nullopt;
+                }
+                if (!reasons.empty())
+                {
+                    reasons += "; ";
+                }
+                reasons += node.url;
+                reasons += ": ";
+                reasons += node.reason;
+            }
+            return reasons;
+        }
     };
 
     struct CloseReport final

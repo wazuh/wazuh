@@ -5,7 +5,7 @@ The Indexer Client does not have an endpoint of its own. The library publishes i
 | Module | Socket | What it publishes |
 |---|---|---|
 | [Inventory Sync Server](../inventory-sync-server/metrics.md#indexer-client-buckets--indexer_clientbucketinventory_sync_serverbucket) | `queue/sockets/inventory-sync-http.sock` | Its two buckets, and the runtime, node, query and PIT metrics **once per process** |
-| [Vulnerability Scanner](../vulnerability-scanner/metrics.md#indexer-client-bucket--indexer_clientbucketvulnerability_scannervd_statesstar) | `queue/sockets/vd-http.sock` | Its `vd-states` bucket only |
+| [Vulnerability Scanner](../vulnerability-scanner/metrics.md#indexer-client-bucket--indexer_clientbucketvulnerability_scannervd_states) | `queue/sockets/vd-http.sock` | Its `vd-states` bucket only |
 
 ```bash
 curl -s --unix-socket /var/wazuh-manager/queue/sockets/inventory-sync-http.sock http://localhost/metrics

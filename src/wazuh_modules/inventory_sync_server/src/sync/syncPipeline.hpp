@@ -53,6 +53,9 @@ namespace invsync::sync
         int conflictRetryAfterSeconds {15};
         /// The by-id half of a whole-agent deletion; default = by-query only (I147c).
         AgentDeletionDeps agentDeletion;
+        /// How long a worker keeps the agents of a failed batch held in the registry while its connector
+        /// still holdsAbandonedWrite(): one request at most, so the runtime's request timeout + 5 s.
+        std::chrono::milliseconds abandonedWriteHold {65000};
     };
 
     /**
@@ -164,6 +167,9 @@ namespace invsync::sync
             std::mutex mutex;
             std::condition_variable cv;
             std::deque<Item> queue;
+            /// Worker-thread only: agents held for an abandoned write (one registry count each), and until when.
+            std::vector<std::string> abandonedHolds;
+            std::chrono::steady_clock::time_point abandonedHoldUntil;
         };
 
         void workerLoop(std::size_t index);
@@ -184,9 +190,16 @@ namespace invsync::sync
         void respondConnectorFailure(std::vector<Item>& items, indexer::ConnectorError::Cause cause);
         /// One sync.bulk.flush.failures.<failureMetric(cause)> increment (one failed session).
         void countFlushFailure(indexer::ConnectorError::Cause cause);
+        /// Before answering a failed @p agentId: when @p connector still holdsAbandonedWrite(), takes one more
+        /// Pipeline count on the agent so the scan lane parks it after the answer (no shard is blocked).
+        void holdForAbandonedWrite(Shard& shard, indexer::IIndexerConnectorSync& connector, const std::string& agentId);
+        /// Drops the holds once the write resolved, the bound passed, or @p force (the worker is exiting).
+        void releaseAbandonedHolds(Shard& shard, indexer::IIndexerConnectorSync& connector, bool force);
         /// Flushes the open batch and answers each session by its own outcome (I136).
-        void
-        flushAndRespond(std::vector<Item>& batch, std::size_t& batchBytes, indexer::IIndexerConnectorSync& connector);
+        void flushAndRespond(Shard& shard,
+                             std::vector<Item>& batch,
+                             std::size_t& batchBytes,
+                             indexer::IIndexerConnectorSync& connector);
 
         SyncPipelineConfig m_config;
         /// Declared before m_processor: the processor resolves its counters from it. Never reset.

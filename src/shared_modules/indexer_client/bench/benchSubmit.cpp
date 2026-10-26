@@ -11,17 +11,18 @@
  */
 
 // Submit microbenchmark (plan 18, E6c, RNF-2, I119; contract-bench §2): what one event costs the producer that hands it
-// to the library, v1 (IndexerConnectorAsync::indexDataStream, string_view) against v2 (IWriter::post, the default, or
-// IWriter::submit, of an IndexDataStream Op whose body is moved in; `--api`, E6d I123). One side per invocation,
-// printed as one `SUBMIT,` row (column `api`: v1 for the v1 side).
+// to the library: IWriter::post (the default) or IWriter::submit, of an IndexDataStream Op whose body is moved in
+// (`--api`, E6d I123). One invocation prints one `SUBMIT,` row. The v1 side (the v1 async connector) was removed with
+// the v1 library (E11d, I221); its number, measured with the v1 connector library, is kept in the README as a
+// reference.
 //
 // Regime: P producers run bursts of B ops at the same time (a generation counter under a mutex + cv releases them);
 // each one times its own burst (steady_clock and CLOCK_THREAD_CPUTIME_ID). When every producer is done, one
-// coordinator polls the backlog every 200 us until it falls below the watermark W (v1 getQueueSize(), v2 the
+// coordinator polls the backlog every 200 us until it falls below the watermark W (the
 // bucket's charge) and releases the next burst; nobody polls during a burst. The first WARMUP_BURSTS bursts are
 // discarded. Each producer pre-serializes a ring of 64 events of 1 500 B; with `--handover move` the v2 body is
 // copied from the ring before the burst (outside the stopwatch) and moved into Op::body; with `--handover view` it is
-// copied inside. The v1 always receives a string_view of the ring (it copies once into its bulk line).
+// copied inside.
 
 #include <time.h>
 #include <unistd.h>
@@ -33,7 +34,6 @@
 #include <cstdint>
 #include <cstdlib>
 #include <exception>
-#include <filesystem>
 #include <iostream>
 #include <memory>
 #include <mutex>
@@ -44,10 +44,8 @@
 
 #include "benchCommon.hpp"
 #include "benchFake.hpp"
-#include "indexerConnector.hpp"
 #include "indexer_client/keyValueConfigSource.hpp"
 #include "indexer_client/runtime.hpp"
-#include "keyStore.hpp"
 
 namespace
 {
@@ -55,8 +53,8 @@ namespace
 
     constexpr int BURST_OPS {1000};                              ///< B.
     constexpr std::uint64_t WATERMARK_BYTES {16ull << 20};       ///< W.
-    constexpr std::uint64_t QUOTA_BYTES {256ull << 20};          ///< v2 bucket quota and global_quota_bytes.
-    constexpr std::size_t BULK_BYTES {4u * 1024u * 1024u};       ///< v2 maxBytes (the v1 default bulk_max_bytes).
+    constexpr std::uint64_t QUOTA_BYTES {256ull << 20};          ///< bucket quota and global_quota_bytes.
+    constexpr std::size_t BULK_BYTES {4u * 1024u * 1024u};       ///< maxBytes (the default bulk_max_bytes).
     constexpr std::size_t EVENT_BYTES {1500};                    ///< One pre-serialized event.
     constexpr std::size_t RING_EVENTS {64};                      ///< Events per producer ring.
     constexpr int WARMUP_BURSTS {5};                             ///< Discarded bursts.
@@ -77,16 +75,15 @@ namespace
     }
 
     constexpr const char* USAGE =
-        "usage: indexer_client_bench_submit --side v1|v2 [--api post|submit] [--producers N] [--cb none|noop]\n"
+        "usage: indexer_client_bench_submit [--api post|submit] [--producers N] [--cb none|noop]\n"
         "                                   [--handover move|view] [--events N] [--pair N] [--indices 1|2]\n"
         "                                   [--csv-header]\n"
-        "  --indices 2 (E6e): the ops alternate between two indices on both sides (default 1).\n"
-        "  --api (v2 only; default post): IWriter::post (bucket with trustedBodies, the engine path, I125) or\n"
+        "  --indices 2 (E6e): the ops alternate between two indices (default 1).\n"
+        "  --api (default post): IWriter::post (bucket with trustedBodies, the engine path, I125) or\n"
         "  IWriter::submit (default bucket, the body is scanned); post has no callback, so it needs --cb none\n"
-        "  (usage error otherwise, exit 2). The v1 prints api=v1.\n"
+        "  (usage error otherwise, exit 2).\n"
         "  --events: per producer (multiple of 1000, > 5000; default 200000). Prints one 'SUBMIT,<csv>' line (see\n"
-        "  --csv-header) and 'NOTE ...' lines. The v1 ignores --cb and --handover (no callback, always a view) and\n"
-        "  prints them as given so that both sides of a pair carry the same row key. Exit 0 only when valid.\n";
+        "  --csv-header) and 'NOTE ...' lines. Exit 0 only when valid.\n";
 
     std::uint64_t cpuNow(clockid_t clock)
     {
@@ -109,7 +106,7 @@ namespace
         return ring;
     }
 
-    /// One side of the comparison. burst() is the only timed call; backlog() is never called during a burst.
+    /// What is measured. burst() is the only timed call; backlog() is never called during a burst.
     class Side
     {
     public:
@@ -121,76 +118,6 @@ namespace
         virtual bool prepares() const = 0;
         virtual std::uint64_t backlog() const = 0;
         virtual std::string note() const = 0;
-    };
-
-    class V1Side final : public Side
-    {
-    public:
-        explicit V1Side(const nlohmann::json& config)
-            : m_connector(std::make_unique<IndexerConnectorAsync>(config))
-        {
-        }
-
-        bool waitAvailable(std::chrono::seconds timeout) const
-        {
-            const auto deadline = Clock::now() + timeout;
-            while (!m_connector->isAvailable())
-            {
-                if (Clock::now() >= deadline)
-                {
-                    return false;
-                }
-                std::this_thread::sleep_for(std::chrono::milliseconds(10));
-            }
-            return true;
-        }
-
-        std::uint64_t
-        burst(const std::vector<std::string>& ring, std::vector<std::string>& /*prepared*/, std::size_t offset) override
-        {
-            std::uint64_t accepted = 0;
-            for (std::size_t i = 0; i < static_cast<std::size_t>(BURST_OPS); ++i)
-            {
-                try
-                {
-                    const std::string index = indexFor(i); // Built per op, as the engine builds its index name.
-                    m_connector->indexDataStream(index, ring[(offset + i) % RING_EVENTS]);
-                    ++accepted;
-                }
-                catch (const std::exception&)
-                {
-                }
-            }
-            return accepted;
-        }
-
-        bool prepares() const override
-        {
-            return false;
-        }
-
-        std::uint64_t backlog() const override
-        {
-            return m_connector->getQueueSize();
-        }
-
-        std::string note() const override
-        {
-            return "v1_dropped=" + std::to_string(m_connector->getDroppedEvents());
-        }
-
-        std::uint64_t dropped() const
-        {
-            return m_connector->getDroppedEvents();
-        }
-
-        void reset()
-        {
-            m_connector.reset();
-        }
-
-    private:
-        std::unique_ptr<IndexerConnectorAsync> m_connector;
     };
 
     class V2Side final : public Side
@@ -435,25 +362,8 @@ namespace
 
     const char* csvHeader()
     {
-        return "side,api,producers,cb,handover,pair,events,ns_per_op,cpu_ns_per_op,proc_cpu_ns_per_op,B,W,quota,"
+        return "api,producers,cb,handover,pair,events,ns_per_op,cpu_ns_per_op,proc_cpu_ns_per_op,B,W,quota,"
                "backlog_max,accepted,server_docs,indices,valid";
-    }
-
-    /// Seeds the v1 credentials in a fresh working directory (the keystore is relative to it and Keystore::get
-    /// caches a static local: before the first IndexerConnectorAsync of the process). Returns the directory.
-    std::filesystem::path seedV1Keystore()
-    {
-        std::string templ = (std::filesystem::temp_directory_path() / "ic-bench-submit-XXXXXX").string();
-        if (::mkdtemp(templ.data()) == nullptr)
-        {
-            throw std::runtime_error("mkdtemp failed");
-        }
-        const std::filesystem::path dir(templ);
-        std::filesystem::current_path(dir);
-        std::filesystem::create_directories("queue");
-        Keystore::put("indexer", "username", bench::BENCH_USER);
-        Keystore::put("indexer", "password", bench::BENCH_PASSWORD);
-        return dir;
     }
 
     int run(bench::Args& args)
@@ -464,7 +374,6 @@ namespace
             std::cout << csvHeader() << std::endl;
             return 0;
         }
-        const auto sideName = args.get("side", "");
         const auto api = args.get("api", "post");
         const int producers = args.getInt("producers", 1);
         const auto cb = args.get("cb", "none");
@@ -473,8 +382,7 @@ namespace
         const int pair = args.getInt("pair", 0);
         g_indices = args.getInt("indices", 1);
         args.rejectUnused();
-        if ((sideName != "v1" && sideName != "v2") || (api != "post" && api != "submit") ||
-            (sideName == "v2" && api == "post" && cb != "none") || producers < 1 || producers > 64 ||
+        if ((api != "post" && api != "submit") || (api == "post" && cb != "none") || producers < 1 || producers > 64 ||
             (cb != "none" && cb != "noop") || (handover != "move" && handover != "view") || events % BURST_OPS != 0 ||
             events / BURST_OPS <= WARMUP_BURSTS || (g_indices != 1 && g_indices != 2))
         {
@@ -488,41 +396,11 @@ namespace
         fake.start();
         fake.resetCounters();
 
-        const auto home = std::filesystem::current_path();
-        std::filesystem::path scratch;
-        std::unique_ptr<V1Side> v1;
         std::unique_ptr<V2Side> v2;
         Side* side = nullptr;
         int rc = 0;
         std::uint64_t quota = 0;
 
-        if (sideName == "v1")
-        {
-            scratch = seedV1Keystore();
-            // flush_interval_seconds = 1 only shortens the final drain (outside the stopwatch).
-            const nlohmann::json config {{"hosts", nlohmann::json::array({fake.baseUrl()})},
-                                         {"monitoring_interval_seconds", 1},
-                                         {"flush_interval_seconds", 1}};
-            try
-            {
-                v1 = std::make_unique<V1Side>(config);
-            }
-            catch (...)
-            {
-                // The temporary keystore never outlives a failed start (E6c G-diff obj. 9).
-                std::error_code ec;
-                std::filesystem::current_path(home, ec);
-                std::filesystem::remove_all(scratch, ec);
-                throw;
-            }
-            if (!v1->waitAvailable(std::chrono::seconds(10)))
-            {
-                std::cerr << "indexer_client_bench_submit: v1 never saw the fake available" << std::endl;
-                rc = 1;
-            }
-            side = v1.get();
-        }
-        else
         {
             const std::string options = "analysisd.indexer_client_network_threads=1\n"
                                         "analysisd.indexer_client_cpu_threads=2\n"
@@ -574,7 +452,7 @@ namespace
             }
             if (!created.value->health().anyAvailable())
             {
-                std::cerr << "indexer_client_bench_submit: v2 never saw the fake available" << std::endl;
+                std::cerr << "indexer_client_bench_submit: the client never saw the fake available" << std::endl;
                 rc = 1;
             }
             created.value.reset();
@@ -587,12 +465,10 @@ namespace
             const auto total = static_cast<std::uint64_t>(producers) * static_cast<std::uint64_t>(events);
             const auto serverDocs = fake.bulkDocs();
             const double ops = result.timedOps ? static_cast<double>(result.timedOps) : 1.0;
-            const bool noDrops = !v1 || v1->dropped() == 0;
             const bool valid = result.totals.accepted == total && serverDocs == total && result.expiredMarks == 0 &&
-                               result.drained && noDrops && result.timedOps > 0;
-            std::cout << "SUBMIT," << sideName << ',' << (v1 ? "v1" : api) << ',' << producers << ',' << cb << ','
-                      << handover << ',' << pair << ',' << events << ','
-                      << bench::fixed(static_cast<double>(result.totals.wallNs) / ops, 1) << ','
+                               result.drained && result.timedOps > 0;
+            std::cout << "SUBMIT," << api << ',' << producers << ',' << cb << ',' << handover << ',' << pair << ','
+                      << events << ',' << bench::fixed(static_cast<double>(result.totals.wallNs) / ops, 1) << ','
                       << bench::fixed(static_cast<double>(result.totals.cpuNs) / ops, 1) << ','
                       << bench::fixed(static_cast<double>(result.procCpuNs) / ops, 1) << ',' << BURST_OPS << ','
                       << WATERMARK_BYTES << ',' << quota << ',' << result.backlogMax << ',' << result.totals.accepted
@@ -606,10 +482,6 @@ namespace
             rc = valid ? 0 : 1;
         }
 
-        if (v1)
-        {
-            v1->reset();
-        }
         if (v2)
         {
             v2->reset();
@@ -620,12 +492,6 @@ namespace
                           << std::endl;
                 rc = rc == 0 ? 1 : rc;
             }
-        }
-        if (!scratch.empty())
-        {
-            std::error_code ec;
-            std::filesystem::current_path(home, ec);
-            std::filesystem::remove_all(scratch, ec);
         }
         // As the other executables: the fake is not stopped gracefully; nothing is measured any more.
         std::cout.flush();

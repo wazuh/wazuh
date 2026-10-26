@@ -74,6 +74,14 @@ namespace invsync::indexer
         std::string reason;
     };
 
+    /// How IIndexerConnectorSync::settleAbandoned() ended.
+    enum class AbandonedWrite
+    {
+        Settled,  ///< Nothing was left on the wire, or what was there resolved.
+        Closing,  ///< The module or the runtime began closing before it resolved.
+        TimedOut, ///< It outlived the bound (the runtime's request timeout plus a margin).
+    };
+
     /**
      * @brief Seam over the module's writer, IndexerClientSyncAdapter (built on indexer_client).
      *
@@ -166,6 +174,32 @@ namespace invsync::indexer
         /// @brief Drops what is staged and not yet sent, and the session ranges, after the caller
         ///        already answered those sessions (the poisoned-batch path). Default: nothing to drop.
         virtual void discard() {}
+
+        /**
+         * @brief Waits, bounded, for a write this connector gave up on -- a chunk a failed flush() or discard()
+         *        cancelled while its `_bulk` was already on the wire -- before its caller lets another connector
+         *        touch the same agent.
+         *
+         * cancel() cannot stop a request in flight, and the barrier of a by-query only waits for the writes of
+         * its OWN connector: without this wait, a delete-by-query of another worker could reach the indexer first
+         * and the late `_bulk` bring back documents it had just deleted. Called after discard().
+         * Default: nothing is ever left on the wire.
+         */
+        virtual AbandonedWrite settleAbandoned()
+        {
+            return AbandonedWrite::Settled;
+        }
+
+        /**
+         * @brief Non-blocking: whether a chunk this connector gave up on may still be applied by the indexer (its
+         *        `_bulk` is unresolved and the module is not closing). The pipeline keeps the agents of a failed
+         *        batch held in the cross-lane registry while this is true, so the scan lane (another connector)
+         *        cannot write their documents underneath it. Default: never.
+         */
+        virtual bool holdsAbandonedWrite()
+        {
+            return false;
+        }
     };
 
 } // namespace invsync::indexer

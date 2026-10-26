@@ -239,7 +239,7 @@ target_link_libraries(builder_benchmark
     benchmark::benchmark_main
 )
 
-# Stage benchmark of the indexer output, v1 against v2 (plan 18, E10b, I198; a diagnostic since I208)
+# Stage benchmark of the indexer output (plan 18, E10b, I198; a diagnostic since I208)
 add_subdirectory(benchmark)
 
 endif(ENGINE_BUILD_BENCHMARK)

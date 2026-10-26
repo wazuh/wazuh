@@ -49,8 +49,8 @@ Every hop is HTTP/1.1. Remoted relays only the agent-facing routes (`POST /state
 downstream route to them, by design. `/stats` and `/config` index one document per agent: the handler
 `post`s it to the `agent-state` bucket of the module's `indexer_client` `Client`, an **ordered** bucket
 (operations on the same document id are never in flight together, and the per-agent order is the order
-of arrival). Neither this module nor the vulnerability scanner links the previous [`indexer_connector`](../indexer_connector/README.md)
-library (see the [Indexer Client](../indexer_client/README.md)); it holds one `Client` with two buckets, `inventory` for the
+of arrival). Neither this module nor the vulnerability scanner links the previous v1 connector library
+(see the [Indexer Client](../indexer_client/README.md)); it holds one `Client` with two buckets, `inventory` for the
 ingestion pipeline and the VD lane and `agent-state` for `/stats`, `/config` and the by-id deletes.
 
 `/stats` and `/config` answer `200` when the bucket **accepted** the report (it is then buffered and
@@ -122,7 +122,7 @@ What runs where, and what it can block:
 
 ## The sync pipeline
 
-`SyncPipeline` (`src/wazuh_modules/inventory_sync_server/src/sync/`) owns N workers, each with its own private `IndexerConnectorSync`. A
+`SyncPipeline` (`src/wazuh_modules/inventory_sync_server/src/sync/`) owns N workers, each with its own private indexer adapter over the `Client`. A
 session lands on `hash(agentId) % N`, which makes **per-agent ordering a property of the
 topology** instead of a lock: two requests of the same agent — a cleans and the delta that
 re-populates it, a delta and its checksum — are applied in arrival order because they traverse
@@ -230,6 +230,7 @@ The gates, in order:
 | `Start.feed_offset` differs from this node's current feed offset (only while this node runs a scanner) | `409` `{"error":"version_mismatch","current_version":N}` | Counted as `vd.offset_mismatch.total`; the agent rebuilds the session against `current_version`. |
 | Scan succeeded | index + flush → `200` | The strong contract: 200 = scanned AND ingested. |
 | Scan threw | `500` `{"error":"vulnerability scan failed","code":500}` | Zero documents indexed; the agent retries next cycle and the re-POST redoes both halves. |
+| Scan succeeded, indexing failed (staging or flush) | by cause: `503` or `500` ([failure table](#failure-causes-and-http-answers)) | What was staged is dropped and the re-POST redoes the session. The agent is answered at once but stays held until a `_bulk` the failure cancelled while it was already on the wire has resolved — at most the runtime's request timeout + 5 s, less if the module closes; a WARN says when it gives up. Released earlier, a delete-by-query of the same agent on the pipeline could reach the indexer first and the late write bring the deleted documents back. |
 | Scan legitimately skipped (scanner disabled, or enabled but failed to start) | index + `200` | Inventory must keep flowing even with the scanner off or broken. |
 | VD session on a node running no scanner | admitted with no version check, then index + `200` | With no scanner there is no feed version to disagree about, and an agent still carrying an offset from before the module was disabled would otherwise be rejected on every cycle, forever. A scanner that is enabled here but still starting is answered `503` above instead, so packages and vulnerabilities keep going together whenever the module is up. |
 | Shutdown | `503` to everything queued | The lane joins its workers; a scan in flight finishes (there is no cancellation point inside the scanner). |
@@ -242,7 +243,10 @@ Two pieces coordinate the lane with the rest of the system:
   shard's other agents), and the lane will not start a second scan for an agent that already has
   one running. Pipeline holds are reentrant (group commit holds several staged sessions of one
   agent at once); lane holds are not. Releases are lane-checked, so one lane can never free the
-  other's hold.
+  other's hold. When a pipeline batch fails with a `_bulk` still on the wire, the pipeline answers
+  at once but keeps the agent held (at most the runtime's request timeout + 5 s, a WARN if it gives
+  up): its shard keeps serving every agent, and the scan lane parks that agent's VD sessions instead
+  of writing its documents under the late write.
 - **The scan coordinator** (`src/wazuh_modules/inventory_sync_server/src/vd/serverScanCoordinator.hpp`)
   registers with the scanner's coordination registry so a feed-update rescan (per-agent, on-demand
   via `/scan/vd`, or the master-only sweep over disconnected agents — see

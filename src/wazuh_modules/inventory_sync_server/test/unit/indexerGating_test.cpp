@@ -377,6 +377,60 @@ TEST_F(IndexerGatingTest, HealthLogFromClient)
         << "recovery must be as visible as the outage";
 }
 
+/// A3 (E12 A/B): every node is born Down with no reason until the Client's first probe round (I190b). A heartbeat
+/// that lands before that round must not log "unreachable" -- the indexer is not known yet -- and must not latch
+/// the state, so the first heartbeat after the round still logs the real one, whichever it is.
+TEST_F(IndexerGatingTest, HealthLogIsSilentBeforeTheFirstProbeRound)
+{
+    auto events = invsync::test::installAlwaysAvailableFakeIndexers();
+    events->m_clientUsable.store(false);
+    events->m_clientProbed.store(false);
+
+    const auto path = uniqueSocketPath("health-unprobed");
+    const auto config = makeConfig(path);
+
+    inventory_sync_server_start(testLogCallback, &config);
+    ASSERT_TRUE(LogRecorder::waitForMessageContaining("listening on"));
+
+    // The worker's own first heartbeat follows the startup that logged "listening on" and sees the same unprobed
+    // node; this poll stands in for it deterministically.
+    invsync::test_hooks::pollIndexerHealthForTests();
+    EXPECT_FALSE(LogRecorder::sawMessageContaining("No configured indexer host"));
+    EXPECT_FALSE(LogRecorder::sawMessageContaining("indexer is reachable"));
+
+    // The round ends with the node usable: the first state logged is "reachable", with no outage before it.
+    events->m_clientUsable.store(true);
+    events->m_clientProbed.store(true);
+    invsync::test_hooks::pollIndexerHealthForTests();
+    ASSERT_TRUE(LogRecorder::waitForMessageContaining("indexer is reachable"));
+    EXPECT_FALSE(LogRecorder::sawMessageContaining("No configured indexer host"));
+
+    inventory_sync_server_stop();
+}
+
+/// The other outcome of the first round: Down WITH a reason is a real outage and is logged at once.
+TEST_F(IndexerGatingTest, HealthLogReportsUnreachableOnceTheFirstRoundFails)
+{
+    auto events = invsync::test::installAlwaysAvailableFakeIndexers();
+    events->m_clientUsable.store(false);
+    events->m_clientProbed.store(false);
+
+    const auto path = uniqueSocketPath("health-down");
+    const auto config = makeConfig(path);
+
+    inventory_sync_server_start(testLogCallback, &config);
+    ASSERT_TRUE(LogRecorder::waitForMessageContaining("listening on"));
+    invsync::test_hooks::pollIndexerHealthForTests();
+    EXPECT_FALSE(LogRecorder::sawMessageContaining("No configured indexer host"));
+
+    events->m_clientProbed.store(true);
+    invsync::test_hooks::pollIndexerHealthForTests();
+    ASSERT_TRUE(LogRecorder::waitForMessageContaining("No configured indexer host is currently reachable"));
+    EXPECT_FALSE(LogRecorder::sawMessageContaining("indexer is reachable"));
+
+    inventory_sync_server_stop();
+}
+
 TEST_F(IndexerGatingTest, OneHeartbeatProducesExactlyOneFailedAttempt)
 {
     invsync::test::installFakeIndexersWithFailingSync("simulated sync failure");

@@ -921,8 +921,9 @@ TEST(SyncPipelineTest, ByIdDeadlineCancelsHeldDeletes)
     EXPECT_EQ(1U, fixture.real.bulk->received().size()) << "the cancelled deletes must not be resent";
 }
 
-/// A 404 that is NOT index_not_found_exception is a failure of the by-id half, never a success (I135 class).
-TEST(SyncPipelineTest, ByIdOther404Is503)
+/// A 404 that is NOT index_not_found_exception is a failure of the by-id half, never a success: a permanent item
+/// failure (ItemPermanent -> DocumentRejected), so 500 by the I135 table.
+TEST(SyncPipelineTest, ByIdOther404Is500)
 {
     ByIdPipeline fixture;
     fixture.real.bulk->setDefault(BulkScript::all(BulkItem::failed(404, "document_missing_exception")));
@@ -930,7 +931,7 @@ TEST(SyncPipelineTest, ByIdOther404Is503)
 
     const auto response = fixture.deleteAgent("007")->get();
 
-    EXPECT_TRUE(response.status == 503 || response.status == 500) << response.status << " " << response.body;
+    EXPECT_EQ(500, response.status) << response.body;
     EXPECT_EQ(0U, fixture.notedAgents()) << "a failed deletion is not handed to the sweeper";
 }
 

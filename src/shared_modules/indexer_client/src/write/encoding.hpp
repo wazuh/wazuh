@@ -30,7 +30,7 @@
 
 namespace indexer_client::detail::write
 {
-    /// The v1 allowlist for index names (indexer_connector/src/indexerConnectorSyncImpl.hpp:72-88).
+    /// The v1 allowlist for index names (indexerConnectorSyncImpl.hpp:72-88; the v1 was removed in 5.x).
     bool isSafeIndexName(std::string_view index) noexcept;
 
     /// Upper bound of ConflictPolicy::retryOnConflict (I73), for the op's policy and the bucket's.

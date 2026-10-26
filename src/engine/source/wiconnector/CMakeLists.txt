@@ -20,8 +20,6 @@ target_include_directories(wIndexerConnector_wIndexerConnector
     PUBLIC
     ${INC_DIR}
     PRIVATE
-    # Keystore::get comes from libindexer_connector.so until E11 (I191, D101): only the header, never the static
-    # library, which would define Log::GLOBAL_LOG_FUNCTION a second time.
     ${SHARED_MODULES}/keystore/include
 )
 target_link_libraries(wIndexerConnector_wIndexerConnector
@@ -30,8 +28,9 @@ target_link_libraries(wIndexerConnector_wIndexerConnector
     wIndexerConnector::iwIndexerConnector
     indexer_client
     PRIVATE
-    # The v1 only for Keystore::get (exported by its .so) and IndexerConnectorException, until E11 (D101).
-    indexer_connector
+    # Keystore::get (D101): keystore_core is keystore without its Log::GLOBAL_LOG_FUNCTION, which the engine defines
+    # (base) and assigns, so the keystore logs reach the engine's sink.
+    keystore_core
 )
 add_library(wIndexerConnector::wIndexerConnector ALIAS wIndexerConnector_wIndexerConnector)
 
@@ -59,8 +58,6 @@ target_link_libraries(wIndexerConnector_utest
     GTest::gmock
     wIndexerConnector::wIndexerConnector
     wIndexerConnector::mocks
-    # IndexerConnectorException, which the remote configuration read throws (D101).
-    indexer_connector
 )
 # The client library's mocks and its in-process fake indexer (header-only, written on cpp-httplib, whose include
 # directory the engine already adds).

@@ -151,7 +151,6 @@ agent's documents). The situations an operator will recognize:
 - [Indexer Client](../indexer_client/README.md) - the library this module reaches the indexer through, in
   the runtime modulesd owns, configured by the
   [`indexer_client_*` options](../indexer_client/configuration.md#the-wazuh_modulesindexer_client_-family).
-  The previous [Indexer Connector](../indexer_connector/README.md) is no longer used by this module.
 
 ## Development
 

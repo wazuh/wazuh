@@ -16,17 +16,14 @@
 # load never fell to load1 <= 2, 5 a mode stayed unreliable after its repetition (the summary still says so).
 #
 # --suite submit (E6c, RNF-2, I119; E6d, I123; the transport suite above is the default and does not change): the
-# submit microbenchmark (indexer_client_bench_submit), v1 against v2 with two v2 APIs (column `api` of the rows).
+# submit microbenchmark (indexer_client_bench_submit) of the v2 write path with two APIs (column `api` of the rows).
 # api=post: P = 1, 4, 8 x cb none (handover move). api=submit: P = 1, 4, 8 x cb none (move), P = 1 x cb noop and
-# P = 1 x handover view (the five rows of E6c); E6e (D) adds api=post P = 1 and P = 8 with --indices 2 (the ops
-# alternate between two indices, as the engine's raw and events; gate=info). Per row 5 pairs v1/v2 alternating which
-# side goes first, ratio = ns_per_op v2/v1 (lower is better). The gate (CA-E6c-8, I119) is only on api=post, P = 1 and
-# P = 8 with one index: median <= 1.05 passes, (1.00, 1.05] is grey; P = 4, the --indices 2 rows and every api=submit
-# row are gate=info. IQR of the ratios > 0.04 or < 4 valid
-# pairs => the row is repeated once. At P = 8 a grey or failing clock ratio is settled by the median cpu_ns_per_op
-# ratio (noted in the summary). The final exit code (6) looks only at api=post. --cpus pins every row, --cpus-p8 the
-# P = 8 rows (default --cpus; both default none). --selfcheck: 1 pair per row with --events 20000; exit 0 only when
-# every sample is valid. Extra exit code: 6 a gate failed.
+# P = 1 x handover view; E6e (D) adds api=post P = 1 and P = 8 with --indices 2 (the ops alternate between two indices,
+# as the engine's raw and events). Per row 5 runs: median and IQR of ns_per_op and the median of cpu_ns_per_op. IQR >
+# 0.04 of the median or < 4 valid runs => the row is repeated once. There is no gate: the v1 side (and the ratio to it)
+# was removed with the v1 library (E11d, I221); the number measured with the v1 connector library is kept in the README. --cpus pins
+# every row, --cpus-p8 the P = 8 rows (default --cpus; both default none). --selfcheck: 1 run per row with --events
+# 20000; exit 0 only when every sample is valid.
 set -u
 
 usage() {
@@ -143,9 +140,9 @@ wait_load() { # wait_load <mode>: refuse to start a mode while load1 > LOAD_MAX 
 if [ "$SUITE" = submit ]; then
   if [ "$CPUS_P8" = none ]; then PIN8=(); else PIN8=(taskset -c "$CPUS_P8"); fi
   # The BENCH_SUBMIT_* overrides exist only to exercise this script quickly (written to the log).
-  SUBMIT_PAIRS=${BENCH_SUBMIT_PAIRS:-5} SUBMIT_EVENTS=${BENCH_SUBMIT_EVENTS:-200000}
-  [ $SELFCHECK -eq 1 ] && SUBMIT_PAIRS=1 SUBMIT_EVENTS=20000
-  log "# run.sh --suite submit $(date -u +%FT%TZ) selfcheck=$SELFCHECK pairs=$SUBMIT_PAIRS events=$SUBMIT_EVENTS cpus=$CPUS cpus_p8=$CPUS_P8"
+  SUBMIT_RUNS=${BENCH_SUBMIT_RUNS:-5} SUBMIT_EVENTS=${BENCH_SUBMIT_EVENTS:-200000}
+  [ $SELFCHECK -eq 1 ] && SUBMIT_RUNS=1 SUBMIT_EVENTS=20000
+  log "# run.sh --suite submit $(date -u +%FT%TZ) selfcheck=$SELFCHECK runs=$SUBMIT_RUNS events=$SUBMIT_EVENTS cpus=$CPUS cpus_p8=$CPUS_P8"
   log "# host: $(lscpu | sed -n 's/^Model name: *//p' | head -1); nproc $(nproc)"
   for c in /sys/devices/system/cpu/cpu[0-9]*/cpufreq/scaling_governor; do cat "$c"; done 2>/dev/null | sort | uniq -c |
     sed 's/^ */# governor: /' | tee -a "$LOG"
@@ -173,8 +170,8 @@ if [ "$SUITE" = submit ]; then
     fi
     echo "$row" >>"$CSV"
     SVALID=$(echo "$row" | awk -F, '{print $NF}')
-    SNS=$(echo "$row" | cut -d, -f8)
-    SCPU=$(echo "$row" | cut -d, -f9)
+    SNS=$(echo "$row" | cut -d, -f7)
+    SCPU=$(echo "$row" | cut -d, -f8)
     got=$(sed -n 's/.* wazuhext_sha256=\([0-9a-f]*\).*/\1/p' "$out" | head -1)
     if [ -n "$WANT_SHA" ] && [ "$got" != "$WANT_SHA" ]; then
       log "!! $label: loaded libwazuhext $got, expected $WANT_SHA: refusing to measure"
@@ -182,54 +179,44 @@ if [ "$SUITE" = submit ]; then
     fi
   }
 
-  # submit_attempt <api> <P> <cb> <handover> <pairs> <tag> <indices>: sets SSTATS ("median iqr valid cpu_v1 cpu_v2
-  # cpu_ratio").
+  # submit_attempt <api> <P> <cb> <handover> <runs> <tag> <indices>: sets SSTATS ("median iqr valid cpu_median").
   submit_attempt() {
-    local api=$1 p=$2 cb=$3 ho=$4 pairs=$5 tag=$6 ix=$7 i side ok1 ok2 n1 n2 c1 c2 ratios="" cratios="" cpu1="" cpu2=""
-    for i in $(seq 1 "$pairs"); do
-      if [ $((i % 2)) -eq 1 ]; then order="v1 v2"; else order="v2 v1"; fi
-      for side in $order; do
-        run_submit "$tag api=$api P=$p cb=$cb $ho indices=$ix pair $i $side" "$p" --side $side --api "$api" --cb "$cb" \
-          --handover "$ho" --events "$SUBMIT_EVENTS" --pair "$i" --indices "$ix"
-        if [ $side = v1 ]; then ok1=$SVALID n1=$SNS c1=$SCPU; else ok2=$SVALID n2=$SNS c2=$SCPU; fi
-      done
-      if [ "$ok1" = 1 ] && [ "$ok2" = 1 ]; then
-        r=$(awk -v a="$n1" -v b="$n2" 'BEGIN{printf "%.6f", (a>0)?b/a:0}')
-        cr=$(awk -v a="$c1" -v b="$c2" 'BEGIN{printf "%.6f", (a>0)?b/a:0}')
-        ratios="$ratios $r" cratios="$cratios $cr" cpu1="$cpu1 $c1" cpu2="$cpu2 $c2"
-        log "# $tag api=$api P=$p cb=$cb $ho pair $i: v1 $n1 ns/op, v2 $n2 ns/op, ratio $r (cpu $c1 / $c2, ratio $cr)"
+    local api=$1 p=$2 cb=$3 ho=$4 runs=$5 tag=$6 ix=$7 i nss="" cpus_=""
+    for i in $(seq 1 "$runs"); do
+      run_submit "$tag api=$api P=$p cb=$cb $ho indices=$ix run $i" "$p" --api "$api" --cb "$cb" \
+        --handover "$ho" --events "$SUBMIT_EVENTS" --pair "$i" --indices "$ix"
+      if [ "$SVALID" = 1 ]; then
+        nss="$nss $SNS" cpus_="$cpus_ $SCPU"
+        log "# $tag api=$api P=$p cb=$cb $ho run $i: $SNS ns/op, $SCPU cpu ns/op"
       else
-        log "# $tag api=$api P=$p cb=$cb $ho pair $i: annulled (v1 valid=$ok1, v2 valid=$ok2)"
+        log "# $tag api=$api P=$p cb=$cb $ho run $i: annulled (invalid)"
       fi
     done
     SSTATS=$(python3 -I -c '
 import statistics, sys
-lists = [[float(x) for x in a.split()] for a in sys.argv[1:5]]
-r, c1, c2, cr = lists
-if not r:
-    print("0.000 0.000 0 0.0 0.0 0.000"); sys.exit()
-q = statistics.quantiles(r, n=4, method="inclusive") if len(r) >= 2 else [r[0], r[0], r[0]]
-print("%.3f %.3f %d %.1f %.1f %.3f" % (statistics.median(r), q[2] - q[0], len(r), statistics.median(c1),
-                                       statistics.median(c2), statistics.median(cr)))
-' "$ratios" "$cpu1" "$cpu2" "$cratios")
+n, c = [[float(x) for x in a.split()] for a in sys.argv[1:3]]
+if not n:
+    print("0.0 0.0 0 0.0"); sys.exit()
+q = statistics.quantiles(n, n=4, method="inclusive") if len(n) >= 2 else [n[0], n[0], n[0]]
+print("%.1f %.1f %d %.1f" % (statistics.median(n), q[2] - q[0], len(n), statistics.median(c)))
+' "$nss" "$cpus_")
     [ -n "$SSTATS" ] || { log "!! python3 missing or failed: cannot compute the medians"; exit 2; }
-    log "# $tag api=$api P=$p cb=$cb $ho: ratios [${ratios# }] => median iqr valid cpu_v1 cpu_v2 cpu_ratio = $SSTATS"
+    log "# $tag api=$api P=$p cb=$cb $ho: ns/op [${nss# }] => median iqr valid cpu_median = $SSTATS"
   }
 
   ok=1
-  for spec in "post 1 none move gate" "post 4 none move info" "post 8 none move gate" \
-    "submit 1 none move info" "submit 4 none move info" "submit 8 none move info" "submit 1 noop move info" \
-    "submit 1 none view info" "post 1 none move info 2" "post 8 none move info 2"; do
-    read -r api p cb ho kind ix <<<"$spec"
+  for spec in "post 1 none move" "post 4 none move" "post 8 none move" \
+    "submit 1 none move" "submit 4 none move" "submit 8 none move" "submit 1 noop move" \
+    "submit 1 none view" "post 1 none move 2" "post 8 none move 2"; do
+    read -r api p cb ho ix <<<"$spec"
     ix=${ix:-1}
     [ $SELFCHECK -eq 1 ] || wait_load "submit api=$api P=$p cb=$cb $ho"
     repeated=0 tag=submit
     while :; do
-      submit_attempt "$api" "$p" "$cb" "$ho" "$SUBMIT_PAIRS" "$tag" "$ix"
-      read -r med iqr vp cpu1 cpu2 cratio <<<"$SSTATS"
+      submit_attempt "$api" "$p" "$cb" "$ho" "$SUBMIT_RUNS" "$tag" "$ix"
+      read -r med iqr vp cpum <<<"$SSTATS"
       reliable=yes
-      # IQR relative to the median (the ratios of this suite may be far from 1; E6c G-diff obj. 5).
-      awk -v q="$iqr" -v m="$med" -v n="$vp" -v want="$SUBMIT_PAIRS" 'BEGIN{exit !((m>0 ? q/m : 1)>0.04 || n<(want<4?want:4))}' && reliable=no
+      awk -v q="$iqr" -v m="$med" -v n="$vp" -v want="$SUBMIT_RUNS" 'BEGIN{exit !((m>0 ? q/m : 1)>0.04 || n<(want<4?want:4))}' && reliable=no
       if [ $reliable = no ] && [ $repeated -eq 0 ] && [ $SELFCHECK -eq 0 ]; then
         log "# submit api=$api P=$p cb=$cb $ho: unreliable (iqr $iqr, valid $vp): repeating once"
         repeated=1 tag=submit-repeat
@@ -238,24 +225,9 @@ print("%.3f %.3f %d %.1f %.1f %.3f" % (statistics.median(r), q[2] - q[0], len(r)
       fi
       break
     done
-    if [ $SELFCHECK -eq 1 ] && [ "$vp" != "$SUBMIT_PAIRS" ]; then ok=0; fi
-    gate=info
-    if [ "$kind" = gate ] && [ $SELFCHECK -eq 0 ] && [ "$vp" -eq 0 ]; then
-      gate=invalid # No valid pair: nothing was measured (E6c G-diff obj. 1).
-      RC=6
-    elif [ "$kind" = gate ] && [ $SELFCHECK -eq 0 ]; then
-      gate=$(awk -v m="$med" 'BEGIN{print (m<=1.00) ? "pass" : (m<=1.05) ? "grey" : "fail"}')
-      if [ "$p" = 8 ] && [ "$gate" != pass ]; then
-        tie=$(awk -v m="$cratio" 'BEGIN{print (m<=1.05) ? "pass" : "fail"}')
-        log "# submit api=$api P=8: clock ratio $med is $gate; tie-break by cpu_ns_per_op ratio $cratio => $tie"
-        gate="$gate,cpu_tiebreak=$tie"
-        [ "$tie" = pass ] || RC=6
-      elif [ "$gate" = fail ]; then
-        RC=6
-      fi
-    fi
+    if [ $SELFCHECK -eq 1 ] && [ "$vp" != "$SUBMIT_RUNS" ]; then ok=0; fi
     [ $reliable = yes ] || { [ $RC -eq 0 ] && RC=5; }
-    echo "SUBMIT_ROW,api=$api,producers=$p,cb=$cb,handover=$ho,indices=$ix,median=$med,iqr=$iqr,valid_pairs=$vp,pairs=$SUBMIT_PAIRS,cpu_v1=$cpu1,cpu_v2=$cpu2,cpu_ratio=$cratio,reliable=$reliable,gate=$gate" >>"$SUM"
+    echo "SUBMIT_ROW,api=$api,producers=$p,cb=$cb,handover=$ho,indices=$ix,median_ns=$med,iqr_ns=$iqr,valid_runs=$vp,runs=$SUBMIT_RUNS,cpu_median_ns=$cpum,reliable=$reliable" >>"$SUM"
   done
   log "# load at the end $(cut -d' ' -f1-3 /proc/loadavg)"
   if [ $SELFCHECK -eq 1 ]; then

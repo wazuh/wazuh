@@ -1663,14 +1663,6 @@ InstallServer()
         fi
     fi
 
-    if [ -f build/lib/libindexer_connector.so ]
-    then
-        ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} build/lib/libindexer_connector.so ${INSTALLDIR}/lib
-
-        if ([ "X${DIST_NAME}" = "Xrhel" ] || [ "X${DIST_NAME}" = "Xcentos" ] || [ "X${DIST_NAME}" = "XCentOS" ]); then
-            chcon -t textrel_shlib_t ${INSTALLDIR}/lib/libindexer_connector.so
-        fi
-    fi
     if [ -f build/lib/libindexer_client.so ]
     then
         ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} build/lib/libindexer_client.so ${INSTALLDIR}/lib

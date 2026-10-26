@@ -258,6 +258,9 @@ namespace invsync::test
         /// What the fake Client's health() reports: one node, Available (true) or Down (false). Lets a test
         /// drive the endpoints' 503 gate and the facade's health log without a network.
         std::atomic<bool> m_clientUsable {true};
+        /// Whether the fake Client's first probe round is over. While false a Down node carries no reason, as a
+        /// real node does before the first round (I190b); once true a Down node says why.
+        std::atomic<bool> m_clientProbed {true};
         /// The bucket specs each fake Client was built with, in build order. Guarded by m_mutex.
         std::vector<std::vector<indexer_client::BucketSpec>> m_clientBucketSpecs;
         /// What the fake Client hands out: the two buckets' writers (null for any other name) and the query.
@@ -292,6 +295,14 @@ namespace invsync::test
         /// Times flush() was ENTERED (before the gate/injection). A test polls this to know a
         /// worker is parked at the closed gate before queueing more work behind it.
         std::atomic<int> m_flushEntered {0};
+        /// While true, the sync fake's settleAbandoned() BLOCKS until openSettleGate(): the abandoned chunk is
+        /// still on the wire. m_settleEntered counts the calls; m_settleResult is what it answers.
+        bool m_settleGateClosed {false};
+        std::condition_variable m_settleGateCv;
+        std::atomic<int> m_settleEntered {0};
+        std::atomic<invsync::indexer::AbandonedWrite> m_settleResult {invsync::indexer::AbandonedWrite::Settled};
+        /// What the sync fake's holdsAbandonedWrite() answers: an abandoned `_bulk` still on the wire.
+        std::atomic<bool> m_holdsAbandonedWrite {false};
         /// What the VD scanner fake reports from feedReady() (D17 gates).
         std::atomic<bool> m_vdFeedReady {true};
         /// When true, the scanner fake's scan() reports a legitimate skip instead of running.
@@ -408,6 +419,28 @@ namespace invsync::test
             m_flushEntered.fetch_add(1);
             std::unique_lock<std::mutex> lock(m_mutex);
             m_flushGateCv.wait(lock, [this] { return !m_flushGateClosed; });
+        }
+
+        void closeSettleGate()
+        {
+            std::lock_guard<std::mutex> lock(m_mutex);
+            m_settleGateClosed = true;
+        }
+
+        void openSettleGate()
+        {
+            {
+                std::lock_guard<std::mutex> lock(m_mutex);
+                m_settleGateClosed = false;
+            }
+            m_settleGateCv.notify_all();
+        }
+
+        void waitAtSettleGate()
+        {
+            m_settleEntered.fetch_add(1);
+            std::unique_lock<std::mutex> lock(m_mutex);
+            m_settleGateCv.wait(lock, [this] { return !m_settleGateClosed; });
         }
 
         void closeScanGate()
@@ -571,6 +604,21 @@ namespace invsync::test
             }
         }
 
+        invsync::indexer::AbandonedWrite settleAbandoned() override
+        {
+            if (!m_events)
+            {
+                return invsync::indexer::AbandonedWrite::Settled;
+            }
+            m_events->waitAtSettleGate();
+            return m_events->m_settleResult.load();
+        }
+
+        bool holdsAbandonedWrite() override
+        {
+            return m_events && m_events->m_holdsAbandonedWrite.load();
+        }
+
     private:
         std::shared_ptr<ConnectorEvents> m_events;
         const char* m_name;
@@ -624,6 +672,10 @@ namespace invsync::test
             node.url = "http://127.0.0.1:9200";
             node.state = m_events->m_clientUsable.load() ? indexer_client::HealthView::NodeState::Available
                                                          : indexer_client::HealthView::NodeState::Down;
+            if (node.state == indexer_client::HealthView::NodeState::Down && m_events->m_clientProbed.load())
+            {
+                node.reason = "ConnectFailed (curl 7)";
+            }
             view.nodes.push_back(std::move(node));
             return view;
         }

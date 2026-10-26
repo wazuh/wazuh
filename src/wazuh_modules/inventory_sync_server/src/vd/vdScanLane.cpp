@@ -251,6 +251,27 @@ namespace invsync::vd
         respond(item, failure.status, failure.body);
     }
 
+    void VdScanLane::settleAbandonedWrite(indexer::IIndexerConnectorSync& connector, const std::string& agentId)
+    {
+        auto result = indexer::AbandonedWrite::Settled;
+        try
+        {
+            result = connector.settleAbandoned();
+        }
+        catch (...) // LCOV_EXCL_LINE -- the adapter answers through its ticket; never let it escape.
+        {
+        }
+        if (result != indexer::AbandonedWrite::Settled)
+        {
+            LOGFN_WARN(logFn(),
+                       "The indexing of agent %s was abandoned with a write still unresolved (%s); the agent is "
+                       "released and a late write of that session may still be applied by the indexer.",
+                       agentId.c_str(),
+                       result == indexer::AbandonedWrite::Closing ? "the module is closing"
+                                                                  : "past the request timeout");
+        }
+    }
+
     void VdScanLane::workerLoop(std::size_t index)
     {
         auto& connector = *m_connectors[index];
@@ -520,6 +541,11 @@ namespace invsync::vd
                 // Same contract as the feed-not-ready path above: the reset keeps finish(0, "")
                 // from counting a bogus sync.requests.total.other / duplicate lane-time sample.
                 item.responder.reset();
+                // Answered already; the agent stays held until a chunk the failure cancelled with its
+                // `_bulk` on the wire has resolved. Released now, a pipeline worker (another connector,
+                // whose barrier cannot see this one) could run the agent's delete-by-query first and the
+                // late `_bulk` bring the deleted documents back. Bounded by one request; cut by closing.
+                settleAbandonedWrite(connector, item.session.agentId);
                 finish(0, "");
             }
         }
