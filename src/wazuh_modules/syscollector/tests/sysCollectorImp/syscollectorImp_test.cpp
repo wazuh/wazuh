@@ -10,6 +10,7 @@
 #include <algorithm>
 #include <atomic>
 #include <chrono>
+#include <condition_variable>
 #include <cstdio>
 #include <functional>
 #include <future>
@@ -5095,18 +5096,20 @@ TEST_F(SyscollectorImpTest, volatileCountersRefreshStateWithoutStatelessNoise)
 }
 
 // Rows stored by an agent that joined members with ':' must be reported again, split into one
-// element per member, on the first scan after the upgrade.
+// element per member, on the first scan after the agent restarts on the upgraded version.
 TEST_F(SyscollectorImpTest, colonJoinedMembersAreResentSplitAfterUpgrade)
 {
     const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
     EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
 
-    int groupsCallCount{0};
+    // Only read from the scan thread, and only switched while no instance is running.
+    bool upgraded{false};
+
     EXPECT_CALL(*spInfoWrapper, groups()).WillRepeatedly(testing::Invoke(
-                                                             [&groupsCallCount]()
+                                                             [&upgraded]()
     {
         auto data = nlohmann::json::parse(EXPECT_CALL_GROUPS_JSON);
-        data[0]["group_users"] = groupsCallCount++ == 0 ? "daemon:pollinate:vboxadd" : "daemon,pollinate,vboxadd";
+        data[0]["group_users"] = upgraded ? "daemon,pollinate,vboxadd" : "daemon:pollinate:vboxadd";
         // The shared fixture's nulls never match the stored row, so every scan would report a
         // change. Providers send UNKNOWN_VALUE (" ") for missing values.
         data[0]["group_description"] = " ";
@@ -5114,12 +5117,11 @@ TEST_F(SyscollectorImpTest, colonJoinedMembersAreResentSplitAfterUpgrade)
         return data;
     }));
 
-    int usersCallCount{0};
     EXPECT_CALL(*spInfoWrapper, users()).WillRepeatedly(testing::Invoke(
-                                                            [&usersCallCount]()
+                                                            [&upgraded]()
     {
         auto data = nlohmann::json::parse(EXPECT_CALL_USERS_JSON);
-        data[0]["user_groups"] = usersCallCount++ == 0 ? "root:adm:sudo" : "root,adm,sudo";
+        data[0]["user_groups"] = upgraded ? "root,adm,sudo" : "root:adm:sudo";
         // Same for the shared fixture's nulls and for values whose type differs from their column:
         // use what the providers send, so only user_groups differs between scans.
         data[0]["user_type"] = " ";
@@ -5142,15 +5144,19 @@ TEST_F(SyscollectorImpTest, colonJoinedMembersAreResentSplitAfterUpgrade)
     EXPECT_CALL(*spInfoWrapper, browserExtensions()).Times(0);
 
     std::mutex eventsMutex;
+    std::condition_variable eventsCv;
     std::map<std::string, std::vector<nlohmann::json>> stateful;
     std::map<std::string, std::vector<nlohmann::json>> stateless;
 
     std::function<void(const std::string&, Operation_t, const std::string&, const std::string&, uint64_t)> callbackDataPersist
     {
-        [&eventsMutex, &stateful](const std::string&, Operation_t, const std::string & index, const std::string & data, uint64_t)
+        [&eventsMutex, &eventsCv, &stateful](const std::string&, Operation_t, const std::string & index, const std::string & data, uint64_t)
         {
-            std::lock_guard<std::mutex> lock{eventsMutex};
-            stateful[index].push_back(nlohmann::json::parse(data));
+            {
+                std::lock_guard<std::mutex> lock{eventsMutex};
+                stateful[index].push_back(nlohmann::json::parse(data));
+            }
+            eventsCv.notify_all();
         }
     };
 
@@ -5164,36 +5170,52 @@ TEST_F(SyscollectorImpTest, colonJoinedMembersAreResentSplitAfterUpgrade)
         }
     };
 
-    std::thread t
+    // One agent run on the on-disk database: a single scan (the interval is never reached), then
+    // stop once both documents of that scan are persisted.
+    const auto runAgent
     {
-        [&spInfoWrapper, &callbackDataDelta, &callbackDataPersist]()
+        [&](size_t expectedDocs)
         {
-            Syscollector::instance().init(spInfoWrapper,
-                                          callbackDataDelta,
-                                          callbackDataPersist,
-                                          logFunction,
-                                          SYSCOLLECTOR_DB_PATH,
-                                          "",
-                                          "",
-                                          1, true, false, false, false, false, false, false, false, false, true, true, false, false, false);
+            std::thread t
+            {
+                [&spInfoWrapper, &callbackDataDelta, &callbackDataPersist]()
+                {
+                    Syscollector::instance().init(spInfoWrapper,
+                                                  callbackDataDelta,
+                                                  callbackDataPersist,
+                                                  logFunction,
+                                                  SYSCOLLECTOR_TEST_DB_PATH,
+                                                  "",
+                                                  "",
+                                                  3600, true, false, false, false, false, false, false, false, false, true, true, false, false, false);
 
-            Syscollector::instance().start();
+                    Syscollector::instance().start();
+                }
+            };
+
+            {
+                std::unique_lock<std::mutex> lock{eventsMutex};
+                eventsCv.wait_for(lock, std::chrono::seconds(30), [&stateful, expectedDocs]()
+                {
+                    return stateful["wazuh-states-inventory-groups"].size() >= expectedDocs &&
+                           stateful["wazuh-states-inventory-users"].size() >= expectedDocs;
+                });
+            }
+
+            Syscollector::instance().destroy();
+
+            if (t.joinable())
+            {
+                t.join();
+            }
         }
     };
 
-    // interval=1s: the first scan stores the legacy values, the following ones report the new format.
-    std::this_thread::sleep_for(std::chrono::seconds(3));
-    Syscollector::instance().destroy();
+    runAgent(1);
+    upgraded = true;
+    runAgent(2);
 
-    if (t.joinable())
-    {
-        t.join();
-    }
-
-    ASSERT_GT(groupsCallCount, 1);
-    ASSERT_GT(usersCallCount, 1);
-
-    // One document for the first scan and one replacing it; later scans change nothing.
+    // One document from the run before the upgrade and one replacing it after the restart.
     const auto& groupDocs = stateful["wazuh-states-inventory-groups"];
     const auto& userDocs = stateful["wazuh-states-inventory-users"];
     ASSERT_EQ(groupDocs.size(), 2u);
@@ -5207,7 +5229,8 @@ TEST_F(SyscollectorImpTest, colonJoinedMembersAreResentSplitAfterUpgrade)
     EXPECT_EQ(userDocs[1]["user"]["groups"], R"(["root","adm","sudo"])"_json);
     EXPECT_NE(userDocs[0]["checksum"]["hash"]["sha1"], userDocs[1]["checksum"]["hash"]["sha1"]);
 
-    // notifyOnFirstScan is disabled, so the only stateless event is the change itself.
+    // notifyOnFirstScan is disabled, so the first run reports nothing, and the run after the restart
+    // reports the change itself.
     const auto& groupEvents = stateless["dbsync_groups"];
     const auto& userEvents = stateless["dbsync_users"];
     ASSERT_EQ(groupEvents.size(), 1u);
