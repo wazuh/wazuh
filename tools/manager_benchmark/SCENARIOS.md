@@ -25,6 +25,7 @@ These put one module's traffic on the socket in isolation — the cleanest read 
 | `syscollector_init_debian` / `syscollector_init_windows` | A syscollector first scan followed by a `ModuleCheck` checksum reconcile |
 | `checksum_reconcile` | The checksum path both ways: a `"correct"` checksum (matches what the agent sent) and a `"mismatch"` (forces a resync) |
 | `vd_first_then_sync_debian` / `vd_first_then_sync_windows` | The VD lane: a `VDFirst` first scan then a `VDSync` delta stream (the feed gate → scan lane path) |
+| `ab_drain_syscollector_debian` | The indexer A/B drain scenario for inventory sync: 32 Debian agents, a 2,000-package `full_resync` + checksum; `ab_indexer.sh` pauses the indexer while the sessions are in flight |
 | `dump_replay_syscollector_full_debian` | A large-dataset first scan + delta (bulk bytes, group commit). Despite the name it GENERATES 2000 synthetic documents — for real captured payloads see the `real_*` scenarios |
 | `mega_burst` | A big single fleet, unpaced, one delta lane — maximum session rate (retry off) |
 | `session_storm` | 50 agents replaying a one-document syscollector delta as fast as the manager answers, for a fixed 60 s, retry off — the sustained flood that makes the server shed (see the `contract_ramp_503` note below for what that shedding actually comes from) |
@@ -49,6 +50,7 @@ These put one module's traffic on the socket in isolation — the cleanest read 
 | `engine_header_shapes` (agent) | Stable H lines padded to 256 / 2048 / 8000 bytes next to one that changes every batch: the cost of the identity check and the engine metadata cache's update path |
 | `engine_cache_fleet` (agent) | 1000 enrolled agents × 1 event/s, one event per batch, each with the stable H line a real agent sends (`header.profile: agent`): fills the engine metadata cache through the full relay at a low total rate. Scale the fleet and divide the rate to keep 1000 events/s |
 | `engine_direct_flood` (uds) | 5000 distinct agent ids, one batch each, straight to the engine's `POST /events/enriched` (`--socket` = the engine ingest socket): the metadata cache's insertion path with no enrollment |
+| `ab_drain_engine` (agent) | The indexer A/B drain scenario for the engine: 25 agents × 4 passes of the syslog sample (100,000 events, sized to fit both 1 GiB queues; see the README); `ab_indexer.sh` pauses the indexer around it |
 
 ## Control (agent)
 

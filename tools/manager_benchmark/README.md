@@ -329,13 +329,128 @@ run exits. Pair it with `--keep-agents` so the documents survive after that too:
 | Script | What it does |
 |---|---|
 | `run_benchmark.sh` | Orchestrates one run end to end (monitor + sender + summary + charts) |
-| `prepare_manager.sh` | Makes remote enrollment reachable, mints the fleet's enrollment token and clears the two unauthenticated routes' rate limits (idempotent); `--open-1515` for the legacy bootstrap, `--keep-rate-limits` to benchmark the limiter |
+| `prepare_manager.sh` | Makes remote enrollment reachable, mints the fleet's enrollment token and clears the two unauthenticated routes' rate limits (idempotent); `--open-1515` for the legacy bootstrap, `--keep-rate-limits` to benchmark the limiter; `--save-side` / `--side` snapshot and restore a build for the A/B |
 | `scrape_metrics.sh` | Wrapper around `bench_collect.py`, the collector the monitor also runs — same loop, same validation, same lines. Only started automatically when the monitor cannot run (it needs psutil) |
 | `cleanup_agents.sh` | Deletes only `bench-*` agents via the Server API (never a real one); `--all` deletes every agent. Credentials come from `WAZUH_API_URL`, `WAZUH_API_USER` and `WAZUH_API_PASS` (or the published `WAZUH_MANAGER_API_PASSWORD`, see below); exits 1 when it cannot authenticate |
 | `indexer_control.sh` | Start/stop/health the local `wazuh-indexer`, by hand (no script calls it), e.g. to stop it during a run and observe the manager with the indexer down |
 | `result_summary.py` | Collates a run's artifacts into `summary.json` — every daemon's metric deltas, every process's resource aggregates, the scenario's verdict (descriptive only, no pass/fail) |
 | `run_matrix.sh` | Runs the whole matrix the load report is built from |
+| `ab_indexer.sh` | The indexer A/B (v1 against v2) in ABBA order, drain and fixed-rate scenarios; `--dry-run` prints the plan and touches nothing |
+| `indexer_ingest_probe.sh` | Samples `_count` and `_stats/indexing` per index pattern every second, from the indexer's side |
+| `ab_report.py` | `collect` (one run's `ab_metrics.json`) and `report` (medians, spread, v2/v1 ratio, verdict) |
 | `make_report_tables.py` | Turns the resulting `results_*/` into the report's tables |
+
+## A/B of the manager's indexer sender
+
+The manager's engine, inventory sync server and vulnerability scanner write to the indexer through
+one sender. The A/B asks whether the new one (**v2**, `indexer_client`) sends at least as well as the
+one it replaced (**v1**, `indexer_connector`): requirement RNF-3. It is wired here and run by hand,
+with the manager free (nothing else may build or measure while it runs).
+
+**Sides.** Each build is installed once (Release; v1 is the merge-base of the branch's final HEAD,
+re-fixed whenever the branch is rebased) and saved as a snapshot with
+`sudo ./prepare_manager.sh --save-side v1|v2`: a tar of `bin/`, `lib/` and the framework's
+`site-packages`, its file list, and the internal-options file as installed. `--side v1|v2` restores
+one **whole**: it stops the manager, deletes what the other side added, unpacks the tar, applies the
+side's internal-options (the snapshot's file plus `ab_options/<side>.conf`, which gives both sides the
+same queue capacity, so the comparison is of senders and not of queue sizes), runs
+`wazuh-manager-conf validate` and restarts. A partial swap crashes at startup, so there is no partial
+mode. The shared `/etc/wazuh-manager/wazuh-manager.conf` is not touched; prepare it once with
+`sudo ./prepare_manager.sh` for agent-mode scenarios.
+
+**Scenarios** (`./ab_indexer.sh --list`):
+
+| Name | Kind | Measures |
+|---|---|---|
+| `drain-engine` | drain | The indexer is paused (`docker pause`) for the whole run and resumed after it; the manager's backlog drains. Documents/s during the drain and seconds until the count stops growing, **from the indexer's `_count`** (`scenarios/ab_drain_engine.json`) |
+| `drain-syscollector` | drain | The indexer is paused while 32 agents' sessions are in flight, then resumed after `--pause-seconds`; sessions/s over the run (`scenarios/ab_drain_syscollector_debian.json`) |
+| `fixed-engine`, `fixed-syscollector`, `fixed-fim`, `fixed-vd` | fixed | The existing fixed-rate scenarios (`engine_fleet_load`, `syscollector_init_debian`, `fim_first_sync_ubuntu`, `vd_first_then_sync_debian`): latency, CPU and RSS as a no-regression check. Reported, **no verdict**: at a fixed offered load both sides sustain it and the ratio is 1 by construction |
+
+**Sizing the drain backlog.** `drain-engine` must not overflow either queue, or each side drains
+what *its* accounting kept and the run is `INCOMPARABLE`; and it must last several seconds, or the 1 s
+probe cannot measure it. Both sides get `analysisd.indexer_queue_max_bytes` = 1 GiB (`ab_options/*.conf`,
+1,073,741,824 B; v2 also raises `indexer_client_global_quota_bytes` to 2 GiB so the engine's `events`
+and `raw` buckets fit). v2 charges every event `payload + RESULT_RESERVE_BYTES` (2,048,
+`src/shared_modules/indexer_client/src/write/bucket.hpp`); v1 charges the bulk payload only, so it fits
+whenever v2 does. The scenario sends 25 agents x 1,000 syslog lines x 4 passes = **100,000 events**.
+Keeping the backlog at half the quota (536,870,912 B) leaves room for `payload + 2,048 <= 5,368`, a
+payload of up to 3,320 B (an enriched syslog event is about 1 to 2 KiB). At an assumed 3 KiB payload:
+v2 100,000 x 5,120 = 512 MB (47.7 %), v1 100,000 x 3,072 = 307 MB. The queue size is a cap, not an
+allocation: the fixed-rate scenarios never approach it. Check it on the first smoke: `drain.json` must say
+`"drain_end": "expected"` and `indexer.events.dropped` must be 0; if not, lower the fleet. Raising
+`agents` or `repeat_count` means redoing this sum.
+
+A paused indexer is `docker pause wazuh-indexer`, not `indexer_control.sh stop`: that script uses
+`service`, which does not exist inside the e2e container.
+
+**Order and runs.** `--n` runs per side (default 4, even), in ABBA order (`ABBA BAAB`), after one
+warm-up run per side that is discarded. Every run restores its side first, so each starts with the
+same empty queues. Labels are `ab-<side>-<scenario>-<i>` (`w` for the warm-up), results in
+`results_<label>/` with `provenance.txt` (sha256 of `bin/wazuh-manager-analysisd`,
+`bin/wazuh-manager-modulesd` and `lib/*.so`, and whether the config validates), `probe.csv`,
+`drain.json` and `ab_metrics.json`. Between runs the indexer is emptied by an **allow-list**
+(`wazuh-events*`, `wazuh-states-*`, and `AB_RAW_PATTERN` when set, the same on both sides); the
+dot-indices (`.wazuh-threatintel-*`, `.wazuh-cti-consumers`) are never touched, because the
+vulnerability scenario needs the feed. The measurement holds an exclusive `flock` on
+`AB_MEASURE_LOCK` for the whole window.
+
+**End of a run.** A run ends when the indexer's summed `_count` reaches the total the sender says it
+sent (`events_sent` in agent mode, `documents_sent` in uds mode), or has not grown for
+`--quiet-seconds` (default **and floor** 60: after a resume the sender idles for a node health probe,
+its backoff and the async flush, so a shorter quiet would end the run before the drain starts), or at
+`--drain-timeout` (600 s, the hard cap: that run is not a valid measurement). `drain.json` records
+which one ended it (`drain_end`: `expected`, `quiet` or `timeout`), the final count and the target.
+
+**Verdict (I204).** The main metric is documents (`_count` per pattern, the same set of patterns on
+both sides); `index_total` (operations) is kept as a diagnostic, because the two builds may issue a
+different number of operations per document. Per verdict metric, `ab_report.py` takes the median of
+each side and the ratio v2/v1 (a time is inverted, so above 1.00 always favours v2):
+
+| Ratio | Verdict |
+|---|---|
+| >= 1.00 | `PASS` |
+| 0.95 to 1.00 | `PASS_WITHIN_NOISE` |
+| < 0.95 | `FAIL` |
+
+It applies **only** to documents/s and time to drain of `drain-engine` and sessions/s of
+`drain-syscollector`; everything else is reported with its spread. Two guards keep it honest: the drain
+metrics are judged only when both sides **drained the same documents** (medians within 1 %); a side
+that drops documents drains sooner, so otherwise the verdict is `INCOMPARABLE` and the report gives the
+gap. And every run records the sha256 of its provenance snapshot: a side whose runs come from more than
+one set of binaries (another HEAD, another snapshot) is `INCOMPLETE`. A side whose repetitions differ by
+more than 10 % of their median gets a note to repeat with `N >= 5`. The exit status of
+`./ab_indexer.sh --report` is 0 for a pass, 1 for a fail and 2 for incomplete or incomparable data.
+
+**Campaigns.** Every real `ab_indexer.sh` invocation stamps a campaign id (UTC time + random) on the runs
+it collects, and the report it prints at the end reads **only** those runs, so the results of an earlier
+campaign (longer, shorter, or aborted) never reach the medians. A run deletes the previous
+`ab_metrics.json` and `drain.json` of its directory before it starts. If any scenario aborted, the exit
+status is never 0 (at least 2). `./ab_indexer.sh --report` has no campaign: it reads every
+`results_ab-*`, so clear stale ones first. A missing results directory is reported and exits 2.
+A drain run whose `docker pause` fails is aborted (not a valid measurement). `drain-syscollector`
+counts only `wazuh-states-inventory-*`, so VD's `wazuh-states-vulnerabilities-*` documents do not end the
+wait early.
+
+```bash
+./ab_indexer.sh --dry-run                            # the whole plan, touching nothing
+sudo ./prepare_manager.sh --save-side v1             # once per side, from that build's install
+sudo ./ab_indexer.sh --scenario drain-engine --n 2   # smoke: 1 scenario, 2 runs per side
+sudo ./ab_indexer.sh                                 # everything, N = 4 per side
+./ab_indexer.sh --report                             # results_ab/ab_report.{json,md}
+```
+
+The real run needs `sudo`: every run restores a side, which stops the manager and rewrites its
+`bin/`, `lib/` and `/etc/wazuh-manager/wazuh-manager-internal-options.conf`.
+
+**Going back.** The A/B leaves the manager on the last side it ran, with that side's internal-options.
+The first restore saves the original file once as `wazuh-manager-internal-options.conf.ab-orig`.
+`sudo ./prepare_manager.sh --restore-original` puts it back and restarts the manager; the binaries are
+not covered by it, so first `sudo ./prepare_manager.sh --side vX --side-only` with the saved side that
+matches your original install (or reinstall with the `stack-env` fresh install).
+
+Credentials and the indexer address come from `INDEXER_URL`, `INDEXER_USER`, `INDEXER_PASSWORD` and
+`INDEXER_CACERT` (see `indexer_ingest_probe.sh`); nothing is stored. Tests:
+`python3 -m pytest tests/test_ab_report.py`.
 
 ## Regenerating the load report
 
