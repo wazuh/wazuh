@@ -14,6 +14,7 @@
 #include "vd/IVdScanner.hpp"
 
 #include <functional>
+#include <stdexcept>
 
 namespace invsync::vd
 {
@@ -49,6 +50,58 @@ namespace invsync::vd
      * @param scan Runs the scan and translates its result.
      */
     AgentScanOutcome onDemandVerdict(bool stopping, bool initialized, const std::function<AgentScanOutcome()>& scan);
+
+    /// The four facade flags vdStopping() decides on, read once (D90).
+    struct VdGate
+    {
+        bool started {false};
+        bool initialized {false};
+        bool enabled {false};
+        bool startFailed {false};
+    };
+
+    /**
+     * @brief Reads the gate's flags off @p state in the order the decision needs (D90).
+     *
+     * hasStarted() first: its acquire load orders the other reads after it; isInitialized() next, so a stop() that
+     * lowers it between the two reads is seen as stopping, never as a legitimate skip. Sequenced statements, not
+     * sibling call arguments, whose evaluation order is unspecified.
+     *
+     * @tparam TState VulnerabilityScannerFacade in production; a recording fake in the unit tests.
+     */
+    template<typename TState>
+    VdGate readVdGate(const TState& state)
+    {
+        VdGate gate;
+        gate.started = state.hasStarted();
+        gate.initialized = state.isInitialized();
+        gate.enabled = state.isEnabled();
+        gate.startFailed = state.startFailed();
+        return gate;
+    }
+
+    /// @throws std::runtime_error when @p gate says the scanner is stopping (I167c): the session fails (500, the
+    ///         agent retries) instead of being indexed unscanned.
+    inline void throwIfVdStopping(const VdGate& gate)
+    {
+        if (vdStopping(gate.started, gate.enabled, gate.startFailed, gate.initialized))
+        {
+            throw std::runtime_error("VD stopping");
+        }
+    }
+
+    /**
+     * @brief The gate of a session's scan(): throws when stopping, else whether the scanner runs here (D90).
+     *
+     * @return The `initialized` read by readVdGate() (never a second read): false means Skipped.
+     */
+    template<typename TState>
+    bool scanGate(const TState& state)
+    {
+        const auto gate = readVdGate(state);
+        throwIfVdStopping(gate);
+        return gate.initialized;
+    }
 
 } // namespace invsync::vd
 

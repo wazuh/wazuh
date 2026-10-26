@@ -17,6 +17,9 @@
 #include <gtest/gtest.h>
 
 #include <initializer_list>
+#include <stdexcept>
+#include <string>
+#include <vector>
 
 using invsync::vd::AgentScanOutcome;
 using invsync::vd::onDemandVerdict;
@@ -115,4 +118,144 @@ TEST(VdStopping, OnDemandVerdictDoesNotCallTheScanOfAStoppingScanner)
     EXPECT_NO_THROW(EXPECT_EQ(onDemandVerdict(true, false, throwing), AgentScanOutcome::NotReady));
     EXPECT_NO_THROW(EXPECT_EQ(onDemandVerdict(false, false, throwing), AgentScanOutcome::Skipped));
     EXPECT_THROW(onDemandVerdict(false, true, throwing), std::runtime_error);
+}
+
+// ---- D90: the adapter's wiring of vdStopping(), through readVdGate()/throwIfVdStopping()/scanGate() over a fake
+// facade that records its reads. Mutants: arguments permuted (started/initialized; swapping started/enabled or
+// startFailed/initialized is equivalent), the throw removed, the read order changed, `initialized` read twice.
+
+namespace
+{
+    /// The four facade flags, with a log of the reads in the order they happened.
+    struct RecordingState
+    {
+        bool started {false};
+        bool enabled {false};
+        bool failed {false};
+        bool initialized {false};
+        mutable std::vector<std::string> reads;
+
+        bool hasStarted() const
+        {
+            reads.emplace_back("hasStarted");
+            return started;
+        }
+        bool isInitialized() const
+        {
+            reads.emplace_back("isInitialized");
+            return initialized;
+        }
+        bool isEnabled() const
+        {
+            reads.emplace_back("isEnabled");
+            return enabled;
+        }
+        bool startFailed() const
+        {
+            reads.emplace_back("startFailed");
+            return failed;
+        }
+    };
+
+    const std::vector<std::string> EXPECTED_READS {"hasStarted", "isInitialized", "isEnabled", "startFailed"};
+
+    /// Every combination of the four flags.
+    std::vector<RecordingState> everyState()
+    {
+        std::vector<RecordingState> states;
+        for (int bits = 0; bits < 16; ++bits)
+        {
+            RecordingState state;
+            state.started = (bits & 1) != 0;
+            state.enabled = (bits & 2) != 0;
+            state.failed = (bits & 4) != 0;
+            state.initialized = (bits & 8) != 0;
+            states.push_back(state);
+        }
+        return states;
+    }
+
+    std::string describe(const RecordingState& state)
+    {
+        return "started=" + std::to_string(state.started) + " enabled=" + std::to_string(state.enabled) +
+               " startFailed=" + std::to_string(state.failed) + " initialized=" + std::to_string(state.initialized);
+    }
+} // namespace
+
+TEST(VdStoppingGateTest, ReadsEachFlagOnceInOrder)
+{
+    for (const auto& state : everyState())
+    {
+        state.reads.clear();
+        const auto gate = invsync::vd::readVdGate(state);
+        EXPECT_EQ(EXPECTED_READS, state.reads) << describe(state);
+        EXPECT_EQ(state.started, gate.started) << describe(state);
+        EXPECT_EQ(state.enabled, gate.enabled) << describe(state);
+        EXPECT_EQ(state.failed, gate.startFailed) << describe(state);
+        EXPECT_EQ(state.initialized, gate.initialized) << describe(state);
+    }
+}
+
+TEST(VdStoppingGateTest, ThrowsOnlyWhenStopping)
+{
+    for (const auto& state : everyState())
+    {
+        invsync::vd::VdGate gate;
+        gate.started = state.started;
+        gate.enabled = state.enabled;
+        gate.startFailed = state.failed;
+        gate.initialized = state.initialized;
+        if (vdStopping(state.started, state.enabled, state.failed, state.initialized))
+        {
+            EXPECT_THROW(invsync::vd::throwIfVdStopping(gate), std::runtime_error) << describe(state);
+        }
+        else
+        {
+            EXPECT_NO_THROW(invsync::vd::throwIfVdStopping(gate)) << describe(state);
+        }
+    }
+}
+
+// scan()'s gate: throws when stopping, else Skipped exactly when not initialized, with one read of each flag.
+TEST(VdStoppingGateTest, ScanGate)
+{
+    for (const auto& state : everyState())
+    {
+        state.reads.clear();
+        if (vdStopping(state.started, state.enabled, state.failed, state.initialized))
+        {
+            EXPECT_THROW(invsync::vd::scanGate(state), std::runtime_error) << describe(state);
+        }
+        else
+        {
+            EXPECT_EQ(state.initialized, invsync::vd::scanGate(state)) << describe(state);
+        }
+        EXPECT_EQ(EXPECTED_READS, state.reads) << describe(state) << ": a flag read twice, or out of order";
+    }
+}
+
+// The race the order exists for: stop() lowers isInitialized() right after hasStarted() was read. Read in the real
+// order, the session is failed as stopping; were `initialized` read first (still true), it would be scanned.
+TEST(VdStoppingGateTest, StopBetweenTheReadsIsStopping)
+{
+    struct StoppingDuringRead : RecordingState
+    {
+        bool hasStarted() const
+        {
+            const auto result = RecordingState::hasStarted();
+            stopped = true;
+            return result;
+        }
+        bool isInitialized() const
+        {
+            reads.emplace_back("isInitialized");
+            return !stopped;
+        }
+        mutable bool stopped {false};
+    };
+
+    StoppingDuringRead state;
+    state.started = true;
+    state.enabled = true;
+    EXPECT_THROW(invsync::vd::scanGate(state), std::runtime_error);
 }
