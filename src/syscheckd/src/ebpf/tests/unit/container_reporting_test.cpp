@@ -38,6 +38,7 @@ namespace
 {
     std::map<std::string, bool> admission;
     std::map<std::string, std::vector<std::string>> files;
+    std::map<std::string, std::string> contexts;
     std::vector<std::pair<std::string, int>> persisted;
     std::vector<std::string> warnings;
     bool listed = false;
@@ -128,6 +129,7 @@ namespace
             {
                 admission = {{"a", true}, {"b", true}};
                 files.clear();
+                contexts.clear();
                 persisted.clear();
                 warnings.clear();
                 listed = false;
@@ -390,7 +392,7 @@ extern "C" int __wrap_cbaseline_run_fim_dbsync(const char*,
                                                const cb_monitored_path_t*,
                                                int,
                                                cb_dbsync_row_sink_t sink,
-                                               cb_container_context_sink_t,
+                                               cb_container_context_sink_t context_sink,
                                                cb_container_status_sink_t status,
                                                cb_rate_limit_fn,
                                                void* ctx)
@@ -400,6 +402,11 @@ extern "C" int __wrap_cbaseline_run_fim_dbsync(const char*,
 
     for (const auto& [id, paths] : files)
     {
+        auto [context, inserted] = contexts.try_emplace(
+        id, nlohmann::json{{"container", {{"id", id}}}}.dump());
+        static_cast<void>(inserted);
+        context_sink(id.c_str(), context->second.c_str(), ctx);
+
         for (const auto& path : paths)
         {
             const nlohmann::json row = {{"container_id", id}, {"path", path}, {"version", 1}, {"size", file_size}};
@@ -2340,6 +2347,32 @@ TEST(ContainerListRefresh, ASilentSourceAllowsNamedVerdictsWithoutAuthorisingAbs
               AdmissionPublish::defer) << "source readiness does not release the startup walk";
     EXPECT_EQ(decideAdmissionPublish(true, false, true, plan.enumerated), AdmissionPublish::defer)
             << "an old connector still cannot authorise installation";
+}
+
+TEST_F(ContainerReportingTest, ContextIsPreservedAndUpdatedAcrossReconciles)
+{
+    files["a"] = {"/etc/one"};
+    fim_run_container_baseline();
+    cJSON* block = fim_db_get_container_context("a");
+    ASSERT_NE(nullptr, block);
+    EXPECT_STREQ("a", cJSON_GetStringValue(cJSON_GetObjectItem(block, "id")));
+    cJSON_Delete(block);
+
+    listed = false;
+    fim_run_container_baseline();
+    block = fim_db_get_container_context("a");
+    ASSERT_NE(nullptr, block);
+    EXPECT_STREQ("a", cJSON_GetStringValue(cJSON_GetObjectItem(block, "id")));
+    cJSON_Delete(block);
+
+    contexts["a"] = R"({"container":{"id":"a","labels":{"revision":"2"}}})";
+    listed = false;
+    fim_run_container_baseline();
+    block = fim_db_get_container_context("a");
+    ASSERT_NE(nullptr, block);
+    const cJSON* labels = cJSON_GetObjectItem(block, "labels");
+    EXPECT_STREQ("2", cJSON_GetStringValue(cJSON_GetObjectItem(labels, "revision")));
+    cJSON_Delete(block);
 }
 
 namespace

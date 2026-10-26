@@ -13,6 +13,7 @@
 
 #include "cgroup_container_map.hpp"
 #include "container_baseline_fim_bridge.h"
+#include "container_identity_set.hpp"
 #include "container_event_router.hpp"
 #include "container_list_refresh.hpp"
 #include "container_event_staging.hpp"
@@ -633,6 +634,7 @@ namespace fim_container_events
          * full set — the seeding path, reached without a special case. */
         std::uint64_t cursor_epoch{0};
         std::uint64_t cursor_seq{0};
+        ContainerIdentitySet known_container_ids;
 
         /* Previous values of the counters that record work being shed.
          *
@@ -1063,33 +1065,63 @@ namespace fim_container_events
              * unusable is invisible on this path. The map cannot infer them
              * either -- install() never reports a container gone, deliberately,
              * because an absence is not a statement of removal and acting on one
-             * is D11 rule 1. Conditional on the list having changed size,
+             * is D11 rule 1. Conditional on the list having changed,
              * because this branch is also the STEADY STATE against a
              * container_instances too old to serve deltas, where it runs on
              * every resolver pass; sweeping the node every five seconds there
              * would be a self-inflicted cost on exactly the deployments least
-             * able to take it. A resync is asked for regardless, since its gap
-             * is a gap in the events rather than in the list. The size
-             * comparison misses an addition and a removal between two passes
-             * that happen to cancel out -- the floor covers that, which is what
-             * the floor is for.
+             * able to take it. Container identities are compared, not list
+             * length against the cgroup map's size: a stopped or unresolved
+             * container has no positive cgroup mapping, and an id can be
+             * replaced without either count moving. A resync is asked for
+             * regardless, since its gap is a gap in the events rather than in
+             * the list. The set comparison still misses an addition and a
+             * removal between two passes that cancel out -- the floor covers
+             * that, which is what the floor is for.
              *
              * A delta names the new containers outright, so the test there is
-             * exact rather than a size comparison. */
+             * exact. */
             if (!delta.deltaSupported || delta.resyncRequired)
             {
-                if (delta.resyncRequired || delta.containers.size() != map.containerCount())
+                ContainerIdentitySet listed_ids;
+
+                for (const auto& container : delta.containers)
+                {
+                    if (!container.containerId.empty())
+                    {
+                        listed_ids.insert(container.containerId);
+                    }
+                }
+
+                if (delta.resyncRequired || ContainerIdentitySetChanged(known_container_ids, listed_ids))
                 {
                     requestSweep();
                 }
+
+                known_container_ids = std::move(listed_ids);
             }
             else
             {
                 using Kind = wazuh::container_instances_client::ContainerEventRef::Kind;
 
-                if (std::any_of(delta.events.begin(),
-                                delta.events.end(),
-                                [](const auto& event) { return event.kind == Kind::added; }))
+                bool discovered = false;
+
+                for (const auto& event : delta.events)
+                {
+                    if (event.containerId.empty()) continue;
+
+                    if (event.kind == Kind::added)
+                    {
+                        discovered = true;
+                        known_container_ids.insert(event.containerId);
+                    }
+                    else if (event.kind == Kind::removed)
+                    {
+                        known_container_ids.erase(event.containerId);
+                    }
+                }
+
+                if (discovered)
                 {
                     requestSweep();
                 }

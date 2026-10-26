@@ -140,7 +140,10 @@ inline const std::vector<std::string>& fimDbUpgradeStatements()
     {
         // v1 -> v2: store a container's context once, rather than stamping a
         // copy of it onto every file row that container owns.
-        CREATE_CONTAINER_CONTEXT_DB_STATEMENT,
+        R"(CREATE TABLE IF NOT EXISTS container_context (
+    container_id TEXT PRIMARY KEY,
+    context TEXT NOT NULL DEFAULT ''
+    ) WITHOUT ROWID;)",
 
         // v2 -> v3: container_id joins the primary key, which SQLite cannot
         // alter in place on a WITHOUT ROWID table, so file_entry is rebuilt:
@@ -238,6 +241,15 @@ class FIMDB
          *         write was never attempted.
          */
         bool updateItem(const nlohmann::json& item, ResultCallbackData& callbackData);
+        /**
+         * @brief Update an item when needed, while verifying the handler is available.
+         *
+         * @param unchanged Whether the item is already persisted and can skip syncRow.
+         * @return false when the database is stopping or has no handler.
+         */
+        bool updateItemIfNeeded(const nlohmann::json& item,
+                                ResultCallbackData& callbackData,
+                                bool unchanged);
 
         /**
          * @brief Execute a query given and uses the callbackData in these rows

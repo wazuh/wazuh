@@ -14,6 +14,7 @@
  */
 
 #include "container_reconcile_plan.hpp"
+#include "container_identity_set.hpp"
 
 #include <gtest/gtest.h>
 
@@ -179,6 +180,16 @@ TEST(ContainerReconcilePlanTest, ASweepBatchCarriesNoContainerAndIsNotEmpty)
     // than performed. The floor legitimately carries no paths, so it must not
     // be swallowed by that rule.
     EXPECT_FALSE(request.empty());
+}
+
+TEST(ContainerIdentitySetTest, DetectsAnIdentityReplacementWithTheSameCardinality)
+{
+    const ContainerIdentitySet previous {"stopped-a", "running-b"};
+    const ContainerIdentitySet current {"stopped-a", "running-c"};
+
+    EXPECT_EQ(previous.size(), current.size());
+    EXPECT_TRUE(ContainerIdentitySetChanged(previous, current));
+    EXPECT_FALSE(ContainerIdentitySetChanged(current, current));
 }
 
 TEST(ContainerReconcilePlanTest, ARemovalIsNeverPromotedToAWalk)

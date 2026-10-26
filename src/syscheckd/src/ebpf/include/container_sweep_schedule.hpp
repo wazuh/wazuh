@@ -32,12 +32,10 @@
  *   **No value of the interval can suppress an out-of-band sweep**, because
  *   the interval is not on that path at all.
  *
- * Which is the inverse of syscollector's shape, where
- * `container_baseline_interval == 0` — the DEFAULT — takes a branch whose wait
- * predicate ignores the lifecycle notification entirely
- * (syscollectorImp.cpp:3300), so leaving the floor unset silently switches the
- * event-driven path off as well. A floor must never be able to turn off the
- * thing it is a floor under.
+ * Syscollector's coupled-cadence path (`container_baseline_interval == 0`,
+ * the default) also wakes for lifecycle notifications. It consumes that
+ * request without moving the host scan's absolute deadline, so the event-driven
+ * path remains active without making host scans more frequent.
  */
 
 #ifndef _CONTAINER_SWEEP_SCHEDULE_HPP
