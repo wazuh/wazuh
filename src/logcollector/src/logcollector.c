@@ -802,7 +802,7 @@ void LogCollectorStart()
 #ifdef WIN32
                     else if ((DWORD)current->size > (lpFileInformation.nFileSizeHigh + lpFileInformation.nFileSizeLow))
 #else
-                    else if (current->size > tmp_stat.st_size)
+                    else if (current->size > tmp_stat.st_size || w_ftell(current->fp) > tmp_stat.st_size)
 #endif
                     {
                         current->exists = 1;
