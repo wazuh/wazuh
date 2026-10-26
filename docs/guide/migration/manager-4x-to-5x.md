@@ -22,6 +22,8 @@ indexer.
 | TLS material | Not carried automatically. 5.0 needs a CA and an agent-listener certificate issued from it, minted by the manager at install or given to it, and every agent ends up verifying the manager against that CA. | [Step 2](#certificates-and-credentials), [Step 7](#7-upgrade-the-agents-to-50) |
 | Alerts, inventory, vulnerability and SCA history in the indexer | Not read by 5.0. The 4.x indices stay in the indexer for consultation; inventory, FIM, SCA and vulnerability state is rebuilt by each agent once it runs 5.0. | Section [Historical data](#historical-data) |
 | Agent labels | Removed in 5.0 on both sides. Not migrated. | |
+| Agent `000`, the manager monitoring its own host | Removed. Nothing collects the server host's logs, file integrity, SCA or inventory until an agent is installed on it. | [Monitoring the server host](../../ref/getting-started/installation.md#monitoring-the-server-host) |
+| Frequency and correlation rules (`frequency`, `timeframe`, `if_matched_sid`), such as 5712 and 5763 for SSH brute force | Removed. Each finding keeps the severity of the single event it matched, so repeated failures never escalate: a brute force produces many `low` findings. | [Repeated events](rules-4x-to-5x.md#alerting-on-repeated-events) |
 | Custom rules, decoders and CDB lists | Not migrated. Decoders and CDB lists are rewritten as engine decoders and KVDBs; rules are rewritten as Sigma-based detection rules, which the indexer evaluates (the engine has no rules). | [Rules](rules-4x-to-5x.md), [decoders](xml-decoders-migration.md), [CDB lists](cdb-to-kvdb-migration.md) |
 | Modules removed in 5.0 (email, agentless, VirusTotal, syslog output, ...) | Replaced. | The per-feature guides in this section |
 
@@ -354,7 +356,7 @@ SQL
 chown wazuh-manager:wazuh-manager /var/wazuh-manager/queue/db/global.db
 ```
 
-Row `0` is the manager itself and is skipped. Agents are inserted as `disconnected`; the first
+Row `0` is the manager itself and is skipped; 5.0 has no agent `000`. Agents are inserted as `disconnected`; the first
 keepalive marks them `active` and refreshes version and OS. The 4.x `labels` and `info` tables
 have no counterpart in 5.0 (agent labels were removed). Columns dropped in 5.0 (`os_codename`,
 `os_build`, `os_uname`, `config_sum`, `merged_sum`, `manager_host`, `node_name`,
