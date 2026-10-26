@@ -1235,7 +1235,12 @@ static bool bridge_shared_unmerge(const char *bundle)
     os_strdup(BRIDGE_SHAREDCFG_FILE_TMP_NAME, keep[1]);
     os_strdup(BRIDGE_SHAREDCFG_APPLYING_NAME, keep[2]);
 
-    bool ok = UnmergeFiles(bundle, SHAREDCFG_DIR, OS_TEXT, &keep) != 0;
+    /* Binary mode: the bundle on disk holds the exact bytes the manager merged
+     * (downloaded as-is and checked against its hash), and every entry size
+     * counts raw bytes. A Windows text-mode stream would undercount ftell() by
+     * one per buffered LF, fold CRLF into LF and stop at Ctrl-Z, so entries
+     * would be rejected or cut short. */
+    bool ok = UnmergeFiles(bundle, SHAREDCFG_DIR, OS_BINARY, &keep) != 0;
 
     if (ok && cldir_ex_ignore(SHAREDCFG_DIR, (const char **)keep)) {
         mwarn("Could not clean up the shared configuration directory.");

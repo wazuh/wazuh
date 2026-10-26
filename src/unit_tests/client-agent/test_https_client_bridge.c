@@ -1723,7 +1723,7 @@ static void expect_unmerge_into_shared(const char *bundle, int unmerge_ret, int 
 {
     expect_string(__wrap_UnmergeFiles, finalpath, bundle);
     expect_string(__wrap_UnmergeFiles, optdir, SHAREDCFG_DIR);
-    expect_value(__wrap_UnmergeFiles, mode, OS_TEXT);
+    expect_value(__wrap_UnmergeFiles, mode, OS_BINARY);
     will_return(__wrap_UnmergeFiles, unmerge_ret); /* UnmergeFiles: 1 = success, 0 = failure. */
 
     if (unmerge_ret) {
