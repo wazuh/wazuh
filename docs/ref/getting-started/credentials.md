@@ -138,9 +138,10 @@ To read a value, parse the line; never `source` the file:
 sudo sed -n 's/^WAZUH_MANAGER_API_PASSWORD=//p' /etc/wazuh-manager/export/credentials.env
 ```
 
-Seeding happens once: an existing, non-empty `rbac.db` is never reseeded, whatever the keys say. A worker node
-seeds nothing ([Cluster deployments](#cluster-deployments)). `WAZUH_INDEXER_MANAGER_PASSWORD` is never published:
-the manager only consumes it.
+Seeding happens once: an existing, non-empty `rbac.db` is never reseeded, whatever the keys say. Only a node
+configured as master seeds, and a fresh install generates every node's configuration as master, so a worker has
+already seeded by the time you configure it as one ([Cluster deployments](#cluster-deployments)).
+`WAZUH_INDEXER_MANAGER_PASSWORD` is never published: the manager only consumes it.
 
 ## What the dashboard takes from the manager
 
@@ -160,7 +161,8 @@ dashboard: the certificate alone is enough to verify the API.
 `CN=wazuh-dashboard`, `CA:FALSE` and `extendedKeyUsage` `clientAuth` only, and a key of its own, never the CA's or
 `apid-key.pem`'s. Nothing uses it yet: the Server API does not ask for a client certificate (`https.use_ca` stays
 off) and the dashboard still logs in with the password, so the pair is there to be imported when that changes. A
-worker publishes none.
+node configured as a worker issues none, and leaves in place the pair it issued at install, while still configured
+as master.
 
 - **When it is issued.** By every writing mode (`--install`, `--upgrade`, `--prestart`) when it is absent and `ca/`
   holds the CA's key: `resolve-credentials: /etc/wazuh-manager/export/dashboard-client.pem: issued; DN …`.
@@ -241,8 +243,8 @@ time you start the service, so the start is where the verdict counts. A DEB rein
 
 A fresh package install relays the resolver's problem lines after its progress lines and ends with its next
 steps, which follow what the resolver did rather than what it was asked: `Server API passwords saved in
-/etc/wazuh-manager/export/credentials.env (readable by root only).` only when that file exists (a worker publishes
-none, and a run stopped by an `UNSAFE` or `INVALID` entry writes nothing at all), then, when any `MISSING`,
+/etc/wazuh-manager/export/credentials.env (readable by root only).` only when that file exists (a run stopped by
+an `UNSAFE` or `INVALID` entry writes nothing at all), then, when any `MISSING`,
 `INVALID` or `UNSAFE` line was reported or the resolver did not exit `0`, `Credential resolution is incomplete: the
 manager does not start until every MISSING, INVALID or UNSAFE entry reported above is resolved.` with the command
 to repeat once they are fixed, `sudo /var/wazuh-manager/bin/wazuh-manager-resolve-credentials --install`: it
@@ -561,12 +563,18 @@ Every node resolves credentials for itself. The cluster synchronizes `client.key
 - **Back up each node's credentials with it.** The cluster does not restore them: a worker's backup must carry
   `ca/`, `export/`, `local.env` and `certs/` together, since the start checks the pairs against that CA. See the
   [worker node backup](../backup-restore.md#worker-node-backup).
-- **Only a master seeds `rbac.db`.** The Server API runs on the master, so a worker seeds and publishes nothing.
-  The role is read with every other setting (`wazuh-manager-conf --skip-file-checks dump`); when the configuration
-  cannot be read, nothing is seeded and the start refuses (`INVALID /etc/wazuh-manager/wazuh-manager.conf: cannot read the TLS paths (…)`).
+- **Only a node configured as master seeds `rbac.db`**, and every node is one until you edit its `<cluster>`
+  block: a fresh install generates the configuration with `node_type` `master`, so a worker seeds `rbac.db` and
+  publishes `export/credentials.env` at install, like the master. Once the node is configured as a worker, the
+  resolver seeds and publishes nothing more, and the Server API does not run there: the worker's `rbac.db` and
+  `export/credentials.env` authenticate nothing while it stays a worker. Read the passwords on the master. The role
+  is read with every other setting (`wazuh-manager-conf --skip-file-checks dump`); when the configuration cannot be
+  read, nothing is seeded and the start refuses (`INVALID /etc/wazuh-manager/wazuh-manager.conf: cannot read the TLS paths (…)`).
 - **`rbac.db` is not replicated**, and an existing one is never touched. A node promoted to master serves its own
-  database, seeded when it is promoted if it holds none. Supply the same `WAZUH_MANAGER_API_PASSWORD` and
-  `WAZUH_MANAGER_WUI_PASSWORD` on every node, so a promoted node comes up with the passwords you already know.
+  database: the one it seeded at install, or one seeded at its first start as master when it holds none. Supply
+  the same `WAZUH_MANAGER_API_PASSWORD` and `WAZUH_MANAGER_WUI_PASSWORD` in every node's `local.env` **before
+  installing it**, so a promoted node comes up with the passwords you already know. A password changed later with
+  `rbac_control change-password` reaches only the master's database.
 
 `rbac_control change-password` changes the current master's database; see
 [Server API authentication](../modules/server-api/authentication.md).
