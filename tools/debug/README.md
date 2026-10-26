@@ -59,7 +59,7 @@ Sends one query to a daemon control socket that speaks the framed protocol (a 4-
 ```sh
 echo -n '{"command":"getconfig","parameters":{"section":"internal"}}' | python3 socket-query.py /var/wazuh-manager/queue/sockets/remote.sock
 ```
-- First argument: Path to the control socket (on the manager, `remote.sock` answers `getconfig` for the `remote`, `internal` and `global` sections, and `getstats`).
+- First argument: Path to the control socket (on the manager, `remote.sock`, bound by `wazuh-manager-remoted`, answers `getstats`, `getconfig` for the `remote`, `internal` and `global` sections, and `assigngroup`).
 - Query is read from stdin.
 
 ## `wdb-query.py`

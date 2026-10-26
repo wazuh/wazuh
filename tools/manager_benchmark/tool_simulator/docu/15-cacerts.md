@@ -10,8 +10,8 @@ caller has nothing to authenticate with yet.
 | | `GET /cacerts` |
 |---|---|
 | What it carries | Nothing (a body or an `Authorization` header, if sent, is ignored) |
-| What it returns | The certificates of the file configured as `remote.https.ca_certificate`, re-serialized by remoted (anything in the file that is not a certificate, a private key included, is never served), with `Content-Type: application/x-pem-file` and a `Wazuh-CA-Generation` header (the bundle's publication generation, `0` when it is not published) |
-| Manager-side path | remoted reads the file on every request (bounded to 1 MiB, the parse cached under the file's SHA-256) and judges on that same read, against the current clock, whether the served leaf chains to the bundle (`src/remoted/remoted_module/src/endpoints/cacertsEndpoint.cpp`, `src/remoted/remoted_module/src/http_server/caCertificateSource.hpp`) — no downstream service at all |
+| What it returns | The certificates of the file configured as `remote.https.ca_certificate`, re-serialized by remoted (anything in the file that is not a certificate, a private key included, is never served), with `Content-Type: application/x-pem-file` and a `Wazuh-CA-Generation` header (both described on remoted's page, below); the sender ignores the header |
+| Manager-side path | remoted reads the configured file and judges, against the current clock, whether the leaf it serves chains to that bundle (`src/remoted/remoted_module/src/endpoints/cacertsEndpoint.cpp`, `src/remoted/remoted_module/src/http_server/caCertificateSource.hpp`) — no downstream service at all |
 | When a real agent does it | Once, on first contact (trust on first use); never to replace a CA it already holds |
 | Sender step | `kind: "cacerts"` |
 
@@ -20,8 +20,8 @@ and the OpenAPI `agent-api.yaml` (`/cacerts`).
 
 ## Why it is in the harness
 
-The harness never *uses* the answer: its TLS client skips verification (docu/04), so the PEM is
-checked for shape and dropped like every other body (docu/03). Two reasons it still deserves a step:
+The harness never *uses* the answer: its TLS client skips verification ([04](04-wire-protocol.md)), so the PEM is
+checked for shape and dropped like every other body ([03](03-control-protocol.md)). Two reasons it still deserves a step:
 
 1. **Contract.** A fleet whose first contact is a `404` (no CA file on the manager) or a `503` (the
    manager refuses to hand out a CA the served certificate does not chain to) cannot bootstrap trust at
@@ -38,8 +38,9 @@ checked for shape and dropped like every other body (docu/03). Two reasons it st
 GET /wazuh-manager/cacerts HTTP/1.1
 ```
 
-Nothing else. The global prefix applies like on every route (`--global-prefix`, or the value read
-from the manager's configuration); the bare path answers `404`. `Do()` still adds the bearer and
+Nothing else. The global prefix applies like on every route (`--global-prefix`, which
+`run_benchmark.sh` fills from the manager's configuration when it is set there); against a prefixed
+manager the bare path answers `404`. `Do()` still adds the bearer and
 `protocol-version` in agent mode — the route ignores them, so they are harmless and keep the client
 uniform. **agent mode only** —
 the module's Unix socket has no such route, so a `uds` scenario carrying a `cacerts` step is refused
@@ -54,7 +55,7 @@ at load time, exactly like an `engine` or `scan_vd` step. The step takes **only*
 | No CA to serve: the file was never readable since remoted started, or it now holds no certificate | `404 {"error":"not_found"}` | `cacerts_404` | no |
 | The served leaf does not chain to the configured CA (judged against the clock, so an expired CA counts); the manager refuses to hand it out | `503 {"error":"ca_mismatch"}` | `cacerts_503` | no |
 | The route's rate limit refused it before the CA was read (`remote.https.cacerts_rate_limit`, `50` req/s for the whole endpoint by default) | `429 {"error":"rate_limited"}` + `Retry-After` | `cacerts_429` | no |
-| A `200` without the PEM media type or without a certificate block | `200` | `cacerts_other` | **yes** |
+| A `200` without the PEM media type or without a certificate block | `200` | `cacerts_200` | **yes** |
 | Any other status | — | `cacerts_other` | **yes** |
 
 `404`, `503` and `429` are **ordinary results**: they are what a real fleet meets against a
@@ -71,9 +72,11 @@ capacity run measures the listener's cost instead of the ceiling; `--keep-rate-l
 shipped defaults in place to benchmark the limiter itself, and `s429` is then the counter to assert.
 Its latency is deliberately **not** in `cacerts_latency_ms_p50/p99`: a refusal never reached the
 handler, so its microsecond-scale samples would drag the percentiles away from what a served request
-actually costs — the same reason remoted keeps a `429` out of its own histogram. The `other` bucket is different: a `200` that would not let an
+actually costs — the same reason remoted keeps a `429` out of its own histogram. The invalidating answers are different: a `200` that would not let an
 agent trust anything means the sender is not talking to remoted's `/cacerts` (a proxy answered, a
-prefix mismatch reached something else) and the measurement is invalid (docu/10). The step never
+prefix mismatch reached something else) and the measurement is invalid
+([10](10-error-handling-and-shutdown.md)); a `200` of that kind is still counted in `cacerts_200`, so
+the invalid run, not the counter, is what flags it. The step never
 retries, so requests and attempts are the same number.
 
 ## Metrics

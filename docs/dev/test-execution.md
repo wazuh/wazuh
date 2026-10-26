@@ -8,7 +8,7 @@ Every lane below is also a CI workflow under `.github/workflows/` (`5_testunit_*
 
 The C daemons and libraries are tested by the CMocka suites under `src/unit_tests/`, a separate CMake project that links the libraries of a `TEST=1` build. CI runs them in `5_testunit_linux-win.yml` for the `manager`, `agent` and `winagent` targets.
 
-Requirements: GCC (CI uses GCC 14), CMake 3.22.1 or newer (the engine requires it), CMocka, and `lcov` for coverage. The Windows agent also needs MinGW, a CMocka cross-built with MinGW, and a 32-bit Wine to run the tests.
+Requirements: GCC (CI uses GCC 14), CMake 3.22.1 or newer (the engine requires it), CMocka, and `lcov`, `gcov` and `genhtml`, without which the unit-test project refuses to configure. The Windows agent also needs MinGW, a CMocka cross-built with MinGW, and a 32-bit Wine to run the tests.
 
 For the manager or the Linux agent, from the repository root:
 
@@ -22,9 +22,10 @@ ctest --output-on-failure
 ```
 
 - The CMake `TARGET` must match the one Wazuh was built with, and must be `manager`, `agent` or `winagent`: the unit-test project refuses any other value, `server` included.
+- The project links `libwazuh_test.a`, `libconfig.a`, `libwazuh_modulesd_lib.a` and `libwazuhext` from `src/build/lib`, so the main tree must have been built with `TEST=1` (it aborts with `libwazuh_test.a not found` otherwise). The manager and Linux agent suites are always compiled with AddressSanitizer and UBSan.
 - `TEST` accepts only `YES`, `yes`, `y`, `Y` or `1`; `TEST=on` is ignored and builds no test libraries.
 - `make coverage` in the same directory runs the tests and writes an HTML report to `coverage-report/`. Pass `-DGCOV_PATH=<gcov>` to `cmake` with the `gcov` of the compiler that built the tree, or lcov cannot read the coverage data.
-- `ctest -R` matches test names. To run one directory, use `ctest --test-dir <dir>`, or run a binary such as `./syscheckd/test_create_db` directly.
+- `ctest -R` matches test names. To run one directory, use `ctest --test-dir <dir>`, or run a binary such as `./remoted/test_secure` directly.
 - The Windows agent configures with `-DTARGET=winagent -DCMAKE_TOOLCHAIN_FILE=../Toolchain-win32.cmake` and runs the `.exe` binaries under Wine, with `WINEARCH=win32` and a `WINEPATH` that names the MinGW runtime and `src/build/bin`.
 - On macOS there is no separate unit-test project: `make -C src TARGET=agent TEST=1` builds the tests in the main build tree, and `ctest` runs from there (`cd src/build && ctest -V`, with `DYLD_LIBRARY_PATH` naming the directory CMocka is installed in).
 
@@ -32,16 +33,19 @@ The step-by-step procedure for each target, including the toolchain, the MinGW b
 
 ### C++ module tests
 
-The C++ modules of the manager (task_manager, inventory_sync_server, vulnerability_scanner, manager_config, uds_http_server, …) carry GoogleTest suites in the main build tree. CI configures the main build tree with `UNIT_TEST=ON`, builds one test target and runs it with `ctest` filtered by label:
+The C++ modules of the manager (task_manager, inventory_sync_server, vulnerability_scanner, manager_config, uds_http_server, …) carry GoogleTest suites in the main build tree. CI configures the main build tree with `UNIT_TEST=ON`, builds one test target and runs it with `ctest` filtered by label, never the test binary directly:
 
 ```bash
 make -C src deps TARGET=manager
+make -C src build-external TARGET=manager TEST=1
 cmake -S src -B src/build -DTARGET=manager -DUNIT_TEST=ON
 cmake --build src/build --target <module>_utest
-cd src/build && ctest --output-on-failure -L <label>
+cd src/build && ctest --output-on-failure --no-tests=error -L <label>
 ```
 
-The label is not always the target name: each workflow (`5_testunit_<module>.yml`) names the target it builds and the label it runs. A `UNIT_TEST=ON` tree builds no daemon executables, and the option stays in the CMake cache until it is set back to `OFF`.
+Before that, CI's dependency step (`.github/actions/build_external_deps/action.yml`) also builds `shared_modules/http-request`, `shared_modules/keystore` and the FlatBuffers schemas as standalone projects; copy its commands when a module target does not link. Each workflow then builds the module once with coverage flags and once with AddressSanitizer (`.github/actions/build_target_cpp/action.yml`, `.github/actions/test_cpp/action.yml`), and most also fail under a line-coverage floor (`.github/actions/coverage_cpp/action.yml`, 90% unless the workflow sets another `threshold`).
+
+The label is not always the target name: each workflow (`5_testunit_<module>.yml`) names the target it builds and the label it runs. `--no-tests=error` makes a label that matches no test fail instead of passing. A `UNIT_TEST=ON` tree builds no daemon executables, and the option stays in the CMake cache until it is set back to `OFF`.
 
 ### Engine
 
@@ -52,6 +56,8 @@ cd src/build/engine && ctest --output-on-failure
 ```
 
 Do not combine `ENGINE_TEST` with `TEST`: with any `TEST` value set, the engine test option is skipped and the engine tests are built with AddressSanitizer forced on.
+
+CI (`5_testunit_engine.yml`) builds the engine tests with AddressSanitizer by editing the default of the `ENGINE_ENABLE_ASAN` option in `src/engine/CMakeLists.txt` to `ON` before configuring. To run the same tests locally, configure once with `-DENGINE_ENABLE_ASAN=ON` (`cmake -S src -B src/build -DENGINE_ENABLE_ASAN=ON`) and build again; like the other options it stays in the cache until set back to `OFF`.
 
 ### Framework and API
 

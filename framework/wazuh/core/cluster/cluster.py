@@ -113,6 +113,27 @@ def get_node():
 # Files
 #
 
+
+def is_excluded(filename: str, excluded_files: list, excluded_extensions: list) -> bool:
+    """Check whether a file name is excluded from the cluster synchronization.
+
+    Parameters
+    ----------
+    filename : str
+        File name without directory.
+    excluded_files : list
+        File names excluded from the synchronization.
+    excluded_extensions : list
+        File extensions excluded from the synchronization.
+
+    Returns
+    -------
+    bool
+        True if the file is excluded.
+    """
+    return filename in excluded_files or filename.endswith(tuple(excluded_extensions))
+
+
 def walk_dir(dirname, recursive, files, excluded_files, excluded_extensions, get_cluster_item_key, previous_status=None,
              get_hash=True):
     """Iterate recursively inside a directory, save the path of each found file and obtain its metadata.
@@ -156,7 +177,7 @@ def walk_dir(dirname, recursive, files, excluded_files, excluded_extensions, get
             if recursive or root_ == full_dirname:
                 for file_ in files_:
                     # If file is inside 'excluded_files' or file extension is inside 'excluded_extensions', skip over.
-                    if file_ in excluded_files or any([file_.endswith(ext) for ext in excluded_extensions]):
+                    if is_excluded(file_, excluded_files, excluded_extensions):
                         continue
                     try:
                         #  If 'all' files have been requested or entry is in the specified files list.

@@ -5,6 +5,7 @@ metadata:
   description: |
     Transforms a number to an integer by truncating the fractional part or rounding to the nearest integer based on the fractional value (e.g., 9.6 → 10, -4.7 → -5);
     values with a fractional part ≥ 0.5 or ≤ -0.5 round away from zero, while others round toward zero.
+    `operation_mode` is optional; when omitted the number is truncated.
     The result of the to_int operation is mapped to “target_field”. In case of errors “target_field” will not be modified.
     This helper function is typically used in the map stage
   keywords:
@@ -29,6 +30,7 @@ arguments:
   operation_mode:
     type: string  # Accept only string
     source: value # includes only values
+    optional: true # defaults to truncate when omitted
     restrictions:
       allowed:
         - truncate

@@ -394,6 +394,19 @@ void Manager::remoteUpsert(const std::string& manifestUrl, const std::string& ci
             return;
         }
 
+        // The creation timestamp is stored with the database: without it the update cannot proceed
+        if (!createdAt.has_value())
+        {
+            // Failed update: keep previous availability/hash, only report FAILED status.
+            m_typeState[type].status = base::SyncStatus::FAILED;
+            LOG_WARNING("[Geo::Manager] Cannot update {} database '{}': manifest has no valid '{}' field",
+                        typeName,
+                        dbName,
+                        GENERATED_AT_PATH.substr(1));
+            updateGeoStatusSnapshot();
+            return;
+        }
+
         // Mark this type as running (a previously loaded version, if any, stays available)
         m_typeState[type].status = base::SyncStatus::UPDATING;
         updateGeoStatusSnapshot();

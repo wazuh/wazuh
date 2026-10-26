@@ -11,7 +11,6 @@ from engine_router.cmds.reload import configure as configure_reload
 from engine_router.cmds.update import configure as configure_update
 
 from engine_router.cmds.list import configure as configure_list
-from engine_router.cmds.ingest import configure as configure_ingest
 
 
 def parse_args():
@@ -37,9 +36,6 @@ def parse_args():
 
     # Table
     configure_list(subparsers)
-
-    # Queue
-    configure_ingest(subparsers)
 
     try:
         import argcomplete

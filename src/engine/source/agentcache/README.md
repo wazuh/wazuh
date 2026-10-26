@@ -2,7 +2,7 @@
 
 Header-only C++17 library used by enriched-event ingestion to share parsed, identity-validated
 agent metadata across batches. Operator settings and metrics live in the
-[engine reference](../../../../docs/ref/modules/engine/README.md#agent-metadata-cache).
+[engine reference](../../../../docs/ref/modules/engine/configuration.md#agent-metadata-cache).
 
 ## Requirements
 

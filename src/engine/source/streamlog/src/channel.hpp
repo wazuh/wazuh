@@ -55,7 +55,7 @@ class ChannelHandler;
  * @brief Concrete `WriterEvent` implementation for log channels.
  *
  * A `ChannelWriter` is the user-facing write handle. It pushes messages into the
- * channel's `FastQueueType` (a lock-free queue), where the `ChannelHandler` worker
+ * channel's `FastQueueType` (a mutex-based `fastqueue::StdQueue`), where the `ChannelHandler` worker
  * thread picks them up for file I/O.
  *
  * ### Ownership & Lifetime
@@ -120,7 +120,7 @@ public:
  *
  * Each `ChannelHandler` owns:
  * - A **rotation configuration** (`RotationConfig`) – immutable after construction.
- * - A **lock-free queue** (`FastQueueType`) – shared with all its `ChannelWriter`s.
+ * - A **mutex-based queue** (`FastQueueType`, a `fastqueue::StdQueue`) – shared with all its `ChannelWriter`s.
  * - A **worker thread** – started on the first `createWriter()` call, joined when
  *   the last writer is destroyed.
  * - State for **file rotation**: current output file, hard-link to "latest", file

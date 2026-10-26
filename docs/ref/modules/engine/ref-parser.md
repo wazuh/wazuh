@@ -3,6 +3,13 @@
 > - The parsers always take a string as input and return a value of a specific type.
 > - The parsers are case-sensitive (Unless otherwise specified).
 > - Check how parsers are used in the [parsers section](README.md#parse)
+> - A field expression must target a field of the schema or a temporary field whose first path segment starts with
+>   `_` (for example `_output_field`); any other name makes the asset fail to build. `~` parses without storing.
+>   That is why the examples below store into `_`-prefixed fields.
+> - A schema field always uses the parser of its schema type, and every argument after its name goes to that parser
+>   (`<event.start/RFC3339>`). A temporary field uses `text` unless its first argument names another parser
+>   (`<_tmp/long>`); the remaining arguments go to that parser.
+> - A parser expression must consume the whole input: anything left after the last token makes the parse fail.
 
 # Schema parser reference
 
@@ -10,13 +17,13 @@
 
 The `bool` parser accurately identifies and converts the string representations of `true` and `false` into JSON boolean
 types. It is case-insensitive. This parser does not require an end token and is automatically used for fields designated
-as boolean types in the schema.
+as `boolean` in the schema.
 
 ### Behavior
 
-- The Boolean parser strictly matches "true" or "false" without supporting parameters or alternative representations
-  like "yes"/"no" or "on"/"off".
-- Is key insensitive.
+- The Boolean parser strictly matches "true" or "false" without alternative representations like "yes"/"no" or
+  "on"/"off". It accepts no parameters: any argument makes the asset fail to build.
+- Is case-insensitive (`TRUE`, `False`, ...).
 - The parser does not require an end token.
 
 ### Signature
@@ -34,7 +41,7 @@ For the following examples, the parser configuration is as follows:
 
 ```yaml
 parse|input_field:
-  - <output_field/bool>
+  - <_output_field/bool>
 ```
 
 **Example 1**
@@ -50,7 +57,7 @@ Output after parse
 ```json
 {
   "input_field": "true",
-  "output_field": true
+  "_output_field": true
 }
 ```
 
@@ -67,7 +74,7 @@ Output after parse
 ```json
 {
   "input_field": "False",
-  "output_field": false
+  "_output_field": false
 }
 ```
 
@@ -106,7 +113,7 @@ Output after parse
 ```json
 {
   "input_field": "FALSE",
-  "output_field": false
+  "_output_field": false
 }
 ```
 
@@ -119,8 +126,11 @@ the bounds of -2^63 to 2^63-1. Automatically engaged for schema fields defined a
 ### Behavior
 
 - Accepts strings that represent integer values, including those prefixed with a '-' sign to denote negative numbers.
-- This parser can process numbers with decimal points but discards any fractional part,
-  effectively rounding down to the nearest whole number.
+  A leading '+' and scientific notation are not accepted.
+- This parser can process numbers with decimal points but discards any fractional part (truncation toward zero:
+  `-1.9` gives `-1`).
+- Values outside the 64-bit range fail.
+- Accepts no parameters.
 - It does not require a specific end token
 
 ### Signature
@@ -136,7 +146,7 @@ the bounds of -2^63 to 2^63-1. Automatically engaged for schema fields defined a
 For the following examples, the parser configuration is as follows:
 ```yaml
 parse|input_field:
-  - <output_field/long>
+  - <_output_field/long>
 ```
 
 **Example 1**
@@ -152,7 +162,7 @@ Output after parse
 ```json
 {
   "input_field": "123",
-  "output_field": 123
+  "_output_field": 123
 }
 ```
 
@@ -169,7 +179,7 @@ Output after parse
 ```json
 {
   "input_field": "-123",
-  "output_field": -123
+  "_output_field": -123
 }
 ```
 
@@ -186,11 +196,11 @@ Output after parse
 ```json
 {
   "input_field": "123.456",
-  "output_field": 123
+  "_output_field": 123
 }
 ```
 
-Success  with rounding
+Success, the fractional part is discarded.
 
 **Example 4**
 
@@ -216,7 +226,7 @@ Output after parse
 ```json
 {
   "input_field": "1.23",
-  "output_field": 1
+  "_output_field": 1
 }
 ```
 
@@ -230,6 +240,7 @@ integers, decimals, and numbers in scientific notation. Automatically used for s
 
 - Accepts numbers with optional leading '-' signs to indicate negative values.
 - Supports numbers with or without a decimal point, and can interpret numbers in scientific notation (e.g., `1.23E+10`).
+- Accepts no parameters.
 - It does not require a specific end token
 
 ### Signature
@@ -245,7 +256,7 @@ integers, decimals, and numbers in scientific notation. Automatically used for s
 For the following examples, the parser configuration is as follows:
 ```yaml
 parse|input_field:
-  - <output_field/double>
+  - <_output_field/double>
 ```
 
 **Example 1**
@@ -261,7 +272,7 @@ Output after parse
 ```json
 {
   "input_field": "123",
-  "output_field": 123.0
+  "_output_field": 123.0
 }
 ```
 
@@ -278,7 +289,7 @@ Output after parse
 ```json
 {
   "input_field": "-123",
-  "output_field": -123.0
+  "_output_field": -123.0
 }
 ```
 
@@ -295,7 +306,7 @@ Output after parse
 ```json
 {
   "input_field": "2.99792458E8",
-  "output_field": 299792458.0
+  "_output_field": 299792458.0
 }
 ```
 
@@ -345,21 +356,79 @@ Output after parse
 ```json
 {
   "input_field": "1.23",
-  "output_field": 1.23
+  "_output_field": 1.23
 }
 ```
 
 
 ## Float parser
 
+The `float` parser handles strings that represent single-precision (32-bit IEEE 754) floating-point values.
+Automatically used for schema fields defined as type `float`.
+
+### Behavior
+
+- Accepts both integers and decimals, with or without a negative sign, and scientific notation (e.g., 2.5E3).
+- The value is stored with single precision, so a decimal that has no exact single-precision representation is
+  written rounded to it (for example `0.1` is not written as `0.1`).
+- Accepts no parameters.
+- Does not require a specific end token.
+
+### Signature
+
+```yaml
+<field/float>
+```
+
+### Examples
+
+**Parser configuration**
+
+For the following examples, the parser configuration is as follows:
+```yaml
+parse|input_field:
+  - <_output_field/float>
+```
+
+**Example 1**
+
+Event input
+```json
+{
+  "input_field": "-2.5E3"
+}
+```
+
+Output after parse
+```json
+{
+  "input_field": "-2.5E3",
+  "_output_field": -2500.0
+}
+```
+
+**Example 2**
+
+Event input
+```json
+{
+  "input_field": "Not a number"
+}
+```
+
+Failed parsing, the input is not a valid float.
+
+## Scaled float parser
+
 The `scaled_float` parser handles strings that represent floating-point values, interpreting them without applying the
-scaling factor during the initial parsing phase. This approach allows for high-precision data capture while deferring
-scaling to later stages of data processing
+scaling factor during the initial parsing phase. The value is parsed as a double-precision number. Automatically used
+for schema fields defined as type `scaled_float`.
 
 ### Behavior
 
 - Accepts both integers and decimals, with or without a negative sign.
 - Efficiently processes numbers expressed in scientific notation (e.g., 2.5E3).
+- Accepts no parameters.
 - Does not require a specific end token.
 
 ### Signature
@@ -375,7 +444,7 @@ scaling to later stages of data processing
 For the following examples, the parser configuration is as follows:
 ```yaml
 parse|input_field:
-  - <output_field/scaled_float>
+  - <_output_field/scaled_float>
 ```
 
 **Example 1**
@@ -391,7 +460,7 @@ Output after parse
 ```json
 {
   "input_field": "123",
-  "output_field": 123.0
+  "_output_field": 123.0
 }
 ```
 
@@ -408,7 +477,7 @@ Output after parse
 ```json
 {
   "input_field": "-123",
-  "output_field": -123.0
+  "_output_field": -123.0
 }
 ```
 
@@ -425,7 +494,7 @@ Output after parse
 ```json
 {
   "input_field": "2.5E3",
-  "output_field": 2500.0
+  "_output_field": 2500.0
 }
 ```
 
@@ -453,20 +522,22 @@ Output after parse
 ```json
 {
   "input_field": "1.0E-2",
-  "output_field": 0.01
+  "_output_field": 0.01
 }
 ```
 
 ## Half Float parser
 
-The `half_float` parser handles strings that represent half precision floating-point values, interpreting them without applying the
-scaling factor during the initial parsing phase. This approach allows for high-precision data capture while deferring
-scaling to later stages of data processing
+The `half_float` parser handles strings that represent half-precision floating-point values. Automatically used for
+schema fields defined as type `half_float`.
 
 ### Behavior
 
 - Accepts both integers and decimals, with or without a negative sign.
 - Efficiently processes numbers expressed in scientific notation (e.g., 2.5E3).
+- Rejects values outside the half-precision range, -65504 to 65504.
+- The value is parsed and stored with single precision (it is not rounded to half precision).
+- Accepts no parameters.
 - Does not require a specific end token.
 
 ### Signature
@@ -482,7 +553,7 @@ scaling to later stages of data processing
 For the following examples, the parser configuration is as follows:
 ```yaml
 parse|input_field:
-  - <output_field/half_float>
+  - <_output_field/half_float>
 ```
 
 **Example 1**
@@ -498,7 +569,7 @@ Output after parse
 ```json
 {
   "input_field": "123",
-  "output_field": 123.0
+  "_output_field": 123.0
 }
 ```
 
@@ -515,7 +586,7 @@ Output after parse
 ```json
 {
   "input_field": "-123",
-  "output_field": -123.0
+  "_output_field": -123.0
 }
 ```
 
@@ -532,7 +603,7 @@ Output after parse
 ```json
 {
   "input_field": "2.5E3",
-  "output_field": 2500.0
+  "_output_field": 2500.0
 }
 ```
 
@@ -545,24 +616,35 @@ Event input
 }
 ```
 
-Failed parsing, the input is not a valid scaled float.
+Failed parsing, the input is not a valid half float.
 
 **Example 5**
 
 Event input
 ```json
 {
-  "input_field": "1.0E-2"
+  "input_field": "5.0E-1"
 }
 ```
 
 Output after parse
 ```json
 {
-  "input_field": "1.0E-2",
-  "output_field": 0.01
+  "input_field": "5.0E-1",
+  "_output_field": 0.5
 }
 ```
+
+**Example 6**
+
+Event input
+```json
+{
+  "input_field": "65505"
+}
+```
+
+Failed parsing, the input is out of the half-float range.
 
 ## Byte parser
 
@@ -575,8 +657,8 @@ Automatically used for schema fields defined as type `byte`.
 - Strictly limits the accepted values to the defined byte range, rejecting inputs outside -128 to 127.
 - Does not require a specific end token.
 - Accepts numeric strings that may optionally include a '-' sign to indicate negative values.
-- This parser can process numbers with decimal points but discards any fractional part,
-  effectively rounding down to the nearest whole number.
+- This parser can process numbers with decimal points but discards any fractional part (truncation toward zero).
+- Accepts no parameters.
 
 ### Signature
 
@@ -591,7 +673,7 @@ Automatically used for schema fields defined as type `byte`.
 For the following examples, the parser configuration is as follows:
 ```yaml
 parse|input_field:
-  - <status_code/byte>
+  - <_status_code/byte>
 ```
 
 **Example 1**
@@ -607,7 +689,7 @@ Output after parse
 ```json
 {
   "input_field": "123",
-  "status_code": 123
+  "_status_code": 123
 }
 ```
 
@@ -624,7 +706,7 @@ Output after parse
 ```json
 {
   "input_field": "-123",
-  "status_code": -123
+  "_status_code": -123
 }
 ```
 
@@ -661,7 +743,8 @@ Automatically used for schema fields defined as type `integer`.
 - Strictly limits the accepted values to the defined integer range, rejecting inputs outside -2^31 to 2^31-1.
 - Does not require a specific end token.
 - Accepts numeric strings that may optionally include a '-' sign to indicate negative values.
-- This parser can process numbers with decimal points but discards any fractional part, effectively rounding down to the nearest whole number.
+- This parser can process numbers with decimal points but discards any fractional part (truncation toward zero).
+- Accepts no parameters.
 
 ### Signature
 
@@ -676,7 +759,7 @@ Automatically used for schema fields defined as type `integer`.
 For the following examples, the parser configuration is as follows:
 ```yaml
 parse|input_field:
-  - <status_code/integer>
+  - <_status_code/integer>
 ```
 
 **Example 1**
@@ -692,7 +775,7 @@ Output after parse
 ```json
 {
   "input_field": "123",
-  "status_code": 123
+  "_status_code": 123
 }
 ```
 
@@ -709,7 +792,7 @@ Output after parse
 ```json
 {
   "input_field": "-123",
-  "status_code": -123
+  "_status_code": -123
 }
 ```
 
@@ -748,11 +831,11 @@ Output after parse
 ```json
 {
   "input_field": "123.456",
-  "status_code": 123
+  "_status_code": 123
 }
 ```
 
-Success with rounding.
+Success, the fractional part is discarded.
 
 ## Short parser
 
@@ -765,7 +848,8 @@ Automatically used for schema fields defined as type `short`.
 - Strictly limits the accepted values to the defined short range, rejecting inputs outside -2^15 to 2^15-1.
 - Does not require a specific end token.
 - Accepts numeric strings that may optionally include a '-' sign to indicate negative values.
-- This parser can process numbers with decimal points but discards any fractional part, effectively rounding down to the nearest whole number.
+- This parser can process numbers with decimal points but discards any fractional part (truncation toward zero).
+- Accepts no parameters.
 
 ### Signature
 
@@ -780,7 +864,7 @@ Automatically used for schema fields defined as type `short`.
 For the following examples, the parser configuration is as follows:
 ```yaml
 parse|input_field:
-  - <status_code/short>
+  - <_status_code/short>
 ```
 
 **Example 1**
@@ -796,7 +880,7 @@ Output after parse
 ```json
 {
   "input_field": "123",
-  "status_code": 123
+  "_status_code": 123
 }
 ```
 
@@ -813,7 +897,7 @@ Output after parse
 ```json
 {
   "input_field": "-123",
-  "status_code": -123
+  "_status_code": -123
 }
 ```
 
@@ -852,24 +936,25 @@ Output after parse
 ```json
 {
   "input_field": "123.456",
-  "status_code": 123
+  "_status_code": 123
 }
 ```
 
-Success with rounding.
+Success, the fractional part is discarded.
 
 ## Unsigned long parser
 
 The `unsigned_long` parser interprets strings as 64-bit unsigned integers, handling values from 0 to 18,446,744,073,709,551,615 (2^64-1).
 This parser is essential for processing large positive integer values, such as counters, IDs, or timestamps.
-Automatically used for schema fields defined as type `unsigned_long`.
+Automatically used for schema fields defined as type `unsigned_long` or `token_count`.
 
 ### Behavior
 
 - Strictly limits the accepted values to the defined unsigned long range, rejecting inputs outside 0 to 2^64-1.
 - Does not require a specific end token.
 - Accepts only non-negative numeric strings (no '-' sign allowed).
-- This parser can process numbers with decimal points but discards any fractional part, effectively rounding down to the nearest whole number.
+- This parser can process numbers with decimal points but discards any fractional part (truncation toward zero).
+- Accepts no parameters.
 
 ### Signature
 
@@ -884,7 +969,7 @@ Automatically used for schema fields defined as type `unsigned_long`.
 For the following examples, the parser configuration is as follows:
 ```yaml
 parse|input_field:
-  - <status_code/unsigned_long>
+  - <_status_code/unsigned_long>
 ```
 
 **Example 1**
@@ -900,7 +985,7 @@ Output after parse
 ```json
 {
   "input_field": "123",
-  "status_code": 123
+  "_status_code": 123
 }
 ```
 
@@ -950,22 +1035,27 @@ Output after parse
 ```json
 {
   "input_field": "123.456",
-  "status_code": 123
+  "_status_code": 123
 }
 ```
 
-Success with rounding.
+Success, the fractional part is discarded.
 
 ## Text parser
 
 The Text Parser is designed to extract sequences of characters from an input string up until a specified delimiter or
 end token is encountered. It is highly effective for parsing unstructured or semi-structured text, making it particularly
-useful for extracting fields from logs or similar textual data sources. Automatically used for schema fields defined as type `keyword` and `text`.
+useful for extracting fields from logs or similar textual data sources. Automatically used for schema fields defined as type `keyword`, `text`, `wildcard`,
+`match_only_text`, `completion`, `search_as_you_type`, `constant_keyword` and `semantic`.
 
 ### Behavior
 
 - Captures all characters in the input string until it reaches a designated end token.
-- If no specific end token is provided, the parser consumes all characters up to the end of the input string
+- Requires an end token: it must be followed by a literal or be the last token of the expression, where it consumes
+  all characters up to the end of the input string. Directly followed by another field, the asset fails to build.
+- Fails when it would capture nothing (the end token is found at once or the input is empty).
+- Accepts no parameters.
+- Is the default parser of a temporary field that names no parser (`<_field>`).
 
 ### Signature
 
@@ -980,7 +1070,7 @@ useful for extracting fields from logs or similar textual data sources. Automati
 For the following examples, the parser configuration is as follows:
 ```yaml
 parse|event.original:
- - "Prefix: <output_field/text>"
+ - "Prefix: <_output_field/text>"
 ```
 
 **Example 1**
@@ -996,7 +1086,7 @@ Output after parse
 ```json
 {
   "event.original": "Prefix: This is a test",
-  "output_field": "This is a test"
+  "_output_field": "This is a test"
 }
 ```
 
@@ -1030,7 +1120,7 @@ Failed parsing, no prefix to match.
 For the following examples, the parser configuration is as follows:
 ```yaml
 parse|event.original:
- - "Prefix: <output_field/text> Suffix"
+ - "Prefix: <_output_field/text> Suffix"
 ```
 
 **Example 1**
@@ -1046,7 +1136,7 @@ Output after parse
 ```json
 {
   "event.original": "Prefix: This is a test Suffix",
-  "output_field": "This is a test"
+  "_output_field": "This is a test"
 }
 ```
 
@@ -1063,7 +1153,7 @@ Output after parse
 ```json
 {
   "event.original": "Prefix: - Suffix",
-  "output_field": "-"
+  "_output_field": "-"
 }
 ```
 
@@ -1097,7 +1187,9 @@ as type `ip`.
 
 ### Behavior
 
-- Extracts and validates IP addresses in both IPv4 and IPv6 formats.
+- Extracts and validates IP addresses in both IPv4 and IPv6 formats (validated with `inet_pton`); the address is
+  stored as written.
+- Accepts no parameters.
 - Does not require a specific end token.
 
 ### Signature
@@ -1113,7 +1205,7 @@ as type `ip`.
 For the following examples, the parser configuration is as follows:
 ```yaml
 parse|input_field:
-  - <output_field/ip>
+  - <_output_field/ip>
 ```
 
 **Example 1**
@@ -1129,7 +1221,7 @@ Output after parse
 ```json
 {
   "input_field": "192.168.1.1",
-  "output_field": "192.168.1.1"
+  "_output_field": "192.168.1.1"
 }
 ```
 
@@ -1146,7 +1238,7 @@ Output after parse
 ```json
 {
   "input_field": "2001:0db8:85a3:0000:0000:8a2e:0370:7334",
-  "output_field": "2001:0db8:85a3:0000:0000:8a2e:0370:7334"
+  "_output_field": "2001:0db8:85a3:0000:0000:8a2e:0370:7334"
 }
 ```
 
@@ -1159,34 +1251,40 @@ Input event
 }
 ```
 
-Output after parse
-```json
-{
-  "input_field": "Not an IP address"
-}
-```
 Failed parsing, the input is not a valid IP address.
 
 ## Date parser
 
-The `date` parser is essential for transforming date strings into a standardized `ISO 8601` format (`YYYY-MM-DDTHH:MM:SSZ`).  It supports a wide array of date formats, both custom and predefined, ensuring flexibility across different logging systems and internationalization through locale support.  Automatically applied to schema fields defined as type` date`
+The `date` parser is essential for transforming date strings into a standardized `ISO 8601` UTC format with
+millisecond precision (`YYYY-MM-DDTHH:MM:SS.sssZ`). It supports a wide array of date formats, both custom and
+predefined, and locale-aware parsing. Automatically applied to schema fields defined as type `date` or `date_nanos`.
 
 ### Behavior
 
 - Format Matching: Attempts to match the input date string against the specified format.
-- Adjustment and Validation: Misformatted or incomplete date entries may result in adjustments based on default values (like assuming the current year when it's missing) or parsing failures, depending on the format's requirements.
-- Standardization: Successfully parsed dates are systematically converted to the ISO 8601 format, enhancing data consistency across systems.
-- Custom Field Applicability: Can be manually applied to custom fields where specific date parsing is required
-- Does not require a specific end token.
+- Missing year: when the format has no year, the current year is used.
+- Time zone: a numeric offset (`%z`, `%Ez`) is applied to convert the time to UTC; a time zone name (`%Z`, for example
+  `MST` or `UTC`, looked up in the time zone database) makes the time a local time in that zone, converted to UTC
+  (`15:04:05 MST` becomes `22:04:05Z`; a local time in a DST gap or overlap takes the earliest instant). When the
+  format carries no time zone information, the time is taken as UTC.
+- Standardization: Successfully parsed dates are written as `YYYY-MM-DDTHH:MM:SS.sssZ`.
+- Custom Field Applicability: Can be manually applied to temporary fields where specific date parsing is required.
+- Does not require a specific end token: it consumes what the format matches.
 
 ### Signature
 
 ```yaml
 <field/date/Format/[Locale]>
 ```
-- `Format`: Date format string or predefined format name.
-- `Locale`: Optional locale string for date parsing. The default locale is "en_US.UTF-8", which handles the most
-    commonly encountered date formats.
+- `Format`: one of
+    - a format string, recognised by containing a `%`;
+    - a predefined format name from the table below;
+    - a sample date (any other value): the format is the single predefined format that matches the whole sample. A
+      sample that matches no predefined format, or more than one, makes the asset fail to build.
+- `Locale`: Optional locale name used to parse the date (for example `en_GB.UTF-8`). The default is the C/POSIX
+    locale. The locale must be installed on the host, otherwise the asset fails to build.
+
+More than two arguments make the asset fail to build.
 
 ***Supported formats***
 
@@ -1220,7 +1318,7 @@ predefined formats like RFC3339, ISO8601, etc.
 For the following examples, the parser configuration is as follows:
 ```yaml
 parse|event_time:
-  - <tmp_time/date/RFC3339>
+  - <_tmp_time/date/RFC3339>
 ```
 
 **Example 1**
@@ -1235,7 +1333,7 @@ Output after parse
 ```json
 {
   "event_time": "2020-01-02T03:04:05Z07:00",
-  "tmp_time": "2020-01-01T20:04:05.000Z"
+  "_tmp_time": "2020-01-01T20:04:05.000Z"
 }
 ```
 
@@ -1274,7 +1372,8 @@ parse|event_time:
 
 > [!NOTE]
 > The `date` parser use is implicit, because the parser is automatically applied to schema fields defined as type `date`
-> like `event.start`.
+> like `event.start`; `HTTPDATE` and `en_GB.UTF-8` are its two arguments. The `en_GB.UTF-8` locale must be installed
+> on the host, otherwise the asset fails to build.
 
 
 **Example 1**
@@ -1314,8 +1413,10 @@ communication contexts. Automatically used for schema fields defined as type `bi
 
 ### Behavior
 
-- Validates base64 encoded strings, ensuring they conform to the base64 encoding standard.
-    ensuring the character set includes only A-Z, a-z, 0-9, '+', '/', and '=' for end padding.
+- Validates base64 encoded strings: it consumes characters from A-Z, a-z, 0-9, '+' and '/', then up to two '='
+  padding characters, and fails unless the consumed length is a multiple of 4.
+- The value is stored as written (still base64 encoded); it is not decoded.
+- Accepts no parameters.
 - Does not require a specific end token.
 
 ### Signature
@@ -1331,7 +1432,7 @@ communication contexts. Automatically used for schema fields defined as type `bi
 For the following examples, the parser configuration is as follows:
 ```yaml
 parse|input_field:
-  - <output_field/binary>
+  - <_output_field/binary>
 ```
 
 **Example 1**
@@ -1347,7 +1448,7 @@ Output after parse
 ```json
 {
   "input_field": "SGVsbG8sIFdvcmxkIQ==",
-  "output_field": "Hello, World!"
+  "_output_field": "SGVsbG8sIFdvcmxkIQ=="
 }
 ```
 
@@ -1373,7 +1474,9 @@ Input event
 
 Failed parsing, the input is not a valid base64 string, missing padding.
 
-**Input event**
+**Example 4**
+
+Input event
 
 ```json
 {
@@ -1396,9 +1499,12 @@ either explicitly or implicitly within parser expressions.
 
 ### Behavior
 
-- Matches the exact sequence of characters specified in the parser expression.
+- Matches the exact sequence of characters specified in the parser expression; the match is case-sensitive.
 - Does not require an end token.
 - Has 2 modes of syntax: explicit and implicit.
+- In an implicit literal, `<`, `?`, `(`, `)` and `\` are reserved and must be escaped with `\`. In an argument
+  (explicit form, and every parser argument), `/`, `>` and `\` must be escaped with `\`.
+- The explicit form takes exactly one argument, the literal; the stored value is the literal itself.
 
 ### Signature
 
@@ -1407,7 +1513,7 @@ Less common, this method involves declaring the literal text along with a destin
 scenarios where the matched text forms a part of the resultant data
 
 ```yaml
-<tmp_lit/literal/literal string><src.ip>
+<_tmp_lit/literal/literal string><source.ip>
 ```
 
 - `literal string`: The literal text to match
@@ -1417,19 +1523,19 @@ More common, this method involves declaring the literal text without a destinati
 serves as a condition or trigger for subsequent parsing operations
 
 ```yaml
-deny from <src.ip>
+deny from <source.ip>
 ```
 
 >[!NOTE]
-> Both forms are used to parse logs like `deny from 66.249.66.167` to extract and store the IP address in src.ip.
+> Both forms are used to parse logs like `deny from 66.249.66.167` to extract and store the IP address in source.ip.
 
-### Example withot explicit storage (Common case)
+### Example without explicit storage (Common case)
 
 **Parser configuration**
 
 ```yaml
 parse|event.original:
-  - deny from <src.ip>
+  - deny from <source.ip>
 ```
 
 **Input event**
@@ -1445,7 +1551,7 @@ parse|event.original:
 ```json
 {
   "event.original": "deny from 1.1.1.1",
-  "src.ip": "1.1.1.1"
+  "source.ip": "1.1.1.1"
 }
 ```
 
@@ -1455,7 +1561,7 @@ parse|event.original:
 
 ```yaml
 parse|event.original:
-  - <tmp_lit/literal/deny from ><src.ip>
+  - <_tmp_lit/literal/deny from ><source.ip>
 ```
 
 **Input event**
@@ -1471,19 +1577,24 @@ parse|event.original:
 ```json
 {
   "event.original": "deny from 1.1.1.1",
-  "src.ip": "1.1.1.1",
-  "tmp_lit": "deny from "
+  "source.ip": "1.1.1.1",
+  "_tmp_lit": "deny from "
 }
 ```
 
 ## Quoted
 
-The `quoted` parser is designed to extract sequences of characters that are enclosed by a specified delimiter, often used to handle quoted strings within text. This parser allows the specification of both the delimiter and the escape character, facilitating the accurate parsing of complex string data that may include escaped quotes or nested quotations.
+The `quoted` parser is designed to extract sequences of characters that are enclosed by a specified delimiter, often used to handle quoted strings within text. This parser allows the specification of both the delimiter and the escape character, facilitating the accurate parsing of string data that may include escaped quotes.
 
 ### Behavior
 
-- Supports nested quotations and escaped characters within quoted strings
+- The input must start with the delimiter; the parser consumes up to the first unescaped delimiter and stores the
+  content between both delimiters. There is no nesting.
+- Inside the string, the escape character may only precede the delimiter or another escape character; any other
+  character after it makes the parse fail. Every escape character is removed from the stored value.
 - By default, the parser uses a double quotation mark (`"`) as the delimiter and a backslash (`\`) as the escape character, but both can be customized to fit different data formats
+- Each argument must be a single character, and the delimiter and the escape character must differ; at most two
+  arguments are accepted. Otherwise the asset fails to build.
 - No specific end token is required
 
 ### Signature
@@ -1504,7 +1615,7 @@ The `quoted` parser is designed to extract sequences of characters that are encl
 For the following examples, the parser configuration is as follows:
 ```yaml
 parse|event.original:
-  - "msg=<temp_quoted/quoted>"
+  - "msg=<_temp_quoted/quoted>"
 ```
 
 **Example 1**
@@ -1520,7 +1631,7 @@ Output after parse
 ```json
 {
   "event.original": "msg=\"This is a quoted string\"",
-  "temp_quoted": "This is a quoted string"
+  "_temp_quoted": "This is a quoted string"
 }
 ```
 
@@ -1531,8 +1642,11 @@ Output after parse
 For the following examples, the parser configuration is as follows:
 ```yaml
 parse|event.original:
-  - "msg=<temp_quoted/quoted/'/\\>"
+  - "msg=<_temp_quoted/quoted/'/\\\\>"
 ```
+
+The escape character `\` is itself the argument escape of a parser expression, so it is written `\\` in the
+expression, and each of those backslashes is doubled again inside a double-quoted YAML string.
 
 **Example 1**
 
@@ -1547,7 +1661,24 @@ Output after parse
 ```json
 {
   "event.original": "msg='This is a quoted string'",
-  "temp_quoted": "This is a quoted string"
+  "_temp_quoted": "This is a quoted string"
+}
+```
+
+**Example 2**
+
+Input event
+```json
+{
+  "event.original": "msg='It\\'s escaped'"
+}
+```
+
+Output after parse
+```json
+{
+  "event.original": "msg='It\\'s escaped'",
+  "_temp_quoted": "It's escaped"
 }
 ```
 
@@ -1563,18 +1694,23 @@ CSV files or similar structured data streams.
 - The parser splits the input based on the specified delimiter while respecting quoted sections and recognizing
     escape characters.
 - Supports a wide range of delimiter characters, including commas, tabs, and custom characters.
-- Ensures all expected elements are present; fails if the count of extracted values does not match the expected number or if configuration errors occur.
+- Ensures all expected elements are present; fails if the count of extracted values does not match the expected number.
+- Values are stored as strings, an empty value as `null`; a `.` in an output name nests the value (`a.b` stores
+  `{"a":{"b":...}}`).
 - Requires an end token to determine the boundary of parsing. If positioned at the end of a parser expression, the end of the string acts as the end token.
 - Output names are JSON Pointer tokens: `~0` and `~1` are the only valid escapes after `~`; a name with any other
     escape is rejected when the asset is built.
+- The delimiter, quote and escape arguments must be single characters, and at least two output names are required;
+  otherwise the asset fails to build.
 - Common Errors:
     - Unbalanced Quotes: Fails parsing if quotes enclosing fields are not properly closed, as it cannot accurately determine the boundaries of the quoted text.
     - Insufficient Values: Fails if the number of fields extracted is less than expected; no data is stored.
+    - Extra Values: Fails if text is left after the last expected field.
 
 ### Signature
 
 ```yaml
-<field/quoted/dsv/delim_char/quote_char/esc_char/out[i]>
+<field/dsv/delim_char/quote_char/esc_char/out1/out2/...>
 ```
 
 - `delim_char`: The character used to separate individual elements within the input string.
@@ -1593,7 +1729,7 @@ CSV files or similar structured data streams.
 For the following examples, the parser configuration is as follows:
 ```yaml
 parse|input:
-- <outField/dsv/|/'/'/out1/out2/out3/outN>
+- <_outField/dsv/|/'/'/out1/out2/out3/outN>
 ```
 
 **Example 1**
@@ -1609,7 +1745,7 @@ Output after parse
 ```json
 {
   "input": "value1|value2|value3|valueN",
-  "outField": {
+  "_outField": {
     "out1": "value1",
     "out2": "value2",
     "out3": "value3",
@@ -1625,7 +1761,7 @@ Output after parse
 For the following examples, the parser configuration is as follows:
 ```yaml
 parse|input:
-- <outField/dsv/|/'/'/out1/out2/out3>
+- <_outField/dsv/|/'/'/out1/out2/out3>
 ```
 
 **Example 1**
@@ -1651,7 +1787,7 @@ Output after parse
 ```json
 {
   "input": "'value-|-1'|'value-''-2'|'value-|''-3'",
-  "outField": {
+  "_outField": {
     "out1": "value-|-1",
     "out2": "value-'-2",
     "out3": "value-|'-3"
@@ -1669,8 +1805,10 @@ structured data streams.
 ### Behavior
 
 - The parser splits the input string by commas, treating sections within quotes as single fields regardless of internal commas.
-- Properly manages fields enclosed in quotes and respects escape characters, allowing the inclusion of quotes within fields.
+- Fields may be enclosed in double quotes (`"`); a double quote inside a quoted field is written doubled (`""`).
 - Checks for balanced quotes and the correct number of fields as expected.
+- Values are stored as strings, an empty value as `null`, as in `dsv`.
+- At least two output names are required; otherwise the asset fails to build.
 - Fails if quotes are unbalanced, fields are missing, or formatting errors occur.
 - Requires an end token to determine the boundary of parsing. If positioned at the end of a parser expression, the end of
     the string acts as the end token.
@@ -1681,7 +1819,7 @@ structured data streams.
 ### Signature
 
 ```yaml
-<field/csv/out[i]>
+<field/csv/out1/out2/...>
 ```
 
 - `out[i]`: The specific field names within the output object where the parsed values will be stored. This argument is
@@ -1694,7 +1832,7 @@ structured data streams.
 For the following examples, the parser configuration is as follows:
 ```yaml
 parse|input:
-- <outField/csv/out1/out2/out3>
+- <_outField/csv/out1/out2/out3>
 ```
 
 **Example 1**
@@ -1710,7 +1848,7 @@ Output after parse
 ```json
 {
   "input": "value1,value2,value3",
-  "outField": {
+  "_outField": {
     "out1": "value1",
     "out2": "value2",
     "out3": "value3"
@@ -1731,7 +1869,7 @@ Output after parse
 ```json
 {
   "input": "value1,\"value,2\",value3",
-  "outField": {
+  "_outField": {
     "out1": "value1",
     "out2": "value,2",
     "out3": "value3"
@@ -1744,19 +1882,19 @@ Output after parse
 Input event
 ```json
 {
-  "input": "value1,\"value\"\"2\"\",value3"
+  "input": "value1,\"value\"\"2\",value3"
 }
 ```
 
-Input in string format: `value1,"value""2"",value3`
+Input in string format: `value1,"value""2",value3`
 
 Output after parse
 ```json
 {
-  "input": "value1,\"value\"\"2\"\",value3",
-  "outField":{
+  "input": "value1,\"value\"\"2\",value3",
+  "_outField": {
     "out1": "value1",
-    "out2": "value\"2\"",
+    "out2": "value\"2",
     "out3": "value3"
   }
 }
@@ -1776,15 +1914,16 @@ The parser does not match because the input does not contain the expected number
 
 ## Parse JSON
 
-The `parse_json` parser is designed to extract and parse JSON objects embedded within input strings. This parser is
+The `json` parser is designed to extract and parse JSON values embedded within input strings. This parser is
 essential for handling structured data formats that include JSON data within text fields, allowing for the extraction of
 specific fields from complex JSON structures. This parser is capable of parsing any JSON type, including objects, arrays,
 strings, numbers, and booleans.
 
 ### Behavior
 
-- Extracts and parses JSON objects embedded within input strings.
+- Parses one JSON value at the start of the input and stops where that value ends.
 - Supports nested JSON structures up to the nesting limit below.
+- Accepts no parameters.
 - Input nested deeper than 256 levels (json::Json::MAX_DEPTH) is rejected: the parser fails as on invalid input, the field is not set and nothing is logged; the nesting depth exceeds the limit (256) message names the cap in test traces.
   The root container is level 1: 256 nested containers (objects and arrays) parse, the 257th fails. The limit is
   fixed (not configurable) and is not an input-size limit; the event size is capped by remoted.
@@ -1803,7 +1942,7 @@ strings, numbers, and booleans.
 For the following examples, the parser configuration is as follows:
 ```yaml
 parse|input:
-- <outField/json>
+- <_outField/json>
 ```
 
 **Example 1**
@@ -1819,7 +1958,7 @@ Output after parse
 ```json
 {
   "input": "{\"field1\": \"value1\", \"field2\": 123, \"field3\": [\"a\", \"b\", \"c\"]}",
-  "outField": {
+  "_outField": {
     "field1": "value1",
     "field2": 123,
     "field3": ["a", "b", "c"]
@@ -1840,7 +1979,7 @@ Output after parse
 ```json
 {
   "input": "{\"field1\": {\"nested1\": \"value1\", \"nested2\": 123}}",
-  "outField": {
+  "_outField": {
     "field1": {
       "nested1": "value1",
       "nested2": 123
@@ -1864,7 +2003,7 @@ Output after parse
 ```json
 {
   "input": "123.45",
-  "outField": 123.45
+  "_outField": 123.45
 }
 ```
 
@@ -1883,14 +2022,15 @@ Windows event logs which often contain complex and repetitive tag structures.
 - Text and CDATA content of an XML element is identified with a '#text' key in the JSON output. If no text or CDATA is
   present, the key is ignored. A CDATA section is a leaf: it does not create a member of its own (for example,
   `<a><![CDATA[x]]></a>` produces `{"a":{"#text":"x"}}`).
-- Ignores the root 'Event' object and maps 'Data' elements using their 'Name' attributes as keys, avoiding array
-  tructures for multiple data elements and directly integrating their values into the JSON output.
+- Repeated sibling elements with the same name become an array.
+- In `windows` mode only: the root `Event` element (and its attributes) is omitted, and each `Data` element with a
+  `Name` attribute is stored as a string member named after that attribute, instead of a `Data` object.
 - Input nested deeper than 256 levels (json::Json::MAX_DEPTH) is rejected: the parser fails as on invalid input, the field is not set and nothing is logged; the nesting depth exceeds the limit (256) message names the cap in test traces.
   Depth is counted in nested XML elements: 256 nested elements parse, the 257th fails; text and CDATA are leaves
   (`#text`) and add no level. In `windows` mode the root `Event`, although omitted from the output, is level 1. The
   limit is fixed (not configurable) and is not an input-size limit; the event size is capped by remoted.
-
-- End token is required.
+- End token is required: the parser takes the text up to the next literal, or to the end of the input when it is the
+  last token, and fails if that text is not well-formed XML.
 
 ### Signature
 
@@ -1898,7 +2038,8 @@ Windows event logs which often contain complex and repetitive tag structures.
 <field/xml/[mode]>
 ```
 
-- `mode`: Optional parameter specifying the parser mode. If omitted, the default mode is used. For Windows Event Logs,
+- `mode`: Optional parameter specifying the parser mode, `default` or `windows`; any other value, or more than one
+  argument, makes the asset fail to build. If omitted, the default mode is used. For Windows Event Logs,
   use `windows` mode. This mode processes complex XML structures by ignoring repetitive tags like `<Event>` and uses the
   unique identifiers from `<Data>` tags directly as keys in the resulting JSON object.
 
@@ -1909,23 +2050,23 @@ Windows event logs which often contain complex and repetitive tag structures.
 For the following examples, the parser configuration is as follows:
 ```yaml
 parse|input:
-- <outField/xml>
+- <_outField/xml>
 ```
 
 **Example 1**
 
 Input event
-```JSON
+```json
 {
   "input": "<SomeField>Some data</SomeField>"
 }
 ```
 
 Output after parse
-```JSON
+```json
 {
   "input": "<SomeField>Some data</SomeField>",
-  "outField": {
+  "_outField": {
     "SomeField": {
       "#text": "Some data"
     }
@@ -1936,17 +2077,17 @@ Output after parse
 **Example 2**
 
 Input event
-```JSON
+```json
 {
   "input": "<SomeField attr1=\"value1\" attr2=\"value2\">Some data</SomeField>"
 }
 ```
 
 Output after parse
-```JSON
+```json
 {
   "input": "<SomeField attr1=\"value1\" attr2=\"value2\">Some data</SomeField>",
-  "outField": {
+  "_outField": {
     "SomeField": {
       "#text": "Some data",
       "@attr1": "value1",
@@ -1959,17 +2100,17 @@ Output after parse
 **Example 3**
 
 Input event
-```JSON
+```json
 {
   "input": "<SomeField attr='attr value'><SubField>Some data</SubField></SomeField>"
 }
 ```
 
 Output after parse
-```JSON
+```json
 {
   "input": "<SomeField attr='attr value'><SubField>Some data</SubField></SomeField>",
-  "outField": {
+  "_outField": {
     "SomeField": {
       "@attr": "attr value",
       "SubField": {
@@ -1993,7 +2134,7 @@ Output after parse
 ```json
 {
   "input": "<SomeField attr=\"attr value\" val=\"10071992\"/>",
-  "outField": {
+  "_outField": {
     "SomeField": {
       "@attr": "attr value",
       "@val": "10071992"
@@ -2011,13 +2152,13 @@ Output after parse
 For the following examples, the parser configuration is as follows:
 ```yaml
 parse|input:
-- <outField/xml/windows>
+- <_outField/xml/windows>
 ```
 
 **Example 1**
 
 Input event
-```JSON
+```json
 {
   "input": "<Event xmlns='http://schemas.microsoft.com/win/2004/08/events/event'><System><EventID>5379</EventID></System><EventData><Data Name='SubjectUserName'>vagrant</Data><Data Name='ClientProcessId'>5572</Data></EventData></Event>"
 }
@@ -2026,22 +2167,22 @@ Input event
 For the purpose of this example, the well-formatted XML is shown below:
 
 ```xml
- <Event xmlns='http://schemas.microsoft.com/win/2004/08/events/event'>
+<Event xmlns='http://schemas.microsoft.com/win/2004/08/events/event'>
   <System>
- 	  <EventID>5379</EventID>
-   </System>
+    <EventID>5379</EventID>
+  </System>
   <EventData>
     <Data Name='SubjectUserName'>vagrant</Data>
     <Data Name='ClientProcessId'>5572</Data>
   </EventData>
- </Event>
+</Event>
 ```
 
 Output after parse
-```JSON
+```json
 {
   "input": "<Event xmlns='http://schemas.microsoft.com/win/2004/08/events/event'><System><EventID>5379</EventID></System><EventData><Data Name='SubjectUserName'>vagrant</Data><Data Name='ClientProcessId'>5572</Data></EventData></Event>",
-  "outField": {
+  "_outField": {
     "System": {
       "EventID": {
         "#text": "5379"
@@ -2073,7 +2214,10 @@ nested delimiters or escape sequences.
   - Each key-value pair is split from others, given the `delimiter` token (may be multi‑character).
   - All the characters contained between the `quote` characters will be considered part of a single value,
     even the `separator` and `delimiter` tokens
-- Customizable delimiters and separator tokens.
+- Customizable delimiters and separator tokens. Exactly four arguments are required: the separator and the delimiter
+  must be non-empty and different, the quote and the escape must be single characters; otherwise the asset fails to
+  build.
+- Values are stored as strings with the outer quotes removed; a key with an empty value is stored as `null`.
 - Input nested deeper than 256 levels (json::Json::MAX_DEPTH) is rejected: the parser fails as on invalid input, the field is not set and nothing is logged; the nesting depth exceeds the limit (256) message names the cap in test traces.
   For every key, with or without a value, each `.` in the key creates one nested level in the output (`a.b=` maps to
   `{"a":{"b":null}}`), so the destination path has one level per `.` plus one and the limit counts those levels: a key
@@ -2092,7 +2236,9 @@ nested delimiters or escape sequences.
 - `sep_token`: Token that separates keys from their corresponding values.
 - `delim_token`: Token that delimits one key-value pair from another.
 - `quote_char`: Character used for quoting complex values that may contain delimiters or separators as literal content.
-- `esc_char`: Character used to escape the quote characters within values, allowing them to be included as part of the data.
+- `esc_char`: Character used to escape the quote character, the separator or the delimiter within values, allowing
+  them to be included as part of the data. When `esc_char` is the backslash it is written `\\` (see
+  [Literal](#literal)). When it equals `quote_char`, a doubled quote inside a quoted value stands for one quote.
 
 ### Examples: Simple Key-Value Pair Extraction
 
@@ -2100,7 +2246,7 @@ nested delimiters or escape sequences.
 
 ```yaml
 parse|input:
-- <outField/kv/=/,/'/'>
+- <_outField/kv/=/,/'/'>
 ```
 
 Input event
@@ -2114,7 +2260,7 @@ Output after parse
 ```json
 {
   "input": "key1=value1,key2=value 2,key3='value 3'",
-  "outField": {
+  "_outField": {
     "key1": "value1",
     "key2": "value 2",
     "key3": "value 3"
@@ -2129,7 +2275,7 @@ Output after parse
 
 ```yaml
 parse|input:
-- <outField/kv/=/,/'/\\'>
+- <_outField/kv/=/,/'/\\>
 ```
 
 Input event
@@ -2143,7 +2289,7 @@ Output after parse
 ```json
 {
   "input": "key1=value1,key2=value\\,2,key3='value ,3'",
-  "outField": {
+  "_outField": {
     "key1": "value1",
     "key2": "value,2",
     "key3": "value ,3"
@@ -2157,7 +2303,7 @@ Output after parse
 
 ```yaml
 parse|input:
-- <outField/kv/::=/ || /"/\\>
+- <_outField/kv/::=/ || /"/\\>
 ```
 
 Input event
@@ -2171,7 +2317,7 @@ Output after parse
 ```json
 {
   "input": "k1::=v1 || k2::=v2",
-  "outField": {
+  "_outField": {
     "k1": "v1",
     "k2": "v2"
   }
@@ -2186,8 +2332,11 @@ The uri parser is adept at parsing Uniform Resource Identifiers (URIs) and trans
 
 ### Behavior
 
-- Checks the validity of the URI format and components.
-- Decomposes the URI into its constituent parts, including scheme, domain, path, port, query, and fragment.
+- Checks the validity of the URI format and components (parsed with libcurl's URL API).
+- Decomposes the URI into string members `original`, `scheme`, `domain`, `username`, `password`, `port`, `path`,
+  `query` and `fragment`; a part absent from the URI is not set. `original` is the URL as normalised by libcurl (for
+  example, an empty path becomes `/`).
+- Accepts no parameters.
 - Requires an end token to determine the boundary of parsing.
 
 ### Signature
@@ -2203,7 +2352,7 @@ The uri parser is adept at parsing Uniform Resource Identifiers (URIs) and trans
 For the following examples, the parser configuration is as follows:
 ```yaml
 parse|input:
-- <outField/uri>
+- <_outField/uri>
 ```
 
 **Example 1**
@@ -2219,7 +2368,7 @@ Output after parse
 ```json
 {
   "input": "http://someurl.com",
-  "outField": {
+  "_outField": {
     "original": "http://someurl.com/",
     "scheme": "http",
     "domain": "someurl.com",
@@ -2241,15 +2390,15 @@ Output after parse
 ```json
 {
   "input": "https://some.url.com:8080/user.php?name=pepe&param=123#login",
-  "outField": {
+  "_outField": {
     "path": "/user.php",
     "query": "name=pepe&param=123",
-    "Original": "https://some.url.com:8080/user.php?name=pepe&param=123#login",
+    "original": "https://some.url.com:8080/user.php?name=pepe&param=123#login",
     "scheme": "https",
-      "fragment": "login",
+    "fragment": "login",
     "domain": "some.url.com",
     "port": "8080"
-	}
+  }
 }
 ```
 
@@ -2266,15 +2415,15 @@ Output after parse
 ```json
 {
   "input": "https://john.doe@[2001:db8::7]:123/forum/questions/?tag=networking&order=newest#top",
-  "outField": {
-  	"domain": "[2001:db8::7]",
-  	"query": "tag=networking&order=newest",
-  	"path": "/forum/questions/",
-  	"original": "https://john.doe@[2001:db8::7]:123/forum/questions/?tag=networking&order=newest#top",
-  	"scheme": "https",
-  	"fragment": "top",
-  	"username": "john.doe",
-  	"port": "123"
+  "_outField": {
+    "domain": "[2001:db8::7]",
+    "query": "tag=networking&order=newest",
+    "path": "/forum/questions/",
+    "original": "https://john.doe@[2001:db8::7]:123/forum/questions/?tag=networking&order=newest#top",
+    "scheme": "https",
+    "fragment": "top",
+    "username": "john.doe",
+    "port": "123"
   }
 }
 ```
@@ -2289,9 +2438,11 @@ length limitations.
 
 - Validates the format of domain names, ensuring they conform to DNS naming standards.
 - Validates that the input string is a valid domain name, adhering to DNS naming rules.
-- Allows characters "a-z", "A-Z", "0-9", ".", and "-".
-- Limits the domain name length to a maximum of 255 characters.
-- Stores the valid domain name in the designated output field if the validation is successful.
+- Consumes the characters "a-z", "A-Z", "0-9", ".", and "-".
+- Limits the domain name length to a maximum of 253 characters; the name cannot start with a dot or contain two
+  consecutive dots.
+- Stores the valid domain name, as a string, in the designated output field if the validation is successful.
+- Accepts no parameters.
 - It does not require a specific end token
 
 
@@ -2307,7 +2458,7 @@ length limitations.
 
 ```yaml
 parse|input:
-- <outField/fqdn>
+- <_outField/fqdn>
 ```
 
 Input event
@@ -2321,7 +2472,7 @@ Output after parse
 ```json
 {
   "input": "www.example.com",
-  "outField": "www.example.com"
+  "_outField": "www.example.com"
 }
 ```
 
@@ -2333,8 +2484,11 @@ elements such as directory, file name, and extension.
 
 ### Behavior
 
-- Extracts and validates file paths, ensuring they conform to standard file path naming conventions.
-- Decomposes the file path into `path`, `name`, `drive_letter`, and `ext` components.
+- Takes the text up to the end token as a file path; a path containing `\` is split on `\`, any other on `/`.
+- Decomposes the file path into the string members `path` (everything before the last separator), `name` (the part
+  after it), `ext` (the text after the last `.` of `name`, lowercased; empty when there is none) and, for a Windows
+  path, `drive_letter`.
+- Accepts no parameters.
 - Requires an end token to determine the boundary of parsing.
 
 ### Signature
@@ -2350,7 +2504,7 @@ elements such as directory, file name, and extension.
 For the following examples, the parser configuration is as follows:
 ```yaml
 parse|input:
-- <outField/file>
+- <_outField/file>
 ```
 
 **Example 1**
@@ -2366,7 +2520,7 @@ Output after parse
 ```json
 {
   "input": "/path/to/file.txt",
-  "outField": {
+  "_outField": {
     "path": "/path/to",
     "name": "file.txt",
     "ext": "txt"
@@ -2387,7 +2541,7 @@ Output after parse
 ```json
 {
   "input": "C:\\path\\to\\file.txt",
-  "outField": {
+  "_outField": {
     "path": "C:\\path\\to",
     "name": "file.txt",
     "ext": "txt",
@@ -2409,7 +2563,7 @@ Output after parse
 ```json
 {
   "input": "../home/..user/.rootkit/.file.sh",
-  "outField": {
+  "_outField": {
     "path": "../home/..user/.rootkit",
     "name": ".file.sh",
     "ext": "sh"
@@ -2425,13 +2579,15 @@ spaces, tabs, or other characters that do not contain valuable data.
 
 ### Behavior
 - Skips over specified text sequences, excluding them from the parsing process.
-- Repeatedly ignores the sequence wherever it appears in the input.
+- Consumes the sequence one or more consecutive times at the current position; it fails if the sequence is not
+  there at least once. The match is case-sensitive.
+- Takes exactly one non-empty argument, and accepts no destination field: it must be written as `<~/ignore/...>`.
 - Does not require an end token.
 
 ### Signature
 
 ```yaml
-<field/ignore/str_to_ignore>
+<~/ignore/str_to_ignore>
 ```
 
 - `str_to_ignore`: The specific text sequence to be ignored during parsing.
@@ -2443,7 +2599,7 @@ spaces, tabs, or other characters that do not contain valuable data.
 For the following examples, the parser configuration is as follows:
 ```yaml
 parse|input:
-- Extract only the number:<~/ignore/ ><number/long>
+- Extract only the number:<~/ignore/ ><_number/long>
 ```
 
 **Example 1**
@@ -2459,17 +2615,14 @@ Output after parse
 ```json
 {
   "input": "Extract only the number:      1234",
-  "number": 1234
+  "_number": 1234
 }
 ```
 
 >[!NOTE]
-> In this example, the parser ignores all spaces ('` `' sequence) between the text and the number, extracting only the
-> number value with the `long` parser. Is useful when the input data is fixed and the parser needs to skip over specific
-> sequences.
-
->[!NOTE]
-> In this example, the parser ignores use as destination the`~` temporary field and not store the value in the output.
+> In this example, the parser ignores all spaces (the ` ` sequence) between the text and the number, extracting only the
+> number value with the `long` parser. It is useful when the input data is fixed and the parser needs to skip over
+> specific sequences. The `ignore` parser is written with the `~` wildcard, so it stores nothing.
 
 
 ## Between
@@ -2479,7 +2632,9 @@ located between a designated `start` and `end` delimiters. This parser is highly
 text formats need to be parsed to extract specific data segments enclosed by known markers.
 
 ### Behavior
-- Extracts the text located between the specified `start` and `end` delimiters.
+- The input must start with `start`; the parser consumes up to the first occurrence of `end` after it, and stores the
+  text in between.
+- Takes exactly two arguments, which cannot both be empty.
 - End token is not required.
 
 ### Signature
@@ -2498,7 +2653,7 @@ text formats need to be parsed to extract specific data segments enclosed by kno
 For the following examples, the parser configuration is as follows:
 ```yaml
 parse|input:
-- "<outField/between/Extract this text: [/].>"
+- "<_outField/between/Extract this text: [/].>"
 ```
 
 **Example 1**
@@ -2514,7 +2669,7 @@ Output after parse
 ```json
 {
   "input": "Extract this text: [This is the text to extract].",
-  "outField": "This is the text to extract"
+  "_outField": "This is the text to extract"
 }
 ```
 
@@ -2526,8 +2681,10 @@ they contain only valid, expected characters.
 
 ### Behavior
 
-- Checks if the content of the input field consists solely of alphanumeric characters, Optionally includes additional
-  characters specified in `additionalChars`.
+- Consumes one or more alphanumeric characters, plus any character listed in `additionalChars`, and stops at the
+  first other character; it fails if the first character is not allowed.
+- Accepts at most one argument.
+- Does not require an end token.
 
 ### Signature
 
@@ -2544,7 +2701,7 @@ they contain only valid, expected characters.
 For the following examples, the parser configuration is as follows:
 ```yaml
 parse|input:
-  <result/alphanumeric>
+  - <_result/alphanumeric>
 ```
 
 **Example 1**
@@ -2560,7 +2717,7 @@ Output after parse
 ```json
 {
   "input": "1234abcd",
-  "result": "1234abcd"
+  "_result": "1234abcd"
 }
 ```
 
@@ -2570,7 +2727,7 @@ Output after parse
 
 ```yaml
 parse|input:
-  <result/alphanumeric/_->
+  - <_result/alphanumeric/_->
 ```
 
 **Example 1**
@@ -2586,7 +2743,7 @@ Output after parse
 ```json
 {
   "input": "_123_abc-DEF456",
-  "result": "_123_abc-DEF456"
+  "_result": "_123_abc-DEF456"
 }
 ```
 
@@ -2598,9 +2755,10 @@ original information for analytical or tracking purposes.
 
 ### Behavior
 
-- The parser takes the content of input field and checks if it is a string.
-- If valid, the string is directly mapped to output field under the sub-field original to emphasize that the content is
-  unmodified.
+- The parser takes the text up to the end token, unmodified, and stores it as the `original` member of the output
+  field (`<field>.original`). It does not decompose the user agent.
+- Accepts no parameters.
+- Requires an end token to determine the boundary of parsing.
 
 
 ### Signature
@@ -2616,7 +2774,7 @@ original information for analytical or tracking purposes.
 For the following examples, the parser configuration is as follows:
 ```yaml
 parse|input:
-- <outField/useragent>
+- <_outField/useragent>
 ```
 
 **Example 1**
@@ -2632,7 +2790,7 @@ Output after parse
 ```json
 {
   "input": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3",
-  "outField": {
+  "_outField": {
     "original": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3"
   }
 }

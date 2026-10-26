@@ -36,8 +36,8 @@ Every subcommand requires a **config JSON** passed with `-c`. Fields:
 | Field | Required | Description |
 |---|---|---|
 | `hosts` | ✅ | Array of indexer URLs, e.g. `["https://127.0.0.1:9200"]` |
-| `username` | ✅ | Indexer username — seeded into the keystore at startup |
-| `password` | ✅ | Indexer password — seeded into the keystore at startup |
+| `username` | ✅ | Indexer username — seeded into the keystore at startup (omitted, the value an earlier run stored is used) |
+| `password` | ✅ | Indexer password — seeded into the keystore at startup (omitted, the value an earlier run stored is used) |
 | `ssl.certificate_authorities` | For HTTPS | Array with path(s) to the CA root cert |
 | `ssl.certificate` | Optional | Path to client TLS certificate (mutual TLS) |
 | `ssl.key` | Optional | Path to client TLS private key (mutual TLS) |
@@ -47,6 +47,8 @@ Every subcommand requires a **config JSON** passed with `-c`. Fields:
 | `bulk_max_bytes` | Optional | Async mode — target byte threshold for each bulk request (default: 4 MB) |
 | `flush_interval_seconds` | Optional | Flush interval in seconds (default: 20; `0` in sync mode = no background flush) |
 | `max_retry_delay_seconds` | Optional | Cap (seconds) for exponential-backoff retries (default: 15) |
+| `max_retry_attempts` | Optional | Sync mode — failed attempts per operation before it throws (default: 5; `0` = no bound) |
+| `max_retry_duration_seconds` | Optional | Sync mode — wall-clock retry budget per operation (default: 15; `0` = no bound) |
 | `request_timeout_seconds` | Optional | Per-request timeout (default: 60; 0 = none) |
 | `monitoring_interval_seconds` | Optional | Health-check period (default: 10) |
 
@@ -157,10 +159,10 @@ mode waits for the queue to drain.
   -e input/example.json
 ```
 
-### Example events file (`input/example.json`)
+### Example events file
 
-The `id`, `operation` and `data` keys of the shipped example are not interpreted: they become fields of
-the indexed document.
+An abridged copy of the shipped `input/example.json` (which carries more fields). Its `id`,
+`operation` and `data` keys are not interpreted: they become fields of the indexed document.
 
 ```json
 [
@@ -299,11 +301,13 @@ compose up -d`).
 ## Local plain-HTTP OpenSearch (alternative)
 
 The `docker-compose.yml` in this directory starts a plain HTTP two-node OpenSearch
-cluster with security disabled — no TLS, no credentials needed.
+cluster (node 1 on port 9200, node 2 on 9300) and OpenSearch Dashboards (port 5601), with security
+disabled — no TLS. The connector still requires a `username` and `password` in the config, but the
+cluster ignores them.
 
 ```bash
-# Start
-docker compose -f testtool/docker-compose.yml up -d
+# Start (from the repository root)
+docker compose -f src/shared_modules/indexer_connector/testtool/docker-compose.yml up -d
 
 # Use this config
 cat > /tmp/config-local.json << 'EOF'

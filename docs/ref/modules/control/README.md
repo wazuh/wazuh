@@ -82,6 +82,13 @@ is the only path from `wm_control` to the manager service. It is installed `root
 ```text
 Usage: wazuh-manager-service-control {restart|reload}
        wazuh-manager-service-control -h
+
+Commands:
+  restart  Restart the Wazuh manager service
+  reload   Reload the Wazuh manager while keeping agent connections active
+
+Options:
+  -h       Show this help
 ```
 
 It accepts exactly one argument. It runs only when the **real** user is `root` or `wazuh-manager`
@@ -94,7 +101,7 @@ modulesd and becomes `root` before running:
 | Action | systemd is PID 1 | No systemd |
 |--------|------------------|------------|
 | `restart` | `/usr/bin/systemctl restart wazuh-manager.service` | `bin/wazuh-manager-control restart` |
-| `reload` | polls `systemctl is-active wazuh-manager.service` once a second, up to 60 times: `active` → `systemctl reload wazuh-manager.service`; `inactive` or `failed` → `bin/wazuh-manager-control reload`; any other state → wait | `bin/wazuh-manager-control reload` |
+| `reload` | polls `systemctl is-active wazuh-manager.service` once a second, up to 60 times: `active` → `systemctl reload wazuh-manager.service`; `inactive` or `failed` → `bin/wazuh-manager-control reload`; any other state, or a failed query → wait | `bin/wazuh-manager-control reload` |
 
 The unit's `ExecReload` is `wazuh-manager-control reload`, which restarts every daemon except
 `wazuh-manager-remoted`, so agent connections stay up.

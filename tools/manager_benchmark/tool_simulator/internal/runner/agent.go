@@ -135,10 +135,7 @@ func (a *agent) startupWhenAuthenticated(ctx context.Context) (control.Result, e
 }
 
 func (a *agent) keepaliveLoop(ctx context.Context) {
-	interval := a.r.scn.Defaults.Control.KeepaliveInterval.D()
-	if interval <= 0 {
-		interval = 10 * time.Second
-	}
+	interval := a.r.keepaliveInterval()
 	// Fire once immediately: a real agent's first notify lands well before the
 	// steady-state interval elapses, and this is a VD lane's only chance to
 	// learn a real vd_feed_offset before its first (often initial_delay: 0)

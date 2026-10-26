@@ -84,7 +84,7 @@ sequenceDiagram
         Q-->>R: 200 {"status":"ok"} · 409 {"status":"checksum_mismatch"} · 503/500
     else VD session
         S->>VQ: enqueue on the scan lane (deferred response)
-        Note over VQ: lane worker: re-check feed → check Start.feed_offset<br/>against the node's current VD feed offset
+        Note over VQ: lane worker: re-check indexer availability (503) → re-check feed<br/>(503 + Retry-After) → check Start.feed_offset against the node's current VD feed offset
         alt feed_offset mismatch
             VQ-->>R: 409 {"error":"version_mismatch","current_version":N}
         else offset matches: run the vulnerability scan SYNCHRONOUSLY
@@ -188,6 +188,7 @@ flowchart LR
     S -->|CVE feed still downloading| RA[503 + Retry-After]
     S -->|lane queue full| E503[503 scan capacity exhausted]
     L --> W["lane worker: build scan views →\nrun scan → (ok) index + flush → 200"]
+    W -->|feed_offset mismatch| C409[409 version_mismatch]
     W -->|scan throws| E500[500 — nothing indexed]
     P <-.->|in-flight agent registry\ncross-lane per-agent ordering| L
     W --> IDX[(indexer)]
@@ -200,6 +201,8 @@ The gates, in order:
 |---|---|---|
 | CVE feed still downloading, or the scanner is enabled here but still starting up | `503` + `Retry-After` | Rejected WITHOUT processing, so the re-POST applies scan and ingest together and nothing ever blocks waiting for the feed or the scanner. The delay is `inventory_sync_server_vd_feed_retry_after_seconds`. |
 | Lane queue full | `503` `{"error":"scan capacity exhausted","code":503}` | The queue is deliberately short (`vd_scan_queue_slots`): scans are slow, and an early 503 beats a late timeout — a timed-out agent re-POSTs and re-does scan+ingest in full. |
+| No healthy indexer host when a lane worker picks the session up | `503` (generic body) | Checked before the scan: a scan whose inventory could never land would waste minutes to answer the same `503`. The feed gate above is also re-checked here, answering `503` + `Retry-After` again if the feed became unready while the session waited. |
+| `Start.feed_offset` differs from this node's current feed offset (only while this node runs a scanner) | `409` `{"error":"version_mismatch","current_version":N}` | Counted as `vd.offset_mismatch.total`; the agent rebuilds the session against `current_version`. |
 | Scan succeeded | index + flush → `200` | The strong contract: 200 = scanned AND ingested. |
 | Scan threw | `500` `{"error":"vulnerability scan failed","code":500}` | Zero documents indexed; the agent retries next cycle and the re-POST redoes both halves. |
 | Scan legitimately skipped (scanner disabled, or enabled but failed to start) | index + `200` | Inventory must keep flowing even with the scanner off or broken. |
@@ -245,9 +248,6 @@ created right after removing the agent from `client.keys` and Wazuh DB. The agen
 body (`{"agent_id":"7"}`), because the dispatcher forwards a task row's payload verbatim and sets no
 headers of its own.
 
-**It answers at COMPLETION**: the `200` means the delete-by-query ran and flushed, which is what
-lets the task row read `completed` and have that mean purged rather than "accepted".
-
 **Two halves, one per writer.** A document can only be deleted in the right ORDER by the connector
 that writes it, and this module writes through two, so the scope is split accordingly
 (`AGENT_DELETION_SCOPE_BY_QUERY` / `AGENT_DELETION_SCOPE_BY_ID`):
@@ -276,11 +276,9 @@ as retryable.
 The `200` still promises only that the by-id half was **queued**: that connector is a buffering FIFO
 with nothing to wait on, which is precisely the property that orders it behind an accepted report.
 
-Nothing waits on `client.keys` any more. The route used to answer at admission because authd relayed
-deletions from the one thread that persists that file, and on populated `wazuh-states-*` a single
-delete-by-query legitimately outlives any request budget worth setting — it timed out, retried into
-the very same running purge, and blocked every key write in between, so no agent could enroll until
-the batch drained. What waits now is a dispatcher lane, which is built to.
+Answering at completion is safe because nothing waits on `client.keys` any more: the caller is a
+dispatcher lane built to wait, not authd's key-writing thread (why the earlier admission-answered
+routes were removed is recorded in the developer README's *What replaced what*).
 
 A deletion has to be complete when it runs: an index that does not exist counts as success (so
 repeating a deletion is harmless), while a per-shard failure or a skipped document (a version
@@ -291,8 +289,9 @@ flush — bounded by an attempt count and by the same wall clock as the rest of 
 fails the deletion if it survives that; see the [connector reference](../indexer_connector/README.md)
 for the allowance. That is why a deletion can take a few seconds longer than the single POST per
 index this lane otherwise implies. A failure is answered as a
-non-2xx, and the dispatcher retries it — against a task type with no attempt budget, so it retries
-until it succeeds.
+non-2xx — an exhausted conflict allowance specifically as `503` `indexer contention` with
+`Retry-After` (counted as `sync.indexer.conflict.exhausted`) — and the dispatcher retries it,
+against a task type with no attempt budget, so it retries until it succeeds.
 
 One window this does NOT cover on its own, which leaves a document behind while still reporting
 success:
@@ -312,11 +311,8 @@ The transport is the shared [UDS HTTP server](../utils/uds-http-server/README.md
 (`src/shared_modules/uds_http_server/`), a hand-written HTTP/1.1 server over `asio` and `llhttp`
 behind its `IUdsHttpServer` interface; this module only builds its configuration
 (`src/wazuh_modules/inventory_sync_server/src/http_server/udsHttpServerConfig.cpp`) and registers the
-routes. Each accepted connection becomes a `Session`
-whose socket handlers are bound to its own strand. That binding is load-bearing rather than
-incidental: an accepted socket inherits the executor of the acceptor that produced it, and the
-acceptor lives on a single shared strand, so without it every connection's I/O would serialize
-onto that one strand and the configured I/O thread count would buy no parallelism at all.
+routes. The library's own internals — per-connection strands, the accept loop, route classes —
+are documented on its page; what this module's requests meet is summarized here.
 
 Admission control runs at headers-complete, before any body byte is read:
 
@@ -324,7 +320,10 @@ Admission control runs at headers-complete, before any body byte is read:
    exists under another verb.
 2. The declared `Content-Length` plus a per-request overhead is reserved from the in-flight byte
    budget. Over the available budget means `503`; a request that declares more than the TOTAL
-   budget could never be admitted and is answered `413`.
+   budget could never be admitted and is answered `413`. This applies to the data-class routes
+   (`/stateful`, `/stats`, `/config`); the two `_internal` routes (control class) are exempt from
+   the budget and bounded instead by `control_max_body_bytes` (`413`) and `control_max_sessions`
+   (`503`), and the liveness routes (`GET /`, `GET /metrics`) by the transport's fixed liveness caps.
 3. Only then is the body read.
 
 The per-request overhead is DERIVED from the configured header limits rather than being a
@@ -335,11 +334,6 @@ the sum of everything in flight rather than each request in isolation.
 Responses are **deferred by contract**: a handler receives an `IHttpResponder` it may answer from
 any thread, long after the handler returned. The byte reservation is released when the request is
 answered, so backpressure covers the whole life of a session, not just its read phase.
-
-An `accept()` that fails for a transient reason — descriptor exhaustion, most likely, since the
-limit is shared with every other module — is logged (throttled) and the accept chain is re-armed.
-A chain that returned without re-arming would leave the socket bound and the listener permanently
-deaf.
 
 ## The startup gate
 
@@ -412,9 +406,9 @@ by stage:
 | Stage | Metrics |
 |---|---|
 | Responses | `sync.requests.total.<code>` — one counter per handler-sent status of the `/stateful` and `_internal` routes (`200/400/403/409/500/503` + an `other` catch-all), counted exactly once at the send site (endpoint rejection, pipeline, or scan lane). Transport-level answers — the contract's `413`, `504`, malformed-HTTP rejections, and the byte-budget/connection-cap 503s — are sent before any handler runs and are **not** in this family |
-| Pipeline | `sync.pipeline.shed.total` (byte-cap refusals), `sync.shard.<i>.depth`/`.bytes` (live gauges per worker shard), `sync.session.duration.bulk`/`.immediate` (enqueue-to-response histograms, µs) |
+| Pipeline | `sync.pipeline.shed.total` (byte-cap refusals), `sync.agent_busy.total` (per-agent cap refusals, pipeline and lane alike), `sync.shard.<i>.depth`/`.bytes` (live gauges per worker shard), `sync.session.duration.bulk`/`.immediate` (enqueue-to-response histograms, µs) |
 | Group commit | `sync.bulk.flushes`, `sync.bulk.bytes.total`, `sync.bulk.sessions.total`, `sync.bulk.sessions.failed`, `sync.bulk.flush.failures.{documents,exhausted,other}` |
-| Indexer requests | `sync.indexer.bulk.requests`, `sync.indexer.bulk.bytes.total`, `sync.indexer.conflict.retries` |
+| Indexer requests | `sync.indexer.bulk.requests`, `sync.indexer.bulk.bytes.total`, `sync.indexer.conflict.retries`, `sync.indexer.conflict.exhausted` |
 | Documents | `sync.docs.indexed`, `sync.docs.skipped`, `sync.bytes.ingested` |
 | VD lane | `vd.lane.depth` (gauge), `vd.lane.time` (enqueue-to-response histogram, all outcomes), `vd.capacity.503.total`, `vd.retry_after.total`, `vd.offset_mismatch.total`, `vd.scan.duration` (histogram), `vd.scans.ok`/`.failed`/`.skipped` |
 | Transport | `server.budget.{available.bytes, inflight.bytes, inflight.requests}`, `server.sessions.{live, data, control, liveness}` and `server.rejected.{budget, session_cap, shutdown, no_response}` — pull metrics over the shared transport's diagnostics, the only visibility into the transport-side 503 gates |

@@ -53,5 +53,8 @@ endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 if(UNIT_TEST)
   enable_testing()
   add_coverage_libraries(agent_metadata)
+  # The tests read and write the provider from several threads at once. Plain gcov
+  # counters lose increments under that, and lcov then rejects the negative counts.
+  target_compile_options(agent_metadata PRIVATE -fprofile-update=atomic)
   add_subdirectory(tests)
 endif()

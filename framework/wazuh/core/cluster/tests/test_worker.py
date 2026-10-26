@@ -1388,16 +1388,16 @@ async def test_worker_handler_update_master_files_in_worker_ok(wazuh_gid_mock, w
     # Now, we are going to test the second for
     worker_handler.cluster_items["files"]["cluster_item_key"]["remove_subdirs_if_empty"] = {
         "dir1": "value1"}
-    worker_handler.cluster_items["files"]["excluded_files"] = "dir_files"
+    worker_handler.cluster_items["files"]["excluded_files"] = ["ar.conf"]
 
     # Test the try
-    with patch("os.listdir", return_value="dir_files") as listdir_mock:
-        with patch("shutil.rmtree") as rmtree_mock:
+    with patch("os.listdir", return_value=[]) as listdir_mock:
+        with patch("os.rmdir") as rmdir_mock:
             with patch("os.path.commonpath", return_value="queue/testing_mock/"):
                 result_logs = worker_handler.update_master_files_in_worker(
                     {"extra": {"filename3": {"cluster_item_key": "cluster_item_key"}}}, "/zip/path",
                     cluster_items=cluster_items)
-            rmtree_mock.assert_called_once()
+            rmdir_mock.assert_called_once()
             listdir_mock.assert_called_once()
 
             assert result_logs['error'] == defaultdict(list)
@@ -1484,6 +1484,107 @@ def test_worker_handler_update_master_files_in_worker_security_checks():
                for e in result['debug2']['active-response/bin/evil.sh'])
 
 
+@pytest.mark.parametrize('ko_files, error_key', [
+    ({'shared': {'etc/wazuh-manager.conf': {'merged': False, 'cluster_item_key': 'etc/'}}, 'missing': {},
+      'extra': {}},
+     ('error', 'shared')),
+    ({'shared': {}, 'missing': {'etc/wazuh-manager.conf': {'merged': False, 'cluster_item_key': 'etc/'}},
+      'extra': {}},
+     ('error', 'missing')),
+    ({'shared': {}, 'missing': {}, 'extra': {'etc/wazuh-manager.conf': {'cluster_item_key': 'etc/'}}},
+     ('debug2', 'etc/wazuh-manager.conf')),
+    ({'shared': {}, 'missing': {}, 'extra': {'etc/shared/default/ar.conf': {'cluster_item_key': 'etc/shared/'}}},
+     ('debug2', 'etc/shared/default/ar.conf')),
+    ({'shared': {}, 'missing': {'etc/x.swp': {'merged': False, 'cluster_item_key': 'etc/'}}, 'extra': {}},
+     ('error', 'missing')),
+    ({'shared': {'etc/x.tmp': {'merged': False, 'cluster_item_key': 'etc/'}}, 'missing': {}, 'extra': {}},
+     ('error', 'shared')),
+    ({'shared': {}, 'missing': {}, 'extra': {'etc/x.tmp': {'cluster_item_key': 'etc/'}}},
+     ('debug2', 'etc/x.tmp')),
+])
+@patch("wazuh.core.cluster.worker.safe_move")
+@patch("wazuh.core.cluster.worker.utils.mkdir_with_mode")
+@patch("os.remove")
+def test_worker_handler_update_master_files_in_worker_excluded_files(os_remove_mock, mkdir_mock, safe_move_mock,
+                                                                     ko_files, error_key):
+    """Verify that files in 'excluded_files' or with an excluded extension are rejected in the non-merged and extra
+    branches."""
+    worker_handler = get_worker_handler(MagicMock())
+    sec_cluster_items = {
+        'files': {
+            'etc/': {'permissions': '0o640', 'remove_subdirs_if_empty': False},
+            'etc/shared/': {'permissions': '0o660', 'remove_subdirs_if_empty': False},
+            'excluded_files': ['ar.conf', 'wazuh-manager.conf'],
+            'excluded_extensions': ['.swp', '.tmp'],
+        }
+    }
+
+    result = worker_handler.update_master_files_in_worker(ko_files, '/tmp', sec_cluster_items)
+
+    assert any("Error 3062" in e and "File is in excluded list" in e for e in result[error_key[0]][error_key[1]])
+    safe_move_mock.assert_not_called()
+    mkdir_mock.assert_not_called()
+    os_remove_mock.assert_not_called()
+
+
+@patch("wazuh.core.cluster.worker.safe_move")
+@patch("os.remove")
+@patch("wazuh.core.common.wazuh_uid", return_value="wazuh_uid")
+@patch("wazuh.core.common.wazuh_gid", return_value="wazuh_gid")
+def test_worker_handler_update_master_files_in_worker_allows_client_keys(wazuh_gid_mock, wazuh_uid_mock,
+                                                                         os_remove_mock, safe_move_mock):
+    """Verify that a file declared in the item but not excluded, such as client.keys, is still synchronized."""
+    worker_handler = get_worker_handler(MagicMock())
+    sec_cluster_items = {
+        'files': {
+            'etc/': {'permissions': '0o640', 'remove_subdirs_if_empty': False},
+            'excluded_files': ['ar.conf', 'wazuh-manager.conf'],
+        }
+    }
+
+    result = worker_handler.update_master_files_in_worker(
+        {'shared': {'etc/client.keys': {'merged': False, 'cluster_item_key': 'etc/'}}, 'missing': {}, 'extra': {}},
+        '/tmp', sec_cluster_items)
+
+    assert not result['error']
+    safe_move_mock.assert_called_once()
+
+
+@patch("os.remove")
+def test_worker_handler_update_master_files_in_worker_dir_cleanup(os_remove_mock, tmp_path):
+    """Verify that only empty directories are removed and those holding an excluded file are kept."""
+    worker_handler = get_worker_handler(MagicMock())
+    sec_cluster_items = {
+        'files': {
+            'etc/shared/': {'permissions': '0o660', 'remove_subdirs_if_empty': True},
+            'excluded_files': ['ar.conf', 'wazuh-manager.conf'],
+        }
+    }
+    # 'etc/' wire paths resolve under CONF_PATH.
+    only_excluded = tmp_path / 'shared' / 'only_excluded'
+    empty = tmp_path / 'shared' / 'empty'
+    missing_file = tmp_path / 'shared' / 'with_excluded'
+    for directory in (only_excluded, empty, missing_file):
+        directory.mkdir(parents=True)
+    (only_excluded / 'ar.conf').write_text('local')
+    (missing_file / 'ar.conf').write_text('local')
+    item = {'cluster_item_key': 'etc/shared/'}
+
+    with patch('wazuh.core.common.CONF_PATH', str(tmp_path)):
+        result = worker_handler.update_master_files_in_worker(
+            {'shared': {}, 'missing': {},
+             'extra': {'etc/shared/only_excluded/merged.mg': item,
+                       'etc/shared/empty/merged.mg': item,
+                       # Non-existent file: its parent still holds ar.conf
+                       'etc/shared/with_excluded/merged.mg': item}},
+            '/tmp', sec_cluster_items)
+
+    assert (only_excluded / 'ar.conf').read_text() == 'local'
+    assert (missing_file / 'ar.conf').read_text() == 'local'
+    assert not empty.exists()
+    assert result['generic_errors'] == []
+
+
 
 @patch('wazuh.core.common.WAZUH_PATH', new='/var/wazuh-manager')
 @patch('wazuh.core.common.CONF_PATH', new='/etc/wazuh-manager')
@@ -1534,13 +1635,13 @@ def test_worker_handler_update_master_files_in_worker_writes_etc_items_under_con
 
     # Extra files are removed from CONF_PATH, and their emptied subdirectory too.
     with patch('os.remove') as remove_mock, patch('os.listdir', return_value=[]), \
-            patch('shutil.rmtree') as rmtree_mock:
+            patch('os.rmdir') as rmdir_mock:
         result = worker_handler.update_master_files_in_worker(
             {'shared': {}, 'missing': {},
              'extra': {'etc/shared/old/agent.conf': {'cluster_item_key': 'etc/shared/'}}},
             '/zip', items)
     remove_mock.assert_called_once_with('/etc/wazuh-manager/shared/old/agent.conf')
-    rmtree_mock.assert_called_once_with('/etc/wazuh-manager/shared/old')
+    rmdir_mock.assert_called_once_with('/etc/wazuh-manager/shared/old')
     assert result['generic_errors'] == []
 
 @pytest.mark.asyncio

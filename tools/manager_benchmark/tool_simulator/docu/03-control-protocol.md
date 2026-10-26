@@ -24,14 +24,20 @@ agent B in the payload is simply agent A as far as the manager is concerned.
 
 Failure modes are the gateway's, not the endpoint's: every credential problem (missing/malformed
 `Authorization`, unknown agent, expired or future timestamp, bad MAC) collapses to `401` with one
-opaque message. A `401` during a benchmark run **MUST** be treated as a sender bug and fail the run,
-not counted as load.
+generic message (the classes are in
+[remoted's https-events-api.md](../../../../docs/ref/modules/remoted/https-events-api.md#error-responses)).
+A `401` during a benchmark run is treated as a sender bug or an unloaded key and fails the run, not
+counted as load — except while the fleet waits for remoted to load its keys
+([06](06-agent-state-machine.md)), when `startup` retries it.
 
 ## The three message types
 
 ### `startup`
 
-Sent once, when the simulated agent comes up.
+Sent once per agent before its lanes start (only when `defaults.control.enabled`), retried every
+2 s while it is answered `401` within the readiness budget ([06](06-agent-state-machine.md)). The
+fleet-wide readiness probe also sends one `startup`, for the fleet's first agent, whether or not
+control is enabled.
 
 ```json
 {"type": "startup", "version": "5.0.0"}
@@ -65,17 +71,21 @@ manager's own version on this branch, `VERSION.json`).
 
 ### `notify` — the keepalive
 
-Sent periodically for the lifetime of the agent. Every field below is optional; the sender
-**SHOULD** send the full shape, because a `notify` carrying `host` is the more expensive one on the
-manager side (it triggers the full agent-data write rather than a bare keepalive) and is what a real
-agent sends:
+Sent periodically for the lifetime of the agent's lanes. Every field below is optional on the
+manager side. The sender always sends `agent.version` (the same `startup_version`) and adds the
+`host` block only when the scenario sets `defaults.control.send_host_info: true` (default `false`).
+A `notify` carrying `host` is the more expensive one on the manager side (it triggers the full
+agent-data write rather than a bare keepalive) and is what a real agent sends, so a scenario
+modelling a real fleet sets it. The block is filled from the fleet's `start` metadata with the same
+built-in fallbacks as `Start` ([05](05-flatbuffers-messages.md#start)), the agent's name as
+`hostname` and a fixed `ip` of `127.0.0.1`:
 
 ```json
 {
   "type": "notify",
   "agent": { "version": "5.0.0" },
   "host": {
-    "hostname": "bench-0001",
+    "hostname": "bench-linux-2000",
     "ip": "127.0.0.1",
     "architecture": "x86_64",
     "os": { "name": "Ubuntu", "version": "24.04", "platform": "ubuntu", "type": "Linux" }
@@ -109,17 +119,17 @@ hostnames and metadata **MUST** stay inside those bounds. `503
 {"error":"dependency_unavailable","dependency":"wazuh-db"}` when the agent's groups must be
 refreshed, wazuh-db does not answer, and remoted has no cached membership for that agent.
 
-Two behaviors worth exploiting in scenarios:
+Two manager behaviors worth knowing when reading results:
 
 - **`notify` does NOT validate the agent version** (only `startup` does), so version-mismatch
   scenarios must go through `startup`.
 - **`notify` does NOT require a previous `startup`**: the manager creates its in-memory registry
-  entry on the fly. A scenario **MAY** therefore model a fleet that only keepalives, to isolate the
-  cost of the notify path from enrollment and startup.
+  entry on the fly. The sender cannot model such a fleet, though: with control enabled every agent
+  sends its `startup` before its first `notify`.
 
 ### `shutdown`
 
-Sent during drain, once per agent.
+Sent once per agent, after all of its lanes have returned (they finished, or the run is draining).
 
 ```json
 {"type": "shutdown"}
@@ -134,12 +144,13 @@ wazuh-db (fire-and-forget), so a `200` here says "accepted", not "state updated"
 Independent of type: `400 invalid_body` (empty body, or larger than 64 KiB),
 `400 invalid_json` (not parseable, or not a JSON object), `400 invalid_agent_id` (the id in
 `Authorization` is not a plain integer), `400 unknown_message_type` (a `type` other than the three
-above). All four are sender bugs and **MUST** fail the run.
+above). All four are sender bugs.
 
-As implemented, the sender is stricter than that for `startup` and `notify`: **any** status other
-than `200` (a `503` from wazuh-db too) invalidates the run (exit `1`). A `shutdown` answer is only
-counted (`control_shutdown_ok`/`_err`). A transport error on a `notify` is counted as
-`control_notify_err` and the loop continues.
+The sender does not tell these apart from the per-type errors above
+(`internal/control/control.go`): for `startup` and `notify`, **any** status other than `200` — a
+wazuh-db `503` too — and any `200` whose body is not JSON invalidates the run (exit `1`); so does a
+transport error on `startup`. A transport error on a `notify` is counted in `control_notify_err`
+and the loop continues. A `shutdown` answer is only counted (`control_shutdown_ok`/`_err`).
 
 ## Cadence
 
@@ -157,13 +168,14 @@ path — the notify-storm scenario **SHOULD** report both, and F9c-4 **MUST** st
 
 ## What the sender does with the response
 
-**Validate and mostly discard.** For each control request the sender **MUST**:
+**Validate and mostly discard.** For each control request the sender:
 
-1. record the status code (and fail the run on `401` or any `400`; as implemented, on any
-   non-`200` answer to `startup` or `notify`);
-2. assert the body parses as JSON — a malformed body is a server regression and **MUST** be
-   reported;
-3. record the response latency and byte size into the metrics for this request type.
+1. records the outcome in `control_<type>_ok`/`_err` (and fails the run on any non-`200` answer to
+   `startup` or `notify`);
+2. requires a `200` body to parse as JSON — a malformed body is a server regression, and for
+   `startup`/`notify` it fails the run;
+3. records the response latency in the `startup`, `notify` or `shutdown` histogram (no response
+   size is recorded).
 
 And it **MUST NOT** use any field of the body to change what it does next, with exactly ONE
 exception: `limits` does not become a rate limit, `agent.groups` does not reach the sessions'
@@ -186,7 +198,3 @@ measures the version_mismatch fast-path instead of the scan lane. The sender the
 latest `vd_feed_offset` per agent (updated on every successful notify) and uses ONLY that one value
 when building a VD session's `Start.feed_offset` — nothing else about session content, pacing or
 routing depends on any control response.
-
-A scenario **MAY** ask for a sample of control responses to be written to an artifact for manual
-inspection; that is evidence in the report, still not behavior. **Not implemented:** the scenario
-schema has no such field, and the sender writes no control response anywhere.

@@ -16,7 +16,7 @@ For module overview and architecture, see [Cluster Module](README.md).
 > The `<cluster>` section is part of the manager configuration schema
 > (`/etc/wazuh-manager/wazuh-manager.schema.json`) and is **mandatory**: a configuration without
 > it is rejected (`(1244): Invalid configuration at '/': missing mandatory option
-> (does not satisfy 'required')`). Every consumer — the C daemons, the engine,
+> (does not satisfy 'required'): cluster …`). Every consumer — the C daemons, the engine,
 > `wazuh-manager-clusterd` and the framework/API — receives the same **effective**
 > section (schema-validated, defaults applied) from the `manager_config`
 > loader. An invalid or incomplete block is rejected at startup with the JSON
@@ -73,7 +73,7 @@ Defines the key used to encrypt the communication between the nodes. This key mu
 > **Security Warning**
 > `<key>` is **required**: the schema rejects a `<cluster>` block without an
 > explicit key (`(1244): Invalid configuration at '/cluster': missing
-> mandatory option (does not satisfy 'required')`), so the manager does not
+> mandatory option (does not satisfy 'required'): key [schema /properties/cluster].`), so the manager does not
 > start with one. There is no
 > hardcoded fallback key anymore. The installer always generates a random key;
 > when writing the block by hand, generate your own 32-character random value.
@@ -92,8 +92,11 @@ Specifies the port to use for cluster communications.
 - **Note:** The range is enforced by the configuration schema on every load,
   so a value outside it fails validation (`(1244): Invalid configuration at
   '/cluster/port'`) before any daemon starts. The port must also differ from the
-  other manager listener ports (`remote.https.port`, `auth.port` while authd
-  runs, and `remote.legacy.port` when the legacy listener is enabled). The master
+  other manager listener ports (`remote.https.port`, `auth.port` while authd's
+  port-1515 listener starts — see
+  [`auth.legacy_enrollment`](../authd/configuration.md#legacy_enrollment) — and
+  `remote.legacy.port` when the legacy listener is enabled); a collision fails validation at `'/cluster/port'` with `port <n> is
+  already used by <pointer>`. The master
   listens on it; workers connect to it.
 
 ### bind_addr
@@ -203,7 +206,9 @@ The cluster daemon supports the following internal option:
 wazuh_clusterd.debug=0
 ```
 
-When it is non-zero it takes precedence over the daemon's `-d` flag.
+When it is non-zero it takes precedence over the daemon's `-d` flag; when it is absent or `0`, the `-d`
+level applies. A value that is not a digit or is outside `0`–`2` makes `wazuh-manager-clusterd` print
+an error and exit with status `1`, so `wazuh-manager-control start` refuses the configuration.
 
 ---
 

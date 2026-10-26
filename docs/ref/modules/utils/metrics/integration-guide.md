@@ -1,15 +1,20 @@
 # Integration guide
 
-How a manager module instruments itself with `wazuh_metrics`. This distills the
-**Usage contract** of the dev README (`src/shared_modules/metrics/README.md`) — when in
-doubt, that file is authoritative. Reference consumers:
+How a manager module instruments itself with `wazuh_metrics` — the library's usage
+contract. The requirements and design decisions behind it are in the developer README,
+`src/shared_modules/metrics/README.md`. Engine code does not use this library: it uses the
+engine's own `fastmetrics`, a separate target and namespace in the same build tree. Reference
+consumers:
 `src/wazuh_modules/inventory_sync_server/` (centralized `metricNames.hpp` catalog) and
 `src/remoted/remoted_module/`.
 
 ## Wire by dependency injection
 
 There is no singleton: each daemon owns a `wazuh::metrics::Manager` and injects it as
-`std::shared_ptr<IManager>` wherever instrumentation lives.
+`std::shared_ptr<IManager>` wherever instrumentation lives. Link the archive with
+`target_link_libraries(<your_module> PRIVATE wazuh_metrics)` — `PUBLIC` only when your own
+public headers expose its types. Registering a name that already exists under a **different
+type** throws `std::invalid_argument`; the same name and type returns the same instance.
 
 ## Resolve once, mutate lock-free
 
@@ -60,8 +65,11 @@ facade).
 ## Durations are histograms of integers
 
 Pick a unit (microseconds, bytes), declare it in the registration `unit`, and
-`observe()` raw integers. Percentiles are computed only on `snapshot()` (a dump), never
-per event.
+`observe()` raw unsigned integers. Percentiles are computed only on `snapshot()` (a dump),
+never per event, as bucket-resolution estimates (~12.5%) clamped into the exact `[min, max]`;
+values of 2^32 or more share the last bucket, so pick a unit that keeps observations below it.
+`slidingWindowRate.hpp` is a helper, not a metric: it cannot be registered or dumped — publish
+its value through a gauge or a pull metric.
 
 ## Testing your consumer
 

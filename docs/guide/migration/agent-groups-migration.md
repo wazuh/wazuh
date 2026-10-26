@@ -86,7 +86,7 @@ ls /etc/wazuh-manager/shared/
 ```
 
 > [!WARNING]
-> **Configuration validity:** The restored `agent.conf` files must be valid for the agents that receive them. The manager distributes the file as it is; a 5.0 agent tests what it downloads and, when a section fails, keeps its current configuration and logs `Downloaded configuration failed validation; not reloading.` Review each group's `agent.conf` against [Centralized configuration](../../ref/modules/agent-management/centralized-configuration.md#supported-configuration-sections) and remove or update any incompatible settings before proceeding.
+> **Configuration validity:** The restored `agent.conf` files must be valid for the agents that receive them. The manager distributes the file as it is; a 5.0 agent tests what it downloads and, when a section fails, keeps its current configuration and logs `The shared configuration the manager provides (hash=<hash>) is invalid; the agent keeps its current configuration until the manager provides a valid one.` Review each group's `agent.conf` against [Centralized configuration](../../ref/modules/agent-management/centralized-configuration.md#supported-configuration-sections) and remove or update any incompatible settings before proceeding.
 
 ### 3. Ensure each agent has its group configured
 
@@ -161,6 +161,15 @@ curl -k -X GET "https://<manager-ip>:55000/agents?agents_list=<agent-id>&select=
      -H "Authorization: Bearer $TOKEN"
 ```
 
+Or, on the manager host, with the `agent_groups` tool:
+
+```bash
+# Groups of one agent
+/var/wazuh-manager/bin/agent_groups -s -i <agent-id>
+# Agents in one group
+/var/wazuh-manager/bin/agent_groups -l -g <group-name>
+```
+
 You have now migrated your agent groups from Wazuh 4.x to Wazuh 5.0.
 
 ## Workaround: agent fails to connect (missing group)
@@ -200,6 +209,8 @@ curl -k -X POST "https://<manager-ip>:55000/groups" \
      -d '{"group_id": "<group-name>"}'
 ```
 
+Or, on the manager host: `/var/wazuh-manager/bin/agent_groups -a -g <group-name> -q`.
+
 The agent's next enrollment retry succeeds once the group exists; restart the agent to retry at once.
 
 To add the configuration afterward, either complete the migration of that group ([step 2](#2-restore-group-configurations-on-the-5x-manager)) or edit it from the dashboard: go to **Agents management -> Groups** and, in the **Actions** column, select the pencil icon (**Edit group configuration**) to edit it manually. Once you have finished, click **Save**:
@@ -224,6 +235,12 @@ You can also assign it through the Wazuh API:
 # Assign a single agent to a group
 curl -k -X PUT "https://<manager-ip>:55000/agents/<agent-id>/group/<group-name>" \
      -H "Authorization: Bearer $TOKEN"
+```
+
+Or, on the manager host (`-q` skips the confirmation prompt):
+
+```bash
+/var/wazuh-manager/bin/agent_groups -a -i <agent-id> -g <group-name> -q
 ```
 
 For bulk assignment, list the agents in each group and assign them in a loop:

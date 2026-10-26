@@ -80,8 +80,8 @@ void printUsage(const char* progName)
               << "Options:\n"
               << "  -f    Run in foreground (do not daemonize)\n"
               << "  -t    Test configuration\n"
-              << "  -d    Test configurationRun in debug mode. This option may be repeated to increase the verbosity "
-                 "of the debug messages.\n"
+              << "  -d    Run in debug mode. This option may be repeated to increase the verbosity of the debug "
+                 "messages.\n"
               << "  -h    Show this help message and exit\n";
     std::exit(EXIT_SUCCESS);
 }
@@ -601,7 +601,8 @@ int main(int argc, char* argv[])
             LOG_INFO("Indexer Connector DISABLED - events will not be indexed");
         }
 
-        // Stream log for alerts an archive
+        // Stream logger: rotating per-channel files under the streamlog base path (logs/<channel>/ by
+        // default) for the builder's file outputs and the event dumper
         if (enableProcessing)
         {
 

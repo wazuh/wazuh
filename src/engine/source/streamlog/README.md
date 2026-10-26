@@ -2,7 +2,7 @@
 
 > **Module path:** `src/engine/source/streamlog`
 > **Namespace:** `streamlog`
-> **Library alias (CMake):** `streamlogger::streamlogger` (implementation), `streamlogger::istreamlogger` (interface-only)
+> **Library alias (CMake):** `streamlogger::streamlogger` (implementation), `streamlogger::istreamlogger` (interface-only), `streamlogger::mocks` (test builds)
 
 ---
 
@@ -30,20 +30,23 @@
 
 ## Overview
 
-The **streamlog** module provides high-performance, named, rotating log channels with fully asynchronous writes. It is the engine's primary mechanism for writing structured logs (NDJSON) to disk for event streams and any other line-oriented output.
+The **streamlog** module provides high-performance, named, rotating log channels with fully asynchronous writes. It is the engine's mechanism for writing line-oriented output (NDJSON) to disk. Its two consumers in the engine are the builder's `file` output stage (channel `<originSpace>-<file value>`, extension `json`) and the event dumper (channel `event-dumps`, extension `log`); `main.cpp` creates one `LogManager` (with the store and the scheduler) only when event processing is enabled.
+
+With the defaults (`analysisd.streamlog_base_path` = `<home>/logs/`, pattern `${YYYY}/${MMM}/wazuh-${name}-${DD}`, see `conf.cpp`), a channel writes `/var/wazuh-manager/logs/<channel>/<YYYY>/<MMM>/wazuh-<channel>-<DD>.<ext>`, with the hard link `/var/wazuh-manager/logs/<channel>/<channel>.<ext>` on the active file. The operator-facing settings are documented in the engine [configuration reference](../../../../docs/ref/modules/engine/configuration.md#stream-log).
 
 ### Key capabilities
 
 | Feature | Details |
 |---------|---------|
 | **Named Channels** | Each channel is identified by a unique name and has its own rotation policy. |
-| **Asynchronous I/O** | A dedicated worker thread per channel drains a lock-free queue and writes to disk. |
+| **Asynchronous I/O** | A dedicated worker thread per channel drains a bounded queue (`fastqueue::StdQueue`, mutex-based) and writes to disk. |
 | **Dual Rotation** | Size-based (counter suffix) and time-based (date placeholders in file name). |
 | **Hard-Link "Latest"** | `<basePath>/<name>.<ext>` always points to the active file — external tools tail this stable path. |
 | **Gzip Compression** | Rotated files are compressed asynchronously via the `scheduler::IScheduler`. |
 | **Retention Policies** | Configurable limits on rotated file count (`maxFiles`) and total rotated size (`maxAccumulatedSize`). Oldest files are deleted first. |
-| **Crash Recovery** | The current file path is persisted to the `store::IStore`; on restart, pending compressions are resumed. |
+| **Crash Recovery** | The current file path and counter are persisted to the `store::IStore`; on restart, the file is resumed or a pending compression is scheduled. |
 | **Zero-Copy Enqueue** | Writers `std::move` messages into the queue — no copies on the hot path. |
+| **Lazy channels** | `ensureAndGetWriter()` creates a channel on first use under `<basePath>/<name>/` (it calls `isolatedBasePath()` itself); for an existing channel the `cfg` argument is ignored. |
 
 ---
 
@@ -53,7 +56,7 @@ The **streamlog** module provides high-performance, named, rotating log channels
 ┌─────────────────────────────────────────────────────────────────────────┐
 │                           Application Threads                          │
 │                                                                        │
-│   auto w = logManager->ensureAndGetWriter("standard-wazuh-events-v5", cfg, "json"); │
+│   auto w = logManager->ensureAndGetWriter("example-channel", cfg, "json"); │
 │   (*w)( R"({"ts":"...","msg":"hello"})" );   // enqueue (move)        │
 │                                                                        │
 └──────────────────────────┬──────────────────────────────────────────────┘
@@ -64,7 +67,7 @@ The **streamlog** module provides high-performance, named, rotating log channels
 │  ┌──────────────────────┐                                              │
 │  │ m_queue  (shared_ptr)├──────┐                                       │
 │  │ m_channelState       │      │                                       │
-│  │ m_channelHandler (wp)│      │  lock-free push                       │
+│  │ m_channelHandler (wp)│      │  push (bounded, mutex-based)          │
 │  └──────────────────────┘      │                                       │
 └────────────────────────────────┼────────────────────────────────────────┘
                                  ▼
@@ -109,33 +112,38 @@ streamlog/
 ├── README.md                             # ← This file
 │
 ├── interface/streamlog/
-│   └── ilogger.hpp                       # Public interface: WriterEvent, ILogManager
+│   └── ilogger.hpp                       # Public interface: RotationConfig, WriterEvent, ILogManager
 │
 ├── include/streamlog/
-│   └── logger.hpp                        # Public header: RotationConfig, LogManager
+│   └── logger.hpp                        # Public header: LogManager
 │
 ├── src/
 │   ├── channel.hpp                       # Internal: ChannelWriter, ChannelHandler, ChannelState
 │   ├── channel.cpp                       # Internal: all I/O, rotation, compression logic
 │   └── logger.cpp                        # LogManager implementation (delegates to ChannelHandler)
 │
+├── benchmark/
+│   ├── src/async_vs_sync_bench.cpp       # Google Benchmark: async channel vs synchronous writes
+│   └── analyze_results.py                # Helper to analyse benchmark output
+│
 └── test/
     ├── mocks/streamlog/
     │   └── mockStreamlog.hpp             # GMock: MockILogManager, MockWriterEvent
     └── src/
         ├── unit/
-        │   ├── channel_test.cpp          # Unit tests for ChannelHandler (~2 000 lines)
-        │   └── logger_test.cpp           # Unit tests for LogManager    (~586 lines)
+        │   ├── channel_test.cpp          # ChannelHandlerTest
+        │   └── logger_test.cpp           # LogManagerTest
         └── component/
-            └── logger_test.cpp           # Component / integration test placeholder
+            ├── channel_test.cpp          # ChannelHandlerComponentTest (real filesystem)
+            └── logger_test.cpp           # LogManagerComponentTest (real filesystem)
 ```
 
 ### Header dependency rules
 
 | Header | Audience | Depends on |
 |--------|----------|------------|
-| `interface/streamlog/ilogger.hpp` | **Any consumer** (read-only) | `<string>`, `<memory>` |
-| `include/streamlog/logger.hpp` | **Owner / configurator** | `ilogger.hpp`, `store::IStore`, `scheduler::IScheduler` |
+| `interface/streamlog/ilogger.hpp` | **Any consumer**: `RotationConfig`, `WriterEvent`, `ILogManager` | `<filesystem>`, `<memory>`, `<string>`, `<string_view>` |
+| `include/streamlog/logger.hpp` | **Owner / configurator**: `LogManager` | `ilogger.hpp`, `store::IStore`, `scheduler::IScheduler` |
 | `src/channel.hpp` | **Library-internal only** | `logger.hpp`, `base/logging`, `fastqueue`, `store`, `scheduler` |
 
 ---
@@ -145,45 +153,25 @@ streamlog/
 ### Class Diagram (simplified)
 
 ```
-  ┌──────────────────┐          ┌────────────────────────┐
-  │   «interface»     │          │      RotationConfig     │
-  │   ILogManager     │          │ ─────────────────────── │
-  │ ─────────────────│          │  basePath               │
-    │ +ensureAndGetWriter(...)    │  pattern                │
-  └────────┬─────────┘          │  maxSize                │
-           │ implements          │  bufferSize             │
-           ▼                     │  shouldCompress         │
-  ┌──────────────────┐          │  compressionLevel       │
-  │    LogManager     │          │  maxFiles               │
-  │ ─────────────────│          │  maxAccumulatedSize     │
-                                 └────────────────────────┘
-  │ ─────────────────│                     │ used by
-  │  m_channels       │─── owns N ──►┌─────┴──────────────┐
-  │  m_channelsMutex  │              │   ChannelHandler    │
-  │  m_scheduler (wp) │              │ ──────────────────  │
-  │  m_store          │              │  m_config (const)   │
-  │ ─────────────────│              │  m_channelName      │
-  │ +destroyChannel()│              │  m_stateData        │
-  │ +ensureAndGetWriter() │         │  m_activeWriters    │
-  │ +hasChannel()    │              │  m_store            │
-  │ +requestShutdown()│              │  m_scheduler (wp)   │
-  └──────────────────┘              │ ──────────────────  │
-                                    │ +create() [factory] │
-                                    │ +createWriter()     │
-  ┌──────────────────┐              │ -workerThreadFunc() │
-  │  «interface»      │              │ -needsRotation()    │
-  │  WriterEvent      │              │ -rotateFile()       │
-  │ ─────────────────│              │ -writeMessage()     │
-                                    │ -compressLogFile()  │
-  │ +operator()(msg) │              │ -deleteOldFiles()   │
-  └────────┬─────────┘              └──────┬──────────────┘
-           │ implements          ┌────────────────────────┐
-           ▼                     │    ChannelWriter        │
-  ┌──────────────────┐          │ ──────────────────────  │
-  │  ChannelWriter    │◄─────── │  m_queue (shared_ptr)   │
-  │  (see left)       │          │  m_channelState (sp)    │
-  └──────────────────┘          │  m_channelHandler (wp)  │
-                                 └────────────────────────┘
+«interface» ILogManager                     RotationConfig (ilogger.hpp)
+  +ensureAndGetWriter(name, cfg, ext)         basePath, pattern, maxSize, bufferSize,
+        ▲ implements                          shouldCompress, compressionLevel,
+        │                                     maxFiles, maxAccumulatedSize
+LogManager                                            │ copied into
+  m_channels : map<name, shared_ptr<ChannelHandler>> ─┼──► ChannelHandler (src/channel.hpp)
+  m_channelsMutex (shared_mutex)                      │      m_config (const), m_channelName
+  m_scheduler (weak_ptr), m_store                     │      m_stateData, m_activeWriters
+  m_compressionShouldRun                              │      m_store, m_scheduler (weak_ptr)
+  +hasChannel() +getActiveWritersCount()              │      m_inFlightFiles, m_retentionMutex
+  +destroyChannel() +requestShutdown()                │      +create() [factory]  +createWriter()
+  +isolatedBasePath() [static]                        │      -workerThreadFunc() -needsRotation()
+                                                      │      -rotateFile() -writeMessage()
+«interface» WriterEvent                               │      -compressLogFile() -deleteOldFiles()
+  +operator()(std::string&&) → bool                   │              │ createWriter()
+        ▲ implements                                  │              ▼
+        └──────────────────────────────────────── ChannelWriter (src/channel.hpp)
+                                                    m_queue (shared_ptr), m_channelState (shared_ptr)
+                                                    m_channelHandler (weak_ptr)
 ```
 
 ### Class Summary
@@ -192,8 +180,8 @@ streamlog/
 |-------|-----------|----------------|
 | `WriterEvent` | **Public interface** | Abstract write handle. `operator()(string&&) → bool`. |
 | `ILogManager` | **Public interface** | Abstract channel registry. `ensureAndGetWriter(name, cfg, ext)`. |
-| `RotationConfig` | **Public** | POD-like struct describing a channel's rotation/compression policy. |
-| `LogManager` | **Public** | Concrete registry. Owns `ChannelHandler` instances. Thread-safe via `shared_mutex`. |
+| `RotationConfig` | **Public interface** | Aggregate describing a channel's rotation/compression policy. |
+| `LogManager` | **Public** | Concrete registry. Owns `ChannelHandler` instances. Thread-safe via `shared_mutex`. Also `hasChannel()`, `getActiveWritersCount()`, `destroyChannel()` (throws if the channel is missing or has writers), `isolatedBasePath()`, `requestShutdown()` (cancels in-flight compressions and drops every channel). |
 | `ChannelHandler` | **Internal** | Per-channel engine: worker thread, file I/O, rotation, compression scheduling. Created via `create()` factory. |
 | `ChannelWriter` | **Internal** | Concrete `WriterEvent`. Pushes into the queue. Non-copyable. Destructor calls `onWriterDestroyed()`. |
 | `ChannelState` | **Internal** | Enum: `Running`, `StopRequested`, `ErrorClosed`. |
@@ -208,7 +196,7 @@ streamlog/
 |--------|------|
 | **Caller threads** (N) | Call `(*writer)(msg)` — only a `queue.push()` on the hot path. |
 | **Worker thread** (1 per channel) | `workerThreadFunc()` — pops, checks rotation, writes, flushes. |
-| **Scheduler thread** (shared) | Runs `compressLogFile()` tasks asynchronously. |
+| **Scheduler worker** (shared) | Runs `compressLogFile()` tasks, then retention cleanup, asynchronously. |
 
 ### Hot-path cost breakdown
 
@@ -224,10 +212,10 @@ createWriter()          → if first writer: startWorkerThread()
 
 ~ChannelWriter()        → handler->onWriterDestroyed()
                           --m_activeWriters.count
-                          if count == 0: stopWorkerThread()  (join)
+                          if count == 0: stopWorkerThread()  (join, then discard queued messages)
 ```
 
-This "lazy start / eager stop" model ensures no background threads exist when a channel has no consumers.
+This "lazy start / eager stop" model ensures no background threads exist when a channel has no consumers. Messages still queued when the last writer goes away are discarded (`Discarded N pending messages for channel: …` warning). `createWriter()` throws if the channel is `ErrorClosed`.
 
 ---
 
@@ -238,23 +226,26 @@ This "lazy start / eager stop" model ensures no background threads exist when a 
 Triggered when `currentSize + messageSize >= maxSize`.
 
 1. Increment `counter`.
-2. Generate new path from pattern (e.g. `standard-wazuh-events-v5-3.log`).
-3. Create directories if needed.
+2. Generate new path from pattern (e.g. `2026/Mar/wazuh-example-channel-26-3.json` with the default pattern, to which `-${counter}` is appended).
+3. Create the parent directories if they changed and do not exist.
 4. Close current file, open new file (`updateOutputFileAndLink()`).
 5. Update hard-link to point to the new file.
-6. Schedule compression of the previous file.
+6. Persist the rotation state to the store.
+7. Schedule compression of the previous file (if `shouldCompress`); otherwise run retention cleanup here.
+
+If the new path equals the current one, nothing rotates; if opening the new file or the link fails, the previous state is restored and the channel becomes `ErrorClosed`.
 
 ### Time-Based Rotation
 
 Triggered when the **hour boundary** changes and the resolved pattern produces a **different path**.
 
 1. Reset `counter` to 0.
-2. Generate new path from pattern (e.g. `2026/Mar/standard-wazuh-events-v5-26.json` → `2026/Mar/standard-wazuh-events-v5-27.json`).
-3. Same steps 3–6 as size-based rotation.
+2. Generate new path from pattern (e.g. `2026/Mar/wazuh-example-channel-26.json` → `2026/Mar/wazuh-example-channel-27.json`).
+3. Same steps 3–7 as size-based rotation.
 
 ### Rotation check frequency
 
-`needsRotation()` is called **once per message** (inside the single worker thread), so there is zero contention. The hour comparison uses `duration_cast<hours>` for a fast integer comparison.
+`needsRotation()` is called **once per message** (inside the single worker thread), so there is zero contention. The hour comparison uses `duration_cast<hours>` for a fast integer comparison; only when the hour changed is the pattern re-resolved and compared with the current path. Rotation is therefore evaluated only when a message arrives: an idle channel keeps its file until the next write.
 
 ---
 
@@ -266,12 +257,14 @@ When `shouldCompress` is `true` and the `scheduler` weak pointer is valid:
    ```cpp
    scheduler::TaskConfig {
        .interval = 0,           // one-time
+       .runImmediately = false,
        .CPUPriority = 0,
-       .timeout = 0,
-       .taskFunction = [path, level]() { compressLogFile(path, level); }
+       .taskFunction = [filePath, /* level, retention settings, registries, shouldRun */]()
+       { compressLogFile(filePath, compressionLevel, shouldRun); /* + steps 3-4 */ }
    };
    ```
-2. `compressLogFile()` calls `Utils::ZlibHelper::gzipCompress()` and removes the original.
+   The task is named `CompressLog-<channel>-<file name>`, and both the source and the `.gz` path are registered as in-flight first.
+2. `compressLogFile()` calls `Utils::ZlibHelper::gzipCompress()` and removes the original. `LogManager::requestShutdown()` clears the shared `shouldRun` flag, which aborts compressions still running.
 3. In-flight paths (source and `.gz`) are unregistered so future retention runs can consider them.
 4. If retention is configured (`maxFiles > 0` or `maxAccumulatedSize > 0`), `deleteOldFilesStatic()` runs **after** compression. In the happy path this means cleanup sees files in their final compressed size.
 5. If the scheduler is unavailable (expired `weak_ptr`), a warning is logged and the file is left uncompressed.
@@ -294,7 +287,7 @@ Both policies are applied **in sequence** (accumulated-size first, then file-cou
 ### Cleanup algorithm (`deleteOldFiles` / `deleteOldFilesStatic`)
 
 1. Scan `basePath` **recursively** for all regular files.
-2. Exclude the current active file (identified by the inode of the `latestLink` hard link).
+2. Exclude the current active file (identified by the inode of the `latestLink` hard link) and any file registered as in-flight (being compressed).
 3. Sort by `mtime` ascending (oldest first).
 4. **Strategy 1 — size:** delete oldest non-active files until their combined size ≤ `maxAccumulatedSize`.
 5. **Strategy 2 — count:** delete oldest remaining non-active files until count ≤ `maxFiles`.
@@ -328,10 +321,10 @@ Set either to `0` to disable that specific policy.
 
 ## Crash-Recovery (Store Persistence)
 
-On each rotation (when compression is enabled), the current file path and counter are saved to the `store::IStore` under:
+When a channel is created and after every successful rotation (whether or not compression is enabled), the current file path and counter are saved to the `store::IStore` under:
 
 ```
-streamlog/<channelName>/0  →  { "/last_current": "/path/to/current/file.json", "/last_counter": 28 }
+streamlog/<channelName>/0  →  { "last_current": "/path/to/current/file.json", "last_counter": 28 }
 ```
 
 ### Startup sequence (`maxSize > 0`)
@@ -340,16 +333,16 @@ streamlog/<channelName>/0  →  { "/last_current": "/path/to/current/file.json",
 2. If both are present: reconstruct the candidate path using the stored counter via `replacePlaceholders(now)`.
    - If the reconstructed path equals `last_current` **and** the file exists on disk → **resume writing** to that file (fast path, no disk scan).
    - Otherwise (time period changed, file deleted by retention, etc.) → fall through to step 3.
-3. If no stored state or resume not possible: start at `counter = 0` and advance it past any existing files (from a prior run in the same time window) by iterating `exists()` until a free slot is found.
+3. If no stored state or resume not possible: start at `counter = 0` and advance it past any existing files (from a prior run in the same time window, including their `.gz` when compression is on) by iterating `exists()` until a free slot is found.
 4. Save both `last_current` and `last_counter` to the store.
 
 `last_counter` is stored alongside `last_current` to make resume a single-shot O(1) path lookup. Without it, resume would require either parsing the counter from the filename (fragile and pattern-dependent) or scanning from 0 (O(N) `stat` calls).
 
 ### Compression catch-up on restart
 
-If `last_current` refers to a file that differs from the newly computed current path and the file still exists on disk, a compression task is scheduled for it — ensuring that a file rotated before a crash is still compressed after restart.
+If compression is enabled and `last_current` refers to a file that differs from the newly computed current path and still exists on disk, a compression task is scheduled for it — ensuring that a file rotated before a crash is still compressed after restart.
 
-If compression is disabled, the stored state is cleared on startup.
+With compression disabled the stored state is kept and updated like any other (`clearCurrentRotationStateFromStore()` exists but nothing calls it).
 
 ---
 
@@ -361,8 +354,8 @@ If compression is disabled, the stored state is cleared on startup.
 |-------|------|---------|-------------|
 | `basePath` | `std::filesystem::path` | *(required)* | Absolute, existing, writable directory. |
 | `pattern` | `std::string` | *(required)* | File name pattern with placeholders. May contain subdirectories. |
-| `maxSize` | `size_t` | `0` | Max file size in bytes before size rotation. `0` = disabled. Clamped to ≥ 1 MiB. |
-| `bufferSize` | `size_t` | `1 << 20` | Queue capacity (events). `0` is promoted to default. |
+| `maxSize` | `size_t` | *(no initializer; `0` when omitted in aggregate init)* | Max file size in bytes before size rotation. `0` = disabled. Clamped to ≥ 1 MiB. |
+| `bufferSize` | `size_t` | `1 << 20` | Queue capacity (number of messages, not bytes). `0` is promoted to default. |
 | `shouldCompress` | `bool` | `true` | Gzip files on rotation. |
 | `compressionLevel` | `size_t` | `5` | 1 (fastest) – 9 (best). Only used when `shouldCompress`. |
 | `maxFiles` | `size_t` | `90` | Max files to keep in the channel directory. `0` = unlimited. Active file excluded. |
@@ -373,7 +366,7 @@ If compression is disabled, the stored state is cleared on startup.
 - `basePath` must be absolute, exist, and be writable (verified by test-writing a file and directory).
 - `pattern` must not be empty, exceed 255 chars, or contain `../`.
 - If `maxSize > 0` and no `${counter}` in pattern → `-${counter}` is appended to the pattern as a suffix.
-- At least one time placeholder is required when `maxSize == 0`.
+- At least one time placeholder (`${YYYY}`, `${YY}`, `${MM}`, `${DD}`, `${HH}`; `${MMM}` does not count) is required when `maxSize == 0`.
 - `bufferSize == 0` → promoted to `1 << 20`.
 - `maxSize` in `(0, 1 MiB)` → clamped to `1 MiB`.
 - `compressionLevel` must be in `[1, 9]` when `shouldCompress`.
@@ -395,24 +388,26 @@ If compression is disabled, the stored state is cleared on startup.
 | `${MM}` | 2-digit month | `07` |
 | `${DD}` | 2-digit day | `01` |
 | `${HH}` | 2-digit hour (24h) | `14` |
-| `${name}` | Channel name | `standard-wazuh-events-v5` |
-| `${counter}` | Rotation counter | `3` |
+| `${name}` | Channel name | `example-channel` |
+| `${counter}` | Rotation counter (replaced only when `maxSize > 0`) | `3` |
 
-**Example:** pattern `${YYYY}/${MMM}/${name}-${DD}` with `ext = "json"` for channel `standard-wazuh-events-v5` on March 26, 2026 → `2026/Mar/standard-wazuh-events-v5-26.json`. The file extension is **not** part of the pattern — it is appended automatically from the `ext` parameter passed to `ChannelHandler::create()`.
+Dates use local time (`std::localtime`).
+
+**Example:** the default pattern `${YYYY}/${MMM}/wazuh-${name}-${DD}` with `ext = "json"` for channel `example-channel` on March 26, 2026 → `2026/Mar/wazuh-example-channel-26.json`. The file extension is **not** part of the pattern — it is appended automatically from the `ext` parameter passed to `ensureAndGetWriter()` (and on to `ChannelHandler::create()`).
 
 ### Example Filesystem Layout
 
-With `basePath = "/var/wazuh-manager/logs"`, `name = "standard-wazuh-events-v5"`, `ext = "json"`, `pattern = "${YYYY}/${MMM}/${name}-${DD}"`, and `LogManager::isolatedBasePath(name, cfg)`, the resulting layout is:
+With `basePath = "/var/wazuh-manager/logs"`, `name = "example-channel"`, `ext = "json"` and `pattern = "${YYYY}/${MMM}/wazuh-${name}-${DD}"` (the isolated `<basePath>/<name>/` directory is added by `ensureAndGetWriter()`), the resulting layout is:
 
 ```text
-/var/wazuh-manager/logs/standard-wazuh-events-v5/
-├── standard-wazuh-events-v5.json
+/var/wazuh-manager/logs/example-channel/
+├── example-channel.json
 └── 2026/
   └── Mar/
-    └── standard-wazuh-events-v5-26.json
+    └── wazuh-example-channel-26.json
 ```
 
-The `standard-wazuh-events-v5.json` hard link and all rotated files share the same extension (`ext`); it is never encoded in the pattern itself.
+The `example-channel.json` hard link and all rotated files share the same extension (`ext`); it is never encoded in the pattern itself.
 
 ---
 
@@ -428,21 +423,20 @@ auto store = /* obtain store::IStore */ ;
 auto scheduler = /* obtain scheduler::IScheduler */ ;
 streamlog::LogManager logManager(store, scheduler);
 
-// Register a channel
+// Channel configuration (basePath is the parent directory; the channel gets <basePath>/<name>/)
 streamlog::RotationConfig cfg {
-  "/var/wazuh-manager/logs",
-  "${YYYY}/${MMM}/${name}-${DD}",  // extension ("json") is passed separately, not part of the pattern
-    10 * 1024 * 1024,   // 10 MiB max size
-    1 << 20,            // buffer
-    true,               // compress
-    5,                  // compression level
-    30,                 // keep at most 30 files in the channel directory
-    20ULL * 1024 * 1024 * 1024  // max 20 GiB accumulated size in the channel directory
+    .basePath = "/var/wazuh-manager/logs",
+    .pattern = "${YYYY}/${MMM}/wazuh-${name}-${DD}", // extension ("json") is passed separately
+    .maxSize = 10 * 1024 * 1024,                     // 10 MiB max size
+    .bufferSize = 1 << 20,                           // queue capacity (messages)
+    .shouldCompress = true,
+    .compressionLevel = 5,
+    .maxFiles = 30,                                  // keep at most 30 files in the channel directory
+    .maxAccumulatedSize = 20ULL * 1024 * 1024 * 1024 // max 20 GiB accumulated size in the channel directory
 };
-streamlog::LogManager::isolatedBasePath("standard-wazuh-events-v5", cfg);
 
-// Obtain a writer (auto-registers and starts the worker thread)
-auto writer = logManager.ensureAndGetWriter("standard-wazuh-events-v5", cfg, "json");
+// Obtain a writer (creates the channel on first use and starts the worker thread)
+auto writer = logManager.ensureAndGetWriter("example-channel", cfg, "json");
 
 // Write from any thread
 (*writer)(R"({"timestamp":"2025-07-01T12:00:00Z","level":"warning","msg":"disk 90%"})");
@@ -458,28 +452,24 @@ writer.reset();
 
 void processEvent(streamlog::ILogManager& logManager) {
     streamlog::RotationConfig cfg {
-      "/var/wazuh-manager/logs",
-      "${YYYY}/${MMM}/${name}-${DD}",  // extension ("json") is passed separately, not part of the pattern
-      0,
-      1 << 20,
-      true,
-      5,
-      30,
-      2ULL * 1024 * 1024 * 1024
-    };
-    streamlog::LogManager::isolatedBasePath("standard-wazuh-events-v5", cfg);
-    auto writer = logManager.ensureAndGetWriter("standard-wazuh-events-v5", cfg, "json");
+        .basePath = "/var/wazuh-manager/logs",
+        .pattern = "${YYYY}/${MMM}/wazuh-${name}-${DD}", // time rotation only (maxSize = 0)
+        .maxSize = 0,
+        .maxFiles = 30,
+        .maxAccumulatedSize = 2ULL * 1024 * 1024 * 1024};
+    auto writer = logManager.ensureAndGetWriter("example-channel", cfg, "json");
     (*writer)(buildJsonString());
 }
 ```
 
 ### Isolated base path (one subdirectory per channel)
 
+`ensureAndGetWriter()` applies `LogManager::isolatedBasePath()` to its copy of `cfg` before creating a channel, so callers pass the parent directory. Calling it yourself first would nest the channel twice (`<base>/<name>/<name>/`). The static helper validates the name and the config, creates `<basePath>/<name>/` and rewrites `cfg.basePath`:
+
 ```cpp
 streamlog::RotationConfig cfg { /* ... */ };
-streamlog::LogManager::isolatedBasePath("standard-wazuh-events-v5", cfg);
-// cfg.basePath is now "<original>/standard-wazuh-events-v5/"
-auto writer = logManager.ensureAndGetWriter("standard-wazuh-events-v5", cfg, "json");
+streamlog::LogManager::isolatedBasePath("example-channel", cfg);
+// cfg.basePath is now "<original>/example-channel"
 ```
 
 ---
@@ -488,7 +478,8 @@ auto writer = logManager.ensureAndGetWriter("standard-wazuh-events-v5", cfg, "js
 
 | Scenario | Behaviour |
 |----------|-----------|
-| File cannot be opened | `ChannelState → ErrorClosed`; all subsequent writes return `false`. |
+| File cannot be opened | At creation: `std::runtime_error` (`Failed to initialize channel …`). On rotation: `ChannelState → ErrorClosed`; all subsequent writes return `false`. |
+| Write to the file fails | `ChannelState → ErrorClosed`. |
 | Hard-link creation fails | File is closed; `runtime_error` thrown (during init) or channel closed (during rotation). |
 | Queue full | `writer->operator()` returns `false`; message is dropped. |
 | Store read / write failure | Warning logged; operation continues normally. |
@@ -499,7 +490,7 @@ auto writer = logManager.ensureAndGetWriter("standard-wazuh-events-v5", cfg, "js
 | Empty subdirectory removal fails | Directory remains on disk; a debug message is logged. Non-fatal. |
 | Directory creation fails during rotation | Warning logged; channel may enter `ErrorClosed`. |
 
-**Philosophy:** Never crash the process. Log an emergency message and gracefully degrade.
+**Philosophy:** Never crash the process from the worker or scheduler threads: log an error or warning and degrade gracefully. Configuration and channel-name errors are thrown to the caller of `ensureAndGetWriter()`.
 
 ---
 
@@ -511,30 +502,23 @@ auto writer = logManager.ensureAndGetWriter("standard-wazuh-events-v5", cfg, "js
 |--------|------|-------------|
 | `streamlogger::istreamlogger` | `INTERFACE` | Headers only (`ilogger.hpp`). |
 | `streamlogger::streamlogger` | `STATIC` | Full implementation library. |
-| `streamlogger::mocks` | `INTERFACE` | GMock mocks for testing consumers. |
-| `streamlogger_utest` | `EXECUTABLE` | Unit tests (GTest). |
-| `streamlogger_ctest` | `EXECUTABLE` | Component tests (GTest). |
-| `streamlogger_benchmark` | `EXECUTABLE` | Performance benchmarks (Google Benchmark). |
+| `streamlogger::mocks` | `INTERFACE` | GMock mocks for testing consumers (`ENGINE_BUILD_TEST`). |
+| `streamlogger_utest` | `EXECUTABLE` | Unit tests (GTest, `ENGINE_BUILD_TEST`). |
+| `streamlogger_ctest` | `EXECUTABLE` | Component tests (GTest, `ENGINE_BUILD_TEST`). |
+| `streamlogger_benchmark` | `EXECUTABLE` | Performance benchmarks (Google Benchmark, `ENGINE_BUILD_BENCHMARK`). |
 
 ### Running tests
 
-```bash
-# From the engine build directory
-cmake --build . --target streamlogger_utest
-ctest -R streamlogger_utest --output-on-failure
-
-# Unit tests directly
-./streamlogger_utest --gtest_filter='ChannelHandlerTest.*'
-./streamlogger_utest --gtest_filter='LogManagerTest.*'
-```
+Both test executables are registered with `gtest_discover_tests`, so `ctest` sees the GTest names (`ChannelHandlerTest.*`, `LogManagerTest.*`, `ChannelHandlerComponentTest.*`, `LogManagerComponentTest.*`), not the executable names; filter with `ctest -R '^ChannelHandlerTest\.'` or run the binary with `--gtest_filter`. Lane reproduction is in the `wazuh-testing` skill.
 
 ### Test overview
 
 | Suite | File | ~Tests | Coverage |
 |-------|------|--------|----------|
-| `ChannelHandlerTest` | `unit/channel_test.cpp` | 40+ | Validation, writing, rotation (size & time), compression, concurrency, store persistence, error paths. |
-| `LogManagerTest` | `unit/logger_test.cpp` | 20+ | Registration, update, destroy, writer lifecycle, concurrency, edge cases. |
-| Component | `component/logger_test.cpp` | 1 (placeholder) | End-to-end (skipped). |
+| `ChannelHandlerTest` | `unit/channel_test.cpp` | 34 | Validation, writing, rotation (size & time), compression, store persistence, error paths. |
+| `LogManagerTest` | `unit/logger_test.cpp` | 17 | Channel creation, destroy, writer lifecycle, edge cases. |
+| `ChannelHandlerComponentTest` | `component/channel_test.cpp` | 74 | Real-filesystem rotation, compression, retention, crash recovery, concurrency. |
+| `LogManagerComponentTest` | `component/logger_test.cpp` | 22 | Real-filesystem channel management and concurrent writers. |
 
 ---
 
@@ -542,12 +526,12 @@ ctest -R streamlogger_utest --output-on-failure
 
 ### Why one thread per channel?
 
-Serialising all I/O for a channel in a single thread **eliminates file-locking** and guarantees message ordering. The lock-free queue pushes the contention to a highly optimised atomic operation.
+Serialising all I/O for a channel in a single thread **eliminates file-locking** and guarantees message ordering. The queue (`fastqueue::StdQueue`) keeps the producers' cost to a push.
 
 ### Why `shared_ptr` + `weak_ptr` for writers?
 
 - `ChannelWriter` must not prevent `ChannelHandler` destruction → `weak_ptr`.
-- `ChannelHandler` must survive as long as **any** writer exists during normal operation → `shared_ptr` ownership in `LogManager::m_channels`.
+- `ChannelHandler` is owned by `LogManager::m_channels`; `destroyChannel()` refuses to drop a channel with active writers, while `requestShutdown()` drops all of them (a writer outliving it holds only a `weak_ptr`).
 - The active-writer counter (protected by mutex) decouples thread lifecycle from pointer lifetime.
 
 ### Why a factory (`create()`) instead of a public constructor?
@@ -569,11 +553,14 @@ Durability: in case of a crash, the maximum data loss is one message. This is ac
 ```
 streamlogger::streamlogger
   ├── PUBLIC  base                     (logging, Name, json::Json, process utils)
-  ├── PUBLIC  fastqueue::fastqueue     (StdQueue — lock-free queue)
+  ├── PUBLIC  fastqueue::fastqueue     (StdQueue)
   ├── PUBLIC  scheduler::ischeduler    (IScheduler for compression tasks)
-  ├── PUBLIC  streamlogger::istreamlogger (WriterEvent, ILogManager)
+  ├── PUBLIC  streamlogger::istreamlogger (RotationConfig, WriterEvent, ILogManager)
   ├── PUBLIC  store::istore            (IStore for crash-recovery persistence)
-  └── PRIVATE urlrequest               (transitive, via base)
+  ├── PUBLIC  ZLIB::ZLIB
+  └── PUBLIC  Minizip::Minizip
+
+streamlogger::istreamlogger  →  base, scheduler::ischeduler, store::istore
 ```
 
 ---

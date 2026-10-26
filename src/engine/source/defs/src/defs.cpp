@@ -151,18 +151,27 @@ std::string Definitions::resolveDefinitionDFS(const std::string& defName,
             continue;
         }
 
-        // TODO: User a helper function to validate variable names, should be moved
-        // from builder to base al related to naming rules
-        // Extract variable name
+        // Match the longest definition name that follows the '$' and ends at a name boundary, as replaceVariables()
+        // does: definition names are not restricted to [A-Za-z0-9_] (only a leading '$' is refused)
         size_t nameStart = pos + 1;
         size_t nameEnd = nameStart;
-        // Rules should match those in the builder and parser
-        while (nameEnd < resolved.length() && (std::isalnum(resolved[nameEnd]) || resolved[nameEnd] == '_'))
+        for (const auto& [candidate, _] : rawDefs)
         {
-            nameEnd++;
+            const auto candidateEnd = nameStart + candidate.size();
+            if (candidate.empty() || candidateEnd <= nameEnd || candidateEnd > resolved.length()
+                || resolved.compare(nameStart, candidate.size(), candidate) != 0)
+            {
+                continue;
+            }
+            if (candidateEnd < resolved.length()
+                && (std::isalnum(static_cast<unsigned char>(resolved[candidateEnd])) || resolved[candidateEnd] == '_'))
+            {
+                continue;
+            }
+            nameEnd = candidateEnd;
         }
 
-        // Check if we found a valid variable name
+        // No definition is referenced here: leave the text as is
         if (nameEnd <= nameStart)
         {
             pos++;
@@ -170,38 +179,30 @@ std::string Definitions::resolveDefinitionDFS(const std::string& defName,
         }
 
         std::string depName = resolved.substr(nameStart, nameEnd - nameStart);
-        if (rawDefs.find(depName) == rawDefs.end())
-        {
-            // If dependency doesn't exist, leave as literal text
-            // maybe a complex json value and not used for remplace strings in parser or checks
-            pos = nameEnd;
-        }
-        else
-        {
-            // Recursively resolve the dependency
-            std::string depValue = resolveDefinitionDFS(depName, rawDefs, visited, inStack, depths);
-            depth = std::max(depth, depths[depName] + 1);
-            if (depth > MAX_DEPTH)
-            {
-                throw std::runtime_error(
-                    fmt::format("Definition '{}' is nested deeper than the limit ({})", defName, MAX_DEPTH));
-            }
 
-            const auto refLength = nameEnd - pos;
-            if (resolved.size() - refLength + depValue.size() > MAX_EXPANDED_SIZE)
-            {
-                throw std::runtime_error(fmt::format(
-                    "Definition '{}' expands beyond the size limit ({} bytes)", defName, MAX_EXPANDED_SIZE));
-            }
-            if (depValue.size() > refLength)
-            {
-                addExpansion(depValue.size() - refLength);
-            }
-
-            // Replace in the current definition
-            resolved.replace(pos, refLength, depValue);
-            pos += depValue.length();
+        // Recursively resolve the dependency
+        std::string depValue = resolveDefinitionDFS(depName, rawDefs, visited, inStack, depths);
+        depth = std::max(depth, depths[depName] + 1);
+        if (depth > MAX_DEPTH)
+        {
+            throw std::runtime_error(
+                fmt::format("Definition '{}' is nested deeper than the limit ({})", defName, MAX_DEPTH));
         }
+
+        const auto refLength = nameEnd - pos;
+        if (resolved.size() - refLength + depValue.size() > MAX_EXPANDED_SIZE)
+        {
+            throw std::runtime_error(
+                fmt::format("Definition '{}' expands beyond the size limit ({} bytes)", defName, MAX_EXPANDED_SIZE));
+        }
+        if (depValue.size() > refLength)
+        {
+            addExpansion(depValue.size() - refLength);
+        }
+
+        // Replace in the current definition
+        resolved.replace(pos, refLength, depValue);
+        pos += depValue.length();
     }
 
     // Remove from recursion stack and cache the resolved value

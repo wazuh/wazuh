@@ -212,10 +212,10 @@ namespace wazuh::uds_http
     };
 
     /**
-     * @brief Server configuration, decoupled from the C-ABI struct.
+     * @brief Server configuration.
      *
-     * The in-struct values below ARE the module defaults; buildServerConfig() only overrides the
-     * ones the caller set. Sentinel rule in the C-ABI, uniform: <=0 / empty -> keep the default.
+     * The in-struct values below ARE the module defaults; a consumer overrides only the ones it
+     * sets.
      */
     struct UdsHttpServerConfig
     {

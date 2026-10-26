@@ -341,10 +341,10 @@ public:
             // Phase 1b: tear down the /control and /scan/vd state. The /control handler's dtor
             // stops the eviction thread, then drops the wdb/task async clients -- their dtors
             // join workers and fail any pending callbacks, which invoke the endpoint's
-            // responder->send() with a 500 body. The HTTP server's I/O runtime is still alive
-            // (phase 4 hasn't run), so those late sends are safe. This runs BEFORE the downstream
-            // client stop so that its own stop() does not race with wdb-worker joins that touch
-            // the same io_context runtime via the response send path.
+            // responder->send() with a 503 dependency_unavailable body. The HTTP server's I/O
+            // runtime is still alive (phase 4 hasn't run), so those late sends are safe. This runs BEFORE the
+            // downstream client stop so that its own stop() does not race with wdb-worker joins that touch the same
+            // io_context runtime via the response send path.
             m_controlHandler.reset();
             // (The /download fallback was drained in phase 0, before the pool went.)
             m_scanVdHandler.reset();
@@ -1104,7 +1104,8 @@ private:
     }
 
     /**
-     * @brief Publishes both endpoint rate limiters as remoted.<endpoint>.rate_limit.* pulls.
+     * @brief Publishes the three endpoint rate limiters (enroll, enroll.unverified, cacerts) as
+     * remoted.<endpoint>.rate_limit.* pulls.
      *
      * The REFUSALS are not here: those are the plain remoted.enroll.rate_limited /
      * remoted.cacerts.rate_limited counters the gate bumps, which belong with the rest of each

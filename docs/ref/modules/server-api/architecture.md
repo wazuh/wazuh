@@ -94,8 +94,10 @@ This layer implements the **HTTP server** that exposes the REST API.
 |-----------|-------------|
 | `controllers/` | Route handlers (one per resource: agent, cluster, security, etc.) |
 | `authentication.py` | JWT token generation and validation using EC keys (PyJWT) |
-| `middlewares.py` | Request/response pipeline (security headers, rate limiting, access logging) |
-| `error_handler.py` | Centralized error handling and brute-force protection |
+| `middlewares.py` | Request/response pipeline (security headers, login lockout, rate limiting, body size limits, access logging) |
+| `error_handler.py` | Turns exceptions (unauthorized, other HTTP errors, problem, oversized body, failed expectation, recursion) into the API's JSON error responses |
+| `api_exception.py` | The API process's own exceptions: the startup error codes (`2000`–`2012`) and the 403/413/417/429 responses raised by the middlewares |
+| `util.py` | Shared helpers, including the mapping of framework exceptions to HTTP status codes |
 | `validator.py` | Regex-based validation for API input parameters, and the JSON schemas of `api.yaml` and `security.yaml` |
 | `parameter_validator.py` | Connexion parameter validator wiring |
 | `signals.py` | ASGI lifespan: the `Listening on ...` line and background tasks (JWT key rotation watch, rate-limit counters cleanup) |

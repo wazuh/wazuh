@@ -37,8 +37,8 @@ inline ValueValidator getBoolValidator()
     };
 }
 
-/** @brief Validator that checks if a JSON value is a short (int8 range). */
-inline ValueValidator getShortValidator()
+/** @brief Validator that checks if a JSON value is a byte (int8 range). */
+inline ValueValidator getByteValidator()
 {
     return [](const json::Json& value) -> base::OptError
     {
@@ -52,6 +52,27 @@ inline ValueValidator getShortValidator()
         if (val < std::numeric_limits<int8_t>::min() || val > std::numeric_limits<int8_t>::max())
         {
             return base::Error {"Value not in range for byte"};
+        }
+
+        return base::noError();
+    };
+}
+
+/** @brief Validator that checks if a JSON value is a short (int16 range). */
+inline ValueValidator getShortValidator()
+{
+    return [](const json::Json& value) -> base::OptError
+    {
+        if (!value.isInt() || !value.isInt64())
+        {
+            return base::Error {"Value is not an integer"};
+        }
+
+        auto val = value.getInt().value();
+
+        if (val < std::numeric_limits<int16_t>::min() || val > std::numeric_limits<int16_t>::max())
+        {
+            return base::Error {"Value not in range for short"};
         }
 
         return base::noError();

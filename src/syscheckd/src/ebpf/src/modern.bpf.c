@@ -129,7 +129,7 @@ struct task_struct___local {
  * libbpf to use this definition instead of kernel BTF, avoiding CO-RE
  * failures on kernels where renamedata is not in BTF (e.g. 5.15).
  * new_mnt_userns must be present to keep new_dentry at the correct offset
- * (field layout stable across 5.12-6.3+).
+ * (field layout stable across 5.12-6.17).
  */
 struct renamedata___local {
     void          *old_mnt_userns;  /* user_namespace* on 5.12-5.15, mnt_idmap* on 6.3+ */
@@ -140,6 +140,15 @@ struct renamedata___local {
     struct inode  *new_dir;
     struct dentry *new_dentry;
 };
+
+/*
+ * 6.18+ renamedata: new_parent replaces new_dir and new_dentry moves, so it is
+ * read through CO-RE when the running kernel has that layout.
+ */
+struct renamedata___v618 {
+    struct dentry *new_parent;
+    struct dentry *new_dentry;
+} __attribute__((preserve_access_index));
 
 /*
 * Concatenates a directory path and a filename into a full path.
@@ -647,10 +656,9 @@ int kprobe__vfs_unlink(struct pt_regs *ctx)
 * Intercepts vfs_rename to detect file move/rename events.
 * Pre-5.12: old_dentry=PARM2, new_dentry=PARM4. 5.12+: single renamedata *=PARM1.
 * Fires before rename executes so new_dentry is negative; use old_dentry->d_inode
-* for validation and new_dentry only for destination path reconstruction.
+* for validation and old_dentry or new_dentry only for path reconstruction.
 */
-SEC("kprobe/vfs_rename")
-int kprobe__vfs_rename(struct pt_regs *ctx)
+statfunc int vfs_rename_event(struct pt_regs *ctx, bool old)
 {
     struct dentry *old_dentry;
     struct dentry *new_dentry;
@@ -662,10 +670,11 @@ int kprobe__vfs_rename(struct pt_regs *ctx)
      * is a negative dentry (d_inode == NULL, no file exists at the destination
      * yet).  We therefore use old_dentry->d_inode for all metadata validation
      * (regular-file check, inode number, device, superblock/mount) and use
-     * new_dentry only for path reconstruction (the destination path FIM needs).
+     * the dentries only for path reconstruction (source or destination path).
      *
-     * Only one get_path_str_from_path call is made (new_dentry's path), so the
-     * jump-sequence count stays within the BPF verifier's 8192 limit on 5.15.
+     * Each program makes a single get_path_str_from_path call (old or new
+     * path), so the jump-sequence count stays within the BPF verifier's 8192
+     * limit on 5.15.
      *
      * Use PT_REGS_PARM*_CORE so the compiler goes through bpf_probe_read_kernel
      * rather than emitting a direct "modified ctx pointer dereference" that the
@@ -684,7 +693,11 @@ int kprobe__vfs_rename(struct pt_regs *ctx)
         if (!rd)
             return 0;
         bpf_probe_read_kernel(&old_dentry, sizeof(old_dentry), &rd->old_dentry);
-        bpf_probe_read_kernel(&new_dentry, sizeof(new_dentry), &rd->new_dentry);
+        struct renamedata___v618 *rd618 = (void *)rd;
+        if (bpf_core_field_exists(rd618->new_parent))
+            new_dentry = BPF_CORE_READ(rd618, new_dentry);
+        else
+            bpf_probe_read_kernel(&new_dentry, sizeof(new_dentry), &rd->new_dentry);
     }
 
     if (!old_dentry || !new_dentry)
@@ -708,17 +721,31 @@ int kprobe__vfs_rename(struct pt_regs *ctx)
     if (!string_buf)
         return 0;
 
-    /* Reconstruct new_dentry's path (the destination). */
+    /* Reconstruct the source or destination path. */
     u8 *full_path = NULL;
-    struct path new_path = {
-        .dentry = new_dentry,
+    struct path path = {
+        .dentry = old ? old_dentry : new_dentry,
         .mnt    = get_write_mnt(BPF_CORE_READ(d_inode, i_sb))
     };
 
-    if (get_path_str_from_path(&full_path, &new_path, string_buf) >= 0)
+    if (get_path_str_from_path(&full_path, &path, string_buf) >= 0)
         submit_event((const char *)full_path, inode, dev);
 
     return 0;
+}
+
+/* Destination path: reported as added. */
+SEC("kprobe/vfs_rename")
+int kprobe__vfs_rename(struct pt_regs *ctx)
+{
+    return vfs_rename_event(ctx, false);
+}
+
+/* Source path: reported as deleted. */
+SEC("kprobe/vfs_rename")
+int kprobe__vfs_rename_old(struct pt_regs *ctx)
+{
+    return vfs_rename_event(ctx, true);
 }
 
 /*
@@ -961,9 +988,9 @@ static __always_inline bool path_rename_filter(struct dentry *old_dentry,
     return true;
 }
 
-SEC("lsm/path_rename")
-int BPF_PROG(path_rename_dpath, struct path *old_dir, struct dentry *old_dentry,
-             struct path *new_dir, struct dentry *new_dentry, unsigned int flags)
+/* Reports dir + dentry name: the source (deleted) or destination (added) path. */
+statfunc int path_rename_dpath_event(struct path *dir, struct dentry *dentry,
+                                     struct dentry *old_dentry)
 {
     __u64 inode = 0, dev = 0;
     if (!path_rename_filter(old_dentry, &inode, &dev))
@@ -981,11 +1008,10 @@ int BPF_PROG(path_rename_dpath, struct path *old_dir, struct dentry *old_dentry,
     const char *file_name_ptr;
     int ret;
 
-    /* Only report the NEW path (destination) — same policy as kprobe/vfs_rename. */
-    ret = bpf_d_path(new_dir, dir_path, MAX_PATH_LEN);
+    ret = bpf_d_path(dir, dir_path, MAX_PATH_LEN);
     if (ret >= 0) {
         bpf_probe_read_kernel(&file_name_ptr, sizeof(file_name_ptr),
-                              &new_dentry->d_name.name);
+                              &dentry->d_name.name);
         if (file_name_ptr) {
             ret = concat_strings_bpf(&full_path, dir_path, file_name_ptr, string_buf);
             if (ret >= 0)
@@ -997,21 +1023,34 @@ int BPF_PROG(path_rename_dpath, struct path *old_dir, struct dentry *old_dentry,
 }
 
 SEC("lsm/path_rename")
-int BPF_PROG(path_rename_walk, struct path *old_dir, struct dentry *old_dentry,
+int BPF_PROG(path_rename_dpath, struct path *old_dir, struct dentry *old_dentry,
              struct path *new_dir, struct dentry *new_dentry, unsigned int flags)
+{
+    return path_rename_dpath_event(new_dir, new_dentry, old_dentry);
+}
+
+SEC("lsm/path_rename")
+int BPF_PROG(path_rename_old_dpath, struct path *old_dir, struct dentry *old_dentry,
+             struct path *new_dir, struct dentry *new_dentry, unsigned int flags)
+{
+    return path_rename_dpath_event(old_dir, old_dentry, old_dentry);
+}
+
+/*
+* Builds the path from dentry + the mount of dir, then walks it manually (no
+* bpf_d_path). Mirrors kprobe/vfs_rename: the destination dentry may be
+* negative, but get_path_str_from_path only walks d_parent (which is set to
+* dir's dentry), so the path resolves. One walk per program, see vfs_rename.
+*/
+statfunc int path_rename_walk_event(struct path *dir, struct dentry *dentry,
+                                    struct dentry *old_dentry)
 {
     __u64 inode = 0, dev = 0;
     if (!path_rename_filter(old_dentry, &inode, &dev))
         return 0;
 
-    /*
-     * Build the destination path from new_dentry + the mount of new_dir,
-     * then walk it manually (no bpf_d_path). Mirrors kprobe/vfs_rename:
-     * new_dentry may be negative, but get_path_str_from_path only walks
-     * d_parent (which is set to new_dir's dentry), so the path resolves.
-     */
     struct vfsmount *mnt = NULL;
-    bpf_probe_read_kernel(&mnt, sizeof(mnt), &new_dir->mnt);
+    bpf_probe_read_kernel(&mnt, sizeof(mnt), &dir->mnt);
     if (!mnt)
         return 0;
 
@@ -1019,16 +1058,30 @@ int BPF_PROG(path_rename_walk, struct path *old_dir, struct dentry *old_dentry,
     if (!string_buf)
         return 0;
 
-    struct path new_path = {
-        .dentry = new_dentry,
+    struct path path = {
+        .dentry = dentry,
         .mnt    = mnt,
     };
 
     u8 *full_path = NULL;
-    if (get_path_str_from_path(&full_path, &new_path, string_buf) >= 0)
+    if (get_path_str_from_path(&full_path, &path, string_buf) >= 0)
         submit_event((const char *)full_path, inode, dev);
 
     return 0;
+}
+
+SEC("lsm/path_rename")
+int BPF_PROG(path_rename_walk, struct path *old_dir, struct dentry *old_dentry,
+             struct path *new_dir, struct dentry *new_dentry, unsigned int flags)
+{
+    return path_rename_walk_event(new_dir, new_dentry, old_dentry);
+}
+
+SEC("lsm/path_rename")
+int BPF_PROG(path_rename_old_walk, struct path *old_dir, struct dentry *old_dentry,
+             struct path *new_dir, struct dentry *new_dentry, unsigned int flags)
+{
+    return path_rename_walk_event(old_dir, old_dentry, old_dentry);
 }
 
 char LICENSE[] SEC("license") = "GPL";

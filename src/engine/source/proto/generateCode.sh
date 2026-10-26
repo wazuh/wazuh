@@ -3,7 +3,7 @@
 # Search for the protoc compiler and source from the vcpkg directory
 set_proto_config() {
     ENGINE_DIR=$(readlink -f "${ENGINE_DIR}")
-    echo "i.e: cd ${ENGINE_DIR} && cmake --preset debug -DENGINE_GENERATE_PROTO=ON && cmake --build ./build --target generate_protobuf_code" >&2
+    echo "i.e: cd ${ENGINE_DIR}/../.. && cmake -DENGINE_GENERATE_PROTO=ON src/build && cmake --build src/build --target generate_protobuf_code" >&2
 
     PROTOC=${PROTOBUF_DIR}/build/protoc
     INCLUDE_PROTO_DIR=${PROTOBUF_DIR}/src/

@@ -1,7 +1,7 @@
 import sys
 import os
 
-import xml.etree.ElementTree as ET
+from defusedxml import ElementTree as ET
 
 
 def parse_section(og_root, section):

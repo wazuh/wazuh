@@ -27,7 +27,7 @@ This README is the **developer / source-tree** view: what each directory does, h
               └──────────┬───────────┴──────────┬───────────┘
                          ▼                      ▼
         ┌────────────────────────────────────────────────┐
-        │     bk::IController  (Rx or Taskflow)          │
+        │     bk::IController  (Rx; Taskflow alternative)│
         │                                                │
         │   pre-filter → decoders → pre-enrichment       │
         │             → enrichment (geo, ioc, kvdb)      │
@@ -40,7 +40,7 @@ This README is the **developer / source-tree** view: what each directory does, h
 
 - One incoming event ⇒ one independent traversal **per active policy**.
 - Inside a policy, decoders are arranged hierarchically (a root decoder dispatches to children), and decoders are grouped into **integrations**.
-- The `builder` module compiles policy assets into an expression tree; the `bk` backend materializes that tree into a runnable pipeline (Rx or Taskflow).
+- The `builder` module compiles policy assets into an expression tree; the `bk` backend materializes that tree into a runnable pipeline. `main.cpp` always injects the Rx backend (`bk::rx::ControllerMaker`); the Taskflow backend is built and tested but not wired.
 
 ---
 
@@ -52,10 +52,10 @@ This README is the **developer / source-tree** view: what each directory does, h
 
 Used by virtually every other module.
 
-- [base/](base/) — Shared primitives: logging (spdlog), JSON wrappers, error types (`base::Error`, `RespOrError`), expression trees (`base::Term`, `base::Event`), process and time utilities. No README; see [base/include/base/](base/include/base/).
-- [proto/](proto/) — Protobuf (`*.proto`) schema for the API. Wire format is JSON, but protobuf is the single source of truth shared by C++ handlers and the Python clients. No README; the `.proto` files in this directory are the contract.
-- [yml/](yml/) — yaml-cpp ↔ RapidJSON conversion used during config and content loading.
-- [conf/](conf/README.md) — Three-tier config (env → json file → defaults) with typed validation. Read by every module at startup.
+- [base/](base/README.md) — Shared primitives: logging (spdlog), JSON wrappers, error types (`base::Error`, `base::RespOrError`), expression trees (`base::Term`), the event type (`base::Event`), the manager configuration loader (`base::managerConfig`), process and time utilities.
+- [proto/](proto/readme.md) — Protobuf (`*.proto`) schema for the API (the `eMessages` library). Wire format is JSON, but protobuf is the single source of truth shared by C++ handlers and the Python clients.
+- [yml/](yml/) — yaml-cpp ↔ RapidJSON conversion used during config and content loading. No README.
+- [conf/](conf/README.md) — Engine settings resolved per key as environment variable → `analysisd.*` key in `wazuh-manager-internal-options.conf` → default, with typed validation. Read in `main.cpp` and passed to modules as constructor arguments.
 - [hlp/](hlp/README.md) — Type-specific parsers (IP, date, JSON, CSV, …). The parser library that decoders are built from.
 - [parsec/](parsec/README.md) — Header-only parser-combinator library that underlies `logpar` and `logicexpr`.
 - [logicexpr/](logicexpr/README.md) — Boolean expression parser/evaluator (Shunting-Yard) used in `check` stages.
@@ -63,7 +63,8 @@ Used by virtually every other module.
 - [defs/](defs/README.md) — `$variable` substitution with cycle detection, used in asset definitions.
 - [schemf/](schemf/README.md) — WCS schema and field-type validation (build-time and runtime).
 - [fastqueue/](fastqueue/README.md) — Bounded thread-safe queues (lock-free `CQueue`, mutex `StdQueue`) with optional rate limiting.
-- [fastmetrics/](fastmetrics/README.md) — Lock-free counters/gauges/pull-callbacks with periodic JSON dump.
+- [fastmetrics/](fastmetrics/README.md) — Lock-free counters, gauges and pull callbacks in a process-wide registry, served by the `metrics` API handlers.
+- [agentcache/](agentcache/) — Header-only TTL cache of agent metadata used by the `/events/enriched` ingestion handler (`agentcache::AgentMetadataCache`). No README; see [agentcache/include/agentcache/agentMetadataCache.hpp](agentcache/include/agentcache/agentMetadataCache.hpp).
 
 ### Storage
 
@@ -74,7 +75,7 @@ Used by virtually every other module.
 
 ### Compilation & execution backend
 
-- [builder/](builder/) — The compilation hub. Reads assets from `cmstore` and produces executable `IPolicy` expression trees, pulling in `logpar`, `schemf`, `kvdbstore`, `iockvdb`, `geo`, `streamlog` and `wiconnector` via a `BuilderDeps` struct. No README; the public interface is in [builder/include/builder/](builder/include/builder/).
+- [builder/](builder/) — The compilation hub. Reads assets from `cmstore` and produces executable `IPolicy` expression trees. `logpar`, `kvdbstore`, `iockvdb`, `geo`, `streamlog` and `wiconnector` reach it through the `BuilderDeps` struct; `cmstore`, `schemf`, `defs` and `store` are constructor arguments. No module README; the public interface is in [builder/include/builder/](builder/include/builder/), and the helper/stage builders are described in [builder/src/builders/README.md](builder/src/builders/README.md).
 - [bk/](bk/README.md) — Two interchangeable execution backends (RxCpp observable graph or Taskflow DAG) for the compiled expression. Provides node-tracing and hot-reload.
 
 ### Enrichment & I/O services
@@ -99,8 +100,8 @@ Used by virtually every other module.
 
 ### API gateway
 
-- [httpsrv/](httpsrv/README.md) — UDS HTTP server (cpp-httplib). Two instances are created in `main`: the management API and the optional remote-event-receiver.
-- [api/](api/README.md) — Per-domain handler factories: `router`, `tester`, `cmcrud`, `geo`, `ioccrud`, `dumper`, `rawevtindexer`, `metrics`, `event`. They translate JSON↔protobuf and delegate to the corresponding domain interface.
+- [httpsrv/](httpsrv/README.md) — UDS HTTP server (cpp-httplib). Two instances are created in `main`: the management API (`engine-api-http.sock`) and, when event processing is enabled, the event-ingestion server (`engine-ingest-http.sock`, route `POST /events/enriched`).
+- [api/](api/README.md) — Per-domain handler factories: `router`, `tester`, `cmcrud`, `geo`, `ioccrud`, `dumper`, `rawevtindexer`, `metrics`, `status`, `event`. They translate JSON↔protobuf and delegate to the corresponding domain interface.
 - [agentcache/](agentcache/README.md) — Bounded, identity-validated cache of parsed agent `H`-line metadata, keyed by the trusted `X-Wazuh-Agent-Id` the `event` handler requires.
 
 ### Entry point
@@ -112,51 +113,45 @@ Used by virtually every other module.
 
 ## Module dependency graph (high level)
 
-`base`, `conf`, `proto` and other foundation libraries are omitted — they are used everywhere. The graph emphasizes the runtime hubs.
+`base`, `conf`, `proto` and other foundation libraries are omitted — they are used everywhere. An arrow `A ──► B` means *A links B* (the `target_link_libraries` lists in each module's `CMakeLists.txt`); `B ◄── A` is the same edge drawn from the other side. The graph emphasizes the runtime hubs.
 
 ```
-                                  ┌──────────────┐
-                                  │     api      │   (handlers per domain)
-                                  └──────┬───────┘
-                                         │
-                                  ┌──────▼───────┐
-                                  │   httpsrv    │
-                                  └──────────────┘
+      api (handlers per domain) ──► httpsrv, and the domain module each handler drives
 
-      ┌──────────────┐    ┌─────────────────┐    ┌──────────────┐
-      │   cmsync     │───►│     router      │◄───│  fastqueue   │
-      └──────┬───────┘    │  (Orchestrator) │    └──────────────┘
+      ┌──────────────┐    ┌─────────────────┐
+      │   cmsync     │───►│     router      │───► fastqueue, bk, rawevtindexer, store
+      └──────┬───────┘    │  (Orchestrator) │
              │            └────────┬────────┘
              │                     │
              ▼                     ▼
       ┌──────────────┐     ┌──────────────┐
-      │   cmcrud     │     │   builder    │ ─── compilation hub
+      │   cmcrud     │────►│   builder    │ ─── compilation hub
       └──────┬───────┘     └──┬───┬───┬───┘
              │                │   │   │
-             ▼                │   │   └────────────► geo, streamlog
+             ▼                │   │   └────────────► geo, streamlog, defs
       ┌──────────────┐        │   │
-      │   cmstore    │◄───────┘   └────► logpar ──► hlp ──► parsec
-      └──────┬───────┘                   schemf
-             │                           kvdbstore
-             ▼                           iockvdb ◄── iocsync
+      │   cmstore    │◄───────┘   └────► logpar ──► hlp, parsec
+      └──────────────┘                   schemf
+                                         kvdbstore ──► cmstore
+                                         iockvdb ◄── iocsync
+
         ┌────────┐
-        │ store  │◄── confremote, rawevtindexer
+        │ store  │◄── builder, router, cmsync, confremote, iocsync, iockvdb, geo, streamlog
         └────────┘
 
                   ┌────────────────┐
                   │  wiconnector   │ ──► wazuh-indexer    (sole egress)
                   └────────────────┘
                           ▲
-              cmsync, iocsync, confremote,
-              rawevtindexer, streamlog, builder
+              builder, cmsync, iocsync, confremote, rawevtindexer
 ```
 
 Key relationships:
 
 - **`router` is the runtime hub.** It owns event queues, worker threads and route lifecycle; `cmsync` hot-swaps its routes.
-- **`builder` is the compilation hub.** Every dependency that contributes to event processing is funneled into it via `BuilderDeps`.
+- **`builder` is the compilation hub.** Every dependency that contributes to event processing reaches it, through `BuilderDeps` or its constructor.
 - **`store` and `cmstore` are the data hubs.** Persisted state (schemas, allowed fields, ruleset, sync state) flows through them.
-- **`wiconnector` is the only egress to the indexer.** All outbound traffic to OpenSearch goes through it.
+- **`wiconnector` is the only egress to the indexer.** All outbound traffic to the indexer goes through it.
 
 ---
 
@@ -164,18 +159,19 @@ Key relationships:
 
 Modules are wired together in [main.cpp](main.cpp) using `std::shared_ptr` and a `StackExecutor` that records teardown callbacks for LIFO shutdown. Construction is staged so each phase only depends on phases above it. Some phases are gated by `conf::key::SERVER_ENABLE_EVENT_PROCESSING`.
 
-1. **Process bootstrap** — option parsing, logging (standalone spdlog vs the manager log sink, `base/managerLogSink.hpp`); the soft `RLIMIT_NOFILE` is then raised to a fixed `8192` (never above the hard limit, never lowered if already higher), followed by the optional `goDaemon()`.
-2. **Configuration** — `conf::Conf` loads from ini file; every later module reads it via `confManager.get<T>(key::…)`. Signal handlers (`SIGINT`, `SIGTERM`, `SIGPIPE` → ignore) are installed right after, once the configuration is loaded.
+1. **Process bootstrap** — option parsing (`-f` foreground, `-t` test configuration, `-d` debug, repeatable). In standalone mode `-t` exits 0 immediately and logging starts from environment variables (`logging::getStandaloneLoggingConfig()`). In manager mode the process `chdir`s to the home (`base::process::getWazuhHome()`), loads `/etc/wazuh-manager/wazuh-manager.conf` through `base::managerConfig::load()` (`-t` validates it with file checks instead and exits) and opens `logs/wazuh-manager.log`/`.json` through the manager log sink (`base/managerLogSink.hpp`). The soft `RLIMIT_NOFILE` is then raised to a fixed `8192` (never above the hard limit, never lowered if already higher), followed by `goDaemon()` unless `-f`.
+2. **Configuration** — `conf::Conf` reads `wazuh-manager-internal-options.conf` from `/etc/wazuh-manager/` (never in standalone mode); `main.cpp` reads each setting with `confManager.get<T>(conf::key::…)` and passes the values to the module constructors. Then `SIGINT`/`SIGTERM` get a handler that sets the shutdown flag and `SIGPIPE` is ignored.
 3. **Privilege drop** (manager-integrated mode only) — the process starts as `root` and switches group and user to the hardcoded `wazuh-manager:wazuh-manager` (`base::process::WAZUH_GROUP`/`WAZUH_USER`), unless disabled via `key::DROP_PRIVILEGES`; group first, since `setgid()` is not permitted after `setuid()`. Everything below runs unprivileged. In standalone mode the launcher's user/group are inherited untouched.
+   Afterwards the log level is applied (`analysisd.debug` in manager mode, raised by `-d`) and, in manager mode, the PID file is created under `var/run/`.
    > **Caveat when debugging with `DROP_PRIVILEGES=false`:** running as `root` leaves every runtime-created path (`data/store`, `data/ruleset`, `data/kvdb-ioc`, `data/mmdb`, `data/tzdb`, `logs/<YYYY>/<MMM>/`, `var/run`) owned by `root:root`. Re-enabling the drop then fails at startup with a permission error from the first module that writes — `chown -R wazuh-manager:wazuh-manager` those paths before restarting. See [configuration.md](../../../docs/ref/modules/engine/configuration.md#process-privileges).
 4. **Core data layer** — `store::Store` (with `FileDriver`) → `cmstore::CMStore` → `kvdbstore::KVDBManager` → `iockvdb::KVDBManager(store)` → `geo::Manager(store, downloader)` → `fastmetrics::registerManager()` → `schemf::Schema` (loads `schema/engine-schema/0` from `store`).
 5. **Parsing** — `hlp::initTZDB(...)` then `logpar::Logpar` (uses `schema/wazuh-logpar-overrides/0` from `store` and the schema validator); `hlp::registerParsers(logpar)`.
 6. **Scheduler & I/O** (always, but most consumers gated on `enableProcessing`) — `scheduler::Scheduler` (registered for early shutdown). When `enableProcessing` is on: `wiconnector::WIndexerConnector` (queue metrics registered as pull callbacks) and `streamlog::LogManager(store, scheduler)`.
 7. **Compilation hub** — `builder::Builder(cmStore, schemaValidator, defs, allowedFields, builderDeps, store)` where `BuilderDeps` carries `logpar`, `kvdbManager`, `IOCkvdb`, `geoManager`, `streamLogger`, `indexerConnector` and the file-output rotation config. Then `cmcrud::CrudService(cmStore, builder)`.
-8. **Background services** (gated) — `confremote::ConfRemoteManager`, `rawevtindexer::RawEventIndexer`, `router::Orchestrator(...)` (started immediately and registered for shutdown), `cmsync::CMSync`, `iocsync::IocSync` (scheduled via `scheduler`), `dumper::Dumper(streamLogger)`.
-9. **API surface** — `httpsrv::Server` is created, then per-domain handlers register their routes against it: metrics, geo, router, tester, dumper, rawevtindexer, cmcrud, ioccrud. Finally `apiServer->start(socketPath)`. An optional second `httpsrv::Server` is created for the remote-event-receiver (event ingestion).
+8. **Background services** — `router::Orchestrator(...)` is always created, started immediately and registered for shutdown. Gated on `enableProcessing`: `confremote::ConfRemoteManager`, `rawevtindexer::RawEventIndexer` (its `index_raw_events` trigger registered on the remote-configuration manager), `cm::sync::CMSync`, `ioc::sync::IocSync` (scheduled as `ioc-sync-task` unless its interval is 0), `dumper::Dumper(streamLogger, …)` and the `remote-conf-sync` task. The `geo-sync-task` is scheduled regardless of the gate, unless its interval is 0.
+9. **API surface** — the management `httpsrv::Server` is created, then per-domain handlers register their routes against it: metrics, geo, router, tester, dumper, rawevtindexer (only when it exists), cmcrud, ioccrud, status. Finally `apiServer->start()` on `analysisd.server_api_socket` (`engine-api-http.sock`). When `enableProcessing` is on, a second `httpsrv::Server` ("Event services") serves `POST /events/enriched` (`api::event::handlers::pushEvent`, with the `agentcache::AgentMetadataCache`) on `analysisd.server_enriched_events_socket` (`engine-ingest-http.sock`); then the `clean-agent-cache` and `cm-sync-task` tasks are scheduled and `scheduler->start()` runs. The main thread then waits for a shutdown signal. Socket defaults and every setting are listed in [configuration.md](../../../docs/ref/modules/engine/configuration.md).
 
-Shutdown is the exact reverse: `StackExecutor` drains callbacks in LIFO. The API server stops first (it joins client connections), background services request shutdown and join, the orchestrator drains queues, `streamlog` and `wiconnector` flush, the scheduler stops, and logging is the last thing torn down.
+Shutdown is the exact reverse: `StackExecutor` drains callbacks in LIFO. The event-ingestion server stops first, then the API server; the dumper is deactivated, the geo manager, `iocsync`, `cmsync`, the orchestrator and `confremote` are asked to shut down, `streamlog` and `wiconnector` (`requestShutdown()`, then `shutdown()`) follow, and the scheduler stops last; in standalone mode logging is torn down after it.
 
 ---
 
@@ -185,7 +181,7 @@ The engine uses a small but specific vocabulary, mirrored across the codebase, t
 
 - **Event** — JSON document representing a security log line, carrying agent/cluster metadata. The unit of work flowing through the engine.
 - **Wazuh Common Schema (WCS)** — Authoritative typed field schema all output events must conform to. Owned by the indexer; the engine fetches `schema/engine-schema/0` from `store` at startup.
-- **Asset** — Smallest content unit (decoder, filter, output, integration, KVDB, schema). Addressed as `<type>/<name>/<version>` (e.g. `decoder/aws-cloudtrail/0`).
+- **Resource / Asset** — Content units held by `cmstore` (`cm::store::ResourceType`: decoder, output, filter, integration, KVDB). Decoders, filters and outputs are *assets*, named `<type>/<name>/<version>` (e.g. `decoder/aws-cloudtrail/0`, `output/indexer/0`).
 - **Decoder** — Asset that parses and normalizes events into WCS fields. Decoders are arranged hierarchically (root → children) and grouped into integrations.
 - **Integration** — Ordered group of decoders + KVDBs that belong to one product or log source. Every decoder lives in exactly one integration.
 - **Filter** — Boolean predicate over an event. Pre-filters drop events before decoding; post-filters drop events before they reach outputs.
@@ -202,7 +198,7 @@ The engine uses a small but specific vocabulary, mirrored across the codebase, t
 ## Conventions
 
 - **C++17** across the engine; `clang-format` and `clang-tidy` configured at `engine/`.
-- Each module exposes an `I<Module>` interface in `include/<module>/`, implementations in `src/`, GoogleTest unit tests in `test/src/unit/`, and mocks for use by other modules' tests in `test/mocks/`.
+- Each module exposes its `I<Name>` interfaces in `interface/<module>/` (a separate `<module>::i<module>`-style CMake target), implementation headers in `include/<module>/`, sources in `src/`, GoogleTest tests in `test/src/` (unit tests in `test/src/unit/`), and mocks for other modules' tests in `test/mocks/`. Not every module has every piece (`conf`, `hlp`, `logpar`, `yml`, `agentcache` have no `interface/`).
 - Dependencies are injected as `std::shared_ptr` and wired exclusively in [main.cpp](main.cpp); modules never instantiate their own dependencies.
 - API handlers follow a factory pattern; see [api/README.md](api/README.md) for the contract.
 
@@ -213,5 +209,5 @@ The engine uses a small but specific vocabulary, mirrored across the codebase, t
 - [User manual / quick-start](../../../docs/ref/modules/engine/README.md) — operator-facing documentation.
 - [api/README.md](api/README.md) — API handler conventions.
 - [router/README.md](router/README.md) — runtime orchestration, route lifecycle and tester semantics.
-- [builder/](builder/) — policy compilation (no README; start at [builder/include/builder/builder.hpp](builder/include/builder/builder.hpp)).
+- [builder/](builder/) — policy compilation (no module README; start at [builder/include/builder/builder.hpp](builder/include/builder/builder.hpp) and [builder/src/builders/README.md](builder/src/builders/README.md)).
 - [bk/README.md](bk/README.md) — execution backends.
