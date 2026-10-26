@@ -205,11 +205,12 @@ protected:
         return node;
     }
 
-    void startRuntimeOn(const std::vector<std::string>& hosts)
+    void startRuntimeOn(const std::vector<std::string>& hosts, const std::string& extra = {})
     {
         std::string text = "wazuh_modules.indexer_client_network_threads=1\n"
                            "wazuh_modules.indexer_client_cpu_threads=2\n"
-                           "wazuh_modules.indexer_client_probe_interval_ms=200\n";
+                           "wazuh_modules.indexer_client_probe_interval_ms=200\n" +
+                           extra;
         std::string json = "{\"hosts\":[";
         for (std::size_t i = 0; i < hosts.size(); ++i)
         {
@@ -226,14 +227,14 @@ protected:
     }
 
     /// The runtime on the nodes started so far.
-    void startRuntime()
+    void startRuntime(const std::string& extra = {})
     {
         std::vector<std::string> hosts;
         for (const auto& node : m_nodes)
         {
             hosts.push_back(node.fake->baseUrl());
         }
-        startRuntimeOn(hosts);
+        startRuntimeOn(hosts, extra);
     }
 
     /// The module's own bucket for `config`, tuned for a test: quick retries, a bucket whose pending
@@ -1324,4 +1325,143 @@ TEST_F(IndexerClientSyncAdapter, QueryBarrierAfterBatchExpiry)
     EXPECT_FALSE(outcomes[0].ok);
     EXPECT_FALSE(outcomes[1].ok);
     EXPECT_EQ(ConnectorError::Cause::Unavailable, outcomes[1].cause) << outcomes[1].reason;
+}
+
+// ---- A chunk abandoned on the wire (settleAbandoned) ------------------------------------------------
+
+/// The scan lane's failure path over two real adapters: `vd0` gives its held chunk up (batch deadline), then
+/// settles it before the agent is released; only then may `w0` (a pipeline worker, whose barrier cannot see
+/// `vd0`) send the agent's delete-by-query. Without the wait the by-query reaches the indexer first, and the
+/// late `_bulk` brings the deleted documents back.
+TEST_F(IndexerClientSyncAdapter, SettleAbandonedWaitsForChunkOnTheWire)
+{
+    auto node = startNode(BulkScript::items().held()); // Held, then answered 200 with every item ok.
+    startRuntime();
+    makeClient(testSpec());
+    auto opts = options(1 * MIB);
+    opts.budgets.stateful = 500ms;
+    opts.budgets.statefulRetry = 500ms;
+    opts.runtime = m_ref;
+    auto& lane = makeAdapter(opts, "vd0");
+    auto& pipeline = makeAdapter(opts, "w0");
+
+    stage(lane, "K", document('a'));
+    lane.endSession();
+    EXPECT_THROW(lane.flush(), ConnectorError) << "the batch deadline gives the held chunk up";
+    ASSERT_EQ(1U, node.bulk->received().size()) << "the chunk never reached the wire";
+    lane.discard();
+
+    Clock::time_point releasedAt;
+    std::thread releaser {[&]
+                          {
+                              std::this_thread::sleep_for(700ms);
+                              releasedAt = Clock::now();
+                              node.fake->releaseHeld();
+                          }};
+    const auto started = Clock::now();
+    const auto settled = lane.settleAbandoned();
+    const auto waited = millisSince(started);
+    pipeline.deleteByQuery(INDEX, "007", "c1"); // What the pipeline runs once the agent is released.
+    releaser.join();
+
+    EXPECT_EQ(invsync::indexer::AbandonedWrite::Settled, settled);
+    EXPECT_GE(waited, 600) << "settleAbandoned() returned before the indexer answered the chunk";
+    EXPECT_EQ(1U, node.bulk->answered());
+    ASSERT_EQ(1U, node.fake->hits(node.dbqRule));
+    for (const auto& request : node.fake->requests())
+    {
+        if (request.path.find("_delete_by_query") != std::string::npos)
+        {
+            EXPECT_GE(request.receivedAt, releasedAt) << "the by-query overtook the abandoned _bulk";
+        }
+    }
+    EXPECT_EQ(invsync::indexer::AbandonedWrite::Settled, lane.settleAbandoned()) << "nothing is left pending";
+}
+
+/// The bound: one request at most (a cancelled op is never sent again), so the request timeout ends the wait.
+TEST_F(IndexerClientSyncAdapter, SettleAbandonedEndsWithTheRequest)
+{
+    auto node = startNode(BulkScript::items().held()); // Never released by the test.
+    startRuntime("wazuh_modules.indexer_client_request_timeout_ms=1000\n");
+    makeClient(testSpec());
+    auto opts = options(1 * MIB);
+    opts.budgets.stateful = 300ms;
+    opts.budgets.statefulRetry = 300ms;
+    opts.runtime = m_ref;
+    auto& lane = makeAdapter(opts, "vd0");
+
+    stage(lane, "K", document('a'));
+    lane.endSession();
+    EXPECT_THROW(lane.flush(), ConnectorError);
+    lane.discard();
+
+    const auto started = Clock::now();
+    EXPECT_EQ(invsync::indexer::AbandonedWrite::Settled, lane.settleAbandoned());
+    const auto waited = millisSince(started);
+    EXPECT_GE(waited, 300) << "it did not wait for the request at all";
+    EXPECT_LT(waited, 1000 + 5000) << "it outlived the request timeout plus the margin";
+    std::this_thread::sleep_for(300ms);
+    EXPECT_EQ(1U, node.bulk->received().size()) << "the cancelled chunk was sent again";
+}
+
+/// A closing module never waits for the abandoned chunk.
+TEST_F(IndexerClientSyncAdapter, ClosingCutsSettleAbandoned)
+{
+    startNode(BulkScript::items().held());
+    startRuntime();
+    makeClient(testSpec());
+    auto opts = options(1 * MIB);
+    opts.budgets.stateful = 300ms;
+    opts.budgets.statefulRetry = 300ms;
+    opts.runtime = m_ref;
+    auto& lane = makeAdapter(opts, "vd0");
+
+    stage(lane, "K", document('a'));
+    lane.endSession();
+    EXPECT_THROW(lane.flush(), ConnectorError);
+    lane.discard();
+
+    Clock::time_point closedAt;
+    std::thread closer {[&]
+                        {
+                            std::this_thread::sleep_for(300ms);
+                            closedAt = Clock::now();
+                            m_closing->store(true);
+                        }};
+    const auto settled = lane.settleAbandoned();
+    const auto returnedAt = Clock::now();
+    closer.join();
+
+    EXPECT_EQ(invsync::indexer::AbandonedWrite::Closing, settled);
+    EXPECT_LE(std::chrono::duration_cast<std::chrono::milliseconds>(returnedAt - closedAt).count(), 500)
+        << "closing must cut the wait within one slice";
+}
+
+/// What the pipeline polls (never waits on): true while the abandoned `_bulk` is unresolved, false once the indexer
+/// answers it, and false as soon as the module closes.
+TEST_F(IndexerClientSyncAdapter, HoldsAbandonedWriteUntilItResolves)
+{
+    auto node = startNode(BulkScript::items().held());
+    startRuntime();
+    makeClient(testSpec());
+    auto opts = options(1 * MIB);
+    opts.budgets.stateful = 300ms;
+    opts.budgets.statefulRetry = 300ms;
+    auto& adapter = makeAdapter(opts, "w0");
+
+    EXPECT_FALSE(adapter.holdsAbandonedWrite());
+    stage(adapter, "K", document('a'));
+    adapter.endSession();
+    const auto outcomes = adapter.flushSessions(1);
+    ASSERT_EQ(1U, outcomes.size());
+    EXPECT_FALSE(outcomes[0].ok);
+    EXPECT_TRUE(adapter.holdsAbandonedWrite()) << "the held _bulk is still on the wire";
+
+    m_closing->store(true);
+    EXPECT_FALSE(adapter.holdsAbandonedWrite()) << "a closing module keeps nothing held";
+    m_closing->store(false);
+    EXPECT_TRUE(adapter.holdsAbandonedWrite());
+
+    node.fake->releaseHeld();
+    EXPECT_TRUE(waitFor([&] { return !adapter.holdsAbandonedWrite(); })) << "never let go once the indexer answered";
 }

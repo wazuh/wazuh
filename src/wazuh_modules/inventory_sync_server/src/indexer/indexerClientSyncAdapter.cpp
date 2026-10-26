@@ -39,6 +39,8 @@ namespace invsync::indexer
         constexpr std::uint64_t AGENT_STATE_FLOOR {16 * KIB};
         constexpr std::uint64_t AGENT_STATE_SLACK {RESULT_RESERVE_BYTES + 4 * KIB}; // reserve + headroom (I149b)
         constexpr std::uint64_t DEFAULT_ASYNC_BULK_MAX_BYTES {4 * MIB};
+        /// settleAbandoned()'s bound past the runtime's request timeout (as VD's abandon() and the sweeper's window).
+        constexpr std::chrono::seconds ABANDON_MARGIN {5};
     } // namespace
 
     Budgets budgets(const inventory_sync_server_config_t& config)
@@ -211,7 +213,8 @@ namespace invsync::indexer
         using Clock = std::chrono::steady_clock;
         using indexer_client::Deadline;
 
-        /// Same filter as the v1 connector's deleteByQuery (`indexerConnectorSyncImpl.hpp`).
+        /// Same filter as the deleteByQuery of the v1 connector (`indexerConnectorSyncImpl.hpp`; the v1 was removed
+        /// in 5.x).
         bool isSafeIndexName(std::string_view index)
         {
             if (index.empty())
@@ -612,6 +615,46 @@ namespace invsync::indexer
             reset();
         }
 
+        bool runtimeClosing() const
+        {
+            return options.runtime.shutdownDeadline().has_value();
+        }
+
+        /// One request at most (a cancelled op is never sent again, I80): the runtime's request timeout + margin.
+        Clock::duration abandonBound() const
+        {
+            Clock::duration timeout = options.runtime.snapshot().requestTimeout;
+            if (timeout <= Clock::duration::zero())
+            {
+                timeout = indexer_client::RuntimeConfig {}.requestTimeout;
+            }
+            return timeout + ABANDON_MARGIN;
+        }
+
+        AbandonedWrite settleAbandoned()
+        {
+            if (!pending.active)
+            {
+                return AbandonedWrite::Settled;
+            }
+            const auto bound = Clock::now() + abandonBound();
+            while (!pending.ticket.ready())
+            {
+                if (isClosing() || runtimeClosing())
+                {
+                    return AbandonedWrite::Closing;
+                }
+                const auto now = Clock::now();
+                if (now >= bound)
+                {
+                    return AbandonedWrite::TimedOut;
+                }
+                static_cast<void>(pending.ticket.wait(std::min<Deadline>(bound, now + slice())));
+            }
+            harvest(pending.ticket.wait(Clock::now()));
+            return AbandonedWrite::Settled;
+        }
+
         /// D49: every pending write is resolved before a query goes out, within the call's own deadline.
         void barrier(Deadline until, const char* what)
         {
@@ -865,6 +908,17 @@ namespace invsync::indexer
     void IndexerClientSyncAdapter::discard()
     {
         m_impl->discard();
+    }
+
+    AbandonedWrite IndexerClientSyncAdapter::settleAbandoned()
+    {
+        return m_impl->settleAbandoned();
+    }
+
+    bool IndexerClientSyncAdapter::holdsAbandonedWrite()
+    {
+        const auto& pending = m_impl->pending;
+        return pending.active && pending.abandoned && !pending.ticket.ready() && !m_impl->isClosing();
     }
 
 } // namespace invsync::indexer

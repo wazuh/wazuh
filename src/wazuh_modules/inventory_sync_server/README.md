@@ -276,7 +276,8 @@ Sync I/O goes through `IndexerClientSyncAdapter` (`src/indexer/indexerClientSync
   and a WARN when it does not fit; retry attempts/duration/delay from the `indexer_sync_max_retry_*`
   options; overflow `Block` (2 s in production); 409 is success; ambiguous 5xx is retried; not ordered.
 - **Chunks.** A worker stages adds in an open `Group`; before the add that would pass the per-worker
-  cap (`chunkCap` = 0.8 * quota / (2 * (pipeline + lane workers))) the chunk is committed. At most one
+  cap (`chunkCap` = 0.8 * quota / (2 * (pipeline + lane workers)), defined in `indexer_client/chunking.hpp` and shared with the
+  vulnerability scanner) the chunk is committed. At most one
   committed-or-abandoned chunk is unresolved per worker besides the open one; its results are
   harvested (ticket and Group dropped) before the next commit. Two operations on the same
   `(index, _id)` are never unresolved at once (I139).
@@ -293,7 +294,13 @@ Sync I/O goes through `IndexerClientSyncAdapter` (`src/indexer/indexerClientSync
   deletion by-query's is `min(d, deleteBudget - 3 s)`, so a by-query's version conflict surfaces
   before the deadline. On expiry, only unresolved sessions fail
   (`503`); the open chunk is abandoned (`cancel(tag)` without waiting) and the next add opens a new
-  deadline (I145, I145b).
+  deadline (I145, I145b). The adapter's own later writes and by-queries still wait for it; a caller
+  about to hand the agent to ANOTHER adapter calls `settleAbandoned()` first (the scan lane does).
+  The pipeline never waits: before answering a failed session while `holdsAbandonedWrite()` is true it
+  takes one more (reentrant) Pipeline count on the agent in the `AgentInFlightRegistry`, and drops it
+  once the write resolves, `requestTimeout` + 5 s pass (`SyncPipelineConfig::abandonedWriteHold`), or
+  the worker exits (WARN when it gives up). Its shard keeps serving every agent, the held one
+  included; only the scan lane parks the agent meanwhile.
 - **Stop.** The module sets a `closing` flag before `requestClose()`; every wait slices (250 ms) and
   returns when it flips. After the workers are joined the module calls `awaitClosed(now + 1 s)`;
   what remains belongs to sessions already answered `503` (I141b).
@@ -531,7 +538,13 @@ runs no scanner at all — there is no version to disagree about, and the sessio
 legitimate-skip path that indexes the agent's inventory without scanning it, D23), run the scan
 inside a try/catch (a throw
 answers `500` with ZERO indexing), then stage the inventory bulk and `flush()` — one session per
-flush, no group commit in this lane — and answer `200`.
+flush, no group commit in this lane — and answer `200`. If the staging or the flush fails, the
+lane `discard()`s, answers by the cause, and only then calls `settleAbandoned()` before releasing
+the agent: a chunk the failure cancelled with its `_bulk` already on the wire is waited for (the
+runtime's `requestTimeout` + 5 s at most, read from `RuntimeRef::snapshot()`; cut by `closing` or
+the runtime's shutdown; a WARN when it gives up). The pipeline's by-query barrier only sees its own
+connector, so releasing the agent earlier would let a `Cleans` delete-by-query overtake that late
+write and its documents come back — the same reason as VD's `VdScanWriter::abandon()`.
 
 **`IVdScanner`** is the lane's entire view of the scanner: `feedReady()`, `scannerRunning()`
 (whether this node runs a scanner at all — what gates the `feed_offset` check, D23),

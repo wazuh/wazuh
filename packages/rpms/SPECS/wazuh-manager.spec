@@ -798,7 +798,6 @@ rm -fr %{buildroot}
 %attr(750, root, wazuh-manager) %{_localstatedir}/lib/libstdc++.so.6
 %attr(750, root, wazuh-manager) %{_localstatedir}/lib/libgcc_s.so.1
 %attr(750, root, wazuh-manager) %{_localstatedir}/lib/libcontent_manager.so
-%attr(750, root, wazuh-manager) %{_localstatedir}/lib/libindexer_connector.so
 %attr(750, root, wazuh-manager) %{_localstatedir}/lib/libindexer_client.so
 %attr(750, root, wazuh-manager) %{_localstatedir}/lib/libwm_indexer_runtime.so
 %attr(750, root, wazuh-manager) %{_localstatedir}/lib/libinventory_sync_server.so
@@ -839,7 +838,6 @@ rm -fr %{buildroot}
 %dir %attr(770, wazuh-manager, wazuh-manager) %{_localstatedir}/queue/tasks
 %dir %attr(770, wazuh-manager, wazuh-manager) %{_localstatedir}/queue/sockets
 %dir %attr(770, wazuh-manager, wazuh-manager) %{_localstatedir}/queue/vd
-%dir %attr(770, wazuh-manager, wazuh-manager) %{_localstatedir}/queue/indexer
 %dir %attr(750, wazuh-manager, wazuh-manager) %{_localstatedir}/queue/authd
 %dir %attr(750, wazuh-manager, wazuh-manager) %{_localstatedir}/queue/keystore
 %dir %attr(750, wazuh-manager, wazuh-manager) %{_localstatedir}/data

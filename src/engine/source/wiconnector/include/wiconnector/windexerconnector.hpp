@@ -7,6 +7,7 @@
 #include <cstdint>
 #include <memory>
 #include <mutex>
+#include <stdexcept>
 #include <string>
 #include <vector>
 
@@ -15,6 +16,14 @@
 
 namespace wiconnector
 {
+
+/// A failed remote configuration read (getEngineRemoteConfig()): the search failed, or its answer holds no single
+/// settings document with an `engine` object. what() is the whole message; callers catch std::exception.
+class RemoteConfigError : public std::runtime_error
+{
+public:
+    using std::runtime_error::runtime_error;
+};
 
 /// The `<indexer>` section of a standalone engine (`hosts`, `ssl`), as the indexer client reads it.
 struct Config

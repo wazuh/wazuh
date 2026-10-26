@@ -13,7 +13,6 @@
 #include <thread>
 #include <vector>
 
-#include <indexerConnector.hpp>
 #include <mockIndexerClient.hpp>
 
 #include <base/logging.hpp>
@@ -590,7 +589,24 @@ TEST_F(WIndexerConnectorTest, RemoteConfZeroHitsThrows)
     searchAnswers(indexer_client::Outcome<nlohmann::json>::success(
         responseWith({{"total", {{"value", 0}}}, {"hits", nlohmann::json::array()}})));
     auto connector = makeReaderConnector();
-    EXPECT_THROW(connector->getEngineRemoteConfig(), IndexerConnectorException);
+    EXPECT_THROW(connector->getEngineRemoteConfig(), wiconnector::RemoteConfigError);
+}
+
+TEST_F(WIndexerConnectorTest, RemoteConfErrorIsARuntimeError)
+{
+    // The engine's own exception keeps the std::runtime_error contract the README states; callers catch std::exception.
+    searchAnswers(indexer_client::Outcome<nlohmann::json>::success(
+        responseWith({{"total", {{"value", 0}}}, {"hits", nlohmann::json::array()}})));
+    auto connector = makeReaderConnector();
+    try
+    {
+        connector->getEngineRemoteConfig();
+        FAIL() << "expected an exception";
+    }
+    catch (const std::runtime_error& e)
+    {
+        EXPECT_STREQ(e.what(), "Remote settings document not found");
+    }
 }
 
 TEST_F(WIndexerConnectorTest, RemoteConfMultipleHitsThrows)
@@ -599,7 +615,7 @@ TEST_F(WIndexerConnectorTest, RemoteConfMultipleHitsThrows)
         responseWith({{"total", {{"value", 2}}},
                       {"hits", {{{"_source", {{"engine", {{"a", 1}}}}}}, {{"_source", {{"engine", {{"b", 2}}}}}}}}})));
     auto connector = makeReaderConnector();
-    EXPECT_THROW(connector->getEngineRemoteConfig(), IndexerConnectorException);
+    EXPECT_THROW(connector->getEngineRemoteConfig(), wiconnector::RemoteConfigError);
 }
 
 TEST_F(WIndexerConnectorTest, RemoteConfMissingEngineThrows)
@@ -607,14 +623,14 @@ TEST_F(WIndexerConnectorTest, RemoteConfMissingEngineThrows)
     searchAnswers(indexer_client::Outcome<nlohmann::json>::success(
         responseWith({{"total", {{"value", 1}}}, {"hits", {{{"_source", {{"other", "value"}}}}}}})));
     auto connector = makeReaderConnector();
-    EXPECT_THROW(connector->getEngineRemoteConfig(), IndexerConnectorException);
+    EXPECT_THROW(connector->getEngineRemoteConfig(), wiconnector::RemoteConfigError);
 }
 
 TEST_F(WIndexerConnectorTest, RemoteConfResponseWithoutHitsThrows)
 {
     searchAnswers(indexer_client::Outcome<nlohmann::json>::success(nlohmann::json {{"took", 1}}));
     auto connector = makeReaderConnector();
-    EXPECT_THROW(connector->getEngineRemoteConfig(), IndexerConnectorException);
+    EXPECT_THROW(connector->getEngineRemoteConfig(), wiconnector::RemoteConfigError);
 }
 
 TEST_F(WIndexerConnectorTest, RemoteConfFailureThrowsWithTheCause)
@@ -627,7 +643,7 @@ TEST_F(WIndexerConnectorTest, RemoteConfFailureThrowsWithTheCause)
         connector->getEngineRemoteConfig();
         FAIL() << "expected an exception";
     }
-    catch (const IndexerConnectorException& e)
+    catch (const wiconnector::RemoteConfigError& e)
     {
         EXPECT_NE(std::string {e.what()}.find("not_found"), std::string::npos) << e.what();
     }
@@ -638,7 +654,7 @@ TEST_F(WIndexerConnectorTest, RemoteConfClientClosedThrows)
     // A search cut by requestClose() is a failure, never "no remote configuration".
     searchAnswers(indexer_client::Outcome<nlohmann::json>::failure(indexer_client::Cause::ClientClosed, "closed"));
     auto connector = makeReaderConnector();
-    EXPECT_THROW(connector->getEngineRemoteConfig(), IndexerConnectorException);
+    EXPECT_THROW(connector->getEngineRemoteConfig(), wiconnector::RemoteConfigError);
 }
 
 TEST_F(WIndexerConnectorTest, RemoteConfClosedClientThrowsWithoutSearching)
@@ -651,7 +667,7 @@ TEST_F(WIndexerConnectorTest, RemoteConfClosedClientThrowsWithoutSearching)
         connector->getEngineRemoteConfig();
         FAIL() << "expected an exception";
     }
-    catch (const IndexerConnectorException& e)
+    catch (const wiconnector::RemoteConfigError& e)
     {
         EXPECT_NE(std::string {e.what()}.find("client_closed"), std::string::npos) << e.what();
     }
@@ -665,8 +681,31 @@ TEST_F(WIndexerConnectorTest, RemoteConfNoUsableNodeFailsAtOnce)
     auto connector = makeReaderConnector();
 
     const auto t0 = std::chrono::steady_clock::now();
-    EXPECT_THROW(connector->getEngineRemoteConfig(), IndexerConnectorException);
+    EXPECT_THROW(connector->getEngineRemoteConfig(), wiconnector::RemoteConfigError);
     EXPECT_LT(std::chrono::steady_clock::now() - t0, std::chrono::milliseconds(100));
+}
+
+TEST_F(WIndexerConnectorTest, RemoteConfNoUsableNodeMessage)
+{
+    // The whole text the operator reads when every node was probed and none is usable: each node's url and reason, in
+    // order, separated by "; " (D103 must keep it as it is).
+    indexer_client::HealthView view;
+    view.nodes.push_back({"http://node-1:9200", indexer_client::HealthView::NodeState::Down, "connect: refused"});
+    view.nodes.push_back({"http://node-2:9200", indexer_client::HealthView::NodeState::Down, "status 503"});
+    ON_CALL(*client, health()).WillByDefault(Return(view));
+    EXPECT_CALL(*query, search(_, _, _, _)).Times(0);
+    auto connector = makeReaderConnector();
+    try
+    {
+        connector->getEngineRemoteConfig();
+        FAIL() << "expected an exception";
+    }
+    catch (const std::exception& e)
+    {
+        EXPECT_STREQ(e.what(),
+                     "Search request failed: no usable indexer node (http://node-1:9200: connect: refused; "
+                     "http://node-2:9200: status 503)");
+    }
 }
 
 TEST_F(WIndexerConnectorTest, RemoteConfWaitsForTheFirstProbe)

@@ -290,7 +290,7 @@ void callLibrary(const Fn& fn, int level, const char* tag, const char* format, .
 {
     va_list args;
     va_start(args, format);
-    fn(level, tag, "/src/shared_modules/indexer_connector/src/indexerConnector.cpp", 77, "publish", format, args);
+    fn(level, tag, "/src/shared_modules/indexer_client/src/runtime/logSummary.cpp", 77, "publish", format, args);
     va_end(args);
 }
 
@@ -702,7 +702,7 @@ TEST_F(ManagerLogSinkTest, LibraryLine)
 {
     auto sys = initFake(true, false, false);
     const auto libLog = logging::createStandaloneLogFunction();
-    const char* libTag = "wazuh-manager-analysisd(indexer-connector)";
+    const char* libTag = "wazuh-manager-analysisd:indexer-client";
 
     // Info (1) with a 5000-byte message: the library bridge caps it at 4095 bytes
     const std::string big(5000, 'z');
@@ -723,8 +723,7 @@ TEST_F(ManagerLogSinkTest, LibraryLine)
     callLibrary(libLog, 5, libTag, "library trace %d", 2);
     ASSERT_EQ(sys->writes.size(), writesBefore + 1);
     EXPECT_EQ(sys->writes.back().second,
-              std::string(NOW) + " " + libTag
-                  + "[4242] indexerConnector.cpp:77 at publish(): DEBUG: library debug 2\n");
+              std::string(NOW) + " " + libTag + "[4242] logSummary.cpp:77 at publish(): DEBUG: library debug 2\n");
 }
 
 TEST_F(ManagerLogSinkTest, CreateFile)

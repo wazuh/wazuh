@@ -200,7 +200,7 @@ int main(int argc, char* argv[])
         const auto logFormat = base::managerConfig::logFormat();
         base::logging::initManager(
             {"logs/wazuh-manager.log", "logs/wazuh-manager.json", logFormat.plain, logFormat.json});
-        // Shared-library lines logged through Log::GLOBAL_LOG_FUNCTION (e.g. indexer_connector's monitoring) go to
+        // Shared-library lines logged through Log::GLOBAL_LOG_FUNCTION (e.g. the keystore's) go to
         // the same sink, as the removed logging::init() did.
         Log::assignLogFunction(logging::createStandaloneLogFunction());
     }

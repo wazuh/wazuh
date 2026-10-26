@@ -226,31 +226,21 @@ namespace
             const auto health = m_client->health();
             if (!health.anyUsable())
             {
-                if (m_options.failFastWithoutNode && allProbed(health))
+                if (m_options.failFastWithoutNode)
                 {
-                    std::string message {"No usable indexer node: "};
-                    message += indexer_client::toString(Cause::Unavailable);
-                    for (const auto& node : health.nodes)
+                    if (const auto why = health.noUsableAfterProbes())
                     {
+                        std::string message {"No usable indexer node: "};
+                        message += indexer_client::toString(Cause::Unavailable);
                         message += "; ";
-                        message += node.url;
-                        message += ": ";
-                        message += node.reason;
+                        message += *why;
+                        logDebug2(WM_CONTENTUPDATER, "%s", message.c_str());
+                        throw std::runtime_error {message};
                     }
-                    logDebug2(WM_CONTENTUPDATER, "%s", message.c_str());
-                    throw std::runtime_error {message};
                 }
                 budget = std::min(budget, m_options.probeDeadline);
             }
             return std::chrono::steady_clock::now() + budget;
-        }
-
-        /// Every node already went through a probe round: a node is born Down with an empty reason (I190b).
-        static bool allProbed(const indexer_client::HealthView& health)
-        {
-            return !health.nodes.empty() && std::all_of(health.nodes.begin(),
-                                                        health.nodes.end(),
-                                                        [](const auto& node) { return !node.reason.empty(); });
         }
 
         std::shared_ptr<indexer_client::IClient> m_client;

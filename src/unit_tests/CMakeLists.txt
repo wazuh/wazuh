@@ -277,7 +277,7 @@ add_custom_target(
   #   - engine/: wazuh-engine has its own coverage workflow (5_testunit_engine.yml);
   #     legacy UT cmocka does not exercise any of its sources.
   #   - wazuh_modules/{agent_info,sca,vulnerability_scanner,inventory_sync_server,
-  #     content_manager,indexer_connector}/: C++ modules with their own coverage
+  #     content_manager}/: C++ modules with their own coverage
   #     workflow (5_testunit_<module>.yml + coverage_cpp action); legacy UT cmocka
   #     does not exercise them in any target.
   #   - wazuh_modules/src/wm_{inventory_sync_server,
@@ -299,7 +299,6 @@ add_custom_target(
     "*wazuh_modules/sca/*" --remove coverage.total
     "*wazuh_modules/vulnerability_scanner/*" --remove coverage.total
     "*wazuh_modules/content_manager/*" --remove coverage.total
-    "*wazuh_modules/indexer_connector/*" --remove coverage.total
     "*wazuh_modules/src/wm_inventory_sync_server.c" --remove coverage.total
     "*wazuh_modules/inventory_sync_server/*" --remove coverage.total
     "*wazuh_modules/src/wm_vulnerability_scanner.c"

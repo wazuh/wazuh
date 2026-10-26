@@ -1,28 +1,26 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-// RNF-2 gate of the indexer output stage (plan 18, E10b, I198; I119, I126): what one event costs the router worker
-// that runs the real `wazuh-indexer` stage (indexerOutputBuilder), with the v1 write path (side v1: a frozen copy of
-// the 163d95c9ac wrapper over IndexerConnectorAsync, frozenV1Connector.hpp) against the v2 one (side v2:
-// wiconnector::WIndexerConnector over the engine's indexer_client runtime, EngineIndexerRuntime with the `events` and
-// `raw` buckets). One side per process; both write to the same in-process fake that accepts every document
-// (IC/bench/benchFake.hpp, items mode).
+// Stage benchmark of the indexer output (plan 18, E10b, I198; I119, I126): what one event costs the router worker
+// that runs the real `wazuh-indexer` stage (indexerOutputBuilder) over wiconnector::WIndexerConnector on the engine's
+// indexer_client runtime (EngineIndexerRuntime with the `events` and `raw` buckets), writing to an in-process fake
+// that accepts every document (IC/bench/benchFake.hpp, items mode). The v1 side (a frozen copy of the v1
+// wrapper over the v1 async connector) was removed with the v1 library (E11d, I221).
 //
 // --mode stage times the stage's operation (index name from its placeholder, event->str(), index()); --mode index
 // times IWIndexerConnector::index() alone, with the index name and the body prepared outside the stopwatch and moved
-// in. The timed code is the same on both sides: only the connector behind the interface changes.
+// in.
 //
 // Regime (IC/bench/benchSubmit.cpp, E6c/E6d): P producers run bursts of B ops at the same time; each one times its own
 // burst (steady_clock and CLOCK_THREAD_CPUTIME_ID). Between bursts one coordinator polls the backlog every 200 us until
-// it falls below the watermark W; nobody polls during a burst. The backlog is payload bytes on both sides, so both run
-// the same regime: v1 IndexerConnectorAsync::getQueueSize(), v2 the sum of the buckets' retainedBytes (not their
-// charge, which adds the 2048-byte result reserve of every op; staged ops, up to 64 per stripe, count once flushed).
-// W is low enough (4 MiB) that the v2 bucket never fills before the backlog reaches W (static_assert below).
-// The first WARMUP_BURSTS bursts are discarded. A row is valid only with every op accepted, every document at the
-// fake, an empty backlog at the end and no event dropped, failed or rejected.
+// it falls below the watermark W; nobody polls during a burst. The backlog is payload bytes: the sum of the buckets'
+// retainedBytes (not their charge, which adds the 2048-byte result reserve of every op; staged ops, up to 64 per
+// stripe, count once flushed). W is low enough (4 MiB) that the bucket never fills before the backlog reaches W
+// (static_assert below). The first WARMUP_BURSTS bursts are discarded. A row is valid only with every op accepted,
+// every document at the fake, an empty backlog at the end and no event dropped, failed or rejected.
 //
 // The event: the decoded output of src/engine/test/integration_tests/tester/features/api.feature:69 (engine-it,
 // decoder/other-test-message/0), the stage definition of ruleset/outputs/indexer.yml:19.
 //
-// I208: the RNF-2 gate is now the engine's end-to-end A/B (E12, RNF-3); this stage ratio is reported as a diagnostic.
+// I208: the RNF-2 gate is the engine's end-to-end A/B (E12, RNF-3); this stage time is a diagnostic.
 
 #include <time.h>
 #include <unistd.h>
@@ -34,7 +32,6 @@
 #include <cstdint>
 #include <cstdlib>
 #include <exception>
-#include <filesystem>
 #include <fstream>
 #include <functional>
 #include <iostream>
@@ -51,10 +48,8 @@
 #include <base/expression.hpp>
 #include <base/json.hpp>
 #include <base/logging.hpp>
-#include <indexerConnector.hpp>
 #include <indexer_client/client.hpp>
 #include <indexer_client/metrics.hpp>
-#include <keyStore.hpp>
 #include <wiconnector/engineConfigSource.hpp>
 #include <wiconnector/engineIndexerRuntime.hpp>
 #include <wiconnector/windexerconnector.hpp>
@@ -63,7 +58,6 @@
 #include "benchFake.hpp"
 #include "builders/buildCtx.hpp"
 #include "builders/stage/indexerOutput.hpp"
-#include "frozenV1Connector.hpp"
 
 namespace
 {
@@ -75,8 +69,8 @@ constexpr std::size_t RING_EVENTS {64};                      ///< Events per pro
 constexpr int WARMUP_BURSTS {5};                             ///< Discarded bursts.
 constexpr auto POLL_PERIOD = std::chrono::microseconds(200); ///< Watermark poll.
 constexpr auto MARK_TIMEOUT = std::chrono::seconds(30);      ///< A watermark (or the final drain) not reached.
-/// conf defaults of analysisd.indexer_queue_max_bytes and analysisd.indexer_bulk_max_bytes (conf.cpp:70-71), on both
-/// sides. The flush interval is 1 s on both (20 s by default): it only shortens the final drain, outside the stopwatch.
+/// conf defaults of analysisd.indexer_queue_max_bytes and analysisd.indexer_bulk_max_bytes (conf.cpp:70-71). The flush
+/// interval is 1 s (20 s by default): it only shortens the final drain, outside the stopwatch.
 constexpr std::uint64_t QUEUE_BYTES {std::uint64_t {1} << 26};
 constexpr std::uint64_t BULK_BYTES {std::uint64_t {1} << 23};
 constexpr std::uint64_t FLUSH_SECONDS {1};
@@ -93,8 +87,8 @@ constexpr const char* CORPUS_EVENT {
     R"("[BB22] (agent-ex) any->SomeModule","queue":49},"space":{"name":"UNDEFINED"}},"event":{"category":["test"],)"
     R"("kind":"metric","original":"hi! i am an event test!","type":["info"]}})"};
 
-/// W must govern v2 too: v2 charges every op its payload plus RESULT_RESERVE_BYTES, so a W in payload bytes that let
-/// the `events` bucket fill before the backlog reached W would turn the regime into DropNewest (lost > 0, row
+/// W must govern the bucket: it charges every op its payload plus RESULT_RESERVE_BYTES, so a W in payload bytes that
+/// let the `events` bucket fill before the backlog reached W would turn the regime into DropNewest (lost > 0, row
 /// invalid). Worst case for the corpus event at run.sh's largest P: the backlog just under W, then a whole burst of P x
 /// B ops on top (staged ops included), with the payload bounded by the body (low, for the ops in W) and by the body
 /// plus a bulk action line (high, for the burst). With W = 16 MiB this is about 127 MiB of charge against a 64 MiB
@@ -110,7 +104,7 @@ static_assert(WATERMARK_BYTES / CORPUS_PAYLOAD_LOW * (CORPUS_PAYLOAD_LOW + index
               "the watermark W does not fit in the v2 bucket quota with the result reserve of every op");
 
 constexpr const char* USAGE =
-    "usage: builder_stage_bench --side v1|v2 [--mode stage|index] [--producers N] [--events N] [--pair N]\n"
+    "usage: builder_stage_bench [--mode stage|index] [--producers N] [--events N] [--pair N]\n"
     "                           [--event-file PATH] [--csv-header]\n"
     "  --mode (default stage): the stage's operation, or IWIndexerConnector::index() alone.\n"
     "  --events: per producer (multiple of 1000, > 5000; default 200000). --event-file: one JSON event instead of the\n"
@@ -137,57 +131,6 @@ public:
     virtual std::string note() const = 0;
     /// Shutdown order of the engine: the connector, then the library.
     virtual void stop() = 0;
-};
-
-class V1Side final : public Side
-{
-public:
-    explicit V1Side(const std::string& baseUrl)
-    {
-        const nlohmann::json config {{"hosts", nlohmann::json::array({baseUrl})},
-                                     {"max_queue_bytes", QUEUE_BYTES},
-                                     {"bulk_max_bytes", BULK_BYTES},
-                                     {"flush_interval_seconds", FLUSH_SECONDS},
-                                     {"monitoring_interval_seconds", 1}};
-        m_inner = std::make_shared<IndexerConnectorAsync>(config);
-        m_connector = std::make_shared<stagebench::frozenv1::FrozenV1Connector>(m_inner);
-    }
-
-    bool waitAvailable(std::chrono::seconds timeout) const
-    {
-        const auto deadline = Clock::now() + timeout;
-        while (!m_inner->isAvailable())
-        {
-            if (Clock::now() >= deadline)
-            {
-                return false;
-            }
-            std::this_thread::sleep_for(std::chrono::milliseconds(10));
-        }
-        return true;
-    }
-
-    std::shared_ptr<wiconnector::IWIndexerConnector> connector() const override { return m_connector; }
-
-    std::uint64_t backlog() const override { return m_inner->getQueueSize(); }
-
-    std::uint64_t lost() const override { return m_inner->getDroppedEvents(); }
-
-    std::string note() const override { return "v1_dropped=" + std::to_string(m_inner->getDroppedEvents()); }
-
-    void stop() override
-    {
-        if (m_connector)
-        {
-            m_connector->shutdown();
-        }
-        m_connector.reset();
-        m_inner.reset();
-    }
-
-private:
-    std::shared_ptr<IndexerConnectorAsync> m_inner;
-    std::shared_ptr<stagebench::frozenv1::FrozenV1Connector> m_connector;
 };
 
 class V2Side final : public Side
@@ -233,7 +176,7 @@ public:
 
     std::shared_ptr<wiconnector::IWIndexerConnector> connector() const override { return m_connector; }
 
-    /// Payload bytes, as the v1's getQueueSize(): the charge would add RESULT_RESERVE_BYTES per op.
+    /// Payload bytes: the charge would add RESULT_RESERVE_BYTES per op.
     std::uint64_t backlog() const override
     {
         std::uint64_t retained = 0;
@@ -494,53 +437,9 @@ Result runBursts(std::vector<Producer>& producers, const Side& side, const bench
 
 const char* csvHeader()
 {
-    return "side,mode,producers,pair,events,ns_per_op,cpu_ns_per_op,proc_cpu_ns_per_op,B,W,queue_bytes,backlog_max,"
+    return "mode,producers,pair,events,ns_per_op,cpu_ns_per_op,proc_cpu_ns_per_op,B,W,queue_bytes,backlog_max,"
            "accepted,server_docs,lost,event_bytes,valid";
 }
-
-/// The v1 keystore's working directory: created by seed(), removed (and the original working directory restored) by
-/// remove() or, when anything throws, by the destructor.
-class V1Scratch final
-{
-public:
-    V1Scratch() = default;
-    V1Scratch(const V1Scratch&) = delete;
-    V1Scratch& operator=(const V1Scratch&) = delete;
-    ~V1Scratch() { remove(); }
-
-    /// Seeds the v1 credentials in a fresh working directory (the keystore is relative to it and Keystore::get caches
-    /// a static local: before the first IndexerConnectorAsync of the process).
-    void seed()
-    {
-        std::string templ = (std::filesystem::temp_directory_path() / "builder-stage-bench-XXXXXX").string();
-        if (::mkdtemp(templ.data()) == nullptr)
-        {
-            throw std::runtime_error("mkdtemp failed");
-        }
-        m_home = std::filesystem::current_path();
-        m_dir = templ;
-        std::filesystem::current_path(m_dir);
-        std::filesystem::create_directories("queue");
-        Keystore::put("indexer", "username", bench::BENCH_USER);
-        Keystore::put("indexer", "password", bench::BENCH_PASSWORD);
-    }
-
-    void remove() noexcept
-    {
-        if (m_dir.empty())
-        {
-            return;
-        }
-        std::error_code ec;
-        std::filesystem::current_path(m_home, ec);
-        std::filesystem::remove_all(m_dir, ec);
-        m_dir.clear();
-    }
-
-private:
-    std::filesystem::path m_home;
-    std::filesystem::path m_dir;
-};
 
 std::string loadEvent(const std::string& path)
 {
@@ -564,15 +463,14 @@ int run(bench::Args& args)
         std::cout << csvHeader() << std::endl;
         return 0;
     }
-    const auto sideName = args.get("side", "");
     const auto mode = args.get("mode", "stage");
     const int producerCount = args.getInt("producers", 1);
     const int events = args.getInt("events", 200000);
     const int pair = args.getInt("pair", 0);
     const auto eventFile = args.get("event-file", "");
     args.rejectUnused();
-    if ((sideName != "v1" && sideName != "v2") || (mode != "stage" && mode != "index") || producerCount < 1
-        || producerCount > 64 || events % BURST_OPS != 0 || events / BURST_OPS <= WARMUP_BURSTS)
+    if ((mode != "stage" && mode != "index") || producerCount < 1 || producerCount > 64 || events % BURST_OPS != 0
+        || events / BURST_OPS <= WARMUP_BURSTS)
     {
         std::cerr << USAGE;
         return 2;
@@ -595,28 +493,15 @@ int run(bench::Args& args)
     fake.start();
     fake.resetCounters();
 
-    V1Scratch scratch; // Before the side: an exception destroys the side first, then removes the directory.
     std::unique_ptr<Side> side;
     int rc = 0;
     try
     {
-        if (sideName == "v1")
-        {
-            scratch.seed();
-            auto v1 = std::make_unique<V1Side>(fake.baseUrl());
-            if (!v1->waitAvailable(std::chrono::seconds(10)))
-            {
-                std::cerr << "builder_stage_bench: v1 never saw the fake available" << std::endl;
-                rc = 1;
-            }
-            side = std::move(v1);
-        }
-        else
         {
             auto v2 = std::make_unique<V2Side>(fake.baseUrl());
             if (!v2->waitAvailable(std::chrono::seconds(10)))
             {
-                std::cerr << "builder_stage_bench: v2 never saw the fake available" << std::endl;
+                std::cerr << "builder_stage_bench: the client never saw the fake available" << std::endl;
                 rc = 1;
             }
             side = std::move(v2);
@@ -624,7 +509,7 @@ int run(bench::Args& args)
     }
     catch (const std::exception& e)
     {
-        std::cerr << "builder_stage_bench: " << sideName << " start: " << e.what() << std::endl;
+        std::cerr << "builder_stage_bench: " << "start: " << e.what() << std::endl;
         rc = 1;
     }
 
@@ -644,7 +529,7 @@ int run(bench::Args& args)
         const double ops = result.timedOps ? static_cast<double>(result.timedOps) : 1.0;
         const bool valid = result.totals.accepted == total && serverDocs == total && lost == 0
                            && result.expiredMarks == 0 && result.drained && result.timedOps > 0;
-        std::cout << "STAGE," << sideName << ',' << mode << ',' << producerCount << ',' << pair << ',' << events << ','
+        std::cout << "STAGE," << mode << ',' << producerCount << ',' << pair << ',' << events << ','
                   << bench::fixed(static_cast<double>(result.totals.wallNs) / ops, 1) << ','
                   << bench::fixed(static_cast<double>(result.totals.cpuNs) / ops, 1) << ','
                   << bench::fixed(static_cast<double>(result.procCpuNs) / ops, 1) << ',' << BURST_OPS << ','
@@ -664,7 +549,6 @@ int run(bench::Args& args)
     {
         side->stop();
     }
-    scratch.remove(); // std::_Exit below runs no destructor.
     // As the indexer_client benches: the fake is not stopped gracefully; nothing is measured any more.
     std::cout.flush();
     std::_Exit(rc);

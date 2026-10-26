@@ -11,7 +11,7 @@ on:
     paths:
       - .clang-format
       - src/engine/.clang-format
-      - src/shared_modules/indexer_connector/**/*.[ch]pp
+      - src/shared_modules/indexer_client/**/*.[ch]pp
       - src/shared_modules/content_manager/**/*.[ch]pp
       - src/shared_modules/utils/**/*.[ch]pp
       - src/shared_modules/metrics/**/*.[ch]pp
@@ -55,16 +55,16 @@ jobs:
         with:
           submodules: recursive
 
-      # Indexer Connector
-      - name: Indexer connector - Coding style
-        id: indexer_connector_style
+      # Indexer Client
+      - name: Indexer client - Coding style
+        id: indexer_client_style
         continue-on-error: true
         uses: ./.github/actions/clang_format
         with:
           bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
           aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
-          path: src/shared_modules/indexer_connector
-          id: indexer_connector
+          path: src/shared_modules/indexer_client
+          id: indexer_client
 
       # Content Manager
       - name: Content manager - Coding style
@@ -225,8 +225,8 @@ jobs:
         run: |
           FAILED_STEPS=""
 
-          if [ "${{ steps.indexer_connector_style.outcome }}" != "success" ]; then
-            FAILED_STEPS="$FAILED_STEPS IndexerConnector"
+          if [ "${{ steps.indexer_client_style.outcome }}" != "success" ]; then
+            FAILED_STEPS="$FAILED_STEPS IndexerClient"
           fi
 
           if [ "${{ steps.content_manager_style.outcome }}" != "success" ]; then

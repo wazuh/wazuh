@@ -1,5 +1,5 @@
 /*
- * Wazuh Indexer Connector - Component tests
+ * Wazuh keystore
  * Copyright (C) Wazuh Inc.
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -10,10 +10,13 @@
  * SPDX-License-Identifier: GPL-2.0-only OR AGPL-3.0-or-later
  */
 
-#include <gtest/gtest.h>
+// The logging hook of the `keystore` archive. A binary that defines Log::GLOBAL_LOG_FUNCTION itself (the engine)
+// links `keystore_core`, which is the same archive without this file.
 
-int main(int argc, char** argv)
+#include "loggerHelper.h"
+
+namespace Log
 {
-    ::testing::InitGoogleTest(&argc, argv);
-    return RUN_ALL_TESTS();
-}
+    std::function<void(const int, const char*, const char*, const int, const char*, const char*, va_list)>
+        GLOBAL_LOG_FUNCTION;
+};

@@ -46,22 +46,19 @@ on:
       # Ref list for every ref-based `make deps` download (src/Makefile:708)
       - 'tools/get_git_refs.sh'
       # Submodule gitlink: urlrequest, linked by conf and geo (source/conf/CMakeLists.txt:13,
-      # source/geo/CMakeLists.txt:17) and by indexer_connector. Moves together with src/Makefile:98.
+      # source/geo/CMakeLists.txt:17). Moves together with src/Makefile:98.
       - 'src/shared_modules/http-request'
       # include_directories (src/engine/CMakeLists.txt:195)
       - 'src/shared_modules/utils/**'
-      # commonDefs.h, on the indexer_connector/keystore include path (indexer_connector/CMakeLists.txt:33)
+      # commonDefs.h, on the keystore include path
       - 'src/shared_modules/common/**'
       # base links manager_config (source/base/CMakeLists.txt:47)
       - 'src/shared_modules/manager_config/**'
-      # wiconnector links indexer_connector (source/wiconnector/CMakeLists.txt:24); its .so is
-      # shipped in the package (generate_package.sh:246)
-      - 'src/shared_modules/indexer_connector/**'
       # indexer_client: the engine's runtime and Client; its tests, bench and fake feed no target this job builds.
       - 'src/shared_modules/indexer_client/**/CMakeLists.txt'
       - 'src/shared_modules/indexer_client/include/**'
       - 'src/shared_modules/indexer_client/src/**'
-      # linked by indexer_connector (indexer_connector/CMakeLists.txt:52)
+      # linked by the engine (Keystore::get in source/wiconnector)
       - 'src/shared_modules/keystore/**'
       # cmcontent links content_manager (source/cmcontent/CMakeLists.txt:37); its .so is shipped in
       # the package (generate_package.sh:254)
@@ -73,9 +70,6 @@ on:
       - '!src/shared_modules/utils/flatbuffers/**'
       - '!src/shared_modules/manager_config/tests/**'
       - '!src/shared_modules/manager_config/cli/**'
-      - '!src/shared_modules/indexer_connector/tests/**'
-      - '!src/shared_modules/indexer_connector/qa/**'
-      - '!src/shared_modules/indexer_connector/testtool/**'
       - '!src/shared_modules/keystore/tests/**'
       - '!src/shared_modules/keystore/qa/**'
       - '!src/shared_modules/keystore/testtool/**'

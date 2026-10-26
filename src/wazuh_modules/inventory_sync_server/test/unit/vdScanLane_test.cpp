@@ -423,6 +423,128 @@ TEST(VdScanLaneTest, ThePipelineParksItemsOfAnAgentWhoseScanIsInFlight)
     pipeline->stop();
 }
 
+namespace
+{
+    /// A pipeline sharing the lane fixture's registry and events, with @p hold as its abandoned-write window.
+    std::shared_ptr<invsync::sync::SyncPipeline> pipelineOn(LaneUnderTest& fixture, std::chrono::milliseconds hold)
+    {
+        invsync::sync::SyncPipelineConfig config;
+        config.abandonedWriteHold = hold;
+        return std::make_shared<invsync::sync::SyncPipeline>(
+            config,
+            std::vector<std::shared_ptr<invsync::indexer::IIndexerConnectorSync>> {
+                std::make_shared<FakeIndexerConnectorSync>(fixture.events, "sync")},
+            CLUSTER,
+            fixture.registry);
+    }
+
+    std::string pipelineBody(const char* agentId, const char* docId)
+    {
+        SessionSpec spec;
+        spec.agentId = agentId;
+        ValueSpec value;
+        value.id = docId;
+        return invsync::test::buildSyncDataSession(spec, {value});
+    }
+} // namespace
+
+/**
+ * The mirror of the lane's own wait: a pipeline batch fails with its `_bulk` still on the wire (the connector
+ * holdsAbandonedWrite()). The pipeline answers at once and keeps the agent held in the registry -- without
+ * blocking its shard -- so a VD session of that agent parks on the lane instead of writing its documents under
+ * the late `_bulk` through another connector. Once the write resolves the hold is dropped and the lane runs.
+ */
+TEST(VdScanLaneTest, APipelineAbandonedWriteParksTheLaneUntilItResolves)
+{
+    LaneUnderTest fixture;
+    auto pipeline = pipelineOn(fixture, std::chrono::seconds {30});
+    {
+        std::lock_guard<std::mutex> lock(fixture.events->m_mutex);
+        fixture.events->m_syncThrowOn = "flush";
+        fixture.events->m_syncThrowCause = invsync::indexer::ConnectorError::Cause::Unavailable;
+    }
+    fixture.events->m_holdsAbandonedWrite.store(true);
+
+    auto failed = std::make_shared<FutureResponder>();
+    ASSERT_TRUE(pipeline->enqueue(makeItem(pipelineBody("001", "doc-p"), failed)));
+    EXPECT_EQ(503, failed->get().status) << "the agent is answered without waiting for the late write";
+    {
+        std::lock_guard<std::mutex> lock(fixture.events->m_mutex);
+        fixture.events->m_syncThrowOn.clear();
+    }
+
+    auto vd = std::make_shared<FutureResponder>();
+    ASSERT_EQ(VdScanLane::Admission::Accepted,
+              fixture.lane->tryEnqueue(makeItem(vdDeltaBody("doc-vd", invsync::test::fb::Option_VDFirst, "001"), vd)));
+
+    // The shard is not blocked: another agent, and the held agent's own next session, still flow.
+    auto other = std::make_shared<FutureResponder>();
+    ASSERT_TRUE(pipeline->enqueue(makeItem(pipelineBody("002", "doc-o"), other, "002")));
+    EXPECT_EQ(200, other->get().status);
+    auto again = std::make_shared<FutureResponder>();
+    ASSERT_TRUE(pipeline->enqueue(makeItem(pipelineBody("001", "doc-p2"), again)));
+    EXPECT_EQ(200, again->get().status);
+
+    std::this_thread::sleep_for(std::chrono::milliseconds {300});
+    EXPECT_EQ(0, fixture.events->m_scanEntered.load()) << "the lane wrote under the pipeline's abandoned write";
+    EXPECT_FALSE(vd->answered());
+
+    fixture.events->m_holdsAbandonedWrite.store(false); // The late `_bulk` resolved.
+    EXPECT_EQ(200, vd->get().status);
+    EXPECT_TRUE(waitFor([&] { return fixture.registry->isFree("001"); }));
+    pipeline->stop();
+}
+
+/// The hold is bounded (request timeout + 5 s in production): past it the agent is released anyway.
+TEST(VdScanLaneTest, APipelineAbandonedWriteHoldEndsAtItsBound)
+{
+    LaneUnderTest fixture;
+    auto pipeline = pipelineOn(fixture, std::chrono::milliseconds {400});
+    {
+        std::lock_guard<std::mutex> lock(fixture.events->m_mutex);
+        fixture.events->m_syncThrowOn = "flush";
+        fixture.events->m_syncThrowCause = invsync::indexer::ConnectorError::Cause::Unavailable;
+    }
+    fixture.events->m_holdsAbandonedWrite.store(true); // Never resolves.
+
+    auto failed = std::make_shared<FutureResponder>();
+    ASSERT_TRUE(pipeline->enqueue(makeItem(pipelineBody("001", "doc-p"), failed)));
+    EXPECT_EQ(503, failed->get().status);
+    const auto answeredAt = std::chrono::steady_clock::now();
+    EXPECT_FALSE(fixture.registry->isFree("001"));
+
+    ASSERT_TRUE(waitFor([&] { return fixture.registry->isFree("001"); }));
+    const auto heldFor =
+        std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - answeredAt).count();
+    EXPECT_GE(heldFor, 300);
+    EXPECT_LT(heldFor, 2000);
+    pipeline->stop();
+    EXPECT_TRUE(fixture.registry->isFree("001"));
+}
+
+/// Stopping never keeps an agent held.
+TEST(VdScanLaneTest, StoppingThePipelineDropsAbandonedWriteHolds)
+{
+    LaneUnderTest fixture;
+    auto pipeline = pipelineOn(fixture, std::chrono::seconds {30});
+    {
+        std::lock_guard<std::mutex> lock(fixture.events->m_mutex);
+        fixture.events->m_syncThrowOn = "flush";
+        fixture.events->m_syncThrowCause = invsync::indexer::ConnectorError::Cause::Unavailable;
+    }
+    fixture.events->m_holdsAbandonedWrite.store(true);
+
+    auto failed = std::make_shared<FutureResponder>();
+    ASSERT_TRUE(pipeline->enqueue(makeItem(pipelineBody("001", "doc-p"), failed)));
+    EXPECT_EQ(503, failed->get().status);
+    EXPECT_FALSE(fixture.registry->isFree("001"));
+
+    const auto started = std::chrono::steady_clock::now();
+    pipeline->stop();
+    EXPECT_LT(std::chrono::steady_clock::now() - started, std::chrono::seconds {2});
+    EXPECT_TRUE(fixture.registry->isFree("001"));
+}
+
 TEST(VdScanLaneTest, AnAgentMidScanCannotBeQuiescedInstantlyButPauseSucceedsOnceItFinishes)
 {
     LaneUnderTest fixture;
@@ -515,6 +637,56 @@ TEST(VdScanLaneTest, AFailedFlushAfterAGoodScanFollowsItsCause)
     ASSERT_EQ(VdScanLane::Admission::Accepted, fixture.lane->tryEnqueue(makeItem(vdDeltaBody(), responder)));
 
     EXPECT_EQ(503, responder->get().status) << "the retry budget ran out: the agent comes back";
+}
+
+/**
+ * A failed flush can leave a chunk whose `_bulk` is already on the wire: cancel() cannot stop it, and the
+ * pipeline's connectors cannot see it from their barriers. The lane answers at once but keeps the agent
+ * until that write settles, so the agent's next delete-by-query (a Cleans on the pipeline) cannot be
+ * overtaken by it. The fake's settle gate stands for the chunk still held by the indexer.
+ */
+TEST(VdScanLaneTest, AFailedFlushHoldsTheAgentUntilTheAbandonedWriteSettles)
+{
+    LaneUnderTest fixture;
+    {
+        std::lock_guard<std::mutex> lock(fixture.events->m_mutex);
+        fixture.events->m_syncThrowOn = "flush";
+        fixture.events->m_syncThrowCause = invsync::indexer::ConnectorError::Cause::Unavailable;
+    }
+    fixture.events->closeSettleGate();
+    auto responder = std::make_shared<FutureResponder>();
+
+    ASSERT_EQ(VdScanLane::Admission::Accepted, fixture.lane->tryEnqueue(makeItem(vdDeltaBody(), responder)));
+
+    EXPECT_EQ(503, responder->get().status) << "the agent is answered without waiting for the late write";
+    ASSERT_TRUE(waitFor([&] { return fixture.events->m_settleEntered.load() == 1; }))
+        << "the lane never waited for the abandoned write";
+    EXPECT_EQ(1, fixture.events->m_discards.load()) << "discard() comes first: it is what cancels the chunk";
+    std::this_thread::sleep_for(std::chrono::milliseconds {100});
+    EXPECT_FALSE(fixture.registry->isFree("001")) << "released with its write still on the wire";
+    EXPECT_FALSE(fixture.registry->couldAcquire("001", AgentInFlightRegistry::Lane::Pipeline, /*reentrant=*/true));
+
+    fixture.events->openSettleGate();
+    EXPECT_TRUE(waitFor([&] { return fixture.registry->isFree("001"); })) << "never released once settled";
+}
+
+/// Giving up (closing, or past the request timeout) still releases the agent: the wait is bounded, never a fence.
+TEST(VdScanLaneTest, AnUnsettledAbandonedWriteStillReleasesTheAgent)
+{
+    LaneUnderTest fixture;
+    {
+        std::lock_guard<std::mutex> lock(fixture.events->m_mutex);
+        fixture.events->m_syncThrowOn = "flush";
+        fixture.events->m_syncThrowCause = invsync::indexer::ConnectorError::Cause::Unavailable;
+    }
+    fixture.events->m_settleResult.store(invsync::indexer::AbandonedWrite::TimedOut);
+    auto responder = std::make_shared<FutureResponder>();
+
+    ASSERT_EQ(VdScanLane::Admission::Accepted, fixture.lane->tryEnqueue(makeItem(vdDeltaBody(), responder)));
+
+    EXPECT_EQ(503, responder->get().status);
+    EXPECT_TRUE(waitFor([&] { return fixture.registry->isFree("001"); }));
+    EXPECT_EQ(1, fixture.events->m_settleEntered.load());
 }
 
 /// The dispatch gate still refuses BEFORE the scan when the connector reports no usable node: a scan

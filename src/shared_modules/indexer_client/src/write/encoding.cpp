@@ -38,7 +38,8 @@ namespace indexer_client::detail::write
         constexpr std::string_view ID_CLOSE = "\"";
         constexpr std::string_view RETRY_INFIX = R"(,"retry_on_conflict":)";
         constexpr std::string_view RETRY_ACTION_SUFFIX = "}}\n";
-        // indexer_connector/src/indexerConnectorSyncImpl.hpp:121-145 (appendScriptedUpdate), byte for byte.
+        // The v1's appendScriptedUpdate (indexerConnectorSyncImpl.hpp:121-145; the v1 was removed in 5.x),
+        // byte for byte.
         constexpr std::string_view V1_GUARD_SOURCE =
             "if (ctx._source?.state?.document_version == null || ctx._source.state.document_version <= "
             "params.doc_version) { ctx._source = params.doc } else { ctx.op = 'none' }";

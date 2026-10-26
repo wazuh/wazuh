@@ -3,13 +3,14 @@ cmake_minimum_required(VERSION 3.12.4)
 
 project(indexer_client)
 
-# Indexer client: the process-wide runtime that replaces indexer_connector (wazuh/wazuh#39933).
+# Indexer client: the process-wide runtime that replaced the v1 connector library (removed in 5.x;
+# wazuh/wazuh#39933).
 
 if(NOT DEFINED SRC_FOLDER)
   get_filename_component(SRC_FOLDER ${CMAKE_CURRENT_SOURCE_DIR}/../../ ABSOLUTE)
 endif()
 
-# Same output layout as indexer_connector (src/shared_modules/indexer_connector/CMakeLists.txt:10-12): the standalone
+# Output layout of the shared modules (the v1, removed in 5.x, used it too): the standalone
 # bundle and the installer pick shared modules up from ${CMAKE_BINARY_DIR}/lib.
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
@@ -90,8 +91,9 @@ target_include_directories(indexer_client PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/inc
 target_compile_features(indexer_client PUBLIC cxx_std_17)
 # --exclude-libs localizes whatever arrives from static archives; wazuhext is the process's single curl/OpenSSL (I44).
 target_link_options(indexer_client PRIVATE "LINKER:--exclude-libs,ALL" "LINKER:--no-undefined")
-# simdjson (the bulk-response classifier, E3b-1 I65): the prebuilt static archive the v1 links too; its symbols stay
-# local (--exclude-libs,ALL). Linked on the final targets: an OBJECT library's link does not reach $<TARGET_OBJECTS>.
+# simdjson (the bulk-response classifier, E3b-1 I65): the prebuilt static archive (the v1, removed in 5.x,
+# linked it too); its symbols stay local (--exclude-libs,ALL). Linked on the final targets: an OBJECT library's link
+# does not reach $<TARGET_OBJECTS>.
 set(INDEXER_CLIENT_SIMDJSON ${SRC_FOLDER}/external/simdjson/build/libsimdjson.a)
 target_link_libraries(indexer_client PRIVATE wazuhext ext_asio Threads::Threads ${INDEXER_CLIENT_SIMDJSON})
 set_target_properties(indexer_client PROPERTIES BUILD_RPATH_USE_ORIGIN TRUE BUILD_RPATH "$ORIGIN/../lib")
@@ -109,7 +111,8 @@ if(UNIT_TEST)
   add_subdirectory(tests)
 endif()
 
-# Release benchmark harness against the indexer_connector transport (plan 18, E2c); off by default, never in the normal build.
+# Release benchmark harness of the transport and the write path (plan 18, E2c); off by default, never in the normal
+# build. benchV1.cpp keeps the HTTPRequest::post loop of the v1 transport (the v1 connector library, removed in 5.x).
 option(INDEXER_CLIENT_BENCH "Build the indexer_client benchmark harness" OFF)
 if(INDEXER_CLIENT_BENCH)
   add_subdirectory(bench)

@@ -12,7 +12,7 @@
 
 // The library's log sink (I56). loggerHelper.h's GLOBAL_LOG_FUNCTION has hidden visibility: every DSO defines its own,
 // and this is the one of libindexer_client.so (and of the test build's static library). The process hands its log
-// function to setLogFunction(), the same one it gives indexer_connector today.
+// function to setLogFunction(), the same one it gave the v1 connector library (removed in 5.x).
 
 #include "indexer_client/runtime.hpp"
 #include "loggerHelper.h"
