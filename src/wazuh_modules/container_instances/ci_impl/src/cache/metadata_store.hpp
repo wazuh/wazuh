@@ -73,6 +73,17 @@ namespace wazuh::container_instances
         void insertResolvedLocked(const SourceId& source, ContainerRecord record);
         void eraseResolvedLocked(const SourceId& source, const std::string& containerId);
 
+        /// The record this source holds for this id, or null. Existence, not
+        /// visibility — the opposite of visibleRecordLocked() below, and the
+        /// difference matters: this one answers "is there anything to point an
+        /// alias at", which a running-but-unresolved record still is.
+        [[nodiscard]] ContainerRecordPtr recordLocked(const SourceId& source, const std::string& containerId) const;
+
+        /// File `hostKey` as another way to reach this container, leaving the
+        /// key it is indexed under alone. See AliasEntry for why the cold path
+        /// must not simply re-key the record instead.
+        void indexAliasLocked(const SourceId& source, const std::string& containerId, std::uint64_t hostKey);
+
         /// The record listContainers() would publish for this id, or null.
         /// Visibility, not existence — that distinction is the whole contract.
         [[nodiscard]] ContainerRecordPtr visibleRecordLocked(const std::string& containerId) const;

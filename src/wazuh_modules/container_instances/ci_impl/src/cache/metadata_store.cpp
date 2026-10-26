@@ -60,7 +60,26 @@ namespace wazuh::container_instances
         }
         std::shared_lock lock(m_mutex);
         const auto it = m_byCgroup.find(key.value);
-        return (it == m_byCgroup.end()) ? LookupResult {} : toLookupResult(it->second);
+        if (it == m_byCgroup.end())
+        {
+            return {};
+        }
+        if (const auto* alias = std::get_if<AliasEntry>(&it->second))
+        {
+            // Resolved through the container rather than held as a record: an
+            // alias that outlives its container answers `miss`, which is the
+            // truth, instead of serving a record that has been swept.
+            const auto record = recordLocked(alias->source, alias->containerId);
+            if (!record)
+            {
+                return {};
+            }
+            LookupResult result;
+            result.status = LookupResult::Status::resolved;
+            result.record = record;
+            return result;
+        }
+        return toLookupResult(it->second);
     }
 
     LookupResult MetadataStore::lookupByContainerId(const std::string& containerId) const
@@ -279,6 +298,33 @@ namespace wazuh::container_instances
                     expiredInodes.push_back(inode);
                 }
             }
+            else if (auto* alias = std::get_if<AliasEntry>(&entry))
+            {
+                // Two ways an alias stops being true, and both have to be swept
+                // here because nothing else walks these.
+                //
+                // The container it names is gone: dropped at once. Not when the
+                // record is erased, because a record is erased on every ordinary
+                // update too, and an alias that outlived one of those is still
+                // perfectly good.
+                //
+                // Or the cgroup it names is gone while the container lives —
+                // a unit that exited. Inodes are reused, so left alone this one
+                // eventually points a DIFFERENT container's events at this one.
+                // Same liveness rule as a verdict, for the same reason.
+                if (!recordLocked(alias->source, alias->containerId))
+                {
+                    expiredInodes.push_back(inode);
+                }
+                else if (liveInodes.count(inode) > 0)
+                {
+                    alias->missedScans = 0;
+                }
+                else if (++alias->missedScans >= MISSED_SCANS_LIMIT)
+                {
+                    expiredInodes.push_back(inode);
+                }
+            }
         }
         for (const auto& [expiredSource, containerId] : expiredRecords)
         {
@@ -342,7 +388,37 @@ namespace wazuh::container_instances
     void MetadataStore::upsertResolved(const SourceId& source, ContainerRecord record)
     {
         std::unique_lock lock(m_mutex);
+
+        // The key this arrived under is the one the COLD PATH WAS ASKED ABOUT,
+        // which is not necessarily the one this container is filed under. A
+        // container running an init system puts its processes in child cgroups,
+        // so an event carries one of those while the reconcile files the record
+        // under the single key it picks for the whole container.
+        //
+        // Letting this overwrite that key made the two take turns: the cold path
+        // moved the container onto the child it was asked about, the next
+        // reconcile moved it back, and each move is an identity change published
+        // as `changed` — FIM re-walked the container's whole tree every few
+        // seconds for a container that had not moved. The reconcile owns the
+        // key; this path only adds a way to find the container by it.
+        const auto observedKey = record.hostKey;
+        const auto containerId = record.containerId;
+
+        if (observedKey != 0)
+        {
+            if (const auto known = recordLocked(source, containerId); known && known->hostKey != 0)
+            {
+                record.hostKey = known->hostKey;
+            }
+        }
+
+        const auto canonicalKey = record.hostKey;
         insertResolvedLocked(source, std::move(record));
+
+        if (observedKey != 0 && observedKey != canonicalKey)
+        {
+            indexAliasLocked(source, containerId, observedKey);
+        }
 
         // The cold path publishes containers too — one first seen through an
         // on-demand resolve is as new to consumers as one the connector found,
@@ -350,6 +426,38 @@ namespace wazuh::container_instances
         // next unrelated reconcile.
         lock.unlock();
         notifyLifecycleUnlocked();
+    }
+
+    ContainerRecordPtr MetadataStore::recordLocked(const SourceId& source, const std::string& containerId) const
+    {
+        const auto sourceIt = m_bySource.find(source);
+        if (sourceIt == m_bySource.end())
+        {
+            return nullptr;
+        }
+        const auto it = sourceIt->second.find(containerId);
+        return (it == sourceIt->second.end()) ? nullptr : it->second;
+    }
+
+    void MetadataStore::indexAliasLocked(const SourceId& source, const std::string& containerId, std::uint64_t hostKey)
+    {
+        const auto it = m_byCgroup.find(hostKey);
+
+        // A resolved entry is never displaced. It is some container's ONE index
+        // entry, and overwriting it would leave that container unreachable by
+        // the only key it has — a worse outcome than this cgroup staying on the
+        // cold path. Pending and verdict entries are provisional by definition:
+        // positive evidence supersedes them, exactly as it does on the resolved
+        // path.
+        if (it != m_byCgroup.end() && std::holds_alternative<ResolvedEntry>(it->second))
+        {
+            return;
+        }
+
+        AliasEntry alias;
+        alias.source = source;
+        alias.containerId = containerId;
+        m_byCgroup[hostKey] = std::move(alias);
     }
 
     void MetadataStore::insertResolvedRawLocked(const SourceId& source, ContainerRecord record)

@@ -116,6 +116,16 @@ namespace wazuh::container_instances
         virtual void upsertVerdict(std::uint64_t cgroupInode, VerdictReason reason) = 0;
 
         /// Targeted single-record insert from the cold path (on-demand refresh).
+        ///
+        /// `record.hostKey` is the key the cold path WAS ASKED ABOUT, which is
+        /// not necessarily the one this container is filed under: a container
+        /// running an init system has several cgroups and the reconcile picks
+        /// one of them for the whole container. A container already keyed keeps
+        /// that key, and the asked-about one becomes an alias (AliasEntry), so
+        /// the query is still answered by it. Re-keying instead made the key
+        /// flap between the two, and a changed key is an identity change —
+        /// published as `changed`, which has consumers re-walk a container that
+        /// never moved.
         virtual void upsertResolved(const SourceId& source, ContainerRecord record) = 0;
     };
 
