@@ -361,8 +361,8 @@ namespace
                 {
                     if (fim_db_transaction_deleted_rows(m_txn, container_txn_callback, &m_ctx) != FIMDB_OK)
                     {
-                        LogDebug("Container FIM baseline: delete detection failed for container '%s'.",
-                                 m_ctx.container_id.c_str());
+                        LogWarn("Container FIM baseline: delete detection failed for container '%s'.",
+                                m_ctx.container_id.c_str());
                     }
                 }
                 else
@@ -424,10 +424,30 @@ namespace
     /// container went" has no authoritative view of which others still exist;
     /// pruning against that would delete live containers' contexts. Only the
     /// whole-node path, which obtained and checked a full list, may prune.
-    static void SweepOneContainer(const std::string& container_id, int origin)
+    ///
+    /// Returns false, and keeps the budget and the context, unless the container is
+    /// confirmed to hold no rows afterwards. Releasing either while rows survive
+    /// would let the container exceed its document limit, and would emit those rows'
+    /// eventual DELETEs without the context that says what they refer to. The rows
+    /// are still absent from the next whole-node listing, so the periodic sweep
+    /// retries. The row count decides, not the transaction's result: a failed
+    /// delete detection still closes the transaction, which removes the rows
+    /// without reporting them.
+    static bool SweepOneContainer(const std::string& container_id, int origin)
     {
         ScopedContainerTxn txn{container_id, origin};
-        txn.finish(true); // no rows synced -> every stored row becomes DELETED
+
+        // No rows synced -> every stored row becomes DELETED.
+        txn.finish(true);
+        const int remaining = fim_db_count_container_rows(container_id.c_str(), nullptr);
+
+        if (remaining != 0)
+        {
+            LogWarn("Container FIM: could not confirm the rows of removed container '%s' were deleted; "
+                    "keeping its context and document budget until a later sweep succeeds.",
+                    container_id.c_str());
+            return false;
+        }
 
         // After the rows are gone, not before: the DELETEs above run through
         // container_txn_callback and decrement the very count being released, so
@@ -438,6 +458,7 @@ namespace
         // Same ordering, same reason: the DELETE events emitted just above are
         // built from this context, so it cannot go first.
         fim_db_delete_container_context(container_id.c_str());
+        return true;
     }
 
     /// Streams the baseline into per-container transactions.
@@ -624,43 +645,54 @@ namespace
 
                 std::set<std::string> stale;
 
-                // A failure here costs the ROW sweep, which needs this list to know
-                // which containers still hold rows. It must not cost the context
-                // prune below, which needs only `known` -- and an orphaned context
-                // is most likely precisely when the database is misbehaving.
-                if (cJSON* db_ids = fim_db_get_distinct_container_ids("file_entry"))
+                // Without this list neither half below is safe. The row sweep needs
+                // it to know which containers still hold rows. The context prune
+                // needs it too: a container absent from `known` whose rows could not
+                // be listed may still hold rows, and pruning its context would emit
+                // their eventual DELETEs without it. Skip both; the next sweep retries.
+                cJSON* db_ids = fim_db_get_distinct_container_ids("file_entry");
+
+                if (!db_ids)
                 {
-                    if (cJSON_IsArray(db_ids))
+                    LogWarn("Container FIM baseline: could not read container ids from the database; "
+                            "skipping the stale-container sweep and the context prune.");
+                    m_stale = 0;
+                    return;
+                }
+
+                if (cJSON_IsArray(db_ids))
+                {
+                    cJSON* item = nullptr;
+                    cJSON_ArrayForEach(item, db_ids)
                     {
-                        cJSON* item = nullptr;
-                        cJSON_ArrayForEach(item, db_ids)
+                        if (!cJSON_IsString(item) || !item->valuestring || item->valuestring[0] == '\0') continue;
+
+                        const std::string id{item->valuestring};
+
+                        // The listing precedes the walk; a container discovered
+                        // during it is still live even if absent from that snapshot.
+                        if (known.find(id) == known.end() && m_scanned.find(id) == m_scanned.end())
                         {
-                            if (!cJSON_IsString(item) || !item->valuestring || item->valuestring[0] == '\0') continue;
-
-                            const std::string id{item->valuestring};
-
-                            // The listing precedes the walk; a container discovered
-                            // during it is still live even if absent from that snapshot.
-                            if (known.find(id) == known.end() && m_scanned.find(id) == m_scanned.end())
-                            {
-                                stale.insert(id);
-                            }
+                            stale.insert(id);
                         }
                     }
+                }
 
-                    cJSON_Delete(db_ids);
-                }
-                else
-                {
-                    LogDebug("Container FIM baseline: could not read container ids from the database; "
-                             "skipping the stale-container row sweep. The context prune still runs.");
-                }
+                cJSON_Delete(db_ids);
+
+                // A container whose sweep could not be confirmed still holds rows,
+                // so the prune below must keep its context as if it were live.
+                std::set<std::string> unswept;
 
                 for (const auto& id : stale)
                 {
                     LogDebug("Container FIM baseline: container '%s' is gone; ageing out its FIM rows.",
                              id.c_str());
-                    SweepOneContainer(id, m_origin);
+
+                    if (!SweepOneContainer(id, m_origin))
+                    {
+                        unswept.insert(id);
+                    }
                 }
 
                 // Recovers contexts orphaned by a crash between deleting a
@@ -675,6 +707,7 @@ namespace
                 // context_sink has just stored its context.
                 std::set<std::string> live_ids{known};
                 live_ids.insert(m_scanned.begin(), m_scanned.end());
+                live_ids.insert(unswept.begin(), unswept.end());
 
                 std::vector<const char*> live;
                 live.reserve(live_ids.size());
@@ -687,7 +720,7 @@ namespace
                 fim_db_prune_container_contexts(live.empty() ? nullptr : live.data(),
                                                 static_cast<int>(live.size()));
 
-                m_stale = stale.size();
+                m_stale = stale.size() - unswept.size();
             }
 
             [[nodiscard]] size_t rows() const
