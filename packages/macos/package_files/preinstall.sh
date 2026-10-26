@@ -65,8 +65,8 @@ if [ -d "${DIR}" ]; then
     rm -rf ${DIR}/config_files/
     mkdir -p ${DIR}/config_files/
     # Back up only a regular file with a single hard link. cp -R (not -r) keeps a planted symlink a
-    # symlink instead of following it; the link-count check rejects a hard link to a root-only file,
-    # which cp would otherwise copy by content (macOS has no protected_hardlinks).
+    # symlink instead of following it; the link-count check rejects a hard link, whose target cp
+    # would otherwise copy by content (macOS has no protected_hardlinks).
     for conf in ossec.conf client.keys local_internal_options.conf; do
         if [ -f ${DIR}/etc/${conf} ] && [ ! -L ${DIR}/etc/${conf} ] && [ -n "$(find ${DIR}/etc/${conf} -prune -links 1)" ]; then
             cp -R ${DIR}/etc/${conf} ${DIR}/config_files/

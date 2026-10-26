@@ -94,8 +94,8 @@ harden_tree 750 ${USER}:${GROUP} ${DIR}/queue/diff
 harden_tree 750 ${USER}:${GROUP} ${DIR}/queue/rids
 
 # For the logging user. logs/ is writable by the wazuh account, so the chown and the file chmod
-# must skip a hard link it may have planted there (its root-owned target would otherwise be
-# re-owned and re-moded). Directories cannot be hard-linked by an unprivileged user.
+# must skip a hard link it may have planted there, whose target would otherwise be re-owned and
+# re-moded. Directories cannot be hard-linked by an unprivileged user.
 chmod 770 ${DIR}/logs
 find ${DIR}/logs ! -type l ! \( -type f ! -links 1 \) -exec chown ${USER}:${GROUP} {} +
 find ${DIR}/logs/ -type d -exec chmod 750 {} \;
@@ -108,8 +108,7 @@ chmod 770 ${DIR}/etc
 chown ${USER}:${GROUP} ${DIR}/etc
 # etc/ is owned by the wazuh account, so a file in it may be a link that account planted. Set the
 # mode and owner only on a regular file with a single hard link that is not a symlink, so a planted
-# symlink or a hard link to a root-only file (macOS has no protected_hardlinks) leaves its target
-# untouched and cannot be turned into a read.
+# symlink or hard link (macOS has no protected_hardlinks) leaves its target untouched.
 harden_etc_file() {
     if [ -f "$2" ] && [ ! -L "$2" ] && [ -n "$(find "$2" -prune -links 1 2>/dev/null)" ]; then
         chmod "$1" "$2"
