@@ -65,6 +65,9 @@ int main(int argc, char **argv)
 
     run_foreground = 0;
 
+    /* Must precede any other OpenSSL init: NO_ATEXIT keeps OPENSSL_cleanup() out of exit(), where it races with worker threads */
+    OPENSSL_init_crypto(OPENSSL_INIT_ADD_ALL_CIPHERS | OPENSSL_INIT_ADD_ALL_DIGESTS | OPENSSL_INIT_LOAD_CONFIG | OPENSSL_INIT_NO_ATEXIT, NULL);
+
     /* Set the name */
     OS_SetName(ARGV0);
 
