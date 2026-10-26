@@ -86,14 +86,21 @@ compile.
 
 Then **confirm each object actually loads** — `bpftool prog loadall <obj>
 /sys/fs/bpf/t` as root, which must exit 0 and pin all five programs — and update
-the four amd64/arm64 `.github/actions/check_files/*.csv` manifests in the same
-change. (There are six; the two i386 ones get no row, because `CMakeLists.txt`
-produces an object only for `x86_64` and `aarch64`.) The checker exits non-zero
-both for an installed file no row lists and for a listed file the build did not
-produce, so the object and its rows have to land together. The rows carry
-`size_bytes=0`, which skips the size comparison — `check_files.py` treats 0 as
-falsy — while still asserting owner, group, mode and permissions, so refreshing
-an object does not mean touching four manifests.
+the `.github/actions/check_files/*.csv` manifests in the same change. There are
+two Linux agent manifests today, `deb_linux_agent_amd64.csv` and
+`rpm_linux_agent_amd64.csv`, so only the `x86` object has rows; an arm64 or i386
+manifest would need its own row added when it comes back (`CMakeLists.txt`
+produces an object for `x86_64` and `aarch64` and nothing else). The checker
+exits non-zero both for an installed file no row lists and for a listed file the
+build did not produce, so the object and its rows have to land together.
+
+The rows carry the object's **real size**, with the usual `0.1` tolerance. A row
+whose `size_bytes` is 0 is skipped by the size comparison entirely —
+`check_files.py` treats 0 as falsy — which is what these rows used to carry, and
+it meant a truncated or empty object passed the check as long as its owner,
+group and mode were right. Refreshing an object therefore means updating its
+size in both manifests; the tolerance absorbs an ordinary recompile, not a
+missing file.
 
 Rebuild whenever `bpf/rt_file.bpf.c` or `include/rt_event_contract.h` changes.
 A mismatched event ABI is refused at `rt_open()` by the guard in `1f6ecea90f`,
