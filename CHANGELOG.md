@@ -12,6 +12,7 @@ All notable changes to this project will be documented in this file.
 #### Fixed
 
 - Fixed the configuration upload validation to also apply the `upload_configuration.remote_commands` setting to the `prefilter_cmd` option of the `syscheck` section. ([#40792](https://github.com/wazuh/wazuh/pull/40792))
+- Fixed the validation of the configuration uploaded through `PUT /manager/configuration` and `PUT /cluster/{node_id}/configuration` so that it checks the same content the daemons read. ([#40726](https://github.com/wazuh/wazuh/pull/40726))
 
 ### Agent
 
