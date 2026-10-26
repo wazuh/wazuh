@@ -75,7 +75,7 @@ namespace invsync::indexer
     };
 
     /**
-     * @brief Seam over the real IndexerConnectorSync.
+     * @brief Seam over the module's writer, IndexerClientSyncAdapter (built on indexer_client).
      *
      * The only connector seam left in the module (E7c): POST /stats, POST /config and the by-id half of a deletion
      * write through the Client's `agent-state` bucket directly, and keep no seam of their own.
@@ -86,8 +86,8 @@ namespace invsync::indexer
      * notify/lock machinery -- the source of the legacy module's deadlock footguns -- never comes
      * into play behind this interface.
      *
-     * Errors keep the real connector's contract: methods throw (IndexerConnectorException and friends)
-     * and the caller maps that to an HTTP result. The constructor of the real connector throws on
+     * Errors keep the real adapter's contract: methods throw (ConnectorError, or std::runtime_error when the
+     * client is gone) and the caller maps that to an HTTP result. The constructor of the real connector throws on
      * invalid configuration, which is the signal the startup gate is built on, and a test needs to
      * drive that outcome deterministically -- the original reason this interface exists.
      */

@@ -66,8 +66,8 @@ target_include_directories(
 # SQLite and libcurl both come from wazuhext, which bundles ext_sqlite and ext_curl whole-archive,
 # so there is exactly one of each in the process and no new dependency is introduced.
 #
-# urlrequest is the tree's shared C++ HTTP client, already linked by vulnerability_scanner and
-# indexer_connector. It is used ONLY for the outbound WPK-repository calls -- the module's own
+# urlrequest is the tree's shared C++ HTTP client, already linked by vulnerability_scanner (indexer_client
+# runs its own curl loop). It is used ONLY for the outbound WPK-repository calls -- the module's own
 # socket traffic keeps handlers/udsHttpClient, which needs libcurl error codes kept apart in a way
 # this library does not offer. It takes curl from the same wazuhext, so it adds no new dependency.
 # wazuh_uds_http_server is registered by whichever consumer's guard runs first (inventory_sync_server,

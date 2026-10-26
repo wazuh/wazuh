@@ -4,8 +4,8 @@ version: '3'
 # across shards, and a single-node single-shard cluster cannot exercise it: every slice but one
 # comes back empty and the gate passes without having tested anything.
 #
-# Ports are shifted off 9200 so this can run alongside indexer_connector's own testtool cluster
-# rather than fighting it for the port.
+# Ports are shifted off 9200 so this can run alongside another local indexer (the e2e stack's, for
+# one) rather than fighting it for the port.
 services:
   cm-opensearch-node1:
     image: opensearchproject/opensearch:latest

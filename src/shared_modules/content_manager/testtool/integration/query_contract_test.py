@@ -88,6 +88,9 @@ def request(host, method, path, body=None, expect_status=True):
         raise
     except urllib.error.URLError as error:
         raise Failure(f"cannot reach {host}: {error.reason}") from error
+    except ConnectionError as error:
+        # A node that is still starting can accept the connection and then reset it.
+        raise Failure(f"cannot reach {host}: {error}") from error
 
 
 def wait_for_cluster(host, timeout_seconds=120):

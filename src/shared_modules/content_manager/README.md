@@ -50,7 +50,7 @@ consequences the library handles:
 | `PitPaginator` | `search_after` pagination, optionally sliced, with sink calls serialised. No domain knowledge. |
 | `FactoryContentUpdater` | Turns a validated `TopicSpec` into a `ContentCycle`. |
 | `RocksDbTokenStore` | The built-in token store, one RocksDB per topic under `state.databasePath`. |
-| `IContentIndexer` | The host's indexer: the four read operations the cycle needs (`contentIndexer.hpp`), with adapters over both connectors and over an `indexer_client::IClient` (D1). |
+| `IContentIndexer` | The host's indexer: the four read operations the cycle needs (`contentIndexer.hpp`), with its adapter over an `indexer_client::IClient` (D1). |
 | `IContentSink` | Where the content goes, and who decides it is safe to keep. Implemented by the host. |
 | `IContentTokenStore` | Where the change-detection token lives, when the host keeps it. |
 
@@ -64,8 +64,9 @@ This README covers the library's interface and internals.
 // Once, before the first registration: the library logs through the host, under the host's tag.
 content_manager::setLogFunction(logFunction, "wazuh-manager-modulesd:content-updater");
 
-// The host's own connector — the one it already uses for everything else (D1).
-const auto indexer = content_manager::makeContentIndexer(myConnector);
+// The host's indexer_client Client — its one connection to the indexer (D1). Time budgets are optional.
+content_manager::ContentIndexerOptions options;   // callDeadline 120 s, pageDeadline 90 s, probeDeadline 10 s
+const auto indexer = content_manager::makeContentIndexer(myClient, options);
 ContentRegister registration {"my.topic", spec, std::make_shared<MySink>(), indexer};
 
 // Host-driven (no schedule.intervalSeconds): run a cycle from your own scheduler.
@@ -77,15 +78,9 @@ registration.requestRun({/*forceFullReload=*/false},
                         [](content_manager::OnDemandResult result) { /* map result.code */ });
 ```
 
-A host that already owns an `indexer_client::Client` passes it instead of a connector. When to use which:
-the connector overloads serve the hosts that still run on `indexer_connector`; the `IClient` overload is
-for a host on `indexer_client`. Both kinds coexist in the library until the connector is removed (E11).
-
-```cpp
-// The host's Client — its one connection to the indexer (D1). Time budgets are optional.
-content_manager::ContentIndexerOptions options;   // callDeadline 120 s, pageDeadline 90 s, probeDeadline 10 s
-const auto indexer = content_manager::makeContentIndexer(myClient, options);
-```
+The `Client` comes from the process's `indexer_client` runtime (`RuntimeRef::client(consumer, buckets)`); a
+host that only downloads content can ask for one with no buckets. `contentIndexerOptionsFor(requestTimeout,
+probeTimeout)` derives budgets above the runtime's own timeouts.
 
 | Option | Default | Bounds |
 |---|---|---|
@@ -180,14 +175,19 @@ hash.metadata = {{"enabled", "/document/enabled"},
 spec.detection = hash;
 ```
 
-> The Content Manager ships a [test tool](./testtool/main.cpp) that registers one topic against a
-> live indexer and prints the delivery contract as it happens.
+> The Content Manager ships a [test tool](./testtool/main.cpp) that starts an `indexer_client` runtime,
+> registers one topic against a live indexer and prints the delivery contract as it happens. Hosts and
+> credentials come from the command line and the environment (no keystore); it exits 0 when its requested
+> cycle completes (`--help` lists the options):
+> `content_manager_test_tool --hosts http://localhost:9400 --user U --password-file FILE --index <data-index>
+> [--ca FILE] [--readiness-index I --readiness-id ID] [--state-dir DIR] [--full] [--timeout S]`. The password
+> can also come from `CM_TESTTOOL_PASSWORD` or `--password P` (visible in `/proc/<pid>/cmdline`).
 
 ## Design decisions (D1–D4)
 
 | ID | Decision |
 |---|---|
-| D1 | **The library never owns an indexer connection; every registration uses the host's.** One connector per process means one health monitor, one keystore read, and an indexer outage reported once. |
+| D1 | **The library never owns an indexer connection; every registration uses the host's.** One `indexer_client` runtime per process means one node-health view, one set of credentials, and an indexer outage reported once. |
 | D2 | **Registrations are described by concern, and each change-detection strategy carries only its own settings.** The shape of `TopicSpec` rules out mixed strategies and unknown keys; what is left to validate is values. |
 | D3 | **The library is dual-licensed `GPL-2.0-only OR AGPL-3.0-or-later`, and the Engine starts it only when it can use it.** Both modulesd (GPL-2.0) and the Engine (AGPL-3.0) link it. |
 | D4 | **One owner per job: the library runs topics; hosts run nothing of their own around it.** Two layers (`ContentRegister` → `TopicDriver` → `ContentCycle`), no process-wide registry, a per-topic request instead of a shared lane, every outcome reaching the sink, and the host's tag on every log line. |
@@ -206,19 +206,15 @@ operations a cycle needs:
 
 An implementation **must accept concurrent calls** — slice workers and several topics use the one
 instance at once — and must not hold a lock of its own across a request. `ContentRegister` takes it
-as a required argument and holds the `shared_ptr` for its whole life, so the connector cannot be
+as a required argument and holds the `shared_ptr` for its whole life, so the `Client` cannot be
 destroyed under a running cycle whatever order the host tears down in.
 
-**Adapters.** `include/contentIndexerAdapters.hpp` ships
-`content_manager::makeContentIndexer(std::shared_ptr<IndexerConnectorSync>)` and
-`makeContentIndexer(std::shared_ptr<IndexerConnectorAsync>)`. The header forward-declares both classes
-instead of including `indexerConnector.hpp`, so the C++17 public-header guard compiles with the
-include directories a foreign host gets. A future host uses one of these or implements the interface.
-
-The third overload, `makeContentIndexer(std::shared_ptr<indexer_client::IClient>, ContentIndexerOptions)`,
-serves a host on `indexer_client` (`indexer_client::IClient` is forward-declared in the same header). It
-keeps the `Client` alive for as long as any registration holds the adapter, and so keeps the host's
-consumer name reserved. The host owes it two things:
+**Adapter.** `include/contentIndexerAdapters.hpp` ships
+`content_manager::makeContentIndexer(std::shared_ptr<indexer_client::IClient>, ContentIndexerOptions)`.
+The header forward-declares `indexer_client::IClient` instead of including the client's headers, so the
+C++17 public-header guard compiles with the include directories a foreign host gets. A future host uses
+it or implements the interface. The adapter keeps the `Client` alive for as long as any registration
+holds it, and so keeps the host's consumer name reserved. The host owes it two things:
 
 - **Call `requestClose()` on its `Client` before it stops its content registrations.** A call in flight then
   returns at once instead of at its deadline.
@@ -226,23 +222,14 @@ consumer name reserved. The host owes it two things:
   and sessions hold the old `Client`, which holds the name; until they are released the new `Client` is
   rejected.
 
-The connector overloads and this one coexist until E11.
+**Why sharing is safe.** A download uses only the `Client`'s query handle (`IClient::query()`: PITs and
+searches), never a bucket's writer, so it takes no write quota and does not queue behind the host's
+bulk writes. Requests run on the runtime's network threads and node health is the runtime's, shared by
+every `Client` of the process.
 
-**Why sharing is safe.** Checked in the code, not assumed:
-
-- A search takes no connector lock. `IndexerConnectorSync::search` and `executeSearchQuery` use only
-  local state; `m_mutex` is taken by bulk operations and `scopeLock()` alone. A content download on a
-  connector never waits for, and never holds up, a bulk write on the same connector.
-- HTTP concurrency is per thread, not per connector. Every connector posts through the process-wide
-  `HTTPRequest::instance()`, whose curl handles are cached per `std::thread::id`.
-- Host selection is `RoundRobinSelector` over an atomic index, and the health monitor is shared.
-- `IndexerConnectorAsync::search` is a direct synchronous request on the calling thread; it does not
-  go through the event-indexing queue, so the Engine's event throughput is untouched by downloads.
-
-**Hosts.** The Vulnerability Scanner hands the feed registration slot 0 of its scan pool, which a
-scan checks out exclusively only for its `scopeLock()`/bulk section — a section downloads never take.
-The Engine builds one `IndexerConnectorAsync` and shares it between `WIndexerConnector` (event
-indexing) and every content topic.
+**Hosts.** The Vulnerability Scanner reads the feed through its own `Client` (consumer
+`vulnerability_scanner`), the one its scans write with; the Engine passes the `Client` of its
+`indexer_client` runtime to every content topic.
 
 ### D2 in detail
 
@@ -270,20 +257,19 @@ pointer — and names the field. Every later stage reads the typed spec.
 ### D3 in detail
 
 **License.** Every file of `src/shared_modules/content_manager/` carries
-`GPL-2.0-only OR AGPL-3.0-or-later`, with the notice `indexer_connector` uses, and the directory ships
+`GPL-2.0-only OR AGPL-3.0-or-later`, with the notice `indexer_client` uses, and the directory ships
 the same `COPYING`. `content_manager` is in `DUAL_DIRS` in `.github/scripts/spdx_scope.py`. Everything
-the library includes or links is compatible with both: `utils` and `indexer_connector` are dual,
+the library includes or links is compatible with both: `utils` and `indexer_client` are dual,
 nlohmann/json is MIT. `src/shared/include` (GPL-2.0 C headers) is not on its include path.
 
 **Started only when used.** The Engine sets the library's log function only when
 `analysisd.server_enable_event_processing` is on — the switch that decides whether CMSync and IocSync
-exist. The standalone Engine, which runs with it off, loads `libcontent_manager.so` without using it,
-as it does `libindexer_connector.so`.
+exist. The standalone Engine, which runs with it off, loads `libcontent_manager.so` without using it.
 
 **Shared, not static.** Linking a static build into the Engine was considered and dropped: it would
 need a second build of the same sources with link rules that can drift, put the code twice on disk,
 and split `Log::GLOBAL_LOG_FUNCTION`, which the shared library defines — while the Engine already
-exchanges `nlohmann::json`, strings and exceptions with `indexer_connector` across the same boundary.
+exchanges `nlohmann::json`, strings and `shared_ptr`s with `libindexer_client.so` across the same boundary.
 
 ### D4 in detail
 
@@ -348,6 +334,9 @@ pure query-shape questions issued straight at the REST API.
 cd testtool/integration
 docker compose -f docker-compose.yml up -d && ./query_contract_test.py
 ```
+
+The [test tool](./testtool/main.cpp) runs a whole registration over the `IClient` adapter against the same
+cluster (a full download through `indexer_client`); the commands are in the integration README.
 
 What remains manual is **end-to-end promotion** for each consumer, which needs the built binaries: a
 vulnerability feed cold start, a full load with a concurrent consumer update, an Engine ruleset sync

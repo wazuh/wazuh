@@ -164,7 +164,7 @@ extern "C"
         /* ---- Sync pipeline (the POST /stateful ingestion path) ---- */
         int sync_workers;                ///< Worker threads applying sessions to the indexer, sharded by
                                          ///< agent id (FIFO per agent). Each worker owns one
-                                         ///< IndexerConnectorSync built on the shared session.
+                                         ///< IndexerClientSyncAdapter on the shared indexer client.
                                          ///< Range 0..64. <=0 -> nproc/2, minimum 1.
         long long sync_queue_bytes;      ///< Early-rejection cap on payload bytes queued in the pipeline;
                                          ///< over it -> 503. A refinement UNDER max_inflight_bytes (which

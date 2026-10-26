@@ -33,7 +33,6 @@ target_link_libraries(
   gmock
   wazuhext
   rocksdb
-  indexer_connector
   # contentIndexerClientAdapter_test.cpp and contentCycleOnClientAdapter_test.cpp drive the real adapter on a real
   # runtime of the client library; the .so is the one content_manager links, so the process holds a single runtime.
   # Never indexer_client_testing.

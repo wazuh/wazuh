@@ -659,46 +659,9 @@ wazuh_modules.inventory_sync_server_indexer_monitoring_interval_seconds=10
 
 **Internal Options prefix:** `wazuh_modules.indexer_client_*`
 
-The `indexer_client` runtime is owned by `wazuh-manager-modulesd` and shared by every module that
-reaches the indexer through it (today this one). Its tunables are not options of this module: they are
-this family, read from the same file as the rest of this page,
-`/etc/wazuh-manager/wazuh-manager-internal-options.conf`, together with the `<indexer>` block of the
-manager configuration (hosts and TLS), which is the only place the connection itself is configured.
+The `indexer_client` runtime is owned by `wazuh-manager-modulesd` and shared by every module that reaches the indexer through it (this one and the vulnerability scanner). Its tunables are not options of this module: they are this family, read from the same file as the rest of this page, `/etc/wazuh-manager/wazuh-manager-internal-options.conf`, together with the `<indexer>` block of the manager configuration (hosts and TLS), which is the only place the connection itself is configured.
 
-- Every value is an unsigned decimal integer; a leading zero does not mean octal. The shipped file
-  carries none of them: the defaults are compiled in, and a line is only needed to override one.
-- **The family is validated in full** by `wazuh-manager-modulesd -t` and again at startup, before any
-  module thread exists, and a failure is logged with the offending key: a value outside its range, a
-  value that is not an unsigned decimal integer, an empty value, **or a key under the prefix that is not
-  listed here (a typo is an error, not an ignored line)**. In every case modulesd refuses to start. A
-  key that is not under the `wazuh_modules.indexer_client_` prefix is not read.
-- The runtime starts only when a consumer exists (inventory sync); with none, the options are still
-  validated but no threads or probes are created.
-- The library reference (`src/shared_modules/indexer_client/README.md`) owns the semantics; this table
-  is the operator's copy of its schema, `kSchema` in `src/shared_modules/indexer_client/src/config/runtimeConfig.cpp`.
-  Every minimum is 1 except `log_summary_interval_ms`, whose minimum is 1000; bounds are inclusive.
-
-| Name (after the prefix) | Unit | Allowed values | Default |
-|---|---|---|---|
-| `network_threads` | count | 1 to 64 | 1 |
-| `cpu_threads` | count | 1 to 64 | 2 |
-| `global_quota_bytes` | bytes | 1 to 68719476736 (64 GiB) | 268435456 (256 MiB) |
-| `max_response_bytes` | bytes | 1 to 1073741824 (1 GiB) | 67108864 (64 MiB) |
-| `drr_quantum_bytes` | bytes | 1 to 67108864 (64 MiB) | 1048576 (1 MiB) |
-| `request_timeout_ms` | ms | 1 to 3600000 (1 h) | 60000 |
-| `probe_timeout_ms` | ms | 1 to 300000 (5 min) | 5000 |
-| `probe_interval_ms` | ms | 1 to 3600000 (1 h) | 10000 |
-| `drain_ms` | ms | 1 to 600000 (10 min) | 10000 |
-| `ambiguous_retry_window_ms` | ms | 1 to 3600000 (1 h) | 30000 |
-| `latency_target_ms` | ms | 1 to 600000 (10 min) | 2000 |
-| `pace_initial_ms` | ms | 1 to 60000 (1 min) | 100 |
-| `pace_relax_after` | count | 1 to 1000000 | 20 |
-| `retry_after_max_ms` | ms | 1 to 3600000 (1 h) | 60000 |
-| `callback_budget_ms` | ms | 1 to 60000 (1 min) | 200 |
-| `max_open_pits` | count | 1 to 10000 | 64 |
-| `log_summary_interval_ms` | ms | 1000 to 3600000 (1 h) | 60000 |
-| `node_window_max` | count | 1 to 64 | 4 |
-| `bulk_min_bytes` | bytes | 1 to 33554432 (32 MiB) | 65536 (64 KiB) |
+The family, its ranges and defaults, and how it is validated (a bad value or an unknown key stops modulesd) are in the [Indexer Client configuration](../indexer_client/configuration.md#the-wazuh_modulesindexer_client_-family).
 
 The ones this module's operator reaches for:
 

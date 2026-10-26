@@ -100,7 +100,7 @@ pipeline satisfies it structurally rather than by discipline:
 | REQ-VDQ-4 | No silent drop; degrade with explicit coalescing | **superseded by D22** — the lane is short and synchronous; a full lane answers `503` and the agent re-POSTs (nothing to coalesce) |
 | REQ-VDQ-5 | Redefine the ack contract for VD sessions (scan decoupled from ack) | **superseded by D22** — the OPPOSITE was chosen: the scan gates the response; `200` guarantees scan + ingest |
 | REQ-VDQ-6 | Two-phase shutdown: stop admitting → drain/abort → reset the orchestrator | kept (lane stop before scanner reset; coordinator unregisters first) |
-| REQ-VDQ-7 | REAL scan parallelism needs scanner work (shared_lock + per-worker chains), not just a queue | **kept** — `ScanOrchestrator` now takes a `shared_lock` and checks out a per-slot `Slot` (its own chains + its own `IndexerConnectorSync`) for each scan; `vd_workers`/the scanner's `scanWorkers` both default to half the host's cores (minimum 1) and can be overridden with an explicit value |
+| REQ-VDQ-7 | REAL scan parallelism needs scanner work (shared_lock + per-worker chains), not just a queue | **kept** — `ScanOrchestrator` now takes a `shared_lock` and checks out a per-slot `Slot` (its own orchestration chains) for each scan; `vd_workers`/the scanner's `scanWorkers` both default to half the host's cores (minimum 1) and can be overridden with an explicit value |
 | REQ-VDQ-8 | Feed-update coordination reformulated over queue state, not module internals | kept (`ServerScanCoordinator` answers from the shared `AgentInFlightRegistry` alone: pause + bounded quiesce wait) |
 | REQ-VDQ-9 | No RocksDB in the VD path (or at all) | kept (D9 — the module has NO local store) |
 | REQ-VDQ-10 | Queue observability: depth, ages, outcomes, durations | kept (`vd.lane.*`, `vd.scans.*` metrics — see [Statistics](#statistics-d18)) |
@@ -263,7 +263,7 @@ touching freed state. Two details of that order are non-obvious and load-bearing
 ### The indexer adapter (`indexer_client`)
 
 Sync I/O goes through `IndexerClientSyncAdapter` (`src/indexer/indexerClientSyncAdapter.*`), an
-`IIndexerConnectorSync` over the shared `indexer_client` library. Neither this module nor the vulnerability scanner links `indexer_connector`.
+`IIndexerConnectorSync` over the shared `indexer_client` library. Neither this module nor the vulnerability scanner links the legacy connector library, directly or through content_manager.
 
 - **One `Client`, two buckets.** The module registers the consumer `inventory_sync_server` with the
   buckets `inventory` and `agent-state` (the runtime rejects a second `Client` of one consumer, so both
