@@ -415,7 +415,9 @@ The map is `registerCompatibles()` in `schemf/src/validator.cpp`. Key compatibil
 | `FLOAT` | `DOUBLE` (yes), `HALF_FLOAT` (no), `SCALED_FLOAT` (no) |
 | `HALF_FLOAT` | `FLOAT` (yes), `DOUBLE` (yes), `SCALED_FLOAT` (yes) |
 | `SCALED_FLOAT` | `FLOAT` (no), `HALF_FLOAT` (no), `DOUBLE` (yes) |
-| `IP`, `DATE`, `DATE_NANOS`, `BINARY` | `KEYWORD` (yes), `TEXT` (yes), `WILDCARD` (yes) |
+| `IP`, `BINARY` | `KEYWORD` (yes), `TEXT` (yes), `WILDCARD` (yes) |
+| `DATE` | `KEYWORD` (yes), `TEXT` (yes), `WILDCARD` (yes), `DATE_NANOS` (yes) |
+| `DATE_NANOS` | `KEYWORD` (yes), `TEXT` (yes), `WILDCARD` (yes), `DATE` (no) |
 | `KEYWORD`, `TEXT`, `MATCH_ONLY_TEXT`, `WILDCARD`, `CONSTANT_KEYWORD`, `COMPLETION`, `SEARCH_AS_YOU_TYPE`, `SEMANTIC` | every other string type of this row, plus `DATE`, `DATE_NANOS`, `IP`, `BINARY` (all no) |
 | `BOOLEAN`, `UNSIGNED_LONG`, `TOKEN_COUNT`, object types, `GEO_POINT` | none |
 

@@ -1,15 +1,22 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+#include "base/utils/timeUtils.hpp"
+
 #include "base/utils/stringUtils.hpp"
+#include <algorithm>
+#include <atomic>
 #include <chrono>
+#include <cstdint>
 #include <ctime>
 #include <iomanip>
 #include <sstream>
 #include <string>
 
+#include <fmt/format.h>
+
 namespace base::utils::time
 {
 
-std::string getTimestamp(const std::time_t& time, const bool utc = true)
+std::string getTimestamp(const std::time_t& time, const bool utc)
 {
     std::stringstream ss;
     // gmtime: result expressed as a UTC time
@@ -35,7 +42,7 @@ std::string getCurrentTimestamp()
     return getTimestamp(std::time(nullptr));
 }
 
-std::string getCurrentDate(const std::string& separator = "/")
+std::string getCurrentDate(const std::string& separator)
 {
     auto date = base::utils::string::split(getCurrentTimestamp(), ' ').at(0);
     base::utils::string::replaceAll(date, "/", separator);
@@ -43,7 +50,7 @@ std::string getCurrentDate(const std::string& separator = "/")
     return date;
 }
 
-std::string getCompactTimestamp(const std::time_t& time, const bool utc = true)
+std::string getCompactTimestamp(const std::time_t& time, const bool utc)
 {
     std::stringstream ss;
     // gmtime: result expressed as a UTC time
@@ -75,6 +82,55 @@ std::string getCurrentISO8601()
     ss << '.' << std::setfill('0') << std::setw(3) << milliseconds << 'Z';
 
     return ss.str();
+}
+
+int64_t systemEpochNanos() noexcept
+{
+    return std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::system_clock::now().time_since_epoch())
+        .count();
+}
+
+int64_t StrictlyIncreasingClock::next(int64_t now) noexcept
+{
+    auto last = m_last.load(std::memory_order_acquire);
+    while (true)
+    {
+        // On CAS failure `last` is reloaded with the current value; recompute the candidate.
+        const auto cand = std::max(now, last + 1);
+        if (m_last.compare_exchange_weak(last, cand, std::memory_order_acq_rel, std::memory_order_acquire))
+        {
+            return cand;
+        }
+    }
+}
+
+StrictlyIncreasingClock& receptionClock()
+{
+    static StrictlyIncreasingClock clock;
+    return clock;
+}
+
+std::string epochNanosToISO8601(int64_t nanos)
+{
+    constexpr int64_t NS = 1'000'000'000;
+
+    // Floor division so the fractional part is always in [0, NS)
+    auto secs = nanos / NS;
+    auto rest = nanos % NS;
+    if (rest < 0)
+    {
+        secs -= 1;
+        rest += NS;
+    }
+
+    std::time_t t = secs;
+    std::tm tm {};
+    gmtime_r(&t, &tm);
+
+    char buf[32];
+    std::strftime(buf, sizeof buf, "%FT%T", &tm);
+
+    return fmt::format("{}.{:09d}Z", buf, rest);
 }
 
 std::string timestampToISO8601(const std::string& timestamp)

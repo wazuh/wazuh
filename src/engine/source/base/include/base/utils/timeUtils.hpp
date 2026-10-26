@@ -12,7 +12,9 @@
 #ifndef _TIME_UTILS_HPP
 #define _TIME_UTILS_HPP
 
+#include <atomic>
 #include <chrono>
+#include <cstdint>
 #include <string>
 
 namespace base::utils::time
@@ -57,6 +59,54 @@ std::string getCompactTimestamp(const std::time_t& time, bool utc = true);
  * @return std::string Formatted as "YYYY-MM-DDThh:mm:ss.mmmZ".
  */
 std::string getCurrentISO8601();
+
+/**
+ * @brief Nanoseconds since the Unix epoch, read from std::chrono::system_clock.
+ *
+ * @return int64_t Nanoseconds since epoch (wall clock; not monotonic).
+ */
+int64_t systemEpochNanos() noexcept;
+
+/**
+ * @brief Process-wide clock whose values never repeat and never go back.
+ *
+ * Every call returns max(now, last + 1): the wall-clock time when it is strictly after the last value
+ * handed out, the last value plus one nanosecond otherwise (same-nanosecond calls and clocks that step
+ * backwards). The last value is published with a CAS loop, so any number of threads can call next()
+ * concurrently and each receives a distinct value, in allocation order.
+ */
+class StrictlyIncreasingClock
+{
+public:
+    /**
+     * @brief Hand out the next value.
+     *
+     * @param now Current time in nanoseconds since epoch. Production uses the default (systemEpochNanos());
+     *            tests pass a controlled value.
+     * @return int64_t A value strictly greater than every value returned before, by this object.
+     */
+    int64_t next(int64_t now = systemEpochNanos()) noexcept;
+
+private:
+    std::atomic<int64_t> m_last {0}; ///< Last value handed out (0 = none yet).
+};
+
+/**
+ * @brief The reception clock shared by every event-ingest thread of the process.
+ *
+ * @return StrictlyIncreasingClock& Function-local singleton.
+ */
+StrictlyIncreasingClock& receptionClock();
+
+/**
+ * @brief Format nanoseconds since epoch as ISO 8601 UTC with nanosecond precision.
+ *
+ * Reentrant (no gmtime). Negative values are handled by flooring to the previous second.
+ *
+ * @param nanos Nanoseconds since the Unix epoch.
+ * @return std::string Formatted as "YYYY-MM-DDThh:mm:ss.nnnnnnnnnZ" (always nine fraction digits).
+ */
+std::string epochNanosToISO8601(int64_t nanos);
 
 /**
  * @brief Convert a "YYYY/MM/DD hh:mm:ss" timestamp to ISO 8601 format.

@@ -236,8 +236,7 @@ void registerOpBuilders(const std::shared_ptr<Registry>& registry, const builder
         "upcase", {schemf::JTypeToken::create(json::Json::Type::String), builders::opBuilderHelperStringUP});
     // Map helpers: Time functions
     registry->template add<builders::OpBuilderEntry>(
-        "system_epoch",
-        {schemf::STypeToken::create(schemf::Type::DATE_NANOS), builders::opBuilderHelperEpochTimeFromSystem});
+        "system_epoch", {schemf::STypeToken::create(schemf::Type::LONG), builders::opBuilderHelperEpochTimeFromSystem});
     registry->template add<builders::OpBuilderEntry>(
         "date_from_epoch",
         {schemf::STypeToken::create(schemf::Type::DATE), builders::opBuilderHelperDateFromEpochTime});

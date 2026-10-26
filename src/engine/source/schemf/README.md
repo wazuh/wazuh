@@ -185,6 +185,7 @@ The validator (`src/validator.cpp`) maintains, per schema type, the accepted JSO
 - `INTEGER` field accepts: `LONG` (with runtime validation), `SHORT` (no extra validation), `BYTE` (no extra validation)
 - `KEYWORD` field accepts: `TEXT`, `DATE`, `IP`, `BINARY`, etc. (all string-family types, no extra validation)
 - `DATE`, `IP`, `BINARY` fields accept `KEYWORD`, `TEXT`, `WILDCARD` with runtime validation
+- `DATE` and `DATE_NANOS` are mutually compatible — a `DATE_NANOS` value written into a `DATE` field is validated at runtime (ISO 8601 UTC, up to nine fraction digits); a `DATE` value is always a valid `DATE_NANOS`
 - `OBJECT`, `NESTED`, `FLAT_OBJECT` have no compatible schema types; they accept JSON objects
 - Some types cannot be written at all (`getIncompatibleValidator`): `KNN_VECTOR`, `SPARSE_VECTOR`, `RANK_FEATURE`, `RANK_FEATURES`, `PERCOLATOR`, `STAR_TREE`, `DERIVED` and the six range types
 
