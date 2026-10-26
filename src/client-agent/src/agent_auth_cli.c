@@ -762,7 +762,9 @@ STATIC int w_agent_auth_enroll(const agent_auth_opts_t *opts, FILE *in, FILE *ou
 
     /* Before the guards, not after: a dry run writes nothing and contacts nothing, so there is
      * nothing for a guard to protect -- and refusing to preview the operation the operator is
-     * deciding whether to authorise is the wrong way round. */
+     * deciding whether to authorise is the wrong way round. It still names each guard the real
+     * run would stop at over the flags given or a running agent, so a clean preview is not read
+     * as a run that will go through. */
     if (opts->dry_run) {
         /* The whole preview on one stream. Split across out and err it came out in the wrong
          * order the moment stdout stopped being a terminal: stdout block-buffers and flushes at
@@ -771,12 +773,22 @@ STATIC int w_agent_auth_enroll(const agent_auth_opts_t *opts, FILE *in, FILE *ou
          * here -- on a real run that is the outcome line, and a dry run has no outcome. */
         if (opts->certs_only) {
             fprintf(out, "would install anchor manager=%s\n", token.adr);
+
+            if (!registered) {
+                fprintf(out, "  run without --certs-only to enroll this agent, or the real run "
+                        "will refuse: there is no trust to refresh\n");
+            }
         } else {
             fprintf(out, "would enroll with manager=%s\n", token.adr);
 
             if (registered) {
                 fprintf(out, "would REPLACE the registration id=%s with a new one\n",
                         current_id != NULL ? current_id : "unknown");
+
+                if (!opts->force_enroll) {
+                    fprintf(out, "  use --force-enroll in the real run, or it will refuse to "
+                            "register\n");
+                }
             }
         }
 
@@ -792,6 +804,15 @@ STATIC int w_agent_auth_enroll(const agent_auth_opts_t *opts, FILE *in, FILE *ou
             fprintf(out, "would remove the CA a remote upgrade left at %s\n", AGENT_DELIVERED_CA);
         }
 #endif
+        if (agentd_pid > 0) {
+#ifdef WIN32
+            fprintf(out, "stop the Wazuh service before the real run, or it will refuse\n");
+#else
+            fprintf(out, "stop wazuh-agentd (pid %d) before the real run, or it will refuse\n",
+                    (int)agentd_pid);
+#endif
+        }
+
         fprintf(out, "nothing was contacted and nothing was written.\n");
         w_etoken_free(&token);
         os_free(current_id);
