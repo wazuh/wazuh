@@ -70,11 +70,22 @@ if [ -d "${DIR}" ]; then
     for conf in ossec.conf client.keys local_internal_options.conf; do
         if [ -f ${DIR}/etc/${conf} ] && [ ! -L ${DIR}/etc/${conf} ] && [ -n "$(find ${DIR}/etc/${conf} -prune -links 1)" ]; then
             cp -R ${DIR}/etc/${conf} ${DIR}/config_files/
+        elif [ -e ${DIR}/etc/${conf} ] || [ -L ${DIR}/etc/${conf} ]; then
+            # A symlink or a hard link the wazuh account planted: do not back it up, and remove it so
+            # the package lays a clean default rather than the installer acting on the planted entry.
+            echo "WARNING: ${DIR}/etc/${conf} is not a regular file with a single link; removing it, the package default will be used." >&2
+            rm -rf ${DIR}/etc/${conf}
         fi
     done
-    # etc/shared only when it is a real directory with no hard-linked file inside it.
-    if [ -d ${DIR}/etc/shared ] && [ ! -L ${DIR}/etc/shared ] && [ -z "$(find ${DIR}/etc/shared -type f ! -links 1)" ]; then
+    # etc/shared: a planted symlink is removed so the default is used; a real directory is backed up
+    # only when it has no hard-linked file inside it.
+    if [ -L ${DIR}/etc/shared ]; then
+        echo "WARNING: ${DIR}/etc/shared is a symbolic link; removing it, the package default will be used." >&2
+        rm -rf ${DIR}/etc/shared
+    elif [ -d ${DIR}/etc/shared ] && [ -z "$(find ${DIR}/etc/shared -type f ! -links 1)" ]; then
         cp -R ${DIR}/etc/shared ${DIR}/config_files/
+    elif [ -d ${DIR}/etc/shared ]; then
+        echo "WARNING: ${DIR}/etc/shared contains a hard-linked file; not backed up, the package default will be used." >&2
     fi
 
     # logs/ is writable by the wazuh account; rename only a real source, and only into a name that
