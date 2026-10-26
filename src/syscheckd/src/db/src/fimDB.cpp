@@ -143,7 +143,26 @@ void FIMDB::updateItem(const nlohmann::json& item, ResultCallbackData callbackDa
 
 void FIMDB::executeQuery(const nlohmann::json& item, ResultCallbackData callbackData)
 {
-    m_dbsyncHandler->selectRows(item, callbackData);
+    std::shared_ptr<DBSync> dbsyncHandler;
+
+    {
+        std::shared_lock<std::shared_timed_mutex> lock(m_handlersMutex);
+
+        if (!m_stopping)
+        {
+            dbsyncHandler = m_dbsyncHandler;
+        }
+    }
+
+    // The callbacks may query or update FIMDB again, so the lock is not held while they run
+    if (dbsyncHandler)
+    {
+        dbsyncHandler->selectRows(item, callbackData);
+    }
+    else if (m_loggingFunction)
+    {
+        m_loggingFunction(LOG_DEBUG, "Query not executed: FIMDB is shutting down");
+    }
 }
 
 void FIMDB::runIntegrity()

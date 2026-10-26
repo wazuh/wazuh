@@ -321,6 +321,16 @@ TEST_F(FimDBFixture, executeQueryFailException)
     fimDBMock.executeQuery(itemJson, callback);
 }
 
+TEST_F(FimDBFixture, executeQueryWhileStopping)
+{
+    nlohmann::json itemJson;
+    ResultCallbackData callback;
+    EXPECT_CALL(*mockDBSync, selectRows(testing::_, testing::_)).Times(0);
+    EXPECT_CALL(*mockLog, loggingFunction(LOG_DEBUG, "Query not executed: FIMDB is shutting down"));
+    fimDBMock.stopIntegrity();
+    fimDBMock.executeQuery(itemJson, callback);
+}
+
 TEST_F(FimDBFixture, fimSyncPushMsgSuccess)
 {
     const std::string data("testing msg");
