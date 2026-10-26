@@ -90,9 +90,10 @@ __wrap_cbaseline_list_containers_ex(const char* socket, cb_container_id_sink_t s
 #endif
 
 /// One more than the number of upgrade statements, which is how DBSync derives
-/// the current version: the container_context create, then one DROP COLUMN per
-/// table in LEGACY_CONTAINER_JSON_TABLES below.
-constexpr int CURRENT_SCHEMA_VERSION {15};
+/// the current version: the published steps in UPGRADE_SQL_STATEMENTS, the
+/// container_context create, then one rebuild per table in
+/// LEGACY_CONTAINER_JSON_TABLES below.
+constexpr int CURRENT_SCHEMA_VERSION {16};
 
 // Mock SchemaValidatorEngine for dependency injection in tests
 class MockSchemaValidatorEngine : public SchemaValidator::ISchemaValidatorEngine
@@ -8912,7 +8913,7 @@ TEST_F(SyscollectorImpTest, AnExistingDatabaseIsUpgradedWithoutLosingWhatItHeld)
         EXPECT_FALSE(columnExists(SYSCOLLECTOR_TEST_DB_PATH, table, "db_status_field_dm"))
                 << table << " kept the status column through the rebuild; it is per-transaction state "
                 << "and SQLiteDBEngine adds it back on first use";
-        EXPECT_FALSE(tableExists(SYSCOLLECTOR_TEST_DB_PATH, (table + "_upgrade_v15_old").c_str()))
+        EXPECT_FALSE(tableExists(SYSCOLLECTOR_TEST_DB_PATH, (table + "_upgrade_v16_old").c_str()))
                 << table << " left its rebuild scratch table behind";
     }
 
