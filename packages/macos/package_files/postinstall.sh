@@ -61,7 +61,8 @@ if [ -f "${UPGRADE_FILE_FLAG}" ]; then
 
     # Drop the backup once everything was restored or deliberately dropped. If a restore failed,
     # keep what is left under a name the next upgrade's preinstall will not wipe, so an operator
-    # can still recover it after re-running the installer.
+    # can still recover it after re-running the installer (only the first such run is preserved; a
+    # later failure is cleaned by the next preinstall).
     if [ -z "${restore_failed}" ]; then
         rm -rf ${DIR}/config_files/
     elif [ ! -e ${DIR}/config_files.unrestored ]; then
@@ -99,10 +100,12 @@ harden_tree 750 ${USER}:${GROUP} ${DIR}/queue/rids
 # re-moded. Directories cannot be hard-linked by an unprivileged user.
 chmod 770 ${DIR}/logs
 find ${DIR}/logs ! -type l \( -type d -o -links 1 \) -exec chown ${USER}:${GROUP} {} +
-find ${DIR}/logs/ -type d -exec chmod 750 {} \;
-find ${DIR}/logs/ -type f -links 1 -exec chmod 660 {} \;
+find ${DIR}/logs/ -type d -exec chmod 750 {} +
+find ${DIR}/logs/ -type f -links 1 -exec chmod 660 {} +
 
-chown -R root:${GROUP} ${DIR}/tmp
+# tmp is 1750 (not group-writable), so nothing can be planted in it; keep the chown off any hard
+# link anyway, for consistency with the walks above.
+find ${DIR}/tmp ! -type l \( -type d -o -links 1 \) -exec chown root:${GROUP} {} +
 chmod 1750 ${DIR}/tmp
 
 chmod 770 ${DIR}/etc

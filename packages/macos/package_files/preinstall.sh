@@ -68,7 +68,7 @@ if [ -d "${DIR}" ]; then
     # symlink instead of following it; the link-count check rejects a hard link, whose target cp
     # would otherwise copy by content (macOS has no protected_hardlinks).
     for conf in ossec.conf client.keys local_internal_options.conf; do
-        if [ -f ${DIR}/etc/${conf} ] && [ ! -L ${DIR}/etc/${conf} ] && [ -n "$(find ${DIR}/etc/${conf} -prune -links 1)" ]; then
+        if [ -f ${DIR}/etc/${conf} ] && [ ! -L ${DIR}/etc/${conf} ] && [ -n "$(find ${DIR}/etc/${conf} -prune -links 1 2>/dev/null)" ]; then
             cp -R ${DIR}/etc/${conf} ${DIR}/config_files/
         elif [ -e ${DIR}/etc/${conf} ] || [ -L ${DIR}/etc/${conf} ]; then
             # A symlink or a hard link the wazuh account planted: do not back it up, and remove it so
@@ -82,7 +82,7 @@ if [ -d "${DIR}" ]; then
     if [ -L ${DIR}/etc/shared ]; then
         echo "WARNING: ${DIR}/etc/shared is a symbolic link; removing it, the package default will be used." >&2
         rm -rf ${DIR}/etc/shared
-    elif [ -d ${DIR}/etc/shared ] && [ -z "$(find ${DIR}/etc/shared -type f ! -links 1)" ]; then
+    elif [ -d ${DIR}/etc/shared ] && [ -z "$(find ${DIR}/etc/shared -type f ! -links 1 2>/dev/null)" ]; then
         cp -R ${DIR}/etc/shared ${DIR}/config_files/
     elif [ -d ${DIR}/etc/shared ]; then
         echo "WARNING: ${DIR}/etc/shared contains a hard-linked file; not backed up, the package default will be used." >&2
