@@ -10,7 +10,7 @@ All notable changes to this project will be documented in this file.
 - Fixed the validation of `group_id` when reading and writing group configuration files, rejecting values that are not a valid group name. ([#40363](https://github.com/wazuh/wazuh/pull/40363))
 - Fixed the group configuration readers and upload accepting a group directory that resolves outside the shared directory, and the multigroup reader accepting a file name that resolves outside the multigroup directory. ([#36834](https://github.com/wazuh/wazuh/issues/36834))
 - Fixed `GET /agents/summary/os` returning `error: 0` with no failed items when none of the agents has reported its operative system. Those agents are now returned as failed items with error code 1761, and the response states when there are no agents registered. ([#37539](https://github.com/wazuh/wazuh/issues/37539))
-- Hardened the creation of Unix domain sockets in the shared modules' socket wrapper. ([#40481](https://github.com/wazuh/wazuh/pull/40481))
+- Hardened the creation and removal of Unix domain sockets in the shared modules' socket wrapper. ([#40481](https://github.com/wazuh/wazuh/pull/40481))
 - Added type validation for the error details of cluster synchronization messages and bound the received archive path to the file transfer completed for the task. ([#40367](https://github.com/wazuh/wazuh/pull/40367))
 - Hardened how cluster workers apply the files received from the master. ([#40366](https://github.com/wazuh/wazuh/pull/40366))
 - Fixed the snort decoder truncating `srcip` to all but its last octet and keeping the port in `dstip`. ([#40521](https://github.com/wazuh/wazuh/pull/40521))
