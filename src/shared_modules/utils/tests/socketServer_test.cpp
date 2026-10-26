@@ -10,6 +10,8 @@
  */
 
 #include "socketServer_test.hpp"
+#include <filesystem>
+#include <fstream>
 #include <future>
 #define private public
 #define protected public
@@ -238,4 +240,29 @@ TEST_F(SocketServerTest, RemoveClient)
 
     EXPECT_CALL(*server.m_epoll, deleteDescriptor(testing::_)).Times(1);
     EXPECT_CALL(*server.m_listenSocket, closeSocket()).Times(1);
+}
+
+TEST_F(SocketServerTest, DestructorRemovesSocketEntry)
+{
+    const std::filesystem::path path {"socket_server_entry"};
+    std::ofstream {path}.close();
+    {
+        SocketServer<MockSocket, MockEpollWrapper> server(path.string());
+        EXPECT_CALL(*server.m_epoll, deleteDescriptor(testing::_)).Times(1);
+        EXPECT_CALL(*server.m_listenSocket, closeSocket()).Times(1);
+    }
+    EXPECT_FALSE(std::filesystem::exists(path));
+}
+
+TEST_F(SocketServerTest, DestructorKeepsDirectoryContents)
+{
+    const std::filesystem::path path {"socket_server_dir"};
+    std::filesystem::create_directories(path / "keep");
+    {
+        SocketServer<MockSocket, MockEpollWrapper> server(path.string());
+        EXPECT_CALL(*server.m_epoll, deleteDescriptor(testing::_)).Times(1);
+        EXPECT_CALL(*server.m_listenSocket, closeSocket()).Times(1);
+    }
+    EXPECT_TRUE(std::filesystem::exists(path / "keep"));
+    std::filesystem::remove_all(path);
 }

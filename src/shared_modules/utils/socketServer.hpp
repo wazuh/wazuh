@@ -142,7 +142,8 @@ public:
         ::close(m_stopFD[0]);
         ::close(m_stopFD[1]);
 
-        std::filesystem::remove_all(m_socketPath);
+        std::error_code ec;
+        std::filesystem::remove(m_socketPath, ec);
     }
 
     void stop()

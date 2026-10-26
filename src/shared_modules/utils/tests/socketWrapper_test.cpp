@@ -12,6 +12,8 @@
 #include "socketWrapper_test.hpp"
 #include "osPrimitives.hpp"
 #include "socketWrapper.hpp"
+#include <filesystem>
+#include <fstream>
 #include <gmock/gmock.h>
 
 void SocketWrapperTest::SetUp() {};
@@ -473,4 +475,114 @@ TEST_F(SocketWrapperTest, DISABLED_ReadSuccessBufferIncrement)
 
     // Buffer is decreased to the original value.
     EXPECT_EQ(socketWrapper.recvBufferSize(), initialRecvBufferSize);
+}
+
+namespace
+{
+    std::filesystem::path gSocketPath;
+    std::filesystem::path gOtherPath;
+} // namespace
+
+class ChangePathAfterBindPrimitives : public OSPrimitives
+{
+protected:
+    int bind(int sockfd, const struct sockaddr* addr, socklen_t addrlen)
+    {
+        const auto ret {OSPrimitives::bind(sockfd, addr, addrlen)};
+        std::filesystem::remove(gSocketPath);
+        std::filesystem::create_symlink(gOtherPath, gSocketPath);
+        return ret;
+    }
+};
+
+TEST_F(SocketWrapperTest, ListenUnixSetsModeOnlyOnCreatedSocket)
+{
+    namespace fs = std::filesystem;
+    const auto dir {fs::temp_directory_path() / ("socketWrapperTest_" + std::to_string(::getpid()))};
+    fs::remove_all(dir);
+    fs::create_directories(dir);
+    gSocketPath = dir / "test.sock";
+    gOtherPath = dir / "other";
+    std::ofstream {gOtherPath};
+    fs::permissions(gOtherPath, fs::perms::owner_read | fs::perms::owner_write);
+
+    {
+        Socket<ChangePathAfterBindPrimitives> socketWrapper;
+        auto unixAddressBuilder {UnixAddress::builder()};
+        EXPECT_NO_THROW(socketWrapper.listen(unixAddressBuilder.address(gSocketPath.string()).data()));
+    }
+
+    EXPECT_EQ(fs::status(gOtherPath).permissions(), fs::perms::owner_read | fs::perms::owner_write);
+    EXPECT_TRUE(fs::is_socket(fs::symlink_status(gSocketPath)));
+    EXPECT_EQ(fs::status(gSocketPath).permissions() & fs::perms::all, static_cast<fs::perms>(0666));
+    EXPECT_EQ(std::distance(fs::directory_iterator(dir), fs::directory_iterator {}), 2);
+
+    fs::remove_all(dir);
+}
+
+class FailingBindPrimitives : public OSPrimitives
+{
+protected:
+    int bind(int, const struct sockaddr*, socklen_t)
+    {
+        errno = EACCES;
+        return -1;
+    }
+};
+
+TEST_F(SocketWrapperTest, ListenUnixBindFailureLeavesNoEntries)
+{
+    namespace fs = std::filesystem;
+    const auto dir {fs::temp_directory_path() / ("socketWrapperFailTest_" + std::to_string(::getpid()))};
+    fs::remove_all(dir);
+    fs::create_directories(dir);
+
+    Socket<FailingBindPrimitives> socketWrapper;
+    auto unixAddressBuilder {UnixAddress::builder()};
+    EXPECT_THROW(socketWrapper.listen(unixAddressBuilder.address((dir / "test.sock").string()).data()),
+                 std::runtime_error);
+    EXPECT_EQ(socketWrapper.fileDescriptor(), INVALID_SOCKET);
+    EXPECT_TRUE(fs::is_empty(dir));
+
+    fs::remove_all(dir);
+}
+
+class MoveBindDirectoryPrimitives : public OSPrimitives
+{
+protected:
+    int bind(int sockfd, const struct sockaddr* addr, socklen_t addrlen)
+    {
+        for (const auto& entry : std::filesystem::directory_iterator(gSocketPath.parent_path()))
+        {
+            if (entry.path().filename().string().rfind(".w", 0) == 0)
+            {
+                std::filesystem::rename(entry.path(), gSocketPath.parent_path() / "moved");
+                std::filesystem::create_directory_symlink(gOtherPath, entry.path());
+                break;
+            }
+        }
+        return OSPrimitives::bind(sockfd, addr, addrlen);
+    }
+};
+
+TEST_F(SocketWrapperTest, ListenUnixCreatesSocketInPinnedDirectory)
+{
+    namespace fs = std::filesystem;
+    const auto dir {fs::temp_directory_path() / ("socketWrapperMoveTest_" + std::to_string(::getpid()))};
+    fs::remove_all(dir);
+    fs::create_directories(dir / "other");
+    gSocketPath = dir / "test.sock";
+    gOtherPath = dir / "other";
+
+    {
+        Socket<MoveBindDirectoryPrimitives> socketWrapper;
+        auto unixAddressBuilder {UnixAddress::builder()};
+        EXPECT_NO_THROW(socketWrapper.listen(unixAddressBuilder.address(gSocketPath.string()).data()));
+    }
+
+    EXPECT_TRUE(fs::is_directory(fs::symlink_status(dir / "moved")));
+    EXPECT_TRUE(fs::is_empty(gOtherPath));
+    EXPECT_TRUE(fs::is_socket(fs::symlink_status(gSocketPath)));
+
+    fs::remove_all(dir);
 }
