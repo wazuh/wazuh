@@ -65,7 +65,8 @@ target_include_directories(
           ${SRC_FOLDER}/shared_modules/indexer_client/tests/fake
           ${SRC_FOLDER}/external/cpp-httplib)
 
-target_compile_definitions(inventory_sync_server_utest PRIVATE ASIO_STANDALONE)
+# D81: the same libstdc++ assertions as the library under test (its CMakeLists.txt).
+target_compile_definitions(inventory_sync_server_utest PRIVATE ASIO_STANDALONE _GLIBCXX_ASSERTIONS)
 
 add_test(NAME inventory_sync_server_utest COMMAND inventory_sync_server_utest)
 set_tests_properties(inventory_sync_server_utest PROPERTIES LABELS inventory_sync_server_utest)

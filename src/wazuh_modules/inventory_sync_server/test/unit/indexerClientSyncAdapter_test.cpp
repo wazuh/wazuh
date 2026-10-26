@@ -655,6 +655,37 @@ TEST_F(IndexerClientSyncAdapter, AddRefusalFailsOnlyItsSession)
 
 // ---- Chunking against the quota (CA-E7b-3) -----------------------------------------------------
 
+// CA-E11b-1 (D88): the cuts of a fixed sequence (index, delete and versioned ops, one `_id` that escapes) under a fixed
+// cap. Pinned on the adapter's own chunkCap/estimateCharge before they moved to indexer_client/chunking.hpp; the
+// extraction keeps them. Each committed chunk is one `_bulk`.
+TEST_F(IndexerClientSyncAdapter, CharacterizationChunkCuts)
+{
+    auto node = startNode();
+    auto& adapter = startAll(testSpec(), options(12000));
+
+    for (int i = 0; i < 24; ++i)
+    {
+        const auto id = (i == 7 ? std::string {"c\""} : std::string {"c"}) + (i < 10 ? "0" : "") + std::to_string(i);
+        switch (i % 3)
+        {
+            case 0: adapter.bulkIndex(id, INDEX, document('a', 200 + static_cast<std::size_t>(i) * 50)); break;
+            case 1: adapter.bulkDelete(id, INDEX); break;
+            default: adapter.bulkIndex(id, INDEX, document('v', 300), "7"); break;
+        }
+    }
+    adapter.endSession();
+    const auto outcomes = adapter.flushSessions(1);
+    ASSERT_EQ(1U, outcomes.size());
+    EXPECT_TRUE(outcomes[0].ok) << outcomes[0].reason;
+
+    std::vector<std::size_t> cuts;
+    for (const auto& request : node.bulk->received())
+    {
+        cuts.push_back(request.size());
+    }
+    EXPECT_EQ((std::vector<std::size_t> {4, 4, 4, 4, 4, 3, 1}), cuts);
+}
+
 TEST_F(IndexerClientSyncAdapter, ReservesDoNotStarveBatch)
 {
     // A 1 MiB bucket and two lanes; the ops' result reserves alone (2 048 B each) add up to over three

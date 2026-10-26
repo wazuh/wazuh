@@ -13,8 +13,11 @@
 #include "components/consumerGate.hpp"
 #include "fakes/fakeIndexerQueryPort.hpp"
 #include "gtest/gtest.h"
+#include <atomic>
 #include <chrono>
 #include <future>
+#include <memory>
+#include <stdexcept>
 #include <string>
 
 using fakes::FakeIndexerQueryPort;
@@ -48,7 +51,28 @@ namespace
 
         void TearDown() override
         {
+            ConsumerGate::setClockForTest(nullptr);
             ConsumerGate::resetCache();
+        }
+
+        /// Puts the gate on a manual clock that starts at an arbitrary point; advance() moves it.
+        void manualClock()
+        {
+            manualNow().store(ConsumerGate::Clock::now().time_since_epoch().count());
+            ConsumerGate::setClockForTest(
+                [] { return ConsumerGate::Clock::time_point {ConsumerGate::Clock::duration {manualNow().load()}}; });
+        }
+
+        void advance(std::chrono::milliseconds by)
+        {
+            manualNow().fetch_add(std::chrono::duration_cast<ConsumerGate::Clock::duration>(by).count());
+        }
+
+        /// The manual clock's "now", in Clock ticks: the seam takes a plain function, so it lives outside the fixture.
+        static std::atomic<ConsumerGate::Clock::rep>& manualNow()
+        {
+            static std::atomic<ConsumerGate::Clock::rep> instance {0};
+            return instance;
         }
     };
 
@@ -289,4 +313,73 @@ TEST_F(ConsumerGateTest, EscalationStartsAtTheThresholdAndThenRepeatsOnACadence)
 
     EXPECT_TRUE(
         ConsumerGate::shouldEscalateForTest(ConsumerGate::WARN_AFTER_ATTEMPTS + ConsumerGate::REPEAT_EVERY_ATTEMPTS));
+}
+
+// D93: an Unreachable answer (here the Client closed mid-probe) is cached for min(cacheTtl, 1 s), not the whole TTL:
+// the next start() probes again as soon as that second is over, and a Ready answer keeps the full TTL. Mutants: the
+// Unreachable answer cached for the whole TTL; not cached at all.
+TEST_F(ConsumerGateTest, ReprobesAfterShortTtl)
+{
+    manualClock();
+    bool closed = true;
+    FakeIndexerQueryPort port;
+    port.state()->onSearchIndex = [&closed](std::string_view, const nlohmann::json&)
+    {
+        if (closed)
+        {
+            throw std::runtime_error("client_closed");
+        }
+        return statusResponse("ready");
+    };
+    constexpr std::chrono::seconds TTL {30};
+
+    EXPECT_EQ(ConsumerGate::probe(port, INDEX, CONSUMER, TTL).status, ConsumerGate::Status::Unreachable);
+    closed = false; // A new start() with a live Client.
+
+    advance(std::chrono::milliseconds {999});
+    EXPECT_EQ(ConsumerGate::probe(port, INDEX, CONSUMER, TTL).status, ConsumerGate::Status::Unreachable)
+        << "inside the short TTL the answer is still reused";
+    EXPECT_EQ(port.state()->indexSearches.size(), 1U);
+
+    advance(std::chrono::milliseconds {1});
+    EXPECT_EQ(ConsumerGate::probe(port, INDEX, CONSUMER, TTL).status, ConsumerGate::Status::Ready)
+        << "the probe waited for the whole TTL instead of the short one";
+    EXPECT_EQ(port.state()->indexSearches.size(), 2U);
+
+    advance(std::chrono::seconds {29});
+    EXPECT_EQ(ConsumerGate::probe(port, INDEX, CONSUMER, TTL).status, ConsumerGate::Status::Ready);
+    EXPECT_EQ(port.state()->indexSearches.size(), 2U) << "a Ready answer keeps the full TTL";
+}
+
+// D93: N topics of one consumer over an indexer that stays down share one probe per short-TTL window. Mutant: the
+// Unreachable answer not cached (one probe per topic).
+TEST_F(ConsumerGateTest, OneProbePerTtlWhileDown)
+{
+    manualClock();
+    FakeIndexerQueryPort port;
+    port.state()->onSearchIndex = [](std::string_view, const nlohmann::json&) -> nlohmann::json
+    {
+        throw std::runtime_error("connection refused");
+    };
+    constexpr int TOPICS {6};
+    const auto probeAll = [&port]
+    {
+        for (int i = 0; i < TOPICS; ++i)
+        {
+            EXPECT_EQ(ConsumerGate::probe(port, INDEX, CONSUMER, std::chrono::seconds {60}).status,
+                      ConsumerGate::Status::Unreachable);
+        }
+    };
+
+    probeAll();
+    EXPECT_EQ(port.state()->indexSearches.size(), 1U);
+    advance(std::chrono::milliseconds {500});
+    probeAll();
+    EXPECT_EQ(port.state()->indexSearches.size(), 1U);
+    advance(std::chrono::milliseconds {500});
+    probeAll();
+    EXPECT_EQ(port.state()->indexSearches.size(), 2U);
+    advance(std::chrono::seconds {1});
+    probeAll();
+    EXPECT_EQ(port.state()->indexSearches.size(), 3U);
 }

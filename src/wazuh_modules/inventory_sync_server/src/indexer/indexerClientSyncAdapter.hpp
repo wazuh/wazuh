@@ -14,6 +14,7 @@
 #include "IIndexerConnectorSync.hpp"
 #include "inventory_sync_server.h"
 
+#include "indexer_client/chunking.hpp"
 #include "indexer_client/client.hpp"
 #include "indexer_client/types.hpp"
 
@@ -97,8 +98,9 @@ namespace invsync::indexer
                                                     std::uint64_t globalQuotaBytes,
                                                     std::string* warning = nullptr);
 
-    /// Per-worker chunk cap: 0.8 · quota / (2 · lanes), lanes = pipeline + scan-lane workers (I137b, I145).
-    std::size_t chunkCap(std::size_t quotaBytes, std::size_t lanes);
+    /// Per-worker chunk cap: 0.8 · quota / (2 · lanes), lanes = pipeline + scan-lane workers (I137b, I145); shared
+    /// with VD in indexer_client/chunking.hpp (D88).
+    using indexer_client::chunkCap;
 
     /// The seam's class of a library cause (I135); every indexer_client::Cause maps to exactly one.
     ConnectorError::Cause translateCause(indexer_client::Cause cause);

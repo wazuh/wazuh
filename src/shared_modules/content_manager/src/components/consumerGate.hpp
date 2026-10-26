@@ -16,6 +16,8 @@
 #include "contentIndexer.hpp"
 #include "loggerHelper.h"
 #include "sharedDefs.hpp"
+#include <algorithm>
+#include <atomic>
 #include <chrono>
 #include <cstdint>
 #include <json.hpp>
@@ -36,7 +38,9 @@
  *  - **It is bounded.** One probe per cycle; a busy consumer ends the cycle `SkippedConsumerNotReady`
  *    with a short `retryAfter` rather than parking the thread.
  *  - **It is cached, process-wide, per consumer id.** Registrations that watch the same consumer —
- *    the Engine's six IOC topics do — pay for one probe between them.
+ *    the Engine's six IOC topics do — pay for one probe between them. An `Unreachable` answer is
+ *    cached for at most @ref UNREACHABLE_TTL: it says nothing about the consumer, only about one
+ *    probe (a `client_closed` mid-probe is one), so the next `start()` must not wait a whole TTL.
  *  - **It stays at DEBUG for the first few bad answers**, then escalates: an indexer that has just
  *    restarted is expected to answer badly for a few seconds.
  */
@@ -54,6 +58,13 @@ public:
     /// repeating on every probe would spend a line a minute for as long as the outage lasts. One in
     /// ten keeps the condition visible for hours without becoming the log.
     static constexpr std::size_t REPEAT_EVERY_ATTEMPTS {10};
+
+    /// Longest an `Unreachable` answer is reused: `min(cacheTtl, UNREACHABLE_TTL)` (D93). Still a
+    /// cache, so the topics of one consumer over a dead indexer cost one probe per second, not N.
+    static constexpr std::chrono::seconds UNREACHABLE_TTL {1};
+
+    /// The gate's clock: steady, replaceable by the unit tests (setClockForTest()).
+    using Clock = std::chrono::steady_clock;
 
     /// What the consumer document says about itself.
     enum class Status : std::uint8_t
@@ -95,7 +106,7 @@ public:
         }
 
         const auto key = index + '\0' + id;
-        const auto now = std::chrono::steady_clock::now();
+        const auto now = currentTime();
 
         // The registry lock only finds the consumer's slot; the query runs under the slot's own lock.
         // Topics watching the same consumer still coalesce onto one probe — the point of the cache —
@@ -121,7 +132,9 @@ public:
 
         entry.result = query(port, index, id);
         entry.valid = true;
-        entry.expiresAt = now + cacheTtl;
+        entry.expiresAt =
+            now + (entry.result.status == Status::Unreachable ? std::min<Clock::duration>(cacheTtl, UNREACHABLE_TTL)
+                                                              : Clock::duration {cacheTtl});
 
         report(entry, index, id);
         return entry.result;
@@ -151,6 +164,19 @@ public:
     static bool shouldEscalateForTest(std::size_t attempt) noexcept
     {
         return shouldEscalate(attempt);
+    }
+
+    /// A replacement for Clock::now(): a plain function, so the probe path reads it with one atomic load.
+    using ClockFunction = Clock::time_point (*)();
+
+    /**
+     * @brief Test seam over the clock the cache expires by.
+     *
+     * @param clock Returns "now"; nullptr restores the steady clock.
+     */
+    static void setClockForTest(ClockFunction clock) noexcept
+    {
+        clockOverride().store(clock, std::memory_order_release);
     }
 
     /// @return The query selecting the consumer document @p id.
@@ -227,7 +253,7 @@ private:
     struct Entry
     {
         Result result;
-        std::chrono::steady_clock::time_point expiresAt {};
+        Clock::time_point expiresAt {};
         bool valid {false};
         std::size_t consecutiveNotReady {0}; ///< Consecutive answers of any kind other than `Ready`.
     };
@@ -336,6 +362,18 @@ private:
             return false;
         }
         return (attempt - WARN_AFTER_ATTEMPTS) % REPEAT_EVERY_ATTEMPTS == 0;
+    }
+
+    static Clock::time_point currentTime()
+    {
+        const auto clock = clockOverride().load(std::memory_order_acquire);
+        return clock != nullptr ? clock() : Clock::now();
+    }
+
+    static std::atomic<ClockFunction>& clockOverride()
+    {
+        static std::atomic<ClockFunction> instance {nullptr};
+        return instance;
     }
 
     static std::mutex& mutex()

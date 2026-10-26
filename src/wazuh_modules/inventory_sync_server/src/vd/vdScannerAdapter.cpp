@@ -15,7 +15,6 @@
 #include "vulnerabilityScannerSync.hpp"
 
 #include <functional>
-#include <stdexcept>
 #include <string_view>
 #include <vector>
 
@@ -121,15 +120,9 @@ namespace invsync::vd
             auto& scanner = VulnerabilityScannerFacade::instance();
 
             // A scanner that is stopping fails the session (500, the agent retries) instead of
-            // skipping it: Skipped would index the inventory without scanning it (I167c).
-            // hasStarted() first: its acquire load orders the reads after it.
-            const bool started = scanner.hasStarted();
-            const bool initialized = scanner.isInitialized();
-            if (vdStopping(started, scanner.isEnabled(), scanner.startFailed(), initialized))
-            {
-                throw std::runtime_error("VD stopping");
-            }
-            if (!initialized)
+            // skipping it: Skipped would index the inventory without scanning it (I167c). The
+            // read order and the throw live in scanGate() (vdStopping.hpp), pinned by a fake.
+            if (!scanGate(scanner))
             {
                 return ScanVerdict::Skipped;
             }
@@ -175,10 +168,9 @@ namespace invsync::vd
             // before calling scanAgent() at all) -- Skipped, not NotReady: this gate is what the QA
             // suite, the operator WARN and vd.scans.skipped hang off. A scanner that is stopping
             // is NotReady instead (I167c): it does not throw, its caller has no `try`.
-            const bool started = scanner.hasStarted();
-            const bool initialized = scanner.isInitialized();
-            return onDemandVerdict(vdStopping(started, scanner.isEnabled(), scanner.startFailed(), initialized),
-                                   initialized,
+            const auto gate = readVdGate(scanner);
+            return onDemandVerdict(vdStopping(gate.started, gate.enabled, gate.startFailed, gate.initialized),
+                                   gate.initialized,
                                    [&scanner, &agentId] { return translate(scanner.triggerAgentScan(agentId)); });
         }
 
