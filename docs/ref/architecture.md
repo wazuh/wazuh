@@ -129,15 +129,15 @@ clients -->|1,5,6,7,8,10| api
 
 ### Daemons
 
-| Daemon         | Binary                    | Purpose                                                                                                                      |
-| -------------- | ------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
-| **Engine**     | `wazuh-manager-analysisd` | Event processing, event generation (replaces legacy analysisd)                                                               |
-| **Remoted**    | `wazuh-manager-remoted`   | Agent communication gateway — HTTPS agent API on port 1517 (enrollment, events, state sync, control, downloads); legacy AES TCP/UDP on 1514 for 4.x agents, controlled by `<remote><legacy><enabled>`: off when the `<legacy>` block is absent, but the configuration the installer generates writes it with `yes`, so an installed manager listens on 1514 |
-| **Wazuh DB**   | `wazuh-manager-db`        | SQLite-based database daemon for agent and global state                                                                      |
-| **Auth**       | `wazuh-manager-authd`     | Owns all agent registration logic. Reached by Remoted's `POST /enroll` over its local socket for 5.x agents; its own TLS listener on port 1515 serves 4.x agents, gated by `<auth><legacy_enrollment>`, which follows `<remote><legacy><enabled>` when it is not set |
-| **Server API** | `wazuh-manager-apid`      | REST API (Python/Starlette, HTTPS) with JWT auth and RBAC                                                                    |
-| **Modules**    | `wazuh-manager-modulesd`  | Hosts manager-side modules: vulnerability scanner, inventory sync server, keystore server, content manager, task manager (which also serves agent upgrades), database (keeps `global.db` in step with `client.keys` and `/etc/wazuh-manager/shared/`), and control (restart/reload) |
-| **Cluster**    | `wazuh-manager-clusterd`  | Multi-node master-worker synchronization (Python, asyncio)                                                                   |
+| Daemon         | Binary                    | Purpose | Command line |
+| -------------- | ------------------------- | ------- | ------------ |
+| **Engine**     | `wazuh-manager-analysisd` | Event processing, event generation (replaces legacy analysisd) | [Engine command line](modules/engine/configuration.md#command-line-options) |
+| **Remoted**    | `wazuh-manager-remoted`   | Agent communication gateway — HTTPS agent API on port 1517 (enrollment, events, state sync, control, downloads); legacy AES TCP/UDP on 1514 for 4.x agents, controlled by `<remote><legacy><enabled>`: off when the `<legacy>` block is absent, but the configuration the installer generates writes it with `yes`, so an installed manager listens on 1514 | [Command line](modules/remoted/README.md#command-line) |
+| **Wazuh DB**   | `wazuh-manager-db`        | SQLite-based database daemon for agent and global state | [Running the daemon](modules/wazuh_db/README.md#running-the-daemon) |
+| **Auth**       | `wazuh-manager-authd`     | Owns all agent registration logic. Reached by Remoted's `POST /enroll` over its local socket for 5.x agents; its own TLS listener on port 1515 serves 4.x agents, gated by `<auth><legacy_enrollment>`, which follows `<remote><legacy><enabled>` when it is not set. Not started when `<auth><disabled>` is `yes` | [Command-line options](modules/authd/README.md#command-line-options) |
+| **Server API** | `wazuh-manager-apid`      | REST API (Python/Starlette, HTTPS) with JWT auth and RBAC. Started only on the master node | [`wazuh-manager-apid` options](modules/server-api/configuration.md#wazuh-manager-apid-options) |
+| **Modules**    | `wazuh-manager-modulesd`  | Hosts manager-side modules: vulnerability scanner, inventory sync server, keystore server, content manager, task manager (which also serves agent upgrades), database (keeps `global.db` in step with `client.keys` and `/etc/wazuh-manager/shared/`), and control (restart/reload) | [`wazuh-manager-modulesd` command line](configuration/manager/README.md#wazuh-manager-modulesd-command-line) |
+| **Cluster**    | `wazuh-manager-clusterd`  | Multi-node master-worker synchronization (Python, asyncio) | [The daemon](modules/cluster/README.md#the-daemon) |
 
 > **Note:** The manager also ships CLI tools (`wazuh-manager-control`, `wazuh-manager-conf`, `wazuh-manager-keystore`, etc.) listed in the [CLI Tools](#cli-tools) section below.
 
@@ -148,7 +148,7 @@ A manager-side module hosted by `wazuh-manager-modulesd` is three pieces, not on
 | Layer                  | Location                        | Build output                            | Role                                                                                                                                                                                                                                     |
 | ---------------------- | ------------------------------- | --------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Shim**               | `src/wazuh_modules/src/wm_<name>.c` | compiled into `wazuh-manager-modulesd`  | Declares the module's `wm_context` (`start`, `stop`, `destroy`, `dump`, `query`), registers it in `wmodules.c`, then `dlopen`s the implementation and calls its `extern "C"` entry points. The C↔C++ ABI boundary; ~100 lines, no logic of its own. |
-| **Implementation**     | `src/wazuh_modules/<name>/`         | `lib<name>.so`, loaded by the shim      | The module proper. Exports a flat `<name>_start()` / `<name>_stop()` pair and nothing else.                                                                                                                                              |
+| **Implementation**     | `src/wazuh_modules/<name>/`         | `lib<name>.so`, loaded by the shim      | The module proper. The shim resolves only its flat `<name>_start()` / `<name>_stop()` pair (the `dlopen` contract); the library keeps default symbol visibility, and modules may link each other directly — `libinventory_sync_server.so` links `libvulnerability_scanner.so` for `runScannerFromViews` and the `vd_sync` coordination registry. |
 | **Shared library**     | `src/shared_modules/<name>/`        | `.so` or `.a`, linked by its consumers  | Reusable code with more than one consumer. Not a module: no `wm_context`, no registration.                                                                                                                                               |
 
 | Module                    | Implementation                         | Shim                            |
@@ -163,7 +163,7 @@ A manager-side module hosted by `wazuh-manager-modulesd` is three pieces, not on
 
 `Database` and `Control` are plain C compiled straight into modulesd, so they have no `.so` and no ABI boundary to cross — the two entries above with no implementation directory. `Database` is created only while the internal option `wazuh_database.sync_agents` is `1` (its default); see [Database Sync](modules/database-sync/README.md).
 
-`src/wazuh_modules/` is a shared tree: it also holds the agent's modules — `agent_info`, `agent_upgrade`, `sca`, `syscollector` — which use the same three-layer shape but are compiled only under `#ifdef CLIENT`. None of them is registered in a manager build, so the table above is the manager's complete module set.
+`src/wazuh_modules/` is a shared tree: it also holds the agent's modules. Their implementations (`agent_info`, `agent_upgrade`, `sca`, `syscollector`) are built only for the agent, but the manager build compiles every shim in `src/wazuh_modules/src/` into `wazuh-manager-modulesd`, the agent-only ones included (`wm_agent_info.c`, `wm_command.c`, `wm_sca.c`, `wm_syscollector.c`, and `wm_aws.c`, `wm_azure.c`, `wm_docker.c`, `wm_gcp.c`, `wm_github.c`, `wm_ms_graph.c`, `wm_office365.c`). `wm_config()` registers none of them in a manager build, so the table above is the manager's complete module set.
 
 ### Shared Libraries
 
@@ -191,7 +191,7 @@ Every tool is installed in `/var/wazuh-manager/bin/`.
 | `wazuh-manager-keystore`            | Manage secrets in the encrypted keystore (AES-256, RocksDB)                                               | [Keystore](modules/keystore/README.md) |
 | `verify-agent-conf`                 | Validate `agent.conf` syntax for shared group configurations                                              | [Centralized configuration](modules/agent-management/centralized-configuration.md) |
 | `agent_groups`                      | Manage agent group assignments                                                                            | [Agent groups](modules/agent-management/agent-groups.md) |
-| `agent_upgrade`                     | Request agent WPK upgrades (through the Task Manager)                                                     | [Agent upgrades](modules/task_manager/agent-upgrades.md) |
+| `agent_upgrade`                     | Request agent WPK upgrades (through the Task Manager)                                                     | [agent_upgrade](modules/agent_upgrade/README.md#agent_upgrade) |
 | `cluster_control`                   | Query cluster nodes, agents and health                                                                    | [Inspecting the cluster](modules/cluster/README.md#inspecting-the-cluster-cluster_control) |
 | `rbac_control`                      | Seed the RBAC database, change the API default users' passwords, or reset it (`seed`, `change-password`, `factory-reset`) | [Server API authentication](modules/server-api/authentication.md) |
 
@@ -209,33 +209,40 @@ cluster.node_type` is `master`, and `wazuh-manager-authd` when `auth.disabled` i
 
 | Action | Behaviour |
 | ------ | --------- |
-| `start` | Validates the configuration file, checks the credentials (`--check`) and validates the configuration with its files (see below), resolves credentials with `bin/wazuh-manager-resolve-credentials --prestart` (skipped silently when the resolver is not installed), empties `tmp/`, then starts each daemon that is not already running. `wazuh-manager-analysisd` counts as started once its API answers on `queue/sockets/engine-api-http.sock`. A daemon that fails to start stops the sequence with `<daemon> did not start correctly.` and exit status `1`. |
-| `stop` | Stops every daemon. |
-| `restart` | Validates the configuration and checks the credentials **while the manager is still running** (a refusal leaves it up), stops every daemon, resolves credentials, and starts them again. |
+| `start` | Runs the four pre-start checks below, empties `tmp/`, then starts each daemon that is not already running. `wazuh-manager-analysisd` counts as started once its API answers on `queue/sockets/engine-api-http.sock`; the script waits for its pid file for up to 10 seconds and then probes the API up to 120 times, a second apart, before giving up with `wazuh-manager-analysisd did not respond correctly after 120 attempts.` A daemon that fails to start stops the sequence with `<daemon> did not start correctly.` and exit status `1`. |
+| `stop` | Stops every daemon: `SIGTERM`, then up to 30 seconds for each before `SIGKILL` (`Process <daemon> couldn't be terminated. It will be killed.`). |
+| `restart` | Runs the first three pre-start checks **while the manager is still running** (a refusal leaves it up), stops every daemon, resolves credentials, and starts them again. |
 | `reload` | `restart` for every daemon except `wazuh-manager-remoted`, which keeps running, so agent connections stay up. |
-| `status` | Prints `<daemon> is running...` or `<daemon> not running...` per daemon (`refused its configuration...` or `failed to start...` when the last `start` left that verdict), and exits `1` when any daemon is down. |
+| `status` | Prints `<daemon> is running...` or `<daemon> not running...` per daemon (`refused its configuration...` or `failed to start...` when the last `start` left that verdict in `var/run/<daemon>.failed`), and exits `1` when any daemon is down. |
 | `enable debug` / `disable debug` | Make every later start pass `-d` to the daemons (or stop doing so), recorded in `bin/.process_list`. `debug` is the only accepted option. |
 | `info` | Prints `WAZUH_VERSION`, `WAZUH_REVISION` and `WAZUH_TYPE` (`manager`); `-v`, `-r` and `-t` print one of them alone. |
 
-Before `start`, `restart` and `reload` touch any daemon, `bin/wazuh-manager-conf validate
---skip-file-checks` validates the configuration file alone (a failure is refused as below, error 20), so
-the credential check can read it. Then `bin/wazuh-manager-resolve-credentials --check`
-tests every credential file and certificate it trusts, read-only, and a problem is refused with
-`Unsafe credentials. Exiting`, `Invalid credentials. Exiting` or, when the check itself cannot run,
-`Cannot check the credentials. Exiting` (`{"error":22,…}` under `-j`). Then the configuration is validated again:
-`bin/wazuh-manager-conf validate`, now **with** the checks that the referenced certificate files exist,
-and then each daemon's own `-t`. A failure is refused with `wazuh-manager.conf: Configuration error.
-Exiting` (or `<daemon>: Configuration error. Exiting`), `{"error":20,…}` under `-j`; the first also
-writes a `wazuh-manager-control: ERROR: …` line to `logs/wazuh-manager.log`. An unresolved credential is
-refused next, with `Unresolved credentials. Exiting` (`{"error":21,"message":"Unresolved
-credentials."}` under `-j`) and the resolver's `MISSING|INVALID|UNSAFE` lines in the same log; see
-[When the manager does not start](getting-started/credentials.md#when-the-manager-does-not-start).
-A configuration so broken that `cluster.node_type` cannot be read surfaces as `Invalid cluster
+Before `start`, `restart` and `reload` touch any daemon, four checks run, and the first one that fails
+refuses the command:
+
+1. `bin/wazuh-manager-conf validate --skip-file-checks`: the configuration file alone.
+2. `bin/wazuh-manager-resolve-credentials --check`: every credential file and certificate, read-only.
+3. `bin/wazuh-manager-conf validate`, now with the checks that the files the configuration names exist,
+   then each daemon's own `-t`.
+4. `bin/wazuh-manager-resolve-credentials --prestart`, which completes what it can and refuses what it
+   cannot. On `restart` and `reload` it runs after the stop; it is skipped while
+   `wazuh-manager-modulesd` is running.
+
+Every refusal prints one line ending in `Exiting` (for example `wazuh-manager.conf: Configuration error.
+Exiting` or `Unresolved credentials. Exiting`), records the reason in `logs/wazuh-manager.log` (except
+when the engine's own `-t` refuses, which prints its reason on stderr only), and exits
+`1`. The error codes (`20` for the configuration, `21` for an unresolved credential, `22` for an unsafe or
+invalid one or a check that could not run) appear only in the `-j` output. The messages, codes and log
+lines of each step are in [When the manager does not start](getting-started/credentials.md#when-the-manager-does-not-start).
+When `bin/wazuh-manager-resolve-credentials` is missing or not executable, steps 2 and 4 are skipped. A
+configuration so broken that `cluster.node_type` cannot be read surfaces as `Invalid cluster
 configuration, check the /etc/wazuh-manager/wazuh-manager.conf file.`
 
 An unknown action prints the usage and exits `1`. The daemons inherit the command's standard output,
 so redirect `start` to a file rather than piping it: a pipe never sees end-of-file and the command
-appears to hang. On a systemd host the `wazuh-manager` unit drives the same script.
+appears to hang. On a systemd host the `wazuh-manager` unit drives the same script (`ExecStart`, `ExecStop`, `ExecReload`); its
+`TimeoutStartSec=180` bounds `start` and also `reload` (systemd times `ExecReload` with the start timeout), which
+covers the engine wait in both; `stop` is bounded by `TimeoutSec=45`.
 
 ### Data Flow
 
@@ -294,13 +301,13 @@ Below, `HTTP` is HTTP/1.1 over the socket, reachable with `curl --unix-socket`. 
 | `queue/sockets/auth.sock`                | wazuh-manager-authd   | Framed   | Local agent registration and deletion                              |
 | `queue/sockets/remote.sock`              | wazuh-manager-remoted | Framed   | Stats and runtime configuration queries                            |
 | `queue/sockets/remote-admin-http.sock`   | wazuh-manager-remoted | HTTP     | Operator-facing admin and metrics endpoint                         |
-| `queue/sockets/engine-api-http.sock`     | wazuh-manager-analysisd | HTTP     | REST API: catalog, policy, router, KVDB, tester, metrics           |
+| `queue/sockets/engine-api-http.sock`     | wazuh-manager-analysisd | HTTP     | Engine API: content (`_internal/content/*`, `content/validate/*`), IOC (`content/ioc/*`), router, tester and `logtest`, GeoIP databases, metrics, `status`, event dumper, raw event indexer status; see [Engine API reference](modules/engine/api-reference.md) |
 | `queue/sockets/engine-ingest-http.sock`  | wazuh-manager-analysisd | HTTP     | Event ingestion                                                    |
 | `queue/sockets/inventory-sync-http.sock` | modulesd (Inventory Sync Server) | HTTP     | Stateful sync, agent-reported stats and config, agent deletion      |
 | `queue/sockets/vd-http.sock`             | modulesd (Vulnerability Scanner) | HTTP     | On-demand scans and feed operations, called by remoted and the API |
-| `queue/sockets/keystore.sock`            | modulesd (Keystore Server) | Framed   | Indexer credential retrieval, called by clusterd                   |
+| `queue/sockets/keystore.sock`            | modulesd (Keystore Server) | Framed   | Indexer credential retrieval, called by clusterd (the framework's `KeystoreClient`, from its Indexer tasks) |
 | `queue/sockets/control.sock`             | modulesd (Control)    | Framed   | Daemon restart and reload                                          |
-| `queue/sockets/wmodules.sock`            | wazuh-manager-modulesd | Framed   | Per-module query and control, and the API's component=wmodules      |
+| `queue/sockets/wmodules.sock`            | wazuh-manager-modulesd | Framed   | Active configuration (`getconfig wmodules`, `getconfig internal_options`, `getallconfig`), read by the Server API for the `wmodules` component of `GET /cluster/{node_id}/configuration/{component}/{configuration}`. Its generic `query <module>` verb has no taker on the manager: no manager module implements it |
 | `queue/sockets/wdb.sock`                 | wazuh-manager-db      | Framed   | Legacy wdb query protocol                                          |
 | `queue/sockets/wdb-http.sock`            | wazuh-manager-db      | HTTP     | Agent sync and summary REST API, used by clusterd and the API; also `GET /v1/status`, the daemon's readiness answer |
 | `queue/sockets/task-http.sock`           | modulesd (Task Manager) | HTTP     | Agent and manager task creation, lookup, pending-task delivery, and agent upgrade requests |

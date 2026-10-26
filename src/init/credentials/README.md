@@ -82,7 +82,9 @@ flowchart TD
     H --> I[indexer password: keystore]
     I --> J[own CA: mint or validate, publish]
     J --> K[server pairs: issue or validate]
-    K --> L[indexer trust: import or validate]
+    K --> P[dashboard client pair, masters: issue, reissue or keep]
+    P --> L[indexer trust: import or validate]
+    L -->|--prestart| R[run_checks again on the result]
     B -->|--clear| M[pid files, CONF, lock, safety pass]
     M --> N[remove what the resolver made]
 ```
@@ -105,10 +107,11 @@ by both packages, run by `postinst`/`%post`, `install.sh` and `src/init/wazuh-se
 
 | Consumer | Reads | Contract |
 |----------|-------|----------|
-| the dashboard on the same host | `<CONF>/export/credentials.env`, `export/ca.pem`, later `export/dashboard-client.pem` / `-key.pem` | `NAME=value` lines `WAZUH_MANAGER_API_PASSWORD`, `WAZUH_MANAGER_WUI_PASSWORD`; `root:root 0600` in a `root:root 0700` directory; `ca.pem` is the manager's CA; the client pair (masters) is not used yet |
+| the dashboard on the same host | `<CONF>/export/credentials.env`, `export/ca.pem`, later `export/dashboard-client.pem` / `-key.pem` | `credentials.env`: `NAME=value` lines `WAZUH_MANAGER_API_PASSWORD`, `WAZUH_MANAGER_WUI_PASSWORD`, `root:root 0600`, in a `root:root 0700` directory; `ca.pem` is the manager's CA; the client pair (masters; `0644` certificate, `0600` key, RF-11) is not used yet |
 | remoted, authd, apid | `certs/remoted.pem`, `apid.pem`, `root-ca.pem`, or the names configured in `wazuh-manager.conf` and `api.yaml` (directly in `certs/`) | `root:wazuh-manager 0640`; the leaf, then its intermediates and optionally the root (what `--install` writes: leaf + CA); each daemon sends the whole file |
 | indexer connector, clusterd | `certs/indexer-ca.pem`, `indexer-connector.pem`, `indexer-connector-key.pem`; keystore `indexer` family | `root:wazuh-manager 0640` |
-| `wazuh-manager-control` | exit status and stderr of `--check` / `--prestart` | non-zero refuses the start; for `--check` the message follows the relayed lines: `UNSAFE` → unsafe, `INVALID` → invalid, neither → cannot check (error 22); `--prestart` → unresolved (error 21) |
+| `wazuh-manager-control` | exit status and stderr of `--check` / `--prestart` | non-zero refuses the start; for `--check` the message follows the relayed lines, first match wins: `UNSAFE` → unsafe, `INVALID` → invalid (error 22), `MISSING` → unresolved (error 21), none of them → cannot check (error 22); `--prestart` → unresolved (error 21). Both steps are skipped when the program is missing or not executable |
+| DEB `postinst`, RPM `%post` | exit status and stderr of `--install` / `--upgrade`, and whether `export/credentials.env` exists afterwards | stderr is captured and relayed after stdout; on a fresh install the saved-password hint is printed only when the file exists, and a non-zero exit or any `MISSING`, `INVALID` or `UNSAFE` line prints that the resolution is incomplete and names `--install` as the command to repeat. The problem-line grammar is therefore read by two consumers |
 | the indexer (producer) | — | `/etc/wazuh-indexer/export/{credentials.env,ca.pem,manager-client.pem,manager-client-key.pem}`, root-owned, not group- or world-writable |
 
 ## Tests

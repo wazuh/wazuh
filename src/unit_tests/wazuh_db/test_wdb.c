@@ -141,6 +141,54 @@ void test_wdb_open_global_create_error(void **state)
     wdb_destroy(node);
 }
 
+/* Tests wdb_open_mitre */
+
+void test_wdb_open_mitre_read_only(void **state)
+{
+    wdb_t *ret = NULL;
+    wdb_t *node = wdb_init(WDB_MITRE_NAME);
+
+    expect_string(__wrap_wdb_pool_get_or_create, name, WDB_MITRE_NAME);
+    will_return(__wrap_wdb_pool_get_or_create, node);
+
+    // Never READWRITE: `mitre sql` takes any statement, and the database must not change
+    expect_string(__wrap_sqlite3_open_v2, filename, "var/db/mitre.db");
+    will_return(__wrap_sqlite3_open_v2, (sqlite3 *)1);
+    expect_value(__wrap_sqlite3_open_v2, flags, SQLITE_OPEN_READONLY);
+    will_return(__wrap_sqlite3_open_v2, SQLITE_OK);
+
+    ret = wdb_open_mitre();
+
+    assert_ptr_equal(ret, node);
+    assert_string_equal(ret->id, WDB_MITRE_NAME);
+    assert_non_null(ret->db);
+    wdb_destroy(ret);
+}
+
+void test_wdb_open_mitre_error(void **state)
+{
+    wdb_t *ret = NULL;
+    wdb_t *node = wdb_init(WDB_MITRE_NAME);
+
+    expect_string(__wrap_wdb_pool_get_or_create, name, WDB_MITRE_NAME);
+    will_return(__wrap_wdb_pool_get_or_create, node);
+
+    expect_string(__wrap_sqlite3_open_v2, filename, "var/db/mitre.db");
+    will_return(__wrap_sqlite3_open_v2, NULL);
+    expect_value(__wrap_sqlite3_open_v2, flags, SQLITE_OPEN_READONLY);
+    will_return(__wrap_sqlite3_open_v2, SQLITE_CANTOPEN);
+
+    will_return(__wrap_sqlite3_errmsg, "unable to open database file");
+    expect_string(__wrap__merror, formatted_msg, "Can't open SQLite database 'var/db/mitre.db': unable to open database file");
+    will_return(__wrap_sqlite3_close_v2, OS_SUCCESS);
+    expect_function_call(__wrap_wdb_pool_leave);
+
+    ret = wdb_open_mitre();
+
+    assert_null(ret);
+    wdb_destroy(node);
+}
+
 /* Tests wdb_exec_row_stmt_multi_column */
 
 void test_wdb_exec_row_stmt_multi_column_one_int(void **state) {
@@ -1579,6 +1627,31 @@ void test_wdb_check_fragmentation_node_null(void **state)
     os_free(value);
 }
 
+void test_wdb_check_fragmentation_skips_mitre(void **state)
+{
+    // wdb_pool_keys
+    rb_tree * tree = rbtree_init();
+    char *value = strdup("testing");
+    rbtree_insert(tree, WDB_MITRE_NAME, value);
+    char** keys = rbtree_keys(tree);
+
+    will_return(__wrap_wdb_pool_keys, keys);
+
+    // Open (read-only), yet never measured nor vacuumed: no SQLite call is expected
+    wdb_t *node = wdb_init(WDB_MITRE_NAME);
+    node->db = (sqlite3 *)1;
+    expect_string(__wrap_wdb_pool_get, name, WDB_MITRE_NAME);
+    will_return(__wrap_wdb_pool_get, node);
+
+    expect_function_call(__wrap_wdb_pool_leave);
+
+    wdb_check_fragmentation();
+
+    rbtree_destroy(tree);
+    os_free(value);
+    wdb_destroy(node);
+}
+
 void test_wdb_check_fragmentation_get_state_error(void **state)
 {
     // wdb_pool_keys
@@ -2970,6 +3043,9 @@ int main() {
         // wdb_open_global
         cmocka_unit_test(test_wdb_open_global_pool_success_wdb_in_pool_db_open),
         cmocka_unit_test(test_wdb_open_global_create_error),
+        // wdb_open_mitre
+        cmocka_unit_test(test_wdb_open_mitre_read_only),
+        cmocka_unit_test(test_wdb_open_mitre_error),
         // wdb_exec_row_stm
         cmocka_unit_test_setup_teardown(test_wdb_exec_row_stmt_multi_column_one_int, setup_wdb, teardown_wdb),
         cmocka_unit_test_setup_teardown(test_wdb_exec_row_stmt_multi_column_multiple_int, setup_wdb, teardown_wdb),
@@ -3056,6 +3132,7 @@ int main() {
         cmocka_unit_test(test_wdb_update_last_vacuum_data_ok_constraint),
         // wdb_check_fragmentation
         cmocka_unit_test(test_wdb_check_fragmentation_node_null),
+        cmocka_unit_test(test_wdb_check_fragmentation_skips_mitre),
         cmocka_unit_test(test_wdb_check_fragmentation_get_state_error),
         cmocka_unit_test(test_wdb_check_fragmentation_get_last_vacuum_data_error),
         cmocka_unit_test(test_wdb_check_fragmentation_commit_error),

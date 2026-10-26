@@ -255,6 +255,14 @@ TEST(ParsecResultTest, ValueMove)
     ASSERT_EQ(valTest, getVal(result.value()));
 }
 
+TEST(ParsecResultTest, ValueOnFailureThrows)
+{
+    parsec::Result<resT> result {{}, {false, 0, "message", {}}};
+    const auto& constResult = result;
+    ASSERT_THROW(constResult.value(), std::bad_optional_access);
+    ASSERT_THROW(result.value(), std::bad_optional_access);
+}
+
 TEST(ParsecResultTest, Error)
 {
     parsec::Result<resT> result {{}, {false, 0, "message", {}}};

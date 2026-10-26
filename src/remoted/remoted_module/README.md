@@ -21,12 +21,19 @@ remoted_module/
 │   ├── remotedModule.cpp           # extern "C" shims + facade delegation + log sink definition
 │   ├── remotedModuleFacade.hpp     # worker thread + lifecycle; owns the HTTP server + auth + endpoints
 │   ├── auth/                       # ns remoted::auth — framework-agnostic JWT bearer auth (see below)
+│   │   ├── authTypes.hpp/.cpp          # shared contract: AuthenticatedRequest/Payload/AuthError/AuthConfig
+│   │   ├── authMiddleware.hpp/.cpp     # AuthMiddleware::authenticate() + publicErrorFor() (the 401 classes)
+│   │   ├── iAgentKeystore.hpp          # key-lookup interface
+│   │   ├── keystore.hpp/.cpp           # client.keys reader + hot-reload watcher
+│   │   ├── addressRule.hpp/.cpp        # the client.keys ip column as an address rule
 │   │   ├── passwordKeySource.hpp/.cpp  # /etc/wazuh-manager/authd.pass -> HKDF key of the shared-key wazuh-enroll+jwt, see Agent enrollment below
 │   │   └── tokenKeySource.hpp/.cpp     # /etc/wazuh-manager/enrollment_tokens.json -> per-token HKDF keys (read-only replica of authd's store)
 │   ├── common/                     # ns remoted::common — leaf utilities with no layer of their own:
 │   │                               #   logThrottle.hpp (rate-limited logging), zstdDecoder.hpp/.cpp,
 │   │                               #   vdClient.hpp/.cpp (cached VD feed-offset UDS client, see below),
-│   │                               #   requestOutcomeMetrics.hpp (per-endpoint responses.* + latency)
+│   │                               #   requestOutcomeMetrics.hpp (per-endpoint responses.* + latency),
+│   │                               #   installPaths.hpp (socket and data paths, relative to the home;
+│   │                               #   the shared group directory, absolute under /etc/wazuh-manager)
 │   ├── decoding/                   # ns remoted::decoding — Content-Encoding policy (see below)
 │   ├── http_server/                # ns remoted::http — transport-agnostic HTTP(S) sub-layer (see below);
 │   │                               #   tlsCertificateStatus.hpp/.cpp = served-certificate expiry + CA
@@ -36,15 +43,11 @@ remoted_module/
 │   │                               #   certificates re-serialised (parse cached by content hash) + the
 │   │                               #   verdicts, judged against the clock on every call;
 │   │                               #   fileRead.hpp/.cpp = bounded, injectable POSIX read + failure cause;
-│   │                               #   endpointRateLimiter.hpp/.cpp = token bucket per endpoint
-│   ├── endpoints/                  # ns remoted::endpoints — endpoint contract + auth gateway (see below);
-│   │   │                           #   endpoint.hpp also carries the remoted.auth.reject.* catalog
-│   │   ├── cacertsEndpoint.hpp/.cpp    # GET /cacerts: publishes remote.https.ca_certificate's certificates (see below)
-│   │   ├── cacertsMetrics.hpp          # remoted.cacerts.* + remoted.server.tls.* name catalog
-│   │   ├── controlEndpoint.hpp/.cpp    # POST /control JSON dispatch (see below)
-│   │   ├── downloadMetrics.hpp         # remoted.download.* catalog (POST /download)
-│   │   ├── rateLimitGate.hpp/.cpp      # EndpointRateLimiter admission (Gate) + route wrapper; 429 + Retry-After (see below)
-│   │   └── scanVdEndpoint.hpp/.cpp     # POST /scan/vd JSON dispatch (see below)
+│   │                               #   endpointRateLimiter.hpp/.cpp = token bucket per endpoint;
+│   │                               #   the full file list is in the sub-layer's own tree below
+│   ├── endpoints/                  # ns remoted::endpoints — endpoint contract + auth gateway + one file
+│   │                               #   pair per route (full tree under "Endpoints" below); endpoint.hpp
+│   │                               #   also carries the remoted.auth.reject.* catalog
 │   ├── control/                    # ns remoted::control — 5.x agent control messages (/control);
 │   │                               #   metrics.hpp = remoted.control.* catalog
 │   ├── scanvd/                     # ns remoted::scanvd — on-demand VD re-scan passthrough (/scan/vd,
@@ -80,7 +83,8 @@ remoted_module/
 Each internal concern is a folder under `src/` (namespaced, PRIVATE, reachable by prefix —
 `"auth/...`", `"common/...`", `"decoding/...`", `"http_server/...`", `"endpoints/...`",
 `"control/...`", `"scanvd/...`", `"downstream/...`", and `"enrollment/...`" — since `src/` is on
-the include path). Endpoints are flat files under `src/endpoints/`.
+the include path). Endpoints are flat files under `src/endpoints/`, except `POST /enroll`, whose
+handler is `src/enrollment/enrollmentEndpoint.hpp/.cpp`.
 
 ## HTTP(S) server sub-layer (`src/http_server/`)
 
@@ -104,6 +108,13 @@ src/http_server/
 ├── certificateDescriptor.hpp/.cpp # one certificate as GET /tls reports it (RFC 2253 names, SANs, epoch
 │                            #   validity; identity and bundle hash come from ca_bundle)
 ├── tlsInventory.hpp/.cpp    # TlsInventory (served leaf + CA snapshot from ONE call) and the GET /tls document
+├── caCertificateSource.hpp/.cpp # the CA file as ONE bounded read: parse cached by content hash, verdicts
+│                            #   judged against the clock on every call (GET /cacerts, GET /tls, notify)
+├── caPublicationRecord.hpp/.cpp # the private record of the bundle's last publication (var/run/remoted-ca-bundle/)
+├── caRecordEvents.hpp/.cpp  # CaRecordEvent derivation + the bounded CaRecordEventMailbox
+├── fileRead.hpp/.cpp        # bounded, injectable POSIX read + failure cause
+├── endpointRateLimiter.hpp/.cpp # token bucket per endpoint (GET /cacerts, POST /enroll)
+├── headerUtils.hpp          # case-insensitive header lookup
 ├── httpServerConfig.hpp/.cpp# buildHttpServerConfig(): C-ABI struct -> HttpServerConfig (+ fallbacks)
 ├── httpServerFactory.hpp    # makeHttpServer() -> the single transport swap point
 ├── handshakeLedger.hpp/.cpp # connections holding a slot, which are mid-handshake and from where; the
@@ -176,7 +187,8 @@ src/http_server/
 
 - **Endpoint registration:** `addRoute(Method, path, handler)` before `start()`. Paths are
   **logical**: the transport serves every route under `HttpServerConfig::globalPrefix`
-  (`<remote><https><global_prefix>`; `""` == `/` == no prefix). With a prefix in effect the
+  (`<remote><https><global_prefix>`, schema default `/wazuh-manager/`; `/` means no prefix — the
+  transport also treats `""` so, but the config reader rejects an empty value). With a prefix in effect the
   unprefixed paths answer `404`, and the health route `"/"` is registered as the bare prefix so
   `GET /<prefix>` and `GET /<prefix>/` both answer. `request.target` is **never rewritten** — the
   router matches the raw (prefixed) target, so agents send the full prefixed path and proxies must
@@ -315,24 +327,34 @@ src/http_server/
   > no longer counts against `max_inflight_bytes` — the **deferred-work limiter** (above) is what
   > bounds that phase.
 - **Configuration** (via the C-ABI struct; no environment-variable fallback anywhere anymore).
-  Four groups of fields, each field falling back to a built-in default when `<=0`/empty:
+  The fields fall in five groups. Most fall back to a built-in default when `<=0`/empty; the
+  exceptions carry their own encoding, noted where they appear (`downstream_stateful_retry_after`,
+  where `0` means "no header"; the rate limits and `max_handshakes_per_source`, where `0` is a real
+  setting and a `_set` flag or the `-1` sentinel means "unset"; `verification_mode`, unset = `-1`;
+  and the boolean `http_content_encoding_enabled`). The struct itself is
+  [`include/remoted_module.h`](include/remoted_module.h).
     1. RESTinio tuning: `io_threads`, `http_worker_threads`, `http_read_timeout`,
        `http_write_timeout`, `http_request_timeout`, `http_max_url_size`,
        `http_max_header_name_size`, `http_max_header_value_size`, `http_max_header_count`,
-       `http_max_pipelined_requests`, `http_concurrent_accepts`, `http_buffer_size` -- `remoted`
-       populates these from the `remoted.http_*` internal options in `secure.c` (already
-       range-validated there). `io_threads`/`http_worker_threads` are thread-count fields: a
+       `http_max_pipelined_requests`, `http_concurrent_accepts`, `http_buffer_size`,
+       `http_stream_chunk_size` (the `/download` chunk), `http_content_encoding_enabled` --
+       `remoted` populates these from the `remoted.http_*` internal options in
+       `remoted_module_https_config()` (`secure.c`; `io_threads` from `remoted.http_io_threads`),
+       already range-validated there. `io_threads`/`http_worker_threads` are thread-count fields: a
        `<=0` value resolves via `cpp_get_nproc()` (`shared_modules/utils/proc.hpp`, cgroup-aware
        on Linux) in `httpServerConfig.cpp::resolveThreadCount()` -- see *Request lifecycle
-       example* below for the exact multiplier per pool.
+       example* below for the exact multiplier per pool; `http_concurrent_accepts` resolves the
+       same way, with a floor of 2 (`MIN_CONCURRENT_ACCEPTS`).
     2. `<remote><https>` settings, wired from the parsed config in `secure.c`'s
        `w_remoted_build_module_config()`: `port`, `bind_address`, `global_prefix`,
-       `http_max_body_size`, `ca_path`, `ciphers`, `verification_mode`, `dual_stack`.
+       `http_max_body_size`, `ca_path`, `ca_certificate_path` (the CA published on `/cacerts`),
+       `ciphers`, `verification_mode`, `dual_stack`, and the two rate limits `enroll_rate_limit` /
+       `cacerts_rate_limit` with their `rate_limit_set` flag (see `rateLimitGate` below).
        `certificate_path`/`private_key_path` are file paths (not PEM content) opened by the
        module itself, after `remoted` has already dropped root privileges (`Privsep_SetUser()`)
        -- so both files (and `ca_path`, when configured) must be readable by the unprivileged
        user `remoted` runs as. `secure.c` probes the pair, `ca_path` when client-certificate
-       verification is on, and `ca_certificate_path` (the CA published on `/cacerts`) with
+       verification is on, and `ca_certificate_path` with
        `access(R_OK)` (`w_remoted_check_tls_files()`) right after the privilege drop, before remoted writes its PID file, and
        exits with a deterministic ERROR when one is missing or unreadable, so this module's own
        load failure only fires for files that exist and are readable but unusable.
@@ -341,26 +363,35 @@ src/http_server/
        real setting, "no cap", so it travels with a `_set` flag like `jwt_clock_skew`),
        `max_deferred_requests` (default 128),
        `max_requests_per_agent` (default 6) and `max_inflight_bytes_per_agent` (default 0, meaning
-       half of `max_inflight_bytes`) -- populated from the `remoted.max_inflight_bytes`/
+       half of `max_inflight_bytes`; the facade raises any share below `auth_max_decoded_body_size`
+       to it, with a WARN) -- populated from the `remoted.max_inflight_bytes`/
        `remoted.max_parallel_connections`/`remoted.max_handshakes_per_source`/`remoted.max_deferred_requests`/
        `remoted.max_requests_per_agent`/`remoted.max_inflight_bytes_per_agent` internal options in
        `secure.c` (same pattern as group 1).
        The transport still clamps the in-flight budget up to at least one max-size request at
        start(), so a too-small value can't reject everything.
     4. Downstream client + auth middleware tuning: `downstream_connect_timeout`,
-       `downstream_write_timeout`, `downstream_response_timeout`, `downstream_io_threads`,
-       `downstream_post_process_threads`, `downstream_max_response_body_size`,
+       `downstream_write_timeout`, `downstream_response_timeout`,
+       `downstream_stateful_response_timeout`, `downstream_stateful_retry_after`,
+       `downstream_io_threads`, `downstream_post_process_threads`,
+       `downstream_max_response_body_size`,
        `jwt_max_age`, `jwt_clock_skew`, `auth_max_body_size`, `auth_max_decoded_body_size` -- populated from the
        `remoted.downstream_*`/`remoted.jwt_*`/`remoted.auth_*` internal options in `secure.c` and translated by
        `remoted::downstream::buildDownstreamConfig()` (`downstream/downstreamConfig.cpp`) and
        `remoted::auth::buildAuthConfig()` (`auth/authTypes.cpp`) respectively; the facade calls
        both in `startHttpServer()` instead of default-constructing `DownstreamConfig{}`/
-       `AuthConfig{}`. The first three are seconds in the C-ABI struct, converted to milliseconds
+       `AuthConfig{}`. The timeouts are seconds in the C-ABI struct, converted to milliseconds
        internally. `downstream_io_threads`/`downstream_post_process_threads` are thread-count
        fields (`cpp_get_nproc()` on `<=0`, same as group 1). See *Deferred forwarding* and
        *Agent<->manager auth middleware* below.
-  See [HTTPS Agent API](../../../docs/ref/modules/remoted/https-events-api.md#configuration) for
-  the full reference (defaults, allowed ranges).
+    5. Everything else is consumed by one subsystem and documented with it: `worker_node`,
+       `cluster_name` and `keystore_refresh_interval` (the `client.keys` watcher, see
+       *Hot-reload*); the `/control` block (`manager_version`, `allow_higher_versions`,
+       `limits_json` and the `control_*` tunables, see the /control *Configuration*);
+       `vd_scan_read_timeout_sec`/`vd_scan_write_timeout_sec` (`/scan/vd`); and the enrollment
+       block (`enrollment_enabled`, `enroll_*`, `authd_*`, see the /enroll *Configuration*).
+  Every `remoted.*` option, with its default and range, is documented once in the operator
+  reference: [Remoted configuration](../../../docs/ref/modules/remoted/configuration.md#https-agent-server-remoted_module).
 - **Restart-friendly bind:** the RESTinio acceptor sets `SO_REUSEADDR`
   (`acceptor_options_setter`), so a manager restart rebinds the port immediately instead of
   failing with `EADDRINUSE` while the previous socket lingers in `TIME_WAIT`.
@@ -369,14 +400,17 @@ src/http_server/
 
 ## Endpoints (`src/endpoints/`)
 
-Ties the transport and the auth layer together and defines the endpoint contract; future endpoints
-each get a folder here.
+Ties the transport and the auth layer together and defines the endpoint contract; each route's
+policy is one flat file pair here (`/enroll`'s lives in `src/enrollment/`). Subsystems with state of
+their own get a folder beside this one (`control/`, `scanvd/`, `enrollment/`).
 
 ```
 src/endpoints/
 ├── endpoint.hpp/.cpp        # shared contract: type aliases (Method/HttpResponse/IHttpResponder/
 │                            #   AuthenticatedRequest) + the async AuthenticatedHandler typedef,
-│                            #   plus errorResponseFor(AuthError) (the {"error","code"} response shape)
+│                            #   errorResponseFor(AuthError, agentContext) (the {"error","code"} shape;
+│                            #   logs and counts every rejection) and the remoted.auth.reject.* catalog
+│                            #   (AuthRejectMetrics, makeAuthRejectMetrics(), installAuthRejectMetrics())
 ├── authGateway.hpp/.cpp     # runs the auth middleware, then hands the verified request + responder
 │                            #   to the endpoint handler. Authentication only — body decoding is an
 │                            #   injected IBodyDecoder it knows nothing about
@@ -384,9 +418,13 @@ src/endpoints/
 ├── statefulEndpoint.hpp/.cpp # /stateful policy: opaque inventory-sync sessions, contract passthrough
 ├── statsEndpoint.hpp/.cpp    # /stats policy: forwards to modulesd's inventory sync server
 ├── configEndpoint.hpp/.cpp   # /config policy: near-duplicate of statsEndpoint, on purpose
+├── controlEndpoint.hpp/.cpp  # /control JSON dispatch to control::ControlHandler (see below)
+├── scanVdEndpoint.hpp/.cpp   # /scan/vd JSON dispatch to scanvd::ScanVdHandler (see below)
 ├── downloadEndpoint.hpp/.cpp # /download policy: request grammar + resource resolution + file streaming
+├── downloadMetrics.hpp       # remoted.download.* name catalog
 ├── iAgentGroupSource.hpp     # interface: the selector an authenticated agent may download
 ├── cacertsEndpoint.hpp/.cpp  # GET /cacerts: the CA the listener cert chains to, certificates only (no auth)
+├── cacertsMetrics.hpp        # remoted.cacerts.* + remoted.server.tls.* name catalog
 ├── rateLimitGate.hpp/.cpp    # per-endpoint rate limit of the two unauthenticated routes
 └── agentRequestLimiter.hpp   # per-agent open-request cap + the AdmittedResponder that releases it
 ```
@@ -475,8 +513,8 @@ src/endpoints/
   SSL-server purpose added, so it can differ from `matchesLeaf` in both directions), which play no
   part in this response and which the transport logs (`WARN`/`INFO`) in `logCertificateStatus()`.
   Neither does the publication verdict the same read produces (issue #39319):
-  [`ca_bundle`](../../shared_modules/ca_bundle/README.md)'s `vouch()` is called once per read that
-  changed the bytes, and `publication`/`vouchFailure`/`block`/`serializedBytes`/`fileSha256` travel
+  [`ca_bundle`](../../shared_modules/ca_bundle/README.md)'s `vouchGivenChain()` is called on every
+  judgement, with the chain verdict just computed, and `publication`/`vouchFailure`/`block`/`serializedBytes`/`fileSha256` travel
   with the snapshot — an unvouched bundle is served exactly as a vouched one, and the difference is
   the generation agents are told about (0 when no guard vouched for it) plus the log line that names
   the guard. `CaCertificateSource::descriptor()` is the read-mostly view of that generation for
@@ -530,7 +568,9 @@ src/endpoints/
   path that answers every agent's notify never waits on a disk write. A **sixth** delivery point
   runs once, at `stopAccepting()`, after the monitor thread has stopped and the worker pool has been
   joined — the last chance to say what the last read noticed, so an event nobody has drained yet is
-  not lost when the listener closes. Start, the tick, the recheck and `GET /cacerts` are the ones that persist,
+  not lost when the listener closes. Every delivery point except the notify path persists — start,
+  the tick, the recheck, `GET /cacerts` and the close-time delivery (so the next start does not
+  re-announce a publication as new) —
   and each pairs its `flushPendingRecord()` with a **second** delivery right after it
   (`deliverAndPersistRecordEvents()`), so a `record_unwritable` that flush itself produces comes out
   in that same call instead of waiting for the next drain. Every event is still said exactly once,
@@ -545,7 +585,9 @@ src/endpoints/
   `payload.bytes()` view, and `payload.release()` frees the body + byte budget early (keeping the
   responder) once it has been forwarded — see *Single-copy payload* above.
 - **`AuthGateway`** owns one `AuthMiddleware` and exposes
-  `addAuthenticatedRoute(IHttpServer&, Method, path, AuthenticatedHandler)`. It registers a raw
+  `addAuthenticatedRoute(IHttpServer&, Method, path, AuthenticatedHandler, ResponseMode mode = Buffered,
+  std::shared_ptr<const IBodyDecoder> routeDecoder = nullptr)` (the last two: `/download`'s
+  `Streamable` mode and `/stateful`'s own decoder). It registers a raw
   async route whose worker-thread body runs the full validation (`AuthMiddleware::authenticate()`,
   always synchronous — HMAC over CPU, off the I/O threads), maps any `AuthError` through
   `errorResponseFor()` (which wraps `publicErrorFor()`) to the client status/message on failure, and
@@ -556,7 +598,8 @@ src/endpoints/
   facade registers **`POST /stateless`** with `stateless::makeHandler(forwarder, socketPath, metrics)`: once
   auth succeeds it checks the H-line prefix and size, then forwards the H/E batch to the engine
   over UDS (see *Deferred forwarding*) and replies from the downstream result
-  (`202`/`400`/`413`/`503`); `400`/`401`/`413` auth rejections come straight from the gateway.
+  (`202`/`400`/`413`/`503`); the gateway's own rejections (`400`/`401`/`413`/`415`, and `503` for
+  an agent over its per-agent share) come straight from it.
 - **Per-endpoint policy (`statelessEndpoint.hpp/.cpp`):** each endpoint owns *what* it forwards and
   *how* it maps the answer, kept out of the generic `downstream/` machinery. `stateless::target(socket,
   agentId)` builds the engine ingest `DownstreamTarget` (`POST /events/enriched`, `application/x-ndjson`,
@@ -565,7 +608,9 @@ src/endpoints/
   its own `target`/`postProcess`.
   `stateless::validatePayloadIdentity(req)` is a pure pre-forward slice check: the body must
   start with literal `H `, and the bytes after it before the first LF (or end of body) must not
-  exceed 8 KiB. A missing prefix or oversized slice returns `AuthError::PayloadAgentMismatch`.
+  exceed 8 KiB (`kMaxHeaderLineJsonSize`, the shared `HTTPS_HEADER_LINE_JSON_MAX_BYTES` from
+  `src/shared_modules/common/httpsHeaderLine.hpp`, which the agent also trims its H line to). A
+  missing prefix or oversized slice returns `AuthError::PayloadAgentMismatch`.
   It does not parse JSON or read the claimed agent id. Empty or malformed JSON and header-only
   bodies that pass this check are left to the engine's batch parser.
 
@@ -580,18 +625,21 @@ src/endpoints/
   Otherwise it forwards the unchanged body with the authenticated carrier, and maps an engine 400
   to the same neutral `400 Invalid event batch`. Identity rejections count in the engine's
   `agent.cache.rejected.identity`; remoted's `payload_mismatch` counts only local slice failures.
+  This is the single `AuthenticatedHandler` the facade registers for `/stateless`.
 - **`POST /stats` and `POST /config` (`statsEndpoint`, `configEndpoint`).** Same authenticated
   pipeline as `/stateless`, but forwarded to **modulesd's inventory sync server**
   (`queue/sockets/inventory-sync-http.sock`) instead of the engine. Nothing on THIS side interprets either
-  document — but the far side does, and no longer trivially: it validates a specific shape
-  (`/stats` an object keyed by module, `/config` an array of `{module, config}` pairs), rebuilds it
+  document — but the far side does, and no longer trivially: it validates a specific shape (both
+  an object carrying a non-empty `modules` object keyed by module name, each module's value an
+  object), rebuilds it
   into an indexable document, and writes one document per agent keyed by the agent id into
   `wazuh-agent-stats` / `wazuh-agent-config`
   (`wazuh_modules/inventory_sync_server/src/endpoints/{stats,config}Endpoint.hpp`). A malformed
   report is rejected whole, with a `400` this side maps to its own fixed message. Note the indexer
   write there is fire-and-forget, so a `200` from here means *accepted*, not *indexed*, and an
-  indexer-side rejection is invisible from here. `wazuh-agent-stats` is `dynamic: true`, so an
-  undeclared metric is indexed like any other field rather than rejected. Three things differ from
+  indexer-side rejection is invisible from here. `wazuh-agent-stats` and `wazuh-agent-config` are
+  `dynamic: strict_allow_templates`: an undeclared metric or key is mapped by a dynamic template from
+  the type of its first value, and a type conflict rejects the whole document. Three things differ from
   `/stateless`:
   - **They forward the authenticated agent id as an `X-Wazuh-Agent-Id` header, and here it is the only
     id.** These documents do not carry the id, and modulesd is what writes it in, so it has to receive
@@ -599,10 +647,12 @@ src/endpoints/
     the same header next to an H line that also names the agent. The value comes from the Authorization
     header the gateway already verified, never from the body, so a document claiming a different agent
     cannot override it.
-  - **They differ from each other only in what a success carries back.** `/config`'s `postProcess`
-    passes the downstream body through (`200` + modulesd's JSON), unlike `/stateless` which discards it;
-    `/stats` answers a fixed `{}` instead, since the agent has nothing to read back and a constant keeps
-    an arbitrary downstream string off the wire. Failure statuses are collapsed to fixed local messages
+  - **They differ from each other only in how a success is built — not in what the agent gets.**
+    `/config`'s `postProcess` passes the downstream body through (`200` + modulesd's body), unlike
+    `/stateless` which discards it; `/stats` answers a fixed `{}`, since the agent has nothing to read
+    back and a constant keeps an arbitrary downstream string off the wire. The sync server itself
+    answers both with `200 {}` (`inventory_sync_server/src/endpoints/configEndpoint.cpp`), so on the
+    wire both routes answer `200 {}`. Failure statuses are collapsed to fixed local messages
     on both, so an arbitrary downstream string is never reflected back to an agent either way.
   - **The only endpoint-level validation is "body is not empty" → `400`.** Parsing is modulesd's job;
     doing it on both sides would walk the payload twice on the hot path. Rejecting an empty body here
@@ -623,16 +673,20 @@ src/endpoints/
     `413`, `500` scan failed, `503` + `Retry-After`). The bodies are produced by the manager's own
     sync server (never echoed agent input), which is what makes reflecting them safe; anything
     outside that set — plus every transport failure — still collapses to a neutral `503`. Of the
-    downstream headers only a digits-only `Retry-After` on a `503` is relayed (the one header in the
-    contract); this is why `DownstreamResponse` grew a `headers` field (names lower-cased, capped by
-    `kMaxResponseHeaderBytes`).
+    downstream headers only a digits-only `Retry-After` of at most 6 characters on a `503` is
+    relayed (the one header in the contract); this is why `DownstreamResponse` grew a `headers`
+    field (names lower-cased, capped by `kMaxResponseHeaderBytes`). remoted also sends a
+    `Retry-After` **of its own**: when its own response deadline expires
+    (`DownstreamError::ResponseTimeout`), the neutral `503` carries
+    `remoted.downstream_stateful_retry_after` (default 20 s, `0` sends none) — see the per-agent
+    share discussion above for why (`statefulEndpoint.cpp`, `postProcess`).
   - **A dedicated, longer response deadline** (`remoted.downstream_stateful_response_timeout`,
     default 20 s) flows into the target's `responseTimeoutMs` override: sessions are validated,
     indexed and flushed *within* the request, unlike the enqueue-style endpoints on the global 5 s
     default. Its default budget (2+5+20 s) deliberately stays inside `http_request_timeout` (30 s);
     raising it past that requires raising the request cap too (the facade warns at startup).
-- **Handler exceptions → 500:** if an endpoint handler throws, the gateway catches it, logs a
-  warning and answers `500` (`{"error":"Internal server error","code":500}`), so an exception never
+- **Handler exceptions → 500:** if an endpoint handler throws, the gateway catches it, logs an
+  ERROR and answers `500` (`{"error":"Internal server error","code":500}`), so an exception never
   escapes onto the worker-pool thread (which would `std::terminate`). The responder's send-once
   guarantee makes the 500 a no-op if the handler had already replied.
 
@@ -646,7 +700,7 @@ fetches pending tasks from task-manager for the agent.
 ```
 src/control/
 ├── controlTypes.hpp          # DTOs: AgentId, StartupData, NotifyData, ShutdownData, HostInfo, HttpResponse
-├── controlConfig.hpp/.cpp    # ControlConfig + buildControlConfig() from C-ABI fields
+├── controlConfig.hpp/.cpp    # control::Config + buildControlConfig() from C-ABI fields
 ├── metrics.hpp               # ControlMetrics (remoted.control.* registry handles + wdb latency histogram)
 ├── controlHandler.hpp/.cpp   # ControlHandler: core business logic for all three message types
 ├── agentRegistry.hpp/.cpp    # AgentRegistry: thread-safe sharded map (agent metadata cache + eviction)
@@ -654,7 +708,8 @@ src/control/
 │                             #   agent as config_token, shared so /download resolves the same string
 ├── registryAgentGroupSource.hpp/.cpp # RegistryAgentGroupSource: IAgentGroupSource over the registry
 │                             #   (answers "which selector may this agent download?", nullopt = deny)
-├── wazuhDBClient.hpp/.cpp    # WazuhDBClient: async UDS client to wazuh-db (agent status/data updates)
+├── wazuhDBClient.hpp/.cpp    # WazuhDBClient: async client to wazuh-db over wdb.sock, length-prefixed
+│                             #   text commands (agent groups, status/data updates)
 ├── taskClient.hpp/.cpp       # TaskClient: async HTTP-over-UDS client to task-manager (pending task fetch)
 ├── mergedMgWatcher.hpp/.cpp  # MergedMgWatcher: inotify watcher for <group>/merged.mg under /etc/wazuh-manager/shared and var/multigroups
 └── hashCache.hpp/.cpp        # HashCache: settings hash (compute-once) + merged.mg config hash cache
@@ -769,8 +824,8 @@ sequenceDiagram
      today that means its value *is* the group selector. Never empty (`"default"` when the CSV is)
    - Queries task-manager for pending tasks (`status='pending'`); if found, marks as `delivered` (local only, no cluster broadcast)
    - Reads this node's current Vulnerability Detection feed offset via `VdClient` (cached, see
-     `common/vdClient.hpp` below) and includes it as `vd_feed_offset` — always present, 0 if the VD
-     module has never completed a feed update or is temporarily unreachable
+     `common/vdClient.hpp` below) and includes it as `vd_feed_offset` — always present; the last
+     known-good value while VD is unreachable, and 0 only if no value was ever obtained
    - Reads the CA bundle's published generation through `Config::caGenerationProvider` (issue
      #39319, RF-3) and includes it as `ca_generation` — the SAME generation `GET /cacerts`'s
      `Wazuh-CA-Generation` header would answer right now, at the cost of at most one file read per
@@ -783,12 +838,13 @@ sequenceDiagram
      *this manager does not know*, which is not the same as the confirmed-empty `null`, and an agent
      must not conflate the two
    - **Response** (`agent`/`settings_hash`/`tasks`/`vd_feed_offset` always present -- `tasks` is
-     `[]` when there is no work, never an absent key; `ca_generation` is the one field that can be
-     missing, per the state above). `nlohmann::json` serialises object keys alphabetically, so on
+     `[]` when there is no work, never an absent key; `ca_generation` is the one field whose value can
+     be `null`, per the state above; the key is sent whenever the handler has a CA provider, which the
+     facade always installs). `nlohmann::json` serialises object keys alphabetically, so on
      the wire `ca_generation` lands between `agent` and `settings_hash`, exactly as below:
      ```json
      {
-       "agent": {"groups": ["web-servers"], "config_token": "web-servers", "config_hash": "e3b0c44..."},
+       "agent": {"config_hash": "e3b0c44...", "config_token": "web-servers", "groups": ["web-servers"]},
        "ca_generation": 1758000000,
        "settings_hash": "d7a8fbb...",
        "tasks": [],
@@ -838,6 +894,7 @@ stores:
 - `lastKeepaliveUpdateSec` — timestamp of last wazuh-db write (for throttling)
 - `lastActivitySec` — timestamp of last control message (any type)
 - `createdAtSec` — timestamp of first insertion into registry
+- `hostPersisted` — whether a host-carrying notify has already been written (see the throttle above)
 
 Supports:
 - `update(id, updateFn)` — atomic read-modify-write via a lambda (returns the new entry)
@@ -886,24 +943,31 @@ Sharding (8 shards) minimizes lock contention on high-frequency keepalives from 
 
 #### WazuhDBClient (`wazuhDBClient.hpp/.cpp`)
 
-Async UDS client to `queue/sockets/wdb.sock` with a **pool of worker threads** (one persistent
-connection each; `wdbRequestConnections`, from `remoted.control_wdb_request_connections`, default 4),
-a **bounded request queue** and a **reaper** thread.
+Async client to `queue/sockets/wdb.sock` — **not HTTP**: wazuh-db's length-prefixed protocol
+(`Socket<OSPrimitives, SizeHeaderProtocol>`) carrying its text commands (`global select-agent-group
+<id>`, …) — with a **pool of worker threads** (one persistent connection each; `wdbRequestConnections`,
+from `remoted.control_wdb_request_connections`, default 4), a **bounded request queue** and a
+**reaper** thread.
 Exposes:
 - `getAgentGroups(id, callback)` — async `global select-agent-group`, used by `/control` startup and
-  by the notify refresh. It answers an `AgentGroupsResult`: `noRow` when the local replica has no
+  by the notify refresh (a `notify` whose cached group membership is older than
+  `groupsRefreshIntervalSec`). It answers an `AgentGroupsResult`: `noRow` when the local replica has no
   row for the agent (`ok []`), otherwise the groups in wazuh-db order (empty for a row with no
   groups). A reply that is not the documented array shape is `SocketError::ProtocolError`, never an
   empty membership. A row with no groups becomes `{"default"}` in every caller (`membershipGroups()`);
   no row is never a membership — `/control` and `/download` answer it `503`.
 - `updateAgentData(...)` — fire-and-forget async write (full agent metadata)
 - `updateKeepalive(...)` — fire-and-forget async write (lightweight)
-- `updateStatusCode(...)` — fire-and-forget async write (e.g., invalid_version rejection)
+- `updateStatusCode(...)` — fire-and-forget async write: the startup write (`Ok` + `pending`) and the
+  invalid_version rejection
+- `updateConnectionStatus(...)` — fire-and-forget async write (`disconnected` on shutdown)
 
 Internally:
-- Each worker keeps a persistent connection and recreates it after a timeout or an I/O error.
-  `SocketClient` retries the connect on its own thread and swallows send failures, so while
-  wazuh-db is down a worker still dequeues and waits on a dead connection.
+- Each worker thread keeps its own persistent connection (`SocketClient`), so there are
+  `wdbRequestConnections` connections; a timeout or I/O error marks it for reconnection, and a
+  failed connect is retried every second. `SocketClient` retries the connect on its own thread and
+  swallows send failures, so while wazuh-db is down a worker still dequeues and waits on a dead
+  connection.
 - Request queue bounded by `maxQueueSize` (`remoted.control_wdb_max_queue_size`) — rejects requests
   with `SocketError::QueueFull` when full (synchronously, on the caller's thread)
 - **Two deadlines.** `deadlineMs` (`remoted.control_wdb_roundtrip_deadline`) bounds one round trip
@@ -911,7 +975,10 @@ Internally:
   from the moment it is queued, and caps the first. The reaper fails every queued request that
   outlives it with `SocketError::Timeout`, and a worker never sends one that has already expired, so
   a burst queued while wazuh-db is down is answered within the deadline instead of one round trip at
-  a time, and is not replayed once wazuh-db is back.
+  a time, and is not replayed once wazuh-db is back. The reaper runs whatever the connection state
+  is, so the expiry holds also while every worker is in its reconnect backoff; a push wakes every
+  worker (`notify_all`), so one in backoff cannot swallow the wake-up meant for a connected one.
+  Every expiry has the same outcome (`wdb_error` counted, the same throttled WARN).
 - **Exactly once.** Each request is owned by exactly one of the reaper, a worker or the destructor's
   drain (`SocketError::Stopping`), each of which takes it off the queue under the queue's mutex
   before calling back.
@@ -953,7 +1020,8 @@ read; `/download` answers it `503`, counted as `remoted.download.unavailable`, l
 #### TaskClient (`taskClient.hpp/.cpp`)
 
 Async HTTP client (`AsioUdsHttpClient`) to `queue/sockets/task-http.sock`, sending
-`POST /v1/tasks/pending`, with its own pool of `tmConcurrency` workers (default 4). Fetches pending
+`POST /v1/tasks/pending`, with its own pool of `tmConcurrency` workers (default 4), each opening a
+connection per request (no persistent connection). Fetches pending
 upgrade/command tasks for an agent via `getPendingTasks(id, callback)`, on `notify` only. Returns a vector of `Task`
 objects (id, type, payload JSON). Uses the same bounded queue + deadline + error throttling pattern.
 
@@ -974,11 +1042,12 @@ config invalidation on their next lookup.
 #### HashCache (`hashCache.hpp/.cpp`)
 
 Two independent, unbounded caches, each guarded by its own `std::shared_mutex`
-(`hashCache.cpp:298-305`) — there is no shared lock and no size-based eviction between them:
+(`hashCache.cpp`, the member block at the end) — there is no shared lock and no size-based eviction between them:
 - `m_settingsHash` — the SHA-256 of the manager's static settings (limits + cluster), a single value
   computed once on first request and cached for the life of the process, under `m_settingsMutex`.
 - `m_configCache` — `std::unordered_map<std::string, std::string>` from a resolved `merged.mg`
-  absolute path to its SHA-256, one entry per group, under `m_configMutex`. Entries grow with the
+  path (absolute under `/etc/wazuh-manager/shared/` for one group, relative to the installation
+  directory under `var/multigroups/` for several) to its SHA-256, one entry per group set, under `m_configMutex`. Entries grow with the
   number of distinct group sets seen and are removed only by `MergedMgWatcher` calling
   `invalidateConfigHash()` when the underlying file changes — never by an entry count or age limit.
 
@@ -1035,8 +1104,9 @@ facade's shared `wazuh_metrics` registry (`shared_modules/metrics`) via `makeCon
 - `remoted.control.startup` — total `POST /control {"type":"startup"}` messages
 - `remoted.control.notify` — total `POST /control {"type":"notify"}` messages
 - `remoted.control.shutdown` — total `POST /control {"type":"shutdown"}` messages
-- `remoted.control.wdb_error` — wazuh-db operation failures (connection, round-trip timeout, queue
-  full, or a request that expired end to end before wazuh-db answered)
+- `remoted.control.wdb_error` — wazuh-db operation failures (round-trip timeout, I/O error, queue
+  full, or a request that expired end to end before wazuh-db answered); a failed connect is logged
+  (ERROR, throttled) but not counted
 - `remoted.control.task_fetch` — successful task fetches from task-manager
 - `remoted.control.task_fetch_error` — task-manager operation failures
 - `remoted.control.rejected` — the endpoint's own 400s (invalid body/JSON/agent-id/type), one
@@ -1073,7 +1143,11 @@ families, lives in **Metrics catalog** below.
 - **Invalid JSON/malformed request**: `400` with specific error code (invalid_body, invalid_json, etc.)
 
 All errors use `LogThrottle` (90-second windows) to avoid log flooding:
-- WARN-level: version rejections, wdb errors, queue full, timeouts
+- ERROR-level: a wazuh-db failure that leaves the agent with no groups (startup, or a notify with
+  nothing cached — the `503` above) and a failed connect to `wdb.sock`
+- WARN-level: version rejections, a wazuh-db failure on a notify that still has cached groups,
+  wazuh-db timeouts, I/O errors and queue full
+- DEBUG1-level: task-manager fetch failures
 - DEBUG1-level per-request logs for startup and shutdown; DEBUG2 for notify (the hot path)
 
 ### Thread safety
@@ -1090,12 +1164,13 @@ and clients, which are all thread-safe internally.
 
 ### Lifecycle
 
-1. **Startup**: `RemotedModuleFacade::startHttpServer()` (called from `start()`) builds `ControlConfig`,
+1. **Startup**: `RemotedModuleFacade::startHttpServer()` (called from `start()`) builds the `control::Config`,
    creates all clients (wazuh-db, task-manager), creates the registry, creates `ControlHandler`, and
    registers `POST /control` via `remoted::endpoints::control::makeHandler(*m_controlHandler, m_controlMetrics)`.
 2. **Runtime**: HTTP worker threads process `/control` requests concurrently. The registry eviction
-   thread runs periodically (every `kRegistryEvictionIntervalSec`, 300 s). Wazuh-db and task-manager
-   clients maintain persistent connections (reconnect on error).
+   thread runs periodically (every `kRegistryEvictionIntervalSec`, 300 s). The wazuh-db client keeps
+   one persistent connection per worker (reconnect on error); the task-manager client connects per
+   request.
 3. **Shutdown**: `RemotedModuleFacade::stop()` stops the HTTP server (drains in-flight requests),
    then resets `ControlHandler` — whose destructor stops and joins the eviction thread first, so
    nothing can touch the registry afterwards, and then drops the wazuh-db and task-manager clients
@@ -1149,9 +1224,12 @@ ID, and dispatches to `ScanVdHandler::handleVdScan()`. Maps each `ScanVdOutcome`
 response:
 - `Accepted` → `200 {}` (VD queued the scan)
 - `VersionMismatch` → `409 {"error":"version_mismatch","current_version":N}`
-- `VdRejected` → `503 {"error":<VD's own cause>}` — `scan_queue_full`, `task_create_failed`,
-  `feed_not_ready`, `scanner_not_ready`, `vd_not_initialized`, `indexer_unavailable`, or
-  `vd_unreachable`/`vd_error` when the relay leg itself failed
+- `VdRejected` → `503 {"error":<VD's own cause>}` — whatever string VD put in its `error` member,
+  whatever VD's status: `scan_queue_full`, `task_create_failed`, `feed_not_ready`,
+  `scanner_not_ready`, `vd_not_initialized`, `indexer_unavailable`, and VD's own `400`/`500` codes
+  (`missing_required_fields`, `invalid_agent_id`, `invalid_request`, `internal_error`) — or
+  `vd_unreachable` (no answer) / `vd_error` (an answer with no readable `error`) when the relay leg
+  itself failed
 - `InvalidAgent` → `400 {"error":"invalid_agent_id"}`
 - Request-shape errors (empty/oversized body, malformed JSON, missing/invalid `type` or
   `feed_offset`) → `400` with a specific `error` code (see
@@ -1173,11 +1251,12 @@ A stateless, synchronous passthrough of VD's admission, run entirely on the HTTP
   5 s each): VD answers at **admission** — a readiness preflight plus recording a `vd_scan` manager
   task (a pending one for the same agent is coalesced) — so the round trip is inline route work,
   never a scan.
-- Relays the answer honestly: VD's `200` → `Accepted`; any VD refusal → `VdRejected` carrying
-  VD's own error code — `indexer_unavailable` included, which keeps its own counter and is VD's
-  own cause to log, exactly like `scan_queue_full`, never folded into the relay-failure window
-  below; an unreachable socket or unexpected status → `VdRejected` with
-  `vd_unreachable`/`vd_error` (logged throttled, one line per 90 s window with its count).
+- Relays the answer honestly: VD's `200` → `Accepted`; any other answer → `VdRejected` carrying
+  VD's own error code, or `vd_unreachable` (no answer) / `vd_error` (no readable `error` member).
+  `scan_queue_full` and `indexer_unavailable` are VD's own causes to log and keep their own
+  counters; **every other** code — `feed_not_ready`, `task_create_failed`, a relay failure… — is
+  counted as `vd_error` and logged here at WARN, throttled (one line per 90 s window with its count
+  and the last code).
 - **No retry, by design**: the agent's pending state survives a `503` and its next `/control`
   notify re-requests — retrying here would only duplicate that loop with a worse deadline.
   Dedup of repeated requests lives in the task manager (VD coalesces into the pending task); queued scans
@@ -1270,7 +1349,9 @@ sequenceDiagram
         Note over EA: always-pass -- nothing left for THIS class to check
     end
     EA-->>EP: EnrollmentGranted{tokenId?} / ReenrollmentRequested / AuthError
-    Note over EP: parse JSON, validate name/version/groups/ip
+    Note over EP: nothing verified (Open, re-enrollment, spent token)?<br/>charge the UNVERIFIED bucket now -- 429 if empty
+    Note over EP: decode the body (zstd), parse JSON,<br/>validate name/groups/ip, then the version policy
+    Note over EP: verified credential? charge the VERIFIED bucket now -- 429 if empty
     EP->>AC: addAgent({name, ip, groups, key_hash, token_id?, reenroll?, source})
     AC->>AD: {"function":"add","arguments":{...}} (SizeHeaderProtocol)
     AD-->>AC: {"error":0,"data":{id,name,ip,key,reenroll_secret}} or {"error":90xx,...}
@@ -1295,8 +1376,11 @@ The bearer itself comes in **three forms**, told apart by the JOSE header's `kid
 | the canonical **agent id** (`001`) | **re-enrollment** (issue #38993): the agent's own re-enrollment secret | HKDF of the 32-byte `reenroll_secret` (label `WAZUH-REENROLL-KEY`) — the secret lives in the master's `global.db` and nowhere else | **authd on the master** (`local_reenroll()`, `os_auth/src/local-server.c`): remoted does NOT verify it and forwards it verbatim as `arguments.reenroll = {kid, bearer}`; authd answers 9026/9027/9028 | whenever presented, in every mode |
 
 The two `kid` shapes are disjoint (a 22-character base64url string is never a canonical digit
-string), so classification is unambiguous; a `kid` of neither shape, or any other header member,
-is not a `wazuh-enroll+jwt` at all and is rejected before any key store is consulted.
+string), so classification is unambiguous. A bearer whose header names a `kid` of neither shape (or
+any other member) is not classified as either form: `peekKid()` returns nothing and the request
+takes the no-`kid` path like any other — granted when `requirePassword` is off, and refused by the
+shared-key verifier (which accepts no `kid` at all) when it is on
+(`enrollmentAuthenticator.cpp`, `authenticate()`).
 
 - **Client certificate** — purely a property of the HTTPS listener's `ClientVerificationMode`
   (`Certificate` or `Full`). When set, the TLS handshake validates the agent's client certificate
@@ -1322,8 +1406,12 @@ is not a `wazuh-enroll+jwt` at all and is rejected before any key store is consu
   `expired`/`revoked` answer is only ever given to a caller that proved it holds the token's secret
   (ids are 128-bit random values, so an `unknown` answer for a guessed id leaks nothing either).
   Expiry uses the same rule authd applies when it consumes the use (`now >= expires` is expired),
-  so the two never disagree on the boundary second. Uses/`max_uses` stay authd's business: the
+  so the two never disagree on the boundary second. Uses/`max_uses` stay authd's decision: the
   verified `token_id` is forwarded and authd is the final word (9022/9023/9024, mapped to `403`).
+  The replica only *reads* them: a token whose `uses` reached `max_uses` is still granted (the
+  replica may be seeing a use authd is about to give back, and a local refusal would make the agent
+  discard a live token), but as **unverified**, so a replayed spent token is paced by the
+  unverified bucket instead of draining the verified one.
 
   For a **re-enrollment** bearer, remoted checks only what it checks for every request (the
   protocol version and the body cap) and hands `{kid, bearer}` to the endpoint unverified: the
@@ -1405,7 +1493,8 @@ enrollment attempt gets `401`, never silently falls back to skipping the passwor
 mirrors authd itself: `/etc/wazuh-manager/authd.pass` is one of the files the cluster's own integrity sync already
 replicates from master to every worker (`framework/wazuh/core/cluster/cluster.json`, alongside
 `client.keys`), and authd treats "password required but not yet synced" as a hard rejection, never
-as a fallback to the NULL-password path (`main-server.c:777-790`) — conflating the two would let an
+as a fallback to the NULL-password path (`main-server.c`, the `use_password && authpass == NULL`
+branch) — conflating the two would let an
 unsynced worker accept anyone. `PasswordKeySource` is **strictly read-only** on every node, master
 or worker alike: only authd's master ever generates the password file (`w_authd_load_password`); a
 worker only reads it, exactly as authd's own `run_authpass_watcher` does.
@@ -1439,13 +1528,14 @@ request.
 #### `TokenKeySource` (`auth/tokenKeySource.hpp/.cpp`)
 
 Read-only, in-memory replica of authd's enrollment token store (`/etc/wazuh-manager/enrollment_tokens.json`,
-`ENROLLMENT_TOKENS_FILE` in os_auth's `defs.h`), keyed by token id, with the `wazuh-enroll+jwt`
+`ENROLLMENT_TOKENS_FILE` in `shared/include/defs.h`), keyed by token id, with the `wazuh-enroll+jwt`
 HS256 key of every **credential-bearing** token already derived (once per load, through the shared
 `deriveEnrollTokenKey()`). Same operational shape and the same watcher as `PasswordKeySource`
 (inotify + a periodic fallback poll + content-hash change detection, torn reads retried). Per token
 it keeps the id (the `kid` the agent presents), the derived key, `expires` and `revoked`; the rest
-of authd's record (`adr`, `pin`/`ca`, `created`, `uses`, `max_uses`, `description`) is deliberately
-not looked at, so a field authd adds later never breaks this reader. Tokens minted **without** a
+of authd's record (`adr`, `pin`/`ca`, `created`, `description`) is deliberately not looked at, so a
+field authd adds later never breaks this reader — except `uses`/`max_uses`, read only to mark a token
+`exhausted` (see the bearer gate above: an exhausted token is granted as unverified). Tokens minted **without** a
 credential (`secret: null` — a public token that only pins the manager's CA) carry nothing an agent
 could authenticate with and are not replicated at all: a `kid` naming one is simply unknown here.
 `reloadIfMissing()` is the cluster-sync mitigation (one forced re-read per unknown `kid`, at most
@@ -1493,14 +1583,15 @@ has always been "trust the caller, validate only business rules." Credential che
 exclusively at each front door (1515's TLS+`PASS:` line, or here). authd structurally *can't*
 re-check either credential even if it wanted to: the plaintext password never leaves remoted, and no
 TLS session reaches the local socket. remoted and authd already run as the same OS service account
-(`Privsep_SetUser()` against the shared default `USER "wazuh"`), so the bridge crosses no new
+(`Privsep_SetUser()` against `USER`, which both CMake files define as `"wazuh-manager"`), so the bridge crosses no new
 privilege boundary — it joins the same trust domain the framework's local-socket client already sits in.
 
 #### `AuthdClient` (`enrollment/authdClient.hpp/.cpp`)
 
 The bridge to authd's local socket `queue/sockets/auth.sock`, framed with `shared_modules/utils`'s
-`Socket<OSPrimitives, SizeHeaderProtocol>` — a 4-byte little-endian length prefix, the exact framing
-`OS_SendSecureTCP`/`OS_RecvSecureTCP` use. Unlike `control/taskClient.cpp`/`control/wazuhDBClient.cpp`,
+`Socket<OSPrimitives, SizeHeaderProtocol>` — a 4-byte length prefix in host byte order, which on
+the little-endian hosts the manager runs on is the exact framing `OS_SendSecureTCP`/`OS_RecvSecureTCP`
+use (they write it little-endian through `wnet_order()`). Unlike `control/taskClient.cpp`/`control/wazuhDBClient.cpp`,
 it does **not** use `shared_modules/utils`'s `SocketClient` async wrapper, even though it drives the
 same underlying `Socket` class: authd closes the connection after **every** reply, so `AuthdClient`
 connects, sends one frame, awaits one frame, and closes — per request, on a worker
@@ -1624,12 +1715,17 @@ re-enrollment the `id` is the one the bearer named and `key`/`reenroll_secret` a
 | 9015 | worker rejection (`remove`/`get`, or an `add` that supplied a caller-chosen `id`/`key` -- see below) | 503 |
 | 9016 (new) | clustered forward to master failed (transport leg of `w_request_agent_add_clustered`) | 503 |
 | 9031 | authd could not journal the credential it was about to hand out, so it handed out none | 503 |
+| any other code (`default:` in `httpStatusForAuthdError()`) | an authd answer this table does not name | 500 |
 | 9022 / 9023 / 9024 | authd refused the use of a **verified** enrollment token: not found or revoked / expired / no uses left (`httpStatusForAuthdError()`). `403`, not `401`: the bearer DID verify, so this is not something the agent fixes by re-signing. 9022/9023 are reachable only when remoted's replica lagged behind authd's store; 9024 only authd can decide (it owns the use counter) | 403, `error.code` = the authd code |
 | 9026 / 9027 / 9028 | authd's verdict on a **re-enrollment** bearer remoted forwarded unverified: unknown agent or no secret on record / invalid credential / outside the accepted time window (`reenrollmentRejection()`) — authentication failures, so they take the uniform 401 through `authErrorResponse()`, never authd's code or text | 401, `error.code` = `unknown_agent` / `invalid_signature` / `stale_token` |
 | request never reached authd (stopping, queue full, connect failure) | — | 503, `error.code` = -1 |
 | request reached authd but no clean answer came back (I/O error after the send, timeout, unparseable reply) | — | 503, `error.code` = -2 |
 | bad/missing/stale credential | — | 401, `error.code` = the class (`invalid_signature`, `invalid_request`, `stale_token`, `unknown_agent`, `token_unknown`, `token_expired`, `token_revoked`, `enrollment_key_unavailable`) |
+| missing or unsupported `protocol-version` header (checked first, in every mode) | — | 400 |
+| wire body over the auth cap, or a zstd body over the 16 KiB decoded cap or the free in-flight budget | — | 413 |
+| `Content-Encoding` other than `zstd` / a zstd body that is not one valid frame | — | 415 / 400 |
 | local schema or version validation failure | — | 400 |
+| a rate-limit bucket empty (unverified before the decode, verified before authd) | — | 429 + `Retry-After` |
 | enrollment administratively disabled | — | 403 |
 
 `9013`/`9016` map to `503` rather than `429`: both are server-side conditions an operator resolves
@@ -1707,7 +1803,7 @@ otherwise — the bridge always has something to talk to as long as authd is run
 `enrollment_enabled` on the remoted side is `!disabled && remote_enrollment`; `legacy_enrollment` has
 no bearing on it whatsoever, and neither flag ever unregisters the route (see above) — only its `403`.
 
-`authd_config_t.flags.disabled` is a plain boolean, defaulting to enabled (`0`) unless
+`authd_config_t.flags.disabled` is a 3-bit bitfield the reader only ever sets to `0` or `1`, defaulting to enabled (`0`) unless
 `<disabled>yes</disabled>` is explicit. It used to look tri-state in its header
 (`AD_CONF_UNPARSED`/`AD_CONF_UNDEFINED` sentinels) with a resolution switch in `os_auth/src/config.c`,
 but nothing ever assigned those values, so both were removed. `secure.c` needs no special resolution logic: zero-initialize a local `authd_config_t` the
@@ -1725,10 +1821,13 @@ listeners now present the *same* identity: the install-time generation step
 to create `authd.pem`/`authd-key.pem` has been removed, and the generated `<auth>` config
 (`auth.template`, and the `<disabled>yes</disabled>` fallback written by `DisableAuthd()`) now
 points `<ssl_manager_cert>`/`<ssl_manager_key>` at `remoted.pem`/`remoted-key.pem` instead — the
-listener pair the operator provisions. The manager generates no certificate at all any more:
-`SetCertsOwnership()` in `init/inst-functions.sh` (and the packaging `fix_certs`) only creates
+listener pair. No installer step writes a certificate itself any more: the pair (and the manager CA)
+is issued once, at installation, by the credential resolver
+(`wazuh-manager-resolve-credentials --install`, [its README](../../init/credentials/README.md)) or
+staged by the operator beforehand. `SetCertsOwnership()` in `init/inst-functions.sh` only creates
 `/etc/wazuh-manager/certs` (`root:wazuh-manager 0750`) and normalizes every `.pem` in it to
-`root:wazuh-manager 0640` — the daemons read the pair through the group, and no daemon writes the
+`root:wazuh-manager 0640`, and the packaging `fix_certs` applies the same modes to the existing
+directory — the daemons read the pair through the group, and no daemon writes the
 directory — and the
 manager fails closed without it — `wazuh-manager-conf validate` (run by `wazuh-manager-control
 start`) rejects a missing file with `(1244) … file not found`, and remoted itself probes both paths
@@ -1745,8 +1844,8 @@ help text, by `config/src/authd-config.c`'s `w_authd_json_defaults()` — the ru
 `<ssl_manager_cert>`/`<ssl_manager_key>` fall back to when absent from `wazuh-manager.conf` — and by
 `os_ssl_keys()`'s fallback. All are manager-only in practice: `os_auth/CMakeLists.txt` builds exactly one
 executable (`wazuh-manager-authd`) from this module -- there is no separate agent-side `authd`
-binary, despite `ARGV0`/the CMake project name still being spelled `wazuh-authd` as a historical
-label, and every caller of `Read_Authd_JSON()` (`os_auth/src/config.c`,
+binary, despite the CMake project name still being spelled `wazuh-authd` as a historical label
+(its `ARGV0` is `wazuh-manager-authd`), and every caller of `Read_Authd_JSON()` (`os_auth/src/config.c`,
 `remoted/src/secure.c`) is itself a manager-only binary. So there was no agent-vs-manager
 conflict to avoid here, and no reason to leave a stale default in place. In practice this fallback
 is never reached on a fresh manager install anyway: `auth.template` always writes
@@ -1762,10 +1861,10 @@ copies fields straight out of authd's own `<auth>` config (`use_password`, `use_
 `allow_higher_versions`, `remote_enrollment`). This is deliberate: `/enroll` and 1515 must agree on
 whether password auth is required and which versions are acceptable, and reading the *same* config
 block is what guarantees that rather than two settings that can drift apart. Only operational knobs
-(the secret files' poll interval, authd-socket connect/response timeouts, queue size) are new C-ABI
+(the secret files' poll interval, authd-socket connect/response timeouts, queue size, worker threads) are new C-ABI
 fields with their own defaults, following this module's usual "`<=0` means default" convention.
 `enrollment_enabled` gates only the response the endpoint gives, never whether the route exists (see
-*Two independent authentication gates* above's `403` discussion).
+the `403` discussion under `enrollmentEndpoint` above).
 
 The enrollment-token and re-enrollment paths add **no** option of their own: the store path is fixed
 (`/etc/wazuh-manager/enrollment_tokens.json`, in the fixed configuration directory like `/etc/wazuh-manager/authd.pass`); the replica's
@@ -1782,15 +1881,17 @@ registry, a silent no-op on a null-object instance), the `remoted.enroll.*` cata
 `enrollment/metrics.hpp` and is counted in `enrollmentEndpoint.cpp`:
 
 - **Outcome of every request** — `remoted.enroll.accepted` (a `200`), `remoted.enroll.rejected_auth`
-  (every `401`: the shared-key bearer, an enrollment token remoted refused, and authd's 9026/9027/
-  9028 on a re-enrollment — a spike here means a password rollout out of sync between managers and
-  agents, or tokens that lapsed), `remoted.enroll.rejected_validation` (local rejections:
+  (every rejection by the authenticator — the `401`s of the shared-key bearer and of an enrollment
+  token remoted refused, plus its `400` protocol-version and `413` body-cap answers — and authd's
+  9026/9027/9028 on a re-enrollment; a spike here means a password rollout out of sync between
+  managers and agents, or tokens that lapsed), `remoted.enroll.rejected_validation` (local rejections:
   `Content-Encoding`, schema, version), `remoted.enroll.disabled` (`403`s — useful to notice an agent
-  still trying an enrollment path an operator turned off), `remoted.enroll.authd_error` (any 90xx
-  authd business rejection, the token `403`s of 9022/9023/9024 included),
+  still trying an enrollment path an operator turned off), `remoted.enroll.authd_error` (any other
+  90xx authd business rejection, the token `403`s of 9022/9023/9024 included; 9026/9027/9028 are
+  `rejected_auth`'s),
   `remoted.enroll.authd_unavailable` (no clean answer from authd: queue full, unreachable, timeout,
-  shutdown), and `remoted.enroll.rate_limited` (`429`s of the enrollment bucket, counted by the
-  rate-limit gate before the handler runs, so in none of the other outcome counters).
+  shutdown), and `remoted.enroll.rate_limited` (`429`s of either enrollment bucket, counted by the
+  rate-limit gate the handler charges after authentication, and in none of the other outcome counters).
 - **The enrollment-token subset** (issue #38993), by what happened to the TOKEN —
   `remoted.enroll.token.accepted` (a `200` obtained with a token), `.rejected_unknown`,
   `.rejected_expired`, `.rejected_revoked` (decided by remoted's replica, `countTokenRejection()`, and
@@ -1819,7 +1920,7 @@ every other `AuthError`; the status/latency view is `remoted.http.enroll.*`. Ope
 ### Lifecycle
 
 Constructed in `RemotedModuleFacade::startHttpServer()` alongside the other endpoint dependencies:
-`PasswordKeySource` only when `requirePassword` is set, `TokenKeySource` whenever enrollment is
+`PasswordKeySource` only when enrollment is enabled **and** `use_password` is set, `TokenKeySource` whenever enrollment is
 administratively enabled at all (an enrollment-token bearer is honoured in every mode, Open
 included), `AuthdClient` always (the route is always registered, so the client always exists even if
 `enrollment_enabled` is currently false — it simply goes unused while the endpoint short-circuits to
@@ -1833,7 +1934,7 @@ I/O runtime, matching the ordering documented in *Deferred forwarding* above.
 
 Most endpoints answer with one in-memory body. `/download` serves `merged.mg` and WPK packages,
 which can be hundreds of megabytes, so it streams with **HTTP chunked transfer encoding** (64 KiB
-chunks) and memory that does not grow with file size.
+chunks by default, `remoted.http_stream_chunk_size`) and memory that does not grow with file size.
 
 Metrics: `remoted.download.*` (admission outcomes incl. `unavailable` and `no_row` for the fallback's 503s, the
 fallback's wazuh-db queries as the `lookups` pull, started transfers/offered bytes, all counted
@@ -1908,10 +2009,10 @@ cross-cutting step every authenticated route runs.
 The facade composes a `BodyDecoder` into the gateway's constructor as a **required** dependency, so
 it is configured **once per gateway rather than per route**: every authenticated endpoint gets
 decoding and none can accidentally opt out. `zstd` is the only accepted encoding (**gzip is not
-supported** — see the benchmark note in
-[HTTPS Agent API](../../../docs/ref/modules/remoted/https-events-api.md#content-encoding-zstd));
+supported** — see [Why zstd, and not gzip](#why-zstd-and-not-gzip) below);
 anything else, including `zstd` when `remoted.http_content_encoding_enabled` is off, is `415`. A body
-that isn't a valid/complete zstd frame is `400`.
+that isn't a valid/complete zstd frame is `400`. The operator-facing rules (caps, status codes) are
+in [HTTPS Agent API](../../../docs/ref/modules/remoted/https-events-api.md#content-encoding-zstd).
 - **Runs strictly AFTER the bearer is verified.** The token is checked from the headers alone (the
   body is not part of it — TLS protects the wire bytes), so an unauthenticated peer never reaches
   the decoder and cannot spend our CPU or memory on it.
@@ -1953,13 +2054,50 @@ that isn't a valid/complete zstd frame is `400`.
   and together overshooting the budget; a frame that doesn't fit is `413` (retryable, unlike the
   `400`/`415` above).
 - **Why the output is charged by capacity, not by bytes written.** `std::string` grows by doubling,
-  so charging what was written let the buffer over-allocate uncharged — measured at **45% under**
-  for an 11 MiB body (11 MiB charged, 16 MiB actually held), which pushed the effective memory
+  so charging what was written let the buffer over-allocate uncharged — measured for an 11 MiB
+  body at 11 MiB charged and 16 MiB actually held (**45% more** than charged), which pushed the effective memory
   ceiling that much above the configured one. Now: a frame's header normally declares its
   decompressed size, so that is charged once and the buffer sized to it exactly — one allocation,
   no over-allocation, nothing to copy as it fills. A frame that omits the size (streaming
   compression with no pledged size) grows in doubling blocks, each charged before being allocated,
   so the over-allocation is charged rather than hidden.
+
+### Why zstd, and not gzip
+
+Both codecs were measured on a real 48 MB FIM sync payload before choosing (a one-off measurement
+recorded here, not a benchmark the repository reruns). At its default level zstd beats gzip's
+default on all three axes at once, so there is no trade-off to weigh — and decompression speed is
+the side that matters, since agents compress while the manager decompresses:
+
+| Codec                  | Compressed  | Compress  | Decompress  |
+| ---------------------- | ----------- | --------- | ----------- |
+| `gzip-6` (default)     | 4.25 MB     | 224 ms    | 44.2 ms     |
+| `gzip-9` (max)         | 4.10 MB     | 429 ms    | 43.1 ms     |
+| **`zstd-3` (default)** | **3.66 MB** | **55 ms** | **24.0 ms** |
+| `zstd-9`               | 3.44 MB     | 157 ms    | 24.3 ms     |
+
+Supporting both was considered and dropped: two decoders, two dependency chains and two test
+matrices for a codec that is dominated on this workload.
+
+zstd's one cost over gzip is the reason the decoder reserves memory the way it does. gzip/DEFLATE
+has a fixed 32 KiB window by specification; a zstd frame's ~50-byte header **declares** its own
+window size, which drives the decoder's up-front allocation and is chosen by the sender. Hence the
+order in `zstdDecode()` (`common/zstdDecoder.cpp`):
+
+1. Read the frame header before creating any decoder state. A header that cannot be read (truncated,
+   bad magic, not a data frame) is `Malformed` (`400`) without touching the budget.
+2. Refuse a declared window over `kMaxDeclaredWindowSize` (8 MiB, windowLog 23 — what zstd itself
+   uses at its highest normal levels, and zstd's recommended `ZSTD_d_windowLogMax` for untrusted
+   input) as `TooLarge` (`413`). The check is on the header's own value, the attacker-controlled
+   quantity; without it a tiny request could reserve zstd's default limit (windowLog 27, 128 MiB) of
+   the budget every other route shares.
+3. Reserve exactly `ZSTD_decodingBufferSize_min(windowSize, frameContentSize)` — what *this* frame
+   makes the decoder allocate, not a blanket worst case — and refuse with `413` if it does not fit.
+   These calls sit behind `ZSTD_STATIC_LINKING_ONLY` (zstd's experimental surface); the risk is
+   contained because the vendored zstd is pinned and statically linked, so a signature change
+   breaks the build on a version bump instead of failing at runtime.
+4. Decode with the output growth charged as described above, so a highly compressed "decompression
+   bomb" is refused the moment a reservation is, before the full payload is materialized.
 
 ## Deferred forwarding (async UDS) — `src/downstream/`
 
@@ -1981,6 +2119,8 @@ src/downstream/
 ├── downstreamConfig.hpp/.cpp # events socket (fixed) + C-ABI-driven connect/write/response timeouts,
 │                            #   io/post threads, max response body (buildDownstreamConfig())
 ├── IDownstreamClient.hpp     # async forward interface + DTOs (DownstreamRequest/Response/Error)
+├── downstreamTypes.cpp       # the DownstreamError names used in logs
+├── forwarderMetrics.hpp      # remoted.forwarder.* failure catalog
 ├── asioUdsHttpClient.hpp/.cpp# standalone-Asio impl (UDS connect-per-request) + llhttp response parse
 └── deferredForwarder.hpp/.cpp# limiter + client + per-endpoint post-processing pool orchestration
 ```
@@ -2015,9 +2155,11 @@ src/downstream/
   `stop()` the transport (releasing the I/O runtime). Getting this order backwards is a real
   use-after-free: a `RestinioResponder` handed to an in-flight forward keeps the agent's connection
   alive independently of the server object, but calling `send()` on it after the transport's I/O
-  runtime is gone touches freed memory. See `RemotedModuleFacade::stop()` for the exact 4-phase
-  sequence, and `test/unit/shutdownRace_test.cpp` for the end-to-end regression test (run it under
-  ASan -- `-DFSANITIZE=ON` -- for it to be a meaningful check).
+  runtime is gone touches freed memory. See `RemotedModuleFacade::stop()` for the exact sequence —
+  phases 1, 1b (the `/control` and `/scan/vd` teardown, before the downstream client stops), 2, 3
+  and 4 — and `test/unit/shutdownRace_test.cpp` for the end-to-end regression test (run it under
+  ASan for it to be a meaningful check: `FSANITIZE` only takes effect in a `DEBUG=yes` build, see the
+  `wazuh-build` skill).
 
 ## Request lifecycle example — a `POST /stateless`, end to end
 
@@ -2081,7 +2223,8 @@ sequenceDiagram
    (`create_response()` moves the connection into a builder), and **drops the RESTinio handle** — freeing
    RESTinio's original buffer here. Then it `asio::post`s to the worker pool and returns immediately.
 2. **[B] Auth + handler.** A worker thread runs the `AuthGateway` wrapper: full bearer-token verification
-   (synchronous — CPU, off the I/O threads). On failure it replies `400`/`401`/`413`. On success it
+   (synchronous — CPU, off the I/O threads). On failure it replies `400`/`401`/`413`/`415`, or `503`
+   for an agent over its per-agent share. On success it
    builds an `AuthenticatedRequest` whose `payload` is a **zero-copy view** into the single buffer plus
    a keep-alive to the context, and calls the `/stateless` handler (`stateless::makeHandler`'s
    closure), which first runs `validatePayloadIdentity()` (literal `H ` prefix and 8 KiB slice
@@ -2186,13 +2329,16 @@ is the only adapter between it and our transport. The token does **not** cover t
 middleware authenticates from the headers alone, the gateway applies the wire-body cap and the
 per-agent request cap directly (the decoded cap lives in the decoder), and the
 body is exposed as a zero-copy `Payload` view that the `AuthGateway` attaches from the transport's
-single request buffer. Every credential `401` carries a `WWW-Authenticate` challenge naming its class.
+single request buffer. Every credential `401` carries a `WWW-Authenticate` challenge; it names the
+class except for `invalid_request` (`error="invalid_request"` alone) and `enrollment_key_unavailable`
+(a bare `Bearer`) — see the table below.
 
 ### 401 classes
 
 Issue #38993 (T10 of its plan): a credential failure is still a `401` with the same generic message,
-but the wire names its **class** twice — as the body's `code` (a string, where every other status
-keeps the numeric status) and as the RFC 6750 challenge's `error_description`. `PublicError`
+but the wire names its **class** — as the body's `code` (a string, where every other status
+keeps the numeric status) and, for the classes that have one, as the RFC 6750 challenge's
+`error_description`. `PublicError`
 (`auth/authTypes.hpp`) carries both as static literals and `publicErrorFor()` (`auth/authMiddleware.cpp`)
 is the one table; `errorResponseFor()` (flat envelope) and `/enroll`'s `authErrorResponse()` (nested
 envelope) render them. The class is deliberately **coarser** than `AuthError`: it is the answer the
@@ -2214,7 +2360,8 @@ On `/enroll`, authd's verdicts on a re-enrollment bearer (9026 unknown agent or 
 `remoted.auth.reject.*` cells as a native rejection — the wire never carries authd's code or text
 for them.
 
-The 5.x agent corrects its clock from the `Date` header (`client-agent/https_client/src/outcomeClassifier.cpp`)
+The 5.x agent corrects its clock from the `Date` header (`correctClockFromServerDate()`,
+`client-agent/https_client/src/clockSkew.hpp`)
 and acts on the class (issue #39064): `client-agent/https_client/src/authFailureClass.cpp` parses it,
 only `unknown_agent` latches the agent into its credential-dead state or makes enrollment drop the
 stored re-enrollment secret (`client-agent/src/enrollment.c`), and every other class keeps the
@@ -2230,12 +2377,14 @@ The disclosure is worth little: ids are sequential (see `AddressNotAllowed` in `
 and knowing one grants nothing without that agent's key or secret. Probing shows up as a rising
 `remoted.auth.reject.unknown_agent`.
 
-`AuthConfig`'s tunables (`timePolicy` -- accepted token age and clock skew -- and `maxBodySize`) are
+`AuthConfig`'s tunables (`timePolicy` -- accepted token age and clock skew --, `maxBodySize` and
+`maxDecodedBodySize`, clamped to at least `maxBodySize`) are
 populated from the matching C-ABI fields (`jwt_max_age`, `jwt_clock_skew`,
-`auth_max_body_size`, in turn read from the `remoted.jwt_*`/`remoted.auth_*` internal options in `secure.c`) via
+`auth_max_body_size`, `auth_max_decoded_body_size`, in turn read from the `remoted.jwt_*`/`remoted.auth_*` internal options in `secure.c`) via
 `remoted::auth::buildAuthConfig()` (`auth/authTypes.cpp`), which the facade calls instead of
 default-constructing `AuthConfig{}`. `supportedProtocolVersion` stays fixed (`"1"`) -- it's a
-protocol constant, not an ops tuning knob. See *Configuration* above.
+protocol constant, not an ops tuning knob. See the **Configuration** bullet of the
+[HTTP(S) server sub-layer](#https-server-sub-layer-srchttp_server) (group 4).
 
 Unit tests under `test/unit/` (`jwtVerify_test.cpp`, `jwtSigner_test.cpp`, `jwtEnrollSignVerify_test.cpp`,
 `authMiddleware_test.cpp`, `keystore_test.cpp`, `addressRule_test.cpp`); `authMiddleware_test.cpp` exercises `AuthMiddleware`
@@ -2274,7 +2423,8 @@ does not parse is skipped with a warning, like any other malformed line, rather 
 without a restriction. The peer address is **not** part of the token, so a NAT rewrite
 between agent and manager does not invalidate it. A mismatch resolves to
 `AuthError::AddressNotAllowed`, which `publicErrorFor()` reports as the `invalid_signature` class (the
-agent must not re-enroll over it); `AuthMiddleware` reports it with a throttled warning naming the agent id and the
+agent must not re-enroll over it); `AuthMiddleware` reports it with a throttled INFO line (a property
+of the agent's registration, not a manager fault) naming the agent id and the
 peer address, and `endpoints/endpoint.cpp` keeps it at DEBUG2 in its own rejection funnel so the line
 is not emitted twice.
 
@@ -2315,10 +2465,12 @@ void remoted_module_stop(void);
 - `start()` launches the worker thread and returns immediately; the module owns the thread.
 - `stop()` signals the worker (atomic flag + condition_variable) and joins it. Safe to call
   when never started.
-- All exceptions are caught at the `extern "C"` boundary — nothing throws into C. Both wrappers
-  catch `std::exception` **and** `(...)`: a non-`std::exception` crossing into remoted's C code
-  would hit no handler at all and `std::terminate` the daemon.
-- Logging is routed back into remoted's `wazuh-manager.log ` via the `full_log_fnc_t` callback
+- `remoted_module_stop()` catches everything at the `extern "C"` boundary — `std::exception`
+  **and** `(...)`: a non-`std::exception` crossing into remoted's C code would hit no handler at all
+  and `std::terminate` the daemon. `remoted_module_start()` deliberately does **not**:
+  `RemotedModuleFacade::start()` logs and rethrows when the HTTPS listener cannot start, and remoted
+  must not run without it (see *Diagnostics* below), so a start failure ends the daemon.
+- Logging is routed back into remoted's `wazuh-manager.log` via the `full_log_fnc_t` callback
   (remoted passes `mtLoggingFunctionsWrapper`) and the `LOGFN_*` macros.
 
 ## Diagnostics — `src/common/logThrottle.hpp`
@@ -2330,11 +2482,13 @@ to change (`"…Consider increasing the value of 'max_deferred_requests'."`). Th
   deferred slots exhausted (`max_deferred_requests`), each downstream failure kind
   (`downstream_connect_timeout` / `_write_timeout` / `_response_timeout` /
   `_max_response_body_size`), clock skew (`jwt_max_age` / `jwt_clock_skew`), body cap
-  (`auth_max_body_size`), an unusable `client.keys` key, and an authenticated agent sending a
-  batch without the H-line prefix or over its 8 KiB limit.
+  (`auth_max_body_size`), an unusable `client.keys` key, an authenticated agent sending a batch
+  without the H-line prefix or over its 8 KiB limit, an agent over its share
+  (`max_requests_per_agent` / `max_inflight_bytes_per_agent`), and an enrollment password key that is
+  unavailable.
 - **Client-fault 4xx → `LOGFN_DEBUG2`, unthrottled.** Malformed/unauthenticated requests. An
   unauthenticated peer controls how many of these it triggers, so logging them at WARN would be a
-  log-amplification vector against `wazuh-manager.log ` — and a bad MAC from an internet scanner is noise.
+  log-amplification vector against `wazuh-manager.log` — and a bad MAC from an internet scanner is noise.
   Visible with `remoted.debug=2` when someone is actually diagnosing a client.
 - **`LogThrottle`** (`src/common/logThrottle.hpp`) enforces one line per 90 s per condition —
   matching remoted's own C throttles — and folds the suppressed count into the emitted line, so
@@ -2409,8 +2563,8 @@ linked into the settings' own documentation — is the official docs page:
 | `remoted.server.budget.{available.bytes, inflight.bytes, inflight.requests, rejected.total}` (pulls) | is `remoted.max_inflight_bytes` sized right; how much did the byte budget shed | `IHttpServer::diagnostics()` over the transport's `InFlightBudget` |
 | `remoted.server.connections.{open, max}` (pulls) | how close the listener runs to `remoted.max_parallel_connections` — the only view of it, since reaching the cap postpones the accept instead of refusing | registered next to the budget pulls in `registerPublicTransportDiagnostics()`; `open` reads the transport's `HandshakeLedger` (counted from the start of the TLS handshake to the close) |
 | `remoted.server.connections.handshaking`, `remoted.server.handshake.{timeouts, rejected_per_source}.total` (pulls) | are slots being held by peers that never complete a TLS handshake — invisible to every request-level metric; what the deadline (`remoted.http_read_timeout`) and the per-source cap (`remoted.max_handshakes_per_source`) closed | `IHttpServer::diagnostics()` over the `HandshakeLedger`; names in `http_server/handshakeMetrics.hpp` |
-| `remoted.enroll.{accepted, rejected_auth, rejected_validation, disabled, authd_error, authd_unavailable, rate_limited}` | WHY each `/enroll` request ended that way (the status/latency view is the `enroll` families above). `rate_limited` is the odd one: the request passed its local checks and was refused before the authd round trip, so it has no outcome among the others | `enrollment/metrics.hpp`, counted in `enrollmentEndpoint.cpp`; `rate_limited` by the gate (`endpoints/rateLimitGate.cpp`), which the handler charges |
-| `remoted.<enroll\|cacerts>.rate_limit.{limit, burst, available}` (pulls) | is the BUCKET's ceiling sized right: `available` pinned at 0 while `rate_limited` climbs is a rate below what the fleet needs, not necessarily an attack. Two buckets, two routes — `enroll` governs `POST /enroll`, `cacerts` governs `GET /cacerts` | `EndpointRateLimiter::diagnostics()` through `registerRateLimitDiagnostics()`; reads the bucket WITHOUT charging it, so scraping never costs an agent its enrollment |
+| `remoted.enroll.{accepted, rejected_auth, rejected_validation, disabled, authd_error, authd_unavailable, rate_limited}` | WHY each `/enroll` request ended that way (the status/latency view is the `enroll` families above). `rate_limited` is the odd one: the request passed its credential check (and, for a verified credential, its body and version checks) and was refused before the authd round trip, so it has no outcome among the others | `enrollment/metrics.hpp`, counted in `enrollmentEndpoint.cpp`; `rate_limited` by the gate (`endpoints/rateLimitGate.cpp`), which the handler charges |
+| `remoted.<enroll\|enroll.unverified\|cacerts>.rate_limit.{limit, burst, available}` (pulls) | is the BUCKET's ceiling sized right: `available` pinned at 0 while `rate_limited` climbs is a rate below what the fleet needs, not necessarily an attack. Three buckets, two routes — `enroll` (verified credentials) and `enroll.unverified` (re-enrollment bearers, Open mode, spent tokens) govern `POST /enroll`, both sized from `enroll_rate_limit`; `cacerts` governs `GET /cacerts` | `EndpointRateLimiter::diagnostics()` through `registerRateLimitDiagnostics()`; reads the bucket WITHOUT charging it, so scraping never costs an agent its enrollment |
 | `remoted.enroll.token.{accepted, rejected_unknown, rejected_expired, rejected_revoked, rejected_exhausted}` | the enrollment-token subset of the above, by what happened to the TOKEN: unknown/expired/revoked decided by remoted's replica (and by authd's 9022/9023 when the replica lagged), exhausted by authd alone (9024) | `countTokenRejection()` (remoted's own verdict) + `countTokenOutcome()` (authd's) in `enrollmentEndpoint.cpp` |
 | `remoted.enroll.reenroll.{accepted, rejected_unknown, rejected_signature, rejected_stale, rejected_in_progress}` | the re-enrollment subset (`kid` = agent id): authd's verdict on the master — 9026 / 9027 / 9028 / 9030 — since remoted forwards that bearer unverified; each rejection also lands in the `remoted.auth.reject.*` cell of the `AuthError` it maps to | `countReenrollOutcome()` in `enrollmentEndpoint.cpp` |
 | `remoted.enroll.token_store.{tokens, reloads.total, reload_failures.total}` (pulls) | does this node recognise the tokens the operator minted (an empty replica on a worker = the sync has not landed); is `/etc/wazuh-manager/enrollment_tokens.json` being picked up, or is a corrupt/hand-edited store making the previous replica serve | `TokenKeySource::diagnostics()` through `registerTokenKeySourceDiagnostics()`; 0 while enrollment is disabled |
@@ -2425,14 +2579,16 @@ an *admitted* compressed request whose decode does not fit the budget is answere
 counted only in `remoted.auth.reject.body_too_large` — never as a budget shed. A deferred-limiter shed
 is the endpoint's answer, so it counts BOTH as that endpoint's `responses.503` and in
 `remoted.forwarder.deferred.rejected.total`; a rate-limit refusal sits with that second group, not
-the first — the handler never ran, yet it counts BOTH as `responses.429` and in
+the first — the route's work never ran (on `/cacerts` the gate sits in front of the handler; on
+`/enroll` the handler charges it before decoding or before calling authd), yet it counts BOTH as `responses.429` and in
 `remoted.<endpoint>.rate_limited`, and in none of that endpoint's outcome cells (nothing was
 decoded, verified or forwarded for it to have an outcome about). Auth-gateway rejections happen before any handler
 and appear only in `remoted.auth.reject.*`; a handler's own pre-forward rejection (empty body,
 H-line prefix/size) counts in its `responses.*` (the "what") and, where it is an AuthError, in
 `remoted.auth.reject.*` too (the "why"). EPS/rates are deliberately NOT computed in-process —
-the scraper (`tools/devContainer/scripts/monitor.py`) derives rates by diffing counters
-per interval, and `tools/devContainer/scripts/bench_samples.py`'s
+the benchmark collector (`tools/devContainer/scripts/bench_collect.py`, which `monitor.py` runs)
+scrapes `GET /metrics`, `tools/devContainer/scripts/bench_samples.py` derives rates by diffing
+counters per interval, and its
 `REMOTED_MODULE_SCALARS`/`REMOTED_MODULE_HISTOGRAMS` tables derive its short-named CSV columns.
 
 ## Local admin socket — `queue/sockets/remote-admin-http.sock`
@@ -2440,8 +2596,9 @@ per interval, and `tools/devContainer/scripts/bench_samples.py`'s
 The module's management plane: a second, independent HTTP server (the shared
 `shared_modules/uds_http_server` library — the public HTTPS server keeps its own RESTinio stack)
 brought up by `startAdminServer()` right after the public server. It serves four read-only
-routes, all **Liveness** class (answered inline from resident state — or, for `/tls`, one bounded
-read of a few-KB file — exempt from the byte budget), and one write route, **Control** class:
+routes, all **Liveness** class (answered inline from resident state — or, for `/tls`, one read of the
+CA file, bounded at 1 MiB (`CaCertificateSource::kMaxBytes`) — exempt from the byte budget), and one
+write route, **Control** class:
 
 | Route | Answer |
 |---|---|
@@ -2675,8 +2832,11 @@ curl --unix-socket /var/wazuh-manager/queue/sockets/remote-admin-http.sock http:
 
 - Build wiring: `add_subdirectory(remoted_module)` + `remoted_module` added to
   `target_link_libraries(remoted_lib ...)` in `src/remoted/CMakeLists.txt`.
-- Lifecycle: `HandleSecure()` (in `src/remoted/src/secure.c`) builds a
-  `remoted_module_config_t`, calls `remoted_module_start(...)`, and registers
+- Lifecycle: `HandleRemote()` (`src/remoted/src/remoted.c`) builds the base
+  `remoted_module_config_t` early, through `w_remoted_preflight_tls_files()` (`secure.c`; so the
+  TLS files are probed right after the privilege drop);
+  `HandleSecure()` (in `src/remoted/src/secure.c`) copies it, adds the `/control` block and the
+  cluster name, calls `remoted_module_start(mtLoggingFunctionsWrapper, &rm_config)`, and registers
   `remoted_module_stop` with `atexit`.
 
 ## Tests
@@ -2734,7 +2894,7 @@ and distinguishes local/relayed rejection metrics), `statsEndpoint_test.cpp` and
 forwarding endpoints, one file each mirroring their near-duplicate implementations: the target's
 socket/path/content-type, the `X-Wazuh-Agent-Id` header, the `serviceName` used in failure logs, the
 full `postProcess` mapping table, **that no downstream body is ever reflected to an agent** — `/stats`
-answers a fixed `{}`, `/config` passes the sync server's enriched document through — and that an empty body
+answers a fixed `{}`, `/config` passes the sync server's own body through — and that an empty body
 answers 400 without ever reaching `forward()`),
 `asioUdsHttpClient_test.cpp` (in-process UDS stub: response parse, connect/timeout errors, keep-alive,
 **and that caller-supplied headers are actually serialized onto the wire without displacing
@@ -2759,11 +2919,9 @@ Transport, framing and shared plumbing: `authConfig_test.cpp` (C-ABI → `AuthCo
 struct yields the profile defaults, and `jwt_clock_skew_set` is what tells "zero tolerance" apart
 from "unset" — an explicitly set negative skew throws, as does an over-maximum value), `downstreamConfig_test.cpp` (default
 socket paths — the inventory-sync literal is pinned against modulesd's own copy — seconds→ms
-conversion, `/stateful`'s dedicated 20 s deadline, and the module's own 11 MiB response cap, chosen
-strictly above the 10 MiB request cap. **Caveat:** that C++ default is unreachable in a running
-manager — `secure.c` always supplies `remoted.downstream_max_response_body_size`, whose own default
-is 10 MiB, so the effective cap equals the request cap and the "strictly above" rationale does not
-hold at runtime. The test pins the constant, not the deployed value),
+conversion, `/stateful`'s dedicated 20 s deadline, and the module's own 10 MiB response-cap
+fallback — the same value as `remoted.downstream_max_response_body_size`'s default, which
+`secure.c` always supplies, so the fallback and the deployed cap cannot disagree),
 `headerUtils_test.cpp` (case-insensitive header lookup: the RFC-canonical `Authorization` the
 transport actually delivers is exactly what a naive exact `find()` misses), `authHeadersE2E_test.cpp`
 (over real TLS: a **duplicated** `Authorization` or `protocol-version` is refused rather than
@@ -2810,6 +2968,12 @@ previous mailbox still held pending is neither replayed into the new one nor lef
 `stop()`'s own close-time delivery (issue #39319, C26) drains and says it before the mailbox is
 replaced, so draining the OLD mailbox directly afterwards finds it empty too.
 
+Also in that group: `installPaths_test.cpp` (every socket and data path is relative to the
+installation directory except the shared-groups directory, which lives in the configuration
+directory, and each consumer's default reaches them), `addressRule_test.cpp` (the `client.keys`
+`ip` forms of *Registered-address enforcement*) and `shutdownRace_test.cpp` (the `stop()` ordering
+of *Deferred forwarding*'s lifecycle note, meaningful under ASan).
+
 Body decoding: `bodyDecoder_test.cpp` (only an exact, case-insensitive `zstd` decodes — `gzip`,
 `"zstd, gzip"` and prefixes are refused — the decoded bytes stay charged to the in-flight budget
 until the payload dies, and a `413` there is never counted as a budget shed) and
@@ -2823,9 +2987,10 @@ roots and non-numeric/negative/trailing-garbage agent ids each get their own `40
 aggregated into `remoted.control.rejected`), `controlHandler_test.cpp` (a malformed version answers
 `400` *and* writes `status_code` with the version sentinelized; `config_token` is the wdb-ordered
 multigroup CSV naming the same `merged.mg` that `config_hash` was computed over; a wazuh-db failure
-answers `503` rather than silently falling back to "default"; every membership `/control` stores is
-stamped, so a `/download` lookup issued before a startup or notify read and answered after it answers
-with that read instead of overwriting it), `controlConfig_test.cpp` (non-positive
+answers `503 dependency_unavailable` naming `wazuh-db` rather than silently falling back to
+"default"; every membership `/control` stores is stamped, so a `/download` lookup issued before a
+startup or notify read and answered after it answers with that read instead of overwriting it),
+`controlConfig_test.cpp` (non-positive
 values fall back instead of casting a negative into a huge unsigned; a malformed `limits_json`
 collapses to `{}`), `controlTypes_test.cpp` (the version grammar, the `compareVersions` ordering and
 the major.minor `isAgentVersionTooNew` policy shared with `/enroll`), `agentRegistry_test.cpp` (an updater returning null is a no-op that never
@@ -2960,8 +3125,6 @@ run. They need `--gtest_also_run_disabled_tests`; use an optimized build for mea
 ctest --test-dir src/build -R '^remoted_module_utest$' -V
 ```
 
-<a id="manual--end-to-end-toolssend_statelesspy-toolssend_downloadpy"></a>
-
 ### Manual / end-to-end (`tools/send_stateless.py`)
 
 > **Port trap:** `send_stateless.py`, `send_agent_json.py` and `send_enroll.py` default to
@@ -2987,7 +3150,8 @@ python3 tools/send_stateless.py            # one valid signed request -> 202
 python3 tools/send_stateless.py --tamper   # corrupted token signature -> 401 (invalid_signature)
 python3 tools/send_stateless.py --all      # every success/failure scenario with expected codes,
                                             # incl. payload_agent_mismatch -> 400 (engine identity check, relayed)
-# options: --url (default https://127.0.0.1:1517), --agent-id, --body, --client-keys, --global-prefix
+# options: --url (default https://127.0.0.1:1517), --agent-id, --body, --client-keys, --tamper,
+#          --all, --global-prefix
 ```
 
 ### Manual / end-to-end (`tools/send_agent_json.py`)
@@ -3016,7 +3180,8 @@ python3 tools/send_agent_json.py --endpoint config        # same, against /confi
 python3 tools/send_agent_json.py --body '{"cpu":42}'      # no `modules` object -> 400, both endpoints
 python3 tools/send_agent_json.py --tamper                 # corrupted token signature -> 401 (invalid_signature)
 python3 tools/send_agent_json.py --all                    # every scenario against BOTH endpoints
-# options: --url, --agent-id, --body, --client-keys, --endpoint {stats,config}, --global-prefix
+# options: --url, --agent-id, --body, --client-keys, --endpoint {stats,config}, --tamper, --all,
+#          --global-prefix
 ```
 
 `--all` runs every scenario against **both** endpoints on purpose: they are deliberate near-duplicates
@@ -3045,7 +3210,11 @@ python3 tools/send_scan_vd.py --url https://127.0.0.1:1517 --auto-offset        
 python3 tools/send_scan_vd.py --url https://127.0.0.1:1517 --feed-offset 1                # 409 if the manager's offset differs from 1,
                                                               # prints the manager's real current_version
 python3 tools/send_scan_vd.py --url https://127.0.0.1:1517 --all                          # every /scan/vd success/failure scenario
-# options: --url (default https://127.0.0.1:9443), --agent-id, --client-keys, --global-prefix
+# options (both): --url (default https://127.0.0.1:9443), --agent-id, --client-keys, --all,
+#          --global-prefix
+#   send_control.py: --type {startup,notify,shutdown} (required unless --all), --version,
+#          --with-host, --tamper
+#   send_scan_vd.py: --feed-offset, --auto-offset
 ```
 
 `send_scan_vd.py --auto-offset` is the tool doing what a real agent does before ever calling
@@ -3080,7 +3249,8 @@ python3 tools/send_download.py --url https://127.0.0.1:1517 --simulate 8 --repea
 the other-existing-group scenario if that group has no local `merged.mg`. `--simulate N` uses up
 to N agents already in `client.keys`; it does not enroll agents or assign their groups.
 
-`--watch-rss` samples RSS and file descriptors during the transfer and reports throughput. Compare
+`--watch-rss` samples RSS and file descriptors during the transfer; throughput (MiB/s, CPU-s/GiB)
+is reported only for a single request, since the `--simulate` path passes no byte count. Compare
 runs with different file sizes to assess memory growth; sampling can miss short-lived RSS peaks.
 CPU time is measured as a `/proc` counter delta over the observation interval.
 

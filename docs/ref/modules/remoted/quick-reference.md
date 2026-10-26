@@ -32,12 +32,12 @@ curl --unix-socket /var/wazuh-manager/queue/sockets/remote-admin-http.sock http:
 curl --unix-socket /var/wazuh-manager/queue/sockets/remote-admin-http.sock http://localhost/status
 curl --unix-socket /var/wazuh-manager/queue/sockets/remote-admin-http.sock http://localhost/tls
 
-# Check the configuration and every remoted.* internal option without starting the daemon
-/var/wazuh-manager/bin/wazuh-manager-remoted -t
-
 # Follow remoted's log lines
 tail -f /var/wazuh-manager/logs/wazuh-manager.log | grep wazuh-manager-remoted
 ```
+
+The daemon's own flags (`-t` to validate the configuration without starting, and the rest) are in
+[Command line](README.md#command-line).
 
 Through the Server API, per cluster node:
 

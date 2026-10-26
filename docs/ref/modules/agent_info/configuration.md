@@ -188,7 +188,7 @@ tail -f /var/ossec/logs/ossec.log | grep agent-info
 **On manager (query agent info through the Server API, master node):**
 ```bash
 # View agent system information
-TOKEN=$(curl -s -k -u wazuh:<WAZUH_PASSWORD> -X POST "https://localhost:55000/security/user/authenticate?raw=true")
+TOKEN=$(curl -s -k -u wazuh:<WAZUH_MANAGER_API_PASSWORD> -X POST "https://localhost:55000/security/user/authenticate?raw=true")
 curl -s -k -X GET "https://localhost:55000/agents?agents_list=001&pretty=true" \
     -H "Authorization: Bearer $TOKEN"
 ```

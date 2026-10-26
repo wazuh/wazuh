@@ -29,7 +29,9 @@ inline base::Expression makeTraceableSuccessExpression(const base::Expression& e
     }
     static const auto successTraceable =
         base::Term<base::EngineOp>::create("AcceptAll", [](auto e) { return base::result::makeSuccess(e, "SUCCESS"); });
-    return base::Implication::create("TraceableSuccess", expr, successTraceable);
+    // Named like the wrapped expression so the SUCCESS term is built inside the traceable node and publishes to its
+    // tracer (bk restores the inherited publisher when it leaves a node).
+    return base::Implication::create(expr->getName(), expr, successTraceable);
 }
 
 /**

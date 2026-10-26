@@ -11,6 +11,7 @@
 #include "httpsClientFacade.hpp"
 
 #include "curlHandle.hpp"
+#include "metadataCollector.hpp"
 
 #include <exception>
 #include <functional>
@@ -18,39 +19,20 @@
 
 namespace
 {
-    /// Wraps a `void(char*, size_t, void*)`-shaped C metadata callback as the
-    /// `std::function<std::string()>` pull-source both ControlStream (Notify's
-    /// host block) and StatelessStream (the H line's host block) take. Returns
-    /// "" when fn is null, so an unset callback degrades to "no extra metadata"
-    /// rather than a crash.
-    std::function<std::string()> makeMetadataCollector(void (*fn)(char*, size_t, void*), void* userData)
-    {
-        return [fn, userData]() -> std::string
-        {
-            if (fn == nullptr)
-            {
-                return {};
-            }
-
-            char buffer[4096] = {};
-            fn(buffer, sizeof(buffer), userData);
-            buffer[sizeof(buffer) - 1] = '\0';
-            return std::string(buffer);
-        };
-    }
-
     std::function<std::string()> makeHostCollector(const hc_callbacks_t& callbacks)
     {
-        return makeMetadataCollector(callbacks.on_collect_host, callbacks.user_data);
+        return makeMetadataCollector(callbacks.on_collect_host, callbacks.user_data, HOST_METADATA_JSON_MAX_BYTES);
     }
 
     /// Pull-source for the /stateless H line's host block -- a separate C
     /// callback from on_collect_host (Notify's), so the two endpoints' host
     /// blocks can carry different fields and evolve independently without
-    /// either risking the other's already-shipped contract.
+    /// either risking the other's already-shipped contract. The /stats and
+    /// /config reporter stamps the same block on its documents.
     std::function<std::string()> makeStatelessHostCollector(const hc_callbacks_t& callbacks)
     {
-        return makeMetadataCollector(callbacks.on_collect_stateless_host, callbacks.user_data);
+        return makeMetadataCollector(
+                   callbacks.on_collect_stateless_host, callbacks.user_data, AGENT_METADATA_JSON_MAX_BYTES);
     }
 
     /// Hands a vetted CA bundle to the consumer, which parses it and owns the write. Called
@@ -88,7 +70,7 @@ HttpsClientFacade::HttpsClientFacade(const hc_config_t& config, const hc_callbac
     , m_caPublication(m_config.caPublication)
     , m_taskStore(callbacks.check_and_record_task, callbacks.user_data)
     , m_vdOffsetStore(callbacks.vd_offset_observe, callbacks.vd_offset_clear_pending, callbacks.user_data)
-    , m_collectors(callbacks)
+    , m_collectors(callbacks, makeStatelessHostCollector(callbacks))
     , m_stateless(m_config,
                   m_performer,
                   m_signer,

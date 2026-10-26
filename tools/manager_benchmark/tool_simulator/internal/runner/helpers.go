@@ -93,6 +93,9 @@ func (a *agent) docKey(lane string, step scenario.Step) string {
 
 // -- step shaping ---------------------------------------------------------
 
+// optionEnum maps a session option to the schema enum. The scenario loader
+// refuses an unknown option, so the Sync fallback only covers "" (absent) and
+// "Sync" there; a captured dump's own option is not checked at load.
 func optionEnum(s string) fbbuild.Option {
 	switch s {
 	case "vdfirst", "VDFirst":

@@ -10,6 +10,8 @@
 
 #include "statelessEndpoint.hpp"
 
+#include "httpsHeaderLine.hpp"
+
 #include <optional>
 #include <string_view>
 #include <utility>
@@ -61,8 +63,9 @@ namespace remoted::endpoints::stateless
     namespace
     {
         // Bound the H-line metadata on the HTTPS path without parsing JSON. The engine validates
-        // its contents and identity before enqueueing any events.
-        constexpr std::size_t kMaxHeaderLineJsonSize = 8U * 1024U;
+        // its contents and identity before enqueueing any events. The agent trims its H line to the
+        // same shared limit, so the two cannot drift apart.
+        constexpr std::size_t kMaxHeaderLineJsonSize = HTTPS_HEADER_LINE_JSON_MAX_BYTES;
 
         // Slices the H-line's JSON substring out of the whole H/E body. Per the event-protocol's own
         // parsing rule ("split by \n, check first char, extract payload after space (index 2)"): the

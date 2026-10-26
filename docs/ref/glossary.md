@@ -19,9 +19,11 @@ they can also be assigned afterwards from the manager.
 `/etc/wazuh-manager/shared/<group>/` on the manager; its values take precedence over the agent's
 local `ossec.conf`.
 
-**Cluster** — Set of manager nodes (one master, multiple workers) that share
-agent keys, group configuration, and runtime state through
-`wazuh-manager-clusterd` (port 1516).
+**Cluster** — Set of manager nodes (one master, any number of workers) run by
+`wazuh-manager-clusterd` (port 1516). The master replicates the agent keys,
+enrollment tokens and group configuration to the workers; every installation
+is a node, and a single node is a cluster of one master. See
+[Wazuh server cluster](modules/cluster/README.md#what-is-synchronized).
 
 **Decoder** — Engine artifact that parses and normalizes raw events into
 structured fields. In 5.0 decoders are written in YAML (legacy 4.x XML decoders

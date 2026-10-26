@@ -28,10 +28,11 @@ sudo dpkg --remove wazuh-manager
 ```
 
 `--remove` deletes `queue/` (the wazuh-db databases, `tasks.db`, the keystore), `var/`, `logs/`,
-`data/` and the API directory, and keeps `/etc/wazuh-manager` with every file outside its `shared/` renamed to
-`<name>.save` (`api.yaml` is kept as `api/configuration/api.yaml.save`): the CA's private key
-`ca/root-ca.key.save` and `local.env.save` among them. The manager never reads a `.save` file; delete those two
-when you no longer need them. The user and the group are left untouched.
+`data/`, `stats/`, `framework/` and the API directory, and keeps `/etc/wazuh-manager` with every file renamed
+to `<name>.save`, the agent groups under `shared/` included (only a file whose name contains `shared` keeps
+its name); `api.yaml` is kept as `api/configuration/api.yaml.save`. The CA's private key
+`ca/root-ca.key.save` and `local.env.save` are among them. The manager never reads a `.save` file; delete those
+two when you no longer need them. The user and the group are left untouched.
 
 ### Red Hat-based platforms
 
@@ -43,12 +44,15 @@ sudo rpm -e wazuh-manager
 
 `rpm -e` deletes the `wazuh-manager` user and group and the state directories under `/var/wazuh-manager`
 (`queue/`, `var/`, `logs/`, `data/`, `api/`, `bin/` and the rest). Under `/etc/wazuh-manager`, RPM removes the
-files the package lists (`wazuh-manager.conf` and `client.keys` included), and the files it does not own, such as
-the certificates under `certs/`, the credentials under `ca/` and `export/` and `local.env`, are kept renamed to
-`<name>.save` (files under `shared/` keep their names). Everything kept, in `/etc/wazuh-manager` and in
-`/var/wazuh-manager`, is handed to `root:root` with no group or other access, because the account
-that owned part of it no longer exists. Back up anything you want to keep before running it, and
-delete `/etc/wazuh-manager` and `/var/wazuh-manager` by hand when the leftovers are no longer needed.
+files the package lists (`wazuh-manager.conf`, `client.keys`, `wazuh-manager-internal-options.conf`,
+`shared/agent-template.conf` and the `default` group's files included), and the files it does not own, such as
+the certificates under `certs/`, the credentials under `ca/` and `export/`, `local.env` and the files of the
+groups you created under `shared/`, are kept renamed to `<name>.save` (only a file whose name contains `shared`
+keeps its name). That renaming runs only when `shared/` is still there after the package's own files are
+gone, which it is whenever it holds anything the package did not install. Everything kept, in
+`/etc/wazuh-manager` and in `/var/wazuh-manager`, is handed to `root:root` with no group or other access,
+because the account that owned part of it no longer exists. Back up anything you want to keep before running
+it, and delete `/etc/wazuh-manager` and `/var/wazuh-manager` by hand when the leftovers are no longer needed.
 
 ## Agent
 

@@ -25,13 +25,10 @@ namespace
     // The re-send then lands at twice the deadline, past the immediate-session p90 measured under
     // group rotation (31 s); a deployment whose sessions run longer raises it, 0 drops the header.
     constexpr int DEFAULT_STATEFUL_RETRY_AFTER_SEC {20};
-    // Fallback only, used when the caller passes 0: 11 MiB, strictly larger than the 10 MiB
-    // agent-request cap because /stats and /config echo the agent's document back enriched (see
-    // DownstreamConfig::maxResponseBodySize). remoted never passes 0 -- secure.c reads
-    // remoted.downstream_max_response_body_size with a 10 MiB default -- so on a stock install the
-    // effective cap EQUALS the default request cap, and a near-cap /stats or /config document can
-    // come back as ResponseTooLarge.
-    constexpr std::size_t DEFAULT_MAX_RESPONSE_BODY_SIZE {11U * 1024U * 1024U};
+    // Fallback only, used when the caller passes 0. remoted never does -- secure.c always reads
+    // remoted.downstream_max_response_body_size, whose default is 10 MiB -- so this mirrors that
+    // default rather than introducing a second one.
+    constexpr std::size_t DEFAULT_MAX_RESPONSE_BODY_SIZE {10U * 1024U * 1024U};
 
     // A positive caller value wins; otherwise the built-in default (seconds).
     int resolveSeconds(const int configValue, const int defaultValue)

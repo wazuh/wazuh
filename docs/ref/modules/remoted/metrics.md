@@ -54,7 +54,7 @@ entry per metric, sorted by name:
       "type": "histogram",
       "enabled": true,
       "value": 98213,
-      "description": "POST /stateless end-to-end time, gateway receipt to response delivery",
+      "description": "POST /stateless end-to-end time, request receipt to response delivery",
       "unit": "microseconds",
       "summary": { "count": 98213, "sum": 210394821, "min": 312, "max": 90210,
                    "p50": 1830, "p90": 4110, "p99": 9920 }
@@ -65,8 +65,7 @@ entry per metric, sorted by name:
 
 Reading notes:
 
-- **Counters** are cumulative since the module started, and survive internal HTTP-server
-  restart retries. There are no rates in the dump: derive events-per-second externally by
+- **Counters** are cumulative since `wazuh-manager-remoted` started. There are no rates in the dump: derive events-per-second externally by
   diffing counters between polls (the in-repo scraper
   `tools/devContainer/scripts/monitor.py` does exactly this).
 - **Pull metrics** (`"type": "pull"`) are read at dump time from live components. While the
@@ -198,7 +197,7 @@ useful than the status —
 |---|---|---|
 | `2xx` | Success (202 for `/stateless`, 200 elsewhere) | — |
 | `400` | Client fault: empty body, bad batch, payload-identity mismatch | diagnostic — agent-side content |
-| `403` | Identity rejection relayed from the sync server (`/stateful` contract), or enrollment administratively disabled (`/enroll`) | diagnostic — the sync server's own view is [`sync.requests.total.*`](../inventory-sync-server/metrics.md#request-outcomes--syncrequeststotalcode); for `/enroll` see [`remoted.enroll.disabled`](#agent-enrollment--remotedenroll) |
+| `403` | Identity rejection relayed from the sync server (`/stateful` contract); on `/enroll`, enrollment administratively disabled, or `authd` refusing a verified enrollment token (9022/9023/9024) | diagnostic — the sync server's own view is [`sync.requests.total.*`](../inventory-sync-server/metrics.md#request-outcomes--syncrequeststotalcode); for `/enroll` see [`remoted.enroll.disabled`](#agent-enrollment--remotedenroll) and `remoted.enroll.token.*` |
 | `409` | Checksum mismatch relayed from the sync server (`/stateful` contract) | diagnostic — same cross-reference as `403` |
 | `413` | Body over the accepted size, on the wire or once decoded | [`remoted.auth_max_body_size`](configuration.md#remotedauth_max_body_size), [`remoted.auth_max_decoded_body_size`](configuration.md#remotedauth_max_decoded_body_size), [`https.max_body_size`](configuration.md#httpsmax_body_size) |
 | `429` | The endpoint's rate limit refused the request before the handler ran. Structurally zero except on `/enroll` and `/cacerts`, the two rate-limited routes | [the `remote.https` rate options](configuration.md#rate-limits-of-the-unauthenticated-routes); the cause is [`remoted.<endpoint>.rate_limited`](#rate-limits--remotedendpointrate_limit) |
@@ -276,8 +275,8 @@ a disallowed peer address); the operator keeps the distinction here. All counter
 | `remoted.auth.reject.token_revoked` | `/enroll` only: a correctly signed enrollment-token bearer whose token the operator revoked | diagnostic — expected after a revocation; a stream of them is an agent (or a leaked token) still trying |
 
 `clock_skew` is the one cell in this family that a timing setting can move, and it fails
-*before* any budget in the request path matters: the token profile's lifetime is a fixed 60 s,
-so the whole tolerance for host clock drift is
+*before* any budget in the request path matters: a token lives at most 60 s (agents send exactly
+60), so the whole tolerance for host clock drift is
 [`jwt_max_age`](configuration.md#remotedjwt_max_age) +
 [`jwt_clock_skew`](configuration.md#remotedjwt_clock_skew). A fleet whose clocks drift past it
 fails every request with a generic `401` and no other symptom
@@ -300,7 +299,7 @@ except the pulls at the end (the `authd` queue and the token store).
 | Metric | Meaning | Tuning |
 |---|---|---|
 | `remoted.enroll.accepted` | `authd` created the agent (or rotated a re-enrolling agent's credentials) and the key was returned | — |
-| `remoted.enroll.rejected_auth` | The enrollment credential check failed — every `401` of the route: the shared-password `wazuh-enroll+jwt` bearer, an enrollment token this node refused (unknown, expired, revoked, bad signature), or a re-enrollment bearer `authd` refused (9026/9027/9028). mTLS failures are not here: the listener already refused the connection | diagnostic — the per-cause split is [`remoted.auth.reject.*`](#authentication-rejections--remotedauthreject); the per-credential split is `remoted.enroll.token.*` / `remoted.enroll.reenroll.*` below |
+| `remoted.enroll.rejected_auth` | The enrollment credential check failed — every `401` of the route: the shared-password `wazuh-enroll+jwt` bearer, an enrollment token this node refused (unknown, expired, revoked, bad signature), or a re-enrollment bearer `authd` refused (9026/9027/9028). The same check also refuses a missing or unsupported `protocol-version` (`400`) and a body over `remoted.auth_max_body_size` (`413`), and those count here too. mTLS failures are not here: the listener already refused the connection | diagnostic — the per-cause split is [`remoted.auth.reject.*`](#authentication-rejections--remotedauthreject); the per-credential split is `remoted.enroll.token.*` / `remoted.enroll.reenroll.*` below |
 | `remoted.enroll.rejected_validation` | Rejected locally before reaching `authd`: undecodable `Content-Encoding`, malformed/invalid body, or a version this manager does not allow | [`remoted.http_content_encoding_enabled`](configuration.md#remotedhttp_content_encoding_enabled); version policy is `<allow_higher_versions>` |
 | `remoted.enroll.disabled` | Enrollment is administratively off, so the request was answered `403` without touching `authd` | the manager's enrollment setting (the route always exists, so this is distinguishable from a `404`) |
 | `remoted.enroll.authd_error` | `authd` answered, and refused on its own business rules (duplicate name, agent limit, cluster forwarding) — including the `403` it gives a verified enrollment token it will not consume (9022 not found or revoked, 9023 expired, 9024 uses exhausted) | diagnostic — `authd`'s own limits; the mapped status is in the `enroll` response cells |
@@ -342,7 +341,7 @@ whenever enrollment is enabled, `0` otherwise):
 
 The enrollment-token, re-enrollment and token-store metrics are read from the admin socket dump
 only; the [API projection](#api-projection)'s `enrollment` group carries the six outcome counters,
-`rate_limited`, the `authd` queue pulls, and the `rate_limit` pulls.
+`rate_limited`, the `authd` queue pulls, and the `rate_limit` pulls of the verified bucket.
 
 The queue in front of `authd` (pulls, so they read as levels):
 
@@ -393,7 +392,7 @@ task-manager clients.
 | `remoted.control.notify` | counter | count | Keepalive messages handled | diagnostic — fleet size × keepalive cadence |
 | `remoted.control.shutdown` | counter | count | `{"type":"shutdown"}` messages handled | diagnostic |
 | `remoted.control.rejected` | counter | count | The endpoint's own 400s (invalid body/JSON/agent-id/type) — an agent/manager version-drift signal | [`agents.allow_higher_versions`](configuration.md#agentsallow_higher_versions) for version drift; otherwise diagnostic |
-| `remoted.control.wdb_error` | counter | count | wazuh-db requests that failed (connect, round-trip timeout, queue full, or expired end to end before wazuh-db answered) | [`remoted.control_wdb_roundtrip_deadline`](configuration.md#remotedcontrol_wdb_roundtrip_deadline), [`remoted.control_wdb_request_deadline`](configuration.md#remotedcontrol_wdb_request_deadline), [`remoted.control_wdb_max_queue_size`](configuration.md#remotedcontrol_wdb_max_queue_size) |
+| `remoted.control.wdb_error` | counter | count | wazuh-db requests that failed: a round-trip timeout, an I/O error, a full queue, or a request that expired end to end (counted from when it was queued) before wazuh-db answered. A failed connect is logged but not counted | [`remoted.control_wdb_roundtrip_deadline`](configuration.md#remotedcontrol_wdb_roundtrip_deadline), [`remoted.control_wdb_request_deadline`](configuration.md#remotedcontrol_wdb_request_deadline), [`remoted.control_wdb_max_queue_size`](configuration.md#remotedcontrol_wdb_max_queue_size) |
 | `remoted.control.no_row` | counter | count | `startup`/`notify` answered `503` because the node's local wazuh-db has **no row** for the agent (`ok []`: not in this node's replica yet, or removed). Disjoint from `wdb_error`, which counts lookups that failed; the agent gets the same `503` for both | diagnostic — on a worker, a non-zero count that does not drain means agent rows are not reaching this node (cluster sync); a single agent stuck here usually was removed but still holds keys |
 | `remoted.control.wdb.latency` | histogram | microseconds | **Successful** wazuh-db round-trip time (timeouts are counted by `wdb_error`, never observed here — the histogram means "how long a healthy round trip takes") | [`remoted.control_wdb_roundtrip_deadline`](configuration.md#remotedcontrol_wdb_roundtrip_deadline), [`remoted.control_wdb_request_connections`](configuration.md#remotedcontrol_wdb_request_connections) |
 | `remoted.control.task_fetch` | counter | count | Pending-task fetches from the task manager that succeeded | — |
@@ -478,7 +477,7 @@ never charges the bucket, so scraping cannot cost an agent its enrollment.
 
 | Metric | Unit | Meaning | Tuning |
 |---|---|---|---|
-| `remoted.<endpoint>.rate_limit.limit` | requests_per_second | The configured ceiling for this route, fleet-wide (`0` when the limit is disabled) | [the `remote.https` rate options](configuration.md#rate-limits-of-the-unauthenticated-routes) |
+| `remoted.<endpoint>.rate_limit.limit` | requests_per_second | The configured ceiling of this bucket on this node, shared by every caller rather than per agent (`0` when the limit is disabled) | [the `remote.https` rate options](configuration.md#rate-limits-of-the-unauthenticated-routes) |
 | `remoted.<endpoint>.rate_limit.burst` | requests | What the route serves back to back before the rate paces it. Derived, not configured: twice the rate | the matching `*_rate_limit` |
 | `remoted.<endpoint>.rate_limit.available` | requests | Allowance left unspent right now. Near zero means the route is at its ceiling and further requests are being refused | read it with `rate_limited`: a climbing counter while `available` sits at 0 is a rate set below what the fleet needs, not necessarily an attack |
 
@@ -560,7 +559,8 @@ legacy daemon counters that same response has always carried:
       "control":         { "notify": 421337, "registry_agents": 32, "wdb_latency": { "...": 0 } },
       "keystore":        { "agents": 34, "reloads_total": 3, "...": 0 },
       "downstream":      { "errors": { "...": 0 }, "deferred": { "capacity": 128, "...": 0 } },
-      "backpressure":    { "available_bytes": 67099136, "inflight_requests": 3, "...": 0 },
+      "backpressure":    { "available_bytes": 268431360, "inflight_requests": 3,
+                           "connections_open": 12, "connections_max": 256, "...": 0 },
       "downloads":       { "started": 12, "bytes_total": 48213004, "...": 0 },
       "tls":             { "cert_expiry_days": 3649, "ca_matches_leaf": 1 },
       "cacerts":         { "served": 34, "not_found": 0, "ca_mismatch": 0, "rate_limited": 0,
@@ -577,12 +577,12 @@ The group names map onto the catalog sections above one-for-one:
 |---|---|
 | `responses.<endpoint>` | [`remoted.http.<endpoint>.responses.<code>`](#request-outcomes--remotedhttpendpointresponsescode), plus a `total` rollup |
 | `latency.<endpoint>` | [`remoted.http.<endpoint>.latency`](#request-latency--remotedhttpendpointlatency) |
-| `auth_rejections` | [`remoted.auth.reject.*`](#authentication-rejections--remotedauthreject) except the three `token_*` causes, plus a `total` rollup |
+| `auth_rejections` | [`remoted.auth.reject.*`](#authentication-rejections--remotedauthreject), every cause, plus a `total` rollup of them |
 | `enrollment` | [`remoted.enroll.*`](#agent-enrollment--remotedenroll) outcome counters and `rate_limited`, with `remoted.enroll.authd.queue.*` under `authd_queue`, [`remoted.enroll.rate_limit.*`](#rate-limits--remotedendpointrate_limit) under `rate_limit` |
 | `control` | [`remoted.control.*`](#control-plane--remotedcontrol), with `registry.agents` as `registry_agents` and `wdb.latency` as `wdb_latency` |
 | `keystore` | [`remoted.auth.keystore.*`](#keystore-health--remotedauthkeystore) |
 | `downstream` | [`remoted.forwarder.*`](#downstream-failures--remotedforwarder), with `error.*` under `errors` and [`deferred.*`](#deferred-forwarding--remotedforwarderdeferred) under `deferred` |
-| `backpressure` | [`remoted.server.budget.*`](#public-transport-backpressure--remotedserverbudget) |
+| `backpressure` | [`remoted.server.budget.*`](#public-transport-backpressure--remotedserverbudget), plus `remoted.server.connections.open` / `.max` as `connections_open` / `connections_max` |
 | `downloads` | [`remoted.download.*`](#downloads--remoteddownload) except `denied` |
 | `tls` | [`remoted.server.tls.*`](#tls-listener-certificate--remotedservertls) — `cert_expiry_days` is the catalog's one signed integer |
 | `cacerts` | [`remoted.cacerts.*`](#ca-distribution--remotedcacerts), with [`remoted.cacerts.rate_limit.*`](#rate-limits--remotedendpointrate_limit) under `rate_limit` |
@@ -591,7 +591,8 @@ The group names map onto the catalog sections above one-for-one:
 Conventions worth knowing before reading a response:
 
 - **Not projected:** `remoted.enroll.token.*`, `remoted.enroll.reenroll.*`,
-  `remoted.enroll.token_store.*`, `remoted.auth.reject.token_{unknown,expired,revoked}` and
+  `remoted.enroll.token_store.*`, `remoted.enroll.unverified.rate_limit.*`,
+  `remoted.server.connections.handshaking`, `remoted.server.handshake.*` and
   `remoted.download.denied` are served by the admin socket only.
 - **`remoted.admin.server.*` is deliberately not projected.** Those metrics
   ([Admin transport](#admin-transport--remotedadminserver)) describe the very socket the API

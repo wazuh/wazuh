@@ -322,12 +322,12 @@ namespace task_manager::schedule
 
         if (m_options.maxRows != storage::UNBOUNDED && stats.remaining > m_options.maxRows)
         {
-            // The ceiling could not be met, which means the excess is pending, claimed or
-            // dead-lettered rows that no rule may remove. Worth saying out loud: reaching this
-            // state with only dead letters left is a real problem, and silence would hide it.
+            // The ceiling could not be met. It evicts every terminal status, dead letters last, so
+            // the excess is pending or claimed work that no rule may remove. Worth saying out loud:
+            // a queue that outgrows the ceiling is a real problem, and silence would hide it.
             LOGFN_WARN(schedulerLogFn(),
                        "MANAGER_TASKS still holds %lld rows after retention, above the %d ceiling. The "
-                       "excess is pending, claimed or dead-lettered work that retention may not remove.",
+                       "excess is pending or claimed work, which retention never removes.",
                        static_cast<long long>(stats.remaining),
                        m_options.maxRows);
         }

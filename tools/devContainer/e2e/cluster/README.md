@@ -29,9 +29,12 @@ into `node/pkg/`:
 
 | Value | Input | Result |
 |---|---|---|
-| `manifest` (default) | `WAZUH_MANIFEST_URL` | Nightly manager package for the arch. |
+| `manifest` (default) | `WAZUH_MANIFEST_URL` (default: the staging `nightly-backup` manifest of `5.0.0-latest`) | Nightly manager package (`wazuh_manager_<arch>_deb`) for the arch. Needs `curl` and `yq`. |
 | `local` | `WAZUH_MANAGER_DEB=/path.deb` | A local package. |
-| `source` | the install at `/var/wazuh-manager` | Snapshot of the manager built on this host with the devContainer make tasks. Only an install at `/var/wazuh-manager` is taken: the worker runs it from that path and the install records absolute paths under its home (GeoIP databases in the engine store). The manager must be stopped while it is taken (`sudo /var/wazuh-manager/bin/wazuh-manager-control stop`); `setup-master.sh` starts it again. |
+| `source` | the install at `/var/wazuh-manager` (`WAZUH_HOME` may only name that path) | Snapshot of the manager built on this host with the devContainer make tasks: the home without `logs/`, `queue/` and `var/`, plus `/etc/wazuh-manager` without `client.keys` and `authd.pass`; the image creates `wazuh-manager` with the host's uid and gid. Only an install at `/var/wazuh-manager` is taken: the worker runs it from that path and the install records absolute paths under its home (GeoIP databases in the engine store). The manager must be stopped while it is taken (`sudo /var/wazuh-manager/bin/wazuh-manager-control stop`); `setup-master.sh` starts it again. |
+
+`init.sh` also stores the cluster key (a new `openssl rand -hex 16` unless one is exported or already
+stored) and the cluster name in `cluster/.env` (0600).
 
 ## Usage
 
@@ -46,8 +49,24 @@ sudo ./cluster/setup-master.sh         # turn the host manager into the cluster 
 ./cluster/cluster.sh down              # remove the workers
 ```
 
-`cluster.sh up` builds the image, starts the workers, waits until they are healthy
-and prints, for each worker, its node name and the host ports that reach it.
+`setup-master.sh` (root) writes a `<cluster>` block into `/etc/wazuh-manager/wazuh-manager.conf`
+(`node_type` `master`, node name `MASTER_NODE_NAME`, default `master`; port 1516, `bind_addr`
+`0.0.0.0`, the key and name of `cluster/.env`), replacing the first existing one or inserting it
+before `</wazuh_config>`. The first run keeps the original as `wazuh-manager.conf.bak`. The new file
+is validated with `wazuh-manager-conf -f <file> validate` before it replaces the configuration (an
+invalid one leaves it untouched); then the script restarts the manager (`systemctl` when systemd is
+PID 1, `wazuh-manager-control restart` otherwise) and fails unless `wazuh-manager-clusterd` is running.
+
+`cluster.sh up` refuses to start unless the base stack's network exists, the `wazuh-indexer` container
+is running, and `node/pkg/` holds an artifact. It builds the image, starts the workers, waits (up to 300 s)
+until they are healthy (every daemon but `wazuh-manager-apid` running) and prints, for each worker,
+its node name (the container's hostname) and the host ports that reach it.
+
+Each worker installs the e2e certificates of the first manager node, `wazuh-1` (the same files and
+CA replacement as `../wazuh_copy_certs.sh`), stores the indexer user (`wazuh-manager`) and password
+in its keystore, rewrites every `<host>https://…</host>` of its configuration (the indexer hosts) to `https://wazuh-indexer:9200`, writes its own
+`<cluster>` block (`node_type` `worker`, `<node>host.docker.internal</node>`), validates the file and
+starts the manager.
 
 ## Credentials and secrets
 
@@ -128,7 +147,11 @@ docker run -d --name wazuh-agent-4x-pinned --hostname wazuh-agent-4x-pinned \
 | Variable | Default | Purpose |
 |---|---|---|
 | `WAZUH_MANAGER_SOURCE` | `manifest` | Worker manager artifact source (`init.sh`). |
+| `WAZUH_MANIFEST_URL` | staging `nightly-backup` manifest | Manifest of the `manifest` source (`init.sh`). |
+| `WAZUH_MANAGER_DEB` | — | Package of the `local` source (`init.sh`). |
 | `WAZUH_ARCH` | autodetected | Package architecture (`init.sh`). |
+| `MASTER_NODE_NAME` | `master` | Node name of the host manager (`setup-master.sh`). |
+| `WAZUH_MANAGER_HOME` | `/var/wazuh-manager` | Host manager whose `bin/` `setup-master.sh` runs; the configuration stays `/etc/wazuh-manager/wazuh-manager.conf` (`WAZUH_MANAGER_CONF` overrides the file). |
 | `WAZUH_CLUSTER_KEY` | generated | Shared cluster key, kept in `cluster/.env`. An exported value replaces the stored one in `init.sh` and `setup-master.sh`, which rewrite `cluster/.env`; `cluster.sh` uses the same precedence but never writes `.env`, so a key exported only at `cluster.sh up` time will not match the master's: export it when running `setup-master.sh` too. |
 | `WAZUH_CLUSTER_NAME` | `wazuh` | Cluster name of the master and the workers, kept in `cluster/.env` like the key. |
 | `WAZUH_E2E_CREDENTIALS` | `../.credentials.env` | Credentials file `cluster.sh` takes the indexer password from. |
@@ -145,8 +168,8 @@ docker logs -f dev-env-cluster-wazuh-worker-1                            # worke
 
 - All manager nodes share the same certificate from the e2e bundle (`../certs`);
   indexer credentials are set in each worker's keystore, not in the config file.
-- Workers reach the indexer at `wazuh-indexer:9200`; `../init.sh` already adds
-  that name as a DNS SAN on the indexer certificate, so hostname verification
-  passes with the shared bundle.
+- Workers reach the indexer at `wazuh-indexer:9200`; `../../scripts/wazuh-certs-tool.yml`
+  lists that name as a DNS SAN of the indexer certificate `../init.sh` issues, so hostname
+  verification passes with the shared bundle.
 - Managers with the same `cluster.name` write documents with the same ids into the
   shared indexer; give each test its own `WAZUH_CLUSTER_NAME`.

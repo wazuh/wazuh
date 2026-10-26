@@ -7,7 +7,7 @@ It is organized in the following sections:
 
 - [Description](description.md) — what the Wazuh Manager is and its role in the platform.
 - [Architecture](architecture.md) — daemons, communication channels, and the 5.0 Engine pipeline.
-- [Compatibility](compatibility.md) — supported operating systems for server and agents.
+- [Compatibility](compatibility.md) — supported operating systems, and which agent and manager versions work together.
 - [Release Notes](release-notes.md) — highlights and breaking changes of 5.0.
 - [Getting Started](getting-started/README.md) — requirements, packages, and installation.
 - [Configuration](configuration/README.md) — configuration guides.

@@ -89,8 +89,14 @@ void CMStore::loadAllNamespacesFromDisk()
             continue;
         }
 
-        // Get namespace ID from directory name
-        NamespaceId nsId(dirEntry.path().filename().string());
+        // Get namespace ID from directory name, skipping directories that are not a valid namespace
+        const auto dirName = dirEntry.path().filename().string();
+        if (!NamespaceId::isValidName(dirName))
+        {
+            LOG_WARNING("[CM::Store] Ignoring directory '{}': not a valid namespace name", dirEntry.path().string());
+            continue;
+        }
+        NamespaceId nsId(dirName);
 
         // Ignore forbidden namespaces
         if (std::find(FORBIDDEN_NAMESPACES.begin(), FORBIDDEN_NAMESPACES.end(), nsId) != FORBIDDEN_NAMESPACES.end())

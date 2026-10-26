@@ -125,6 +125,29 @@ listener certificate, so without it no token can point at the balancer.
 It also issues material for the failure drills: a leaf whose SAN names nothing the agent dials,
 an expired leaf signed by the real CA, and a leaf from a foreign CA.
 
+### How a node takes the lab PKI
+
+The package's credential resolver runs at `dpkg -i`, while the image is built: it mints a CA of
+its own in `/etc/wazuh-manager/ca/` and issues the remoted and Server API pairs from it. Every
+start then checks that `certs/root-ca.pem` contains `ca/root-ca.pem` and that each pair chains
+to that CA, so copying the lab leaf over `certs/` alone gets the start refused. The manager
+entrypoint follows the documented path for
+[certificates issued elsewhere](../../../../../docs/ref/getting-started/installation.md#using-certificates-issued-elsewhere)
+instead, on every boot:
+
+* removes the minted CA's key and mint marker and stages the lab CA as `ca/root-ca.pem`, without
+  its key, so nothing is ever issued on a node;
+* stages the lab CA as `certs/root-ca.pem` (the bundle agents fetch from `GET /cacerts`);
+* stages the node's own leaf as **both** `remoted.pem` and `apid.pem` (with their keys): the minted
+  pairs no longer chain, and the resolver never reissues a pair outside an install;
+* stages the indexer trust the manager consumes but never generates — `indexer-ca.pem` (the lab
+  CA), the `indexer-connector` pair (`admin.pem`) — and writes `local.env` with
+  `WAZUH_INDEXER_MANAGER_PASSWORD` (see [Indexer](#indexer)).
+
+A start the resolver still refuses exits 1 with no daemon running; the entrypoint says so, and
+the reason (`MISSING|INVALID|UNSAFE <path>: …`) is in the manager log it tails (`docker logs
+<node>`).
+
 ## Scenarios
 
 ### The whole route matrix, with node attribution
@@ -235,8 +258,26 @@ by the agent.
 ./cert_drill.sh restore
 ```
 
-Installs the certificate on worker2, restarts it, measures twelve requests from all five paths,
-and reads the node's two TLS metrics. Of the three failures, only two move a metric.
+Installs the certificate on worker2 as its remoted pair and restarts it. The manager judges its
+own pair before serving it: `restart` runs the credential check **before** it stops anything, and
+that check refuses a remoted leaf that is expired or does not chain to `certs/root-ca.pem`
+(`Invalid credentials`, `-j` error 22). So:
+
+| Drill | What the restart does | What the front ends then measure |
+|---|---|---|
+| expired leaf | refused before the stop | the **previous** leaf, still served by the running daemons |
+| wrong CA | refused before the stop | the **previous** leaf, still served by the running daemons |
+| SAN mismatch | restarts (the check requires SANs, not particular names) | the mismatched leaf |
+
+Each drill prints the restart's verdict with the resolver's reason, the leaf on disk next to the
+leaf worker2 actually serves on `41519`, the node's two TLS metrics, and twelve requests from all
+five paths — which measure the served leaf, not necessarily the installed one. Only the SAN
+mismatch is a TLS failure the front ends can see.
+
+A refused pair stays on disk, so worker2's **next** start is refused too: a `docker restart
+wazuh-worker2` leaves it with no daemon at all. `DRILL_COLD=1 ./cert_drill.sh …` measures that
+case on purpose — stop, then start — so the front ends see a dead backend instead of a bad
+certificate. Always finish with `./cert_drill.sh restore`.
 
 `certs-bad/` is built with `openssl ca` and explicit dates, because OpenSSL 3.0 has no
 `-not_before`/`-not_after` on `openssl x509`.
@@ -293,8 +334,10 @@ rm overrides/break-indexer-ca.sh              # undo
 docker restart wazuh-worker2
 ```
 
-`break-indexer-ca.sh` points the indexer connector at a missing file, which is enough to keep
-the whole node from opening its agent listener. Scenarios run with the entrypoint's variables
+`break-indexer-ca.sh` points the indexer connector's CA at a relative path to a missing file,
+which is enough to keep the whole node from opening its agent listener: the credential check
+before the start refuses a TLS path outside `/etc/wazuh-manager/certs` (`Invalid credentials`),
+so no daemon starts. Scenarios run with the entrypoint's variables
 in scope: `$CONF` is the manager configuration, `$DIR` the install root.
 
 ## Indexer
@@ -336,8 +379,18 @@ The configuration directory is selected by `OPENSEARCH_PATH_CONF`, not by `-Epat
 was removed and stops the node from starting.
 
 The managers reach it over `https://wazuh-indexer:9200` with `admin.pem`. A single-host install
-points `<indexer><ssl>` straight at `/etc/wazuh-indexer/certs/`; here the two are separate
-containers, so the same three files are copied into each manager's own `/etc/wazuh-manager/certs`.
+imports the indexer's CA, client pair and password from `/etc/wazuh-indexer/export/`; here the two
+are separate containers, so the manager entrypoint stages them under the names the generated
+`<indexer><ssl>` block already uses: the lab CA as `certs/indexer-ca.pem` and `admin.pem` /
+`admin-key.pem` as `certs/indexer-connector.pem` / `-key.pem`. The pair must carry `clientAuth`,
+or every start is refused.
+
+The resolver also requires `WAZUH_INDEXER_MANAGER_PASSWORD` before any start. The entrypoint
+writes it to `/etc/wazuh-manager/local.env` (root, `0600`) on a node that has none, from
+`LAB_INDEXER_MANAGER_PASSWORD` in the service's environment, else a placeholder that satisfies
+the password rule: the lab indexer authenticates the manager by its client certificate. The
+first start stores it in the keystore, and a later change of `local.env` does not replace it
+there.
 
 The vulnerability feed does not load here. The manager reads it from the indexer's CTI
 catalogue, which nothing populates in this lab.

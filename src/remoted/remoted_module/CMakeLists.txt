@@ -33,12 +33,19 @@ target_include_directories(
 # and scanvd/scanVdMetrics.hpp. Defined later in the top-level configure (this module never
 # configures standalone), which is fine: CMake resolves link targets at generate time.
 # wazuh_uds_http_server: the shared HTTP-over-UDS server behind the module's LOCAL admin socket
-# (queue/sockets/remote-admin-http.sock, see startAdminServer() in remotedModuleFacade.hpp). Also
-# registered by the top-level configure; its asio/llhttp deps stay PRIVATE inside the archive,
-# and it compiles the same vendored standalone asio (ASIO_STANDALONE) ext_restinio already uses.
+# (queue/sockets/remote-admin-http.sock, see startAdminServer() in remotedModuleFacade.hpp). Not
+# registered by the top-level configure (its gate there never fires): the first consumer whose
+# `if(NOT TARGET wazuh_uds_http_server)` guard runs registers it -- inventory_sync_server, under
+# wazuh_modules, before remoted -- and the same guard below keeps this module independent of that
+# order. Its asio/llhttp deps stay PRIVATE inside the archive, and it compiles the same vendored
+# standalone asio (ASIO_STANDALONE) ext_restinio already uses.
 # ca_bundle: shared_modules/ca_bundle, the CA bundle's parsing/hashing/guards (issue #39319), which
 # the certs tool answers the same questions with. Its PUBLIC include directory propagates through
 # this PRIVATE link, so http_server/ resolves <ca_bundle/ca_bundle.hpp> with nothing added below.
+if(NOT TARGET wazuh_uds_http_server)
+  add_subdirectory(${SRC_FOLDER}/shared_modules/uds_http_server
+                   ${CMAKE_BINARY_DIR}/shared_modules/uds_http_server EXCLUDE_FROM_ALL)
+endif()
 target_link_libraries(remoted_module PRIVATE pthread ext_restinio ext_rapidjson ext_zstd ext_jwt_cpp
                                              wazuh_metrics wazuh_uds_http_server ca_bundle)
 

@@ -6,9 +6,11 @@ evaluating the cluster surface.
 
 ## Overview
 
-The Manager Cluster uses a dedicated transport protocol (DAPI) over TCP port
-1516. This protocol is an **internal control plane** between manager nodes, not
-a user-facing API. It is distinct from the RESTful API (port 55000), which is
+The Manager Cluster uses a dedicated transport protocol over TCP port 1516 (the
+default of `<cluster><port>`; every statement about port 1516 below applies to
+the configured port). The distributed API (DAPI), which executes API operations
+on other nodes, runs over it. This protocol is an **internal control plane**
+between manager nodes, not a user-facing API. It is distinct from the RESTful API (port 55000), which is
 the user-facing entry point and the place where user authentication and
 authorization are enforced.
 
@@ -166,6 +168,21 @@ them, so frames of different messages never interleave.
    version (error 3031), so mixed-protocol clusters cannot form. The preamble's
    magic and version turn a mismatch into a clear 3063 instead of a 3025.
 
+### Connection and message limits
+
+The master bounds the connections a peer can open and how long it may take to
+identify itself; every node bounds the messages it receives. These values are
+constants of `framework/wazuh/core/cluster/`, not configuration:
+
+| Limit | Value | Effect when exceeded |
+|---|---|---|
+| Connections from one IP address | 10 | the new connection is closed (`Too many connections from <ip>`) |
+| Connections in total | 1024 | the new connection is closed (`Too many total connections`) |
+| Time to complete the handshake (`hello` accepted) | 30 s | the connection is closed (`handshake not completed within deadline`) |
+| Time to receive a payload whose header has arrived | 30 s | the connection is closed (`incomplete message payload not received within deadline`) |
+| Size of one message, divided or not | 256 MiB | error 3050 |
+| Divided messages being received at once | 10 | error 3051 |
+
 ### What this does not provide
 
 - **Forward secrecy.** The nonces travel in clear, so anyone who holds the
@@ -179,10 +196,13 @@ them, so frames of different messages never interleave.
 ## Authorization Model
 
 User-level authorization (RBAC) is enforced at the **RESTful API entry point**
-(port 55000). Once a request has passed RBAC at the API, the resulting
-operations may be dispatched to other nodes through the DAPI. The receiving
-node does not re-evaluate the original caller's RBAC permissions; it assumes
-that authorization has already been performed upstream.
+(port 55000), which runs only on the master. Once a request has passed RBAC at
+the API, the resulting operations may be dispatched to other nodes through the
+DAPI. The caller's RBAC policies, as the API resolved them, travel inside the
+DAPI request, and the receiving node applies them to the operation as they
+arrive: it does not authenticate the caller or derive the policies again from
+its own RBAC database, so it trusts the policies the sending node put in the
+request.
 
 In practical terms:
 
@@ -197,11 +217,25 @@ In practical terms:
 Independently of the trust model, the DAPI does enforce a small set of
 restrictions on operations between nodes:
 
-- **Local configuration**: a node will not accept remote modifications to its
-  local  `wazuh-manager.conf` (previously `ossec.conf`).
+- **Local configuration**: cluster file synchronization never replicates a
+  node's `wazuh-manager.conf`; it is on the cluster's excluded-files list, so
+  no node's copy overwrites another's. The file is changed remotely only
+  through the API: `PUT /cluster/{node_id}/configuration` on the master is
+  forwarded over the DAPI to the named node, which runs it only for a caller
+  holding the `cluster:update_config` RBAC action over that node. The node
+  checks the new text before writing it — XML syntax and schema; changes to
+  the `indexer` section or to `agents.allow_higher_versions` (under `auth` or
+  `remote`) are refused unless `upload_configuration` in `api.yaml` allows
+  them, which it does by default; and a change to the cluster key or to the
+  `indexer` section additionally requires `cluster:read_secrets` over the
+  node. The written file is then validated, and the previous file is restored
+  on any failure.
 - **Authority context boundary**: operations outside the scope of the Wazuh
   product (i.e. outside the Wazuh authority context) are not executed through
-  the DAPI.
+  the DAPI. A received request names the function to run; the node runs it
+  only if it belongs to the `wazuh` or `api` package and is marked as exposed
+  to the DAPI (by the framework's `@expose_resources` or `@dapi_allower`
+  decorator), and refuses anything else.
 
 These restrictions are explicit limits of the cluster protocol and are part
 of the security model. Crossing them is considered a vulnerability (see
@@ -218,6 +252,12 @@ segmentation (dedicated subnet, VLAN, security group, firewall rules, etc.).
 
 **Unsupported deployment**: Port 1516 exposed to untrusted networks, the
 Internet, agent networks, or user networks.
+
+Only the master listens on the cluster port, on `<cluster><bind_addr>`, whose
+default is `127.0.0.1`: a single-node manager accepts no cluster connection from
+the network. A multi-node cluster needs an address the workers can reach; choose
+one on the management network rather than `0.0.0.0` on a host whose other
+interfaces face agents or users.
 
 Vulnerabilities reported in unsupported deployment configurations are **out of
 scope** for security evaluation, as they require violating documented

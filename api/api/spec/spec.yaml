@@ -2104,7 +2104,7 @@ components:
                   description: "When the HTTPS agent server collected these values"
                 responses:
                   type: object
-                  description: "Responses sent per agent-facing endpoint, by status. Rejections produced by the authentication gateway (401, 413, bad encoding) are answered before any endpoint runs and are counted only in `auth_rejections`"
+                  description: "Responses sent per agent-facing endpoint, by status. Rejections produced by the authentication gateway (401, 413, bad encoding, the 503 for an agent over its share) are answered before any endpoint runs and are counted only in `auth_rejections`"
                   properties:
                     stateless:
                       allOf:
@@ -2196,6 +2196,22 @@ components:
                       type: integer
                       format: int64
                       description: "The request could not be parsed at all"
+                    token_unknown:
+                      type: integer
+                      format: int64
+                      description: "`POST /enroll` only: the enrollment-token bearer names no credential-bearing token known to this node"
+                    token_expired:
+                      type: integer
+                      format: int64
+                      description: "`POST /enroll` only: the enrollment token presented has expired"
+                    token_revoked:
+                      type: integer
+                      format: int64
+                      description: "`POST /enroll` only: the enrollment token presented was revoked"
+                    agent_busy:
+                      type: integer
+                      format: int64
+                      description: "An authenticated agent already had its share of open requests or in-flight bytes; answered with 503"
                 enrollment:
                   type: object
                   description: "Agent enrollment handled by `POST /enroll`, which bridges to the enrollment daemon"
@@ -3983,8 +3999,10 @@ components:
     file_path:
       in: query
       name: file_path
-      description: "Full path to the WPK file. The file must be on a folder on the Wazuh's installation directory
-      (by default, <code>/var/wazuh-manager</code>)"
+      description: "Full path to the WPK file, ending in <code>.wpk</code>. The file must be directly in the
+      <code>var/upgrade/</code> directory of the installation (by default, <code>/var/wazuh-manager/var/upgrade/</code>),
+      not in a subdirectory of it; a symbolic link that resolves outside that directory is refused. Any other path
+      fails with error 1824"
       required: True
       schema:
         type: string
@@ -4580,7 +4598,7 @@ paths:
       tags:
         - Agents
       summary: "Upgrade agents"
-      description: "Upgrade agents using a WPK file from online repository. When upgrading more than 3000 agents at the same time, it's highly recommended to use the parameter `wait_for_complete` set to `true` to avoid a possible API timeout"
+      description: "Upgrade agents using a WPK file from online repository. When upgrading more than 3000 agents at the same time, it's highly recommended to use the parameter `wait_for_complete` set to `true` to avoid a possible API timeout An agent the manager cannot upgrade (errors 1816 to 1826 and 1828: unsupported platform or version, repository or WPK problems, and the like) is reported in `failed_items` with the reason, while the tasks created for the other agents are still returned in `affected_items`."
       operationId: api.controllers.agent_controller.put_upgrade_agents
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/agent:upgrade'
@@ -4639,7 +4657,7 @@ paths:
       tags:
         - Agents
       summary: "Upgrade agents custom"
-      description: "Upgrade the agents using a local WPK file. When upgrading more than 3000 agents at the same time, it's highly recommended to use the parameter `wait_for_complete` set to `true` to avoid a possible API timeout"
+      description: "Upgrade the agents using a local WPK file. When upgrading more than 3000 agents at the same time, it's highly recommended to use the parameter `wait_for_complete` set to `true` to avoid a possible API timeout An agent the manager cannot upgrade (errors 1816 to 1826 and 1828: unsupported platform or version, repository or WPK problems, and the like) is reported in `failed_items` with the reason, while the tasks created for the other agents are still returned in `affected_items`."
       operationId: api.controllers.agent_controller.put_upgrade_custom_agents
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/agent:upgrade'
@@ -5732,7 +5750,7 @@ paths:
       tags:
         - Agents
       summary: "Summarize agents OS"
-      description: "Return a summary of the OS of available agents"
+      description: "Return a summary of the OS of available agents. If none of them has reported its OS yet, they are returned as failed items. If there are no agents registered, the message says so"
       operationId: api.controllers.agent_controller.get_agent_summary_os
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/agent:read'
@@ -7173,6 +7191,10 @@ paths:
                             body_too_large: 1
                             bad_encoding: 0
                             malformed: 0
+                            token_unknown: 0
+                            token_expired: 0
+                            token_revoked: 0
+                            agent_busy: 0
                           enrollment:
                             accepted: 34
                             rejected_auth: 2

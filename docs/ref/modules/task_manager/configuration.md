@@ -26,13 +26,12 @@ are read once, when `wazuh-manager-modulesd` starts.
 
 Time-to-live for a **pending** agent task, measured from its `create_time`. On each cleanup pass
 (every `cleanup_interval`), pending tasks older than `task_ttl` are moved to `expired` and are never
-handed out. Manager tasks are never expired by age. (The schema's one-line description, "Seconds a
-finished task is kept", does not describe what the module does with it.)
+handed out. Manager tasks are never expired by age.
 
 - **Default value:** `3600` (1 hour)
 - **Allowed values:** integer ≥ 0 (seconds). `0` means "use default".
 - **Note:** for agents below v5.0.0, `remoted`'s own `remoted.legacy_task_polling_interval` (default
-  `900`s, see [remoted configuration](../remoted/configuration.md)) must be configured comfortably
+  `900`s, see [remoted configuration](../remoted/configuration.md#remotedlegacy_task_polling_interval)) must be configured comfortably
   smaller than this value, or a `remote_upgrade` task created just after a poll cycle can expire
   before the next cycle ever picks it up. Nothing checks this relationship for you — the two options
   belong to different daemons and neither reads the other's — so it is worth confirming by hand
@@ -145,14 +144,17 @@ curl --unix-socket /var/wazuh-manager/queue/sockets/task-http.sock http://localh
 # {"status":"ok"}
 ```
 
-If the module cannot bind its socket or open `tasks.db`, modulesd exits with `Cannot start the task
-manager module.`; a missing `lib/libtask_manager.so` exits with `Unable to load libtask_manager.so
-(<reason>); the installation is broken.`
+If the module cannot start — it cannot bind its socket or open `tasks.db`, or
+`manager_task_delete_timeout` does not exceed `manager_task_vd_scan_timeout` — it logs `Task manager
+failed to start: <reason>` and modulesd exits with `Cannot start the task manager module.` These
+happen at module start, after `wazuh-manager-modulesd -t` has already passed. A missing
+`lib/libtask_manager.so` exits with `Unable to load libtask_manager.so (<reason>); the installation
+is broken.`
 
 ### Inspect the tasks database
 
-The Task Manager is the **sole owner** of `tasks.db`: Wazuh DB no longer has a `task` actor, and
-there is no protocol to query it through. Read it directly, and only read it — the module holds the
+The Task Manager is the **sole owner** of `tasks.db`: Wazuh DB has no `task` actor, and there is
+no protocol to query it through. Read it directly, and only read it — the module holds the
 database open in WAL mode:
 
 ```bash
@@ -194,7 +196,7 @@ short triage guide are in [Metrics](metrics.md).
 ### Common Issues
 
 **Issue:** A task shows up as `expired` before an agent could pick it up.
-**Solution:** Increase `task_ttl` if the target agents may be offline for long periods, or make sure the agents actually poll on their `notify` cadence. Each cleanup pass logs how many pending agent tasks it expired at debug level (`Expired N pending agent task(s) created more than Ns ago (task_ttl)`). In a cluster, some expiries are expected rather than a fault: an agent command is queued on every node, only the node the agent polls delivers it, and the other nodes' copies age out.
+**Solution:** Increase `task_ttl` if the target agents may be offline for long periods, or make sure the agents actually poll on their `notify` cadence. Each cleanup pass logs how many pending agent tasks it expired at debug level (`Expired <n> pending agent task(s) created more than <ttl>s ago (task_ttl): their agent never fetched them from this node`). In a cluster, some expiries are expected rather than a fault: an agent command is queued on every node, only the node the agent polls delivers it, and the other nodes' copies age out.
 
 **Issue:** `413` answers with `payload exceeds max_payload_bytes` when creating tasks.
 **Solution:** Producers should reduce payload size, or raise `max_payload_bytes`. This limit protects the manager from unbounded task payloads.
@@ -263,20 +265,12 @@ manager defaults file to consult. Every default above lives in code, so an optio
 is at the value in this table, and writing one is the only way to change it. All are read once, when
 `wazuh-manager-modulesd` starts.
 
-> **Renamed in 5.0.** These were `monitord.*` while log rotation and agent monitoring belonged to
-> `wazuh-manager-monitord`. If you set any of them in `wazuh-manager-internal-options.conf` on an
-> earlier build, rename the key — an override under the old name is silently ignored, because the
-> lookup compares the part before the first `.` as well as the part after it.
->
-> **The agent is unaffected.** It keeps `monitord.*` for its own log rotation; see the
-> [Agent configuration reference](../client/configuration.md). Only the manager's keys moved.
+A 4.x `monitord.*` key is not read under its old name; the mapping to these keys is in
+[Migrating Manager Configuration to Wazuh 5.0](../../../guide/migration/manager-configuration-migration.md#internal_optionsconf--wazuh-manager-internal-optionsconf).
 
 **The first two settings are windows, not intervals.** Each names an *age* — how long an agent must
-have been silent — and the schedule that applies it runs on an interval derived from it, at a quarter
-of the window bounded to `[60 s, 300 s]` for the disconnection sweep and `[60 s, 3600 s]` for
-retention deletion. At the default that is a sweep every 225 s against a 900 s window, so an agent is
-marked `disconnected` between 15 and 18 m 45 s after its last keepalive. There is no option for the
-interval; see [Window and interval are not the same
+have been silent; how often the schedule applies it is derived from it and has no option of its
+own. See [Window and interval are not the same
 number](schedules.md#window-and-interval-are-not-the-same-number).
 
 ### Reading back what modulesd read
@@ -371,7 +365,7 @@ fails `wazuh-manager-modulesd -t` rather than aborting later.
 | `wazuh_modules.upgrade_workers` | `cores / 2`, clamped to 1–4 | 1–16 | upgrade **batches** run at once |
 | `wazuh_modules.upgrade_queue_depth` | 8 | 1–1000 | batches queued before a request is refused |
 | `wazuh_modules.upgrade_batch_deadline` | 180 | 10–3600 | seconds one batch may take before its remaining agents are failed |
-| `wazuh_modules.upgrade_max_agents` | 500 | 1–100000 | largest batch accepted in one request |
+| `wazuh_modules.upgrade_max_agents` | 500 | 1–100000 | largest batch accepted in one request; a larger one answers every agent with error 2 |
 | `wazuh_modules.upgrade_download_attempts` | 3 | 1–10 | tries per WPK before giving up |
 | `wazuh_modules.upgrade_download_timeout` | 45000 | 1000–600000 | milliseconds per download attempt |
 | `wazuh_modules.upgrade_max_concurrent_downloads` | 2 | 1–32 | WPK downloads in flight across all batches |
@@ -417,12 +411,8 @@ Upgrade work logs under its own sub-tag, `wazuh-manager-modulesd:task-manager:up
 tail -f /var/wazuh-manager/logs/wazuh-manager.log | grep 'task-manager:upgrade'
 ```
 
-The counters are also published on the module's metrics endpoint — `wpk_downloads`,
-`wpk_cache_hits`, `versions_fetches`, `versions_cache_hits`, `queue_depth` and `batches_shed`:
-
-```bash
-curl --unix-socket /var/wazuh-manager/queue/sockets/task-http.sock http://localhost/v1/metrics
-```
+The upgrade counters (`task_manager.upgrade.*`) are on the module's metrics endpoint; see
+[Metrics](metrics.md#agent-upgrades).
 
 Each request produces one `remote_upgrade` row per accepted agent, inspectable like any other task
 type. Whether the agent then picked it up, downloaded the WPK and ran the installer is visible in
@@ -438,10 +428,9 @@ version gates are listed under
 `/var/wazuh-manager/var/upgrade/` and use the custom-upgrade endpoint. A custom WPK **must** be
 inside that directory; anything else is refused with *The WPK file does not exist*.
 
-*A missing CA bundle fails every repository request, by design.* Peer verification is never disabled: the
-SHA-1 a WPK is checked against comes from the repository's own index over the same connection, so an
-unverified channel would let a man in the middle supply a matching pair and the integrity check
-would confirm his work rather than ours. The module says so once at start-up:
+*A missing CA bundle fails every repository request, by design* (peer verification is never
+disabled; see [The WPK file](agent-upgrades.md#the-wpk-file)). The module says so once at start-up,
+at WARN:
 
 ```
 No CA bundle was found on this host. HTTPS requests to the WPK repository will fail;
@@ -469,5 +458,5 @@ so this is usually self-correcting; if it persists the repository is likely slow
 - [Recurring manager tasks](schedules.md) — the three schedules and how they fire
 - [Agent upgrades](agent-upgrades.md) — the manager-side flow end to end
 - [Task Manager Module](README.md) — Module overview and architecture
-- [Wazuh DB](../wazuh_db/README.md) — no longer involved in `tasks.db`; the module owns it outright
+- [Wazuh DB](../wazuh_db/README.md) — not involved in `tasks.db`; the module owns it outright
 - [Manager Configuration Reference](../../configuration/manager/README.md)

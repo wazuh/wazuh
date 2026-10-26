@@ -372,6 +372,7 @@ using ::testing::HasSubstr;
 using ::testing::Invoke;
 using ::testing::NiceMock;
 using ::testing::Return;
+using ::testing::SaveArg;
 using ::testing::Throw;
 
 class WIndexerConnectorMockTest : public ::testing::Test
@@ -524,11 +525,20 @@ TEST_F(WIndexerConnectorMockTest, ExistsIocDataIndexAfterShutdownThrows)
  **************************/
 namespace
 {
-nlohmann::json policyHit(const std::string& hash, bool enabled, const std::vector<std::string>& integrations = {"int1"})
+constexpr auto ROOT_DECODER_UUID = "5c1df6b6-1458-4b2e-9001-96f67a8b12c8";
+
+// rootDecoder == std::nullopt leaves the root_decoder key out of the document
+nlohmann::json policyHit(const std::string& hash,
+                         bool enabled,
+                         const std::vector<std::string>& integrations = {"int1"},
+                         const std::optional<nlohmann::json>& rootDecoder = nlohmann::json(ROOT_DECODER_UUID))
 {
-    nlohmann::json hit = {{"_source",
-                           {{"space", {{"hash", {{"sha256", hash}}}}},
-                            {"document", {{"enabled", enabled}, {"integrations", integrations}}}}}};
+    nlohmann::json document = {{"enabled", enabled}, {"integrations", integrations}};
+    if (rootDecoder.has_value())
+    {
+        document["root_decoder"] = *rootDecoder;
+    }
+    nlohmann::json hit = {{"_source", {{"space", {{"hash", {{"sha256", hash}}}}}, {"document", document}}}};
     return hit;
 }
 } // namespace
@@ -553,6 +563,65 @@ TEST_F(WIndexerConnectorMockTest, GetPolicyHashAndEnabledDisabledWhenNoIntegrati
     ASSERT_TRUE(result.has_value());
     EXPECT_EQ(result->first, "zz");
     EXPECT_FALSE(result->second);
+}
+
+TEST_F(WIndexerConnectorMockTest, GetPolicyHashAndEnabledDisabledWhenRootDecoderNull)
+{
+    nlohmann::json hits = {{"total", {{"value", 1}}},
+                           {"hits", {policyHit("h-null", true, {"int1"}, nlohmann::json())}}};
+    EXPECT_CALL(*mock, search(An<std::string_view>(), 1U, _, _)).WillOnce(Return(hits));
+    auto connector = makeConnector();
+    auto result = connector->getPolicyHashAndEnabled("default");
+    ASSERT_TRUE(result.has_value());
+    EXPECT_EQ(result->first, "h-null");
+    EXPECT_FALSE(result->second);
+}
+
+TEST_F(WIndexerConnectorMockTest, GetPolicyHashAndEnabledDisabledWhenRootDecoderEmpty)
+{
+    nlohmann::json hits = {{"total", {{"value", 1}}}, {"hits", {policyHit("h-empty", true, {"int1"}, "")}}};
+    EXPECT_CALL(*mock, search(An<std::string_view>(), 1U, _, _)).WillOnce(Return(hits));
+    auto connector = makeConnector();
+    auto result = connector->getPolicyHashAndEnabled("default");
+    ASSERT_TRUE(result.has_value());
+    EXPECT_EQ(result->first, "h-empty");
+    EXPECT_FALSE(result->second);
+}
+
+TEST_F(WIndexerConnectorMockTest, GetPolicyHashAndEnabledDisabledWhenRootDecoderMissing)
+{
+    nlohmann::json hits = {{"total", {{"value", 1}}}, {"hits", {policyHit("h-missing", true, {"int1"}, std::nullopt)}}};
+    EXPECT_CALL(*mock, search(An<std::string_view>(), 1U, _, _)).WillOnce(Return(hits));
+    auto connector = makeConnector();
+    std::optional<std::pair<std::string, bool>> result;
+    EXPECT_NO_THROW(result = connector->getPolicyHashAndEnabled("default"));
+    ASSERT_TRUE(result.has_value());
+    EXPECT_EQ(result->first, "h-missing");
+    EXPECT_FALSE(result->second);
+}
+
+TEST_F(WIndexerConnectorMockTest, GetPolicyHashAndEnabledDisabledWhenRootDecoderNotString)
+{
+    nlohmann::json hits = {{"total", {{"value", 1}}}, {"hits", {policyHit("h-number", true, {"int1"}, 42)}}};
+    EXPECT_CALL(*mock, search(An<std::string_view>(), 1U, _, _)).WillOnce(Return(hits));
+    auto connector = makeConnector();
+    std::optional<std::pair<std::string, bool>> result;
+    EXPECT_NO_THROW(result = connector->getPolicyHashAndEnabled("default"));
+    ASSERT_TRUE(result.has_value());
+    EXPECT_EQ(result->first, "h-number");
+    EXPECT_FALSE(result->second);
+}
+
+TEST_F(WIndexerConnectorMockTest, GetPolicyHashAndEnabledRequestsRootDecoder)
+{
+    nlohmann::json hits = {{"total", {{"value", 1}}}, {"hits", {policyHit("abc123", true)}}};
+    std::optional<nlohmann::json> source;
+    EXPECT_CALL(*mock, search(An<std::string_view>(), 1U, _, _)).WillOnce(DoAll(SaveArg<3>(&source), Return(hits)));
+    auto connector = makeConnector();
+    connector->getPolicyHashAndEnabled("default");
+    ASSERT_TRUE(source.has_value());
+    const auto& includes = source->at("includes");
+    EXPECT_NE(std::find(includes.begin(), includes.end(), "document.root_decoder"), includes.end());
 }
 
 TEST_F(WIndexerConnectorMockTest, GetPolicyHashAndEnabledDisabledWhenEnabledFalse)

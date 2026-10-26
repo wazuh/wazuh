@@ -313,6 +313,64 @@ def test_get_file_conf_path_traversal():
             mock_open_fn.assert_not_called()
 
 
+INVALID_GROUP_IDS = ['../', '..', '../..', '../../etc', '/etc', 'a/b', '.', '', pytest.param('a' * 256, id='too_long')]
+
+
+@pytest.mark.parametrize('group_id', INVALID_GROUP_IDS)
+def test_get_agent_conf_invalid_group_id(group_id):
+    """Check that a group_id that is not a plain group name is rejected before any path is built or read."""
+    with patch('wazuh.core.common.SHARED_PATH', new=os.path.join(parent_directory, tmp_path, 'configuration')):
+        with patch('wazuh.core.configuration.load_wazuh_xml') as mock_load, patch('builtins.open') as mock_open_fn:
+            with pytest.raises(WazuhError, match=".* 1722 .*"):
+                configuration.get_agent_conf(group_id=group_id, filename='agent.conf')
+            mock_load.assert_not_called()
+            mock_open_fn.assert_not_called()
+
+
+@pytest.mark.parametrize('group_id', INVALID_GROUP_IDS)
+@pytest.mark.parametrize('raw', [True, False])
+def test_get_file_conf_invalid_group_id(group_id, raw):
+    """Check that a group_id that is not a plain group name is rejected before any path is built or read."""
+    with patch('wazuh.core.common.SHARED_PATH', new=os.path.join(parent_directory, tmp_path, 'configuration')):
+        with patch('wazuh.core.configuration.load_wazuh_xml') as mock_load, patch('builtins.open') as mock_open_fn:
+            with pytest.raises(WazuhError, match=".* 1722 .*"):
+                configuration.get_file_conf(filename='ossec.conf', group_id=group_id, raw=raw)
+            mock_load.assert_not_called()
+            mock_open_fn.assert_not_called()
+
+
+@pytest.mark.parametrize('group_id', ['my-group', 'my_group', 'my.group', 'group.1-a_B', '...', '.hidden',
+                                      pytest.param('a' * 255, id='max_length')])
+def test_get_conf_valid_group_id_format(group_id):
+    """Check that group names accepted by the API reach the existence check instead of being rejected."""
+    with patch('wazuh.core.common.SHARED_PATH', new=os.path.join(parent_directory, tmp_path, 'configuration')):
+        with pytest.raises(WazuhError, match=".* 1710 .*"):
+            configuration.get_agent_conf(group_id=group_id)
+        with pytest.raises(WazuhError, match=".* 1710 .*"):
+            configuration.get_file_conf(filename='agent.conf', group_id=group_id)
+        with pytest.raises(WazuhError, match=".* 1710 .*"):
+            configuration.upload_group_configuration(group_id, '<agent_config></agent_config>')
+        with pytest.raises(WazuhError, match=".* 1710 .*"):
+            configuration.upload_group_file(group_id, '<agent_config></agent_config>')
+
+
+def test_group_id_symlink_outside_shared(tmp_path_factory):
+    """Check that a group directory that is a symlink to a directory outside the shared one is rejected."""
+    root = tmp_path_factory.mktemp('symlink')
+    (root / 'shared').mkdir()
+    (root / 'outside').mkdir()
+    (root / 'outside' / 'agent.conf').write_text('<agent_config></agent_config>')
+    os.symlink(root / 'outside', root / 'shared' / 'link')
+
+    with patch('wazuh.core.common.SHARED_PATH', new=str(root / 'shared')):
+        with pytest.raises(WazuhError, match=".* 1006 .*"):
+            configuration.get_agent_conf(group_id='link')
+        with pytest.raises(WazuhError, match=".* 1006 .*"):
+            configuration.get_file_conf(filename='agent.conf', group_id='link', raw=True)
+        with pytest.raises(WazuhError, match=".* 1710 .*"):
+            configuration.upload_group_configuration('link', '<agent_config></agent_config>')
+
+
 def test_parse_internal_options():
     with patch('wazuh.core.common.INTERNAL_OPTIONS_CONF',
                new=os.path.join(parent_directory, tmp_path, 'configuration/noexists.conf')):
@@ -423,6 +481,24 @@ def test_upload_group_file(mock_safe_move, mock_open, mock_wazuh_uid, mock_wazuh
     with patch('wazuh.core.common.SHARED_PATH', new=os.path.join(parent_directory, tmp_path, 'configuration')):
         with pytest.raises(WazuhError, match=".* 1111 .*"):
             configuration.upload_group_file('default', [], 'a.conf')
+
+@pytest.mark.parametrize('group_id', INVALID_GROUP_IDS)
+@patch('wazuh.core.configuration.safe_move')
+@patch('wazuh.core.configuration.tempfile.mkstemp')
+@patch('wazuh.core.configuration.subprocess.check_output')
+def test_upload_group_invalid_group_id(mock_check_output, mock_mkstemp, mock_safe_move, group_id):
+    """Check that a group_id that is not a plain group name is rejected before anything is written or moved."""
+    with patch('wazuh.core.common.SHARED_PATH', new=os.path.join(parent_directory, tmp_path, 'configuration')):
+        with pytest.raises(WazuhError, match=".* 1722 .*"):
+            configuration.upload_group_configuration(group_id, '<agent_config></agent_config>')
+        with pytest.raises(WazuhError, match=".* 1722 .*"):
+            configuration.upload_group_file(group_id, '<agent_config></agent_config>', 'agent.conf')
+        with pytest.raises(WazuhError, match=".* 1722 .*"):
+            configuration.upload_group_file(group_id, '<agent_config></agent_config>', 'other.conf')
+    mock_mkstemp.assert_not_called()
+    mock_check_output.assert_not_called()
+    mock_safe_move.assert_not_called()
+
 
 def test_get_active_configuration_reads_authd_pass_from_the_configuration_directory(tmp_path):
     """The enrollment password comes from common.AUTHD_PASS (the configuration directory), not from WAZUH_PATH/etc."""

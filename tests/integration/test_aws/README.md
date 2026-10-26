@@ -101,7 +101,6 @@ The provided credentials must have the following set of minimum permissions defi
     "s3:CreateBucket",
     "s3:DeleteObject",
     "s3:DeleteBucket",
-    "s3:PutBucketNotification",
     "s3:GetBucketAcl"
 
     "ec2:CreateVpc",
@@ -134,7 +133,7 @@ The provided credentials must have the following set of minimum permissions defi
     "sqs:CreateQueue",
     "sqs:DeleteMessage",
     "sqs:DeleteQueue",
-    "sqs:SetQueueAttributes",
+    "sqs:SendMessage",
     "sqs:GetQueueAttributes",
     "sqs:GetQueueUrl"
 

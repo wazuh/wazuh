@@ -11,7 +11,7 @@ Its primary purpose is to ensure that decoders and rules only write data that is
 ### Field
 
 A `Field` represents a single entry in the schema. It has:
-- A **type** (`schemf::Type`) — one of 40+ supported types (e.g., `KEYWORD`, `INTEGER`, `IP`, `OBJECT`, `NESTED`, etc.)
+- A **type** (`schemf::Type`) — one of 41 supported types (e.g., `KEYWORD`, `INTEGER`, `IP`, `OBJECT`, `NESTED`, etc.)
 - Optional **properties** — child fields, only valid for container types (`OBJECT`, `NESTED`, `FLAT_OBJECT`)
 
 Fields form a tree: an `OBJECT` field can contain child fields, which can themselves be objects, creating a nested structure that mirrors the JSON event layout.
@@ -33,8 +33,11 @@ Defined in `interface/schemf/type.hpp`. An enum covering all indexer-compatible 
 | **Special** | `TOKEN_COUNT`, `JOIN`, `KNN_VECTOR`, `SPARSE_VECTOR`, `RANK_FEATURE`, `RANK_FEATURES`, `PERCOLATOR`, `STAR_TREE`, `DERIVED` |
 | **Range** | `INTEGER_RANGE`, `LONG_RANGE`, `FLOAT_RANGE`, `DOUBLE_RANGE`, `DATE_RANGE`, `IP_RANGE` |
 
+The enum also has `ERROR` (`-1`), returned for an unknown type name.
+
 Helper functions:
 - `typeToStr(Type)` / `strToType(string_view)` — bidirectional conversion
+- `typeToJType(Type)` — the JSON type a schema type is stored as (used by `getJsonType()`)
 - `hasProperties(Type)` — returns `true` for `OBJECT`, `NESTED`, `FLAT_OBJECT`
 
 ### Schema
@@ -52,11 +55,11 @@ The validation system operates at **two levels**:
 
 ```
 ┌────────────────────────────────────────────────────────────────┐
-│                   Consumer (Builder module)                     │
+│            Consumers (main.cpp → Builder module)               │
 │                                                                │
-│  1. Loads the schema JSON from the store                       │
+│  1. main.cpp reads store doc schema/engine-schema/0            │
 │  2. Creates a Schema object and calls schema.load(json)        │
-│  3. At build time, validates operations via IValidator          │
+│  3. At build time, the builder validates via IValidator        │
 │     - validateTargetField(name): is the target field valid?     │
 │     - validate(name, token/value): is the operation compatible? │
 └───────────────────────┬────────────────────────────────────────┘
@@ -82,11 +85,11 @@ The validation system operates at **two levels**:
 
 ```
 schemf/
-├── CMakeLists.txt                              # Build: defines schemf::ischema, schemf, schemf::mocks
+├── CMakeLists.txt                              # Build: defines schemf::ischema, schemf, schemf::mocks, test executables
 ├── interface/
 │   └── schemf/
 │       ├── type.hpp                            # Type enum + typeToStr/strToType/hasProperties helpers
-│       ├── ischema.hpp                         # ISchema interface (getType, getJsonType, hasField)
+│       ├── ischema.hpp                         # ISchema interface (getType, getJsonType, getJsonTypes, hasField)
 │       └── ivalidator.hpp                      # IValidator interface, validation tokens, ValidationResult
 ├── include/
 │   └── schemf/
@@ -95,16 +98,15 @@ schemf/
 ├── src/
 │   ├── field.cpp                               # Field construction and property management
 │   ├── schema.cpp                              # Schema: addField, removeField, hasField, load, get
-│   ├── validator.cpp                           # Validator: type compatibility matrix and validation logic
-│   └── valueValidators.hpp                     # Per-type value validator factories (bool, int, string, IP, date, etc.)
+│   ├── validator.hpp / validator.cpp           # Validator: type compatibility matrix and validation logic
+│   └── valueValidators.hpp                     # Per-type value validator factories (bool, int, string, IP, date, geo, etc.)
 └── test/
     ├── mocks/
     │   └── schemf/
     │       ├── mockSchema.hpp                  # GMock mock for IValidator
-    │       └── emptySchema.hpp                 # Test helper: schema with no fields
+    │       └── emptySchema.hpp                 # Test helper: IValidator with no fields
     └── src/
-        ├── unit/
-        │   └── field_test.cpp                  # Unit tests for Field
+        ├── unit/                               # field, schema, type, validator, valueValidator, ivalidator tests
         └── component/
             ├── schema_test.cpp                 # Component tests: addField, load, remove, hasField
             └── validator_test.cpp              # Component tests: type compatibility and validation
@@ -123,6 +125,9 @@ class ISchema {
 
     // Get the JSON type of a field (e.g., json::Json::Type::String)
     virtual json::Json::Type getJsonType(const DotPath& name) const = 0;
+
+    // Get every JSON type a field accepts (e.g., Object and String for GEO_POINT)
+    virtual std::unordered_set<json::Json::Type> getJsonTypes(const DotPath& name) const = 0;
 
     // Check if a field exists in the schema
     virtual bool hasField(const DotPath& name) const = 0;
@@ -157,6 +162,7 @@ Tokens describe the *intent* of an operation at build time, without providing a 
 | `ValueToken` | `ValueToken::create(json::Json)` | "This operation will write this exact value" |
 | `nullptr` | `runtimeValidation()` | "Cannot determine type at build time — defer to runtime" |
 | `BaseToken` | `elementValidationToken()` | "Validate as array element instead of whole array" |
+| `STypeToken` | `tokenFromReference(reference, validator)` | The schema type of a referenced field, or `runtimeValidation()` when the reference is not in the schema |
 
 ### `ValidationResult`
 
@@ -174,12 +180,13 @@ Returned by `validateTargetField()`:
 
 ### Type Compatibility Matrix
 
-The validator maintains a compatibility matrix that defines which schema types can be assigned from which other types. For example:
+The validator (`src/validator.cpp`) maintains, per schema type, the accepted JSON types, a value validator, and a compatibility map of the schema types it can be assigned from (the flag says whether runtime validation is needed). For example:
 
 - `INTEGER` field accepts: `LONG` (with runtime validation), `SHORT` (no extra validation), `BYTE` (no extra validation)
-- `KEYWORD` field accepts: `TEXT`, `DATE`, `IP`, `BINARY`, etc. (all string-family types)
-- `OBJECT` fields are only compatible with other objects
-- Some types are incompatible with everything: `KNN_VECTOR`, `SPARSE_VECTOR`, `RANK_FEATURE`, etc.
+- `KEYWORD` field accepts: `TEXT`, `DATE`, `IP`, `BINARY`, etc. (all string-family types, no extra validation)
+- `DATE`, `IP`, `BINARY` fields accept `KEYWORD`, `TEXT`, `WILDCARD` with runtime validation
+- `OBJECT`, `NESTED`, `FLAT_OBJECT` have no compatible schema types; they accept JSON objects
+- Some types cannot be written at all (`getIncompatibleValidator`): `KNN_VECTOR`, `SPARSE_VECTOR`, `RANK_FEATURE`, `RANK_FEATURES`, `PERCOLATOR`, `STAR_TREE`, `DERIVED` and the six range types
 
 When a compatible type requires additional validation (e.g., `LONG` → `INTEGER` may overflow), a runtime `ValueValidator` is returned.
 
@@ -190,7 +197,7 @@ validateTargetField("host.name")
   ├── Field exists in schema? → TargetFieldKind::SCHEMA
   ├── Root is "." (root target)? → TargetFieldKind::TEMPORARY  
   ├── Root starts with '_'? → TargetFieldKind::TEMPORARY
-  └── Otherwise → Error: "not defined in WCS schema and not a temporary field"
+  └── Otherwise → Error: "Field '<name>' is not defined in WCS schema and is not a temporary field (root must start with '_')"
 ```
 
 Temporary fields (rooted at `_`) are used for intermediate values during event processing that are not indexed.
@@ -202,10 +209,11 @@ Per-type validators in `valueValidators.hpp`:
 | Validator | Checks |
 |-----------|--------|
 | `getBoolValidator` | `json.isBool()` |
-| `getShortValidator` | `json.isInt()` and value in int8 range |
+| `getByteValidator` | `json.isInt()` and value in int8 range (`BYTE`) |
+| `getShortValidator` | `json.isInt()` and value in int16 range (`SHORT`) |
 | `getIntegerValidator` | `json.isInt()` |
 | `getLongValidator` | `json.isInt64()` |
-| `getFloatValidator` | `json.isFloat()` |
+| `getFloatValidator` | `json.isFloat()` (`FLOAT`, `HALF_FLOAT`, `SCALED_FLOAT`) |
 | `getDoubleValidator` | `json.isDouble()` |
 | `getUnsignedLongValidator` | `json.isUint64()` |
 | `getStringValidator` | `json.isString()` |
@@ -213,11 +221,12 @@ Per-type validators in `valueValidators.hpp`:
 | `getIpValidator` | String that `inet_pton` accepts as IPv4 or IPv6 (whole string; no embedded NUL), or an IPv6 address with no dots followed by `%` and a non-empty zone (the zone is not otherwise checked, as in the index mapping; no zone on IPv4 or on an IPv4-embedded address). The `ip` parser used in decoders still rejects a zone id |
 | `getBinaryValidator` | String that is entirely Base64 (padding allowed, nothing after it) |
 | `getObjectValidator` | `json.isObject()` |
+| `getGeoValidator` | `GEO_POINT`: `{"lat":…,"lon":…}`, GeoJSON `Point`, `"lat,lon"`, WKT `POINT(lon lat)`, geohash (1–12 chars), `[lon, lat]`, or an array of these; latitude ±90, longitude ±180. Not wrapped in `asArray()` (`skipArrayWrap`) |
 | `getIncompatibleValidator` | Always fails (for types that cannot be written to) |
 
 ## Schema Loading
 
-Schemas are loaded from a JSON document:
+Schemas are loaded from a JSON document (in the engine, store document `schema/engine-schema/0`; if it cannot be read, `main.cpp` logs a warning and the engine runs without a schema):
 
 ```json
 {
@@ -231,7 +240,7 @@ Schemas are loaded from a JSON document:
 }
 ```
 
-`Schema::load()` parses this format and calls `addField()` for each entry. Dot-separated field names automatically create intermediate `OBJECT` parents (e.g., `host.name` creates `host` as `OBJECT` and `name` as `KEYWORD` under it).
+`Schema::load()` parses this format and calls `addField()` for each entry; it throws `std::runtime_error` if the document is not an object, has no `fields` object, an entry is not an object or has no `type`, or a field cannot be built or added (e.g. an unknown type, a duplicate name). Dot-separated field names automatically create intermediate `OBJECT` parents (e.g., `host.name` creates `host` as `OBJECT` and `name` as `KEYWORD` under it).
 
 ## Array Handling
 
@@ -242,16 +251,16 @@ Fields are implicitly array-capable. The `asArray()` helper wraps a `ValueValida
 | Target | Alias | Type | Description |
 |--------|-------|------|-------------|
 | `schemf_ischema` | `schemf::ischema` | INTERFACE | Interfaces only (`ISchema`, `IValidator`, `Type`). Depends on `base`. |
-| `schemf` | — | STATIC | Full implementation. Depends on `schemf::ischema`, `hlp`, `base`. |
+| `schemf` | — | STATIC | Full implementation. Depends on `schemf::ischema`, `hlp`, `base`, `date::date`. |
 | `schemf_mocks` | `schemf::mocks` | INTERFACE | GMock mocks for external testing. Depends on `schemf::ischema`. |
-| `schemf_utest` | — | EXECUTABLE | Unit tests for Field. |
+| `schemf_utest` | — | EXECUTABLE | Unit tests (field, schema, type, validator, value validators, IValidator helpers). |
 | `schemf_ctest` | — | EXECUTABLE | Component tests for Schema and Validator. |
 
 ## Testing
 
-### Unit Tests (`field_test.cpp`)
+### Unit Tests (`test/src/unit/`)
 
-Tests for the `Field` class: construction with valid/invalid parameters, property management, type constraints.
+`field_test.cpp` (construction, properties, type constraints), `schema_test.cpp`, `type_test.cpp` (string ↔ type conversion), `validator_test.cpp`, `valueValidator_test.cpp` (each value validator) and `ivalidator_test.cpp` (tokens and helpers).
 
 ### Component Tests — Schema (`schema_test.cpp`)
 
@@ -269,11 +278,7 @@ Tests for the `Field` class: construction with valid/invalid parameters, propert
 
 ### Running Tests
 
-```bash
-# From the engine build directory:
-./schemf_utest    # Unit tests
-./schemf_ctest    # Component tests
-```
+Both executables exist only when the engine is configured with tests (`ENGINE_BUILD_TEST`, e.g. via `make … ENGINE_TEST=y`); they are registered with `gtest_discover_tests`. Lane reproduction is in the `wazuh-testing` skill.
 
 ## Related Documentation
 

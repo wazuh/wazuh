@@ -343,3 +343,49 @@ func TestLoaderConstrainsBatching(t *testing.T) {
 		t.Fatalf("an existing count step must still load: %v", err)
 	}
 }
+
+// TestLoaderConstrainsOption pins that an unknown session option is a load
+// error, on a step and in defaults: the session builder would otherwise send
+// it as Sync, so a typo'd VD scenario would measure a plain sync and no scan.
+func TestLoaderConstrainsOption(t *testing.T) {
+	for _, option := range []string{"Sync", "sync", "VDFirst", "vdfirst", "VDSync", "vdsync"} {
+		step := fmt.Sprintf(`{"kind": "delta", "option": %q}`, option)
+		if _, err := loadFromLiteral(t, sprintf(minimalUDS, step, "")); err != nil {
+			t.Errorf("step option %q must load: %v", option, err)
+		}
+		if _, err := loadFromLiteral(t, sprintf(minimalUDS, `{"kind": "delta"}`,
+			fmt.Sprintf(`, "defaults": {"option": %q}`, option))); err != nil {
+			t.Errorf("defaults option %q must load: %v", option, err)
+		}
+	}
+	for _, option := range []string{"VDFrist", "vd_first", "full", "SYNC"} {
+		step := fmt.Sprintf(`{"kind": "delta", "option": %q}`, option)
+		if _, err := loadFromLiteral(t, sprintf(minimalUDS, step, "")); err == nil ||
+			!strings.Contains(err.Error(), "option must be") {
+			t.Errorf("step option %q must be refused, got %v", option, err)
+		}
+		if _, err := loadFromLiteral(t, sprintf(minimalUDS, `{"kind": "delta"}`,
+			fmt.Sprintf(`, "defaults": {"option": %q}`, option))); err == nil ||
+			!strings.Contains(err.Error(), "defaults: option must be") {
+			t.Errorf("defaults option %q must be refused, got %v", option, err)
+		}
+	}
+}
+
+// TestEveryShippedScenarioLoads keeps the scenarios/ directory in step with the
+// loader: a constraint added here must not leave a shipped scenario that
+// --validate (and every run) refuses.
+func TestEveryShippedScenarioLoads(t *testing.T) {
+	paths, err := filepath.Glob(filepath.Join("..", "..", "..", "scenarios", "*.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(paths) == 0 {
+		t.Fatal("no scenario found under tools/manager_benchmark/scenarios")
+	}
+	for _, path := range paths {
+		if _, err := Load(path, ""); err != nil {
+			t.Errorf("%s: %v", filepath.Base(path), err)
+		}
+	}
+}

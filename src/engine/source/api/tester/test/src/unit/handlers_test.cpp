@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 #include <gtest/gtest.h>
 
+#include <chrono>
 #include <functional>
+#include <future>
 #include <map>
 #include <stdexcept>
 #include <string>
@@ -1149,6 +1151,33 @@ TEST(RunPostTemporaryValidation, ValidFieldsNoTemporariesNoErrors)
 
     EXPECT_TRUE(v.valid());
     EXPECT_EQ(v.errors_size(), 0);
+}
+
+// The wait for the test result is bounded by the configured tester timeout (analysisd.server_api_timeout)
+TEST(RunPostTimeout, UsesConfiguredTestTimeout)
+{
+    auto tester = std::make_shared<MockTesterAPI>();
+    // Never fulfilled while the handler waits: the promise outlives the call
+    auto pending = std::make_shared<std::promise<base::RespOrError<::router::test::Output>>>();
+    EXPECT_CALL(*tester, getTestTimeout()).WillRepeatedly(testing::Return(10));
+    EXPECT_CALL(*tester, ingestTest(testing::_, testing::_))
+        .WillOnce([pending](auto&&, auto&&) { return pending->get_future(); });
+
+    eEngine::tester::RunPost_Request protoReq;
+    protoReq.set_name("test-session");
+    protoReq.set_event("1:/var/log/test:some event");
+    protoReq.set_trace_level(eEngine::tester::TraceLevel::NONE);
+
+    httplib::Response res;
+    const auto start = std::chrono::steady_clock::now();
+    runPost(tester, base::eventParsers::parseLegacyEvent, makeSchemaMock({}))(
+        createRequest<eEngine::tester::RunPost_Request>(protoReq), res);
+    const auto elapsed = std::chrono::steady_clock::now() - start;
+
+    EXPECT_EQ(res.status, httplib::StatusCode::BadRequest_400);
+    EXPECT_NE(res.body.find("Timeout waiting for ingestTest"), std::string::npos);
+    // Far below the former hard-coded 5 s wait
+    EXPECT_LT(elapsed, std::chrono::seconds(4));
 }
 
 class LogtestDeleteTest : public ::testing::TestWithParam<LogtestDeleteCase>

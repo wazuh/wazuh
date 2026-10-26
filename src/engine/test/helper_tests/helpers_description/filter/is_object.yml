@@ -26,7 +26,7 @@ test:
     description: Is object
   - target_field: [1,2,3,4]
     should_pass: false
-    description: Is object
+    description: Not object (array)
   - target_field: hello
     should_pass: false
     description: Not is object

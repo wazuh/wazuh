@@ -119,7 +119,10 @@ for entry in "${MATRIX[@]}"; do
         else
             # Names are reused across runs, so clear the previous fleet first; this only
             # ever deletes bench-* agents.
-            ./cleanup_agents.sh >/dev/null 2>&1 || true
+            if ! ./cleanup_agents.sh >/dev/null; then
+                echo "WARNING: pre-run cleanup FAILED for $label (see the error above); stale" \
+                     "bench-* agents will fail its enrollment with 'Duplicate agent name'." >&2
+            fi
         fi
         extra+=(--enroll-settle "$ENROLL_SETTLE" --bootstrap "$BOOTSTRAP")
     fi

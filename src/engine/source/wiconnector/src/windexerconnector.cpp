@@ -483,12 +483,12 @@ void WIndexerConnector::index(std::string_view index, std::string_view data)
         }
         catch (const IndexerConnectorException& e)
         {
-            LOG_WARNING("[indexer-connector] Error indexing data: %s", e.what());
+            LOG_WARNING("[indexer-connector] Error indexing data: {}", e.what());
             return;
         }
         catch (const std::exception& e)
         {
-            LOG_WARNING("[indexer-connector] Error indexing data: %s", e.what());
+            LOG_WARNING("[indexer-connector] Error indexing data: {}", e.what());
             return;
         }
     }
@@ -661,8 +661,9 @@ WIndexerConnector::getPolicyHashAndEnabled(std::string_view space,
     nlohmann::json query = getQueryFilter(space);
 
     // Prepare source filter to only retrieve the needed fields
-    nlohmann::json source = {{"includes", {"space.hash.sha256", "document.enabled", "document.integrations"}},
-                             {"excludes", nlohmann::json::array()}};
+    nlohmann::json source = {
+        {"includes", {"space.hash.sha256", "document.enabled", "document.integrations", "document.root_decoder"}},
+        {"excludes", nlohmann::json::array()}};
 
     nlohmann::json hits;
 
@@ -738,12 +739,17 @@ WIndexerConnector::getPolicyHashAndEnabled(std::string_view space,
                                         + std::string(space));
     }
 
-    // If the document hasn't integrations or it's empty, we consider the policy as disabled, avoiding the need of sync
-    // between enabled field and integrations content
-    const bool hasIntegrations = !source_data["document"]["integrations"].empty();
-    const bool enabled = source_data["document"]["enabled"].get<bool>();
+    // If the document hasn't integrations or a root decoder, we consider the policy as disabled: there is nothing to
+    // build (the policy build fails with "Missing root decoder"), avoiding the need of sync between enabled field and
+    // the policy content. Anything but a non-empty string (missing, null, "" or another type) means no root decoder.
+    const auto& document = source_data["document"];
+    const bool hasIntegrations = !document["integrations"].empty();
+    const bool hasRootDecoder = document.contains("root_decoder") && document["root_decoder"].is_string()
+                                && !document["root_decoder"].get_ref<const std::string&>().empty();
+    const bool enabled = document["enabled"].get<bool>();
 
-    return std::make_pair(source_data["space"]["hash"]["sha256"].get<std::string>(), enabled && hasIntegrations);
+    return std::make_pair(source_data["space"]["hash"]["sha256"].get<std::string>(),
+                          enabled && hasIntegrations && hasRootDecoder);
 }
 
 bool WIndexerConnector::existsPolicy(std::string_view space)
@@ -915,7 +921,7 @@ WIndexerConnector::getIocTypeHashes(const std::optional<std::string_view>& consu
         return std::nullopt;
     }
 
-    // Hashes document not found, is expected on fresh installs without any IOC indexed yet — return empty map
+    // Hashes document not found, is expected on fresh installs without any IOC indexed yet — return nullopt
     if (!hashesDoc.has_value())
     {
         LOG_DEBUG("[indexer-connector] Hash document '{}' not found in index '{}'", IOC_HASHES_DOC_ID, IOC_INDEX);

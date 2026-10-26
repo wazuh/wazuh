@@ -2,6 +2,7 @@
 #include <api/event/handlers.hpp>
 #include <api/event/identityWarningGate.hpp>
 #include <api/event/ndJsonParser.hpp>
+#include <base/json.hpp>
 #include <base/logging.hpp>
 
 #include <fastmetrics/registry.hpp>
