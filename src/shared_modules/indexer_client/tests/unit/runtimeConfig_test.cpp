@@ -282,6 +282,48 @@ TEST(RuntimeConfigTest, IndexerSectionParsed)
     EXPECT_TRUE(noTls.value.ssl.key.empty());
 }
 
+TEST(RuntimeConfigTest, VerifyCertificatesDefaultsToTrue)
+{
+    // Absent from ssl and with no ssl at all: verification stays on.
+    for (const auto* json :
+         {R"({"hosts":["https://a:9200"],"ssl":{"certificate_authorities":[]}})", R"({"hosts":["https://a:9200"]})"})
+    {
+        SCOPED_TRACE(json);
+        const auto result = RuntimeConfig::from(ProcessId::Modulesd, RecordingSource {{}, json});
+        ASSERT_TRUE(result.ok()) << result.reason;
+        EXPECT_TRUE(result.value.ssl.verifyCertificates);
+    }
+    EXPECT_TRUE(RuntimeConfig {}.ssl.verifyCertificates);
+}
+
+TEST(RuntimeConfigTest, VerifyCertificatesFalseRead)
+{
+    const RecordingSource source {{},
+                                  R"({"hosts":["https://a:9200"],"ssl":{"certificate_authorities":["ca.pem"],)"
+                                  R"("certificate":"","key":"","verify_certificates":false}})"};
+    const auto result = RuntimeConfig::from(ProcessId::Analysisd, source);
+    ASSERT_TRUE(result.ok()) << result.reason;
+    EXPECT_FALSE(result.value.ssl.verifyCertificates);
+    // The configured CA is still kept with false (it is loaded and validated all the same).
+    EXPECT_EQ(result.value.ssl.certificateAuthorities, (std::vector<std::string> {"ca.pem"}));
+
+    const RecordingSource explicitTrue {{}, R"({"hosts":["https://a:9200"],"ssl":{"verify_certificates":true}})"};
+    const auto on = RuntimeConfig::from(ProcessId::Analysisd, explicitTrue);
+    ASSERT_TRUE(on.ok()) << on.reason;
+    EXPECT_TRUE(on.value.ssl.verifyCertificates);
+}
+
+TEST(RuntimeConfigTest, VerifyCertificatesNotBooleanRejected)
+{
+    for (const auto* json : {R"({"hosts":["https://a:9200"],"ssl":{"verify_certificates":"no"}})",
+                             R"({"hosts":["https://a:9200"],"ssl":{"verify_certificates":0}})",
+                             R"({"hosts":["https://a:9200"],"ssl":{"verify_certificates":null}})"})
+    {
+        SCOPED_TRACE(json);
+        expectInvalid(RecordingSource {{}, json}, "indexer.ssl.verify_certificates: expected a boolean");
+    }
+}
+
 TEST(RuntimeConfigTest, DefaultsWhenUnset)
 {
     const auto result = RuntimeConfig::from(ProcessId::Analysisd, RecordingSource {});

@@ -711,7 +711,17 @@ namespace indexer_client::detail::write
                 // m_consumer and m_spec are immutable: read without the mutex.
                 for (const auto& line : lines)
                 {
-                    if (line.edge == Edge::Ambiguous)
+                    if (line.edge == Edge::Ambiguous && line.responseTooLarge)
+                    {
+                        logWarn(TAG,
+                                "Indexer client bucket '%s/%s' got a response over max_response_bytes for a bulk of "
+                                "%llu operations: they failed without being resent (onAmbiguous5xx = fail); the "
+                                "indexer may have applied them.",
+                                m_consumer.c_str(),
+                                m_spec.name.c_str(),
+                                static_cast<unsigned long long>(line.charge));
+                    }
+                    else if (line.edge == Edge::Ambiguous)
                     {
                         logWarn(TAG,
                                 "Indexer client bucket '%s/%s' got an ambiguous HTTP %d for a bulk of %llu operations: "
@@ -1899,14 +1909,14 @@ namespace indexer_client::detail::write
         }
     }
 
-    void Bucket::countAmbiguous(int httpStatus, std::uint64_t ops)
+    void Bucket::countAmbiguous(int httpStatus, std::uint64_t ops, bool responseTooLarge)
     {
         EmitPendingOnExit emit {*this}; // Declared before the lock: the line is written once the mutex is dropped.
         std::lock_guard<std::mutex> lock(m_mutex);
         if (m_armedAmbiguous)
         {
             m_armedAmbiguous = false;
-            m_edgeLines.push_back(EdgeLine {Edge::Ambiguous, ops, httpStatus});
+            m_edgeLines.push_back(EdgeLine {Edge::Ambiguous, ops, httpStatus, responseTooLarge});
             m_edgePending.store(true);
         }
     }

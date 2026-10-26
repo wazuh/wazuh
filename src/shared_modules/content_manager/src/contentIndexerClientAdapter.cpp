@@ -51,6 +51,11 @@ namespace
             message += outcome.reason;
         }
         logDebug2(WM_CONTENTUPDATER, "%s", message.c_str());
+        // Typed, not by text: the paginator halves its page on this one (contentIndexer.hpp).
+        if (outcome.responseTooLarge)
+        {
+            throw content_manager::ResponseTooLargeError {message};
+        }
         throw std::runtime_error {message};
     }
 
@@ -85,6 +90,9 @@ namespace
             indexer_client::PitOptions pitOptions;
             pitOptions.keepAlive = content_manager::detail::parseKeepAlive(keepAlive);
             pitOptions.expandWildcardsAll = expandWildcards;
+            // I229: content pages are capped by max_response_bytes, not by the query cap (max_response_bytes / 8): a
+            // single CVE5 of the CTI feed is ~17 MB. The paginator halves a page that is over even this cap.
+            pitOptions.wholeResponseCap = true;
 
             auto outcome = m_query->pit(indices, pitOptions, queryOptions(), deadline(m_options.callDeadline));
             if (!outcome.ok())

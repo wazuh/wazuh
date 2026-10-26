@@ -175,9 +175,15 @@ namespace cmtest
         /// Starts the runtime on @p url. Returns the reason when it fails, empty otherwise.
         std::string startWith(const std::string& url, const std::string& text)
         {
-            const std::string json = "{\"hosts\":[\"" + url + "\"]}";
-            auto source =
-                indexer_client::KeyValueConfigSource::parse(text, json, indexer_client::Credentials {"admin", "admin"});
+            return startWithConfig(
+                "{\"hosts\":[\"" + url + "\"]}", text, indexer_client::Credentials {"admin", "admin"});
+        }
+
+        /// Starts the runtime with an `indexer` JSON of its own ({"hosts": [..], "ssl": {..}}) and credentials.
+        std::string
+        startWithConfig(const std::string& json, const std::string& text, indexer_client::Credentials credentials)
+        {
+            auto source = indexer_client::KeyValueConfigSource::parse(text, json, std::move(credentials));
             if (!source.ok())
             {
                 return source.reason;

@@ -15,6 +15,7 @@
 
 #include "transport/transport.hpp"
 
+#include <algorithm>
 #include <chrono>
 #include <ctime>
 #include <mutex>
@@ -68,12 +69,12 @@ namespace indexer_client::detail
             return true;
         }
 
-        /// Schemes `http` and `https` (E2a-2); CURLOPT_PROTOCOLS_STR enforces the same set inside curl.
-        /// http always; https only when a CA is configured: without one there is no trust anchor (I48), and curl would
-        /// otherwise fall back to the CA bundle compiled into it.
-        bool admittedUrl(std::string_view url, bool haveCa)
+        /// Schemes `http` and `https` (E2a-2); CURLOPT_PROTOCOLS_STR enforces the same set inside curl. https is
+        /// admitted with or without a configured CA (E11e): the trust anchor is the policy loadTlsMaterial resolved
+        /// (configured CA, system store or none), never curl's compiled-in bundle (curlLoop.cpp).
+        bool admittedUrl(std::string_view url)
         {
-            return startsWithScheme(url, "http://") || (haveCa && startsWithScheme(url, "https://"));
+            return startsWithScheme(url, "http://") || startsWithScheme(url, "https://");
         }
 
         class CurlTransport final : public Transport
@@ -106,8 +107,7 @@ namespace indexer_client::detail
 
             Admission submit(HttpRequest request, ResultCallback callback) override
             {
-                if (!admittedMethod(request.method) || !admittedUrl(request.url, !m_shared->tls.caBundle.empty()) ||
-                    !callback)
+                if (!admittedMethod(request.method) || !admittedUrl(request.url) || !callback)
                 {
                     m_shared->rejected.fetch_add(1);
                     return Admission {false, Cause::InvalidArgument, 0};
@@ -268,6 +268,7 @@ namespace indexer_client::detail
                                      std::function<bool(std::function<void()>)> pool,
                                      std::size_t loopCount)
         : retryAfterMax(runtimeConfig.retryAfterMax)
+        , hostCount(std::max<std::size_t>(1, runtimeConfig.hosts.size()))
         , postToPool(std::move(pool))
         , assigned(std::make_unique<std::atomic<std::uint64_t>[]>(loopCount))
         , completedPerLoop(std::make_unique<std::atomic<std::uint64_t>[]>(loopCount))

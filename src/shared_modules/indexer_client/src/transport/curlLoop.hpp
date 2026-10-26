@@ -19,6 +19,7 @@
 // included only by transport.cpp and curlLoop.cpp.
 
 #include <atomic>
+#include <cstddef>
 #include <cstdint>
 #include <functional>
 #include <future>
@@ -69,6 +70,8 @@ namespace indexer_client::detail
         TransportShared& operator=(const TransportShared&) = delete;
 
         Duration retryAfterMax;
+        /// Configured nodes (at least 1): sizes each multi's idle-connection pool (CURLMOPT_MAXCONNECTS).
+        std::size_t hostCount;
         std::function<bool(std::function<void()>)> postToPool;
         TlsMaterial tls;         ///< I48; set once before any loop runs, read-only afterwards.
         Credentials credentials; ///< I55; set once before any loop runs, read-only afterwards.

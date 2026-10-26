@@ -186,7 +186,7 @@ TEST(ConfigTest, ToJsonIsTheIndexerSection)
     config.hosts = {"http://localhost:9200"};
 
     const auto json = nlohmann::json::parse(config.toJson());
-    EXPECT_EQ(json, (nlohmann::json {{"hosts", {"http://localhost:9200"}}}));
+    EXPECT_EQ(json, (nlohmann::json {{"hosts", {"http://localhost:9200"}}, {"ssl", {{"verify_certificates", true}}}}));
 }
 
 TEST(ConfigTest, ToJsonWithSsl)
@@ -201,10 +201,21 @@ TEST(ConfigTest, ToJsonWithSsl)
     EXPECT_EQ(json["ssl"],
               (nlohmann::json {{"certificate_authorities", {"/path/to/ca.crt"}},
                                {"certificate", "/path/to/client.crt"},
-                               {"key", "/path/to/client.key"}}));
+                               {"key", "/path/to/client.key"},
+                               {"verify_certificates", true}}));
     // Credentials come from the keystore, never from Config.
     EXPECT_FALSE(json.contains("username"));
     EXPECT_FALSE(json.contains("password"));
+}
+
+TEST(ConfigTest, ToJsonEmitsVerifyCertificatesFalse)
+{
+    wiconnector::Config config;
+    config.hosts = {"https://localhost:9200"};
+    config.ssl.verifyCertificates = false;
+
+    const auto json = nlohmann::json::parse(config.toJson());
+    EXPECT_EQ(json["ssl"], (nlohmann::json {{"verify_certificates", false}}));
 }
 
 /****************************************************************************************

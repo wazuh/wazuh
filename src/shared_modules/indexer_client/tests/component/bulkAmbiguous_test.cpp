@@ -17,7 +17,9 @@
 // by the completion after its ops are resolved (it counts the ops it resolved, G-diff E6a obj. 4), so the cases wait
 // for it (warned()) instead of reading it as soon as the results are in.
 
+#include <algorithm>
 #include <atomic>
+#include <chrono>
 #include <cstdarg>
 #include <cstdint>
 #include <cstdio>
@@ -29,6 +31,7 @@
 #include <vector>
 
 #include "bulkFixture.hpp"
+#include "write/sender.hpp"
 
 using namespace write_component;
 using bulk_component::BulkScript;
@@ -306,4 +309,85 @@ TEST_F(BulkAmbiguousTest, FailPolicyNeverResentAfterCompletionException)
     EXPECT_FALSE(eventually([&] { return a.bulk->answered() > 1u; }, 200ms)) << "resent";
     EXPECT_EQ(failedAmbiguous(*c, "b"), 2u);
     EXPECT_TRUE(m_logs.warned(WARN, warnOf("b") + "502 for a bulk of 2 operations", 1u));
+}
+
+// G-rama round 2 (plan 18, Codex): a `_bulk` whose response goes over max_response_bytes was answered by the node, so
+// the indexer may have applied it. A bucket with onAmbiguous5xx = Fail and a bulk of 4 data-stream ops (no `_id`, as
+// the engine's events) ⇒ exactly one request, the 4 ops Failed(Ambiguous) with reason "ambiguous response over
+// maxResponseBytes (not resent)", failed.ambiguous = 4, no split and one WARN that names the cap (not the status); a
+// Retry bucket (ops with `_id`, a resend overwrites) still halves the batch until every answer fits. Mutant: the old
+// code (Split under both policies: the halves are resent and the indexer receives every op twice).
+TEST_F(BulkAmbiguousTest, ResponseTooLargeFailPolicyNeverResent)
+{
+    constexpr std::size_t OPS = 4;
+    const std::string index = "logs-" + std::string(200, 'i');
+    // The cap: one item of either kind fits, two do not; the health body fits.
+    const auto render = [&](const std::string& action, std::optional<std::string> docId, std::size_t n)
+    {
+        std::vector<indexer_client::testing::BulkOp> ops;
+        for (std::size_t i = 0; i < n; ++i)
+        {
+            ops.push_back({action, index, docId, "{}"});
+        }
+        return indexer_client::testing::BulkResponder::renderItems(ops, BulkScript::items(), 100000).size();
+    };
+    const auto one = std::max(render("create", std::nullopt, 1), render("index", "k100", 1));
+    const auto two = std::min(render("create", std::nullopt, 2), render("index", "k0", 2));
+    ASSERT_LT(one + 64, two);
+    const auto cap = one + (two - one) / 2;
+    ASSERT_LT(indexer_client::testing::healthBody("green").size() + 50, cap) << "the probe must still fit";
+
+    const auto a = startNode();
+    ASSERT_NO_FATAL_FAILURE(startOn({a.url()}, std::chrono::hours(1), {{"max_response_bytes", std::to_string(cap)}}));
+    auto c = client("c",
+                    {ambiguousBucket("fail", OPS, ic::AmbiguousPolicy::Fail),
+                     ambiguousBucket("retry", OPS, ic::AmbiguousPolicy::Retry)});
+    auto results = Results::create();
+
+    // Fail: one request, never split nor resent.
+    const auto splits = wr::senderStats().splits;
+    auto failWriter = c->writer("fail");
+    for (std::uint64_t k = 0; k < OPS; ++k)
+    {
+        ic::Op op;
+        op.kind = ic::Op::Kind::IndexDataStream;
+        op.index = index;
+        op.body = R"({"p":1})";
+        ASSERT_TRUE(failWriter->submit(std::move(op), results->callback(k)).accepted);
+    }
+    ASSERT_TRUE(results->waitTotal(OPS, 10s));
+    for (std::uint64_t k = 0; k < OPS; ++k)
+    {
+        const auto result = results->result(k);
+        ASSERT_TRUE(result.has_value()) << k;
+        EXPECT_EQ(result->status, ic::Status::Failed) << k << ": " << ic::toString(result->cause);
+        EXPECT_EQ(result->cause, ic::Cause::Ambiguous) << k << ": " << result->reason;
+        EXPECT_EQ(result->reason, "ambiguous response over maxResponseBytes (not resent)") << k;
+        EXPECT_EQ(results->count(k), 1) << k;
+    }
+    EXPECT_EQ(a.bulk->answered(), 1u);
+    EXPECT_FALSE(eventually([&] { return a.bulk->answered() > 1u; }, 200ms)) << "resent";
+    EXPECT_EQ(wr::senderStats().splits, splits) << "a Fail bucket never splits a response over the cap";
+    EXPECT_EQ(failedAmbiguous(*c, "fail"), OPS);
+    EXPECT_TRUE(m_logs.warned(
+        WARN, "Indexer client bucket 'c/fail' got a response over max_response_bytes for a bulk of 4 operations", 1u));
+    EXPECT_EQ(m_logs.count(WARN, warnOf("fail")), 0u) << "no misleading status in the WARN";
+    EXPECT_EQ(nodeState(0), ic::HealthView::NodeState::Available) << "a response over the cap is not the node's fault";
+
+    // Retry: split as before, every op Ok once its answer fits.
+    auto retryWriter = c->writer("retry");
+    for (std::uint64_t k = OPS; k < 2 * OPS; ++k)
+    {
+        ASSERT_TRUE(retryWriter->submit(indexOp("k" + std::to_string(k), 16, index), results->callback(k)).accepted);
+    }
+    ASSERT_TRUE(results->waitTotal(2 * OPS, 10s));
+    for (std::uint64_t k = OPS; k < 2 * OPS; ++k)
+    {
+        const auto result = results->result(k);
+        ASSERT_TRUE(result.has_value()) << k;
+        EXPECT_EQ(result->status, ic::Status::Ok) << k << ": " << ic::toString(result->cause) << " " << result->reason;
+    }
+    EXPECT_GE(wr::senderStats().splits, splits + 1u);
+    EXPECT_EQ(failedAmbiguous(*c, "retry"), 0u);
+    EXPECT_EQ(m_logs.count(WARN, "bucket 'c/retry'"), 0u);
 }

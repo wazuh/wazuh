@@ -12,7 +12,7 @@ options, each of which can be overridden by an environment variable. For what th
 | What | Where it comes from |
 |------|---------------------|
 | Indexer hosts and TLS material | The `<indexer>` section of `/etc/wazuh-manager/wazuh-manager.conf` (`hosts` and `ssl`). See [`indexer`](../../configuration/manager/reference.md#indexer). |
-| Indexer username and password | The manager keystore only (entries `username` and `password` in family `indexer`; read one with `wazuh-manager-keystore -f indexer -k username -g`, write with the forms in the [Keystore](../keystore/README.md) page — a command without `-g` and without `-v`/`-vp` **writes** whatever arrives on stdin). See [Store the credentials in the keystore](../../../guide/migration/filebeat-to-indexer-connector.md#3-store-the-credentials-in-the-keystore). |
+| Indexer username and password | The manager keystore only (entries `username` and `password` in family `indexer`; read one with `wazuh-manager-keystore -f indexer -k username -g`, write with the forms in the [Keystore](../keystore/README.md) page — a command without `-g` and without `-v`/`-vp` **writes** whatever arrives on stdin). See [Store the credentials in the keystore](../../../guide/migration/filebeat-to-indexer-connector.md#3-store-the-credentials-in-the-keystore). Read once at start-up by the engine's indexer client, which serves both the event writes and the reads; never logged. |
 | Every other engine setting | `analysisd.*` lines in `/etc/wazuh-manager/wazuh-manager-internal-options.conf` — see [Settings reference](#settings-reference). |
 | Overrides | Each `analysisd.*` setting has a `WAZUH_*` environment variable that takes precedence over the file. |
 | Process behaviour for one run | The [command-line options](#command-line-options) of `wazuh-manager-analysisd`. |
@@ -23,6 +23,8 @@ the internal options file is ignored; set the credentials in the keystore.
 When the engine runs standalone (`WAZUH_ENGINE_STANDALONE=true`, as inside `wazuh-indexer`), it does not read the
 internal options file at all: only environment variables and built-in defaults apply, and the indexer connection
 comes from the `WAZUH_INDEXER_HOSTS` and `WAZUH_INDEXER_SSL_*` variables instead of `<indexer>`.
+`WAZUH_INDEXER_SSL_VERIFY_CERTIFICATES` (`true`/`false`, default `true`; key `analysisd.indexer_ssl_verify_certificates`)
+is the equivalent of `<verify_certificates>`: see [verify_certificates](../indexer_client/configuration.md#verify_certificates).
 
 ## How values are resolved
 
@@ -221,16 +223,114 @@ deployment. Use the
 
 ### Indexer connector settings
 
+The engine writes events to `wazuh-indexer` through two buckets of its indexer client (see
+[Indexer client settings](#indexer-client-settings)): `events` for the `wazuh-indexer` output stage and `raw` for raw
+events (`wazuh-events-raw-v5`). Both buckets get the same values from the keys below; how they deliver is described in
+[Delivery to `wazuh-indexer`](README.md#delivery-to-wazuh-indexer).
+
+- `analysisd.indexer_queue_max_bytes` is the quota of **each** bucket. Every queued operation also reserves 2048 bytes
+  of the quota for its result, besides its payload, so a quota holds fewer small events than the same value did in the
+  earlier connector queue, which only counted payload bytes; raise it if the same burst must fit.
+- `analysisd.indexer_bulk_max_bytes` and `analysisd.indexer_flush_interval` cut a bulk, by size and by age of its
+  oldest event. There is no limit on the number of events in a bulk (the client's per-bucket document limit is set to
+  its maximum).
+- `analysisd.indexer_max_retry_delay` caps the retry delay; retries are unlimited.
+- `analysisd.indexer_request_timeout` and `analysisd.indexer_monitoring_interval` only feed the indexer client (see
+  [Relation to the connector's keys](#relation-to-the-connectors-keys)).
+- `analysisd.indexer_logger_queue_size` and `analysisd.indexer_logger_threads` are obsolete and ignored.
+
+The client admits the events of each router worker in small batches (up to 64 events, flushed when full, after about
+1 ms, or at shutdown). Batched events are not charged to the quota until they are admitted; per bucket they take at
+most half of the bucket's effective quota (`analysisd.indexer_queue_max_bytes`, or
+`analysisd.indexer_client_global_quota_bytes` when it is `0` or above it) on top of it. Worst case with the defaults: up
+to 128 MiB charged to the two buckets (2 × 64 MiB, under the 256 MiB global quota) plus 2 × 32 MiB in batches, about
+192 MiB, against the single 64 MiB queue of the earlier connector (about half when raw events are off and the `raw`
+bucket stays empty). With `analysisd.indexer_queue_max_bytes` set to `0` the bound is the global quota plus half of it
+per bucket, 512 MiB with the defaults. A full quota is found when the batch is admitted: the event is dropped then and
+counted in `indexer.events.dropped`.
+
 | Setting | Env var | Description | Default | Mode |
 |:--|:--|:--|:--:|:--:|
-| `analysisd.indexer_queue_max_bytes` | `WAZUH_INDEXER_QUEUE_MAX_BYTES` | Maximum number of bytes of events waiting in the indexer output queue. Events can be dropped when this queue is full. | `67108864` (64 MB) | both |
-| `analysisd.indexer_bulk_max_bytes` | `WAZUH_INDEXER_BULK_MAX_BYTES` | Maximum byte size of the bulk payload accumulated before a `_bulk` request is dispatched to `wazuh-indexer`. When the buffered data reaches this threshold, a batch is flushed. Allowed range: `64KB` to `100MB`. | `8388608` (8 MB) | both |
-| `analysisd.indexer_flush_interval` | `WAZUH_INDEXER_FLUSH_INTERVAL` | Seconds between periodic flushes of the asynchronous indexer bulk buffer. Drives the background timer that forwards buffered events to `wazuh-indexer` when the byte threshold has not been reached. Allowed range: `1` to `3600`. | `20` | both |
-| `analysisd.indexer_logger_queue_size` | `WAZUH_INDEXER_LOGGER_QUEUE_SIZE` | Maximum number of `_bulk` responses (with their payloads) that can wait in the indexer error-logger queue. Only responses whose bulk reported item errors are queued; when the queue is full the error details are dropped and a warning is logged. Allowed range: `1` to `1024`. | `8` | both |
-| `analysisd.indexer_logger_threads` | `WAZUH_INDEXER_LOGGER_THREADS` | Number of worker threads that parse `_bulk` error responses to log per-item failures. Allowed range: `1` to `16`. | `1` | both |
-| `analysisd.indexer_max_retry_delay` | `WAZUH_INDEXER_MAX_RETRY_DELAY` | Maximum exponential-backoff delay in seconds between retries of a failed `_bulk` request (e.g. `429 Too Many Requests`, `503 Service Unavailable`, connection errors). See [Indexer Connector - Retry and backoff behavior](../indexer_connector/README.md#retry-and-backoff-behavior) for how the delay scales. Allowed range: `1` to `3600`. | `15` | both |
-| `analysisd.indexer_request_timeout` | `WAZUH_INDEXER_REQUEST_TIMEOUT` | Upper bound in seconds for one data request against `wazuh-indexer`. Catches a host that accepted the connection and then never answers; a timed-out bulk request is retried with backoff, not discarded. Allowed range: `0` to `3600` (`0` disables the bound). | `60` | both |
-| `analysisd.indexer_monitoring_interval` | `WAZUH_INDEXER_MONITORING_INTERVAL` | Polling period in seconds of the indexer health monitor that marks each `wazuh-indexer` host as available or unavailable for the connector. Allowed range: `1` to `3600`. | `10` | both |
+| `analysisd.indexer_queue_max_bytes` | `WAZUH_INDEXER_QUEUE_MAX_BYTES` | Quota in bytes of **each** of the two write buckets (`events` and `raw`, the same value for both). `0` uses `analysisd.indexer_client_global_quota_bytes`; a value above that cap is lowered to it with a warning. Must hold a 64 KiB bulk plus the 2048-byte reserve (67584 bytes), else the engine fails to start (the error names `analysisd.indexer_client_global_quota_bytes` when the quota came from it). When a bucket is full its new events are dropped and counted in `indexer.events.dropped`. | `67108864` (64 MB) | both |
+| `analysisd.indexer_bulk_max_bytes` | `WAZUH_INDEXER_BULK_MAX_BYTES` | Maximum byte size of the bulk payload accumulated before a `_bulk` request is dispatched to `wazuh-indexer` (there is no event-count limit). Allowed range: `64KB` to `100MB`. If it does not fit the bucket quota minus the 2048-byte reserve, it is reduced to that value with a warning. | `8388608` (8 MB) | both |
+| `analysisd.indexer_flush_interval` | `WAZUH_INDEXER_FLUSH_INTERVAL` | Seconds a buffered event may wait before its bulk is flushed when the byte threshold has not been reached (the bulk maximum age of both buckets). Allowed range: `1` to `3600`. | `20` | both |
+| `analysisd.indexer_logger_queue_size` | `WAZUH_INDEXER_LOGGER_QUEUE_SIZE` | Obsolete, kept for compatibility. It is ignored; the engine logs a warning at startup when it is not `8`. Still checked: a value outside `1` to `1024` stops the engine at start-up. | `8` | both |
+| `analysisd.indexer_logger_threads` | `WAZUH_INDEXER_LOGGER_THREADS` | Obsolete, kept for compatibility. It is ignored; the engine logs a warning at startup when it is not `1`. Still checked: a value outside `1` to `16` stops the engine at start-up. | `1` | both |
+| `analysisd.indexer_max_retry_delay` | `WAZUH_INDEXER_MAX_RETRY_DELAY` | Maximum exponential-backoff delay in seconds between retries of a failed `_bulk` request (the retry cap of both buckets), e.g. `429 Too Many Requests`, `503 Service Unavailable`, connection errors. Retries are unlimited. Allowed range: `1` to `3600`. | `15` | both |
+| `analysisd.indexer_request_timeout` | `WAZUH_INDEXER_REQUEST_TIMEOUT` | Kept for compatibility: the engine only uses it to feed `analysisd.indexer_client_request_timeout_ms` (seconds converted to milliseconds) when that one is not set; if both are set and differ, the engine fails to start. That key bounds one request against `wazuh-indexer`; a timed-out bulk request is retried with backoff, not discarded. Allowed range: `0` to `3600`; `0` leaves the client's default, with a warning. | `60` | both |
+| `analysisd.indexer_monitoring_interval` | `WAZUH_INDEXER_MONITORING_INTERVAL` | Kept for compatibility: the engine has no health monitor of its own any more; it only uses this value to feed `analysisd.indexer_client_probe_interval_ms` (seconds converted to milliseconds), the period of the indexer client's node probes, when that one is not set; if both are set and differ, the engine fails to start. Allowed range: `1` to `3600`. | `10` | both |
+
+### Indexer client settings
+
+The engine reads from `wazuh-indexer` (content synchronization and the remote configuration) and writes its events
+through its own `indexer_client` runtime, one `analysisd` client per process, so it holds a single connection to the
+indexer and an outage logs one line. The client is created only when event processing is enabled.
+
+Its settings are the `analysisd.indexer_client_*` keys below, with the same precedence as every other setting:
+environment variable (`WAZUH_INDEXER_CLIENT_<NAME>`, the name after the prefix in upper case), then the line in
+`wazuh-manager-internal-options.conf` (manager mode only), then the default. A key under the
+`analysisd.indexer_client_` prefix that is not in the table (in the file or as a `WAZUH_INDEXER_CLIENT_*` variable),
+an empty value, a value that is not an unsigned decimal integer or a value outside its range stops the engine at
+start-up with the offending key named. Hosts and TLS material are the same as for the writes (the `<indexer>` section
+in manager mode, `WAZUH_INDEXER_HOSTS` and `WAZUH_INDEXER_SSL_*` standalone); the user and password come from the
+manager keystore (`indexer` / `username` and `password`) in both modes and are never logged.
+
+| Setting | Env var | Description | Default | Mode |
+|:--|:--|:--|:--:|:--:|
+| `analysisd.indexer_client_network_threads` | `WAZUH_INDEXER_CLIENT_NETWORK_THREADS` | Network (I/O loop) threads of the process-wide indexer client runtime. Allowed range: 1 – 64 (count). | `1` | both |
+| `analysisd.indexer_client_cpu_threads` | `WAZUH_INDEXER_CLIENT_CPU_THREADS` | CPU pool threads that run completion callbacks. Allowed range: 1 – 64 (count). | `2` | both |
+| `analysisd.indexer_client_global_quota_bytes` | `WAZUH_INDEXER_CLIENT_GLOBAL_QUOTA_BYTES` | Bytes the client may hold queued across all its buckets. Allowed range: 1 – 68719476736 (64 GiB) (bytes). | `268435456` (256 MiB) | both |
+| `analysisd.indexer_client_max_response_bytes` | `WAZUH_INDEXER_CLIENT_MAX_RESPONSE_BYTES` | Largest response body the client accepts. A `_bulk` of the `events` or `raw` buckets whose answer exceeds it is not resent (the indexer may have applied it): its events are counted as dropped. Allowed range: 1 – 1073741824 (1 GiB) (bytes). | `67108864` (64 MiB) | both |
+| `analysisd.indexer_client_drr_quantum_bytes` | `WAZUH_INDEXER_CLIENT_DRR_QUANTUM_BYTES` | Quantum of the scheduler that shares bulk capacity among buckets. Allowed range: 1 – 67108864 (64 MiB) (bytes). | `1048576` (1 MiB) | both |
+| `analysisd.indexer_client_request_timeout_ms` | `WAZUH_INDEXER_CLIENT_REQUEST_TIMEOUT_MS` | Upper bound of one request against `wazuh-indexer`. The content downloads and the remote configuration read derive their call budgets from it. Allowed range: 1 – 3600000 (1 h) (ms). | `60000` | both |
+| `analysisd.indexer_client_probe_timeout_ms` | `WAZUH_INDEXER_CLIENT_PROBE_TIMEOUT_MS` | Upper bound of one node health probe. The content downloads derive their wait for a first probe from it. Allowed range: 1 – 300000 (5 min) (ms). | `5000` | both |
+| `analysisd.indexer_client_probe_interval_ms` | `WAZUH_INDEXER_CLIENT_PROBE_INTERVAL_MS` | Period of the node health probe. Allowed range: 1 – 3600000 (1 h) (ms). | `10000` | both |
+| `analysisd.indexer_client_drain_ms` | `WAZUH_INDEXER_CLIENT_DRAIN_MS` | Shutdown drain budget. Allowed range: 1 – 600000 (10 min) (ms). | `10000` | both |
+| `analysisd.indexer_client_ambiguous_retry_window_ms` | `WAZUH_INDEXER_CLIENT_AMBIGUOUS_RETRY_WINDOW_MS` | How long a bulk answered with an ambiguous 5xx may be retried. Allowed range: 1 – 3600000 (1 h) (ms). | `30000` | both |
+| `analysisd.indexer_client_latency_target_ms` | `WAZUH_INDEXER_CLIENT_LATENCY_TARGET_MS` | Target latency of a bulk request for the adaptive window. Allowed range: 1 – 600000 (10 min) (ms). | `2000` | both |
+| `analysisd.indexer_client_pace_initial_ms` | `WAZUH_INDEXER_CLIENT_PACE_INITIAL_MS` | Initial pacing between bulks to a node. Allowed range: 1 – 60000 (1 min) (ms). | `100` | both |
+| `analysisd.indexer_client_pace_relax_after` | `WAZUH_INDEXER_CLIENT_PACE_RELAX_AFTER` | Successful bulks before the pacing relaxes. Allowed range: 1 – 1000000 (count). | `20` | both |
+| `analysisd.indexer_client_retry_after_max_ms` | `WAZUH_INDEXER_CLIENT_RETRY_AFTER_MAX_MS` | Longest `Retry-After` honoured when parking a node. Allowed range: 1 – 3600000 (1 h) (ms). | `60000` | both |
+| `analysisd.indexer_client_callback_budget_ms` | `WAZUH_INDEXER_CLIENT_CALLBACK_BUDGET_MS` | Time a completion callback may take before it is counted as an overrun. Allowed range: 1 – 60000 (1 min) (ms). | `200` | both |
+| `analysisd.indexer_client_max_open_pits` | `WAZUH_INDEXER_CLIENT_MAX_OPEN_PITS` | Maximum Point-in-Time handles open at once. Allowed range: 1 – 10000 (count). | `64` | both |
+| `analysisd.indexer_client_log_summary_interval_ms` | `WAZUH_INDEXER_CLIENT_LOG_SUMMARY_INTERVAL_MS` | Period of the summarized client log lines. Allowed range: 1000 – 3600000 (1 h) (ms). | `60000` | both |
+| `analysisd.indexer_client_node_window_max` | `WAZUH_INDEXER_CLIENT_NODE_WINDOW_MAX` | Maximum in-flight bulks per node. Allowed range: 1 – 64 (count). | `4` | both |
+| `analysisd.indexer_client_bulk_min_bytes` | `WAZUH_INDEXER_CLIENT_BULK_MIN_BYTES` | Smallest bulk size the client shrinks to. Allowed range: 1 – 33554432 (32 MiB) (bytes). | `65536` (64 KiB) | both |
+
+#### Relation to the connector's keys
+
+Two keys of the [Indexer connector settings](#indexer-connector-settings) also feed the client when its own key is not
+set: `analysisd.indexer_request_timeout` (seconds) gives `analysisd.indexer_client_request_timeout_ms` and
+`analysisd.indexer_monitoring_interval` (seconds) gives `analysisd.indexer_client_probe_interval_ms` (converted to
+milliseconds). A key counts as set only when it comes from an environment variable or a line of the internal options
+file; the built-in defaults do not.
+
+- Only the connector key is set: the client uses its value, and the engine logs a warning saying so.
+- Only the client key is set: it applies.
+- Both set and different once converted to milliseconds: the engine fails to start, naming both keys. Set one of them,
+  or make them agree.
+- The connector key is `0` ("no limit", `analysisd.indexer_request_timeout` only): the client keeps its own value or
+  its default, and the engine logs a warning once.
+
+#### Call budgets and an unreachable indexer
+
+The content downloads are bounded from the client's timeouts, never below their built-in budgets: a call may last
+twice `analysisd.indexer_client_request_timeout_ms` and a page one and a half times it, and the wait for a first node
+probe is twice `analysisd.indexer_client_probe_timeout_ms`. The remote configuration read is one request (no retries
+inside the client; the Configuration module retries it per cycle, `analysisd.remote_conf_indexer_connector_max_retries`,
+`3` by default) with a page deadline of `analysisd.indexer_client_request_timeout_ms` and a call deadline 5 s above it.
+
+Once every configured node has been probed and none is usable, a content call or the remote configuration read fails
+at once with the client's cause instead of waiting. Before the first probe round has finished the call still waits for
+it (the remote configuration read at most 10 s), so a start-up with the indexer reachable is not affected.
+
+#### Stop
+
+On shutdown the engine stops the indexer client in two phases: it closes the client to new work and stops the writes
+before the scheduler stops (a read in flight returns as closed), and after the scheduler it waits for the client and
+joins the runtime. Nothing queued is drained: the events still queued or waiting for a retry are discarded, as the
+earlier connector did, and are neither counted in `indexer.events.dropped` nor reported in the log (see
+[Indexer metrics](README.md#indexer-metrics)). The whole stop is bounded by 3 seconds.
 
 ### Indexer connection (standalone only)
 
@@ -244,6 +344,7 @@ credentials from the keystore (see [Configuration sources](#configuration-source
 | `analysisd.indexer_ssl_certificate_authorities` | `WAZUH_INDEXER_SSL_CA_BUNDLE` | List of CA bundle file paths used to validate the `wazuh-indexer` TLS certificate. | `[]` | standalone |
 | `analysisd.indexer_ssl_certificate` | `WAZUH_INDEXER_SSL_CERTIFICATE` | Path to the client TLS certificate presented to `wazuh-indexer`. | `""` | standalone |
 | `analysisd.indexer_ssl_key` | `WAZUH_INDEXER_SSL_KEY` | Path to the client TLS private key presented to `wazuh-indexer`. | `""` | standalone |
+| `analysisd.indexer_ssl_verify_certificates` | `WAZUH_INDEXER_SSL_VERIFY_CERTIFICATES` | `true`/`false`. Verify the `wazuh-indexer` certificate and host name. With no CA bundle the first existing system CA store is used; with none, the certificate is not verified (the host name is) and a warning is logged. `false` disables certificate and host name verification, with a warning. Same policy as [`verify_certificates`](../indexer_client/configuration.md#verify_certificates). | `true` | standalone |
 
 ### Synchronization
 
@@ -261,7 +362,7 @@ credentials from the keystore (see [Configuration sources](#configuration-source
 | `analysisd.ioc_indexer_connector_max_retries` | `WAZUH_IOC_INDEXER_CONNECTOR_MAX_RETRIES` | Maximum retry attempts for IoC synchronization requests to the Wazuh Indexer. | `3` | both |
 | `analysisd.ioc_indexer_connector_retry_interval` | `WAZUH_IOC_INDEXER_CONNECTOR_RETRY_INTERVAL` | Seconds between retry attempts for IoC synchronization. | `5` | both |
 | `analysisd.ioc_indexer_connector_sync_batch_size` | `WAZUH_IOC_INDEXER_CONNECTOR_SYNC_BATCH_SIZE` | Maximum number of IoC documents streamed per Wazuh Indexer page while synchronizing IoC databases. | `1000` | both |
-| `analysisd.content_pit_keep_alive` | `WAZUH_CONTENT_PIT_KEEP_ALIVE` | Lease duration requested for the Point-in-Time snapshot each content download reads from. Shared by ruleset and IoC synchronization. | `5m` | both |
+| `analysisd.content_pit_keep_alive` | `WAZUH_CONTENT_PIT_KEEP_ALIVE` | Lease duration requested for the Point-in-Time snapshot each content download reads from. Shared by ruleset and IoC synchronization. Validated when the content topics are registered at start-up: `<n><unit>` with an integer `n` and unit `nanos`, `micros`, `ms`, `s`, `m`, `h` or `d` in lower case, for a lease of at least 1 ms; surrounding spaces are ignored. `5m`, `300s` and ` 5m ` are accepted; `5M`, `1.5m` and `5` are rejected and the engine fails to start with an error naming the value (the formats were checked against OpenSearch). | `5m` | both |
 | `analysisd.content_consumer_cache_seconds` | `WAZUH_CONTENT_CONSUMER_CACHE_SECONDS` | How long a CTI consumer readiness answer may be reused across content topics watching the same consumer. Keeps the IoC types from probing once each. | `5` | both |
 | `analysisd.content_consumer_retry_interval` | `WAZUH_CONTENT_CONSUMER_RETRY_INTERVAL` | Seconds before retrying a content cycle that was deferred because its CTI consumer was not ready. Shorter than a full sync interval on purpose: a consumer that is briefly busy should not cost a whole cycle. `0` is treated as `1`. | `60` | both |
 
@@ -392,7 +493,9 @@ analysisd.cm_sync_interval=7200
   caps how fast the queue is drained, so any non-zero value trades event loss for CPU.
 - **Indexer bulk.** A smaller `analysisd.indexer_bulk_max_bytes` and a shorter `analysisd.indexer_flush_interval`
   deliver events to `wazuh-indexer` sooner, in more requests; larger values send fewer, bigger requests.
-  `analysisd.indexer_queue_max_bytes` bounds what waits for the indexer.
+  `analysisd.indexer_queue_max_bytes` bounds what waits for the indexer, per write bucket (`events` and `raw`), and
+  `analysisd.indexer_client_global_quota_bytes` bounds both together (see
+  [Indexer connector settings](#indexer-connector-settings)).
 - **Synchronization.** Shorter `analysisd.cm_sync_interval`, `analysisd.ioc_sync_interval` and
   `analysisd.geo_sync_interval` pick up content changes sooner at the cost of more requests to `wazuh-indexer`
   (content, IOCs) and to the GeoIP manifest URL.
@@ -457,7 +560,8 @@ curl -s --unix-socket /var/wazuh-manager/queue/sockets/engine-api-http.sock \
 ### Queue monitoring
 
 `router.queue.size`, `router.queue.usage.percent`, `router.queue.bytes.usage.percent` and `router.events.dropped`
-show the input queue; `indexer.queue.usage.percent` and `indexer.events.dropped` the output queue. When the input
+show the input queue; `indexer.queue.usage.percent` and `indexer.events.dropped` the writes to the indexer (the
+`events` and `raw` buckets of the indexer client, see [Indexer metrics](README.md#indexer-metrics)). When the input
 queue has stayed contended for 10 minutes, the engine logs a warning with the events dropped meanwhile, and repeats
 it at most every 10 minutes while the contention lasts:
 
@@ -484,6 +588,12 @@ grep wazuh-manager-analysisd /var/wazuh-manager/logs/wazuh-manager.log | grep -E
   `data/ruleset`, `data/kvdb-ioc`, `data/mmdb`, `data/tzdb`, `logs/<channel>/`) is not owned by `wazuh-manager`,
   typically because it was created by hand as `root`. With the daemon stopped, restore it with
   `chown -R wazuh-manager:wazuh-manager <path>` (see [Process privileges](#process-privileges)).
+- `Could not initialize Indexer Connector: indexer client: … (invalid_config)` — an `analysisd.indexer_client_*` key that
+  is unknown, empty, not an unsigned integer or out of range; an `analysisd.indexer_client_*` key and the connector key
+  that feeds it set to different values; or an `analysisd.indexer_queue_max_bytes` quota that cannot hold one bulk (see
+  [Indexer client settings](#indexer-client-settings)). The message names the key.
+- `Invalid PIT keepAlive '<value>'` — `analysisd.content_pit_keep_alive` is not a valid lease (see
+  [Synchronization](#synchronization)).
 
 ### Events being dropped
 
@@ -502,6 +612,20 @@ grep wazuh-manager-analysisd /var/wazuh-manager/logs/wazuh-manager.log | grep -E
    ```bash
    systemctl restart wazuh-manager
    ```
+
+If `router.events.dropped` stays flat but `indexer.events.dropped` grows, the events are lost on the way to the
+indexer instead: a write bucket is full (the indexer is slower than the event rate, or unreachable), or `_bulk`
+requests fail (see [Indexer metrics](README.md#indexer-metrics) for every cause). Drops on a full
+bucket are only counted. An event the client refuses outright logs one warning, and nothing more until events are
+accepted again:
+
+```bash
+grep "The indexer client refused an event" /var/wazuh-manager/logs/wazuh-manager.log
+```
+
+`indexer.queue.usage.percent` at 100 means new events are being dropped. Raise `analysisd.indexer_queue_max_bytes`
+(and `analysisd.indexer_client_global_quota_bytes` if twice the bucket quota exceeds it) to absorb longer outages, at
+the memory cost described in [Indexer connector settings](#indexer-connector-settings).
 
 ### Slow delivery to the indexer
 

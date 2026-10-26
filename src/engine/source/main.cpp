@@ -524,6 +524,7 @@ int main(int argc, char* argv[])
                     icConfig.ssl.cert = confManager.get<std::string>(conf::key::INDEXER_SSL_CERTIFICATE);
                     icConfig.ssl.cacert = confManager.get<std::vector<std::string>>(conf::key::INDEXER_SSL_CA_BUNDLE);
                     icConfig.ssl.key = confManager.get<std::string>(conf::key::INDEXER_SSL_KEY);
+                    icConfig.ssl.verifyCertificates = confManager.get<bool>(conf::key::INDEXER_SSL_VERIFY_CERTIFICATES);
                 }
                 return icConfig.toJson();
             };

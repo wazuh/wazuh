@@ -156,7 +156,8 @@ json::Json remoteConfigFromClient(indexer_client::IClient& reader, std::chrono::
  *       "/var/wazuh-manager_cert/"
  *     ],
  *     "certificate": "cert",
- *     "key": "key_example"
+ *     "key": "key_example",
+ *     "verify_certificates": true
  *   }
  * }
  */
@@ -165,9 +166,10 @@ std::string Config::toJson() const
     nlohmann::json config {};
     config["hosts"] = hosts;
 
-    if (!ssl.cacert.empty() || !ssl.cert.empty() || !ssl.key.empty())
+    // `verify_certificates` is always emitted, so the section states the choice explicitly.
     {
         nlohmann::json sslJson {};
+        sslJson["verify_certificates"] = ssl.verifyCertificates;
         if (!ssl.cacert.empty())
         {
             sslJson["certificate_authorities"] = ssl.cacert;

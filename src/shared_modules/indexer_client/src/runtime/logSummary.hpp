@@ -21,8 +21,9 @@
 // submitting thread that crossed the edge, once per crossing, when it leaves Bucket::reserve()/reserveForGroup(),
 // with no mutex held; the summary's timer drains whatever is still pending (e.g. what a Block left behind).
 //
-// AMBIGUOUS EDGE (E6a, plan 18 I105/I105b). One more edge, per bucket: the first Failed(Ambiguous) after a 2xx _bulk of
-// the bucket (or since its creation) ⇒ WARN; the next 2xx _bulk re-arms it (Bucket::countBulk). Unlike the quota edges
+// AMBIGUOUS EDGE (E6a, plan 18 I105/I105b). One more edge, per bucket: the first Failed(Ambiguous) (a 500/502/504, or a
+// response over max_response_bytes, which the WARN names instead of a status) after a 2xx _bulk of the bucket (or since
+// its creation) ⇒ WARN; the next 2xx _bulk re-arms it (Bucket::countBulk). Unlike the quota edges
 // it is NOT written by a submitting thread: the completion thread of the _bulk decides it under the bucket mutex
 // (Bucket::countAmbiguous) and writes it once that mutex is dropped (EmitPendingOnExit), like every other line.
 //

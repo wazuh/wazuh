@@ -20,6 +20,8 @@
 #include <cstddef>
 #include <cstdint>
 #include <optional>
+#include <string>
+#include <vector>
 
 #include <sys/types.h>
 
@@ -71,6 +73,10 @@ namespace indexer_client::detail::seams
     /// E6e (B): K, the stripes of a staging bucket, fixed by INDEXER_CLIENT_TEST_STRIPES (an integer 1-64, read once;
     /// anything else aborts the run); nullopt when unset or empty (the library's K).
     std::optional<std::size_t> stripeCount();
+    /// E11e: replaces the system CA stores loadTlsMaterial tries when no CA is configured (detail::systemCaStorePaths);
+    /// nullopt keeps the real list. Every https test without a configured CA sets it, so no test depends on the
+    /// stores of the machine it runs on.
+    std::optional<std::vector<std::string>> systemCaPaths();
 #else
     // always_inline: even at -O0 no out-of-line copy is emitted, so the .so carries no seams:: symbol (VisibilityTest).
     [[gnu::always_inline]] inline void afterAdmissionCheck() {}
@@ -107,6 +113,10 @@ namespace indexer_client::detail::seams
     [[gnu::always_inline]] inline void midAdmitBatch() {}
     [[gnu::always_inline]] inline void inSettleBulk() {}
     [[gnu::always_inline]] inline std::optional<std::size_t> stripeCount()
+    {
+        return std::nullopt;
+    }
+    [[gnu::always_inline]] inline std::optional<std::vector<std::string>> systemCaPaths()
     {
         return std::nullopt;
     }

@@ -259,7 +259,8 @@ def test_get_manager_conf(load_mock):
     # Sections the fixture omits exist with their schema defaults
     assert whole['remote']['https']['port'] == 1517
     assert whole['indexer'] == {'hosts': ['https://127.0.0.1:9200'],
-                                'ssl': {'certificate_authorities': [], 'certificate': '', 'key': ''}}
+                                'ssl': {'certificate_authorities': [], 'certificate': '', 'key': '',
+                                        'verify_certificates': True}}
 
     assert configuration.get_manager_conf(section='cluster', conf_file=FIXTURE_CONF)['cluster']['node_name'] == 'master-node'
     assert configuration.get_manager_conf(section='cluster', field='name', conf_file=FIXTURE_CONF) == \

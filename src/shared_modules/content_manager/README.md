@@ -47,7 +47,7 @@ consequences the library handles:
 | `ConsumerGate` | The consumer document's format (query, `_source` filter, parser) and the cached pre-flight probe, shared across topics watching the same consumer. An answer is reused for the topic's cache TTL; an `Unreachable` one (the probe itself failed, e.g. `client_closed`) for `min(TTL, 1 s)` only, so the next cycle re-probes at once while the topics of a consumer over a dead indexer still share one probe per second. |
 | `PitSession` | Opens and closes the PIT; validates consumer readiness inside it with the gate's parser; scopes queries to the data indices. |
 | `IChangeDetector` | `OffsetCursorDetector` (monotonic integer cursor) and `ContentHashDetector` (content hash, document- or query-probed). |
-| `PitPaginator` | `search_after` pagination, optionally sliced, with sink calls serialised. No domain knowledge. |
+| `PitPaginator` | `search_after` pagination, optionally sliced, with sink calls serialised; halves a page that is too large for a query. No domain knowledge. |
 | `FactoryContentUpdater` | Turns a validated `TopicSpec` into a `ContentCycle`. |
 | `RocksDbTokenStore` | The built-in token store, one RocksDB per topic under `state.databasePath`. |
 | `IContentIndexer` | The host's indexer: the four read operations the cycle needs (`contentIndexer.hpp`), with its adapter over an `indexer_client::IClient` (D1). |
@@ -95,7 +95,27 @@ background once the last handle is released. A `keepAlive` is `<n>` plus one of
 that is null, or whose `query()` is null (a closed one), and a `ContentIndexerOptions` deadline that is not
 positive are rejected with `std::invalid_argument`.
 A failure reaches the cycle as a `std::runtime_error` carrying the library's cause; so does a search
-response without `hits`.
+response without `hits`. A response over the client's size cap is the subclass
+`content_manager::ResponseTooLargeError` (`contentIndexer.hpp`), typed by the library's
+`Outcome::responseTooLarge` rather than by the reason's text. The cap depends on the call (I229):
+`openPit` asks for `PitOptions::wholeResponseCap`, so the **content pages** (`search` on a PIT) are
+capped by `max_response_bytes` itself (64 MiB by default) — single CVE5 documents of the CTI feed
+reach ~17 MB (`CVE-2016-10243`), over the plain query cap; the pre-flight probe (`searchIndex`)
+keeps the query cap, `max_response_bytes / QUERY_DOM_FACTOR` (8 MiB). The price is memory: a page
+near the cap parses into a DOM of several times its size, per slice in flight.
+
+### Page size under the response cap
+
+`PitPaginator` asks for `pageSize` hits per request. When a page fails with `ResponseTooLargeError`,
+it asks the **same page again** — same PIT, `search_after` and slice — with half the hits, down to
+one; the pages that follow keep the reduced size and double back (up to `pageSize`) after
+`PageSizer::REGROW_AFTER` (4) pages in a row that fit, so one stretch of large documents does not
+slow the rest of the fetch down. Each cut is a DEBUG line, `Page of '<topic>' (slice <i>/<n>) too
+large for a query at <n> hits; retrying it with <m>.` (with the whole cap on content pages this
+needs a page over `max_response_bytes`). Only a single document over the cap fails the
+fetch, with the error it always had. The end of the data is a page shorter than the size *it asked
+for*, never than `pageSize`, so a page cut down for size is not mistaken for the last one. Every
+slice sizes its pages on its own; the vulnerability feed and the Engine's topics share this path.
 
 While no indexer node is usable (at host start every node is `Down` until the first round of health
 probes) a call does not fail at once: its deadline becomes `min(callDeadline, probeDeadline)` and the
@@ -307,8 +327,8 @@ Automated, and run by CI:
 |---|---|
 | `content_manager_utest` | Every component through `IContentIndexer`: the full `CycleStatus` matrix, which paths write the token, `retryAfter` per status, slicing, the consumer gate and its cache, the driver (thread, requests, codes, backoff, run slot), spec validation, the token store. |
 | `content_manager_ctest` | Whole registrations through the public API against a scripted indexer: the consumer-flip race, forced reloads, requested runs, destruction waiting for a cycle. |
-| `ContentIndexerClientAdapter*` (in `content_manager_utest`) | The `IClient` adapter against a real `indexer_client` runtime and the fake indexer of `indexer_client`'s tests: PIT lifecycle and slices, bounded wait without a usable node (`NoUsableNodeBoundedByProbe`, `FirstCallWaitsForFirstProbe`), `requestClose()` waking a held search, a closed `Client`, releasing the consumer name. `ContentIndexerClientAdapterReal.SlicesCoverOnce` runs against a real OpenSearch when `INDEXER_URL` is set. |
-| `ContentCycleOnClientAdapter*` (in `content_manager_utest`) | `PitSession` → `PitPaginator` → `ContentCycle` over that adapter: full download, abort midway, restart from the token, resume after an expired PIT. |
+| `ContentIndexerClientAdapter*` (in `content_manager_utest`) | The `IClient` adapter against a real `indexer_client` runtime and the fake indexer of `indexer_client`'s tests: PIT lifecycle and slices, bounded wait without a usable node (`NoUsableNodeBoundedByProbe`, `FirstCallWaitsForFirstProbe`), `requestClose()` waking a held search, a closed `Client`, releasing the consumer name. `ContentIndexerClientAdapterReal.SlicesCoverOnce` runs against a real OpenSearch when `INDEXER_URL` is set; `ContentIndexerClientAdapterReal.LargeDocumentFromARealCatalog` (read only, also `CM_REAL_DOC_ID`, optional `INDEXER_USER`/`INDEXER_PASSWORD`/`INDEXER_CA`/`CM_REAL_INDEX`) reads one document over the query cap from a real catalog through a content page, and checks a plain query still refuses it. `ContentPagesTakeTheWholeResponseCap` is the same on the fake. |
+| `ContentCycleOnClientAdapter*` (in `content_manager_utest`) | `PitSession` → `PitPaginator` → `ContentCycle` over that adapter: full download, abort midway, restart from the token, resume after an expired PIT, pages over the response cap halved (`TooLargePagesAreHalved`). |
 | `content_manager_public_abi_c17` | The public headers alone, under C++17, with only the include directories a foreign host gets. Fails on a C++20 construct in a public header, and on a private header leaking into `include/`. |
 
 Two properties are asserted here rather than left to an integration run, because both would otherwise

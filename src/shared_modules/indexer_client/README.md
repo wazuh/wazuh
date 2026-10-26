@@ -15,13 +15,7 @@ consumers of the indexer, one consumer at a time, with:
 - metrics exposed as a snapshot;
 - typed configuration validated from one `IConfigSource`.
 
-**Status: E6a — write admission, buckets and scheduling on top of the internal transport, the bulk-response classifier, the retry lane and the bulk sender with its [per-node load control](#load-control-e5a) (E5a) and the [client close and shutdown](#closing-and-shutdown-e5b) that drain up to one deadline (E5b), the [metrics snapshot and catalog](#metrics-e5c) and the [edge-triggered, summarized logging](#logging-e5c) (E5c; E5 is complete), with the per-operation conflict policy, `ReplacePreserving`, confirmable groups, [`ordered` buckets](#ordered-buckets-e3c-2) and [`cancel(tag)`](#cancellation-e3c-2), plus the [queries](#queries-e4a) and the [managed point in time](#point-in-time-e4b), the per-bucket [ambiguous 5xx policy](#ambiguous-5xx-e6a) and the `Retry-After` parking of nodes with one scheduler wake-up per completion (E6a): writes and reads reach the indexer.** The public headers, the
-configuration schema, the runtime lifecycle (threads, owner thread, shutdown deadline), the test
-helpers, the internal curl [Transport](#transport-internal-e2a-1-and-e2a-2) (HTTP, HTTPS, credentials), the
-[node health probe](#node-health-e2b) and the [write path](#write-path-e3a) (encoding, quota charge, overflow policies, DRR scheduler,
-resolution) exist, the [response classifier and retry lane](#response-classification-and-retry-lane-e3b-1) are driven by the [bulk sender](#bulk-sender-e3b-2), and the transport has been [benchmarked against the v1](#benchmark). `Writer::submit` admits and schedules
-writes and the production sink sends them as `_bulk` requests, with a per-node adaptive window, a bulk-size target and pacing, failover and retry; `Client::query()` runs
-searches, by-query writes, index checks and PITs on the consumer's thread. `requestClose()` closes admission and the queued writes keep draining until `awaitClosed(deadline)`, which then resolves the rest and stops callbacks from starting. See [What is not implemented yet](#what-is-not-implemented-yet).
+**Status.** The library is complete for its consumers (the Inventory Sync Server, the Vulnerability Scanner and the engine): write admission, buckets and DRR scheduling over an internal curl [Transport](#transport-internal-e2a-1-and-e2a-2) (HTTP, HTTPS, credentials), the [node health probe](#node-health-e2b), the [response classifier and retry lane](#response-classification-and-retry-lane-e3b-1) driven by the [bulk sender](#bulk-sender-e3b-2) with its [per-node load control](#load-control-e5a), the [client close and shutdown](#closing-and-shutdown-e5b), the [metrics snapshot and catalog](#metrics-e5c), the [edge-triggered logging](#logging-e5c), the per-operation conflict policy, `ReplacePreserving`, confirmable groups, [`ordered` buckets](#ordered-buckets-e3c-2), [`cancel(tag)`](#cancellation-e3c-2), the [queries](#queries-e4a) and the [managed point in time](#point-in-time-e4b). `requestClose()` closes admission and the queued writes keep draining until `awaitClosed(deadline)`, which then resolves the rest and stops callbacks from starting. See [Known limits](#known-limits).
 The v1 connector library no longer exists in the tree; where this document says "the v1" it is that library, kept only as the
 reference the tests and benchmarks were written against.
 
@@ -41,12 +35,12 @@ Headers are in `include/indexer_client/`; `indexerClient.hpp` is the umbrella.
 | | `ProcessId` | `Analysisd`, `Modulesd`, `Standalone`; selects the internal-options prefix |
 | | `Status`, `Cause`, `ItemOutcome` | Final status (`Ok`/`Failed`/`Dropped`), single failure classification, per-item write outcome |
 | | `toString(Cause)` | Stable lowercase name for logs, metrics labels and tests |
-| | `Outcome<T>` | Value or failure: `cause`, `httpStatus`, `reason`; `ok()` is `cause == Cause::None` |
+| | `Outcome<T>` | Value or failure: `cause`, `httpStatus`, `reason`, `responseTooLarge` (queries: the failure is the [response cap](#response-cap)); `ok()` is `cause == Cause::None` |
 | | `OpResult` | Final result of one write; `itemErrorType` truncated to 64 B, `reason` to 512 B |
 | | `RetryPolicy`, `Overflow`, `BulkThresholds`, `ConflictPolicy`, `WriteMode` | Per-bucket / per-query policies |
 | | `Op`, `Callback` | One write (`Index`, `IndexAutoId`, `IndexDataStream`, `Delete`, `IndexVersionedScript`); completion callback that runs on the CPU pool |
 | | `BucketSpec` | A consumer-declared queue: name, weight, quota, retry, overflow, bulk, conflict policy, `ordered`, `onAmbiguous5xx`, `trustedBodies` (default `false`: the producer guarantees compact JSON without a raw `\n`, so the per-op `\n` search is skipped; a stray `\n` is then not caught locally: it fails that whole bulk with 400, or, when what follows it is a valid action line, injects an operation, the batch is requeued and every retry runs it again and duplicates each `IndexAutoId`/`IndexDataStream` of the batch; only for producers that guarantee compact JSON, see [Encoding per kind](#encoding-per-kind)) |
-| | `AmbiguousPolicy` | `Retry` (default) or `Fail`: what a bucket does with a `_bulk` answered 500, 502 or 504 (see [Ambiguous 5xx](#ambiguous-5xx-e6a)) |
+| | `AmbiguousPolicy` | `Retry` (default) or `Fail`: what a bucket does with a `_bulk` answered 500, 502 or 504, or whose response went over `max_response_bytes` (see [Ambiguous 5xx](#ambiguous-5xx-e6a)) |
 | | `Slice`, `CursorQuery`, `PitOptions`, `DbqOptions`, `QueryOptions`, `PitPage` | Query and PIT parameters and page |
 | | `HealthView` | `nodes[]` (`url`, `state`, `reason`), `clusterRed`, `localFault`, `anyAvailable()`, `anyUsable()`; returned by `Client::health()` (see [Node health](#node-health-e2b)) |
 | | `CloseReport` | Close accounting |
@@ -184,7 +178,7 @@ and values are strict unsigned decimals (C uses `atoi`).
   does not match.
 
 The caller reads the file; the class only parses text. In the manager build there is one
-internal-options file: E7 (modulesd) passes exactly `etc/wazuh-manager-internal-options.conf`
+internal-options file: E7 (modulesd) passes exactly `/etc/wazuh-manager/wazuh-manager-internal-options.conf`
 (`WAZUH_LDEFINES`, `src/shared/include/defs.h`). The defaults are `kSchema`'s, the same model the C
 side uses with `getDefine_Int_default()`: there is no default file to concatenate. The engine is
 expected to wrap its own `conf` in its own `IConfigSource`.
@@ -207,6 +201,7 @@ exactly those two members.
 | `ssl.certificate_authorities` | array of strings | Optional, entries non-empty |
 | `ssl.certificate` | string | Optional |
 | `ssl.key` | string | Optional |
+| `ssl.verify_certificates` | boolean | Optional, default `true` (also when absent); see [TLS](#tls-and-credentials) |
 
 **Internal options.** Full key = prefix + name. The prefix is `analysisd.indexer_client_` for
 `ProcessId::Analysisd` and `ProcessId::Standalone`, and `wazuh_modules.indexer_client_` for
@@ -269,7 +264,7 @@ the runtime alive. The normative contract is the transport contract of the Index
   `src/transport/transport.cpp:220`).
 - **Admission.** `submit(HttpRequest, ResultCallback)` is synchronous and returns
   `Admission{admitted, cause, id}`. `id` is monotonic per runtime and never reused. Only `GET`,
-  `HEAD`, `POST`, `PUT`, `DELETE` and the schemes `http` and `https` are admitted (`https` only when some CA is configured, see [TLS](#tls-and-credentials));
+  `HEAD`, `POST`, `PUT`, `DELETE` and the schemes `http` and `https` are admitted (`https` with or without a configured CA: the trust anchor is the policy of [TLS](#tls-and-credentials));
   anything else, or a stopped transport, is not admitted (`InvalidArgument` / `Shutdown`) and the
   callback never runs. The `id` is registered before the post to the loop, so `stop()` resolves it
   even if the post never arrived.
@@ -322,7 +317,9 @@ the runtime alive. The normative contract is the transport contract of the Index
 - **Fixed options.** Per easy: `CURLOPT_PROTOCOLS_STR "http,https"`, `CURLOPT_NOSIGNAL`,
   `CURLOPT_PROXY ""` (never a proxy from the environment); `Expect` is left to curl (100-continue on bodies over 1 MiB,
   as the v1). Per multi:
-  `CURLMOPT_MAX_HOST_CONNECTIONS` = 8 (a constant of E2a-1; the sender's window is the [limiter's](#load-control-e5a)) and
+  `CURLMOPT_MAX_HOST_CONNECTIONS` = 8 (a constant of E2a-1; the sender's window is the [limiter's](#load-control-e5a)),
+  `CURLMOPT_MAXCONNECTS` = configured hosts x 8 (curl's default pool, 4 x the transfers running, closed connections
+  after every burst and the next burst reconnected; it caps idle connections, not transfers) and
   `CURLMOPT_QUICK_EXIT`. `curl_global_init` runs once (`std::call_once`).
 - **Timings.** `HttpResult.timings` (`TransferTimings`: `total`, `connect`, `appConnect`) is in
   **microseconds**, and is also filled for `Cancelled` and `Shutdown` results. `appConnect` is 0 in clear text.
@@ -336,7 +333,7 @@ before creating any thread, and does so **whenever the material is configured, w
 scheme**: a typo in a path fails at start, not on the day `https` is used. A failure is
 `Cause::InvalidConfig`, names the path or the host, and creates no thread. What is required:
 
-- every host is `http` or `https` (case-insensitive); some `https` host with no CA configured fails;
+- every host is `http` or `https` (case-insensitive);
 - every file is at most **1 MiB**;
 - every file in `ssl.certificate_authorities` exists, parses the way curl parses `CAINFO_BLOB`
   (`PEM_X509_INFO_read_bio` over the whole file: a malformed PEM block anywhere fails) and holds at
@@ -353,10 +350,30 @@ the files any more (a file changed on disk after start does not matter: the mate
 How it reaches curl: relative paths resolve against the process's working directory (the manager
 runs with cwd = home); the files are read once into memory (`TlsMaterial`, held by the transport) and
 passed as `CAINFO_BLOB`, `SSLCERT_BLOB` and `SSLKEY_BLOB` with `CURL_BLOB_NOCOPY`, so no temporary file
-and no CA directory (`CAPATH` is null). Verification is always on (`VERIFYPEER` 1, `VERIFYHOST` 2),
-the minimum protocol is TLS 1.2 and there is no insecure mode. `https` is admitted only when a CA is
-configured. The material is read only at start: **rotating a CA, certificate or key requires a
-restart**.
+and no CA directory (`CAPATH` is null). The minimum protocol is TLS 1.2. The material is read only at
+start: **rotating a CA, certificate or key requires a restart**.
+
+**Verification policy (E11e, `ssl.verify_certificates`).** `loadTlsMaterial` also decides what curl
+verifies, with the v1's behaviour (http-request's `urlRequest.hpp`) so that an update from 5.0 keeps
+connecting:
+
+| `verify_certificates` | CA configured | Trust anchor (curl) | `VERIFYPEER` / `VERIFYHOST` | Log at start |
+|---|---|---|---|---|
+| `true` (default) | yes | `CAINFO_BLOB` | 1 / 2 | — |
+| `true` | no, a system store exists | `CAINFO` = the first **existing** of `/etc/ssl/certs/ca-certificates.crt`, `/etc/pki/tls/certs/ca-bundle.crt`, `/usr/share/ssl/certs/ca-bundle.crt`, `/usr/local/share/certs/ca-root-nss.crt`, `/etc/ssl/cert.pem` | 1 / 2 | INFO `indexer TLS: using the system CA store <path>` |
+| `true` | no, and none of the five exists | `CAINFO` null (explicitly: never curl's compiled-in bundle) | 0 / 2 (the host name is still checked) | WARN `indexer TLS: no CA configured and no system CA store found (<paths>); the server certificate is not verified (the host name is) for https host(s) <hosts>; the indexer credentials are sent to an unverified server` |
+| `false` | either | the configured CA, else null | 0 / 0 | WARN `indexer TLS: certificate and host name verification disabled (verify_certificates is false) for https host(s) <hosts>; the indexer credentials are sent to an unverified server` |
+
+- The system store is only **located** at start, never read: curl loads it by path (no 1 MiB cap and
+  no strict PEM check). "Exists" is `std::filesystem::status`: only "not found" and "not a directory"
+  mean absent; any other error (permission, symlink loop...) picks that path, so the handshake fails
+  instead of switching verification off. The first existing path wins whatever it holds: a broken
+  store fails every handshake (77/60) and the next path is never tried.
+- A configured CA always wins, and a malformed one is `InvalidConfig` whatever `verify_certificates`
+  says: with `false` the CA and the client pair are still loaded and validated.
+- The INFO and the WARN are logged once per start, and only when some host is `https`.
+- Tests replace the list of paths through the `systemCaPaths()` seam (`src/transport/seams.hpp`, not in
+  the `.so`).
 
 **TLS causes (I54).** Added to the classification table:
 
@@ -800,7 +817,7 @@ the request classifier. Two steps over one response:
 | `Cancelled`, `Shutdown` | `Ignore` | The shutdown sweep resolves the operations |
 | 429 | `Throttled` | `Cause::Throttled`; `retryAfter` when the transport parsed one |
 | 413 | `Split` (more than one operation) | `Cause::PayloadTooLarge`; with one operation `FailBatch(PayloadTooLarge)` |
-| `ResponseTooLarge` | `Split` (more than one operation) | With one operation `FailBatch(ItemPermanent)`, reason `response over maxResponseBytes` |
+| `ResponseTooLarge` | `Split` (more than one operation) | With one operation `FailBatch(ItemPermanent)`, reason `response over maxResponseBytes`; under any size the bucket's [`onAmbiguous5xx`](#ambiguous-5xx-e6a) `Fail` turns it into `Failed(Ambiguous)` (the node answered: the bulk may be applied) |
 | 408 | `Retry` | `TransportTimeout` |
 | 5xx | `Retry` | `Server5xx`; for 500, 502 and 504 the bucket's [`onAmbiguous5xx`](#ambiguous-5xx-e6a) may turn it into `Failed(Ambiguous)` |
 | 401, 403 | `Retry` | `Client4xx` (see the deviation below) |
@@ -819,13 +836,19 @@ A `_bulk` answered 500, 502 or 504 may have been **applied** by the indexer (a p
 Resending it duplicates documents in an index without `_id` (data streams). `BucketSpec::onAmbiguous5xx` (I105; v1 parity: the async
 connector never resent these) chooses per bucket:
 
-| Policy | A 500, 502 or 504 on `_bulk` |
-|---|---|
-| `AmbiguousPolicy::Retry` (default) | Requeued `{true, Backoff}` like any 5xx; it may duplicate |
-| `AmbiguousPolicy::Fail` | Every operation of the batch resolves `Failed(Ambiguous)` with the HTTP status and reason `ambiguous HTTP <status> (not resent)`; nothing is resent |
+| Policy | A 500, 502 or 504 on `_bulk` | A `_bulk` response over `max_response_bytes` (`ResponseTooLarge`) |
+|---|---|---|
+| `AmbiguousPolicy::Retry` (default) | Requeued `{true, Backoff}` like any 5xx; it may duplicate | `Split` like a 413 (the halves are resent; one operation alone ends `Failed(ItemPermanent)`); it may duplicate |
+| `AmbiguousPolicy::Fail` | Every operation of the batch resolves `Failed(Ambiguous)` with the HTTP status and reason `ambiguous HTTP <status> (not resent)`; nothing is resent | Every operation of the batch, one alone included, resolves `Failed(Ambiguous)` with the status the node sent in its headers and reason `ambiguous response over maxResponseBytes (not resent)`; never split nor resent |
 
-- A **503** is always retried, under both policies. The classifier is untouched: the sender turns the `Retry` verdict into `FailBatch` with
-  `Cause::Ambiguous` just before it applies the verdict, so the choice lives in the bucket and not in the response table.
+- A **503** is always retried, under both policies. The classifier is untouched: the sender turns the `Retry` (5xx) or `Split`/`FailBatch`
+  (`ResponseTooLarge`) verdict into `FailBatch` with `Cause::Ambiguous` as soon as the completion classifies it (before the node's
+  accounting, so no split is counted), so the choice lives in the bucket and not in the response table.
+- **A response over the cap is ambiguous too.** The node answered (`ResponseTooLarge` clears the ordered pin like any HTTP response) but the
+  client stopped reading the body, so it cannot know which items were applied. Splitting it would resend every operation in halves: harmless
+  with an `_id` (`Retry` keeps doing it so that an oversized answer still makes progress), a duplicate without one (G-rama round 2 of plan 18,
+  `ResponseTooLargeFailPolicyNeverResent`). The WARN then names the cap instead of a status: `... got a response over max_response_bytes for
+  a bulk of <n> operations: ...`.
 - The operations count in `failed.ambiguous` (`FailCause::Ambiguous`, [Metrics](#metrics-e5c)); there is no separate counter. The new `Cause`
   is `ambiguous` (`toString(Cause::Ambiguous)`).
 - **One WARN per edge**: the first ambiguous failure of the bucket after a 2xx `_bulk` (or since the bucket was created) logs once; the next
@@ -950,7 +973,7 @@ the wake still runs.
 | `Failover` | `NodeSet::report` (the node goes `Down`) and requeue `{mayHaveSent, Now}`: a failover whose request may not have left costs no attempt |
 | `Retry` | Requeue `{true, Backoff}`; a 500, 502 or 504 in a bucket with `onAmbiguous5xx = Fail` is resolved `Failed(Ambiguous)` instead (see [Ambiguous 5xx](#ambiguous-5xx-e6a)) |
 | `Throttled` (429) | `NodeSet::report` (the node goes `Throttled`), raise the node's `notBefore`, requeue `{false, Now}` (see below) |
-| `Split` | Requeue `{false, Now, toHead, halve}` |
+| `Split` | Requeue `{false, Now, toHead, halve}`; a `ResponseTooLarge` in a bucket with `onAmbiguous5xx = Fail` is resolved `Failed(Ambiguous)` instead |
 | `FailBatch` | Every operation `Failed(cause, httpStatus, reason)` |
 | `Items` | `classifyItems`; per item `Ok`/`NotFound` resolve `Ok` with the item's outcome, `Conflict` follows the op's effective [conflict policy](#conflict-policy-e3c-1) (`Success`: `Ok` keeping 409 and the error type; `Retry`: requeue `{true, Backoff}` and, once exhausted, `Failed(RetryExhausted)`), `Retry` requeues `{true, Backoff}` (one call per batch), `Permanent` resolves `Failed(ItemPermanent)` with the item's status, type and reason |
 
@@ -995,7 +1018,7 @@ as success or failure now retry, so the indexer may see an operation more than o
 | Situation | Behaviour |
 |---|---|
 | A 2xx whose body is unreadable, or holds a different number of items than operations | The whole batch is requeued `{true, Backoff}`; the last error is `Server5xx` with the HTTP status and the parser's reason; when attempts run out it ends `Failed(RetryExhausted)` carrying it (`UnreadableBodyRetries`) |
-| `ResponseTooLarge` | Split in halves like a 413; one operation alone ends `Failed(ItemPermanent)`, `response over maxResponseBytes` (`ResponseTooLargeSplits`) |
+| `ResponseTooLarge` | Split in halves like a 413; one operation alone ends `Failed(ItemPermanent)`, `response over maxResponseBytes` (`ResponseTooLargeSplits`). In a bucket with `onAmbiguous5xx = Fail` the whole batch ends `Failed(Ambiguous)` after one request (`ResponseTooLargeFailPolicyNeverResent`) |
 | Timeout, connection reset or any failover with `mayHaveSent` | The batch goes to another node and the attempt is counted; the first node may have applied it (`FailoverOnTransportError`) |
 | A failover with `mayHaveSent` false | Retried with no attempt counted |
 | 401, 403 | Retryable, not a failed batch (`CredentialsErrorRetries`) |
@@ -1049,7 +1072,7 @@ ambiguous_retry_window_ms` (the defaults), a second timeout of the retry on its 
 
 **Residual risk.** After the window the batch goes to another node while the first one may still apply the older request later, so
 the final state of a key can be an older one. The library cannot close that window; the consumer mitigates it with its own sweep
-(inventory sync, E7, with the `ordered.ambiguous.residual` metric), which is outside this library.
+(inventory sync, with its `sync.agent_delete.sweep.residual` metric), which is outside this library.
 
 ### Cancellation (E3c-2)
 
@@ -1329,6 +1352,18 @@ DOM-to-wire ratio `QueryDomFactorMeasured` found (glibc heap in use: inventory-s
 5.74, delete/update-by-query responses 3.5–5.2). An unparsable 2xx body is also `ItemPermanent`. The reason of a 4xx is the OpenSearch error type
 plus at most `REASON_BODY_BYTES = 256` bytes of the body, within `OpResult::MAX_REASON`.
 
+A failure for size — this cap, or a body over `maxResponseBytes` on the wire (`ResponseTooLarge`, one op ⇒ `FailBatch(ItemPermanent)`,
+reason `response over maxResponseBytes`) — also sets `Outcome::responseTooLarge`, through every query that returns one (`search`,
+`searchAfter`, `Pit::search`, `PitSession::next`). The cause stays `ItemPermanent` and the library never retries it; the flag only lets a caller
+tell it from the other `ItemPermanent` failures without parsing the reason (the content manager's paginator halves its page on it). An
+unparsable body leaves it false.
+
+**Whole cap for a PIT (I229).** A PIT opened with `PitOptions::wholeResponseCap` checks its pages (`Pit::search`, `PitSession::next`)
+against `maxResponseBytes` itself, not `maxResponseBytes / QUERY_DOM_FACTOR` (`classifyPitSearch(..., wholeResponseCap)`); since the
+transport already stops reading at `maxResponseBytes`, the 2xx check never trips there and a page over it fails on the wire as above. Only
+the content manager asks for it, for the CTI content pages (one CVE5 document reaches ~17 MB); every other query keeps I84. A page near the
+cap parses into a DOM up to `QUERY_DOM_FACTOR` times its size (the `responseBytesInFlight` gauge shows the wire bytes).
+
 ### Close and shutdown
 
 Every wait (result, backoff, no node) sleeps on the `QueryGate`. The transport callback, `Client::requestClose()` and
@@ -1381,7 +1416,8 @@ checks); then
 `POST /<i1,i2>/_search/point_in_time?keep_alive=<ms>ms[&expand_wildcards=all]`, no body.
 
 `PitOptions.keepAlive` (default 300000 ms) is sent in milliseconds. `expand_wildcards=all` is added when `PitOptions.expandWildcardsAll`
-or `QueryOptions.expandWildcardsAll` is set. A 2xx needs a non-empty string `pit_id`, otherwise `Failed(ItemPermanent)`; a 404
+or `QueryOptions.expandWildcardsAll` is set. `PitOptions.wholeResponseCap` (default false) is not sent: it sets the
+[response cap](#response-cap) of the PIT's pages. A 2xx needs a non-empty string `pit_id`, otherwise `Failed(ItemPermanent)`; a 404
 `index_not_found_exception` is `NotFound` (I85); the rest follows the [retry table](#retry-i82).
 
 ### Slots and the cap
@@ -1583,7 +1619,7 @@ are process-wide and never reset (they survive `shutdown()` + `start()`; one run
 |---|---|
 | `RejectCause` | `queue_full`, `client_closed`, `shutdown`, `submit_timeout`, `reentrancy`, `payload_too_large`, `group_too_large`, `invalid_argument` (refusals of `submit` and of `Group::add`) |
 | `DropCause` | `queue_full` (`DropNewest` and `DropOldest` together), `client_closed`, `shutdown`, `cancelled` |
-| `FailCause` | `item_permanent`, `retry_exhausted`, `client_4xx`, `server_5xx`, `unavailable`, `invalid_state`, `ambiguous` (E6a: a `_bulk` answered 500/502/504 in a bucket with `onAmbiguous5xx = Fail`) |
+| `FailCause` | `item_permanent`, `retry_exhausted`, `client_4xx`, `server_5xx`, `unavailable`, `invalid_state`, `ambiguous` (E6a: a `_bulk` answered 500/502/504, or whose response went over `max_response_bytes`, in a bucket with `onAmbiguous5xx = Fail`) |
 | `RetryCause` | `item_retryable`, `version_conflict`, `server_5xx`, `transport`, `other`: operations requeued with a counted attempt, counted per operation in `Bucket::requeue` from its last error |
 
 `toString(RejectCause | DropCause | FailCause | RetryCause)` gives these names.
@@ -1713,7 +1749,7 @@ compare-and-swap crossed the threshold claims the line with an `exchange`, so a 
 | WARN | `Indexer client bucket '<consumer>/<bucket>' has no room for new operations (<charge> of <quota> bytes charged): its overflow policy '<policy>' applies.` | The first admission **the bucket's own quota** refuses and resolves by overflow: a `QueueFull` refusal, `DropNewest`, a `DropOldest` eviction or a `Block` that has to wait. A refusal of the global cap logs the global line below, never this one |
 | WARN | `Indexer client global quota reached 80% (<charge> of <cap> bytes charged).` | The global charge crosses 0.8 × `global_quota_bytes` upwards |
 | WARN | `Indexer client global quota is full (<charge> of <cap> bytes charged): every bucket applies its overflow policy.` | The first admission the global cap refuses |
-| WARN | `Indexer client bucket '<consumer>/<bucket>' got an ambiguous HTTP <status> for a bulk of <n> operations: they failed without being resent (onAmbiguous5xx = fail); the indexer may have applied them.` | The first `Failed(Ambiguous)` of the bucket after a 2xx `_bulk` (or since its creation); re-armed by the next 2xx `_bulk`. See [Ambiguous 5xx](#ambiguous-5xx-e6a) |
+| WARN | `Indexer client bucket '<consumer>/<bucket>' got an ambiguous HTTP <status> for a bulk of <n> operations: they failed without being resent (onAmbiguous5xx = fail); the indexer may have applied them.` — or, for a response over the cap, `... got a response over max_response_bytes for a bulk of <n> operations: ...` (same tail) | The first `Failed(Ambiguous)` of the bucket after a 2xx `_bulk` (or since its creation); re-armed by the next 2xx `_bulk`. See [Ambiguous 5xx](#ambiguous-5xx-e6a) |
 
 **Periodic summary** (I102). A timer on network loop 0 fires every `log_summary_interval_ms` (1000 – 3600000, default 60000). `<n>` is the
 elapsed seconds since the previous summary, rounded up and never below 1. A bucket with no activity in the interval logs nothing; every bucket
@@ -1784,7 +1820,7 @@ curl add `Expect: 100-continue` ([finding below](#finding-expect-100-continue)).
 `Accept-Encoding: gzip` (the fake does not compress); `run.sh --selfcheck` requires it and verifies the headers on the wire. The v1 **as shipped**
 (`DEFAULT_HEADERS`) is informative only.
 
-**Build.** The target is off by default (`INDEXER_CLIENT_BENCH`, `CMakeLists.txt:90`); CI only compiles it (job `indexerclient-bench-build`, Release, `-DINDEXER_CLIENT_BENCH=ON`; see [Tests and CI](#tests-and-ci)). Build it in a
+**Build.** The target is off by default (the `INDEXER_CLIENT_BENCH` option of the library's `CMakeLists.txt`); CI only compiles it (job `indexerclient-bench-build`, Release, `-DINDEXER_CLIENT_BENCH=ON`; see [Tests and CI](#tests-and-ci)). Build it in a
 **separate checkout or worktree**, never the development checkout: `wazuhext` is always written to `<checkout>/src/build/lib`
 whatever the build tree, and both binaries load it from there through their RPATH:
 
@@ -1832,21 +1868,7 @@ sample annuls its pair and counts through the reliability rule), 2 usage, 3 anot
 connect_ms_sum,appconnect_ms_sum,thread_cpu,proc_cpu,cpus,wazuhext_sha256,errors,server_bytes,valid`). The summary has one
 `NORMATIVE` line per mode (median, valid pairs, v1 spread, IQR, `reliable`, `grey`), the `INFO` lines and the `PROBE` line.
 
-**Result of E2c** (2026-10-20, Intel Core i9-14900HX, governor `powersave`, CPUs 0,2,4,6, Release, 4 MiB bulk body; MiB/s):
-
-| Run | Plain | TLS |
-|---|---|---|
-| Normative c = 1, median v2/v1 (5 of 5 valid pairs, reliable, not grey) | **0.992** | **1.003** |
-| v1 spread / IQR of the ratios | 0.025 / 0.006 | 0.014 / 0.005 |
-| v2 c = 2 (informative) | 5422.7 | 1890.7 |
-| v2 c = 4 (informative) | 5223.9 | 1878.6 |
-| v2 c = 8 (informative) | 5139.8 | 1928.2 |
-| v1 as shipped (informative) | 5286.1 | 1958.1 |
-
-The gate is a median >= 0.95 at c = 1 in plain and TLS (the two normative rows); the other rows are informative. The
-informative rows are bounded by the single network thread (K = 1, ~82 % busy in TLS) and by the in-process fake sharing the four
-cores: they are not a concurrency ceiling (E5a fixed the adaptive window; E6 measures the windows with K against the real indexer). The machine class of CI is
-not measured (E6).
+**Result.** The gate is a median v2/v1 ratio >= 0.95 at c = 1 in plain and TLS (the two normative rows of the summary); the rows at c = 2, 4, 8 and the v1 as shipped are informative. The numbers depend on the machine (CPU model, governor, pinned CPUs) and are not kept here: rerun the harness (`run.sh`, below) on the machine that matters.
 
 **D37 (probe cost).** With `CAINFO_BLOB` curl re-parses the CA bundle on every new TLS connection; the probe does not pay it
 repeatedly: `PROBE,connections=1,failures=0,appconnect_nonzero=0,rounds=50,applied=50,...`: 50 rounds over the one connection the
@@ -1865,9 +1887,7 @@ warm connection: the 10 s interval against an indexer that closes idle connectio
   coordinator waits, off the clock, until the backlog (the bucket's `charge`) is below W = 16 MiB. The first 5 bursts are discarded.
   Row: `SUBMIT,api,producers,cb,handover,pair,events,ns_per_op,cpu_ns_per_op,proc_cpu_ns_per_op,B,W,quota,backlog_max,accepted,
   server_docs,indices,valid`; valid when every op was accepted, the fake received `events x P` documents and no watermark wait
-  timed out. It has no v1 side any more (the executable no longer links the v1 library or `keystore`). **Historical
-  reference:** the v1 write path (the async connector's `indexDataStream`, a `string_view`) cost about 345-350 ns of producer CPU per op
-  (`cpu_ns_per_op`) at P = 1, measured in E6c with the v1 connector library; that number is a reference, not a gate.
+  timed out. It has no v1 side any more (the executable no longer links the v1 library or `keystore`).
 - **`run.sh --suite submit --submit PATH --out PREFIX [--cpus L] [--cpus-p8 L] [--selfcheck]`**: `api=post` at P = 1/4/8 (no
   callback, `handover=move`), `api=submit` at P = 1/4/8 without callback, P = 1 with a no-op callback and P = 1 with
   `handover=view`, and `api=post` with `--indices 2` at P = 1 and 8; 5 runs each, reported as the median and the IQR of `ns_per_op`
@@ -1876,16 +1896,12 @@ warm connection: the 10 s interval against an indexer that closes idle connectio
 
 ### Finding: `Expect: 100-continue`
 
-The v2 used to suppress `Expect:`; the v1 as shipped let curl send `100-continue` on bodies over 1 MiB, and over TLS the v1 as
-shipped was faster than the v2 (about 1922 against 1675 MiB/s). The diagnosis (`anexos/e2c/diagnostico-expect.md`, outside the
-repository) showed that the whole difference was `Expect: 100-continue` (gzip did not matter); the v2 now leaves `Expect` to
-curl (I60), which also lets a node reject (401/413/429) before the body. Measured on the fake only: about +18 % TLS and +5 % plain;
-a real indexer and network RTT may differ (one RTT per bulk), so E6 confirms it against the real indexer.
+The v2 used to suppress `Expect:`; the v1 as shipped let curl send `100-continue` on bodies over 1 MiB, and over TLS the v1 was faster than the v2. The cause was `Expect: 100-continue` (gzip did not matter), so the v2 now leaves `Expect` to curl (I60), which also lets a node reject (401/413/429) before the body. This was measured against the in-process fake only; a real indexer and network RTT may differ (one RTT per bulk). Reproduce with the transport benchmark (`run.sh`, above).
 
 ## Linking
 
 simdjson (the bulk-response classifier) is linked **statically** into the `.so` and into `indexer_client_testing`, from the
-prebuilt archive `src/external/simdjson/build/libsimdjson.a` that the v1 also links (`CMakeLists.txt:82-95`). `--exclude-libs,ALL`
+prebuilt archive `src/external/simdjson/build/libsimdjson.a` that the v1 also links (see the `indexer_client` target in the library's `CMakeLists.txt`). `--exclude-libs,ALL`
 keeps its symbols local: `nm -D` of the `.so` shows no `simdjson::`.
 
 curl and OpenSSL come **only** through `libwazuhext.so` (`target_link_libraries(indexer_client
@@ -1895,7 +1911,7 @@ has `BUILD_RPATH $ORIGIN/../lib` so it finds `libwazuhext.so` in `${CMAKE_BINARY
 
 ## Build and tests
 
-The sources are compiled twice (I45b, `CMakeLists.txt:35-61`):
+The sources are compiled twice (I45b, the `indexer_client_objects` and `indexer_client_objects_testing` object libraries):
 
 | Target | Kind | Seams | Linked by |
 |---|---|---|---|
@@ -1918,8 +1934,8 @@ C++20-ism in a public header fails there first:
 
 | Suite | Target / ctest label | Covers |
 |---|---|---|
-| Unit | `indexer_client_utest` (`tests/unit/*.cpp`) | Config, key-value source, mocks, fake indexer, the query response classifiers (`queryResponse_test.cpp`, 29 cases), the public library (`VisibilityTest.SetLogFunctionRoutesLogs` covers the log setter) |
-| Component | `indexer_client_component_test` (`tests/component/*.cpp`) | The transport and the fake over real sockets, with the seams; `HealthTest` (probe, states, logs, stop order) and `FakeHealthTest` (the fake's `/_cluster/health` rules); `WriteTest` (the [write path](#write-path-e3a), below); the [queries](#queries-e4a) (`query_test.cpp` 17, `queryByQuery_test.cpp` 2, `queryDomFactor_test.cpp` 1); the [PIT](#point-in-time-e4b) (`pit_test.cpp` 10, `pitRegistry_test.cpp` 6) |
+| Unit | `indexer_client_utest` (`tests/unit/*.cpp`) | Config, key-value source, mocks, fake indexer, the query response classifiers (`queryResponse_test.cpp`), the public library (`VisibilityTest.SetLogFunctionRoutesLogs` covers the log setter) |
+| Component | `indexer_client_component_test` (`tests/component/*.cpp`) | The transport and the fake over real sockets, with the seams; `HealthTest` (probe, states, logs, stop order) and `FakeHealthTest` (the fake's `/_cluster/health` rules); `WriteTest` (the [write path](#write-path-e3a), below); the [queries](#queries-e4a) (`query_test.cpp`, `queryByQuery_test.cpp`, `queryDomFactor_test.cpp`); the [PIT](#point-in-time-e4b) (`pit_test.cpp`, `pitRegistry_test.cpp`) |
 
 ```bash
 cmake --build $WAZUH_REPO/src/build -j"$(nproc)" --target indexer_client_utest indexer_client_component_test
@@ -1997,7 +2013,7 @@ test above).
 
 | File | Covers |
 |---|---|
-| `bulkAmbiguous_test.cpp` | `onAmbiguous5xx`: `Fail` on 500, 502 and 504 (one send, `failed.ambiguous`, one WARN), 503 still retried, `Retry` unchanged, the WARN re-armed by a 2xx, a throwing completion that still never resends |
+| `bulkAmbiguous_test.cpp` | `onAmbiguous5xx`: `Fail` on 500, 502 and 504 (one send, `failed.ambiguous`, one WARN), 503 still retried, `Retry` unchanged, the WARN re-armed by a 2xx, a throwing completion that still never resends, a response over `max_response_bytes` (`Fail`: one send, never split; `Retry`: split as before) |
 | `nodeRetryAfter_test.cpp` | A `Retry-After` from a query, a bulk, a PIT or the probe parks the node; the sender neither spins nor loses the wake; reads wait for the first parked node; `notBefore` set in any state; a mirrored park keeps one pace doubling per 429 burst (`MirroredParkKeepsOnePaceDoublingPerBurst`). The PIT registry's DELETE waiting for a parked node is `pitRegistry_test.cpp` `DeleteWaitsForParkedNode` |
 | `rf9Matrix_test.cpp` | The RF-9 matrix, one parameterized row per case: `_bulk` statuses (500, 502, 503, 504 among them), items and transport failures, and the same for queries and PIT creation |
 | `bulkWakeups_test.cpp` | Also `OneWakePerCompletion` (`SchedulerStats::posts`) |
@@ -2063,7 +2079,7 @@ Layout of `tests/`: `unit/` (config schema, key-value source, mocks, fake indexe
 
 | Job | What it does |
 |---|---|
-| `indexerclient-modules` | unit + component suites in the coverage build. CI compiles Release `-O3 -s`, because `build_target_cpp` passes no build type (`src/CMakeLists.txt:24-30,52`) |
+| `indexerclient-modules` | unit + component suites in the coverage build. CI compiles Release `-O3 -s`, because `build_target_cpp` passes no build type (`src/CMakeLists.txt`) |
 | `indexerclient-asan` | ASAN + UBSAN + LSan, component suite without `*Long` |
 | `indexerclient-tsan` | Debug, `-fsanitize=thread`, `sudo sysctl -w vm.mmap_rnd_bits=28`, `TSAN_OPTIONS=halt_on_error=1 second_deadlock_stack=1`, component suite without `*Long` |
 | `indexerclient-bench-build` | only compiles `indexer_client_bench` in Release with `-DINDEXER_CLIENT_BENCH=ON` |
@@ -2085,7 +2101,7 @@ literal durations were not reviewed one by one: most are generous waits, and a f
 **Real-OpenSearch suite** (`tests/opensearch/`, `indexer_client_opensearch_test`; links the public `.so` and cpp-httplib for raw requests). Without
 a URL the suite SKIPs, except under `GITHUB_ACTIONS`, where it FAILs; a URL that does not answer within `scaled(120 s)` FAILs, once per run (later cases fail at once). Its indices are `ic-e6b-<case>-<pid>`; the global
 setup **deletes every `ic-e6b-*` index** left by an earlier run, so never point it at a cluster where another run of the suite is active.
-13 cases:
+Its suites:
 
 | Suite | Covers |
 |---|---|
@@ -2098,25 +2114,12 @@ setup **deletes every `ic-e6b-*` index** left by an earlier run, so never point 
 Locally: start the container with those settings, then
 `INDEXER_CLIENT_OPENSEARCH_URL=http://localhost:<port> ctest --test-dir src/build -V -L indexer_client_opensearch_test`.
 
-**D54 result.** With OpenSearch 3.6.0 at 2 CPU, bulks totalling 256 MiB took 5.8 s with p95 <= 64-128 ms and no latency-driven window reduction, so
-`latency_target_ms` stays at 2 s.
+**D54.** `latency_target_ms` stays at 2 s: against a real OpenSearch the bulks showed no latency-driven window reduction. The figures are not kept here; the `OpenSearchSizes.*` and `OpenSearchLoad.*` suites print them.
 
-## What is not implemented yet
+## Known limits
 
-E1 delivered the skeleton, E2a-1 the internal `http` transport, E2a-2 TLS and credentials, E2b node health and logging, E2c the
-transport [benchmark](#benchmark) (done; the `--path client` benchmark of the whole client arrives with E6c), E3a the
-[write path](#write-path-e3a) up to the sink, E3b-1 the [response classifier and retry lane](#response-classification-and-retry-lane-e3b-1),
-E3b-2 the [bulk sender](#bulk-sender-e3b-2), E3c-1 the [per-operation conflict policy](#conflict-policy-e3c-1), `ReplacePreserving` and
-[groups](#groups-e3c-1), and E3c-2 [`ordered` buckets](#ordered-buckets-e3c-2) and [`cancel(tag)`](#cancellation-e3c-2): bulk writes
-reach the indexer, E4a the [queries](#queries-e4a) (`search`, `searchAfter`, `deleteByQuery`, `updateByQuery`, `indexExists`), E4b the managed [point in time](#point-in-time-e4b), E5a the per-node [load control](#load-control-e5a) (adaptive window, bulk-size target and pacing), E5b the [client close and shutdown](#closing-and-shutdown-e5b) (drain up to one deadline, callback boundary) and E5c the [metrics](#metrics-e5c) and [logging](#logging-e5c), which complete E5, E6a the [ambiguous 5xx policy](#ambiguous-5xx-e6a), the `Retry-After` parking of nodes (D56) and one scheduler wake per completion, and E6b the [CI, the TSAN job and the real-OpenSearch suite](#tests-and-ci) and gzip on the transport (I117). Not implemented, by stage:
-
-| Area | Stage |
-|---|---|
-| Benchmark of the whole client (`--path client`) | E6c |
-| Registration of the catalog in `wazuh_metrics` / fastmetrics and the `GET /metrics` of each consumer | E7–E10 |
-| The consumer's sweep that closes the [ordered ambiguous window](#ordered-buckets-e3c-2) (inventory sync, delete by query) and its `ordered.ambiguous.residual` metric | E7 |
-
-Known defects E6b records and does not fix: a `CursorQuery` left at its default `{}` gets a 400 from OpenSearch 3.6 (D60); an average bulk of
-about 1 MiB with `bulk.maxBytes` at 4 MiB against a real OpenSearch (D61, measured in E6c).
+- The library records no benchmark figures; the harnesses under `tests/` and the benchmark sections above reproduce them.
+- The [ordered ambiguous window](#ordered-buckets-e3c-2) cannot be closed by the library: the consumer's own sweep does (inventory sync, delete by query).
+- A `CursorQuery` left at its default `{}` gets a 400 from OpenSearch 3.6 (D60); an average bulk of about 1 MiB with `bulk.maxBytes` at 4 MiB is a known inefficiency against a real OpenSearch (D61).
 
 Nothing public calls the transport directly. Traffic is the health probe, the bulk sender's `POST /_bulk` and the queries.

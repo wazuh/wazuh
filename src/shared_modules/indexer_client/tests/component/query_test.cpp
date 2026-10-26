@@ -725,7 +725,8 @@ TEST_F(QueryTest, QueryWakesOnCloseAndShutdown)
 }
 
 // I84: a 2xx body above maxResponseBytes / QUERY_DOM_FACTOR ⇒ ItemPermanent without parsing (queryStats.tooLarge);
-// a valid body of exactly that size is Ok.
+// a valid body of exactly that size is Ok. Outcome::responseTooLarge marks it (and a body over maxResponseBytes on the
+// wire), never another ItemPermanent (an unparsable body) nor another final cause.
 TEST_F(QueryTest, QueryResponseCap)
 {
     constexpr std::uint64_t MAX_RESPONSE = 64000;
@@ -735,8 +736,11 @@ TEST_F(QueryTest, QueryResponseCap)
         return R"({"p":")" + std::string(bytes - 8, 'x') + R"("})";
     };
     ASSERT_EQ(jsonOf(fits).size(), fits);
-    const auto node =
-        fake({rule("POST", "/fits/_search", 200, jsonOf(fits)), rule("POST", "/large/_search", 200, jsonOf(fits + 1))});
+    const auto node = fake({rule("POST", "/fits/_search", 200, jsonOf(fits)),
+                            rule("POST", "/large/_search", 200, jsonOf(fits + 1)),
+                            rule("POST", "/wire/_search", 200, jsonOf(MAX_RESPONSE + 1)),
+                            rule("POST", "/garbage/_search", 200, "not json"),
+                            rule("POST", "/bad/_search", 400, R"({"error":{"type":"parsing_exception"}})")});
     ASSERT_NO_FATAL_FAILURE(start({node->baseUrl()}, {{"max_response_bytes", std::to_string(MAX_RESPONSE)}}));
     auto owner = client();
     auto query = owner->query();
@@ -745,15 +749,35 @@ TEST_F(QueryTest, QueryResponseCap)
     auto ok = query->search("fits", MATCH_ALL, fastOptions(), in(5s));
     ASSERT_TRUE(ok.ok()) << ic::toString(ok.cause) << ": " << ok.reason;
     EXPECT_EQ(ok.value.at("p").get<std::string>().size(), fits - 8);
+    EXPECT_FALSE(ok.responseTooLarge);
     EXPECT_EQ(delta(before, q::queryStats()).tooLarge, 0u);
 
     before = q::queryStats();
     auto large = query->search("large", MATCH_ALL, fastOptions(), in(5s));
     EXPECT_EQ(large.cause, ic::Cause::ItemPermanent) << large.reason;
     EXPECT_NE(large.reason.find("response too large"), std::string::npos) << large.reason;
+    EXPECT_TRUE(large.responseTooLarge);
     const auto d = delta(before, q::queryStats());
     EXPECT_EQ(d.tooLarge, 1u);
     EXPECT_EQ(d.requests, 1u) << "a too-large answer is final";
+
+    before = q::queryStats();
+    auto wire = query->search("wire", MATCH_ALL, fastOptions(), in(5s));
+    EXPECT_EQ(wire.cause, ic::Cause::ItemPermanent) << wire.reason;
+    EXPECT_TRUE(wire.responseTooLarge) << wire.reason;
+    EXPECT_EQ(delta(before, q::queryStats()).requests, 1u) << "over the wire cap is final too";
+
+    auto paged =
+        query->searchAfter("large", pagedBody(2), [](const nlohmann::json&) { return true; }, fastOptions(), in(5s));
+    EXPECT_EQ(paged.cause, ic::Cause::ItemPermanent) << paged.reason;
+    EXPECT_TRUE(paged.responseTooLarge);
+
+    auto garbage = query->search("garbage", MATCH_ALL, fastOptions(), in(5s));
+    EXPECT_EQ(garbage.cause, ic::Cause::ItemPermanent) << garbage.reason;
+    EXPECT_FALSE(garbage.responseTooLarge);
+    auto bad = query->search("bad", MATCH_ALL, fastOptions(), in(5s));
+    EXPECT_EQ(bad.cause, ic::Cause::Client4xx) << bad.reason;
+    EXPECT_FALSE(bad.responseTooLarge);
 }
 
 // I87: unsafe or missing index names (also "." and "..", which libcurl collapses, and "_all") ⇒ InvalidArgument naming
