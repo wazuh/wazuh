@@ -68,7 +68,7 @@ api/
 │   ├── src/handlers.cpp
 │   └── test/src/unit/handlers_test.cpp
 │
-├── event/                                      # Event ingestion handler (pushEvent) + NDJson parser
+├── event/                                      # Event ingestion handler (pushEvent) + NDJson parser (stamps each event with its reception time)
 │   ├── include/api/event/
 │   │   ├── handlers.hpp
 │   │   └── ndJsonParser.hpp
@@ -483,6 +483,8 @@ Route → proto mapping, from the `registerHandlers()` functions. The operator c
 | `/events/enriched` | POST | NDJSON (parsed by `api::event::protocol::parseNDJson`, `event/include/api/event/ndJsonParser.hpp`) | `api::event::handlers::pushEvent(orchestrator, dumper, agentMetadataCache)` |
 
 This route is the exception to the conventions above: it is not protobuf-based (errors are `{"error": "...", "code": 400|500}`), it has no `registerHandlers()` (`main.cpp` adds it directly with `addRoute`), and it lives on the second `httpsrv::Server` ("Event services", socket setting `analysisd.server_enriched_events_socket`, default `engine-ingest-http.sock`), created only when `analysisd.server_enable_event_processing` is true. Its contract is `docs/ref/modules/engine/spec-events.yaml`.
+
+`parseNDJson` stamps every event it hands to the hook with its reception time: it takes the stamp (`receivedAtNs`, nanoseconds since the epoch) once per event, in batch order, on the HTTP thread and before the event is queued (`postEvent`). The default stamp source is `base::utils::time::receptionClock()`, a process-wide strictly increasing clock, so events of a batch keep their order and no two events share a stamp. The parser does not write `@timestamp` or `wazuh.event.id`: the router worker formats the stamp as an ISO 8601 UTC string with nine decimals into `@timestamp` and generates the event id (a decoder may overwrite `@timestamp` later). See [Reception timestamp](../router/README.md#reception-timestamp).
 
 ---
 

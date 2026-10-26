@@ -13,3 +13,11 @@ A request is answered 200 once its batch is split and queued: the header line an
 checked synchronously (400 on failure), but each event line is parsed later by a router worker, so a malformed
 event is dropped with the log line `Failed processing queued event in router worker: <reason>` while the
 request still succeeds.
+
+Each event receives a reception timestamp when it is queued, taken from a process-wide clock (nanoseconds since the
+epoch, strictly increasing): the events of a batch keep their order and two events never share a stamp. The router
+worker formats that stamp into `@timestamp` (UTC, nine fractional digits) before policy processing, and decoders can
+overwrite it. Only the order in which stamps are assigned is guaranteed, not the network arrival order of concurrent
+requests.
+
+The engine emits reception timestamps with nine fractional digits, but indices mapped as `date` retain only millisecond precision for indexing and sorting, so events within the same millisecond can still tie until the separate indexer change provides `date_nanos` mappings for new backing indices.
