@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0-only OR AGPL-3.0-or-later
 /*
  * Wazuh shared — cgroup hierarchy mode probe.
  * Copyright (C) 2015, Wazuh Inc.
