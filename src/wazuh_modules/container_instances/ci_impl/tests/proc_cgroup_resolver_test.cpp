@@ -156,6 +156,22 @@ namespace
         {
             return {};
         }
+
+        // The resolver reads /proc/<pid>/cgroup through readLineByLine above and
+        // never through these. They answer OpenFailed rather than something
+        // plausible so that a resolver that started using one shows up as a test
+        // that stops resolving, instead of one that quietly reads nothing.
+        RegularFileStatus getRegularFileContent(const std::filesystem::path&, bool, std::string& content) const override
+        {
+            content.clear();
+            return RegularFileStatus::OpenFailed;
+        }
+        RegularFileStatus readRegularFileLineByLine(const std::filesystem::path&,
+                                                    bool,
+                                                    const std::function<bool(const std::string&)>&) const override
+        {
+            return RegularFileStatus::OpenFailed;
+        }
     };
 
     constexpr auto kContainerId = "3f2abc9900112233445566778899aabbccddeeff00112233445566778899aabb";
