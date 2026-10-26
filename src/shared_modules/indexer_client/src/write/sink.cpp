@@ -55,7 +55,7 @@ namespace indexer_client::detail::write
                     result.status = Status::Failed;
                     result.cause = Cause::Unavailable;
                     result.reason = "no bulk sender yet (E3b)";
-                    path->resolve(op, std::move(result));
+                    path->resolve(batch.bucket, op, std::move(result));
                 }
             }
 

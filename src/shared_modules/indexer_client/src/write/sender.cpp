@@ -513,12 +513,15 @@ namespace indexer_client::detail::write
             }
             if (path)
             {
+                // E6e (A): the exhausted and the closed ops in one bulk resolution (per op for those not of post).
+                std::vector<BulkItem> settle;
+                settle.reserve(result.exhausted.size() + result.closed.size());
                 for (std::size_t i = 0; i < result.exhausted.size(); ++i)
                 {
-                    path->resolve(result.exhausted[i],
-                                  exhaustedResult(i < result.exhaustedErrors.size()
-                                                      ? std::move(result.exhaustedErrors[i])
-                                                      : LastError {}));
+                    settle.push_back(BulkItem {result.exhausted[i].get(),
+                                               exhaustedResult(i < result.exhaustedErrors.size()
+                                                                   ? std::move(result.exhaustedErrors[i])
+                                                                   : LastError {})});
                 }
                 if (!result.closed.empty())
                 {
@@ -526,13 +529,17 @@ namespace indexer_client::detail::write
                     const auto cause = bucket->sweepCause().value_or(Cause::Shutdown);
                     for (const auto& op : result.closed)
                     {
-                        path->resolve(op, droppedResult(cause));
+                        settle.push_back(BulkItem {op.get(), droppedResult(cause)});
                     }
+                }
+                if (!settle.empty())
+                {
+                    path->resolveBulk(bucket, settle);
                 }
                 // I80: marked by cancel(tag); cancellation wins over exhaustion and close (bucket.hpp).
                 for (const auto& op : result.cancelled)
                 {
-                    path->resolve(op, droppedResult(Cause::Cancelled));
+                    path->resolve(bucket, op, droppedResult(Cause::Cancelled));
                 }
                 if (result.notify)
                 {
@@ -632,6 +639,9 @@ namespace indexer_client::detail::write
                 return;
             }
             std::vector<RequeueOp> retry;
+            // E6e (A): the resolutions of this bulk (Ok and Permanent items), settled together below.
+            std::vector<BulkItem> settle;
+            settle.reserve(batch.ops.size());
             for (std::size_t i = 0; i < batch.ops.size(); ++i)
             {
                 auto& item = (*items)[i];
@@ -661,10 +671,7 @@ namespace indexer_client::detail::write
                         ok.httpStatus = item.httpStatus;
                         ok.itemErrorType = std::move(item.itemErrorType);
                         ok.reason = std::move(item.reason);
-                        if (path && !path->resolve(op, std::move(ok)))
-                        {
-                            ++late;
-                        }
+                        settle.push_back(BulkItem {op.get(), std::move(ok)});
                         break;
                     }
                     case ItemVerdict::Retry:
@@ -683,13 +690,14 @@ namespace indexer_client::detail::write
                         failed.httpStatus = item.httpStatus;
                         failed.itemErrorType = std::move(item.itemErrorType);
                         failed.reason = std::move(item.reason);
-                        if (path && !path->resolve(op, std::move(failed)))
-                        {
-                            ++late;
-                        }
+                        settle.push_back(BulkItem {op.get(), std::move(failed)});
                         break;
                     }
                 }
+            }
+            if (path && !settle.empty())
+            {
+                late += settle.size() - path->resolveBulk(batch.bucket, settle);
             }
             late += requeueOps(
                 shared, path, batch.bucket, std::move(retry), spec(true, RequeueSpec::Delay::Backoff, clear), deferred);
@@ -738,7 +746,9 @@ namespace indexer_client::detail::write
             {
                 return;
             }
-            std::uint64_t late = 0;
+            // E6e (A): one bulk resolution; countAmbiguous counts only the ops it won (resolved).
+            std::vector<BulkItem> settle;
+            settle.reserve(batch.ops.size());
             for (const auto& op : batch.ops)
             {
                 OpResult failed;
@@ -746,11 +756,9 @@ namespace indexer_client::detail::write
                 failed.cause = cause;
                 failed.httpStatus = httpStatus;
                 failed.reason = reason;
-                if (!path->resolve(op, std::move(failed)))
-                {
-                    ++late;
-                }
+                settle.push_back(BulkItem {op.get(), std::move(failed)});
             }
+            const std::uint64_t late = batch.ops.size() - path->resolveBulk(batch.bucket, settle);
             if (!batch.bucket)
             {
                 return;
@@ -1125,7 +1133,7 @@ namespace indexer_client::detail::write
                     {
                         for (const auto& op : cancelled)
                         {
-                            path->resolve(op, droppedResult(Cause::Cancelled));
+                            path->resolve(batch->bucket, op, droppedResult(Cause::Cancelled));
                         }
                     }
                     if (batch->ops.empty())

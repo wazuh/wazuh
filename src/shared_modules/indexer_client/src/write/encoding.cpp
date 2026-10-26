@@ -353,20 +353,32 @@ namespace indexer_client::detail::write
             return {};
         }
 
-        /// E6d I125: the one-entry, per-thread cache of the action line of the kinds without `_id` (IndexAutoId,
-        /// IndexDataStream), which depends only on kind and index. Only a fully valid op ever fills it.
-        struct SharedHeadCache final
+        /// E6e (D, I125): the per-thread cache over the HeadTables: THREAD_CACHE entries keyed by (generation, kind,
+        /// index), the last one used checked first, replaced in turn. Only a fully valid op ever fills an entry, and
+        /// `line` points into the table of `generation` (generations start at 1: 0 is an empty entry).
+        struct HeadCacheEntry final
         {
+            std::uint64_t generation {0};
             Op::Kind kind {Op::Kind::IndexAutoId};
             std::string index;
-            std::shared_ptr<const std::string> head;
+            const std::string* line {nullptr};
         };
 
-        SharedHeadCache& sharedHeadCache() noexcept
+        struct HeadCache final
         {
-            thread_local SharedHeadCache cache;
+            std::array<HeadCacheEntry, THREAD_CACHE> entries;
+            std::size_t last {0}; ///< The entry of the last hit or fill.
+            std::size_t next {0}; ///< The next entry a fill replaces.
+        };
+
+        HeadCache& headCache() noexcept
+        {
+            thread_local HeadCache cache;
             return cache;
         }
+
+        /// The process-wide generation counter of HeadTable (monotonic, never reused).
+        std::atomic<std::uint64_t> g_headTableGenerations {0};
 
         /// Size of <P>: [["a","b"],["c"]] (validated paths: no segment needs escaping).
         std::size_t pathsSize(const std::vector<std::string>& paths) noexcept
@@ -458,6 +470,53 @@ namespace indexer_client::detail::write
         appendWire(out, encoded.headView(), encoded.body);
     }
 
+    HeadTable::HeadTable()
+        : m_generation(g_headTableGenerations.fetch_add(1) + 1)
+        , m_slots(std::make_unique<Slot[]>(CAPACITY))
+    {
+    }
+
+    const std::string* HeadTable::find(Op::Kind kind, std::string_view index) const noexcept
+    {
+        // Published slots are immutable: the acquire load makes their contents visible without the append mutex.
+        const std::size_t count = m_count.load(std::memory_order_acquire);
+        for (std::size_t i = 0; i < count; ++i)
+        {
+            const auto& slot = m_slots[i];
+            if (slot.kind == kind && slot.index == index)
+            {
+                return &slot.line;
+            }
+        }
+        return nullptr;
+    }
+
+    const std::string* HeadTable::intern(Op::Kind kind, std::string_view index, std::string&& line)
+    {
+        if (full())
+        {
+            // The table only grows: once full, no op takes the mutex again (G-diff E6e P2).
+            return find(kind, index);
+        }
+        std::lock_guard<std::mutex> lock(m_appendMutex);
+        m_appendLocks.fetch_add(1, std::memory_order_relaxed);
+        if (const auto* existing = find(kind, index))
+        {
+            return existing; // Another thread stored it first: `line` is left as it was.
+        }
+        const std::size_t count = m_count.load(std::memory_order_relaxed);
+        if (count == CAPACITY)
+        {
+            return nullptr; // Full: the op keeps its own line (`line` untouched).
+        }
+        auto& slot = m_slots[count];
+        slot.kind = kind;
+        slot.index.assign(index);
+        slot.line = std::move(line);
+        m_count.store(count + 1, std::memory_order_release);
+        return &slot.line;
+    }
+
     std::uint64_t Encoded::wire() const noexcept
     {
         return wireSize(headView(), body);
@@ -468,13 +527,41 @@ namespace indexer_client::detail::write
         return chargeSize(headView(), body);
     }
 
-    Outcome<Encoded> encode(Op&& op, const ConflictPolicy& effective, bool trustedBody)
+    Outcome<Encoded> encode(Op&& op, const ConflictPolicy& effective, bool trustedBody, HeadTable* heads)
     {
-        // I125: the kinds without `_id` share their action line through the per-thread cache. A hit (same kind, the
-        // same index byte for byte) skips the index checks: the cached index passed them.
-        const bool sharedKind = op.kind == Op::Kind::IndexAutoId || op.kind == Op::Kind::IndexDataStream;
-        auto& cache = sharedHeadCache();
-        const bool hit = sharedKind && cache.head && cache.kind == op.kind && cache.index == op.index;
+        // I125, E6e D: the kinds without `_id` share their action line through the write path's HeadTable, reached by
+        // the per-thread cache. A hit (same table, same kind, the same index byte for byte) skips the index checks:
+        // the cached index passed them.
+        const bool sharedKind =
+            heads != nullptr && (op.kind == Op::Kind::IndexAutoId || op.kind == Op::Kind::IndexDataStream);
+        HeadCache* cache = nullptr;
+        const std::string* cached = nullptr;
+        if (sharedKind)
+        {
+            cache = &headCache();
+            const auto generation = heads->generation();
+            const auto matches = [&](const HeadCacheEntry& entry)
+            {
+                return entry.generation == generation && entry.kind == op.kind && entry.index == op.index;
+            };
+            if (matches(cache->entries[cache->last]))
+            {
+                cached = cache->entries[cache->last].line;
+            }
+            else
+            {
+                for (std::size_t i = 0; i < cache->entries.size(); ++i)
+                {
+                    if (matches(cache->entries[i]))
+                    {
+                        cached = cache->entries[i].line;
+                        cache->last = i;
+                        break;
+                    }
+                }
+            }
+        }
+        const bool hit = cached != nullptr;
 
         // The first failure wins: the op's fields, then the effective policy, then the write mode.
         if (auto why = validate(op, hit, trustedBody); !why.empty())
@@ -494,7 +581,7 @@ namespace indexer_client::detail::write
         {
             // Neither validated nor built again: the cached line is this op's, byte for byte.
             Encoded encoded;
-            encoded.sharedHead = cache.head;
+            encoded.cachedHead = cached;
             encoded.body = std::move(op.body);
             return Outcome<Encoded>::success(std::move(encoded));
         }
@@ -612,12 +699,31 @@ namespace indexer_client::detail::write
         Encoded encoded;
         if (sharedKind)
         {
-            // Valid op (no retry digits, no script: a ReplacePreserving or Retry line is not reachable here).
-            auto shared = std::make_shared<const std::string>(std::move(lines));
-            cache.kind = op.kind;
-            cache.index.assign(op.index);
-            cache.head = shared;
-            encoded.sharedHead = std::move(shared);
+            // Valid op (no retry digits, no script: a ReplacePreserving or Retry line is not reachable here). The
+            // table's line (found lock-free, else interned), or the op's own when the table is full (seen lock-free:
+            // a full table is never locked again).
+            const std::string* line = heads->find(op.kind, op.index);
+            if (line == nullptr && !heads->full())
+            {
+                line = heads->intern(op.kind, op.index, std::move(lines));
+            }
+            if (line != nullptr)
+            {
+                auto& entry = cache->entries[cache->next];
+                entry.generation = 0; // Empty while it is rewritten (an allocation below may throw).
+                entry.line = nullptr;
+                entry.kind = op.kind;
+                entry.index.assign(op.index);
+                entry.line = line;
+                entry.generation = heads->generation();
+                cache->last = cache->next;
+                cache->next = (cache->next + 1) % cache->entries.size();
+                encoded.cachedHead = line;
+            }
+            else
+            {
+                encoded.head = std::move(lines);
+            }
         }
         else
         {

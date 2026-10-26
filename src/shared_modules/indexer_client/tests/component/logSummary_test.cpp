@@ -157,7 +157,7 @@ protected:
         ASSERT_LE(n, m_held.size());
         for (std::size_t i = 0; i < n; ++i)
         {
-            ASSERT_TRUE(m_path->resolve(m_held.front(), TestSink::ok()));
+            ASSERT_TRUE(m_path->resolve(bucketOf(*m_held.front()), m_held.front(), TestSink::ok()));
             m_held.pop_front();
         }
     }
@@ -190,7 +190,7 @@ TEST_F(LogSummaryTest, TenThousandFailedItemsBoundedLog)
         const auto type = "type_" + std::to_string(i % TYPES);
         const auto reason = "failed to parse field [doc] of document {\"secret\":\"SECRETDOC-" + std::to_string(i) +
                             "\",\"pad\":\"" + std::string(400, 'z') + "\"}";
-        ASSERT_TRUE(m_path->resolve(op, failed(ic::Cause::ItemPermanent, type, reason)));
+        ASSERT_TRUE(m_path->resolve(bucketOf(*op), op, failed(ic::Cause::ItemPermanent, type, reason)));
         ++i;
     }
     m_held.clear();
@@ -442,7 +442,7 @@ TEST_F(LogSummaryTest, SummaryTimerFiresAndFlushesAtStop)
     ASSERT_EQ(m_held.size(), 4u);
     for (std::size_t i = 0; i < 3; ++i)
     {
-        ASSERT_TRUE(m_path->resolve(m_held[i], failed(ic::Cause::ItemPermanent, "x", "r")));
+        ASSERT_TRUE(m_path->resolve(bucketOf(*m_held[i]), m_held[i], failed(ic::Cause::ItemPermanent, "x", "r")));
     }
     m_held.clear();
     ASSERT_EQ(ic::RuntimeOwner::shutdown(), ic::Cause::None);

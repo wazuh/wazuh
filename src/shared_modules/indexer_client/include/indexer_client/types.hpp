@@ -241,6 +241,10 @@ namespace indexer_client
         Fail   ///< Resolve every op Failed(Ambiguous) without resending it.
     };
 
+    /// What every queued operation reserves against the quota for its result, besides its payload (the charge). A
+    /// bucket is valid only if `bulk.maxBytes + RESULT_RESERVE_BYTES <= quotaBytes`.
+    constexpr std::uint64_t RESULT_RESERVE_BYTES = 2048;
+
     /// A queue with its own policies, declared by a consumer (RF-2, I8).
     struct BucketSpec final
     {

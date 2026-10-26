@@ -260,7 +260,7 @@ TEST_F(WriteTest, ResultReserveMeasured)
     {
         for (const auto& op : batch.ops)
         {
-            ASSERT_TRUE(m_path->resolve(op, result));
+            ASSERT_TRUE(m_path->resolve(bucketOf(*op), op, result));
         }
     }
     const double queued = perOp(base);
@@ -290,7 +290,7 @@ TEST_F(WriteTest, ResultReserveMeasured)
     {
         for (const auto& op : batch.ops)
         {
-            ASSERT_TRUE(m_path->resolve(op, result));
+            ASSERT_TRUE(m_path->resolve(bucketOf(*op), op, result));
         }
     }
     const double noCallback = perOp(base4);
@@ -342,7 +342,7 @@ TEST_F(WriteTest, ResultReserveMeasured)
     EXPECT_EQ(stats("b").retained, N) << "in the lane";
     for (const auto& op : lane)
     {
-        ASSERT_TRUE(m_path->resolve(op, result));
+        ASSERT_TRUE(m_path->resolve(bucketOf(*op), op, result));
     }
     lane.clear();
     ASSERT_TRUE(component::eventually([&] { return calls->load() == 2 * N; }, 5s));
@@ -414,7 +414,7 @@ TEST_F(WriteTest, ResultReserveMeasured)
     {
         for (const auto& op : batch.ops)
         {
-            ASSERT_TRUE(m_path->resolve(op, result));
+            ASSERT_TRUE(m_path->resolve(bucketOf(*op), op, result));
         }
     }
     const double composed = perOp(base6);
@@ -463,7 +463,7 @@ TEST_F(WriteTest, ResultReserveMeasured)
         {
             for (const auto& op : batch.ops)
             {
-                ASSERT_TRUE(m_path->resolve(op, result));
+                ASSERT_TRUE(m_path->resolve(bucketOf(*op), op, result));
             }
         }
         ASSERT_TRUE(groupTicket.ready());
@@ -533,7 +533,7 @@ TEST_F(WriteTest, ResultReserveMeasured)
     ASSERT_TRUE(blocker8->waitStarted(1, 5s));
     for (const auto& op : lane)
     {
-        ASSERT_TRUE(m_path->resolve(op, result));
+        ASSERT_TRUE(m_path->resolve(bucketOf(*op), op, result));
     }
     const double orderedResolved =
         static_cast<double>(liveBytes() - base8 - static_cast<std::int64_t>(orderedLines)) / static_cast<double>(N);

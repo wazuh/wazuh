@@ -48,6 +48,33 @@
 // of the op's tag loses one, and those that reach 0 complete (success) after the mutex is dropped. A second cancel of a
 // tag adds a second waiter. A bucket destroyed with waiters fails them ClientClosed. Groups still Building are out of
 // reach (I76). Ops resolved Dropped(Cancelled) count in `cancelled` and in resolvedDropped.
+//
+// STAGING (stage E6e, plan 18 I208–I210; NORMATIVE). Only a bucket with Overflow::DropNewest that is not ordered
+// stages, and only post() without a tag (submit, Group::add and a tagged post admit op by op through admit(), so
+// cancel(tag) still sees every tagged op, I80). It has K = max(1, min(64, 2 * hardware_concurrency())) stripes (a test
+// build may fix K, seams::stripeCount); a producer thread always uses the same one (a thread_local slot taken in turn).
+// stage(): with `closing` seen (a relaxed load) or any of the three size conditions of admit() (wire > bulk.maxBytes,
+// payload + RESULT_RESERVE > quotaBytes or > the global cap) the op is not staged and post() admits it by itself
+// (today's refusal and counters); otherwise the stripe's mutex, `closing` read again under it (not staged when set),
+// push_back. Posted is `accepted` at once (DropNewest: a full quota is accepted anyway, I182);
+// submitted/accepted/charge move when the stripe is flushed. A stripe is flushed (flushStripeLocked: ONE take of the
+// bucket mutex, the rules of admit() per op, in stripe order; the ops are moved and each leaves the stripe only once
+// admitted, and an op is admitted or dropped all at once — a throw leaves it, and the rest, staged and counted nowhere;
+// the quota edge lines are written after the stripe's mutex is dropped, by the thread that flushed it: a producer, loop
+// 0 or the closer) when it holds STRIPE_OPS ops, when its staged payload reaches STRIPE_BYTES = min(bulk.maxBytes,
+// quotaBytes / (2K)), when its oldest op is min(1 ms, maxAge) old (the scheduler's pass, flushDueStripes, whatever the
+// sink's capacity) and at the seal. On the empty → non-empty transition the stripe publishes `oldest` (an atomic
+// nextDue reads without the stripe's mutex) and post() notifies the scheduler. Lock order: stripe → bucket
+// (flushStripeLocked runs holding the stripe mutex); a stripe mutex is never taken under the bucket mutex. Seal
+// (sealStripes, by closeAdmission and close, so by every close entry): sets `closing`, flushes every stripe under its
+// mutex while the admission is still open, and only then the caller takes the bucket mutex to close the admission: a
+// post that took the stripe mutex before the seal is admitted; one after it sees `closing` and goes through admit(),
+// which refuses it with today's cause once the admission is closed (in the window between the seal and that close it is
+// still accepted, as a post that began before requestClose() returned). Consequences (documented, I209): the snapshot
+// lags by up to K x STRIPE_OPS ops per bucket; staged memory is outside the quota and the global cap (bounded by
+// quotaBytes / 2 per bucket); an op flushed late breaks for up to min(1 ms, maxAge) the "pending front is the oldest"
+// assumption of eligible/nextDue, and a post staged before a Group::commit leaves with maxAge, not with the group; a
+// submit may overtake earlier staged posts of the same thread (unordered bucket).
 
 #include <array>
 #include <atomic>
@@ -90,7 +117,7 @@ namespace indexer_client::detail::write
     /// queued completion keeps 1516.0, since the resolution also frees OpState::tag) => 1944.0 => 1984; E6d, with the
     /// moved-in body and the shared action head of E6d in OpState (body, sharedHead), 1603.4 (the same ordered op
     /// pinned in the retry lane) => 2004.3 => 2048. Registration requires bulk.maxBytes + RESULT_RESERVE <= quotaBytes.
-    constexpr std::uint64_t RESULT_RESERVE = 2048;
+    constexpr std::uint64_t RESULT_RESERVE = RESULT_RESERVE_BYTES;
 
     /// I79: the key of an op of an ordered bucket (OpState::keyHash), computed by whoever builds the OpState: 64-bit
     /// FNV-1a over `index`, one '\0' byte and `id`. Stable across runs, builds and platforms; a collision only blocks
@@ -101,14 +128,15 @@ namespace indexer_client::detail::write
     struct OpState final
     {
         /// The op's wire lines (encoding.hpp Encoded, I121): headView() + `body` + '\n' (the '\n' only with a body).
-        /// IndexAutoId and IndexDataStream carry their action line in `sharedHead` (E6d I125) and leave `head` empty.
+        /// IndexAutoId and IndexDataStream carry their action line in `cachedHead` (E6d I125, E6e D: a line of the
+        /// write path's HeadTable, which outlives every reader of it) and leave `head` empty.
         std::string head;
-        std::shared_ptr<const std::string> sharedHead;
+        const std::string* cachedHead {nullptr};
         std::string body;
-        /// The shared head when there is one, else `head`. Every reader of the head goes through it.
+        /// The cached head when there is one, else `head`. Every reader of the head goes through it.
         std::string_view headView() const noexcept
         {
-            return sharedHead ? std::string_view(*sharedHead) : std::string_view(head);
+            return cachedHead ? std::string_view(*cachedHead) : std::string_view(head);
         }
         /// Charged payload = chargeSize(headView(), body) (I124b: the wire plus the body's heap slack); released once,
         /// at resolution. Quota and global cap count it (+ RESULT_RESERVE); bulk.maxBytes and thresholds count wire().
@@ -137,7 +165,9 @@ namespace indexer_client::detail::write
         int lastHttpStatus {0};
         std::string lastItemErrorType;
         std::string lastReason;
-        std::weak_ptr<Bucket> bucket;
+        /// E6e (D): the bucket that took the op (set by the writer / Group::add, or by its custody), for a debug assert
+        /// in WritePath::resolve only: the caller passes the bucket (no per-op reference count to touch).
+        const Bucket* owner {nullptr};
         /// The effective ConflictPolicy is Retry (I73): a 409 item goes back to the retry lane. Set before admit,
         /// immutable afterwards (read lock-free by the sender).
         bool conflictRetry {false};
@@ -224,6 +254,21 @@ namespace indexer_client::detail::write
         std::uint64_t skipped {0};
     };
 
+    /// E6e (A): one op of a bulk resolution (WritePath::resolveBulk) and its result. `op` is owned by the caller's
+    /// batch (or the requeue's lists) for the whole call.
+    struct BulkItem final
+    {
+        OpState* op {nullptr};
+        OpResult result;
+    };
+
+    /// E6e (A): the most ops Bucket::settleBulk settles under one take of the bucket mutex (a bulk of 8 000 ops would
+    /// otherwise hold it ~1 ms against admit and slice). 64 = STRIPE_OPS (I217): a chunk holds the mutex about as long
+    /// as a stripe flush does, so producers flushing stripes never queue behind one (512 held it ~50 us and convoyed
+    /// eight of them); the price, 8 000 / 64 takes of the mutex and GlobalBudget::release calls per bulk, is still
+    /// 1/64 of the per-op settlement.
+    constexpr std::size_t SETTLE_CHUNK = 64;
+
     /// Outcome of Bucket::cancel (I80).
     struct CancelResult final
     {
@@ -258,6 +303,18 @@ namespace indexer_client::detail::write
     struct Admission final : Reservation
     {
         bool notify {false};
+    };
+
+    /// E6e (B): the most ops a stripe stages before it is flushed.
+    constexpr std::size_t STRIPE_OPS = 64;
+    /// E6e (B): the longest a stripe's oldest op waits for a flush (or the bucket's maxAge when shorter).
+    constexpr Duration STRIPE_AGE {1};
+
+    /// Outcome of Bucket::stage (E6e B).
+    struct StageResult final
+    {
+        bool staged {false}; ///< The op is in a stripe (post() reports it accepted); false: admit() it by itself.
+        bool notify {false}; ///< The caller notifies the scheduler (a stripe became non-empty, or a flush asks).
     };
 
     /// Per-bucket counters (I62, I74). Invariants: submitted = accepted + rejected* (+ invalidArgument); accepted =
@@ -376,12 +433,30 @@ namespace indexer_client::detail::write
         /// `op->payload` + RESULT_RESERVE exactly as reserve() — same cause order (closed admission, PayloadTooLarge
         /// with `op->wire()` against bulk.maxBytes, the charge, then the overflow policy: Reject, Block (Reentrancy
         /// from a runtime thread), DropNewest, DropOldest), same counters; `withCallback` is `op->callback`. When
-        /// charged it appends the op: custody (payloadCharged, retained, seq, `bucket` when unset, `firstSubmit` when
+        /// charged it appends the op: custody (payloadCharged, retained, seq, `owner` when unset, `firstSubmit` when
         /// unset, to `now`), pendingBytes += wire, and `notify` when the scheduler must be told (the bucket went from
         /// empty to non-empty or crossed bulk.maxBytes / bulk.maxDocs, with >=, and the dedup flag was clear). The
         /// bucket's queue takes the only copy of `op`. `evicted` (DropOldest) and a `dropNewest` op are resolved by the
         /// caller outside the mutex; the global surplus is released and the edge lines emitted after it.
         Admission admit(const std::shared_ptr<OpState>& op, TimePoint now, TimePoint blockUntil);
+
+        // ---- staging (E6e B, see the header comment; producer threads, the scheduler and the seal)
+
+        /// The bucket stages (DropNewest, not ordered).
+        bool stages() const noexcept;
+        /// post() without a tag: stages `op` (moved from on success) or tells the caller to admit() it by itself.
+        /// Flushes the stripe when it reaches STRIPE_OPS or STRIPE_BYTES (a throw there keeps the ops staged for the
+        /// next flush, counted as a usage error, and never reaches the producer).
+        StageResult stage(std::shared_ptr<OpState>& op);
+        /// Loop 0 (Scheduler pass): flushes every stripe whose oldest op is min(1 ms, maxAge) old at `now`, holding no
+        /// other lock; a throw is counted and retried at the next flush. True when the scheduler must be told.
+        bool flushDueStripes(TimePoint now);
+#ifdef INDEXER_CLIENT_TESTING
+        /// Test-only (I209): flushes every stripe now. True when the scheduler must be told.
+        bool flushStaged();
+        /// Test-only: the ops staged now.
+        std::size_t stagedOps() const;
+#endif
 
         /// Group::add (I74, group.hpp): charges `payload` + RESULT_RESERVE for an op of a Building group that already
         /// holds `groupReserved`. In order: closed ⇒ its cause (rejectedClosed); `wire` > bulk.maxBytes or the charge
@@ -443,6 +518,11 @@ namespace indexer_client::detail::write
         /// the pending head is a committed group's (seq <= flushSeq) — returned as TimePoint::min(), which every `now`
         /// reaches (Scheduler::armTimer arms no timer and reports it due); nullopt if empty.
         std::optional<TimePoint> nextDue(TimePoint now) const;
+        /// E6e (B): the stripes' own deadline (earliest oldest + min(1 ms, maxAge)), nullopt with every stripe empty.
+        /// Atomics only, no mutex. Scheduler::armTimer arms it when nextDue is already past (an expired pending op or
+        /// a committed group's head while the sink has no capacity): that part of nextDue waits for capacity, a staged
+        /// op does not.
+        std::optional<TimePoint> stripeDue() const;
         /// Takes whole ops, the due retry lane first and then the pending queue (one batch may mix both): the head
         /// always (when eligible), then the next ones while their wire bytes fit in bulk.maxBytes, bulk.maxDocs, `cap`
         /// (the sink's batchLimit, 0 = none; I98) and the smallest batchCap of the ops taken (`cap` never refuses the
@@ -460,6 +540,13 @@ namespace indexer_client::detail::write
         RequeueResult requeue(std::vector<RequeueOp> ops, const RequeueSpec& spec, TimePoint now);
         /// Clears the dedup flag set by admit / enqueueGroup (the scheduler consumed the notification).
         void clearNotified() noexcept;
+        /// Loop 0, at the start of a pass, before it reads the buckets (with clearNotified): the armed deadline is
+        /// unknown until armTimer publishes it again, so a stripe that becomes non-empty meanwhile notifies.
+        void invalidateArmedDue() noexcept;
+        /// Loop 0, from armTimer: the deadline its timer is armed at for this bucket (nullopt: none armed). A stripe
+        /// whose deadline is not earlier does not notify on its empty -> non-empty transition (that pass reads it,
+        /// D116).
+        void publishArmedDue(std::optional<TimePoint> due) const noexcept;
 
         // ---- resolution and close (any thread)
 
@@ -468,6 +555,16 @@ namespace indexer_client::detail::write
         /// resolution path, after it won the op's claim. `withReserve` (E6d): also returns the op's RESULT_RESERVE in
         /// the same take of the mutex — an op of post (no ticket, callback nor group) has nobody else to return it.
         void releasePayload(OpState& op, bool withReserve = false);
+        /// E6e (A): the bucket side of WritePath::resolveBulk for `count` ops of post (no ticket, callback nor group,
+        /// RESULT_RESERVE charged) whose claim the caller already won, under ONE take of the mutex: for each op, in
+        /// order, countResolved (with countCancelled for a Dropped(Cancelled) result) and then releasePayload(op, true)
+        /// — its RESULT_RESERVE, its payload once, the cancel(tag) waiters' decrement re-reading `cancelled` under the
+        /// mutex —, then one re-arm of the quota edge and one wake-up of the blocked producers; after the mutex, ONE
+        /// GlobalBudget::release of everything released and the completed cancel(tag) waiters. `settled` grows by one
+        /// for every op fully settled, so a throw (only an allocation of the interval keys, or the seam inSettleBulk)
+        /// leaves the rest to the caller. At most SETTLE_CHUNK ops per call is the caller's choice. Each op must be
+        /// this bucket's (asserted in debug builds, as WritePath::resolve).
+        void settleBulk(BulkItem* items, std::size_t count, std::size_t& settled);
         /// Releases `count` RESULT_RESERVEs (after the callback ran, when the last Ticket died, or when a committed
         /// group's GroupState died).
         void releaseReserve(std::uint32_t count = 1);
@@ -561,12 +658,48 @@ namespace indexer_client::detail::write
         /// min(oldest pending + maxAge, retry-lane head notBefore), TimePoint::min() for a committed group's head;
         /// the ordered rules of the header comment when spec().ordered; m_mutex held.
         std::optional<TimePoint> nextDueLocked(TimePoint now) const;
-        /// Takes `op` into the bucket's custody (firstSubmit, bucket, payloadCharged, seq, retained); m_mutex held.
+        /// Takes `op` into the bucket's custody (firstSubmit, owner, payloadCharged, seq, retained); m_mutex held.
         void takeCustodyLocked(OpState& op, TimePoint now);
         /// What a refused enqueueGroup reports: the sweep's cause if close() ran, else the admission's; m_mutex held.
         std::optional<Cause> refusalCauseLocked() const;
         /// Inserts a non-toHead op into the retry lane by notBefore (stable); m_mutex held.
         void insertLaneLocked(std::shared_ptr<OpState> op);
+        /// E6e (B): Stripe::oldest of an empty stripe.
+        static constexpr TimePoint::rep NO_OLDEST = TimePoint::max().time_since_epoch().count();
+        /// E6e (B): one stripe of staged post ops (cache-line aligned: producers on different stripes share nothing).
+        struct alignas(64) Stripe final
+        {
+            std::mutex mutex;
+            std::vector<std::shared_ptr<OpState>> ops;
+            std::uint64_t payload {0}; ///< Σ payload of `ops` (the STRIPE_BYTES threshold).
+            /// firstSubmit of the op that made the stripe non-empty (ticks), NO_OLDEST when empty: written under the
+            /// stripe mutex, read by nextDue and flushDueStripes without it.
+            std::atomic<TimePoint::rep> oldest {NO_OLDEST};
+        };
+        /// Admits `stripe`'s ops in order under one take of m_mutex (the stripe's mutex held by the caller,
+        /// never m_mutex). Each op is admitted (or dropped) whole or not at all: its only allocation (its queue slot)
+        /// comes before any counter moves, and a DropNewest drop whose interval keys fail to allocate is undone. It
+        /// writes no line: the caller calls emitPendingLogs() once the stripe's mutex is dropped. Returns whether the
+        /// scheduler must be told.
+        bool flushStripeLocked(Stripe& stripe);
+        /// The seal: sets `closing` and flushes every stripe (admission still open). Returns what a throw left staged
+        /// (normally nothing), for the caller to keep in m_unstaged.
+        std::vector<std::shared_ptr<OpState>> sealStripes();
+        /// The earliest stripe deadline (oldest + min(1 ms, maxAge)), if any stripe holds ops.
+        std::optional<TimePoint> stripeDueLocked() const;
+        /// Takes the ops of m_unstaged out (submitted and accepted counted now, nothing charged) for close().
+        void handBackUnstagedLocked(std::vector<std::shared_ptr<OpState>>& out);
+
+        /// The body of countResolved(); m_mutex held. Only the interval keys and sample may throw (an allocation), and
+        /// they run before any counter moves.
+        void countResolvedLocked(Status status, Cause cause, std::string_view itemErrorType, std::string_view reason);
+        /// The body of releasePayload() up to the release itself; m_mutex held. Returns the bytes released (to give
+        /// back to the global cap after the mutex) and hands the bucket's copy of the op out in `keep`; cancel(tag)
+        /// waiters that reach 0 go to `cancelDone`. The caller re-arms the quota edge and wakes the blocked producers.
+        std::uint64_t releasePayloadLocked(OpState& op,
+                                           bool withReserve,
+                                           std::shared_ptr<OpState>& keep,
+                                           std::vector<std::shared_ptr<CancelState>>& cancelDone);
 
         // Ordered buckets (I79); m_mutex held. Every op entering the lane goes through laneAddedLocked and every op
         // leaving it through laneRemovedLocked (cancel() and pinnedNodeUsable() too), which keep m_laneKeys and
@@ -610,6 +743,8 @@ namespace indexer_client::detail::write
         std::optional<Cause> m_closed;    ///< close(): the sweep (requeue hands ops back as closed).
         std::optional<Cause> m_admission; ///< closeAdmission() or close(): submit refuses (E5b, I99).
         std::atomic<bool> m_notified {false};
+        /// E6e (D116): the deadline loop 0 armed for this bucket (ticks), NO_OLDEST when none or unknown (mid-pass).
+        mutable std::atomic<TimePoint::rep> m_armedDue {NO_OLDEST};
         /// Ordered buckets (I79): multiset of the lane ops' keys (hash -> count; ops without a key are not in it).
         std::unordered_map<std::uint64_t, std::uint32_t> m_laneKeys;
         std::size_t m_lanePinned {0}; ///< Ordered buckets: lane ops with pinNode set (expired pins included).
@@ -639,6 +774,8 @@ namespace indexer_client::detail::write
             std::uint64_t charge {0};
             int httpStatus {0};
         };
+        /// Queues `line` (m_mutex held); a failed allocation drops the line, never a counter (G-diff E6e P3-1).
+        void pushEdgeLocked(const EdgeLine& line) noexcept;
         const std::uint64_t m_threshold80; ///< 80 % and 70 % of quotaBytes, rounded down.
         const std::uint64_t m_threshold70;
         bool m_armed80 {true};
@@ -655,6 +792,26 @@ namespace indexer_client::detail::write
             std::uint64_t dropped {0};
         };
         LogMark m_logMark; ///< The totals at the previous takeLogInterval().
+
+        // E6e (B) staging; immutable after construction except the stripes' contents, m_closing and m_unstaged.
+        /// The fields stage() reads on every post, immutable after construction except `m_closing` (written once, by
+        /// the seal), from a cache line other threads do not write per op (GlobalBudget::m_charge shares one with its
+        /// cap; the bucket's counters and mutex are written by every flush and settle).
+        alignas(64) const std::size_t m_stripeCount; ///< K, or 0 for a bucket that never stages.
+        const std::uint64_t m_stageMaxWire;          ///< bulk.maxBytes: stage()'s PayloadTooLarge pre-check on wire().
+        const std::uint64_t m_stageMaxCharge; ///< min(quotaBytes, the global cap): its pre-check on payload + reserve.
+        const std::uint64_t m_stripeBytes;    ///< min(bulk.maxBytes, quotaBytes / (2K)).
+        const Duration m_stripeAge;           ///< min(STRIPE_AGE, bulk.maxAge).
+        std::unique_ptr<Stripe[]> m_stripes;
+        std::atomic<bool> m_closing {false}; ///< The seal ran (or runs): stage() refuses.
+        /// Ops posted (Posted accepted) that a flush found with the admission already closed (unreachable while the
+        /// seal protocol holds), or that a throw at the seal left out of the stripes: never charged, counted
+        /// submitted/accepted and handed back by close() (Dropped(cause)); guarded by m_mutex. Kept rather than
+        /// resolved at once: a resolution runs in the WritePath outside every bucket mutex, and close() already hands
+        /// its pending ops to a caller that resolves them Dropped(cause) — the same path, no second one. Until then
+        /// they are outside Σ retained (awaitClosed's drain does not wait for them; its sweep, or stop()'s, resolves
+        /// them).
+        std::vector<std::shared_ptr<OpState>> m_unstaged;
     };
 } // namespace indexer_client::detail::write
 
