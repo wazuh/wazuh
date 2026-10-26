@@ -44,6 +44,9 @@ namespace wazuh::container_instances_client
     {
         std::string runtime;
         std::string containerId;
+
+        /// The container's HOST KEY, which is a cgroup inode only on a host
+        /// keyed that way — see ContainerEventRef::cgroupId.
         std::uint64_t cgroupId {0};
 
         /// The container's FULL record as the `list` reply carried it — the same
@@ -74,8 +77,12 @@ namespace wazuh::container_instances_client
         Kind kind {Kind::changed};
         std::string containerId;
 
-        /// Last known cgroup inode, present on removals too — a consumer keyed
-        /// on the inode cannot act on a removal it cannot map back to one.
+        /// Last known HOST KEY, present on removals too — a consumer keyed on
+        /// it cannot act on a removal it cannot map back to one.
+        ///
+        /// A cgroup inode on a host keyed that way, a mount-namespace inode on
+        /// one that is not; hostKeyKind() says which, and the name is kept only
+        /// because consumers already spell it this way.
         std::uint64_t cgroupId {0};
 
         /// Change classes as NAMES, verbatim from the wire. Deliberately not
@@ -301,8 +308,13 @@ namespace wazuh::container_instances_client
                 event.seq = parseDecimalU64(item.value("seq", std::string {"0"}));
                 event.containerId = item.value("container_id", std::string {});
                 // `key` first, `cgroup_id` as the fallback for a producer that
-                // predates v2. Note the producer OMITS cgroup_id where it would
-                // not be one, so this never reads a namespace inode as a cgroup.
+                // predates v2. `key` is the host key WHATEVER ITS KIND, so on a
+                // legacy host this is a mount-namespace inode -- the field's
+                // name is historical, not a promise. The producer omits
+                // `cgroup_id` where it would not be one, which protects a v1
+                // consumer that reads that field; it does not make this one a
+                // cgroup id. A consumer that can only act on cgroup ids asks
+                // hostKeyKind() and refuses, as the FIM drain does.
                 event.cgroupId = parseDecimalU64(item.value("key", item.value("cgroup_id", std::string {"0"})));
 
                 if (event.containerId.empty())
