@@ -92,12 +92,12 @@ if [ -d "${DIR}" ]; then
     # is absent and not a symlink, so a planted logs/wazuh link cannot send the move outside logs/.
     if [ -d ${DIR}/logs/ossec ] && [ ! -L ${DIR}/logs/ossec ] && [ ! -e ${DIR}/logs/wazuh ] && [ ! -L ${DIR}/logs/wazuh ]; then
         echo "Renaming ${DIR}/logs/ossec to ${DIR}/logs/wazuh"
-        mv -fh ${DIR}/logs/ossec ${DIR}/logs/wazuh
+        mv -f ${DIR}/logs/ossec ${DIR}/logs/wazuh
     fi
 
     if [ -d ${DIR}/queue/ossec ] && [ ! -L ${DIR}/queue/ossec ] && [ ! -e ${DIR}/queue/sockets ] && [ ! -L ${DIR}/queue/sockets ]; then
         echo "Renaming ${DIR}/queue/ossec to ${DIR}/queue/sockets"
-        mv -fh ${DIR}/queue/ossec ${DIR}/queue/sockets
+        mv -f ${DIR}/queue/ossec ${DIR}/queue/sockets
     fi
 
     if pkgutil --pkgs | grep -i wazuh-agent-etc > /dev/null 2>&1 ; then

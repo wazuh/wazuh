@@ -26,16 +26,17 @@ if [ -f "${UPGRADE_FILE_FLAG}" ]; then
     rm -f ${UPGRADE_FILE_FLAG}
     echo "Restoring configuration files from ${DIR}/config_files/ to ${DIR}/etc/"
 
-    # The backup was taken with cp -R, so a config the wazuh account had replaced with a symlink is
-    # a symlink here too. Restore only a regular file, and move it with mv -fh so a link planted at
-    # the destination in etc/ is replaced instead of written through. Anything else (a symlink, or
-    # a directory/FIFO/other) is dropped and whatever the package installed at that path is left.
+    # The backup holds only a regular file per config name (preinstall copied with cp -R and
+    # removed any planted symlink or hard link before the payload was laid). Move it over the
+    # package default with a plain mv: -h is not used because it does not exist before macOS 12.5
+    # (Apple file_cmds-353) and the agent supports older releases, and by this point the destination
+    # is the package's regular file, not a symlink. Anything that is not a regular file is dropped.
     restore_failed=""
     for conf in ossec.conf client.keys local_internal_options.conf; do
         if [ ! -e ${DIR}/config_files/${conf} ] && [ ! -L ${DIR}/config_files/${conf} ]; then
             continue
         elif [ -f ${DIR}/config_files/${conf} ] && [ ! -L ${DIR}/config_files/${conf} ]; then
-            if ! mv -fh ${DIR}/config_files/${conf} ${DIR}/etc/${conf}; then
+            if ! mv -f ${DIR}/config_files/${conf} ${DIR}/etc/${conf}; then
                 echo "WARNING: could not restore ${DIR}/etc/${conf}; a copy is kept for recovery." >&2
                 restore_failed="yes"
             fi
@@ -45,12 +46,16 @@ if [ -f "${UPGRADE_FILE_FLAG}" ]; then
         fi
     done
 
-    # etc/shared is a directory: restore only a real directory. Remove the destination (a link or
-    # the package copy) and move the backup in; a directory link re-planted at the destination
-    # makes mv fail without writing through, and the backup is kept.
+    # etc/shared is a directory: replace the package copy with the backup without destroying it
+    # first. Move the installed one aside, move the backup into place, and put the original back if
+    # that fails, so a failed move never leaves etc/shared missing (and no mv -h, as above).
     if [ -d ${DIR}/config_files/shared ] && [ ! -L ${DIR}/config_files/shared ]; then
-        rm -rf ${DIR}/etc/shared
-        if ! mv -fh ${DIR}/config_files/shared ${DIR}/etc/shared; then
+        rm -rf ${DIR}/etc/shared.save
+        mv -f ${DIR}/etc/shared ${DIR}/etc/shared.save 2> /dev/null
+        if mv -f ${DIR}/config_files/shared ${DIR}/etc/shared; then
+            rm -rf ${DIR}/etc/shared.save
+        else
+            [ -e ${DIR}/etc/shared.save ] && mv -f ${DIR}/etc/shared.save ${DIR}/etc/shared
             echo "WARNING: could not restore ${DIR}/etc/shared; a copy is kept for recovery." >&2
             restore_failed="yes"
         fi
