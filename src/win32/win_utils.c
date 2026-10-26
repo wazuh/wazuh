@@ -369,7 +369,7 @@ int local_start()
         mlerror_exit(LOGLEVEL_ERROR, CLIENT_ERROR);
     }
 
-    if (!w_agent_validate_manager_address(agt)) {
+    if (!w_agent_validate_manager_address(agt, NULL)) {
         mlerror_exit(LOGLEVEL_ERROR, CLIENT_ERROR);
     }
 

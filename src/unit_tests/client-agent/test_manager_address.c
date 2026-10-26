@@ -26,13 +26,18 @@
  * client.keys on Windows), so the same cases run on both targets. The cases where it must not
  * matter use an empty one: a hint logged there would be an unexpected merror(), which fails. */
 
+/* main.c passes the installation directory so the hint names a command that runs as typed: bin/
+ * is not on PATH. The Windows hint names the GUI first and has no use for it. */
 #ifndef WIN32
-#define NOT_ENROLLED_HINT "(4128): This agent is not enrolled yet. Enroll it with " \
-                          "'wazuh-agent-auth --token-file <file>', then start the agent."
+#define HOME_PATH "/var/ossec"
+#define NOT_ENROLLED_HINT "(4128): This agent is not enrolled yet. Enroll it as root with " \
+                          "'/var/ossec/bin/wazuh-agent-auth --token-file <file>', then start the agent."
 #else
+#define HOME_PATH NULL
 #define NOT_ENROLLED_HINT "(4128): This agent is not enrolled yet. Enroll it with Manage > " \
-                          "Enroll in the agent GUI or with 'wazuh-agent-auth.exe --token-file " \
-                          "<file>', then start the agent."
+                          "Enroll in the agent GUI, or as an administrator with " \
+                          "'wazuh-agent-auth.exe --token-file <file>' from the agent's " \
+                          "installation folder, then start the agent."
 #endif
 
 /* Leaves client.keys holding @p content, or absent when it is NULL. */
@@ -72,7 +77,7 @@ static void test_no_manager_block_refuses_to_start(void **state)
     set_client_keys("");
     expect_string(__wrap__merror, formatted_msg, "(4105): No valid server IP found.");
 
-    assert_false(w_agent_validate_manager_address(&cfg));
+    assert_false(w_agent_validate_manager_address(&cfg, HOME_PATH));
 }
 
 static void test_real_address_starts(void **state)
@@ -83,7 +88,7 @@ static void test_real_address_starts(void **state)
 
     set_client_keys("");
 
-    assert_true(w_agent_validate_manager_address(&cfg));
+    assert_true(w_agent_validate_manager_address(&cfg, HOME_PATH));
 }
 
 /* Validate_Address() asks for one usable address, not for all of them to be usable. */
@@ -95,7 +100,7 @@ static void test_one_real_address_among_placeholders_starts(void **state)
 
     set_client_keys("");
 
-    assert_true(w_agent_validate_manager_address(&cfg));
+    assert_true(w_agent_validate_manager_address(&cfg, HOME_PATH));
 }
 
 /* The case the hint exists for: a package installed without a token and started as it is. */
@@ -109,7 +114,7 @@ static void test_placeholder_on_an_unenrolled_agent_names_wazuh_agent_auth(void 
     expect_string(__wrap__merror, formatted_msg, "(4112): Invalid server address found: 'MANAGER_IP'");
     expect_string(__wrap__merror, formatted_msg, NOT_ENROLLED_HINT);
 
-    assert_false(w_agent_validate_manager_address(&cfg));
+    assert_false(w_agent_validate_manager_address(&cfg, HOME_PATH));
 }
 
 /* No client.keys at all is just as unenrolled. */
@@ -123,7 +128,7 @@ static void test_placeholder_without_client_keys_names_wazuh_agent_auth(void **s
     expect_string(__wrap__merror, formatted_msg, "(4112): Invalid server address found: 'MANAGER_IP'");
     expect_string(__wrap__merror, formatted_msg, NOT_ENROLLED_HINT);
 
-    assert_false(w_agent_validate_manager_address(&cfg));
+    assert_false(w_agent_validate_manager_address(&cfg, HOME_PATH));
 }
 
 /* The Windows package ships 0.0.0.0 instead of MANAGER_IP; it is the same unenrolled agent. */
@@ -137,7 +142,7 @@ static void test_windows_placeholder_on_an_unenrolled_agent_names_wazuh_agent_au
     expect_string(__wrap__merror, formatted_msg, "(4112): Invalid server address found: '0.0.0.0'");
     expect_string(__wrap__merror, formatted_msg, NOT_ENROLLED_HINT);
 
-    assert_false(w_agent_validate_manager_address(&cfg));
+    assert_false(w_agent_validate_manager_address(&cfg, HOME_PATH));
 }
 
 /* An enrolled agent whose address was put back to the placeholder by hand: telling it to enroll
@@ -151,7 +156,7 @@ static void test_placeholder_on_an_enrolled_agent_names_only_the_address(void **
     set_client_keys("001 enrolled-agent any 0123456789abcdef\n");
     expect_string(__wrap__merror, formatted_msg, "(4112): Invalid server address found: 'MANAGER_IP'");
 
-    assert_false(w_agent_validate_manager_address(&cfg));
+    assert_false(w_agent_validate_manager_address(&cfg, HOME_PATH));
 }
 
 int main(void)
