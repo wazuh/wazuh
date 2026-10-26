@@ -70,12 +70,13 @@ if [ -f "${UPGRADE_FILE_FLAG}" ]; then
     fi
 fi
 
-# harden_tree MODE OWNER DIR: set MODE and OWNER on DIR and everything under it, but never on a
-# symlink or a hard-linked regular file (a link the wazuh account may have planted to a file
-# outside the install), so chmod/chown cannot reach that external inode. macOS has no
-# protected_hardlinks, so every recursive step over a wazuh-writable tree goes through this.
+# harden_tree MODE OWNER DIR: set MODE and OWNER on DIR and everything under it, acting only on a
+# directory or a single-link entry — never on a symlink or on anything with more than one hard link
+# (a regular file, FIFO or socket the wazuh account may have linked to something outside the
+# install), so chmod/chown cannot reach that external inode. macOS has no protected_hardlinks, so
+# every recursive step over a wazuh-writable tree goes through this.
 harden_tree() {
-    find "$3" ! -type l ! \( -type f ! -links 1 \) -exec chmod "$1" {} + -exec chown "$2" {} +
+    find "$3" ! -type l \( -type d -o -links 1 \) -exec chmod "$1" {} + -exec chown "$2" {} +
 }
 
 # Default for all directories. Parts of the tree (etc/, logs/, var/, queue/ sub-dirs) are writable
@@ -97,7 +98,7 @@ harden_tree 750 ${USER}:${GROUP} ${DIR}/queue/rids
 # must skip a hard link it may have planted there, whose target would otherwise be re-owned and
 # re-moded. Directories cannot be hard-linked by an unprivileged user.
 chmod 770 ${DIR}/logs
-find ${DIR}/logs ! -type l ! \( -type f ! -links 1 \) -exec chown ${USER}:${GROUP} {} +
+find ${DIR}/logs ! -type l \( -type d -o -links 1 \) -exec chown ${USER}:${GROUP} {} +
 find ${DIR}/logs/ -type d -exec chmod 750 {} \;
 find ${DIR}/logs/ -type f -links 1 -exec chmod 660 {} \;
 
@@ -124,7 +125,7 @@ harden_etc_file 640 ${DIR}/etc/localtime nochown
 # reach a file outside the installation.
 if [ -d ${DIR}/etc/shared ] && [ ! -L ${DIR}/etc/shared ]; then
     chmod 770 ${DIR}/etc/shared # ossec must be able to write to it
-    find ${DIR}/etc/shared ! -type l ! \( -type f ! -links 1 \) -exec chown root:${GROUP} {} +
+    find ${DIR}/etc/shared ! -type l \( -type d -o -links 1 \) -exec chown root:${GROUP} {} +
     find ${DIR}/etc/shared -type f -links 1 -exec chmod 660 {} +
 fi
 harden_etc_file 660 ${DIR}/etc/ossec.conf
