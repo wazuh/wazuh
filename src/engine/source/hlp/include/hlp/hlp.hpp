@@ -116,11 +116,11 @@ Parser getBinaryParser(const Params& params);
  * options:
  *  - a format which must contain a '%' char, and optionally
  *  a locale string. If no locale is used, it will default to
- *  en_US.UTF-8
- *  - a date sample which will be tried among common format,
- *  if a common format is found, it will use it, and optionally
- *  a locale string. If no locale is used, it will default to
- *  en_US.UTF-8.
+ *  the C/POSIX locale
+ *  - a predefined format name or a date sample which will be tried
+ *  among common formats, if a common format is found, it will use it,
+ *  and optionally a locale string. If no locale is used, it will default
+ *  to the C/POSIX locale.
  *
  * The parsers will return the date in a format like
  * 2006-01-02T16:04:05.000Z. If the parsed date does have
@@ -327,16 +327,16 @@ Parser getLiteralParser(const Params& params);
 Parser getEofParser(const Params& params);
 
 /**
- * @brief Returns a parser that will ignore a string, which may be repeated 0 or more
- * times at the beginning of the other string, returning an empty Json.
+ * @brief Returns a parser that consumes a string repeated 1 or more times at the beginning
+ * of the input, mapping nothing.
  *
- * The parser never fails, and the string can be partially repeated, as long as it is the
- * last time it appears. For example, the parser will return parse to ' test!' in the case
- * where the string to ignore is 'wazuh' and the string to parse is "wazuhwazuhwa test!"
+ * The parser fails when the input does not start with at least one complete repetition of the
+ * string; a trailing partial repetition is not consumed. For example, with the string 'wazuh'
+ * and the input "wazuhwazuhwa test!", the parser consumes "wazuhwazuh" and leaves "wa test!".
  *
  * @param params.name name of the parser
- * @param params.targetField: field to store the parsed value, if not present, the value is ignored
- * @param params.options a list with one element, the string to ignore
+ * @param params.targetField must be empty: the parser throws if a target field is given
+ * @param params.options a list with one non-empty element, the string to ignore
  * @return Parser the parser
  */
 Parser getIgnoreParser(const Params& params);
@@ -355,10 +355,12 @@ Parser getQuotedParser(const Params& params);
 /**
  * @brief Get the alphanumeric parser, which will parse a string and return the alphanumeric content
  *
+ * The parser consumes one or more alphanumeric characters (plus the additional characters, if given)
+ * and fails if the input does not start with one of them.
+ *
  * @param params.name name of the parser
  * @param params.targetField: field to store the parsed value, if not present, the value is ignored
- * @param params.options Option[0] is the quote character, Option[1] is the escape character. If not
- * provided, the default is " and \
+ * @param params.options Optional single element: a string with additional characters to accept
  * @return Parser
  */
 Parser getAlphanumericParser(const Params& params);

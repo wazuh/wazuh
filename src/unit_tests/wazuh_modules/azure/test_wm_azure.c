@@ -43,6 +43,7 @@ void wm_setup_logging_capture();
 void wm_integrations_parse_output(char * const output, bool failed);
 bool wm_azure_graphs(wm_azure_api_t *graph);
 bool wm_azure_storage(wm_azure_storage_t *storage);
+cJSON *wm_azure_dump(const wm_azure_t *azure);
 
 static void wmodule_cleanup(wmodule *module){
     wm_azure_t* module_data = (wm_azure_t *)module->data;
@@ -588,6 +589,127 @@ void test_storage_success_is_logged_as_finished(void **state) {
     assert_true(wm_azure_storage(module_data->storage));
 }
 
+/* The dump only reads the configuration, so it is built on the stack. That
+ * also keeps wm_azure_destroy() and its azure_script_log_regex out of these
+ * tests. The parser no longer accepts inline keys, but the struct still has
+ * them, and the dump must not print them. scan_wday -1 is what
+ * sched_scan_init leaves. */
+static char *azure_dump_text(const wm_azure_t *azure) {
+    cJSON *root = wm_azure_dump(azure);
+    char *text = cJSON_PrintUnformatted(root);
+
+    cJSON_Delete(root);
+    return text;
+}
+
+void test_azure_dump_masks_application_and_account_keys(void **state) {
+    wm_azure_api_t api = {
+        .type = LOG_ANALYTICS,
+        .application_id = "fake-application-id",
+        .application_key = "fakeAzureApplicationKey01",
+        .tenantdomain = "wazuh.onmicrosoft.com",
+    };
+    wm_azure_storage_t storage = {
+        .account_name = "wazuhstorage",
+        .account_key = "fakeAzureAccountKey0001",
+        .tag = "azure-storage",
+    };
+    wm_azure_t azure = { .flags.enabled = 1, .api_config = &api, .storage = &storage, .scan_config.scan_wday = -1 };
+
+    char *text = azure_dump_text(&azure);
+
+    assert_string_equal(text, "{\"azure-logs\":{\"disabled\":\"no\",\"run_on_start\":\"no\",\"timeout\":0,\"content\":["
+                              "{\"type\":\"log_analytics\",\"tenantdomain\":\"wazuh.onmicrosoft.com\","
+                              "\"application_id\":\"fake-application-id\",\"application_key\":\"*****\"},"
+                              "{\"tag\":\"azure-storage\",\"account_name\":\"wazuhstorage\",\"account_key\":\"*****\"}]}}");
+    cJSON_free(text);
+}
+
+void test_azure_dump_never_prints_a_key(void **state) {
+    wm_azure_api_t graph = { .type = GRAPHS, .application_key = "fakeAzureGraphKey0001", .tenantdomain = "wazuh.onmicrosoft.com" };
+    wm_azure_api_t analytics = { .type = LOG_ANALYTICS, .application_key = "fakeAzureAnalyticsKey01",
+                                 .tenantdomain = "wazuh.onmicrosoft.com", .next = &graph };
+    wm_azure_storage_t storage = { .account_key = "fakeAzureAccountKey0002", .tag = "azure-storage" };
+    wm_azure_t azure = { .api_config = &analytics, .storage = &storage, .scan_config.scan_wday = -1 };
+
+    char *text = azure_dump_text(&azure);
+
+    assert_null(strstr(text, "fakeAzureGraphKey0001"));
+    assert_null(strstr(text, "fakeAzureAnalyticsKey01"));
+    assert_null(strstr(text, "fakeAzureAccountKey0002"));
+    cJSON_free(text);
+}
+
+void test_azure_dump_reports_keys_in_clear_when_unmasked(void **state) {
+    wm_azure_api_t api = { .type = LOG_ANALYTICS, .application_key = "fakeAzureAnalyticsKey02", .tenantdomain = "wazuh.onmicrosoft.com" };
+    wm_azure_storage_t storage = { .account_key = "fakeAzureAccountKey0003", .tag = "azure-storage" };
+    wm_azure_t azure = { .api_config = &api, .storage = &storage, .scan_config.scan_wday = -1 };
+
+    wm_unmask_credentials = 1;
+    char *text = azure_dump_text(&azure);
+    wm_unmask_credentials = 0;
+
+    assert_non_null(strstr(text, "\"application_key\":\"fakeAzureAnalyticsKey02\""));
+    assert_non_null(strstr(text, "\"account_key\":\"fakeAzureAccountKey0003\""));
+    cJSON_free(text);
+}
+
+void test_azure_dump_reports_requests_and_containers(void **state) {
+    wm_azure_request_t request = { .tag = "azure-activity", .query = "AzureActivity", .time_offset = "36h", .workspace = "d6b-efa" };
+    wm_azure_api_t api = { .type = LOG_ANALYTICS, .auth_path = "/var/ossec/wodles/azure/credentials.txt",
+                           .tenantdomain = "wazuh.onmicrosoft.com", .request = &request };
+    wm_azure_container_t container = { .name = "insights-logs", .blobs = ".json", .content_type = "json_inline", .time_offset = "24h" };
+    wm_azure_storage_t storage = { .auth_path = "/var/ossec/wodles/azure/credentials.txt", .tag = "azure-storage", .container = &container };
+    wm_azure_t azure = { .flags.enabled = 1, .api_config = &api, .storage = &storage, .scan_config.scan_wday = -1 };
+
+    char *text = azure_dump_text(&azure);
+
+    assert_string_equal(text, "{\"azure-logs\":{\"disabled\":\"no\",\"run_on_start\":\"no\",\"timeout\":0,\"content\":["
+                              "{\"type\":\"log_analytics\",\"tenantdomain\":\"wazuh.onmicrosoft.com\","
+                              "\"auth_path\":\"/var/ossec/wodles/azure/credentials.txt\",\"requests\":["
+                              "{\"tag\":\"azure-activity\",\"query\":\"AzureActivity\",\"time_offset\":\"36h\",\"workspace\":\"d6b-efa\"}]},"
+                              "{\"tag\":\"azure-storage\",\"auth_path\":\"/var/ossec/wodles/azure/credentials.txt\",\"containers\":["
+                              "{\"name\":\"insights-logs\",\"blobs\":\".json\",\"content_type\":\"json_inline\",\"time_offset\":\"24h\"}]}]}}");
+    cJSON_free(text);
+}
+
+void test_dump_requests_and_containers(void **state) {
+    wm_azure_request_t second_request = { .tag = "azure-signin", .query = "SigninLogs", .time_offset = "1d", .timeout = 60 };
+    wm_azure_request_t first_request = { .tag = "azure-activity", .query = "AzureActivity", .time_offset = "36h",
+                                         .workspace = "d6b-efa", .next = &second_request };
+    wm_azure_request_t graph_request = { .tag = "azure-ad-graph", .query = "auditLogs/directoryAudits", .time_offset = "1d" };
+    wm_azure_api_t graph = { .type = GRAPHS, .auth_path = "/var/ossec/wodles/azure/graph.txt",
+                             .tenantdomain = "wazuh.onmicrosoft.com", .request = &graph_request };
+    wm_azure_api_t analytics = { .type = LOG_ANALYTICS, .auth_path = "/var/ossec/wodles/azure/analytics.txt",
+                                 .tenantdomain = "wazuh.onmicrosoft.com", .request = &first_request, .next = &graph };
+    wm_azure_container_t second_container = { .name = "insights-operational-logs", .blobs = "*", .content_type = "file",
+                                              .time_offset = "2d", .path = "logs/", .timeout = 30 };
+    wm_azure_container_t first_container = { .name = "insights-activity-logs", .blobs = ".json", .content_type = "json_inline",
+                                             .time_offset = "24h", .next = &second_container };
+    wm_azure_storage_t storage = { .auth_path = "/var/ossec/wodles/azure/storage.txt", .tag = "azure-storage",
+                                   .container = &first_container };
+    wm_azure_t azure = { .flags.enabled = 1, .api_config = &analytics, .storage = &storage, .scan_config.scan_wday = -1 };
+
+    cJSON *root = wm_azure_dump(&azure);
+    char *text = cJSON_PrintUnformatted(root);
+
+    assert_string_equal(text, "{\"azure-logs\":{\"disabled\":\"no\",\"run_on_start\":\"no\",\"timeout\":0,\"content\":["
+                              "{\"type\":\"log_analytics\",\"tenantdomain\":\"wazuh.onmicrosoft.com\","
+                              "\"auth_path\":\"/var/ossec/wodles/azure/analytics.txt\",\"requests\":["
+                              "{\"tag\":\"azure-activity\",\"query\":\"AzureActivity\",\"time_offset\":\"36h\",\"workspace\":\"d6b-efa\"},"
+                              "{\"tag\":\"azure-signin\",\"query\":\"SigninLogs\",\"time_offset\":\"1d\",\"timeout\":60}]},"
+                              "{\"type\":\"graph\",\"tenantdomain\":\"wazuh.onmicrosoft.com\","
+                              "\"auth_path\":\"/var/ossec/wodles/azure/graph.txt\",\"requests\":["
+                              "{\"tag\":\"azure-ad-graph\",\"query\":\"auditLogs/directoryAudits\",\"time_offset\":\"1d\"}]},"
+                              "{\"tag\":\"azure-storage\",\"auth_path\":\"/var/ossec/wodles/azure/storage.txt\",\"containers\":["
+                              "{\"name\":\"insights-activity-logs\",\"blobs\":\".json\",\"content_type\":\"json_inline\",\"time_offset\":\"24h\"},"
+                              "{\"name\":\"insights-operational-logs\",\"blobs\":\"*\",\"content_type\":\"file\",\"time_offset\":\"2d\","
+                              "\"prefix\":\"logs/\",\"timeout\":30}]}]}}");
+
+    cJSON_free(text);
+    cJSON_Delete(root);
+}
+
 int main(void) {
     const struct CMUnitTest tests_with_startup[] = {
         cmocka_unit_test_setup_teardown(test_interval_execution, setup_test_executions, teardown_test_executions),
@@ -611,11 +733,19 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_read_scheduling_monthday_configuration, setup_test_read, teardown_test_read),
         cmocka_unit_test_setup_teardown(test_read_scheduling_weekday_configuration, setup_test_read, teardown_test_read),
         cmocka_unit_test_setup_teardown(test_read_scheduling_daytime_configuration, setup_test_read, teardown_test_read),
-        cmocka_unit_test_setup_teardown(test_read_scheduling_interval_configuration, setup_test_read, teardown_test_read)
+        cmocka_unit_test_setup_teardown(test_read_scheduling_interval_configuration, setup_test_read, teardown_test_read),
+        cmocka_unit_test(test_dump_requests_and_containers)
+    };
+    const struct CMUnitTest tests_dump[] = {
+        cmocka_unit_test(test_azure_dump_masks_application_and_account_keys),
+        cmocka_unit_test(test_azure_dump_never_prints_a_key),
+        cmocka_unit_test(test_azure_dump_reports_keys_in_clear_when_unmasked),
+        cmocka_unit_test(test_azure_dump_reports_requests_and_containers)
     };
     int result;
     result = cmocka_run_group_tests(tests_with_startup, setup_module, teardown_module);
     result += cmocka_run_group_tests(tests_runners, setup_runners, teardown_runners);
     result += cmocka_run_group_tests(tests_without_startup, NULL, NULL);
+    result += cmocka_run_group_tests(tests_dump, NULL, NULL);
     return result;
 }

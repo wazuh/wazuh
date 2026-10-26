@@ -34,7 +34,10 @@ checks:
     name: "Ensure separate partition exists for /tmp"
     description: "The /tmp directory is a world-writable directory used for temporary storage by all users and some applications."
     rationale: "Since the /tmp directory is intended to be world-writable, there is a risk of resource exhaustion if it is not bound to a separate partition. In addition, making /tmp its own file system allows an administrator to set the noexec option on the mount, making /tmp useless for an attacker to install executable code. It would also prevent an attacker from establishing a hardlink to a system setuid program and wait for it to be updated. Once the program was updated, the hardlink would be broken and the attacker would have his own copy of the program. If the program happened to have a security vulnerability, the attacker could continue to exploit the known flaw."
-    remediation: "For new installations, during installation create a custom partition setup and specify a separate partition for /tmp.  For systems that were previously installed, create a new partition and configure /etc/fstab or the systemd tmp.mount service as appropriate."
+    remediation: |
+      For new installations, during installation create a custom partition setup and specify a separate partition for `/tmp`.
+
+      For systems that were previously installed, create a new partition and configure `/etc/fstab` or the systemd `tmp.mount` service as appropriate.
     compliance:
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
@@ -76,7 +79,14 @@ checks:
     name: "Ensure nodev option set on /tmp partition"
     description: "The nodev mount option specifies that the filesystem cannot contain special devices."
     rationale: "Since the /tmp filesystem is not intended to support devices, set this option to ensure that users cannot attempt to create block or character special devices in /tmp."
-    remediation: "Edit the /etc/fstab file and add nodev to the fourth field (mounting options) for the /tmp partition. See the fstab(5) manual page for more information.  Run the following command to remount /tmp : # mount -o remount,nodev /tmp"
+    remediation: |
+      Edit the `/etc/fstab` file and add `nodev` to the fourth field (mounting options) for the `/tmp` partition. See the `fstab(5)` manual page for more information.
+
+      Run the following command to remount `/tmp`:
+
+      ```
+      # mount -o remount,nodev /tmp
+      ```
     compliance:
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
@@ -107,7 +117,14 @@ checks:
     name: "Ensure nosuid option set on /tmp partition"
     description: "The nosuid mount option specifies that the filesystem cannot contain setuid files."
     rationale: "Since the /tmp filesystem is only intended for temporary file storage, set this option to ensure that users cannot create setuid files in /tmp."
-    remediation: "Edit the /etc/fstab file and add nosuid to the fourth field (mounting options) for the /tmp partition. See the fstab(5) manual page for more information.  Run the following command to remount /tmp : # mount -o remount,nosuid /tmp"
+    remediation: |
+      Edit the `/etc/fstab` file and add `nosuid` to the fourth field (mounting options) for the `/tmp` partition. See the `fstab(5)` manual page for more information.
+
+      Run the following command to remount `/tmp`:
+
+      ```
+      # mount -o remount,nosuid /tmp
+      ```
     compliance:
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
@@ -144,7 +161,14 @@ checks:
     name: "Ensure noexec option set on /tmp partition"
     description: "The noexec mount option specifies that the filesystem cannot contain executable binaries."
     rationale: "Since the /tmp filesystem is only intended for temporary file storage, set this option to ensure that users cannot run executable binaries from /tmp."
-    remediation: "Edit the /etc/fstab file and add noexec to the fourth field (mounting options) for the /tmp partition. See the fstab(5) manual page for more information.  Run the following command to remount /tmp : # mount -o remount,noexec /tmp"
+    remediation: |
+      Edit the `/etc/fstab` file and add `noexec` to the fourth field (mounting options) for the `/tmp` partition. See the `fstab(5)` manual page for more information.
+
+      Run the following command to remount `/tmp`:
+
+      ```
+      # mount -o remount,noexec /tmp
+      ```
     compliance:
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
@@ -181,7 +205,10 @@ checks:
     name: "Ensure separate partition exists for /var"
     description: "The /var directory is used by daemons and other system services to temporarily store dynamic data. Some directories created by these processes may be world-writable."
     rationale: "Since the /var directory may contain world-writable files and directories, there is a risk of resource exhaustion if it is not bound to a separate partition."
-    remediation: "For new installations, during installation create a custom partition setup and specify a separate partition for /var.  For systems that were previously installed, create a new partition and configure /etc/fstab as appropriate."
+    remediation: |
+      For new installations, during installation create a custom partition setup and specify a separate partition for `/var`.
+
+      For systems that were previously installed, create a new partition and configure `/etc/fstab` as appropriate.
     compliance:
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
@@ -223,7 +250,10 @@ checks:
     name: "Ensure separate partition exists for /var/log"
     description: "The /var/log directory is used by system services to store log data."
     rationale: "There are two important reasons to ensure that system logs are stored on a separate partition: protection against resource exhaustion (since logs can grow quite large) and protection of audit data."
-    remediation: "For new installations, during installation create a custom partition setup and specify a separate partition for /var/log.  For systems that were previously installed, create a new partition and configure /etc/fstab as appropriate."
+    remediation: |
+      For new installations, during installation create a custom partition setup and specify a separate partition for `/var/log`.
+
+      For systems that were previously installed, create a new partition and configure `/etc/fstab` as appropriate.
     compliance:
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
@@ -266,7 +296,10 @@ checks:
     name: "Ensure separate partition exists for /var/log/audit"
     description: "The auditing daemon, auditd , stores log data in the /var/log/audit directory."
     rationale: "There are two important reasons to ensure that data gathered by auditd is stored on a separate partition: protection against resource exhaustion (since the audit.log file can grow quite large) and protection of audit data. The audit daemon calculates how much free space is left and performs actions based on the results. If other processes (such as syslog ) consume space in the same partition as auditd, it may not perform as desired."
-    remediation: "For new installations, during installation create a custom partition setup and specify a separate partition for /var/log/audit.  For systems that were previously installed, create a new partition and configure /etc/fstab as appropriate."
+    remediation: |
+      For new installations, during installation create a custom partition setup and specify a separate partition for `/var/log/audit`.
+
+      For systems that were previously installed, create a new partition and configure `/etc/fstab` as appropriate.
     compliance:
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
@@ -309,7 +342,10 @@ checks:
     name: "Ensure separate partition exists for /home"
     description: "The /home directory is used to support disk storage needs of local users."
     rationale: "If the system is intended to support local users, create a separate partition for the /home directory to protect against resource exhaustion and restrict the type of files that can be stored under /home."
-    remediation: "For new installations, during installation create a custom partition setup and specify a separate partition for /home.  For systems that were previously installed, create a new partition and configure /etc/fstab as appropriate."
+    remediation: |
+      For new installations, during installation create a custom partition setup and specify a separate partition for `/home`.
+
+      For systems that were previously installed, create a new partition and configure `/etc/fstab` as appropriate.
     compliance:
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
@@ -352,7 +388,14 @@ checks:
     name: "Ensure nodev option set on /home partition"
     description: "The nodev mount option specifies that the filesystem cannot contain special devices."
     rationale: "Since the user partitions are not intended to support devices, set this option to ensure that users cannot attempt to create block or character special devices."
-    remediation: "Edit the /etc/fstab file and add nodev to the fourth field (mounting options) for the /home partition. See the fstab(5) manual page for more information.  # mount -o remount,nodev /home. Notes: The actions in this recommendation refer to the /home partition, which is the default user partition that is defined. If you have created other user partitions, it is recommended that the Remediation and Audit steps be applied to these partitions as well."
+    remediation: |
+      Edit the `/etc/fstab` file and add `nodev` to the fourth field (mounting options) for the `/home` partition. See the `fstab(5)` manual page for more information.
+
+      ```
+      # mount -o remount,nodev /home
+      ```
+
+      **Note:** the actions in this recommendation refer to the `/home` partition, which is the default user partition that is defined. If you have created other user partitions, it is recommended that the Remediation and Audit steps be applied to these partitions as well.
     compliance:
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
@@ -384,7 +427,20 @@ checks:
     name: "Ensure nodev option set on /dev/shm partition"
     description: "The nodev mount option specifies that the filesystem cannot contain special devices."
     rationale: "Since the /dev/shm filesystem is not intended to support devices, set this option to ensure that users cannot attempt to create special devices in /dev/shm partitions."
-    remediation: "Edit the /etc/fstab file and add nodev to the fourth field (mounting options) for the /dev/shm partition. See the fstab(5) manual page for more information.  Run the following command to remount /dev/shm : # mount -o remount,nodev /dev/shm    Notes: /dev/shm is not specified in /etc/fstab despite being mounted by default. The following line will implement the recommended /dev/shm mount options in /etc/fstab: tmpfs  /dev/shm  tmpfs  defaults,nodev,nosuid,noexec  0 0. Notes: /dev/shm is not specified in /etc/fstab despite being mounted by default. The following line will implement the recommended /dev/shm mount options in /etc/fstab: tmpfs  /dev/shm  tmpfs  defaults,nodev,nosuid,noexec  0 0"
+    remediation: |
+      Edit the `/etc/fstab` file and add `nodev` to the fourth field (mounting options) for the `/dev/shm` partition. See the `fstab(5)` manual page for more information.
+
+      Run the following command to remount `/dev/shm`:
+
+      ```
+      # mount -o remount,nodev /dev/shm
+      ```
+
+      **Note:** `/dev/shm` is not specified in `/etc/fstab` despite being mounted by default. The following line will implement the recommended `/dev/shm` mount options in `/etc/fstab`:
+
+      ```
+      tmpfs  /dev/shm  tmpfs  defaults,nodev,nosuid,noexec  0 0
+      ```
     compliance:
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
@@ -416,7 +472,20 @@ checks:
     name: "Ensure nosuid option set on /dev/shm partition"
     description: "The nosuid mount option specifies that the filesystem cannot contain setuid files."
     rationale: "Setting this option on a file system prevents users from introducing privileged programs onto the system and allowing non-root users to execute them."
-    remediation: "Edit the /etc/fstab file and add nosuid to the fourth field (mounting options) for the /dev/shm partition. See the fstab(5) manual page for more information.  Run the following command to remount /dev/shm : # mount -o remount,nosuid /dev/shm    Notes: /dev/shm is not specified in /etc/fstab despite being mounted by default. The following line will implement the recommended /dev/shm mount options in /etc/fstab: tmpfs  /dev/shm  tmpfs  defaults,nodev,nosuid,noexec  0 0. Notes: /dev/shm is not specified in /etc/fstab despite being mounted by default. The following line will implement the recommended /dev/shm mount options in /etc/fstab: tmpfs  /dev/shm  tmpfs  defaults,nodev,nosuid,noexec  0 0"
+    remediation: |
+      Edit the `/etc/fstab` file and add `nosuid` to the fourth field (mounting options) for the `/dev/shm` partition. See the `fstab(5)` manual page for more information.
+
+      Run the following command to remount `/dev/shm`:
+
+      ```
+      # mount -o remount,nosuid /dev/shm
+      ```
+
+      **Note:** `/dev/shm` is not specified in `/etc/fstab` despite being mounted by default. The following line will implement the recommended `/dev/shm` mount options in `/etc/fstab`:
+
+      ```
+      tmpfs  /dev/shm  tmpfs  defaults,nodev,nosuid,noexec  0 0
+      ```
     compliance:
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
@@ -453,7 +522,20 @@ checks:
     name: "Ensure noexec option set on /dev/shm partition"
     description: "The noexec mount option specifies that the filesystem cannot contain executable binaries."
     rationale: "Setting this option on a file system prevents users from executing programs from shared memory. This deters users from introducing potentially malicious software on the system."
-    remediation: "Edit the /etc/fstab file and add noexec to the fourth field (mounting options) for the /dev/shm partition. See the fstab(5) manual page for more information.  Run the following command to remount /dev/shm : # mount -o remount,noexec /dev/shm    Notes: /dev/shm is not specified in /etc/fstab despite being mounted by default. The following line will implement the recommended /dev/shm mount options in /etc/fstab: tmpfs  /dev/shm  tmpfs  defaults,nodev,nosuid,noexec  0 0. Notes: /dev/shm is not specified in /etc/fstab despite being mounted by default. The following line will implement the recommended /dev/shm mount options in /etc/fstab: tmpfs  /dev/shm  tmpfs  defaults,nodev,nosuid,noexec  0 0"
+    remediation: |
+      Edit the `/etc/fstab` file and add `noexec` to the fourth field (mounting options) for the `/dev/shm` partition. See the `fstab(5)` manual page for more information.
+
+      Run the following command to remount `/dev/shm`:
+
+      ```
+      # mount -o remount,noexec /dev/shm
+      ```
+
+      **Note:** `/dev/shm` is not specified in `/etc/fstab` despite being mounted by default. The following line will implement the recommended `/dev/shm` mount options in `/etc/fstab`:
+
+      ```
+      tmpfs  /dev/shm  tmpfs  defaults,nodev,nosuid,noexec  0 0
+      ```
     compliance:
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
@@ -493,7 +575,24 @@ checks:
     name: "Ensure core dumps are restricted"
     description: "A core dump is the memory of an executable program. It is generally used to determine why a program aborted. It can also be used to glean confidential information from a core file. The system provides the ability to set a soft limit for core dumps, but this can be overridden by the user."
     rationale: "Setting a hard limit on core dumps prevents users from overriding the soft variable. If core dumps are required, consider setting limits for user groups (see limits.conf(5) ). In addition, setting the fs.suid_dumpable variable to 0 will prevent setuid programs from dumping core."
-    remediation: "Add the following line to /etc/security/limits.conf or a /etc/security/limits.d/* file: * hard core 0.  Set the following parameter in /etc/sysctl.conf or a /etc/sysctl.d/* file:fs.suid_dumpable = 0.  Run the following command to set the active kernel parameter: # sysctl -w fs.suid_dumpable=0"
+    remediation: |
+      Add the following line to `/etc/security/limits.conf` or a `/etc/security/limits.d/*` file:
+
+      ```
+      * hard core 0
+      ```
+
+      Set the following parameter in `/etc/sysctl.conf` or a `/etc/sysctl.d/*` file:
+
+      ```
+      fs.suid_dumpable = 0
+      ```
+
+      Run the following command to set the active kernel parameter:
+
+      ```
+      # sysctl -w fs.suid_dumpable=0
+      ```
     compliance:
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
@@ -527,7 +626,18 @@ checks:
     name: "Ensure address space layout randomization (ASLR) is enabled"
     description: "Address space layout randomization (ASLR) is an exploit mitigation technique which randomly arranges the address space of key data areas of a process."
     rationale: "Randomly placing virtual memory regions will make it difficult to write memory page exploits as the memory placement will be consistently shifting."
-    remediation: "Set the following parameter in /etc/sysctl.conf or a /etc/sysctl.d/* file: kernel.randomize_va_space = 2.  Run the following command to set the active kernel parameter: # sysctl -w kernel.randomize_va_space=2"
+    remediation: |
+      Set the following parameter in `/etc/sysctl.conf` or a `/etc/sysctl.d/*` file:
+
+      ```
+      kernel.randomize_va_space = 2
+      ```
+
+      Run the following command to set the active kernel parameter:
+
+      ```
+      # sysctl -w kernel.randomize_va_space=2
+      ```
     compliance:
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
@@ -570,7 +680,13 @@ checks:
     name: "Ensure chargen services are not enabled"
     description: "chargen is a network service that responds with 0 to 512 ASCII characters for each connection it receives. This service is intended for debugging and testing purposes. It is recommended that this service be disabled."
     rationale: "Disabling this service will reduce the remote attack surface of the system."
-    remediation: "Run the following commands to disable chargen and chargen-udp : # chkconfig chargen off # chkconfig chargen-udp off"
+    remediation: |
+      Run the following commands to disable `chargen` and `chargen-udp`:
+
+      ```
+      # chkconfig chargen off
+      # chkconfig chargen-udp off
+      ```
     compliance:
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
@@ -603,7 +719,13 @@ checks:
     name: "Ensure daytime services are not enabled"
     description: "daytime is a network service that responds with the server's current date and time. This service is intended for debugging and testing purposes. It is recommended that this service be disabled."
     rationale: "Disabling this service will reduce the remote attack surface of the system."
-    remediation: "Run the following commands to disable daytime and daytime-udp: # chkconfig daytime off # chkconfig daytime-udp off"
+    remediation: |
+      Run the following commands to disable `daytime` and `daytime-udp`:
+
+      ```
+      # chkconfig daytime off
+      # chkconfig daytime-udp off
+      ```
     compliance:
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
@@ -636,7 +758,13 @@ checks:
     name: "Ensure discard services are not enabled"
     description: "discard is a network service that simply discards all data it receives. This service is intended for debugging and testing purposes. It is recommended that this service be disabled."
     rationale: "Disabling this service will reduce the remote attack surface of the system."
-    remediation: "Run the following commands to disable discard and discard-udp: # chkconfig discard off # chkconfig discard-udp off"
+    remediation: |
+      Run the following commands to disable `discard` and `discard-udp`:
+
+      ```
+      # chkconfig discard off
+      # chkconfig discard-udp off
+      ```
     compliance:
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
@@ -669,7 +797,13 @@ checks:
     name: "Ensure echo services are not enabled"
     description: "echo is a network service that responds to clients with the data sent to it by the client. This service is intended for debugging and testing purposes. It is recommended that this service be disabled."
     rationale: "Disabling this service will reduce the remote attack surface of the system."
-    remediation: "Run the following commands to disable echo and echo-udp: # chkconfig echo off # chkconfig echo-udp off"
+    remediation: |
+      Run the following commands to disable `echo` and `echo-udp`:
+
+      ```
+      # chkconfig echo off
+      # chkconfig echo-udp off
+      ```
     compliance:
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
@@ -702,7 +836,13 @@ checks:
     name: "Ensure time services are not enabled"
     description: "timeis a network service that responds with the server's current date and time as a 32 bit integer. This service is intended for debugging and testing purposes. It is recommended that this service be disabled."
     rationale: "Disabling this service will reduce the remote attack surface of the system."
-    remediation: "Run the following commands to disable time and time-udp: # chkconfig time off # chkconfig time-udp off"
+    remediation: |
+      Run the following commands to disable `time` and `time-udp`:
+
+      ```
+      # chkconfig time off
+      # chkconfig time-udp off
+      ```
     compliance:
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
@@ -735,7 +875,14 @@ checks:
     name: "Ensure rsh server is not enabled"
     description: "The Berkeley rsh-server (rsh, rlogin, rexec) package contains legacy services that exchange credentials in clear-text."
     rationale: "These legacy services contain numerous security exposures and have been replaced with the more secure SSH package."
-    remediation: "Run the following commands to disable rsh , rlogin , and rexec : # chkconfig rexec off # chkconfig rlogin off # chkconfig rsh off"
+    remediation: |
+      Run the following commands to disable `rsh`, `rlogin`, and `rexec`:
+
+      ```
+      # chkconfig rexec off
+      # chkconfig rlogin off
+      # chkconfig rsh off
+      ```
     compliance:
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
@@ -768,7 +915,12 @@ checks:
     name: "Ensure talk server is not enabled"
     description: "The talk software makes it possible for users to send and receive messages across systems through a terminal session. The talk client (allows initiate of talk sessions) is installed by default."
     rationale: "The software presents a security risk as it uses unencrypted protocols for communication."
-    remediation: "Run the following command to disable talk: # chkconfig talk off"
+    remediation: |
+      Run the following command to disable `talk`:
+
+      ```
+      # chkconfig talk off
+      ```
     compliance:
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
@@ -801,7 +953,12 @@ checks:
     name: "Ensure telnet server is not enabled"
     description: "The telnet-server package contains the telnet daemon, which accepts connections from users from other systems via the telnet protocol."
     rationale: "The telnet protocol is insecure and unencrypted. The use of an unencrypted transmission medium could allow a user with access to sniff network traffic the ability to steal credentials. The ssh package provides an encrypted session and stronger security."
-    remediation: "Run the following command to disable telnet: # chkconfig telnet off"
+    remediation: |
+      Run the following command to disable `telnet`:
+
+      ```
+      # chkconfig telnet off
+      ```
     compliance:
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
@@ -834,7 +991,12 @@ checks:
     name: "Ensure tftp server is not enabled"
     description: "Trivial File Transfer Protocol (TFTP) is a simple file transfer protocol, typically used to automatically transfer configuration or boot machines from a boot server. The package atftp is used to define and support a TFTP server."
     rationale: "TFTP does not support authentication nor does it ensure the confidentiality or integrity of data. It is recommended that TFTP be removed, unless there is a specific need for TFTP. In that case, extreme caution must be used when configuring the services."
-    remediation: "Run the following command to disable tftp: # systemctl disable atftpd"
+    remediation: |
+      Run the following command to disable tftp:
+
+      ```
+      # systemctl disable atftpd
+      ```
     compliance:
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
@@ -867,7 +1029,12 @@ checks:
     name: "Ensure rsync service is not enabled"
     description: "The rsyncd service can be used to synchronize files between systems over network links."
     rationale: "The rsyncd service presents a security risk as it uses unencrypted protocols for communication."
-    remediation: "Run the following command to disable rsyncd: # systemctl disable rsyncd"
+    remediation: |
+      Run the following command to disable rsyncd:
+
+      ```
+      # systemctl disable rsyncd
+      ```
     compliance:
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
@@ -900,7 +1067,12 @@ checks:
     name: "Ensure xinetd is not enabled"
     description: "The eXtended InterNET Daemon ( xinetd ) is an open source super daemon that replaced the original inetd daemon. The xinetd daemon listens for well known services and dispatches the appropriate daemon to properly respond to service requests."
     rationale: "If there are no xinetd services required, it is recommended that the daemon be disabled."
-    remediation: "Run the following command to disable xinetd : # systemctl disable xinetd"
+    remediation: |
+      Run the following command to disable `xinetd`:
+
+      ```
+      # systemctl disable xinetd
+      ```
     compliance:
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
@@ -936,7 +1108,25 @@ checks:
     name: "Ensure ntp is configured"
     description: "ntp is a daemon which implements the Network Time Protocol (NTP). It is designed to synchronize system clocks across a variety of systems and use a source that is highly accurate. More information on NTP can be found at https://tools.ietf.org/html/rfc958. ntp can be configured to be a client and/or a server.  This recommendation only applies if ntp is in use on the system."
     rationale: "If ntp is in use on the system proper configuration is vital to ensuring time synchronization is working properly."
-    remediation: "Add or edit restrict lines in /etc/ntp.conf to match the following: restrict -4 default kod limited nomodify notrap nopeer noquery    restrict -6 default kod limited nomodify notrap nopeer noquery    Add or edit server or pool lines to /etc/ntp.conf as appropriate: server <remote-server>    Add or edit the NTPD_OPTIONS in /etc/sysconfig/ntp to include '-u ntp:ntp': NTPD_OPTIONS='-u ntp:ntp'"
+    remediation: |
+      Add or edit `restrict` lines in `/etc/ntp.conf` to match the following:
+
+      ```
+      restrict -4 default kod limited nomodify notrap nopeer noquery
+      restrict -6 default kod limited nomodify notrap nopeer noquery
+      ```
+
+      Add or edit `server` or `pool` lines to `/etc/ntp.conf` as appropriate:
+
+      ```
+      server <remote-server>
+      ```
+
+      Add or edit the `NTPD_OPTIONS` in `/etc/sysconfig/ntp` to include `-u ntp:ntp`:
+
+      ```
+      NTPD_OPTIONS='-u ntp:ntp'
+      ```
     compliance:
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
@@ -971,7 +1161,12 @@ checks:
     name: "Ensure X Window System is not installed"
     description: "The X Window System provides a Graphical User Interface (GUI) where users can have multiple windows in which to run programs and various add on. The X Windows system is typically used on workstations where users login, but not on servers where users typically do not login."
     rationale: "Unless your organization specifically requires graphical login access via X Windows, remove it to reduce the potential attack surface."
-    remediation: "Run the following command to remove the X Windows System packages: # zypper remove xorg-x11*"
+    remediation: |
+      Run the following command to remove the X Windows System packages:
+
+      ```
+      # zypper remove xorg-x11*
+      ```
     compliance:
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
@@ -1005,7 +1200,12 @@ checks:
     name: "Ensure Avahi Server is not enabled"
     description: "Avahi is a free zeroconf implementation, including a system for multicast DNS/DNS-SD service discovery. Avahi allows programs to publish and discover services and hosts running on a local network with no specific configuration. For example, a user can plug a computer into a network and Avahi automatically finds printers to print to, files to look at and people to talk to, as well as network services running on the machine."
     rationale: "Automatic discovery of network services is not normally required for system functionality.  It is recommended to disable the service to reduce the potential attack surface."
-    remediation: "Run the following command to disable avahi-daemon : # systemctl disable avahi-daemon"
+    remediation: |
+      Run the following command to disable `avahi-daemon`:
+
+      ```
+      # systemctl disable avahi-daemon
+      ```
     compliance:
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
@@ -1038,7 +1238,12 @@ checks:
     name: "Ensure DHCP Server is not enabled"
     description: "The Dynamic Host Configuration Protocol (DHCP) is a service that allows machines to be dynamically assigned IP addresses."
     rationale: "Unless a system is specifically set up to act as a DHCP server, it is recommended that this service be disabled to reduce the potential attack surface."
-    remediation: "Run the following command to disable dhcpd : # systemctl disable dhcpd"
+    remediation: |
+      Run the following command to disable `dhcpd`:
+
+      ```
+      # systemctl disable dhcpd
+      ```
     compliance:
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
@@ -1072,7 +1277,13 @@ checks:
     name: "Ensure NFS and RPC are not enabled"
     description: "The Network File System (NFS) is one of the first and most widely distributed file systems in the UNIX environment. It provides the ability for systems to mount file systems of other servers through the network."
     rationale: "If the system does not export NFS shares or act as an NFS client, it is recommended that these services be disabled to reduce remote attack surface."
-    remediation: "Run the following commands to disable nfs and rpcbind : # systemctl disable nfs # systemctl disable rpcbind"
+    remediation: |
+      Run the following commands to disable `nfs` and `rpcbind`:
+
+      ```
+      # systemctl disable nfs
+      # systemctl disable rpcbind
+      ```
     compliance:
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
@@ -1106,7 +1317,12 @@ checks:
     name: "Ensure DNS Server is not enabled"
     description: "The Domain Name System (DNS) is a hierarchical naming system that maps names to IP addresses for computers, services and other resources connected to a network."
     rationale: "Unless a system is specifically designated to act as a DNS server, it is recommended that the service be disabled to reduce the potential attack surface."
-    remediation: "Run the following command to disable named : # systemctl disable named"
+    remediation: |
+      Run the following command to disable `named`:
+
+      ```
+      # systemctl disable named
+      ```
     compliance:
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
@@ -1139,7 +1355,14 @@ checks:
     name: "Ensure FTP Server is not enabled"
     description: "The File Transfer Protocol (FTP) provides networked computers with the ability to transfer files."
     rationale: "FTP does not protect the confidentiality of data or authentication credentials. It is recommended sftp be used if file transfer is required. Unless there is a need to run the system as a FTP server (for example, to allow anonymous downloads), it is recommended that the service be disabled to reduce the potential attack surface."
-    remediation: "Run the following command to disable vsftpd : # systemctl disable vsftpd    Notes: Additional FTP servers also exist and should be audited."
+    remediation: |
+      Run the following command to disable `vsftpd`:
+
+      ```
+      # systemctl disable vsftpd
+      ```
+
+      **Note:** additional FTP servers also exist and should be audited.
     compliance:
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
@@ -1173,7 +1396,14 @@ checks:
     name: "Ensure HTTP server is not enabled"
     description: "HTTP or web servers provide the ability to host web site content."
     rationale: "Unless there is a need to run the system as a web server, it is recommended that the service be disabled to reduce the potential attack surface."
-    remediation: "Run the following command to disable apache2 : # systemctl disable apache2    Notes: Several httpd servers exist and can use other service names. apache, apache2, lighttpd, and nginx are example services that provide an HTTP server. These and other services should also be audited."
+    remediation: |
+      Run the following command to disable `apache2`:
+
+      ```
+      # systemctl disable apache2
+      ```
+
+      **Note:** several httpd servers exist and can use other service names. `apache`, `apache2`, `lighttpd`, and `nginx` are example services that provide an HTTP server. These and other services should also be audited.
     compliance:
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
@@ -1206,7 +1436,14 @@ checks:
     name: "Ensure IMAP and POP3 server is not enabled"
     description: "dovecot is an open source IMAP and POP3 server for Linux based systems."
     rationale: "Unless POP3 and/or IMAP servers are to be provided by this system, it is recommended that the service be disabled to reduce the potential attack surface."
-    remediation: "Run the following command to disable dovecot : # systemctl disable dovecot    Notes: Several IMAP/POP3 servers exist and can use other service names. cyrus-imap is an example service that provides an IMAP/POP3 server. These and other services should also be audited."
+    remediation: |
+      Run the following command to disable `dovecot`:
+
+      ```
+      # systemctl disable dovecot
+      ```
+
+      **Note:** several IMAP/POP3 servers exist and can use other service names. `cyrus-imap` is an example service that provides an IMAP/POP3 server. These and other services should also be audited.
     compliance:
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
@@ -1240,7 +1477,12 @@ checks:
     name: "Ensure Samba is not enabled"
     description: "The Samba daemon allows system administrators to configure their Linux systems to share file systems and directories with Windows desktops. Samba will advertise the file systems and directories via the Small Message Block (SMB) protocol. Windows desktop users will be able to mount these directories and file systems as letter drives on their systems."
     rationale: "If there is no need to mount directories and file systems to Windows systems, then this service can be disabled to reduce the potential attack surface."
-    remediation: "Run the following command to disable smb : # systemctl disable smb"
+    remediation: |
+      Run the following command to disable `smb`:
+
+      ```
+      # systemctl disable smb
+      ```
     compliance:
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
@@ -1273,7 +1515,14 @@ checks:
     name: "Ensure HTTP Proxy Server is not enabled"
     description: "Squid is a standard proxy server used in many distributions and environments."
     rationale: "If there is no need for a proxy server, it is recommended that the squid proxy be disabled to reduce the potential attack surface."
-    remediation: "Run the following command to disable squid : # systemctl disable squid    Notes: Several HTTP proxy servers exist. These and other services should be checked."
+    remediation: |
+      Run the following command to disable `squid`:
+
+      ```
+      # systemctl disable squid
+      ```
+
+      **Note:** several HTTP proxy servers exist. These and other services should be checked.
     compliance:
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
@@ -1306,7 +1555,14 @@ checks:
     name: "Ensure SNMP Server is not enabled"
     description: "The Simple Network Management Protocol (SNMP) server is used to listen for SNMP commands from an SNMP management system, execute the commands or collect the information and then send results back to the requesting system."
     rationale: "The SNMP server can communicate using SNMP v1, which transmits data in the clear and does not require authentication to execute commands. Unless absolutely necessary, it is recommended that the SNMP service not be used. If SNMP is required the server should be configured to disallow SNMP v1."
-    remediation: "Run the following command to disable snmpd: # systemctl disable snmpd    Notes: Additional methods of disabling a service exist. Consult your distribution documentation for appropriate methods."
+    remediation: |
+      Run the following command to disable `snmpd`:
+
+      ```
+      # systemctl disable snmpd
+      ```
+
+      **Note:** additional methods of disabling a service exist. Consult your distribution documentation for appropriate methods.
     compliance:
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
@@ -1339,7 +1595,12 @@ checks:
     name: "Ensure NIS Server is not enabled"
     description: "The Network Information Service (NIS) (formally known as Yellow Pages) is a client-server directory service protocol for distributing system configuration files. The NIS server is a collection of programs that allow for the distribution of configuration files."
     rationale: "The NIS service is inherently an insecure system that has been vulnerable to DOS attacks, buffer overflows and has poor authentication for querying NIS maps. NIS generally been replaced by such protocols as Lightweight Directory Access Protocol (LDAP). It is recommended that the service be disabled and other, more secure services be used"
-    remediation: "Run the following command to disable ypserv : # systemctl disable ypserv"
+    remediation: |
+      Run the following command to disable `ypserv`:
+
+      ```
+      # systemctl disable ypserv
+      ```
     compliance:
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
@@ -1373,7 +1634,12 @@ checks:
     name: "Ensure NIS Client is not installed"
     description: "The Network Information Service (NIS), formerly known as Yellow Pages, is a client-server directory service protocol used to distribute system configuration files. The NIS client ( ypbind ) was used to bind a machine to an NIS server and receive the distributed configuration files."
     rationale: "The NIS service is inherently an insecure system that has been vulnerable to DOS attacks, buffer overflows and has poor authentication for querying NIS maps. NIS generally has been replaced by such protocols as Lightweight Directory Access Protocol (LDAP). It is recommended that the service be removed."
-    remediation: "Run the following command to uninstall ypbind : # zypper remove ypbind"
+    remediation: |
+      Run the following command to uninstall `ypbind`:
+
+      ```
+      # zypper remove ypbind
+      ```
     compliance:
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
@@ -1413,7 +1679,19 @@ checks:
     name: "Ensure IP forwarding is disabled"
     description: "The net.ipv4.ip_forward flag is used to tell the system whether it can forward packets or not."
     rationale: "Setting the flag to 0 ensures that a system with multiple interfaces (for example, a hard proxy), will never be able to forward packets, and therefore, never serve as a router."
-    remediation: "Set the following parameter in /etc/sysctl.conf or a /etc/sysctl.d/* file: net.ipv4.ip_forward = 0.  Run the following commands to set the active kernel parameters: # sysctl -w net.ipv4.ip_forward=0 # sysctl -w net.ipv4.route.flush=1"
+    remediation: |
+      Set the following parameter in `/etc/sysctl.conf` or a `/etc/sysctl.d/*` file:
+
+      ```
+      net.ipv4.ip_forward = 0
+      ```
+
+      Run the following commands to set the active kernel parameters:
+
+      ```
+      # sysctl -w net.ipv4.ip_forward=0
+      # sysctl -w net.ipv4.route.flush=1
+      ```
     compliance:
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
@@ -1446,7 +1724,21 @@ checks:
     name: "Ensure packet redirect sending is disabled"
     description: "ICMP Redirects are used to send routing information to other hosts. As a host itself does not act as a router (in a host only configuration), there is no need to send redirects."
     rationale: "An attacker could use a compromised host to send invalid ICMP redirects to other router devices in an attempt to corrupt routing and have users access a system set up by the attacker as opposed to a valid system."
-    remediation: "Set the following parameters in /etc/sysctl.conf or a /etc/sysctl.d/* file: net.ipv4.conf.all.send_redirects = 0    net.ipv4.conf.default.send_redirects = 0. Run the following commands to set the active kernel parameters: # sysctl -w net.ipv4.conf.all.send_redirects=0 # sysctl -w net.ipv4.conf.default.send_redirects=0 # sysctl -w net.ipv4.route.flush=1"
+    remediation: |
+      Set the following parameters in `/etc/sysctl.conf` or a `/etc/sysctl.d/*` file:
+
+      ```
+      net.ipv4.conf.all.send_redirects = 0
+      net.ipv4.conf.default.send_redirects = 0
+      ```
+
+      Run the following commands to set the active kernel parameters:
+
+      ```
+      # sysctl -w net.ipv4.conf.all.send_redirects=0
+      # sysctl -w net.ipv4.conf.default.send_redirects=0
+      # sysctl -w net.ipv4.route.flush=1
+      ```
     compliance:
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
@@ -1486,7 +1778,21 @@ checks:
     name: "Ensure source routed packets are not accepted"
     description: "In networking, source routing allows a sender to partially or fully specify the route packets take through a network. In contrast, non-source routed packets travel a path determined by routers in the network. In some cases, systems may not be routable or reachable from some locations (e.g. private addresses vs. Internet routable), and so source routed packets would need to be used."
     rationale: "Setting net.ipv4.conf.all.accept_source_route and net.ipv4.conf.default.accept_source_route to 0 disables the system from accepting source routed packets. Assume this system was capable of routing packets to Internet routable addresses on one interface and private addresses on another interface. Assume that the private addresses were not routable to the Internet routable addresses and vice versa. Under normal routing circumstances, an attacker from the Internet routable addresses could not use the system as a way to reach the private address systems. If, however, source routed packets were allowed, they could be used to gain access to the private address systems as the route could be specified, rather than rely on routing protocols that did not allow this routing."
-    remediation: "Set the following parameters in /etc/sysctl.conf or a /etc/sysctl.d/* file: net.ipv4.conf.all.accept_source_route = 0    net.ipv4.conf.default.accept_source_route = 0.  Run the following commands to set the active kernel parameters: # sysctl -w net.ipv4.conf.all.accept_source_route=0 # sysctl -w net.ipv4.conf.default.accept_source_route=0 # sysctl -w net.ipv4.route.flush=1"
+    remediation: |
+      Set the following parameters in `/etc/sysctl.conf` or a `/etc/sysctl.d/*` file:
+
+      ```
+      net.ipv4.conf.all.accept_source_route = 0
+      net.ipv4.conf.default.accept_source_route = 0
+      ```
+
+      Run the following commands to set the active kernel parameters:
+
+      ```
+      # sysctl -w net.ipv4.conf.all.accept_source_route=0
+      # sysctl -w net.ipv4.conf.default.accept_source_route=0
+      # sysctl -w net.ipv4.route.flush=1
+      ```
     compliance:
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
@@ -1523,7 +1829,21 @@ checks:
     name: "Ensure ICMP redirects are not accepted"
     description: "ICMP redirect messages are packets that convey routing information and tell your host (acting as a router) to send packets via an alternate path. It is a way of allowing an outside routing device to update your system routing tables. By setting net.ipv4.conf.all.accept_redirects to 0, the system will not accept any ICMP redirect messages, and therefore, won't allow outsiders to update the system's routing tables."
     rationale: "Attackers could use bogus ICMP redirect messages to maliciously alter the system routing tables and get them to send packets to incorrect networks and allow your system packets to be captured."
-    remediation: "Set the following parameters in /etc/sysctl.conf or a /etc/sysctl.d/* file: net.ipv4.conf.all.accept_redirects = 0    net.ipv4.conf.default.accept_redirects = 0.  Run the following commands to set the active kernel parameters: # sysctl -w net.ipv4.conf.all.accept_redirects=0 # sysctl -w net.ipv4.conf.default.accept_redirects=0 # sysctl -w net.ipv4.route.flush=1."
+    remediation: |
+      Set the following parameters in `/etc/sysctl.conf` or a `/etc/sysctl.d/*` file:
+
+      ```
+      net.ipv4.conf.all.accept_redirects = 0
+      net.ipv4.conf.default.accept_redirects = 0
+      ```
+
+      Run the following commands to set the active kernel parameters:
+
+      ```
+      # sysctl -w net.ipv4.conf.all.accept_redirects=0
+      # sysctl -w net.ipv4.conf.default.accept_redirects=0
+      # sysctl -w net.ipv4.route.flush=1
+      ```
     compliance:
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
@@ -1560,7 +1880,21 @@ checks:
     name: "Ensure secure ICMP redirects are not accepted"
     description: "Secure ICMP redirects are the same as ICMP redirects, except they come from gateways listed on the default gateway list. It is assumed that these gateways are known to your system, and that they are likely to be secure."
     rationale: "It is still possible for even known gateways to be compromised. Setting net.ipv4.conf.all.secure_redirects to 0 protects the system from routing table updates by possibly compromised known gateways."
-    remediation: "Set the following parameters in /etc/sysctl.conf or a /etc/sysctl.d/* file: net.ipv4.conf.all.secure_redirects = 0    net.ipv4.conf.default.secure_redirects = 0.  Run the following commands to set the active kernel parameters: # sysctl -w net.ipv4.conf.all.secure_redirects=0 # sysctl -w net.ipv4.conf.default.secure_redirects=0 # sysctl -w net.ipv4.route.flush=1."
+    remediation: |
+      Set the following parameters in `/etc/sysctl.conf` or a `/etc/sysctl.d/*` file:
+
+      ```
+      net.ipv4.conf.all.secure_redirects = 0
+      net.ipv4.conf.default.secure_redirects = 0
+      ```
+
+      Run the following commands to set the active kernel parameters:
+
+      ```
+      # sysctl -w net.ipv4.conf.all.secure_redirects=0
+      # sysctl -w net.ipv4.conf.default.secure_redirects=0
+      # sysctl -w net.ipv4.route.flush=1
+      ```
     compliance:
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
@@ -1596,7 +1930,21 @@ checks:
     name: "Ensure suspicious packets are logged"
     description: "When enabled, this feature logs packets with un-routable source addresses to the kernel log."
     rationale: "Enabling this feature and logging these packets allows an administrator to investigate the possibility that an attacker is sending spoofed packets to their system."
-    remediation: "Set the following parameters in /etc/sysctl.conf or a /etc/sysctl.d/* file: net.ipv4.conf.all.log_martians = 1    net.ipv4.conf.default.log_martians = 1.  Run the following commands to set the active kernel parameters: # sysctl -w net.ipv4.conf.all.log_martians=1 # sysctl -w net.ipv4.conf.default.log_martians=1 # sysctl -w net.ipv4.route.flush=1."
+    remediation: |
+      Set the following parameters in `/etc/sysctl.conf` or a `/etc/sysctl.d/*` file:
+
+      ```
+      net.ipv4.conf.all.log_martians = 1
+      net.ipv4.conf.default.log_martians = 1
+      ```
+
+      Run the following commands to set the active kernel parameters:
+
+      ```
+      # sysctl -w net.ipv4.conf.all.log_martians=1
+      # sysctl -w net.ipv4.conf.default.log_martians=1
+      # sysctl -w net.ipv4.route.flush=1
+      ```
     compliance:
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
@@ -1640,7 +1988,19 @@ checks:
     name: "Ensure broadcast ICMP requests are ignored"
     description: "Setting net.ipv4.icmp_echo_ignore_broadcasts to 1 will cause the system to ignore all ICMP echo and timestamp requests to broadcast and multicast addresses."
     rationale: "Accepting ICMP echo and timestamp requests with broadcast or multicast destinations for your network could be used to trick your host into starting (or participating) in a Smurf attack. A Smurf attack relies on an attacker sending large amounts of ICMP broadcast messages with a spoofed source address. All hosts receiving this message and responding would send echo-reply messages back to the spoofed address, which is probably not routable. If many hosts respond to the packets, the amount of traffic on the network could be significantly multiplied."
-    remediation: "Set the following parameter in /etc/sysctl.conf or a /etc/sysctl.d/* file: net.ipv4.icmp_echo_ignore_broadcasts = 1    Run the following commands to set the active kernel parameters: # sysctl -w net.ipv4.icmp_echo_ignore_broadcasts=1 # sysctl -w net.ipv4.route.flush=1."
+    remediation: |
+      Set the following parameter in `/etc/sysctl.conf` or a `/etc/sysctl.d/*` file:
+
+      ```
+      net.ipv4.icmp_echo_ignore_broadcasts = 1
+      ```
+
+      Run the following commands to set the active kernel parameters:
+
+      ```
+      # sysctl -w net.ipv4.icmp_echo_ignore_broadcasts=1
+      # sysctl -w net.ipv4.route.flush=1
+      ```
     compliance:
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
@@ -1680,7 +2040,19 @@ checks:
     name: "Ensure bogus ICMP responses are ignored"
     description: "Setting icmp_ignore_bogus_error_responses to 1 prevents the kernel from logging bogus responses (RFC-1122 non-compliant) from broadcast reframes, keeping file systems from filling up with useless log messages."
     rationale: "Some routers (and some attackers) will send responses that violate RFC-1122 and attempt to fill up a log file system with many useless error messages."
-    remediation: "Set the following parameter in /etc/sysctl.conf or a /etc/sysctl.d/* file: net.ipv4.icmp_ignore_bogus_error_responses = 1. Run the following commands to set the active kernel parameters: # sysctl -w net.ipv4.icmp_ignore_bogus_error_responses=1 # sysctl -w net.ipv4.route.flush=1."
+    remediation: |
+      Set the following parameter in `/etc/sysctl.conf` or a `/etc/sysctl.d/*` file:
+
+      ```
+      net.ipv4.icmp_ignore_bogus_error_responses = 1
+      ```
+
+      Run the following commands to set the active kernel parameters:
+
+      ```
+      # sysctl -w net.ipv4.icmp_ignore_bogus_error_responses=1
+      # sysctl -w net.ipv4.route.flush=1
+      ```
     compliance:
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
@@ -1720,7 +2092,21 @@ checks:
     name: "Ensure Reverse Path Filtering is enabled"
     description: "Setting net.ipv4.conf.all.rp_filter and net.ipv4.conf.default.rp_filter to 1 forces the Linux kernel to utilize reverse path filtering on a received packet to determine if the packet was valid. Essentially, with reverse path filtering, if the return packet does not go out the same interface that the corresponding source packet came from, the packet is dropped (and logged if log_martians is set)."
     rationale: "Setting these flags is a good way to deter attackers from sending your system bogus packets that cannot be responded to. One instance where this feature breaks down is if asymmetrical routing is employed. This would occur when using dynamic routing protocols (bgp, ospf, etc) on your system. If you are using asymmetrical routing on your system, you will not be able to enable this feature without breaking the routing."
-    remediation: "Set the following parameters in /etc/sysctl.conf or a /etc/sysctl.d/* file: net.ipv4.conf.all.rp_filter = 1    net.ipv4.conf.default.rp_filter = 1. Run the following commands to set the active kernel parameters: # sysctl -w net.ipv4.conf.all.rp_filter=1 # sysctl -w net.ipv4.conf.default.rp_filter=1 # sysctl -w net.ipv4.route.flush=1"
+    remediation: |
+      Set the following parameters in `/etc/sysctl.conf` or a `/etc/sysctl.d/*` file:
+
+      ```
+      net.ipv4.conf.all.rp_filter = 1
+      net.ipv4.conf.default.rp_filter = 1
+      ```
+
+      Run the following commands to set the active kernel parameters:
+
+      ```
+      # sysctl -w net.ipv4.conf.all.rp_filter=1
+      # sysctl -w net.ipv4.conf.default.rp_filter=1
+      # sysctl -w net.ipv4.route.flush=1
+      ```
     compliance:
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
@@ -1757,7 +2143,19 @@ checks:
     name: "Ensure TCP SYN Cookies is enabled"
     description: "When tcp_syncookies is set, the kernel will handle TCP SYN packets normally until the half-open connection queue is full, at which time, the SYN cookie functionality kicks in. SYN cookies work by not using the SYN queue at all. Instead, the kernel simply replies to the SYN with a SYN|ACK, but will include a specially crafted TCP sequence number that encodes the source and destination IP address and port number and the time the packet was sent. A legitimate connection would send the ACK packet of the three way handshake with the specially crafted sequence number. This allows the system to verify that it has received a valid response to a SYN cookie and allow the connection, even though there is no corresponding SYN in the queue."
     rationale: "Attackers use SYN flood attacks to perform a denial of service attacked on a system by sending many SYN packets without completing the three way handshake. This will quickly use up slots in the kernel's half-open connection queue and prevent legitimate connections from succeeding. SYN cookies allow the system to keep accepting valid connections, even if under a denial of service attack."
-    remediation: "Set the following parameter in /etc/sysctl.conf or a /etc/sysctl.d/* file: net.ipv4.tcp_syncookies = 1. Run the following commands to set the active kernel parameters: # sysctl -w net.ipv4.tcp_syncookies=1 # sysctl -w net.ipv4.route.flush=1"
+    remediation: |
+      Set the following parameter in `/etc/sysctl.conf` or a `/etc/sysctl.d/*` file:
+
+      ```
+      net.ipv4.tcp_syncookies = 1
+      ```
+
+      Run the following commands to set the active kernel parameters:
+
+      ```
+      # sysctl -w net.ipv4.tcp_syncookies=1
+      # sysctl -w net.ipv4.route.flush=1
+      ```
     compliance:
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
@@ -1803,7 +2201,12 @@ checks:
     name: "Ensure SSH Protocol is set to 2"
     description: "SSH supports two different and incompatible protocols: SSH1 and SSH2. SSH1 was the original protocol and was subject to security issues. SSH2 is more advanced and secure."
     rationale: "SSH v1 suffers from insecurities that do not affect SSH v2."
-    remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: Protocol 2"
+    remediation: |
+      Edit the `/etc/ssh/sshd_config` file to set the parameter as follows:
+
+      ```
+      Protocol 2
+      ```
     compliance:
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
@@ -1841,7 +2244,12 @@ checks:
     name: "Ensure SSH LogLevel is set to INFO"
     description: "The INFO parameter specifies that login and logout activity will be logged."
     rationale: "SSH provides several logging levels with varying amounts of verbosity. DEBUG is specifically not recommended other than strictly for debugging SSH communications since it provides so much data that it is difficult to identify important security information. INFO level is the basic level that only records login activity of SSH users. In many situations, such as Incident Response, it is important to determine when a particular user was active on a system. The logout record can eliminate those users who disconnected, which helps narrow the field."
-    remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: LogLevel INFO"
+    remediation: |
+      Edit the `/etc/ssh/sshd_config` file to set the parameter as follows:
+
+      ```
+      LogLevel INFO
+      ```
     compliance:
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
@@ -1877,7 +2285,12 @@ checks:
     name: "Ensure SSH MaxAuthTries is set to 4 or less"
     description: "The MaxAuthTries parameter specifies the maximum number of authentication attempts permitted per connection. When the login failure count reaches half the number, error messages will be written to the syslog file detailing the login failure."
     rationale: "Setting the MaxAuthTries parameter to a low number will minimize the risk of successful brute force attacks to the SSH server. While the recommended setting is 4, set the number based on site policy."
-    remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: MaxAuthTries 4"
+    remediation: |
+      Edit the `/etc/ssh/sshd_config` file to set the parameter as follows:
+
+      ```
+      MaxAuthTries 4
+      ```
     compliance:
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
@@ -1918,7 +2331,12 @@ checks:
     name: "Ensure SSH IgnoreRhosts is enabled"
     description: "The IgnoreRhosts parameter specifies that .rhosts and .shosts files will not be used in RhostsRSAAuthentication or HostbasedAuthentication."
     rationale: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: IgnoreRhosts yes"
-    remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: IgnoreRhosts yes"
+    remediation: |
+      Edit the `/etc/ssh/sshd_config` file to set the parameter as follows:
+
+      ```
+      IgnoreRhosts yes
+      ```
     compliance:
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
@@ -1956,7 +2374,12 @@ checks:
     name: "Ensure SSH HostbasedAuthentication is disabled"
     description: "The HostbasedAuthentication parameter specifies if authentication is allowed through trusted hosts via the user of .rhosts , or /etc/hosts.equiv , along with successful public key client host authentication. This option only applies to SSH Protocol Version 2."
     rationale: "Even though the .rhosts files are ineffective if support is disabled in /etc/pam.conf, disabling the ability to use .rhosts files in SSH provides an additional layer of protection."
-    remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: HostbasedAuthentication no"
+    remediation: |
+      Edit the `/etc/ssh/sshd_config` file to set the parameter as follows:
+
+      ```
+      HostbasedAuthentication no
+      ```
     compliance:
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
@@ -1994,7 +2417,12 @@ checks:
     name: "Ensure SSH root login is disabled"
     description: "The PermitRootLogin parameter specifies if the root user can log in using ssh(1). The default is no."
     rationale: "Disallowing root logins over SSH requires system admins to authenticate using their own individual account, then escalating to root via sudo or su. This in turn limits opportunity for non-repudiation and provides a clear audit trail in the event of a security incident"
-    remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: PermitRootLogin no"
+    remediation: |
+      Edit the `/etc/ssh/sshd_config` file to set the parameter as follows:
+
+      ```
+      PermitRootLogin no
+      ```
     compliance:
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
@@ -2043,7 +2471,12 @@ checks:
     name: "Ensure SSH PermitEmptyPasswords is disabled"
     description: "The PermitEmptyPasswords parameter specifies if the SSH server allows login to accounts with empty password strings."
     rationale: "Disallowing remote shell access to accounts that have an empty password reduces the probability of unauthorized access to the system"
-    remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: PermitEmptyPasswords no"
+    remediation: |
+      Edit the `/etc/ssh/sshd_config` file to set the parameter as follows:
+
+      ```
+      PermitEmptyPasswords no
+      ```
     compliance:
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
@@ -2086,7 +2519,8 @@ checks:
     name: "Ensure root is the only UID 0 account"
     description: "Any account with UID 0 has superuser privileges on the system."
     rationale: "This access must be limited to only the default root account and only from the system console. Administrative access must be through an unprivileged account using an approved mechanism as noted in Item 5.6 Ensure access to the su command is restricted."
-    remediation: "Remove any users other than root with UID 0 or assign them a new UID if appropriate."
+    remediation: |
+      Remove any users other than root with UID 0 or assign them a new UID if appropriate.
     compliance:
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
@@ -2134,7 +2568,14 @@ checks:
     name: "Ensure password fields are not empty"
     description: "An account with an empty password field means that anybody may log in as that user without providing a password."
     rationale: "All accounts must have passwords or be locked to prevent the account from being used by an unauthorized user."
-    remediation: "If any accounts in the /etc/shadow file do not have a password, run the following command to lock the account until it can be determined why it does not have a password: # passwd -l <username>.  Also, check to see if the account is logged in and investigate what it is being used for to determine if it needs to be forced off."
+    remediation: |
+      If any accounts in the `/etc/shadow` file do not have a password, run the following command to lock the account until it can be determined why it does not have a password:
+
+      ```
+      # passwd -l <username>
+      ```
+
+      Also, check to see if the account is logged in and investigate what it is being used for to determine if it needs to be forced off.
     compliance:
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]

@@ -70,6 +70,14 @@ target_include_directories(
 # indexer_connector. It is used ONLY for the outbound WPK-repository calls -- the module's own
 # socket traffic keeps handlers/udsHttpClient, which needs libcurl error codes kept apart in a way
 # this library does not offer. It takes curl from the same wazuhext, so it adds no new dependency.
+# wazuh_uds_http_server is registered by whichever consumer's guard runs first (inventory_sync_server,
+# configured before this module, in the normal tree); the same guard here keeps this module from
+# depending on that order.
+if(NOT TARGET wazuh_uds_http_server)
+  add_subdirectory(${SRC_FOLDER}/shared_modules/uds_http_server
+                   ${CMAKE_BINARY_DIR}/shared_modules/uds_http_server EXCLUDE_FROM_ALL)
+endif()
+
 target_link_libraries(
   task_manager
   PUBLIC wazuh_metrics

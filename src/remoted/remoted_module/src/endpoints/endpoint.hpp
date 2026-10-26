@@ -89,10 +89,11 @@ namespace remoted::endpoints
         std::shared_ptr<wazuh::metrics::ICounter> unusableKey;       ///< client.keys entry does not decode.
         std::shared_ptr<wazuh::metrics::ICounter> addressNotAllowed; ///< Peer address outside the agent's ip column.
         std::shared_ptr<wazuh::metrics::ICounter> enrollmentKey; ///< /enroll: the enrollment password key is unusable.
-        std::shared_ptr<wazuh::metrics::ICounter> payloadMismatch; ///< Authenticated agent claimed another id.
-        std::shared_ptr<wazuh::metrics::ICounter> bodyTooLarge;    ///< Over the authenticated-body cap.
-        std::shared_ptr<wazuh::metrics::ICounter> badEncoding;     ///< Unsupported/undecodable Content-Encoding.
-        std::shared_ptr<wazuh::metrics::ICounter> malformed;       ///< Missing/malformed auth or protocol headers.
+        std::shared_ptr<wazuh::metrics::ICounter>
+            payloadMismatch; ///< Authenticated /stateless batch failed the H-line prefix/size check.
+        std::shared_ptr<wazuh::metrics::ICounter> bodyTooLarge; ///< Over the authenticated-body cap.
+        std::shared_ptr<wazuh::metrics::ICounter> badEncoding;  ///< Unsupported/undecodable Content-Encoding.
+        std::shared_ptr<wazuh::metrics::ICounter> malformed;    ///< Missing/malformed auth or protocol headers.
         std::shared_ptr<wazuh::metrics::ICounter>
             tokenUnknown; ///< /enroll: the bearer's `kid` names no credential-bearing enrollment token.
         std::shared_ptr<wazuh::metrics::ICounter> tokenExpired; ///< /enroll: the enrollment token has lapsed.
@@ -138,7 +139,7 @@ namespace remoted::endpoints
                                        "count"),
             manager.getOrCreateCounter(
                 METRIC_AUTH_REJECT_PAYLOAD_MISMATCH,
-                "Rejections: an authenticated agent submitted a payload claiming another agent id (security signal)",
+                "Rejections: an authenticated stateless batch has no H-line prefix or exceeds its 8 KiB limit",
                 "count"),
             manager.getOrCreateCounter(METRIC_AUTH_REJECT_BODY_TOO_LARGE,
                                        "Rejections: body over 'remoted.auth_max_body_size', or a zstd body that "

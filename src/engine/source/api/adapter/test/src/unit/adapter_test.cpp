@@ -136,7 +136,25 @@ TEST(ApiAdapterTest, CreateRequest)
     httplib::Request req;
     ASSERT_NO_THROW(req = createRequest<TestReq>(protoReq));
     ASSERT_EQ(req.body, std::get<std::string>(eMessage::eMessageToJson<TestReq>(protoReq)));
-    ASSERT_EQ(req.get_header_value("Content-Type"), "plain/text");
+    ASSERT_EQ(req.get_header_value("Content-Type"), "application/json");
+}
+
+TEST(ApiAdapterTest, ResponsesAreLabelledJson)
+{
+    TestRes protoRes;
+    protoRes.set_status(eEngine::ReturnStatus::OK);
+
+    auto ok = userResponse<TestRes>(protoRes);
+    EXPECT_EQ(ok.status, httplib::StatusCode::OK_200);
+    EXPECT_EQ(ok.get_header_value("Content-Type"), "application/json");
+
+    auto userError = userErrorResponse<TestRes>("bad request");
+    EXPECT_EQ(userError.status, httplib::StatusCode::BadRequest_400);
+    EXPECT_EQ(userError.get_header_value("Content-Type"), "application/json");
+
+    auto internalError = internalErrorResponse<TestRes>("internal");
+    EXPECT_EQ(internalError.status, httplib::StatusCode::InternalServerError_500);
+    EXPECT_EQ(internalError.get_header_value("Content-Type"), "application/json");
 }
 
 TEST(ApiAdapterTest, ParseResponse)

@@ -8,8 +8,9 @@ header** (`X509` stays an incomplete type, as in remoted's `tlsCertificateStatus
 
 It is not a certificate store and it never writes a file: the caller reads the bundle — remoted
 through its own bounded, injectable reader — and at runtime only `wazuh-manager-certs` writes one
-back (the credential resolver creates the initial, unstamped `root-ca.pem` from the manager's CA when
-it is absent, without this library). It does
+back (the credential resolver creates the initial, unstamped `root-ca.pem` from the manager's CA, only
+at `--install` and only when it is absent, without this library — `check_bundle()` in
+`src/init/credentials/wazuh-manager-resolve-credentials.py`). It does
 verify one thing, because the publication depends on it: whether the served leaf chains to the bundle
 (`leafChainsToAnyCa()`, C33). The operator-facing chain verdict, which also weighs the server
 purpose, stays in remoted's `chainValidates()`.

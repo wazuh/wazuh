@@ -48,9 +48,9 @@ TEST(DownstreamConfigTest, DefaultsWhenEmpty)
     EXPECT_EQ(config.statefulRetryAfterSec, 0);
     EXPECT_EQ(config.ioThreads, static_cast<std::size_t>(cpp_get_nproc()));
     EXPECT_EQ(config.postProcessThreads, static_cast<std::size_t>(cpp_get_nproc()));
-    // Strictly larger than the 10 MiB agent-request cap: /stats and /config echo the document back
-    // enriched, so a cap equal to the request cap would 503 a near-cap document.
-    EXPECT_EQ(config.maxResponseBodySize, 11U * 1024U * 1024U);
+    // The same 10 MiB as secure.c's remoted.downstream_max_response_body_size default, so the
+    // fallback and the deployed value cannot disagree.
+    EXPECT_EQ(config.maxResponseBodySize, 10U * 1024U * 1024U);
 }
 
 TEST(DownstreamConfigTest, StructValuesWinAndTimeoutsConvertSecondsToMs)

@@ -18,17 +18,18 @@ WAZUH_BUILD=../../../build python -m pytest -vv --log-cli-level=INFO
 ```
 
 This is what [5_testintegration_taskmanager.yml](../../../../.github/workflows/5_testintegration_taskmanager.yml)
-runs. The testtool is looked up at `$WAZUH_BUILD/bin/task_manager_testtool` (`WAZUH_BUILD` defaults to
-`build`, relative to the working directory); `--testtool /path/to/task_manager_testtool` overrides the
-lookup. When the binary is absent every test is **skipped** and pytest still exits 0, so a green run
-proves nothing until the summary shows tests passed.
+runs, with `WAZUH_BUILD` set to the workspace's build tree (`${GITHUB_WORKSPACE}/src/build`). The testtool is looked up at
+`$WAZUH_BUILD/bin/task_manager_testtool` (`WAZUH_BUILD` defaults to `build`, relative to the working
+directory); `--testtool /path/to/task_manager_testtool` overrides the lookup. When the binary is
+absent every test is **skipped** and pytest still exits 0, so a local green run proves nothing until
+the summary shows tests passed. CI runs with `-rs` and fails the job on any skip.
 
 ## What is here
 
 | File | Covers |
 | --- | --- |
-| `test_agent_tasks.py` | Creation, one-shot delivery, deterministic ids, bulk, payload and timestamp limits, restart durability |
-| `test_manager_tasks.py` | Claim to completion, the retry and deferral ladders, coalescing, admission shedding, paging, and the recovery cases |
+| `test_agent_tasks.py` | Creation, one-shot delivery, deterministic ids, bulk, payload and timestamp limits, invalid JSON, the unknown-route `404`, `/v1/health`, `/v1/metrics`, restart durability |
+| `test_manager_tasks.py` | Claim to completion, the retry and deferral ladders, coalescing, admission shedding, lookup, paging and counting, the recovery cases, and a WAL checkpoint while the module runs |
 | `test_agent_upgrade.py` | The two upgrade routes against a stub repository: one fetch and one download per platform for a whole fleet, SHA-1 verification, the delivery gates, custom WPKs, the always-200 envelope, the disabled module and shutdown answering parked requests |
 | `helpers/task_client.py` | The HTTP-over-UDS client, and the stub consumer whose answers each test scripts |
 | `helpers/wpk_repo.py` | `StubWpkRepository`: a TCP server serving `versions` files and WPK bodies, counting every request |

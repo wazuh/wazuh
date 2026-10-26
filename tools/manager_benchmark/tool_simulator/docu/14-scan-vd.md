@@ -42,17 +42,17 @@ like a VD session's `Start.feed_offset` — one order for both, so a lane cannot
 different offsets:
 
 1. the step's own `feed_offset` (a contract scenario pinning a deliberate mismatch);
-2. `--vd-feed-offset` (environment config);
+2. `--vd-feed-offset` when non-zero (environment config);
 3. otherwise the value this agent's keepalive loop learned from `/control`, **waiting** for the
-   first notify to report one (30 s cap). The wait matters: the keepalive loop and the lane
-   goroutines start together, so without it a `scan_vd` with no `initial_delay` would race the first
-   notify and send offset 0.
+   first successful notify (30 s cap). The wait matters: the keepalive loop and the lane goroutines
+   start together, so without it a `scan_vd` with no `initial_delay` would race the first notify and
+   send offset 0. A scenario without `defaults.control.enabled` learns nothing and sends `0`.
 
 ## Responses
 
 | Outcome | Status | Recorded as | Fails the run? |
 |---|---|---|---|
-| Recorded (the scan will run) | `200 {}` | `scan_200` | no |
+| Recorded (the scan will run) | `200 {}` | `scan_200` | no (a `200` whose body is not JSON is counted here too, and **fails** the run) |
 | `feed_offset` != the node's offset | `409 {"error":"version_mismatch","current_version":N}` | `scan_409` | no |
 | VD did not record it | `503 {"error":"<cause>"}` — `scan_queue_full` (the bounded number of pending scans is reached) \| `indexer_unavailable` (no healthy indexer host) \| `feed_not_ready` \| `scanner_not_ready` \| `vd_not_initialized` \| `task_create_failed` (the task row could not be written, or the write timed out) \| `vd_unreachable` \| `vd_error` | `scan_503` | no |
 | Malformed request (`invalid_body`/`invalid_json`/`missing_type`/`invalid_type`/`missing_feed_offset`/`invalid_agent_id`) | `400` | `scan_other` | **yes** |
@@ -118,7 +118,7 @@ error, because it would mean the author expected the step to send inventory too.
 are sequential, so the real order is expressed by putting it after the inventory step, with
 `initial_delay` as the gap that lets the indexing land first:
 
-```json
+```json,fragment
 {
   "lanes": {
     "vd_linux": [

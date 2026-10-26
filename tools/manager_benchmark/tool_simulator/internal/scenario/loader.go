@@ -6,6 +6,9 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
+
+	"github.com/wazuh/wazuh/tools/manager_benchmark/tool_simulator/internal/engine"
 )
 
 // Known step kinds, so a typo is a load-time error, not a silent no-op.
@@ -17,6 +20,23 @@ var validKinds = map[string]bool{
 	"metadata": true, "groups": true, "full_resync": true,
 	"delete_agent": true, "engine": true, "raw": true,
 	"scan_vd": true, "cacerts": true, "enroll_https": true,
+}
+
+// Known session options (Start.option), in the schema's spelling and lower
+// case. Anything else is refused at load: the session builder would otherwise
+// send it as Sync, so a typo'd "VDFrist" would measure a plain sync and never
+// trigger the scan the scenario was written for.
+var validOptions = map[string]bool{
+	"Sync": true, "sync": true,
+	"VDFirst": true, "vdfirst": true,
+	"VDSync": true, "vdsync": true,
+}
+
+func checkOption(option string) error {
+	if option != "" && !validOptions[option] {
+		return fmt.Errorf("option must be \"Sync\", \"VDFirst\" or \"VDSync\" (or absent), got %q", option)
+	}
+	return nil
 }
 
 // Load reads and strictly validates a scenario file. Unknown fields and unknown
@@ -89,6 +109,9 @@ func (s *Scenario) validate() error {
 	default:
 		return fmt.Errorf("compression must be \"zstd\", \"none\" or absent, got %q", s.Defaults.Compression)
 	}
+	if err := checkOption(s.Defaults.Option); err != nil {
+		return fmt.Errorf("defaults: %w", err)
+	}
 	// Absent degrades to plain in uds mode on its own (CompressionFor); only an
 	// EXPLICIT zstd is a contradiction worth refusing.
 	if s.Defaults.Compression == "zstd" && s.Mode != "agent" {
@@ -118,15 +141,82 @@ func (s *Scenario) validate() error {
 	return nil
 }
 
+// validateHeader refuses a header shape the run could not send as written: a
+// negative knob, an unknown id position, a padding size some agent of the
+// fleet cannot reach, or, in agent mode, a header remoted would answer 400.
+func (s *Scenario) validateHeader(where, fleetName string, h *engine.HeaderSpec) error {
+	if h == nil {
+		return nil
+	}
+	if h.Profile != "" && h.Profile != engine.ProfileAgent {
+		return fmt.Errorf("%s: header.profile must be %q or absent, got %q", where, engine.ProfileAgent, h.Profile)
+	}
+	if h.Profile == engine.ProfileAgent && h.IDPosition != "" {
+		return fmt.Errorf("%s: header.id_position does not apply to the %q profile, whose members are sorted by name as the agent sends them",
+			where, engine.ProfileAgent)
+	}
+	for _, knob := range []struct {
+		name  string
+		value int
+	}{
+		{"pad_bytes", h.PadBytes}, {"extra_fields", h.ExtraFields},
+		{"off_path_fields", h.OffPathFields}, {"change_every", h.ChangeEvery},
+	} {
+		if knob.value < 0 {
+			return fmt.Errorf("%s: header.%s must not be negative", where, knob.name)
+		}
+	}
+	if h.IDPosition != "" && h.IDPosition != "first" && h.IDPosition != "last" {
+		return fmt.Errorf("%s: header.id_position must be \"first\" or \"last\", got %q", where, h.IDPosition)
+	}
+	minBytes := engine.MinHeaderBytesFor(s.widestHeaderInfo(fleetName), h)
+	if h.PadBytes > 0 && h.PadBytes < minBytes {
+		return fmt.Errorf("%s: header.pad_bytes %d is below the %d bytes this header needs", where, h.PadBytes, minBytes)
+	}
+	if s.Mode == "agent" {
+		size := minBytes
+		if h.PadBytes > size {
+			size = h.PadBytes
+		}
+		if size > engine.MaxStatelessHeaderBytes {
+			return fmt.Errorf("%s: header of %d bytes exceeds remoted's %d-byte H-line cap (every batch would be answered 400)",
+				where, size, engine.MaxStatelessHeaderBytes)
+		}
+	}
+	return nil
+}
+
+// widestHeaderInfo bounds what an "agent" profile header of fleetName carries:
+// the fleet's start block and cluster name as written, and a 64-character
+// agent name, wider than any name the sender generates.
+func (s *Scenario) widestHeaderInfo(fleetName string) *engine.AgentInfo {
+	for _, f := range s.Fleets {
+		if f.Name != fleetName {
+			continue
+		}
+		name := strings.Repeat("n", 64)
+		return &engine.AgentInfo{
+			Name: name, Version: "v" + f.Start.AgentVersion, Groups: []string{"default"},
+			Architecture: f.Start.Architecture, Hostname: name,
+			OSName: f.Start.OSName, OSPlatform: f.Start.OSPlatform,
+			OSType: f.Start.OSType, OSVersion: f.Start.OSVersion,
+			ClusterName: s.Defaults.ClusterName,
+		}
+	}
+	return nil
+}
+
 func (s *Scenario) validateStep(fleet, lane string, i int, step Step) error {
 	where := fmt.Sprintf("fleet %q lane %q step %d", fleet, lane, i)
 	if !validKinds[step.Kind] {
 		return fmt.Errorf("%s: unknown kind %q", where, step.Kind)
 	}
+	if err := checkOption(step.Option); err != nil {
+		return fmt.Errorf("%s: %w", where, err)
+	}
 	if step.Kind == "engine" {
-		if s.Mode != "agent" {
-			return fmt.Errorf("%s: engine streams need agent mode", where)
-		}
+		// Agent mode posts to remoted's POST /stateless; uds mode posts straight
+		// to the engine's POST /events/enriched on --socket (docu/13).
 		if step.Engine == "" || step.Location == "" {
 			return fmt.Errorf("%s: engine step needs \"engine\" and \"location\"", where)
 		}
@@ -136,6 +226,19 @@ func (s *Scenario) validateStep(fleet, lane string, i int, step Step) error {
 		if step.EventsPerBatch < 0 {
 			return fmt.Errorf("%s: events_per_batch must not be negative", where)
 		}
+		if err := s.validateHeader(where, fleet, step.Header); err != nil {
+			return err
+		}
+		if err := validateBatching(where, step); err != nil {
+			return err
+		}
+	}
+	if step.Kind != "engine" && step.Header != nil {
+		return fmt.Errorf("%s: header only applies to engine steps", where)
+	}
+	if step.Kind != "engine" && (step.Batching != "" || step.BatchSizeBytes != 0 || step.BatchInterval != 0 ||
+		step.RetryMaxAttempts != 0 || step.StartJitter != nil) {
+		return fmt.Errorf("%s: batching, batch_size_bytes, batch_interval, retry_max_attempts and start_jitter only apply to engine steps", where)
 	}
 	if step.Kind != "engine" && (step.EventsPerSecond != 0 || step.EventsPerBatch != 0) {
 		return fmt.Errorf("%s: events_per_second/events_per_batch only apply to engine steps", where)
@@ -211,4 +314,35 @@ func (s *Scenario) LaneOption(step Step) string {
 		return step.Option
 	}
 	return s.Defaults.Option
+}
+
+// validateBatching refuses an engine step's batching knobs that the run could
+// not honour: an unknown mode, a negative size, interval, budget or jitter, an
+// agent-only knob on a "count" step, or an events_per_batch on an "agent" step
+// (whose batches are sized by bytes, as the agent's are).
+func validateBatching(where string, step Step) error {
+	switch step.Batching {
+	case "", BatchingCount, BatchingAgent:
+	default:
+		return fmt.Errorf("%s: batching must be %q or %q, got %q", where, BatchingCount, BatchingAgent, step.Batching)
+	}
+	if step.BatchSizeBytes < 0 || step.BatchInterval < 0 || step.RetryMaxAttempts < 0 {
+		return fmt.Errorf("%s: batch_size_bytes, batch_interval and retry_max_attempts must not be negative", where)
+	}
+	if step.StartJitter != nil && *step.StartJitter < 0 {
+		return fmt.Errorf("%s: start_jitter must not be negative", where)
+	}
+	if step.AgentBatching() {
+		if step.EventsPerSecond <= 0 {
+			return fmt.Errorf("%s: %q batching needs events_per_second > 0: the buffer fills at that rate", where, BatchingAgent)
+		}
+		if step.EventsPerBatch != 0 {
+			return fmt.Errorf("%s: events_per_batch does not apply to %q batching, which flushes by batch_size_bytes or batch_interval", where, BatchingAgent)
+		}
+		return nil
+	}
+	if step.BatchSizeBytes != 0 || step.BatchInterval != 0 || step.RetryMaxAttempts != 0 {
+		return fmt.Errorf("%s: batch_size_bytes, batch_interval and retry_max_attempts need batching %q", where, BatchingAgent)
+	}
+	return nil
 }

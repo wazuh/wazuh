@@ -72,6 +72,15 @@ class StorageBlobOffset(Base):
     processed_bytes = Column(Integer, nullable=False)
 
 
+class LogAnalyticsIngestion(Base):
+    """Ingestion time and TimeGenerated of the last record processed for each Log Analytics query, in the order the
+    results are sorted, so later runs also get the records ingested after a run with an older TimeGenerated."""
+    __tablename__ = 'log_analytics_ingestion'
+    md5 = Column(Text, primary_key=True)
+    ingestion_time = Column(Text, nullable=False)
+    time_generated = Column(Text, nullable=False)
+
+
 class AzureORMError(Exception):
     pass
 
@@ -208,6 +217,53 @@ def update_row(table: Base, md5: str, min_date: str, max_date: str, query: str =
         if query:
             row_data['query'] = query
         session.execute(update(table).where(table.md5 == md5).values(row_data))
+        session.commit()
+    except (IntegrityError, OperationalError, StatementError) as e:
+        session.rollback()
+        raise AzureORMError(str(e))
+
+
+def get_ingestion_cursor(md5: str) -> Optional[LogAnalyticsIngestion]:
+    """Get the last record processed for a Log Analytics query.
+
+    Parameters
+    ----------
+    md5 : str
+        md5 value of the workspace and query.
+
+    Returns
+    -------
+    Optional[LogAnalyticsIngestion]
+        The row object if present, None otherwise.
+
+    Raises
+    ------
+    AzureORMError
+    """
+    try:
+        return session.scalars(select(LogAnalyticsIngestion).filter_by(md5=md5)).first()
+    except (IntegrityError, OperationalError, AttributeError) as e:
+        raise AzureORMError(str(e))
+
+
+def set_ingestion_cursor(md5: str, ingestion_time: str, time_generated: str):
+    """Store the last record processed for a Log Analytics query.
+
+    Parameters
+    ----------
+    md5 : str
+        md5 value of the workspace and query.
+    ingestion_time : str
+        Ingestion time of the record.
+    time_generated : str
+        TimeGenerated of the record.
+
+    Raises
+    ------
+    AzureORMError
+    """
+    try:
+        session.merge(LogAnalyticsIngestion(md5=md5, ingestion_time=ingestion_time, time_generated=time_generated))
         session.commit()
     except (IntegrityError, OperationalError, StatementError) as e:
         session.rollback()

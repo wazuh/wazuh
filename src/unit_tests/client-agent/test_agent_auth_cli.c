@@ -706,6 +706,7 @@ static void test_stale_pidfile_is_not_a_running_agent(void **state) {
     fclose(err);
 
     assert_null(strstr(err_buf, "wazuh-agentd is running"));
+    assert_null(strstr(out_buf, "stop wazuh-agentd"));
 
     snprintf(path, sizeof(path), "%s/wazuh-agentd-%d.pid", OS_PIDFILE, FAKE_AGENTD_PID);
     assert_int_equal(IsFile(path), 0);
@@ -737,6 +738,8 @@ static void test_dry_run_writes_nothing(void **state) {
      * soon as stdout was redirected. */
     assert_non_null(strstr(out_buf, "would enroll with manager=siem.example.local"));
     assert_non_null(strstr(out_buf, "would REPLACE the registration id=003"));
+    /* Every guard the real run applies is satisfied, so none is named. */
+    assert_null(strstr(out_buf, "will refuse"));
     assert_non_null(strstr(out_buf, "nothing was contacted"));
     assert_string_equal(err_buf, "");
 
@@ -1170,9 +1173,65 @@ static void test_dry_run_previews_instead_of_refusing(void **state) {
 
     assert_non_null(strstr(out_buf, "would enroll with manager="));
     assert_non_null(strstr(out_buf, "would REPLACE the registration id=003"));
+    /* Previewed, but not passed off as a run that will go through. */
+    assert_non_null(strstr(out_buf, "use --force-enroll in the real run, or it will refuse"));
     assert_non_null(strstr(out_buf, "nothing was contacted"));
     assert_string_equal(err_buf, "");
     assert_int_equal(FileSize(KEYS_FILE), (int64_t) strlen(EXISTING_KEY_LINE));
+}
+
+/* The agentd guard is skipped by a dry run like the others, so it is named the same way. */
+static void test_dry_run_names_a_running_agentd(void **state) {
+    (void) state;
+    agent_auth_opts_t opts;
+    char out_buf[1024] = {0};
+    char err_buf[2048] = {0};
+    char token[] = TOKEN_PIN_ONLY;
+    FILE *in = fmemopen(token, strlen(token), "r");
+    FILE *out = fmemopen(out_buf, sizeof(out_buf), "w");
+    FILE *err = fmemopen(err_buf, sizeof(err_buf), "w");
+
+    g_agentd_alive = true;
+    seed_agentd_pidfile(FAKE_AGENTD_PID);
+    w_agent_auth_opts_init(&opts);
+    opts.dry_run = true;
+
+    assert_int_equal(w_agent_auth_run(&opts, in, out, err), AGENT_AUTH_OK);
+
+    fclose(in);
+    fclose(out);
+    fclose(err);
+
+    assert_non_null(strstr(out_buf, "stop wazuh-agentd (pid 4711) before the real run"));
+    assert_non_null(strstr(out_buf, "nothing was contacted"));
+    assert_string_equal(err_buf, "");
+}
+
+/* --certs-only on an agent that was never enrolled previews the anchor, and says the real run
+ * stops before installing it. */
+static void test_certs_only_dry_run_names_the_missing_enrollment(void **state) {
+    (void) state;
+    agent_auth_opts_t opts;
+    char out_buf[1024] = {0};
+    char err_buf[2048] = {0};
+    char token[] = TOKEN_PIN_ONLY;
+    FILE *in = fmemopen(token, strlen(token), "r");
+    FILE *out = fmemopen(out_buf, sizeof(out_buf), "w");
+    FILE *err = fmemopen(err_buf, sizeof(err_buf), "w");
+
+    w_agent_auth_opts_init(&opts);
+    opts.certs_only = true;
+    opts.dry_run = true;
+
+    assert_int_equal(w_agent_auth_run(&opts, in, out, err), AGENT_AUTH_OK);
+
+    fclose(in);
+    fclose(out);
+    fclose(err);
+
+    assert_non_null(strstr(out_buf, "would install anchor manager="));
+    assert_non_null(strstr(out_buf, "run without --certs-only to enroll this agent"));
+    assert_string_equal(err_buf, "");
 }
 
 /* --certs-only refreshes trust material, so an agent with no registration has nothing to
@@ -1355,6 +1414,8 @@ static void test_certs_only_dry_run_previews_the_config_rewrite(void **state) {
     assert_non_null(strstr(out_buf, "would install anchor manager=new.example.local:1518"));
     assert_non_null(strstr(out_buf, "would point <manager><endpoint> at 'new.example.local:1518'"));
     assert_non_null(strstr(out_buf, "nothing was contacted"));
+    /* Enrolled, so --certs-only has trust to refresh and the real run goes through. */
+    assert_null(strstr(out_buf, "will refuse"));
     assert_string_equal(err_buf, "");
     /* Contacted nothing: a preview must not reach the manager for the anchor either. */
     assert_int_equal(g_fetch_calls, 0);
@@ -1670,6 +1731,9 @@ int main(void) {
                                         teardown_test),
         cmocka_unit_test_setup_teardown(test_registered_is_decided_by_content_not_by_shape, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_dry_run_previews_instead_of_refusing, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_dry_run_names_a_running_agentd, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_certs_only_dry_run_names_the_missing_enrollment, setup_test,
+                                        teardown_test),
         cmocka_unit_test_setup_teardown(test_certs_only_refuses_when_not_enrolled, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_certs_only_needs_no_force_enroll, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_certs_only_is_idempotent, setup_test, teardown_test),

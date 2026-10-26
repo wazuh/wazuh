@@ -14,12 +14,15 @@
 #include "https_client.h"
 
 #include <cstdlib>
+#include <functional>
 #include <optional>
 #include <string>
+#include <utility>
 
 /**
- * @brief Where the reporter pulls the /stats and /config snapshots. Injected
- *        so the reporter can be unit-tested without C callbacks.
+ * @brief Where the reporter pulls the /stats and /config snapshots and the
+ *        agent metadata it stamps on them. Injected so the reporter can be
+ *        unit-tested without C callbacks.
  */
 class ICollectorSource
 {
@@ -27,6 +30,10 @@ class ICollectorSource
         virtual ~ICollectorSource() = default;
         virtual std::optional<std::string> collectStats() = 0;
         virtual std::optional<std::string> collectConfig() = 0;
+
+        /// The same `{"agent":{...},"cluster":{...}}` JSON the /stateless H line
+        /// carries, or "" while the metadata is not available.
+        virtual std::string collectAgentMetadata() = 0;
 };
 
 /**
@@ -37,8 +44,9 @@ class ICollectorSource
 class CallbackCollectorSource final : public ICollectorSource
 {
     public:
-        explicit CallbackCollectorSource(const hc_callbacks_t& callbacks)
+        CallbackCollectorSource(const hc_callbacks_t& callbacks, std::function<std::string()> collectAgentMetadata)
             : m_callbacks(callbacks)
+            , m_collectAgentMetadata(std::move(collectAgentMetadata))
         {
         }
 
@@ -50,6 +58,11 @@ class CallbackCollectorSource final : public ICollectorSource
         std::optional<std::string> collectConfig() override
         {
             return invoke(m_callbacks.collect_config);
+        }
+
+        std::string collectAgentMetadata() override
+        {
+            return m_collectAgentMetadata ? m_collectAgentMetadata() : std::string();
         }
 
     private:
@@ -73,6 +86,7 @@ class CallbackCollectorSource final : public ICollectorSource
         }
 
         hc_callbacks_t m_callbacks;
+        std::function<std::string()> m_collectAgentMetadata;
 };
 
 #endif // _HC_COLLECTOR_SOURCE_HPP

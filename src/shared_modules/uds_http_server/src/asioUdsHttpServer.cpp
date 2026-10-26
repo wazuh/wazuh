@@ -1301,6 +1301,13 @@ namespace wazuh::uds_http
         /// Bind, permission and listen, in an order where any failure leaves nothing running.
         void bindAcceptor()
         {
+            // Every consumer names its own socket. An empty path is not refused by bind(): Linux
+            // autobinds an abstract address nobody can find, and the server would "start" unreachable.
+            if (socketPath.empty())
+            {
+                throw std::runtime_error {"no socket path configured: the server needs a path to bind to"};
+            }
+
             // sockaddr_un::sun_path is famously short and asio's own failure here is opaque, so the
             // limit is checked up front with a message that names both the path and the cap.
             constexpr std::size_t SUN_PATH_MAX {sizeof(::sockaddr_un::sun_path)};

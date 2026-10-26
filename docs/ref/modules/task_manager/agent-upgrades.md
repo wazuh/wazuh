@@ -52,7 +52,10 @@ a single database transaction. A 500-agent request against one platform costs on
 download and one transaction — not 500 of each.
 
 **The response is a per-agent envelope**, so one agent failing its version check does not affect the
-rest of the request.
+rest of the request. The Server API keeps that shape: an agent refused with any per-agent verdict
+(errors 6 to 16, and 18) is a failed item in the response, while the agents whose task was created in
+the same answer are still reported as affected (see the
+[per-agent codes](api-reference.md#agent-upgrade-routes)).
 
 `wpk_version` is empty for a custom WPK, which the delivery side reads as a 5.x target.
 
@@ -64,7 +67,7 @@ chunk and retrying.
 
 Task IDs are derived deterministically from `agent_id`, `task_type` and the request timestamp
 forwarded by the API, so the same request reaching several cluster nodes produces the same
-`task_id` and does not schedule the upgrade twice.
+`task_id` on each, and a repeated request on one node is one row rather than two.
 
 ---
 
@@ -77,7 +80,7 @@ forwarded by the API, so the same request reaching several cluster nodes produce
 | Target version ≤ current agent version | Rejected (error 10) unless `force_upgrade` is set; repository path only |
 | Target version > manager version | Rejected (error 11) unless `force_upgrade` is set; repository path only |
 | Upgrade target ≥ `v5.0.0` and the resolved `remote.https.verification_mode` is not `none` (it is `certificate` when `remote.https.ca` is set and the mode is not) | Rejected (error 16). The repository path allows `force_upgrade` to override, with a logged warning; the custom-WPK path treats every file as a 5.x target, has no `force` parameter and so cannot be overridden |
-| Agent below `v5.0.0` and `remote.legacy.enabled` false | Rejected (error 18) — there would be no way to deliver the task. Not overridable |
+| Agent below `v5.0.0` and `remote.legacy.enabled` false (also when the `<legacy>` block is absent, which disables it) | Rejected (error 18) — there would be no way to deliver the task. Not overridable |
 
 The two `remote` checks are skipped for every agent when modulesd could not read the `remote`
 section at start-up.
@@ -141,15 +144,12 @@ of it. Progress is observable through the agent's reported version, the agent's 
 
 | Socket | Direction | Purpose |
 | --- | --- | --- |
-| `queue/sockets/task-http.sock` | Inbound | `POST /v1/agents/upgrade` and `POST /v1/agents/upgrade-custom` from the Server API (and the `agent_upgrade` CLI, which goes through it) |
+| `queue/sockets/task-http.sock` | Inbound | `POST /v1/agents/upgrade` and `POST /v1/agents/upgrade-custom` from the framework's upgrade function, which both the Server API and the `agent_upgrade` CLI call |
 
-Outbound, the only traffic is HTTPS to the WPK repository.
+Outbound, the only traffic is HTTP(S) to the WPK repository.
 
-**Both routes always answer `200`**, including for a body that could not be parsed. The per-agent
-envelope carries every verdict, and the Server API turns each entry into an exception code by adding
-1810; a non-2xx would make that client raise before it ever read the entries, replacing a precise
-per-agent reason with a generic transport error. The request fields, the envelope and every
-per-agent code are in [Agent upgrade routes](api-reference.md#agent-upgrade-routes).
+The request fields, the always-`200` per-agent envelope and every per-agent code are in
+[Agent upgrade routes](api-reference.md#agent-upgrade-routes).
 
 ---
 
@@ -164,7 +164,7 @@ Under `src/wazuh_modules/task_manager/src/upgrade/`.
 | `upgradeOrchestrator.{hpp,cpp}` | The three phases: resolve per agent, materialise per WPK, persist in one transaction |
 | `versionPolicy.{hpp,cpp}` | The version gates, including the un-forceable `v4.14.0` rule |
 | `platform.{hpp,cpp}` | Platform tables, package family and architecture naming |
-| `repoLayout.{hpp,cpp}` | The six published repository URL shapes and the two version epochs that select them |
+| `repoLayout.{hpp,cpp}` | The repository URL and WPK file-name shapes, selected by platform and by two version epochs (v3.4.0 and v4.9.0) |
 | `deliveryGate.{hpp,cpp}` | The `remote.legacy.enabled` and `verification_mode` checks |
 | `wpkCache.{hpp,cpp}` | One download per file, stage-then-rename, digest memo |
 | `versionsCache.{hpp,cpp}` | One `versions` fetch per repository path, TTL-cached |

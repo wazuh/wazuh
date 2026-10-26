@@ -11,6 +11,8 @@ once per `synchronize()`, turns the outcome into the per-space status `GET /stat
 persists what the router does not record — when each space last updated and whether its remote
 policy is enabled.
 
+Operator view (spaces, the synchronization process, the `analysisd.cm_sync_*` and `analysisd.cmsync_indexer_connector_*` settings): the engine's [Synchronization process](../../../../docs/ref/modules/engine/README.md#synchronization-process) and [Synchronization settings](../../../../docs/ref/modules/engine/configuration.md#synchronization).
+
 ## Architecture
 
 ```
@@ -56,6 +58,9 @@ space's status:
 
 After each cycle the space's `available` and `hash` are read back from the sink's deployment, and
 `enabled` from the policy's metadata when the cycle probed it. A change to `enabled` is persisted.
+`enabled` is the sink's verdict, not the raw flag: a policy that is disabled, has no integrations or
+has no root decoder (`root_decoder` missing, `null`, `""` or not a string) counts as disabled, and the
+sink removes the space's route and namespace.
 
 `FailedTransport` and `FailedSink` are retried within the run by `cmcontent::runWithRetries`, up to
 `analysisd.cmsync_indexer_connector_max_retries` attempts,
@@ -122,6 +127,16 @@ cmsync/
 ```cpp
 namespace cm::sync
 {
+struct SpaceStatus
+{
+    std::string name;                 // "standard", "custom"
+    bool available {false};           // a route serves the space
+    bool enabled {false};             // remote policy enabled (see "Per space, per run")
+    base::SyncStatus status {base::SyncStatus::READY};
+    std::string hash;                 // hash of the deployed ruleset
+    uint32_t lastSuccessfulUpdate {0};
+};
+
 class ICMSync
 {
 public:
@@ -140,6 +155,9 @@ public:
            const cmcontent::Options& contentOptions,
            cmcontent::RetryPolicy retry);
 };
+
+// Next-cycle delay while a space has no route: min(retry, sync); main.cpp treats 0 as "no early retry".
+constexpr std::size_t earlyRetryInterval(std::size_t retryInterval, std::size_t syncInterval);
 }
 ```
 
@@ -157,7 +175,7 @@ public:
 
 - **Unit** — one topic per tracked space whose sink is also its token store, orphan collection at
   startup, the record and the deployment read back, a malformed record rejected, the status table
-  above, retries, shutdown.
+  above, retries, shutdown, the early-retry return value and `earlyRetryInterval()`.
 - **Component** — `CMSync` over real registrations with the router and stores faked: a cycle
   against an empty indexer defers or finds nothing without failing, and shutdown stops the run.
 - The download and deployment are covered by `cmcontent_utest` and `content_manager_utest`.
@@ -166,5 +184,5 @@ public:
 
 | Module | Dependency | Role |
 |---|---|---|
-| `main.cpp` | `cmsync::cmsync` | Builds `CMSync` and the `cm-sync-task` that runs it |
+| `main.cpp` | `cmsync::cmsync` | Builds `CMSync` (only when event processing is enabled) and the `cm-sync-task` that runs it |
 | `api::status` | `cmsync::icmsync` | Reports per-space status through `GET /status` |

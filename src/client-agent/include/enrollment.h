@@ -68,6 +68,32 @@ int w_enrollment_build_request(w_enroll_request_t *out);
 void w_enroll_request_destroy(w_enroll_request_t *request);
 
 /**
+ * @brief What a refused /enroll response says about why, whichever error envelope carried it.
+ *
+ * Read once, by w_enrollment_parse_error(), for every consumer: the log line
+ * w_enrollment_process_response() writes and the reason wazuh-agent-auth (and the Windows
+ * enrollment dialog that reads it) shows must not disagree about what the manager said.
+ */
+typedef struct w_enroll_error_t {
+    char message[256];     /**< The manager's reason, "" when it gave none. */
+    char auth_class[64];   /**< The nested envelope's string `code` (a 401's class), or "". */
+    int authd_code;        /**< The nested envelope's numeric `code`, 0 when absent. */
+    bool has_numeric_code; /**< Whether the nested envelope carried a numeric `code`, 0 included. */
+} w_enroll_error_t;
+
+/**
+ * @brief Reads the manager's reason out of a non-200 /enroll response.
+ *
+ * Understands both envelopes the manager sends on this route: the /enroll handler's nested
+ * {"error":{"code":N,"message":"..."}} and the HTTPS server's flat {"error":"<msg>","code":N}.
+ * Never fails: an unreadable body leaves @p out empty.
+ *
+ * @param result The /enroll outcome. Only http_code and body are read.
+ * @param out Filled in; zeroed first.
+ */
+void w_enrollment_parse_error(const hc_enroll_result_t *result, w_enroll_error_t *out);
+
+/**
  * @brief Parses one /enroll HTTP outcome and, on success, writes client.keys
  *        (atomically on Linux, directly on Windows -- see
  *        w_enrollment_store_key_entry()'s platform split) from the response

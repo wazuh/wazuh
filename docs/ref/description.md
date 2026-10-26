@@ -20,10 +20,11 @@ Its main responsibilities are:
   (Syscollector / IT Hygiene), configuration assessment (SCA), file integrity
   monitoring (FIM) — into the Wazuh Indexer (Inventory Sync Server), and
   vulnerability detection fed by CVE/CTI data served from the Wazuh Indexer.
-- **Management plane**: a RESTful Server API (`wazuh-manager-apid`) with RBAC,
-  and mandatory clustering (`wazuh-manager-clusterd`) — every Wazuh Server
-  installation runs as a cluster node, even single-node deployments, providing
-  horizontal scaling and high availability by default.
+- **Management plane**: a RESTful Server API (`wazuh-manager-apid`, served by
+  the master node only) with RBAC, and mandatory clustering
+  (`wazuh-manager-clusterd`) — every Wazuh Server installation runs as a
+  cluster node, and a single-node deployment is a cluster of one master
+  (see [Wazuh server cluster](modules/cluster/README.md)).
 
 The manager is a multi-daemon system installed under `/var/wazuh-manager` and
 configured through `/etc/wazuh-manager/wazuh-manager.conf`. See the

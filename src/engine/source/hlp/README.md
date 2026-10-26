@@ -107,7 +107,9 @@ The `syntax.hpp` header provides low-level combinators that build syntax parsers
 | Many1 | `many1(p)` | One or more |
 | Repeat exact | `repeat(p, n)` | Exactly n times |
 
-Basic syntax parsers: `any()`, `char_(c)`, `digit()`, `hex()`, `alnum()`, `literal(str)`, `toEnd(token)`, `toEnd()`.
+Basic syntax parsers (namespace `syntax::parsers`): `any()`, `char_(c)`, `digit()`, `hex()`, `alnum(additional = "")`,
+`literal(str, caseSensitive = true)`, `toEnd(char)`, `toEnd(string)`, `toEnd(vector<string>)`, `toEnd()`.
+The combinators live in `syntax::combinators`.
 
 ### Abstract Result
 
@@ -115,7 +117,7 @@ Basic syntax parsers: `any()`, `char_(c)`, `digit()`, `hex()`, `alnum()`, `liter
 
 - `success()` / `failure()` — outcome
 - `remaining()` — unconsumed input
-- `value()` — extracted value of type `T`
+- `hasValue()` / `value()` — whether a value was extracted, and the value of type `T`
 - `nested()` — child results from sub-parsers
 - `trace()` — parser name for error reporting
 
@@ -140,10 +142,10 @@ hlp/
 │       ├── bool.cpp                  # getBoolParser — "true"/"false"
 │       ├── ip.cpp                    # getIPParser — IPv4/IPv6 via inet_pton
 │       ├── date.cpp                  # getDateParser — chrono-based date parsing + TZDB
-│       ├── json.cpp                  # getJSONParser — rapidJSON streaming parser
+│       ├── json.cpp                  # getJSONParser — rapidjson Document over a StringStream, depth-bounded
 │       ├── xml.cpp                   # getXMLParser — pugixml parser
 │       ├── web.cpp                   # getUriParser, getUAParser, getFQDNParser
-│       ├── dsv_csv.cpp              # getDSVParser, getCSVParser — delimiter/comma separated
+│       ├── dsv_csv.cpp               # getDSVParser, getCSVParser — delimiter/comma separated
 │       ├── kvmap.cpp                 # getKVParser — key-value map parsing
 │       ├── quoted.cpp                # getQuotedParser — quoted string extraction
 │       ├── between.cpp              # getBetweenParser — match between delimiters
@@ -156,6 +158,7 @@ hlp/
 │       └── parse_field.cpp          # Field parsing implementation (for DSV/KV)
 └── test/src/unit/
     ├── hlp_test.hpp                  # Test harness and helpers
+    ├── address_space_cap.hpp         # Runs a check in a child with a capped address space (KV numeric keys)
     ├── hlp_test.cpp                  # General integration tests
     ├── text_test.cpp
     ├── literal_test.cpp
@@ -174,7 +177,8 @@ hlp/
     ├── file_test.cpp
     ├── web_test.cpp
     ├── kvmap_test.cpp
-    └── dsv_csv_test.cpp
+    ├── dsv_csv_test.cpp
+    └── parse_field_test.cpp          # getField quoting/escaping edge cases
 ```
 
 ## Public Interface
@@ -183,37 +187,41 @@ hlp/
 
 All builders follow the signature `Parser fn(const Params&)`. Each validates its `params`, constructs a syntax parser from combinators, wires up a semantic parser, and returns a composed `Parser`.
 
+`Stop` says whether the builder throws `std::runtime_error` when `params.stop` is empty ("Required") or
+does not read it at all ("—"). `Options` lists what each builder accepts; any other count or shape
+throws at build time. Builders declared in `hlp.hpp` live in namespace `hlp::parsers`.
+
 | Builder | Type Parsed | Stop | Options |
 |---------|-------------|------|---------|
-| `getTextParser` | Any text until stop | Required | — |
-| `getLiteralParser` | Exact string | — | `[literal]` |
-| `getEofParser` | End of input | — | — |
-| `getBoolParser` | `true` / `false` | Optional | — |
-| `getByteParser` | 8-bit integer | Optional | — |
-| `getShortParser` | 16-bit integer | Optional | — |
-| `getIntegerParser` | 32-bit integer | Optional | — |
-| `getLongParser` | 64-bit integer | Optional | — |
-| `getUnsignedLongParser` | Unsigned 64-bit | Optional | — |
-| `getHalfFloatParser` | 16-bit float | Optional | — |
-| `getFloatParser` | 32-bit float | Optional | — |
-| `getDoubleParser` | 64-bit float | Optional | — |
-| `getScaledFloatParser` | Scaled float | Optional | — |
-| `getBinaryParser` | Base64 string | Optional | — |
-| `getDateParser` | Date/time | Optional | `[format, locale]` or `[sample, locale]` |
-| `getIPParser` | IPv4 / IPv6 | — | — |
-| `getUriParser` | URI (ECS url) | Optional | — |
-| `getUAParser` | User-Agent | Optional | — |
-| `getFQDNParser` | Domain name | Optional | — |
-| `getFilePathParser` | File path | Optional | — |
-| `getJSONParser` | JSON value | — | — |
-| `getXMLParser` | XML document | — | — |
-| `getDSVParser` | Delimiter-separated | Required | `[delimiter, quote, escape, fields...]` |
-| `getCSVParser` | Comma-separated | Required | `[fields...]` |
-| `getKVParser` | Key-value map | Optional | `[separator, delimiter]` |
-| `getQuotedParser` | Quoted string | — | `[quote_char, escape_char]` |
-| `getBetweenParser` | Between delimiters | — | `[start, end]` |
-| `getAlphanumericParser` | Alphanumeric chars | — | — |
-| `getIgnoreParser` | Skip prefix | — | `[string_to_ignore]` |
+| `getTextParser` | Any text until stop | Required | none |
+| `getLiteralParser` | Exact string | — | exactly `[literal]` |
+| `getEofParser` | End of input | — | none |
+| `getBoolParser` | `true` / `false` | — | none |
+| `getByteParser` | 8-bit integer | — | none |
+| `getShortParser` | 16-bit integer | — | none |
+| `getIntegerParser` | 32-bit integer | — | none |
+| `getLongParser` | 64-bit integer | — | none |
+| `getUnsignedLongParser` | Unsigned 64-bit | — | none |
+| `getHalfFloatParser` | 16-bit float | — | none |
+| `getFloatParser` | 32-bit float | — | none |
+| `getDoubleParser` | 64-bit float | — | none |
+| `getScaledFloatParser` | Scaled float | — | none |
+| `getBinaryParser` | Base64 string | — | none |
+| `getDateParser` | Date/time | — | `[format]` or `[sample]`, optionally followed by a locale (default: the C/POSIX locale) |
+| `getIPParser` | IPv4 / IPv6 | — | none |
+| `getUriParser` | URI (ECS url) | Required | none |
+| `getUAParser` | User-Agent | Required | none |
+| `getFQDNParser` | Domain name | — | none |
+| `getFilePathParser` | File path | Required | none |
+| `getJSONParser` | JSON value | — | none |
+| `getXMLParser` | XML document | Required | none, or `[module]`: `default` or `windows` |
+| `getDSVParser` | Delimiter-separated | Required | `[delimiter, quote, escape, header1, header2, ...]` (at least 5; the three characters single) |
+| `getCSVParser` | Comma-separated | Required | `[header1, header2, ...]` (at least 2; delimiter `,`, quote and escape `"`) |
+| `getKVParser` | Key-value map | — | exactly `[separator, delimiter, quote, escape]` (separator ≠ delimiter, both non-empty; quote and escape single characters) |
+| `getQuotedParser` | Quoted string | — | 0–2: `[quote, escape]`, single characters, defaults `"` and `\` |
+| `getBetweenParser` | Between delimiters | — | exactly `[start, end]`, not both empty |
+| `getAlphanumericParser` | Alphanumeric chars | — | 0 or 1: `[additional_chars]` also accepted |
+| `getIgnoreParser` | Skip prefix | — | exactly `[string_to_ignore]` (non-empty); a `targetField` is rejected |
 
 ### Execution (parser.hpp)
 
@@ -242,7 +250,12 @@ namespace hlp::parser::combinator {
 void hlp::initTZDB(const std::string& path, bool autoUpdate, const std::string& forceVersion = "");
 ```
 
-Initializes the timezone database used by the date parser.
+Initializes the timezone database used by the date parser. `main.cpp` calls it with
+`<analysisd.tzdb_path>/iana`, `analysisd.tzdb_auto_update` and `analysisd.tzdb_force_version_update`
+(defaults in `conf/src/conf.cpp`; operator reference in the engine book's
+[Time-zone database](../../../../docs/ref/modules/engine/configuration.md#time-zone-database)). A forced version turns auto-update
+on and downloads that version unless it is already the loaded one; with no database present and auto-update
+disabled it throws.
 
 ## Implementation Details
 
@@ -286,6 +299,7 @@ Used by DSV/CSV and KV parsers to split delimited fields while respecting quotin
 - `getField()` — parses a single field from input with configurable delimiter, quote, and escape characters
 - `unescape()` — removes escape characters from parsed values
 - `updateDoc()` — adds a key-value to the JSON (`setNullAsMembers` for an empty value, `setStringAsMembers` otherwise); the dots of the key nest the value in both cases (`a.b=` maps to `{"a":{"b":null}}`); rejects destination paths deeper than the nesting cap. Every token of the key is written as an object member, never as an array index: `123=v` maps to `{"123":"v"}` and `a.5=v` to `{"a":{"5":"v"}}`, and the cost does not depend on the value of a numeric key
+- `hasInvalidPointerEscape()` — true when a key has a `~` not followed by `0` or `1` (or a trailing `~`): such a key is not a valid JSON Pointer token and `updateDoc()` would throw on it. `kvmap` fails the parse on it; `dsv_csv` rejects such an output name when the parser is built
 
 ### External Libraries
 
@@ -301,8 +315,8 @@ Used by DSV/CSV and KV parsers to split delimited fields while respecting quotin
 
 | Target | Type | Description |
 |--------|------|-------------|
-| `hlp` | STATIC | All parser implementations (links FastFloat, date-tz, curl, pugixml) |
-| `hlp_utest` | Executable | Unit tests (one test file per parser type) |
+| `hlp` | STATIC | All parser implementations (`base` public; FastFloat, date-tz, pthread, curl, pugixml private) |
+| `hlp_utest` | Executable | Unit tests (`ENGINE_BUILD_TEST`; one test file per parser type plus `parse_field_test.cpp`); `HLP_TEST_TZDB_PATH` is `${CMAKE_SOURCE_DIR}/external/tzdata`, the top-level tree's downloaded tzdata |
 
 ## Testing
 
@@ -316,6 +330,7 @@ Each parser has a dedicated test file (`*_test.cpp`) testing:
 
 | Consumer | Dependency | Usage |
 |----------|------------|-------|
-| **logpar** | `hlp` | Registers parser builders, compiles log format expressions into parser chains using HLP builders |
-| **schemf** | `hlp` | Uses HLP for value validation against schema types |
-| **builder** | `hlp` (via `logpar`) | HLP transform operation wrappers for event processing |
+| **logpar** | `hlp` (public) | `hlp::registerParsers()` registers the builders; compiles log format expressions into parser chains |
+| **schemf** | `hlp` (private) | Uses HLP for value validation against schema types |
+| **builder** | `hlp` (via `logpar`) | HLP transform operations (`builders/optransform/hlp.cpp`) and the parse stage |
+| **main.cpp** | `hlp` (via `logpar`) | `hlp::initTZDB()` before building `Logpar` |

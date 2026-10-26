@@ -31,12 +31,12 @@ wazuh# cd packages
 | -a, --architecture   | Target architecture: amd64, arm64                                   | amd64                   |
 | -j, --jobs           | Number of parallel jobs                                             | 2                       |
 | -r, --revision       | Package revision                                                    | 0                       |
-| -s, --store          | Destination path for the package                                    | (output folder created) |
+| -s, --store          | Destination path for the package                                    | `packages/output`       |
 | -p, --path           | Installation path for the package                                   | /var/wazuh-manager (manager), /var/ossec (agent) |
 | -d, --debug          | Build binaries with debug flags (without optimizations)             | no                      |
 | -c, --checksum       | Generate checksum on the same directory                             | no                      |
 | --dont-build-docker  | Use a locally built Docker image instead of building it             | no                      |
-| --tag                | Tag to use with the Docker image                                    | -                       |
+| --tag                | Tag to use with the Docker image                                    | latest                  |
 | --sources            | Absolute path containing the Wazuh source code to mount             | the checkout `generate_package.sh` belongs to |
 | --is_stage           | Use the release name in the package (no commit hash)                | no                      |
 | --src                | Also generate the source package                                    | no                      |
@@ -61,6 +61,8 @@ Without `--is_stage`, the 7-character commit hash (`git rev-parse --short=7 HEAD
 
 
 **Notes:**
+- With both `-b` and `--sources`, the mounted sources are built and `-b` is ignored.
+- For the manager, the package recipe (`packages/debs/SPECS/wazuh-manager/debian/rules`, `packages/rpms/SPECS/wazuh-manager.spec`) runs `install.sh` unattended inside the container to stage the package tree, with `USER_RESOLVE_CREDENTIALS="n"`: the package carries no CA, certificate or password of the build host, and its maintainer scripts issue them on the host that installs it.
 - For `--dont-build-docker` to work effectively, ensure a Docker image with the necessary build environment is already available.
 - For RPM packages, we use the following architecture equivalences:
     * amd64 -> x86_64
@@ -82,14 +84,14 @@ wazuh# cd packages/windows
 |---------------------------|---------------------------------------------------------------------|------------------------------------------------------------------|
 | -o, --output              | Name of the output zip (required)                                   | -                                                                |
 | -b, --branch              | Git branch to compile (optional)                                    | -                                                                |
-| --sources                 | Path containing local Wazuh source code (optional)                  | ../../src                                                        |
+| --sources                 | Path containing local Wazuh source code (optional)                  | the repository root (`../..`; run the script from `packages/windows`) |
 | -j, --jobs                | Number of parallel jobs (optional)                                  | 4                                                                |
 | -s, --store               | Destination path for the zip (optional)                             | current path                                                     |
 | -d, --debug               | Build binaries with debug symbols (optional)                        | no                                                               |
 | -t, --trust_verification  | Module signature verification: 0, 1 or 2 (optional)                 | 1                                                                |
 | -c, --ca_name             | Root CA required by the module signature verification (optional)    | Microsoft Identity Verification Root Certificate Authority 2020 |
 | --dont-build-docker       | Use a locally built Docker image (optional)                         | no                                                               |
-| --tag                     | Tag to use with the Docker image (optional)                         | -                                                                |
+| --tag                     | Tag to use with the Docker image (optional)                         | latest                                                           |
 
 **Module signature verification (`-t`, `-c`):**
 
@@ -124,3 +126,5 @@ gh workflow run 5_builderpackage_agent-linux.yml --ref <branch> \
 ```
 
 The manager workflow also takes `is_stage`, `debug`, `checksum`, `upload_package` (default `true`) and `id`; the agent one takes `debug` and `checksum`.
+
+On pull requests that touch its `paths:`, `5_builderpackage_manager-multiples.yml` calls the manager workflow, which compares the installed files of the package with `.github/actions/check_files/manager_base.csv` (owner, group, mode and type of every path); the calling workflow then runs the manager integration test modules selected by `.github/test_modules_manager.json` against the `.deb` that build produced. Adding, moving or re-moding an installed file therefore needs its CSV row.

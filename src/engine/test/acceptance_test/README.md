@@ -3,11 +3,16 @@
 Automated benchmark harness for the Wazuh Engine (`wazuh-manager-analysisd`).  
 Measures how resource usage and event throughput scale across different orchestrator thread counts.
 
+It runs against an **installed manager** (default home `/var/wazuh-manager`, overridable with the
+`WAZUH_HOME` environment variable), stops and starts its analysisd, and therefore needs root. It is run by
+hand; no CI workflow runs it.
+
 ## Directory Structure
 
 ```
 acceptance_test/
 ├── acceptance_test.sh          # Main orchestration script
+├── setup_dependencies.sh       # Installs Go, curl, Python and the venv (Amazon Linux 2023, Ubuntu 24.04)
 ├── requirements.txt            # Python dependencies
 ├── README.md
 ├── results/                    # Generated after a run
@@ -20,25 +25,34 @@ acceptance_test/
 └── utils/
     ├── benchmark_tool.go       # Event sender (Go)
     ├── monitor.py              # Process resource monitor (Python)
-    └── graphics_generator.py   # Chart generator (Python)
+    ├── graphics_generator.py   # Chart generator (Python)
+    ├── hardware_comparison.py  # Compares results directories from different hosts
+    └── version_comparison.py   # Compares results directories from different code versions
 ```
 
 ## How It Works
 
 For each requested thread count, `acceptance_test.sh` executes the following steps:
 
-1. **Stop** the manager (if running) and clean stale KVDB locks.
-2. **Launch** `wazuh-manager-analysisd` with `WAZUH_ORCHESTRATOR_THREADS=N`.
-3. **Wait** until the engine is ready (log line detection + route verification via `curl`).
+1. **Stop** the manager (`wazuh-manager-control stop`, if analysisd is running) and remove stale RocksDB
+   `LOCK` files under `<home>/engine` and `<home>/queue`.
+2. **Launch** `<home>/bin/wazuh-manager-analysisd` with `WAZUH_ORCHESTRATOR_THREADS=N`, after truncating
+   `<home>/logs/wazuh-manager.log`.
+3. **Wait** until the engine is ready: a line ending in `Engine started` (or `Engine started in standalone mode`) in
+   `wazuh-manager.log`, then
+   `POST /_internal/router/route/get` for the route (`--route`) on `engine-api-http.sock` via `curl`.
 4. **Start** `monitor.py` to sample CPU, memory, FDs and disk I/O every second.
 5. **Grace period** before the benchmark.
-6. **Run** `benchmark_tool.go` — sends events at the configured rate and records throughput.
+6. **Run** `benchmark_tool.go` twice — a warmup run (`bench-NT-warmup.csv`) and the measured run
+   (`bench-NT.csv`), with a grace period between them. Each sends events at the configured rate and records
+   throughput; a failed run is logged and the loop continues.
 7. **Grace period** after the benchmark.
-8. **Stop** the monitor and analysisd.
+8. **Stop** the monitor and analysisd (`wazuh-manager-control stop`).
 
 A `trap` ensures that child processes (monitor, analysisd) are cleaned up on any exit.
 
 Before the test loop starts, the script also:
+- Activates the Python virtual environment `.venv` next to the script (or `VENV_DIR`) when it exists.
 - Verifies that `python3` and `go` are available.
 - Checks / installs Python dependencies from `requirements.txt`.
 - Generates `system_report.txt` with CPU model, cores, RAM, OS version and test parameters.
@@ -51,9 +65,13 @@ Before the test loop starts, the script also:
 | **Go** | `benchmark_tool.go` |
 | **curl** | Engine route verification |
 | **psutil** (pip) | Process resource sampling |
-| **matplotlib, pandas, numpy** (pip) | Chart generation |
+| **matplotlib, seaborn, pandas, numpy** (pip) | Chart generation |
 
-Python packages are auto-installed by the script if missing.
+Python packages are auto-installed by the script if missing. `setup_dependencies.sh` (as root) installs
+everything, Go included, on Amazon Linux 2023 and Ubuntu 24.04.
+
+The input directory (`--input`) must hold `.txt` / `.log` files; the default `utils/test_logs` is not
+shipped in the repository.
 
 ## Usage
 
@@ -82,13 +100,18 @@ Python packages are auto-installed by the script if missing.
 | `--time SECS` | `10` | Benchmark sending duration |
 | `--rate EPS` | `0` | Target EPS (`0` = unlimited) |
 | `--batch SIZE` | `50` | Events per HTTP request |
-| `--input DIR` | `utils/test_logs` | Directory with `.txt` / `.log` input files |
+| `--input DIR` | `utils/test_logs` | Directory with `.txt` / `.log` input files (not shipped) |
 | `--output FILE` | `$WAZUH_HOME/logs/standard-wazuh-events-v5/standard-wazuh-events-v5.json` | Output file to watch for processed events |
 | `--grace SECS` | `5` | Grace period before & after benchmark |
 | `--monitor-interval SECS` | `1` | Monitor sampling interval |
-| `--results DIR` | `./results` | Directory for output CSVs |
+| `--results DIR` | `results/` next to the script | Directory for output CSVs |
 | `--route NAME` | `cmsync_standard` | Engine route to verify on startup |
 | `--timeout SECS` | `120` | Max wait for engine readiness |
+
+Each default can also be set through an environment variable read by the script (`THREAD_LIST`, `BT_TIME`,
+`BT_RATE`, `BT_BATCH`, `BT_INPUT`, `BT_OUTPUT`, `GRACE_SECS`, `MONITOR_INTERVAL`, `RESULTS_DIR`, `ROUTE_NAME`,
+`READY_TIMEOUT`). The `--output` default is the latest-file link of the `standard` space's
+`wazuh-events-v5` file output (`ruleset/outputs/file-output-integrations.yml`).
 
 ### Generating Charts
 
@@ -119,13 +142,13 @@ Generated charts include:
 | Column | Description |
 |--------|-------------|
 | `timestamp` | ISO-8601 timestamp |
-| `cpu_pct` | CPU usage (%) |
+| `cpu_pct` | CPU usage (%; 100 = one full core) |
 | `rss_mb` | Resident Set Size (MB) |
 | `vms_mb` | Virtual Memory Size (MB) |
 | `fds` | Open file descriptors |
 | `read_ops` / `write_ops` | Cumulative I/O operations |
 | `read_bytes` / `write_bytes` | Cumulative I/O bytes |
-| `disk_pct` | Disk usage (%) |
+| `disk_pct` | Process I/O as a percentage of total disk I/O |
 
 **`bench-NT.csv`** — one row per second:
 
@@ -141,7 +164,9 @@ Generated charts include:
 
 ### `utils/benchmark_tool.go`
 
-Sends events to the engine via Unix socket and tracks throughput.
+Sends events with `POST /events/enriched` to the engine's event socket
+(`/var/wazuh-manager/queue/sockets/engine-ingest-http.sock`) and tracks throughput by counting the lines of
+the watched output file.
 
 ```bash
 go run utils/benchmark_tool.go -h
@@ -167,11 +192,11 @@ python3 utils/monitor.py -h
 
 | Flag | Default | Description |
 |------|---------|-------------|
-| `-p, --pid PID` | | Monitor by PID |
+| `-p, --pid PID` | | Monitor by PID (one of `-p`/`-n` is required) |
 | `-n, --name NAME` | | Monitor by process name |
-| `-o, --output FILE` | `stdout` | CSV output file |
+| `-o, --output FILE` | *(required)* | CSV output file |
 | `-s, --interval SECS` | `1` | Sampling interval |
-| `--pidfile FILE` | | Write monitor PID to file |
+| `--pidfile FILE` | `monitor.pid` | Write monitor PID to file |
 | `-d, --debug` | | Enable debug logging |
 
 ### `utils/graphics_generator.py`
@@ -181,3 +206,20 @@ Reads a results directory and produces comparison charts.
 ```bash
 python3 utils/graphics_generator.py -h
 ```
+
+### `utils/hardware_comparison.py` and `utils/version_comparison.py`
+
+Compare several results directories, from different hosts or from different code versions, for the thread
+counts they have in common.
+
+```bash
+python3 utils/hardware_comparison.py -r ./results_amd::AMD -r ./results_arm::ARM -o ./hw_charts
+python3 utils/version_comparison.py -r ./results_v1::Baseline -r ./results_v2::Optimised -o ./version_charts
+```
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `-r, --results DIR[::LABEL]` | | A results directory, optionally labelled; repeatable |
+| `--scan PARENT_DIR` | | `hardware_comparison.py` only: compare every `results_*` subdirectory |
+| `-o, --output DIR` | `./hw_charts` / `./version_charts` | Output directory for images |
+| `--format FMT` | `png` | Image format (`png`, `svg`, `pdf`) |

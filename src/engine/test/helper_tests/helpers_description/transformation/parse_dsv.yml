@@ -12,6 +12,7 @@ metadata:
     of  a single value, even the “delimiting” character. If the quoting is not correctly balanced, the parser will fail.
     The “escaping” character is used to escape the “quoting” characters that are intended to be used as literal characters.
     This helper function is typically used in the map stage.
+    Output names are JSON Pointer tokens: “~0” and “~1” are the only valid escapes after “~”; a name with any other escape is rejected when the asset is built.
   keywords:
     - parser
 
@@ -38,7 +39,11 @@ arguments:
     type: string  # Accept only string
     generate: string
     source: value # includes only values
-  out:
+  out1:
+    type: string  # Accept only string
+    generate: string
+    source: value # includes only values
+  out2:
     type: string  # Accept only string
     generate: string
     source: value # includes only values
@@ -55,8 +60,8 @@ test:
       delim_char: "|"
       quote_char: "'"
       esc_char: "\\"
-      out: out1
-      out_1: out2
+      out1: out1
+      out2: out2
     target_field: any_value
     should_pass: true
     expected:
@@ -68,9 +73,9 @@ test:
       delim_char: "|"
       quote_char: "'"
       esc_char: "\\"
-      out: out1.key
-      out_2: out2/key
-      out_3: out3.key/subkey
+      out1: out1.key
+      out2: out2/key
+      out2_1: out3.key/subkey
     target_field: any_value
     should_pass: true
     expected:
@@ -87,8 +92,8 @@ test:
       delim_char: "|"
       quote_char: "\\"
       esc_char: "'"
-      out: out1
-      out_1: out2
+      out1: out1
+      out2: out2
     target_field: any_value
     should_pass: false
     description: Failure dsv parse

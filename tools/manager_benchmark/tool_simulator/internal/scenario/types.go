@@ -8,6 +8,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"time"
+
+	"github.com/wazuh/wazuh/tools/manager_benchmark/tool_simulator/internal/engine"
 )
 
 // Duration unmarshals a Go duration string ("20s", "5m").
@@ -196,6 +198,83 @@ type Step struct {
 	// the whole sample file as a single batch. One runStep pass always ships the
 	// entire file, split into ceil(lines/batch) requests.
 	EventsPerBatch int `json:"events_per_batch"`
+	// Header shapes the step's H line: size, extra members, identity
+	// position and how often it changes (engine.HeaderSpec). Absent sends the
+	// minimal header an agent sends.
+	Header *engine.HeaderSpec `json:"header,omitempty"`
+	// Batching selects how the step groups events into requests. "" or "count"
+	// (the default) sends EventsPerBatch events per request as fast as
+	// EventsPerSecond allows, and drops a batch answered 503. "agent" follows the
+	// 5.x agent's stateless stream instead (docu/13): events accumulate at
+	// EventsPerSecond, a flush sends what is buffered once it reaches
+	// BatchSizeBytes or BatchInterval has passed since the previous send ended,
+	// one request at a time, and a 503/5xx/transport failure is retried with the
+	// agent's backoff before the batch is kept for the next flush.
+	Batching string `json:"batching,omitempty"`
+	// BatchSizeBytes is the agent's <agent><batch><size>: the buffered "E" line
+	// bytes that trigger a flush and the most one request carries. 0 = 1 MiB.
+	BatchSizeBytes int `json:"batch_size_bytes,omitempty"`
+	// BatchInterval is the agent's <agent><batch><interval>. 0 = 10s.
+	BatchInterval Duration `json:"batch_interval,omitempty"`
+	// RetryMaxAttempts is the agent's per-flush try budget (statelessMaxAttempts,
+	// first try included). 0 = 5; 1 disables retries.
+	RetryMaxAttempts int `json:"retry_max_attempts,omitempty"`
+	// StartJitter delays each agent's first pass of this step by a random amount
+	// in [0, StartJitter), so a fleet started at once does not send in lockstep.
+	// Nil defaults to 0 for "count" batching and to BatchInterval for "agent"
+	// batching, whose real counterpart flushes on its own timer.
+	StartJitter *Duration `json:"start_jitter,omitempty"`
+}
+
+// Batching modes of an engine step.
+const (
+	BatchingCount = "count"
+	BatchingAgent = "agent"
+)
+
+// Agent stateless-stream defaults (src/client-agent/https_client/src/moduleConfig.hpp).
+const (
+	DefaultAgentBatchSizeBytes   = 1024 * 1024
+	DefaultAgentBatchInterval    = 10 * time.Second
+	DefaultAgentRetryMaxAttempts = 5
+)
+
+// AgentBatching reports whether the step follows the agent's stateless policy.
+func (s Step) AgentBatching() bool { return s.Batching == BatchingAgent }
+
+// AgentBatchSizeBytes resolves BatchSizeBytes with its default.
+func (s Step) AgentBatchSizeBytes() int {
+	if s.BatchSizeBytes > 0 {
+		return s.BatchSizeBytes
+	}
+	return DefaultAgentBatchSizeBytes
+}
+
+// AgentBatchInterval resolves BatchInterval with its default.
+func (s Step) AgentBatchInterval() time.Duration {
+	if s.BatchInterval > 0 {
+		return s.BatchInterval.D()
+	}
+	return DefaultAgentBatchInterval
+}
+
+// AgentRetryMaxAttempts resolves RetryMaxAttempts with its default.
+func (s Step) AgentRetryMaxAttempts() int {
+	if s.RetryMaxAttempts > 0 {
+		return s.RetryMaxAttempts
+	}
+	return DefaultAgentRetryMaxAttempts
+}
+
+// ResolvedStartJitter resolves StartJitter with the default of the step's batching mode.
+func (s Step) ResolvedStartJitter() time.Duration {
+	if s.StartJitter != nil {
+		return s.StartJitter.D()
+	}
+	if s.AgentBatching() {
+		return s.AgentBatchInterval()
+	}
+	return 0
 }
 
 // DocSpec controls document (or context) generation for a step.

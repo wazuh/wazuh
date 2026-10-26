@@ -25,13 +25,14 @@ The following table maps each `<integration>` field from Wazuh 4.x to its equiva
 | `<hook_url>`       | Notifications | Webhook URL              | Some 4.x built-in scripts (e.g. PagerDuty) had the endpoint hardcoded and did not require this field                                     |
 | `<api_key>`        | Notifications | Webhook URL / Headers    | Depending on the service, credentials may be placed in the URL, request headers, or not be needed at all                                 |
 | `<alert_format>`   | —             | No match                 | The payload format is whatever message you configure in the monitor's action.                                                            |
-| `<rule_id>`        | Alerting      | Monitor query            | Monitors use queries on index patterns instead of rule matching. The matching field is `wazuh.rule.id`, the id of the 5.x detection rule. |
+| `<rule_id>`        | Alerting      | Monitor query            | Monitors use queries on index patterns instead of rule matching. A finding's `wazuh.rule.id` is the 5.x detection rule's UUID, not the 4.x number: match the replacing rule by `wazuh.rule.title` (see [Map rule identification](rules-4x-to-5x.md#step-2-map-rule-identification)). |
 | `<level>`          | Alerting      | Monitor query            | In 4.x the field was `rule.level`; see the note below.                                                                                   |
-| `<group>`          | Alerting      | Monitor query            | The group tag referred to the internal Wazuh component that generated the data. Now, it's represented by `wazuh.integration.name`.       |
-| `<event_location>` | Alerting      | Monitor query            | The 4.x tag used a sregex expression to match Wazuh modules or log sources/files; In 5.x, there is no direct conversion. See note below. |
+| `<group>`          | Alerting      | Monitor query            | In 4.x it matched one of the alert's rule groups (`rule.groups`). In 5.x, filter on the integration that decoded the event (`wazuh.integration.name`) or on the finding's `wazuh.rule.tags`. |
+| `<event_location>` | Alerting      | Monitor query            | The 4.x tag was an `sregex` expression matched against the alert's `location` (the Wazuh module or log source/file). In 5.x there is no direct conversion. See note below. |
 | `<options>`        | Alerting      | Trigger → Action message | See below                                                                                                                                |
+| `<max_log>`, `<timeout>`, `<retries>` | — | No match           | Script execution settings of 4.x integratord; delivery is handled by the Notifications plugin.                                          |
 
-> **Note:** In 5.x, alerts are replaced by **findings**: the Wazuh Indexer's Security Analytics detectors evaluate indexed events against Sigma-based detection rules and index each match into `wazuh-findings-v5-*` (the manager's engine has no rules). The 4.x `rule.level` corresponds to the findings field `wazuh.rule.level`, which uses categorical values (low, medium, high) instead of a number. Because there is no direct conversion, you must review your existing alert thresholds and determine how best to map your legacy numeric levels to these new categories based on your organization's specific routing needs.
+> **Note:** In 5.x, alerts are replaced by **findings**: the Wazuh Indexer's Security Analytics detectors evaluate indexed events against Sigma-based detection rules and index each match into `wazuh-findings-v5-*` (the manager's engine has no rules). The 4.x `rule.level` corresponds to the findings field `wazuh.rule.level`, which uses categorical values (`informational`, `low`, `medium`, `high`, `critical`) instead of a number; [Map severity levels](rules-4x-to-5x.md#step-3-map-severity-levels) suggests a correspondence. Because there is no direct conversion, you must review your existing alert thresholds and determine how best to map your legacy numeric levels to these new categories based on your organization's specific routing needs.
 
 > **Note:** The `<event_location>` tag has no direct 1-to-1 replacement in 5.x. Because 5.x parses events into highly structured documents, the legacy `location` field is split across multiple independent fields. You should review your current use cases to determine which specific 5.x fields ( e.g: `wazuh.protocol.location`, `file.path`, `wazuh.agent.name`, ... ) align best with your implementation.
 
@@ -138,7 +139,7 @@ issue_data = {
 
 # Send the request
 response = requests.post(hook_url, data=json.dumps(issue_data), headers=headers, auth=(user, api_key))
-print(json.dumps(json.loads(response.text), sort_keys=True, indent=4, separators=(",", ": "))) # <--- Uncomment this line for debugging
+# print(json.dumps(json.loads(response.text), sort_keys=True, indent=4, separators=(",", ": "))) # <--- Uncomment this line for debugging
 
 sys.exit(0)
 ```
@@ -217,7 +218,7 @@ Navigate to **Explore > Notifications > Channels**.
 
 #### 1.1 Using default channels
 
-Wazuh ships a set of pre-configured channels that are muted by default. To use one, un-mute it and fill in the required credentials. Each channel includes a brief description with configuration instructions.
+The Wazuh dashboard ships a set of pre-configured channels that are muted by default. To use one, un-mute it and fill in the required credentials. Each channel includes a brief description with configuration instructions.
 
 In this example either use the default channel or create a new channel from scratch, see [Custom webhook channel](#122-custom-webhook-channel-type).
 
@@ -314,7 +315,7 @@ In the PagerDuty example, the original `<level>14</level>` doesn't have a direct
 
 **Example queries for Jira:**
 
-In the Jira example, the original `<group>syscheck</group>` was a group for rules related to FIM (File integrity monitoring), so that maps to the `wazuh.integration.name` is `wazuh-fim` and for the `<level>9</level>` see [Configuration mapping 4x -> 5.x](#configuration-mapping-4x--5x), in this example we will use the value `medium`.
+In the Jira example, the original `<group>syscheck</group>` was a group for rules related to FIM (File integrity monitoring), so that maps to a condition on `wazuh.integration.name`, the integration that decodes FIM events (`wazuh-fim` in this example; confirm the value on one of your FIM findings), and for the `<level>9</level>` see [Configuration mapping 4x -> 5.x](#configuration-mapping-4x--5x), in this example we will use the value `medium`.
 
 | Field      | Value                     |
 | ---------- | ------------------------- |
@@ -368,13 +369,13 @@ Each trigger can have multiple actions, allowing a single trigger to notify more
 
 > **⚠️ Warning:** The message payload must match the format expected by the receiving integration. If the format is incorrect, no event will appear on the external side. Consult each integration's API documentation before sending.
 
-The following payload replicates what the default 4.x PagerDuty script sent:
+The following payload is modelled on what the default 4.x PagerDuty script sent (an `event_action` `trigger` whose `summary` was the rule description and whose `custom_details` carried the whole alert; the 4.x script also put the routing key in the body, which the channel's `X-Routing-Key` header replaces here):
 
 ```json
 {
   "event_action": "trigger",
   "payload": {
-    "summary": "Wazuh Alert: {{ctx.alerts.0.sample_documents.0._source.event.original}}",
+    "summary": "Wazuh Alert: {{ctx.alerts.0.sample_documents.0._source.wazuh.rule.title}}",
     "source": "{{ctx.alerts.0.sample_documents.0._source.wazuh.agent.name}}",
     "severity": "critical",
     "custom_details": {
@@ -444,7 +445,7 @@ For building message payloads with dynamic variables, refer to:
 
 In 4.x, `Maltiverse` and `Virustotal` worked as a bi-directional callback loop: the built-in script sent the alert to the external service, received an enriched response, and re-injected it into Wazuh as a new alert. **There is no equivalent mechanism in 5.x — these integrations cannot be migrated.**
 
-Enrichment is now handled inline by the Engine during event processing, before events reach the indexer. The Engine provides exactly two built-in kinds of enrichment (Geo/ASN and IOC), and they cannot be extended with custom third-party services. See [Security enrichment process](../../ref/modules/engine/README.md#security-enrichment-process) for details.
+Enrichment is now handled inline by the Engine during event processing, before events reach the indexer. The Engine provides two built-in kinds of enrichment (Geo/ASN and IOC), and they cannot be extended with custom third-party services. See [Security enrichment process](../../ref/modules/engine/README.md#security-enrichment-process) for details.
 
 ---
 

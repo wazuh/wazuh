@@ -520,6 +520,133 @@ TEST(WazuhDBClientTest, QueryTimeoutFailsWithTimeoutAndIncrementsMetric)
 }
 
 // -----------------------------------------------------------------------------
+// Unreachable wdb.sock: a request queued while wazuh-db is down must still fail
+// on its deadline, with the same outcome as a send-time timeout, instead of
+// waiting for wazuh-db to come back.
+// -----------------------------------------------------------------------------
+TEST(WazuhDBClientTest, QueuedRequestTimesOutWhileSocketUnreachable)
+{
+    // No server ever listens on this path.
+    const auto path = remoted::test::makeUniqueSocketPath("wdb_down");
+
+    // A real manager-backed set (not the null object): this test asserts the count.
+    wazuh::metrics::Manager metricsManager;
+    ControlMetrics metrics {makeControlMetrics(metricsManager)};
+    WazuhDBClient client(
+        path, /*poolSize*/ 1, /*deadlineMs*/ 100, /*maxQueueSize*/ 100, metrics, /*requestDeadlineMs*/ 100);
+
+    // Let the worker fail its first connect and enter the backoff.
+    std::this_thread::sleep_for(50ms);
+
+    Waiter<SocketError> w;
+    const auto queuedAt = std::chrono::steady_clock::now();
+    client.query("global anything", [&](SocketError e, const std::string&) { w.complete(e); });
+    ASSERT_TRUE(w.wait(800ms));
+    EXPECT_EQ(w.value, SocketError::Timeout);
+    EXPECT_GE(std::chrono::steady_clock::now() - queuedAt, 100ms);
+    EXPECT_GE(metrics.wdbError->get(), 1U);
+    EXPECT_EQ(metrics.wdbLatency->snapshot().count, 0U);
+}
+
+// One worker, several requests queued at once, wdb.sock absent: every request
+// counts its deadline from when it was queued, so all of them fail at about one
+// deadline -- not one deadline after the other (300, 600, 900, 1200 ms) as when
+// the worker timed each round trip from its own send.
+TEST(WazuhDBClientTest, QueuedRequestsShareTheDeadlineWhileSocketUnreachable)
+{
+    const auto path = remoted::test::makeUniqueSocketPath("wdb_down_many");
+
+    wazuh::metrics::Manager metricsManager;
+    ControlMetrics metrics {makeControlMetrics(metricsManager)};
+    constexpr auto kDeadline = 300ms;
+    WazuhDBClient client(
+        path, /*poolSize*/ 1, /*deadlineMs*/ 300, /*maxQueueSize*/ 100, metrics, /*requestDeadlineMs*/ 300);
+
+    constexpr int kRequests = 4;
+    std::array<Waiter<SocketError>, kRequests> waiters;
+    std::array<std::chrono::steady_clock::duration, kRequests> elapsed {};
+    const auto queuedAt = std::chrono::steady_clock::now();
+    for (int i = 0; i < kRequests; ++i)
+    {
+        client.query("global anything",
+                     [&, i](SocketError e, const std::string&)
+                     {
+                         elapsed[i] = std::chrono::steady_clock::now() - queuedAt;
+                         waiters[i].complete(e);
+                     });
+    }
+
+    for (int i = 0; i < kRequests; ++i)
+    {
+        ASSERT_TRUE(waiters[i].wait(3000ms)) << "request " << i;
+        EXPECT_EQ(waiters[i].value, SocketError::Timeout) << "request " << i;
+        EXPECT_GE(elapsed[i], kDeadline) << "request " << i;
+        // Well under the second deadline: the queued ones did not wait for a round trip of their own.
+        EXPECT_LT(elapsed[i], 2 * kDeadline) << "request " << i;
+    }
+    EXPECT_EQ(metrics.wdbError->get(), static_cast<std::uint64_t>(kRequests));
+    EXPECT_EQ(metrics.wdbLatency->snapshot().count, 0U);
+}
+
+// A connected but stalled wazuh-db: the second request expires while the only
+// worker waits for the first one's response, and is failed when dequeued --
+// without being sent -- instead of getting a fresh deadline from its send.
+TEST(WazuhDBClientTest, RequestExpiredInQueueIsFailedWithoutSending)
+{
+    const auto path = remoted::test::makeUniqueSocketPath("wdb_stall");
+    FakeUdsServer server(path, [](const std::string&) -> std::string { return "ok"; });
+    server.setDropResponses(true);
+
+    ControlMetrics metrics;
+    WazuhDBClient client(
+        path, /*poolSize*/ 1, /*deadlineMs*/ 200, /*maxQueueSize*/ 100, metrics, /*requestDeadlineMs*/ 200);
+
+    Waiter<SocketError> first;
+    Waiter<SocketError> second;
+    std::chrono::steady_clock::duration secondElapsed {};
+    const auto queuedAt = std::chrono::steady_clock::now();
+    client.query("global first", [&](SocketError e, const std::string&) { first.complete(e); });
+    client.query("global second",
+                 [&](SocketError e, const std::string&)
+                 {
+                     secondElapsed = std::chrono::steady_clock::now() - queuedAt;
+                     second.complete(e);
+                 });
+
+    ASSERT_TRUE(first.wait(3000ms));
+    ASSERT_TRUE(second.wait(3000ms));
+    EXPECT_EQ(first.value, SocketError::Timeout);
+    EXPECT_EQ(second.value, SocketError::Timeout);
+    EXPECT_LT(secondElapsed, 400ms);
+    // Only the first request reached the server.
+    std::this_thread::sleep_for(100ms);
+    EXPECT_EQ(server.requestCount(), 1U);
+}
+
+// The deadline sweep must not fail a queued request early: one queued while
+// wdb.sock is unreachable, whose deadline outlasts the outage, is served once
+// the reconnect succeeds.
+TEST(WazuhDBClientTest, QueuedRequestServedWhenSocketReturnsBeforeDeadline)
+{
+    const auto path = remoted::test::makeUniqueSocketPath("wdb_back");
+
+    ControlMetrics metrics;
+    WazuhDBClient client(
+        path, /*poolSize*/ 1, /*deadlineMs*/ 5000, /*maxQueueSize*/ 100, metrics, /*requestDeadlineMs*/ 5000);
+    std::this_thread::sleep_for(50ms);
+
+    Waiter<SocketError> w;
+    client.query("global anything", [&](SocketError e, const std::string&) { w.complete(e); });
+
+    // wazuh-db comes back; the worker reconnects on its next backoff tick (1 s).
+    std::this_thread::sleep_for(200ms);
+    FakeUdsServer server(path, [](const std::string&) -> std::string { return "ok"; });
+
+    ASSERT_TRUE(w.wait(4000ms));
+    EXPECT_EQ(w.value, SocketError::None);
+}
+
+// -----------------------------------------------------------------------------
 // Latency: one observation per SUCCESSFUL round trip -- the histogram is the
 // number that sizes wdbRoundtripDeadlineMs, so failures must never feed it.
 // -----------------------------------------------------------------------------

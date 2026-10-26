@@ -60,6 +60,7 @@ inline std::string unindentContinuation(std::string_view indented)
 }
 
 inline void parseNDJson(std::string_view batch,
+                        std::string_view trustedAgentId,
                         const EventHook& hook,
                         const std::shared_ptr<agentcache::AgentMetadataCache>& agentMetadataCache)
 {
@@ -87,7 +88,7 @@ inline void parseNDJson(std::string_view batch,
         }
 
         std::string_view headerJson = headerLine.substr(2);
-        auto header = agentMetadataCache->getOrParse(headerJson).first;
+        auto header = agentMetadataCache->getOrParse(trustedAgentId, headerJson).first;
 
         // ---- Parse events using "\nE " as delimiter ----
         std::size_t pos = firstNewline + NEWLINE_SIZE;
@@ -135,6 +136,10 @@ inline void parseNDJson(std::string_view batch,
             // Move to next event position
             pos = (nextEventPos != std::string_view::npos) ? (nextEventPos + NEWLINE_SIZE) : batch.size();
         }
+    }
+    catch (const agentcache::IdentityError& ex)
+    {
+        throw agentcache::IdentityError {fmt::format(PARSER_ERROR_MSG, ex.what())};
     }
     catch (const std::exception& ex)
     {

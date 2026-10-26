@@ -102,7 +102,9 @@ rulesetSpec(std::string_view space, const Options& options, const std::optional<
            nlohmann::json::array({nlohmann::json {{"term", {{"space.name", std::string {space}}}}},
                                   nlohmann::json {{"wildcard", {{"_index", {{"value", "*policies*"}}}}}}})}}}}};
     hash.tokenPointers = {"/space/hash/sha256"};
-    hash.metadata = {{"enabled", "/document/enabled"}, {"integrations", "/document/integrations"}};
+    hash.metadata = {{"enabled", "/document/enabled"},
+                     {"integrations", "/document/integrations"},
+                     {"root_decoder", "/document/root_decoder"}};
     spec.detection = std::move(hash);
     return spec;
 }

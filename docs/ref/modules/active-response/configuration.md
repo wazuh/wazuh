@@ -31,7 +31,9 @@ Enable or disable active response execution on this agent.
 
 - **Default value:** `no` when the option is absent. The agent installer writes `<disabled>no</disabled>`,
   or `yes` for a from-source install run with `USER_ENABLE_ACTIVE_RESPONSE=n`
-- **Allowed values:** `yes`, `no`; any other value is a configuration error and `wazuh-execd` does not start
+- **Allowed values:** `yes`, `no`; any other value is a configuration error
+  (`(1235): Invalid value for element 'disabled': <value>.`) and the agent does not start: on Unix
+  `wazuh-control start` runs `wazuh-execd -t` first and stops on its error
 - **Note:** with `yes`, `wazuh-execd` logs `(1350): Active response disabled.` and does not open its
   queue. The agent still receives `active_response` tasks — they are marked delivered on the
   manager — and drops them (`active_response task <id> dropped: execd queue not available.` at debug
@@ -43,10 +45,12 @@ Longer timeouts for stateful responses that recur for the same keys.
 
 - **Default value:** none (every repetition uses the channel's `stateful_timeout`)
 - **Allowed values:** a comma-separated list of up to six durations, in **minutes**; values after
-  the sixth are ignored
+  the sixth are ignored. A value that reads as `0` (`0` itself, or one that does not start with a
+  number) ends the list there; a list starting with one turns the feature off
 - **Note:** applies only to stateful responses. The first time execd sees a key, the response uses
   its `stateful_timeout`; the n-th repetition of that key uses the n-th value of the list, and the
-  last value once the list is exhausted. The count lives in execd's memory and restarts with it.
+  last value once the list is exhausted. A repetition that arrives while the reversal is still
+  pending counts too. The count lives in execd's memory and restarts with it.
   execd logs `Adding offenders timeout: <n> (for #<k>)` for each value it reads
 
 ### allowlist
@@ -58,8 +62,8 @@ An address or network that no active response may target. Repeat the element for
   once a minute; the last 32 addresses it resolved stay protected if a later lookup fails), loopback
   (`127.0.0.0/8`, `::1`) and the unspecified addresses (`0.0.0.0`, `::`)
 - **Allowed values:** an IPv4 or IPv6 address, optionally with a CIDR prefix (`10.0.0.0/8`,
-  `2001:db8::/32`); a name, `any` or a `!` negation is a configuration error and the agent does not
-  start
+  `2001:db8::/32`); a name, `any` or a `!` negation is a configuration error
+  (`(1235): Invalid value for element 'allowlist': <value>.`) and the agent does not start
 - **Note:** execd checks the response's `source.ip`, for every executable, before running it. A
   response whose `source.ip` matches is not executed and execd logs
   `Active response '<executable>' not executed: source.ip '<ip>' is the manager or in the allowlist.`
@@ -155,8 +159,13 @@ directory. The one that concerns Active Response:
 execd.debug=2
 ```
 
+`execd.debug` is read by the Unix `wazuh-execd` only. On Windows execd runs inside the agent
+service, whose debug level is `windows.debug`. The agentd lines about `active_response` tasks follow
+`agent.debug` on Unix.
+
 `execd.request_timeout` and `execd.max_restart_lock`, also in the `execd` group, belong to the WPK
-upgrade path, not to Active Response:
+upgrade path, not to Active Response (see
+[Agent upgrade configuration](../agent_upgrade/configuration.md)):
 
 ```ini
 # Longest restart lock, in seconds, that a WPK upgrade can request (0-3600)
@@ -192,7 +201,7 @@ delivered to execd in `wazuh.active_response.stateful_timeout` of the JSON messa
 - **`type: stateful`:** the executable runs with `command: enable`, and execd runs it again with
   `command: disable` once more than `stateful_timeout` seconds have passed (execd checks every
   second). A missing, `null` or `0` value makes the response stateless. The reversal is only
-  scheduled if the executable answers on stdout with its keys (see
+  scheduled if the executable writes a line on stdout, normally its `check_keys` line (see
   [Deduplication and timeouts](architecture.md#deduplication-and-timeouts)); one that writes nothing
   is run once.
 - A stateful response repeated for the same keys while its reversal is pending is answered `abort`
@@ -223,8 +232,8 @@ behaviour and how to write your own: [Executables Reference](executables.md).
 - Active response executables run with root/administrator privileges: install only trusted ones,
   owned `root:wazuh` with mode `0750`, as the installer does for the shipped executables
 - A custom executable must validate every field it reads before passing it to a command
-- Responses reach execd only as tasks the agent fetched from its manager; execd itself listens only
-  on its local queue (`queue/sockets/execq` on Unix)
+- Responses reach execd only as tasks the agent fetched from its manager; execd accepts them only on
+  its local queue (`queue/sockets/execq` on Unix, an in-process queue on Windows)
 
 ---
 

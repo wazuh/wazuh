@@ -23,9 +23,11 @@ Every value is encrypted with AES-256-CBC under a random key and IV generated fo
 key and IV are stored together with the ciphertext. The encryption therefore keeps values from being
 read as plain text in the files; what protects them is the ownership and mode of the directory.
 
-The [credential resolver](../../getting-started/credentials.md) writes the `indexer` entries at
-installation and before every start: `username` is set to `wazuh-manager` when absent, and `password`
-comes from `WAZUH_INDEXER_MANAGER_PASSWORD`.
+The [credential resolver](../../getting-started/credentials.md) writes the `indexer` entries, through
+`wazuh-manager-keystore`, at installation and before every start: `username` is set to `wazuh-manager`
+when absent, and, only while the keystore holds no `password`, `password` comes from
+`WAZUH_INDEXER_MANAGER_PASSWORD`. A stored password is never replaced by the resolver; change it with
+the CLI below.
 
 ## CLI usage
 
@@ -51,13 +53,13 @@ printf '%s' '<password>' | /var/wazuh-manager/bin/wazuh-manager-keystore -f inde
 | `-f <family>` | Column family (namespace). Required |
 | `-k <key>` | Key name. Required |
 | `-v <value>` | Value (inline) |
-| `-vp <path>` | Value read from the first line of a file |
+| `-vp <path>` | Value read from the first line of a file (opened before the tool switches user, so a root-only file works) |
 | (stdin) | When neither `-v` nor `-vp` is given, the value is the first line of standard input; an empty line is an error |
 | `-g` | Print the stored value instead of writing one; exits 1 when the key is not set or empty. Cannot be combined with `-v`/`-vp` |
 | `-h` | Print the usage |
 
-The tool exits 0 on success and 1 on any error, printing the error (and the usage, for an argument
-error) to standard error. There is no delete operation; the resolver's
+The tool exits 0 on success and 1 on any error, printing the error to standard error (and, for an
+argument error, the usage to standard output). There is no delete operation; the resolver's
 `--clear` mode removes the whole database instead.
 
 Components read the credentials once per process: restart the manager after changing them.

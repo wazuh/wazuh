@@ -25,8 +25,9 @@ A Wazuh server cluster can have only one master node. During synchronization, da
 > Configuration changes applied to the file
 > `/etc/wazuh-manager/wazuh-manager.conf`
 > on the master node are **not synchronized** to worker nodes (the file is on the cluster's
-> exclusion list). You must replicate these changes manually and restart the nodes for them to
-> take effect.
+> exclusion list). Apply them on each node — by hand, or through the Server API on the master with
+> `PUT /cluster/{node_id}/configuration`, which replaces the named node's file — and restart that
+> node for them to take effect.
 
 ---
 
@@ -67,8 +68,11 @@ the master to the workers:
 
 `wazuh-manager.conf` is excluded, and so are files ending in `~`, `.tmp`, `.lock` or `.swp`. Nothing
 else is synchronized: not `/etc/wazuh-manager/certs/`, not the RBAC database, not `var/upgrade/`, not
-`queue/tasks/`. What that means for agents reaching the cluster through a load balancer is
-described in [What the cluster replicates, and what it does not](lb.md#4-what-the-cluster-replicates-and-what-it-does-not).
+`queue/tasks/`. In particular the CA bundle a worker publishes to agents
+(`/etc/wazuh-manager/certs/root-ca.pem`) does not follow the master's: a worker pulls it with
+`wazuh-manager-certs --from-master`, the only write `wazuh-manager-certs` accepts on a worker (see the
+[CA Bundle Rotation Runbook](../remoted/ca-rotation.md)). What that means for agents reaching the
+cluster through a load balancer is described in [What the cluster replicates, and what it does not](lb.md#4-what-the-cluster-replicates-and-what-it-does-not).
 
 ---
 
@@ -158,11 +162,13 @@ command-line options, for running it by hand:
 | `-V` | Print the version and exit |
 | `-r` | Run as root instead of dropping privileges to `wazuh-manager` |
 | `-t` | Read and check the cluster configuration, then exit (`0` when valid, `1` otherwise) |
-| `-c <file>` | Configuration file to read (default `/etc/wazuh-manager/wazuh-manager.conf`) |
+| `-c <file>` | Configuration file to read the `<cluster>` section from (default `/etc/wazuh-manager/wazuh-manager.conf`) |
+| `-h` | Print the help and exit |
 
 The debug level can also be set with the `wazuh_clusterd.debug` internal option (see
 [Internal Options](configuration.md#internal-options)); when it is non-zero it takes precedence over
-`-d`.
+`-d`. When the option is absent or `0`, the `-d` level applies, so `wazuh-manager-control enable debug`
+(which starts every daemon with `-d`) raises the cluster log to debug level 1.
 
 All cluster logs are written to `/var/wazuh-manager/logs/cluster.log`.
 
@@ -184,8 +190,9 @@ it works on any node (a worker forwards node and health queries to the master).
 | `-i -fn <node> [<node> …]` | Health of the named nodes only |
 | `-d`, `--debug` | Print debug messages |
 | `-u`, `--usage` | Print usage examples |
+| `-h`, `--help` | Print the help |
 
-`-a`, `-l`, `-i` and `-u` are mutually exclusive. For example:
+`-a`, `-l`, `-i` and `-u` are mutually exclusive; with none of them the help is printed. For example:
 
 ```bash
 /var/wazuh-manager/bin/cluster_control -l

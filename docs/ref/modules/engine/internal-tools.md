@@ -1,98 +1,98 @@
 # Internal Development Tools
 
-The repository contains Python modules that are not distributed with the Wazuh engine.
-These modules are intended **exclusively for internal use** during the development and testing of the Wazuh engine.
-Their use outside of development is not recommended, as they may change without notice.
+The repository contains Python tools for developing and testing the Wazuh engine. They are **not part of the
+`wazuh-manager` package**. Most of them are bundled in the separate `wazuh-internal-tools` package (built from
+`src/engine/internal_packages/`), which installs them into a virtual environment under `/opt/wazuh-internal-tools`
+with command wrappers in `/usr/bin`. They are intended **exclusively for internal use** during the development and
+testing of the engine and may change without notice.
+
+Every tool that talks to a running engine uses its API socket, by default
+`/var/wazuh-manager/queue/sockets/engine-api-http.sock` (see [API access](configuration.md#api-access)).
 
 ## Api-communication
 
-This library provides a client interface for local communication with the Wazuh engine. It is designed to facilitate seamless interaction between components during development and testing.
+A Python client library for the engine API over its Unix socket, shared by the other tools.
 
-For more details, refer to the README on src/engine/tools/api-communication/README.md
+Details: `src/engine/tools/api-communication/README.md`.
 
 ---
 
 ## Engine Suite
 
-The `engine-suite` Python package offers a comprehensive set of tools to manage and interact with the Wazuh engine.
-These tools simplify the management of assets, policies, integrations, and other elements within the Wazuh environment,
-providing a centralized and efficient workflow.
+The `engine-suite` Python package provides the command-line clients of the engine API:
 
-### Key Tools in `engine-suite`:
-- **engine-private**: Hosts internal-only operations for namespace management, content-manager CRUD, geo, and raw-event tooling.
-- **engine-public**: Hosts public-facing validation, IOC, and logtest cleanup commands.
-- **engine-router**: Provides internal route management and event ingestion tooling.
-- **engine-event-dumper**: Manages the internal event-dumper endpoints.
-- **engine-test**: Provides utilities for testing engine functionality.
+- **engine-public**: commands on the public API — `cm` (policy and resource validation), `logtest` (cleanup),
+  `ioc` (state, update) and `status` (engine readiness). Example: `engine-public status get`.
+- **engine-private**: commands on the internal API — namespace management, content-manager CRUD, GeoIP databases
+  and the raw-event indexer status.
+- **engine-router**: route management (`add`, `delete`, `get`, `list`, `reload`, `update`).
+- **engine-event-dumper**: the event-dumper routes.
+- **engine-test**: test sessions against a policy.
 
-For more details, refer to the README on src/engine/tools/engine-suite/README.md
+`engine-public`, `engine-private`, `engine-router` and `engine-event-dumper` accept `--api-socket` to target
+another socket; `engine-test` commands take it as their own `--api-socket` option.
+
+Details: `src/engine/tools/engine-suite/README.md`.
 
 ---
 
 ## Engine Test Utils
 
 A Python library containing utility functions and helpers for testing scripts that interact with the Wazuh engine.
-These utilities streamline the creation and execution of test cases.
 
-For more details, refer to the README on src/engine/test/engine-test-utils/README.md
+Details: `src/engine/test/engine-test-utils/README.md`.
 
 ---
 
 ## Engine Helper Test
 
-This tool automates the generation of test cases to verify the correct end-to-end operation of helper functions used
-in asset. It uses YAML files to define the parameters of helper functions and generates corresponding test cases
-automatically. The tool also generates documentation for helper functions.
+`engine-helper-test` generates test cases from YAML descriptions of the helper functions, runs them end to end
+against an engine, and generates the [helper functions reference](ref-helper-functions.md).
 
-**Features:**
-- YAML-based test case generation.
-- Simplifies testing of helper functions.
-- Generate documentation for helper functions.
-
-For more details, see the [helper tests README](https://github.com/wazuh/wazuh/blob/5.0.0/src/engine/test/helper_tests/README.md).
+Details: `src/engine/test/helper_tests/README.md`.
 
 ---
 
 ## Engine Integration Test
 
-The `engine-integration-test` tool is designed to test the integration of the Wazuh engine with external systems.
-It verifies the correct operation of integrations and ensures that data is correctly processed and forwarded to the
-engine.
+`engine-it` runs the engine's behaviour-driven (behave) integration tests — content CRUD, namespaces, router,
+tester, GeoIP, status — against a sandboxed engine.
 
-For more details, refer to the README on src/engine/test/integration_tests/README.md.
+Details: `src/engine/test/integration_tests/README.md`.
 
 ---
 
 ## Engine Metrics
 
-A real-time metrics dashboard and CLI for the Wazuh engine. It polls the engine's metrics API over its Unix domain
-socket and renders live, auto-refreshing charts for global and per-space metrics in a browser.
+`engine-metrics` is a real-time metrics dashboard and CLI for the engine. It polls the engine's metrics API over
+its Unix socket and renders live, auto-refreshing charts for global and per-space metrics in a browser.
 
-For more details, refer to the README on src/engine/tools/engine-metrics/README.md
+Details: `src/engine/tools/engine-metrics/README.md`.
 
 ---
 
 ## Engine Schema
 
-A standalone tool that generates the engine's schema and associated decoder/field configuration files from the
-Wazuh Common Schema (WCS) YAML definitions.
+`engine-schema` generates the engine's schema and the associated decoder and enrichment configuration files from
+the Wazuh Common Schema (WCS) definitions. The manager installer runs it from the source tree; the generated files
+are installed into the engine store.
 
-For more details, refer to the README on src/engine/tools/engine-schema/README.md
+Details: `src/engine/tools/engine-schema/README.md`.
 
 ---
 
 ## Engine Bench
 
-A benchmarking tool that runs the Wazuh engine executable under `perf` and produces flame graphs to visualize
-performance bottlenecks and hotspots.
+`engine-bench` runs the engine executable under `perf` and produces flame graphs to visualize performance
+bottlenecks and hotspots. It is not part of `wazuh-internal-tools`.
 
-For more details, refer to the README on src/engine/tools/engine-bench/README.md
+Details: `src/engine/tools/engine-bench/README.md`.
 
 ---
 
 ## evtx2xml
 
 A Python tool that converts Windows Event Log (EVTX) files to XML, used when preparing Windows event samples for
-engine testing and decoder development.
+engine testing and decoder development. It is not part of `wazuh-internal-tools`.
 
-For more details, refer to the README on src/engine/tools/evtx2xml/README.md
+Details: `src/engine/tools/evtx2xml/README.md`.

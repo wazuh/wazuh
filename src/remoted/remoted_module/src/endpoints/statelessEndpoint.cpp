@@ -10,9 +10,8 @@
 
 #include "statelessEndpoint.hpp"
 
-#include <rapidjson/document.h>
+#include "httpsHeaderLine.hpp"
 
-#include <charconv>
 #include <optional>
 #include <string_view>
 #include <utility>
@@ -20,10 +19,13 @@
 namespace remoted::endpoints::stateless
 {
 
-    remoted::downstream::DownstreamTarget target(const std::string& socketPath)
+    remoted::downstream::DownstreamTarget target(const std::string& socketPath, const std::string& agentId)
     {
         remoted::downstream::DownstreamTarget result {
             socketPath, remoted::http::Method::Post, "/events/enriched", "application/x-ndjson"};
+        // Written by us, never by the agent: the value comes from the Authorization header the
+        // gateway already authenticated, so it cannot be used to inject headers downstream.
+        result.headers.emplace_back("X-Wazuh-Agent-Id", agentId);
         result.serviceName = "engine event ingress";
         return result;
     }
@@ -60,11 +62,10 @@ namespace remoted::endpoints::stateless
 
     namespace
     {
-        // H-line is metadata (agent id, name, cluster labels, ...), never bulk event data -- a real
-        // one is realistically a few hundred bytes. Capped well before parsing so a pathologically
-        // large/nested JSON blob (still comfortably inside the 10 MiB body cap) is rejected outright
-        // instead of costing CPU/heap proportional to its size.
-        constexpr std::size_t kMaxHeaderLineJsonSize = 8U * 1024U;
+        // Bound the H-line metadata on the HTTPS path without parsing JSON. The engine validates
+        // its contents and identity before enqueueing any events. The agent trims its H line to the
+        // same shared limit, so the two cannot drift apart.
+        constexpr std::size_t kMaxHeaderLineJsonSize = HTTPS_HEADER_LINE_JSON_MAX_BYTES;
 
         // Slices the H-line's JSON substring out of the whole H/E body. Per the event-protocol's own
         // parsing rule ("split by \n, check first char, extract payload after space (index 2)"): the
@@ -87,138 +88,13 @@ namespace remoted::endpoints::stateless
             return result;
         }
 
-        // Non-negative integer, fully consuming the string. from_chars<AgentId> (unsigned) already
-        // rejects a leading '-'; checking ptr against the end also rejects a partial match (e.g. "12x").
-        std::optional<remoted::auth::AgentId> parseAgentId(std::string_view s)
-        {
-            remoted::auth::AgentId value = 0;
-            const auto [ptr, ec] = std::from_chars(s.data(), s.data() + s.size(), value);
-            if (s.empty() || ec != std::errc {} || ptr != s.data() + s.size())
-            {
-                return std::nullopt;
-            }
-            return value;
-        }
-
-        // The one member of `obj` named `name`, or nullptr when it is absent OR repeated.
-        //
-        // Repeated is a rejection, not a pick: a lookup here takes the FIRST member of a duplicated
-        // name while the engine's merge keeps the LAST, and the body is forwarded byte for byte in
-        // between -- so a repeated step of /wazuh/agent/id would authorise one agent and ingest
-        // another.
-        //
-        // A third reader is what makes rejection the only coherent answer, rather than a rule about
-        // which copy wins: the engine's AgentMetadataCache resolves this same pointer, also
-        // first-wins, and keys its cache entry on the result. Picking a winner leaves one of the
-        // three out of step either way -- keep the first and the event still goes out under the
-        // last; keep the last and the cache is still keyed on the first. Refusing the ambiguity is
-        // the only rule all three agree on, which is also why it must not be relaxed later.
-        //
-        // Only that path is checked; a repetition anywhere else cannot move the identity, because
-        // the engine escapes member names when it builds the pointer it recurses with
-        // (base/src/json.cpp).
-        //
-        // Names are compared decoded and by length: "\u0077azuh" IS "wazuh", while "wazuh\u0000x" (length 7)
-        // is a different name and must not be confused with it.
-        const rapidjson::Value* findUniqueMember(const rapidjson::Value& obj, std::string_view name)
-        {
-            const rapidjson::Value* found = nullptr;
-
-            for (auto it = obj.MemberBegin(); it != obj.MemberEnd(); ++it)
-            {
-                if (std::string_view {it->name.GetString(), it->name.GetStringLength()} != name)
-                {
-                    continue;
-                }
-                if (found != nullptr)
-                {
-                    return nullptr; // repeated: the document is ambiguous about this key
-                }
-                found = &it->value;
-            }
-
-            return found;
-        }
-
-        // Resolves /wazuh/agent/id, requiring each step to exist exactly once and each container to
-        // be an object.
-        std::optional<std::string_view> agentIdFromHeader(const rapidjson::Document& doc)
-        {
-            if (!doc.IsObject())
-            {
-                return std::nullopt;
-            }
-
-            const auto* wazuh = findUniqueMember(doc, "wazuh");
-            if (wazuh == nullptr || !wazuh->IsObject())
-            {
-                return std::nullopt;
-            }
-
-            const auto* agent = findUniqueMember(*wazuh, "agent");
-            if (agent == nullptr || !agent->IsObject())
-            {
-                return std::nullopt;
-            }
-
-            const auto* id = findUniqueMember(*agent, "id");
-            if (id == nullptr || !id->IsString())
-            {
-                return std::nullopt;
-            }
-
-            return std::string_view {id->GetString(), id->GetStringLength()};
-        }
     } // namespace
 
     remoted::auth::AuthError validatePayloadIdentity(const remoted::auth::AuthenticatedRequest& req)
     {
         using remoted::auth::AuthError;
 
-        const auto headerJson = headerLineJson(req.payload.bytes());
-        if (!headerJson)
-        {
-            return AuthError::PayloadAgentMismatch;
-        }
-
-        rapidjson::Document doc;
-        // Length-based, non-in-situ parse: the payload is a string_view into a shared buffer that is
-        // neither mutable nor NUL-terminated, so it cannot be parsed in place or as a C-string.
-        // kParseIterativeFlag: bounds the parser's C-stack usage to a constant regardless of input
-        // nesting depth (it uses an explicit heap stack instead of recursive descent) -- without it,
-        // a deeply-nested H-line (still well inside kMaxHeaderLineJsonSize) could overflow this
-        // worker thread's stack. Only changes how the DOM is built, not its shape: the identity
-        // lookup below is unaffected.
-        doc.Parse<rapidjson::kParseIterativeFlag>(headerJson->data(), headerJson->size());
-        if (doc.HasParseError())
-        {
-            return AuthError::PayloadAgentMismatch;
-        }
-
-        const auto payloadAgentIdStr = agentIdFromHeader(doc);
-        if (!payloadAgentIdStr)
-        {
-            return AuthError::PayloadAgentMismatch;
-        }
-
-        // Shape first: still a non-negative integer that fits AgentId, so "", "-1", "12x" and an
-        // id too large to represent are refused exactly as before.
-        if (!parseAgentId(*payloadAgentIdStr))
-        {
-            return AuthError::PayloadAgentMismatch;
-        }
-
-        // Identity: the SAME STRING the token proves, byte for byte. "001", "01" and "1" are one
-        // agent arithmetically but three distinct strings, and it is the string that travels -- the
-        // body is forwarded verbatim, and the engine keys its cache on the raw id and stamps it
-        // into every event. A conforming agent stamps the H line from the string its token carries,
-        // so exact equality costs it nothing.
-        if (*payloadAgentIdStr != req.agentId)
-        {
-            return AuthError::PayloadAgentMismatch;
-        }
-
-        return AuthError::None;
+        return headerLineJson(req.payload.bytes()) ? AuthError::None : AuthError::PayloadAgentMismatch;
     }
 
     remoted::endpoints::AuthenticatedHandler makeHandler(remoted::downstream::DeferredForwarder& forwarder,
@@ -245,7 +121,7 @@ namespace remoted::endpoints::stateless
                 responder->send(std::move(rejection));
                 return;
             }
-            auto downstreamTarget = target(socketPath);
+            auto downstreamTarget = target(socketPath, authReq->agentId);
             downstreamTarget.httpMetrics = metrics;
             forwarder.forward(std::move(authReq), std::move(responder), std::move(downstreamTarget), postProcess);
         };

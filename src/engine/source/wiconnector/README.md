@@ -5,12 +5,14 @@
 The **wiconnector** module is the Engine's **writer** to the wazuh-indexer (OpenSearch), plus the one
 read the remote configuration needs. It exposes:
 
-- **Indexing events** — pushing alert / raw-event JSON documents into data-stream indices.
+- **Indexing events** — pushing processed / raw-event JSON documents into data-stream indices.
 - **Remote engine configuration** — pulling runtime engine settings from `.wazuh-settings`.
-- **Queue introspection** — reporting the current size and dropped-event count of the pending-event queue.
+- **Queue introspection** — reporting the pending-queue size in bytes and the dropped-event count (exported by `main.cpp` as indexer metrics).
 
-It wraps an asynchronous `IndexerConnectorAsync` (from the shared `indexer_connector` library) and
-guards every operation with a `std::shared_mutex`. Content downloads (rulesets, IOCs) do not go
+It wraps an asynchronous `IndexerConnectorAsync` (from the shared `indexer_connector` library in
+`src/shared_modules/indexer_connector/`; operator page [indexer_connector](../../../../docs/ref/modules/indexer_connector/README.md))
+behind the internal `IIndexerConnectorAsync` interface (`IndexerConnectorAsyncAdapter`, so tests can
+inject a mock), and guards every operation with a `std::shared_mutex`. Content downloads (rulesets, IOCs) do not go
 through it: they are the content manager's, reached through [`cmcontent`](../cmcontent/README.md)
 over the same underlying connector.
 
@@ -45,7 +47,7 @@ throws `std::runtime_error`. `main.cpp` registers `shutdown()` in the exit handl
 
 ### Configuration
 
-The `Config` struct encapsulates connection parameters:
+The `Config` struct encapsulates connection parameters. `main.cpp` builds it only in standalone mode (from the `analysisd.indexer_hosts` / `analysisd.indexer_ssl_*` options); on a manager the base JSON is the `indexer` section of `wazuh-manager.conf` (`base::managerConfig::sectionJson("indexer")`):
 
 ```cpp
 struct Config
@@ -64,7 +66,7 @@ struct Config
 };
 ```
 
-Credentials are not part of `Config`: the connector reads them from the keystore (`indexer` / `username`, `password`).
+Credentials are not part of `Config`: the shared `indexer_connector` library reads them from the keystore (`indexer` / `username`, `password`).
 
 An alternative constructor accepts a raw JSON OSSEC configuration string directly. `main.cpp`
 builds the `IndexerConnectorAsync` once, with `makeIndexerConnectorAsync` (the same parsing that
@@ -73,12 +75,11 @@ constructor uses), and hands it both to this module (the constructor taking a
 content topics of `cmsync` and `iocsync`: one connection, one health monitor, one place to configure
 the indexer.
 
-Beyond the `Config` struct fields above, `main.cpp` reads eight more settings
+`main.cpp` builds the connector the same way in both modes: it takes the base JSON above and folds in eight more settings
 from the same `conf` mechanism (env var, `wazuh-manager-internal-options.conf`, or
-default — env var wins) and folds them into the JSON handed to
-`IndexerConnectorAsync`. They're documented by their `wazuh-manager-internal-options.conf`
-key in [Engine Module — Internal options reference § Indexer connector](../../../../docs/ref/modules/engine/README.md#indexer-connector);
-here's the env-var equivalent for each:
+default — env var wins), validating their ranges first (an out-of-range value aborts startup). They are documented in the
+[engine configuration reference § Indexer connector settings](../../../../docs/ref/modules/engine/configuration.md#indexer-connector-settings);
+the keys, env vars and defaults (`conf.cpp`) are:
 
 | Internal option | Env Override | Default |
 |-----------------|--------------|---------|
@@ -100,12 +101,15 @@ wiconnector/
 ├── interface/wiconnector/
 │   └── iwindexerconnector.hpp        # IWIndexerConnector
 ├── include/wiconnector/
-│   └── windexerconnector.hpp         # WIndexerConnector + Config + makeIndexerConnectorAsync
+│   ├── windexerconnector.hpp         # WIndexerConnector + Config + makeIndexerConnectorAsync
+│   └── iindexerConnectorAsync.hpp    # IIndexerConnectorAsync seam over the shared library
 ├── src/
-│   └── windexerconnector.cpp
+│   ├── windexerconnector.cpp
+│   └── indexerConnectorAsyncAdapter.hpp # Adapter: IIndexerConnectorAsync → IndexerConnectorAsync
 └── test/
     ├── mocks/wiconnector/
-    │   └── mockswindexerconnector.hpp # MockWIndexerConnector
+    │   ├── mockswindexerconnector.hpp     # MockWIndexerConnector
+    │   └── mockIndexerConnectorAsync.hpp  # MockIndexerConnectorAsync (the internal async seam)
     └── src/unit/
         └── wic_test.cpp
 ```
@@ -121,7 +125,7 @@ public:
     virtual ~IWIndexerConnector() = default;
     virtual void index(std::string_view index, std::string_view data) = 0;
     virtual json::Json getEngineRemoteConfig() = 0;
-    virtual uint64_t getQueueSize() = 0;
+    virtual uint64_t getQueueSize() = 0;     // bytes pending
     virtual uint64_t getDroppedEvents() = 0;
 };
 
@@ -141,17 +145,19 @@ public:
 
 - **`index(index, data)`** — shared lock, `IndexerConnectorAsync::indexDataStream()`. Exceptions are
   caught and logged as warnings; indexing failures do not propagate.
-- **`getEngineRemoteConfig()`** — searches `.wazuh-settings` for exactly one document, extracts
-  `_source.engine`, checks it is an object and returns it.
+- **`getEngineRemoteConfig()`** — searches `.wazuh-settings` (`match_all`, `size=1`, source `engine`
+  only); exactly one document must exist (zero or several → `IndexerConnectorException`). Extracts
+  `_source.engine`, checks it is an object and returns it (for example `{ "index_raw_events": false }`,
+  consumed by `confremote`).
 
 ## CMake Targets
 
 | Target | Type | Alias | Links |
 |---|---|---|---|
 | `wIndexerConnector_iwIndexerConnector` | INTERFACE | `wIndexerConnector::iwIndexerConnector` | `base` |
-| `wIndexerConnector_wIndexerConnector` | STATIC | `wIndexerConnector::wIndexerConnector` | `base`, `wIndexerConnector::iwIndexerConnector` (public); `indexer_connector` (private) |
-| `wIndexerConnector_mocks` | INTERFACE | `wIndexerConnector::mocks` | `GTest::gmock`, `wIndexerConnector::iwIndexerConnector` |
-| `wIndexerConnector_utest` | Executable | — | `GTest::gtest_main`, `GTest::gmock`, `wIndexerConnector::wIndexerConnector` |
+| `wIndexerConnector_wIndexerConnector` | STATIC | `wIndexerConnector::wIndexerConnector` | `base`, `wIndexerConnector::iwIndexerConnector`, `indexer_connector` (all public) |
+| `wIndexerConnector_mocks` | INTERFACE | `wIndexerConnector::mocks` | `GTest::gmock`, `wIndexerConnector::iwIndexerConnector` (test builds only) |
+| `wIndexerConnector_utest` | Executable | — | `GTest::gtest_main`, `GTest::gmock`, `wIndexerConnector::wIndexerConnector`, `wIndexerConnector::mocks`; discovered tests hold the `rocks_db_lock` resource lock (test builds only) |
 
 ## Testing
 
@@ -159,7 +165,9 @@ public:
   `index()` error handling, `shutdown()`, concurrent indexing (with and without a concurrent
   shutdown), the queue counters, and `getEngineRemoteConfig()` against a mocked
   `IIndexerConnectorAsync`.
-- **Mock** (`test/mocks/wiconnector/mockswindexerconnector.hpp`) — `MockWIndexerConnector`.
+- **Mocks** — `MockWIndexerConnector` (`test/mocks/wiconnector/mockswindexerconnector.hpp`, namespace
+  `wiconnector::mocks`) for downstream consumers; `MockIndexerConnectorAsync`
+  (`mockIndexerConnectorAsync.hpp`) mocks the internal async seam.
 
 ## Consumers
 
@@ -168,4 +176,4 @@ public:
 | `builder` | `wIndexerConnector::iwIndexerConnector` | Pushes indexed events via the `indexerOutput` stage |
 | `rawevtindexer` | `wIndexerConnector::iwIndexerConnector` | Indexes raw events |
 | `confremote` | `wIndexerConnector::iwIndexerConnector` | Reads the remote engine configuration |
-| `main.cpp` | `wIndexerConnector::wIndexerConnector` | Builds the connector and injects it |
+| `main.cpp` | `wIndexerConnector::wIndexerConnector` | Builds the connector (only when event processing is enabled), injects it, exports `getQueueSize()`/`getDroppedEvents()` as metrics, and registers `shutdown()` on exit |

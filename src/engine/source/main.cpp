@@ -89,8 +89,8 @@ void printUsage(const char* progName)
               << "Options:\n"
               << "  -f    Run in foreground (do not daemonize)\n"
               << "  -t    Test configuration\n"
-              << "  -d    Test configurationRun in debug mode. This option may be repeated to increase the verbosity "
-                 "of the debug messages.\n"
+              << "  -d    Run in debug mode. This option may be repeated to increase the verbosity of the debug "
+                 "messages.\n"
               << "  -h    Show this help message and exit\n";
     std::exit(EXIT_SUCCESS);
 }
@@ -311,6 +311,7 @@ int main(int argc, char* argv[])
     std::shared_ptr<scheduler::TriggerableTask> cmSyncTask;
     std::shared_ptr<scheduler::TriggerableTask> iocSyncTask;
     std::shared_ptr<agentcache::AgentMetadataCache> agentMetadataCache;
+    std::size_t agentMetadataCacheCleanInterval {0}; // validated with the cache, before any event is accepted
     bool firstStart {false};
 
     try
@@ -618,7 +619,8 @@ int main(int argc, char* argv[])
             LOG_INFO("Indexer Connector DISABLED - events will not be indexed");
         }
 
-        // Stream log for alerts an archive
+        // Stream logger: rotating per-channel files under the streamlog base path (logs/<channel>/ by
+        // default) for the builder's file outputs and the event dumper
         if (enableProcessing)
         {
 
@@ -1001,10 +1003,16 @@ int main(int argc, char* argv[])
         if (enableProcessing)
         {
             engineRemoteServer = std::make_shared<httpsrv::Server>("Event services", 0, false);
+            // Every cache setting is validated here, before the ingest server below starts listening: a
+            // bad value must stop start-up before any batch is accepted, not after.
+            agentMetadataCacheCleanInterval = agentcache::validateCleanInterval(
+                confManager.get<std::size_t>(conf::key::AGENT_METADATA_CACHE_CLEAN_INTERVAL));
             agentMetadataCache = std::make_shared<agentcache::AgentMetadataCache>(
-                std::chrono::seconds(confManager.get<std::size_t>(conf::key::AGENT_METADATA_CACHE_TTL)));
+                std::chrono::seconds(confManager.get<std::size_t>(conf::key::AGENT_METADATA_CACHE_TTL)),
+                agentcache::Limits {confManager.get<std::size_t>(conf::key::AGENT_METADATA_CACHE_MAX_ENTRIES),
+                                    confManager.get<std::size_t>(conf::key::AGENT_METADATA_CACHE_MAX_BYTES)});
 
-            // Register the cache's instantaneous "agent.cache.entries" pull metric.
+            // Register retained cache usage and configured limits.
             agentcache::registerCacheMetrics(agentMetadataCache);
 
             exitHandler.add([engineRemoteServer]() { engineRemoteServer->stop(); });
@@ -1038,8 +1046,7 @@ int main(int argc, char* argv[])
             // operation, so it is not critical if the cache is not cleaned on time. The number of evicted
             // entries is recorded by the cache itself (agent.cache.evictions).
             scheduler->scheduleTask("clean-agent-cache",
-                                    scheduler::TaskConfig {.interval = confManager.get<std::size_t>(
-                                                               conf::key::AGENT_METADATA_CACHE_CLEAN_INTERVAL),
+                                    scheduler::TaskConfig {.interval = agentMetadataCacheCleanInterval,
                                                            .runImmediately = false,
                                                            .CPUPriority = 0,
                                                            .taskFunction = [agentMetadataCache]()

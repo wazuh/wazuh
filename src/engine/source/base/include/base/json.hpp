@@ -573,6 +573,15 @@ public:
     bool exists(std::string_view pointerPath) const;
 
     /**
+     * @brief Test decoded member names at one object without copying or traversing member values.
+     *
+     * Calls predicate with a length-aware view of each name, including repeated names, until it
+     * returns true. Views are valid while this document remains alive and unmodified.
+     * Returns false for an absent path, a non-object, or no match. Predicate exceptions propagate.
+     */
+    bool anyMemberName(const std::function<bool(std::string_view)>& predicate, const PointerPath& path = ROOT_PP) const;
+
+    /**
      * @brief Check if the Json contains a field with the given dot path, and if so, with
      * the given value.
      *
@@ -676,6 +685,19 @@ public:
         }
         return RetGet::Success;
     }
+
+    /**
+     * @brief Get a string through a unique path of object members.
+     *
+     * Each decoded pointer token must match exactly one member, comparing both bytes and length.
+     * Arrays are not traversed; numeric tokens are object member names. An empty path selects the root.
+     * Off-path members are not traversed or checked for uniqueness.
+     *
+     * @return Success, NotFound (absent or repeated member), or WrongType (non-object intermediate
+     *         or non-string leaf). The output is assigned only on success.
+     * @warning The returned view is valid only while this document remains alive and unmodified.
+     */
+    RetGet getUniqueString(std::string_view& out, const PointerPath& path = ROOT_PP) const noexcept;
 
     /**
      * @brief Get the value of the int field at the given path.

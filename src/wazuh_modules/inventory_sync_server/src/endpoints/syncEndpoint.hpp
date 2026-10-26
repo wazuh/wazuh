@@ -69,7 +69,7 @@ namespace invsync::endpoints::sync
         std::weak_ptr<invsync::indexer::IIndexerConnectorSync> indexer;
         invsync::common::ClusterIdentity cluster;
         /// Retry-After seconds attached to the 503 for vulnerability-detection sessions (D17).
-        int vdRetryAfterSeconds {60};
+        int vdRetryAfterSeconds {10};
         /// The D22 scan lane for VD data sessions and its feed gate. Both weak, like the rest;
         /// either expiring means the module is stopping (503).
         std::weak_ptr<invsync::vd::VdScanLane> scanLane;

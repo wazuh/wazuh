@@ -192,12 +192,12 @@ void WIndexerConnector::index(std::string_view index, std::string_view data)
         }
         catch (const IndexerConnectorException& e)
         {
-            LOG_WARNING("[indexer-connector] Error indexing data: %s", e.what());
+            LOG_WARNING("[indexer-connector] Error indexing data: {}", e.what());
             return;
         }
         catch (const std::exception& e)
         {
-            LOG_WARNING("[indexer-connector] Error indexing data: %s", e.what());
+            LOG_WARNING("[indexer-connector] Error indexing data: {}", e.what());
             return;
         }
     }

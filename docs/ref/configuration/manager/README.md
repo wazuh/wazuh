@@ -47,14 +47,17 @@ element is rejected as a duplicate.
     `(1239): Configuration file not found: '<file>'.`
   - `get <key.path>` prints one option of the **effective** document (defaults applied): scalars as
     plain text, objects and lists as JSON. `dump` prints the whole effective document.
-- `bin/wazuh-manager-control start|restart|reload` validates the file first and refuses to start any
-  daemon when it is invalid: the CLI's verdict on stderr and as
-  `wazuh-manager-control: ERROR: (1244): …` in `logs/wazuh-manager.log`, then
-  `wazuh-manager.conf: Configuration error. Exiting` (`{"error":20,…}` with `-j`). It then runs each
-  daemon's `-t`; for the C daemons and the engine, `-t` validates the whole file, including the files it
-  names. A daemon started against an invalid file logs `(1244): Invalid configuration at
-  '<file>': <pointer>: <reason>.` and the CRITICAL `(1202): Configuration error at '<file>'.` in
-  `logs/wazuh-manager.log`.
+- `bin/wazuh-manager-control start|restart|reload` validates the file first (with
+  `--skip-file-checks`) and refuses to start any daemon when it is invalid: the CLI's verdict on stderr
+  and as `wazuh-manager-control: ERROR: (1244): …` in `logs/wazuh-manager.log`, then
+  `wazuh-manager.conf: Configuration error. Exiting` (`{"error":20,…}` with `-j`). After the credential
+  check it validates the file again with the file checks on, then runs each daemon's `-t`; for the C
+  daemons and the engine, `-t` validates the whole file, including the files it names. A C daemon
+  started against an invalid file logs `(1244): Invalid configuration at '<file>': <pointer>: <reason>.`
+  in `logs/wazuh-manager.log` and exits; `wazuh-manager-remoted` and `wazuh-manager-authd` add the
+  CRITICAL `(1202): Configuration error at '<file>'.`, `wazuh-manager-db` the CRITICAL
+  `Invalid configuration block for Wazuh-DB.`. The engine prints
+  `Error loading configuration: <pointer>: <reason>` on stderr instead.
 - The API serves the effective sections as JSON (`GET /cluster/{node_id}/configuration`, optional
   `section`/`field`, `raw=true` for the XML text) and replaces the file with an XML document
   (`PUT /cluster/{node_id}/configuration`, `application/xml` or `application/octet-stream`); a
@@ -77,16 +80,17 @@ element is rejected as a duplicate.
 | [Indexer Connector](../../modules/indexer_connector/configuration.md) | `indexer` | - |
 | [Inventory Sync Server](../../modules/inventory-sync-server/configuration.md) | `indexer` (read-only consumer) | `wazuh_modules.inventory_sync_server_*` |
 | [Logging](../../modules/logging/configuration.md) | `logging` | - |
-| [Remoted](../../modules/remoted/configuration.md) | `remote` (`legacy`, `https`, `agents`), `global` | `remoted.*`, `fim.*_limit`, `sca.checks_limit`, `syscollector.*_limit` |
-| [Task Manager](../../modules/task_manager/configuration.md) (incl. [agent upgrades](../../modules/task_manager/agent-upgrades.md)) | `task-manager`, `global` (disconnection settings only), `remote` (delivery gates, read-only consumer) | `wazuh_modules.manager_task_*`, `wazuh_modules.upgrade_*` |
+| [Remoted](../../modules/remoted/configuration.md) | `remote` (`legacy`, `https`, `agents`), `global` (read-only consumer) | `remoted.*`, `fim.*_limit`, `sca.checks_limit`, `syscollector.*_limit` |
+| [Task Manager](../../modules/task_manager/configuration.md) (incl. [agent upgrades](../../modules/task_manager/agent-upgrades.md)) | `task-manager`, `global` ([`agents_disconnection_time`](../../modules/task_manager/configuration.md#agents_disconnection_time) is documented here), `remote` (delivery gates, read-only consumer) | `wazuh_modules.manager_task_*`, `wazuh_modules.upgrade_*` |
 | [Vulnerability Scanner](../../modules/vulnerability-scanner/configuration.md) | `vulnerability-detection` | `vulnerability-detection.*`, `wazuh_modules.indexer_*` |
 | [Wazuh DB](../../modules/wazuh_db/configuration.md) | `wdb` | `wazuh_db.*` |
 
 Every option, with its type, default, constraints and description, is listed in the
 [Manager Configuration Reference](reference.md), generated from the schema. The `global` section only
-holds [`agents_disconnection_time`](../../modules/task_manager/configuration.md#agents_disconnection_time);
-it is read by both remoted and the Task Manager's disconnection sweep, so it is shared configuration
-rather than one module's; the Task Manager reads `remote` the same way, for the gates that decide
+holds [`agents_disconnection_time`](../../modules/task_manager/configuration.md#agents_disconnection_time),
+documented with the Task Manager; it is read by both remoted (which stops pushing to an agent silent
+for longer, and checks `remoted.control_keepalive_throttle` against it) and the Task Manager's
+disconnection sweep, so it is shared configuration rather than one module's; the Task Manager reads `remote` the same way, for the gates that decide
 whether an upgrade could be delivered at all. There is no `agent-upgrade` section: that module is
 agent-only, the element is rejected as an unknown option, and the manager configures the upgrades it
 serves under `task-manager`. The manager's log-rotation and agent-retention tunables
@@ -102,7 +106,7 @@ Scanner) also read the process-wide `wazuh_modules.*` options documented in
 | Section | Applied |
 |---|---|
 | `cluster` | `wazuh-manager-control restart` or `reload` (clusterd re-reads the file on both) |
-| `indexer` | Python consumers re-read the file when its modification time changes; the C daemons (modulesd, engine) read it at start |
+| `indexer` | Python consumers re-read the file when its modification time changes; `wazuh-manager-modulesd` and the engine read it at start |
 | every other section | at daemon start (`restart`); note that `reload` does **not** restart `wazuh-manager-remoted`, so a change in `remote` needs `restart` |
 
 ---
@@ -122,7 +126,25 @@ below, and a value outside the range stops the daemon at start with
 | `wazuh_modules.task_nice` | `10` | `-20`-`19` | Nice value of the external programs a module launches; no manager module launches one |
 | `wazuh_modules.kill_timeout` | `10` | `0`-`3600` | Seconds a module's child process gets to exit at shutdown before it is killed; no manager module starts one |
 | `wazuh_modules.socket_timeout` | `1` | `1`-`60` | Longest time, in seconds, a local client of the `wazuh-manager-modulesd` request socket can go without sending the next part of its request, or without reading the reply, before the connection is dropped. It bounds each wait, not the whole request |
+| `wazuh_modules.unmask_credentials` | `0` | `0`-`1` | Reports module credentials in clear instead of as `*****`; read and range-checked, but the modules that hold credentials run only on agents |
 | `wazuh.thread_stack_size` | `8192` | `2048`-`65536` | Stack size, in KiB, of the threads `wazuh-manager-remoted` and `wazuh-manager-modulesd` start; read at each thread creation |
+
+### `wazuh-manager-modulesd` command line
+
+`wazuh-manager-control` runs `bin/wazuh-manager-modulesd -t` before every start and then starts it
+with no flags, or with `-d` after `wazuh-manager-control enable debug`. Usage:
+`wazuh-manager-modulesd -[d|f|h|t] [-u <user>] [-c <config>]`.
+
+| Flag | Effect |
+|---|---|
+| `-d` | Raise the debug level by one; repeat it (`-dd`) for level 2. When given, `wazuh_modules.debug` is ignored |
+| `-f` | Run in the foreground instead of as a daemon |
+| `-t` | Test the configuration and exit: load `wazuh-manager.conf` and the internal options, then validate the whole file, including the certificate files it names. Exit `0` when valid, `1` otherwise. Implies `-f` |
+| `-c <config>` | Manager configuration file to read (default `/etc/wazuh-manager/wazuh-manager.conf`) |
+| `-u <user>` | User the daemon switches to at start, after raising its file descriptor limit (default `wazuh-manager`); the group is always `wazuh-manager` |
+| `-h` | Print the usage and exit with status `1` |
+
+Any other flag prints the usage and exits with status `1`.
 
 ---
 

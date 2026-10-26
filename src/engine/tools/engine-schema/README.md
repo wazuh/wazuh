@@ -2,48 +2,57 @@
 
 Standalone tool for generating engine schema and associated configuration files from Wazuh Common Schema (WCS).
 
+The installer runs it to produce the engine's schema files (`generateSchemaFiles()` in
+`src/init/inst-functions.sh`), and so does the standalone package build
+(`src/engine/standalone/generate_package.sh`).
+
 ## Installation
 
-```bash
-pip install -e .
-```
-
-It can also be used directly without the installation:
+The tool is not a pip package (there is no `setup.py` or `pyproject.toml`) and installs no `engine-schema`
+command: run `engine_schema.py`, which adds `src/` to the import path. It needs PyYAML:
 
 ```bash
-python3 engine_schema.py generate --output-dir /engine_schema_test --wcs-path "ecs_flat_1.yaml , ecs_flat_2.yaml" --decoder-template /path/to/wazuh-decoders.template.json
+pip install -r requirements.txt
 ```
 
 ## Usage
 
+From `src/`, as the installer runs it (the WCS flat files are downloaded into `src/external/wcs-flat-files/`
+by `make -C src deps`):
+
 ```bash
-# Using a single YAML file
-engine-schema generate --wcs-path /path/to/wcs_flat.yml --output-dir ./output --decoder-template /path/to/wazuh-decoders.template.json
-
-# Using a directory with multiple YAML files (they will be merged)
-engine-schema generate --wcs-path /path/to/wcs_directory/ --output-dir ./output --decoder-template /path/to/wazuh-decoders.template.json
-
-# Using a list of YAML files (they will be merged)
-engine-schema generate --wcs-path "/path/to/wcs_directory/file_1.yaml , /path/to/wcs_directory/file_2.yaml" --output-dir ./output --decoder-template /path/to/wazuh-decoders.template.json
+python3 engine/tools/engine-schema/engine_schema.py generate \
+    --output-dir engine/ruleset/schemas/ \
+    --wcs-path external/wcs-flat-files/ \
+    --decoder-template engine/ruleset/schemas/wazuh-decoders.template.json \
+    --exclude-geo engine/ruleset/schemas/exclude-enrichment-geo.json \
+    --ioc-enrichment-cfg engine/ruleset/schemas/ioc-enrichment-cfg.json
 ```
+
+`--wcs-path` also accepts a single YAML file, or a comma-separated list of files (`"file_1.yaml , file_2.yaml"`);
+the files are merged.
 
 ## Arguments
 
-- `--wcs-path`: Path to the Wazuh Common Schema YAML file, directory containing YAML files or list of files separated by comma. If a directory is provided, all .yml and .yaml files will be merged into a single schema without duplicated keys
+- `--wcs-path` (required): Path to the Wazuh Common Schema YAML file, directory containing YAML files or list of files separated by comma. If a directory is provided, all .yml and .yaml files will be merged into a single schema without duplicated keys
 - `--output-dir`: Root directory to store generated files (default: current directory)
-- `--decoder-template`: Path to wazuh-decoders.json template file for fields injection
-- `--types-output`: Optional path to write the list of ECS field types
-- `--exclude-geo-ip`: Optional comma-separated list of IP fields to exclude from geo enrichment (e.g., "observer.ip,client.nat.ip")
-- `--ioc-enrichment-cfg`: Optional path to a JSON file that defines IOC enrichment configuration (which fields to check for IOCs)
+- `--decoder-template` (required): Path to the `wazuh-decoders.template.json` template; its `definitions._fieldsDecoder` must hold the placeholder `__FIELDS_DECODER_PLACEHOLDER__`, which is replaced by the fields
+- `--types-output`: Optional path to write the list of ECS field types (not written when omitted)
+- `--exclude-geo`: Optional path to a JSON file holding an array of IP field names to exclude from Geo/AS enrichment (e.g. `ruleset/schemas/exclude-enrichment-geo.json`)
+- `--ioc-enrichment-cfg`: Optional path to a JSON file that defines the IOC enrichment configuration (which fields to check for IOCs); without it no IOC source is selected
 
 ## Generated Files
 
-The tool generates the following files:
+The tool generates the following files in the output directory:
 - `wazuh-decoders.json`: Unified decoder schema with all fields injected into the template
 - `wazuh-logpar-overrides.json`: Logpar configuration overrides
 - `engine-schema.json`: Engine schema definition
 - `enrichment-geo.json`: Geo/AS enrichment configuration mapping
 - `enrichment-ioc.json`: IOC enrichment source fields configuration
+
+The other files in `src/engine/ruleset/schemas/` (`allowed-fields.json`, `wazuh-filters.json`, the template
+and the two configuration files) are maintained by hand; `ecs_types.json` is the `--types-output` list, which
+the installer's run does not write.
 
 ## Enrichment Configuration
 
@@ -70,11 +79,13 @@ The tool automatically generates a geo enrichment mapping (`enrichment-geo.json`
 }
 ```
 
+- An IP field whose parent has both `<parent>.as` and `<parent>.asn` uses `<parent>.as`.
+- Generation fails when two IP fields map to the same geo/AS targets.
+
 **Exclude IP fields from geo enrichment:**
-You can exclude specific IP fields using the `--exclude-geo-ip` argument:
-```bash
-engine-schema generate --wcs-path /path/to/wcs.yml --output-dir ./output \
-  --exclude-geo-ip "observer.ip,cloud.instance.id"
+You can exclude specific IP fields with `--exclude-geo` and a JSON file holding an array of field names:
+```json
+["threat.indicator.ip", "threat.enrichments.indicator.ip"]
 ```
 
 ### IOC Enrichment
@@ -203,7 +214,7 @@ Checks domain names, subdomains, and hostnames against IOC databases.
 - `enabled`: Set to `true` to activate domain IOC checking
 - `by_field_contains`: Array of tokens to search in field names. Any field containing these tokens will be included (e.g., "dns.question.domain", "url.registered_domain")
 - `explicit_fields`: Specific field paths to always include
-- `by_description_exact`: **Exclusion filter** based on field descriptions in WCS
+- `by_description_exact`: **Exclusion filter** based on field descriptions in WCS (the `short` description)
   - `enabled`: Set to `true` to activate this filter
   - `values`: Array of exact description strings. Fields with these descriptions will be EXCLUDED (useful to filter out fields like "user.domain" which refers to Active Directory, not internet domains)
 - `exclude.exclude_trees`: Additional field prefixes to exclude
@@ -261,7 +272,9 @@ Checks file hashes against IOC databases. Supports multiple hash algorithms.
 
 - `enabled`: Set to `true` to activate hash IOC checking globally
 - `algorithms`: Object containing configuration for each hash algorithm
-  - Each algorithm (md5, sha1, sha256, sha384, sha512, tlsh, ssdeep, cdhash) can be independently enabled
+  - Each algorithm is enabled independently and produces a `hash_<algorithm>` entry in the output (the shipped
+    `ruleset/schemas/ioc-enrichment-cfg.json` lists md5, sha1, sha256, sha384, sha512, tlsh, ssdeep and cdhash, and
+    enables md5, sha1 and sha256)
   - `by_field_contains`: Array of tokens to search in field names
   - `exclude.exclude_trees`: Field prefixes to exclude for this specific algorithm
 
@@ -352,7 +365,7 @@ All three levels are merged (union) when filtering fields.
 
 ```bash
 # Generate enrichment configurations with IOC support
-engine-schema generate \
+python3 engine_schema.py generate \
   --wcs-path /path/to/wcs.yml \
   --output-dir ./output \
   --decoder-template /path/to/wazuh-decoders.template.json \

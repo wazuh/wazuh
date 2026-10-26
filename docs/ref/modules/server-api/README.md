@@ -10,7 +10,7 @@ The API is served by `wazuh-manager-apid`, on port `55000` by default, and **onl
 
 - **REST API**: Full management interface over HTTPS
 - **JWT Authentication**: Short-lived tokens signed with ES512 (900 seconds by default)
-- **RBAC**: Fine-grained permission control per endpoint and resource, including a separate action for reading the configuration secrets in clear (see [Authentication](authentication.md#sensitive-configuration-values))
+- **RBAC**: Fine-grained permission control per endpoint and resource, including separate actions for reading the configuration secrets in clear and the agents' keys (see [Sensitive configuration values](authentication.md#sensitive-configuration-values) and [Agent keys](authentication.md#agent-keys))
 - **Distributed API (DAPI)**: Transparent request routing across cluster nodes
 - **`q` query filter**: Server-side query language for filtering large datasets
 - **OpenAPI 3.0**: Fully specified API contract (`api/api/spec/spec.yaml`)

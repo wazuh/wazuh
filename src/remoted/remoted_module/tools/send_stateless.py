@@ -47,7 +47,7 @@ ESCAPED_NUL = r"\u0000"  # two characters, not a NUL byte
 
 def default_body(agent_id: str) -> bytes:
     """One H line naming `agent_id` + one event. The H line MUST name the authenticated agent: the
-    manager answers 400 (payload_agent_mismatch) to a batch that claims another id."""
+    manager answers 400 to a batch that claims another id."""
     return b'H {"wazuh":{"agent":{"id":"' + agent_id.encode() + b'"}}}\nE 1:/var/log/syslog:hello from python'
 
 
@@ -129,9 +129,9 @@ def prefixed(path: str) -> str:
 # --- Scenarios -------------------------------------------------------------
 # Each returns (headers, body_to_send, target). Every distinct AuthError that
 # publicErrorFor() (authMiddleware.cpp) maps to a distinct status is covered
-# here, including PayloadAgentMismatch (400): /stateless cross-checks the H
-# line's wazuh.agent.id against the authenticated agent-id before forwarding
-# (statelessEndpoint.cpp). Also covers every transport-level limit RESTinio
+# here, plus an H line naming another agent (400): /stateless forwards it with
+# the authenticated id as X-Wazuh-Agent-Id, the engine rejects the mismatch and
+# remoted relays that 400. Also covers every transport-level limit RESTinio
 # itself enforces (RestinioHttpServer.cpp), which fail differently: see
 # CONN_CLOSED.
 
@@ -276,8 +276,8 @@ def scenario_too_many_headers(agent_id, agent_key):
 
 def scenario_payload_agent_mismatch(agent_id, agent_key):
     # The bearer token names the real agent; the H line's
-    # wazuh.agent.id claims a different one. statelessEndpoint.cpp rejects the mismatch with a
-    # plain 400 before ever forwarding the batch to the engine.
+    # wazuh.agent.id claims a different one. The engine rejects the mismatch against the
+    # X-Wazuh-Agent-Id remoted sets, and remoted relays it as a plain 400.
     target = prefixed("/stateless")
     claimed_id = str(int(agent_id) + 1)
     body = f'H {{"wazuh":{{"agent":{{"id":"{claimed_id}"}}}}}}\nE 1:/var/log/syslog:hello from python'.encode()
@@ -384,10 +384,11 @@ def scenario_malformed_zstd(agent_id, agent_key):
 
 
 def scenario_zstd_body_beyond_the_auth_cap(agent_id, agent_key):
-    # auth_max_body_size (5 MiB) bounds the WIRE body only. A DECOMPRESSED body is bounded by the
-    # server's live in-flight capacity instead (max_inflight_bytes, 256 MiB by default), so a batch
-    # that decompresses well past 5 MiB is accepted -- that is the behavior change zstd support
-    # introduced, and what this scenario pins down.
+    # auth_max_body_size (5 MiB) bounds the WIRE body only. A DECOMPRESSED body has its own cap,
+    # remoted.auth_max_decoded_body_size (32 MiB by default), and draws on the server's live
+    # in-flight capacity (max_inflight_bytes, 256 MiB by default), so a batch that decompresses to
+    # ~6 MiB -- past the wire cap, well under the decoded one -- is accepted. That is the behavior
+    # change zstd support introduced, and what this scenario pins down.
     #
     # There is deliberately no e2e scenario for the 413 that capacity exhaustion produces: with the
     # default 256 MiB budget a single request cannot realistically reach it, and forcing it would

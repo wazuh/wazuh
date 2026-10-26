@@ -10,10 +10,21 @@ on:
       - "tools/devContainer/scripts/*.py"
       - "tools/devContainer/scripts/tests/**"
       - "tools/manager_benchmark/result_summary.py"
+      # test_scripts.py runs the shell helpers it covers.
+      - "tools/manager_benchmark/*.sh"
       - "tools/manager_benchmark/tests/**"
       # Dashboard capture tool: the tests read capture.py, capture_logic.py and views.json.
       - "tools/devContainer/e2e/dashboard/*.py"
       - "tools/devContainer/e2e/dashboard/views.json"
+      # The Go sender: its sources and module files, its tests' testdata, the scenarios/ its scenario
+      # test loads, the schema `make generate` compiles and the lock that pins flatc.
+      - "tools/manager_benchmark/tool_simulator/**"
+      - "!tools/manager_benchmark/tool_simulator/docu/**"
+      - "tools/manager_benchmark/scenarios/**"
+      - "src/shared_modules/utils/flatbuffers/schemas/inventorySync.fbs"
+      - "src/deps.lock.mk"
+      # test_jwt_vectors_mirror.py compares the simulator's jwt_vectors.json with this header.
+      - "src/shared_modules/utils/jwt/testVectors.hpp"
   workflow_dispatch:
 
 concurrency:
@@ -60,6 +71,38 @@ jobs:
           if grep -Eq '^=+ .*[0-9]+ skipped' /tmp/benchmark.log; then
             echo "::error::tools/manager_benchmark tests skipped cases"; exit 1
           fi
+
+  benchmark-sender:
+    if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: tools/manager_benchmark/tool_simulator/go.mod
+          cache-dependency-path: tools/manager_benchmark/tool_simulator/go.sum
+
+      # `make generate` runs src/external/flatbuffers/build/flatc (the bindings are never committed).
+      # Only that one dependency is fetched, through the same src/Makefile rule `make deps` uses: the
+      # pool's precompiled tree when it has one for this platform (src/external/CMakeLists.txt treats a
+      # tree holding build/flatc as precompiled), otherwise the sources, from which flatc is built with
+      # the options that file passes.
+      - name: Obtain flatc
+        run: |
+          make -C src TARGET=manager external/flatbuffers.tar.gz
+          if [ ! -x src/external/flatbuffers/build/flatc ]; then
+            cmake -S src/external/flatbuffers -B src/external/flatbuffers/build \
+              -DFLATBUFFERS_BUILD_TESTS=0 -DFLATBUFFERS_INSTALL=0
+            cmake --build src/external/flatbuffers/build --target flatc -j"$(nproc)"
+          fi
+          src/external/flatbuffers/build/flatc --version
+
+      - name: Generate the FlatBuffers bindings and run the Go tests
+        run: make -C tools/manager_benchmark/tool_simulator generate test
 
   dashboard-capture:
     if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}

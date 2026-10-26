@@ -12,8 +12,11 @@ set -euo pipefail
 #   1. makes remote enrollment reachable:
 #          <disabled>no</disabled>
 #          <remote_enrollment>yes</remote_enrollment>
-#          <max_agents>N</max_agents>          (only when --max-agents is given)
-#      (remoted serves /enroll only while both of the first two hold)
+#      (remoted serves /enroll only while both hold). --max-agents N sets the
+#      enrollment cap, which is NOT a configuration-file option (the schema
+#      refuses an unknown <auth> child): it writes the internal option
+#          authd.max_agents=N      (0 = no limit, the default)
+#      to /etc/wazuh-manager/wazuh-manager-internal-options.conf instead.
 #   2. mints ONE multi-use enrollment token for the fleet and writes it to
 #      --token-file (default: .enrollment_token next to this script), which
 #      run_benchmark.sh picks up by itself. authd's defaults apply: 30 days,
@@ -57,7 +60,8 @@ set -euo pipefail
 # manager unless --no-restart is given.
 #
 # Usage:
-#   sudo ./prepare_manager.sh [--conf PATH] [--max-agents N] [--address HOST]
+#   sudo ./prepare_manager.sh [--conf PATH] [--internal-options PATH]
+#                             [--max-agents N] [--address HOST]
 #                             [--token-file PATH] [--no-mint] [--open-1515]
 #                             [--keep-rate-limits] [--no-restart]
 # ---------------------------------------------------------------------------
@@ -66,6 +70,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # The manager configuration directory is fixed: a custom home never moves it.
 CONF_DIR="/etc/wazuh-manager"
 CONF="$CONF_DIR/wazuh-manager.conf"
+INTERNAL_OPTIONS="$CONF_DIR/wazuh-manager-internal-options.conf"
 MAX_AGENTS=""
 RESTART=true
 OPEN_1515=false
@@ -78,6 +83,7 @@ PYTHON="${PYTHON:-python3}"
 while [[ $# -gt 0 ]]; do
     case "$1" in
         --conf)        CONF="$2"; shift 2 ;;
+        --internal-options) INTERNAL_OPTIONS="$2"; shift 2 ;;
         --max-agents)  MAX_AGENTS="$2"; shift 2 ;;
         --address)     ADDRESS="$2"; shift 2 ;;
         --token-file)  TOKEN_FILE="$2"; shift 2 ;;
@@ -92,6 +98,13 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
+# authd accepts authd.max_agents in [0, INT_MAX] and exits at startup on anything else, so a typo
+# would take the manager down after the restart: refuse it here instead.
+if [[ -n "$MAX_AGENTS" ]] && ! [[ "$MAX_AGENTS" =~ ^[0-9]+$ && "$MAX_AGENTS" -le 2147483647 ]]; then
+    echo "prepare_manager: --max-agents must be an integer in [0, 2147483647], got '$MAX_AGENTS'" >&2
+    exit 1
+fi
+
 if [[ ! -f "$CONF" ]]; then
     echo "Error: config not found: $CONF" >&2
     echo "  Is the manager installed? Pass --conf to point at wazuh-manager.conf." >&2
@@ -105,11 +118,10 @@ CONTROL="$WAZUH_HOME/bin/wazuh-manager-control"
 AUTHD="$WAZUH_HOME/bin/wazuh-manager-authd"
 
 echo "Configuring reachable remote enrollment in $CONF ..."
-MAX_AGENTS="$MAX_AGENTS" OPEN_1515="$OPEN_1515" KEEP_RATE_LIMITS="$KEEP_RATE_LIMITS" "$PYTHON" - "$CONF" <<'PY'
+OPEN_1515="$OPEN_1515" KEEP_RATE_LIMITS="$KEEP_RATE_LIMITS" "$PYTHON" - "$CONF" <<'PY'
 import os, re, sys
 
 path = sys.argv[1]
-max_agents = os.environ.get("MAX_AGENTS", "").strip()
 open_1515 = os.environ.get("OPEN_1515", "") == "true"
 with open(path, "r", encoding="utf-8") as fh:
     original = fh.read()
@@ -207,8 +219,11 @@ else:
 new_block = block
 new_block = set_child(new_block, "disabled", "no")
 new_block = set_child(new_block, "remote_enrollment", "yes")
-if max_agents:
-    new_block = set_child(new_block, "max_agents", max_agents)
+# An earlier version of this script wrote <max_agents> here. The schema refuses it (the cap is the
+# internal option authd.max_agents), so a leftover one would keep the manager from starting: drop it.
+stale = live_search(r"[ \t]*<max_agents>.*?</max_agents>[ \t]*\n?", new_block)
+if stale:
+    new_block = new_block[:stale.start()] + new_block[stale.end():]
 # use_password is otherwise NOT touched: the enrollment-token bootstrap works
 # whatever it says, and a benchmark should not soften the manager it measures.
 if open_1515:
@@ -270,6 +285,28 @@ with open(path, "w", encoding="utf-8") as fh:
 print("  auth block updated")
 print(f"  remote.https rate limits: {rate_note}")
 PY
+
+if [[ -n "$MAX_AGENTS" ]]; then
+    echo "Setting authd.max_agents=$MAX_AGENTS in $INTERNAL_OPTIONS ..."
+    if [[ ! -e "$INTERNAL_OPTIONS" ]]; then
+        # The installed file is root:wazuh-manager 0640 and authd reads it after dropping privileges.
+        install -m 0640 -o root -g wazuh-manager /dev/null "$INTERNAL_OPTIONS"
+    fi
+    # Rewritten in place (same inode), so the installed owner and mode are kept.
+    "$PYTHON" - "$INTERNAL_OPTIONS" "$MAX_AGENTS" <<'PY'
+import re, sys
+
+path, value = sys.argv[1], sys.argv[2]
+with open(path, "r+", encoding="utf-8") as fh:
+    lines = fh.read().splitlines()
+    pattern = re.compile(r"^\s*authd\.max_agents\s*=")
+    kept = [line for line in lines if not pattern.match(line)]
+    kept.append(f"authd.max_agents={value}")
+    fh.seek(0)
+    fh.write("\n".join(kept) + "\n")
+    fh.truncate()
+PY
+fi
 
 if $OPEN_1515; then
     echo "  --open-1515: use_password=no (unauthenticated enrollment on port 1515 is now open)"

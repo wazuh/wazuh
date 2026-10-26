@@ -17,8 +17,9 @@ namespace router
  * @class Router
  * @brief Manages the routing of events through a dynamic environment and policies configuration.
  *
- * An environment is a policy + filter combination.
- * A filter is a set of rules that determine which events are processed by a policy
+ * An environment is the built policy (its controller) of one namespace, plus the policy hash.
+ * Every enabled environment receives a copy of each ingested event; event selection is done by the
+ * policy itself (its pre-filter and filters), not by the router.
  */
 class IRouter
 {

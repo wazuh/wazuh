@@ -111,17 +111,23 @@ The agent's daemons read these sections from `agent.conf` (`read_main_elements()
 | `<agent-info>` | Agent info module |
 | `<gcp-pubsub>`, `<gcp-bucket>` | Google Cloud modules |
 | `<github>`, `<office365>`, `<ms-graph>` | Cloud log collection modules |
-| `<agent>` | Only its `<batch>` child; any other child is an error |
+| `<agent>` (or its 4.x spelling `<client>`) | Only its `<batch>` child; any other child is an error |
 
 Sections that are read only from the agent's local `ossec.conf`:
 
-- `<active-response>`: the agent's execd reads its `<disabled>` flag only from the local file, so an
-  `<active-response>` block in `agent.conf` is accepted and ignored.
+- `<active-response>`: the agent's execd reads the whole block (`<disabled>`,
+  `<repeated_offenders>`, `<allowlist>`) only from the local file, so an `<active-response>` block in
+  `agent.conf` is accepted and ignored.
 - `<agent-upgrade>`: ignored in `agent.conf`.
+- `<anti_tampering>` (Unix agents): read from the local file only; ignored in `agent.conf`. Windows
+  agents do not know the section, so there it makes the file invalid.
 - `<logging>`: ignored in `agent.conf`.
 
-A manager-only section is skipped with the warning `<section> configuration is only set in the
-manager.`
+A manager-only section (`global`, `remote`, `auth`, `wdb`, `indexer`, `vulnerability-detection`,
+`vulnerability-detector`, `task-manager`) is skipped with the warning `<section> configuration is only set in the manager.` A
+section removed in 5.0 (`labels`, `command`, `integration`, …) is skipped with
+`(1223): '<section>' is no longer supported and will be ignored. <reason>` Any other unknown section is
+an error that makes the whole file invalid.
 
 ## Verifying the configuration
 
@@ -139,8 +145,8 @@ verify-agent-conf: OK
 
 | Option | Effect |
 |--------|--------|
-| *(none)* | Check `agent.conf` in every directory under `/etc/wazuh-manager/shared/`; a directory without one is reported as `File not found` |
-| `-f <file>` | Check only that file |
+| *(none)* | Check `agent.conf` in every directory under `/etc/wazuh-manager/shared/`; a directory without one is reported as `File not found` and counts as a failure |
+| `-f <file>` | Check only that file. A relative path is resolved against `/var/wazuh-manager`, so give an absolute one |
 | `-d` | Debug output. Any option turns the scan of `/etc/wazuh-manager/shared/` off, so use it with `-f` |
 | `-V` | Print the version |
 | `-h` | Print the help and exit `1` |
@@ -149,9 +155,21 @@ It exits `0` when every file is valid and `1` otherwise. Errors are printed on s
 syntax error names the line (`(1226): Error reading XML file '<file>': <error> (line <n>).`). The
 `os`, `name` and `profile` filters are not evaluated here: every block is checked.
 
-On the agent, a received configuration that fails validation is not applied: the agent logs
-`Downloaded configuration failed validation; not reloading.` and reports
-`wazuh: Invalid remote configuration: '<section>'.` to the manager as an event.
+`PUT /groups/<GROUP_NAME>/configuration` runs the same check (`verify-agent-conf -f`) on the body
+before it replaces `agent.conf`, and refuses an invalid one with error `1113` (not well-formed XML) or
+`1114` (invalid configuration), or `1115` when `verify-agent-conf` fails without an error line the
+API can parse, without touching the file. An `agent.conf` edited directly on disk is
+not checked by the manager: `wazuh-manager-remoted` distributes it as it is, so run
+`verify-agent-conf` after editing.
+
+On the agent, a received configuration that fails validation is not applied: the agent restores its
+previous shared files, keeps running with its current configuration, reports
+`wazuh: Invalid remote configuration: '<section>'.` to the manager as an event, and logs the warning
+`The shared configuration the manager provides (hash=<hash>) is invalid; the agent keeps its current
+configuration until the manager provides a valid one.` (while the agent is still starting and its
+modules wait for the manager's configuration, the warning ends `the modules stay on hold until the
+manager provides a valid one.` instead; either is repeated every 10 minutes while the manager
+keeps offering that configuration; it is not downloaded again until it changes).
 
 ## Applying changes
 
@@ -165,4 +183,6 @@ disabled.` An agent whose `agent.remote_conf` internal option is `0` ignores `ag
 
 ## Precedence rules
 
-`agent.conf` wins over the local `ossec.conf` (see [Introduction](#introduction)). If an agent belongs to multiple groups, the configurations from all groups are merged. Groups are merged in the order they were assigned to the agent, and in case of conflicts between groups, the configuration from the group assigned last takes precedence. See [Configuration merge order](agent-groups.md#configuration-merge-order).
+`agent.conf` wins over the local `ossec.conf` (see [Introduction](#introduction)). For an agent in
+several groups, how their `agent.conf` files are combined is described in
+[Configuration merge order](agent-groups.md#configuration-merge-order).

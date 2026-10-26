@@ -201,7 +201,13 @@ content_manager::SessionDecision RulesetSpaceSink::beginSession(const content_ma
         return SessionDecision::Abort;
     }
 
-    m_policyEnabled = enabled->get<bool>() && !integrations->empty();
+    // A policy with no root decoder has nothing to build either (the build fails with "Missing root
+    // decoder"), so it counts as disabled, like one with no integrations. Anything but a non-empty
+    // string (missing, null, "" or another type) means no root decoder; it never aborts the cycle.
+    const auto rootDecoder = metadata.find("root_decoder");
+    const bool hasRootDecoder = rootDecoder != metadata.end() && rootDecoder->is_string()
+                                && !rootDecoder->get_ref<const std::string&>().empty();
+    m_policyEnabled = enabled->get<bool>() && !integrations->empty() && hasRootDecoder;
     if (!*m_policyEnabled)
     {
         teardown();
@@ -423,13 +429,15 @@ void RulesetSpaceSink::teardown() noexcept
     {
         if (!router->existsEntry(m_routeName))
         {
-            LOG_DEBUG("[{}] Policy for space '{}' is disabled in the indexer and no route exists, skipping",
+            LOG_DEBUG("[{}] Policy for space '{}' is disabled in the indexer or has nothing to build (no "
+                      "integrations or no root decoder) and no route exists, skipping",
                       LOG_MODULE_NAME,
                       m_space);
             return;
         }
 
-        LOG_INFO("[{}] Policy for space '{}' is disabled in the indexer, removing route and namespace",
+        LOG_INFO("[{}] Policy for space '{}' is disabled in the indexer or has nothing to build (no integrations "
+                 "or no root decoder), removing route and namespace",
                  LOG_MODULE_NAME,
                  m_space);
 
