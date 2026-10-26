@@ -712,10 +712,18 @@ namespace
                 return it == m_blocks.end() ? nullptr : cJSON_Duplicate(it->second, 1);
             }
 
-            /// Takes ownership of @p block, freeing whatever it replaces.
-            void store(const std::string& containerId, cJSON* block)
+            bool hasContext(const std::string& containerId, const std::string& context) const
             {
                 std::lock_guard<std::mutex> lock {m_mutex};
+                const auto it = m_contexts.find(containerId);
+                return it != m_contexts.end() && it->second == context;
+            }
+
+            /// Takes ownership of @p block, freeing whatever it replaces.
+            void store(const std::string& containerId, cJSON* block, const std::string& context)
+            {
+                std::lock_guard<std::mutex> lock {m_mutex};
+                m_contexts[containerId] = context;
                 cJSON*& slot = m_blocks[containerId];
                 cJSON_Delete(slot);
                 slot = block;
@@ -741,7 +749,10 @@ namespace
             /// it describes the database as it was read.
             ///
             /// Takes ownership of @p block.
-            cJSON* fill(const std::string& containerId, cJSON* block, std::uint64_t generation)
+            cJSON* fill(const std::string& containerId,
+                        cJSON* block,
+                        const std::string& context,
+                        std::uint64_t generation)
             {
                 std::lock_guard<std::mutex> lock {m_mutex};
                 cJSON* copy = cJSON_Duplicate(block, 1);
@@ -749,6 +760,7 @@ namespace
                 if (generation == m_generation && m_blocks.find(containerId) == m_blocks.end())
                 {
                     m_blocks.emplace(containerId, block);
+                    m_contexts.emplace(containerId, context);
                 }
                 else
                 {
@@ -769,6 +781,7 @@ namespace
                     m_blocks.erase(it);
                 }
 
+                m_contexts.erase(containerId);
                 ++m_generation;
             }
 
@@ -782,6 +795,7 @@ namespace
                 }
 
                 m_blocks.clear();
+                m_contexts.clear();
                 ++m_generation;
             }
 
@@ -794,8 +808,15 @@ namespace
 
             mutable std::mutex m_mutex;
             std::map<std::string, cJSON*> m_blocks;
+            std::map<std::string, std::string> m_contexts;
             std::uint64_t m_generation {0};
     };
+
+    std::recursive_mutex& ContainerContextWriteMutex()
+    {
+        static std::recursive_mutex mutex;
+        return mutex;
+    }
 
     /// Lifts the "container" block out of a stored context document. Returns an
     /// owned object, or nullptr if the document is not one.
@@ -821,6 +842,7 @@ namespace
 
 void fim_db_clear_container_contexts()
 {
+    std::lock_guard<std::recursive_mutex> writeLock {ContainerContextWriteMutex()};
     ContainerContextCache::instance().clear();
 }
 
@@ -834,9 +856,13 @@ int fim_db_set_container_context(const char* container_id, const char* context_j
 
     try
     {
+        const std::string context {context_json};
+        std::lock_guard<std::recursive_mutex> writeLock {ContainerContextWriteMutex()};
+        const bool unchanged = ContainerContextCache::instance().hasContext(container_id, context);
+
         nlohmann::json row;
         row["container_id"] = container_id;
-        row["context"] = context_json;
+        row["context"] = context;
 
         nlohmann::json input;
         input["table"] = FIMDB_CONTAINER_CONTEXT_TABLE_NAME;
@@ -847,7 +873,7 @@ int fim_db_set_container_context(const char* container_id, const char* context_j
         // the point of keeping the context out of the file rows.
         ResultCallbackData callback {[](ReturnTypeCallback, const nlohmann::json&) {}};
 
-        if (!FIMDB::instance().updateItem(input, callback))
+        if (!FIMDB::instance().updateItemIfNeeded(input, callback, unchanged))
         {
             // Stopping, or no database: nothing was written, so caching the
             // block would make the context look stored when it is not.
@@ -858,7 +884,9 @@ int fim_db_set_container_context(const char* container_id, const char* context_j
 
         // Only cached once the write succeeded, so a cache hit always describes
         // something the database holds.
-        ContainerContextCache::instance().store(container_id, ExtractContainerBlock(context_json));
+        std::unique_ptr<cJSON, decltype(&cJSON_Delete)> block {ExtractContainerBlock(context.c_str()), cJSON_Delete};
+        ContainerContextCache::instance().store(container_id, block.get(), context);
+        block.release();
     }
     catch (const std::exception& e)
     {
@@ -927,7 +955,7 @@ cJSON* fim_db_get_container_context(const char* container_id)
             return nullptr;
         }
 
-        return ContainerContextCache::instance().fill(container_id, block, generation);
+        return ContainerContextCache::instance().fill(container_id, block, context, generation);
     }
     catch (const std::exception& e)
     {
@@ -942,6 +970,8 @@ int fim_db_delete_container_context(const char* container_id)
     {
         return FIMDB_ERR;
     }
+
+    std::lock_guard<std::recursive_mutex> writeLock {ContainerContextWriteMutex()};
 
     try
     {
@@ -984,6 +1014,8 @@ int fim_db_prune_container_contexts(const char* const* keep, int keep_count)
         FIMDB::instance().logFunction(LOG_ERROR, "Invalid parameters");
         return FIMDB_ERR;
     }
+
+    std::lock_guard<std::recursive_mutex> writeLock {ContainerContextWriteMutex()};
 
     try
     {

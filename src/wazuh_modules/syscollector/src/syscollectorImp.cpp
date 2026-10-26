@@ -703,7 +703,10 @@ std::vector<std::string> Syscollector::getUpgradeStatements() const
     {
         // v2 -> v3: store a container's context once, rather than stamping a
         // copy of it onto every row that container owns.
-        CONTAINER_CONTEXT_SQL_STATEMENT,
+        R"(CREATE TABLE IF NOT EXISTS container_context (
+    container_id TEXT PRIMARY KEY,
+    context TEXT NOT NULL DEFAULT ''
+    ) WITHOUT ROWID;)",
 
         // v3 -> v4: dbsync_osinfo (20 columns)
         R"(DROP TABLE IF EXISTS dbsync_osinfo_upgrade_v4_old;
