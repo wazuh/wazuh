@@ -118,7 +118,9 @@ list(APPEND client-agent_flags "-Wl,--wrap,w_is_file -Wl,--wrap,IsFile -Wl,--wra
                                 -Wl,--wrap,w_x509_load_all_pem -Wl,--wrap,w_x509_free_all ${DEBUG_OP_WRAPPERS}")
 
 list(APPEND client-agent_names "test_manager_address")
-list(APPEND client-agent_flags "${DEBUG_OP_WRAPPERS}")
+# FileSize is wrapped so each case states whether client.keys is consulted at all. wfopen only so
+# the link succeeds, as for test_agent_ssl_ca: its wrapper forwards to the real call.
+list(APPEND client-agent_flags "-Wl,--wrap,FileSize -Wl,--wrap,wfopen ${DEBUG_OP_WRAPPERS}")
 
 # getAgentConfig() reads the agt globals and builds cJSON, nothing else: no wrappers.
 list(APPEND client-agent_names "test_agent_config")
@@ -321,7 +323,7 @@ endif()
 # KEYS_FILE, AUTHD_PASS and SHAREDCFG_DIR/SHAREDCFG_FILE expand to the manager's absolute
 # /etc/wazuh-manager paths instead of the agent's relative etc/ ones, so the test would expect (or
 # create) one path while the code under test uses another.
-foreach(client_test test_https_client_bridge test_startup_gate test_enrollment test_token_bootstrap test_shred_file)
+foreach(client_test test_https_client_bridge test_startup_gate test_enrollment test_token_bootstrap test_shred_file test_manager_address)
     if(TARGET ${client_test})
         target_compile_definitions(${client_test} PRIVATE CLIENT)
     endif()

@@ -46,8 +46,9 @@ void w_agent_resolve_ssl_posture(agent *cfg);
  * Returns false when the agent must not start. */
 bool w_agent_validate_ssl_ca(const agent *cfg);
 
-/* Check that <manager><endpoint> names a manager rather than a placeholder, logging why not.
- * Returns false when the agent must not start. */
+/* Check that <manager><endpoint> names a manager rather than a placeholder, logging why not and,
+ * on an agent that was never enrolled, how to enroll it. Returns false when the agent must not
+ * start. */
 bool w_agent_validate_manager_address(const agent *cfg);
 
 /* Parse read config into JSON format */

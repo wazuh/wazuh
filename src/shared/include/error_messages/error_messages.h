@@ -304,6 +304,14 @@
                                    "to 'none', so the start is refused. Restore the anchor, reinstall " \
                                    "it with 'wazuh-agent-auth --certs-only', or set " \
                                    "<ssl><verification_mode> explicitly to say what was intended."
+#ifndef WIN32
+#define AG_NOT_ENROLLED            "(4128): This agent is not enrolled yet. Enroll it with " \
+                                   "'wazuh-agent-auth --token-file <file>', then start the agent."
+#else
+#define AG_NOT_ENROLLED            "(4128): This agent is not enrolled yet. Enroll it with Manage > " \
+                                   "Enroll in the agent GUI or with 'wazuh-agent-auth.exe --token-file " \
+                                   "<file>', then start the agent."
+#endif
 
 /* Rules reading errors */
 #define RL_INV_ROOT     "(5101): Invalid root element: '%s'."
