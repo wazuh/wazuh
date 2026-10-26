@@ -157,6 +157,37 @@ base::OptError Tester::renameEntry(const std::string& from, const std::string& t
     return std::nullopt;
 }
 
+base::RespOrError<std::optional<test::Entry>> Tester::replaceEntry(const std::string& from, const std::string& to)
+{
+    if (from == to)
+    {
+        return base::Error {"Error replacing session: names must differ"};
+    }
+
+    std::unique_lock<std::shared_mutex> lock {m_mutex};
+
+    auto itFrom = m_table.find(from);
+    if (itFrom == m_table.end())
+    {
+        return base::Error {fmt::format("Error replacing session: The '{}' environment does not exist", from)};
+    }
+
+    std::optional<test::Entry> replaced;
+    auto itTo = m_table.find(to);
+    if (itTo != m_table.end())
+    {
+        replaced = test::Entry {itTo->second};
+        m_table.erase(itTo);
+    }
+
+    auto node = m_table.extract(itFrom);
+    node.key() = to;
+    node.mapped().name(to);
+    m_table.insert(std::move(node));
+
+    return replaced;
+}
+
 base::OptError Tester::enableEntry(const std::string& name)
 {
     std::unique_lock lock {m_mutex};

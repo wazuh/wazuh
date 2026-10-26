@@ -1209,15 +1209,13 @@ TEST_F(OrchestratorTest, replaceTestEntrySameName)
     EXPECT_TRUE(base::isError(m_orchestrator->replaceTestEntry("final", "final")));
 }
 
-TEST_F(OrchestratorTest, replaceTestEntryFromMissing)
+TEST_F(OrchestratorTest, replaceTestEntryWorkerFails)
 {
     auto testerMock = std::make_shared<MockTester>();
     auto itesterMock = std::static_pointer_cast<router::ITester>(testerMock);
 
     EXPECT_CALL(*m_orchestrator->m_testerWorkerMock, get()).WillRepeatedly(testing::Return(itesterMock));
-    EXPECT_CALL(*testerMock, getEntry("tmp")).WillOnce(testing::Return(base::Error {"missing"}));
-    EXPECT_CALL(*testerMock, removeEntry(testing::_)).Times(0);
-    EXPECT_CALL(*testerMock, renameEntry(testing::_, testing::_)).Times(0);
+    EXPECT_CALL(*testerMock, replaceEntry("tmp", "final")).WillOnce(testing::Return(base::Error {"replace failed"}));
     EXPECT_CALL(*(m_orchestrator->m_mockstore), upsertDoc(testing::_, testing::_)).Times(0);
 
     EXPECT_TRUE(base::isError(m_orchestrator->replaceTestEntry("tmp", "final")));
@@ -1229,10 +1227,7 @@ TEST_F(OrchestratorTest, replaceTestEntryTargetAbsent)
     auto itesterMock = std::static_pointer_cast<router::ITester>(testerMock);
 
     EXPECT_CALL(*m_orchestrator->m_testerWorkerMock, get()).WillRepeatedly(testing::Return(itesterMock));
-    EXPECT_CALL(*testerMock, getEntry("tmp")).WillOnce(testing::Return(makeTestEntry("tmp", "ns_tmp")));
-    EXPECT_CALL(*testerMock, getEntry("final")).WillOnce(testing::Return(base::Error {"missing"}));
-    EXPECT_CALL(*testerMock, removeEntry(testing::_)).Times(0);
-    EXPECT_CALL(*testerMock, renameEntry("tmp", "final")).WillOnce(testing::Return(std::nullopt));
+    EXPECT_CALL(*testerMock, replaceEntry("tmp", "final")).WillOnce(testing::Return(std::optional<test::Entry> {}));
     EXPECT_CALL(*testerMock, getEntries()).WillOnce(testing::Return(std::list<test::Entry> {}));
     EXPECT_CALL(*(m_orchestrator->m_mockstore), upsertDoc(testing::_, testing::_))
         .WillOnce(::testing::Return(store::mocks::storeOk()));
@@ -1248,13 +1243,8 @@ TEST_F(OrchestratorTest, replaceTestEntryTargetPresent)
     auto itesterMock = std::static_pointer_cast<router::ITester>(testerMock);
 
     EXPECT_CALL(*m_orchestrator->m_testerWorkerMock, get()).WillRepeatedly(testing::Return(itesterMock));
-    EXPECT_CALL(*testerMock, getEntry("tmp")).WillOnce(testing::Return(makeTestEntry("tmp", "ns_tmp")));
-    EXPECT_CALL(*testerMock, getEntry("final")).WillOnce(testing::Return(makeTestEntry("final", "ns_old")));
-    {
-        testing::InSequence seq;
-        EXPECT_CALL(*testerMock, removeEntry("final")).WillOnce(testing::Return(std::nullopt));
-        EXPECT_CALL(*testerMock, renameEntry("tmp", "final")).WillOnce(testing::Return(std::nullopt));
-    }
+    EXPECT_CALL(*testerMock, replaceEntry("tmp", "final"))
+        .WillOnce(testing::Return(std::optional<test::Entry> {makeTestEntry("final", "ns_old")}));
     EXPECT_CALL(*testerMock, getEntries()).WillOnce(testing::Return(std::list<test::Entry> {}));
     EXPECT_CALL(*(m_orchestrator->m_mockstore), upsertDoc(testing::_, testing::_))
         .WillOnce(::testing::Return(store::mocks::storeOk()));
@@ -1264,35 +1254,6 @@ TEST_F(OrchestratorTest, replaceTestEntryTargetPresent)
     const auto& replaced = base::getResponse(result);
     ASSERT_TRUE(replaced.has_value());
     EXPECT_EQ(replaced->namespaceId().toStr(), "ns_old");
-}
-
-TEST_F(OrchestratorTest, replaceTestEntryRemoveFails)
-{
-    auto testerMock = std::make_shared<MockTester>();
-    auto itesterMock = std::static_pointer_cast<router::ITester>(testerMock);
-
-    EXPECT_CALL(*m_orchestrator->m_testerWorkerMock, get()).WillRepeatedly(testing::Return(itesterMock));
-    EXPECT_CALL(*testerMock, getEntry("tmp")).WillOnce(testing::Return(makeTestEntry("tmp", "ns_tmp")));
-    EXPECT_CALL(*testerMock, getEntry("final")).WillOnce(testing::Return(makeTestEntry("final", "ns_old")));
-    EXPECT_CALL(*testerMock, removeEntry("final")).WillOnce(testing::Return(base::Error {"remove failed"}));
-    EXPECT_CALL(*testerMock, renameEntry(testing::_, testing::_)).Times(0);
-    EXPECT_CALL(*(m_orchestrator->m_mockstore), upsertDoc(testing::_, testing::_)).Times(0);
-
-    EXPECT_TRUE(base::isError(m_orchestrator->replaceTestEntry("tmp", "final")));
-}
-
-TEST_F(OrchestratorTest, replaceTestEntryRenameFails)
-{
-    auto testerMock = std::make_shared<MockTester>();
-    auto itesterMock = std::static_pointer_cast<router::ITester>(testerMock);
-
-    EXPECT_CALL(*m_orchestrator->m_testerWorkerMock, get()).WillRepeatedly(testing::Return(itesterMock));
-    EXPECT_CALL(*testerMock, getEntry("tmp")).WillOnce(testing::Return(makeTestEntry("tmp", "ns_tmp")));
-    EXPECT_CALL(*testerMock, getEntry("final")).WillOnce(testing::Return(base::Error {"missing"}));
-    EXPECT_CALL(*testerMock, renameEntry("tmp", "final")).WillOnce(testing::Return(base::Error {"rename failed"}));
-    EXPECT_CALL(*(m_orchestrator->m_mockstore), upsertDoc(testing::_, testing::_)).Times(0);
-
-    EXPECT_TRUE(base::isError(m_orchestrator->replaceTestEntry("tmp", "final")));
 }
 
 /**************************************************************************

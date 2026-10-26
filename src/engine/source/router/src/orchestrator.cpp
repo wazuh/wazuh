@@ -830,28 +830,11 @@ base::RespOrError<std::optional<test::Entry>> Orchestrator::replaceTestEntry(con
     {
         return base::Error {"Tester worker is not available"};
     }
-    auto tester = m_testerWorker->get();
 
-    auto source = tester->getEntry(from);
-    if (base::isError(source))
+    auto replaced = m_testerWorker->get()->replaceEntry(from, to);
+    if (base::isError(replaced))
     {
-        return base::getError(source);
-    }
-
-    std::optional<test::Entry> replaced;
-    auto current = tester->getEntry(to);
-    if (!base::isError(current))
-    {
-        replaced = base::getResponse(current);
-        if (auto error = tester->removeEntry(to); error)
-        {
-            return *error;
-        }
-    }
-
-    if (auto error = tester->renameEntry(from, to); error)
-    {
-        return *error;
+        return base::getError(replaced);
     }
 
     dumpTestersInternal();
