@@ -309,6 +309,7 @@ CREATE TABLE dbsync_users (
 
 **Key Fields:**
 - `user_name`: Primary key
+- `user_groups`: Comma-separated list of the groups the user belongs to
 - Extensive password policy and authentication tracking
 - Login session information
 

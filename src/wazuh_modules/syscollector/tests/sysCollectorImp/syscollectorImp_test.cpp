@@ -10,6 +10,7 @@
 #include <algorithm>
 #include <atomic>
 #include <chrono>
+#include <condition_variable>
 #include <cstdio>
 #include <functional>
 #include <future>
@@ -124,8 +125,8 @@ void populateTestDb()
 #define EXPECT_CALL_PACKAGES_JSON R"({"architecture":"amd64", "category":"x11","name":"xserver-xorg","priority":"optional","size":4111222333,"source":"xorg","version_":"1:7.7+19ubuntu14","type":"deb","path":" "})"
 #define EXPECT_CALL_HOTFIXES_JSON R"([{"hotfix_name":"KB12345678"}])"
 #define EXPECT_CALL_PROCESSES_JSON R"({"name":"kworker/u256:2-","pid":"431625","parent_pid":2,"start":9302261,"state":"I","stime":3,"utime":0})"
-#define EXPECT_CALL_GROUPS_JSON R"([{"group_description": null, "group_id": 1, "group_id_signed": 1, "group_is_hidden": 0, "group_name": "daemon", "group_users": "daemon:pollinate:vboxadd", "group_uuid": null }])"
-#define EXPECT_CALL_USERS_JSON R"([{"host_ip":"192.168.0.84","login_status":0,"login_tty":"pts/0","login_type":"user","process_pid":"129870","user_auth_failed_count":0,"user_auth_failed_timestamp":0,"user_created":0,"user_full_name":"root","user_group_id":0,"user_group_id_signed":0,"user_groups":0,"user_home":"/root","user_id":0,"user_is_hidden":0,"user_is_remote":1,"user_last_login":"1749605216","user_name":"root","user_password_expiration_date":-1,"user_password_hash_algorithm":"y","user_password_inactive_days":-1,"user_password_last_change":1745971200.0,"user_password_max_days_between_changes":99999,"user_password_min_days_between_changes":0,"user_password_status":"active","user_password_warning_days_before_expiration":7,"user_roles":"sudo","user_shell":"/bin/bash","user_type":null,"user_uid_signed":0,"user_uuid":null}])"
+#define EXPECT_CALL_GROUPS_JSON R"([{"group_description": null, "group_id": 1, "group_id_signed": 1, "group_is_hidden": 0, "group_name": "daemon", "group_users": "daemon,pollinate,vboxadd", "group_uuid": null }])"
+#define EXPECT_CALL_USERS_JSON R"([{"host_ip":"192.168.0.84","login_status":0,"login_tty":"pts/0","login_type":"user","process_pid":"129870","user_auth_failed_count":0,"user_auth_failed_timestamp":0,"user_created":0,"user_full_name":"root","user_group_id":0,"user_group_id_signed":0,"user_groups":"root,adm,sudo","user_home":"/root","user_id":0,"user_is_hidden":0,"user_is_remote":1,"user_last_login":"1749605216","user_name":"root","user_password_expiration_date":-1,"user_password_hash_algorithm":"y","user_password_inactive_days":-1,"user_password_last_change":1745971200.0,"user_password_max_days_between_changes":99999,"user_password_min_days_between_changes":0,"user_password_status":"active","user_password_warning_days_before_expiration":7,"user_roles":"sudo","user_shell":"/bin/bash","user_type":null,"user_uid_signed":0,"user_uuid":null}])"
 #define EXPECT_CALL_SERVICES_JSON R"([{"service_id":"wazuh-agent","service_name":"Wazuh Agent","service_description":"Monitors system activity","service_state":"running","service_sub_state":"subState","service_start_type":"auto","service_type":"type","process_pid":1234,"service_exit_code":0,"service_win32_exit_code":0,"process_executable":"/usr/bin/wazuh-agent","service_address":"/lib/systemd/system/wazuh-agent.service","user_name":"root","service_enabled":"enabled","service_following":"following","service_object_path":"objectPath","service_target_ephemeral_id":0,"service_target_type":"jobType","service_target_address":"jobPath","file_path":"sourcePath"}])"
 #define EXPECT_CALL_BROWSER_EXTENSIONS_JSON R"([{"browser_name":"chrome","user_id":"S-1-5-21-1234567890-987654321-1122334455-1001","package_name":"uBlock Origin","package_id":"cjpalhdlnbpafiamejdnhcphjbkeiagm","package_version_":"1.52.2","package_description":"Finally, an efficient wide-spectrum content blocker. Easy on CPU and memory.","package_vendor":"Raymond Hill","package_build_version":"","package_path":"C:\\Users\\john.doe\\AppData\\Local\\Google\\Chrome\\User Data\\Default\\Extensions\\cjpalhdlnbpafiamejdnhcphjbkeiagm\\1.52.2_0","browser_profile_name":"Default","browser_profile_path":"C:\\Users\\john.doe\\AppData\\Local\\Google\\Chrome\\User Data\\Default","package_reference":"https://clients2.google.com/service/update2/crx","package_permissions":"[\\\"activeTab\\\",\\\"storage\\\",\\\"tabs\\\",\\\"webNavigation\\\"]","package_type":"extension","package_enabled":1,"package_visible":0,"package_autoupdate":1,"package_persistent":0,"package_from_webstore":1,"browser_profile_referenced":1,"package_installed":"1710489821000","file_hash_sha256":"a1b2c3d4e5f6789012345678901234567890abcdef123456789012345678901234","scan_time":"2020/12/28 21:49:50"}])"
 
@@ -179,11 +180,11 @@ const auto expected_dbsync_hotfixes
 };
 const auto expected_dbsync_groups
 {
-    R"({"collector":"dbsync_groups","data":{"event":{"changed_fields":[],"type":"created"},"group":{"description":null,"id":1,"id_signed":1,"is_hidden":false,"name":"daemon","users":["daemon:pollinate:vboxadd"],"uuid":null}},"module":"inventory"})"
+    R"({"collector":"dbsync_groups","data":{"event":{"changed_fields":[],"type":"created"},"group":{"description":null,"id":1,"id_signed":1,"is_hidden":false,"name":"daemon","users":["daemon","pollinate","vboxadd"],"uuid":null}},"module":"inventory"})"
 };
 const auto expected_dbsync_users
 {
-    R"({"collector":"dbsync_users","data":{"event":{"changed_fields":[],"type":"created"},"host":{"ip":["192.168.0.84"]},"login":{"status":false,"tty":"pts/0","type":"user"},"process":{"pid":"129870"},"user":{"auth_failures":{"count":0,"timestamp":0},"created":0,"full_name":"root","group":{"id":0,"id_signed":0},"groups":[0],"home":"/root","id":"0","is_hidden":false,"is_remote":true,"last_login":"1749605216","name":"root","password":{"expiration_date":-1,"hash_algorithm":"y","inactive_days":-1,"last_change":1745971200.0,"max_days_between_changes":99999,"min_days_between_changes":0,"status":"active","warning_days_before_expiration":7},"roles":["sudo"],"shell":"/bin/bash","type":null,"uid_signed":0,"uuid":null}},"module":"inventory"})"
+    R"({"collector":"dbsync_users","data":{"event":{"changed_fields":[],"type":"created"},"host":{"ip":["192.168.0.84"]},"login":{"status":false,"tty":"pts/0","type":"user"},"process":{"pid":"129870"},"user":{"auth_failures":{"count":0,"timestamp":0},"created":0,"full_name":"root","group":{"id":0,"id_signed":0},"groups":["root","adm","sudo"],"home":"/root","id":"0","is_hidden":false,"is_remote":true,"last_login":"1749605216","name":"root","password":{"expiration_date":-1,"hash_algorithm":"y","inactive_days":-1,"last_change":1745971200.0,"max_days_between_changes":99999,"min_days_between_changes":0,"status":"active","warning_days_before_expiration":7},"roles":["sudo"],"shell":"/bin/bash","type":null,"uid_signed":0,"uuid":null}},"module":"inventory"})"
 };
 const auto expected_dbsync_services
 {
@@ -404,11 +405,11 @@ static const auto expectedPersistHotfix
 };
 static const auto expectedPersistGroup
 {
-    R"({"checksum":{"hash":{"sha1":"81793e529c565256a60eff6c6345e2f5c5ee8cb0"}},"group":{"description":null,"id":1,"id_signed":1,"is_hidden":false,"name":"daemon","users":["daemon:pollinate:vboxadd"],"uuid":null}})"
+    R"({"checksum":{"hash":{"sha1":"3b38856f559a47b64607873afcd02add2c83b05f"}},"group":{"description":null,"id":1,"id_signed":1,"is_hidden":false,"name":"daemon","users":["daemon","pollinate","vboxadd"],"uuid":null}})"
 };
 static const auto expectedPersistUser
 {
-    R"({"checksum":{"hash":{"sha1":"11769088416d594d547a508e084cec990e282ece"}},"host":{"ip":["192.168.0.84"]},"login":{"status":false,"tty":"pts/0","type":"user"},"process":{"pid":"129870"},"user":{"auth_failures":{"count":0,"timestamp":0},"created":0,"full_name":"root","group":{"id":0,"id_signed":0},"groups":[0],"home":"/root","id":"0","is_hidden":false,"is_remote":true,"last_login":"1749605216","name":"root","password":{"expiration_date":-1,"hash_algorithm":"y","inactive_days":-1,"last_change":1745971200.0,"max_days_between_changes":99999,"min_days_between_changes":0,"status":"active","warning_days_before_expiration":7},"roles":["sudo"],"shell":"/bin/bash","type":null,"uid_signed":0,"uuid":null}})"
+    R"({"checksum":{"hash":{"sha1":"953afad272bd71146fd17507337d5b9e891f215a"}},"host":{"ip":["192.168.0.84"]},"login":{"status":false,"tty":"pts/0","type":"user"},"process":{"pid":"129870"},"user":{"auth_failures":{"count":0,"timestamp":0},"created":0,"full_name":"root","group":{"id":0,"id_signed":0},"groups":["root","adm","sudo"],"home":"/root","id":"0","is_hidden":false,"is_remote":true,"last_login":"1749605216","name":"root","password":{"expiration_date":-1,"hash_algorithm":"y","inactive_days":-1,"last_change":1745971200.0,"max_days_between_changes":99999,"min_days_between_changes":0,"status":"active","warning_days_before_expiration":7},"roles":["sudo"],"shell":"/bin/bash","type":null,"uid_signed":0,"uuid":null}})"
 };
 static const auto expectedPersistService
 {
@@ -2615,10 +2616,10 @@ TEST_F(SyscollectorImpTest, sanitizeJsonValues)
               (R"({"name":" kworker/u256:2-  ","pid":"431625","parent_pid":2,"start":9302261,"state":"I","stime":3,"utime":0})"_json));
 
     EXPECT_CALL(*spInfoWrapper, groups()).WillRepeatedly(Return(
-                                                             R"([{"group_description": null, "group_id": 1, "group_id_signed": 1, "group_is_hidden": 0, "group_name": "daemon", "group_users": "daemon:pollinate:vboxadd", "group_uuid": null }])"_json));
+                                                             R"([{"group_description": null, "group_id": 1, "group_id_signed": 1, "group_is_hidden": 0, "group_name": "daemon", "group_users": " daemon,pollinate,vboxadd ", "group_uuid": null }])"_json));
 
     EXPECT_CALL(*spInfoWrapper, users()).WillRepeatedly(Return
-                                                        (R"([{"host_ip":"192.168.0.84","login_status":0,"login_tty":"pts/0","login_type":"user","process_pid":"129870","user_auth_failed_count":0,"user_auth_failed_timestamp":0,"user_created":0,"user_full_name":"root","user_group_id":0,"user_group_id_signed":0,"user_groups":0,"user_home":"/root","user_id":0,"user_is_hidden":0,"user_is_remote":1,"user_last_login":"1749605216","user_name":"root","user_password_expiration_date":-1,"user_password_hash_algorithm":"y","user_password_inactive_days":-1,"user_password_last_change":1745971200.0,"user_password_max_days_between_changes":99999,"user_password_min_days_between_changes":0,"user_password_status":"active","user_password_warning_days_before_expiration":7,"user_roles":"sudo","user_shell":"/bin/bash","user_type":null,"user_uid_signed":0,"user_uuid":null}])"_json));
+                                                        (R"([{"host_ip":"192.168.0.84","login_status":0,"login_tty":"pts/0","login_type":"user","process_pid":"129870","user_auth_failed_count":0,"user_auth_failed_timestamp":0,"user_created":0,"user_full_name":"root","user_group_id":0,"user_group_id_signed":0,"user_groups":" root,adm,sudo ","user_home":"/root","user_id":0,"user_is_hidden":0,"user_is_remote":1,"user_last_login":"1749605216","user_name":"root","user_password_expiration_date":-1,"user_password_hash_algorithm":"y","user_password_inactive_days":-1,"user_password_last_change":1745971200.0,"user_password_max_days_between_changes":99999,"user_password_min_days_between_changes":0,"user_password_status":"active","user_password_warning_days_before_expiration":7,"user_roles":"sudo","user_shell":"/bin/bash","user_type":null,"user_uid_signed":0,"user_uuid":null}])"_json));
 
     EXPECT_CALL(*spInfoWrapper, services()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_SERVICES_JSON)));
     EXPECT_CALL(*spInfoWrapper, browserExtensions()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_BROWSER_EXTENSIONS_JSON)));
@@ -5092,6 +5093,156 @@ TEST_F(SyscollectorImpTest, volatileCountersRefreshStateWithoutStatelessNoise)
     ASSERT_TRUE(lastStateful.count("wazuh-states-inventory-hardware"));
     EXPECT_GT(lastStateful["wazuh-states-inventory-hardware"]["host"]["memory"]["free"].get<int64_t>(),
               FIRST_MEMORY_FREE);
+}
+
+// Rows stored by an agent that joined members with ':' must be reported again, split into one
+// element per member, on the first scan after the agent restarts on the upgraded version.
+TEST_F(SyscollectorImpTest, colonJoinedMembersAreResentSplitAfterUpgrade)
+{
+    const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
+
+    // Only read from the scan thread, and only switched while no instance is running.
+    bool upgraded{false};
+
+    EXPECT_CALL(*spInfoWrapper, groups()).WillRepeatedly(testing::Invoke(
+                                                             [&upgraded]()
+    {
+        auto data = nlohmann::json::parse(EXPECT_CALL_GROUPS_JSON);
+        data[0]["group_users"] = upgraded ? "daemon,pollinate,vboxadd" : "daemon:pollinate:vboxadd";
+        // The shared fixture's nulls never match the stored row, so every scan would report a
+        // change. Providers send UNKNOWN_VALUE (" ") for missing values.
+        data[0]["group_description"] = " ";
+        data[0]["group_uuid"] = " ";
+        return data;
+    }));
+
+    EXPECT_CALL(*spInfoWrapper, users()).WillRepeatedly(testing::Invoke(
+                                                            [&upgraded]()
+    {
+        auto data = nlohmann::json::parse(EXPECT_CALL_USERS_JSON);
+        data[0]["user_groups"] = upgraded ? "root,adm,sudo" : "root:adm:sudo";
+        // Same for the shared fixture's nulls and for values whose type differs from their column:
+        // use what the providers send, so only user_groups differs between scans.
+        data[0]["user_type"] = " ";
+        data[0]["user_uuid"] = " ";
+        data[0]["user_created"] = " ";
+        data[0]["user_auth_failed_timestamp"] = " ";
+        data[0]["user_password_expiration_date"] = " ";
+        data[0]["process_pid"] = 129870;
+        return data;
+    }));
+
+    EXPECT_CALL(*spInfoWrapper, hardware()).Times(0);
+    EXPECT_CALL(*spInfoWrapper, os()).Times(0);
+    EXPECT_CALL(*spInfoWrapper, networks()).Times(0);
+    EXPECT_CALL(*spInfoWrapper, ports()).Times(0);
+    EXPECT_CALL(*spInfoWrapper, packages(_)).Times(0);
+    EXPECT_CALL(*spInfoWrapper, processes(_)).Times(0);
+    EXPECT_CALL(*spInfoWrapper, hotfixes()).Times(0);
+    EXPECT_CALL(*spInfoWrapper, services()).Times(0);
+    EXPECT_CALL(*spInfoWrapper, browserExtensions()).Times(0);
+
+    std::mutex eventsMutex;
+    std::condition_variable eventsCv;
+    std::map<std::string, std::vector<nlohmann::json>> stateful;
+    std::map<std::string, std::vector<nlohmann::json>> stateless;
+
+    std::function<void(const std::string&, Operation_t, const std::string&, const std::string&, uint64_t)> callbackDataPersist
+    {
+        [&eventsMutex, &eventsCv, &stateful](const std::string&, Operation_t, const std::string & index, const std::string & data, uint64_t)
+        {
+            {
+                std::lock_guard<std::mutex> lock{eventsMutex};
+                stateful[index].push_back(nlohmann::json::parse(data));
+            }
+            eventsCv.notify_all();
+        }
+    };
+
+    std::function<void(const std::string&)> callbackDataDelta
+    {
+        [&eventsMutex, &stateless](const std::string & payload)
+        {
+            const auto parsed = nlohmann::json::parse(payload);
+            std::lock_guard<std::mutex> lock{eventsMutex};
+            stateless[parsed.at("collector").get<std::string>()].push_back(parsed);
+        }
+    };
+
+    // One agent run on the on-disk database: a single scan (the interval is never reached), then
+    // stop once both documents of that scan are persisted.
+    const auto runAgent
+    {
+        [&](size_t expectedDocs)
+        {
+            std::thread t
+            {
+                [&spInfoWrapper, &callbackDataDelta, &callbackDataPersist]()
+                {
+                    Syscollector::instance().init(spInfoWrapper,
+                                                  callbackDataDelta,
+                                                  callbackDataPersist,
+                                                  logFunction,
+                                                  SYSCOLLECTOR_TEST_DB_PATH,
+                                                  "",
+                                                  "",
+                                                  3600, true, false, false, false, false, false, false, false, false, true, true, false, false, false);
+
+                    Syscollector::instance().start();
+                }
+            };
+
+            {
+                std::unique_lock<std::mutex> lock{eventsMutex};
+                eventsCv.wait_for(lock, std::chrono::seconds(30), [&stateful, expectedDocs]()
+                {
+                    return stateful["wazuh-states-inventory-groups"].size() >= expectedDocs &&
+                           stateful["wazuh-states-inventory-users"].size() >= expectedDocs;
+                });
+            }
+
+            Syscollector::instance().destroy();
+
+            if (t.joinable())
+            {
+                t.join();
+            }
+        }
+    };
+
+    runAgent(1);
+    upgraded = true;
+    runAgent(2);
+
+    // One document from the run before the upgrade and one replacing it after the restart.
+    const auto& groupDocs = stateful["wazuh-states-inventory-groups"];
+    const auto& userDocs = stateful["wazuh-states-inventory-users"];
+    ASSERT_EQ(groupDocs.size(), 2u);
+    ASSERT_EQ(userDocs.size(), 2u);
+
+    EXPECT_EQ(groupDocs[0]["group"]["users"], R"(["daemon:pollinate:vboxadd"])"_json);
+    EXPECT_EQ(groupDocs[1]["group"]["users"], R"(["daemon","pollinate","vboxadd"])"_json);
+    EXPECT_NE(groupDocs[0]["checksum"]["hash"]["sha1"], groupDocs[1]["checksum"]["hash"]["sha1"]);
+
+    EXPECT_EQ(userDocs[0]["user"]["groups"], R"(["root:adm:sudo"])"_json);
+    EXPECT_EQ(userDocs[1]["user"]["groups"], R"(["root","adm","sudo"])"_json);
+    EXPECT_NE(userDocs[0]["checksum"]["hash"]["sha1"], userDocs[1]["checksum"]["hash"]["sha1"]);
+
+    // notifyOnFirstScan is disabled, so the first run reports nothing, and the run after the restart
+    // reports the change itself.
+    const auto& groupEvents = stateless["dbsync_groups"];
+    const auto& userEvents = stateless["dbsync_users"];
+    ASSERT_EQ(groupEvents.size(), 1u);
+    ASSERT_EQ(userEvents.size(), 1u);
+
+    EXPECT_EQ(groupEvents[0]["data"]["event"]["type"], "modified");
+    EXPECT_EQ(groupEvents[0]["data"]["event"]["changed_fields"], R"(["group.users"])"_json);
+    EXPECT_EQ(groupEvents[0]["data"]["group"]["previous"]["users"], R"(["daemon:pollinate:vboxadd"])"_json);
+
+    EXPECT_EQ(userEvents[0]["data"]["event"]["type"], "modified");
+    EXPECT_EQ(userEvents[0]["data"]["event"]["changed_fields"], R"(["user.groups"])"_json);
+    EXPECT_EQ(userEvents[0]["data"]["user"]["previous"]["groups"], R"(["root:adm:sudo"])"_json);
 }
 
 // Windows reports interface_mtu as 4294967295 (UINT32_MAX) when the MTU is not available;

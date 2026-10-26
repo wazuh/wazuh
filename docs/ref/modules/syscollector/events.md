@@ -552,7 +552,9 @@ On Linux, `user.last_login` is the newest of the `lastlog` record, the `lastlog2
             "is_hidden": false,
             "name": "daemon",
             "users": [
-                "daemon:pollinate:vboxadd"
+                "daemon",
+                "pollinate",
+                "vboxadd"
             ],
             "uuid": null
         }
