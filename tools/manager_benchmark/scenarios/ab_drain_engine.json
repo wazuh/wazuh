@@ -1,0 +1,50 @@
+{
+  "name": "ab_drain_engine",
+  "description": "Indexer A/B drain scenario (engine): a 25-agent Linux fleet replays the syslog sample 4 times at 400 events/s per agent, 100,000 events (25 x 1,000 lines x 4) in about 10 s. ab_indexer.sh pauses the indexer for the whole run and resumes it afterwards, so the documents the manager accumulated are the fixed backlog whose drain (documents/s and time to drain, measured at the indexer) is the capacity of the manager's indexer sender. SIZING: the backlog must fit BOTH queues (analysisd.indexer_queue_max_bytes = 1 GiB on both sides, ab_options/*.conf) so that nothing is dropped and the documents drained equal the events sent on both sides. v2 charges every event payload + RESULT_RESERVE_BYTES (2048): 100,000 x (payload + 2,048) <= 536,870,912 (half the quota) holds while payload <= 3,320 bytes (an enriched syslog event is about 1 to 2 KiB; at an assumed 3 KiB, v2 100,000 x 5,120 B = 512 MB, 47.7 % of the quota; v1 charges the payload only, 307 MB). The drain lasts several seconds at the indexer's pace, long enough for the 1 s probe. Do not raise repeat_count or agents without redoing this sum (README, 'Sizing the drain backlog').",
+  "mode": "agent",
+  "defaults": {
+    "cluster_name": "cluster01",
+    "control": {
+      "enabled": true,
+      "keepalive_interval": "10s",
+      "send_host_info": true,
+      "startup_version": "5.0.0"
+    }
+  },
+  "lanes": {
+    "engine": [
+      {
+        "kind": "engine",
+        "engine": "../sample_payloads/engine/syslog.log",
+        "location": "syslog",
+        "events_per_second": 400,
+        "events_per_batch": 100,
+        "repeat_count": 4
+      }
+    ]
+  },
+  "fleets": [
+    {
+      "name": "linux",
+      "agents": 25,
+      "first_id": 53000,
+      "lanes": [
+        "engine"
+      ],
+      "start": {
+        "osname": "Ubuntu",
+        "osplatform": "ubuntu",
+        "ostype": "linux",
+        "osversion": "22.04",
+        "architecture": "x86_64",
+        "agentversion": "5.0.0"
+      }
+    }
+  ],
+  "pacing": {
+    "concurrent_agents": 0,
+    "requests_per_second": 0,
+    "repeat_until": "0",
+    "drain_timeout": "60s"
+  }
+}
