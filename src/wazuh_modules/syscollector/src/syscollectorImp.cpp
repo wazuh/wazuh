@@ -867,6 +867,17 @@ void Syscollector::start()
     std::unique_lock<std::mutex> scan_lock{m_scan_mutex};
     syncLoop(scan_lock);
 
+    // Released BEFORE the join, and that ordering is the whole point. syncLoop()
+    // returns still holding this lock, and the watcher takes the SAME mutex after
+    // poll() hands it a notification -- so a notification arriving in the moment
+    // between the stop flag and this line leaves the watcher blocked on a mutex
+    // this thread owns, while this thread waits for that watcher to exit. Neither
+    // ever moves again, and modulesd never finishes stopping.
+    if (scan_lock.owns_lock())
+    {
+        scan_lock.unlock();
+    }
+
     // syncLoop only returns once m_stopping is set, which is also what ends the
     // watcher, so joining here needs no additional signal.
     if (m_containerNotifyThread.joinable())
