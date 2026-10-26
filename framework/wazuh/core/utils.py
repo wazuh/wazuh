@@ -1222,7 +1222,11 @@ def load_wazuh_xml(xml_path, data=None):
                '\n'.join([f'<!ENTITY {name} "{value}">' for name, value in custom_entities.items()]) + \
                '\n]>\n'
 
-    return fromstring(f"{entities}<root_tag>{data}</root_tag>", forbid_entities=False)
+    root = fromstring(f"{entities}<root_tag>{data}</root_tag>", forbid_entities=False)
+    for element in root.iter():
+        element.tag = element.tag.rpartition('}')[2]
+
+    return root
 
 
 class WazuhVersion:
@@ -2194,23 +2198,24 @@ def validate_wazuh_xml(content: str, config_file: bool = False):
     WazuhError(1113)
         XML syntax error.
     """
+    uncommented = re.sub(r'<!.*?(?:-->|!>)', '', content, flags=re.DOTALL)
     # -- characters are not allowed in XML comments
     content = replace_in_comments(content, '--', '%wildcard%')
 
     # Create temporary file for parsing xml input
     try:
+        parseString(f'<root>{content}</root>'.replace('&', '&amp;'))
         # Beautify xml file and escape '&' character as it could come in some tag values unescaped
-        xml = parseString(f'<root>{content}</root>'.replace('&', '&amp;'))
+        xml = parseString(f'<root>{uncommented}</root>'.replace('&', '&amp;'))
         # Remove first line (XML specification: <? xmlversion="1.0" ?>), <root> and </root> tags, and empty lines
         indent = '  '  # indent parameter for toprettyxml function
         pretty_xml = '\n'.join(filter(lambda x: x.strip(), xml.toprettyxml(indent=indent).split('\n')[2:-2])) + '\n'
         # Revert xml.dom replacings
         # (https://github.com/python/cpython/blob/8e0418688906206fe59bd26344320c0fc026849e/Lib/xml/dom/minidom.py#L305)
-        pretty_xml = pretty_xml.replace("&amp;", "&").replace("&lt;", "<").replace("&quot;", "\"", ) \
-            .replace("&gt;", ">").replace('&apos;', "'")
+        pretty_xml = pretty_xml.replace("&lt;", "<").replace("&quot;", "\"", ).replace("&gt;", ">") \
+            .replace('&apos;', "'").replace("&amp;", "&")
         # Delete two first spaces of each line
         final_xml = re.sub(fr'^{indent}', '', pretty_xml, flags=re.MULTILINE)
-        final_xml = replace_in_comments(final_xml, '%wildcard%', '--')
 
         # Check xml format
         incoming_xml = load_wazuh_xml(xml_path='', data=final_xml)
