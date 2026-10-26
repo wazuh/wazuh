@@ -23,10 +23,10 @@ namespace invsync::endpoints::config
     /**
      * @brief The agent configuration ingress endpoint, reached through remoted's `POST /config`.
      *
-     * The body is a JSON array of `{"module": <string>, "config": <object>}` pairs -- one per agent
-     * module (e.g. `fim`, `logcollector`). Each valid element is reduced to exactly those two keys
-     * (anything else the agent sent is dropped) and wrapped into the document indexed under
-     * `wazuh-agent-config`:
+     * The body carries a `modules` object keyed by module name (e.g. `fim`, `logcollector`), each
+     * value that module's configuration object, plus the agent's groups and host under a root
+     * `agent` object. Both are wrapped into the document indexed under `wazuh-agent-config`; anything
+     * else the agent sent is dropped:
      *
      * @code
      * {
@@ -34,6 +34,7 @@ namespace invsync::endpoints::config
      *   "wazuh": {
      *     "schema": { "version": "1.0" },
      *     "agent": { "id": "<authenticated id>",
+     *                "groups": [...], "host": {...},
      *                "configuration": { "modules": ["fim", "logcollector", ...],
      *                                   "content": { "fim": {...}, "logcollector": {...}, ... } } },
      *     "cluster": { "name": "..." }
@@ -41,8 +42,8 @@ namespace invsync::endpoints::config
      * }
      * @endcode
      *
-     * `content` is an OBJECT keyed by module name, not the array the agent sends -- a module is
-     * unique per report, so this makes "does agent X have module Y" a single field lookup. `modules`
+     * `content` is an OBJECT keyed by module name -- a module is unique per report, so this makes
+     * "does agent X have module Y" a single field lookup. `modules`
      * is derived from `content`'s keys so the two can never drift apart. The template also declares
      * an explicit per-module sub-schema under `content` (`content.fim.syscheck.frequency`, etc.).
      *
@@ -51,7 +52,8 @@ namespace invsync::endpoints::config
      * within a known one) is mapped by a dynamic template from the type of its first value, and a
      * value whose type conflicts with the existing mapping makes the indexer reject the whole
      * document. This endpoint only sanitizes the outer `{module, config}` shape, never the fields
-     * inside `config` itself.
+     * inside `config` itself. Outside `content` the mapping is strict, which is why the groups and
+     * host are copied field by field (stampReportedAgentMetadata()).
      *
      * The document is indexed under the agent id as its `_id`, via a plain upsert: each report
      * replaces the previous one for that agent, there is no separate delete step.

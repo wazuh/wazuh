@@ -20,9 +20,14 @@ from the indexer.
   vulnerability-detection integration workflow.
 - OpenSearch: an already-running one at `INDEXER_URL` (default
   `http://127.0.0.1:9200`) is used as-is; otherwise a single-node container
-  (`opensearch-test`, security disabled) is started via docker. A minimal
-  index template is installed so the fields the server's own queries sort and
-  filter on (`checksum.hash.sha1`, `wazuh.agent.id`, ...) are `keyword`.
+  (`opensearch-test`, OpenSearch 2.19, security disabled) is started via
+  docker. A minimal index template is installed so the fields the server's own
+  queries sort and filter on (`checksum.hash.sha1`, `wazuh.agent.id`, ...) are
+  `keyword`. The production `wazuh-agent-stats` and `wazuh-agent-config`
+  templates are installed as they are, downloaded from wazuh-indexer-plugins
+  with the same ref walk as the build (`tools/get_git_refs.sh`, or `GIT_REFS`):
+  they are `strict_allow_templates`, so a document that does not fit them fails
+  the suite instead of being mapped dynamically.
   Note that the container runs with the security plugin DISABLED, so nothing
   here exercises indexer permissions — a role whose write/delete privileges do
   not cover the `wazuh-agent-config` / `wazuh-agent-stats` patterns would pass
