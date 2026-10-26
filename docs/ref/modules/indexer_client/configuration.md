@@ -1,0 +1,286 @@
+# Indexer Client Configuration Reference
+
+Configuration reference for the connection between the Wazuh manager and the Wazuh Indexer. Three things configure it:
+
+- the `<indexer>` section of `wazuh-manager.conf`: hosts and TLS files;
+- the `indexer` entries of the [keystore](../keystore/README.md): the account;
+- the internal options: the runtime's own (`wazuh_modules.indexer_client_*`, below) and each consumer's.
+
+The `<indexer>` section and the credentials are read by every manager component that talks to the Indexer: the Indexer Client (modulesd), the engine and the Python framework.
+
+For the module overview, see [Indexer Client](README.md).
+
+---
+
+## Manager Configuration
+
+**Configuration file:** `/etc/wazuh-manager/wazuh-manager.conf`
+
+**XML Section:** `<indexer>`
+
+The section is **required**, and so is `<hosts>` with at least one `<host>`: without them the configuration is rejected and the manager does not start. `<ssl>` is optional, but an `https` host needs at least one `<ca>` (see [certificate_authorities](#certificate_authorities)).
+
+The installer writes this section:
+
+```xml
+<indexer>
+  <hosts>
+    <host>https://127.0.0.1:9200</host>
+  </hosts>
+  <ssl>
+    <certificate_authorities>
+      <ca>/etc/wazuh-manager/certs/indexer-ca.pem</ca>
+    </certificate_authorities>
+    <certificate>/etc/wazuh-manager/certs/indexer-connector.pem</certificate>
+    <key>/etc/wazuh-manager/certs/indexer-connector-key.pem</key>
+  </ssl>
+</indexer>
+```
+
+### hosts
+
+List of Indexer node URLs, one per `<host>` child element.
+
+- **Default value:** None (required)
+- **Allowed values:** URLs starting with `http://` or `https://` (e.g. `https://10.0.0.1:9200`); at least one, no duplicates
+- **Note:** The runtime probes every host and load-balances requests round-robin across the ones that are available, skipping the ones that are down (see [Node health](README.md#node-health)). An unreachable host does not stop the manager from starting.
+
+### ssl
+
+TLS material of the connection. Relative paths are resolved from the manager home (`/var/wazuh-manager`).
+
+The configuration check run before every start (`wazuh-manager-conf validate`, and `wazuh-manager-modulesd -t`) does **not** open these files. They are read when modulesd starts the runtime, and any problem stops the runtime from starting, with the reason in the log (see [Troubleshooting](README.md#troubleshooting)). The files are read once: replacing a CA, certificate or key takes a restart.
+
+#### certificate_authorities
+
+CA certificates used to verify the Indexer's certificate, one per `<ca>` child element.
+
+- **Default value:** empty list
+- **Allowed values:** paths to PEM-encoded CA files, each at most 1 MiB and holding at least one certificate
+- **Note:** Required as soon as one host uses `https` (`indexer host '<url>' uses https but no ssl.certificate_authorities is configured`). Every file must exist and be well-formed PEM. With several CAs, all of them are trusted; the files are concatenated in memory, no merged file is written. Verification is always on (peer and host name), the minimum protocol is TLS 1.2, and there is no insecure mode.
+
+#### certificate
+
+Client certificate the manager presents to the Indexer.
+
+- **Default value:** empty (no client certificate)
+- **Allowed values:** path to a PEM-encoded certificate: the leaf, optionally followed by its intermediate CAs, sent whole
+- **Note:** `certificate` and `key` come together or not at all.
+
+#### key
+
+Private key of `certificate`.
+
+- **Default value:** empty
+- **Allowed values:** path to a PEM-encoded private key, **not encrypted**, matching the first certificate of `certificate`
+
+---
+
+## Indexer Credentials
+
+The runtime always authenticates with HTTP basic authentication, also over plain `http`. The user and password are not part of `wazuh-manager.conf`: they are read from the `indexer` column family of the [keystore](../keystore/README.md), keys `username` and `password`.
+
+The credential resolver fills them in at installation and before every start: `username` defaults to `wazuh-manager` when it is not set, and `password` is taken from `WAZUH_INDEXER_MANAGER_PASSWORD` in the environment, in `/etc/wazuh-manager/local.env`, or in the indexer's `/etc/wazuh-indexer/export/credentials.env` when the indexer runs on the same host. There is no default password: when the keystore holds no password and none of them supplies one, the start is refused with `MISSING WAZUH_INDEXER_MANAGER_PASSWORD`. See [Credentials](../../getting-started/credentials.md).
+
+To change them by hand (as root):
+
+```bash
+printf '%s' 'wazuh-manager' | /var/wazuh-manager/bin/wazuh-manager-keystore -f indexer -k username
+printf '%s' '<password>' | /var/wazuh-manager/bin/wazuh-manager-keystore -f indexer -k password
+```
+
+modulesd reads the credentials once, when it starts the runtime (an empty user or password stops the runtime: `indexer credentials missing: user` or `password`). Restart the manager after changing them. The password never appears in a log line or a metric.
+
+---
+
+## Internal Options
+
+Internal options are set in `/etc/wazuh-manager/wazuh-manager-internal-options.conf`, one `key=value` per line. The shipped file carries none of the options below: the defaults are compiled in, and a line is only needed to override one.
+
+### The `wazuh_modules.indexer_client_*` family
+
+**Internal Options prefix:** `wazuh_modules.indexer_client_*`
+
+These are the options of the runtime that `wazuh-manager-modulesd` owns and every consumer shares ([Inventory Sync Server](../inventory-sync-server/README.md), [Vulnerability Scanner](../vulnerability-scanner/README.md)).
+
+- Every value is an unsigned decimal integer; a leading zero does not mean octal.
+- **The family is validated in full** by `wazuh-manager-modulesd -t` and again at startup, before any module thread exists, and a failure is logged with the offending key: a value outside its range, a value that is not an unsigned decimal integer, an empty value, **or a key under the prefix that is not listed here (a typo is an error, not an ignored line)**. In every case modulesd refuses to start. A key that is not under the `wazuh_modules.indexer_client_` prefix is not read by the runtime.
+- The runtime starts only when a consumer exists (the Inventory Sync Server is configured, or the Vulnerability Scanner is enabled); with none, the options are still validated but no threads or probes are created.
+- The table is the operator's copy of the schema, `kSchema` in `src/shared_modules/indexer_client/src/config/runtimeConfig.cpp`; the library README owns the semantics. Every minimum is 1 except `log_summary_interval_ms`, whose minimum is 1000; bounds are inclusive.
+
+| Name (after the prefix) | Unit | Allowed values | Default |
+|---|---|---|---|
+| `network_threads` | count | 1 to 64 | 1 |
+| `cpu_threads` | count | 1 to 64 | 2 |
+| `global_quota_bytes` | bytes | 1 to 68719476736 (64 GiB) | 268435456 (256 MiB) |
+| `max_response_bytes` | bytes | 1 to 1073741824 (1 GiB) | 67108864 (64 MiB) |
+| `drr_quantum_bytes` | bytes | 1 to 67108864 (64 MiB) | 1048576 (1 MiB) |
+| `request_timeout_ms` | ms | 1 to 3600000 (1 h) | 60000 |
+| `probe_timeout_ms` | ms | 1 to 300000 (5 min) | 5000 |
+| `probe_interval_ms` | ms | 1 to 3600000 (1 h) | 10000 |
+| `drain_ms` | ms | 1 to 600000 (10 min) | 10000 |
+| `ambiguous_retry_window_ms` | ms | 1 to 3600000 (1 h) | 30000 |
+| `latency_target_ms` | ms | 1 to 600000 (10 min) | 2000 |
+| `pace_initial_ms` | ms | 1 to 60000 (1 min) | 100 |
+| `pace_relax_after` | count | 1 to 1000000 | 20 |
+| `retry_after_max_ms` | ms | 1 to 3600000 (1 h) | 60000 |
+| `callback_budget_ms` | ms | 1 to 60000 (1 min) | 200 |
+| `max_open_pits` | count | 1 to 10000 | 64 |
+| `log_summary_interval_ms` | ms | 1000 to 3600000 (1 h) | 60000 |
+| `node_window_max` | count | 1 to 64 | 4 |
+| `bulk_min_bytes` | bytes | 1 to 33554432 (32 MiB) | 65536 (64 KiB) |
+
+The ones an operator reaches for:
+
+- `request_timeout_ms` - the per-request timeout of every bucket. The Inventory Sync Server's [post-deletion sweep](../inventory-sync-server/architecture.md#the-post-deletion-sweep) window is derived from it (`request_timeout_ms + 5 s`).
+- `global_quota_bytes` - the memory ceiling every bucket's quota is carved from.
+- `probe_interval_ms`, `probe_timeout_ms` - the host health probe.
+- `ambiguous_retry_window_ms` - the longest an `agent-state` bucket stays pinned to one indexer node after an ambiguous `5xx` (see [Effects to know](../inventory-sync-server/architecture.md#effects-to-know)).
+- `drain_ms` - the shutdown budget used when no deadline was fixed first. On a normal stop modulesd fixes one (see [Start and stop](README.md#start-and-stop)); `drain_ms` applies to a `Client` destroyed, or a runtime stopped, without it.
+- `network_threads`, `cpu_threads` - the runtime's threads, shared by every consumer.
+- `log_summary_interval_ms` - how often each active bucket logs its summary line.
+
+### The consumers' options
+
+Each consumer sizes its own buckets from its own internal options; they do not live in the family above and are not interchangeable:
+
+| Consumer | Options | Reference |
+|---|---|---|
+| Inventory Sync Server | `wazuh_modules.inventory_sync_server_indexer_sync_*` (bucket `inventory`), `wazuh_modules.inventory_sync_server_indexer_async_*` (bucket `agent-state`) | [Inventory Sync Server configuration](../inventory-sync-server/configuration.md#indexer-client-buckets-indexer_sync_-and-indexer_async_) |
+| Vulnerability Scanner | `wazuh_modules.indexer_bulk_size_bytes`, `wazuh_modules.indexer_max_retry_attempts`, `wazuh_modules.indexer_max_retry_duration_seconds` (`wazuh_modules.indexer_flush_interval` is ignored) | [Vulnerability Scanner configuration](../vulnerability-scanner/configuration.md#indexer_bulk_size_bytes) |
+| Engine | `analysisd.indexer_*` | [Engine configuration](../engine/configuration.md) |
+
+Options of the previous library that no longer act (a flush interval, a request timeout per bucket, a shared session) are accepted so that existing files do not abort the daemon; a value other than the default logs a warning once, and the consumers' pages mark them **Ignored**.
+
+---
+
+## Manager Configuration Examples
+
+### Multi-Node Cluster
+
+```xml
+<indexer>
+  <hosts>
+    <host>https://10.0.0.1:9200</host>
+    <host>https://10.0.0.2:9200</host>
+    <host>https://10.0.0.3:9200</host>
+  </hosts>
+  <ssl>
+    <certificate_authorities>
+      <ca>/etc/wazuh-manager/certs/indexer-ca.pem</ca>
+    </certificate_authorities>
+    <certificate>/etc/wazuh-manager/certs/indexer-connector.pem</certificate>
+    <key>/etc/wazuh-manager/certs/indexer-connector-key.pem</key>
+  </ssl>
+</indexer>
+```
+
+### Multiple CA Certificates
+
+If the Indexer nodes' certificates come from different CAs:
+
+```xml
+<indexer>
+  <hosts>
+    <host>https://indexer1.example.com:9200</host>
+    <host>https://indexer2.example.com:9200</host>
+  </hosts>
+  <ssl>
+    <certificate_authorities>
+      <ca>/etc/wazuh-manager/certs/root-ca-1.pem</ca>
+      <ca>/etc/wazuh-manager/certs/root-ca-2.pem</ca>
+    </certificate_authorities>
+    <certificate>/etc/wazuh-manager/certs/indexer-connector.pem</certificate>
+    <key>/etc/wazuh-manager/certs/indexer-connector-key.pem</key>
+  </ssl>
+</indexer>
+```
+
+### Plain HTTP (development only)
+
+**WARNING:** Not for production: credentials and data travel unencrypted.
+
+```xml
+<indexer>
+  <hosts>
+    <host>http://127.0.0.1:9200</host>
+  </hosts>
+</indexer>
+```
+
+### Giving the runtime more memory and threads on a busy manager
+
+```ini
+wazuh_modules.indexer_client_global_quota_bytes=536870912
+wazuh_modules.indexer_client_network_threads=2
+```
+
+Raise the quota only after checking that a bucket really is full (`rejected.queue_full`, `retained_bytes` against `quota_bytes` in [Metrics](metrics.md)): a larger quota holds more data in memory when the indexer is slow, it does not make the indexer faster. A bucket's own quota is capped by what the global one leaves it.
+
+---
+
+## Verifying Connectivity
+
+Validate the configuration:
+
+```bash
+/var/wazuh-manager/bin/wazuh-manager-conf validate
+/var/wazuh-manager/bin/wazuh-manager-modulesd -t
+```
+
+Check that the Indexer accepts the manager's certificate and credentials, using the same files and account the runtime uses:
+
+```bash
+curl --cacert /etc/wazuh-manager/certs/indexer-ca.pem \
+     --cert   /etc/wazuh-manager/certs/indexer-connector.pem \
+     --key    /etc/wazuh-manager/certs/indexer-connector-key.pem \
+     -u "wazuh-manager:$(/var/wazuh-manager/bin/wazuh-manager-keystore -f indexer -k password -g)" \
+     "https://127.0.0.1:9200/_cluster/health?local=true"
+```
+
+The runtime treats a node as available when its health is `green` or `yellow`, and probes exactly this URL.
+
+Then check the manager log for the runtime's verdict on each node:
+
+```bash
+grep "indexer-client" /var/wazuh-manager/logs/wazuh-manager.log
+```
+
+| Message | Meaning |
+|---|---|
+| `Indexer client runtime started.` | The options, files and credentials were accepted |
+| `Indexer node '<host>' is available.` | The first probe of that node succeeded |
+| `Indexer node '<host>' is no longer available. Reason: HTTP 401: check indexer credentials / permissions` | The Indexer answered `401` or `403`: wrong user or password in the keystore, or missing permissions |
+| `Indexer node '<host>' is no longer available. Reason: <reason>` | The node stopped answering `green`/`yellow`, or could not be reached |
+| `The indexer client runtime did not start: <cause>: <reason>. ...` | The runtime refused to start; the reason names the file, host or credential |
+| `Invalid indexer client configuration: <reason>` | An option under `wazuh_modules.indexer_client_` or the `<indexer>` section is invalid |
+
+---
+
+## Certificates
+
+The runtime trusts the indexer's CA and presents a client pair the indexer issued for this manager. Neither comes from the manager's own CA:
+
+| File | Owner:group | Mode |
+|---|---|---|
+| `/etc/wazuh-manager/certs/indexer-ca.pem` | root:wazuh-manager | 0640 |
+| `/etc/wazuh-manager/certs/indexer-connector.pem` | root:wazuh-manager | 0640 |
+| `/etc/wazuh-manager/certs/indexer-connector-key.pem` | root:wazuh-manager | 0640 |
+
+The name of the pair, `indexer-connector*.pem`, is historical: it is the name the credential resolver, the installer's configuration template and [Credentials](../../getting-started/credentials.md) agree on. It was kept when the Indexer Connector was replaced, and it is not an indication of which library reads it.
+
+When the indexer runs on the same host, the credential resolver imports them from `/etc/wazuh-indexer/export/` (`ca.pem`, `manager-client.pem`, `manager-client-key.pem`), records the import with a marker file, and imports them again when the indexer's files change. Otherwise stage them yourself under these names: files without a marker are validated at every start and never replaced. The client certificate must chain to a certificate of `indexer-ca.pem` (an intermediate CA that issued it goes in `indexer-connector.pem`, after the leaf), match its key, be inside its validity window and carry an `extendedKeyUsage` with `clientAuth`. See [Indexer trust](../../getting-started/credentials.md#indexer-trust).
+
+The daemons read them as `wazuh-manager`, so a replacement file must stay readable by that group. modulesd reads them when it starts the runtime: restart the manager after replacing any of them.
+
+`/etc/wazuh-manager/certs/root-ca.pem` is not the runtime's: it is the manager's own CA bundle, the default [`remote.https.ca_certificate`](../remoted/configuration.md#httpsca_certificate) that remoted serves to agents on `GET /cacerts`. To trust more than one indexer CA, put them all in `indexer-ca.pem`. Other files listed under [`certificate_authorities`](#certificate_authorities) widen what the runtime trusts, but the credential resolver still requires `indexer-ca.pem` and checks the client pair against it.
+
+---
+
+## See Also
+
+- [Indexer Client](README.md) - Module overview, buckets, node health, logs and troubleshooting
+- [Metrics](metrics.md) - The `indexer_client.*` metrics
+- [Keystore](../keystore/README.md) - Where the Indexer credentials are stored
+- [Inventory Sync Server Configuration](../inventory-sync-server/configuration.md) and [Vulnerability Scanner Configuration](../vulnerability-scanner/configuration.md) - The consumers' options
+- [Manager Configuration Reference](../../configuration/manager/README.md) - All manager configuration options

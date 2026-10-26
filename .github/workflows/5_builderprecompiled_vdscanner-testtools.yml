@@ -27,9 +27,6 @@ on:
       - "src/shared_modules/content_manager/**/CMakeLists.txt"
       - "src/shared_modules/content_manager/include/**"
       - "src/shared_modules/content_manager/src/**"
-      - "src/shared_modules/indexer_connector/**/CMakeLists.txt"
-      - "src/shared_modules/indexer_connector/include/**"
-      - "src/shared_modules/indexer_connector/src/**"
       - "src/shared_modules/indexer_client/**/CMakeLists.txt"
       - "src/shared_modules/indexer_client/include/**"
       - "src/shared_modules/indexer_client/src/**"
@@ -111,9 +108,6 @@ on:
       - "src/shared_modules/content_manager/**/CMakeLists.txt"
       - "src/shared_modules/content_manager/include/**"
       - "src/shared_modules/content_manager/src/**"
-      - "src/shared_modules/indexer_connector/**/CMakeLists.txt"
-      - "src/shared_modules/indexer_connector/include/**"
-      - "src/shared_modules/indexer_connector/src/**"
       - "src/shared_modules/indexer_client/**/CMakeLists.txt"
       - "src/shared_modules/indexer_client/include/**"
       - "src/shared_modules/indexer_client/src/**"
@@ -227,7 +221,6 @@ jobs:
           for lib in \
             libinventory_sync_server.so \
             libvulnerability_scanner.so \
-            libindexer_connector.so \
             libindexer_client.so \
             libwazuhext.so \
             libcontent_manager.so \

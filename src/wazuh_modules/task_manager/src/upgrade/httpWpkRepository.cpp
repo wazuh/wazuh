@@ -29,7 +29,7 @@ namespace
      *
      * It has to outlive everything, and a member would not. cURLMultiHandler stores this reference
      * at construction, and cURLHandlerCache -- a singleton keyed only on (thread id, handler type),
-     * shared with vulnerability_scanner and indexer_connector -- keeps that handler and reuses it
+     * shared with vulnerability_scanner -- keeps that handler and reuses it
      * without rebinding. A flag with any shorter life would be read after its owner was gone, by
      * requests belonging to other modules.
      *

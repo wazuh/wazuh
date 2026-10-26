@@ -58,7 +58,7 @@ namespace invsync::sync
     /**
      * @brief The ingestion pipeline behind POST /stateful: workers sharded by agent id.
      *
-     * One worker (and ONE IndexerConnectorSync, private to it) per shard; a session lands on
+     * One worker (and ONE IIndexerConnectorSync, private to it) per shard; a session lands on
      * `hash(agentId) % workers`, which makes per-agent ordering a property of the topology instead
      * of a lock: two requests of the same agent -- a Cleans and the SyncData that re-populates it,
      * a delta and its checksum -- are applied in arrival order because they traverse the same

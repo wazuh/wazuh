@@ -113,7 +113,7 @@ Credentials are not set here; they come from the keystore (step 3). Validate the
 sudo /var/wazuh-manager/bin/wazuh-manager-conf validate
 ```
 
-The section is described in full in the [Indexer Connector configuration reference](../../ref/modules/indexer_connector/configuration.md).
+The section is described in full in the [Indexer Client configuration reference](../../ref/modules/indexer_client/configuration.md).
 
 ### 5. Stop Filebeat and restart the manager
 
@@ -124,7 +124,7 @@ sudo systemctl restart wazuh-manager
 sudo /var/wazuh-manager/bin/wazuh-manager-control status
 ```
 
-Confirm that the indexer accepts the manager's certificate and credentials, and read the connector's verdict on each node in the manager log, as [Verifying Connectivity](../../ref/modules/indexer_connector/configuration.md#verifying-connectivity) describes.
+Confirm that the indexer accepts the manager's certificate and credentials, and read the connector's verdict on each node in the manager log, as [Verifying Connectivity](../../ref/modules/indexer_client/configuration.md#verifying-connectivity) describes.
 
 ### 6. Remove Filebeat
 

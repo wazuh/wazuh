@@ -250,9 +250,9 @@ static void wm_inventory_sync_server_read_tunables(inventory_sync_server_config_
      * ranges and defaults rather than the 0 sentinel, because they are forwarded to a shared
      * library whose own defaults we mirror here. Each one names the connector key it maps to.
      *
-     * The two families are deliberately separate: IndexerConnectorSync reads `max_bulk_size`
-     * while IndexerConnectorAsync reads `bulk_max_bytes` for the same concept, and handing
-     * either the other's key is ignored silently. Keep the `indexer_sync_`/`indexer_async_`
+     * The two families are deliberately separate: they kept the key names of the sync and async
+     * connectors they replaced, `max_bulk_size` and `bulk_max_bytes` for the same concept, and
+     * handing either the other's key is ignored silently. Keep the `indexer_sync_`/`indexer_async_`
      * prefixes intact.
      *
      * Note the minimum of 1 on both `max_retry_delay_seconds`: the connector constructors reject
