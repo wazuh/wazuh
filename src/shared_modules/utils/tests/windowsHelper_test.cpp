@@ -12,10 +12,40 @@
 #ifdef WIN32
 #include "windowsHelper_test.h"
 #include "windowsHelper.h"
+#include <cstdlib>
 
-void WindowsHelperTest::SetUp() {};
+namespace
+{
+    void setTimezone(const char* tz)
+    {
+        _putenv_s("TZ", tz);
+        _tzset();
+    }
 
-void WindowsHelperTest::TearDown() {};
+    // Wine's C runtime takes the offset from TZ but never applies its DST rule
+    bool timezoneHasDST()
+    {
+        std::tm summer {};
+        summer.tm_year = 2026 - 1900;
+        summer.tm_mon = 6;
+        summer.tm_mday = 1;
+        summer.tm_hour = 12;
+        summer.tm_isdst = -1;
+        std::mktime(&summer);
+        return summer.tm_isdst > 0;
+    }
+} // namespace
+
+void WindowsHelperTest::SetUp()
+{
+    const auto* tz = std::getenv("TZ");
+    m_timezone = tz != nullptr ? tz : "";
+};
+
+void WindowsHelperTest::TearDown()
+{
+    setTimezone(m_timezone.c_str());
+};
 
 TEST_F(WindowsHelperTest, ipv6NetMask_64)
 {
@@ -236,9 +266,27 @@ TEST_F(WindowsHelperTest, normalizeTimestampNotEqual)
     std::string RegistryModificationDateValue = "2022/02/15 14:04:50";
     std::string expected = "2022/02/14 00:00:00";
 
+    setTimezone("UTC0");
     std::string result = Utils::normalizeTimestamp(RegistryInstallDateValue, RegistryModificationDateValue);
 
     EXPECT_EQ(expected, result);
+}
+
+TEST_F(WindowsHelperTest, normalizeTimestampNotEqualReturnsLocalMidnightInUTC)
+{
+    // InstallDate is a local date; its midnight comes back in UTC
+    setTimezone("JST-9");
+    EXPECT_EQ("2026/10/19 15:00:00", Utils::normalizeTimestamp("20261020", "2026/10/23 18:02:28"));
+
+    setTimezone("PST8PDT");
+    EXPECT_EQ("2026/12/01 08:00:00", Utils::normalizeTimestamp("20261201", "2026/12/03 18:02:28"));
+
+    if (!timezoneHasDST())
+    {
+        GTEST_SKIP() << "The C runtime does not apply the DST rule of TZ";
+    }
+
+    EXPECT_EQ("2026/10/20 07:00:00", Utils::normalizeTimestamp("20261020", "2026/10/23 18:02:28"));
 }
 
 TEST_F(WindowsHelperTest, normalizeTimestampEqual)

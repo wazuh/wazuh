@@ -22,7 +22,7 @@ void WindowsPackageImpl::buildPackageData(nlohmann::json& package)
     package["version_"] = m_packageWrapper->version();
     package["vendor"] = m_packageWrapper->vendor();
     auto installed = m_packageWrapper->install_time();
-    package["installed"] = installed == UNKNOWN_VALUE ? UNKNOWN_VALUE : Utils::timestampToISO8601(installed);
+    package["installed"] = installed == UNKNOWN_VALUE ? UNKNOWN_VALUE : Utils::timestampToISO8601(installed, true);
     package["path"] = m_packageWrapper->location();
     package["architecture"] = m_packageWrapper->architecture();
     package["category"] = m_packageWrapper->groups();

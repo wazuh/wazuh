@@ -202,6 +202,8 @@ namespace Utils
 
     // https://en.wikipedia.org/wiki/ISO_8601#Calendar_dates
     // https://en.wikipedia.org/wiki/ISO_8601#Combined_date_and_time_representations
+    // Returns a UTC "YYYY/MM/DD hh:mm:ss": dateISO8601CombinedFormat (a UTC key modification date) when its date
+    // matches dateISO8601CalendarDateFormat, otherwise local midnight of dateISO8601CalendarDateFormat.
     static std::string normalizeTimestamp(const std::string& dateISO8601CalendarDateFormat, const std::string& dateISO8601CombinedFormat)
     {
         std::string normalizedTimestamp;
@@ -248,9 +250,12 @@ namespace Utils
                     local_time_s.tm_hour = 0;
                     local_time_s.tm_min = 0;
                     local_time_s.tm_sec = 0;
+                    // Let mktime work out whether DST applies on that date.
+                    local_time_s.tm_isdst = -1;
                     time_t local_time = mktime(&local_time_s);
 
-                    normalizedTimestamp = Utils::getTimestamp(local_time, false);
+                    // Local midnight of InstallDate, expressed in UTC like the other branch.
+                    normalizedTimestamp = Utils::getTimestamp(local_time);
                 }
             }
             else
