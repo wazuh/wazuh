@@ -219,7 +219,7 @@ firewall_result_t try_firewalld(const char *srcip, int action, int ip_version, c
 static int run_iptables_rule(const char *iptables, const char *iptables_name, const char *op,
                              const char *chain, const char *srcip, const char *argv0) {
     char log_msg[OS_MAXSTR];
-    char buffer[OS_MAXSTR];
+    char buffer[OS_SIZE_1024];
     char *exec_cmd[] = {(char *)iptables, (char *)op, (char *)chain, "-s", (char *)srcip, "-j", "DROP", NULL};
 
     for (int count = 1; count <= 5; count++) {
@@ -268,7 +268,7 @@ firewall_result_t try_iptables(const char *srcip, int action, int ip_version, co
     firewall_result_t final_result = FIREWALL_SUCCESS;
 
     for (size_t i = 0; i < sizeof(chains) / sizeof(chains[0]); i++) {
-        int rc;
+        int rc = 0;
 
         if (action == ENABLE_COMMAND) {
             if (run_iptables_rule(iptables, iptables_name, "-C", chains[i], srcip, argv0) == 0) {
@@ -279,8 +279,8 @@ firewall_result_t try_iptables(const char *srcip, int action, int ip_version, co
             }
             rc = run_iptables_rule(iptables, iptables_name, "-I", chains[i], srcip, argv0);
         } else {
-            // -D removes a single copy, and earlier versions added one per run
-            while ((rc = run_iptables_rule(iptables, iptables_name, "-D", chains[i], srcip, argv0)) == 0);
+            // -D removes a single copy, and earlier versions added one per run. Capped in case -D never fails
+            for (int n = 0; n < 1024 && (rc = run_iptables_rule(iptables, iptables_name, "-D", chains[i], srcip, argv0)) == 0; n++);
         }
 
         if (rc == -1) {
