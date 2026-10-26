@@ -86,6 +86,18 @@ list(APPEND client-agent_flags "-Wl,--wrap,getAgentConfig \
                                 -Wl,--wrap,getAntiTamperingConfig -Wl,--wrap,w_agentd_state_get")
 endif()
 
+# Both targets: the (4128) hint has a Windows wording. client.keys is a real file in the working
+# directory, since the Windows wrappers only offer FileSizeWin().
+list(APPEND client-agent_names "test_manager_address")
+if(${TARGET} STREQUAL "winagent")
+list(APPEND client-agent_flags "-Wl,--wrap=syscom_dispatch -Wl,--wrap=Start_win32_Syscheck \
+                                -Wl,--wrap=is_fim_shutdown -Wl,--wrap=fim_db_teardown \
+                                -Wl,--wrap=_imp__dbsync_initialize -Wl,--wrap=_imp__rsync_initialize \
+                                ${DEBUG_OP_WRAPPERS}")
+else()
+list(APPEND client-agent_flags "${DEBUG_OP_WRAPPERS}")
+endif()
+
 if(${TARGET} STREQUAL "agent")
 list(APPEND client-agent_names "test_agentd")
 list(APPEND client-agent_flags "-Wl,--wrap,wurl_free_response -Wl,--wrap,wurl_http_request \
@@ -116,11 +128,6 @@ list(APPEND client-agent_names "test_agent_ssl_ca")
 # references __real_wfopen. Its wrapper forwards to the real call unless a test sets test_mode.
 list(APPEND client-agent_flags "-Wl,--wrap,w_is_file -Wl,--wrap,IsFile -Wl,--wrap,IsLink -Wl,--wrap,wfopen -Wl,--wrap,os_find_ca_bundle \
                                 -Wl,--wrap,w_x509_load_all_pem -Wl,--wrap,w_x509_free_all ${DEBUG_OP_WRAPPERS}")
-
-list(APPEND client-agent_names "test_manager_address")
-# FileSize is wrapped so each case states whether client.keys is consulted at all. wfopen only so
-# the link succeeds, as for test_agent_ssl_ca: its wrapper forwards to the real call.
-list(APPEND client-agent_flags "-Wl,--wrap,FileSize -Wl,--wrap,wfopen ${DEBUG_OP_WRAPPERS}")
 
 # getAgentConfig() reads the agt globals and builds cJSON, nothing else: no wrappers.
 list(APPEND client-agent_names "test_agent_config")
