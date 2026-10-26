@@ -78,6 +78,7 @@ int main(int argc, char **argv) {
         keys[1] = NULL;
 
         action2 = send_keys_and_check_message(argv, keys);
+        os_free(keys[0]);
         os_free(keys);
 
         if (action2 != CONTINUE_COMMAND) {
@@ -214,10 +215,38 @@ firewall_result_t try_firewalld(const char *srcip, int action, int ip_version, c
 // LINUX: iptables/ip6tables implementation
 // ============================================================================
 
+// Returns the exit status of "<iptables> <op> <chain> -s <srcip> -j DROP", or -1 if it could not be run
+static int run_iptables_rule(const char *iptables, const char *iptables_name, const char *op,
+                             const char *chain, const char *srcip, const char *argv0) {
+    char log_msg[OS_MAXSTR];
+    char buffer[OS_MAXSTR];
+    char *exec_cmd[] = {(char *)iptables, (char *)op, (char *)chain, "-s", (char *)srcip, "-j", "DROP", NULL};
+
+    for (int count = 1; count <= 5; count++) {
+        wfd_t *wfd = wpopenv(iptables, exec_cmd, W_BIND_STDERR);
+
+        if (wfd) {
+            while (fgets(buffer, sizeof(buffer), wfd->file_out));
+            int status = wpclose(wfd);
+            return WIFEXITED(status) ? WEXITSTATUS(status) : 255;
+        }
+
+        if (count < 5) {
+            sleep(count);
+        }
+    }
+
+    memset(log_msg, '\0', OS_MAXSTR);
+    snprintf(log_msg, OS_MAXSTR - 1, "Unable to run %s on %s chain", iptables_name, chain);
+    write_debug_file(argv0, log_msg);
+    return -1;
+}
+
 firewall_result_t try_iptables(const char *srcip, int action, int ip_version, const char *argv0) {
     char log_msg[OS_MAXSTR];
     char *iptables = NULL;
     const char *iptables_name = (ip_version == 4) ? "iptables" : "ip6tables";
+    const char *chains[] = {"INPUT", "FORWARD"};
     lock_context_t lock_ctx = {
         .lock_path = LOCK_PATH,
         .lock_pid_path = LOCK_FILE,
@@ -236,56 +265,26 @@ firewall_result_t try_iptables(const char *srcip, int action, int ip_version, co
         return FIREWALL_EXECUTION_FAILED;
     }
 
-    // Determine argument for enable/disable
-    const char *arg = (action == ENABLE_COMMAND) ? "-I" : "-D";
-
     firewall_result_t final_result = FIREWALL_SUCCESS;
 
-    // Execute INPUT chain with retry
-    int count = 0;
-    bool flag = true;
-    while (flag) {
-        char *exec_cmd1[] = {iptables, (char *)arg, "INPUT", "-s", (char *)srcip, "-j", "DROP", NULL};
-        wfd_t *wfd = wpopenv(iptables, exec_cmd1, W_BIND_STDERR);
+    for (size_t i = 0; i < sizeof(chains) / sizeof(chains[0]); i++) {
+        int rc;
 
-        if (!wfd) {
-            count++;
-            if (count > 4) {
-                flag = false;
+        if (action == ENABLE_COMMAND) {
+            if (run_iptables_rule(iptables, iptables_name, "-C", chains[i], srcip, argv0) == 0) {
                 memset(log_msg, '\0', OS_MAXSTR);
-                snprintf(log_msg, OS_MAXSTR - 1, "Unable to run %s on INPUT chain", iptables_name);
-                write_debug_file(argv0, log_msg);
-                final_result = FIREWALL_EXECUTION_FAILED;
-            } else {
-                sleep(count);
+                snprintf(log_msg, OS_MAXSTR - 1, "IP %s already blocked in %s chain", srcip, chains[i]);
+                log_firewall_action(argv0, LOG_LEVEL_INFO, "iptables", "check", log_msg);
+                continue;
             }
+            rc = run_iptables_rule(iptables, iptables_name, "-I", chains[i], srcip, argv0);
         } else {
-            flag = false;
-            wpclose(wfd);
+            // -D removes a single copy, and earlier versions added one per run
+            while ((rc = run_iptables_rule(iptables, iptables_name, "-D", chains[i], srcip, argv0)) == 0);
         }
-    }
 
-    // Execute FORWARD chain with retry
-    count = 0;
-    flag = true;
-    while (flag) {
-        char *exec_cmd2[] = {iptables, (char *)arg, "FORWARD", "-s", (char *)srcip, "-j", "DROP", NULL};
-        wfd_t *wfd = wpopenv(iptables, exec_cmd2, W_BIND_STDERR);
-
-        if (!wfd) {
-            count++;
-            if (count > 4) {
-                flag = false;
-                memset(log_msg, '\0', OS_MAXSTR);
-                snprintf(log_msg, OS_MAXSTR - 1, "Unable to run %s on FORWARD chain", iptables_name);
-                write_debug_file(argv0, log_msg);
-                final_result = FIREWALL_EXECUTION_FAILED;
-            } else {
-                sleep(count);
-            }
-        } else {
-            flag = false;
-            wpclose(wfd);
+        if (rc == -1) {
+            final_result = FIREWALL_EXECUTION_FAILED;
         }
     }
 
