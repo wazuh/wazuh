@@ -262,13 +262,7 @@ int main(int argc, char **argv)
         mlerror_exit(LOGLEVEL_ERROR, CLIENT_ERROR);
     }
 
-    if (!(agt->server && agt->server[0].rip)) {
-        merror(AG_INV_IP);
-        mlerror_exit(LOGLEVEL_ERROR, CLIENT_ERROR);
-    }
-
-    if (!Validate_Address(agt->server)){
-        merror(AG_INV_MNGIP, agt->server[0].rip);
+    if (!w_agent_validate_manager_address(agt)) {
         mlerror_exit(LOGLEVEL_ERROR, CLIENT_ERROR);
     }
 

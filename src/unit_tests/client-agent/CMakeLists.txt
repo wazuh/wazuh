@@ -117,6 +117,9 @@ list(APPEND client-agent_names "test_agent_ssl_ca")
 list(APPEND client-agent_flags "-Wl,--wrap,w_is_file -Wl,--wrap,IsFile -Wl,--wrap,IsLink -Wl,--wrap,wfopen -Wl,--wrap,os_find_ca_bundle \
                                 -Wl,--wrap,w_x509_load_all_pem -Wl,--wrap,w_x509_free_all ${DEBUG_OP_WRAPPERS}")
 
+list(APPEND client-agent_names "test_manager_address")
+list(APPEND client-agent_flags "${DEBUG_OP_WRAPPERS}")
+
 # getAgentConfig() reads the agt globals and builds cJSON, nothing else: no wrappers.
 list(APPEND client-agent_names "test_agent_config")
 list(APPEND client-agent_flags " ")
