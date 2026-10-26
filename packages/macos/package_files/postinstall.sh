@@ -25,56 +25,124 @@ if [ -f "${UPGRADE_FILE_FLAG}" ]; then
     upgrade="true"
     rm -f ${UPGRADE_FILE_FLAG}
     echo "Restoring configuration files from ${DIR}/config_files/ to ${DIR}/etc/"
-    rm -rf ${DIR}/etc/{ossec.conf,client.keys,local_internal_options.conf,shared}
-    cp -rf ${DIR}/config_files/{ossec.conf,client.keys,local_internal_options.conf,shared} ${DIR}/etc/
-    rm -rf ${DIR}/config_files/
+
+    # The backup holds only a regular file per config name (preinstall copied with cp -R and
+    # removed any planted symlink or hard link before the payload was laid). Move it over the
+    # package default with a plain mv: -h is not used because it does not exist before macOS 12.5
+    # (Apple file_cmds-353) and the agent supports older releases, and by this point the destination
+    # is the package's regular file, not a symlink. Anything that is not a regular file is dropped.
+    restore_failed=""
+    for conf in ossec.conf client.keys local_internal_options.conf; do
+        if [ ! -e ${DIR}/config_files/${conf} ] && [ ! -L ${DIR}/config_files/${conf} ]; then
+            continue
+        elif [ -f ${DIR}/config_files/${conf} ] && [ ! -L ${DIR}/config_files/${conf} ]; then
+            if ! mv -f ${DIR}/config_files/${conf} ${DIR}/etc/${conf}; then
+                echo "WARNING: could not restore ${DIR}/etc/${conf}; a copy is kept for recovery." >&2
+                restore_failed="yes"
+            fi
+        else
+            echo "WARNING: ${DIR}/config_files/${conf} is not a regular file; not restored, the package-installed ${DIR}/etc/${conf} is left in place." >&2
+            rm -rf ${DIR}/config_files/${conf}
+        fi
+    done
+
+    # etc/shared is a directory: replace the package copy with the backup without destroying it
+    # first. Move the installed one aside, move the backup into place, and put the original back if
+    # that fails, so a failed move never leaves etc/shared missing (and no mv -h, as above).
+    if [ -d ${DIR}/config_files/shared ] && [ ! -L ${DIR}/config_files/shared ]; then
+        rm -rf ${DIR}/etc/shared.save
+        mv -f ${DIR}/etc/shared ${DIR}/etc/shared.save 2> /dev/null
+        if mv -f ${DIR}/config_files/shared ${DIR}/etc/shared; then
+            rm -rf ${DIR}/etc/shared.save
+        else
+            [ -e ${DIR}/etc/shared.save ] && mv -f ${DIR}/etc/shared.save ${DIR}/etc/shared
+            echo "WARNING: could not restore ${DIR}/etc/shared; a copy is kept for recovery." >&2
+            restore_failed="yes"
+        fi
+    elif [ -e ${DIR}/config_files/shared ] || [ -L ${DIR}/config_files/shared ]; then
+        echo "WARNING: ${DIR}/config_files/shared is not a directory; not restored, the package-installed ${DIR}/etc/shared is left in place." >&2
+        rm -rf ${DIR}/config_files/shared
+    fi
+
+    # Drop the backup once everything was restored or deliberately dropped. If a restore failed,
+    # keep what is left under a name the next upgrade's preinstall will not wipe, so an operator
+    # can still recover it after re-running the installer (only the first such run is preserved; a
+    # later failure is cleaned by the next preinstall).
+    if [ -z "${restore_failed}" ]; then
+        rm -rf ${DIR}/config_files/
+    elif [ ! -e ${DIR}/config_files.unrestored ]; then
+        mv ${DIR}/config_files ${DIR}/config_files.unrestored \
+            && echo "WARNING: configuration that could not be restored is kept at ${DIR}/config_files.unrestored for recovery." >&2
+    fi
 fi
 
-# Default for all directories
+# harden_tree MODE OWNER DIR: set MODE and OWNER on DIR and everything under it, acting only on a
+# directory or a single-link entry — never on a symlink or on anything with more than one hard link
+# (a regular file, FIFO or socket the wazuh account may have linked to something outside the
+# install), so chmod/chown cannot reach that external inode. macOS has no protected_hardlinks, so
+# every recursive step over a wazuh-writable tree goes through this.
+harden_tree() {
+    find "$3" ! -type l \( -type d -o -links 1 \) -exec chmod "$1" {} + -exec chown "$2" {} +
+}
+
+# Default for all directories. Parts of the tree (etc/, logs/, var/, queue/ sub-dirs) are writable
+# by the wazuh account, so the hard-link-safe walk is used instead of a plain chmod -R / chown -R.
 echo "Seting permissions and ownership for directories and files"
-chmod -R 750 ${DIR}/
-chown -R root:${GROUP} ${DIR}/
+harden_tree 750 root:${GROUP} ${DIR}
 
 chown -R root:wheel ${DIR}/bin
 chown -R root:wheel ${DIR}/lib
 
-# To the ossec queue (default for agentd to read)
-chown -R ${USER}:${GROUP} ${DIR}/queue/{alerts,diff,sockets,rids}
+# The ossec queue (default for agentd to read). queue/{alerts,sockets} are group-writable, so a
+# hard link the wazuh account plants inside them must be skipped, not chowned/chmodded through.
+harden_tree 770 ${USER}:${GROUP} ${DIR}/queue/alerts
+harden_tree 770 ${USER}:${GROUP} ${DIR}/queue/sockets
+harden_tree 750 ${USER}:${GROUP} ${DIR}/queue/diff
+harden_tree 750 ${USER}:${GROUP} ${DIR}/queue/rids
 
-chmod -R 770 ${DIR}/queue/{alerts,sockets}
-chmod -R 750 ${DIR}/queue/{diff,rids}
-
-# For the logging user
+# For the logging user. logs/ is writable by the wazuh account, so the chown and the file chmod
+# must skip a hard link it may have planted there, whose target would otherwise be re-owned and
+# re-moded. Directories cannot be hard-linked by an unprivileged user.
 chmod 770 ${DIR}/logs
-chown -R ${USER}:${GROUP} ${DIR}/logs
-find ${DIR}/logs/ -type d -exec chmod 750 {} \;
-find ${DIR}/logs/ -type f -exec chmod 660 {} \;
+find ${DIR}/logs ! -type l \( -type d -o -links 1 \) -exec chown ${USER}:${GROUP} {} +
+find ${DIR}/logs/ -type d -exec chmod 750 {} +
+find ${DIR}/logs/ -type f -links 1 -exec chmod 660 {} +
 
-chown -R root:${GROUP} ${DIR}/tmp
+# tmp is 1750 (not group-writable), so nothing can be planted in it; keep the chown off any hard
+# link anyway, for consistency with the walks above.
+find ${DIR}/tmp ! -type l \( -type d -o -links 1 \) -exec chown root:${GROUP} {} +
 chmod 1750 ${DIR}/tmp
 
 chmod 770 ${DIR}/etc
 chown ${USER}:${GROUP} ${DIR}/etc
-chmod 640 ${DIR}/etc/internal_options.conf
-chown root:${GROUP} ${DIR}/etc/internal_options.conf
-chmod 640 ${DIR}/etc/local_internal_options.conf
-chown root:${GROUP} ${DIR}/etc/local_internal_options.conf
-chmod 640 ${DIR}/etc/client.keys
-chown root:${GROUP} ${DIR}/etc/client.keys
-chmod 640 ${DIR}/etc/localtime
-chmod 770 ${DIR}/etc/shared # ossec must be able to write to it
-chown -R root:${GROUP} ${DIR}/etc/shared
-find ${DIR}/etc/shared/ -type f -exec chmod 660 {} \;
-chown root:${GROUP} ${DIR}/etc/ossec.conf
-chmod 660 ${DIR}/etc/ossec.conf
-chown root:${GROUP} ${DIR}/etc/wpk_root.pem
-chmod 640 ${DIR}/etc/wpk_root.pem
+# etc/ is owned by the wazuh account, so a file in it may be a link that account planted. Set the
+# mode and owner only on a regular file with a single hard link that is not a symlink, so a planted
+# symlink or hard link (macOS has no protected_hardlinks) leaves its target untouched.
+harden_etc_file() {
+    if [ -f "$2" ] && [ ! -L "$2" ] && [ -n "$(find "$2" -prune -links 1 2>/dev/null)" ]; then
+        chmod "$1" "$2"
+        [ "${3:-}" = nochown ] || chown root:${GROUP} "$2"
+    fi
+}
+harden_etc_file 640 ${DIR}/etc/internal_options.conf
+harden_etc_file 640 ${DIR}/etc/local_internal_options.conf
+harden_etc_file 640 ${DIR}/etc/client.keys
+harden_etc_file 640 ${DIR}/etc/localtime nochown
+# etc/shared only when it is a real directory (a trailing-slash find would follow a symlinked
+# shared into its target); inside it skip a symlink and a hard-linked file, so chown/chmod cannot
+# reach a file outside the installation.
+if [ -d ${DIR}/etc/shared ] && [ ! -L ${DIR}/etc/shared ]; then
+    chmod 770 ${DIR}/etc/shared # ossec must be able to write to it
+    find ${DIR}/etc/shared ! -type l \( -type d -o -links 1 \) -exec chown root:${GROUP} {} +
+    find ${DIR}/etc/shared -type f -links 1 -exec chmod 660 {} +
+fi
+harden_etc_file 660 ${DIR}/etc/ossec.conf
+harden_etc_file 640 ${DIR}/etc/wpk_root.pem
 
 chmod 770 ${DIR}/.ssh
 
-# For the /var/run
-chmod -R 770 ${DIR}/var
-chown -R root:${GROUP} ${DIR}/var
+# For the /var/run. var/{incoming,upgrade} are group-writable, so use the hard-link-safe walk.
+harden_tree 770 root:${GROUP} ${DIR}/var
 
 # VERSION.json
 chmod -R 440 ${DIR}/VERSION.json
