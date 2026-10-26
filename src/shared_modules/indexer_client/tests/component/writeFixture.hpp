@@ -90,6 +90,7 @@ namespace write_component
         void dispatch(wr::Batch batch) override
         {
             std::vector<std::shared_ptr<wr::OpState>> resolveNow;
+            std::shared_ptr<wr::Bucket> bucket = batch.bucket; // E6e (D): resolve() takes the op's bucket.
             {
                 std::lock_guard<std::mutex> lock(m_mutex);
                 if (m_capacity != UNLIMITED && m_capacity > 0)
@@ -118,7 +119,7 @@ namespace write_component
                 {
                     for (const auto& op : resolveNow)
                     {
-                        path->resolve(op, ok());
+                        path->resolve(bucket, op, ok());
                     }
                 }
             }
@@ -187,7 +188,7 @@ namespace write_component
                 {
                     for (const auto& op : batch.ops)
                     {
-                        won += path->resolve(op, result) ? 1 : 0;
+                        won += path->resolve(batch.bucket, op, result) ? 1 : 0;
                     }
                 }
             }
@@ -344,6 +345,32 @@ namespace write_component
         return out;
     }
 
+    /// The write path of the running case (set by WriteTest::start and BulkTest::startOn; the fixture's m_path keeps
+    /// it alive after a stop()).
+    inline std::weak_ptr<wr::WritePath>& casePath()
+    {
+        static std::weak_ptr<wr::WritePath> path;
+        return path;
+    }
+
+    /// E6e (D): the bucket of an op a case holds without its batch: WritePath::resolve takes the bucket from its
+    /// caller, the op keeps no reference to it. Looked up among the case path's live buckets by OpState::owner, which
+    /// is never dereferenced (G-diff E6e P3-9: a dead owner is a test failure, not undefined behaviour).
+    inline std::shared_ptr<wr::Bucket> bucketOf(const wr::OpState& op)
+    {
+        if (op.owner == nullptr)
+        {
+            return nullptr;
+        }
+        const auto path = casePath().lock();
+        auto bucket = path ? path->liveBucket(op.owner) : nullptr;
+        if (!bucket)
+        {
+            ADD_FAILURE() << "the op's bucket is not a live bucket of the case's write path";
+        }
+        return bucket;
+    }
+
     /// Wire size of `op` (its NDJSON lines).
     inline std::uint64_t wireSize(ic::Op op)
     {
@@ -479,6 +506,7 @@ protected:
         m_ref = started.value;
         m_path = write_component::wr::runtimeWritePath();
         ASSERT_NE(m_path, nullptr);
+        write_component::casePath() = m_path;
     }
 
     std::shared_ptr<write_component::TestSink>

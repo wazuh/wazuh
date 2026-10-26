@@ -15,7 +15,8 @@
 
 // Test-only (INDEXER_CLIENT_TESTING): installs the hooks behind detail::seams and reads the test registry. Each
 // setter replaces the previous hook; an empty function restores the default (no-op / identity). resetAll() is meant
-// for test fixtures' TearDown.
+// for test fixtures' TearDown. A seam with no hook installed costs one acquire load of its slot's flag: it takes no
+// lock, so the seams on the hot paths add no synchronization between producers (G-diff E6e r2 P3-1).
 
 #include <cstddef>
 #include <cstdint>
@@ -48,6 +49,22 @@ namespace indexer_client::testing_hooks
     void setInCallbackGate(std::function<void()> hook);
     /// G-diff E5b: runs in WritePath::resolve right after the op's payload was released (no lock held).
     void setAfterPayloadReleased(std::function<void()> hook);
+    /// E6e (A): runs in WritePath::resolveBulk before each chunk is settled; a throw exercises its RAII settlement.
+    void setMidBulkSettle(std::function<void()> hook);
+    /// E6e (A): runs in Bucket::settleBulk before each op is counted, under the bucket mutex; a throw exercises its
+    /// catch and resolveBulk's per-op fallback.
+    void setInSettleBulk(std::function<void()> hook);
+    /// E6e (B): runs in Bucket::stage between the relaxed check of `closing` and the stripe's mutex (PostRacingSeal).
+    void setBeforeStagePush(std::function<void()> hook);
+    /// E6e (D116): runs in Bucket::stage between a stripe's store of `oldest` (empty -> non-empty) and the load of the
+    /// armed deadline, with that stripe's mutex held (a loop-0 pass may run meanwhile unless that stripe is due).
+    void setBeforeArmedDueLoad(std::function<void()> hook);
+    /// E6e (D116): runs on loop 0 in the scheduler's armTimer, between the bucket's nextDue read and the publish of the
+    /// deadline armed for it; blocking holds loop 0 there.
+    void setBeforePublishArmedDue(std::function<void()> hook);
+    /// E6e (B): runs in the stripe flush before each op is admitted and before a drop's interval keys, both mutexes
+    /// held; a throw keeps that op and the rest staged, counted nowhere.
+    void setMidAdmitBatch(std::function<void()> hook);
     /// E3b-1: capacity of the calling thread's bulk-response parser (0 before its first use); I65 caps it at 4 MiB.
     std::size_t parserCapacity();
     /// false makes RuntimeOwner::start create the NodeSet and the Prober without starting the probe (no round, no

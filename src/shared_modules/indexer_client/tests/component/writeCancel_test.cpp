@@ -531,10 +531,10 @@ TEST_F(WriteTest, CancelTwiceSameTag)
     const auto second = writer->cancel("tag-t");
     EXPECT_FALSE(first.ready());
     EXPECT_FALSE(second.ready());
-    ASSERT_TRUE(m_path->resolve(batches[0].ops.at(0), TestSink::ok()));
+    ASSERT_TRUE(m_path->resolve(bucketOf(*batches[0].ops.at(0)), batches[0].ops.at(0), TestSink::ok()));
     EXPECT_FALSE(eventually([&] { return first.ready() || second.ready(); }, 200ms))
         << "a waiter completed with one delivered op unresolved";
-    ASSERT_TRUE(m_path->resolve(batches[1].ops.at(0), TestSink::ok()));
+    ASSERT_TRUE(m_path->resolve(bucketOf(*batches[1].ops.at(0)), batches[1].ops.at(0), TestSink::ok()));
     ASSERT_TRUE(first.wait(in(5s)).ok());
     ASSERT_TRUE(second.wait(in(5s)).ok());
     ASSERT_TRUE(results->waitTotal(2, 3s));
@@ -564,10 +564,10 @@ TEST_F(WriteTest, CancelAfterTagReenqueued)
     auto after = sink->take();
     ASSERT_EQ(after.size(), 1u);
 
-    ASSERT_TRUE(m_path->resolve(before[0].ops.at(0), TestSink::ok()));
+    ASSERT_TRUE(m_path->resolve(bucketOf(*before[0].ops.at(0)), before[0].ops.at(0), TestSink::ok()));
     ASSERT_TRUE(ticket.wait(in(2s)).ok()) << "the later op of the tag delayed the ticket";
     EXPECT_EQ(results->count(1), 0) << "the later op is still held";
-    ASSERT_TRUE(m_path->resolve(after[0].ops.at(0), TestSink::ok()));
+    ASSERT_TRUE(m_path->resolve(bucketOf(*after[0].ops.at(0)), after[0].ops.at(0), TestSink::ok()));
     ASSERT_TRUE(results->waitTotal(2, 3s));
     EXPECT_EQ(results->countWith(ic::Status::Ok, ic::Cause::None), 2u);
     EXPECT_EQ(stats("b").cancelled, 0u);

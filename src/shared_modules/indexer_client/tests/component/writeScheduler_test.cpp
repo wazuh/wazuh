@@ -237,7 +237,7 @@ TEST_F(WriteTest, DocumentNeverSplitDebtCarries)
     ASSERT_EQ(batches[0].ops.size(), 1u);
     EXPECT_EQ(batches[0].bytes, size) << "whole";
     EXPECT_EQ(batches[0].ops[0]->wire(), size);
-    m_path->resolve(batches[0].ops[0], TestSink::ok());
+    m_path->resolve(bucketOf(*batches[0].ops[0]), batches[0].ops[0], TestSink::ok());
 
     // The debt (size - quantum) is paid by skipped rounds before the small op leaves.
     const auto fastForwards = m_path->scheduler()->stats().fastForwards;
@@ -342,7 +342,7 @@ TEST_F(WriteTest, DrrDebtKeptWhenEmpty)
     ASSERT_TRUE(eventually([&] { return bucketA->empty(); }, 2s)) << "A did not empty";
     for (const auto& op : held[0].ops)
     {
-        m_path->resolve(op, TestSink::ok());
+        m_path->resolve(bucketOf(*op), op, TestSink::ok());
     }
 
     // A refilled with >= bulk.maxBytes, B with 16 x its bulk.maxBytes.
@@ -596,7 +596,7 @@ namespace
             {
                 for (auto& op : batch.ops)
                 {
-                    path->resolve(op, TestSink::ok());
+                    path->resolve(batch.bucket, op, TestSink::ok());
                 }
             }
         }

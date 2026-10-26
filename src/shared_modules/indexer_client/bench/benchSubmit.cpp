@@ -64,10 +64,23 @@ namespace
     constexpr auto MARK_TIMEOUT = std::chrono::seconds(30);      ///< A watermark (or the final drain) not reached.
     constexpr int PROBE_INTERVAL_MS {3600000};
     constexpr const char* INDEX_NAME {"bench-submit"};
+    /// E6e (D): with --indices 2 the odd ops of a burst go here (the engine alternates its raw and events indices).
+    constexpr const char* INDEX_NAME_ALT {"bench-submit-raw"};
+
+    /// --indices (1 or 2), set once by main before any producer starts.
+    int g_indices = 1;
+
+    /// The index of op `i` of a burst.
+    const char* indexFor(std::size_t i)
+    {
+        return g_indices == 2 && i % 2 == 1 ? INDEX_NAME_ALT : INDEX_NAME;
+    }
 
     constexpr const char* USAGE =
         "usage: indexer_client_bench_submit --side v1|v2 [--api post|submit] [--producers N] [--cb none|noop]\n"
-        "                                   [--handover move|view] [--events N] [--pair N] [--csv-header]\n"
+        "                                   [--handover move|view] [--events N] [--pair N] [--indices 1|2]\n"
+        "                                   [--csv-header]\n"
+        "  --indices 2 (E6e): the ops alternate between two indices on both sides (default 1).\n"
         "  --api (v2 only; default post): IWriter::post (bucket with trustedBodies, the engine path, I125) or\n"
         "  IWriter::submit (default bucket, the body is scanned); post has no callback, so it needs --cb none\n"
         "  (usage error otherwise, exit 2). The v1 prints api=v1.\n"
@@ -140,7 +153,7 @@ namespace
             {
                 try
                 {
-                    const std::string index = INDEX_NAME; // Built per op, as the engine builds its index name.
+                    const std::string index = indexFor(i); // Built per op, as the engine builds its index name.
                     m_connector->indexDataStream(index, ring[(offset + i) % RING_EVENTS]);
                     ++accepted;
                 }
@@ -204,7 +217,7 @@ namespace
             {
                 indexer_client::Op op;
                 op.kind = indexer_client::Op::Kind::IndexDataStream;
-                op.index = INDEX_NAME;
+                op.index = indexFor(i);
                 if (m_move)
                 {
                     op.body = std::move(prepared[i]);
@@ -423,7 +436,7 @@ namespace
     const char* csvHeader()
     {
         return "side,api,producers,cb,handover,pair,events,ns_per_op,cpu_ns_per_op,proc_cpu_ns_per_op,B,W,quota,"
-               "backlog_max,accepted,server_docs,valid";
+               "backlog_max,accepted,server_docs,indices,valid";
     }
 
     /// Seeds the v1 credentials in a fresh working directory (the keystore is relative to it and Keystore::get
@@ -458,11 +471,12 @@ namespace
         const auto handover = args.get("handover", "move");
         const int events = args.getInt("events", 200000);
         const int pair = args.getInt("pair", 0);
+        g_indices = args.getInt("indices", 1);
         args.rejectUnused();
         if ((sideName != "v1" && sideName != "v2") || (api != "post" && api != "submit") ||
             (sideName == "v2" && api == "post" && cb != "none") || producers < 1 || producers > 64 ||
             (cb != "none" && cb != "noop") || (handover != "move" && handover != "view") || events % BURST_OPS != 0 ||
-            events / BURST_OPS <= WARMUP_BURSTS)
+            events / BURST_OPS <= WARMUP_BURSTS || (g_indices != 1 && g_indices != 2))
         {
             std::cerr << USAGE;
             return 2;
@@ -582,7 +596,7 @@ namespace
                       << bench::fixed(static_cast<double>(result.totals.cpuNs) / ops, 1) << ','
                       << bench::fixed(static_cast<double>(result.procCpuNs) / ops, 1) << ',' << BURST_OPS << ','
                       << WATERMARK_BYTES << ',' << quota << ',' << result.backlogMax << ',' << result.totals.accepted
-                      << ',' << serverDocs << ',' << (valid ? 1 : 0) << std::endl;
+                      << ',' << serverDocs << ',' << g_indices << ',' << (valid ? 1 : 0) << std::endl;
             const auto wazuhext = bench::loadedWazuhext();
             std::cout << "NOTE bursts=" << bursts << " warmup_bursts=" << WARMUP_BURSTS
                       << " timed_ops=" << result.timedOps << " expired_marks=" << result.expiredMarks
