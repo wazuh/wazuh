@@ -1871,7 +1871,7 @@ static int teardown_unmerge(void **state) {
 }
 
 static void write_unmerge_bundle(const char *content) {
-    // Text mode, as the agent receives merged.mg: each LF is stored as CR LF.
+    // Text mode, as a 4.x agent stores merged.mg: each LF is stored as CR LF.
     FILE *fp = fopen("merged.mg", "w");
 
     assert_non_null(fp);
@@ -1941,6 +1941,48 @@ void test_unmerge_windows_text_mode_bundle(void **state) {
     assert_int_equal(TestUnmergeFiles("merged.mg", OS_TEXT), 0);
     write_unmerge_bundle("!5 lines.conf\na\nb\n");
     assert_int_equal(TestUnmergeFiles("merged.mg", OS_TEXT), 0);
+}
+
+void test_unmerge_windows_binary_lf_bundle(void **state) {
+    // Raw bytes, as the agent downloads merged.mg: LF only, with entry sizes counting raw bytes, and
+    // an entry holding CR LF and Ctrl-Z, which a text-mode read would fold or stop at.
+    static const char script[] = "first\r\nsecond\x1a\r\nlast";
+    char config[2048];
+    size_t config_size = 0;
+    char line[64];
+    long offset = 0;
+    FILE *fp;
+
+    for (int i = 0; i < 80; i++) {
+        config_size += snprintf(config + config_size, sizeof(config) - config_size, "<!-- line %02d -->\n", i);
+    }
+
+    fp = fopen("merged.mg", "wb");
+    assert_non_null(fp);
+    assert_true(fputs("#0123456789abcdef0123456789abcdef\n", fp) >= 0);
+    assert_true(fprintf(fp, "!%u agent.conf\n", (unsigned int)config_size) > 0);
+    assert_int_equal(fwrite(config, 1, config_size, fp), config_size);
+    assert_true(fprintf(fp, "!%u script.txt\n", (unsigned int)(sizeof(script) - 1)) > 0);
+    assert_int_equal(fwrite(script, 1, sizeof(script) - 1, fp), sizeof(script) - 1);
+    assert_int_equal(fclose(fp), 0);
+
+    // TestUnmergeFiles() reads the entries exactly as UnmergeFiles() does.
+    assert_int_equal(TestUnmergeFiles("merged.mg", OS_BINARY), 1);
+
+    // The C runtime's text mode undercounts ftell() by one per buffered LF, so after the first header
+    // there are more LF left in the buffer than bytes read and the offset goes negative. The file is
+    // closed before checking, so teardown can remove it whatever the result.
+    fp = fopen("merged.mg", "r");
+    assert_non_null(fp);
+    if (fgets(line, sizeof(line), fp) && fgets(line, sizeof(line), fp)) {
+        offset = ftell(fp);
+    }
+    assert_int_equal(fclose(fp), 0);
+
+    if (offset >= 0) {
+        print_message("Skipped: this C runtime's text-mode ftell() does not go negative on this bundle.\n");
+        skip();
+    }
 }
 
 #endif
@@ -3342,6 +3384,7 @@ int main(void) {
         cmocka_unit_test(test_w_win_reparse_tag_is_plain),
         cmocka_unit_test(test_unmerge_normalize_name_windows),
         cmocka_unit_test_setup_teardown(test_unmerge_windows_text_mode_bundle, setup_unmerge, teardown_unmerge),
+        cmocka_unit_test_setup_teardown(test_unmerge_windows_binary_lf_bundle, setup_unmerge, teardown_unmerge),
 
 #endif
     };
