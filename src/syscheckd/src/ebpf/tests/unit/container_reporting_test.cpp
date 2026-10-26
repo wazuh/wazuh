@@ -7,6 +7,10 @@
 
 #include "container_baseline_fim.h"
 #include "container_baseline_fim_bridge.h"
+extern "C"
+{
+#include "container_baseline_host_api.h"
+}
 #include "db.h"
 #include "container_event_drain.hpp"
 #include "rt_engine.h"
@@ -106,6 +110,15 @@ namespace
      * assumed. */
     bool distinct_ids_malformed = false;
     std::size_t persist_attempts = 0;
+
+    /* Makes that query fail outright, which is a different thing from answering
+     * a malformed shape: the sweep then knows nothing about which containers
+     * hold rows. */
+    bool fail_distinct_ids = false;
+
+    /* Makes container b's sweep transaction fail to open, so its rows survive a
+     * sweep that believed it removed them. */
+    bool fail_txn_start = false;
     int file_size = 1;
 
     class ContainerReportingTest : public testing::Test
@@ -138,6 +151,8 @@ namespace
                 distinct_id_queries = 0;
                 distinct_ids_malformed = false;
                 persist_attempts = 0;
+                fail_distinct_ids = false;
+                fail_txn_start = false;
                 file_size = 1;
                 fim_db_init(FIM_DB_MEMORY, [](modules_log_level_t, const char*) {}, 1000, 0, nullptr);
                 fim_container_doc_budget_release("a");
@@ -190,6 +205,8 @@ extern "C" cJSON* __real_fim_db_get_distinct_container_ids(const char* table_nam
 extern "C" cJSON* __wrap_fim_db_get_distinct_container_ids(const char* table_name)
 {
     ++distinct_id_queries;
+
+    if (fail_distinct_ids) return nullptr;
 
     if (distinct_ids_malformed)
     {
@@ -289,6 +306,15 @@ extern "C" int __wrap_fim_collect_container_monitored_paths(cb_monitored_path_t*
     *paths = &path;
     *count = 1;
     return 0;
+}
+
+extern "C" TXN_HANDLE __real_fim_db_transaction_start(const char* table, result_callback_t callback, void* ctx);
+extern "C" TXN_HANDLE __wrap_fim_db_transaction_start(const char* table, result_callback_t callback, void* ctx)
+{
+    if (fail_txn_start && std::string(table).find("\"b\"") != std::string::npos)
+        return nullptr;
+
+    return __real_fim_db_transaction_start(table, callback, ctx);
 }
 
 extern "C" void __wrap_fim_free_container_monitored_paths(cb_monitored_path_t*) {}
@@ -2314,4 +2340,86 @@ TEST(ContainerListRefresh, ASilentSourceAllowsNamedVerdictsWithoutAuthorisingAbs
               AdmissionPublish::defer) << "source readiness does not release the startup walk";
     EXPECT_EQ(decideAdmissionPublish(true, false, true, plan.enumerated), AdmissionPublish::defer)
             << "an old connector still cannot authorise installation";
+}
+
+namespace
+{
+    bool warned(const char* fragment)
+    {
+        for (const auto& warning : warnings)
+        {
+            if (warning.find(fragment) != std::string::npos)
+                return true;
+        }
+
+        return false;
+    }
+
+    bool hasContext(const char* container)
+    {
+        fim_db_clear_container_contexts();
+        cJSON* block = fim_db_get_container_context(container);
+        const bool present = block != nullptr;
+        cJSON_Delete(block);
+        return present;
+    }
+} // namespace
+
+TEST_F(ContainerReportingTest, UnreadableContainerIdsSkipThePruneToo)
+{
+    files = {{"a", {"/etc/one"}}, {"b", {"/etc/one"}}};
+    fim_run_container_baseline();
+    ASSERT_EQ(fim_db_set_container_context("b", R"({"container":{"id":"b"}})"), FIMDB_OK);
+
+    // b leaves, but its rows cannot be enumerated: pruning its context against
+    // the live list would strand rows whose DELETEs need it.
+    admission.erase("b");
+    files.erase("b");
+    fail_distinct_ids = true;
+    listed = false;
+    fim_run_container_baseline();
+
+    EXPECT_TRUE(warned("could not read container ids"));
+    EXPECT_EQ(fim_db_count_container_rows("b", nullptr), 1);
+    EXPECT_TRUE(hasContext("b"));
+
+    fail_distinct_ids = false;
+    listed = false;
+    fim_run_container_baseline();
+    EXPECT_EQ(fim_db_count_container_rows("b", nullptr), 0);
+    EXPECT_FALSE(hasContext("b"));
+}
+
+TEST_F(ContainerReportingTest, FailedSweepKeepsTheContextUntilARetrySucceeds)
+{
+    files = {{"a", {"/etc/one"}}, {"b", {"/etc/one"}}};
+    fim_run_container_baseline();
+    ASSERT_EQ(fim_db_set_container_context("b", R"({"container":{"id":"b"}})"), FIMDB_OK);
+
+    admission.erase("b");
+    files.erase("b");
+    fail_txn_start = true;
+    listed = false;
+    fim_run_container_baseline();
+
+    EXPECT_TRUE(warned("could not confirm the rows of removed container 'b'"));
+    EXPECT_EQ(fim_db_count_container_rows("b", nullptr), 1);
+    EXPECT_TRUE(hasContext("b")) << "the prune must keep an unswept container's context";
+
+    fail_txn_start = false;
+    persisted.clear();
+    listed = false;
+    fim_run_container_baseline();
+    EXPECT_EQ(fim_db_count_container_rows("b", nullptr), 0);
+    EXPECT_FALSE(hasContext("b"));
+    EXPECT_TRUE(persisted.empty()) << "the departure already retracted b's document";
+}
+
+TEST_F(ContainerReportingTest, AnUnregisteredHostStillReleasesTheRow)
+{
+    // The row is owned by fim_persist_baseline_row on every path; this one
+    // leaked it. LeakSanitizer or Valgrind is what fails on a regression.
+    fim_container_baseline_set_host_api(nullptr);
+    EXPECT_EQ(fim_persist_baseline_row("a:/etc/one", OPERATION_CREATE, "idx", cJSON_CreateObject(), 1), -1);
+    EXPECT_TRUE(persisted.empty());
 }
