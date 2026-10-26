@@ -15,7 +15,7 @@ namespace
 {
 using namespace builder::builders;
 
-static_assert(std::is_same_v<json::Document::AllocatorType, rapidjson::MemoryPoolAllocator<json::BaseAllocator>>,
+static_assert(std::is_base_of_v<rapidjson::MemoryPoolAllocator<json::BaseAllocator>, json::Document::AllocatorType>,
               "HLP transforms require the engine pool allocator: parser mappers retain string_views into "
               "the event while mutating it, so replacing the allocator may invalidate those views.");
 

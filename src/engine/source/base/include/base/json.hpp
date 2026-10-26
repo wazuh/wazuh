@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstddef>
 #include <cstdint>
 #include <cstring>
 #include <functional>
@@ -14,6 +15,7 @@
 #include <stdexcept>
 #include <string>
 #include <string_view>
+#include <type_traits>
 #include <unordered_map>
 #include <vector>
 
@@ -36,8 +38,18 @@ namespace json
  */
 struct BaseAllocator : rapidjson::CrtAllocator
 {
+    /**
+     * @brief Test hook: when non-zero, the n-th allocation of the calling thread fails with std::bad_alloc
+     * (1 = the next one) and the counter goes back to zero. Only tests set it.
+     */
+    static inline thread_local std::size_t failAt = 0;
+
     void* Malloc(size_t size)
     {
+        if (size != 0 && injectedFailure())
+        {
+            throw std::bad_alloc();
+        }
         void* block = rapidjson::CrtAllocator::Malloc(size);
         if (block == nullptr && size != 0)
         {
@@ -48,6 +60,10 @@ struct BaseAllocator : rapidjson::CrtAllocator
 
     void* Realloc(void* originalPtr, size_t originalSize, size_t newSize)
     {
+        if (newSize != 0 && injectedFailure())
+        {
+            throw std::bad_alloc();
+        }
         void* block = rapidjson::CrtAllocator::Realloc(originalPtr, originalSize, newSize);
         if (block == nullptr && newSize != 0)
         {
@@ -55,12 +71,47 @@ struct BaseAllocator : rapidjson::CrtAllocator
         }
         return block;
     }
+
+private:
+    static bool injectedFailure() noexcept { return failAt != 0 && --failAt == 0; }
 };
 
-using Allocator = rapidjson::MemoryPoolAllocator<BaseAllocator>; ///< Pool allocator of the engine documents.
+/**
+ * @brief The base allocator every pool and pointer is built with. It is stateless, so one instance serves all threads;
+ * passing it saves the base allocator rapidjson otherwise heap-allocates per document and per pointer, and the leak
+ * of that object when the constructor that created it throws.
+ */
+inline BaseAllocator& baseAllocator() noexcept
+{
+    static BaseAllocator allocator;
+    return allocator;
+}
+
+/// Pool allocator of the engine documents: rapidjson's pool on the shared base allocator.
+class Allocator : public rapidjson::MemoryPoolAllocator<BaseAllocator>
+{
+public:
+    explicit Allocator(size_t chunkSize = RAPIDJSON_ALLOCATOR_DEFAULT_CHUNK_CAPACITY)
+        : MemoryPoolAllocator(chunkSize, &baseAllocator())
+    {
+    }
+
+    Allocator(void* buffer, size_t size, size_t chunkSize = RAPIDJSON_ALLOCATOR_DEFAULT_CHUNK_CAPACITY)
+        : MemoryPoolAllocator(buffer, size, chunkSize, &baseAllocator())
+    {
+    }
+};
+
 using Document = rapidjson::GenericDocument<rapidjson::UTF8<>, Allocator, BaseAllocator>;
 using Value = rapidjson::GenericValue<rapidjson::UTF8<>, Allocator>;
-using Pointer = rapidjson::GenericPointer<Value>;
+using Pointer = rapidjson::GenericPointer<Value, BaseAllocator>; ///< Token storage on the throwing allocator too.
+
+/// Builds a pointer from a path: the tokens live on the throwing allocator, an allocation failure throws
+/// std::bad_alloc.
+inline Pointer makePointer(std::string_view path)
+{
+    return Pointer(path.data(), path.size(), &baseAllocator());
+}
 using Reader = rapidjson::GenericReader<rapidjson::UTF8<>, rapidjson::UTF8<>, BaseAllocator>;
 using StringBuffer = rapidjson::GenericStringBuffer<rapidjson::UTF8<>, BaseAllocator>;
 
@@ -90,7 +141,7 @@ public:
      * @throws std::runtime_error If the provided path is not a valid JSON pointer.
      */
     PointerPath(std::string_view path)
-        : m_pointer(path.data(), static_cast<rapidjson::SizeType>(path.size()))
+        : m_pointer(path.data(), path.size(), &json::baseAllocator())
     {
         if (!m_pointer.IsValid())
         {
@@ -109,11 +160,25 @@ public:
     {
     }
 
-    // Copy and move (json::Pointer is copyable)
-    PointerPath(const PointerPath&) = default;
-    PointerPath& operator=(const PointerPath&) = default;
-    PointerPath(PointerPath&&) noexcept = default;
-    PointerPath& operator=(PointerPath&&) noexcept = default;
+    // Copies allocate the tokens and may throw std::bad_alloc; the assignment copies first and swaps, so a failure
+    // leaves both objects as they were (rapidjson's own assignment frees the old tokens before allocating the new
+    // ones). Moves swap: json::Pointer has no move constructor, and a defaulted move would copy and could throw.
+    PointerPath(const PointerPath& other)
+        : m_pointer(other.m_pointer, &json::baseAllocator())
+    {
+    }
+    PointerPath& operator=(const PointerPath& other)
+    {
+        PointerPath copy(other);
+        m_pointer.Swap(copy.m_pointer);
+        return *this;
+    }
+    PointerPath(PointerPath&& other) noexcept { m_pointer.Swap(other.m_pointer); }
+    PointerPath& operator=(PointerPath&& other) noexcept
+    {
+        m_pointer.Swap(other.m_pointer);
+        return *this;
+    }
 
     // Implicit conversion to json::Pointer
     operator const json::Pointer&() const { return m_pointer; }
@@ -712,7 +777,7 @@ public:
      * @note out its only assigned if the field is found and is a string; in all other cases it is left unchanged.
      */
     template<typename T>
-    RetGet getString(T& out, const PointerPath& path = ROOT_PP) const noexcept
+    RetGet getString(T& out, const PointerPath& path = ROOT_PP) const noexcept(std::is_same_v<T, std::string_view>)
     {
         static_assert(std::is_same_v<T, std::string_view> || std::is_same_v<T, std::string>,
                       "T must be std::string_view or std::string");
@@ -1136,8 +1201,10 @@ public:
      * @brief Validate the Json agains the schema.
      *
      * @param schema The schema to validate against.
-     * @return std::optional<base::Error> Error message if validation failed, std::nullopt
-     * otherwise.
+     * @return std::optional<base::Error> Error message if validation failed or could not be completed (an
+     * allocation failure while compiling the schema or validating is reported here), std::nullopt otherwise.
+     * @note rapidjson's schema machinery keeps a few internal buffers on its default allocator (schema.h,
+     * GenericStringBuffer<EncodingType>); an allocation failure inside those is not reported by this method.
      */
     std::optional<base::Error> validate(const Json& schema) const;
 
@@ -1410,7 +1477,7 @@ public:
         static_assert(std::is_invocable_v<Transform&, std::string_view, std::string&>,
                       "Transform must be callable as void(std::string_view, std::string&).");
 
-        const json::Pointer pp(path.data(), static_cast<rapidjson::SizeType>(path.size()));
+        const json::Pointer pp = json::makePointer(path);
         if (!pp.IsValid())
         {
             throw std::runtime_error(fmt::format("Invalid pointer path '{}'", std::string(path)));
@@ -1614,14 +1681,28 @@ public:
             return false;
         }
 
-        for (auto& k : keyEdits)
+        // Every replacement string is allocated before the first node is touched: an allocation failure leaves the
+        // document as it was, and the assignments below cannot fail
+        std::vector<json::Value> newKeys;
+        newKeys.reserve(keyEdits.size());
+        for (const auto& k : keyEdits)
         {
-            k.name->SetString(k.text.c_str(), static_cast<rapidjson::SizeType>(k.text.size()), alloc);
+            newKeys.emplace_back(k.text.c_str(), static_cast<rapidjson::SizeType>(k.text.size()), alloc);
+        }
+        std::vector<json::Value> newStrings;
+        newStrings.reserve(stringEdits.size());
+        for (const auto& s : stringEdits)
+        {
+            newStrings.emplace_back(s.text.c_str(), static_cast<rapidjson::SizeType>(s.text.size()), alloc);
         }
 
-        for (auto& s : stringEdits)
+        for (size_t i = 0; i < keyEdits.size(); ++i)
         {
-            s.v->SetString(s.text.c_str(), static_cast<rapidjson::SizeType>(s.text.size()), alloc);
+            *keyEdits[i].name = newKeys[i];
+        }
+        for (size_t i = 0; i < stringEdits.size(); ++i)
+        {
+            *stringEdits[i].v = newStrings[i];
         }
 
         return true;
