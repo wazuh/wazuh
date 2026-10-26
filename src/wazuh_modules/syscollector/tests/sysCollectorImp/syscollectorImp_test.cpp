@@ -6683,7 +6683,10 @@ TEST_F(SyscollectorImpTest, AdmissionRetractsAndRestoresRetainedRows)
         module.m_admissionReconciled = false;
         module.setAdmittedContainers({{"a", true}, {"b", false}});
         ASSERT_EQ(events.size(), 1u);
-        EXPECT_EQ(events[0].second, OPERATION_DELETE);
+        if (events.size() == 1u)
+        {
+            EXPECT_EQ(events[0].second, OPERATION_DELETE);
+        }
         EXPECT_EQ(module.m_containerDocumentCounts.count("b"), 0u);
 
         auto flags = [&module]()
@@ -6710,8 +6713,11 @@ TEST_F(SyscollectorImpTest, AdmissionRetractsAndRestoresRetainedRows)
         module.setAdmittedContainers({{"a", true}, {"b", true}});
         module.promoteItemsAfterScan();
         ASSERT_EQ(events.size(), 2u);
-        EXPECT_EQ(events[1].first, events[0].first);
-        EXPECT_EQ(events[1].second, OPERATION_CREATE);
+        if (events.size() == 2u)
+        {
+            EXPECT_EQ(events[1].first, events[0].first);
+            EXPECT_EQ(events[1].second, OPERATION_CREATE);
+        }
         EXPECT_EQ(flags().at("b"), 1);
     }
 }
