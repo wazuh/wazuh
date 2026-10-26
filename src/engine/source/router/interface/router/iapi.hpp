@@ -2,7 +2,9 @@
 #ifndef _ROUTER_IAPI_HPP
 #define _ROUTER_IAPI_HPP
 
+#include <cstdint>
 #include <future>
+#include <memory>
 #include <optional>
 #include <string>
 #include <utility>
@@ -12,7 +14,18 @@
 namespace router
 {
 
-using IngestEvent = std::pair<std::shared_ptr<const json::Json>, std::string>; // {header, rawEvent}
+/**
+ * @brief One event of a received batch, as queued for the router workers.
+ *
+ * The reception stamp is taken by the API parser on the HTTP thread, once per event and in batch
+ * order, from base::utils::time::receptionClock(); the worker only formats it.
+ */
+struct IngestEvent
+{
+    std::shared_ptr<const json::Json> header; ///< Batch header, shared by every event of the batch.
+    std::string rawEvent;                     ///< One event of the batch, continuation lines unindented.
+    int64_t receivedAtNs {0}; ///< Reception stamp (ns since the Unix epoch) from receptionClock(); 0 = not stamped.
+};
 
 /**
  * @brief Interface for the Router API

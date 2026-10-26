@@ -96,7 +96,12 @@ router/
 Combines `IRouterAPI` and `ITesterAPI` into a single interface consumed by API handlers.
 
 ```cpp
-using IngestEvent = std::pair<std::shared_ptr<const json::Json>, std::string>;
+struct IngestEvent
+{
+    std::shared_ptr<const json::Json> header; ///< Batch header, shared by every event of the batch.
+    std::string rawEvent;                     ///< One event of the batch, continuation lines unindented.
+    int64_t receivedAtNs {0};                 ///< Reception stamp (ns since the Unix epoch) from receptionClock(); 0 = not stamped.
+};
 
 class IOrchestratorAPI : public IRouterAPI, public ITesterAPI {};
 ```

@@ -2,6 +2,7 @@
 #ifndef _API_EVENT_NDJSONPARSER_HPP
 #define _API_EVENT_NDJSONPARSER_HPP
 
+#include <cstdint>
 #include <functional>
 #include <memory>
 #include <stdexcept>
@@ -11,11 +12,27 @@
 
 #include <agentcache/agentMetadataCache.hpp>
 #include <base/json.hpp>
+#include <base/utils/timeUtils.hpp>
+#include <router/iapi.hpp>
 
 namespace api::event::protocol
 {
-using IngestEvent = std::pair<std::shared_ptr<const json::Json>, std::string>; // {header, rawEvent}
+using IngestEvent = router::IngestEvent; // {header, rawEvent, receivedAtNs}
 using EventHook = std::function<void(IngestEvent&&)>;
+
+/**
+ * @brief Default reception stamp: the process-wide strictly increasing clock (ns since the epoch).
+ *
+ * A single static callable, so the default argument of parseNDJson() does not build a std::function per batch.
+ */
+inline const std::function<int64_t()>& defaultReceptionStamp()
+{
+    static const std::function<int64_t()> stamp = []
+    {
+        return base::utils::time::receptionClock().next();
+    };
+    return stamp;
+}
 
 constexpr auto PARSER_ERROR_MSG = "NDJson parser error, {}";
 
@@ -59,9 +76,19 @@ inline std::string unindentContinuation(std::string_view indented)
     return result;
 }
 
+/**
+ * @brief Parse an "H {json}\nE event\n..." batch and hand every event to the hook, stamped in batch order.
+ *
+ * @param batch Wire-format batch.
+ * @param hook Receives each IngestEvent; when empty, nothing is stamped.
+ * @param agentMetadataCache Header cache (required).
+ * @param stamp Called once per event, inside the hook branch, to obtain receivedAtNs; defaults to the shared
+ * reception clock. Tests inject a controlled value.
+ */
 inline void parseNDJson(std::string_view batch,
                         const EventHook& hook,
-                        const std::shared_ptr<agentcache::AgentMetadataCache>& agentMetadataCache)
+                        const std::shared_ptr<agentcache::AgentMetadataCache>& agentMetadataCache,
+                        const std::function<int64_t()>& stamp = defaultReceptionStamp())
 {
     if (!agentMetadataCache)
     {
@@ -127,8 +154,8 @@ inline void parseNDJson(std::string_view batch,
 
             if (hook)
             {
-                // Remove continuation-line indentation added by the sender
-                IngestEvent ingestEvent {header, unindentContinuation(rawEvent)};
+                // Remove continuation-line indentation added by the sender; stamp once per event, in batch order
+                IngestEvent ingestEvent {header, unindentContinuation(rawEvent), stamp()};
                 hook(std::move(ingestEvent));
             }
 
