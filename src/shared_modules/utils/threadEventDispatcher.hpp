@@ -22,10 +22,19 @@
 #include <chrono>
 #include <functional>
 #include <iostream>
+#include <stdexcept>
 #include <thread>
 
 // Number of queued elements from which a queue is reported as growing.
 constexpr size_t QUEUE_SIZE_WARNING {100000};
+
+// Thrown by a handler that postponed its element on purpose: the element stays in the queue and is retried like after
+// a handler error, without being reported as one.
+class PostponedElementException final : public std::runtime_error
+{
+public:
+    using std::runtime_error::runtime_error;
+};
 
 template<typename T,
          typename U,
@@ -259,6 +268,13 @@ private:
                         std::is_same_v<Utils::TSafeQueue<T, U, RocksDBQueue<T, U>>, TSafeQueueType> ||
                             std::is_same_v<Utils::TSafeMultiQueue<T, U, RocksDBQueueCF<T, U>>, TSafeQueueType>,
                         "This method is not supported for this queue type");
+                }
+            }
+            catch (const PostponedElementException&)
+            {
+                if (m_running)
+                {
+                    std::this_thread::sleep_for(std::chrono::seconds(1));
                 }
             }
             catch (const std::exception& ex)

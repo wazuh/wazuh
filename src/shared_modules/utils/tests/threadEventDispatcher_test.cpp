@@ -13,6 +13,7 @@
 #include "threadEventDispatcher.hpp"
 #include <algorithm>
 #include <filesystem>
+#include <future>
 #include <mutex>
 #include <vector>
 
@@ -256,4 +257,65 @@ TEST_F(ThreadEventDispatcherTest, NoDiscardReportWhenQueueNeverOverflows)
 
     EXPECT_EQ(consumed, 50);
     EXPECT_EQ(calls, 0);
+}
+
+namespace
+{
+    // Runs a dispatcher whose handler throws `exception` on its first call and consumes the element on the next one,
+    // and returns the lines logged meanwhile.
+    template<typename Exception>
+    std::string logsOfHandlerThrowingOnce(const std::string& dbPath, bool& consumed)
+    {
+        std::filesystem::remove_all(dbPath);
+        std::mutex logMutex;
+        std::string logs;
+        Log::deassignLogFunction();
+        Log::assignLogFunction(
+            [&](const int, const char*, const char*, const int, const char*, const char* message, va_list args)
+            {
+                char buffer[1024] {};
+                vsnprintf(buffer, sizeof(buffer), message, args);
+                std::lock_guard<std::mutex> lock(logMutex);
+                logs.append(buffer).append("\n");
+            });
+        {
+            std::atomic<int> calls {0};
+            std::promise<void> done;
+            ThreadEventDispatcher<std::string, std::function<void(std::queue<std::string>&)>> dispatcher(
+                [&](std::queue<std::string>& data)
+                {
+                    if (calls++ == 0)
+                    {
+                        throw Exception("Empty OS data from Wazuh-DB.");
+                    }
+                    data.pop();
+                    done.set_value();
+                },
+                dbPath);
+            dispatcher.push("element");
+            consumed = done.get_future().wait_for(std::chrono::seconds(10)) == std::future_status::ready;
+        }
+        Log::deassignLogFunction();
+        return logs;
+    }
+} // namespace
+
+TEST_F(ThreadEventDispatcherTest, PostponedElementIsRetriedWithoutWarning)
+{
+    bool consumed {false};
+    const auto logs = logsOfHandlerThrowingOnce<PostponedElementException>("test_postponed.db", consumed);
+
+    EXPECT_TRUE(consumed);
+    EXPECT_EQ(logs.find("dispatch handler error"), std::string::npos) << logs;
+}
+
+TEST_F(ThreadEventDispatcherTest, HandlerErrorIsRetriedWithWarning)
+{
+    bool consumed {false};
+    const auto logs = logsOfHandlerThrowingOnce<std::runtime_error>("test_handler_error.db", consumed);
+
+    EXPECT_TRUE(consumed);
+    EXPECT_NE(logs.find("Queue 'test_handler_error.db': dispatch handler error, Empty OS data from Wazuh-DB."),
+              std::string::npos)
+        << logs;
 }
