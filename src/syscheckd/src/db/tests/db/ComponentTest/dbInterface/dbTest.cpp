@@ -49,23 +49,23 @@ void transaction_callback(ReturnTypeCallback resultType, const cJSON* result_jso
         "uid":  "0",
         "owner":    "fakeUser"
     }])"_json;
-    const cJSON* dbsync_event = NULL;
-    cJSON* json_path = NULL;
-    ASSERT_EQ(INSERTED, resultType);
-    ASSERT_EQ(FIM_ADD, event_data->event->type);
+const cJSON* dbsync_event = NULL;
+cJSON* json_path = NULL;
+ASSERT_EQ(INSERTED, resultType);
+ASSERT_EQ(FIM_ADD, event_data->event->type);
 
-    if (cJSON_IsArray(result_json))
+if (cJSON_IsArray(result_json))
+{
+    if (dbsync_event = cJSON_GetArrayItem(result_json, 0), dbsync_event != NULL)
     {
-        if (dbsync_event = cJSON_GetArrayItem(result_json, 0), dbsync_event != NULL)
-        {
-            dbsync_event = result_json;
+        dbsync_event = result_json;
 
-            if (json_path = cJSON_GetObjectItem(dbsync_event, "path"), json_path != NULL)
-            {
-                ASSERT_EQ(cJSON_GetStringValue(json_path), expectedValue.at("path"));
-            }
+        if (json_path = cJSON_GetObjectItem(dbsync_event, "path"), json_path != NULL)
+        {
+            ASSERT_EQ(cJSON_GetStringValue(json_path), expectedValue.at("path"));
         }
     }
+}
 }
 
 TEST_F(DBTestFixture, TestFimDBInit)
@@ -79,14 +79,16 @@ TEST_F(DBTestFixture, TestFimDBInit)
 
 TEST_F(DBTestFixture, ContainerSyncFlagsAndCountsAreScopedByPrimaryKey)
 {
-    for (const std::string id : {"", "a", "a'b"})
+    for (const std::string id :
+            {"", "a", "a'b"
+            })
     {
         auto row = insertFileStatement;
         row["container_id"] = id;
         row["sync"] = 0;
         ASSERT_EQ(fim_db_container_file_sync(
-                      row.dump().c_str(), [](ReturnTypeCallback, const cJSON*, void*) {}, nullptr),
-                  FIMDB_OK);
+        row.dump().c_str(), [](ReturnTypeCallback, const cJSON*, void*) {}, nullptr),
+        FIMDB_OK);
         pending_sync_item_t item {};
         item.json = cJSON_Parse(row.dump().c_str());
         ASSERT_NE(item.json, nullptr);

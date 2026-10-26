@@ -51,108 +51,117 @@
 namespace
 {
 
-int g_inserted = 0;
-int g_modified = 0;
-int g_deleted = 0;
-int g_unexpected = 0;
-/* MODIFIED payloads that arrived as {"old":...,"new":...} rather than a bare
- * updated row. The container callback reads the changed columns out of "old",
- * so this is the difference between an alert and silence. */
-int g_modified_wrapped = 0;
+    int g_inserted = 0;
+    int g_modified = 0;
+    int g_deleted = 0;
+    int g_unexpected = 0;
+    /* MODIFIED payloads that arrived as {"old":...,"new":...} rather than a bare
+     * updated row. The container callback reads the changed columns out of "old",
+     * so this is the difference between an alert and silence. */
+    int g_modified_wrapped = 0;
 
-void ResetCounters()
-{
-    g_inserted = g_modified = g_deleted = g_unexpected = 0;
-    g_modified_wrapped = 0;
-}
-
-void LogCallback(modules_log_level_t, const char* message)
-{
-    // libfimdb logs schema/statement errors here. Anything arriving during this
-    // test is a failure signal worth seeing, so it is not swallowed.
-    std::fprintf(stderr, "[fimdb] %s\n", message);
-}
-
-void RowCallback(ReturnTypeCallback type, const cJSON* payload, void*)
-{
-    switch (type)
+    void ResetCounters()
     {
-        case INSERTED: ++g_inserted; break;
-        case MODIFIED:
-            ++g_modified;
-
-            if (payload != nullptr && cJSON_GetObjectItem(payload, "new") != nullptr &&
-                cJSON_GetObjectItem(payload, "old") != nullptr)
-            {
-                ++g_modified_wrapped;
-            }
-
-            break;
-        case DELETED:  ++g_deleted;  break;
-        default:       ++g_unexpected; break;
+        g_inserted = g_modified = g_deleted = g_unexpected = 0;
+        g_modified_wrapped = 0;
     }
-}
 
-/* A row in the dbsync column format both container consumers emit. Only the
- * columns that matter here carry meaningful values; `checksum` is NOT NULL in
- * the schema, so it always has to be present. */
-std::string RowJson(const char* containerId, const char* path)
-{
-    char buffer[1024];
-    std::snprintf(buffer,
-                  sizeof(buffer),
-                  "{\"path\":\"%s\",\"container_id\":\"%s\",\"container_json\":\"\",\"mode\":0,"
-                  "\"size\":1,\"permissions\":\"0644\",\"uid\":\"0\",\"gid\":\"0\",\"owner\":\"root\","
-                  "\"group\":\"root\",\"inode\":1,\"device\":1,\"mtime\":1,\"hash_md5\":\"\","
-                  "\"hash_sha1\":\"\",\"hash_sha256\":\"\",\"checksum\":\"cs\",\"version\":1}",
-                  path,
-                  containerId);
-    return buffer;
-}
-
-/* The same row with a different size and checksum, i.e. what re-reading a file
- * that changed on disk produces. */
-std::string ChangedRowJson(const char* containerId, const char* path)
-{
-    char buffer[1024];
-    std::snprintf(buffer,
-                  sizeof(buffer),
-                  "{\"path\":\"%s\",\"container_id\":\"%s\",\"container_json\":\"\",\"mode\":0,"
-                  "\"size\":99,\"permissions\":\"0644\",\"uid\":\"0\",\"gid\":\"0\",\"owner\":\"root\","
-                  "\"group\":\"root\",\"inode\":1,\"device\":1,\"mtime\":2,\"hash_md5\":\"\","
-                  "\"hash_sha1\":\"\",\"hash_sha256\":\"\",\"checksum\":\"cs-changed\",\"version\":1}",
-                  path,
-                  containerId);
-    return buffer;
-}
-
-/* The same scoped-transaction JSON `container_baseline_fim.cpp` builds, with
- * FIMDB_FILE_CONTAINER_ID_COLUMN as the scope column. */
-std::string TxnScope(const char* containerId)
-{
-    return std::string("{\"tables\":[\"file_entry\"],\"scope\":{\"column\":\"") + FIMDB_FILE_CONTAINER_ID_COLUMN +
-           "\",\"value\":\"" + containerId + "\"}}";
-}
-
-void SyncPaths(TXN_HANDLE txn, const char* containerId, int first, int last)
-{
-    for (int i = first; i < last; ++i)
+    void LogCallback(modules_log_level_t, const char* message)
     {
-        char path[64];
-        std::snprintf(path, sizeof(path), "/etc/a%d", i);
-        fim_db_transaction_sync_row_json(txn, "file_entry", RowJson(containerId, path).c_str());
+        // libfimdb logs schema/statement errors here. Anything arriving during this
+        // test is a failure signal worth seeing, so it is not swallowed.
+        std::fprintf(stderr, "[fimdb] %s\n", message);
     }
-}
 
-bool Check(const char* name, bool condition, const char* detail)
-{
-    std::printf("%-46s %-34s %s\n", name, detail, condition ? "OK" : "*** FAILED ***");
-    return condition;
-}
+    void RowCallback(ReturnTypeCallback type, const cJSON* payload, void*)
+    {
+        switch (type)
+        {
+            case INSERTED:
+                ++g_inserted;
+                break;
 
-constexpr int kContainerARows = 500;
-constexpr int kContainerBRows = 10;
-constexpr int kContainerAReported = 5;
+            case MODIFIED:
+                ++g_modified;
+
+                if (payload != nullptr && cJSON_GetObjectItem(payload, "new") != nullptr &&
+                        cJSON_GetObjectItem(payload, "old") != nullptr)
+                {
+                    ++g_modified_wrapped;
+                }
+
+                break;
+
+            case DELETED:
+                ++g_deleted;
+                break;
+
+            default:
+                ++g_unexpected;
+                break;
+        }
+    }
+
+    /* A row in the dbsync column format both container consumers emit. Only the
+     * columns that matter here carry meaningful values; `checksum` is NOT NULL in
+     * the schema, so it always has to be present. */
+    std::string RowJson(const char* containerId, const char* path)
+    {
+        char buffer[1024];
+        std::snprintf(buffer,
+                      sizeof(buffer),
+                      "{\"path\":\"%s\",\"container_id\":\"%s\",\"container_json\":\"\",\"mode\":0,"
+                      "\"size\":1,\"permissions\":\"0644\",\"uid\":\"0\",\"gid\":\"0\",\"owner\":\"root\","
+                      "\"group\":\"root\",\"inode\":1,\"device\":1,\"mtime\":1,\"hash_md5\":\"\","
+                      "\"hash_sha1\":\"\",\"hash_sha256\":\"\",\"checksum\":\"cs\",\"version\":1}",
+                      path,
+                      containerId);
+        return buffer;
+    }
+
+    /* The same row with a different size and checksum, i.e. what re-reading a file
+     * that changed on disk produces. */
+    std::string ChangedRowJson(const char* containerId, const char* path)
+    {
+        char buffer[1024];
+        std::snprintf(buffer,
+                      sizeof(buffer),
+                      "{\"path\":\"%s\",\"container_id\":\"%s\",\"container_json\":\"\",\"mode\":0,"
+                      "\"size\":99,\"permissions\":\"0644\",\"uid\":\"0\",\"gid\":\"0\",\"owner\":\"root\","
+                      "\"group\":\"root\",\"inode\":1,\"device\":1,\"mtime\":2,\"hash_md5\":\"\","
+                      "\"hash_sha1\":\"\",\"hash_sha256\":\"\",\"checksum\":\"cs-changed\",\"version\":1}",
+                      path,
+                      containerId);
+        return buffer;
+    }
+
+    /* The same scoped-transaction JSON `container_baseline_fim.cpp` builds, with
+     * FIMDB_FILE_CONTAINER_ID_COLUMN as the scope column. */
+    std::string TxnScope(const char* containerId)
+    {
+        return std::string("{\"tables\":[\"file_entry\"],\"scope\":{\"column\":\"") + FIMDB_FILE_CONTAINER_ID_COLUMN +
+               "\",\"value\":\"" + containerId + "\"}}";
+    }
+
+    void SyncPaths(TXN_HANDLE txn, const char* containerId, int first, int last)
+    {
+        for (int i = first; i < last; ++i)
+        {
+            char path[64];
+            std::snprintf(path, sizeof(path), "/etc/a%d", i);
+            fim_db_transaction_sync_row_json(txn, "file_entry", RowJson(containerId, path).c_str());
+        }
+    }
+
+    bool Check(const char* name, bool condition, const char* detail)
+    {
+        std::printf("%-46s %-34s %s\n", name, detail, condition ? "OK" : "*** FAILED ***");
+        return condition;
+    }
+
+    constexpr int kContainerARows = 500;
+    constexpr int kContainerBRows = 10;
+    constexpr int kContainerAReported = 5;
 
 } // namespace
 

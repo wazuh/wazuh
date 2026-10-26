@@ -27,37 +27,40 @@ using namespace fim_container_events;
 namespace
 {
 
-constexpr std::size_t kMaxPaths = 64;
-constexpr std::size_t kMaxContainers = 32;
+    constexpr std::size_t kMaxPaths = 64;
+    constexpr std::size_t kMaxContainers = 32;
 
-/* Everything the consumer would see, in the order it would see it. */
-std::vector<Batch> DrainBatches(ContainerEventStaging& staging)
-{
-    std::vector<Batch> out;
-    Batch batch;
-
-    while (staging.nextBatch(batch, 0))
+    /* Everything the consumer would see, in the order it would see it. */
+    std::vector<Batch> DrainBatches(ContainerEventStaging& staging)
     {
-        out.push_back(batch);
+        std::vector<Batch> out;
+        Batch batch;
+
+        while (staging.nextBatch(batch, 0))
+        {
+            out.push_back(batch);
+        }
+
+        return out;
     }
 
-    return out;
-}
+    const Batch* FindBatch(const std::vector<Batch>& batches, const std::string& container_id)
+    {
+        const auto it = std::find_if(batches.begin(),
+                                     batches.end(),
+                                     [&container_id](const Batch & b)
+        {
+            return b.container_id == container_id;
+        });
+        return it == batches.end() ? nullptr : &*it;
+    }
 
-const Batch* FindBatch(const std::vector<Batch>& batches, const std::string& container_id)
-{
-    const auto it = std::find_if(batches.begin(),
-                                 batches.end(),
-                                 [&container_id](const Batch& b) { return b.container_id == container_id; });
-    return it == batches.end() ? nullptr : &*it;
-}
-
-struct Fixture
-{
-    CgroupContainerMap map;
-    ContainerEventStaging staging{kMaxPaths, kMaxContainers};
-    ContainerEventRouter router{map, staging};
-};
+    struct Fixture
+    {
+        CgroupContainerMap map;
+        ContainerEventStaging staging{kMaxPaths, kMaxContainers};
+        ContainerEventRouter router{map, staging};
+    };
 
 } // namespace
 

@@ -194,7 +194,8 @@ int fim_container_recover_row(const cJSON* row);
  * shims), and hard-coding that enum's numeric values on this side of the
  * boundary would rot silently if it ever gained a member. The bridge does the
  * mapping. */
-typedef enum {
+typedef enum
+{
     CB_FIM_ORIGIN_SCAN  = 0, /* whole-node or per-container walk -> "scheduled" */
     CB_FIM_ORIGIN_EVENT = 1  /* driven by an eBPF file event     -> "whodata"   */
 } cb_fim_origin_t;

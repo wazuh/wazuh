@@ -7,9 +7,15 @@
 /// before container FIM had one.
 TEST(ContainerDocBudget, AnUnsetBudgetReportsEverythingAndCountsNothing)
 {
-    for (const int stored : {0, 1})
+    for (const int stored :
+            {
+                0, 1
+            })
     {
-        for (const int is_delete : {0, 1})
+        for (const int is_delete :
+                {
+                    0, 1
+                })
         {
             const auto d = container_budget_decide(0, 1000000, stored, is_delete);
             EXPECT_EQ(d.sync_flag, 1);
@@ -84,6 +90,7 @@ TEST(ContainerDocBudget, TheCounterNeverExceedsTheBudgetAcrossAMixedSequence)
         reported += d.sync_flag;
         EXPECT_LE(count, limit);
     }
+
     EXPECT_EQ(count, limit);
     EXPECT_EQ(reported, limit) << "exactly `limit` rows may be reported";
 
@@ -93,12 +100,14 @@ TEST(ContainerDocBudget, TheCounterNeverExceedsTheBudgetAcrossAMixedSequence)
         count += container_budget_decide(limit, count, 0, 0).count_delta; // insert, no room
         EXPECT_LE(count, limit);
     }
+
     EXPECT_EQ(count, limit);
 
     for (int i = 0; i < limit; ++i)
     {
         count += container_budget_decide(limit, count, 1, 1).count_delta; // delete reported
     }
+
     EXPECT_EQ(count, 0) << "every slot taken must be released again";
 
     // Deleting withheld rows afterwards must not push the counter negative.
@@ -106,6 +115,7 @@ TEST(ContainerDocBudget, TheCounterNeverExceedsTheBudgetAcrossAMixedSequence)
     {
         count += container_budget_decide(limit, count, 0, 1).count_delta;
     }
+
     EXPECT_EQ(count, 0);
 }
 
@@ -128,17 +138,20 @@ TEST(ContainerDocBudget, OneContainerExhaustingItsBudgetDoesNotTouchAnother)
     {
         busy += container_budget_decide(limit, busy, 0, 0).count_delta;
     }
+
     EXPECT_EQ(busy, limit) << "the busy container fills its own budget and stops";
     EXPECT_EQ(container_budget_decide(limit, busy, 0, 0).sync_flag, 0);
 
     // The quiet container is untouched by any of that.
     EXPECT_EQ(quiet, 0);
+
     for (int i = 0; i < limit; ++i)
     {
         const auto d = container_budget_decide(limit, quiet, 0, 0);
         EXPECT_EQ(d.sync_flag, 1) << "a quiet container keeps its full allowance";
         quiet += d.count_delta;
     }
+
     EXPECT_EQ(quiet, limit);
 }
 
@@ -150,10 +163,12 @@ TEST(ContainerDocBudget, AReleasedContainerStartsFromZeroAgain)
 {
     constexpr int limit = 3;
     int count = 0;
+
     for (int i = 0; i < limit; ++i)
     {
         count += container_budget_decide(limit, count, 0, 0).count_delta;
     }
+
     EXPECT_EQ(container_budget_decide(limit, count, 0, 0).sync_flag, 0);
 
     count = 0; // what fim_container_doc_budget_release() must achieve

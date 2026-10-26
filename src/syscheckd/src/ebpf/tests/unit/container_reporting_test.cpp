@@ -30,39 +30,39 @@ namespace
 
     class ContainerReportingTest : public testing::Test
     {
-    protected:
-        void SetUp() override
-        {
-            admission = {{"a", true}, {"b", true}};
-            files.clear();
-            persisted.clear();
-            warnings.clear();
-            listed = false;
-            connector_available = true;
-            reject_persistence = false;
-            file_size = 1;
-            fim_db_init(FIM_DB_MEMORY, [](modules_log_level_t, const char*) {}, 1000, 0, nullptr);
-            fim_container_doc_budget_release("a");
-            fim_container_doc_budget_release("b");
-            fim_container_doc_budget_release("c");
-            container_reporting_test_host(1);
-        }
+        protected:
+            void SetUp() override
+            {
+                admission = {{"a", true}, {"b", true}};
+                files.clear();
+                persisted.clear();
+                warnings.clear();
+                listed = false;
+                connector_available = true;
+                reject_persistence = false;
+                file_size = 1;
+                fim_db_init(FIM_DB_MEMORY, [](modules_log_level_t, const char*) {}, 1000, 0, nullptr);
+                fim_container_doc_budget_release("a");
+                fim_container_doc_budget_release("b");
+                fim_container_doc_budget_release("c");
+                container_reporting_test_host(1);
+            }
 
-        void TearDown() override
-        {
-            fim_db_teardown();
-        }
+            void TearDown() override
+            {
+                fim_db_teardown();
+            }
 
-        static int syncFlag(const char* container, const char* path)
-        {
-            const std::string filter = std::string("WHERE container_id='") + container + "' AND path='" + path + "'";
-            cJSON* rows = fim_db_get_every_element(FIMDB_FILE_TABLE_NAME, filter.c_str());
-            EXPECT_NE(rows, nullptr);
-            const cJSON* value = cJSON_GetObjectItem(cJSON_GetArrayItem(rows, 0), "sync");
-            const int flag = cJSON_IsNumber(value) ? value->valueint : -1;
-            cJSON_Delete(rows);
-            return flag;
-        }
+            static int syncFlag(const char* container, const char* path)
+            {
+                const std::string filter = std::string("WHERE container_id='") + container + "' AND path='" + path + "'";
+                cJSON* rows = fim_db_get_every_element(FIMDB_FILE_TABLE_NAME, filter.c_str());
+                EXPECT_NE(rows, nullptr);
+                const cJSON* value = cJSON_GetObjectItem(cJSON_GetArrayItem(rows, 0), "sync");
+                const int flag = cJSON_IsNumber(value) ? value->valueint : -1;
+                cJSON_Delete(rows);
+                return flag;
+            }
     };
 } // namespace
 
@@ -70,8 +70,10 @@ extern "C" bool container_reporting_test_persist(const char* id, int operation, 
 {
     if (reject_persistence)
         return false;
+
     if (sync_flag)
         persisted.emplace_back(id, operation);
+
     return true;
 }
 
@@ -107,9 +109,12 @@ extern "C" int __wrap_cbaseline_list_containers(const char*, cb_container_id_sin
 {
     EXPECT_FALSE(listed) << "reuse the warm-up-guarded listing";
     listed = true;
+
     if (!connector_available)
         return -1;
+
     for (const auto& [id, admitted] : admission) sink(id.c_str(), admitted, ctx);
+
     return static_cast<int>(admission.size());
 }
 
@@ -122,6 +127,7 @@ extern "C" int __wrap_cbaseline_run_fim_dbsync(const char*,
                                                void* ctx)
 {
     EXPECT_TRUE(listed) << "admission must precede the first stored row";
+
     for (const auto& [id, paths] : files)
     {
         for (const auto& path : paths)
@@ -129,10 +135,12 @@ extern "C" int __wrap_cbaseline_run_fim_dbsync(const char*,
             const nlohmann::json row = {{"container_id", id}, {"path", path}, {"version", 1}, {"size", file_size}};
             sink(id.c_str(), "file_entry", row.dump().c_str(), ctx);
         }
+
         cb_container_status_t result {};
         result.container_id = id.c_str();
         status(&result, ctx);
     }
+
     return static_cast<int>(files.size());
 }
 
@@ -168,7 +176,10 @@ TEST_F(ContainerReportingTest, GrantedRowsSurviveModifyAndSendStatefulDeletes)
 
 TEST_F(ContainerReportingTest, AdmissionRetractsRetainsAndRestoresUnchangedRows)
 {
-    for (const int limit : {1, 0})
+    for (const int limit :
+            {
+                1, 0
+            })
     {
         container_reporting_test_host(limit);
         files = {{"a", {"/etc/one"}}, {"b", {"/etc/one"}}};

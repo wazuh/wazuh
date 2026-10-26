@@ -73,9 +73,15 @@ TEST(ContainerRowBudget, ARefusedRowMakesTheScanPartialEvenWhenTheWalkWasWhole)
 /// only when nothing was withheld by either layer.
 TEST(ContainerRowBudget, AScanIsCompleteOnlyWhenNothingWasWithheld)
 {
-    for (const bool walker : {false, true})
+    for (const bool walker :
+            {
+                false, true
+            })
     {
-        for (const size_t refused : {size_t {0}, size_t {1}, size_t {42}})
+        for (const size_t refused :
+                {
+                    size_t {0}, size_t {1}, size_t {42}
+                })
         {
             const bool complete = !container_scan_is_partial(walker, refused);
             EXPECT_EQ(complete, (!walker && refused == 0));
@@ -95,7 +101,12 @@ TEST(ContainerRowBudget, AScanIsCompleteOnlyWhenNothingWasWithheld)
 /// and the two must account for every row offered.
 TEST(ContainerRowBudget, StoredPlusRefusedAccountsForEveryRowOffered)
 {
-    struct Case { int limit; size_t offered; size_t expectStored; };
+    struct Case
+    {
+        int limit;
+        size_t offered;
+        size_t expectStored;
+    };
 
     const Case cases[] =
     {
@@ -157,9 +168,11 @@ TEST(ContainerRowBudget, HoldingsNeverExceedTheCeilingAcrossPasses)
     {
         std::set<std::string> refreshed;
         size_t held = stored.size();
+
         for (const auto& file : files)
         {
             const bool known = stored.count(file) != 0;
+
             if (container_row_admitted(limit, held, known))
             {
                 refreshed.insert(file);
@@ -167,6 +180,7 @@ TEST(ContainerRowBudget, HoldingsNeverExceedTheCeilingAcrossPasses)
                 EXPECT_LE(held, static_cast<size_t>(limit));
             }
         }
+
         // Cap refusals do not make the scan partial, so unrefreshed rows age out.
         EXPECT_FALSE(container_scan_is_partial(false, 0));
         stored = refreshed;
@@ -175,7 +189,9 @@ TEST(ContainerRowBudget, HoldingsNeverExceedTheCeilingAcrossPasses)
     pass();
     EXPECT_EQ(stored, (std::set<std::string> {"f2", "f3", "f4"}));
 
-    for (const auto& added : {"f0", "f1", "e9"})
+    for (const auto& added :
+            {"f0", "f1", "e9"
+            })
     {
         files.insert(files.begin(), added);
         pass();
