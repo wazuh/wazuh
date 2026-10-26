@@ -1,11 +1,15 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 #include <wiconnector/engineIndexerRuntime.hpp>
 
+#include <algorithm>
 #include <exception>
+#include <limits>
+#include <optional>
 #include <utility>
 #include <vector>
 
 #include <base/logging.hpp>
+#include <fmt/format.h>
 
 namespace wiconnector
 {
@@ -55,39 +59,40 @@ private:
     const indexer_client::Credentials& m_credentials;
 };
 
+/// The smallest bulk the engine accepts (`analysisd.indexer_bulk_max_bytes`, 64 KiB): a quota must hold it and its
+/// reserve (I196).
+constexpr std::uint64_t MIN_BULK_MAX_BYTES {std::uint64_t {1} << 16};
+/// The two keys a bucket's quota can come from.
+constexpr const char* QUEUE_MAX_BYTES_KEY {"analysisd.indexer_queue_max_bytes"};
+constexpr const char* GLOBAL_QUOTA_KEY {"analysisd.indexer_client_global_quota_bytes"};
+/// `events` is served twice as often as `raw` on the shared transport (I182, I194).
+constexpr std::uint32_t EVENTS_WEIGHT {2};
+constexpr std::uint32_t RAW_WEIGHT {1};
+/// The v1 logger defaults: any other value is reported as ignored (I187).
+constexpr std::uint64_t DEFAULT_LOGGER_QUEUE_SIZE {8};
+constexpr std::uint64_t DEFAULT_LOGGER_THREADS {1};
+
 template<class T, class U>
 indexer_client::Outcome<T> failureFrom(const indexer_client::Outcome<U>& outcome)
 {
     return indexer_client::Outcome<T>::failure(outcome.cause, outcome.reason, outcome.httpStatus);
 }
 
-} // namespace
-
-EngineIndexerRuntime::~EngineIndexerRuntime()
+/// What a successful start leaves to EngineIndexerRuntime.
+struct Started final
 {
-    try
-    {
-        finishStop();
-    }
-    catch (const std::exception& e)
-    {
-        LOG_ERROR("[indexer-client] Unexpected error while stopping the runtime: {}", e.what());
-    }
-    catch (...)
-    {
-        LOG_ERROR("[indexer-client] Unexpected error while stopping the runtime");
-    }
-}
+    std::shared_ptr<indexer_client::IClient> client;
+    std::uint64_t queueCapacityBytes {0};
+};
 
-indexer_client::Outcome<indexer_client::RuntimeConfig>
-EngineIndexerRuntime::start(indexer_client::ProcessId process, const indexer_client::IConfigSource& source)
+/// Both start() overloads: without @p options the Client has no buckets (E10a).
+indexer_client::Outcome<indexer_client::RuntimeConfig> startRuntime(indexer_client::ProcessId process,
+                                                                    const indexer_client::IConfigSource& source,
+                                                                    const EngineWriteOptions* options,
+                                                                    std::vector<std::string>* warnings,
+                                                                    Started& out)
 {
     using Result = indexer_client::Outcome<indexer_client::RuntimeConfig>;
-
-    if (m_started)
-    {
-        return Result::failure(indexer_client::Cause::InvalidState, "the engine's indexer runtime was already started");
-    }
 
     indexer_client::Credentials credentials;
     const CredentialsWiper wiper {credentials};
@@ -113,13 +118,32 @@ EngineIndexerRuntime::start(indexer_client::ProcessId process, const indexer_cli
         return config;
     }
 
+    // The buckets need the global quota, so they are built from the validated configuration, before the runtime
+    // starts: a quota that cannot hold a bulk fails the start without a runtime (I196).
+    std::vector<indexer_client::BucketSpec> buckets;
+    if (options != nullptr)
+    {
+        auto specs = engineBucketSpecs(*options, config.value, *warnings);
+        if (!specs.ok())
+        {
+            return failureFrom<indexer_client::RuntimeConfig>(specs);
+        }
+        buckets = std::move(specs.value);
+    }
+
     auto started = indexer_client::RuntimeOwner::start(process, pinned);
     if (!started.ok())
     {
         return failureFrom<indexer_client::RuntimeConfig>(started);
     }
 
-    auto client = started.value.client(ENGINE_INDEXER_CONSUMER, {});
+    std::uint64_t quotas {0};
+    for (const auto& bucket : buckets)
+    {
+        quotas += bucket.quotaBytes;
+    }
+
+    auto client = started.value.client(ENGINE_INDEXER_CONSUMER, std::move(buckets));
     if (!client.ok() || !client.value)
     {
         indexer_client::RuntimeOwner::beginShutdown(std::chrono::steady_clock::now());
@@ -128,9 +152,166 @@ EngineIndexerRuntime::start(indexer_client::ProcessId process, const indexer_cli
                            : failureFrom<indexer_client::RuntimeConfig>(client);
     }
 
-    m_client = std::move(client.value);
-    m_started = true;
+    out.client = std::move(client.value);
+    out.queueCapacityBytes = std::min(quotas, config.value.globalQuotaBytes);
     return config;
+}
+
+} // namespace
+
+indexer_client::Outcome<std::vector<indexer_client::BucketSpec>> engineBucketSpecs(
+    const EngineWriteOptions& options, const indexer_client::RuntimeConfig& config, std::vector<std::string>& warnings)
+{
+    using Result = indexer_client::Outcome<std::vector<indexer_client::BucketSpec>>;
+
+    // I188: one quota for both buckets; 0 is the v1's "no limit", which the runtime's cap bounds.
+    std::uint64_t quota = options.queueMaxBytes == 0 ? config.globalQuotaBytes : options.queueMaxBytes;
+    // The key whose value the quota ends up with, for the error below.
+    const char* quotaKey = options.queueMaxBytes == 0 ? GLOBAL_QUOTA_KEY : QUEUE_MAX_BYTES_KEY;
+    if (quota > config.globalQuotaBytes)
+    {
+        warnings.push_back(fmt::format("{} ({}) is above {} ({}): using {}",
+                                       QUEUE_MAX_BYTES_KEY,
+                                       quota,
+                                       GLOBAL_QUOTA_KEY,
+                                       config.globalQuotaBytes,
+                                       config.globalQuotaBytes));
+        quota = config.globalQuotaBytes;
+        quotaKey = GLOBAL_QUOTA_KEY;
+    }
+    if (quota < MIN_BULK_MAX_BYTES + indexer_client::RESULT_RESERVE_BYTES)
+    {
+        return Result::failure(indexer_client::Cause::InvalidConfig,
+                               fmt::format("{} ({}) cannot hold one bulk of {} bytes and its {}-byte reserve: the "
+                                           "minimum is {}",
+                                           quotaKey,
+                                           quota,
+                                           MIN_BULK_MAX_BYTES,
+                                           indexer_client::RESULT_RESERVE_BYTES,
+                                           MIN_BULK_MAX_BYTES + indexer_client::RESULT_RESERVE_BYTES));
+    }
+
+    std::uint64_t bulkMaxBytes = options.bulkMaxBytes;
+    if (bulkMaxBytes + indexer_client::RESULT_RESERVE_BYTES > quota)
+    {
+        bulkMaxBytes = quota - indexer_client::RESULT_RESERVE_BYTES;
+        warnings.push_back(fmt::format("analysisd.indexer_bulk_max_bytes ({}) plus the {}-byte reserve of an operation "
+                                       "does not fit in the queue quota ({}): using {}",
+                                       options.bulkMaxBytes,
+                                       indexer_client::RESULT_RESERVE_BYTES,
+                                       quota,
+                                       bulkMaxBytes));
+    }
+
+    if (options.maxRetryDelay <= std::chrono::seconds::zero())
+    {
+        return Result::failure(indexer_client::Cause::InvalidConfig, "analysisd.indexer_max_retry_delay must be > 0");
+    }
+    if (options.flushInterval <= std::chrono::seconds::zero())
+    {
+        return Result::failure(indexer_client::Cause::InvalidConfig, "analysisd.indexer_flush_interval must be > 0");
+    }
+
+    if (options.loggerQueueSize != DEFAULT_LOGGER_QUEUE_SIZE)
+    {
+        warnings.push_back(fmt::format("analysisd.indexer_logger_queue_size ({}) is ignored: the indexer client has "
+                                       "no error logger queue",
+                                       options.loggerQueueSize));
+    }
+    if (options.loggerThreads != DEFAULT_LOGGER_THREADS)
+    {
+        warnings.push_back(fmt::format("analysisd.indexer_logger_threads ({}) is ignored: the indexer client has no "
+                                       "error logger threads",
+                                       options.loggerThreads));
+    }
+
+    indexer_client::BucketSpec events;
+    events.name = ENGINE_EVENTS_BUCKET;
+    events.weight = EVENTS_WEIGHT;
+    events.quotaBytes = static_cast<std::size_t>(quota);
+    // Unlimited retry (I6): the queue, not the attempts, bounds what an outage holds; a full quota drops the newest
+    // event and the router never waits (I182).
+    events.retry.maxAttempts = std::nullopt;
+    events.retry.maxDuration = std::nullopt;
+    events.retry.cap = std::chrono::duration_cast<indexer_client::Duration>(options.maxRetryDelay);
+    events.retry.base = std::min(events.retry.base, events.retry.cap);
+    events.overflow.kind = indexer_client::Overflow::Kind::DropNewest;
+    events.bulk.maxBytes = static_cast<std::size_t>(bulkMaxBytes);
+    events.bulk.maxAge = std::chrono::duration_cast<indexer_client::Duration>(options.flushInterval);
+    // The v1 cut a bulk only by bytes and by time: no document count closes one (the library only requires > 0).
+    events.bulk.maxDocs = std::numeric_limits<std::size_t>::max();
+    // Data streams without `_id`: resending an ambiguous 5xx would duplicate (I105). The engine only sends compact
+    // JSON from json::Json::str(), which escapes every '\n' (I125).
+    events.onAmbiguous5xx = indexer_client::AmbiguousPolicy::Fail;
+    events.trustedBodies = true;
+
+    auto raw = events;
+    raw.name = ENGINE_RAW_BUCKET;
+    raw.weight = RAW_WEIGHT;
+
+    return Result::success({std::move(events), std::move(raw)});
+}
+
+EngineIndexerRuntime::~EngineIndexerRuntime()
+{
+    try
+    {
+        finishStop();
+    }
+    catch (const std::exception& e)
+    {
+        LOG_ERROR("[indexer-client] Unexpected error while stopping the runtime: {}", e.what());
+    }
+    catch (...)
+    {
+        LOG_ERROR("[indexer-client] Unexpected error while stopping the runtime");
+    }
+}
+
+indexer_client::Outcome<indexer_client::RuntimeConfig>
+EngineIndexerRuntime::start(indexer_client::ProcessId process, const indexer_client::IConfigSource& source)
+{
+    if (m_started)
+    {
+        return indexer_client::Outcome<indexer_client::RuntimeConfig>::failure(
+            indexer_client::Cause::InvalidState, "the engine's indexer runtime was already started");
+    }
+    Started started;
+    auto config = startRuntime(process, source, nullptr, nullptr, started);
+    if (config.ok())
+    {
+        m_client = std::move(started.client);
+        m_queueCapacityBytes = started.queueCapacityBytes;
+        m_started = true;
+    }
+    return config;
+}
+
+indexer_client::Outcome<indexer_client::RuntimeConfig>
+EngineIndexerRuntime::start(indexer_client::ProcessId process,
+                            const indexer_client::IConfigSource& source,
+                            const EngineWriteOptions& options,
+                            std::vector<std::string>& warnings)
+{
+    if (m_started)
+    {
+        return indexer_client::Outcome<indexer_client::RuntimeConfig>::failure(
+            indexer_client::Cause::InvalidState, "the engine's indexer runtime was already started");
+    }
+    Started started;
+    auto config = startRuntime(process, source, &options, &warnings, started);
+    if (config.ok())
+    {
+        m_client = std::move(started.client);
+        m_queueCapacityBytes = started.queueCapacityBytes;
+        m_started = true;
+    }
+    return config;
+}
+
+std::uint64_t EngineIndexerRuntime::queueCapacityBytes() const
+{
+    return m_queueCapacityBytes;
 }
 
 std::shared_ptr<indexer_client::IClient> EngineIndexerRuntime::client() const

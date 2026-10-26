@@ -535,24 +535,18 @@ int main(int argc, char* argv[])
                                              ? standAloneConfig()
                                              : base::managerConfig::sectionJson("indexer");
 
-                // Parse JSON and add max_queue_bytes from engine configuration
-                json::Json jsonCnf(baseJsonCnf);
+                // The v1 write options the engine keeps (I187, I188): validated here as before, then they size the
+                // `events` and `raw` buckets (I194, I196).
                 const auto maxQueueBytes = confManager.get<size_t>(conf::key::INDEXER_QUEUE_MAX_BYTES);
-                jsonCnf.setUint64(maxQueueBytes, "/max_queue_bytes");
 
-                // The ranges of these settings are checked by confManager.load() (conf.cpp), as `-t` does
-                jsonCnf.setUint64(confManager.get<size_t>(conf::key::INDEXER_BULK_MAX_BYTES), "/bulk_max_bytes");
-                jsonCnf.setUint64(confManager.get<size_t>(conf::key::INDEXER_FLUSH_INTERVAL),
-                                  "/flush_interval_seconds");
-                // Error-logger sizing: bounded queue + thread count (only error responses are queued)
-                jsonCnf.setUint64(confManager.get<size_t>(conf::key::INDEXER_LOGGER_QUEUE_SIZE), "/logger_queue_size");
-                jsonCnf.setUint64(confManager.get<size_t>(conf::key::INDEXER_LOGGER_THREADS), "/logger_threads");
-                jsonCnf.setUint64(confManager.get<size_t>(conf::key::INDEXER_MAX_RETRY_DELAY),
-                                  "/max_retry_delay_seconds");
-                jsonCnf.setUint64(confManager.get<size_t>(conf::key::INDEXER_REQUEST_TIMEOUT),
-                                  "/request_timeout_seconds");
-                jsonCnf.setUint64(confManager.get<size_t>(conf::key::INDEXER_MONITORING_INTERVAL),
-                                  "/monitoring_interval_seconds");
+                // Their ranges are checked by confManager.load() (conf.cpp), as `-t` does; the v1's request timeout
+                // and monitoring interval are only range-checked there, nothing here reads them.
+                const auto bulkMaxBytes = confManager.get<size_t>(conf::key::INDEXER_BULK_MAX_BYTES);
+                const auto flushInterval = confManager.get<size_t>(conf::key::INDEXER_FLUSH_INTERVAL);
+                const auto maxRetryDelay = confManager.get<size_t>(conf::key::INDEXER_MAX_RETRY_DELAY);
+                // Error-logger sizing of the v1: ignored with a WARN if not the default (I187).
+                const auto loggerQueueSize = confManager.get<size_t>(conf::key::INDEXER_LOGGER_QUEUE_SIZE);
+                const auto loggerThreads = confManager.get<size_t>(conf::key::INDEXER_LOGGER_THREADS);
 
                 // Reads (content and remote configuration) go through the engine's indexer_client runtime, started
                 // here on the main thread, after goDaemon() and the privilege drop (I37). Its lines reach the
@@ -612,9 +606,23 @@ int main(int argc, char* argv[])
                 {
                     LOG_WARNING("{}", warning);
                 }
+                wiconnector::EngineWriteOptions writeOptions;
+                writeOptions.queueMaxBytes = maxQueueBytes;
+                writeOptions.bulkMaxBytes = bulkMaxBytes;
+                writeOptions.flushInterval = std::chrono::seconds {flushInterval};
+                writeOptions.maxRetryDelay = std::chrono::seconds {maxRetryDelay};
+                writeOptions.loggerQueueSize = loggerQueueSize;
+                writeOptions.loggerThreads = loggerThreads;
+                std::vector<std::string> bucketWarnings;
                 const auto started = indexerRuntime->start(standalone ? indexer_client::ProcessId::Standalone
                                                                       : indexer_client::ProcessId::Analysisd,
-                                                           indexerSource);
+                                                           indexerSource,
+                                                           writeOptions,
+                                                           bucketWarnings);
+                for (const auto& warning : bucketWarnings)
+                {
+                    LOG_WARNING("{}", warning);
+                }
                 if (!started.ok())
                 {
                     throw std::runtime_error(fmt::format(
@@ -629,14 +637,14 @@ int main(int argc, char* argv[])
                 contentOptions.failFastWithoutNode = true;
                 contentIndexer = content_manager::makeContentIndexer(indexerRuntime->client(), contentOptions);
 
-                // Writes (events and raw events) stay on the v1 connector until E10b.
-                const auto asyncConnector = wiconnector::makeIndexerConnectorAsync(jsonCnf.str());
+                // Writes: the `events` and `raw` buckets of the same Client (E10b, I193); reads as above.
                 indexerConnector = std::make_shared<wiconnector::WIndexerConnector>(
-                    asyncConnector, indexerRuntime->client(), runtimeConfig.requestTimeout);
+                    indexerRuntime->client(), runtimeConfig.requestTimeout, indexerRuntime->queueCapacityBytes());
 
                 // First stop phase (I191): registered after the scheduler's handler, so it runs before the
                 // scheduler stops. It closes the Client's admission (a read in flight returns ClientClosed, so no
-                // scheduler thread stays inside a call) and then stops the v1 connector.
+                // scheduler thread stays inside a call) and then releases the connector's writers and reader; the
+                // router and tester workers were joined before (I196b).
                 exitHandler.add(
                     [indexerRuntime = indexerRuntime, indexerConnector]()
                     {
@@ -662,11 +670,10 @@ int main(int argc, char* argv[])
                                      return connector ? connector->getDroppedEvents() : 0;
                                  });
 
-                auto indexerQueueUsageGetter = [wIndexer, maxQueueBytes]()
+                auto indexerQueueUsageGetter = [wIndexer]()
                 {
                     auto connector = wIndexer.lock();
-                    auto currentSize = connector ? connector->getQueueSize() : 0;
-                    return maxQueueBytes > 0 ? (static_cast<double>(currentSize) * 100.0 / maxQueueBytes) : 0.0;
+                    return connector ? connector->getQueueUsagePercent() : 0.0;
                 };
                 FASTMETRICS_PULL(double, fastmetrics::names::INDEXER_QUEUE_USAGE_PERCENT, indexerQueueUsageGetter);
 
@@ -756,8 +763,7 @@ int main(int argc, char* argv[])
         // Raw Event Indexer
         if (enableProcessing)
         {
-            rawEventIndexer = std::make_shared<raweventindexer::RawEventIndexer>(
-                indexerConnector, raweventindexer::RawEventIndexer::DEFAULT_INDEX_NAME);
+            rawEventIndexer = std::make_shared<raweventindexer::RawEventIndexer>(indexerConnector);
             LOG_INFO("Raw Event Indexer initialized");
 
             if (remoteConf)

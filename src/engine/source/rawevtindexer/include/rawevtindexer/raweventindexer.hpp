@@ -19,24 +19,26 @@ class RawEventIndexer final : public IRawEventIndexer
 private:
     std::atomic<bool> m_enabled;                                ///< Atomic flag for enabled state
     std::weak_ptr<wiconnector::IWIndexerConnector> m_connector; ///< Weak pointer to indexer connector
-    std::string m_indexName;                                    ///< Index name for raw events
 
 public:
-    static constexpr std::string_view DEFAULT_INDEX_NAME = "wazuh-events-raw-v5"; /// Default index name for raw events
-
     /**
      * @brief Construct a new Raw Event Indexer object
      *
+     * Raw events always go to wiconnector::RAW_EVENTS_INDEX, the index the connector routes to its `raw` bucket.
+     *
      * @param connector Shared pointer to the indexer connector
-     * @param indexName The index name to use for raw events (default: DEFAULT_INDEX_NAME)
      */
-    explicit RawEventIndexer(std::weak_ptr<wiconnector::IWIndexerConnector> connector,
-                             std::string_view indexName = DEFAULT_INDEX_NAME);
+    explicit RawEventIndexer(std::weak_ptr<wiconnector::IWIndexerConnector> connector);
 
     /**
      * @copydoc IRawEventIndexer::index
      */
     void index(const std::string& data) override;
+
+    /**
+     * @copydoc IRawEventIndexer::index
+     */
+    void index(std::string&& data) override;
 
     /**
      * @copydoc IRawEventIndexer::index

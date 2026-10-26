@@ -12,6 +12,7 @@ class MockRawEventIndexer : public IRawEventIndexer
 {
 public:
     MOCK_METHOD(void, index, (const std::string& data), (override));
+    MOCK_METHOD(void, index, (std::string && data), (override));
     MOCK_METHOD(void, index, (const char* data), (override));
     MOCK_METHOD(void, index, (std::string_view data), (override));
     MOCK_METHOD(void, enable, (), (override));

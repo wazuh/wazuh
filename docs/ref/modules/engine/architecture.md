@@ -134,9 +134,9 @@ The Geo module performs GeoIP and ASN lookups using MaxMind MMDB databases. Like
 
 ### Indexer Connector
 
-The Indexer Connector carries the engine's **outbound** processed events (driven by policy outputs) to `wazuh-indexer`. The **inbound** runtime configuration (consumed by the Configuration module) is read through the engine's `analysisd` indexer client.
+The Indexer Connector carries the engine's **outbound** processed events (driven by policy outputs) and raw events to `wazuh-indexer`, posting them to the `events` and `raw` buckets of the `analysisd` indexer client. The **inbound** runtime configuration (consumed by the Configuration module) is read through the engine's `analysisd` indexer client.
 
-**Content downloads do not go through it.** Ruleset and IoC content is pulled by the shared **Content Manager** library (`shared_modules/content_manager`), the same library the Vulnerability Detection module uses. Since the engine moved its reads to the `indexer_client` runtime, the library reaches the indexer through the engine's own `analysisd` indexer client, the same one the remote configuration read uses (see [Indexer client](./README.md#indexer-client)); the connector keeps carrying the event writes until they move too, so the engine holds two connections to the indexer and each outage logs one line per connection. Downloads never use the writes' queue, so they do not delay events.
+**Content downloads do not go through it.** Ruleset and IoC content is pulled by the shared **Content Manager** library (`shared_modules/content_manager`), the same library the Vulnerability Detection module uses. Since the engine moved its reads to the `indexer_client` runtime, the library reaches the indexer through the engine's own `analysisd` indexer client, the same one the remote configuration read uses (see [Indexer client](./README.md#indexer-client)); the event writes use that same client too (buckets `events` and `raw`), so the engine holds one connection to the indexer. Downloads never use the writes' buckets, so they do not delay events.
 
 ### Content Manager (shared library)
 

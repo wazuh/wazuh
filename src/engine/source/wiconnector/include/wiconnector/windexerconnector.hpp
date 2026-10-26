@@ -2,32 +2,24 @@
 #ifndef _WINDEXER_CONNECTOR_HPP
 #define _WINDEXER_CONNECTOR_HPP
 
+#include <atomic>
 #include <chrono>
-#include <functional>
+#include <cstdint>
 #include <memory>
-#include <optional>
-#include <shared_mutex>
-#include <stdexcept>
+#include <mutex>
 #include <string>
-#include <string_view>
-#include <unordered_map>
 #include <vector>
 
 #include <indexer_client/client.hpp>
-#include <wiconnector/iindexerConnectorAsync.hpp>
 #include <wiconnector/iwindexerconnector.hpp>
 
 namespace wiconnector
 {
 
-using LogFunctionType =
-    std::function<void(const int, const char*, const char*, const int, const char*, const char*, va_list)>;
-
+/// The `<indexer>` section of a standalone engine (`hosts`, `ssl`), as the indexer client reads it.
 struct Config
 {
-    std::vector<std::string> hosts;   ///< The list of hosts to connect to. i.e. ["https://localhost:9200"]
-    size_t maxQueueBytes {0};         ///< Maximum bytes in the indexer queue. 0 means unlimited.
-    size_t maxRetryDelaySeconds {15}; ///< Maximum delay in seconds for indexer retry backoff.
+    std::vector<std::string> hosts; ///< The list of hosts to connect to. i.e. ["https://localhost:9200"]
 
     struct
     {
@@ -40,101 +32,44 @@ struct Config
 };
 
 /**
- * @brief Build the Engine's indexer connector from a JSON OSSEC configuration string.
+ * @brief The Engine's writes and its remote configuration read, on the Engine's indexer_client Client (E10b).
  *
- * The one place it is built, so the instance shared by @ref WIndexerConnector and the content
- * registrations is configured exactly as the JSON constructor configures its own.
+ * index() posts each event to the `events` bucket, or to `raw` for RAW_EVENTS_INDEX (I193), with the index and the
+ * body moved into the operation and no lock: the writers are fixed in the constructor. A refused post is logged on the
+ * edge and counted only by the library (`rejected` in the bucket's metrics). shutdown() releases the writers and the
+ * reader; an index() after it discards the event and counts it in getDroppedEvents(). No index() may run concurrently
+ * with shutdown() (I196b): the router and tester workers are joined before the indexer stops.
  *
- * @param jsonOssecConfig The JSON string containing the OSSEC configuration for the indexer connector
- * @return The connector.
- * @throws std::runtime_error if the JSON configuration is invalid or empty
- */
-std::shared_ptr<IndexerConnectorAsync> makeIndexerConnectorAsync(std::string_view jsonOssecConfig);
-
-/**
- * @brief Thread-safe wrapper around the asynchronous indexer connector.
- *
- * Implements IWIndexerConnector over an IIndexerConnectorAsync, guarding its lifecycle with a shared
- * mutex so @ref shutdown can release it while other threads are indexing.
+ * The three queue metrics read one cached snapshot of Client::metrics(), refreshed at most once per second (I197).
  */
 class WIndexerConnector : public IWIndexerConnector
 {
-
-private:
-    std::unique_ptr<IIndexerConnectorAsync> m_indexerConnectorAsync;
-    /// The engine's Client for the reads (E10a); null with the v1-only constructors.
-    std::shared_ptr<indexer_client::IClient> m_reader;
-    std::chrono::milliseconds m_requestTimeout {60000};
-    std::shared_mutex m_mutex;
-
 public:
+    /// How long a metrics snapshot serves the getters (one scrape reads all three).
+    static constexpr std::chrono::milliseconds METRICS_TTL {1000};
+
     WIndexerConnector() = delete;
-    ~WIndexerConnector();
+    ~WIndexerConnector() override;
 
     /**
-     * @brief Constructs a WIndexerConnector instance with the specified configuration and logging function.
+     * @brief Writes and reads through the engine's Client (E10b, I193, I196, I196b): index() posts to the `events` or
+     *        `raw` bucket without a lock; shutdown() releases the writers and the reader. No index() may run
+     *        concurrently with shutdown(): the router and tester workers are joined before the indexer stops.
      *
-     * @param config The configuration object containing settings for the indexer connector
-     * @param logFunction The logging function to be used for output and error reporting
-     * @throws std::runtime_error if the configuration is invalid or if the indexer connector fails to initialize
+     * @param client The engine's Client with the `events` and `raw` buckets. Must not be null.
+     * @param requestTimeout The runtime's `request_timeout_ms` (remote configuration reads).
+     * @param queueCapacityBytes min(Σ bucket quotas, global quota): the budget the buckets share, the second term of
+     *        getQueueUsagePercent() (I197, I218); 0 reports 0.0.
+     * @throws std::runtime_error if @p client is null or lacks a bucket
      */
-    WIndexerConnector(const Config&, const LogFunctionType& logFunction);
-
-    /**
-     * @brief Constructs a WIndexerConnector instance using a JSON OSSEC configuration string.
-     *
-     * @param jsonOssecConfig The JSON string containing the OSSEC configuration for the indexer connector
-     * @throws std::runtime_error if the JSON configuration is invalid or empty
-     */
-    explicit WIndexerConnector(std::string_view jsonOssecConfig);
-
-    /**
-     * @brief Constructs a WIndexerConnector over a connector the caller already built.
-     *
-     * The Engine builds one connector (@ref makeIndexerConnectorAsync) and shares it between this
-     * class and the content registrations, so the process runs one health monitor and reports an
-     * indexer outage once (D1 of the content manager). @ref shutdown releases this class's
-     * reference only; the connector is destroyed when its last holder lets go.
-     *
-     * @param connector The shared connector. Must not be null.
-     * @throws std::runtime_error if @p connector is null
-     */
-    explicit WIndexerConnector(std::shared_ptr<IndexerConnectorAsync> connector);
-
-    /**
-     * @brief Writes through the v1 connector, reads through the engine's indexer_client Client (E10a, I184).
-     *
-     * getEngineRemoteConfig() searches `.wazuh-settings` with the Client's query interface: one attempt, a page
-     * deadline of the runtime's request timeout, and an immediate failure when every node was probed and none is
-     * usable (I190, I190b); ClientClosed and every other failure throw, as the v1 did. @ref shutdown releases both.
-     *
-     * @param connector The shared v1 connector for index(). Must not be null.
-     * @param reader The engine's Client. Must not be null.
-     * @param requestTimeout The runtime's `request_timeout_ms` (RuntimeConfig::requestTimeout).
-     * @throws std::runtime_error if @p connector or @p reader is null
-     */
-    WIndexerConnector(std::shared_ptr<IndexerConnectorAsync> connector,
-                      std::shared_ptr<indexer_client::IClient> reader,
-                      std::chrono::milliseconds requestTimeout);
-
-    /**
-     * @brief Test-only constructor: a custom IIndexerConnectorAsync for the writes and a Client for the reads.
-     */
-    WIndexerConnector(std::unique_ptr<IIndexerConnectorAsync> async,
-                      std::shared_ptr<indexer_client::IClient> reader,
-                      std::chrono::milliseconds requestTimeout);
-
-    /**
-     * @brief Test-only constructor: inject a custom IIndexerConnectorAsync (e.g. a gMock).
-     *
-     * @param async Owned implementation of IIndexerConnectorAsync used for every backend call.
-     */
-    explicit WIndexerConnector(std::unique_ptr<IIndexerConnectorAsync> async);
+    WIndexerConnector(std::shared_ptr<indexer_client::IClient> client,
+                      std::chrono::milliseconds requestTimeout,
+                      std::uint64_t queueCapacityBytes);
 
     /**
      * @copydoc IWIndexerConnector::index
      */
-    void index(std::string_view index, std::string_view data) override;
+    void index(std::string index, std::string data) override;
 
     /**
      * @copydoc IWIndexerConnector::getEngineRemoteConfig
@@ -142,22 +77,59 @@ public:
     json::Json getEngineRemoteConfig() override;
 
     /**
-     * @copydoc IWIndexerConnector::getQueueSize
+     * @brief Σ `retainedBytes` of `events` and `raw` (I195); 0 once shut down.
      */
     uint64_t getQueueSize() override;
 
     /**
-     * @copydoc IWIndexerConnector::getDroppedEvents
+     * @brief Σ `dropped` + `failed` + `rejected` of `events` and `raw` (I185), plus the events discarded after
+     *        shutdown(). After shutdown() the bucket part is the last snapshot taken.
      */
     uint64_t getDroppedEvents() override;
 
     /**
-     * @brief Shuts down the indexer connector, releasing resources and stopping operations.
+     * @brief max(the fullest bucket, the shared budget) × 100, capped at 100 (I197, I218): max over `events` and
+     *        `raw` of `charge` / `quotaBytes`, and Σ `charge` / @p queueCapacityBytes. 100 means a bucket or the global
+     *        budget is full, i.e. new events are being dropped; a bucket without a quota counts as 0. 0.0 once shut
+     *        down or without a capacity.
+     */
+    double getQueueUsagePercent() override;
+
+    /**
+     * @brief Releases the writers and the Client. Must not run concurrently with index() (I196b).
      *
-     * This method ensures that the underlying asynchronous indexer connector is properly
-     * shut down and that all associated resources are released.
+     * The engine calls it after the Client's requestClose() (EngineIndexerRuntime::beginStop()), so a remote
+     * configuration read in flight returns ClientClosed.
      */
     void shutdown();
+
+private:
+    /// The bucket sums of one Client::metrics() snapshot.
+    struct Totals final
+    {
+        std::uint64_t retainedBytes {0};
+        std::uint64_t dropped {0};
+        double usagePercent {0.0}; ///< max(fullest bucket, Σ charge / capacity) × 100, uncapped (I218).
+    };
+
+    /// The cached totals, refreshed when older than METRICS_TTL and the Client is still held.
+    Totals totals();
+
+    std::shared_ptr<indexer_client::IWriter> m_events; ///< Fixed until shutdown(); read without a lock.
+    std::shared_ptr<indexer_client::IWriter> m_raw;    ///< Fixed until shutdown(); read without a lock.
+    std::atomic<bool> m_closed {false};                ///< Set by shutdown() before it releases the writers.
+    std::atomic<bool> m_refusing {false};              ///< A post was refused and none accepted since (log edge).
+    std::atomic<std::uint64_t> m_discardedAfterShutdown {0};
+
+    std::mutex m_mutex;                                ///< Guards m_client (copied out, never called under it).
+    std::shared_ptr<indexer_client::IClient> m_client; ///< Reads and metrics; null after shutdown().
+    std::chrono::milliseconds m_requestTimeout;
+    std::uint64_t m_queueCapacityBytes;
+
+    std::mutex m_metricsMutex; ///< Guards the cache and serializes its refresh (one snapshot per TTL).
+    Totals m_totals;
+    std::chrono::steady_clock::time_point m_totalsAt {};
+    bool m_hasTotals {false};
 };
 }; // namespace wiconnector
 

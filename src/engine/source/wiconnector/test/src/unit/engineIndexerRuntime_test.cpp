@@ -6,13 +6,16 @@
 #include <cstdarg>
 #include <cstdio>
 #include <future>
+#include <limits>
 #include <map>
 #include <memory>
 #include <mutex>
 #include <string>
+#include <string_view>
 #include <thread>
 #include <vector>
 
+#include <bulkResponder.hpp>
 #include <fakeIndexer.hpp>
 #include <healthRules.hpp>
 #include <pitResponder.hpp>
@@ -341,4 +344,256 @@ TEST_F(EngineIndexerRuntimeTest, FinishStopAloneKeepsTheStopBudget)
     EXPECT_LE(elapsed, EngineIndexerRuntime::STOP_BUDGET + 1s)
         << std::chrono::duration_cast<std::chrono::milliseconds>(elapsed).count() << " ms";
     EXPECT_FALSE(indexer_client::RuntimeOwner::running());
+}
+
+/****************************************************************************************
+ * The `events` and `raw` buckets (E10b: I188, I194, I196, I197)
+ ****************************************************************************************/
+
+namespace
+{
+constexpr std::uint64_t MIB {std::uint64_t {1} << 20};
+
+indexer_client::RuntimeConfig runtimeConfig(std::uint64_t globalQuotaBytes = 256 * MIB)
+{
+    indexer_client::RuntimeConfig config;
+    config.globalQuotaBytes = globalQuotaBytes;
+    return config;
+}
+
+bool mentions(const std::vector<std::string>& warnings, std::string_view text)
+{
+    for (const auto& warning : warnings)
+    {
+        if (warning.find(text) != std::string::npos)
+        {
+            return true;
+        }
+    }
+    return false;
+}
+} // namespace
+
+TEST(EngineBucketSpecsTest, DefaultsBuildBothBuckets)
+{
+    std::vector<std::string> warnings;
+    const auto specs = wiconnector::engineBucketSpecs(wiconnector::EngineWriteOptions {}, runtimeConfig(), warnings);
+    ASSERT_TRUE(specs.ok()) << specs.reason;
+    ASSERT_EQ(specs.value.size(), 2U);
+    EXPECT_TRUE(warnings.empty());
+
+    const auto& events = specs.value[0];
+    const auto& raw = specs.value[1];
+    EXPECT_EQ(events.name, wiconnector::ENGINE_EVENTS_BUCKET);
+    EXPECT_EQ(raw.name, wiconnector::ENGINE_RAW_BUCKET);
+    EXPECT_EQ(events.weight, 2U);
+    EXPECT_EQ(raw.weight, 1U);
+    for (const auto* spec : {&events, &raw})
+    {
+        EXPECT_EQ(spec->quotaBytes, 64 * MIB); // The same quota for both (I188).
+        EXPECT_EQ(spec->overflow.kind, indexer_client::Overflow::Kind::DropNewest);
+        EXPECT_FALSE(spec->retry.maxAttempts.has_value()); // Unlimited retry (I6).
+        EXPECT_FALSE(spec->retry.maxDuration.has_value());
+        EXPECT_EQ(spec->retry.cap, std::chrono::seconds {15});
+        EXPECT_LE(spec->retry.base, spec->retry.cap);
+        EXPECT_EQ(spec->onAmbiguous5xx, indexer_client::AmbiguousPolicy::Fail);
+        EXPECT_TRUE(spec->trustedBodies);
+        EXPECT_FALSE(spec->ordered);
+        EXPECT_EQ(spec->bulk.maxBytes, 8 * MIB);
+        EXPECT_EQ(spec->bulk.maxAge, std::chrono::seconds {20});
+        // The v1 cut a bulk only by bytes and by time: no document count closes one.
+        EXPECT_EQ(spec->bulk.maxDocs, std::numeric_limits<std::size_t>::max());
+    }
+}
+
+TEST(EngineBucketSpecsTest, ZeroQuotaIsTheGlobalQuota)
+{
+    wiconnector::EngineWriteOptions options;
+    options.queueMaxBytes = 0;
+    std::vector<std::string> warnings;
+    const auto specs = wiconnector::engineBucketSpecs(options, runtimeConfig(), warnings);
+    ASSERT_TRUE(specs.ok()) << specs.reason;
+    EXPECT_EQ(specs.value[0].quotaBytes, 256 * MIB);
+    EXPECT_EQ(specs.value[1].quotaBytes, 256 * MIB);
+    EXPECT_TRUE(warnings.empty());
+}
+
+TEST(EngineBucketSpecsTest, QuotaAboveTheGlobalQuotaIsCappedWithAWarning)
+{
+    wiconnector::EngineWriteOptions options;
+    options.queueMaxBytes = 512 * MIB;
+    std::vector<std::string> warnings;
+    const auto specs = wiconnector::engineBucketSpecs(options, runtimeConfig(), warnings);
+    ASSERT_TRUE(specs.ok()) << specs.reason;
+    EXPECT_EQ(specs.value[0].quotaBytes, 256 * MIB);
+    EXPECT_EQ(specs.value[1].quotaBytes, 256 * MIB);
+    ASSERT_EQ(warnings.size(), 1U);
+    EXPECT_TRUE(mentions(warnings, "analysisd.indexer_queue_max_bytes")) << warnings.front();
+}
+
+TEST(EngineBucketSpecsTest, QuotaBelowOneBulkIsAnError)
+{
+    wiconnector::EngineWriteOptions options;
+    options.queueMaxBytes = (std::uint64_t {64} << 10) + indexer_client::RESULT_RESERVE_BYTES - 1;
+    std::vector<std::string> warnings;
+    const auto specs = wiconnector::engineBucketSpecs(options, runtimeConfig(), warnings);
+    ASSERT_FALSE(specs.ok());
+    EXPECT_EQ(specs.cause, indexer_client::Cause::InvalidConfig);
+    EXPECT_NE(specs.reason.find("analysisd.indexer_queue_max_bytes"), std::string::npos) << specs.reason;
+
+    // The smallest valid quota: a 64 KiB bulk and its reserve, the bulk clipped to fit.
+    options.queueMaxBytes += 1;
+    const auto smallest = wiconnector::engineBucketSpecs(options, runtimeConfig(), warnings);
+    ASSERT_TRUE(smallest.ok()) << smallest.reason;
+    EXPECT_EQ(smallest.value[0].bulk.maxBytes, std::size_t {64} << 10);
+}
+
+TEST(EngineBucketSpecsTest, QuotaErrorNamesTheKeyThatGaveIt)
+{
+    const auto tooSmall = (std::uint64_t {64} << 10) + indexer_client::RESULT_RESERVE_BYTES - 1;
+    std::vector<std::string> warnings;
+
+    // 0 takes the global quota: the global key is the one that limits.
+    wiconnector::EngineWriteOptions options;
+    options.queueMaxBytes = 0;
+    const auto unlimited = wiconnector::engineBucketSpecs(options, runtimeConfig(tooSmall), warnings);
+    ASSERT_FALSE(unlimited.ok());
+    EXPECT_NE(unlimited.reason.find("analysisd.indexer_client_global_quota_bytes"), std::string::npos)
+        << unlimited.reason;
+    EXPECT_EQ(unlimited.reason.find("analysisd.indexer_queue_max_bytes"), std::string::npos) << unlimited.reason;
+
+    // Above the global quota: capped to it, so the global key limits too.
+    options.queueMaxBytes = 64 * MIB;
+    const auto capped = wiconnector::engineBucketSpecs(options, runtimeConfig(tooSmall), warnings);
+    ASSERT_FALSE(capped.ok());
+    EXPECT_EQ(capped.reason.rfind("analysisd.indexer_client_global_quota_bytes", 0), 0U) << capped.reason;
+}
+
+TEST(EngineBucketSpecsTest, BulkAboveTheQuotaIsClippedToThePublicReserve)
+{
+    wiconnector::EngineWriteOptions options;
+    options.bulkMaxBytes = 100 * MIB; // Valid for the v1 with a 64 MiB queue; not for a v2 bucket.
+    std::vector<std::string> warnings;
+    const auto specs = wiconnector::engineBucketSpecs(options, runtimeConfig(), warnings);
+    ASSERT_TRUE(specs.ok()) << specs.reason;
+    EXPECT_EQ(specs.value[0].bulk.maxBytes, 64 * MIB - indexer_client::RESULT_RESERVE_BYTES);
+    EXPECT_EQ(specs.value[1].bulk.maxBytes, 64 * MIB - indexer_client::RESULT_RESERVE_BYTES);
+    ASSERT_EQ(warnings.size(), 1U);
+    EXPECT_TRUE(mentions(warnings, "analysisd.indexer_bulk_max_bytes")) << warnings.front();
+
+    // A bulk that fits exactly is kept without a warning.
+    options.bulkMaxBytes = 64 * MIB - indexer_client::RESULT_RESERVE_BYTES;
+    warnings.clear();
+    ASSERT_TRUE(wiconnector::engineBucketSpecs(options, runtimeConfig(), warnings).ok());
+    EXPECT_TRUE(warnings.empty());
+}
+
+TEST(EngineBucketSpecsTest, FlushIntervalAndRetryDelayMapToTheBucket)
+{
+    wiconnector::EngineWriteOptions options;
+    options.flushInterval = std::chrono::seconds {7};
+    options.maxRetryDelay = std::chrono::seconds {120};
+    std::vector<std::string> warnings;
+    const auto specs = wiconnector::engineBucketSpecs(options, runtimeConfig(), warnings);
+    ASSERT_TRUE(specs.ok()) << specs.reason;
+    EXPECT_EQ(specs.value[0].bulk.maxAge, std::chrono::seconds {7});
+    EXPECT_EQ(specs.value[0].retry.cap, std::chrono::seconds {120});
+
+    // A cap below the library's default base lowers the base with it (the runtime requires base <= cap).
+    options.maxRetryDelay = std::chrono::seconds {1};
+    const auto low = wiconnector::engineBucketSpecs(options, runtimeConfig(), warnings);
+    ASSERT_TRUE(low.ok()) << low.reason;
+    EXPECT_LE(low.value[0].retry.base, low.value[0].retry.cap);
+}
+
+TEST(EngineBucketSpecsTest, LoggerKeysAreIgnoredWithAWarning)
+{
+    wiconnector::EngineWriteOptions options;
+    options.loggerQueueSize = 16;
+    options.loggerThreads = 2;
+    std::vector<std::string> warnings;
+    const auto specs = wiconnector::engineBucketSpecs(options, runtimeConfig(), warnings);
+    ASSERT_TRUE(specs.ok()) << specs.reason;
+    EXPECT_EQ(warnings.size(), 2U);
+    EXPECT_TRUE(mentions(warnings, "analysisd.indexer_logger_queue_size"));
+    EXPECT_TRUE(mentions(warnings, "analysisd.indexer_logger_threads"));
+}
+
+TEST_F(EngineIndexerRuntimeTest, StartWithOptionsCreatesTheBuckets)
+{
+    const auto src = source(countingProvider());
+    std::vector<std::string> warnings;
+    const auto started =
+        runtime->start(indexer_client::ProcessId::Analysisd, src, wiconnector::EngineWriteOptions {}, warnings);
+    ASSERT_TRUE(started.ok()) << indexer_client::toString(started.cause) << ": " << started.reason;
+    EXPECT_TRUE(warnings.empty());
+
+    const auto client = runtime->client();
+    ASSERT_NE(client, nullptr);
+    EXPECT_NE(client->writer(wiconnector::ENGINE_EVENTS_BUCKET), nullptr);
+    EXPECT_NE(client->writer(wiconnector::ENGINE_RAW_BUCKET), nullptr);
+    // min(Σ quotas, global quota): two 64 MiB buckets under the default 256 MiB cap.
+    EXPECT_EQ(runtime->queueCapacityBytes(), 128 * MIB);
+
+    // The buckets the library reports are the engine's two, with their quota.
+    const auto metrics = client->metrics();
+    ASSERT_EQ(metrics.buckets.size(), 2U);
+    EXPECT_EQ(metrics.buckets[0].quotaBytes, 64 * MIB);
+    EXPECT_EQ(metrics.buckets[1].quotaBytes, 64 * MIB);
+}
+
+TEST_F(EngineIndexerRuntimeTest, StartWithAGlobalQuotaCapacity)
+{
+    const auto src = source(countingProvider());
+    wiconnector::EngineWriteOptions options;
+    options.queueMaxBytes = 0; // Both buckets take the whole global quota: the capacity is the global quota.
+    std::vector<std::string> warnings;
+    ASSERT_TRUE(runtime->start(indexer_client::ProcessId::Analysisd, src, options, warnings).ok());
+    EXPECT_EQ(runtime->queueCapacityBytes(), 256 * MIB);
+}
+
+TEST_F(EngineIndexerRuntimeTest, StartWithAQuotaBelowOneBulkFailsWithoutARuntime)
+{
+    const auto src = source(countingProvider());
+    wiconnector::EngineWriteOptions options;
+    options.queueMaxBytes = 1024;
+    std::vector<std::string> warnings;
+    const auto started = runtime->start(indexer_client::ProcessId::Analysisd, src, options, warnings);
+    ASSERT_FALSE(started.ok());
+    EXPECT_EQ(started.cause, indexer_client::Cause::InvalidConfig);
+    EXPECT_FALSE(indexer_client::RuntimeOwner::running());
+    EXPECT_EQ(runtime->client(), nullptr);
+    EXPECT_EQ(runtime->queueCapacityBytes(), 0U);
+}
+
+TEST_F(EngineIndexerRuntimeTest, NoDocumentCountClosesABulk)
+{
+    auto responder = std::make_shared<indexer_client::testing::BulkResponder>();
+    fake->addRule(indexer_client::testing::bulkRule(responder));
+    const auto src = source(countingProvider());
+    wiconnector::EngineWriteOptions options;
+    options.flushInterval = std::chrono::seconds {3};
+    std::vector<std::string> warnings;
+    ASSERT_TRUE(runtime->start(indexer_client::ProcessId::Analysisd, src, options, warnings).ok());
+    const auto client = runtime->client();
+    ASSERT_NE(client, nullptr);
+    ASSERT_TRUE(waitUntil([&client] { return client->health().anyAvailable(); }));
+
+    // More documents than the library's default bulk.maxDocs (10 000), far below the bulk's bytes: as in the v1,
+    // only the flush interval sends them, all in one bulk.
+    constexpr std::size_t DOCS {10001};
+    const auto writer = client->writer(wiconnector::ENGINE_EVENTS_BUCKET);
+    ASSERT_NE(writer, nullptr);
+    for (std::size_t i = 0; i < DOCS; ++i)
+    {
+        indexer_client::Op op;
+        op.kind = indexer_client::Op::Kind::IndexDataStream;
+        op.index = "wazuh-events-v5-test";
+        op.body = R"({"n":)" + std::to_string(i) + "}";
+        ASSERT_TRUE(writer->post(std::move(op)).accepted) << i;
+    }
+    ASSERT_TRUE(waitUntil([&responder] { return responder->opCount() >= DOCS; }, 15s)) << responder->opCount();
+    const auto bulks = responder->received();
+    ASSERT_EQ(bulks.size(), 1U);
+    EXPECT_EQ(bulks.front().size(), DOCS);
 }

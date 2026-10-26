@@ -201,7 +201,7 @@ TEST_F(WorkerTest, RouterWorkerProcessesEventWithRawIndexer)
     std::string eventStr = R"(1:[100] (agent) any->syslog {"message":"test"})";
 
     ON_CALL(*m_mockRawIndexer, isEnabled()).WillByDefault(Return(true));
-    EXPECT_CALL(*m_mockRawIndexer, index(A<const std::string&>()))
+    EXPECT_CALL(*m_mockRawIndexer, index(A<std::string&&>()))
         .Times(AtLeast(1))
         .WillRepeatedly(
             [](const std::string& payload)
@@ -332,7 +332,7 @@ TEST_F(WorkerTest, RouterWorkerUsesReceivedStampForRawAndEvent)
     auto doneFuture = capture.done.get_future();
 
     ON_CALL(*m_mockRawIndexer, isEnabled()).WillByDefault(Return(true));
-    EXPECT_CALL(*m_mockRawIndexer, index(A<const std::string&>()))
+    EXPECT_CALL(*m_mockRawIndexer, index(A<std::string&&>()))
         .WillOnce(
             [&](const std::string& payload)
             {
@@ -405,7 +405,7 @@ TEST_F(WorkerTest, RouterWorkerStampsUnstampedEvent)
     auto doneFuture = capture.done.get_future();
 
     ON_CALL(*m_mockRawIndexer, isEnabled()).WillByDefault(Return(true));
-    EXPECT_CALL(*m_mockRawIndexer, index(A<const std::string&>()))
+    EXPECT_CALL(*m_mockRawIndexer, index(A<std::string&&>()))
         .WillOnce(
             [&](const std::string& payload)
             {

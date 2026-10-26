@@ -1,4 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+// IndexerConnectorException is the v1's until E11 (D101).
+#include <algorithm>
 #include <chrono>
 #include <optional>
 #include <string>
@@ -10,9 +12,8 @@
 
 #include <base/logging.hpp>
 
+#include <wiconnector/engineIndexerRuntime.hpp>
 #include <wiconnector/windexerconnector.hpp>
-
-#include "indexerConnectorAsyncAdapter.hpp"
 
 namespace wiconnector
 {
@@ -165,7 +166,7 @@ json::Json remoteConfigFromClient(indexer_client::IClient& reader, std::chrono::
 } // namespace
 
 /****************************************************************************************
- * Config class implementation
+ * Config
  ****************************************************************************************/
 
 /*
@@ -208,92 +209,31 @@ std::string Config::toJson() const
         config["ssl"] = sslJson;
     }
 
-    config["max_queue_bytes"] = maxQueueBytes;
-    config["max_retry_delay_seconds"] = maxRetryDelaySeconds;
-
     return config.dump();
 }
 
-std::shared_ptr<IndexerConnectorAsync> makeIndexerConnectorAsync(std::string_view jsonOssecConfig)
-{
-    if (jsonOssecConfig.empty())
-    {
-        throw std::runtime_error("Empty JSON configuration for IndexerConnector");
-    }
-
-    const auto jsonParsed = nlohmann::json::parse(jsonOssecConfig, nullptr, false);
-    if (jsonParsed.is_discarded())
-    {
-        throw std::runtime_error("Invalid JSON configuration for IndexerConnector");
-    }
-
-    const auto logFunction = logging::createStandaloneLogFunction();
-    return std::make_shared<IndexerConnectorAsync>(jsonParsed, LoggingContext {logging::default_tag(), logFunction});
-}
-
 /****************************************************************************************
- * Wrapper of IndexerConnector class implementation
+ * WIndexerConnector
  ****************************************************************************************/
-WIndexerConnector::WIndexerConnector(std::string_view jsonOssecConfig)
-    : WIndexerConnector(makeIndexerConnectorAsync(jsonOssecConfig))
-{
-}
 
-WIndexerConnector::WIndexerConnector(std::shared_ptr<IndexerConnectorAsync> connector)
+WIndexerConnector::WIndexerConnector(std::shared_ptr<indexer_client::IClient> client,
+                                     std::chrono::milliseconds requestTimeout,
+                                     std::uint64_t queueCapacityBytes)
+    : m_client(std::move(client))
+    , m_requestTimeout(requestTimeout)
+    , m_queueCapacityBytes(queueCapacityBytes)
 {
-    if (!connector)
+    if (!m_client)
     {
-        throw std::runtime_error("IndexerConnectorAsync instance cannot be null");
+        throw std::runtime_error("The indexer client cannot be null");
     }
-    m_indexerConnectorAsync = std::make_unique<IndexerConnectorAsyncAdapter>(std::move(connector));
-}
-
-WIndexerConnector::WIndexerConnector(const Config& config, const LogFunctionType& logFunction)
-{
-    nlohmann::json jsonConfig = nlohmann::json::parse(config.toJson(), nullptr, false);
-    if (jsonConfig.is_discarded())
+    m_events = m_client->writer(ENGINE_EVENTS_BUCKET);
+    m_raw = m_client->writer(ENGINE_RAW_BUCKET);
+    if (!m_events || !m_raw)
     {
-        throw std::runtime_error("Invalid JSON configuration for IndexerConnector");
+        throw std::runtime_error(std::string {"The indexer client has no '"}
+                                 + (m_events ? ENGINE_RAW_BUCKET : ENGINE_EVENTS_BUCKET) + "' bucket");
     }
-
-    auto inner =
-        std::make_unique<IndexerConnectorAsync>(jsonConfig, LoggingContext {logging::default_tag(), logFunction});
-    m_indexerConnectorAsync = std::make_unique<IndexerConnectorAsyncAdapter>(std::move(inner));
-}
-
-WIndexerConnector::WIndexerConnector(std::shared_ptr<IndexerConnectorAsync> connector,
-                                     std::shared_ptr<indexer_client::IClient> reader,
-                                     std::chrono::milliseconds requestTimeout)
-    : WIndexerConnector(std::move(connector))
-{
-    if (!reader)
-    {
-        throw std::runtime_error("The indexer client for the reads cannot be null");
-    }
-    m_reader = std::move(reader);
-    m_requestTimeout = requestTimeout;
-}
-
-WIndexerConnector::WIndexerConnector(std::unique_ptr<IIndexerConnectorAsync> async,
-                                     std::shared_ptr<indexer_client::IClient> reader,
-                                     std::chrono::milliseconds requestTimeout)
-    : WIndexerConnector(std::move(async))
-{
-    if (!reader)
-    {
-        throw std::runtime_error("The indexer client for the reads cannot be null");
-    }
-    m_reader = std::move(reader);
-    m_requestTimeout = requestTimeout;
-}
-
-WIndexerConnector::WIndexerConnector(std::unique_ptr<IIndexerConnectorAsync> async)
-{
-    if (!async)
-    {
-        throw std::runtime_error("IndexerConnectorAsync instance cannot be null");
-    }
-    m_indexerConnectorAsync = std::move(async);
 }
 
 WIndexerConnector::~WIndexerConnector() = default;
@@ -301,75 +241,144 @@ WIndexerConnector::~WIndexerConnector() = default;
 void WIndexerConnector::shutdown()
 {
     LOG_INFO("[indexer-connector] Shutdown initiated");
-    // A remote configuration search in flight holds the shared lock; the Client's requestClose() (the engine's
-    // EngineIndexerRuntime::beginStop(), before this call) makes it return ClientClosed, so this wait is short.
-    std::unique_lock lock(m_mutex);
-    m_indexerConnectorAsync.reset();
-    m_reader.reset();
+    m_closed.store(true, std::memory_order_release);
+    std::shared_ptr<indexer_client::IClient> client;
+    {
+        std::lock_guard lock(m_mutex);
+        client = std::move(m_client);
+        m_events.reset();
+        m_raw.reset();
+    }
+    // The Client is released outside the lock: a remote configuration read in flight keeps its own copy.
+    client.reset();
+}
+
+void WIndexerConnector::index(std::string index, std::string data)
+{
+    if (m_closed.load(std::memory_order_acquire))
+    {
+        m_discardedAfterShutdown.fetch_add(1, std::memory_order_relaxed);
+        return;
+    }
+
+    auto& writer = index == RAW_EVENTS_INDEX ? *m_raw : *m_events;
+    indexer_client::Op op;
+    op.kind = indexer_client::Op::Kind::IndexDataStream;
+    op.index = std::move(index);
+    op.body = std::move(data);
+    const auto posted = writer.post(std::move(op));
+
+    // The library counts every refusal (`rejected` in the bucket's metrics): here it is only logged, on the edge.
+    if (!posted.accepted)
+    {
+        if (!m_refusing.exchange(true, std::memory_order_relaxed))
+        {
+            LOG_WARNING("[indexer-connector] The indexer client refused an event: {}{}{} (further refusals are counted "
+                        "in indexer.events.dropped)",
+                        indexer_client::toString(posted.cause),
+                        posted.reason.empty() ? "" : ": ",
+                        posted.reason);
+        }
+    }
+    else if (m_refusing.load(std::memory_order_relaxed) && m_refusing.exchange(false, std::memory_order_relaxed))
+    {
+        LOG_INFO("[indexer-connector] The indexer client accepts events again");
+    }
+}
+
+WIndexerConnector::Totals WIndexerConnector::totals()
+{
+    std::lock_guard metricsLock(m_metricsMutex);
+    const auto now = std::chrono::steady_clock::now();
+    if (m_hasTotals && now - m_totalsAt < METRICS_TTL)
+    {
+        return m_totals;
+    }
+
+    std::shared_ptr<indexer_client::IClient> client;
+    {
+        std::lock_guard lock(m_mutex);
+        client = m_client;
+    }
+    if (!client)
+    {
+        return m_totals; // The last snapshot taken (zeros if none).
+    }
+
+    Totals totals;
+    std::uint64_t charge {0};
+    for (const auto& bucket : client->metrics().buckets)
+    {
+        totals.retainedBytes += bucket.retainedBytes;
+        charge += bucket.charge;
+        // I218: each bucket against its own quota (the runtime keeps it <= the global quota); a bucket without a
+        // quota adds nothing (no division by zero).
+        if (bucket.quotaBytes != 0)
+        {
+            const auto percent = static_cast<double>(bucket.charge) * 100.0 / static_cast<double>(bucket.quotaBytes);
+            totals.usagePercent = std::max(totals.usagePercent, percent);
+        }
+        for (const auto count : bucket.dropped)
+        {
+            totals.dropped += count;
+        }
+        for (const auto count : bucket.failed)
+        {
+            totals.dropped += count;
+        }
+        for (const auto count : bucket.rejected)
+        {
+            totals.dropped += count;
+        }
+    }
+    // I218: the global budget drops too (`GlobalFull`) when it binds (2 x quota > global, e.g. a quota of 0), so the
+    // sum against the capacity also counts. When the global quota does not bind it never exceeds the fullest bucket.
+    if (m_queueCapacityBytes != 0)
+    {
+        const auto percent = static_cast<double>(charge) * 100.0 / static_cast<double>(m_queueCapacityBytes);
+        totals.usagePercent = std::max(totals.usagePercent, percent);
+    }
+    m_totals = totals;
+    m_totalsAt = now;
+    m_hasTotals = true;
+    return m_totals;
 }
 
 uint64_t WIndexerConnector::getQueueSize()
 {
-    std::shared_lock lock(m_mutex);
-    if (!m_indexerConnectorAsync)
+    if (m_closed.load(std::memory_order_acquire))
     {
         return 0;
     }
-    return m_indexerConnectorAsync->getQueueSize();
+    return totals().retainedBytes;
+}
+
+double WIndexerConnector::getQueueUsagePercent()
+{
+    if (m_closed.load(std::memory_order_acquire) || m_queueCapacityBytes == 0)
+    {
+        return 0.0;
+    }
+    return std::min(totals().usagePercent, 100.0);
 }
 
 uint64_t WIndexerConnector::getDroppedEvents()
 {
-    std::shared_lock lock(m_mutex);
-    if (!m_indexerConnectorAsync)
-    {
-        return 0;
-    }
-    return m_indexerConnectorAsync->getDroppedEvents();
-}
-
-void WIndexerConnector::index(std::string_view index, std::string_view data)
-{
-    std::shared_lock lock(m_mutex);
-    if (m_indexerConnectorAsync)
-    {
-        try
-        {
-            m_indexerConnectorAsync->indexDataStream(index, data);
-        }
-        catch (const IndexerConnectorException& e)
-        {
-            LOG_WARNING("[indexer-connector] Error indexing data: {}", e.what());
-            return;
-        }
-        catch (const std::exception& e)
-        {
-            LOG_WARNING("[indexer-connector] Error indexing data: {}", e.what());
-            return;
-        }
-    }
-    else
-    {
-        LOG_DEBUG("[indexer-connector] IndexerConnectorAsync shutdown, cannot index data");
-    }
+    return totals().dropped + m_discardedAfterShutdown.load(std::memory_order_relaxed);
 }
 
 json::Json WIndexerConnector::getEngineRemoteConfig()
 {
-    std::shared_lock lock(m_mutex);
-    if (m_reader)
+    std::shared_ptr<indexer_client::IClient> reader;
     {
-        return remoteConfigFromClient(*m_reader, m_requestTimeout);
+        std::lock_guard lock(m_mutex);
+        reader = m_client;
     }
-    if (!m_indexerConnectorAsync)
+    if (!reader)
     {
-        throw std::runtime_error("IndexerConnectorAsync is not initialized");
+        throw std::runtime_error("The indexer connector is shut down");
     }
-
-    nlohmann::json query = {{"match_all", nlohmann::json::object()}};
-    nlohmann::json source = {{"includes", {"engine"}}, {"excludes", nlohmann::json::array()}};
-
-    return engineConfigFromHits(m_indexerConnectorAsync->search(REMOTE_CONF_INDEX, SINGLE_RESULT_SIZE, query, source));
+    return remoteConfigFromClient(*reader, m_requestTimeout);
 }
 
 }; // namespace wiconnector
