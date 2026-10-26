@@ -22,6 +22,7 @@
 #include <cstdint>
 #include <functional>
 #include <optional>
+#include <string>
 #include <vector>
 
 #include <sys/types.h>
@@ -65,6 +66,8 @@ namespace indexer_client::testing_hooks
     /// E6e (B): runs in the stripe flush before each op is admitted and before a drop's interval keys, both mutexes
     /// held; a throw keeps that op and the rest staged, counted nowhere.
     void setMidAdmitBatch(std::function<void()> hook);
+    /// E11e: the system CA stores tried, in order, when no CA is configured; nullopt restores the real list.
+    void setSystemCaPaths(std::optional<std::vector<std::string>> paths);
     /// E3b-1: capacity of the calling thread's bulk-response parser (0 before its first use); I65 caps it at 4 MiB.
     std::size_t parserCapacity();
     /// false makes RuntimeOwner::start create the NodeSet and the Prober without starting the probe (no round, no

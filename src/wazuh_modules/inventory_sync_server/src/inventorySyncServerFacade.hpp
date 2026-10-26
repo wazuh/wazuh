@@ -914,7 +914,8 @@ namespace invsync
          * Copies the Client under m_lifecycleMutex and reads it without, so the read can never delay
          * stop(); health() itself is a snapshot, no I/O.
          */
-        void logIndexerHealthTransition()
+        /// @return true while the Client's first probe round is still pending (the heartbeat then re-polls sooner).
+        bool logIndexerHealthTransition()
         {
             try
             {
@@ -925,7 +926,7 @@ namespace invsync
                 }
                 if (!client)
                 {
-                    return; // not built yet; the gate reports its own progress
+                    return false; // not built yet; the gate reports its own progress
                 }
 
                 const auto health = client->health();
@@ -935,11 +936,11 @@ namespace invsync
                     // Every node is born Down with no reason until the Client's first probe round (I190b): that
                     // is "not known yet", not "unreachable". Stay silent and leave the last state unset, so the
                     // first heartbeat after the round logs the real one.
-                    return;
+                    return true;
                 }
                 if (m_lastIndexerAvailable.has_value() && *m_lastIndexerAvailable == available)
                 {
-                    return;
+                    return false;
                 }
                 m_lastIndexerAvailable = available;
 
@@ -954,6 +955,7 @@ namespace invsync
                                "retried until one comes back; checking again every %d s.",
                                INVENTORY_SYNC_SERVER_HEARTBEAT_SECS);
                 }
+                return false;
             }
             // LCOV_EXCL_START -- a Client mid-teardown is the only thrower, and forcing that
             // interleaving from a test would pin a race, not behaviour
@@ -961,6 +963,7 @@ namespace invsync
             {
                 // The next heartbeat retries. Never let this kill the worker: run()'s barrier
                 // deliberately does not re-enter the loop.
+                return false;
             }
             // LCOV_EXCL_STOP
         }
@@ -1684,7 +1687,9 @@ namespace invsync
             while (true)
             {
                 tryStartHttpServer();
-                logIndexerHealthTransition();
+                bool firstRoundPending = logIndexerHealthTransition();
+                const auto nextHeartbeat =
+                    std::chrono::steady_clock::now() + std::chrono::seconds(INVENTORY_SYNC_SERVER_HEARTBEAT_SECS);
 
                 std::unique_lock<std::mutex> lock(m_waitMutex);
                 if (m_stopping)
@@ -1693,9 +1698,16 @@ namespace invsync
                 }
 
                 LOGFN_DEBUG1(moduleLogFn(), "inventory sync server heartbeat.");
-                m_waitCv.wait_for(lock,
-                                  std::chrono::seconds(INVENTORY_SYNC_SERVER_HEARTBEAT_SECS),
-                                  [this]() { return m_stopping.load(); });
+                // Until the first probe round ends the indexer's state is unknown: look again every second, so
+                // "reachable" is logged when the round ends and not a whole heartbeat later. Health only.
+                while (firstRoundPending && std::chrono::steady_clock::now() < nextHeartbeat &&
+                       !m_waitCv.wait_for(lock, std::chrono::seconds(1), [this]() { return m_stopping.load(); }))
+                {
+                    lock.unlock(); // the poll takes m_lifecycleMutex: never under m_waitMutex
+                    firstRoundPending = logIndexerHealthTransition();
+                    lock.lock();
+                }
+                m_waitCv.wait_until(lock, nextHeartbeat, [this]() { return m_stopping.load(); });
 
                 if (m_stopping)
                 {

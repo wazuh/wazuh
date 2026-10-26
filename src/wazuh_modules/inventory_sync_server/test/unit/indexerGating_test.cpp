@@ -431,6 +431,30 @@ TEST_F(IndexerGatingTest, HealthLogReportsUnreachableOnceTheFirstRoundFails)
     inventory_sync_server_stop();
 }
 
+/// While the first probe round is pending the worker looks again every second instead of a whole heartbeat (60 s)
+/// later: "reachable" follows the end of the round by about a second, with no test hook polling for it.
+TEST_F(IndexerGatingTest, HeartbeatRepollsUntilTheFirstProbeRoundEnds)
+{
+    auto events = invsync::test::installAlwaysAvailableFakeIndexers();
+    events->m_clientUsable.store(false);
+    events->m_clientProbed.store(false);
+
+    const auto path = uniqueSocketPath("health-repoll");
+    const auto config = makeConfig(path);
+
+    inventory_sync_server_start(testLogCallback, &config);
+    ASSERT_TRUE(LogRecorder::waitForMessageContaining("listening on"));
+    std::this_thread::sleep_for(std::chrono::milliseconds {1500}); // at least one re-poll before the round ends
+    EXPECT_FALSE(LogRecorder::sawMessageContaining("No configured indexer host"));
+
+    events->m_clientUsable.store(true);
+    events->m_clientProbed.store(true);
+    EXPECT_TRUE(LogRecorder::waitForMessageContaining("indexer is reachable", std::chrono::seconds {5}))
+        << "the worker waited out the whole heartbeat";
+
+    inventory_sync_server_stop();
+}
+
 TEST_F(IndexerGatingTest, OneHeartbeatProducesExactlyOneFailedAttempt)
 {
     invsync::test::installFakeIndexersWithFailingSync("simulated sync failure");

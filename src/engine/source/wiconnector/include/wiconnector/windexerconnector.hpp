@@ -35,6 +35,7 @@ struct Config
         std::vector<std::string> cacert; ///< Path to the CA bundle file. '/certificate_authorities'
         std::string cert;                ///< The certificate to connect to OpenSearch. '/certificate'
         std::string key;                 ///< The key to connect to OpenSearch.'/key'
+        bool verifyCertificates {true};  ///< Verify the server certificate. '/verify_certificates'
     } ssl;                               ///< SSL options. '/ssl'
 
     std::string toJson() const;

@@ -14,10 +14,12 @@
 #include "contentSink.hpp"
 #include "fakes/fakeIndexerQueryPort.hpp"
 #include "gtest/gtest.h"
+#include <algorithm>
 #include <atomic>
 #include <chrono>
 #include <condition_variable>
 #include <mutex>
+#include <numeric>
 #include <set>
 #include <thread>
 
@@ -381,4 +383,204 @@ TEST(PitPaginatorTest, TokenOrderingIsNumericForIntegersAndLexicographicOtherwis
     EXPECT_TRUE(PitPaginator::tokenLess("abc", "abd"));
     EXPECT_TRUE(PitPaginator::tokenLess("", "anything"));
     EXPECT_FALSE(PitPaginator::tokenLess("anything", ""));
+}
+
+namespace
+{
+    /**
+     * @brief A data set behind the fake port whose responses are "too large" over a byte budget.
+     *
+     * Documents 1..N, sliced as OpenSearch does here ((k - 1) % max == id), each with a weight; a
+     * search answers the next `size` documents of its slice after `search_after[0]`, or throws
+     * ResponseTooLargeError when their weights add up to more than @p cap.
+     */
+    struct WeightedData
+    {
+        std::vector<std::size_t> weights; ///< weights[k - 1] is document k's.
+        std::size_t cap {0};
+
+        nlohmann::json answer(const FakeIndexerQueryPort::SearchCall& call) const
+        {
+            std::size_t sliceId = 0;
+            std::size_t sliceMax = 1;
+            if (call.slice.has_value())
+            {
+                sliceId = call.slice->at("id").get<std::size_t>();
+                sliceMax = call.slice->at("max").get<std::size_t>();
+            }
+            std::uint64_t after = 0;
+            if (call.searchAfter.has_value())
+            {
+                after = call.searchAfter->at(0).get<std::uint64_t>();
+            }
+            auto hits = nlohmann::json::array();
+            std::size_t bytes = 0;
+            for (std::uint64_t k = after + 1; k <= weights.size() && hits.size() < call.size; ++k)
+            {
+                if ((k - 1) % sliceMax != sliceId)
+                {
+                    continue;
+                }
+                bytes += weights[k - 1];
+                hits.push_back(FakeIndexerQueryPort::hit("CVE-" + std::to_string(k), k));
+            }
+            if (bytes > cap)
+            {
+                throw content_manager::ResponseTooLargeError {"PIT search failed: item_permanent: response too large"};
+            }
+            return FakeIndexerQueryPort::hitsOf(std::move(hits));
+        }
+    };
+
+    /// The `_source.offset` of every delivered document, in delivery order.
+    std::vector<std::uint64_t> deliveredOffsets(const RecordingSink& sink)
+    {
+        std::vector<std::uint64_t> offsets;
+        for (const auto& page : sink.pages)
+        {
+            for (const auto& hit : page)
+            {
+                offsets.push_back(hit.at("_source").at("offset").get<std::uint64_t>());
+            }
+        }
+        return offsets;
+    }
+} // namespace
+
+// A page over the size cap is asked again, same cursor, with half the hits until it fits; the pages
+// that follow keep the reduced size, then grow back. Nothing is lost or repeated, and a page cut
+// down for size is not mistaken for the end of the data.
+TEST(PitPaginatorTest, TooLargePageIsHalvedOnTheSameCursorAndGrowsBack)
+{
+    WeightedData data;
+    data.weights.assign(200, 1);
+    for (std::size_t k = 41; k <= 50; ++k)
+    {
+        data.weights[k - 1] = 30; // Documents 41..50: at most 3 of them fit in a page.
+    }
+    data.cap = 100;
+
+    FakeIndexerQueryPort port;
+    port.state()->onSearch = [&data](const FakeIndexerQueryPort::SearchCall& call, std::size_t) -> nlohmann::json
+    {
+        return data.answer(call);
+    };
+
+    std::atomic<bool> stop {false};
+    PitSession session {port, pitConfig()};
+    PitPaginator paginator {port, session, stop};
+    RecordingSink sink;
+
+    const auto outcome = paginator.run(specOf(20), sink, "topic");
+
+    EXPECT_TRUE(outcome.error.empty()) << outcome.error;
+    EXPECT_EQ(outcome.documentsDelivered, 200U);
+    EXPECT_EQ(outcome.highestPageToken, "200");
+    std::vector<std::uint64_t> expected(200);
+    std::iota(expected.begin(), expected.end(), 1);
+    EXPECT_EQ(deliveredOffsets(sink), expected) << "every document once, in order";
+
+    const auto& searches = port.state()->searches;
+    std::vector<std::size_t> sizes;
+    for (std::size_t i = 0; i < searches.size(); ++i)
+    {
+        sizes.push_back(searches[i].size);
+    }
+    // 1-20, 21-40, then 41-60 is too large: 10 (41-50, too large), 5 (41-45, too large), 2 (41-42) fits.
+    // From there pages of 2 until four fit in a row (41-48), then 4, 8, 16 and 20 again.
+    ASSERT_GE(sizes.size(), 14U);
+    EXPECT_EQ((std::vector<std::size_t> {sizes.begin(), sizes.begin() + 14}),
+              (std::vector<std::size_t> {20, 20, 20, 10, 5, 2, 2, 2, 2, 4, 4, 4, 4, 8}));
+    // The retries repeat the failed page's cursor.
+    EXPECT_EQ(*searches[2].searchAfter, nlohmann::json::array({40, "CVE-40"}));
+    EXPECT_EQ(*searches[3].searchAfter, nlohmann::json::array({40, "CVE-40"}));
+    EXPECT_EQ(*searches[4].searchAfter, nlohmann::json::array({40, "CVE-40"}));
+    EXPECT_EQ(*searches[5].searchAfter, nlohmann::json::array({40, "CVE-40"}));
+    // Past the heavy stretch the size is back to 20, and the last page (short against 20) ends the fetch.
+    EXPECT_EQ(sizes.back(), 20U);
+    EXPECT_EQ(std::count(sizes.begin(), sizes.end(), 1U), 0) << "never cut further than needed";
+}
+
+// Every slice halves on its own; their union is the whole data set, each document exactly once.
+TEST(PitPaginatorTest, SlicedFetchHalvesPerSliceWithoutLosingDocuments)
+{
+    WeightedData data;
+    data.weights.assign(301, 1);
+    for (std::size_t k = 100; k <= 160; ++k)
+    {
+        data.weights[k - 1] = 7;
+    }
+    data.cap = 40;
+
+    FakeIndexerQueryPort port;
+    port.state()->onSearch = [&data](const FakeIndexerQueryPort::SearchCall& call, std::size_t) -> nlohmann::json
+    {
+        return data.answer(call);
+    };
+
+    std::atomic<bool> stop {false};
+    PitSession session {port, pitConfig()};
+    PitPaginator paginator {port, session, stop};
+    RecordingSink sink;
+
+    const auto outcome = paginator.run(specOf(32, 2), sink, "topic");
+
+    EXPECT_TRUE(outcome.error.empty()) << outcome.error;
+    EXPECT_EQ(outcome.documentsDelivered, 301U);
+    auto offsets = deliveredOffsets(sink);
+    std::sort(offsets.begin(), offsets.end());
+    std::vector<std::uint64_t> expected(301);
+    std::iota(expected.begin(), expected.end(), 1);
+    EXPECT_EQ(offsets, expected);
+}
+
+// One document that does not fit on its own is the error it was before: the fetch fails, with the
+// documents before it delivered and the size cut down to one hit first.
+TEST(PitPaginatorTest, OneDocumentTooLargeOnItsOwnFailsTheFetch)
+{
+    WeightedData data;
+    data.weights.assign(30, 1);
+    data.weights[12 - 1] = 1000;
+    data.cap = 100;
+
+    FakeIndexerQueryPort port;
+    port.state()->onSearch = [&data](const FakeIndexerQueryPort::SearchCall& call, std::size_t) -> nlohmann::json
+    {
+        return data.answer(call);
+    };
+
+    std::atomic<bool> stop {false};
+    PitSession session {port, pitConfig()};
+    PitPaginator paginator {port, session, stop};
+    RecordingSink sink;
+
+    const auto outcome = paginator.run(specOf(8), sink, "topic");
+
+    EXPECT_NE(outcome.error.find("response too large"), std::string::npos) << outcome.error;
+    EXPECT_EQ(deliveredOffsets(sink), (std::vector<std::uint64_t> {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11}));
+    const auto& searches = port.state()->searches;
+    ASSERT_FALSE(searches.empty());
+    EXPECT_EQ(searches.back().size, 1U);
+    EXPECT_EQ(*searches.back().searchAfter, nlohmann::json::array({11, "CVE-11"}));
+}
+
+// Any other failure is not retried with a smaller page.
+TEST(PitPaginatorTest, OtherFailuresAreNotHalved)
+{
+    FakeIndexerQueryPort port;
+    port.state()->onSearch = [](const auto&, std::size_t) -> nlohmann::json
+    {
+        throw std::runtime_error("PIT search failed: client_4xx: 400 parsing_exception");
+    };
+
+    std::atomic<bool> stop {false};
+    PitSession session {port, pitConfig()};
+    PitPaginator paginator {port, session, stop};
+    RecordingSink sink;
+
+    const auto outcome = paginator.run(specOf(16), sink, "topic");
+
+    EXPECT_EQ(outcome.error, "PIT search failed: client_4xx: 400 parsing_exception");
+    ASSERT_EQ(port.state()->searches.size(), 1U);
+    EXPECT_EQ(port.state()->searches.front().size, 16U);
 }

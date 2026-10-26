@@ -600,12 +600,14 @@ namespace indexer_client::detail::write
         /// E5c: one completed bulk request of this bucket (`bytes` of batch); `latencyMicros` only with an HTTP answer.
         /// `success` (a 2xx answer) re-arms the ambiguous edge (I105).
         void countBulk(std::uint64_t bytes, std::optional<std::uint64_t> latencyMicros, bool success);
-        /// I105: a bulk answered `httpStatus` (500/502/504) that the sender fails Ambiguous without resending
-        /// (onAmbiguous5xx = Fail); `ops` is how many of its ops it resolved Failed(Ambiguous) (never 0: the late ones,
-        /// won by another resolution, are not counted and a bulk whose ops were all late is not reported). The first
-        /// one after a 2xx bulk of this bucket (or since its creation) logs one WARN; the next 2xx re-arms it
-        /// (countBulk). Called with no lock held; emits the line itself.
-        void countAmbiguous(int httpStatus, std::uint64_t ops);
+        /// I105: a bulk answered `httpStatus` (500/502/504), or whose response went over max_response_bytes
+        /// (`responseTooLarge`: the node answered, so it may have applied it; the WARN then names the cap, not the
+        /// status), that the sender fails Ambiguous without resending (onAmbiguous5xx = Fail); `ops` is how many of its
+        /// ops it resolved Failed(Ambiguous) (never 0: the late ones, won by another resolution, are not counted and a
+        /// bulk whose ops were all late is not reported). The first one after a 2xx bulk of this bucket (or since its
+        /// creation) logs one WARN; the next 2xx re-arms it (countBulk). Called with no lock held; emits the line
+        /// itself.
+        void countAmbiguous(int httpStatus, std::uint64_t ops, bool responseTooLarge);
         BucketStats stats() const;
         /// The metrics of this bucket (metrics.hpp BucketMetrics), read under the bucket mutex.
         BucketMetrics metrics() const;
@@ -773,6 +775,7 @@ namespace indexer_client::detail::write
             Edge edge {Edge::Quota80};
             std::uint64_t charge {0};
             int httpStatus {0};
+            bool responseTooLarge {false}; ///< Ambiguous: the response went over max_response_bytes.
         };
         /// Queues `line` (m_mutex held); a failed allocation drops the line, never a counter (G-diff E6e P3-1).
         void pushEdgeLocked(const EdgeLine& line) noexcept;

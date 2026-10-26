@@ -70,7 +70,9 @@ namespace indexer_client::detail::query
         template<class T>
         Outcome<T> failFrom(const Outcome<QueryResponse>& other)
         {
-            return Outcome<T>::failure(other.cause, other.reason, other.httpStatus);
+            auto out = Outcome<T>::failure(other.cause, other.reason, other.httpStatus);
+            out.responseTooLarge = other.responseTooLarge;
+            return out;
         }
 
         /// The cause a request on this PIT ends with before being sent, if any (pit.hpp EXPIRY and SHUTDOWN).
@@ -191,7 +193,7 @@ namespace indexer_client::detail::query
             const auto cap = pit->client->maxResponseBytes;
             const Classifier classify = [pit, cap](const HttpResult& result)
             {
-                auto response = classifyPitSearch(result, cap);
+                auto response = classifyPitSearch(result, cap, pit->wholeResponseCap);
                 if (response.verdict == QueryVerdict::Fail && response.cause == Cause::PitExpired)
                 {
                     markExpired(*pit);
@@ -293,6 +295,7 @@ namespace indexer_client::detail::query
 
         const auto slots = std::make_shared<CreateSlots>();
         const auto keepAlive = pitOptions.keepAlive;
+        const auto wholeResponseCap = pitOptions.wholeResponseCap;
         EngineHooks hooks;
         // I89/I91: one slot per attempt; a slot no attempt settled (a "no node" wait) is kept for the next one.
         hooks.preAttempt = [slots, registry]() -> std::optional<PreAttemptAbort>
@@ -369,6 +372,7 @@ namespace indexer_client::detail::query
         state->keepAlive = keepAlive;
         state->generation = g_generation.fetch_add(1, std::memory_order_relaxed) + 1;
         state->options = options;
+        state->wholeResponseCap = wholeResponseCap;
         state->indices = std::move(indices);
         state->client = client;
         state->registry = registry;

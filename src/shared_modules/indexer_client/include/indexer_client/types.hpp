@@ -88,7 +88,8 @@ namespace indexer_client
         InvalidArgument,
         InvalidState,
         UsageError,
-        /// A bulk answered 500/502/504 by the indexer, failed without resending (BucketSpec::onAmbiguous5xx = Fail).
+        /// A bulk answered 500/502/504 by the indexer, or whose response went over max_response_bytes, failed without
+        /// resending (BucketSpec::onAmbiguous5xx = Fail).
         Ambiguous
     };
 
@@ -114,6 +115,10 @@ namespace indexer_client
         Cause cause {Cause::None};
         int httpStatus {0};
         std::string reason;
+        /// Queries only: the failure (always Cause::ItemPermanent, never retried by the library) is a response over
+        /// the query's size cap (maxResponseBytes / QUERY_DOM_FACTOR, or maxResponseBytes on the wire). The same
+        /// request asking for fewer hits may fit; the caller decides (the content manager's paginator halves its page).
+        bool responseTooLarge {false};
 
         bool ok() const noexcept
         {
@@ -234,10 +239,11 @@ namespace indexer_client
 
     using Callback = std::function<void(const OpResult&)>; ///< Runs on the CPU pool; must be short and never block.
 
-    /// What a bucket does with a `_bulk` answered 500, 502 or 504 (BucketSpec::onAmbiguous5xx).
+    /// What a bucket does with a `_bulk` answered 500, 502 or 504, or whose response went over max_response_bytes
+    /// (BucketSpec::onAmbiguous5xx).
     enum class AmbiguousPolicy
     {
-        Retry, ///< Requeue the batch with a counted attempt, as any other 5xx.
+        Retry, ///< Requeue the batch with a counted attempt, as any other 5xx; split an oversized answer like a 413.
         Fail   ///< Resolve every op Failed(Ambiguous) without resending it.
     };
 
@@ -260,9 +266,10 @@ namespace indexer_client
         /// pins the retry to that node for ambiguous_retry_window_ms. See README § Ordered buckets.
         bool ordered {false};
         /// A `_bulk` answered 500, 502 or 504 may have been applied by the indexer: Retry resends it (a duplicate in an
-        /// index without `_id`), Fail resolves its ops Failed(Ambiguous) without resending them. A 503 is always
-        /// retried. A transport timeout after the request left stays Retry under both (known asymmetry: it may still
-        /// duplicate in buckets without `_id`).
+        /// index without `_id`), Fail resolves its ops Failed(Ambiguous) without resending them. A response over
+        /// max_response_bytes is ambiguous too (the node answered, the client did not read it): Retry splits the batch
+        /// and resends the halves, Fail resolves it like a 500. A 503 is always retried. A transport timeout after the
+        /// request left stays Retry under both (known asymmetry: it may still duplicate in buckets without `_id`).
         AmbiguousPolicy onAmbiguous5xx {AmbiguousPolicy::Retry};
         /// The producer guarantees every body is compact JSON with no raw '\n': submit, post and Group::add skip the
         /// per-op search for it (an empty body is still InvalidArgument). Risk: a stray '\n' is not caught locally;
@@ -293,6 +300,11 @@ namespace indexer_client
     {
         Duration keepAlive {Duration {300000}};
         bool expandWildcardsAll {false};
+        /// I229: the pages of this PIT (Pit::search, PitSession::next) are capped by maxResponseBytes itself instead of
+        /// maxResponseBytes / QUERY_DOM_FACTOR (8 MiB with the default 64 MiB), so one page may parse into a DOM
+        /// several times maxResponseBytes. For content downloads (the content manager), whose single documents can
+        /// exceed the query cap; every other query keeps it.
+        bool wholeResponseCap {false};
     };
 
     struct DbqOptions final

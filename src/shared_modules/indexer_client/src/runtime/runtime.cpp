@@ -37,6 +37,7 @@
 
 #include "health/nodeSet.hpp"
 #include "health/prober.hpp"
+#include "loggerHelper.h"
 #include "query/pit.hpp"
 #include "query/query.hpp"
 #include "runtime/logSummary.hpp"
@@ -55,6 +56,8 @@ namespace indexer_client
 {
     namespace
     {
+        constexpr const char* TAG = "indexer-client";
+
         thread_local bool t_onRuntimeThread = false;
 
         /// Usage errors detected by the library (I37), process-wide; read through detail::testing::usageErrors().
@@ -889,6 +892,15 @@ namespace indexer_client
         if (!tls.ok())
         {
             return Result::failure(tls.cause, std::move(tls.reason));
+        }
+        // E11e: once per start, before any thread; nothing when every host is http.
+        if (!tls.value.warning.empty())
+        {
+            logWarn(TAG, "%s", tls.value.warning.c_str());
+        }
+        if (!tls.value.notice.empty())
+        {
+            logInfo(TAG, "%s", tls.value.notice.c_str());
         }
         Credentials credentials;
         // Every exit that does not hand them to the transport wipes the local copies (best effort; empty once moved).

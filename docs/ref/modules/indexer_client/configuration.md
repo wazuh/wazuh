@@ -18,7 +18,7 @@ For the module overview, see [Indexer Client](README.md).
 
 **XML Section:** `<indexer>`
 
-The section is **required**, and so is `<hosts>` with at least one `<host>`: without them the configuration is rejected and the manager does not start. `<ssl>` is optional, but an `https` host needs at least one `<ca>` (see [certificate_authorities](#certificate_authorities)).
+The section is **required**, and so is `<hosts>` with at least one `<host>`: without them the configuration is rejected and the manager does not start. `<ssl>` is optional. An `https` host without a `<ca>` is verified against the first existing system CA store, or not verified (with a warning) when none of the 5 system paths exists (see [verify_certificates](#verify_certificates)).
 
 The installer writes this section:
 
@@ -47,7 +47,7 @@ List of Indexer node URLs, one per `<host>` child element.
 
 ### ssl
 
-TLS material of the connection. Relative paths are resolved from the manager home (`/var/wazuh-manager`).
+TLS material and verification policy of the connection. The runtime resolves a relative path from the manager home (`/var/wazuh-manager`), but the credential resolver only accepts files directly inside `/etc/wazuh-manager/certs` and reports anything else (a relative path included) as `INVALID`: use absolute paths in that directory.
 
 The configuration check run before every start (`wazuh-manager-conf validate`, and `wazuh-manager-modulesd -t`) does **not** open these files. They are read when modulesd starts the runtime, and any problem stops the runtime from starting, with the reason in the log (see [Troubleshooting](README.md#troubleshooting)). The files are read once: replacing a CA, certificate or key takes a restart.
 
@@ -57,7 +57,27 @@ CA certificates used to verify the Indexer's certificate, one per `<ca>` child e
 
 - **Default value:** empty list
 - **Allowed values:** paths to PEM-encoded CA files, each at most 1 MiB and holding at least one certificate
-- **Note:** Required as soon as one host uses `https` (`indexer host '<url>' uses https but no ssl.certificate_authorities is configured`). Every file must exist and be well-formed PEM. With several CAs, all of them are trusted; the files are concatenated in memory, no merged file is written. Verification is always on (peer and host name), the minimum protocol is TLS 1.2, and there is no insecure mode.
+- **Note:** Optional. Without any `<ca>` the system CA store is used (see [verify_certificates](#verify_certificates)). Every configured file must exist and be well-formed PEM, also when `verify_certificates` is `no`. With several CAs, all of them are trusted; the files are concatenated in memory, no merged file is written. A configured CA always wins over the system store. The minimum protocol is TLS 1.2.
+
+#### verify_certificates
+
+Whether the runtime verifies the Indexer's certificate and host name. Same behaviour as the Wazuh 5.0 connector, so an update keeps connecting.
+
+- **Default value:** `yes`
+- **Allowed values:** `yes`, `no`
+- **Note:** In the XML the values are `yes` and `no`; in the JSON schema and the effective configuration it is the boolean `ssl.verify_certificates`. What the runtime does, for an `https` host:
+
+| `verify_certificates` | `<ca>` configured | Trust anchor | Peer / host name checked | Log at start |
+|---|---|---|---|---|
+| `yes` | yes | the configured CAs | yes / yes | none |
+| `yes` | no, a system store exists | the first **existing** of `/etc/ssl/certs/ca-certificates.crt`, `/etc/pki/tls/certs/ca-bundle.crt`, `/usr/share/ssl/certs/ca-bundle.crt`, `/usr/local/share/certs/ca-root-nss.crt`, `/etc/ssl/cert.pem` | yes / yes | INFO `indexer TLS: using the system CA store <path>` |
+| `yes` | no, none of the five exists | none (curl's built-in bundle is never used) | no / yes | WARN `indexer TLS: no CA configured and no system CA store found (<paths>); the server certificate is not verified (the host name is) for https host(s) <hosts>; the indexer credentials are sent to an unverified server` |
+| `no` | either | the configured CA, if any | no / no | WARN `indexer TLS: certificate and host name verification disabled (verify_certificates is false) for https host(s) <hosts>; the indexer credentials are sent to an unverified server` |
+
+- The first existing path of the list is the one used, whatever it holds: a broken store (unreadable, not PEM) makes every handshake fail, it does not switch verification off and the next path is not tried.
+- A malformed `<ca>` or client pair is an error whatever the value: with `no` they are still loaded and validated.
+- The INFO and the WARN are logged once per start, and only when some host is `https`. Plain `http` hosts are not affected.
+- The Python framework (`wazuh.core.indexer`) reads the same option. With `no` it does not verify the server certificate and, unlike modulesd and the engine, it cannot check the host name either (Python cannot check the host name without verifying the peer); it logs `indexer TLS: certificate verification disabled (verify_certificates is false); the host name is not checked either; the indexer credentials are sent to an unverified server`. With `yes` and no CA it uses the same first existing system path, else OpenSSL's default trust; with no trust at all it keeps verifying, so its connections fail (fail-closed, as before this option existed) and it logs `indexer TLS: no CA configured, no system CA store found and no default trust available; ...`.
 
 #### certificate
 
@@ -104,8 +124,8 @@ Internal options are set in `/etc/wazuh-manager/wazuh-manager-internal-options.c
 These are the options of the runtime that `wazuh-manager-modulesd` owns and every consumer shares ([Inventory Sync Server](../inventory-sync-server/README.md), [Vulnerability Scanner](../vulnerability-scanner/README.md)).
 
 - Every value is an unsigned decimal integer; a leading zero does not mean octal.
-- **The family is validated in full** by `wazuh-manager-modulesd -t` and again at startup, before any module thread exists, and a failure is logged with the offending key: a value outside its range, a value that is not an unsigned decimal integer, an empty value, **or a key under the prefix that is not listed here (a typo is an error, not an ignored line)**. In every case modulesd refuses to start. A key that is not under the `wazuh_modules.indexer_client_` prefix is not read by the runtime.
-- The runtime starts only when a consumer exists (the Inventory Sync Server is configured, or the Vulnerability Scanner is enabled); with none, the options are still validated but no threads or probes are created.
+- **When a consumer exists, the family is validated in full** by `wazuh-manager-modulesd -t` and again at startup, before any module thread exists, and a failure is logged with the offending key: a value outside its range, a value that is not an unsigned decimal integer, an empty value, **or a key under the prefix that is not listed here (a typo is an error, not an ignored line)**. In every case modulesd refuses to start. A key that is not under the `wazuh_modules.indexer_client_` prefix is not read by the runtime.
+- The runtime starts only when a consumer exists (the Inventory Sync Server is configured, or the Vulnerability Scanner is enabled); with none, the options are **not** validated (a typo in a `wazuh_modules.indexer_client_*` key passes `modulesd -t`) and no threads or probes are created.
 - The table is the operator's copy of the schema, `kSchema` in `src/shared_modules/indexer_client/src/config/runtimeConfig.cpp`; the library README owns the semantics. Every minimum is 1 except `log_summary_interval_ms`, whose minimum is 1000; bounds are inclusive.
 
 | Name (after the prefix) | Unit | Allowed values | Default |
@@ -135,6 +155,7 @@ The ones an operator reaches for:
 - `request_timeout_ms` - the per-request timeout of every bucket. The Inventory Sync Server's [post-deletion sweep](../inventory-sync-server/architecture.md#the-post-deletion-sweep) window is derived from it (`request_timeout_ms + 5 s`).
 - `global_quota_bytes` - the memory ceiling every bucket's quota is carved from.
 - `probe_interval_ms`, `probe_timeout_ms` - the host health probe.
+- `max_response_bytes` - the largest response body the client reads. A query answer is held to an eighth of it (8 MiB by default), because parsing builds a structure several times the body's size; the content pages of the content manager (the vulnerability feed, the Engine's ruleset and IoCs) use the whole value, since single CTI documents exceed 8 MiB, and a page over it is requested again with fewer documents. Raising it raises the memory a feed download may take. A `_bulk` answer over it may have been applied: a bucket with `onAmbiguous5xx = Retry` (the three above) splits the batch and resends the halves; one with `Fail` (the engine's `events` and `raw`) fails every operation `ambiguous` without resending it.
 - `ambiguous_retry_window_ms` - the longest an `agent-state` bucket stays pinned to one indexer node after an ambiguous `5xx` (see [Effects to know](../inventory-sync-server/architecture.md#effects-to-know)).
 - `drain_ms` - the shutdown budget used when no deadline was fixed first. On a normal stop modulesd fixes one (see [Start and stop](README.md#start-and-stop)); `drain_ms` applies to a `Client` destroyed, or a runtime stopped, without it.
 - `network_threads`, `cpu_threads` - the runtime's threads, shared by every consumer.
@@ -195,6 +216,33 @@ If the Indexer nodes' certificates come from different CAs:
   </ssl>
 </indexer>
 ```
+
+### System CA store (no CA configured)
+
+The indexer's certificate comes from a public or corporate CA that the operating system already trusts:
+
+```xml
+<indexer>
+  <hosts>
+    <host>https://indexer.example.com:9200</host>
+  </hosts>
+</indexer>
+```
+
+### Verification disabled (testing only)
+
+```xml
+<indexer>
+  <hosts>
+    <host>https://10.0.0.1:9200</host>
+  </hosts>
+  <ssl>
+    <verify_certificates>no</verify_certificates>
+  </ssl>
+</indexer>
+```
+
+Certificate and host name are not checked and a WARN is logged at every start. Do not use it in production: the indexer credentials travel to whoever answers.
 
 ### Plain HTTP (development only)
 

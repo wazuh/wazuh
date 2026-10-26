@@ -13,10 +13,13 @@
 #ifndef _INDEXER_CLIENT_TLS_MATERIAL_HPP
 #define _INDEXER_CLIENT_TLS_MATERIAL_HPP
 
-// TLS material of <indexer>.ssl, read and validated once in RuntimeOwner::start (I48). Lives in TransportShared and is
-// handed to curl as CURL_BLOB_NOCOPY blobs, so it must outlive every multi of the transport.
+// TLS material of <indexer>.ssl, read and validated once in RuntimeOwner::start (I48), and the verification policy
+// derived from it (plan 18 E11e: ssl.verify_certificates and the system CA store of the v1). Lives in TransportShared
+// and is handed to curl as CURL_BLOB_NOCOPY blobs (the system store as a path), so it must outlive every multi of the
+// transport.
 
 #include <string>
+#include <vector>
 
 #include "indexer_client/runtimeConfig.hpp"
 #include "indexer_client/types.hpp"
@@ -29,6 +32,16 @@ namespace indexer_client::detail
         std::string
             certificateChain;   ///< The client certificate file as is (leaf + optional intermediates). Empty: no mTLS.
         std::string privateKey; ///< Unencrypted PEM key matching the first certificate. Empty: no mTLS.
+        /// No CA configured and verification on: the first existing path of the system CA stores, handed to curl as
+        /// CAINFO (curl reads it; a broken store fails the handshake). Empty: a configured CA, or no store at all.
+        std::string systemCaPath;
+        bool verifyPeer {true}; ///< CURLOPT_SSL_VERIFYPEER.
+        bool verifyHost {true}; ///< CURLOPT_SSL_VERIFYHOST (2 when true, 0 when false).
+        /// The WARN RuntimeOwner::start logs once (verification off, or no CA and no system store, with some https
+        /// host); empty when there is nothing to warn about.
+        std::string warning;
+        /// The INFO it logs once when the system CA store is used for some https host; empty otherwise.
+        std::string notice;
 
         TlsMaterial() = default;
         /// Wipes the private key (I55, best effort) on every path, also when a constructor that took it by value
@@ -45,8 +58,17 @@ namespace indexer_client::detail
         }
     };
 
-    /// Reads and validates the configured material (I48), whatever the hosts' scheme:
-    /// - every host is http or https (case-insensitive); some https host without any CA ⇒ InvalidConfig;
+    /// The system CA stores the v1 tried, in its order (http-request's DEFAULT_CAINFO_PATHS, urlRequest.hpp).
+    const std::vector<std::string>& systemCaStorePaths();
+
+    /// Reads and validates the configured material (I48), whatever the hosts' scheme, and derives the policy:
+    /// - every host is http or https (case-insensitive);
+    /// - verify_certificates true and a CA configured: peer and host verified against it; no CA: the first path of
+    ///   systemCaStorePaths() that exists (std::filesystem::status: only "not found" / "not a directory" mean absent;
+    ///   any other error picks the path and fails closed in the handshake), never read here; none exists: the peer is
+    ///   not verified, the host name is (v1/curl parity), and `warning` is set when some host is https;
+    /// - verify_certificates false: neither peer nor host verified, `warning` set when some host is https; the
+    ///   material below is loaded and validated all the same;
     /// - each CA file (at most 1 MiB) exists, parses as curl parses CAINFO_BLOB (`PEM_X509_INFO_read_bio`, no
     ///   malformed block anywhere) and holds at least one certificate; the concatenation parses too and stays below
     ///   curl's blob limit (8 000 000 bytes);

@@ -28,6 +28,9 @@ namespace indexer_client
         std::vector<std::string> certificateAuthorities;
         std::string certificate;
         std::string key;
+        /// `indexer.ssl.verify_certificates` (default true, also when absent): false turns off server certificate and
+        /// host name verification; the CA and client pair above are still loaded and validated.
+        bool verifyCertificates {true};
     };
 
     /// Typed, validated runtime configuration (RF-18). Every field has exactly one entry in the schema (`kSchema`

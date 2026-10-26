@@ -79,7 +79,10 @@ namespace indexer_client::detail::query
     /// SEARCH_CONTEXT_MISSING ⇒ Fail PitExpired; any other 404 as classifySearch. 2xx: capped and parsed; with
     /// _shards.failed > 0, SEARCH_CONTEXT_MISSING in any _shards.failures[] ⇒ Fail PitExpired and any other failure
     /// ⇒ Retry (a partial answer is never a page); else Ok. The caller owns the PIT state (expired, stale, pit_id).
-    QueryResponse classifyPitSearch(const HttpResult& result, std::uint64_t maxResponseBytes);
+    /// wholeResponseCap (PitOptions, I229): the 2xx cap is maxResponseBytes itself, not maxResponseBytes /
+    /// QUERY_DOM_FACTOR.
+    QueryResponse
+    classifyPitSearch(const HttpResult& result, std::uint64_t maxResponseBytes, bool wholeResponseCap = false);
 } // namespace indexer_client::detail::query
 
 #endif // _INDEXER_CLIENT_QUERY_RESPONSE_HPP

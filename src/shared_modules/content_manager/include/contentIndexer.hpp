@@ -13,10 +13,12 @@
 #ifndef _CONTENT_INDEXER_HPP
 #define _CONTENT_INDEXER_HPP
 
+#include "contentExport.hpp"
 #include <cstddef>
 #include <cstdint>
 #include <json.hpp>
 #include <optional>
+#include <stdexcept>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -34,6 +36,19 @@ namespace content_manager
         std::string id;                 ///< PIT id the indexer returned.
         std::uint64_t creationTime {0}; ///< Creation time the indexer returned.
         std::string keepAlive;          ///< Lease the PIT was opened with, e.g. "5m".
+    };
+
+    /**
+     * @brief A search whose response is over the indexer client's size cap for a query.
+     *
+     * Thrown by `IContentIndexer::search` (and `searchIndex`) instead of a plain `std::runtime_error`
+     * when the failure is the response's size, so the paginator can ask the same page again with fewer
+     * hits instead of failing the cycle. Any other failure stays a `std::runtime_error`.
+     */
+    class EXPORTED ResponseTooLargeError final : public std::runtime_error
+    {
+    public:
+        using std::runtime_error::runtime_error;
     };
 
     /**
@@ -83,6 +98,8 @@ namespace content_manager
          * @param source Optional `_source` filter.
          * @param slice Optional slice descriptor, e.g. `{"id": 0, "max": 2}`.
          * @return The `hits` object of the response.
+         * @throws ResponseTooLargeError The response is over the size cap of a query; the same
+         *         request with a smaller @p size may fit.
          */
         virtual nlohmann::json search(const ContentPit& pit,
                                       std::size_t size,

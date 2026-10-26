@@ -11,16 +11,19 @@
  */
 
 // Loading and validation of <indexer>.ssl (plan 18, I48) over the OpenSSL that libwazuhext exports. Nothing is written
-// to disk: the files are read once and handed to curl as in-memory blobs by the loops.
+// to disk: the files are read once and handed to curl as in-memory blobs by the loops. The system CA store (no CA
+// configured, E11e) is only located here, never read: curl loads it by path.
 
 #include "transport/tlsMaterial.hpp"
 
 #include <cerrno>
 #include <cstddef>
 #include <cstring>
+#include <filesystem>
 #include <memory>
 #include <string>
 #include <string_view>
+#include <system_error>
 #include <utility>
 
 #include <fcntl.h>
@@ -32,6 +35,8 @@
 #include <openssl/evp.h>
 #include <openssl/pem.h>
 #include <openssl/x509.h>
+
+#include "transport/seams.hpp"
 
 namespace indexer_client::detail
 {
@@ -248,18 +253,42 @@ namespace indexer_client::detail
             return hasScheme(host, "http://");
         }
 
+        /// "Does not exist" is only ENOENT / ENOTDIR; anything else (EACCES, ELOOP, EIO...) picks the path, so that
+        /// a store this process cannot read fails the handshake instead of turning verification off (I216). Never
+        /// access(R_OK): after the privilege drop it would turn an unreadable store into "no store".
+        bool pathExists(const std::string& path)
+        {
+            std::error_code error;
+            static_cast<void>(std::filesystem::status(path, error)); // Follows symlinks, as curl's open does.
+            if (!error)
+            {
+                return true;
+            }
+            return error != std::errc::no_such_file_or_directory && error != std::errc::not_a_directory;
+        }
+
+        std::string joined(const std::vector<std::string>& values)
+        {
+            std::string out;
+            for (const auto& value : values)
+            {
+                out += (out.empty() ? "" : ", ") + value;
+            }
+            return out;
+        }
+
         Result load(const RuntimeConfig& config)
         {
             TlsMaterial material;
             const auto& ssl = config.ssl;
 
-            // Hosts: http or https only; https needs a CA (I48).
-            bool anyHttps = false;
+            // Hosts: http or https only.
+            std::vector<std::string> httpsHosts;
             for (const auto& host : config.hosts)
             {
                 if (isHttps(host))
                 {
-                    anyHttps = true;
+                    httpsHosts.push_back(host);
                 }
                 else if (!isHttp(host))
                 {
@@ -308,15 +337,46 @@ namespace indexer_client::detail
                 return Result::failure(Cause::InvalidConfig,
                                        "indexer ssl.certificate_authorities: the concatenated files are not valid PEM");
             }
-            if (anyHttps && material.caBundle.empty())
+
+            // Verification policy (E11e, I207/I216): the v1's behaviour when updating from 5.0.
+            if (!ssl.verifyCertificates)
             {
-                for (const auto& host : config.hosts)
+                material.verifyPeer = false;
+                material.verifyHost = false;
+                if (!httpsHosts.empty())
                 {
-                    if (isHttps(host))
+                    material.warning = "indexer TLS: certificate and host name verification disabled "
+                                       "(verify_certificates is false) for https host(s) " +
+                                       joined(httpsHosts) +
+                                       "; the indexer credentials are sent to an unverified server";
+                }
+            }
+            else if (material.caBundle.empty())
+            {
+                const auto testPaths = seams::systemCaPaths();
+                const auto& paths = testPaths ? *testPaths : systemCaStorePaths();
+                for (const auto& path : paths)
+                {
+                    if (pathExists(path))
                     {
-                        return Result::failure(Cause::InvalidConfig,
-                                               "indexer host '" + host +
-                                                   "' uses https but no ssl.certificate_authorities is configured");
+                        material.systemCaPath = path; // The first existing one, whatever it holds (v1).
+                        break;
+                    }
+                }
+                if (!material.systemCaPath.empty() && !httpsHosts.empty())
+                {
+                    material.notice = "indexer TLS: using the system CA store " + material.systemCaPath;
+                }
+                if (material.systemCaPath.empty())
+                {
+                    material.verifyPeer = false; // The host name is still checked, as curl did in the v1.
+                    if (!httpsHosts.empty())
+                    {
+                        material.warning =
+                            "indexer TLS: no CA configured and no system CA store found (" + joined(paths) +
+                            "); the server certificate is not verified (the host name is) for https "
+                            "host(s) " +
+                            joined(httpsHosts) + "; the indexer credentials are sent to an unverified server";
                     }
                 }
             }
@@ -388,6 +448,18 @@ namespace indexer_client::detail
             return Result::success(std::move(material));
         }
     } // namespace
+
+    const std::vector<std::string>& systemCaStorePaths()
+    {
+        static const std::vector<std::string> PATHS {
+            "/etc/ssl/certs/ca-certificates.crt",     // Debian systems
+            "/etc/pki/tls/certs/ca-bundle.crt",       // Redhat and Mandriva
+            "/usr/share/ssl/certs/ca-bundle.crt",     // RedHat
+            "/usr/local/share/certs/ca-root-nss.crt", // FreeBSD
+            "/etc/ssl/cert.pem",                      // OpenBSD, FreeBSD, MacOS
+        };
+        return PATHS;
+    }
 
     TlsMaterial::~TlsMaterial()
     {

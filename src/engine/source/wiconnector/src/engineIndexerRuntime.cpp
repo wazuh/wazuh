@@ -240,7 +240,8 @@ indexer_client::Outcome<std::vector<indexer_client::BucketSpec>> engineBucketSpe
     events.bulk.maxAge = std::chrono::duration_cast<indexer_client::Duration>(options.flushInterval);
     // The v1 cut a bulk only by bytes and by time: no document count closes one (the library only requires > 0).
     events.bulk.maxDocs = std::numeric_limits<std::size_t>::max();
-    // Data streams without `_id`: resending an ambiguous 5xx would duplicate (I105). The engine only sends compact
+    // Data streams without `_id`: resending an ambiguous 5xx, or splitting a `_bulk` whose answer went over
+    // max_response_bytes, would duplicate (I105). The engine only sends compact
     // JSON from json::Json::str(), which escapes every '\n' (I125).
     events.onAmbiguous5xx = indexer_client::AmbiguousPolicy::Fail;
     events.trustedBodies = true;

@@ -26,7 +26,8 @@
 //                invalid_argument (Submit refusals and group adds).
 //   DropCause    queue_full (DropNewest + DropOldest), client_closed, shutdown, cancelled.
 //   FailCause    item_permanent, retry_exhausted, client_4xx, server_5xx, unavailable, invalid_state, ambiguous (a
-//                bulk answered 500/502/504 in a bucket with onAmbiguous5xx = Fail).
+//                bulk answered 500/502/504, or whose response went over max_response_bytes, in a bucket with
+//                onAmbiguous5xx = Fail).
 //   RetryCause   item_retryable, version_conflict, server_5xx, transport, other (ops requeued with a counted attempt,
 //                counted per op in Bucket::requeue from the op's last error).
 //

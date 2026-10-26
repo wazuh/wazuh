@@ -12,13 +12,13 @@ The library is not a daemon. modulesd starts **one runtime** with its own thread
 |---|---|---|---|---|
 | `wazuh-manager-modulesd` | Inventory Sync Server | `inventory_sync_server` | `inventory`, `agent-state` | Agent state writes (`/stateful`), `/stats` and `/config` documents, agent deletion, the by-query operations, and the Vulnerability Scanner's scan lane reads |
 | `wazuh-manager-modulesd` | Vulnerability Scanner | `vulnerability_scanner` | `vd-states` | Detections written to `wazuh-states-vulnerabilities`; the reads of its scans; the CVE feed download (the [Content Manager](../content_manager/README.md) reads `.wazuh-threatintel-vulnerabilities` and `.wazuh-cti-consumers` through the scanner's `Client`) |
-| `wazuh-manager-analysisd` (engine) | Engine | `analysisd` | — | Its event writes and its reads (content, remote configuration) go through a runtime of its own. The engine side is documented with the engine: see [Engine](#engine) |
+| `wazuh-manager-analysisd` (engine) | Engine | `analysisd` | `events`, `raw` | Its event writes and its reads (content, remote configuration) go through a runtime of its own. The engine side is documented with the engine: see [Engine](#engine) |
 
 The Python framework does not use the library: it reads the same `indexer` section and the same keystore credentials through the `keystore_server` socket (see [Keystore](../keystore/README.md#keystore_server)).
 
 ## How it works
 
-1. **Ownership.** modulesd loads `libwm_indexer_runtime.so` at run time and owns the runtime from its main thread. The runtime exists only when a consumer does: the Inventory Sync Server is configured, or the Vulnerability Scanner is enabled. Without one, the options are still validated but no thread or probe is created.
+1. **Ownership.** modulesd loads `libwm_indexer_runtime.so` at run time and owns the runtime from its main thread. The runtime exists only when a consumer does: the Inventory Sync Server is configured, or the Vulnerability Scanner is enabled. Without one nothing is validated or loaded: a typo in `wazuh_modules.indexer_client_*` or in the TLS files is not reported until a consumer is enabled.
 2. **Validation before the fork.** While modulesd reads its configuration (and so in `wazuh-manager-modulesd -t`), the `wazuh_modules.indexer_client_*` internal options and the `<indexer>` section are validated. A bad value stops modulesd: `Invalid indexer client configuration: <reason>`, naming the offending key.
 3. **Start.** After the startup gate and before any module thread, modulesd reads the indexer `username` and `password` from the [keystore](../keystore/README.md), loads the TLS files into memory and starts the runtime: `Indexer client runtime started.` A failure here is logged and modulesd **goes on without a runtime**; the modules that need it report their own failure and retry on their heartbeat, but the runtime is not retried until modulesd restarts (see [Troubleshooting](#troubleshooting)).
 4. **Threads.** The runtime owns `network_threads` I/O threads and `cpu_threads` pool threads, shared by every consumer (defaults 1 and 2). No bucket or `Client` creates threads.
@@ -32,8 +32,10 @@ The Python framework does not use the library: it reads the same `indexer` secti
 | `inventory` | `inventory_sync_server` | The writer waits up to 2 s, then the write fails | `inventory_sync_server_indexer_sync_max_retry_attempts` (default 5, `0` = unlimited) and `…_sync_max_retry_duration_seconds` (default 15 s) | `max(64 MiB, bulk + 2 KiB + 1 MiB)`, clipped to what the global quota leaves after `agent-state` | `inventory_sync_server_indexer_sync_connector_max_bulk_size` (default 10 MiB) |
 | `agent-state` (ordered: operations on one document are never in flight together) | `inventory_sync_server` | Refused at once (`503` to the agent) | Without an attempt or duration limit: an outage is buffered, bounded by the quota | `inventory_sync_server_indexer_async_max_queue_bytes`, at most a quarter of the global quota | `inventory_sync_server_indexer_async_bulk_max_bytes` (default 4 MiB) |
 | `vd-states` | `vulnerability_scanner` | The writer waits up to 2 s, then the write fails | `indexer_max_retry_attempts` (default 5) and `indexer_max_retry_duration_seconds` (default 15 s) | 64 MiB, at most a quarter of the global quota (at least 16 KiB) | `indexer_bulk_size_bytes` (default 10 MiB) |
+| `events` (weight 2) | `analysisd` (engine) | The newest event is dropped; the router never waits | Unlimited attempts and duration, delay capped by `analysisd.indexer_max_retry_delay`; an ambiguous `5xx` fails the write | `analysisd.indexer_queue_max_bytes` (`0` = the global quota) | `analysisd.indexer_bulk_max_bytes`, cut also by `analysisd.indexer_flush_interval` |
+| `raw` (weight 1) | `analysisd` (engine) | As `events` | As `events` | As `events` | As `events` |
 
-The option names are the internal options `wazuh_modules.<name>`. All three treat a version conflict (`409`) on a write as success and retry an ambiguous `5xx` (see below). The per-option semantics, ranges and the way an option that does not fit is clipped are in the consumers' pages: [Inventory Sync Server configuration](../inventory-sync-server/configuration.md#indexer-client-buckets-indexer_sync_-and-indexer_async_) and [Vulnerability Scanner configuration](../vulnerability-scanner/configuration.md#indexer_bulk_size_bytes).
+The option names are the internal options `wazuh_modules.<name>`. The modulesd buckets treat a version conflict (`409`) on a write as success and retry an ambiguous `5xx` (see below). The per-option semantics, ranges and the way an option that does not fit is clipped are in the consumers' pages: [Inventory Sync Server configuration](../inventory-sync-server/configuration.md#indexer-client-buckets-indexer_sync_-and-indexer_async_) and [Vulnerability Scanner configuration](../vulnerability-scanner/configuration.md#indexer_bulk_size_bytes).
 
 ### What the library does with a status
 
@@ -44,6 +46,7 @@ The option names are the internal options `wazuh_modules.<name>`. All three trea
 | `503`, `408`, `401`, `403` | Retried with backoff within the bucket's budget (a `401`/`403` also marks the node down on the next probe) |
 | `500`, `502`, `504` | Retried, because the three buckets above keep `onAmbiguous5xx = Retry`: the batch may have been applied, and every operation they send carries its `_id`, so a resend overwrites |
 | `413` | The batch is split in halves and resent; one operation that is still too large fails |
+| A `2xx` larger than `max_response_bytes` | Split in halves and resent like a `413`, because the three buckets above keep `onAmbiguous5xx = Retry` (the indexer may have applied it, but every operation carries its `_id`); one operation whose answer is still too large fails |
 | Any other `4xx` or a `3xx` | The whole batch fails, not retried |
 | `2xx` | Every item is read on its own: `created`/`updated`/`noop`/`deleted` are success; a delete of a missing document is success; `409` follows the bucket's conflict policy; `429`, `5xx` and `cluster_block_exception` items are retried; any other item error (a mapping rejection, a missing index) fails that operation only and is never retried |
 
@@ -89,7 +92,7 @@ Every line of the library carries the tag `wazuh-manager-modulesd:indexer-client
 | WARN | `Indexer client global quota is full (<charge> of <cap> bytes charged): every bucket applies its overflow policy.` | The runtime-wide ceiling is reached |
 | INFO | `Indexer client bucket '<consumer>/<bucket>' in the last <n> s: <a> accepted, <o> ok, <f> failed, <d> dropped.` | Every `log_summary_interval_ms` (60 s), for each bucket with activity |
 | WARN | `Indexer client bucket '<consumer>/<bucket>' unsuccessful operations in the last <n> s: <cause>[/<item error type>]=<count>, ...` | The bucket had failed or dropped operations; at most one line per bucket and interval |
-| WARN | `Indexer client bucket '<consumer>/<bucket>' got an ambiguous HTTP <status> ...` | Only for a bucket with `onAmbiguous5xx = fail` (none of the three above) |
+| WARN | `Indexer client bucket '<consumer>/<bucket>' got an ambiguous HTTP <status> ...` or `... got a response over max_response_bytes ...` | Only for a bucket with `onAmbiguous5xx = fail` (none of the three above) |
 
 The library README lists the full set of lines. It never logs a document body, an id, a URL or a password.
 
@@ -98,7 +101,9 @@ The library README lists the full set of lines. It never logs a document body, a
 | Symptom | Cause | What to do |
 |---|---|---|
 | modulesd does not start, or `wazuh-manager-modulesd -t` fails with `Invalid indexer client configuration: <reason>` | A key under `wazuh_modules.indexer_client_` is unknown, empty, not an unsigned decimal or out of range, or `<indexer>` is invalid | Fix the key the reason names in `/etc/wazuh-manager/wazuh-manager-internal-options.conf` or the `<indexer>` section ([Configuration](configuration.md)) |
-| `The indexer client runtime did not start: invalid_config: indexer host '<url>' uses https but no ssl.certificate_authorities is configured` | An `https` host without a CA | Add `<certificate_authorities>` to `<indexer><ssl>` and restart the manager |
+| WARN `indexer TLS: no CA configured and no system CA store found (<paths>); the server certificate is not verified (the host name is) for https host(s) <hosts>; the indexer credentials are sent to an unverified server` | An `https` host, no `<ca>` and none of the five system CA bundles exists | Add `<certificate_authorities>` to `<indexer><ssl>`, or install the system CA bundle, and restart the manager |
+| WARN `indexer TLS: certificate and host name verification disabled (verify_certificates is false) for https host(s) <hosts>; the indexer credentials are sent to an unverified server` | `<verify_certificates>no</verify_certificates>` | Intended only for tests; remove it and configure the CA ([verify_certificates](configuration.md#verify_certificates)) |
+| INFO `indexer TLS: using the system CA store <path>` | An `https` host and no `<ca>`: the first existing system CA bundle is the trust anchor | None; add `<certificate_authorities>` to trust only the indexer's CA |
 | `... invalid_config: ssl.certificate_authorities '<path>': cannot read: ...` (or `malformed PEM content`, `holds no PEM certificate`) | A CA file is missing, unreadable or not PEM | Fix the file or the path; relative paths resolve against `/var/wazuh-manager` |
 | `... invalid_config: ssl.certificate '<path>': configured without ssl.key (both or neither)` and the key variants | Only one of the client certificate and key is set, the key is encrypted or does not match the first certificate | Set both, with an unencrypted PEM key that matches the certificate |
 | `... cannot read the indexer credentials from the keystore: ...` or `invalid_config: indexer credentials missing: user` / `password` | The keystore has no `indexer` `username` or `password` | Run the [credential resolver](../../getting-started/credentials.md) or write them with `wazuh-manager-keystore` |

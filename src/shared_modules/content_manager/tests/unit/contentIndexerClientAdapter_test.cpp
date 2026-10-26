@@ -318,6 +318,89 @@ TEST(ContentIndexerClientAdapter, ExpiredThrows)
     EXPECT_NO_THROW(adapter->closePit(pit));
 }
 
+// I229: a content page (a PIT the adapter opened) takes responses up to max_response_bytes, not the query cap
+// (max_response_bytes / QUERY_DOM_FACTOR); the probe (searchIndex, a plain query) keeps the query cap and fails with
+// a ResponseTooLargeError, typed by the library's Outcome::responseTooLarge and not by the reason's text; any other
+// final failure is a plain runtime_error.
+TEST(ContentIndexerClientAdapter, ContentPagesTakeTheWholeResponseCap)
+{
+    RealIndexer env;
+    // Query cap = 8000 / 8 = 1000 bytes; a body of ~4000 bytes is over it, but under max_response_bytes.
+    const std::string pad(4000, 'x');
+    const std::string padded =
+        R"({"took":1,"_shards":{"total":1,"successful":1,"failed":0},"hits":{"hits":[{"_id":"d1","_source":{"n":1},"sort":[1]}]},"pad":")" +
+        pad + R"("})";
+    env.pits->intercept(
+        [padded](const PitRequestView& view, Rule& reply)
+        {
+            if (view.call != PitCall::Search)
+            {
+                return false;
+            }
+            if (view.body.value("size", 0) > 4)
+            {
+                reply.status = 200;
+                reply.body = padded;
+                return true;
+            }
+            reply.status = 400;
+            reply.body = R"({"error":{"type":"parsing_exception","reason":"bad"},"status":400})";
+            return true;
+        });
+    Rule probe;
+    probe.method = "POST";
+    probe.pathRegex = "/probe-idx/_search";
+    probe.body = R"({"took":1,"hits":{"hits":[]},"pad":")" + pad + R"("})";
+    env.fake->addRule(std::move(probe));
+    env.startRuntime("wazuh_modules.indexer_client_max_response_bytes=8000\n");
+    ASSERT_TRUE(env.makeClient()) << env.startError;
+    auto adapter = env.adapter(shortOptions());
+
+    const auto pit = adapter->openPit({"idx"}, "5m", false);
+    const auto page = adapter->search(pit, 5, matchAll(), docSort(), std::nullopt, std::nullopt, std::nullopt);
+    EXPECT_EQ(numbersOf(page), (std::vector<std::int64_t> {1}));
+
+    try
+    {
+        adapter->searchIndex("probe-idx", 1, matchAll(), std::nullopt);
+        FAIL() << "a plain query over the query cap must throw";
+    }
+    catch (const content_manager::ResponseTooLargeError& e)
+    {
+        EXPECT_NE(std::string {e.what()}.find("response too large"), std::string::npos) << e.what();
+    }
+
+    try
+    {
+        adapter->search(pit, 3, matchAll(), docSort(), std::nullopt, std::nullopt, std::nullopt);
+        FAIL() << "a 400 must throw";
+    }
+    catch (const content_manager::ResponseTooLargeError& e)
+    {
+        FAIL() << "a 400 is not a response too large: " << e.what();
+    }
+    catch (const std::runtime_error& e)
+    {
+        EXPECT_NE(std::string {e.what()}.find("parsing_exception"), std::string::npos) << e.what();
+    }
+    adapter->closePit(pit);
+}
+
+// A content page over max_response_bytes (curl stops reading) is a ResponseTooLargeError as well.
+TEST(ContentIndexerClientAdapter, OverTheWireCapIsTyped)
+{
+    RealIndexer env;
+    answerSearchesWith(env, 200, R"({"took":1,"hits":{"hits":[]},"pad":")" + std::string(20000, 'x') + R"("})");
+    env.startRuntime("wazuh_modules.indexer_client_max_response_bytes=8000\n");
+    ASSERT_TRUE(env.makeClient()) << env.startError;
+    auto adapter = env.adapter(shortOptions());
+
+    const auto pit = adapter->openPit({"idx"}, "5m", false);
+    EXPECT_THROW(adapter->search(pit, 5, matchAll(), docSort(), std::nullopt, std::nullopt, std::nullopt),
+                 content_manager::ResponseTooLargeError);
+    adapter->closePit(pit);
+}
+
 TEST(ContentIndexerClientAdapter, UnknownPitThrows)
 {
     RealIndexer env;

@@ -5,9 +5,10 @@
 The **wiconnector** module is the Engine's **writer** to the wazuh-indexer (OpenSearch), plus the one
 read the remote configuration needs, and the owner of the Engine's `indexer_client` runtime. It exposes:
 
-- **Indexing events** — posting alert / raw-event JSON documents to data-stream indices.
+- **Indexing events** — posting processed / raw-event JSON documents to data-stream indices.
 - **Remote engine configuration** — pulling runtime engine settings from `.wazuh-settings`.
-- **Queue introspection** — the queued bytes, their share of the capacity and the events not indexed.
+- **Queue introspection** — the queued bytes, their share of the capacity and the events not indexed (exported by
+  `main.cpp` as the three indexer metrics).
 
 **One connection.** Writes and reads go through the Engine's `indexer_client` `Client` `analysisd` (since E10b; the
 v1 connector is no longer used here). The writes use its two buckets, `events` and `raw`; the reads
@@ -72,7 +73,7 @@ that `main.cpp` reads (`EngineWriteOptions`) and the validated `RuntimeConfig` (
 | `bulk.maxDocs` | `SIZE_MAX`: as in the v1, a bulk is cut only by bytes and by age (the library's default is 10 000) |
 | `retry` | unlimited attempts and duration; `cap` = `analysisd.indexer_max_retry_delay` (the base is lowered to the cap if needed) |
 | `overflow` | `DropNewest` (the router never waits) |
-| `onAmbiguous5xx` | `Fail` (data streams without `_id`: a resend would duplicate) |
+| `onAmbiguous5xx` | `Fail` (data streams without `_id`: a resend would duplicate); it also covers a `_bulk` answer over `max_response_bytes`, never split nor resent |
 | `trustedBodies` | `true` (the Engine only sends compact `json::Json::str()` output) |
 
 A quota that cannot hold a 64 KiB bulk and its reserve fails the start (`InvalidConfig`, no runtime); the error names
@@ -114,7 +115,7 @@ phases that `main.cpp` places around the scheduler's stop:
    Client's admission (`requestClose()`), so a read in flight returns `ClientClosed`. `WIndexerConnector::shutdown()` follows.
 2. `finishStop()`, after the scheduler has stopped: `awaitClosed` without a drain, releases the Client and joins the runtime.
 
-Queued work is **discarded**, not drained, as the v1 did (I186); the whole stop fits in 3 s. The discarded events are
+Nothing waits for the queue to drain (I186, as the v1): `finishStop()` does not wait for the buckets, and what is still queued when the runtime closes is discarded. Between `beginStop()` (which closes the Client's admission) and `finishStop()` the library may still send what is already queued while the scheduler stops; the whole stop fits in 3 s. The discarded events are
 not counted in `getDroppedEvents()` (its bucket part is the snapshot from before `shutdown()`) and, today, not logged
 either: `finishStop()` releases the Client before `RuntimeOwner::shutdown()`, so the library's last summary sees no
 engine bucket and emits no line for them (D122). `finishStop()` without a
@@ -123,7 +124,8 @@ previous `beginStop()` runs both phases; each phase runs once.
 ### Configuration
 
 `Config` is the standalone `<indexer>` section (`hosts`, `ssl`); `toJson()` serialises it as the indexer client reads
-it. Credentials are not part of it: the Client's credentials come from the keystore (`indexer` / `username`,
+it, always with `ssl.verify_certificates` (`analysisd.indexer_ssl_verify_certificates`, env
+`WAZUH_INDEXER_SSL_VERIFY_CERTIFICATES`, default `true`). Credentials are not part of it: the Client's credentials come from the keystore (`indexer` / `username`,
 `password`) through `keystoreCredentials()` (an injectable `CredentialsProvider`; `Keystore::get` comes from
 `keystore_core`, the `keystore` archive without its `Log::GLOBAL_LOG_FUNCTION`: the engine defines and assigns its own,
 so what the keystore logs reaches the engine's sink), and the runtime's local copy of the password is erased after
@@ -137,17 +139,20 @@ engine's: an engine sanitizer build does not instrument it.
 `WAZUH_<key without "analysisd.", upper case>` (the convention of `conf`), then, in manager mode only, from the internal
 options file; otherwise it is unset and the library default applies. Standalone never reads the file. `keysWithPrefix` also
 enumerates the environment, so an unknown `WAZUH_INDEXER_CLIENT_*` variable is rejected like an unknown file key. The `<indexer>`
-section is the manager's (`hosts`, `ssl`); standalone builds it from `analysisd.indexer_hosts|ssl_*` through the environment only.
+section is the manager's (`hosts`, `ssl`); standalone builds it from `analysisd.indexer_hosts|ssl_*` (including `ssl_verify_certificates`) through the environment only.
 
 Two v1 keys feed their v2 equivalent when that one is not set (I192): `analysisd.indexer_request_timeout` (s) →
 `indexer_client_request_timeout_ms` and `analysisd.indexer_monitoring_interval` (s) → `indexer_client_probe_interval_ms`.
 "Set" means an environment variable or a file entry, never a `conf` default. Both set and different in ms is reported by
 `problem()` on the v2 key (the start fails); a v1 value of `0` leaves the v2 key unset and is reported once by `warnings()`
-(logged as WARN). The operator-facing list is in [Indexer client](../../../../docs/ref/modules/engine/README.md#indexer-client).
+(logged as WARN). The operator-facing list is in
+[engine configuration reference § Indexer client settings](../../../../docs/ref/modules/engine/configuration.md#indexer-client-settings).
 
 The write keys of the v1 still come from the same `conf` mechanism (env var, `wazuh-manager-internal-options.conf`, or
-default — env var wins) and feed `EngineWriteOptions` and the runtime (see [Engine Module — Internal options reference
-§ Indexer connector](../../../../docs/ref/modules/engine/README.md#indexer-connector)); the env-var equivalent of each:
+default — env var wins); `main.cpp` validates their ranges first (an out-of-range value aborts startup) and passes them
+in `EngineWriteOptions` to the runtime. They are documented in the
+[engine configuration reference § Indexer connector settings](../../../../docs/ref/modules/engine/configuration.md#indexer-connector-settings);
+the keys, env vars and defaults (`conf.cpp`) are:
 
 | Internal option | Env Override | Default |
 |-----------------|--------------|---------|
@@ -178,8 +183,7 @@ wiconnector/
 │   └── engineIndexerRuntime.cpp
 └── test/
     ├── mocks/wiconnector/
-    │   ├── mockswindexerconnector.hpp     # MockWIndexerConnector
-    │   └── mockIndexerConnectorAsync.hpp  # MockIndexerConnectorAsync (the internal async seam)
+    │   └── mockswindexerconnector.hpp     # MockWIndexerConnector
     └── src/unit/
         ├── wic_test.cpp
         ├── engineConfigSource_test.cpp
@@ -220,7 +224,8 @@ public:
 - **`index(index, data)`** — after `shutdown()`: discard and count. Otherwise `post(Op{IndexDataStream, index, data})`
   on `raw` (`RAW_EVENTS_INDEX`) or `events`, without a lock; a refusal is logged on the edge, never thrown.
 - **`getEngineRemoteConfig()`** — searches `.wazuh-settings` for exactly one document through the Client's `IQuery::search`
-  (same body as the v1, unwrapping the v2 `hits`), extracts `_source.engine`, checks it is an object and returns it. One
+  (same body as the v1: `match_all`, `size=1`, source `engine` only; unwrapping the v2 `hits`), extracts `_source.engine`,
+  checks it is an object and returns it (for example `{ "index_raw_events": false }`, consumed by `confremote`). One
   attempt (`maxAttempts = 1`: the retry is the caller's), a page deadline of the runtime's `request_timeout_ms` and a call
   deadline a margin above it. Once every node has been probed and none is usable it fails at once (I190, I190b); before
   the first probe round it waits as I158b says. A null `query()` is `ClientClosed`, which throws like every other failure (it is
@@ -234,8 +239,8 @@ public:
 |---|---|---|---|
 | `wIndexerConnector_iwIndexerConnector` | INTERFACE | `wIndexerConnector::iwIndexerConnector` | `base` |
 | `wIndexerConnector_wIndexerConnector` | STATIC | `wIndexerConnector::wIndexerConnector` | `base`, `wIndexerConnector::iwIndexerConnector`, `indexer_client` (public); `keystore_core` (**private**, `Keystore::get`, D101) |
-| `wIndexerConnector_mocks` | INTERFACE | `wIndexerConnector::mocks` | `GTest::gmock`, `wIndexerConnector::iwIndexerConnector` |
-| `wIndexerConnector_utest` | Executable | — | `GTest::gtest_main`, `GTest::gmock`, `wIndexerConnector::wIndexerConnector`, `wIndexerConnector::mocks` |
+| `wIndexerConnector_mocks` | INTERFACE | `wIndexerConnector::mocks` | `GTest::gmock`, `wIndexerConnector::iwIndexerConnector` (test builds only) |
+| `wIndexerConnector_utest` | Executable | — | `GTest::gtest_main`, `GTest::gmock`, `wIndexerConnector::wIndexerConnector`, `wIndexerConnector::mocks`; discovered tests hold the `rocks_db_lock` resource lock (test builds only) |
 
 ## Testing
 

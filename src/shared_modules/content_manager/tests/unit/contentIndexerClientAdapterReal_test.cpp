@@ -17,6 +17,7 @@
 #include "gtest/gtest.h"
 #include <algorithm>
 #include <chrono>
+#include <cstdio>
 #include <cstdlib>
 #include <numeric>
 #include <string>
@@ -185,4 +186,54 @@ TEST(ContentIndexerClientAdapterReal, SlicesCoverOnce)
     EXPECT_EQ(metrics.created - metricsBefore.created, 1U);
     EXPECT_EQ(metrics.deletesConfirmed - metricsBefore.deletesConfirmed, 1U);
     EXPECT_TRUE(waitUntil([&] { return listedPits(http) <= pitsBefore; }, 10s)) << "the PIT is still listed";
+}
+
+// I229 against a real catalog (e.g. the CTI vulnerabilities index): the document CM_REAL_DOC_ID, larger than the query
+// cap (max_response_bytes / QUERY_DOM_FACTOR = 8 MiB by default) but within max_response_bytes, comes back from a
+// content page (a PIT the adapter opened), while the same lookup as a plain query fails with ResponseTooLargeError.
+// Read only. Skipped unless INDEXER_URL and CM_REAL_DOC_ID are set; INDEXER_USER/INDEXER_PASSWORD (default
+// admin/admin), INDEXER_CA (a PEM; "verify_certificates" false without it) and CM_REAL_INDEX (default
+// .wazuh-threatintel-vulnerabilities) are optional.
+TEST(ContentIndexerClientAdapterReal, LargeDocumentFromARealCatalog)
+{
+    const char* url = std::getenv("INDEXER_URL");
+    const char* docId = std::getenv("CM_REAL_DOC_ID");
+    if (url == nullptr || *url == '\0' || docId == nullptr || *docId == '\0')
+    {
+        GTEST_SKIP() << "INDEXER_URL or CM_REAL_DOC_ID is not set";
+    }
+    const auto env_or = [](const char* name, const char* fallback)
+    {
+        const char* value = std::getenv(name);
+        return std::string {value != nullptr && *value != '\0' ? value : fallback};
+    };
+    const auto index = env_or("CM_REAL_INDEX", ".wazuh-threatintel-vulnerabilities");
+    const auto ca = env_or("INDEXER_CA", "");
+    nlohmann::json config {{"hosts", nlohmann::json::array({url})}};
+    config["ssl"] = ca.empty() ? nlohmann::json {{"verify_certificates", false}}
+                               : nlohmann::json {{"certificate_authorities", nlohmann::json::array({ca})}};
+
+    RealIndexer env;
+    const auto reason = env.startWithConfig(
+        config.dump(),
+        "wazuh_modules.indexer_client_network_threads=1\n"
+        "wazuh_modules.indexer_client_cpu_threads=2\n",
+        indexer_client::Credentials {env_or("INDEXER_USER", "admin"), env_or("INDEXER_PASSWORD", "admin")});
+    ASSERT_TRUE(reason.empty()) << reason;
+    ASSERT_TRUE(env.makeClient()) << env.startError;
+    auto adapter = env.adapter();
+
+    const nlohmann::json byId {{"ids", {{"values", nlohmann::json::array({docId})}}}};
+    const auto sort = nlohmann::json::array({nlohmann::json {{"_doc", "asc"}}, nlohmann::json {{"_id", "asc"}}});
+
+    const auto pit = adapter->openPit({index}, "5m", true);
+    const auto hits = adapter->search(pit, 1, byId, sort, std::nullopt, std::nullopt, std::nullopt);
+    ASSERT_EQ(hits.at("hits").size(), 1U);
+    EXPECT_EQ(hits.at("hits").at(0).at("_id").get<std::string>(), docId);
+    const auto bytes = hits.at("hits").at(0).dump().size();
+    std::printf("[ REAL     ] %s: %zu bytes from a content page\n", docId, bytes);
+    adapter->closePit(pit);
+
+    EXPECT_THROW(adapter->searchIndex(index, 1, byId, std::nullopt), content_manager::ResponseTooLargeError)
+        << "the plain query keeps the query cap";
 }

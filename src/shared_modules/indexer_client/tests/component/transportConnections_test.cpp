@@ -289,6 +289,43 @@ TEST_F(TransportTest, KeepAliveReusesConnections)
     std::cout << "[ INFO     ] " << REQUESTS << " POST over " << connections << " connections" << std::endl;
 }
 
+// E12 A5: bursts of CURLMOPT_MAX_HOST_CONNECTIONS (8) concurrent requests, each burst waited out before the next, keep
+// reusing the same connections. curl's default pool (4 x the transfers running) closed the extra ones as each burst
+// drained, so every burst opened (and over TLS handshook) new connections; CURLMOPT_MAXCONNECTS keeps them.
+TEST_F(TransportTest, BurstsReuseTheirConnections)
+{
+    constexpr std::size_t BURSTS = 10;
+    constexpr std::size_t PER_BURST = 8;
+    FakeIndexerOptions options;
+    options.threads = 16;
+    FakeIndexer fake(options);
+    Rule slow;
+    slow.method = "POST";
+    slow.pathRegex = "/_bulk";
+    slow.latency = 50ms; // The whole burst is in flight at once: 8 connections.
+    fake.addRule(std::move(slow));
+    fake.start();
+    auto transport = startRuntime(1, 2);
+    ASSERT_NE(transport, nullptr);
+    auto collector = Collector::create();
+
+    const auto body = std::make_shared<const std::string>(R"({"index":{}})");
+    for (std::size_t burst = 1; burst <= BURSTS; ++burst)
+    {
+        for (std::size_t i = 0; i < PER_BURST; ++i)
+        {
+            ASSERT_TRUE(submitTo(*transport, collector, request(HttpMethod::Post, fake.baseUrl() + "/_bulk", body))
+                            .admission.admitted);
+        }
+        ASSERT_TRUE(collector->waitTotal(burst * PER_BURST, 30s)) << "burst " << burst;
+    }
+    ASSERT_EQ(fake.requestCount(), BURSTS * PER_BURST);
+    const auto connections = fake.distinctRemotePorts();
+    EXPECT_LE(connections, PER_BURST) << "the pool was trimmed between bursts and reconnected";
+    std::cout << "[ INFO     ] " << BURSTS << " bursts of " << PER_BURST << " over " << connections << " connections"
+              << std::endl;
+}
+
 // The method and the body are set on every use of an easy handle: POST → GET → DELETE with a body → HEAD on the same
 // (reused) easy reach the server exactly as asked. A method the transport does not know (PATCH) is not admitted.
 TEST_F(TransportTest, MethodAndBodyAfterReuse)

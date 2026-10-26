@@ -210,6 +210,7 @@ namespace indexer_client::detail
         std::atomic<bool> expired {false};
         std::atomic<bool> drained {false}; ///< The shutdown drain deleted it: the hand-over gives nothing.
         QueryOptions options;              ///< The pit() options: they govern every page and search.
+        bool wholeResponseCap {false};     ///< PitOptions::wholeResponseCap: pages capped by maxResponseBytes (I229).
         std::vector<std::string> indices;
         std::shared_ptr<ClientState> client;
         std::weak_ptr<query::PitRegistry> registry;

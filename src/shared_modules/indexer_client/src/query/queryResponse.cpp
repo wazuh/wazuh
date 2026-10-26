@@ -111,17 +111,21 @@ namespace indexer_client::detail::query
             return fail(result, cause, errorReason(result.status, result.body));
         }
 
-        /// I84: the size cap, checked before parsing. `size * QUERY_DOM_FACTOR > max` without the multiplication
-        /// (no overflow): for integers it is `size > floor(max / QUERY_DOM_FACTOR)`.
-        bool tooLarge(const std::string& body, std::uint64_t maxResponseBytes) noexcept
+        /// I84: the size cap, checked before parsing. `size * domFactor > max` without the multiplication (no
+        /// overflow): for integers it is `size > floor(max / domFactor)`. domFactor is QUERY_DOM_FACTOR, or 1 for the
+        /// pages of a PIT opened with PitOptions::wholeResponseCap (I229).
+        bool tooLarge(const std::string& body, std::uint64_t maxResponseBytes, std::uint64_t domFactor) noexcept
         {
-            return static_cast<std::uint64_t>(body.size()) > maxResponseBytes / QUERY_DOM_FACTOR;
+            return static_cast<std::uint64_t>(body.size()) > maxResponseBytes / domFactor;
         }
 
         /// A 2xx body: capped, parsed and required to be a JSON object; a failure is Fail ItemPermanent.
-        bool parse2xx(const HttpResult& result, std::uint64_t maxResponseBytes, QueryResponse& response)
+        bool parse2xx(const HttpResult& result,
+                      std::uint64_t maxResponseBytes,
+                      QueryResponse& response,
+                      std::uint64_t domFactor = QUERY_DOM_FACTOR)
         {
-            if (tooLarge(result.body, maxResponseBytes))
+            if (tooLarge(result.body, maxResponseBytes, domFactor))
             {
                 response = fail(result, Cause::ItemPermanent, "response too large for a query");
                 response.tooLarge = true;
@@ -422,7 +426,7 @@ namespace indexer_client::detail::query
         return response;
     }
 
-    QueryResponse classifyPitSearch(const HttpResult& result, std::uint64_t maxResponseBytes)
+    QueryResponse classifyPitSearch(const HttpResult& result, std::uint64_t maxResponseBytes, bool wholeResponseCap)
     {
         if (result.status == HTTP_NOT_FOUND)
         {
@@ -437,7 +441,7 @@ namespace indexer_client::detail::query
             return failUnexpected(result);
         }
         QueryResponse response;
-        if (!parse2xx(result, maxResponseBytes, response))
+        if (!parse2xx(result, maxResponseBytes, response, wholeResponseCap ? 1 : QUERY_DOM_FACTOR))
         {
             return response;
         }

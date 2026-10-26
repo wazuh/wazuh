@@ -136,6 +136,60 @@ TEST(ContentCycleOnClientAdapter, FullDownload)
     EXPECT_EQ(harness.env.pits->requests(PitCall::Delete), harness.env.pits->created());
 }
 
+// A page over the query cap on the real library is asked again with half the hits on the same PIT and cursor:
+// the cycle completes, every document once, and the page sizes follow the cut and the regrowth.
+TEST(ContentCycleOnClientAdapter, TooLargePagesAreHalved)
+{
+    CycleOnAdapter harness;
+    // Content pages are capped by max_response_bytes itself (I229): any page asking for more than 12 hits gets a
+    // 100000-byte body, over the 80000 of max_response_bytes.
+    const std::string padded = R"({"took":1,"hits":{"hits":[]},"pad":")" + std::string(100000, 'x') + R"("})";
+    harness.env.pits->intercept(
+        [padded](const PitRequestView& view, Rule& reply)
+        {
+            if (view.call != PitCall::Search || view.body.value("size", 0) <= 12)
+            {
+                return false;
+            }
+            reply.status = 200;
+            reply.body = padded;
+            return true;
+        });
+    harness.env.startRuntime("wazuh_modules.indexer_client_max_response_bytes=80000\n");
+    ASSERT_TRUE(harness.env.makeClient()) << harness.env.startError;
+    harness.adapter = harness.env.adapter();
+
+    const auto outcome = harness.build()->run({});
+
+    EXPECT_EQ(outcome.status, CycleStatus::Updated) << outcome.detail;
+    EXPECT_EQ(outcome.documentsDelivered, 300U);
+    EXPECT_EQ(outcome.token, "300");
+    std::vector<std::int64_t> delivered;
+    for (const auto& page : harness.sink->pages)
+    {
+        for (const auto& hit : page)
+        {
+            delivered.push_back(hit.at("_source").at("n").get<std::int64_t>());
+        }
+    }
+    ASSERT_EQ(delivered.size(), 300U);
+    for (std::size_t i = 0; i < delivered.size(); ++i)
+    {
+        ASSERT_EQ(delivered[i], static_cast<std::int64_t>(i + 1)) << "document " << i + 1 << " lost or repeated";
+    }
+
+    // 50 (too large), 25 (too large), 12 x 4, 24 (too large), 12 x 4, ...: one PIT, the same cursor on each retry.
+    const auto searches = harness.env.searchRequests();
+    ASSERT_GE(searches.size(), 4U);
+    EXPECT_EQ(RealIndexer::bodyOf(searches[0]).at("size"), 50);
+    EXPECT_EQ(RealIndexer::bodyOf(searches[1]).at("size"), 25);
+    EXPECT_EQ(RealIndexer::bodyOf(searches[2]).at("size"), 12);
+    EXPECT_FALSE(RealIndexer::bodyOf(searches[1]).contains("search_after"));
+    EXPECT_FALSE(RealIndexer::bodyOf(searches[2]).contains("search_after"));
+    EXPECT_EQ(RealIndexer::bodyOf(searches[3]).at("search_after"), nlohmann::json::array({12}));
+    EXPECT_EQ(harness.env.pits->created(), 1U);
+}
+
 TEST(ContentCycleOnClientAdapter, AbortMidway)
 {
     CycleOnAdapter harness;

@@ -326,6 +326,77 @@ TEST_F(PitTest, PartialShardFailureIsNotAPage)
     EXPECT_EQ(pitDelta(before, q::pitStats()).expired, 1u);
 }
 
+// I229: a PIT opened with PitOptions::wholeResponseCap takes pages up to maxResponseBytes (here 64000), not
+// maxResponseBytes / QUERY_DOM_FACTOR (8000), on Pit::search and on its cursors; a PIT without it still refuses them
+// (ItemPermanent, responseTooLarge), and a page over maxResponseBytes is refused by both. Mutant: the classifier
+// ignores the option.
+TEST_F(PitTest, WholeResponseCapPit)
+{
+    constexpr std::uint64_t MAX_RESPONSE = 64000;
+    auto pits = std::make_shared<PitResponder>(10);
+    pits->intercept(
+        [](const PitRequestView& request, Rule& reply)
+        {
+            if (request.call != PitCall::Search || !request.body.is_object())
+            {
+                return false;
+            }
+            const auto size = request.body.value("size", 0);
+            const std::size_t pad = size == 3 ? 20000 : (size == 4 ? 70000 : 0); // 8000 < 20000 < 64000 < 70000.
+            if (pad == 0)
+            {
+                return false;
+            }
+            reply.status = 200;
+            reply.body = nlohmann::json {{"pit_id", request.body.at("pit").at("id")},
+                                         {"took", 1},
+                                         {"timed_out", false},
+                                         {"_shards", {{"total", 1}, {"successful", 1}, {"skipped", 0}, {"failed", 0}}},
+                                         {"hits",
+                                          {{"total", {{"value", 1}, {"relation", "eq"}}},
+                                           {"hits", nlohmann::json::array({PitResponder::document(1)})}}},
+                                         {"pad", std::string(pad, 'x')}}
+                             .dump();
+            return true;
+        });
+    const auto node = pitFake(pits);
+    ASSERT_NO_FATAL_FAILURE(start({node->baseUrl()}, {{"max_response_bytes", std::to_string(MAX_RESPONSE)}}));
+    auto owner = client();
+
+    auto wholeOptions = keepAlive(60s);
+    wholeOptions.wholeResponseCap = true;
+    auto whole = owner->query()->pit({"idx"}, wholeOptions, fastOptions(), in(5s));
+    ASSERT_TRUE(whole.ok()) << ic::toString(whole.cause) << ": " << whole.reason;
+    auto plain = owner->query()->pit({"idx"}, keepAlive(60s), fastOptions(), in(5s));
+    ASSERT_TRUE(plain.ok()) << ic::toString(plain.cause) << ": " << plain.reason;
+
+    const nlohmann::json between {{"size", 3}};
+    const nlohmann::json over {{"size", 4}};
+
+    auto wholeSearch = whole.value.search(between, in(5s));
+    ASSERT_TRUE(wholeSearch.ok()) << ic::toString(wholeSearch.cause) << ": " << wholeSearch.reason;
+    EXPECT_EQ(wholeSearch.value.at("pad").get<std::string>().size(), 20000u);
+    auto wholeCursor = whole.value.cursor(cursorQuery(3));
+    auto wholePage = wholeCursor.next(in(5s));
+    ASSERT_TRUE(wholePage.ok()) << ic::toString(wholePage.cause) << ": " << wholePage.reason;
+    EXPECT_EQ(numbers(wholePage.value), (std::vector<std::int64_t> {1}));
+
+    auto plainSearch = plain.value.search(between, in(5s));
+    EXPECT_EQ(plainSearch.cause, ic::Cause::ItemPermanent) << plainSearch.reason;
+    EXPECT_TRUE(plainSearch.responseTooLarge);
+    auto plainCursor = plain.value.cursor(cursorQuery(3));
+    auto plainPage = plainCursor.next(in(5s));
+    EXPECT_EQ(plainPage.cause, ic::Cause::ItemPermanent) << plainPage.reason;
+    EXPECT_TRUE(plainPage.responseTooLarge);
+
+    for (auto* pit : {&whole.value, &plain.value})
+    {
+        auto tooLarge = pit->search(over, in(5s));
+        EXPECT_EQ(tooLarge.cause, ic::Cause::ItemPermanent) << tooLarge.reason;
+        EXPECT_TRUE(tooLarge.responseTooLarge) << tooLarge.reason;
+    }
+}
+
 // T19: a page held by the fake is released after another cursor saw the expiry: that cursor gets PitExpired and
 // stale + 1. Mutant: accept the late page.
 TEST_F(PitTest, StaleGenerationDiscarded)
