@@ -180,8 +180,6 @@
   - [Indexer Client](ref/modules/indexer_client/README.md)
     - [Configuration](ref/modules/indexer_client/configuration.md)
     - [Metrics](ref/modules/indexer_client/metrics.md)
-  - [Indexer Connector](ref/modules/indexer_connector/README.md)
-    - [Configuration](ref/modules/indexer_connector/configuration.md)
   - [Wazuh DB](ref/modules/wazuh_db/README.md)
     - [API Reference](ref/modules/wazuh_db/api-reference.md)
     - [Configuration](ref/modules/wazuh_db/configuration.md)

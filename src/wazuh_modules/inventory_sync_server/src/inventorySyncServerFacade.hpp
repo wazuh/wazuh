@@ -909,6 +909,8 @@ namespace invsync
          *
          * Reads the Client's HealthView (I151, I52-e): usable = at least one node the runtime would
          * send to. Without this the log has no record of when the indexer went away or came back.
+         * "Unreachable" is reported only once every node went through a probe round
+         * (HealthView::noUsableAfterProbes()); before the first round there is nothing to report.
          * Copies the Client under m_lifecycleMutex and reads it without, so the read can never delay
          * stop(); health() itself is a snapshot, no I/O.
          */
@@ -926,7 +928,15 @@ namespace invsync
                     return; // not built yet; the gate reports its own progress
                 }
 
-                const bool available = client->health().anyUsable();
+                const auto health = client->health();
+                const bool available = health.anyUsable();
+                if (!available && !health.noUsableAfterProbes().has_value())
+                {
+                    // Every node is born Down with no reason until the Client's first probe round (I190b): that
+                    // is "not known yet", not "unreachable". Stay silent and leave the last state unset, so the
+                    // first heartbeat after the round logs the real one.
+                    return;
+                }
                 if (m_lastIndexerAvailable.has_value() && *m_lastIndexerAvailable == available)
                 {
                     return;
@@ -1304,6 +1314,9 @@ namespace invsync
                     sweepWindow = std::chrono::duration_cast<std::chrono::milliseconds>(snapshot.requestTimeout) +
                                   AGENT_DELETE_SWEEP_MARGIN;
                 }
+                // One request at most, like the sweeper's window: how long a pipeline worker keeps the agents of
+                // a failed batch held while its abandoned `_bulk` is unresolved.
+                pipelineConfig.abandonedWriteHold = sweepWindow;
                 const auto budgets = invsync::indexer::budgets(m_config);
 
                 std::string agentStateWarning;
@@ -1341,6 +1354,11 @@ namespace invsync
                                                       budgets,
                                                       inventorySpec.retry,
                                                       INDEXER_PAGE_DEADLINE};
+                if (indexerRuntime != nullptr)
+                {
+                    // settleAbandoned()'s bound (requestTimeout + 5 s) and its cut on the runtime's shutdown.
+                    adapterOptions.runtime = *static_cast<const indexer_client::RuntimeRef*>(indexerRuntime);
+                }
             }
             catch (const std::exception& e)
             {

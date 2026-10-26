@@ -1,5 +1,4 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-// IndexerConnectorException is the v1's until E11 (D101).
 #include <algorithm>
 #include <chrono>
 #include <optional>
@@ -7,7 +6,6 @@
 #include <string_view>
 #include <vector>
 
-#include <indexerConnector.hpp>
 #include <json.hpp>
 
 #include <base/logging.hpp>
@@ -72,71 +70,50 @@ json::Json engineConfigFromHits(const nlohmann::json& hits)
 
     if (totalHits == 0)
     {
-        throw IndexerConnectorException("Remote settings document not found");
+        throw RemoteConfigError("Remote settings document not found");
     }
 
     if (totalHits > 1)
     {
-        throw IndexerConnectorException("Multiple remote settings documents found in index "
-                                        + std::string(REMOTE_CONF_INDEX) + " (expected 1, got "
-                                        + std::to_string(totalHits) + ")");
+        throw RemoteConfigError("Multiple remote settings documents found in index " + std::string(REMOTE_CONF_INDEX)
+                                + " (expected 1, got " + std::to_string(totalHits) + ")");
     }
 
     const auto& hitArray = hits["hits"];
     if (!hitArray.is_array() || hitArray.empty())
     {
-        throw IndexerConnectorException("No hits returned for remote settings");
+        throw RemoteConfigError("No hits returned for remote settings");
     }
 
     const auto& firstHit = hitArray[0];
     if (!firstHit.contains("_source"))
     {
-        throw IndexerConnectorException("Remote settings hit does not contain _source");
+        throw RemoteConfigError("Remote settings hit does not contain _source");
     }
 
     const auto& sourceData = firstHit["_source"];
     if (!sourceData.contains("engine") || !sourceData["engine"].is_object())
     {
-        throw IndexerConnectorException("Remote settings _source.engine missing or invalid");
+        throw RemoteConfigError("Remote settings _source.engine missing or invalid");
     }
 
     return json::Json {sourceData["engine"].dump().c_str()};
-}
-
-/// Why no call should wait for a node: every node was probed (Down with a reason) and none is usable (I190b).
-/// Nullopt while a usable node exists or before the first probe round (every node is born Down without a reason).
-std::optional<std::string> noUsableNodeAfterProbes(const indexer_client::HealthView& health)
-{
-    if (health.nodes.empty() || health.anyUsable())
-    {
-        return std::nullopt;
-    }
-    std::string reasons;
-    for (const auto& node : health.nodes)
-    {
-        if (node.reason.empty())
-        {
-            return std::nullopt;
-        }
-        reasons += (reasons.empty() ? "" : "; ") + node.url + ": " + node.reason;
-    }
-    return reasons;
 }
 
 /// The remote configuration through the engine's Client: one attempt, a page deadline of the request timeout and an
 /// immediate failure once every node was probed and none is usable (I190, I190b). Every failure throws.
 json::Json remoteConfigFromClient(indexer_client::IClient& reader, std::chrono::milliseconds requestTimeout)
 {
-    if (const auto why = noUsableNodeAfterProbes(reader.health()))
+    if (const auto why = reader.health().noUsableAfterProbes())
     {
-        throw IndexerConnectorException(std::string {"Search request failed: no usable indexer node ("} + *why + ")");
+        throw RemoteConfigError(std::string {"Search request failed: no usable indexer node ("} + *why + ")");
     }
 
     const auto query = reader.query();
     if (!query)
     {
-        throw IndexerConnectorException(std::string {"Search request failed: "}
-                                        + indexer_client::toString(indexer_client::Cause::ClientClosed));
+        throw RemoteConfigError(std::string {"Search request failed: "}
+                                + indexer_client::toString(indexer_client::Cause::ClientClosed));
     }
 
     indexer_client::QueryOptions options;
@@ -150,15 +127,12 @@ json::Json remoteConfigFromClient(indexer_client::IClient& reader, std::chrono::
     const auto outcome = query->search(REMOTE_CONF_INDEX, remoteConfigBody(), options, deadline);
     if (!outcome.ok())
     {
-        throw IndexerConnectorException(std::string {"Search request failed: "}
-                                            + indexer_client::toString(outcome.cause)
-                                            + (outcome.reason.empty() ? "" : ": " + outcome.reason),
-                                        IndexerConnectorException::Category::Other,
-                                        outcome.httpStatus);
+        throw RemoteConfigError(std::string {"Search request failed: "} + indexer_client::toString(outcome.cause)
+                                + (outcome.reason.empty() ? "" : ": " + outcome.reason));
     }
     if (!outcome.value.is_object() || !outcome.value.contains("hits"))
     {
-        throw IndexerConnectorException("Search response does not contain 'hits' field");
+        throw RemoteConfigError("Search response does not contain 'hits' field");
     }
     return engineConfigFromHits(outcome.value["hits"]);
 }

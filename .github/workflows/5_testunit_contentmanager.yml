@@ -13,7 +13,7 @@ on:
       - "src/shared_modules/content_manager/src/**"
       - "src/shared_modules/content_manager/tests/**"
       # keystore: kept on the path although nothing here links it since the v1 connector left
-      # (it used to arrive through indexer_connector); trimming it needs a green trial run first.
+      # (it used to arrive through the v1 library); trimming it needs a green trial run first.
       # indexer_client: linked by the library (the v2 adapter, CMakeLists.txt) and the suites, whose
       # fake indexer lives in its tests/fake.
       - "src/shared_modules/indexer_client/**/CMakeLists.txt"

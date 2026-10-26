@@ -597,3 +597,38 @@ TEST_F(EngineIndexerRuntimeTest, NoDocumentCountClosesABulk)
     ASSERT_EQ(bulks.size(), 1U);
     EXPECT_EQ(bulks.front().size(), DOCS);
 }
+
+TEST_F(EngineIndexerRuntimeTest, FinishStopDiscardsWhatIsQueued)
+{
+    // No drain (I186): the indexer holds every `_bulk`, so a stop that waited for the queue would sit out the whole
+    // STOP_BUDGET. finishStop() gives the queue up at once instead.
+    auto responder =
+        std::make_shared<indexer_client::testing::BulkResponder>(indexer_client::testing::BulkScript::items().held());
+    fake->addRule(indexer_client::testing::bulkRule(responder));
+    const auto src = source(countingProvider());
+    std::vector<std::string> warnings;
+    ASSERT_TRUE(
+        runtime->start(indexer_client::ProcessId::Analysisd, src, wiconnector::EngineWriteOptions {}, warnings).ok());
+    const auto client = runtime->client();
+    ASSERT_NE(client, nullptr);
+    ASSERT_TRUE(waitUntil([&client] { return client->health().anyAvailable(); }));
+
+    const auto writer = client->writer(wiconnector::ENGINE_EVENTS_BUCKET);
+    ASSERT_NE(writer, nullptr);
+    for (int i = 0; i < 3; ++i)
+    {
+        indexer_client::Op op;
+        op.kind = indexer_client::Op::Kind::IndexDataStream;
+        op.index = "wazuh-events-v5-test";
+        op.body = R"({"n":)" + std::to_string(i) + "}";
+        ASSERT_TRUE(writer->post(std::move(op)).accepted) << i;
+    }
+
+    const auto t0 = std::chrono::steady_clock::now();
+    runtime->beginStop();
+    runtime->finishStop();
+    const auto elapsed = std::chrono::steady_clock::now() - t0;
+    EXPECT_LT(elapsed, EngineIndexerRuntime::STOP_BUDGET / 2)
+        << std::chrono::duration_cast<std::chrono::milliseconds>(elapsed).count() << " ms: the queue was drained";
+    EXPECT_FALSE(indexer_client::RuntimeOwner::running());
+}

@@ -35,6 +35,8 @@ namespace
 
     constexpr auto SHUTTING_DOWN_BODY {R"({"error":"Service unavailable","code":503})"};
     constexpr auto INDEXER_UNAVAILABLE_BODY {R"({"error":"Service unavailable","code":503})"};
+    /// How often a worker holding agents for an abandoned write looks whether it resolved.
+    constexpr std::chrono::milliseconds ABANDONED_HOLD_POLL {250};
 } // namespace
 
 namespace invsync::sync
@@ -349,7 +351,8 @@ namespace invsync::sync
         }
     }
 
-    void SyncPipeline::flushAndRespond(std::vector<Item>& batch,
+    void SyncPipeline::flushAndRespond(Shard& shard,
+                                       std::vector<Item>& batch,
                                        std::size_t& batchBytes,
                                        indexer::IIndexerConnectorSync& connector)
     {
@@ -412,6 +415,7 @@ namespace invsync::sync
                 firstFailedItem = &item;
             }
             countFlushFailure(outcome.cause);
+            holdForAbandonedWrite(shard, connector, item.session.agentId);
             respondFailure(item, outcome.cause);
         }
 
@@ -437,6 +441,53 @@ namespace invsync::sync
         batchBytes = 0;
     }
 
+    void SyncPipeline::holdForAbandonedWrite(Shard& shard,
+                                             indexer::IIndexerConnectorSync& connector,
+                                             const std::string& agentId)
+    {
+        // A chunk given up on (batch deadline) may still be on the wire, and the scan lane writes through ANOTHER
+        // connector whose barrier cannot see it: answered and released now, the lane could index this agent's
+        // documents and the late `_bulk` overwrite them. One more Pipeline count keeps the lane parking the agent
+        // (the pipeline's own holds are reentrant, so this shard keeps serving it, and nothing here waits).
+        if (!m_registry || !connector.holdsAbandonedWrite())
+        {
+            return;
+        }
+        if (m_registry->tryAcquire(agentId, vd::AgentInFlightRegistry::Lane::Pipeline, /*reentrant=*/true))
+        {
+            shard.abandonedHolds.push_back(agentId);
+            shard.abandonedHoldUntil = std::chrono::steady_clock::now() + m_config.abandonedWriteHold;
+        }
+    }
+
+    void SyncPipeline::releaseAbandonedHolds(Shard& shard, indexer::IIndexerConnectorSync& connector, bool force)
+    {
+        if (shard.abandonedHolds.empty())
+        {
+            return;
+        }
+        const bool stillHeld = connector.holdsAbandonedWrite();
+        const bool expired = std::chrono::steady_clock::now() >= shard.abandonedHoldUntil;
+        if (stillHeld && !expired && !force)
+        {
+            return;
+        }
+        if (stillHeld)
+        {
+            LOGFN_WARN(logFn(),
+                       "A bulk flush was abandoned with a write still unresolved (%s); its %zu agent(s) (first: %s) "
+                       "are released and a late write of that batch may still be applied by the indexer.",
+                       force ? "the pipeline is stopping" : "past the request timeout",
+                       shard.abandonedHolds.size(),
+                       shard.abandonedHolds.front().c_str());
+        }
+        for (const auto& agentId : shard.abandonedHolds)
+        {
+            m_registry->release(agentId, vd::AgentInFlightRegistry::Lane::Pipeline);
+        }
+        shard.abandonedHolds.clear();
+    }
+
     void SyncPipeline::workerLoop(std::size_t index)
     {
         auto& shard = *m_shards[index];
@@ -447,6 +498,8 @@ namespace invsync::sync
 
         while (true)
         {
+            releaseAbandonedHolds(shard, connector, false);
+
             Item item;
             bool hasItem {false};
             {
@@ -455,28 +508,36 @@ namespace invsync::sync
                 {
                     // Wait for stop, or for SOMETHING dispatchable: a non-empty queue whose every
                     // agent is scan-busy must keep sleeping (the registry's release listener wakes
-                    // this cv), or the worker would spin.
-                    shard.cv.wait(lock,
-                                  [this, &shard]
-                                  {
-                                      if (m_stopping.load(std::memory_order_acquire))
-                                      {
-                                          return true;
-                                      }
-                                      if (!m_registry)
-                                      {
-                                          return !shard.queue.empty();
-                                      }
-                                      return std::any_of(shard.queue.begin(),
-                                                         shard.queue.end(),
-                                                         [this](const Item& queued)
-                                                         {
-                                                             return m_registry->couldAcquire(
-                                                                 queued.session.agentId,
-                                                                 vd::AgentInFlightRegistry::Lane::Pipeline,
-                                                                 /*reentrant=*/true);
-                                                         });
-                                  });
+                    // this cv), or the worker would spin. While agents are held for an abandoned
+                    // write the wait is sliced, so the holds are dropped once it resolves.
+                    const auto dispatchable = [this, &shard]
+                    {
+                        if (m_stopping.load(std::memory_order_acquire))
+                        {
+                            return true;
+                        }
+                        if (!m_registry)
+                        {
+                            return !shard.queue.empty();
+                        }
+                        return std::any_of(shard.queue.begin(),
+                                           shard.queue.end(),
+                                           [this](const Item& queued)
+                                           {
+                                               return m_registry->couldAcquire(
+                                                   queued.session.agentId,
+                                                   vd::AgentInFlightRegistry::Lane::Pipeline,
+                                                   /*reentrant=*/true);
+                                           });
+                    };
+                    if (shard.abandonedHolds.empty())
+                    {
+                        shard.cv.wait(lock, dispatchable);
+                    }
+                    else
+                    {
+                        shard.cv.wait_for(lock, ABANDONED_HOLD_POLL, dispatchable);
+                    }
                 }
                 hasItem = popDispatchable(shard, item);
             }
@@ -500,7 +561,7 @@ namespace invsync::sync
                     }
                     else
                     {
-                        flushAndRespond(batch, batchBytes, connector);
+                        flushAndRespond(shard, batch, batchBytes, connector);
                     }
                     continue; // re-check the queue before blocking
                 }
@@ -541,7 +602,7 @@ namespace invsync::sync
                 // Same batch-cut rule as an Immediate session: the deletion executes its own I/O
                 // now, and staged writes of an EARLIER session of this agent must reach the indexer
                 // first or the delete-then-reinsert order would invert.
-                flushAndRespond(batch, batchBytes, connector);
+                flushAndRespond(shard, batch, batchBytes, connector);
 
                 // The deletion's budget starts once the batch is answered, not at admission: it bounds
                 // this deletion's own I/O (the by-query and the by-id wait share it, I145), not the time
@@ -561,6 +622,7 @@ namespace invsync::sync
                                item.session.agentId.c_str(),
                                e.what());
                     const auto* typed = dynamic_cast<const indexer::ConnectorError*>(&e);
+                    holdForAbandonedWrite(shard, connector, item.session.agentId);
                     respondFailure(item, typed ? typed->cause() : indexer::ConnectorError::Cause::Other);
                 }
                 continue;
@@ -571,7 +633,7 @@ namespace invsync::sync
                 // Batch cut: an immediate session executes its own I/O NOW, so the staged batch
                 // must reach the indexer first or this session's effects (deletes, a checksum
                 // read) would overtake bulk writes of an EARLIER session of the same agent.
-                flushAndRespond(batch, batchBytes, connector);
+                flushAndRespond(shard, batch, batchBytes, connector);
 
                 try
                 {
@@ -585,6 +647,7 @@ namespace invsync::sync
                                item.session.agentId.c_str(),
                                e.what());
                     const auto* typed = dynamic_cast<const indexer::ConnectorError*>(&e);
+                    holdForAbandonedWrite(shard, connector, item.session.agentId);
                     respondFailure(item, typed ? typed->cause() : indexer::ConnectorError::Cause::Other);
                 }
                 continue;
@@ -621,15 +684,19 @@ namespace invsync::sync
                 batch.clear();
                 batchBytes = 0;
                 m_bulkSessionsFailed->add(failed.size());
-                respondConnectorFailure(failed, indexer::ConnectorError::Cause::Other);
                 try
                 {
                     connector.discard();
                 }
                 catch (...) // LCOV_EXCL_LINE -- discard() drops local state only
                 {
-                    // Already answered; nothing staged survives a discard.
+                    // Nothing staged survives a discard; the sessions are answered below.
                 }
+                for (const auto& failedItem : failed)
+                {
+                    holdForAbandonedWrite(shard, connector, failedItem.session.agentId);
+                }
+                respondConnectorFailure(failed, indexer::ConnectorError::Cause::Other);
                 continue;
             }
 
@@ -648,9 +715,12 @@ namespace invsync::sync
 
             if (batchBytes >= m_config.bulkFlushBytes)
             {
-                flushAndRespond(batch, batchBytes, connector);
+                flushAndRespond(shard, batch, batchBytes, connector);
             }
         }
+
+        // Stopping: the adapters' `closing` already cut every wait; nothing is kept held past the worker.
+        releaseAbandonedHolds(shard, connector, true);
     }
 
 } // namespace invsync::sync

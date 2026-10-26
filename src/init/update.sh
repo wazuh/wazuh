@@ -364,6 +364,8 @@ UpdateStopWAZUH()
     rm -rf $PREINSTALLEDDIR/framework/* > /dev/null 2>&1
     rm -f $PREINSTALLEDDIR/wodles/aws/aws > /dev/null 2>&1 # this script has been renamed
     rm -f $PREINSTALLEDDIR/wodles/aws/aws.py > /dev/null 2>&1 # this script has been renamed
+    # The indexer connector library was replaced by libindexer_client.so; no daemon loads it any more
+    rm -f $PREINSTALLEDDIR/lib/libindexer_connector.so > /dev/null 2>&1
 
     # Deleting plain-text agent information if exists (it was migrated to Wazuh DB in v4.1)
     if [ -d "$PREINSTALLEDDIR/queue/agent-info" ]; then

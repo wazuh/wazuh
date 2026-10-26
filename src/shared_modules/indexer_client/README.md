@@ -2,7 +2,7 @@
 
 ## Purpose
 
-`indexer_client` is the shared library that replaces `indexer_connector` (epic
+`indexer_client` is the shared library that replaced the v1 connector library (removed in 5.x; epic
 [wazuh/wazuh#39933](https://github.com/wazuh/wazuh/issues/39933)). It is built to serve the four
 consumers of the indexer, one consumer at a time, with:
 
@@ -15,8 +15,6 @@ consumers of the indexer, one consumer at a time, with:
 - metrics exposed as a snapshot;
 - typed configuration validated from one `IConfigSource`.
 
-The design is in `planes/18-indexer_connector_v2/03-diseno.md` §1–§4 (outside the repository).
-
 **Status: E6a — write admission, buckets and scheduling on top of the internal transport, the bulk-response classifier, the retry lane and the bulk sender with its [per-node load control](#load-control-e5a) (E5a) and the [client close and shutdown](#closing-and-shutdown-e5b) that drain up to one deadline (E5b), the [metrics snapshot and catalog](#metrics-e5c) and the [edge-triggered, summarized logging](#logging-e5c) (E5c; E5 is complete), with the per-operation conflict policy, `ReplacePreserving`, confirmable groups, [`ordered` buckets](#ordered-buckets-e3c-2) and [`cancel(tag)`](#cancellation-e3c-2), plus the [queries](#queries-e4a) and the [managed point in time](#point-in-time-e4b), the per-bucket [ambiguous 5xx policy](#ambiguous-5xx-e6a) and the `Retry-After` parking of nodes with one scheduler wake-up per completion (E6a): writes and reads reach the indexer.** The public headers, the
 configuration schema, the runtime lifecycle (threads, owner thread, shutdown deadline), the test
 helpers, the internal curl [Transport](#transport-internal-e2a-1-and-e2a-2) (HTTP, HTTPS, credentials), the
@@ -24,7 +22,8 @@ helpers, the internal curl [Transport](#transport-internal-e2a-1-and-e2a-2) (HTT
 resolution) exist, the [response classifier and retry lane](#response-classification-and-retry-lane-e3b-1) are driven by the [bulk sender](#bulk-sender-e3b-2), and the transport has been [benchmarked against the v1](#benchmark). `Writer::submit` admits and schedules
 writes and the production sink sends them as `_bulk` requests, with a per-node adaptive window, a bulk-size target and pacing, failover and retry; `Client::query()` runs
 searches, by-query writes, index checks and PITs on the consumer's thread. `requestClose()` closes admission and the queued writes keep draining until `awaitClosed(deadline)`, which then resolves the rest and stops callbacks from starting. See [What is not implemented yet](#what-is-not-implemented-yet).
-`indexer_connector` keeps working untouched until each consumer migrates.
+The v1 connector library no longer exists in the tree; where this document says "the v1" it is that library, kept only as the
+reference the tests and benchmarks were written against.
 
 Strict C++17: the target requires `cxx_std_17` publicly and is pinned to 17, so consumers built
 with a C++17 floor can include the headers. Only `INDEXER_CLIENT_API` symbols are exported
@@ -237,8 +236,9 @@ source; every minimum is 1 except `log_summary_interval_ms`, whose minimum is 10
 | `log_summary_interval_ms` | unsigned integer | ms | 1000 – 3600000 (1 h) | 60000 |
 
 A change to `kSchema` must change this table, the `RuntimeConfig` initializers (checked by the
-`DefaultsWhenUnset` test) and the tests together. In E1 these options are not yet registered in
-`etc/wazuh-manager-internal-options.conf`, and there is no `docs/ref` page for the library.
+`DefaultsWhenUnset` test) and the tests together. The operator-facing page is
+[`docs/ref/modules/indexer_client/`](../../../docs/ref/modules/indexer_client/README.md) (`README.md`, `configuration.md`,
+`metrics.md`); a change here that an operator can see must update it.
 
 ## Threads
 
@@ -261,8 +261,7 @@ loops and the CPU pool runs its result callbacks; the test seams (`detail::testi
 path (E3b) and the queries (E4) build on. It is **not public API**: no installed header names it and
 neither asio nor curl types appear in it. `RuntimeOwner::start` creates it after the runtime threads
 exist; internal users reach it through `detail::runtimeTransport()`, a weak view that never keeps
-the runtime alive. The normative contract is `planes/18-indexer_connector_v2/anexos/e2a-1/contrato-transport.md`
-(outside the repository).
+the runtime alive. The normative contract is the transport contract of the Indexer Client plan (outside the repository).
 
 - **Loops.** Each of the K network threads runs one libcurl multi on its `io_context`
   (`src/transport/curlLoop.cpp`). Under the admission mutex a request goes to the loop with the
@@ -446,6 +445,7 @@ by anybody.
 | `localFault` | The local reason of the last complete round, when there is one |
 | `anyAvailable()` | At least one node `Available`; the strict aggregate, for the vulnerability scanner |
 | `anyUsable()` | At least one node not `Down`; the lenient aggregate, for inventory sync. It ignores parking: a parked node still counts |
+| `noUsableAfterProbes()` | Why a call should not wait for a node: when every node has already been through a probe round (`Down` with a reason) and none is usable, the `url: reason` of each node in order, joined by `; `. `std::nullopt` with no node, with a usable one, or before the first probe round. Used by the engine's `wiconnector` and by the Content Manager's `contentIndexerClientAdapter` to fail a read fast with the same message as before |
 
 **For the next stages.** `NodeSet` also exposes `generation()` (+1 per node transition), `transitions(index)` and
 `onTransition(hook)`, called after each transition outside the mutex; `Prober::stats()` reports `rounds`, `roundsApplied`,
@@ -491,7 +491,7 @@ it.
   the document twice, which is their wire format) and `body` is empty.
 
 On success `op.body` is left empty (moved from, or freed for the update kinds); on failure `op` is untouched. The shapes are
-byte-for-byte the v1's (`indexer_connector/src/indexerConnectorSyncImpl.hpp`):
+byte-for-byte the v1's (`indexerConnectorSyncImpl.hpp` of the deleted v1 library):
 
 | Kind | Lines |
 |---|---|
@@ -1532,7 +1532,7 @@ They are for the tests; E5 publishes `pit.open`, `pit.delete.pending`, `pit.dele
 ## Logging
 
 The library logs through `loggerHelper.h` with the tag `indexer-client`. The process gives it its log function, the same one it
-gives `indexer_connector`:
+gave the v1 connector library:
 
 ```cpp
 using LogFunction = std::function<void(const int, const char*, const char*, const int, const char*, const char*, va_list)>;
@@ -1746,6 +1746,28 @@ the indexer is the `itemErrorType` token, with control bytes replaced.
 **Seam.** `detail::testing::flushLogSummary()` (`runtime.hpp`) runs the summary body now on loop 0 and returns when its lines are emitted. It returns
 `false`, without waiting, when no runtime runs, it stopped accepting work, or the caller is a runtime thread.
 
+## Consumer helpers: `chunking.hpp` and `metricsSlot.hpp`
+
+Two header-only helpers in `include/indexer_client/` that the consumers share (inventory sync and the vulnerability scanner). Nothing in
+them is exported by the library (`INDEXER_CLIENT_API` is not applied): each consumer compiles its own copy.
+
+**`chunking.hpp`** (D88, I137b, I165, I176b) holds the arithmetic a consumer needs to cut a write into [Groups](#groups-e3c-1) that fit
+the bucket's quota; the staging machines (barriers, deadlines) stay in the consumers.
+
+| Symbol | Meaning |
+|---|---|
+| `chunkCap(quotaBytes, lanes)` | Per-worker chunk cap, `0.8 * quota / (2 * lanes)` (never below 1; `lanes` 0 counts as 1): every lane can hold an open and a pending chunk. The reserve is a parameter of the caller, not a constant here. |
+| `estimateCharge(op, resultReserve)` | What the library will charge for the op (payload plus the per-op result reserve, `RESULT_RESERVE_BYTES`), never less. `Delete`: the action line alone; `IndexVersionedScript`: the document twice plus the script; any other kind: action line + body + `'\n'` + the body's heap slack (its whole capacity). |
+| `escapedSizeBound(id)` | Upper bound of the `_id` once [escaped](#encoding-per-kind): 2 bytes for `"` and `\`, at most 6 for any other control character. |
+| `CHUNK_ACTION_FRAME_BYTES` (64), `CHUNK_VERSIONED_FRAME_BYTES` (512) | Upper bounds of the fixed bytes of an action line and of an `IndexVersionedScript` head (`src/write/encoding.cpp`); if the encoder grows past them, `estimateCharge` under-reports. |
+
+**`metricsSlot.hpp`** (D95, I140, I141b, I168) is the pull-metrics source of a consumer: `MetricsSlot(maxAge, prefixes)` holds its `Client`
+**weakly** (a scrape never keeps a closed `Client` alive; without a live one the bucket values read 0) and, optionally, the process's
+`RuntimeRef` (whose values do not depend on a `Client`, I168). One refresh serves every read within `maxAge`, so one scrape of N metrics
+costs one `metrics()` and one `snapshot()`; `repoint()` aims the slot at a new `Client` after a restart; `value(name)` and
+`read(fn)` return the metric (0 when absent or filtered out by `prefixes`). It has its own mutex, so a scrape never contends with the
+consumer's lifecycle; share it (`shared_ptr`) between the consumer and every getter it registers.
+
 ## Benchmark
 
 `bench/` (stage E2c) measures whether the v2 [transport](#transport-internal-e2a-1-and-e2a-2) is at least as fast as the v1 bulk
@@ -1837,18 +1859,20 @@ warm connection: the 10 s interval against an indexer that closes idle connectio
   (4 MiB bulks, 256 MiB quota, `Reject`) kept at N x 4 MiB of 1.5 KiB documents, refilled from the result callbacks. The fake runs in
   **items mode** (one `201` item per action line, so the classifier sees a complete answer). The row is valid when the bucket's
   delta of `bulkBytes` equals the bytes the fake received; `NOTE bulk_mean=` is the mean bulk size the fake saw.
-- **`indexer_client_bench_submit`** (RNF-2) times what a producer pays per event: v1 `IndexerConnectorAsync::indexDataStream`
-  (a `string_view`) against v2 `IWriter::post` (`--api post`, the default, on a bucket with `trustedBodies` as the engine will use it; it requires `--cb none`, otherwise exit 2) or
-  `IWriter::submit` (`--api submit`) of an `IndexDataStream` op with its body moved in. P producers fire bursts of
-  B = 1000 ops behind a barrier; between bursts one coordinator waits, off the clock, until the backlog (v1 `getQueueSize()`, v2 the
-  bucket's `charge`) is below W = 16 MiB. The first 5 bursts are discarded. Row: `SUBMIT,side,api,producers,cb,handover,pair,events,
-  ns_per_op,cpu_ns_per_op,proc_cpu_ns_per_op,B,W,quota,backlog_max,accepted,server_docs,valid`; valid when every op was accepted,
-  the fake received `events x P` documents and no watermark wait timed out. The v1 side seeds a keystore in a temporary directory.
+- **`indexer_client_bench_submit`** (RNF-2) times what a producer pays per event: `IWriter::post` (`--api post`, the default, on a
+  bucket with `trustedBodies` as the engine uses it; it requires `--cb none`, otherwise exit 2) or `IWriter::submit` (`--api submit`)
+  of an `IndexDataStream` op with its body moved in. P producers fire bursts of B = 1000 ops behind a barrier; between bursts one
+  coordinator waits, off the clock, until the backlog (the bucket's `charge`) is below W = 16 MiB. The first 5 bursts are discarded.
+  Row: `SUBMIT,api,producers,cb,handover,pair,events,ns_per_op,cpu_ns_per_op,proc_cpu_ns_per_op,B,W,quota,backlog_max,accepted,
+  server_docs,indices,valid`; valid when every op was accepted, the fake received `events x P` documents and no watermark wait
+  timed out. It has no v1 side any more (the executable no longer links the v1 library or `keystore`). **Historical
+  reference:** the v1 write path (the async connector's `indexDataStream`, a `string_view`) cost about 345-350 ns of producer CPU per op
+  (`cpu_ns_per_op`) at P = 1, measured in E6c with the v1 connector library; that number is a reference, not a gate.
 - **`run.sh --suite submit --submit PATH --out PREFIX [--cpus L] [--cpus-p8 L] [--selfcheck]`**: `api=post` at P = 1/4/8 (no
-  callback, `handover=move`) and `api=submit` at P = 1/4/8 without callback, P = 1 with a no-op callback and P = 1 with
-  `handover=view`, 5 alternated pairs each; ratio = v2/v1 `ns_per_op` (lower is better); the gate (`api=post` only, at P = 1 and
-  P = 8; every `api=submit` row and P = 4 are `gate=info`) is <= 1.05 (grey zone (1.00, 1.05]; at P = 8 a grey or failing
-  wall-clock result is decided by `cpu_ns_per_op`). `--selfcheck` runs one pair per row of both APIs. Exit code 6: a gate failed.
+  callback, `handover=move`), `api=submit` at P = 1/4/8 without callback, P = 1 with a no-op callback and P = 1 with
+  `handover=view`, and `api=post` with `--indices 2` at P = 1 and 8; 5 runs each, reported as the median and the IQR of `ns_per_op`
+  and the median of `cpu_ns_per_op` (a row with IQR > 4 % of the median or fewer than 4 valid runs is repeated once; exit code 5 if it
+  stays unreliable). There is no gate. `--selfcheck` runs one run per row.
 
 ### Finding: `Expect: 100-continue`
 
@@ -1878,8 +1902,8 @@ The sources are compiled twice (I45b, `CMakeLists.txt:35-61`):
 | `indexer_client` | SHARED, from `indexer_client_objects` | none (production) | consumers and `indexer_client_utest` |
 | `indexer_client_testing` | STATIC, from `indexer_client_objects_testing`, `INDEXER_CLIENT_TESTING` (adds `src/testing/seams.cpp`, `src/testing/registry.cpp`) | `detail::seams::*` | only `indexer_client_component_test` |
 
-So no executable holds two copies of the runtime. Output goes to `${CMAKE_BINARY_DIR}/lib`, like
-`indexer_connector`. The `.so` links `wazuhext`, `ext_asio` and `Threads::Threads` privately; there
+So no executable holds two copies of the runtime. Output goes to `${CMAKE_BINARY_DIR}/lib`, as every shared
+module. The `.so` links `wazuhext`, `ext_asio` and `Threads::Threads` privately; there
 is no `manager_config`.
 
 ```bash
@@ -2091,7 +2115,6 @@ reach the indexer, E4a the [queries](#queries-e4a) (`search`, `searchAfter`, `de
 | Benchmark of the whole client (`--path client`) | E6c |
 | Registration of the catalog in `wazuh_metrics` / fastmetrics and the `GET /metrics` of each consumer | E7–E10 |
 | The consumer's sweep that closes the [ordered ambiguous window](#ordered-buckets-e3c-2) (inventory sync, delete by query) and its `ordered.ambiguous.residual` metric | E7 |
-| Migration of the four consumers off `indexer_connector` | later stages |
 
 Known defects E6b records and does not fix: a `CursorQuery` left at its default `{}` gets a 400 from OpenSearch 3.6 (D60); an average bulk of
 about 1 MiB with `bulk.maxBytes` at 4 MiB against a real OpenSearch (D61, measured in E6c).

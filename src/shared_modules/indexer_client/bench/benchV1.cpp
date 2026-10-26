@@ -10,10 +10,10 @@
  * SPDX-License-Identifier: GPL-2.0-only OR AGPL-3.0-or-later
  */
 
-// Benchmark harness, v1 side (plan 18, E2c, I58): the indexer_connector bulk transport alone, HTTPRequest::post with
-// the SINGLE handler (indexer_connector/src/indexerConnectorSyncImpl.hpp: RequestParametersStringView + headers +
-// ConfigurationParameters{timeout}), in a closed loop on the calling thread, against the in-process fake. One run per
-// invocation, printed as one CSV row (`ROW,` + the I58 columns).
+// Benchmark harness, v1 side (plan 18, E2c, I58): the v1 bulk transport alone (the v1 connector library, removed
+// in 5.x), HTTPRequest::post with the SINGLE handler (its indexerConnectorSyncImpl.hpp: RequestParametersStringView
+// + headers + ConfigurationParameters{timeout}), in a closed loop on the calling thread, against the in-process fake.
+// One run per invocation, printed as one CSV row (`ROW,` + the I58 columns).
 
 #include <sys/syscall.h>
 #include <unistd.h>

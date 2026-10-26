@@ -5,9 +5,6 @@
 # Engine Module
 /src/engine/ @wazuh/devel-xdrsiem-server @wazuh/devel-xdrsiem-server-leaders
 
-# Indexer connector
-/src/shared_modules/indexer_connector/ @wazuh/devel-xdrsiem-server @wazuh/devel-xdrsiem-server-leaders
-
 # Framework and API
 
 /framework/ @wazuh/devel-xdrsiem-server @wazuh/devel-xdrsiem-server-leaders

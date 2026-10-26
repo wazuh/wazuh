@@ -26,12 +26,6 @@ constexpr auto DATABASE_READ_CACHE_SIZE {16 * 1024 * 1024};
 constexpr auto KS_VERSION {"2"};
 constexpr auto KS_VERSION_FIELD {"version"};
 
-namespace Log
-{
-    std::function<void(const int, const char*, const char*, const int, const char*, const char*, va_list)>
-        GLOBAL_LOG_FUNCTION;
-};
-
 // Stamp the keystore format version. Pre-versioning keystores are not migrated: the manager is not
 // upgraded in place across the 4.x -> 5.x boundary, so no legacy keystore reaches this code. The
 // version field is kept so future format changes can key off it.

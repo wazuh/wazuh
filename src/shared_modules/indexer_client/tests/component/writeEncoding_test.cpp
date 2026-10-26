@@ -27,8 +27,9 @@ using namespace write_component;
 
 namespace
 {
-    // The v1's builders, transcribed literally (indexer_connector/src/indexerConnectorAsyncImpl.hpp:660-790 and
-    // indexerConnectorSyncImpl.hpp:121-145): the reference the encoding must match byte for byte.
+    // The v1's builders, transcribed literally (indexerConnectorAsyncImpl.hpp:660-790 and
+    // indexerConnectorSyncImpl.hpp:121-145 of the v1 connector library removed in 5.x): the reference the
+    // encoding must match byte for byte.
     std::string v1Index(const std::string& index, const std::string& id, const std::string& data)
     {
         std::string b;

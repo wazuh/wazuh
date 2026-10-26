@@ -1,6 +1,6 @@
 # Indexer Client
 
-The Indexer Client is the shared library (`libindexer_client`) through which `wazuh-manager-modulesd` reads from and writes to the Wazuh Indexer (OpenSearch). It replaces the [Indexer Connector](../indexer_connector/README.md) in modulesd: the [Inventory Sync Server](../inventory-sync-server/README.md), the [Vulnerability Scanner](../vulnerability-scanner/README.md) and the [Content Manager](../content_manager/README.md) feed reads no longer link the old library.
+The Indexer Client is the shared library (`libindexer_client`) through which `wazuh-manager-modulesd` reads from and writes to the Wazuh Indexer (OpenSearch). It replaces the previous Indexer Connector library: the [Inventory Sync Server](../inventory-sync-server/README.md), the [Vulnerability Scanner](../vulnerability-scanner/README.md) and the [Content Manager](../content_manager/README.md) feed reads do not link the old library, which no longer exists.
 
 Source: `src/shared_modules/indexer_client/` (developer reference: its `README.md`). Operator pages: [Configuration](configuration.md) and [Metrics](metrics.md).
 
@@ -12,7 +12,7 @@ The library is not a daemon. modulesd starts **one runtime** with its own thread
 |---|---|---|---|---|
 | `wazuh-manager-modulesd` | Inventory Sync Server | `inventory_sync_server` | `inventory`, `agent-state` | Agent state writes (`/stateful`), `/stats` and `/config` documents, agent deletion, the by-query operations, and the Vulnerability Scanner's scan lane reads |
 | `wazuh-manager-modulesd` | Vulnerability Scanner | `vulnerability_scanner` | `vd-states` | Detections written to `wazuh-states-vulnerabilities`; the reads of its scans; the CVE feed download (the [Content Manager](../content_manager/README.md) reads `.wazuh-threatintel-vulnerabilities` and `.wazuh-cti-consumers` through the scanner's `Client`) |
-| `wazuh-manager-analysisd` (engine) | Engine | `analysisd` | — | Its reads (content and remote configuration) go through a runtime of its own; its event writes still go through the Indexer Connector. The engine side is documented with the engine: see [Engine](#engine) |
+| `wazuh-manager-analysisd` (engine) | Engine | `analysisd` | — | Its event writes and its reads (content, remote configuration) go through a runtime of its own. The engine side is documented with the engine: see [Engine](#engine) |
 
 The Python framework does not use the library: it reads the same `indexer` section and the same keystore credentials through the `keystore_server` socket (see [Keystore](../keystore/README.md#keystore_server)).
 
@@ -112,12 +112,11 @@ To check by hand what the library checks, use the commands of [Verifying connect
 
 ## Engine
 
-The engine (`wazuh-manager-analysisd`) runs a runtime of its own, in its own process (options `analysisd.indexer_client_*`, log tag `wazuh-manager-analysisd:indexer-client`), for the reads of its content and remote configuration. Its event writes still go through the [Indexer Connector](../indexer_connector/README.md), configured with `analysisd.indexer_*` ([Engine configuration](../engine/configuration.md)). This page covers modulesd and the library; the engine's section is completed with its migration. The `<indexer>` section and the credentials described here are shared with it.
+The engine (`wazuh-manager-analysisd`) runs a runtime of its own, in its own process (options `analysisd.indexer_client_*`, log tag `wazuh-manager-analysisd:indexer-client`), for its event writes and for the reads of its content and remote configuration (see [Engine configuration](../engine/configuration.md)). This page covers modulesd and the library. The `<indexer>` section and the credentials described here are shared with it.
 
 ## See also
 
 - [Configuration](configuration.md) - the `<indexer>` section, credentials, certificates and the `indexer_client_*` options
 - [Metrics](metrics.md) - the `indexer_client.*` metrics and where they are published
-- [Indexer Connector](../indexer_connector/README.md) - the previous library, now used only by the engine
 - [Inventory Sync Server](../inventory-sync-server/README.md) and [Vulnerability Scanner](../vulnerability-scanner/README.md) - the consumers
 - `src/shared_modules/indexer_client/README.md` - developer reference

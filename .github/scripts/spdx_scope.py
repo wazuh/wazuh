@@ -5,7 +5,7 @@
 Scope:
   src/engine/**                                   -> AGPL-3.0-or-later
   src/shared_modules/{utils,manager_config,
-      keystore,indexer_connector,indexer_client,
+      keystore,indexer_client,
       common,content_manager}/**                  -> GPL-2.0-only OR AGPL-3.0-or-later
   everything else                                 -> out of scope
 
@@ -35,7 +35,7 @@ AGPL = "AGPL-3.0-or-later"
 DUAL = "GPL-2.0-only OR AGPL-3.0-or-later"
 
 ENGINE_PREFIX = "src/engine/"
-DUAL_DIRS = ("utils", "manager_config", "keystore", "indexer_connector", "indexer_client", "common", "content_manager")
+DUAL_DIRS = ("utils", "manager_config", "keystore", "indexer_client", "common", "content_manager")
 DUAL_PREFIXES = tuple("src/shared_modules/%s/" % d for d in DUAL_DIRS)
 
 SLASH_EXT = {

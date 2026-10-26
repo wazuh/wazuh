@@ -124,9 +124,11 @@ previous `beginStop()` runs both phases; each phase runs once.
 
 `Config` is the standalone `<indexer>` section (`hosts`, `ssl`); `toJson()` serialises it as the indexer client reads
 it. Credentials are not part of it: the Client's credentials come from the keystore (`indexer` / `username`,
-`password`) through `keystoreCredentials()` (an injectable `CredentialsProvider`; the engine does not link `keystore`,
-it calls the `Keystore::get` that `libindexer_connector.so` exports until E11), and the runtime's local copy of the
-password is erased after `start` (the keystore keeps its own).
+`password`) through `keystoreCredentials()` (an injectable `CredentialsProvider`; `Keystore::get` comes from
+`keystore_core`, the `keystore` archive without its `Log::GLOBAL_LOG_FUNCTION`: the engine defines and assigns its own,
+so what the keystore logs reaches the engine's sink), and the runtime's local copy of the password is erased after
+`start` (the keystore keeps its own). `keystore_core` is compiled with the keystore's own flags (C++20, `-fPIC`), not the
+engine's: an engine sanitizer build does not instrument it.
 
 #### `EngineConfigSource` (the Client's configuration)
 
@@ -222,16 +224,18 @@ public:
   attempt (`maxAttempts = 1`: the retry is the caller's), a page deadline of the runtime's `request_timeout_ms` and a call
   deadline a margin above it. Once every node has been probed and none is usable it fails at once (I190, I190b); before
   the first probe round it waits as I158b says. A null `query()` is `ClientClosed`, which throws like every other failure (it is
-  never read as "no config"); 0 or more than one hit, or no `_source.engine`, throw `IndexerConnectorException` as in the v1.
+  never read as "no config"); 0 or more than one hit, or no `_source.engine`, throw. Every failure is a
+  `wiconnector::RemoteConfigError` (a `std::runtime_error`; callers catch `std::exception`), with the v1's messages; the
+  "no usable node" check is `HealthView::noUsableAfterProbes()` of the client library, shared with the content manager.
 
 ## CMake Targets
 
 | Target | Type | Alias | Links |
 |---|---|---|---|
 | `wIndexerConnector_iwIndexerConnector` | INTERFACE | `wIndexerConnector::iwIndexerConnector` | `base` |
-| `wIndexerConnector_wIndexerConnector` | STATIC | `wIndexerConnector::wIndexerConnector` | `base`, `wIndexerConnector::iwIndexerConnector`, `indexer_client` (public); `indexer_connector` (**private**, only for `Keystore::get` and `IndexerConnectorException` until E11, D101); only the include directory of `keystore` |
+| `wIndexerConnector_wIndexerConnector` | STATIC | `wIndexerConnector::wIndexerConnector` | `base`, `wIndexerConnector::iwIndexerConnector`, `indexer_client` (public); `keystore_core` (**private**, `Keystore::get`, D101) |
 | `wIndexerConnector_mocks` | INTERFACE | `wIndexerConnector::mocks` | `GTest::gmock`, `wIndexerConnector::iwIndexerConnector` |
-| `wIndexerConnector_utest` | Executable | — | `GTest::gtest_main`, `GTest::gmock`, `wIndexerConnector::wIndexerConnector`, `indexer_connector` |
+| `wIndexerConnector_utest` | Executable | — | `GTest::gtest_main`, `GTest::gmock`, `wIndexerConnector::wIndexerConnector`, `wIndexerConnector::mocks` |
 
 ## Testing
 

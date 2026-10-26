@@ -40,12 +40,13 @@ target_link_libraries(
   pthread)
 
 # The client library's public headers (RuntimeOwner, Client, Pit) and its in-process fake indexer (header-only test
-# fixture: rules, PIT responder, node health), which the adapter suites serve their runtime from. httplib is what the
-# fake is written on.
+# fixture: rules, PIT responder, node health), which the adapter suites serve their runtime from, and its gmock mocks
+# (a health view no real node gives). httplib is what the fake is written on.
 target_include_directories(
   ${PROJECT_NAME}
   PRIVATE ${SRC_FOLDER}/shared_modules/indexer_client/include
           ${SRC_FOLDER}/shared_modules/indexer_client/tests/fake
+          ${SRC_FOLDER}/shared_modules/indexer_client/tests/mocks
           ${SRC_FOLDER}/external/cpp-httplib)
 
 add_test(NAME ${PROJECT_NAME} COMMAND ${PROJECT_NAME})

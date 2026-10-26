@@ -1,10 +1,11 @@
 name: "Build external dependencies"
 description: "Build the external dependencies for the project"
 
-# The three standalone builds below configure sub-projects outside src/build. The http-request and
-# keystore outputs are consumed only through link_directories(): http-request/build by
-# vulnerability_scanner and data_provider (their CMakeLists.txt) and by indexer_connector, which
-# the engine still links and which also links keystore/build. The flatbuffers step generates the schema
+# The three standalone builds below configure sub-projects outside src/build. The http-request output is
+# consumed through link_directories(): http-request/build by vulnerability_scanner and data_provider (their
+# CMakeLists.txt). Nothing consumes keystore/build any more: the engine's wiconnector links the in-tree
+# keystore_core target (source/wiconnector/CMakeLists.txt:33), so build_keystore has no consumer left (candidate to drop
+# after a green trial run). The flatbuffers step generates the schema
 # headers several modules include.
 # A lane whose target needs none of an output can opt out, which also takes that sub-project out
 # of its trigger closure. Defaults keep today's behaviour; opt a lane out only after a green trial

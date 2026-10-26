@@ -13,6 +13,8 @@
 // The indexer_client adapter of IContentIndexer (E9, I153-I159) on a real runtime over the library's fake indexer.
 
 #include "fakes/realIndexerFixture.hpp"
+#include "mockIndexerClient.hpp"
+#include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include <chrono>
 #include <functional>
@@ -528,6 +530,35 @@ TEST(ContentIndexerClientAdapter, FailFastWithoutNode)
     EXPECT_THROW(adapter->searchIndex("consumers", 1, matchAll(), std::nullopt), std::runtime_error);
     EXPECT_LT(std::chrono::steady_clock::now() - started, 100ms);
     EXPECT_EQ(env.nonProbeRequests(), 0U) << "nothing is sent while no node is usable";
+}
+
+TEST(ContentIndexerClientAdapter, FailFastMessageNamesEveryNode)
+{
+    // The whole text of the fail-fast error: the cause, then each node's url and reason, each after "; " (D103 must
+    // keep it as it is).
+    indexer_client::HealthView view;
+    view.nodes.push_back({"http://node-1:9200", indexer_client::HealthView::NodeState::Down, "connect: refused"});
+    view.nodes.push_back({"http://node-2:9200", indexer_client::HealthView::NodeState::Down, "status 503"});
+    auto client = std::make_shared<::testing::NiceMock<indexer_client::MockClient>>();
+    auto query = std::make_shared<::testing::NiceMock<indexer_client::MockQuery>>();
+    ON_CALL(*client, query()).WillByDefault(::testing::Return(query));
+    ON_CALL(*client, health()).WillByDefault(::testing::Return(view));
+    EXPECT_CALL(*query, search(::testing::_, ::testing::_, ::testing::_, ::testing::_)).Times(0);
+
+    ContentIndexerOptions options;
+    options.failFastWithoutNode = true;
+    const auto adapter = content_manager::makeContentIndexer(client, options);
+    try
+    {
+        adapter->searchIndex("consumers", 1, matchAll(), std::nullopt);
+        FAIL() << "a call with every node probed and down must fail";
+    }
+    catch (const std::runtime_error& e)
+    {
+        EXPECT_STREQ(e.what(),
+                     "No usable indexer node: unavailable; http://node-1:9200: connect: refused; "
+                     "http://node-2:9200: status 503");
+    }
 }
 
 TEST(ContentIndexerClientAdapter, WaitsBeforeFirstProbe)

@@ -16,6 +16,7 @@
 
 #include "indexer_client/chunking.hpp"
 #include "indexer_client/client.hpp"
+#include "indexer_client/runtime.hpp"
 #include "indexer_client/types.hpp"
 
 #include <atomic>
@@ -112,6 +113,9 @@ namespace invsync::indexer
         Budgets budgets;                                ///< Deadlines and query retry durations.
         indexer_client::RetryPolicy queryRetry;         ///< Base query policy; maxDuration set per call.
         std::chrono::milliseconds pageDeadline {30000}; ///< QueryOptions::pageDeadline of each query.
+        /// The process runtime: settleAbandoned() takes its bound from snapshot().requestTimeout and gives up
+        /// once shutdownDeadline() is set. An invalid reference (tests) means the default request timeout.
+        indexer_client::RuntimeRef runtime;
     };
 
     /**
@@ -162,6 +166,12 @@ namespace invsync::indexer
         void endSession() override;
         std::vector<SessionOutcome> flushSessions(std::size_t sessions) override;
         void discard() override;
+        /// Waits for the abandoned chunk, if any, up to the runtime's request timeout + 5 s (one request at most:
+        /// a cancelled op is never sent again), watching `closing` and the runtime's shutdown every blockSlice.
+        /// Still unresolved past that, the chunk stays pending (its keys keep their barrier).
+        AbandonedWrite settleAbandoned() override;
+        /// True while an abandoned chunk's ticket is not ready and `closing` is unset.
+        bool holdsAbandonedWrite() override;
 
     private:
         struct Impl;

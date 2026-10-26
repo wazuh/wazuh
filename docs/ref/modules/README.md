@@ -14,7 +14,6 @@
 - [Engine](engine/README.md) - Event decoding and enrichment pipeline (`wazuh-manager-analysisd`)
 - [FIM](fim/README.md) - Agent module: File Integrity Monitoring with persistent state synchronization
 - [Indexer Client](indexer_client/README.md) - modulesd's process-wide client for the Wazuh Indexer (OpenSearch): buckets, node health, credentials, metrics
-- [Indexer Connector](indexer_connector/README.md) - Previous OpenSearch indexing library (Filebeat replacement), now used only by the engine; bridge to the Indexer Client
 - [Integrations](integrations/README.md) - Agent modules: cloud services and third-party platform integrations
 - [Inventory Sync Server](inventory-sync-server/README.md) - Manager-side synchronization service for agent state data (HTTP over UDS)
 - [Keystore](keystore/README.md) - Encrypted credential storage (AES-256, RocksDB), served over UDS by the `keystore_server` module
