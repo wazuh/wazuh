@@ -9239,6 +9239,42 @@ TEST_F(SyscollectorImpTest, AContextOrphanedByACrashIsRecoveredByTheNextSweep)
 #endif
 }
 
+TEST_F(SyscollectorImpTest, ARecreatedDatabaseGetsItsContextsWrittenAgain)
+{
+#ifndef __linux__
+    GTEST_SKIP() << "The container baseline is Linux-only";
+#else
+    const auto spInfoWrapper {std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
+
+    const auto start = [&spInfoWrapper]()
+    {
+        Syscollector::instance().init(spInfoWrapper, reportFunction, persistFunction, logFunction,
+                                      SYSCOLLECTOR_TEST_DB_PATH, "", "",
+                                      3600, false, false, false, false, false, false, false,
+                                      false, false, false, false, false, false, false);
+    };
+
+    const std::string context {R"({"container":{"id":"c1","name":"web"}})"};
+
+    start();
+    EXPECT_TRUE(Syscollector::instance().storeContainerContext("c1", context));
+
+    // The unchanged-context shortcut remembers what it wrote. Once the database
+    // holding those writes is gone, that memory describes nothing and must not
+    // suppress the write into the new one.
+    Syscollector::instance().deleteDatabase();
+    Syscollector::instance().destroy();
+
+    start();
+    EXPECT_TRUE(Syscollector::instance().storeContainerContext("c1", context));
+    Syscollector::instance().destroy();
+
+    EXPECT_EQ(readStoredContext(SYSCOLLECTOR_TEST_DB_PATH, "c1"), context)
+            << "rows stored under c1 in the new database need their context row";
+#endif
+}
+
 TEST_F(SyscollectorImpTest, TheScanMutexCanBeHeldFromOutsideTheModule)
 {
     // wm_sync_module takes this around a synchronization so a scan cannot start
