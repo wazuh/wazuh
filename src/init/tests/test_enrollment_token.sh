@@ -221,6 +221,13 @@ unset WAZUH_ENROLLMENT_TOKEN
 
 run_target "${DESC_WITH_KEY}" 0
 check "no token and no endpoint names the missing manager" "INFO_NO_MANAGER" "$(refusal_code)"
+# The agent refuses to start on the placeholder, so the notice has to say what comes before the
+# start: the full path, since bin/ is not on PATH.
+NO_TOKEN_HINT="Enroll it with '${RUN_DIR}/bin/wazuh-agent-auth --token-file <file>' before starting it."
+check "no token names the enrollment command on stderr" "1" \
+      "$(grep -cF "${NO_TOKEN_HINT}" "${RUN_DIR}/stderr")"
+check "no token names the enrollment command in ossec.log" "1" \
+      "$(grep -cF "${NO_TOKEN_HINT}" "${RUN_DIR}/logs/ossec.log")"
 check "no token leaves the shipped placeholder" "IP:1517/wazuh-manager/" "$(endpoint_of)"
 check "no token stores no token" "absent" \
       "$([ -e "${RUN_DIR}/etc/enrollment_token" ] && echo present || echo absent)"

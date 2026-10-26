@@ -511,7 +511,7 @@ resolve_deployment_conflicts() {
     warn_removed_variables
 
     if [ -z "${WAZUH_ENROLLMENT_TOKEN}" ]; then
-        deployment_notice "${WET_INFO_NO_MANAGER}" "WAZUH_ENROLLMENT_TOKEN was not supplied, so the agent does not know where to connect."
+        deployment_notice "${WET_INFO_NO_MANAGER}" "WAZUH_ENROLLMENT_TOKEN was not supplied, so the agent does not know where to connect. Enroll it with '${INSTALLDIR}/bin/wazuh-agent-auth --token-file <file>' before starting it."
         return 0
     fi
 
