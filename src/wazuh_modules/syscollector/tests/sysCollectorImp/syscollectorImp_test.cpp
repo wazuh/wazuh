@@ -888,6 +888,138 @@ TEST_F(SyscollectorImpTest, aLifecycleNotificationIsHonouredOnTheDefaultCoupledC
 #endif
 }
 
+TEST_F(SyscollectorImpTest, stoppingDoesNotDeadlockAgainstAnArrivingNotification)
+{
+#ifndef __linux__
+    GTEST_SKIP() << "The container notification watcher is Linux-only";
+#else
+    // The watcher the two tests above rely on is joined by start(), and the join
+    // used to happen with the scan mutex still held -- syncLoop() returns holding
+    // it. The watcher takes that same mutex once poll() hands it a notification,
+    // so a notification arriving around the stop left the watcher blocked on the
+    // mutex and start() blocked on the watcher: modulesd stopped answering its
+    // stop entirely, and only SIGKILL ended it.
+    //
+    // Reproduced by keeping notifications arriving THROUGHOUT the stop. A pass
+    // holds the mutex for seconds at a time here, so a watcher waiting on it when
+    // the loop exits is the ordinary case rather than a narrow race.
+    const auto spInfoWrapper {std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
+    EXPECT_CALL(*spInfoWrapper, hardware()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_HARDWARE_JSON)));
+    EXPECT_CALL(*spInfoWrapper, os()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_OS_JSON)));
+    EXPECT_CALL(*spInfoWrapper, networks()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_NETWORKS_JSON)));
+    EXPECT_CALL(*spInfoWrapper, ports()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_PORTS_JSON)));
+    EXPECT_CALL(*spInfoWrapper, hotfixes()).WillRepeatedly(Return(R"([])"_json));
+    EXPECT_CALL(*spInfoWrapper, processes(_)).Times(testing::AnyNumber()).WillRepeatedly(testing::InvokeArgument<0>
+                                                                                         (nlohmann::json::parse(EXPECT_CALL_PROCESSES_JSON)));
+    EXPECT_CALL(*spInfoWrapper, packages(_)).Times(testing::AnyNumber()).WillRepeatedly(testing::InvokeArgument<0>
+                                                                                        (R"({"name":"TEXT", "version_":"TEXT", "vendor":"TEXT", "installed":"TEXT", "path":"TEXT", "architecture":"TEXT", "category":"TEXT", "description":"TEXT", "size":"TEXT", "priority":"TEXT", "multiarch":"TEXT", "source":"TEXT", "os_patch":"TEXT"})"_json));
+    EXPECT_CALL(*spInfoWrapper, groups()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_GROUPS_JSON)));
+    EXPECT_CALL(*spInfoWrapper, users()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_USERS_JSON)));
+    EXPECT_CALL(*spInfoWrapper, services()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_SERVICES_JSON)));
+    EXPECT_CALL(*spInfoWrapper,
+                browserExtensions()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_BROWSER_EXTENSIONS_JSON)));
+
+    ASSERT_EQ(0, ::system("mkdir -p queue/sockets"));
+
+    // Heap-allocated and joined through a watchdog, because the failure this
+    // test is about is a HANG: a joinable std::thread going out of scope calls
+    // std::terminate, which would take the whole suite down with no report of
+    // which case failed. On the failure path it is deliberately leaked instead.
+    auto* moduleThread = new std::thread
+    {
+        [&spInfoWrapper]()
+        {
+            Syscollector::instance().init(spInfoWrapper,
+                                          reportFunction,
+                                          persistFunction,
+                                          logFunction,
+                                          SYSCOLLECTOR_DB_PATH,
+                                          "",
+                                          "",
+                                          100,    // host interval: nothing else wakes this loop
+                                          false,  // scan_on_start
+                                          true, true, true, true, true, true, true, true, true, true, true, true,
+                                          false,  // notify_on_first_scan
+                                          true,   // container_baseline: this is what starts the watcher
+                                          0);     // coupled cadence, the default
+
+            Syscollector::instance().start();
+        }
+    };
+
+    std::this_thread::sleep_for(std::chrono::seconds{3});
+
+    std::atomic<bool> senderStop{false};
+    std::thread sender
+    {
+        [&senderStop]()
+        {
+            const std::string payload = R"({"epoch":"1","seq":"1"})";
+
+            sockaddr_un address {};
+            address.sun_family = AF_UNIX;
+            std::strncpy(address.sun_path, "queue/sockets/syscollector-ci-notify", sizeof(address.sun_path) - 1);
+
+            while (!senderStop.load())
+            {
+                const int fd = ::socket(AF_UNIX, SOCK_DGRAM, 0);
+
+                if (fd >= 0)
+                {
+                    static_cast<void>(::sendto(fd,
+                                               payload.data(),
+                                               payload.size(),
+                                               0,
+                                               reinterpret_cast<const sockaddr*>(&address),
+                                               sizeof(address)));
+                    ::close(fd);
+                }
+
+                std::this_thread::sleep_for(std::chrono::milliseconds{5});
+            }
+        }
+    };
+
+    // Long enough for the first notification to start a container pass, which is
+    // what holds the scan mutex while the next notifications queue up behind it.
+    std::this_thread::sleep_for(std::chrono::seconds{3});
+
+    Syscollector::instance().destroy();
+
+    std::promise<void> joined;
+    auto joinedFuture = joined.get_future();
+    std::thread waiter{[moduleThread, &joined]()
+    {
+        moduleThread->join();
+        joined.set_value();
+    }};
+
+    const bool stopped = joinedFuture.wait_for(std::chrono::seconds{60}) == std::future_status::ready;
+
+    senderStop = true;
+    sender.join();
+
+    if (!stopped)
+    {
+        // Both threads are stuck on each other and will never return. Detached
+        // and leaked on purpose: there is nothing left to join.
+        waiter.detach();
+        FAIL() << "the module thread did not return 60 s after destroy(): start() joins the notification "
+               "watcher while still holding the scan mutex, and the watcher was waiting for that mutex";
+    }
+
+    waiter.join();
+    delete moduleThread;
+
+    // The first destroy() ran while a pass held the scan mutex, so it skipped the
+    // teardown by design (it try_locks). Now that the loop is gone the mutex is
+    // free, and this second call releases the resources the rest of the suite
+    // expects to be released.
+    Syscollector::instance().destroy();
+#endif
+}
+
 TEST_F(SyscollectorImpTest, containerBaselineRunsOnItsOwnIntervalNotTheHostOne)
 {
 #ifndef __linux__
