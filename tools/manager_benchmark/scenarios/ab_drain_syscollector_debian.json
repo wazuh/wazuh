@@ -1,0 +1,22 @@
+{
+  "name": "ab_drain_syscollector_debian",
+  "description": "Indexer A/B drain scenario (inventory sync): 32 Debian agents each run a syscollector full_resync of 2,000 packages followed by a checksum reconcile. ab_indexer.sh pauses the indexer for a fixed time while the sessions are in flight and then resumes it, so the sessions the server retains wait for the indexer and then drain: sessions/s over the run is the capacity of the server's indexer sender.",
+  "mode": "uds",
+  "defaults": {
+    "module": "syscollector",
+    "option": "Sync",
+    "cluster_name": "cluster01"
+  },
+  "lanes": {
+    "syscollector": [
+      { "kind": "full_resync", "module": "syscollector", "indices": ["wazuh-states-inventory-packages"],
+        "documents": { "count": 2000, "size_bytes": 256 } },
+      { "kind": "checksum", "module": "syscollector", "indices": ["wazuh-states-inventory-packages"], "checksum": "correct" }
+    ]
+  },
+  "fleets": [
+    { "name": "linux", "agents": 32, "first_id": 54000, "lanes": ["syscollector"],
+      "start": { "osname": "Debian GNU/Linux", "osplatform": "debian", "ostype": "linux", "osversion": "12", "architecture": "x86_64", "agentversion": "5.0.0" } }
+  ],
+  "pacing": { "concurrent_agents": 0, "requests_per_second": 0, "repeat_until": "0", "drain_timeout": "300s" }
+}
