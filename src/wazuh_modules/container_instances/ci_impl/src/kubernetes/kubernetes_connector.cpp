@@ -286,6 +286,12 @@ namespace wazuh::container_instances
                                              container,
                                              workloads ? k8s::resolveOwnerChain(pod, *workloads) : pod.ownerRefs,
                                              m_nodeName);
+                    // The key the query asked about, not a decision about which key
+                    // this container is filed under: the store keeps the one the
+                    // reconcile chose and records this as another way to reach the
+                    // container. See AliasEntry -- re-keying here made the key flap
+                    // between this cgroup and the reconcile's, and every flip was
+                    // published as `changed`.
                     record.hostKey = cgroupInode;
                     m_store.upsertResolved(KUBERNETES_SOURCE, std::move(record));
                     return RefreshOutcome::resolved;

@@ -225,6 +225,12 @@ namespace wazuh::container_instances
         try
         {
             auto detail = m_client.inspect(containerId);
+            // The key the query asked about, not a decision about which key
+            // this container is filed under: the store keeps the one the
+            // reconcile chose and records this as another way to reach the
+            // container. See AliasEntry -- re-keying here made the key flap
+            // between this cgroup and the reconcile's, and every flip was
+            // published as `changed`.
             detail.record.hostKey = cgroupInode;
             m_store.upsertResolved(m_source, std::move(detail.record));
             return RefreshOutcome::resolved;
