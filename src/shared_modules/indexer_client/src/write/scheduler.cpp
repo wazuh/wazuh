@@ -28,6 +28,7 @@
 #include <asio/steady_timer.hpp>
 
 #include "runtime/runtimeInternal.hpp"
+#include "transport/seams.hpp"
 #include "write/sink.hpp"
 #include "write/writer.hpp"
 
@@ -117,7 +118,9 @@ namespace indexer_client::detail::write
         /// retry-lane head's notBefore, whichever comes first; E3b-2). An
         /// already-due expiry is not armed (arming it would spin while the sink has no capacity, which
         /// WritePath::sinkReady() ends) and is reported: an op that expired during the pass was not eligible when the
-        /// pass read the buckets, so the caller runs another pass for it.
+        /// pass read the buckets, so the caller runs another pass for it. E6e (B): the stripes' deadline does not
+        /// wait for capacity, so with nextDue already past the timer is armed at Bucket::stripeDue() when that one is
+        /// still ahead (no spin: it is in the future, and the pass it wakes flushes that stripe).
         bool armTimer(const std::shared_ptr<SchedulerShared>& shared, Entry& entry, const Bucket& bucket, TimePoint now)
         {
             std::optional<TimePoint> due;
@@ -126,12 +129,23 @@ namespace indexer_client::detail::write
             {
                 if (*due <= now)
                 {
-                    due.reset();
                     dueNow = true;
+                    // G-diff E6e r2 P2: an expired pending head (or a committed group's, TimePoint::min()) would
+                    // otherwise mask the stripes' later deadline and leave staged ops waiting for sink capacity.
+                    // Read after invalidateArmedDue like nextDue's: the same half of stage()'s Dekker pair.
+                    due = bucket.stripeDue();
+                    if (due && *due <= now)
+                    {
+                        due.reset(); // Flushed by flushDueStripes(now) just before; one that threw waits for a pass.
+                    }
                 }
             }
+            // D116: from the nextDue read above (the stripes' `oldest`) to the publish below, m_armedDue stays
+            // invalidated, so a stripe that becomes non-empty in between notifies (another pass reads it).
+            seams::beforePublishArmedDue(); // StageRacingPassArmsDeadline: a post staged in this window.
             if (due == entry.due)
             {
+                bucket.publishArmedDue(due); // D116: still armed at it (invalidated at the pass start).
                 return dueNow;
             }
             entry.due = due;
@@ -141,6 +155,7 @@ namespace indexer_client::detail::write
                 {
                     entry.timer->cancel();
                 }
+                bucket.publishArmedDue(std::nullopt);
                 return dueNow;
             }
             if (!entry.timer)
@@ -162,7 +177,8 @@ namespace indexer_client::detail::write
                     }
                     runPass(shared);
                 });
-            return false;
+            bucket.publishArmedDue(due); // D116: after the timer is armed.
+            return dueNow;               // An expired nextDue is still reported (armed at the stripes' deadline only).
         }
 
         void removeFromRing(SchedulerShared& shared, std::size_t index)
@@ -390,13 +406,19 @@ namespace indexer_client::detail::write
                     entry.bucket = key;
                 }
             }
+            // E6e (B): the stripes whose deadline passed are flushed first, with no lock held and whatever the sink's
+            // capacity (a staged op never waits for the indexer to be admitted); their dedup flag is cleared below
+            // with the others, since this pass reads the buckets afterwards.
+            const auto start = std::chrono::steady_clock::now();
             // Clear every dedup flag before reading the buckets: an enqueue that lands after this point notifies
             // again, one that landed before is seen by this pass.
             for (auto it = shared->entries.begin(); it != shared->entries.end();)
             {
                 if (auto bucket = it->second.bucket.lock())
                 {
+                    bucket->flushDueStripes(start);
                     bucket->clearNotified();
+                    bucket->invalidateArmedDue(); // D116: republished by armTimer below.
                     ++it;
                 }
                 else
@@ -432,16 +454,25 @@ namespace indexer_client::detail::write
             }
             const auto after = std::chrono::steady_clock::now();
             bool dueDuringPass = false;
+            bool flushedNotify = false;
             for (auto& [key, entry] : shared->entries)
             {
                 if (auto bucket = entry.bucket.lock())
                 {
+                    // E6e (B): a stripe deadline that passed during the pass is flushed here, so armTimer never sees
+                    // one already due (it would not re-arm it without capacity); a flush that crossed a threshold
+                    // asks for another pass.
+                    if (bucket->flushDueStripes(after))
+                    {
+                        bucket->clearNotified();
+                        flushedNotify = true;
+                    }
                     dueDuringPass = armTimer(shared, entry, *bucket, after) || dueDuringPass;
                 }
             }
             // An op whose maxAge expired while this pass ran was not eligible when the pass read the buckets and now
             // has no timer: run another pass for it (without capacity, sinkReady() is what resumes the scheduler).
-            if (dueDuringPass && sink && sink->capacity() > 0)
+            if ((dueDuringPass && sink && sink->capacity() > 0) || flushedNotify)
             {
                 postPass(shared);
             }

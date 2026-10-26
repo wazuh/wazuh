@@ -155,7 +155,7 @@ namespace indexer_client::detail::write
 
         // The effective conflict policy (I73), exactly as submit.
         const ConflictPolicy effective = op.onConflict ? *op.onConflict : bucket->spec().onConflict;
-        auto outcome = encode(std::move(op), effective, bucket->spec().trustedBodies);
+        auto outcome = encode(std::move(op), effective, bucket->spec().trustedBodies, &path->heads());
         if (!outcome.ok())
         {
             bucket->countInvalidArgument();
@@ -180,14 +180,14 @@ namespace indexer_client::detail::write
         auto state = std::make_shared<OpState>();
         state->payload = payload;
         state->head = std::move(outcome.value.head);
-        state->sharedHead = std::move(outcome.value.sharedHead);
+        state->cachedHead = outcome.value.cachedHead; // E6e (D): the write path's line, if any.
         state->body = std::move(outcome.value.body);
         state->reserveCharged = true;
         state->conflictRetry = effective.kind == ConflictPolicy::Kind::Retry;
         state->tag = std::move(tag);
         state->hasKey = hasKey;
         state->keyHash = keyHash;
-        state->bucket = bucket;
+        state->owner = bucket.get(); // E6e (D): for the debug assert only.
         state->group = group;
 
         std::lock_guard<std::mutex> lock(group->groupMutex);
@@ -262,7 +262,7 @@ namespace indexer_client::detail::write
             path->budget().release(reserved - reserves);
             for (const auto& op : ops)
             {
-                path->resolve(op, dropped(Cause::ClientClosed));
+                path->resolve(nullptr, op, dropped(Cause::ClientClosed)); // D66b/D67b: no bucket, no client.
             }
             return GroupTicket(group);
         }
@@ -276,7 +276,7 @@ namespace indexer_client::detail::write
             // in the bucket's custody but not queued; only this group's ops are resolved, the rest keeps draining.
             for (const auto& op : ops)
             {
-                path->resolve(op, dropped(*closed)); // Not part of CloseReport::drained (a refusal).
+                path->resolve(bucket, op, dropped(*closed)); // Not part of CloseReport::drained (a refusal).
             }
             return GroupTicket(group);
         }

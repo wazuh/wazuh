@@ -124,6 +124,7 @@ protected:
         m_ref = started.value;
         m_path = write_component::wr::runtimeWritePath();
         ASSERT_NE(m_path, nullptr);
+        write_component::casePath() = m_path;
         ASSERT_TRUE(component::eventually([] { return probeRounds() >= 1; }, std::chrono::seconds(5)))
             << "the first probe round was never applied";
     }

@@ -466,20 +466,26 @@ that resolved every operation `Failed(Unavailable)`). The code is in `src/write/
 
 ### Encoding per kind
 
-`encode(Op&&, const ConflictPolicy&, bool trustedBody = false)` (`src/write/encoding.hpp`, normative for the details below) runs
-in `submit`, `post` and in `Group::add`, on the producer's thread, once; those pass the bucket's `BucketSpec::trustedBodies`. The
-result is the operation's NDJSON lines (each ends in `\n`) as an `Encoded{head, sharedHead, body}` (I121, I125): on the wire the
-operation is `headView()` + `body` + `\n` (the `\n` only with a body; `appendWire`), `wire()` is its exact size on the wire, and a
-retry re-sends them without re-encoding. `headView()` is the shared head when there is one, else `head`; the wire size, the charge,
-the batch builder and the sender all read the head through it.
+`encode(Op&&, const ConflictPolicy&, bool trustedBody = false, HeadTable* heads = nullptr)` (`src/write/encoding.hpp`, normative
+for the details below) runs in `submit`, `post` and in `Group::add`, on the producer's thread, once; those pass the bucket's
+`BucketSpec::trustedBodies` and the write path's `HeadTable`. The result is the operation's NDJSON lines (each ends in `\n`) as an
+`Encoded{head, cachedHead, body}` (I121, I125): on the wire the operation is `headView()` + `body` + `\n` (the `\n` only with a
+body; `appendWire`), `wire()` is its exact size on the wire, and a retry re-sends them without re-encoding. `headView()` is the
+cached head when there is one, else `head`; the wire size, the charge, the batch builder and the sender all read the head through
+it.
 
 - `Index` (`Replace`): `head` is the action line with its `\n`, built with an exact `reserve`; `body` is `op.body` itself, moved
   in with its buffer: the document is never copied nor re-reserved on the producer's thread.
 - `IndexAutoId`, `IndexDataStream`: `body` as above; the action line depends only on kind and index, so it is **shared**
-  (`sharedHead`, a `shared_ptr<const std::string>`; `head` stays empty). `encoding.cpp` keeps a one-entry `thread_local` cache
-  {kind, index, line} per producer thread: on a hit (same kind, index equal byte for byte) the index is not validated again and no
-  line is built, the op just takes a reference; on a miss the op is validated as always and, once valid, its line replaces the
-  entry (an invalid index never enters the cache). The rest of the validation runs in the same order either way, so the first
+  (`cachedHead`, a plain pointer to a line of the write path's `HeadTable`; `head` stays empty; E6e removed the per-op reference
+  count). The table is append-only, holds at most 256 lines in fixed slots and lives as long as the write path, which outlives
+  every reader of a line (the runtime joins its CPU pool first; a group of a dead path never reads its lines); past 256 an op
+  builds its own `head`. The cap is per runtime lifetime (the table never shrinks): once 256 (kind, index) pairs were seen, an
+  op of a new pair finds the table full without a lock and only builds its line, never taking the table's append mutex.
+  Each producer thread keeps a 16-entry `thread_local` cache {table generation, kind, index, line} (the
+  engine alternates its raw and events indices): on a hit (same table, same kind, index equal byte for byte) the index is not
+  validated again and no line is built; on a miss the op is validated as always and, once valid, its line is found (lock-free) or
+  interned in the table and takes an entry of the cache (an invalid index never enters either). The rest of the validation runs in the same order either way, so the first
   failure still wins. The charge does not count the shared line apart: every op charges its own `wire()` (which includes it) plus
   its body's heap slack, as any other op ([Charge and quota](#charge-and-quota)).
 - The update kinds (`IndexVersionedScript`, every `ReplacePreserving`) and `Delete`: `head` holds every line (the update kinds copy
@@ -660,6 +666,56 @@ When the charge does not fit, the bucket's `Overflow` decides:
   resolved.
 - **Locks.** A bucket's mutex is a leaf: it is never held while posting, running a callback or destroying a ticket state, and
   the only other lock taken under it is the waiter registry's (itself a leaf).
+
+### Staged admission of `post` (E6e)
+
+A bucket with `Overflow::DropNewest` that is not `ordered` (the engine's `events` and `raw` buckets) admits the `post()`
+calls without a tag in batches (I208–I210). Everything else admits operation by operation as above: `submit()`, a group's
+`add()`, a `post()` with a tag (so `cancel(tag)` sees it, I80) and every `post()` on another policy or an ordered bucket.
+
+- **Stripes.** The bucket has `K = max(1, min(64, 2 x hardware_concurrency()))` stripes; each producer thread always uses the
+  same one. A staged `post()` takes only its stripe's mutex. The stripe is flushed with **one** take of the bucket's mutex
+  (the rules of `admit` per operation, in stripe order) when it holds 64 operations, when its staged payload reaches
+  `min(bulk.maxBytes, quotaBytes / (2K))`, when its oldest operation is `min(1 ms, bulk.maxAge)` old (the scheduler's pass on
+  loop 0 flushes it whether or not the sink has capacity) and when the bucket closes. Each operation of a flush is admitted
+  (or dropped) whole or not at all: a failure leaves it and the rest staged for the next flush. The quota edge lines a flush
+  crosses ([Logging (E5c)](#logging-e5c)) are written once the stripe's mutex is dropped too, by the thread that flushed
+  it: the posting thread, loop 0 for a deadline flush, or the closing thread.
+- **Deadline wake-up (D116, I217).** Loop 0's timer, not the producer, flushes a stripe at its deadline
+  (`oldest + min(1 ms, maxAge)`). On the empty → non-empty transition the stripe publishes `oldest` and notifies the scheduler
+  only if that deadline is earlier than the one loop 0 last armed for the bucket (published after the timer is armed; unknown,
+  so always notified, while a pass runs or when none is armed). Otherwise the pass at the armed deadline reads the stripe and
+  re-arms, so the operation is still admitted within `min(1 ms, maxAge)` plus a tick, without a scheduler post per transition.
+  The stripes' deadline is armed on its own when the bucket's other deadline is already past and waits for sink capacity (an
+  expired pending operation or a committed group while every node is down or the send window is full): a staged operation
+  never waits for capacity (`WriteLocalBatch.StripeDeadlineWithExpiredPendingAndNoCapacity`).
+  It rests on a Dekker pair, every access `seq_cst`: the producer stores `oldest` and then loads the armed deadline; the pass
+  invalidates the armed deadline at its start and then reads every stripe's `oldest` (when it computes the next deadline), so
+  at least one of them sees the other's store. The component case `WriteLocalBatch.StageRacingPassArmsDeadline` races both
+  orders through two seams.
+- **`Posted`.** A staged `post()` returns `accepted` at once: with `DropNewest` a full quota is accepted anyway (I182), and an
+  overflow found at the flush is counted `droppedNewest` and resolved `Dropped(QueueFull)` as before. An operation that can
+  never fit (`PayloadTooLarge`: wire above `bulk.maxBytes`, or payload + `RESULT_RESERVE` above the quota or the global cap)
+  and any `post()` on a closing bucket are not staged: they are refused at once with today's cause and counters.
+- **Lag of the snapshot.** `submitted`, `accepted`, `charge`, `retained` and the metrics built from them (I195, I197) move
+  when a stripe is flushed: up to 64 operations per stripe, so up to `K x 64` per bucket, or `min(1 ms, maxAge)`, behind
+  the `post()` calls.
+- **Memory outside the quota.** Staged operations are not charged: they are outside the bucket's quota and the global cap
+  until their flush. Per bucket that memory is bounded by `quotaBytes / 2` (`K` stripes of at most `quotaBytes / (2K)`
+  of payload, plus one operation each), and over every staging bucket by the sum of those halves.
+- **Close.** Every close entry (`requestClose()`, `awaitClosed`'s sweep, a `Client` destroyed on a runtime thread, the
+  runtime's `stop()`) flushes the stripes while the admission is still open, then closes it: a staged operation is never
+  lost, drains like any other after `requestClose()` and is counted in the `CloseReport`. A `post()` that reaches its stripe
+  after the seal sees it and is admitted by itself: refused with the close cause once the admission is closed (in the short
+  window between the seal and that close it is still accepted, as a `post()` that began before `requestClose()` returned).
+- **Order.** Stripes are flushed independently, so the pending queue is not strictly in `post()` order: an operation can be
+  admitted up to `min(1 ms, maxAge)` after a later one of another thread, a `submit()` can overtake earlier staged `post()`
+  calls of the same thread, and a `post()` staged before a group's `commit()` leaves with `maxAge` rather than with the
+  group. The bucket is unordered, so no ordering promise is broken.
+- **Bulk settlement.** A bulk's results are settled in chunks of `SETTLE_CHUNK` = 64 operations (= the operations of a full
+  stripe), one take of the bucket's mutex each: a chunk holds it about as long as a stripe flush does, so producers flushing
+  stripes do not queue behind a settlement (with 512 a chunk held it ~50 µs and convoyed eight producers, I217). The price, one
+  take of the mutex and one release to the global cap per 64 operations, is 1/64 of settling operation by operation.
 
 ### Scheduler (DRR on loop 0)
 

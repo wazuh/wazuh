@@ -18,9 +18,11 @@
 // what the bucket charges (CA-12) and the bulk carries without re-encoding. Normative contract:
 // anexos/e2a-1/contrato-transport.md § Escritura; this header is normative for I73.
 
+#include <atomic>
 #include <cstddef>
 #include <cstdint>
 #include <memory>
+#include <mutex>
 #include <string>
 #include <string_view>
 
@@ -74,21 +76,79 @@ namespace indexer_client::detail::write
         "cur.put(p[last], k[1]); } "
         "} else { ctx.op = 'none' }";
 
+    /// E6e (D, I125): the action lines of the kinds without `_id` (IndexAutoId, IndexDataStream), which depend only on
+    /// kind and index, shared by every op of the write path that owns the table (WritePath::heads()). Append-only, at
+    /// most CAPACITY entries in fixed slots (a line never moves and is never freed before the table: an op holds a
+    /// plain pointer to it, no reference count). A full table refuses new entries and the op builds its own line. The
+    /// cap is per runtime lifetime (the table never shrinks): past 256 distinct (kind, index) pairs every op of a new
+    /// pair builds its own line, and a full table is seen lock-free (no append mutex, no second scan).
+    /// Each table has a process-wide unique, monotonic `generation()`, the key of the per-thread caches (a new table
+    /// at the address of a dead one never matches an old entry). Invariant (the owner's): no reader of a line outlives
+    /// the table — the runtime joins its pool before it destroys the write path, and a group of a dead path never
+    /// reads its ops' lines.
+    class HeadTable final
+    {
+    public:
+        static constexpr std::size_t CAPACITY = 256;
+
+        HeadTable();
+        HeadTable(const HeadTable&) = delete;
+        HeadTable& operator=(const HeadTable&) = delete;
+
+        std::uint64_t generation() const noexcept
+        {
+            return m_generation;
+        }
+        /// The line of (kind, index), lock-free over the published slots; null if absent.
+        const std::string* find(Op::Kind kind, std::string_view index) const noexcept;
+        /// The line of (kind, index): the existing one, or `line` stored now; null when the table is full. A full
+        /// table is checked before the append mutex: it never takes it again.
+        const std::string* intern(Op::Kind kind, std::string_view index, std::string&& line);
+        /// Every entry is taken (lock-free).
+        bool full() const noexcept
+        {
+            return m_count.load(std::memory_order_acquire) == CAPACITY;
+        }
+        /// Entries stored (tests).
+        std::size_t size() const noexcept
+        {
+            return m_count.load(std::memory_order_acquire);
+        }
+        /// Takes of the append mutex so far (tests: a full table takes none).
+        std::uint64_t appendLocks() const noexcept
+        {
+            return m_appendLocks.load(std::memory_order_relaxed);
+        }
+
+    private:
+        struct Slot final
+        {
+            Op::Kind kind {Op::Kind::IndexAutoId};
+            std::string index;
+            std::string line;
+        };
+        const std::uint64_t m_generation;
+        std::unique_ptr<Slot[]> m_slots; ///< CAPACITY fixed slots; [0, m_count) published, immutable.
+        std::atomic<std::size_t> m_count {0};
+        std::mutex m_appendMutex;                     ///< Serializes intern(); readers never take it.
+        std::atomic<std::uint64_t> m_appendLocks {0}; ///< Takes of m_appendMutex (written under it).
+    };
+
     /// The wire lines of one op (I121): the action line (and, for the update kinds and Delete, every line) in `head`
-    /// or, for IndexAutoId and IndexDataStream, in `sharedHead` (E6d I125: a per-thread cached line shared by every op
-    /// of that kind and index; `head` then stays empty), and `body` the moved-in document of the kinds that carry it
-    /// verbatim (empty otherwise). On the wire the op is headView() + `body` + '\n' (the '\n' only when `body` is not
-    /// empty).
+    /// or, for IndexAutoId and IndexDataStream given a HeadTable, in `cachedHead` (E6d I125, E6e D: the table's line
+    /// shared by every op of that kind and index; `head` then stays empty), and `body` the moved-in document of the
+    /// kinds that carry it verbatim (empty otherwise). On the wire the op is headView() + `body` + '\n' (the '\n' only
+    /// when `body` is not empty).
     struct Encoded final
     {
         std::string head;
-        std::shared_ptr<const std::string> sharedHead;
+        const std::string* cachedHead {nullptr}; ///< A line of the HeadTable given to encode() (E6e D), or null.
         std::string body;
 
-        /// The shared head when there is one, else `head`. Every reader of the head goes through it.
+        /// The cached head when there is one, else `head`. Every reader of the head goes through it.
         std::string_view headView() const noexcept
         {
-            return sharedHead ? std::string_view(*sharedHead) : std::string_view(head);
+            return cachedHead ? std::string_view(*cachedHead) : std::string_view(head);
         }
         std::uint64_t wire() const noexcept;
         /// I124b: the bytes charged against the quota: wire() plus the heap slack of `body` (capacity - size when the
@@ -127,10 +187,11 @@ namespace indexer_client::detail::write
     /// <P> = the preserved paths in the given order, each as an array of its segments: [["case"],["a","b"]] (the
     /// segment alphabet needs no escaping). `_id` is escaped as the v1 escapes it. The result splits those bytes in
     /// two (I121): for Index (Replace) `head` is the action line with its '\n' (built with an exact reserve); for
-    /// IndexAutoId and IndexDataStream that line (it depends only on kind and index) is `sharedHead`, taken from a
-    /// one-entry thread_local cache {kind, index, line} (E6d I125): on a hit (same kind, index equal byte for byte)
-    /// neither isSafeIndexName runs nor a line is built; on a miss the index is validated as always and, once the op
-    /// is valid, the entry is replaced (an invalid index never enters it). For those three kinds `body` is `op.body`
+    /// IndexAutoId and IndexDataStream, given a HeadTable, that line (it depends only on kind and index) is
+    /// `cachedHead`, taken from the per-thread cache over the table (E6d I125, E6e D; see below): on a hit (same table,
+    /// kind, index equal byte for byte) neither isSafeIndexName runs nor a line is built; on a miss the index is
+    /// validated as always and, once the op is valid, the line is found or interned (an invalid index never enters
+    /// the table nor the cache). For those three kinds `body` is `op.body`
     /// itself, moved in with its buffer and capacity, never copied nor
     /// re-reserved; for the update kinds and Delete `head` holds every line (the update kinds copy the document twice,
     /// which is their wire format, I71) and `body` is empty. On success `op.body` is left empty (moved from, or its
@@ -151,7 +212,16 @@ namespace indexer_client::detail::write
     ///     IndexVersionedScript `state`, `state.document_version` or a path under it (it would defeat the guard).
     /// A per-op Retry on Index/IndexAutoId/IndexDataStream/Delete is accepted and only changes how a 409 item is
     /// treated (futile for `create`: its 409 means "exists"). On failure `op` is untouched.
-    Outcome<Encoded> encode(Op&& op, const ConflictPolicy& effective, bool trustedBody = false);
+    /// E6e (D): with `heads`, the line of IndexAutoId / IndexDataStream comes from that table through a per-thread
+    /// cache of THREAD_CACHE entries keyed by (heads->generation(), kind, index) — a hit validates neither the index
+    /// nor builds a line; a miss validates as always, then finds or interns the line in the table (a full table: the op
+    /// keeps its own `head`) — and `cachedHead` points at it. Without `heads` every op builds its own `head`.
+    Outcome<Encoded>
+    encode(Op&& op, const ConflictPolicy& effective, bool trustedBody = false, HeadTable* heads = nullptr);
+
+    /// E6e (D): entries of the per-thread cache of encode() (engine workers alternate the raw and the events index,
+    /// the latter templated per event).
+    constexpr std::size_t THREAD_CACHE = 16;
 } // namespace indexer_client::detail::write
 
 #endif // _INDEXER_CLIENT_WRITE_ENCODING_HPP

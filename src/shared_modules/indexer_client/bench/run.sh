@@ -18,9 +18,11 @@
 # --suite submit (E6c, RNF-2, I119; E6d, I123; the transport suite above is the default and does not change): the
 # submit microbenchmark (indexer_client_bench_submit), v1 against v2 with two v2 APIs (column `api` of the rows).
 # api=post: P = 1, 4, 8 x cb none (handover move). api=submit: P = 1, 4, 8 x cb none (move), P = 1 x cb noop and
-# P = 1 x handover view (the five rows of E6c). Per row 5 pairs v1/v2 alternating which side goes first, ratio =
-# ns_per_op v2/v1 (lower is better). The gate (CA-E6c-8, I119) is only on api=post, P = 1 and P = 8: median <= 1.05
-# passes, (1.00, 1.05] is grey; P = 4 and every api=submit row are gate=info. IQR of the ratios > 0.04 or < 4 valid
+# P = 1 x handover view (the five rows of E6c); E6e (D) adds api=post P = 1 and P = 8 with --indices 2 (the ops
+# alternate between two indices, as the engine's raw and events; gate=info). Per row 5 pairs v1/v2 alternating which
+# side goes first, ratio = ns_per_op v2/v1 (lower is better). The gate (CA-E6c-8, I119) is only on api=post, P = 1 and
+# P = 8 with one index: median <= 1.05 passes, (1.00, 1.05] is grey; P = 4, the --indices 2 rows and every api=submit
+# row are gate=info. IQR of the ratios > 0.04 or < 4 valid
 # pairs => the row is repeated once. At P = 8 a grey or failing clock ratio is settled by the median cpu_ns_per_op
 # ratio (noted in the summary). The final exit code (6) looks only at api=post. --cpus pins every row, --cpus-p8 the
 # P = 8 rows (default --cpus; both default none). --selfcheck: 1 pair per row with --events 20000; exit 0 only when
@@ -180,14 +182,15 @@ if [ "$SUITE" = submit ]; then
     fi
   }
 
-  # submit_attempt <api> <P> <cb> <handover> <pairs> <tag>: sets SSTATS ("median iqr valid cpu_v1 cpu_v2 cpu_ratio").
+  # submit_attempt <api> <P> <cb> <handover> <pairs> <tag> <indices>: sets SSTATS ("median iqr valid cpu_v1 cpu_v2
+  # cpu_ratio").
   submit_attempt() {
-    local api=$1 p=$2 cb=$3 ho=$4 pairs=$5 tag=$6 i side ok1 ok2 n1 n2 c1 c2 ratios="" cratios="" cpu1="" cpu2=""
+    local api=$1 p=$2 cb=$3 ho=$4 pairs=$5 tag=$6 ix=$7 i side ok1 ok2 n1 n2 c1 c2 ratios="" cratios="" cpu1="" cpu2=""
     for i in $(seq 1 "$pairs"); do
       if [ $((i % 2)) -eq 1 ]; then order="v1 v2"; else order="v2 v1"; fi
       for side in $order; do
-        run_submit "$tag api=$api P=$p cb=$cb $ho pair $i $side" "$p" --side $side --api "$api" --cb "$cb" --handover "$ho" \
-          --events "$SUBMIT_EVENTS" --pair "$i"
+        run_submit "$tag api=$api P=$p cb=$cb $ho indices=$ix pair $i $side" "$p" --side $side --api "$api" --cb "$cb" \
+          --handover "$ho" --events "$SUBMIT_EVENTS" --pair "$i" --indices "$ix"
         if [ $side = v1 ]; then ok1=$SVALID n1=$SNS c1=$SCPU; else ok2=$SVALID n2=$SNS c2=$SCPU; fi
       done
       if [ "$ok1" = 1 ] && [ "$ok2" = 1 ]; then
@@ -216,12 +219,13 @@ print("%.3f %.3f %d %.1f %.1f %.3f" % (statistics.median(r), q[2] - q[0], len(r)
   ok=1
   for spec in "post 1 none move gate" "post 4 none move info" "post 8 none move gate" \
     "submit 1 none move info" "submit 4 none move info" "submit 8 none move info" "submit 1 noop move info" \
-    "submit 1 none view info"; do
-    read -r api p cb ho kind <<<"$spec"
+    "submit 1 none view info" "post 1 none move info 2" "post 8 none move info 2"; do
+    read -r api p cb ho kind ix <<<"$spec"
+    ix=${ix:-1}
     [ $SELFCHECK -eq 1 ] || wait_load "submit api=$api P=$p cb=$cb $ho"
     repeated=0 tag=submit
     while :; do
-      submit_attempt "$api" "$p" "$cb" "$ho" "$SUBMIT_PAIRS" "$tag"
+      submit_attempt "$api" "$p" "$cb" "$ho" "$SUBMIT_PAIRS" "$tag" "$ix"
       read -r med iqr vp cpu1 cpu2 cratio <<<"$SSTATS"
       reliable=yes
       # IQR relative to the median (the ratios of this suite may be far from 1; E6c G-diff obj. 5).
@@ -251,7 +255,7 @@ print("%.3f %.3f %d %.1f %.1f %.3f" % (statistics.median(r), q[2] - q[0], len(r)
       fi
     fi
     [ $reliable = yes ] || { [ $RC -eq 0 ] && RC=5; }
-    echo "SUBMIT_ROW,api=$api,producers=$p,cb=$cb,handover=$ho,median=$med,iqr=$iqr,valid_pairs=$vp,pairs=$SUBMIT_PAIRS,cpu_v1=$cpu1,cpu_v2=$cpu2,cpu_ratio=$cratio,reliable=$reliable,gate=$gate" >>"$SUM"
+    echo "SUBMIT_ROW,api=$api,producers=$p,cb=$cb,handover=$ho,indices=$ix,median=$med,iqr=$iqr,valid_pairs=$vp,pairs=$SUBMIT_PAIRS,cpu_v1=$cpu1,cpu_v2=$cpu2,cpu_ratio=$cratio,reliable=$reliable,gate=$gate" >>"$SUM"
   done
   log "# load at the end $(cut -d' ' -f1-3 /proc/loadavg)"
   if [ $SELFCHECK -eq 1 ]; then

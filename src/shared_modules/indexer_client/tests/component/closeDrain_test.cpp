@@ -879,11 +879,11 @@ TEST_F(CloseDrainSinkTest, ResolutionOutstandingBeforeReleased)
     c->requestClose();
     Park park;
     hooks::setAfterPayloadReleased(park.hook());
-    AsyncCall resolveA([path = m_path, op = ops[0]] { path->resolve(op, TestSink::ok()); });
+    AsyncCall resolveA([path = m_path, op = ops[0]] { path->resolve(bucketOf(*op), op, TestSink::ok()); });
     ASSERT_TRUE(park.waitEntered(5s));
     auto report = std::make_shared<ic::Outcome<ic::CloseReport>>();
     AsyncCall closer([c, report] { *report = c->awaitClosed(now() + 10s); });
-    ASSERT_TRUE(m_path->resolve(ops[1], TestSink::ok())); // Σ retained = 0 from here on.
+    ASSERT_TRUE(m_path->resolve(bucketOf(*ops[1]), ops[1], TestSink::ok())); // Σ retained = 0 from here on.
     const bool returnedWhileParked = closer.wait(scaled(300ms));
     park.release();
     ASSERT_TRUE(resolveA.wait(5s));

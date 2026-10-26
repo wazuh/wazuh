@@ -1263,7 +1263,7 @@ protected:
     {
         for (const auto& op : ops)
         {
-            m_path->resolve(op, TestSink::ok());
+            m_path->resolve(bucketOf(*op), op, TestSink::ok());
         }
     }
 

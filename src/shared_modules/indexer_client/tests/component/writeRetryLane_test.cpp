@@ -155,7 +155,7 @@ protected:
     /// Resolves `op` through the single resolution path (false if someone else resolved it first).
     bool resolve(const OpPtr& op, ic::Status status = ic::Status::Ok, ic::Cause cause = ic::Cause::None)
     {
-        return m_path->resolve(op, resultOf(status, cause));
+        return m_path->resolve(bucketOf(*op), op, resultOf(status, cause));
     }
 
     /// Takes everything still queued in `bucket` (lane and pending) and every op still delivered, and resolves it.

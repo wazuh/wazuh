@@ -79,7 +79,7 @@ TEST_F(WriteTest, ChargeIsWireBytesPlusReserve)
         ASSERT_EQ(batches[0].ops.size(), 1u);
         EXPECT_EQ(batches[0].ops[0]->wire(), size);
 
-        ASSERT_TRUE(m_path->resolve(batches[0].ops[0], TestSink::ok()));
+        ASSERT_TRUE(m_path->resolve(bucketOf(*batches[0].ops[0]), batches[0].ops[0], TestSink::ok()));
         EXPECT_EQ(stats("b").charge, R) << "the payload is released at resolution";
         EXPECT_EQ(globalCharge(), R);
 
@@ -400,12 +400,12 @@ TEST_F(WriteTest, OverflowBlockWakes)
         auto batches = sink->take();
         ASSERT_EQ(batches.size(), 1u);
         const auto t0 = now();
-        ASSERT_TRUE(m_path->resolve(batches[0].ops[0], TestSink::ok()));
+        ASSERT_TRUE(m_path->resolve(bucketOf(*batches[0].ops[0]), batches[0].ops[0], TestSink::ok()));
         ASSERT_TRUE(producer.wait(5s));
         EXPECT_LT(std::chrono::duration_cast<std::chrono::milliseconds>(now() - t0).count(), 500)
             << "ms until woken by the local release";
         EXPECT_EQ(*admitted, static_cast<int>(ic::Cause::None));
-        m_path->resolve(batches[0].ops[1], TestSink::ok());
+        m_path->resolve(bucketOf(*batches[0].ops[1]), batches[0].ops[1], TestSink::ok());
         closeNow(*l); // The admitted op is still pending (I99: drained into the held sink, then swept).
         sink->take(); // That batch, already resolved by the sweep.
         ASSERT_TRUE(eventually([&] { return globalCharge() == 0; }, 5s));
@@ -432,14 +432,14 @@ TEST_F(WriteTest, OverflowBlockWakes)
         auto batches = sink->take();
         ASSERT_EQ(batches.size(), 1u);
         const auto t0 = now();
-        ASSERT_TRUE(m_path->resolve(batches[0].ops[0], TestSink::ok()));
+        ASSERT_TRUE(m_path->resolve(bucketOf(*batches[0].ops[0]), batches[0].ops[0], TestSink::ok()));
         ASSERT_TRUE(producer.wait(6s));
         EXPECT_LT(std::chrono::duration_cast<std::chrono::milliseconds>(now() - t0).count(), 500)
             << "ms until woken by the global release";
         EXPECT_EQ(*admitted, static_cast<int>(ic::Cause::None));
         for (std::size_t k = 1; k < batches[0].ops.size(); ++k)
         {
-            m_path->resolve(batches[0].ops[k], TestSink::ok());
+            m_path->resolve(bucketOf(*batches[0].ops[k]), batches[0].ops[k], TestSink::ok());
         }
     }
     closeNow(*g); // The waiter's op is still pending (I99: drained into the held sink, then swept).
@@ -987,10 +987,13 @@ TEST_F(WriteTest, PostDropPolicies)
         {
             ASSERT_TRUE(writer->post(indexOp(id(key++), 1000)).accepted);
         }
+        // I209 (E6e B): a DropNewest bucket stages post(); the snapshot moves when the stripes are flushed.
+        m_path->flushStaged();
         EXPECT_EQ(stats(name).charge, 3 * one);
         const auto overflow = writer->post(indexOp(id(key++), 1000));
         EXPECT_TRUE(overflow.accepted) << ic::toString(overflow.cause);
         EXPECT_EQ(overflow.cause, ic::Cause::None);
+        m_path->flushStaged(); // I209.
         EXPECT_TRUE(eventually([&] { return stats(name).charge == 3 * one; }, 5s)) << describe(stats(name));
         EXPECT_EQ(stats(name).retained, 3u);
     }
@@ -1053,7 +1056,8 @@ TEST_F(WriteTest, PostReserveReturnedOnClientDestroyed)
     std::size_t won = 0;
     for (const auto& op : delivered)
     {
-        won += m_path->resolve(op, TestSink::ok()) ? 1 : 0; // The sink's late answer, after its bucket died.
+        // The sink's late answer, after its bucket died (E6e D: no bucket to pass, the branch of D66b/D67b).
+        won += m_path->resolve(nullptr, op, TestSink::ok()) ? 1 : 0;
     }
     EXPECT_EQ(won, 0u) << "the close had resolved them";
     delivered.clear();
