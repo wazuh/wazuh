@@ -315,3 +315,73 @@ TEST_F(FimDbUpgradeTest, AMigratedDatabaseHasTheSchemaOfAFreshOne)
     EXPECT_EQ(schemaFingerprint(FRESH_DB_PATH), schemaFingerprint(UPGRADE_DB_PATH))
             << "a migrated database and a freshly created one must be the same database";
 }
+
+namespace
+{
+    /// Opens the database like openThroughDbSync and returns why DBSync recreated it, if it did.
+    std::string openAndGetRecreateReason(const char* path)
+    {
+        DBSync dbSync(HostType::AGENT,
+                      DbEngineType::SQLITE3,
+                      path,
+                      FIMDBCreator<OS_TYPE>::CreateStatement(),
+                      DbManagement::PERSISTENT,
+                      fimDbUpgradeStatements());
+        return dbSync.recreateReason();
+    }
+
+    /// A development fim.db that already had container_id in file_entry's key
+    /// but was stamped at an older version, so the v2 -> v3 rebuild runs on it.
+    void seedDevelopmentDatabase(const char* path, const std::string& rows)
+    {
+        std::string schema {FIMDBCreator<OS_TYPE>::CreateStatement()};
+        schema += rows;
+        schema += "PRAGMA user_version = 2;";
+        execOrFail(path, schema);
+    }
+}
+
+TEST_F(FimDbUpgradeTest, ADevelopmentDatabaseWithCollidingKeysIsRecreatedInsteadOfDisablingFim)
+{
+    seedDevelopmentDatabase(UPGRADE_DB_PATH,
+                            "INSERT INTO file_entry (container_id, path, checksum) VALUES ('', '/etc/passwd', 'h');"
+                            "INSERT INTO file_entry (container_id, path, checksum) VALUES ('cid', '/etc/passwd', 'c');");
+
+    std::string reason;
+    ASSERT_NO_THROW(reason = openAndGetRecreateReason(UPGRADE_DB_PATH));
+
+    EXPECT_NE(reason.find("could not be upgraded from version 2"), std::string::npos) << reason;
+    EXPECT_EQ(readUserVersion(UPGRADE_DB_PATH), 3);
+    EXPECT_EQ(scalar(UPGRADE_DB_PATH, "SELECT count(*) FROM file_entry;"), "0");
+    EXPECT_EQ(schemaFingerprint(UPGRADE_DB_PATH), [&]()
+    {
+        openThroughDbSync(FRESH_DB_PATH);
+        return schemaFingerprint(FRESH_DB_PATH);
+    }());
+}
+
+TEST_F(FimDbUpgradeTest, ADevelopmentContainerRowIsNeverTurnedIntoAHostRow)
+{
+    seedDevelopmentDatabase(UPGRADE_DB_PATH,
+                            "INSERT INTO file_entry (container_id, path, checksum) VALUES ('cid', '/etc/hosts', 'c');");
+
+    std::string reason;
+    ASSERT_NO_THROW(reason = openAndGetRecreateReason(UPGRADE_DB_PATH));
+
+    EXPECT_FALSE(reason.empty()) << "the guard must reject the rebuild, not copy the row as a host row";
+    EXPECT_EQ(readUserVersion(UPGRADE_DB_PATH), 3);
+    EXPECT_EQ(scalar(UPGRADE_DB_PATH, "SELECT count(*) FROM file_entry WHERE container_id = '';"), "0");
+}
+
+TEST_F(FimDbUpgradeTest, ADatabaseFromANewerVersionIsRecreated)
+{
+    seedLegacyV1Database(UPGRADE_DB_PATH);
+    execOrFail(UPGRADE_DB_PATH, "PRAGMA user_version = 9;");
+
+    std::string reason;
+    ASSERT_NO_THROW(reason = openAndGetRecreateReason(UPGRADE_DB_PATH));
+
+    EXPECT_NE(reason.find("written by a newer version"), std::string::npos) << reason;
+    EXPECT_EQ(readUserVersion(UPGRADE_DB_PATH), 3);
+    EXPECT_EQ(scalar(UPGRADE_DB_PATH, "SELECT count(*) FROM file_entry;"), "0");
+}

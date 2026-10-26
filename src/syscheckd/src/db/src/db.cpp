@@ -59,6 +59,12 @@ void DB::init(const int storage,
                                                  DbManagement::PERSISTENT,
                                                  fimDbUpgradeStatements())};
 
+    // A recreated database is why the next sync resends every file, so say so.
+    if (const auto recreateReason {dbsyncHandler->recreateReason()}; !recreateReason.empty() && callbackLogWrapper)
+    {
+        callbackLogWrapper(LOG_WARNING, recreateReason);
+    }
+
     FIMDB::instance().init(std::move(callbackLogWrapper), std::move(dbsyncHandler), fileLimit, valueLimit);
 }
 

@@ -166,7 +166,16 @@ inline const std::vector<std::string>& fimDbUpgradeStatements()
         // live table also carries db_status_field_dm, which
         // initializeStatusField() adds lazily on first use. It is
         // per-transaction state, so dropping it here is correct.
-        R"(DROP TABLE IF EXISTS file_entry_upgrade_v3_old;
+        //
+        // The first statement is a guard. The copy assigns container_id = ''
+        // and is only correct for the published schema, which has no such
+        // column. A development database that already has container_id would
+        // collide on the primary key or silently turn container rows into host
+        // rows. json('container_id') is malformed JSON, so in that case the
+        // guard raises SQLITE_ERROR, and DBSync recreates the database instead
+        // of migrating it.
+        R"(SELECT json(name) FROM pragma_table_info('file_entry') WHERE name = 'container_id';
+DROP TABLE IF EXISTS file_entry_upgrade_v3_old;
 ALTER TABLE file_entry RENAME TO file_entry_upgrade_v3_old;
 DROP INDEX IF EXISTS path_index;
 DROP INDEX IF EXISTS inode_index;

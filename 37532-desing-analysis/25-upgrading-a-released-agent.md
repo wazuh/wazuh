@@ -35,11 +35,13 @@ No `container_id`. No `container_json`. A **single-column** primary key. The sam
 | `dbsync_processes` | `PRIMARY KEY (pid)` | `PRIMARY KEY (container_id, pid)` |
 | `file_entry` | `PRIMARY KEY (path)` | `PRIMARY KEY (container_id, path)` |
 | `container_context` | — | new table |
-| `user_version` | **1** | 15 (syscollector) / 3 (FIM) |
+| `user_version` | **1** (FIM; syscollector up to 5.0.0-rc1) / **2** (syscollector 5.0.0 GA) | 16 (syscollector) / 3 (FIM) |
 
-The `user_version` of 1 is not a guess: 5.0.0 constructs `DBSync` with the five-argument
-constructor (`syscollectorImp.cpp:567` on that branch), so `currentDbsyncVersion` is
-`upgradeStatements.size() + 1` = 1, and every database it creates is stamped 1.
+The `user_version` of 1 is not a guess: up to 5.0.0-rc1 both modules construct `DBSync` without
+upgrade statements, so `currentDbsyncVersion` is `upgradeStatements.size() + 1` = 1. 5.0.0 GA
+(`70666bdb5b`) gave syscollector one published step, the `os_distribution_release` →
+`os_display_version` rename, so its databases are stamped 2. That step keeps index 0 for good;
+the container steps follow it, which is why syscollector ends at 16 and FIM at 3.
 
 > **The migration mechanism itself had never run.** Neither consumer passed `upgradeStatements`
 > until this branch wired it up. `SQLiteDBEngine::initialize` only executes the create statement
@@ -185,13 +187,13 @@ the comparison that has value:
 | `wdb_upgrade_global()` does | `SQLiteDBEngine::initialize` did | …and does now |
 | --- | --- | --- |
 | `wdb_global_create_backup(…, "-pre_upgrade")`, restores on failure | nothing — a failed upgrade leaves a half-migrated database | **each step is atomic**, so a failure leaves the database whole at its previous version. No backup; see §25.7 rule 4 |
-| Rejects `version > latest_version` and disables the database | no upper bound; a downgraded agent silently uses a newer schema | **guard added** (`DB_VERSION_AHEAD_OF_SCHEMA`) |
-| `wdb->enabled = false` with a specific error naming the database | a generic throw, swallowed by the caller | error names the step and carries SQLite's own text; **still swallowed** — see §25.8 |
+| Rejects `version > latest_version` and disables the database | no upper bound; a downgraded agent silently uses a newer schema | **recreated**, per upstream `70666bdb5b`: the agent databases only hold what the module collects again, so a newer one is rebuilt and the reason logged (`recreateReason()`, in syscollector and FIM) |
+| `wdb->enabled = false` with a specific error naming the database | a generic throw, swallowed by the caller | a schema error (`SQLITE_ERROR`) recreates the database and logs why; transient errors (busy, I/O) are rethrown without deleting anything. Each container rebuild also refuses a table that already has `container_id`, so a development database is recreated instead of having its container rows turned into host rows |
 
-The middle row was worth borrowing and has been. The first turned out not to be: once a step
+The middle row was worth borrowing, and upstream settled it as recreation rather than rejection. The first turned out not to be: once a step
 cannot half-apply, the state a backup would restore from no longer exists, and what it *would*
 restore — a 5.0.0-shaped database under a 5.1.0 agent — is itself the broken state §25.2
-describes. The third is a policy question this work deliberately left open.
+describes. The third was settled the same way upstream.
 
 Two of the three gaps this table was written to highlight are therefore closed by changing
 `SQLiteDBEngine::initialize` rather than by importing anything from `wdb_upgrade.c`. The one

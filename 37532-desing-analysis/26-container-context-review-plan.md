@@ -32,11 +32,21 @@
 - Decisión de producto (2026-10-26): para #8, el contexto de un documento es el último
   contexto conocido al emitirlo. Un cambio posterior de metadatos no reescribe
   retroactivamente documentos ya indexados ni, por sí solo, genera una reemisión.
+- Resolución upstream de #2/#13 (2026-10-29): ambos quedaron corregidos en la rama de
+  límites (`d424987739`, `87350ca9f7`), no en esta entrega. El conector publica
+  `withheld` junto a `containers`, de modo que una lista parcial no autoriza ni el sweep
+  ni la de-admisión, y la admisión de un contenedor nacido después del arranque se
+  resuelve por contenedor en lugar de pedir un sweep global.
+- Integración 5.0.0 y Entrega D (2026-10-26): tras el rebase sobre 5.0.0 se completaron
+  #3 y #4 (ver Entrega D). El rebase dejó dos roturas de compilación de tests ajenas a
+  esta entrega, corregidas en el mismo commit: `FakeProc` no implementaba los métodos
+  nuevos de `IFileIOUtils`, y `remoted_module_wrappers.c` no incluía `<stdint.h>`.
+  Pasaron las 15 suites de dbsync, dbengine, FIM DB, contenedores y Syscollector.
 
 **Conclusión:** los 15 comentarios identifican comportamientos presentes en el código,
 pero no tienen todos el mismo alcance ni justifican aplicar literalmente la solución
 propuesta. Priorizar seguridad de memoria, autoridad para borrar y conservación del
-contexto ante errores. La política de rollback sigue pendiente; el contrato de #8 ya
+contexto ante errores. La política de rollback quedó resuelta como recreación (upstream); el contrato de #8 ya
 está acordado como snapshot del último contexto conocido al emitir, sin convergencia
 retroactiva del inventario indexado.
 
@@ -55,9 +65,9 @@ Prioridades:
 | # | Veredicto | Prioridad recomendada | ¿Conviene corregir? | Esfuerzo |
 | --- | --- | --- | --- | --- |
 | 1 | UAF confirmado por inspección | P0 | Sí, independientemente del cierre del daemon | 0,5–1 |
-| 2 | Ausencia no autoritativa puede borrar contenedores vivos | P0 | Sí; corregir productor y ambos consumidores | 3–5 |
-| 3 | Bloqueo de inicialización confirmado; política deliberada | P1 si se soporta rollback | Sí, definir recuperación; no recrear globalmente sin garantías | 1–3 |
-| 4 | Colisión reproducida; solo en esquemas intermedios de desarrollo, no en el publicado | P1; bloqueante para actualizar esos nodos | Sí; definir compatibilidad de bases de desarrollo | 1–3 con recreación explícita; 3–5 preservándolas |
+| 2 | **Corregido** upstream (`d424987739`): una lista parcial ya no autoriza sweeps ni de-admisión | Hecho | El conector informa `withheld`; FIM no instala un snapshot parcial y Syscollector arrastra la admisión previa hasta una lista completa | — |
+| 3 | **Corregido** con la política upstream (`70666bdb5b`): versión mayor o upgrade fallido por esquema → recreación con motivo registrado | Hecho | FIM registra `recreateReason()`; transitorios no borran | — |
+| 4 | **Corregido**: numeración alineada con 5.0.0 (v16) y guard `container_id` en cada reconstrucción | Hecho | Bases de desarrollo se recrean; nunca se convierten filas de contenedor en host | — |
 | 5 | Prune inseguro tras fallo de lectura | P0 | Sí, junto con #6 | 0,25–0,5 |
 | 6 | Limpieza de contexto y presupuesto sin confirmar el borrado | P0 | Sí; propagar resultados y conservar estado ante fallos | 1–2 |
 | 7 | **Ya corregido**: consume notificaciones con el intervalo cero y conserva la cadencia host | Hecho | Verificado con test de lifecycle en modo acoplado | — |
@@ -66,7 +76,7 @@ Prioridades:
 | 10 | Memoización sobrevive al reemplazo de la DB | P1 | Sí; invalidar al cambiar la base | 0,5–1 |
 | 11 | Escritura no ejecutada se informa como exitosa | P1 | Sí; corregir el contrato de persistencia | 0,5–1,5 |
 | 12 | **Corregido y probado**: libera la fila poseída en todas las salidas | Hecho | Callback no registrado probado | — |
-| 13 | Altas disparan trabajo global innecesario | P2 | Sí, preservando admisión antes del primer walk | 1,5–3 |
+| 13 | **Corregido** upstream (`87350ca9f7`): un alta ya no pide un sweep global | Hecho | La admisión se resuelve por contenedor cuando el snapshot no lo conoce; el sweep periódico sigue como backstop | — |
 | 14 | **Corregido**: omite `syncRow` si el contexto completo no cambió | Hecho | Integrado al ciclo de vida de caché de A | 0,5 |
 | 15 | **Corregido**: v1→v2 usa SQL literal en ambos esquemas | Hecho | Upgrade FIM probado; Syscollector compila | 0,25 |
 
@@ -538,6 +548,34 @@ Esfuerzo estimado: 1,5–2,5 días-persona, casi todo en resolver conflictos y e
 
 **Decisión:** esperar a que `37532-nfr3-container-limits` incorpore `main`, y luego
 rebasear esta rama y aplicar los puntos 1–4 sin cherry-picks parciales.
+
+**Estado: hecho** (rebase sobre 5.0.0 y el commit siguiente).
+
+1. El rebase ya trajo el `initialize` upstream y retiró `DB_VERSION_AHEAD_OF_SCHEMA`.
+   `execute()` lanza `sqlite_error` con el código de SQLite, así que solo `SQLITE_ERROR`
+   provoca recreación; busy, locked e I/O se relanzan. FIM ahora registra
+   `recreateReason()` como `LOG_WARNING`, igual que Syscollector.
+2. El rebase dejó el `RENAME COLUMN` publicado como v1→v2 y los pasos de contenedor
+   hasta v16; la DDL de osinfo ya usa `os_display_version`.
+3. Guard: cada reconstrucción (FIM v2→v3 y las 13 de Syscollector) empieza con
+   `SELECT json(name) FROM pragma_table_info('<tabla>') WHERE name = 'container_id';`.
+   Con el esquema publicado no devuelve filas. Si la columna ya existe,
+   `json('container_id')` produce `malformed JSON` (`SQLITE_ERROR`) y la base se recrea.
+4. Matriz cubierta:
+
+   | Caso | Prueba | Resultado |
+   | --- | --- | --- |
+   | FIM v1 publicado → v3 | `AReleasedDatabaseIsUpgradedWithoutLosingWhatItHeld` | migra |
+   | FIM dev con claves que colisionan | `ADevelopmentDatabaseWithCollidingKeysIsRecreatedInsteadOfDisablingFim` | recrea, esquema igual al fresco |
+   | FIM dev, solo fila de contenedor | `ADevelopmentContainerRowIsNeverTurnedIntoAHostRow` | recrea, sin fila host |
+   | FIM versión mayor | `ADatabaseFromANewerVersionIsRecreated` | recrea con motivo |
+   | Syscollector v1 (5.0.0-rc1) → v16 | `AnExistingDatabaseIsUpgradedWithoutLosingWhatItHeld`, `OsInfoDistributionReleaseColumnIsRenamedOnUpgrade` | migra, conserva valores |
+   | Syscollector v2 (5.0.0 GA) → v16 | `AReleasedVersionTwoDatabaseIsUpgradedWithoutRecreation` | migra sin recrear |
+   | Syscollector dev (`container_id`, v15) | `ADevelopmentDatabaseWithContainerIdIsRecreatedNotMigrated` | recrea, sin fila host |
+   | Syscollector versión mayor y transitorios | pruebas upstream de `dbengine_test` | recrea / relanza |
+
+   `OsInfoDistributionReleaseColumnIsRenamedOnUpgrade` armaba su v1 con el esquema actual,
+   que ya tiene `container_id`; ahora usa `LEGACY_V1_SCHEMA` congelado.
 
 Implementar la política elegida y una matriz
 de esquemas reales. No modificar migraciones publicadas como si nadie las hubiera corrido,

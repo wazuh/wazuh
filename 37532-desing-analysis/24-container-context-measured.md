@@ -108,7 +108,7 @@ unreachable by construction, and the column keeps being written as `DEFAULT ''` 
 So the column is gone in the same release that introduced the dimension:
 
 - Dropped from all 14 create statements (13 syscollector tables, `file_entry`).
-- Dropped from existing databases by migration — `user_version` 2 → 15 for syscollector, 2 → 3 for
+- Dropped from existing databases by migration — `user_version` 2 → 16 for syscollector (after the published 5.0.0 rename step), 2 → 3 for
   FIM. Development databases converge rather than keeping a vestigial column forever.
 - Both legacy fallback readers deleted, in `ecsData()` and in the FIM bridge's two lift sites.
 - The C round trip removed with it: `fim_file_data.container_json`, `FileItem`'s member, and the
