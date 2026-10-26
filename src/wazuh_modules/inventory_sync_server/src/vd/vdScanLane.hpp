@@ -32,7 +32,7 @@ namespace invsync::vd
 
     struct VdScanLaneConfig
     {
-        /// Scan workers; each worker owns one IndexerConnectorSync. Raising this above 1 is safe
+        /// Scan workers; each worker owns one IIndexerConnectorSync. Raising this above 1 is safe
         /// -- VD's own ScanOrchestrator has a matching per-slot pool (REQ-VDQ-7, its
         /// "scanWorkers" setting). Placeholder default; the facade overwrites it with
         /// resolveVdWorkers()'s resolved value (vd_workers, or half the host's cores) before the

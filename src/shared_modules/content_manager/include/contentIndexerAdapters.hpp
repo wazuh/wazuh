@@ -18,12 +18,6 @@
 #include <chrono>
 #include <memory>
 
-// Forward-declared, not included: indexerConnector.hpp is not on the include path this library's
-// public headers are held to (content_manager_public_abi_c17), and a host that passes a connector
-// already includes it.
-class IndexerConnectorSync;
-class IndexerConnectorAsync;
-
 namespace indexer_client
 {
     class IClient;
@@ -31,30 +25,6 @@ namespace indexer_client
 
 namespace content_manager
 {
-    /**
-     * @brief Use a host's synchronous connector as the content manager's indexer.
-     *
-     * The adapter keeps the connector alive for as long as any registration holds it. Requests are
-     * forwarded as-is: the connector logs its own failures, under the host's tag.
-     *
-     * @param connector The host's connector. Must not be null.
-     * @return The indexer to pass to every `ContentRegister`.
-     * @throws std::invalid_argument if @p connector is null.
-     */
-    EXPORTED std::shared_ptr<IContentIndexer> makeContentIndexer(std::shared_ptr<IndexerConnectorSync> connector);
-
-    /**
-     * @brief Use a host's asynchronous connector as the content manager's indexer.
-     *
-     * Only the connector's synchronous read operations are used; nothing goes through its indexing
-     * queue, so a download does not delay the events the host is indexing.
-     *
-     * @param connector The host's connector. Must not be null.
-     * @return The indexer to pass to every `ContentRegister`.
-     * @throws std::invalid_argument if @p connector is null.
-     */
-    EXPORTED std::shared_ptr<IContentIndexer> makeContentIndexer(std::shared_ptr<IndexerConnectorAsync> connector);
-
     /// Time budgets of the indexer_client adapter's calls (I159b).
     struct ContentIndexerOptions
     {

@@ -62,7 +62,7 @@ hosts:
 |---|---|
 | Vulnerability feed: update interval, page size, parallel slices | `feed-update-interval`, `pageSize` and `numSlices` of `<vulnerability-detection>` — see the [Vulnerability Scanner configuration](../vulnerability-scanner/configuration.md) |
 | Engine: sync intervals, page sizes, PIT lease, consumer retry | `analysisd.*` internal options — see the [Engine configuration](../engine/configuration.md) |
-| Indexer hosts, TLS files, credentials | The `<indexer>` section and the keystore — see the [Indexer Connector configuration](../indexer_connector/configuration.md) |
+| Indexer hosts, TLS files, credentials | The `<indexer>` section and the keystore — see the [Indexer Client configuration](../indexer_client/configuration.md) |
 
 ## Indexer indices
 

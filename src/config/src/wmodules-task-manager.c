@@ -143,8 +143,9 @@ static void wm_task_manager_read_tunables(wm_task_manager *data) {
      * a mutex-guarded socket plus pure CPU, so running agents in parallel would multiply contention
      * on that mutex to buy nothing. The ceiling is deliberately low for a second reason too -- the
      * WPK client is shared_modules/http-request, which caches curl handlers in a process-wide queue
-     * of five shared with vulnerability_scanner and indexer_connector, and a large pool here would
-     * evict theirs. Note that what bounds TRANSFERS is upgrade_max_concurrent_downloads, not this.
+     * of five shared with vulnerability_scanner (indexer_client runs its own curl loop), and a large
+     * pool here would evict its handlers.
+     * Note that what bounds TRANSFERS is upgrade_max_concurrent_downloads, not this.
      *
      * upgrade_batch_deadline MUST expire before the Server API's own timeout, which must in turn be
      * shorter than the transport's per-route backstop. The module answering first is what keeps a

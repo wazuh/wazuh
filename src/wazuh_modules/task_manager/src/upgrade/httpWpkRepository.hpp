@@ -26,7 +26,7 @@ namespace task_manager::upgrade
      * WHY THIS LIBRARY, given the retired module used something else. It used wurl_http_get() and
      * wurl_request() from shared/src/url.c -- libwazuh, which this shared object must not link, so
      * some replacement was required either way. http-request is the tree's existing C++ HTTP client
-     * (vulnerability_scanner and indexer_connector both use it), it pins the same C++17, and it
+     * (vulnerability_scanner uses it), it pins the same C++17, and it
      * takes libcurl from the same `wazuhext` this module already links. Reusing it beats a second
      * hand-rolled client.
      *
@@ -41,8 +41,8 @@ namespace task_manager::upgrade
      * CA, but this guarantee does not depend on it.
      *
      * TWO COSTS WORTH KNOWING. First, cURLHandlerCache is a process-wide singleton holding at most
-     * QUEUE_MAX_SIZE (5) handlers keyed only by (thread id, handler type), shared with those two
-     * modules -- so a large upgrade worker pool would evict their handlers and cost them connection
+     * QUEUE_MAX_SIZE (5) handlers keyed only by (thread id, handler type), shared with
+     * vulnerability_scanner -- so a large upgrade worker pool would evict its handlers and cost them connection
      * reuse. That is why upgrade_workers defaults to 2 rather than to the core count. Second, the
      * library collapses every transport failure into responseCode -1 plus an English curl string;
      * that blocked it for the UDS consumer calls, which must tell "could not connect" from "died
