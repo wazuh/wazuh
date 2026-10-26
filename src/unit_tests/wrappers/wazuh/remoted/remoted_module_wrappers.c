@@ -9,6 +9,7 @@
 
 #include "remoted_module_wrappers.h"
 #include <stddef.h>
+#include <stdint.h>
 #include <string.h>
 #include <stdarg.h>
 #include <setjmp.h>
