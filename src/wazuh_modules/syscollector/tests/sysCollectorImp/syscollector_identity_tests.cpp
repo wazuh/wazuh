@@ -46,6 +46,10 @@
 #include <sqlite3.h>
 #include <mock_sysinfo.hpp>
 
+/// The version DBSync records once every upgrade step has run: the published
+/// steps in UPGRADE_SQL_STATEMENTS, then the container ones after them.
+constexpr int CURRENT_SCHEMA_VERSION {16};
+
 using ::testing::_;
 using ::testing::NiceMock;
 using ::testing::Return;
@@ -1498,7 +1502,7 @@ TEST_F(SyscollectorIdentityTest, OsInfoDistributionReleaseColumnIsRenamedOnUpgra
     sqlite3_stmt* stmt = nullptr;
     ASSERT_EQ(sqlite3_prepare_v2(db, "PRAGMA user_version;", -1, &stmt, nullptr), SQLITE_OK);
     ASSERT_EQ(sqlite3_step(stmt), SQLITE_ROW);
-    EXPECT_EQ(sqlite3_column_int(stmt, 0), static_cast<int>(UPGRADE_SQL_STATEMENTS.size() + 1));
+    EXPECT_EQ(sqlite3_column_int(stmt, 0), CURRENT_SCHEMA_VERSION);
     sqlite3_finalize(stmt);
 
     ASSERT_EQ(sqlite3_prepare_v2(db, "SELECT os_display_version FROM dbsync_osinfo;", -1, &stmt, nullptr), SQLITE_OK);
@@ -1551,7 +1555,7 @@ TEST_F(SyscollectorIdentityTest, OsInfoUnexpectedSchemaIsRecreatedOnUpgrade)
     sqlite3_stmt* stmt = nullptr;
     ASSERT_EQ(sqlite3_prepare_v2(db, "PRAGMA user_version;", -1, &stmt, nullptr), SQLITE_OK);
     ASSERT_EQ(sqlite3_step(stmt), SQLITE_ROW);
-    EXPECT_EQ(sqlite3_column_int(stmt, 0), static_cast<int>(UPGRADE_SQL_STATEMENTS.size() + 1));
+    EXPECT_EQ(sqlite3_column_int(stmt, 0), CURRENT_SCHEMA_VERSION);
     sqlite3_finalize(stmt);
 
     // Recreated, so the row stored with the unexpected schema is gone.
