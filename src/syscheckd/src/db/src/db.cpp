@@ -719,6 +719,43 @@ namespace
                 cJSON*& slot = m_blocks[containerId];
                 cJSON_Delete(slot);
                 slot = block;
+                ++m_generation;
+            }
+
+            /// Read before a database lookup that may end in fill().
+            std::uint64_t generation() const
+            {
+                std::lock_guard<std::mutex> lock {m_mutex};
+                return m_generation;
+            }
+
+            /// Caches a block read from the database and returns an owned
+            /// duplicate of it, both under the lock: once the lock is released,
+            /// a store(), erase() or clear() on another thread may free the
+            /// cached object.
+            ///
+            /// The block is cached only if nothing changed the cache since
+            /// @p generation was read. Otherwise the database read may predate
+            /// a newer write or a delete, and caching it would serve that stale
+            /// block until the next write. The caller still gets its duplicate:
+            /// it describes the database as it was read.
+            ///
+            /// Takes ownership of @p block.
+            cJSON* fill(const std::string& containerId, cJSON* block, std::uint64_t generation)
+            {
+                std::lock_guard<std::mutex> lock {m_mutex};
+                cJSON* copy = cJSON_Duplicate(block, 1);
+
+                if (generation == m_generation && m_blocks.find(containerId) == m_blocks.end())
+                {
+                    m_blocks.emplace(containerId, block);
+                }
+                else
+                {
+                    cJSON_Delete(block);
+                }
+
+                return copy;
             }
 
             void erase(const std::string& containerId)
@@ -731,6 +768,8 @@ namespace
                     cJSON_Delete(it->second);
                     m_blocks.erase(it);
                 }
+
+                ++m_generation;
             }
 
             void clear()
@@ -743,6 +782,7 @@ namespace
                 }
 
                 m_blocks.clear();
+                ++m_generation;
             }
 
         private:
@@ -754,6 +794,7 @@ namespace
 
             mutable std::mutex m_mutex;
             std::map<std::string, cJSON*> m_blocks;
+            std::uint64_t m_generation {0};
     };
 
     /// Lifts the "container" block out of a stored context document. Returns an
@@ -805,7 +846,15 @@ int fim_db_set_container_context(const char* container_id, const char* context_j
         // downstream should be told that a container's labels moved, which is
         // the point of keeping the context out of the file rows.
         ResultCallbackData callback {[](ReturnTypeCallback, const nlohmann::json&) {}};
-        FIMDB::instance().updateItem(input, callback);
+
+        if (!FIMDB::instance().updateItem(input, callback))
+        {
+            // Stopping, or no database: nothing was written, so caching the
+            // block would make the context look stored when it is not.
+            FIMDB::instance().logFunction(LOG_DEBUG, "Container context not stored: FIMDB is not available.");
+            ContainerContextCache::instance().erase(container_id);
+            return FIMDB_ERR;
+        }
 
         // Only cached once the write succeeded, so a cache hit always describes
         // something the database holds.
@@ -835,6 +884,8 @@ cJSON* fim_db_get_container_context(const char* container_id)
 
     // A miss is expected once per container per process -- after a restart the
     // cache is cold while the database is not.
+    const auto generation = ContainerContextCache::instance().generation();
+
     try
     {
         std::string context;
@@ -876,8 +927,7 @@ cJSON* fim_db_get_container_context(const char* container_id)
             return nullptr;
         }
 
-        ContainerContextCache::instance().store(container_id, block);
-        return cJSON_Duplicate(block, 1);
+        return ContainerContextCache::instance().fill(container_id, block, generation);
     }
     catch (const std::exception& e)
     {
@@ -907,8 +957,14 @@ int fim_db_delete_container_context(const char* container_id)
             .build()
         };
 
-        FIMDB::instance().removeItem(deleteQuery.query());
+        const bool removed = FIMDB::instance().removeItem(deleteQuery.query());
         ContainerContextCache::instance().erase(container_id);
+
+        if (!removed)
+        {
+            FIMDB::instance().logFunction(LOG_DEBUG, "Container context not deleted: FIMDB is not available.");
+            return FIMDB_ERR;
+        }
     }
     catch (const std::exception& e)
     {

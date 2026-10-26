@@ -39,8 +39,11 @@
  * (FIM_DB_MEMORY).
  */
 
+#include <atomic>
 #include <cstdio>
+#include <cstring>
 #include <string>
+#include <thread>
 #include <vector>
 
 #include <cJSON.h>
@@ -463,6 +466,64 @@ int main()
             Check("the prune collects an orphan and keeps the live one", orphan == nullptr && keep != nullptr, detail);
         cJSON_Delete(orphan);
         cJSON_Delete(keep);
+    }
+
+    /* 12. A cold read races the writers that free cached blocks. The miss path
+     *     used to cache the block, release the lock and only then duplicate it,
+     *     so a concurrent clear() or set() could free it first. Run under
+     *     Valgrind for the use-after-free itself; without it this still proves
+     *     every read returns a whole, owned block. */
+    {
+        constexpr int kRounds = 2000;
+        fim_db_set_container_context("cid-race", "{\"container\":{\"id\":\"cid-race\"}}");
+
+        std::atomic<bool> stop {false};
+        std::thread writer(
+            [&stop]()
+            {
+                while (!stop.load())
+                {
+                    fim_db_clear_container_contexts();
+                    fim_db_set_container_context("cid-race", "{\"container\":{\"id\":\"cid-race\"}}");
+                }
+            });
+
+        int malformed = 0;
+
+        for (int i = 0; i < kRounds; ++i)
+        {
+            fim_db_clear_container_contexts();
+            cJSON* block = fim_db_get_container_context("cid-race");
+            const char* id = cJSON_GetStringValue(cJSON_GetObjectItem(block, "id"));
+
+            if (block == nullptr || id == nullptr || std::strcmp(id, "cid-race") != 0)
+            {
+                ++malformed;
+            }
+
+            cJSON_Delete(block);
+        }
+
+        stop = true;
+        writer.join();
+
+        std::snprintf(detail, sizeof(detail), "malformed=%d of %d", malformed, kRounds);
+        ok &= Check("a cold read survives concurrent cache writers", malformed == 0, detail);
+    }
+
+    /* 13. A write the database never attempted is not a stored context. Last,
+     *     because it tears the database down. */
+    {
+        fim_db_teardown();
+        const int stored = fim_db_set_container_context("cid-late", "{\"container\":{\"id\":\"cid-late\"}}");
+        cJSON* late = fim_db_get_container_context("cid-late");
+        std::snprintf(detail,
+                      sizeof(detail),
+                      "set=%s cached=%s",
+                      stored == FIMDB_OK ? "OK" : "ERR",
+                      late == nullptr ? "no" : "yes");
+        ok &= Check("a write after teardown fails and is not cached", stored != FIMDB_OK && late == nullptr, detail);
+        cJSON_Delete(late);
     }
 
     std::printf("\n%s\n", ok ? "ALL OK" : "FAILURES");

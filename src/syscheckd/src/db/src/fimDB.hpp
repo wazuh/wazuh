@@ -223,8 +223,10 @@ class FIMDB
          * @brief Remove a given item from the database
          *
          * @param item json item that represent the fim_entry data
+         * @return false when the database is stopping or has no handler, so the
+         *         delete was never attempted.
          */
-        void removeItem(const nlohmann::json& item);
+        bool removeItem(const nlohmann::json& item);
 
         /**
          * @brief Update a given item in the database, or insert a new one if not exists,
@@ -232,8 +234,10 @@ class FIMDB
          *
          * @param item json item that represent the fim_entry data
          * @param callbackData Pointer to the callback used after update rows
+         * @return false when the database is stopping or has no handler, so the
+         *         write was never attempted.
          */
-        void updateItem(const nlohmann::json& item, ResultCallbackData& callbackData);
+        bool updateItem(const nlohmann::json& item, ResultCallbackData& callbackData);
 
         /**
          * @brief Execute a query given and uses the callbackData in these rows
