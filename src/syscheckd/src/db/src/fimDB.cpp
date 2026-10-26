@@ -24,24 +24,30 @@ void FIMDB::init(std::function<void(modules_log_level_t, const std::string&)> ca
     FIMDBCreator<OS_TYPE>::setLimits(m_dbsyncHandler, fileLimit, registryLimit);
 }
 
-void FIMDB::removeItem(const nlohmann::json& item)
+bool FIMDB::removeItem(const nlohmann::json& item)
 {
     std::shared_lock<std::shared_timed_mutex> lock(m_handlersMutex);
 
     if (!m_stopping && m_dbsyncHandler)
     {
         m_dbsyncHandler->deleteRows(item);
+        return true;
     }
+
+    return false;
 }
 
-void FIMDB::updateItem(const nlohmann::json& item, ResultCallbackData& callbackData)
+bool FIMDB::updateItem(const nlohmann::json& item, ResultCallbackData& callbackData)
 {
     std::shared_lock<std::shared_timed_mutex> lock(m_handlersMutex);
 
     if (!m_stopping && m_dbsyncHandler)
     {
         m_dbsyncHandler->syncRow(item, callbackData);
+        return true;
     }
+
+    return false;
 }
 
 void FIMDB::executeQuery(const nlohmann::json& item, ResultCallbackData& callbackData)
