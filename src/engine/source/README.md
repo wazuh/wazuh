@@ -159,13 +159,11 @@ Key relationships:
 - **`router` is the runtime hub.** It owns event queues, worker threads and route lifecycle; `cmsync` hot-swaps its routes.
 - **`builder` is the compilation hub.** Every dependency that contributes to event processing reaches it, through `BuilderDeps` or its constructor.
 - **`store` and `cmstore` are the data hubs.** Persisted state (schemas, allowed fields, ruleset, sync state) flows through them.
-- **One connector to the indexer.** `main.cpp` builds a single `IndexerConnectorAsync`
-  (`wiconnector::makeIndexerConnectorAsync`) and shares it: `wiconnector` uses it for event indexing
-  and the remote configuration, and the content topics use it, through
-  `content_manager::makeContentIndexer`, for every download (D1 of the content manager). The
-  library opens no connection of its own, so the process runs one health monitor and reports an
-  indexer outage once. Downloads use only the connector's synchronous read calls, never its
-  indexing queue, so they do not delay events.
+- **One connection to the indexer.** `main.cpp` starts the engine's `indexer_client` runtime and its one `Client`
+  `analysisd` (`wiconnector::EngineIndexerRuntime`) and shares it: `wiconnector` writes events and raw events to its
+  `events` and `raw` buckets and reads the remote configuration, and the content topics use it, through
+  `content_manager::makeContentIndexer`, for every download. The process runs one health monitor and reports an
+  indexer outage once. Downloads are queries on the Client, never its write buckets, so they do not delay events.
 
 ---
 

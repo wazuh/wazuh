@@ -67,9 +67,10 @@ rawevtindexer/
 
 | Method | Description |
 |---|---|
-| `index(const std::string&)` | Index raw event data (string) if enabled |
+| `index(std::string&&)` | Index raw event data (the string is moved to the connector, no copy) if enabled; an empty string is not skipped |
+| `index(const std::string&)` | Index raw event data if enabled (checked before the copy, then copied once); an empty string is not skipped |
 | `index(const char*)` | Index raw event data (C-string); null/empty are skipped |
-| `index(std::string_view)` | Index raw event data (zero-copy view); empty is skipped |
+| `index(std::string_view)` | Index raw event data (copied once); empty is skipped |
 | `enable()` | Enable the indexer |
 | `disable()` | Disable the indexer |
 | `isEnabled()` | Check current state |
@@ -78,14 +79,11 @@ rawevtindexer/
 ### `RawEventIndexer` ([raweventindexer.hpp](include/rawevtindexer/raweventindexer.hpp))
 
 ```cpp
-explicit RawEventIndexer(
-    std::weak_ptr<wiconnector::IWIndexerConnector> connector,
-    std::string_view indexName = DEFAULT_INDEX_NAME  // "wazuh-events-raw-v5"
-);
+explicit RawEventIndexer(std::weak_ptr<wiconnector::IWIndexerConnector> connector);
 ```
 
 - **Thread-safe**: The `m_enabled` flag uses `std::atomic<bool>` with acquire/release ordering.
-- **Connector expiry tolerated**: an expired connector after construction makes `index()` a no-op. Connector exceptions are **not** caught here (see [Index Flow](#index-flow)).
+- **Non-blocking**: The connector's `index()` never blocks and never throws (a refused event is counted in `indexer.events.dropped`), so nothing is caught here; connector expiry is handled gracefully.
 - **Always starts disabled**: Must be explicitly enabled after construction.
 
 ## Implementation Details
@@ -94,10 +92,10 @@ explicit RawEventIndexer(
 
 Each `index()` overload follows the same pattern:
 
-1. **Guard empty input** — `const char*` and `string_view` overloads return early on null/empty data.
+1. **Guard empty input** — `const char*` and `string_view` overloads return early on null/empty data; the two `std::string` overloads do not.
 2. **Check enabled** — `m_enabled.load(memory_order_acquire)`. If disabled, return immediately.
 3. **Lock connector** — `m_connector.lock()`. If the connector has been destroyed, return silently.
-4. **Delegate** — Call `connector->index(m_indexName, data)`. There is no try/catch: an exception from the connector propagates to the caller. In the router worker it is caught by the per-event handler, which logs `Failed processing queued event in router worker: …` and skips routing that event.
+4. **Delegate** — Call `connector->index(wiconnector::RAW_EVENTS_INDEX, data)`. The index is always `wazuh-events-raw-v5` (`wiconnector::RAW_EVENTS_INDEX`, shared with the connector, which routes it to the `raw` bucket of the indexer client). There is no try/catch: the connector does not throw, and a refusal is only counted (`indexer.events.dropped`) and logged by the connector on its edge. The `std::string&&` overload moves the payload down to the indexer client without copying it; the other overloads copy it once and then take that path.
 
 ### Hot Reload
 

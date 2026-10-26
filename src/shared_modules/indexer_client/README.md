@@ -198,10 +198,9 @@ decimal integers (surrounding blanks allowed).
 
 **`<indexer>` section.** `indexerSectionJson()` must return exactly the `indexer` section of
 `wazuh-manager.conf` as `manager_config`'s `sectionJson("indexer")` produces it: an object with
-`hosts` and, optionally, `ssl`; any other member is rejected. The engine's current
-`wiconnector::Config::toJson()` is **not** valid input: it appends `max_queue_bytes` and
-`max_retry_delay_seconds` (`src/engine/source/wiconnector/src/windexerconnector.cpp`), and the
-standalone path in the engine's `main.cpp` injects `/max_queue_bytes` too.
+`hosts` and, optionally, `ssl`; any other member is rejected. The engine builds it from its
+`<indexer>` section (manager) or from `wiconnector::Config::toJson()` (standalone), which emit
+exactly those two members.
 
 | Path | Type | Rule |
 |---|---|---|
@@ -1698,7 +1697,10 @@ Counts per prefix: bucket 51, client 3, runtime 7, query 8, PIT 10, node 31. Sou
 RF-16 asks for a log that is useful and bounded. Every line below is decided under the mutex that owns its state and **emitted after that mutex
 is dropped** (the `NodeSet` `pending.lines` pattern), never under a bucket mutex or inside `GlobalBudget::tryReserve`. The quota-edge lines are
 written **by the submitting thread that crossed the edge**, once per crossing, when it leaves `Bucket::reserve()`/`reserveForGroup()` with no
-mutex held (the engine's submit thread included); the summary's timer drains what is still pending, e.g. what a `Block` left behind. The **ambiguous** line is the exception: it is written by the **completion thread** (CPU pool) of the `_bulk`, once the bucket mutex is dropped. A throwing
+mutex held (the engine's submit thread included). A staged `post()` ([Staged admission of `post`](#staged-admission-of-post-e6e)) crosses
+no edge itself: its edges are crossed when its stripe is flushed, and the thread that flushed it writes them once the stripe's and the bucket's
+mutexes are dropped: the posting thread that filled the stripe (64 operations or its byte limit), loop 0 for a deadline flush, or the closing
+thread for the seal. The summary's timer drains what is still pending, e.g. what a `Block` left behind. The **ambiguous** line is the exception: it is written by the **completion thread** (CPU pool) of the `_bulk`, once the bucket mutex is dropped. A throwing
 log sink never takes a producer or a runtime thread down. The node-health lines are in [Logging](#logging).
 
 **Quota edges**, per bucket and for the global cap. Each edge logs once and is re-armed only when the charge crosses **70 % downwards**
@@ -1728,7 +1730,9 @@ with activity logs its INFO line every interval (one line per minute per active 
 The counting happens in `Bucket::countResolved` under the bucket mutex; the timer swaps the interval out. The timer is weak-captured (it never
 keeps the summary alive) and the body releases its client references before it emits. The runtime's stop (`stopAndJoin`) disarms the summary
 and stops the timer **before** `writePath->stop()`, and emits the **last summary synchronously after** `writePath->stop()` and the PIT drain: the
-shutdown sweep's `Dropped(Shutdown)` and the PIT deletes the drain gives up are in it. The summary body has its own mutex, so a timer run still in
+shutdown sweep's `Dropped(Shutdown)` and the PIT deletes the drain gives up are in it, for the buckets whose Client is still alive then. A
+consumer that releases its Client before the runtime stops gets no final line for its buckets: the engine does (`EngineIndexerRuntime::finishStop()`
+resets its Client before `RuntimeOwner::shutdown()`), so the events it discards at stop (I186) are not in any summary line today (D122). The summary body has its own mutex, so a timer run still in
 progress and the final one may overlap. Limiter changes (window, target, pace) stay at DEBUG.
 
 **What is never logged at INFO or above:** a document body, a `reason`, an id or a URL, except the 16-byte prefix of a PIT id in the PIT WARN. The summary's only free text from
