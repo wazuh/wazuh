@@ -122,6 +122,7 @@ extern "C" int __wrap_cbaseline_run_fim_dbsync(const char*,
                                                const cb_monitored_path_t*,
                                                int,
                                                cb_dbsync_row_sink_t sink,
+                                               cb_container_context_sink_t,
                                                cb_container_status_sink_t status,
                                                cb_rate_limit_fn,
                                                void* ctx)

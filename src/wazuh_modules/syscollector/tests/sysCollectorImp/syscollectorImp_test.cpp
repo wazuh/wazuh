@@ -55,17 +55,18 @@ namespace
     bool containerListComplete {true};
 } // namespace
 
-extern "C" int
-__real_cbaseline_run_syscollector_dbsync(const char*, cb_dbsync_row_sink_t, cb_container_status_sink_t, void*);
+extern "C" int __real_cbaseline_run_syscollector_dbsync(
+    const char*, cb_dbsync_row_sink_t, cb_container_context_sink_t, cb_container_status_sink_t, void*);
 extern "C" int __real_cbaseline_list_containers_ex(const char*, cb_container_id_sink_t, void*, int*);
 
 extern "C" int __wrap_cbaseline_run_syscollector_dbsync(const char* socket,
                                                         cb_dbsync_row_sink_t sink,
+                                                        cb_container_context_sink_t context,
                                                         cb_container_status_sink_t status,
                                                         void* ctx)
 {
     return containerScanHook ? containerScanHook(sink, status, ctx)
-           : __real_cbaseline_run_syscollector_dbsync(socket, sink, status, ctx);
+           : __real_cbaseline_run_syscollector_dbsync(socket, sink, context, status, ctx);
 }
 
 extern "C" int
