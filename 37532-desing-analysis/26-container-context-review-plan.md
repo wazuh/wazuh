@@ -159,6 +159,34 @@ Conservar rechazo para consumidores sin esa política. Incluir permisos insufici
 fallo de recreación y coherencia con estado de sincronización y presupuestos.
 Una migración SQL descendente genérica no es una alternativa segura.
 
+**Actualización (reanálisis de integración, 2026-10-23):** upstream ya resolvió esta
+política. El commit `70666bdb5b`, presente en `origin/5.0.0`, `5.0.1` y `main` pero no
+en el merge-base de esta rama, modificó `SQLiteDBEngine::initialize` para:
+
+- recrear la base cuando `user_version` es mayor que la del build;
+- recrear cuando un paso de upgrade falla por esquema (`SQLITE_ERROR` o
+  `STEP_ERROR_UPDATE_STMT`), relanzando los errores transitorios (busy, locked, I/O);
+- estampar `user_version` solo después de crear todas las tablas;
+- exponer `DBSync::recreateReason()`, que Syscollector registra como `LOG_WARNING`.
+
+`DB_VERSION_AHEAD_OF_SCHEMA` y su prueba contradicen ese comportamiento publicado.
+Al integrar `main`, hay que adoptar la versión upstream y retirar el throw, la
+constante y su prueba. También hay que:
+
+- conservar `execute()` (scripts de varios statements) y el bump de versión dentro
+  de la transacción;
+- mapear el `dbsync_error` de `execute()` de modo que solo los errores de esquema
+  recreen la base. Hoy cualquier fallo se convierte en `STEP_ERROR_UPDATE_STMT`, y con
+  la política upstream eso borraría la base ante un `SQLITE_BUSY`;
+- registrar `recreateReason()` también en FIM, que upstream no lo hace;
+- verificar que la recreación de FIM vacíe `container_context`, la caché de contexto
+  y los presupuestos (#10 y #11).
+
+Los paquetes de 4.x se ocupan solos: los instaladores deb, rpm, macOS, `wazuh.sh` y
+MSI borran `fim.db` y `local.db` al subir de 4.x a 5.x. Una base de 4.14 (`user_version` 1
+con otro esquema) no llega a la migración por la vía soportada. Si llegara, la
+política upstream la recrearía.
+
 ### 4. Colisión y pérdida de identidad en la migración
 
 **Reproducido con los scripts reales.**
@@ -199,6 +227,46 @@ Cubrir las 13 tablas de Syscollector, no únicamente osinfo. Si no se soportan,
 recreación explícita de firmas de desarrollo reconocidas, sin transformar silenciosamente
 sus filas en host. No usar `INSERT OR IGNORE/REPLACE`, que oculta pérdida de datos.
 Un paso nuevo al final del vector no rescata una base que falla en un paso anterior.
+
+**Actualización (reanálisis de integración, 2026-10-23) — colisión de numeración
+con 5.0.0, bloqueante:** `70666bdb5b` agregó a Syscollector
+`UPGRADE_SQL_STATEMENTS = { "ALTER TABLE dbsync_osinfo RENAME COLUMN os_distribution_release TO os_display_version;" }`.
+Un agente 5.0.0 GA deja `local.db` en `user_version` 2, ya renombrado. Esta rama usa ese
+mismo índice 0 para crear `container_context`. Con un `local.db` de 5.0.0:
+
+- el motor ve la versión 2, **salta** el paso que crea `container_context` y ejecuta la
+  reconstrucción de osinfo;
+- esa reconstrucción copia `os_distribution_release`, que ya no existe (`no such column`);
+- con el motor de esta rama, Syscollector queda deshabilitado en cada inicio; con el de
+  upstream, la base se recrea siempre, aunque la causa sea un bug de numeración.
+
+Las versiones de upstream ya son inmutables (v1 = esquema 5.0 inicial, v2 = rename), así
+que el vector integrado debe ser:
+
+| Paso | Contenido |
+| --- | --- |
+| v1→v2 (índice 0) | `RENAME COLUMN` de upstream, **idéntico** al publicado |
+| v2→v3 | `container_context` |
+| v3→v4 | reconstrucción de `dbsync_osinfo` con `os_display_version` |
+| v4→v5 … v15→v16 | las otras 12 tablas, desplazadas en uno |
+
+Resultado: Syscollector pasa a `user_version` **16**, `CURRENT_SCHEMA_VERSION` = 16, y los
+nombres `*_upgrade_vN_old` se renumeran. Un `local.db` de 5.0.0-rc1 o anterior queda en
+v1 con `os_distribution_release` y recorre la cadena completa. Hay que actualizar también
+la DDL de `OS_SQL_STATEMENT` de la rama a `os_display_version`.
+
+FIM no tiene pasos de upgrade upstream: sigue en v1 en 5.0.0, 5.0.1 y `main`. Su DDL no
+cambió desde el merge-base, salvo el encabezado. La numeración v1→v2→v3 de FIM sigue
+siendo válida y no hace falta renumerar.
+
+Esto solo corrige la numeración. La colisión de PK sobre bases de desarrollo con
+`container_id` estampadas como v1 sigue abierta como antes. Con la política upstream ya
+no deshabilita el módulo: la base se recrea y se hace un full sync. Eso es aceptable si
+se decide no soportar esas bases, pero el caso "solo fila de contenedor → fila host"
+no falla y sigue convirtiendo filas en silencio. Si no se soportan esas bases, cada paso
+de reconstrucción debería abortar (y así forzar la recreación) cuando la tabla vieja
+ya tiene `container_id`. Por ejemplo, una sentencia que falle si
+`pragma_table_info('<tabla>_upgrade_vN_old')` contiene `container_id`.
 
 ### 5. Prune después de fallar la lectura de IDs
 
@@ -426,10 +494,16 @@ fallo al iniciar la transacción, ambos con reintento exitoso.
 **Salida:** reiniciar modulesd no borra contenedores vivos; el modo por defecto atiende
 notificaciones y el scan periódico sigue existiendo aunque haya churn continuo.
 
-**Estado parcial:** #7 ya estaba implementado en ambos modos de cadencia y su test
-del modo acoplado pasa; se corrigió el comentario obsoleto del scheduler. #2 sigue
-pendiente: falta una señal autoritativa de completitud de lista desde container_instances
-hasta los consumidores que barren filas. No habilitar sweeps sobre snapshots incompletos.
+**Estado: hecho** (`2e8ff0ab6e`). #7 ya estaba implementado en ambos modos de cadencia.
+#2 se resolvió así:
+
+- `MetadataStore` expone `snapshot_complete` y `known_container_ids` en la respuesta de
+  lista;
+- los clientes tratan como incompleta cualquier respuesta ambigua;
+- FIM y Syscollector no barren ni podan con snapshots incompletos;
+- un resync incompleto no avanza el cursor.
+
+Pendiente: prueba de integración en VM reiniciando modulesd.
 
 ### Entrega D — Compatibilidad y recuperación
 
@@ -442,6 +516,29 @@ Decisiones previas, que este plan no da por aprobadas:
 - Estrategia de respaldo, DataClean/full sync y recuperación si falla la reconstrucción.
 
 **Estado parcial:** #15 ya está congelado en SQL literal en ambos vectores de upgrade.
+
+**Integración con 5.0.x (requisito previo de esta entrega):** traer `origin/main` o
+`5.0.0` a la base de la rama. Después:
+
+1. adoptar el `initialize` upstream (recrear en versión mayor o upgrade fallido) y
+   retirar `DB_VERSION_AHEAD_OF_SCHEMA`; mantener `execute()` y clasificar los errores
+   transitorios; log de `recreateReason()` en FIM;
+2. Syscollector: anteponer el `RENAME COLUMN` publicado como v1→v2, desplazar los pasos
+   de contenedor (v16) y pasar la DDL de osinfo a `os_display_version`;
+3. guard de #4 (**decidido**): abortar la reconstrucción si la tabla vieja ya tiene
+   `container_id`, para que la base se recree en vez de convertirse en silencio;
+4. matriz de pruebas:
+   - FIM v1 de 5.0 → v3;
+   - Syscollector v1 (5.0.0-rc1) → v16;
+   - Syscollector v2 (5.0.0 GA) → v16;
+   - versión mayor → recreación con `recreateReason`;
+   - fallo transitorio → sin borrado.
+
+Esfuerzo estimado: 1,5–2,5 días-persona, casi todo en resolver conflictos y en la matriz.
+
+**Decisión:** esperar a que `37532-nfr3-container-limits` incorpore `main`, y luego
+rebasear esta rama y aplicar los puntos 1–4 sin cherry-picks parciales.
+
 Implementar la política elegida y una matriz
 de esquemas reales. No modificar migraciones publicadas como si nadie las hubiera corrido,
 ni agregar un paso final esperando que repare fallos anteriores. Al ser trabajo aún no
@@ -465,10 +562,14 @@ Separar tareas pequeñas del pase global, comparar conjuntos equivalentes y coal
 solicitudes. Instrumentar conteos de consultas, escrituras y tiempo del consumidor
 antes/después; no aceptar solo una mejora teórica.
 
-**Estado parcial:** #9 compara conjuntos de identidad y #14 omite la persistencia
-de contextos idénticos; ambos tienen cobertura focalizada. #13 sigue pendiente:
-la admisión debe refrescarse antes del primer walk, pero sin convertir cada alta en
-un barrido global.
+**Estado: hecho** (`a5c796dddb`, `2e8ff0ab6e`).
+
+- #9 compara conjuntos de identidad.
+- #14 omite contextos idénticos.
+- #13: un alta por delta ya no pide sweep; solo actualiza la admisión de ese contenedor
+  con `fim_container_update_admitted`.
+
+Pendiente: benchmark con unas 300k filas.
 
 **Salida:** un contenedor detenido estable no genera sweeps por comparación errónea;
 una alta no exige `SELECT DISTINCT file_entry`; N contextos idénticos no repiten N
