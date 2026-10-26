@@ -319,3 +319,58 @@ TEST_F(ThreadEventDispatcherTest, HandlerErrorIsRetriedWithWarning)
               std::string::npos)
         << logs;
 }
+
+TEST_F(ThreadEventDispatcherTest, HandlerThatClearsItsPrefixIsNotAnError)
+{
+    using MultiQueueDispatcher =
+        TThreadEventDispatcher<rocksdb::Slice,
+                               rocksdb::PinnableSlice,
+                               std::function<void(rocksdb::PinnableSlice&)>,
+                               RocksDBQueueCF<rocksdb::Slice, rocksdb::PinnableSlice>,
+                               Utils::TSafeMultiQueue<rocksdb::Slice,
+                                                      rocksdb::PinnableSlice,
+                                                      RocksDBQueueCF<rocksdb::Slice, rocksdb::PinnableSlice>>>;
+    constexpr auto DB_PATH {"test_clear_prefix.db"};
+    std::filesystem::remove_all(DB_PATH);
+
+    std::mutex logMutex;
+    std::string logs;
+    Log::deassignLogFunction();
+    Log::assignLogFunction(
+        [&](const int, const char*, const char*, const int, const char*, const char* message, va_list args)
+        {
+            char buffer[1024] {};
+            vsnprintf(buffer, sizeof(buffer), message, args);
+            std::lock_guard<std::mutex> lock(logMutex);
+            logs.append(buffer).append("\n");
+        });
+    {
+        std::atomic<int> handled {0};
+        std::promise<void> done;
+        MultiQueueDispatcher dispatcher(DB_PATH);
+        dispatcher.startWorker(
+            [&](rocksdb::PinnableSlice& element)
+            {
+                if (element.ToString() == "rescan")
+                {
+                    dispatcher.clear("001");
+                }
+                if (++handled == 2)
+                {
+                    done.set_value();
+                }
+            });
+        dispatcher.push("001", "rescan");
+        dispatcher.push("002", "event");
+
+        EXPECT_EQ(done.get_future().wait_for(std::chrono::seconds(10)), std::future_status::ready);
+        // A failed pop is logged after the one second pause of the dispatcher.
+        std::this_thread::sleep_for(std::chrono::milliseconds(1500));
+        EXPECT_EQ(handled, 2);
+        EXPECT_EQ(dispatcher.size("001"), 0);
+        EXPECT_EQ(dispatcher.size("002"), 0);
+    }
+    Log::deassignLogFunction();
+
+    EXPECT_EQ(logs.find("dispatch handler error"), std::string::npos) << logs;
+}

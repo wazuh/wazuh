@@ -258,7 +258,11 @@ private:
                     if (!data.second.empty())
                     {
                         m_functor(data.first);
-                        m_queue->pop(data.second);
+                        // The handler can clear its own prefix, e.g. a re-scan that drops the agent's pending events.
+                        if (m_queue->size(data.second) != 0)
+                        {
+                            m_queue->pop(data.second);
+                        }
                     }
                 }
                 else
