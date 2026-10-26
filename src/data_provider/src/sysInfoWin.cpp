@@ -15,7 +15,11 @@
 #include <ntstatus.h>
 #include <iphlpapi.h>
 #include <shellapi.h>
+#include <algorithm>
 #include <memory>
+#include <mutex>
+#include <type_traits>
+#include <vector>
 #include <list>
 #include <set>
 #include <system_error>
@@ -40,6 +44,7 @@
 #include "packages/packagesWindowsParserHelper.h"
 #include "packages/packagesWindows.h"
 #include "packages/appxWindowsWrapper.h"
+#include "packages/offlineRegistryWindows.h"
 #include "packages/packagesPYPI.hpp"
 #include "packages/packagesNPM.hpp"
 #include "packages/modernPackageDataRetriever.hpp"
@@ -56,6 +61,11 @@
 
 constexpr auto CENTRAL_PROCESSOR_REGISTRY {"HARDWARE\\DESCRIPTION\\System\\CentralProcessor\\0"};
 const std::string UNINSTALL_REGISTRY{"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall"};
+const std::string PROFILE_LIST_REGISTRY{"SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\ProfileList"};
+// The profile service loads NTUSER.MAN, the user hive of a mandatory profile, in preference to NTUSER.DAT.
+const std::vector<std::wstring> USER_HIVE_FILES{L"\\NTUSER.MAN", L"\\NTUSER.DAT"};
+const std::wstring USER_CLASSES_HIVE_FILE{L"\\AppData\\Local\\Microsoft\\Windows\\UsrClass.dat"};
+const std::string USER_CLASSES_HIVE_SUFFIX{"_Classes"};
 
 
 static const std::map<std::string, DWORD> gs_firmwareTableProviderSignature
@@ -364,6 +374,7 @@ static nlohmann::json getProcessHandleFields(const PROCESSENTRY32& processEntry)
 }
 
 
+template <typename TRegistry = Utils::Registry>
 static void getPackagesFromReg(const HKEY key, const std::string& subKey, std::function<void(nlohmann::json&)> returnCallback, const REGSAM access = 0)
 {
     try
@@ -374,7 +385,7 @@ static void getPackagesFromReg(const HKEY key, const std::string& subKey, std::f
             {
                 std::string value;
                 nlohmann::json packageJson;
-                Utils::Registry packageReg{key, subKey + "\\" + package, access | KEY_READ};
+                TRegistry packageReg{key, subKey + "\\" + package, access | KEY_READ};
 
                 std::string name;
                 std::string version;
@@ -455,7 +466,7 @@ static void getPackagesFromReg(const HKEY key, const std::string& subKey, std::f
                 }
             }
         };
-        Utils::Registry root{key, subKey, access | KEY_ENUMERATE_SUB_KEYS | KEY_READ};
+        TRegistry root{key, subKey, access | KEY_ENUMERATE_SUB_KEYS | KEY_READ};
         root.enumerate(callback);
     }
     catch (...)
@@ -463,13 +474,22 @@ static void getPackagesFromReg(const HKEY key, const std::string& subKey, std::f
     }
 }
 
-static void getStorePackages(const HKEY key, const std::string& user, std::function<void(nlohmann::json&)> returnCallback)
+static std::string joinRegistryPath(const std::string& root, const std::string& subKey)
+{
+    return root.empty() ? subKey : root + "\\" + subKey;
+}
+
+/*
+ * @param[in] classesRoot Path of the user classes root under key, empty if key is the classes root itself.
+ */
+template <typename TRegistry = Utils::Registry>
+static void getStorePackages(const HKEY key, const std::string& classesRoot, std::function<void(nlohmann::json&)> returnCallback)
 {
     std::set<std::string> cacheReg;
 
     try
     {
-        for (const auto& registry : Utils::Registry{key, user + "\\" + CACHE_NAME_REGISTRY, KEY_READ | KEY_ENUMERATE_SUB_KEYS}.enumerate())
+        for (const auto& registry : TRegistry{key, joinRegistryPath(classesRoot, CACHE_NAME_REGISTRY), KEY_READ | KEY_ENUMERATE_SUB_KEYS}.enumerate())
         {
             cacheReg.insert(registry);
         }
@@ -480,7 +500,8 @@ static void getStorePackages(const HKEY key, const std::string& user, std::funct
             {
                 nlohmann::json jsPackage;
 
-                FactoryWindowsPackage::create(key, user, nameApp, cacheReg)->buildPackageData(jsPackage);
+                WindowsPackageImpl package {std::make_shared<TAppxWindowsWrapper<TRegistry>>(key, classesRoot, nameApp, cacheReg)};
+                package.buildPackageData(jsPackage);
 
                 if (!jsPackage.at("name").get_ref<const std::string&>().empty())
                 {
@@ -490,7 +511,7 @@ static void getStorePackages(const HKEY key, const std::string& user, std::funct
             }
         };
 
-        Utils::Registry root(key, user + "\\" + APPLICATION_STORE_REGISTRY, KEY_READ | KEY_ENUMERATE_SUB_KEYS);
+        TRegistry root(key, joinRegistryPath(classesRoot, APPLICATION_STORE_REGISTRY), KEY_READ | KEY_ENUMERATE_SUB_KEYS);
         root.enumerate(callback);
     }
     catch (...)
@@ -835,40 +856,50 @@ void expandFromRegistry(const HKEY key, const std::string& subKey, const std::st
     }
 }
 
+static void addPythonDirectory(const std::string& pythonDir, std::set<std::string>& pythonDirList)
+{
+    pythonDirList.insert(pythonDir + R"(Lib\site-packages)");
+    pythonDirList.insert(pythonDir + R"(Lib\dist-packages)");
+}
+
+/*
+ * Microsoft Store Python does not expose its PEP 514 registration under HKEY_USERS
+ * (it lives in the MSIX virtualized hive), so its site-packages directory is derived
+ * from the package location kept on the AppModel repository.
+ */
+static void addStorePythonDirectory(const std::string& packageRootFolder, std::set<std::string>& pythonDirList)
+{
+    /*
+     * Only the Python Store packages bundle a site-packages directory. The prefix is
+     * anchored to the folder name; PackageRootFolder has no trailing separator, unlike
+     * InstallPath.
+     */
+    if (packageRootFolder.find(std::string(R"(\)") + PYTHON_STORE_PACKAGE_PREFIX) != std::string::npos)
+    {
+        pythonDirList.insert(packageRootFolder + R"(\Lib\site-packages)");
+    }
+}
+
 const std::set<std::string> getPythonDirectories()
 {
     std::set<std::string> pythonDirList;
 
     const auto postAction = [&](const std::string & pythonDir)
     {
-        pythonDirList.insert(pythonDir + R"(Lib\site-packages)");
-        pythonDirList.insert(pythonDir + R"(Lib\dist-packages)");
+        addPythonDirectory(pythonDir, pythonDirList);
     };
 
     const auto storePostAction = [&](const std::string & packageRootFolder)
     {
-        /*
-         * Only the Python Store packages bundle a site-packages directory. The prefix is
-         * anchored to the folder name; PackageRootFolder has no trailing separator, unlike
-         * InstallPath.
-         */
-        if (packageRootFolder.find(std::string(R"(\)") + PYTHON_STORE_PACKAGE_PREFIX) != std::string::npos)
-        {
-            pythonDirList.insert(packageRootFolder + R"(\Lib\site-packages)");
-        }
+        addStorePythonDirectory(packageRootFolder, pythonDirList);
     };
 
     try
     {
         expandFromRegistry(HKEY_USERS, R"(*\SOFTWARE\Python\PythonCore\*\InstallPath)", "", postAction);
         expandFromRegistry(HKEY_LOCAL_MACHINE, R"(SOFTWARE\Python\PythonCore\*\InstallPath)", "", postAction);
-        /*
-         * Microsoft Store Python does not expose its PEP 514 registration under HKEY_USERS
-         * (it lives in the MSIX virtualized hive), so its site-packages directory is derived
-         * from the package location kept on the AppModel repository.
-         */
         expandFromRegistry(HKEY_USERS,
-                           std::string(R"(*\)") + APPLICATION_STORE_REGISTRY + R"(\*)",
+                           std::string(R"(*\)") + USER_CLASSES_REGISTRY + R"(\)" + APPLICATION_STORE_REGISTRY + R"(\*)",
                            "PackageRootFolder",
                            storePostAction);
     }
@@ -904,6 +935,474 @@ const std::set<std::string> getNodeDirectories()
     return nodeDirList;
 }
 
+/*
+ * Calls postAction with the field of every "<parent>\<subkey><suffix>" key that holds a local fixed
+ * path: the expansion of a single wildcard that expandFromRegistry() does, for any registry reader.
+ */
+template <typename TRegistry>
+static void expandSubKeys(const HKEY key,
+                          const std::string& parent,
+                          const std::string& suffix,
+                          const std::string& field,
+                          const std::function<void(const std::string&)>& postAction)
+{
+    try
+    {
+        for (const auto& subKey : TRegistry {key, parent, KEY_READ | KEY_ENUMERATE_SUB_KEYS}.enumerate())
+        {
+            if (subKey.find_first_of("*?") != std::string::npos)
+            {
+                continue;
+            }
+
+            try
+            {
+                const auto dir {TRegistry {key, parent + "\\" + subKey + suffix}.string(field)};
+
+                if (Utils::isLocalFixedPath(dir))
+                {
+                    postAction(dir);
+                }
+            }
+            catch (...)
+            {
+            }
+        }
+    }
+    catch (...)
+    {
+    }
+}
+
+// Software found in the hives of a user profile with no session.
+struct OfflineProfileData
+{
+    std::vector<nlohmann::json> packages;
+    std::set<std::string> pythonDirs;
+    std::set<std::string> nodeDirs;
+};
+
+/*
+ * @param[in] root Path of the user hive root under key, empty if key is the hive root itself.
+ */
+template <typename TRegistry>
+static void readUserHive(const HKEY key, const std::string& root, OfflineProfileData& data)
+{
+    getPackagesFromReg<TRegistry>(key, joinRegistryPath(root, UNINSTALL_REGISTRY), [&data](nlohmann::json & package)
+    {
+        data.packages.push_back(std::move(package));
+    });
+
+    expandSubKeys<TRegistry>(key, joinRegistryPath(root, R"(SOFTWARE\Python\PythonCore)"), R"(\InstallPath)", "", [&data](const std::string & pythonDir)
+    {
+        addPythonDirectory(pythonDir, data.pythonDirs);
+    });
+
+    try
+    {
+        const auto nodeDir {TRegistry {key, joinRegistryPath(root, R"(SOFTWARE\Node.js)")}.string("InstallPath")};
+
+        if (Utils::isLocalFixedPath(nodeDir))
+        {
+            data.nodeDirs.insert(nodeDir);
+        }
+    }
+    catch (...)
+    {
+    }
+}
+
+/*
+ * @param[in] classesRoot Path of the user classes root under key, empty if key is the classes root itself.
+ */
+template <typename TRegistry>
+static void readClassesHive(const HKEY key, const std::string& classesRoot, OfflineProfileData& data)
+{
+    getStorePackages<TRegistry>(key, classesRoot, [&data](nlohmann::json & package)
+    {
+        data.packages.push_back(std::move(package));
+    });
+
+    expandSubKeys<TRegistry>(key, joinRegistryPath(classesRoot, APPLICATION_STORE_REGISTRY), "", "PackageRootFolder", [&data](const std::string & packageRootFolder)
+    {
+        addStorePythonDirectory(packageRootFolder, data.pythonDirs);
+    });
+}
+
+static std::wstring getProfileImagePath(const std::string& sid)
+{
+    const auto subKey {Utils::EncodingWindowsHelper::stringToWStringAnsi(PROFILE_LIST_REGISTRY + "\\" + sid)};
+    HKEY key {nullptr};
+
+    if (RegOpenKeyExW(HKEY_LOCAL_MACHINE, subKey.c_str(), 0, KEY_READ | KEY_WOW64_64KEY, &key) != ERROR_SUCCESS)
+    {
+        return {};
+    }
+
+    const std::unique_ptr<std::remove_pointer_t<HKEY>, decltype(&RegCloseKey)> keyGuard {key, &RegCloseKey};
+    DWORD size {0};
+
+    // RRF_RT_REG_SZ also accepts REG_EXPAND_SZ values and returns them expanded.
+    if (RegGetValueW(key, nullptr, L"ProfileImagePath", RRF_RT_REG_SZ, nullptr, nullptr, &size) != ERROR_SUCCESS || size < sizeof(wchar_t))
+    {
+        return {};
+    }
+
+    std::wstring path(size / sizeof(wchar_t), L'\0');
+
+    if (RegGetValueW(key, nullptr, L"ProfileImagePath", RRF_RT_REG_SZ, nullptr, &path[0], &size) != ERROR_SUCCESS)
+    {
+        return {};
+    }
+
+    path.resize(wcsnlen(path.c_str(), path.size()));
+    return path;
+}
+
+using HandleGuard = std::unique_ptr<void, decltype(&CloseHandle)>;
+
+// Path of an open file or directory with every junction and symbolic link resolved, or empty on error.
+static std::wstring getFinalPath(const HANDLE handle)
+{
+    std::wstring finalPath(MAX_PATH, L'\0');
+    auto size {GetFinalPathNameByHandleW(handle, &finalPath[0], static_cast<DWORD>(finalPath.size()), FILE_NAME_NORMALIZED)};
+
+    // On a short buffer the size returned includes the terminator.
+    if (size >= finalPath.size())
+    {
+        finalPath.resize(size);
+        size = GetFinalPathNameByHandleW(handle, &finalPath[0], static_cast<DWORD>(finalPath.size()), FILE_NAME_NORMALIZED);
+    }
+
+    if (size == 0 || size >= finalPath.size())
+    {
+        return {};
+    }
+
+    finalPath.resize(size);
+    return finalPath;
+}
+
+/*
+ * Opened without data access and with full sharing, so it never gets in the way of the profile service.
+ */
+static std::wstring getFinalPath(const std::wstring& path)
+{
+    const auto handle {CreateFileW(path.c_str(),
+                                   FILE_READ_ATTRIBUTES,
+                                   FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+                                   nullptr,
+                                   OPEN_EXISTING,
+                                   FILE_FLAG_BACKUP_SEMANTICS,
+                                   nullptr)};
+
+    if (handle == INVALID_HANDLE_VALUE)
+    {
+        return {};
+    }
+
+    const HandleGuard guard {handle, &CloseHandle};
+    return getFinalPath(handle);
+}
+
+struct HiveStamp
+{
+    bool exists {false};
+    ULONGLONG lastWriteTime {0};
+    ULONGLONG size {0};
+
+    bool operator==(const HiveStamp& other) const
+    {
+        return exists == other.exists && lastWriteTime == other.lastWriteTime && size == other.size;
+    }
+};
+
+static HiveStamp getHiveStamp(const std::wstring& file)
+{
+    HiveStamp stamp;
+    WIN32_FILE_ATTRIBUTE_DATA attributes {};
+
+    if (GetFileAttributesExW(file.c_str(), GetFileExInfoStandard, &attributes) && !(attributes.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY))
+    {
+        stamp.exists = true;
+        stamp.lastWriteTime = (static_cast<ULONGLONG>(attributes.ftLastWriteTime.dwHighDateTime) << 32) | attributes.ftLastWriteTime.dwLowDateTime;
+        stamp.size = (static_cast<ULONGLONG>(attributes.nFileSizeHigh) << 32) | attributes.nFileSizeLow;
+    }
+
+    return stamp;
+}
+
+// A hive file is read whole into memory, so larger files are not read.
+constexpr ULONGLONG MAX_OFFLINE_HIVE_SIZE {128ULL * 1024 * 1024};
+
+/*
+ * Per-user software only changes while the profile is loaded, which rewrites its hive files, so what was
+ * read from the hives of a profile with no session is kept until the date or size of a hive file change.
+ */
+struct OfflineProfileCacheEntry
+{
+    std::wstring userHiveFile;
+    HiveStamp userHive;
+    HiveStamp classesHive;
+    OfflineProfileData data;
+};
+
+struct OfflineProfileCache
+{
+    std::map<std::string, OfflineProfileCacheEntry> entries;
+    std::mutex mutex;
+};
+
+/*
+ * Never destroyed: sysinfo.dll is loaded with LoadLibrary, and a static destructor run at shutdown could
+ * free the cache while the scan thread is still using it.
+ */
+static OfflineProfileCache& offlineProfileCache()
+{
+    static const auto cache {new OfflineProfileCache};
+    return *cache;
+}
+
+// Where the software of a profile was read from, ordered from the most to the least complete.
+enum class OfflineProfileSource
+{
+    Files,
+    Registry,
+    Failed
+};
+
+/*
+ * Opens a hive file of a profile with no session. A user can redirect the folders of their own profile,
+ * so the final path and the size of the file are checked on an open handle, and offreg reads the file
+ * through that same handle. Writes are not shared, so the file cannot change while it is read. The file
+ * is held only for the read, as an open hive file also keeps the profile service from loading it.
+ *
+ * @return ERROR_SUCCESS with the hive set, ERROR_SHARING_VIOLATION if the profile service has the hive
+ *         loaded, or another error if the file cannot be read.
+ */
+static DWORD openProfileHive(const std::wstring& profileFinalPath,
+                             const std::wstring& profilePath,
+                             const std::wstring& relativePath,
+                             std::unique_ptr<OfflineHive>& hive)
+{
+    const auto path {profilePath + relativePath};
+    const auto handle {CreateFileW(path.c_str(), GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr)};
+
+    if (handle == INVALID_HANDLE_VALUE)
+    {
+        return GetLastError();
+    }
+
+    const HandleGuard guard {handle, &CloseHandle};
+    LARGE_INTEGER size {};
+
+    if (!GetFileSizeEx(handle, &size))
+    {
+        return GetLastError();
+    }
+
+    if (static_cast<ULONGLONG>(size.QuadPart) > MAX_OFFLINE_HIVE_SIZE)
+    {
+        return ERROR_FILE_TOO_LARGE;
+    }
+
+    if (_wcsicmp(getFinalPath(handle).c_str(), (profileFinalPath + relativePath).c_str()) != 0)
+    {
+        return ERROR_ACCESS_DENIED;
+    }
+
+    hive = std::make_unique<OfflineHive>(handle);
+
+    // Without OROpenHiveByHandle, the file is read by its path, which the held handle keeps from being redirected.
+    if (hive->result() == ERROR_PROC_NOT_FOUND)
+    {
+        hive = std::make_unique<OfflineHive>(path);
+    }
+
+    const auto result {hive->result()};
+
+    if (result != ERROR_SUCCESS)
+    {
+        hive.reset();
+    }
+
+    return result;
+}
+
+/*
+ * Reads the hive files of a profile with no session. A hive that the profile service loads in the
+ * meantime cannot be opened (ERROR_SHARING_VIOLATION) and is read under HKEY_USERS instead.
+ */
+static OfflineProfileSource readOfflineProfile(const std::string& sid,
+                                               const std::wstring& profilePath,
+                                               const std::wstring& userHiveFile,
+                                               const HiveStamp& classesHive,
+                                               const std::set<std::string>& loadedUsers,
+                                               OfflineProfileData& data)
+{
+    auto source {OfflineProfileSource::Files};
+    const auto degrade = [&source](const OfflineProfileSource result)
+    {
+        source = std::max(source, result);
+    };
+    const auto profileFinalPath {getFinalPath(profilePath)};
+
+    if (profileFinalPath.empty())
+    {
+        return OfflineProfileSource::Failed;
+    }
+
+    if (!userHiveFile.empty())
+    {
+        std::unique_ptr<OfflineHive> hive;
+        const auto result {openProfileHive(profileFinalPath, profilePath, userHiveFile, hive)};
+
+        if (result == ERROR_SUCCESS)
+        {
+            readUserHive<OfflineRegistry>(hive->key(), "", data);
+        }
+        else if (result == ERROR_SHARING_VIOLATION && Utils::Registry::KeyExists("HKEY_USERS", sid))
+        {
+            degrade(OfflineProfileSource::Registry);
+            readUserHive<Utils::Registry>(HKEY_USERS, sid, data);
+        }
+        else
+        {
+            degrade(OfflineProfileSource::Failed);
+        }
+    }
+
+    const auto classesHiveName {sid + USER_CLASSES_HIVE_SUFFIX};
+
+    // A classes hive can stay loaded after the logoff, and then it cannot be opened from its file.
+    if (loadedUsers.find(classesHiveName) != loadedUsers.end())
+    {
+        degrade(OfflineProfileSource::Registry);
+        readClassesHive<Utils::Registry>(HKEY_USERS, classesHiveName, data);
+    }
+    else if (classesHive.exists)
+    {
+        std::unique_ptr<OfflineHive> hive;
+        const auto result {openProfileHive(profileFinalPath, profilePath, USER_CLASSES_HIVE_FILE, hive)};
+
+        if (result == ERROR_SUCCESS)
+        {
+            readClassesHive<OfflineRegistry>(hive->key(), "", data);
+        }
+        else if (result == ERROR_SHARING_VIOLATION && Utils::Registry::KeyExists("HKEY_USERS", classesHiveName))
+        {
+            degrade(OfflineProfileSource::Registry);
+            readClassesHive<Utils::Registry>(HKEY_USERS, classesHiveName, data);
+        }
+        else
+        {
+            degrade(OfflineProfileSource::Failed);
+        }
+    }
+
+    return source;
+}
+
+/*
+ * HKEY_USERS only lists the hives of users with a session, so the software installed per user would
+ * come and go with the user logon state. The hives of the remaining user profiles are read from their
+ * files, which are neither loaded into the registry nor written.
+ */
+static std::vector<OfflineProfileData> getOfflineProfiles(const std::set<std::string>& loadedUsers)
+{
+    std::vector<OfflineProfileData> profiles;
+    std::vector<std::string> sids;
+
+    try
+    {
+        sids = Utils::Registry {HKEY_LOCAL_MACHINE, PROFILE_LIST_REGISTRY, KEY_READ | KEY_ENUMERATE_SUB_KEYS | KEY_WOW64_64KEY}.enumerate();
+    }
+    catch (...)
+    {
+    }
+
+    auto& cache {offlineProfileCache()};
+    std::lock_guard<std::mutex> lock {cache.mutex};
+    std::set<std::string> visited;
+
+    for (const auto& sid : sids)
+    {
+        if (!OfflineUserProfiles::isOfflineUserProfile(sid, loadedUsers))
+        {
+            continue;
+        }
+
+        const auto profilePath {getProfileImagePath(sid)};
+
+        if (!Utils::isLocalFixedPath(Utils::EncodingWindowsHelper::wstringToStringAnsi(profilePath)))
+        {
+            continue;
+        }
+
+        std::wstring userHiveFile;
+        HiveStamp userHive;
+
+        for (const auto& file : USER_HIVE_FILES)
+        {
+            userHive = getHiveStamp(profilePath + file);
+
+            if (userHive.exists)
+            {
+                userHiveFile = file;
+                break;
+            }
+        }
+
+        const auto classesHive {getHiveStamp(profilePath + USER_CLASSES_HIVE_FILE)};
+        const auto cached {cache.entries.find(sid)};
+        visited.insert(sid);
+
+        if (cached != cache.entries.end() && cached->second.userHiveFile == userHiveFile &&
+                cached->second.userHive == userHive && cached->second.classesHive == classesHive &&
+                loadedUsers.find(sid + USER_CLASSES_HIVE_SUFFIX) == loadedUsers.end())
+        {
+            profiles.push_back(cached->second.data);
+            continue;
+        }
+
+        OfflineProfileData data;
+        auto source {OfflineProfileSource::Failed};
+
+        try
+        {
+            source = readOfflineProfile(sid, profilePath, userHiveFile, classesHive, loadedUsers, data);
+        }
+        catch (...)
+        {
+        }
+
+        if (source == OfflineProfileSource::Files)
+        {
+            cache.entries[sid] = OfflineProfileCacheEntry {userHiveFile, userHive, classesHive, data};
+        }
+        else if (source == OfflineProfileSource::Failed && cached != cache.entries.end())
+        {
+            // A hive that cannot be read keeps the last result, instead of dropping its packages until it can.
+            profiles.push_back(cached->second.data);
+            continue;
+        }
+        else
+        {
+            cache.entries.erase(sid);
+        }
+
+        profiles.push_back(std::move(data));
+    }
+
+    // Profiles that were removed, or whose user has a session now.
+    for (auto it {cache.entries.begin()}; it != cache.entries.end();)
+    {
+        it = visited.find(it->first) == visited.end() ? cache.entries.erase(it) : std::next(it);
+    }
+
+    return profiles;
+}
+
 void SysInfo::getPackages(std::function<void(nlohmann::json&)> callback) const
 {
     std::set<std::string> set;
@@ -923,16 +1422,41 @@ void SysInfo::getPackages(std::function<void(nlohmann::json&)> callback) const
     getPackagesFromReg(HKEY_LOCAL_MACHINE, UNINSTALL_REGISTRY, fillList, KEY_WOW64_64KEY);
     getPackagesFromReg(HKEY_LOCAL_MACHINE, UNINSTALL_REGISTRY, fillList, KEY_WOW64_32KEY);
 
+    std::set<std::string> loadedUsers;
+
     for (const auto& user : Utils::Registry {HKEY_USERS, "", KEY_READ | KEY_ENUMERATE_SUB_KEYS}.enumerate())
     {
+        loadedUsers.insert(user);
+
+        // A classes hive is read through <sid>\SOFTWARE\Classes of its user.
+        if (Utils::endsWith(user, USER_CLASSES_HIVE_SUFFIX))
+        {
+            continue;
+        }
+
         getPackagesFromReg(HKEY_USERS, user + "\\" + UNINSTALL_REGISTRY, fillList);
-        getStorePackages(HKEY_USERS, user, fillList);
+        getStorePackages(HKEY_USERS, user + "\\" + USER_CLASSES_REGISTRY, fillList);
+    }
+
+    auto pythonDirList {getPythonDirectories()};
+    auto nodeDirList {getNodeDirectories()};
+
+    // The profiles are copies of the cached ones, so they are reported after the cache is released.
+    for (auto& profile : getOfflineProfiles(loadedUsers))
+    {
+        for (auto& package : profile.packages)
+        {
+            fillList(package);
+        }
+
+        pythonDirList.insert(profile.pythonDirs.begin(), profile.pythonDirs.end());
+        nodeDirList.insert(profile.nodeDirs.begin(), profile.nodeDirs.end());
     }
 
     const std::map<std::string, std::set<std::string>> searchPaths =
     {
-        {"PYPI", getPythonDirectories()},
-        {"NPM", getNodeDirectories()}
+        {"PYPI", std::move(pythonDirList)},
+        {"NPM", std::move(nodeDirList)}
     };
 
     ModernFactoryPackagesCreator::getPackages(searchPaths, callback);

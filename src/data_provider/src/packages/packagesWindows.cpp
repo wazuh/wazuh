@@ -9,14 +9,8 @@
  */
 
 #include "packagesWindows.h"
-#include "appxWindowsWrapper.h"
 #include "sharedDefs.h"
 #include "timeHelper.h"
-
-std::shared_ptr<IPackage> FactoryWindowsPackage::create(const HKEY key, const std::string& userId, const std::string& nameApp, const std::set<std::string>& cacheRegistry)
-{
-    return std::make_shared<WindowsPackageImpl>(std::make_shared<AppxWindowsWrapper>(key, userId, nameApp, cacheRegistry));
-}
 
 WindowsPackageImpl::WindowsPackageImpl(const std::shared_ptr<IPackageWrapper>& packageWrapper)
     : m_packageWrapper(packageWrapper)
