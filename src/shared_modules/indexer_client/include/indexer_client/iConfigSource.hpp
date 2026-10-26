@@ -49,9 +49,7 @@ namespace indexer_client
         }
 
         /// The `<indexer>` section as canonical JSON (shape of manager_config's `sectionJson("indexer")`): exactly an
-        /// object with `hosts` and, optionally, `ssl`; any other member is Cause::InvalidConfig. The engine's current
-        /// `wiconnector::Config::toJson()` is NOT valid input (it adds `max_queue_bytes` and
-        /// `max_retry_delay_seconds`).
+        /// object with `hosts` and, optionally, `ssl`; any other member is Cause::InvalidConfig.
         virtual std::string indexerSectionJson() const = 0;
 
         /// The indexer user and password (I42). RuntimeOwner::start copies them and fails with InvalidConfig, before

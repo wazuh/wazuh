@@ -2423,7 +2423,7 @@ The following metric names are defined by the module.
 
 ##### `indexer.queue.size`
 
-Current number of bytes buffered in the indexer output queue.
+Bytes the engine currently retains for the indexer: the sum of the retained bytes of the `events` and `raw` buckets (payload bytes, without the per-operation reserve).
 
 **Used for:** monitoring queue growth and backpressure.
 
@@ -2431,7 +2431,7 @@ Current number of bytes buffered in the indexer output queue.
 
 ##### `indexer.queue.usage.percent`
 
-Current indexer output queue byte utilization as a percentage of the configured `analysisd.indexer_queue_max_bytes` limit.
+How close the writes are to dropping new events, as a percentage capped at 100: the larger of (a) the fullest write bucket, the charge of the `events` or `raw` bucket divided by its quota (`analysisd.indexer_queue_max_bytes`, or `analysisd.indexer_client_global_quota_bytes` when that one is `0` or above it), and (b) the shared budget, the charge of both buckets divided by the smaller of the sum of their quotas and `analysisd.indexer_client_global_quota_bytes`. It reaches 100 as soon as one bucket is full, even if the other one is empty, or as soon as the global quota is used up by both buckets together; either way new events are being dropped. Term (b) only matters when twice the bucket quota exceeds the global quota, for example with `analysisd.indexer_queue_max_bytes` set to `0`; with the defaults (64 MiB per bucket, 256 MiB global) the metric is the fullest bucket. The charge is what the quota is consumed with, so it includes the reserve of every queued operation (see [Indexer connector](#indexer-connector)). It is `0` once the engine has shut its writes down.
 
 **Used for:** identifying queue saturation risk.
 
@@ -2439,7 +2439,11 @@ Current indexer output queue byte utilization as a percentage of the configured 
 
 ##### `indexer.events.dropped`
 
-Total number of events dropped in the indexer path: events refused by a full queue, plus events of batches discarded after an indexer response for their `_bulk` status (500, 502, 504 or any other status the connector does not retry, or 503 retries exhausted). A `413` batch the async connector can no longer shrink (bulk threshold at its minimum), and failed items inside a successful response, are not counted.
+Total number of events the engine wanted to index and that did not reach the indexer: the sum of the dropped, failed and rejected operations of the `events` and `raw` buckets. It counts events refused because the bucket quota was full (`DropNewest`), events refused while the writes were closed or the indexer unavailable, events of a `_bulk` that failed (including an ambiguous 500, 502 or 504 answer, which is not retried) or that the indexer rejected as too large (413), and events offered after the writes closed at shutdown. Failed items inside a `_bulk` that the indexer accepted are not counted. Events still pending when the engine stops are discarded but not counted here: once the writes close, the counter keeps the value of the last snapshot taken before (at most about 1 s older than the close, or `0` if the metrics were never read). They are not reported anywhere else either: the indexer client's last summary line is not emitted for the engine's buckets at shutdown, so the log does not show how many pending events were discarded.
+
+This is a change of meaning from earlier versions, where the counter only included events refused by a full queue and batches discarded after a final `_bulk` status.
+
+The three indexer metrics keep their names. They are read from one snapshot of the writes, refreshed at most once per second, so two scrapes less than a second apart report the same values. The snapshot also lags the router: the indexer client admits the events of each router worker in batches, so an event is counted in `indexer.queue.size`, `indexer.queue.usage.percent` and the quota-full part of `indexer.events.dropped` only when its batch is admitted, up to 64 events per worker (and per bucket) or about 1 ms after it was offered. While they wait, those batched events are outside the quota: per bucket they hold at most half of the bucket's effective quota of extra memory (see [Indexer connector](#indexer-connector)).
 
 **Used for:** detecting loss conditions and overload situations.
 

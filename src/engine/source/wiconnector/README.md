@@ -3,17 +3,16 @@
 ## Overview
 
 The **wiconnector** module is the Engine's **writer** to the wazuh-indexer (OpenSearch), plus the one
-read the remote configuration needs, and (since E10a) the owner of the Engine's `indexer_client` runtime. It exposes:
+read the remote configuration needs, and the owner of the Engine's `indexer_client` runtime. It exposes:
 
-- **Indexing events** — pushing processed / raw-event JSON documents into data-stream indices.
+- **Indexing events** — posting alert / raw-event JSON documents to data-stream indices.
 - **Remote engine configuration** — pulling runtime engine settings from `.wazuh-settings`.
-- **Queue introspection** — reporting the pending-queue size in bytes and the dropped-event count (exported by `main.cpp` as indexer metrics).
+- **Queue introspection** — the queued bytes, their share of the capacity and the events not indexed.
 
-**Two connections until E10b.** The writes (`index()`) still go through an asynchronous `IndexerConnectorAsync`
-(from the shared `indexer_connector` library, the v1). The reads go through the Engine's `indexer_client`
-`Client` `analysisd` (the v2): the remote configuration read here and the content downloads of
-[`cmcontent`](../cmcontent/README.md), which the content manager makes through that same Client. Each indexer outage
-therefore logs one line per connection. Every operation is guarded with a `std::shared_mutex`.
+**One connection.** Writes and reads go through the Engine's `indexer_client` `Client` `analysisd` (since E10b; the
+v1 connector is no longer used here). The writes use its two buckets, `events` and `raw`; the reads
+are the remote configuration here and the content downloads of [`cmcontent`](../cmcontent/README.md), which the
+content manager makes through that same Client. An indexer outage is reported once.
 
 ## Architecture
 
@@ -24,68 +23,110 @@ therefore logs one line per connection. Every operation is guarded with a `std::
       └──────────────┼──────────────┘
                      │  IWIndexerConnector
                      ▼
-          ┌─────────────────────┐
-          │  WIndexerConnector  │
-          │  • shared_mutex     │
-          └─────────┬───────────┘
-                    │  writes: IndexerConnectorAsync (v1)      reads: indexer_client Client `analysisd` (v2)
+          ┌──────────────────────────────┐
+          │  WIndexerConnector           │
+          │  • index(): IWriter::post    │
+          │    (no lock, fixed writers)  │
+          │  • metrics: 1 snapshot / s   │
+          └─────────┬────────────────────┘
+                    │  buckets `events` (weight 2) and `raw` (weight 1); IQuery for the reads
                     ▼
-          ┌──────────────────────┐        ┌──────────────────────┐
-          │  indexer_connector   │──►  wazuh-indexer  ◄──│    indexer_client    │
-          └──────────────────────┘        └──────────────────────┘
+          ┌──────────────────────────────┐
+          │ indexer_client Client        │──►  wazuh-indexer
+          │ `analysisd`                  │
+          └──────────────────────────────┘
 ```
 
-The Client is created by `EngineIndexerRuntime`, shared with the content topics and handed to
-`WIndexerConnector` for the remote configuration read.
+The Client is created by `EngineIndexerRuntime` with both buckets, shared with the content topics and handed to
+`WIndexerConnector`.
 
 ## Key Concepts
 
-### Thread Safety
+### Hot path and thread safety
 
-Every public method acquires either a **shared lock** (indexing, queries) or an **exclusive lock**
-(`shutdown`). After `shutdown()` resets the internal `IndexerConnectorAsync` and releases the read Client, later calls degrade
-gracefully: `index()` returns silently, the queue counters return 0, and `getEngineRemoteConfig()`
-throws `std::runtime_error`. `shutdown()` takes the exclusive lock **after** the Client's `requestClose()`, so a remote
-configuration search in flight returns `ClientClosed` instead of holding the lock. `main.cpp` registers `shutdown()` in the exit handler.
+`index(index, data)` takes both strings by value and moves them into an `Op{IndexDataStream}` that it posts with
+`IWriter::post` (no ticket, no callback) to `raw` when the index is `RAW_EVENTS_INDEX` (`wazuh-events-raw-v5`, declared
+next to the interface and shared with `rawevtindexer`) and to `events` otherwise: no copy of the body and no lock. The two
+writers are fixed in the constructor. A refused post (`payload_too_large`, `invalid_argument`, `client_closed`, ...)
+never throws: it is logged on the edge (one WARN until a post is accepted again, then one INFO) and counted only by
+the library, in the bucket's `rejected` counters.
+
+`shutdown()` sets an atomic flag and releases the writers and the Client (a mutex guards only the Client pointer,
+which the reads and the metrics copy out before calling it). **Precondition**: no `index()` runs concurrently with
+`shutdown()` — the router and tester workers are joined before the indexer's exit handler runs. After
+`shutdown()`, `index()` discards the event and counts it (the module's only local counter), the queue size and usage
+read 0, and `getEngineRemoteConfig()` throws `std::runtime_error`. The Engine calls `shutdown()` after the Client's
+`requestClose()`, so a remote configuration read in flight returns `ClientClosed`.
+
+### Buckets (`engineBucketSpecs`)
+
+`EngineIndexerRuntime::start(process, source, EngineWriteOptions, warnings)` builds the two buckets from the v1 keys
+that `main.cpp` reads (`EngineWriteOptions`) and the validated `RuntimeConfig` (it needs `global_quota_bytes`):
+
+| Bucket field | Value |
+|---|---|
+| `weight` | `events` 2, `raw` 1 |
+| `quotaBytes` | `analysisd.indexer_queue_max_bytes` for **both**; `0` ⇒ `global_quota_bytes`; above it ⇒ `global_quota_bytes` + WARN |
+| `bulk.maxBytes` | `analysisd.indexer_bulk_max_bytes`, clipped to `quota − RESULT_RESERVE_BYTES` (2048) + WARN when it does not fit |
+| `bulk.maxAge` | `analysisd.indexer_flush_interval` |
+| `bulk.maxDocs` | `SIZE_MAX`: as in the v1, a bulk is cut only by bytes and by age (the library's default is 10 000) |
+| `retry` | unlimited attempts and duration; `cap` = `analysisd.indexer_max_retry_delay` (the base is lowered to the cap if needed) |
+| `overflow` | `DropNewest` (the router never waits) |
+| `onAmbiguous5xx` | `Fail` (data streams without `_id`: a resend would duplicate) |
+| `trustedBodies` | `true` (the Engine only sends compact `json::Json::str()` output) |
+
+A quota that cannot hold a 64 KiB bulk and its reserve fails the start (`InvalidConfig`, no runtime); the error names
+the key the quota came from (`analysisd.indexer_client_global_quota_bytes` when `indexer_queue_max_bytes` is `0` or
+above it).
+`analysisd.indexer_logger_queue_size` and `analysisd.indexer_logger_threads` are ignored, with a WARN when not at
+their default (8 and 1). The warnings are returned to `main.cpp`, which logs them. `queueCapacityBytes()` =
+min(Σ quotas, `global_quota_bytes`). Every queued op also reserves `RESULT_RESERVE_BYTES` of the quota, so a v2 quota
+holds fewer small events than a v1 queue of the same size.
+
+### Metrics
+
+The three getters read one cached `Client::metrics()` snapshot, refreshed at most once per second (one scrape of the
+three fastmetrics takes one snapshot):
+
+| Getter | Value |
+|---|---|
+| `getQueueSize()` | Σ `retainedBytes` of `events` and `raw` |
+| `getQueueUsagePercent()` | max(the fullest bucket, the shared budget) × 100, capped at 100 (I218): max over `events` and `raw` of `charge` / `quotaBytes`, and Σ `charge` / `queueCapacityBytes`. 100 = a bucket or the global budget is full, i.e. new events are dropped (`QueueFull` or `GlobalFull`): the second term only matters when 2 × quota > global (a quota of `0` or above half the global quota). A bucket with quota 0 is skipped; 0.0 with no capacity or once shut down |
+| `getDroppedEvents()` | Σ `dropped` + `failed` + `rejected` (every cause) of both buckets, plus the events discarded after `shutdown()`; after it the bucket part is the last snapshot taken before it (up to `METRICS_TTL`, 1 s, older than the close; zeros if nothing read the metrics before), so what the runtime's stop drops later (`Dropped(Shutdown)`) is not in it |
+
+The snapshot lags the `index()` calls: the library stages the `post()` of each producer thread and admits it in
+batches (64 ops, ~1 ms, or the close), so `retainedBytes`, `charge` and the queue-full drops move up to 64 ops per
+stripe behind (I209); staged ops are outside the quota until then (at most `quotaBytes / 2` per bucket, `quotaBytes`
+being the effective quota, see
+[Staged admission of `post`](../../../shared_modules/indexer_client/README.md#staged-admission-of-post-e6e)).
+Worst case with the defaults: min(2 × 64 MiB, 256 MiB global) charged plus 2 × 32 MiB staged, about 192 MiB, against
+the single 64 MiB queue of the v1; with `indexer_queue_max_bytes` = 0 (quota = global), 256 + 2 × 128 = 512 MiB.
 
 ### Runtime and two-phase stop (`EngineIndexerRuntime`)
 
 `EngineIndexerRuntime` (`engineIndexerRuntime.hpp`) owns the process's `indexer_client` runtime and the one Client
-(`analysisd`, no buckets). `start(process, source)` validates the configuration, starts the runtime and creates the
-Client; every call must come from the thread that started it (the runtime's owner: the Engine's main thread). The
-stop is in two phases that `main.cpp` places around the scheduler's stop:
+(`analysisd`). `start(process, source, options, warnings)` validates the configuration, builds the buckets, starts the
+runtime and creates the Client; `start(process, source)` (E10a) creates it without buckets and remains for tests. Every
+call must come from the thread that started it (the runtime's owner: the Engine's main thread). The stop is in two
+phases that `main.cpp` places around the scheduler's stop:
 
 1. `beginStop()`, before the scheduler stops: fixes the shutdown deadline (now + 3 s, `STOP_BUDGET`) and closes the
    Client's admission (`requestClose()`), so a read in flight returns `ClientClosed`. `WIndexerConnector::shutdown()` follows.
 2. `finishStop()`, after the scheduler has stopped: `awaitClosed` without a drain, releases the Client and joins the runtime.
 
-Queued work is **discarded**, not drained, as the v1 does (I186); the whole stop fits in 3 s. `finishStop()` without a
+Queued work is **discarded**, not drained, as the v1 did (I186); the whole stop fits in 3 s. The discarded events are
+not counted in `getDroppedEvents()` (its bucket part is the snapshot from before `shutdown()`) and, today, not logged
+either: `finishStop()` releases the Client before `RuntimeOwner::shutdown()`, so the library's last summary sees no
+engine bucket and emits no line for them (D122). `finishStop()` without a
 previous `beginStop()` runs both phases; each phase runs once.
 
 ### Configuration
 
-The `Config` struct encapsulates connection parameters. `main.cpp` builds it only in standalone mode (from the `analysisd.indexer_hosts` / `analysisd.indexer_ssl_*` options); on a manager the base JSON is the `indexer` section of `wazuh-manager.conf` (`base::managerConfig::sectionJson("indexer")`):
-
-```cpp
-struct Config
-{
-    std::vector<std::string> hosts;    // e.g. ["https://localhost:9200"]
-    size_t maxQueueBytes {0};          // 0 = unlimited (bytes)
-    size_t maxRetryDelaySeconds {15};  // Upper bound of the retry backoff
-
-    struct {
-        std::vector<std::string> cacert; // CA bundle paths
-        std::string cert;                // Client certificate
-        std::string key;                 // Client private key
-    } ssl;
-
-    std::string toJson() const;      // Serialises to JSON for IndexerConnectorAsync
-};
-```
-
-Credentials are not part of `Config`: the connector reads them from the keystore (`indexer` / `username`, `password`).
-The Client's credentials come from the same keystore column through `keystoreCredentials()` (an injectable `CredentialsProvider`;
-the engine does not link `keystore`, it calls the `Keystore::get` that `libindexer_connector.so` exports), and the runtime's local copy of the password is erased after `start` (the keystore keeps its own).
+`Config` is the standalone `<indexer>` section (`hosts`, `ssl`); `toJson()` serialises it as the indexer client reads
+it. Credentials are not part of it: the Client's credentials come from the keystore (`indexer` / `username`,
+`password`) through `keystoreCredentials()` (an injectable `CredentialsProvider`; the engine does not link `keystore`,
+it calls the `Keystore::get` that `libindexer_connector.so` exports until E11), and the runtime's local copy of the
+password is erased after `start` (the keystore keeps its own).
 
 #### `EngineConfigSource` (the Client's configuration)
 
@@ -102,18 +143,9 @@ Two v1 keys feed their v2 equivalent when that one is not set (I192): `analysisd
 `problem()` on the v2 key (the start fails); a v1 value of `0` leaves the v2 key unset and is reported once by `warnings()`
 (logged as WARN). The operator-facing list is in [Indexer client](../../../../docs/ref/modules/engine/README.md#indexer-client).
 
-An alternative constructor accepts a raw JSON OSSEC configuration string directly. `main.cpp`
-builds the `IndexerConnectorAsync` once, with `makeIndexerConnectorAsync` (the same parsing that
-constructor uses), and hands it both to this module (the constructor taking a
-`shared_ptr<IndexerConnectorAsync>`) and, through `content_manager::makeContentIndexer`, to the
-content topics of `cmsync` and `iocsync`: one connection, one health monitor, one place to configure
-the indexer.
-
-`main.cpp` builds the connector the same way in both modes: it takes the base JSON above and folds in eight more settings
-from the same `conf` mechanism (env var, `wazuh-manager-internal-options.conf`, or
-default — env var wins), validating their ranges first (an out-of-range value aborts startup). They are documented in the
-[engine configuration reference § Indexer connector settings](../../../../docs/ref/modules/engine/configuration.md#indexer-connector-settings);
-the keys, env vars and defaults (`conf.cpp`) are:
+The write keys of the v1 still come from the same `conf` mechanism (env var, `wazuh-manager-internal-options.conf`, or
+default — env var wins) and feed `EngineWriteOptions` and the runtime (see [Engine Module — Internal options reference
+§ Indexer connector](../../../../docs/ref/modules/engine/README.md#indexer-connector)); the env-var equivalent of each:
 
 | Internal option | Env Override | Default |
 |-----------------|--------------|---------|
@@ -133,11 +165,11 @@ wiconnector/
 ├── CMakeLists.txt
 ├── README.md
 ├── interface/wiconnector/
-│   └── iwindexerconnector.hpp        # IWIndexerConnector
+│   └── iwindexerconnector.hpp        # IWIndexerConnector, RAW_EVENTS_INDEX
 ├── include/wiconnector/
-│   ├── windexerconnector.hpp         # WIndexerConnector + Config + makeIndexerConnectorAsync
+│   ├── windexerconnector.hpp         # WIndexerConnector + Config
 │   ├── engineConfigSource.hpp        # EngineConfigSource, keystoreCredentials
-│   └── engineIndexerRuntime.hpp      # EngineIndexerRuntime (start, beginStop, finishStop)
+│   └── engineIndexerRuntime.hpp      # EngineIndexerRuntime, EngineWriteOptions, engineBucketSpecs
 ├── src/
 │   ├── windexerconnector.cpp
 │   ├── engineConfigSource.cpp
@@ -147,7 +179,9 @@ wiconnector/
     │   ├── mockswindexerconnector.hpp     # MockWIndexerConnector
     │   └── mockIndexerConnectorAsync.hpp  # MockIndexerConnectorAsync (the internal async seam)
     └── src/unit/
-        └── wic_test.cpp
+        ├── wic_test.cpp
+        ├── engineConfigSource_test.cpp
+        └── engineIndexerRuntime_test.cpp
 ```
 
 ## Public Interface
@@ -155,61 +189,59 @@ wiconnector/
 ```cpp
 namespace wiconnector
 {
+constexpr std::string_view RAW_EVENTS_INDEX {"wazuh-events-raw-v5"}; // → the `raw` bucket
+
 class IWIndexerConnector
 {
 public:
     virtual ~IWIndexerConnector() = default;
-    virtual void index(std::string_view index, std::string_view data) = 0;
+    virtual void index(std::string index, std::string data) = 0; // both moved into the operation
     virtual json::Json getEngineRemoteConfig() = 0;
     virtual uint64_t getQueueSize() = 0;     // bytes pending
     virtual uint64_t getDroppedEvents() = 0;
+    virtual double getQueueUsagePercent() = 0;
 };
 
 class WIndexerConnector : public IWIndexerConnector
 {
 public:
-    WIndexerConnector(const Config&, const LogFunctionType& logFunction);
-    explicit WIndexerConnector(std::string_view jsonOssecConfig);
-    explicit WIndexerConnector(std::shared_ptr<IndexerConnectorAsync> connector);
-    explicit WIndexerConnector(std::unique_ptr<IIndexerConnectorAsync> async); // tests
-    // E10a: writes through the v1 connector, reads through the Engine's Client
-    WIndexerConnector(std::shared_ptr<IndexerConnectorAsync> connector,
-                      std::shared_ptr<indexer_client::IClient> reader,
-                      std::chrono::milliseconds requestTimeout);   // + a test variant taking a unique_ptr<IIndexerConnectorAsync>
-    void shutdown(); // resets the async connector under the exclusive lock
+    WIndexerConnector(std::shared_ptr<indexer_client::IClient> client,  // with the `events` and `raw` buckets
+                      std::chrono::milliseconds requestTimeout,         // remote configuration reads
+                      std::uint64_t queueCapacityBytes);                // EngineIndexerRuntime::queueCapacityBytes()
+    void shutdown(); // releases the writers and the Client; never concurrent with index()
 };
 }
 ```
 
 ## Key Flows
 
-- **`index(index, data)`** — shared lock, `IndexerConnectorAsync::indexDataStream()`. Exceptions are
-  caught and logged as warnings; indexing failures do not propagate.
+- **`index(index, data)`** — after `shutdown()`: discard and count. Otherwise `post(Op{IndexDataStream, index, data})`
+  on `raw` (`RAW_EVENTS_INDEX`) or `events`, without a lock; a refusal is logged on the edge, never thrown.
 - **`getEngineRemoteConfig()`** — searches `.wazuh-settings` for exactly one document through the Client's `IQuery::search`
   (same body as the v1, unwrapping the v2 `hits`), extracts `_source.engine`, checks it is an object and returns it. One
   attempt (`maxAttempts = 1`: the retry is the caller's), a page deadline of the runtime's `request_timeout_ms` and a call
   deadline a margin above it. Once every node has been probed and none is usable it fails at once (I190, I190b); before
   the first probe round it waits as I158b says. A null `query()` is `ClientClosed`, which throws like every other failure (it is
-  never read as "no config"); 0 or more than one hit, or no `_source.engine`, throw as in the v1.
+  never read as "no config"); 0 or more than one hit, or no `_source.engine`, throw `IndexerConnectorException` as in the v1.
 
 ## CMake Targets
 
 | Target | Type | Alias | Links |
 |---|---|---|---|
 | `wIndexerConnector_iwIndexerConnector` | INTERFACE | `wIndexerConnector::iwIndexerConnector` | `base` |
-| `wIndexerConnector_wIndexerConnector` | STATIC | `wIndexerConnector::wIndexerConnector` | `base`, `wIndexerConnector::iwIndexerConnector`, `indexer_client` (public); `indexer_connector` (public); only the include directory of `keystore` |
+| `wIndexerConnector_wIndexerConnector` | STATIC | `wIndexerConnector::wIndexerConnector` | `base`, `wIndexerConnector::iwIndexerConnector`, `indexer_client` (public); `indexer_connector` (**private**, only for `Keystore::get` and `IndexerConnectorException` until E11, D101); only the include directory of `keystore` |
 | `wIndexerConnector_mocks` | INTERFACE | `wIndexerConnector::mocks` | `GTest::gmock`, `wIndexerConnector::iwIndexerConnector` |
-| `wIndexerConnector_utest` | Executable | — | `GTest::gtest_main`, `GTest::gmock`, `wIndexerConnector::wIndexerConnector` |
+| `wIndexerConnector_utest` | Executable | — | `GTest::gtest_main`, `GTest::gmock`, `wIndexerConnector::wIndexerConnector`, `indexer_connector` |
 
 ## Testing
 
-- **Unit tests** (`test/src/unit/wic_test.cpp`) — `Config::toJson()`, constructor validation,
-  `index()` error handling, `shutdown()`, concurrent indexing (with and without a concurrent
-  shutdown), the queue counters, and `getEngineRemoteConfig()` against a mocked
-  `IIndexerConnectorAsync`.
-- **Mocks** — `MockWIndexerConnector` (`test/mocks/wiconnector/mockswindexerconnector.hpp`, namespace
-  `wiconnector::mocks`) for downstream consumers; `MockIndexerConnectorAsync`
-  (`mockIndexerConnectorAsync.hpp`) mocks the internal async seam.
+- **Unit tests** (`test/src/unit/wic_test.cpp`) — `Config::toJson()`, the bucket of each index, the moved body (a
+  hand-written `FakeWriter` checks the buffer reaches `Op::body`), refusals counted once, the metrics (sums, the fullest
+  bucket's percent, the global budget when it binds (quota = global, both buckets at 50 % ⇒ 100), quota 0, every cause, one snapshot per second, the refresh), `shutdown()` (the writers expire, later events are discarded and
+  counted), concurrent indexing, and `getEngineRemoteConfig()` against the library's `MockClient`/`MockQuery`.
+- **`engineIndexerRuntime_test.cpp`** — `engineBucketSpecs` (`EngineBucketSpecsTest.*`) and the runtime against the
+  library's in-process fake indexer: start with and without buckets, the capacity, the failed start, the stop phases.
+- **Mock** (`test/mocks/wiconnector/mockswindexerconnector.hpp`) — `MockWIndexerConnector`.
 
 ## Consumers
 
@@ -218,4 +250,4 @@ public:
 | `builder` | `wIndexerConnector::iwIndexerConnector` | Pushes indexed events via the `indexerOutput` stage |
 | `rawevtindexer` | `wIndexerConnector::iwIndexerConnector` | Indexes raw events |
 | `confremote` | `wIndexerConnector::iwIndexerConnector` | Reads the remote engine configuration |
-| `main.cpp` | `wIndexerConnector::wIndexerConnector` | Starts `EngineIndexerRuntime` (when event processing is enabled), builds the connector and injects it, registers the two stop phases |
+| `main.cpp` | `wIndexerConnector::wIndexerConnector` | Starts `EngineIndexerRuntime` with the buckets (when event processing is enabled), builds the connector and injects it, registers the two stop phases and the three fastmetrics |

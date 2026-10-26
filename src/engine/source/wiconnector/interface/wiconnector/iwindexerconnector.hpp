@@ -17,6 +17,10 @@
 namespace wiconnector
 {
 
+/// The raw events' index: what goes there is written to the `raw` bucket, everything else to `events` (I193). The one
+/// source of truth for both the raw event indexer and the connector's routing.
+constexpr std::string_view RAW_EVENTS_INDEX {"wazuh-events-raw-v5"};
+
 /**
  * @brief The Engine's write path to the wazuh-indexer, and its one settings read.
  *
@@ -32,10 +36,13 @@ public:
     /**
      * @brief Indexes the given data into the specified index.
      *
+     * Both are taken by value and moved into the operation, so a caller that moves them pays no copy (I193, I196).
+     * Never called concurrently with the implementation's shutdown (I196b).
+     *
      * @param index The name of the index where the data will be stored
-     * @param data The data content to be indexed as a string view (JSON format)
+     * @param data The data content to be indexed (compact JSON)
      */
-    virtual void index(std::string_view index, std::string_view data) = 0;
+    virtual void index(std::string index, std::string data) = 0;
 
     /**
      * @brief Retrieves remote engine runtime configuration from wazuh-indexer.
@@ -66,6 +73,14 @@ public:
      * @return The number of dropped events
      */
     virtual uint64_t getDroppedEvents() = 0;
+
+    /**
+     * @brief How full the fullest queue is: the bytes its queued operations hold against its quota, as a
+     *        percentage (I197, I218).
+     *
+     * @return 0.0 to 100.0; 0.0 once shut down.
+     */
+    virtual double getQueueUsagePercent() = 0;
 };
 
 } // namespace wiconnector

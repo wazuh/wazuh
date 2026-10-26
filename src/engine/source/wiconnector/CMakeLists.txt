@@ -28,8 +28,10 @@ target_link_libraries(wIndexerConnector_wIndexerConnector
     PUBLIC
     base
     wIndexerConnector::iwIndexerConnector
-    indexer_connector
     indexer_client
+    PRIVATE
+    # The v1 only for Keystore::get (exported by its .so) and IndexerConnectorException, until E11 (D101).
+    indexer_connector
 )
 add_library(wIndexerConnector::wIndexerConnector ALIAS wIndexerConnector_wIndexerConnector)
 
@@ -57,6 +59,8 @@ target_link_libraries(wIndexerConnector_utest
     GTest::gmock
     wIndexerConnector::wIndexerConnector
     wIndexerConnector::mocks
+    # IndexerConnectorException, which the remote configuration read throws (D101).
+    indexer_connector
 )
 # The client library's mocks and its in-process fake indexer (header-only, written on cpp-httplib, whose include
 # directory the engine already adds).
