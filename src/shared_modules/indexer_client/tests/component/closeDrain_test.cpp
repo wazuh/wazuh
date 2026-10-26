@@ -1179,14 +1179,10 @@ TEST_F(CloseDrainTest, SignalDuringActivityOwnerThread)
     g_signalFd.store(efd);
     g_signalled.store(0);
     g_handlerTid.store(0);
-    struct sigaction action
-    {
-    };
+    struct sigaction action {};
     action.sa_handler = onSigusr1;
     sigemptyset(&action.sa_mask);
-    struct sigaction previousAction
-    {
-    };
+    struct sigaction previousAction {};
     ASSERT_EQ(::sigaction(SIGUSR1, &action, &previousAction), 0);
 
     const auto a = startNode();
@@ -1294,7 +1290,8 @@ TEST_F(CloseDrainTest, BlockedProducerAndQueryUnblock)
     };
     {
         AsyncCall search(
-            [query, options, searched] {
+            [query, options, searched]
+            {
                 *searched =
                     query->search("busy", nlohmann::json::parse(R"({"query":{"match_all":{}}})"), options, now() + 30s);
             });

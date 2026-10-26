@@ -319,11 +319,10 @@ namespace indexer_client::testing
             m_byId[entry.current] = m_pits.size();
             m_pits.push_back(entry);
             reply.status = 200;
-            reply.body = nlohmann::json {
-                {"pit_id", entry.current},
-                {"_shards", {{"total", 1}, {"successful", 1}, {"skipped", 0}, {"failed", 0}}},
-                {"creation_time",
-                 1}}.dump();
+            reply.body = nlohmann::json {{"pit_id", entry.current},
+                                         {"_shards", {{"total", 1}, {"successful", 1}, {"skipped", 0}, {"failed", 0}}},
+                                         {"creation_time", 1}}
+                             .dump();
         }
 
         void search(const nlohmann::json& body, Rule& reply, std::chrono::steady_clock::time_point now)
