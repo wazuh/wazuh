@@ -70,29 +70,36 @@ if [ -f "${UPGRADE_FILE_FLAG}" ]; then
     fi
 fi
 
-# Default for all directories.
-# This baseline walks the whole tree, parts of which (etc/, logs/, var/, tmp/, queue/ sub-dirs) the
-# wazuh account can write. A plain chmod -R / chown -R would act on a hard link that account planted
-# to a root-only file (macOS has no protected_hardlinks), changing that external inode. Set
-# directories and single-link files, and skip a symlink and a regular file with more than one link.
+# harden_tree MODE OWNER DIR: set MODE and OWNER on DIR and everything under it, but never on a
+# symlink or a hard-linked regular file (a link the wazuh account may have planted to a file
+# outside the install), so chmod/chown cannot reach that external inode. macOS has no
+# protected_hardlinks, so every recursive step over a wazuh-writable tree goes through this.
+harden_tree() {
+    find "$3" ! -type l ! \( -type f ! -links 1 \) -exec chmod "$1" {} + -exec chown "$2" {} +
+}
+
+# Default for all directories. Parts of the tree (etc/, logs/, var/, queue/ sub-dirs) are writable
+# by the wazuh account, so the hard-link-safe walk is used instead of a plain chmod -R / chown -R.
 echo "Seting permissions and ownership for directories and files"
-find ${DIR} ! -type l ! \( -type f ! -links 1 \) -exec chmod 750 {} +
-find ${DIR} ! -type l ! \( -type f ! -links 1 \) -exec chown root:${GROUP} {} +
+harden_tree 750 root:${GROUP} ${DIR}
 
 chown -R root:wheel ${DIR}/bin
 chown -R root:wheel ${DIR}/lib
 
-# To the ossec queue (default for agentd to read)
-chown -R ${USER}:${GROUP} ${DIR}/queue/{alerts,diff,sockets,rids}
+# The ossec queue (default for agentd to read). queue/{alerts,sockets} are group-writable, so a
+# hard link the wazuh account plants inside them must be skipped, not chowned/chmodded through.
+harden_tree 770 ${USER}:${GROUP} ${DIR}/queue/alerts
+harden_tree 770 ${USER}:${GROUP} ${DIR}/queue/sockets
+harden_tree 750 ${USER}:${GROUP} ${DIR}/queue/diff
+harden_tree 750 ${USER}:${GROUP} ${DIR}/queue/rids
 
-chmod -R 770 ${DIR}/queue/{alerts,sockets}
-chmod -R 750 ${DIR}/queue/{diff,rids}
-
-# For the logging user
+# For the logging user. logs/ is writable by the wazuh account, so the chown and the file chmod
+# must skip a hard link it may have planted there (its root-owned target would otherwise be
+# re-owned and re-moded). Directories cannot be hard-linked by an unprivileged user.
 chmod 770 ${DIR}/logs
-chown -R ${USER}:${GROUP} ${DIR}/logs
+find ${DIR}/logs ! -type l ! \( -type f ! -links 1 \) -exec chown ${USER}:${GROUP} {} +
 find ${DIR}/logs/ -type d -exec chmod 750 {} \;
-find ${DIR}/logs/ -type f -exec chmod 660 {} \;
+find ${DIR}/logs/ -type f -links 1 -exec chmod 660 {} \;
 
 chown -R root:${GROUP} ${DIR}/tmp
 chmod 1750 ${DIR}/tmp
@@ -126,9 +133,8 @@ harden_etc_file 640 ${DIR}/etc/wpk_root.pem
 
 chmod 770 ${DIR}/.ssh
 
-# For the /var/run
-chmod -R 770 ${DIR}/var
-chown -R root:${GROUP} ${DIR}/var
+# For the /var/run. var/{incoming,upgrade} are group-writable, so use the hard-link-safe walk.
+harden_tree 770 root:${GROUP} ${DIR}/var
 
 # VERSION.json
 chmod -R 440 ${DIR}/VERSION.json
