@@ -56,6 +56,7 @@
 
 #include <indexer_client/client.hpp>
 #include <indexer_client/metrics.hpp>
+#include <indexer_client/metricsSlot.hpp>
 #include <indexer_client/runtime.hpp>
 #include <wazuh_metrics/manager.hpp>
 
@@ -785,16 +786,7 @@ namespace invsync
                 {
                     m_metricsManager->registerPullMetric(
                         name,
-                        [slot, name = name]
-                        {
-                            return slot->read(
-                                [&name](const IndexerClientMetricsSlot& snapshot)
-                                {
-                                    const auto it = snapshot.values.find(name);
-                                    return it == snapshot.values.end() ? std::uint64_t {0}
-                                                                       : static_cast<std::uint64_t>(it->second);
-                                });
-                        },
+                        [slot, name = name] { return static_cast<std::uint64_t>(slot->value(name)); },
                         std::string("indexer_client ") +
                             (kind == indexer_client::MetricKind::Counter ? "counter" : "gauge") + " of the module's '" +
                             bucketName + "' bucket (0 without a live client)");
@@ -804,21 +796,28 @@ namespace invsync
             m_metricsManager->registerPullMetric(
                 invsync::metrics::INDEXER_BULK_REQUESTS,
                 [slot]
-                { return slot->read([](const IndexerClientMetricsSlot& snapshot) { return snapshot.bulkRequests; }); },
+                {
+                    return slot->read([](const indexer_client::MetricsSlotSnapshot& snapshot)
+                                      { return inventoryBucket(snapshot).bulkRequests; });
+                },
                 "_bulk requests the 'inventory' bucket completed, whatever their outcome",
                 "requests");
             m_metricsManager->registerPullMetric(
                 invsync::metrics::INDEXER_BULK_BYTES,
                 [slot]
-                { return slot->read([](const IndexerClientMetricsSlot& snapshot) { return snapshot.bulkBytes; }); },
+                {
+                    return slot->read([](const indexer_client::MetricsSlotSnapshot& snapshot)
+                                      { return inventoryBucket(snapshot).bulkBytes; });
+                },
                 "Body bytes of those _bulk requests (resends count again)",
                 "bytes");
             m_metricsManager->registerPullMetric(
                 invsync::metrics::INDEXER_CONFLICT_RETRIES,
                 [slot]
                 {
-                    return slot->read([](const IndexerClientMetricsSlot& snapshot)
-                                      { return snapshot.conflictRetries; });
+                    return slot->read(
+                        [](const indexer_client::MetricsSlotSnapshot& snapshot)
+                        { return snapshot.runtime ? snapshot.runtime->queries.conflictRetries : std::uint64_t {0}; });
                 },
                 "Version-conflict retries of the process's indexer queries (by-query calls included)",
                 "count");
@@ -895,32 +894,13 @@ namespace invsync
                 {
                     m_metricsManager->registerPullMetric(
                         name,
-                        [slot, name = name]
-                        {
-                            return slot->read(
-                                [&name](const IndexerClientMetricsSlot& snapshot)
-                                {
-                                    const auto it = snapshot.values.find(name);
-                                    return it == snapshot.values.end() ? std::uint64_t {0}
-                                                                       : static_cast<std::uint64_t>(it->second);
-                                });
-                        },
+                        [slot, name = name] { return static_cast<std::uint64_t>(slot->value(name)); },
                         description);
                     continue;
                 }
                 // Gauges can be fractions (a node's breaker window, for one): no truncation to an integer.
                 m_metricsManager->registerPullMetricDouble(
-                    name,
-                    [slot, name = name]
-                    {
-                        return slot->read(
-                            [&name](const IndexerClientMetricsSlot& snapshot)
-                            {
-                                const auto it = snapshot.values.find(name);
-                                return it == snapshot.values.end() ? 0.0 : it->second;
-                            });
-                    },
-                    description);
+                    name, [slot, name = name] { return slot->value(name); }, description);
             }
         }
 
@@ -1745,94 +1725,31 @@ namespace invsync
         bool m_transportPullsRegistered {false};
 
         /**
-         * @brief What the indexer_client pull metrics read (I140, I141b): the Client WEAKLY, a copy of the
-         *        RuntimeRef, and the last snapshot, refreshed at most every INDEXER_METRICS_MAX_AGE.
+         * @brief What the indexer_client pull metrics read (I140, I141b, D95): the Client WEAKLY, a copy of the
+         *        RuntimeRef, and the last snapshot of both, refreshed at most every INDEXER_METRICS_MAX_AGE.
          *
          * Owned by the facade and by every getter (shared_ptr), so it outlives the registry's use of it; its own
-         * mutex, never m_lifecycleMutex, so a scrape cannot contend with stop().
+         * mutex, never m_lifecycleMutex, so a scrape cannot contend with stop(). Every name is kept: the getters
+         * pick the buckets' and the runtime's.
          */
-        struct IndexerClientMetricsSlot final
+        const std::shared_ptr<indexer_client::MetricsSlot> m_indexerMetricsSlot {
+            std::make_shared<indexer_client::MetricsSlot>(INDEXER_METRICS_MAX_AGE)};
+
+        /// The `inventory` bucket of a slot snapshot; all zeros without a live Client.
+        static indexer_client::BucketMetrics inventoryBucket(const indexer_client::MetricsSlotSnapshot& snapshot)
         {
-            std::mutex mutex;
-            std::weak_ptr<indexer_client::IClient> client;
-            std::optional<indexer_client::RuntimeRef> runtime;
-            bool fresh {false};
-            std::chrono::steady_clock::time_point refreshedAt;
-            /// forEachMetric of the RuntimeRef snapshot and of the ClientMetrics, by name.
-            std::unordered_map<std::string, double> values;
-            std::uint64_t bulkRequests {0};
-            std::uint64_t bulkBytes {0};
-            std::uint64_t conflictRetries {0};
-
-            void repoint(std::weak_ptr<indexer_client::IClient> target,
-                         std::optional<indexer_client::RuntimeRef> runtimeRef)
+            if (snapshot.client)
             {
-                std::lock_guard<std::mutex> lock {mutex};
-                client = std::move(target);
-                runtime = std::move(runtimeRef);
-                fresh = false;
-            }
-
-            template<typename TRead>
-            std::invoke_result_t<TRead&, const IndexerClientMetricsSlot&> read(TRead&& reader)
-            {
-                std::lock_guard<std::mutex> lock {mutex};
-                refreshLocked();
-                return reader(*this);
-            }
-
-        private:
-            void refreshLocked()
-            {
-                const auto now = std::chrono::steady_clock::now();
-                if (fresh && now - refreshedAt < INDEXER_METRICS_MAX_AGE)
-                {
-                    return;
-                }
-                fresh = true;
-                refreshedAt = now;
-                values.clear();
-                bulkRequests = 0;
-                bulkBytes = 0;
-                conflictRetries = 0;
-
-                // The process's runtime first: its values do not depend on a live Client (I168).
-                if (runtime)
-                {
-                    const auto snapshot = runtime->snapshot();
-                    conflictRetries = snapshot.queries.conflictRetries;
-                    indexer_client::forEachMetric(
-                        snapshot,
-                        [this](std::string_view name, indexer_client::MetricKind, double value)
-                        { values[std::string(name)] = value; });
-                }
-
-                // Scoped: the strong reference lives only for this one call.
-                const auto metrics = [this]
-                {
-                    const auto live = client.lock();
-                    return live ? std::optional<indexer_client::ClientMetrics> {live->metrics()} : std::nullopt;
-                }();
-                if (!metrics)
-                {
-                    return; // no live Client: the buckets read 0
-                }
-
-                indexer_client::forEachMetric(*metrics,
-                                              [this](std::string_view name, indexer_client::MetricKind, double value)
-                                              { values[std::string(name)] = value; });
-                for (const auto& bucket : metrics->buckets)
+                for (const auto& bucket : snapshot.client->buckets)
                 {
                     if (bucket.bucket == invsync::indexer::INVENTORY_BUCKET)
                     {
-                        bulkRequests = bucket.bulkRequests;
-                        bulkBytes = bucket.bulkBytes;
+                        return bucket;
                     }
                 }
             }
-        };
-        const std::shared_ptr<IndexerClientMetricsSlot> m_indexerMetricsSlot {
-            std::make_shared<IndexerClientMetricsSlot>()};
+            return {};
+        }
         bool m_indexerClientPullsRegistered {false};
         bool m_indexerRuntimePullsRegistered {false};
 

@@ -168,13 +168,6 @@ namespace invsync::indexer
         return spec;
     }
 
-    std::size_t chunkCap(std::size_t quotaBytes, std::size_t lanes)
-    {
-        const auto share =
-            static_cast<double>(quotaBytes) * 0.8 / (2.0 * static_cast<double>(std::max<std::size_t>(lanes, 1)));
-        return std::max<std::size_t>(static_cast<std::size_t>(share), 1);
-    }
-
     ConnectorError::Cause translateCause(indexer_client::Cause cause)
     {
         using C = indexer_client::Cause;
@@ -217,56 +210,6 @@ namespace invsync::indexer
     {
         using Clock = std::chrono::steady_clock;
         using indexer_client::Deadline;
-
-        /// Upper bound of an action line's fixed bytes (`{"update":{"_index":"` + `","_id":"` + `"}}\n` = 34,
-        /// `IC/src/write/encoding.cpp` INDEX/DELETE/UPDATE_PREFIX, ID_INFIX, ACTION_SUFFIX), with room to spare.
-        constexpr std::size_t ACTION_FRAME_BYTES {64};
-        /// Upper bound of the scripted line's fixed bytes of an IndexVersionedScript (`encoding.cpp` SCRIPT_OPEN,
-        /// V1_GUARD_SOURCE, SCRIPT_PARAMS, SCRIPT_VERSION, SCRIPT_DOC, SCRIPT_UPSERT, SCRIPT_TAIL: about 260 B).
-        constexpr std::size_t VERSIONED_FRAME_BYTES {512};
-
-        /// The `_id` as `encoding.cpp` escapes it, bounded from above: `"` and `\` take 2 bytes, any other control
-        /// character at most 6 (`\u00XX`).
-        std::size_t escapedSizeBound(std::string_view id)
-        {
-            std::size_t size = 0;
-            for (const char c : id)
-            {
-                if (c == '"' || c == '\\')
-                {
-                    size += 2;
-                }
-                else if (static_cast<unsigned char>(c) < 0x20)
-                {
-                    size += 6;
-                }
-                else
-                {
-                    ++size;
-                }
-            }
-            return size;
-        }
-
-        /**
-         * @brief What the library will charge for the op (payload + RESULT_RESERVE), never less (I137b).
-         *
-         * Index: action line + body + '\n' + the body's heap slack (taken as its whole capacity). Delete: the action
-         * line alone. IndexVersionedScript: everything lives in the head, the document twice plus the v1 script.
-         */
-        std::size_t estimateCharge(const indexer_client::Op& op)
-        {
-            std::size_t bytes = ACTION_FRAME_BYTES + op.index.size() + escapedSizeBound(op.id) + RESULT_RESERVE_BYTES;
-            switch (op.kind)
-            {
-                case indexer_client::Op::Kind::Delete: break;
-                case indexer_client::Op::Kind::IndexVersionedScript:
-                    bytes += VERSIONED_FRAME_BYTES + op.version.size() + 2 * op.body.size();
-                    break;
-                default: bytes += op.body.capacity() + 1; break;
-            }
-            return bytes;
-        }
 
         /// Same filter as the v1 connector's deleteByQuery (`indexerConnectorSyncImpl.hpp`).
         bool isSafeIndexName(std::string_view index)
@@ -603,7 +546,8 @@ namespace invsync::indexer
             };
 
             auto op = makeOp();
-            const auto estimate = estimateCharge(op);
+            // What the library will charge for it, never less (I137b; indexer_client/chunking.hpp, D88).
+            const auto estimate = indexer_client::estimateCharge(op, RESULT_RESERVE_BYTES);
             if (!open.sessions.empty() && open.bytes + estimate > options.capBytes && !commitOpen(*deadline, true))
             {
                 return;

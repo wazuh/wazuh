@@ -44,7 +44,7 @@ consequences the library handles:
 | `ContentRegister` | The public handle of one topic (`contentRegister.hpp`). Owns its `TopicDriver`. |
 | `TopicDriver` | One topic: validates the spec, opens the token store, holds the run slot (one cycle at a time), runs the optional driver thread and the pending request, escalates transport backoff, logs each outcome. |
 | `ContentCycle` | Runs the cycle exactly once and returns a `CycleOutcome`. Never throws, never waits on a gate. |
-| `ConsumerGate` | The consumer document's format (query, `_source` filter, parser) and the cached pre-flight probe, shared across topics watching the same consumer. |
+| `ConsumerGate` | The consumer document's format (query, `_source` filter, parser) and the cached pre-flight probe, shared across topics watching the same consumer. An answer is reused for the topic's cache TTL; an `Unreachable` one (the probe itself failed, e.g. `client_closed`) for `min(TTL, 1 s)` only, so the next cycle re-probes at once while the topics of a consumer over a dead indexer still share one probe per second. |
 | `PitSession` | Opens and closes the PIT; validates consumer readiness inside it with the gate's parser; scopes queries to the data indices. |
 | `IChangeDetector` | `OffsetCursorDetector` (monotonic integer cursor) and `ContentHashDetector` (content hash, document- or query-probed). |
 | `PitPaginator` | `search_after` pagination, optionally sliced, with sink calls serialised. No domain knowledge. |
