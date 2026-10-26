@@ -13,6 +13,7 @@
 
 #include "cgroup_container_map.hpp"
 #include "container_baseline_fim_bridge.h"
+#include "container_identity_set.hpp"
 #include "container_event_router.hpp"
 #include "container_event_staging.hpp"
 #include "container_sweep_schedule.hpp"
@@ -144,6 +145,7 @@ namespace fim_container_events
          * full set — the seeding path, reached without a special case. */
         std::uint64_t cursor_epoch{0};
         std::uint64_t cursor_seq{0};
+        ContainerIdentitySet known_container_ids;
 
         /* Previous values of the counters that record work being shed.
          *
@@ -498,14 +500,15 @@ namespace fim_container_events
                  * against a container_instances too old to serve deltas, where it
                  * runs on every resolver pass. Sweeping the node every five
                  * seconds there would be a self-inflicted cost on exactly the
-                 * deployments least able to take it. A list whose size matches
-                 * what the map already holds changed nothing worth a pass; a
-                 * resync is asked for regardless, since its gap is a gap in the
-                 * events rather than in the list.
+                 * deployments least able to take it. Compare container identities,
+                 * not list length to the cgroup map's size: stopped or unresolved
+                 * containers have no positive cgroup mapping, and an ID can be
+                 * replaced without changing either count. A resync is still asked
+                 * for regardless, since its gap is a gap in the events rather
+                 * than in the list.
                  *
-                 * The size comparison misses one case: an addition and a removal
-                 * between two passes that happen to cancel out. The floor covers
-                 * it, which is what the floor is for.
+                 * A set comparison still misses an addition and removal between
+                 * two passes that cancel out. The floor covers that case.
                  *
                  * BEFORE the list is applied, not after, and the delta branch
                  * below does the same. Applying it escalates any new container to
@@ -515,11 +518,22 @@ namespace fim_container_events
                  * which the consumer takes the walk first and drops every row it
                  * produces -- and nothing walks that container again, so it would
                  * report only the files that happen to change afterwards. */
-                if (delta.resyncRequired || delta.containers.size() != map.containerCount())
+                ContainerIdentitySet listed_ids;
+
+                for (const auto& container : delta.containers)
+                {
+                    if (!container.containerId.empty())
+                    {
+                        listed_ids.insert(container.containerId);
+                    }
+                }
+
+                if (delta.resyncRequired || ContainerIdentitySetChanged(known_container_ids, listed_ids))
                 {
                     requestSweep();
                 }
 
+                known_container_ids = std::move(listed_ids);
                 applyFullList(delta.containers);
             }
             else
@@ -541,10 +555,12 @@ namespace fim_container_events
                         case Kind::added:
                             translated.kind = CgroupDeltaEvent::Kind::added;
                             discovered = true;
+                            known_container_ids.insert(event.containerId);
                             break;
 
                         case Kind::removed:
                             translated.kind = CgroupDeltaEvent::Kind::removed;
+                            known_container_ids.erase(event.containerId);
                             break;
 
                         case Kind::changed:

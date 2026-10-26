@@ -144,6 +144,15 @@ TEST_F(FimDBFixture, updateItemSuccess)
     fimDBMock.updateItem(itemJson, callback);
 }
 
+TEST_F(FimDBFixture, updateItemIfNeededSkipsUnchangedItem)
+{
+    nlohmann::json itemJson;
+    ResultCallbackData callback;
+    EXPECT_CALL(*mockDBSync, syncRow(testing::_, testing::_)).Times(0);
+
+    EXPECT_TRUE(fimDBMock.updateItemIfNeeded(itemJson, callback, true));
+}
+
 TEST_F(FimDBFixture, executeQuerySuccess)
 {
     nlohmann::json itemJson;
