@@ -69,16 +69,19 @@ file_owner() {
 
 }
 
-# Build an INSTALLDIR whose bin/wazuh-agentd answers --show-token with ${1} and exits ${2}.
-# Echoes the directory; the caller removes it.
+# Build an INSTALLDIR whose bin/wazuh-agentd answers --show-token with ${1} and exits ${2}, and
+# whose etc/client.keys holds ${3} when one is given. Echoes the directory; the caller removes it.
 make_installdir() {
 
-    local description="$1" status="$2" installdir
+    local description="$1" status="$2" keys="${3:-}" installdir
 
     installdir="$(mktemp -d)"
     mkdir -p "${installdir}/etc" "${installdir}/tmp" "${installdir}/logs" "${installdir}/bin"
     printf '%s' "${PLACEHOLDER_CONF}" > "${installdir}/etc/ossec.conf"
     touch "${installdir}/logs/ossec.log"
+    if [ -n "${keys}" ]; then
+        printf '%s\n' "${keys}" > "${installdir}/etc/client.keys"
+    fi
 
     {
         echo '#!/bin/bash'
@@ -93,12 +96,13 @@ make_installdir() {
 }
 
 # Run the target against a fresh INSTALLDIR with the caller's WAZUH_* already exported, and
-# leave the result in RUN_DIR / RUN_STATUS for the assertions. The caller removes RUN_DIR.
+# leave the result in RUN_DIR / RUN_STATUS for the assertions. ${3}, when given, is the
+# client.keys the install starts with. The caller removes RUN_DIR.
 run_target() {
 
-    local description="$1" status="$2"
+    local description="$1" status="$2" keys="${3:-}"
 
-    RUN_DIR="$(make_installdir "${description}" "${status}")"
+    RUN_DIR="$(make_installdir "${description}" "${status}" "${keys}")"
     bash "${TARGET}" "${RUN_DIR}" >/dev/null 2>"${RUN_DIR}/stderr"
     RUN_STATUS="$?"
 
@@ -223,7 +227,7 @@ run_target "${DESC_WITH_KEY}" 0
 check "no token and no endpoint names the missing manager" "INFO_NO_MANAGER" "$(refusal_code)"
 # The agent refuses to start on the placeholder, so the notice has to say what comes before the
 # start: the full path, since bin/ is not on PATH.
-NO_TOKEN_HINT="Enroll it with '${RUN_DIR}/bin/wazuh-agent-auth --token-file <file>' before starting it."
+NO_TOKEN_HINT="Enroll it as root with '${RUN_DIR}/bin/wazuh-agent-auth --token-file <file>' before starting it."
 check "no token names the enrollment command on stderr" "1" \
       "$(grep -cF "${NO_TOKEN_HINT}" "${RUN_DIR}/stderr")"
 check "no token names the enrollment command in ossec.log" "1" \
@@ -231,6 +235,16 @@ check "no token names the enrollment command in ossec.log" "1" \
 check "no token leaves the shipped placeholder" "IP:1517/wazuh-manager/" "$(endpoint_of)"
 check "no token stores no token" "absent" \
       "$([ -e "${RUN_DIR}/etc/enrollment_token" ] && echo present || echo absent)"
+rm -rf "${RUN_DIR}"
+
+# A reinstall that keeps client.keys but regenerates ossec.conf: the agent is enrolled, so it is
+# not told to enroll -- wazuh-agent-auth refuses an agent that already has a key.
+run_target "${DESC_WITH_KEY}" 0 "001 enrolled-agent any 0123456789abcdef"
+check "no token on an enrolled agent still names the missing manager" "INFO_NO_MANAGER" "$(refusal_code)"
+check "no token on an enrolled agent is not told to enroll (stderr)" "0" \
+      "$(grep -c 'wazuh-agent-auth' "${RUN_DIR}/stderr")"
+check "no token on an enrolled agent is not told to enroll (ossec.log)" "0" \
+      "$(grep -c 'wazuh-agent-auth' "${RUN_DIR}/logs/ossec.log")"
 rm -rf "${RUN_DIR}"
 
 export WAZUH_SSL_VERIFICATION="system"
