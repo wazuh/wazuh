@@ -951,9 +951,10 @@ TEST_F(SyscollectorImpTest, stoppingDoesNotDeadlockAgainstAnArrivingNotification
     std::this_thread::sleep_for(std::chrono::seconds{3});
 
     std::atomic<bool> senderStop{false};
+    std::atomic<size_t> delivered{0};
     std::thread sender
     {
-        [&senderStop]()
+        [&senderStop, &delivered]()
         {
             const std::string payload = R"({"epoch":"1","seq":"1"})";
 
@@ -967,12 +968,16 @@ TEST_F(SyscollectorImpTest, stoppingDoesNotDeadlockAgainstAnArrivingNotification
 
                 if (fd >= 0)
                 {
-                    static_cast<void>(::sendto(fd,
-                                               payload.data(),
-                                               payload.size(),
-                                               0,
-                                               reinterpret_cast<const sockaddr*>(&address),
-                                               sizeof(address)));
+                    if (::sendto(fd,
+                                 payload.data(),
+                                 payload.size(),
+                                 0,
+                                 reinterpret_cast<const sockaddr*>(&address),
+                                 sizeof(address)) >= 0)
+                    {
+                        ++delivered;
+                    }
+
                     ::close(fd);
                 }
 
@@ -1011,6 +1016,11 @@ TEST_F(SyscollectorImpTest, stoppingDoesNotDeadlockAgainstAnArrivingNotification
 
     waiter.join();
     delete moduleThread;
+
+    // Without this the case is vacuous: nothing bound the socket, no watcher
+    // ever took the mutex, and a clean stop proves only that there was nothing
+    // to deadlock against.
+    EXPECT_LT(0u, delivered.load()) << "no notification was ever delivered, so this test proved nothing";
 
     // The first destroy() ran while a pass held the scan mutex, so it skipped the
     // teardown by design (it try_locks). Now that the loop is gone the mutex is
