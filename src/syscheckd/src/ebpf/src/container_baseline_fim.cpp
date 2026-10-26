@@ -670,11 +670,16 @@ namespace
                 //
                 // `known` is the whole-node container list, which the caller
                 // already established was answered -- an incomplete list here
-                // would delete the contexts of containers that still exist.
-                std::vector<const char*> live;
-                live.reserve(known.size());
+                // would delete the contexts of containers that still exist. A
+                // container the walk discovered after that listing is live too, and
+                // context_sink has just stored its context.
+                std::set<std::string> live_ids{known};
+                live_ids.insert(m_scanned.begin(), m_scanned.end());
 
-                for (const auto& id : known)
+                std::vector<const char*> live;
+                live.reserve(live_ids.size());
+
+                for (const auto& id : live_ids)
                 {
                     live.push_back(id.c_str());
                 }
