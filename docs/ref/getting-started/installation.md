@@ -632,17 +632,17 @@ On Windows the same properties are removed under their unprefixed MSI spellings 
 
 #### Installing without a token
 
-A package install with no `WAZUH_ENROLLMENT_TOKEN` completes, and the installer records that the agent has nowhere to connect and how to register it:
+A package install with no `WAZUH_ENROLLMENT_TOKEN` completes, and the installer records that the agent has nowhere to connect and, when it has no key yet, how to register it:
 
 ```console
-wazuh-agent: no manager configured [INFO_NO_MANAGER]: WAZUH_ENROLLMENT_TOKEN was not supplied, so the agent does not know where to connect. Enroll it with '/var/ossec/bin/wazuh-agent-auth --token-file <file>' before starting it.
+wazuh-agent: no manager configured [INFO_NO_MANAGER]: WAZUH_ENROLLMENT_TOKEN was not supplied, so the agent does not know where to connect. Enroll it as root with '/var/ossec/bin/wazuh-agent-auth --token-file <file>' before starting it.
 ```
 
 That is the **Package** and **From sources** methods: the agent is installed but not yet registered. A package install leaves the placeholder `<endpoint>MANAGER_IP</endpoint>` (`0.0.0.0:1517/wazuh-manager/` on Windows), and the agent refuses to start with it until it is registered:
 
 ```console
 wazuh-agentd: ERROR: (4112): Invalid server address found: 'MANAGER_IP'
-wazuh-agentd: ERROR: (4128): This agent is not enrolled yet. Enroll it with 'wazuh-agent-auth --token-file <file>', then start the agent.
+wazuh-agentd: ERROR: (4128): This agent is not enrolled yet. Enroll it as root with '/var/ossec/bin/wazuh-agent-auth --token-file <file>', then start the agent.
 wazuh-agentd: ERROR: (1215): No client configured. Exiting.
 ```
 
