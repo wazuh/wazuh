@@ -26,9 +26,7 @@
 
 #include "sysInfoInterface.h"
 
-constexpr auto primaryArraySeparator { "," };
-
-constexpr auto secondaryArraySeparator { ":" };
+constexpr auto arraySeparator { "," };
 
 class EXPORTED SysInfo: public ISysInfo
 {
