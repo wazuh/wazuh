@@ -146,6 +146,7 @@ void fim_container_reconcile_admission(void);
  * @param count         How many. Zero is a real answer -- no container reports.
  */
 void fim_container_set_admitted(const char** container_ids, size_t count);
+void fim_container_update_admitted(const char* container_id, int admitted);
 
 /**
  * @brief Whether a container may report. Non-zero when it may.

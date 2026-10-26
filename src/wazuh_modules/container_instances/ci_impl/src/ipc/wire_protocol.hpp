@@ -466,6 +466,8 @@ namespace wazuh::container_instances::wire
                         }
                     }
                     body["containers"] = std::move(containers);
+                    body["snapshot_complete"] = response.snapshotComplete;
+                    body["known_container_ids"] = response.knownContainerIds;
                 }
 
                 if (response.delta)

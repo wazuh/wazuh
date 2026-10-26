@@ -287,6 +287,7 @@ int RunSyscollectorDbsyncBaselineForContainers(const std::string&              c
 /// after a reconcile that changed the set, and would attribute one container's
 /// verdict to another.
 using ContainerIdSink = std::function<void(const std::string&, bool)>;
+using KnownContainerIdSink = std::function<void(const std::string&)>;
 
 /// @brief Lists every container currently known to container_instances,
 /// independent of whether it has a resolvable live PID right now — unlike the
@@ -303,5 +304,9 @@ using ContainerIdSink = std::function<void(const std::string&, bool)>;
 ///         exists" deletes every container's stored rows on a momentary
 ///         connector blip.
 int ListContainers(const std::string& connector_socket_path, const ContainerIdSink& sink);
+int ListContainers(const std::string& connector_socket_path,
+                   const ContainerIdSink& sink,
+                   const KnownContainerIdSink& known_sink,
+                   bool* snapshot_complete);
 
 } // namespace wazuh::container_baseline

@@ -52,6 +52,7 @@ namespace wazuh::container_instances
 
     void DockerConnector::reSeed()
     {
+        m_store.markSourceIncomplete(m_source);
         const auto summaries = m_client.listContainers();
 
         std::vector<ContainerRecord> records;
@@ -105,6 +106,8 @@ namespace wazuh::container_instances
                 m_seenEvents.erase(m_seenEvents.begin());
             }
         }
+
+        m_store.markSourceIncomplete(m_source);
 
         // Coalesce: churn-heavy hosts get at most one full reconcile per debounce
         // window. What the window defers, flushPendingReconcile() picks up one
@@ -187,6 +190,8 @@ namespace wazuh::container_instances
                         return;
                     }
 
+                    m_store.markSourceIncomplete(m_source);
+
                     // Mirrors the Kubernetes connector's post-watch flush: a
                     // disconnect is itself a quiet period, and the re-seed below
                     // happens only after a backoff wait.
@@ -201,6 +206,7 @@ namespace wazuh::container_instances
             }
             catch (const DockerVersionTooOld& error)
             {
+                m_store.markSourceIncomplete(m_source);
                 m_logger(LogLevel::error, std::string {error.what()} + " — container_instances inactive");
                 while (!stop.isStopRequested())
                 {
@@ -210,6 +216,7 @@ namespace wazuh::container_instances
             }
             catch (const std::exception& error)
             {
+                m_store.markSourceIncomplete(m_source);
                 m_logger(LogLevel::warn, std::string {"Docker connector error: "} + error.what());
                 if (!stop.waitFor(backoff))
                 {

@@ -48,11 +48,18 @@ namespace
 {
     std::function<int(cb_dbsync_row_sink_t, cb_container_status_sink_t, void*)> containerScanHook;
     std::function<int(cb_container_id_sink_t, void*)> containerListHook;
+    bool containerListSnapshotComplete {true};
 } // namespace
 
 extern "C" int __real_cbaseline_run_syscollector_dbsync(
     const char*, cb_dbsync_row_sink_t, cb_container_context_sink_t, cb_container_status_sink_t, void*);
 extern "C" int __real_cbaseline_list_containers(const char*, cb_container_id_sink_t, void*);
+extern "C" int __real_cbaseline_list_containers_ex(const char*,
+                                                    cb_container_id_sink_t,
+                                                    void*,
+                                                    cb_known_container_id_sink_t,
+                                                    void*,
+                                                    int*);
 
 extern "C" int __wrap_cbaseline_run_syscollector_dbsync(const char* socket,
                                                         cb_dbsync_row_sink_t sink,
@@ -67,6 +74,40 @@ extern "C" int __wrap_cbaseline_run_syscollector_dbsync(const char* socket,
 extern "C" int __wrap_cbaseline_list_containers(const char* socket, cb_container_id_sink_t sink, void* ctx)
 {
     return containerListHook ? containerListHook(sink, ctx) : __real_cbaseline_list_containers(socket, sink, ctx);
+}
+
+extern "C" int __wrap_cbaseline_list_containers_ex(const char* socket,
+                                                    cb_container_id_sink_t sink,
+                                                    void* ctx,
+                                                    cb_known_container_id_sink_t knownSink,
+                                                    void* knownCtx,
+                                                    int* snapshotComplete)
+{
+    struct ForwardContext
+    {
+        cb_container_id_sink_t sink;
+        void* context;
+        cb_known_container_id_sink_t knownSink;
+        void* knownContext;
+    } forward {sink, ctx, knownSink, knownCtx};
+    const auto forwardSink = [](const char* id, int synced, void* userData)
+    {
+        auto* state = static_cast<ForwardContext*>(userData);
+        state->sink(id, synced, state->context);
+        if (state->knownSink != nullptr)
+        {
+            state->knownSink(id, state->knownContext);
+        }
+    };
+    const int result = containerListHook
+                           ? containerListHook(forwardSink, &forward)
+                           : __real_cbaseline_list_containers_ex(
+                                 socket, sink, ctx, knownSink, knownCtx, snapshotComplete);
+    if (containerListHook && snapshotComplete != nullptr)
+    {
+        *snapshotComplete = result >= 0 && containerListSnapshotComplete ? 1 : 0;
+    }
+    return result;
 }
 #endif
 
@@ -258,6 +299,9 @@ const auto expected_dbsync_browser_extensions
 
 void SyscollectorImpTest::SetUp()
 {
+#if defined(__linux__)
+    containerListSnapshotComplete = true;
+#endif
     std::remove(SYSCOLLECTOR_TEST_DB_PATH);
 
     // Initialize SchemaValidatorFactory with mocks to prevent issues in Wine/Windows tests
@@ -7056,6 +7100,20 @@ TEST_F(SyscollectorImpTest, ContainerBaselineAdmissionAndCleanup)
     ASSERT_EQ(events, (std::vector<Operation_t> {OPERATION_CREATE}));
     EXPECT_EQ(flags(), (std::map<std::string, int> {{"a", 1}, {"b", 0}}));
     events.clear();
+
+    containerListSnapshotComplete = false;
+    admitted = {{"b", true}};
+    scanned = {{"b", true}};
+    module.runContainerBaselinePass();
+    EXPECT_EQ(flags(), (std::map<std::string, int> {{"a", 1}, {"b", 0}}))
+        << "an answered but incomplete connector snapshot must not delete a live container's rows";
+
+    containerListSnapshotComplete = true;
+    admitted = {{"a", true}, {"b", false}};
+    scanned = {{"a", true}, {"b", true}};
+    module.runContainerBaselinePass();
+    events.clear();
+
     admitted = {{"a", false}, {"b", true}};
     module.runContainerBaselinePass();
     EXPECT_EQ(events, (std::vector<Operation_t> {OPERATION_DELETE, OPERATION_CREATE}));

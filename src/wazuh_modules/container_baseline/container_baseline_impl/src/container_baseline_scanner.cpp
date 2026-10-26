@@ -163,7 +163,10 @@ ContainerContextPtr ContextFromRecord(const nlohmann::json& data)
 // connect/send/recv/close against a 2-worker server with a 1 s timeout, so
 // dropping the follow-ups takes a 100-container node from 101 connections per
 // baseline to 1.
-std::vector<ContainerIdentity> DiscoverContainers(const std::string& socket_path, bool* reachable = nullptr)
+std::vector<ContainerIdentity> DiscoverContainers(const std::string& socket_path,
+                                                  bool* reachable = nullptr,
+                                                  bool* snapshotComplete = nullptr,
+                                                  std::set<std::string>* knownContainerIds = nullptr)
 {
     wazuh::container_instances_client::ContainerInstancesClient client(socket_path);
     std::vector<ContainerIdentity> out;
@@ -172,9 +175,19 @@ std::vector<ContainerIdentity> DiscoverContainers(const std::string& socket_path
     {
         *reachable = false;
     }
+    if (snapshotComplete != nullptr)
+    {
+        *snapshotComplete = false;
+    }
+    if (knownContainerIds != nullptr)
+    {
+        knownContainerIds->clear();
+    }
 
     std::vector<wazuh::container_instances_client::ContainerRef> refs;
     bool answered = false;
+    bool complete = false;
+    std::set<std::string> knownIds;
 
     // Phase 1 — get an answer, and give a still-warming connector time to have
     // something to report.
@@ -183,11 +196,19 @@ std::vector<ContainerIdentity> DiscoverContainers(const std::string& socket_path
     for (int attempt = 1; attempt <= attempts; ++attempt)
     {
         bool polled = false;
-        auto listed = client.listContainers(&polled);
+        bool polledComplete = false;
+        std::set<std::string> polledKnownIds;
+        auto listed = client.listContainers(&polled, &polledComplete, &polledKnownIds);
         if (polled)
         {
             answered = true;
             refs = std::move(listed);
+            complete = polledComplete;
+            knownIds = std::move(polledKnownIds);
+        }
+        else
+        {
+            complete = false;
         }
 
         // Two different reasons to poll again, and they must not be conflated:
@@ -197,10 +218,9 @@ std::vector<ContainerIdentity> DiscoverContainers(const std::string& socket_path
         //                  its first enumeration, in which case an empty list is
         //                  a truthful "nothing yet" rather than "nothing".
         //
-        // The difference matters for DELETIONS, not for how long to wait: only
-        // `answered` gates the caller's stale sweep (see the header), and an
-        // empty list from a connector that has answered is still authoritative
-        // once the warm-up window has closed.
+        // An empty answer may be a genuine empty inventory or an incomplete
+        // first snapshot. Reachability is useful to baseline callers; only the
+        // explicit completeness signal may authorize a stale sweep.
         if ((answered && !refs.empty()) || attempt == attempts)
         {
             break;
@@ -213,6 +233,10 @@ std::vector<ContainerIdentity> DiscoverContainers(const std::string& socket_path
     if (reachable != nullptr)
     {
         *reachable = answered;
+    }
+    if (snapshotComplete != nullptr)
+    {
+        *snapshotComplete = answered && complete;
     }
 
     if (!refs.empty())
@@ -231,15 +255,20 @@ std::vector<ContainerIdentity> DiscoverContainers(const std::string& socket_path
             std::this_thread::sleep_for(kListRetryDelay);
 
             bool polled = false;
-            auto nextRefs = client.listContainers(&polled);
+            bool nextComplete = false;
+            std::set<std::string> nextKnownIds;
+            auto nextRefs = client.listContainers(&polled, &nextComplete, &nextKnownIds);
             if (!polled)
             {
                 // The connector went away mid-check. Keep the last list that it
                 // did answer with rather than adopting a failed poll's empty
-                // one, and leave the latch clear so the next run re-checks.
+                // one, but do not let that stale answer authorize deletions.
+                // Leave the latch clear so the next run re-checks.
+                complete = false;
                 break;
             }
-
+            complete = nextComplete;
+            knownIds = std::move(nextKnownIds);
             auto nextIds = ContainerIdSet(nextRefs);
             if (nextIds == lastIds)
             {
@@ -270,6 +299,18 @@ std::vector<ContainerIdentity> DiscoverContainers(const std::string& socket_path
             ctx = ContextFromRecord(ref.record);
         }
         out.push_back(ContainerIdentity{ref.containerId, std::move(ctx), ref.synced});
+    }
+    if (snapshotComplete != nullptr)
+    {
+        *snapshotComplete = answered && complete;
+    }
+    if (knownContainerIds != nullptr)
+    {
+        *knownContainerIds = std::move(knownIds);
+        for (const auto& identity : out)
+        {
+            knownContainerIds->insert(identity.container_id);
+        }
     }
     return out;
 }
@@ -733,6 +774,36 @@ int ListContainers(const std::string& connector_socket_path, const ContainerIdSi
         ++count;
     }
 
+    return count;
+}
+
+int ListContainers(const std::string& connector_socket_path,
+                   const ContainerIdSink& sink,
+                   const KnownContainerIdSink& known_sink,
+                   bool* snapshot_complete)
+{
+    bool reachable = false;
+    std::set<std::string> knownIds;
+    const auto identities =
+        DiscoverContainers(connector_socket_path, &reachable, snapshot_complete, &knownIds);
+    if (!reachable)
+    {
+        return -1;
+    }
+
+    int count = 0;
+    for (const auto& identity : identities)
+    {
+        sink(identity.container_id, identity.synced);
+        ++count;
+    }
+    if (known_sink)
+    {
+        for (const auto& containerId : knownIds)
+        {
+            known_sink(containerId);
+        }
+    }
     return count;
 }
 

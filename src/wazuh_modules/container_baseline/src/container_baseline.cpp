@@ -215,6 +215,20 @@ extern "C" int cbaseline_lifecycle_since(const char*         connector_socket_pa
                                          cb_lifecycle_sink_t sink,
                                          void*               user_data)
 {
+    return cbaseline_lifecycle_since_ex(connector_socket_path, epoch, seq, sink, user_data, nullptr);
+}
+
+extern "C" int cbaseline_lifecycle_since_ex(const char*         connector_socket_path,
+                                            unsigned long long* epoch,
+                                            unsigned long long* seq,
+                                            cb_lifecycle_sink_t sink,
+                                            void*               user_data,
+                                            int*                snapshot_complete)
+{
+    if (snapshot_complete != nullptr)
+    {
+        *snapshot_complete = 0;
+    }
     if (connector_socket_path == nullptr || epoch == nullptr || seq == nullptr)
     {
         return CB_DELTA_UNAVAILABLE;
@@ -230,6 +244,10 @@ extern "C" int cbaseline_lifecycle_since(const char*         connector_socket_pa
         // the caller: it learned nothing, so it may not act as though it did.
         return CB_DELTA_UNAVAILABLE;
     }
+    if (snapshot_complete != nullptr)
+    {
+        *snapshot_complete = delta.snapshotComplete ? 1 : 0;
+    }
 
     // An older module answered with the whole set and no cursor. Reporting that
     // as a resync is exactly right — the caller re-baselines what it is told
@@ -237,6 +255,10 @@ extern "C" int cbaseline_lifecycle_since(const char*         connector_socket_pa
     // has no separate "talking to an old module" path for callers to handle.
     if (!delta.deltaSupported || delta.resyncRequired)
     {
+        if (!delta.snapshotComplete)
+        {
+            return CB_DELTA_UNAVAILABLE;
+        }
         if (sink != nullptr)
         {
             for (const auto& container : delta.containers)
@@ -314,4 +336,42 @@ extern "C" int cbaseline_list_containers(const char* connector_socket_path, cb_c
             if (sink == nullptr) return;
             sink(containerId.c_str(), synced ? 1 : 0, user_data);
         });
+}
+
+extern "C" int cbaseline_list_containers_ex(const char*                  connector_socket_path,
+                                             cb_container_id_sink_t       sink,
+                                             void*                        user_data,
+                                             cb_known_container_id_sink_t known_sink,
+                                             void*                        known_user_data,
+                                             int*                         snapshot_complete)
+{
+    if (snapshot_complete != nullptr)
+    {
+        *snapshot_complete = 0;
+    }
+    if (connector_socket_path == nullptr)
+    {
+        return -1;
+    }
+    bool complete = false;
+    const int listed = ListContainers(
+        connector_socket_path,
+        [sink, user_data](const std::string& containerId, bool synced) {
+            if (sink != nullptr)
+            {
+                sink(containerId.c_str(), synced ? 1 : 0, user_data);
+            }
+        },
+        [known_sink, known_user_data](const std::string& containerId) {
+            if (known_sink != nullptr)
+            {
+                known_sink(containerId.c_str(), known_user_data);
+            }
+        },
+        &complete);
+    if (snapshot_complete != nullptr)
+    {
+        *snapshot_complete = complete ? 1 : 0;
+    }
+    return listed;
 }

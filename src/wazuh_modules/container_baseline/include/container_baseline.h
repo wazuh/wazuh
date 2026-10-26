@@ -317,8 +317,7 @@ typedef void (*cb_lifecycle_sink_t)(const cb_lifecycle_event_t* event, void* use
  *
  * Pass 0/0 to start from cold; that reports CB_DELTA_RESYNC with the full set,
  * which is the same shape as recovering from a gap and so needs no separate
- * handling. The cursor is advanced only after the caller has applied what it
- * was given, so a crash in between replays rather than drops. */
+ * handling. */
 #define CB_DELTA_UNAVAILABLE (-1)
 #define CB_DELTA_RESYNC      (-2)
 
@@ -327,6 +326,17 @@ EXPORTED int cbaseline_lifecycle_since(const char*         connector_socket_path
                                        unsigned long long* seq,
                                        cb_lifecycle_sink_t sink,
                                        void*               user_data);
+
+/* Extended form reports whether absence in the accompanying list is
+ * authoritative. On an incomplete resync it returns CB_DELTA_UNAVAILABLE
+ * without advancing the cursor; the caller must retry after a complete
+ * snapshot. */
+EXPORTED int cbaseline_lifecycle_since_ex(const char*         connector_socket_path,
+                                          unsigned long long* epoch,
+                                          unsigned long long* seq,
+                                          cb_lifecycle_sink_t sink,
+                                          void*               user_data,
+                                          int*                snapshot_complete);
 
 /* Invoked once per container currently known to the container-connector
  * module, independent of whether it has a resolvable live PID right now.
@@ -341,6 +351,7 @@ EXPORTED int cbaseline_lifecycle_since(const char*         connector_socket_path
  * stored rows, which is the opposite of withholding them — withholding keeps
  * the rows and stops offering them. */
 typedef void (*cb_container_id_sink_t)(const char* container_id, int synced, void* user_data);
+typedef void (*cb_known_container_id_sink_t)(const char* container_id, void* user_data);
 
 /* Lists every container currently known to the container-connector module
  * (queried via its IPC socket at `connector_socket_path`) — including a
@@ -350,20 +361,25 @@ typedef void (*cb_container_id_sink_t)(const char* container_id, int synced, voi
  * their own database) MUST compare this list against the run_* functions'
  * output instead of treating "absent from a scan" as "removed".
  *
- * Returns the number of containers reported through `sink`, or -1 when the
- * connector could not be reached or answered malformed.
- *
- * IMPORTANT: callers MUST check for -1 before using this list to authorise
- * deletions. A failed query reports zero containers, so treating the result as
- * authoritative would delete every container's stored rows whenever the
- * connector is momentarily unavailable (agent startup ordering, a connector
- * restart, a Docker daemon reload) and re-create them on the next cycle — a
- * mass false-delete followed by a mass re-insert, on exactly the signal that
- * must be reported accurately.
+ * Returns the number of visible containers reported through `sink`, or -1
+ * when the connector could not be reached or answered malformed. This legacy
+ * form reports reachability only; it does NOT certify that the snapshot is
+ * complete. Destructive reconcilers must use cbaseline_list_containers_ex().
  */
 EXPORTED int cbaseline_list_containers(const char*            connector_socket_path,
                                        cb_container_id_sink_t sink,
                                        void*                  user_data);
+
+/* Extended form for stale-state reconciliation. `snapshot_complete` is true
+ * only when every configured connector has published a successful snapshot.
+ * `known_sink` also receives IDs withheld from the visible list while their
+ * cgroup identity is unresolved. */
+EXPORTED int cbaseline_list_containers_ex(const char*                    connector_socket_path,
+                                          cb_container_id_sink_t         sink,
+                                          void*                          user_data,
+                                          cb_known_container_id_sink_t   known_sink,
+                                          void*                          known_user_data,
+                                          int*                           snapshot_complete);
 
 #ifdef __cplusplus
 }

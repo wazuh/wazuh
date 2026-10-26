@@ -177,6 +177,7 @@ target_link_options(container_reporting_test PRIVATE
     -Wl,--wrap=fim_free_container_monitored_paths
     -Wl,--wrap=fim_container_baseline_available
     -Wl,--wrap=cbaseline_list_containers
+    -Wl,--wrap=cbaseline_list_containers_ex
     -Wl,--wrap=cbaseline_run_fim_dbsync
     -Wl,--wrap=fim_db_get_distinct_container_ids
     -Wl,--wrap=fim_db_transaction_start

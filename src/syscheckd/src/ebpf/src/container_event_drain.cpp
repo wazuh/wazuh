@@ -486,6 +486,14 @@ namespace fim_container_events
 
             if (!delta.deltaSupported || delta.resyncRequired)
             {
+                if (!delta.snapshotComplete)
+                {
+                    // An incomplete set cannot authorise map replacement or a
+                    // stale-row sweep. Keep the cursor too: a resync remains
+                    // pending until every configured connector has published.
+                    return;
+                }
+
                 /* A full list states what exists and says nothing about what
                  * stopped existing, so every removal that happened while the
                  * cursor was unusable is invisible on this path. The map cannot
@@ -520,11 +528,22 @@ namespace fim_container_events
                  * report only the files that happen to change afterwards. */
                 ContainerIdentitySet listed_ids;
 
-                for (const auto& container : delta.containers)
+                for (const auto& containerId : delta.knownContainerIds)
                 {
-                    if (!container.containerId.empty())
+                    if (!containerId.empty())
                     {
-                        listed_ids.insert(container.containerId);
+                        listed_ids.insert(containerId);
+                    }
+                }
+
+                if (listed_ids.empty())
+                {
+                    for (const auto& container : delta.containers)
+                    {
+                        if (!container.containerId.empty())
+                        {
+                            listed_ids.insert(container.containerId);
+                        }
                     }
                 }
 
@@ -540,7 +559,6 @@ namespace fim_container_events
             {
                 std::vector<CgroupDeltaEvent> events;
                 events.reserve(delta.events.size());
-                bool discovered = false;
 
                 for (const auto& event : delta.events)
                 {
@@ -554,8 +572,10 @@ namespace fim_container_events
 
                         case Kind::added:
                             translated.kind = CgroupDeltaEvent::Kind::added;
-                            discovered = true;
                             known_container_ids.insert(event.containerId);
+                            fim_container_update_admitted(
+                                event.containerId.c_str(),
+                                event.record.is_object() ? (event.record.value("synced", true) ? 1 : 0) : 1);
                             break;
 
                         case Kind::removed:
@@ -570,23 +590,6 @@ namespace fim_container_events
                     }
 
                     events.push_back(std::move(translated));
-                }
-
-                /* A container the module had not seen may not report anything
-                 * until the admission set is rebuilt from a container list, and
-                 * only the whole-node pass obtains one -- a delta reply carries no
-                 * container set at all. Without this, a container born after
-                 * startup is walked, has every row withheld by an admission set
-                 * that predates it, and reports nothing at all until the floor
-                 * comes round.
-                 *
-                 * Requested before the events are applied, for the ordering
-                 * reason given on the full-list branch above. Here the test is
-                 * exact rather than a size comparison: the events say which
-                 * containers are new. */
-                if (discovered)
-                {
-                    requestSweep();
                 }
 
                 syncAllowlist(router.applyContainerDelta(events));

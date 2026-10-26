@@ -858,6 +858,7 @@ class EXPORTED Syscollector final
         // Per-container inventory baseline (Linux only). Previously ran
         // unconditionally on every Linux agent, unlike every sibling collector.
         bool                                                                     m_containerBaseline;
+        bool                                                                     m_containerSnapshotComplete{false};
         // Independent container-inventory cadence, decoupled from
         // m_intervalValue (the host scan interval). 0 keeps the two coupled.
         // syncLoop() wakes for whichever deadline elapses first, so the

@@ -641,6 +641,7 @@ void fim_container_doc_budget_initialize(const char* container_id)
  * Guarded by synced_docs_mutex, like the counts above, so a reconcile cannot
  * replace the set while a row is being decided against it. */
 static OSHash* container_admitted = NULL;
+static OSHash* container_admission_overrides = NULL;
 static int container_admission_known = 0;
 
 void fim_container_set_admitted(const char** container_ids, size_t count)
@@ -673,15 +674,76 @@ void fim_container_set_admitted(const char** container_ids, size_t count)
 
     synced_docs_lock();
     OSHash* previous = container_admitted;
+    OSHash* previousOverrides = container_admission_overrides;
     container_admitted = replacement;
+    container_admission_overrides = NULL;
     container_admission_known = 1;
     synced_docs_unlock();
 
     if (previous != NULL) {
         OSHash_Free(previous);
     }
+    if (previousOverrides != NULL) {
+        OSHash_Free(previousOverrides);
+    }
 
     fim_container_reconcile_admission();
+}
+
+void fim_container_update_admitted(const char* container_id, int admitted)
+{
+    if (container_id == NULL || *container_id == '\0') {
+        return;
+    }
+
+    synced_docs_lock();
+    if (container_admission_known == 0) {
+        if (container_admission_overrides == NULL) {
+            container_admission_overrides = OSHash_Create();
+            if (container_admission_overrides == NULL) {
+                synced_docs_unlock();
+                merror("Container FIM: could not create incremental admission overrides.");
+                return;
+            }
+            OSHash_SetFreeDataPointer(container_admission_overrides, free);
+        }
+
+        int* marker = NULL;
+        os_calloc(1, sizeof(int), marker);
+        *marker = admitted != 0;
+        int* previous = (int*)OSHash_Delete(container_admission_overrides, container_id);
+        os_free(previous);
+        if (OSHash_Add(container_admission_overrides, container_id, marker) != 2) {
+            os_free(marker);
+            synced_docs_unlock();
+            merror("Container FIM: could not update incremental admission for '%s'.", container_id);
+            return;
+        }
+        synced_docs_unlock();
+        return;
+    }
+    if (container_admitted == NULL) {
+        synced_docs_unlock();
+        return;
+    }
+
+    if (admitted != 0) {
+        if (OSHash_Get(container_admitted, container_id) == NULL) {
+            int* marker = NULL;
+            os_calloc(1, sizeof(int), marker);
+            *marker = 1;
+            if (OSHash_Add(container_admitted, container_id, marker) != 2) {
+                os_free(marker);
+                synced_docs_unlock();
+                merror("Container FIM: could not admit container '%s'.", container_id);
+                return;
+            }
+        }
+    } else {
+        int* marker = (int*)OSHash_Delete(container_admitted, container_id);
+        os_free(marker);
+    }
+    synced_docs_unlock();
 }
 
 int fim_container_is_admitted(const char* container_id)
@@ -691,9 +753,15 @@ int fim_container_is_admitted(const char* container_id)
     }
 
     synced_docs_lock();
-    const int admitted = (container_admission_known == 0 || container_admitted == NULL)
-                         ? 1
-                         : (OSHash_Get(container_admitted, container_id) != NULL);
+    int admitted = (container_admission_known == 0 || container_admitted == NULL)
+                       ? 1
+                       : (OSHash_Get(container_admitted, container_id) != NULL);
+    if (container_admission_overrides != NULL) {
+        int* override = (int*)OSHash_Get(container_admission_overrides, container_id);
+        if (override != NULL) {
+            admitted = *override != 0;
+        }
+    }
     synced_docs_unlock();
 
     return admitted;

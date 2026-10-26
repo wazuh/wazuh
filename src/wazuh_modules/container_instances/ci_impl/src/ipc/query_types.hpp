@@ -87,6 +87,8 @@ namespace wazuh::container_instances
 
         ContainerRecordPtr record;                  ///< resolved.
         std::vector<ContainerRecordPtr> containers; ///< list op.
+        std::set<std::string> knownContainerIds;
+        bool snapshotComplete {false};
         /// This response IS a `list` reply, so `containers` must be serialised even
         /// when empty. Omitting the key made "no containers on this host"
         /// indistinguishable from "no connector" for every client, because the

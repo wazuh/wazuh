@@ -116,7 +116,8 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
   target_link_libraries(syscollectorimp_unit_test container_baseline)
   target_link_options(syscollectorimp_unit_test PRIVATE
     -Wl,--wrap=cbaseline_run_syscollector_dbsync
-    -Wl,--wrap=cbaseline_list_containers)
+    -Wl,--wrap=cbaseline_list_containers
+    -Wl,--wrap=cbaseline_list_containers_ex)
 endif()
 
 add_test(NAME syscollectorimp_unit_test COMMAND syscollectorimp_unit_test)

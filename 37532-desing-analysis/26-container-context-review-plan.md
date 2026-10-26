@@ -32,6 +32,15 @@
 - Decisión de producto (2026-10-26): para #8, el contexto de un documento es el último
   contexto conocido al emitirlo. Un cambio posterior de metadatos no reescribe
   retroactivamente documentos ya indexados ni, por sí solo, genera una reemisión.
+- Implementación #2/#13 (2026-10-26): container_instances ahora certifica snapshots
+  solo cuando todas las fuentes configuradas terminaron una enumeración satisfactoria;
+  los IDs conocidos incluyen contenedores running aún sin cgroup resuelto. La señal y
+  esos IDs llegan por IPC y por el API extendido de baseline. FIM, Syscollector y el
+  drain eBPF no usan una lista incompleta para barrer o reemplazar su estado. Syscollector
+  fuerza un pase completo al observar la transición a completitud. Las altas delta de
+  FIM actualizan la admisión individual antes del walk, sin pedir un sweep global.
+  Se compiló con `TEST=yes` y pasaron las cuatro suites focalizadas de container_instances,
+  container_baseline, container_reporting y Syscollector.
 
 **Conclusión:** los 15 comentarios identifican comportamientos presentes en el código,
 pero no tienen todos el mismo alcance ni justifican aplicar literalmente la solución
@@ -55,7 +64,7 @@ Prioridades:
 | # | Veredicto | Prioridad recomendada | ¿Conviene corregir? | Esfuerzo |
 | --- | --- | --- | --- | --- |
 | 1 | UAF confirmado por inspección | P0 | Sí, independientemente del cierre del daemon | 0,5–1 |
-| 2 | Ausencia no autoritativa puede borrar contenedores vivos | P0 | Sí; corregir productor y ambos consumidores | 3–5 |
+| 2 | **Corregido**: las listas incompletas no autorizan sweeps | Hecho | IDs conocidos y completitud por fuente; los consumidores conservan el estado hasta un snapshot completo | — |
 | 3 | Bloqueo de inicialización confirmado; política deliberada | P1 si se soporta rollback | Sí, definir recuperación; no recrear globalmente sin garantías | 1–3 |
 | 4 | Colisión reproducida; solo en esquemas intermedios de desarrollo, no en el publicado | P1; bloqueante para actualizar esos nodos | Sí; definir compatibilidad de bases de desarrollo | 1–3 con recreación explícita; 3–5 preservándolas |
 | 5 | Prune inseguro tras fallo de lectura | P0 | Sí, junto con #6 | 0,25–0,5 |
@@ -66,7 +75,7 @@ Prioridades:
 | 10 | Memoización sobrevive al reemplazo de la DB | P1 | Sí; invalidar al cambiar la base | 0,5–1 |
 | 11 | Escritura no ejecutada se informa como exitosa | P1 | Sí; corregir el contrato de persistencia | 0,5–1,5 |
 | 12 | **Corregido y probado**: libera la fila poseída en todas las salidas | Hecho | Callback no registrado probado | — |
-| 13 | Altas disparan trabajo global innecesario | P2 | Sí, preservando admisión antes del primer walk | 1,5–3 |
+| 13 | **Corregido**: las altas delta no piden sweep global | Hecho | Actualización incremental de admisión antes del walk; el sweep periódico sigue como backstop | — |
 | 14 | **Corregido**: omite `syncRow` si el contexto completo no cambió | Hecho | Integrado al ciclo de vida de caché de A | 0,5 |
 | 15 | **Corregido**: v1→v2 usa SQL literal en ambos esquemas | Hecho | Upgrade FIM probado; Syscollector compila | 0,25 |
 
@@ -127,6 +136,23 @@ completo por epoch/fuente. Durante redescubrimiento, no inferir bajas por ausenc
 Conservar las bajas explícitas del journal según su contrato y el sweep periódico
 como backstop cuando exista autoridad. Un sleep mayor o suprimir solo el sweep del
 resync no arreglan la causa.
+
+**Implementado:** `MetadataStore` registra las fuentes esperadas y las que ya
+publicaron snapshots completos; una reconexión o un evento que invalida el snapshot
+retira temporalmente esa autoridad. Las respuestas de lista incluyen
+`snapshot_complete` y `known_container_ids`, capturados con los registros bajo el
+mismo lock. El API extendido del baseline conserva ambos datos, mientras el API viejo
+se mantiene por compatibilidad y no certifica completitud. El drain no instala una
+lista ni avanza un cursor de resync mientras falte completitud. Los sweeps FIM y
+Syscollector usan los IDs conocidos (incluidos los unresolved) y se omiten hasta que
+el snapshot esté completo. Syscollector recuerda la completitud y ejecuta un pase
+completo al recuperarla, para cubrir cambios que ocurrieron durante el redescubrimiento.
+
+**Regresiones:** el store y QueryService verifican que una fuente pendiente haga el
+snapshot incompleto, que un ID unresolved siga conocido y que la recuperación de todas
+las fuentes restablezca la autoridad. Syscollector verifica que una lista alcanzable
+pero incompleta no borre filas. Las suites focalizadas de container_instances,
+container_baseline, container_reporting y Syscollector pasan con `TEST=yes`.
 
 ### 3. Bases de versión superior bloquean los módulos
 
@@ -345,6 +371,17 @@ reconciliación periódica segura. No admitir indiscriminadamente todo ID nuevo:
 el cap y su indicador de admisión. Usar `container_context` como fuente de candidatos
 solo si se demuestra que no puede haber filas sin contexto; #5/#6/#10/#11 impiden
 asumir hoy ese invariante.
+
+**Implementado:** al recibir una alta delta, el drain usa el veredicto `synced` del
+registro para actualizar solo esa entrada de admisión antes de entregar el evento al
+router y su walk. No solicita `requestSweep()` por la alta, evitando así el
+`SELECT DISTINCT` sobre `file_entry` y la reconciliación global de admisión. La
+actualización incremental no consulta filas y conserva el indicador de cap de
+container_instances; la reconciliación periódica y las listas completas siguen
+disponibles para recuperar estado y procesar removals.
+
+**Regresión:** `IncrementalAdmissionUpdateDoesNotQueryAllFileRows` verifica que la
+actualización por ID cambia la admisión sin invocar las consultas globales de IDs FIM.
 
 ### 14. Reescritura de contexto FIM sin cambios
 

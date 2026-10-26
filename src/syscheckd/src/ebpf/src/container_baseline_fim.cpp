@@ -906,6 +906,7 @@ namespace
         /// want of a reply rather than for want of containers, which is a
         /// difference nothing downstream may ignore.
         bool answered{false};
+        bool snapshotComplete{false};
     };
 
     /// Obtain the whole-node container list and refresh the admission set from it
@@ -917,11 +918,26 @@ namespace
     {
         NodeReconcile out;
 
-        const int listed =
-            cbaseline_list_containers(CB_DEFAULT_CONNECTOR_SOCKET_PATH, container_id_sink, &out.listing);
-        out.answered = (listed >= 0);
+        const auto knownSink = [](const char* containerId, void* userData)
+        {
+            auto* listing = static_cast<ContainerListing*>(userData);
 
-        if (!out.answered)
+            if (listing != nullptr && containerId != nullptr)
+            {
+                listing->known.insert(containerId);
+            }
+        };
+        int complete = 0;
+        const int listed = cbaseline_list_containers_ex(CB_DEFAULT_CONNECTOR_SOCKET_PATH,
+                                                        container_id_sink,
+                                                        &out.listing,
+                                                        knownSink,
+                                                        &out.listing,
+                                                        &complete);
+        out.answered = (listed >= 0);
+        out.snapshotComplete = out.answered && complete != 0;
+
+        if (!out.snapshotComplete)
         {
             return out;
         }
@@ -949,9 +965,11 @@ namespace
     /// reported accurately.
     void SweepUnlisted(BaselineDriver& driver, const NodeReconcile& reconcile)
     {
-        if (!reconcile.answered)
+        if (!reconcile.answered || !reconcile.snapshotComplete)
         {
-            LogError("Container FIM: container connector unavailable, skipping stale-container cleanup "
+            LogError(reconcile.answered
+                     ? "Container FIM: container connector snapshot is incomplete, skipping stale-container cleanup."
+                     : "Container FIM: container connector unavailable, skipping stale-container cleanup "
                      "to avoid false deletions.");
             return;
         }
@@ -1340,7 +1358,7 @@ extern "C" void fim_container_sweep_absent(void)
 
         const auto reconcile = ListAndSweep(driver);
 
-        if (reconcile.answered)
+        if (reconcile.answered && reconcile.snapshotComplete)
         {
             // Debug, like the per-container lines sweepStale() already emits:
             // a floor that finds nothing is the normal case and must not be

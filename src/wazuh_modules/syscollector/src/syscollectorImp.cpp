@@ -3084,11 +3084,13 @@ bool Syscollector::scanContainerBaselineDelta()
         }
     };
 
-    const int result = cbaseline_lifecycle_since(CB_DEFAULT_CONNECTOR_SOCKET_PATH,
-                                                 &m_containerCursorEpoch,
-                                                 &m_containerCursorSeq,
-                                                 sink,
-                                                 &collected);
+    int snapshotComplete = 0;
+    const int result = cbaseline_lifecycle_since_ex(CB_DEFAULT_CONNECTOR_SOCKET_PATH,
+                                                    &m_containerCursorEpoch,
+                                                    &m_containerCursorSeq,
+                                                    sink,
+                                                    &collected,
+                                                    &snapshotComplete);
 
     if (result == CB_DELTA_UNAVAILABLE)
     {
@@ -3097,6 +3099,7 @@ bool Syscollector::scanContainerBaselineDelta()
         // happened meanwhile is still waiting when the connector returns.
         m_logFunction(LOG_DEBUG,
                       "Container inventory: lifecycle delta unavailable; leaving stored rows untouched.");
+        m_containerSnapshotComplete = false;
         return false;
     }
 
@@ -3107,6 +3110,17 @@ bool Syscollector::scanContainerBaselineDelta()
         // the additions alone would leave removed containers' rows for ever.
         // The caller's full pass settles both.
         m_logFunction(LOG_DEBUG, "Container inventory: lifecycle cursor needs a resync; running a full pass.");
+        m_containerSnapshotComplete = snapshotComplete != 0;
+        return false;
+    }
+
+    const bool snapshotJustCompleted = snapshotComplete != 0 && !m_containerSnapshotComplete;
+    m_containerSnapshotComplete = snapshotComplete != 0;
+    if (snapshotJustCompleted)
+    {
+        // Changes that arrived while one source was still listing may not
+        // have produced a complete lifecycle set. A full scan is the first
+        // point at which absence is safe to interpret as removal.
         return false;
     }
 
@@ -3493,6 +3507,7 @@ void Syscollector::scanContainerBaseline(const std::vector<std::string>& only_th
     // admission separately could straddle a reconcile and attribute one
     // container's verdict to another.
     std::map<std::string, bool> discovered;
+    std::set<std::string> discoveredIds;
     const auto idSink = [](const char* containerId, int synced, void* userData)
     {
         auto* ids = static_cast<std::map<std::string, bool>*>(userData);
@@ -3502,22 +3517,24 @@ void Syscollector::scanContainerBaseline(const std::vector<std::string>& only_th
             (*ids)[containerId] = (synced != 0);
         }
     };
-    const int listed = cbaseline_list_containers(CB_DEFAULT_CONNECTOR_SOCKET_PATH, idSink, &discovered);
-
-    // EVERY known container, admitted or not. The sweep below deletes what is
-    // absent from this set, and a container whose rows are merely withheld has
-    // not been removed -- leaving it out here would delete the very rows the
-    // cap is holding back, turning "do not report this yet" into "this is
-    // gone". That distinction is the whole reason the cap withholds instead of
-    // shortening the list.
-    std::set<std::string> discoveredIds;
-
-    for (const auto& entry : discovered)
+    const auto knownSink = [](const char* containerId, void* userData)
     {
-        discoveredIds.insert(entry.first);
-    }
+        auto* ids = static_cast<std::set<std::string>*>(userData);
+        if (ids != nullptr && containerId != nullptr)
+        {
+            ids->insert(containerId);
+        }
+    };
+    int snapshotComplete = 0;
+    const int listed = cbaseline_list_containers_ex(CB_DEFAULT_CONNECTOR_SOCKET_PATH,
+                                                     idSink,
+                                                     &discovered,
+                                                     knownSink,
+                                                     &discoveredIds,
+                                                     &snapshotComplete);
+    m_containerSnapshotComplete = listed >= 0 && snapshotComplete != 0;
 
-    if (listed >= 0)
+    if (listed >= 0 && snapshotComplete != 0)
     {
         setAdmittedContainers(discovered);
     }
@@ -3546,10 +3563,10 @@ void Syscollector::scanContainerBaseline(const std::vector<std::string>& only_th
         // — which is most of them. Removals on that path come from the delta
         // naming them, never from absence.
     }
-    else if (listed < 0)
+    else if (listed < 0 || snapshotComplete == 0)
     {
         m_logFunction(LOG_WARNING,
-                      "Container connector unavailable; skipping stale-container cleanup "
+                      "Container connector snapshot unavailable or incomplete; skipping stale-container cleanup "
                       "to avoid deleting rows for containers that still exist.");
     }
     else

@@ -32,6 +32,7 @@ namespace
     bool connector_available = true;
     bool reject_persistence = false;
     bool fail_distinct_ids = false;
+    int distinct_id_queries = 0;
     bool fail_txn_start = false;
     int file_size = 1;
 
@@ -49,6 +50,7 @@ namespace
                 connector_available = true;
                 reject_persistence = false;
                 fail_distinct_ids = false;
+                distinct_id_queries = 0;
                 fail_txn_start = false;
                 file_size = 1;
                 fim_db_init(FIM_DB_MEMORY, [](modules_log_level_t, const char*) {}, 1000, 0, nullptr);
@@ -112,6 +114,7 @@ extern "C" int __wrap_fim_collect_container_monitored_paths(cb_monitored_path_t*
 extern "C" cJSON* __real_fim_db_get_distinct_container_ids(const char* table_name);
 extern "C" cJSON* __wrap_fim_db_get_distinct_container_ids(const char* table_name)
 {
+    ++distinct_id_queries;
     return fail_distinct_ids ? nullptr : __real_fim_db_get_distinct_container_ids(table_name);
 }
 
@@ -141,6 +144,30 @@ extern "C" int __wrap_cbaseline_list_containers(const char*, cb_container_id_sin
     for (const auto& [id, admitted] : admission) sink(id.c_str(), admitted, ctx);
 
     return static_cast<int>(admission.size());
+}
+
+extern "C" int __wrap_cbaseline_list_containers_ex(const char* socket,
+                                                   cb_container_id_sink_t sink,
+                                                   void* ctx,
+                                                   cb_known_container_id_sink_t knownSink,
+                                                   void* knownCtx,
+                                                   int* snapshotComplete)
+{
+    const int listed = __wrap_cbaseline_list_containers(socket, sink, ctx);
+
+    if (listed >= 0)
+    {
+        for (const auto& [id, admitted] : admission)
+        {
+            static_cast<void>(admitted);
+
+            if (knownSink != nullptr) knownSink(id.c_str(), knownCtx);
+        }
+    }
+
+    if (snapshotComplete != nullptr) *snapshotComplete = listed >= 0 ? 1 : 0;
+
+    return listed;
 }
 
 extern "C" int __wrap_cbaseline_run_fim_dbsync(const char*,
@@ -236,6 +263,24 @@ TEST_F(ContainerReportingTest, AdmissionRetractsRetainsAndRestoresUnchangedRows)
         EXPECT_EQ(persisted[0], (std::pair<std::string, int> {"b:/etc/one", OPERATION_CREATE}));
         EXPECT_EQ(syncFlag("b", "/etc/one"), 1);
     }
+
+}
+
+TEST_F(ContainerReportingTest, IncrementalAdmissionUpdateDoesNotQueryAllFileRows)
+{
+    const char* initialAdmission[] {"a"};
+    fim_container_set_admitted(initialAdmission, 1);
+    const int queriesAfterReconcile = distinct_id_queries;
+    ASSERT_GT(queriesAfterReconcile, 0);
+
+    fim_container_update_admitted("b", 1);
+    EXPECT_TRUE(fim_container_is_admitted("b"));
+    EXPECT_EQ(queriesAfterReconcile, distinct_id_queries)
+            << "a lifecycle addition must not trigger the full distinct-container scan";
+
+    fim_container_update_admitted("a", 0);
+    EXPECT_FALSE(fim_container_is_admitted("a"));
+    EXPECT_EQ(queriesAfterReconcile, distinct_id_queries);
 }
 
 TEST_F(ContainerReportingTest, FirstScanWithholdsAndUnavailableConnectorKeepsRows)

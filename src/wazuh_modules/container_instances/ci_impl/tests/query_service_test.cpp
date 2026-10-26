@@ -26,11 +26,13 @@
 #include "cache/metadata_store.hpp"
 #include "core/i_on_demand_refresher.hpp"
 #include "ipc/query_service.hpp"
+#include "ipc/wire_protocol.hpp"
 
 #include <gtest/gtest.h>
 
 #include <cstdint>
 #include <optional>
+#include <set>
 #include <string>
 #include <vector>
 
@@ -108,6 +110,34 @@ namespace
     }
 
 } // namespace
+
+TEST(QueryServiceTest, ListReplyCarriesAtomicCompletenessAndKnownIds)
+{
+    Fixture fixture;
+    const SourceId kKubernetes {"kubernetes"};
+    fixture.store.setExpectedSources({kDocker, kKubernetes});
+    fixture.store.applySnapshot(kDocker, {MakeRecord("unresolved", 0)}, {}, std::chrono::steady_clock::now());
+
+    QueryRequest request;
+    request.version = 2;
+    request.op = QueryRequest::Op::list;
+    auto service = fixture.Service();
+
+    auto response = service.handle(request);
+    EXPECT_FALSE(response.snapshotComplete);
+    EXPECT_TRUE(response.containers.empty());
+    EXPECT_EQ((std::set<std::string> {"unresolved"}), response.knownContainerIds);
+    const auto incompleteJson = nlohmann::json::parse(wire::serializeResponse(response));
+    EXPECT_FALSE(incompleteJson.at("snapshot_complete").get<bool>());
+    EXPECT_EQ((nlohmann::json::array({"unresolved"})), incompleteJson.at("known_container_ids"));
+
+    fixture.store.applySnapshot(kKubernetes, {}, {}, std::chrono::steady_clock::now());
+    response = service.handle(request);
+    EXPECT_TRUE(response.snapshotComplete);
+    EXPECT_EQ((std::set<std::string> {"unresolved"}), response.knownContainerIds);
+    const auto completeJson = nlohmann::json::parse(wire::serializeResponse(response));
+    EXPECT_TRUE(completeJson.at("snapshot_complete").get<bool>());
+}
 
 TEST(QueryServiceTest, AResolveInTheWrongKeySpaceIsRefusedAndNeverColdResolved)
 {
