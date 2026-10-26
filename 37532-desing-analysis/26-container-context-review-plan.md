@@ -27,14 +27,18 @@
 - Continuación de implementación (2026-10-26): #9 compara conjuntos de identidades,
   #14 omite `syncRow` para contextos completos sin cambios y #15 congela el SQL
   v1→v2. Se recompiló el agente con `TEST=yes`; pasaron `container_reporting_test`,
-  `container_reconcile_plan_test` y `fim_db_upgrade_test`. Los cambios de esta tanda
-  siguen locales hasta confirmar su publicación.
+  `container_reconcile_plan_test` y `fim_db_upgrade_test`. Los cambios se publicaron
+  en `a5c796dddb8`.
+- Decisión de producto (2026-10-26): para #8, el contexto de un documento es el último
+  contexto conocido al emitirlo. Un cambio posterior de metadatos no reescribe
+  retroactivamente documentos ya indexados ni, por sí solo, genera una reemisión.
 
 **Conclusión:** los 15 comentarios identifican comportamientos presentes en el código,
 pero no tienen todos el mismo alcance ni justifican aplicar literalmente la solución
 propuesta. Priorizar seguridad de memoria, autoridad para borrar y conservación del
-contexto ante errores. Resolver las políticas de rollback y actualización de metadatos
-antes de implementar cambios que borren bases o reemitan inventario.
+contexto ante errores. La política de rollback sigue pendiente; el contrato de #8 ya
+está acordado como snapshot del último contexto conocido al emitir, sin convergencia
+retroactiva del inventario indexado.
 
 ## 1. Resumen de decisiones y esfuerzo
 
@@ -57,7 +61,7 @@ Prioridades:
 | 5 | Prune inseguro tras fallo de lectura | P0 | Sí, junto con #6 | 0,25–0,5 |
 | 6 | Limpieza de contexto y presupuesto sin confirmar el borrado | P0 | Sí; propagar resultados y conservar estado ante fallos | 1–2 |
 | 7 | **Ya corregido**: consume notificaciones con el intervalo cero y conserva la cadencia host | Hecho | Verificado con test de lifecycle en modo acoplado | — |
-| 8 | Documentos indexados no se refrescan solo por cambiar contexto | P1 para definir contrato | Sí analizarlo; la propagación depende del contrato de producto | 4–8 si se exige actualización end-to-end |
+| 8 | Contrato acordado: snapshot del último contexto conocido al emitir | Resuelta por decisión de producto | No; los documentos ya emitidos no se reescriben retroactivamente | 0 |
 | 9 | **Corregido**: compara identidades, no cardinalidades | Hecho | Detecta reemplazos con igual cardinalidad; no barre estados estables | 0,25 |
 | 10 | Memoización sobrevive al reemplazo de la DB | P1 | Sí; invalidar al cambiar la base | 0,5–1 |
 | 11 | Escritura no ejecutada se informa como exitosa | P1 | Sí; corregir el contrato de persistencia | 0,5–1,5 |
@@ -237,31 +241,32 @@ También se actualizó el comentario de
 [container_sweep_schedule.hpp](../src/syscheckd/src/ebpf/include/container_sweep_schedule.hpp#L15),
 que describía el comportamiento anterior.
 
-### 8. Metadatos antiguos en documentos ya indexados
+### 8. Contrato de snapshot para metadatos
 
-**Confirmado como limitación de consistencia; intención de producto pendiente.**
+**Decisión de producto acordada (2026-10-26): el contexto representa el último
+conocido al emitir el documento.** La frescura se evalúa en el momento de emisión;
+no se promete que todos los documentos indexados reflejen siempre los metadatos
+actuales del contenedor.
 [ecsData](../src/wazuh_modules/syscollector/src/syscollectorImp.cpp#L1442)
-enriquece al emitir. Guardar contexto no emite inventario y el
+adjunta el contexto disponible al emitir. Guardar un contexto nuevo no emite inventario y el
 [delta de Syscollector](../src/wazuh_modules/syscollector/src/syscollectorImp.cpp#L3015)
-ignora cambios exclusivamente de metadatos. Esto incluso puede retrasar la actualización
-de la propia tabla de contexto hasta una pasada completa.
-[FIM](../src/syscheckd/src/db/src/db.cpp#L864) también suprime eventos de contexto.
+ignora cambios exclusivamente de metadatos. Por tanto, un cambio de etiquetas,
+annotations u owner no reescribe por sí solo los documentos ya indexados.
+[FIM](../src/syscheckd/src/db/src/db.cpp#L864) también persiste el contexto sin
+generar por ello una modificación de archivo.
 
 La [justificación de normalización](24-container-context-measured.md) quiere evitar
 precisamente una tormenta de MODIFIED por editar una etiqueta. Por tanto, no restaurar
 el blob en cada fila ni incorporar metadatos al checksum del archivo/inventario.
-Un scan que encuentre datos iguales no garantiza reemitirlos.
+Un scan que encuentre datos iguales no garantiza reemitirlos, y eso es compatible con
+el contrato acordado. Cuando un documento se emita por su flujo normal, debe adjuntar
+el último contexto que esté disponible entonces; no se añade una vía de reemisión solo
+para converger documentos anteriores.
 
-**Decisión requerida antes de programar:**
-
-- ¿El contexto representa el último conocido al emitir, o debe reflejar siempre el
-  estado actual del contenedor en todos los documentos indexados?
-- Si debe converger, fijar latencia máxima y comportamiento para contenedores detenidos.
-
-**Plan si se exige convergencia:** atender el cambio de metadatos sin un walk completo,
-persistir el nuevo contexto y refrescar documentos stateful afectados por una vía
-coalescida y compatible con el protocolo. Verificar versionado, reintentos y validación
-estricta del indexer. No generar alertas stateless FIM de modificación de archivo.
+**Criterio:** comprobar que una emisión posterior a la persistencia de contexto nuevo
+incluye ese contexto, y que cambiar solo metadatos no reescribe documentos previos ni
+genera alertas stateless FIM de modificación de archivo. No requiere convergencia
+retroactiva ni una latencia máxima de actualización del inventario indexado.
 Reutilizar resincronización existente solo después de comprobar que reenvía documentos
 sin cambio de contenido y que el receptor acepta sus versiones.
 
@@ -469,18 +474,17 @@ un barrido global.
 una alta no exige `SELECT DISTINCT file_entry`; N contextos idénticos no repiten N
 syncRow/parseos.
 
-### Entrega F — Consistencia de metadatos
+### Entrega F — Contrato de metadatos
 
 **Comentario:** #8.
 
-Definir el contrato en paralelo al resto. Si se exige convergencia del estado indexado,
-implementar después de A y de establecer lifecycle en C. Puede precisar cambios en el
-protocolo de sincronización/manager; confirmar ese alcance antes de cerrar la estimación.
-Si se acepta snapshot al emitir, documentar explícitamente esa limitación y no presentarla
-como consistencia inmediata.
+**Decisión acordada:** snapshot del último contexto conocido al emitir. No implementar
+refresco retroactivo de documentos ni cambios en el protocolo de sincronización para
+forzar convergencia tras una actualización de metadatos.
 
-**Salida:** contrato medible y probado; ninguna corrección vuelve a generar falsas
-modificaciones de archivos ni tormentas de inventario por cada edición de etiqueta.
+**Salida:** contrato documentado y probado en el punto de emisión; ninguna corrección
+genera falsas modificaciones de archivos ni tormentas de inventario por cada edición
+de etiqueta.
 
 ## 4. Pruebas de aceptación
 
@@ -507,7 +511,7 @@ helpers no sustituyen la verificación del cableado real.
 | #4/#15 | Esquema publicado v1 sin container_id; desarrollo v1/v2 con host+contenedor compartiendo clave y contenedor sin host; versiones parciales. Preservar IDs, checksums, versiones, sync, índices y filas, o ejecutar la recreación explícitamente acordada. Upgrade fallido conserva datos y versión del paso anterior |
 | #9/#13 | Fallback sin deltas con contenedor detenido y lista estable durante N polls: cero sweeps adicionales por falso cambio. Alta: admisión correcta antes del walk, sin SELECT DISTINCT global. Sustitución con igual cardinalidad: no perder reconciliación legítima |
 | #13 | Fixture representativa de 300.000 filas: contar sweeps y consultas globales y medir p50/p95 de espera del consumidor antes/después; sin pérdida de eventos. Fijar presupuesto de latencia con el baseline medido, no inventarlo |
-| #8 | Cambiar solo label/annotation/owner sin alterar inventario: estado indexado converge en el plazo acordado, cero alertas stateless de modificación de archivo, IDs estables y versiones aceptadas por receptor. Repetir metadata-only delta, coalescencia, reinicio y reintento |
+| #8 | Persistir un cambio solo de label/annotation/owner: no reescribir documentos ya indexados ni generar alertas stateless FIM. Una emisión normal posterior debe incluir el último contexto persistido disponible; no se exige convergencia retroactiva |
 
 Para integración con eventos reales y carga del proveedor eBPF, usar la VM de pruebas
 con cgroup v2 y Docker/Kubernetes. En la implementación, ejecutar primero suites
@@ -534,7 +538,7 @@ Presupuesto orientativo agrupado:
 | E: eficiencia | 2–4 |
 | Integración cruzada y regresiones | 2–3 |
 | **Base sin propagación nueva de metadatos** | **13–23** |
-| F: convergencia end-to-end, si se exige | **+4–8** |
+| F: refresh retroactivo de metadatos | No requerido por el contrato acordado |
 
 No es un compromiso de calendario: la parte alta corresponde a preservar esquemas
 intermedios, coordinar recuperación con el manager y cubrir reinicios/fallos parciales.
@@ -550,5 +554,5 @@ pero no debe presentarse como rollback corregido.
 - Identidad host/contenedor se conserva en los upgrades soportados.
 - Lifecycle funciona con configuración por defecto sin alterar la cadencia host.
 - Las optimizaciones se verifican mediante conteos de trabajo y medidas.
-- El contrato de metadatos está documentado y, si exige convergencia, validado en el indexer.
+- El contexto emitido corresponde al último valor conocido disponible en ese momento; no se exige convergencia retroactiva de documentos indexados.
 - El agente compila y las pruebas focalizadas e integradas correspondientes pasan.
