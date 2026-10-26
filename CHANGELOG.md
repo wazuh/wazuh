@@ -120,6 +120,7 @@ All notable changes to this project will be documented in this file.
 - Fixed macOS `wazuh-modulesd` leaking memory and Mach ports in the syscollector users inventory. ([#40327](https://github.com/wazuh/wazuh/pull/40327))
 - Fixed FIM crash on first scan when inotify cannot be initialized. ([#39707](https://github.com/wazuh/wazuh/pull/39707))
 - Fixed `force_reconnect_interval` from centralized configuration not applied on agent hot reload. ([#39573](https://github.com/wazuh/wazuh/pull/39573))
+- Hardened the creation of agent Unix domain sockets. ([#39870](https://github.com/wazuh/wazuh/pull/39870))
 - Fixed the `report_changes` snapshot following symbolic links and accepting non-regular files on Linux and macOS. ([#39476](https://github.com/wazuh/wazuh/pull/39476))
 - Fixed a root-level OS command injection in the rootcheck promiscuous-interface check. ([#39622](https://github.com/wazuh/wazuh/pull/39622))
 - Limited the rootcheck system scan directory depth. ([#40459](https://github.com/wazuh/wazuh/pull/40459))
