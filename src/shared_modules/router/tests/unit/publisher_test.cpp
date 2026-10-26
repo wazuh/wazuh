@@ -74,6 +74,28 @@ TEST_F(PublisherTest, TestPublisherWithEmptyEndpointNameAndSocketPath)
 }
 
 /*
+ * @brief Tests that endpoint names that are not a single path component are rejected.
+ */
+TEST_F(PublisherTest, TestPublisherRejectsEndpointNameOutsideSocketPath)
+{
+    constexpr auto SOCKET_PATH = "test/";
+
+    for (const auto& endpointName :
+         std::vector<std::string> {".", "..", "sub/test", "../test", std::string {"test\0sub", 8}})
+    {
+        EXPECT_THROW(std::make_shared<Publisher>(endpointName, SOCKET_PATH), std::runtime_error) << endpointName;
+    }
+}
+
+/*
+ * @brief Tests that the endpoint name of the registration socket is rejected.
+ */
+TEST_F(PublisherTest, TestPublisherRejectsRegistrationEndpointName)
+{
+    EXPECT_THROW(std::make_shared<Publisher>("subscription.sock", "queue/router/"), std::runtime_error);
+}
+
+/*
  * @brief Tests two Publishers with the same endpoint name and socket path.
  */
 TEST_F(PublisherTest, TestTwoPublishersWithTheSameEndpointNameAndSocketPath)
