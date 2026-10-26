@@ -229,6 +229,10 @@ paths:
           (`logtest_<hex>` when `load_in_tester` is true, `tmp_policy_validate_<hex>` otherwise).
         - If the Tester API is not available, the request fails immediately.
         - Any import or instantiation failure is returned as a 400 with the underlying error message.
+        - This is the only point where the Engine checks the content as a whole. Resource names, for
+          example, are unique per type within the imported policy, so a policy carrying two decoders with
+          the same name is refused here (`import_failed_duplicate_name`), even though the Wazuh Indexer
+          accepted both while they were edited.
       requestBody:
         required: true
         content:
@@ -386,6 +390,11 @@ paths:
                   value:
                     status: ERROR
                     error: "Failed to import namespace 'tmp_policy_validate_<hex>': <details>"
+                import_failed_duplicate_name:
+                  summary: Two resources of the same type share a name
+                  value:
+                    status: ERROR
+                    error: "Failed to import namespace 'logtest_<hex>': Resource with name 'decoder/core-wazuh-message/0' and type 'decoder' already exists"
                 tester_failed:
                   summary: Creating or renaming the tester session failed (the tester's error message is returned as is)
                   value:

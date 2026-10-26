@@ -1049,6 +1049,33 @@ subsequent synchronization cycles run periodically to keep the local state up to
 When both spaces are available and synchronized, the Engine processes all incoming events through each active
 operational graph.
 
+### Where content is validated
+
+Editing and validation happen in two different places, by design. The Wazuh Indexer keeps user content in an
+editable draft that accepts content which would not build yet, so a user can work in steps. The Engine checks
+that content once, as a whole, when the user promotes it: the Wazuh Indexer sends the full policy to
+`POST /content/validate/policy` (see the [Public API Reference](public-api-reference.md)), and the Engine
+imports it into a temporary namespace and builds it exactly as it would run. A promotion succeeds only if
+that build does. Nothing is checked earlier, so a mistake made while editing the draft surfaces only at
+promotion.
+
+The checks that most often refuse a promotion, with the error the Engine returns:
+
+| Cause | Error |
+|-------|-------|
+| Two assets of the same type and name in the space (for example, a second root decoder created with the name of an existing one) | `Failed to import namespace 'logtest_<hex>': Resource with name '<name>' and type '<type>' already exists` |
+| The same decoder listed by two integrations | `Decoder '<name>' [id: '<id>'] from integration '<integration>' [id: '<id>'] was already defined by another integration` |
+| The policy has no root decoder | `Missing root decoder` |
+| No enabled integration contributes a decoder | `Policy must have at least a decoders` |
+| The root decoder is disabled, or not part of any enabled integration | `The root decoder '<name>' [id: '<id>'] is disabled; enable it before using this policy`, or `... is required by the policy decoders but is not part of its enabled content ...` |
+
+`logtest_<hex>` is the temporary namespace of that one validation request, not a space the user created.
+
+Because promotion always builds the whole space, removing content by promoting an empty or incomplete space
+is refused by the same checks. To stop using a space's content, disable the space's policy in the Wazuh
+Indexer instead: on its next synchronization cycle CMSync removes the space's route and namespace and logs
+`Policy for space '<space>' is disabled in indexer or has nothing to build (no integrations or no root decoder), removing route and namespace`.
+
 ## Assets
 
 In the Wazuh Engine, assets represent the fundamental components of security policies and are the smallest unit within
@@ -1108,6 +1135,10 @@ classDef AttributesClass min-width: 200px
 Attributes are configuration details and metadata about the asset. Every asset shares the following common attributes:
 
 - **`name`**: Uniquely identifies the asset using the pattern `<asset_type>/<name>/<version>` (e.g. `decoder/aws-cloudtrail/0`).
+  The name is unique **per type within one space**: the Standard and Custom spaces may each hold an asset
+  with the same name, but one space cannot hold two. The Engine enforces this when it imports the space,
+  not when the asset is created in the Wazuh Indexer — see
+  [Where content is validated](#where-content-is-validated).
 - **`id`**: A string that uniquely identifies the asset across the system. It is opaque to the Engine:
   any UUID version or other format is accepted, and one is generated (UUIDv4) when the asset does not carry it.
   The only constraints are that it must be non-empty, at most 256 characters long and free of control
