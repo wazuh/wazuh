@@ -145,6 +145,7 @@ Wazuh indexer connection shared by modulesd, the engine and the cluster. Mandato
 | `ssl.certificate_authorities` | list of string | `[]` |  | CA bundles (PEM). |
 | `ssl.certificate` | string | `""` |  | Client certificate (PEM). Empty = no client certificate. |
 | `ssl.key` | string | `""` |  | Client private key (PEM). |
+| `ssl.verify_certificates` | boolean | `true` |  | Verify the indexer server certificate and host name. With no certificate_authorities, the first existing system CA store is used (/etc/ssl/certs/ca-certificates.crt, /etc/pki/tls/certs/ca-bundle.crt, /usr/share/ssl/certs/ca-bundle.crt, /usr/local/share/certs/ca-root-nss.crt, /etc/ssl/cert.pem); with none of them modulesd and the engine (C++) connect without verifying the server certificate (they still check the host name) and log a warning, while the Python framework/API keeps verifying (OpenSSL's default trust) and fails closed when there is no trust at all. 'no' disables certificate and host name verification and logs a warning; the configured CA and client certificate are still loaded and validated. |
 
 ## `task-manager`
 

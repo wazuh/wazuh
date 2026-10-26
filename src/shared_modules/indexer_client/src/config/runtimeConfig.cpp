@@ -47,19 +47,19 @@ namespace indexer_client
             Apply apply;
         };
 
-        template<std::uint32_t RuntimeConfig::*Field>
+        template<std::uint32_t RuntimeConfig::* Field>
         void setU32(RuntimeConfig& config, std::uint64_t value)
         {
             config.*Field = static_cast<std::uint32_t>(value);
         }
 
-        template<std::uint64_t RuntimeConfig::*Field>
+        template<std::uint64_t RuntimeConfig::* Field>
         void setU64(RuntimeConfig& config, std::uint64_t value)
         {
             config.*Field = value;
         }
 
-        template<Duration RuntimeConfig::*Field>
+        template<Duration RuntimeConfig::* Field>
         void setMs(RuntimeConfig& config, std::uint64_t value)
         {
             config.*Field = Duration {static_cast<Duration::rep>(value)};
@@ -219,8 +219,19 @@ namespace indexer_client
             return Outcome<Unit>::success({});
         }
 
+        Outcome<Unit> readBool(const nlohmann::json& node, const std::string& path, bool& out)
+        {
+            if (!node.is_boolean())
+            {
+                return invalid(path + ": expected a boolean");
+            }
+            out = node.get<bool>();
+            return Outcome<Unit>::success({});
+        }
+
         /// `<indexer>` in the shape of manager_config's `sectionJson("indexer")` (schema section `indexer`):
-        /// {"hosts": [..], "ssl": {"certificate_authorities": [..], "certificate": "..", "key": ".."}}.
+        /// {"hosts": [..], "ssl": {"certificate_authorities": [..], "certificate": "..", "key": "..",
+        /// "verify_certificates": true}}.
         Outcome<Unit> parseIndexerSection(const std::string& text, RuntimeConfig& config)
         {
             if (text.empty())
@@ -279,6 +290,10 @@ namespace indexer_client
                 else if (name == "key")
                 {
                     r = readString(value, "indexer.ssl.key", config.ssl.key);
+                }
+                else if (name == "verify_certificates")
+                {
+                    r = readBool(value, "indexer.ssl.verify_certificates", config.ssl.verifyCertificates);
                 }
                 else
                 {

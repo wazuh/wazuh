@@ -154,6 +154,11 @@ namespace indexer_client::detail
             set(curl_multi_setopt(multi, CURLMOPT_TIMERFUNCTION, &Impl::timerCb));
             set(curl_multi_setopt(multi, CURLMOPT_TIMERDATA, this));
             set(curl_multi_setopt(multi, CURLMOPT_MAX_HOST_CONNECTIONS, MAX_HOST_CONNECTIONS));
+            // Keep every connection the per-host cap allows idle in the pool. curl's default pool is 4 x the transfers
+            // running: after a burst it closes the extra connections and the next burst handshakes again (TLS). Not
+            // CURLMOPT_MAX_TOTAL_CONNECTIONS, which caps transfers and churns (E0 H2): this only stops the trimming.
+            set(curl_multi_setopt(
+                multi, CURLMOPT_MAXCONNECTS, static_cast<long>(shared->hostCount) * MAX_HOST_CONNECTIONS));
             // curl_multi_cleanup does not join a resolver thread stuck in getaddrinfo (I38b).
             set(curl_multi_setopt(multi, CURLMOPT_QUICK_EXIT, 1L));
             if (rc != CURLM_OK)
@@ -256,22 +261,30 @@ namespace indexer_client::detail
             set(curl_easy_setopt(easy, CURLOPT_PROTOCOLS_STR, "http,https"));
             set(curl_easy_setopt(easy, CURLOPT_NOSIGNAL, 1L));
 
-            // TLS (I48): material in memory (CURL_BLOB_NOCOPY over TransportShared, alive until the last
-            // curl_multi_cleanup), no CA directory, verification always on, TLS 1.2 or newer. No insecure mode.
+            // TLS (I48, E11e): the configured CA in memory (CURL_BLOB_NOCOPY over TransportShared, alive until the last
+            // curl_multi_cleanup), else the system CA store loadTlsMaterial located (by path: curl reads it, and a
+            // broken store fails the handshake), else no CA at all; never curl's compiled-in bundle nor a CA directory.
+            // Peer and host verification follow the policy of loadTlsMaterial (ssl.verify_certificates); TLS 1.2 or
+            // newer.
             const auto& tls = shared->tls;
             if (!tls.caBundle.empty())
             {
                 curl_blob ca {const_cast<char*>(tls.caBundle.data()), tls.caBundle.size(), CURL_BLOB_NOCOPY};
                 set(curl_easy_setopt(easy, CURLOPT_CAINFO_BLOB, &ca));
             }
+            else if (!tls.systemCaPath.empty())
+            {
+                set(curl_easy_setopt(easy, CURLOPT_CAINFO, tls.systemCaPath.c_str()));
+            }
             else
             {
-                // No CA: never curl's compiled-in bundle (https is not admitted then anyway; defence in depth).
+                // Defence in depth: after curl_easy_reset, keep curl from loading the bundle compiled into it
+                // (CURL_CA_BUNDLE). Not observable: this path never verifies the peer (VERIFYPEER is 0).
                 set(curl_easy_setopt(easy, CURLOPT_CAINFO, nullptr));
             }
             set(curl_easy_setopt(easy, CURLOPT_CAPATH, nullptr));
-            set(curl_easy_setopt(easy, CURLOPT_SSL_VERIFYPEER, 1L));
-            set(curl_easy_setopt(easy, CURLOPT_SSL_VERIFYHOST, 2L));
+            set(curl_easy_setopt(easy, CURLOPT_SSL_VERIFYPEER, tls.verifyPeer ? 1L : 0L));
+            set(curl_easy_setopt(easy, CURLOPT_SSL_VERIFYHOST, tls.verifyHost ? 2L : 0L));
             set(curl_easy_setopt(easy, CURLOPT_SSLVERSION, static_cast<long>(CURL_SSLVERSION_TLSv1_2)));
             if (tls.mutual())
             {

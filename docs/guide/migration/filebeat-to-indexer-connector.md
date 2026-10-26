@@ -16,11 +16,12 @@ Filebeat is its own package, so removing the 4.x manager does not remove it. Rem
 | `output.elasticsearch.ssl.certificate_authorities` | `<indexer><ssl><certificate_authorities><ca>` | `wazuh-manager.conf` |
 | `output.elasticsearch.ssl.certificate` | `<indexer><ssl><certificate>` | `wazuh-manager.conf` |
 | `output.elasticsearch.ssl.key` | `<indexer><ssl><key>` | `wazuh-manager.conf` |
+| `output.elasticsearch.ssl.verification_mode: none` | `<indexer><ssl><verify_certificates>no</verify_certificates>` | `wazuh-manager.conf` |
 
 Every other `filebeat.yml` setting is gone:
 
 - **Output tuning** (`bulk_max_size`, `worker`, `timeout`, `compression_level`) and **queue/buffering** (`queue.mem.*`): the engine's connector is tuned with the `analysisd.indexer_*` internal options (bulk size in bytes, flush interval, queue size, request timeout, retry delay). See [Indexer Connector Settings](../../ref/modules/engine/configuration.md#indexer-connector-settings).
-- **TLS options** (`ssl.verification_mode`, `ssl.supported_protocols`, `ssl.cipher_suites`): the `<indexer><ssl>` section has only `certificate_authorities`, `certificate` and `key`; there is no option to turn off server-certificate verification. If you used `verification_mode: none`, you must now provide the CA that signed the indexer's certificate.
+- **TLS options** (`ssl.verification_mode`, `ssl.supported_protocols`, `ssl.cipher_suites`): the `<indexer><ssl>` section has `certificate_authorities`, `certificate`, `key` and [`verify_certificates`](../../ref/modules/indexer_client/configuration.md#verify_certificates). `verification_mode: none` becomes `<verify_certificates>no</verify_certificates>` (certificate and host name are not checked and a warning is logged at every start); any other mode keeps the default `yes`. Note that `yes` also checks the host name, so it is stricter than `verification_mode: certificate`: a certificate issued for a different name stops connecting. Without `certificate_authorities` the system CA store is used instead of failing.
 - **Processors** (`add_host_metadata`, `add_fields`, `drop_fields`, etc.): not supported. If you relied on them to enrich events, move that logic to the Engine decoders/integrations.
 - **Templates and ILM** (`setup.template.*`, `setup.ilm.*`): the manager does not install index templates; they are managed on the Wazuh Indexer.
 - **Logging** (`logging.*`): connector messages go to the manager log, `/var/wazuh-manager/logs/wazuh-manager.log`.

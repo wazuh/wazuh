@@ -106,7 +106,9 @@ namespace indexer_client::detail::query
         template<class T, class U>
         Outcome<T> failFrom(const Outcome<U>& other)
         {
-            return Outcome<T>::failure(other.cause, other.reason, other.httpStatus);
+            auto out = Outcome<T>::failure(other.cause, other.reason, other.httpStatus);
+            out.responseTooLarge = other.responseTooLarge;
+            return out;
         }
 
         /// The state of one attempt, shared with the transport callback (which may land after the engine returned).
@@ -543,10 +545,14 @@ namespace indexer_client::detail::query
                     {
                         case QueryVerdict::Ok: return Outcome<QueryResponse>::success(std::move(response));
                         case QueryVerdict::Fail:
-                            return fail<QueryResponse>(response.cause,
-                                                       std::move(response.reason),
-                                                       response.httpStatus ? response.httpStatus
-                                                                           : static_cast<int>(r.status));
+                        {
+                            auto out = fail<QueryResponse>(response.cause,
+                                                           std::move(response.reason),
+                                                           response.httpStatus ? response.httpStatus
+                                                                               : static_cast<int>(r.status));
+                            out.responseTooLarge = response.tooLarge;
+                            return out;
+                        }
                         case QueryVerdict::Conflict:
                         {
                             ++conflicts;
@@ -654,9 +660,12 @@ namespace indexer_client::detail::query
                                 reason = std::move(quoted);
                             }
                         }
-                        return fail<QueryResponse>(verdict.cause == Cause::None ? Cause::Client4xx : verdict.cause,
-                                                   std::move(reason),
-                                                   verdict.httpStatus);
+                        auto out = fail<QueryResponse>(verdict.cause == Cause::None ? Cause::Client4xx : verdict.cause,
+                                                       std::move(reason),
+                                                       verdict.httpStatus);
+                        // Over maxResponseBytes on the wire (curl 23, one op ⇒ FailBatch ItemPermanent).
+                        out.responseTooLarge = r.cause == TransportCause::ResponseTooLarge;
+                        return out;
                     }
                 }
             }

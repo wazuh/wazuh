@@ -12,11 +12,18 @@
 
 // TLS of the transport (plan 18, plan-E2a-2 §Tests: CA-19, I48, D22): handshakes against the HTTPS/mTLS fake with the
 // material of <indexer>.ssl, the failures the node is blamed for, a cancel in the middle of a handshake, and every
-// configuration refusal of RuntimeOwner::start (InvalidConfig before any thread exists).
+// configuration refusal of RuntimeOwner::start (InvalidConfig before any thread exists). E11e: the verification
+// policy of ssl.verify_certificates and the system CA store (the list of paths replaced through the systemCaPaths()
+// seam in every https case without a configured CA, so that no case depends on the machine's stores).
 
 #include <algorithm>
+#include <cstdarg>
+#include <cstdio>
+#include <filesystem>
 #include <iterator>
 #include <map>
+#include <memory>
+#include <mutex>
 #include <optional>
 #include <string>
 #include <utility>
@@ -27,6 +34,7 @@
 #include "rawTcpServer.hpp"
 #include "testTimeScale.hpp"
 #include "tlsMaterialFactory.hpp"
+#include "transport/tlsMaterial.hpp"
 
 using namespace component;
 using indexer_client::Cause;
@@ -47,6 +55,67 @@ namespace
         std::vector<std::string> certificateAuthorities;
         std::optional<std::string> certificate;
         std::optional<std::string> key;
+        std::optional<bool> verifyCertificates {}; ///< Absent from the JSON when unset (the default, true).
+    };
+
+    constexpr int LEVEL_INFO {1};
+    constexpr int LEVEL_WARN {2};
+
+    /// Every line the library logged, formatted with vsnprintf, under a mutex.
+    class LogSink final
+    {
+    public:
+        indexer_client::LogFunction function(const std::shared_ptr<LogSink>& self)
+        {
+            return [self](const int level,
+                          const char* /*tag*/,
+                          const char* /*file*/,
+                          const int /*line*/,
+                          const char* /*function*/,
+                          const char* format,
+                          va_list args)
+            {
+                va_list copy;
+                va_copy(copy, args);
+                char buffer[4096];
+                std::vsnprintf(buffer, sizeof(buffer), format, copy);
+                va_end(copy);
+                std::lock_guard<std::mutex> lock(self->m_mutex);
+                self->m_lines.emplace_back(level, buffer);
+            };
+        }
+
+        /// Lines of `level` holding `part`.
+        std::size_t count(int level, const std::string& part) const
+        {
+            std::lock_guard<std::mutex> lock(m_mutex);
+            return static_cast<std::size_t>(std::count_if(
+                m_lines.begin(),
+                m_lines.end(),
+                [&](const auto& line) { return line.first == level && line.second.find(part) != std::string::npos; }));
+        }
+
+        /// Lines of `level` equal to `text`.
+        std::size_t exactly(int level, const std::string& text) const
+        {
+            std::lock_guard<std::mutex> lock(m_mutex);
+            return static_cast<std::size_t>(std::count(m_lines.begin(), m_lines.end(), std::make_pair(level, text)));
+        }
+
+        std::string dump() const
+        {
+            std::lock_guard<std::mutex> lock(m_mutex);
+            std::string out;
+            for (const auto& [level, text] : m_lines)
+            {
+                out += "  [" + std::to_string(level) + "] " + text + "\n";
+            }
+            return out;
+        }
+
+    private:
+        mutable std::mutex m_mutex;
+        std::vector<std::pair<int, std::string>> m_lines;
     };
 
     std::string quote(const std::string& text)
@@ -92,6 +161,10 @@ namespace
         if (section.key)
         {
             add("\"key\":" + quote(*section.key));
+        }
+        if (section.verifyCertificates)
+        {
+            add(std::string("\"verify_certificates\":") + (*section.verifyCertificates ? "true" : "false"));
         }
         return "{\"hosts\":" + list(section.hosts) + (ssl.empty() ? "" : ",\"ssl\":{" + ssl + "}") + "}";
     }
@@ -157,17 +230,20 @@ class TransportTlsTest : public ::testing::Test
 protected:
     TlsMaterialFactory m_material;
     std::vector<std::shared_ptr<FakeIndexer>> m_fakes;
+    std::shared_ptr<LogSink> m_logs {std::make_shared<LogSink>()};
 
     void SetUp() override
     {
         indexer_client::testing_hooks::resetAll();
         // The health probe would add its own requests to the traffic these cases count (E2b).
         indexer_client::testing_hooks::setProbeAutoStart(false);
+        indexer_client::setLogFunction(m_logs->function(m_logs));
     }
 
     void TearDown() override
     {
         indexer_client::RuntimeOwner::shutdown();
+        indexer_client::setLogFunction({});
         // After the runtime: curl has closed its keep-alive connections, so the TLS fakes stop at once instead of
         // waiting for httplib's keep-alive timeout on an idle TLS connection (5 s per test).
         m_fakes.clear();
@@ -243,6 +319,60 @@ protected:
     std::string missingPath() const
     {
         return m_material.directory() + "/missing-ca.pem";
+    }
+
+    /// The system CA stores tried, in order, when no CA is configured (E11e seam).
+    static void systemStores(std::vector<std::string> paths)
+    {
+        indexer_client::testing_hooks::setSystemCaPaths(std::move(paths));
+    }
+
+    /// A path whose status() fails with ELOOP (a symlink to itself): an error other than "does not exist", whatever
+    /// the user the suite runs as (root reads through any permission bit).
+    std::string symlinkLoop() const
+    {
+        const auto path = m_material.directory() + "/loop.pem";
+        std::error_code ignored;
+        std::filesystem::remove(path, ignored);
+        std::filesystem::create_symlink(path, path);
+        return path;
+    }
+
+    static std::string noStoreWarning(const std::vector<std::string>& paths, const std::string& hosts)
+    {
+        std::string list;
+        for (const auto& path : paths)
+        {
+            list += (list.empty() ? "" : ", ") + path;
+        }
+        return "indexer TLS: no CA configured and no system CA store found (" + list +
+               "); the server certificate is not verified (the host name is) for https host(s) " + hosts +
+               "; the indexer credentials are sent to an unverified server";
+    }
+
+    static std::string disabledWarning(const std::string& hosts)
+    {
+        return "indexer TLS: certificate and host name verification disabled (verify_certificates is false) for "
+               "https host(s) " +
+               hosts + "; the indexer credentials are sent to an unverified server";
+    }
+
+    /// A GET that must fail in the handshake without reaching the fake.
+    void expectRefusedHandshake(Transport& transport, const std::shared_ptr<FakeIndexer>& fake)
+    {
+        const auto result = get(transport, fake->baseUrl() + "/");
+        ASSERT_TRUE(result.has_value());
+        EXPECT_EQ(result->status, 0) << toString(result->cause) << " curl " << result->curlCode;
+        EXPECT_TRUE(result->cause == TransportCause::Tls || result->cause == TransportCause::TlsConfig)
+            << toString(result->cause) << " curl " << result->curlCode;
+        EXPECT_EQ(fake->requestCount(), 0u);
+    }
+
+    void expectOk(Transport& transport, const std::shared_ptr<FakeIndexer>& fake, const std::string& path = "/")
+    {
+        const auto result = get(transport, fake->baseUrl() + path);
+        ASSERT_TRUE(result.has_value());
+        EXPECT_EQ(result->status, 200) << toString(result->cause) << " curl " << result->curlCode;
     }
 };
 
@@ -426,10 +556,16 @@ TEST_F(TransportTlsTest, CancelDuringTlsHandshake)
 
 // ---- I48: configuration refusals of RuntimeOwner::start (InvalidConfig, no thread) ----
 
-TEST_F(TransportTlsTest, TlsConfigHttpsWithoutCa)
+// E11e (rewritten): https without a configured CA is no longer a configuration error: the runtime starts with the
+// system store (here none) and warns.
+TEST_F(TransportTlsTest, TlsConfigHttpsWithoutCaStarts)
 {
-    expectInvalidConfig({{"http://127.0.0.1:9200", "https://127.0.0.1:9201"}, {}, {}, {}},
-                        {"https://127.0.0.1:9201", "certificate_authorities"});
+    systemStores({missingPath()});
+    auto transport = startRuntime({{"http://127.0.0.1:9200", "https://127.0.0.1:9201"}, {}, {}, {}});
+    ASSERT_NE(transport, nullptr);
+    EXPECT_TRUE(indexer_client::RuntimeOwner::running());
+    EXPECT_EQ(m_logs->exactly(LEVEL_WARN, noStoreWarning({missingPath()}, "https://127.0.0.1:9201")), 1u)
+        << m_logs->dump();
 }
 
 TEST_F(TransportTlsTest, TlsConfigMissingCaFile)
@@ -556,25 +692,249 @@ TEST_F(TransportTlsTest, TlsConfigEmptyStringsMeanAbsent)
     EXPECT_EQ(result->status, 200) << toString(result->cause) << " curl " << result->curlCode;
 }
 
-// Defect A of E2a-2 step 5: with no CA configured there is no trust anchor, so https is not admitted at all; curl would
-// otherwise fall back to the CA bundle compiled into it (the system's CAs on some distributions). No connection is
-// made.
-TEST_F(TransportTlsTest, HttpsNotAdmittedWithoutConfiguredCa)
+// E11e (rewrites HttpsNotAdmittedWithoutConfiguredCa, defect A of E2a-2 step 5): https is admitted without a configured
+// CA, also towards a URL that is not a configured host, and its trust anchor is the system store loadTlsMaterial
+// located, never curl's compiled-in bundle: a store with another CA refuses the fake, one with the fake's CA accepts
+// it.
+TEST_F(TransportTlsTest, HttpsAdmittedWithoutConfiguredCa)
 {
-    SilentServer silent;
-    auto transport = startRuntime({{"http://127.0.0.1:" + std::to_string(silent.port())}, {}, {}, {}});
+    auto fake = startFake(serverTls());
+    const auto httpOnly = std::string("http://127.0.0.1:9");
+    {
+        systemStores({m_material.otherCaCertificate()});
+        auto transport = startRuntime({{httpOnly}, {}, {}, {}});
+        ASSERT_NE(transport, nullptr);
+        expectRefusedHandshake(*transport, fake);
+    }
+    ASSERT_EQ(indexer_client::RuntimeOwner::shutdown(), Cause::None);
+
+    systemStores({m_material.caCertificate()});
+    auto transport = startRuntime({{httpOnly}, {}, {}, {}});
     ASSERT_NE(transport, nullptr);
-    auto collector = Collector::create();
+    expectOk(*transport, fake);
+    EXPECT_EQ(fake->requestCount(), 1u);
+    EXPECT_EQ(m_logs->count(LEVEL_WARN, "indexer TLS"), 0u) << "only http hosts: no warning\n" << m_logs->dump();
+    EXPECT_EQ(m_logs->count(LEVEL_INFO, "indexer TLS"), 0u) << "only http hosts: no notice\n" << m_logs->dump();
+}
 
-    const auto sent = submitTo(
-        *transport, collector, request(HttpMethod::Get, "https://127.0.0.1:" + std::to_string(silent.port()) + "/"));
-    EXPECT_FALSE(sent.admission.admitted);
-    EXPECT_EQ(sent.admission.cause, indexer_client::Cause::InvalidArgument);
-    EXPECT_FALSE(silent.waitForAccepted(1, 300ms)) << "an https request without a CA opened a connection";
-    EXPECT_EQ(collector->total(), 0u);
+// ---- E11e CA-2: the system CA store (no CA configured, verify_certificates true) ----
 
-    const auto plain = submitTo(
-        *transport, collector, request(HttpMethod::Get, "http://127.0.0.1:" + std::to_string(silent.port()) + "/"));
-    EXPECT_TRUE(plain.admission.admitted) << "http stays admitted without a CA";
-    ASSERT_TRUE(transport->cancel(plain.admission.id) || collector->waitKey(plain.key, 10s));
+// The first EXISTING path wins, whatever the next ones hold: [missing, other CA, fake's CA] refuses the fake.
+TEST_F(TransportTlsTest, SystemStoreFirstExistingPathWins)
+{
+    auto fake = startFake(serverTls());
+    systemStores({missingPath(), m_material.otherCaCertificate(), m_material.caCertificate()});
+    auto transport = startRuntime({{fake->baseUrl()}, {}, {}, {}});
+    ASSERT_NE(transport, nullptr);
+    expectRefusedHandshake(*transport, fake);
+    EXPECT_EQ(m_logs->exactly(LEVEL_INFO, "indexer TLS: using the system CA store " + m_material.otherCaCertificate()),
+              1u)
+        << m_logs->dump();
+    EXPECT_EQ(m_logs->count(LEVEL_WARN, "indexer TLS"), 0u) << m_logs->dump();
+}
+
+// The mirror: [missing, fake's CA, other CA] connects, verified against the fake's CA.
+TEST_F(TransportTlsTest, SystemStoreFirstExistingPathWinsMirror)
+{
+    auto fake = startFake(serverTls());
+    systemStores({missingPath(), m_material.caCertificate(), m_material.otherCaCertificate()});
+    auto transport = startRuntime({{fake->baseUrl()}, {}, {}, {}});
+    ASSERT_NE(transport, nullptr);
+    expectOk(*transport, fake);
+    EXPECT_EQ(m_logs->exactly(LEVEL_INFO, "indexer TLS: using the system CA store " + m_material.caCertificate()), 1u)
+        << m_logs->dump();
+}
+
+// A store that is a file used as a directory (ENOTDIR) counts as absent, like ENOENT.
+TEST_F(TransportTlsTest, SystemStoreNotADirectoryIsAbsent)
+{
+    auto fake = startFake(serverTls());
+    systemStores({m_material.otherCaCertificate() + "/ca.pem", m_material.caCertificate()});
+    auto transport = startRuntime({{fake->baseUrl()}, {}, {}, {}});
+    ASSERT_NE(transport, nullptr);
+    expectOk(*transport, fake);
+}
+
+// A configured CA beats the store, both ways.
+TEST_F(TransportTlsTest, ConfiguredCaBeatsSystemStore)
+{
+    auto fake = startFake(serverTls());
+    {
+        systemStores({m_material.otherCaCertificate()});
+        auto transport = startRuntime({{fake->baseUrl()}, {m_material.caCertificate()}, {}, {}});
+        ASSERT_NE(transport, nullptr);
+        expectOk(*transport, fake);
+    }
+    ASSERT_EQ(indexer_client::RuntimeOwner::shutdown(), Cause::None);
+
+    auto second = startFake(serverTls()); // A fresh request count.
+    systemStores({m_material.caCertificate()});
+    auto transport = startRuntime({{second->baseUrl()}, {m_material.otherCaCertificate()}, {}, {}});
+    ASSERT_NE(transport, nullptr);
+    expectRefusedHandshake(*transport, second);
+    EXPECT_EQ(m_logs->count(LEVEL_INFO, "system CA store"), 0u) << m_logs->dump();
+}
+
+// I216: the first existing store is broken: the handshake fails; neither the next store (the fake's valid CA) nor an
+// unverified connection is tried.
+TEST_F(TransportTlsTest, BrokenStoreFailsClosed)
+{
+    auto fake = startFake(serverTls());
+    systemStores({m_material.malformedCa(), m_material.caCertificate()});
+    auto transport = startRuntime({{fake->baseUrl()}, {}, {}, {}});
+    ASSERT_NE(transport, nullptr);
+    expectRefusedHandshake(*transport, fake);
+    EXPECT_EQ(m_logs->count(LEVEL_WARN, "indexer TLS"), 0u) << m_logs->dump();
+}
+
+// I216, G-plan r2 P2-1: a store whose status() fails with something other than "does not exist" (here ELOOP) is picked
+// and fails closed, never read as "no store" (which would switch peer verification off).
+TEST_F(TransportTlsTest, UnreadableStoreFailsClosed)
+{
+    auto fake = startFake(serverTls());
+    const auto loop = symlinkLoop();
+    systemStores({loop, m_material.caCertificate()});
+    auto transport = startRuntime({{fake->baseUrl()}, {}, {}, {}});
+    ASSERT_NE(transport, nullptr);
+    expectRefusedHandshake(*transport, fake);
+    EXPECT_EQ(m_logs->exactly(LEVEL_INFO, "indexer TLS: using the system CA store " + loop), 1u) << m_logs->dump();
+    EXPECT_EQ(m_logs->count(LEVEL_WARN, "indexer TLS"), 0u) << m_logs->dump();
+}
+
+// A directory as the first store exists, so it is the one chosen; curl cannot load it and the handshake fails closed:
+// neither the next store (the fake's valid CA) nor an unverified connection is tried.
+TEST_F(TransportTlsTest, SystemStoreIsADirectoryFailsClosed)
+{
+    auto fake = startFake(serverTls());
+    const auto directory = m_material.directory();
+    systemStores({directory, m_material.caCertificate()});
+    auto transport = startRuntime({{fake->baseUrl()}, {}, {}, {}});
+    ASSERT_NE(transport, nullptr);
+    expectRefusedHandshake(*transport, fake);
+    EXPECT_EQ(m_logs->exactly(LEVEL_INFO, "indexer TLS: using the system CA store " + directory), 1u) << m_logs->dump();
+    EXPECT_EQ(m_logs->count(LEVEL_WARN, "indexer TLS"), 0u) << m_logs->dump();
+}
+
+// A malformed configured CA is a configuration error: no fallback to the store.
+TEST_F(TransportTlsTest, ConfiguredCaMalformedDoesNotFallBack)
+{
+    systemStores({m_material.caCertificate()});
+    expectInvalidConfig({{"https://127.0.0.1:9200"}, {m_material.malformedCa()}, {}, {}},
+                        {m_material.malformedCa(), "malformed PEM content"});
+}
+
+// verify_certificates false still loads and validates the configured CA (and pair).
+TEST_F(TransportTlsTest, FalseWithMalformedCaIsInvalid)
+{
+    systemStores({});
+    expectInvalidConfig({{"https://127.0.0.1:9200"}, {m_material.malformedCa()}, {}, {}, false},
+                        {m_material.malformedCa(), "malformed PEM content"});
+    expectInvalidConfig({{"https://127.0.0.1:9200"},
+                         {m_material.caCertificate()},
+                         m_material.clientCertificate(),
+                         m_material.otherKey(),
+                         false},
+                        {m_material.otherKey(), "does not match"});
+}
+
+// The real list (no seam) is the v1's DEFAULT_CAINFO_PATHS (src/shared_modules/http-request/src/urlRequest.hpp), in
+// its order.
+TEST_F(TransportTlsTest, ProductionPathListMatchesV1)
+{
+    const std::vector<std::string> v1 {
+        "/etc/ssl/certs/ca-certificates.crt",
+        "/etc/pki/tls/certs/ca-bundle.crt",
+        "/usr/share/ssl/certs/ca-bundle.crt",
+        "/usr/local/share/certs/ca-root-nss.crt",
+        "/etc/ssl/cert.pem",
+    };
+    EXPECT_EQ(indexer_client::detail::systemCaStorePaths(), v1);
+}
+
+// ---- E11e CA-3: no CA and no system store (v1 parity) ----
+
+// The runtime starts, the peer is not verified (the fake's CA is known nowhere) and one WARN names the paths and hosts.
+TEST_F(TransportTlsTest, NoCaNoStoreConnectsUnverifiedWithWarn)
+{
+    auto fake = startFake(serverTls());
+    const std::vector<std::string> paths {missingPath(), m_material.directory() + "/also-missing.pem"};
+    systemStores(paths);
+    auto transport = startRuntime({{fake->baseUrl(), "http://127.0.0.1:9"}, {}, {}, {}});
+    ASSERT_NE(transport, nullptr);
+    expectOk(*transport, fake);
+    EXPECT_EQ(fake->requestCount(), 1u);
+    EXPECT_EQ(m_logs->exactly(LEVEL_WARN, noStoreWarning(paths, fake->baseUrl())), 1u) << m_logs->dump();
+    EXPECT_EQ(m_logs->count(LEVEL_INFO, "indexer TLS"), 0u) << m_logs->dump();
+}
+
+// Without a store the host name is still checked (VERIFYHOST 2, as curl did in the v1).
+TEST_F(TransportTlsTest, NoStoreStillChecksHost)
+{
+    auto fake =
+        startFake(FakeTlsOptions {m_material.wrongNameServerCertificate(), m_material.wrongNameServerKey(), {}, false});
+    systemStores({});
+    auto transport = startRuntime({{fake->baseUrl()}, {}, {}, {}});
+    ASSERT_NE(transport, nullptr);
+    const auto result = get(*transport, fake->baseUrl() + "/");
+    ASSERT_TRUE(result.has_value());
+    EXPECT_EQ(result->status, 0);
+    EXPECT_EQ(result->cause, TransportCause::Tls) << "curl " << result->curlCode;
+    EXPECT_EQ(result->curlCode, 60);
+    EXPECT_EQ(fake->requestCount(), 0u);
+}
+
+// ---- E11e CA-4: verify_certificates false ----
+
+// A foreign CA and a certificate for another name: connects all the same.
+TEST_F(TransportTlsTest, VerifyFalseAcceptsForeignCaAndHost)
+{
+    auto fake =
+        startFake(FakeTlsOptions {m_material.wrongNameServerCertificate(), m_material.wrongNameServerKey(), {}, false});
+    systemStores({m_material.otherCaCertificate()});
+    auto transport = startRuntime({{fake->baseUrl()}, {m_material.otherCaCertificate()}, {}, {}, false});
+    ASSERT_NE(transport, nullptr);
+    expectOk(*transport, fake);
+    EXPECT_EQ(fake->requestCount(), 1u);
+}
+
+// verify_certificates false switches off the server check only: the client certificate is still sent. The fake demands
+// one (mTLS) and the server's own certificate is for another name and CA.
+TEST_F(TransportTlsTest, VerifyFalseStillSendsClientCertificate)
+{
+    auto fake = startFake(FakeTlsOptions {
+        m_material.wrongNameServerCertificate(), m_material.wrongNameServerKey(), m_material.caCertificate(), false});
+    auto transport =
+        startRuntime({{fake->baseUrl()}, {}, m_material.clientCertificate(), m_material.clientKey(), false});
+    ASSERT_NE(transport, nullptr);
+    expectOk(*transport, fake);
+    EXPECT_EQ(fake->requestCount(), 1u);
+}
+
+// One WARN per start, however many transfers; none of the system store's INFO.
+TEST_F(TransportTlsTest, VerifyFalseWarnsOnce)
+{
+    auto fake = startFake(serverTls());
+    systemStores({m_material.caCertificate()});
+    auto transport = startRuntime({{fake->baseUrl(), "http://127.0.0.1:9"}, {}, {}, {}, false});
+    ASSERT_NE(transport, nullptr);
+    expectOk(*transport, fake, "/one");
+    expectOk(*transport, fake, "/two");
+    EXPECT_EQ(m_logs->count(LEVEL_WARN, "indexer TLS"), 1u) << m_logs->dump();
+    EXPECT_EQ(m_logs->exactly(LEVEL_WARN, disabledWarning(fake->baseUrl())), 1u) << m_logs->dump();
+    EXPECT_EQ(m_logs->count(LEVEL_INFO, "indexer TLS"), 0u) << m_logs->dump();
+}
+
+// Only http hosts: no warning, with false and with no CA nor store.
+TEST_F(TransportTlsTest, HttpOnlyNoWarn)
+{
+    systemStores({});
+    {
+        auto transport = startRuntime({{"http://127.0.0.1:9", "HTTP://127.0.0.1:10"}, {}, {}, {}, false});
+        ASSERT_NE(transport, nullptr);
+    }
+    ASSERT_EQ(indexer_client::RuntimeOwner::shutdown(), Cause::None);
+    auto transport = startRuntime({{"http://127.0.0.1:9"}, {}, {}, {}});
+    ASSERT_NE(transport, nullptr);
+    EXPECT_EQ(m_logs->count(LEVEL_WARN, "indexer TLS"), 0u) << m_logs->dump();
+    EXPECT_EQ(m_logs->count(LEVEL_INFO, "indexer TLS"), 0u) << m_logs->dump();
 }

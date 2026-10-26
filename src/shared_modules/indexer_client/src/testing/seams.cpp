@@ -47,6 +47,7 @@ namespace
     Hook<std::function<void()>> g_beforeSenderMirror;
     Hook<std::function<void()>> g_beforeAssembly;
     std::optional<std::int64_t> g_queryConflictBaseMs;
+    std::optional<std::vector<std::string>> g_systemCaPaths;
     Hook<std::function<void()>> g_inCallbackGate;
     Hook<std::function<void()>> g_afterPayloadReleased;
     Hook<std::function<void()>> g_midBulkSettle;
@@ -164,6 +165,12 @@ namespace indexer_client::detail::seams
     {
         std::lock_guard<std::mutex> lock(g_hooksMutex);
         return g_queryConflictBaseMs;
+    }
+
+    std::optional<std::vector<std::string>> systemCaPaths()
+    {
+        std::lock_guard<std::mutex> lock(g_hooksMutex);
+        return g_systemCaPaths;
     }
 
     void inCallbackGate()
@@ -339,6 +346,11 @@ namespace indexer_client::testing_hooks
         std::lock_guard<std::mutex> lock(g_hooksMutex);
         g_queryConflictBaseMs = milliseconds;
     }
+    void setSystemCaPaths(std::optional<std::vector<std::string>> paths)
+    {
+        std::lock_guard<std::mutex> lock(g_hooksMutex);
+        g_systemCaPaths = std::move(paths);
+    }
     void resetAll()
     {
         {
@@ -354,6 +366,7 @@ namespace indexer_client::testing_hooks
             clear(g_beforeSenderMirror);
             clear(g_beforeAssembly);
             g_queryConflictBaseMs.reset();
+            g_systemCaPaths.reset();
             clear(g_inCallbackGate);
             clear(g_afterPayloadReleased);
             clear(g_midBulkSettle);

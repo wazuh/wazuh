@@ -33,7 +33,8 @@ namespace indexer_client::detail::write
         Failover,  ///< Node-attributable transport failure: another node (attempt iff mayHaveSent).
         Retry,     ///< 408, 5xx, 401, 403, TlsConfig, LocalError (cause InvalidState): retry with an attempt.
         Throttled, ///< 429: the node waits (retryAfter, if any); no attempt.
-        Split,     ///< 413 or ResponseTooLarge with more than one op: halve the batch.
+        Split,     ///< 413 or ResponseTooLarge with more than one op: halve the batch (the sender fails a
+                   ///< ResponseTooLarge Ambiguous instead under onAmbiguous5xx = Fail, I105).
         FailBatch, ///< Every op Failed(cause): other 4xx (incl. 409), 3xx, 413/ResponseTooLarge of a single op.
         Ignore     ///< Cancelled, Shutdown: the sweep resolves the ops.
     };

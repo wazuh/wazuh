@@ -41,7 +41,11 @@ Each update:
      deployed one the content is reloaded in full, and when it matches nothing is downloaded.
 4. **Downloads the snapshot**, `pageSize` documents per request. A full load of the vulnerability
    feed (the initial load, or one forced on demand) is split into `numSlices` parallel slices when
-   `numSlices` is greater than 1; incremental updates are always sequential.
+   `numSlices` is greater than 1; incremental updates are always sequential. A page may be as large
+   as the indexer connection's `max_response_bytes` (64 MiB by default; other queries of the
+   connection are held to an eighth of it). A page over it is requested again with half the
+   documents, down to one, and the page size grows back after a few pages that fit; only a single
+   document over `max_response_bytes` fails the update.
 5. **Lets the host accept the result.** The host promotes the content only once it has all of it. If
    it rejects it — for example, the Vulnerability Scanner finds the local feed not usable — the
    stored position is cleared and the next run, about 30 seconds later, is a full reload.

@@ -18,11 +18,11 @@
  * modulesd's side of the process-wide indexer_client runtime (plan 18, E7a). Manager only: on the agent every function
  * is a no-op. The C++ owner lives in libwm_indexer_runtime.so, loaded at run time (I132).
  *
- * wm_indexer_runtime_configure() runs in wm_config(), before the fork: it reads the internal-options file
+ * wm_indexer_runtime_configure() runs in wm_config(), before the fork. Without a consumer it does nothing (no library
+ * is loaded and no option is read or validated). With one, it loads the library, reads the internal-options file
  * (WAZUH_LDEFINES; absent => defaults silently, unreadable => ERROR with the path and defaults, I133) and validates the
- * wazuh_modules.indexer_client_* family against the <indexer> section. Returns -1 (after logging why) when the
- * configuration is invalid or, with a consumer, when the library cannot be loaded: wm_config() fails, so do "wazuh-modulesd -t" and
- * the start.
+ * wazuh_modules.indexer_client_* family against the <indexer> section. Returns -1 (after logging why) when the library
+ * cannot be loaded or the configuration is invalid: wm_config() fails, so do "wazuh-modulesd -t" and the start.
  *
  * The rest runs on the main thread only (the runtime's owner thread, I37): start after the startup gate and before
  * the module threads (I128; -1 => logged, modulesd goes on without a runtime, I131), begin_shutdown/shutdown from

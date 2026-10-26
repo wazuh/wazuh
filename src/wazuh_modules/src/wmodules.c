@@ -201,9 +201,9 @@ int wm_config() {
     if ((module = wm_inventory_sync_server_read()))
         wm_add(module);
 
-    // indexer_client runtime: validates the wazuh_modules.indexer_client_* options against <indexer> before the fork
-    // (so "-t" fails on them too) and loads its library when a consumer exists (inventory sync, or an enabled
-    // vulnerability scanner). It logs why it fails.
+    // indexer_client runtime: when a consumer exists (inventory sync, or an enabled vulnerability scanner), loads its
+    // library and validates the wazuh_modules.indexer_client_* options against <indexer> before the fork (so "-t"
+    // fails on them too); without one it does nothing. It logs why it fails.
     if (wm_indexer_runtime_configure(indexer_config,
                                      wm_find_module(WM_INVENTORY_SYNC_SERVER_CONTEXT.name) != NULL
                                          || wm_vulnerability_scanner_enabled()) < 0) {
