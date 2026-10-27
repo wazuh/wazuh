@@ -296,12 +296,19 @@ class AgentSyncProtocol : public IAgentSyncProtocol
         /// @param httpCode Raw HTTP status code the manager answered with (200, 400, 403,
         ///        409, 413, 500, 503...). 0 means no HTTP response was received at all
         ///        (timeout/connect/TLS failure/abort), handled like a 503.
-        /// @param body Raw JSON response body (may be empty); used only for logging - the
-        ///        HTTP code alone fully determines the outcome.
+        /// @param body Raw JSON response body (may be empty). The HTTP code determines the
+        ///        outcome; the body only tells which mismatch a 409 is and whether a 503 is
+        ///        the vulnerability feed still loading, and is logged.
         /// @param expectedSession Session that this result belongs to. It must match the
         ///        session in flight, so 0 never does. The check is performed under
         ///        m_syncState.mtx so it is race-free with a concurrent session start.
         bool applyHttpResult(int httpCode, std::string_view body, uint64_t expectedSession);
+
+        /// @brief Records a 503 answer: the manager is not ready, and the body tells whether that
+        ///        is its vulnerability feed still loading. Called by applyHttpResult() with
+        ///        m_syncState.mtx held.
+        /// @param body Raw JSON response body (may be empty).
+        void applyServiceUnavailable(std::string_view body);
 
         /// @brief Picks the id for a new session. The agent chooses it because the
         ///        single-message exchange has no StartAck to carry one back; a retry

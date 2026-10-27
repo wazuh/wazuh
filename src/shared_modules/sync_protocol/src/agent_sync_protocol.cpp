@@ -75,6 +75,13 @@ namespace
 
         return std::nullopt;
     }
+
+    // The one 503 told apart from the rest (syncEndpoint.cpp, vdScanLane.cpp): the manager's
+    // vulnerability feed is still loading, which every new manager answers for a while.
+    bool isFeedNotReadyBody(std::string_view body)
+    {
+        return jsonErrorKind(std::string(body)) == "vulnerability feed not ready";
+    }
 } // namespace
 
 // Various synchronization functions write a SyncResult into `m_syncState.lastSyncResult`
@@ -109,6 +116,11 @@ static std::string determineSyncFailureReasonBasedOnSyncResult(SyncResult result
 
         case SyncResult::PAYLOAD_TOO_LARGE:
             failureReason = "Manager rejected the session as too large (413); it must be split and resent.";
+            break;
+
+        case SyncResult::FEED_NOT_READY:
+            failureReason = "The manager's vulnerability feed is not ready yet; packages and OS inventory will be "
+                            "synchronized once it is.";
             break;
 
         // Reached by synchronizeModule()/synchronizeMetadataOrGroups() themselves, never by the
@@ -513,6 +525,7 @@ SyncModuleResult AgentSyncProtocol::synchronizeDeltaByBlocks(Option option, size
     std::string failureReason;
     bool managerNotReady = false;
     bool awaitingPrerequisite = false;
+    bool feedNotReady = false;
     {
         // These fields are also written by applyHttpResult() on the response
         // thread while phase stays WaitingResponse (cleared only by
@@ -523,6 +536,7 @@ SyncModuleResult AgentSyncProtocol::synchronizeDeltaByBlocks(Option option, size
                                                                     m_syncState.lastSyncFailureBody);
         managerNotReady = m_syncState.lastSyncManagerNotReady;
         awaitingPrerequisite = m_syncState.lastSyncAwaitingPrerequisite;
+        feedNotReady = m_syncState.lastSyncResult == SyncResult::FEED_NOT_READY;
     }
     const bool stopped = shouldStop();
     const unsigned int consecutiveFailures = trackSyncOutcome(success, stopped);
@@ -537,7 +551,8 @@ SyncModuleResult AgentSyncProtocol::synchronizeDeltaByBlocks(Option option, size
             .consecutiveFailures = consecutiveFailures,
             .awaitingPrerequisite = awaitingPrerequisite,
             .localTransportUnavailable = false,
-            .sentAnything = sentAny};
+            .sentAnything = sentAny,
+            .feedNotReady = feedNotReady};
 }
 
 unsigned int AgentSyncProtocol::trackSyncOutcome(bool success, bool stopped)
@@ -1422,8 +1437,9 @@ bool AgentSyncProtocol::applyHttpResult(int httpCode, std::string_view body, uin
         return true;
     }
 
-    // The HTTP status code alone fully determines the outcome; the body (already
-    // valid JSON text from the manager) is only ever used here for logging context.
+    // The HTTP status code determines the outcome; the body (already valid JSON text
+    // from the manager) only refines it -- which mismatch a 409 is, whether a 503 is the
+    // vulnerability feed still loading -- and gives logging context.
     // Any 2xx is success, not just 200: the /stateful contract already documents a
     // future 202 (queued-processing endpoint) as a deliberate accepted-but-not-200
     // answer (see syncEndpoint.cpp), and this must not fall into the default
@@ -1454,9 +1470,7 @@ bool AgentSyncProtocol::applyHttpResult(int httpCode, std::string_view body, uin
 
         case 503: // Manager not ready (indexer down, at capacity, shutting down, or a VD
             // feed still downloading): retried on the next cycle either way.
-            m_syncState.lastSyncResult = SyncResult::COMMUNICATION_ERROR;
-            m_syncState.lastSyncManagerNotReady = true;
-            m_logger(LOG_DEBUG, "Manager reported not ready (503): " + std::string(body));
+            applyServiceUnavailable(body);
             break;
 
         case 415: // Compression rejected. The agent's own RetrySender already reports this
@@ -1487,6 +1501,23 @@ bool AgentSyncProtocol::applyHttpResult(int httpCode, std::string_view body, uin
 
     m_syncState.cv.notifyAll();
     return true;
+}
+
+void AgentSyncProtocol::applyServiceUnavailable(std::string_view body)
+{
+    m_syncState.lastSyncManagerNotReady = true;
+
+    // The feed is the one cause the body tells apart: it is expected on every new manager and must
+    // not be reported as a communication failure (#40683).
+    if (isFeedNotReadyBody(body))
+    {
+        m_syncState.lastSyncResult = SyncResult::FEED_NOT_READY;
+        m_logger(LOG_DEBUG, "Manager's vulnerability feed is not ready (503): " + std::string(body));
+        return;
+    }
+
+    m_syncState.lastSyncResult = SyncResult::COMMUNICATION_ERROR;
+    m_logger(LOG_DEBUG, "Manager reported not ready (503): " + std::string(body));
 }
 
 void AgentSyncProtocol::clearSyncState()

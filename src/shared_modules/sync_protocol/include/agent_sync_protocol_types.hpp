@@ -28,6 +28,8 @@ enum class SyncResult
     NO_GROUPS_ERROR,     ///< No groups available in metadata.
     PAYLOAD_TOO_LARGE,   ///< Manager rejected the session as larger than its total in-flight
     ///< budget (HTTP 413); the session must be split and resent smaller.
+    FEED_NOT_READY,      ///< Manager's vulnerability feed is not loaded yet (HTTP 503 "vulnerability
+    ///< feed not ready"); the session is resent on the next cycle.
 };
 
 struct SyncModuleResult
@@ -102,6 +104,17 @@ struct SyncModuleResult
     /// Always false for metadata and group synchronizations, which send no queued items by
     /// construction.
     bool sentAnything{false};
+
+    /// @brief True when the manager answered that its vulnerability feed is not loaded yet (HTTP
+    /// 503 "vulnerability feed not ready"). Only a vulnerability-detection data session gets this
+    /// answer, and every new manager gives it while it downloads the feed, which can take more
+    /// than half an hour: the manager indexes those tables only together with their scan. Nothing
+    /// is wrong on the agent or the network, so the calling module reports it at INFO and never
+    /// escalates it. @ref managerNotReady is set as well, as for any other 503: this flag only
+    /// tells the cause apart.
+    ///
+    /// Not part of the C interface's SyncModuleResult_t: its modules never send those sessions.
+    bool feedNotReady{false};
 };
 
 /// @brief Outcome of a module integrity check (IAgentSyncProtocol::requiresFullSync()).

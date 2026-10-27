@@ -3397,6 +3397,86 @@ TEST_F(AgentSyncProtocolTest, ParseResponseBufferWithUnrecognizedBodyFallsBackTo
     syncThread.join();
 }
 
+// The manager answers a vulnerability-detection session with this 503 while its feed is still
+// loading, more than half an hour on a new manager (#40683). It is an expected state, not a
+// communication failure: it gets its own reason and flag, on top of the managerNotReady every 503
+// sets.
+TEST_F(AgentSyncProtocolTest, ParseResponseBufferWithFeedNotReadyReportsItsOwnReason)
+{
+    mockQueue = std::make_shared<MockPersistentQueue>();
+    LoggerFunc testLogger = [](modules_log_level_t, const std::string&)
+    {
+    };
+    protocol = std::make_unique<AgentSyncProtocol>("test_module_vd", ":memory:", testLogger, mockQueue,
+                                                   mockSyncTransport, /*isFeedBased=*/true);
+
+    std::thread syncThread(
+        [this]()
+    {
+        std::vector<PersistedData> testData =
+        {
+            {0, "test_id_1", "test_index_1", "test_data_1", Operation::CREATE, 1}
+        };
+
+        EXPECT_CALL(*mockQueue, fetchAndMarkForSync(_) ).WillOnce(Return(testData));
+        EXPECT_CALL(*mockQueue, resetSyncingItems()).Times(1);
+
+        SyncModuleResult syncResult = protocol->synchronizeModule(Mode::DELTA);
+        EXPECT_FALSE(syncResult.success);
+        EXPECT_TRUE(syncResult.feedNotReady);
+        EXPECT_TRUE(syncResult.managerNotReady);
+        EXPECT_EQ(syncResult.failureReason,
+                  "The manager's vulnerability feed is not ready yet; packages and OS inventory will be "
+                  "synchronized once it is.");
+    });
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(delay));
+
+    bool response = feedHttpResult(503, R"({"error":"vulnerability feed not ready","code":503})");
+
+    EXPECT_TRUE(response);
+
+    syncThread.join();
+}
+
+// Every other 503 (indexer unreachable, no capacity, shutting down) carries the manager's generic
+// body and keeps being reported as the manager not being ready.
+TEST_F(AgentSyncProtocolTest, ParseResponseBufferWithServiceUnavailableKeepsManagerNotReady)
+{
+    mockQueue = std::make_shared<MockPersistentQueue>();
+    LoggerFunc testLogger = [](modules_log_level_t, const std::string&)
+    {
+    };
+    protocol = std::make_unique<AgentSyncProtocol>("test_module_vd", ":memory:", testLogger, mockQueue,
+                                                   mockSyncTransport, /*isFeedBased=*/true);
+
+    std::thread syncThread(
+        [this]()
+    {
+        std::vector<PersistedData> testData =
+        {
+            {0, "test_id_1", "test_index_1", "test_data_1", Operation::CREATE, 1}
+        };
+
+        EXPECT_CALL(*mockQueue, fetchAndMarkForSync(_) ).WillOnce(Return(testData));
+        EXPECT_CALL(*mockQueue, resetSyncingItems()).Times(1);
+
+        SyncModuleResult syncResult = protocol->synchronizeModule(Mode::DELTA);
+        EXPECT_FALSE(syncResult.success);
+        EXPECT_FALSE(syncResult.feedNotReady);
+        EXPECT_TRUE(syncResult.managerNotReady);
+        EXPECT_EQ(syncResult.failureReason, "Failed to communicate with the manager.");
+    });
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(delay));
+
+    bool response = feedHttpResult(503, R"({"error":"Service unavailable","code":503})");
+
+    EXPECT_TRUE(response);
+
+    syncThread.join();
+}
+
 // httpCode 0: no HTTP response at all (timeout/connect/TLS failure/abort) - treated
 // like a 503, since the transport layer already exhausted its own retries.
 TEST_F(AgentSyncProtocolTest, ParseResponseBufferWithNoHttpResponse)
