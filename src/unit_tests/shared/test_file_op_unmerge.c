@@ -568,6 +568,65 @@ static void test_invalid_name_logged_as_received(void** state)
     assert_int_equal(count_entries(sb->dest), 0);
 }
 
+/* Regression test: text-mode ftell() can become invalid on Windows when
+ * the bundle contains more LF characters than the entry header contains bytes.
+ * Keep the bundle bytes unchanged by writing it in binary mode. */
+static void test_unmerge_text_bundle_with_many_line_feeds(void** state)
+{
+    sandbox_t* sb = *state;
+    char payload[1024];
+    char bundle[1200];
+    size_t payload_length = 0;
+    size_t bundle_length;
+    char output_path[PATH_MAX];
+    char** list = new_list();
+
+    for (int i = 0; i < 60; ++i)
+    {
+        int written = snprintf(payload + payload_length,
+                               sizeof(payload) - payload_length,
+                               "line-%02d\n", i);
+        assert_true(written > 0);
+        assert_true((size_t)written < sizeof(payload) - payload_length);
+        payload_length += (size_t)written;
+    }
+
+    int header_length = snprintf(bundle, sizeof(bundle), "!%zu agent.conf\n", payload_length);
+    assert_true(header_length > 0);
+    assert_true((size_t)header_length + payload_length < sizeof(bundle));
+
+    bundle_length = (size_t)header_length;
+    memcpy(bundle + bundle_length, payload, payload_length);
+    bundle_length += payload_length;
+
+    /* Binary mode preserves LF-only input on Windows. */
+    FILE* fp = fopen(sb->merged, "wb");
+    assert_non_null(fp);
+    assert_int_equal(fwrite(bundle, 1, bundle_length, fp), bundle_length);
+    assert_int_equal(fclose(fp), 0);
+
+    assert_int_equal(UnmergeFiles(sb->merged, sb->dest, OS_TEXT, &list), 1);
+
+    /* Read in text mode so CRLF conversion on Windows is normalized. */
+    snprintf(output_path, sizeof(output_path), "%s/agent.conf", sb->dest);
+    fp = fopen(output_path, "r");
+    assert_non_null(fp);
+    for (int i = 0; i < 60; ++i)
+    {
+        char expected[32];
+        char actual[32];
+        snprintf(expected, sizeof(expected), "line-%02d\n", i);
+        assert_non_null(fgets(actual, sizeof(actual), fp));
+        assert_string_equal(actual, expected);
+    }
+    assert_int_equal(fgetc(fp), EOF);
+    assert_int_equal(fclose(fp), 0);
+
+    assert_string_equal(list[1], "agent.conf");
+    assert_null(list[2]);
+    free_strarray(list);
+}
+
 int main(void)
 {
     const struct CMUnitTest tests[] =
@@ -581,6 +640,7 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_invalid_name_logged_as_received, setup_sandbox, teardown_sandbox),
         cmocka_unit_test_setup_teardown(test_unmerge_failure_outranks_skipped_name, setup_sandbox, teardown_sandbox),
         cmocka_unit_test_setup_teardown(test_unmerge_regular_entries, setup_sandbox, teardown_sandbox),
+        cmocka_unit_test_setup_teardown(test_unmerge_text_bundle_with_many_line_feeds, setup_sandbox, teardown_sandbox),
         cmocka_unit_test_setup_teardown(test_unmerge_binary_entry, setup_sandbox, teardown_sandbox),
         cmocka_unit_test_setup_teardown(test_unmerge_open_failure, setup_sandbox, teardown_sandbox),
         cmocka_unit_test_setup_teardown(test_unmerge_write_failure, setup_sandbox, teardown_sandbox),
