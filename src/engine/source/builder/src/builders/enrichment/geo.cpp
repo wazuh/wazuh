@@ -387,7 +387,8 @@ std::pair<base::Expression, std::string> geoEnrichmentBuilder(const std::shared_
                                                return base::result::makeFailure(e, std::string {});
                                            });
 
-    return {base::Implication::create("TraceableConditional", enrichmentExpr, conditionalSuccess),
+    // Named like the traceable so the SUCCESS term publishes to its tracer (see makeTraceableSuccessExpression)
+    return {base::Implication::create(GEO_ENRICHMENT_TRACEABLE_NAMES, enrichmentExpr, conditionalSuccess),
             GEO_ENRICHMENT_TRACEABLE_NAMES};
 };
 

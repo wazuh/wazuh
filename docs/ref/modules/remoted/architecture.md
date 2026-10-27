@@ -57,7 +57,9 @@ flowchart LR
     BUD -.->|503| A5
     A4 -->|"AES over TCP/UDP"| LIS
     LIS --> META
+    LIS -->|"keep-alives"| WDB
     LIS --> EQ --> DISP
+    META -.->|"batch header"| DISP
 
     EP -->|"/stateless"| ENG
     EP -->|"/stateful · /stats · /config"| SYNC
@@ -66,12 +68,13 @@ flowchart LR
     EP -->|"/enroll"| AUTHD
     EP -->|"/scan/vd"| VD
     DISP --> ENG
-    META --> WDB
 ```
 
-Every downstream hop is HTTP over a Unix-domain socket, except `authd`'s local socket
-(`queue/sockets/auth.sock`), which `POST /enroll` speaks authd's own
-framed JSON protocol over.
+Every downstream hop is a Unix-domain socket under `queue/sockets/`. The engine
+(`engine-ingest-http.sock`), the inventory sync server (`inventory-sync-http.sock`), the task
+manager (`task-http.sock`) and vulnerability detection (`vd-http.sock`) are spoken to over HTTP;
+`authd` (`auth.sock`, for `POST /enroll`) and wazuh-db (`wdb.sock`, for `POST /control` and the
+legacy keep-alives) over their own length-prefixed protocol.
 
 ## HTTPS agent API (`remoted_module`)
 
@@ -198,35 +201,17 @@ Agent sends event → listener → decrypt and validate → classify:
 - **Control message** → parse keep-alive → update metadata cache → update wazuh-db
 - **Event message** → event queue → batch and enrich → `POST /events/enriched` to the engine
 
-## Key configuration options
+## Configuration
 
-```xml
-<remote>
-  <https>
-    <port>1517</port>
-    <bind_addr>0.0.0.0</bind_addr>
-    <certificate>/etc/wazuh-manager/certs/remoted.pem</certificate>
-    <key>/etc/wazuh-manager/certs/remoted-key.pem</key>
-  </https>
-
-  <legacy>
-    <enabled>yes</enabled>
-    <port>1514</port>
-    <protocol>tcp</protocol>
-  </legacy>
-
-  <agents>
-    <allow_higher_versions>no</allow_higher_versions>
-  </agents>
-</remote>
-```
-
-Tuning lives in internal options rather than `wazuh-manager.conf` — the HTTPS server's transport and
-capacity knobs under `remoted.http_*`, `remoted.max_inflight_bytes` and
-`remoted.max_deferred_requests`, and the legacy pipeline's under `remoted.control_msg_queue_size`,
-`remoted.batch_events_capacity` and `remoted.worker_pool`.
-
-For the complete set, see [Configuration](configuration.md).
+The `<remote>` section of `/etc/wazuh-manager/wazuh-manager.conf` holds the listeners (`<https>`,
+`<legacy>`), the HTTPS body cap and the rate limits of the two unauthenticated routes, and the agent
+version policy (`<agents>`); the block the installer writes is in
+[Configuration — Installed Configuration](configuration.md#installed-configuration). Everything
+else is an internal option in `/etc/wazuh-manager/wazuh-manager-internal-options.conf`: the HTTPS
+server's transport, capacity and downstream knobs (`remoted.http_*`, `remoted.max_*`,
+`remoted.downstream_*`, ...) and the legacy pipeline's (`remoted.worker_pool`,
+`remoted.control_msg_queue_size`, `remoted.batch_events_capacity`, ...). Every option is in
+[Configuration](configuration.md).
 
 ## References
 

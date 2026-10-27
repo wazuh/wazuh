@@ -32,8 +32,8 @@ Variables shared by every test (ports, the test user and password, endpoints) ar
 
 The environment is described by `env/docker-compose.yml` and is composed of **12 containers**:
 
-- 3 Wazuh managers forming a cluster: `wazuh-master` (API published on host port `55000`), `wazuh-worker1` and
-  `wazuh-worker2`.
+- 3 Wazuh managers forming a cluster: `wazuh-master`, `wazuh-worker1` and `wazuh-worker2`, whose port `55000` is
+  published on host ports `55000`, `55001` and `55002`.
 - 4 Wazuh agents (`wazuh-agent1` to `wazuh-agent4`) built from the same branch as the managers.
 - 4 old Wazuh agents (`wazuh-agent5` to `wazuh-agent8`), installed from the 4.x package repository at version
   `4.14.1` (`env/base/agent/old.Dockerfile`).
@@ -90,7 +90,8 @@ Besides the module and RBAC files, three files check what every endpoint shares:
   unauthenticated request through it every 5 seconds, so its address cannot carry the failed ones.
 
 `conftest.py` copies `env/configurations/base` and then `env/configurations/<module>` into the
-environment, `<module>` being the second word of the file name.
+environment, `<module>` being the module word of the file name (the second word, or the fourth for a
+`test_rbac_*` file).
 
 ## Coverage and test selection in CI
 

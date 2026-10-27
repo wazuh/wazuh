@@ -98,7 +98,7 @@ namespace
         ClockSkew,                ///< Token outside the accepted window -> jwt_max_age / jwt_clock_skew.
         BodyTooLarge,             ///< Over the authenticated-body cap -> auth_max_body_size.
         UnusableKey,              ///< The agent exists but its client.keys key does not decode.
-        AgentMismatch,            ///< An authenticated agent claimed a different agent's id (security signal).
+        InvalidHeaderLine,        ///< An authenticated batch failed the H-line prefix/size check.
         EnrollmentKeyUnavailable, ///< /enroll's Password mode: etc/authd.pass unavailable, or HKDF
                                   ///< unavailable manager-wide. Deliberately NOT UnusableKey -- there
                                   ///< is no agent and no client.keys entry yet to "re-enroll".
@@ -115,7 +115,7 @@ namespace
             case remoted::auth::AuthError::BodyTooLarge: return RejectionKind::BodyTooLarge;
             case remoted::auth::AuthError::MissingKey: return RejectionKind::UnusableKey;
             case remoted::auth::AuthError::EnrollmentKeyUnavailable: return RejectionKind::EnrollmentKeyUnavailable;
-            case remoted::auth::AuthError::PayloadAgentMismatch: return RejectionKind::AgentMismatch;
+            case remoted::auth::AuthError::PayloadAgentMismatch: return RejectionKind::InvalidHeaderLine;
             case remoted::auth::AuthError::AgentBusy: return RejectionKind::AgentBusy;
             // Already reported by AuthMiddleware's own throttled WARN, which names the agent id and
             // the peer address (neither reaches this funnel). Kept at DEBUG2 to avoid a second line.
@@ -135,7 +135,7 @@ namespace
         static LogThrottle clockSkewThrottle;
         static LogThrottle bodyTooLargeThrottle;
         static LogThrottle unusableKeyThrottle;
-        static LogThrottle agentMismatchThrottle;
+        static LogThrottle headerLineThrottle;
         static LogThrottle enrollmentKeyUnavailableThrottle;
         static LogThrottle agentBusyThrottle;
 
@@ -199,14 +199,14 @@ namespace
                 }
                 break;
 
-            case RejectionKind::AgentMismatch:
-                if (const auto d = agentMismatchThrottle.record())
+            case RejectionKind::InvalidHeaderLine:
+                if (const auto d = headerLineThrottle.record())
                 {
-                    // Security-relevant: the request's MAC verified, so this is a legitimately
-                    // authenticated agent submitting a batch attributed to a different agent id.
+                    // Authentication already succeeded; name the sender of the malformed or
+                    // oversized H-line slice so the operator can investigate that agent.
                     LOGFN_WARN(logFn(),
-                               "Rejected %llu authenticated request(s) in the last %d s whose payload claimed a "
-                               "different agent id than the one that signed them (authenticated agent '%.*s').",
+                               "Rejected %llu authenticated request(s) in the last %d s whose stateless batch has "
+                               "no H-line prefix or exceeds its 8 KiB limit (authenticated agent '%.*s').",
                                static_cast<unsigned long long>(d.total),
                                LogThrottle::kDefaultWindowSeconds,
                                static_cast<int>(agentContext.size()),

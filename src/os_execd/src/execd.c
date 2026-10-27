@@ -31,6 +31,10 @@ time_t pending_upg = 0;
 STATIC OSList *timeout_list;
 STATIC OSListNode *timeout_node;
 STATIC OSHash *repeated_hash;
+STATIC int repeated_levels;
+STATIC time_t repeated_window;
+STATIC time_t repeated_last_purge;
+STATIC time_t repeated_last_full_warn;
 
 #ifdef WIN32
 #ifdef WAZUH_UNIT_TESTING
@@ -110,6 +114,103 @@ void FreeTimeoutList() {
 #ifdef WIN32
     w_mutex_unlock(&timeout_list_mutex);
 #endif
+}
+
+/* Create the repeated offenders table if the option is configured */
+STATIC void RepeatedOffendersInit()
+{
+    repeated_hash = NULL;
+    repeated_levels = 0;
+    repeated_window = 0;
+    repeated_last_purge = 0;
+    repeated_last_full_warn = 0;
+
+    if (repeated_offenders_timeout[0] == 0) {
+        return;
+    }
+
+    for (; repeated_offenders_timeout[repeated_levels] != 0; repeated_levels++) {
+        time_t level = (time_t)repeated_offenders_timeout[repeated_levels] * 60;
+
+        if (level > repeated_window) {
+            repeated_window = level;
+        }
+    }
+
+    if (repeated_hash = OSHash_Create(), !repeated_hash) {
+        merror_exit(HASH_ERROR);
+    }
+
+    if (!OSHash_setSize(repeated_hash, REPEATED_OFFENDERS_ROWS)) {
+        merror_exit(MEM_ERROR, errno, strerror(errno));
+    }
+
+    // OSHash_setSize() resets the seed to fixed values
+    repeated_hash->initial_seed = os_getprime((unsigned)os_random() % repeated_hash->rows);
+    repeated_hash->constant = os_getprime((unsigned)os_random() % repeated_hash->rows);
+}
+
+/* Forget the keys whose last block ended longer ago than the largest repeated timeout */
+STATIC void RepeatedOffendersPurge(time_t curr_time)
+{
+    unsigned int row;
+    OSHashNode *node;
+    OSHashNode *next;
+
+    for (node = OSHash_Begin(repeated_hash, &row); node; node = next) {
+        repeated_offender *offender = (repeated_offender *)node->data;
+
+        next = OSHash_Next(repeated_hash, &row, node);
+
+        if (curr_time - offender->release_at > repeated_window) {
+            free(OSHash_Delete(repeated_hash, node->key));
+        }
+    }
+
+    repeated_last_purge = curr_time;
+}
+
+/* Return the timeout for this offense of rkey and record it */
+STATIC int RepeatedOffendersCheck(const char *rkey, int timeout_value, time_t curr_time)
+{
+    repeated_offender *offender;
+
+    // Purge every interval, after a backward clock step, and at most once a second while full
+    if (curr_time - repeated_last_purge >= REPEATED_OFFENDERS_PURGE || curr_time < repeated_last_purge ||
+        (repeated_hash->elements >= REPEATED_OFFENDERS_MAX && curr_time != repeated_last_purge)) {
+        RepeatedOffendersPurge(curr_time);
+    }
+
+    if (offender = (repeated_offender *)OSHash_Get(repeated_hash, rkey), offender) {
+        if (offender->count >= repeated_levels) {
+            timeout_value = repeated_offenders_timeout[repeated_levels - 1] * 60;
+        } else {
+            timeout_value = repeated_offenders_timeout[offender->count] * 60;
+            offender->count++;
+        }
+
+        mdebug1("Repeated offender. Setting timeout to '%ds'", timeout_value);
+    } else {
+        if (repeated_hash->elements >= REPEATED_OFFENDERS_MAX) {
+            // Repeat the warning at most once per purge interval while the table stays full
+            if (curr_time - repeated_last_full_warn >= REPEATED_OFFENDERS_PURGE || curr_time < repeated_last_full_warn) {
+                mwarn(AR_REPEATED_FULL, REPEATED_OFFENDERS_MAX);
+                repeated_last_full_warn = curr_time;
+            }
+            return timeout_value;
+        }
+
+        os_calloc(1, sizeof(repeated_offender), offender);
+
+        if (OSHash_Add(repeated_hash, rkey, offender) != 2) {
+            os_free(offender);
+            merror("At ExecdRun: OSHash_Add() failed");
+            return timeout_value;
+        }
+    }
+
+    offender->release_at = curr_time + timeout_value;
+    return timeout_value;
 }
 
 #ifdef WIN32
@@ -529,41 +630,7 @@ void ExecdRun(char *exec_msg, int *childcount)
         /* We don't need to add to the list if the timeout_value == 0 */
         if (timeout_value) {
             if (repeated_hash != NULL) {
-                char *ntimes = NULL;
-
-                if ((ntimes = (char *) OSHash_Get(repeated_hash, rkey))) {
-                    int ntimes_int = 0;
-                    int i2 = 0;
-                    int new_timeout = 0;
-
-                    ntimes_int = atoi(ntimes);
-                    while (repeated_offenders_timeout[i2] != 0) {
-                        i2++;
-                    }
-                    if (ntimes_int >= i2) {
-                        new_timeout = repeated_offenders_timeout[i2 - 1] * 60;
-                    } else {
-                        os_free(ntimes);       /* In hash_op.c, data belongs to caller */
-                        os_calloc(16, sizeof(char), ntimes);
-                        new_timeout = repeated_offenders_timeout[ntimes_int] * 60;
-                        ntimes_int++;
-                        snprintf(ntimes, 16, "%d", ntimes_int);
-                        if (OSHash_Update(repeated_hash, rkey, ntimes) != 1) {
-                            os_free(ntimes);
-                            merror("At ExecdRun: OSHash_Update() failed");
-                        }
-                    }
-                    mdebug1("Repeated offender. Setting timeout to '%ds'", new_timeout);
-                    timeout_value = new_timeout;
-                } else {
-                    /* Add to the repeated offenders list */
-                    char *tmp_zero;
-                    os_strdup("0", tmp_zero);
-                    if (OSHash_Add(repeated_hash, rkey, tmp_zero) != 2) {
-                        os_free(tmp_zero);
-                        merror("At ExecdRun: OSHash_Add() failed");
-                    }
-                }
+                timeout_value = RepeatedOffendersCheck(rkey, timeout_value, curr_time);
             }
 
 #ifdef WIN32
@@ -694,11 +761,7 @@ void ExecdStart(int q)
     }
 #endif
 
-    if (repeated_offenders_timeout[0] != 0) {
-        repeated_hash = OSHash_Create();
-    } else {
-        repeated_hash = NULL;
-    }
+    RepeatedOffendersInit();
 
     /* Main loop */
     while (1) {
@@ -783,11 +846,7 @@ int WinExecdStart()
         merror_exit(LIST_ERROR);
     }
 
-    if (repeated_offenders_timeout[0] != 0) {
-        repeated_hash = OSHash_Create();
-    } else {
-        repeated_hash = NULL;
-    }
+    RepeatedOffendersInit();
 
     /* Mutex to access timeout list */
     w_mutex_init(&timeout_list_mutex, NULL);

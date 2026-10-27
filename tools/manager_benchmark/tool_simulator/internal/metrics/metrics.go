@@ -16,6 +16,13 @@ type Counters struct {
 
 	StatelessSent, St202, StBad400, StBad413, St503, StOther, EventsSent uint64
 
+	// StatelessRetries counts /stateless re-sends of the same batch by an
+	// "agent"-batching engine step; StatelessRetriesExhausted the flushes whose
+	// try budget ran out (the batch stays buffered for the next flush, as the
+	// agent keeps it); EventsDropped the events refused because the step's buffer
+	// was at its cap (the agent's drop-newest). Summary JSON only, not bench.csv.
+	StatelessRetries, StatelessRetriesExhausted, EventsDropped uint64
+
 	// Scan* are the POST /scan/vd (feed-update re-scan) counters. Scan200 is
 	// "queued", not "scanned" -- the manager answers once VD has recorded a
 	// durable vd_scan task and the scan runs afterward (docu/14-scan-vd.md). ScanOther
@@ -57,7 +64,7 @@ type Counters struct {
 // bucket is the counters plus latency histograms for one granularity.
 type bucket struct {
 	c     Counters
-	hists map[string]*Histogram // "session","stateless","notify","startup"
+	hists map[string]*Histogram // one per request kind, keyed as newBucket lists them
 }
 
 func newBucket() *bucket {
@@ -66,6 +73,7 @@ func newBucket() *bucket {
 		"stateless":    NewHistogram(),
 		"notify":       NewHistogram(),
 		"startup":      NewHistogram(),
+		"shutdown":     NewHistogram(),
 		"scan":         NewHistogram(),
 		"cacerts":      NewHistogram(),
 		"enroll_https": NewHistogram(),
@@ -164,6 +172,21 @@ func (r *Registry) RecordRetry503(fleet, lane string) {
 // (max_attempts reached, or the feed budget expired) while still answering 503.
 func (r *Registry) RecordRetryExhausted(fleet, lane string) {
 	r.add(fleet, lane, func(c *Counters) *uint64 { return &c.RetriesExhausted }, 1)
+}
+
+// RecordStatelessRetry counts one re-send of a /stateless batch.
+func (r *Registry) RecordStatelessRetry(fleet, lane string) {
+	r.add(fleet, lane, func(c *Counters) *uint64 { return &c.StatelessRetries }, 1)
+}
+
+// RecordStatelessRetryExhausted counts a flush whose try budget ran out.
+func (r *Registry) RecordStatelessRetryExhausted(fleet, lane string) {
+	r.add(fleet, lane, func(c *Counters) *uint64 { return &c.StatelessRetriesExhausted }, 1)
+}
+
+// RecordEventsDropped counts events refused by a full agent-batching buffer.
+func (r *Registry) RecordEventsDropped(fleet, lane string, events uint64) {
+	r.add(fleet, lane, func(c *Counters) *uint64 { return &c.EventsDropped }, events)
 }
 
 // RecordStateless classifies a /stateless outcome and records its latency.
@@ -273,7 +296,8 @@ func (r *Registry) RecordEnrollHTTPS(fleet, lane string, status int, latencyUS u
 	}
 }
 
-// RecordControl records a startup/notify/shutdown outcome and latency.
+// RecordControl records a startup/notify/shutdown outcome and latency. Each
+// kind has its own histogram in newBucket: observe drops a kind without one.
 func (r *Registry) RecordControl(fleet, kind string, ok bool, latencyUS uint64) {
 	r.observe(fleet, "", kind, latencyUS)
 	pick := map[[2]string]func(*Counters) *uint64{

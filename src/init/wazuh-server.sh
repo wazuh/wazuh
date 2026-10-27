@@ -51,9 +51,10 @@ SDAEMONS=$(reverse_list "${DAEMONS}")
 LOCK="${DIR}/var/start-script-lock"
 LOCK_PID="${LOCK}/pid"
 
-# Seconds the lock loop waits. Below the unit's TimeoutSec (45, which still bounds stop and reload;
-# start has TimeoutStartSec=180 for the engine readiness wait, templates/wazuh-manager.service), or
-# systemd reports a timeout instead of the real reason.
+# Seconds the lock loop waits. Below the unit's TimeoutSec (45, which bounds stop only; start and
+# reload both run under TimeoutStartSec=180 for the engine readiness wait, since systemd applies the
+# start timeout to ExecReload, templates/wazuh-manager.service), or systemd reports a timeout instead
+# of the real reason.
 MAX_ITERATION="40"
 
 MAX_KILL_TRIES=30
@@ -474,7 +475,7 @@ get_wazuh_engine_pid()
     local ticks=0
     local pidfile
 
-    ${DIR}/bin/wazuh-manager-analysisd
+    ${DIR}/bin/wazuh-manager-analysisd ${DEBUG_CLI}
 
     while [ $ticks -lt $max_ticks ]; do
         for pidfile in ${DIR}/var/run/wazuh-manager-analysisd-*.pid; do
@@ -502,8 +503,7 @@ class UnixConnection(http.client.HTTPConnection):
         self.sock.connect(sys.argv[1])
 try:
     connection = UnixConnection("localhost", timeout=5)
-    connection.request("POST", "/_internal/event-dumper/status", body="{}",
-                       headers={"Content-Type": "application/json"})
+    connection.request("GET", "/status")
     sys.exit(0 if connection.getresponse().status < 400 else 1)
 except Exception:
     sys.exit(1)'
@@ -527,7 +527,7 @@ wait_for_wazuh_engine_ready()
         fi
 
         if ! kill -0 "$ENGINE_PID" 2>/dev/null; then
-            echo "wazuh-manager-analysisd died during event dumper check."
+            echo "wazuh-manager-analysisd died during the readiness check."
             return 1
         fi
 

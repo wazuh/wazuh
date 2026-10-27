@@ -41,8 +41,9 @@ namespace remoted::endpoints::config
         const int status = response.status;
         if (status >= 200 && status < 300)
         {
-            // Pass the enriched document straight through. Safe to reflect: modulesd produced it
-            // from the agent's own document plus two fields it added itself.
+            // Pass the body straight through: the inventory sync server (in modulesd) answers
+            // 200 {} once it has accepted the document. Safe to reflect: it is modulesd's own fixed
+            // answer, not the agent's document.
             return HttpResponse::json(200, response.body);
         }
         if (status == 400)

@@ -2091,6 +2091,38 @@ def test_filter_array_by_query_typed_fields(q, expected_ids):
     assert [item['id'] for item in result] == expected_ids
 
 
+@pytest.mark.parametrize('q, expected_ids', [
+    # The shape a response body renders a timestamp in, passed back as-is.
+    ('created=2026-01-01T00:00:00+00:00', ['first']),
+    ('created!=2026-01-01T00:00:00+00:00', ['second']),
+    ('created>2026-01-01T00:00:00+00:00', ['second']),
+    ('created<2026-06-01T00:00:00+00:00', ['first']),
+    ('created=2026-01-01T00:00:00.000000+00:00', ['first']),
+    ('created=2026-01-01 00:00:00+0000', ['first']),
+    # A non-UTC offset is converted to UTC, not relabelled: 2025-12-31T21:00:00-03:00 is midnight UTC.
+    ('created=2025-12-31T21:00:00-03:00', ['first']),
+    ('created>2025-12-31T21:00:00-03:00', ['second']),
+    ('created=2026-01-01T02:00:00+02:00', ['first']),
+    ('created<2026-01-01T02:00:00+02:00', []),
+])
+def test_filter_array_by_query_typed_fields_offset_literal(q, expected_ids):
+    """Test that a date literal with a numeric UTC offset is compared as an aware datetime by every operator."""
+    result = utils.filter_array_by_query(q, typed_input_array)
+
+    assert [item['id'] for item in result] == expected_ids
+
+
+def test_filter_array_by_query_offset_literal_against_string_dates():
+    """Test that offset-bearing literals and stored strings in either form compare as the same instant."""
+    array = [{'id': 'first', 'created': '2026-01-01T00:00:00Z'},
+             {'id': 'second', 'created': '2026-06-01T03:00:00+03:00'}]
+
+    assert [item['id'] for item in utils.filter_array_by_query('created=2026-06-01T00:00:00Z', array)] == ['second']
+    assert [item['id'] for item in utils.filter_array_by_query('created<2026-01-01T01:00:00+01:00', array)] == []
+    assert [item['id'] for item in utils.filter_array_by_query('created>2025-12-31T23:00:00-01:00', array)] == \
+        ['second']
+
+
 # Array whose `revoked` field is a real `bool`, the shape enrollment tokens' `revoked`/`credential`
 # reach filter_array_by_query with. Also carries `created` so a combined date+bool query can be
 # exercised without needing a third fixture.

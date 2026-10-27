@@ -93,11 +93,12 @@ EXPECTED_HTTP_SERVER_METRICS = {
         'enroll': {'count': 8300, 'sum': 8301, 'min': 8302, 'max': 8303, 'p50': 8304, 'p90': 8305,
                    'p99': 8306},
     },
-    'auth_rejections': {'total': 12078, 'unknown_agent': 1001, 'invalid_signature': 1002, 'bad_token': 1003,
+    'auth_rejections': {'total': 16136, 'unknown_agent': 1001, 'invalid_signature': 1002, 'bad_token': 1003,
                         'identity_mismatch': 1004, 'clock_skew': 1005, 'unusable_key': 1006,
                         'address_not_allowed': 1007, 'enrollment_key_unavailable': 1008,
                         'payload_mismatch': 1009, 'body_too_large': 1010, 'bad_encoding': 1011,
-                        'malformed': 1012},
+                        'malformed': 1012, 'token_unknown': 1013, 'token_expired': 1014,
+                        'token_revoked': 1015, 'agent_busy': 1016},
     'enrollment': {'accepted': 2001, 'rejected_auth': 2002, 'rejected_validation': 2003, 'disabled': 2004,
                    'authd_error': 2005, 'authd_unavailable': 2006,
                    'authd_queue': {'depth': 2007, 'capacity': 2008, 'rejected_total': 2009},
@@ -135,6 +136,18 @@ def _dump_without(*names: str) -> dict:
 def test_build_remoted_http_metrics():
     """The whole registered catalog is projected onto the documented metrics.http_server shape."""
     assert stats.build_remoted_http_metrics(REMOTED_METRICS_DUMP) == EXPECTED_HTTP_SERVER_METRICS
+
+
+def test_build_remoted_http_metrics_auth_rejections_cover_every_reason():
+    """Every `remoted.auth.reject.*` reason in the dump is projected, so `total` counts every rejection."""
+    reasons = {entry['name'].rsplit('.', 1)[1] for entry in REMOTED_METRICS_DUMP['metrics']
+               if entry['name'].startswith('remoted.auth.reject.')}
+    result = stats.build_remoted_http_metrics(REMOTED_METRICS_DUMP)['auth_rejections']
+
+    assert reasons == set(result) - {'total'}
+    assert result['agent_busy'] == 1016
+    assert result['total'] == sum(entry['value'] for entry in REMOTED_METRICS_DUMP['metrics']
+                                  if entry['name'].startswith('remoted.auth.reject.'))
 
 
 def test_build_remoted_http_metrics_never_reports_the_admin_socket():

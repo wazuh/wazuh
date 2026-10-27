@@ -12,6 +12,9 @@ once per `synchronize()`, forces a full reload of a database that has gone missi
 outcome into the per-type status `GET /status` reports, and persists each type's hash — which is also
 the topic's change-detection token.
 
+`main.cpp` builds it only when `analysisd.server_enable_event_processing` is true. The
+operator-facing settings are on the engine [configuration](../../../../docs/ref/modules/engine/configuration.md) page.
+
 ## Architecture
 
 ```
@@ -36,9 +39,9 @@ the topic's change-detection token.
 ### One runner
 
 `synchronize()` is the only thing that runs the topics, one call at a time (`m_syncMutex`). It
-runs from the scheduler task `ioc-sync-task` (a `scheduler::TriggerableTask`): at startup, then on
-`analysisd.ioc_sync_interval` (0 = only on request), and whenever `POST /content/ioc/sync` triggers
-it. A request that arrives during a run makes the task run once more right after.
+runs from the scheduler task `ioc-sync-task` (a `scheduler::TriggerableTask`): at startup, then every
+`analysisd.ioc_sync_interval` seconds (default 360; `0` = only on request, no startup run either), and
+whenever `POST /content/ioc/sync` triggers it. A request that arrives during a run makes the task run once more right after.
 
 ### Per type, per run
 
@@ -47,7 +50,7 @@ it. A request that arrives during a run makes the task run once more right after
 2. The cycle compares the type's hash in the manifest with the stored one and, when it moved,
    downloads and swaps the database. The token store (`cmcontent::EngineTokenStore`) reads and
    writes the hash in this module's state; it is only touched from inside `synchronize()`.
-3. The outcome becomes the type's status:
+3. The type is reported `UPDATING` while its cycle runs; the outcome becomes the type's status:
 
 | Cycle status | Type status | Persisted |
 |---|---|---|
@@ -100,6 +103,15 @@ iocsync/
 ```cpp
 namespace ioc::sync
 {
+struct IocTypeStatus
+{
+    std::string type;
+    bool available {false};           // the type has a hash and its database exists
+    base::SyncStatus status {base::SyncStatus::READY}; // READY, UPDATING, FAILED
+    std::string hash;
+    uint32_t lastSuccessfulUpdate {0};
+};
+
 class IIocSync
 {
 public:
@@ -140,5 +152,5 @@ and shutdown. The download and the swap are covered by `cmcontent_utest` and `co
 
 | Consumer | Dependency | Usage |
 |---|---|---|
-| `main.cpp` | `iocsync::iocsync` | Builds `IocSync` and the `ioc-sync-task` that runs it |
+| `main.cpp` | `iocsync::iocsync` | Builds `IocSync` (only when event processing is enabled), registers `requestShutdown()` in the exit handler, and the `ioc-sync-task` that runs it |
 | `api::status` | `iocsync::iiocsync` | Reports per-type status through `GET /status` |

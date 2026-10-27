@@ -392,6 +392,52 @@ char *gen_audit_path(char *cwd, char *path0, char *path1) {
 }
 
 
+// Returns the path FIM stores for the object of a single-item event, and takes ownership of file_path.
+static char *audit_stored_path(char *file_path, const char *inode) {
+    struct stat st;
+
+    // The syscall acted on a symbolic link itself (chown -h), so FIM stores the link.
+    if (inode && w_lstat(file_path, &st) == 0 && S_ISLNK(st.st_mode) &&
+        st.st_ino == (ino_t)strtoull(inode, NULL, 10)) {
+        return file_path;
+    }
+
+    char *resolved = realpath(file_path, NULL);
+    if (resolved == NULL) {
+        mdebug1(FIM_CHECK_LINK_REALPATH, file_path); // LCOV_EXCL_LINE
+        return file_path;
+    }
+
+    // A whodata directory reached through a symbolic link above it, without follow_symbolic_link:
+    // FIM stores the resolved path spelled from the configured directory.
+    char *stored = NULL;
+    w_rwlock_rdlock(&syscheck.directories_lock);
+    const directory_t *configuration = fim_configuration_directory(resolved, false, syscheck.directories);
+    if (configuration == NULL || !(configuration->options & WHODATA_ACTIVE)) {
+        configuration = fim_configuration_directory(file_path, false, syscheck.directories);
+        if (configuration && (configuration->options & WHODATA_ACTIVE) && w_lstat(configuration->path, &st) == 0 &&
+            S_ISDIR(st.st_mode)) {
+            char *root = realpath(configuration->path, NULL);
+            const size_t root_len = root ? strlen(root) : 0;
+            if (root_len && strncmp(resolved, root, root_len) == 0 && resolved[root_len] == '/') {
+                const size_t size = strlen(configuration->path) + strlen(resolved + root_len) + 1;
+                os_malloc(size, stored);
+                snprintf(stored, size, "%s%s", configuration->path, resolved + root_len);
+            }
+            os_free(root);
+        }
+    }
+    w_rwlock_unlock(&syscheck.directories_lock);
+
+    free(file_path);
+    if (stored) {
+        free(resolved);
+        return stored;
+    }
+    return resolved;
+}
+
+
 void get_parent_process_info(char *ppid, char **const parent_name, char **const parent_cwd) {
 
     char *slinkexe = NULL;
@@ -766,16 +812,7 @@ void audit_parse(char *buffer) {
                                 (w_evt->inode) ? w_evt->inode : "", (file_path) ? file_path : "",
                                 (w_evt->process_name) ? w_evt->process_name : "");
 
-                        // Resolve the path like the items=2 case below: when the operation is
-                        // performed through a monitored symbolic link, the kernel reports the
-                        // symlink path, which does not match the resolved path FIM stores.
-                        w_evt->path = realpath(file_path, NULL);
-                        if (w_evt->path == NULL) {
-                            os_strdup(file_path, w_evt->path);
-                            mdebug1(FIM_CHECK_LINK_REALPATH, w_evt->path); // LCOV_EXCL_LINE
-                        }
-
-                        free(file_path);
+                        w_evt->path = audit_stored_path(file_path, w_evt->inode);
 
                         if (w_evt->inode) {
                             fim_whodata_event(w_evt);

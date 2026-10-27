@@ -173,8 +173,9 @@ after writing it:
 5. Environment cleared to `PATH=/usr/sbin:/usr/bin:/sbin:/bin` and `LANG=C`; umask `0077`; every
    inherited descriptor above 3 closed.
 6. `'1'` written to descriptor 3, which is then closed.
-7. Real, effective and saved uid and gid set to `0`, supplementary groups dropped, then the action is
-   executed as shown in the [README](README.md#wazuh-manager-service-control).
+7. Real, effective and saved uid and gid set to `0`, supplementary groups dropped (umask `0022` when it
+   runs `wazuh-manager-control`), then the action is executed as shown in the
+   [README](README.md#wazuh-manager-service-control).
 
 The `bin/.process_list` check matters because `wazuh-manager-control` sources that file
 (`wazuh-manager-control enable debug` writes to it) and the helper runs `wazuh-manager-control` as

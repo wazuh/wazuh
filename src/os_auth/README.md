@@ -114,8 +114,10 @@ it, inventory-sync applies it — and all three depend on these:
 | `include/enrollment_token_mint.h`, `include/enrollment_token_store.h`, `include/token_cli.h`, `include/reenroll_verify.h` | one header per unit above; `reenroll_verify.h` is the `extern "C"` surface the C callers see |
 
 `main-server.c` is deliberately **excluded from `authd_lib`**, the static library the unit tests link
-against (see [`CMakeLists.txt`](CMakeLists.txt)). Anything that needs coverage therefore belongs in
-`auth.c` or `local-server.c`, not in `main-server.c` — that is why the deletion journal lives in
+against (see [`CMakeLists.txt`](CMakeLists.txt)): it carries `main()`. Only one suite,
+`test_main-server`, compiles it directly (with `main` renamed) to reach the port-1515 connection
+helpers; the writer thread and startup have no unit coverage. Anything else that needs coverage
+therefore belongs in `auth.c` or `local-server.c` — that is why the deletion journal lives in
 `auth.c` even though only `main-server.c`'s writer thread drives it. Since `reenroll_verify.cpp` joined,
 `authd_lib` is a `C CXX` project linked as CXX (`cxx_std_17`); it takes from `ext_jwt_cpp` only its
 include directories and compile definitions, never the target itself, which would link a second, static
@@ -558,10 +560,11 @@ The `<force>` sub-block decides whether an enrollment may take over a name or IP
 All guards are evaluated together and every one has to allow it. With the defaults (`enabled` yes,
 `key_mismatch` yes, `disconnected_time` 1 h, `after_registration_time` 1 h) the existing agent is
 replaced when it has never connected or the disconnection guard allows it, was registered at least
-an hour ago, and the enrolling agent presents no `key_hash` or a different one. The disconnection
-guard refuses an agent whose `disconnection_time` is `0` and a `disconnected` agent whose
-disconnection is younger than the threshold; it does not look at the status otherwise, so an agent
-reported `active` with a nonzero `disconnection_time` (one that reconnected) passes it.
+an hour ago, and the enrolling agent presents no `key_hash` or a different one. For an agent that has
+connected, the disconnection guard takes the **status** as the verdict and the timestamp only as its
+measure (`w_auth_replace_agent()`): any status other than `disconnected` is refused as *not
+disconnected* — an `active` agent with a stale nonzero `disconnection_time` included — and so is a
+`disconnected` agent whose `disconnection_time` is `0` or younger than the threshold.
 
 Two consequences worth knowing:
 
@@ -624,6 +627,7 @@ store and re-enrollment — are catalogued, with their meaning, in the operator 
 | `unit_tests/os_auth/test_auth_add.c` | id and key assignment |
 | `unit_tests/os_auth/test_auth.c` | password handling |
 | `unit_tests/os_auth/test_auth_parse.c` | the enrollment message parser |
+| `unit_tests/os_auth/test_main-server.c` | `main-server.c` compiled on its own: the port-1515 idle-connection sweep, request reads split across TLS records or overflowing the buffer, and `enqueue_pending_key()`'s insert and rollback |
 | `unit_tests/os_auth/test_authd-config.c` | the `<auth>` block |
 | `unit_tests/os_auth/test_local-server.c` | the local-socket `add`/`remove`/`get` protocol: malformed key/id rejection (`9019`/`9020`), clustered forwarding; the `token_*` verbs and `add` with `token_id`/`reenroll` (`w_mconf_section`, `wdb_get_agent_info` and `w_reenroll_verify` wrapped; the store and the X509 checks run for real on temporary files) |
 | `unit_tests/os_auth/test_enrollment_token_store.c` | the store on real temporary files: mode, atomicity, what the file never contains, consume/release/revoke, reload, the purge (what it removes, what it leaves and the file it does not rewrite when there is nothing to remove) and both limits: the cap of 5000 with its automatic purge, and the byte ceiling that undoes the entry instead of writing a store remoted would refuse |
@@ -638,8 +642,8 @@ store and re-enrollment — are catalogued, with their meaning, in the operator 
 Two things to know before writing a case here. The log functions are wrapped, so **every** line the
 code under test emits has to be declared — and an undeclared one aborts cmocka from inside whatever
 lock the code was holding, which hangs the run rather than failing it. And `main-server.c` is not in
-`authd_lib`, so the phase ORDER itself — which is the writer thread — is only exercised in a running
-manager; what is unit-testable is every decision the phases delegate to `auth.c`. The two wazuh-db
+`authd_lib` (`test_main-server` reaches only its connection helpers), so the phase ORDER itself —
+which is the writer thread — is only exercised in a running manager; what is unit-testable is every decision the phases delegate to `auth.c`. The two wazuh-db
 calls are `--wrap`ped, because what those cases are about is how the ANSWERS are read: a real socket
 would make "the row is outstanding" and "the query failed" the same case.
 

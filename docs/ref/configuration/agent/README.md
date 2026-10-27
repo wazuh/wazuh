@@ -61,6 +61,7 @@ daemon at start with `(2302): Invalid definition for <name>: '<value>'.`
 | `wazuh_modules.task_nice` | `10` | `-20`-`19` | Nice value of the external programs modules launch (Command, AWS, Azure, GCP, SCA policy commands, the Agent Upgrade installer) |
 | `wazuh_modules.kill_timeout` | `10` | `0`-`3600` | Seconds a module's child process (the programs above, the Docker listener) gets to exit, at shutdown or after its command times out, before it is killed |
 | `wazuh_modules.socket_timeout` | `1` | `1`-`60` | Longest time, in seconds, a local client of the `wazuh-modulesd` request socket (`queue/sockets/wmodules`) can go without sending the next part of its request, or without reading the reply, before the connection is dropped. It bounds each wait, not the whole request; not used on Windows |
+| `wazuh_modules.unmask_credentials` | `0` | `0`-`1` | `1` reports the credentials set in `ossec.conf` (aws-s3 keys, GitHub token, Office 365 client secret, MS Graph secret value, Azure keys) in clear in the configuration report and in `getconfig` replies; `0` shows them as `*****`, see [config_report](../../modules/client/configuration.md#config_report) |
 | `wazuh.thread_stack_size` | `8192` | `2048`-`65536` | Stack size, in KiB, of the threads the daemons start through the shared thread helper |
 
 `wazuh_modules.rlimit_nofile` cannot go below `8192`: a lower value is rejected at start with

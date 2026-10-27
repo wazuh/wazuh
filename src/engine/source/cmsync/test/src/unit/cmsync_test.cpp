@@ -75,7 +75,9 @@ content_manager::SessionInfo sessionOf(content_manager::SessionKind kind, bool e
     content_manager::SessionInfo info;
     info.kind = kind;
     info.remoteToken = hash;
-    info.probeMetadata = nlohmann::json {{"enabled", enabled}, {"integrations", nlohmann::json::array({"wazuh-core"})}};
+    info.probeMetadata = nlohmann::json {{"enabled", enabled},
+                                         {"integrations", nlohmann::json::array({"wazuh-core"})},
+                                         {"root_decoder", "decoder/root/0"}};
     return info;
 }
 

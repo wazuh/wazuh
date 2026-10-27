@@ -35,11 +35,12 @@ namespace manager_certs
         constexpr const char* kCacertsPath = "/cacerts";
 
         /// What an operator can do instead when the master cannot be reached: the two knobs that
-        /// override the configuration, and the copy-by-hand path that does not need the network.
+        /// override the configuration, and the copy-by-hand path that does not need the network
+        /// (not `add`: every writing command refuses on a worker, G7).
         constexpr const char* kUnreachableHint =
             "; check that the master's HTTPS listener is up and reachable (override the address with "
-            "--master and the port with --port), or copy its bundle across with scp and install it here with "
-            "'wazuh-manager-certs add <file>' followed by 'wazuh-manager-certs check'";
+            "--master and the port with --port), or copy its bundle across with scp over this node's bundle "
+            "(keeping its owner and mode) and run 'wazuh-manager-certs check'";
 
         /// @p raw with its trailing slashes dropped and a leading one guaranteed, or empty for the
         /// root. Same criterion as remoted's own normalizeGlobalPrefix()
@@ -229,7 +230,7 @@ namespace manager_certs
             return refuse(2,
                           "the local trust bundle is empty: " + bundlePath +
                               "; there is nothing to verify the master's certificate with (provision it, or copy "
-                              "the master's bundle across and install it with 'wazuh-manager-certs add')");
+                              "the master's bundle over it and run 'wazuh-manager-certs check')");
         }
 
         // Guard 4: the URL, by components (§7).

@@ -104,8 +104,27 @@ components:
 | `{"command":"getconfig","parameters":{"section":"remote"\|"internal"\|"global"}}` | The effective `remote` or `global` section, or the resolved `remoted.*` internal options; served by `GET /cluster/{node_id}/configuration/request/{section}` |
 | `{"command":"assigngroup",...}` | Assigns the `default` group to a 4.x agent that has none; a worker's remoted sends it to the master's through the cluster |
 
-Any message that is not JSON is taken as a request to forward to a 4.x agent over the legacy
-channel, and is refused with `err Legacy delivery disabled` when that channel is off.
+Any message that does not start with `{` is taken as a request to forward to a 4.x agent over the
+legacy channel, and is refused with `err Legacy delivery disabled` when that channel is off.
+
+## Command line
+
+`/var/wazuh-manager/bin/wazuh-manager-remoted` is started by `wazuh-manager-control start` (the
+`wazuh-manager` systemd unit runs that command), which passes no option except `-d` after
+`wazuh-manager-control enable debug`, and runs `-t` on it before every start. The other options are
+for running the daemon by hand.
+
+| Option | Effect |
+|---|---|
+| `-t` | Test the configuration and exit: validates `wazuh-manager.conf` with file checks on (the TLS files must exist) and every `remoted.*` internal option, including the HTTPS agent server's; exits non-zero on the first error |
+| `-d` | Debug logging; repeat to raise the level. When given, the [`remoted.debug`](configuration.md#remoteddebug) internal option is not read |
+| `-f` | Run in the foreground instead of detaching |
+| `-c <config>` | Configuration file to read instead of `/etc/wazuh-manager/wazuh-manager.conf`; the enrollment policy remoted takes from its `auth` section comes from the same file |
+| `-D <dir>` | Home directory to change into instead of `/var/wazuh-manager`; it wins over the `WAZUH_MANAGER_FORCE_HOME` and `WAZUH_MANAGER_HOME` environment variables |
+| `-u <user>` / `-g <group>` | User and group to run as, `wazuh-manager` by default |
+| `-m` | Do not build the groups' `merged.mg` files, as if [`remoted.merge_shared`](configuration.md#remotedmerge_shared) were `0` |
+| `-V` | Print the version and license and exit |
+| `-h` | Print the usage and exit (status 1) |
 
 ## Related Modules
 

@@ -6,8 +6,10 @@
 This module will contain all cases for the only logs after test suite
 """
 
+import re
+
 import pytest
-from datetime import datetime
+from datetime import datetime, timedelta
 # qa-integration-framework imports
 from wazuh_testing import session_parameters
 from wazuh_testing.constants.paths.aws import S3_CLOUDTRAIL_DB_PATH, AWS_SERVICES_DB_PATH
@@ -25,6 +27,9 @@ from .configurator import configurator
 from .utils import ERROR_MESSAGE, TIMEOUT, local_internal_options
 
 pytestmark = [pytest.mark.server]
+
+# Bucket types whose marker the module rewinds to the day before the last processed key
+LATE_ARRIVAL_BUCKET_TYPES = {'cloudtrail', 'alb', 'clb', 'nlb'}
 
 # Set test configurator for the module
 configurator.module = 'only_logs_after_test_module'
@@ -908,6 +913,13 @@ def test_bucket_multiple_calls(
                        data=data,
                        key=key,
                        client=s3_client)
+
+    # The module rewinds the marker of these types to the day before the last processed key, to read the files
+    # delivered after a greater key of the same prefix
+    if bucket_type in LATE_ARRIVAL_BUCKET_TYPES:
+        date_match = re.search(r'\d{4}/\d{2}/\d{2}', last_marker_key)
+        rewind_day = datetime.strptime(date_match.group(), '%Y/%m/%d') - timedelta(days=1)
+        last_marker_key = f'{last_marker_key[:date_match.start()]}{rewind_day:%Y/%m/%d}'
 
     pattern = fr"{MARKER}{last_marker_key}"
 

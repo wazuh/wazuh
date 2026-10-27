@@ -16,6 +16,9 @@ namespace api::status::handlers
  * GET /status
  * Request: {}
  * Response: { ready, spaces, ioc, geo }
+ *
+ * cmSync and iocSync may be null (event processing disabled): the response then has no spaces/ioc entries
+ * and ready is false.
  */
 adapter::RouteHandler getStatus(const std::shared_ptr<cm::sync::ICMSync>& cmSync,
                                 const std::shared_ptr<ioc::sync::IIocSync>& iocSync,

@@ -1,5 +1,9 @@
 {
   "_comment": "category: section in the dashboard (events, bytes, or any custom label). unit: y-axis label (count, items, percent, bytes, eps).",
+  "agent.cache.rejected.identity": {
+    "category": "events",
+    "unit": "count"
+  },
   "server.bytes.received": {
     "category": "bytes",
     "unit": "bytes"
@@ -54,6 +58,46 @@
   },
   "indexer.events.dropped": {
     "category": "events",
+    "unit": "count"
+  },
+  "agent.cache.bytes": {
+    "category": "cache",
+    "unit": "bytes"
+  },
+  "agent.cache.max_entries": {
+    "category": "cache",
+    "unit": "items"
+  },
+  "agent.cache.max_bytes": {
+    "category": "cache",
+    "unit": "bytes"
+  },
+  "agent.cache.bypass.max_entries": {
+    "category": "cache",
+    "unit": "count"
+  },
+  "agent.cache.bypass.max_bytes": {
+    "category": "cache",
+    "unit": "count"
+  },
+  "agent.cache.entries": {
+    "category": "cache",
+    "unit": "items"
+  },
+  "agent.cache.hits": {
+    "category": "cache",
+    "unit": "count"
+  },
+  "agent.cache.insertions": {
+    "category": "cache",
+    "unit": "count"
+  },
+  "agent.cache.updates": {
+    "category": "cache",
+    "unit": "count"
+  },
+  "agent.cache.evictions": {
+    "category": "cache",
     "unit": "count"
   }
 }

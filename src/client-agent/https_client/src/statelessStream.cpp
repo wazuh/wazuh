@@ -11,15 +11,18 @@
 #include "statelessStream.hpp"
 
 #include "external/nlohmann/json.hpp"
+#include "httpsHeaderLine.hpp"
+
+#include <cstddef>
 
 namespace
 {
     /// Builds the H metadata line that opens every /stateless body (#37732).
     ///
-    /// Always carries wazuh.agent.id -- statelessEndpoint.cpp's
-    /// validatePayloadIdentity() reads exactly that pointer to cross-check the
-    /// payload against the authenticated connection, so this key must never
-    /// move or disappear. When collectHost is set and returns a parseable
+    /// Always carries wazuh.agent.id -- the engine compares that identity with
+    /// X-Wazuh-Agent-Id, which remoted authors from the verified JWT, before
+    /// enqueueing the batch. This key must never move or disappear.
+    /// When collectHost is set and returns a parseable
     /// JSON object (see bridge_on_collect_stateless_host()), its "agent" keys
     /// (name/version/groups/host, already nested the way the manager's
     /// strict_allow_templates wazuh.* mapping requires) are merged into
@@ -35,8 +38,11 @@ namespace
     /// Built through the JSON library rather than concatenated, so a value
     /// carrying a quote, a backslash or a newline cannot escape the string it
     /// sits in -- controlStream.cpp builds its payloads the same way.
-    std::string buildHeaderLine(const std::string& agentId, const std::function<std::string()>& collectHost)
+    std::string buildHeaderLine(const std::string& agentId,
+                                const std::function<std::string()>& collectHost,
+                                HeaderLineTrim& trim)
     {
+        trim = HeaderLineTrim::None;
         nlohmann::json extra;
 
         if (collectHost)
@@ -73,7 +79,25 @@ namespace
 
         nlohmann::json header;
         header["wazuh"] = std::move(wazuh);
-        return "H " + header.dump() + "\n";
+        auto json = header.dump();
+
+        // A long group list can push the line past remoted's cap. Groups go first,
+        // then everything but the id: events without them still beat no events.
+        if (json.size() > HTTPS_HEADER_LINE_JSON_MAX_BYTES)
+        {
+            header["wazuh"]["agent"].erase("groups");
+            json = header.dump();
+            trim = HeaderLineTrim::Groups;
+        }
+
+        if (json.size() > HTTPS_HEADER_LINE_JSON_MAX_BYTES)
+        {
+            header["wazuh"]["agent"] = {{"id", agentId}};
+            json = header.dump();
+            trim = HeaderLineTrim::AllButId;
+        }
+
+        return "H " + json + "\n";
     }
 } // namespace
 
@@ -103,10 +127,11 @@ StatelessStream::StatelessStream(const ModuleConfig& config,
                config.serverEndpoint)
     , m_sink(sink)
     , m_collectHost(std::move(collectHost))
-    , m_headerLine(buildHeaderLine(signer.agentId(), m_collectHost))
+    , m_headerLine(buildHeaderLine(signer.agentId(), m_collectHost, m_headerTrim))
     , m_headerAgentId(signer.agentId())
     , m_lastFlush(clock.steadyNow())
     , m_ladder(config.bufferWarnLevel, config.bufferNormalLevel, config.bufferFloodToleranceS)
+    , m_headerTrimLimiter(clock)
 {
 }
 
@@ -312,8 +337,8 @@ void StatelessStream::handleOutcome(OutcomeClass outcome,
         {
             // hc_set_agent_identity() landed while this batch was in flight (the
             // re-enroll path, #38465): the retry was signed by the new agent but
-            // the H line still named the old one, which the manager rejects with
-            // 400 (PayloadAgentMismatch). The events are fine -- keep them and let
+            // the H line still named the old one, which the engine rejects with
+            // 400 (relayed by remoted). The events are fine -- keep them and let
             // the next flush re-stamp the header with the live id.
             LOGFN_DEBUG2(m_logFn,
                          "Keeping a /stateless batch rejected with 4xx: the agent identity "
@@ -377,5 +402,20 @@ uint64_t StatelessStream::eventBytesBudgetLocked() const
 void StatelessStream::refreshHeaderLineLocked()
 {
     m_headerAgentId = m_signer.agentId();
-    m_headerLine = buildHeaderLine(m_headerAgentId, m_collectHost);
+    m_headerLine = buildHeaderLine(m_headerAgentId, m_collectHost, m_headerTrim);
+
+    // Events then reach the manager without the agent's groups, which group-scoped rules
+    // and DLS roles depend on: say so, without a line per flush.
+    if (m_headerTrim != HeaderLineTrim::None)
+    {
+        if (const auto decision = m_headerTrimLimiter.record())
+        {
+            LOGFN_DEBUG1(m_logFn,
+                         "The /stateless H line would exceed %zu bytes; sent %llu time(s) %s.",
+                         HTTPS_HEADER_LINE_JSON_MAX_BYTES,
+                         static_cast<unsigned long long>(decision.total),
+                         m_headerTrim == HeaderLineTrim::Groups ? "without the agent groups"
+                         : "with only the agent id");
+        }
+    }
 }

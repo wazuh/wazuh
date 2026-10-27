@@ -9,7 +9,7 @@ configuration files into the structures each daemon consumes.
 |---|---|---|---|
 | Agent daemons (`-DCLIENT`) | `etc/ossec.conf`, `etc/shared/agent.conf` | `ReadConfig(modules, cfgfile, ...)` (`src/config.c`) | XML (`os_xml`) |
 | Manager, on behalf of agents (the `Test_*()` checks behind `verify-agent-conf`) | `/etc/wazuh-manager/shared/<group>/agent.conf` (`CAGENT_CONFIG`) | `ReadConfig()` | XML |
-| Manager daemons | `/etc/wazuh-manager/wazuh-manager.conf` (`WAZUHCONF`, under `WAZUH_MANAGER_CONF_DIR`) | `w_mconf_load()` / `w_mconf_section()` (`src/mconf-config.c`, manager only) | strict XML validated against `/etc/wazuh-manager/wazuh-manager.schema.json` |
+| Manager daemons | `/etc/wazuh-manager/wazuh-manager.conf` (`WAZUHCONF`, under `WAZUH_MANAGER_CONF_DIR`) | `w_mconf_load()` / `w_mconf_section()` (`src/mconf-config.c`, manager only) | strict XML validated against the schema embedded at build time (`src/shared_modules/manager_config/schema/wazuh-manager.schema.json`; the installed copy is read by no daemon) |
 
 `ReadConfig()` dispatches each XML top-level element to its reader (`Read_Syscheck`, `Read_Localfile`, `Read_Client`,
 `Read_WModule`...). The manager's own sections (`global`, `remote`, `auth`, `wdb`, `indexer`, `vulnerability-detection`,

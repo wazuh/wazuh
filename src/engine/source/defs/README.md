@@ -4,7 +4,7 @@
 
 The `defs` module provides a **variable definition and substitution system** for the Wazuh engine. It manages a set of named definitions (key-value pairs stored as JSON) and performs variable replacement in strings using the `$variable` syntax.
 
-Its primary purpose is to allow policies and assets to declare reusable values (constants, paths, URLs, etc.) that are resolved at build time. Definitions can reference other definitions, forming dependency chains that are automatically resolved with cycle detection.
+Its primary purpose is to allow assets to declare reusable values (constants, paths, URLs, etc.) in their `definitions` section, resolved when the asset is built. Definitions can reference other definitions, forming dependency chains that are automatically resolved with cycle detection.
 
 ## Key Concepts
 
@@ -25,9 +25,12 @@ A definition is a named value stored within a JSON object. Each key in the JSON 
 
 A variable reference uses the `$name` syntax within a string. When `replace()` is called, every `$name` pattern is substituted with the corresponding definition value.
 
-- `$varname` — replaced with the value of `varname`
-- `\$varname` — escaped, produces the literal `$varname`
+- `$varname` — replaced with the value of `varname`; a variable name is a run of ASCII letters, digits and `_`
+- `\$varname` — escaped, produces the literal `$varname` (the backslash is removed only when a defined name
+  matches there — `varname` itself or a defined name that is a prefix of it; otherwise the input is left untouched)
 - `$nonexistent` — left as-is if the definition doesn't exist
+
+A non-string value is substituted as its compact JSON text (`1`, `true`, `null`, `[]`, `{}`).
 
 ### Dependency Resolution
 
@@ -55,9 +58,9 @@ After resolution, `$endpoint` expands to `/api/v1`.
 ┌──────────────────────────────────────────────────────────────┐
 │                   Consumer (Builder module)                   │
 │                                                              │
-│  1. Reads definition JSON from the store                     │
+│  1. Takes the `definitions` object of each asset             │
 │  2. Builds a Definitions object via IDefinitionsBuilder      │
-│  3. Uses IDefinitions to resolve $variables in asset configs │
+│  3. Uses IDefinitions to resolve $variables in the asset     │
 └────────────────────────┬─────────────────────────────────────┘
                          │ json::Json
                          ▼
@@ -99,7 +102,7 @@ defs/
     │   └── defs/
     │       ├── mockDefinitions.hpp          # GMock mock for IDefinitions and IDefinitionsBuilder
     │       ├── singleDef.hpp               # Test helper: single definition with fixed value
-    │       └── failDef.hpp                 # Test helper: always-failing IDefinitions
+    │       └── failDef.hpp                 # Test helper: IDefinitions that contains nothing and throws on get()
     └── src/
         └── unit/
             └── defs_test.cpp               # Unit tests
@@ -113,10 +116,11 @@ Main contract for accessing and using definitions. Defined in `interface/defs/id
 
 ```cpp
 class IDefinitions {
-    // Get the JSON value of a definition by its dot-path name (e.g., "/key" or "/nested/key")
+    // Get the JSON value of a definition by its JSON-pointer path (e.g., "/key" or "/nested/key");
+    // throws std::runtime_error("Definition '<name>' not found") when absent
     virtual json::Json get(std::string_view name) const = 0;
 
-    // Check if a definition exists at the given dot-path
+    // Check if a definition exists at the given JSON-pointer path
     virtual bool contains(std::string_view name) const = 0;
 
     // Replace all $variable references in the input string with their resolved values
@@ -138,18 +142,22 @@ class IDefinitionsBuilder {
 
 ### Construction (`Definitions(const json::Json&)`)
 
-1. **Validates** the input is a JSON object (throws otherwise)
-2. **Rejects** any key starting with `$` (reserved for variable references)
-3. Stores raw definitions in `m_definitions`
+1. **Validates** the input is a JSON object (throws `Definitions must be an object, got <type>` otherwise)
+2. **Rejects** any key starting with `$` (`Definition name '<name>' cannot start with '$'`)
+3. Stores a compact copy of the raw definitions in `m_definitions`
 4. Calls `preResolveDefinitions()` to compute `m_resolvedDefinitions`
+
+The default constructor leaves `m_definitions` empty: `contains()` is always `false` and `replace()` returns its
+input unchanged (`DefsDefaultTest.DefaultConstructor`).
 
 ### Pre-resolution (`preResolveDefinitions`)
 
-At construction time, all definitions with string values containing `$` references are resolved into their final form. This is a one-time cost that makes subsequent `replace()` calls fast.
+At construction time every definition is cached as a string — a string value as is, any other value as its
+compact JSON text — and every `$` reference to another definition inside it is resolved into its final form. This is a one-time cost that makes subsequent `replace()` calls fast.
 
 The algorithm uses `resolveDefinitionDFS()`:
 - Maintains a **visited set** and a **recursion stack** for cycle detection
-- If a definition references another, it recursively resolves the dependency first
+- If a definition references another, it recursively resolves the dependency first. A reference is the longest defined name that follows a `$` and is not followed by a letter, digit or `_` — the same rule `replace()` applies, so a name with characters such as `-` resolves inside another definition too
 - Resolved values are cached in `m_resolvedDefinitions`
 - Circular references (`a → b → a`) throw `std::runtime_error`
 - Each resolved definition records its nesting depth next to its cached value, so the depth check does not depend on the order in which definitions are visited
@@ -168,14 +176,15 @@ Each definition can reference others several times, so the expanded size grows e
 
 ### Variable Replacement (`replace`)
 
-When `replace()` is called:
+When `replace()` is called, each pre-resolved definition is substituted in turn:
 1. Definitions are sorted by name length (longest first) to prevent prefix conflicts (e.g., `$ab` replacing inside `$abc`)
 2. Each `$variable` pattern is matched with proper boundary checking — a match is only valid if the next character is not alphanumeric or underscore
-3. Escaped variables (`\$var`) produce the literal `$var` with the backslash removed
+3. Escaped variables (`\$var`) produce the literal `$var` with the backslash removed (only where a defined
+   name's pattern is found, since only those patterns are searched; the escape is checked before the boundary)
 
 ### `get` and `contains`
 
-These operate on the raw `m_definitions` JSON using dot-path navigation:
+These operate on the raw `m_definitions` JSON using JSON-pointer paths:
 - `/key` — top-level key
 - `/nested/key` — nested object access
 - `/array/0` — array index access
@@ -191,24 +200,34 @@ These operate on the raw `m_definitions` JSON using dot-path navigation:
 | `$url` | `{"host": "h", "url": "http://$host"}` | `http://h` | Dependency chain resolved |
 | `$ab` | `{"ab": "X", "abc": "Y"}` | `X` | Longest-first matching prevents prefix conflict |
 | `$abc` | `{"ab": "X", "abc": "Y"}` | `Y` | Boundary check ensures correct match |
+| `$a` | `{"a": 1}` | `1` | Non-string value substituted as JSON text |
 
 ## Usage from the Builder
 
 The `builder` module is the primary consumer. The typical flow is:
 
 ```cpp
-// 1. At engine startup, a DefinitionsBuilder is created
-auto defsBuilder = std::make_shared<defs::DefinitionsBuilder>();
+// 1. At engine startup (main.cpp), a DefinitionsBuilder is created
+auto defs = std::make_shared<defs::DefinitionsBuilder>();
 
 // 2. The Builder receives it as a dependency
-Builder builder(..., defsBuilder, ...);
+std::make_shared<builder::Builder>(cmStore, schemaValidator, defs, allowedFields, builderDeps, store);
 
-// 3. When building a policy, the builder reads the definitions JSON from the store
-//    and calls defsBuilder->build(definitionsJson) to create an IDefinitions instance
+// 3. For each asset, AssetBuilder (builder/src/policy/assetBuilder.cpp) takes its optional `definitions`
+//    object, calls build() on it (an empty object when the asset has none) and stores the result in the
+//    asset's build context.
 
-// 4. During asset construction, $variables in check/parse expressions are resolved:
-std::string resolved = definitions.replace("field == $expected_value");
+// 4a. Check and parse stages substitute $variables in their expression strings
+//     (builder/src/builders/stage/check.cpp, stage/parse.cpp):
+auto replacedExpr = buildCtx->definitions().replace(logicExpr);
+
+// 4b. A helper argument that is a reference naming a definition is replaced by the definition's JSON value
+//     (builder/src/builders/baseHelper.cpp):
+if (buildCtx->definitions().contains(ref->jsonPath()))
+    opArgs[i] = std::make_shared<Value>(buildCtx->definitions().get(ref->jsonPath()));
 ```
+
+Definitions are therefore scoped to one asset: an asset cannot use another asset's definitions.
 
 ## CMake Targets
 
@@ -218,6 +237,8 @@ std::string resolved = definitions.replace("field == $expected_value");
 | `defs` | — | STATIC | Concrete implementation. Depends on `defs::idefinitions` and `base`. |
 | `defs_mocks` | `defs::mocks` | INTERFACE | GMock mocks for external testing. Depends on `defs::idefinitions`. |
 | `defs_utest` | — | EXECUTABLE | Unit tests. |
+
+`defs_mocks` and `defs_utest` exist only when `ENGINE_BUILD_TEST` is on.
 
 ## Testing
 
@@ -230,15 +251,16 @@ Tests are in `test/src/unit/defs_test.cpp` and cover:
 - **Circular references**: Detection of direct cycles (`a→b→a`), transitive cycles (`a→b→c→a`), self-references (`a→a`)
 - **Limits**: Each limit at and over its bound, exponential blocks (2^34, 4^20) rejected without allocating, the `replace()` budget, and literals larger than `MAX_EXPANDED_SIZE` still accepted
 - **Error messages**: Validates that exceptions contain useful diagnostic information
-- **Performance**: Handles 1000+ definitions without issues
+- **Performance**: Builds 1000 definitions without throwing
 - **Special JSON values**: Numbers, booleans, null, unicode, empty strings
 - **Builder**: Verifies `DefinitionsBuilder` creates valid instances and propagates errors
 
 ### Running Tests
 
+Built only with engine tests enabled (`make -C src TARGET=manager ENGINE_TEST=y`):
+
 ```bash
-# From the engine build directory:
-./defs_utest
+src/build/engine/source/defs/defs_utest
 ```
 
 ## Relevant Design Decisions

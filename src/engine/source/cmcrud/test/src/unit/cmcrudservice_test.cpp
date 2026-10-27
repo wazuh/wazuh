@@ -1560,6 +1560,73 @@ TEST_F(CrudServiceImportNsFromVectorTest, SoftValidationFalse_ValidatesPolicy)
         service->importNamespace(nsId, {}, {}, {}, {}, makeJsonPayload(kPolicyJson), /*softValidation=*/false));
 }
 
+// softValidation=false → a failed decoder validation fails the import before the resource is stored
+
+TEST_F(CrudServiceImportNsFromVectorTest, SoftValidationFalse_InvalidDecoder_Throws)
+{
+    std::vector<json::Json> decoders = {makeJsonPayload(kDecoderJson)};
+
+    EXPECT_CALL(*validator, validateAsset(_, _)).WillOnce(Return(base::Error {"bad decoder"}));
+    EXPECT_CALL(*nsPtr, createResource(_, _, _)).Times(0);
+    EXPECT_CALL(*nsPtr, upsertPolicy(_)).Times(0);
+
+    try
+    {
+        service->importNamespace(nsId, {}, decoders, {}, {}, makeJsonPayload(kPolicyJson), /*softValidation=*/false);
+        FAIL() << "Expected std::runtime_error";
+    }
+    catch (const std::runtime_error& e)
+    {
+        EXPECT_THAT(std::string {e.what()}, HasSubstr("Asset validation failed"));
+        EXPECT_THAT(std::string {e.what()}, HasSubstr("bad decoder"));
+    }
+}
+
+// softValidation=false → a failed filter validation fails the import before the resource is stored
+
+TEST_F(CrudServiceImportNsFromVectorTest, SoftValidationFalse_InvalidFilter_Throws)
+{
+    std::vector<json::Json> filters = {makeJsonPayload(kFilterJson)};
+
+    EXPECT_CALL(*validator, validateAsset(_, _)).WillOnce(Return(base::Error {"bad filter"}));
+    EXPECT_CALL(*nsPtr, createResource(_, _, _)).Times(0);
+    EXPECT_CALL(*nsPtr, upsertPolicy(_)).Times(0);
+
+    try
+    {
+        service->importNamespace(nsId, {}, {}, filters, {}, makeJsonPayload(kPolicyJson), /*softValidation=*/false);
+        FAIL() << "Expected std::runtime_error";
+    }
+    catch (const std::runtime_error& e)
+    {
+        EXPECT_THAT(std::string {e.what()}, HasSubstr("Asset validation failed"));
+        EXPECT_THAT(std::string {e.what()}, HasSubstr("bad filter"));
+    }
+}
+
+// softValidation=false → a failed integration validation fails the import before the resource is stored
+
+TEST_F(CrudServiceImportNsFromVectorTest, SoftValidationFalse_InvalidIntegration_Throws)
+{
+    std::vector<json::Json> integrations = {makeJsonPayload(kIntegrationJson)};
+
+    EXPECT_CALL(*validator, softIntegrationValidate(_, _)).WillOnce(Return(base::Error {"bad integration"}));
+    EXPECT_CALL(*nsPtr, createResource(_, _, _)).Times(0);
+    EXPECT_CALL(*nsPtr, upsertPolicy(_)).Times(0);
+
+    try
+    {
+        service->importNamespace(
+            nsId, {}, {}, {}, integrations, makeJsonPayload(kPolicyJson), /*softValidation=*/false);
+        FAIL() << "Expected std::runtime_error";
+    }
+    catch (const std::runtime_error& e)
+    {
+        EXPECT_THAT(std::string {e.what()}, HasSubstr("Integration validation failed"));
+        EXPECT_THAT(std::string {e.what()}, HasSubstr("bad integration"));
+    }
+}
+
 // softValidation=true → no validator calls at all
 
 TEST_F(CrudServiceImportNsFromVectorTest, SoftValidationTrue_SkipsAllValidation)

@@ -35,7 +35,9 @@ content_manager::SessionInfo sessionOf(content_manager::SessionKind kind,
                                        bool enabled = true,
                                        const std::vector<std::string>& integrations = {"int1"})
 {
-    return sessionWith(kind, nlohmann::json {{"enabled", enabled}, {"integrations", integrations}});
+    return sessionWith(
+        kind,
+        nlohmann::json {{"enabled", enabled}, {"integrations", integrations}, {"root_decoder", "decoder/root/0"}});
 }
 
 nlohmann::json hitOf(const std::string& index, nlohmann::json source)
@@ -133,6 +135,36 @@ TEST_F(RulesetSpaceSinkTest, APolicyWithAnEmptyIntegrationListCountsAsDisabled)
     // `enabled` and the integration list are separate fields and can disagree; a policy with no
     // integrations would deploy a namespace that routes nothing.
     EXPECT_EQ(sink->beginSession(sessionOf(content_manager::SessionKind::FullReload, /*enabled=*/true, {})),
+              content_manager::SessionDecision::Skip);
+    EXPECT_EQ(sink->deployment().enabled, false);
+}
+
+TEST_F(RulesetSpaceSinkTest, APolicyWithoutARootDecoderCountsAsDisabled)
+{
+    // A policy that lists integrations but has no root decoder cannot be built; keeping its old
+    // route would go on decoding events with content already removed from the indexer. Anything
+    // but a non-empty string is no root decoder, and none of them aborts the cycle.
+    const std::vector<nlohmann::json> noRootDecoder {
+        nlohmann::json(nullptr), nlohmann::json(""), nlohmann::json(42), nlohmann::json::array({"decoder/root/0"})};
+    for (const auto& rootDecoder : noRootDecoder)
+    {
+        serve("cmsync_standard_abcd");
+        EXPECT_CALL(*router, deleteEntry(std::string {ROUTE})).Times(1);
+        EXPECT_CALL(*crud, deleteNamespace(cm::store::NamespaceId("cmsync_standard_abcd"))).Times(1);
+
+        const auto metadata =
+            nlohmann::json {{"enabled", true}, {"integrations", {"int1"}}, {"root_decoder", rootDecoder}};
+        EXPECT_EQ(sink->beginSession(sessionWith(content_manager::SessionKind::FullReload, metadata)),
+                  content_manager::SessionDecision::Skip)
+            << rootDecoder.dump();
+        EXPECT_EQ(sink->deployment().enabled, false) << rootDecoder.dump();
+        testing::Mock::VerifyAndClearExpectations(router.get());
+        testing::Mock::VerifyAndClearExpectations(crud.get());
+    }
+
+    // Missing altogether.
+    EXPECT_EQ(sink->beginSession(sessionWith(content_manager::SessionKind::FullReload,
+                                             nlohmann::json {{"enabled", true}, {"integrations", {"int1"}}})),
               content_manager::SessionDecision::Skip);
     EXPECT_EQ(sink->deployment().enabled, false);
 }

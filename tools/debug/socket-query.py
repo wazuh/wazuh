@@ -11,9 +11,11 @@ Socket Query Tool for Wazuh modules
 
 Examples:
     echo -n '{"command":"getconfig","parameters":{"section":"internal"}}' | \\
-    ./socket-query.py /var/wazuh-manager/queue/sockets/engine-api-http.sock
+    ./socket-query.py /var/wazuh-manager/queue/sockets/remote.sock
 
-This tool allows you to send queries to Wazuh module control sockets.
+This tool allows you to send queries to Wazuh module control sockets that speak
+the framed protocol (a 4-byte little-endian length, then the payload). Sockets
+that speak HTTP, such as engine-api-http.sock, need curl --unix-socket instead.
 """
 
 

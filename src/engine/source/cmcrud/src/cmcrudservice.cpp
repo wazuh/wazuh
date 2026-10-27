@@ -398,7 +398,6 @@ void CrudService::importNamespace(const cm::store::NamespaceId& nsId,
                                   bool softValidation)
 {
     const auto store = getStore();
-    const auto validator = getValidator();
     // Reject if destination namespace already exists
     if (store->existsNamespace(nsId))
     {
@@ -437,7 +436,7 @@ void CrudService::importNamespace(const cm::store::NamespaceId& nsId,
 
         if (!softValidation)
         {
-            validator->validateAsset(nsReader, assetJson);
+            validateAsset(nsReader, assetJson);
         }
         ns->createResource(name.toStr(), cm::store::ResourceType::DECODER, assetJson);
     }
@@ -456,7 +455,7 @@ void CrudService::importNamespace(const cm::store::NamespaceId& nsId,
 
         if (!softValidation)
         {
-            validator->validateAsset(nsReader, assetJson);
+            validateAsset(nsReader, assetJson);
         }
         ns->createResource(name.toStr(), cm::store::ResourceType::FILTER, assetJson);
     }
@@ -473,7 +472,7 @@ void CrudService::importNamespace(const cm::store::NamespaceId& nsId,
         }
         if (!softValidation)
         {
-            validator->softIntegrationValidate(nsReader, integ);
+            validateIntegration(nsReader, integ);
         }
         ns->createResource(integ.getName(), cm::store::ResourceType::INTEGRATION, integ.toJson());
     }

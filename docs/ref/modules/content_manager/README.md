@@ -5,7 +5,8 @@ page by page, to whoever registered for it. Two hosts link it in-process; it has
 modulesd module of its own:
 
 - the **Vulnerability Scanner** (in `wazuh-manager-modulesd`) registers its feed topic,
-  `vulnerability_feed_manager`, and builds its local CVE database from it;
+  `vulnerability_feed_manager`, and builds its local CVE database from it. With
+  `<vulnerability-detection>` disabled no topic is registered, so nothing is downloaded;
 - the **Engine** (`wazuh-manager-analysisd`) registers one topic per ruleset space (`cmsync`) and one
   per IoC type (`iocsync`), and keeps its ruleset and IoC enrichment databases in step with them.
 
@@ -80,7 +81,9 @@ hosts:
 | Engine store documents `cmsync/status/0`, `iocsync/status/0` | Engine: the deployed hash of each ruleset space and IoC type |
 
 If the vulnerability feed's cursor database cannot be opened or repaired, it is rebuilt empty and
-the next update is an initial load.
+the next update is an initial load. The Vulnerability Scanner also clears the stored cursor when it
+finds its own feed database (`queue/vd/feed`) incomplete or unreadable at start, which forces the next
+update to be an initial load.
 
 ## On-demand updates
 

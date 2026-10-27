@@ -127,6 +127,14 @@ static void expect_client_accepted(void) {
     expect_value(__wrap_OS_RecvSecureTCP, sock, TEST_PEER);
 }
 
+// No module takes the message, so modulesSync() retries before giving up.
+static void expect_sync_retries_exhausted(void) {
+    expect_string(__wrap__mdebug1, formatted_msg, "WModules is not ready. Retry 1");
+    expect_string(__wrap__mdebug1, formatted_msg, "WModules is not ready. Retry 2");
+    expect_string(__wrap__mdebug1, formatted_msg, "WModules is not ready. Retry 3");
+    expect_string(__wrap__merror, formatted_msg, "At modulesSync(): Unable to sync module '': (-1)");
+}
+
 static void assert_client_and_socket_closed(void) {
     assert_int_equal(closed_fds_count, 2);
     assert_int_equal(closed_fds[0], TEST_PEER);
@@ -193,10 +201,7 @@ static void test_wmcom_main_answers_and_closes_client(void **state) {
     will_return(__wrap_OS_RecvSecureTCP, 5);
 
     // An unknown command falls through to the sync dispatcher, which finds no module.
-    expect_string(__wrap__mdebug1, formatted_msg, "WModules is not ready. Retry 1");
-    expect_string(__wrap__mdebug1, formatted_msg, "WModules is not ready. Retry 2");
-    expect_string(__wrap__mdebug1, formatted_msg, "WModules is not ready. Retry 3");
-    expect_string(__wrap__merror, formatted_msg, "At modulesSync(): Unable to sync module '': (-1)");
+    expect_sync_retries_exhausted();
     expect_string(__wrap__mdebug1, formatted_msg, "At WMCOM sync: Could not sync 'bogus' buffer");
     expect_string(__wrap__mdebug1, formatted_msg, "WMCOM Unrecognized command 'bogus'.");
 
@@ -211,12 +216,66 @@ static void test_wmcom_main_answers_and_closes_client(void **state) {
     assert_client_and_socket_closed();
 }
 
+static void test_wmcom_main_closes_client_on_empty_request(void **state) {
+    (void)state;
+
+    expect_client_accepted();
+    will_return(__wrap_OS_RecvSecureTCP, NULL);
+    will_return(__wrap_OS_RecvSecureTCP, 0);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "Empty message from local client.");
+    expect_string(__wrap__mdebug1, formatted_msg, "Local server thread finished.");
+
+    wmcom_main(NULL);
+
+    assert_client_and_socket_closed();
+}
+
+static void test_wmcom_main_terminates_a_full_size_request(void **state) {
+    (void)state;
+    static const char EXPECTED_REPLY[] = "err Unrecognized command";
+    char *request = NULL;
+    char *expected_sync = NULL;
+    char *expected_unrecognized = NULL;
+    os_calloc(OS_MAXSTR + 1, sizeof(char), request);
+    os_calloc(OS_MAXSTR, sizeof(char), expected_sync);
+    os_calloc(OS_MAXSTR, sizeof(char), expected_unrecognized);
+    memset(request, 'x', OS_MAXSTR);
+
+    // The unit tests build with ASan: without the extra byte, logging the request reads past its buffer.
+    expect_client_accepted();
+    will_return(__wrap_OS_RecvSecureTCP, request);
+    will_return(__wrap_OS_RecvSecureTCP, OS_MAXSTR);
+
+    expect_sync_retries_exhausted();
+    // expect_string() keeps the pointer, so each expected message needs its own buffer.
+    snprintf(expected_sync, OS_MAXSTR, "At WMCOM sync: Could not sync '%s' buffer", request);
+    expect_string(__wrap__mdebug1, formatted_msg, expected_sync);
+    snprintf(expected_unrecognized, OS_MAXSTR, "WMCOM Unrecognized command '%s'.", request);
+    expect_string(__wrap__mdebug1, formatted_msg, expected_unrecognized);
+
+    expect_value(__wrap_OS_SendSecureTCP, sock, TEST_PEER);
+    expect_value(__wrap_OS_SendSecureTCP, size, strlen(EXPECTED_REPLY));
+    expect_string(__wrap_OS_SendSecureTCP, msg, EXPECTED_REPLY);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "Local server thread finished.");
+
+    wmcom_main(NULL);
+
+    assert_client_and_socket_closed();
+    os_free(expected_unrecognized);
+    os_free(expected_sync);
+    os_free(request);
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test_setup_teardown(test_wmcom_main_closes_client_on_oversize_request, setup, teardown),
         cmocka_unit_test_setup_teardown(test_wmcom_main_closes_client_on_receive_error, setup, teardown),
         cmocka_unit_test_setup_teardown(test_wmcom_main_closes_client_that_does_not_send, setup, teardown),
+        cmocka_unit_test_setup_teardown(test_wmcom_main_closes_client_on_empty_request, setup, teardown),
         cmocka_unit_test_setup_teardown(test_wmcom_main_answers_and_closes_client, setup, teardown),
+        cmocka_unit_test_setup_teardown(test_wmcom_main_terminates_a_full_size_request, setup, teardown),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

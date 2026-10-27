@@ -145,10 +145,9 @@ namespace remoted::auth
         StaleToken,           ///< Clock-relative rejection: issued in the future, expired, or older than
                               ///< the accepted age (AuthConfig::timePolicy).
         IdentityMismatch,     ///< `sub` / `iss` do not name the agent `kid` names.
-        PayloadAgentMismatch, ///< Raised by POST /stateless's pre-forward check (statelessEndpoint.cpp):
-                              ///< the H-line JSON is missing/malformed, or wazuh.agent.id is
-                              ///< missing/not-a-string/not-numeric, or doesn't match the authenticated
-                              ///< agent id.
+        PayloadAgentMismatch, ///< POST /stateless's pre-forward check: missing literal "H " prefix
+                              ///< or an H-line slice larger than 8 KiB. JSON and identity validation
+                              ///< belong to the engine; its 400 response is relayed separately.
         BodyTooLarge,
         UnsupportedContentEncoding, ///< Content-Encoding present but not (case-insensitively) "zstd".
         MalformedContentEncoding,   ///< Content-Encoding: zstd, but the body isn't a valid/complete

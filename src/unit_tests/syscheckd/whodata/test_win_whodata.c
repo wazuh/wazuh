@@ -18,6 +18,7 @@
 #include <ntsecapi.h>
 #include <sddl.h>
 #include <winevt.h>
+#include <malloc.h>
 
 #include "wrappers/common.h"
 #include "wrappers/libc/stdio_wrappers.h"
@@ -3302,6 +3303,26 @@ void test_replace_device_path_device_found(void **state) {
     *state = path;
 
     assert_string_equal(path, "A:\\a\\path");
+    // The buffer fits the converted path exactly
+    assert_int_equal(_msize(path), strlen("A:\\a\\path") + 1);
+}
+
+void test_replace_device_path_path_is_device(void **state) {
+    char *path = strdup("\\Device\\HarddiskVolume5\\");
+    syscheck.wdata.device[0] = strdup("\\Device\\HarddiskVolume5\\");
+    syscheck.wdata.drive[0] = strdup("V:\\");
+
+    expect_string(__wrap__mdebug2, formatted_msg,
+        "(6304): Find device '\\Device\\HarddiskVolume5\\' in path '\\Device\\HarddiskVolume5\\'");
+    expect_string(__wrap__mdebug2, formatted_msg,
+        "(6305): Replacing '\\Device\\HarddiskVolume5\\' to 'V:\\'");
+
+    replace_device_path(&path);
+
+    *state = path;
+
+    assert_string_equal(path, "V:\\");
+    assert_int_equal(_msize(path), strlen("V:\\") + 1);
 }
 
 void test_get_drive_names_access_denied_error(void **state) {
@@ -8188,6 +8209,7 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_replace_device_path_empty_wdata_device, setup_replace_device_path, teardown_replace_device_path),
         cmocka_unit_test_setup_teardown(test_replace_device_path_device_not_found, setup_replace_device_path, teardown_replace_device_path),
         cmocka_unit_test_setup_teardown(test_replace_device_path_device_found, setup_replace_device_path, teardown_replace_device_path),
+        cmocka_unit_test_setup_teardown(test_replace_device_path_path_is_device, setup_replace_device_path, teardown_replace_device_path),
         /* get_drive_names */
         cmocka_unit_test(test_get_drive_names_access_denied_error),
         cmocka_unit_test(test_get_drive_names_more_data_error),

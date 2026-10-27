@@ -18,6 +18,16 @@ HTTP POST over Unix socket at `/var/wazuh-manager/queue/sockets/engine-ingest-ht
 `application/x-wev1` (classic C dispatcher) or `application/x-ndjson` (HTTPS `remoted_module`
 ingestion path, forwarding to `POST /events/enriched`).
 
+Both remoted paths also send `X-Wazuh-Agent-Id: <agent id>`. It names the agent the batch belongs to
+outside the `H` line, and remoted always writes it itself:
+
+- The HTTPS `remoted_module` path sends the canonical id of the agent it authenticated (the token's
+  `sub`, e.g. `001`), never a value copied from the agent's request.
+- The classic C dispatcher sends the canonical spelling of the key's id (`1` in `client.keys` is sent
+  as `001`), and its `H` line carries that same spelling.
+- A dispatcher batch whose stored id is not a valid agent id is discarded; warnings are limited to
+  one every 90 seconds across dispatcher threads.
+
 ## Message Format
 
 Batch structure:
@@ -77,7 +87,7 @@ The header is a JSON object conforming to Elastic Common Schema (ECS):
 
 | Field | Type | Required | Description | Example |
 |-------|------|----------|-------------|---------|
-| `wazuh.agent.id` | string | **Yes** | Agent numeric ID | `"001"` |
+| `wazuh.agent.id` | string | **Yes** | Canonical uint32 agent ID, zero-padded only to 3 digits | `"001"` |
 | `wazuh.agent.name` | string | No | Agent name | `"web-server-01"` |
 | `wazuh.agent.version` | string | No | Wazuh agent version | `"v5.0.0"` |
 | `wazuh.agent.groups` | array[string] | No | Agent groups | `["web", "production"]` |
@@ -91,6 +101,15 @@ The header is a JSON object conforming to Elastic Common Schema (ECS):
 | `wazuh.cluster.node` | string | No | Manager node | `"master-node"` |
 
 ### Rules
+
+The engine requires exactly one locally authored `X-Wazuh-Agent-Id`. It must be canonical
+(`000`–`999`, or no leading zero through `4294967295`) and equal to the H-line id. It rejects a
+missing/repeated/malformed carrier or an ambiguous/mismatched H-line identity with HTTP 400.
+On the HTTPS path, remoted verifies the JWT and checks only the literal `H ` prefix and
+8 KiB H-line slice limit before forwarding; it does not parse the JSON. H-line identity validation
+belongs to the engine, with cache hits reusing validation of the same id and exact header bytes.
+The engine does not verify JWTs; it trusts producers that can write to its local socket to supply the authenticated or
+server-side identity. See the [ingestion specification](../engine/spec-events.yaml).
 
 - Exactly one header per batch (first line)
 - JSON must be compact (no newlines)
@@ -146,9 +165,12 @@ The manager applies no per-event size limit of its own on the HTTPS path; what b
 there is the whole body: the transport limit is
 [`https.max_body_size`](configuration.md#httpsmax_body_size), 10 MiB by default, and the authentication
 limit is [`remoted.auth_max_body_size`](configuration.md#remotedauth_max_body_size), 5 MiB by default.
-Both limits apply to the bytes received on the wire. For zstd on `/stateless`, decoded output is
-charged to the shared [in-flight byte budget](configuration.md#remotedmax_inflight_bytes),
-not capped at 10 MiB; the decoder also limits its window to 8 MiB. `/stateless` separately limits
+Both limits apply to the bytes received on the wire. For zstd on `/stateless`, the decoded body is
+capped by [`remoted.auth_max_decoded_body_size`](configuration.md#remotedauth_max_decoded_body_size),
+32 MiB by default, and charged to the shared
+[in-flight byte budget](configuration.md#remotedmax_inflight_bytes) and to the agent's
+[share of it](configuration.md#remotedmax_inflight_bytes_per_agent); the decoder also limits its
+window to 8 MiB. `/stateless` separately limits
 the header JSON to 8 KiB. On the legacy
 TCP/UDP channel a single agent message is bounded by the receive buffer, `OS_MAXSTR` (64 KiB).
 
@@ -158,8 +180,8 @@ TCP/UDP channel a single agent message is bounded by the receive buffer, `OS_MAX
 
 ```
 H {"wazuh":{"agent":{"id":"001","name":"web-01","version":"v5.0.0","groups":["web"],"host":{"os":{"type":"linux"}}}}}
-E {"timestamp":"2026-01-05T10:00:00Z","log":"Connection from 192.168.1.100"}
-E {"timestamp":"2026-01-05T10:00:01Z","log":"Authentication successful"}
+E 1:syslog:{"timestamp":"2026-01-05T10:00:00Z","log":"Connection from 192.168.1.100"}
+E 1:syslog:{"timestamp":"2026-01-05T10:00:01Z","log":"Authentication successful"}
 ```
 
 ### Full Batch
@@ -168,14 +190,15 @@ E {"timestamp":"2026-01-05T10:00:01Z","log":"Authentication successful"}
 POST /events/enriched HTTP/1.1
 Host: localhost
 Content-Type: application/x-wev1
-Content-Length: 655
+X-Wazuh-Agent-Id: 001
+Content-Length: 682
 User-Agent: wazuh-manager-remoted/1.0
 Connection: keep-alive
 
 H {"wazuh":{"agent":{"id":"001","name":"web-server-01","version":"v5.0.0","groups":["web","production"],"host":{"architecture":"x86_64","hostname":"web-server-01","os":{"name":"Ubuntu","version":"22.04","platform":"ubuntu","type":"linux"}}},"cluster":{"name":"production","node":"master-node"}}}
-E {"timestamp":"2026-01-05T10:00:00.000Z","log":"sshd[1234]: Connection from 192.168.1.100 port 54321"}
-E {"timestamp":"2026-01-05T10:00:01.123Z","log":"sshd[1234]: Accepted publickey for admin from 192.168.1.100"}
-E {"timestamp":"2026-01-05T10:00:02.456Z","log":"sudo: admin : TTY=pts/0 ; PWD=/home/admin ; USER=root ; COMMAND=/bin/systemctl restart nginx"}
+E 1:syslog:{"timestamp":"2026-01-05T10:00:00.000Z","log":"sshd[1234]: Connection from 192.168.1.100 port 54321"}
+E 1:syslog:{"timestamp":"2026-01-05T10:00:01.123Z","log":"sshd[1234]: Accepted publickey for admin from 192.168.1.100"}
+E 1:syslog:{"timestamp":"2026-01-05T10:00:02.456Z","log":"sudo: admin : TTY=pts/0 ; PWD=/home/admin ; USER=root ; COMMAND=/bin/systemctl restart nginx"}
 ```
 
 ## Parsing
@@ -188,13 +211,18 @@ Trailing newlines are trimmed from each event; blank lines between events are sk
 ## Engine Responses
 
 - `200`: the batch was parsed and its events queued for processing.
-- `400`: the batch could not be parsed (`{"error": "<parser message>", "code": 400}`); nothing of it
-  is ingested. The engine logs `[API::Event] Failed to parse request: '<message>'`.
+- `400`: the identity carrier is missing, repeated or noncanonical; the H-line identity is missing,
+  ambiguous, mismatched or has a dotted alias; or the H/E batch is malformed. The response is
+  `{"error": "<validation message>", "code": 400}`. Identity failures are rejected before any event
+  is enqueued and increment `agent.cache.rejected.identity`. Identity and parse warnings are
+  independently throttled to one per 90 seconds; their prefixes are `[API::Event] Identity rejected`
+  and `[API::Event] Failed to parse request`, respectively.
 - `500`: internal error in the engine.
 
 The engine's event server sets no request-size limit of its own. On the HTTPS path, remoted maps these
 answers onto what the agent receives (see [HTTPS Agent API](https-events-api.md#error-responses));
-the legacy dispatcher does not retry a failed batch.
+the legacy dispatcher does not retry a failed batch. For an engine `400`, remoted preserves the
+HTTP status but replaces the body with `{"error":"Invalid event batch","code":400}`.
 
 ## Security
 

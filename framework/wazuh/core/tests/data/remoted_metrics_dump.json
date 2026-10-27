@@ -119,6 +119,12 @@
       "value": 1010
     },
     {
+      "name": "remoted.auth.reject.agent_busy",
+      "type": "counter",
+      "enabled": true,
+      "value": 1016
+    },
+    {
       "name": "remoted.auth.reject.clock_skew",
       "type": "counter",
       "enabled": true,
@@ -153,6 +159,24 @@
       "type": "counter",
       "enabled": true,
       "value": 1009
+    },
+    {
+      "name": "remoted.auth.reject.token_expired",
+      "type": "counter",
+      "enabled": true,
+      "value": 1014
+    },
+    {
+      "name": "remoted.auth.reject.token_revoked",
+      "type": "counter",
+      "enabled": true,
+      "value": 1015
+    },
+    {
+      "name": "remoted.auth.reject.token_unknown",
+      "type": "counter",
+      "enabled": true,
+      "value": 1013
     },
     {
       "name": "remoted.auth.reject.unknown_agent",

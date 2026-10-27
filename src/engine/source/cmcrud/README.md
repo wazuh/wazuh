@@ -2,9 +2,11 @@
 
 ## Overview
 
-The **cmcrud** module is the **CRUD service layer** for the Wazuh engine's Content Manager. It sits between the HTTP API handlers and the underlying `cmstore`, mediating all create / read / update / delete operations on namespaces, policies, and resources (decoders, filters, outputs, integrations, KVDBs).
+The **cmcrud** module is the **CRUD service layer** for the Wazuh engine's Content Manager. It sits between the API handlers (`api/cmcrud`), the content synchronization service (`cmsync`) and the underlying `cmstore`, mediating create / read / update / delete operations on namespaces, policies, and resources (decoders, filters, outputs, integrations, KVDBs).
 
-Before any mutation reaches the store, `cmcrud` receives a structured `json::Json` payload, applies type-specific adaptations (canonical field ordering for assets), and delegates structural validation to `builder::IValidator`. This guarantees that every artifact persisted in `cmstore` has already been checked for consistency.
+Before a mutation reaches the store, `cmcrud` receives a structured `json::Json` payload, applies type-specific adaptations (canonical field ordering for assets), and delegates structural validation to `builder::IValidator` (the `builder::Builder` instance in production). The bulk import paths can skip that validation (`force` / `softValidation`); see [Namespace Import](#namespace-import).
+
+The routes that reach this module (`/_internal/content/*` and the public `/content/validate/*` routes) are documented for operators in the engine's [private API reference](../../../../docs/ref/modules/engine/private-api-reference.md) and [public API reference](../../../../docs/ref/modules/engine/public-api-reference.md).
 
 ## Architecture
 
@@ -36,7 +38,7 @@ Before any mutation reaches the store, `cmcrud` receives a structured `json::Jso
 
 ### Validation-Before-Mutation
 
-`CrudService` never writes to `cmstore` without validating first. Depending on the resource type it calls:
+The single-resource mutations (`upsertPolicy`, `upsertResource`) always validate before writing. Depending on the resource type `CrudService` calls:
 
 | Resource Type | Validation Path |
 |---|---|
@@ -45,41 +47,35 @@ Before any mutation reaches the store, `cmcrud` receives a structured `json::Jso
 | **Asset** (decoder / filter / output) | `IValidator::validateAsset()` |
 | **KVDB** | Parsed via `cm::store::dataType::KVDB::fromJson()` (structural check only) |
 
-A `force` / `softValidation` flag on the import paths can relax or skip some of these checks.
+A failed `base::OptError` from the validator is turned into `std::runtime_error` by `throwIfError()`. On the import paths the `force` / `softValidation` flag skips the validator calls; the structural checks (adapter, name prefix, UUID, `fromJson`) still run.
 
 ### Asset Adaptation
 
-Before storing an asset, its JSON representation is run through a type-specific *adapter* that enforces canonical field ordering:
+Before storing an asset, its JSON representation is run through a type-specific *adapter* from `cmstore/detail.hpp`:
 
-- `detail::adaptDecoder()` — canonical ordering for decoders
-- `detail::adaptFilter()` — canonical ordering for filters
-- `detail::adaptOutput()` — canonical ordering for outputs
+- `cm::store::detail::adaptDecoder()` — decoders
+- `cm::store::detail::adaptFilter()` — filters
+- `cm::store::detail::adaptOutput()` — outputs
 
-This ensures deterministic serialisation regardless of the order in which the user supplied the fields.
+Each adapter rebuilds the document with its known keys in a fixed order (keys it does not know are dropped), checks that `name` has exactly three parts `<type>/<name>/<version>` with the matching prefix, and requires a boolean `enabled`. This gives a deterministic serialisation regardless of the order in which the caller supplied the fields.
 
 ### Namespace Import
 
-Import is an all-or-nothing operation. Resources are ingested in a strict order to satisfy dependency chains:
+Import only targets a **new** namespace: both overloads throw if `nsId` already exists. Resources are ingested in a fixed order so that references resolve:
 
 1. **KVDBs**
 2. **Decoders**
-3. **Filters** (extracted from integrations in the JSON-document overload)
-4. **Outputs** (extracted from integrations in the JSON-document overload)
+3. **Filters**
+4. **Outputs** (JSON-document overload only)
 5. **Integrations**
 6. **Policy**
 
-If any step fails, a `bestEffortDelete` rollback lambda removes whatever was already created in the namespace.
-
 Two overloads exist:
 
-| Overload | Input | Use Case |
-|---|---|---|
-| `importNamespace(nsId, jsonDocument, origin, force)` | Single JSON document containing all components | API-driven import (e.g. uploading a full namespace export) |
-| `importNamespace(nsId, kvdbs, decoders, integrations, policy, softValidation)` | Pre-parsed component vectors | Programmatic import from `cmsync` |
-
-### Weak-Pointer Resource Model
-
-`CrudService` stores its dependencies (`ICMStore`, `IValidator`) as `std::weak_ptr`. Every public method locks them on entry via `getStore()` / `getValidator()`, throwing `std::runtime_error` if the underlying object has been destroyed. This prevents dangling references and makes lifetime management explicit.
+| Overload | Input | Caller | Rollback |
+|---|---|---|---|
+| `importNamespace(nsId, jsonDocument, originSpace, force)` | One JSON document `{"policy": {…}, "resources": {"kvdbs", "decoders", "filters", "outputs", "integrations"}}` | `api/cmcrud`: `namespaceImport`, and `policyValidate` (`POST /content/validate/policy`) into a temporary namespace with `force=true` | Internal: the `bestEffortDelete` lambda deletes the namespace if any step fails after it was created |
+| `importNamespace(nsId, kvdbs, decoders, filters, integrations, policy, softValidation)` | Pre-parsed component vectors (no outputs) | `cmsync` (always `softValidation=true`) | None internally; `cmsync` deletes the namespace itself when the call throws |
 
 ## Directory Structure
 
@@ -92,12 +88,13 @@ cmcrud/
 ├── include/cmcrud/
 │   └── cmcrudservice.hpp           # CrudService concrete implementation header
 ├── src/
-│   └── cmcrudservice.cpp           # Full implementation (~750 lines)
+│   └── cmcrudservice.cpp           # Implementation
 └── test/
     ├── mocks/cmcrud/
     │   └── mockcmcrud.hpp          # GMock mock (MockCrudService)
-    ├── unit/                       # Unit tests
-    └── component/                  # Component tests
+    └── src/
+        ├── unit/cmcrudservice_test.cpp
+        └── component/cmcrud_test.cpp
 ```
 
 ## Public Interface
@@ -119,20 +116,21 @@ public:
     virtual cm::store::dataType::Policy
     importNamespace(const cm::store::NamespaceId& nsId,
                     std::string_view jsonDocument,
-                    std::string_view origin,
+                    std::string_view originSpace,
                     bool force) = 0;
 
     virtual void
     importNamespace(const cm::store::NamespaceId& nsId,
                     const std::vector<json::Json>& kvdbs,
                     const std::vector<json::Json>& decoders,
+                    const std::vector<json::Json>& filters,
                     const std::vector<json::Json>& integrations,
                     const json::Json& policy,
                     bool softValidation) = 0;
 
     // ── Policy ─────────────────────────────────────────────
     virtual void upsertPolicy(const cm::store::NamespaceId& nsId,
-                              std::string_view document) = 0;
+                              const json::Json& policy) = 0;
     virtual void deletePolicy(const cm::store::NamespaceId& nsId) = 0;
 
     // ── Generic Resources ──────────────────────────────────
@@ -140,14 +138,14 @@ public:
     listResources(const cm::store::NamespaceId& nsId,
                   cm::store::ResourceType type) const = 0;
 
-    virtual std::string
+    virtual json::Json
     getResourceByUUID(const cm::store::NamespaceId& nsId,
                       const std::string& uuid) const = 0;
 
     virtual void
     upsertResource(const cm::store::NamespaceId& nsId,
                    cm::store::ResourceType type,
-                   std::string_view document) = 0;
+                   const json::Json& resource) = 0;
 
     virtual void
     deleteResourceByUUID(const cm::store::NamespaceId& nsId,
@@ -155,9 +153,11 @@ public:
 
     virtual void
     validateResource(cm::store::ResourceType type,
-                     const json::Json& resource) = 0;
+                     const json::Json& payload) = 0;
 };
 ```
+
+All methods signal failure by throwing `std::runtime_error`, its message prefixed with the operation (`Failed to upsert resource of type '…' in namespace '…': …`).
 
 ### `ResourceSummary`
 
@@ -187,78 +187,86 @@ private:
     std::shared_ptr<cm::store::ICMStore> getStore() const;
     std::shared_ptr<builder::IValidator> getValidator() const;
 
-    void validatePolicy(/* ... */) const;
-    void validateIntegration(/* ... */) const;
-    void validateAsset(/* ... */) const;
+    void validatePolicy(nsReader, policy) const;
+    void validateIntegration(nsReader, integration) const;
+    void validateAsset(nsReader, assetJson) const;
 
-    std::shared_ptr<cm::store::ICMStoreNSReader> getNamespaceStoreView(/* ... */) const;
-    std::shared_ptr<cm::store::ICMstoreNS>       getNamespaceStore(/* ... */) const;
+    std::shared_ptr<cm::store::ICMStoreNSReader> getNamespaceStoreView(nsId) const;
+    std::shared_ptr<cm::store::ICMstoreNS>       getNamespaceStore(nsId) const;
 };
 ```
+
+The constructor throws `std::invalid_argument` on a null store or validator. Dependencies are held as `std::weak_ptr`; `getStore()` / `getValidator()` lock them and throw `std::runtime_error` (`CMStore is no longer available`, `Validator is no longer available`) once the owner has released them. `getNamespaceStore*()` throw `Namespace '<ns>' does not exist` when the store returns no handle.
 
 ### Anonymous-Namespace Helpers (`cmcrudservice.cpp`)
 
 | Helper | Purpose |
 |---|---|
-| `assetUuidFromJson(json)` | Extracts the UUID string from a JSON asset document |
-| `assetNameFromJson(json)` | Extracts the logical name string from a JSON asset document |
-| `throwIfError(base::OptError)` | Converts an `OptError` into a thrown `std::runtime_error` |
-| `policyFromDocument(const json::Json&)` | Converts a JSON object into `cm::store::dataType::Policy` |
-| `integrationFromDocument(const json::Json&, bool requireUUID)` | Converts a JSON object into `cm::store::dataType::Integration` |
-| `kvdbFromDocument(const json::Json&, bool requireUUID)` | Converts a JSON object into `cm::store::dataType::KVDB` |
+| `assetUuidFromJson(json, name)` | Reads `/id`; throws if missing, empty or not a valid resource id (`base::utils::generators::isValidResourceId`) |
+| `assetNameFromJson(json)` | Reads `/name` as `base::Name`; throws if missing or empty |
+| `throwIfError(base::OptError, context)` | Converts an `OptError` into a thrown `std::runtime_error` |
+| `policyFromDocument(const json::Json&)` | `cm::store::dataType::Policy::fromJson` |
+| `integrationFromDocument(const json::Json&, bool requireUUID)` | `cm::store::dataType::Integration::fromJson` |
+| `kvdbFromDocument(const json::Json&, bool requireUUID)` | `cm::store::dataType::KVDB::fromJson` |
+| `existsByUUIDWithType(nsReader, uuid, type)` | True if the UUID exists with this type; throws `UUID '…' already belongs to <type> '…'` if it belongs to another type (the store updates by UUID whatever owns it) |
 
 ### Key Flows
 
 #### `upsertResource`
 
-1. Receive the incoming payload as `json::Json`.
+1. Resolve the namespace (`getNamespaceStore`).
 2. Branch by `ResourceType`:
-   - **INTEGRATION** — convert via `integrationFromDocument()`, validate with `validateIntegration()`, then create or update.
-   - **KVDB** — convert via `kvdbFromDocument()`, then create or update.
-   - **DECODER / FILTER / OUTPUT** — adapt via `detail::adaptDecoder/Filter/Output()`, validate asset name prefix matches type, call `validateAsset()`, then create or update based on UUID / name existence.
+   - **INTEGRATION** — `integrationFromDocument(…, requireUUID=false)`, `validateIntegration()`, then `updateResourceByUUID` if `existsByUUIDWithType()` else `createResource`.
+   - **KVDB** — `kvdbFromDocument(…, requireUUID=false)` (no validator call), then update by UUID or create, same rule.
+   - **DECODER / FILTER / OUTPUT** — adapt via `adaptDecoder/Filter/Output()`, check the name prefix matches the type, `validateAsset()`, then `updateResourceByName` if `assetExistsByName()` else `createResource`.
 3. On any failure, throw `std::runtime_error`.
 
 #### `importNamespace` (JSON document)
 
-1. Parse `jsonDocument` and extract `/policy` and `/resources` (kvdbs, decoders, integrations).
-2. Create the namespace via `cmstore`.
-3. Register a `bestEffortDelete` rollback lambda.
-4. Import in strict order: KVDBs → Decoders → Filters → Outputs → Integrations → Policy.
-5. Unless `force == true`, validate each resource before storing.
-6. On success, return the imported `Policy`.
+1. Reject an existing `nsId`.
+2. Parse `jsonDocument`; the root must have exactly the two object keys `policy` and `resources`.
+3. Create the namespace; from here any exception triggers `bestEffortDelete` (a failed rollback is logged as a warning).
+4. Import `/resources/kvdbs`, `decoders`, `filters`, `outputs`, `integrations` in that order (an absent array is skipped). Integrations and KVDBs need a UUID and a valid name part; assets need `/id`, a valid name and a matching prefix.
+5. Unless `force == true`, validate each integration, asset and the policy.
+6. Set the policy's origin space when `originSpace` is not empty, upsert it, and return the stored `Policy`.
 
 #### `getResourceByUUID`
 
-1. Resolve UUID to `{name, type}` via the namespace reader.
-2. Load the typed object (decoder / filter / output / integration / KVDB).
-3. Serialise the typed object back to a JSON string.
+1. Resolve the UUID to `{name, type}` via the namespace reader.
+2. Load the typed object (integration / KVDB via their `toJson()`, decoder / filter / output via `getAssetByUUID`).
+3. Return it as `json::Json`.
 
 #### `validateResource`
 
-1. For **DECODER / FILTER**: adapt payload, validate name prefix, call `validator->validateAssetShallow()`.
-2. For **INTEGRATION**: convert from the provided `json::Json` via `integrationFromDocument()`.
-3. For **KVDB**: convert from the provided `json::Json` via `kvdbFromDocument()`.
+No namespace is involved.
+
+1. **DECODER / FILTER**: adapt the payload, require `/id`, check the name prefix, call `validator->validateAssetShallow()`.
+2. **INTEGRATION**: `Integration::fromJson(…, requireUUID=true)` and a valid name part.
+3. **KVDB**: `KVDB::fromJson(…, requireUUID=true)` and a valid name part.
+4. Any other type (including **OUTPUT**) throws `Unsupported resource type`. The `POST /content/validate/resource` handler never reaches this case: it answers `Unsupported value for /type` for `output` as for an unknown type.
 
 ## CMake Targets
 
 | Target | Type | Alias | Links |
 |---|---|---|---|
-| `cmcrud_icmcrud` | INTERFACE | `cmcrud::icmcrud` | `cmstore::icmstore` |
-| `cmcrud_cmcrud` | STATIC | `cmcrud::cmcrud` | `builder::ibuilder` (public) |
+| `cmcrud_icmcrud` | INTERFACE | `cmcrud::icmcrud` | `base`, `cmstore::icmstore` |
+| `cmcrud_cmcrud` | STATIC | `cmcrud::cmcrud` | `cmcrud::icmcrud`, `builder::ibuilder` (public); `yml` (private) |
 | `cmcrud_mocks` | INTERFACE | `cmcrud::mocks` | `cmcrud::icmcrud`, `GTest::gmock` |
-| `cmcrud_utest` | Executable | — | `cmcrud::cmcrud`, `cmstore::mocks`, `builder::mocks`, `GTest::gtest_main` |
-| `cmcrud_ctest` | Executable | — | `cmcrud::cmcrud`, `cmstore::mocks`, `builder::mocks`, `GTest::gtest_main` |
+| `cmcrud_utest` | Executable | — | `cmcrud::cmcrud`, `cmcrud::mocks`, `cmstore::mocks`, `builder::mocks`, `GTest::gtest_main`, `GTest::gmock` |
+| `cmcrud_ctest` | Executable | — | same as `cmcrud_utest` |
+
+The mocks and test executables exist only when `ENGINE_BUILD_TEST` is on.
 
 ## Testing
 
-- **Unit tests** (`test/unit/`) — test `CrudService` methods with mocked `ICMStore` and `IValidator`.
-- **Component tests** (`test/component/`) — broader scenarios covering import flows and resource lifecycle.
-- **Mock** (`test/mocks/cmcrud/mockcmcrud.hpp`) — `MockCrudService` implements `ICrudService` with GMock macros for use by downstream consumers' tests.
+- **Unit tests** (`test/src/unit/cmcrudservice_test.cpp`) — `CrudService` methods with mocked `ICMStore` and `IValidator`.
+- **Component tests** (`test/src/component/cmcrud_test.cpp`) — import flows and resource lifecycle, still over the mocks.
+- **Mock** (`test/mocks/cmcrud/mockcmcrud.hpp`) — `MockCrudService` implements `ICrudService` with GMock macros for downstream consumers' tests (`api/cmcrud`, `cmsync`).
 
 ## Consumers
 
 | Module | Dependency | Role |
 |---|---|---|
-| `api/cmcrud` | `cmcrud::icmcrud` | HTTP API handlers that expose namespace and resource CRUD operations to external clients |
-| `cmsync` | `cmcrud::icmcrud` | Content synchronization service that uses `ICrudService` to import content from the cluster |
-| `main.cpp` | `cmcrud::cmcrud` | Creates the `CrudService` instance, wiring it with the store and validator |
+| `api/cmcrud` | `cmcrud::icmcrud` | API handlers that expose namespace and resource CRUD, namespace import and resource validation |
+| `cmsync` | `cmcrud::icmcrud` | Content synchronization service that imports each space downloaded from `wazuh-indexer` |
+| `main.cpp` | `cmcrud::cmcrud` | Creates the `CrudService` with `cmStore` and the `builder::Builder` as validator, and hands it to `cmsync` and the API handlers |

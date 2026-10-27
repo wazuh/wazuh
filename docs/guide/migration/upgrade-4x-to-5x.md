@@ -202,17 +202,17 @@ Remove unsupported elements:
 
 ## `local_internal_options.conf` migration notes
 
-`local_internal_options.conf` overrides values defined in the default `internal_options.conf`. Comparing the agent default internal options between `4.14.X` and `5.0.0`, no agent-side option keys were renamed. These `agent.*` keys were removed because nothing in 5.0 reads them, so a copy left in `local_internal_options.conf` has no effect:
+`local_internal_options.conf` overrides values defined in the default `internal_options.conf`. Comparing the agent default internal options between `4.14.X` and `5.0.0`, no agent-side option keys were renamed. These agent-side keys were removed because nothing in 5.0 reads them, so a copy left in `local_internal_options.conf` has no effect:
 
 - `agent.min_eps`
-- `agent.tcp_keepidle`, `agent.tcp_keepintvl`, `agent.tcp_keepcnt`, `agent.send_timeout`
-- `agent.request_pool`, `agent.request_rto_sec`, `agent.request_rto_msec`, `agent.max_attempts`
+- `agent.recv_timeout`
+- `sca.request_db_interval`
 
 All agent component namespaces remain valid in 5.0:
 
-`agent`, `execd`, `logcollector`, `rootcheck`, `sca`, `syscheck`, `wazuh_command`, `wazuh_modules`, `windows`.
+`agent`, `execd`, `logcollector`, `monitord`, `rootcheck`, `sca`, `syscheck`, `wazuh`, `wazuh_command`, `wazuh_modules`, `windows`.
 
-The internal options removed in 5.0 belong exclusively to **manager-side** components (for example `analysisd.*`, `remoted.*`, `wazuh_db.*`, `vulnerability-detection.*`). These never take effect on an agent, so they do not require any migration action on agent hosts.
+Every other key the 4.x file carried belongs to a **manager-side** component (for example `analysisd.*`, `remoted.*`, `wazuh_db.*`, `vulnerability-detection.*`, and `monitord.*` other than the six rotation keys below); the 5.0 agent file no longer lists them. They never took effect on an agent, so they do not require any migration action on agent hosts.
 
 `monitord.*` is **not** in that set. Those six rotation keys are read by the agent for its own log management and are unchanged in 5.0 — keep them. (On the *manager* they were renamed; see the manager configuration migration guide.)
 
@@ -231,13 +231,13 @@ After upgrading and cleaning configuration, verify:
 2. Agent and manager versions are both compatible with 5.0 communication protocol.
 3. The agent holds a trust anchor at `/var/ossec/etc/certs/root-ca.pem` and verifies the manager. A remote upgrade delivers one — see [Trust anchor delivery to legacy agents](remote-agent-upgrade.md#trust-anchor-delivery-to-legacy-agents); a local package upgrade does not. On Linux, a `(4126)` in `ossec.log` means one was delivered but never installed, usually because the `openssl` command is missing — see [When the CA cannot be validated on the agent](remote-agent-upgrade.md#when-the-ca-cannot-be-validated-on-the-agent).
 
-Port `1515` is the legacy enrollment listener, used only by 4.x agents, and `1514` is the legacy session listener that 4.x agents (and the remote upgrade of a 4.x agent) use. A 5.0 manager opens `1514` only when `<remote><legacy>` is configured, and `1515` follows it unless `<auth><legacy_enrollment>` is set explicitly. An upgraded agent never uses either: it keeps the identity it already has and does not enroll again, and a 5.0 agent registering for the first time does so over `POST /enroll` on `1517`, with an enrollment token.
+Port `1515` is the legacy enrollment listener, used only by 4.x agents, and `1514` is the legacy session listener that 4.x agents (and the remote upgrade of a 4.x agent) use. A 5.0 manager opens `1514` only when `<remote><legacy>` is present and enabled (the installer writes it with `<enabled>yes</enabled>` unless `WAZUH_REMOTE_LEGACY_ENABLED=no`), and `1515` follows it unless `<auth><legacy_enrollment>` is set explicitly. An upgraded agent never uses either: it keeps the identity it already has and does not enroll again, and a 5.0 agent registering for the first time does so over `POST /enroll` on `1517`, with an enrollment token.
 
-The following are the messages of an agent still running **4.x** (not yet upgraded, or whose upgrade aborted) that cannot reach those legacy listeners, for example because the 5.0 manager was installed without `<remote><legacy>`. A 5.0 agent does not log them:
+The following are the messages of an agent still running **4.x** (not yet upgraded, or whose upgrade aborted) that cannot reach those legacy listeners, for example because the 5.0 manager runs with `<remote><legacy><enabled>no</enabled>`. A 5.0 agent does not log them (`(4101)` names the agent's own version, `v4.14.0` here):
 
 ```console
 ERROR: (1208): Unable to connect to enrollment service at '[MANAGER_IP]:1515'
-WARNING: (4101): Waiting for server reply (not started). Tried: 'MANAGER_IP'. Ensure that the manager version is 'v5.0.0' or higher.
+WARNING: (4101): Waiting for server reply (not started). Tried: 'MANAGER_IP'. Ensure that the manager version is 'v4.14.0' or higher.
 ERROR: (1216): Unable to connect to '[MANAGER_IP]:1514/tcp': 'Transport endpoint is not connected'.
 ```
 

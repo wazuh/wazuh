@@ -11,6 +11,7 @@
 #ifndef _INVSYNC_SYNC_FULL_SESSION_VALIDATOR_HPP
 #define _INVSYNC_SYNC_FULL_SESSION_VALIDATOR_HPP
 
+#include "common/agentMetadataLimits.hpp"
 #include "schema/syncSchema.hpp"
 
 #include <cstddef>
@@ -23,11 +24,10 @@
 namespace invsync::sync
 {
 
-    /// D26: Start.groups ceiling. Restates MAX_GROUPS_PER_MULTIGROUP (defs.h), which C++ does not
-    /// include -- keep the two equal.
-    constexpr std::size_t MAX_START_GROUPS {128};
-    /// D26: one group name. Restates MAX_GROUP_NAME (defs.h).
-    constexpr std::size_t MAX_START_GROUP_NAME_BYTES {255};
+    /// D26: Start.groups ceiling.
+    constexpr std::size_t MAX_START_GROUPS {invsync::common::MAX_AGENT_GROUPS};
+    /// D26: one group name.
+    constexpr std::size_t MAX_START_GROUP_NAME_BYTES {invsync::common::MAX_AGENT_GROUP_NAME_BYTES};
     /// D26: Start.index ceiling. The agent declares one entry per index a module syncs.
     constexpr std::size_t MAX_START_INDICES {64};
     /// D26: one index name -- the indexer's own limit on an index name.

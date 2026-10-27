@@ -949,10 +949,20 @@ def filter_array_by_query(q: str, input_array: typing.List) -> typing.List:
             In case of a date, return the element after its conversion. Otherwise it return the element.
         """
         date_patterns = ['%Y-%m-%d', '%Y-%m-%dT%H:%M:%SZ', '%Y-%m-%d %H:%M:%S', '%Y-%m-%dT%H:%M:%S.%fZ']
+        # The same timestamps carrying a numeric UTC offset (`+00:00`, `-0300`), as response bodies render
+        # them: parsed as aware datetimes and converted to UTC, never relabelled.
+        offset_date_patterns = ['%Y-%m-%dT%H:%M:%S%z', '%Y-%m-%dT%H:%M:%S.%f%z', '%Y-%m-%d %H:%M:%S%z',
+                                '%Y-%m-%d %H:%M:%S.%f%z']
 
         for pattern in date_patterns:
             try:
                 return get_utc_strptime(element, pattern)
+            except (ValueError, TypeError):
+                pass
+
+        for pattern in offset_date_patterns:
+            try:
+                return datetime.strptime(element, pattern).astimezone(timezone.utc)
             except (ValueError, TypeError):
                 pass
 
@@ -1091,10 +1101,10 @@ def filter_array_by_query(q: str, input_array: typing.List) -> typing.List:
         r"\.?([\w.]*)?" +
         # Operator: looks for '=', '!=', '<', '>' or '~'.
         rf"([{''.join(operators)}]{{1,2}})" +
-        # Value: A string.
-        r"((?:(?:\((?:\[[\[\]\w _\-.,:?\\/'\"=@%<>{}]*]|[\[\]\w _\-.:?\\/'\"=@%<>{}]*)\))*"
-        r"(?:\[[\[\]\w _\-.,:?\\/'\"=@%<>{}]*]|[\[\]\w _\-.:?\\/'\"=@%<>{}]+)"
-        r"(?:\((?:\[[\[\]\w _\-.,:?\\/'\"=@%<>{}]*]|[\[\]\w _\-.:?\\/'\"=@%<>{}]*)\))*)+)" +
+        # Value: A string. `+` is accepted for the UTC offset of a timestamp literal.
+        r"((?:(?:\((?:\[[\[\]\w _\-.,:?\\/'\"=@%<>{}+]*]|[\[\]\w _\-.:?\\/'\"=@%<>{}+]*)\))*"
+        r"(?:\[[\[\]\w _\-.,:?\\/'\"=@%<>{}+]*]|[\[\]\w _\-.:?\\/'\"=@%<>{}+]+)"
+        r"(?:\((?:\[[\[\]\w _\-.,:?\\/'\"=@%<>{}+]*]|[\[\]\w _\-.:?\\/'\"=@%<>{}+]*)\))*)+)" +
         r"\)?"
     )
 
