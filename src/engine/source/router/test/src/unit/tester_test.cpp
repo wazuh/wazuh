@@ -1,6 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 #include <gtest/gtest.h>
 
+#include <atomic>
+#include <thread>
+#include <vector>
+
 #include <bk/mockController.hpp>
 #include <builder/mockBuilder.hpp>
 #include <builder/mockPolicy.hpp>
@@ -613,4 +617,161 @@ TEST_F(TesterTest, UpdateLastUsedWithExplicitTimestamp)
     EXPECT_TRUE(m_test->updateLastUsed(ENVIRONMENT_NAME, 12345));
 
     stopControllerCall();
+}
+
+/**************************************************************************
+ * replaceEntry tests
+ *************************************************************************/
+
+TEST_F(TesterTest, ReplaceEntryFromNotExist)
+{
+    auto result = m_test->replaceEntry("nonExistent", "Other");
+    ASSERT_TRUE(std::holds_alternative<base::Error>(result));
+    EXPECT_STREQ(std::get<base::Error>(result).message.c_str(),
+                 "Error replacing session: The 'nonExistent' environment does not exist");
+}
+
+TEST_F(TesterTest, ReplaceEntrySameName)
+{
+    auto result = m_test->replaceEntry(ENVIRONMENT_NAME, ENVIRONMENT_NAME);
+    EXPECT_TRUE(std::holds_alternative<base::Error>(result));
+}
+
+TEST_F(TesterTest, ReplaceEntryTargetAbsent)
+{
+    auto entryPost = router::test::EntryPost {ENVIRONMENT_NAME, POLICY_NAMESPACE, LIFESPAM};
+    std::unordered_set<base::Name> fakeAssets {base::Name("asset/test/0")};
+
+    addEntryCallers(fakeAssets, "hash");
+    ASSERT_FALSE(m_test->addEntry(entryPost, /*ignoreFail=*/false).has_value());
+
+    auto result = m_test->replaceEntry(ENVIRONMENT_NAME, "Final");
+    ASSERT_FALSE(std::holds_alternative<base::Error>(result));
+    EXPECT_FALSE(std::get<std::optional<router::test::Entry>>(result).has_value());
+
+    EXPECT_TRUE(std::holds_alternative<base::Error>(m_test->getEntry(ENVIRONMENT_NAME)));
+    auto renamed = m_test->getEntry("Final");
+    ASSERT_FALSE(std::holds_alternative<base::Error>(renamed));
+    EXPECT_EQ(std::get<router::test::Entry>(renamed).name(), "Final");
+    EXPECT_EQ(m_test->getEntries().size(), 1u);
+
+    stopControllerCall();
+}
+
+TEST_F(TesterTest, ReplaceEntryTargetPresentReturnsReplaced)
+{
+    const cm::store::NamespaceId oldNamespace {"policy_old_0"};
+    auto finalPost = router::test::EntryPost {"Final", oldNamespace, LIFESPAM};
+    auto tmpPost = router::test::EntryPost {ENVIRONMENT_NAME, POLICY_NAMESPACE, LIFESPAM};
+    std::unordered_set<base::Name> fakeAssets {base::Name("asset/test/0")};
+
+    addEntryCallers(fakeAssets, "hash");
+    ASSERT_FALSE(m_test->addEntry(finalPost, /*ignoreFail=*/false).has_value());
+    addEntryCallers(fakeAssets, "hash");
+    ASSERT_FALSE(m_test->addEntry(tmpPost, /*ignoreFail=*/false).has_value());
+
+    // The replaced entry's controller stops when it leaves the table; the survivor's at teardown.
+    stopControllerCall(2);
+
+    auto result = m_test->replaceEntry(ENVIRONMENT_NAME, "Final");
+    ASSERT_FALSE(std::holds_alternative<base::Error>(result));
+    const auto& replaced = std::get<std::optional<router::test::Entry>>(result);
+    ASSERT_TRUE(replaced.has_value());
+    EXPECT_EQ(replaced->name(), "Final");
+    EXPECT_EQ(replaced->namespaceId(), oldNamespace);
+
+    EXPECT_EQ(m_test->getEntries().size(), 1u);
+    auto survivor = m_test->getEntry("Final");
+    ASSERT_FALSE(std::holds_alternative<base::Error>(survivor));
+    EXPECT_EQ(std::get<router::test::Entry>(survivor).namespaceId(), POLICY_NAMESPACE);
+    EXPECT_TRUE(std::holds_alternative<base::Error>(m_test->getEntry(ENVIRONMENT_NAME)));
+}
+
+TEST_F(TesterTest, IngestDuringReplaceNeverSeesTheSpaceMissing)
+{
+    constexpr std::size_t kReplacements = 300;
+    const std::string space = "space";
+
+    std::unordered_set<base::Name> fakeAssets {base::Name("asset/test/0")};
+    const std::string hash = "hash";
+    EXPECT_CALL(*m_mockBuilder, buildPolicy(testing::_, testing::_)).WillRepeatedly(::testing::Return(m_mockPolicy));
+    EXPECT_CALL(*m_mockPolicy, assets()).WillRepeatedly(::testing::ReturnRefOfCopy(fakeAssets));
+    EXPECT_CALL(*m_mockPolicy, expression()).WillRepeatedly(::testing::ReturnRefOfCopy(base::Expression {}));
+    EXPECT_CALL(*m_mockPolicy, hash()).WillRepeatedly(::testing::ReturnRefOfCopy(hash));
+    EXPECT_CALL(*m_mockControllerMaker, create(testing::_, testing::_, testing::_))
+        .WillRepeatedly(::testing::Return(m_mockController));
+    EXPECT_CALL(*m_mockController, subscribe(testing::_, testing::_))
+        .WillRepeatedly(::testing::Return(bk::Subscription(1)));
+    EXPECT_CALL(*m_mockController, ingestGet(testing::_))
+        .WillRepeatedly(::testing::Invoke([](base::Event&&) { return std::make_shared<json::Json>(R"({})"); }));
+    EXPECT_CALL(*m_mockController, unsubscribeAll()).Times(testing::AnyNumber());
+    EXPECT_CALL(*m_mockController, stop()).Times(testing::AnyNumber());
+
+    ASSERT_FALSE(m_test->addEntry(router::test::EntryPost {space, POLICY_NAMESPACE, 0}, false).has_value());
+    ASSERT_FALSE(m_test->enableEntry(space).has_value());
+
+    std::atomic<bool> replacing {true};
+    std::atomic<std::size_t> ingested {0};
+    std::vector<std::string> replaceErrors;
+    std::vector<std::string> ingestErrors;
+
+    std::thread replacer(
+        [&]()
+        {
+            for (std::size_t i = 0; i < kReplacements; ++i)
+            {
+                const auto tmp = "tmp_" + std::to_string(i);
+                const cm::store::NamespaceId ns {"ns_" + std::to_string(i)};
+                if (auto err = m_test->addEntry(router::test::EntryPost {tmp, ns, 0}, false); err)
+                {
+                    replaceErrors.push_back(err->message);
+                    break;
+                }
+                if (auto err = m_test->enableEntry(tmp); err)
+                {
+                    replaceErrors.push_back(err->message);
+                    break;
+                }
+                auto result = m_test->replaceEntry(tmp, space);
+                if (std::holds_alternative<base::Error>(result))
+                {
+                    replaceErrors.push_back(std::get<base::Error>(result).message);
+                    break;
+                }
+            }
+            replacing = false;
+        });
+
+    std::thread ingester(
+        [&]()
+        {
+            router::test::Options opt(router::test::Options::TraceLevel::NONE, {}, space);
+            while (replacing)
+            {
+                auto event = std::make_shared<json::Json>(R"({"key": "value"})");
+                auto response = m_test->ingestTest(std::move(event), opt);
+                if (std::holds_alternative<base::Error>(response))
+                {
+                    ingestErrors.push_back(std::get<base::Error>(response).message);
+                    if (ingestErrors.size() > 5)
+                    {
+                        break;
+                    }
+                }
+                else
+                {
+                    ++ingested;
+                }
+            }
+        });
+
+    replacer.join();
+    ingester.join();
+
+    EXPECT_TRUE(replaceErrors.empty()) << replaceErrors.front();
+    EXPECT_TRUE(ingestErrors.empty()) << ingestErrors.front();
+    EXPECT_GT(ingested.load(), 0u);
+    EXPECT_EQ(m_test->getEntries().size(), 1u);
+    EXPECT_EQ(std::get<router::test::Entry>(m_test->getEntry(space)).namespaceId().toStr(),
+              "ns_" + std::to_string(kReplacements - 1));
 }

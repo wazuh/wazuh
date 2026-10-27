@@ -6,6 +6,7 @@
 #include <fmt/format.h>
 
 #include <base/json.hpp>
+#include <base/logging.hpp>
 #include <base/utils/generator.hpp>
 #include <cmstore/types.hpp>
 #include <eMessages/crud.pb.h>
@@ -485,38 +486,27 @@ adapter::RouteHandler policyValidate(std::shared_ptr<cm::crud::ICrudService> cru
 
             if (shouldPromote)
             {
-                // Promote the temp session → finalSessionName, replacing the old one.
-                std::optional<std::string> oldNsToDelete;
-
-                auto entry = testerLocked->getTestEntry(finalSessionName);
-                if (!base::isError(entry))
-                {
-                    oldNsToDelete = base::getResponse(entry).namespaceId().toStr();
-
-                    if (auto serr = strictDeleteSession(finalSessionName))
-                    {
-                        // guard will clean temp session + namespace.
-                        res = adapter::userErrorResponse<ResponseType>(serr->message);
-                        return;
-                    }
-                }
-
-                auto rerr = testerLocked->renameTestEntry(tmpSessionName, finalSessionName);
-                if (base::isError(rerr))
+                // Promote the temp session → finalSessionName, replacing the old one atomically.
+                auto replaced = testerLocked->replaceTestEntry(tmpSessionName, finalSessionName);
+                if (base::isError(replaced))
                 {
                     // guard will clean temp session + namespace.
-                    res = adapter::userErrorResponse<ResponseType>(base::getError(rerr).message);
+                    res = adapter::userErrorResponse<ResponseType>(base::getError(replaced).message);
                     return;
                 }
-                // After rename the temp resources are now owned by the final session.
+                // After the swap the temp resources are owned by the final session.
                 guard.releaseAll();
 
-                if (oldNsToDelete)
+                // The swap succeeded: a failed cleanup of the previous namespace is logged, not reported.
+                if (const auto& oldEntry = base::getResponse(replaced); oldEntry)
                 {
-                    if (auto nerr = strictDeleteNamespace(*oldNsToDelete))
+                    const std::string oldNsName = oldEntry->namespaceId().toStr();
+                    if (auto nerr = strictDeleteNamespace(oldNsName))
                     {
-                        res = adapter::userErrorResponse<ResponseType>(nerr->message);
-                        return;
+                        LOG_WARNING("Session '{}' replaced but its previous namespace '{}' was not deleted: {}",
+                                    finalSessionName,
+                                    oldNsName,
+                                    nerr->message);
                     }
                 }
             }
@@ -546,20 +536,25 @@ adapter::RouteHandler policyValidate(std::shared_ptr<cm::crud::ICrudService> cru
                 // If requested, delete the old persistent test session and its namespace.
                 if (shouldDeleteOldTest)
                 {
-                    auto entry = testerLocked->getTestEntry(finalSessionName);
-                    if (!base::isError(entry))
+                    auto extracted = testerLocked->extractTestEntry(finalSessionName);
+                    if (base::isError(extracted))
                     {
-                        const std::string oldNsName = base::getResponse(entry).namespaceId().toStr();
+                        res = adapter::userErrorResponse<ResponseType>(
+                            fmt::format("Cleanup: failed deleting session '{}': {}",
+                                        finalSessionName,
+                                        base::getError(extracted).message));
+                        return;
+                    }
 
-                        if (auto serr = strictDeleteSession(finalSessionName))
-                        {
-                            (void)strictDeleteNamespace(oldNsName);
-                            res = adapter::userErrorResponse<ResponseType>(serr->message);
-                            return;
-                        }
-
+                    if (const auto& oldEntry = base::getResponse(extracted); oldEntry)
+                    {
+                        const std::string oldNsName = oldEntry->namespaceId().toStr();
                         if (auto nerr = strictDeleteNamespace(oldNsName))
                         {
+                            LOG_WARNING("Session '{}' deleted but its namespace '{}' was not deleted: {}",
+                                        finalSessionName,
+                                        oldNsName,
+                                        nerr->message);
                             res = adapter::userErrorResponse<ResponseType>(nerr->message);
                             return;
                         }

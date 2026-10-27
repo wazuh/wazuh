@@ -1183,6 +1183,136 @@ TEST_F(OrchestratorTest, renameTestEntrySuccess)
 }
 
 /**************************************************************************
+ * replaceTestEntry tests
+ *************************************************************************/
+
+namespace
+{
+test::Entry makeTestEntry(const std::string& name, const std::string& ns)
+{
+    return test::Entry {test::EntryPost {name, cm::store::NamespaceId {ns}, 0}};
+}
+} // namespace
+
+TEST_F(OrchestratorTest, replaceTestEntryFromEmpty)
+{
+    EXPECT_TRUE(base::isError(m_orchestrator->replaceTestEntry("", "final")));
+}
+
+TEST_F(OrchestratorTest, replaceTestEntryToEmpty)
+{
+    EXPECT_TRUE(base::isError(m_orchestrator->replaceTestEntry("tmp", "")));
+}
+
+TEST_F(OrchestratorTest, replaceTestEntrySameName)
+{
+    EXPECT_TRUE(base::isError(m_orchestrator->replaceTestEntry("final", "final")));
+}
+
+TEST_F(OrchestratorTest, replaceTestEntryWorkerFails)
+{
+    auto testerMock = std::make_shared<MockTester>();
+    auto itesterMock = std::static_pointer_cast<router::ITester>(testerMock);
+
+    EXPECT_CALL(*m_orchestrator->m_testerWorkerMock, get()).WillRepeatedly(testing::Return(itesterMock));
+    EXPECT_CALL(*testerMock, replaceEntry("tmp", "final")).WillOnce(testing::Return(base::Error {"replace failed"}));
+    EXPECT_CALL(*(m_orchestrator->m_mockstore), upsertDoc(testing::_, testing::_)).Times(0);
+
+    EXPECT_TRUE(base::isError(m_orchestrator->replaceTestEntry("tmp", "final")));
+}
+
+TEST_F(OrchestratorTest, replaceTestEntryTargetAbsent)
+{
+    auto testerMock = std::make_shared<MockTester>();
+    auto itesterMock = std::static_pointer_cast<router::ITester>(testerMock);
+
+    EXPECT_CALL(*m_orchestrator->m_testerWorkerMock, get()).WillRepeatedly(testing::Return(itesterMock));
+    EXPECT_CALL(*testerMock, replaceEntry("tmp", "final")).WillOnce(testing::Return(std::optional<test::Entry> {}));
+    EXPECT_CALL(*testerMock, getEntries()).WillOnce(testing::Return(std::list<test::Entry> {}));
+    EXPECT_CALL(*(m_orchestrator->m_mockstore), upsertDoc(testing::_, testing::_))
+        .WillOnce(::testing::Return(store::mocks::storeOk()));
+
+    auto result = m_orchestrator->replaceTestEntry("tmp", "final");
+    ASSERT_FALSE(base::isError(result));
+    EXPECT_FALSE(base::getResponse(result).has_value());
+}
+
+TEST_F(OrchestratorTest, replaceTestEntryTargetPresent)
+{
+    auto testerMock = std::make_shared<MockTester>();
+    auto itesterMock = std::static_pointer_cast<router::ITester>(testerMock);
+
+    EXPECT_CALL(*m_orchestrator->m_testerWorkerMock, get()).WillRepeatedly(testing::Return(itesterMock));
+    EXPECT_CALL(*testerMock, replaceEntry("tmp", "final"))
+        .WillOnce(testing::Return(std::optional<test::Entry> {makeTestEntry("final", "ns_old")}));
+    EXPECT_CALL(*testerMock, getEntries()).WillOnce(testing::Return(std::list<test::Entry> {}));
+    EXPECT_CALL(*(m_orchestrator->m_mockstore), upsertDoc(testing::_, testing::_))
+        .WillOnce(::testing::Return(store::mocks::storeOk()));
+
+    auto result = m_orchestrator->replaceTestEntry("tmp", "final");
+    ASSERT_FALSE(base::isError(result));
+    const auto& replaced = base::getResponse(result);
+    ASSERT_TRUE(replaced.has_value());
+    EXPECT_EQ(replaced->namespaceId().toStr(), "ns_old");
+}
+
+/**************************************************************************
+ * extractTestEntry tests
+ *************************************************************************/
+
+TEST_F(OrchestratorTest, extractTestEntryEmpty)
+{
+    EXPECT_TRUE(base::isError(m_orchestrator->extractTestEntry("")));
+}
+
+TEST_F(OrchestratorTest, extractTestEntryMissing)
+{
+    auto testerMock = std::make_shared<MockTester>();
+    auto itesterMock = std::static_pointer_cast<router::ITester>(testerMock);
+
+    EXPECT_CALL(*m_orchestrator->m_testerWorkerMock, get()).WillRepeatedly(testing::Return(itesterMock));
+    EXPECT_CALL(*testerMock, getEntry("test")).WillOnce(testing::Return(base::Error {"missing"}));
+    EXPECT_CALL(*testerMock, removeEntry(testing::_)).Times(0);
+    EXPECT_CALL(*(m_orchestrator->m_mockstore), upsertDoc(testing::_, testing::_)).Times(0);
+
+    auto result = m_orchestrator->extractTestEntry("test");
+    ASSERT_FALSE(base::isError(result));
+    EXPECT_FALSE(base::getResponse(result).has_value());
+}
+
+TEST_F(OrchestratorTest, extractTestEntryPresent)
+{
+    auto testerMock = std::make_shared<MockTester>();
+    auto itesterMock = std::static_pointer_cast<router::ITester>(testerMock);
+
+    EXPECT_CALL(*m_orchestrator->m_testerWorkerMock, get()).WillRepeatedly(testing::Return(itesterMock));
+    EXPECT_CALL(*testerMock, getEntry("test")).WillOnce(testing::Return(makeTestEntry("test", "ns_test")));
+    EXPECT_CALL(*testerMock, removeEntry("test")).WillOnce(testing::Return(std::nullopt));
+    EXPECT_CALL(*testerMock, getEntries()).WillOnce(testing::Return(std::list<test::Entry> {}));
+    EXPECT_CALL(*(m_orchestrator->m_mockstore), upsertDoc(testing::_, testing::_))
+        .WillOnce(::testing::Return(store::mocks::storeOk()));
+
+    auto result = m_orchestrator->extractTestEntry("test");
+    ASSERT_FALSE(base::isError(result));
+    const auto& extracted = base::getResponse(result);
+    ASSERT_TRUE(extracted.has_value());
+    EXPECT_EQ(extracted->namespaceId().toStr(), "ns_test");
+}
+
+TEST_F(OrchestratorTest, extractTestEntryRemoveFails)
+{
+    auto testerMock = std::make_shared<MockTester>();
+    auto itesterMock = std::static_pointer_cast<router::ITester>(testerMock);
+
+    EXPECT_CALL(*m_orchestrator->m_testerWorkerMock, get()).WillRepeatedly(testing::Return(itesterMock));
+    EXPECT_CALL(*testerMock, getEntry("test")).WillOnce(testing::Return(makeTestEntry("test", "ns_test")));
+    EXPECT_CALL(*testerMock, removeEntry("test")).WillOnce(testing::Return(base::Error {"remove failed"}));
+    EXPECT_CALL(*(m_orchestrator->m_mockstore), upsertDoc(testing::_, testing::_)).Times(0);
+
+    EXPECT_TRUE(base::isError(m_orchestrator->extractTestEntry("test")));
+}
+
+/**************************************************************************
  * ingestTest (future overload) - queue path
  *************************************************************************/
 
