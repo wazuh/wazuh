@@ -359,7 +359,7 @@ static void test_fim_recovery_resync_routes_container_rows_to_handler(void **sta
 
     expect_recovery_sync(handle);
 
-    assert_true(fim_recovery_persist_table_and_resync(FIMDB_FILE_TABLE_NAME, handle, &mock_directories));
+    assert_true(fim_recovery_persist_table_and_resync(FIMDB_FILE_TABLE_NAME, handle, &mock_directories, "retry note"));
     fim_recovery_set_container_row_handler(NULL);
 }
 
@@ -378,7 +378,7 @@ static void test_fim_recovery_resync_skips_container_rows_without_handler(void *
     expect_recovery_start(handle, test_items);
     expect_recovery_sync(handle);
 
-    assert_true(fim_recovery_persist_table_and_resync(FIMDB_FILE_TABLE_NAME, handle, &mock_directories));
+    assert_true(fim_recovery_persist_table_and_resync(FIMDB_FILE_TABLE_NAME, handle, &mock_directories, "retry note"));
 }
 
 static void test_fim_recovery_resync_reports_container_row_failure(void **state) {
@@ -397,7 +397,7 @@ static void test_fim_recovery_resync_reports_container_row_failure(void **state)
     expect_string(__wrap__merror, formatted_msg, "Failed to recover container file abc123:/tmp/c.txt");
     expect_recovery_sync(handle);
 
-    assert_true(fim_recovery_persist_table_and_resync(FIMDB_FILE_TABLE_NAME, handle, &mock_directories));
+    assert_true(fim_recovery_persist_table_and_resync(FIMDB_FILE_TABLE_NAME, handle, &mock_directories, "retry note"));
     fim_recovery_set_container_row_handler(NULL);
     mock_container_row_result = 1;
 }
