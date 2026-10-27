@@ -511,6 +511,8 @@ decode_enrollment_token() {
 # which is what a hand-configured install needs.
 #
 # Kept in lockstep with config() in src/win32/InstallerScripts.vbs; a change here belongs there.
+# The no-token notice's wording is the exception: Windows points at the agent GUI first (#40121),
+# so enrollment_hint() has no counterpart there.
 # WriteAgent() in src/init/inst-functions.sh also writes this file, but not under this rule: it
 # generates a fresh ossec.conf for a source install from install.sh's own prompts, with no
 # deployment variables in play, so it does not participate in the refusals below. So does

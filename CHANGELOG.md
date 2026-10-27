@@ -163,7 +163,7 @@
 | [#40121](https://github.com/wazuh/wazuh/issues/40121) | With no manager configured, **Manage** > **Start** and **Restart** in the Windows agent GUI report "check config" instead of starting an agent that exits at once. |
 | [#40121](https://github.com/wazuh/wazuh/issues/40121) | The Windows installer's no-token message points to **Manage** > **Enroll** in the agent GUI or to `wazuh-agent-auth.exe`. |
 | [#40121](https://github.com/wazuh/wazuh/issues/40121) | Windows installer lines in `ossec.log` use the agent's `yyyy/mm/dd hh:mm:ss` timestamp. |
-| [#40681](https://github.com/wazuh/wazuh/issues/40681) | An agent installed without a token names `wazuh-agent-auth --token-file <file>` in the installer's no-token message and, with `(4128)`, when it refuses to start. |
+| [#40681](https://github.com/wazuh/wazuh/issues/40681) | The deb, rpm and macOS installers' no-token message names `wazuh-agent-auth --token-file <path>`, and an agent that refuses to start because it was never enrolled says how to enroll it, with `(4128)`. |
 | [#40349](https://github.com/wazuh/wazuh/pull/40349) | Changed the AWS module to pass inline `access_key`/`secret_key` to its script through the environment instead of the command line. |
 | [#40531](https://github.com/wazuh/wazuh/issues/40531) | Aligned `host.os.kernel`, `host.os.display_version` and `host.os.full` in the syscollector system inventory with the inventory schema. |
 
