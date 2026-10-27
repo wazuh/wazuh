@@ -25,12 +25,12 @@
 
 namespace
 {
-    // The manager's own 409 bodies are not consistent about which key carries the mismatch kind
+    // The manager's own error bodies are not consistent about which key carries the error kind
     // (vdScanLane.cpp uses "error", sessionProcessor.cpp's checksum path uses "status") -- checked
     // in that order so both shapes resolve. Never throws: a malformed/unexpected body (a proxy
     // that strips it, a future manager change) must fall back to the caller's default wording, not
     // crash the sync thread.
-    std::optional<std::string> jsonMismatchKind(const std::string& body)
+    std::optional<std::string> jsonErrorKind(const std::string& body)
     {
         try
         {
@@ -125,7 +125,7 @@ static std::string determineSyncFailureReasonBasedOnSyncResult(SyncResult result
         // proxy, or a shape introduced after this code was written).
         case SyncResult::CHECKSUM_ERROR:
             {
-                const auto kind = jsonMismatchKind(failureBody);
+                const auto kind = jsonErrorKind(failureBody);
 
                 if (kind == "version_mismatch")
                 {
