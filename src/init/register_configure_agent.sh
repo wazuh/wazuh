@@ -10,6 +10,7 @@
 # Global variables
 INSTALLDIR=${1}
 CONF_FILE="${INSTALLDIR}/etc/ossec.conf"
+OSSEC_LOG="${INSTALLDIR}/logs/ossec.log"
 TMP_ENROLLMENT="${INSTALLDIR}/tmp/enrollment-configuration"
 TMP_SERVER="${INSTALLDIR}/tmp/server-configuration"
 TMP_INSERT="${INSTALLDIR}/tmp/insert-output"
@@ -18,6 +19,8 @@ TMP_INSERT="${INSTALLDIR}/tmp/insert-output"
 # so the wazuh user never needs it.
 WAZUH_ENROLLMENT_TOKEN_PATH="etc/enrollment_token"
 WAZUH_MACOS_AGENT_DEPLOYMENT_VARS="/tmp/wazuh_envs"
+# Set only by upgrade_main; never taken from the environment.
+UPGRADE_STAGE=""
 
 
 # Set default sed alias
@@ -54,7 +57,7 @@ REMOVED_VARS=(WAZUH_MANAGER WAZUH_MANAGER_IP WAZUH_MANAGER_PORT WAZUH_MANAGER_EN
 deployment_refusal() {
 
     echo "$(date '+%Y/%m/%d %H:%M:%S') Deployment variables refused [${1}]: ${2}" \
-        >> "${INSTALLDIR}/logs/ossec.log"
+        >> "${OSSEC_LOG}"
     echo "wazuh-agent: deployment variables refused [${1}]: ${2}" >&2
 
 }
@@ -64,7 +67,7 @@ deployment_refusal() {
 deployment_notice() {
 
     echo "$(date '+%Y/%m/%d %H:%M:%S') No manager configured [${1}]: ${2}" \
-        >> "${INSTALLDIR}/logs/ossec.log"
+        >> "${OSSEC_LOG}"
     echo "wazuh-agent: no manager configured [${1}]: ${2}" >&2
 
 }
@@ -86,7 +89,7 @@ enrollment_hint() {
 dead_variable() {
 
     echo "$(date '+%Y/%m/%d %H:%M:%S') ${1} is not supported in 5.0 and was ignored: ${2}" \
-        >> "${INSTALLDIR}/logs/ossec.log"
+        >> "${OSSEC_LOG}"
     echo "wazuh-agent: ${1} is not supported in 5.0 and was ignored: ${2}" >&2
 
 }
@@ -143,7 +146,7 @@ edit_value_tag() {
     fi
 
     if [ "$?" != "0" ]; then
-        echo "$(date '+%Y/%m/%d %H:%M:%S') Error updating $2 with variable $1." >> "${INSTALLDIR}/logs/ossec.log"
+        echo "$(date '+%Y/%m/%d %H:%M:%S') Error updating $2 with variable $1." >> "${OSSEC_LOG}"
     fi
 
 }
@@ -405,7 +408,7 @@ set_agent_verification_mode() {
     case "${mode}" in
         full|certificate|system|none) ;;
         *)
-            echo "$(date '+%Y/%m/%d %H:%M:%S') Invalid WAZUH_SSL_VERIFICATION '${mode}': must be exactly one of full, certificate, system, none. Leaving <verification_mode> unset." >> "${INSTALLDIR}/logs/ossec.log"
+            echo "$(date '+%Y/%m/%d %H:%M:%S') Invalid WAZUH_SSL_VERIFICATION '${mode}': must be exactly one of full, certificate, system, none. Leaving <verification_mode> unset." >> "${OSSEC_LOG}"
             return
             ;;
     esac
@@ -416,7 +419,7 @@ set_agent_verification_mode() {
         # paired <tag>...</tag> form, so it would miss a self-closing or multi-line tag and
         # would happily rewrite a same-named tag somewhere else in the file.
         if ! replace_agent_ssl_tag "verification_mode" "${mode}"; then
-            echo "$(date '+%Y/%m/%d %H:%M:%S') Error updating verification_mode with variable ${mode}." >> "${INSTALLDIR}/logs/ossec.log"
+            echo "$(date '+%Y/%m/%d %H:%M:%S') Error updating verification_mode with variable ${mode}." >> "${OSSEC_LOG}"
         fi
         return
     fi
@@ -424,7 +427,7 @@ set_agent_verification_mode() {
     if agent_option_is_set "ssl"; then
         echo "      <verification_mode>${mode}</verification_mode>" > "${TMP_SERVER}"
         if ! insert_into_agent_block "${TMP_SERVER}" "ssl"; then
-            echo "$(date '+%Y/%m/%d %H:%M:%S') Could not pin WAZUH_SSL_VERIFICATION into <ssl><verification_mode>: an existing <ssl> block was found but not in the expected format (opening tag not alone on its own line)." >> "${INSTALLDIR}/logs/ossec.log"
+            echo "$(date '+%Y/%m/%d %H:%M:%S') Could not pin WAZUH_SSL_VERIFICATION into <ssl><verification_mode>: an existing <ssl> block was found but not in the expected format (opening tag not alone on its own line)." >> "${OSSEC_LOG}"
         fi
         rm -f "${TMP_SERVER}"
         return
@@ -439,7 +442,7 @@ set_agent_verification_mode() {
     # Read_Legacy_Client(), which never looks at <ssl>, so a block pinned there would
     # report success while staying inert.
     if ! insert_into_agent_block "${TMP_SERVER}" "agent"; then
-        echo "$(date '+%Y/%m/%d %H:%M:%S') Could not pin WAZUH_SSL_VERIFICATION into a fresh <ssl> block: no <agent> opening tag found to insert after." >> "${INSTALLDIR}/logs/ossec.log"
+        echo "$(date '+%Y/%m/%d %H:%M:%S') Could not pin WAZUH_SSL_VERIFICATION into a fresh <ssl> block: no <agent> opening tag found to insert after." >> "${OSSEC_LOG}"
     fi
     rm -f "${TMP_SERVER}"
 
@@ -546,6 +549,12 @@ store_enrollment_token() {
 
     set_token_path="${INSTALLDIR}/${WAZUH_ENROLLMENT_TOKEN_PATH}"
 
+    # On upgrade, etc/ is writable by an account that has been running for a while: the token is
+    # built in the root-only staging directory and renamed over whatever is at its name.
+    if [ -n "${UPGRADE_STAGE}" ]; then
+        set_token_path="${UPGRADE_STAGE}/enrollment_token"
+    fi
+
     # Created and locked down before the token is written into it, so the credential is never
     # briefly readable -- a reinstall would otherwise keep whatever mode the old file had.
     : > "${set_token_path}"
@@ -553,7 +562,11 @@ store_enrollment_token() {
     chown 0:0 "${set_token_path}"
     printf '%s' "${WAZUH_ENROLLMENT_TOKEN}" > "${set_token_path}"
 
-    echo "$(date '+%Y/%m/%d %H:%M:%S') Enrollment token stored; the manager was set to '${TOKEN_ADR}' and the trust anchor will be bootstrapped at the first agent start." >> "${INSTALLDIR}/logs/ossec.log"
+    if [ -n "${UPGRADE_STAGE}" ]; then
+        mv -fT "${set_token_path}" "${INSTALLDIR}/${WAZUH_ENROLLMENT_TOKEN_PATH}" || return 1
+    fi
+
+    echo "$(date '+%Y/%m/%d %H:%M:%S') Enrollment token stored; the manager was set to '${TOKEN_ADR}' and the trust anchor will be bootstrapped at the first agent start." >> "${OSSEC_LOG}"
 
 }
 
@@ -580,8 +593,47 @@ add_adress_block() {
     } >> "${TMP_SERVER}"
 
     insert_into_agent_block "${TMP_SERVER}"
+    aab_status=$?
 
     rm -f "${TMP_SERVER}"
+
+    return "${aab_status}"
+
+}
+
+# True when every <server>/<manager> block opens and closes on lines of its own, the only shape
+# add_adress_block()'s sed range deletes cleanly: a one-line block never ends the range, which
+# then deletes to the end of the file.
+address_blocks_are_multiline() {
+
+    # The rewrite works on lines and cannot see comments, so a tag inside one is refused.
+    abm_live="$(strip_xml_comments "$1")" || return 1
+    for abm_tag in server manager; do
+        if [ "$(grep -o "<${abm_tag}>\|/${abm_tag}>" "$1" | wc -l)" -ne "$(printf '%s\n' "${abm_live}" | grep -o "<${abm_tag}>\|/${abm_tag}>" | wc -l)" ] \
+                || grep -q "<${abm_tag}>.*/${abm_tag}>" "$1" \
+                || [ "$(grep -c "<${abm_tag}>" "$1")" -ne "$(grep -c "/${abm_tag}>" "$1")" ]; then
+            return 1
+        fi
+    done
+
+}
+
+# Prints the file without its XML comments; fails on a comment that is never closed.
+strip_xml_comments() {
+
+    awk '{
+        line = $0; out = ""
+        while (line != "") {
+            if (incomment) {
+                i = index(line, "-->")
+                if (i) { incomment = 0; line = substr(line, i + 3) } else { line = "" }
+            } else {
+                i = index(line, "<!--")
+                if (i) { out = out substr(line, 1, i - 1); incomment = 1; line = substr(line, i + 4) } else { out = out line; line = "" }
+            }
+        }
+        print out
+    } END { exit incomment }' "$1"
 
 }
 
@@ -667,7 +719,7 @@ set_vars () {
                 chmod 660 "${INSTALLDIR}/logs/ossec.log"
                 chown root:wazuh "${INSTALLDIR}/logs/ossec.log"
             fi
-            echo "${message}" >> "${INSTALLDIR}/logs/ossec.log"
+            echo "${message}" >> "${OSSEC_LOG}"
         fi
         rm -f "${WAZUH_MACOS_AGENT_DEPLOYMENT_VARS}"
     fi
@@ -874,9 +926,123 @@ main () {
 
 }
 
+# An in-place upgrade keeps the configuration it had, so only the token is honoured: it re-points
+# the address and is left for the agent to install the trust anchor with, as --certs-only does.
+#
+# logs/, etc/ and tmp/ are writable by the wazuh account, which on an upgrade has been running for
+# a while, so nothing here is written by path in them: messages go to stderr only, and ossec.conf
+# and the token are built in a root-only directory and renamed into place.
+upgrade_main () {
+
+    OSSEC_LOG="/dev/null"
+
+    warn_removed_variables
+
+    for um_name in WAZUH_AGENT_NAME WAZUH_AGENT_GROUP WAZUH_GROUP WAZUH_KEEP_ALIVE_INTERVAL \
+            WAZUH_NOTIFY_TIME WAZUH_TIME_RECONNECT ENROLLMENT_DELAY WAZUH_SSL_VERIFICATION; do
+        if [ -n "${!um_name}" ]; then
+            echo "wazuh-agent: ${um_name} was ignored: an upgrade keeps the existing configuration; only WAZUH_ENROLLMENT_TOKEN is read." >&2
+        fi
+    done
+
+    # An agent with no key yet enrolls with the token; one already enrolled only installs the CA.
+    um_auth="'${INSTALLDIR}/bin/wazuh-agent-auth --token-file <file> --certs-only'"
+    if [ ! -s "${INSTALLDIR}/etc/client.keys" ]; then
+        um_auth="'${INSTALLDIR}/bin/wazuh-agent-auth --token-file <file>'"
+    fi
+
+    # An agent that already holds an anchor never uses the token, so the address is left alone too.
+    # Moving it to another manager is wazuh-agent-auth's job.
+    if [ -f "${INSTALLDIR}/etc/certs/root-ca.pem" ]; then
+        if [ -n "${WAZUH_ENROLLMENT_TOKEN}" ]; then
+            echo "wazuh-agent: WAZUH_ENROLLMENT_TOKEN was ignored: this agent already has a trust anchor. Use '${INSTALLDIR}/bin/wazuh-agent-auth' to re-point or re-enroll it." >&2
+        fi
+        unset_vars
+        return 0
+    fi
+
+    if [ -z "${WAZUH_ENROLLMENT_TOKEN}" ]; then
+        # Not when a token is still waiting for the first start, or a remote upgrade left a CA.
+        if [ ! -e "${INSTALLDIR}/${WAZUH_ENROLLMENT_TOKEN_PATH}" ] && [ ! -e "${INSTALLDIR}/var/incoming/root-ca.pem" ]; then
+            echo "wazuh-agent: no trust anchor at ${INSTALLDIR}/etc/certs/root-ca.pem; unless <ssl> names a CA, the agent will not verify the manager. Upgrade with WAZUH_ENROLLMENT_TOKEN set, or run ${um_auth}." >&2
+        fi
+        unset_vars
+        return 0
+    fi
+
+    if ! decode_enrollment_token; then
+        unset_vars
+        return 1
+    fi
+
+    # mktemp -d makes it ours and 0700; its parent must not let anyone else rename it away.
+    if [ -n "$(find "${INSTALLDIR}/packages_files" -maxdepth 0 \( ! -user "${EUID}" -o -perm -g+w -o -perm -o+w \) 2>&1)" ] \
+            || ! UPGRADE_STAGE="$(mktemp -d "${INSTALLDIR}/packages_files/register.XXXXXX")"; then
+        echo "wazuh-agent: no root-only staging directory under ${INSTALLDIR}/packages_files; WAZUH_ENROLLMENT_TOKEN was not applied." >&2
+        unset_vars
+        return 1
+    fi
+
+    # Hard-linked into the stage first, so what is checked is what gets copied: a link or a FIFO
+    # renamed over etc/ossec.conf afterwards cannot reach the cp. ln -P links a symlink itself.
+    um_pin="${UPGRADE_STAGE}/ossec.conf.pin"
+    if ! ln -P "${CONF_FILE}" "${um_pin}" 2>/dev/null || [ -L "${um_pin}" ] || [ ! -f "${um_pin}" ] \
+            || ! cp -fp "${um_pin}" "${UPGRADE_STAGE}/ossec.conf"; then
+        echo "wazuh-agent: ${CONF_FILE} is not a regular file; WAZUH_ENROLLMENT_TOKEN was not applied." >&2
+        rm -rf "${UPGRADE_STAGE}"
+        unset_vars
+        return 1
+    fi
+
+    um_conf="${CONF_FILE}"
+    CONF_FILE="${UPGRADE_STAGE}/ossec.conf"
+    TMP_SERVER="${UPGRADE_STAGE}/server-configuration"
+    TMP_INSERT="${UPGRADE_STAGE}/insert-output"
+
+    # The admin's preserved file, not one the package generated: anything the rewrite cannot
+    # handle cleanly leaves it untouched. Closing tags and comment markers are counted again after it.
+    um_closing="$(grep -c -E '</(ossec_config|client|agent)>' "${CONF_FILE}")"
+    um_comments="$(grep -o -e '<!--' -e '-->' "${CONF_FILE}" | wc -l)"
+    FINAL_ENDPOINT="${TOKEN_ADR}"
+    if ! address_blocks_are_multiline "${CONF_FILE}" || ! add_adress_block \
+            || ! grep -qF "<endpoint>${FINAL_ENDPOINT}</endpoint>" "${CONF_FILE}" \
+            || [ "$(grep -c -E '</(ossec_config|client|agent)>' "${CONF_FILE}")" -ne "${um_closing}" ] \
+            || [ "$(grep -o -e '<!--' -e '-->' "${CONF_FILE}" | wc -l)" -ne "${um_comments}" ]; then
+        echo "wazuh-agent: the manager address in ${um_conf} could not be rewritten (a <server> block must open and close on lines of its own, outside any comment); WAZUH_ENROLLMENT_TOKEN was not applied. Run ${um_auth}." >&2
+        rm -rf "${UPGRADE_STAGE}"
+        unset_vars
+        return 1
+    fi
+
+    # The token goes in first and is taken back if ossec.conf cannot follow, so the agent is
+    # never left re-pointed without one. The ownership is the one the package gives ossec.conf;
+    # only root can set it, and only root has to.
+    um_status=0
+    if ! store_enrollment_token; then
+        echo "wazuh-agent: WAZUH_ENROLLMENT_TOKEN could not be applied." >&2
+        um_status=1
+    elif ! { chmod 640 "${CONF_FILE}" && { chown root:wazuh "${CONF_FILE}" 2>/dev/null || [ "${EUID}" -ne 0 ]; } \
+            && mv -fT "${CONF_FILE}" "${um_conf}"; }; then
+        rm -f "${INSTALLDIR}/${WAZUH_ENROLLMENT_TOKEN_PATH}"
+        echo "wazuh-agent: WAZUH_ENROLLMENT_TOKEN could not be applied." >&2
+        um_status=1
+    else
+        echo "wazuh-agent: WAZUH_ENROLLMENT_TOKEN applied: the manager was set to '${TOKEN_ADR}', and the agent installs its trust anchor at its next start." >&2
+    fi
+
+    rm -rf "${UPGRADE_STAGE}"
+    unset_vars
+    return "${um_status}"
+
+}
+
 # Guarded so this file can be sourced by the test suite without running the full
 # install flow; every packaged caller invokes it directly as its own process, where
 # BASH_SOURCE[0] == $0 either way.
 if [ "${BASH_SOURCE[0]}" = "$0" ]; then
-    main "$@"
+    if [ "$2" = "upgrade" ]; then
+        upgrade_main
+    else
+        main "$@"
+    fi
 fi

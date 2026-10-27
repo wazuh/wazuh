@@ -727,18 +727,15 @@ static void test_anchor_already_present_skips_and_discards_the_token(void **stat
     assert_int_equal(g_keys_chown_gid, getgid());
 }
 
-static void test_already_enrolled_skips_and_discards_the_token(void **state) {
+static void test_already_enrolled_without_a_token_is_noop(void **state) {
     (void) state;
     write_file("etc/client.keys", "001 test-agent 10.0.0.5 aaaa\n");
-    write_token_file(true, true, NULL);
 
     assert_int_equal(w_agent_token_bootstrap(getuid(), getgid()), 0);
     assert_int_equal(g_fetch_call_count, 0);
     assert_int_equal(g_enroll_call_count, 0);
     assert_int_not_equal(IsFile("etc/certs/root-ca.pem"), 0);
-    /* Same reasoning as the anchor latch above: an agent that already holds a key will never
-     * spend this token, so it does not stay on disk. */
-    assert_int_not_equal(IsFile("etc/enrollment_token"), 0);
+    assert_string_equal(read_file("etc/client.keys"), "001 test-agent 10.0.0.5 aaaa\n");
 
     /* Regression guard: this latch must still repair client.keys's group every time it fires,
      * not just skip out -- a prior boot's enrollment call can replace client.keys (via
@@ -746,6 +743,113 @@ static void test_already_enrolled_skips_and_discards_the_token(void **state) {
      * leaving it root:root until a later boot passes through here again. */
     assert_int_equal(g_keys_chown_uid, 0);
     assert_int_equal(g_keys_chown_gid, getgid());
+}
+
+/* An agent enrolled before 5.0 and upgraded in place holds a key but no anchor. A token left by
+ * the package installs the anchor only, as --certs-only does: re-enrolling would give it a new id. */
+static void test_already_enrolled_with_a_token_installs_the_anchor_only(void **state) {
+    (void) state;
+    write_file("etc/client.keys", "001 test-agent 10.0.0.5 aaaa\n");
+    write_token_file(true, true, NULL);
+
+    will_return(__wrap_hc_fetch_cacerts, 200L);
+    will_return(__wrap_hc_fetch_cacerts, "FAKE-CA-BODY");
+    will_return(__wrap_hc_fetch_cacerts, 1);
+    will_return(__wrap_hc_spki_pinned_certificate, PINNED_CERT);
+
+    expect_any_always(__wrap__mdebug1, formatted_msg);
+    expect_string(__wrap__minfo, formatted_msg,
+                  "Token bootstrap: this agent is already enrolled; installing the manager's CA "
+                  "without re-enrolling.");
+    expect_string(__wrap__minfo, formatted_msg, "The manager's CA is now the agent's trust anchor.");
+
+    assert_int_equal(w_agent_token_bootstrap(getuid(), getgid()), 0);
+    assert_int_equal(g_fetch_call_count, 1);
+    assert_int_equal(g_spki_call_count, 1);
+    assert_int_equal(g_enroll_call_count, 0);
+
+    assert_string_equal(read_file("etc/certs/root-ca.pem"), PINNED_CERT);
+    assert_int_equal(IsFile("etc/certs/.anchor-committed"), 0);
+    /* The registration is untouched and the one-shot token is spent. */
+    assert_string_equal(read_file("etc/client.keys"), "001 test-agent 10.0.0.5 aaaa\n");
+    assert_int_not_equal(IsFile("etc/enrollment_token"), 0);
+
+    assert_int_equal(g_anchor_chown_uid, getuid());
+    assert_int_equal(g_anchor_chown_gid, getgid());
+    assert_int_equal(g_keys_chown_uid, 0);
+    assert_int_equal(g_keys_chown_gid, getgid());
+}
+
+/* An enrolled agent has no enrollment to protect, so a CA that fails the token's pin is refused
+ * without stopping the agent: it starts as before, with its key and no anchor, and the token,
+ * which can never succeed against this manager, is discarded. */
+static void test_already_enrolled_pin_mismatch_starts_without_an_anchor(void **state) {
+    (void) state;
+    write_file("etc/client.keys", "001 test-agent 10.0.0.5 aaaa\n");
+    write_token_file(true, true, NULL);
+
+    will_return(__wrap_hc_fetch_cacerts, 200L);
+    will_return(__wrap_hc_fetch_cacerts, "FAKE-CA-BODY");
+    will_return(__wrap_hc_fetch_cacerts, 1);
+    will_return(__wrap_hc_spki_pinned_certificate, NULL);
+
+    expect_any(__wrap__minfo, formatted_msg);
+    expect_string(__wrap__merror, formatted_msg,
+                  "pin_mismatch -- fetched CA does not match the enrollment "
+                  "token's pin, refusing to trust it.");
+    expect_string(__wrap__merror, formatted_msg,
+                  "Token bootstrap: the manager's CA could not be installed; the agent keeps its "
+                  "registration and runs without a trust anchor.");
+
+    assert_int_equal(w_agent_token_bootstrap(getuid(), getgid()), W_TOKEN_BOOTSTRAP_DONE);
+    assert_int_equal(g_enroll_call_count, 0);
+    assert_int_not_equal(IsFile("etc/certs/root-ca.pem"), 0);
+    assert_string_equal(read_file("etc/client.keys"), "001 test-agent 10.0.0.5 aaaa\n");
+    assert_int_not_equal(IsFile("etc/enrollment_token"), 0);
+}
+
+/* A manager that cannot be reached does not hold the agent's start either, but the token is kept
+ * so the next start tries again. */
+static void test_already_enrolled_unreachable_manager_keeps_the_token(void **state) {
+    (void) state;
+    write_file("etc/client.keys", "001 test-agent 10.0.0.5 aaaa\n");
+    write_token_file(true, true, NULL);
+
+    will_return(__wrap_hc_fetch_cacerts, 0L);
+    will_return(__wrap_hc_fetch_cacerts, NULL);
+    will_return(__wrap_hc_fetch_cacerts, 0);
+
+    expect_any(__wrap__minfo, formatted_msg);
+    expect_string(__wrap__merror, formatted_msg,
+                  "/cacerts adr_unreachable -- could not reach the manager to "
+                  "fetch the certificate authority.");
+    expect_string(__wrap__merror, formatted_msg,
+                  "Token bootstrap: the manager's CA could not be installed; the agent keeps its "
+                  "registration and runs without a trust anchor.");
+
+    assert_int_equal(w_agent_token_bootstrap(getuid(), getgid()), W_TOKEN_BOOTSTRAP_DONE);
+    assert_int_equal(g_enroll_call_count, 0);
+    assert_int_not_equal(IsFile("etc/certs/root-ca.pem"), 0);
+    assert_string_equal(read_file("etc/client.keys"), "001 test-agent 10.0.0.5 aaaa\n");
+    assert_int_equal(IsFile("etc/enrollment_token"), 0);
+}
+
+/* An empty token file (a store that hit a full disk, say) can never be read into a token, so an
+ * enrolled agent discards it and starts as before instead of exiting on every start. */
+static void test_already_enrolled_empty_token_is_discarded(void **state) {
+    (void) state;
+    write_file("etc/client.keys", "001 test-agent 10.0.0.5 aaaa\n");
+    write_file("etc/enrollment_token", "");
+
+    expect_any(__wrap__minfo, formatted_msg);
+    expect_string(__wrap__merror, formatted_msg,
+                  "Could not read the enrollment token file 'etc/enrollment_token'.");
+
+    assert_int_equal(w_agent_token_bootstrap(getuid(), getgid()), W_TOKEN_BOOTSTRAP_DONE);
+    assert_int_equal(g_fetch_call_count, 0);
+    assert_int_equal(g_enroll_call_count, 0);
+    assert_string_equal(read_file("etc/client.keys"), "001 test-agent 10.0.0.5 aaaa\n");
+    assert_int_not_equal(IsFile("etc/enrollment_token"), 0);
 }
 
 /* Regression test: a hard link is a regular file by every other measure -- O_NOFOLLOW does not
@@ -756,7 +860,6 @@ static void test_client_keys_hard_link_is_not_chowned(void **state) {
     (void) state;
     write_file("etc/other-file", "not-client-keys\n");
     assert_int_equal(link("etc/other-file", "etc/client.keys"), 0);
-    write_token_file(true, true, NULL);
 
     /* This repair runs on every boot for as long as no anchor exists, so its failure is logged
      * at debug level rather than merror() -- see w_token_bootstrap_chown_keys_file()'s own
@@ -776,7 +879,6 @@ static void test_client_keys_hard_link_is_not_chowned(void **state) {
 static void test_keys_chown_failure_is_logged(void **state) {
     (void) state;
     write_file("etc/client.keys", "001 test-agent 10.0.0.5 aaaa\n");
-    write_token_file(true, true, NULL);
     g_keys_fchown_should_fail = true;
 
     /* This repair runs on every boot for as long as no anchor exists, so its failure is logged
@@ -784,9 +886,9 @@ static void test_keys_chown_failure_is_logged(void **state) {
      * comment. */
     expect_any(__wrap__mdebug1, formatted_msg);
 
-    /* The failure is logged, but does not fail the bootstrap itself: the token is one-shot and
-     * this agent is already enrolled, so there is nothing left to retry here besides the chown
-     * -- and that keeps getting retried on every later boot regardless. */
+    /* The failure is logged, but does not fail the bootstrap itself: this agent is already
+     * enrolled, so there is nothing left to retry here besides the chown -- and that keeps
+     * getting retried on every later boot regardless. */
     assert_int_equal(w_agent_token_bootstrap(getuid(), getgid()), 0);
     assert_int_equal(g_fetch_call_count, 0);
     assert_int_equal(g_enroll_call_count, 0);
@@ -2631,7 +2733,11 @@ int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test_setup_teardown(test_no_token_file_is_noop, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_anchor_already_present_skips_and_discards_the_token, setup_test, teardown_test),
-        cmocka_unit_test_setup_teardown(test_already_enrolled_skips_and_discards_the_token, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_already_enrolled_without_a_token_is_noop, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_already_enrolled_with_a_token_installs_the_anchor_only, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_already_enrolled_pin_mismatch_starts_without_an_anchor, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_already_enrolled_unreachable_manager_keeps_the_token, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_already_enrolled_empty_token_is_discarded, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_client_keys_hard_link_is_not_chowned, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_keys_chown_failure_is_logged, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_anchor_latch_keys_chown_failure_is_quiet, setup_test, teardown_test),

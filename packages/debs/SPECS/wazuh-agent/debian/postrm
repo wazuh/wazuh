@@ -67,6 +67,9 @@ case "$1" in
             rm -f ${DIR}/etc/certs/.anchor-committed
         fi
 
+        # Installed by postinst on hosts without systemd, not shipped by the package
+        rm -f /etc/init.d/wazuh-agent
+
         # Delete audisp wazuh plugin if exists
         if [ -e /etc/audit/plugins.d/af_wazuh.conf ]; then
             rm -f -- /etc/audit/plugins.d/af_wazuh.conf

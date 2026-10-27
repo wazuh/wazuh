@@ -76,7 +76,9 @@ make_installdir() {
     local description="$1" status="$2" keys="${3:-}" installdir
 
     installdir="$(mktemp -d)"
-    mkdir -p "${installdir}/etc" "${installdir}/tmp" "${installdir}/logs" "${installdir}/bin"
+    mkdir -p "${installdir}/etc" "${installdir}/tmp" "${installdir}/logs" "${installdir}/bin" \
+             "${installdir}/packages_files"
+    chmod 750 "${installdir}/packages_files"
     printf '%s' "${PLACEHOLDER_CONF}" > "${installdir}/etc/ossec.conf"
     touch "${installdir}/logs/ossec.log"
     if [ -n "${keys}" ]; then
@@ -178,6 +180,12 @@ check "a token alone succeeds" "0" "${RUN_STATUS}"
 check "a token alone writes no authd.pass" "absent" \
       "$([ -e "${RUN_DIR}/etc/authd.pass" ] && echo present || echo absent)"
 check_no_dead_elements "a token alone"
+rm -rf "${RUN_DIR}"
+
+# Only upgrade_main sets the staging directory; one inherited from the environment is not used.
+UPGRADE_STAGE="/nonexistent/stage" run_target "${DESC_WITH_KEY}" 0
+check "an inherited UPGRADE_STAGE does not move the stored token" "${TOKEN}" \
+      "$(cat "${RUN_DIR}/etc/enrollment_token" 2>/dev/null)"
 rm -rf "${RUN_DIR}"
 
 run_target "${DESC_NO_KEY}" 0
@@ -305,6 +313,311 @@ check "a 4.x file is not given a <manager> the parser will not read there" "0" \
       "$(grep -c "<manager>" "${RUN_DIR}/etc/ossec.conf")"
 rm -rf "${RUN_DIR}"
 unset WAZUH_ENROLLMENT_TOKEN
+
+# --- An in-place upgrade (the packages pass "upgrade") ----------------------------------------
+# The configuration the agent had is kept: only the token is applied, so an agent enrolled before
+# 5.0 gets the address and the token its first start installs the trust anchor with.
+
+run_upgrade() {
+
+    RUN_DIR="$(make_installdir "$1" "$2")"
+    printf '%s' "${LEGACY_CONF}" > "${RUN_DIR}/etc/ossec.conf"
+    # An agent enrolled under 4.x, unless the case says otherwise.
+    [ -n "${NO_KEYS}" ] || echo "001 agent any 0123456789abcdef" > "${RUN_DIR}/etc/client.keys"
+    bash "${TARGET}" "${RUN_DIR}" upgrade >/dev/null 2>"${RUN_DIR}/stderr"
+    RUN_STATUS="$?"
+
+}
+
+export WAZUH_ENROLLMENT_TOKEN="${TOKEN}"
+IGNORED_ON_UPGRADE=(WAZUH_AGENT_NAME WAZUH_AGENT_GROUP WAZUH_GROUP WAZUH_KEEP_ALIVE_INTERVAL \
+                    WAZUH_NOTIFY_TIME WAZUH_TIME_RECONNECT ENROLLMENT_DELAY WAZUH_SSL_VERIFICATION)
+for name in "${IGNORED_ON_UPGRADE[@]}"; do
+    export "${name}=not-on-upgrade"
+done
+run_upgrade "${DESC_WITH_KEY}" 0
+check "an upgrade with a token succeeds" "0" "${RUN_STATUS}"
+check "an upgrade with a token writes its address" "siem.example.local" "$(endpoint_of)"
+check "an upgrade keeps the 4.x <server> wrapper" "1" "$(grep -c "<server>" "${RUN_DIR}/etc/ossec.conf")"
+check "an upgrade stores the token verbatim" "${TOKEN}" "$(cat "${RUN_DIR}/etc/enrollment_token")"
+check "the token stored on upgrade is root-only" "600" "$(file_mode "${RUN_DIR}/etc/enrollment_token")"
+check "an upgrade applies nothing but the token" "0" \
+      "$(grep -c "not-on-upgrade" "${RUN_DIR}/etc/ossec.conf")"
+for name in "${IGNORED_ON_UPGRADE[@]}"; do
+    check "an upgrade says ${name} was ignored" "1" "$(grep -c "${name} was ignored" "${RUN_DIR}/stderr")"
+    unset "${name}"
+done
+rm -rf "${RUN_DIR}"
+
+run_upgrade "" 2
+check "an upgrade with a refused token names ERR_BAD_TOKEN" "ERR_BAD_TOKEN" "$(refusal_code)"
+check "an upgrade with a refused token exits non-zero" "1" "${RUN_STATUS}"
+check "an upgrade with a refused token keeps the configuration" "${LEGACY_CONF}" \
+      "$(cat "${RUN_DIR}/etc/ossec.conf")"
+check "an upgrade with a refused token stores no token" "absent" \
+      "$([ -e "${RUN_DIR}/etc/enrollment_token" ] && echo present || echo absent)"
+rm -rf "${RUN_DIR}"
+unset WAZUH_ENROLLMENT_TOKEN
+
+run_upgrade "${DESC_WITH_KEY}" 0
+check "an upgrade with no token keeps the configuration" "${LEGACY_CONF}" "$(cat "${RUN_DIR}/etc/ossec.conf")"
+check "an upgrade with no token is not a missing manager" "" "$(refusal_code)"
+check "an upgrade with no token and no anchor says how to get one" "1" \
+      "$(grep -c -- "--certs-only" "${RUN_DIR}/stderr")"
+rm -rf "${RUN_DIR}"
+
+NO_KEYS=1 run_upgrade "${DESC_WITH_KEY}" 0
+check "an upgrade with no token and no key suggests enrolling, not --certs-only" "1:0" \
+      "$(grep -c -- "--token-file <file>'" "${RUN_DIR}/stderr"):$(grep -c -- "--certs-only" "${RUN_DIR}/stderr")"
+rm -rf "${RUN_DIR}"
+
+RUN_DIR="$(make_installdir "${DESC_WITH_KEY}" 0)"
+mkdir -p "${RUN_DIR}/etc/certs"
+touch "${RUN_DIR}/etc/certs/root-ca.pem"
+bash "${TARGET}" "${RUN_DIR}" upgrade >/dev/null 2>"${RUN_DIR}/stderr"
+check "an upgrade with no token and an anchor says nothing" "" "$(cat "${RUN_DIR}/stderr")"
+rm -rf "${RUN_DIR}"
+
+# An anchor means the token would never be used, so the address stays where it was.
+export WAZUH_ENROLLMENT_TOKEN="${TOKEN}"
+run_upgrade_with_anchor() {
+
+    RUN_DIR="$(make_installdir "${DESC_WITH_KEY}" 0)"
+    printf '%s' "${LEGACY_CONF}" > "${RUN_DIR}/etc/ossec.conf"
+    mkdir -p "${RUN_DIR}/etc/certs"
+    touch "${RUN_DIR}/etc/certs/root-ca.pem"
+    bash "${TARGET}" "${RUN_DIR}" upgrade >/dev/null 2>"${RUN_DIR}/stderr"
+    RUN_STATUS="$?"
+
+}
+run_upgrade_with_anchor
+check "an upgrade with a token and an anchor keeps the configuration" "${LEGACY_CONF}" \
+      "$(cat "${RUN_DIR}/etc/ossec.conf")"
+check "an upgrade with a token and an anchor stores no token" "absent" \
+      "$([ -e "${RUN_DIR}/etc/enrollment_token" ] && echo present || echo absent)"
+check "an upgrade with a token and an anchor says the token was ignored" "1" \
+      "$(grep -c "WAZUH_ENROLLMENT_TOKEN was ignored" "${RUN_DIR}/stderr")"
+rm -rf "${RUN_DIR}"
+unset WAZUH_ENROLLMENT_TOKEN
+
+# A 4.x playbook still passing a removed variable is told on upgrade too.
+export WAZUH_MANAGER="10.0.0.5"
+run_upgrade "${DESC_WITH_KEY}" 0
+check "an upgrade reports a removed variable" "1" \
+      "$(grep -c "WAZUH_MANAGER is not supported in 5.0" "${RUN_DIR}/stderr")"
+check "an upgrade with a removed variable keeps the configuration" "${LEGACY_CONF}" \
+      "$(cat "${RUN_DIR}/etc/ossec.conf")"
+rm -rf "${RUN_DIR}"
+unset WAZUH_MANAGER
+
+# --- An upgrade writes nothing by path where the wazuh account can write -----------------------
+
+export WAZUH_ENROLLMENT_TOKEN="${TOKEN}"
+
+run_upgrade "${DESC_WITH_KEY}" 0
+check "an upgrade writes nothing to logs/ossec.log" "" "$(cat "${RUN_DIR}/logs/ossec.log")"
+check "an upgrade tells the operator the token was applied" "1" \
+      "$(grep -c "WAZUH_ENROLLMENT_TOKEN applied" "${RUN_DIR}/stderr")"
+check "an upgrade leaves no staging directory behind" "" "$(ls "${RUN_DIR}/packages_files")"
+rm -rf "${RUN_DIR}"
+
+# A link at the token's name is replaced, never written through.
+RUN_DIR="$(make_installdir "${DESC_WITH_KEY}" 0)"
+printf '%s' "${LEGACY_CONF}" > "${RUN_DIR}/etc/ossec.conf"
+printf 'victim' > "${RUN_DIR}/victim"
+ln -s "${RUN_DIR}/victim" "${RUN_DIR}/etc/enrollment_token"
+bash "${TARGET}" "${RUN_DIR}" upgrade >/dev/null 2>&1
+check "a link at etc/enrollment_token is not written through" "victim" "$(cat "${RUN_DIR}/victim")"
+check "a link at etc/enrollment_token is replaced by the token" "regular:${TOKEN}" \
+      "$([ -L "${RUN_DIR}/etc/enrollment_token" ] && echo link || echo regular):$(cat "${RUN_DIR}/etc/enrollment_token")"
+rm -rf "${RUN_DIR}"
+
+# A link at ossec.conf is refused: neither its target nor the token is written.
+RUN_DIR="$(make_installdir "${DESC_WITH_KEY}" 0)"
+printf '%s' "${LEGACY_CONF}" > "${RUN_DIR}/victim"
+rm -f "${RUN_DIR}/etc/ossec.conf"
+ln -s "${RUN_DIR}/victim" "${RUN_DIR}/etc/ossec.conf"
+bash "${TARGET}" "${RUN_DIR}" upgrade >/dev/null 2>"${RUN_DIR}/stderr"
+RUN_STATUS="$?"
+check "a link at etc/ossec.conf is refused" "1" "${RUN_STATUS}"
+check "a link at etc/ossec.conf is not written through" "${LEGACY_CONF}" "$(cat "${RUN_DIR}/victim")"
+check "a link at etc/ossec.conf stores no token" "absent" \
+      "$([ -e "${RUN_DIR}/etc/enrollment_token" ] && echo present || echo absent)"
+rm -rf "${RUN_DIR}"
+
+# A staging parent anyone else can write would let them swap the staging directory.
+RUN_DIR="$(make_installdir "${DESC_WITH_KEY}" 0)"
+printf '%s' "${LEGACY_CONF}" > "${RUN_DIR}/etc/ossec.conf"
+chmod 770 "${RUN_DIR}/packages_files"
+bash "${TARGET}" "${RUN_DIR}" upgrade >/dev/null 2>"${RUN_DIR}/stderr"
+RUN_STATUS="$?"
+check "a group-writable packages_files/ is refused" "1" "${RUN_STATUS}"
+check "a group-writable packages_files/ keeps the configuration" "${LEGACY_CONF}" \
+      "$(cat "${RUN_DIR}/etc/ossec.conf")"
+rm -rf "${RUN_DIR}"
+
+# --- An upgrade rewrites the admin's own file: what it cannot rewrite cleanly is left alone ----
+
+ONE_LINE_SERVER='<ossec_config>
+  <client>
+    <server><address>MANAGER_IP</address></server>
+  </client>
+  <logging>
+    <log_format>plain</log_format>
+  </logging>
+</ossec_config>'
+
+UNCLOSED_SERVER='<ossec_config>
+  <client>
+    <server>
+      <address>MANAGER_IP</address>
+  </client>
+</ossec_config>'
+
+COMMENTED_CLIENT='<ossec_config>
+  <client> <!-- managers -->
+    <server>
+      <address>MANAGER_IP</address>
+    </server>
+  </client>
+</ossec_config>'
+
+# A commented-out failover server whose markers sit on other lines than its tags: cutting the
+# block out would leave the comment unclosed, or a stray "-->" inside <client>.
+SPLIT_COMMENTED_SERVER='<ossec_config>
+  <client>
+    <server>
+      <address>MANAGER_IP</address>
+    </server>
+    <!--
+    <server>
+      <address>10.0.0.2</address>
+    </server> -->
+    <config-profile>ubuntu</config-profile>
+  </client>
+</ossec_config>'
+
+TRAILING_COMMENT_SERVER='<ossec_config>
+  <client>
+    <server>
+      <address>MANAGER_IP</address>
+    </server>
+    <!-- <server>
+      <address>10.0.0.2</address>
+    </server>
+    -->
+  </client>
+</ossec_config>'
+
+for shape in ONE_LINE_SERVER UNCLOSED_SERVER COMMENTED_CLIENT SPLIT_COMMENTED_SERVER TRAILING_COMMENT_SERVER; do
+    RUN_DIR="$(make_installdir "${DESC_WITH_KEY}" 0)"
+    printf '%s' "${!shape}" > "${RUN_DIR}/etc/ossec.conf"
+    bash "${TARGET}" "${RUN_DIR}" upgrade >/dev/null 2>"${RUN_DIR}/stderr"
+    RUN_STATUS="$?"
+    check "an upgrade over ${shape} fails" "1" "${RUN_STATUS}"
+    check "an upgrade over ${shape} keeps the configuration" "${!shape}" "$(cat "${RUN_DIR}/etc/ossec.conf")"
+    check "an upgrade over ${shape} stores no token" "absent" \
+          "$([ -e "${RUN_DIR}/etc/enrollment_token" ] && echo present || echo absent)"
+    check "an upgrade over ${shape} does not say applied" "0" "$(grep -c "applied:" "${RUN_DIR}/stderr")"
+    check "an upgrade over ${shape} leaves no staging directory behind" "" "$(ls "${RUN_DIR}/packages_files")"
+    check "an upgrade over ${shape} with no key suggests enrolling" "0" "$(grep -c -- "--certs-only" "${RUN_DIR}/stderr")"
+    rm -rf "${RUN_DIR}"
+done
+
+# A comment that holds no address block does not stop the rewrite, and is kept.
+COMMENTED_ELSEWHERE='<ossec_config>
+  <client>
+    <!-- failover
+         is configured below -->
+    <server>
+      <address>MANAGER_IP</address>
+    </server>
+  </client>
+</ossec_config>'
+RUN_DIR="$(make_installdir "${DESC_WITH_KEY}" 0)"
+printf '%s' "${COMMENTED_ELSEWHERE}" > "${RUN_DIR}/etc/ossec.conf"
+bash "${TARGET}" "${RUN_DIR}" upgrade >/dev/null 2>"${RUN_DIR}/stderr"
+check "an upgrade past an unrelated comment succeeds" "0" "$?"
+check "an upgrade past an unrelated comment writes its address" "siem.example.local" "$(endpoint_of)"
+check "an upgrade past an unrelated comment keeps it" "1:1" \
+      "$(grep -c -- '<!--' "${RUN_DIR}/etc/ossec.conf"):$(grep -c -- '-->' "${RUN_DIR}/etc/ossec.conf")"
+rm -rf "${RUN_DIR}"
+
+RUN_DIR="$(make_installdir "${DESC_WITH_KEY}" 0)"
+printf '%s' "${ONE_LINE_SERVER}" > "${RUN_DIR}/etc/ossec.conf"
+echo "001 agent any 0123456789abcdef" > "${RUN_DIR}/etc/client.keys"
+bash "${TARGET}" "${RUN_DIR}" upgrade >/dev/null 2>"${RUN_DIR}/stderr"
+check "a refused rewrite on an enrolled agent suggests --certs-only" "1" "$(grep -c -- "--certs-only" "${RUN_DIR}/stderr")"
+rm -rf "${RUN_DIR}"
+
+# A FIFO at ossec.conf is refused rather than read, which would block the upgrade.
+RUN_DIR="$(make_installdir "${DESC_WITH_KEY}" 0)"
+rm -f "${RUN_DIR}/etc/ossec.conf"
+mkfifo "${RUN_DIR}/etc/ossec.conf"
+timeout 10 bash "${TARGET}" "${RUN_DIR}" upgrade >/dev/null 2>"${RUN_DIR}/stderr"
+RUN_STATUS="$?"
+check "a FIFO at etc/ossec.conf is refused without blocking" "1" "${RUN_STATUS}"
+check "a FIFO at etc/ossec.conf stores no token" "absent" \
+      "$([ -e "${RUN_DIR}/etc/enrollment_token" ] && echo present || echo absent)"
+rm -rf "${RUN_DIR}"
+
+# A FIFO renamed over ossec.conf between the checks and the copy is not what gets copied.
+RUN_DIR="$(make_installdir "${DESC_WITH_KEY}" 0)"
+printf '%s' "${LEGACY_CONF}" > "${RUN_DIR}/etc/ossec.conf"
+mkdir -p "${RUN_DIR}/shim"
+{
+    echo '#!/bin/bash'
+    echo "conf='${RUN_DIR}/etc/ossec.conf'"
+    echo '[ -p "${conf}" ] || { rm -f "${conf}"; mkfifo "${conf}"; }'
+    echo 'exec /bin/cp "$@"'
+} > "${RUN_DIR}/shim/cp"
+chmod 755 "${RUN_DIR}/shim/cp"
+PATH="${RUN_DIR}/shim:${PATH}" timeout 10 bash "${TARGET}" "${RUN_DIR}" upgrade >/dev/null 2>"${RUN_DIR}/stderr"
+RUN_STATUS="$?"
+check "a FIFO swapped in before the copy does not block the upgrade" "0" "${RUN_STATUS}"
+check "a FIFO swapped in before the copy does not change what is rewritten" "siem.example.local" \
+      "$([ -p "${RUN_DIR}/etc/ossec.conf" ] && echo fifo || endpoint_of)"
+rm -rf "${RUN_DIR}"
+
+# ossec.conf failing to move into place takes the token back with it.
+RUN_DIR="$(make_installdir "${DESC_WITH_KEY}" 0)"
+printf '%s' "${LEGACY_CONF}" > "${RUN_DIR}/etc/ossec.conf"
+mkdir -p "${RUN_DIR}/shim"
+{
+    echo '#!/bin/bash'
+    echo 'case "${!#}" in */etc/ossec.conf) exit 1 ;; esac'
+    echo 'exec /bin/mv "$@"'
+} > "${RUN_DIR}/shim/mv"
+chmod 755 "${RUN_DIR}/shim/mv"
+PATH="${RUN_DIR}/shim:${PATH}" bash "${TARGET}" "${RUN_DIR}" upgrade >/dev/null 2>"${RUN_DIR}/stderr"
+RUN_STATUS="$?"
+check "an ossec.conf that cannot be moved fails the upgrade" "1" "${RUN_STATUS}"
+check "an ossec.conf that cannot be moved keeps the configuration" "${LEGACY_CONF}" \
+      "$(cat "${RUN_DIR}/etc/ossec.conf")"
+check "an ossec.conf that cannot be moved leaves no token" "absent" \
+      "$([ -e "${RUN_DIR}/etc/enrollment_token" ] && echo present || echo absent)"
+
+# And a token that cannot be stored leaves ossec.conf pointing where it did.
+sed -i 's:\*/etc/ossec.conf:*/etc/enrollment_token:' "${RUN_DIR}/shim/mv"
+PATH="${RUN_DIR}/shim:${PATH}" bash "${TARGET}" "${RUN_DIR}" upgrade >/dev/null 2>"${RUN_DIR}/stderr"
+RUN_STATUS="$?"
+check "a token that cannot be stored fails the upgrade" "1" "${RUN_STATUS}"
+check "a token that cannot be stored keeps the configuration" "${LEGACY_CONF}" \
+      "$(cat "${RUN_DIR}/etc/ossec.conf")"
+rm -rf "${RUN_DIR}"
+
+unset WAZUH_ENROLLMENT_TOKEN
+
+# No anchor yet is expected while a token waits for the first start, or after a remote upgrade.
+for pending in etc/enrollment_token var/incoming/root-ca.pem; do
+    RUN_DIR="$(make_installdir "${DESC_WITH_KEY}" 0)"
+    mkdir -p "${RUN_DIR}/$(dirname "${pending}")"
+    touch "${RUN_DIR}/${pending}"
+    bash "${TARGET}" "${RUN_DIR}" upgrade >/dev/null 2>"${RUN_DIR}/stderr"
+    check "an upgrade with ${pending} present does not warn about the anchor" "0" \
+          "$(grep -c "no trust anchor" "${RUN_DIR}/stderr")"
+    rm -rf "${RUN_DIR}"
+done
 
 echo
 echo "${checks} checks, ${failures} failed"

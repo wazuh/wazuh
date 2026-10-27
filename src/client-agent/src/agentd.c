@@ -153,8 +153,9 @@ void AgentdStart(int uid, int gid, const char *user, const char *group)
      *
      * Only a token that was present and (after any transient retries) still failed does this.
      * An install with no token at all returns W_TOKEN_BOOTSTRAP_DONE from the gate, so the
-     * legacy password/mTLS enrollment loop still gets its normal chance -- as do an agent
-     * already holding an anchor and one already enrolled. */
+     * legacy password/mTLS enrollment loop still gets its normal chance -- as does an agent
+     * already holding an anchor. An agent already enrolled only tries to install the anchor, and
+     * gets DONE whatever the outcome: it has no enrollment for this gate to protect. */
     const bool anchor_before = (IsFile(AGENT_ANCHOR_CA) == 0);
     int token_bootstrap_delay = 0;
     time_t token_pending_since = 0;

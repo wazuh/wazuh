@@ -65,8 +65,11 @@ case "$1" in
         fi
     }
 
+    # Not shipped under /etc (see debian/rules): only hosts without systemd get the init.d script.
     if [ -d /run/systemd/system ]; then
         rm -f /etc/init.d/wazuh-agent
+    else
+        install -D -m 0755 ${SCRIPTS_DIR}/src/init/templates/wazuh-debian.init /etc/init.d/wazuh-agent
     fi
 
     if [ ! -f ${OSMYSHELL} ]; then
@@ -211,6 +214,9 @@ case "$1" in
     # Register and configure agent if Wazuh environment variables are defined
     if [ -z "$2" ] || [ -f ${WAZUH_TMP_DIR}/create_conf ] ; then
         ${SCRIPTS_DIR}/src/init/register_configure_agent.sh ${DIR} > /dev/null || :
+    else
+        # An upgrade keeps its configuration; only WAZUH_ENROLLMENT_TOKEN is applied.
+        ${SCRIPTS_DIR}/src/init/register_configure_agent.sh ${DIR} upgrade > /dev/null || :
     fi
 
     # Restoring file permissions
