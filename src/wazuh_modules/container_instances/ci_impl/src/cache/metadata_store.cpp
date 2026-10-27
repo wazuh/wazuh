@@ -3,6 +3,7 @@
 #include "reconciler.hpp"
 
 #include <mutex>
+#include <unordered_map>
 #include <unordered_set>
 #include <utility>
 #include <vector>
@@ -192,6 +193,41 @@ namespace wazuh::container_instances
         return result;
     }
 
+namespace
+{
+    /// Whether an alias still points at a cgroup of ITS OWN container.
+    ///
+    /// The plain liveness test -- "is this inode in the scan" -- cannot answer
+    /// that. `allHostKeys` holds every key observed on the host, so an inode
+    /// that died with one container's unit and was promptly reused by an
+    /// unrelated cgroup reads as live, and the alias goes on pointing at the old
+    /// container; its events would then be attributed to the wrong one.
+    ///
+    /// The snapshot knows the answer directly, because a record now carries the
+    /// container's other cgroups as well as the one it is filed under. That is
+    /// only authoritative for the source that produced the snapshot, though: an
+    /// alias owned by another connector is not described by these records at
+    /// all, and judging it against them would expire something perfectly good.
+    /// For those, the old liveness rule stands.
+    [[nodiscard]] bool aliasInodeIsLive(const AliasEntry& alias,
+                                        std::uint64_t inode,
+                                        const SourceId& snapshotSource,
+                                        const std::unordered_map<std::string, std::unordered_set<std::uint64_t>>&
+                                            snapshotKeysByContainerId,
+                                        const std::unordered_set<std::uint64_t>& liveInodes)
+    {
+        if (alias.source != snapshotSource)
+        {
+            return liveInodes.count(inode) > 0;
+        }
+
+        const auto keys = snapshotKeysByContainerId.find(alias.containerId);
+
+        return keys != snapshotKeysByContainerId.end() && keys->second.count(inode) > 0;
+    }
+} // namespace
+
+
     void MetadataStore::applySnapshot(const SourceId& source,
                                       std::vector<ContainerRecord> snapshot,
                                       const std::unordered_set<std::uint64_t>& liveInodes,
@@ -267,6 +303,24 @@ namespace wazuh::container_instances
             }
         }
 
+        // Which host keys this snapshot says each of its containers occupies.
+        // An alias is only true while its inode is one of ITS container's, and
+        // `liveInodes` cannot answer that: it holds every key observed on the
+        // host, so an inode that died with one container's unit and was reused
+        // by an unrelated cgroup is still "live" there. See the alias sweep.
+        std::unordered_map<std::string, std::unordered_set<std::uint64_t>> snapshotKeysByContainerId;
+        for (const auto& record : snapshot)
+        {
+            auto& keys = snapshotKeysByContainerId[record.containerId];
+
+            if (record.hostKey != 0)
+            {
+                keys.insert(record.hostKey);
+            }
+
+            keys.insert(record.extraHostKeys.begin(), record.extraHostKeys.end());
+        }
+
         // Sweeps: expired grace records (any source — expiry is owner-marked),
         // pending TTL, verdict liveness.
         std::vector<std::pair<SourceId, std::string>> expiredRecords;
@@ -316,7 +370,7 @@ namespace wazuh::container_instances
                 {
                     expiredInodes.push_back(inode);
                 }
-                else if (liveInodes.count(inode) > 0)
+                else if (aliasInodeIsLive(*alias, inode, source, snapshotKeysByContainerId, liveInodes))
                 {
                     alias->missedScans = 0;
                 }

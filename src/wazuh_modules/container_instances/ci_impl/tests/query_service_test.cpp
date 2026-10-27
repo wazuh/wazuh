@@ -364,6 +364,75 @@ TEST(QueryServiceColdPathTest, AnAliasOutlivesNeitherItsCgroupNorItsContainer)
         << "expiring an alias must not touch the container it pointed at";
 }
 
+TEST(QueryServiceColdPathTest, AnAliasDiesWhenItsInodeIsReusedElsewhereOnTheHost)
+{
+    /* The reuse case, which plain liveness cannot see.
+     *
+     * `allHostKeys` holds every key observed on the HOST, container or not. So
+     * once the dead unit's inode is handed to some other cgroup -- a host
+     * service, another container's child -- it reads as "live" on every pass,
+     * the alias's missed-scan counter is reset forever, and the alias goes on
+     * claiming events that are no longer its container's.
+     *
+     * Nothing displaces it either: the new owner is not a container keyed on
+     * that inode, so no resolved entry ever overwrites the alias. Only the sweep
+     * can end it, and under the old rule the sweep never did.
+     *
+     * The snapshot settles it directly, because a record now carries the
+     * container's other cgroups: the store can ask whether the inode is still
+     * one of THIS container's rather than merely present somewhere. */
+    ColdPathFixture fixture;
+    fixture.Reconcile(kInitScopeInode);
+    auto service = fixture.Service();
+    static_cast<void>(service.handle(Resolve(kUnitServiceInode, KeyKind::cgroupInode)));
+
+    const auto aliased = fixture.store.lookup(HostKey {KeyKind::cgroupInode, kUnitServiceInode});
+    ASSERT_EQ(LookupResult::Status::resolved, aliased.status);
+    ASSERT_EQ("alpha", aliased.record->containerId);
+
+    // alpha still runs and reports only its own cgroup. The unit's inode is
+    // still observed on the host -- by whatever inherited it -- but it is not
+    // alpha's any more.
+    for (int pass = 0; pass < MISSED_SCANS_LIMIT; ++pass)
+    {
+        fixture.store.applySnapshot(kDocker,
+                                    {MakeRecord("alpha", kInitScopeInode)},
+                                    {kInitScopeInode, kUnitServiceInode},
+                                    std::chrono::steady_clock::now());
+    }
+
+    EXPECT_EQ(LookupResult::Status::miss, fixture.store.lookup(HostKey {KeyKind::cgroupInode, kUnitServiceInode}).status)
+        << "an inode the container no longer holds must stop resolving to it, however alive that inode "
+           "is elsewhere on the host";
+
+    EXPECT_EQ(LookupResult::Status::resolved, fixture.store.lookup(HostKey {KeyKind::cgroupInode, kInitScopeInode}).status)
+        << "expiring the alias must not disturb the container it pointed at";
+}
+
+TEST(QueryServiceColdPathTest, AnAliasSurvivesWhileItsOwnContainerStillReportsTheCgroup)
+{
+    // The other half of the rule: an alias whose cgroup the container still
+    // occupies must NOT be swept. Published in the record's extra keys, which is
+    // how a reconcile says "this cgroup is still mine".
+    ColdPathFixture fixture;
+    fixture.Reconcile(kInitScopeInode);
+    auto service = fixture.Service();
+    static_cast<void>(service.handle(Resolve(kUnitServiceInode, KeyKind::cgroupInode)));
+
+    for (int pass = 0; pass < MISSED_SCANS_LIMIT + 1; ++pass)
+    {
+        auto record = MakeRecord("alpha", kInitScopeInode);
+        record.extraHostKeys = {kUnitServiceInode};
+        fixture.store.applySnapshot(
+            kDocker, {record}, {kInitScopeInode, kUnitServiceInode}, std::chrono::steady_clock::now());
+    }
+
+    const auto alias = fixture.store.lookup(HostKey {KeyKind::cgroupInode, kUnitServiceInode});
+    ASSERT_EQ(LookupResult::Status::resolved, alias.status)
+        << "a unit that is still running must keep resolving to its container";
+    EXPECT_EQ("alpha", alias.record->containerId);
+}
+
 TEST(QueryServiceColdPathTest, AContainerTheStoreHasNeverSeenIsKeyedByWhatWasAsked)
 {
     // Cold DISCOVERY, where there is no stored key to preserve. The asked-about
