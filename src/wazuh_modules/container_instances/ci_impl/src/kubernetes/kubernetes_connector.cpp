@@ -68,6 +68,7 @@ namespace wazuh::container_instances
 
     void KubernetesConnector::reconcile()
     {
+        m_store.markSourceIncomplete(KUBERNETES_SOURCE);
         const auto scan = m_resolver.scan();
         // The host's key, not simply the cgroup inode: on a legacy hierarchy the
         // cgroup inode is a number no event ever carries, so keying on it answers
@@ -126,11 +127,6 @@ namespace wazuh::container_instances
 
     void KubernetesConnector::handleWatchEvent(const PodWatchEvent& event)
     {
-        if (!event.resourceVersion.empty())
-        {
-            m_resourceVersion = event.resourceVersion;
-        }
-
         if (m_workloadIndex.generation() != m_ownersGeneration)
         {
             m_reconcilePending = true;
@@ -139,15 +135,29 @@ namespace wazuh::container_instances
         switch (event.type)
         {
             case PodEventType::added:
-            case PodEventType::modified: m_podsByUid[event.pod.uid] = event.pod; break;
-            case PodEventType::deleted: m_podsByUid.erase(event.pod.uid); break;
+            case PodEventType::modified:
+                m_store.markSourceIncomplete(KUBERNETES_SOURCE);
+                m_podsByUid[event.pod.uid] = event.pod;
+                break;
+            case PodEventType::deleted:
+                m_store.markSourceIncomplete(KUBERNETES_SOURCE);
+                m_podsByUid.erase(event.pod.uid);
+                break;
             case PodEventType::bookmark:
-            case PodEventType::error:
                 if (m_reconcilePending && std::chrono::steady_clock::now() - m_lastReconcile >= RECONCILE_DEBOUNCE)
                 {
                     reconcile();
                 }
                 return;
+            case PodEventType::error:
+                m_store.markSourceIncomplete(KUBERNETES_SOURCE);
+                m_reconcilePending = true;
+                return;
+        }
+
+        if (!event.resourceVersion.empty())
+        {
+            m_resourceVersion = event.resourceVersion;
         }
 
         // Coalesce: at most one full reconcile per debounce window; the pending
@@ -167,6 +177,7 @@ namespace wazuh::container_instances
         {
             try
             {
+                m_store.markSourceIncomplete(KUBERNETES_SOURCE);
                 const auto list = m_client.listPods();
                 m_podsByUid.clear();
                 for (const auto& pod : list.pods)
@@ -200,6 +211,7 @@ namespace wazuh::container_instances
                     {
                         reconcile(); // Flush anything the debounce deferred.
                     }
+                    m_store.markSourceIncomplete(KUBERNETES_SOURCE);
                     if (outcome.kind == WatchOutcome::Kind::gone)
                     {
                         m_logger(LogLevel::debug, "Watch resourceVersion expired; re-listing");
@@ -229,6 +241,7 @@ namespace wazuh::container_instances
             }
             catch (const KubernetesApiError& error)
             {
+                m_store.markSourceIncomplete(KUBERNETES_SOURCE);
                 if (error.httpStatus() == 403)
                 {
                     m_logger(LogLevel::error,
@@ -248,6 +261,7 @@ namespace wazuh::container_instances
             }
             catch (const std::exception& error)
             {
+                m_store.markSourceIncomplete(KUBERNETES_SOURCE);
                 m_logger(LogLevel::warn, std::string {"Kubernetes connector error: "} + error.what());
                 if (!stop.waitFor(backoff))
                 {

@@ -13,8 +13,10 @@
 
 #include "cgroup_container_map.hpp"
 #include "container_baseline_fim_bridge.h"
+#include "container_identity_set.hpp"
 #include "container_event_router.hpp"
 #include "container_event_staging.hpp"
+#include "container_sweep_schedule.hpp"
 #include "resolver_wait.hpp"
 #include "container_instances_client.hpp"
 #include "container_instances_notify_socket.hpp"
@@ -116,6 +118,7 @@ namespace fim_container_events
             , staging(cfg.max_paths_per_container, cfg.max_containers, cfg.settle_delay_ms)
             , router(map, staging)
             , client(cfg.connector_socket_path)
+            , sweep(cfg.sweep_interval_ms)
         {
         }
 
@@ -124,6 +127,11 @@ namespace fim_container_events
         ContainerEventStaging                                        staging;
         ContainerEventRouter                                         router;
         wazuh::container_instances_client::ContainerInstancesClient  client;
+
+        /* When the whole-node reconciliation pass is next due. Touched only on the
+         * resolver thread -- the loop's deadline and every out-of-band request are
+         * all on it -- which is why it needs no synchronisation. */
+        SweepSchedule    sweep;
 
         rt_handle_t      handle{nullptr};
         ReconcileHandler handler;
@@ -137,6 +145,7 @@ namespace fim_container_events
          * full set — the seeding path, reached without a special case. */
         std::uint64_t cursor_epoch{0};
         std::uint64_t cursor_seq{0};
+        ContainerIdentitySet known_container_ids;
 
         /* Previous values of the counters that record work being shed.
          *
@@ -341,6 +350,7 @@ namespace fim_container_events
         void resolverLoop()
         {
             auto next_list = std::chrono::steady_clock::now();
+            sweep.restart(next_list);
 
             while (!stop.load(std::memory_order_relaxed))
             {
@@ -353,10 +363,18 @@ namespace fim_container_events
                     next_list = now + std::chrono::milliseconds(config.resolver_interval_ms);
                 }
 
+                /* The floor. After the refresh, never before: the refresh is what
+                 * requests a sweep out of band, and doing both in one pass is one
+                 * sweep rather than two. */
+                if (sweep.due(std::chrono::steady_clock::now()))
+                {
+                    requestSweep();
+                }
+
                 resolvePending();
                 router.pumpUnknownOverflow();
 
-                if (waitForWork(next_list))
+                if (waitForWork(sweep.soonerOf(next_list)))
                 {
                     /* container_instances says its list moved. Refreshing on the
                      * next pass rather than here keeps one call site for the
@@ -383,13 +401,14 @@ namespace fim_container_events
          *   stop     an eventfd, not a short timeout. The floor is heading for tens
          *            of seconds, and without this, shutdown would wait out whatever
          *            remained of it.
-         *   timeout  bounded by resolvePending()'s pacing while cgroups are still
-         *            unresolved, since those need revisiting on their own cadence
-         *            and no notification is coming for them. */
-        bool waitForWork(std::chrono::steady_clock::time_point next_list)
+         *   timeout  the earlier of the next list refresh and the next whole-node
+         *            sweep, further bounded by resolvePending()'s pacing while
+         *            cgroups are still unresolved, since those need revisiting on
+         *            their own cadence and no notification is coming for them. */
+        bool waitForWork(std::chrono::steady_clock::time_point next_deadline)
         {
             const auto until_refresh =
-                std::chrono::duration_cast<std::chrono::milliseconds>(next_list - std::chrono::steady_clock::now());
+                std::chrono::duration_cast<std::chrono::milliseconds>(next_deadline - std::chrono::steady_clock::now());
             const int timeout_ms = resolverWaitMs(until_refresh, map.unresolvedCount() > 0);
 
             struct pollfd fds[2];
@@ -425,6 +444,23 @@ namespace fim_container_events
             return false;
         }
 
+        /* Ask for a whole-node reconciliation pass, and start the floor's period
+         * again from here.
+         *
+         * One function for the deadline and for both out-of-band triggers, so the
+         * "a sweep restarts the period" rule cannot hold on one path and not the
+         * others. Only the marker is raised: the pass itself runs on the consumer
+         * thread, the only thread allowed to open a FIMDB transaction (D5).
+         *
+         * Resolver thread only -- the deadline, the resync and the discovery
+         * triggers are all on it, plus start()'s seed refresh before that thread
+         * exists. */
+        void requestSweep()
+        {
+            staging.requestSweep();
+            sweep.restart(std::chrono::steady_clock::now());
+        }
+
         /* Bring the cgroup map up to date with container_instances.
          *
          * Reads forward from a cursor where it can, and falls back to the whole
@@ -450,6 +486,73 @@ namespace fim_container_events
 
             if (!delta.deltaSupported || delta.resyncRequired)
             {
+                if (!delta.snapshotComplete)
+                {
+                    // An incomplete set cannot authorise map replacement or a
+                    // stale-row sweep. Keep the cursor too: a resync remains
+                    // pending until every configured connector has published.
+                    return;
+                }
+
+                /* A full list states what exists and says nothing about what
+                 * stopped existing, so every removal that happened while the
+                 * cursor was unusable is invisible on this path. The map cannot
+                 * infer them either -- install() never reports a container gone,
+                 * deliberately, because an absence is not a statement of removal
+                 * and acting on one is D11 rule 1. The one pass that can resolve
+                 * them safely is the whole-node sweep, which holds the list it is
+                 * sweeping against; so ask for one now rather than waiting out the
+                 * floor's interval.
+                 *
+                 * Conditional, because this branch is also the STEADY STATE
+                 * against a container_instances too old to serve deltas, where it
+                 * runs on every resolver pass. Sweeping the node every five
+                 * seconds there would be a self-inflicted cost on exactly the
+                 * deployments least able to take it. Compare container identities,
+                 * not list length to the cgroup map's size: stopped or unresolved
+                 * containers have no positive cgroup mapping, and an ID can be
+                 * replaced without changing either count. A resync is still asked
+                 * for regardless, since its gap is a gap in the events rather
+                 * than in the list.
+                 *
+                 * A set comparison still misses an addition and removal between
+                 * two passes that cancel out. The floor covers that case.
+                 *
+                 * BEFORE the list is applied, not after, and the delta branch
+                 * below does the same. Applying it escalates any new container to
+                 * a walk; the staging buffer serves lifecycle work ahead of walks,
+                 * so asking first puts the admission refresh in front of the walk
+                 * whose rows depend on it. The other order leaves a window in
+                 * which the consumer takes the walk first and drops every row it
+                 * produces -- and nothing walks that container again, so it would
+                 * report only the files that happen to change afterwards. */
+                ContainerIdentitySet listed_ids;
+
+                for (const auto& containerId : delta.knownContainerIds)
+                {
+                    if (!containerId.empty())
+                    {
+                        listed_ids.insert(containerId);
+                    }
+                }
+
+                if (listed_ids.empty())
+                {
+                    for (const auto& container : delta.containers)
+                    {
+                        if (!container.containerId.empty())
+                        {
+                            listed_ids.insert(container.containerId);
+                        }
+                    }
+                }
+
+                if (delta.resyncRequired || ContainerIdentitySetChanged(known_container_ids, listed_ids))
+                {
+                    requestSweep();
+                }
+
+                known_container_ids = std::move(listed_ids);
                 applyFullList(delta.containers);
             }
             else
@@ -469,10 +572,15 @@ namespace fim_container_events
 
                         case Kind::added:
                             translated.kind = CgroupDeltaEvent::Kind::added;
+                            known_container_ids.insert(event.containerId);
+                            fim_container_update_admitted(
+                                event.containerId.c_str(),
+                                event.record.is_object() ? (event.record.value("synced", true) ? 1 : 0) : 1);
                             break;
 
                         case Kind::removed:
                             translated.kind = CgroupDeltaEvent::Kind::removed;
+                            known_container_ids.erase(event.containerId);
                             break;
 
                         case Kind::changed:
@@ -782,9 +890,18 @@ namespace fim_container_events
              * Deliberately NOT "container FIM falls back to scheduled baselines":
              * there is no scheduled container baseline to fall back to —
              * fim_run_container_baseline() runs once from main(), and the only
-             * thing that re-runs it is this drain's own rebaselineAll. The caller
-             * turns this into a WARNING when container directories are actually
-             * configured; the detail stays here at debug level. */
+             * thing that re-runs it is this drain's own rebaselineAll.
+             *
+             * Nor does the reconciliation floor cover it, which is worth saying
+             * plainly because the floor exists precisely to catch what nothing
+             * else reports: it is scheduled by THIS drain's resolver loop, so a
+             * host that gets no further than here has no floor either. Container
+             * FIM then reports the node as it stood when the agent started —
+             * every container listed at that moment, and nothing about any
+             * container created or removed since.
+             *
+             * The caller turns this into a WARNING when container directories are
+             * actually configured; the detail stays here at debug level. */
             LogDebug("Container eBPF drain: the eBPF engine is unavailable (no rt_file.bpf.o, or the "
                      "kernel/capabilities do not permit loading it).");
             delete impl;

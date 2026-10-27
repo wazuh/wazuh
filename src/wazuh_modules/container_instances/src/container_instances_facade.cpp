@@ -20,6 +20,7 @@
 #include "file_io_utils.hpp"
 #include "filesystem_wrapper.hpp"
 
+#include <set>
 #include <stdexcept>
 #include <string>
 #include <thread>
@@ -113,6 +114,17 @@ namespace wazuh::container_instances
                              " container(s) will report to the manager; the rest stay visible locally but are "
                              "withheld. Raise containers.synced_limit to report more.");
             }
+
+            std::set<SourceId> expectedSources;
+            if (config.kubernetes)
+            {
+                expectedSources.insert(KUBERNETES_SOURCE);
+            }
+            if (config.docker)
+            {
+                expectedSources.insert(dockerSource(config.docker->socketPath));
+            }
+            m_store.setExpectedSources(std::move(expectedSources));
 
             std::vector<RefresherBinding> refreshers;
             std::string connectorNames;

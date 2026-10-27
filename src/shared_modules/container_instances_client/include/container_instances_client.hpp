@@ -12,6 +12,7 @@
 #include <cstring>
 #include <json.hpp>
 #include <optional>
+#include <set>
 #include <string>
 #include <utility>
 #include <vector>
@@ -127,12 +128,14 @@ namespace wazuh::container_instances_client
         bool available {false};
         bool deltaSupported {false};
         bool resyncRequired {false};
+        bool snapshotComplete {false};
 
         std::uint64_t epoch {0};
         std::uint64_t seq {0};
 
         std::vector<ContainerEventRef> events;
         std::vector<ContainerRef> containers;
+        std::set<std::string> knownContainerIds;
     };
 
     /// Synchronous, connect-per-request client for the Container Instances query
@@ -194,13 +197,23 @@ namespace wazuh::container_instances_client
         ///        list would then delete every stored row the moment the
         ///        connector blips. Callers that only iterate what they got can
         ///        keep ignoring it.
-        [[nodiscard]] std::vector<ContainerRef> listContainers(bool* reachable = nullptr) const
+        [[nodiscard]] std::vector<ContainerRef> listContainers(bool* reachable = nullptr,
+                                                               bool* snapshotComplete = nullptr,
+                                                               std::set<std::string>* knownContainerIds = nullptr) const
         {
             std::vector<ContainerRef> result;
 
             if (reachable != nullptr)
             {
                 *reachable = false;
+            }
+            if (snapshotComplete != nullptr)
+            {
+                *snapshotComplete = false;
+            }
+            if (knownContainerIds != nullptr)
+            {
+                knownContainerIds->clear();
             }
 
             const auto reply = roundTrip(R"({"version":2,"op":"list"})");
@@ -221,20 +234,71 @@ namespace wazuh::container_instances_client
                 return result;
             }
 
-            // From here the reply is a well-formed `ok` list: an empty array now
-            // means "no containers", which is authoritative.
+            // From here the reply is a well-formed, reachable list. Whether an
+            // empty list authorises absence is reported separately below.
             if (reachable != nullptr)
             {
                 *reachable = true;
             }
+            const auto completeIt = parsed.find("snapshot_complete");
+            bool complete = completeIt != parsed.end() && completeIt->is_boolean() && completeIt->get<bool>();
+            const auto knownIt = parsed.find("known_container_ids");
+            std::set<std::string> parsedKnownIds;
+            if (knownIt == parsed.end() || !knownIt->is_array())
+            {
+                complete = false;
+            }
+            if (knownIt != parsed.end() && knownIt->is_array())
+            {
+                for (const auto& item : *knownIt)
+                {
+                    if (item.is_string())
+                    {
+                        parsedKnownIds.insert(item.get<std::string>());
+                    }
+                    else
+                    {
+                        complete = false;
+                    }
+                }
+            }
+            if (knownContainerIds != nullptr)
+            {
+                *knownContainerIds = parsedKnownIds;
+            }
 
+            bool recordsWellFormed = true;
             for (const auto& item : *containersIt)
             {
                 auto ref = parseContainerRef(item);
                 if (ref)
                 {
+                    if (complete && knownContainerIds != nullptr &&
+                        knownContainerIds->count(ref->containerId) == 0)
+                    {
+                        complete = false;
+                    }
                     result.push_back(std::move(*ref));
                 }
+                else
+                {
+                    recordsWellFormed = false;
+                }
+            }
+            if (complete)
+            {
+                for (const auto& ref : result)
+                {
+                    if (parsedKnownIds.count(ref.containerId) == 0)
+                    {
+                        complete = false;
+                        break;
+                    }
+                }
+            }
+            if (snapshotComplete != nullptr)
+            {
+                *snapshotComplete = complete && recordsWellFormed;
             }
 
             return result;
@@ -276,16 +340,57 @@ namespace wazuh::container_instances_client
                 return delta;
             }
 
-            // A well-formed `ok` list reply: whatever else is true, the
-            // connector answered and its view is authoritative.
+            // A well-formed `ok` list reply: the connector answered. Snapshot
+            // completeness is a separate signal, not implied by reachability.
             delta.available = true;
-
+            const auto completeIt = parsed.find("snapshot_complete");
+            delta.snapshotComplete = completeIt != parsed.end() && completeIt->is_boolean() &&
+                                     completeIt->get<bool>();
+            const auto knownIt = parsed.find("known_container_ids");
+            if (knownIt == parsed.end() || !knownIt->is_array())
+            {
+                delta.snapshotComplete = false;
+            }
+            else
+            {
+                for (const auto& item : *knownIt)
+                {
+                    if (item.is_string())
+                    {
+                        delta.knownContainerIds.insert(item.get<std::string>());
+                    }
+                    else
+                    {
+                        delta.snapshotComplete = false;
+                    }
+                }
+            }
+            bool recordsWellFormed = true;
             for (const auto& item : *containersIt)
             {
                 auto ref = parseContainerRef(item);
                 if (ref)
                 {
                     delta.containers.push_back(std::move(*ref));
+                }
+                else
+                {
+                    recordsWellFormed = false;
+                }
+            }
+            if (!recordsWellFormed)
+            {
+                delta.snapshotComplete = false;
+            }
+            if (delta.snapshotComplete)
+            {
+                for (const auto& ref : delta.containers)
+                {
+                    if (delta.knownContainerIds.count(ref.containerId) == 0)
+                    {
+                        delta.snapshotComplete = false;
+                        break;
+                    }
                 }
             }
 

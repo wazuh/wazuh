@@ -3,6 +3,7 @@
 #include "container_admission.hpp"
 #include "reconciler.hpp"
 
+#include <algorithm>
 #include <mutex>
 #include <unordered_set>
 #include <utility>
@@ -139,16 +140,30 @@ namespace wazuh::container_instances
 
     std::vector<ContainerRecordPtr> MetadataStore::listContainers() const
     {
+        return containerListSnapshot().containers;
+    }
+
+    ContainerListSnapshot MetadataStore::containerListSnapshot() const
+    {
         std::shared_lock lock(m_mutex);
-        std::vector<ContainerRecordPtr> result;
+        ContainerListSnapshot result;
+        result.admitted = m_admitted;
+        result.complete = std::includes(m_readySources.begin(),
+                                        m_readySources.end(),
+                                        m_expectedSources.begin(),
+                                        m_expectedSources.end());
         std::unordered_set<std::string> seen;
         std::size_t withheld = 0;
         std::string withheldExample;
 
-        for (const auto& [source, records] : m_bySource)
+        for (const auto& sourceRecords : m_bySource)
         {
-            for (const auto& [containerId, record] : records)
+            for (const auto& [containerId, record] : sourceRecords.second)
             {
+                if (record)
+                {
+                    result.knownContainerIds.insert(containerId);
+                }
                 if (record && record->hostKey == 0 && isRunning(record->state))
                 {
                     ++withheld;
@@ -167,7 +182,7 @@ namespace wazuh::container_instances
                 {
                     continue;
                 }
-                result.push_back(record);
+                result.containers.push_back(record);
             }
         }
 
@@ -193,12 +208,91 @@ namespace wazuh::container_instances
         return result;
     }
 
+    std::set<std::string> MetadataStore::knownContainerIds() const
+    {
+        std::shared_lock lock(m_mutex);
+        std::set<std::string> result;
+
+        for (const auto& [source, records] : m_bySource)
+        {
+            for (const auto& [containerId, record] : records)
+            {
+                if (record)
+                {
+                    result.insert(containerId);
+                }
+            }
+        }
+
+        return result;
+    }
+
+    bool MetadataStore::snapshotComplete() const
+    {
+        std::shared_lock lock(m_mutex);
+        return std::includes(m_readySources.begin(),
+                             m_readySources.end(),
+                             m_expectedSources.begin(),
+                             m_expectedSources.end());
+    }
+
+    void MetadataStore::setExpectedSources(std::set<SourceId> sources)
+    {
+        std::unique_lock lock(m_mutex);
+        const bool wasComplete = std::includes(m_readySources.begin(),
+                                               m_readySources.end(),
+                                               m_expectedSources.begin(),
+                                               m_expectedSources.end());
+        m_expectedSources = std::move(sources);
+        const bool isComplete = std::includes(m_readySources.begin(),
+                                              m_readySources.end(),
+                                              m_expectedSources.begin(),
+                                              m_expectedSources.end());
+        if (wasComplete != isComplete)
+        {
+            m_snapshotDirty = true;
+        }
+        lock.unlock();
+        notifyLifecycleUnlocked();
+    }
+
+    void MetadataStore::markSourceIncomplete(const SourceId& source)
+    {
+        std::unique_lock lock(m_mutex);
+        const bool wasComplete = std::includes(m_readySources.begin(),
+                                               m_readySources.end(),
+                                               m_expectedSources.begin(),
+                                               m_expectedSources.end());
+        if (m_expectedSources.count(source) > 0)
+        {
+            m_readySources.erase(source);
+        }
+        const bool isComplete = std::includes(m_readySources.begin(),
+                                              m_readySources.end(),
+                                              m_expectedSources.begin(),
+                                              m_expectedSources.end());
+        if (wasComplete != isComplete)
+        {
+            m_snapshotDirty = true;
+        }
+        lock.unlock();
+        notifyLifecycleUnlocked();
+    }
+
     void MetadataStore::applySnapshot(const SourceId& source,
                                       std::vector<ContainerRecord> snapshot,
                                       const std::unordered_set<std::uint64_t>& liveInodes,
                                       TimePoint now)
     {
         std::unique_lock lock(m_mutex);
+        const bool wasComplete = std::includes(m_readySources.begin(),
+                                               m_readySources.end(),
+                                               m_expectedSources.begin(),
+                                               m_expectedSources.end());
+        if (m_expectedSources.empty())
+        {
+            m_expectedSources.insert(source);
+        }
 
         auto& sourceRecords = m_bySource[source];
         auto delta = diffSnapshot(sourceRecords, snapshot);
@@ -344,6 +438,13 @@ namespace wazuh::container_instances
         // would hand a slot to a newcomer a beat before the departure that
         // freed it, and hand it back on the next pass.
         recomputeAdmittedLocked();
+
+        m_readySources.insert(source);
+        const bool isComplete = std::includes(m_readySources.begin(),
+                                              m_readySources.end(),
+                                              m_expectedSources.begin(),
+                                              m_expectedSources.end());
+        m_snapshotDirty = m_snapshotDirty || (wasComplete != isComplete);
 
         // Released before the notify on purpose: an observer's natural first
         // move is to read the store back, which would deadlock under this lock,
@@ -724,8 +825,9 @@ namespace wazuh::container_instances
 
         {
             std::unique_lock lock(m_mutex);
-            dirty = m_lifecycleDirty;
+            dirty = m_lifecycleDirty || m_snapshotDirty;
             m_lifecycleDirty = false;
+            m_snapshotDirty = false;
             cursor = m_journal.cursor();
         }
 

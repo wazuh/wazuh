@@ -40,11 +40,16 @@
 #include "syscollector.hpp"
 #include "syscollector.h"
 #include "syscollectorTablesDef.hpp"
+#include "legacySchemaV1.hpp"
 #include "agent_sync_protocol.hpp"
 #include "metadata_provider.h"
 #include "module_query_errors.h"
 #include <sqlite3.h>
 #include <mock_sysinfo.hpp>
+
+/// The version DBSync records once every upgrade step has run: the published
+/// steps in UPGRADE_SQL_STATEMENTS, then the container ones after them.
+constexpr int CURRENT_SCHEMA_VERSION {16};
 
 using ::testing::_;
 using ::testing::NiceMock;
@@ -1465,17 +1470,16 @@ TEST_F(SyscollectorIdentityTest, RecoveryInterruptedByStopLeavesTheTableUnstampe
 // failing on the missing os_display_version column.
 TEST_F(SyscollectorIdentityTest, OsInfoDistributionReleaseColumnIsRenamedOnUpgrade)
 {
-    initModule(false, false);
-    Syscollector::instance().destroy();
-
-    // Turn the database back into the previous schema, with one row stored by it.
+    // The released version 1 schema, with one row stored by it. It must be the frozen
+    // copy: the current schema already has container_id, and the container rebuilds
+    // reject it on purpose.
     sqlite3* db = nullptr;
-    ASSERT_EQ(sqlite3_open_v2(IDENTITY_DB_PATH, &db, SQLITE_OPEN_READWRITE, nullptr), SQLITE_OK);
+    ASSERT_EQ(sqlite3_open_v2(IDENTITY_DB_PATH, &db, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, nullptr), SQLITE_OK);
     ASSERT_EQ(sqlite3_exec(db,
-                           "ALTER TABLE dbsync_osinfo RENAME COLUMN os_display_version TO os_distribution_release;"
-                           "INSERT INTO dbsync_osinfo (os_name, os_version, os_distribution_release, checksum) "
-                           "VALUES ('Microsoft Windows 10 Pro', '10.0.19045', '2009', 'oldchecksum');"
-                           "PRAGMA user_version = 1;",
+                           (std::string {LEGACY_V1_SCHEMA} +
+                            "INSERT INTO dbsync_osinfo (os_name, os_version, os_distribution_release, checksum) "
+                            "VALUES ('Microsoft Windows 10 Pro', '10.0.19045', '2009', 'oldchecksum');"
+                            "PRAGMA user_version = 1;").c_str(),
                            nullptr, nullptr, nullptr), SQLITE_OK);
     sqlite3_close(db);
 
@@ -1498,7 +1502,7 @@ TEST_F(SyscollectorIdentityTest, OsInfoDistributionReleaseColumnIsRenamedOnUpgra
     sqlite3_stmt* stmt = nullptr;
     ASSERT_EQ(sqlite3_prepare_v2(db, "PRAGMA user_version;", -1, &stmt, nullptr), SQLITE_OK);
     ASSERT_EQ(sqlite3_step(stmt), SQLITE_ROW);
-    EXPECT_EQ(sqlite3_column_int(stmt, 0), static_cast<int>(UPGRADE_SQL_STATEMENTS.size() + 1));
+    EXPECT_EQ(sqlite3_column_int(stmt, 0), CURRENT_SCHEMA_VERSION);
     sqlite3_finalize(stmt);
 
     ASSERT_EQ(sqlite3_prepare_v2(db, "SELECT os_display_version FROM dbsync_osinfo;", -1, &stmt, nullptr), SQLITE_OK);
@@ -1551,13 +1555,116 @@ TEST_F(SyscollectorIdentityTest, OsInfoUnexpectedSchemaIsRecreatedOnUpgrade)
     sqlite3_stmt* stmt = nullptr;
     ASSERT_EQ(sqlite3_prepare_v2(db, "PRAGMA user_version;", -1, &stmt, nullptr), SQLITE_OK);
     ASSERT_EQ(sqlite3_step(stmt), SQLITE_ROW);
-    EXPECT_EQ(sqlite3_column_int(stmt, 0), static_cast<int>(UPGRADE_SQL_STATEMENTS.size() + 1));
+    EXPECT_EQ(sqlite3_column_int(stmt, 0), CURRENT_SCHEMA_VERSION);
     sqlite3_finalize(stmt);
 
     // Recreated, so the row stored with the unexpected schema is gone.
     ASSERT_EQ(sqlite3_prepare_v2(db, "SELECT COUNT(*) FROM dbsync_osinfo;", -1, &stmt, nullptr), SQLITE_OK);
     ASSERT_EQ(sqlite3_step(stmt), SQLITE_ROW);
     EXPECT_EQ(sqlite3_column_int(stmt, 0), 0);
+    sqlite3_finalize(stmt);
+
+    sqlite3_close(db);
+}
+
+// A 5.0.0 database already took the published rename and reports version 2. The container
+// steps follow it, so the rename is not replayed and the row is kept as a host row.
+TEST_F(SyscollectorIdentityTest, AReleasedVersionTwoDatabaseIsUpgradedWithoutRecreation)
+{
+    sqlite3* db = nullptr;
+    ASSERT_EQ(sqlite3_open_v2(IDENTITY_DB_PATH, &db, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, nullptr), SQLITE_OK);
+    ASSERT_EQ(sqlite3_exec(db,
+                           (std::string {LEGACY_V1_SCHEMA} +
+                            "ALTER TABLE dbsync_osinfo RENAME COLUMN os_distribution_release TO os_display_version;"
+                            "INSERT INTO dbsync_osinfo (os_name, os_version, os_display_version, checksum) "
+                            "VALUES ('Ubuntu', '24.04', 'noble', 'os-sum');"
+                            "PRAGMA user_version = 2;").c_str(),
+                           nullptr, nullptr, nullptr), SQLITE_OK);
+    sqlite3_close(db);
+
+    std::vector<std::string> warnings;
+    initModule(false, false, false, [&warnings](const modules_log_level_t level, const std::string & msg)
+    {
+        if (level == LOG_WARNING)
+        {
+            warnings.push_back(msg);
+        }
+    });
+    Syscollector::instance().destroy();
+
+    EXPECT_TRUE(warnings.empty()) << warnings.front();
+
+    db = nullptr;
+    ASSERT_EQ(sqlite3_open_v2(IDENTITY_DB_PATH, &db, SQLITE_OPEN_READONLY, nullptr), SQLITE_OK);
+
+    sqlite3_stmt* stmt = nullptr;
+    ASSERT_EQ(sqlite3_prepare_v2(db, "PRAGMA user_version;", -1, &stmt, nullptr), SQLITE_OK);
+    ASSERT_EQ(sqlite3_step(stmt), SQLITE_ROW);
+    EXPECT_EQ(sqlite3_column_int(stmt, 0), CURRENT_SCHEMA_VERSION);
+    sqlite3_finalize(stmt);
+
+    ASSERT_EQ(sqlite3_prepare_v2(db,
+                                 "SELECT container_id || '|' || os_display_version || '|' || checksum FROM dbsync_osinfo;",
+                                 -1, &stmt, nullptr), SQLITE_OK);
+    ASSERT_EQ(sqlite3_step(stmt), SQLITE_ROW);
+    EXPECT_STREQ(reinterpret_cast<const char*>(sqlite3_column_text(stmt, 0)), "|noble|os-sum");
+    sqlite3_finalize(stmt);
+
+    ASSERT_EQ(sqlite3_prepare_v2(db, "SELECT COUNT(*) FROM sqlite_master WHERE name = 'container_context';",
+                                 -1, &stmt, nullptr), SQLITE_OK);
+    ASSERT_EQ(sqlite3_step(stmt), SQLITE_ROW);
+    EXPECT_EQ(sqlite3_column_int(stmt, 0), 1);
+    sqlite3_finalize(stmt);
+
+    sqlite3_close(db);
+}
+
+// A development database already keyed by container_id, stamped below the current version.
+// Copying it with container_id = '' would collide or turn container rows into host rows, so
+// the rebuild refuses it and the database is created again.
+TEST_F(SyscollectorIdentityTest, ADevelopmentDatabaseWithContainerIdIsRecreatedNotMigrated)
+{
+#ifdef WIN32
+    GTEST_SKIP() << "The rejected upgrade is an exception thrown and caught inside DBSync";
+#endif
+    initModule(false, false);
+    Syscollector::instance().destroy();
+
+    sqlite3* db = nullptr;
+    ASSERT_EQ(sqlite3_open_v2(IDENTITY_DB_PATH, &db, SQLITE_OPEN_READWRITE, nullptr), SQLITE_OK);
+    ASSERT_EQ(sqlite3_exec(db,
+                           "INSERT INTO dbsync_osinfo (container_id, os_name, os_version, checksum) "
+                           "VALUES ('cid', 'Alpine', '3.20', 'container-sum');"
+                           "PRAGMA user_version = 15;",
+                           nullptr, nullptr, nullptr), SQLITE_OK);
+    sqlite3_close(db);
+
+    std::vector<std::string> warnings;
+    ASSERT_NO_THROW(initModule(false, false, false, [&warnings](const modules_log_level_t level, const std::string & msg)
+    {
+        if (level == LOG_WARNING)
+        {
+            warnings.push_back(msg);
+        }
+    }));
+    Syscollector::instance().destroy();
+
+    ASSERT_EQ(warnings.size(), 1u);
+    EXPECT_NE(warnings[0].find("could not be upgraded from version 15 and was created again"), std::string::npos)
+            << warnings[0];
+
+    db = nullptr;
+    ASSERT_EQ(sqlite3_open_v2(IDENTITY_DB_PATH, &db, SQLITE_OPEN_READONLY, nullptr), SQLITE_OK);
+
+    sqlite3_stmt* stmt = nullptr;
+    ASSERT_EQ(sqlite3_prepare_v2(db, "PRAGMA user_version;", -1, &stmt, nullptr), SQLITE_OK);
+    ASSERT_EQ(sqlite3_step(stmt), SQLITE_ROW);
+    EXPECT_EQ(sqlite3_column_int(stmt, 0), CURRENT_SCHEMA_VERSION);
+    sqlite3_finalize(stmt);
+
+    ASSERT_EQ(sqlite3_prepare_v2(db, "SELECT COUNT(*) FROM dbsync_osinfo;", -1, &stmt, nullptr), SQLITE_OK);
+    ASSERT_EQ(sqlite3_step(stmt), SQLITE_ROW);
+    EXPECT_EQ(sqlite3_column_int(stmt, 0), 0) << "the container row must not survive as a host row";
     sqlite3_finalize(stmt);
 
     sqlite3_close(db);

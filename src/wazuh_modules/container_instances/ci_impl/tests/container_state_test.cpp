@@ -115,6 +115,34 @@ TEST(ContainerStateTest, UnresolvedRunningStaysHidden)
     EXPECT_TRUE(Contains(ListedIds(store), "beta")) << "it must appear once the inode is known";
 }
 
+TEST(ContainerStateTest, SnapshotCompletenessTracksExpectedSourcesAndKnownUnresolvedIds)
+{
+    auto store = MakeStore();
+    const SourceId kKubernetes {"kubernetes"};
+    store.setExpectedSources({kDocker, kKubernetes});
+
+    store.applySnapshot(
+        kDocker, {MakeRecord("beta", 0, ContainerState::running)}, {}, std::chrono::steady_clock::now());
+
+    auto snapshot = store.containerListSnapshot();
+    EXPECT_FALSE(snapshot.complete);
+    EXPECT_TRUE(snapshot.containers.empty());
+    EXPECT_EQ((std::set<std::string> {"beta"}), snapshot.knownContainerIds);
+
+    store.applySnapshot(kKubernetes, {}, {}, std::chrono::steady_clock::now());
+    EXPECT_TRUE(store.containerListSnapshot().complete);
+
+    store.markSourceIncomplete(kDocker);
+    EXPECT_FALSE(store.containerListSnapshot().complete);
+
+    store.applySnapshot(
+        kDocker, {MakeRecord("beta", 7777, ContainerState::running)}, {7777}, std::chrono::steady_clock::now());
+    snapshot = store.containerListSnapshot();
+    EXPECT_TRUE(snapshot.complete);
+    ASSERT_EQ(1U, snapshot.containers.size());
+    EXPECT_EQ("beta", snapshot.containers.front()->containerId);
+}
+
 TEST(ContainerStateTest, AnUnknownStateIsTreatedAsRunningSoItIsNeverPublishedWithoutAnInode)
 {
     auto store = MakeStore();

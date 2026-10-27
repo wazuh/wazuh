@@ -14,6 +14,7 @@
  */
 
 #include "container_reconcile_plan.hpp"
+#include "container_identity_set.hpp"
 
 #include <gtest/gtest.h>
 
@@ -41,6 +42,21 @@ namespace
         batch.suspect = true;
         return batch;
     }
+
+Batch GoneBatch(const std::string& container_id)
+{
+    Batch batch;
+    batch.container_id = container_id;
+    batch.lifecycle = Batch::Lifecycle::containerGone;
+    return batch;
+}
+
+Batch SweepBatch()
+{
+    Batch batch;
+    batch.lifecycle = Batch::Lifecycle::sweepAbsent;
+    return batch;
+}
 
 } // namespace
 
@@ -80,6 +96,12 @@ TEST(ContainerReconcilePlanTest, OnlyAWalkMayAuthoriseDeletion)
     EXPECT_TRUE(PlanFor(SuspectBatch("container-a")).may_detect_deletions);
     EXPECT_TRUE(PlanFor(SuspectBatch("")).may_detect_deletions);
     EXPECT_FALSE(PlanFor(PathBatch("container-a", {"/etc/passwd"})).may_detect_deletions);
+
+    // The lifecycle modes delete too, but what they delete is STATED by the
+    // connector rather than derived from a read, so they must not carry the
+    // flag that lets a walk treat absent rows as deletions.
+    EXPECT_FALSE(PlanFor(GoneBatch("container-a")).may_detect_deletions);
+    EXPECT_FALSE(PlanFor(SweepBatch()).may_detect_deletions);
 }
 
 TEST(ContainerReconcilePlanTest, NoPathBatchMayEverAuthoriseDeletion)
@@ -134,4 +156,52 @@ TEST(ContainerReconcilePlanTest, AWalkIsNeverEmptyEvenWithNoPaths)
     // skipped.
     EXPECT_FALSE(PlanFor(SuspectBatch("container-a")).empty());
     EXPECT_FALSE(PlanFor(SuspectBatch("")).empty());
+}
+
+TEST(ContainerReconcilePlanTest, AGoneContainerBecomesASweepOfThatContainer)
+{
+    const auto request = PlanFor(GoneBatch("container-a"));
+
+    EXPECT_EQ(ReconcileMode::containerGone, request.mode);
+    EXPECT_EQ("container-a", request.container_id);
+    EXPECT_TRUE(request.paths.empty());
+    EXPECT_FALSE(request.empty()) << "a removal must not be mistaken for a no-op batch";
+}
+
+TEST(ContainerReconcilePlanTest, ASweepBatchCarriesNoContainerAndIsNotEmpty)
+{
+    const auto request = PlanFor(SweepBatch());
+
+    EXPECT_EQ(ReconcileMode::sweepAbsent, request.mode);
+    EXPECT_TRUE(request.container_id.empty()) << "the floor reconciles the node, not one container";
+    EXPECT_TRUE(request.paths.empty());
+
+    // empty() exists so a path batch that resolved to nothing is dropped rather
+    // than performed. The floor legitimately carries no paths, so it must not
+    // be swallowed by that rule.
+    EXPECT_FALSE(request.empty());
+}
+
+TEST(ContainerIdentitySetTest, DetectsAnIdentityReplacementWithTheSameCardinality)
+{
+    const ContainerIdentitySet previous {"stopped-a", "running-b"};
+    const ContainerIdentitySet current {"stopped-a", "running-c"};
+
+    EXPECT_EQ(previous.size(), current.size());
+    EXPECT_TRUE(ContainerIdentitySetChanged(previous, current));
+    EXPECT_FALSE(ContainerIdentitySetChanged(current, current));
+}
+
+TEST(ContainerReconcilePlanTest, ARemovalIsNeverPromotedToAWalk)
+{
+    // Walking a container the connector no longer lists returns 0 and achieves
+    // nothing. More importantly a walk may authorise deletion by absence, and
+    // the removal path must delete only what it was told about.
+    for (const auto& id : {std::string("container-a"), std::string("")})
+    {
+        const auto request = PlanFor(GoneBatch(id));
+        EXPECT_NE(ReconcileMode::rewalkContainer, request.mode);
+        EXPECT_NE(ReconcileMode::rebaselineAll, request.mode);
+        EXPECT_FALSE(request.may_detect_deletions);
+    }
 }

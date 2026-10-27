@@ -11,6 +11,7 @@
 #include "container_baseline_host_api.h"
 
 #include "container_doc_budget.h"
+#include "db.h"
 
 #include "db.h"
 #include "file.h"
@@ -120,28 +121,26 @@ static void normalize_container_fim_row(cJSON* msg)
         return;
     }
 
-    // Lift the container_json column to the top-level "container" block. Since
-    // D15 the Kubernetes context is nested INSIDE that block at
-    // container.kubernetes, so it rides along with this one detach -- there is
-    // no second block to lift. BuildContainerContextJson() is what wrote this
-    // column, so the shape here is whatever StampContainerContext() produced.
-    const cJSON* container_json_item = cJSON_GetObjectItem(msg, "container_json");
-    if (container_json_item != NULL && cJSON_IsString(container_json_item) &&
-        container_json_item->valuestring != NULL && container_json_item->valuestring[0] != '\0') {
-        cJSON* ctx = cJSON_Parse(container_json_item->valuestring);
-        if (ctx != NULL) {
-            cJSON* container_block = cJSON_DetachItemFromObject(ctx, "container");
-            if (container_block != NULL) {
-                cJSON_DeleteItemFromObject(msg, "container");
-                cJSON_AddItemToObject(msg, "container", container_block);
-            }
-            // Defensive: a column written before D15 carries a sibling
-            // "kubernetes". Drop it rather than lift it, so a database that
-            // survived the change cannot emit the retired two-block shape.
-            cJSON_DeleteItemFromObject(msg, "kubernetes");
-            cJSON_Delete(ctx);
-        }
+    // Attach the container block, which is stored once per container rather
+    // than copied onto every row. Since D15 the Kubernetes context is nested
+    // INSIDE that block at container.kubernetes, so there is no second block.
+    const cJSON* container_id_item = cJSON_GetObjectItem(msg, "container_id");
+    cJSON* container_block = NULL;
+
+    if (container_id_item != NULL && cJSON_IsString(container_id_item) &&
+        container_id_item->valuestring != NULL && container_id_item->valuestring[0] != '\0') {
+        container_block = fim_db_get_container_context(container_id_item->valuestring);
     }
+
+    if (container_block != NULL) {
+        cJSON_DeleteItemFromObject(msg, "container");
+        cJSON_AddItemToObject(msg, "container", container_block);
+    }
+
+    // Defensive: the retired pre-D15 shape put "kubernetes" beside "container"
+    // rather than inside it. Drop any such sibling rather than lift it, so the
+    // two-block shape every dynamic:strict template rejects cannot be emitted.
+    cJSON_DeleteItemFromObject(msg, "kubernetes");
 
     cJSON* file_obj = cJSON_GetObjectItem(msg, "file");
     if (file_obj == NULL || !cJSON_IsObject(file_obj)) {
@@ -194,7 +193,6 @@ static void normalize_container_fim_row(cJSON* msg)
     cJSON_DeleteItemFromObject(msg, "is_symlink");
     // dbsync-only columns: not part of the stateful event schema.
     cJSON_DeleteItemFromObject(msg, "container_id");
-    cJSON_DeleteItemFromObject(msg, "container_json");
     cJSON_DeleteItemFromObject(msg, "checksum");
     cJSON_DeleteItemFromObject(msg, "sync");
     cJSON_DeleteItemFromObject(msg, "version");
@@ -643,6 +641,7 @@ void fim_container_doc_budget_initialize(const char* container_id)
  * Guarded by synced_docs_mutex, like the counts above, so a reconcile cannot
  * replace the set while a row is being decided against it. */
 static OSHash* container_admitted = NULL;
+static OSHash* container_admission_overrides = NULL;
 static int container_admission_known = 0;
 
 void fim_container_set_admitted(const char** container_ids, size_t count)
@@ -675,15 +674,76 @@ void fim_container_set_admitted(const char** container_ids, size_t count)
 
     synced_docs_lock();
     OSHash* previous = container_admitted;
+    OSHash* previousOverrides = container_admission_overrides;
     container_admitted = replacement;
+    container_admission_overrides = NULL;
     container_admission_known = 1;
     synced_docs_unlock();
 
     if (previous != NULL) {
         OSHash_Free(previous);
     }
+    if (previousOverrides != NULL) {
+        OSHash_Free(previousOverrides);
+    }
 
     fim_container_reconcile_admission();
+}
+
+void fim_container_update_admitted(const char* container_id, int admitted)
+{
+    if (container_id == NULL || *container_id == '\0') {
+        return;
+    }
+
+    synced_docs_lock();
+    if (container_admission_known == 0) {
+        if (container_admission_overrides == NULL) {
+            container_admission_overrides = OSHash_Create();
+            if (container_admission_overrides == NULL) {
+                synced_docs_unlock();
+                merror("Container FIM: could not create incremental admission overrides.");
+                return;
+            }
+            OSHash_SetFreeDataPointer(container_admission_overrides, free);
+        }
+
+        int* marker = NULL;
+        os_calloc(1, sizeof(int), marker);
+        *marker = admitted != 0;
+        int* previous = (int*)OSHash_Delete(container_admission_overrides, container_id);
+        os_free(previous);
+        if (OSHash_Add(container_admission_overrides, container_id, marker) != 2) {
+            os_free(marker);
+            synced_docs_unlock();
+            merror("Container FIM: could not update incremental admission for '%s'.", container_id);
+            return;
+        }
+        synced_docs_unlock();
+        return;
+    }
+    if (container_admitted == NULL) {
+        synced_docs_unlock();
+        return;
+    }
+
+    if (admitted != 0) {
+        if (OSHash_Get(container_admitted, container_id) == NULL) {
+            int* marker = NULL;
+            os_calloc(1, sizeof(int), marker);
+            *marker = 1;
+            if (OSHash_Add(container_admitted, container_id, marker) != 2) {
+                os_free(marker);
+                synced_docs_unlock();
+                merror("Container FIM: could not admit container '%s'.", container_id);
+                return;
+            }
+        }
+    } else {
+        int* marker = (int*)OSHash_Delete(container_admitted, container_id);
+        os_free(marker);
+    }
+    synced_docs_unlock();
 }
 
 int fim_container_is_admitted(const char* container_id)
@@ -693,9 +753,15 @@ int fim_container_is_admitted(const char* container_id)
     }
 
     synced_docs_lock();
-    const int admitted = (container_admission_known == 0 || container_admitted == NULL)
-                         ? 1
-                         : (OSHash_Get(container_admitted, container_id) != NULL);
+    int admitted = (container_admission_known == 0 || container_admitted == NULL)
+                       ? 1
+                       : (OSHash_Get(container_admitted, container_id) != NULL);
+    if (container_admission_overrides != NULL) {
+        int* override = (int*)OSHash_Get(container_admission_overrides, container_id);
+        if (override != NULL) {
+            admitted = *override != 0;
+        }
+    }
     synced_docs_unlock();
 
     return admitted;
@@ -715,6 +781,12 @@ static int container_row_sync_flag(const cJSON* row, int operation)
      * even when no document limit is configured. Putting it after the limit
      * check below would make the container cap silently depend on
      * container_file_limit being set, which is not what configures it.
+     *
+     * This gate and the budget below govern the STATEFUL row and nothing else.
+     * The alert is sent without consulting either, exactly as the host sends
+     * one without consulting syscheck.file_limit -- see
+     * container_should_report_events() for why that asymmetry is the intended
+     * behaviour rather than an oversight to be tidied away.
      *
      * Deletes are exempt: container_budget_decide() answers a delete with the
      * row's own stored flag, so a row the manager never saw still reports no
@@ -772,21 +844,31 @@ static int container_row_sync_flag(const cJSON* row, int operation)
     return granted;
 }
 
-int fim_persist_baseline_row(const char* id, int operation, const char* index, const char* json, uint64_t version)
+int fim_persist_baseline_row(const char* id, int operation, const char* index, cJSON* msg, uint64_t version)
 {
-    if (g_host.validate_and_persist == NULL) {
-        merror("Container FIM: persistence API is not registered.");
+    if (msg == NULL) {
+        mdebug1("Container FIM baseline: dropping row '%s' - no row object.", id);
         return -1;
     }
-    cJSON* msg = cJSON_Parse(json);
-    if (msg == NULL) {
-        mdebug1("Container FIM baseline: dropping row '%s' - failed to parse JSON.", id);
+    if (g_host.validate_and_persist == NULL) {
+        merror("Container FIM: persistence API is not registered.");
+        cJSON_Delete(msg);
         return -1;
     }
 
     /* BEFORE normalisation: the stored row's own "sync" column is what the
      * accounting reads, and normalisation reshapes the row for the schema. */
     const int sync_flag = container_row_sync_flag(msg, operation);
+
+    /* Also before normalisation, which reshapes both: what a rejected document
+     * needs to return the budget it was charged. */
+    const cJSON* stored_sync = cJSON_GetObjectItem(msg, "sync");
+    const int previous_sync = cJSON_IsNumber(stored_sync) ? stored_sync->valueint : 0;
+    char* container_id = NULL;
+    const char* stored_container_id = cJSON_GetStringValue(cJSON_GetObjectItem(msg, "container_id"));
+    if (stored_container_id != NULL) {
+        os_strdup(stored_container_id, container_id);
+    }
 
     /* The integrity check compares the agent's checksum over the stored rows'
      * "checksum" column with the manager's over each document's
@@ -865,10 +947,6 @@ int fim_persist_baseline_row(const char* id, int operation, const char* index, c
          * validate_and_persist(). What is not logged anywhere else is that the
          * budget charged for a row the manager never saw, so say that and undo it:
          * a slot spent on a rejected document is a slot the cap can never return. */
-        cJSON* original = cJSON_Parse(json);
-        const cJSON* stored = cJSON_GetObjectItem(original, "sync");
-        const int previous_sync = cJSON_IsNumber(stored) ? stored->valueint : 0;
-        const char* container_id = cJSON_GetStringValue(cJSON_GetObjectItem(original, "container_id"));
         mdebug1("Container FIM: returning the budget charged for rejected row '%s'.", id);
         if (container_id && host_config() && host_config()->container_file_limit > 0) {
             const int delta = operation == OPERATION_DELETE ? (previous_sync ? -1 : 0)
@@ -880,11 +958,12 @@ int fim_persist_baseline_row(const char* id, int operation, const char* index, c
             }
             synced_docs_unlock();
         }
-        cJSON_Delete(original);
+        os_free(container_id);
         cJSON_Delete(msg);
         return -1;
     }
 
+    os_free(container_id);
     cJSON_Delete(msg);
     return sync_flag;
 }
@@ -909,8 +988,8 @@ int fim_container_recover_row(const cJSON* row)
         return 0;
     }
 
-    char* json = cJSON_PrintUnformatted(row);
-    if (json == NULL) {
+    cJSON* msg = cJSON_Duplicate(row, 1);
+    if (msg == NULL) {
         return -1;
     }
 
@@ -924,10 +1003,9 @@ int fim_container_recover_row(const cJSON* row)
     const int result = fim_persist_baseline_row(id,
                                                 OPERATION_CREATE,
                                                 "wazuh-states-fim-files",
-                                                json,
+                                                msg,
                                                 (uint64_t)cJSON_GetNumberValue(version));
     os_free(id);
-    cJSON_free(json);
     return result;
 }
 
@@ -956,6 +1034,26 @@ static const char* CONTAINER_FIM_EVENT_TYPE[] = {
  * here happens-before every read of it. */
 static int container_notify_scan = -1;
 
+/* The ONLY thing standing between a detected change and its alert, and that is
+ * deliberate: neither the document budget nor the admission set is consulted
+ * here, although both are consulted for the stateful row in
+ * container_row_sync_flag().
+ *
+ * It reads like an inconsistency and is not one -- it is what the host already
+ * does. There, `sync_flag` is decided against syscheck.file_limit
+ * (file/file.c:317) while the alert is sent on `notify_scan != 0 &&
+ * report_event` alone (file/file.c:178 and :477), with the limit nowhere in
+ * the condition. So a host file past the document limit still alerts; it
+ * simply contributes no row to wazuh-states-fim-files.
+ *
+ * The rule that produces is worth stating plainly, because a later reader will
+ * be tempted to "fix" this into agreement: a limit bounds STATE, never
+ * DETECTION. Making the alert respect the budget would mean a container that
+ * exhausted its allowance stops reporting changes entirely -- a silent
+ * detection gap, configured by something an operator set to bound a database.
+ *
+ * The admission set has no host counterpart, there being no host admission,
+ * but it sits on the same side of the line: it withholds rows, not alerts. */
 static int container_should_report_events(void)
 {
     if (container_notify_scan < 0) {
@@ -970,30 +1068,25 @@ void fim_container_baseline_first_scan_done(void)
     container_notify_scan = 1;
 }
 
-/* Lifts the container_json column onto `target` as the top-level "container"
- * block, Kubernetes context nested inside it at container.kubernetes (D15).
- * Same placement normalize_container_fim_row() uses for the stateful document,
- * so an analyst reads the same field names on both sides. */
+/* Looks the row's container context up by id and attaches it to `target` as
+ * the top-level "container" block, Kubernetes context nested inside it at
+ * container.kubernetes (D15). Same placement normalize_container_fim_row()
+ * uses for the stateful document, so an analyst reads the same field names on
+ * both sides. */
 static void add_container_context(const cJSON* row_data, cJSON* target)
 {
-    const cJSON* container_json_item = cJSON_GetObjectItem(row_data, "container_json");
+    // Stored once per container; the row references it by id.
+    const cJSON* container_id_item = cJSON_GetObjectItem(row_data, "container_id");
+    cJSON* container_block = NULL;
 
-    if (container_json_item == NULL || !cJSON_IsString(container_json_item) ||
-        container_json_item->valuestring == NULL || container_json_item->valuestring[0] == '\0') {
-        return;
+    if (container_id_item != NULL && cJSON_IsString(container_id_item) &&
+        container_id_item->valuestring != NULL && container_id_item->valuestring[0] != '\0') {
+        container_block = fim_db_get_container_context(container_id_item->valuestring);
     }
 
-    cJSON* ctx = cJSON_Parse(container_json_item->valuestring);
-    if (ctx == NULL) {
-        return;
-    }
-
-    cJSON* container_block = cJSON_DetachItemFromObject(ctx, "container");
     if (container_block != NULL) {
         cJSON_AddItemToObject(target, "container", container_block);
     }
-
-    cJSON_Delete(ctx);
 }
 
 void fim_send_container_stateless_event(const cJSON* row_data,
@@ -1080,7 +1173,7 @@ void fim_send_container_stateless_event(const cJSON* row_data,
      *
      * Container rows have no fim_file_data struct, so this always takes
      * fim_attributes_json()'s JSON-only mode (data == NULL) — which reads the
-     * named columns and ignores container_id/container_json. */
+     * named columns and ignores container_id. */
     cJSON* file_stateless = (operation == OPERATION_DELETE || g_host.attributes_json == NULL)
         ? cJSON_CreateObject()
         : g_host.attributes_json(row_data, NULL, config);

@@ -90,22 +90,28 @@ namespace wazuh::container_instances
                 // would let a reconcile land mid-serialisation and ship a reply
                 // that admits a container in one key and withholds it in
                 // another.
-                response.admitted = m_store.admittedIds();
-
                 if (!request.since)
                 {
                     // No cursor: the reply this op has always given.
-                    response.containers = m_store.listContainers();
+                    const auto snapshot = m_store.containerListSnapshot();
+                    response.admitted = snapshot.admitted;
+                    response.knownContainerIds = snapshot.knownContainerIds;
+                    response.snapshotComplete = snapshot.complete;
+                    response.containers = snapshot.containers;
                     return response;
                 }
 
                 auto delta = m_store.lifecycleSince(*request.since);
+                const auto snapshot = m_store.containerListSnapshot();
+                response.admitted = snapshot.admitted;
+                response.knownContainerIds = snapshot.knownContainerIds;
+                response.snapshotComplete = snapshot.complete;
 
-                // On resync the journal hands back the full set, which goes out
-                // through `containers` — the key every client already reads —
-                // so recovery needs no second call and no special case beyond
-                // noticing the flag.
-                response.containers = delta.resyncRequired ? delta.containers : std::vector<ContainerRecordPtr> {};
+                // On resync pair the journal cursor with a fresh, coherent
+                // store snapshot. Changes after the cursor are replayed on the
+                // next read, so the returned full set can be newer without
+                // losing transitions.
+                response.containers = delta.resyncRequired ? snapshot.containers : std::vector<ContainerRecordPtr> {};
                 response.delta = std::move(delta);
 
                 return response;

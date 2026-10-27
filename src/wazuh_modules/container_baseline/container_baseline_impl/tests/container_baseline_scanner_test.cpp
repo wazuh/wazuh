@@ -8,7 +8,9 @@
 #include <chrono>
 #include <cstdlib>
 #include <fstream>
+#include <set>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <gtest/gtest.h>
@@ -49,6 +51,35 @@ struct Recorder
             sequence.push_back("status:" + status.container_id);
             statuses.push_back(status);
         };
+    }
+
+    // Container contexts in emission order, recorded into `sequence` as
+    // "context:<container_id>" so the context-before-rows contract can be
+    // asserted alongside the row/status ordering above.
+    std::vector<std::pair<std::string, std::string>> contexts;
+
+    /// Containers whose context store is refused, to exercise the branch that
+    /// skips a container whose context could not be stored.
+    std::set<std::string> refuseContextFor;
+
+    wazuh::container_baseline::ContainerContextSink contextSink()
+    {
+        return [this](const std::string& container_id, const std::string& context_json)
+        {
+            sequence.push_back("context:" + container_id);
+            contexts.emplace_back(container_id, context_json);
+            return refuseContextFor.count(container_id) == 0;
+        };
+    }
+
+    /// Index of the first `kind:id` entry, or -1.
+    [[nodiscard]] int firstIndexOf(const std::string& kind, const std::string& id) const
+    {
+        for (std::size_t i = 0; i < sequence.size(); ++i)
+        {
+            if (sequence[i] == kind + ":" + id) return static_cast<int>(i);
+        }
+        return -1;
     }
 
     [[nodiscard]] const ContainerStatus* statusFor(const std::string& id) const
@@ -789,4 +820,113 @@ TEST(SingleContainerBaseline, StatusSinkIsOptional)
     EXPECT_EQ(1, RunFimDbsyncBaselineForContainerFrom(
                      discover, "c1", pids, {PathFor(tree.path()), FilePathFor("/a/../b")}, rec.rowSink()));
     EXPECT_FALSE(rec.rows.empty());
+}
+
+/* The context-before-rows contract on the SINGLE-CONTAINER path.
+ *
+ * Regression for a forwarding bug: RunFimDbsyncBaselineForContainerFrom()
+ * delegates to RunFimDbsyncBaselineFrom(), and for a while it dropped
+ * context_sink on the way. Because that parameter defaults to an empty
+ * std::function the omission compiled silently, and the guard inside the core
+ * -- `if (context_sink && !context_sink(...))` -- short-circuited, so the
+ * context was never stored AND the container was not skipped. The result was
+ * file_entry rows for a container with no container_context row: rows whose
+ * DELETE events can no longer describe themselves.
+ *
+ * Asserting the ORDER rather than merely the call is deliberate; storing the
+ * context after the rows would satisfy a call-count check and still break the
+ * contract the consumers rely on.
+ */
+TEST(SingleContainerBaseline, StoresTheContainerContextBeforeAnyOfItsRows)
+{
+    TempTree tree;
+    tree.writeFile("f1", "one");
+    tree.writeFile("f2", "two");
+
+    Recorder rec;
+    const auto discover = []
+    { return std::vector<ContainerIdentity>{MakeIdentity("c1"), MakeIdentity("c2")}; };
+    const auto self = ::getpid();
+    const auto pids = PidIndex::FromMap({{"c1", {self}}, {"c2", {self}}});
+
+    const int baselined = RunFimDbsyncBaselineForContainerFrom(discover,
+                                                               "c2",
+                                                               pids,
+                                                               {PathFor(tree.path())},
+                                                               rec.rowSink(),
+                                                               rec.statusSink(),
+                                                               {},
+                                                               rec.contextSink());
+
+    EXPECT_EQ(1, baselined);
+
+    // Exactly once, for the container actually scanned.
+    ASSERT_EQ(1u, rec.contexts.size());
+    EXPECT_EQ("c2", rec.contexts[0].first);
+    EXPECT_FALSE(rec.contexts[0].second.empty());
+
+    // Before the first row, not merely present.
+    const int context_at = rec.firstIndexOf("context", "c2");
+    const int first_row  = rec.firstIndexOf("row", "c2");
+    ASSERT_GE(context_at, 0) << "the context sink was never called";
+    ASSERT_GE(first_row, 0) << "no rows were produced, so the ordering is untested";
+    EXPECT_LT(context_at, first_row) << "rows were emitted before the container's context was stored";
+}
+
+/* The same contract on the path-reconcile shape (a MonitoredPath naming one
+ * file), which reaches the same core through the same delegation and was
+ * broken by the same dropped argument. */
+TEST(SingleContainerBaseline, StoresTheContextBeforeRowsForASingleFileToo)
+{
+    TempTree tree;
+    tree.writeFile("wanted", "x");
+
+    Recorder rec;
+    const auto discover = [] { return std::vector<ContainerIdentity>{MakeIdentity("c1")}; };
+    const auto pids     = PidIndex::FromMap({{"c1", {::getpid()}}});
+
+    const int baselined = RunFimDbsyncBaselineForContainerFrom(discover,
+                                                               "c1",
+                                                               pids,
+                                                               {FilePathFor(tree.path() + "/wanted")},
+                                                               rec.rowSink(),
+                                                               rec.statusSink(),
+                                                               {},
+                                                               rec.contextSink());
+
+    EXPECT_EQ(1, baselined);
+    ASSERT_EQ(1u, rec.contexts.size());
+    EXPECT_EQ("c1", rec.contexts[0].first);
+    EXPECT_LT(rec.firstIndexOf("context", "c1"), rec.firstIndexOf("row", "c1"));
+}
+
+/* A consumer that cannot store the context must get no rows either.
+ *
+ * This is the other half of the guard: emitting rows anyway would leave them
+ * referencing a container nothing can describe, so the container is skipped
+ * whole and is NOT counted as baselined -- because it was not. */
+TEST(SingleContainerBaseline, ARefusedContextSkipsTheContainerEntirely)
+{
+    TempTree tree;
+    tree.writeFile("f1", "one");
+
+    Recorder rec;
+    rec.refuseContextFor.insert("c1");
+
+    const auto discover = [] { return std::vector<ContainerIdentity>{MakeIdentity("c1")}; };
+    const auto pids     = PidIndex::FromMap({{"c1", {::getpid()}}});
+
+    const int baselined = RunFimDbsyncBaselineForContainerFrom(discover,
+                                                               "c1",
+                                                               pids,
+                                                               {PathFor(tree.path())},
+                                                               rec.rowSink(),
+                                                               rec.statusSink(),
+                                                               {},
+                                                               rec.contextSink());
+
+    EXPECT_EQ(0, baselined) << "a container whose context could not be stored was counted anyway";
+    EXPECT_TRUE(rec.rows.empty()) << "rows were emitted for a container with no stored context";
+    EXPECT_TRUE(rec.statuses.empty());
+    EXPECT_EQ(1u, rec.contexts.size()) << "the sink should be asked exactly once before giving up";
 }

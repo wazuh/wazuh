@@ -43,6 +43,11 @@ namespace wazuh::container_instances
                                                         const std::string& containerName) const override;
         [[nodiscard]] StoreStats stats() const override;
         [[nodiscard]] std::vector<ContainerRecordPtr> listContainers() const override;
+        [[nodiscard]] ContainerListSnapshot containerListSnapshot() const override;
+        [[nodiscard]] std::set<std::string> knownContainerIds() const override;
+        [[nodiscard]] bool snapshotComplete() const override;
+        void markSourceIncomplete(const SourceId& source) override;
+        void setExpectedSources(std::set<SourceId> sources);
         [[nodiscard]] std::set<std::string> admittedIds() const override;
         void setSyncLimit(int limit) override;
 
@@ -123,6 +128,8 @@ namespace wazuh::container_instances
         /// One resolved-record map per source: removal diffs never cross sources.
         std::unordered_map<SourceId, std::unordered_map<std::string, ContainerRecordPtr>> m_bySource;
         std::unordered_map<std::string, ContainerRecordPtr> m_byPodContainer;
+        std::set<SourceId> m_expectedSources;
+        std::set<SourceId> m_readySources;
         std::optional<TimePoint> m_lastReconcile;
         Logger m_logger;
         KeyKind m_keyKind;
@@ -149,6 +156,7 @@ namespace wazuh::container_instances
         /// Set by journalTransitionLocked, consumed by notifyLifecycleUnlocked.
         /// Guarded by m_mutex like everything else it sits beside.
         bool m_lifecycleDirty {false};
+        bool m_snapshotDirty {false};
 
         /// Set once at startup before any thread races for it, then only read.
         std::function<void(LifecycleCursor)> m_onLifecycleChange;

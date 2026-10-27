@@ -120,8 +120,8 @@ class EXPORTED DB final
          * @brief getFile Get ONE container-scoped file row from the database.
          *
          * Unlike getFile(path), this filters on both file_entry primary-key
-         * columns and returns container_id/container_json with the row, so a
-         * caller can build the container-enriched event for it.
+         * columns and returns container_id with the row, so a caller can look
+         * up that container's context and build the enriched event for it.
          *
          * @param path The logical (in-container) path of the row.
          * @param containerId The container the row belongs to.

@@ -222,26 +222,18 @@ static std::string getItemChecksum(const nlohmann::json& item)
     return Utils::asciiToHex(hash.hash());
 }
 
-// The two container-scope columns are row *identity* and row *context*, never row
-// content, so neither may reach the checksum:
+// container_id is row *identity*, never row content, so it may not reach the
+// checksum. It is the leading PRIMARY KEY of every table in
+// syscollectorTablesDef.hpp, so rows are already told apart by it. Digesting it
+// changed every host row's checksum against a pre-container agent ('' is still
+// a value), which would have re-synced the whole host inventory of every
+// upgraded agent — including agents that run no containers at all.
 //
-//   container_id   is the leading PRIMARY KEY of every table in
-//                  syscollectorTablesDef.hpp, so rows are already told apart by
-//                  it. Digesting it changed every host row's checksum against a
-//                  pre-container agent ('' is still a value), which would have
-//                  re-synced the whole host inventory of every upgraded agent —
-//                  including agents that run no containers at all.
-//   container_json is a copy of the container's metadata blob stamped onto each
-//                  of its rows. Digesting it makes one label or annotation edit
-//                  change the checksum of every row of that container, in every
-//                  table, and re-emit its entire inventory as MODIFIED.
-//
-// Strip both here rather than at each call site: nothing about a future caller
-// stamping the scope earlier should be able to put them back into the digest.
+// Strip it here rather than at each call site: nothing about a future caller
+// stamping the scope earlier should be able to put it back into the digest.
 static std::string getRowChecksum(nlohmann::json item)
 {
     item.erase(std::string{CONTAINER_ID_COLUMN});
-    item.erase(std::string{CONTAINER_JSON_COLUMN});
     return getItemChecksum(item);
 }
 
@@ -627,7 +619,426 @@ std::string Syscollector::getCreateStatement() const
     ret += SERVICES_SQL_STATEMENT;
     ret += BROWSER_EXTENSIONS_SQL_STATEMENT;
     ret += TABLE_METADATA_SQL_STATEMENT;
+    ret += CONTAINER_CONTEXT_SQL_STATEMENT;
     return ret;
+}
+
+/// Schema changes applied to a database that already exists, in order.
+///
+/// DBSync derives the schema version from this list: a database reports
+/// PRAGMA user_version, and every entry from that point on is applied to it.
+/// Three properties, all load-bearing:
+///
+///  - One entry is one SCRIPT. It runs through sqlite3_exec inside a
+///    transaction that also carries the version bump, so a step is
+///    all-or-nothing. A script must not open a transaction of its own.
+///  - This list is APPEND-ONLY, permanently. An agent may skip releases, so it
+///    replays the vector from wherever its own database left off. Editing or
+///    removing an entry rewrites history that some installed agent still needs.
+///  - The DDL below is written out LITERALLY rather than taken from the
+///    constants in syscollectorTablesDef.hpp. An edit to a constant must not
+///    reach a migration that has already run on real agents; it earns a new
+///    entry instead.
+///
+/// container_id joins every primary key, and SQLite cannot alter a primary key
+/// in place, so each table is rebuilt: rename the old one aside, create the new
+/// shape under its final name, copy the rows with container_id = '', drop the
+/// old one. Rename-aside-then-create rather than create-then-rename, because
+/// ALTER TABLE ... RENAME rewrites sqlite_master with the table name quoted,
+/// and a migrated database would then differ textually from a freshly created
+/// one forever.
+///
+/// Columns are enumerated rather than copied with SELECT *, because a live
+/// table also carries db_status_field_dm, which initializeStatusField() adds
+/// lazily on first use and which therefore varies per table and per host. It is
+/// per-transaction state, so dropping it here is correct; it comes back on the
+/// next transaction.
+///
+/// Host rows keep their checksums: getRowChecksum() erases container_id before
+/// digesting, so no upgraded agent re-syncs its inventory.
+///
+/// Each rebuild starts with a guard. The copy assigns container_id = '' and is
+/// only correct for the published schema, which has no such column. A
+/// development database that already has container_id would collide on the
+/// primary key or silently turn container rows into host rows.
+/// json('container_id') is malformed JSON, so in that case the guard raises
+/// SQLITE_ERROR, and DBSync recreates the database instead of migrating it.
+///
+/// The create statement above must keep producing the same schema this list
+/// builds up to, because fresh databases take that path and never replay these.
+std::vector<std::string> Syscollector::getUpgradeStatements() const
+{
+    // The published steps come first and keep their numbers: a 5.0.0 database
+    // already reports the version they lead to.
+    auto statements {UPGRADE_SQL_STATEMENTS};
+
+    statements.insert(statements.end(),
+    {
+        // v2 -> v3: store a container's context once, rather than stamping a
+        // copy of it onto every row that container owns.
+        R"(CREATE TABLE IF NOT EXISTS container_context (
+    container_id TEXT PRIMARY KEY,
+    context TEXT NOT NULL DEFAULT ''
+    ) WITHOUT ROWID;)",
+
+        // v3 -> v4: dbsync_osinfo (20 columns)
+        R"(SELECT json(name) FROM pragma_table_info('dbsync_osinfo') WHERE name = 'container_id';
+DROP TABLE IF EXISTS dbsync_osinfo_upgrade_v4_old;
+ALTER TABLE dbsync_osinfo RENAME TO dbsync_osinfo_upgrade_v4_old;
+CREATE TABLE dbsync_osinfo (
+    container_id TEXT DEFAULT '',
+    hostname TEXT,
+    architecture TEXT,
+    os_name TEXT,
+    os_version TEXT,
+    os_codename TEXT,
+    os_major TEXT,
+    os_minor TEXT,
+    os_patch TEXT,
+    os_build TEXT,
+    os_platform TEXT,
+    os_type TEXT,
+    os_kernel_name TEXT,
+    os_kernel_release TEXT,
+    os_kernel_version TEXT,
+    os_display_version TEXT,
+    os_full TEXT,
+    sync INTEGER DEFAULT 0,
+    checksum TEXT,
+    version INTEGER NOT NULL DEFAULT 1,
+    PRIMARY KEY (container_id, os_name, os_version)) WITHOUT ROWID;
+INSERT INTO dbsync_osinfo (container_id,hostname,architecture,os_name,os_version,os_codename,os_major,os_minor,os_patch,os_build,os_platform,os_type,os_kernel_name,os_kernel_release,os_kernel_version,os_display_version,os_full,sync,checksum,version)
+    SELECT '',hostname,architecture,os_name,os_version,os_codename,os_major,os_minor,os_patch,os_build,os_platform,os_type,os_kernel_name,os_kernel_release,os_kernel_version,os_display_version,os_full,sync,checksum,version FROM dbsync_osinfo_upgrade_v4_old;
+DROP TABLE dbsync_osinfo_upgrade_v4_old;)",
+
+        // v4 -> v5: dbsync_hwinfo (11 columns)
+        R"(SELECT json(name) FROM pragma_table_info('dbsync_hwinfo') WHERE name = 'container_id';
+DROP TABLE IF EXISTS dbsync_hwinfo_upgrade_v5_old;
+ALTER TABLE dbsync_hwinfo RENAME TO dbsync_hwinfo_upgrade_v5_old;
+CREATE TABLE dbsync_hwinfo (
+    container_id TEXT DEFAULT '',
+    serial_number TEXT,
+    cpu_name TEXT,
+    cpu_cores INTEGER,
+    cpu_speed DOUBLE,
+    memory_total INTEGER,
+    memory_free INTEGER,
+    memory_used INTEGER,
+    sync INTEGER DEFAULT 0,
+    checksum TEXT,
+    version INTEGER NOT NULL DEFAULT 1,
+    PRIMARY KEY (container_id, serial_number)) WITHOUT ROWID;
+INSERT INTO dbsync_hwinfo (container_id,serial_number,cpu_name,cpu_cores,cpu_speed,memory_total,memory_free,memory_used,sync,checksum,version)
+    SELECT '',serial_number,cpu_name,cpu_cores,cpu_speed,memory_total,memory_free,memory_used,sync,checksum,version FROM dbsync_hwinfo_upgrade_v5_old;
+DROP TABLE dbsync_hwinfo_upgrade_v5_old;)",
+
+        // v5 -> v6: dbsync_hotfixes (5 columns)
+        R"(SELECT json(name) FROM pragma_table_info('dbsync_hotfixes') WHERE name = 'container_id';
+DROP TABLE IF EXISTS dbsync_hotfixes_upgrade_v6_old;
+ALTER TABLE dbsync_hotfixes RENAME TO dbsync_hotfixes_upgrade_v6_old;
+CREATE TABLE dbsync_hotfixes(
+    container_id TEXT DEFAULT '',
+    hotfix_name TEXT,
+    sync INTEGER DEFAULT 0,
+    checksum TEXT,
+    version INTEGER NOT NULL DEFAULT 1,
+    PRIMARY KEY (container_id, hotfix_name)) WITHOUT ROWID;
+INSERT INTO dbsync_hotfixes (container_id,hotfix_name,sync,checksum,version)
+    SELECT '',hotfix_name,sync,checksum,version FROM dbsync_hotfixes_upgrade_v6_old;
+DROP TABLE dbsync_hotfixes_upgrade_v6_old;)",
+
+        // v6 -> v7: dbsync_packages (17 columns)
+        R"(SELECT json(name) FROM pragma_table_info('dbsync_packages') WHERE name = 'container_id';
+DROP TABLE IF EXISTS dbsync_packages_upgrade_v7_old;
+ALTER TABLE dbsync_packages RENAME TO dbsync_packages_upgrade_v7_old;
+CREATE TABLE dbsync_packages(
+    container_id TEXT DEFAULT '',
+    name TEXT,
+    version_ TEXT,
+    vendor TEXT,
+    installed TEXT,
+    path TEXT,
+    architecture TEXT,
+    category TEXT,
+    description TEXT,
+    size BIGINT,
+    priority TEXT,
+    multiarch TEXT,
+    source TEXT,
+    type TEXT,
+    sync INTEGER DEFAULT 0,
+    checksum TEXT,
+    version INTEGER NOT NULL DEFAULT 1,
+    PRIMARY KEY (container_id, name,version_,architecture,type,path)) WITHOUT ROWID;
+INSERT INTO dbsync_packages (container_id,name,version_,vendor,installed,path,architecture,category,description,size,priority,multiarch,source,type,sync,checksum,version)
+    SELECT '',name,version_,vendor,installed,path,architecture,category,description,size,priority,multiarch,source,type,sync,checksum,version FROM dbsync_packages_upgrade_v7_old;
+DROP TABLE dbsync_packages_upgrade_v7_old;)",
+
+        // v7 -> v8: dbsync_processes (14 columns)
+        R"(SELECT json(name) FROM pragma_table_info('dbsync_processes') WHERE name = 'container_id';
+DROP TABLE IF EXISTS dbsync_processes_upgrade_v8_old;
+ALTER TABLE dbsync_processes RENAME TO dbsync_processes_upgrade_v8_old;
+CREATE TABLE dbsync_processes (
+    container_id TEXT DEFAULT '',
+    pid TEXT,
+    name TEXT,
+    state TEXT,
+    parent_pid BIGINT,
+    utime BIGINT,
+    stime BIGINT,
+    command_line TEXT,
+    args TEXT,
+    args_count BIGINT,
+    start TEXT,
+    sync INTEGER DEFAULT 0,
+    checksum TEXT,
+    version INTEGER NOT NULL DEFAULT 1,
+    PRIMARY KEY (container_id, pid)) WITHOUT ROWID;
+INSERT INTO dbsync_processes (container_id,pid,name,state,parent_pid,utime,stime,command_line,args,args_count,start,sync,checksum,version)
+    SELECT '',pid,name,state,parent_pid,utime,stime,command_line,args,args_count,start,sync,checksum,version FROM dbsync_processes_upgrade_v8_old;
+DROP TABLE dbsync_processes_upgrade_v8_old;)",
+
+        // v8 -> v9: dbsync_ports (15 columns)
+        R"(SELECT json(name) FROM pragma_table_info('dbsync_ports') WHERE name = 'container_id';
+DROP TABLE IF EXISTS dbsync_ports_upgrade_v9_old;
+ALTER TABLE dbsync_ports RENAME TO dbsync_ports_upgrade_v9_old;
+CREATE TABLE dbsync_ports (
+       container_id TEXT DEFAULT '',
+       network_transport TEXT,
+       source_ip TEXT,
+       source_port BIGINT,
+       destination_ip TEXT,
+       destination_port BIGINT,
+       host_network_egress_queue BIGINT,
+       host_network_ingress_queue BIGINT,
+       file_inode BIGINT,
+       interface_state TEXT,
+       process_pid BIGINT,
+       process_name TEXT,
+       sync INTEGER DEFAULT 0,
+       checksum TEXT,
+       version INTEGER NOT NULL DEFAULT 1,
+       PRIMARY KEY (container_id, file_inode, network_transport, source_ip, source_port)) WITHOUT ROWID;
+INSERT INTO dbsync_ports (container_id,network_transport,source_ip,source_port,destination_ip,destination_port,host_network_egress_queue,host_network_ingress_queue,file_inode,interface_state,process_pid,process_name,sync,checksum,version)
+    SELECT '',network_transport,source_ip,source_port,destination_ip,destination_port,host_network_egress_queue,host_network_ingress_queue,file_inode,interface_state,process_pid,process_name,sync,checksum,version FROM dbsync_ports_upgrade_v9_old;
+DROP TABLE dbsync_ports_upgrade_v9_old;)",
+
+        // v9 -> v10: dbsync_network_iface (18 columns)
+        R"(SELECT json(name) FROM pragma_table_info('dbsync_network_iface') WHERE name = 'container_id';
+DROP TABLE IF EXISTS dbsync_network_iface_upgrade_v10_old;
+ALTER TABLE dbsync_network_iface RENAME TO dbsync_network_iface_upgrade_v10_old;
+CREATE TABLE dbsync_network_iface (
+       container_id TEXT DEFAULT '',
+       interface_name TEXT,
+       interface_alias TEXT,
+       interface_type TEXT,
+       interface_state TEXT,
+       interface_mtu INTEGER,
+       host_mac TEXT,
+       host_network_egress_packages INTEGER,
+       host_network_ingress_packages INTEGER,
+       host_network_egress_bytes INTEGER,
+       host_network_ingress_bytes INTEGER,
+       host_network_egress_errors INTEGER,
+       host_network_ingress_errors INTEGER,
+       host_network_egress_drops INTEGER,
+       host_network_ingress_drops INTEGER,
+       sync INTEGER DEFAULT 0,
+       checksum TEXT,
+       version INTEGER NOT NULL DEFAULT 1,
+       PRIMARY KEY (container_id, interface_name,interface_alias,interface_type)) WITHOUT ROWID;
+INSERT INTO dbsync_network_iface (container_id,interface_name,interface_alias,interface_type,interface_state,interface_mtu,host_mac,host_network_egress_packages,host_network_ingress_packages,host_network_egress_bytes,host_network_ingress_bytes,host_network_egress_errors,host_network_ingress_errors,host_network_egress_drops,host_network_ingress_drops,sync,checksum,version)
+    SELECT '',interface_name,interface_alias,interface_type,interface_state,interface_mtu,host_mac,host_network_egress_packages,host_network_ingress_packages,host_network_egress_bytes,host_network_ingress_bytes,host_network_egress_errors,host_network_ingress_errors,host_network_egress_drops,host_network_ingress_drops,sync,checksum,version FROM dbsync_network_iface_upgrade_v10_old;
+DROP TABLE dbsync_network_iface_upgrade_v10_old;)",
+
+        // v10 -> v11: dbsync_network_protocol (9 columns)
+        R"(SELECT json(name) FROM pragma_table_info('dbsync_network_protocol') WHERE name = 'container_id';
+DROP TABLE IF EXISTS dbsync_network_protocol_upgrade_v11_old;
+ALTER TABLE dbsync_network_protocol RENAME TO dbsync_network_protocol_upgrade_v11_old;
+CREATE TABLE dbsync_network_protocol (
+       container_id TEXT DEFAULT '',
+       interface_name TEXT,
+       network_type TEXT,
+       network_gateway TEXT,
+       network_dhcp INTEGER,
+       network_metric TEXT,
+       sync INTEGER DEFAULT 0,
+       checksum TEXT,
+       version INTEGER NOT NULL DEFAULT 1,
+       PRIMARY KEY (container_id, interface_name,network_type)) WITHOUT ROWID;
+INSERT INTO dbsync_network_protocol (container_id,interface_name,network_type,network_gateway,network_dhcp,network_metric,sync,checksum,version)
+    SELECT '',interface_name,network_type,network_gateway,network_dhcp,network_metric,sync,checksum,version FROM dbsync_network_protocol_upgrade_v11_old;
+DROP TABLE dbsync_network_protocol_upgrade_v11_old;)",
+
+        // v11 -> v12: dbsync_network_address (9 columns)
+        R"(SELECT json(name) FROM pragma_table_info('dbsync_network_address') WHERE name = 'container_id';
+DROP TABLE IF EXISTS dbsync_network_address_upgrade_v12_old;
+ALTER TABLE dbsync_network_address RENAME TO dbsync_network_address_upgrade_v12_old;
+CREATE TABLE dbsync_network_address (
+       container_id TEXT DEFAULT '',
+       interface_name TEXT,
+       network_type INTEGER,
+       network_ip TEXT,
+       network_netmask TEXT,
+       network_broadcast TEXT,
+       sync INTEGER DEFAULT 0,
+       checksum TEXT,
+       version INTEGER NOT NULL DEFAULT 1,
+       PRIMARY KEY (container_id, interface_name,network_type,network_ip)) WITHOUT ROWID;
+INSERT INTO dbsync_network_address (container_id,interface_name,network_type,network_ip,network_netmask,network_broadcast,sync,checksum,version)
+    SELECT '',interface_name,network_type,network_ip,network_netmask,network_broadcast,sync,checksum,version FROM dbsync_network_address_upgrade_v12_old;
+DROP TABLE dbsync_network_address_upgrade_v12_old;)",
+
+        // v12 -> v13: dbsync_users (35 columns)
+        R"(SELECT json(name) FROM pragma_table_info('dbsync_users') WHERE name = 'container_id';
+DROP TABLE IF EXISTS dbsync_users_upgrade_v13_old;
+ALTER TABLE dbsync_users RENAME TO dbsync_users_upgrade_v13_old;
+CREATE TABLE dbsync_users (
+        container_id TEXT DEFAULT '',
+        user_name TEXT,
+        user_full_name TEXT,
+        user_home TEXT,
+        user_id BIGINT,
+        user_uid_signed BIGINT,
+        user_uuid TEXT,
+        user_groups TEXT,
+        user_group_id BIGINT,
+        user_group_id_signed BIGINT,
+        user_created TEXT,
+        user_roles TEXT,
+        user_shell TEXT,
+        user_type TEXT,
+        user_is_hidden INTEGER,
+        user_is_remote INTEGER,
+        user_last_login TEXT,
+        user_auth_failed_count BIGINT,
+        user_auth_failed_timestamp TEXT,
+        user_password_last_change BIGINT,
+        user_password_expiration_date TEXT,
+        user_password_hash_algorithm TEXT,
+        user_password_inactive_days INTEGER,
+        user_password_max_days_between_changes INTEGER,
+        user_password_min_days_between_changes INTEGER,
+        user_password_status TEXT,
+        user_password_warning_days_before_expiration INTEGER,
+        process_pid BIGINT,
+        host_ip TEXT,
+        login_status INTEGER,
+        login_tty TEXT,
+        login_type TEXT,
+        sync INTEGER DEFAULT 0,
+        checksum TEXT,
+        version INTEGER NOT NULL DEFAULT 1,
+        PRIMARY KEY (container_id, user_name)) WITHOUT ROWID;
+INSERT INTO dbsync_users (container_id,user_name,user_full_name,user_home,user_id,user_uid_signed,user_uuid,user_groups,user_group_id,user_group_id_signed,user_created,user_roles,user_shell,user_type,user_is_hidden,user_is_remote,user_last_login,user_auth_failed_count,user_auth_failed_timestamp,user_password_last_change,user_password_expiration_date,user_password_hash_algorithm,user_password_inactive_days,user_password_max_days_between_changes,user_password_min_days_between_changes,user_password_status,user_password_warning_days_before_expiration,process_pid,host_ip,login_status,login_tty,login_type,sync,checksum,version)
+    SELECT '',user_name,user_full_name,user_home,user_id,user_uid_signed,user_uuid,user_groups,user_group_id,user_group_id_signed,user_created,user_roles,user_shell,user_type,user_is_hidden,user_is_remote,user_last_login,user_auth_failed_count,user_auth_failed_timestamp,user_password_last_change,user_password_expiration_date,user_password_hash_algorithm,user_password_inactive_days,user_password_max_days_between_changes,user_password_min_days_between_changes,user_password_status,user_password_warning_days_before_expiration,process_pid,host_ip,login_status,login_tty,login_type,sync,checksum,version FROM dbsync_users_upgrade_v13_old;
+DROP TABLE dbsync_users_upgrade_v13_old;)",
+
+        // v13 -> v14: dbsync_groups (11 columns)
+        R"(SELECT json(name) FROM pragma_table_info('dbsync_groups') WHERE name = 'container_id';
+DROP TABLE IF EXISTS dbsync_groups_upgrade_v14_old;
+ALTER TABLE dbsync_groups RENAME TO dbsync_groups_upgrade_v14_old;
+CREATE TABLE dbsync_groups (
+    container_id TEXT DEFAULT '',
+    group_id BIGINT,
+    group_name TEXT,
+    group_description TEXT,
+    group_id_signed BIGINT,
+    group_uuid TEXT,
+    group_is_hidden INTEGER,
+    group_users TEXT,
+    sync INTEGER DEFAULT 0,
+    checksum TEXT,
+    version INTEGER NOT NULL DEFAULT 1,
+    PRIMARY KEY (container_id, group_name)) WITHOUT ROWID;
+INSERT INTO dbsync_groups (container_id,group_id,group_name,group_description,group_id_signed,group_uuid,group_is_hidden,group_users,sync,checksum,version)
+    SELECT '',group_id,group_name,group_description,group_id_signed,group_uuid,group_is_hidden,group_users,sync,checksum,version FROM dbsync_groups_upgrade_v14_old;
+DROP TABLE dbsync_groups_upgrade_v14_old;)",
+
+        // v14 -> v15: dbsync_services (36 columns)
+        R"(SELECT json(name) FROM pragma_table_info('dbsync_services') WHERE name = 'container_id';
+DROP TABLE IF EXISTS dbsync_services_upgrade_v15_old;
+ALTER TABLE dbsync_services RENAME TO dbsync_services_upgrade_v15_old;
+CREATE TABLE dbsync_services (
+        container_id TEXT DEFAULT '',
+        service_id TEXT,
+        service_name TEXT,
+        service_description TEXT,
+        service_type TEXT,
+        service_state TEXT,
+        service_sub_state TEXT,
+        service_enabled TEXT,
+        service_start_type TEXT,
+		service_restart TEXT,
+		service_frequency BIGINT,
+		service_starts_on_mount INTEGER,
+		service_starts_on_path_modified TEXT,
+		service_starts_on_not_empty_directory TEXT,
+		service_inetd_compatibility INTEGER,
+        process_pid BIGINT,
+        process_executable TEXT,
+        process_args TEXT,
+		process_user_name TEXT,
+		process_group_name TEXT,
+		process_working_dir TEXT,
+		process_root_dir TEXT,
+        file_path TEXT,
+        service_address TEXT,
+        log_file_path TEXT,
+        error_log_file_path TEXT,
+        service_exit_code INTEGER,
+        service_win32_exit_code INTEGER,
+        service_following TEXT,
+        service_object_path TEXT,
+        service_target_ephemeral_id BIGINT,
+        service_target_type TEXT,
+        service_target_address TEXT,
+        sync INTEGER DEFAULT 0,
+        checksum TEXT,
+        version INTEGER NOT NULL DEFAULT 1,
+        PRIMARY KEY (container_id, service_id, file_path)) WITHOUT ROWID;
+INSERT INTO dbsync_services (container_id,service_id,service_name,service_description,service_type,service_state,service_sub_state,service_enabled,service_start_type,service_restart,service_frequency,service_starts_on_mount,service_starts_on_path_modified,service_starts_on_not_empty_directory,service_inetd_compatibility,process_pid,process_executable,process_args,process_user_name,process_group_name,process_working_dir,process_root_dir,file_path,service_address,log_file_path,error_log_file_path,service_exit_code,service_win32_exit_code,service_following,service_object_path,service_target_ephemeral_id,service_target_type,service_target_address,sync,checksum,version)
+    SELECT '',service_id,service_name,service_description,service_type,service_state,service_sub_state,service_enabled,service_start_type,service_restart,service_frequency,service_starts_on_mount,service_starts_on_path_modified,service_starts_on_not_empty_directory,service_inetd_compatibility,process_pid,process_executable,process_args,process_user_name,process_group_name,process_working_dir,process_root_dir,file_path,service_address,log_file_path,error_log_file_path,service_exit_code,service_win32_exit_code,service_following,service_object_path,service_target_ephemeral_id,service_target_type,service_target_address,sync,checksum,version FROM dbsync_services_upgrade_v15_old;
+DROP TABLE dbsync_services_upgrade_v15_old;)",
+
+        // v15 -> v16: dbsync_browser_extensions (26 columns)
+        R"(SELECT json(name) FROM pragma_table_info('dbsync_browser_extensions') WHERE name = 'container_id';
+DROP TABLE IF EXISTS dbsync_browser_extensions_upgrade_v16_old;
+ALTER TABLE dbsync_browser_extensions RENAME TO dbsync_browser_extensions_upgrade_v16_old;
+CREATE TABLE dbsync_browser_extensions (
+        container_id TEXT DEFAULT '',
+        browser_name TEXT,
+        user_id TEXT,
+        package_name TEXT,
+        package_id TEXT,
+        package_version_ TEXT,
+        package_description TEXT,
+        package_vendor TEXT,
+        package_build_version TEXT,
+        package_path TEXT,
+        browser_profile_name TEXT,
+        browser_profile_path TEXT,
+        package_reference TEXT,
+        package_permissions TEXT,
+        package_type TEXT,
+        package_enabled INTEGER,
+        package_visible INTEGER,
+        package_autoupdate INTEGER,
+        package_persistent INTEGER,
+        package_from_webstore INTEGER,
+        browser_profile_referenced INTEGER,
+        package_installed TEXT,
+        file_hash_sha256 TEXT,
+        sync INTEGER DEFAULT 0,
+        checksum TEXT,
+        version INTEGER NOT NULL DEFAULT 1,
+        PRIMARY KEY (container_id, browser_name,user_id,browser_profile_path,package_name,package_version_)) WITHOUT ROWID;
+INSERT INTO dbsync_browser_extensions (container_id,browser_name,user_id,package_name,package_id,package_version_,package_description,package_vendor,package_build_version,package_path,browser_profile_name,browser_profile_path,package_reference,package_permissions,package_type,package_enabled,package_visible,package_autoupdate,package_persistent,package_from_webstore,browser_profile_referenced,package_installed,file_hash_sha256,sync,checksum,version)
+    SELECT '',browser_name,user_id,package_name,package_id,package_version_,package_description,package_vendor,package_build_version,package_path,browser_profile_name,browser_profile_path,package_reference,package_permissions,package_type,package_enabled,package_visible,package_autoupdate,package_persistent,package_from_webstore,browser_profile_referenced,package_installed,file_hash_sha256,sync,checksum,version FROM dbsync_browser_extensions_upgrade_v16_old;
+DROP TABLE dbsync_browser_extensions_upgrade_v16_old;)",
+    });
+
+    return statements;
 }
 
 
@@ -657,7 +1068,7 @@ void Syscollector::init(const std::shared_ptr<ISysInfo>& spInfo,
                         const unsigned int containerBaselineInterval)
 {
     auto dbSync = std::make_unique<DBSync>(HostType::AGENT, DbEngineType::SQLITE3, dbPath, getCreateStatement(), DbManagement::PERSISTENT,
-                                           UPGRADE_SQL_STATEMENTS);
+                                           getUpgradeStatements());
 
     // Logged here, with this module's tag: a recreated database is why the next sync resends
     // the whole inventory.
@@ -670,6 +1081,7 @@ void Syscollector::init(const std::shared_ptr<ISysInfo>& spInfo,
 
     std::unique_lock<std::mutex> lock{m_scan_mutex};
 
+    forgetContainerContexts();
     m_spInfo = spInfo;
     m_reportDiffFunction = std::move(reportDiffFunction);
     m_persistDiffFunction = std::move(persistDiffFunction);
@@ -1005,6 +1417,7 @@ void Syscollector::releaseResources()
     // and prevent use-after-free when Syscollector singleton destructs
     // after static dependencies have already been destroyed
     m_spDBSync.reset();
+    forgetContainerContexts();
     m_spNormalizer.reset();
     m_spSyncProtocol.reset();
     m_spSyncProtocolVD.reset();
@@ -1044,6 +1457,70 @@ void Syscollector::destroy()
     }
 
     releaseResources();
+}
+
+/// The container block for a row, read from the context stored once per
+/// container rather than from a copy carried on the row itself.
+///
+/// Memoised on the container id. Rows reach here grouped by container on every
+/// path -- the scan flushes one container at a time, and every table is
+/// WITHOUT ROWID with container_id leading the primary key, so rows read back
+/// out of the database arrive clustered too. One lookup per container per
+/// flush, not one per row.
+///
+/// Not guarded by a mutex: every ecsData() call site runs under m_scan_mutex.
+nlohmann::json Syscollector::containerContextBlock(const std::string& containerId)
+{
+    {
+        std::lock_guard<std::mutex> lock {m_containerContextMutex};
+
+        if (containerId == m_lastContainerId)
+        {
+            return m_lastContainerBlock;
+        }
+    }
+
+    nlohmann::json block;
+
+#if defined(__linux__)
+
+    try
+    {
+        auto selectQuery = SelectQuery::builder()
+                           .table(CONTAINER_CONTEXT_TABLE)
+                           .columnList({"context"})
+                           .rowFilter("WHERE container_id=?")
+                           .rowFilterBindText(containerId)
+                           .build();
+
+        const auto callback = [&block](ReturnTypeCallback result, const nlohmann::json & selected)
+        {
+            if (result == SELECTED && selected.contains("context") && selected.at("context").is_string())
+            {
+                const auto& stored = selected.at("context").get_ref<const std::string&>();
+                const auto parsed = nlohmann::json::parse(stored, nullptr, false);
+
+                if (parsed.is_object() && parsed.contains("container"))
+                {
+                    block = parsed["container"];
+                }
+            }
+        };
+
+        m_spDBSync->selectRows(selectQuery.query(), callback);
+    }
+    catch (const std::exception&)
+    {
+        // Leaves `block` null, which degrades to the fallback below and then
+        // to an event without a container block -- never to a malformed one.
+    }
+
+#endif
+
+    std::lock_guard<std::mutex> lock {m_containerContextMutex};
+    m_lastContainerId = containerId;
+    m_lastContainerBlock = block;
+    return block;
 }
 
 std::pair<nlohmann::json, uint64_t> Syscollector::ecsData(const nlohmann::json& data, const std::string& table, bool createFields)
@@ -1104,30 +1581,29 @@ std::pair<nlohmann::json, uint64_t> Syscollector::ecsData(const nlohmann::json& 
         ret = ecsBrowserExtensionsData(data, createFields);
     }
 
-    // Option A (container baseline): container-sourced rows carry their
-    // serialized runtime context in the container_json column — surface it as
-    // the event's container/kubernetes blocks. Host rows have an empty column
-    // and are untouched. DELETED events keep the blocks because the column is
-    // part of the stored row, even after the container itself is gone.
-    if (data.contains(CONTAINER_JSON_COLUMN) && data[CONTAINER_JSON_COLUMN].is_string())
+    // Option A (container baseline): container-sourced rows name their
+    // container, and its runtime context is stored once under that id — join
+    // the two and surface the result as the event's container block. Host rows
+    // have an empty container_id and are untouched. DELETED events keep the
+    // block because the context outlives the rows it describes: it is removed
+    // only after the last of them has been swept.
+    //
+    // One block, with the Kubernetes context nested inside it at
+    // container.kubernetes (D15). The producer has nested it since the shape
+    // changed, and every wazuh-states-* template is dynamic:strict and rejects
+    // a second top-level "kubernetes" sibling, so lifting one here could only
+    // ever have produced a document the indexer refuses.
+    if (data.contains(CONTAINER_ID_COLUMN) && data[CONTAINER_ID_COLUMN].is_string())
     {
-        const auto& contextBlob = data[CONTAINER_JSON_COLUMN].get_ref<const std::string&>();
+        const auto& containerId = data[CONTAINER_ID_COLUMN].get_ref<const std::string&>();
 
-        if (!contextBlob.empty())
+        if (!containerId.empty())
         {
-            const auto context = nlohmann::json::parse(contextBlob, nullptr, false);
+            const auto block = containerContextBlock(containerId);
 
-            if (context.is_object())
+            if (!block.is_null())
             {
-                if (context.contains("container"))
-                {
-                    ret["container"] = context["container"];
-                }
-
-                if (context.contains("kubernetes"))
-                {
-                    ret["kubernetes"] = context["kubernetes"];
-                }
+                ret["container"] = block;
             }
         }
     }
@@ -2236,14 +2712,33 @@ void Syscollector::scanBrowserExtensions()
 #if defined(__linux__)
 namespace
 {
-    // Tables the container baseline covers; each container gets one scoped
-    // txn per table so absent rows (or absent containers) turn into DELETED
-    // events through the same pipeline as host rows.
+    // Tables the container baseline PRODUCES rows for; each container gets one
+    // scoped txn per table so absent rows turn into DELETED events through the
+    // same pipeline as host rows. Used by the per-container flush, where a
+    // table the scanner never fills must not be handed an empty row set --
+    // that would delete on every pass.
     const std::vector<std::string> CONTAINER_BASELINE_TABLES
     {
         PROCESSES_TABLE, PORTS_TABLE, USERS_TABLE, GROUPS_TABLE, PACKAGES_TABLE,
         OS_TABLE, NET_IFACE_TABLE, NET_ADDRESS_TABLE, NET_PROTOCOL_TABLE,
         SERVICES_TABLE, HW_TABLE
+    };
+
+    // Tables that CARRY container_id, which is a larger set than the one the
+    // baseline fills: hotfixes and browser extensions have the column and the
+    // scoped primary key, so a container's rows can exist there, but no
+    // scanner produces them on Linux today.
+    //
+    // The sweeps must use this list rather than the one above. A sweep is the
+    // answer to "this container is gone, remove what it left behind", and a
+    // row it does not visit is a row that outlives its container -- it would
+    // be left pointing at a context that the sweep has already dropped, and
+    // emit the context-less DELETE this whole design exists to prevent.
+    const std::vector<std::string> CONTAINER_SCOPED_TABLES
+    {
+        PROCESSES_TABLE, PORTS_TABLE, USERS_TABLE, GROUPS_TABLE, PACKAGES_TABLE,
+        OS_TABLE, NET_IFACE_TABLE, NET_ADDRESS_TABLE, NET_PROTOCOL_TABLE,
+        SERVICES_TABLE, HW_TABLE, HOTFIXES_TABLE, BROWSER_EXTENSIONS_TABLE
     };
 }
 #endif
@@ -2257,12 +2752,215 @@ namespace
 /// rows but must keep its state so a restart resumes diffing against it rather
 /// than re-seeding from empty. Passing an empty set therefore removes ALL
 /// container rows, which is what the disabled-collector path wants.
+/// Stores one container's context, so its rows can reference it instead of
+/// each carrying a copy. Returns false if it could not be stored.
+///
+/// Skipped when the context has not changed since this process last wrote it.
+/// Compared as a string rather than hashed: the comparison is a length check
+/// and a memcmp, which costs less than a digest of the same bytes and cannot
+/// collide. One comparison per container per scan, not per row.
+///
+/// Not written through a DBSync transaction. The table is never named in one,
+/// so it has no status column and no scoped sweep can reach it — its lifetime
+/// is managed explicitly, next to the sweeps that delete the rows pointing at
+/// it. table_metadata is driven the same way.
+bool Syscollector::storeContainerContext(const std::string& containerId, const std::string& contextJson)
+{
+#if defined(__linux__)
+
+    if (containerId.empty())
+    {
+        return false;
+    }
+
+    {
+        std::lock_guard<std::mutex> lock {m_containerContextMutex};
+        const auto it = m_containerContexts.find(containerId);
+
+        if (it != m_containerContexts.end() && it->second == contextJson)
+        {
+            return true;
+        }
+    }
+
+    try
+    {
+        nlohmann::json row;
+        row[CONTAINER_ID_COLUMN] = containerId;
+        row["context"] = contextJson;
+
+        nlohmann::json input;
+        input["table"] = CONTAINER_CONTEXT_TABLE;
+        input["data"] = nlohmann::json::array({row});
+
+        // A no-op callback: this table's changes are not events. Nothing
+        // downstream is told that a container's labels moved, which is the
+        // whole point of keeping the context out of the inventory rows.
+        m_spDBSync->syncRow(input, [](ReturnTypeCallback, const nlohmann::json&) {});
+    }
+    catch (const std::exception& e)
+    {
+        m_logFunction(LOG_ERROR,
+                      "Could not store the context for container '" + containerId + "': " + e.what() +
+                      ". Its rows are skipped this pass rather than stored without it.");
+
+        std::lock_guard<std::mutex> lock {m_containerContextMutex};
+        m_containerContexts.erase(containerId);
+        return false;
+    }
+
+    std::lock_guard<std::mutex> lock {m_containerContextMutex};
+    m_containerContexts[containerId] = contextJson;
+
+    // The read memo is keyed on the id, so a context that just changed under
+    // that id must not keep being served from it.
+    if (m_lastContainerId == containerId)
+    {
+        m_lastContainerId.clear();
+        m_lastContainerBlock = nlohmann::json {};
+    }
+
+    return true;
+#else
+    (void)containerId;
+    (void)contextJson;
+    return false;
+#endif
+}
+
+/// Deletes one container's stored context, and forgets it.
+///
+/// Called only AFTER that container's rows have been deleted and their DELETE
+/// events emitted, because those events are built from this context. Removing
+/// it first produces deletes that cannot say what they refer to, which is the
+/// defect the stored context exists to prevent.
+void Syscollector::dropContainerContext(const std::string& containerId)
+{
+#if defined(__linux__)
+
+    if (containerId.empty())
+    {
+        return;
+    }
+
+    try
+    {
+        // Bound through the query's data rather than spliced into a filter
+        // string: container ids come from a runtime this code does not own,
+        // and a primary key is exactly what this builder binds.
+        auto deleteQuery = DeleteQuery::builder()
+                           .table(CONTAINER_CONTEXT_TABLE)
+        .data({{CONTAINER_ID_COLUMN, containerId}})
+        .rowFilter("")
+        .build();
+
+        m_spDBSync->deleteRows(deleteQuery.query());
+    }
+    catch (const std::exception& e)
+    {
+        m_logFunction(LOG_DEBUG,
+                      "Could not delete the stored context for container '" + containerId + "': " + e.what());
+    }
+
+    std::lock_guard<std::mutex> lock {m_containerContextMutex};
+    m_containerContexts.erase(containerId);
+
+    if (m_lastContainerId == containerId)
+    {
+        m_lastContainerId.clear();
+        m_lastContainerBlock = nlohmann::json {};
+    }
+
+#else
+    (void)containerId;
+#endif
+}
+
+/// Forgets what this process remembers about stored contexts.
+///
+/// Both memos describe one particular database: m_containerContexts says what
+/// it already holds, so an unchanged context is not rewritten. Once that
+/// database is closed, deleted or replaced, keeping them would skip writing a
+/// context the new database does not have, and its rows would be emitted
+/// without one.
+void Syscollector::forgetContainerContexts()
+{
+    std::lock_guard<std::mutex> lock {m_containerContextMutex};
+    m_containerContexts.clear();
+    m_lastContainerId.clear();
+    m_lastContainerBlock = nlohmann::json {};
+}
+
+/// Deletes every stored context whose container is not in `keep`.
+///
+/// This is the crash-safety half of the lifecycle. After the sweep above, any
+/// id that legitimately owns a context is live; a container with rows that was
+/// not live has just been swept. So "delete every context whose container is
+/// not live" is exact, needs no timestamp and no reference count, and recovers
+/// a context orphaned by a crash between deleting a container's rows and
+/// deleting its context -- which the row scan can never find again, precisely
+/// because those rows are gone.
+///
+/// MUST be given an authoritative live set. A merely incomplete one deletes
+/// the contexts of containers that still exist.
+std::size_t Syscollector::pruneContainerContexts(const std::set<std::string>& keep)
+{
+#if defined(__linux__)
+    std::set<std::string> stored;
+
+    try
+    {
+        const auto callback = [&stored](ReturnTypeCallback result, const nlohmann::json & data)
+        {
+            if (result == SELECTED && data.contains(CONTAINER_ID_COLUMN) && data.at(CONTAINER_ID_COLUMN).is_string())
+            {
+                const auto& id = data.at(CONTAINER_ID_COLUMN).get_ref<const std::string&>();
+
+                if (!id.empty())
+                {
+                    stored.insert(id);
+                }
+            }
+        };
+
+        auto selectQuery = SelectQuery::builder()
+                           .table(CONTAINER_CONTEXT_TABLE)
+                           .columnList({CONTAINER_ID_COLUMN})
+                           .rowFilter("")
+                           .build();
+
+        m_spDBSync->selectRows(selectQuery.query(), callback);
+    }
+    catch (const std::exception& e)
+    {
+        m_logFunction(LOG_DEBUG, std::string("Could not list stored container contexts: ") + e.what());
+        return 0;
+    }
+
+    std::size_t pruned = 0;
+
+    for (const auto& id : stored)
+    {
+        if (keep.find(id) == keep.end())
+        {
+            dropContainerContext(id);
+            ++pruned;
+        }
+    }
+
+    return pruned;
+#else
+    (void)keep;
+    return 0;
+#endif
+}
+
 std::size_t Syscollector::sweepContainerRowsNotIn(const std::set<std::string>& keep)
 {
 #if defined(__linux__)
     std::set<std::string> staleIds;
 
-    for (const auto& table : CONTAINER_BASELINE_TABLES)
+    for (const auto& table : CONTAINER_SCOPED_TABLES)
     {
         const auto selectCallback = [&staleIds, &keep](ReturnTypeCallback result, const nlohmann::json & data)
         {
@@ -2290,14 +2988,24 @@ std::size_t Syscollector::sweepContainerRowsNotIn(const std::set<std::string>& k
 
     for (const auto& staleId : staleIds)
     {
-        for (const auto& table : CONTAINER_BASELINE_TABLES)
+        for (const auto& table : CONTAINER_SCOPED_TABLES)
         {
             updateChanges(table, nlohmann::json::array(), staleId);
         }
 
+        // After the DELETEs above, never before: those events are built from
+        // this context.
+        dropContainerContext(staleId);
+
         m_knownContainerIds.erase(staleId);
         releaseContainerCounts(staleId);
     }
+
+    // `keep` came from a whole-node list the caller already checked was
+    // answered, so it is authoritative and the prune is safe. It recovers
+    // contexts orphaned by a crash between the two steps above, which nothing
+    // else can find once the rows are gone.
+    pruneContainerContexts(keep);
 
     return staleIds.size();
 #else
@@ -2319,14 +3027,23 @@ std::size_t Syscollector::sweepContainerRows(const std::vector<std::string>& con
         }
 
         // An empty scoped sync per table emits that container's rows as
-        // DELETED, each one self-contained through its container_json column.
-        for (const auto& table : CONTAINER_BASELINE_TABLES)
+        // DELETED. The context row is still present here -- it is dropped only
+        // once these are done -- so each event is still self-contained.
+        for (const auto& table : CONTAINER_SCOPED_TABLES)
         {
             updateChanges(table, nlohmann::json::array(), containerId);
         }
 
+        // After the DELETEs above, for the same reason as the whole-list sweep.
+        dropContainerContext(containerId);
+
         m_knownContainerIds.erase(containerId);
 
+        // Deliberately no prune pass here: this path is told which containers
+        // went and has no authoritative view of which still exist, so it
+        // cannot tell an orphaned context from a live one. The next whole-node
+        // sweep covers them.
+        //
         // The same release the whole-list sweep does. Omitting it here leaked
         // an entry per container removed through the delta path -- the rows
         // were gone, but the budget they had spent was never returned, so a
@@ -2387,11 +3104,13 @@ bool Syscollector::scanContainerBaselineDelta()
         }
     };
 
-    const int result = cbaseline_lifecycle_since(CB_DEFAULT_CONNECTOR_SOCKET_PATH,
-                                                 &m_containerCursorEpoch,
-                                                 &m_containerCursorSeq,
-                                                 sink,
-                                                 &collected);
+    int snapshotComplete = 0;
+    const int result = cbaseline_lifecycle_since_ex(CB_DEFAULT_CONNECTOR_SOCKET_PATH,
+                                                    &m_containerCursorEpoch,
+                                                    &m_containerCursorSeq,
+                                                    sink,
+                                                    &collected,
+                                                    &snapshotComplete);
 
     if (result == CB_DELTA_UNAVAILABLE)
     {
@@ -2400,6 +3119,7 @@ bool Syscollector::scanContainerBaselineDelta()
         // happened meanwhile is still waiting when the connector returns.
         m_logFunction(LOG_DEBUG,
                       "Container inventory: lifecycle delta unavailable; leaving stored rows untouched.");
+        m_containerSnapshotComplete = false;
         return false;
     }
 
@@ -2410,6 +3130,17 @@ bool Syscollector::scanContainerBaselineDelta()
         // the additions alone would leave removed containers' rows for ever.
         // The caller's full pass settles both.
         m_logFunction(LOG_DEBUG, "Container inventory: lifecycle cursor needs a resync; running a full pass.");
+        m_containerSnapshotComplete = snapshotComplete != 0;
+        return false;
+    }
+
+    const bool snapshotJustCompleted = snapshotComplete != 0 && !m_containerSnapshotComplete;
+    m_containerSnapshotComplete = snapshotComplete != 0;
+    if (snapshotJustCompleted)
+    {
+        // Changes that arrived while one source was still listing may not
+        // have produced a complete lifecycle set. A full scan is the first
+        // point at which absence is safe to interpret as removal.
         return false;
     }
 
@@ -2701,6 +3432,25 @@ void Syscollector::scanContainerBaseline(const std::vector<std::string>& only_th
         }
     };
 
+    // The container's context, handed over once before any of its rows. Stored
+    // against the container id so its rows need not each carry a copy.
+    //
+    // Returning non-zero makes the baseline skip the container entirely. That
+    // is the right answer to a failed write: rows stored against a context
+    // that is not there would, when the container is eventually swept, produce
+    // DELETE events describing a container nothing can identify.
+    const auto contextSink = [](const char* containerId, const char* contextJson, void* userData) -> int
+    {
+        auto* a = static_cast<Accumulator*>(userData);
+
+        if (a == nullptr || a->self == nullptr || containerId == nullptr || contextJson == nullptr)
+        {
+            return 1;
+        }
+
+        return a->self->storeContainerContext(containerId, contextJson) ? 0 : 1;
+    };
+
     const auto statusSink = [](const cb_container_status_t* status, void* userData)
     {
         if (status == nullptr)
@@ -2728,7 +3478,7 @@ void Syscollector::scanContainerBaseline(const std::vector<std::string>& only_th
 
     if (only_these.empty())
     {
-        baselined = cbaseline_run_syscollector_dbsync(CB_DEFAULT_CONNECTOR_SOCKET_PATH, sink, statusSink, &acc);
+        baselined = cbaseline_run_syscollector_dbsync(CB_DEFAULT_CONNECTOR_SOCKET_PATH, sink, contextSink, statusSink, &acc);
     }
     else
     {
@@ -2744,6 +3494,7 @@ void Syscollector::scanContainerBaseline(const std::vector<std::string>& only_th
                                                           ids.data(),
                                                           static_cast<int>(ids.size()),
                                                           sink,
+                                                          contextSink,
                                                           statusSink,
                                                           &acc);
     }
@@ -2776,6 +3527,7 @@ void Syscollector::scanContainerBaseline(const std::vector<std::string>& only_th
     // admission separately could straddle a reconcile and attribute one
     // container's verdict to another.
     std::map<std::string, bool> discovered;
+    std::set<std::string> discoveredIds;
     const auto idSink = [](const char* containerId, int synced, void* userData)
     {
         auto* ids = static_cast<std::map<std::string, bool>*>(userData);
@@ -2785,30 +3537,32 @@ void Syscollector::scanContainerBaseline(const std::vector<std::string>& only_th
             (*ids)[containerId] = (synced != 0);
         }
     };
-    const int listed = cbaseline_list_containers(CB_DEFAULT_CONNECTOR_SOCKET_PATH, idSink, &discovered);
-
-    // EVERY known container, admitted or not. The sweep below deletes what is
-    // absent from this set, and a container whose rows are merely withheld has
-    // not been removed -- leaving it out here would delete the very rows the
-    // cap is holding back, turning "do not report this yet" into "this is
-    // gone". That distinction is the whole reason the cap withholds instead of
-    // shortening the list.
-    std::set<std::string> discoveredIds;
-
-    for (const auto& entry : discovered)
+    const auto knownSink = [](const char* containerId, void* userData)
     {
-        discoveredIds.insert(entry.first);
-    }
+        auto* ids = static_cast<std::set<std::string>*>(userData);
+        if (ids != nullptr && containerId != nullptr)
+        {
+            ids->insert(containerId);
+        }
+    };
+    int snapshotComplete = 0;
+    const int listed = cbaseline_list_containers_ex(CB_DEFAULT_CONNECTOR_SOCKET_PATH,
+                                                     idSink,
+                                                     &discovered,
+                                                     knownSink,
+                                                     &discoveredIds,
+                                                     &snapshotComplete);
+    m_containerSnapshotComplete = listed >= 0 && snapshotComplete != 0;
 
-    if (listed >= 0)
+    if (listed >= 0 && snapshotComplete != 0)
     {
         setAdmittedContainers(discovered);
     }
 
     // Containers still in the DB but no longer known to container_instances
     // at all (genuinely removed, not merely stopped): an empty scoped sync
-    // per stale id emits their DELETED events — each row's container_json
-    // column keeps those self-contained. A container that's still known but
+    // per stale id emits their DELETED events, which still find the stored
+    // context and so stay self-contained. A container that's still known but
     // just has no live PID right now (stopped) is in `discoveredIds` and is
     // therefore left untouched here, so a later restart resumes diffing
     // against its retained rows instead of re-seeding from empty.
@@ -2829,10 +3583,10 @@ void Syscollector::scanContainerBaseline(const std::vector<std::string>& only_th
         // — which is most of them. Removals on that path come from the delta
         // naming them, never from absence.
     }
-    else if (listed < 0)
+    else if (listed < 0 || snapshotComplete == 0)
     {
         m_logFunction(LOG_WARNING,
-                      "Container connector unavailable; skipping stale-container cleanup "
+                      "Container connector snapshot unavailable or incomplete; skipping stale-container cleanup "
                       "to avoid deleting rows for containers that still exist.");
     }
     else
@@ -4229,6 +4983,8 @@ void Syscollector::deleteDatabaseUnlocked()
     {
         m_spDBSync->closeAndDeleteDatabase();
     }
+
+    forgetContainerContexts();
 }
 // LCOV_EXCL_STOP
 
@@ -4915,7 +5671,10 @@ void Syscollector::setAdmittedContainers(const std::map<std::string, bool>& disc
     m_containerAdmissionWithholding = (admitted.size() != discovered.size());
     const bool lostAdmission = std::any_of(m_admittedContainers.begin(),
                                            m_admittedContainers.end(),
-                                           [&admitted](const auto& id) { return admitted.count(id) == 0; });
+                                           [&admitted](const auto & id)
+    {
+        return admitted.count(id) == 0;
+    });
     m_admittedContainers = std::move(admitted);
     m_admissionKnown = true;
 
@@ -4956,27 +5715,29 @@ void Syscollector::setAdmittedContainers(const std::map<std::string, bool>& disc
     {
         std::vector<nlohmann::json> records;
         auto query = SelectQuery::builder()
-                         .table(table)
-                         .columnList({"*"})
-                         .rowFilter("WHERE sync=1 AND container_id<>''")
-                         .build();
+                     .table(table)
+                     .columnList({"*"})
+                     .rowFilter("WHERE sync=1 AND container_id<>''")
+                     .build();
         m_spDBSync->selectRows(query.query(),
-                               [&records, this](ReturnTypeCallback type, const nlohmann::json& row)
-                               {
-                                   if (type == SELECTED &&
-                                       !isContainerAdmittedLocked(row.at(CONTAINER_ID_COLUMN).get<std::string>()))
-                                   {
-                                       records.push_back(row);
-                                   }
-                               });
+                               [&records, this](ReturnTypeCallback type, const nlohmann::json & row)
+        {
+            if (type == SELECTED &&
+                    !isContainerAdmittedLocked(row.at(CONTAINER_ID_COLUMN).get<std::string>()))
+            {
+                records.push_back(row);
+            }
+        });
 
         std::vector<std::pair<std::string, nlohmann::json>> demoted;
+
         for (const auto& record : records)
         {
             auto [data, version] = ecsData(record, table);
             m_persistDiffFunction(calculateHashId(record, table), OPERATION_DELETE, index, data.dump(), version);
             demoted.emplace_back(table, record);
         }
+
         updateSyncFlagInDB(demoted, 0);
     }
 
@@ -4984,6 +5745,7 @@ void Syscollector::setAdmittedContainers(const std::map<std::string, bool>& disc
     {
         it = isContainerAdmittedLocked(it->first) ? std::next(it) : m_containerDocumentCounts.erase(it);
     }
+
     for (auto it = m_limitReported.begin(); it != m_limitReported.end();)
     {
         it = isContainerAdmittedLocked(it->first) ? std::next(it) : m_limitReported.erase(it);
@@ -5088,11 +5850,11 @@ std::set<std::string> Syscollector::containersWithRowsIn(const std::string& tabl
     // DISTINCT so the engine returns one row per container, not one per stored
     // inventory row.
     auto selectQuery = SelectQuery::builder()
-                           .table(tableName)
-                           .columnList({CONTAINER_ID_COLUMN})
-                           .rowFilter(unsyncedOnly ? "WHERE sync=0 AND container_id != ''" : "WHERE container_id != ''")
-                           .distinctOpt(true)
-                           .build();
+                       .table(tableName)
+                       .columnList({CONTAINER_ID_COLUMN})
+                       .rowFilter(unsyncedOnly ? "WHERE sync=0 AND container_id != ''" : "WHERE container_id != ''")
+                       .distinctOpt(true)
+                       .build();
 
     m_spDBSync->selectRows(selectQuery.query(),
                            [&ids](ReturnTypeCallback, const nlohmann::json & row)
@@ -5777,7 +6539,7 @@ size_t Syscollector::promoteUnsyncedItems(const std::string& index,
     {
         m_logFunction(LOG_DEBUG,
                       reason + ": Promoting " + std::to_string(recordsToPromote.size()) +
-                          " unsynced items for index '" + index + "'");
+                      " unsynced items for index '" + index + "'");
     }
 
     // Generate INSERT events and mark as sync=1
@@ -5871,8 +6633,8 @@ void Syscollector::promoteItemsAfterScanLocked(LimitScope scope)
             for (auto it = m_limitReported.begin(); it != m_limitReported.end();)
             {
                 it = (it->second == index && !it->first.empty() && targets.count(it->first) == 0)
-                         ? m_limitReported.erase(it)
-                         : std::next(it);
+                     ? m_limitReported.erase(it)
+                     : std::next(it);
             }
         }
 
@@ -5894,7 +6656,7 @@ void Syscollector::promoteItemsAfterScanLocked(LimitScope scope)
             // Calculate available space
             size_t availableSpace = limit == 0               ? std::numeric_limits<uint32_t>::max()
                                     : (currentCount < limit) ? (limit - currentCount)
-                                                             : 0;
+                                    : 0;
 
             const std::string scopeSuffix = (scope == LimitScope::host)
                                             ? std::string {}

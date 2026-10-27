@@ -146,6 +146,14 @@ ownerReferences chain. Kubernetes annotations routinely include
 | Syscollector, per scan | 100 × 300 = 30,000 | 1.5 KB | **~45 MB** |
 | FIM, per run (2,000 files/container) | 100 × 2,000 = 200,000 | 1.5 KB | **~300 MB** |
 
+> **The 1.5 KB above is an estimate, and it is too high.** Measured on a real node
+> (see [24](24-container-context-measured.md)): **329 B** for a Docker container, **927 B** for a
+> Kubernetes one, nothing near 1.5 KB and no `last-applied-configuration` anywhere. The same
+> scenario re-run with measured sizes gives **~21 MB** and **~66 MB**, not 45 and 300.
+>
+> The **duplication factor** in this finding stands, and is the part that matters: 79× measured in
+> `file_entry`, 84× in syscollector's tables. It scales with rows-per-container, not blob size.
+
 That volume is paid **four times over**: built once per container (good), then copied into every row's
 JSON, then stored in the DB for every row, then **re-parsed per row on every event emission** —
 `syscollectorImp.cpp` parses `container_json` inside `ecsData()` for each row it emits, and FIM's

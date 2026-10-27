@@ -163,7 +163,10 @@ ContainerContextPtr ContextFromRecord(const nlohmann::json& data)
 // connect/send/recv/close against a 2-worker server with a 1 s timeout, so
 // dropping the follow-ups takes a 100-container node from 101 connections per
 // baseline to 1.
-std::vector<ContainerIdentity> DiscoverContainers(const std::string& socket_path, bool* reachable = nullptr)
+std::vector<ContainerIdentity> DiscoverContainers(const std::string& socket_path,
+                                                  bool* reachable = nullptr,
+                                                  bool* snapshotComplete = nullptr,
+                                                  std::set<std::string>* knownContainerIds = nullptr)
 {
     wazuh::container_instances_client::ContainerInstancesClient client(socket_path);
     std::vector<ContainerIdentity> out;
@@ -172,9 +175,19 @@ std::vector<ContainerIdentity> DiscoverContainers(const std::string& socket_path
     {
         *reachable = false;
     }
+    if (snapshotComplete != nullptr)
+    {
+        *snapshotComplete = false;
+    }
+    if (knownContainerIds != nullptr)
+    {
+        knownContainerIds->clear();
+    }
 
     std::vector<wazuh::container_instances_client::ContainerRef> refs;
     bool answered = false;
+    bool complete = false;
+    std::set<std::string> knownIds;
 
     // Phase 1 — get an answer, and give a still-warming connector time to have
     // something to report.
@@ -183,11 +196,19 @@ std::vector<ContainerIdentity> DiscoverContainers(const std::string& socket_path
     for (int attempt = 1; attempt <= attempts; ++attempt)
     {
         bool polled = false;
-        auto listed = client.listContainers(&polled);
+        bool polledComplete = false;
+        std::set<std::string> polledKnownIds;
+        auto listed = client.listContainers(&polled, &polledComplete, &polledKnownIds);
         if (polled)
         {
             answered = true;
             refs = std::move(listed);
+            complete = polledComplete;
+            knownIds = std::move(polledKnownIds);
+        }
+        else
+        {
+            complete = false;
         }
 
         // Two different reasons to poll again, and they must not be conflated:
@@ -197,10 +218,9 @@ std::vector<ContainerIdentity> DiscoverContainers(const std::string& socket_path
         //                  its first enumeration, in which case an empty list is
         //                  a truthful "nothing yet" rather than "nothing".
         //
-        // The difference matters for DELETIONS, not for how long to wait: only
-        // `answered` gates the caller's stale sweep (see the header), and an
-        // empty list from a connector that has answered is still authoritative
-        // once the warm-up window has closed.
+        // An empty answer may be a genuine empty inventory or an incomplete
+        // first snapshot. Reachability is useful to baseline callers; only the
+        // explicit completeness signal may authorize a stale sweep.
         if ((answered && !refs.empty()) || attempt == attempts)
         {
             break;
@@ -213,6 +233,10 @@ std::vector<ContainerIdentity> DiscoverContainers(const std::string& socket_path
     if (reachable != nullptr)
     {
         *reachable = answered;
+    }
+    if (snapshotComplete != nullptr)
+    {
+        *snapshotComplete = answered && complete;
     }
 
     if (!refs.empty())
@@ -231,15 +255,20 @@ std::vector<ContainerIdentity> DiscoverContainers(const std::string& socket_path
             std::this_thread::sleep_for(kListRetryDelay);
 
             bool polled = false;
-            auto nextRefs = client.listContainers(&polled);
+            bool nextComplete = false;
+            std::set<std::string> nextKnownIds;
+            auto nextRefs = client.listContainers(&polled, &nextComplete, &nextKnownIds);
             if (!polled)
             {
                 // The connector went away mid-check. Keep the last list that it
                 // did answer with rather than adopting a failed poll's empty
-                // one, and leave the latch clear so the next run re-checks.
+                // one, but do not let that stale answer authorize deletions.
+                // Leave the latch clear so the next run re-checks.
+                complete = false;
                 break;
             }
-
+            complete = nextComplete;
+            knownIds = std::move(nextKnownIds);
             auto nextIds = ContainerIdSet(nextRefs);
             if (nextIds == lastIds)
             {
@@ -271,6 +300,18 @@ std::vector<ContainerIdentity> DiscoverContainers(const std::string& socket_path
         }
         out.push_back(ContainerIdentity{ref.containerId, std::move(ctx), ref.synced});
     }
+    if (snapshotComplete != nullptr)
+    {
+        *snapshotComplete = answered && complete;
+    }
+    if (knownContainerIds != nullptr)
+    {
+        *knownContainerIds = std::move(knownIds);
+        for (const auto& identity : out)
+        {
+            knownContainerIds->insert(identity.container_id);
+        }
+    }
     return out;
 }
 
@@ -281,7 +322,8 @@ int RunFimDbsyncBaselineFrom(const ContainerDiscoverer&        discover,
                               const std::vector<MonitoredPath>& paths,
                               const DbsyncRowSink&              sink,
                               const ContainerStatusSink&        status_sink,
-                              const std::function<void()>&      rate_limit)
+                              const std::function<void()>&      rate_limit,
+                              const ContainerContextSink&       context_sink)
 {
     int baselined = 0;
 
@@ -295,8 +337,20 @@ int RunFimDbsyncBaselineFrom(const ContainerDiscoverer&        discover,
         const auto pid = SelectAddressablePid(pids);
         if (pid == 0) continue; // every candidate has gone; same as "no live PID"
 
+        const auto containerContext = BuildContainerContextJson(identity.container_id, identity.context);
+
+        // The context reaches the consumer BEFORE any of this container's
+        // rows, and the consumer may refuse it. A refusal means it could not
+        // store the context, so emitting rows anyway would leave rows
+        // referencing a container nothing can describe -- and the DELETE they
+        // eventually produce is the very event that context exists to keep
+        // self-contained. Skip the container whole, and do not count it
+        // baselined, because it was not.
+        if (context_sink && !context_sink(identity.container_id, containerContext)) {
+            continue;
+        }
+
         ++baselined;
-        const auto containerJson = BuildContainerContextJson(identity.container_id, identity.context);
 
         // A walk that hit its row cap, or whose root could not be examined,
         // produces a SUBSET of the container's files, and absence must not then
@@ -324,7 +378,7 @@ int RunFimDbsyncBaselineFrom(const ContainerDiscoverer&        discover,
             for (auto row : walk.rows) {
                 ApplyIdentity(row, identity);
                 sink(DbsyncRow{identity.container_id, "file_entry",
-                               BuildFimFileDbsyncRow(row, containerJson)});
+                               BuildFimFileDbsyncRow(row)});
             }
         }
 
@@ -358,7 +412,8 @@ int RunFimDbsyncBaselineForContainerFrom(const ContainerDiscoverer&        disco
                                           const std::vector<MonitoredPath>& paths,
                                           const DbsyncRowSink&              sink,
                                           const ContainerStatusSink&        status_sink,
-                                          const std::function<void()>&      rate_limit)
+                                          const std::function<void()>&      rate_limit,
+                                          const ContainerContextSink&       context_sink)
 {
     if (container_id.empty()) return 0;
 
@@ -415,13 +470,14 @@ int RunFimDbsyncBaselineForContainerFrom(const ContainerDiscoverer&        disco
     }
 
     return RunFimDbsyncBaselineFrom([&selected]() { return selected; },
-                                    pidIndex, safe, sink, guarded, rate_limit);
+                                    pidIndex, safe, sink, guarded, rate_limit, context_sink);
 }
 
 int RunSyscollectorDbsyncBaselineFrom(const ContainerDiscoverer& discover,
                                        const PidIndex&            pidIndex,
                                        const DbsyncRowSink&       sink,
-                                       const ContainerStatusSink& status_sink)
+                                       const ContainerStatusSink& status_sink,
+                                       const ContainerContextSink& context_sink)
 {
     int baselined = 0;
 
@@ -439,20 +495,32 @@ int RunSyscollectorDbsyncBaselineFrom(const ContainerDiscoverer& discover,
         const auto pid = SelectAddressablePid(pids);
         if (pid == 0) continue; // every candidate has gone; same as "no live PID"
 
-        ++baselined;
-
         const auto scope = DetectContainerScope(pid);
 
-        // Context blob serialized once per container; every row carries it in
-        // its container_json column so DELETED events stay self-contained.
-        const auto containerJson = BuildContainerContextJson(identity.container_id, identity.context);
+        // Context serialized once per container and handed to the consumer
+        // before any of this container's rows, so a DELETED event can still
+        // describe the container after it is gone.
+        const auto containerContext = BuildContainerContextJson(identity.container_id, identity.context);
+
+        // Same contract as the FIM path: context first, and a refusal means
+        // this container contributes nothing on this pass.
+        if (context_sink && !context_sink(identity.container_id, containerContext)) {
+            continue;
+        }
+
+        // Counted only once the container is committed to, so the returned
+        // count keeps meaning "containers that produced a baseline". A caller
+        // compares it against the known container list to tell stopped from
+        // gone, and a skipped container must not read as either.
+        ++baselined;
+
         const auto emit = [&](const std::string& table, std::string json) {
             sink(DbsyncRow{identity.container_id, table, std::move(json)});
         };
 
         for (auto row : ScanContainerProcesses(identity.container_id, pids)) {
             ApplyIdentity(row, identity);
-            emit("dbsync_processes", BuildProcessDbsyncRow(row, containerJson));
+            emit("dbsync_processes", BuildProcessDbsyncRow(row));
         }
 
         // Network-namespace-scoped classes. ScanContainerNetwork itself declines
@@ -462,7 +530,7 @@ int RunSyscollectorDbsyncBaselineFrom(const ContainerDiscoverer& discover,
 
         for (auto row : ScanContainerNetwork(identity.container_id, pids, scope, netnsShared)) {
             ApplyIdentity(row, identity);
-            emit("dbsync_ports", BuildPortDbsyncRow(row, containerJson));
+            emit("dbsync_ports", BuildPortDbsyncRow(row));
         }
 
         // Users, groups, packages and the OS record are image-layer content, so
@@ -502,32 +570,32 @@ int RunSyscollectorDbsyncBaselineFrom(const ContainerDiscoverer& discover,
 
         for (auto row : content->users) {
             ApplyIdentity(row, identity);
-            emit("dbsync_users", BuildUserDbsyncRow(row, containerJson));
+            emit("dbsync_users", BuildUserDbsyncRow(row));
         }
 
         for (auto row : content->groups) {
             ApplyIdentity(row, identity);
-            emit("dbsync_groups", BuildGroupDbsyncRow(row, containerJson));
+            emit("dbsync_groups", BuildGroupDbsyncRow(row));
         }
 
         for (auto row : content->packages) {
             ApplyIdentity(row, identity);
-            emit("dbsync_packages", BuildPackageDbsyncRow(row, containerJson));
+            emit("dbsync_packages", BuildPackageDbsyncRow(row));
         }
 
         for (auto row : content->os) {
             ApplyIdentity(row, identity);
-            emit("dbsync_osinfo", BuildOsDbsyncRow(row, containerJson));
+            emit("dbsync_osinfo", BuildOsDbsyncRow(row));
         }
 
         auto ifscan = ScanContainerInterfaces(pid, scope);
         for (auto row : ifscan.interfaces) {
             ApplyIdentity(row, identity);
-            emit("dbsync_network_iface", BuildInterfaceDbsyncRow(row, containerJson));
+            emit("dbsync_network_iface", BuildInterfaceDbsyncRow(row));
         }
         for (auto row : ifscan.addresses) {
             ApplyIdentity(row, identity);
-            emit("dbsync_network_address", BuildNetworkAddressDbsyncRow(row, containerJson));
+            emit("dbsync_network_address", BuildNetworkAddressDbsyncRow(row));
         }
 
         // Routes come from /proc/<pid>/net/route, which is netns-relative — so
@@ -536,18 +604,18 @@ int RunSyscollectorDbsyncBaselineFrom(const ContainerDiscoverer& discover,
         if (!scope.netCollapsedToHost()) {
             for (auto row : ScanContainerProtocols(pid)) {
                 ApplyIdentity(row, identity);
-                emit("dbsync_network_protocol", BuildProtocolDbsyncRow(row, containerJson));
+                emit("dbsync_network_protocol", BuildProtocolDbsyncRow(row));
             }
         }
 
         for (auto row : ScanContainerServices(pid)) {
             ApplyIdentity(row, identity);
-            emit("dbsync_services", BuildServiceDbsyncRow(row, containerJson));
+            emit("dbsync_services", BuildServiceDbsyncRow(row));
         }
 
         for (auto row : ScanContainerHardware(pid)) {
             ApplyIdentity(row, identity);
-            emit("dbsync_hwinfo", BuildHardwareDbsyncRow(row, containerJson));
+            emit("dbsync_hwinfo", BuildHardwareDbsyncRow(row));
         }
 
         if (status_sink) {
@@ -586,13 +654,14 @@ int RunFimDbsyncBaseline(const std::string&                connector_socket_path
                           const std::vector<MonitoredPath>& paths,
                           const DbsyncRowSink&              sink,
                           const ContainerStatusSink&        status_sink,
-                          const std::function<void()>&      rate_limit)
+                          const std::function<void()>&      rate_limit,
+                          const ContainerContextSink&       context_sink)
 {
     const auto pids = PidIndex::Build();
 
     return RunFimDbsyncBaselineFrom(
         [&connector_socket_path]() { return DiscoverContainers(connector_socket_path); },
-        pids, paths, sink, status_sink, rate_limit);
+        pids, paths, sink, status_sink, rate_limit, context_sink);
 }
 
 int RunFimDbsyncBaselineForContainer(const std::string&                connector_socket_path,
@@ -600,7 +669,8 @@ int RunFimDbsyncBaselineForContainer(const std::string&                connector
                                       const std::vector<MonitoredPath>& paths,
                                       const DbsyncRowSink&              sink,
                                       const ContainerStatusSink&        status_sink,
-                                      const std::function<void()>&      rate_limit)
+                                      const std::function<void()>&      rate_limit,
+                                      const ContainerContextSink&       context_sink)
 {
     if (container_id.empty()) return 0;
 
@@ -621,24 +691,27 @@ int RunFimDbsyncBaselineForContainer(const std::string&                connector
     const auto pids = PidIndex::FromMap({{container_id, ResolvePidsForContainer(container_id)}});
 
     return RunFimDbsyncBaselineForContainerFrom([&identities]() { return identities; },
-                                                container_id, pids, paths, sink, status_sink, rate_limit);
+                                                container_id, pids, paths, sink, status_sink, rate_limit,
+                                                context_sink);
 }
 
 int RunSyscollectorDbsyncBaseline(const std::string&         connector_socket_path,
                                   const DbsyncRowSink&       sink,
-                                  const ContainerStatusSink& status_sink)
+                                  const ContainerStatusSink& status_sink,
+                                  const ContainerContextSink& context_sink)
 {
     const auto pids = PidIndex::Build();
 
     return RunSyscollectorDbsyncBaselineFrom(
         [&connector_socket_path]() { return DiscoverContainers(connector_socket_path); },
-        pids, sink, status_sink);
+        pids, sink, status_sink, context_sink);
 }
 
 int RunSyscollectorDbsyncBaselineForContainers(const std::string&              connector_socket_path,
                                                const std::vector<std::string>& container_ids,
                                                const DbsyncRowSink&            sink,
-                                               const ContainerStatusSink&      status_sink)
+                                               const ContainerStatusSink&      status_sink,
+                                               const ContainerContextSink&     context_sink)
 {
     if (container_ids.empty())
     {
@@ -675,7 +748,8 @@ int RunSyscollectorDbsyncBaselineForContainers(const std::string&              c
     // row-contiguity and one-status-per-container contracts to drift apart.
     const auto pids = PidIndex::Build();
 
-    return RunSyscollectorDbsyncBaselineFrom([&selected]() { return selected; }, pids, sink, status_sink);
+    return RunSyscollectorDbsyncBaselineFrom([&selected]() { return selected; }, pids, sink, status_sink,
+                                             context_sink);
 }
 
 int ListContainers(const std::string& connector_socket_path, const ContainerIdSink& sink)
@@ -700,6 +774,36 @@ int ListContainers(const std::string& connector_socket_path, const ContainerIdSi
         ++count;
     }
 
+    return count;
+}
+
+int ListContainers(const std::string& connector_socket_path,
+                   const ContainerIdSink& sink,
+                   const KnownContainerIdSink& known_sink,
+                   bool* snapshot_complete)
+{
+    bool reachable = false;
+    std::set<std::string> knownIds;
+    const auto identities =
+        DiscoverContainers(connector_socket_path, &reachable, snapshot_complete, &knownIds);
+    if (!reachable)
+    {
+        return -1;
+    }
+
+    int count = 0;
+    for (const auto& identity : identities)
+    {
+        sink(identity.container_id, identity.synced);
+        ++count;
+    }
+    if (known_sink)
+    {
+        for (const auto& containerId : knownIds)
+        {
+            known_sink(containerId);
+        }
+    }
     return count;
 }
 

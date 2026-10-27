@@ -35,6 +35,8 @@
 #include <hashHelper.h>
 #include <map>
 #include <memory>
+#include <mutex>
+#include <set>
 #include <string>
 #include <utility>
 #include <vector>
@@ -45,11 +47,23 @@ void DB::init(const int storage,
               const int valueLimit)
 {
     const auto* path {storage == FIM_DB_MEMORY ? FIM_DB_MEMORY_PATH : FIM_DB_DISK_PATH};
+
+    // Without an upgrade list, CreateStatement() is only ever reached by a
+    // database being created from nothing, and every upgraded agent silently
+    // keeps the schema it already had. The list itself lives beside the DDL it
+    // mirrors, in fimDB.hpp.
     auto dbsyncHandler {std::make_shared<DBSync>(HostType::AGENT,
                                                  DbEngineType::SQLITE3,
                                                  path,
                                                  FIMDBCreator<OS_TYPE>::CreateStatement(),
-                                                 DbManagement::PERSISTENT)};
+                                                 DbManagement::PERSISTENT,
+                                                 fimDbUpgradeStatements())};
+
+    // A recreated database is why the next sync resends every file, so say so.
+    if (const auto recreateReason {dbsyncHandler->recreateReason()}; !recreateReason.empty() && callbackLogWrapper)
+    {
+        callbackLogWrapper(LOG_WARNING, recreateReason);
+    }
 
     FIMDB::instance().init(std::move(callbackLogWrapper), std::move(dbsyncHandler), fileLimit, valueLimit);
 }
@@ -61,11 +75,16 @@ DBSYNC_HANDLE DB::DBSyncHandle()
 
 void DB::teardown()
 {
+    // The cached contexts describe the contents of THIS database. Keeping them
+    // across a teardown would let a re-init against a different database serve
+    // a container block the new one never stored.
+    fim_db_clear_container_contexts();
     FIMDB::instance().teardown();
 }
 
 void DB::closeAndDeleteDatabase()
 {
+    fim_db_clear_container_contexts();
     FIMDB::instance().closeAndDeleteDatabase();
 }
 
@@ -662,6 +681,406 @@ cJSON* fim_db_get_every_element(const char* table_name, const char* row_filter)
     }
 
     return result_array;
+}
+
+/* --- container context -------------------------------------------------- *
+ *
+ * A container's context is stored once, in container_context, instead of being
+ * copied onto every file row that container owns. The rows reference it by
+ * container_id.
+ *
+ * The parsed form is cached because the alternative is worse than what it
+ * replaced: the context is needed once per emitted row, and querying the
+ * database per row would be far more expensive than the per-row parse this
+ * exists to remove. The cache holds the "container" block already parsed and
+ * hands out duplicates, so a caller that attaches it to a message owns what it
+ * attaches.
+ *
+ * Cleared on teardown and on database recreation, because the entries describe
+ * the contents of a particular database and must not outlive it.
+ */
+namespace
+{
+    class ContainerContextCache final
+    {
+        public:
+            static ContainerContextCache& instance()
+            {
+                static ContainerContextCache s_instance;
+                return s_instance;
+            }
+
+            /// An owned duplicate of the container's block, or nullptr on a miss.
+            cJSON* duplicate(const std::string& containerId) const
+            {
+                std::lock_guard<std::mutex> lock {m_mutex};
+                const auto it = m_blocks.find(containerId);
+                return it == m_blocks.end() ? nullptr : cJSON_Duplicate(it->second, 1);
+            }
+
+            bool hasContext(const std::string& containerId, const std::string& context) const
+            {
+                std::lock_guard<std::mutex> lock {m_mutex};
+                const auto it = m_contexts.find(containerId);
+                return it != m_contexts.end() && it->second == context;
+            }
+
+            /// Takes ownership of @p block, freeing whatever it replaces.
+            void store(const std::string& containerId, cJSON* block, const std::string& context)
+            {
+                std::lock_guard<std::mutex> lock {m_mutex};
+                m_contexts[containerId] = context;
+                cJSON*& slot = m_blocks[containerId];
+                cJSON_Delete(slot);
+                slot = block;
+                ++m_generation;
+            }
+
+            /// Read before a database lookup that may end in fill().
+            std::uint64_t generation() const
+            {
+                std::lock_guard<std::mutex> lock {m_mutex};
+                return m_generation;
+            }
+
+            /// Caches a block read from the database and returns an owned
+            /// duplicate of it, both under the lock: once the lock is released,
+            /// a store(), erase() or clear() on another thread may free the
+            /// cached object.
+            ///
+            /// The block is cached only if nothing changed the cache since
+            /// @p generation was read. Otherwise the database read may predate
+            /// a newer write or a delete, and caching it would serve that stale
+            /// block until the next write. The caller still gets its duplicate:
+            /// it describes the database as it was read.
+            ///
+            /// Takes ownership of @p block.
+            cJSON* fill(const std::string& containerId,
+                        cJSON* block,
+                        const std::string& context,
+                        std::uint64_t generation)
+            {
+                std::lock_guard<std::mutex> lock {m_mutex};
+                cJSON* copy = cJSON_Duplicate(block, 1);
+
+                if (generation == m_generation && m_blocks.find(containerId) == m_blocks.end())
+                {
+                    m_blocks.emplace(containerId, block);
+                    m_contexts.emplace(containerId, context);
+                }
+                else
+                {
+                    cJSON_Delete(block);
+                }
+
+                return copy;
+            }
+
+            void erase(const std::string& containerId)
+            {
+                std::lock_guard<std::mutex> lock {m_mutex};
+                const auto it = m_blocks.find(containerId);
+
+                if (it != m_blocks.end())
+                {
+                    cJSON_Delete(it->second);
+                    m_blocks.erase(it);
+                }
+
+                m_contexts.erase(containerId);
+                ++m_generation;
+            }
+
+            void clear()
+            {
+                std::lock_guard<std::mutex> lock {m_mutex};
+
+                for (auto& entry : m_blocks)
+                {
+                    cJSON_Delete(entry.second);
+                }
+
+                m_blocks.clear();
+                m_contexts.clear();
+                ++m_generation;
+            }
+
+        private:
+            ContainerContextCache() = default;
+            ~ContainerContextCache()
+            {
+                clear();
+            }
+
+            mutable std::mutex m_mutex;
+            std::map<std::string, cJSON*> m_blocks;
+            std::map<std::string, std::string> m_contexts;
+            std::uint64_t m_generation {0};
+    };
+
+    std::recursive_mutex& ContainerContextWriteMutex()
+    {
+        static std::recursive_mutex mutex;
+        return mutex;
+    }
+
+    /// Lifts the "container" block out of a stored context document. Returns an
+    /// owned object, or nullptr if the document is not one.
+    cJSON* ExtractContainerBlock(const char* contextJson)
+    {
+        if (contextJson == nullptr || *contextJson == '\0')
+        {
+            return nullptr;
+        }
+
+        cJSON* parsed = cJSON_Parse(contextJson);
+
+        if (parsed == nullptr)
+        {
+            return nullptr;
+        }
+
+        cJSON* block = cJSON_DetachItemFromObject(parsed, "container");
+        cJSON_Delete(parsed);
+        return block;
+    }
+}
+
+void fim_db_clear_container_contexts()
+{
+    std::lock_guard<std::recursive_mutex> writeLock {ContainerContextWriteMutex()};
+    ContainerContextCache::instance().clear();
+}
+
+int fim_db_set_container_context(const char* container_id, const char* context_json)
+{
+    if (container_id == nullptr || *container_id == '\0' || context_json == nullptr)
+    {
+        FIMDB::instance().logFunction(LOG_ERROR, "Invalid parameters");
+        return FIMDB_ERR;
+    }
+
+    try
+    {
+        const std::string context {context_json};
+        std::lock_guard<std::recursive_mutex> writeLock {ContainerContextWriteMutex()};
+        const bool unchanged = ContainerContextCache::instance().hasContext(container_id, context);
+
+        nlohmann::json row;
+        row["container_id"] = container_id;
+        row["context"] = context;
+
+        nlohmann::json input;
+        input["table"] = FIMDB_CONTAINER_CONTEXT_TABLE_NAME;
+        input["data"] = nlohmann::json::array({row});
+
+        // A no-op callback: writes to this table are not events. Nothing
+        // downstream should be told that a container's labels moved, which is
+        // the point of keeping the context out of the file rows.
+        ResultCallbackData callback {[](ReturnTypeCallback, const nlohmann::json&) {}};
+
+        if (!FIMDB::instance().updateItemIfNeeded(input, callback, unchanged))
+        {
+            // Stopping, or no database: nothing was written, so caching the
+            // block would make the context look stored when it is not.
+            FIMDB::instance().logFunction(LOG_DEBUG, "Container context not stored: FIMDB is not available.");
+            ContainerContextCache::instance().erase(container_id);
+            return FIMDB_ERR;
+        }
+
+        // Only cached once the write succeeded, so a cache hit always describes
+        // something the database holds.
+        std::unique_ptr<cJSON, decltype(&cJSON_Delete)> block {ExtractContainerBlock(context.c_str()), cJSON_Delete};
+        ContainerContextCache::instance().store(container_id, block.get(), context);
+        block.release();
+    }
+    catch (const std::exception& e)
+    {
+        FIMDB::instance().logFunction(LOG_ERROR, std::string("Could not store container context: ") + e.what());
+        ContainerContextCache::instance().erase(container_id);
+        return FIMDB_ERR;
+    }
+
+    return FIMDB_OK;
+}
+
+cJSON* fim_db_get_container_context(const char* container_id)
+{
+    if (container_id == nullptr || *container_id == '\0')
+    {
+        return nullptr;
+    }
+
+    if (cJSON* cached = ContainerContextCache::instance().duplicate(container_id))
+    {
+        return cached;
+    }
+
+    // A miss is expected once per container per process -- after a restart the
+    // cache is cold while the database is not.
+    const auto generation = ContainerContextCache::instance().generation();
+
+    try
+    {
+        std::string context;
+
+        auto callback = [&context](ReturnTypeCallback result, const nlohmann::json & data)
+        {
+            if (ReturnTypeCallback::SELECTED != result)
+            {
+                return;
+            }
+
+            const auto it = data.find("context");
+
+            if (it != data.end() && it->is_string())
+            {
+                context = it->get<std::string>();
+            }
+        };
+
+        auto selectQuery = SelectQuery::builder()
+                           .table(FIMDB_CONTAINER_CONTEXT_TABLE_NAME)
+                           .columnList({"context"})
+                           .rowFilter("WHERE container_id=?")
+                           .rowFilterBindText(container_id)
+                           .orderByOpt("")
+                           .build();
+
+        FIMDB::instance().executeQuery(selectQuery.query(), callback);
+
+        if (context.empty())
+        {
+            return nullptr;
+        }
+
+        cJSON* block = ExtractContainerBlock(context.c_str());
+
+        if (block == nullptr)
+        {
+            return nullptr;
+        }
+
+        return ContainerContextCache::instance().fill(container_id, block, context, generation);
+    }
+    catch (const std::exception& e)
+    {
+        FIMDB::instance().logFunction(LOG_ERROR, std::string("Could not read container context: ") + e.what());
+        return nullptr;
+    }
+}
+
+int fim_db_delete_container_context(const char* container_id)
+{
+    if (container_id == nullptr || *container_id == '\0')
+    {
+        return FIMDB_ERR;
+    }
+
+    std::lock_guard<std::recursive_mutex> writeLock {ContainerContextWriteMutex()};
+
+    try
+    {
+        // Bound through the query's data rather than spliced into a filter
+        // string: container ids come from a runtime that this code does not
+        // own, and a primary key is exactly what this builder binds.
+        auto deleteQuery
+        {
+            DeleteQuery::builder()
+            .table(FIMDB_CONTAINER_CONTEXT_TABLE_NAME)
+            .data({{"container_id", container_id}})
+            .rowFilter("")
+            .build()
+        };
+
+        const bool removed = FIMDB::instance().removeItem(deleteQuery.query());
+        ContainerContextCache::instance().erase(container_id);
+
+        if (!removed)
+        {
+            FIMDB::instance().logFunction(LOG_DEBUG, "Container context not deleted: FIMDB is not available.");
+            return FIMDB_ERR;
+        }
+    }
+    catch (const std::exception& e)
+    {
+        FIMDB::instance().logFunction(LOG_ERROR, std::string("Could not delete container context: ") + e.what());
+        return FIMDB_ERR;
+    }
+
+    return FIMDB_OK;
+}
+
+int fim_db_prune_container_contexts(const char* const* keep, int keep_count)
+{
+    // A null list with a positive count is a caller bug, and the damage it
+    // would do is deleting every context. Refuse rather than interpret.
+    if (keep == nullptr && keep_count > 0)
+    {
+        FIMDB::instance().logFunction(LOG_ERROR, "Invalid parameters");
+        return FIMDB_ERR;
+    }
+
+    std::lock_guard<std::recursive_mutex> writeLock {ContainerContextWriteMutex()};
+
+    try
+    {
+        std::set<std::string> live;
+
+        for (int i = 0; i < keep_count; ++i)
+        {
+            if (keep[i] != nullptr && *keep[i] != '\0')
+            {
+                live.insert(keep[i]);
+            }
+        }
+
+        std::vector<std::string> stored;
+
+        auto callback = [&stored](ReturnTypeCallback result, const nlohmann::json & data)
+        {
+            if (ReturnTypeCallback::SELECTED != result)
+            {
+                return;
+            }
+
+            const auto it = data.find("container_id");
+
+            if (it != data.end() && it->is_string())
+            {
+                auto id = it->get<std::string>();
+
+                if (!id.empty())
+                {
+                    stored.push_back(std::move(id));
+                }
+            }
+        };
+
+        auto selectQuery = SelectQuery::builder()
+                           .table(FIMDB_CONTAINER_CONTEXT_TABLE_NAME)
+                           .columnList({"container_id"})
+                           .rowFilter("")
+                           .orderByOpt("")
+                           .build();
+
+        FIMDB::instance().executeQuery(selectQuery.query(), callback);
+
+        for (const auto& id : stored)
+        {
+            if (live.find(id) == live.end())
+            {
+                fim_db_delete_container_context(id.c_str());
+            }
+        }
+    }
+    catch (const std::exception& e)
+    {
+        FIMDB::instance().logFunction(LOG_ERROR, std::string("Could not prune container contexts: ") + e.what());
+        return FIMDB_ERR;
+    }
+
+    return FIMDB_OK;
 }
 
 cJSON* fim_db_get_distinct_container_ids(const char* table_name)

@@ -180,6 +180,10 @@
 | [#37203](https://github.com/wazuh/wazuh/issues/37203) | Added container inventory on hosts using the legacy cgroup layout, such as RHEL 8. |
 | [#37203](https://github.com/wazuh/wazuh/issues/37203) | Added container file monitoring on hosts using the legacy cgroup layout, such as RHEL 8. |
 | [#37203](https://github.com/wazuh/wazuh/issues/37203) | Reported file changes inside containers on installed agents, which previously reported the feature as unavailable on every platform. |
+| [#37532](https://github.com/wazuh/wazuh/issues/37532) | Stored a container's runtime context once per container instead of copying it onto every inventory and file row. |
+| [#37532](https://github.com/wazuh/wazuh/issues/37532) | Stopped reporting a container's whole inventory as changed when only its labels or annotations changed. |
+| [#37532](https://github.com/wazuh/wazuh/issues/37532) | Removed the rows a deleted container left behind in two inventory tables the cleanup did not cover. |
+| [#37532](https://github.com/wazuh/wazuh/issues/37532) | Applied pending database schema changes when upgrading an agent, which previously reached only new installations. |
 
 #### Removed
 

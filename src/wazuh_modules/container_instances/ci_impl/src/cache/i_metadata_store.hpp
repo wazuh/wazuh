@@ -46,6 +46,14 @@ namespace wazuh::container_instances
         std::optional<TimePoint> lastReconcile;
     };
 
+    struct ContainerListSnapshot
+    {
+        std::vector<ContainerRecordPtr> containers;
+        std::set<std::string> knownContainerIds;
+        std::set<std::string> admitted;
+        bool complete {false};
+    };
+
     /// Concurrent metadata cache. Threading contract:
     ///  - applySnapshot: exactly one caller, the connector thread.
     ///  - upsertPending/upsertVerdict: targeted single-key writes from IPC workers.
@@ -81,6 +89,10 @@ namespace wazuh::container_instances
                                                                 const std::string& containerName) const = 0;
         [[nodiscard]] virtual StoreStats stats() const = 0;
         [[nodiscard]] virtual std::vector<ContainerRecordPtr> listContainers() const = 0;
+        [[nodiscard]] virtual ContainerListSnapshot containerListSnapshot() const = 0;
+        [[nodiscard]] virtual std::set<std::string> knownContainerIds() const = 0;
+        [[nodiscard]] virtual bool snapshotComplete() const = 0;
+        virtual void markSourceIncomplete(const SourceId& source) = 0;
 
         /// Which containers may report to the manager, a subset of the ids
         /// listContainers() publishes.

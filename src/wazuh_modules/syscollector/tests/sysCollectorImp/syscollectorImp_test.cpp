@@ -31,6 +31,7 @@
 #endif
 
 #include "syscollectorImp_test.h"
+#include "legacySchemaV1.hpp"
 #include "syscollector.hpp"
 #include "module_query_errors.h"
 #include "syscollectorTablesDef.hpp"
@@ -47,26 +48,77 @@ namespace
 {
     std::function<int(cb_dbsync_row_sink_t, cb_container_status_sink_t, void*)> containerScanHook;
     std::function<int(cb_container_id_sink_t, void*)> containerListHook;
+    bool containerListSnapshotComplete {true};
 } // namespace
 
-extern "C" int
-__real_cbaseline_run_syscollector_dbsync(const char*, cb_dbsync_row_sink_t, cb_container_status_sink_t, void*);
+extern "C" int __real_cbaseline_run_syscollector_dbsync(
+    const char*, cb_dbsync_row_sink_t, cb_container_context_sink_t, cb_container_status_sink_t, void*);
 extern "C" int __real_cbaseline_list_containers(const char*, cb_container_id_sink_t, void*);
+extern "C" int __real_cbaseline_list_containers_ex(const char*,
+                                                   cb_container_id_sink_t,
+                                                   void*,
+                                                   cb_known_container_id_sink_t,
+                                                   void*,
+                                                   int*);
 
 extern "C" int __wrap_cbaseline_run_syscollector_dbsync(const char* socket,
                                                         cb_dbsync_row_sink_t sink,
+                                                        cb_container_context_sink_t context,
                                                         cb_container_status_sink_t status,
                                                         void* ctx)
 {
     return containerScanHook ? containerScanHook(sink, status, ctx)
-                             : __real_cbaseline_run_syscollector_dbsync(socket, sink, status, ctx);
+           : __real_cbaseline_run_syscollector_dbsync(socket, sink, context, status, ctx);
 }
 
 extern "C" int __wrap_cbaseline_list_containers(const char* socket, cb_container_id_sink_t sink, void* ctx)
 {
     return containerListHook ? containerListHook(sink, ctx) : __real_cbaseline_list_containers(socket, sink, ctx);
 }
+
+extern "C" int __wrap_cbaseline_list_containers_ex(const char* socket,
+                                                   cb_container_id_sink_t sink,
+                                                   void* ctx,
+                                                   cb_known_container_id_sink_t knownSink,
+                                                   void* knownCtx,
+                                                   int* snapshotComplete)
+{
+    struct ForwardContext
+    {
+        cb_container_id_sink_t sink;
+        void* context;
+        cb_known_container_id_sink_t knownSink;
+        void* knownContext;
+    } forward {sink, ctx, knownSink, knownCtx};
+    const auto forwardSink = [](const char* id, int synced, void* userData)
+    {
+        auto* state = static_cast<ForwardContext*>(userData);
+        state->sink(id, synced, state->context);
+
+        if (state->knownSink != nullptr)
+        {
+            state->knownSink(id, state->knownContext);
+        }
+    };
+    const int result = containerListHook
+                       ? containerListHook(forwardSink, &forward)
+                       : __real_cbaseline_list_containers_ex(
+                           socket, sink, ctx, knownSink, knownCtx, snapshotComplete);
+
+    if (containerListHook && snapshotComplete != nullptr)
+    {
+        *snapshotComplete = result >= 0 && containerListSnapshotComplete ? 1 : 0;
+    }
+
+    return result;
+}
 #endif
+
+/// One more than the number of upgrade statements, which is how DBSync derives
+/// the current version: the published steps in UPGRADE_SQL_STATEMENTS, the
+/// container_context create, then one rebuild per table in
+/// LEGACY_CONTAINER_JSON_TABLES below.
+constexpr int CURRENT_SCHEMA_VERSION {16};
 
 // Mock SchemaValidatorEngine for dependency injection in tests
 class MockSchemaValidatorEngine : public SchemaValidator::ISchemaValidatorEngine
@@ -116,6 +168,24 @@ void populateTestDb()
         if (db) sqlite3_close(db);
 
         throw std::runtime_error("Failed to open test DB");
+    }
+
+    // The create statements above are the CURRENT schema, so the database has
+    // to say so. DBSync's 5-argument constructor stamps version 1, which would
+    // send the next init() through every upgrade statement -- including the
+    // DROP COLUMNs for a column this schema was never built with.
+    {
+        char* versionErr = nullptr;
+
+        const std::string pragma {"PRAGMA user_version = " + std::to_string(CURRENT_SCHEMA_VERSION) + ";"};
+
+        if (sqlite3_exec(db, pragma.c_str(), nullptr, nullptr, &versionErr) != SQLITE_OK)
+        {
+            const std::string message {versionErr ? versionErr : "unknown error"};
+            sqlite3_free(versionErr);
+            sqlite3_close(db);
+            throw std::runtime_error("Failed to stamp the schema version: " + message);
+        }
     }
 
     // Insert dummy data to trigger "disabled collector with data" detection
@@ -233,6 +303,9 @@ const auto expected_dbsync_browser_extensions
 
 void SyscollectorImpTest::SetUp()
 {
+#if defined(__linux__)
+    containerListSnapshotComplete = true;
+#endif
     std::remove(SYSCOLLECTOR_TEST_DB_PATH);
 
     // Initialize SchemaValidatorFactory with mocks to prevent issues in Wine/Windows tests
@@ -6634,41 +6707,51 @@ TEST_F(SyscollectorImpTest, AdmissionRetractsAndRestoresRetainedRows)
     module.init(
         info,
         reportFunction,
-        [&events](const std::string& id, Operation_t op, const std::string&, const std::string&, uint64_t)
-        { events.emplace_back(id, op); },
-        logFunction,
-        SYSCOLLECTOR_DB_PATH,
-        "",
-        "",
-        3600,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false);
+        [&events](const std::string & id, Operation_t op, const std::string&, const std::string&, uint64_t)
+    {
+        events.emplace_back(id, op);
+    },
+    logFunction,
+    SYSCOLLECTOR_DB_PATH,
+    "",
+    "",
+    3600,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false);
 
     const std::string index = "wazuh-states-inventory-processes";
-    for (const size_t limit : {size_t {2}, size_t {0}})
+
+    for (const size_t limit :
+            {
+                size_t {2}, size_t {0}
+            })
     {
         module.m_containerDocumentLimits[index] = limit;
         module.setAdmittedContainers({{"a", true}, {"b", true}});
-        for (const std::string id : {"", "a", "b"})
+
+        for (const std::string id :
+                {"", "a", "b"
+                })
         {
             const nlohmann::json row = {{"container_id", id},
-                                        {"pid", "123"},
-                                        {"name", "test"},
-                                        {"checksum", "checksum"},
-                                        {"version", 1},
-                                        {"sync", 1}};
+                {"pid", "123"},
+                {"name", "test"},
+                {"checksum", "checksum"},
+                {"version", 1},
+                {"sync", 1}
+            };
             auto query = SyncRowQuery::builder().table(PROCESSES_TABLE).data(row).build();
             module.m_spDBSync->syncRow(query.query(), [](ReturnTypeCallback, const nlohmann::json&) {});
         }
@@ -6683,10 +6766,12 @@ TEST_F(SyscollectorImpTest, AdmissionRetractsAndRestoresRetainedRows)
         module.m_admissionReconciled = false;
         module.setAdmittedContainers({{"a", true}, {"b", false}});
         ASSERT_EQ(events.size(), 1u);
+
         if (events.size() == 1u)
         {
             EXPECT_EQ(events[0].second, OPERATION_DELETE);
         }
+
         EXPECT_EQ(module.m_containerDocumentCounts.count("b"), 0u);
 
         auto flags = [&module]()
@@ -6694,10 +6779,11 @@ TEST_F(SyscollectorImpTest, AdmissionRetractsAndRestoresRetainedRows)
             std::map<std::string, int> result;
             auto query = SelectQuery::builder().table(PROCESSES_TABLE).columnList({"container_id", "sync"}).build();
             module.m_spDBSync->selectRows(query.query(),
-                                          [&result](ReturnTypeCallback, const nlohmann::json& row) {
-                                              result[row.at("container_id").get<std::string>()] =
-                                                  row.at("sync").get<int>();
-                                          });
+                                          [&result](ReturnTypeCallback, const nlohmann::json & row)
+            {
+                result[row.at("container_id").get<std::string>()] =
+                    row.at("sync").get<int>();
+            });
             return result;
         };
         EXPECT_EQ(flags(), (std::map<std::string, int> {{"", 1}, {"a", 1}, {"b", 0}}));
@@ -6705,7 +6791,7 @@ TEST_F(SyscollectorImpTest, AdmissionRetractsAndRestoresRetainedRows)
         module.setAdmittedContainers({{"a", true}, {"b", false}});
         EXPECT_EQ(events.size(), 1u) << "unchanged admission must not repeat DELETEs";
         EXPECT_FALSE(module.m_admissionRetractionPending)
-            << "a cap that is merely still biting owes no second pass over every table";
+                << "a cap that is merely still biting owes no second pass over every table";
         module.applyDocumentLimit(index, PROCESSES_TABLE, 0, Syscollector::LimitScope::container, "b");
         EXPECT_EQ(events.size(), 1u) << "an unlimited document budget must not bypass admission";
         module.m_containerDocumentLimits[index] = limit;
@@ -6713,11 +6799,13 @@ TEST_F(SyscollectorImpTest, AdmissionRetractsAndRestoresRetainedRows)
         module.setAdmittedContainers({{"a", true}, {"b", true}});
         module.promoteItemsAfterScan();
         ASSERT_EQ(events.size(), 2u);
+
         if (events.size() == 2u)
         {
             EXPECT_EQ(events[1].first, events[0].first);
             EXPECT_EQ(events[1].second, OPERATION_CREATE);
         }
+
         EXPECT_EQ(flags().at("b"), 1);
     }
 }
@@ -6732,37 +6820,43 @@ TEST_F(SyscollectorImpTest, DocumentBudgetsShrinkPromoteAndReleasePerContainer)
         info,
         reportFunction,
         [&events](const std::string&, Operation_t op, const std::string&, const std::string&, uint64_t)
-        { events.push_back(op); },
-        logFunction,
-        SYSCOLLECTOR_DB_PATH,
-        "",
-        "",
-        3600,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false);
+    {
+        events.push_back(op);
+    },
+    logFunction,
+    SYSCOLLECTOR_DB_PATH,
+    "",
+    "",
+    3600,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false);
     const std::string index = "wazuh-states-inventory-processes";
-    for (const std::string id : {"", "a", "b"})
+
+    for (const std::string id :
+            {"", "a", "b"
+            })
     {
         for (int pid = 1; pid <= 3; ++pid)
         {
             const nlohmann::json row = {{"container_id", id},
-                                        {"pid", std::to_string(pid)},
-                                        {"name", "test"},
-                                        {"checksum", "sum"},
-                                        {"version", 1},
-                                        {"sync", 1}};
+                {"pid", std::to_string(pid)},
+                {"name", "test"},
+                {"checksum", "sum"},
+                {"version", 1},
+                {"sync", 1}
+            };
             auto query = SyncRowQuery::builder().table(PROCESSES_TABLE).data(row).build();
             module.m_spDBSync->syncRow(query.query(), [](ReturnTypeCallback, const nlohmann::json&) {});
         }
@@ -6770,9 +6864,12 @@ TEST_F(SyscollectorImpTest, DocumentBudgetsShrinkPromoteAndReleasePerContainer)
     module.initializeDocumentCounts();
     module.setAdmittedContainers({{"a", true}, {"b", true}});
     EXPECT_TRUE(
-        module.applyLimitsForScope(nlohmann::json {{"container_processes", 1u}}, Syscollector::LimitScope::container));
+    module.applyLimitsForScope(nlohmann::json {{"container_processes", 1u}}, Syscollector::LimitScope::container));
     EXPECT_EQ(events.size(), 4u);
-    EXPECT_TRUE(std::all_of(events.begin(), events.end(), [](Operation_t op) { return op == OPERATION_DELETE; }));
+    EXPECT_TRUE(std::all_of(events.begin(), events.end(), [](Operation_t op)
+    {
+        return op == OPERATION_DELETE;
+    }));
     EXPECT_EQ(module.m_documentCounts[index], 3u);
     EXPECT_EQ(module.m_containerDocumentCounts["a"][index], 1u);
     EXPECT_EQ(module.m_containerDocumentCounts["b"][index], 1u);
@@ -6789,9 +6886,12 @@ TEST_F(SyscollectorImpTest, DocumentBudgetsShrinkPromoteAndReleasePerContainer)
     EXPECT_TRUE(module.checkDocumentLimit(PROCESSES_TABLE, row, MODIFIED));
     EXPECT_TRUE(module.checkDocumentLimit(PROCESSES_TABLE, row, DELETED));
     module.m_spDBSync->deleteRows(
-        {{"table", PROCESSES_TABLE},
-         {"query",
-          {{"data", nlohmann::json::array({{{"container_id", "a"}, {"pid", "1"}}})}, {"where_filter_opt", ""}}}});
+    {
+        {"table", PROCESSES_TABLE},
+        {
+            "query",
+            {{"data", nlohmann::json::array({{{"container_id", "a"}, {"pid", "1"}}})}, {"where_filter_opt", ""}}
+        }});
     EXPECT_EQ(module.m_containerDocumentCounts["a"][index], 0u);
     row["sync"] = 0;
     EXPECT_FALSE(module.checkDocumentLimit(PROCESSES_TABLE, row, DELETED));
@@ -6802,10 +6902,13 @@ TEST_F(SyscollectorImpTest, DocumentBudgetsShrinkPromoteAndReleasePerContainer)
 
     events.clear();
     EXPECT_TRUE(
-        module.applyLimitsForScope(nlohmann::json {{"container_processes", 3u}}, Syscollector::LimitScope::container));
+    module.applyLimitsForScope(nlohmann::json {{"container_processes", 3u}}, Syscollector::LimitScope::container));
     EXPECT_EQ(module.m_containerDocumentCounts["b"][index], 3u);
     EXPECT_FALSE(events.empty());
-    EXPECT_TRUE(std::all_of(events.begin(), events.end(), [](Operation_t op) { return op == OPERATION_CREATE; }));
+    EXPECT_TRUE(std::all_of(events.begin(), events.end(), [](Operation_t op)
+    {
+        return op == OPERATION_CREATE;
+    }));
     module.applyDocumentLimit(index, PROCESSES_TABLE, 3, Syscollector::LimitScope::container, "b");
     module.releaseContainerCounts("b");
     EXPECT_EQ(module.m_containerDocumentCounts.count("b"), 0u);
@@ -6823,41 +6926,44 @@ TEST_F(SyscollectorImpTest, PostScanPromotionVisitsOnlyContainersWithBacklog)
         info,
         reportFunction,
         [&events](const std::string&, Operation_t op, const std::string&, const std::string&, uint64_t)
-        { events.push_back(op); },
-        [&notices](const modules_log_level_t level, const std::string& message)
+    {
+        events.push_back(op);
+    },
+    [&notices](const modules_log_level_t level, const std::string & message)
+    {
+        if (level == LOG_INFO && message.find("Inventory limit reached") != std::string::npos)
         {
-            if (level == LOG_INFO && message.find("Inventory limit reached") != std::string::npos)
-            {
-                notices.push_back(message);
-            }
-        },
-        SYSCOLLECTOR_DB_PATH,
-        "",
-        "",
-        3600,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false);
+            notices.push_back(message);
+        }
+    },
+    SYSCOLLECTOR_DB_PATH,
+    "",
+    "",
+    3600,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false);
     const std::string index = "wazuh-states-inventory-processes";
-    const auto store = [&module](const std::string& id, int pid, int sync)
+    const auto store = [&module](const std::string & id, int pid, int sync)
     {
         const nlohmann::json row = {{"container_id", id},
-                                    {"pid", std::to_string(pid)},
-                                    {"name", "test"},
-                                    {"checksum", "sum"},
-                                    {"version", 1},
-                                    {"sync", sync}};
+            {"pid", std::to_string(pid)},
+            {"name", "test"},
+            {"checksum", "sum"},
+            {"version", 1},
+            {"sync", sync}
+        };
         auto query = SyncRowQuery::builder().table(PROCESSES_TABLE).data(row).build();
         module.m_spDBSync->syncRow(query.query(), [](ReturnTypeCallback, const nlohmann::json&) {});
     };
@@ -6921,26 +7027,28 @@ TEST_F(SyscollectorImpTest, ContainerBaselineAdmissionAndCleanup)
         info,
         reportFunction,
         [&events](const std::string&, Operation_t op, const std::string&, const std::string&, uint64_t)
-        { events.push_back(op); },
-        logFunction,
-        SYSCOLLECTOR_DB_PATH,
-        "",
-        "",
-        3600,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false);
+    {
+        events.push_back(op);
+    },
+    logFunction,
+    SYSCOLLECTOR_DB_PATH,
+    "",
+    "",
+    3600,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false);
     module.m_containerBaseline = true;
     module.m_containerRowsPurged = false;
     module.m_containerDocumentCounts.clear();
@@ -6956,7 +7064,9 @@ TEST_F(SyscollectorImpTest, ContainerBaselineAdmissionAndCleanup)
     {
         if (!available)
             return -1;
+
         for (const auto& [id, allowed] : admitted) sink(id.c_str(), allowed, ctx);
+
         return static_cast<int>(admitted.size());
     };
     containerScanHook = [&](cb_dbsync_row_sink_t sink, cb_container_status_sink_t status, void* ctx)
@@ -6968,6 +7078,7 @@ TEST_F(SyscollectorImpTest, ContainerBaselineAdmissionAndCleanup)
                 const nlohmann::json row = {{"container_id", id}, {"pid", "123"}, {"name", "worker"}};
                 sink(id.c_str(), PROCESSES_TABLE, row.dump().c_str(), ctx);
             }
+
             cb_container_status_t outcome {};
             outcome.container_id = id.c_str();
             outcome.partial = partial;
@@ -6975,6 +7086,7 @@ TEST_F(SyscollectorImpTest, ContainerBaselineAdmissionAndCleanup)
             outcome.netns_unreadable = partial;
             status(&outcome, ctx);
         }
+
         return static_cast<int>(scanned.size());
     };
     auto flags = [&]()
@@ -6982,14 +7094,30 @@ TEST_F(SyscollectorImpTest, ContainerBaselineAdmissionAndCleanup)
         std::map<std::string, int> rows;
         auto query = SelectQuery::builder().table(PROCESSES_TABLE).columnList({"container_id", "sync"}).build();
         module.m_spDBSync->selectRows(query.query(),
-                                      [&](ReturnTypeCallback, const nlohmann::json& row)
-                                      { rows[row.at("container_id").get<std::string>()] = row.at("sync").get<int>(); });
+                                      [&](ReturnTypeCallback, const nlohmann::json & row)
+        {
+            rows[row.at("container_id").get<std::string>()] = row.at("sync").get<int>();
+        });
         return rows;
     };
     module.runContainerBaselinePass();
     ASSERT_EQ(events, (std::vector<Operation_t> {OPERATION_CREATE}));
     EXPECT_EQ(flags(), (std::map<std::string, int> {{"a", 1}, {"b", 0}}));
     events.clear();
+
+    containerListSnapshotComplete = false;
+    admitted = {{"b", true}};
+    scanned = {{"b", true}};
+    module.runContainerBaselinePass();
+    EXPECT_EQ(flags(), (std::map<std::string, int> {{"a", 1}, {"b", 0}}))
+            << "an answered but incomplete connector snapshot must not delete a live container's rows";
+
+    containerListSnapshotComplete = true;
+    admitted = {{"a", true}, {"b", false}};
+    scanned = {{"a", true}, {"b", true}};
+    module.runContainerBaselinePass();
+    events.clear();
+
     admitted = {{"a", false}, {"b", true}};
     module.runContainerBaselinePass();
     EXPECT_EQ(events, (std::vector<Operation_t> {OPERATION_DELETE, OPERATION_CREATE}));
@@ -7474,6 +7602,849 @@ TEST_F(SyscollectorImpTest, SweepContainerRowsNotInKeepsEverythingWhenThereAreNo
     EXPECT_EQ(Syscollector::instance().sweepContainerRowsNotIn({}), 0u);
 
     Syscollector::instance().destroy();
+#endif
+}
+
+TEST_F(SyscollectorImpTest, ADeletedContainerRowCarriesOneContainerBlockAndNoKubernetesSibling)
+{
+#ifndef __linux__
+    GTEST_SKIP() << "Container row sweeps are Linux-only";
+#else
+    const auto spInfoWrapper {std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
+
+    // First init only to create the schema on disk, so the row below can be
+    // seeded into a table that exists.
+    Syscollector::instance().init(spInfoWrapper, reportFunction, persistFunction, logFunction,
+                                  SYSCOLLECTOR_TEST_DB_PATH, "", "",
+                                  3600, false, false, false, false, false, false, false,
+                                  false, false, false, false, false, false, false);
+
+    // The stored context carries BOTH shapes at once: the nested one the
+    // producer emits today (D15), and the retired two-sibling one beside it.
+    // Only the nested block may reach the document. A top-level "kubernetes"
+    // is refused by every dynamic:strict wazuh-states-* template, so lifting
+    // one could only ever have produced a document the indexer drops -- which
+    // is why a reader that still handled it was worth deleting rather than
+    // keeping as harmless. Reading only context["container"] makes the sibling
+    // unreachable by construction; this pins that it stays so.
+    EXPECT_TRUE(Syscollector::instance().storeContainerContext(
+                    "c1",
+                    R"({"container":{"id":"c1","name":"web","kubernetes":{"pod":{"name":"web-0"}}},)"
+                    R"("kubernetes":{"pod":{"name":"retired-sibling"}}})"));
+    Syscollector::instance().destroy();
+
+    // sync = 1 because a DELETED row that was never synced is suppressed by the
+    // document-limit accounting and would never reach the persist callback.
+    sqlite3* db = nullptr;
+    ASSERT_EQ(sqlite3_open_v2(SYSCOLLECTOR_TEST_DB_PATH, &db, SQLITE_OPEN_READWRITE, nullptr), SQLITE_OK);
+
+    char* errMsg = nullptr;
+    ASSERT_EQ(sqlite3_exec(db,
+                           "INSERT INTO dbsync_processes "
+                           "(container_id, pid, name, sync, checksum) "
+                           "VALUES ('c1', '431625', 'nginx', 1, 'sum');",
+                           nullptr,
+                           nullptr,
+                           &errMsg),
+              SQLITE_OK)
+            << (errMsg ? errMsg : "");
+
+    if (errMsg)
+    {
+        sqlite3_free(errMsg);
+    }
+
+    sqlite3_close(db);
+
+    std::vector<std::string> persisted;
+    const auto capturePersist
+    {
+        [&persisted](const std::string&, Operation_t, const std::string&, const std::string & payload, uint64_t)
+        {
+            persisted.push_back(payload);
+        }
+    };
+
+    Syscollector::instance().init(spInfoWrapper, reportFunction, capturePersist, logFunction,
+                                  SYSCOLLECTOR_TEST_DB_PATH, "", "",
+                                  3600, false, false, false, false, false, false, false,
+                                  false, false, false, false, false, false, false);
+
+    // The container is gone, so its rows go -- and the DELETED event each one
+    // produces is exactly the case the stored context exists to serve.
+    EXPECT_EQ(Syscollector::instance().sweepContainerRows({"c1"}), 1u);
+
+    ASSERT_EQ(persisted.size(), 1u) << "the swept row should have produced one stateful delete";
+
+    const auto document = nlohmann::json::parse(persisted.front());
+
+    EXPECT_FALSE(document.contains("kubernetes"))
+            << "a top-level kubernetes sibling is the retired shape and is refused by the index template";
+
+    ASSERT_TRUE(document.contains("container")) << "the delete must stay self-contained once the container is gone";
+    EXPECT_EQ(document["container"]["id"], "c1");
+    EXPECT_EQ(document["container"]["name"], "web");
+    EXPECT_EQ(document["container"]["kubernetes"]["pod"]["name"], "web-0")
+            << "the Kubernetes context belongs inside the container block, not beside it";
+
+    Syscollector::instance().destroy();
+#endif
+}
+
+TEST_F(SyscollectorImpTest, EachContainersRowsCarryTheirOwnContextNotThePreviousContainers)
+{
+#ifndef __linux__
+    GTEST_SKIP() << "Container row sweeps are Linux-only";
+#else
+    const auto spInfoWrapper {std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
+
+    Syscollector::instance().init(spInfoWrapper, reportFunction, persistFunction, logFunction,
+                                  SYSCOLLECTOR_TEST_DB_PATH, "", "",
+                                  3600, false, false, false, false, false, false, false,
+                                  false, false, false, false, false, false, false);
+
+    EXPECT_TRUE(Syscollector::instance().storeContainerContext(
+                    "a", R"({"container":{"id":"a","name":"alpha"}})"));
+    EXPECT_TRUE(Syscollector::instance().storeContainerContext(
+                    "b", R"({"container":{"id":"b","name":"bravo"}})"));
+    Syscollector::instance().destroy();
+
+    // ecsData() memoises the context it looked up so it reads and parses once
+    // per container instead of once per row. The memo is keyed on the
+    // container id, so the failure it has to be proved against is a stale hit:
+    // container b being handed container a's context because the memo was
+    // never refreshed.
+    //
+    // Two containers, two rows each -- and the rows are interleaved in the
+    // table by primary key so a sweep cannot accidentally pass by visiting
+    // them in a convenient order.
+    sqlite3* db = nullptr;
+    ASSERT_EQ(sqlite3_open_v2(SYSCOLLECTOR_TEST_DB_PATH, &db, SQLITE_OPEN_READWRITE, nullptr), SQLITE_OK);
+
+    const char* seed =
+        "INSERT INTO dbsync_processes (container_id, pid, name, sync, checksum) VALUES "
+        "('a', '1', 'p1', 1, 's'),"
+        "('a', '2', 'p2', 1, 's'),"
+        "('b', '1', 'p1', 1, 's'),"
+        "('b', '2', 'p2', 1, 's');";
+
+    char* errMsg = nullptr;
+    ASSERT_EQ(sqlite3_exec(db, seed, nullptr, nullptr, &errMsg), SQLITE_OK) << (errMsg ? errMsg : "");
+
+    if (errMsg)
+    {
+        sqlite3_free(errMsg);
+    }
+
+    sqlite3_close(db);
+
+    std::vector<std::string> persisted;
+    const auto capturePersist
+    {
+        [&persisted](const std::string&, Operation_t, const std::string&, const std::string & payload, uint64_t)
+        {
+            persisted.push_back(payload);
+        }
+    };
+
+    Syscollector::instance().init(spInfoWrapper, reportFunction, capturePersist, logFunction,
+                                  SYSCOLLECTOR_TEST_DB_PATH, "", "",
+                                  3600, false, false, false, false, false, false, false,
+                                  false, false, false, false, false, false, false);
+
+    EXPECT_EQ(Syscollector::instance().sweepContainerRows({"a", "b"}), 2u);
+
+    ASSERT_EQ(persisted.size(), 4u) << "four rows went, so four stateful deletes";
+
+    std::map<std::string, int> namesById;
+
+    for (const auto& payload : persisted)
+    {
+        const auto document = nlohmann::json::parse(payload);
+        ASSERT_TRUE(document.contains("container"));
+        namesById[document["container"]["id"].get<std::string>() + "/" +
+                                                                 document["container"]["name"].get<std::string>()]++;
+    }
+
+    EXPECT_EQ(namesById["a/alpha"], 2) << "both of a's rows must carry a's own context";
+    EXPECT_EQ(namesById["b/bravo"], 2) << "a memo that went stale would stamp alpha onto b's rows";
+    EXPECT_EQ(namesById.size(), 2u) << "no row should carry a context belonging to neither container";
+
+    Syscollector::instance().destroy();
+#endif
+}
+
+/* --- schema migration
+ *
+ * DBSync only ever runs the create statement for a database it is creating
+ * from nothing. An existing one reports PRAGMA user_version and is handed the
+ * upgrade statements from that point on -- and until this branch, neither
+ * consumer passed any, so an upgraded agent silently kept whatever schema it
+ * already had and a newly added table was never created for it at all.
+ *
+ * These two tests are the pair that matters: the new database must come out
+ * at the current version, and the old one must arrive at the same schema by
+ * the other route, without losing what it was holding.
+ */
+
+/// Reads PRAGMA user_version from a closed database file.
+static int readUserVersion(const char* path)
+{
+    sqlite3* db = nullptr;
+
+    if (sqlite3_open_v2(path, &db, SQLITE_OPEN_READONLY, nullptr) != SQLITE_OK)
+    {
+        if (db)
+        {
+            sqlite3_close(db);
+        }
+
+        return -1;
+    }
+
+    sqlite3_stmt* stmt = nullptr;
+    int version = -1;
+
+    if (sqlite3_prepare_v2(db, "PRAGMA user_version;", -1, &stmt, nullptr) == SQLITE_OK &&
+            sqlite3_step(stmt) == SQLITE_ROW)
+    {
+        version = sqlite3_column_int(stmt, 0);
+    }
+
+    sqlite3_finalize(stmt);
+    sqlite3_close(db);
+    return version;
+}
+
+/// Whether a table exists in a closed database file.
+static bool tableExists(const char* path, const char* table)
+{
+    sqlite3* db = nullptr;
+
+    if (sqlite3_open_v2(path, &db, SQLITE_OPEN_READONLY, nullptr) != SQLITE_OK)
+    {
+        if (db)
+        {
+            sqlite3_close(db);
+        }
+
+        return false;
+    }
+
+    sqlite3_stmt* stmt = nullptr;
+    bool found = false;
+
+    if (sqlite3_prepare_v2(db, "SELECT 1 FROM sqlite_master WHERE type='table' AND name=?;",
+                           -1, &stmt, nullptr) == SQLITE_OK)
+    {
+        sqlite3_bind_text(stmt, 1, table, -1, SQLITE_STATIC);
+        found = (sqlite3_step(stmt) == SQLITE_ROW);
+    }
+
+    sqlite3_finalize(stmt);
+    sqlite3_close(db);
+    return found;
+}
+
+/// Whether `table` still has `column`, read from the table's own definition
+/// rather than from a SELECT -- a dropped column has to be gone from the
+/// schema, not merely absent from the rows.
+static bool columnExists(const char* path, const std::string& table, const std::string& column)
+{
+    sqlite3* db = nullptr;
+
+    if (sqlite3_open_v2(path, &db, SQLITE_OPEN_READONLY, nullptr) != SQLITE_OK)
+    {
+        if (db)
+        {
+            sqlite3_close(db);
+        }
+
+        return false;
+    }
+
+    sqlite3_stmt* stmt = nullptr;
+    bool found = false;
+
+    // PRAGMA takes no bindings, and `table` is a literal from this file.
+    if (sqlite3_prepare_v2(db, ("PRAGMA table_info(" + table + ");").c_str(), -1, &stmt, nullptr) == SQLITE_OK)
+    {
+        while (sqlite3_step(stmt) == SQLITE_ROW)
+        {
+            const auto* name = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 1));
+
+            if (name != nullptr && column == name)
+            {
+                found = true;
+                break;
+            }
+        }
+    }
+
+    sqlite3_finalize(stmt);
+    sqlite3_close(db);
+    return found;
+}
+
+/// Every table that carried the retired per-row context copy.
+static const std::vector<std::string> LEGACY_CONTAINER_JSON_TABLES
+{
+    "dbsync_osinfo", "dbsync_hwinfo", "dbsync_hotfixes", "dbsync_packages",
+    "dbsync_processes", "dbsync_ports", "dbsync_network_iface",
+    "dbsync_network_protocol", "dbsync_network_address", "dbsync_users",
+    "dbsync_groups", "dbsync_services", "dbsync_browser_extensions"
+};
+
+TEST_F(SyscollectorImpTest, AFreshDatabaseIsCreatedAtTheCurrentSchemaVersion)
+{
+    const auto spInfoWrapper {std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
+
+    Syscollector::instance().init(spInfoWrapper, reportFunction, persistFunction, logFunction,
+                                  SYSCOLLECTOR_TEST_DB_PATH, "", "",
+                                  3600, false, false, false, false, false, false, false,
+                                  false, false, false, false, false, false, false);
+    Syscollector::instance().destroy();
+
+    EXPECT_TRUE(tableExists(SYSCOLLECTOR_TEST_DB_PATH, "container_context"))
+            << "a database created from nothing takes the create statement, which must carry every table";
+
+    // A fresh database must land at the current version directly, or it would
+    // be handed upgrades meant for older schemas on next start.
+    EXPECT_EQ(readUserVersion(SYSCOLLECTOR_TEST_DB_PATH), CURRENT_SCHEMA_VERSION);
+
+    // And it must arrive without the retired column, since it never replays
+    // the DROP COLUMN upgrades that take it off an older database.
+    for (const auto& table : LEGACY_CONTAINER_JSON_TABLES)
+    {
+        EXPECT_FALSE(columnExists(SYSCOLLECTOR_TEST_DB_PATH, table, "container_json"))
+                << table << " was created carrying a column the create statement should no longer have";
+    }
+}
+
+/// The schema as SQLite itself records it, with runs of whitespace collapsed so
+/// that reindenting a DDL literal -- which is not a schema change -- does not
+/// read as one. Identifier quoting is deliberately NOT normalised: if a table
+/// ever comes back as CREATE TABLE "dbsync_groups", someone has rebuilt it by
+/// creating under a temporary name and renaming, and ALTER TABLE ... RENAME
+/// quotes the name it writes into sqlite_master.
+static std::string schemaFingerprint(const char* path)
+{
+    sqlite3* db = nullptr;
+
+    if (sqlite3_open_v2(path, &db, SQLITE_OPEN_READONLY, nullptr) != SQLITE_OK)
+    {
+        if (db)
+        {
+            sqlite3_close(db);
+        }
+
+        return "<unreadable>";
+    }
+
+    sqlite3_stmt* stmt = nullptr;
+    std::string out;
+
+    if (sqlite3_prepare_v2(db,
+                           "SELECT type, name, tbl_name, COALESCE(sql, '') FROM sqlite_master "
+                           "WHERE name NOT LIKE 'sqlite_%' ORDER BY type, name;",
+                           -1, &stmt, nullptr) == SQLITE_OK)
+    {
+        while (sqlite3_step(stmt) == SQLITE_ROW)
+        {
+            for (int col = 0; col < 4; ++col)
+            {
+                const auto* text = reinterpret_cast<const char*>(sqlite3_column_text(stmt, col));
+                out += (text != nullptr ? text : "");
+                out += '|';
+            }
+
+            out += '\n';
+        }
+    }
+
+    sqlite3_finalize(stmt);
+    sqlite3_close(db);
+
+    // Collapse whitespace runs to a single space.
+    std::string collapsed;
+    bool inSpace = false;
+
+    for (const auto character : out)
+    {
+        const bool isSpace = (character == ' ' || character == '\t' || character == '\r');
+
+        if (isSpace)
+        {
+            inSpace = true;
+            continue;
+        }
+
+        if (inSpace)
+        {
+            collapsed += ' ';
+            inSpace = false;
+        }
+
+        collapsed += character;
+    }
+
+    return collapsed;
+}
+
+/// Lays down a database shaped exactly as released 5.0.0 left it: the frozen
+/// v1 DDL, stamped version 1, with db_status_field_dm present on every table
+/// except dbsync_hotfixes.
+///
+/// That unevenness is not incidental. SQLiteDBEngine adds the status column
+/// lazily, the first time a table is named in a transaction, and
+/// dbsync_hotfixes holds Windows-only data, so on a Linux agent it never gets
+/// one. A rebuild that copied rows with SELECT * would pass against a tidy
+/// fixture and fail on every real agent; leaving exactly one table without the
+/// column is what makes that mistake visible here.
+static void seedLegacyV1Database(const char* path)
+{
+    sqlite3* db = nullptr;
+    ASSERT_EQ(sqlite3_open_v2(path, &db, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, nullptr), SQLITE_OK);
+
+    std::string schema {LEGACY_V1_SCHEMA};
+
+    for (const auto& table : LEGACY_CONTAINER_JSON_TABLES)
+    {
+        if (table != "dbsync_hotfixes")
+        {
+            schema += "ALTER TABLE " + table + " ADD COLUMN db_status_field_dm INTEGER DEFAULT 1;";
+        }
+    }
+
+    schema += "PRAGMA user_version = 1;";
+
+    char* errMsg = nullptr;
+    ASSERT_EQ(sqlite3_exec(db, schema.c_str(), nullptr, nullptr, &errMsg), SQLITE_OK) << (errMsg ? errMsg : "");
+
+    if (errMsg)
+    {
+        sqlite3_free(errMsg);
+    }
+
+    sqlite3_close(db);
+}
+
+TEST_F(SyscollectorImpTest, AnExistingDatabaseIsUpgradedWithoutLosingWhatItHeld)
+{
+    seedLegacyV1Database(SYSCOLLECTOR_TEST_DB_PATH);
+
+    sqlite3* db = nullptr;
+    ASSERT_EQ(sqlite3_open_v2(SYSCOLLECTOR_TEST_DB_PATH, &db, SQLITE_OPEN_READWRITE, nullptr), SQLITE_OK);
+
+    // Three keys of different widths, and a row carrying NULLs in non-key
+    // columns, because the rebuild names every column explicitly and a
+    // mis-ordered list would land values in the wrong ones.
+    char* errMsg = nullptr;
+    ASSERT_EQ(sqlite3_exec(db,
+                           "INSERT INTO dbsync_processes (pid, name, checksum, version) "
+                           "VALUES ('1', 'host-proc', 'proc-sum', 7);"
+                           "INSERT INTO dbsync_groups (group_id, group_name, checksum) "
+                           "VALUES (0, 'root', 'group-sum');"
+                           "INSERT INTO dbsync_packages (name, version_, architecture, type, path, checksum, vendor) "
+                           "VALUES ('bash', '5.2', 'amd64', 'deb', '/', 'pkg-sum', NULL);",
+                           nullptr, nullptr, &errMsg), SQLITE_OK) << (errMsg ? errMsg : "");
+
+    if (errMsg)
+    {
+        sqlite3_free(errMsg);
+    }
+
+    sqlite3_close(db);
+
+    ASSERT_EQ(readUserVersion(SYSCOLLECTOR_TEST_DB_PATH), 1) << "precondition: a version-1 database";
+    ASSERT_FALSE(tableExists(SYSCOLLECTOR_TEST_DB_PATH, "container_context"));
+    ASSERT_FALSE(columnExists(SYSCOLLECTOR_TEST_DB_PATH, "dbsync_groups", "container_id"))
+            << "precondition: a released 5.0.0 database has no container_id anywhere";
+
+    const auto spInfoWrapper {std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
+
+    Syscollector::instance().init(spInfoWrapper, reportFunction, persistFunction, logFunction,
+                                  SYSCOLLECTOR_TEST_DB_PATH, "", "",
+                                  3600, false, false, false, false, false, false, false,
+                                  false, false, false, false, false, false, false);
+    Syscollector::instance().destroy();
+
+    EXPECT_EQ(readUserVersion(SYSCOLLECTOR_TEST_DB_PATH), CURRENT_SCHEMA_VERSION)
+            << "the upgrade must advance the recorded version";
+    EXPECT_TRUE(tableExists(SYSCOLLECTOR_TEST_DB_PATH, "container_context"))
+            << "the upgrade statement is the only route by which an existing database gains the table";
+
+    for (const auto& table : LEGACY_CONTAINER_JSON_TABLES)
+    {
+        EXPECT_TRUE(columnExists(SYSCOLLECTOR_TEST_DB_PATH, table, "container_id"))
+                << table << " did not gain container_id, so container and host rows will collide in it";
+        EXPECT_FALSE(columnExists(SYSCOLLECTOR_TEST_DB_PATH, table, "db_status_field_dm"))
+                << table << " kept the status column through the rebuild; it is per-transaction state "
+                << "and SQLiteDBEngine adds it back on first use";
+        EXPECT_FALSE(tableExists(SYSCOLLECTOR_TEST_DB_PATH, (table + "_upgrade_v16_old").c_str()))
+                << table << " left its rebuild scratch table behind";
+    }
+
+    // container_id has to lead the key, not merely exist: it is what separates
+    // a container's row from the host's.
+    ASSERT_EQ(sqlite3_open_v2(SYSCOLLECTOR_TEST_DB_PATH, &db, SQLITE_OPEN_READONLY, nullptr), SQLITE_OK);
+
+    sqlite3_stmt* stmt = nullptr;
+    ASSERT_EQ(sqlite3_prepare_v2(db, "PRAGMA table_info(dbsync_groups);", -1, &stmt, nullptr), SQLITE_OK);
+
+    std::string leadingKeyColumn;
+
+    while (sqlite3_step(stmt) == SQLITE_ROW)
+    {
+        if (sqlite3_column_int(stmt, 5) == 1)
+        {
+            leadingKeyColumn = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 1));
+        }
+    }
+
+    sqlite3_finalize(stmt);
+    EXPECT_EQ(leadingKeyColumn, "container_id");
+
+    // The rows must survive with their checksums and versions untouched. A
+    // checksum that changed here would resync that agent's whole inventory on
+    // upgrade, which is the cost this approach exists to avoid paying; a
+    // version that reset would make the indexer noop the document instead.
+    ASSERT_EQ(sqlite3_prepare_v2(db,
+                                 "SELECT container_id || '/' || name || '/' || checksum || '/' || version "
+                                 "FROM dbsync_processes;", -1, &stmt, nullptr), SQLITE_OK);
+    ASSERT_EQ(sqlite3_step(stmt), SQLITE_ROW);
+    EXPECT_STREQ(reinterpret_cast<const char*>(sqlite3_column_text(stmt, 0)), "/host-proc/proc-sum/7");
+    sqlite3_finalize(stmt);
+
+    ASSERT_EQ(sqlite3_prepare_v2(db,
+                                 "SELECT container_id || '/' || group_name || '/' || checksum "
+                                 "FROM dbsync_groups;", -1, &stmt, nullptr), SQLITE_OK);
+    ASSERT_EQ(sqlite3_step(stmt), SQLITE_ROW);
+    EXPECT_STREQ(reinterpret_cast<const char*>(sqlite3_column_text(stmt, 0)), "/root/group-sum");
+    sqlite3_finalize(stmt);
+
+    // The NULL must still be a NULL, in the column it started in.
+    ASSERT_EQ(sqlite3_prepare_v2(db,
+                                 "SELECT name, checksum, vendor IS NULL FROM dbsync_packages;",
+                                 -1, &stmt, nullptr), SQLITE_OK);
+    ASSERT_EQ(sqlite3_step(stmt), SQLITE_ROW);
+    EXPECT_STREQ(reinterpret_cast<const char*>(sqlite3_column_text(stmt, 0)), "bash");
+    EXPECT_STREQ(reinterpret_cast<const char*>(sqlite3_column_text(stmt, 1)), "pkg-sum");
+    EXPECT_EQ(sqlite3_column_int(stmt, 2), 1) << "a NULL was filled in, so the copy shifted a column";
+    sqlite3_finalize(stmt);
+
+    ASSERT_EQ(sqlite3_prepare_v2(db, "PRAGMA integrity_check;", -1, &stmt, nullptr), SQLITE_OK);
+    ASSERT_EQ(sqlite3_step(stmt), SQLITE_ROW);
+    EXPECT_STREQ(reinterpret_cast<const char*>(sqlite3_column_text(stmt, 0)), "ok");
+    sqlite3_finalize(stmt);
+
+    sqlite3_close(db);
+}
+
+TEST_F(SyscollectorImpTest, AContainerRowNoLongerCollidesWithTheHostRow)
+{
+    // The defect this migration exists to fix: on a 5.0.0 schema the key is
+    // (group_name), so a container's 'root' group is the host's row. Through
+    // DBSync the two scopes then overwrite each other on alternating scans.
+    seedLegacyV1Database(SYSCOLLECTOR_TEST_DB_PATH);
+
+    sqlite3* db = nullptr;
+    ASSERT_EQ(sqlite3_open_v2(SYSCOLLECTOR_TEST_DB_PATH, &db, SQLITE_OPEN_READWRITE, nullptr), SQLITE_OK);
+    char* errMsg = nullptr;
+    ASSERT_EQ(sqlite3_exec(db, "INSERT INTO dbsync_groups (group_id, group_name, checksum) "
+                           "VALUES (0, 'root', 'host-sum');", nullptr, nullptr, &errMsg), SQLITE_OK)
+            << (errMsg ? errMsg : "");
+
+    if (errMsg)
+    {
+        sqlite3_free(errMsg);
+    }
+
+    // Before the migration a container's root group cannot coexist with it.
+    ASSERT_NE(sqlite3_exec(db, "INSERT INTO dbsync_groups (group_id, group_name, checksum) "
+                           "VALUES (0, 'root', 'ctr-sum');", nullptr, nullptr, nullptr), SQLITE_OK)
+            << "precondition: the 5.0.0 key already rejects a second 'root'";
+    sqlite3_close(db);
+
+    const auto spInfoWrapper {std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
+
+    Syscollector::instance().init(spInfoWrapper, reportFunction, persistFunction, logFunction,
+                                  SYSCOLLECTOR_TEST_DB_PATH, "", "",
+                                  3600, false, false, false, false, false, false, false,
+                                  false, false, false, false, false, false, false);
+    Syscollector::instance().destroy();
+
+    ASSERT_EQ(sqlite3_open_v2(SYSCOLLECTOR_TEST_DB_PATH, &db, SQLITE_OPEN_READWRITE, nullptr), SQLITE_OK);
+    errMsg = nullptr;
+    EXPECT_EQ(sqlite3_exec(db, "INSERT INTO dbsync_groups (container_id, group_id, group_name, checksum) "
+                           "VALUES ('c1', 0, 'root', 'ctr-sum');", nullptr, nullptr, &errMsg), SQLITE_OK)
+            << "a container's root group still collides with the host's: " << (errMsg ? errMsg : "");
+
+    if (errMsg)
+    {
+        sqlite3_free(errMsg);
+    }
+
+    sqlite3_stmt* stmt = nullptr;
+    ASSERT_EQ(sqlite3_prepare_v2(db, "SELECT count(*) FROM dbsync_groups WHERE group_name = 'root';",
+                                 -1, &stmt, nullptr), SQLITE_OK);
+    ASSERT_EQ(sqlite3_step(stmt), SQLITE_ROW);
+    EXPECT_EQ(sqlite3_column_int(stmt, 0), 2) << "the host and container rows must coexist";
+    sqlite3_finalize(stmt);
+    sqlite3_close(db);
+}
+
+TEST_F(SyscollectorImpTest, AMigratedDatabaseHasTheSchemaOfAFreshOne)
+{
+    // Nothing in the code keeps getCreateStatement() and getUpgradeStatements()
+    // converging; this test is the only thing that does. An edit to a DDL
+    // constant changes the created side and not the migrated one, and the only
+    // way back to green is to append a migration entry that makes the same
+    // change to a database that already exists -- which is the append-only
+    // discipline the upgrade list documents, enforced rather than asked for.
+    constexpr auto MIGRATED_DB_PATH {"syscollector_migrated_test.db"};
+    std::remove(MIGRATED_DB_PATH);
+
+    const auto spInfoWrapper {std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
+
+    // Created from nothing: takes the create statement.
+    Syscollector::instance().init(spInfoWrapper, reportFunction, persistFunction, logFunction,
+                                  SYSCOLLECTOR_TEST_DB_PATH, "", "",
+                                  3600, false, false, false, false, false, false, false,
+                                  false, false, false, false, false, false, false);
+    Syscollector::instance().destroy();
+
+    // Reached by the other route: a released 5.0.0 database, replayed forward.
+    seedLegacyV1Database(MIGRATED_DB_PATH);
+    Syscollector::instance().init(spInfoWrapper, reportFunction, persistFunction, logFunction,
+                                  MIGRATED_DB_PATH, "", "",
+                                  3600, false, false, false, false, false, false, false,
+                                  false, false, false, false, false, false, false);
+    Syscollector::instance().destroy();
+
+    EXPECT_EQ(readUserVersion(SYSCOLLECTOR_TEST_DB_PATH), readUserVersion(MIGRATED_DB_PATH));
+    EXPECT_EQ(schemaFingerprint(SYSCOLLECTOR_TEST_DB_PATH), schemaFingerprint(MIGRATED_DB_PATH))
+            << "a migrated database and a freshly created one must be the same database";
+
+    std::remove(MIGRATED_DB_PATH);
+}
+
+/// Reads a container's stored context, or "" when it has none.
+static std::string readStoredContext(const char* path, const char* containerId)
+{
+    sqlite3* db = nullptr;
+
+    if (sqlite3_open_v2(path, &db, SQLITE_OPEN_READONLY, nullptr) != SQLITE_OK)
+    {
+        if (db)
+        {
+            sqlite3_close(db);
+        }
+
+        return {};
+    }
+
+    sqlite3_stmt* stmt = nullptr;
+    std::string context;
+
+    if (sqlite3_prepare_v2(db, "SELECT context FROM container_context WHERE container_id=?;",
+                           -1, &stmt, nullptr) == SQLITE_OK)
+    {
+        sqlite3_bind_text(stmt, 1, containerId, -1, SQLITE_STATIC);
+
+        if (sqlite3_step(stmt) == SQLITE_ROW)
+        {
+            const auto* text = sqlite3_column_text(stmt, 0);
+            context = text ? reinterpret_cast<const char*>(text) : "";
+        }
+    }
+
+    sqlite3_finalize(stmt);
+    sqlite3_close(db);
+    return context;
+}
+
+TEST_F(SyscollectorImpTest, AContainersContextIsStoredOncePerContainerNotOncePerRow)
+{
+#ifndef __linux__
+    GTEST_SKIP() << "The container baseline is Linux-only";
+#else
+    const auto spInfoWrapper {std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
+
+    Syscollector::instance().init(spInfoWrapper, reportFunction, persistFunction, logFunction,
+                                  SYSCOLLECTOR_TEST_DB_PATH, "", "",
+                                  3600, false, false, false, false, false, false, false,
+                                  false, false, false, false, false, false, false);
+
+    const std::string context {R"({"container":{"id":"c1","name":"web"}})"};
+
+    EXPECT_TRUE(Syscollector::instance().storeContainerContext("c1", context));
+
+    // An empty id names no container. Refusing it matters because the return
+    // value gates whether that container's rows are emitted at all, and rows
+    // under an empty container_id are the HOST's.
+    EXPECT_FALSE(Syscollector::instance().storeContainerContext("", context));
+
+    // Repeating an unchanged context is accepted without a second write. The
+    // assertion that it was not rewritten is the one below on the stored
+    // value; what matters here is that an unchanged context still reports
+    // success, because reporting failure would skip the container's rows.
+    EXPECT_TRUE(Syscollector::instance().storeContainerContext("c1", context));
+
+    // A changed context replaces the stored one rather than accumulating.
+    const std::string edited {R"({"container":{"id":"c1","name":"web","labels":{"tier":"edge"}}})"};
+    EXPECT_TRUE(Syscollector::instance().storeContainerContext("c1", edited));
+
+    Syscollector::instance().destroy();
+
+    EXPECT_EQ(readStoredContext(SYSCOLLECTOR_TEST_DB_PATH, "c1"), edited)
+            << "one row per container, holding the latest context";
+    EXPECT_EQ(readStoredContext(SYSCOLLECTOR_TEST_DB_PATH, ""), "")
+            << "the host is not a container and must never acquire a context row";
+#endif
+}
+
+TEST_F(SyscollectorImpTest, ADeleteIsDescribedByTheContextStoredOnceNotByTheRow)
+{
+#ifndef __linux__
+    GTEST_SKIP() << "The container baseline is Linux-only";
+#else
+    const auto spInfoWrapper {std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
+
+    Syscollector::instance().init(spInfoWrapper, reportFunction, persistFunction, logFunction,
+                                  SYSCOLLECTOR_TEST_DB_PATH, "", "",
+                                  3600, false, false, false, false, false, false, false,
+                                  false, false, false, false, false, false, false);
+
+    EXPECT_TRUE(Syscollector::instance().storeContainerContext(
+                    "c1", R"({"container":{"id":"c1","name":"web","kubernetes":{"pod":{"name":"web-0"}}}})"));
+    Syscollector::instance().destroy();
+
+    // The row carries NO context of its own -- there is no longer a column it
+    // could carry one in. Everything the delete says about the container
+    // therefore has to come from the context stored once, which is the point.
+    sqlite3* db = nullptr;
+    ASSERT_EQ(sqlite3_open_v2(SYSCOLLECTOR_TEST_DB_PATH, &db, SQLITE_OPEN_READWRITE, nullptr), SQLITE_OK);
+
+    char* errMsg = nullptr;
+    ASSERT_EQ(sqlite3_exec(db,
+                           "INSERT INTO dbsync_processes (container_id, pid, name, sync, checksum) "
+                           "VALUES ('c1', '431625', 'nginx', 1, 'sum');",
+                           nullptr, nullptr, &errMsg), SQLITE_OK) << (errMsg ? errMsg : "");
+
+    if (errMsg)
+    {
+        sqlite3_free(errMsg);
+    }
+
+    sqlite3_close(db);
+
+    std::vector<std::string> persisted;
+    const auto capturePersist
+    {
+        [&persisted](const std::string&, Operation_t, const std::string&, const std::string & payload, uint64_t)
+        {
+            persisted.push_back(payload);
+        }
+    };
+
+    Syscollector::instance().init(spInfoWrapper, reportFunction, capturePersist, logFunction,
+                                  SYSCOLLECTOR_TEST_DB_PATH, "", "",
+                                  3600, false, false, false, false, false, false, false,
+                                  false, false, false, false, false, false, false);
+
+    EXPECT_EQ(Syscollector::instance().sweepContainerRows({"c1"}), 1u);
+
+    ASSERT_EQ(persisted.size(), 1u);
+    const auto document = nlohmann::json::parse(persisted.front());
+
+    ASSERT_TRUE(document.contains("container"))
+            << "the delete must still describe the container, with nothing on the row to describe it";
+    EXPECT_EQ(document["container"]["name"], "web");
+    EXPECT_EQ(document["container"]["kubernetes"]["pod"]["name"], "web-0");
+    EXPECT_FALSE(document.contains("kubernetes"));
+
+    Syscollector::instance().destroy();
+
+    // And the context goes only after the delete that needed it.
+    EXPECT_EQ(readStoredContext(SYSCOLLECTOR_TEST_DB_PATH, "c1"), "")
+            << "a swept container keeps no context behind it";
+#endif
+}
+
+TEST_F(SyscollectorImpTest, AContextOrphanedByACrashIsRecoveredByTheNextSweep)
+{
+#ifndef __linux__
+    GTEST_SKIP() << "The container baseline is Linux-only";
+#else
+    const auto spInfoWrapper {std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
+
+    Syscollector::instance().init(spInfoWrapper, reportFunction, persistFunction, logFunction,
+                                  SYSCOLLECTOR_TEST_DB_PATH, "", "",
+                                  3600, false, false, false, false, false, false, false,
+                                  false, false, false, false, false, false, false);
+
+    // "orphan" is the state left by a crash between deleting a container's
+    // rows and deleting its context: a context with no rows anywhere. Walking
+    // the inventory tables can never find it again, precisely because the rows
+    // it would have been found by are gone -- only the live list can identify
+    // it, which is what the prune uses.
+    EXPECT_TRUE(Syscollector::instance().storeContainerContext("orphan", R"({"container":{"id":"orphan"}})"));
+    EXPECT_TRUE(Syscollector::instance().storeContainerContext("alive", R"({"container":{"id":"alive"}})"));
+
+    EXPECT_EQ(Syscollector::instance().pruneContainerContexts({"alive"}), 1u)
+            << "exactly the one context whose container is not live";
+
+    Syscollector::instance().destroy();
+
+    EXPECT_EQ(readStoredContext(SYSCOLLECTOR_TEST_DB_PATH, "orphan"), "");
+    EXPECT_EQ(readStoredContext(SYSCOLLECTOR_TEST_DB_PATH, "alive"), R"({"container":{"id":"alive"}})")
+            << "a live container must keep its context, or its next delete cannot describe it";
+#endif
+}
+
+TEST_F(SyscollectorImpTest, ARecreatedDatabaseGetsItsContextsWrittenAgain)
+{
+#ifndef __linux__
+    GTEST_SKIP() << "The container baseline is Linux-only";
+#else
+    const auto spInfoWrapper {std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
+
+    const auto start = [&spInfoWrapper]()
+    {
+        Syscollector::instance().init(spInfoWrapper, reportFunction, persistFunction, logFunction,
+                                      SYSCOLLECTOR_TEST_DB_PATH, "", "",
+                                      3600, false, false, false, false, false, false, false,
+                                      false, false, false, false, false, false, false);
+    };
+
+    const std::string context {R"({"container":{"id":"c1","name":"web"}})"};
+
+    start();
+    EXPECT_TRUE(Syscollector::instance().storeContainerContext("c1", context));
+
+    // The unchanged-context shortcut remembers what it wrote. Once the database
+    // holding those writes is gone, that memory describes nothing and must not
+    // suppress the write into the new one.
+    Syscollector::instance().deleteDatabase();
+    Syscollector::instance().destroy();
+
+    start();
+    EXPECT_TRUE(Syscollector::instance().storeContainerContext("c1", context));
+    Syscollector::instance().destroy();
+
+    EXPECT_EQ(readStoredContext(SYSCOLLECTOR_TEST_DB_PATH, "c1"), context)
+            << "rows stored under c1 in the new database need their context row";
 #endif
 }
 
