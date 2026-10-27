@@ -36,6 +36,7 @@ bool w_get_hash_context(logreader *lf, EVP_MD_CTX **context, int64_t position);
 ssize_t w_set_to_pos(logreader *lf, long pos, int mode);
 char * w_save_files_status_to_cJSON();
 void w_save_file_status();
+void w_logcollector_shutdown(void);
 void w_load_files_status(cJSON *global_json);
 void w_initialize_file_status();
 int w_update_hash_node(char * path, int64_t pos);
@@ -1044,6 +1045,35 @@ void test_w_save_file_status_OK(void ** state) {
     expect_rename_ex("queue/logcollector/file_status.json.tmp", "queue/logcollector/file_status.json", 0);
 
     w_save_file_status();
+}
+
+/* w_logcollector_shutdown */
+
+void test_w_logcollector_shutdown_releases_macos_and_saves_status(void ** state) {
+    OSHashNode *hash_node = NULL;
+    strcpy(macos_log_vault.timestamp,"any timestamp");
+    macos_log_vault.settings = "my settings";
+    macos_processes = NULL;
+    macos_log_shutdown = 0;
+
+    expect_function_call(__wrap_pthread_rwlock_rdlock);
+    expect_value(__wrap_OSHash_Begin, self, files_status);
+    will_return(__wrap_OSHash_Begin, hash_node);
+    expect_function_call(__wrap_pthread_rwlock_unlock);
+
+    expect_function_call(__wrap_pthread_rwlock_rdlock);
+    expect_function_call(__wrap_pthread_rwlock_unlock);
+
+    expect_function_call(__wrap_pthread_rwlock_rdlock);
+    expect_function_call(__wrap_pthread_rwlock_unlock);
+
+    expect_function_call(__wrap_pthread_rwlock_rdlock);
+    expect_function_call(__wrap_pthread_rwlock_unlock);
+
+    w_logcollector_shutdown();
+
+    assert_int_equal(macos_log_shutdown, 1);
+    macos_log_shutdown = 0;
 }
 
 void test_w_save_file_status_short_write(void ** state) {
@@ -3219,6 +3249,7 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_w_save_file_status_wfopen_error, setup_log_context, teardown_log_context),
         cmocka_unit_test_setup_teardown(test_w_save_file_status_fwrite_error, setup_log_context, teardown_log_context),
         cmocka_unit_test_setup_teardown(test_w_save_file_status_OK, setup_log_context, teardown_log_context),
+        cmocka_unit_test_setup_teardown(test_w_logcollector_shutdown_releases_macos_and_saves_status, setup_local_hashmap, teardown_local_hashmap),
         cmocka_unit_test_setup_teardown(test_w_save_file_status_short_write, setup_log_context, teardown_log_context),
         cmocka_unit_test_setup_teardown(test_w_save_file_status_fclose_error, setup_log_context, teardown_log_context),
         cmocka_unit_test_setup_teardown(test_w_save_file_status_rename_error, setup_log_context, teardown_log_context),

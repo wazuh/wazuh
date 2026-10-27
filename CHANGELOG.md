@@ -48,6 +48,7 @@ All notable changes to this project will be documented in this file.
 - Fixed the Windows agent reporting the wrong release for builds 15063 and 16299 when the registry has no `ReleaseId`. ([#40489](https://github.com/wazuh/wazuh/pull/40489))
 - Fixed the `ms-graph` configuration reported by the Server API leaving out the name of each resource and all its relationships but the last. `api_auth` is now an array with one item per block, and each resource lists its `name` and a `relationships` array. ([#40580](https://github.com/wazuh/wazuh/pull/40580))
 - Fixed `wazuh-syscheckd` crashing and leaving a core file when it is stopped or restarted during a FIM scan or synchronization. ([#40692](https://github.com/wazuh/wazuh/pull/40692))
+- Fixed `wazuh-agentd` and `wazuh-logcollector` crashing or leaving a stale PID file when they are stopped while working. ([#40770](https://github.com/wazuh/wazuh/issues/40770))
 
 ## [v4.14.10]
 

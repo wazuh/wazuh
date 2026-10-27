@@ -62,6 +62,12 @@ STATIC void w_initialize_file_status();
 STATIC void w_save_file_status();
 
 /**
+ * @brief Run the atexit work (release the macOS log processes, save the files status) on a termination signal,
+ * which skips the atexit handlers
+ */
+STATIC void w_logcollector_shutdown(void);
+
+/**
  * @brief Load files_status data to hash
  * @param global_json json wich contains the previous files_status hash
  */
@@ -212,6 +218,8 @@ void LogCollectorStart()
     if (atexit(w_save_file_status)) {
         merror(ATEXIT_ERROR);
     }
+
+    SetSIGShutdownFunc(w_logcollector_shutdown);
 
     /* Initialize state component */
     if (state_interval == 0) {
@@ -2720,6 +2728,13 @@ STATIC void w_initialize_file_status() {
 
     os_free(str);
     fclose(fd);
+}
+
+STATIC void w_logcollector_shutdown(void) {
+#if defined(Darwin) || (defined(__linux__) && defined(WAZUH_UNIT_TESTING))
+    w_macos_release_log_execution();
+#endif
+    w_save_file_status();
 }
 
 STATIC void w_save_file_status() {

@@ -12,6 +12,7 @@
 
 #include "shared.h"
 #include "agentd.h"
+#include "openssl_init.h"
 
 #if !defined(HPUX) && !defined(AIX) && !defined(SOLARIS)
 #include <getopt.h>
@@ -67,6 +68,8 @@ int main(int argc, char **argv)
 
     /* Set the name */
     OS_SetName(ARGV0);
+
+    w_openssl_init();
 
 	/* Change working directory */
     if (chdir(home_path) == -1) {
