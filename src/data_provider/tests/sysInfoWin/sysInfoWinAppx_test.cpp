@@ -256,7 +256,7 @@ TEST_F(SysInfoWinAppxTest, InstallTimeIsReportedInUTC)
     .qwords["InstallTime"] = 134372521480000000ULL;
 
     const ScopedTimezone timezone { "JST-9" };
-    TestAppxWrapper wrapper(HKEY_USERS, TEST_USER_SID, edgePackage, {});
+    TestAppxWrapper wrapper(HKEY_USERS, TEST_CLASSES_ROOT, edgePackage, {});
 
     EXPECT_EQ("2026-10-23T18:02:28.000Z", wrapper.install_time());
 }
