@@ -70,7 +70,7 @@ The promotion path for user-created content is: **Draft → Test → Custom**.
 | **Severity** | Numeric level 0–16 | Keyword: `informational`, `low`, `medium`, `high`, `critical` |
 | **Detection logic** | Decoder fields + regex matching + parent rule chaining | Sigma detection blocks with selections, conditions, and value modifiers |
 | **Rule chaining** | `if_sid`, `if_group`, `if_level`, `if_matched_sid` | Not supported — each rule is self-contained |
-| **Correlation** | `frequency`, `timeframe`, `same_*`, `different_*` | Not supported in the rule format; no correlation rules are shipped in 5.0 |
+| **Correlation** | `frequency`, `timeframe`, `same_*`, `different_*` | Not supported in the rule format; no correlation rules are shipped in 5.0. See [Alerting on repeated events](#alerting-on-repeated-events) |
 | **Field schema** | Custom decoder-extracted fields — open-ended, no validation | Wazuh Common Schema (WCS) fields — validated closed set; unknown fields are rejected at creation |
 | **Compliance mapping** | Embedded in `<group>` tag as CSV | Dedicated `compliance` object with structured fields |
 | **MITRE mapping** | `<mitre><id>` tags inside rule | Dedicated `mitre` object: `tactic`, `technique` and `subtechnique`, each with parallel `id` and `name` arrays |
@@ -647,7 +647,7 @@ Compliance tags go into the `compliance` object (see [Step 8](#step-8-migrate-co
 | 4.x feature | Approach in 5.x |
 |---|---|
 | **Rule chaining** (`if_sid`, `if_group`, `if_level`) | Flatten into a single self-contained rule. See [example below](#flattening-if_sid-chains). |
-| **Correlation rules** (`frequency`, `timeframe`, `same_*`, `different_*`) | No equivalent in the rule format, and 5.0 ships no correlation rules; handle it outside Wazuh's detection rules (for example, an Alerting monitor over the findings indices). |
+| **Correlation rules** (`frequency`, `timeframe`, `same_*`, `different_*`) | No equivalent in the rule format, and 5.0 ships no correlation rules; count the findings with an Alerting monitor instead. See [Alerting on repeated events](#alerting-on-repeated-events). |
 | **CDB list lookups** (`<list>`) | Migrate to KVDBs within the integration — see [Migrating CDB lists to KVDB lists](cdb-to-kvdb-migration.md). KVDBs serve a similar purpose but operate at the decoder level during normalization, not at rule evaluation time. |
 | **Time-based conditions** (`<time>`, `<weekday>`) | Implement via scheduled queries or external logic. |
 | **Regex on raw log** (`<match>`, `<regex>`) | Ensure logs are properly decoded into WCS fields; match on structured fields. See [Translating `<match>` and `<regex>`](#translating-match-and-regex). |
@@ -690,7 +690,7 @@ The most common migration challenge is collapsing a multi-level rule chain into 
 **Migration plan:**
 - Rule 5700: **discard** — its `decoded_as` binding is implicit in the sshd integration.
 - Rule 5710: **migrate** — the integration link replaces `if_sid`; detection logic replaces `<match>`.
-- Rule 5720: **cannot be migrated directly** — `frequency`/`timeframe`/`if_matched_sid` have no equivalent in the 5.x rule format. Document as a gap.
+- Rule 5720: **cannot be migrated directly** — `frequency`/`timeframe`/`if_matched_sid` have no equivalent in the 5.x rule format. Count the findings of the migrated 5710 with a monitor instead (see [Alerting on repeated events](#alerting-on-repeated-events)).
 
 ```yaml
 # Migrated rule 5710 — self-contained, linked to the sshd integration
@@ -729,6 +729,108 @@ tags:
 ```
 
 > **Verify with logtest:** The 4.x `<match>illegal user|invalid user</match>` matched raw log text. After normalization, whether the `user.name` field is absent or set to a sentinel value depends on the decoder. Confirm with logtest which field (if any) captures this distinction in your integration.
+
+#### Alerting on repeated events
+
+5.0 evaluates each event on its own: a finding has the severity of the one event it matched, and nothing escalates when the same finding repeats. Threshold and correlation rules are not supported in 5.0.0 ([wazuh/wazuh-indexer#1842](https://github.com/wazuh/wazuh-indexer/issues/1842); planned in [wazuh/wazuh-indexer-security-analytics#119](https://github.com/wazuh/wazuh-indexer-security-analytics/issues/119)). An SSH brute force that 4.x raised to level 10 with rules 5712, 5720 and 5763 produces in 5.0 one `low` finding, `Failed authentication attempt - <user>`, per logged failure, and a triage by severity never sees the attack.
+
+Until they are, a bucket-level monitor of the indexer's Alerting plugin does the counting over the findings indices. The monitor below runs every minute, groups the authentication failures of the last five minutes by agent and source address, and triggers for every group with 8 or more, the count of rules 5712 and 5763. Create it from the dashboard's **Dev Tools**, or rebuild it in **Alerting > Monitors** as a per-bucket monitor:
+
+```
+POST _plugins/_alerting/monitors
+{
+  "type": "monitor",
+  "monitor_type": "bucket_level_monitor",
+  "name": "Repeated authentication failures",
+  "enabled": true,
+  "schedule": {
+    "period": {
+      "interval": 1,
+      "unit": "MINUTES"
+    }
+  },
+  "inputs": [
+    {
+      "search": {
+        "indices": [
+          "wazuh-findings-v5-*"
+        ],
+        "query": {
+          "size": 0,
+          "query": {
+            "bool": {
+              "filter": [
+                {
+                  "term": {
+                    "event.action": "authentication-failure"
+                  }
+                },
+                {
+                  "range": {
+                    "@timestamp": {
+                      "gte": "{{period_end}}||-5m",
+                      "lte": "{{period_end}}",
+                      "format": "epoch_millis"
+                    }
+                  }
+                }
+              ]
+            }
+          },
+          "aggregations": {
+            "by_source": {
+              "composite": {
+                "sources": [
+                  {
+                    "agent": {
+                      "terms": {
+                        "field": "wazuh.agent.name"
+                      }
+                    }
+                  },
+                  {
+                    "source_ip": {
+                      "terms": {
+                        "field": "source.ip"
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    }
+  ],
+  "triggers": [
+    {
+      "bucket_level_trigger": {
+        "name": "8 or more failures from one address in 5 minutes",
+        "severity": "2",
+        "condition": {
+          "buckets_path": {
+            "failures": "_count"
+          },
+          "parent_bucket_path": "by_source",
+          "script": {
+            "source": "params.failures >= 8",
+            "lang": "painless"
+          }
+        },
+        "actions": []
+      }
+    }
+  ]
+}
+```
+
+Each group over the threshold becomes an active alert in **Alerting > Alerts**, with the agent and the source address as its bucket keys. Add an action to the trigger to send it to a notification channel. Two things set the numbers apart from the 4.x rules:
+
+- The window is five minutes rather than two because the detectors write findings every one or two minutes, stamped with the time of the event; a two-minute window misses findings that arrive late.
+- The threshold counts findings, not attempts. An SSH attempt with a user that does not exist logs `Invalid user` and `Failed password`, and each line is a finding.
+
+To count another pattern, change the `filter` that selects the findings (`event.action`, `wazuh.rule.title` or any other field) and the composite `sources`, which play the role of the 4.x `same_*` options.
 
 ### Step 11: Deploy and test
 

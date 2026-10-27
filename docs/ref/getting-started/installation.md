@@ -553,6 +553,18 @@ curl -s -k -X GET "https://localhost:55000/agents?name=web-server-01&select=id,n
 
 Drop `name=` to list every agent. The dashboard shows the same list under **Endpoints**. See [List agents](../modules/server-api/api-reference.md#list-agents) for the other filters.
 
+### Monitoring the server host
+
+The manager does not monitor the host it runs on. In 4.x it collected that host's logs, file integrity, SCA and inventory as agent `000`; 5.0 has no agent `000`, and `GET /agents` lists only the agents that enrolled. To monitor a server host, install an agent on it. The agent installs in `/var/ossec`, next to the manager in `/var/wazuh-manager`, and enrolls with a token as described above; the address the token names must reach the manager from the host itself. On a Debian-based all-in-one host:
+
+```bash
+TOKEN=$(sudo /var/wazuh-manager/bin/wazuh-manager-authd --create-enrollment-token --address mgr.example.com)
+sudo WAZUH_ENROLLMENT_TOKEN="$TOKEN" WAZUH_AGENT_NAME="$(hostname)" dpkg -i wazuh-agent_*.deb
+sudo systemctl daemon-reload && sudo systemctl enable --now wazuh-agent
+```
+
+The agent adds the usage listed in [Requirements](requirements.md#agent) to the host.
+
 ### Options
 
 #### Enrollment

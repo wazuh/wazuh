@@ -27,6 +27,8 @@ Beyond that baseline, disk space requirements depend on:
 
 The storage capacity should be calculated based on your expected alert volume and desired retention policy.
 
+The manager does not monitor its own host. To monitor it, install an agent on it (see [Monitoring the server host](installation.md#monitoring-the-server-host)) and add the agent usage below.
+
 ## Agent
 
 ### Operating System Requirements
