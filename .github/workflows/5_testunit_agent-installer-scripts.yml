@@ -14,6 +14,12 @@ on:
       - "src/init/tests/test_register_configure_agent.sh"
       - "src/init/tests/test_pkg_installer_ca.sh"
       - "src/init/tests/test_pkg_installer_state.sh"
+      # The default <localfile> blocks the packages add to ossec.conf (add_localfiles.sh), generated
+      # from the localfile-logs templates by WriteLogs.
+      - "src/init/inst-functions.sh"
+      - "src/init/add_localfiles.sh"
+      - "etc/templates/config/generic/localfile-logs/**"
+      - "src/init/tests/test_write_logs.sh"
   workflow_dispatch:
 
 concurrency:
@@ -47,3 +53,9 @@ jobs:
 
       - name: Agent state file (pkg_installer.sh)
         run: bash src/init/tests/test_pkg_installer_state.sh
+
+      # The deb postinst runs it under dash, the rpm %post under bash.
+      - name: Default log files (inst-functions.sh WriteLogs, dash and bash)
+        run: |
+          sh src/init/tests/test_write_logs.sh
+          bash src/init/tests/test_write_logs.sh
