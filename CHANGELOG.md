@@ -34,7 +34,7 @@ All notable changes to this project will be documented in this file.
 - Fixed the Azure Storage integration skipping the blobs of a container when another container of the same storage account, or another block of the same container with another path or blob extension, had already sent newer ones. ([#40646](https://github.com/wazuh/wazuh/pull/40646))
 - Fixed the Azure Storage integration stopping at a `json_file` blob that cannot be parsed, or whose records are not a list or include values that are not JSON objects, without processing the blobs after it. ([#40646](https://github.com/wazuh/wazuh/pull/40646))
 - Fixed the AWS module stopping when a fetch outlasted the session of the role in `iam_role_arn`, which the subscribers reported with an empty exit code 21 warning. The role is now assumed again before its session expires, and the warning includes the reason of the error. ([#40739](https://github.com/wazuh/wazuh/issues/40739))
-- Fixed the `upload_configuration.remote_commands` restriction of the Server API not covering the `prefilter_cmd` option of the `syscheck` section when uploading the manager configuration.
+- Fixed the configuration upload validation to also apply the `upload_configuration.remote_commands` setting to the `prefilter_cmd` option of the `syscheck` section. ([#40791](https://github.com/wazuh/wazuh/pull/40791))
 
 ### Agent
 
