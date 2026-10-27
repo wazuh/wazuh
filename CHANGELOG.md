@@ -29,6 +29,7 @@ All notable changes to this project will be documented in this file.
 - Fixed the Azure Log Analytics integration never collecting the records ingested after a run with a `TimeGenerated` older than the newest record processed. ([#40538](https://github.com/wazuh/wazuh/pull/40538))
 - Fixed the Azure Log Analytics integration skipping new records for up to a day after reading a record with a `TimeGenerated` ahead of the current time. ([#40538](https://github.com/wazuh/wazuh/pull/40538))
 - Fixed the `ms-graph` configuration reported by the Server API leaving out the name of each resource and all its relationships but the last. `api_auth` is now an array with one item per block, and each resource lists its `name` and a `relationships` array. ([#40580](https://github.com/wazuh/wazuh/pull/40580))
+- Fixed Vulnerability Detection reporting CentOS Stream packages as vulnerable when the fixed version differs from the installed one only by the minor of the dist tag (`el10` and `el10_2`). ([#40566](https://github.com/wazuh/wazuh/pull/40566))
 
 ### Agent
 
