@@ -275,32 +275,38 @@ extern int LINUX_KERNEL_VERSION __kconfig;
  *   further out still: there the field is `ino` and not `id` at all. Neither
  *   host can load the engine, which is the only reason this is safe.
  *
- * The MASK is a separate question from the layout, and it applies to EVERY
- * id this program reports -- including the one bpf_get_current_cgroup_id()
- * returns, which is why current_container_cgroup_id() masks both of its arms.
+ * The MASK is a separate question from the layout, and it is right where it is
+ * applied: a kernfs ino comes from a 32-bit IDR and so never reaches the high
+ * word, so when no generation is packed the high word is zero and the mask is a
+ * no-op. Arithmetic on the u64, not a reinterpretation of its bytes, so
+ * endianness does not enter into it.
  *
- * That was not always so, and the reasoning that left the helper's result
- * unmasked is worth recording because it is a trap. The argument ran: the
- * packed generation was measured on a legacy host, the legacy host is the only
- * one that reaches the CO-RE read below, therefore only that read needs
- * masking. The first two steps are true and the conclusion does not follow.
- * Generation packing is a property of the KERNEL, not of which hierarchy the
- * host mounts, and bpf_get_current_cgroup_id() returns the same kernfs id by
- * the same rule -- it is `cgroup_id(cgrp)`, which is `kn->id`. On a RHEL 8
- * family kernel, where the generation IS packed, the helper therefore reports
+ * KNOWN GAP, deliberately left open: this mask is applied to the CO-RE read
+ * below and NOT to bpf_get_current_cgroup_id(), which every unified and hybrid
+ * host uses instead. The reasoning that produced that split does not actually
+ * hold. It ran: the packed generation was measured on a legacy host, a legacy
+ * host is the only one that reaches the read below, therefore only that read
+ * needs masking. The first two steps are true and the conclusion does not
+ * follow -- generation packing is a property of the KERNEL, not of which
+ * hierarchy the host mounts, and the helper returns the same kernfs id by the
+ * same rule, since it is `cgroup_id(cgrp)`, which is `kn->id`.
+ *
+ * So on a kernel that packs a generation, the helper reports
  * (generation << 32 | ino) while userspace stat() reports st_ino, the low word
- * alone. The two never join, on a unified or hybrid host just as surely as on
- * a legacy one, and the symptom is a cgroup id that matches no inode anywhere:
- * the resolver's scanOne() finds it among neither containers nor host cgroups
- * and returns nullopt, so the consumer retries and logs a cold-cache
- * resolution FAILURE rather than a host-process verdict.
+ * alone, and the two never join. The symptom is distinctive: a cgroup id
+ * matching no inode anywhere, which scanOne() finds among neither containers
+ * nor host cgroups, so the consumer logs a cold-cache resolution FAILURE and
+ * retries forever rather than settling a host-process verdict.
  *
- * Masking is right everywhere for the reason it was always right here. A
- * kernfs ino comes from a 32-bit IDR and so never reaches the high word; when
- * no generation is packed the high word is zero and the mask is a no-op, which
- * is why every 6.x host validated before this went unnoticed. Arithmetic on the
- * u64, not a reinterpretation of its bytes, so endianness does not enter into
- * it. */
+ * It is left open because no host that can reach it has been observed to pack
+ * one. Upstream >= 5.5 leaves the high word zero until the kernfs IDR wraps, so
+ * every 6.x host validated here is unaffected and the mask would be a no-op.
+ * The suspect is the RHEL 8 family backport, where the generation IS packed
+ * (measured above) -- but that family defaults to cgroup v1, which uses the
+ * masked read below instead, so reaching this needs RHEL 8 booted with
+ * systemd.unified_cgroup_hierarchy=1. Closing it is a one-token change here;
+ * what it costs is a rebuild of both prebuilt objects, which cannot be
+ * load-tested from this tree. Measure that configuration before making it. */
 statfunc __u64 kernfs_node_ino(__u64 raw)
 {
     return raw & 0xFFFFFFFFULL;
@@ -313,10 +319,9 @@ statfunc __u64 current_container_cgroup_id(void)
 
     if (!configured || *configured == 0)
     {
-        /* Masked for the same reason the CO-RE read below is: the helper hands
-         * back kn->id, generation included on a kernel that packs one, and
-         * userspace correlates on st_ino. See kernfs_node_ino(). */
-        return kernfs_node_ino(bpf_get_current_cgroup_id());
+        /* NOT masked. See kernfs_node_ino() for the case where that is
+         * suspected to be wrong, and why it is left alone for now. */
+        return bpf_get_current_cgroup_id();
     }
 
     const __u32 index = *configured - 1;
