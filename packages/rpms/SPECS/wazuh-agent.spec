@@ -358,6 +358,9 @@ if [ $1 = 1 ]; then
 
   # Register and configure agent if Wazuh environment variables are defined
   %{_localstatedir}/packages_files/agent_installation_scripts/src/init/register_configure_agent.sh %{_localstatedir} > /dev/null || :
+else
+  # An upgrade keeps its configuration; only WAZUH_ENROLLMENT_TOKEN is applied.
+  %{_localstatedir}/packages_files/agent_installation_scripts/src/init/register_configure_agent.sh %{_localstatedir} upgrade > /dev/null || :
 fi
 
 if [ -r /etc/SuSE-release ] && grep -q "VERSION = 11" /etc/SuSE-release 2>/dev/null; then
@@ -475,8 +478,15 @@ if [ -r ${SCA_TMP_FILE} ]; then
   done
 fi
 
-# Delete the installation files used to configure the agent
-rm -rf %{_localstatedir}/packages_files
+# Delete the installation files used to configure the agent, but register_configure_agent.sh: it is
+# a plain packaged file (see the file list), so every upgrade lays it down for this script to run,
+# and rpm -V expects it there.
+find %{_localstatedir}/packages_files -mindepth 1 -depth \
+    ! -path %{_localstatedir}/packages_files/agent_installation_scripts \
+    ! -path %{_localstatedir}/packages_files/agent_installation_scripts/src \
+    ! -path %{_localstatedir}/packages_files/agent_installation_scripts/src/init \
+    ! -path %{_localstatedir}/packages_files/agent_installation_scripts/src/init/register_configure_agent.sh \
+    -exec rm -rf {} +
 
 # Set the proper selinux context
 if ([ "X${DIST_NAME}" = "Xrhel" ] || [ "X${DIST_NAME}" = "Xcentos" ] || [ "X${DIST_NAME}" = "XCentOS" ]) && [ "${DIST_VER}" == "5" ]; then
@@ -815,7 +825,15 @@ rm -fr %{buildroot}
 %attr(750, root, root) %config(missingok) %{_localstatedir}/packages_files/agent_installation_scripts/etc/templates/config/rhel/*
 %attr(750, root, root) %config(missingok) %{_localstatedir}/packages_files/agent_installation_scripts/etc/templates/config/sles/*
 %attr(750, root, root) %config(missingok) %{_localstatedir}/packages_files/agent_installation_scripts/etc/templates/config/suse/*
-%attr(750, root, root) %config(missingok) %{_localstatedir}/packages_files/agent_installation_scripts/src/*
+%dir %attr(750, root, root) %config(missingok) %{_localstatedir}/packages_files/agent_installation_scripts/src
+%dir %attr(750, root, root) %config(missingok) %{_localstatedir}/packages_files/agent_installation_scripts/src/init
+%attr(750, root, root) %config(missingok) %{_localstatedir}/packages_files/agent_installation_scripts/src/init/*.init
+# Every script but register_configure_agent.sh, which is listed on its own below.
+%attr(750, root, root) %config(missingok) %{_localstatedir}/packages_files/agent_installation_scripts/src/init/[!r]*.sh
+%attr(750, root, root) %config(missingok) %{_localstatedir}/packages_files/agent_installation_scripts/src/init/replace_manager_ip.sh
+# A plain file: rpm does not lay down again a missingok config file that an earlier package's
+# post-install script deleted, so an upgrade would not find it.
+%attr(750, root, root) %{_localstatedir}/packages_files/agent_installation_scripts/src/init/register_configure_agent.sh
 %dir %attr(750, root, wazuh) %{_localstatedir}/queue
 %dir %attr(770, wazuh, wazuh) %{_localstatedir}/queue/sockets
 %dir %attr(750, wazuh, wazuh) %{_localstatedir}/queue/diff
