@@ -20,7 +20,7 @@
 
 static inline void w_openssl_init(void) {
     if (!OPENSSL_init_crypto(W_OPENSSL_INIT_OPTS, NULL)) {
-        mwarn("Could not initialize OpenSSL without its exit cleanup: stopping the process may leave it running threads on freed OpenSSL state.");
+        mwarn("OpenSSL initialization failed: OPENSSL_init_crypto() returned an error.");
     }
 }
 

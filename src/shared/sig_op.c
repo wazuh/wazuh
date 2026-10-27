@@ -100,11 +100,15 @@ STATIC void SIGShutdown(void)
 STATIC void *SIGShutdownThread(__attribute__((unused)) void *arg)
 {
     char buf;
+    ssize_t len;
 
-    while (read(sig_pipe_rd, &buf, 1) != 1) {
-        if (errno != EINTR) {
-            sleep(1);
-        }
+    while (len = read(sig_pipe_rd, &buf, 1), len < 0 && errno == EINTR) {}
+
+    if (len != 1) {
+        /* The pipe is unusable, so no signal can wake this thread: fall back to the legacy exit() path */
+        sig_pipe_wr = -1;
+        merror("The shutdown pipe is unusable. Termination signals will exit directly.");
+        return NULL;
     }
 
     SIGShutdown();

@@ -183,12 +183,19 @@ void test_handler_only_signals(void **state) {
 }
 
 void test_handler_keeps_errno(void **state) {
+    char fill[4096] = {0};
+
     (void) state;
-    errno = EAGAIN;
+
+    /* A full pipe makes write() set errno to EAGAIN, which the handler must not leak */
+    while (write(sig_pipe_wr, fill, sizeof(fill)) > 0) {}
+    assert_int_equal(errno, EAGAIN);
+
+    errno = ENOENT;
 
     HandleSIG(SIGINT);
 
-    assert_int_equal(errno, EAGAIN);
+    assert_int_equal(errno, ENOENT);
 }
 
 void test_handler_ignores_second_signal(void **state) {
@@ -251,6 +258,21 @@ void test_thread_runs_shutdown_work_once(void **state) {
     assert_false(pid_file_exists());
 }
 
+/* An unusable pipe can never wake the thread, so it disarms the handler and the legacy exit() path takes over */
+void test_thread_disarms_handler_on_unusable_pipe(void **state) {
+    int write_fd = sig_pipe_wr;
+
+    (void) state;
+    close(sig_pipe_rd);
+
+    assert_null(SIGShutdownThread(NULL));
+    assert_int_equal(sig_pipe_wr, -1);
+    assert_int_equal(exit_calls, 0);
+    assert_int_equal(shutdown_func_calls, 0);
+
+    close(write_fd);
+}
+
 /* The real thread, signal and _exit() in a child: the atexit handlers must not run, the registered work and the PID file removal must */
 void test_signal_ends_process_from_thread(void **state) {
     (void) state;
@@ -295,6 +317,7 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_shutdown_runs_work_then_removes_pid_file_and_exits, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_shutdown_without_registered_work, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_thread_runs_shutdown_work_once, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_thread_disarms_handler_on_unusable_pipe, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_signal_ends_process_from_thread, test_setup, test_teardown)
     };
     return cmocka_run_group_tests(tests, group_setup, group_teardown);
