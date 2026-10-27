@@ -254,7 +254,6 @@ int main(int argc, char **argv)
     }
 
     mdebug1(WAZUH_HOMEDIR, home_path);
-    os_free(home_path);
     mdebug1(STARTUP_MSG, (int)getpid());
 
     /* Read config */
@@ -262,15 +261,10 @@ int main(int argc, char **argv)
         mlerror_exit(LOGLEVEL_ERROR, CLIENT_ERROR);
     }
 
-    if (!(agt->server && agt->server[0].rip)) {
-        merror(AG_INV_IP);
+    if (!w_agent_validate_manager_address(agt, home_path)) {
         mlerror_exit(LOGLEVEL_ERROR, CLIENT_ERROR);
     }
-
-    if (!Validate_Address(agt->server)){
-        merror(AG_INV_MNGIP, agt->server[0].rip);
-        mlerror_exit(LOGLEVEL_ERROR, CLIENT_ERROR);
-    }
+    os_free(home_path);
 
     /* Resolve the server address only when the process won't fork: on macOS 26, getaddrinfo() crashed
      * in the forked agent when this process had already called it. wazuh-control runs -t before starting */

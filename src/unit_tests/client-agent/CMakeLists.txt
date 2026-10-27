@@ -86,6 +86,18 @@ list(APPEND client-agent_flags "-Wl,--wrap,getAgentConfig \
                                 -Wl,--wrap,getAntiTamperingConfig -Wl,--wrap,w_agentd_state_get")
 endif()
 
+# Both targets: the (4128) hint has a Windows wording. client.keys is a real file in the working
+# directory, since the Windows wrappers only offer FileSizeWin().
+list(APPEND client-agent_names "test_manager_address")
+if(${TARGET} STREQUAL "winagent")
+list(APPEND client-agent_flags "-Wl,--wrap=syscom_dispatch -Wl,--wrap=Start_win32_Syscheck \
+                                -Wl,--wrap=is_fim_shutdown -Wl,--wrap=fim_db_teardown \
+                                -Wl,--wrap=_imp__dbsync_initialize -Wl,--wrap=_imp__rsync_initialize \
+                                ${DEBUG_OP_WRAPPERS}")
+else()
+list(APPEND client-agent_flags "${DEBUG_OP_WRAPPERS}")
+endif()
+
 if(${TARGET} STREQUAL "agent")
 list(APPEND client-agent_names "test_agentd")
 list(APPEND client-agent_flags "-Wl,--wrap,wurl_free_response -Wl,--wrap,wurl_http_request \
@@ -318,7 +330,7 @@ endif()
 # KEYS_FILE, AUTHD_PASS and SHAREDCFG_DIR/SHAREDCFG_FILE expand to the manager's absolute
 # /etc/wazuh-manager paths instead of the agent's relative etc/ ones, so the test would expect (or
 # create) one path while the code under test uses another.
-foreach(client_test test_https_client_bridge test_startup_gate test_enrollment test_token_bootstrap test_shred_file)
+foreach(client_test test_https_client_bridge test_startup_gate test_enrollment test_token_bootstrap test_shred_file test_manager_address)
     if(TARGET ${client_test})
         target_compile_definitions(${client_test} PRIVATE CLIENT)
     endif()

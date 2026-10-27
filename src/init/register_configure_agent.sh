@@ -69,6 +69,17 @@ deployment_notice() {
 
 }
 
+# The next step for an agent installed without a token: enrolling, with the full path since bin/
+# is not on PATH. Empty for an agent that already has a key -- a reinstall that kept client.keys --
+# since wazuh-agent-auth refuses to enroll it.
+enrollment_hint() {
+
+    if [ ! -s "${INSTALLDIR}/etc/client.keys" ]; then
+        printf " Enroll it as root before starting it: echo '<TOKEN>' | %s/bin/wazuh-agent-auth" "${INSTALLDIR}"
+    fi
+
+}
+
 # A deployment variable that no longer does anything: say so, and write nothing. Not a refusal of
 # the whole run. One obsolete variable left in a playbook should not stop an install and
 # never silent either.
@@ -500,6 +511,8 @@ decode_enrollment_token() {
 # which is what a hand-configured install needs.
 #
 # Kept in lockstep with config() in src/win32/InstallerScripts.vbs; a change here belongs there.
+# The no-token notice's wording is the exception: Windows points at the agent GUI first (#40121),
+# so enrollment_hint() has no counterpart there.
 # WriteAgent() in src/init/inst-functions.sh also writes this file, but not under this rule: it
 # generates a fresh ossec.conf for a source install from install.sh's own prompts, with no
 # deployment variables in play, so it does not participate in the refusals below. So does
@@ -511,7 +524,7 @@ resolve_deployment_conflicts() {
     warn_removed_variables
 
     if [ -z "${WAZUH_ENROLLMENT_TOKEN}" ]; then
-        deployment_notice "${WET_INFO_NO_MANAGER}" "WAZUH_ENROLLMENT_TOKEN was not supplied, so the agent does not know where to connect."
+        deployment_notice "${WET_INFO_NO_MANAGER}" "WAZUH_ENROLLMENT_TOKEN was not supplied, so the agent does not know where to connect.$(enrollment_hint)"
         return 0
     fi
 

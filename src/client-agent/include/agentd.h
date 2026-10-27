@@ -46,6 +46,12 @@ void w_agent_resolve_ssl_posture(agent *cfg);
  * Returns false when the agent must not start. */
 bool w_agent_validate_ssl_ca(const agent *cfg);
 
+/* Check that <manager><endpoint> names a manager rather than a placeholder, logging why not and,
+ * on an agent that was never enrolled, how to enroll it. @home_path is the installation
+ * directory the POSIX hint builds the command's path from; Windows passes NULL, its hint points
+ * at the agent GUI. Returns false when the agent must not start. */
+bool w_agent_validate_manager_address(const agent *cfg, const char *home_path);
+
 /* Parse read config into JSON format */
 cJSON *getAgentConfig(void);
 cJSON *getAgentInternalOptions(void);
