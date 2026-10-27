@@ -335,6 +335,38 @@ bash "${TARGET}" "${RUN_DIR}" upgrade >/dev/null 2>"${RUN_DIR}/stderr"
 check "an upgrade with no token and an anchor says nothing" "" "$(cat "${RUN_DIR}/stderr")"
 rm -rf "${RUN_DIR}"
 
+# An anchor means the token would never be used, so the address stays where it was.
+export WAZUH_ENROLLMENT_TOKEN="${TOKEN}"
+run_upgrade_with_anchor() {
+
+    RUN_DIR="$(make_installdir "${DESC_WITH_KEY}" 0)"
+    printf '%s' "${LEGACY_CONF}" > "${RUN_DIR}/etc/ossec.conf"
+    mkdir -p "${RUN_DIR}/etc/certs"
+    touch "${RUN_DIR}/etc/certs/root-ca.pem"
+    bash "${TARGET}" "${RUN_DIR}" upgrade >/dev/null 2>"${RUN_DIR}/stderr"
+    RUN_STATUS="$?"
+
+}
+run_upgrade_with_anchor
+check "an upgrade with a token and an anchor keeps the configuration" "${LEGACY_CONF}" \
+      "$(cat "${RUN_DIR}/etc/ossec.conf")"
+check "an upgrade with a token and an anchor stores no token" "absent" \
+      "$([ -e "${RUN_DIR}/etc/enrollment_token" ] && echo present || echo absent)"
+check "an upgrade with a token and an anchor says the token was ignored" "1" \
+      "$(grep -c "WAZUH_ENROLLMENT_TOKEN was ignored" "${RUN_DIR}/stderr")"
+rm -rf "${RUN_DIR}"
+unset WAZUH_ENROLLMENT_TOKEN
+
+# A 4.x playbook still passing a removed variable is told on upgrade too.
+export WAZUH_MANAGER="10.0.0.5"
+run_upgrade "${DESC_WITH_KEY}" 0
+check "an upgrade reports a removed variable" "1" \
+      "$(grep -c "WAZUH_MANAGER is not supported in 5.0" "${RUN_DIR}/stderr")"
+check "an upgrade with a removed variable keeps the configuration" "${LEGACY_CONF}" \
+      "$(cat "${RUN_DIR}/etc/ossec.conf")"
+rm -rf "${RUN_DIR}"
+unset WAZUH_MANAGER
+
 echo
 echo "${checks} checks, ${failures} failed"
 [ "${failures}" -eq 0 ]

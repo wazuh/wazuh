@@ -69,7 +69,7 @@ case "$1" in
     if [ -d /run/systemd/system ]; then
         rm -f /etc/init.d/wazuh-agent
     else
-        install -m 0755 ${SCRIPTS_DIR}/src/init/templates/wazuh-debian.init /etc/init.d/wazuh-agent
+        install -D -m 0755 ${SCRIPTS_DIR}/src/init/templates/wazuh-debian.init /etc/init.d/wazuh-agent
     fi
 
     if [ ! -f ${OSMYSHELL} ]; then

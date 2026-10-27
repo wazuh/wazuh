@@ -780,9 +780,10 @@ static void test_already_enrolled_with_a_token_installs_the_anchor_only(void **s
     assert_int_equal(g_keys_chown_gid, getgid());
 }
 
-/* A CA that fails the token's pin is refused exactly as on a fresh install: no anchor, the key
- * left alone, and the token kept for the next boot. */
-static void test_already_enrolled_pin_mismatch_keeps_the_key_and_the_token(void **state) {
+/* An enrolled agent has no enrollment to protect, so a CA that fails the token's pin is refused
+ * without stopping the agent: it starts as before, with its key and no anchor, and the token,
+ * which can never succeed against this manager, is discarded. */
+static void test_already_enrolled_pin_mismatch_starts_without_an_anchor(void **state) {
     (void) state;
     write_file("etc/client.keys", "001 test-agent 10.0.0.5 aaaa\n");
     write_token_file(true, true, NULL);
@@ -796,8 +797,37 @@ static void test_already_enrolled_pin_mismatch_keeps_the_key_and_the_token(void 
     expect_string(__wrap__merror, formatted_msg,
                   "pin_mismatch -- fetched CA does not match the enrollment "
                   "token's pin, refusing to trust it.");
+    expect_string(__wrap__merror, formatted_msg,
+                  "Token bootstrap: the manager's CA could not be installed; the agent keeps its "
+                  "registration and runs without a trust anchor.");
 
-    assert_int_equal(w_agent_token_bootstrap(getuid(), getgid()), W_TOKEN_BOOTSTRAP_PERMANENT);
+    assert_int_equal(w_agent_token_bootstrap(getuid(), getgid()), W_TOKEN_BOOTSTRAP_DONE);
+    assert_int_equal(g_enroll_call_count, 0);
+    assert_int_not_equal(IsFile("etc/certs/root-ca.pem"), 0);
+    assert_string_equal(read_file("etc/client.keys"), "001 test-agent 10.0.0.5 aaaa\n");
+    assert_int_not_equal(IsFile("etc/enrollment_token"), 0);
+}
+
+/* A manager that cannot be reached does not hold the agent's start either, but the token is kept
+ * so the next start tries again. */
+static void test_already_enrolled_unreachable_manager_keeps_the_token(void **state) {
+    (void) state;
+    write_file("etc/client.keys", "001 test-agent 10.0.0.5 aaaa\n");
+    write_token_file(true, true, NULL);
+
+    will_return(__wrap_hc_fetch_cacerts, 0L);
+    will_return(__wrap_hc_fetch_cacerts, NULL);
+    will_return(__wrap_hc_fetch_cacerts, 0);
+
+    expect_any(__wrap__minfo, formatted_msg);
+    expect_string(__wrap__merror, formatted_msg,
+                  "/cacerts adr_unreachable -- could not reach the manager to "
+                  "fetch the certificate authority.");
+    expect_string(__wrap__merror, formatted_msg,
+                  "Token bootstrap: the manager's CA could not be installed; the agent keeps its "
+                  "registration and runs without a trust anchor.");
+
+    assert_int_equal(w_agent_token_bootstrap(getuid(), getgid()), W_TOKEN_BOOTSTRAP_DONE);
     assert_int_equal(g_enroll_call_count, 0);
     assert_int_not_equal(IsFile("etc/certs/root-ca.pem"), 0);
     assert_string_equal(read_file("etc/client.keys"), "001 test-agent 10.0.0.5 aaaa\n");
@@ -2687,7 +2717,8 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_anchor_already_present_skips_and_discards_the_token, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_already_enrolled_without_a_token_is_noop, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_already_enrolled_with_a_token_installs_the_anchor_only, setup_test, teardown_test),
-        cmocka_unit_test_setup_teardown(test_already_enrolled_pin_mismatch_keeps_the_key_and_the_token, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_already_enrolled_pin_mismatch_starts_without_an_anchor, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_already_enrolled_unreachable_manager_keeps_the_token, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_client_keys_hard_link_is_not_chowned, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_keys_chown_failure_is_logged, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_anchor_latch_keys_chown_failure_is_quiet, setup_test, teardown_test),

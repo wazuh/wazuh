@@ -19,9 +19,9 @@
  *  - w_agent_token_bootstrap() is the first-boot path, run once per install from AgentdStart()
  *    on POSIX (agentd.c) and from local_start() on Windows (win_utils.c). It is latched: an
  *    anchor already on disk or no token file each independently make it a no-op, and a
- *    non-empty client.keys limits it to installing the anchor. On POSIX it runs before AgentdStart()'s privilege drop, so the files it writes
- *    are owned while still root and handed to the runtime user before the process stops being
- *    able to.
+ *    non-empty client.keys limits it to installing the anchor. On POSIX it runs before
+ *    AgentdStart()'s privilege drop, so the files it writes are owned while still root and
+ *    handed to the runtime user before the process stops being able to.
  *
  *  - w_agent_token_enroll() is the same sequence with no latches and no opinion about where the
  *    token came from or what happens to it afterwards. It is what lets an operator enroll,
@@ -203,8 +203,9 @@ w_token_read_status_t w_agent_token_read_stream(FILE *in, char **text);
 /**
  * @brief Outcome of w_agent_token_bootstrap(): whether the caller should give up or retry.
  *
- * W_TOKEN_BOOTSTRAP_DONE covers both a no-op (nothing to do: an anchor or client.keys already
- * exists, or no token file is present -- a legacy install) and a full success. Only the caller
+ * W_TOKEN_BOOTSTRAP_DONE covers a no-op (nothing to do: an anchor already exists, or no token
+ * file is present -- a legacy install), a full success, and any outcome of an anchor-only run
+ * for an agent that is already enrolled. Only the caller
  * can tell those apart if it needs to (checking AGENT_ANCHOR_CA/KEYS_FILE itself), because the
  * distinction has never mattered to what happens next: startup carries on either way.
  *
@@ -247,7 +248,8 @@ typedef enum {
  *
  * An agent already enrolled (non-empty client.keys) with no anchor, such as one upgraded in place
  * from 4.x, uses the token to install the anchor only, as wazuh-agent-auth --certs-only does. Its
- * registration is left alone.
+ * registration is left alone, and a failure is logged and returns DONE: the agent starts as it
+ * did before, without an anchor. Only a transient failure keeps the token for the next start.
  *
  * Each latch independently blocks a re-run, so this is not the way to re-enroll or to move an
  * agent -- w_agent_token_enroll() is, and wazuh-agent-auth is what drives it.

@@ -1580,6 +1580,20 @@ w_token_bootstrap_result_t w_agent_token_bootstrap(int uid, int gid) {
     if (w_agent_token_enroll(&opts, &report) != W_TOKEN_ENROLL_OK) {
         os_free(token_text);
 
+        /* An enrolled agent has no enrollment here to protect: it keeps its registration and runs
+         * as it did before the token arrived. Only a transient failure keeps the token, so the
+         * next start tries again. */
+        if (opts.anchor_only) {
+            merror("Token bootstrap: the manager's CA could not be installed; the agent keeps its "
+                   "registration and runs without a trust anchor.");
+
+            if (!report.transient) {
+                unlink(AGENT_ENROLLMENT_TOKEN_FILE);
+            }
+
+            return W_TOKEN_BOOTSTRAP_DONE;
+        }
+
         /* The token file is kept, so a retry within this boot -- or a later one -- still has
          * something to enroll with. The one exception is a token the manager has finally refused:
          * unknown, revoked, or out of uses. Nothing on this path clears it (the anchor is never

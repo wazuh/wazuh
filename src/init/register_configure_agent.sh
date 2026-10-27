@@ -867,10 +867,23 @@ upgrade_main () {
 
     ensure_ossec_log
 
-    if [ -z "${WAZUH_ENROLLMENT_TOKEN}" ]; then
-        if [ ! -f "${INSTALLDIR}/etc/certs/root-ca.pem" ]; then
-            echo "wazuh-agent: no trust anchor at ${INSTALLDIR}/etc/certs/root-ca.pem; unless <ssl> names a CA, the agent will not verify the manager. Upgrade with WAZUH_ENROLLMENT_TOKEN set, or run '${INSTALLDIR}/bin/wazuh-agent-auth --token-file <file> --certs-only'." >&2
+    warn_removed_variables
+
+    # An agent that already holds an anchor never uses the token, so the address is left alone too.
+    # Moving it to another manager is wazuh-agent-auth's job.
+    if [ -f "${INSTALLDIR}/etc/certs/root-ca.pem" ]; then
+        if [ -n "${WAZUH_ENROLLMENT_TOKEN}" ]; then
+            uam_message="WAZUH_ENROLLMENT_TOKEN was ignored: this agent already has a trust anchor. Use '${INSTALLDIR}/bin/wazuh-agent-auth' to re-point or re-enroll it."
+            echo "$(date '+%Y/%m/%d %H:%M:%S') ${uam_message}" >> "${INSTALLDIR}/logs/ossec.log"
+            echo "wazuh-agent: ${uam_message}" >&2
         fi
+        unset_vars
+        return 0
+    fi
+
+    if [ -z "${WAZUH_ENROLLMENT_TOKEN}" ]; then
+        echo "wazuh-agent: no trust anchor at ${INSTALLDIR}/etc/certs/root-ca.pem; unless <ssl> names a CA, the agent will not verify the manager. Upgrade with WAZUH_ENROLLMENT_TOKEN set, or run '${INSTALLDIR}/bin/wazuh-agent-auth --token-file <file> --certs-only'." >&2
+        unset_vars
         return 0
     fi
 
