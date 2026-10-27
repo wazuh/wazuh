@@ -650,8 +650,11 @@ Register it with [`wazuh-agent-auth`](../modules/client/README.md#enrolling-or-r
 
 ```bash
 sudo /var/ossec/bin/wazuh-agent-auth --token-file /root/token
+sudo shred -u /root/token
 sudo systemctl start wazuh-agent
 ```
+
+`wazuh-agent-auth` never deletes the file it reads the token from, and the token stays usable until it expires, runs out of uses or is revoked, so remove the file once the agent is enrolled.
 
 On macOS the command is `/Library/Ossec/bin/wazuh-agent-auth`. On Windows, use **Manage** > **Enroll** in the agent GUI, or `wazuh-agent-auth.exe` from the agent's installation folder.
 
