@@ -228,6 +228,10 @@ void w_agentd_populate_metadata(void)
     /* OS type (compile-time constant) */
 #ifdef WIN32
     strncpy(metadata.os_type, "windows", sizeof(metadata.os_type) - 1);
+    /* get_win_version() never fills os_platform, and agent-info shares this record: an
+     * empty platform here overwrites its "windows" until agent-info's next publish, and the
+     * first keepalive after a (re)start carries that empty value to the manager. */
+    strncpy(metadata.os_platform, "windows", sizeof(metadata.os_platform) - 1);
 #elif defined(__MACH__)
     strncpy(metadata.os_type, "macos", sizeof(metadata.os_type) - 1);
 #else
