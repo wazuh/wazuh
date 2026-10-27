@@ -521,10 +521,12 @@ def step_impl(context, response: str):
 
     # 4b. Remove dynamic fields stamped by TesterWorker (@timestamp, wazuh.event.id).
     # The stamp is always present and must keep the nanosecond ISO-8601 format (9 decimals, UTC).
-    stamp = actual_output['@timestamp']
-    assert re.fullmatch(r'\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{9}Z', stamp), \
-        f"@timestamp is not a nanosecond ISO-8601 UTC stamp: {stamp!r}"
-    actual_output.pop('@timestamp')
+    if '@timestamp' not in expected_output:
+        stamp = actual_output.get('@timestamp')
+        assert stamp is not None, "the tester output has no @timestamp (TesterWorker always stamps it)"
+        assert re.fullmatch(r'\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{9}Z', stamp), \
+            f"@timestamp is not a nanosecond ISO-8601 UTC stamp: {stamp!r}"
+        actual_output.pop('@timestamp')
     if 'wazuh' in actual_output and 'event' in actual_output['wazuh']:
         actual_output['wazuh']['event'].pop('id', None)
         if not actual_output['wazuh']['event']:

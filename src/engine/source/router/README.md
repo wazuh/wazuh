@@ -186,7 +186,7 @@ Every route mutation (add, remove, rebuild, priority change, hot swap) is replic
 
 `@timestamp` is fixed **when the batch is received**, not when a worker dequeues the event. The API parser (`api::event::protocol::parseNDJson`, `src/engine/source/api/event/include/api/event/ndJsonParser.hpp`) takes one stamp per event from `base::utils::time::receptionClock()` on the HTTP thread, right before building the `IngestEvent`, and stores it in `receivedAtNs` (nanoseconds since the Unix epoch). The clock is a single process-wide `StrictlyIncreasingClock` (`max(now, last + 1)` published with a CAS loop), so:
 
-- two events never share a stamp, and stamps never go back, across every ingest thread;
+- two events never share a stamp, and stamps never go back, across every ingest thread of this process (after a backward wall-clock step the stamps advance one nanosecond per event until the wall clock catches up: ordering wins over wall-clock fidelity);
 - the events of one batch keep their stamps in batch order, which is what the dashboard sorts by;
 - the raw document (raw event indexer) and the processed event carry the **same** value, since both are formatted from `receivedAtNs` in `RouterWorker` ([worker.cpp](src/worker.cpp)) with `epochNanosToISO8601` (`YYYY-MM-DDTHH:MM:SS.nnnnnnnnnZ`, UTC, always nine digits);
 - an unstamped event (`receivedAtNs == 0`, a producer that bypasses the parser) falls back to `receptionClock().next()` at dequeue time, so `@timestamp` is never empty;

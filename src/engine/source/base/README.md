@@ -69,7 +69,7 @@ Injection: `ProcessSysCalls` groups 13 system calls (`fork`, `setsid`, `umask`, 
 
 Header: [include/base/utils/timeUtils.hpp](include/base/utils/timeUtils.hpp). Implementation: [src/utils/timeUtils.cpp](src/utils/timeUtils.cpp). Namespace `base::utils::time`.
 
-The reception timestamp of an event comes from a process-wide clock whose values never repeat and never go back, so events ingested in this process get distinct, ordered timestamps even when the wall clock ties or steps backwards.
+The reception timestamp of an event comes from a process-wide clock whose values never repeat and never go back, so events ingested in this process get distinct, ordered timestamps even when the wall clock ties or steps backwards. The price of a backward step of Δ is that stamps run ahead of the wall clock for up to Δ, advancing one nanosecond per event; a restart or another node starts its own sequence.
 
 | Function | Behaviour |
 |---|---|

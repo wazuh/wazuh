@@ -15,9 +15,11 @@ event is dropped with the log line `Failed processing queued event in router wor
 request still succeeds.
 
 Each event receives a reception timestamp when it is queued, taken from a process-wide clock (nanoseconds since the
-epoch, strictly increasing): the events of a batch keep their order and two events never share a stamp. The router
+epoch, strictly increasing within one engine process): the events of a batch keep their order and two events never share a stamp in that process. The router
 worker formats that stamp into `@timestamp` (UTC, nine fractional digits) before policy processing, and decoders can
 overwrite it. Only the order in which stamps are assigned is guaranteed, not the network arrival order of concurrent
 requests.
+
+If the wall clock steps backwards by Δ (an NTP correction, or a start with the clock ahead), the reception stamps do not go back with it: every event gets the last stamp plus one nanosecond until the wall clock catches up, so for up to Δ of real time the stamps run ahead of the wall clock and a dashboard time window may not show those events until then. Ordering and uniqueness are kept on purpose over wall-clock fidelity; a restart or another cluster node starts its own sequence.
 
 The engine emits reception timestamps with nine fractional digits, but indices mapped as `date` retain only millisecond precision for indexing and sorting, so events within the same millisecond can still tie until the separate indexer change provides `date_nanos` mappings for new backing indices.

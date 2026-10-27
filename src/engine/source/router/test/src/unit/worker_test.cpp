@@ -388,7 +388,10 @@ TEST_F(WorkerTest, RouterWorkerStampsUnstampedEvent)
     ASSERT_FALSE(worker.get()->addEntry(entryPost, false).has_value());
     ASSERT_FALSE(worker.get()->enableEntry("Production").has_value());
 
-    const auto lo = base::utils::time::epochNanosToISO8601(base::utils::time::receptionClock().next());
+    // Push the shared clock one hour ahead of the wall clock: a fallback that read the wall clock instead of the
+    // shared clock would stamp below `lo` and fail (the stamp must come from receptionClock()).
+    const auto lo = base::utils::time::epochNanosToISO8601(
+        base::utils::time::receptionClock().next(base::utils::time::systemEpochNanos() + 3600LL * 1000000000LL));
     worker.start();
     const auto status = doneFuture.wait_for(std::chrono::seconds(2));
     worker.stop();

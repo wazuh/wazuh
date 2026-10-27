@@ -169,4 +169,11 @@ TEST_F(DateNanosCompatTest, SystemEpochIsLongRejectedIntoDateRunsIntoLong)
     EXPECT_TRUE(event->isInt64("/event/sequence"));
 }
 
+TEST_F(DateNanosCompatTest, SystemEpochIsLongRejectedIntoKeyword)
+{
+    // Contract fixed by the LONG token: integer seconds no longer build into string fields (before this branch the
+    // DATE_NANOS token let them through because every string type lists DATE_NANOS as compatible).
+    EXPECT_THROW(buildMapEntry(R"json({"msg": "system_epoch()"})json"), std::runtime_error);
+}
+
 } // namespace
