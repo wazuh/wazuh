@@ -20,6 +20,7 @@ from google.api_core import exceptions as google_exceptions
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..'))  # noqa: E501
 from pubsub.subscriber import WazuhGCloudSubscriber
 from exceptions import GCloudError
+from utils import MAX_EVENT_SIZE
 
 
 data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data/')
@@ -183,8 +184,48 @@ def test_WazuhGCloudSubscriber_pull_request_forwards_valid_json(mock_credentials
     pubsub.subscriber.pull.return_value = MagicMock(received_messages=[message])
 
     assert pubsub.pull_request(max_messages=1) == 1
-    mock_send_msg.assert_called_once_with(pubsub.format_msg('{"logName": "test"}'))
+    mock_send_msg.assert_called_once_with(pubsub.format_msg('{"logName":"test"}'))
     pubsub.logger.warning.assert_not_called()
+
+
+@pytest.mark.parametrize('text', ['ñandú', '日本語', 'emoji 😀', 'mixed ASCII and 日本'])
+@patch('pubsub.subscriber.pubsub.subscriber.Client.from_service_account_file')
+def test_WazuhGCloudSubscriber_pull_request_keeps_non_ascii_unescaped(mock_credentials, text):
+    """Test pull_request sends non-ASCII text as raw UTF-8 rather than as \\uXXXX escapes."""
+    raw_payload = '{"textPayload":"%s"}' % text
+    message = MagicMock()
+    message.message.data.decode.return_value = raw_payload
+    message.ack_id = 'ack-id-1'
+
+    pubsub = WazuhGCloudSubscriber(**get_wodle_config())
+    pubsub.subscriber.pull.return_value = MagicMock(received_messages=[message])
+    pubsub.socket = MagicMock()
+
+    assert pubsub.pull_request(max_messages=1) == 1
+    sent = pubsub.socket.send.call_args.args[0]
+    assert sent == f'{pubsub.header}{pubsub.format_msg(raw_payload)}'.encode()
+    assert b'\\u' not in sent
+
+
+@pytest.mark.parametrize('char, count', [('日', 15000), ('ñ', 25000), ('😀', 12000)])
+@patch('logging.warning')
+@patch('pubsub.subscriber.pubsub.subscriber.Client.from_service_account_file')
+def test_WazuhGCloudSubscriber_pull_request_event_size_does_not_grow(mock_credentials, mock_warning, char, count):
+    """Test pull_request does not grow a non-ASCII event past its UTF-8 size, which would push it over the
+    analysisd event size limit."""
+    raw_payload = '{"textPayload":"%s"}' % (char * count)
+    message = MagicMock()
+    message.message.data.decode.return_value = raw_payload
+    message.ack_id = 'ack-id-1'
+
+    pubsub = WazuhGCloudSubscriber(**get_wodle_config())
+    pubsub.subscriber.pull.return_value = MagicMock(received_messages=[message])
+    pubsub.socket = MagicMock()
+
+    assert pubsub.pull_request(max_messages=1) == 1
+    sent = pubsub.socket.send.call_args.args[0]
+    assert len(sent) == len(f'{pubsub.header}{pubsub.format_msg(raw_payload)}'.encode())
+    assert len(sent) <= MAX_EVENT_SIZE
 
 
 @patch('pubsub.subscriber.pubsub.subscriber.Client.from_service_account_file')

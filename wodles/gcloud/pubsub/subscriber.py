@@ -148,7 +148,9 @@ class WazuhGCloudSubscriber(WazuhGCloudIntegration):
                 # Re-serializing the parsed payload guarantees format_msg() receives exactly one
                 # well-formed JSON value, so a message cannot close the "gcp" field early and add
                 # sibling keys (e.g. "srcip") to the event analysisd ultimately decodes.
-                message = dumps(loads(raw_message))
+                # ensure_ascii=False and compact separators keep a compact UTF-8 message at its original size;
+                # \uXXXX escapes or ", "/": " spacing can push the event past the analysisd size limit.
+                message = dumps(loads(raw_message), ensure_ascii=False, separators=(',', ':'))
             except (ValueError, RecursionError) as error:
                 # JSONDecodeError is a ValueError; an over-long integer literal raises a plain ValueError and
                 # deeply nested arrays raise RecursionError, neither of which may escape before the ack.
