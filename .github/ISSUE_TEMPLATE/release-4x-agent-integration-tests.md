@@ -203,30 +203,30 @@ List every new or known issue that appeared while testing this task, with its li
 
 | Status | Test | Failure type | New or known issues (with link) | Notes |
 |---|---|---|---|---|
-|  | 4_testintegration_agentd-tier-0-1-lin |  |  |  |
-|  | 4_testintegration_agentd-tier-0-1-win |  |  |  |
-|  | 4_testintegration_aws-tier-0-1 |  |  |  |
-|  | 4_testintegration_enrollment-tier-0-1-lin |  |  |  |
-|  | 4_testintegration_enrollment-tier-0-1-win |  |  |  |
-|  | 4_testintegration_execd-tier-0-1-lin |  |  |  |
-|  | 4_testintegration_execd-tier-0-1-win |  |  |  |
-|  | 4_testintegration_fim-tier-0-1-lin |  |  |  |
-|  | 4_testintegration_fim-tier-0-1-macos |  |  |  |
-|  | 4_testintegration_fim-tier-0-1-win |  |  |  |
-|  | 4_testintegration_github-tier-0-1-lin |  |  |  |
-|  | 4_testintegration_github-tier-0-1-win |  |  |  |
-|  | 4_testintegration_logcollector-tier-0-1-lin |  |  |  |
-|  | 4_testintegration_logcollector-tier-0-1-macos |  |  |  |
-|  | 4_testintegration_logcollector-tier-0-1-win |  |  |  |
-|  | 4_testintegration_msgraph-tier-0-1-lin |  |  |  |
-|  | 4_testintegration_office365-tier-0-1-lin |  |  |  |
-|  | 4_testintegration_office365-tier-0-1-win |  |  |  |
-|  | 4_testintegration_sca-tier-0-1-lin |  |  |  |
-|  | 4_testintegration_sca-tier-0-1-win |  |  |  |
-|  | 4_testintegration_syscollector-tier-0-1-lin |  |  |  |
-|  | 4_testintegration_syscollector-tier-0-1-win |  |  |  |
-|  | 4_testintegration_fim-tier-2-lin |  |  |  |
-|  | 4_testintegration_fim-tier-2-win |  |  |  |
+|  | Agent integration tests agentd-tier-0-1-lin |  |  |  |
+|  | Agent integration tests agentd-tier-0-1-win |  |  |  |
+|  | Agent integration tests aws-tier-0-1 |  |  |  |
+|  | Agent integration tests enrollment-tier-0-1-lin |  |  |  |
+|  | Agent integration tests enrollment-tier-0-1-win |  |  |  |
+|  | Agent integration tests execd-tier-0-1-lin |  |  |  |
+|  | Agent integration tests execd-tier-0-1-win |  |  |  |
+|  | Agent integration tests fim-tier-0-1-lin |  |  |  |
+|  | Agent integration tests fim-tier-0-1-macos |  |  |  |
+|  | Agent integration tests fim-tier-0-1-win |  |  |  |
+|  | Agent integration tests github-tier-0-1-lin |  |  |  |
+|  | Agent integration tests github-tier-0-1-win |  |  |  |
+|  | Agent integration tests logcollector-tier-0-1-lin |  |  |  |
+|  | Agent integration tests logcollector-tier-0-1-macos |  |  |  |
+|  | Agent integration tests logcollector-tier-0-1-win |  |  |  |
+|  | Agent integration tests msgraph-tier-0-1-lin |  |  |  |
+|  | Agent integration tests office365-tier-0-1-lin |  |  |  |
+|  | Agent integration tests office365-tier-0-1-win |  |  |  |
+|  | Agent integration tests sca-tier-0-1-lin |  |  |  |
+|  | Agent integration tests sca-tier-0-1-win |  |  |  |
+|  | Agent integration tests syscollector-tier-0-1-lin |  |  |  |
+|  | Agent integration tests syscollector-tier-0-1-win |  |  |  |
+|  | Agent integration tests fim-tier-2-lin |  |  |  |
+|  | Agent integration tests fim-tier-2-win |  |  |  |
 
 ## Auditors' validation
 In order to close and proceed with the release or the next candidate version, the following auditors must give the green light to this stage.
