@@ -1,0 +1,5 @@
+  <localfile>
+    <log_format>syslog</log_format>
+    <location>/var/log/dnf.log</location>
+    <restrict>^\S+ (DDEBUG Command: |WARNING |ERROR |CRITICAL )</restrict>
+  </localfile>
