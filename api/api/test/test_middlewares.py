@@ -6,6 +6,7 @@ from copy import deepcopy
 from datetime import datetime, timedelta
 from types import SimpleNamespace
 from unittest.mock import patch, MagicMock, AsyncMock, call
+import base64
 import binascii
 import hashlib
 import json
@@ -28,6 +29,7 @@ from wazuh.core.exception import WazuhInternalError
 from api.middlewares import charge_unauthenticated_request, charge_authenticated_request, \
     is_authenticated_bucket_exhausted, check_blocked_ip, \
     settle_login_attempt, cleanup_general_request_stats, cleanup_login_attempt_stats, get_client_key, \
+    get_login_attempt_key, \
     UNKNOWN_USER_STRING, LOGIN_ENDPOINT, \
     RUN_AS_LOGIN_ENDPOINT, AUTH_CONTEXT_MAX_PAYLOAD_SIZE, CheckAuthContextSizeMiddleware, CheckRateLimitsMiddleware, \
     CheckAuthenticatedRateLimitMiddleware, WazuhAccessLoggerMiddleware, CheckBlockedIP, SecureHeadersMiddleware, \
@@ -97,6 +99,12 @@ def chunked_receive(chunk, chunks):
         for index in range(chunks)
     ])
 
+# Keys the login lockout counts `mock_req` under: it carries no Basic credentials, so no user,
+# and the client across all users.
+LOGIN_KEY = ('ip', '')
+CLIENT_KEY = ('ip', None)
+
+
 @pytest.fixture
 def mock_req():
     """fixture to wrap functions with request"""
@@ -120,16 +128,17 @@ async def test_middlewares_check_blocked_ip(mock_req):
        Check if the ip_block is emptied when the blocking period has finished, and that the
        current attempt is then counted."""
     api_conf = {'access': {'block_time': 300, 'max_login_attempts': 50}}
-    with patch("api.middlewares.ip_stats", new={'ip': {'timestamp': -300}}) as mock_ip_stats, \
-         patch("api.middlewares.ip_block", new={"ip"}) as mock_ip_block, \
+    with patch("api.middlewares.ip_stats", new={LOGIN_KEY: {'timestamp': -300}}) as mock_ip_stats, \
+         patch("api.middlewares.ip_block", new={LOGIN_KEY}) as mock_ip_block, \
          patch("api.middlewares.configuration.api_conf", new=api_conf):
         await check_blocked_ip(mock_req)
-        assert "ip" not in mock_ip_block
-        assert mock_ip_stats == {'ip': {'attempts': 1, 'timestamp': 10.0}}
+        assert LOGIN_KEY not in mock_ip_block
+        assert mock_ip_stats == {LOGIN_KEY: {'attempts': 1, 'timestamp': 10.0},
+                                 CLIENT_KEY: {'attempts': 1, 'timestamp': 10.0}}
 
 
-@patch("api.middlewares.ip_stats", new={"ip": {'timestamp': 5}})
-@patch("api.middlewares.ip_block", new={"ip"})
+@patch("api.middlewares.ip_stats", new={LOGIN_KEY: {'timestamp': 5}})
+@patch("api.middlewares.ip_block", new={LOGIN_KEY})
 @freeze_time(datetime(1970, 1, 1))
 @pytest.mark.asyncio
 async def test_middlewares_check_blocked_ip_ko(mock_req):
@@ -151,8 +160,8 @@ async def test_middlewares_check_blocked_ip_ko(mock_req):
 @freeze_time(datetime(1970, 1, 1, 0, 0, 10))
 @pytest.mark.parametrize('stats, expected_attempts, expected_timestamp, expect_blocked', [
     ({}, 1, 10.0, False),
-    ({'ip': {'attempts': 3, 'timestamp': 5}}, 4, 5, False),
-    ({'ip': {'attempts': 4, 'timestamp': 5}}, 5, 5, True),
+    ({LOGIN_KEY: {'attempts': 3, 'timestamp': 5}}, 4, 5, False),
+    ({LOGIN_KEY: {'attempts': 4, 'timestamp': 5}}, 5, 5, True),
 ])
 async def test_middlewares_check_blocked_ip_counts_attempt(
         stats, expected_attempts, expected_timestamp, expect_blocked, mock_req):
@@ -165,9 +174,9 @@ async def test_middlewares_check_blocked_ip_counts_attempt(
          patch("api.middlewares.configuration.api_conf", new=api_conf):
         await check_blocked_ip(mock_req)
 
-        assert mock_ip_stats['ip']['attempts'] == expected_attempts
-        assert mock_ip_stats['ip']['timestamp'] == expected_timestamp
-        assert ('ip' in mock_ip_block) == expect_blocked
+        assert mock_ip_stats[LOGIN_KEY]['attempts'] == expected_attempts
+        assert mock_ip_stats[LOGIN_KEY]['timestamp'] == expected_timestamp
+        assert (LOGIN_KEY in mock_ip_block) == expect_blocked
 
 
 @pytest.mark.asyncio
@@ -185,8 +194,8 @@ async def test_middlewares_check_blocked_ip_enforces_limit_without_auth_failure(
         await check_blocked_ip(mock_req)
         await check_blocked_ip(mock_req)
 
-        assert mock_ip_stats['ip']['attempts'] == 3
-        assert "ip" in mock_ip_block
+        assert mock_ip_stats[LOGIN_KEY]['attempts'] == 3
+        assert LOGIN_KEY in mock_ip_block
 
         with pytest.raises(ProblemException) as exc_info:
             await check_blocked_ip(mock_req)
@@ -195,10 +204,10 @@ async def test_middlewares_check_blocked_ip_enforces_limit_without_auth_failure(
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize('stats, max_login_attempts, expected_stats, expect_blocked', [
-    ({'ip': {'attempts': 1, 'timestamp': 10}}, 5, {}, False),
-    ({'ip': {'attempts': 3, 'timestamp': 10}}, 5, {'ip': {'attempts': 2, 'timestamp': 10}}, False),
-    ({'ip': {'attempts': 5, 'timestamp': 10}, }, 5, {'ip': {'attempts': 4, 'timestamp': 10}}, False),
-    ({'ip': {'attempts': 1, 'timestamp': 10}}, 1, {}, False),
+    ({LOGIN_KEY: {'attempts': 1, 'timestamp': 10}}, 5, {}, False),
+    ({LOGIN_KEY: {'attempts': 3, 'timestamp': 10}}, 5, {LOGIN_KEY: {'attempts': 2, 'timestamp': 10}}, False),
+    ({LOGIN_KEY: {'attempts': 5, 'timestamp': 10}, }, 5, {LOGIN_KEY: {'attempts': 4, 'timestamp': 10}}, False),
+    ({LOGIN_KEY: {'attempts': 1, 'timestamp': 10}}, 1, {}, False),
 ])
 async def test_middlewares_settle_login_attempt(
         stats, max_login_attempts, expected_stats, expect_blocked, mock_req):
@@ -206,14 +215,14 @@ async def test_middlewares_settle_login_attempt(
        for a successful login, drops the entry when no attempt is left, and unblocks the IP if
        the release brings it back under max_login_attempts."""
     api_conf = {'access': {'block_time': 300, 'max_login_attempts': max_login_attempts}}
-    starting_block = {'ip'} if stats['ip']['attempts'] >= max_login_attempts else set()
+    starting_block = {LOGIN_KEY} if stats[LOGIN_KEY]['attempts'] >= max_login_attempts else set()
     with patch("api.middlewares.ip_stats", new=dict(stats)) as mock_ip_stats, \
          patch("api.middlewares.ip_block", new=starting_block) as mock_ip_block, \
          patch("api.middlewares.configuration.api_conf", new=api_conf):
         await settle_login_attempt(mock_req)
 
         assert mock_ip_stats == expected_stats
-        assert ('ip' in mock_ip_block) == expect_blocked
+        assert (LOGIN_KEY in mock_ip_block) == expect_blocked
 
 
 @pytest.mark.asyncio
@@ -244,7 +253,7 @@ async def test_middlewares_repeated_successful_logins_never_block_ip(mock_req):
             await settle_login_attempt(mock_req)
 
         assert mock_ip_stats == {}
-        assert "ip" not in mock_ip_block
+        assert LOGIN_KEY not in mock_ip_block
 
 
 @pytest.mark.asyncio
@@ -264,8 +273,8 @@ async def test_middlewares_login_traffic_does_not_slide_the_window(mock_req):
             if succeeds:
                 await settle_login_attempt(mock_req)
 
-        assert mock_ip_stats['ip']['attempts'] == 1
-        assert "ip" not in mock_ip_block
+        assert mock_ip_stats[LOGIN_KEY]['attempts'] == 1
+        assert LOGIN_KEY not in mock_ip_block
 
 
 @pytest.mark.asyncio
@@ -286,8 +295,8 @@ async def test_middlewares_window_starts_at_first_failed_attempt(mock_req):
             frozen.move_to(datetime(1970, 1, 1) + timedelta(seconds=elapsed))
             await check_blocked_ip(mock_req)
 
-        assert mock_ip_stats['ip'] == {'attempts': 3, 'timestamp': 50.0}
-        assert "ip" in mock_ip_block
+        assert mock_ip_stats[LOGIN_KEY] == {'attempts': 3, 'timestamp': 50.0}
+        assert LOGIN_KEY in mock_ip_block
 
 
 @pytest.mark.asyncio
@@ -568,29 +577,103 @@ async def test_check_blocked_ip_groups_an_ipv6_client_by_its_64():
          patch("api.middlewares.ip_block", new=set()) as mock_ip_block, \
          patch("api.middlewares.configuration.api_conf", new=api_conf):
         for suffix in ('1', '2', '3'):
-            await check_blocked_ip(SimpleNamespace(client=SimpleNamespace(host=f'2001:db8::{suffix}')))
+            await check_blocked_ip(SimpleNamespace(client=SimpleNamespace(host=f'2001:db8::{suffix}'), headers={}))
 
-        assert mock_ip_stats == {'2001:db8::/64': {'attempts': 3, 'timestamp': 10.0}}
-        assert mock_ip_block == {'2001:db8::/64'}
+        assert mock_ip_stats == {('2001:db8::/64', ''): {'attempts': 3, 'timestamp': 10.0},
+                                 ('2001:db8::/64', None): {'attempts': 3, 'timestamp': 10.0}}
+        assert mock_ip_block == {('2001:db8::/64', '')}
 
         with pytest.raises(ProblemException) as exc_info:
-            await check_blocked_ip(SimpleNamespace(client=SimpleNamespace(host='2001:db8::ffff')))
+            await check_blocked_ip(SimpleNamespace(client=SimpleNamespace(host='2001:db8::ffff'), headers={}))
         assert exc_info.value.status == 403
 
         # A different /64 is a different client.
-        await check_blocked_ip(SimpleNamespace(client=SimpleNamespace(host='2001:db8:0:1::1')))
-        assert mock_ip_stats['2001:db8:0:1::/64']['attempts'] == 1
+        await check_blocked_ip(SimpleNamespace(client=SimpleNamespace(host='2001:db8:0:1::1'), headers={}))
+        assert mock_ip_stats[('2001:db8:0:1::/64', '')]['attempts'] == 1
 
 
 @pytest.mark.asyncio
 async def test_settle_login_attempt_uses_the_client_key():
     """A successful login releases the attempt under the same key it was charged to."""
-    with patch("api.middlewares.ip_stats", new={'2001:db8::/64': {'attempts': 2, 'timestamp': 10}}) as stats, \
+    with patch("api.middlewares.ip_stats", new={('2001:db8::/64', ''): {'attempts': 2, 'timestamp': 10}}) as stats, \
          patch("api.middlewares.ip_block", new=set()), \
          patch("api.middlewares.configuration.api_conf", new={'access': {'max_login_attempts': 5}}):
-        await settle_login_attempt(SimpleNamespace(client=SimpleNamespace(host='2001:db8::99')))
+        await settle_login_attempt(SimpleNamespace(client=SimpleNamespace(host='2001:db8::99'), headers={}))
 
-        assert stats['2001:db8::/64']['attempts'] == 1
+        assert stats[('2001:db8::/64', '')]['attempts'] == 1
+
+
+def _login_request(host: str, authorization: str = None) -> SimpleNamespace:
+    """Request to a login endpoint from `host`, with `authorization` as its Authorization header."""
+    return SimpleNamespace(client=SimpleNamespace(host=host),
+                           headers={'Authorization': authorization} if authorization else {})
+
+
+def _basic(user: str, password: str = 'pass') -> str:
+    return 'Basic ' + base64.b64encode(f'{user}:{password}'.encode('latin1')).decode()
+
+
+@pytest.mark.parametrize('authorization, expected_user', [
+    (None, ''),
+    (_basic('wazuh'), 'wazuh'),
+    (_basic('wazuh-internal-client', 'a:b'), 'wazuh-internal-client'),
+    (_basic('u' * 1000), 'u' * 64),
+    ('Basic not-base64!', ''),
+    ('Basic ñ', ''),
+    ('Bearer token', ''),
+    ('Basic', ''),
+])
+def test_get_login_attempt_key(authorization, expected_user):
+    """The lockout key is the client key and the user of the Basic credentials, truncated; a
+       request without readable Basic credentials has no user."""
+    assert get_login_attempt_key(_login_request('2001:db8::1', authorization)) == ('2001:db8::/64', expected_user)
+
+
+@pytest.mark.asyncio
+@freeze_time(datetime(1970, 1, 1, 0, 0, 10))
+async def test_check_blocked_ip_blocks_per_user():
+    """Failures for one user block that user from the address, not another one logging in from it."""
+    api_conf = {'access': {'block_time': 300, 'max_login_attempts': 3}}
+    with patch("api.middlewares.ip_stats", new={}), \
+         patch("api.middlewares.ip_block", new=set()) as mock_ip_block, \
+         patch("api.middlewares.configuration.api_conf", new=api_conf):
+        for _ in range(3):
+            await check_blocked_ip(_login_request('127.0.0.1', _basic('wazuh', 'wrong')))
+
+        assert mock_ip_block == {('127.0.0.1', 'wazuh')}
+        with pytest.raises(ProblemException):
+            await check_blocked_ip(_login_request('127.0.0.1', _basic('wazuh')))
+
+        await check_blocked_ip(_login_request('127.0.0.1', _basic('wazuh-internal-client')))
+        await settle_login_attempt(_login_request('127.0.0.1', _basic('wazuh-internal-client')))
+        assert mock_ip_block == {('127.0.0.1', 'wazuh')}
+
+
+@pytest.mark.asyncio
+@freeze_time(datetime(1970, 1, 1, 0, 0, 10))
+async def test_check_blocked_ip_blocks_a_client_trying_many_users():
+    """A client failing for many user names is blocked for all of them once its failures across
+       users reach LOGIN_CLIENT_ATTEMPTS_FACTOR times max_login_attempts, which also bounds the
+       entries it can create."""
+    api_conf = {'access': {'block_time': 300, 'max_login_attempts': 2}}
+    with patch("api.middlewares.ip_stats", new={}) as mock_ip_stats, \
+         patch("api.middlewares.ip_block", new=set()) as mock_ip_block, \
+         patch("api.middlewares.LOGIN_CLIENT_ATTEMPTS_FACTOR", new=3), \
+         patch("api.middlewares.configuration.api_conf", new=api_conf):
+        for user in ('a', 'b', 'c', 'd', 'e'):
+            await check_blocked_ip(_login_request('10.0.0.1', _basic(user)))
+        assert ('10.0.0.1', None) not in mock_ip_block
+
+        await check_blocked_ip(_login_request('10.0.0.1', _basic('f')))
+        assert ('10.0.0.1', None) in mock_ip_block
+        with pytest.raises(ProblemException):
+            await check_blocked_ip(_login_request('10.0.0.1', _basic('g')))
+        assert len(mock_ip_stats) == 7
+
+        # Another client is not affected, and a success gives the attempt back on both keys.
+        await check_blocked_ip(_login_request('10.0.0.2', _basic('a')))
+        await settle_login_attempt(_login_request('10.0.0.2', _basic('a')))
+        assert not any(key[0] == '10.0.0.2' for key in mock_ip_stats)
 
 
 @pytest.mark.asyncio
@@ -935,7 +1018,8 @@ async def test_access_log(json_body, q_password, b_password, b_key, c_user,
             endpoint in {LOGIN_ENDPOINT, RUN_AS_LOGIN_ENDPOINT} and \
                 method in {'GET', 'POST'}:
             mock_log_warning.assert_called_once_with(
-                f"IP blocked due to exceeded number of logins attempts: {mock_req.client.host}")
+                f"IP blocked due to exceeded number of logins attempts: {mock_req.client.host}. "
+                f"User: {expected_user!r}.")
 
 
 @pytest.mark.asyncio

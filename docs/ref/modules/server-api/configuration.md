@@ -185,7 +185,7 @@ Cross-origin resource sharing, applied with Starlette's `CORSMiddleware`.
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `max_login_attempts` | `50` | Failed logins from one client before it is blocked (`403`, error `6000`) |
+| `max_login_attempts` | `50` | Failed logins for one user from one client before that user is blocked from it (`403`, error `6000`). Ten times this many failures across all users block the client for every user |
 | `block_time` | `300` | Length, in seconds, of the window the failed logins are counted in, starting at the first one: a block lasts until that window ends |
 | `max_request_per_minute` | `300` | Authenticated requests per minute per client address (`429`, error `6001`); `0` disables it |
 | `max_unauthenticated_request_per_minute` | `10` | Unauthenticated or failed-authentication requests per minute per client address (`429`, error `6005`); `0` disables it |
@@ -488,7 +488,7 @@ curl -k -H "Authorization: Bearer $TOKEN" "https://localhost:55000/security/conf
 curl -k -H "Authorization: Bearer $TOKEN" "https://localhost:55000/security/users"
 ```
 
-A `403` with error `6000` on a login means the client IP is blocked; it is lifted `block_time`
+A `403` with error `6000` on a login means the user is blocked from the client IP; it is lifted `block_time`
 seconds after the first failed attempt that was counted, and a successful login does not lift it.
 
 ### High Load
