@@ -44,6 +44,12 @@ TEST_F(SysInfoWinTest, InstallTimeIsTheKeyModificationTimeInUTC)
         // 2026/10/24 03:02:28 UTC is 2026/10/23 19:02:28 in UTC-8
         EXPECT_EQ("2026-10-24T03:02:28.000Z", PackageWindowsHelper::getInstallTime("20261023", "2026/10/24 03:02:28"));
     }
+
+    // Installed while the host was in another time zone: InstallDate is the key's UTC date, not its local date
+    {
+        const ScopedTimezone timezone { "JST-9" };
+        EXPECT_EQ("2026-10-26T17:44:00.000Z", PackageWindowsHelper::getInstallTime("20261026", "2026/10/26 17:44:00"));
+    }
 }
 
 TEST_F(SysInfoWinTest, InstallTimeFromAnEarlierInstallDateIsItsLocalMidnightInUTC)
