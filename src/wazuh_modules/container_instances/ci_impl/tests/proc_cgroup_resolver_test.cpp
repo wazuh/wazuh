@@ -28,7 +28,9 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include <chrono>
 #include <map>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -60,6 +62,23 @@ namespace
                 out.emplace_back(std::filesystem::path {"/proc"} / pid);
             }
             return out;
+        }
+
+        // The resolver measures nothing -- it reads /proc/<pid>/cgroup and stats
+        // cgroupfs paths for their inode. These exist because the interface
+        // requires them, and each returns what it documents for "could not be
+        // established", so a caller that ever did reach one would not read a
+        // fabricated size as a real measurement.
+        std::uintmax_t file_size(const std::filesystem::path&) const override
+        {
+            return 0;
+        }
+
+        std::optional<std::uintmax_t> directory_size(const std::filesystem::path&,
+                                                     std::uintmax_t,
+                                                     std::chrono::milliseconds) const override
+        {
+            return std::nullopt;
         }
 
         // --- IFileIOUtils ---------------------------------------------------
