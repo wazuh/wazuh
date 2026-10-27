@@ -25,13 +25,34 @@
 class HttpServerHighFdTest : public ::testing::Test
 {
 protected:
+    /**
+     * @brief Minimum RLIMIT_NOFILE needed by the test.
+     */
     static constexpr rlim_t REQUIRED_NOFILE {FD_SETSIZE + 256};
 
+    /**
+     * @brief RLIMIT_NOFILE to restore on teardown.
+     */
     rlimit m_oldLimit {};
+
+    /**
+     * @brief Descriptors opened to fill the ones below FD_SETSIZE.
+     */
     std::vector<int> m_fds;
+
+    /**
+     * @brief Temporary directory holding the socket.
+     */
     std::filesystem::path m_dir;
+
+    /**
+     * @brief Path of the UNIX socket served by the test.
+     */
     std::string m_socket;
 
+    /**
+     * @brief Raises the descriptor limit and creates the temporary socket directory.
+     */
     void SetUp() override
     {
         ASSERT_EQ(getrlimit(RLIMIT_NOFILE, &m_oldLimit), 0);
@@ -50,6 +71,9 @@ protected:
         m_socket = (m_dir / "test.sock").string();
     }
 
+    /**
+     * @brief Closes the reserved descriptors, restores the limit and removes the temporary directory.
+     */
     void TearDown() override
     {
         for (const auto fd : m_fds)
@@ -61,7 +85,9 @@ protected:
         std::filesystem::remove_all(m_dir, ec);
     }
 
-    // Fills every free descriptor below FD_SETSIZE so that any later one is above it.
+    /**
+     * @brief Fills every free descriptor below FD_SETSIZE so that any later one is above it.
+     */
     void exhaustLowDescriptors()
     {
         int fd {};
@@ -76,7 +102,7 @@ protected:
 
 TEST_F(HttpServerHighFdTest, ServesRequestsOnDescriptorsAboveFdSetSize)
 {
-    exhaustLowDescriptors();
+    ASSERT_NO_FATAL_FAILURE(exhaustLowDescriptors());
 
     httplib::Server server;
     server.set_address_family(AF_UNIX);
@@ -84,6 +110,10 @@ TEST_F(HttpServerHighFdTest, ServesRequestsOnDescriptorsAboveFdSetSize)
 
     std::thread serverThread {[&]() { server.listen(m_socket, true); }};
     server.wait_until_ready();
+
+    // Frees one descriptor below FD_SETSIZE for the client, so only the accepted socket is above it.
+    close(m_fds.front());
+    m_fds.erase(m_fds.begin());
 
     // Each client gets its own connection, so the server accepts every one on a high descriptor.
     for (auto i = 0; i < 3; ++i)
