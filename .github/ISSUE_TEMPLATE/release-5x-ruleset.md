@@ -15,7 +15,7 @@ In 5.x the ruleset is not in this repository: the Wazuh indexer syncs it from CT
 | Engine | `wazuh/wazuh` | Decodes the event. The manager runs it on agent events, and the indexer bundles a copy for logtest. |
 | Ruleset Management | `wazuh/wazuh-indexer-plugins` | Matches the Sigma rules: the standard detectors write a finding for each matching event. |
 
-The Threat Intel team runs the test twice with the same ruleset version: on a lab of the previous release, then on a lab rebuilt from the `{{TAG}}` packages. Only the release changes between the two runs, so a difference is caused by `{{TAG}}`. It is a manual task and has no workflow.
+The Threat Intel team deploys the previous release and `{{TAG}}` from their official Docker images, side by side, syncs both to the same ruleset version and runs the test on each. Only the release differs between them, so a difference is caused by `{{TAG}}`. The Threat Intel team starts the run: this template lists no workflow.
 
 ## Ruleset tests information
 |  |  |
