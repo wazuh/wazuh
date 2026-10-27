@@ -1,0 +1,8 @@
+arch=arm64
+vmlinux_btf=6.6 kernel BTF dump (bpftool btf dump file /sys/kernel/btf/vmlinux format c)
+clang=unrecorded
+load_verified=x86 only: bpftool prog loadall, CentOS Stream 8 (4.18.0-326.el8)
+notes=clang was not captured when these objects were committed. Record it on the
+  next refresh; see prebuilt/README.md. A rebuild with a different clang can
+  change which helpers are outlined, which is what tools/check_bpf_symbols.sh
+  asserts against.

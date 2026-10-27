@@ -15,15 +15,32 @@
 # walks into the callee at every call site and exceeds its instruction budget.
 #
 # Usage: check_bpf_symbols.sh <object> [readelf]
+#
+# Set RT_BPF_SYMBOLS_REQUIRED=1 to make a missing readelf an error instead of a
+# skip. A packaging or CI build sets it: there, "the tool was not installed" is
+# a silently unchecked object shipped to users, which is the outcome this script
+# exists to prevent. A developer build leaves it unset and gets the skip.
 
 set -eu
 
 OBJ="${1:?usage: check_bpf_symbols.sh <object> [readelf]}"
 READELF="${2:-readelf}"
+REQUIRED="${RT_BPF_SYMBOLS_REQUIRED:-0}"
 
 if ! command -v "$READELF" >/dev/null 2>&1; then
+    if [ "$REQUIRED" = "1" ]; then
+        echo "ERROR: $READELF not found, so $OBJ cannot be checked." >&2
+        echo "  RT_BPF_SYMBOLS_REQUIRED=1 forbids shipping it unchecked." >&2
+        echo "  Install binutils, or point the second argument at a readelf." >&2
+        exit 1
+    fi
     echo "check_bpf_symbols: $READELF not found; skipping the .text symbol check on $OBJ" >&2
     exit 0
+fi
+
+if [ ! -r "$OBJ" ]; then
+    echo "ERROR: $OBJ is missing or unreadable." >&2
+    exit 1
 fi
 
 # .text's section index, as the symbol table reports it.

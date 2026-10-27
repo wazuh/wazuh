@@ -171,19 +171,64 @@ if(RT_BPF_ARCH AND EXISTS ${RT_BPF_PREBUILT})
     string(STRIP "${RT_BPF_RECORDED_DIGEST}" RT_BPF_RECORDED_DIGEST)
   endif()
 
+  # A stale prebuilt is a WARNING for a developer and an ERROR for anything that
+  # produces artifacts other people run. The warning alone kept the build green,
+  # and a package build would then ship an object that does not correspond to
+  # rt_file.bpf.c at all -- the one outcome this guard exists to prevent.
+  #
+  # Defaults from the CI environment variable (GitHub Actions and most CI images
+  # set it) so no pipeline has to remember to opt in; override explicitly for a
+  # packaging build that does not set it.
+  if(DEFINED ENV{CI} AND NOT "$ENV{CI}" STREQUAL "" AND NOT "$ENV{CI}" STREQUAL "0")
+    set(RT_BPF_STRICT_PREBUILT_DEFAULT ON)
+  else()
+    set(RT_BPF_STRICT_PREBUILT_DEFAULT OFF)
+  endif()
+  option(RT_BPF_STRICT_PREBUILT
+         "Fail the build when prebuilt rt_file.bpf.o does not match its sources"
+         ${RT_BPF_STRICT_PREBUILT_DEFAULT})
+
   if(NOT RT_BPF_RECORDED_DIGEST STREQUAL RT_BPF_SOURCES_DIGEST)
+    set(RT_BPF_STALE_MESSAGE
+        "eBPF Module: prebuilt/${RT_BPF_ARCH}/rt_file.bpf.o is STALE -- it was built from a "
+        "different bpf/rt_file.bpf.c or include/rt_event_contract.h than the one in this tree, "
+        "and it is preferred over compiling, so that is the object that will ship. "
+        "Rebuild it and refresh the digest: see prebuilt/README.md.")
+    if(RT_BPF_STRICT_PREBUILT)
+      message(FATAL_ERROR ${RT_BPF_STALE_MESSAGE})
+    else()
+      message(WARNING ${RT_BPF_STALE_MESSAGE})
+    endif()
+  endif()
+
+  # What the object was built with. NOT part of the digest above: these are
+  # properties of whichever host produced the binary, so comparing them would
+  # make the check fail on every machine but that one. Recorded and printed so a
+  # rebuild can be reproduced, which is the actual need.
+  set(RT_BPF_PROVENANCE_FILE
+      ${CMAKE_CURRENT_SOURCE_DIR}/prebuilt/${RT_BPF_ARCH}/rt_file.bpf.o.provenance)
+  if(EXISTS ${RT_BPF_PROVENANCE_FILE})
+    file(READ ${RT_BPF_PROVENANCE_FILE} RT_BPF_PROVENANCE)
+    string(STRIP "${RT_BPF_PROVENANCE}" RT_BPF_PROVENANCE)
+    message(STATUS "eBPF Module: prebuilt ${RT_BPF_ARCH} rt_file.bpf.o provenance: ${RT_BPF_PROVENANCE}")
+  else()
     message(WARNING
-            "eBPF Module: prebuilt/${RT_BPF_ARCH}/rt_file.bpf.o is STALE -- it was built from a "
-            "different bpf/rt_file.bpf.c or include/rt_event_contract.h than the one in this tree, "
-            "and it is preferred over compiling, so that is the object that will ship. "
-            "Rebuild it and refresh the digest: see prebuilt/README.md.")
+            "eBPF Module: prebuilt/${RT_BPF_ARCH}/rt_file.bpf.o has no .provenance file, so the "
+            "clang version and kernel BTF it was built from are unrecorded and the object cannot "
+            "be reproduced. See prebuilt/README.md.")
   endif()
 
   message(STATUS "eBPF Module: using prebuilt ${RT_BPF_ARCH} rt_file.bpf.o")
   add_custom_command(
     OUTPUT ${RT_BPF_OBJ}
     COMMAND ${CMAKE_COMMAND} -E copy_if_different ${RT_BPF_PREBUILT} ${RT_BPF_OBJ}
+    # The prebuilt is the object that actually ships, so it is the one that has
+    # to hold the .text invariant. Checking only the compiled branch left the
+    # shipped binary as the single unchecked path.
+    COMMAND ${CMAKE_COMMAND} -E env RT_BPF_SYMBOLS_REQUIRED=$<IF:$<BOOL:${RT_BPF_STRICT_PREBUILT}>,1,0>
+            ${CMAKE_CURRENT_SOURCE_DIR}/tools/check_bpf_symbols.sh ${RT_BPF_OBJ}
     DEPENDS ${RT_BPF_PREBUILT}
+            ${CMAKE_CURRENT_SOURCE_DIR}/tools/check_bpf_symbols.sh
     COMMENT "Installing prebuilt rt_file.bpf.o")
   add_custom_target(rt_file_bpf_object ALL DEPENDS ${RT_BPF_OBJ})
 
@@ -218,7 +263,8 @@ elseif(RT_BPF_ARCH AND CLANG_EXECUTABLE AND RT_LIBBPF_HEADER_DIR AND (RT_VMLINUX
     # A build-time check and not a review item, because what it is checking is a
     # compiler decision: get it wrong and the object loads everywhere except on
     # a legacy RHEL-family kernel, which no CI job load-tests.
-    COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/tools/check_bpf_symbols.sh ${RT_BPF_OBJ}
+    COMMAND ${CMAKE_COMMAND} -E env RT_BPF_SYMBOLS_REQUIRED=1
+            ${CMAKE_CURRENT_SOURCE_DIR}/tools/check_bpf_symbols.sh ${RT_BPF_OBJ}
     DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/bpf/rt_file.bpf.c
             ${CMAKE_CURRENT_SOURCE_DIR}/include/rt_event_contract.h
             ${CMAKE_CURRENT_SOURCE_DIR}/tools/check_bpf_symbols.sh

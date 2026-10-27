@@ -76,7 +76,32 @@ for a in x86 arm64; do
                    "$(sha256sum include/rt_event_contract.h | cut -d' ' -f1)" \
     > "prebuilt/$a/rt_file.bpf.o.sources.sha256"
 done
+
+# 5. record the toolchain, which the digest deliberately does NOT cover
+for a in x86 arm64; do
+  cat > "prebuilt/$a/rt_file.bpf.o.provenance" <<EOF
+arch=$a
+vmlinux_btf=<kernel version the header was dumped from>
+clang=$(clang --version | head -1)
+load_verified=<host/kernel where bpftool prog loadall was run, or "none">
+EOF
+done
 ```
+
+The digest in step 4 covers only the two files in this repository. `vmlinux.h`,
+the libbpf headers and the clang build are properties of whichever host produced
+the object, so folding them into the comparison would report every *other*
+machine's build as stale. They are recorded in step 5 instead, which is what
+reproducing a build actually needs; CMake prints the file and warns when it is
+absent. The committed objects predate this file and carry `clang=unrecorded`.
+
+A mismatch in step 4 is a warning for a developer build and a **hard error**
+whenever `CI` is set in the environment or `-DRT_BPF_STRICT_PREBUILT=ON` is
+passed — a package build must not ship an object that does not correspond to
+`rt_file.bpf.c`. Step 3 now also runs automatically against the prebuilt on
+every build, not only against a freshly compiled object, since the prebuilt is
+the one that ships; under the same strict setting a missing `readelf` fails
+rather than skipping the check.
 
 Prefer a **recent** kernel's header. CO-RE resolves field offsets against the
 running kernel at load time, so a newer header is the portable direction: the
