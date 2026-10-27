@@ -162,3 +162,179 @@ TEST_F(ProcessRuleEvaluatorTest, NegatedFullPathAbsentReturnsFound)
     auto evaluator = CreateEvaluator();
     EXPECT_EQ(evaluator.Evaluate(), RuleResult::Found);
 }
+
+// Exercises the production process listing (no injected GetProcessesFunc) with the
+// names a platform reports through ISysInfo::processNames().
+class MockSysInfoWithNames : public MockSysInfo
+{
+    public:
+        MOCK_METHOD(void, processNames, (std::function<void(const ProcessNames&)>), (override));
+};
+
+class ProcessRuleEvaluatorNamesTest : public ProcessRuleEvaluatorTest
+{
+    protected:
+        ProcessRuleEvaluator CreateEvaluatorWithNames(std::vector<ProcessNames> names)
+        {
+            auto sysInfo = std::make_unique<MockSysInfoWithNames>();
+
+            EXPECT_CALL(*sysInfo, processNames(::testing::_))
+            .WillOnce([names = std::move(names)](const std::function<void(const ProcessNames&)>& callback)
+            {
+                for (const auto& process : names)
+                {
+                    callback(process);
+                }
+            });
+
+            return ProcessRuleEvaluator{m_ctx, std::move(m_fsMock), std::move(sysInfo)};
+        }
+};
+
+TEST_F(ProcessRuleEvaluatorNamesTest, ProcessThatRewritesArgv0IsFoundByComm)
+{
+    m_ctx.rule = "nginx";
+
+    auto evaluator = CreateEvaluatorWithNames(
+    {
+        {"nginx -g daemon on; master_process on;", "nginx: master process /usr/sbin/nginx -g daemon on; master_process on;", "nginx"},
+        {"nginx: worker process", "nginx: worker process", "nginx"}
+    });
+
+    EXPECT_EQ(evaluator.Evaluate(), RuleResult::Found);
+}
+
+TEST_F(ProcessRuleEvaluatorNamesTest, ScriptRunByAnInterpreterIsFoundByComm)
+{
+    m_ctx.rule = "firewalld";
+
+    auto evaluator = CreateEvaluatorWithNames({{"python3", "/usr/bin/python3", "firewalld"}});
+
+    EXPECT_EQ(evaluator.Evaluate(), RuleResult::Found);
+}
+
+TEST_F(ProcessRuleEvaluatorNamesTest, NegatedRuleIsNotFoundWhenOnlyCommMatches)
+{
+    m_ctx.rule = "firewalld";
+    m_ctx.isNegated = true;
+
+    auto evaluator = CreateEvaluatorWithNames({{"python3", "/usr/bin/python3", "firewalld"}});
+
+    EXPECT_EQ(evaluator.Evaluate(), RuleResult::NotFound);
+}
+
+TEST_F(ProcessRuleEvaluatorNamesTest, NameAndCommandLineAreStillMatched)
+{
+    m_ctx.rule = "/usr/sbin/systemd-journald";
+
+    auto evaluator = CreateEvaluatorWithNames({{"systemd-journald", "/usr/sbin/systemd-journald", "systemd-journal"}});
+
+    EXPECT_EQ(evaluator.Evaluate(), RuleResult::Found);
+}
+
+TEST_F(ProcessRuleEvaluatorNamesTest, CommandLineNoneIsNotAProcessName)
+{
+    m_ctx.rule = "none";
+
+    auto evaluator = CreateEvaluatorWithNames({{"System", "none", ""}});
+
+    EXPECT_EQ(evaluator.Evaluate(), RuleResult::NotFound);
+}
+
+TEST_F(ProcessRuleEvaluatorTest, DefaultProcessNamesUsesTheProcessInventory)
+{
+    // MockSysInfo does not override processNames(), so ISysInfo's default builds the
+    // names from processes(), as on platforms without a separate kernel task name.
+    m_ctx.rule = "sshd.exe";
+
+    EXPECT_CALL(*m_rawSysInfoMock, processes(::testing::An<std::function<void(nlohmann::json&)>>()))
+    .WillOnce([](const std::function<void(nlohmann::json&)>& callback)
+    {
+        auto system = nlohmann::json {{"name", "System"}, {"command_line", "none"}};
+        auto sshd = nlohmann::json {{"name", "sshd.exe"}, {"command_line", "C:\\Windows\\System32\\OpenSSH\\sshd.exe"}};
+        auto noName = nlohmann::json {{"pid", "4"}};
+        callback(system);
+        callback(sshd);
+        callback(noName);
+    });
+
+    auto evaluator = ProcessRuleEvaluator{m_ctx, std::move(m_fsMock), std::move(m_sysInfoMock)};
+    EXPECT_EQ(evaluator.Evaluate(), RuleResult::Found);
+}
+
+TEST_F(ProcessRuleEvaluatorTest, PlainValueMatchesCaseInsensitively)
+{
+    m_ctx.rule = "SSHD.exe";
+
+    m_processesMock = []
+    {
+        return std::vector<std::string> {"System", "sshd.exe"};
+    };
+
+    auto evaluator = CreateEvaluator();
+    EXPECT_EQ(evaluator.Evaluate(), RuleResult::Found);
+}
+
+TEST_F(ProcessRuleEvaluatorTest, RegexValueIsMatchedAgainstEachName)
+{
+    m_ctx.rule = "r:^nginx";
+
+    m_processesMock = []
+    {
+        return std::vector<std::string> {"systemd", "nginx: worker process"};
+    };
+
+    auto evaluator = CreateEvaluator();
+    EXPECT_EQ(evaluator.Evaluate(), RuleResult::Found);
+}
+
+TEST_F(ProcessRuleEvaluatorTest, RegexValueWithoutMatchReturnsNotFound)
+{
+    m_ctx.rule = "r:^apache";
+
+    m_processesMock = []
+    {
+        return std::vector<std::string> {"systemd", "nginx"};
+    };
+
+    auto evaluator = CreateEvaluator();
+    EXPECT_EQ(evaluator.Evaluate(), RuleResult::NotFound);
+}
+
+TEST_F(ProcessRuleEvaluatorTest, CompoundValueNeedsOneNameToSatisfyEveryTerm)
+{
+    m_ctx.rule = "r:nginx && !r:worker";
+
+    m_processesMock = []
+    {
+        return std::vector<std::string> {"nginx: worker process", "systemd"};
+    };
+
+    auto onlyWorkers = CreateEvaluator();
+    EXPECT_EQ(onlyWorkers.Evaluate(), RuleResult::NotFound);
+
+    m_fsMock = std::make_unique<MockFileSystemWrapper>();
+    m_sysInfoMock = std::make_unique<MockSysInfo>();
+    m_processesMock = []
+    {
+        return std::vector<std::string> {"nginx: worker process", "nginx"};
+    };
+
+    auto withMaster = CreateEvaluator();
+    EXPECT_EQ(withMaster.Evaluate(), RuleResult::Found);
+}
+
+TEST_F(ProcessRuleEvaluatorTest, ContentPatternIsRejectedInsteadOfIgnored)
+{
+    m_ctx.rule = "nginx";
+    m_ctx.pattern = "r:master";
+
+    m_processesMock = []
+    {
+        return std::vector<std::string> {"nginx"};
+    };
+
+    auto evaluator = CreateEvaluator();
+    EXPECT_EQ(evaluator.Evaluate(), RuleResult::Invalid);
+    EXPECT_THAT(evaluator.GetUnresolvedReason(), ::testing::HasSubstr("not supported"));
+}

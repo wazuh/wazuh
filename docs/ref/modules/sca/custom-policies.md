@@ -288,6 +288,18 @@ c:systemctl is-enabled cups -> r:^enabled
 
 - `p:process_name`
 - `not p:process_name`
+- `p:r:REGEX`
+- `p:r:REGEX && !r:REGEX`
+
+A process rule matches when any running process has a name that matches the value. The names
+checked are the process name, its executable path or argv[0], and, on Linux, the kernel task name
+(`/proc/<pid>/comm`). The kernel task name lets `p:nginx` match a process that rewrites its argv[0]
+(`nginx: master process ...`) and `p:firewalld` match a script run through its interpreter
+(`/usr/bin/python3 -s /usr/sbin/firewalld`). The kernel truncates it to 15 characters.
+
+A plain value is compared case-insensitively. A value starting with `r:`, `n:`, `!r:` or `!n:`, or joining
+terms with `&&`, is matched as a pattern against each name. A process rule takes no content
+pattern: `p:process_name -> r:REGEX` is reported as invalid.
 
 ### Commands
 

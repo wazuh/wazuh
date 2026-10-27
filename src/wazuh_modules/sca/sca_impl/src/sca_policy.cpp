@@ -125,6 +125,10 @@ void SCAPolicy::Scan(
     }
     else
     {
+        // Without this a policy whose requirements fail only shows its checks as not
+        // applicable, and the reason is visible at debug level only.
+        LoggingHelper::getInstance().log(LOG_INFO, "Policy \"" + m_id + "\" skipped: its requirements are not met.");
+
         for (const auto& check : m_checks)
         {
             // NOLINTNEXTLINE(bugprone-unchecked-optional-access)

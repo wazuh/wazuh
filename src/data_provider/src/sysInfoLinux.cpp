@@ -78,6 +78,20 @@ static bool getSystemInfo(const std::string& fileName, const std::string& separa
     return ret;
 }
 
+// process->cmd (/proc/<pid>/comm) is capped at TASK_COMM_LEN (15 chars); use the
+// untruncated argv[0] basename instead, falling back to comm for kernel threads,
+// which have no cmdline.
+static std::string getProcessName(const proc_t* process, const std::string& commandLine)
+{
+    const std::string baseName {commandLine.empty() ? std::string {} : std::filesystem::path(commandLine).filename().string()};
+    return baseName.empty() ? process->cmd : baseName;
+}
+
+static std::string getProcessCommandLine(const proc_t* process)
+{
+    return process->cmdline && process->cmdline[0] ? process->cmdline[0] : std::string {};
+}
+
 static nlohmann::json getProcessInfo(const proc_t* process)
 {
     nlohmann::json jsProcessInfo{};
@@ -87,14 +101,12 @@ static nlohmann::json getProcessInfo(const proc_t* process)
     jsProcessInfo["parent_pid"] = process->ppid;
     jsProcessInfo["utime"]      = process->utime;
     jsProcessInfo["stime"]      = process->stime;
-    std::string commandLine;
+    const std::string commandLine {getProcessCommandLine(process)};
     std::string commandLineArgs;
     unsigned int commandLineCount = 0;
 
     if (process->cmdline && process->cmdline[0])
     {
-        commandLine = process->cmdline[0];
-
         for (int idx = 1; process->cmdline[idx]; ++idx)
         {
             const auto cmdlineArgSize { sizeof(process->cmdline[idx]) };
@@ -113,11 +125,7 @@ static nlohmann::json getProcessInfo(const proc_t* process)
         }
     }
 
-    // process->cmd (/proc/<pid>/comm) is capped at TASK_COMM_LEN (15 chars); use the
-    // untruncated argv[0] basename instead, falling back to comm for kernel threads,
-    // which have no cmdline.
-    const std::string baseName {commandLine.empty() ? std::string {} : std::filesystem::path(commandLine).filename().string()};
-    jsProcessInfo["name"]         = baseName.empty() ? process->cmd : baseName;
+    jsProcessInfo["name"]         = getProcessName(process, commandLine);
     jsProcessInfo["command_line"] = commandLine;
     jsProcessInfo["args"]         = commandLineArgs;
     jsProcessInfo["args_count"]   = commandLineCount;
@@ -626,6 +634,17 @@ void SysInfo::getProcessesInfo(std::function<void(nlohmann::json&)> callback) co
     {
         auto processInfo = getProcessInfo(process);
         callback(processInfo);
+    });
+}
+
+void SysInfo::processNames(std::function<void(const ProcessNames&)> callback)
+{
+    // Only stat (for comm) and cmdline are needed, so skip the environment, memory
+    // and user/group lookups that the full inventory scan pays for.
+    ProcpsWrapper::scanProcesses(PROC_FILLSTAT | PROC_FILLARG, [&callback](const proc_t* process)
+    {
+        const auto commandLine {getProcessCommandLine(process)};
+        callback({getProcessName(process, commandLine), commandLine, process->cmd});
     });
 }
 

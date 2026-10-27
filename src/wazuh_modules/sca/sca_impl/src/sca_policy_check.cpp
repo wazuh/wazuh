@@ -665,22 +665,25 @@ ProcessRuleEvaluator::ProcessRuleEvaluator(PolicyEvaluationContext ctx,
 {
     std::vector<std::string> processNames;
 
-    m_sysInfo->processes(
-        [&processNames](nlohmann::json & procJson)
+    m_sysInfo->processNames(
+        [&processNames](const ProcessNames & process)
     {
-        if (procJson.contains("name") && procJson["name"].is_string())
+        if (!process.name.empty())
         {
-            processNames.emplace_back(procJson["name"]);
+            processNames.emplace_back(process.name);
         }
 
-        if (procJson.contains("command_line") && procJson["command_line"].is_string())
+        if (!process.commandLine.empty() && process.commandLine != "none")
         {
-            const auto& cmd = procJson["command_line"].get_ref<const std::string&>();
+            processNames.emplace_back(process.commandLine);
+        }
 
-            if (!cmd.empty() && cmd != "none")
-            {
-                processNames.emplace_back(cmd);
-            }
+        // The inventory name comes from argv[0], which a process can rewrite (nginx)
+        // or which names the interpreter of a script (firewalld runs as python3), so
+        // also match the kernel task name, as the ps-based 4.x check did.
+        if (!process.comm.empty() && process.comm != process.name)
+        {
+            processNames.emplace_back(process.comm);
         }
     });
 
@@ -696,13 +699,44 @@ RuleResult ProcessRuleEvaluator::Evaluate()
 
     LoggingHelper::getInstance().log(LOG_DEBUG, "Processing process rule: '" + m_ctx.rule + "'");
 
+    // A process rule has no content to apply a pattern to; refuse it instead of
+    // silently evaluating only the part before "->".
+    if (m_ctx.pattern)
+    {
+        LoggingHelper::getInstance().log(LOG_DEBUG, "Process rule '" + m_ctx.rule + "' has a pattern, which process rules do not support");
+        m_lastUnresolvedReason = "Patterns ('->') are not supported in process rule '" + m_ctx.rule + "'";
+        return RuleResult::Invalid;
+    }
+
+    // As in 4.x, the value may be a pattern (r:, n:, their ! negations, &&) matched against each name;
+    // a plain value is compared case-insensitively.
+    const auto isPattern = sca::IsRegexOrNumericPattern(m_ctx.rule) || m_ctx.rule.find(" && ") != std::string::npos;
+    const auto lowerRule = Utils::toLowerCase(m_ctx.rule);
+
     auto result = RuleResult::NotFound;
 
     if (const auto processes = TryFunc([this] { return m_getProcesses(); }))
     {
         for (const auto& process : processes.value())
         {
-            if (process == m_ctx.rule)
+            if (isPattern)
+            {
+                const auto patternMatch = sca::PatternMatches(process, m_ctx.rule, m_ctx.regexEngine);
+
+                if (!patternMatch)
+                {
+                    LoggingHelper::getInstance().log(LOG_DEBUG, "Invalid pattern '" + m_ctx.rule + "' for process rule evaluation");
+                    m_lastUnresolvedReason = "Invalid pattern '" + m_ctx.rule + "' for process rule";
+                    return RuleResult::Invalid;
+                }
+
+                if (*patternMatch)
+                {
+                    result = RuleResult::Found;
+                    break;
+                }
+            }
+            else if (Utils::toLowerCase(process) == lowerRule)
             {
                 result = RuleResult::Found;
                 break;

@@ -223,3 +223,49 @@ TEST_F(SCAPolicyTest, NotRunRequirementsReportTheirReasonOnEveryCheck)
     EXPECT_EQ(reported[0].result, "Not run");
     EXPECT_EQ(reported[0].reason, "Command timed out after 30 seconds: rpm -q");
 }
+
+TEST_F(SCAPolicyTest, UnmetRequirementsAreLoggedAtInfo)
+{
+    std::vector<std::pair<modules_log_level_t, std::string>> logs;
+    LoggingHelper::setLogCallback([&logs](const modules_log_level_t level, const char* log)
+    {
+        logs.emplace_back(level, log);
+    });
+
+    auto requirements = MakeCheck("requirements", "any", {{RuleResult::NotFound, "", "p:nginx"}});
+
+    std::vector<Check> checks;
+    checks.push_back(MakeCheck("1007", "all", {{RuleResult::Found, ""}}));
+
+    const auto reported = RunPolicy(std::move(requirements), std::move(checks));
+    LoggingHelper::setLogCallback([](const modules_log_level_t /* level */, const char* /* log */) {});
+
+    ASSERT_EQ(reported.size(), 1U);
+    EXPECT_EQ(reported[0].result, "Not applicable");
+
+    const auto line = std::find_if(logs.begin(), logs.end(), [](const auto & log)
+    {
+        return log.first == LOG_INFO && log.second == "Policy \"test_policy\" skipped: its requirements are not met.";
+    });
+
+    EXPECT_NE(line, logs.end());
+}
+
+TEST_F(SCAPolicyTest, MetRequirementsLogNothingAtInfo)
+{
+    std::vector<modules_log_level_t> levels;
+    LoggingHelper::setLogCallback([&levels](const modules_log_level_t level, const char* /* log */)
+    {
+        levels.push_back(level);
+    });
+
+    auto requirements = MakeCheck("requirements", "any", {{RuleResult::Found, "", "p:nginx"}});
+
+    std::vector<Check> checks;
+    checks.push_back(MakeCheck("1008", "all", {{RuleResult::Found, ""}}));
+
+    RunPolicy(std::move(requirements), std::move(checks));
+    LoggingHelper::setLogCallback([](const modules_log_level_t /* level */, const char* /* log */) {});
+
+    EXPECT_EQ(std::count(levels.begin(), levels.end(), LOG_INFO), 0);
+}
