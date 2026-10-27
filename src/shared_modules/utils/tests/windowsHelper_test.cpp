@@ -301,22 +301,24 @@ TEST_F(WindowsHelperTest, normalizeTimestampEqual)
     EXPECT_EQ(expected, result);
 }
 
-TEST_F(WindowsHelperTest, normalizeTimestampInstallDateWithinOneDayIsTheModificationTime)
+TEST_F(WindowsHelperTest, normalizeTimestampInstallDateUnderAnyOffsetIsTheModificationTime)
 {
-    // InstallDate was written in an unknown time zone, so one day either side of the UTC date keeps the modification time
+    // InstallDate was written in an unknown time zone: the modification time is kept when it falls on InstallDate
+    // under some offset from UTC-12 to UTC+14
     setTimezone("JST-9");
     // 2026/10/23 18:02:28 UTC is 2026/10/24 03:02:28 in UTC+9
     EXPECT_EQ("2026/10/23 18:02:28", Utils::normalizeTimestamp("20261024", "2026/10/23 18:02:28"));
     // Written under a zone behind UTC, scanned in UTC+9: InstallDate is the UTC date, not the local one
     EXPECT_EQ("2026/10/23 18:02:28", Utils::normalizeTimestamp("20261023", "2026/10/23 18:02:28"));
-    EXPECT_EQ("2026/10/23 18:02:28", Utils::normalizeTimestamp("20261022", "2026/10/23 18:02:28"));
-    // Two days before: the key was written later, so InstallDate wins
-    EXPECT_EQ("2026/10/20 15:00:00", Utils::normalizeTimestamp("20261021", "2026/10/23 18:02:28"));
+    // No offset puts 2026/10/23 18:02:28 UTC on 2026/10/22: the key was rewritten later, so InstallDate wins
+    EXPECT_EQ("2026/10/21 15:00:00", Utils::normalizeTimestamp("20261022", "2026/10/23 18:02:28"));
 
-    // 2026/10/24 03:02:28 UTC is 2026/10/23 19:02:28 in UTC-8
+    // Bounds: 2026/10/22 00:00 at UTC+14 and 2026/10/22 23:59:59 at UTC-12
     setTimezone("PST8");
-    EXPECT_EQ("2026/10/24 03:02:28", Utils::normalizeTimestamp("20261023", "2026/10/24 03:02:28"));
-    EXPECT_EQ("2026/10/24 03:02:28", Utils::normalizeTimestamp("20261025", "2026/10/24 03:02:28"));
+    EXPECT_EQ("2026/10/21 10:00:00", Utils::normalizeTimestamp("20261022", "2026/10/21 10:00:00"));
+    EXPECT_EQ("2026/10/22 08:00:00", Utils::normalizeTimestamp("20261022", "2026/10/21 09:59:59"));
+    EXPECT_EQ("2026/10/23 11:59:59", Utils::normalizeTimestamp("20261022", "2026/10/23 11:59:59"));
+    EXPECT_EQ("2026/10/22 08:00:00", Utils::normalizeTimestamp("20261022", "2026/10/23 12:00:00"));
 }
 
 TEST_F(WindowsHelperTest, normalizeTimestampInvalidInstallDate)
@@ -325,7 +327,7 @@ TEST_F(WindowsHelperTest, normalizeTimestampInvalidInstallDate)
 
     setTimezone("JST-9");
 
-    const char* const installDates[] {"00000000", "19691231", "20261301", "20261000"};
+    const char* const installDates[] {"00000000", "19691231", "20261301", "20261000", "20260231", "20261032"};
 
     for (const auto* installDate : installDates)
     {
