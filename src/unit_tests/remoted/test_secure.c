@@ -4127,7 +4127,7 @@ static void queue_control_config_defines(int keepalive_throttle)
 {
     will_return(__wrap_getDefine_Int_default, 60);    // control_groups_refresh_interval
     will_return(__wrap_getDefine_Int_default, 4);     // control_wdb_request_connections
-    will_return(__wrap_getDefine_Int_default, 2000);  // control_wdb_roundtrip_deadline
+    will_return(__wrap_getDefine_Int_default, 5000);  // control_wdb_roundtrip_deadline
     will_return(__wrap_getDefine_Int_default, 10000); // control_wdb_max_queue_size
     will_return(__wrap_getDefine_Int_default, 4);     // control_tm_concurrency
     will_return(__wrap_getDefine_Int_default, 2000);  // control_tm_deadline
