@@ -41,6 +41,7 @@ All notable changes to this project will be documented in this file.
 - Fixed the validation of the configuration uploaded through `PUT /manager/configuration` and `PUT /cluster/{node_id}/configuration` so that it handles comments, escaped markup and namespaces the way the daemons do. ([#40720](https://github.com/wazuh/wazuh/pull/40720))
 - Fixed the AWS S3 buckets not reading any more logs after processing an object whose key sorts after them, such as one under a far future day folder, until its row was removed from the database. The files without a valid date after the prefix, or dated after they were written, are now skipped, the ones processed before are removed from the database, and every bucket type but AWS Config lists again the logs from the day before the last one processed. On the first run after the upgrade, a bucket with more than 500 files in those two days sends again, once, the ones that the previous retention had deleted. ([#40848](https://github.com/wazuh/wazuh/pull/40848))
 - Fixed the native GuardDuty bucket type reading only the last region, in alphabetical order, of a bucket with the findings of several regions. After the upgrade, the regions that were not read are read from their last processed file, or from `only_logs_after`. ([#40848](https://github.com/wazuh/wazuh/pull/40848))
+- Fixed the `wazuh-db` HTTP socket not answering requests when `wazuh-db` has more than 1024 open file descriptors. ([#40634](https://github.com/wazuh/wazuh/issues/40634))
 
 ### Agent
 
