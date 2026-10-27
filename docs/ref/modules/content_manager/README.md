@@ -89,6 +89,8 @@ The Content Manager logs to `/var/wazuh-manager/logs/wazuh-manager.log` under th
 | `IndexerDownloader: Consumer '<id>' is still running in '<index>'. Waiting 60s before retrying.` | The CTI consumer is still indexing the feed |
 | `IndexerDownloader: Global-map documents not yet indexed in '<index>' (<n>/3 found). Waiting 30s before retrying.` | An initial load is waiting for the global maps |
 | `IndexerDownloader: Starting initial full load (slices=<n>)` | A full download started |
+| `IndexerDownloader: Slice <i> (<i+1>/<n>) in progress — <n> documents so far, cursor '<c>', <s>s elapsed` | A sliced full download is advancing (one line per slice at most once a minute) |
+| `IndexerDownloader: Download in progress — <n> documents so far, cursor '<c>', <s>s elapsed` | A sequential download (full load with `numSlices` = 1, or an incremental update) is advancing (at most once a minute) |
 | `IndexerDownloader: Starting incremental update from offset <n>` | An incremental download started |
 | `IndexerDownloader: Initial load download phase complete — <n> documents, cursor: '<n>'` | A full download finished |
 | `IndexerDownloader: Incremental update download phase complete — <n> documents, new cursor: '<n>'` | An incremental download finished |
