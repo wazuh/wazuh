@@ -19,12 +19,17 @@
 #include "stringHelper.h"
 #include "sharedDefs.h"
 
-constexpr auto APPLICATION_STORE_REGISTRY        {"SOFTWARE\\Classes\\Local Settings\\Software\\Microsoft\\Windows\\CurrentVersion\\AppModel\\Repository\\Packages"};
-constexpr auto APPLICATION_INSTALL_TIME_REGISTRY {"SOFTWARE\\Classes\\Local Settings\\Software\\Microsoft\\Windows\\CurrentVersion\\AppModel\\Repository\\Families"};
-constexpr auto APPLICATION_VENDOR_REGISTRY       {"SOFTWARE\\Classes"};
+/*
+ * The AppX keys live in the user classes hive (UsrClass.dat). When the user profile is loaded it
+ * is reachable as <sid>\SOFTWARE\Classes, otherwise the hive is mounted on its own, so the paths
+ * below are relative to the classes root.
+ */
+constexpr auto USER_CLASSES_REGISTRY             {"SOFTWARE\\Classes"};
+constexpr auto APPLICATION_STORE_REGISTRY        {"Local Settings\\Software\\Microsoft\\Windows\\CurrentVersion\\AppModel\\Repository\\Packages"};
+constexpr auto APPLICATION_INSTALL_TIME_REGISTRY {"Local Settings\\Software\\Microsoft\\Windows\\CurrentVersion\\AppModel\\Repository\\Families"};
 constexpr auto FILE_ASSOCIATIONS_REGISTRY        { "\\Capabilities\\FileAssociations" };
 constexpr auto URL_ASSOCIATIONS_REGISTRY         { "\\Capabilities\\URLAssociations" };
-constexpr auto CACHE_NAME_REGISTRY               { "SOFTWARE\\Classes\\Local Settings\\MrtCache" };
+constexpr auto CACHE_NAME_REGISTRY               { "Local Settings\\MrtCache" };
 constexpr auto STORE_APPLICATION_DATABASE        { "C:\\Program Files\\WindowsApps" };
 constexpr auto PYTHON_STORE_PACKAGE_PREFIX       { "PythonSoftwareFoundation.Python" };
 constexpr auto PYTHON_EXECUTABLE                 { "\\python.exe" };
@@ -52,9 +57,15 @@ class TAppxWindowsWrapper final : public IPackageWrapper
 {
     public:
 
-        explicit TAppxWindowsWrapper(const HKEY key, const std::string& userId, const std::string& appName, const std::set<std::string>& cacheRegistry)
+        /*
+         * @param[in] key           Root key the classes root is relative to.
+         * @param[in] classesRoot   Path of the user classes root under key, empty if key is the classes root itself.
+         * @param[in] appName       Package full name.
+         * @param[in] cacheRegistry MrtCache subkeys of the user classes root.
+         */
+        explicit TAppxWindowsWrapper(const HKEY key, const std::string& classesRoot, const std::string& appName, const std::set<std::string>& cacheRegistry)
             : m_key{ key },
-              m_userId{ userId },
+              m_classesPrefix{ classesRoot.empty() ? classesRoot : classesRoot + "\\" },
               m_appName{ appName },
               m_format{ "win" },
               m_cacheReg{ cacheRegistry }
@@ -136,7 +147,7 @@ class TAppxWindowsWrapper final : public IPackageWrapper
 
     private:
         HKEY m_key;
-        std::string m_userId;
+        std::string m_classesPrefix;
         std::string m_appName;
         std::string m_format;
         std::string m_name;
@@ -149,7 +160,7 @@ class TAppxWindowsWrapper final : public IPackageWrapper
 
         bool isRegistryValid()
         {
-            TRegistry registry(m_key, m_userId + "\\" + APPLICATION_STORE_REGISTRY + "\\" + m_appName, KEY_READ | KEY_ENUMERATE_SUB_KEYS);
+            TRegistry registry(m_key, m_classesPrefix + APPLICATION_STORE_REGISTRY + "\\" + m_appName, KEY_READ | KEY_ENUMERATE_SUB_KEYS);
 
             return registry.enumerate().size() != 0;
         }
@@ -171,7 +182,7 @@ class TAppxWindowsWrapper final : public IPackageWrapper
 
                 if (fields.size() >= INDEX_COUNT)
                 {
-                    const TRegistry packageReg(m_key, m_userId + "\\" + APPLICATION_STORE_REGISTRY + "\\" + m_appName);
+                    const TRegistry packageReg(m_key, m_classesPrefix + APPLICATION_STORE_REGISTRY + "\\" + m_appName);
 
                     m_version = fields.at(INDEX_VERSION);
                     m_architecture = getArchitecture(fields.at(INDEX_ARCHITECTURE));
@@ -268,7 +279,7 @@ class TAppxWindowsWrapper final : public IPackageWrapper
 
             try
             {
-                const TRegistry installTimeRegistry {TRegistry(m_key, m_userId + "\\" + APPLICATION_INSTALL_TIME_REGISTRY + "\\" + mainRegistry + "\\" + m_appName)};
+                const TRegistry installTimeRegistry {TRegistry(m_key, m_classesPrefix + APPLICATION_INSTALL_TIME_REGISTRY + "\\" + mainRegistry + "\\" + m_appName)};
 
                 if (installTimeRegistry.qword("InstallTime", value))
                 {
@@ -362,7 +373,7 @@ class TAppxWindowsWrapper final : public IPackageWrapper
                     for (const auto& folder : registry.enumerate())
                     {
                         std::string value;
-                        const TRegistry nameReg(m_key, m_userId  + "\\" + APPLICATION_STORE_REGISTRY + "\\" + m_appName + "\\" + folder + "\\Capabilities");
+                        const TRegistry nameReg(m_key, m_classesPrefix + APPLICATION_STORE_REGISTRY + "\\" + m_appName + "\\" + folder + "\\Capabilities");
 
                         if (nameReg.string("ApplicationName", value))
                         {
@@ -404,12 +415,12 @@ class TAppxWindowsWrapper final : public IPackageWrapper
             {
                 for (const auto& folder : registry.enumerate())
                 {
-                    const TRegistry fileReg(m_key, m_userId + "\\" + APPLICATION_STORE_REGISTRY + "\\" + m_appName + "\\" + folder + FILE_ASSOCIATIONS_REGISTRY, KEY_READ | KEY_QUERY_VALUE);
+                    const TRegistry fileReg(m_key, m_classesPrefix + APPLICATION_STORE_REGISTRY + "\\" + m_appName + "\\" + folder + FILE_ASSOCIATIONS_REGISTRY, KEY_READ | KEY_QUERY_VALUE);
                     vendor = searchPublisher(fileReg);
 
                     if (vendor.empty())
                     {
-                        const TRegistry urlReg(m_key, m_userId + "\\"  + APPLICATION_STORE_REGISTRY + "\\" + m_appName + "\\" + folder + URL_ASSOCIATIONS_REGISTRY, KEY_READ | KEY_QUERY_VALUE);
+                        const TRegistry urlReg(m_key, m_classesPrefix + APPLICATION_STORE_REGISTRY + "\\" + m_appName + "\\" + folder + URL_ASSOCIATIONS_REGISTRY, KEY_READ | KEY_QUERY_VALUE);
                         vendor = searchPublisher(urlReg);
                     }
 
@@ -457,7 +468,7 @@ class TAppxWindowsWrapper final : public IPackageWrapper
 
             if (!registry.empty())
             {
-                name = searchKeyOnSubRegistries(m_userId + "\\" + CACHE_NAME_REGISTRY + "\\" + registry, nameKey);
+                name = searchKeyOnSubRegistries(m_classesPrefix + CACHE_NAME_REGISTRY + "\\" + registry, nameKey);
             }
 
             return Utils::startsWith(name, PREFIX_LOCALIZATION) ? "" : name;
@@ -510,7 +521,7 @@ class TAppxWindowsWrapper final : public IPackageWrapper
                 std::string vendorRegistry;
 
                 registry.string(value, vendorRegistry);
-                const TRegistry pubRegistry(m_key, m_userId  + "\\" + APPLICATION_VENDOR_REGISTRY + "\\" + vendorRegistry + "\\Application");
+                const TRegistry pubRegistry(m_key, m_classesPrefix + vendorRegistry + "\\Application");
 
                 if (pubRegistry.string("ApplicationCompany", data))
                 {
