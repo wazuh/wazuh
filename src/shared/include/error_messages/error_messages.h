@@ -306,11 +306,11 @@
                                    "<ssl><verification_mode> explicitly to say what was intended."
 #ifndef WIN32
 #define AG_NOT_ENROLLED            "(4128): This agent is not enrolled yet. Enroll it as root with " \
-                                   "'%s/bin/wazuh-agent-auth --token-file <file>', then start the agent."
+                                   "'%s/bin/wazuh-agent-auth --token-file <path>', then start the agent."
 #else
 #define AG_NOT_ENROLLED            "(4128): This agent is not enrolled yet. Enroll it with Manage > " \
                                    "Enroll in the agent GUI, or as an administrator with " \
-                                   "'wazuh-agent-auth.exe --token-file <file>' from the agent's " \
+                                   "'wazuh-agent-auth.exe --token-file <path>' from the agent's " \
                                    "installation folder, then start the agent."
 #endif
 

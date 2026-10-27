@@ -31,12 +31,12 @@
 #ifndef WIN32
 #define HOME_PATH "/var/ossec"
 #define NOT_ENROLLED_HINT "(4128): This agent is not enrolled yet. Enroll it as root with " \
-                          "'/var/ossec/bin/wazuh-agent-auth --token-file <file>', then start the agent."
+                          "'/var/ossec/bin/wazuh-agent-auth --token-file <path>', then start the agent."
 #else
 #define HOME_PATH NULL
 #define NOT_ENROLLED_HINT "(4128): This agent is not enrolled yet. Enroll it with Manage > " \
                           "Enroll in the agent GUI, or as an administrator with " \
-                          "'wazuh-agent-auth.exe --token-file <file>' from the agent's " \
+                          "'wazuh-agent-auth.exe --token-file <path>' from the agent's " \
                           "installation folder, then start the agent."
 #endif
 
