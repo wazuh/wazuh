@@ -573,6 +573,256 @@ static void test_parse_agent_add_response(void **state) {
     assert_string_equal(err_response, "ERROR: Invalid message format");
 }
 
+/* w_validate_group_name */
+
+#define GROUP_RESPONSE_SIZE OS_SIZE_2048
+#define GROUP_SENTINEL      'X'
+#define GROUP_ERR_PREFIX    "ERROR: Invalid group name: "
+#define GROUP_PROHIBITED    "... characters '\\/:*?\"<>|,' are prohibited"
+#define GROUP_TOO_LARGE     "... group is too large"
+#define GROUP_DBG_EMPTY     "At w_validate_group_name(): Group length is 0"
+#define GROUP_DBG_TOO_LARGE "At w_validate_group_name(): Group length is over 255 characters"
+#define GROUP_DBG_MULTI     "At w_validate_group_name(): Multigroup length is over 65536 characters"
+
+/* Returns prefix + n chars cycling over pattern + suffix. */
+static char *build_group(const char *prefix, const char *pattern, size_t n, const char *suffix) {
+    size_t plen = strlen(prefix);
+    size_t pat_len = strlen(pattern);
+    char *group = calloc(plen + n + strlen(suffix) + 1, 1);
+
+    strcpy(group, prefix);
+    for (size_t i = 0; i < n; i++) {
+        group[plen + i] = pattern[i % pat_len];
+    }
+    strcpy(group + plen + n, suffix);
+    return group;
+}
+
+static void fill_group_sentinel(char *response) {
+    memset(response, GROUP_SENTINEL, GROUP_RESPONSE_SIZE - 1);
+    response[GROUP_RESPONSE_SIZE - 1] = '\0';
+}
+
+static void assert_group_sentinel_from(const char *response, size_t from) {
+    for (size_t i = from; i < GROUP_RESPONSE_SIZE - 1; i++) {
+        assert_int_equal(response[i], GROUP_SENTINEL);
+    }
+}
+
+/* Checks return and full response for quoted (first 255 chars of quoted, as the source formats it), then the
+ * same call with a NULL response. dbg is the mdebug1 message the branch logs, or NULL. */
+static void check_group_error(const char *group, int expected_ret, const char *quoted, const char *suffix,
+                              const char *dbg) {
+    char response[GROUP_RESPONSE_SIZE];
+    char expected[GROUP_RESPONSE_SIZE];
+
+    snprintf(expected, sizeof(expected), "%s%.255s%s", GROUP_ERR_PREFIX, quoted, suffix);
+
+    if (dbg) {
+        expect_string(__wrap__mdebug1, formatted_msg, dbg);
+    }
+    fill_group_sentinel(response);
+    assert_int_equal(w_validate_group_name(group, response), expected_ret);
+    assert_string_equal(response, expected);
+    assert_group_sentinel_from(response, strlen(expected) + 1);
+
+    if (dbg) {
+        expect_string(__wrap__mdebug1, formatted_msg, dbg);
+    }
+    assert_int_equal(w_validate_group_name(group, NULL), expected_ret);
+}
+
+static void check_group_valid(const char *group) {
+    char response[GROUP_RESPONSE_SIZE];
+
+    fill_group_sentinel(response);
+    assert_int_equal(w_validate_group_name(group, response), 0);
+    assert_group_sentinel_from(response, 0);
+
+    assert_int_equal(w_validate_group_name(group, NULL), 0);
+}
+
+static void test_w_validate_group_name_valid_single(void **state) {
+    check_group_valid("group1");
+}
+
+static void test_w_validate_group_name_valid_multi(void **state) {
+    check_group_valid("g1,g2");
+    check_group_valid("g1,g2,g3");
+}
+
+static void test_w_validate_group_name_allowed_punctuation(void **state) {
+    check_group_valid("a.:;_-=+!@()b");
+}
+
+static void test_w_validate_group_name_single_max_length(void **state) {
+    char *group = build_group("", "a", MAX_GROUP_NAME, "");
+    check_group_valid(group);
+    free(group);
+}
+
+static void test_w_validate_group_name_multi_three_max_length(void **state) {
+    char group[3 * (MAX_GROUP_NAME + 1)];
+
+    memset(group, 'a', sizeof(group) - 1);
+    group[MAX_GROUP_NAME] = ',';
+    group[2 * MAX_GROUP_NAME + 1] = ',';
+    group[sizeof(group) - 1] = '\0';
+
+    check_group_valid(group);
+}
+
+static void test_w_validate_group_name_empty(void **state) {
+    char response[GROUP_RESPONSE_SIZE];
+    const char *expected = GROUP_ERR_PREFIX "Empty Group";
+
+    expect_string(__wrap__mdebug1, formatted_msg, GROUP_DBG_EMPTY);
+    fill_group_sentinel(response);
+    assert_int_equal(w_validate_group_name("", response), -8);
+    assert_string_equal(response, expected);
+    assert_group_sentinel_from(response, strlen(expected) + 1);
+
+    expect_string(__wrap__mdebug1, formatted_msg, GROUP_DBG_EMPTY);
+    assert_int_equal(w_validate_group_name("", NULL), -8);
+}
+
+static void test_w_validate_group_name_single_too_large(void **state) {
+    char *group = build_group("", "a", MAX_GROUP_NAME + 1, "");
+    check_group_error(group, -2, group, GROUP_TOO_LARGE, GROUP_DBG_TOO_LARGE);
+    free(group);
+}
+
+static void test_w_validate_group_name_multigroup_too_large(void **state) {
+    char *group = build_group("", "a,", OS_SIZE_65536, "");
+    check_group_error(group, -3, group, "... multigroup is too large", GROUP_DBG_MULTI);
+    free(group);
+}
+
+static void test_w_validate_group_name_white_space(void **state) {
+    check_group_error("a b,c", -4, "a b,c", "... white spaces are not allowed", NULL);
+    check_group_error("a,b c,d", -4, "a,b c,d", "... white spaces are not allowed", NULL);
+    check_group_error("a,b c", -4, "a,b c", "... white spaces are not allowed", NULL);
+}
+
+static void test_w_validate_group_name_white_space_before_oversized(void **state) {
+    char *group = build_group("a b,", "a", MAX_GROUP_NAME + 1, "");
+    check_group_error(group, -4, group, "... white spaces are not allowed", NULL);
+    free(group);
+}
+
+static void test_w_validate_group_name_consecutive_commas(void **state) {
+    check_group_error("a,,b", -5, "a,,b", "... consecutive ',' are not allowed", NULL);
+}
+
+static void test_w_validate_group_name_only_commas_multi(void **state) {
+    check_group_error(",,,", -5, ",,,", "... consecutive ',' are not allowed", NULL);
+}
+
+static void test_w_validate_group_name_only_one_comma(void **state) {
+    check_group_error(",", -1, ",", GROUP_PROHIBITED, NULL);
+}
+
+static void test_w_validate_group_name_leading_trailing_comma(void **state) {
+    check_group_error(",a", -6, ",a", "... cannot start or end with ','", NULL);
+    check_group_error("a,b,", -6, "a,b,", "... cannot start or end with ','", NULL);
+}
+
+static void test_w_validate_group_name_invalid_char_single(void **state) {
+    check_group_error("a/b", -1, "a/b", GROUP_PROHIBITED, NULL);
+    check_group_error("a*b", -1, "a*b", GROUP_PROHIBITED, NULL);
+    check_group_error("a\"b", -1, "a\"b", GROUP_PROHIBITED, NULL);
+    check_group_error("a\\b", -1, "a\\b", GROUP_PROHIBITED, NULL);
+}
+
+static void test_w_validate_group_name_invalid_char_multi(void **state) {
+    check_group_error("a,b/c", -1, "a,b/c", GROUP_PROHIBITED, NULL);
+}
+
+static void test_w_validate_group_name_max_length_in_multigroup(void **state) {
+    char *group = build_group("", "a", MAX_GROUP_NAME, ",b");
+    check_group_valid(group);
+    free(group);
+}
+
+/* Oversized group inside a multigroup: the response quotes that group's own token. */
+
+static void test_w_validate_group_name_oversized_null_response(void **state) {
+    char *group = build_group("", "a", MAX_GROUP_NAME + 1, ",b");
+    assert_int_equal(w_validate_group_name(group, NULL), -7);
+    free(group);
+}
+
+static void test_w_validate_group_name_oversized_first(void **state) {
+    char *token = build_group("", "a", MAX_GROUP_NAME + 1, "");
+    char *group = build_group("", "a", MAX_GROUP_NAME + 1, ",b");
+
+    check_group_error(group, -7, token, GROUP_TOO_LARGE, NULL);
+    free(group);
+    free(token);
+}
+
+static void test_w_validate_group_name_oversized_middle(void **state) {
+    char *token = build_group("", "a", MAX_GROUP_NAME + 1, "");
+    char *group = build_group("a,", "a", MAX_GROUP_NAME + 1, ",c");
+
+    check_group_error(group, -7, token, GROUP_TOO_LARGE, NULL);
+    free(group);
+    free(token);
+}
+
+static void test_w_validate_group_name_oversized_last(void **state) {
+    char *token = build_group("", "a", MAX_GROUP_NAME + 1, "");
+    char *group = build_group("a,b,", "a", MAX_GROUP_NAME + 1, "");
+
+    check_group_error(group, -7, token, GROUP_TOO_LARGE, NULL);
+    free(group);
+    free(token);
+}
+
+/* The 256th char differs, so it must not appear in the response. */
+static void test_w_validate_group_name_oversized_one_past_limit(void **state) {
+    char *token = build_group("", "a", MAX_GROUP_NAME, "b");
+    char *group = build_group("", "a", MAX_GROUP_NAME, "b,c");
+
+    check_group_error(group, -7, token, GROUP_TOO_LARGE, NULL);
+    free(group);
+    free(token);
+}
+
+static void test_w_validate_group_name_oversized_far_over_limit(void **state) {
+    char *token = build_group("", "a", 4000, "");
+    char *group = build_group("", "a", 4000, ",b");
+
+    check_group_error(group, -7, token, GROUP_TOO_LARGE, NULL);
+    free(group);
+    free(token);
+}
+
+/* Non-uniform bytes, so a corrupted read shows as a wrong character. */
+static void test_w_validate_group_name_oversized_distinct_bytes(void **state) {
+    char *token = build_group("", "0123456789", 300, "");
+    char *group = build_group("", "0123456789", 300, ",b");
+
+    check_group_error(group, -7, token, GROUP_TOO_LARGE, NULL);
+    free(group);
+    free(token);
+}
+
+/* Total length OS_SIZE_65536 - 1: the multigroup size check passes and the group check fires. */
+static void test_w_validate_group_name_oversized_near_multigroup_cap(void **state) {
+    const size_t token_len = MAX_GROUP_NAME + 2;
+    const size_t filler = (OS_SIZE_65536 - 1 - token_len) / 2;
+    char *token = build_group("", "a", token_len, "");
+    char *fill = build_group("", ",b", 2 * filler, "");
+    char *group = build_group(token, "", 0, fill);
+
+    assert_int_equal(strlen(group), OS_SIZE_65536 - 1);
+    check_group_error(group, -7, token, GROUP_TOO_LARGE, NULL);
+    free(group);
+    free(fill);
+    free(token);
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test(test_create_agent_add_payload),
@@ -594,6 +844,33 @@ int main(void) {
         cmocka_unit_test(test_w_send_clustered_message_success_after_cluster_error),
         cmocka_unit_test(test_w_send_clustered_message_success_after_recv_error),
         #endif
+        // Tests w_validate_group_name
+        cmocka_unit_test(test_w_validate_group_name_valid_single),
+        cmocka_unit_test(test_w_validate_group_name_valid_multi),
+        cmocka_unit_test(test_w_validate_group_name_allowed_punctuation),
+        cmocka_unit_test(test_w_validate_group_name_single_max_length),
+        cmocka_unit_test(test_w_validate_group_name_multi_three_max_length),
+        cmocka_unit_test(test_w_validate_group_name_empty),
+        cmocka_unit_test(test_w_validate_group_name_single_too_large),
+        cmocka_unit_test(test_w_validate_group_name_multigroup_too_large),
+        cmocka_unit_test(test_w_validate_group_name_white_space),
+        cmocka_unit_test(test_w_validate_group_name_white_space_before_oversized),
+        cmocka_unit_test(test_w_validate_group_name_consecutive_commas),
+        cmocka_unit_test(test_w_validate_group_name_only_commas_multi),
+        cmocka_unit_test(test_w_validate_group_name_only_one_comma),
+        cmocka_unit_test(test_w_validate_group_name_leading_trailing_comma),
+        cmocka_unit_test(test_w_validate_group_name_invalid_char_single),
+        cmocka_unit_test(test_w_validate_group_name_invalid_char_multi),
+        cmocka_unit_test(test_w_validate_group_name_max_length_in_multigroup),
+        // Oversized group in a multigroup: kept last so a sanitizer abort does not hide the cases above
+        cmocka_unit_test(test_w_validate_group_name_oversized_null_response),
+        cmocka_unit_test(test_w_validate_group_name_oversized_first),
+        cmocka_unit_test(test_w_validate_group_name_oversized_middle),
+        cmocka_unit_test(test_w_validate_group_name_oversized_last),
+        cmocka_unit_test(test_w_validate_group_name_oversized_one_past_limit),
+        cmocka_unit_test(test_w_validate_group_name_oversized_far_over_limit),
+        cmocka_unit_test(test_w_validate_group_name_oversized_distinct_bytes),
+        cmocka_unit_test(test_w_validate_group_name_oversized_near_multigroup_cap),
     };
     return cmocka_run_group_tests(tests, NULL, NULL);
 }
