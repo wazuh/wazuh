@@ -317,6 +317,7 @@ WriteLogBlocks()
             continue
         fi
 
+        # The shipped blocks are package manager logs, which the installer summary leaves out.
         if [ "$1" = "echo" ]; then
             EchoLocalfile "${_lb_location}"
         elif [ "$1" = "add" ]; then

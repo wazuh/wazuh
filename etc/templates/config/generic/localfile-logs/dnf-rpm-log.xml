@@ -1,0 +1,5 @@
+  <localfile>
+    <log_format>syslog</log_format>
+    <location>/var/log/dnf.rpm.log</location>
+    <ignore>--- logging initialized ---</ignore>
+  </localfile>

@@ -55,7 +55,9 @@ jobs:
         run: bash src/init/tests/test_pkg_installer_state.sh
 
       # The deb postinst runs it under dash, the rpm %post under bash.
-      - name: Default log files (inst-functions.sh WriteLogs, dash and bash)
-        run: |
-          sh src/init/tests/test_write_logs.sh
-          bash src/init/tests/test_write_logs.sh
+      - name: Default log files under dash (inst-functions.sh WriteLogs, add_localfiles.sh)
+        run: sh src/init/tests/test_write_logs.sh
+
+      - name: Default log files under bash (inst-functions.sh WriteLogs, add_localfiles.sh)
+        if: ${{ !cancelled() }}
+        run: bash src/init/tests/test_write_logs.sh

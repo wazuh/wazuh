@@ -2,4 +2,6 @@
     <log_format>syslog</log_format>
     <location>/var/log/dnf.log</location>
     <restrict>^\S+ (DDEBUG Command: |WARNING |ERROR |CRITICAL )</restrict>
+    <ignore>^\S+ DDEBUG Command: dnf makecache</ignore>
+    <ignore>^\S+ WARNING (=+|WARNING:)\s*$</ignore>
   </localfile>

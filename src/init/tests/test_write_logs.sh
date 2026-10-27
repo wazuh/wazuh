@@ -106,6 +106,13 @@ dnf="  <localfile>
     <log_format>syslog</log_format>
     <location>$LOG/dnf.log</location>
     <restrict>^\\S+ (DDEBUG Command: |WARNING |ERROR |CRITICAL )</restrict>
+    <ignore>^\\S+ DDEBUG Command: dnf makecache</ignore>
+    <ignore>^\\S+ WARNING (=+|WARNING:)\\s*\$</ignore>
+  </localfile>"
+dnf_rpm="  <localfile>
+    <log_format>syslog</log_format>
+    <location>$LOG/dnf.rpm.log</location>
+    <ignore>--- logging initialized ---</ignore>
   </localfile>"
 
 # ------------------------------------------------------------------------------- package managers
@@ -120,13 +127,12 @@ same "Debian family without journald" \
 
 host dnf.log dnf.rpm.log audit/audit.log secure
 same "Red Hat family with journald" \
-    "$(blocks "$journald" "$(localfile audit "$LOG/audit/audit.log")" "$active_responses" \
-        "$(localfile syslog "$LOG/dnf.rpm.log")" "$dnf")" \
+    "$(blocks "$journald" "$(localfile audit "$LOG/audit/audit.log")" "$active_responses" "$dnf" "$dnf_rpm")" \
     "$(write_logs journald add)"
 
 same "Red Hat family without journald" \
-    "$(blocks "$(localfile audit "$LOG/audit/audit.log")" "$active_responses" \
-        "$(localfile syslog "$LOG/dnf.rpm.log")" "$(localfile syslog "$LOG/secure")" "$dnf")" \
+    "$(blocks "$(localfile audit "$LOG/audit/audit.log")" "$active_responses" "$(localfile syslog "$LOG/secure")" \
+        "$dnf" "$dnf_rpm")" \
     "$(write_logs no-journald add)"
 
 host
@@ -160,6 +166,18 @@ for block in "$REPO"/etc/templates/config/generic/localfile-logs/*.xml; do
         same "$name has its <multiline_regex>" 1 "$(grep -c '<multiline_regex' "$block")"
     fi
 done
+
+# ------------------------------------------------------------------------------- add_localfiles.sh
+# The packages run it with the installation directory and append its output to ossec.conf. The blocks
+# depend on this host's log files, so only the wrapper and the installation directory are checked.
+add_localfiles=$(sh "$REPO/src/init/add_localfiles.sh" "$INSTALL")
+same "add_localfiles.sh opens <ossec_config>" "<ossec_config>" "$(printf '%s\n' "$add_localfiles" | sed -n 2p)"
+same "add_localfiles.sh closes <ossec_config>" "</ossec_config>" "$(printf '%s\n' "$add_localfiles" | tail -n 1)"
+case "$add_localfiles" in
+    *"$active_responses"*) pass "add_localfiles.sh uses the installation directory" ;;
+    *) fail "add_localfiles.sh uses the installation directory" "no '$INSTALL/logs/active-responses.log' block" ;;
+esac
+same "add_localfiles.sh removes its temporary file" no "$([ -e "$REPO/localfiles.temp" ] && echo yes || echo no)"
 
 echo "test_write_logs: $((checks - failures))/$checks passed"
 [ "$failures" = 0 ]
