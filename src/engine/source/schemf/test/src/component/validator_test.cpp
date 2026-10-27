@@ -430,7 +430,7 @@ INSTANTIATE_TEST_SUITE_P(
                   {},
                   {JT::String}),
            BuildT(ST::DATE, {ST::DATE}, {ST::TEXT, ST::WILDCARD, ST::KEYWORD, ST::DATE_NANOS}, {JT::String}),
-           BuildT(ST::DATE_NANOS, {ST::DATE_NANOS, ST::DATE}, {ST::TEXT, ST::WILDCARD, ST::KEYWORD}, {JT::String}),
+           BuildT(ST::DATE_NANOS, {ST::DATE_NANOS}, {ST::TEXT, ST::WILDCARD, ST::KEYWORD, ST::DATE}, {JT::String}),
            BuildT(ST::IP, {ST::IP}, {ST::TEXT, ST::WILDCARD, ST::KEYWORD}, {JT::String}),
            BuildT(ST::BINARY, {ST::BINARY}, {ST::TEXT, ST::WILDCARD, ST::KEYWORD}, {JT::String}),
            BuildT(ST::OBJECT, {ST::OBJECT}, {}, {JT::Object}),

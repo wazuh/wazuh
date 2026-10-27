@@ -7,6 +7,7 @@
 #include <chrono>
 #include <cmath>
 #include <locale>
+#include <optional>
 #include <sstream>
 #include <string>
 #include <string_view>
@@ -212,6 +213,44 @@ inline bool isIsoUtcLayout(std::string_view val)
 
 } // namespace detail
 
+namespace detail
+{
+
+/**
+ * @brief Parses a date in the layout checked by isIsoUtcLayout, with every field in range.
+ *
+ * @return The parsed fields, or nothing if the value is not a valid date.
+ */
+inline std::optional<date::fields<std::chrono::nanoseconds>> parseIsoUtcDate(std::string_view val)
+{
+    if (!isIsoUtcLayout(val))
+    {
+        return std::nullopt;
+    }
+
+    std::istringstream stream {std::string(val)};
+    stream.imbue(std::locale::classic());
+    date::fields<std::chrono::nanoseconds> fields {};
+    std::string abbrev {};
+    std::chrono::minutes offset {0};
+    stream >> date::parse("%Y-%m-%dT%H:%M:%SZ", fields, abbrev, offset);
+    if (stream.fail())
+    {
+        return std::nullopt;
+    }
+
+    // The date library does not check ranges: month 13, February 31 or hour 25 parse fine
+    if (!fields.ymd.ok() || fields.tod.hours() >= std::chrono::hours {24}
+        || fields.tod.minutes() >= std::chrono::minutes {60} || fields.tod.seconds() >= std::chrono::seconds {60})
+    {
+        return std::nullopt;
+    }
+
+    return fields;
+}
+
+} // namespace detail
+
 /** @brief Validator that checks if a JSON value is a valid date string. */
 inline ValueValidator getDateValidator()
 {
@@ -225,27 +264,46 @@ inline ValueValidator getDateValidator()
 
         std::string_view val;
         value.getString(val);
-        if (!detail::isIsoUtcLayout(val))
+        if (!detail::parseIsoUtcDate(val))
         {
             return base::Error {"Invalid date"};
         }
 
-        std::istringstream stream {std::string(val)};
-        stream.imbue(std::locale::classic());
-        date::fields<std::chrono::nanoseconds> fields {};
-        std::string abbrev {};
-        std::chrono::minutes offset {0};
-        stream >> date::parse("%Y-%m-%dT%H:%M:%SZ", fields, abbrev, offset);
-        if (stream.fail())
+        return base::noError();
+    };
+}
+
+/**
+ * @brief Validator that checks if a JSON value is a valid date_nanos string.
+ *
+ * Same layout as a date, limited to what the index mapping can store: nanoseconds since the epoch in a signed 64-bit
+ * integer, from 1970-01-01T00:00:00Z to 2262-04-11T23:47:16.854775807Z.
+ */
+inline ValueValidator getDateNanosValidator()
+{
+    return [](const json::Json& value) -> base::OptError
+    {
+        if (!value.isString())
+        {
+            return base::Error {"Value is not a string"};
+        }
+
+        std::string_view val;
+        value.getString(val);
+        const auto fields = detail::parseIsoUtcDate(val);
+        if (!fields)
         {
             return base::Error {"Invalid date"};
         }
 
-        // The date library does not check ranges: month 13, February 31 or hour 25 parse fine
-        if (!fields.ymd.ok() || fields.tod.hours() >= std::chrono::hours {24}
-            || fields.tod.minutes() >= std::chrono::minutes {60} || fields.tod.seconds() >= std::chrono::seconds {60})
+        // Compared by day and time of day: the nanosecond count of a date past the maximum overflows int64
+        constexpr auto MAX = std::chrono::nanoseconds::max();
+        constexpr auto MAX_DAY = std::chrono::floor<date::days>(MAX);
+        const auto day = date::sys_days {fields->ymd}.time_since_epoch();
+        if (day.count() < 0 || day > MAX_DAY || (day == MAX_DAY && fields->tod.to_duration() > MAX - MAX_DAY))
         {
-            return base::Error {"Invalid date"};
+            return base::Error {
+                "Date out of the date_nanos range [1970-01-01T00:00:00Z, 2262-04-11T23:47:16.854775807Z]"};
         }
 
         return base::noError();

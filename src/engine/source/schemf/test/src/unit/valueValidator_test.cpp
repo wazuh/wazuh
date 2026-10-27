@@ -302,6 +302,57 @@ TEST(ValueValidatorTest, Date_AcceptsValidForms)
 }
 
 // ---------------------------------------------------------------------------
+// getDateNanosValidator
+// ---------------------------------------------------------------------------
+
+TEST(ValueValidatorTest, DateNanos_AcceptsTheRepresentableRange)
+{
+    auto v = getDateNanosValidator();
+    for (const auto* value : {R"("1970-01-01T00:00:00Z")",
+                              R"("2024-01-01T00:00:00.123456789Z")",
+                              R"("2262-04-11T00:00:00Z")",
+                              R"("2262-04-11T23:47:16.854775807Z")",
+                              R"("2262-04-11T23:47:16.854775807Zulu")"})
+    {
+        SCOPED_TRACE(value);
+        EXPECT_FALSE(base::isError(v(json::Json {value})));
+    }
+}
+
+TEST(ValueValidatorTest, DateNanos_RejectsOutOfRange)
+{
+    auto v = getDateNanosValidator();
+    for (const auto* value : {R"("1969-12-31T23:59:59.999999999Z")",
+                              R"("0001-01-01T00:00:00Z")",
+                              R"("2262-04-11T23:47:16.854775808Z")",
+                              R"("2262-04-12T00:00:00Z")",
+                              R"("9999-12-31T23:59:59Z")"})
+    {
+        SCOPED_TRACE(value);
+        auto res = v(json::Json {value});
+        ASSERT_TRUE(base::isError(res));
+        EXPECT_THAT(base::getError(res).message, HasSubstr("date_nanos range"));
+    }
+}
+
+TEST(ValueValidatorTest, DateNanos_RejectsWhatTheDateValidatorRejects)
+{
+    auto v = getDateNanosValidator();
+    for (const auto* value :
+         {R"("not-a-date")", R"("2024-02-31T00:00:00Z")", R"("2024-01-01T00:00:00")", R"("2024-01-01T00:00:00+02:00")"})
+    {
+        SCOPED_TRACE(value);
+        auto res = v(json::Json {value});
+        ASSERT_TRUE(base::isError(res));
+        EXPECT_THAT(base::getError(res).message, HasSubstr("Invalid date"));
+    }
+
+    auto res = v(json::Json {"42"});
+    ASSERT_TRUE(base::isError(res));
+    EXPECT_THAT(base::getError(res).message, HasSubstr("string"));
+}
+
+// ---------------------------------------------------------------------------
 // getIpValidator
 // ---------------------------------------------------------------------------
 

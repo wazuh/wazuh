@@ -417,7 +417,7 @@ The map is `registerCompatibles()` in `schemf/src/validator.cpp`. Key compatibil
 | `SCALED_FLOAT` | `FLOAT` (no), `HALF_FLOAT` (no), `DOUBLE` (yes) |
 | `IP`, `BINARY` | `KEYWORD` (yes), `TEXT` (yes), `WILDCARD` (yes) |
 | `DATE` | `KEYWORD` (yes), `TEXT` (yes), `WILDCARD` (yes), `DATE_NANOS` (yes) |
-| `DATE_NANOS` | `KEYWORD` (yes), `TEXT` (yes), `WILDCARD` (yes), `DATE` (no) |
+| `DATE_NANOS` | `KEYWORD` (yes), `TEXT` (yes), `WILDCARD` (yes), `DATE` (yes) |
 | `KEYWORD`, `TEXT`, `MATCH_ONLY_TEXT`, `WILDCARD`, `CONSTANT_KEYWORD`, `COMPLETION`, `SEARCH_AS_YOU_TYPE`, `SEMANTIC` | every other string type of this row, plus `DATE`, `DATE_NANOS`, `IP`, `BINARY` (all no) |
 | `BOOLEAN`, `UNSIGNED_LONG`, `TOKEN_COUNT`, object types, `GEO_POINT` | none |
 
@@ -441,8 +441,9 @@ Defined in `schemf/src/valueValidators.hpp`, each validator checks the concrete 
 | `getUnsignedLongValidator()` | `value.isUint64()` (used for `UNSIGNED_LONG` and `TOKEN_COUNT`) |
 | `getFloatValidator()` | `value.isFloat()` (used for `FLOAT`, `HALF_FLOAT`, `SCALED_FLOAT`) |
 | `getDoubleValidator()` | `value.isDouble()` |
-| `getStringValidator()` | `value.isString()` (every string type without a stricter validator, `DATE_NANOS` included) |
+| `getStringValidator()` | `value.isString()` (every string type without a stricter validator) |
 | `getDateValidator()` | Is string in the exact form `YYYY-MM-DDTHH:MM:SS[.fraction]Z` (two-digit fields, 1-9 fraction digits, zone `Z` or `Zulu` and nothing after it) that is a real calendar date and time (month 1-12, valid day of month, hour < 24, minute < 60, second < 60) |
+| `getDateNanosValidator()` | `getDateValidator()` plus the range a `date_nanos` mapping can store (nanoseconds since the epoch in an int64): `1970-01-01T00:00:00Z` to `2262-04-11T23:47:16.854775807Z` |
 | `getIpValidator()` | Is string that `inet_pton` accepts as IPv4 or IPv6 (whole string; no embedded NUL, no zone id) |
 | `getBinaryValidator()` | Is string that is entirely Base64 (padding allowed, nothing after it) |
 | `getObjectValidator()` | `value.isObject()` |

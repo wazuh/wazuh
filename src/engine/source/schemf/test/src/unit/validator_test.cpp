@@ -166,11 +166,16 @@ TEST_F(ValidatorTest, ValidateSType_NotCompatible)
 
 TEST_F(ValidatorTest, ValidateSType_DateTokenIntoDateNanos)
 {
-    // DATE_NANOS field <- DATE token: every valid date is a valid date_nanos, no runtime validation
+    // DATE_NANOS field <- DATE token: compatible, the value is checked at runtime (date_nanos starts at the epoch)
     auto token = STypeToken::create(Type::DATE);
     auto res = m_validator->validate(DotPath {"event.received"}, token);
     EXPECT_OK(res);
-    EXPECT_FALSE(base::getResponse(res).needsRuntimeValidation());
+    ASSERT_TRUE(base::getResponse(res).needsRuntimeValidation());
+
+    const auto& validator = base::getResponse(res).getValidator();
+    EXPECT_FALSE(base::isError(validator(json::Json {R"("2024-01-01T00:00:00Z")"})));
+    EXPECT_TRUE(base::isError(validator(json::Json {R"("1969-12-31T23:59:59Z")"})));
+    EXPECT_TRUE(base::isError(validator(json::Json {R"(["2024-01-01T00:00:00Z", "1969-12-31T23:59:59Z"])"})));
 }
 
 TEST_F(ValidatorTest, ValidateSType_DateNanosTokenIntoDate)

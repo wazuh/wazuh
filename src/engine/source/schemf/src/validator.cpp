@@ -140,8 +140,8 @@ void Schema::Validator::registerCompatibles()
     m_compatibles.emplace(
         Type::DATE_NANOS,
         ValidationInfo {{json::Json::Type::String},
-                        validators::getStringValidator(),
-                        {{Type::KEYWORD, true}, {Type::TEXT, true}, {Type::WILDCARD, true}, {Type::DATE, false}}});
+                        validators::getDateNanosValidator(),
+                        {{Type::KEYWORD, true}, {Type::TEXT, true}, {Type::WILDCARD, true}, {Type::DATE, true}}});
     m_compatibles.emplace(Type::IP,
                           ValidationInfo {{json::Json::Type::String},
                                           validators::getIpValidator(),

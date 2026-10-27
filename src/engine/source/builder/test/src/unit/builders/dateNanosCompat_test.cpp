@@ -112,7 +112,7 @@ protected:
 
 TEST_F(DateNanosCompatTest, ParseDateAndGetDateIntoDateNanosBuild)
 {
-    // DATE helpers into a DATE_NANOS field: compatible without runtime validation
+    // DATE helpers into a DATE_NANOS field: compatible, with runtime validation of the date_nanos range
     // Delimited raw strings: `()"` and `')"` inside the expressions would otherwise close a plain R"(...)"
     EXPECT_NO_THROW(buildMapEntry(R"json({"event.received": "parse_date($msg, '%Y-%m-%dT%H:%M:%SZ')"})json"));
     EXPECT_NO_THROW(buildMapEntry(R"json({"event.received": "get_date()"})json"));
@@ -150,6 +150,29 @@ TEST_F(DateNanosCompatTest, DateNanosReferenceIntoDateRuntimeRejects)
         auto result = run(expr, event);
         EXPECT_TRUE(result.failure());
         EXPECT_FALSE(event->exists("/@timestamp"));
+    }
+}
+
+TEST_F(DateNanosCompatTest, DateReferenceIntoDateNanosRuntimeRange)
+{
+    // A valid DATE is not always a valid DATE_NANOS: the index mapping stores nanoseconds since the epoch in an int64
+    base::Expression expr;
+    ASSERT_NO_THROW(expr = buildMapEntry(R"({"event.received": "$@timestamp"})"));
+
+    const std::vector<std::pair<std::string, bool>> cases {
+        {R"("2026-10-26T10:00:00.123Z")", true},
+        {R"("1970-01-01T00:00:00Z")", true},
+        {R"("1969-12-31T23:59:59Z")", false},
+        {R"("2262-04-12T00:00:00Z")", false},
+        {R"(["2026-10-26T10:00:00Z", "1969-12-31T23:59:59Z"])", false}};
+    for (const auto& [value, accepted] : cases)
+    {
+        SCOPED_TRACE(value);
+        auto event = std::make_shared<json::Json>(R"({})");
+        event->set("/@timestamp", json::Json(value.c_str()));
+        auto result = run(expr, event);
+        EXPECT_EQ(result.success(), accepted);
+        EXPECT_EQ(event->exists("/event/received"), accepted);
     }
 }
 
