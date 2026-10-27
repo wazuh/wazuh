@@ -53,6 +53,7 @@
 #ifndef _CGROUP_CONTAINER_MAP_HPP
 #define _CGROUP_CONTAINER_MAP_HPP
 
+#include <algorithm>
 #include <cstddef>
 #include <cstdint>
 #include <map>
@@ -108,6 +109,14 @@ struct CgroupDeltaEvent
      * one it had, which is how the consumer knows what to withdraw. */
     std::uint64_t cgroup_id {0};
     std::string container_id;
+
+    /* The container's OTHER cgroups, when it occupies more than one (an init
+     * system inside it: `init.scope` plus one per unit). Carried alongside
+     * rather than as extra events, because applyDelta() withdraws whatever the
+     * container held before applying an event -- two events for one container
+     * would each undo the other's work. Empty on `removed`, which withdraws
+     * everything the container held regardless. */
+    std::vector<std::uint64_t> extra_cgroup_ids;
 };
 
 /* What a connector list refresh changed.
@@ -348,9 +357,9 @@ class CgroupContainerMap
                     continue;
                 }
 
-                /* Whatever inode this container held until now. Taken for every
-                 * kind, because all three can move it: a restart gives it a new
-                 * one, a stop takes it away, a removal ends it. */
+                /* Whatever inodes this container held until now. Taken for
+                 * every kind, because all three can move them: a restart gives
+                 * it new ones, a stop takes them away, a removal ends it. */
                 const auto previous = eraseByContainerIdLocked(event.container_id);
 
                 if (event.kind == CgroupDeltaEvent::Kind::removed || event.cgroup_id == 0)
@@ -369,33 +378,68 @@ class CgroupContainerMap
                      * event's own value because ours is what the kernel was
                      * actually told; they agree on a removal and only ours is
                      * set on a stop. */
-                    const auto withdraw = (previous != 0) ? previous : event.cgroup_id;
-
-                    if (withdraw != 0)
+                    if (!previous.empty())
                     {
-                        delta.removed.push_back(withdraw);
+                        for (const auto withdraw : previous)
+                        {
+                            delta.removed.push_back(withdraw);
+                        }
+                    }
+                    else if (event.cgroup_id != 0)
+                    {
+                        delta.removed.push_back(event.cgroup_id);
                     }
                     continue;
                 }
 
-                if (previous != 0 && previous != event.cgroup_id)
+                /* The container's full key set after this event: the one it is
+                 * filed under, plus whatever other cgroups it occupies. */
+                std::vector<std::uint64_t> current;
+                current.reserve(1 + event.extra_cgroup_ids.size());
+                current.push_back(event.cgroup_id);
+
+                for (const auto extra : event.extra_cgroup_ids)
                 {
-                    /* Restarted: the inode it used to have is dead and may be
-                     * handed to something else, so it must stop being admitted. */
-                    delta.removed.push_back(previous);
+                    if (extra != 0 && extra != event.cgroup_id &&
+                        std::find(current.begin(), current.end(), extra) == current.end())
+                    {
+                        current.push_back(extra);
+                    }
                 }
 
-                if (noteContainerLocked(event.cgroup_id, event.container_id))
+                for (const auto stale : previous)
                 {
-                    delta.escalate.push_back(event.container_id);
+                    if (std::find(current.begin(), current.end(), stale) == current.end())
+                    {
+                        /* Gone from this container: a restart gave it a new
+                         * inode, or a unit it was running exited. Either way the
+                         * old one is dead and may be handed to something else,
+                         * so it must stop being admitted. */
+                        delta.removed.push_back(stale);
+                    }
                 }
 
-                if (previous != event.cgroup_id)
+                bool escalated = false;
+
+                for (const auto key : current)
                 {
-                    /* A new inode for this container: either it has just been
-                     * published, or it restarted and the old one is gone. Both
-                     * are a container whose contents nobody has walked. */
-                    delta.added.emplace_back(event.cgroup_id, event.container_id);
+                    /* Once per container however many of its cgroups were
+                     * unknown: `escalate` drives a whole-container re-walk, and
+                     * doing that N times for one container is N-1 walks of the
+                     * same tree. */
+                    if (noteContainerLocked(key, event.container_id) && !escalated)
+                    {
+                        delta.escalate.push_back(event.container_id);
+                        escalated = true;
+                    }
+
+                    if (std::find(previous.begin(), previous.end(), key) == previous.end())
+                    {
+                        /* A new inode for this container: either it has just been
+                         * published, or it restarted and the old one is gone. Both
+                         * are a container whose contents nobody has walked. */
+                        delta.added.emplace_back(key, event.container_id);
+                    }
                 }
             }
 
@@ -426,6 +470,8 @@ class CgroupContainerMap
 
             m_container.clear();
 
+            std::set<std::string> escalated;
+
             for (const auto& entry : containers)
             {
                 if (entry.first == 0 || entry.second.empty())
@@ -438,7 +484,11 @@ class CgroupContainerMap
                     continue;
                 }
 
-                if (noteContainerLocked(entry.first, entry.second))
+                /* Once per container however many of its cgroups were unknown,
+                 * for the reason given in applyDelta(): `escalate` re-walks the
+                 * whole container, so a second entry for the same id is a second
+                 * walk of the same tree. */
+                if (noteContainerLocked(entry.first, entry.second) && escalated.insert(entry.second).second)
                 {
                     delta.escalate.push_back(entry.second);
                 }
@@ -501,24 +551,38 @@ class CgroupContainerMap
         }
 
     private:
-        /* Drops whatever inode `container_id` is indexed under, returning it, or
-         * 0 when it had none. Linear, and deliberately so: the map is keyed by
-         * inode because that is what every event carries, and the reverse
-         * direction is only ever needed when a container stops or leaves — rare,
-         * against a few hundred entries, and not worth a second index that
-         * would have to be kept in step. */
-        std::uint64_t eraseByContainerIdLocked(const std::string& container_id)
+        /* Drops EVERY inode `container_id` is indexed under, returning them, or
+         * an empty vector when it had none. Linear, and deliberately so: the map
+         * is keyed by inode because that is what every event carries, and the
+         * reverse direction is only ever needed when a container stops or leaves
+         * — rare, against a few hundred entries, and not worth a second index
+         * that would have to be kept in step.
+         *
+         * All of them rather than the first: a container can hold several
+         * inodes. That is true whenever it runs an init system (one cgroup per
+         * unit, all published together), and it was ALREADY true before those
+         * were published, because the cold path files an alias inode against the
+         * same container id when it resolves one. Returning only the first left
+         * the rest in the map, pointing at a container that had gone, until
+         * some unrelated refresh happened to overwrite them. */
+        std::vector<std::uint64_t> eraseByContainerIdLocked(const std::string& container_id)
         {
-            for (auto it = m_container.begin(); it != m_container.end(); ++it)
+            std::vector<std::uint64_t> inodes;
+
+            for (auto it = m_container.begin(); it != m_container.end();)
             {
                 if (it->second == container_id)
                 {
-                    const auto inode = it->first;
-                    m_container.erase(it);
-                    return inode;
+                    inodes.push_back(it->first);
+                    it = m_container.erase(it);
+                }
+                else
+                {
+                    ++it;
                 }
             }
-            return 0;
+
+            return inodes;
         }
 
         bool noteContainerLocked(std::uint64_t cgroup_id, const std::string& container_id)

@@ -274,6 +274,26 @@ namespace wazuh::container_instances::wire
             data["cgroup_id"] = std::to_string(record.hostKey);
         }
 
+        /* The container's other cgroups, under the same guard and for the same
+         * reason as `cgroup_id`: on a legacy host these are not cgroup ids and
+         * a consumer handing them to the kernel allowlist would admit unrelated
+         * inodes. Omitted entirely when empty, which is the ordinary case, so
+         * the common reply does not grow.
+         *
+         * Additive: a client that does not know the key reads the reply exactly
+         * as before. */
+        if (keyKind == KeyKind::cgroupInode && !record.extraHostKeys.empty())
+        {
+            auto extraKeys = nlohmann::json::array();
+
+            for (const auto key : record.extraHostKeys)
+            {
+                extraKeys.push_back(std::to_string(key));
+            }
+
+            data["extra_cgroup_ids"] = std::move(extraKeys);
+        }
+
         if (record.runtime == ContainerRuntime::kubernetes)
         {
             data["pod_uid"] = record.podUid;

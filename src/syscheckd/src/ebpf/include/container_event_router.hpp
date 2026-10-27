@@ -71,6 +71,7 @@
 
 #include <atomic>
 #include <cstdint>
+#include <set>
 #include <string>
 #include <utility>
 #include <vector>
@@ -377,10 +378,21 @@ class ContainerEventRouter
 
             if (m_filtering)
             {
+                /* Once per CONTAINER, not once per cgroup it added. A container
+                 * running an init system publishes several -- `init.scope` plus
+                 * one per unit -- and onDrops() re-walks the whole container, so
+                 * doing it per cgroup is N-1 walks of the same tree and a
+                 * discovery_escalations count that no longer matches the number
+                 * of containers discovered. */
+                std::set<std::string> escalated;
+
                 for (const auto& entry : delta.added)
                 {
-                    bump(m_stats.discovery_escalations);
-                    m_staging.onDrops(entry.second);
+                    if (escalated.insert(entry.second).second)
+                    {
+                        bump(m_stats.discovery_escalations);
+                        m_staging.onDrops(entry.second);
+                    }
                 }
             }
 

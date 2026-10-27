@@ -26,6 +26,7 @@
 #include <gtest/gtest.h>
 
 #include <string>
+#include <vector>
 #include <variant>
 
 using namespace wazuh::container_instances;
@@ -204,4 +205,47 @@ TEST(WireV2Test, AVersionOneListReplyIsUnchangedForAVersionOneClient)
     EXPECT_EQ(1, body["version"].get<int>());
     ASSERT_EQ(1U, body["containers"].size());
     EXPECT_EQ("4242", body["containers"][0]["cgroup_id"].get<std::string>());
+}
+
+/* ---------------------------------------------------------------------------
+ * `extra_cgroup_ids`: the container's other cgroups, for a consumer that
+ * filters events in the kernel by exact cgroup id.
+ * ------------------------------------------------------------------------- */
+
+TEST(WireV2Test, ARecordCarriesTheContainersOtherCgroupsWhenItHasThem)
+{
+    auto record = MakeRecord(11);
+    record.extraHostKeys = {12, 13};
+
+    const auto data = wire::recordToJson(record, KeyKind::cgroupInode);
+
+    ASSERT_TRUE(data.contains("extra_cgroup_ids"));
+    EXPECT_EQ((std::vector<std::string> {"12", "13"}), data["extra_cgroup_ids"].get<std::vector<std::string>>())
+        << "decimal strings, for the same 2^53 reason every other key on this protocol is one";
+
+    // The canonical key stays where it was and is NOT repeated here: two copies
+    // of it could disagree.
+    EXPECT_EQ("11", data["cgroup_id"].get<std::string>());
+}
+
+TEST(WireV2Test, ARecordWithOneCgroupOmitsTheExtraKeysEntirely)
+{
+    // The ordinary container. The common reply must not grow an empty array.
+    const auto data = wire::recordToJson(MakeRecord(4242), KeyKind::cgroupInode);
+
+    EXPECT_FALSE(data.contains("extra_cgroup_ids"));
+}
+
+TEST(WireV2Test, ANamespaceKeyedHostOmitsTheExtraKeysToo)
+{
+    /* Same reasoning as `cgroup_id` above, and it matters more here: these go
+     * straight into a kernel allowlist. Publishing mount-namespace inodes under
+     * a cgroup-shaped name would have a v1 consumer admit unrelated inodes and
+     * monitor nothing, reporting success throughout. */
+    auto record = MakeRecord(4026532281);
+    record.extraHostKeys = {4026532282};
+
+    const auto data = wire::recordToJson(record, KeyKind::mntNsInode);
+
+    EXPECT_FALSE(data.contains("extra_cgroup_ids"));
 }

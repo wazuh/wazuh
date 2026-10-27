@@ -112,6 +112,19 @@ namespace wazuh::container_instances
         /// indistinguishable from an unresolved one.
         std::uint64_t hostKey {0};
 
+        /// The container's OTHER cgroup keys, if it occupies more than one.
+        ///
+        /// A container running an init system has a cgroup per unit on top of
+        /// the one it is filed under, and a consumer that filters events in the
+        /// kernel by exact cgroup id has to admit all of them or it discards
+        /// everything those units do. See extraHostKeysByContainerId().
+        ///
+        /// Deliberately NOT part of lifecycleChangeMask(): a unit starting or
+        /// stopping is not a change to the container's identity, and counting it
+        /// as one would re-walk the whole container every time a timer fired
+        /// inside it. Consumers pick the set up from the next list refresh.
+        std::vector<std::uint64_t> extraHostKeys;
+
         /// When the current run of this container began, verbatim from the
         /// runtime (RFC 3339).
         ///

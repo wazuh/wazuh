@@ -80,10 +80,22 @@ namespace wazuh::container_instances
         // One key per container, chosen deterministically -- see
         // hostKeysByContainerId().
         const auto inodeByContainerId = hostKeysByContainerId(scan);
+        // The rest of the container's cgroups travel beside the chosen one, so a
+        // consumer filtering events in the kernel can admit them all; without
+        // them an init-system container's units are filtered out before anyone
+        // sees them. See extraHostKeysByContainerId().
+        const auto extraKeysByContainerId = extraHostKeysByContainerId(scan);
         for (auto& record : records)
         {
             const auto it = inodeByContainerId.find(record.containerId);
             record.hostKey = (it != inodeByContainerId.end()) ? it->second : 0;
+
+            const auto extras = extraKeysByContainerId.find(record.containerId);
+
+            if (extras != extraKeysByContainerId.end())
+            {
+                record.extraHostKeys = extras->second;
+            }
         }
 
         m_store.applySnapshot(m_source, std::move(records), scan.allHostKeys, std::chrono::steady_clock::now());

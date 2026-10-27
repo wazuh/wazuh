@@ -49,6 +49,17 @@ namespace wazuh::container_instances_client
         /// keyed that way — see ContainerEventRef::cgroupId.
         std::uint64_t cgroupId {0};
 
+        /// The container's OTHER host keys, when it occupies more than one
+        /// cgroup (an init system inside the container: `init.scope` plus one
+        /// per unit). Empty on the ordinary single-cgroup container, and empty
+        /// on a host whose keys are not cgroup ids -- the producer omits the
+        /// field there for the same reason it omits `cgroup_id`.
+        ///
+        /// A consumer that filters events in the kernel by exact cgroup id has
+        /// to admit these as well as `cgroupId`, or everything the container's
+        /// units do is discarded before it sees any of it.
+        std::vector<std::uint64_t> extraCgroupIds;
+
         /// The container's FULL record as the `list` reply carried it — the same
         /// object a `resolve` would return in its "data" field (runtime, name,
         /// image, image_digest, restart_count, labels, network, oci_mounts, and
@@ -84,6 +95,12 @@ namespace wazuh::container_instances_client
         /// one that is not; hostKeyKind() says which, and the name is kept only
         /// because consumers already spell it this way.
         std::uint64_t cgroupId {0};
+
+        /// The container's other host keys, as ContainerRef::extraCgroupIds.
+        /// Read from this event's `data`, so it is empty on a removal (which
+        /// carries no record) -- a consumer withdraws a removed container's
+        /// keys from what it already holds, not from the event.
+        std::vector<std::uint64_t> extraCgroupIds;
 
         /// Change classes as NAMES, verbatim from the wire. Deliberately not
         /// decoded into a bitmask here: a class this build does not know must
@@ -317,6 +334,11 @@ namespace wazuh::container_instances_client
                 // hostKeyKind() and refuses, as the FIM drain does.
                 event.cgroupId = parseDecimalU64(item.value("key", item.value("cgroup_id", std::string {"0"})));
 
+                if (const auto data = item.find("data"); data != item.end() && data->is_object())
+                {
+                    event.extraCgroupIds = parseDecimalU64Array(*data, "extra_cgroup_ids");
+                }
+
                 if (event.containerId.empty())
                 {
                     continue;
@@ -545,12 +567,41 @@ namespace wazuh::container_instances_client
             {
                 ref.cgroupId = parseDecimalU64(*it);
             }
+            ref.extraCgroupIds = parseDecimalU64Array(item, "extra_cgroup_ids");
             if (ref.containerId.empty())
             {
                 return std::nullopt;
             }
             ref.record = item;
             return ref;
+        }
+
+        /// An array of those decimal strings, under `key` of `object`, skipping
+        /// anything that is not one. Absent, not an array, or empty all give an
+        /// empty vector, which every caller already treats as "no extra keys" --
+        /// so a producer that does not send the field, and one that sends it
+        /// malformed, both degrade to today's behaviour rather than to a throw.
+        [[nodiscard]] static std::vector<std::uint64_t> parseDecimalU64Array(const nlohmann::json& object,
+                                                                            const char* key)
+        {
+            std::vector<std::uint64_t> out;
+
+            const auto it = object.find(key);
+
+            if (it == object.end() || !it->is_array())
+            {
+                return out;
+            }
+
+            for (const auto& value : *it)
+            {
+                if (const auto parsed = parseDecimalU64(value); parsed != 0)
+                {
+                    out.push_back(parsed);
+                }
+            }
+
+            return out;
         }
 
         /// 64-bit values travel as decimal strings on this protocol: cJSON

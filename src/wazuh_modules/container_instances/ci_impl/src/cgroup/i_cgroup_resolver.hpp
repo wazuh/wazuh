@@ -2,6 +2,7 @@
 
 #include "../core/host_key.hpp"
 
+#include <algorithm>
 #include <cstdint>
 #include <optional>
 #include <string>
@@ -120,6 +121,71 @@ namespace wazuh::container_instances
 
             pathByContainerId[entry.containerId] = entry.cgroupPath;
             out[entry.containerId] = hostKey;
+        }
+
+        return out;
+    }
+
+    /// The host keys a container occupies BESIDES the one it is filed under.
+    ///
+    /// hostKeysByContainerId() collapses a container to one key on purpose, so
+    /// its identity cannot flap. The kernel event filter needs the other half of
+    /// that picture: a container running an init system occupies several cgroups
+    /// -- `init.scope`, one per unit -- and rt_file.bpf.c matches an event's
+    /// cgroup id by EQUALITY against the allowlist. An allowlist holding only
+    /// the canonical key therefore discards, in the kernel, every event the
+    /// container's units produce; nothing downstream ever sees them, so nothing
+    /// downstream can recover them either.
+    ///
+    /// Returned separately from the canonical key rather than as one combined
+    /// set, so there is no second copy of the canonical key that could disagree
+    /// with `hostKey`. Sorted, because an order that varied between scans would
+    /// read as keys coming and going to a consumer diffing the two.
+    ///
+    /// Empty for the ordinary case: a container whose processes all sit in its
+    /// own cgroup has no extra keys, and this costs it nothing.
+    [[nodiscard]] inline std::unordered_map<std::string, std::vector<std::uint64_t>>
+    extraHostKeysByContainerId(const CgroupScan& scan)
+    {
+        const auto canonical = hostKeysByContainerId(scan);
+        std::unordered_map<std::string, std::vector<std::uint64_t>> out;
+
+        for (const auto& entry : scan.containers)
+        {
+            if (entry.containerId.empty())
+            {
+                continue;
+            }
+
+            const auto hostKey = hostKeyOf(entry, scan.keyKind);
+
+            /* 0 is "no key could be determined", not an inode -- see
+             * CgroupContainerMap::install(), which drops it for the same
+             * reason. */
+            if (hostKey == 0)
+            {
+                continue;
+            }
+
+            const auto chosen = canonical.find(entry.containerId);
+
+            if (chosen != canonical.end() && chosen->second == hostKey)
+            {
+                continue;
+            }
+
+            auto& keys = out[entry.containerId];
+
+            if (std::find(keys.begin(), keys.end(), hostKey) == keys.end())
+            {
+                keys.push_back(hostKey);
+            }
+        }
+
+        for (auto& [containerId, keys] : out)
+        {
+            (void)containerId;
+            std::sort(keys.begin(), keys.end());
         }
 
         return out;

@@ -458,8 +458,9 @@ struct ContainerEventDrain::Impl
             for (const auto& event : delta.events)
             {
                 CgroupDeltaEvent translated;
-                translated.container_id = event.containerId;
-                translated.cgroup_id    = event.cgroupId;
+                translated.container_id    = event.containerId;
+                translated.cgroup_id       = event.cgroupId;
+                translated.extra_cgroup_ids = event.extraCgroupIds;
 
                 switch (event.kind)
                 {
@@ -492,6 +493,20 @@ struct ContainerEventDrain::Impl
         for (const auto& ref : refs)
         {
             containers.emplace_back(ref.cgroupId, ref.containerId);
+
+            /* Every other cgroup the container occupies, as its own entry. A
+             * container running an init system has one per unit, and the kernel
+             * filter matches an event's cgroup id by equality — so a key that
+             * does not reach the allowlist is a unit whose file events are
+             * discarded before anything downstream can see them.
+             *
+             * One entry per key rather than a key set in the map, because the
+             * map is keyed by inode precisely because that is what every event
+             * carries; attribution then needs no second lookup. */
+            for (const auto extra : ref.extraCgroupIds)
+            {
+                containers.emplace_back(extra, ref.containerId);
+            }
         }
 
         syncAllowlist(router.applyContainerList(containers));

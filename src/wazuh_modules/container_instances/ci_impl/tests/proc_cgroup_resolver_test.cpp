@@ -28,6 +28,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include <algorithm>
 #include <chrono>
 #include <map>
 #include <optional>
@@ -458,9 +459,29 @@ TEST(ProcCgroupResolverTest, AnInitSystemContainerGetsOneStableKeyWhateverTheWal
     EXPECT_EQ(11U, forwardKeys.at(kContainerId))
         << "init.scope is the shortest path of the three, so it is the one chosen";
 
-    // Every child cgroup still has to reach the kernel allowlist, or events from
-    // the units the container runs are filtered out before anyone sees them.
+    // The scan still reports every child cgroup. This is the store's liveness
+    // set and NOT what the kernel allowlist is built from -- see the next
+    // assertions for that -- but a key missing here could not reach either.
     EXPECT_EQ(1U, forward.allHostKeys.count(11U));
     EXPECT_EQ(1U, forward.allHostKeys.count(12U));
     EXPECT_EQ(1U, forward.allHostKeys.count(13U));
+
+    // What actually reaches rt_allow_cgroup: the canonical key plus these. The
+    // kernel filter matches an event's cgroup id by equality, so a unit cgroup
+    // absent from this set is a unit whose file events are discarded in the
+    // kernel and never seen by anything downstream.
+    const auto forwardExtras = extraHostKeysByContainerId(forward);
+    const auto reversedExtras = extraHostKeysByContainerId(reversed);
+
+    ASSERT_EQ(1U, forwardExtras.size());
+    const auto& extras = forwardExtras.at(kContainerId);
+    ASSERT_EQ(2U, extras.size()) << "the two unit cgroups, with init.scope left to hostKey";
+    EXPECT_EQ(12U, extras[0]);
+    EXPECT_EQ(13U, extras[1]);
+
+    EXPECT_EQ(extras, reversedExtras.at(kContainerId))
+        << "the set must not depend on the order the process table was walked";
+
+    EXPECT_EQ(std::find(extras.begin(), extras.end(), forwardKeys.at(kContainerId)), extras.end())
+        << "the canonical key is carried by hostKey and must not be duplicated here";
 }

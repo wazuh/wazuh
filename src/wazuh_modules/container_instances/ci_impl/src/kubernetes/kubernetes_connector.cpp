@@ -80,6 +80,16 @@ namespace wazuh::container_instances
             const auto it = inodeByContainerId.find(containerId);
             return (it != inodeByContainerId.end()) ? it->second : 0;
         };
+        // The rest of the container's cgroups travel beside the chosen one, so a
+        // consumer filtering events in the kernel can admit them all; without
+        // them an init-system container's units are filtered out before anyone
+        // sees them. See extraHostKeysByContainerId().
+        const auto extraKeysByContainerId = extraHostKeysByContainerId(scan);
+        const auto extraKeysFor = [&extraKeysByContainerId](const std::string& containerId)
+        {
+            const auto it = extraKeysByContainerId.find(containerId);
+            return (it != extraKeysByContainerId.end()) ? it->second : std::vector<std::uint64_t> {};
+        };
 
         m_ownersGeneration = m_workloadIndex.generation();
         const auto workloads = m_workloadIndex.latest();
@@ -109,6 +119,7 @@ namespace wazuh::container_instances
             {
                 auto record = makeRecord(pod, container, ownerChain, m_nodeName);
                 record.hostKey = inodeFor(container.containerId);
+                record.extraHostKeys = extraKeysFor(container.containerId);
                 records.push_back(std::move(record));
             }
         }
