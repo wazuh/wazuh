@@ -159,7 +159,8 @@ An agent that installed without a token needs one of these afterwards to registe
 Both actions drive `wazuh-agent-auth`, the same command-line tool used directly on Linux and macOS (and available on Windows too, for scripting). It is installed in the agent's `bin/` directory, which is not on `PATH` (`/Library/Ossec/bin/` on macOS), and runs as root:
 
 ```bash
-sudo /var/ossec/bin/wazuh-agent-auth --token-file /root/token                  # enroll
+echo '<TOKEN>' | sudo /var/ossec/bin/wazuh-agent-auth                          # enroll
+sudo /var/ossec/bin/wazuh-agent-auth --token-file /root/token                  # enroll from a file
 sudo /var/ossec/bin/wazuh-agent-auth --token-file /root/token --force-enroll   # re-register, new id
 sudo /var/ossec/bin/wazuh-agent-auth --token-file /root/token --certs-only     # refresh CA + address
 sudo /var/ossec/bin/wazuh-agent-auth --show-token --token-file /root/token     # decode a token

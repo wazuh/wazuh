@@ -183,10 +183,10 @@ USER_UPDATE="y" \
 
 ### Enrolling the Agent
 
-A source install does not register the agent. Mint an enrollment token on the manager (`sudo /var/wazuh-manager/bin/wazuh-manager-authd --create-enrollment-token --address <host>`), save it to a file on the agent, and enroll with `wazuh-agent-auth`, which installs the manager's CA as the trust anchor, registers the agent and writes the address the token names:
+A source install does not register the agent. Mint an enrollment token on the manager (`sudo /var/wazuh-manager/bin/wazuh-manager-authd --create-enrollment-token --address <host>`) and enroll with `wazuh-agent-auth`, which installs the manager's CA as the trust anchor, registers the agent and writes the address the token names:
 
 ```bash
-sudo /var/ossec/bin/wazuh-agent-auth --token-file /root/token
+echo '<TOKEN>' | sudo /var/ossec/bin/wazuh-agent-auth
 ```
 
 See [Enrolling or re-pointing an agent](../ref/modules/client/README.md#enrolling-or-re-pointing-an-agent) for the other actions and options.
