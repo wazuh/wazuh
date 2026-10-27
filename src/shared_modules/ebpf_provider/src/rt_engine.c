@@ -534,6 +534,77 @@ rt_handle_t rt_open(const struct rt_filter* filter)
         return NULL;
     }
 
+    /* CONFIGURE BEFORE ATTACHING. The maps exist as soon as the object is
+     * loaded, and the moment a program is attached it begins writing events
+     * into the ring — so anything configured after the attach loop below leaves
+     * a window in which the program runs with an unconfigured filter.
+     *
+     * That window is not harmless, for two reasons that compound:
+     *
+     *   event_is_wanted() treats an unwritten mode as SUBMIT, deliberately, so
+     *   that an engine whose userspace never wrote one cannot silently deliver
+     *   nothing. Configured late, that default applies to the window instead of
+     *   to a misconfigured consumer, and the whole host's file traffic is
+     *   admitted — which is exactly what the consumer asking for ALLOWLIST was
+     *   trying to avoid, and what its "start closed" comment says it gets.
+     *
+     *   On a host with no unified hierarchy the ids on those events are worse
+     *   than unwanted, they are meaningless: current_container_cgroup_id()
+     *   falls back to bpf_get_current_cgroup_id(), which there reports the
+     *   default hierarchy's root — inode 1, plus a packed generation on a RHEL
+     *   8 family kernel. That key matches no inode on the host, so the consumer
+     *   can neither attribute it nor conclude it is not a container; it retries
+     *   the cold-cache resolve forever. ONE event caught in this window is
+     *   enough to log that failure on every resolver cycle for the life of the
+     *   process.
+     *
+     * Writing the configuration first closes it: a consumer that opened in
+     * allowlist mode filters against an empty allowlist from the first attached
+     * program onwards, and delivers nothing until it seeds one. */
+    h->filter_cfg_fd = g_libbpf.find_map_fd_by_name(h->obj, "filter_cfg");
+    h->cgroup_allow_fd = g_libbpf.find_map_fd_by_name(h->obj, "cgroup_allow_map");
+
+    /* Write the requested mode. An object that predates filtering has neither
+     * map: unfiltered is what it does anyway, so ALL is satisfied silently and
+     * only ALLOWLIST is an error — asking to filter and getting everything is
+     * a correctness surprise, not a degradation to absorb quietly. */
+    if (h->filter_cfg_fd < 0 || h->cgroup_allow_fd < 0)
+    {
+        if (filter->cgroup_mode != RT_CGROUP_MODE_ALL)
+        {
+            rt_log(&h->log, RT_LOG_ERROR,
+                   "cgroup filtering requested but this BPF object has no filtering maps: every event "
+                   "on the host would be delivered. Rebuild rt_file.bpf.o.");
+            abort_open(h);
+            return NULL;
+        }
+    }
+    else if (rt_set_cgroup_mode(h, filter->cgroup_mode) != 0)
+    {
+        rt_log(&h->log, RT_LOG_ERROR, "could not set cgroup filter mode %d", filter->cgroup_mode);
+        abort_open(h);
+        return NULL;
+    }
+
+    /* Per-event work this consumer opted out of. An object that predates the
+     * mask has a one-slot filter_cfg, so the write fails: that is a degradation
+     * (every field is computed, as before) and not a correctness problem, so it
+     * warns rather than refusing the open — the opposite of the mode above,
+     * which changes which events arrive. */
+    if (filter->skip_mask != 0 && h->filter_cfg_fd >= 0)
+    {
+        const unsigned int key = FILTER_CFG_KEY_SKIP;
+        const unsigned int value = filter->skip_mask;
+
+        if (g_libbpf.map_update_elem(h->filter_cfg_fd, &key, &value, 0 /* BPF_ANY */) != 0)
+        {
+            rt_log(&h->log, RT_LOG_WARN,
+                   "could not apply skip mask 0x%x; every per-event field will be computed. Rebuild "
+                   "rt_file.bpf.o to honour it.",
+                   filter->skip_mask);
+        }
+    }
+
     struct bpf_program* prog = NULL;
     while ((prog = g_libbpf.next_program(h->obj, prog)) != NULL)
     {
@@ -588,50 +659,6 @@ rt_handle_t rt_open(const struct rt_filter* filter)
         rt_log(&h->log, RT_LOG_WARN,
                "BPF object has no 'cgroup_drops_map': dropped events will be visible but not "
                "attributable to a cgroup. Rebuild rt_file.bpf.o to enable rt_drain_drops().");
-    }
-
-    h->filter_cfg_fd = g_libbpf.find_map_fd_by_name(h->obj, "filter_cfg");
-    h->cgroup_allow_fd = g_libbpf.find_map_fd_by_name(h->obj, "cgroup_allow_map");
-
-    /* Write the requested mode. An object that predates filtering has neither
-     * map: unfiltered is what it does anyway, so ALL is satisfied silently and
-     * only ALLOWLIST is an error — asking to filter and getting everything is
-     * a correctness surprise, not a degradation to absorb quietly. */
-    if (h->filter_cfg_fd < 0 || h->cgroup_allow_fd < 0)
-    {
-        if (filter->cgroup_mode != RT_CGROUP_MODE_ALL)
-        {
-            rt_log(&h->log, RT_LOG_ERROR,
-                   "cgroup filtering requested but this BPF object has no filtering maps: every event "
-                   "on the host would be delivered. Rebuild rt_file.bpf.o.");
-            abort_open(h);
-            return NULL;
-        }
-    }
-    else if (rt_set_cgroup_mode(h, filter->cgroup_mode) != 0)
-    {
-        rt_log(&h->log, RT_LOG_ERROR, "could not set cgroup filter mode %d", filter->cgroup_mode);
-        abort_open(h);
-        return NULL;
-    }
-
-    /* Per-event work this consumer opted out of. An object that predates the
-     * mask has a one-slot filter_cfg, so the write fails: that is a degradation
-     * (every field is computed, as before) and not a correctness problem, so it
-     * warns rather than refusing the open — the opposite of the mode above,
-     * which changes which events arrive. */
-    if (filter->skip_mask != 0 && h->filter_cfg_fd >= 0)
-    {
-        const unsigned int key = FILTER_CFG_KEY_SKIP;
-        const unsigned int value = filter->skip_mask;
-
-        if (g_libbpf.map_update_elem(h->filter_cfg_fd, &key, &value, 0 /* BPF_ANY */) != 0)
-        {
-            rt_log(&h->log, RT_LOG_WARN,
-                   "could not apply skip mask 0x%x; every per-event field will be computed. Rebuild "
-                   "rt_file.bpf.o to honour it.",
-                   filter->skip_mask);
-        }
     }
 
     rt_log(&h->log, RT_LOG_INFO,
