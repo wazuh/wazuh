@@ -95,10 +95,13 @@ machine's build as stale. They are recorded in step 5 instead, which is what
 reproducing a build actually needs; CMake prints the file and warns when it is
 absent. The committed objects predate this file and carry `clang=unrecorded`.
 
-A mismatch in step 4 is a warning for a developer build and a **hard error**
-whenever `CI` is set in the environment or `-DRT_BPF_STRICT_PREBUILT=ON` is
-passed — a package build must not ship an object that does not correspond to
-`rt_file.bpf.c`. Step 3 now also runs automatically against the prebuilt on
+A mismatch in step 4 is a **hard error by default**, everywhere. It is not keyed
+off the environment: the `.deb` and `.rpm` are built inside a container started
+by `packages/generate_package.sh`, which forwards a fixed list of variables that
+does not include `CI`, so keying on that reached the jobs whose output is
+discarded and not the one whose output ships. Pass
+`-DRT_BPF_STRICT_PREBUILT=OFF` to downgrade it to a warning while editing
+`rt_file.bpf.c` before the object has been rebuilt. Step 3 now also runs automatically against the prebuilt on
 every build, not only against a freshly compiled object, since the prebuilt is
 the one that ships; under the same strict setting a missing `readelf` fails
 rather than skipping the check.

@@ -176,17 +176,27 @@ if(RT_BPF_ARCH AND EXISTS ${RT_BPF_PREBUILT})
   # and a package build would then ship an object that does not correspond to
   # rt_file.bpf.c at all -- the one outcome this guard exists to prevent.
   #
-  # Defaults from the CI environment variable (GitHub Actions and most CI images
-  # set it) so no pipeline has to remember to opt in; override explicitly for a
-  # packaging build that does not set it.
-  if(DEFINED ENV{CI} AND NOT "$ENV{CI}" STREQUAL "" AND NOT "$ENV{CI}" STREQUAL "0")
-    set(RT_BPF_STRICT_PREBUILT_DEFAULT ON)
-  else()
-    set(RT_BPF_STRICT_PREBUILT_DEFAULT OFF)
-  endif()
+  # ON by default, and deliberately NOT keyed off the environment.
+  #
+  # It was keyed off CI, on the reasoning that a pipeline sets it and a
+  # developer does not. That reached the wrong builds. The .deb and .rpm are
+  # produced inside a container started by packages/generate_package.sh, which
+  # forwards a fixed list of variables -- SYSTEM, BUILD_TARGET,
+  # ARCHITECTURE_TARGET, INSTALLATION_PATH, IS_STAGE, WAZUH_BRANCH,
+  # WAZUH_VERBOSE -- and CI is not among them. So the runner's CI reached the
+  # jobs whose output is thrown away and not the one whose output ships, which
+  # is the exact inverse of the intent.
+  #
+  # Defaulting ON removes the plumbing from the question: there is no
+  # environment to forward and no build script to remember. A stale object now
+  # fails everywhere unless someone says otherwise, which is the right default
+  # for a binary that is PREFERRED over compiling -- left to a warning, an edit
+  # to rt_file.bpf.c silently ships the old object.
+  #
+  # -DRT_BPF_STRICT_PREBUILT=OFF is the opt-out, for a developer mid-edit who
+  # has not refreshed the digest yet.
   option(RT_BPF_STRICT_PREBUILT
-         "Fail the build when prebuilt rt_file.bpf.o does not match its sources"
-         ${RT_BPF_STRICT_PREBUILT_DEFAULT})
+         "Fail the build when prebuilt rt_file.bpf.o does not match its sources" ON)
 
   if(NOT RT_BPF_RECORDED_DIGEST STREQUAL RT_BPF_SOURCES_DIGEST)
     set(RT_BPF_STALE_MESSAGE
