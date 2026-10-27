@@ -61,11 +61,13 @@ STATIC void w_initialize_file_status();
  */
 STATIC void w_save_file_status();
 
+#ifndef WIN32
 /**
  * @brief Run the atexit work (release the macOS log processes, save the files status) on a termination signal,
  * which skips the atexit handlers
  */
 STATIC void w_logcollector_shutdown(void);
+#endif
 
 /**
  * @brief Load files_status data to hash
@@ -219,7 +221,9 @@ void LogCollectorStart()
         merror(ATEXIT_ERROR);
     }
 
+#ifndef WIN32
     SetSIGShutdownFunc(w_logcollector_shutdown);
+#endif
 
     /* Initialize state component */
     if (state_interval == 0) {
@@ -2730,12 +2734,14 @@ STATIC void w_initialize_file_status() {
     fclose(fd);
 }
 
+#ifndef WIN32
 STATIC void w_logcollector_shutdown(void) {
 #if defined(Darwin) || (defined(__linux__) && defined(WAZUH_UNIT_TESTING))
     w_macos_release_log_execution();
 #endif
     w_save_file_status();
 }
+#endif
 
 STATIC void w_save_file_status() {
 
