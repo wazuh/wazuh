@@ -259,6 +259,7 @@ extern "C" int cbaseline_lifecycle_since(const char*         connector_socket_pa
             else if (name == "mounts") event.changed |= CB_CHANGED_MOUNTS;
             else if (name == "network") event.changed |= CB_CHANGED_NETWORK;
             else if (name == "metadata") event.changed |= CB_CHANGED_METADATA;
+            else if (name == "keys") event.changed |= CB_CHANGED_KEYS;
             else
             {
                 // A class this build has no bit for. Setting every known bit is

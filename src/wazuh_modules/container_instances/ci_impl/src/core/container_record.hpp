@@ -119,10 +119,20 @@ namespace wazuh::container_instances
         /// kernel by exact cgroup id has to admit all of them or it discards
         /// everything those units do. See extraHostKeysByContainerId().
         ///
-        /// Deliberately NOT part of lifecycleChangeMask(): a unit starting or
-        /// stopping is not a change to the container's identity, and counting it
-        /// as one would re-walk the whole container every time a timer fired
-        /// inside it. Consumers pick the set up from the next list refresh.
+        /// Published under its own lifecycle class, LIFECYCLE_KEYS, and NOT as
+        /// part of `identity`: a unit starting or stopping is not a change to
+        /// the container, and counting it as one would re-walk the whole
+        /// container every time a timer fired inside it.
+        ///
+        /// It does have to be published, though. There is no periodic full list
+        /// on the delta path, so a key that appears after the container's
+        /// `added` event reaches a consumer ONLY through its own event --
+        /// leaving it out of the mask entirely meant a unit started a second
+        /// after the container, which is the ordinary systemd sequence, was
+        /// never admitted to the kernel filter and never monitored.
+        ///
+        /// A consumer that does not filter by cgroup id ignores the class by
+        /// name; see CB_CHANGED_KEYS for why that must be explicit.
         std::vector<std::uint64_t> extraHostKeys;
 
         /// When the current run of this container began, verbatim from the

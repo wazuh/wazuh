@@ -25,6 +25,7 @@
 
 #include <gtest/gtest.h>
 
+#include <algorithm>
 #include <string>
 #include <vector>
 #include <variant>
@@ -248,4 +249,26 @@ TEST(WireV2Test, ANamespaceKeyedHostOmitsTheExtraKeysToo)
     const auto data = wire::recordToJson(record, KeyKind::mntNsInode);
 
     EXPECT_FALSE(data.contains("extra_cgroup_ids"));
+}
+
+TEST(WireV2Test, TheKeySetChangeTravelsAsItsOwnClass)
+{
+    /* Its own name on the wire, so a consumer that does not filter by cgroup id
+     * can ignore it BY NAME. That is the whole point of the class: the
+     * unknown-class rule is "re-scan everything", so an unnamed key change would
+     * turn every unit starting inside a container into a full inventory
+     * re-scan. See CB_CHANGED_KEYS. */
+    const auto names = wire::changeMaskToNames(LIFECYCLE_KEYS);
+
+    ASSERT_EQ(1u, names.size());
+    EXPECT_EQ("keys", names[0].get<std::string>());
+}
+
+TEST(WireV2Test, TheKeyClassDoesNotDisturbTheOthers)
+{
+    const auto names = wire::changeMaskToNames(LIFECYCLE_IDENTITY | LIFECYCLE_KEYS);
+    const auto list = names.get<std::vector<std::string>>();
+
+    EXPECT_NE(std::find(list.begin(), list.end(), "identity"), list.end());
+    EXPECT_NE(std::find(list.begin(), list.end(), "keys"), list.end());
 }

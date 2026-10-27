@@ -46,6 +46,27 @@ namespace wazuh::container_instances
         LIFECYCLE_MOUNTS = 1u << 2,   ///< oci mounts
         LIFECYCLE_NETWORK = 1u << 3,  ///< interfaces/addresses
         LIFECYCLE_METADATA = 1u << 4, ///< labels, annotations, owner refs, pod identity
+
+        /// The container's OTHER cgroups changed -- a unit started or stopped
+        /// inside a container running an init system.
+        ///
+        /// Its own class, and deliberately not part of `identity`. The container
+        /// has not moved: it is filed under the same key, its files and packages
+        /// are untouched, and anything that re-scans on this would re-walk the
+        /// whole container every time a timer fired inside it.
+        ///
+        /// But it cannot be left unpublished either. A consumer that filters
+        /// events in the kernel by exact cgroup id has to admit the new cgroup
+        /// or everything that unit does is discarded before it is seen, and in
+        /// steady state the delta stream is the ONLY way it hears about one --
+        /// there is no periodic full list to pick it up from. Suppressing this
+        /// made the common systemd case (units starting a second after the
+        /// container does) silently unmonitored.
+        ///
+        /// Consumers that do not filter in the kernel must ignore it explicitly
+        /// rather than fall into the unknown-class rule, which re-scans
+        /// everything; see CB_CHANGED_KEYS.
+        LIFECYCLE_KEYS = 1u << 5,
     };
 
     struct LifecycleEvent
@@ -232,6 +253,10 @@ namespace wazuh::container_instances
             before.podNamespace != after.podNamespace || before.nodeName != after.nodeName)
         {
             mask |= LIFECYCLE_METADATA;
+        }
+        if (before.extraHostKeys != after.extraHostKeys)
+        {
+            mask |= LIFECYCLE_KEYS;
         }
 
         return mask;

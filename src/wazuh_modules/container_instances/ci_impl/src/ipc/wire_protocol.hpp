@@ -343,6 +343,8 @@ namespace wazuh::container_instances::wire
             names.push_back("network");
         if ((mask & LIFECYCLE_METADATA) != 0)
             names.push_back("metadata");
+        if ((mask & LIFECYCLE_KEYS) != 0)
+            names.push_back("keys");
 
         return names;
     }

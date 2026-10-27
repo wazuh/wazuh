@@ -2495,11 +2495,28 @@ bool Syscollector::scanContainerBaselineDelta()
             return;
         }
 
-        // A change. Metadata alone — labels, annotations, pod identity — moves
-        // nothing this module stores, and re-walking eleven data classes for a
-        // relabelled pod would cost more than the delta saves. Anything else,
-        // including a class this build has no name for, earns a re-scan.
-        if ((event->changed & ~static_cast<unsigned int>(CB_CHANGED_METADATA)) != 0)
+        // A change. Two classes move nothing this module stores and are ignored
+        // by name:
+        //
+        //   metadata  labels, annotations, pod identity. Re-walking eleven data
+        //             classes for a relabelled pod would cost more than the
+        //             delta saves.
+        //   keys      the container's other cgroups, which change whenever a
+        //             unit starts or stops inside a container running an init
+        //             system. That is published for the consumer filtering
+        //             events in the kernel, which must admit the new cgroup;
+        //             nothing here is keyed on it. Ignored EXPLICITLY, and the
+        //             name is mapped to a bit in container_baseline.cpp for the
+        //             same reason: an unrecognised class name sets every bit
+        //             there, so without both halves a timer firing inside a
+        //             container would mean a full re-scan of eleven classes.
+        //
+        // Anything else, including a class this build has no name for, earns a
+        // re-scan.
+        constexpr auto ignored = static_cast<unsigned int>(CB_CHANGED_METADATA) |
+                                 static_cast<unsigned int>(CB_CHANGED_KEYS);
+
+        if ((event->changed & ~ignored) != 0)
         {
             out->rescan.emplace_back(event->container_id);
         }

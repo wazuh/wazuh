@@ -242,6 +242,82 @@ TEST(LifecycleJournalTest, MetadataOnlyChangeAppendsNothing)
     EXPECT_EQ(1u, ListedIds(store).count("zeta"));
 }
 
+TEST(LifecycleJournalTest, AUnitCgroupAppearingLaterIsPublishedOnItsOwn)
+{
+    /* The systemd sequence, and the one the delta path has to carry.
+     *
+     * The reconcile triggered by `docker run` scans while only PID 1 exists, so
+     * the container is published with no extra keys. A second later systemd
+     * starts its units, each in its own cgroup. Nothing else about the container
+     * changes -- same name, same image, same key, same state.
+     *
+     * If that produces no event, a consumer filtering in the kernel never hears
+     * about the new cgroups: there is no periodic full list on this path, so the
+     * delta stream is its only source, and the units stay unmonitored until
+     * syscheckd restarts. That is the ordinary case, not a corner one. */
+    auto store = MakeStore();
+
+    store.applySnapshot(kDocker, {MakeRecord("systemd-ctr", 11)}, {11}, Now());
+    const auto afterAdd = store.lifecycleCursor();
+
+    auto withUnits = MakeRecord("systemd-ctr", 11);
+    withUnits.extraHostKeys = {12, 13};
+    store.applySnapshot(kDocker, {withUnits}, {11, 12, 13}, Now());
+
+    const auto delta = store.lifecycleSince(afterAdd);
+    ASSERT_EQ(1u, delta.events.size()) << "a unit cgroup appearing later must be published";
+    EXPECT_EQ(LifecycleKind::changed, delta.events[0].kind);
+
+    EXPECT_EQ(LIFECYCLE_KEYS, delta.events[0].changed)
+        << "its own class and nothing else: the container has not moved, so anything that re-scans on "
+           "identity must not be woken by a timer firing inside it";
+
+    ASSERT_NE(nullptr, delta.events[0].record);
+    EXPECT_EQ((std::vector<std::uint64_t> {12, 13}), delta.events[0].record->extraHostKeys);
+}
+
+TEST(LifecycleJournalTest, AKeySetChangeAlongsideARelabelIsStillPublished)
+{
+    // The suppression is on "nothing but metadata", not on equality with it.
+    // Spelled as equality, a relabel landing in the same reconcile as a new unit
+    // cgroup suppressed BOTH, and the key was lost for good.
+    auto store = MakeStore();
+
+    store.applySnapshot(kDocker, {MakeRecord("both", 21)}, {21}, Now());
+    const auto afterAdd = store.lifecycleCursor();
+
+    auto moved = MakeRecord("both", 21);
+    moved.labels.emplace("rev", "2");
+    moved.extraHostKeys = {22};
+    store.applySnapshot(kDocker, {moved}, {21, 22}, Now());
+
+    const auto delta = store.lifecycleSince(afterAdd);
+    ASSERT_EQ(1u, delta.events.size());
+    EXPECT_TRUE((delta.events[0].changed & LIFECYCLE_KEYS) != 0);
+}
+
+TEST(LifecycleJournalTest, AUnitCgroupGoingAwayIsPublishedToo)
+{
+    // The withdrawal half. An allowed cgroup that has gone must be denied in the
+    // kernel: cgroup ids are inodes and are reused, so an allowlist that only
+    // grew would admit whatever inherits one.
+    auto store = MakeStore();
+
+    auto withUnits = MakeRecord("systemd-ctr", 31);
+    withUnits.extraHostKeys = {32, 33};
+    store.applySnapshot(kDocker, {withUnits}, {31, 32, 33}, Now());
+    const auto afterAdd = store.lifecycleCursor();
+
+    auto oneLeft = MakeRecord("systemd-ctr", 31);
+    oneLeft.extraHostKeys = {32};
+    store.applySnapshot(kDocker, {oneLeft}, {31, 32}, Now());
+
+    const auto delta = store.lifecycleSince(afterAdd);
+    ASSERT_EQ(1u, delta.events.size());
+    EXPECT_EQ(LIFECYCLE_KEYS, delta.events[0].changed);
+    EXPECT_EQ((std::vector<std::uint64_t> {32}), delta.events[0].record->extraHostKeys);
+}
+
 TEST(LifecycleJournalTest, UpsertResolvedFromTheColdPathIsPublished)
 {
     // The on-demand resolve path bypasses applySnapshot entirely. A container

@@ -260,6 +260,19 @@ EXPORTED int cbaseline_run_syscollector_dbsync_for(const char*                co
 #define CB_CHANGED_NETWORK  (1u << 3)
 #define CB_CHANGED_METADATA (1u << 4) /* labels, annotations, pod identity */
 
+/* The container's other cgroups changed: a unit started or stopped inside a
+ * container running an init system.
+ *
+ * Nothing this module stores moves with it. The container is filed under the
+ * same key and its files and packages are untouched, so a consumer that does
+ * not filter events by cgroup id owes NO work for it -- and must say so
+ * explicitly, because the unknown-bit rule above would otherwise re-scan every
+ * data class each time a timer fired inside a container.
+ *
+ * It is published for the consumer that DOES filter in the kernel, which has to
+ * admit the new cgroup or lose everything that unit does. */
+#define CB_CHANGED_KEYS (1u << 5)
+
 #define CB_LIFECYCLE_ADDED   0
 #define CB_LIFECYCLE_CHANGED 1
 #define CB_LIFECYCLE_REMOVED 2

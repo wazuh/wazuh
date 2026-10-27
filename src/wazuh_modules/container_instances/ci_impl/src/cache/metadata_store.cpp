@@ -645,13 +645,18 @@ namespace
         {
             const auto mask = lifecycleChangeMask(*before, *after);
 
-            if (mask == 0 || mask == LIFECYCLE_METADATA)
+            if ((mask & ~static_cast<unsigned int>(LIFECYCLE_METADATA)) == 0)
             {
                 // Nothing changed, or only labels/annotations did. Dropped at
                 // append time rather than filtered by the reader: Kubernetes
                 // annotation churn marks records changed on every reconcile, and
                 // letting that into the ring would evict real transitions long
                 // before a consumer's next poll.
+                //
+                // Tested on the mask rather than against LIFECYCLE_METADATA
+                // exactly, so a class that arrives TOGETHER with a metadata
+                // change is still published. Spelled as equality, a relabel in
+                // the same reconcile as a new unit cgroup suppressed both.
                 return;
             }
 
