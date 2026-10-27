@@ -253,10 +253,37 @@ extern int LINUX_KERNEL_VERSION __kconfig;
  * high word, against st_ino 35. So the type says nothing about the packing,
  * and the mask is right either way.
  *
- * Safe on every kernel because a kernfs ino comes from a 32-bit IDR and so
- * never reaches the high word; when no generation is packed the high word is
- * zero and the mask is a no-op. Arithmetic on the u64, not a reinterpretation
- * of its bytes, so endianness does not enter into it. */
+ * ON THE KERNELS THAT CAN LOAD THIS OBJECT the field is a plain u64, so the
+ * CO-RE read below resolves. That is worth stating precisely, because the two
+ * kernels named above are measurements of the LAYOUT taken on hosts that cannot
+ * run this engine at all, and they do not say the read works there:
+ *
+ *   This object declares BPF_MAP_TYPE_RINGBUF and rt_engine.c binds
+ *   ring_buffer__new() with no perf-buffer fallback, so a kernel without BPF
+ *   ringbuf never gets as far as loading it. Upstream that is 5.8; the union
+ *   layout existed from 5.0 and was replaced by a plain u64 in 5.5, so the two
+ *   never meet. In the RHEL 8 family the u64 backport is in place by
+ *   4.18.0-326, while ringbuf arrives later still (RHEL 8.5, 4.18.0-348) --
+ *   so there too every kernel that can load this has the u64.
+ *
+ *   It matters because CO-RE would NOT paper over the difference. libbpf
+ *   matches a field read by type, and bpf_core_fields_are_compat() rejects
+ *   INT against UNION, so on a union-layout kernel the relocation below would
+ *   find no candidate, libbpf would poison the instruction, and the verifier
+ *   would reject the whole object -- not merely container attribution, since
+ *   submit_event() reaches this from every program. Amazon Linux 2's 4.14 is
+ *   further out still: there the field is `ino` and not `id` at all. Neither
+ *   host can load the engine, which is the only reason this is safe.
+ *
+ * The MASK is a separate question from the layout and is right regardless. A
+ * kernfs ino comes from a 32-bit IDR and so never reaches the high word; when
+ * no generation is packed the high word is zero and the mask is a no-op.
+ * Arithmetic on the u64, not a reinterpretation of its bytes, so endianness
+ * does not enter into it. Nor can it truncate a key that userspace keeps whole:
+ * this read happens ONLY on a legacy host, because rt_set_cgroup_v1_subsys()
+ * refuses unless wz_cgroup_v1_subsys_read_allowed() agrees, and a legacy host
+ * is precisely where the generation was measured to be packed. Everywhere else
+ * the id comes from bpf_get_current_cgroup_id() and is never masked. */
 statfunc __u64 kernfs_node_ino(__u64 raw)
 {
     return raw & 0xFFFFFFFFULL;
