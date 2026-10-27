@@ -834,6 +834,24 @@ static void test_already_enrolled_unreachable_manager_keeps_the_token(void **sta
     assert_int_equal(IsFile("etc/enrollment_token"), 0);
 }
 
+/* An empty token file (a store that hit a full disk, say) can never be read into a token, so an
+ * enrolled agent discards it and starts as before instead of exiting on every start. */
+static void test_already_enrolled_empty_token_is_discarded(void **state) {
+    (void) state;
+    write_file("etc/client.keys", "001 test-agent 10.0.0.5 aaaa\n");
+    write_file("etc/enrollment_token", "");
+
+    expect_any(__wrap__minfo, formatted_msg);
+    expect_string(__wrap__merror, formatted_msg,
+                  "Could not read the enrollment token file 'etc/enrollment_token'.");
+
+    assert_int_equal(w_agent_token_bootstrap(getuid(), getgid()), W_TOKEN_BOOTSTRAP_DONE);
+    assert_int_equal(g_fetch_call_count, 0);
+    assert_int_equal(g_enroll_call_count, 0);
+    assert_string_equal(read_file("etc/client.keys"), "001 test-agent 10.0.0.5 aaaa\n");
+    assert_int_not_equal(IsFile("etc/enrollment_token"), 0);
+}
+
 /* Regression test: a hard link is a regular file by every other measure -- O_NOFOLLOW does not
  * stop it, only its link count gives it away. etc/ is 0770 root:wazuh, so the runtime user could
  * otherwise hard-link some other root-owned file to client.keys's path and have this
@@ -2719,6 +2737,7 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_already_enrolled_with_a_token_installs_the_anchor_only, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_already_enrolled_pin_mismatch_starts_without_an_anchor, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_already_enrolled_unreachable_manager_keeps_the_token, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_already_enrolled_empty_token_is_discarded, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_client_keys_hard_link_is_not_chowned, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_keys_chown_failure_is_logged, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_anchor_latch_keys_chown_failure_is_quiet, setup_test, teardown_test),

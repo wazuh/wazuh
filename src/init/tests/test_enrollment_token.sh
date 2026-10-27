@@ -76,7 +76,9 @@ make_installdir() {
     local description="$1" status="$2" installdir
 
     installdir="$(mktemp -d)"
-    mkdir -p "${installdir}/etc" "${installdir}/tmp" "${installdir}/logs" "${installdir}/bin"
+    mkdir -p "${installdir}/etc" "${installdir}/tmp" "${installdir}/logs" "${installdir}/bin" \
+             "${installdir}/packages_files"
+    chmod 750 "${installdir}/packages_files"
     printf '%s' "${PLACEHOLDER_CONF}" > "${installdir}/etc/ossec.conf"
     touch "${installdir}/logs/ossec.log"
 
@@ -366,6 +368,65 @@ check "an upgrade with a removed variable keeps the configuration" "${LEGACY_CON
       "$(cat "${RUN_DIR}/etc/ossec.conf")"
 rm -rf "${RUN_DIR}"
 unset WAZUH_MANAGER
+
+# --- An upgrade writes nothing by path where the wazuh account can write -----------------------
+
+export WAZUH_ENROLLMENT_TOKEN="${TOKEN}"
+
+run_upgrade "${DESC_WITH_KEY}" 0
+check "an upgrade writes nothing to logs/ossec.log" "" "$(cat "${RUN_DIR}/logs/ossec.log")"
+check "an upgrade tells the operator the token was applied" "1" \
+      "$(grep -c "WAZUH_ENROLLMENT_TOKEN applied" "${RUN_DIR}/stderr")"
+check "an upgrade leaves no staging directory behind" "" "$(ls "${RUN_DIR}/packages_files")"
+rm -rf "${RUN_DIR}"
+
+# A link at the token's name is replaced, never written through.
+RUN_DIR="$(make_installdir "${DESC_WITH_KEY}" 0)"
+printf '%s' "${LEGACY_CONF}" > "${RUN_DIR}/etc/ossec.conf"
+printf 'victim' > "${RUN_DIR}/victim"
+ln -s "${RUN_DIR}/victim" "${RUN_DIR}/etc/enrollment_token"
+bash "${TARGET}" "${RUN_DIR}" upgrade >/dev/null 2>&1
+check "a link at etc/enrollment_token is not written through" "victim" "$(cat "${RUN_DIR}/victim")"
+check "a link at etc/enrollment_token is replaced by the token" "regular:${TOKEN}" \
+      "$([ -L "${RUN_DIR}/etc/enrollment_token" ] && echo link || echo regular):$(cat "${RUN_DIR}/etc/enrollment_token")"
+rm -rf "${RUN_DIR}"
+
+# A link at ossec.conf is refused: neither its target nor the token is written.
+RUN_DIR="$(make_installdir "${DESC_WITH_KEY}" 0)"
+printf '%s' "${LEGACY_CONF}" > "${RUN_DIR}/victim"
+rm -f "${RUN_DIR}/etc/ossec.conf"
+ln -s "${RUN_DIR}/victim" "${RUN_DIR}/etc/ossec.conf"
+bash "${TARGET}" "${RUN_DIR}" upgrade >/dev/null 2>"${RUN_DIR}/stderr"
+RUN_STATUS="$?"
+check "a link at etc/ossec.conf is refused" "1" "${RUN_STATUS}"
+check "a link at etc/ossec.conf is not written through" "${LEGACY_CONF}" "$(cat "${RUN_DIR}/victim")"
+check "a link at etc/ossec.conf stores no token" "absent" \
+      "$([ -e "${RUN_DIR}/etc/enrollment_token" ] && echo present || echo absent)"
+rm -rf "${RUN_DIR}"
+
+# A staging parent anyone else can write would let them swap the staging directory.
+RUN_DIR="$(make_installdir "${DESC_WITH_KEY}" 0)"
+printf '%s' "${LEGACY_CONF}" > "${RUN_DIR}/etc/ossec.conf"
+chmod 770 "${RUN_DIR}/packages_files"
+bash "${TARGET}" "${RUN_DIR}" upgrade >/dev/null 2>"${RUN_DIR}/stderr"
+RUN_STATUS="$?"
+check "a group-writable packages_files/ is refused" "1" "${RUN_STATUS}"
+check "a group-writable packages_files/ keeps the configuration" "${LEGACY_CONF}" \
+      "$(cat "${RUN_DIR}/etc/ossec.conf")"
+rm -rf "${RUN_DIR}"
+
+unset WAZUH_ENROLLMENT_TOKEN
+
+# No anchor yet is expected while a token waits for the first start, or after a remote upgrade.
+for pending in etc/enrollment_token var/incoming/root-ca.pem; do
+    RUN_DIR="$(make_installdir "${DESC_WITH_KEY}" 0)"
+    mkdir -p "${RUN_DIR}/$(dirname "${pending}")"
+    touch "${RUN_DIR}/${pending}"
+    bash "${TARGET}" "${RUN_DIR}" upgrade >/dev/null 2>"${RUN_DIR}/stderr"
+    check "an upgrade with ${pending} present does not warn about the anchor" "0" \
+          "$(grep -c "no trust anchor" "${RUN_DIR}/stderr")"
+    rm -rf "${RUN_DIR}"
+done
 
 echo
 echo "${checks} checks, ${failures} failed"

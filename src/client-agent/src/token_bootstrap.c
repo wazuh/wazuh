@@ -1567,6 +1567,14 @@ w_token_bootstrap_result_t w_agent_token_bootstrap(int uid, int gid) {
     if ((token_text = w_agent_token_read_file(AGENT_ENROLLMENT_TOKEN_FILE)) == NULL) {
         merror("Could not read the enrollment token file '%s'.",
                AGENT_ENROLLMENT_TOKEN_FILE);
+
+        /* Rereading it cannot change the answer, and an enrolled agent has nothing to protect
+         * here: it starts as it did before the token arrived. */
+        if (opts.anchor_only) {
+            unlink(AGENT_ENROLLMENT_TOKEN_FILE);
+            return W_TOKEN_BOOTSTRAP_DONE;
+        }
+
         return W_TOKEN_BOOTSTRAP_PERMANENT;
     }
 

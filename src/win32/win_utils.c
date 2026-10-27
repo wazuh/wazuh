@@ -411,8 +411,9 @@ int local_start()
      *
      * Only a token that was present and (after any transient retries) still failed does this. An
      * install with no token at all returns W_TOKEN_BOOTSTRAP_DONE from the gate, so the normal
-     * enrollment loop still gets its chance -- as do an agent already holding an anchor and one
-     * already enrolled.
+     * enrollment loop still gets its chance -- as does an agent already holding an anchor. An
+     * agent already enrolled only tries to install the anchor, and gets DONE whatever the
+     * outcome: it has no enrollment for this gate to protect.
      *
      * 0/0 for uid/gid: Windows runs the service as one account from start to finish, so
      * neither file the bootstrap writes is handed over to a second user (token_bootstrap.c). */
