@@ -32,6 +32,7 @@ All notable changes to this project will be documented in this file.
 - Fixed Vulnerability Detection reporting CentOS Stream packages as vulnerable when the fixed version differs from the installed one only by the minor of the dist tag (`el10` and `el10_2`). ([#40566](https://github.com/wazuh/wazuh/pull/40566))
 - Fixed the Azure Storage integration skipping the blobs of a container when another container of the same storage account, or another block of the same container with another path or blob extension, had already sent newer ones. ([#40646](https://github.com/wazuh/wazuh/pull/40646))
 - Fixed the Azure Storage integration stopping at a `json_file` blob that cannot be parsed, or whose records are not a list or include values that are not JSON objects, without processing the blobs after it. ([#40646](https://github.com/wazuh/wazuh/pull/40646))
+- Fixed the AWS module stopping when a fetch outlasted the session of the role in `iam_role_arn`, which the subscribers reported with an empty exit code 21 warning. The role is now assumed again before its session expires, and the warning includes the reason of the error. ([#40739](https://github.com/wazuh/wazuh/issues/40739))
 
 ### Agent
 
@@ -50,6 +51,7 @@ All notable changes to this project will be documented in this file.
 - Fixed the Windows agent reporting the wrong release for builds 15063 and 16299 when the registry has no `ReleaseId`. ([#40489](https://github.com/wazuh/wazuh/pull/40489))
 - Fixed the `ms-graph` configuration reported by the Server API leaving out the name of each resource and all its relationships but the last. `api_auth` is now an array with one item per block, and each resource lists its `name` and a `relationships` array. ([#40580](https://github.com/wazuh/wazuh/pull/40580))
 - Fixed `wazuh-syscheckd` crashing and leaving a core file when it is stopped or restarted during a FIM scan or synchronization. ([#40692](https://github.com/wazuh/wazuh/pull/40692))
+- Fixed the AWS module stopping when a fetch outlasted the session of the role in `iam_role_arn`, which the subscribers reported with an empty exit code 21 warning. The role is now assumed again before its session expires, and the warning includes the reason of the error. ([#40739](https://github.com/wazuh/wazuh/issues/40739))
 
 ## [v4.14.10]
 

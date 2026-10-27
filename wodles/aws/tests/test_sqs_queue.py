@@ -87,14 +87,16 @@ def test_aws_sqs_queue_delete_message(mock_wazuh_integration, mock_get_url):
 
 
 @patch('wazuh_integration.WazuhIntegration.__init__', side_effect=wazuh_integration.WazuhIntegration.__init__)
-def test_aws_sqs_queue_delete_message_handles_exception_when_deleting_message(mock_wazuh_integration):
-    """Test 'delete_message' handles exceptions raised when trying to delete a message from SQS."""
+def test_aws_sqs_queue_delete_message_handles_exception_when_deleting_message(mock_wazuh_integration, capsys):
+    """Test 'delete_message' handles exceptions raised when trying to delete a message from SQS, printing the reason
+    as an error."""
     instance = utils.get_mocked_aws_sqs_queue()
-    instance.client.delete_message.side_effect = Exception
+    instance.client.delete_message.side_effect = Exception('expired token')
 
     with pytest.raises(SystemExit) as e:
         instance.delete_message(SAMPLE_MESSAGE)
     assert e.value.code == utils.UNABLE_TO_FETCH_DELETE_FROM_QUEUE
+    assert 'ERROR: Error deleting message from SQS: expired token' in capsys.readouterr().out
 
 
 @patch('sqs_queue.AWSSQSQueue._get_sqs_url', return_value=SAMPLE_URL)
@@ -113,16 +115,18 @@ def test_aws_sqs_queue_fetch_messages(mock_wazuh_integration, mock_get_url):
 
 
 @patch('wazuh_integration.WazuhIntegration.__init__', side_effect=wazuh_integration.WazuhIntegration.__init__)
-def test_aws_sqs_queue_fetch_messages_handles_exception_when_getting_messages(mock_wazuh_integration):
-    """Test 'fetch_messages' handles exceptions raised when trying to retrieve messages from SQS."""
+def test_aws_sqs_queue_fetch_messages_handles_exception_when_getting_messages(mock_wazuh_integration, capsys):
+    """Test 'fetch_messages' handles exceptions raised when trying to retrieve messages from SQS, printing the reason
+    as an error."""
     instance = utils.get_mocked_aws_sqs_queue()
 
     mock_receive = instance.client.receive_message
-    mock_receive.side_effect = Exception
+    mock_receive.side_effect = Exception('expired token')
 
     with pytest.raises(SystemExit) as e:
         instance.fetch_messages()
     assert e.value.code == utils.UNABLE_TO_FETCH_DELETE_FROM_QUEUE
+    assert 'ERROR: Error receiving message from SQS: expired token' in capsys.readouterr().out
 
 
 @patch('sqs_queue.AWSSQSQueue.fetch_messages', return_value=SAMPLE_RAW_MESSAGE)

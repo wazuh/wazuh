@@ -286,7 +286,7 @@ class AWSSLSubscriberBucket(wazuh_integration.WazuhIntegration, AWSS3LogHandler)
         try:
             raw_parquet = io.BytesIO(self.client.get_object(Bucket=bucket, Key=log_path)['Body'].read())
         except Exception as e:
-            aws_tools.debug(f'Could not get the parquet file {log_path} in {bucket}: {e}', 1)
+            aws_tools.error(f'Could not get the parquet file {log_path} in {bucket}: {e}')
             sys.exit(21)
         pfile = pq.ParquetFile(raw_parquet)
         for i in pfile.iter_batches():

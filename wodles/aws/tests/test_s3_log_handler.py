@@ -96,15 +96,18 @@ def test_aws_sl_subscriber_bucket_obtain_logs_with_datetime(mock_wazuh_integrati
 @patch('wazuh_integration.WazuhIntegration.get_sts_client')
 @patch('wazuh_integration.WazuhIntegration.__init__', side_effect=wazuh_integration.WazuhIntegration.__init__)
 def test_aws_sl_subscriber_bucket_obtain_logs_handles_exception(mock_wazuh_integration,
-                                                                                    mock_sts_client):
-    """Test 'obtain_information_from_parquet' handles exceptions raised when failing to process a parquet file."""
+                                                                                    mock_sts_client, capsys):
+    """Test 'obtain_information_from_parquet' handles exceptions raised when failing to process a parquet file,
+    printing the reason as an error."""
     instance = utils.get_mocked_aws_sl_subscriber_bucket()
 
-    instance.client.get_object.side_effect = Exception
+    instance.client.get_object.side_effect = Exception('expired token')
 
     with pytest.raises(SystemExit) as e:
         instance.obtain_logs(utils.TEST_BUCKET, SAMPLE_PARQUET_KEY)
     assert e.value.code == utils.UNABLE_TO_FETCH_DELETE_FROM_QUEUE
+    assert f'ERROR: Could not get the parquet file {SAMPLE_PARQUET_KEY} in {utils.TEST_BUCKET}: expired token' \
+           in capsys.readouterr().out
 
 
 @patch('s3_log_handler.AWSSLSubscriberBucket.obtain_logs')
