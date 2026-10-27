@@ -220,8 +220,8 @@ sudo /var/wazuh-manager/bin/wazuh-manager-authd --create-enrollment-token --addr
 ```
 
 The CLI prints the token alone on stdout and its id, endpoint,
-expiry and pin on stderr; `--show-token` decodes one offline (argument, `--token-file` or stdin) without
-its credential. An inline token requires `--show-token=<token>`; a separate positional argument
+expiry and pin on stderr; `--show-token` decodes one offline (argument, `--token-file` or stdin), printing
+its id but not its credential. An inline token requires `--show-token=<token>`; a separate positional argument
 is not consumed. `--purge-enrollment-tokens` removes dead tokens by default; `--all` also removes
 usable tokens and requires interactive confirmation or `--force`. The server API offers the same
 operations as `POST`/`GET /agents/enrollment-tokens`, `DELETE /agents/enrollment-tokens/{token_id}`

@@ -100,7 +100,7 @@ that omits the credential):
 | `ver` | format version, always `1`; anything else is refused |
 | `adr` | where to connect: `host[:port][/prefix]`. The default port `1517` and the default prefix `wazuh-manager` are **dropped** on encoding, so a default deployment's token carries only a hostname |
 | `pin` **or** `ca` | the trust anchor — exactly one, never both and never neither |
-| `key` | the credential: 32 bytes, base64url. Absent on a `--no-credential` token |
+| `key` | the credential: 32 bytes, base64url — the 16-byte token id followed by the 16-byte secret. Absent on a `--no-credential` token |
 
 That is the whole document. There is no signature on the token itself. Distribute it through a
 trusted channel: replacing the descriptor can replace both the destination and its trust anchor,

@@ -67,15 +67,20 @@ void w_agent_auth_help(FILE *out, const char *progname) {
     fprintf(out,
         "\n"
         "%s: enroll, re-enroll or move an installed agent with a token.\n"
-        "\n"
-        "  %s --token-file %s                 enroll\n"
+        "\n",
+        progname);
+#ifndef WIN32
+    /* cmd.exe's echo keeps the quotes, so this example only holds outside Windows */
+    fprintf(out, "  echo '<TOKEN>' | %s                       enroll\n", progname);
+#endif
+    fprintf(out,
+        "  %s --token-file %s                 enroll from a file\n"
         "  %s --token-file %s --force-enroll  re-register, new id\n"
         "  %s --token-file %s --certs-only    refresh CA + address\n"
         "  %s --show-token < %s               decode a token\n"
         "\n"
         "  The token is read from --token-file or standard input, never from the\n"
-        "  command line: a command line is readable by other processes and lands in\n"
-        "  shell history. The file is never modified or deleted, whichever it is.\n"
+        "  command line. The file is never modified or deleted, whichever it is.\n"
         "\n"
         "  Actions\n"
         "    --show-token     Decode the token and print what it carries. Nothing\n"
@@ -107,7 +112,7 @@ void w_agent_auth_help(FILE *out, const char *progname) {
         "  Exit codes: 0 done  1 could not run  2 token rejected  3 CA not established\n"
         "              4 enrollment refused  5 not committed  6 config not updated\n"
         "\n",
-        progname, progname, AGENT_AUTH_EXAMPLE_TOKEN, progname, AGENT_AUTH_EXAMPLE_TOKEN,
+        progname, AGENT_AUTH_EXAMPLE_TOKEN, progname, AGENT_AUTH_EXAMPLE_TOKEN,
         progname, AGENT_AUTH_EXAMPLE_TOKEN, progname, AGENT_AUTH_EXAMPLE_TOKEN, WAZUHCONF);
 }
 
@@ -309,9 +314,12 @@ static char *w_agent_auth_read_token_file(const char *path, FILE *err) {
  * command having hung. Say what is wanted instead: a token only ever arrives here from a redirect
  * or a pipe. */
 static void w_agent_auth_explain_no_token(FILE *err) {
-    fprintf(err, "%s: no token given. Pass --token-file <path>, or redirect one in:\n",
+    fprintf(err, "%s: no token given. Pass --token-file <path>, or pipe or redirect one in:\n",
             AGENT_AUTH_NAME);
     fprintf(err, "\n");
+#ifndef WIN32
+    fprintf(err, "      echo '<TOKEN>' | %s\n", AGENT_AUTH_NAME);
+#endif
     fprintf(err, "      %s --token-file %s\n", AGENT_AUTH_NAME, AGENT_AUTH_EXAMPLE_TOKEN);
     fprintf(err, "      %s < %s\n", AGENT_AUTH_NAME, AGENT_AUTH_EXAMPLE_TOKEN);
     fprintf(err, "\n");
@@ -343,7 +351,7 @@ static char *w_agent_auth_read_token_stdin(FILE *in, FILE *err) {
 
     if (*text == '\0') {
         fprintf(err, "%s: the enrollment token is empty. Pass --token-file <path>,\n"
-                "  or redirect one on standard input.\n", AGENT_AUTH_NAME);
+                "  or pipe or redirect one in.\n", AGENT_AUTH_NAME);
         os_free(text);
         return NULL;
     }
