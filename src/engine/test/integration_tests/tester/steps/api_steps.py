@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 import json
 import os
+import re
 import subprocess
 from typing import Optional, Tuple
 
@@ -518,8 +519,12 @@ def step_impl(context, response: str):
     expected_output.get('agent', {}).pop('manager_name', None)
     actual_output.get('agent', {}).pop('manager_name', None)
 
-    # 4b. Remove dynamic fields stamped by TesterWorker (@timestamp, wazuh.event.id)
-    actual_output.pop('@timestamp', None)
+    # 4b. Remove dynamic fields stamped by TesterWorker (@timestamp, wazuh.event.id).
+    # The stamp is always present and must keep the nanosecond ISO-8601 format (9 decimals, UTC).
+    stamp = actual_output['@timestamp']
+    assert re.fullmatch(r'\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{9}Z', stamp), \
+        f"@timestamp is not a nanosecond ISO-8601 UTC stamp: {stamp!r}"
+    actual_output.pop('@timestamp')
     if 'wazuh' in actual_output and 'event' in actual_output['wazuh']:
         actual_output['wazuh']['event'].pop('id', None)
         if not actual_output['wazuh']['event']:
