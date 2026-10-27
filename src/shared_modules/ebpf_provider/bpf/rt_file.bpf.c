@@ -275,15 +275,32 @@ extern int LINUX_KERNEL_VERSION __kconfig;
  *   further out still: there the field is `ino` and not `id` at all. Neither
  *   host can load the engine, which is the only reason this is safe.
  *
- * The MASK is a separate question from the layout and is right regardless. A
+ * The MASK is a separate question from the layout, and it applies to EVERY
+ * id this program reports -- including the one bpf_get_current_cgroup_id()
+ * returns, which is why current_container_cgroup_id() masks both of its arms.
+ *
+ * That was not always so, and the reasoning that left the helper's result
+ * unmasked is worth recording because it is a trap. The argument ran: the
+ * packed generation was measured on a legacy host, the legacy host is the only
+ * one that reaches the CO-RE read below, therefore only that read needs
+ * masking. The first two steps are true and the conclusion does not follow.
+ * Generation packing is a property of the KERNEL, not of which hierarchy the
+ * host mounts, and bpf_get_current_cgroup_id() returns the same kernfs id by
+ * the same rule -- it is `cgroup_id(cgrp)`, which is `kn->id`. On a RHEL 8
+ * family kernel, where the generation IS packed, the helper therefore reports
+ * (generation << 32 | ino) while userspace stat() reports st_ino, the low word
+ * alone. The two never join, on a unified or hybrid host just as surely as on
+ * a legacy one, and the symptom is a cgroup id that matches no inode anywhere:
+ * the resolver's scanOne() finds it among neither containers nor host cgroups
+ * and returns nullopt, so the consumer retries and logs a cold-cache
+ * resolution FAILURE rather than a host-process verdict.
+ *
+ * Masking is right everywhere for the reason it was always right here. A
  * kernfs ino comes from a 32-bit IDR and so never reaches the high word; when
- * no generation is packed the high word is zero and the mask is a no-op.
- * Arithmetic on the u64, not a reinterpretation of its bytes, so endianness
- * does not enter into it. Nor can it truncate a key that userspace keeps whole:
- * this read happens ONLY on a legacy host, because rt_set_cgroup_v1_subsys()
- * refuses unless wz_cgroup_v1_subsys_read_allowed() agrees, and a legacy host
- * is precisely where the generation was measured to be packed. Everywhere else
- * the id comes from bpf_get_current_cgroup_id() and is never masked. */
+ * no generation is packed the high word is zero and the mask is a no-op, which
+ * is why every 6.x host validated before this went unnoticed. Arithmetic on the
+ * u64, not a reinterpretation of its bytes, so endianness does not enter into
+ * it. */
 statfunc __u64 kernfs_node_ino(__u64 raw)
 {
     return raw & 0xFFFFFFFFULL;
@@ -296,7 +313,10 @@ statfunc __u64 current_container_cgroup_id(void)
 
     if (!configured || *configured == 0)
     {
-        return bpf_get_current_cgroup_id();
+        /* Masked for the same reason the CO-RE read below is: the helper hands
+         * back kn->id, generation included on a kernel that packs one, and
+         * userspace correlates on st_ino. See kernfs_node_ino(). */
+        return kernfs_node_ino(bpf_get_current_cgroup_id());
     }
 
     const __u32 index = *configured - 1;
