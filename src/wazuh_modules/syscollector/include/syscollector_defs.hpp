@@ -84,7 +84,8 @@
     FRIEND_TEST(SyscollectorImpTest, SyncModule_GenericFailureWithinToleranceLogsDeferred);                            \
     FRIEND_TEST(SyscollectorImpTest, SyncModule_GenericFailurePastToleranceLogsWarning);                               \
     FRIEND_TEST(SyscollectorImpTest, SyncModule_VDGenericFailureWithinToleranceLogsDeferred);                          \
-    FRIEND_TEST(SyscollectorImpTest, SyncModule_VDGenericFailurePastToleranceLogsWarning)
+    FRIEND_TEST(SyscollectorImpTest, SyncModule_VDGenericFailurePastToleranceLogsWarning);                             \
+    FRIEND_TEST(SyscollectorImpTest, SyncModule_VDFeedNotReadyLogsDeferredEvenPastTolerance)
 #else
 #define SYSCOLLECTOR_FRIEND_TEST_DECLARATIONS
 #endif // SYSCOLLECTOR_UNIT_TESTING
