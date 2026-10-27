@@ -174,7 +174,7 @@ The token is read from `--token-file` or standard input, never from the command 
 |---|---|
 | *(none)* | Establishes the manager's certificate authority, enrolls, and writes the address the token names into `<manager><endpoint>`. Refused if the agent already has a key |
 | `--certs-only` | Installs the trust anchor and, when the token names a different address, writes that too. The registration is left alone, so the agent keeps its id. Refused on an agent that was never enrolled |
-| `--show-token` | Prints what a token carries, without its credential. Contacts nothing and writes nothing |
+| `--show-token` | Prints what a token carries, including the token id the manager lists and revokes it by, without its credential. Contacts nothing and writes nothing |
 | `-h`, `--help` | Usage |
 
 **Options**

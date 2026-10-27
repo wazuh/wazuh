@@ -504,9 +504,9 @@ static void assert_frozen_description(const char *text) {
     assert_non_null(strstr(text, "adr: siem.example.local\n"));
     assert_non_null(strstr(text, "pin: " FROZEN_PIN_HEX "\n"));
     assert_non_null(strstr(text, "credential: present\n"));
-    // Neither the credential nor either of its halves ever reaches the output.
+    // The id is shown so the token can be revoked; the secret never reaches the output.
+    assert_non_null(strstr(text, "id: " TOKEN_ID "\n"));
     assert_null(strstr(text, FROZEN_SECRET_B64));
-    assert_null(strstr(text, TOKEN_ID));
     assert_null(strstr(text, "key"));
 }
 

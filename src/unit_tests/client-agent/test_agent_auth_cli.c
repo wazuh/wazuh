@@ -570,8 +570,8 @@ static void test_show_token_renders_without_the_credential(void **state) {
     assert_non_null(strstr(out_buf, "pin: " FROZEN_PIN_HEX "\n"));
     /* The token carries a credential, and the output must say so without ever carrying it. */
     assert_non_null(strstr(out_buf, "credential: present\n"));
+    assert_non_null(strstr(out_buf, "id: " FROZEN_ID_B64 "\n"));
     assert_null(strstr(out_buf, FROZEN_KEY_B64));
-    assert_null(strstr(out_buf, FROZEN_ID_B64));
     assert_null(strstr(out_buf, "key"));
 }
 

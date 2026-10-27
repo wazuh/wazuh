@@ -351,7 +351,7 @@ static char *w_agent_auth_read_token_stdin(FILE *in, FILE *err) {
 
     if (*text == '\0') {
         fprintf(err, "%s: the enrollment token is empty. Pass --token-file <path>,\n"
-                "  or redirect one on standard input.\n", AGENT_AUTH_NAME);
+                "  or pipe or redirect one in.\n", AGENT_AUTH_NAME);
         os_free(text);
         return NULL;
     }

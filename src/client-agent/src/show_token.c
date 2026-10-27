@@ -65,7 +65,7 @@ static char *w_agent_show_token_read(FILE *in, FILE *err, const char *progname)
  *
  * Read from stdin, never from an argument: a token carries the credential secret, and argv
  * is world-readable through /proc. w_etoken_describe() renders the token without its
- * identifier or secret, so the output is safe to print, log and parse.
+ * secret, so the output is safe to print, log and parse.
  *
  * Decodes with the same w_etoken_decode() the agent itself uses at first boot, so a token
  * this accepts is a token the bootstrap will accept, and a malformed one is reported while

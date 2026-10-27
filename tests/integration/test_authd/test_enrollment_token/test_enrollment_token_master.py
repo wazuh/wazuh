@@ -211,8 +211,8 @@ def _case_cli_show_token(sock, test_metadata, created_agents):
     """'--show-token' describes a token without its credential, and refuses one it cannot parse.
 
     This is the command an operator runs on a token someone sent them, so it must be safe to run
-    where the output can be read: it says which manager the token points at and which CA it pins,
-    and never repeats the key or either of its halves. Anything that is not a token is a plain
+    where the output can be read: it says which manager the token points at, which CA it pins and
+    its id, and never repeats the key or its secret. Anything that is not a token is a plain
     failure, not an empty description.
     """
     token_text, _ = _mint_over_cli()
@@ -229,7 +229,7 @@ def _case_cli_show_token(sock, test_metadata, created_agents):
     assert 'credential: present' in result.stdout, f'The credential is not reported: {result.stdout!r}'
     assert 'key:' not in result.stdout, '--show-token prints the key field'
     assert token['key'] not in result.stdout, '--show-token prints the key'
-    assert token_id not in result.stdout, '--show-token prints the identifier half of the key'
+    assert f'id: {token_id}' in result.stdout, f'No id line: {result.stdout!r}'
     assert secret not in result.stdout, '--show-token prints the secret half of the key'
 
     garbage = utils.run_authd_cli(['--show-token'], stdin='garbage\n')
