@@ -91,7 +91,6 @@ jobs:
     env:
       BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
       BRANCH_BASE: ${{ inputs.base_branch || github.base_ref }}
-      BUILD_WORKFLOW: 5_builderpackage_agent-windows.yml
       AGENT_PACKAGE_REGEXP: wazuh-agent.*windows.*\.msi
       PR_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
     runs-on: windows-2025
@@ -122,35 +121,12 @@ jobs:
           path: C:\wazuh-package
           key: msi-${{ env.PR_HEAD_SHA }}
       # ================= DOWNLOAD =================
-      - name: Resolve build run id
-        id: resolve
-        if: ${{ !(inputs.skip_tests == true || inputs.skip_tests == 'true') && steps.cache-msi.outputs.cache-hit != 'true' }}
-        shell: bash
-        env:
-          GH_TOKEN: ${{ github.token }}
-          REPO: ${{ github.repository }}
-          BASE_BRANCH: ${{ inputs.base_branch }}
-          INPUT_BUILD_RUN_ID: ${{ inputs.build_run_id }}
-        run: |
-          set -euo pipefail
-          if [ -n "${INPUT_BUILD_RUN_ID}" ]; then
-            echo "build_run_id=${INPUT_BUILD_RUN_ID}" >> "$GITHUB_OUTPUT"
-          else
-            if ! rid="$(gh run list --repo "${REPO}" --workflow "${BUILD_WORKFLOW}" --branch "${BASE_BRANCH}" --status success --limit 1 --json databaseId --jq '.[0].databaseId')"; then
-              echo "::error::Could not list ${BUILD_WORKFLOW} runs on branch ${BASE_BRANCH}"
-              exit 1
-            fi
-            if [ -z "${rid}" ] || [ "${rid}" = "null" ]; then
-              echo "::error::No successful ${BUILD_WORKFLOW} run found on branch ${BASE_BRANCH}"
-              exit 1
-            fi
-            echo "build_run_id=${rid}" >> "$GITHUB_OUTPUT"
-          fi
       - name: Download MSI package artifact
         if: ${{ !(inputs.skip_tests == true || inputs.skip_tests == 'true') && steps.cache-msi.outputs.cache-hit != 'true' }}
         uses: ./.github/actions/download_package
         with:
-          build_run_id: ${{ steps.resolve.outputs.build_run_id }}
+          build_run_id: ${{ inputs.build_run_id }}
+          base_branch: ${{ inputs.base_branch }}
           producer_workflow: 5_builderpackage_agent-windows
           name_regexp: ${{ env.AGENT_PACKAGE_REGEXP }}
           path: C:\wazuh-package\

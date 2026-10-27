@@ -21,15 +21,6 @@ This issue will show the results of the Coverity scan for the current stage.
 ## Workflows
 ```yaml
 workflows:
-  - name: "Coverity scan - manager"
-    type: "github"
-    repository: "wazuh/wazuh"
-    workflow: "5_codeanalysis_coverity.yml"
-    ref: "{{TAG}}"
-    inputs:
-      project: "wazuh"
-      threads: "0"
-      target: "manager"
   - name: "Coverity scan - agent"
     type: "github"
     repository: "wazuh/wazuh"
@@ -46,7 +37,6 @@ List every new or known issue that appeared while testing this task, with its li
 
 | Status | Test | Failure type | New or known issues (with link) | Notes |
 |---|---|---|---|---|
-|  | Coverity scan - manager |  |  |  |
 |  | Coverity scan - agent |  |  |  |
 
 ## Auditors' validation
