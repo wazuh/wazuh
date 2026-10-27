@@ -14,6 +14,7 @@
 #include "chainOfResponsability.hpp"
 #include "componentsHelper.hpp"
 #include "defs.h"
+#include "initialLoadState.hpp"
 #include "json.hpp"
 #include "sharedDefs.hpp"
 #include "stringHelper.h"
@@ -105,7 +106,7 @@ private:
     void createRocksDB(UpdaterBaseContext& context) const
     {
         // Create the database name. It will be the topic name with the prefix "updater_" and the suffix "_metadata".
-        const auto databaseName {"/updater_" + context.topicName + "_metadata"};
+        const auto databaseName {"/" + InitialLoadState::updaterDatabaseName(context.topicName)};
         const auto& databasePath {context.configData.at("databasePath").get_ref<std::string&>()};
 
         // Check if the output folder exists.

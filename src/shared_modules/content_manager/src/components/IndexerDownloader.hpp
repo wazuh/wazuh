@@ -13,6 +13,7 @@
 
 #include "componentsHelper.hpp"
 #include "indexerSearchClient.hpp"
+#include "initialLoadState.hpp"
 #include "sharedDefs.hpp"
 #include "updaterContext.hpp"
 #include "utils/chainOfResponsability.hpp"
@@ -795,7 +796,7 @@ private:
      *        been accepted, so that a restart in between resumes through the retrying initial-load
      *        path from the persisted cursor instead of the incremental path (which does not retry).
      */
-    static constexpr std::string_view INITIAL_LOAD_PENDING_KEY {"pending"};
+    static constexpr std::string_view INITIAL_LOAD_PENDING_KEY {InitialLoadState::PENDING_KEY};
 
     bool isInitialLoadPending(const UpdaterContext& context) const
     {
@@ -1103,8 +1104,9 @@ private:
         std::atomic<size_t> totalProcessed {0};
         std::string maxCursor = startCursor;
         std::mutex cursorMutex;
-        // Resume bookkeeping, all under cursorMutex: the last offset each slice delivered and which
-        // slices ran out of documents. Every slice pages in offset order, so every document with an
+        // Resume bookkeeping, all under cursorMutex, which also covers each page delivery: the last
+        // offset each slice delivered and which slices ran out of documents. Every slice pages in
+        // offset order, so every document with an
         // offset at or below the lowest unfinished frontier was delivered by every slice; once the
         // consumer answers "flushed" that frontier is durable and becomes the cursor an interrupted
         // load resumes from (a slice that was ahead re-reads at most what it read since the flush).
@@ -1160,11 +1162,13 @@ private:
                         sliceCursor = std::to_string(lastHit.at("_source").at("offset").get<uint64_t>());
                     }
 
-                    const bool flushed = processPage(context, hitArray, sliceCursor);
-                    sliceProcessed += hitArray.size();
-
                     {
+                        // Delivery and bookkeeping in one critical section: otherwise another slice could
+                        // deliver an unflushed page and advance its frontier between this page's
+                        // "flushed" answer and the minimum computed from it.
                         std::lock_guard<std::mutex> lock(cursorMutex);
+                        const bool flushed = processPage(context, hitArray, sliceCursor);
+                        sliceProcessed += hitArray.size();
                         if (!sliceCursor.empty())
                         {
                             sliceFrontier[sliceId] = std::stoull(sliceCursor);
@@ -1291,9 +1295,9 @@ private:
             return totalProcessed.load();
         }
 
-        // Persist cursor only after all slices complete
+        // The tail after the last "flushed" answer is durable only once the consumer has processed the
+        // completion: UpdateIndexerCursor stores this cursor after that, never before.
         context.data["cursor"] = maxCursor;
-        persistCursor(context, maxCursor);
 
         return totalProcessed.load();
     }
@@ -1548,9 +1552,12 @@ public:
             }
 
             // If a shutdown was requested, skip the completion signal — no point reloading
-            // maps or triggering a rescan if the agent is going down.
+            // maps or triggering a rescan if the agent is going down. Without it the tail of this
+            // download is not durable, so its cursor must not reach UpdateIndexerCursor: the cursor
+            // persisted on the last "flushed" answer stays the resume point.
             if (context->spUpdaterBaseContext->spStopCondition->check())
             {
+                context->data.erase("cursor");
                 break;
             }
 

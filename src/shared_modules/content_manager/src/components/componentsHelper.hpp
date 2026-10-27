@@ -11,6 +11,7 @@
 #ifndef _COMPONENTS_HELPER_HPP
 #define _COMPONENTS_HELPER_HPP
 
+#include "initialLoadState.hpp"
 #include "json.hpp"
 #include "updaterContext.hpp"
 #include <map>
@@ -34,7 +35,8 @@ namespace Components
         static const std::string CURRENT_OFFSET {"current_offset"};             ///< Database column name for offsets.
         static const std::string DOWNLOADED_FILE_HASH {"downloaded_file_hash"}; ///< Database column name for hashes.
         static const std::string INITIAL_LOAD_PENDING {
-            "initial_load_pending"}; ///< Database column holding the marker of an initial load not yet completed.
+            InitialLoadState::PENDING_COLUMN}; ///< Database column holding the marker of an initial load not yet
+                                               ///< completed.
     } // namespace Columns
 
     /**

@@ -14,6 +14,8 @@
 #include "conditionSync.hpp"
 #include "indexerSearchClient.hpp"
 #include <algorithm>
+#include <chrono>
+#include <condition_variable>
 #include <cstdint>
 #include <functional>
 #include <memory>
@@ -29,7 +31,8 @@
  * Serves PIT searches the way the indexer does for the downloader's queries: `match_all` or
  * `range.offset.gt`, sorted by (offset, _id), `search_after`, `size`, and `slice` by a hash of the id.
  * Faults are injected by PIT-search ordinal: throw at request N (once), set the stop condition at
- * request N, or answer no hits for the first N requests.
+ * request N, or answer no hits for the first N requests. Lockstep mode makes the slice order of the
+ * requests deterministic.
  */
 struct FakeIndex
 {
@@ -59,6 +62,8 @@ struct FakeIndex
     size_t stopAtRequest {0}; ///< The N-th PIT search sets the stop condition before answering.
     std::shared_ptr<ConditionSync> stopCondition;
     size_t emptyUntilRequest {0}; ///< The first N PIT searches answer no hits.
+    size_t lockstepSlices {0};    ///< When N > 0, sliced searches take turns: request k goes to slice (k - 1) % N.
+    std::condition_variable turn;
 
     void add(std::string id, uint64_t offset, std::string type)
     {
@@ -119,8 +124,20 @@ public:
                           const std::optional<nlohmann::json>& /*source*/,
                           const std::optional<nlohmann::json>& slice) override
     {
-        std::lock_guard<std::mutex> lock(m_index->mutex);
+        std::unique_lock<std::mutex> lock(m_index->mutex);
+        if (m_index->lockstepSlices > 0 && slice)
+        {
+            const auto sliceId = slice->at("id").get<size_t>();
+            m_index->turn.wait_for(lock,
+                                   std::chrono::seconds {2},
+                                   [this, sliceId]
+                                   {
+                                       return m_index->searchCalls % m_index->lockstepSlices == sliceId ||
+                                              (m_index->stopCondition && m_index->stopCondition->check());
+                                   });
+        }
         const auto ordinal = ++m_index->searchCalls;
+        m_index->turn.notify_all();
         m_index->searches.push_back({pit.id, query, searchAfter.has_value(), slice});
 
         if (ordinal == m_index->failAtRequest)
