@@ -9,7 +9,7 @@ import logging
 import sys
 from datetime import datetime
 from hashlib import md5
-from json import JSONDecodeError, dumps, loads
+from json import dumps, loads
 from os.path import abspath, dirname
 
 from azure.core.exceptions import AzureError, ClientAuthenticationError, HttpResponseError, ResourceExistsError, \
@@ -94,15 +94,19 @@ def start_storage(args):
 
     logging.info('Storage: Authenticated.')
 
+    # The offsets of the append blobs already include the container, so they keep the key of the storage account
+    account_md5_hash = md5(name.encode()).hexdigest()
+
     # Get the blobs
     for container in containers:
-        md5_hash = md5(name.encode()).hexdigest()
+        # Blocks of the same container with another path or blob extension keep their own bookmark
+        md5_hash = orm.create_pk(account=name, container=container, prefix=args.prefix, blobs=args.blobs)
         offset = args.storage_time_offset
         try:
             item = orm.get_row(orm.Storage, md5=md5_hash)
             if item is None:
                 item = create_new_row(
-                    table=orm.Storage, query=name, md5_hash=md5_hash, offset=offset
+                    table=orm.Storage, query=container, md5_hash=md5_hash, offset=offset
                 )
         except orm.AzureORMError as e:
             logging.error(
@@ -118,6 +122,7 @@ def start_storage(args):
             prefix=args.prefix,
             service_client=service_client,
             md5_hash=md5_hash,
+            account_md5_hash=account_md5_hash,
             min_datetime=min_datetime,
             max_datetime=max_datetime,
             desired_datetime=desired_datetime,
@@ -134,6 +139,7 @@ def get_blobs(
     container_name: str,
     service_client: BlobServiceClient,
     md5_hash: str,
+    account_md5_hash: str,
     min_datetime: datetime,
     max_datetime: datetime,
     desired_datetime: datetime,
@@ -160,6 +166,8 @@ def get_blobs(
         Value to compare with the blobs last modified times.
     md5_hash : str
         md5 value used to search the container in the file containing the dates.
+    account_md5_hash : str
+        md5 value of the storage account name, used to store the offsets of the append blobs.
     prefix : str, optional
         Prefix value to search blobs that match with it.
 
@@ -209,7 +217,7 @@ def get_blobs(
             creation_time = str(blob.creation_time)
             processed_bytes = None
             if track_offset and not reparse:
-                processed_bytes = get_processed_bytes(md5_hash, container_name, blob.name, creation_time)
+                processed_bytes = get_processed_bytes(account_md5_hash, container_name, blob.name, creation_time)
 
             # Skip the blob if already processed
             last_modified = blob.last_modified
@@ -242,7 +250,7 @@ def get_blobs(
                     try:
                         content_list = loads(content)
                         records = content_list['records']
-                    except (JSONDecodeError, TypeError) as e:
+                    except (ValueError, TypeError, RecursionError) as e:
                         logging.error(
                             f'Storage: Error reading the contents of the blob: "{e}".'
                         )
@@ -253,13 +261,25 @@ def get_blobs(
                         )
                         continue
                     else:
+                        if not isinstance(records, list):
+                            logging.error(f'Storage: The records of the blob "{blob.name}" are not a list.')
+                            continue
+                        skipped_records = 0
                         for log_record in records:
+                            if not isinstance(log_record, dict):
+                                skipped_records += 1
+                                continue
                             # Add azure tags
                             log_record['azure_tag'] = 'azure-storage'
                             if tag:
                                 log_record['azure_storage_tag'] = tag
                             logging.info('Storage: Sending event by socket.')
                             send_message(dumps(log_record))
+                        if skipped_records:
+                            logging.warning(
+                                f'Storage: Skipped records of the blob "{blob.name}" that are not JSON objects: '
+                                f'{skipped_records}.'
+                            )
                 # Process the data as plain text
                 else:
                     for line in [s for s in str(content).splitlines() if s]:
@@ -277,7 +297,8 @@ def get_blobs(
                         send_message(msg)
                 if track_offset:
                     save_processed_bytes(
-                        md5_hash, container_name, blob.name, creation_time, (processed_bytes or 0) + downloaded_bytes
+                        account_md5_hash, container_name, blob.name, creation_time,
+                        (processed_bytes or 0) + downloaded_bytes
                     )
             update_row_object(
                 table=orm.Storage,
@@ -288,7 +309,7 @@ def get_blobs(
             )
 
         if append_blobs:
-            remove_stale_offsets(md5_hash, container_name, prefix, append_blobs)
+            remove_stale_offsets(account_md5_hash, container_name, prefix, append_blobs)
 
 
 def download_blob(container_client, blob, offset=None, number_of_retries=3):
