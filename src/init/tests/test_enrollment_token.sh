@@ -178,6 +178,12 @@ check "a token alone writes no authd.pass" "absent" \
 check_no_dead_elements "a token alone"
 rm -rf "${RUN_DIR}"
 
+# Only upgrade_main sets the staging directory; one inherited from the environment is not used.
+UPGRADE_STAGE="/nonexistent/stage" run_target "${DESC_WITH_KEY}" 0
+check "an inherited UPGRADE_STAGE does not move the stored token" "${TOKEN}" \
+      "$(cat "${RUN_DIR}/etc/enrollment_token" 2>/dev/null)"
+rm -rf "${RUN_DIR}"
+
 run_target "${DESC_NO_KEY}" 0
 check "a credential-less token is not an error" "siem.example.local" "$(endpoint_of)"
 rm -rf "${RUN_DIR}"
@@ -295,13 +301,19 @@ run_upgrade() {
 
     RUN_DIR="$(make_installdir "$1" "$2")"
     printf '%s' "${LEGACY_CONF}" > "${RUN_DIR}/etc/ossec.conf"
+    # An agent enrolled under 4.x, unless the case says otherwise.
+    [ -n "${NO_KEYS}" ] || echo "001 agent any 0123456789abcdef" > "${RUN_DIR}/etc/client.keys"
     bash "${TARGET}" "${RUN_DIR}" upgrade >/dev/null 2>"${RUN_DIR}/stderr"
     RUN_STATUS="$?"
 
 }
 
 export WAZUH_ENROLLMENT_TOKEN="${TOKEN}"
-export WAZUH_AGENT_NAME="not-on-upgrade"
+IGNORED_ON_UPGRADE=(WAZUH_AGENT_NAME WAZUH_AGENT_GROUP WAZUH_GROUP WAZUH_KEEP_ALIVE_INTERVAL \
+                    WAZUH_NOTIFY_TIME WAZUH_TIME_RECONNECT ENROLLMENT_DELAY WAZUH_SSL_VERIFICATION)
+for name in "${IGNORED_ON_UPGRADE[@]}"; do
+    export "${name}=not-on-upgrade"
+done
 run_upgrade "${DESC_WITH_KEY}" 0
 check "an upgrade with a token succeeds" "0" "${RUN_STATUS}"
 check "an upgrade with a token writes its address" "siem.example.local" "$(endpoint_of)"
@@ -310,8 +322,11 @@ check "an upgrade stores the token verbatim" "${TOKEN}" "$(cat "${RUN_DIR}/etc/e
 check "the token stored on upgrade is root-only" "600" "$(file_mode "${RUN_DIR}/etc/enrollment_token")"
 check "an upgrade applies nothing but the token" "0" \
       "$(grep -c "not-on-upgrade" "${RUN_DIR}/etc/ossec.conf")"
+for name in "${IGNORED_ON_UPGRADE[@]}"; do
+    check "an upgrade says ${name} was ignored" "1" "$(grep -c "${name} was ignored" "${RUN_DIR}/stderr")"
+    unset "${name}"
+done
 rm -rf "${RUN_DIR}"
-unset WAZUH_AGENT_NAME
 
 run_upgrade "" 2
 check "an upgrade with a refused token names ERR_BAD_TOKEN" "ERR_BAD_TOKEN" "$(refusal_code)"
@@ -328,6 +343,11 @@ check "an upgrade with no token keeps the configuration" "${LEGACY_CONF}" "$(cat
 check "an upgrade with no token is not a missing manager" "" "$(refusal_code)"
 check "an upgrade with no token and no anchor says how to get one" "1" \
       "$(grep -c -- "--certs-only" "${RUN_DIR}/stderr")"
+rm -rf "${RUN_DIR}"
+
+NO_KEYS=1 run_upgrade "${DESC_WITH_KEY}" 0
+check "an upgrade with no token and no key suggests enrolling, not --certs-only" "1:0" \
+      "$(grep -c -- "--token-file <file>'" "${RUN_DIR}/stderr"):$(grep -c -- "--certs-only" "${RUN_DIR}/stderr")"
 rm -rf "${RUN_DIR}"
 
 RUN_DIR="$(make_installdir "${DESC_WITH_KEY}" 0)"
@@ -452,8 +472,16 @@ for shape in ONE_LINE_SERVER UNCLOSED_SERVER COMMENTED_CLIENT; do
           "$([ -e "${RUN_DIR}/etc/enrollment_token" ] && echo present || echo absent)"
     check "an upgrade over ${shape} does not say applied" "0" "$(grep -c "applied:" "${RUN_DIR}/stderr")"
     check "an upgrade over ${shape} leaves no staging directory behind" "" "$(ls "${RUN_DIR}/packages_files")"
+    check "an upgrade over ${shape} with no key suggests enrolling" "0" "$(grep -c -- "--certs-only" "${RUN_DIR}/stderr")"
     rm -rf "${RUN_DIR}"
 done
+
+RUN_DIR="$(make_installdir "${DESC_WITH_KEY}" 0)"
+printf '%s' "${ONE_LINE_SERVER}" > "${RUN_DIR}/etc/ossec.conf"
+echo "001 agent any 0123456789abcdef" > "${RUN_DIR}/etc/client.keys"
+bash "${TARGET}" "${RUN_DIR}" upgrade >/dev/null 2>"${RUN_DIR}/stderr"
+check "a refused rewrite on an enrolled agent suggests --certs-only" "1" "$(grep -c -- "--certs-only" "${RUN_DIR}/stderr")"
+rm -rf "${RUN_DIR}"
 
 # A FIFO at ossec.conf is refused rather than read, which would block the upgrade.
 RUN_DIR="$(make_installdir "${DESC_WITH_KEY}" 0)"

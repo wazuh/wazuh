@@ -19,6 +19,8 @@ TMP_INSERT="${INSTALLDIR}/tmp/insert-output"
 # so the wazuh user never needs it.
 WAZUH_ENROLLMENT_TOKEN_PATH="etc/enrollment_token"
 WAZUH_MACOS_AGENT_DEPLOYMENT_VARS="/tmp/wazuh_envs"
+# Set only by upgrade_main; never taken from the environment.
+UPGRADE_STAGE=""
 
 
 # Set default sed alias
@@ -901,6 +903,19 @@ upgrade_main () {
 
     warn_removed_variables
 
+    for um_name in WAZUH_AGENT_NAME WAZUH_AGENT_GROUP WAZUH_GROUP WAZUH_KEEP_ALIVE_INTERVAL \
+            WAZUH_NOTIFY_TIME WAZUH_TIME_RECONNECT ENROLLMENT_DELAY WAZUH_SSL_VERIFICATION; do
+        if [ -n "${!um_name}" ]; then
+            echo "wazuh-agent: ${um_name} was ignored: an upgrade keeps the existing configuration; only WAZUH_ENROLLMENT_TOKEN is read." >&2
+        fi
+    done
+
+    # An agent with no key yet enrolls with the token; one already enrolled only installs the CA.
+    um_auth="'${INSTALLDIR}/bin/wazuh-agent-auth --token-file <file> --certs-only'"
+    if [ ! -s "${INSTALLDIR}/etc/client.keys" ]; then
+        um_auth="'${INSTALLDIR}/bin/wazuh-agent-auth --token-file <file>'"
+    fi
+
     # An agent that already holds an anchor never uses the token, so the address is left alone too.
     # Moving it to another manager is wazuh-agent-auth's job.
     if [ -f "${INSTALLDIR}/etc/certs/root-ca.pem" ]; then
@@ -914,7 +929,7 @@ upgrade_main () {
     if [ -z "${WAZUH_ENROLLMENT_TOKEN}" ]; then
         # Not when a token is still waiting for the first start, or a remote upgrade left a CA.
         if [ ! -e "${INSTALLDIR}/${WAZUH_ENROLLMENT_TOKEN_PATH}" ] && [ ! -e "${INSTALLDIR}/var/incoming/root-ca.pem" ]; then
-            echo "wazuh-agent: no trust anchor at ${INSTALLDIR}/etc/certs/root-ca.pem; unless <ssl> names a CA, the agent will not verify the manager. Upgrade with WAZUH_ENROLLMENT_TOKEN set, or run '${INSTALLDIR}/bin/wazuh-agent-auth --token-file <file> --certs-only'." >&2
+            echo "wazuh-agent: no trust anchor at ${INSTALLDIR}/etc/certs/root-ca.pem; unless <ssl> names a CA, the agent will not verify the manager. Upgrade with WAZUH_ENROLLMENT_TOKEN set, or run ${um_auth}." >&2
         fi
         unset_vars
         return 0
@@ -956,7 +971,7 @@ upgrade_main () {
     if ! address_blocks_are_multiline "${CONF_FILE}" || ! add_adress_block \
             || ! grep -qF "<endpoint>${FINAL_ENDPOINT}</endpoint>" "${CONF_FILE}" \
             || [ "$(grep -c -E '</(ossec_config|client|agent)>' "${CONF_FILE}")" -ne "${um_closing}" ]; then
-        echo "wazuh-agent: the manager address in ${um_conf} could not be rewritten (a <server> block must open and close on lines of its own); WAZUH_ENROLLMENT_TOKEN was not applied. Run '${INSTALLDIR}/bin/wazuh-agent-auth --token-file <file> --certs-only'." >&2
+        echo "wazuh-agent: the manager address in ${um_conf} could not be rewritten (a <server> block must open and close on lines of its own); WAZUH_ENROLLMENT_TOKEN was not applied. Run ${um_auth}." >&2
         rm -rf "${UPGRADE_STAGE}"
         unset_vars
         return 1
