@@ -61,6 +61,9 @@ STATIC void w_initialize_file_status();
  */
 STATIC void w_save_file_status();
 
+/* Serializes the periodic status save of the main loop with the one of the shutdown thread: both write the same temporary file */
+static pthread_mutex_t file_status_save_mutex = PTHREAD_MUTEX_INITIALIZER;
+
 #ifndef WIN32
 /**
  * @brief Run the atexit work (release the macOS log processes, save the files status) on a termination signal,
@@ -1008,7 +1011,9 @@ void LogCollectorStart()
             }
 
             //Save status localfiles to disk
+            w_mutex_lock(&file_status_save_mutex);
             w_save_file_status();
+            w_mutex_unlock(&file_status_save_mutex);
 
             f_check = 0;
 
@@ -2739,7 +2744,9 @@ STATIC void w_logcollector_shutdown(void) {
 #if defined(Darwin) || (defined(__linux__) && defined(WAZUH_UNIT_TESTING))
     w_macos_release_log_execution();
 #endif
+    w_mutex_lock(&file_status_save_mutex);
     w_save_file_status();
+    w_mutex_unlock(&file_status_save_mutex);
 }
 #endif
 
