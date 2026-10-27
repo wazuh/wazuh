@@ -88,16 +88,16 @@ List every new or known issue that appeared while testing this task, with its li
 
 | Status | Test | Failure type | New or known issues (with link) | Notes |
 |---|---|---|---|---|
-|  | 5_testunit_linux-win |  |  |  |
-|  | 5_testunit_macos |  |  |  |
-|  | 5_testcomponent_agent_info-rtr |  |  |  |
-|  | 5_testcomponent_agent_metadata-rtr |  |  |  |
-|  | 5_testcomponent_sca-rtr |  |  |  |
-|  | 5_testcomponent_schema_validator-rtr |  |  |  |
-|  | 5_testcomponent_shared_modules_file_helper-rtr |  |  |  |
-|  | 5_testcomponent_sync_protocol-rtr |  |  |  |
-|  | 5_testcomponent_syscheck-rtr |  |  |  |
-|  | 5_testcomponent_syscollector-rtr |  |  |  |
+|  | Linux and Windows C unit tests |  |  |  |
+|  | macOS C unit tests |  |  |  |
+|  | agent_info RTR |  |  |  |
+|  | agent_metadata RTR |  |  |  |
+|  | sca RTR |  |  |  |
+|  | schema_validator RTR |  |  |  |
+|  | shared_modules_file_helper RTR |  |  |  |
+|  | sync_protocol RTR |  |  |  |
+|  | syscheck RTR |  |  |  |
+|  | syscollector RTR |  |  |  |
 
 ## Auditors' validation
 In order to close and proceed with the release or the next candidate version, the following auditors must give the green light to this stage.

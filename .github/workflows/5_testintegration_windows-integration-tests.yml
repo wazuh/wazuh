@@ -136,7 +136,10 @@ jobs:
           if [ -n "${INPUT_BUILD_RUN_ID}" ]; then
             echo "build_run_id=${INPUT_BUILD_RUN_ID}" >> "$GITHUB_OUTPUT"
           else
-            rid="$(gh run list --repo "${REPO}" --workflow "${BUILD_WORKFLOW}" --branch "${BASE_BRANCH}" --status success --limit 1 --json databaseId --jq '.[0].databaseId' || true)"
+            if ! rid="$(gh run list --repo "${REPO}" --workflow "${BUILD_WORKFLOW}" --branch "${BASE_BRANCH}" --status success --limit 1 --json databaseId --jq '.[0].databaseId')"; then
+              echo "::error::Could not list ${BUILD_WORKFLOW} runs on branch ${BASE_BRANCH}"
+              exit 1
+            fi
             if [ -z "${rid}" ] || [ "${rid}" = "null" ]; then
               echo "::error::No successful ${BUILD_WORKFLOW} run found on branch ${BASE_BRANCH}"
               exit 1
