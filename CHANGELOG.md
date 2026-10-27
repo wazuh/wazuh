@@ -217,6 +217,7 @@
 | [#38736](https://github.com/wazuh/wazuh/pull/38736) | Fixed two CIS Amazon Linux 2023 SCA checks (`gpgcheck`, `vsftpd`) reporting false-positives on compliant systems. |
 | [#38829](https://github.com/wazuh/wazuh/issues/38829) | Fixed Coverity findings across agent components (`syscheckd`, `sca`, `agent-info`, `https_client`, `agent-upgrade`, and `shared`). |
 | [#38850](https://github.com/wazuh/wazuh/issues/38850) | Fixed missing `<manager>` block on Debian 10 unattended DEB installs. |
+| [#39162](https://github.com/wazuh/wazuh/issues/39162) | Fixed the macOS agent package installing the Linux SCA policy on newer macOS releases. |
 | [#38975](https://github.com/wazuh/wazuh/pull/38975) | Fixed SCA PCI-DSS compliance mappings, updated from v3.2.1 to v4.0 numbering. |
 | [#38928](https://github.com/wazuh/wazuh/issues/38928) | Fixed the CIS Amazon Linux 2023 SCA policy: check 31170 was named for the GID 0 default group control it does not test (its rule actually tests the root password), and check 31172 was a byte-identical duplicate of 31171, both testing `/etc/passwd` permissions and inflating compliance scores. |
 | [#38914](https://github.com/wazuh/wazuh/issues/38914) | Fixed the default agent nodiff list not protecting `/etc/shadow` and real key paths. |
