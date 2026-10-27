@@ -18,8 +18,8 @@
  *
  *  - w_agent_token_bootstrap() is the first-boot path, run once per install from AgentdStart()
  *    on POSIX (agentd.c) and from local_start() on Windows (win_utils.c). It is latched: an
- *    anchor already on disk, a non-empty client.keys, or no token file each independently make
- *    it a no-op. On POSIX it runs before AgentdStart()'s privilege drop, so the files it writes
+ *    anchor already on disk or no token file each independently make it a no-op, and a
+ *    non-empty client.keys limits it to installing the anchor. On POSIX it runs before AgentdStart()'s privilege drop, so the files it writes
  *    are owned while still root and handed to the runtime user before the process stops being
  *    able to.
  *
@@ -242,10 +242,12 @@ typedef enum {
  *
  * W_TOKEN_BOOTSTRAP_DONE in every case where the token path is simply not applicable: AGENT_ANCHOR_CA
  * already exists (a previous run already committed one -- the bootstrap never re-fetches once
- * an anchor is on disk), client.keys is already non-empty (already enrolled), or
- * AGENT_ENROLLMENT_TOKEN_FILE does not exist (a legacy install with no token). The first two
- * also discard the token on their way out: it is a one-shot credential, and once either is true
- * it can never be used again.
+ * an anchor is on disk, and discards the token on its way out), or AGENT_ENROLLMENT_TOKEN_FILE
+ * does not exist (a legacy install with no token).
+ *
+ * An agent already enrolled (non-empty client.keys) with no anchor, such as one upgraded in place
+ * from 4.x, uses the token to install the anchor only, as wazuh-agent-auth --certs-only does. Its
+ * registration is left alone.
  *
  * Each latch independently blocks a re-run, so this is not the way to re-enroll or to move an
  * agent -- w_agent_token_enroll() is, and wazuh-agent-auth is what drives it.

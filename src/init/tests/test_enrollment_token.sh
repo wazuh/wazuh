@@ -285,6 +285,56 @@ check "a 4.x file is not given a <manager> the parser will not read there" "0" \
 rm -rf "${RUN_DIR}"
 unset WAZUH_ENROLLMENT_TOKEN
 
+# --- An in-place upgrade (the packages pass "upgrade") ----------------------------------------
+# The configuration the agent had is kept: only the token is applied, so an agent enrolled before
+# 5.0 gets the address and the token its first start installs the trust anchor with.
+
+run_upgrade() {
+
+    RUN_DIR="$(make_installdir "$1" "$2")"
+    printf '%s' "${LEGACY_CONF}" > "${RUN_DIR}/etc/ossec.conf"
+    bash "${TARGET}" "${RUN_DIR}" upgrade >/dev/null 2>"${RUN_DIR}/stderr"
+    RUN_STATUS="$?"
+
+}
+
+export WAZUH_ENROLLMENT_TOKEN="${TOKEN}"
+export WAZUH_AGENT_NAME="not-on-upgrade"
+run_upgrade "${DESC_WITH_KEY}" 0
+check "an upgrade with a token succeeds" "0" "${RUN_STATUS}"
+check "an upgrade with a token writes its address" "siem.example.local" "$(endpoint_of)"
+check "an upgrade keeps the 4.x <server> wrapper" "1" "$(grep -c "<server>" "${RUN_DIR}/etc/ossec.conf")"
+check "an upgrade stores the token verbatim" "${TOKEN}" "$(cat "${RUN_DIR}/etc/enrollment_token")"
+check "the token stored on upgrade is root-only" "600" "$(file_mode "${RUN_DIR}/etc/enrollment_token")"
+check "an upgrade applies nothing but the token" "0" \
+      "$(grep -c "not-on-upgrade" "${RUN_DIR}/etc/ossec.conf")"
+rm -rf "${RUN_DIR}"
+unset WAZUH_AGENT_NAME
+
+run_upgrade "" 2
+check "an upgrade with a refused token names ERR_BAD_TOKEN" "ERR_BAD_TOKEN" "$(refusal_code)"
+check "an upgrade with a refused token exits non-zero" "1" "${RUN_STATUS}"
+check "an upgrade with a refused token keeps the configuration" "${LEGACY_CONF}" \
+      "$(cat "${RUN_DIR}/etc/ossec.conf")"
+check "an upgrade with a refused token stores no token" "absent" \
+      "$([ -e "${RUN_DIR}/etc/enrollment_token" ] && echo present || echo absent)"
+rm -rf "${RUN_DIR}"
+unset WAZUH_ENROLLMENT_TOKEN
+
+run_upgrade "${DESC_WITH_KEY}" 0
+check "an upgrade with no token keeps the configuration" "${LEGACY_CONF}" "$(cat "${RUN_DIR}/etc/ossec.conf")"
+check "an upgrade with no token is not a missing manager" "" "$(refusal_code)"
+check "an upgrade with no token and no anchor says how to get one" "1" \
+      "$(grep -c -- "--certs-only" "${RUN_DIR}/stderr")"
+rm -rf "${RUN_DIR}"
+
+RUN_DIR="$(make_installdir "${DESC_WITH_KEY}" 0)"
+mkdir -p "${RUN_DIR}/etc/certs"
+touch "${RUN_DIR}/etc/certs/root-ca.pem"
+bash "${TARGET}" "${RUN_DIR}" upgrade >/dev/null 2>"${RUN_DIR}/stderr"
+check "an upgrade with no token and an anchor says nothing" "" "$(cat "${RUN_DIR}/stderr")"
+rm -rf "${RUN_DIR}"
+
 echo
 echo "${checks} checks, ${failures} failed"
 [ "${failures}" -eq 0 ]

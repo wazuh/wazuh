@@ -1508,8 +1508,8 @@ w_token_bootstrap_result_t w_agent_token_bootstrap(int uid, int gid) {
     (void)gid;
 #endif
 
-    /* Both latches below discard the token on their way out. It is a one-shot credential, and
-     * once either of these is true it can never be used again -- but it was only ever deleted
+    /* The anchor latch below discards the token on its way out. It is a one-shot credential, and
+     * once an anchor is committed it can never be used again -- but it was only ever deleted
      * on the success path, so a reinstall over an enrolled agent left it sitting at rest
      * indefinitely with nothing left that would consume it. Removing it is not conditional on
      * having used it; it is conditional on it no longer being usable. */
@@ -1550,11 +1550,16 @@ w_token_bootstrap_result_t w_agent_token_bootstrap(int uid, int gid) {
          * cheap and idempotent. */
         w_token_bootstrap_chown_keys_file(gid, true);
 
-        unlink(AGENT_ENROLLMENT_TOKEN_FILE);
-        return W_TOKEN_BOOTSTRAP_DONE;
-    }
+        if (IsFile(AGENT_ENROLLMENT_TOKEN_FILE) != 0) {
+            return W_TOKEN_BOOTSTRAP_DONE;
+        }
 
-    if (IsFile(AGENT_ENROLLMENT_TOKEN_FILE) != 0) {
+        /* A token left here (typically by an in-place upgrade of an agent enrolled before 5.0)
+         * installs the anchor only, as --certs-only does: re-enrolling would change the agent id. */
+        minfo("Token bootstrap: this agent is already enrolled; installing the manager's CA "
+              "without re-enrolling.");
+        opts.anchor_only = true;
+    } else if (IsFile(AGENT_ENROLLMENT_TOKEN_FILE) != 0) {
         /* Legacy install, no token provided: not an error. */
         return W_TOKEN_BOOTSTRAP_DONE;
     }
@@ -1568,7 +1573,8 @@ w_token_bootstrap_result_t w_agent_token_bootstrap(int uid, int gid) {
     opts.token_text = token_text;
     opts.uid = uid;
     opts.gid = gid;
-    /* Nothing to roll back to: this path only runs when there is no anchor and no key. */
+    /* Nothing to roll back to: there is no anchor, and only an anchor-only run reaches here with a
+     * key, which it never touches. */
     opts.transactional = false;
 
     if (w_agent_token_enroll(&opts, &report) != W_TOKEN_ENROLL_OK) {

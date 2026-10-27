@@ -861,9 +861,39 @@ main () {
 
 }
 
+# An in-place upgrade keeps the configuration it had, so only the token is honoured: it re-points
+# the address and is left for the agent to install the trust anchor with, as --certs-only does.
+upgrade_main () {
+
+    ensure_ossec_log
+
+    if [ -z "${WAZUH_ENROLLMENT_TOKEN}" ]; then
+        if [ ! -f "${INSTALLDIR}/etc/certs/root-ca.pem" ]; then
+            echo "wazuh-agent: no trust anchor at ${INSTALLDIR}/etc/certs/root-ca.pem; unless <ssl> names a CA, the agent will not verify the manager. Upgrade with WAZUH_ENROLLMENT_TOKEN set, or run '${INSTALLDIR}/bin/wazuh-agent-auth --token-file <file> --certs-only'." >&2
+        fi
+        return 0
+    fi
+
+    if ! decode_enrollment_token; then
+        unset_vars
+        return 1
+    fi
+
+    FINAL_ENDPOINT="${TOKEN_ADR}"
+    add_adress_block
+    store_enrollment_token
+
+    unset_vars
+
+}
+
 # Guarded so this file can be sourced by the test suite without running the full
 # install flow; every packaged caller invokes it directly as its own process, where
 # BASH_SOURCE[0] == $0 either way.
 if [ "${BASH_SOURCE[0]}" = "$0" ]; then
-    main "$@"
+    if [ "$2" = "upgrade" ]; then
+        upgrade_main
+    else
+        main "$@"
+    fi
 fi
