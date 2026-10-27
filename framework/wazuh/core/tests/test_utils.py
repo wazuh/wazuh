@@ -736,6 +736,78 @@ def test_plain_dict_to_nested_dict():
      {'localfile': {'allow': True, 'exceptions': []},
       'wodle_command': {'allow': False, 'exceptions': []}},
      True),
+
+    # Test case where syscheck prefilter_cmd is added (should raise when not allowed)
+    ("<ossec_config><syscheck><prefilter_cmd>/tmp/run.sh</prefilter_cmd></syscheck></ossec_config>",
+     "<ossec_config><syscheck><frequency>43200</frequency></syscheck></ossec_config>",
+     {'localfile': {'allow': False, 'exceptions': []},
+      'wodle_command': {'allow': False, 'exceptions': []}},
+     True),
+
+    # Test case where syscheck prefilter_cmd is modified (should raise when not allowed)
+    ("<ossec_config><syscheck><prefilter_cmd>/tmp/run.sh</prefilter_cmd></syscheck></ossec_config>",
+     "<ossec_config><syscheck><prefilter_cmd>/usr/bin/prelink</prefilter_cmd></syscheck></ossec_config>",
+     {'localfile': {'allow': False, 'exceptions': []},
+      'wodle_command': {'allow': False, 'exceptions': []}},
+     True),
+
+    # Test case where syscheck prefilter_cmd is unchanged (should not raise)
+    ("<ossec_config><syscheck><prefilter_cmd>/usr/bin/prelink</prefilter_cmd></syscheck></ossec_config>",
+     "<ossec_config><syscheck><prefilter_cmd>/usr/bin/prelink</prefilter_cmd></syscheck></ossec_config>",
+     {'localfile': {'allow': False, 'exceptions': []},
+      'wodle_command': {'allow': False, 'exceptions': []}},
+     False),
+
+    # Test case where syscheck prefilter_cmd is added and remote commands are allowed (should not raise)
+    ("<ossec_config><syscheck><prefilter_cmd>/tmp/run.sh</prefilter_cmd></syscheck></ossec_config>",
+     "<ossec_config><syscheck><frequency>43200</frequency></syscheck></ossec_config>",
+     {'localfile': {'allow': True, 'exceptions': []},
+      'wodle_command': {'allow': True, 'exceptions': []}},
+     False),
+
+    # Test case where syscheck prefilter_cmd is added and only localfile is disabled (should raise)
+    ("<ossec_config><syscheck><prefilter_cmd>/tmp/run.sh</prefilter_cmd></syscheck></ossec_config>",
+     "<ossec_config><syscheck><frequency>43200</frequency></syscheck></ossec_config>",
+     {'localfile': {'allow': False, 'exceptions': []},
+      'wodle_command': {'allow': True, 'exceptions': []}},
+     True),
+
+    # Test case where syscheck prefilter_cmd is added and only wodle_command is disabled (should raise)
+    ("<ossec_config><syscheck><prefilter_cmd>/tmp/run.sh</prefilter_cmd></syscheck></ossec_config>",
+     "<ossec_config><syscheck><frequency>43200</frequency></syscheck></ossec_config>",
+     {'localfile': {'allow': True, 'exceptions': []},
+      'wodle_command': {'allow': False, 'exceptions': []}},
+     True),
+
+    # Test case where syscheck prefilter_cmd is added in an extra ossec_config and syscheck block (should raise)
+    ("<ossec_config><syscheck><frequency>43200</frequency></syscheck></ossec_config>"
+     "<ossec_config><syscheck><prefilter_cmd>/tmp/run.sh</prefilter_cmd></syscheck></ossec_config>",
+     "<ossec_config><syscheck><frequency>43200</frequency></syscheck></ossec_config>",
+     {'localfile': {'allow': False, 'exceptions': []},
+      'wodle_command': {'allow': False, 'exceptions': []}},
+     True),
+
+    # Test case where a second prefilter_cmd is added after the original one (should raise)
+    ("<ossec_config><syscheck><prefilter_cmd>/usr/bin/prelink</prefilter_cmd>"
+     "<prefilter_cmd>/tmp/run.sh</prefilter_cmd></syscheck></ossec_config>",
+     "<ossec_config><syscheck><prefilter_cmd>/usr/bin/prelink</prefilter_cmd></syscheck></ossec_config>",
+     {'localfile': {'allow': False, 'exceptions': []},
+      'wodle_command': {'allow': False, 'exceptions': []}},
+     True),
+
+    # Test case where syscheck prefilter_cmd is removed (should raise, same as the other remote command checks)
+    ("<ossec_config><syscheck><frequency>43200</frequency></syscheck></ossec_config>",
+     "<ossec_config><syscheck><prefilter_cmd>/usr/bin/prelink</prefilter_cmd></syscheck></ossec_config>",
+     {'localfile': {'allow': False, 'exceptions': []},
+      'wodle_command': {'allow': False, 'exceptions': []}},
+     True),
+
+    # Test case where a localfile exception does not apply to syscheck prefilter_cmd (should raise)
+    ("<ossec_config><syscheck><prefilter_cmd>/tmp/run.sh</prefilter_cmd></syscheck></ossec_config>",
+     "<ossec_config><syscheck><frequency>43200</frequency></syscheck></ossec_config>",
+     {'localfile': {'allow': False, 'exceptions': ['/tmp/run.sh']},
+      'wodle_command': {'allow': False, 'exceptions': ['/tmp/run.sh']}},
+     True),
 ])
 def test_check_remote_commands(new_conf, original_conf, allow_config, should_raise):
     """Tests check_remote_commands with different remote command inputs."""

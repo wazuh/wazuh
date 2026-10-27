@@ -929,6 +929,7 @@ def check_remote_commands(new_conf: Element, original_conf: Element):
     EXCEPTIONS_KEY = 'exceptions'
     LOCALFILE_HIERARCHY = ['ossec_config', 'localfile']
     WODLE_HIERARCHY = ['ossec_config', 'wodle']
+    PREFILTER_HIERARCHY = ['ossec_config', 'syscheck', 'prefilter_cmd']
     LOCALFILE_SETTINGS = configuration.api_conf['upload_configuration']['remote_commands']['localfile']
     WODLE_SETTINGS = configuration.api_conf['upload_configuration']['remote_commands']['wodle_command']
 
@@ -947,6 +948,13 @@ def check_remote_commands(new_conf: Element, original_conf: Element):
         if normalize(_filter_wodle_commands(new_wodle, WODLE_SETTINGS[EXCEPTIONS_KEY])) \
             != normalize(_filter_wodle_commands(original_wodle, WODLE_SETTINGS[EXCEPTIONS_KEY])):
             raise WazuhError(1124, extra_message="wodle")
+
+    # prefilter_cmd has no setting of its own: any disabled remote command setting protects it, exceptions do not apply
+    if not (LOCALFILE_SETTINGS[ALLOW_KEY] and WODLE_SETTINGS[ALLOW_KEY]):
+        if normalize(xml_to_dict(new_conf, PREFILTER_HIERARCHY)) \
+            != normalize(xml_to_dict(original_conf, PREFILTER_HIERARCHY)):
+            raise WazuhError(1124, extra_message="syscheck prefilter_cmd")
+
 
 def xml_to_dict(root, section_path: list):
     """Extract configuration sections from an XML tree using dotted paths.
