@@ -593,12 +593,34 @@ add_adress_block() {
 # then deletes to the end of the file.
 address_blocks_are_multiline() {
 
+    # The rewrite works on lines and cannot see comments, so a tag inside one is refused.
+    abm_live="$(strip_xml_comments "$1")" || return 1
     for abm_tag in server manager; do
-        if grep -q "<${abm_tag}>.*/${abm_tag}>" "$1" \
+        if [ "$(grep -o "<${abm_tag}>\|/${abm_tag}>" "$1" | wc -l)" -ne "$(printf '%s\n' "${abm_live}" | grep -o "<${abm_tag}>\|/${abm_tag}>" | wc -l)" ] \
+                || grep -q "<${abm_tag}>.*/${abm_tag}>" "$1" \
                 || [ "$(grep -c "<${abm_tag}>" "$1")" -ne "$(grep -c "/${abm_tag}>" "$1")" ]; then
             return 1
         fi
     done
+
+}
+
+# Prints the file without its XML comments; fails on a comment that is never closed.
+strip_xml_comments() {
+
+    awk '{
+        line = $0; out = ""
+        while (line != "") {
+            if (incomment) {
+                i = index(line, "-->")
+                if (i) { incomment = 0; line = substr(line, i + 3) } else { line = "" }
+            } else {
+                i = index(line, "<!--")
+                if (i) { out = out substr(line, 1, i - 1); incomment = 1; line = substr(line, i + 4) } else { out = out line; line = "" }
+            }
+        }
+        print out
+    } END { exit incomment }' "$1"
 
 }
 
@@ -965,13 +987,15 @@ upgrade_main () {
     TMP_INSERT="${UPGRADE_STAGE}/insert-output"
 
     # The admin's preserved file, not one the package generated: anything the rewrite cannot
-    # handle cleanly leaves it untouched. The closing tags are counted again after it.
+    # handle cleanly leaves it untouched. Closing tags and comment markers are counted again after it.
     um_closing="$(grep -c -E '</(ossec_config|client|agent)>' "${CONF_FILE}")"
+    um_comments="$(grep -o -e '<!--' -e '-->' "${CONF_FILE}" | wc -l)"
     FINAL_ENDPOINT="${TOKEN_ADR}"
     if ! address_blocks_are_multiline "${CONF_FILE}" || ! add_adress_block \
             || ! grep -qF "<endpoint>${FINAL_ENDPOINT}</endpoint>" "${CONF_FILE}" \
-            || [ "$(grep -c -E '</(ossec_config|client|agent)>' "${CONF_FILE}")" -ne "${um_closing}" ]; then
-        echo "wazuh-agent: the manager address in ${um_conf} could not be rewritten (a <server> block must open and close on lines of its own); WAZUH_ENROLLMENT_TOKEN was not applied. Run ${um_auth}." >&2
+            || [ "$(grep -c -E '</(ossec_config|client|agent)>' "${CONF_FILE}")" -ne "${um_closing}" ] \
+            || [ "$(grep -o -e '<!--' -e '-->' "${CONF_FILE}" | wc -l)" -ne "${um_comments}" ]; then
+        echo "wazuh-agent: the manager address in ${um_conf} could not be rewritten (a <server> block must open and close on lines of its own, outside any comment); WAZUH_ENROLLMENT_TOKEN was not applied. Run ${um_auth}." >&2
         rm -rf "${UPGRADE_STAGE}"
         unset_vars
         return 1

@@ -461,7 +461,34 @@ COMMENTED_CLIENT='<ossec_config>
   </client>
 </ossec_config>'
 
-for shape in ONE_LINE_SERVER UNCLOSED_SERVER COMMENTED_CLIENT; do
+# A commented-out failover server whose markers sit on other lines than its tags: cutting the
+# block out would leave the comment unclosed, or a stray "-->" inside <client>.
+SPLIT_COMMENTED_SERVER='<ossec_config>
+  <client>
+    <server>
+      <address>MANAGER_IP</address>
+    </server>
+    <!--
+    <server>
+      <address>10.0.0.2</address>
+    </server> -->
+    <config-profile>ubuntu</config-profile>
+  </client>
+</ossec_config>'
+
+TRAILING_COMMENT_SERVER='<ossec_config>
+  <client>
+    <server>
+      <address>MANAGER_IP</address>
+    </server>
+    <!-- <server>
+      <address>10.0.0.2</address>
+    </server>
+    -->
+  </client>
+</ossec_config>'
+
+for shape in ONE_LINE_SERVER UNCLOSED_SERVER COMMENTED_CLIENT SPLIT_COMMENTED_SERVER TRAILING_COMMENT_SERVER; do
     RUN_DIR="$(make_installdir "${DESC_WITH_KEY}" 0)"
     printf '%s' "${!shape}" > "${RUN_DIR}/etc/ossec.conf"
     bash "${TARGET}" "${RUN_DIR}" upgrade >/dev/null 2>"${RUN_DIR}/stderr"
@@ -475,6 +502,25 @@ for shape in ONE_LINE_SERVER UNCLOSED_SERVER COMMENTED_CLIENT; do
     check "an upgrade over ${shape} with no key suggests enrolling" "0" "$(grep -c -- "--certs-only" "${RUN_DIR}/stderr")"
     rm -rf "${RUN_DIR}"
 done
+
+# A comment that holds no address block does not stop the rewrite, and is kept.
+COMMENTED_ELSEWHERE='<ossec_config>
+  <client>
+    <!-- failover
+         is configured below -->
+    <server>
+      <address>MANAGER_IP</address>
+    </server>
+  </client>
+</ossec_config>'
+RUN_DIR="$(make_installdir "${DESC_WITH_KEY}" 0)"
+printf '%s' "${COMMENTED_ELSEWHERE}" > "${RUN_DIR}/etc/ossec.conf"
+bash "${TARGET}" "${RUN_DIR}" upgrade >/dev/null 2>"${RUN_DIR}/stderr"
+check "an upgrade past an unrelated comment succeeds" "0" "$?"
+check "an upgrade past an unrelated comment writes its address" "siem.example.local" "$(endpoint_of)"
+check "an upgrade past an unrelated comment keeps it" "1:1" \
+      "$(grep -c -- '<!--' "${RUN_DIR}/etc/ossec.conf"):$(grep -c -- '-->' "${RUN_DIR}/etc/ossec.conf")"
+rm -rf "${RUN_DIR}"
 
 RUN_DIR="$(make_installdir "${DESC_WITH_KEY}" 0)"
 printf '%s' "${ONE_LINE_SERVER}" > "${RUN_DIR}/etc/ossec.conf"
