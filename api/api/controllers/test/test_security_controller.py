@@ -49,6 +49,7 @@ def mock_request():
             m_req.get = MagicMock(return_value=None)
             m_req.client = MagicMock()
             m_req.client.host = 'ip'
+            m_req.headers = {}
             m_req.query_params = MagicMock()
             m_req.query_params.get = MagicMock(return_value=None)
             m_req.context = {
