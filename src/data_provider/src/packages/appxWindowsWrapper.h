@@ -283,7 +283,13 @@ class TAppxWindowsWrapper final : public IPackageWrapper
 
                 if (installTimeRegistry.qword("InstallTime", value))
                 {
-                    installTime = Utils::buildTimestamp(value);
+                    // FILETIME is UTC.
+                    const auto installTimeISO8601 { Utils::timestampToISO8601(Utils::buildTimestamp(value), true) };
+
+                    if (!installTimeISO8601.empty())
+                    {
+                        installTime = installTimeISO8601;
+                    }
                 }
             }
             catch (...)

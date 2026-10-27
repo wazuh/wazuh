@@ -409,21 +409,14 @@ static void getPackagesFromReg(const HKEY key, const std::string& subKey, std::f
                     vendor = value;
                 }
 
+                std::string installDate;
+
                 if (packageReg.string("InstallDate", value))
                 {
-                    try
-                    {
-                        install_time = Utils::timestampToISO8601(Utils::normalizeTimestamp(value, packageReg.keyModificationDate()), true);
-                    }
-                    catch (const std::exception& e)
-                    {
-                        install_time = Utils::timestampToISO8601(packageReg.keyModificationDate(), true);
-                    }
+                    installDate = value;
                 }
-                else
-                {
-                    install_time = Utils::timestampToISO8601(packageReg.keyModificationDate(), true);
-                }
+
+                install_time = PackageWindowsHelper::getInstallTime(installDate, packageReg.keyModificationDate());
 
                 if (packageReg.string("InstallLocation", value))
                 {

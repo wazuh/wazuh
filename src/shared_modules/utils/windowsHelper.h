@@ -202,8 +202,9 @@ namespace Utils
 
     // https://en.wikipedia.org/wiki/ISO_8601#Calendar_dates
     // https://en.wikipedia.org/wiki/ISO_8601#Combined_date_and_time_representations
-    // Returns a UTC "YYYY/MM/DD hh:mm:ss": dateISO8601CombinedFormat (a UTC key modification date) when its date
-    // matches dateISO8601CalendarDateFormat, otherwise local midnight of dateISO8601CalendarDateFormat.
+    // Returns a UTC "YYYY/MM/DD hh:mm:ss": dateISO8601CombinedFormat (a UTC key modification date) when its local
+    // date matches dateISO8601CalendarDateFormat (a local date), otherwise local midnight of
+    // dateISO8601CalendarDateFormat. Throws when either value is invalid.
     static std::string normalizeTimestamp(const std::string& dateISO8601CalendarDateFormat, const std::string& dateISO8601CombinedFormat)
     {
         std::string normalizedTimestamp;
@@ -233,9 +234,23 @@ namespace Utils
             Utils::replaceAll(timeTrimmed, ":", "");
 
             if (dateTrimmed.size() == INSTALLDATE_REGISTRY_VALUE_SIZE
-                    || timeTrimmed.size() == HOURMINSEC_VALUE_SIZE)
+                    && timeTrimmed.size() == HOURMINSEC_VALUE_SIZE)
             {
-                if (dateTrimmed.compare(dateISO8601CalendarDateFormat) == 0)
+                // InstallDate is a local date, so compare it with the local date of the UTC modification time.
+                tm modification_time_s {};
+                std::istringstream modificationStream {dateISO8601CombinedFormat};
+                modificationStream >> std::get_time(&modification_time_s, "%Y/%m/%d %H:%M:%S");
+                const time_t modification_time {modificationStream.fail() ? -1 : _mkgmtime(&modification_time_s)};
+
+                if (modification_time == -1 || localtime_r(&modification_time, &modification_time_s) == nullptr)
+                {
+                    throw std::runtime_error("Invalid dateISO8601CombinedFormat format.");
+                }
+
+                char modificationLocalDate[INSTALLDATE_REGISTRY_VALUE_SIZE + 1] {};
+                std::strftime(modificationLocalDate, sizeof(modificationLocalDate), "%Y%m%d", &modification_time_s);
+
+                if (dateISO8601CalendarDateFormat.compare(modificationLocalDate) == 0)
                 {
                     normalizedTimestamp = dateISO8601CombinedFormat;
                 }
@@ -252,7 +267,19 @@ namespace Utils
                     local_time_s.tm_sec = 0;
                     // Let mktime work out whether DST applies on that date.
                     local_time_s.tm_isdst = -1;
+
+                    if (local_time_s.tm_mon < 0 || local_time_s.tm_mon > 11 || local_time_s.tm_mday < 1 || local_time_s.tm_mday > 31)
+                    {
+                        throw std::runtime_error("Invalid dateISO8601CalendarDateFormat date.");
+                    }
+
                     time_t local_time = mktime(&local_time_s);
+
+                    // Before 1970 or out of range: let the caller fall back to the modification time.
+                    if (local_time == -1)
+                    {
+                        throw std::runtime_error("Invalid dateISO8601CalendarDateFormat date.");
+                    }
 
                     // Local midnight of InstallDate, expressed in UTC like the other branch.
                     normalizedTimestamp = Utils::getTimestamp(local_time);

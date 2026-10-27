@@ -295,9 +295,36 @@ TEST_F(WindowsHelperTest, normalizeTimestampEqual)
     std::string RegistryModificationDateValue = "2022/02/15 14:04:50";
     std::string expected = "2022/02/15 14:04:50";
 
+    setTimezone("UTC0");
     std::string result = Utils::normalizeTimestamp(RegistryInstallDateValue, RegistryModificationDateValue);
 
     EXPECT_EQ(expected, result);
+}
+
+TEST_F(WindowsHelperTest, normalizeTimestampComparesInstallDateWithTheLocalModificationDate)
+{
+    // 2026/10/23 18:02:28 UTC is 2026/10/24 03:02:28 in UTC+9
+    setTimezone("JST-9");
+    EXPECT_EQ("2026/10/23 18:02:28", Utils::normalizeTimestamp("20261024", "2026/10/23 18:02:28"));
+    EXPECT_EQ("2026/10/22 15:00:00", Utils::normalizeTimestamp("20261023", "2026/10/23 18:02:28"));
+
+    // 2026/10/24 03:02:28 UTC is 2026/10/23 19:02:28 in UTC-8
+    setTimezone("PST8");
+    EXPECT_EQ("2026/10/24 03:02:28", Utils::normalizeTimestamp("20261023", "2026/10/24 03:02:28"));
+}
+
+TEST_F(WindowsHelperTest, normalizeTimestampInvalidInstallDate)
+{
+    const std::string RegistryModificationDateValue = "2026/10/23 18:02:28";
+
+    setTimezone("JST-9");
+
+    const char* const installDates[] {"00000000", "19691231", "20261301", "20261000"};
+
+    for (const auto* installDate : installDates)
+    {
+        EXPECT_ANY_THROW(Utils::normalizeTimestamp(installDate, RegistryModificationDateValue)) << installDate;
+    }
 }
 
 TEST_F(WindowsHelperTest, normalizeTimestampWrongRegistryInstallDateValue)

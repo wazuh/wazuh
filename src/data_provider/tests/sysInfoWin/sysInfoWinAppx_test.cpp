@@ -15,6 +15,7 @@
 #include <vector>
 #include "gtest/gtest.h"
 #include "packages/appxWindowsWrapper.h"
+#include "sysInfoWin_test.h"
 
 /*
  * In-memory registry replacement for AppxWindowsWrapper tests.
@@ -153,6 +154,7 @@ std::map<std::string, std::string> FakeExeVersionReader::versions;
 constexpr auto TEST_USER_SID { "S-1-5-21-1111111111-2222222222-3333333333-1001" };
 constexpr auto TEST_STORE_REGISTRY { "SOFTWARE\\Classes\\Local Settings\\Software\\Microsoft\\Windows\\CurrentVersion\\AppModel\\Repository\\Packages" };
 constexpr auto TEST_CLASSES_REGISTRY { "SOFTWARE\\Classes" };
+constexpr auto TEST_FAMILIES_REGISTRY { "SOFTWARE\\Classes\\Local Settings\\Software\\Microsoft\\Windows\\CurrentVersion\\AppModel\\Repository\\Families" };
 constexpr auto TEST_CACHE_REGISTRY { "SOFTWARE\\Classes\\Local Settings\\MrtCache" };
 constexpr auto TEST_CLASSES_ROOT { "S-1-5-21-1111111111-2222222222-3333333333-1001\\SOFTWARE\\Classes" };
 
@@ -240,6 +242,23 @@ TEST_F(SysInfoWinAppxTest, SingleApplicationPackageKeepsItsName)
 
     EXPECT_EQ("Microsoft Edge", wrapper.name());
     EXPECT_EQ("120.0.2210.91", wrapper.version());
+}
+
+TEST_F(SysInfoWinAppxTest, InstallTimeIsReportedInUTC)
+{
+    constexpr auto edgePackage { "Microsoft.MicrosoftEdge.Stable_120.0.2210.91_x64__8wekyb3d8bbwe" };
+    const auto root { packagePath(edgePackage) };
+
+    FakeRegistry::data[root].strings["DisplayName"] = "Microsoft Edge";
+    FakeRegistry::data[root + "\\Msedge\\Capabilities"].strings["ApplicationName"] = "Microsoft Edge";
+    // FILETIME of 2026-10-23T18:02:28Z
+    FakeRegistry::data[std::string{ TEST_USER_SID } + "\\" + TEST_FAMILIES_REGISTRY + "\\Microsoft.MicrosoftEdge.Stable_8wekyb3d8bbwe\\" + edgePackage]
+    .qwords["InstallTime"] = 134372521480000000ULL;
+
+    const ScopedTimezone timezone { "JST-9" };
+    TestAppxWrapper wrapper(HKEY_USERS, TEST_USER_SID, edgePackage, {});
+
+    EXPECT_EQ("2026-10-23T18:02:28.000Z", wrapper.install_time());
 }
 
 TEST_F(SysInfoWinAppxTest, LocalizedDisplayNameResolvedFromCacheRegistry)

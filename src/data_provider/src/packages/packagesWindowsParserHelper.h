@@ -17,6 +17,8 @@
 #include "json.hpp"
 #include "registryHelper.h"
 #include "stringHelper.h"
+#include "timeHelper.h"
+#include "windowsHelper.h"
 
 
 namespace PackageWindowsHelper
@@ -258,6 +260,33 @@ namespace PackageWindowsHelper
         }
 
         return version;
+    }
+
+    /**
+     * @brief Get the install time of a package from its Uninstall registry key.
+     *
+     * @param[in] installDate         InstallDate value of the key, a local "YYYYMMDD" date; empty when the key has none.
+     * @param[in] keyModificationDate Last write time of the key, a UTC "YYYY/MM/DD hh:mm:ss" time.
+     *
+     * @return Returns the install time in ISO 8601 UTC, or an empty string if neither value is valid.
+     */
+    static std::string getInstallTime(const std::string& installDate, const std::string& keyModificationDate)
+    {
+        std::string installTime { keyModificationDate };
+
+        if (!installDate.empty())
+        {
+            try
+            {
+                installTime = Utils::normalizeTimestamp(installDate, keyModificationDate);
+            }
+            catch (const std::exception&)
+            {
+                // An invalid InstallDate falls back to the key's last write time.
+            }
+        }
+
+        return Utils::timestampToISO8601(installTime, true);
     }
 };
 
