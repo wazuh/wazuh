@@ -466,6 +466,24 @@ check "a FIFO at etc/ossec.conf stores no token" "absent" \
       "$([ -e "${RUN_DIR}/etc/enrollment_token" ] && echo present || echo absent)"
 rm -rf "${RUN_DIR}"
 
+# A FIFO renamed over ossec.conf between the checks and the copy is not what gets copied.
+RUN_DIR="$(make_installdir "${DESC_WITH_KEY}" 0)"
+printf '%s' "${LEGACY_CONF}" > "${RUN_DIR}/etc/ossec.conf"
+mkdir -p "${RUN_DIR}/shim"
+{
+    echo '#!/bin/bash'
+    echo "conf='${RUN_DIR}/etc/ossec.conf'"
+    echo '[ -p "${conf}" ] || { rm -f "${conf}"; mkfifo "${conf}"; }'
+    echo 'exec /bin/cp "$@"'
+} > "${RUN_DIR}/shim/cp"
+chmod 755 "${RUN_DIR}/shim/cp"
+PATH="${RUN_DIR}/shim:${PATH}" timeout 10 bash "${TARGET}" "${RUN_DIR}" upgrade >/dev/null 2>"${RUN_DIR}/stderr"
+RUN_STATUS="$?"
+check "a FIFO swapped in before the copy does not block the upgrade" "0" "${RUN_STATUS}"
+check "a FIFO swapped in before the copy does not change what is rewritten" "siem.example.local" \
+      "$([ -p "${RUN_DIR}/etc/ossec.conf" ] && echo fifo || endpoint_of)"
+rm -rf "${RUN_DIR}"
+
 # ossec.conf failing to move into place takes the token back with it.
 RUN_DIR="$(make_installdir "${DESC_WITH_KEY}" 0)"
 printf '%s' "${LEGACY_CONF}" > "${RUN_DIR}/etc/ossec.conf"

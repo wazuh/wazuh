@@ -933,11 +933,11 @@ upgrade_main () {
         return 1
     fi
 
-    # -P keeps a link planted at etc/ossec.conf a link, which is then refused rather than followed;
-    # the first test keeps cp from blocking on a FIFO.
-    if [ ! -f "${CONF_FILE}" ] || [ -L "${CONF_FILE}" ] \
-            || ! cp -fpP "${CONF_FILE}" "${UPGRADE_STAGE}/ossec.conf" || [ -L "${UPGRADE_STAGE}/ossec.conf" ] \
-            || [ ! -f "${UPGRADE_STAGE}/ossec.conf" ]; then
+    # Hard-linked into the stage first, so what is checked is what gets copied: a link or a FIFO
+    # renamed over etc/ossec.conf afterwards cannot reach the cp. ln -P links a symlink itself.
+    um_pin="${UPGRADE_STAGE}/ossec.conf.pin"
+    if ! ln -P "${CONF_FILE}" "${um_pin}" 2>/dev/null || [ -L "${um_pin}" ] || [ ! -f "${um_pin}" ] \
+            || ! cp -fp "${um_pin}" "${UPGRADE_STAGE}/ossec.conf"; then
         echo "wazuh-agent: ${CONF_FILE} is not a regular file; WAZUH_ENROLLMENT_TOKEN was not applied." >&2
         rm -rf "${UPGRADE_STAGE}"
         unset_vars
