@@ -30,8 +30,8 @@
  * is not on PATH. The Windows hint names the GUI first and has no use for it. */
 #ifndef WIN32
 #define HOME_PATH "/var/ossec"
-#define NOT_ENROLLED_HINT "(4128): This agent is not enrolled yet. Enroll it as root with " \
-                          "'/var/ossec/bin/wazuh-agent-auth --token-file <path>', then start the agent."
+#define NOT_ENROLLED_HINT "(4128): This agent is not enrolled yet. Enroll it as root before " \
+                          "starting it: echo '<TOKEN>' | /var/ossec/bin/wazuh-agent-auth"
 #else
 #define HOME_PATH NULL
 #define NOT_ENROLLED_HINT "(4128): This agent is not enrolled yet. Enroll it with Manage > " \
