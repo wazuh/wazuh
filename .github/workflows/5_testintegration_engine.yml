@@ -18,7 +18,7 @@ on:
       - 'src/engine/test/integration_tests/**'
       - 'src/engine/tools/api-communication/**'
       - 'src/engine/tools/engine-suite/**'
-      # Copied into the test store by setupEnvironment.py:11-18
+      # Copied into the test store by setupEnvironment.py:13-20
       - 'src/engine/ruleset/schemas/engine-schema.json'
       - 'src/engine/ruleset/schemas/wazuh-logpar-overrides.json'
       - 'src/engine/ruleset/schemas/allowed-fields.json'
@@ -51,7 +51,7 @@ on:
       # uploaded and loaded by the engine at test time
       - 'src/shared_modules/indexer_connector/**'
       # linked by indexer_connector (indexer_connector/CMakeLists.txt:52); wazuh-manager-keystore
-      # (keystore/CMakeLists.txt:42) is run by setupEnvironment.py:52-57
+      # (keystore/CMakeLists.txt:42) is run by setupEnvironment.py:53-82
       - 'src/shared_modules/keystore/**'
       # Other components' test trees, harnesses and tools: never linked into the engine.
       - '!src/shared_modules/utils/tests/**'
