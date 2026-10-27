@@ -347,6 +347,11 @@ else()
 list(APPEND shared_tests_flags "-Wl,--wrap,pthread_mutex_lock -Wl,--wrap,pthread_mutex_unlock")
 endif()
 
+if(NOT ${TARGET} STREQUAL "winagent")
+list(APPEND shared_tests_names "test_sig_op")
+list(APPEND shared_tests_flags "-Wl,--wrap,_exit -Wl,--wrap,CreateThread -Wl,--wrap,_minfo -Wl,--wrap,_merror")
+endif()
+
 list(APPEND shared_tests_names "test_url")
 set(url_flags "-Wl,--wrap,curl_slist_free_all -Wl,--wrap,curl_easy_cleanup \
                -Wl,--wrap,curl_easy_init -Wl,--wrap,curl_easy_setopt -Wl,--wrap,wfopen \

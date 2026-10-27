@@ -19,6 +19,7 @@
 #include "../os_crypto/md5/md5_op.h"
 #include "../os_crypto/sha512/sha512_op.h"
 #include "shared.h"
+#include "openssl_init.h"
 #include "msgpack.h"
 
 #undef minfo
@@ -101,7 +102,7 @@ void * wm_fluent_main(wm_fluent_t * fluent) {
         pthread_exit(NULL);
     }
 
-    OPENSSL_init_crypto(OPENSSL_INIT_ADD_ALL_CIPHERS | OPENSSL_INIT_ADD_ALL_DIGESTS | OPENSSL_INIT_LOAD_CONFIG | OPENSSL_INIT_NO_ATEXIT, NULL);
+    w_openssl_init();
     SSL_load_error_strings();
     SSL_library_init();
 
