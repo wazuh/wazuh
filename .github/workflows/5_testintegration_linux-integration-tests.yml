@@ -94,7 +94,6 @@ jobs:
     env:
       BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
       BRANCH_BASE: ${{ github.base_ref || inputs.base_branch }}
-      BUILD_WORKFLOW: 5_builderpackage_agent-linux.yml
       PACKAGES_PATH: /tmp/packages
       AGENT_PACKAGE_REGEXP: wazuh-agent.*amd64.*\.deb
     runs-on: ubuntu-24.04
@@ -108,34 +107,11 @@ jobs:
           python-version-file: ".github/workflows/.python-version-it"
           architecture: x64
 
-      - name: Resolve build run id
-        id: resolve
-        shell: bash
-        env:
-          GH_TOKEN: ${{ github.token }}
-          REPO: ${{ github.repository }}
-          BASE_BRANCH: ${{ inputs.base_branch }}
-          INPUT_BUILD_RUN_ID: ${{ inputs.build_run_id }}
-        run: |
-          set -euo pipefail
-          if [ -n "${INPUT_BUILD_RUN_ID}" ]; then
-            echo "build_run_id=${INPUT_BUILD_RUN_ID}" >> "$GITHUB_OUTPUT"
-          else
-            if ! rid="$(gh run list --repo "${REPO}" --workflow "${BUILD_WORKFLOW}" --branch "${BASE_BRANCH}" --status success --limit 1 --json databaseId --jq '.[0].databaseId')"; then
-              echo "::error::Could not list ${BUILD_WORKFLOW} runs on branch ${BASE_BRANCH}"
-              exit 1
-            fi
-            if [ -z "${rid}" ] || [ "${rid}" = "null" ]; then
-              echo "::error::No successful ${BUILD_WORKFLOW} run found on branch ${BASE_BRANCH}"
-              exit 1
-            fi
-            echo "build_run_id=${rid}" >> "$GITHUB_OUTPUT"
-          fi
-
       - name: Download package artifact
         uses: ./.github/actions/download_package
         with:
-          build_run_id: ${{ steps.resolve.outputs.build_run_id }}
+          build_run_id: ${{ inputs.build_run_id }}
+          base_branch: ${{ inputs.base_branch }}
           producer_workflow: 5_builderpackage_agent-linux
           name_regexp: ${{ env.AGENT_PACKAGE_REGEXP }}
           path: ${{ env.PACKAGES_PATH }}
