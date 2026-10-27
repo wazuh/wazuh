@@ -1205,7 +1205,9 @@ InstallCommon()
     fi
 
     if [ "X${INSTYPE}" = "Xmanager" ]; then
-        # JSON Schema of etc/wazuh-manager.conf: product (always refreshed), consumed by the Python framework.
+        # JSON Schema of etc/wazuh-manager.conf, consumed by the Python framework. Written on every run, but an
+        # upgrade restores the previous /etc/wazuh-manager after this (RestoreUpgradePreserve, DEB postinst,
+        # RPM %posttrans), so an upgraded manager keeps the previous release's copy; only a fresh install gets this one.
         ${INSTALL} -m 0640 -o root -g ${WAZUH_GROUP} shared_modules/manager_config/schema/wazuh-manager.schema.json ${ETC_DIR}/wazuh-manager.schema.json
     fi
 

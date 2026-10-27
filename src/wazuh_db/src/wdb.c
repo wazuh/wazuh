@@ -202,7 +202,10 @@ wdb_t * wdb_open_mitre() {
 
     snprintf(path, sizeof(path), "%s/%s.db", WDB_DIR, WDB_MITRE_NAME);
 
-    if (sqlite3_open_v2(path, &wdb->db, SQLITE_OPEN_READWRITE, NULL)) {
+    // Read-only: the installer builds this database and nothing writes it afterwards, so a
+    // statement that would modify it (`mitre sql` takes any SQL) fails with "attempt to write a
+    // readonly database" instead of changing it
+    if (sqlite3_open_v2(path, &wdb->db, SQLITE_OPEN_READONLY, NULL)) {
         merror("Can't open SQLite database '%s': %s", path, sqlite3_errmsg(wdb->db));
         wdb_close(wdb, false);
         wdb_pool_leave(wdb);
@@ -561,7 +564,8 @@ void wdb_check_fragmentation() {
             continue;
         }
 
-        if (node->db == NULL) {
+        // The MITRE database is opened read-only (wdb_open_mitre()): it can never be vacuumed
+        if (node->db == NULL || strcmp(node->id, WDB_MITRE_NAME) == 0) {
             wdb_pool_leave(node);
             continue;
         }

@@ -136,10 +136,10 @@ typedef struct {
     char agent_id[16];               /**< Agent id the manager assigned */
     char agent_name[256];            /**< Agent name the manager registered */
     long http_code;                  /**< Last HTTP status from /enroll */
-    /** What the manager said when it refused, verbatim from the response's error.message.
-     *  Empty when it did not refuse or said nothing: the reason for a refusal is the manager's
-     *  to give, and repeating it is the difference between "refused" and "refused because this
-     *  name is taken by an agent too new to replace". */
+    /** What the manager said when it refused, verbatim, from either error envelope
+     *  (w_enrollment_parse_error()). Empty when it did not refuse or said nothing: the reason for
+     *  a refusal is the manager's to give, and repeating it is the difference between "refused"
+     *  and "refused because this name is taken by an agent too new to replace". */
     char manager_message[256];
 } w_token_enroll_report_t;
 

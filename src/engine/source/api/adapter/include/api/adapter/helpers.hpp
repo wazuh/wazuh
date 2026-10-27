@@ -65,7 +65,7 @@ inline httplib::Response buildJsonContentResponse(const json::Json& content)
 
     httplib::Response response;
     response.status = httplib::StatusCode::OK_200;
-    response.set_content(responseBody.str(), "plain/text");
+    response.set_content(responseBody.str(), "application/json");
     return response;
 }
 

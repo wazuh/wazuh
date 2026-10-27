@@ -1180,6 +1180,226 @@ void test_w_logreader_journald_merge_both_have_filters(void ** state) {
     free(logr);
 }
 
+/* Remote configuration (agent.conf) socket and target restrictions */
+
+static void free_test_nodes(xml_node ** nodes) {
+    for (int i = 0; nodes[i]; i++) {
+        os_free(nodes[i]->element);
+        os_free(nodes[i]->content);
+        os_free(nodes[i]);
+    }
+    os_free(nodes);
+}
+
+static xml_node ** build_test_nodes(const char * const * pairs) {
+    xml_node ** nodes = NULL;
+    int n = 0;
+
+    for (int i = 0; pairs[i]; i += 2) {
+        os_realloc(nodes, (n + 2) * sizeof(xml_node *), nodes);
+        os_calloc(1, sizeof(xml_node), nodes[n]);
+        os_strdup(pairs[i], nodes[n]->element);
+        os_strdup(pairs[i + 1], nodes[n]->content);
+        nodes[++n] = NULL;
+    }
+
+    return nodes;
+}
+
+static void add_local_socket(logreader_config * config, const char * name) {
+    os_calloc(2, sizeof(socket_forwarder), config->socket_list);
+    os_strdup(name, config->socket_list[0].name);
+    os_strdup("/var/run/local.sock", config->socket_list[0].location);
+    config->socket_list[0].socket = -1;
+}
+
+void test_Read_LogCollecSocket_remote_rejected(void ** state) {
+    const char * const pairs[] = {"name", "custom", "location", "/var/run/docker.sock", "mode", "tcp", NULL};
+    xml_node ** nodes = build_test_nodes(pairs);
+    logreader_config config = { .agent_cfg = 1, .accept_remote = 0 };
+
+    expect_string(__wrap__merror, formatted_msg,
+                  "Remote sockets are not accepted from the manager. Ignoring socket 'custom' (/var/run/docker.sock) on the agent.conf");
+
+    assert_int_equal(Read_LogCollecSocket(nodes, &config, NULL), 0);
+    assert_null(config.socket_list);
+
+    free_test_nodes(nodes);
+}
+
+void test_Read_LogCollecSocket_remote_accepted(void ** state) {
+    const char * const pairs[] = {"name", "custom", "location", "/var/run/custom.sock", NULL};
+    xml_node ** nodes = build_test_nodes(pairs);
+    logreader_config config = { .agent_cfg = 1, .accept_remote = 1 };
+
+    assert_int_equal(Read_LogCollecSocket(nodes, &config, NULL), 0);
+    assert_non_null(config.socket_list);
+    assert_string_equal(config.socket_list[0].name, "custom");
+    assert_string_equal(config.socket_list[0].location, "/var/run/custom.sock");
+
+    Free_Localfile(&config);
+    free_test_nodes(nodes);
+}
+
+void test_Read_LogCollecSocket_local(void ** state) {
+    const char * const pairs[] = {"name", "custom", "location", "/var/run/custom.sock", NULL};
+    xml_node ** nodes = build_test_nodes(pairs);
+    logreader_config config = { .agent_cfg = 0, .accept_remote = 0 };
+
+    assert_int_equal(Read_LogCollecSocket(nodes, &config, NULL), 0);
+    assert_non_null(config.socket_list);
+    assert_string_equal(config.socket_list[0].name, "custom");
+
+    Free_Localfile(&config);
+    free_test_nodes(nodes);
+}
+
+void test_Read_Localfile_remote_undefined_target(void ** state) {
+    const char * const pairs[] = {"location", "/var/log/test.log", "log_format", "syslog",
+                                  "target", "custom", "out_format", "$(log)", NULL};
+    xml_node ** nodes = build_test_nodes(pairs);
+    logreader_config config = { .agent_cfg = 1, .accept_remote = 0 };
+
+    expect_string(__wrap__merror, formatted_msg,
+                  "Socket 'custom' is not defined in the local configuration. "
+                  "Ignoring it as a target of localfile '/var/log/test.log' on the agent.conf");
+
+    assert_int_equal(Read_Localfile(nodes, &config, NULL), 0);
+    assert_non_null(config.config);
+    assert_null(config.config[0].file);
+    assert_null(config.config[0].target);
+
+    Free_Localfile(&config);
+    free_test_nodes(nodes);
+}
+
+void test_Read_Localfile_remote_undefined_target_keeps_others(void ** state) {
+    const char * const pairs[] = {"location", "/var/log/test.log", "log_format", "syslog",
+                                  "target", "agent,custom,local", NULL};
+    xml_node ** nodes = build_test_nodes(pairs);
+    logreader_config config = { .agent_cfg = 1, .accept_remote = 0 };
+
+    add_local_socket(&config, "local");
+
+    expect_string(__wrap__merror, formatted_msg,
+                  "Socket 'custom' is not defined in the local configuration. "
+                  "Ignoring it as a target of localfile '/var/log/test.log' on the agent.conf");
+
+    assert_int_equal(Read_Localfile(nodes, &config, NULL), 0);
+    assert_string_equal(config.config[0].file, "/var/log/test.log");
+    assert_string_equal(config.config[0].target[0], "agent");
+    assert_string_equal(config.config[0].target[1], "local");
+    assert_null(config.config[0].target[2]);
+
+    Free_Localfile(&config);
+    free_test_nodes(nodes);
+}
+
+void test_Read_Localfile_remote_undefined_target_drops_out_format(void ** state) {
+    const char * const pairs[] = {"location", "/var/log/test.log", "log_format", "syslog",
+                                  "target", "agent,custom", "out_format", "custom: $(log)",
+                                  "out_format", "all: $(log)", NULL};
+    xml_node ** nodes = build_test_nodes(pairs);
+    logreader_config config = { .agent_cfg = 1, .accept_remote = 0 };
+
+    // Bind the first output format to the 'custom' target
+    os_calloc(2, sizeof(char *), nodes[3]->attributes);
+    os_calloc(2, sizeof(char *), nodes[3]->values);
+    os_strdup("target", nodes[3]->attributes[0]);
+    os_strdup("custom", nodes[3]->values[0]);
+
+    expect_string(__wrap__merror, formatted_msg,
+                  "Socket 'custom' is not defined in the local configuration. "
+                  "Ignoring it as a target of localfile '/var/log/test.log' on the agent.conf");
+
+    assert_int_equal(Read_Localfile(nodes, &config, NULL), 0);
+    assert_string_equal(config.config[0].target[0], "agent");
+    assert_null(config.config[0].target[1]);
+    assert_non_null(config.config[0].out_format);
+    assert_null(config.config[0].out_format[0]->target);
+    assert_string_equal(config.config[0].out_format[0]->format, "all: $(log)");
+    assert_null(config.config[0].out_format[1]);
+
+    Free_Localfile(&config);
+    free(nodes[3]->attributes[0]);
+    free(nodes[3]->values[0]);
+    free(nodes[3]->attributes);
+    free(nodes[3]->values);
+    free_test_nodes(nodes);
+}
+
+void test_Read_Localfile_remote_socket_then_target(void ** state) {
+    const char * const socket_pairs[] = {"name", "custom", "location", "/var/run/docker.sock", NULL};
+    const char * const localfile_pairs[] = {"location", "/var/log/test.log", "log_format", "syslog",
+                                            "target", "custom", NULL};
+    xml_node ** socket_nodes = build_test_nodes(socket_pairs);
+    xml_node ** localfile_nodes = build_test_nodes(localfile_pairs);
+    logreader_config config = { .agent_cfg = 1, .accept_remote = 0 };
+
+    add_local_socket(&config, "local");
+
+    expect_string(__wrap__merror, formatted_msg,
+                  "Remote sockets are not accepted from the manager. Ignoring socket 'custom' (/var/run/docker.sock) on the agent.conf");
+    expect_string(__wrap__merror, formatted_msg,
+                  "Socket 'custom' is not defined in the local configuration. "
+                  "Ignoring it as a target of localfile '/var/log/test.log' on the agent.conf");
+
+    assert_int_equal(Read_LogCollecSocket(socket_nodes, &config, NULL), 0);
+    assert_string_equal(config.socket_list[0].name, "local");
+    assert_null(config.socket_list[1].name);
+
+    assert_int_equal(Read_Localfile(localfile_nodes, &config, NULL), 0);
+    assert_null(config.config[0].file);
+
+    Free_Localfile(&config);
+    free_test_nodes(socket_nodes);
+    free_test_nodes(localfile_nodes);
+}
+
+void test_Read_Localfile_remote_local_socket_target(void ** state) {
+    const char * const pairs[] = {"location", "/var/log/test.log", "log_format", "syslog",
+                                  "target", "agent,local", NULL};
+    xml_node ** nodes = build_test_nodes(pairs);
+    logreader_config config = { .agent_cfg = 1, .accept_remote = 0 };
+
+    add_local_socket(&config, "local");
+
+    assert_int_equal(Read_Localfile(nodes, &config, NULL), 0);
+    assert_string_equal(config.config[0].file, "/var/log/test.log");
+    assert_string_equal(config.config[0].target[0], "agent");
+    assert_string_equal(config.config[0].target[1], "local");
+
+    Free_Localfile(&config);
+    free_test_nodes(nodes);
+}
+
+void test_Read_Localfile_remote_default_target(void ** state) {
+    const char * const pairs[] = {"location", "/var/log/test.log", "log_format", "syslog", NULL};
+    xml_node ** nodes = build_test_nodes(pairs);
+    logreader_config config = { .agent_cfg = 1, .accept_remote = 0 };
+
+    assert_int_equal(Read_Localfile(nodes, &config, NULL), 0);
+    assert_string_equal(config.config[0].file, "/var/log/test.log");
+    assert_string_equal(config.config[0].target[0], "agent");
+
+    Free_Localfile(&config);
+    free_test_nodes(nodes);
+}
+
+void test_Read_Localfile_remote_accepted_undefined_target(void ** state) {
+    const char * const pairs[] = {"location", "/var/log/test.log", "log_format", "syslog",
+                                  "target", "custom", NULL};
+    xml_node ** nodes = build_test_nodes(pairs);
+    logreader_config config = { .agent_cfg = 1, .accept_remote = 1 };
+
+    assert_int_equal(Read_Localfile(nodes, &config, NULL), 0);
+    assert_string_equal(config.config[0].file, "/var/log/test.log");
+    assert_string_equal(config.config[0].target[0], "custom");
+
+    Free_Localfile(&config);
+    free_test_nodes(nodes);
+}
+
 /* main */
 
 int main(void) {
@@ -1281,6 +1501,17 @@ int main(void) {
         // Test w_multiline_log_config_clone
         cmocka_unit_test(test_w_multiline_log_config_clone_null),
         cmocka_unit_test(test_w_multiline_log_config_clone_success),
+        // Test remote configuration socket and target restrictions
+        cmocka_unit_test(test_Read_LogCollecSocket_remote_rejected),
+        cmocka_unit_test(test_Read_LogCollecSocket_remote_accepted),
+        cmocka_unit_test(test_Read_LogCollecSocket_local),
+        cmocka_unit_test(test_Read_Localfile_remote_undefined_target),
+        cmocka_unit_test(test_Read_Localfile_remote_undefined_target_keeps_others),
+        cmocka_unit_test(test_Read_Localfile_remote_undefined_target_drops_out_format),
+        cmocka_unit_test(test_Read_Localfile_remote_socket_then_target),
+        cmocka_unit_test(test_Read_Localfile_remote_local_socket_target),
+        cmocka_unit_test(test_Read_Localfile_remote_default_target),
+        cmocka_unit_test(test_Read_Localfile_remote_accepted_undefined_target),
 
     };
     return cmocka_run_group_tests(tests, setup_group, teardown_group);

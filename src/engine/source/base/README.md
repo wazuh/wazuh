@@ -32,6 +32,14 @@ base/
 └── benchmark/                  # base_benchmark (eventParser, json)
 ```
 
+## Object member inspection
+
+`Json::anyMemberName(predicate, path)` checks decoded, length-aware names of the selected object's
+immediate members without copying values or descending into them. It preserves repeated names and
+stops at the first match. Missing paths and non-objects return false. Predicate views borrow the
+immutable document; predicate exceptions propagate. Ingestion uses this to reject dotted aliases
+of its identity path while leaving generic JSON Pointer and merge semantics unchanged.
+
 ## Manager Log Sink
 
 Header: [include/base/managerLogSink.hpp](include/base/managerLogSink.hpp). Implementation: [src/managerLogSink.cpp](src/managerLogSink.cpp).
@@ -71,7 +79,7 @@ Three binaries are built with `ENGINE_TEST=y` (see [CMakeLists.txt](CMakeLists.t
 
 | Binary | Content |
 |---|---|
-| `base_utest` | `test/src/unit/*_test.cpp` except the two below, including [process_test.cpp](test/src/unit/process_test.cpp) |
+| `base_utest` | The files listed in [CMakeLists.txt](CMakeLists.txt): `test/src/unit/*_test.cpp` and `test/src/unit/utils/*_test.cpp` except the two below, including [process_test.cpp](test/src/unit/process_test.cpp) |
 | `base_manager_utest` | Only [managerLogSink_test.cpp](test/src/unit/managerLogSink_test.cpp): the sink (`ManagerLogSinkTest.*`, `ManagerLogSinkDeathTest.*`) and the manager home (`ManagerHome.*`, `ManagerHomeAbsolute.*`). The sink and the manager mode are global process state, hence the separate binary. The fixtures work in their own `mkdtemp` directory (the child of a death test inherits it); `ManagerHomeAbsolute` touches no disk. |
 | `base_logger_utest` | [logger_test.cpp](test/src/unit/logger_test.cpp) |
 

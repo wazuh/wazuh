@@ -144,7 +144,9 @@ spec.readiness = content_manager::Readiness {".wazuh-cti-consumers", "cti:catalo
 content_manager::HashDetection hash;
 hash.probe = content_manager::QueryProbe {/* space.name = standard AND _index wildcard *policies* */};
 hash.tokenPointers = {"/space/hash/sha256"};
-hash.metadata = {{"enabled", "/document/enabled"}, {"integrations", "/document/integrations"}};
+hash.metadata = {{"enabled", "/document/enabled"},
+                 {"integrations", "/document/integrations"},
+                 {"root_decoder", "/document/root_decoder"}};
 spec.detection = hash;
 ```
 

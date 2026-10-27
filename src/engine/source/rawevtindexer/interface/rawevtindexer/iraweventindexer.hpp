@@ -16,21 +16,24 @@ public:
     virtual ~IRawEventIndexer() = default;
 
     /**
-     * @brief Index the given raw event data if the indexer is enabled (ignore errors)
+     * @brief Index the given raw event data if the indexer is enabled (an exception from the connector is not
+     * caught here: it propagates to the caller)
      *
      * @param data The raw event data to index, as a std::string.
      */
     virtual void index(const std::string& data) = 0;
 
     /**
-     * @brief Index the given raw event data if the indexer is enabled (ignore errors)
+     * @brief Index the given raw event data if the indexer is enabled (an exception from the connector is not
+     * caught here: it propagates to the caller)
      *
      * @param data The raw event data to index, as a C-style string (To avoid copies in some cases).
      */
     virtual void index(const char* data) = 0;
 
     /**
-     * @brief Index the given raw event data if the indexer is enabled (ignore errors)
+     * @brief Index the given raw event data if the indexer is enabled (an exception from the connector is not
+     * caught here: it propagates to the caller)
      *
      * @param data The raw event data to index, as a std::string_view (zero-copy view).
      */

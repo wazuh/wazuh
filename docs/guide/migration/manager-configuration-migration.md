@@ -21,42 +21,15 @@ This guide covers the four configuration files that changed between versions:
 | Manager log file | `logs/ossec.log` | `logs/wazuh-manager.log` |
 | Manager JSON log file | `logs/ossec.json` | `logs/wazuh-manager.json` |
 
-## Migration procedure
+## Where this fits
 
-### 1. Back up the 4.x configuration
-
-On the running **4.x manager**, export the configuration files you will need to adapt:
-
-```bash
-mkdir -p /tmp/wazuh-4x-backup
-cp /var/ossec/etc/ossec.conf                    /tmp/wazuh-4x-backup/
-cp /var/ossec/etc/internal_options.conf         /tmp/wazuh-4x-backup/
-cp /var/ossec/etc/local_internal_options.conf   /tmp/wazuh-4x-backup/
-cp /var/ossec/api/configuration/api.yaml        /tmp/wazuh-4x-backup/
-```
-
-Also back up any custom rules, decoders, and lists:
-
-```bash
-tar -czf /tmp/wazuh-4x-backup/custom-ruleset.tar.gz \
-    /var/ossec/etc/rules/ \
-    /var/ossec/etc/decoders/ \
-    /var/ossec/etc/lists/
-```
-
-Keep these files somewhere that survives the reinstall (external storage or a remote location).
-
-### 2. Uninstall the 4.x manager
-
-Follow the official Wazuh documentation to uninstall the 4.x manager package for your distribution. This removes the 4.x binaries and the `/var/ossec/` directory.
-
-### 3. Install the 5.0 manager
-
-Follow the official Wazuh 5.0 installation documentation for your distribution. The manager installs to `/var/wazuh-manager/` and generates a fresh `wazuh-manager.conf` with default settings.
-
-### 4. Apply configuration changes
-
-Do not copy the 4.x configuration files directly into the 5.0 installation. Instead, use your backed-up files as a reference and apply your customizations to the new default files, following the per-file guidance in the sections below.
+This page is Step 4 of [Manager migration from 4.x to 5.0](manager-4x-to-5x.md), which backs up the 4.x
+files (`ossec.conf`, `local_internal_options.conf`, `api.yaml`), uninstalls 4.x and installs 5.0. The 5.0
+installation generates its own `wazuh-manager.conf` (and ships `api.yaml` and
+`wazuh-manager-internal-options.conf` as comment-only templates). Do not copy the 4.x files over them: use
+the backed-up files as a reference and apply your customizations to the 5.0 files, section by section as
+described below, then check the result with `/var/wazuh-manager/bin/wazuh-manager-conf validate` before
+starting the manager.
 
 ---
 
@@ -210,7 +183,7 @@ rejected and the manager will not start; there is no automatic migration.
 
 ### `<auth>` section
 
-The section is preserved, but `wazuh-manager-authd` now enforces TLS 1.3 as the minimum protocol version for agent enrollment. Besides updating the certificate paths to reflect the new installation directory, this requires two additional changes:
+The section is preserved, but `wazuh-manager-authd` now enforces TLS 1.3 as the minimum protocol version for agent enrollment. Besides updating the certificate paths to the manager's configuration directory, this requires two additional changes:
 
 - `<ciphers>` must be a colon-separated list of TLS 1.3 ciphersuite names (`TLS_AES_128_GCM_SHA256`, `TLS_AES_256_GCM_SHA384`, `TLS_CHACHA20_POLY1305_SHA256`, `TLS_AES_128_CCM_SHA256`, `TLS_AES_128_CCM_8_SHA256`). A 4.x-style OpenSSL cipher-list string does not match the schema's pattern, so the configuration is rejected (`(1244): Invalid configuration at '/auth/ciphers': does not satisfy 'pattern' [...]`) and the manager does not start. A `TLS_`-prefixed name that is not one of these suites passes the schema but is refused by `wazuh-manager-authd` itself (`Invalid TLS 1.3 cipher suite '<token>' in 'ciphers' option`).
 - `<ssl_auto_negotiate>` was removed entirely. Leaving it in place is now an unknown option (`ERROR: (1244): Invalid configuration at '/auth/ssl_auto_negotiate': unknown option (does not satisfy 'additionalProperties') [...]`) and blocks the manager from starting.
@@ -268,6 +241,13 @@ are), and `wazuh-manager-control start` starts nothing.
 | `<localfile>` blocks | Log collection is an agent-side function |
 | `<wodle name="open-scap">` | Replaced by SCA — see [CIS-CAT/OpenSCAP to SCA migration](ciscat-openscap-to-sca.md) |
 | `<agent-upgrade>` | Its manager options moved into `<task-manager>` — see [Remote Agent Upgrade Migration](remote-agent-upgrade.md#configuration-changes) |
+| `<active-response>` | Rebuilt in 5.0 — see [Active Response](active-response.md) |
+| `<email_alerts>`, `<reports>` | Email removed — see [Mail forwarding and reporting](mail-forwarding-reporting.md) |
+| `<syslog_output>` | Removed — see [Remote syslog output](remote-syslog-output.md) |
+| `<integration>` | Integrations daemon removed — see [Integratord to notifications plugin](integratord-notifications.md) |
+| `<agentless>` | Removed — see [Agentless to supported alternatives](agentless-4x-to-5x.md) |
+
+The table names the common ones; the rule covers every top-level element not in the list above.
 
 > [!IMPORTANT]
 > Custom rules and decoders from 4.x **cannot** be migrated by copying XML files to the manager. Content is managed through the engine's content management system. See [Migrating rules from 4.x to 5.x](rules-4x-to-5x.md), [Migrating decoders from XML to YAML](xml-decoders-migration.md) and [Migrating CDB lists to KVDB lists](cdb-to-kvdb-migration.md).
@@ -295,7 +275,7 @@ The `<vulnerability-detection>` section is preserved in 5.0 but the `<index-stat
 ```
 
 Remove the `<index-status>` element from your configuration: left in place it is an unknown option and
-the manager does not start. `<enabled>` and `<feed-update-interval>` carry over unchanged.
+the manager does not start. `<enabled>` and `<feed-update-interval>` carry over unchanged, except that an interval of zero (in any unit) is now rejected.
 
 ### `<indexer>` section
 
@@ -303,9 +283,7 @@ The `<indexer>` section exists in both 4.x and 5.0 but has two changes.
 
 **`<enabled>` removed**
 
-In 4.x the section had an `<enabled>` flag. In 5.0 the indexer connection is always active and the flag has been removed; left in place it is an unknown option and the manager does not start. The installer still needs an `apid.pem`/`apid-key.pem` pair under the default names to
-complete: when the manager's CA has no private key (an anchor-only deployment), stage one signed by that
-CA even if the API is then pointed at other files.
+In 4.x the section had an `<enabled>` flag. In 5.0 the indexer connection is always active and the flag has been removed; left in place it is an unknown option and the manager does not start.
 
 **Certificate paths changed**
 
@@ -346,9 +324,12 @@ In 4.x the certificates pointed to Filebeat's certificate directory. In 5.0, Fil
 
 > [!NOTE]
 > The 5.0 installer generates the `<indexer>` section with these absolute paths, in the manager's
-> configuration directory `/etc/wazuh-manager`. A relative path you write resolves against the installation
-> directory `/var/wazuh-manager`. See
-> [Configure the indexer address](../../ref/getting-started/installation.md#configure-the-indexer-address).
+> configuration directory `/etc/wazuh-manager`. Keep them there: every TLS path the manager is configured
+> with must name a file directly inside `/etc/wazuh-manager/certs`. A relative path resolves against the
+> installation directory `/var/wazuh-manager`, so it is outside `certs/`, and the start is refused
+> (`Invalid credentials. Exiting`). The schema accepts such a path; the credential check does not. See
+> [Configure the indexer address](../../ref/getting-started/installation.md#configure-the-indexer-address)
+> and [Configured file names](../../ref/getting-started/credentials.md#configured-file-names).
 
 ### `<cluster>` section
 
@@ -494,14 +475,14 @@ dbd.reconnect_attempts
 integrator.debug
 ```
 
-The 4.x file also carried `logcollector.*`, `execd.*` and `agent.*` keys. They belong to agent-side
-daemons that a 5.0 manager does not run; do not carry them into
-`wazuh-manager-internal-options.conf`.
+The 4.x file also carried `agent.*`, `execd.*`, `logcollector.*`, `rootcheck.*`, `sca.*`, `syscheck.*`,
+`wazuh_command.*` and `windows.*` keys. They belong to agent-side components that a 5.0 manager does not
+run; do not carry them into `wazuh-manager-internal-options.conf`.
 
 `wazuh_clusterd.debug` is still read in 5.0 (by `wazuh-manager-clusterd`, range `0`–`2`), so it can be
 carried forward.
 
-**Renamed options:**
+### Renamed options
 
 `wazuh-manager-monitord` was removed in 5.0 and its work — agent disconnection detection, deletion of
 long-disconnected agents, and log rotation — moved into the Task Manager inside
@@ -656,6 +637,11 @@ under `/etc/wazuh-manager/shared/`, and `var/multigroups/merged.mg` files.
 | 4.x | 5.0 |
 |-----|-----|
 | `ar.conf`, `ossec.conf` | `wazuh-manager.conf` |
+
+### Removed worker interval
+
+`intervals.worker.sync_agent_groups` (4.x) is gone from the 5.0 file and nothing reads it; only the
+master's `intervals.master.sync_agent_groups` remains. Do not carry it.
 
 ### New master intervals
 

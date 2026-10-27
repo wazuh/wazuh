@@ -1,6 +1,6 @@
 # os_regex_execute tests framework
 
-The `test suites` set of **os_regex_execute** is defined in [test_os_regex_execute.json](test_os_regex_execute.json) as an array as follows:
+The `test suites` set of **os_regex_execute** (run by [test_os_regex_execute.c](test_os_regex_execute.c), which calls `OSRegex_Execute_ex()`) is defined in [test_os_regex_execute.json](test_os_regex_execute.json) as an array as follows:
 
 ```json,fragment
 [
@@ -13,7 +13,7 @@ The `test suites` set of **os_regex_execute** is defined in [test_os_regex_execu
 ]
 ```
 
-Each `test suite` uses a [regex_matching](https://github.com/wazuh/wazuh/blob/v4.3.5/src/os_regex/os_regex.h#L45-L49) structure, which is initially empty and is shared between its `unit tests`, allowing to test the memory usage. These suites are JSON objects with the following structure:
+Each `test suite` uses a [regex_matching](../../shared/os_regex/os_regex.h#L46-L50) structure, which is initially empty and is shared between its `unit tests`, allowing to test the memory usage. These suites are JSON objects with the following structure (both keys are required):
 
 ```json,fragment
 {
@@ -50,8 +50,8 @@ Where:
 - `description` (string/optional): Unit test description.
 - `skip_test` (bool/optional): If true, the test is skipped. This allows developing tests that should work but are not, until fixed, given known buggy cases. This option is used in tests that produce segmentation faults or conditions that abort the tests and can not be handled.
 - `ignore_result` (bool/optional): If true, the test is executed but if it fails then such failures are ignored. This allows having tests for known buggy cases but prevents them to fail. This option is used in tests that fail but still can be bypassed.
-- `debug` (bool/optional): If true, it prints a verbose description of the errors.
-- `pattern` (string) : OS Regex pattern.
-- `log` (string): Log to be analyzed.
-- `end_match` (string): When the regex matches, it should return a pointer to the last matched character. This parameter would be the string that is conformed starting from this character to the end of the log.
-- `captured_groups`: An array with the expected capture groups.
+- `debug` (bool/optional): If true, it prints a verbose description of the errors (and a line when the test is skipped).
+- `pattern` (string/required): OS Regex pattern.
+- `log` (string/required): Log to be analyzed.
+- `end_match` (string or `null`/required): When the regex matches, it should return a pointer to the last matched character. This parameter would be the string that is conformed starting from this character to the end of the log; `null` means the pattern must not match.
+- `captured_groups` (array of strings/required): The expected capture groups, in order; `[]` when none is expected.

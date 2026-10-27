@@ -206,6 +206,68 @@ def test_agent_get_agents_summary_os(connect_mock, send_mock):
     assert summary.affected_items == ['ubuntu'], f"Expected ['ubuntu'] OS but received '{summary['items']} instead."
 
 
+@pytest.mark.parametrize('agent_list, failed_ids', [
+    (['003', '004'], ['003', '004']),
+    (['000', '003'], ['003']),
+    (['000'], []),
+    ([], []),
+    (['999'], []),
+    (['003', '999'], ['003']),
+    (['001', '003'], [])
+])
+@patch('wazuh.agent.get_agents_info', return_value=set(short_agent_list))
+@patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
+@patch('socket.socket.connect')
+def test_agent_get_agents_summary_os_unknown_os(connect_mock, send_mock, agents_info_mock, agent_list, failed_ids):
+    """Test `get_agents_summary_os` when some of the agents have not reported their OS.
+
+    Parameters
+    ----------
+    agent_list : list
+        List of agent IDs.
+    failed_ids : list
+        Agent IDs expected in `failed_items`.
+    """
+    summary = get_agents_summary_os(agent_list)
+
+    assert summary.total_failed_items == len(failed_ids)
+    rendered = summary.render()
+    if failed_ids:
+        assert summary.affected_items == []
+        assert rendered['data']['failed_items'][0]['error']['code'] == 1776
+        assert rendered['data']['failed_items'][0]['id'] == failed_ids
+        assert rendered['error'] == 1
+    else:
+        assert rendered['data']['failed_items'] == []
+        assert rendered['error'] == 0
+
+
+@pytest.mark.parametrize('system_agents, agent_list, message', [
+    (set(), [], 'No agents are registered'),
+    (set(short_agent_list), ['999'], 'Could not get the operative system of the agents')
+])
+@patch('wazuh.agent.WazuhDBQueryAgents.run', return_value={'items': [], 'totalItems': 0})
+@patch('socket.socket.connect')
+def test_agent_get_agents_summary_os_no_agents(connect_mock, run_mock, system_agents, agent_list, message):
+    """Test the message of `get_agents_summary_os` when no registered agent is in scope.
+
+    Parameters
+    ----------
+    system_agents : set
+        IDs of the agents registered in the system.
+    agent_list : list
+        Agent IDs in scope.
+    message : str
+        Expected message.
+    """
+    with patch('wazuh.agent.get_agents_info', return_value=system_agents):
+        rendered = get_agents_summary_os(agent_list).render()
+
+    assert rendered['message'] == message
+    assert rendered['data']['failed_items'] == []
+    assert rendered['error'] == 0
+
+
 @pytest.mark.parametrize('agent_list, expected_items, error_code', [
     (['010'],        ['010'], None),   # v5.0.0 - succeeds
     (['001', '002'], [],      1761),   # v4.x agents - version guard rejects both
@@ -822,7 +884,7 @@ def _remove_group_and_tmp_dirs(group_id):
     shutil.rmtree(os.path.join(test_shared_path, group_id), ignore_errors=True)
     tmp_parent = os.path.dirname(test_shared_path)
     for entry in os.listdir(tmp_parent):
-        if entry.startswith(f'.{group_id}.tmp-'):
+        if entry.startswith('.group.tmp-'):
             shutil.rmtree(os.path.join(tmp_parent, entry), ignore_errors=True)
 
 
@@ -844,7 +906,7 @@ def test_create_group_final_ownership_and_mode(chown_mock, uid_mock, gid_mock):
         chown_mock.assert_called_once()
         chowned_path, chowned_uid, chowned_gid = chown_mock.call_args[0]
         assert chowned_path != path_to_group
-        assert chowned_path.startswith(os.path.join(os.path.dirname(test_shared_path), f'.{group_id}.tmp-'))
+        assert chowned_path.startswith(os.path.join(os.path.dirname(test_shared_path), '.group.tmp-'))
         assert chowned_uid == 1000
         assert chowned_gid == 1234
 
@@ -853,6 +915,25 @@ def test_create_group_final_ownership_and_mode(chown_mock, uid_mock, gid_mock):
         file_mode = stat.S_IMODE(os.stat(os.path.join(path_to_group, 'agent.conf')).st_mode)
         assert dir_mode == 0o700, f'Expected group directory mode 0o700, got {oct(dir_mode)}.'
         assert file_mode == 0o660, f'Expected group file mode 0o660, got {oct(file_mode)}.'
+    finally:
+        _remove_group_and_tmp_dirs(group_id)
+
+
+@patch('wazuh.core.common.SHARED_PATH', new=test_shared_path)
+@patch('wazuh.core.common.wazuh_gid', return_value=getgrnam('root'))
+@patch('wazuh.core.common.wazuh_uid', return_value=getpwnam('root'))
+@patch('wazuh.agent.chown_r')
+def test_create_group_longest_valid_name(chown_mock, uid_mock, gid_mock):
+    """Test that `create_group` accepts a group name of the maximum length the validator allows: the
+    temporary build directory's name does not grow with the group name.
+    """
+    group_id = 'g' * 255
+    try:
+        create_group(group_id)
+        assert os.path.isdir(os.path.join(test_shared_path, group_id))
+        chowned_path = chown_mock.call_args[0][0]
+        assert group_id not in os.path.basename(chowned_path)
+        assert len(os.path.basename(chowned_path)) == len('.group.tmp-') + 32
     finally:
         _remove_group_and_tmp_dirs(group_id)
 
@@ -872,7 +953,7 @@ def test_create_group_cleans_up_tmp_dir_when_full_copy_fails(full_copy_mock):
         assert not os.path.exists(path_to_group), \
             f'"{path_to_group}" should not exist after a failed `create_group` call.'
         leftover_tmp_dirs = [entry for entry in os.listdir(os.path.dirname(test_shared_path))
-                             if entry.startswith(f'.{group_id}.tmp-')]
+                             if entry.startswith('.group.tmp-')]
         assert not leftover_tmp_dirs, f'Temporary build directories were not cleaned up: {leftover_tmp_dirs}'
     finally:
         _remove_group_and_tmp_dirs(group_id)
@@ -893,7 +974,7 @@ def test_create_group_cleans_up_tmp_dir_when_chown_fails(chown_mock):
         assert not os.path.exists(path_to_group), \
             f'"{path_to_group}" should not exist after a failed `create_group` call.'
         leftover_tmp_dirs = [entry for entry in os.listdir(os.path.dirname(test_shared_path))
-                             if entry.startswith(f'.{group_id}.tmp-')]
+                             if entry.startswith('.group.tmp-')]
         assert not leftover_tmp_dirs, f'Temporary build directories were not cleaned up: {leftover_tmp_dirs}'
     finally:
         _remove_group_and_tmp_dirs(group_id)
@@ -1463,7 +1544,10 @@ def test_agent_upgrade_agents(mock_socket, mock_wdb, mock_client_keys, agent_set
 
 
 
-@pytest.mark.parametrize('socket_error, error_code', [(14, 1824), (16, 1826)])
+@pytest.mark.parametrize('socket_error, error_code', [
+    (7, 1817), (8, 1818), (9, 1819), (10, 1820), (11, 1821), (12, 1822), (13, 1823), (14, 1824), (15, 1825),
+    (16, 1826), (18, 1828)
+])
 @patch('wazuh.agent.get_agents_info', return_value=set(full_agent_list))
 @patch('wazuh.core.common.CLIENT_KEYS', new=os.path.join(test_agent_path, 'client.keys'))
 @patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
@@ -1499,6 +1583,33 @@ def test_agent_upgrade_agents_reports_mixed_outcomes_per_agent(mock_socket, mock
     failed = {error.code: ids for error, ids in result.failed_items.items()}
     assert failed == {error_code: {'002'}}, \
         f'only 002 failed, and with {error_code}; got {failed}'
+
+
+def test_agent_upgrade_error_codes_match_task_manager_per_agent_verdicts():
+    """The per-agent list is exactly the Task Manager's per-agent and per-package-group verdicts (socket errors
+    7 to 16, and 18), each as 1810 + the socket error; request- and node-level errors stay out of it."""
+    from wazuh.agent import ERROR_CODES_UPGRADE_SOCKET
+
+    assert sorted(ERROR_CODES_UPGRADE_SOCKET) == [1810 + error for error in (7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 18)]
+
+
+@pytest.mark.parametrize('socket_error', [17])
+@patch('wazuh.agent.get_agents_info', return_value=set(full_agent_list))
+@patch('wazuh.core.common.CLIENT_KEYS', new=os.path.join(test_agent_path, 'client.keys'))
+@patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
+@patch('socket.socket.connect')
+def test_agent_upgrade_agents_node_level_error_raises(mock_socket, mock_wdb, mock_client_keys, socket_error):
+    """A node-level answer (upgrades disabled on the node) is still raised for the whole request."""
+    result_from_socket = {
+        'error': 0,
+        'data': [{'error': socket_error, 'message': 'Upgrade procedure could not start', 'agent': 1}],
+        'message': 'Success'}
+
+    with patch('wazuh.core.agent.core_upgrade_agents', return_value=result_from_socket):
+        with pytest.raises(WazuhInternalError) as exc_info:
+            upgrade_agents(agent_list=['001'])
+
+    assert exc_info.value.code == 1810 + socket_error
 
 
 @patch('wazuh.agent.get_agents_info', return_value=set(full_agent_list))

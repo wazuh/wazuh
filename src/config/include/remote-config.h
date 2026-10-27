@@ -51,8 +51,11 @@
 #define REMOTED_HTTPS_DUAL_STACK_UNSET 0 ///< Not configured -> module defaults to IPv6-only (RestinioHttpServer.cpp).
                                           ///< Kept distinct from _NO so the "dual_stack only applies to an IPv6
                                           ///< bind_addr" warning doesn't fire when the operator never touched it.
+                                          ///< Also what Read_Remote_JSON() stores for `dual_stack: false`: the
+                                          ///< schema defaults the option to false, so `no` and absent are one value.
 #define REMOTED_HTTPS_DUAL_STACK_YES   1 ///< Force dual-stack on (IPV6_V6ONLY=0): also accept IPv4
-#define REMOTED_HTTPS_DUAL_STACK_NO    2 ///< Force IPv6-only (IPV6_V6ONLY=1): reject IPv4 on this socket
+#define REMOTED_HTTPS_DUAL_STACK_NO    2 ///< Force IPv6-only (IPV6_V6ONLY=1); same socket option as _UNSET, and not
+                                          ///< produced by Read_Remote_JSON()
 
 /* remote.https.<endpoint>_rate_limit sentinel. Kept in sync by hand with the
  * C-ABI mirror in src/remoted/remoted_module/include/remoted_module.h
@@ -99,9 +102,9 @@ typedef struct _remoted_https_config {
     char *key;                 ///< NULL -> module default
     char *ca;                  ///< NULL -> module default (/etc/wazuh-manager/certs/root-ca.pem), opened only in verification modes
     char *ca_certificate;      ///< NULL -> module default (CA that signs the listener certificate)
-    char *ciphers;             ///< NULL -> library default cipher list
+    char *ciphers;             ///< NULL -> module default cipher list (the schema default carries the same list)
     int verification_mode;     ///< REMOTED_HTTPS_VERIFY_*
-    long max_body_size;        ///< bytes; 0 -> module default
+    long max_body_size;        ///< bytes; 0 -> module default (the schema default "10M" is the same value)
     int dual_stack;            ///< REMOTED_HTTPS_DUAL_STACK_*; only applies to an IPv6 bind_addr
     /* Rate limits of the two unauthenticated routes. An enrolling agent has no client.keys entry
      * and a trust-bootstrapping one has no anchor yet, so neither route can be put behind the

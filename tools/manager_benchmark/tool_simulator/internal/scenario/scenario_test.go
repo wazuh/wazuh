@@ -1,6 +1,7 @@
 package scenario
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -230,5 +231,161 @@ func TestCompressionForResolvesTheDefaultPerTransport(t *testing.T) {
 	d.Compression = "zstd"
 	if got := d.CompressionFor("agent"); got != "zstd" {
 		t.Fatalf("explicit zstd must stick, got %q", got)
+	}
+}
+
+// engineStep writes a one-line sample log and returns an engine step literal
+// pointing at it, with any extra fields appended.
+func engineStep(t *testing.T, extra string) string {
+	t.Helper()
+	path := filepath.Join(t.TempDir(), "sample.log")
+	if err := os.WriteFile(path, []byte("Oct  6 14:02:11 host sshd[1]: test\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	return fmt.Sprintf(`{"kind": "engine", "engine": %q, "location": "syslog"%s}`, path, extra)
+}
+
+// uds mode posts engine batches straight to the engine's ingest socket, so the
+// loader no longer reserves engine steps for agent mode.
+func TestLoaderAllowsEngineStepsInUDSMode(t *testing.T) {
+	scn, err := loadFromLiteral(t, sprintf(minimalUDS, engineStep(t, `, "header": {"pad_bytes": 9000}`), ""))
+	if err != nil {
+		t.Fatalf("a uds engine step must load: %v", err)
+	}
+	if h := scn.Lanes["main"][0].Header; h == nil || h.PadBytes != 9000 {
+		t.Fatalf("header not parsed: %+v", h)
+	}
+}
+
+func TestLoaderConstrainsHeaderSpec(t *testing.T) {
+	const minimalAgent = `{
+	  "name": "t", "mode": "agent",
+	  "lanes": {"main": [%s]},
+	  "fleets": [{"name": "f", "agents": 1, "first_id": 1, "lanes": ["main"]}]
+	}`
+	for _, tc := range []struct{ body, field string }{
+		{sprintf(minimalUDS, `{"kind": "delta", "header": {"pad_bytes": 512}}`, ""), "engine steps"},
+		{sprintf(minimalUDS, engineStep(t, `, "header": {"pad_bytes": -1}`), ""), "pad_bytes"},
+		{sprintf(minimalUDS, engineStep(t, `, "header": {"extra_fields": -1}`), ""), "extra_fields"},
+		{sprintf(minimalUDS, engineStep(t, `, "header": {"off_path_fields": -1}`), ""), "off_path_fields"},
+		{sprintf(minimalUDS, engineStep(t, `, "header": {"change_every": -1}`), ""), "change_every"},
+		{sprintf(minimalUDS, engineStep(t, `, "header": {"id_position": "middle"}`), ""), "id_position"},
+		{sprintf(minimalUDS, engineStep(t, `, "header": {"pad_bytes": 20}`), ""), "pad_bytes"},
+		{sprintf(minimalAgent, engineStep(t, `, "header": {"pad_bytes": 9000}`)), "H-line cap"},
+		{sprintf(minimalAgent, engineStep(t, `, "header": {"extra_fields": 400}`)), "H-line cap"},
+		{sprintf(minimalUDS, engineStep(t, `, "header": {"profile": "windows"}`), ""), "profile"},
+		{sprintf(minimalUDS, engineStep(t, `, "header": {"profile": "agent", "id_position": "last"}`), ""), "id_position"},
+		{sprintf(minimalUDS, engineStep(t, `, "header": {"profile": "agent", "pad_bytes": 100}`), ""), "pad_bytes"},
+	} {
+		if _, err := loadFromLiteral(t, tc.body); err == nil || !strings.Contains(err.Error(), tc.field) {
+			t.Errorf("want an error naming %q, got %v\n%s", tc.field, err, tc.body)
+		}
+	}
+	if _, err := loadFromLiteral(t, sprintf(minimalAgent, engineStep(t,
+		`, "header": {"pad_bytes": 8192, "extra_fields": 3, "off_path_fields": 2, "id_position": "last", "change_every": 5}`))); err != nil {
+		t.Fatalf("a header at exactly remoted's cap must load: %v", err)
+	}
+	if _, err := loadFromLiteral(t, sprintf(minimalAgent, engineStep(t,
+		`, "header": {"profile": "agent", "change_every": 0}`))); err != nil {
+		t.Fatalf("an agent-profile header must load: %v", err)
+	}
+}
+
+func TestLoaderConstrainsBatching(t *testing.T) {
+	agent := `, "batching": "agent", "events_per_second": 50`
+	for _, tc := range []struct{ body, field string }{
+		{sprintf(minimalUDS, engineStep(t, `, "batching": "bytes"`), ""), "batching must be"},
+		{sprintf(minimalUDS, engineStep(t, `, "batching": "agent"`), ""), "events_per_second > 0"},
+		{sprintf(minimalUDS, engineStep(t, agent+`, "events_per_batch": 100`), ""), "events_per_batch does not apply"},
+		{sprintf(minimalUDS, engineStep(t, `, "batch_size_bytes": 1024`), ""), "need batching"},
+		{sprintf(minimalUDS, engineStep(t, `, "batch_interval": "5s"`), ""), "need batching"},
+		{sprintf(minimalUDS, engineStep(t, `, "retry_max_attempts": 3`), ""), "need batching"},
+		{sprintf(minimalUDS, engineStep(t, agent+`, "batch_size_bytes": -1`), ""), "must not be negative"},
+		{sprintf(minimalUDS, engineStep(t, agent+`, "start_jitter": "-1s"`), ""), "start_jitter must not be negative"},
+		{sprintf(minimalUDS, `{"kind": "delta", "batching": "agent"}`, ""), "only apply to engine steps"},
+		{sprintf(minimalUDS, `{"kind": "delta", "start_jitter": "1s"}`, ""), "only apply to engine steps"},
+	} {
+		if _, err := loadFromLiteral(t, tc.body); err == nil || !strings.Contains(err.Error(), tc.field) {
+			t.Errorf("want an error naming %q, got %v\n%s", tc.field, err, tc.body)
+		}
+	}
+
+	scn, err := loadFromLiteral(t, sprintf(minimalUDS, engineStep(t, agent), ""))
+	if err != nil {
+		t.Fatalf("an agent-batching step must load: %v", err)
+	}
+	step := scn.Lanes["main"][0]
+	if !step.AgentBatching() || step.AgentBatchSizeBytes() != 1024*1024 || step.AgentBatchInterval() != 10*time.Second ||
+		step.AgentRetryMaxAttempts() != 5 || step.ResolvedStartJitter() != 10*time.Second {
+		t.Fatalf("agent defaults: size %d interval %v attempts %d jitter %v", step.AgentBatchSizeBytes(),
+			step.AgentBatchInterval(), step.AgentRetryMaxAttempts(), step.ResolvedStartJitter())
+	}
+
+	scn, err = loadFromLiteral(t, sprintf(minimalUDS, engineStep(t,
+		agent+`, "batch_size_bytes": 65536, "batch_interval": "2s", "retry_max_attempts": 1, "start_jitter": "0s"`), ""))
+	if err != nil {
+		t.Fatalf("explicit agent knobs must load: %v", err)
+	}
+	step = scn.Lanes["main"][0]
+	if step.AgentBatchSizeBytes() != 65536 || step.AgentBatchInterval() != 2*time.Second ||
+		step.AgentRetryMaxAttempts() != 1 || step.ResolvedStartJitter() != 0 {
+		t.Fatalf("explicit knobs not honoured: %+v", step)
+	}
+
+	scn, err = loadFromLiteral(t, sprintf(minimalUDS, engineStep(t, `, "events_per_batch": 100, "start_jitter": "3s"`), ""))
+	if err != nil {
+		t.Fatalf("a count step with start_jitter must load: %v", err)
+	}
+	if step = scn.Lanes["main"][0]; step.AgentBatching() || step.ResolvedStartJitter() != 3*time.Second {
+		t.Fatalf("count step: agent=%v jitter=%v", step.AgentBatching(), step.ResolvedStartJitter())
+	}
+	if _, err = loadFromLiteral(t, sprintf(minimalUDS, engineStep(t, `, "events_per_batch": 100`), "")); err != nil {
+		t.Fatalf("an existing count step must still load: %v", err)
+	}
+}
+
+// TestLoaderConstrainsOption pins that an unknown session option is a load
+// error, on a step and in defaults: the session builder would otherwise send
+// it as Sync, so a typo'd VD scenario would measure a plain sync and no scan.
+func TestLoaderConstrainsOption(t *testing.T) {
+	for _, option := range []string{"Sync", "sync", "VDFirst", "vdfirst", "VDSync", "vdsync"} {
+		step := fmt.Sprintf(`{"kind": "delta", "option": %q}`, option)
+		if _, err := loadFromLiteral(t, sprintf(minimalUDS, step, "")); err != nil {
+			t.Errorf("step option %q must load: %v", option, err)
+		}
+		if _, err := loadFromLiteral(t, sprintf(minimalUDS, `{"kind": "delta"}`,
+			fmt.Sprintf(`, "defaults": {"option": %q}`, option))); err != nil {
+			t.Errorf("defaults option %q must load: %v", option, err)
+		}
+	}
+	for _, option := range []string{"VDFrist", "vd_first", "full", "SYNC"} {
+		step := fmt.Sprintf(`{"kind": "delta", "option": %q}`, option)
+		if _, err := loadFromLiteral(t, sprintf(minimalUDS, step, "")); err == nil ||
+			!strings.Contains(err.Error(), "option must be") {
+			t.Errorf("step option %q must be refused, got %v", option, err)
+		}
+		if _, err := loadFromLiteral(t, sprintf(minimalUDS, `{"kind": "delta"}`,
+			fmt.Sprintf(`, "defaults": {"option": %q}`, option))); err == nil ||
+			!strings.Contains(err.Error(), "defaults: option must be") {
+			t.Errorf("defaults option %q must be refused, got %v", option, err)
+		}
+	}
+}
+
+// TestEveryShippedScenarioLoads keeps the scenarios/ directory in step with the
+// loader: a constraint added here must not leave a shipped scenario that
+// --validate (and every run) refuses.
+func TestEveryShippedScenarioLoads(t *testing.T) {
+	paths, err := filepath.Glob(filepath.Join("..", "..", "..", "scenarios", "*.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(paths) == 0 {
+		t.Fatal("no scenario found under tools/manager_benchmark/scenarios")
+	}
+	for _, path := range paths {
+		if _, err := Load(path, ""); err != nil {
+			t.Errorf("%s: %v", filepath.Base(path), err)
+		}
 	}
 }

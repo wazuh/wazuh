@@ -4,37 +4,37 @@ on:
   pull_request:
     types: [synchronize, opened, reopened, ready_for_review]
     paths:
-      # The engine and its ctest suites/benchmarks (ENGINE_TEST=y, src/engine/CMakeLists.txt:39-41).
-      # Only source/* is added to the build (src/engine/CMakeLists.txt:299-330): test/, tools/,
+      # The engine and its ctest suites/benchmarks (ENGINE_TEST=y, the if(WAZUH_ENGINE_TEST) block of src/engine/CMakeLists.txt).
+      # Only source/* is added to the build (its add_subdirectory(${ENGINE_SOURCE_DIR}/...) list): test/, tools/,
       # ruleset/, standalone/, internal_packages/ and docs/ feed no target this lane runs.
       - 'src/engine/CMakeLists.txt'
       - 'src/engine/source/**'
       # Link closure outside src/engine. The engine is configured inside the src/ tree
-      # (add_subdirectory(engine), src/CMakeLists.txt:278).
+      # (add_subdirectory(engine) in src/CMakeLists.txt).
       - 'src/CMakeLists.txt'
-      # wazuh_link_jemalloc(wazuh-engine) (src/engine/CMakeLists.txt:373, src/cmake/WazuhJemalloc.cmake:20)
+      # wazuh_link_jemalloc(wazuh-engine PLAIN) in src/engine/CMakeLists.txt, defined in src/cmake/WazuhJemalloc.cmake
       - 'src/cmake/**'
-      # wazuhext and the vendored libraries the engine imports from src/external (src/CMakeLists.txt:237)
+      # wazuhext and the vendored libraries the engine imports from src/external (add_subdirectory(external) in src/CMakeLists.txt)
       - 'src/external/CMakeLists.txt'
-      # make deps / build; pins http-request (HTTP_REQUEST_BRANCH, src/Makefile:98) and tzdata
+      # make deps / build; pins http-request (HTTP_REQUEST_BRANCH in src/Makefile) and tzdata
       - 'src/Makefile'
       - 'src/deps.lock.mk'
-      # Ref list for every ref-based `make deps` download (src/Makefile:708)
+      # Ref list for every ref-based `make deps` download (GIT_REFS_LIST in src/Makefile)
       - 'tools/get_git_refs.sh'
-      # Submodule gitlink: urlrequest, linked by conf and geo (source/conf/CMakeLists.txt:13,
-      # source/geo/CMakeLists.txt:17) and by indexer_connector. Moves together with src/Makefile:98.
+      # Submodule gitlink: urlrequest, linked by conf and geo (target_link_libraries in
+      # source/conf/ and source/geo/CMakeLists.txt) and by indexer_connector. Moves together with HTTP_REQUEST_BRANCH.
       - 'src/shared_modules/http-request'
-      # include_directories (src/engine/CMakeLists.txt:195): loggerHelper.h, proc.hpp, zlibHelper.hpp
+      # include_directories(${SHARED_MODULES}/utils) in src/engine/CMakeLists.txt: loggerHelper.h, proc.hpp, zlibHelper.hpp
       - 'src/shared_modules/utils/**'
-      # commonDefs.h, on the indexer_connector/keystore include path (indexer_connector/CMakeLists.txt:33)
+      # commonDefs.h, on the indexer_connector/keystore include path (include_directories(${SHARED_MODULES}/common) in indexer_connector/CMakeLists.txt)
       - 'src/shared_modules/common/**'
-      # base links manager_config (source/base/CMakeLists.txt:47); schema embedded at build time
-      # (manager_config/CMakeLists.txt:20)
+      # base links manager_config (target_link_libraries(base) PRIVATE); schema embedded at build time
+      # (MANAGER_CONFIG_SCHEMA_FILE -> embeddedSchema.hpp in manager_config/CMakeLists.txt)
       - 'src/shared_modules/manager_config/**'
-      # wiconnector links indexer_connector (source/wiconnector/CMakeLists.txt:24)
+      # wiconnector links indexer_connector (target_link_libraries(wIndexerConnector_wIndexerConnector))
       - 'src/shared_modules/indexer_connector/**'
-      # linked by indexer_connector (indexer_connector/CMakeLists.txt:52); keyStore.hpp in
-      # wIndexerConnector_utest (source/wiconnector/CMakeLists.txt:51)
+      # linked by indexer_connector (target_link_libraries(indexer_connector)); keyStore.hpp in
+      # wIndexerConnector_utest (its target_include_directories in source/wiconnector/CMakeLists.txt)
       - 'src/shared_modules/keystore/**'
       # Other components' test trees, harnesses and tools: never linked into the engine.
       - '!src/shared_modules/utils/tests/**'
@@ -55,7 +55,7 @@ on:
       # 5_testintegration_engine.yml exercises it on every engine PR.
       - '.github/workflows/5_testunit_engine.yml'
       - '.github/actions/reinstall_cmake/**'
-      # run by reinstall_cmake (.github/actions/reinstall_cmake/action.yml:29)
+      # run by reinstall_cmake (its `sudo tools/devContainer/reinstall-cmake.sh` step)
       - 'tools/devContainer/reinstall-cmake.sh'
       - '.github/actions/setup-sccache/**'
   workflow_dispatch:

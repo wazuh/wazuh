@@ -308,6 +308,36 @@ TEST(AuthGatewayTest, ValidAuthReachesHandlerWithVerifiedRequest)
     EXPECT_LE(seenReceivedAt, after);
 }
 
+// remoted tells its downstreams which agent a request belongs to with X-Wazuh-Agent-Id, and that
+// value must come from the verified token alone. An agent that sends a header of the same name has no
+// way to reach a handler with it: the gateway hands the handler only the authenticated id (the
+// AuthenticatedRequest carries no request headers at all).
+TEST(AuthGatewayTest, AgentSuppliedIdentityHeaderIsNotPropagated)
+{
+    FakeHttpServer server;
+    auto gateway = makeGateway();
+
+    std::string seenAgentId;
+    gateway.addAuthenticatedRoute(server,
+                                  Method::Post,
+                                  "/stateless",
+                                  [&seenAgentId](std::shared_ptr<const remoted::auth::AuthenticatedRequest> authReq,
+                                                 std::shared_ptr<IHttpResponder> responder)
+                                  {
+                                      seenAgentId = authReq->agentId;
+                                      responder->send(HttpResponse {200, "", {}});
+                                  });
+
+    auto request = signedRequest("some-body");
+    request.headers.emplace("x-wazuh-agent-id", "999");
+    auto responder = std::make_shared<CapturingResponder>();
+    server.dispatch(Method::Post, "/stateless", request, responder);
+
+    ASSERT_TRUE(responder->captured.has_value());
+    EXPECT_EQ(responder->captured->status, 200);
+    EXPECT_EQ(seenAgentId, "001");
+}
+
 TEST(AuthGatewayTest, PayloadOutlivesDispatchAndReleaseKeepsMetadata)
 {
     FakeHttpServer server;

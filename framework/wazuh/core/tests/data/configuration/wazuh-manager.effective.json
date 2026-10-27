@@ -40,6 +40,9 @@
             "key": "/etc/wazuh-manager/certs/remoted-key.pem",
             "ca": "",
             "ca_certificate": "/etc/wazuh-manager/certs/root-ca.pem",
+            "ciphers": "TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256",
+            "max_body_size": "10M",
+            "dual_stack": false,
             "enroll_rate_limit": 100,
             "cacerts_rate_limit": 50
         },

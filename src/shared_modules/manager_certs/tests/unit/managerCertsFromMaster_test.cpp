@@ -764,6 +764,9 @@ TEST(ManagerCertsFromMaster, TransferFailureSuggestsTheWayOut)
     EXPECT_EQ(outcome.exitCode, 2);
     EXPECT_NE(outcome.err.find("--port"), std::string::npos) << outcome.err;
     EXPECT_NE(outcome.err.find("scp"), std::string::npos) << outcome.err;
+    // The way out must be one a worker accepts: `add` refuses on a worker (G7), `check` does not.
+    EXPECT_NE(outcome.err.find("wazuh-manager-certs check"), std::string::npos) << outcome.err;
+    EXPECT_EQ(outcome.err.find("wazuh-manager-certs add"), std::string::npos) << outcome.err;
     EXPECT_EQ(outcome.hash, before);
 }
 
@@ -809,6 +812,8 @@ TEST(ManagerCertsFromMaster, EmptyLocalBundleRefusedBeforeConnecting)
     // asked (C39a, objection 1).
     EXPECT_EQ(outcome.exitCode, 2);
     EXPECT_NE(outcome.err.find("local trust bundle is empty"), std::string::npos) << outcome.err;
+    EXPECT_NE(outcome.err.find("wazuh-manager-certs check"), std::string::npos) << outcome.err;
+    EXPECT_EQ(outcome.err.find("wazuh-manager-certs add"), std::string::npos) << outcome.err;
     EXPECT_TRUE(stub.asked.empty());
     EXPECT_EQ(readFile(bundlePath), "");
 }

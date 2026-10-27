@@ -9,8 +9,9 @@
 # --start-mark), manager-errors.log, verify-manager.log, manifest.md. Nothing secret is written: the
 # bundle served by GET /cacerts is public material.
 #
-# Used by the VS Code task "E2E Scripts: [Manager] Verify installed manager", by
-# wazuh_install_manager.sh after every install, and by the stack-env skill.
+# Used by the VS Code task "E2E Scripts: [Manager] Verify installed manager" and by
+# wazuh_install_manager.sh after every install (tools/devContainer/README.md, "wazuh_install_manager.sh /
+# wazuh_verify_manager.sh").
 set -u
 
 usage() {
@@ -159,7 +160,7 @@ if [ "$WRITE_MANIFEST" -eq 1 ]; then
     echo "mode: verify"
     echo "manager.home: $HOME_DIR"
     echo "remoted.https: port=$PORT prefix=${PFX:-/}"
-    [ -f "$CONF_DIR/.install-provenance" ] && sed 's/^/installed./' "$CONF_DIR/.install-provenance"
+    [ -f "$HOME_DIR/.install-provenance" ] && sed 's/^/installed./' "$HOME_DIR/.install-provenance"
     echo
     echo "| # | check | verdict | got / reason |"
     echo "|---|---|---|---|"

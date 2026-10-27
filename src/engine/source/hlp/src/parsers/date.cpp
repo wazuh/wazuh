@@ -56,11 +56,8 @@ SemParser getSemParser(std::string_view targetField,
         std::ostringstream out {};
         out.imbue(outputLocale);
 
-        // If we have timezone information, transform it to UTC
-        // else, assume we have UTC.
-        //
-        // If there is no timezone, we substract the offset to UTC
-        // as default offset is 0
+        // If we have a time zone name (%Z), the parsed fields are a local time in that zone: transform it to UTC.
+        // Else, subtract the parsed UTC offset (%z), which defaults to 0 (UTC).
         {
             auto tms = date::floor<std::chrono::milliseconds>(tp);
             if (!abbrev.empty())
@@ -69,8 +66,11 @@ SemParser getSemParser(std::string_view targetField,
                 // we might consider restrict the abbrev supported
                 try
                 {
-                    auto tz = date::make_zoned(abbrev, tms);
-                    date::to_stream(out, "%Y-%m-%dT%H:%M:%SZ", tz);
+                    const auto* tz = date::locate_zone(abbrev);
+                    // A local time in a DST gap or fold resolves to the earliest instant instead of failing
+                    const auto utc = tz->to_sys(date::local_time<std::chrono::milliseconds> {tms.time_since_epoch()},
+                                                date::choose::earliest);
+                    date::to_stream(out, "%Y-%m-%dT%H:%M:%SZ", utc);
                 }
                 catch (std::exception& e)
                 {

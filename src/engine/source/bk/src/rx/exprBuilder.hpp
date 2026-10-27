@@ -50,6 +50,15 @@ private:
             throw std::runtime_error {"Expression is null"};
         }
 
+        // Restore the inherited publisher when leaving this node: the publisher of a traceable subtree must not
+        // leak to the sibling nodes built after it
+        struct PublisherGuard
+        {
+            Publisher& current;
+            Publisher saved;
+            ~PublisherGuard() { current = std::move(saved); }
+        } publisherGuard {params.publisher, params.publisher};
+
         // Create traceable if found and get the publisher function
         auto traceIt = params.traceables.find(expression->getName());
         if (traceIt != params.traceables.end())

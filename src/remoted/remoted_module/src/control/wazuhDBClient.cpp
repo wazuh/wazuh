@@ -214,7 +214,10 @@ namespace remoted::control
                     // request that expires first, which is all the reaper has to watch.
                     const bool wasEmpty = m_queue.empty();
                     m_queue.push({command, std::move(callback), std::chrono::steady_clock::now() + m_requestDeadline});
-                    m_cv.notify_one();
+                    // notify_all, not notify_one: a worker in its reconnect backoff waits on this
+                    // condition variable too, so a single wake-up could land on it and leave the
+                    // connected workers asleep.
+                    m_cv.notify_all();
                     if (wasEmpty)
                     {
                         m_reaperCv.notify_one();

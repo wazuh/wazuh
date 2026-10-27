@@ -39,7 +39,8 @@ A policy resource is `<type>:<field>:<value>`, with `*` as a wildcard value (`ag
 | `node:id` | Cluster nodes by name (`node:id:worker1`) |
 | `policy:id`, `role:id`, `rule:id`, `user:id` | Security resources by ID (`role:id:1`) |
 
-`GET /security/actions` and `GET /security/resources` return this catalog from the running API.
+`GET /security/actions` and `GET /security/resources` return this catalog from the running API
+(both need `security:read_config`).
 
 ---
 
@@ -84,7 +85,7 @@ Changing an agent's group needs **both** `agent:modify_group` over the agent and
 |--------|-----------|-----------|
 | `cluster:status` | `*:*` | `GET /cluster/status` |
 | `cluster:read` | `node:id` | `GET /cluster/nodes`, `/cluster/healthcheck`, `/cluster/local/info`, `/cluster/local/config`, `/cluster/configuration/validation`, `/cluster/{node_id}/status`, `/cluster/{node_id}/info`, `/cluster/{node_id}/configuration`, `/cluster/{node_id}/configuration/{component}/{configuration}`, `/cluster/{node_id}/daemons/stats`, `/cluster/{node_id}/daemons/remoted/tls`, `/cluster/{node_id}/logs`, `/cluster/{node_id}/logs/summary`; `PUT /cluster/restart`, `/cluster/reload` |
-| `cluster:read_secrets` | `node:id` | Unmasks the enrollment password and cluster key in `GET /cluster/local/config`, `/cluster/{node_id}/configuration` and `/cluster/{node_id}/configuration/{component}/{configuration}`; needed to change the cluster key with `PUT /cluster/{node_id}/configuration` |
+| `cluster:read_secrets` | `node:id` | Unmasks the enrollment password, the cluster key and the credential-named fields in `GET /cluster/local/config`, `/cluster/{node_id}/configuration` and `/cluster/{node_id}/configuration/{component}/{configuration}`; needed to change the cluster key or the `indexer` section with `PUT /cluster/{node_id}/configuration` |
 | `cluster:update_config` | `node:id` | `PUT /cluster/{node_id}/configuration` |
 | `cluster:read_api_config` | `*:*` | `GET /cluster/api/config` |
 | `cluster:restart` | `node:id` | `PUT /cluster/restart`, `/cluster/reload` |
@@ -102,7 +103,7 @@ for how `cluster:read_secrets` is checked.
 | `security:update` | `policy:id`, `role:id`, `rule:id`, `user:id` | `PUT /security/users/{user_id}`, `/security/roles/{role_id}`, `/security/policies/{policy_id}`, `/security/rules/{rule_id}`; `POST /security/users/{user_id}/roles`, `/security/roles/{role_id}/policies`, `/security/roles/{role_id}/rules` |
 | `security:delete` | `policy:id`, `role:id`, `rule:id`, `user:id` | `DELETE /security/users`, `/security/roles`, `/security/policies`, `/security/rules`, `/security/users/{user_id}/roles`, `/security/roles/{role_id}/policies`, `/security/roles/{role_id}/rules` |
 | `security:edit_run_as` | `*:*` | `PUT /security/users/{user_id}/run_as` |
-| `security:read_config` | `*:*` | `GET /security/config` |
+| `security:read_config` | `*:*` | `GET /security/config`, `/security/actions`, `/security/resources` |
 | `security:update_config` | `*:*` | `PUT`/`DELETE /security/config` |
 | `security:revoke` | `*:*` | `PUT /security/user/revoke` |
 
@@ -118,9 +119,9 @@ roles that user can reach: see [Default Users](../server-api/authentication.md#d
 ### Endpoints without an action
 
 `GET /`, the login and logout endpoints (`POST`/`DELETE /security/user/authenticate`,
-`POST /security/user/authenticate/run_as`), `GET /security/users/me`,
-`GET /security/users/me/policies`, `GET /security/actions` and `GET /security/resources` need a valid
-token (or, for the logins, valid credentials) but no RBAC action.
+`POST /security/user/authenticate/run_as`), `GET /security/users/me` and
+`GET /security/users/me/policies` need a valid token (or, for the logins, valid credentials) but no
+RBAC action.
 
 ### Notes on specific actions
 

@@ -11,12 +11,13 @@ node: the certificate its HTTPS listener presents, and the CA bundle it hands ou
 
 The document carries **dates and identities, no verdicts**: there is no `warning` or `critical`
 field and no threshold. What "expiring soon" means is the consumer's decision (the Dashboard's, a
-runbook's). The log lines remoted writes about its certificate at start and every 24 hours (see
-[Metrics](metrics.md#tls-listener-certificate--remotedservertls)) are separate from it.
+runbook's). The log lines remoted writes about its certificate at start and every 24 hours (listed
+under [`https.certificate`](configuration.md#httpscertificate)) and the two gauges of
+[Metrics](metrics.md#tls-listener-certificate--remotedservertls) are separate from it.
 
 ```bash
 curl --unix-socket /var/wazuh-manager/queue/sockets/remote-admin-http.sock http://localhost/tls | jq
-curl -k -H "Authorization: Bearer $TOKEN" https://localhost:55000/cluster/master-node/daemons/remoted/tls?pretty=true
+curl -k -H "Authorization: Bearer $TOKEN" "https://localhost:55000/cluster/node01/daemons/remoted/tls?pretty=true"
 ```
 
 ## The document
@@ -63,7 +64,7 @@ Every timestamp comes in two spellings: RFC 3339 UTC, and `_ts` as epoch seconds
 | `listener.seconds_until_expiry` | `not_after_ts − evaluated_at_ts`. **Signed: negative once expired.** |
 | `listener.fingerprint` | The certificate's identity, see [Identities](#identities). |
 | `listener.serial` | Serial number, `0x` + lowercase hex. |
-| `listener.path` | The configured path as written (`remote.https.certificate`); a relative path resolves against the installation directory. |
+| `listener.path` | The configured path as written (`remote.https.certificate`); the start checks require it to name a file directly in `/etc/wazuh-manager/certs`. |
 | `listener.loaded_at` | When remoted loaded this certificate: its last start. See [Freshness](#freshness). |
 | `ca_bundle.path` | [`https.ca_certificate`](configuration.md#httpsca_certificate), the file `GET /cacerts` serves from. |
 | `ca_bundle.publication`, `publication_vouched` | The publication `wazuh-manager-certs` stamped in the bundle's `##` block, the same value the manager advertises to agents as `ca_generation`: `null` when there is no servable bundle, `0` when a bundle is served but no guard vouches for it, else the vouched Unix timestamp. `publication_vouched` is that guard's verdict (block present, hash matches, the leaf chains to a CA of the bundle, count and size within the agent limits), judged against the clock on every request: a CA that expires with the file untouched reads `0` / `false` on the next one. See the [CA rotation runbook](ca-rotation.md). |

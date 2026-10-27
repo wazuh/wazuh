@@ -37,6 +37,11 @@ The agent reports every module it can collect statistics from in one push, keyed
                      "tasks": {"dispatched": {"total": 4}, "discarded_duplicate": {"total": 0},
                                "failed": {"total": 0}}},
     "logcollector": {"global": {"files": []}, "interval": {"files": []}}
+  },
+  "agent": {
+    "groups": ["default", "linux"],
+    "host": {"architecture": "x86_64", "hostname": "web-01",
+             "os": {"name": "Ubuntu", "platform": "ubuntu", "type": "linux", "version": "24.04"}}
   }
 }
 ```
@@ -51,7 +56,8 @@ agent's previous report:
   "wazuh": {
     "schema": {"version": "1.0"},
     "cluster": {"name": "wazuh"},
-    "agent": {"id": "001", "statistics": {"agent": {…}, "logcollector": {…}}}
+    "agent": {"id": "001", "groups": ["default", "linux"], "host": {…},
+              "statistics": {"agent": {…}, "logcollector": {…}}}
   }
 }
 ```
@@ -59,11 +65,15 @@ agent's previous report:
 Two details worth knowing:
 
 - The document is built from scratch, so an `agent_id` or `cluster` the agent writes at the root of its
-  own report is dropped rather than indexed next to the authoritative `wazuh.agent.id`.
+  own report is dropped rather than indexed next to the authoritative `wazuh.agent.id`. Only the
+  agent's groups and host are taken from the root `agent` object: see
+  [Agent-supplied metadata](#agent-supplied-metadata-stats-and-config).
 - The report is stored as it arrives. The module renames no metric and reshapes no module body, so the
   field names in the index are the ones the agent emits, and a metric the agent adds needs no change
-  here, nor in the index template: `wazuh-agent-stats` is mapped `dynamic: true`, so a module or
-  metric it does not declare is indexed like any other field rather than rejected.
+  here, nor in the index template: `wazuh-agent-stats` is mapped `dynamic: strict_allow_templates`, so a
+  module or metric it does not declare under `statistics` is mapped by a dynamic template from the type
+  of its first value. A metric whose type later changes makes the indexer reject the whole document,
+  and the previous one stays; the write is fire-and-forget, so that rejection is silent here.
 
 `400` when the body is not a JSON object, when `modules` is missing, is not an object, is empty, or
 holds a module whose body is not an object. The empty case is a rejection on purpose: indexing a
@@ -79,7 +89,7 @@ fail the indexer's own `index.mapping.depth.limit`, which is much lower.
 
 | Header | Required | Meaning |
 |---|---|---|
-| `X-Wazuh-Agent-Id` | Yes for `/stateful`, `/stats` and `/config` | The agent identity remoted authenticated. Missing or empty is answered `400` on all three. It must be a canonical agent id — decimal digits that fit a 32-bit unsigned value, zero-padded to at least three characters (`001`, `1000`), the only form remoted forwards — or the answer is `400`. On `/stateful` the session's claimed `Start.agentid` must be that same string: another spelling of the same number (`1`, `0001`) is `400`, another agent's id is `403`. All three routes use it verbatim as `wazuh.agent.id` and as the document id. **Ignored by both `_internal` routes**, which read their target from the body — their caller sends no headers of its own. |
+| `X-Wazuh-Agent-Id` | Yes for `/stateful`, `/stats` and `/config` | The agent identity remoted authenticated. Missing or empty is answered `400` on all three. It must be a canonical agent id — decimal digits that fit a 32-bit unsigned value, zero-padded to at least three characters (`001`, `1000`), the only form remoted forwards — or the answer is `400`. On `/stateful` the session's claimed `Start.agentid` must be that same string: another spelling of the same number (`1`, `0001`) is `400`, another agent's id is `403`. All three routes use it verbatim as `wazuh.agent.id`; `/stats` and `/config` also use it as the document `_id`, and `/stateful` as the middle segment of `{cluster}_{agent}_{id}`. **Ignored by both `_internal` routes**, which read their target from the body — their caller sends no headers of its own. |
 | `Content-Type` | No | Recorded, not interpreted. |
 
 ## Enrichment (`/stats` and `/config`)
@@ -97,6 +107,32 @@ authoritative and replaces whatever the agent sent:
 
 Both write `state.modified_at` rather than `@timestamp` because their indices follow the schema's
 stateful convention: a stable document id, replaced in place, with no time series behind it.
+
+## Agent-supplied metadata (`/stats` and `/config`)
+
+The agent's groups and host come from the report's root `agent` object, the same block its
+`/stateless` header carries, and are written with the same shape as in the `wazuh-states-*` indices.
+Only these fields are copied; the agent's `id`, `name`, `version`, `host.ip` and anything else in the
+block are not:
+
+| JSON pointer | Source | Accepted when |
+|---|---|---|
+| `/wazuh/agent/groups` | `agent.groups` | An array of at most 128 strings of up to 255 bytes each |
+| `/wazuh/agent/host/architecture` | `agent.host.architecture` | A string of up to 255 bytes |
+| `/wazuh/agent/host/hostname` | `agent.host.hostname` | Same |
+| `/wazuh/agent/host/os/name` | `agent.host.os.name` | Same |
+| `/wazuh/agent/host/os/platform` | `agent.host.os.platform` | Same |
+| `/wazuh/agent/host/os/type` | `agent.host.os.type` | Same |
+| `/wazuh/agent/host/os/version` | `agent.host.os.version` | Same |
+
+When `agent` is an object, all of them are written: a missing host string is stored as `""` and missing
+groups as `[]`. A value that is not accepted is stored the same way, and a single bad group empties the
+whole list rather than storing a partial membership. Bad metadata never turns the report into a `400`:
+the agent resends the same values every cycle, so a rejection would stop its reports for as long as
+they stay bad. Those cases are logged at debug level, throttled.
+
+A report without an `agent` object (an agent that predates these fields) is indexed without
+`groups` or `host`.
 
 A cluster name containing bytes that are not valid UTF-8 is sanitized once at startup, with a warning,
 rather than being allowed to break the serialization of every request.
@@ -119,6 +155,7 @@ previous one for that agent in full, there is no delete step:
   "wazuh": {
     "schema": { "version": "1.0" },
     "agent": { "id": "<authenticated X-Wazuh-Agent-Id>",
+               "groups": [...], "host": {...},
                "configuration": { "modules": ["fim", "logcollector", ...],
                                   "content": { "fim": {...}, "logcollector": {...}, ... } } },
     "cluster": { "name": "<cluster><name>" }
@@ -132,8 +169,9 @@ agent's payload might claim; there is no per-request source for the cluster iden
 manager's own configuration read once at registration time.
 
 A `POST /config` that fails indexer-availability validation (see status codes below) never reaches the
-write path; a request that passes validation but whose serialization later fails (e.g. an agent id
-header that is not valid UTF-8) is answered `400` rather than crashing the handler.
+write path; a request that passes validation but whose serialization later fails (a string inside
+a module's configuration that is not valid UTF-8, which is only detected when the document is
+serialized) is answered `400` rather than crashing the handler. `/stats` behaves the same way.
 
 ## What a `/stats` or `/config` `200` promises
 
@@ -332,7 +370,7 @@ These can be returned on any route, by the transport rather than by a handler:
 
 | Status | Cause |
 |---|---|
-| `400` | Malformed HTTP, a missing/invalid agent id header, or a body that does not match the route's shape (for `/stats` and `/config`: a non-empty `modules`-keyed object whose every module value is an object — an empty `modules` is rejected on purpose, since indexing a report with nothing to store would replace the agent's last good document, and no nesting deeper than 256 levels; for `/_internal/agents/delete`: an object carrying a usable `agent_id`) |
+| `400` | Malformed HTTP, a missing/invalid agent id header, or a body that does not match the route's shape (for `/stats` and `/config`: a non-empty `modules`-keyed object whose every module value is an object — an empty `modules` is rejected on purpose, since indexing a report with nothing to store would replace the agent's last good document, and no nesting deeper than 256 levels; for the two `_internal` routes: an object carrying a usable `agent_id`). Of these, only malformed HTTP is answered by the transport; the shape checks are the handlers' |
 | `404` | Unknown path |
 | `405` | Known path, wrong verb. Carries an `Allow` header listing that path's verbs |
 | `411` | Chunked transfer encoding, which is not supported |

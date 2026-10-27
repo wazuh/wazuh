@@ -592,6 +592,272 @@ void test_get_unix_version_opensuse_leap_unaffected(void **state)
     assert_string_equal(ret->sysname, "Linux");
 }
 
+void test_get_unix_version_rhcos_rhel_version(void **state)
+{
+    (void) state;
+    os_info *ret;
+
+    // Open /etc/os-release
+    expect_string(__wrap_wfopen, path, "/etc/os-release");
+    expect_string(__wrap_wfopen, mode, "r");
+    will_return(__wrap_wfopen, 1);
+
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, "NAME=\"Red Hat Enterprise Linux CoreOS\"");
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, "ID=\"rhcos\"");
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, "ID_LIKE=\"rhel fedora\"");
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, "VERSION=\"418.94.202602022246-0\"");
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, "VERSION_ID=\"4.18\"");
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, "PLATFORM_ID=\"platform:el9\"");
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, "OPENSHIFT_VERSION=\"4.18\"");
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, "RHEL_VERSION=9.4");
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, "OSTREE_VERSION=\"418.94.202602022246-0\"");
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, NULL);
+
+    expect_value(__wrap_fclose, _File, 1);
+    will_return(__wrap_fclose, 1);
+
+    ret = get_unix_version();
+    *state = ret;
+
+    assert_non_null(ret);
+    assert_string_equal(ret->os_name, "Red Hat Enterprise Linux CoreOS");
+    assert_string_equal(ret->os_version, "9.4");
+    assert_string_equal(ret->os_major, "9");
+    assert_string_equal(ret->os_minor, "4");
+    assert_null(ret->os_patch);
+    assert_string_equal(ret->os_platform, "rhcos");
+    assert_string_equal(ret->sysname, "Linux");
+}
+
+void test_get_unix_version_rhcos_rhel_version_quoted(void **state)
+{
+    (void) state;
+    os_info *ret;
+
+    // Open /etc/os-release
+    expect_string(__wrap_wfopen, path, "/etc/os-release");
+    expect_string(__wrap_wfopen, mode, "r");
+    will_return(__wrap_wfopen, 1);
+
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, "NAME=\"Red Hat Enterprise Linux CoreOS\"");
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, "RHEL_VERSION=\"8.6\"");
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, "ID=\"rhcos\"");
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, "VERSION=\"412.86.202308081039-0\"");
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, "VERSION_ID=\"4.12\"");
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, NULL);
+
+    expect_value(__wrap_fclose, _File, 1);
+    will_return(__wrap_fclose, 1);
+
+    ret = get_unix_version();
+    *state = ret;
+
+    assert_non_null(ret);
+    assert_string_equal(ret->os_name, "Red Hat Enterprise Linux CoreOS");
+    assert_string_equal(ret->os_version, "8.6");
+    assert_string_equal(ret->os_major, "8");
+    assert_string_equal(ret->os_minor, "6");
+    assert_null(ret->os_patch);
+    assert_string_equal(ret->os_platform, "rhcos");
+    assert_string_equal(ret->sysname, "Linux");
+}
+
+void test_get_unix_version_rhcos_rhel_version_major_only(void **state)
+{
+    (void) state;
+    os_info *ret;
+
+    // Open /etc/os-release
+    expect_string(__wrap_wfopen, path, "/etc/os-release");
+    expect_string(__wrap_wfopen, mode, "r");
+    will_return(__wrap_wfopen, 1);
+
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, "NAME=\"Red Hat Enterprise Linux CoreOS\"");
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, "ID=\"rhcos\"");
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, "VERSION=\"418.94.202602022246-0\"");
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, "VERSION_ID=\"4.18\"");
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, "RHEL_VERSION=9");
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, NULL);
+
+    expect_value(__wrap_fclose, _File, 1);
+    will_return(__wrap_fclose, 1);
+
+    ret = get_unix_version();
+    *state = ret;
+
+    assert_non_null(ret);
+    assert_string_equal(ret->os_version, "9");
+    assert_string_equal(ret->os_major, "9");
+    assert_null(ret->os_minor);
+    assert_null(ret->os_patch);
+    assert_string_equal(ret->os_platform, "rhcos");
+}
+
+void test_get_unix_version_rhcos_no_rhel_version(void **state)
+{
+    (void) state;
+    os_info *ret;
+
+    // Open /etc/os-release
+    expect_string(__wrap_wfopen, path, "/etc/os-release");
+    expect_string(__wrap_wfopen, mode, "r");
+    will_return(__wrap_wfopen, 1);
+
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, "NAME=\"Red Hat Enterprise Linux CoreOS\"");
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, "ID=\"rhcos\"");
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, "VERSION=\"418.94.202602022246-0\"");
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, "VERSION_ID=\"4.18\"");
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, NULL);
+
+    expect_value(__wrap_fclose, _File, 1);
+    will_return(__wrap_fclose, 1);
+
+    ret = get_unix_version();
+    *state = ret;
+
+    assert_non_null(ret);
+    assert_string_equal(ret->os_version, "418.94.202602022246-0");
+    assert_string_equal(ret->os_major, "418");
+    assert_string_equal(ret->os_minor, "94");
+    assert_string_equal(ret->os_patch, "202602022246");
+    assert_string_equal(ret->os_platform, "rhcos");
+}
+
+void test_get_unix_version_rhcos_empty_rhel_version(void **state)
+{
+    (void) state;
+    os_info *ret;
+
+    // Open /etc/os-release
+    expect_string(__wrap_wfopen, path, "/etc/os-release");
+    expect_string(__wrap_wfopen, mode, "r");
+    will_return(__wrap_wfopen, 1);
+
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, "NAME=\"Red Hat Enterprise Linux CoreOS\"");
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, "ID=\"rhcos\"");
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, "VERSION=\"418.94.202602022246-0\"");
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, "RHEL_VERSION=");
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, NULL);
+
+    expect_value(__wrap_fclose, _File, 1);
+    will_return(__wrap_fclose, 1);
+
+    ret = get_unix_version();
+    *state = ret;
+
+    assert_non_null(ret);
+    assert_string_equal(ret->os_version, "418.94.202602022246-0");
+    assert_string_equal(ret->os_major, "418");
+    assert_string_equal(ret->os_minor, "94");
+    assert_string_equal(ret->os_patch, "202602022246");
+    assert_string_equal(ret->os_platform, "rhcos");
+}
+
+void test_get_unix_version_rhcos_invalid_rhel_version(void **state)
+{
+    (void) state;
+    os_info *ret;
+
+    // Open /etc/os-release
+    expect_string(__wrap_wfopen, path, "/etc/os-release");
+    expect_string(__wrap_wfopen, mode, "r");
+    will_return(__wrap_wfopen, 1);
+
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, "NAME=\"Red Hat Enterprise Linux CoreOS\"");
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, "ID=\"rhcos\"");
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, "VERSION=\"418.94.202602022246-0\"");
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, "RHEL_VERSION=\"unknown\"");
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, NULL);
+
+    expect_value(__wrap_fclose, _File, 1);
+    will_return(__wrap_fclose, 1);
+
+    ret = get_unix_version();
+    *state = ret;
+
+    assert_non_null(ret);
+    assert_string_equal(ret->os_version, "418.94.202602022246-0");
+    assert_string_equal(ret->os_major, "418");
+    assert_string_equal(ret->os_minor, "94");
+    assert_string_equal(ret->os_patch, "202602022246");
+    assert_string_equal(ret->os_platform, "rhcos");
+}
+
+void test_get_unix_version_rhel_version_ignored_other_platform(void **state)
+{
+    (void) state;
+    os_info *ret;
+
+    // Open /etc/os-release
+    expect_string(__wrap_wfopen, path, "/etc/os-release");
+    expect_string(__wrap_wfopen, mode, "r");
+    will_return(__wrap_wfopen, 1);
+
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, "NAME=\"Red Hat Enterprise Linux\"");
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, "VERSION=\"9.6 (Plow)\"");
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, "ID=\"rhel\"");
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, "VERSION_ID=\"9.6\"");
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, "RHEL_VERSION=8.10");
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, NULL);
+
+    expect_value(__wrap_fclose, _File, 1);
+    will_return(__wrap_fclose, 1);
+
+    ret = get_unix_version();
+    *state = ret;
+
+    assert_non_null(ret);
+    assert_string_equal(ret->os_name, "Red Hat Enterprise Linux");
+    assert_string_equal(ret->os_version, "9.6 (Plow)");
+    assert_string_equal(ret->os_major, "9");
+    assert_string_equal(ret->os_minor, "6");
+    assert_string_equal(ret->os_codename, "Plow");
+    assert_string_equal(ret->os_platform, "rhel");
+}
+
 void test_get_unix_version_alpine(void **state)
 {
     (void) state;
@@ -1654,13 +1920,30 @@ void test_get_unix_version_darwin_mapped_codename(void **state)
     assert_string_equal(ret->os_version, "26.5.1 (Tahoe)");
 }
 
+void test_get_unix_version_darwin_golden_gate_codename(void **state)
+{
+    (void) state;
+    os_info *ret;
+
+    // macOS 27 Golden Gate runs Darwin 27
+    expect_darwin_version_calls("27.0.1\n", "27.0.0\n");
+
+    ret = get_unix_version();
+    *state = ret;
+
+    assert_non_null(ret);
+    assert_string_equal(ret->os_platform, "darwin");
+    assert_string_equal(ret->os_codename, "Golden Gate");
+    assert_string_equal(ret->os_version, "27.0.1 (Golden Gate)");
+}
+
 void test_get_unix_version_darwin_unmapped_codename(void **state)
 {
     (void) state;
     os_info *ret;
 
     // Darwin version newer than the release name table: no codename, and no "(Unknown)" suffix
-    expect_darwin_version_calls("28.0\n", "27.0.0\n");
+    expect_darwin_version_calls("29.0\n", "28.0.0\n");
 
     ret = get_unix_version();
     *state = ret;
@@ -1668,7 +1951,7 @@ void test_get_unix_version_darwin_unmapped_codename(void **state)
     assert_non_null(ret);
     assert_string_equal(ret->os_platform, "darwin");
     assert_null(ret->os_codename);
-    assert_string_equal(ret->os_version, "28.0");
+    assert_string_equal(ret->os_version, "29.0");
 }
 
 void test_get_unix_version_fail_os_release_uname_darwin_no_key(void **state)
@@ -2057,8 +2340,9 @@ void test_OSX_ReleaseName(void **state) {
     assert_string_equal(OSX_ReleaseName(23), "Sonoma");
     assert_string_equal(OSX_ReleaseName(24), "Sequoia");
     assert_string_equal(OSX_ReleaseName(25), "Tahoe");
-    assert_string_equal(OSX_ReleaseName(26), "Golden Gate");
-    assert_string_equal(OSX_ReleaseName(27), "Unknown");
+    assert_string_equal(OSX_ReleaseName(26), "Unknown");
+    assert_string_equal(OSX_ReleaseName(27), "Golden Gate");
+    assert_string_equal(OSX_ReleaseName(28), "Unknown");
 }
 
 #endif
@@ -2360,6 +2644,13 @@ int main(void) {
             cmocka_unit_test_teardown(test_get_unix_version_sles_service_pack_extra_suffix, delete_os_info),
             cmocka_unit_test_teardown(test_get_unix_version_sles_no_service_pack, delete_os_info),
             cmocka_unit_test_teardown(test_get_unix_version_opensuse_leap_unaffected, delete_os_info),
+            cmocka_unit_test_teardown(test_get_unix_version_rhcos_rhel_version, delete_os_info),
+            cmocka_unit_test_teardown(test_get_unix_version_rhcos_rhel_version_quoted, delete_os_info),
+            cmocka_unit_test_teardown(test_get_unix_version_rhcos_rhel_version_major_only, delete_os_info),
+            cmocka_unit_test_teardown(test_get_unix_version_rhcos_no_rhel_version, delete_os_info),
+            cmocka_unit_test_teardown(test_get_unix_version_rhcos_empty_rhel_version, delete_os_info),
+            cmocka_unit_test_teardown(test_get_unix_version_rhcos_invalid_rhel_version, delete_os_info),
+            cmocka_unit_test_teardown(test_get_unix_version_rhel_version_ignored_other_platform, delete_os_info),
             cmocka_unit_test_teardown(test_get_unix_version_alpine, delete_os_info),
             cmocka_unit_test_teardown(test_get_unix_version_fail_os_release_centos, delete_os_info),
             cmocka_unit_test_teardown(test_get_unix_version_fail_os_release_fedora, delete_os_info),
@@ -2377,6 +2668,7 @@ int main(void) {
             cmocka_unit_test_teardown(test_get_unix_version_fail_os_release_uname_darwin, delete_os_info),
             cmocka_unit_test_teardown(test_get_unix_version_fail_os_release_uname_darwin_no_key, delete_os_info),
             cmocka_unit_test_teardown(test_get_unix_version_darwin_mapped_codename, delete_os_info),
+            cmocka_unit_test_teardown(test_get_unix_version_darwin_golden_gate_codename, delete_os_info),
             cmocka_unit_test_teardown(test_get_unix_version_darwin_unmapped_codename, delete_os_info),
             cmocka_unit_test_teardown(test_get_unix_version_fail_os_release_uname_bsd, delete_os_info),
             cmocka_unit_test_teardown(test_get_unix_version_zscaler, delete_os_info),

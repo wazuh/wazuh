@@ -969,8 +969,8 @@ namespace task_manager::storage
                                      total -= stats.byCeiling;
                                  }
 
-                                 // Reported so the caller can notice a ceiling it could not meet: the excess is
-                                 // then pending, claimed or dead-lettered rows that no rule may remove.
+                                 // Reported so the caller can notice a ceiling it could not meet: MtEvict takes
+                                 // every terminal status, so the excess is then pending or claimed rows.
                                  stats.remaining = total;
                                  return stats;
                              });

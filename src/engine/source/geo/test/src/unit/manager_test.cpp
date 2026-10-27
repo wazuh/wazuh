@@ -532,6 +532,35 @@ TEST_F(GeoManagerTest, RemoteUpsertEmptyUrlOrMd5)
     ASSERT_EQ(manager.listDbs().size(), 0);
 }
 
+TEST_F(GeoManagerTest, RemoteUpsertManifestWithoutGeneratedAt)
+{
+    auto manager = getEmptyManager();
+
+    json::Json manifest;
+    // No /generated_at field
+    manifest.setString("https://example.com/city.tar.gz", "/city/url");
+    manifest.setString("expectedmd5", "/city/md5");
+    manifest.setString("https://example.com/asn.tar.gz", "/asn/url");
+    manifest.setString("expectedmd5asn", "/asn/md5");
+
+    EXPECT_CALL(*mockDownloader, downloadManifest(testing::_))
+        .WillOnce(testing::Return(base::RespOrError<json::Json>(manifest)));
+    // Nothing is downloaded: both databases fail before the download
+    EXPECT_CALL(*mockDownloader, downloadHTTPS(testing::_)).Times(0);
+
+    ASSERT_NO_THROW(manager.remoteUpsert("https://example.com/manifest.json", "/tmp/city.mmdb", "/tmp/asn.mmdb"));
+
+    ASSERT_EQ(manager.listDbs().size(), 0);
+
+    auto status = manager.getGeoStatus();
+    ASSERT_EQ(status.size(), 2U);
+    for (const auto& s : status)
+    {
+        EXPECT_EQ(s.status, base::SyncStatus::FAILED);
+        EXPECT_FALSE(s.available);
+    }
+}
+
 TEST_F(GeoManagerTest, InitializeIncompleteStoreDoc)
 {
     // Document with incomplete info (missing generated_at)

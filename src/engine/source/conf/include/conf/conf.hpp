@@ -2,6 +2,7 @@
 #ifndef _CONFIG_CONFIG_HPP
 #define _CONFIG_CONFIG_HPP
 
+#include <limits>
 #include <memory>
 #include <sstream>
 #include <string>
@@ -282,14 +283,18 @@ public:
                     std::size_t pos = 0;
                     try
                     {
-                        size_t value = std::stoull(rawValue, &pos);
+                        const auto value = std::stoull(rawValue, &pos);
+                        if (value > std::numeric_limits<size_t>::max())
+                        {
+                            throw std::out_of_range("Value exceeds size_t range");
+                        }
                         if (pos != rawValue.size())
                         {
                             throw std::runtime_error(
                                 fmt::format("Extra characters after size_t: '{}'", rawValue.substr(pos)));
                         }
                         LOG_DEBUG("[{}] Using configuration key '{}' from file: '{}'", LOG_MODULE_NAME, key, value);
-                        return value;
+                        return static_cast<T>(value);
                     }
                     catch (const std::invalid_argument& e)
                     {

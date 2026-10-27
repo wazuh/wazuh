@@ -44,7 +44,7 @@ is chosen when the binary is built for its operating system.
 | ipfw | `ipfw -q table 00001 add 192.168.1.100`; creates rules `00001` denying traffic from and to `table(00001)` when `ipfw show` lacks them | `ipfw -q table 00001 delete 192.168.1.100` | `ipfw` found |
 | pf | `pfctl -t wazuh_fwtable -T add 192.168.1.100`, then `pfctl -k 192.168.1.100` | `pfctl -t wazuh_fwtable -T delete 192.168.1.100` | `pfctl` found, `/dev/pf` present, `pfctl -s info` reports `Status: Enabled` |
 | npf | `npfctl table wazuh_blacklist add 192.168.1.100` | `npfctl table wazuh_blacklist del 192.168.1.100` | `npfctl` found, `npfctl show` reports filtering active and a `wazuh_blacklist` table |
-| hosts.deny | appends `ALL:192.168.1.100` to `/etc/hosts.deny`; FreeBSD appends `ALL : 192.168.1.100 : deny` to `/etc/hosts.allow`; a file that already names the address is left as it is | removes every line containing the address | the file exists |
+| hosts.deny | appends `ALL:192.168.1.100` to `/etc/hosts.deny`; FreeBSD appends `ALL : 192.168.1.100 : deny` to `/etc/hosts.allow`. The address is written in its canonical form, and a file that already holds that exact line is left as it is | removes only the lines identical to that rule; a line of your own that merely contains the address is kept | the file exists |
 | route | Linux: `route add 192.168.1.100 reject`; BSD: `route -q add 192.168.1.100 127.0.0.1 -blackhole` | Linux: `route del 192.168.1.100 reject`; FreeBSD: `route -q delete 192.168.1.100 127.0.0.1 -blackhole`; OpenBSD/NetBSD: `route -q delete 192.168.1.100` | `route` found |
 
 The `pf`, `npf` and `wazuh_blacklist` tables and their block rules are not created by `block-ip`;
@@ -79,6 +79,7 @@ address (`getaddrinfo` without name resolution), otherwise `Invalid IP address: 
 - **Connection Killing**: When blocking, also kills existing connections: `pfctl -k 192.168.1.100`. Best effort: a failure here is not reported.
 - **Table Precondition**: The `wazuh_fwtable` table and its block rules are a one-time setup owned by the administrator, the same way `wazuh_blacklist` is for `npf` on NetBSD. `block-ip` does not use a PF anchor file, never edits `/etc/pf.conf` and never reloads the packet filter ruleset: if the table is absent it declines and the next method in the chain is tried. The macOS package does not apply or announce it — `install.sh`'s notice runs at package build time, not on the endpoint — so it has to be applied by hand.
 - **Fallback**: Falls back to `hosts.deny`, then to a `route` blackhole if `pf` is unavailable, not enabled or missing its table — the same no-configuration-needed fallback the Unix/Linux chain has, so a stock macOS install (pf disabled, no `/etc/hosts.deny`) still blocks the address
+- **hosts.deny matching**: unlike the Unix/Linux binary, the macOS one matches by substring: a file with any line containing the address counts as already blocked, and the unblock removes every line containing it
 - **Unblocking**: Each method declines when the address is not the one it holds (`pf` reports `0/1 addresses deleted.`, `hosts.deny` finds no matching line), so the unblock walks the chain until it reaches the method that actually applied the block. Without this a block applied by `route` would never be lifted once `pf` or `hosts.deny` became available.
 - **route results**: `route` exits 0 whatever happens, so the result is read from its stderr; `File exists` on a block and `not in table` on an unblock count as success.
 - **Permissions**: Requires root privileges
@@ -163,7 +164,8 @@ exits with failure.
 `-` and `$`, must not start with `-`, and must not be `root`; otherwise `Cannot read 'user.name'
 from data or invalid username format`. The name is not checked against the account database: an
 account that does not exist makes `passwd` or `pwpolicy` fail, which is logged as
-`Command '<path>' failed to disable the account '<username>' (exit code <n>): <first output line>`.
+`Command '<path>' failed to disable the account '<username>' (exit code <n>): <first output line>`
+(`enable` instead of `disable` when unlocking).
 
 **Limitations**:
 - **Existing Sessions**: Locking the account does not end the user's existing sessions
@@ -175,14 +177,8 @@ account that does not exist makes `passwd` or `pwpolicy` fail, which is logged a
 
 ## Agent Restart and Reload
 
-Agent restart and reload operations are **not** implemented as Active Response executables. These control operations are handled by the [Control Module (wm_control)](../control/README.md).
-
-**Control Operations**:
-- Agent restart via `PUT /agents/{agent_id}/restart` API endpoint
-- Agent reload via `PUT /agents/{agent_id}/reload` API endpoint
-- Handled through dedicated `agent_restart` / `agent_reload` tasks, not Active Response
-
-**See**: [Control Module Documentation](../control/README.md) for details on agent control operations.
+There is no restart or reload executable: agent restart and reload are `agent_restart` /
+`agent_reload` tasks of the [Control Module](../control/README.md).
 
 ---
 

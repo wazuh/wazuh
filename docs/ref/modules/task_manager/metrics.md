@@ -56,7 +56,8 @@ gauges, by contrast, exist for every registered type from start-up.
 
 ### Manager tasks
 
-`<task_type>` is a registered type ([Manager tasks](manager-tasks.md)); `<result>` is `created`,
+`<task_type>` is a registered type ([Manager tasks](manager-tasks.md)) — for `manager_tasks.created`,
+whatever type the producer sent, registered or not; `<result>` is `created`,
 `coalesced`, `collided` or `queue_full`; `<status>` is a terminal status — `completed`, `failed`,
 `dead_letter` or `superseded`; `<outcome>` is `ok`, `retryable`, `timeout`, `terminal`, `not_ready`,
 `busy` or `incomplete`.
@@ -64,9 +65,9 @@ gauges, by contrast, exist for every registered type from start-up.
 | Metric | Type | Unit | Meaning | Tuning |
 |---|---|---|---|---|
 | `task_manager.queue.pending.<task_type>` | pull | tasks | Pending rows of that type, read from `tasks.db` | [`manager_task_executor_threads`](manager-tasks.md#threading), though per-type concurrency is a code constant |
-| `task_manager.manager_tasks.created.<task_type>.<result>` | counter | count | Create requests by outcome | `queue_full` means the type's admission bound is reached: [`manager_task_max_pending_{deletes,scans}`](manager-tasks.md#per-type-bounds) |
-| `task_manager.manager_tasks.retired.<task_type>.<status>` | counter | count | Rows that reached a terminal status | `dead_letter` follows the attempt and deferral budgets: [`manager_task_max_{attempts,defer}`](manager-tasks.md#queue-mechanics) |
-| `task_manager.manager_tasks.reclaimed` | counter | count | Claimed rows the ownership sweep returned to pending (their worker died or overran) | [`manager_task_claim_grace`, `manager_task_sweep_interval`](manager-tasks.md#queue-mechanics) |
+| `task_manager.manager_tasks.created.<task_type>.<result>` | counter | count | Create requests by outcome, from `POST /v1/manager-tasks` and from the scheduler's own spawns | `queue_full` means the type's admission bound is reached: [`manager_task_max_pending_{deletes,scans}`](manager-tasks.md#per-type-bounds) |
+| `task_manager.manager_tasks.retired.<task_type>.<status>` | counter | count | Rows the executor brought to a terminal status (rows of an unknown type retired at startup are not counted) | `dead_letter` follows the attempt and deferral budgets: [`manager_task_max_{attempts,defer}`](manager-tasks.md#queue-mechanics) |
+| `task_manager.manager_tasks.reclaimed` | counter | count | Claimed rows the ownership sweep returned to pending (their worker died or overran), including those the startup sweep took back from a previous process | [`manager_task_claim_grace`, `manager_task_sweep_interval`](manager-tasks.md#queue-mechanics) |
 | `task_manager.handler.outcome.<task_type>.<outcome>` | counter | count | What each handler run returned | *diagnostic* — `not_ready` / `busy` point at the consumer |
 | `task_manager.handler.duration` | histogram | microseconds | Handler wall time, all types together (count/sum/min/max/p50/p90/p99) | the per-type deadlines in [Manager tasks](manager-tasks.md#per-type-bounds) |
 | `task_manager.executor.busy_workers` | gauge_int | workers | Executor workers running a handler right now | [`manager_task_executor_threads`](manager-tasks.md#threading) |

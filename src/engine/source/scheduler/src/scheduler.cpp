@@ -31,7 +31,7 @@ void Scheduler::start()
     {
         return;
     }
-    LOG_DEBUG("[Scheduler] Starting scheduler with %d threads...", m_numThreads);
+    LOG_DEBUG("[Scheduler] Starting scheduler with {} threads...", m_numThreads);
 
     m_running.store(true);
 
@@ -275,9 +275,9 @@ void Scheduler::setCurrentThreadPriority(int cpuPriority)
 
     if (setpriority(PRIO_PROCESS, 0, niceValue) != 0)
     {
-        LOG_WARNING("[Scheduler] Failed to set thread CPU priority to %d", niceValue);
+        LOG_WARNING("[Scheduler] Failed to set thread CPU priority to {}", niceValue);
     }
-    LOG_DEBUG("[Scheduler] Set thread CPU priority to %d", niceValue);
+    LOG_DEBUG("[Scheduler] Set thread CPU priority to {}", niceValue);
 }
 
 } // namespace scheduler

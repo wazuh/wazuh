@@ -6,6 +6,12 @@ The **fastmetrics** module provides a high-performance, lock-free metrics system
 
 The module supports three metric types: **counters** (monotonically increasing), **gauges** (bidirectional integers), and **pull metrics** (on-demand callbacks). Metrics are not written to a file: they are read on demand through the engine API (`api/metrics`).
 
+This is the engine's metrics library; the rest of the manager uses `wazuh_metrics`
+(`src/shared_modules/metrics/`). The operator-facing catalog (what each metric means) and the
+`/metrics/*` request and response shapes live in the engine book:
+[Metrics](../../../../docs/ref/modules/engine/README.md#metrics) and the
+[public API reference](../../../../docs/ref/modules/engine/public-api-reference.md).
+
 ## Architecture
 
 ```
@@ -16,6 +22,7 @@ The module supports three metric types: **counters** (monotonically increasing),
                     │  router/orch:      FASTMETRICS_PULL(...)            │
                     │  api/event:        counter.add(bytes) (hot path)    │
                     │  builder/policy:   counter.add(1)                   │
+                    │  agentcache:       counter.add(1), FASTMETRICS_PULL │
                     │  main.cpp:         FASTMETRICS_PULL(...)            │
                     └───────────────┬─────────────────────────────────────┘
                                     │
@@ -66,11 +73,23 @@ The module is designed around three performance tiers:
 
 1. **Hot path** (lock-free): `counter.add()`, `gauge.set()`, `gauge.add()`, `gauge.sub()` — all use `atomic::fetch_add` / `atomic::store` with `memory_order_relaxed`. Zero contention.
 2. **Warm path** (shared lock): `manager().get()`, `manager().exists()`, `manager().getAllNames()` — read-only lookups on the registry map with `shared_lock`.
-3. **Cold path** (unique lock): `getOrCreateCounter()`, `getOrCreateGaugeInt()`, `registerPullMetric()` — registration with double-checked locking pattern.
+3. **Cold path** (unique lock): `getOrCreateCounter()`, `getOrCreateGaugeInt()`, `registerPullMetric()` / `registerPullMetricDouble()` — registration with double-checked locking pattern.
+
+### Registration semantics
+
+- `getOrCreateCounter()` / `getOrCreateGaugeInt()` return the existing metric when the name is
+  already registered with the same interface, and throw `std::invalid_argument` ("already exists with
+  a different type") when it is registered as another type (`include/fastmetrics/manager.hpp`,
+  `getOrCreate()`).
+- Registering a pull metric under a name that already exists is a **silent no-op**: the first getter
+  stays (`registerPullMetricImpl()`). A pull metric has no `remove()`; its getter must stay safe to call
+  for the life of the process: the indexer (`main.cpp`) and agent-cache getters capture a `weak_ptr`,
+  the router's EPS getters own a `shared_ptr` to their `SlidingWindowRate`.
+- The `description` and `unit` parameters of `IManager` are accepted and ignored by `Manager`.
 
 ### Enable/Disable
 
-Each metric has an individual `m_enabled` atomic flag. When disabled, all mutation operations (`add`, `set`, `sub`) become no-ops and `value()` returns 0.0. The manager provides `enableAll()` / `disableAll()` to toggle all metrics globally via `m_globalEnabled`.
+Each metric has an individual `m_enabled` atomic flag. When disabled, all mutation operations (`add`, `set`, `sub`) become no-ops and `value()` returns 0.0 (`reset()` and `get()` are not gated). The manager provides `enableAll()` / `disableAll()`, which set `m_globalEnabled` and toggle every registered metric; a metric created while `m_globalEnabled` is false starts disabled.
 
 ### Singleton Access Pattern
 
@@ -80,21 +99,32 @@ The manager is registered once via `fastmetrics::registerManager()` and accessed
 // Registration (once in main.cpp)
 fastmetrics::registerManager();
 
-// Access from anywhere
-auto counter = fastmetrics::manager().getOrCreateCounter("router.events.processed");
+// Access from anywhere (cache the pointer outside the hot loop, as router/src/worker.cpp does)
+auto counter = fastmetrics::manager().getOrCreateCounter(fastmetrics::names::ROUTER_EVENTS_PROCESSED);
 counter->add(1);  // lock-free, hot path
 ```
 
+Names are never spelled at the call site: they come from the constants and per-space formatters in
+`interface/fastmetrics/metric_names.hpp`.
+
 ### Pull Metrics and the `FASTMETRICS_PULL` Macro
 
-Pull metrics avoid state duplication by executing a callback on read:
+Pull metrics avoid state duplication by executing a callback on read (from `main.cpp`):
 
 ```cpp
-FASTMETRICS_PULL(uint64_t, "indexer.queue.size", [wIndexer]() { return wIndexer->byteSize(); });
-FASTMETRICS_PULL(double, "router.eps.1m", [rate]() { return rate->getRate(std::chrono::seconds(60)); });
+std::weak_ptr<wiconnector::WIndexerConnector> wIndexer = indexerConnector;
+FASTMETRICS_PULL(uint64_t,
+                 fastmetrics::names::INDEXER_QUEUE_SIZE,
+                 [wIndexer]()
+                 {
+                     auto connector = wIndexer.lock();
+                     return connector ? connector->getQueueSize() : 0;
+                 });
 ```
 
-The macro expands to `fastmetrics::registerPullMetric(name, std::function<type()>(getter))`.
+The macro expands to `fastmetrics::registerPullMetric(name, std::function<type()>(getter))`, which
+calls `registerPullMetric()` for an unsigned integer getter and `registerPullMetricDouble()` for a
+`double` one. A getter that throws reads as `0.0` (`PullMetric::value()`).
 
 ### Sliding Window Rate (`SlidingWindowRate`)
 
@@ -108,53 +138,53 @@ A lock-free circular buffer for computing events-per-second (EPS) over configura
 
 ### Metric Output Format
 
-`POST /metrics/dump` returns a snapshot of every registered metric, split into `global` and per-space
-groups (the `space.<name>.` prefix is stripped inside a space); `name`, `uptime` and `timestamp` are the
-daemon name and ISO 8601 times:
-
-```json
-{
-  "status": "OK",
-  "name": "wazuh-manager-analysisd",
-  "uptime": "2026-10-02T10:00:00.000Z",
-  "timestamp": "2026-10-02T10:05:00.000Z",
-  "global": [
-    {"name": "router.events.processed", "type": "counter", "enabled": true, "value": 42}
-  ],
-  "spaces": [
-    {"name": "wazuh", "metrics": [
-      {"name": "events.discarded", "type": "counter", "enabled": true, "value": 3}
-    ]}
-  ]
-}
-```
-
-`type` is `counter`, `gauge_int` or `pull`. Value is always `double`.
+The four `/metrics/*` routes are registered by `api/metrics` (`registerHandlers()` in
+`api/metrics/include/api/metrics/handlers.hpp`); their request and response shapes, including the
+`global` / `spaces` split of `POST /metrics/dump`, are owned by the engine's public API
+([public-api-reference.md](../../../../docs/ref/modules/engine/public-api-reference.md)). Two facts come
+from this module: `type` is the `MetricType` rendered as `counter`, `gauge_int` or `pull`
+(`metricTypeToString()` in `api/metrics/src/handlers.cpp`), and `value` is always `IMetric::value()`, a
+`double`.
 
 ## Registered Metric Names
 
-Predefined names in `metric_names.hpp`:
+Constants and per-space formatters in `interface/fastmetrics/metric_names.hpp`, and who registers each
+(the meaning of each metric is documented in the engine book's
+[Available metric names](../../../../docs/ref/modules/engine/README.md#available-metric-names)):
 
 | Name | Type | Source |
 |------|------|--------|
-| `indexer.queue.size` | PULL | main.cpp (indexer connector) |
-| `indexer.queue.usage.percent` | PULL | main.cpp (indexer connector) |
-| `indexer.events.dropped` | PULL | main.cpp (indexer connector) |
-| `router.queue.size` | PULL | router/orchestrator |
-| `router.queue.usage.percent` | PULL | router/orchestrator |
-| `router.queue.bytes.used` | PULL | router/orchestrator |
-| `router.queue.bytes.usage.percent` | PULL | router/orchestrator |
-| `router.events.processed` | COUNTER | router/worker |
-| `router.events.dropped` | COUNTER | router/orchestrator |
-| `router.eps.1m` | PULL | router/orchestrator (SlidingWindowRate) |
-| `router.eps.5m` | PULL | router/orchestrator (SlidingWindowRate) |
-| `router.eps.30m` | PULL | router/orchestrator (SlidingWindowRate) |
-| `server.bytes.received` | COUNTER | api/event |
-| `server.events.received` | COUNTER | api/event |
-| `space.{name}.events.unclassified` | COUNTER | builder/policy (per-space) |
-| `space.{name}.events.discarded` | COUNTER | builder/policy (per-space) |
-| `space.{name}.events.discarded.prefilter` | COUNTER | builder/policy (per-space) |
-| `space.{name}.events.discarded.postfilter` | COUNTER | builder/policy (per-space) |
+| `indexer.queue.size` | PULL | `main.cpp` (only when the indexer connector is enabled) |
+| `indexer.queue.usage.percent` | PULL | `main.cpp` (only when the indexer connector is enabled) |
+| `indexer.events.dropped` | PULL | `main.cpp` (only when the indexer connector is enabled) |
+| `router.queue.size` | PULL | `router/src/orchestrator.cpp` |
+| `router.queue.usage.percent` | PULL | `router/src/orchestrator.cpp` |
+| `router.queue.bytes.used` | PULL | `router/src/orchestrator.cpp` |
+| `router.queue.bytes.usage.percent` | PULL | `router/src/orchestrator.cpp` |
+| `router.events.processed` | COUNTER | `router/src/worker.cpp` |
+| `router.events.dropped` | COUNTER | `router/src/orchestrator.cpp` |
+| `router.eps.1m` | PULL | `router/src/orchestrator.cpp` (`SlidingWindowRate`, 60 s) |
+| `router.eps.5m` | PULL | `router/src/orchestrator.cpp` (`SlidingWindowRate`, 300 s) |
+| `router.eps.30m` | PULL | `router/src/orchestrator.cpp` (`SlidingWindowRate`, 1800 s) |
+| `agent.cache.entries` | PULL | `agentcache` (`registerCacheMetrics()`, called from `main.cpp`; retained entries) |
+| `agent.cache.bytes` | PULL | `agentcache` (`registerCacheMetrics()`; accounted retained bytes, not RSS) |
+| `agent.cache.max_entries` | PULL | `agentcache` (`registerCacheMetrics()`; configured entry limit, 0 unlimited) |
+| `agent.cache.max_bytes` | PULL | `agentcache` (`registerCacheMetrics()`; configured byte limit, 0 unlimited) |
+| `agent.cache.hits` | COUNTER | `agentcache` (`AgentMetadataCache`; identical validated pair reused) |
+| `agent.cache.insertions` | COUNTER | `agentcache` (`AgentMetadataCache`; new entry retained) |
+| `agent.cache.updates` | COUNTER | `agentcache` (`AgentMetadataCache`; changed header retained) |
+| `agent.cache.evictions` | COUNTER | `agentcache` (`AgentMetadataCache`; TTL removals only) |
+| `agent.cache.bypass.max_entries` | COUNTER | `agentcache` (`AgentMetadataCache`; entry-capacity admission failures) |
+| `agent.cache.bypass.max_bytes` | COUNTER | `agentcache` (`AgentMetadataCache`; byte-capacity admission failures) |
+| `agent.cache.rejected.identity` | COUNTER | `api/event` (one per identity-rejected batch) |
+| `server.bytes.received` | COUNTER | `api/event` |
+| `server.events.received` | COUNTER | `api/event` |
+| `space.{name}.events.unclassified` | COUNTER | `builder/src/policy/policy.cpp` (per-space) |
+| `space.{name}.events.discarded` | COUNTER | `builder/src/policy/policy.cpp` (per-space) |
+| `space.{name}.events.discarded.prefilter` | COUNTER | `builder/src/policy/policy.cpp` (per-space) |
+| `space.{name}.events.discarded.postfilter` | COUNTER | `builder/src/policy/policy.cpp` (per-space) |
+
+No engine module registers a `GAUGE_INT` today; the type is exercised only by the tests.
 
 ## Dependencies
 
@@ -168,12 +198,12 @@ Predefined names in `metric_names.hpp`:
 // 1. Register singleton manager (early startup)
 fastmetrics::registerManager();
 
-// 2. Register pull metrics for indexer
+// 2. Register pull metrics for the indexer (only when the indexer connector is enabled)
 FASTMETRICS_PULL(uint64_t, fastmetrics::names::INDEXER_QUEUE_SIZE, [wIndexer]() { ... });
 FASTMETRICS_PULL(double, fastmetrics::names::INDEXER_QUEUE_USAGE_PERCENT, indexerQueueUsageGetter);
 
 // 3. Wrap singleton as shared_ptr for API handlers
-metricsManager = std::shared_ptr<fastmetrics::IManager>(&fastmetrics::manager(), [](auto*) {});
+metricsManager = std::shared_ptr<fastmetrics::IManager>(&fastmetrics::manager(), [](fastmetrics::IManager*) {});
 
 // 4. Register API endpoints
 api::metrics::handlers::registerHandlers(metricsManager, apiServer, "wazuh-manager-analysisd", engineUptimeISO);
@@ -183,7 +213,8 @@ api::metrics::handlers::registerHandlers(metricsManager, apiServer, "wazuh-manag
 
 | Module | What it does |
 |--------|-------------|
-| **router** | Creates counters for processed/dropped events, registers EPS pull metrics via `SlidingWindowRate`, increments counters in the worker event loop |
+| **router** | Creates counters for processed/dropped events, registers queue and EPS pull metrics via `SlidingWindowRate`, increments counters in the worker event loop |
+| **agentcache** | Creates hit/insertion/update/eviction counters and the `agent.cache.entries` pull metric |
 | **builder** | Creates per-space counters for unclassified/discarded events in policy pipelines |
 | **api/event** | Creates counters for bytes/events received on the ingest endpoint |
 | **api/metrics** | Exposes metrics via HTTP API (get, list, enable/disable, dump) |
@@ -223,7 +254,7 @@ fastmetrics/
 │   │   └── mockManager.hpp                                 # GMock mock for IManager
 │   └── src/
 │       ├── unit/
-│       │   ├── main.cpp                                    # Test main (registers singleton for tests)
+│       │   ├── main.cpp                                    # GoogleTest main (no singleton registration)
 │       │   ├── counter_test.cpp                            # AtomicCounter tests
 │       │   ├── gauge_test.cpp                              # AtomicGaugeInt tests
 │       │   ├── pullMetric_test.cpp                         # PullMetric tests
@@ -240,33 +271,37 @@ fastmetrics/
 | Test File | Covers |
 |-----------|--------|
 | `counter_test.cpp` | AtomicCounter: add, increment, reset, enable/disable, concurrent access |
-| `gauge_test.cpp` | AtomicGaugeInt: set, add, sub, reset, enable/disable |
+| `gauge_test.cpp` | AtomicGaugeInt: set, add, sub, negative values, reset, enable/disable |
 | `pullMetric_test.cpp` | PullMetric: callback invocation, disable behavior, exception safety |
-| `registry_test.cpp` | Manager: getOrCreate, type conflicts, exists, getAllNames, count, clear, enableAll/disableAll |
-| `slidingWindowRate_test.cpp` | SlidingWindowRate: increment, getRate over windows, bucket recycling |
+| `registry_test.cpp` | Manager: getOrCreate (returns existing), get, exists, getAllNames, count, clear, enableAll/disableAll, concurrent registration |
+| `slidingWindowRate_test.cpp` | SlidingWindowRate: increment, getRate over windows, zero window, old events leaving the window, window clamped to 31 min, concurrent increments |
 
 ### Component Tests (`fastmetrics_ctest`)
 
 | Test File | Covers |
 |-----------|--------|
-| `realistic_scenarios_test.cpp` | Realistic multi-threaded workloads with counters, gauges, and pull metrics |
+| `realistic_scenarios_test.cpp` | Realistic multi-threaded counter workloads: event pipeline, worker pool, dynamic metric creation, high-frequency updates |
 
 Build and run:
 
 ```bash
-make --directory=$WAZUH_REPO/src -j TARGET=manager ENGINE_TEST=y DEBUG=yes
-$ENGINE_BUILD/source/fastmetrics/fastmetrics_utest
-$ENGINE_BUILD/source/fastmetrics/fastmetrics_ctest
+make -C src -j TARGET=manager ENGINE_TEST=y      # from the repository root; ENGINE_TEST sticks in the cache
+src/build/engine/source/fastmetrics/fastmetrics_utest
+src/build/engine/source/fastmetrics/fastmetrics_ctest
 ```
+
+Both executables register their cases with `gtest_discover_tests`, so `ctest` sees them under the
+GoogleTest names (`CounterTest.*`, `RegistryTest.*`, `RealisticScenariosTest.*`, …), not under
+`fastmetrics`.
 
 ## Mocks
 
-Available at `test/mocks/fastmetrics/` (CMake target: `fastmetrics::mocks`):
+Available at `test/mocks/fastmetrics/` (CMake target: `fastmetrics::mocks`), all in namespace `fastmetrics`:
 
 | Mock | Class |
 |------|-------|
-| `mockCounter.hpp` | `fastmetrics::mocks::MockCounter` — mocks `ICounter` |
-| `mockGauge.hpp` | `fastmetrics::mocks::MockGauge` — mocks `IGaugeInt` |
-| `mockManager.hpp` | `fastmetrics::mocks::MockManager` — mocks `IManager` |
+| `mockCounter.hpp` | `fastmetrics::MockCounter` — mocks `ICounter` |
+| `mockGauge.hpp` | `fastmetrics::MockGaugeInt` — mocks `IGaugeInt` |
+| `mockManager.hpp` | `fastmetrics::MockManager` — mocks `IManager` |
 
 Used by `router` and `builder` test targets.

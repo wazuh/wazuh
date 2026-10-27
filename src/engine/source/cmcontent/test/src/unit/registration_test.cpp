@@ -54,6 +54,7 @@ TEST(RegistrationTest, RulesetProbeSelectsThePolicyIndexByWildcard)
     EXPECT_EQ(hash.tokenPointers, (std::vector<std::string> {"/space/hash/sha256"}));
     EXPECT_EQ(hash.metadata.at("enabled"), "/document/enabled");
     EXPECT_EQ(hash.metadata.at("integrations"), "/document/integrations");
+    EXPECT_EQ(hash.metadata.at("root_decoder"), "/document/root_decoder");
 
     // The space's own content is selected by the source query.
     ASSERT_TRUE(spec.source.query.has_value());

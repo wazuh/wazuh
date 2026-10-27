@@ -10,12 +10,14 @@ The **conf** module provides the unified configuration system for the Wazuh engi
 
 Each configuration option is declared as a typed **unit** (`UConf<T>`) tied to a key, an environment variable name, and a default value. At runtime, `Conf::get<T>(key)` resolves the final value by checking the three sources in priority order.
 
+The only consumer is [main.cpp](../main.cpp): it builds one `conf::Conf` over `/etc/wazuh-manager/wazuh-manager-internal-options.conf`, reads each setting with `confManager.get<T>(conf::key::…)` and passes the values to the module constructors. The operator-facing list of settings (keys, environment variables, defaults, ranges) is [configuration.md](../../../../docs/ref/modules/engine/configuration.md); the units themselves are registered in the `Conf` constructor in [src/conf.cpp](src/conf.cpp).
+
 ## Architecture
 
 ```
 ┌──────────────────────────────────────────────────────────┐
-│                      Consumers                            │
-│              conf->get<T>("analysisd.xxx")                │
+│                  Consumer (main.cpp)                      │
+│        confManager.get<T>(conf::key::<NAME>)              │
 └──────────────────────┬───────────────────────────────────┘
                        │
               ┌────────▼────────┐
@@ -75,10 +77,12 @@ The configuration file (`wazuh-manager-internal-options.conf`) uses a simple `se
 # Comment
 analysisd.debug=0
 analysisd.store_path=/var/wazuh-manager/data/store
-analysisd.indexer_hosts=host1,host2
+analysisd.cm_sync_interval=120
 analysisd.dumper_enabled=false  # inline comment
-analysisd.note=value\#with-hash   # escaped '#' in value
+analysisd.<key>=value\#with-hash   # escaped '#' in value (placeholder key)
 ```
+
+`analysisd.<key>` is a placeholder for the escaping rule, not a registered key.
 
 Parsing rules:
 - Only keys under the `analysisd` section are loaded
@@ -87,10 +91,15 @@ Parsing rules:
 - String lists use comma-separated values (bracket notation `[...]` is rejected)
 - Whitespace around keys and values is trimmed
 - Duplicate keys: last value wins
+- A line with no `=`, or with no `.` before the `=`, is logged as `Invalid configuration line ignored` and skipped
+- A missing or unreadable file is only a warning (`Failed to load configuration: …`); the engine starts on environment variables and defaults
+- An `analysisd.*` key that matches no registered unit is kept in the map but never validated nor read, so a misspelled key is silently ignored
 
 ### Standalone Mode
 
 If the engine is running in standalone mode (`WAZUH_ENGINE_STANDALONE=true`, case-insensitive; any other value or unset means manager mode), the file loader is **skipped entirely** — only environment variables and default values are used. This simplifies testing and development scenarios.
+
+The indexer host and TLS units (`analysisd.indexer_hosts`, `analysisd.indexer_ssl_*`) are read only in standalone mode, hence only from their environment variables: in manager mode `main.cpp` takes the indexer settings from the `indexer` section of `wazuh-manager.conf` (`base::managerConfig::sectionJson("indexer")`).
 
 ### Registration Phase
 
@@ -143,13 +152,19 @@ conf/
 
 All keys are `constexpr std::string_view` constants under the `conf::key` namespace, following the pattern `"analysisd.<option_name>"`. They are grouped by module (logging, store, geo, indexer, streamlog, etc.) and may change as the engine evolves.
 
+Agent metadata retention uses `size_t` keys `AGENT_METADATA_CACHE_MAX_ENTRIES` (default 50000)
+and `AGENT_METADATA_CACHE_MAX_BYTES` (default 134217728). Each zero limit independently means
+unlimited. The cache validates upper bounds; startup also validates TTL and cleanup intervals.
+See the [engine settings](../../../../docs/ref/modules/engine/configuration.md#agent-metadata-cache).
+
 ## Implementation Details
 
 ### Validation
 
 On `load()`, the file-loaded `OptionMap` is validated against the declared units. For each key present in the file:
 
-- **INTEGER**: parsed with `std::stoll`, checked for trailing characters
+- **INTEGER**: parsed with `std::stoll`, checked for trailing characters. Unsigned (`size_t`) units refuse a leading
+  `-` (after whitespace) and are parsed with `std::stoull`, so a negative file value stops start-up instead of wrapping
 - **STRING**: always valid
 - **STRING_LIST**: bracket notation `[...]` is rejected
 - **BOOL**: must be `"true"` or `"false"` (case-insensitive)
@@ -160,7 +175,7 @@ Invalid values cause `load()` to throw `std::runtime_error`, preventing the engi
 
 `UConf<T>::getEnvValue()` handles per-type parsing:
 
-- **Integers**: Uses `std::stoll`/`std::stoull` with strict validation (no whitespace, no trailing chars, range checks)
+- **Integers**: Unsigned values reject negative environment inputs before conversion. Uses `std::stoll`/`std::stoull` with strict validation (no whitespace, no trailing chars, range checks)
 - **Strings**: Direct passthrough
 - **String lists**: Comma-separated with backslash escaping (`\,` for literal commas); bracket notation rejected
 - **Booleans**: Case-insensitive `"true"`/`"false"`
@@ -174,7 +189,8 @@ Invalid values cause `load()` to throw `std::runtime_error`, preventing the engi
 | Duplicate key or env name | `addUnit` throws `std::invalid_argument` |
 | `addUnit` after `load()` | Throws `std::logic_error` |
 | Double `load()` call | Throws `std::logic_error` |
-| Invalid file value type | `load()` throws `std::runtime_error` |
+| Invalid file value type | `load()` throws `std::runtime_error` (`main.cpp` logs `Error loading configuration: …` and exits with failure) |
+| Missing or unreadable file | `FileLoader` logs a warning and returns an empty map |
 | Invalid env var at `get()` time | Warning logged, falls through to next source |
 | Invalid file value at `get()` time | Warning logged, falls through to default |
 | Unknown key at `get()` time | Throws `std::runtime_error` |
@@ -190,17 +206,19 @@ Invalid values cause `load()` to throw `std::runtime_error`, preventing the engi
 **Dependencies:**
 
 ```
-conf  ←── base (PUBLIC), urlrequest (PRIVATE)
+conf ──► base (PUBLIC), urlrequest (PRIVATE)
 ```
 
 ## Testing
 
 ### Unit Tests (conf_test.cpp, unitconf_test.cpp)
 
-- **conf_test.cpp** (~449 lines): Tests `Conf` lifecycle (build, addUnit, load, get) with priority resolution.  Parameterized tests cover all type combinations × all three sources × valid/invalid values.
-- **unitconf_test.cpp** (~536 lines): Tests `UConf<T>` environment variable parsing for all supported types, including edge cases (overflow, whitespace, invalid format).
+- **conf_test.cpp**: Tests `Conf` lifecycle (build, addUnit, load, get) with priority resolution.  Parameterized tests cover all type combinations × all three sources × valid/invalid values.
+- **unitconf_test.cpp**: Tests `UConf<T>` environment variable parsing for all supported types, including `size_t` boundaries, negative-to-unsigned rejection, overflow, whitespace and invalid formats.
 
-Both use `MockFileLoader` to isolate from filesystem.
+Configuration tests also pin cache defaults, ENV/file/default precedence, independent zero limits
+and fallback after invalid unsigned environment values. `Conf` tests use `MockFileLoader` to
+isolate from the filesystem. New environment regressions restore the caller's original values.
 
 ### Component Tests (fileLoader_test.cpp)
 

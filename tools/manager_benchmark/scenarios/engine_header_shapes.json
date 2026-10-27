@@ -1,0 +1,39 @@
+{
+  "name": "engine_header_shapes",
+  "description": "Agent-mode H-line shapes through POST /stateless: three fleets with a stable header padded to 256, 2048 and 8000 bytes, and one whose 2048-byte header changes on every batch (the engine's metadata-cache update path). Each agent ships the 50-line short syslog sample in batches of 10.",
+  "mode": "agent",
+  "defaults": {
+    "cluster_name": "cluster01",
+    "control": { "enabled": true, "keepalive_interval": "10s", "send_host_info": true, "startup_version": "5.0.0" }
+  },
+  "lanes": {
+    "stable_256": [
+      { "kind": "engine", "engine": "../sample_payloads/engine/syslog_short.log", "location": "syslog",
+        "events_per_second": 200, "events_per_batch": 10, "header": { "pad_bytes": 256, "extra_fields": 4 } }
+    ],
+    "stable_2048": [
+      { "kind": "engine", "engine": "../sample_payloads/engine/syslog_short.log", "location": "syslog",
+        "events_per_second": 200, "events_per_batch": 10, "header": { "pad_bytes": 2048, "extra_fields": 4, "off_path_fields": 4 } }
+    ],
+    "stable_8000": [
+      { "kind": "engine", "engine": "../sample_payloads/engine/syslog_short.log", "location": "syslog",
+        "events_per_second": 200, "events_per_batch": 10, "header": { "pad_bytes": 8000, "extra_fields": 4, "id_position": "last" } }
+    ],
+    "changing_2048": [
+      { "kind": "engine", "engine": "../sample_payloads/engine/syslog_short.log", "location": "syslog",
+        "events_per_second": 200, "events_per_batch": 10, "header": { "pad_bytes": 2048, "extra_fields": 4, "change_every": 1 } }
+    ]
+  },
+  "fleets": [
+    { "name": "pad256", "agents": 10, "first_id": 25000, "lanes": ["stable_256"],
+      "start": { "osname": "Ubuntu", "osplatform": "ubuntu", "ostype": "linux", "osversion": "22.04", "architecture": "x86_64", "agentversion": "5.0.0" } },
+    { "name": "pad2048", "agents": 10, "first_id": 25100, "lanes": ["stable_2048"],
+      "start": { "osname": "Ubuntu", "osplatform": "ubuntu", "ostype": "linux", "osversion": "22.04", "architecture": "x86_64", "agentversion": "5.0.0" } },
+    { "name": "pad8000", "agents": 10, "first_id": 25200, "lanes": ["stable_8000"],
+      "start": { "osname": "Ubuntu", "osplatform": "ubuntu", "ostype": "linux", "osversion": "22.04", "architecture": "x86_64", "agentversion": "5.0.0" } },
+    { "name": "changing", "agents": 10, "first_id": 25300, "lanes": ["changing_2048"],
+      "start": { "osname": "Ubuntu", "osplatform": "ubuntu", "ostype": "linux", "osversion": "22.04", "architecture": "x86_64", "agentversion": "5.0.0" } }
+  ],
+  "pacing": { "concurrent_agents": 0, "requests_per_second": 0, "repeat_until": "0", "drain_timeout": "60s" },
+  "expected": { "stateless": { "sent": { "eq": 200 }, "s202": { "eq": 200 }, "events_sent": { "eq": 2000 } }, "control": { "startup_err": { "eq": 0 } } }
+}

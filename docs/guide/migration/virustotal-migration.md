@@ -2,7 +2,7 @@
 
 Integratord, which managed external notifications in 4.x, was removed in Wazuh 5.0 (the manager ships no `wazuh-manager-integratord`), and with it every VirusTotal integration method. If you also had other third-party notifications configured (Slack, PagerDuty, etc.), see the [integratord migration guide](integratord-notifications.md).
 
-In 4.x, VirusTotal and Maltiverse worked as a bi-directional callback loop: integratord sent the alert to the external service, received an enriched response, and re-injected it into Wazuh as a new alert. There is no direct equivalent mechanism in 5.x for live third-party lookups. Enrichment is now handled inline by the Engine during event processing, before events reach the indexer, through exactly two built-in plugins: Geo/ASN and IOC.
+In 4.x, VirusTotal and Maltiverse worked as a bi-directional callback loop: integratord sent the alert to the external service, received an enriched response, and re-injected it into Wazuh as a new alert. There is no direct equivalent mechanism in 5.x for live third-party lookups. Enrichment is now handled inline by the Engine during event processing, before events reach the indexer, through two built-in enrichments: Geo/ASN and IOC.
 
 > [!NOTE]
 > As the [release notes](../../ref/release-notes.md) put it, real-time VirusTotal lookups have no direct replacement: what 5.0 provides is the Engine's IOC enrichment — a general-purpose threat indicator matching system backed by Wazuh's CTI feed — not live VirusTotal API lookups. See [Section 4](#4-migration-gap) for the functional gap.
@@ -11,7 +11,7 @@ In 4.x, VirusTotal and Maltiverse worked as a bi-directional callback loop: inte
 
 ### 1.1. Do not carry the integration block over
 
-A 5.0 manager is a fresh installation, and its `wazuh-manager.conf` replaces the 4.x `ossec.conf` (see the [manager configuration migration guide](manager-configuration-migration.md)). Leave every 4.x `<integration>` block with `<name>virustotal</name>` behind, whatever optional parameters (`<level>`, `<group>`, `<rule_id>`, `<alert_level>`) it contains: `wazuh-manager.conf` has no `<integration>` section, so the manager refuses to start with one (`(1244): Invalid configuration at '/integration': unknown option ...`). The 4.x block looked like this:
+A 5.0 manager is a fresh installation, and its `wazuh-manager.conf` replaces the 4.x `ossec.conf` (see the [manager configuration migration guide](manager-configuration-migration.md)). Leave every 4.x `<integration>` block with `<name>virustotal</name>` behind, whatever filters (`<level>`, `<group>`, `<rule_id>`, `<event_location>`) it contains: `wazuh-manager.conf` has no `<integration>` section, so the manager refuses to start with one (`(1244): Invalid configuration at '/integration': unknown option ...`). The 4.x block looked like this:
 
 ```xml
 <integration>
@@ -30,59 +30,17 @@ The 4.x `upload_configuration.integrations.virustotal` block of `api.yaml` was r
 
 ## 2. What replaced VirusTotal in 5.0
 
-The Engine provides two built-in enrichment plugins, Geo/ASN and IOC, which cannot be extended with third-party services. During installation, the Engine generates enrichment source definition files for both.
+The Engine has two built-in enrichments, Geo/ASN and IOC, applied to events when the policy enables them; neither
+can be extended with a third-party service. Which event fields each one observes is fixed at installation, when the Engine generates its
+observed-fields definitions from the Wazuh Common Schema. How both work is described in
+[Security enrichment process](../../ref/modules/engine/README.md#security-enrichment-process); what matters for a
+VirusTotal migration is the IOC enrichment.
 
-### 2.1. Geo/ASN enrichment
-
-Geo enrichment evaluates the event fields defined for geo/ASN observation and, when applicable, adds location and autonomous system context to the event.
-
-The fields observed for this enrichment are determined from the generated geo enrichment definitions based on the Wazuh Common Schema (WCS). These typically include fields that may contain IP addresses relevant for enrichment.
-
-When a valid source value is found, geo enrichment may add information such as:
-
-- Geographic location data
-- Country or city data
-- ASN number
-- ASN organization
-
-```json
-{
-  "source": {
-    "ip": "8.8.8.8",
-    "geo": {
-      "country_name": "United States",
-      "location": {
-        "lat": 37.751,
-        "lon": -97.822
-      }
-    },
-    "as": {
-      "number": 15169,
-      "organization": {
-        "name": "Google LLC"
-      }
-    }
-  }
-}
-```
-
-### 2.2. IOC enrichment
-
-IOC enrichment evaluates the event fields defined for IOC observation and checks whether their values match known indicators of compromise.
-
-The observed fields are determined from the generated IOC enrichment definitions based on the Wazuh Common Schema (WCS) and the predefined observation rules.
-
-Depending on the observed field and the configured IOC types, this enrichment may evaluate values such as:
-
-- Connection-based indicators represented as ip:port
-- Domains
-- URLs
-- Hashes
-- Other supported indicator values
-
-In particular, network IOC matching is not limited to plain IP values. For connection-based enrichment, the observed value is built from the relevant event fields as a connection key, typically combining IP address and port.
-
-If a match is found, the event is enriched with threat-related context associated with the matched indicator. For connection-based IOC matching, the Engine builds a `ip:port` key from the relevant event fields and writes both field names in `matched.field`:
+The IOC enrichment looks up the observed values in local IOC databases, one per indicator type: connections
+(`ip:port`, built from an IP field and its sibling port field), full URLs, URL domains, and file hashes (MD5, SHA-1
+and SHA-256). Each match appends an entry to `wazuh.threat.enrichments` on the event itself, holding the matched
+indicator as stored in the database and, in `matched.field`, the event field(s) it came from. For a connection
+indicator both field names are written, comma-separated (the `indicator` content shown is illustrative):
 
 ```json
 {
@@ -104,18 +62,20 @@ If a match is found, the event is enriched with threat-related context associate
 }
 ```
 
-The IOC database is populated from Wazuh's Cyber Threat Intelligence (CTI) feed into the Wazuh Indexer (`wazuh-threatintel-enrichments`), from which the Engine synchronizes it automatically. It is not user-configurable and cannot be extended with custom indicators or connected to third-party feeds such as VirusTotal directly.
+The IOC databases are populated from Wazuh's Cyber Threat Intelligence (CTI) feed into the Wazuh Indexer
+(`wazuh-threatintel-enrichments`), from which the Engine synchronizes them automatically. They cannot be extended
+with custom indicators or connected to third-party feeds such as VirusTotal.
 
 ## 3. Migration comparison
 
-In 4.x, the VirusTotal integration was triggered exclusively by FIM (syscheck) alerts and performed live file hash lookups against the VirusTotal API. The table below summarizes the key differences with the 5.x IOC enrichment:
+In 4.x, the VirusTotal integration acted only on FIM (syscheck) alerts and looked up the file's MD5 hash (`syscheck.md5_after`) live against the VirusTotal API. The table below summarizes the key differences with the 5.x IOC enrichment:
 
 | | Wazuh 4.x (VirusTotal) | Wazuh 5.x (IOC enrichment) |
 |---|---|---|
 | Trigger | FIM alert (syscheck file event) | Any event with a field matching an IOC observed-fields definition |
 | Lookup | VirusTotal API (live, at alert time) | Wazuh CTI database (periodic sync, offline matching) |
-| Indicators covered | File hashes (MD5/SHA-256) | Hashes, connection indicators (IP:port), domains, URLs — via Wazuh CTI |
-| Custom indicators | Backed by VirusTotal's database | Not supported |
+| Indicators covered | File MD5 hash | File hashes (MD5, SHA-1, SHA-256), connections (`ip:port`), URLs, URL domains — via Wazuh CTI |
+| Indicator source | VirusTotal's database | Wazuh CTI only; custom indicators not supported |
 | Result injected as new alert | Yes | No — enrichment is added inline to the originating event |
 | API key required | Yes | No |
 

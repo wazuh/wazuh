@@ -133,7 +133,8 @@ bool UnixOsParser::parseFile(std::istream& in, nlohmann::json& output)
         {"VERSION_ID",       "version_id"},
         {"ID",               "os_platform"},
         {"BUILD_ID",         "os_build"},
-        {"VERSION_CODENAME", "os_codename"}
+        {"VERSION_CODENAME", "os_codename"},
+        {"RHEL_VERSION",     "rhel_version"}
     };
     const auto ret {parseUnixFile(KEY_MAPPING, SEPARATOR, in, output)};
 
@@ -156,8 +157,25 @@ bool UnixOsParser::parseFile(std::istream& in, nlohmann::json& output)
             findMajorMinorVersionInString(output["os_version"], output);
         }
 
-        // Clean up temporary field
+        // RHCOS up to OpenShift 4.19 reports the OpenShift release in VERSION/VERSION_ID; the RHEL base is only in RHEL_VERSION.
+        if (output.contains("os_platform") && output.at("os_platform") == "rhcos" && output.contains("rhel_version"))
+        {
+            nlohmann::json rhelVersion;
+            findMajorMinorVersionInString(output["rhel_version"], rhelVersion);
+
+            if (rhelVersion.contains("os_major"))
+            {
+                output.erase("os_major");
+                output.erase("os_minor");
+                output.erase("os_patch");
+                output["os_version"] = output["rhel_version"];
+                output.update(rhelVersion);
+            }
+        }
+
+        // Clean up temporary fields
         output.erase("version_id");
+        output.erase("rhel_version");
     }
 
     return ret;
@@ -416,7 +434,7 @@ bool MacOsParser::parseUname(const std::string& in, nlohmann::json& output)
         {"23", "Sonoma"},
         {"24", "Sequoia"},
         {"25", "Tahoe"},
-        {"26", "Golden Gate"},
+        {"27", "Golden Gate"},
     };
     constexpr auto PATTERN_MATCH{"[0-9]+"};
     static const std::regex pattern{PATTERN_MATCH};

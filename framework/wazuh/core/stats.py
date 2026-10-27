@@ -33,7 +33,8 @@ class _Histogram(NamedTuple):
 # Only the metrics named in the tables below are reported; anything else in the dump is dropped.
 # That leaves out `remoted.admin.server.*`, which describes the very socket used to fetch the
 # dump, and also (not projected yet) `remoted.enroll.token.*`, `remoted.enroll.reenroll.*`,
-# `remoted.enroll.token_store.*`, `remoted.auth.reject.token_{expired,revoked,unknown}` and
+# `remoted.enroll.token_store.*`, `remoted.enroll.unverified.rate_limit.*`,
+# `remoted.server.connections.handshaking`, `remoted.server.handshake.*` and
 # `remoted.download.denied`. A metric missing from the dump omits its field rather than
 # reporting a zero, so a rename on the C++ side surfaces as an absent field instead of a
 # convincing but false counter.
@@ -65,6 +66,10 @@ _AUTH_REJECT_REASONS = (
     'body_too_large',
     'bad_encoding',
     'malformed',
+    'token_unknown',
+    'token_expired',
+    'token_revoked',
+    'agent_busy',
 )
 
 # {output group: {output field: source metric name | nested spec | _Histogram}}

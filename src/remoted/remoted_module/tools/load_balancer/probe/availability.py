@@ -32,7 +32,7 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 def batch(agent_id):
     """One H line naming the authenticated agent plus one E event line. The H line MUST name
-    the authenticated agent or the manager answers 400 (payload_agent_mismatch). Format taken
+    the authenticated agent or the manager answers 400 (engine identity check). Format taken
     verbatim from send_stateless.py's default_body()."""
     return (b'H {"wazuh":{"agent":{"id":"' + agent_id.encode() + b'"}}}\n'
             b'E 1:/var/log/syslog:availability drill')

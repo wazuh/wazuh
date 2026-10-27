@@ -33,7 +33,11 @@ INSTANTIATE_TEST_SUITE_P(
                       BuildT(FAILURE, getCSVParser, {NAME, TARGET, {""}, {"out1"}}),
                       BuildT(SUCCESS, getCSVParser, {NAME, TARGET, {""}, {"out1", "out2"}}),
                       BuildT(SUCCESS, getCSVParser, {NAME, TARGET, {""}, {"out1", "out2", "out3"}}),
-                      BuildT(FAILURE, getCSVParser, {NAME, TARGET, {}, {"out1", "out2"}})));
+                      BuildT(FAILURE, getCSVParser, {NAME, TARGET, {}, {"out1", "out2"}}),
+                      // Headers are JSON Pointer tokens: ~0 and ~1 are the only valid escapes
+                      BuildT(SUCCESS, getCSVParser, {NAME, TARGET, {""}, {"out1", "a~0b"}}),
+                      BuildT(FAILURE, getCSVParser, {NAME, TARGET, {""}, {"out1", "a~2"}}),
+                      BuildT(FAILURE, getCSVParser, {NAME, TARGET, {""}, {"out1", "a~"}})));
 
 INSTANTIATE_TEST_SUITE_P(
     CSVParse,
@@ -301,7 +305,8 @@ INSTANTIATE_TEST_SUITE_P(
     ::testing::Values(BuildT(SUCCESS, getDSVParser, {NAME, TARGET, {""}, {"d", "q", "e", "out1", "out2"}}),
                       BuildT(FAILURE, getDSVParser, {NAME, TARGET, {}, {"d", "q", "e", "out1", "out2"}}),
                       BuildT(SUCCESS, getDSVParser, {NAME, TARGET, {""}, {"d", "q", "e", "out1", "out2", "out3"}}),
-                      BuildT(FAILURE, getDSVParser, {NAME, TARGET, {""}, {"d", "q", "e", "out1"}})));
+                      BuildT(FAILURE, getDSVParser, {NAME, TARGET, {""}, {"d", "q", "e", "out1"}}),
+                      BuildT(FAILURE, getDSVParser, {NAME, TARGET, {""}, {"d", "q", "e", "out1", "a~2"}})));
 
 INSTANTIATE_TEST_SUITE_P(
     DSVParse,

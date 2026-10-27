@@ -105,7 +105,7 @@ inline httplib::Response internalErrorResponse(const std::string& message)
 
     httplib::Response response;
     response.status = httplib::StatusCode::InternalServerError_500;
-    response.set_content(std::get<std::string>(result), "plain/text");
+    response.set_content(std::get<std::string>(result), "application/json");
 
     return response;
 }
@@ -132,7 +132,7 @@ httplib::Response userResponse(const Res& res)
 
     httplib::Response response;
     response.status = httplib::StatusCode::OK_200;
-    response.set_content(std::get<std::string>(result), "plain/text");
+    response.set_content(std::get<std::string>(result), "application/json");
     return response;
 }
 
@@ -159,7 +159,7 @@ inline httplib::Response userErrorResponse(const std::string& message)
 
     httplib::Response response;
     response.status = httplib::StatusCode::BadRequest_400;
-    response.set_content(std::get<std::string>(result), "plain/text");
+    response.set_content(std::get<std::string>(result), "application/json");
 
     return response;
 }
@@ -212,7 +212,7 @@ inline httplib::Request createRequest(const Req& req)
 
     httplib::Request request;
     request.body = std::get<std::string>(result);
-    request.set_header("Content-Type", "plain/text");
+    request.set_header("Content-Type", "application/json");
 
     return request;
 }

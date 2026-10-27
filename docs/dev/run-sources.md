@@ -12,13 +12,15 @@ Before running from sources, ensure you have:
 
 ### Installation
 
-Install the server by running the installation script:
+Install the server by running the installation script as root:
 
 ```bash
-./install.sh
+sudo ./install.sh
 ```
 
-Follow the interactive wizard to install the manager.
+Follow the interactive wizard to install the manager. The manager is installed under `/var/wazuh-manager`, with its configuration in `/etc/wazuh-manager`.
+
+`install.sh` builds before it installs: unless `USER_BINARYINSTALL` is set, it runs `make deps` only when `src/external/` has no subdirectory yet, then `make TARGET=manager INSTALLDIR=<dir> build` in the same build tree (the one whose cache is `src/build/CMakeCache.txt`). Whatever flags that tree has cached (`TEST`, `DEBUG`, `FSANITIZE`, …, see [Build Options](build-sources.md#build-options)) end up in the installed binaries, and with a cached `TEST=1` the build produces no daemons at all: clear them first.
 
 ### Unattended Installation
 
@@ -33,6 +35,8 @@ USER_UPDATE="y" \
 USER_AUTO_START="n" \
 ./install.sh
 ```
+
+`USER_UPDATE="y"` applies only when an installation is found: it is updated in place. Without it, an existing installation makes the script ask what to do.
 
 ### Installing into a Sandbox Directory
 
@@ -60,6 +64,12 @@ USER_REGISTER_SERVICE="n" \
 To move the system service to the new directory on purpose, pass
 `USER_TAKEOVER_SERVICE="y"` instead.
 
+A sandbox install moves only the home: its configuration directory is the same
+`/etc/wazuh-manager` the real installation uses. With `USER_DELETE_DIR="y"`, a run
+that finds the sandbox directory already there deletes it **and**
+`/etc/wazuh-manager`, the manager CA's private key included, so do not run the
+example above again on a host whose real installation you want to keep.
+
 ### Provision certificates
 
 `install.sh` resolves the manager's credentials at the end of the run: it seeds the Server API passwords, stores
@@ -83,23 +93,28 @@ directory): the agents' bundle `root-ca.pem`, the agent listener pair `remoted.p
 API pair `apid.pem` / `apid-key.pem`, and the indexer trust above. The CA that issued the two server pairs goes,
 without its key unless this host should issue pairs, in `/etc/wazuh-manager/ca/root-ca.pem` (`root:root 644`, in a
 `root:root 0700` directory): the credential resolver checks the Server API pair against it at every start. A
-staged file is validated, never replaced. A missing or invalid one stops `wazuh-manager-control start` with a line
-naming it, or, for a missing listener pair, with
-`(1244): Invalid configuration at '/remote/https/certificate': file not found: …`.
+staged file is validated, never replaced. A missing, invalid or wrongly owned one stops `wazuh-manager-control start`
+before any daemon runs, printing `Unresolved credentials. Exiting`, `Invalid credentials. Exiting` or
+`Unsafe credentials. Exiting`, and the resolver's `MISSING|INVALID|UNSAFE <path or variable>: <reason>` line is
+appended to `/var/wazuh-manager/logs/wazuh-manager.log`.
 See [Using certificates issued elsewhere](../ref/getting-started/installation.md#using-certificates-issued-elsewhere)
 and [Credentials](../ref/getting-started/credentials.md).
 
-In the devcontainer, the E2E environment carries a copy of that tool
-(`tools/devContainer/scripts/wazuh-certs-tool.sh`, driven by
-`wazuh-certs-tool.yml` next to it) and a script that deploys its output with the
-names and ownership above, puts that tool's CA in `/etc/wazuh-manager/ca/` (certificate only), and runs
-`--install` and `--check` (stop the manager first):
+The repository carries a certificate tool for test PKI, `tools/devContainer/scripts/wazuh-certs-tool.sh`
+(driven by `wazuh-certs-tool.yml` next to it). In the devcontainer, the E2E environment uses it and adds a
+script that deploys its output with the names and ownership above, puts the tool's CA in
+`/etc/wazuh-manager/ca/` (certificate only), and runs `--install` and `--check`. The copy script refuses to
+run while the manager is running, so stop it first:
 
 ```bash
 cd $WAZUH_REPO/tools/devContainer/e2e
-./init.sh --certs-only          # issues certs/ (reuses certs/root-ca.pem when present)
-sudo ./wazuh_copy_certs.sh      # -> /etc/wazuh-manager/certs
+./init.sh --certs-only --no-listeners   # issues certs/ (reuses certs/root-ca.pem when present)
+sudo ./wazuh_copy_certs.sh              # -> /etc/wazuh-manager/certs
 ```
+
+Without `--no-listeners`, `init.sh` also edits `/etc/wazuh-manager/wazuh-manager.conf`: it replaces a
+`127.0.0.1` `local_ip`/`bind_addr` in `<remote>` with `0.0.0.0`, for agents in containers, and resets the file
+to `root:wazuh-manager 660`.
 
 For a sandbox install, point the copy script at its directory (the certificates still go to
 `/etc/wazuh-manager/certs`: a custom installation directory moves the home only, so two installs on one
@@ -121,17 +136,23 @@ bash $WAZUH_REPO/tools/devContainer/scripts/wazuh-certs-tool.sh -A -c certs.yml 
 
 ### Starting the Server
 
-After installation, start the manager:
+After installation, start the manager as root, either through the system service (`sudo systemctl start wazuh-manager`) or with its control script:
 
 ```bash
-/var/wazuh-manager/bin/wazuh-manager-control start
+sudo /var/wazuh-manager/bin/wazuh-manager-control start > /tmp/wazuh-manager-start.log 2>&1
 ```
+
+Do not pipe the output of `start`: the daemons inherit it and the command never returns. Redirect it to a file instead.
+
+A fresh installation does not start until the indexer credentials are resolved. Unless a 5.x indexer runs on the same host, `start` stops before any daemon with `Unresolved credentials. Exiting` until the indexer password is in `/etc/wazuh-manager/local.env` and the indexer's CA and client pair are in `/etc/wazuh-manager/certs` (see [Provision certificates](#provision-certificates)). Put the password in `local.env` rather than in your shell: systemd starts the service with a clean environment, and `sudo` resets it too.
 
 To verify the server is running:
 
 ```bash
-/var/wazuh-manager/bin/wazuh-manager-control status
+sudo /var/wazuh-manager/bin/wazuh-manager-control status
 ```
+
+`status` exits 1 when a daemon is not running. It lists `wazuh-manager-apid` only on a master node and `wazuh-manager-authd` only while `auth.disabled` is false, the daemons `start` launches.
 
 ## Agent for UNIX
 

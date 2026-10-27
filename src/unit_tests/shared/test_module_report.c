@@ -128,6 +128,68 @@ static void test_add_leaves_out_a_module_that_reported_nothing(void** state)
     cJSON_Delete(report);
 }
 
+/* --- module_report_add_secret --- */
+static void test_add_secret_keeps_the_key_but_not_the_value(void** state)
+{
+    (void)state;
+    cJSON* auth = cJSON_CreateObject();
+
+    module_report_add_secret(auth, "api_token", "ghp_not_a_real_token", false);
+
+    /* The literal, not the macro: it pins the mask to the text the server API
+     * uses, so a change to either shows up here. */
+    char* printed = cJSON_PrintUnformatted(auth);
+    assert_string_equal(printed, "{\"api_token\":\"*****\"}");
+    assert_null(strstr(printed, "ghp_not_a_real_token"));
+
+    cJSON_free(printed);
+    cJSON_Delete(auth);
+}
+
+static void test_add_secret_keeps_the_value_when_unmasked(void** state)
+{
+    (void)state;
+    cJSON* auth = cJSON_CreateObject();
+
+    module_report_add_secret(auth, "api_token", "ghp_not_a_real_token", true);
+
+    char* printed = cJSON_PrintUnformatted(auth);
+    assert_string_equal(printed, "{\"api_token\":\"ghp_not_a_real_token\"}");
+
+    cJSON_free(printed);
+    cJSON_Delete(auth);
+}
+
+static void test_add_secret_leaves_out_an_unset_secret(void** state)
+{
+    (void)state;
+    cJSON* auth = cJSON_CreateObject();
+
+    /* A mask would claim a credential is configured when none is, and an
+     * unmasked report has nothing to show. */
+    module_report_add_secret(auth, "api_token", NULL, false);
+    module_report_add_secret(auth, "secret_key", "", false);
+    module_report_add_secret(auth, "api_token", NULL, true);
+    module_report_add_secret(auth, "secret_key", "", true);
+
+    assert_null(auth->child);
+
+    cJSON_Delete(auth);
+}
+
+static void test_add_secret_ignores_a_missing_object_or_key(void** state)
+{
+    (void)state;
+    cJSON* auth = cJSON_CreateObject();
+
+    module_report_add_secret(NULL, "api_token", "ghp_not_a_real_token", false);
+    module_report_add_secret(auth, NULL, "ghp_not_a_real_token", false);
+
+    assert_null(auth->child);
+
+    cJSON_Delete(auth);
+}
+
 /* --- module_report_reply --- */
 static void test_reply_prefixes_the_serialized_report_with_ok(void** state)
 {
@@ -172,6 +234,10 @@ int main(void)
         cmocka_unit_test(test_add_keys_the_body_by_module_name),
         cmocka_unit_test(test_add_keeps_each_module_separate),
         cmocka_unit_test(test_add_leaves_out_a_module_that_reported_nothing),
+        cmocka_unit_test(test_add_secret_keeps_the_key_but_not_the_value),
+        cmocka_unit_test(test_add_secret_keeps_the_value_when_unmasked),
+        cmocka_unit_test(test_add_secret_leaves_out_an_unset_secret),
+        cmocka_unit_test(test_add_secret_ignores_a_missing_object_or_key),
         cmocka_unit_test(test_reply_prefixes_the_serialized_report_with_ok),
         cmocka_unit_test(test_reply_still_answers_when_no_module_reported),
     };

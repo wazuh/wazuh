@@ -20,9 +20,11 @@ measurement — it isolates the cost of the relay:
 
 ### `--mode uds` — the server alone
 
-Connects straight to the module's Unix socket (`queue/sockets/inventory-sync-http.sock`) and speaks the
-bytes remoted would forward: `POST /stateful` with `X-Wazuh-Agent-Id`. No enrollment, no TLS, no
-signing. This is the mode that measures the ingestion pipeline itself (validation, sharded workers,
+Connects straight to the module's Unix socket (`--socket`, default
+`queue/sockets/inventory-sync-http.sock` relative to the sender's working directory, so pass
+`/var/wazuh-manager/queue/sockets/inventory-sync-http.sock` when running from elsewhere) and speaks
+the bytes remoted would forward: `POST /stateful` with `X-Wazuh-Agent-Id`. No enrollment, no TLS,
+no signing, no `/control`: each agent's id is synthesized as `first_id + i`. This is the mode that measures the ingestion pipeline itself (validation, sharded workers,
 group commit, the scan lane) with nothing else in the path.
 
 ### `--mode agent` — the whole path
@@ -56,7 +58,7 @@ one that stresses the manager's cross-lane paths (see [07](07-scenario-schema.md
 - **It does not interpret the manager's configuration.** `POST /control` answers with `limits`,
   `cluster`, `agent.groups`, `config_hash`, `settings_hash`, `ca_generation`, `vd_feed_offset` and
   pending `tasks`. The sender **MUST** validate that response (status `200`, parseable JSON) and
-  record its latency and size, and **MUST NOT** let any field of it change its behavior: no rate
+  record its latency, and **MUST NOT** let any field of it change its behavior: no rate
   limit is adopted, no group is honored, no task is executed, no hash is compared. The one
   exception is `vd_feed_offset`, which VD sessions must echo (see
   [03](03-control-protocol.md#what-the-sender-does-with-the-response)). A benchmark whose load shape depends on the
@@ -71,12 +73,45 @@ one that stresses the manager's cross-lane paths (see [07](07-scenario-schema.md
   manager rather than load. The other is a bare `503` (backpressure), re-sent per the scenario's
   `defaults.retry` block (on by default: 500 ms apart, 10 attempts), because that is what a real
   agent does. Every attempt is counted and paced, and shed-counting scenarios switch it off. No
-  other answer, and no other route, is ever retried. FR-12 as first written said "never retry a
-  bare `503`"; see the note there.
+  other answer, and no other route, is ever retried.
 - **It does not tune the manager.** Preparing the manager (remote enrollment reachable, a token
   minted, indexer reachable) belongs to the orchestration scripts, and every setting used is
   recorded with the run. It no longer WEAKENS the manager either: the default bootstrap runs against
   the installed `<use_password>` policy.
+
+## Command line
+
+`benchmark_sender` takes stdlib `flag` options (`-x` and `--x` are the same flag). The complete set,
+from `cmd/benchmark_sender/main.go`:
+
+| Flag | Default | Meaning |
+|---|---|---|
+| `--scenario` | *(required)* | Scenario JSON ([07](07-scenario-schema.md)). Missing → usage and exit `2` |
+| `--mode` | the scenario's `mode` | `uds` or `agent`; overrides the file |
+| `--validate` | `false` | Load and strict-check the scenario (and its `expected` block), print `ok: <name> (mode=…, fleets=N, lanes=N, expected_checks=N)` and exit `0`, sending nothing |
+| `--socket` | `queue/sockets/inventory-sync-http.sock` | `uds` mode: the module socket (relative to the working directory) |
+| `--manager` | `127.0.0.1` | `agent` mode: remoted host |
+| `--port` | `1517` | `agent` mode: remoted HTTPS port (every route, `/enroll` included) |
+| `--reg-port` | `1515` | authd's legacy enrollment port, used only by `--bootstrap 1515` |
+| `--bootstrap` | `enroll-token` | `agent` mode: `enroll-token` (`POST /enroll` with the enrollment token) or `1515` (authd's legacy listener); anything else → exit `2`. See [16](16-enroll-https.md) |
+| `--enroll-token-file` | `""` | File holding the enrollment token (trimmed); falls back to the `WAZUH_ENROLLMENT_TOKEN` environment variable. An unreadable file → exit `2` |
+| `--global-prefix` | `""` | `agent` mode: the manager's `<remote><https><global_prefix>` ([04](04-wire-protocol.md#https-to-remoted-agent-mode)) |
+| `--cluster` | `""` | Cluster name every session declares; overrides `defaults.cluster_name` |
+| `--compression` | `""` | `zstd` or `none`; overrides `defaults.compression`. `zstd` outside `agent` mode, or any other value → exit `2` |
+| `--vd-feed-offset` | `0` | `Start.feed_offset` / `scan_vd` offset override; `0` means no override ([05](05-flatbuffers-messages.md#start)) |
+| `--no-reuse` | `false` | Disable HTTP keep-alive in `agent` mode (`uds` never reuses) |
+| `--seed` | `0` | Document seed; `0` draws a random one, recorded in `meta.document_seed` |
+| `--timeout` | `120s` | Per-request timeout, every request ([10](10-error-handling-and-shutdown.md#timeouts)) |
+| `--feed-timeout` | `300s` | Budget for feed-not-ready (`503` + `Retry-After`) retries of one session |
+| `--enroll-settle` | `12s` | Readiness budget after enrollment, with a 30 s floor ([06](06-agent-state-machine.md)) |
+| `--drain-timeout` | `0` | Drain window; `0` defers to `pacing.drain_timeout`, else 60 s |
+| `--output` | `bench.csv` | Per-second CSV ([09](09-metrics-and-output.md)) |
+| `--summary-json` | `sender_summary.json` | Run summary ([09](09-metrics-and-output.md)) |
+
+Exit codes (`0` valid, `1` invalidated while running, `2` setup error, `3` the scenario's `expected`
+block failed) are defined in [10](10-error-handling-and-shutdown.md#error-matrix).
+`run_benchmark.sh` builds this command line from its own flags and the manager's configuration
+([the harness README](../../README.md)).
 
 ## Relationship to the retired simulator
 

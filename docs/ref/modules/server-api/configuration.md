@@ -25,7 +25,7 @@ For module overview and architecture, see [Server API Module](README.md).
 Both YAML files are merged over built-in defaults (`api/api/configuration.py`) and validated against a
 JSON schema (`api/api/validator.py`) when `wazuh-manager-apid` starts: an unknown option or a value of
 the wrong type stops it with error `2000`. Every string value is lowercased except `https.key`,
-`https.cert` and `https.ca`, and the strings `yes`/`no` are read as booleans. A change to `api.yaml`
+`https.cert`, `https.ca` and `https.ssl_ciphers`, and the strings `yes`/`no` are read as booleans. A change to `api.yaml`
 takes effect when `wazuh-manager-apid` restarts (for example with
 `/var/wazuh-manager/bin/wazuh-manager-control restart`).
 
@@ -111,6 +111,9 @@ Number of worker processes dedicated to authentication requests.
 - **Default value:** `2`
 - **Allowed values:** Integer from `1` to `50`
 - **Note:** Increase for high-concurrency environments with many simultaneous login attempts
+- **Note:** At most `authentication_pool_size - 1` password checks (at least one) run at once, so with
+  two or more workers one is always left for validating tokens. Once eight times that many logins are
+  running or waiting, a further login is refused with `429` and error `6006` before its password is checked
 
 ### intervals
 
@@ -137,16 +140,11 @@ contain only letters, digits, `_`, `-` and `.`.
 | `ca` | `root-ca.pem` | CA used to verify client certificates when `use_ca` is `true` |
 | `ssl_ciphers` | `""` | OpenSSL cipher list for TLS 1.2, passed to OpenSSL as written (keywords are case-sensitive: `!kRSA`, not `!KRSA`). Empty serves `ECDHE+AESGCM:ECDHE+CHACHA20`: forward-secret AEAD suites only. TLS 1.3 suites are not selected by this list. A list OpenSSL rejects as written but accepts uppercased is applied uppercased with a warning in `logs/api.log` |
 
-The installer (`wazuh-manager-resolve-credentials --install`, run by the package post-install step or
-`install.sh` on a clean installation) issues `apid.pem` and `apid-key.pem` from the manager's CA with the
-same profile as the agent listener's `remoted.pem`: subject `C=US, L=California, O=Wazuh, OU=Wazuh,
-CN=<node name>`, its own SANs (`WAZUH_MANAGER_APID_CERT_SANS` in the environment or in
-`/etc/wazuh-manager/local.env`, plus `localhost`, `127.0.0.1` and `::1`; when unset, discovered the way Remoted's
-are: the node's host names and every global address of its interfaces plus those three — it never
-inherits `WAZUH_MANAGER_REMOTED_CERT_SANS`), 2048-bit RSA, `serverAuth`, `notBefore` one day before issuance and
-`notAfter` 3650 days after it, the leaf followed by the CA, owned by `root:wazuh-manager` with mode `0640`. Before
-every start the resolver checks that the pair is issued by the CA in `/etc/wazuh-manager/ca/root-ca.pem`. Issuing it therefore needs
-the node name and either that discovery or `WAZUH_MANAGER_APID_CERT_SANS`. See
+The credential resolver (`wazuh-manager-resolve-credentials --install`, run by the package post-install
+step or `install.sh` on a clean installation) issues `apid.pem` and `apid-key.pem` from the manager's CA,
+with their own subject alternative names (`WAZUH_MANAGER_APID_CERT_SANS`, never remoted's list), and
+before every start checks that the pair chains to `/etc/wazuh-manager/ca/root-ca.pem`. The profile, the
+checks and the SAN discovery are in [Server pairs](../../getting-started/credentials.md#server-pairs) and
 [Subject alternative names](../../getting-started/credentials.md#subject-alternative-names).
 
 `wazuh-manager-apid` generates no certificate. When `enabled` is `true` and the configured pair is
@@ -187,14 +185,17 @@ Cross-origin resource sharing, applied with Starlette's `CORSMiddleware`.
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `max_login_attempts` | `50` | Failed logins from one IP before it is blocked (`403`, error `6000`) |
-| `block_time` | `300` | Seconds an IP stays blocked, counted from its last login attempt |
+| `max_login_attempts` | `50` | Failed logins from one client before it is blocked (`403`, error `6000`) |
+| `block_time` | `300` | Length, in seconds, of the window the failed logins are counted in, starting at the first one: a block lasts until that window ends |
 | `max_request_per_minute` | `300` | Authenticated requests per minute per client address (`429`, error `6001`); `0` disables it |
 | `max_unauthenticated_request_per_minute` | `10` | Unauthenticated or failed-authentication requests per minute per client address (`429`, error `6005`); `0` disables it |
 
 The client address is always the TCP peer of the connection. The API ignores `X-Forwarded-For` and
 `X-Forwarded-Proto` from any peer, loopback included, so behind a reverse proxy every client shares
-the proxy's address for the lockout, the limits and `api.log`.
+the proxy's address for the lockout, the limits and `api.log`. The login lockout and the
+unauthenticated limit group an IPv6 client by its `/64` network (and an IPv4-mapped address by the
+IPv4 address it carries); the authenticated limit counts the exact address. Each limit counts in a
+fixed 60-second window that starts with the first request it counts.
 
 See [Request rate limiting](#request-rate-limiting) and
 [Rate Limiting & Brute-Force Protection](authentication.md#rate-limiting--brute-force-protection).
@@ -400,11 +401,8 @@ not after, so exceeding the ceiling does not itself cost the authentication step
 
 ### Database Query Limits
 
-Use pagination for large result sets:
-
-- Default limit: 500 results (`DATABASE_LIMIT` in `framework/wazuh/core/common.py`)
-- Maximum limit: 100,000 results (`MAXIMUM_DATABASE_LIMIT`)
-- Use `offset` and `limit` parameters in API calls
+Page large result sets with `offset` and `limit` (500 by default, at most 100,000): see
+[Common Query Parameters](api-reference.md#common-query-parameters).
 
 ---
 
@@ -491,7 +489,7 @@ curl -k -H "Authorization: Bearer $TOKEN" "https://localhost:55000/security/user
 ```
 
 A `403` with error `6000` on a login means the client IP is blocked; it is lifted `block_time`
-seconds after its last attempt.
+seconds after the first failed attempt that was counted, and a successful login does not lift it.
 
 ### High Load
 

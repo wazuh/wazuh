@@ -95,3 +95,16 @@ int __wrap_uhttp_post(uhttp_client_t* c, const void* data, size_t len, uhttp_res
 
     return retval;
 }
+
+int __wrap_uhttp_client_reset_headers(uhttp_client_t* c) {
+    (void)c;
+    function_called();
+    return mock_type(int);
+}
+
+int __wrap_uhttp_client_add_header(uhttp_client_t* c, const char* header_line) {
+    (void)c;
+    function_called();
+    check_expected(header_line);
+    return mock_type(int);
+}

@@ -1,6 +1,6 @@
 {
   "name": "contract_oversized_413",
-  "description": "Contract test for the 413 (payload too large) path: a Linux fleet sends a delta with an intentionally huge document set (200 documents at 65536 bytes each) to push the request body past the server's max-body limit. The exact size that triggers 413 depends on the server's configured max-body-size, so this scenario is deliberately oversized to trip it regardless.",
+  "description": "Contract test for the 413 (payload too large) path: a Linux fleet sends a delta with an intentionally huge document set (200 documents at 65536 bytes each) to push the request body past the server's max-body limit. Each session is about 13 MB, which a default manager accepts (with wazuh_modules.inventory_sync_server_max_body_size=0 the cap is derived from the 256 MiB in-flight budget): the 413 appears only against a server configured with a smaller cap, which is why the scenario carries no expected block.",
   "mode": "uds",
   "defaults": {
     "module": "syscollector",
