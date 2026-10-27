@@ -1397,9 +1397,13 @@ Size of the wazuh-db connection pool the control plane uses.
 Milliseconds a wazuh-db request may take, from when it is queued until its answer, before the control
 handler gives up.
 
-- **Default value:** `2000`
+- **Default value:** `5000`
 - **Allowed values:** Integer from `100` to `30000`
-- **Note:** Exceeding it surfaces to the agent as a `503` on `/control`, and counts as
+- **Note:** The default leaves room for wazuh-db's periodic global database commit, which can
+  hold queries for several seconds on a slow disk under heavy write load, such as the initial
+  vulnerability feed load. Together with `remoted.control_tm_deadline` it bounds the manager's
+  side of `/control` (7 s with the defaults), below the agent's `agent.https_request_timeout`
+  (10 s). Exceeding it surfaces to the agent as a `503` on `/control`, and counts as
   `remoted.control.wdb_error` in
   [`GET /metrics`](metrics.md#control-plane--remotedcontrol). The healthy-round-trip
   distribution that sizes this deadline is `remoted.control.wdb.latency` (timeouts are

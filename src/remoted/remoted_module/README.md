@@ -1001,7 +1001,7 @@ from C-ABI struct fields in `remoted_module_config_t`; the tunable ones are fed 
 | `isWorkerNode` | from cluster config | — |
 | `groupsRefreshIntervalSec` | 60 s | `remoted.control_groups_refresh_interval` (1–3600) |
 | `wdbRequestConnections` | 4 | `remoted.control_wdb_request_connections` (1–64) |
-| `wdbRoundtripDeadlineMs` | 2000 ms | `remoted.control_wdb_roundtrip_deadline` (100–30000) |
+| `wdbRoundtripDeadlineMs` | 5000 ms | `remoted.control_wdb_roundtrip_deadline` (100–30000) |
 | `wdbMaxQueueSize` | 10000 | `remoted.control_wdb_max_queue_size` (100–1000000) |
 | `tmConcurrency` | 4 | `remoted.control_tm_concurrency` (1–64) |
 | `tmDeadlineMs` | 2000 ms | `remoted.control_tm_deadline` (100–30000) |
