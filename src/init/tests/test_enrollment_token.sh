@@ -227,7 +227,7 @@ run_target "${DESC_WITH_KEY}" 0
 check "no token and no endpoint names the missing manager" "INFO_NO_MANAGER" "$(refusal_code)"
 # The agent refuses to start on the placeholder, so the notice has to say what comes before the
 # start: the full path, since bin/ is not on PATH.
-NO_TOKEN_HINT="Enroll it as root with '${RUN_DIR}/bin/wazuh-agent-auth --token-file <path>' before starting it."
+NO_TOKEN_HINT="Enroll it as root before starting it: echo '<TOKEN>' | ${RUN_DIR}/bin/wazuh-agent-auth"
 check "no token names the enrollment command on stderr" "1" \
       "$(grep -cF "${NO_TOKEN_HINT}" "${RUN_DIR}/stderr")"
 check "no token names the enrollment command in ossec.log" "1" \

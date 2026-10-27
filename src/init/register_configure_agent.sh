@@ -75,7 +75,7 @@ deployment_notice() {
 enrollment_hint() {
 
     if [ ! -s "${INSTALLDIR}/etc/client.keys" ]; then
-        printf " Enroll it as root with '%s/bin/wazuh-agent-auth --token-file <path>' before starting it." "${INSTALLDIR}"
+        printf " Enroll it as root before starting it: echo '<TOKEN>' | %s/bin/wazuh-agent-auth" "${INSTALLDIR}"
     fi
 
 }
