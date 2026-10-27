@@ -578,8 +578,25 @@ add_adress_block() {
     } >> "${TMP_SERVER}"
 
     insert_into_agent_block "${TMP_SERVER}"
+    aab_status=$?
 
     rm -f "${TMP_SERVER}"
+
+    return "${aab_status}"
+
+}
+
+# True when every <server>/<manager> block opens and closes on lines of its own, the only shape
+# add_adress_block()'s sed range deletes cleanly: a one-line block never ends the range, which
+# then deletes to the end of the file.
+address_blocks_are_multiline() {
+
+    for abm_tag in server manager; do
+        if grep -q "<${abm_tag}>.*/${abm_tag}>" "$1" \
+                || [ "$(grep -c "<${abm_tag}>" "$1")" -ne "$(grep -c "/${abm_tag}>" "$1")" ]; then
+            return 1
+        fi
+    done
 
 }
 
@@ -916,8 +933,10 @@ upgrade_main () {
         return 1
     fi
 
-    # -P keeps a link planted at etc/ossec.conf a link, which is then refused rather than followed.
-    if ! cp -fpP "${CONF_FILE}" "${UPGRADE_STAGE}/ossec.conf" || [ -L "${UPGRADE_STAGE}/ossec.conf" ] \
+    # -P keeps a link planted at etc/ossec.conf a link, which is then refused rather than followed;
+    # the first test keeps cp from blocking on a FIFO.
+    if [ ! -f "${CONF_FILE}" ] || [ -L "${CONF_FILE}" ] \
+            || ! cp -fpP "${CONF_FILE}" "${UPGRADE_STAGE}/ossec.conf" || [ -L "${UPGRADE_STAGE}/ossec.conf" ] \
             || [ ! -f "${UPGRADE_STAGE}/ossec.conf" ]; then
         echo "wazuh-agent: ${CONF_FILE} is not a regular file; WAZUH_ENROLLMENT_TOKEN was not applied." >&2
         rm -rf "${UPGRADE_STAGE}"
@@ -930,13 +949,29 @@ upgrade_main () {
     TMP_SERVER="${UPGRADE_STAGE}/server-configuration"
     TMP_INSERT="${UPGRADE_STAGE}/insert-output"
 
+    # The admin's preserved file, not one the package generated: anything the rewrite cannot
+    # handle cleanly leaves it untouched. The closing tags are counted again after it.
+    um_closing="$(grep -c -E '</(ossec_config|client|agent)>' "${CONF_FILE}")"
     FINAL_ENDPOINT="${TOKEN_ADR}"
-    add_adress_block
+    if ! address_blocks_are_multiline "${CONF_FILE}" || ! add_adress_block \
+            || ! grep -qF "<endpoint>${FINAL_ENDPOINT}</endpoint>" "${CONF_FILE}" \
+            || [ "$(grep -c -E '</(ossec_config|client|agent)>' "${CONF_FILE}")" -ne "${um_closing}" ]; then
+        echo "wazuh-agent: the manager address in ${um_conf} could not be rewritten (a <server> block must open and close on lines of its own); WAZUH_ENROLLMENT_TOKEN was not applied. Run '${INSTALLDIR}/bin/wazuh-agent-auth --token-file <file> --certs-only'." >&2
+        rm -rf "${UPGRADE_STAGE}"
+        unset_vars
+        return 1
+    fi
 
-    # The ownership the package gives ossec.conf; only root can set it, and only root has to.
+    # The token goes in first and is taken back if ossec.conf cannot follow, so the agent is
+    # never left re-pointed without one. The ownership is the one the package gives ossec.conf;
+    # only root can set it, and only root has to.
     um_status=0
-    if ! { chmod 640 "${CONF_FILE}" && { chown root:wazuh "${CONF_FILE}" 2>/dev/null || [ "${EUID}" -ne 0 ]; } \
-            && mv -fT "${CONF_FILE}" "${um_conf}"; } || ! store_enrollment_token; then
+    if ! store_enrollment_token; then
+        echo "wazuh-agent: WAZUH_ENROLLMENT_TOKEN could not be applied." >&2
+        um_status=1
+    elif ! { chmod 640 "${CONF_FILE}" && { chown root:wazuh "${CONF_FILE}" 2>/dev/null || [ "${EUID}" -ne 0 ]; } \
+            && mv -fT "${CONF_FILE}" "${um_conf}"; }; then
+        rm -f "${INSTALLDIR}/${WAZUH_ENROLLMENT_TOKEN_PATH}"
         echo "wazuh-agent: WAZUH_ENROLLMENT_TOKEN could not be applied." >&2
         um_status=1
     else

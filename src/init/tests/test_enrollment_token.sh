@@ -415,6 +415,84 @@ check "a group-writable packages_files/ keeps the configuration" "${LEGACY_CONF}
       "$(cat "${RUN_DIR}/etc/ossec.conf")"
 rm -rf "${RUN_DIR}"
 
+# --- An upgrade rewrites the admin's own file: what it cannot rewrite cleanly is left alone ----
+
+ONE_LINE_SERVER='<ossec_config>
+  <client>
+    <server><address>MANAGER_IP</address></server>
+  </client>
+  <logging>
+    <log_format>plain</log_format>
+  </logging>
+</ossec_config>'
+
+UNCLOSED_SERVER='<ossec_config>
+  <client>
+    <server>
+      <address>MANAGER_IP</address>
+  </client>
+</ossec_config>'
+
+COMMENTED_CLIENT='<ossec_config>
+  <client> <!-- managers -->
+    <server>
+      <address>MANAGER_IP</address>
+    </server>
+  </client>
+</ossec_config>'
+
+for shape in ONE_LINE_SERVER UNCLOSED_SERVER COMMENTED_CLIENT; do
+    RUN_DIR="$(make_installdir "${DESC_WITH_KEY}" 0)"
+    printf '%s' "${!shape}" > "${RUN_DIR}/etc/ossec.conf"
+    bash "${TARGET}" "${RUN_DIR}" upgrade >/dev/null 2>"${RUN_DIR}/stderr"
+    RUN_STATUS="$?"
+    check "an upgrade over ${shape} fails" "1" "${RUN_STATUS}"
+    check "an upgrade over ${shape} keeps the configuration" "${!shape}" "$(cat "${RUN_DIR}/etc/ossec.conf")"
+    check "an upgrade over ${shape} stores no token" "absent" \
+          "$([ -e "${RUN_DIR}/etc/enrollment_token" ] && echo present || echo absent)"
+    check "an upgrade over ${shape} does not say applied" "0" "$(grep -c "applied:" "${RUN_DIR}/stderr")"
+    check "an upgrade over ${shape} leaves no staging directory behind" "" "$(ls "${RUN_DIR}/packages_files")"
+    rm -rf "${RUN_DIR}"
+done
+
+# A FIFO at ossec.conf is refused rather than read, which would block the upgrade.
+RUN_DIR="$(make_installdir "${DESC_WITH_KEY}" 0)"
+rm -f "${RUN_DIR}/etc/ossec.conf"
+mkfifo "${RUN_DIR}/etc/ossec.conf"
+timeout 10 bash "${TARGET}" "${RUN_DIR}" upgrade >/dev/null 2>"${RUN_DIR}/stderr"
+RUN_STATUS="$?"
+check "a FIFO at etc/ossec.conf is refused without blocking" "1" "${RUN_STATUS}"
+check "a FIFO at etc/ossec.conf stores no token" "absent" \
+      "$([ -e "${RUN_DIR}/etc/enrollment_token" ] && echo present || echo absent)"
+rm -rf "${RUN_DIR}"
+
+# ossec.conf failing to move into place takes the token back with it.
+RUN_DIR="$(make_installdir "${DESC_WITH_KEY}" 0)"
+printf '%s' "${LEGACY_CONF}" > "${RUN_DIR}/etc/ossec.conf"
+mkdir -p "${RUN_DIR}/shim"
+{
+    echo '#!/bin/bash'
+    echo 'case "${!#}" in */etc/ossec.conf) exit 1 ;; esac'
+    echo 'exec /bin/mv "$@"'
+} > "${RUN_DIR}/shim/mv"
+chmod 755 "${RUN_DIR}/shim/mv"
+PATH="${RUN_DIR}/shim:${PATH}" bash "${TARGET}" "${RUN_DIR}" upgrade >/dev/null 2>"${RUN_DIR}/stderr"
+RUN_STATUS="$?"
+check "an ossec.conf that cannot be moved fails the upgrade" "1" "${RUN_STATUS}"
+check "an ossec.conf that cannot be moved keeps the configuration" "${LEGACY_CONF}" \
+      "$(cat "${RUN_DIR}/etc/ossec.conf")"
+check "an ossec.conf that cannot be moved leaves no token" "absent" \
+      "$([ -e "${RUN_DIR}/etc/enrollment_token" ] && echo present || echo absent)"
+
+# And a token that cannot be stored leaves ossec.conf pointing where it did.
+sed -i 's:\*/etc/ossec.conf:*/etc/enrollment_token:' "${RUN_DIR}/shim/mv"
+PATH="${RUN_DIR}/shim:${PATH}" bash "${TARGET}" "${RUN_DIR}" upgrade >/dev/null 2>"${RUN_DIR}/stderr"
+RUN_STATUS="$?"
+check "a token that cannot be stored fails the upgrade" "1" "${RUN_STATUS}"
+check "a token that cannot be stored keeps the configuration" "${LEGACY_CONF}" \
+      "$(cat "${RUN_DIR}/etc/ossec.conf")"
+rm -rf "${RUN_DIR}"
+
 unset WAZUH_ENROLLMENT_TOKEN
 
 # No anchor yet is expected while a token waits for the first start, or after a remote upgrade.
