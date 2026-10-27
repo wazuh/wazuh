@@ -358,9 +358,6 @@ if [ $1 = 1 ]; then
 
   # Register and configure agent if Wazuh environment variables are defined
   %{_localstatedir}/packages_files/agent_installation_scripts/src/init/register_configure_agent.sh %{_localstatedir} > /dev/null || :
-else
-  # An upgrade keeps its configuration; only WAZUH_ENROLLMENT_TOKEN is applied.
-  %{_localstatedir}/packages_files/agent_installation_scripts/src/init/register_configure_agent.sh %{_localstatedir} upgrade > /dev/null || :
 fi
 
 if [ -r /etc/SuSE-release ] && grep -q "VERSION = 11" /etc/SuSE-release 2>/dev/null; then
