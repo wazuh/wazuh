@@ -4,6 +4,7 @@
 
 import os
 import re
+from collections import defaultdict
 from enum import Enum
 from glob import glob
 
@@ -254,3 +255,36 @@ def format_rule_decoder_file(ruleset_conf, parameters, tags):
                 _create_dict(ruleset_conf, tag, exclude_filenames, tmp_data)
 
     return _remove_files(tmp_data, parameters)
+
+
+def format_rule_decoder_files(ruleset_conf, parameters, tags, filenames):
+    """Get the rule or decoder files of each name in `filenames`.
+
+    Same result as concatenating `format_rule_decoder_file` once per name, keeping the order and repetitions of
+    `filenames`, but the configured files are listed only once. An empty name matches every file.
+
+    Parameters
+    ----------
+    ruleset_conf : dict
+        Ruleset section of the configuration.
+    parameters : dict
+        Filters to apply other than `filename`.
+    tags : list
+        Configuration tags with the files to list.
+    filenames : list
+        Names of the files to get.
+
+    Returns
+    -------
+    list
+        Files of each name, in the order of `filenames`.
+    """
+    if not filenames:
+        return []
+
+    all_files = format_rule_decoder_file(ruleset_conf, {**parameters, 'filename': None}, tags)
+    files_by_name = defaultdict(list)
+    for item in all_files:
+        files_by_name[item['filename']].append(item)
+
+    return [item for name in filenames for item in (files_by_name.get(name, []) if name else all_files)]
