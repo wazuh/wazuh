@@ -31,6 +31,20 @@ static int is_date_line(const char *str) {
     return str[2] == '/' && (str[5] == '-' || (str[5] == '/' && str[8] == '-'));
 }
 
+/* The text of a date line after its date and time, NULL if str is not a date line */
+static const char *date_line_text(const char *str) {
+    const char *space = is_date_line(str) ? strchr(str, ' ') : NULL;
+
+    return space != NULL ? space + 1 : NULL;
+}
+
+/* Queue the alert, unless the ignore and restrict regexes of the localfile drop it, or drop_it is set */
+static void send_alert(logreader *lf, const char *message, int drop_it) {
+    if (drop_it == 0 && !check_ignore_and_restrict(lf->regex_ignore, lf->regex_restrict, message)) {
+        w_msg_hash_queues_push(message, lf->file, strlen(message) + 1, lf->log_target, LOCALFILE_MQ);
+    }
+}
+
 static bool is_alert_header(const char *str) {
     return strncmp(str, "[**] [", 6) == 0;
 }
@@ -96,6 +110,7 @@ void *read_snortfull(logreader *lf, int *rc, int drop_it) {
     const char *two = "two";
     const char *p = NULL;
     char *q;
+    const char *text;
     char str[OS_MAX_LOG_SIZE] = {0};
     char f_msg[OS_MAX_LOG_SIZE] = {0};
     int lines = 0;
@@ -167,21 +182,14 @@ void *read_snortfull(logreader *lf, int *rc, int drop_it) {
                 /* If it is a preprocessor message, it will not have
                  * the classification.
                  */
-                else if (is_date_line(str) && (q = strchr(str, ' '))) {
+                else if ((text = date_line_text(str)) != NULL) {
                     append_part(f_msg, sizeof(f_msg), LABEL_PREPROCESSOR_MESSAGE);
-                    append_part(f_msg, sizeof(f_msg), ++q);
+                    append_part(f_msg, sizeof(f_msg), text);
 
                     /* Clean for next event */
                     p = NULL;
 
-                    /* Check ignore and restrict log regex, if configured. */
-                    if (drop_it == 0 && !check_ignore_and_restrict(lf->regex_ignore, lf->regex_restrict, f_msg)) {
-                        /* Send message to queue */
-                        w_msg_hash_queues_push(f_msg, lf->file, strlen(f_msg) + 1, lf->log_target, LOCALFILE_MQ);
-                    }
-
-                    f_msg[0] = '\0';
-                    str[0] = '\0';
+                    send_alert(lf, f_msg, drop_it);
                 } else {
                     goto file_error;
                 }
@@ -191,18 +199,11 @@ void *read_snortfull(logreader *lf, int *rc, int drop_it) {
                     append_part(f_msg, sizeof(f_msg), str);
                 }
                 /* Third line has the 01/13-15 (date) */
-                else if (is_date_line(str) && (q = strchr(str, ' '))) {
-                    append_part(f_msg, sizeof(f_msg), ++q);
+                else if ((text = date_line_text(str)) != NULL) {
+                    append_part(f_msg, sizeof(f_msg), text);
                     p = NULL;
 
-                    /* Check ignore and restrict log regex, if configured. */
-                    if (drop_it == 0 && !check_ignore_and_restrict(lf->regex_ignore, lf->regex_restrict, f_msg)) {
-                        /* Send message to queue */
-                        w_msg_hash_queues_push(f_msg, lf->file, strlen(f_msg) + 1, lf->log_target, LOCALFILE_MQ);
-                    }
-
-                    f_msg[0] = '\0';
-                    str[0] = '\0';
+                    send_alert(lf, f_msg, drop_it);
                 } else {
                     goto file_error;
                 }
