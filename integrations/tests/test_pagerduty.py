@@ -149,6 +149,38 @@ def test_debug():
         open_mock().write.assert_called_with(str(msg_template) + '\n')
 
 
+@pytest.mark.parametrize(
+    'level, expected_severity',
+    [
+        (0, 'info'),
+        (6, 'info'),
+        (7, 'warning'),
+        (9, 'warning'),
+        (10, 'error'),
+        (12, 'error'),
+        (13, 'critical'),
+        (15, 'critical'),
+    ],
+)
+def test_generate_msg_severity(level, expected_severity):
+    """Test that generate_msg maps the rule level to the expected PagerDuty severity.
+
+    Parameters
+    ----------
+    level : int
+        Rule level of the alert.
+    expected_severity : str
+        Severity expected in the generated message payload.
+    """
+    alert = {
+        'timestamp': alert_template['timestamp'],
+        'rule': {'level': level, 'description': 'alert description', 'groups': ['test']},
+        'agent': {'name': 'v'},
+    }
+    msg = json.loads(pagerduty.generate_msg(alert, None, apikey_pagerduty))
+    assert msg['payload']['severity'] == expected_severity
+
+
 def test_send_msg_raise_exception():
     """Test that the send_msg function will raise an exception when passed the wrong webhook url."""
     with patch('requests.post') as request_post, pytest.raises(requests.exceptions.ConnectionError):

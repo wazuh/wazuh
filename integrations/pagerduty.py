@@ -146,12 +146,12 @@ def generate_msg(alert: any, options: any, apikey: str) -> str:
     level = alert['rule']['level']
 
     severity = 'info'
-    if level >= 7:
-        severity = 'warning'
+    if level >= 13:
+        severity = 'critical'
     elif level >= 10:
         severity = 'error'
-    elif level >= 13:
-        severity = 'critical'
+    elif level >= 7:
+        severity = 'warning'
 
     groups = ', '.join(alert['rule']['groups'])
 
