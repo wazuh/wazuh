@@ -54,6 +54,103 @@ static bool is_unfinished_line(logreader *lf, const char *str) {
     return strchr(str, '\n') == NULL && feof(lf->fp);
 }
 
+typedef enum {
+    ALERT_NONE,                 /* Between alerts */
+    ALERT_AFTER_HEADER,         /* The header is read: the classification comes next */
+    ALERT_AFTER_CLASSIFICATION  /* The classification is read: AppID lines and the date line come next */
+} alert_stage_t;
+
+/* The alert being assembled from its lines */
+typedef struct {
+    alert_stage_t stage;
+    char message[OS_MAX_LOG_SIZE];
+} alert_t;
+
+typedef enum {
+    LINE_ACCEPTED,  /* Part of the alert, or between alerts */
+    ALERT_COMPLETE, /* The date line: the message is ready to send */
+    LINE_REJECTED   /* Breaks the format */
+} line_result_t;
+
+/* First part of the message. Between alerts only a header means something, any other line is skipped */
+static line_result_t add_first_line(alert_t *alert, const char *str) {
+    if (is_alert_header(str)) {
+        snprintf(alert->message, sizeof(alert->message), "%s", str);
+        alert->stage = ALERT_AFTER_HEADER;
+    }
+    return LINE_ACCEPTED;
+}
+
+static line_result_t add_second_line(alert_t *alert, const char *str) {
+    const char *text;
+
+    /* Second line has the [Classification: */
+    if (strncmp(str, "[Classification: ", 16) == 0 || strncmp(str, "[Priority: ", 10) == 0) {
+        append_part(alert->message, sizeof(alert->message), str);
+        alert->stage = ALERT_AFTER_CLASSIFICATION;
+        return LINE_ACCEPTED;
+    }
+
+    /* If it is a preprocessor message, it will not have the classification */
+    if ((text = date_line_text(str)) != NULL) {
+        append_part(alert->message, sizeof(alert->message), LABEL_PREPROCESSOR_MESSAGE);
+        append_part(alert->message, sizeof(alert->message), text);
+        alert->stage = ALERT_NONE;
+        return ALERT_COMPLETE;
+    }
+    return LINE_REJECTED;
+}
+
+static line_result_t add_third_line(alert_t *alert, const char *str) {
+    const char *text;
+
+    /* Snort with OpenAppID writes "[AppID: <name>] " before the date line */
+    if (strncmp(str, "[AppID: ", 8) == 0) {
+        append_part(alert->message, sizeof(alert->message), str);
+        return LINE_ACCEPTED;
+    }
+
+    /* Third line has the 01/13-15 (date) */
+    if ((text = date_line_text(str)) != NULL) {
+        append_part(alert->message, sizeof(alert->message), text);
+        alert->stage = ALERT_NONE;
+        return ALERT_COMPLETE;
+    }
+    return LINE_REJECTED;
+}
+
+static line_result_t add_line(alert_t *alert, const char *str) {
+    switch (alert->stage) {
+    case ALERT_AFTER_HEADER:
+        return add_second_line(alert, str);
+    case ALERT_AFTER_CLASSIFICATION:
+        return add_third_line(alert, str);
+    default:
+        return add_first_line(alert, str);
+    }
+}
+
+/* Remove the line end. Returns false if the line has none */
+static bool strip_line_end(char *str) {
+    char *end = strrchr(str, '\n');
+
+    if (end == NULL) {
+        return false;
+    }
+
+    *end = '\0';
+    if (end > str && *(end - 1) == '\r') {
+        *(end - 1) = '\0';
+    }
+    return true;
+}
+
+/* The line limit does not cut an alert: going back to its header instead would never get past an alert
+ * longer than the limit */
+static bool line_limit_reached(int lines, const alert_t *alert) {
+    return maximum_lines && lines >= maximum_lines && alert->stage == ALERT_NONE;
+}
+
 /* Where the alert being assembled starts, to read it again if the read stops before its date line */
 typedef struct {
     int64_t position;
@@ -106,13 +203,8 @@ static void retry_from(logreader *lf, int64_t position) {
 
 /* Read snort_full files */
 void *read_snortfull(logreader *lf, int *rc, int drop_it) {
-    const char *one = "one";
-    const char *two = "two";
-    const char *p = NULL;
-    char *q;
-    const char *text;
+    alert_t alert = { ALERT_NONE, {0} };
     char str[OS_MAX_LOG_SIZE] = {0};
-    char f_msg[OS_MAX_LOG_SIZE] = {0};
     int lines = 0;
     bool line_left_unread = false;
 
@@ -124,9 +216,7 @@ void *read_snortfull(logreader *lf, int *rc, int drop_it) {
     bool is_valid_context_file = w_get_hash_context(lf, &context, current_position);
     alert_start_t alert_start = { current_position, NULL };
 
-    /* The line limit does not cut an alert: going back to its header instead would never get past an
-     * alert longer than the limit */
-    while (can_read() && (!maximum_lines || lines < maximum_lines || p != NULL) && fgets(str, sizeof(str), lf->fp)) {
+    while (can_read() && !line_limit_reached(lines, &alert) && fgets(str, sizeof(str), lf->fp)) {
 
         lines++;
 
@@ -136,7 +226,7 @@ void *read_snortfull(logreader *lf, int *rc, int drop_it) {
             break;
         }
 
-        if (p == NULL && is_alert_header(str)) {
+        if (alert.stage == ALERT_NONE && is_alert_header(str)) {
             if (!mark_alert_start(&alert_start, current_position, is_valid_context_file ? context : NULL)) {
                 merror("Could not save the hash state of '%s' at the start of an alert. Trying again later.",
                        lf->file);
@@ -152,89 +242,33 @@ void *read_snortfull(logreader *lf, int *rc, int drop_it) {
             current_position = w_ftell(lf->fp);
         }
 
-        /* Remove \n at the end of the string */
-        if ((q = strrchr(str, '\n')) != NULL) {
-            *q = '\0';
-            if (q > str && *(q - 1) == '\r') {
-                *(q - 1) = '\0';
+        line_result_t result = strip_line_end(str) ? add_line(&alert, str) : LINE_REJECTED;
+
+        if (result == LINE_REJECTED) {
+            merror("Bad formated snort full file.");
+            *rc = -1;
+            EVP_MD_CTX_free(alert_start.context);
+            /* The bad line was hashed: store the state so the next read and a restart resume after it */
+            if (is_valid_context_file) {
+                w_update_file_status(lf->file, current_position, context);
+            } else {
+                EVP_MD_CTX_free(context);
             }
-        } else {
-            goto file_error;
+            return (NULL);
         }
 
-        /* First part of the message */
-        if (p == NULL) {
-            if (is_alert_header(str)) {
-                snprintf(f_msg, sizeof(f_msg), "%s", str);
-                p = one;
-            }
-        } else {
-            if (p == one) {
-                /* Second line has the [Classification: */
-                if (strncmp(str, "[Classification: ", 16) == 0) {
-                    append_part(f_msg, sizeof(f_msg), str);
-                    p = two;
-                } else if (strncmp(str, "[Priority: ", 10) == 0) {
-                    append_part(f_msg, sizeof(f_msg), str);
-                    p = two;
-                }
-
-                /* If it is a preprocessor message, it will not have
-                 * the classification.
-                 */
-                else if ((text = date_line_text(str)) != NULL) {
-                    append_part(f_msg, sizeof(f_msg), LABEL_PREPROCESSOR_MESSAGE);
-                    append_part(f_msg, sizeof(f_msg), text);
-
-                    /* Clean for next event */
-                    p = NULL;
-
-                    send_alert(lf, f_msg, drop_it);
-                } else {
-                    goto file_error;
-                }
-            } else if (p == two) {
-                /* Snort with OpenAppID writes "[AppID: <name>] " before the date line */
-                if (strncmp(str, "[AppID: ", 8) == 0) {
-                    append_part(f_msg, sizeof(f_msg), str);
-                }
-                /* Third line has the 01/13-15 (date) */
-                else if ((text = date_line_text(str)) != NULL) {
-                    append_part(f_msg, sizeof(f_msg), text);
-                    p = NULL;
-
-                    send_alert(lf, f_msg, drop_it);
-                } else {
-                    goto file_error;
-                }
-
-            }
+        if (result == ALERT_COMPLETE) {
+            send_alert(lf, alert.message, drop_it);
         }
-
-        continue;
-
-file_error:
-
-        merror("Bad formated snort full file.");
-        *rc = -1;
-        EVP_MD_CTX_free(alert_start.context);
-        /* The bad line was hashed: store the state so the next read and a restart resume after it */
-        if (is_valid_context_file) {
-            w_update_file_status(lf->file, current_position, context);
-        } else {
-            EVP_MD_CTX_free(context);
-        }
-        return (NULL);
-
     }
 
     /* The read stopped before the date line of the alert being assembled */
-    if (p != NULL) {
+    if (alert.stage != ALERT_NONE) {
         restore_alert_start(&alert_start, &context, &current_position);
     }
 
     /* Without an open alert, current_position is the start of the line left unread, which was not hashed */
-    if (p != NULL || line_left_unread) {
+    if (alert.stage != ALERT_NONE || line_left_unread) {
         retry_from(lf, current_position);
     } else {
         current_position = w_ftell(lf->fp);
