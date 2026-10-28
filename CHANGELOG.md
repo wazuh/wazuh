@@ -7,6 +7,7 @@ All notable changes to this project will be documented in this file.
 
 #### Fixed
 
+- Fixed the removal and purge of the `wazuh-manager` DEB package failing when the installation is incomplete. ([#33339](https://github.com/wazuh/wazuh/issues/33339))
 - Fixed the validation of `group_id` when reading and writing group configuration files, rejecting values that are not a valid group name. ([#40363](https://github.com/wazuh/wazuh/pull/40363))
 - Fixed the group configuration readers and upload accepting a group directory that resolves outside the shared directory, and the multigroup reader accepting a file name that resolves outside the multigroup directory. ([#36834](https://github.com/wazuh/wazuh/issues/36834))
 - Fixed `GET /agents/summary/os` returning `error: 0` with no failed items when none of the agents has reported its operative system. Those agents are now returned as failed items with error code 1761, and the response states when there are no agents registered. ([#37539](https://github.com/wazuh/wazuh/issues/37539))
