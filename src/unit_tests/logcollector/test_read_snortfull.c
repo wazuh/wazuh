@@ -773,6 +773,101 @@ void test_read_snortfull_eof_mid_alert_unhashed(void **state) {
     assert_int_equal(rc, 0);
 }
 
+/**
+ * Test: the line limit, 100 (the lowest logcollector accepts), is reached on the header of the 34th alert.
+ * The limit does not cut the alert: the reader goes on to its date line, queues it and stops there.
+ */
+void test_read_snortfull_line_limit_on_header(void **state) {
+    logreader lf = {0};
+    lf.file = "test.log";
+    lf.fp = (FILE *) 1;
+    int rc;
+
+    char header[] = "[**] [1:1000001:1] Test alert [**]\n";
+    char classification[] = "[Classification: Misc activity] [Priority: 3] \n";
+    char date[] = "10/06-08:25:55.608163 10.0.0.1 -> 10.0.0.2\n";
+    const char *msg = "[**] [1:1000001:1] Test alert [**] [Classification: Misc activity] [Priority: 3] "
+                      "10.0.0.1 -> 10.0.0.2";
+    char read_bytes[34 * 160] = {0};
+
+    maximum_lines = 100;
+
+    expect_prologue();
+
+    /* 33 three-line alerts take lines 1 to 99, the 34th starts on line 100 */
+    for (int i = 0; i < 34; i++) {
+        expect_line(header);
+        expect_line(classification);
+        expect_line(date);
+        expect_queued(msg, strlen(msg) + 1);
+        strcat(read_bytes, header);
+        strcat(read_bytes, classification);
+        strcat(read_bytes, date);
+    }
+
+    /* No alert open: the limit stops the read after line 102 */
+    will_return(__wrap_can_read, 1);
+    expect_any(__wrap_w_ftell, x);
+    will_return(__wrap_w_ftell, (int64_t) strlen(read_bytes));
+
+    expect_stored_state((int64_t) strlen(read_bytes), read_bytes);
+    expect_any(__wrap__mdebug2, formatted_msg);
+
+    read_snortfull(&lf, &rc, 0);
+
+    assert_int_equal(rc, 0);
+}
+
+/**
+ * Test: an alert longer than the line limit, with 98 AppID lines before its date line.
+ * Snort writes no such alert, but going back to its header would stop the file there for good: every read
+ * would end inside it again. The alert is read whole and queued.
+ */
+void test_read_snortfull_line_limit_shorter_than_alert(void **state) {
+    logreader lf = {0};
+    lf.file = "test.log";
+    lf.fp = (FILE *) 1;
+    int rc;
+
+    char header[] = "[**] [1:1000001:0] Test alert [**]\n";
+    char classification[] = "[Classification: Attempted Information Leak] [Priority: 2] \n";
+    char appid[] = "[AppID: HTTP] \n";
+    char date[] = "01/13-15:30:00.000000 10.0.0.1:1234 -> 10.0.0.2:80\n";
+    char read_bytes[4096] = {0};
+    char msg[4096] = "[**] [1:1000001:0] Test alert [**] [Classification: Attempted Information Leak] [Priority: 2] ";
+
+    maximum_lines = 100;
+
+    expect_prologue();
+
+    expect_line(header);
+    expect_line(classification);
+    strcat(read_bytes, header);
+    strcat(read_bytes, classification);
+
+    for (int i = 0; i < 98; i++) {
+        expect_line(appid);
+        strcat(read_bytes, appid);
+        strcat(msg, "[AppID: HTTP] ");
+    }
+
+    expect_line(date);
+    strcat(read_bytes, date);
+    strcat(msg, "10.0.0.1:1234 -> 10.0.0.2:80");
+    expect_queued(msg, strlen(msg) + 1);
+
+    will_return(__wrap_can_read, 1);
+    expect_any(__wrap_w_ftell, x);
+    will_return(__wrap_w_ftell, (int64_t) strlen(read_bytes));
+
+    expect_stored_state((int64_t) strlen(read_bytes), read_bytes);
+    expect_any(__wrap__mdebug2, formatted_msg);
+
+    read_snortfull(&lf, &rc, 0);
+
+    assert_int_equal(rc, 0);
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test(test_read_snortfull_complete_record),
@@ -791,6 +886,8 @@ int main(void) {
         cmocka_unit_test_teardown(test_read_snortfull_eof_after_classification, test_teardown),
         cmocka_unit_test_teardown(test_read_snortfull_paused_mid_alert, test_teardown),
         cmocka_unit_test_teardown(test_read_snortfull_eof_mid_alert_unhashed, test_teardown),
+        cmocka_unit_test_teardown(test_read_snortfull_line_limit_on_header, test_teardown),
+        cmocka_unit_test_teardown(test_read_snortfull_line_limit_shorter_than_alert, test_teardown),
     };
 
     return cmocka_run_group_tests(tests, group_setup, group_teardown);

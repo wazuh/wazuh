@@ -83,7 +83,9 @@ void *read_snortfull(logreader *lf, int *rc, int drop_it) {
     bool is_valid_context_file = w_get_hash_context(lf, &context, current_position);
     alert_start_t alert_start = { current_position, is_valid_context_file ? EVP_MD_CTX_new() : NULL };
 
-    while (can_read() && (!maximum_lines || lines < maximum_lines) && fgets(str, sizeof(str), lf->fp)) {
+    /* The line limit does not cut an alert: going back to its header instead would never get past an
+     * alert longer than the limit */
+    while (can_read() && (!maximum_lines || lines < maximum_lines || p != NULL) && fgets(str, sizeof(str), lf->fp)) {
 
         lines++;
 
