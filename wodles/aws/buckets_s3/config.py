@@ -150,11 +150,15 @@ class AWSConfigBucket(aws_bucket.AWSLogsBucket):
                 # Normalize month and day to two digits
                 month = month.zfill(2)
                 day = day.zfill(2)
-                return datetime(int(year), int(month), int(day))
+                try:
+                    return datetime(int(year), int(month), int(day))
+                except ValueError:
+                    return None
 
         filtered_files = super()._filter_bucket_files(bucket_files, **kwargs)
 
-        sorted_files = sorted(filtered_files, key=lambda x: extract_date_from_key(x['Key']))
+        # The files without a valid date go last, to be skipped as they cannot be the marker
+        sorted_files = sorted(filtered_files, key=lambda x: extract_date_from_key(x['Key']) or datetime.max)
 
         if self.only_logs_after is None:
             for sorted_file in sorted_files:

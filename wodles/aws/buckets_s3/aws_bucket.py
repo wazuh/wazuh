@@ -10,9 +10,9 @@ import csv
 import zipfile
 import re
 from os import path
-from typing import Iterator
+from typing import Iterator, Optional
 
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 
 sys.path.insert(0, path.dirname(path.dirname(path.abspath(__file__))))
 import wazuh_integration
@@ -23,6 +23,10 @@ PATH_DATE_FORMAT = "%Y/%m/%d"
 DB_DATE_FORMAT = "%Y%m%d"
 DEFAULT_DATABASE_NAME = "s3_cloudtrail"
 LATE_ARRIVAL_LOG_TABLES = {"cloudtrail", "alb", "clb", "nlb"}
+# Date of the folder or name right after the full prefix of a key, as the markers are built
+KEY_DATE_REGEX = re.compile(r'(\d{4})[/-](\d{1,2})[/-](\d{1,2})(?!\d)')
+# The date of a key may be in a time zone ahead of UTC, such as the prefix of a Firehose stream
+MAX_KEY_DATE_UTC_OFFSET = timedelta(hours=14)
 
 RETRY_CONFIGURATION_URL = 'https://documentation.wazuh.com/current/amazon/services/prerequisites/' \
                           'considerations.html#Connection-configuration-for-retries'
@@ -130,7 +134,8 @@ class AWSBucket(wazuh_integration.WazuhAWSDatabase):
 
         self.sql_find_last_key_processed = """
             SELECT
-                log_key
+                log_key,
+                processed_date
             FROM
                 {table_name}
             WHERE
@@ -139,8 +144,7 @@ class AWSBucket(wazuh_integration.WazuhAWSDatabase):
                 aws_region = :aws_region AND
                 log_key LIKE :prefix
             ORDER BY
-                log_key DESC
-            LIMIT 1;"""
+                log_key DESC;"""
 
         self.sql_find_first_key_processed = """
             SELECT
@@ -302,6 +306,91 @@ class AWSBucket(wazuh_integration.WazuhAWSDatabase):
 
         return self.marker_custom_date(aws_region, aws_account_id, rewind_day)
 
+    def get_key_date(self, log_key: str, aws_account_id: str, aws_region: str) -> Optional[date]:
+        """
+        Return the date of the folder or name right after the full prefix of a key.
+
+        Parameters
+        ----------
+        log_key : str
+            The key of the file.
+        aws_account_id : str
+            The account ID of the AWS account.
+        aws_region : str
+            The region where the bucket is located.
+
+        Returns
+        -------
+        date or None
+            The date, or None if the key has no valid date right after its full prefix.
+        """
+        full_prefix = self.get_full_prefix(aws_account_id, aws_region)
+        match = KEY_DATE_REGEX.match(log_key, len(full_prefix)) if log_key.startswith(full_prefix) else None
+        try:
+            return date(*map(int, match.groups())) if match else None
+        except ValueError:
+            return None
+
+    def is_valid_marker(self, log_key: str, aws_account_id: str, aws_region: str, written_date: datetime) -> bool:
+        """
+        Check if a key can be the marker of the next fetch, which starts after the greatest key processed.
+
+        The key is chosen by whoever writes the object, so a key with no valid date right after the full prefix, or
+        dated after the object was written, such as a far future day folder, would make every fetch skip the logs.
+
+        Parameters
+        ----------
+        log_key : str
+            The key of the file.
+        aws_account_id : str
+            The account ID of the AWS account.
+        aws_region : str
+            The region where the bucket is located.
+        written_date : datetime
+            When the object was written or processed, in UTC.
+
+        Returns
+        -------
+        bool
+            True if the key can be the marker, False otherwise.
+        """
+        key_date = self.get_key_date(log_key, aws_account_id, aws_region)
+        return key_date is not None and key_date <= (written_date + MAX_KEY_DATE_UTC_OFFSET).date()
+
+    def get_last_key_processed(self, aws_account_id: str, aws_region: str, prefix: str, **kwargs) -> Optional[str]:
+        """
+        Return the greatest key processed that can be the marker of the next fetch.
+
+        Older versions processed every key, so the database may keep keys that are not a valid marker.
+
+        Parameters
+        ----------
+        aws_account_id : str
+            The account ID of the AWS account.
+        aws_region : str
+            The region where the bucket is located.
+        prefix : str
+            The pattern the keys must match.
+        **kwargs
+            Additional parameters of the query.
+
+        Returns
+        -------
+        str or None
+            The key, or None if no key processed can be the marker.
+        """
+        rows = self.db_cursor.execute(self.sql_find_last_key_processed.format(table_name=self.db_table_name), {
+            'bucket_path': self.bucket_path,
+            'aws_account_id': aws_account_id,
+            'aws_region': aws_region,
+            'prefix': prefix,
+            **kwargs})
+        for log_key, processed_date in rows:
+            # The processed date is the UTC time of the manager, which AWS requests keep within minutes of its own
+            if self.is_valid_marker(log_key, aws_account_id, aws_region, datetime.fromisoformat(processed_date)):
+                return log_key
+        return None
+
     def db_count_region(self, aws_account_id, aws_region):
         """Counts the number of rows in DB for a region
         :param aws_account_id: AWS account ID
@@ -333,17 +422,11 @@ class AWSBucket(wazuh_integration.WazuhAWSDatabase):
                     # and process them as new. Only the keys of this prefix are deleted, as other buckets with
                     # the same path, such as an organization trail, keep their own window
                     prefix = f'{self.get_full_prefix(aws_account_id, aws_region)}%'
-                    last_key = self.db_cursor.execute(
-                        self.sql_find_last_key_processed.format(table_name=self.db_table_name), {
-                            'bucket_path': self.bucket_path,
-                            'aws_account_id': aws_account_id,
-                            'aws_region': aws_region,
-                            'prefix': prefix}).fetchone()
+                    last_key = self.get_last_key_processed(aws_account_id, aws_region, prefix)
                     if last_key:
                         query = self.sql_db_maintenance_before_marker
                         params['prefix'] = prefix
-                        params['marker'] = self.rewind_marker_to_day_folder(last_key[0], aws_account_id,
-                                                                            aws_region)
+                        params['marker'] = self.rewind_marker_to_day_folder(last_key, aws_account_id, aws_region)
 
                 self.db_cursor.execute(query.format(table_name=self.db_table_name), params)
         except Exception as e:
@@ -461,25 +544,14 @@ class AWSBucket(wazuh_integration.WazuhAWSDatabase):
             if self.db_table_name in LATE_ARRIVAL_LOG_TABLES:
                 db_prefix = f'{self.get_full_prefix(aws_account_id, aws_region)}%'
 
-            query_last_key = self.db_cursor.execute(
-                self.sql_find_last_key_processed.format(table_name=self.db_table_name), {
-                    'bucket_path': self.bucket_path,
-                    'aws_region': aws_region,
-                    'prefix': db_prefix,
-                    'aws_account_id': aws_account_id,
-                    **kwargs
-                })
-            try:
-                filter_marker = query_last_key.fetchone()[0]
-
-                # Rewind marker to day folder to catch late-arriving logs
-                if filter_marker and self.db_table_name in LATE_ARRIVAL_LOG_TABLES:
-                    filter_marker = self.rewind_marker_to_day_folder(filter_marker, aws_account_id, aws_region)
-
-            except (TypeError, IndexError):
+            filter_marker = self.get_last_key_processed(aws_account_id, aws_region, db_prefix, **kwargs)
+            if filter_marker is None:
                 # if DB is empty for a region
                 filter_marker = self.marker_only_logs_after(aws_region, aws_account_id) if self.only_logs_after \
                     else self.marker_custom_date(aws_region, aws_account_id, self.default_date)
+            elif self.db_table_name in LATE_ARRIVAL_LOG_TABLES:
+                # Rewind marker to day folder to catch late-arriving logs
+                filter_marker = self.rewind_marker_to_day_folder(filter_marker, aws_account_id, aws_region)
 
         filter_args = {
             'Bucket': self.bucket,
@@ -675,6 +747,12 @@ class AWSBucket(wazuh_integration.WazuhAWSDatabase):
                             aws_tools.debug(f"++ Skipping file with another prefix: {bucket_file['Key']}", 3)
                             continue
 
+                    if not self.is_valid_marker(bucket_file['Key'], aws_account_id, aws_region,
+                                                bucket_file['LastModified']):
+                        aws_tools.debug(f"+++ WARNING: Skipping file without a valid date after the prefix or dated "
+                                        f"after it was written: {bucket_file['Key']}", 1)
+                        continue
+
                     if self.already_processed(bucket_file['Key'], aws_account_id, aws_region, **kwargs):
                         if self.reparse:
                             aws_tools.debug(f"++ File previously processed, but reparse flag set: {bucket_file['Key']}",
@@ -862,7 +940,8 @@ class AWSCustomBucket(AWSBucket):
 
         self.sql_find_last_key_processed = """
             SELECT
-                log_key
+                log_key,
+                processed_date
             FROM
                 {table_name}
             WHERE
@@ -870,8 +949,7 @@ class AWSCustomBucket(AWSBucket):
                 aws_account_id=:aws_account_id AND
                 log_key LIKE :prefix
             ORDER BY
-                log_key DESC
-            LIMIT 1;"""
+                log_key DESC;"""
 
         self.sql_db_maintenance = """
             DELETE FROM {table_name}

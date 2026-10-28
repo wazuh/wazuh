@@ -11,7 +11,7 @@ import time
 import zipfile
 import re
 import csv
-from datetime import datetime
+from datetime import date, datetime, timedelta, timezone
 from unittest.mock import MagicMock, patch, mock_open
 
 import botocore
@@ -28,6 +28,12 @@ sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 
 import aws_bucket
 from cloudtrail import AWSCloudTrailBucket
 from config import AWSConfigBucket
+from guardduty import AWSGuardDutyBucket
+from load_balancers import AWSALBBucket
+from server_access import AWSServerAccess
+from umbrella import CiscoUmbrella
+from vpcflow import AWSVPCFlowBucket
+from waf import AWSWAFBucket
 
 TEST_CLOUDTRAIL_SCHEMA = "schema_cloudtrail_test.sql"
 TEST_CUSTOM_SCHEMA = "schema_custom_test.sql"
@@ -835,6 +841,12 @@ def test_aws_bucket_iter_files_in_bucket(mock_build_filter, mock_debug,
                         mock_debug.assert_any_call(f"++ Skipping file with another prefix: {bucket_file['Key']}", 3)
                         continue
 
+                if not bucket.is_valid_marker(bucket_file['Key'], aws_account_id, aws_region,
+                                              bucket_file['LastModified']):
+                    mock_debug.assert_any_call(f"+++ WARNING: Skipping file without a valid date after the prefix or "
+                                               f"dated after it was written: {bucket_file['Key']}", 1)
+                    continue
+
                 mock_already_processed.assert_called_with(bucket_file['Key'], aws_account_id, aws_region)
                 if bucket.reparse:
                     mock_debug.assert_any_call(
@@ -1395,3 +1407,248 @@ def test_aws_custom_bucket_db_maintenance_handles_exceptions(mock_wazuh_aws_data
     instance.db_maintenance(aws_account_id=utils.TEST_ACCOUNT_ID)
 
     mock_print.assert_called_once()
+
+
+class FakeS3Bucket:
+    """Objects of a bucket, listed as S3 does: in UTF-8 binary order of their key and after 'StartAfter'."""
+
+    def __init__(self):
+        self.objects = {}
+
+    def put(self, key: str, day: date):
+        self.objects[key] = datetime(day.year, day.month, day.day, 12, tzinfo=timezone.utc)
+
+    def list_objects_v2(self, Prefix='', StartAfter='', MaxKeys=1000, ContinuationToken=None, **kwargs):
+        keys = sorted(key for key in self.objects if key.startswith(Prefix) and key > (ContinuationToken or StartAfter))
+        response = {'IsTruncated': len(keys) > MaxKeys}
+        if keys:
+            response['Contents'] = [{'Key': key, 'LastModified': self.objects[key]} for key in keys[:MaxKeys]]
+        if response['IsTruncated']:
+            response['NextContinuationToken'] = keys[MaxKeys - 1]
+        return response
+
+
+A, R, FLOW_LOG_ID = utils.TEST_ACCOUNT_ID, utils.TEST_REGION, 'fl-1234'
+# Bucket type, its parameters and the key of a log file of a day, as the AWS service or Firehose writes them
+BUCKET_LAYOUTS = [
+    pytest.param(AWSCloudTrailBucket, {}, lambda d, n: f'AWSLogs/{A}/CloudTrail/{R}/{d:%Y/%m/%d}/'
+                 f'{A}_CloudTrail_{R}_{d:%Y%m%d}T0000Z_{n}.json.gz', id='cloudtrail'),
+    pytest.param(AWSConfigBucket, {}, lambda d, n: f'AWSLogs/{A}/Config/{R}/{d.year}/{d.month}/{d.day}/ConfigHistory/'
+                 f'{A}_Config_{R}_ConfigHistory_AWS::EC2::Instance_{d:%Y%m%d}T0000Z_{d:%Y%m%d}T0000Z_{n}.json.gz',
+                 id='config'),
+    pytest.param(AWSVPCFlowBucket, {}, lambda d, n: f'AWSLogs/{A}/vpcflowlogs/{R}/{d:%Y/%m/%d}/'
+                 f'{A}_vpcflowlogs_{R}_{FLOW_LOG_ID}_{d:%Y%m%d}T0000Z_{n}.log.gz', id='vpcflow'),
+    pytest.param(AWSALBBucket, {}, lambda d, n: f'AWSLogs/{A}/elasticloadbalancing/{R}/{d:%Y/%m/%d}/'
+                 f'{A}_elasticloadbalancing_{R}_app.lb_{d:%Y%m%d}T0000Z_10.0.0.1_{n}.log.gz', id='alb'),
+    pytest.param(AWSGuardDutyBucket, {'native': True},
+                 lambda d, n: f'AWSLogs/{A}/GuardDuty/{R}/{d:%Y/%m/%d}/{n}.jsonl.gz', id='guardduty'),
+    pytest.param(AWSGuardDutyBucket, {'native': False, 'prefix': 'firehose/'},
+                 lambda d, n: f'firehose/{d:%Y/%m/%d}/00/firehose-1-{d:%Y-%m-%d}-00-00-00-{n}', id='guardduty-kinesis'),
+    pytest.param(aws_bucket.AWSCustomBucket, {'prefix': 'custom/'},
+                 lambda d, n: f'custom/{d:%Y/%m/%d}/00/firehose-1-{d:%Y-%m-%d}-00-00-00-{n}', id='custom'),
+    pytest.param(AWSWAFBucket, {'prefix': 'waf/'},
+                 lambda d, n: f'waf/{d:%Y/%m/%d}/00/firehose-1-{d:%Y-%m-%d}-00-00-00-{n}', id='waf'),
+    pytest.param(CiscoUmbrella, {'prefix': 'dnslogs/'},
+                 lambda d, n: f'dnslogs/{d:%Y-%m-%d}/{d:%Y-%m-%d}-00-00-{n}.csv.gz', id='cisco_umbrella'),
+    pytest.param(AWSServerAccess, {'prefix': 'access/'},
+                 lambda d, n: f'access/{d:%Y-%m-%d}-00-00-00-{n}', id='server_access'),
+]
+
+
+def get_layout_bucket(class_, parameters: dict, database, only_logs_after: date):
+    """Return a bucket of the given type with an empty database and the fake S3 bucket as client."""
+    parameters = dict(parameters)
+    native = parameters.pop('native', None)
+    with patch('wazuh_integration.WazuhIntegration.get_sts_client'), \
+            patch('guardduty.AWSGuardDutyBucket.check_guardduty_type', return_value=native):
+        bucket = utils.get_mocked_bucket(class_=class_, only_logs_after=f'{only_logs_after:%Y%m%d}', **parameters)
+    bucket.aws_account_id = A
+    bucket.db_connector = database
+    bucket.db_cursor = database.cursor()
+    bucket.db_cursor.execute(bucket.sql_create_table.format(table_name=bucket.db_table_name))
+    bucket.client = FakeS3Bucket()
+    return bucket
+
+
+def get_layout_iter_kwargs(bucket) -> dict:
+    return {'flow_log_id': FLOW_LOG_ID} if isinstance(bucket, AWSVPCFlowBucket) else {}
+
+
+def fetch_layout_bucket(bucket, regions=(R,)) -> list:
+    """Run a fetch of the bucket as the module does and return the keys of the files it processed."""
+    processed = []
+    with patch('aws_tools.get_script_arguments') as mock_arguments, \
+            patch.object(bucket, 'get_log_file', side_effect=lambda account, key: processed.append(key) or []), \
+            patch.object(bucket, 'iter_events'), \
+            patch('vpcflow.AWSVPCFlowBucket.get_flow_logs_ids', return_value=[FLOW_LOG_ID]):
+        mock_arguments.return_value.type = bucket.db_table_name
+        bucket.iter_regions_and_accounts([A], list(regions))
+    return processed
+
+
+def get_planted_key(bucket, key_of_day, kind: str) -> str:
+    """Return a key a writer of the bucket could choose to sort after the logs."""
+    planted = key_of_day(date(9999, 12, 31), 'zzzz')
+    if kind == 'future':
+        return planted
+    full_prefix = bucket.get_full_prefix(A, R)
+    rest = planted[len(full_prefix):]
+    match = aws_bucket.KEY_DATE_REGEX.match(rest)
+    if kind == 'invalid':
+        separator = rest[4]
+        return f'{full_prefix}2026{separator}99{separator}99{rest[match.end():]}'
+    # Without date, but with the name of a log so it can be marked as processed
+    return f'{full_prefix}zzzz/{os.path.basename(planted)}'
+
+
+@pytest.mark.parametrize('kind', ['future', 'invalid', 'no_date'])
+@pytest.mark.parametrize('class_, parameters, key_of_day', BUCKET_LAYOUTS)
+def test_aws_bucket_planted_key_does_not_become_the_marker(custom_database, class_, parameters, key_of_day, kind):
+    """Test a key sorting after the logs written to the bucket, such as a far future day folder, is not processed, so
+    it does not become the marker and the logs written after it are still processed."""
+    today = datetime.now(timezone.utc).date()
+    day_1, day_2 = today - timedelta(days=2), today - timedelta(days=1)
+    bucket = get_layout_bucket(class_, parameters, custom_database, today - timedelta(days=10))
+
+    bucket.client.put(key_of_day(day_1, 'a'), day_1)
+    assert fetch_layout_bucket(bucket) == [key_of_day(day_1, 'a')]
+
+    planted = get_planted_key(bucket, key_of_day, kind)
+    bucket.client.put(planted, day_1)
+    bucket.client.put(key_of_day(day_1, 'b'), day_1)
+    bucket.client.put(key_of_day(day_2, 'a'), day_2)
+    with patch('aws_bucket.aws_tools.debug') as mock_debug:
+        assert fetch_layout_bucket(bucket) == [key_of_day(day_1, 'b'), key_of_day(day_2, 'a')]
+    assert call_skipped(mock_debug, planted) or is_skipped_before(bucket, kind)
+
+    bucket.client.put(key_of_day(day_2, 'b'), day_2)
+    assert fetch_layout_bucket(bucket) == [key_of_day(day_2, 'b')]
+
+
+def is_skipped_before(bucket, kind: str) -> bool:
+    """Whether a planted key is skipped before checking if it can be the marker: without date, by the prefix check of
+    the bucket types that have it, and without a valid date, by the date filter of AWS Config with only_logs_after."""
+    return (kind == 'no_date' and bucket.check_prefix) or (kind != 'future' and isinstance(bucket, AWSConfigBucket))
+
+
+def call_skipped(mock_debug, key: str) -> bool:
+    return any(c.args == (f'+++ WARNING: Skipping file without a valid date after the prefix or dated after it was '
+                          f'written: {key}', 1) for c in mock_debug.call_args_list)
+
+
+@pytest.mark.parametrize('kind', ['future', 'invalid', 'no_date'])
+@pytest.mark.parametrize('class_, parameters, key_of_day', BUCKET_LAYOUTS)
+def test_aws_bucket_marker_skips_planted_key_processed_by_older_versions(custom_database, class_, parameters,
+                                                                         key_of_day, kind):
+    """Test the marker is the greatest key processed that is a valid one, so a key sorting after the logs that an
+    older version processed does not keep the next fetches from processing the logs written after it."""
+    today = datetime.now(timezone.utc).date()
+    day_1, day_2 = today - timedelta(days=2), today - timedelta(days=1)
+    bucket = get_layout_bucket(class_, parameters, custom_database, today - timedelta(days=10))
+    for key in (key_of_day(day_1, 'a'), get_planted_key(bucket, key_of_day, kind)):
+        bucket.mark_complete(A, R, {'Key': key, 'LastModified': bucket.default_date},
+                             **get_layout_iter_kwargs(bucket))
+    assert utils.database_execute_query(custom_database, utils.SQL_COUNT_ROWS.format(
+        table_name=bucket.db_table_name)) == 2
+
+    bucket.client.put(key_of_day(day_1, 'a'), day_1)
+    bucket.client.put(key_of_day(day_2, 'a'), day_2)
+    assert fetch_layout_bucket(bucket) == [key_of_day(day_2, 'a')]
+
+
+def test_aws_bucket_marker_is_a_key_of_the_region_fetched(custom_database):
+    """Test the marker of a region is a key of that region for GuardDuty, whose database query does not filter by
+    region, so the keys of another region, real or planted, do not keep its logs from being processed."""
+    today = datetime.now(timezone.utc).date()
+    day_1, day_2 = today - timedelta(days=2), today - timedelta(days=1)
+    bucket = get_layout_bucket(AWSGuardDutyBucket, {'native': True}, custom_database, today - timedelta(days=10))
+
+    def key_of_day(region, day, name):
+        return f'AWSLogs/{A}/GuardDuty/{region}/{day:%Y/%m/%d}/{name}.jsonl.gz'
+
+    for region in ('us-east-1', 'us-west-2'):
+        bucket.client.put(key_of_day(region, day_1, 'a'), day_1)
+    assert fetch_layout_bucket(bucket, ('us-east-1', 'us-west-2')) == \
+        [key_of_day('us-east-1', day_1, 'a'), key_of_day('us-west-2', day_1, 'a')]
+
+    bucket.client.put(key_of_day('us-east-1', day_2, 'a'), day_2)
+    assert fetch_layout_bucket(bucket, ('us-east-1', 'us-west-2')) == [key_of_day('us-east-1', day_2, 'a')]
+
+
+def test_aws_bucket_db_maintenance_keeps_the_keys_of_each_region(custom_database):
+    """Test the database maintenance of GuardDuty keeps the last keys of each region, as the marker of a region is one
+    of its keys and the table has no region column, so no region whose keys sort first loses all of them and processes
+    its files again."""
+    today = datetime.now(timezone.utc).date()
+    bucket = get_layout_bucket(AWSGuardDutyBucket, {'native': True}, custom_database, today - timedelta(days=10))
+    bucket.retain_db_records = 2
+    regions = ('ap-south-1', 'us-east-1', 'us-west-2')
+
+    def key_of_day(region, day, name):
+        return f'AWSLogs/{A}/GuardDuty/{region}/{day:%Y/%m/%d}/{name}.jsonl.gz'
+
+    keys = [key_of_day(region, today - timedelta(days=offset), 'a') for region in regions for offset in (3, 2, 1)]
+    for key in keys:
+        bucket.client.put(key, today - timedelta(days=1))
+    assert fetch_layout_bucket(bucket, regions) == keys
+    assert fetch_layout_bucket(bucket, regions) == []
+
+    bucket.client.put(key_of_day('ap-south-1', today - timedelta(days=1), 'b'), today - timedelta(days=1))
+    assert fetch_layout_bucket(bucket, regions) == [key_of_day('ap-south-1', today - timedelta(days=1), 'b')]
+
+
+@pytest.mark.parametrize('class_', [AWSCloudTrailBucket, AWSALBBucket])
+def test_aws_bucket_db_maintenance_window_skips_planted_key(custom_database, class_):
+    """Test the window that the database maintenance keeps for the late arrival types starts at the day before the
+    greatest valid key processed, not at the one of a planted key sorting after it."""
+    key_of_day = next(p.values[2] for p in BUCKET_LAYOUTS if p.values[0] is class_)
+    today = datetime.now(timezone.utc).date()
+    bucket = get_layout_bucket(class_, {}, custom_database, today - timedelta(days=10))
+    bucket.retain_db_records = 0
+    days = [today - timedelta(days=offset) for offset in (3, 2, 1)]
+    for key in [key_of_day(day, 'a') for day in days] + [key_of_day(date(9999, 12, 31), 'zzzz')]:
+        bucket.mark_complete(A, R, {'Key': key})
+
+    bucket.db_maintenance(aws_account_id=A, aws_region=R)
+
+    remaining = {row[0] for row in custom_database.execute(f'SELECT log_key FROM {bucket.db_table_name}')}
+    assert key_of_day(days[0], 'a') not in remaining
+    assert {key_of_day(days[1], 'a'), key_of_day(days[2], 'a')} <= remaining
+
+
+@pytest.mark.parametrize('key_suffix, expected_date', [
+    ('2026/10/28/00/firehose-1', date(2026, 10, 28)),
+    ('2026/1/6/ConfigHistory/file', date(2026, 1, 6)),
+    ('2026-10-28/2026-10-28-00-00-abcd.csv.gz', date(2026, 10, 28)),
+    ('2026-10-28-12-00-00-F123456789012345', date(2026, 10, 28)),
+    ('9999/12/31/file', date(9999, 12, 31)),
+    ('2026/99/99/file', None),
+    ('2026/02/30/file', None),
+    ('2026/10/280/file', None),
+    ('zzzz/2026/10/28/file', None),
+    ('', None),
+])
+def test_aws_bucket_get_key_date(key_suffix, expected_date):
+    """Test 'get_key_date' returns the date right after the full prefix of a key, if it is a valid one."""
+    bucket = utils.get_mocked_aws_bucket()
+    with patch('aws_bucket.AWSBucket.get_full_prefix', return_value='archive/2024/01/01/'):
+        assert bucket.get_key_date(f'archive/2024/01/01/{key_suffix}', A, R) == expected_date
+        assert bucket.get_key_date(f'other/{key_suffix}', A, R) is None
+
+
+@pytest.mark.parametrize('key_date, written_date, expected', [
+    ('2026/10/27', datetime(2026, 10, 28, 9, tzinfo=timezone.utc), True),
+    ('2026/10/28', datetime(2026, 10, 28, 0, tzinfo=timezone.utc), True),
+    ('2026/10/29', datetime(2026, 10, 28, 10, tzinfo=timezone.utc), True),
+    ('2026/10/29', datetime(2026, 10, 28, 9, 59, 59, tzinfo=timezone.utc), False),
+    ('2026/10/29', datetime(2026, 10, 28, 10), True),
+    ('2026/10/30', datetime(2026, 10, 28, 23, 59, tzinfo=timezone.utc), False),
+    ('9999/12/31', datetime(2026, 10, 28, tzinfo=timezone.utc), False),
+])
+def test_aws_bucket_is_valid_marker(key_date, written_date, expected):
+    """Test 'is_valid_marker' accepts a key dated up to the date that it was written on in the time zone furthest
+    ahead of UTC, UTC+14."""
+    bucket = utils.get_mocked_aws_bucket()
+    with patch('aws_bucket.AWSBucket.get_full_prefix', return_value='custom/'):
+        assert bucket.is_valid_marker(f'custom/{key_date}/00/file', A, R, written_date) == expected
+        assert not bucket.is_valid_marker('custom/zzzz/00/file', A, R, written_date)

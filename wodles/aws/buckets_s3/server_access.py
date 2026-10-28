@@ -63,6 +63,12 @@ class AWSServerAccess(AWSCustomBucket):
                         aws_tools.debug(f"++ Skipping file with another prefix: {bucket_file['Key']}", 3)
                         continue
 
+                    if not self.is_valid_marker(bucket_file['Key'], aws_account_id, aws_region,
+                                                bucket_file['LastModified']):
+                        aws_tools.debug(f"+++ WARNING: Skipping file without a valid date after the prefix or dated "
+                                        f"after it was written: {bucket_file['Key']}", 1)
+                        continue
+
                     if self.already_processed(bucket_file['Key'], aws_account_id, aws_region):
                         if self.reparse:
                             aws_tools.debug(f"++ File previously processed, but reparse flag set: {bucket_file['Key']}",

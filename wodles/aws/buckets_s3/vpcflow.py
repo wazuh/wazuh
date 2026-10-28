@@ -87,7 +87,8 @@ class AWSVPCFlowBucket(AWSLogsBucket):
 
         self.sql_find_last_key_processed = """
             SELECT
-                log_key
+                log_key,
+                processed_date
             FROM
                 {table_name}
             WHERE
@@ -97,8 +98,7 @@ class AWSVPCFlowBucket(AWSLogsBucket):
                 flow_log_id = :flow_log_id AND
                 log_key LIKE :prefix
             ORDER BY
-                log_key DESC
-            LIMIT 1;"""
+                log_key DESC;"""
 
         self.sql_db_maintenance = """
             DELETE FROM {table_name}

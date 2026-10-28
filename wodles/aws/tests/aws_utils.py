@@ -5,6 +5,7 @@
 import os
 import sys
 import copy
+from datetime import datetime, timezone
 from unittest.mock import patch
 
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..'))
@@ -63,6 +64,7 @@ LIST_OBJECT_V2 = {'CommonPrefixes': [{'Prefix': f'AWSLogs/{TEST_REGION}/'},
 
 LIST_OBJECT_V2_NO_PREFIXES = {'Contents': [{
     'Key': '',
+    'LastModified': datetime(2022, 1, 1, tzinfo=timezone.utc),
     'OtherKey': 'value'}],
     'IsTruncated': False
 }
