@@ -211,11 +211,13 @@ class AgentSyncProtocol : public IAgentSyncProtocol
 
         /// @brief Updates the consecutive-failure streak with the outcome of a synchronization.
         /// @param success Whether the synchronization succeeded.
-        /// @param stopped Whether it was aborted because a stop was requested.
+        /// @param expectedFailure Whether it failed for an expected reason: a stop was requested,
+        ///        or the manager's vulnerability feed is still loading.
         /// @return Consecutive failed synchronizations including this one, or 0 on success.
         ///
-        /// A stop-induced abort leaves the streak untouched: it reports nothing about the manager.
-        unsigned int trackSyncOutcome(bool success, bool stopped);
+        /// An expected failure leaves the streak untouched: it is not a sign of a problem the
+        /// modules should escalate.
+        unsigned int trackSyncOutcome(bool success, bool expectedFailure);
 
         /// @brief Bumps (or, if a stop was requested, just reads) the consecutive-failure streak
         ///        for the local sync intake being unreachable.

@@ -111,7 +111,8 @@ struct SyncModuleResult
     /// than half an hour: the manager indexes those tables only together with their scan. Nothing
     /// is wrong on the agent or the network, so the calling module reports it at INFO and never
     /// escalates it. @ref managerNotReady is set as well, as for any other 503: this flag only
-    /// tells the cause apart.
+    /// tells the cause apart. Left out of @ref consecutiveFailures, which keeps the count it had
+    /// before.
     ///
     /// Not part of the C interface's SyncModuleResult_t: its modules never send those sessions.
     bool feedNotReady{false};

@@ -539,7 +539,7 @@ SyncModuleResult AgentSyncProtocol::synchronizeDeltaByBlocks(Option option, size
         feedNotReady = m_syncState.lastSyncResult == SyncResult::FEED_NOT_READY;
     }
     const bool stopped = shouldStop();
-    const unsigned int consecutiveFailures = trackSyncOutcome(success, stopped);
+    const unsigned int consecutiveFailures = trackSyncOutcome(success, stopped || feedNotReady);
     clearSyncState();
     // Designated on purpose: this struct gains fields from more than one direction, they are all
     // bool, and a positional list binds by position -- a new field landing between two of these
@@ -555,7 +555,7 @@ SyncModuleResult AgentSyncProtocol::synchronizeDeltaByBlocks(Option option, size
             .feedNotReady = feedNotReady};
 }
 
-unsigned int AgentSyncProtocol::trackSyncOutcome(bool success, bool stopped)
+unsigned int AgentSyncProtocol::trackSyncOutcome(bool success, bool expectedFailure)
 {
     if (success)
     {
@@ -563,9 +563,12 @@ unsigned int AgentSyncProtocol::trackSyncOutcome(bool success, bool stopped)
         return 0;
     }
 
-    // A sync aborted because the module is stopping says nothing about the manager, so it must not
-    // count towards the streak: the module is torn down on purpose and will start over on restart.
-    if (stopped)
+    // An expected failure must not count towards the streak. A sync aborted because the module is
+    // stopping says nothing about the manager: the module is torn down on purpose and will start
+    // over on restart. The manager's vulnerability feed still loading is a normal state of a new
+    // manager that lasts several cycles; counting it would push the first different failure after
+    // it (the 409 the first session after the load gets) straight past the tolerance.
+    if (expectedFailure)
     {
         return m_consecutiveSyncFailures.load(std::memory_order_relaxed);
     }
