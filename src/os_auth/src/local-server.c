@@ -831,7 +831,10 @@ cJSON* local_add(const char *id,
     int index;
     cJSON *response = NULL;
     int ierror;
-    char* str_result = NULL;
+    char *ip_result = NULL;
+    char *name_result = NULL;
+    keyentry *ip_holder = NULL;
+    keyentry *name_holder = NULL;
     char _ip[IPSIZE + 1] = {0};
     char reenroll_secret[AGENT_REENROLL_SECRET_HEX_CHARS + 1] = {0};
     char canonical_id[12] = {0}; /* INT32_MAX has 10 digits */
@@ -885,9 +888,10 @@ cJSON* local_add(const char *id,
     }
 
     /* Phase 0 of the identity journal, and it has to be HERE, before anything is mutated: a
-     * duplicate name or IP resolved by <force> deletes the previous agent inside the checks below
-     * (w_auth_replace_agent() -> add_remove() + OS_DeleteKey()), so a refusal discovered after that
-     * point would answer 9031 with that agent already destroyed and queued for the indexer purge.
+     * duplicate name or IP resolved by <force> deletes the previous agent once the checks below have
+     * admitted the request (w_auth_remove_replaced_agent() -> add_remove() + OS_DeleteKey()), so a
+     * refusal discovered after that point would answer 9031 with that agent already destroyed and
+     * queued for the indexer purge.
      * The deletion path already reasons this way one line into the same function -- see
      * purge_backlog_full() -- and this is its twin for credentials. */
     if (identity_journal_full()) {
@@ -922,19 +926,21 @@ cJSON* local_add(const char *id,
         goto fail;
     }
 
+    /* Every refusal below is decided BEFORE anything is removed. A replacement is a deletion, so
+     * judging the IP holder and removing it before the name check ran let a request carrying one
+     * agent's IP and another agent's name delete the first and then be refused for the second: an
+     * agent gone, and nothing added in its place. The duplicate IP and name checks only judge their
+     * holders; both are removed together once the request is admitted, right before the new agent is
+     * added. The pointers stay valid in between: mutex_keys is held throughout, and OS_DeleteKey()
+     * moves entry pointers, never the entries they point to. */
+
     // Check for duplicate ID
-    //
-    // w_auth_replace_agent() os_strdup()s a fresh message into str_result on every call, so the
-    // duplicate IP and name checks below free what the previous one left -- an add matching on both
-    // would otherwise leak, since only one os_free() runs at the end. The ID check does not
-    // participate: it refuses instead of replacing, so it never writes str_result.
     if (id && (index = OS_IsAllowedID(&keys, id), index >= 0)) {
         /* NOT replaced, even when force would allow it: replacing by the SAME id queues a purge for
          * an id that gets a new owner in this very operation. The agent has to be deleted first,
          * and its purge has to finish, before the id can be reused.
          *
-         * Nothing is freed here, unlike the IP and name checks below: this branch no longer calls
-         * w_auth_replace_agent(), so it leaves nothing in str_result for them to free. */
+         * This branch does not call w_auth_check_replace_agent(): it refuses, it never replaces. */
         mwarn("Duplicate ID '%s', rejecting the insertion: delete the agent and let its deletion "
               "finish before reusing the ID.", id);
         ierror = EDUPID;
@@ -957,14 +963,12 @@ cJSON* local_add(const char *id,
         w_free_os_ip(aux_ip);
 
         if (index = OS_IsAllowedIP(&keys, _ip), index >= 0) {
-            os_free(str_result); // see the note on str_result above
-            if (OS_SUCCESS == w_auth_replace_agent(keys.keyentries[index], key_hash, force_options, &str_result, &warn)) {
-                minfo("Duplicate IP '%s'. %s", _ip, str_result);
-            } else {
+            ip_holder = keys.keyentries[index];
+            if (OS_SUCCESS != w_auth_check_replace_agent(ip_holder, key_hash, force_options, &ip_result, &warn)) {
                 if (warn) {
-                    mwarn("Duplicate IP '%s', rejecting enrollment. %s", _ip, str_result);
+                    mwarn("Duplicate IP '%s', rejecting enrollment. %s", _ip, ip_result);
                 } else {
-                    minfo("Duplicate IP '%s', rejecting enrollment. %s", _ip, str_result);
+                    minfo("Duplicate IP '%s', rejecting enrollment. %s", _ip, ip_result);
                 }
                 ierror = EDUPIP;
                 goto fail;
@@ -974,16 +978,14 @@ cJSON* local_add(const char *id,
         strncpy(_ip, ip, IPSIZE);
     }
 
-    /* Check for duplicate names */
-    if (index = OS_IsAllowedName(&keys, name), index >= 0) {
-        os_free(str_result); // see the note on str_result above
-        if(OS_SUCCESS == w_auth_replace_agent(keys.keyentries[index], key_hash, force_options, &str_result, &warn)) {
-            minfo("Duplicate name. %s", str_result);
-        } else {
+    /* Check for duplicate names. The IP holder may be this same agent; it has been judged already. */
+    if ((index = OS_IsAllowedName(&keys, name), index >= 0) && keys.keyentries[index] != ip_holder) {
+        name_holder = keys.keyentries[index];
+        if (OS_SUCCESS != w_auth_check_replace_agent(name_holder, key_hash, force_options, &name_result, &warn)) {
             if (warn) {
-                mwarn("Duplicate name '%s', rejecting enrollment. %s", name, str_result);
+                mwarn("Duplicate name '%s', rejecting enrollment. %s", name, name_result);
             } else {
-                minfo("Duplicate name '%s', rejecting enrollment. %s", name, str_result);
+                minfo("Duplicate name '%s', rejecting enrollment. %s", name, name_result);
             }
             ierror = EDUPNAME;
             goto fail;
@@ -997,6 +999,17 @@ cJSON* local_add(const char *id,
     if (OS_NewReenrollSecret(reenroll_secret, sizeof(reenroll_secret)) != 0) {
         ierror = EKEY;
         goto fail;
+    }
+
+    /* Admitted: only now are the replaced agents removed. Removing them first also keeps the agent
+     * limit below from counting the entries this request replaces. */
+    if (ip_holder) {
+        minfo("Duplicate IP '%s'. %s", _ip, ip_result);
+        w_auth_remove_replaced_agent(ip_holder);
+    }
+    if (name_holder) {
+        minfo("Duplicate name. %s", name_result);
+        w_auth_remove_replaced_agent(name_holder);
     }
 
     index = OS_AddNewAgent(&keys, id, name, _ip, key, config.max_agents);
@@ -1040,14 +1053,16 @@ cJSON* local_add(const char *id,
     } else {
         minfo("Agent key generated for agent '%s' (requested locally)", name);
     }
-    os_free(str_result);
+    os_free(ip_result);
+    os_free(name_result);
     return response;
 
 fail:
     w_mutex_unlock(&mutex_keys);
     OPENSSL_cleanse(reenroll_secret, sizeof(reenroll_secret));
     response = local_create_error_response(ERRORS[ierror].code, ERRORS[ierror].message);
-    os_free(str_result);
+    os_free(ip_result);
+    os_free(name_result);
     return response;
 }
 

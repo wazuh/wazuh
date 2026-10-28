@@ -1886,9 +1886,9 @@ static void test_a_full_journal_refuses_before_a_replacement_destroys_the_previo
     cJSON *response = dispatch("{\"function\":\"add\",\"arguments\":{\"name\":\"victim\",\"ip\":\"any\"}}");
 
     // Refused, and refused EARLY -- no OS_IsValidIP is even consumed, because the keystore is never
-    // reached: w_auth_replace_agent() deletes the previous agent while it validates, so a refusal
-    // discovered after that point would answer 9031 with that agent already gone and queued for the
-    // indexer purge.
+    // reached: once the duplicate checks admit the request the previous agent is deleted
+    // (w_auth_remove_replaced_agent()), so a refusal discovered after that point would answer 9031
+    // with that agent already gone and queued for the indexer purge.
     assert_int_equal(response_error(response), 9031);
     cJSON_Delete(response);
 
@@ -1897,6 +1897,85 @@ static void test_a_full_journal_refuses_before_a_replacement_destroys_the_previo
     assert_null(find_node(queue_remove, victim_id));
 
     identity_journal_init(IDENTITY_JOURNAL_PATH);
+    config.force_options = saved_force;
+}
+
+// The get-agent-info row the <force> guards read: a never-connected agent, so with the guards below
+// it is replaceable.
+static cJSON *replaceable_row(int id) {
+    cJSON *rows = cJSON_CreateArray();
+    cJSON *row = cJSON_CreateObject();
+    cJSON_AddNumberToObject(row, "id", id);
+    cJSON_AddStringToObject(row, "connection_status", "never_connected");
+    cJSON_AddNumberToObject(row, "disconnection_time", 0);
+    cJSON_AddNumberToObject(row, "date_add", 1632255744);
+    cJSON_AddItemToArray(rows, row);
+    return rows;
+}
+
+static void test_a_refused_enrollment_removes_no_agent(void **state) {
+    (void)state;
+    EXPECT_LOG_INFO();
+    EXPECT_LOG_DEBUG2();
+
+    const authd_force_options_t saved_force = config.force_options;
+    config.force_options.enabled = true;
+    config.force_options.key_mismatch = false;
+    config.force_options.disconnected_time_enabled = false;
+    config.force_options.after_registration_time = 0;
+
+    // A holds the IP the request carries; B holds the name. OS_IsValidIP() runs in the duplicate-IP
+    // check and again in OS_AddKey().
+    char id_a[16];
+    char id_b[16];
+    expect_any_count(__wrap_OS_IsValidIP, ip_address, 2);
+    expect_any_count(__wrap_OS_IsValidIP, final_ip, 2);
+    will_return_count(__wrap_OS_IsValidIP, -1, 2);
+    cJSON *response = dispatch("{\"function\":\"add\",\"arguments\":{\"name\":\"ip-holder\",\"ip\":\"10.9.9.9\"}}");
+    assert_int_equal(response_error(response), 0);
+    snprintf(id_a, sizeof(id_a), "%s", data_string(response, "id"));
+    cJSON_Delete(response);
+    add_agent("name-holder", id_b, sizeof(id_b), NULL, 0);
+    const unsigned int keysize = keys.keysize;
+
+    // A is replaceable, B is not (no agent-info to judge it by): the request is refused for B's name,
+    // and A must survive it. Judging A and removing it before the name check deleted it here.
+    expect_any(__wrap_OS_IsValidIP, ip_address);
+    expect_any(__wrap_OS_IsValidIP, final_ip);
+    will_return(__wrap_OS_IsValidIP, -1);
+    expect_value(__wrap_wdb_get_agent_info, id, atoi(id_a));
+    will_return(__wrap_wdb_get_agent_info, replaceable_row(atoi(id_a)));
+    expect_value(__wrap_wdb_get_agent_info, id, atoi(id_b));
+    will_return(__wrap_wdb_get_agent_info, NULL);
+    response = dispatch("{\"function\":\"add\",\"arguments\":{\"name\":\"name-holder\",\"ip\":\"10.9.9.9\"}}");
+    assert_int_equal(response_error(response), 9008);
+    cJSON_Delete(response);
+
+    assert_int_equal(keys.keysize, keysize);
+    assert_true(OS_IsAllowedID(&keys, id_a) >= 0);
+    assert_true(OS_IsAllowedIP(&keys, "10.9.9.9") >= 0);
+    assert_true(OS_IsAllowedID(&keys, id_b) >= 0);
+    assert_null(find_node(queue_remove, id_a));
+    assert_null(find_node(queue_remove, id_b));
+
+    // The same request once B is replaceable too: admitted, and both holders are removed by it.
+    expect_any_count(__wrap_OS_IsValidIP, ip_address, 2);
+    expect_any_count(__wrap_OS_IsValidIP, final_ip, 2);
+    will_return_count(__wrap_OS_IsValidIP, -1, 2);
+    expect_value(__wrap_wdb_get_agent_info, id, atoi(id_a));
+    will_return(__wrap_wdb_get_agent_info, replaceable_row(atoi(id_a)));
+    expect_value(__wrap_wdb_get_agent_info, id, atoi(id_b));
+    will_return(__wrap_wdb_get_agent_info, replaceable_row(atoi(id_b)));
+    response = dispatch("{\"function\":\"add\",\"arguments\":{\"name\":\"name-holder\",\"ip\":\"10.9.9.9\"}}");
+    assert_int_equal(response_error(response), 0);
+    cJSON_Delete(response);
+
+    assert_int_equal(keys.keysize, keysize - 1);
+    assert_true(OS_IsAllowedID(&keys, id_a) < 0);
+    assert_true(OS_IsAllowedID(&keys, id_b) < 0);
+    assert_non_null(find_node(queue_remove, id_a));
+    assert_non_null(find_node(queue_remove, id_b));
+
     config.force_options = saved_force;
 }
 
@@ -2212,6 +2291,7 @@ int main(void) {
         cmocka_unit_test(test_an_enrollment_that_cannot_be_journaled_is_refused),
         cmocka_unit_test(test_a_rotation_that_cannot_be_journaled_is_refused_and_frees_the_reservation),
         cmocka_unit_test(test_a_full_journal_refuses_before_a_replacement_destroys_the_previous_agent),
+        cmocka_unit_test(test_a_refused_enrollment_removes_no_agent),
         cmocka_unit_test(test_reenroll_twice_with_the_same_bearer_rotates_once),
         cmocka_unit_test(test_reenroll_reservation_is_released_when_the_request_is_rejected),
         cmocka_unit_test(test_reenroll_after_the_writer_persists_needs_the_new_secret),
