@@ -21,6 +21,8 @@
 
 #include "ipc/wire_protocol.hpp"
 
+#include "container_instances_client.hpp"
+
 #include <gtest/gtest.h>
 
 #include <set>
@@ -123,4 +125,77 @@ TEST(ContainerAdmissionWireTest, ADeltaEventCarriesTheDecisionToo)
     ASSERT_EQ(2U, body["events"].size());
     EXPECT_TRUE(body["events"][0]["data"]["synced"].get<bool>());
     EXPECT_FALSE(body["events"][1]["data"]["synced"].get<bool>());
+}
+
+/* The other half of the contract: the consumer reading what the producer just
+ * wrote. Both halves in one test on purpose -- the key only does its job if the
+ * two agree on its name, its type and which object carries it, and a producer
+ * test alone cannot see the reader drift away from any of the three.
+ *
+ * This is the delta path specifically. A container created while the agent runs
+ * is announced as an `added` EVENT, never as a fresh full list, so a decision
+ * that reaches only the full-list reader never reaches such a container at all.
+ */
+TEST(ContainerAdmissionWireTest, TheClientReadsAdmissionOffADeltaEvent)
+{
+    const std::set<std::string> admitted {"kept"};
+
+    LifecycleDelta delta;
+
+    LifecycleEvent kept;
+    kept.kind = LifecycleKind::added;
+    kept.containerId = "kept";
+    kept.hostKey = 4242;
+    kept.record = std::make_shared<const ContainerRecord>(MakeRecord("kept"));
+
+    LifecycleEvent withheld;
+    withheld.kind = LifecycleKind::added;
+    withheld.containerId = "withheld";
+    withheld.hostKey = 4243;
+    withheld.record = std::make_shared<const ContainerRecord>(MakeRecord("withheld"));
+
+    delta.events.push_back(kept);
+    delta.events.push_back(withheld);
+
+    nlohmann::json body;
+    body["containers"] = nlohmann::json::array();
+    wire::serialiseDelta(delta, body, KeyKind::cgroupInode, &admitted);
+
+    const auto parsed = wazuh::container_instances_client::ContainerInstancesClient::parseListReply(body);
+
+    ASSERT_TRUE(parsed.deltaSupported);
+    ASSERT_EQ(2U, parsed.events.size());
+    EXPECT_EQ("kept", parsed.events[0].containerId);
+    EXPECT_TRUE(parsed.events[0].synced);
+    EXPECT_EQ("withheld", parsed.events[1].containerId);
+    EXPECT_FALSE(parsed.events[1].synced);
+}
+
+/* A server that predates the key sends no `synced`, and the reader must leave
+ * its default standing. The opposite default silently stops a working agent
+ * from reporting anything about the container.
+ */
+TEST(ContainerAdmissionWireTest, ADeltaEventWithoutTheKeyStaysSynced)
+{
+    LifecycleDelta delta;
+
+    LifecycleEvent event;
+    event.kind = LifecycleKind::added;
+    event.containerId = "legacy";
+    event.hostKey = 4242;
+    event.record = std::make_shared<const ContainerRecord>(MakeRecord("legacy"));
+    delta.events.push_back(event);
+
+    nlohmann::json body;
+    body["containers"] = nlohmann::json::array();
+    // No admitted set: exactly what a server built before the decision existed
+    // puts on the wire.
+    wire::serialiseDelta(delta, body, KeyKind::cgroupInode);
+
+    ASSERT_FALSE(body["events"][0]["data"].contains("synced"));
+
+    const auto parsed = wazuh::container_instances_client::ContainerInstancesClient::parseListReply(body);
+
+    ASSERT_EQ(1U, parsed.events.size());
+    EXPECT_TRUE(parsed.events[0].synced) << "absent must read as 'may report'";
 }

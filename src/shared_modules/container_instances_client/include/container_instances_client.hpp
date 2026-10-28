@@ -127,6 +127,15 @@ namespace wazuh::container_instances_client
 
         /// Absent for removals.
         nlohmann::json record;
+
+        /// Whether this container may report to the manager, as
+        /// ContainerRef::synced -- read from this event's `data`, which the
+        /// producer builds with the same serialiser as a `list` entry.
+        ///
+        /// TRUE by default, for ContainerRef::synced's reason and one more: a
+        /// removal carries no `data`, so there is nothing to read and nothing
+        /// to decide -- a removed container reports nothing either way.
+        bool synced {true};
     };
 
     /// Reply to a cursor read. The three unhappy outcomes are deliberately
@@ -287,6 +296,19 @@ namespace wazuh::container_instances_client
                 return delta;
             }
 
+            return parseListReply(parsed);
+        }
+
+        /// Reads a `list` reply already fetched and parsed as JSON.
+        ///
+        /// Split out from listContainersSince() so the wire contract can be
+        /// checked against the producer's own serialiser without a socket:
+        /// this is the only reader of these keys, and nothing reached it
+        /// before.
+        [[nodiscard]] static ContainerDelta parseListReply(const nlohmann::json& parsed)
+        {
+            ContainerDelta delta;
+
             const auto containersIt = parsed.find("containers");
             if (containersIt == parsed.end() || !containersIt->is_array())
             {
@@ -354,6 +376,12 @@ namespace wazuh::container_instances_client
                 if (const auto data = item.find("data"); data != item.end() && data->is_object())
                 {
                     event.extraCgroupIds = parseDecimalU64Array(*data, "extra_cgroup_ids");
+
+                    if (const auto synced = data->find("synced");
+                        synced != data->end() && synced->is_boolean())
+                    {
+                        event.synced = synced->get<bool>();
+                    }
                 }
 
                 if (event.containerId.empty())

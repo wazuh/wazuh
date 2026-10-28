@@ -31,6 +31,7 @@
 #include <cerrno>
 #include <chrono>
 #include <cstring>
+#include <map>
 #include <optional>
 #include <thread>
 #include <utility>
@@ -486,6 +487,33 @@ namespace fim_container_events
                 }
 
                 syncAllowlist(router.applyContainerDelta(events));
+
+                /* Merged into the view rather than rebuilt from it: a delta
+                 * describes transitions, so a container it does not mention is
+                 * unchanged, not gone. `added` and `changed` carry the
+                 * connector's current answer for that container; `removed`
+                 * carries no record, and a container that no longer exists
+                 * needs no admission -- dropping it also keeps the view from
+                 * growing without bound on a host that churns containers. */
+                std::map<std::string, bool> updated{admission_view};
+
+                for (const auto& event : delta.events)
+                {
+                    if (event.containerId.empty()) continue;
+
+                    using Kind = wazuh::container_instances_client::ContainerEventRef::Kind;
+
+                    if (event.kind == Kind::removed)
+                    {
+                        updated.erase(event.containerId);
+                    }
+                    else
+                    {
+                        updated[event.containerId] = event.synced;
+                    }
+                }
+
+                publishAdmission(updated);
             }
 
             /* Advanced only after the events have been applied. A crash in between
@@ -496,14 +524,76 @@ namespace fim_container_events
             cursor_seq   = delta.seq;
         }
 
+        /* Who may report, as this drain last heard it.
+         *
+         * The connector decides admission and says so on every list reply, in
+         * both shapes: ContainerRef::synced on a full list, and the same key
+         * inside each delta event's `data`. Holding the answer here is what
+         * lets a container created at run time be admitted at run time -- the
+         * FIM baseline's own listing is taken once, at startup, and a container
+         * it never saw would otherwise read as refused for the life of the
+         * process.
+         *
+         * A map rather than two sets because the distinction that matters is
+         * per container: present-and-false (the cap refused it) must not be
+         * confused with absent (never heard of), which is exactly what
+         * fim_container_admission_is_stale() exists to tell apart. */
+        std::map<std::string, bool> admission_view;
+
+        /* Hands the view to the FIM side, which owns what to do about it.
+         *
+         * ONLY when something actually changed: installing it runs a
+         * reconciliation that re-reads every container's rows, and the resolver
+         * refreshes the list every resolver_interval_ms whether or not any
+         * container appeared.
+         *
+         * And NEVER before the whole-node baseline has finished. This runs on
+         * the resolver thread, which is live from the moment the drain starts --
+         * before the walk, by design, so no change is missed while it runs. The
+         * reconciliation reads and writes file_entry, and a single-row write
+         * racing that walk's open scoped transaction is what
+         * fim_container_events_release() exists to prevent for the consumer
+         * thread; it is the same hazard here. The walk takes its own listing and
+         * installs admission from it, so nothing is lost by waiting: the view is
+         * still tracked meanwhile, and the first change AFTER release publishes
+         * it. */
+        void publishAdmission(const std::map<std::string, bool>& updated)
+        {
+            const bool changed = (updated != admission_view);
+            admission_view = updated;
+
+            if (!changed || !staging.released()) return;
+
+            std::vector<const char*> known;
+            std::vector<const char*> admitted;
+            known.reserve(admission_view.size());
+
+            for (const auto& [id, is_admitted] : admission_view)
+            {
+                known.push_back(id.c_str());
+
+                if (is_admitted)
+                {
+                    admitted.push_back(id.c_str());
+                }
+            }
+
+            fim_container_set_admission(known.data(), known.size(), admitted.data(), admitted.size());
+        }
+
         void applyFullList(const std::vector<wazuh::container_instances_client::ContainerRef>& refs)
         {
             std::vector<std::pair<std::uint64_t, std::string>> containers;
             containers.reserve(refs.size());
 
+            /* Rebuilt rather than merged: a full list is the whole truth, so a
+             * container absent from it is gone, not unchanged. */
+            std::map<std::string, bool> refreshed;
+
             for (const auto& ref : refs)
             {
                 containers.emplace_back(ref.cgroupId, ref.containerId);
+                refreshed[ref.containerId] = ref.synced;
 
                 /* Every other cgroup the container occupies, as its own entry. A
                  * container running an init system has one per unit, and the kernel
@@ -521,6 +611,7 @@ namespace fim_container_events
             }
 
             syncAllowlist(router.applyContainerList(containers));
+            publishAdmission(refreshed);
         }
 
         /* Mirror a list refresh into the kernel filter.
