@@ -1,0 +1,73 @@
+<!-- DECTRAX Universal Rules for Wazuh (ID range 100500 - 100506) -->
+<!-- Target path in wazuh/wazuh: ruleset/rules/0600-dectrax_rules.xml -->
+<group name="dectrax,deception,">
+
+  <!-- Base Syslog Rule -->
+  <rule id="100500" level="3">
+    <decoded_as>dectrax-syslog</decoded_as>
+    <description>DECTRAX: Deception event received from sensor fabric</description>
+  </rule>
+
+  <!-- Base CEF Rule -->
+  <rule id="100501" level="3">
+    <decoded_as>dectrax-cef</decoded_as>
+    <description>DECTRAX CEF: Deception telemetry received</description>
+  </rule>
+
+  <!-- High Severity Honeypot Interaction -->
+  <rule id="100502" level="10">
+    <if_sid>100500, 100501</if_sid>
+    <match>Breakout|Exploit|RCE|Unauthorized Access|Rootkit|HONEYPOT_INTERACTION|DECEPTION_TRIGGER</match>
+    <description>DECTRAX: Critical exploitation or interactive breakout intercepted on decoy sensor</description>
+    <mitre>
+      <id>T1190</id>
+      <id>T1059</id>
+      <id>T1021.001</id>
+    </mitre>
+  </rule>
+
+  <!-- Honeytoken Credential Access -->
+  <rule id="100503" level="12">
+    <if_sid>100500, 100501</if_sid>
+    <match>HONEYTOKEN|CanaryCredential|DecoyKey|CanaryToken</match>
+    <description>DECTRAX: Synthetic canary honeytoken triggered - immediate active breach indicator</description>
+    <mitre>
+      <id>T1078</id>
+      <id>T1552</id>
+    </mitre>
+  </rule>
+
+  <!-- Kerberoasting / Decoy SPN Probe -->
+  <rule id="100504" level="11">
+    <if_sid>100500, 100501</if_sid>
+    <match>Kerberoast|SPN_Probe|LDAP|TGS-REQ|DecoyAccountAccess</match>
+    <description>DECTRAX: Active Directory lateral discovery or Kerberoasting probe detected on decoy SPN</description>
+    <mitre>
+      <id>T1558.003</id>
+      <id>T1069.002</id>
+    </mitre>
+  </rule>
+
+  <!-- SCADA / OT Protocol Tamper -->
+  <rule id="100505" level="12">
+    <if_sid>100500, 100501</if_sid>
+    <match>modbus|bacnet|s7comm|dnp3|mqtt|SCADA|PLC</match>
+    <description>DECTRAX: Industrial control protocol (SCADA/ICS) tampering attempt detected</description>
+    <mitre>
+      <id>T0855</id>
+      <id>T0812</id>
+    </mitre>
+  </rule>
+
+  <!-- Volumetric Recon / Port Probe -->
+  <rule id="100506" level="7" frequency="10" timeframe="60">
+    <if_matched_sid>100500, 100501</if_matched_sid>
+    <same_source_ip />
+    <description>DECTRAX: Volumetric port probing and network reconnaissance across deception fabric</description>
+    <mitre>
+      <id>T1046</id>
+      <id>T1595</id>
+    </mitre>
+  </rule>
+
+</group>
