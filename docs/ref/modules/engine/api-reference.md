@@ -20,9 +20,16 @@ OpenAPI sources, each with a ReDoc viewer the book publishes beside this page fo
 
 These apply to every route on `engine-api-http.sock`:
 
-- Request bodies are JSON. Unknown fields are ignored, and an empty body is read as an empty request.
+- Request bodies are JSON. Unknown fields are ignored, and an empty body is read as an empty request, whether it
+  is sent with `Content-Length: 0` or with no `Content-Length` (and no `Transfer-Encoding`) at all; the handler
+  then names the missing field. `POST /content/validate/policy` is the exception: it reads `full_policy` from the
+  raw body, so an empty body is rejected with 400 and `Error parsing request body: <details>`.
   A body that does not parse is rejected with 400 and `Failed to parse protobuff json request: <details>`.
+  A request the server cannot read at all is answered 400 with the plain-text body
+  `Bad request: the request could not be read.` before any handler runs.
 - Responses carry a JSON body with a `status` field (`OK` or `ERROR`) and, on error, an `error` message.
+  The metrics routes repeat a requested metric or space name in their errors cut to its first 128 characters,
+  followed by `... (<n> bytes)`.
   The server labels these bodies `Content-Type: application/json`.
 - Validation failures are 400. A handler whose backing component is gone answers 500 with
   `Error: Handler is not initialized`; an exception escaping a handler is answered 500 with the plain-text

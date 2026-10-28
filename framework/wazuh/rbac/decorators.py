@@ -704,6 +704,9 @@ def _sensitive_paths_in(payload, dotted_path: str) -> bool:
         return any(leaf.group(3) is not None for block in blocks for leaf in leaf_pattern.finditer(block))
     if isinstance(payload, AffectedItemsWazuhResult):
         return any(_sensitive_paths_in(item, dotted_path) for item in payload.affected_items)
+    if isinstance(payload, AbstractWazuhResult):
+        # As `_mask_payload` does, only the configuration under 'data' counts, never the envelope.
+        return _sensitive_paths_in(payload.get('data'), dotted_path)
     if isinstance(payload, list):
         return any(_sensitive_paths_in(element, dotted_path) for element in payload)
     if not isinstance(payload, dict):
@@ -714,6 +717,41 @@ def _sensitive_paths_in(payload, dotted_path: str) -> bool:
     head, *tail = dotted_path.split('.', 1)
 
     return head in payload and bool(tail) and _sensitive_paths_in(payload[head], tail[0])
+
+
+def _sensitive_names_in(payload) -> list:
+    """The ``SENSITIVE_FIELD_NAMES`` that ``payload`` serves. Read-only twin of `_mask_names_in_object` (keys at any
+    depth, and tags inside embedded XML strings), kept next to `_sensitive_paths_in` for the same reason.
+
+    Returns
+    -------
+    list
+        Names found, in the order of ``SENSITIVE_FIELD_NAMES``.
+    """
+    found = set()
+
+    def visit(obj):
+        if isinstance(obj, str):
+            if '<' in obj:
+                found.update(name for name in SENSITIVE_FIELD_NAMES if _sensitive_paths_in(obj, name))
+        elif isinstance(obj, AffectedItemsWazuhResult):
+            for item in obj.affected_items:
+                visit(item)
+        elif isinstance(obj, AbstractWazuhResult):
+            visit(obj.get('data'))
+        elif isinstance(obj, dict):
+            for name, value in obj.items():
+                if name in SENSITIVE_FIELD_NAMES:
+                    found.add(name)
+                else:
+                    visit(value)
+        elif isinstance(obj, list):
+            for element in obj:
+                visit(element)
+
+    visit(payload)
+
+    return [name for name in SENSITIVE_FIELD_NAMES if name in found]
 
 
 def _bare_key_in(payload) -> bool:
@@ -742,6 +780,8 @@ def _audit_secret_read(payload):
 
         if _bare_key_in(payload) and "cluster.key" not in disclosed:
             disclosed.append("cluster.key")
+
+        disclosed.extend(name for name in _sensitive_names_in(payload) if name not in disclosed)
 
         if disclosed:
             _audit_logger().info(

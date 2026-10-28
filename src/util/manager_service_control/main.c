@@ -328,8 +328,50 @@ static void execute_control(const char *control_path, const char *action)
     fail("cannot execute manager control");
 }
 
-static void execute_systemctl(const char *action)
+static bool check_passed(int status)
 {
+    return WIFEXITED(status) && WEXITSTATUS(status) == 0;
+}
+
+/*
+ * Runs `wazuh-manager-control check` (the checks a start runs, nothing started or stopped) as root, with the
+ * sanitized environment, and waits for it. The unit's ExecStop stops every daemon before its ExecStart checks
+ * anything, so a configuration or credential the start would refuse must be refused here, while the manager is
+ * still running. Its output goes to this program's standard error; its refusal is also in the manager log.
+ */
+static bool run_check(const char *control_path)
+{
+    const pid_t pid = fork();
+    if (pid < 0) {
+        return false;
+    }
+
+    if (pid == 0) {
+        if (dup2(STDERR_FILENO, STDOUT_FILENO) < 0) {
+            _exit(EXIT_FAILURE);
+        }
+        become_root();
+        umask(0022);
+        char *const arguments[] = {(char *)control_path, "check", NULL};
+        execv(control_path, arguments);
+        _exit(EXIT_FAILURE);
+    }
+
+    int status;
+    pid_t waited;
+    do {
+        waited = waitpid(pid, &status, 0);
+    } while (waited < 0 && errno == EINTR);
+
+    return waited == pid && check_passed(status);
+}
+
+static void execute_systemctl(const char *control_path, const char *action)
+{
+    if (!run_check(control_path)) {
+        fail("the manager configuration or credentials check failed; the manager was not restarted");
+    }
+
     become_root();
     char *const arguments[] = {"systemctl", (char *)action, MANAGER_SERVICE, NULL};
     execv(SYSTEMCTL_PATH, arguments);
@@ -391,7 +433,7 @@ int main(int argc, char **argv)
             for (int attempt = 0; attempt < ACTIVE_WAIT_SECONDS; ++attempt) {
                 const service_state_t state = service_state();
                 if (state == SERVICE_ACTIVE) {
-                    execute_systemctl(argv[1]);
+                    execute_systemctl(control_path, argv[1]);
                 }
                 if (state == SERVICE_INACTIVE) {
                     execute_control(control_path, argv[1]);
@@ -400,7 +442,7 @@ int main(int argc, char **argv)
             }
             fail("cannot determine a safe manager service state");
         }
-        execute_systemctl(argv[1]);
+        execute_systemctl(control_path, argv[1]);
     }
 
     execute_control(control_path, argv[1]);

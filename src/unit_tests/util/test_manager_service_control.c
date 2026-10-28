@@ -15,6 +15,7 @@
 #include <stddef.h>
 #include <setjmp.h>
 #include <cmocka.h>
+#include <signal.h>
 
 #undef fail
 #define main wazuh_manager_service_control_main
@@ -115,6 +116,16 @@ static void test_install_paths_are_derived_independently(void **state)
                                       process_list_path));
 }
 
+static void test_check_verdict_requires_a_clean_exit(void **state)
+{
+    (void)state;
+    assert_true(check_passed(0));          /* exited 0 */
+    assert_false(check_passed(1 << 8));    /* exited 1: the check refused */
+    assert_false(check_passed(20 << 8));
+    assert_false(check_passed(SIGKILL));   /* killed: no verdict */
+    assert_false(check_passed(SIGSEGV));
+}
+
 int main(void)
 {
     const struct CMUnitTest tests[] = {
@@ -124,6 +135,7 @@ int main(void)
         cmocka_unit_test(test_privileged_path_policy),
         cmocka_unit_test(test_service_states),
         cmocka_unit_test(test_install_paths_are_derived_independently),
+        cmocka_unit_test(test_check_verdict_requires_a_clean_exit),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

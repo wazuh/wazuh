@@ -102,6 +102,12 @@ def test_agent_get_distinct_agents(socket_mock, send_mock, fields, expected_item
     distinct = get_distinct_agents(short_agent_list, fields=fields, sort={'fields': fields, 'order': 'desc'})
     assert isinstance(distinct, AffectedItemsWazuhResult), 'The returned object is not an "AffectedItemsWazuhResult".'
     assert distinct.affected_items == expected_items, f'"Affected_items" does not match. Should be "{expected_items}".'
+    # The total counts the rows (combinations), as every other collection does, not the agents grouped in them.
+    assert distinct.total_affected_items == len(expected_items)
+
+    # Paginated, the total is still every row, not the page.
+    page = get_distinct_agents(short_agent_list, fields=fields, sort={'fields': fields, 'order': 'desc'}, limit=1)
+    assert page.total_affected_items == len(expected_items) and len(page.affected_items) == 1
 
 
 @pytest.mark.parametrize('fields, order, expected_items', [
@@ -1387,7 +1393,10 @@ def test_agent_get_outdated_agents(socket_mock, send_mock):
     # Newer than the manager: not outdated either.
     ('v5.1.0', ['001', '002', '005']),
     ('4.14.0', ['001', '002', '005', '010']),
-    ('v5.0.0-rc1', ['001', '002', '005', '010']),
+    # A pre-release of the manager's version: the upgrade refuses it as up to date (1820), so it is not outdated.
+    ('v5.0.0-rc1', ['001', '002', '005']),
+    ('v5.0.0-alpha1', ['001', '002', '005']),
+    ('Wazuh v4.14.5', ['001', '002', '005', '010']),
 ])
 @patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
 @patch('socket.socket.connect')
@@ -1425,8 +1434,9 @@ def test_agent_get_distinct_agents_merges_version_forms(socket_mock, send_mock):
         versions = [item['version'] for item in result.affected_items]
         assert versions.count('v5.0.0') == 1
         assert next(item['count'] for item in result.affected_items if item['version'] == 'v5.0.0') == 2
-        # The total counts agents, not groups.
-        assert result.total_affected_items == len(full_agent_list)
+        # The total counts the rows answered, after the merge, not the agents in them.
+        assert result.total_affected_items == len(result.affected_items)
+        assert sum(item['count'] for item in result.affected_items) == len(full_agent_list)
     finally:
         test_data.cur.execute("UPDATE agent SET version = 'Wazuh v4.2.0' WHERE id = 2")
 

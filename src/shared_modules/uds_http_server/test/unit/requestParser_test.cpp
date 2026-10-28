@@ -446,3 +446,43 @@ TEST(RequestParserTest, RepeatedHeaderNamesConsumeTheHeaderCountQuota)
     EXPECT_EQ(RequestParser::Feed::Reject, verdict) << "repeating one header name must still exhaust the quota";
     EXPECT_EQ(431, parser.rejectStatus());
 }
+
+/**
+ * @brief Two requests pipelined into one read: the FIRST is complete, intact, and the second is
+ *        ignored.
+ *
+ * One request per connection is the contract, but a peer can still send two. llhttp used to run on
+ * into the second one: its target was appended to the first's, it paused again at the second head
+ * and the parser reported HeadersReady after resume() -- a verdict the session never answers, so the
+ * connection hung until a phase timeout.
+ */
+TEST(RequestParserTest, APipelinedSecondRequestDoesNotDisturbTheFirst)
+{
+    RequestParser parser {defaultLimits()};
+    const std::string bytes {"GET /first HTTP/1.1\r\nHost: h\r\n\r\n"
+                             "GET /second HTTP/1.1\r\nHost: h\r\n\r\n"};
+
+    ASSERT_EQ(Feed::Complete, feedChunks(parser, {bytes}));
+    EXPECT_EQ("/first", parser.request().target);
+    EXPECT_EQ(Method::Get, parser.request().method);
+
+    // The verdict is stable: more bytes, a resume or the peer's close do not reopen the parse.
+    EXPECT_EQ(Feed::Complete, parser.feed("GET /third HTTP/1.1\r\n\r\n", 23));
+    EXPECT_EQ(Feed::Complete, parser.resume());
+    EXPECT_EQ(Feed::Complete, parser.finish());
+    EXPECT_EQ("/first", parser.request().target);
+}
+
+/// The same with bodies and `Connection: close` (which llhttp would otherwise turn into a protocol
+/// error on the bytes that follow), split so the second request starts in the body's read.
+TEST(RequestParserTest, APipelinedRequestAfterABodyIsIgnored)
+{
+    RequestParser parser {defaultLimits()};
+    const auto first = peerRequest("abc");
+    const auto headEnd = first.find("\r\n\r\n") + 4;
+
+    ASSERT_EQ(Feed::Complete,
+              feedChunks(parser, {first.substr(0, headEnd), first.substr(headEnd) + peerRequest("second-body")}));
+    EXPECT_EQ("/inventory/sync", parser.request().target);
+    EXPECT_EQ("abc", parser.request().body);
+}

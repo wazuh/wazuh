@@ -722,18 +722,41 @@ def test_restart_ok(mock_exists, mock_path, mock_fcntl, mock_socket):
 @patch('wazuh.core.cluster.utils.fcntl')
 @patch('os.path.exists', return_value=False)
 def test_restart_ko_socket(mock_exists, mock_fcntl, mock_open):
-    """Tests restarting a manager exceptions"""
+    """Tests restart() when the control socket is unavailable or fails.
 
-    # Socket path not exists
-    with pytest.raises(WazuhInternalError, match='.* 1901 .*'):
-        restart()
+    Without the socket (missing, or refusing the connection) the service-control helper is run instead: its
+    acceptance is a success, its refusal (1904) a failed item, and a helper that cannot be run (1903) an internal
+    error. A socket that fails during the exchange is still an internal error (1014).
+    """
+    with patch('wazuh.core.cluster.utils._run_service_control') as run_helper:
+        # Socket path does not exist -> the helper runs and accepts
+        result = restart()
+        run_helper.assert_called_once_with('restart')
+        assert result.render()['data']['total_affected_items'] == 1
+        assert result.render()['data']['total_failed_items'] == 0
 
-    # Socket error
+        # Socket refuses the connection -> the helper runs too
+        run_helper.reset_mock()
+        with patch('os.path.exists', return_value=True), patch('socket.socket.connect', side_effect=socket.error):
+            result = restart()
+        run_helper.assert_called_once_with('restart')
+        assert result.render()['data']['total_failed_items'] == 0
+
+    # The helper refuses (for example its configuration check failed) -> failed item 1904
+    with patch('wazuh.core.cluster.utils._run_service_control',
+               side_effect=WazuhError(1904, extra_message={'action': 'restart', 'detail': 'exit code 1'})):
+        result = restart()
+        assert result.render()['data']['total_affected_items'] == 0
+        assert result.render()['data']['total_failed_items'] == 1
+        assert result.render()['data']['failed_items'][0]['error']['code'] == 1904
+
+    # The helper cannot be run -> internal error 1903
+    with patch('wazuh.core.cluster.utils._run_service_control', side_effect=WazuhInternalError(1903)):
+        with pytest.raises(WazuhInternalError, match='.* 1903 .*'):
+            restart()
+
+    # Socket error during the exchange
     with patch("os.path.exists", return_value=True):
-        with patch('socket.socket', side_effect=socket.error):
-            with pytest.raises(WazuhInternalError, match='.* 1902 .*'):
-                restart()
-
         with patch('socket.socket.connect'):
             with patch('socket.socket.send', side_effect=socket.error):
                 with pytest.raises(WazuhInternalError, match='.* 1014 .*'):
@@ -756,25 +779,34 @@ def test_reload_ok(mock_exists, mock_path, mock_fcntl, mock_socket):
 @patch('wazuh.core.cluster.utils.fcntl')
 @patch('os.path.exists', return_value=False)
 def test_reload_ko_socket(mock_exists, mock_fcntl, mock_open):
-    """Tests reload() exceptions related to socket errors.
+    """Tests reload() when the control socket is unavailable or fails.
 
-    Unlike restart(), reload() catches WazuhInternalError internally, so socket
-    errors are surfaced as failed_items rather than raised exceptions.
+    Unlike restart(), reload() catches WazuhInternalError internally, so every error is surfaced as a failed item.
     """
-    # Socket path not exists -> WazuhInternalError(1901) caught, added to failed_items
-    result = reload()
-    assert isinstance(result, AffectedItemsWazuhResult)
-    assert result.render()['data']['total_failed_items'] == 1
-    assert result.render()['data']['total_affected_items'] == 0
+    with patch('wazuh.core.cluster.utils._run_service_control') as run_helper:
+        # Socket path does not exist -> the helper runs and accepts
+        result = reload()
+        run_helper.assert_called_once_with('reload')
+        assert result.render()['data']['total_affected_items'] == 1
+        assert result.render()['data']['total_failed_items'] == 0
 
-    # Socket connection error -> WazuhInternalError(1902) caught, added to failed_items
-    with patch('os.path.exists', return_value=True):
-        with patch('socket.socket', side_effect=socket.error):
+        # Socket refuses the connection -> the helper runs too
+        run_helper.reset_mock()
+        with patch('os.path.exists', return_value=True), patch('socket.socket.connect', side_effect=socket.error):
             result = reload()
-            assert result.render()['data']['total_failed_items'] == 1
-            assert result.render()['data']['total_affected_items'] == 0
+        run_helper.assert_called_once_with('reload')
+        assert result.render()['data']['total_failed_items'] == 0
 
-        # Send error -> WazuhInternalError(1014) caught, added to failed_items
+    # The helper refuses or cannot be run -> failed item
+    for error in (WazuhError(1904, extra_message={'action': 'reload', 'detail': 'exit code 1'}),
+                  WazuhInternalError(1903)):
+        with patch('wazuh.core.cluster.utils._run_service_control', side_effect=error):
+            result = reload()
+            assert result.render()['data']['total_affected_items'] == 0
+            assert result.render()['data']['failed_items'][0]['error']['code'] == error.code
+
+    # Send error -> WazuhInternalError(1014) caught, added to failed_items
+    with patch('os.path.exists', return_value=True):
         with patch('socket.socket.connect'):
             with patch('socket.socket.send', side_effect=socket.error):
                 result = reload()

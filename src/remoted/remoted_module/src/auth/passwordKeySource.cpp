@@ -379,20 +379,20 @@ namespace remoted::auth
                     {
                         LOGFN_WARN(logFn(),
                                    "'%s' is not readable or its content is invalid (errno=%d); Password-mode "
-                                   "enrollment requests will be rejected. %llu failed attempt(s) in the last %d s.",
+                                   "enrollment requests will be rejected. %llu failed attempt(s) %s.",
                                    m_path.c_str(),
                                    errno,
                                    static_cast<unsigned long long>(d.total),
-                                   remoted::common::LogThrottle::kDefaultWindowSeconds);
+                                   d.period().c_str());
                     }
                     else
                     {
                         LOGFN_DEBUG1(logFn(),
                                      "Still waiting for '%s' to be synchronized from the master node (%llu check(s) "
-                                     "in the last %d s).",
+                                     "%s).",
                                      m_path.c_str(),
                                      static_cast<unsigned long long>(d.total),
-                                     remoted::common::LogThrottle::kDefaultWindowSeconds);
+                                     d.period().c_str());
                     }
                 }
             }

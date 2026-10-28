@@ -155,6 +155,9 @@ int wm_config() {
     }
 
     static const char *manager_sections[] = { "vulnerability-detection", "indexer", "task-manager" };
+    // Set when a reader answers with a positive value: it read its section, but another one it also needs
+    // was refused and it fell back to its defaults. The daemon still starts; `-t` fails on it (main.c).
+    bool degraded = false;
 
     for (size_t i = 0; i < sizeof(manager_sections) / sizeof(manager_sections[0]); i++) {
         cJSON *section = w_mconf_section(manager_sections[i]);
@@ -176,6 +179,10 @@ int wm_config() {
 
         if (rc < 0) {
             return OS_INVALID;
+        }
+
+        if (rc > 0) {
+            degraded = true;
         }
     }
 
@@ -204,6 +211,12 @@ int wm_config() {
     wmodule * control_module;
     control_module = wm_control_read();
     wm_add(control_module);
+#endif
+
+#ifndef CLIENT
+    if (degraded) {
+        return 1;
+    }
 #endif
 
     return 0;

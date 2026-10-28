@@ -179,9 +179,8 @@ async def test_print_health(get_health_mock, get_nodes_mock, local_client_mock, 
              call(worker_status['last_sync_agentinfo']['date_end_master'], '%Y-%m-%dT%H:%M:%S.%fZ'),
              call(worker_status['last_sync_agentinfo']['date_start_master'], '%Y-%m-%dT%H:%M:%S.%fZ')])
 
-        # filter_node dependant assertions
-        filter_node and get_nodes_mock.assert_not_called()
-        filter_node or get_nodes_mock.assert_called_once()
+        # The nodes are always resolved, so that a node that does not exist is refused (1730).
+        get_nodes_mock.assert_called_once_with(local_client_mock.return_value, filter_node=filter_node)
         get_health_mock.assert_called_once_with(
             local_client_mock.return_value,
             filter_node=filter_node or [get_nodes_mock.return_value['items'][0]['name']])
@@ -407,18 +406,40 @@ async def test_main(get_cluster_status_mock, read_config_mock, check_cluster_con
     assert parser_mock.called is True
 
 
+@pytest.mark.parametrize('argv', [['-l', '-fn', 'unknown'], ['-i', '-fn', 'unknown'], ['-i', 'more', '-fn', 'unknown']])
+@patch('builtins.print')
 @patch('scripts.cluster_control.sys.exit', side_effect=SystemExit)
-@patch('scripts.cluster_control.asyncio.run', side_effect=WazuhResourceNotFound(1730))
-@patch('logging.error')
+@patch('scripts.cluster_control.control.get_health', return_value={'n_connected_nodes': 0, 'nodes': {}})
+@patch('scripts.cluster_control.control.get_nodes', side_effect=WazuhResourceNotFound(1730))
+@patch('scripts.cluster_control.local_client.LocalClient')
 @patch('logging.basicConfig')
 @patch('wazuh.core.cluster.cluster.check_cluster_config')
-@patch('wazuh.core.cluster.utils.read_config', return_value='')
-def test_main_exits_non_zero_on_error(read_config_mock, check_cluster_config_mock, basic_config_mock,
-                                      logging_error_mock, asyncio_run_mock, exit_mock):
-    """An error (here, an unknown node name) is printed and the command exits with 1."""
-    with patch('sys.argv', ['cluster_control', '-l', '-fn', 'unknown']):
+@patch('wazuh.core.cluster.utils.read_config', return_value={'name': 'wazuh'})
+def test_main_exits_non_zero_on_unknown_node(read_config_mock, check_cluster_config_mock, basic_config_mock,
+                                             local_client_mock, get_nodes_mock, get_health_mock, exit_mock,
+                                             print_mock, argv):
+    """An unknown node name, listed or health-checked, is printed as agent_groups prints an error and exits 1."""
+    with patch('sys.argv', ['cluster_control', *argv]):
         with pytest.raises(SystemExit):
             cluster_control.main()
 
-    logging_error_mock.assert_called_once_with(asyncio_run_mock.side_effect)
+    print_mock.assert_called_once_with('Error 1730: Node does not exist')
+    exit_mock.assert_called_once_with(1)
+    get_health_mock.assert_not_called()
+
+
+@patch('builtins.print')
+@patch('scripts.cluster_control.sys.exit', side_effect=SystemExit)
+@patch('scripts.cluster_control.asyncio.run', side_effect=RuntimeError('boom'))
+@patch('logging.basicConfig')
+@patch('wazuh.core.cluster.cluster.check_cluster_config')
+@patch('wazuh.core.cluster.utils.read_config', return_value='')
+def test_main_exits_non_zero_on_internal_error(read_config_mock, check_cluster_config_mock, basic_config_mock,
+                                               asyncio_run_mock, exit_mock, print_mock):
+    """Any other error is printed as an internal error and exits 1."""
+    with patch('sys.argv', ['cluster_control', '-l']):
+        with pytest.raises(SystemExit):
+            cluster_control.main()
+
+    print_mock.assert_called_once_with('Internal error: boom')
     exit_mock.assert_called_once_with(1)

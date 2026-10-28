@@ -25,7 +25,6 @@ case "$1" in
       ${DIR}/bin/wazuh-manager-control stop > /dev/null 2>&1
 
       # Purging files
-      rm -rf ${DIR}/stats/*
       rm -rf ${DIR}/queue/*
       rm -rf ${DIR}/var/*
       rm -rf ${DIR}/framework/*

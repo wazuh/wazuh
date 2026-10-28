@@ -960,3 +960,39 @@ TEST_F(RocksDBWrapperTest, LockHeldByAnotherProcessPersistentlyFailsWithoutRepai
     EXPECT_EQ(value, "value");
 }
 #endif
+
+/**
+ * @brief Giving up on a held lock is its own exception type, so a caller can tell "busy, retry"
+ *        from a real failure without matching the message.
+ */
+TEST_F(RocksDBWrapperTest, LockTimeoutIsReportedAsItsOwnType)
+{
+    EXPECT_THROW(
+        {
+            Utils::RocksDBWrapper second(
+                m_databaseFolder, true, true, false, 16 * 1024 * 1024, std::chrono::milliseconds(50));
+        },
+        Utils::RocksDBLockTimeout);
+}
+
+/**
+ * @brief The backoff step is jittered within [delay/2, delay]: openers that lost the same race must
+ *        not all wake together and collide again.
+ */
+TEST(RocksDBWrapperJitterTest, RetryDelayIsJitteredWithinHalfToFullStep)
+{
+    const std::chrono::milliseconds step {200};
+    std::vector<std::chrono::milliseconds::rep> seen;
+    for (int i = 0; i < 200; ++i)
+    {
+        const auto delay {Utils::jitteredLockRetryDelay(step)};
+        EXPECT_GE(delay.count(), step.count() / 2);
+        EXPECT_LE(delay.count(), step.count());
+        seen.push_back(delay.count());
+    }
+    std::sort(seen.begin(), seen.end());
+    EXPECT_NE(seen.front(), seen.back()) << "200 draws over 101 values must not all be equal";
+
+    EXPECT_EQ(Utils::jitteredLockRetryDelay(std::chrono::milliseconds(1)).count(), 1);
+    EXPECT_EQ(Utils::jitteredLockRetryDelay(std::chrono::milliseconds(0)).count(), 0);
+}

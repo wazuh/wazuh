@@ -50,6 +50,22 @@ Server::Server(const std::string& id, size_t payloadMaxBytes, bool enableDetaile
     // Apply payload limit
     applyPayloadLimit();
 
+    // A request with neither Content-Length nor Transfer-Encoding has an empty body (RFC 9112, section 6.3).
+    // httplib instead reads such a POST/PUT body until the peer closes the connection, so a client that sends
+    // no body and waits for the answer got a bare 400 after the read timeout, before any handler ran. Declare
+    // the empty body explicitly so the request reaches its handler, which answers with its own reason.
+    m_srv->set_pre_routing_handler(
+        [](const httplib::Request& req, httplib::Response&) -> httplib::Server::HandlerResponse
+        {
+            if (!req.has_header("Content-Length") && !req.has_header("Transfer-Encoding"))
+            {
+                // The request object is owned (non-const) by httplib's connection loop; only this hook is const.
+                auto& mutableReq = const_cast<httplib::Request&>(req);
+                mutableReq.set_header("Content-Length", "0");
+            }
+            return httplib::Server::HandlerResponse::Unhandled;
+        });
+
     m_srv->set_error_handler(
         [this](const httplib::Request&, httplib::Response& res) -> httplib::Server::HandlerResponse
         {
@@ -71,6 +87,13 @@ Server::Server(const std::string& id, size_t payloadMaxBytes, bool enableDetaile
                         fmt::format("Payload too large. Max allowed: {} bytes ({} KiB).", maxBytes, maxBytes / 1024),
                         "text/plain");
                 }
+                return httplib::Server::HandlerResponse::Handled;
+            }
+            if (res.status == httplib::StatusCode::BadRequest_400 && res.body.empty())
+            {
+                // Rejected by httplib before any handler (unreadable request or body): say so instead of
+                // answering an empty 400.
+                res.set_content("Bad request: the request could not be read.", "text/plain");
                 return httplib::Server::HandlerResponse::Handled;
             }
             return httplib::Server::HandlerResponse::Unhandled;

@@ -1224,7 +1224,7 @@ INSTANTIATE_TEST_SUITE_P(
             "NamespaceExistsDeletesNamespaceAndSession",
             [](auto& tester, auto& store)
             {
-                const auto entry = makeEntry("test", "policy_validate_x");
+                const auto entry = makeEntry("test", "logtest_x");
                 EXPECT_CALL(tester, getTestEntry("test")).WillOnce(::testing::Return(entry));
                 EXPECT_CALL(store, existsNamespace(::testing::_)).WillOnce(::testing::Return(true));
                 EXPECT_CALL(store, deleteNamespace(::testing::_)).WillOnce(::testing::Return());
@@ -1236,7 +1236,7 @@ INSTANTIATE_TEST_SUITE_P(
             "NamespaceMissingDeletesSessionOnly",
             [](auto& tester, auto& store)
             {
-                const auto entry = makeEntry("test", "policy_validate_x");
+                const auto entry = makeEntry("test", "logtest_x");
                 EXPECT_CALL(tester, getTestEntry("test")).WillOnce(::testing::Return(entry));
                 EXPECT_CALL(store, existsNamespace(::testing::_)).WillOnce(::testing::Return(false));
                 EXPECT_CALL(store, deleteNamespace(::testing::_)).Times(0);
@@ -1248,7 +1248,7 @@ INSTANTIATE_TEST_SUITE_P(
             "NamespaceDeleteFailsReturnsError",
             [](auto& tester, auto& store)
             {
-                const auto entry = makeEntry("test", "policy_validate_x");
+                const auto entry = makeEntry("test", "logtest_x");
                 EXPECT_CALL(tester, getTestEntry("test")).WillOnce(::testing::Return(entry));
                 EXPECT_CALL(store, existsNamespace(::testing::_)).WillOnce(::testing::Return(true));
                 EXPECT_CALL(store, deleteNamespace(::testing::_))
@@ -1258,14 +1258,46 @@ INSTANTIATE_TEST_SUITE_P(
             []()
             {
                 return userErrorResponse<eEngine::GenericStatus_Response>(
-                    "Cleanup: failed deleting namespace 'policy_validate_x': boom");
+                    "Cleanup: failed deleting namespace 'logtest_x': boom");
+            },
+        },
+        LogtestDeleteCase {
+            "ForeignNamespaceIsRefused",
+            [](auto& tester, auto& store)
+            {
+                const auto entry = makeEntry("test", "cmsync_standard_abcdef");
+                EXPECT_CALL(tester, getTestEntry("test")).WillOnce(::testing::Return(entry));
+                EXPECT_CALL(store, existsNamespace(::testing::_)).Times(0);
+                EXPECT_CALL(store, deleteNamespace(::testing::_)).Times(0);
+                EXPECT_CALL(tester, deleteTestEntry(::testing::_)).Times(0);
+            },
+            []()
+            {
+                return userErrorResponse<eEngine::GenericStatus_Response>(
+                    "Refusing to delete space 'test': its namespace 'cmsync_standard_abcdef' was not created by the "
+                    "tester");
+            },
+        },
+        LogtestDeleteCase {
+            "BarePrefixNamespaceIsRefused",
+            [](auto& tester, auto& store)
+            {
+                const auto entry = makeEntry("test", "logtest_");
+                EXPECT_CALL(tester, getTestEntry("test")).WillOnce(::testing::Return(entry));
+                EXPECT_CALL(store, deleteNamespace(::testing::_)).Times(0);
+                EXPECT_CALL(tester, deleteTestEntry(::testing::_)).Times(0);
+            },
+            []()
+            {
+                return userErrorResponse<eEngine::GenericStatus_Response>(
+                    "Refusing to delete space 'test': its namespace 'logtest_' was not created by the tester");
             },
         },
         LogtestDeleteCase {
             "SessionDeleteFailsReturnsError",
             [](auto& tester, auto& store)
             {
-                const auto entry = makeEntry("test", "policy_validate_x");
+                const auto entry = makeEntry("test", "logtest_x");
                 EXPECT_CALL(tester, getTestEntry("test")).WillOnce(::testing::Return(entry));
                 EXPECT_CALL(store, existsNamespace(::testing::_)).WillOnce(::testing::Return(true));
                 EXPECT_CALL(store, deleteNamespace(::testing::_)).WillOnce(::testing::Return());

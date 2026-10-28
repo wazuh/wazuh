@@ -166,6 +166,53 @@ namespace remoted::enrollment
                                [](unsigned char c) { return std::isalnum(c) || c == '-' || c == '_' || c == '.'; });
         }
 
+        // The CIDR prefix after the '/': 1-3 digits, no larger than maxPrefix. An empty prefix
+        // ("10.0.0.0/") is refused, as port 1515 refuses it. Leading zeros follow 1515's grammar
+        // (OS_IsValidIP()): none for an IPv4 prefix, none on a three-digit IPv6 one.
+        std::optional<int> parsePrefix(const std::string& prefix, int maxPrefix)
+        {
+            if (prefix.empty() || prefix.size() > 3 ||
+                !std::all_of(prefix.begin(), prefix.end(), [](char c) { return c >= '0' && c <= '9'; }))
+            {
+                return std::nullopt;
+            }
+            const bool ipv4 = maxPrefix == 32;
+            if (prefix.size() > 1 && prefix.front() == '0' && (ipv4 || prefix.size() == 3))
+            {
+                return std::nullopt;
+            }
+            const int value = std::stoi(prefix); // at most three digits: cannot overflow
+            if (value > maxPrefix)
+            {
+                return std::nullopt;
+            }
+            return value;
+        }
+
+        // An IPv4 netmask in dotted form ("255.255.0.0") as its prefix length, when its ones are
+        // contiguous. A non-contiguous mask is refused: the agent registry can only record a mask
+        // as a prefix length, so port 1515, which accepts one, silently drops it from client.keys.
+        std::optional<int> dottedMaskPrefix(const std::string& mask)
+        {
+            in_addr parsed {};
+            if (inet_pton(AF_INET, mask.c_str(), &parsed) != 1)
+            {
+                return std::nullopt;
+            }
+            const std::uint32_t bits = ntohl(parsed.s_addr);
+            const std::uint32_t hostBits = ~bits;
+            if ((hostBits & (hostBits + 1U)) != 0U)
+            {
+                return std::nullopt;
+            }
+            int prefix = 0;
+            for (std::uint32_t b = bits; b != 0U; b <<= 1U)
+            {
+                ++prefix;
+            }
+            return prefix;
+        }
+
         // Syntactic IPv4/IPv6/CIDR check, plus two sentinels neither of which is a real address:
         // "any" (authd's own "no override" value) and "src" (the legacy port 1515 wire protocol's
         // "use the connection's actual source IP instead of whatever I put here" sentinel --
@@ -173,15 +220,22 @@ namespace remoted::enrollment
         // its own side, mirrored here for the same client-side setting). Not a semantic check --
         // authd's local `add` path re-validates independently (and does NOT understand "src"
         // itself -- see resolveIp() below, which must resolve it before ever reaching authd).
-        bool isValidIpOrCidr(std::string_view value)
+        //
+        // Accepts what port 1515 accepts (OS_IsValidIP()): an IPv4 network may carry its mask as a
+        // prefix length or in dotted form, an IPv4 address may come IPv4-mapped ("::ffff:a.b.c.d").
+        // Returns the value to forward, with a dotted mask rewritten as its prefix length -- the
+        // form the registry records it in whichever port the agent enrolled through -- or nullopt
+        // when the value is not valid.
+        std::optional<std::string> normalizeIpOrCidr(std::string_view value)
         {
             if (value == "any" || value == "src")
             {
-                return true;
+                return std::string(value);
             }
 
             std::string addr(value);
             std::string prefixPart;
+            bool hasPrefix = false;
             if (const auto slash = addr.find('/'); slash != std::string::npos)
             {
                 // Copied BEFORE resize(), not a string_view into addr's own buffer: resize() to a
@@ -191,41 +245,44 @@ namespace remoted::enrollment
                 // builds and read invalidated/annotated memory under ASan or a hardened one.
                 prefixPart = addr.substr(slash + 1);
                 addr.resize(slash);
+                hasPrefix = true;
             }
 
-            int maxPrefix = 0;
             unsigned char buf[16];
-            if (inet_pton(AF_INET, addr.c_str(), buf) == 1)
+            bool ipv4 = inet_pton(AF_INET, addr.c_str(), buf) == 1;
+            if (!ipv4)
             {
-                maxPrefix = 32;
-            }
-            else if (inet_pton(AF_INET6, addr.c_str(), buf) == 1)
-            {
-                maxPrefix = 128;
-            }
-            else
-            {
-                return false;
+                // "::ffff:a.b.c.d" is an IPv4 address to 1515 too, with an IPv4 mask
+                constexpr std::string_view kMapped {"::ffff:"};
+                if (addr.size() > kMapped.size() &&
+                    std::equal(kMapped.begin(),
+                               kMapped.end(),
+                               addr.begin(),
+                               [](char a, char b) { return a == std::tolower(static_cast<unsigned char>(b)); }))
+                {
+                    ipv4 = inet_pton(AF_INET, addr.c_str() + kMapped.size(), buf) == 1;
+                }
+                if (!ipv4 && inet_pton(AF_INET6, addr.c_str(), buf) != 1)
+                {
+                    return std::nullopt;
+                }
             }
 
-            if (prefixPart.empty())
+            if (!hasPrefix)
             {
-                return true;
+                return addr;
             }
-            if (!std::all_of(prefixPart.begin(), prefixPart.end(), [](char c) { return c >= '0' && c <= '9'; }))
+
+            auto prefix = parsePrefix(prefixPart, ipv4 ? 32 : 128);
+            if (!prefix && ipv4 && prefixPart.find('.') != std::string::npos)
             {
-                return false;
+                prefix = dottedMaskPrefix(prefixPart);
             }
-            try
+            if (!prefix)
             {
-                const int prefix = std::stoi(std::string(prefixPart));
-                return prefix >= 0 && prefix <= maxPrefix;
+                return std::nullopt;
             }
-            catch (const std::exception&)
-            {
-                // All-digit but out of range for int (e.g. a huge prefix string) -> not a valid prefix.
-                return false;
-            }
+            return addr + "/" + std::to_string(*prefix);
         }
 
         struct ParsedBody
@@ -281,11 +338,12 @@ namespace remoted::enrollment
 
             if (const auto it = j.find("ip"); it != j.end() && !it->is_null())
             {
-                if (!it->is_string() || !isValidIpOrCidr(it->get<std::string>()))
+                auto ip = it->is_string() ? normalizeIpOrCidr(it->get<std::string>()) : std::nullopt;
+                if (!ip)
                 {
                     return std::string("Invalid field: ip");
                 }
-                parsed.ip = it->get<std::string>();
+                parsed.ip = std::move(*ip);
             }
 
             if (const auto it = j.find("key_hash"); it != j.end() && !it->is_null())
@@ -466,9 +524,9 @@ namespace remoted::enrollment
                 if (const auto throttle = authdErrorThrottle().record())
                 {
                     LOGFN_DEBUG1(logFn(),
-                                 "authd rejected %llu /enroll request(s) in the last %d s (last code=%d: %s).",
+                                 "authd rejected %llu /enroll request(s) %s (last code=%d: %s).",
                                  throttle.total,
-                                 remoted::common::LogThrottle::kDefaultWindowSeconds,
+                                 throttle.period().c_str(),
                                  result.errorCode,
                                  result.message.c_str());
                 }
@@ -479,10 +537,10 @@ namespace remoted::enrollment
             if (const auto throttle = authdUnavailableThrottle().record())
             {
                 LOGFN_WARN(logFn(),
-                           "%llu /enroll request(s) got no clean answer from authd in the last %d s (last: %s). Is "
+                           "%llu /enroll request(s) got no clean answer from authd %s (last: %s). Is "
                            "authd unreachable, or did it just not answer in time?",
                            throttle.total,
-                           remoted::common::LogThrottle::kDefaultWindowSeconds,
+                           throttle.period().c_str(),
                            result.message.c_str());
             }
 
@@ -589,9 +647,9 @@ namespace remoted::enrollment
                 if (const auto throttle = invalidBodyThrottle().record())
                 {
                     LOGFN_DEBUG2(logFn(),
-                                 "Rejected %llu invalid /enroll request(s) in the last %d s (last reason: %s).",
+                                 "Rejected %llu invalid /enroll request(s) %s (last reason: %s).",
                                  throttle.total,
-                                 remoted::common::LogThrottle::kDefaultWindowSeconds,
+                                 throttle.period().c_str(),
                                  std::get<std::string>(parsedOrError).c_str());
                 }
                 responder->send(errorResponse(400, 0, std::get<std::string>(parsedOrError)));
@@ -610,14 +668,14 @@ namespace remoted::enrollment
                 {
                     LOGFN_WARN(logFn(),
                                "Enrollment of agent '%s' from %s rejected for version '%s' (manager=%s, "
-                               "allow_higher=%d): %llu rejection(s) in the last %d s.",
+                               "allow_higher=%d): %llu rejection(s) %s.",
                                parsed.name.c_str(),
                                request->remoteIp.empty() ? "local" : request->remoteIp.c_str(),
                                parsed.version.c_str(),
                                config.managerVersion.c_str(),
                                config.allowHigherVersions,
                                throttle.total,
-                               remoted::common::LogThrottle::kDefaultWindowSeconds);
+                               throttle.period().c_str());
                 }
                 responder->send(errorResponse(400, 0, "Agent version is newer than this manager allows"));
                 return;

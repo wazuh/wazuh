@@ -15,6 +15,7 @@
 #include <chrono>
 #include <cstdint>
 #include <limits>
+#include <string>
 
 namespace remoted::common
 {
@@ -44,8 +45,8 @@ namespace remoted::common
         /// One window per condition. 90 s matches remoted's existing C throttles.
         static constexpr std::chrono::nanoseconds kDefaultWindow {std::chrono::seconds {90}};
 
-        /// The same window in whole seconds, for rendering "in the last N s" in the log message.
-        /// Kept next to the window itself so the text can never drift from the actual period.
+        /// The same window in whole seconds, for telling the operator how often a line is
+        /// summarised. Never for the period a count covers: that is Decision::period().
         static constexpr int kDefaultWindowSeconds {
             static_cast<int>(std::chrono::duration_cast<std::chrono::seconds>(kDefaultWindow).count())};
 
@@ -72,6 +73,23 @@ namespace remoted::common
             explicit operator bool() const noexcept
             {
                 return emit;
+            }
+
+            /**
+             * @brief The period `total` really covers, worded for a log line ("%llu error(s) %s").
+             *
+             * "so far" for the first emission (it covers everything since the process started,
+             * which is usually just itself), otherwise "in the last N s" with N the real time since
+             * the previous emission -- never the window length, which would misattribute the
+             * occurrences a quiet stretch carried over.
+             */
+            std::string period() const
+            {
+                if (secondsSinceLastEmit < 0)
+                {
+                    return "so far";
+                }
+                return "in the last " + std::to_string(secondsSinceLastEmit) + " s";
             }
         };
 

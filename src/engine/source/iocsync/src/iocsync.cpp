@@ -23,6 +23,8 @@
 
 #include <iocsync/iocsync.hpp>
 
+#include "errorSummary.hpp"
+
 namespace
 {
 
@@ -420,7 +422,9 @@ IocSync::TypeSyncResult IocSync::syncIOCType(SyncedIOCDatabase& dbState,
         }
         catch (const std::exception& e)
         {
-            LOG_WARNING("[IOC::Sync] Failed to download IOCs for type '{}': {}", dbState.getIocType(), e.what());
+            LOG_WARNING("[IOC::Sync] Failed to download IOCs for type '{}': {}",
+                        dbState.getIocType(),
+                        detail::summarizeError(e.what()));
             return TypeSyncResult::FAILED;
         }
 
@@ -439,8 +443,9 @@ IocSync::TypeSyncResult IocSync::syncIOCType(SyncedIOCDatabase& dbState,
             {
                 LOG_WARNING("[IOC::Sync] Failed to rollback temporary database '{}': {}", tempDBName, ex.what());
             }
-            LOG_WARNING(
-                "[IOC::Sync] Failed to ensure target database for IOC type '{}': {}", dbState.getIocType(), e.what());
+            LOG_WARNING("[IOC::Sync] Failed to ensure target database for IOC type '{}': {}",
+                        dbState.getIocType(),
+                        detail::summarizeError(e.what()));
             return TypeSyncResult::FAILED;
         }
 
@@ -461,8 +466,9 @@ IocSync::TypeSyncResult IocSync::syncIOCType(SyncedIOCDatabase& dbState,
                             tempDBName,
                             ex.what());
             }
-            LOG_WARNING(
-                "[IOC::Sync] Failed to hot-swap database for IOC type '{}': {}", dbState.getIocType(), e.what());
+            LOG_WARNING("[IOC::Sync] Failed to hot-swap database for IOC type '{}': {}",
+                        dbState.getIocType(),
+                        detail::summarizeError(e.what()));
             return TypeSyncResult::FAILED;
         }
 
@@ -474,7 +480,9 @@ IocSync::TypeSyncResult IocSync::syncIOCType(SyncedIOCDatabase& dbState,
     }
     catch (const std::exception& e)
     {
-        LOG_WARNING("[IOC::Sync] Failed to synchronize database for IOC type '{}': {}", dbState.getIocType(), e.what());
+        LOG_WARNING("[IOC::Sync] Failed to synchronize database for IOC type '{}': {}",
+                    dbState.getIocType(),
+                    detail::summarizeError(e.what()));
         return TypeSyncResult::FAILED;
     }
 }
@@ -508,7 +516,7 @@ void IocSync::synchronize()
 
             if (!ready)
             {
-                LOG_INFO("[IOC::Sync] IOC syncronization skipped because wazuh-indexer consumer for IOCs is not ready "
+                LOG_INFO("[IOC::Sync] IOC synchronization skipped because wazuh-indexer consumer for IOCs is not ready "
                          "for sync (might be updating or no data yet)");
                 reportSyncFailure(); // types without a usable version → FAILED (could not sync)
                 return;
@@ -527,8 +535,9 @@ void IocSync::synchronize()
         const auto remoteTypeHashesOpt = getRemoteHashesFromRemote();
         if (!remoteTypeHashesOpt.has_value())
         {
-            LOG_INFO("[IOC::Sync] IOC syncronization skipped because the IOC consumer is not ready (data/hash is being "
-                     "updated in the indexer)");
+            LOG_INFO(
+                "[IOC::Sync] IOC synchronization skipped because the IOC consumer is not ready (data/hash is being "
+                "updated in the indexer)");
             reportSyncFailure();
             return;
         }
@@ -602,7 +611,7 @@ void IocSync::synchronize()
             updateIocStatusSnapshot();
             return;
         }
-        LOG_WARNING("[IOC::Sync] Synchronization cycle failed: {}", e.what());
+        LOG_WARNING("[IOC::Sync] Synchronization cycle failed: {}", detail::summarizeError(e.what()));
         // Mark in-progress and never-synced types as failed (the failure may have occurred during the
         // pre-flight, before any type was set UPDATING).
         reportSyncFailure();

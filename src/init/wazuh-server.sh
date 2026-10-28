@@ -32,6 +32,9 @@ fi
 
 AUTHOR="Wazuh Inc."
 USE_JSON=false
+# Set by `check`: run the start checks only. Nothing is started or stopped, no lock is taken or released, and
+# the verdict markers in var/run are left as they are -- they describe the daemons, which a check never touches.
+CHECK_ONLY=false
 DAEMONS="wazuh-manager-clusterd wazuh-manager-modulesd wazuh-manager-remoted wazuh-manager-analysisd wazuh-manager-db wazuh-manager-authd wazuh-manager-apid"
 
 # The words of $1 in reverse order.
@@ -162,6 +165,29 @@ log_lines()
     done
 }
 
+# clear_verdicts: forgets the verdicts of a previous start (var/run/*.failed), which this run's replaces. A
+# check replaces nothing: its verdict is its exit status and output.
+clear_verdicts()
+{
+    if [ "${CHECK_ONLY}" != true ]; then
+        rm -f ${DIR}/var/run/*.failed
+    fi
+}
+
+# abort_start: ends a refused start, restart, reload or check with exit 1. Every path but a check also drops
+# the start markers and releases the lock. unlock() is `rm -rf ${LOCK}`: on the start path, which has not taken
+# the lock yet, that releases nothing of ours (and would remove a lock another invocation holds), on the restart
+# path it releases ours. A check never took it and must not remove anyone else's.
+abort_start()
+{
+    if [ "${CHECK_ONLY}" != true ]; then
+        rm -f ${DIR}/var/run/*.start
+        rm -f ${DIR}/var/run/.restart
+        unlock;
+    fi
+    exit 1;
+}
+
 # refuse <code> <reason>: the one line a refusal prints -- "<reason>. Exiting", or with -j the JSON
 # document {"error":<code>,"message":"<reason>."}.
 refuse()
@@ -177,8 +203,10 @@ help()
 {
     # Help message
     echo ""
-    echo "Usage: $0 [-j] {start|stop|restart|reload|status|enable|disable|info [-v -r -t]}";
+    echo "Usage: $0 [-j] {start|stop|restart|reload|check|status|enable|disable|info [-v -r -t]}";
     echo ""
+    echo "    check Run the checks a start runs first (configuration, credentials, every daemon's -t),"
+    echo "          without starting or stopping anything."
     echo "    -j    Use JSON output."
     exit 1;
 }
@@ -212,7 +240,7 @@ disable()
     if [ -z "$1" ]; then
         echo ""
         echo "Disable options: debug"
-        echo "Usage: $0 disable debug]"
+        echo "Usage: $0 disable debug"
         exit 1;
     fi
 
@@ -312,7 +340,7 @@ validateconfig()
 {
     # Each marker is a verdict from a previous run, and this run's verdict replaces them; this
     # function may exit before checkcredentials() or testconfig() clears them.
-    rm -f ${DIR}/var/run/*.failed
+    clear_verdicts
 
     MCONF_VERDICT=$(${MCONF} "$@" validate 2>&1)
     if [ $? = 0 ]; then
@@ -323,11 +351,8 @@ validateconfig()
     # the integration tests) look for it: surface the verdict in the manager log too.
     log_lines ERROR "${MCONF_VERDICT}"
     refuse 20 "${WAZUH_CONF}: Configuration error"
-    rm -f ${DIR}/var/run/*.start
-    rm -f ${DIR}/var/run/.restart
-    # Before lock() on both paths, like checkcredentials() and testconfig(): see the note there.
-    unlock;
-    exit 1;
+    # Before lock() on both paths, like checkcredentials() and testconfig(): see abort_start().
+    abort_start
 }
 
 # The credentials and certificates, checked right after the configuration file itself on the start
@@ -353,7 +378,7 @@ checkcredentials()
     # Each marker is a verdict from a previous run, and this run's verdict replaces them; testconfig()
     # clears them too, but this function may exit before it runs. Without this, a refusal here would
     # leave `status` reporting another run's "refused its configuration".
-    rm -f ${DIR}/var/run/*.failed
+    clear_verdicts
 
     if [ ! -x ${DIR}/bin/wazuh-manager-resolve-credentials ]; then
         return 0
@@ -383,12 +408,8 @@ checkcredentials()
     log_lines ERROR "${CHECK_LOG}"
     log_lines ERROR "${CHECK_VERDICT}"
     refuse ${CHECK_ERROR} "${CHECK_REASON}"
-    rm -f ${DIR}/var/run/*.start
-    rm -f ${DIR}/var/run/.restart
-    # Like testconfig(), this runs before lock() on both paths: unlock() is `rm -rf ${LOCK}`, so it
-    # releases nothing of ours -- and, as there, it would also remove a lock another invocation holds.
-    unlock;
-    exit 1;
+    # Like testconfig(), this runs before lock() on both paths: see abort_start().
+    abort_start
 }
 
 # Credential resolution, run immediately before the daemons and while we are still root.
@@ -473,7 +494,7 @@ testconfig()
     # Each marker is a verdict from a previous run and this one replaces all of them. Cleared
     # here, not in start_service(): this function exits 1 on the FIRST failure, so start_service()
     # may never run to clear a marker left by an earlier, unrelated one.
-    rm -f ${DIR}/var/run/*.failed
+    clear_verdicts
 
     # The whole configuration file again, now with the files it references: the certificates and
     # keys checkcredentials() has already vouched for, and every other file the options name.
@@ -487,14 +508,13 @@ testconfig()
         ${DIR}/bin/${i} -t ${DEBUG_CLI} 1>&2;
         if [ $? != 0 ]; then
             refuse 20 "${i}: Configuration error"
-            # Unconditionally: the wipe at the top of this function already replaced the old
-            # .restart guard's job, and keeping the guard here would leave a restart with a
-            # refused configuration reporting plain "not running".
-            echo "refused" > ${DIR}/var/run/${i}.failed
-            rm -f ${DIR}/var/run/*.start
-            rm -f ${DIR}/var/run/.restart
-            unlock;
-            exit 1;
+            # Unconditionally on a start: the wipe at the top of this function already replaced the
+            # old .restart guard's job, and keeping the guard here would leave a restart with a
+            # refused configuration reporting plain "not running". A check leaves the markers alone.
+            if [ "${CHECK_ONLY}" != true ]; then
+                echo "refused" > ${DIR}/var/run/${i}.failed
+            fi
+            abort_start
         fi
     done
 }
@@ -825,6 +845,25 @@ info()
     fi
 }
 
+# The checks a start runs before it starts anything, in the same order and with the same refusals (message,
+# `-j` error 20/21/22, lines in logs/wazuh-manager.log), and nothing else: no daemon is started or stopped, no
+# lock is taken. --prestart (resolvecredentials()) is not part of it: it opens the keystore, which must not happen
+# while the manager is up, so what only --prestart refuses (an indexer password nobody supplied, its lock) still
+# refuses the start that follows. wazuh-manager-service-control runs this before handing a restart or reload over
+# to systemd, whose unit would otherwise stop every daemon before its own checks run.
+check_service()
+{
+    CHECK_ONLY=true
+    validateconfig --skip-file-checks
+    checkcredentials
+    testconfig
+    if [ $USE_JSON = true ]; then
+        echo -n '{"error":0,"data":[]}'
+    else
+        echo "Configuration and credentials checks passed."
+    fi
+}
+
 restart_service()
 {
     touch ${DIR}/var/run/.restart
@@ -890,6 +929,10 @@ reload)
     restart_service
     RETVAL=0
     ;;
+check)
+    check_service
+    RETVAL=0
+    ;;
 status)
     lock
     status
@@ -915,6 +958,15 @@ help)
     help
     ;;
 *)
+    # With -j, one JSON document and nothing else, like every other answer.
+    if [ $USE_JSON = true ]; then
+        if [ -n "$action" ]; then
+            echo -n '{"error":1,"message":"Invalid action: '"${action}"'."}'
+        else
+            echo -n '{"error":1,"message":"Missing action."}'
+        fi
+        exit 1
+    fi
     if [ -n "$action" ]; then
         echo "Invalid action: ${action}"
     fi

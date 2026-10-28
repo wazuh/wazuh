@@ -119,6 +119,13 @@ Remote checks (`isConsumerReadyForSync`, `existIocDataInRemote`, `getRemoteHashe
 
 If the download-and-populate step fails or the consumer turns out not ready, the temporary database is removed. If ensuring the target database or the hot-swap itself fails, the temporary database is also cleaned up. The target database remains untouched, and the local hash is not updated, so the next cycle retries.
 
+### Error Text in Log Lines
+
+An indexer connector error ends with the whole response body; a circuit-breaker `429` is more than a kilobyte,
+its root cause repeated. Every `WARNING` that carries a caught error passes it through `summarizeError()`
+(`src/errorSummary.hpp`): the text before the body (which holds the HTTP status), then the body's `error.type`
+and `error.reason` (the reason cut to 160 characters), the whole line's error part bounded to 400 characters.
+
 ### Persistence
 
 Sync state is stored in the engine's internal store under `iocsync/status/0` as a JSON array of `SyncedIOCDatabase` entries (an object with a `/databases` array is also accepted on load). Each entry tracks the IOC type, its last known data hash and the Unix time of its last successful update. On first setup (no document), every type from `getSupportedIocTypes()` is added and the document is written.
@@ -133,12 +140,14 @@ iocsync/
 ├── include/iocsync/
 │   └── iocsync.hpp               # IocSync — concrete implementation
 ├── src/
-│   └── iocsync.cpp               # Full implementation + SyncedIOCDatabase class
+│   ├── iocsync.cpp               # Full implementation + SyncedIOCDatabase class
+│   └── errorSummary.hpp          # summarizeError(): bounded indexer error text for log lines
 └── test/
     ├── mocks/iocsync/
     │   └── mockIocSync.hpp       # GMock of IIocSync
     └── src/unit/
-        └── iocsync_status_test.cpp
+        ├── iocsync_status_test.cpp
+        └── errorSummary_test.cpp
 ```
 
 ## Public Interface
@@ -213,7 +222,7 @@ Tracks per-type sync state with JSON serialization:
 
 ## Testing
 
-`iocsync_status_test.cpp` (`iocsync_utest`) covers the status snapshot and failure reporting with mocked store, indexer connector and KVDB manager: initial status, failed cycles marking unsynced types `FAILED`, a failed per-type download reported `FAILED` while the old version stays available, a successful per-type sync reported `READY`, a type with no remote hash and no version reported `FAILED`, an index-check error retried then failing the cycle, a missing IOC index not retried, and restoring `last_successful_update` from the store.
+`iocsync_status_test.cpp` (`iocsync_utest`) covers the status snapshot and failure reporting with mocked store, indexer connector and KVDB manager: initial status, failed cycles marking unsynced types `FAILED`, a failed per-type download reported `FAILED` while the old version stays available, a successful per-type sync reported `READY`, a type with no remote hash and no version reported `FAILED`, an index-check error retried then failing the cycle, a missing IOC index not retried, and restoring `last_successful_update` from the store. `errorSummary_test.cpp` (same executable) covers `summarizeError()`: a 429 circuit-breaker body reduced to status, type and a short reason; a message without a body unchanged; an unparseable body dropped; a plain-string `error` kept; a long message bounded.
 
 ## Consumers
 

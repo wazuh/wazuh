@@ -584,8 +584,9 @@ CONF_DIR="%{_sysconfdir}/wazuh-manager"
 # the two find commands it replaces made. MODE "drop" deletes the *.save left by an earlier erase;
 # MODE "rename" then renames every other regular file in DIR and below to *.save. Two passes, never
 # one: a single loop would rename client.keys onto client.keys.save and then reach that name and
-# delete it. *rpmsave files and anything whose name contains "shared" keep their names. Links are
-# neither followed nor renamed.
+# delete it. *rpmsave files and any file whose own name (not its path: the agent groups under shared/
+# are renamed too, as the DEB postrm does) contains "shared" keep their names. Links are neither
+# followed nor renamed.
 save_conf() {
   for SAVE_ENTRY in "$2"/* "$2"/.[!.]* "$2"/..?*; do
     if [ -L "${SAVE_ENTRY}" ]; then
@@ -624,7 +625,6 @@ if [ $1 = 0 ];then
   rm -rf %{_localstatedir}/queue/
   rm -rf %{_localstatedir}/framework/
   rm -rf %{_localstatedir}/api/
-  rm -rf %{_localstatedir}/stats/
   rm -rf %{_localstatedir}/var/
   rm -rf %{_localstatedir}/bin/
   rm -rf %{_localstatedir}/logs/
@@ -658,9 +658,13 @@ if [ -d "${UPGRADE_PRESERVE_DIR}" ]; then
   # A subshell on its own, not the left side of an || list: the shell ignores set -e inside a
   # command whose failure is tested, and a failed copy would otherwise go unnoticed and the
   # snapshot be deleted below.
+  # The schema copy is product, not configuration: the one this package installed stays.
   (
     set -e
     if [ -d "${UPGRADE_PRESERVE_DIR}/etc" ]; then
+      if [ -f "${CONF_DIR}/wazuh-manager.schema.json" ]; then
+        rm -f "${UPGRADE_PRESERVE_DIR}/etc/wazuh-manager.schema.json"
+      fi
       mkdir -p "${CONF_DIR}"
       cp -a --remove-destination "${UPGRADE_PRESERVE_DIR}/etc/." "${CONF_DIR}/"
     fi

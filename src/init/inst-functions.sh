@@ -599,14 +599,21 @@ CheckRemoteTime()
     [ -z "$2" ] && return 0
     TIME_NUM=${2%%[!0-9]*}
     TIME_UNIT=${2#"$TIME_NUM"}
-    if [ -z "$TIME_NUM" ] || [ "$TIME_NUM" -eq 0 ]; then
-        RemoteVarError "$1" "$2" "expected a positive number with an optional time unit (s, m, h, d, w)"
-    fi
-    # Units as accepted by w_parse_time(): lowercase only, weeks included.
+    # Leading zeros aside, the digit count is capped per unit as the configuration schema does
+    # (at most 999999999 seconds), so no reader overflows and the shell test below cannot either.
+    TIME_DIGITS=${TIME_NUM#"${TIME_NUM%%[!0]*}"}
     case "$TIME_UNIT" in
-        ''|[smhdw]) ;;
+        ''|s) TIME_MAX_DIGITS=9 ;;
+        m) TIME_MAX_DIGITS=7 ;;
+        h) TIME_MAX_DIGITS=5 ;;
+        d) TIME_MAX_DIGITS=4 ;;
+        w) TIME_MAX_DIGITS=3 ;;
+        # Units as accepted by w_parse_time(): lowercase only, weeks included.
         *) RemoteVarError "$1" "$2" "expected a positive number with an optional time unit (s, m, h, d, w)";;
     esac
+    if [ -z "$TIME_DIGITS" ] || [ ${#TIME_DIGITS} -gt $TIME_MAX_DIGITS ]; then
+        RemoteVarError "$1" "$2" "expected a positive number with an optional time unit (s, m, h, d, w), at most 999999999 seconds"
+    fi
 }
 
 CheckRemoteSize()
@@ -614,13 +621,18 @@ CheckRemoteSize()
     [ -z "$2" ] && return 0
     SIZE_NUM=${2%%[!0-9]*}
     SIZE_UNIT=${2#"$SIZE_NUM"}
-    if [ -z "$SIZE_NUM" ] || [ "$SIZE_NUM" -eq 0 ]; then
-        RemoteVarError "$1" "$2" "expected a positive size with an optional unit (B, KB, MB, GB)"
-    fi
+    # Leading zeros aside, the digit count is capped per unit as the configuration schema does.
+    SIZE_DIGITS=${SIZE_NUM#"${SIZE_NUM%%[!0]*}"}
     case "$SIZE_UNIT" in
-        ''|[KkMmGgBb]|[KkMmGg][Bb]) ;;
-        *) RemoteVarError "$1" "$2" "expected a positive size with an optional unit (B, KB, MB, GB)";;
+        ''|[Bb]) SIZE_MAX_DIGITS=15 ;;
+        [Kk]) SIZE_MAX_DIGITS=12 ;;
+        [Mm]) SIZE_MAX_DIGITS=9 ;;
+        [Gg]) SIZE_MAX_DIGITS=6 ;;
+        *) RemoteVarError "$1" "$2" "expected a positive size with an optional unit (B, K, M, G)";;
     esac
+    if [ -z "$SIZE_DIGITS" ] || [ ${#SIZE_DIGITS} -gt $SIZE_MAX_DIGITS ]; then
+        RemoteVarError "$1" "$2" "expected a positive size with an optional unit (B, K, M, G) the configuration accepts"
+    fi
 }
 
 # Mirrors w_remoted_validate_global_prefix() in src/config/src/remote-config.c exactly, so a
@@ -1241,9 +1253,9 @@ InstallCommon()
     fi
 
     if [ "X${INSTYPE}" = "Xmanager" ]; then
-        # JSON Schema of etc/wazuh-manager.conf, consumed by the Python framework. Written on every run, but an
-        # upgrade restores the previous /etc/wazuh-manager after this (RestoreUpgradePreserve, DEB postinst,
-        # RPM %posttrans), so an upgraded manager keeps the previous release's copy; only a fresh install gets this one.
+        # JSON Schema of etc/wazuh-manager.conf, consumed by the Python framework. Product, not configuration:
+        # written on every run, and the upgrade restore of /etc/wazuh-manager that follows (RestoreUpgradePreserve,
+        # DEB postinst, RPM %posttrans) skips it, so every install and upgrade leaves this release's copy.
         ${INSTALL} -m 0640 -o root -g ${WAZUH_GROUP} shared_modules/manager_config/schema/wazuh-manager.schema.json ${ETC_DIR}/wazuh-manager.schema.json
     fi
 
@@ -1533,7 +1545,11 @@ InstallLocal()
     # credential resolver in postinst, a manual start) rewrites the file as root:root, unreadable
     # by the service account. The rewritten files are given back to the group the rest of the
     # tree has (py_compile replaces each file, so it comes out owned by root:root).
-    ${INSTALLDIR}/framework/python/bin/python3 -I -m compileall -q -f -j 0 --invalidation-mode checked-hash ${INSTALLDIR}/framework/python/lib
+    # Only the plain level is compiled: nothing in the product runs the interpreter with -O or -OO,
+    # so the timestamp-based .opt-1/.opt-2 files CPython's own install leaves are dropped rather
+    # than shipped stale.
+    ${INSTALLDIR}/framework/python/bin/python3 -I -m compileall -q -f -j 0 -o 0 --invalidation-mode checked-hash ${INSTALLDIR}/framework/python/lib
+    find ${INSTALLDIR}/framework/python/lib -name '*.opt-[12].pyc' -type f -exec rm -f {} +
     find ${INSTALLDIR}/framework/python/lib \( -name '*.pyc' -o -name __pycache__ \) -exec chown root:${WAZUH_GROUP} {} +
 
     generateSchemaFiles
@@ -1570,6 +1586,10 @@ InstallLocal()
     # Install Vulnerability Detector files
     ${INSTALL} -d -m 0770 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/vd
 
+    # queue/indexer is no longer used or installed; an update removes the one an earlier release
+    # left, only while it is empty (rmdir never follows a link and fails on anything not empty).
+    rmdir ${INSTALLDIR}/queue/indexer > /dev/null 2>&1 || true
+
 
     # Install Task Manager files
     ${INSTALL} -d -m 0770 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/tasks
@@ -1586,16 +1606,6 @@ InstallLocal()
     if [ "X${update_only}" = "Xyes" ]; then
       ${MAKEBIN} --quiet -C ../api restore INSTALLDIR=${INSTALLDIR} WAZUH_GROUP=${WAZUH_GROUP}
     fi
-}
-
-TransferShared()
-{
-    rm -f ${ETC_DIR}/shared/merged.mg
-    for SHARED_FILE in ${ETC_DIR}/shared/* ${ETC_DIR}/shared/.[!.]* ${ETC_DIR}/shared/..?*; do
-        if [ -f "${SHARED_FILE}" ] && [ ! -L "${SHARED_FILE}" ]; then
-            mv -f "${SHARED_FILE}" ${ETC_DIR}/shared/default
-        fi
-    done
 }
 
 InstallServer()
@@ -1640,9 +1650,9 @@ InstallServer()
     ${INSTALL} -d -m 0770 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/cluster
     ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/logs/cluster
 
+    # shared/ itself holds only agent-template.conf and the groups' directories: nothing at its top
+    # level is moved into a group (the 4.x layout this used to migrate cannot be upgraded from).
     ${INSTALL} -d -m 0770 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${ETC_DIR}/shared/default
-
-    TransferShared
 
     ${INSTALL} -m 0750 -o root -g 0 build/bin/wazuh-manager-remoted ${INSTALLDIR}/bin
     ${INSTALL} -m 0750 -o root -g 0 build/bin/wazuh-manager-authd ${INSTALLDIR}/bin

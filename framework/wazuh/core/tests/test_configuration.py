@@ -184,6 +184,23 @@ def test_agentconf2json():
     assert configuration._agentconf2json(xml_conf=xml_conf)[0]['filters'] == {'name': 'agent_name'}
 
 
+def test_agentconf2json_keeps_sections_it_does_not_describe():
+    """A section CONF_SECTIONS does not list (<labels>, a wodle, an unknown one) is kept, once per occurrence."""
+    xml_conf = fromstring('<root><agent_config>'
+                          '<labels><label key="env">prod</label></labels>'
+                          '<wodle name="aws-s3"><disabled>no</disabled></wodle>'
+                          '<unknown><a>1</a></unknown><unknown><a>2</a></unknown>'
+                          '<syscheck><frequency>60</frequency></syscheck>'
+                          '</agent_config></root>')
+
+    config = configuration._agentconf2json(xml_conf=xml_conf)[0]['config']
+
+    assert config['labels'] == [{'label': {'key': 'env', 'item': 'prod'}}]
+    assert config['aws-s3'] == [{'disabled': 'no'}]
+    assert config['unknown'] == [{'a': '1'}, {'a': '2'}]
+    assert config['syscheck'] == {'frequency': '60'}
+
+
 def test_rcl2json():
     with patch('builtins.open', return_value=Exception):
         with pytest.raises(WazuhError, match=".* 1101 .*"):
@@ -438,16 +455,41 @@ def test_upload_group_configuration(mock_open, mock_wazuh_uid, mock_wazuh_gid):
                                                                              "<agent_config>new_config</agent_config>")
             with patch('wazuh.core.configuration.subprocess.check_output',
                        side_effect=subprocess.CalledProcessError(cmd='ls', returncode=1, output=b'ERROR')):
-                with patch('wazuh.core.configuration.re.findall', return_value=None):
+                with patch('wazuh.core.configuration.re.findall', return_value=[]):
                     with pytest.raises(WazuhError, match=".* 1115 .*"):
                         configuration.upload_group_configuration('default', "<agent_config>new_config</agent_config>")
-                with patch('wazuh.core.configuration.re.findall', return_value='1114'):
+                with patch('wazuh.core.configuration.re.findall', return_value=[('1230', 'Invalid element')]):
                     with patch('os.path.exists', return_value=True):
                         with patch('wazuh.core.configuration.remove') as mock_remove:
                             with pytest.raises(WazuhError, match=".* 1114 .*"):
                                 configuration.upload_group_configuration('default',
                                                                          "<agent_config>new_config</agent_config>")
                                 mock_remove.assert_called_once()
+
+
+@pytest.mark.parametrize('output, expected', [
+    # An unknown section: the Syscheck reader's generic line is dropped, the real reason is kept.
+    ("2026/10/27 10:00:00 verify-agent-conf: ERROR: (1230): Invalid element in the configuration: 'unknown'.\n"
+     "2026/10/27 10:00:00 verify-agent-conf: ERROR: (1207): Syscheck remote configuration in '{tmp}' is corrupted.\n",
+     "Invalid element in the configuration: 'unknown'."),
+    # The generic line alone is kept, naming the group's file rather than the temporary one.
+    ("2026/10/27 10:00:00 verify-agent-conf: ERROR: (1207): Localfile remote configuration in '{tmp}' is corrupted.\n",
+     "Localfile remote configuration in 'default/agent.conf' is corrupted."),
+])
+def test_upload_group_configuration_reports_the_reason(output, expected):
+    """A refused group configuration names its real cause and the group's file, never the temporary file."""
+    tmp_file = os.path.join(parent_directory, tmp_path, 'api_tmp_file_x.xml')
+    error = subprocess.CalledProcessError(cmd='verify-agent-conf', returncode=1,
+                                          output=output.format(tmp=tmp_file).encode())
+    with patch('wazuh.core.common.SHARED_PATH', new=os.path.join(parent_directory, tmp_path, 'configuration')), \
+            patch('wazuh.core.configuration.tempfile.mkstemp', return_value=['mock_handle', tmp_file]), \
+            patch('wazuh.core.configuration.open', mock_open()), \
+            patch('wazuh.core.configuration.subprocess.check_output', side_effect=error), \
+            pytest.raises(WazuhError, match='.* 1114 .*') as exc:
+        configuration.upload_group_configuration('default', '<unknown><a>x</a></unknown>')
+
+    assert exc.value.message == f'Wazuh syntax error: {expected}'
+    assert 'api_tmp_file' not in exc.value.message
 
 
 @pytest.mark.parametrize('prolog', [

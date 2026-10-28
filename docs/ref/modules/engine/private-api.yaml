@@ -42,10 +42,10 @@ paths:
               $ref: '#/components/schemas/RoutePost_Request'
             example:
               route:
-                name: default
-                namespaceId: standard
+                name: cmsync_standard
+                namespaceId: cmsync_standard_3f9a
                 priority: 1
-                description: Default route
+                description: Route of the standard space
       responses:
         '200':
           $ref: '#/components/responses/GenericSuccess_200'
@@ -154,10 +154,10 @@ paths:
               example:
                 status: OK
                 route:
-                  name: default
-                  namespaceId: standard
+                  name: cmsync_standard
+                  namespaceId: cmsync_standard_3f9a
                   priority: 1
-                  description: Default route
+                  description: Route of the standard space
                   entry_status: ENABLED
                   uptime: 3600
         '400':
@@ -215,7 +215,7 @@ paths:
                   summary: The namespace's policy cannot be rebuilt
                   value:
                     status: ERROR
-                    error: "Failed to reload the route: Failed to create environment with policy 'standard': <details>"
+                    error: "Failed to reload the route: Failed to create environment with policy 'cmsync_standard_3f9a': <details>"
         '500':
           $ref: '#/components/responses/InternalServerError_500'
   /_internal/router/route/patchPriority:
@@ -289,10 +289,10 @@ paths:
               example:
                 status: OK
                 table:
-                - name: default
-                  namespaceId: standard
+                - name: cmsync_standard
+                  namespaceId: cmsync_standard_3f9a
                   priority: 1
-                  description: Default route
+                  description: Route of the standard space
                   entry_status: ENABLED
                   uptime: 3600
         '400':
@@ -314,7 +314,7 @@ paths:
             example:
               session:
                 name: testing
-                namespaceId: standard
+                namespaceId: cmsync_standard_3f9a
                 lifetime: 0
                 description: Manual test session
       responses:
@@ -351,7 +351,7 @@ paths:
                   summary: The namespace's policy has no assets
                   value:
                     status: ERROR
-                    error: "Failed to create the testing environment: Policy 'standard' has no assets"
+                    error: "Failed to create the testing environment: Policy 'cmsync_standard_3f9a' has no assets"
         '500':
           $ref: '#/components/responses/InternalServerError_500'
   /_internal/tester/session/delete:
@@ -880,8 +880,8 @@ paths:
               example:
                 status: OK
                 spaces:
-                - standard
-                - custom
+                - cmsync_standard_3f9a
+                - logtest_8c41d2
         '400':
           $ref: '#/components/responses/BadRequest_400'
         '500':

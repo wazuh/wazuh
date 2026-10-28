@@ -169,7 +169,7 @@ Idle time after which remoted closes an agent's open RIDS (message-counter) file
 `queue/rids/`. It is also the period of the thread that looks for such files.
 
 - **Default value:** `5m` (300 seconds)
-- **Allowed values:** Time value with optional suffix: `s` (seconds), `m` (minutes), `h` (hours), `d` (days), `w` (weeks). Bare number defaults to seconds. `0` passes the schema but is replaced by the default with a warning.
+- **Allowed values:** Time value with optional suffix: `s` (seconds), `m` (minutes), `h` (hours), `d` (days), `w` (weeks). Bare number defaults to seconds. At least 1 second: `0`, in any unit, is refused by the configuration check.
 - **Example:** `300`, `5m`, `300s` are all equivalent
 
 ### legacy.connection_overtake_time
@@ -702,6 +702,14 @@ time are closed. Authenticated connections are never subject to it.
   message arrives. If the workers fall more than this many seconds behind the input queue (for example
   while a large 4.x fleet reconnects after a restart), legitimate agents are closed too and have to
   reconnect. If those closures show up without an attack, raise this value
+- **Note:** A message rejected before it decrypts — an unterminated `!<id>!` header, an ID not
+  registered for the source address, a source address that is no agent's, an empty message, or one
+  that does not decrypt — is logged by remoted as a `WARNING` naming the source address, not an
+  agent: the ID it carries is only a claim until it decrypts. Each of those reasons is throttled on
+  its own: the first is logged at once, the others in the next 90 seconds at debug level, and the
+  next logged one ends with `(and <n> more like it in the last <s> s)`. A message that reaches the
+  decryption step and fails there also gets that step's own line (`(1403)`, `(1404)`, `(1406)`,
+  or a decompression error), which names the ID the message claims and is not throttled
 
 ### remoted.unauthenticated_max
 
@@ -1653,11 +1661,13 @@ HTTPS channel, whose equivalent is [`remoted.max_inflight_bytes`](#remotedmax_in
   total over the limit is dropped until space is freed. The count limit
   ([`legacy.queue_size`](#legacyqueue_size)) drops the same way.
 - Input-queue drops count in `metrics.messages.received_breakdown.discarded` and are logged as
-  `Input queue discarded <n> event(s) in the last 90 seconds.`, at most once every 90 seconds.
+  `Input queue discarded <n> event(s) in the last <s> s.`, at most once every 90 seconds; `<s>` is
+  the real time since the previous line, and the first line says `so far` instead.
 - Events-queue drops (its byte limit, [`remoted.batch_events_capacity`](#remotedbatch_events_capacity)
   or [`remoted.batch_events_per_agent_capacity`](#remotedbatch_events_per_agent_capacity)) count in
   `metrics.messages.received_breakdown.events_failed` and are logged as
-  `Events queue discarded <n> event(s) in the last 90 seconds.`, at most once every 90 seconds.
+  `Events queue discarded <n> event(s) in the last <s> s.`, at most once every 90 seconds, with the
+  same wording rules.
 
 ### Guidelines
 

@@ -31,6 +31,8 @@ from wazuh.core.indexer.disconnected_agents import DisconnectedAgentSyncTasks
 
 
 DEFAULT_DATE: str = 'n/a'
+# Log tag of an incoming cluster connection until its hello identifies it as a worker.
+UNIDENTIFIED_PEER_TAG = "Incoming connection"
 
 
 class ReceiveIntegrityTask(c_common.ReceiveFileTask):
@@ -185,6 +187,9 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
             Arguments for the parent class constructor.
         """
         super().__init__(**kwargs, tag="Worker")
+        # A connection is a worker only once its hello says so (and passes the checks): until then nothing tells it
+        # apart from any other peer that reached the cluster port.
+        self.tag = UNIDENTIFIED_PEER_TAG
         # Sync availability variables. Used to prevent sync process from overlapping.
         self.sync_agent_info_free = True
         self.sync_integrity_free = [True, utils.get_utc_now()]

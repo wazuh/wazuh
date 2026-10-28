@@ -127,8 +127,11 @@ TransformOp specificHLPBuilder(const Reference& targetField,
     }
 
     hlp::parser::Parser parser;
-    hlp::Params params {
-        .name = "parser", .targetField = targetField.jsonPath(), .stop = {""}, .options = hlpOptionsList};
+    // The parser name is what a failure trace prints ("Parser <name> failed at: ..."): name it after its target
+    hlp::Params params {.name = fmt::format("<{}>", targetField.dotPath()),
+                        .targetField = targetField.jsonPath(),
+                        .stop = {""},
+                        .options = hlpOptionsList};
 
     parser = parserBuilder(params);
 

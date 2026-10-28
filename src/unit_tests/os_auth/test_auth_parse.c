@@ -83,6 +83,9 @@ parse_evaluator parse_values_default_cfg [] = {
     { "OSSEC PASS: pass123 OSSEC A:'agent9' IP:'192.0.0.3' K:'ABC123'", "192.0.0.1", "pass123",   {"192.0.0.3", "agent9", NULL, "ABC123"},                      {OS_SUCCESS,""}, {NULL, NULL, NULL, "Received request for a new agent (agent9) from: 192.0.0.1", NULL} },
     { "OSSEC A:'agent10' G:'Group1,Group2' IP:'192.0.0.3' K:'ABC123'", "192.0.0.1", NULL,         {"192.0.0.3", "agent10", "Group1,Group2", "ABC123"},          {OS_SUCCESS,""}, {NULL, NULL, NULL, "Received request for a new agent (agent10) from: 192.0.0.1", "Group(s) is: Group1,Group2"} },
     { "OSSEC A:'agent11' V:'v4.5.0'", "192.0.0.1", NULL,                                          {"192.0.0.1", "agent11", NULL, NULL},                         {OS_SUCCESS,""}, {NULL, NULL, NULL, "Received request for a new agent (agent11) from: 192.0.0.1", NULL} },
+    /* The optional fields are read in any order */
+    { "OSSEC A:'agent12' G:'Group1' V:'v4.5.0'", "192.0.0.1", NULL,                               {"192.0.0.1", "agent12", "Group1", NULL},                     {OS_SUCCESS,""}, {NULL, NULL, NULL, "Received request for a new agent (agent12) from: 192.0.0.1", "Group(s) is: Group1"} },
+    { "OSSEC A:'agent13' K:'ABC123' G:'Group1' V:'v4.5.0'", "192.0.0.1", NULL,                    {"192.0.0.1", "agent13", "Group1", "ABC123"},                 {OS_SUCCESS,""}, {NULL, NULL, NULL, "Received request for a new agent (agent13) from: 192.0.0.1", "Group(s) is: Group1"} },
 
     { "OSSEC A:'agent0'", "192.0.0.1", "pass123",                       {NULL, NULL, NULL, NULL}, {OS_INVALID,"ERROR: Invalid password"},              {NULL, NULL, "Invalid password provided by 192.0.0.1. Closing connection.", NULL, NULL} },
     { "OSSEC PASS: pass124 OSSEC A:'agent0'", "192.0.0.1", "pass123",   {NULL, NULL, NULL, NULL}, {OS_INVALID,"ERROR: Invalid password"},              {NULL, NULL, "Invalid password provided by 192.0.0.1. Closing connection.", NULL, NULL} },
@@ -94,6 +97,8 @@ parse_evaluator parse_values_default_cfg [] = {
     { "OSSEC A:'agent3' G:'Group1,Group2' IP:'192.0.0.3' K:'ABC123", "192.0.0.1", NULL,           {NULL, NULL, NULL, NULL}, {OS_INVALID,"ERROR: Unterminated key field"}, {NULL, "Unterminated key field", NULL, "Received request for a new agent (agent3) from: 192.0.0.1", "Group(s) is: Group1,Group2"} },
     { "OSSEC A:'agent3' V:'v4.5.0", "192.0.0.1", NULL,                  {NULL, NULL, NULL, NULL}, {OS_INVALID,"ERROR: Unterminated version field"},    {NULL, "Unterminated version field", NULL, "Received request for a new agent (agent3) from: 192.0.0.1", NULL} },
     { "OSSEC A:'agent4' V:'v5.6.0'", "192.0.0.1", NULL,                 {NULL, NULL, NULL, NULL}, {OS_INVALID,"ERROR: Agent version must be lower or equal to manager version"},          {NULL, "Incompatible version for new agent from: 192.0.0.1", NULL, "Received request for a new agent (agent4) from: 192.0.0.1", NULL} },
+    /* A version after another field is still checked */
+    { "OSSEC A:'agent4' G:'Group1' V:'v5.6.0'", "192.0.0.1", NULL,      {NULL, NULL, NULL, NULL}, {OS_INVALID,"ERROR: Agent version must be lower or equal to manager version"},          {NULL, "Incompatible version for new agent from: 192.0.0.1", NULL, "Received request for a new agent (agent4) from: 192.0.0.1", "Group(s) is: Group1"} },
 
     {0}
 };
@@ -205,12 +210,70 @@ static void test_client_rejections_are_throttled(void **state) {
     w_auth_client_rejection_log_reset();
 }
 
+/* Each reason has its own window: a stream of wrong passwords (INFO) does not hide a different
+ * rejection, nor log it at INFO. */
+static void test_client_rejections_are_throttled_per_reason(void **state) {
+    char response[2048] = {0};
+    char ip[IPSIZE + 1];
+    char *agentname = NULL;
+    char *groups = NULL;
+    char *key_hash = NULL;
+
+    w_auth_client_rejection_log_reset();
+
+    strncpy(ip, "192.0.0.1", IPSIZE);
+    expect_string(__wrap__minfo, formatted_msg, "Invalid password provided by 192.0.0.1. Closing connection.");
+    assert_int_equal(w_auth_parse_data("OSSEC PASS: bad OSSEC A:'agent0'", response, "pass123", ip, &agentname, &groups, &key_hash), OS_INVALID);
+
+    strncpy(ip, "192.0.0.1", IPSIZE);
+    expect_string(__wrap__mdebug1, formatted_msg, "Invalid password provided by 192.0.0.1. Closing connection.");
+    assert_int_equal(w_auth_parse_data("OSSEC PASS: bad OSSEC A:'agent0'", response, "pass123", ip, &agentname, &groups, &key_hash), OS_INVALID);
+
+    strncpy(ip, "192.0.0.1", IPSIZE);
+    expect_string(__wrap__mdebug1, formatted_msg, "Received request for a new agent (inv;agent) from: 192.0.0.1");
+    expect_string(__wrap__mwarn, formatted_msg, "Invalid agent name: inv;agent from 192.0.0.1");
+    assert_int_equal(w_auth_parse_data("OSSEC A:'inv;agent'", response, NULL, ip, &agentname, &groups, &key_hash), OS_INVALID);
+    os_free(agentname);
+
+    w_auth_client_rejection_log_reset();
+}
+
+/* The line closing a window names how many of its kind it stands for and the real period, at the
+ * highest level among them. */
+static void test_client_rejection_summary(void **state) {
+    w_auth_client_rejection_log_reset();
+
+    expect_string(__wrap__minfo, formatted_msg, "first");
+    w_auth_client_rejection_log("reason-a", true, "first", 1000);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "second");
+    w_auth_client_rejection_log("reason-a", true, "second", 1010);
+
+    /* The same reason reported at WARNING once inside the window lifts the summary to WARNING. */
+    expect_string(__wrap__mdebug1, formatted_msg, "third");
+    w_auth_client_rejection_log("reason-a", false, "third", 1020);
+
+    expect_string(__wrap__mwarn, formatted_msg, "fourth (and 2 more like it in the last 200 s)");
+    w_auth_client_rejection_log("reason-a", true, "fourth", 1200);
+
+    /* Back to INFO once nothing louder was folded in. */
+    expect_string(__wrap__mdebug1, formatted_msg, "fifth");
+    w_auth_client_rejection_log("reason-a", true, "fifth", 1210);
+
+    expect_string(__wrap__minfo, formatted_msg, "sixth (and 1 more like it in the last 100 s)");
+    w_auth_client_rejection_log("reason-a", true, "sixth", 1300);
+
+    w_auth_client_rejection_log_reset();
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         /* w_auth_parse_data tests*/
         cmocka_unit_test_setup(test_w_auth_parse_data, setup_parse_default),
         cmocka_unit_test_setup(test_w_auth_parse_data, setup_parse_use_src_ip_cfg_0),
         cmocka_unit_test_setup(test_client_rejections_are_throttled, setup_parse_default),
+        cmocka_unit_test_setup(test_client_rejections_are_throttled_per_reason, setup_parse_default),
+        cmocka_unit_test(test_client_rejection_summary),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

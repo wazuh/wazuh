@@ -68,9 +68,9 @@ public:
             if (const auto decision = missingThrottle.record())
             {
                 logWarn(LOGTAG,
-                        "Rejected %llu agent groups request(s) in the last %d s: missing the agent id header.",
+                        "Rejected %llu agent groups request(s) %s: missing the agent id header.",
                         static_cast<unsigned long long>(decision.total),
-                        wazuh::uds_http::LogThrottle::kDefaultWindowSeconds);
+                        decision.period().c_str());
             }
             return {400, "Missing header: X-Wazuh-Agent-Id", {{"Content-Type", "text/plain"}}};
         }
@@ -81,10 +81,10 @@ public:
             if (const auto decision = invalidThrottle.record())
             {
                 logWarn(LOGTAG,
-                        "Rejected %llu agent groups request(s) in the last %d s: the agent id header is not a "
+                        "Rejected %llu agent groups request(s) %s: the agent id header is not a "
                         "numeric agent id.",
                         static_cast<unsigned long long>(decision.total),
-                        wazuh::uds_http::LogThrottle::kDefaultWindowSeconds);
+                        decision.period().c_str());
             }
             return {
                 400, "Invalid header: X-Wazuh-Agent-Id must be a numeric agent id", {{"Content-Type", "text/plain"}}};

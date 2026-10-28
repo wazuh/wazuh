@@ -568,13 +568,14 @@ per 90 seconds per condition**, so a burst or an outage produces a readable summ
 thousands of identical lines. The first occurrence is logged at once. Later ones inside the window
 are counted, not logged, and are reported by the **next occurrence after the window** — there is no
 timer flushing them — so that line's count covers everything since the previous line, which can be
-longer than 90 s when the condition paused. The rate-limit lines say so explicitly ("refused N
-request(s) with 429 since the previous report T s ago"); for an exact total at any moment, read the
-counter on [`GET /metrics`](metrics.md):
+longer than 90 s when the condition paused. Every such line names the period its count really
+covers: `in the last T s`, T being the time since the previous line, or `so far` on the first (the
+rate-limit lines: "refused N request(s) with 429 since the previous report T s ago"); for an exact
+total at any moment, read the counter on [`GET /metrics`](metrics.md):
 
 ```
 wazuh-manager-remoted:forwarder: WARNING: Deferred-work slots exhausted (capacity 128): shed 4812
-request(s) with 503 in the last 90 s. Consider increasing the value of 'max_deferred_requests', or
+request(s) with 503 in the last 140 s. Consider increasing the value of 'max_deferred_requests', or
 investigate why the downstream service is not keeping up.
 ```
 
@@ -634,8 +635,15 @@ Four more that are not about tuning:
   fails inside the module with an ERROR naming which of the two is the problem. See
   [Certificate provisioning and fail-closed start](#certificate-provisioning-and-fail-closed-start).
 
-Client-side rejections (malformed or unauthenticated requests) are logged at debug level only —
-visible with `remoted.debug=2` — because an unauthenticated peer controls how many it can trigger.
+Rejections of unauthenticated requests (no bearer, an unknown agent, a bad signature) are logged at
+debug level only — visible with `remoted.debug=2` — because an unauthenticated peer controls how many
+it can trigger. A malformed request from an agent that **did** authenticate (an invalid `/control` or
+`/scan/vd` body, an unknown `/control` type, a payload naming another agent) and the rejections that
+point at a manager-side setting (a token outside the clock-skew window, a body over the
+authenticated-body cap, an unusable key in `client.keys`) are logged as throttled `WARNING`s instead:
+one line per cause and 90 seconds, the rest folded into the next line, which counts them —
+`… 12 request(s) in the last 140 s …`, or `… so far` on the first. A peer outside the agent's
+[registered address](#registered-address-ip-column) is logged the same way at `INFO`.
 Transport-level diagnostics reported by the HTTP library itself (TLS handshake errors, malformed
 HTTP, socket resets, and breaches of the `remoted.http_max_*` limits) are logged at
 `remoted.debug=1`, not surfaced by default: these are per-connection events driven overwhelmingly by
@@ -1190,7 +1198,7 @@ replay store either: a captured token could be replayed inside its window, bound
 | `name` | yes | 2-128 chars, no leading `.`, charset `[A-Za-z0-9._-]` only — `OS_IsValidName()`, the same rule the legacy port-1515 path applies, so both enrollment paths accept exactly the same names. `authd`'s local socket separately enforces a looser *storage-safety* floor (no whitespace/control bytes, no leading `#`/`!`, ≤128 chars) for all of its callers, the API included; this endpoint holds the tighter line itself rather than relying on that floor. |
 | `version` | yes | Rejected if its major or minor is higher than the manager's (a higher patch alone is accepted, as on port 1515) unless `authd`'s own `<auth><agents><allow_higher_versions>` is `yes` (not `remote`'s, which governs `/control`; this keeps `/enroll` in step with port 1515) — `authd`'s local socket performs no version check of its own, so this endpoint enforces it. |
 | `groups` | no | Comma-separated, passed through unchanged. |
-| `ip` | no | Syntactic IPv4/IPv6/CIDR check, or one of two sentinels: `any` (no override), or `src` — mirrors legacy port 1515's own wire sentinel (an agent configured with its own client-side `use_source_ip` sends this instead of a literal address); see IP resolution below. |
+| `ip` | no | The grammar port 1515 accepts: an IPv4 or IPv6 address, optionally a network — `/<prefix>`, or for IPv4 a dotted mask (`10.5.0.0/255.255.0.0`) that is forwarded as its prefix length (`10.5.0.0/16`), the form the registry records either way. An empty prefix (`10.0.0.0/`), a prefix past 32/128 and a non-contiguous mask are `400`. Or one of two sentinels: `any` (no override), or `src` — mirrors legacy port 1515's own wire sentinel (an agent configured with its own client-side `use_source_ip` sends this instead of a literal address); see IP resolution below. |
 | `key_hash` | no | Opaque hash of the agent's current key, if it has one — drives `authd`'s force/key-mismatch decision, same as port 1515's `K:` field. |
 
 `force`, `id`, and a raw `key` are never sent, even though `authd`'s local socket accepts all three

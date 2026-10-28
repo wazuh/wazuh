@@ -312,6 +312,9 @@ TEST_F(HlpTestModeTest, ParserFailureWithTestModeTrace)
     EXPECT_FALSE(result.success());
     EXPECT_TRUE(result.hasTrace());
     EXPECT_THAT(result.trace(), testing::HasSubstr("->"));
+    // The failing parser is named after its target field, not a generic "parser"
+    EXPECT_THAT(result.trace(), testing::HasSubstr("Parser <target> failed at: not-an-ip"));
+    EXPECT_THAT(result.trace(), testing::Not(testing::HasSubstr("Parser parser")));
 }
 
 // =============================================================================

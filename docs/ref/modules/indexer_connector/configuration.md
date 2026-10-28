@@ -40,8 +40,9 @@ The installer writes this section:
 List of Indexer node URLs, one per `<host>` child element.
 
 - **Default value:** None (required)
-- **Allowed values:** URLs starting with `http://` or `https://` (e.g. `https://10.0.0.1:9200`); at
-  least one, no duplicates
+- **Allowed values:** URLs starting with `http://` or `https://` that name a host — a host name, an IPv4
+  address, or an IPv6 address in brackets — then an optional `:port` and path (e.g. `https://10.0.0.1:9200`,
+  `https://[fd00::1]:9200`); at least one, no duplicates. `https://` alone is refused
 - **Note:** The connector load-balances requests round-robin across the hosts its health monitor
   sees as available, and skips the ones that are not.
 

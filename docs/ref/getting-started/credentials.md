@@ -82,9 +82,14 @@ An empty value counts as unset for a password. A value that breaks a rule is rep
 replaced by a generated one**: the start refuses until you fix it. A `local.env` that is unsafe or malformed is
 rejected as a whole, and then nothing is generated or seeded from defaults in that run either.
 
-`local.env` holds `NAME=value` lines. Surrounding whitespace is trimmed, blank lines and `#` comments are skipped,
-and one pair of matching single or double quotes around the value is removed. Nothing is expanded or unescaped. A
-name given twice, an unbalanced quote or any other line is an error naming the file and the line.
+`local.env` holds `NAME=value` lines. Whitespace at the start and end of a line is trimmed, blank lines and `#`
+comments are skipped, and one pair of matching single or double quotes around the value is removed. Nothing is
+expanded or unescaped. No whitespace is allowed around the `=`:
+
+| Line | Result |
+|------|--------|
+| `NAME = value`, `export NAME=value`, `NAME='value` (unbalanced quote), `NAME= 'value'`, a name given twice, a line that is not UTF-8 | the whole file is rejected: `INVALID /etc/wazuh-manager/local.env:<line>: not a NAME=value line` — the same message for every case, naming the line |
+| `NAME= value` | accepted, and the space is part of the value: a password then breaks the rule, `INVALID NAME: may only use A-Z a-z 0-9 and . , _ + : @ % ^ = ~ - (set in /etc/wazuh-manager/local.env:<line>)` |
 
 ```bash
 sudo install -m 0600 -o root -g root /dev/null /etc/wazuh-manager/local.env
@@ -376,7 +381,7 @@ indexer's CA and a client pair the indexer issued for it:
 
 | `<CONF>/ca/` holds | `--install` | `--upgrade` and `--prestart` |
 |--------------------|-------------|------------------------------|
-| nothing, and `certs/` holds no pair and no `root-ca.pem` | mints a CA (RSA 2048, SHA-256, ten years backdated one day, `CN=wazuh-manager-<node>`) and the marker | `MISSING …/ca/root-ca.pem` |
+| nothing, and `certs/` holds no pair and no `root-ca.pem` | mints a CA (RSA 2048, SHA-256, valid from one day before issuance to 3650 days after it, `CN=wazuh-manager-<node>`) and the marker | `MISSING …/ca/root-ca.pem` |
 | nothing, but pairs or `root-ca.pem` are already in `certs/` | `MISSING …/ca/root-ca.pem: stage the CA that issued the pairs` (never a second CA beside existing material) | same |
 | `root-ca.pem` and `root-ca.key` | validated and used to issue what is missing | validated |
 | `root-ca.pem` alone | validated; nothing can be issued here, the pairs must be staged | validated |
@@ -395,7 +400,7 @@ adds survive.
 ### Server pairs
 
 A pair is issued at **installation only**, when it is absent and the CA has its key. The profile is RSA 2048,
-SHA-256, ten years backdated one day, `CA:FALSE`, `serverAuth`, `CN=<node>` and the pair's own SAN list. The
+SHA-256, valid from one day before issuance to 3650 days after it (`notBefore` is backdated a day, `notAfter` is not), `CA:FALSE`, `serverAuth`, `CN=<node>` and the pair's own SAN list. The
 certificate file carries the leaf followed by the CA.
 
 At every other moment a pair is only checked:

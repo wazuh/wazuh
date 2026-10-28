@@ -223,9 +223,9 @@ namespace remoted::enrollment
                     if (const auto throttle = stoppingThrottle().record())
                     {
                         LOGFN_DEBUG1(logFn(),
-                                     "AuthdClient is stopping: rejected %llu request(s) in the last %d s.",
+                                     "AuthdClient is stopping: rejected %llu request(s) %s.",
                                      throttle.total,
-                                     remoted::common::LogThrottle::kDefaultWindowSeconds);
+                                     throttle.period().c_str());
                     }
                     AuthdResult result;
                     result.errorCode = kAuthdRequestNotSentErrorCode;
@@ -237,10 +237,10 @@ namespace remoted::enrollment
                 if (const auto throttle = queueFullThrottle().record())
                 {
                     LOGFN_WARN(logFn(),
-                               "AuthdClient queue full (max=%u): dropped %llu request(s) in the last %d s.",
+                               "AuthdClient queue full (max=%u): dropped %llu request(s) %s.",
                                m_maxQueueSize,
                                throttle.total,
-                               remoted::common::LogThrottle::kDefaultWindowSeconds);
+                               throttle.period().c_str());
                 }
                 AuthdResult result;
                 result.errorCode = kAuthdRequestNotSentErrorCode;
@@ -401,10 +401,10 @@ namespace remoted::enrollment
                 if (const auto throttle = connectFailThrottle().record())
                 {
                     LOGFN_WARN(logFn(),
-                               "Failed to connect to authd socket at %s: %llu failure(s) in the last %d s.",
+                               "Failed to connect to authd socket at %s: %llu failure(s) %s.",
                                m_socketPath.c_str(),
                                throttle.total,
-                               remoted::common::LogThrottle::kDefaultWindowSeconds);
+                               throttle.period().c_str());
                 }
                 return result;
             }
@@ -429,9 +429,9 @@ namespace remoted::enrollment
                 if (const auto throttle = ioErrorThrottle().record())
                 {
                     LOGFN_WARN(logFn(),
-                               "authd socket I/O error: %llu error(s) in the last %d s.",
+                               "authd socket I/O error: %llu error(s) %s.",
                                throttle.total,
-                               remoted::common::LogThrottle::kDefaultWindowSeconds);
+                               throttle.period().c_str());
                 }
                 return result;
             }
@@ -462,9 +462,9 @@ namespace remoted::enrollment
                     if (const auto throttle = ioErrorThrottle().record())
                     {
                         LOGFN_WARN(logFn(),
-                                   "authd socket I/O error: %llu error(s) in the last %d s.",
+                                   "authd socket I/O error: %llu error(s) %s.",
                                    throttle.total,
-                                   remoted::common::LogThrottle::kDefaultWindowSeconds);
+                                   throttle.period().c_str());
                     }
                     return result;
                 }
@@ -480,10 +480,10 @@ namespace remoted::enrollment
                 if (const auto throttle = timeoutThrottle().record())
                 {
                     LOGFN_WARN(logFn(),
-                               "authd response timeout (deadline=%u ms): %llu timeout(s) in the last %d s.",
+                               "authd response timeout (deadline=%u ms): %llu timeout(s) %s.",
                                m_responseTimeoutMs,
                                throttle.total,
-                               remoted::common::LogThrottle::kDefaultWindowSeconds);
+                               throttle.period().c_str());
                 }
                 return result;
             }
@@ -529,9 +529,9 @@ namespace remoted::enrollment
                 if (const auto throttle = protocolErrorThrottle().record())
                 {
                     LOGFN_WARN(logFn(),
-                               "authd returned an unparseable response: %llu error(s) in the last %d s.",
+                               "authd returned an unparseable response: %llu error(s) %s.",
                                throttle.total,
-                               remoted::common::LogThrottle::kDefaultWindowSeconds);
+                               throttle.period().c_str());
                 }
             }
 

@@ -58,8 +58,9 @@ Replace `<ossec_config>` with `<wazuh_config>` throughout the file.
 ### Strict XML
 
 5.0 parses `wazuh-manager.conf` as **well-formed XML** validated against a JSON Schema
-(`/etc/wazuh-manager/wazuh-manager.schema.json`; `bin/wazuh-manager-conf validate` reports the same verdict the
-daemons apply). Constructs the 4.x parser tolerated are now rejected at startup, each reported as
+(`/etc/wazuh-manager/wazuh-manager.schema.json`; `bin/wazuh-manager-conf validate` reports the verdict the
+daemons apply to the file, durations and sizes included; `bin/wazuh-manager-control check` adds the credential
+check and every daemon's own `-t`, which is everything a start checks). Constructs the 4.x parser tolerated are now rejected at startup, each reported as
 `(1244): Invalid configuration at '<pointer or file>': <detail>`:
 
 - **A single root.** Multiple sibling `<wazuh_config>` blocks are no longer merged — keep one root.
@@ -72,6 +73,12 @@ daemons apply). Constructs the 4.x parser tolerated are now rejected at startup,
   (`/remote/connection: unknown option`), as are duplicated elements the schema declares unique.
 - **Booleans are `yes`/`no`**, checked strictly; numbers must be digits; every option is typed by the
   schema (see the [generated reference](../../ref/configuration/manager/reference.md)).
+- **Durations and sizes are bounded.** A size is at least one byte in any unit (`0K` is refused), a
+  duration or size has at most as many digits as its unit allows (a duration at most 999999999 seconds:
+  9 digits in seconds, 7 in minutes, 5 in hours, 4 in days, 3 in weeks), and `<remote><legacy><rids_closing_time>`
+  is at least 1 second — 4.x fell back to its default on `0`, 5.0 refuses it.
+- **Addresses are checked.** `<cluster><bind_addr>` must be a host name or an IP address, and every
+  `<indexer><hosts><host>` an `http://` or `https://` URL that names a host (an IPv6 address in brackets).
 - **`<cluster>` and `<indexer>` are required sections**, and `<cluster><key>` and `<indexer><hosts>`
   cannot be omitted within them: every manager runs as a cluster node and needs at least one indexer
   host to start `wazuh-manager-analysisd` (the installer always generates both). The 4.x

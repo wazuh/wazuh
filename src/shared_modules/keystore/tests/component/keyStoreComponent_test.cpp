@@ -133,3 +133,48 @@ TEST(KeyStoreComponentTest, TestConcurrentAccessSucceeds)
     EXPECT_EQ(failures.load(), 0);
     EXPECT_FALSE(std::filesystem::exists(std::filesystem::path(DATABASE_PATH) / "lost"));
 }
+
+TEST(KeyStoreComponentTest, TestALockHeldPastTheWaitIsReportedAsBusyAndChangesNothing)
+{
+    std::filesystem::remove_all(DATABASE_PATH);
+    Keystore::put("default", "key1", "value1");
+
+    {
+        // Another handle holds the database for longer than the caller is willing to wait.
+        Utils::RocksDBWrapper holder(DATABASE_PATH, false);
+
+        std::string out;
+        EXPECT_THROW(Keystore::get("default", "key1", out, std::chrono::milliseconds(100)), KeystoreLockTimeout);
+        EXPECT_EQ(out, "");
+        EXPECT_THROW(Keystore::put("default", "key1", "changed", std::chrono::milliseconds(100)), KeystoreLockTimeout);
+    }
+
+    EXPECT_EQ(Keystore::get("default", "key1"), "value1") << "a put that gave up must not have written";
+    EXPECT_FALSE(std::filesystem::exists(std::filesystem::path(DATABASE_PATH) / "lost"));
+}
+
+TEST(KeyStoreComponentTest, TestTheCallersWaitIsHonoured)
+{
+    std::filesystem::remove_all(DATABASE_PATH);
+    Keystore::put("default", "key1", "value1");
+
+    auto holder = std::make_unique<Utils::RocksDBWrapper>(DATABASE_PATH, false);
+    std::thread releaser(
+        [&holder]()
+        {
+            std::this_thread::sleep_for(std::chrono::milliseconds(300));
+            holder.reset();
+        });
+
+    std::string out;
+    EXPECT_NO_THROW(Keystore::get("default", "key1", out, Keystore::CLI_LOCK_WAIT));
+    releaser.join();
+    EXPECT_EQ(out, "value1");
+}
+
+TEST(KeyStoreComponentTest, TestTheCliWaitsLongerThanTheDaemons)
+{
+    // A burst of daemon reads must delay the CLI, not fail it.
+    EXPECT_GT(Keystore::CLI_LOCK_WAIT, Keystore::DEFAULT_LOCK_WAIT);
+    EXPECT_EQ(Keystore::DEFAULT_LOCK_WAIT, std::chrono::milliseconds(5000));
+}

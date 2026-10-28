@@ -655,7 +655,8 @@ class WazuhDBQueryGroupByAgents(WazuhDBQueryGroupBy, WazuhDBQueryAgents):
                 merged[key]["count"] = merged[key].get("count", 0) + item.get("count", 0)
             else:
                 merged[key] = item
-        # totalItems counts the agents, not the groups, so merging leaves it as is.
+        # totalItems counts the rows, so it loses the ones merged away.
+        result["totalItems"] -= len(result["items"]) - len(merged)
         result["items"] = list(merged.values())
 
         return result

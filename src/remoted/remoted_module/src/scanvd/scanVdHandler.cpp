@@ -120,10 +120,10 @@ namespace remoted::scanvd
                 if (const auto decision = m_vdErrorThrottle.record())
                 {
                     LOGFN_WARN(logFn(),
-                               "Answered %llu scan request(s) with 503 in the last %d s: VD did not queue them "
+                               "Answered %llu scan request(s) with 503 %s: VD did not queue them "
                                "(last: %s). The agents retry on their next notify.",
                                static_cast<unsigned long long>(decision.total),
-                               wazuh::uds_http::LogThrottle::kDefaultWindowSeconds,
+                               decision.period().c_str(),
                                vdAnswer.second.c_str());
                 }
             }

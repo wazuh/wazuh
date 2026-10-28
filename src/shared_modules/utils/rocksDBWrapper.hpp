@@ -22,6 +22,7 @@
 #include <chrono>
 #include <filesystem>
 #include <memory>
+#include <random>
 #include <rocksdb/db.h>
 #include <rocksdb/filter_policy.h>
 #include <rocksdb/table.h>
@@ -39,6 +40,40 @@ namespace Utils
 {
     /// Default time a constructor keeps retrying while another handle holds the database lock.
     constexpr std::chrono::milliseconds ROCKSDB_DEFAULT_LOCK_RETRY_TIMEOUT {5000};
+
+    /**
+     * @brief Thrown by the constructor when the database lock was still held by another handle or
+     *        process when the retry window ran out. Nothing was opened, read or written.
+     *
+     * A distinct type so a caller can tell "busy, retry later" from a real failure (corruption, a
+     * missing directory, permissions) without matching message text.
+     */
+    class RocksDBLockTimeout final : public std::runtime_error
+    {
+    public:
+        using std::runtime_error::runtime_error;
+    };
+
+    /**
+     * @brief The sleep before the next open attempt: a uniformly random point in [delay/2, delay].
+     *
+     * Without jitter, every opener that lost the same race wakes on the same exponential schedule
+     * and collides again on every attempt, so under a burst some of them exhaust their whole window
+     * without ever seeing the lock free. The random half spreads them out.
+     *
+     * @param delay The un-jittered backoff step.
+     * @return std::chrono::milliseconds The step to sleep.
+     */
+    inline std::chrono::milliseconds jitteredLockRetryDelay(const std::chrono::milliseconds delay)
+    {
+        if (delay.count() <= 1)
+        {
+            return delay;
+        }
+        thread_local std::minstd_rand generator {std::random_device {}()};
+        std::uniform_int_distribution<std::chrono::milliseconds::rep> distribution {delay.count() / 2, delay.count()};
+        return std::chrono::milliseconds {distribution(generator)};
+    }
 
     class RocksDBTransaction;
     class IRocksDBWrapper
@@ -182,7 +217,7 @@ namespace Utils
             {
                 if (isLockContention(status))
                 {
-                    throw std::runtime_error("Failed to open RocksDB database '" + m_path +
+                    throw RocksDBLockTimeout("Failed to open RocksDB database '" + m_path +
                                              "': it is locked by another handle or process and was still locked "
                                              "after " +
                                              std::to_string(lockRetryTimeout.count()) +
@@ -822,8 +857,8 @@ namespace Utils
         }
 
         /**
-         * @brief Runs an open attempt, retrying with a bounded exponential backoff while the database lock
-         *        is held elsewhere (or a file vanished under a concurrent writer).
+         * @brief Runs an open attempt, retrying with a bounded, jittered exponential backoff while the
+         *        database lock is held elsewhere (or a file vanished under a concurrent writer).
          *
          * @param attempt Callable returning the status of one open attempt.
          * @param timeout Total time to keep retrying. Zero tries once.
@@ -848,7 +883,8 @@ namespace Utils
                 {
                     break;
                 }
-                std::this_thread::sleep_for(std::min<std::chrono::steady_clock::duration>(delay, deadline - now));
+                std::this_thread::sleep_for(
+                    std::min<std::chrono::steady_clock::duration>(jitteredLockRetryDelay(delay), deadline - now));
                 delay = std::min(delay * 2, MAX_DELAY);
                 status = attempt();
             }

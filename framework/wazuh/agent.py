@@ -1516,8 +1516,10 @@ def get_outdated_agents(agent_list: list = None, offset: int = 0, limit: int = c
 def _is_older_version(version: str, reference: str) -> bool:
     """Whether a stored agent version is older than the reference one.
 
-    A missing or unparseable version is not considered older, and neither is one the query language could not
-    express as a value.
+    Only major, minor and patch count, as in the upgrade's own check (the task manager's `compareVersions`): an agent
+    on a pre-release of the manager's version ('v5.0.0-rc1' against 'v5.0.0') is not older, because an upgrade
+    request for it is refused as already up to date (1820). A missing or unparseable version is not considered older,
+    and neither is one the query language could not express as a value.
 
     Parameters
     ----------
@@ -1534,10 +1536,12 @@ def _is_older_version(version: str, reference: str) -> bool:
     if not isinstance(version, str) or not re.fullmatch(r'[\w .\-]+', version):
         return False
 
-    try:
-        return WazuhVersion(version) < WazuhVersion(reference)
-    except ValueError:
+    release = re.compile(r'(?:Wazuh )?v?(\d+)\.(\d+)\.(\d+)')
+    agent_match, reference_match = release.match(version), release.match(reference or '')
+    if not agent_match or not reference_match:
         return False
+
+    return tuple(map(int, agent_match.groups())) < tuple(map(int, reference_match.groups()))
 
 
 @expose_resources(actions=["agent:upgrade"], resources=["agent:id:{agent_list}"],

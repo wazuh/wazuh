@@ -190,11 +190,11 @@ namespace remoted::endpoints::control
                 if (const auto throttle = invalidBodyThrottle().record())
                 {
                     LOGFN_WARN(logFn(),
-                               "Invalid /control body size (agent %.*s): rejected %llu request(s) in the last %d s.",
+                               "Invalid /control body size (agent %.*s): rejected %llu request(s) %s.",
                                static_cast<int>(authReq->agentId.size()),
                                authReq->agentId.data(),
                                throttle.total,
-                               remoted::common::LogThrottle::kDefaultWindowSeconds);
+                               throttle.period().c_str());
                 }
                 remoted::control::incRejected(metrics);
                 responder->send(errorJson(400, "invalid_body"));
@@ -210,11 +210,11 @@ namespace remoted::endpoints::control
                 if (const auto throttle = invalidJsonThrottle().record())
                 {
                     LOGFN_WARN(logFn(),
-                               "Invalid /control JSON (agent %.*s): rejected %llu request(s) in the last %d s.",
+                               "Invalid /control JSON (agent %.*s): rejected %llu request(s) %s.",
                                static_cast<int>(authReq->agentId.size()),
                                authReq->agentId.data(),
                                throttle.total,
-                               remoted::common::LogThrottle::kDefaultWindowSeconds);
+                               throttle.period().c_str());
                 }
                 remoted::control::incRejected(metrics);
                 responder->send(errorJson(400, "invalid_json"));
@@ -226,13 +226,12 @@ namespace remoted::endpoints::control
             {
                 if (const auto throttle = invalidAgentIdThrottle().record())
                 {
-                    LOGFN_WARN(
-                        logFn(),
-                        "Invalid agent ID in /control request (%.*s): rejected %llu request(s) in the last %d s.",
-                        static_cast<int>(authReq->agentId.size()),
-                        authReq->agentId.data(),
-                        throttle.total,
-                        remoted::common::LogThrottle::kDefaultWindowSeconds);
+                    LOGFN_WARN(logFn(),
+                               "Invalid agent ID in /control request (%.*s): rejected %llu request(s) %s.",
+                               static_cast<int>(authReq->agentId.size()),
+                               authReq->agentId.data(),
+                               throttle.total,
+                               throttle.period().c_str());
                 }
                 remoted::control::incRejected(metrics);
                 responder->send(errorJson(400, "invalid_agent_id"));
@@ -263,13 +262,12 @@ namespace remoted::endpoints::control
             {
                 if (const auto throttle = unknownTypeThrottle().record())
                 {
-                    LOGFN_WARN(
-                        logFn(),
-                        "Unknown /control message type '%s' (agent %u): rejected %llu request(s) in the last %d s.",
-                        type.c_str(),
-                        id,
-                        throttle.total,
-                        remoted::common::LogThrottle::kDefaultWindowSeconds);
+                    LOGFN_WARN(logFn(),
+                               "Unknown /control message type '%s' (agent %u): rejected %llu request(s) %s.",
+                               type.c_str(),
+                               id,
+                               throttle.total,
+                               throttle.period().c_str());
                 }
                 remoted::control::incRejected(metrics);
                 responder->send(errorJson(400, "unknown_message_type"));

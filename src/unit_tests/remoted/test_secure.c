@@ -1131,6 +1131,8 @@ void test_HandleSecureMessage_OldMessage_NoShutdownMessage(void** state)
 
 void test_HandleSecureMessage_invalid_message(void** state)
 {
+    rem_reject_log_reset(); // a quiet log: the rejection is the first of its kind
+
     char buffer[OS_MAXSTR + 1] = "!1234!";
     message_t message = {.buffer = buffer, .size = 6, .sock = 1};
     struct sockaddr_in peer_info;
@@ -1841,6 +1843,8 @@ void test_HandleSecureMessage_close_idle_sock_disabled_2(void** state)
 
 void test_HandleSecureMessage_close_idle_sock_recv_fail(void** state)
 {
+    rem_reject_log_reset(); // a quiet log: the rejection is the first of its kind
+
     char buffer[OS_MAXSTR + 1] = "12!";
     message_t message = {.buffer = buffer, .size = 0, .sock = 1};
     struct sockaddr_in peer_info;
@@ -1941,6 +1945,8 @@ void test_HandleSecureMessage_close_idle_sock_recv_fail(void** state)
 
 void test_HandleSecureMessage_close_idle_sock_decrypt_fail(void** state)
 {
+    rem_reject_log_reset(); // a quiet log: the rejection is the first of its kind
+
     char buffer[OS_MAXSTR + 1] = "12!";
     message_t message = {.buffer = buffer, .size = 4, .sock = 1};
     struct sockaddr_in peer_info;
@@ -3425,6 +3431,82 @@ void test_HandleSecureMessage_ping_udp_send_fails(void** state)
     HandleSecureMessage(&message, NULL, NULL);
 }
 
+/* Rejections of unauthenticated frames: one WARNING per reason and window, the rest at debug level
+ * and counted into the next WARNING, which names the real period it covers. */
+void test_rem_log_rejected_frame_throttles_per_reason(void** state)
+{
+    rem_reject_log_reset();
+
+    current_ts = 1000;
+    expect_string(__wrap__mwarn, formatted_msg, "Received message is empty from '192.0.2.1'");
+    rem_log_rejected_frame(REM_REJECT_EMPTY, "Received message is empty from '%s'", "192.0.2.1");
+
+    // Same reason inside the window: debug level only
+    current_ts = 1010;
+    expect_string(__wrap__mdebug1, formatted_msg, "Received message is empty from '192.0.2.2'");
+    rem_log_rejected_frame(REM_REJECT_EMPTY, "Received message is empty from '%s'", "192.0.2.2");
+
+    // Another reason is not hidden by the first one's window
+    expect_string(__wrap__mwarn, formatted_msg, "Decrypt the message fail from '192.0.2.3', socket 7");
+    rem_log_rejected_frame(REM_REJECT_DECRYPT, "Decrypt the message fail from '%s', socket %d", "192.0.2.3", 7);
+
+    // Past the window: a WARNING that reports the suppressed one and the real period
+    current_ts = 1100;
+    expect_string(__wrap__mwarn,
+                  formatted_msg,
+                  "Received message is empty from '192.0.2.4' (and 1 more like it in the last 100 s)");
+    rem_log_rejected_frame(REM_REJECT_EMPTY, "Received message is empty from '%s'", "192.0.2.4");
+}
+
+/* A frame claiming an ID that is not registered for its source address names the address and the
+ * claim, never an agent: nothing has decrypted yet. */
+void test_HandleSecureMessage_unregistered_id_names_no_agent(void** state)
+{
+    char buffer[OS_MAXSTR + 1] = "!009!payload";
+    message_t message = {.buffer = buffer, .size = 12, .sock = USING_UDP_NO_CLIENT_SOCKET};
+    struct sockaddr_in peer_info = {0};
+
+    rem_reject_log_reset();
+    current_ts = 61;
+
+    peer_info.sin_family = AF_INET;
+    peer_info.sin_addr.s_addr = 0x0100007F;
+    memcpy(&message.addr, &peer_info, sizeof(peer_info));
+
+    expect_function_call(__wrap_key_lock_read);
+    expect_string(__wrap_OS_IsAllowedDynamicID, id, "009");
+    expect_string(__wrap_OS_IsAllowedDynamicID, srcip, "127.0.0.1");
+    will_return(__wrap_OS_IsAllowedDynamicID, -1);
+    expect_function_call(__wrap_key_unlock);
+
+    expect_string(__wrap__mwarn,
+                  formatted_msg,
+                  "Message from '127.0.0.1' claims agent ID '009', which is not registered for that source address.");
+    expect_function_call(__wrap_rem_inc_recv_unknown);
+
+    HandleSecureMessage(&message, NULL, NULL);
+}
+
+/* An unterminated "!<id>!" header is a WARNING naming the source address only. */
+void test_HandleSecureMessage_unterminated_id_header(void** state)
+{
+    char buffer[OS_MAXSTR + 1] = "!12abc";
+    message_t message = {.buffer = buffer, .size = 6, .sock = USING_UDP_NO_CLIENT_SOCKET};
+    struct sockaddr_in peer_info = {0};
+
+    rem_reject_log_reset();
+    current_ts = 61;
+
+    peer_info.sin_family = AF_INET;
+    peer_info.sin_addr.s_addr = 0x0100007F;
+    memcpy(&message.addr, &peer_info, sizeof(peer_info));
+
+    expect_string(__wrap__mwarn, formatted_msg, "Incorrectly formatted message from '127.0.0.1'.");
+    expect_function_call(__wrap_rem_inc_recv_unknown);
+
+    HandleSecureMessage(&message, NULL, NULL);
+}
+
 /* send_msg_nowait() as send_control_ack() drives it: full_sock is set only on SEND_MSG_QUEUE_FULL */
 int __wrap_send_msg_nowait(const char* agent_id, const char* msg, ssize_t msg_length, int* full_sock)
 {
@@ -4550,6 +4632,10 @@ int main(void)
         cmocka_unit_test(test_HandleSecureMessage_ping_tcp_socket_gone),
         cmocka_unit_test(test_HandleSecureMessage_ping_udp),
         cmocka_unit_test(test_HandleSecureMessage_ping_udp_send_fails),
+        // Tests the throttled rejections of unauthenticated legacy frames
+        cmocka_unit_test(test_rem_log_rejected_frame_throttles_per_reason),
+        cmocka_unit_test(test_HandleSecureMessage_unregistered_id_names_no_agent),
+        cmocka_unit_test(test_HandleSecureMessage_unterminated_id_header),
         // Tests send_control_ack
         cmocka_unit_test(test_send_control_ack_queued),
         cmocka_unit_test(test_send_control_ack_agent_not_reading),

@@ -153,17 +153,32 @@ is broken.`
 
 ### Inspect the tasks database
 
-The Task Manager is the **sole owner** of `tasks.db`: Wazuh DB has no `task` actor, and there is
-no protocol to query it through. Read it directly, and only read it — the module holds the
-database open in WAL mode:
+The Task Manager is the **sole owner** of `tasks.db`: Wazuh DB has no `task` actor. Manager tasks
+are inspected through the module's own routes, which is what [Manager tasks](manager-tasks.md)
+documents — for example, how many `vd_scan` tasks are waiting:
 
 ```bash
-sqlite3 -readonly /var/wazuh-manager/queue/tasks/tasks.db \
-  "SELECT STATUS, COUNT(*) FROM TASKS GROUP BY STATUS;"
+curl --unix-socket /var/wazuh-manager/queue/sockets/task-http.sock \
+     -H 'Content-Type: application/json' \
+     -d '{"task_type":"vd_scan","status":"pending"}' \
+     http://localhost/v1/manager-tasks/count
 ```
 
-Manager tasks live in the same file and are better inspected through the module's own endpoints,
-which is what [Manager tasks](manager-tasks.md) documents.
+Agent tasks have no read-only route (`/v1/tasks/pending` marks what it returns as delivered). To
+look at them, or at anything the routes do not answer, query a **copy** of the database, never the
+live file. The module holds it open in WAL mode, and opening it in place — even with
+`sqlite3 -readonly`, and especially as root — can create or take over its `-wal` and `-shm` files
+next to the running module:
+
+```bash
+d=$(mktemp -d)
+cp /var/wazuh-manager/queue/tasks/tasks.db "$d/"
+cp /var/wazuh-manager/queue/tasks/tasks.db-wal "$d/" 2>/dev/null   # recent writes not yet checkpointed
+sqlite3 "$d/tasks.db" "SELECT STATUS, COUNT(*) FROM TASKS GROUP BY STATUS;"
+rm -rf "$d"
+```
+
+The copy is a snapshot taken while the module writes, so a count may be off by the rows in flight.
 
 ### Monitor Logs
 

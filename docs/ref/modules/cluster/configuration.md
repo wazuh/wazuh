@@ -105,8 +105,9 @@ Specifies the address the **master** listens on for worker connections. Workers 
 so they ignore it.
 
 - **Default value:** `127.0.0.1`
-- **Allowed values:** A non-empty string (the schema does not check the address format; an address
-  the master cannot bind stops `wazuh-manager-clusterd` with `Could not start master`)
+- **Allowed values:** A host name (letters, digits, `-` and `_` in dot-separated labels) or an IP
+  address; anything else is refused by the configuration check. A valid name or address the master
+  cannot bind still stops `wazuh-manager-clusterd` with `Could not start master`
 - **Note:** With the default, the master accepts only local connections. Set it to an address the
   workers can reach (or `0.0.0.0`) on the master of a multi-node cluster.
 

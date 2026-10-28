@@ -63,8 +63,9 @@ read. `remoted` reads an agent's groups from the `agent` table with `global sele
 `wdb.sock`, and a failure there makes it answer `503 dependency_unavailable` on `POST /control`;
 [`GET /v1/agents/groups`](#get-v1agentsgroups) joins `belongs` and `group`. A `503` for missing
 tables also logs a `WARNING` under the `wazuh-manager-db` tag (`Status answered unavailable N
-time(s) in the last 90 s: the global database is missing expected tables.`), at most once per 90
-seconds so a polling load balancer does not flood the log.
+time(s) in the last <s> s: the global database is missing expected tables.`, or `… so far: …` on
+the first one), at most once per 90 seconds so a polling load balancer does not flood the log;
+`<s>` is the real time since the previous such line.
 
 **This is a readiness answer, not a liveness one.** A process that is up is not necessarily a
 process that can work: `wazuh-manager-db` can be running and accepting connections on this socket

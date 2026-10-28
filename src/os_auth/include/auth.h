@@ -46,7 +46,8 @@
 
 #define AUTH_IDLE_CONN_TIMEOUT 30   /* Seconds a connection may stay idle before completing its enrolment request */
 #define AUTH_EPOLL_WAIT_MS     1000 /* epoll_wait tick used to sweep idle connections */
-#define AUTH_CLIENT_REJECT_LOG_WINDOW 90 /* Seconds between two logged client-caused rejections (as remoted) */
+#define AUTH_CLIENT_REJECT_LOG_WINDOW 90 /* Seconds between two logged client-caused rejections of one reason (as remoted) */
+#define AUTH_CLIENT_REJECT_LOG_REASONS 32 /* Distinct reasons throttled apart; any more share one slot */
 
 #define full(i, j) ((i + 1) % AUTH_POOL == j)
 #define empty(i, j) (i == j)
@@ -138,14 +139,25 @@ void w_auth_validate_groups_cleanup(void);
  *        password or a malformed request).
  *
  * The client's mistake is not a manager error, so it is logged at WARNING (INFO when @p info is
- * true), and throttled: one line per AUTH_CLIENT_REJECT_LOG_WINDOW seconds across all such
- * rejections. That line names how many were suppressed since the previous one; each suppressed
- * rejection is still logged at debug level.
+ * true), and throttled per reason -- the reason being @p format, so one call site is one reason:
+ * one line per AUTH_CLIENT_REJECT_LOG_WINDOW seconds for each, so a frequent reason never hides
+ * another. That line names how many of its kind were suppressed and over what period; each
+ * suppressed rejection is still logged at debug level.
  *
  * @param info true to log at INFO instead of WARNING.
  * @param format printf-style message.
  */
 void w_auth_log_client_rejection(bool info, const char *format, ...) __attribute__((format(printf, 2, 3)));
+
+/**
+ * @brief The throttle behind w_auth_log_client_rejection(), with the clock passed in (for testing).
+ *
+ * @param reason What identifies the reason (w_auth_log_client_rejection() passes its format).
+ * @param info true to log at INFO instead of WARNING.
+ * @param message The formatted message.
+ * @param now The current time.
+ */
+void w_auth_client_rejection_log(const char *reason, bool info, const char *message, time_t now);
 
 /**
  * @brief Forget the client-rejection throttle state, so the next rejection is logged (for testing).

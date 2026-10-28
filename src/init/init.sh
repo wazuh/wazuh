@@ -166,7 +166,9 @@ runInit()
             rm -f /etc/systemd/system/wazuh-$type.service
         fi
         GenerateService wazuh-$type.service > ${SERVICE_UNIT_PATH}
-        chown root:$file_permissions ${SERVICE_UNIT_PATH}
+        # root:root 0644, as the DEB and RPM packages install it (the redirection above follows umask).
+        chown root:root ${SERVICE_UNIT_PATH}
+        chmod 0644 ${SERVICE_UNIT_PATH}
         systemctl daemon-reload
 
         rm -f /etc/rc.d/init.d/${service}

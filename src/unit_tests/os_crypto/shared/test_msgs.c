@@ -380,7 +380,7 @@ void test_ReadSecMSG_final_size_validation(void **state){
     _s_verify_counter = 0;
     _s_recv_flush = 1;
 
-    expect_string(__wrap__mwarn, formatted_msg, "Decompressed message too short from agent '001'");
+    expect_string(__wrap__mdebug1, formatted_msg, "Decompressed message too short from agent '001'");
 
     assert_int_equal(ReadSecMSG(keys, msg_buf, cleartext, 0,
                                 sizeof(msg_buf) - 1, &final_size, "127.0.0.1", &output), KS_CORRUPT);
@@ -428,7 +428,7 @@ void test_ReadSecMSG_unauthenticated_prefix_keeps_crypto_method(void **state){
     _s_recv_flush = 1;
 
     /* The "#AES" prefix selects the cipher, so the message decrypts... */
-    expect_string(__wrap__mwarn, formatted_msg, "Decompressed message too short from agent '001'");
+    expect_string(__wrap__mdebug1, formatted_msg, "Decompressed message too short from agent '001'");
 
     assert_int_equal(ReadSecMSG(keys, msg_buf, cleartext, 0,
                                 sizeof(msg_buf) - 1, &final_size, "127.0.0.1", &output), KS_CORRUPT);
@@ -478,7 +478,7 @@ void test_ReadSecMSG_legacy_format_length_validation(void **state){
     size_t final_size = 0;
     char *output = NULL;
 
-    expect_string(__wrap__mwarn, formatted_msg, "Message too short from agent '001'");
+    expect_string(__wrap__mdebug1, formatted_msg, "Message too short from agent '001'");
 
     assert_int_equal(ReadSecMSG(keys, msg_buf, cleartext, 0,
                                 sizeof(msg_buf) - 1, &final_size, "127.0.0.1", &output), KS_CORRUPT);

@@ -123,22 +123,22 @@ namespace remoted::endpoints::cacerts
                         // cause, because a missing file, a directory at the path and an oversized file
                         // lead the operator to different fixes.
                         LOGFN_WARN(logFn(),
-                                   "GET /cacerts answered 404 to %llu request(s) in the last %d s: the configured CA "
+                                   "GET /cacerts answered 404 to %llu request(s) %s: the configured CA "
                                    "certificate %s (%llu consecutive failed read(s)); agents cannot bootstrap trust "
                                    "from this manager until it is restored.",
                                    static_cast<unsigned long long>(throttle.total),
-                                   remoted::common::LogThrottle::kDefaultWindowSeconds,
+                                   throttle.period().c_str(),
                                    causeOf(*snapshot.lastReadFailure).c_str(),
                                    static_cast<unsigned long long>(snapshot.lastReadFailure->consecutive));
                     }
                     else
                     {
                         LOGFN_WARN(logFn(),
-                                   "GET /cacerts answered 404 to %llu request(s) in the last %d s: the configured CA "
+                                   "GET /cacerts answered 404 to %llu request(s) %s: the configured CA "
                                    "certificate carries no usable certificate; agents cannot bootstrap trust from "
                                    "this manager until it is restored.",
                                    static_cast<unsigned long long>(throttle.total),
-                                   remoted::common::LogThrottle::kDefaultWindowSeconds);
+                                   throttle.period().c_str());
                     }
                 }
                 responder->send(remoted::http::HttpResponse::json(404, R"({"error":"not_found"})"));
@@ -153,11 +153,11 @@ namespace remoted::endpoints::cacerts
                 if (const auto throttle = throttles->readFailure.record())
                 {
                     LOGFN_WARN(logFn(),
-                               "GET /cacerts is answering %llu request(s) in the last %d s from the last good read of "
+                               "GET /cacerts is answering %llu request(s) %s from the last good read of "
                                "the configured CA certificate, which now %s (%llu consecutive failed read(s)); "
                                "restore the file -- the bundle being served predates the failure.",
                                static_cast<unsigned long long>(throttle.total),
-                               remoted::common::LogThrottle::kDefaultWindowSeconds,
+                               throttle.period().c_str(),
                                causeOf(*snapshot.lastReadFailure).c_str(),
                                static_cast<unsigned long long>(snapshot.lastReadFailure->consecutive));
                 }
@@ -169,11 +169,11 @@ namespace remoted::endpoints::cacerts
                 if (const auto throttle = throttles->caMismatch.record())
                 {
                     LOGFN_ERROR(logFn(),
-                                "GET /cacerts answered 503 to %llu request(s) in the last %d s: the configured CA "
+                                "GET /cacerts answered 503 to %llu request(s) %s: the configured CA "
                                 "(%s) is not one the served certificate chains to, so it is not handed out (agents "
                                 "would fail every handshake against this manager with it).",
                                 static_cast<unsigned long long>(throttle.total),
-                                remoted::common::LogThrottle::kDefaultWindowSeconds,
+                                throttle.period().c_str(),
                                 snapshot.subjects.c_str());
                 }
                 responder->send(remoted::http::HttpResponse::json(503, R"({"error":"ca_mismatch"})"));

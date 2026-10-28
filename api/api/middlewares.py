@@ -87,28 +87,28 @@ LOGIN_USERNAME_MAX_LENGTH = 64
 # for all of them
 LOGIN_CLIENT_ATTEMPTS_FACTOR = 10
 
-# A client over its rate limit gets a 429 per request; the WARNING naming it is written at most once per
-# this many seconds for each client and user, with the count of the refusals in between.
+# A client over its rate limit gets a 429 per request, and a blocked one a 403 per login; the WARNING naming it is
+# written at most once per this many seconds for each key (see `warn_rate_limited` and `check_blocked_ip`), with the
+# count of the refusals in between.
 RATE_LIMIT_WARNING_INTERVAL_SECONDS = 60
-# Most clients and users that interval is tracked for at once.
+# Most keys that interval is tracked for at once.
 RATE_LIMIT_WARNING_MAX_KEYS = 10000
 rate_limit_warnings: dict = {}
 
 
-def warn_rate_limited(host: str, user: str):
-    """Log that `user` at `host` was refused for exceeding the request rate, at most once per interval.
+def warn_throttled(key: tuple, message: str):
+    """Log `message` as a WARNING at most once per interval for `key`.
 
-    The refusals that are not logged are counted and reported on the next warning for the same client and user.
+    The calls that are not logged are counted and reported on the next warning for the same key.
 
     Parameters
     ----------
-    host : str
-        Client address.
-    user : str
-        User the request was made as.
+    key : tuple
+        What the warning is throttled by.
+    message : str
+        Warning to log.
     """
     now = time.time()
-    key = (host, user)
     entry = rate_limit_warnings.get(key)
     if entry is not None and now - entry['since'] < RATE_LIMIT_WARNING_INTERVAL_SECONDS:
         entry['suppressed'] += 1
@@ -123,10 +123,33 @@ def warn_rate_limited(host: str, user: str):
             rate_limit_warnings.clear()
     rate_limit_warnings[key] = {'since': now, 'suppressed': 0}
 
-    message = f'Maximum number of requests per minute reached. IP: {host}. User: {user}.'
     if suppressed:
         message += f' {suppressed} more request(s) refused since the previous warning.'
     logger.warning(message)
+
+
+def warn_rate_limited(host: str, user: str, authenticated: bool = True):
+    """Log that a client was refused for exceeding the request rate, at most once per interval.
+
+    An authenticated caller is tracked per client and user. An unauthenticated one is tracked per client only (see
+    `get_client_key`): the user it claims is whatever it sent, so keying on it would let a caller rotating names get a
+    WARNING per request.
+
+    Parameters
+    ----------
+    host : str
+        Client address.
+    user : str
+        User the request was made as, or claimed.
+    authenticated : bool
+        Whether the API authenticated the caller.
+    """
+    if authenticated:
+        warn_throttled(('rate', host, user),
+                       f'Maximum number of requests per minute reached. IP: {host}. User: {user}.')
+    else:
+        warn_throttled(('rate', get_client_key(host)),
+                       f'Maximum number of unauthenticated requests per minute reached. IP: {host}.')
 
 
 def get_client_key(host: str) -> str:
@@ -364,7 +387,7 @@ async def access_log(request: ConnexionRequest, response: Response, prev_time: t
     # A blocked client (6000) is logged where the block is enforced, `check_blocked_ip`: a 403 here can
     # equally be an RBAC or run_as refusal.
     if response.status_code == 429:
-        warn_rate_limited(host, user)
+        warn_rate_limited(host, user, authenticated=log_body)
 
 
 def get_login_attempt_key(request: Request) -> tuple:
@@ -436,7 +459,9 @@ async def check_blocked_ip(request: Request):
 
         if any(key in ip_block for key in limits):
             host = request.client.host if request.client else ''
-            logger.warning(f'IP blocked due to exceeded number of logins attempts: {host}. '
+            # Once per interval per client: the user is the one claimed, so it cannot key the throttle.
+            warn_throttled(('blocked', get_login_attempt_key(request)[0]),
+                           f'IP blocked due to exceeded number of logins attempts: {host}. '
                            f'User: {get_login_attempt_key(request)[1]!r}.')
             raise BlockedIPException(
                 status=403,

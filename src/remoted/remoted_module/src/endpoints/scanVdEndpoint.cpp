@@ -91,11 +91,11 @@ namespace remoted::endpoints::scanvd
                 if (const auto throttle = invalidBodyThrottle().record())
                 {
                     LOGFN_WARN(logFn(),
-                               "Invalid /scan/vd body size (agent %.*s): rejected %llu request(s) in the last %d s.",
+                               "Invalid /scan/vd body size (agent %.*s): rejected %llu request(s) %s.",
                                static_cast<int>(authReq->agentId.size()),
                                authReq->agentId.data(),
                                throttle.total,
-                               remoted::common::LogThrottle::kDefaultWindowSeconds);
+                               throttle.period().c_str());
                 }
                 responder->send(errorJson(400, "invalid_body"));
                 return;
@@ -111,11 +111,11 @@ namespace remoted::endpoints::scanvd
                 if (const auto throttle = invalidJsonThrottle().record())
                 {
                     LOGFN_WARN(logFn(),
-                               "Invalid JSON in /scan/vd (agent %.*s): rejected %llu request(s) in the last %d s.",
+                               "Invalid JSON in /scan/vd (agent %.*s): rejected %llu request(s) %s.",
                                static_cast<int>(authReq->agentId.size()),
                                authReq->agentId.data(),
                                throttle.total,
-                               remoted::common::LogThrottle::kDefaultWindowSeconds);
+                               throttle.period().c_str());
                 }
                 responder->send(errorJson(400, "invalid_json"));
                 return;
@@ -127,9 +127,9 @@ namespace remoted::endpoints::scanvd
                 if (const auto throttle = invalidAgentIdThrottle().record())
                 {
                     LOGFN_WARN(logFn(),
-                               "Invalid agent ID in /scan/vd: rejected %llu request(s) in the last %d s.",
+                               "Invalid agent ID in /scan/vd: rejected %llu request(s) %s.",
                                throttle.total,
-                               remoted::common::LogThrottle::kDefaultWindowSeconds);
+                               throttle.period().c_str());
                 }
                 responder->send(errorJson(400, "invalid_agent_id"));
                 return;

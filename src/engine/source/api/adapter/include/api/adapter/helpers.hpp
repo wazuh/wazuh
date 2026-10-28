@@ -2,8 +2,10 @@
 #ifndef API_ADAPTER_HELPERS_HPP
 #define API_ADAPTER_HELPERS_HPP
 
+#include <cstddef>
 #include <functional>
 #include <optional>
+#include <string>
 #include <string_view>
 
 #include <fmt/format.h>
@@ -14,6 +16,25 @@
 
 namespace api::adapter::helpers
 {
+/// Longest piece of request input an error message repeats back.
+inline constexpr std::size_t MAX_ECHOED_INPUT_LENGTH = 128;
+
+/**
+ * @brief Bound a request value before an error message repeats it back.
+ *
+ * @param value The value taken from the request.
+ * @param maxLength Longest text kept (MAX_ECHOED_INPUT_LENGTH by default).
+ * @return std::string The value itself when it fits, else its first characters followed by "... (<n> bytes)".
+ */
+inline std::string truncateForMessage(std::string_view value, std::size_t maxLength = MAX_ECHOED_INPUT_LENGTH)
+{
+    if (value.size() <= maxLength)
+    {
+        return std::string {value};
+    }
+    return fmt::format("{}... ({} bytes)", value.substr(0, maxLength), value.size());
+}
+
 template<typename T>
 using PropGetter = std::function<T()>;
 

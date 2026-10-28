@@ -10,6 +10,10 @@ from wazuh.core.common import AGENT_NAME_LEN_LIMIT, MAX_GROUPS_PER_MULTIGROUP, M
 
 GENERIC_ERROR_MSG = "Wazuh Internal Error. See log for more detail"
 DOCU_VERSION = 'current' if __version__ == '' else '.'.join(__version__.split('.')[:2]).lstrip('v')
+# The sections and fields of wazuh-manager.conf are those of the manager configuration schema.
+MANAGER_CONF_REFERENCE_REMEDIATION = ('See the manager configuration reference for the sections and fields of '
+                                      'wazuh-manager.conf, or run `/var/wazuh-manager/bin/wazuh-manager-conf dump` '
+                                      'on the node to list them with their effective values')
 
 class WazuhException(Exception):
     """
@@ -51,21 +55,14 @@ class WazuhException(Exception):
         # Configuration: 1100 - 1199
         1101: {'message': 'Requested component does not exist'},
         1102: {'message': 'Invalid section',
-               'remediation': f'Please, visit the official documentation (https://documentation.wazuh.com/'
-                              f'{DOCU_VERSION}/user-manual/reference/ossec-conf/index.html) '
-                              'to get more information about configuration sections'},
+               'remediation': MANAGER_CONF_REFERENCE_REMEDIATION},
         1103: {'message': 'Invalid field in section',
-               'remediation': f'Please, visit the official documentation (https://documentation.wazuh.com/'
-                              f'{DOCU_VERSION}/user-manual/reference/ossec-conf/index.html) '
-                              'to get more information about configuration sections'},
+               'remediation': MANAGER_CONF_REFERENCE_REMEDIATION},
         1104: {'message': 'Invalid type',
                'remediation': 'Insert a valid type'},
         1105: 'Error reading API configuration',
         1106: {'message': 'Requested section not present in configuration',
-               'remediation': 'Please, check your configuration file. '
-                              f'You can visit the official documentation (https://documentation.wazuh.com/'
-                              f'{DOCU_VERSION}/user-manual/reference/ossec-conf/index.html) '
-                              'to get more information about configuration sections'},
+               'remediation': f'Please, check your configuration file. {MANAGER_CONF_REFERENCE_REMEDIATION}'},
         1107: 'Internal options file not found',
         1108: 'Value not found in internal_options.conf',
         1109: 'Option must be a digit',
@@ -303,6 +300,15 @@ class WazuhException(Exception):
         1901: {'message': 'Control socket has not been created'
                },
         1902: {'message': 'Connection to control socket failed'
+               },
+        1903: {'message': 'The manager service-control helper could not be run',
+               'remediation': 'Check that `bin/wazuh-manager-service-control` is installed as `root:wazuh-manager` '
+                              'with mode 4750, or restart the manager on the node with `systemctl restart '
+                              'wazuh-manager`'
+               },
+        1904: {'message': 'The manager service-control helper refused the {action} request ({detail})',
+               'remediation': 'Run `wazuh-manager-control check` as root on the node to see why, fix the cause and '
+                              'send the request again'
                },
         1908: {'message': 'Error validating configuration',
                'remediation': 'Please, fix the corrupted files'

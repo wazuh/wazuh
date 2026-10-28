@@ -26,8 +26,12 @@ Both YAML files are merged over built-in defaults (`api/api/configuration.py`) a
 JSON schema (`api/api/validator.py`) when `wazuh-manager-apid` starts: an unknown option or a value of
 the wrong type stops it with error `2000`. Every string value is lowercased except `https.key`,
 `https.cert`, `https.ca` and `https.ssl_ciphers`, and the strings `yes`/`no` are read as booleans. A change to `api.yaml`
-takes effect when `wazuh-manager-apid` restarts (for example with
-`/var/wazuh-manager/bin/wazuh-manager-control restart`).
+takes effect when `wazuh-manager-apid` restarts: under systemd with
+`/var/wazuh-manager/bin/wazuh-manager-control check && systemctl restart wazuh-manager`, or with
+`PUT /cluster/restart`, which runs the same check first; without systemd with
+`/var/wazuh-manager/bin/wazuh-manager-control restart`. A shell `wazuh-manager-control restart` on a systemd
+host relaunches the daemons outside the unit
+([`wazuh-manager-control`](../../architecture.md#wazuh-manager-control)).
 
 Validate a file without starting the API:
 
@@ -36,7 +40,8 @@ Validate a file without starting the API:
 ```
 
 It prints nothing and exits `0` when the file is valid, and prints `Configuration not valid. ERROR: ...`
-and exits `1` otherwise. Without `-c`, `-t` validates only the built-in defaults.
+and exits `1` otherwise, including when the file named with `-c` does not exist. Without `-c`, `-t`
+validates only the built-in defaults.
 
 ### `wazuh-manager-apid` options
 
@@ -47,7 +52,7 @@ runs and debugging:
 |--------|--------|
 | `-f` | Run in the foreground, logging to the console as well as to the log files |
 | `-r` | Run as root: do not drop privileges to `wazuh-manager` (otherwise governed by [`drop_privileges`](#drop_privileges)) |
-| `-c <file>` | Use this API configuration file (merged over the built-in defaults) instead of `api.yaml` |
+| `-c <file>` | Use this API configuration file (merged over the built-in defaults) instead of `api.yaml`; a file that does not exist is error `2004` |
 | `-t` | Validate the configuration file given with `-c` and exit |
 | `-V` | Print the version and exit |
 | `-d` | Accepted, but has no effect: the log level is [`logs.level`](#logs) |
@@ -196,6 +201,12 @@ the proxy's address for the lockout, the limits and `api.log`. The login lockout
 unauthenticated limit group an IPv6 client by its `/64` network (and an IPv4-mapped address by the
 IPv4 address it carries); the authenticated limit counts the exact address. Each limit counts in a
 fixed 60-second window that starts with the first request it counts.
+
+Refusals are recorded in `api.log` at `WARNING` level at most once a minute, the next line adding
+`<n> more request(s) refused since the previous warning`: `Maximum number of requests per minute
+reached` once per client address and user, `Maximum number of unauthenticated requests per minute
+reached` and `IP blocked due to exceeded number of logins attempts` once per client (grouped as the
+lockout groups it), whatever user name the requests claim.
 
 See [Request rate limiting](#request-rate-limiting) and
 [Rate Limiting & Brute-Force Protection](authentication.md#rate-limiting--brute-force-protection).

@@ -115,7 +115,7 @@ curl -k -X GET "https://localhost:55000/agents?select=id,name,status,ip&sort=-id
   -H "Authorization: Bearer $TOKEN"
 ```
 
-Key filters: `agents_list`, `status`, `older_than`, `os.type`, `os.platform`, `os.version`, `os.major`, `os.minor`, `os.arch`, `os.name`, `version`, `group`, `name`, `ip`, `registerIP`.
+Key filters: `agents_list`, `status`, `older_than`, `os.type`, `os.platform`, `os.version`, `os.major`, `os.minor`, `os.arch`, `os.name`, `version`, `group`, `name`, `ip`, `registerIP` (an exact match; IPv4, IPv6 and CIDR values such as `10.0.0.0/24` are accepted, so an agent registered for a range is found by that range).
 
 #### Add agent
 
@@ -373,12 +373,12 @@ Other MITRE endpoints: `/mitre/tactics`, `/mitre/groups`, `/mitre/software`, `/m
 | PUT | `/agents/group/{group_id}/restart` | Restart group (v5.0.0+) |
 | PUT | `/agents/group/{group_id}/reload` | Reload group config (v5.0.0+) |
 | GET | `/agents/no_group` | Without group |
-| GET | `/agents/outdated` | Agents older than the manager (versions compared as versions, `5.0.0` equals `v5.0.0`) |
+| GET | `/agents/outdated` | Agents older than the manager (versions compared as versions, `5.0.0` equals `v5.0.0`; only major, minor and patch count, as in the upgrade check, so `v5.0.0-rc1` is not outdated against a `v5.0.0` manager) |
 | PUT | `/agents/upgrade` | Upgrade agents |
 | PUT | `/agents/upgrade_custom` | Custom upgrade |
 | PUT | `/agents/scan/vulnerability` | Request on-demand vulnerability scan |
 | GET | `/agents/uninstall` | Check whether the calling user has permission to uninstall the given agents |
-| GET | `/agents/stats/distinct` | Distinct fields |
+| GET | `/agents/stats/distinct` | Distinct fields: one row per combination of the `fields` values, with the `count` of agents that have it; `total_affected_items` counts the rows |
 | GET | `/agents/summary` | Summary |
 | GET | `/agents/summary/os` | OS summary |
 | GET | `/agents/summary/status` | Status summary |
@@ -390,7 +390,7 @@ Other MITRE endpoints: `/mitre/tactics`, `/mitre/groups`, `/mitre/software`, `/m
 | POST | `/groups` | Create group |
 | DELETE | `/groups` | Delete groups |
 | GET | `/groups/{group_id}/agents` | Group agents |
-| GET | `/groups/{group_id}/configuration` | Group config |
+| GET | `/groups/{group_id}/configuration` | Group config, as JSON: one entry per set of `<agent_config>` filters, with those `filters` and the `config` of every block that has them. Sections are keyed by tag (a wodle by its `name`); `syscheck`, `rootcheck`, `sca`, `syscollector` and `client` sections are merged into one object, any other section is a list with one object per occurrence, including sections the manager does not know |
 | PUT | `/groups/{group_id}/configuration` | Update group config |
 | GET | `/groups/{group_id}/files` | Group files |
 | GET | `/groups/{group_id}/files/{file_name}` | File content |
@@ -495,7 +495,10 @@ field operator value[;connector field operator value]
 | `<` | Less than |
 | `~` | Contains (SQL `LIKE`) |
 
-Any other operator (`>=`, `<=`, `~=`) is rejected with error `1409` (*Invalid query operator*).
+Any other operator (`>=`, `<=`, `~=`) is rejected: with error `1409` (*Invalid query operator*) on the
+collections queried through `wazuh-manager-db` (agents, groups, MITRE), and with error `1407` (*Query does
+not match expected format*) on the collections the framework filters in memory (for example users, roles,
+policies, enrollment tokens and cluster nodes).
 Clauses can be grouped with parentheses: `(status=active,status=pending);os.platform=ubuntu`.
 
 ### Connectors
@@ -599,14 +602,27 @@ Agents are the exception to the 404 rule. Every endpoint that names agents, the 
 included (`GET /agents/{agent_id}/key`, `PUT /agents/{agent_id}/group/{group_id}`,
 `PUT /agents/{agent_id}/restart`), answers `200` with the unknown agent as a failed item (`1701`), the
 same shape a list of agents gets, where some may exist and others not. A missing group or cluster node
-named in the same request is still a `404`.
+named in the same request is still a `404`, except in the node lists of `GET /cluster/nodes` and
+`GET /cluster/healthcheck` (`nodes_list`): there an unknown node is a failed item (`1730`, *Node does not
+exist*) of a `200` answer, next to the nodes that exist.
 
 While one of the core daemons (`wazuh-manager-modulesd`, `wazuh-manager-analysisd`, `wazuh-manager-db`,
 `wazuh-manager-remoted`) is stopped, failed or restarting, requests are refused with `500` and error
 `1017`, naming the node and the daemons. Logging in and out, the status and health endpoints
 (`GET /cluster/status`, `GET /cluster/healthcheck`, `GET /cluster/{node_id}/status`) and
 `PUT /cluster/restart` and `PUT /cluster/reload` keep working, so a node can be inspected and restarted
-remotely.
+remotely. They work without `wazuh-manager-modulesd` too: when its control socket (`control.sock`) does not
+exist or refuses the connection, the node runs `bin/wazuh-manager-service-control restart|reload` itself
+(the helper modulesd would run) and logs a `WARNING` naming the socket error. The node waits up to 5
+seconds for the helper to accept, then up to 4 more for the configuration and credentials check it runs
+before handing the action to systemd. A refusal in either is a failed item `1904` (*The manager
+service-control helper refused the restart request*, with its exit code and reason, such as `the manager
+configuration or credentials check failed; the manager was not restarted`), and the manager keeps running; a
+helper that cannot be run is `1903`. A failure the node no longer waits for (a longer check, or `systemctl`
+itself) is logged as an `ERROR` in `api.log` (`cluster.log` on a worker): `The manager restart run by
+wazuh-manager-service-control failed (exit code 1): …`. While modulesd runs, the request goes through its
+control socket instead, which answers as soon as the helper accepts. See
+[the control module](../control/README.md#manager-restart-and-reload).
 
 These codes are the framework's catalog (`framework/wazuh/core/exception.py`). The API process has a
 separate, startup-only catalog (`api/api/api_exception.py`) whose codes overlap numerically: `2000`

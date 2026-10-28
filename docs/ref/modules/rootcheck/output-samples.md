@@ -207,17 +207,26 @@ Navigate to **Threat Hunting** or **Discover** module and use these filters:
 wazuh.protocol.location: rootcheck
 ```
 
-**Exclude scan messages:**
+`event.original` is stored but not indexed, so a query on it never matches (or errors): filter on the fields the
+decoder extracts instead (see [Messages and the fields extracted from them](#messages-and-the-fields-extracted-from-them)).
+
+**Exclude scan messages** (detections carry `indicator` in `event.type`, the scan markers do not):
 ```
-wazuh.protocol.location: rootcheck AND NOT event.original: ("Starting rootcheck scan." OR "Ending rootcheck scan.")
+wazuh.protocol.location: rootcheck AND event.type: indicator
 ```
 
 **Specific detection types:**
 ```
 wazuh.protocol.location: rootcheck AND threat.indicator.type: file
-wazuh.protocol.location: rootcheck AND event.original: "present on /dev"
-wazuh.protocol.location: rootcheck AND event.original: "written permissions to anyone"
+wazuh.protocol.location: rootcheck AND file.path: /dev/*
+wazuh.protocol.location: rootcheck AND file.owner: *
+wazuh.protocol.location: rootcheck AND process.pid: *
+wazuh.protocol.location: rootcheck AND destination.port: *
+wazuh.protocol.location: rootcheck AND observer.ingress.interface.name: *
 ```
+
+They select, in order: file indicators, files in `/dev`, world-writable files owned by root, hidden processes,
+hidden ports and promiscuous interfaces.
 
 **Specific agent:**
 ```

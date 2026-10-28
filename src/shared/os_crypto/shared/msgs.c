@@ -306,6 +306,18 @@ STATIC char *CheckSum(char *msg, size_t length)
     return (msg);
 }
 
+/* Failures before the checksum proves the sender holds the agent's key. On the manager they come from an
+ * unauthenticated peer: remoted logs one throttled line per reason naming only the source address, so the
+ * details here stay at debug level and never name the claimed agent at a higher one. The agent keeps its
+ * levels: there the peer is its own manager. */
+#ifdef CLIENT
+#define preauth_merror(...) merror(__VA_ARGS__)
+#define preauth_mwarn(...) mwarn(__VA_ARGS__)
+#else
+#define preauth_merror(...) mdebug1(__VA_ARGS__)
+#define preauth_mwarn(...) mdebug1(__VA_ARGS__)
+#endif
+
 int ReadSecMSG(keystore *keys, char *buffer, char *cleartext, int id, unsigned int buffer_size, size_t *final_size, const char *srcip, char **output)
 {
     if (keys->flags.key_mode != W_ENCRYPTION_KEY && keys->flags.key_mode != W_DUAL_KEY) {
@@ -343,7 +355,7 @@ int ReadSecMSG(keystore *keys, char *buffer, char *cleartext, int id, unsigned i
     if (*buffer == ':') {
         buffer++;
     } else {
-        merror(ENCFORMAT_ERROR, keys->keyentries[id]->id, srcip);
+        preauth_merror(ENCFORMAT_ERROR, keys->keyentries[id]->id, srcip);
         w_mutex_unlock(&keys->keyentries[id]->mutex);
         return KS_CORRUPT;
     }
@@ -353,7 +365,7 @@ int ReadSecMSG(keystore *keys, char *buffer, char *cleartext, int id, unsigned i
         case W_METH_BLOWFISH:
             if (!OS_BF_Str(buffer, cleartext, keys->keyentries[id]->encryption_key,
                         buffer_size, OS_DECRYPT)) {
-                mwarn(ENCKEY_ERROR, keys->keyentries[id]->id, keys->keyentries[id]->ip->ip);
+                preauth_mwarn(ENCKEY_ERROR, keys->keyentries[id]->id, keys->keyentries[id]->ip->ip);
                 w_mutex_unlock(&keys->keyentries[id]->mutex);
                 return KS_ENCKEY;
             }
@@ -361,7 +373,7 @@ int ReadSecMSG(keystore *keys, char *buffer, char *cleartext, int id, unsigned i
         case W_METH_AES:
             if (!OS_AES_Str(buffer, cleartext, keys->keyentries[id]->encryption_key,
                 buffer_size-4, OS_DECRYPT)) {
-                mwarn(ENCKEY_ERROR, keys->keyentries[id]->id, keys->keyentries[id]->ip->ip);
+                preauth_mwarn(ENCKEY_ERROR, keys->keyentries[id]->id, keys->keyentries[id]->ip->ip);
                 w_mutex_unlock(&keys->keyentries[id]->mutex);
                 return KS_ENCKEY;
             }
@@ -393,19 +405,19 @@ int ReadSecMSG(keystore *keys, char *buffer, char *cleartext, int id, unsigned i
         }
 #else
         if (*final_size == 0) {
-            mwarn(UNCOMPRESS_ERR " Message received from agent '%s' at '%s'", keys->keyentries[id]->id, keys->keyentries[id]->ip->ip);
+            mdebug1(UNCOMPRESS_ERR " Message received from agent '%s' at '%s'", keys->keyentries[id]->id, keys->keyentries[id]->ip->ip);
             return KS_CORRUPT;
         }
 
         if (*final_size < MSG_OVERHEAD) {
-            mwarn("Decompressed message too short from agent '%s'", keys->keyentries[id]->id);
+            mdebug1("Decompressed message too short from agent '%s'", keys->keyentries[id]->id);
             return KS_CORRUPT;
         }
 #endif
 
         /* Check checksum */
         if (f_msg = CheckSum(decompress_buffer, *final_size), !f_msg) {
-            merror(ENCSUM_ERROR, keys->keyentries[id]->id, keys->keyentries[id]->ip->ip);
+            preauth_merror(ENCSUM_ERROR, keys->keyentries[id]->id, keys->keyentries[id]->ip->ip);
             return KS_CORRUPT;
         }
 
@@ -492,7 +504,7 @@ int ReadSecMSG(keystore *keys, char *buffer, char *cleartext, int id, unsigned i
         unsigned int msg_time;
 
         if (buffer_size < MSG_OVERHEAD) {
-            mwarn("Message too short from agent '%s'", keys->keyentries[id]->id);
+            preauth_mwarn("Message too short from agent '%s'", keys->keyentries[id]->id);
             return KS_CORRUPT;
         }
 
@@ -503,7 +515,7 @@ int ReadSecMSG(keystore *keys, char *buffer, char *cleartext, int id, unsigned i
         cleartext++;
         f_msg = CheckSum(cleartext, buffer_size);
         if (f_msg == NULL) {
-            merror(ENCSUM_ERROR, keys->keyentries[id]->id, keys->keyentries[id]->ip->ip);
+            preauth_merror(ENCSUM_ERROR, keys->keyentries[id]->id, keys->keyentries[id]->ip->ip);
             return KS_CORRUPT;
         }
 

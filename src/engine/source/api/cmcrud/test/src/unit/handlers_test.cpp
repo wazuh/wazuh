@@ -9,6 +9,7 @@
 #include <api/cmcrud/handlers.hpp>
 
 #include <cmcrud/mockcmcrud.hpp>
+#include <router/mockTester.hpp>
 
 using namespace api::adapter;
 using namespace api::test;
@@ -737,3 +738,123 @@ INSTANTIATE_TEST_SUITE_P(
                 return userResponse<eEngine::GenericStatus_Response>(protoRes);
             },
             [](auto& mock) { EXPECT_CALL(mock, validateResource(cm::store::ResourceType::KVDB, ::testing::_)); })));
+
+/***********************************************************************
+ * policyValidate: the session's previous namespace
+ **********************************************************************/
+namespace
+{
+constexpr const char* kIntegrationUuid = "550e8400-e29b-41d4-a716-446655440001";
+
+httplib::Request makePolicyValidateRequest()
+{
+    httplib::Request request;
+    request.body = R"({"load_in_tester": true, "space": "standard", "full_policy": {"title": "p"}})";
+    request.set_header("Content-Type", "application/json");
+    return request;
+}
+
+cm::store::dataType::Policy makeValidatedPolicy(bool withIntegration)
+{
+    std::vector<std::string> integrations;
+    if (withIntegration)
+    {
+        integrations.emplace_back(kIntegrationUuid);
+    }
+    return cm::store::dataType::Policy(
+        "p", true, "", std::move(integrations), {}, {}, {}, "standard", "", false, false, true);
+}
+
+::router::test::Entry makeTestEntry(const std::string& name, const std::string& nsId)
+{
+    ::router::test::EntryPost post(name, cm::store::NamespaceId {nsId}, 0);
+    return ::router::test::Entry {post};
+}
+
+auto namespaceNamed(const std::string& name)
+{
+    return ::testing::Truly([name](const cm::store::NamespaceId& nsId) { return nsId.toStr() == name; });
+}
+
+auto testerNamespace()
+{
+    return ::testing::Truly([](const cm::store::NamespaceId& nsId)
+                            { return ::router::test::isTesterOwnedNamespace(nsId); });
+}
+} // namespace
+
+TEST(PolicyValidateTesterNamespace, PromoteRefusesToReplaceAForeignNamespace)
+{
+    auto crud = std::make_shared<cm::crud::MockCrudService>();
+    auto testerApi = std::make_shared<::tester::mocks::MockTesterAPI>();
+
+    EXPECT_CALL(*crud, importNamespace(testerNamespace(), ::testing::_, ::testing::_, ::testing::_))
+        .WillOnce(::testing::Return(makeValidatedPolicy(true)));
+    EXPECT_CALL(*testerApi, postTestEntry(::testing::_)).WillOnce(::testing::Return(base::noError()));
+    EXPECT_CALL(*testerApi, getTestEntry("standard"))
+        .WillOnce(::testing::Return(makeTestEntry("standard", "cmsync_standard_abcdef")));
+    EXPECT_CALL(*testerApi, deleteTestEntry("standard")).Times(0);
+    EXPECT_CALL(*testerApi, renameTestEntry(::testing::_, ::testing::_)).Times(0);
+    // The temporary session and namespace are cleaned up; the synchronized namespace is never touched
+    EXPECT_CALL(*testerApi, deleteTestEntry(::testing::StartsWith("logtest_")))
+        .WillOnce(::testing::Return(base::noError()));
+    EXPECT_CALL(*crud, deleteNamespace(testerNamespace())).Times(1);
+    EXPECT_CALL(*crud, deleteNamespace(namespaceNamed("cmsync_standard_abcdef"))).Times(0);
+
+    httplib::Response res;
+    policyValidate(crud, testerApi)(makePolicyValidateRequest(), res);
+
+    const auto expected = userErrorResponse<eEngine::GenericStatus_Response>(
+        "Refusing to replace space 'standard': its namespace 'cmsync_standard_abcdef' was not created by the tester");
+    EXPECT_EQ(res.status, expected.status);
+    EXPECT_EQ(res.body, expected.body);
+}
+
+TEST(PolicyValidateTesterNamespace, DeleteOldRefusesToDeleteAForeignNamespace)
+{
+    auto crud = std::make_shared<cm::crud::MockCrudService>();
+    auto testerApi = std::make_shared<::tester::mocks::MockTesterAPI>();
+
+    // No integrations: nothing is loaded and the old session would be wiped
+    EXPECT_CALL(*crud, importNamespace(testerNamespace(), ::testing::_, ::testing::_, ::testing::_))
+        .WillOnce(::testing::Return(makeValidatedPolicy(false)));
+    EXPECT_CALL(*testerApi, postTestEntry(::testing::_)).Times(0);
+    EXPECT_CALL(*crud, deleteNamespace(testerNamespace())).Times(1);
+    EXPECT_CALL(*testerApi, getTestEntry("standard"))
+        .WillOnce(::testing::Return(makeTestEntry("standard", "cmsync_standard_abcdef")));
+    EXPECT_CALL(*testerApi, deleteTestEntry(::testing::_)).Times(0);
+    EXPECT_CALL(*crud, deleteNamespace(namespaceNamed("cmsync_standard_abcdef"))).Times(0);
+
+    httplib::Response res;
+    policyValidate(crud, testerApi)(makePolicyValidateRequest(), res);
+
+    const auto expected = userErrorResponse<eEngine::GenericStatus_Response>(
+        "Refusing to replace space 'standard': its namespace 'cmsync_standard_abcdef' was not created by the tester");
+    EXPECT_EQ(res.status, expected.status);
+    EXPECT_EQ(res.body, expected.body);
+}
+
+TEST(PolicyValidateTesterNamespace, PromoteReplacesATesterNamespace)
+{
+    auto crud = std::make_shared<cm::crud::MockCrudService>();
+    auto testerApi = std::make_shared<::tester::mocks::MockTesterAPI>();
+
+    EXPECT_CALL(*crud, importNamespace(testerNamespace(), ::testing::_, ::testing::_, ::testing::_))
+        .WillOnce(::testing::Return(makeValidatedPolicy(true)));
+    EXPECT_CALL(*testerApi, postTestEntry(::testing::_)).WillOnce(::testing::Return(base::noError()));
+    EXPECT_CALL(*testerApi, getTestEntry("standard"))
+        .WillOnce(::testing::Return(makeTestEntry("standard", "logtest_aaaaaa")));
+    EXPECT_CALL(*testerApi, deleteTestEntry("standard")).WillOnce(::testing::Return(base::noError()));
+    EXPECT_CALL(*testerApi, renameTestEntry(::testing::StartsWith("logtest_"), "standard"))
+        .WillOnce(::testing::Return(base::noError()));
+    EXPECT_CALL(*crud, deleteNamespace(namespaceNamed("logtest_aaaaaa"))).Times(1);
+
+    httplib::Response res;
+    policyValidate(crud, testerApi)(makePolicyValidateRequest(), res);
+
+    eEngine::GenericStatus_Response protoRes;
+    protoRes.set_status(eEngine::ReturnStatus::OK);
+    const auto expected = userResponse<eEngine::GenericStatus_Response>(protoRes);
+    EXPECT_EQ(res.status, expected.status);
+    EXPECT_EQ(res.body, expected.body);
+}

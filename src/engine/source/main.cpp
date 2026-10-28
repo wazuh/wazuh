@@ -3,6 +3,7 @@
 #include <csignal>
 #include <exception>
 #include <filesystem>
+#include <iostream>
 #include <memory>
 #include <optional>
 #include <string>
@@ -84,15 +85,28 @@ struct Options
         << "  -t    Test configuration\n"
         << "  -d    Run in debug mode. This option may be repeated to increase the verbosity of the debug "
            "messages.\n"
-        << "  -h    Show this help message and exit\n";
+        << "  -h    Show this help message and exit\n"
+        << "  -V    Print the version and exit\n";
     std::exit(exitCode);
+}
+
+/// Print the version and exit, as the other manager daemons do (help.c print_version(): to stderr, exit 0).
+[[noreturn]] void printVersion()
+{
+#ifdef VERSION
+    constexpr const char* version = VERSION; // From VERSION.json, defined for every target by src/CMakeLists.txt
+#else
+    constexpr const char* version = "unknown";
+#endif
+    std::cerr << " \nWazuh " << version << " - Wazuh Inc.\n \n";
+    std::exit(EXIT_SUCCESS);
 }
 
 Options parseOptions(int argc, char* argv[])
 {
     Options opts;
     int c;
-    while ((c = getopt(argc, argv, "ftdh")) != -1)
+    while ((c = getopt(argc, argv, "ftdhV")) != -1)
     {
         switch (c)
         {
@@ -100,6 +114,7 @@ Options parseOptions(int argc, char* argv[])
             case 't': opts.testConfig = true; break;
             case 'd': ++opts.debugCount; break;
             case 'h': printUsage(argv[0], EXIT_SUCCESS);
+            case 'V': printVersion();
             default: printUsage(argv[0], EXIT_FAILURE); // getopt already printed the invalid option
         }
     }

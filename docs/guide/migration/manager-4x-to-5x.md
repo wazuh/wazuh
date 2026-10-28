@@ -523,7 +523,7 @@ the installer deliberately does not do:
 sudo systemctl enable wazuh-manager
 sudo systemctl restart wazuh-manager
 sudo /var/wazuh-manager/bin/wazuh-manager-control status
-grep -E "keystore|authd" /var/wazuh-manager/logs/wazuh-manager.log | tail
+grep -E "client-keys|authd" /var/wazuh-manager/logs/wazuh-manager.log | tail
 ```
 
 Expected: every daemon running, `wazuh-manager-remoted:client-keys: INFO: Loaded N agent key(s)

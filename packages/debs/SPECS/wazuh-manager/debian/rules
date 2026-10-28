@@ -23,7 +23,10 @@ export TARGET_DIR=${CURDIR}/${PKG_DIR}
 export INSTALLATION_DIR="/var/wazuh-manager"
 # The manager's configuration directory (CONF_DIR in src/init/shared.sh), outside the installation directory
 export CONF_DIR=/etc/wazuh-manager
-export INSTALLATION_SCRIPTS_DIR="${INSTALLATION_DIR}/packages_files/manager_installation_scripts"
+# What postinst runs (gen_wazuh.sh and its templates, the restore-permissions scripts). Shipped under
+# /usr/share and left in place, so that dpkg --verify finds every file the package installed; the
+# installation directory's packages_files/ holds only the maintainer scripts' working state.
+export INSTALLATION_SCRIPTS_DIR="/usr/share/wazuh-manager/installation_scripts"
 export JOBS="5"
 export DEBUG_ENABLED="no"
 export PATH="${PATH}"

@@ -350,10 +350,15 @@ def test_main(print_mock, path_exists_mock, chown_mock, chmod_mock, setuid_mock,
                               return_value={'node_type': 'master'}):
                 with patch.object(wazuh_manager_clusterd.main_logger, 'error') as main_logger_mock:
                     with patch.object(wazuh_manager_clusterd.main_logger, 'info') as main_logger_info_mock:
-                        with patch.object(wazuh_manager_clusterd.cluster_utils, 'read_config', side_effect=Exception):
+                        with patch.object(wazuh_manager_clusterd.cluster_utils, 'read_config',
+                                          side_effect=Exception('Error 3006 - Invalid configuration')):
                             with pytest.raises(SystemExit):
                                 wazuh_manager_clusterd.main()
                             main_logger_mock.assert_called_once()
+                            # Under -t the reason also reaches the terminal, not only cluster.log.
+                            print_mock.assert_called_once_with('ERROR: Error 3006 - Invalid configuration',
+                                                               file=sys.stderr)
+                            print_mock.reset_mock()
                             main_logger_mock.reset_mock()
                             path_exists_mock.assert_any_call(f'{common.WAZUH_PATH}/logs/cluster.log')
                             chown_mock.assert_called_with(f'{common.WAZUH_PATH}/logs/cluster.log', 'uid_test',
@@ -366,6 +371,8 @@ def test_main(print_mock, path_exists_mock, chown_mock, chmod_mock, setuid_mock,
                             with pytest.raises(SystemExit):
                                 wazuh_manager_clusterd.main()
                             main_logger_mock.assert_called_once()
+                            print_mock.assert_called_once()
+                            print_mock.reset_mock()
                             exit_mock.assert_called_once_with(1)
                             exit_mock.reset_mock()
 

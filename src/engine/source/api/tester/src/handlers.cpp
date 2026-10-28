@@ -1017,6 +1017,17 @@ adapter::RouteHandler logtestDelete(const std::shared_ptr<::router::ITesterAPI>&
 
         const auto nsId = base::getResponse(entry).namespaceId();
 
+        // Only a namespace the tester created may go with the session: a session can point at any namespace
+        // (a synchronized space, one a route uses), and deleting that would remove live content.
+        if (!::router::test::isTesterOwnedNamespace(nsId))
+        {
+            res = adapter::userErrorResponse<ResponseType>(
+                fmt::format("Refusing to delete space '{}': its namespace '{}' was not created by the tester",
+                            sessionName,
+                            nsId.toStr()));
+            return;
+        }
+
         if (storeLocked->existsNamespace(nsId))
         {
             if (auto nerr = cleanupNamespace(nsId))

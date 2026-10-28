@@ -81,8 +81,11 @@ fragments: a manager configuration also needs its `cluster` and `indexer` sectio
 
 Every line carries the local time as `YYYY/MM/DD HH:MM:SS`, the tag of the daemon that wrote it, and
 the level. Manager tags are the manager daemon names (`wazuh-manager-db`, `wazuh-manager-remoted`,
-…); a module inside modulesd logs as `wazuh-manager-modulesd:<module>`. Agent tags are the agent's
-daemon names (`wazuh-agentd`, `wazuh-modulesd:<module>`, …).
+…); a module inside modulesd logs as `wazuh-manager-modulesd:<module>`. Two manager programs that are not
+daemons write to the same file under their own name: `wazuh-manager-control` (a refused start, restart, reload or
+check, and the credential resolver's lines it relays) and `bin/verify-agent-conf` (`verify-agent-conf`, when it
+checks a shared `agent.conf`). Agent tags are the agent's daemon names (`wazuh-agentd`,
+`wazuh-modulesd:<module>`, …).
 
 ### Plain
 

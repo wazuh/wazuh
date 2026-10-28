@@ -421,7 +421,13 @@ verifies the bearer against it (`9026` no such agent or no secret on record, `90
 outside the window), and rotates the entry under the lock. Only one rotation per agent may be in
 flight; a second concurrent one is answered `9030`, which means *retry*, not *bad credential*.
 The generation must still match, the id must still exist in the keystore, groups and IP must be
-valid, and the requested name/IP must not belong to another agent. Both fresh credentials must be
+valid, and the requested name/IP must not belong to another agent.
+
+Only the id is kept from the old entry, and groups when the request names none. The rotated entry
+takes the request's **name**, which may differ from the registered one, and its **address**: what
+`ip` resolves to on `POST /enroll`, so a request without `ip` registers `any` again (or the
+connection's source address under `use_source_ip`), replacing an address or network the agent was
+registered with. Both fresh credentials must be
 generated and journalled before the in-place rotation can proceed.
 
 ## Step 9: The credential is written down before it is handed out

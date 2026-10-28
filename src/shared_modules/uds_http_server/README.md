@@ -64,6 +64,7 @@ the knobs, and those are documented on the consumer's own pages.
 | No dynamic route registration | Routes are immutable after `start()`, which is what makes the hot-path table scan lock-free. The one seemingly-dynamic consumer (content updates on demand) is dynamic at the handler level, not the route level |
 | Identity via config, not template/macros | The extraction requirement was byte-identical logs for the first consumer; a handful of `%s` templates plus injected strings achieves it with zero per-consumer builds |
 | `diagnostics()` instead of built-in metrics | Keeps the library free of the metrics dependency; each consumer publishes through its own `wazuh::metrics::IManager` as pull metrics |
+| A pipelined second request is ignored, never parsed | Parsing stops at the end of the first message (`on_message_complete` pauses llhttp): the first request is dispatched and answered, the response closes the connection, and the bytes after it are dropped. Letting llhttp run on merged the second request into the first and paused at its head after the first was complete, a state the session never answered, so the connection hung until a phase timeout. A request arriving in a later read, while the first is deferred, still ends the session through the peer-gone watch |
 
 ## Architecture
 

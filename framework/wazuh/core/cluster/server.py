@@ -56,6 +56,8 @@ class AbstractServerHandler(c_common.Handler):
         self.server = server
         self.loop = loop
         self.last_keepalive = utils.get_utc_now().timestamp()
+        # What the peer is once its hello identifies it; until then a subclass may log it under a neutral tag.
+        self.peer_tag = tag
         self.tag = tag
         context_tag.set(self.tag)
         self.name = None
@@ -194,7 +196,7 @@ class AbstractServerHandler(c_common.Handler):
             self.name = node_name
             self._cancel_handshake_deadline()
             self.server.clients[self.name] = self
-            self.tag = f'{self.tag} {self.name}'
+            self.tag = f'{self.peer_tag} {self.name}'
             context_tag.set(self.tag)
             self.handler_tasks.append(self.loop.create_task(self.broadcast_reader()))
             return b'ok', f'Client {self.name} added'.encode()

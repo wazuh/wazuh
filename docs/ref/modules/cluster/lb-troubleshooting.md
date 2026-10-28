@@ -173,8 +173,10 @@ Check on the manager:
 
 ```bash
 curl -s --unix-socket /var/wazuh-manager/queue/sockets/remote-admin-http.sock \
-  http://localhost/metrics | grep body_too_large
+  http://localhost/metrics | jq '.metrics[] | select(.name | contains("body_too_large")) | {name, value}'
 ```
+
+The dump is a single line of JSON, so `grep` would print all of it; `jq` picks the metric out.
 
 > Do not look for it in `remoted.http.stateless.responses.413`. That bucket stays at zero, because
 > the authentication middleware answers before the route runs. The counter above is the one that
@@ -248,7 +250,7 @@ that node's pipeline is degraded.
 
 ```bash
 curl -s --unix-socket /var/wazuh-manager/queue/sockets/remote-admin-http.sock \
-  http://localhost/metrics | grep -E 'forwarder|budget.rejected'
+  http://localhost/metrics | jq '.metrics[] | select(.name | test("forwarder|budget\\.rejected")) | {name, value}'
 ```
 
 ### Early in a deployment

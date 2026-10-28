@@ -119,9 +119,9 @@ configuration. Both answer `{"error":<code>,"message":…,"data":…}`.
 | `timestamp` | The Unix time (seconds) of this answer |
 | `name` | `wazuh-manager-db` |
 | `metrics.queries.received` | Queries received since start, all targets |
-| `metrics.queries.received_breakdown` | The same count per target (`global`, `mitre`) and, under `global_breakdown`, per command: `db` (`backup`, `sql`, `vacuum`, `commit`, `get_fragmentation`) and `tables` (`agent`, `belongs`, `group`, one counter per command named as on the wire, such as `insert-agent`) |
+| `metrics.queries.received_breakdown` | The same count per target (`global`, `mitre`) and, under `global_breakdown`, per command: `db` (`backup`, `sql`, `vacuum`, `commit`, `get_fragmentation`) and `tables` (`agent`, `belongs`, `group`, one counter per command named as on the wire, such as `insert-agent`). `mitre_breakdown.db.sql` counts the SQL queries run against the MITRE database |
 | `metrics.time.execution` | Total time spent running queries since start, in milliseconds |
-| `metrics.time.execution_breakdown` | That time with the same breakdown as the counters, plus `db.open` (time spent opening `global.db`), in milliseconds |
+| `metrics.time.execution_breakdown` | That time with the same breakdown as the counters (`mitre_breakdown.db.sql` included), plus `global_breakdown.db.open` (time spent opening `global.db`), in milliseconds |
 
 Counters and times are cumulative since the daemon started; nothing resets them while it runs.
 

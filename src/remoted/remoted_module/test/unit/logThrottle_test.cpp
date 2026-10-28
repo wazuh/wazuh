@@ -149,3 +149,17 @@ TEST(LogThrottleTest, EmissionReportsTheRealTimeSinceThePreviousOne)
 
     EXPECT_EQ(throttle.record().secondsSinceLastEmit, -1) << "a suppressed decision carries no period";
 }
+
+// The wording every throttled line uses for its count: never the window length, which is wrong on
+// the first emission (it covers only itself) and after any quiet stretch longer than the window.
+TEST(LogThrottleTest, PeriodNamesTheRealSpanNotTheWindow)
+{
+    LogThrottle::Decision first {true, 0, 1, -1};
+    EXPECT_EQ(first.period(), "so far");
+
+    LogThrottle::Decision later {true, 4, 5, 312};
+    EXPECT_EQ(later.period(), "in the last 312 s");
+
+    LogThrottle throttle;
+    EXPECT_EQ(throttle.record().period(), "so far") << "the first real emission";
+}

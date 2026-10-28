@@ -234,12 +234,12 @@ namespace remoted::auth
             if (const auto d = addressNotAllowedThrottle().record())
             {
                 LOGFN_INFO(logFn(),
-                           "Rejected %llu request(s) in the last %d s coming from an address the agent is not "
+                           "Rejected %llu request(s) %s coming from an address the agent is not "
                            "registered with (most recently agent %u from '%.*s'). client.keys restricts that agent to "
                            "a fixed address; re-enroll it with the address it actually connects from, or with 'any' if "
                            "that address changes or the agent reaches the manager through a load balancer.",
                            static_cast<unsigned long long>(d.total),
-                           remoted::common::LogThrottle::kDefaultWindowSeconds,
+                           d.period().c_str(),
                            kid->numeric(),
                            static_cast<int>(peerIp.size()),
                            peerIp.data());

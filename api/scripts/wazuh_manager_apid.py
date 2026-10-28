@@ -490,6 +490,9 @@ def test_config(config_file: str):
         Path of the file
     """
     try:
+        # A file named on purpose must exist: reading a missing one gives the defaults, which would pass.
+        if config_file is not None and not os.path.isfile(config_file):
+            raise FileNotFoundError(f"'{config_file}' does not exist or is not a regular file")
         read_yaml_config(config_file=config_file)
     except Exception as exc:
         print(f"Configuration not valid. ERROR: {exc}")
@@ -592,6 +595,8 @@ if __name__ == '__main__':
 
     try:
         if args.config_file is not None:
+            if not os.path.isfile(args.config_file):
+                raise APIError(2004, details=f"'{args.config_file}' does not exist or is not a regular file")
             api_conf.update(read_yaml_config(config_file=args.config_file))
     except APIError as e:
         print(f"Error when trying to start the Wazuh API. {e}")

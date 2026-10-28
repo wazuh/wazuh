@@ -231,6 +231,12 @@ paths:
         | `true`           | yes              | `true`    | The temporary session is **renamed** to `space`, replacing the old one (old namespace deleted). |
         | `true`           | yes              | `false`   | The temporary session and namespace **and** the `space` session and its namespace are **deleted**. |
 
+        The old `space` session's namespace is deleted only when the tester created it (`logtest_<hex>`). When the
+        `space` session points at any other namespace (for example a synchronized `cmsync_<space>_<hex>`
+        namespace), a request that would replace or delete that session is refused with 400
+        (`Refusing to replace space '<space>': its namespace '<namespace>' was not created by the tester`): the
+        temporary resources are deleted and the old session and its namespace are left untouched.
+
         ## Notes
         - A unique temporary namespace and session name is generated per request
           (`logtest_<hex>` when `load_in_tester` is true, `tmp_policy_validate_<hex>` otherwise).
@@ -255,10 +261,10 @@ paths:
                   full_policy:
                     policy:
                       metadata:
-                        title: <policy_name>
-                      root_decoder: <decoder_uuid>
+                        title: Sample policy
+                      root_decoder: 8f3c1a52-6d1e-4b7a-9f0e-2c4d5e6f7a81
                       integrations:
-                      - <integration_uuid>
+                      - 1b2c3d4e-5f60-4a7b-8c9d-0e1f2a3b4c5d
                       filters: []
                       enrichments: []
                       enabled: true
@@ -267,8 +273,8 @@ paths:
                     resources:
                       kvdbs: []
                       decoders:
-                      - id: <decoder_uuid>
-                        name: decoder/<name>/0
+                      - id: 8f3c1a52-6d1e-4b7a-9f0e-2c4d5e6f7a81
+                        name: decoder/sample/0
                         enabled: true
                         normalize:
                         - map:
@@ -276,13 +282,13 @@ paths:
                       filters: []
                       outputs: []
                       integrations:
-                      - id: <integration_uuid>
+                      - id: 1b2c3d4e-5f60-4a7b-8c9d-0e1f2a3b4c5d
                         metadata:
-                          title: <name>
+                          title: sample-integration
                         enabled: true
                         category: security
                         decoders:
-                        - <decoder_uuid>
+                        - 8f3c1a52-6d1e-4b7a-9f0e-2c4d5e6f7a81
                         kvdbs: []
               validate_no_integrations:
                 summary: Validate policy without integrations (import-only validation)
@@ -292,7 +298,7 @@ paths:
                   full_policy:
                     policy:
                       metadata:
-                        title: <policy_name>
+                        title: Sample policy
                       root_decoder: null
                       integrations: []
                       filters: []
@@ -314,41 +320,41 @@ paths:
                   full_policy:
                     policy:
                       metadata:
-                        title: <policy_name>
-                      root_decoder: <decoder_uuid>
+                        title: Sample policy
+                      root_decoder: 8f3c1a52-6d1e-4b7a-9f0e-2c4d5e6f7a81
                       integrations:
-                      - <integration_uuid>
+                      - 1b2c3d4e-5f60-4a7b-8c9d-0e1f2a3b4c5d
                       filters:
-                      - <filter_uuid>
+                      - 2c3d4e5f-6071-4b8c-9d0e-1f2a3b4c5d6e
                       enrichments: []
                       enabled: true
                       index_unclassified_events: false
                       index_discarded_events: false
                     resources:
                       kvdbs:
-                      - id: <kvdb_uuid>
+                      - id: 3d4e5f60-7182-4c9d-8e0f-2a3b4c5d6e7f
                         metadata:
-                          title: <name>
+                          title: sample-kvdb
                         enabled: true
                         content:
-                          <key>: {}
+                          sample_key: {}
                       decoders:
-                      - id: <decoder_uuid>
-                        name: decoder/<name>/0
+                      - id: 8f3c1a52-6d1e-4b7a-9f0e-2c4d5e6f7a81
+                        name: decoder/sample/0
                         enabled: true
                         normalize:
                         - map:
                           - '@timestamp': get_date()
                       integrations:
-                      - id: <integration_uuid>
+                      - id: 1b2c3d4e-5f60-4a7b-8c9d-0e1f2a3b4c5d
                         metadata:
-                          title: <name>
+                          title: sample-integration
                         enabled: true
                         category: security
                         decoders:
-                        - <decoder_uuid>
+                        - 8f3c1a52-6d1e-4b7a-9f0e-2c4d5e6f7a81
                         kvdbs:
-                        - <kvdb_uuid>
+                        - 3d4e5f60-7182-4c9d-8e0f-2a3b4c5d6e7f
                       filters:
                       - name: filter/prefilter/0
                         metadata:
@@ -360,7 +366,7 @@ paths:
                         check: $host.os.platform == 'ubuntu'
                         type: pre-filter
                         enabled: true
-                        id: <filter_uuid>
+                        id: 2c3d4e5f-6071-4b8c-9d0e-1f2a3b4c5d6e
                       outputs: []
               validate_disabled_policy:
                 summary: "Validate a disabled policy — deletes the `space` tester session"
@@ -370,7 +376,7 @@ paths:
                   full_policy:
                     policy:
                       metadata:
-                        title: <policy_name>
+                        title: Sample policy
                       root_decoder: null
                       integrations: []
                       filters: []
@@ -424,6 +430,11 @@ paths:
                   value:
                     status: ERROR
                     error: <tester error>
+                foreign_namespace:
+                  summary: The `space` session points at a namespace the tester did not create
+                  value:
+                    status: ERROR
+                    error: "Refusing to replace space 'test': its namespace 'cmsync_standard_3f9a' was not created by the tester"
                 cleanup_failed_session:
                   summary: "Strict cleanup failed — could not delete a session"
                   value:
@@ -734,6 +745,11 @@ paths:
         Deletes the namespace of the testing session named by `space` (including all its assets),
         then the session itself.
 
+        Only a namespace the tester created (named `logtest_<hex>` by `POST /content/validate/policy` with
+        `load_in_tester: true`) is deleted. A session pointing at any other namespace (for example a
+        synchronized space such as `cmsync_standard_<hex>`, attached with the internal tester API) is refused
+        with 400 and nothing is deleted: that namespace may be live content a route uses.
+
         This operation is idempotent: if there is no session named `space`, it returns **OK**.
       requestBody:
         required: true
@@ -770,6 +786,11 @@ paths:
                   value:
                     status: ERROR
                     error: space is required and cannot be empty
+                foreign_namespace:
+                  summary: The session points at a namespace the tester did not create; nothing is deleted
+                  value:
+                    status: ERROR
+                    error: 'Refusing to delete space ''test'': its namespace ''cmsync_standard_3f9a'' was not created by the tester'
                 cleanup_failed_namespace:
                   summary: The session's namespace could not be deleted
                   value:
@@ -964,7 +985,8 @@ paths:
           the asset must pass the builder's shallow validation.
         - **integration**: `id`, `metadata.title`, `enabled` and `category` are required; `category` must be one of
           `access-management`, `applications`, `cloud-services`, `network-activity`, `other`, `security`,
-          `system-activity`, `unclassified`; `decoders[]` and `kvdbs[]` must be non-empty, non-duplicated identifiers;
+          `system-activity`, `unclassified`; `decoders[]` and `kvdbs[]` may be empty, but every entry must be a non-empty,
+          valid identifier and no entry may repeat;
           `default_parent`, if present, must be a non-empty identifier.
         - **kvdb**: `id`, `metadata.title`, `enabled` and a `content` JSON object are required.
 

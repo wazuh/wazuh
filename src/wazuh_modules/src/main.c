@@ -33,6 +33,7 @@ static void wm_drop_privileges(const char *user); // Drop manager privileges per
 #endif
 
 static int flag_foreground = 0;         // Running in foreground.
+static int flag_test_config = 0;        // -t: test the configuration and exit.
 
 static pthread_mutex_t sig_lock = PTHREAD_MUTEX_INITIALIZER;
 
@@ -50,9 +51,9 @@ int main(int argc, char **argv)
 #endif
 #ifdef WAZUH_RUNTIME_USER
     const char *runtime_user = WAZUH_RUNTIME_USER;
-    const char *getopt_options = "dfhtu:" WM_GETOPT_CONF;
+    const char *getopt_options = "Vdfhtu:" WM_GETOPT_CONF;
 #else
-    const char *getopt_options = "dfht" WM_GETOPT_CONF;
+    const char *getopt_options = "Vdfht" WM_GETOPT_CONF;
 #endif
 
     /* Set the name */
@@ -75,6 +76,9 @@ int main(int argc, char **argv)
 
     while ((c = getopt(argc, argv, getopt_options)) != -1) {
         switch (c) {
+        case 'V':
+            print_version();
+            break;
         case 'd':
             nowDebug();
             wm_debug = 1;
@@ -87,6 +91,7 @@ int main(int argc, char **argv)
             break;
         case 't':
             test_config = 1;
+            flag_test_config = 1;
             flag_foreground = 1;
             break;
 #ifndef CLIENT
@@ -211,11 +216,12 @@ void wm_help()
 #define WM_HELP_CONF " [-c <config>]"
 #endif
 #ifdef WAZUH_RUNTIME_USER
-    print_out("Usage: %s -[d|f|h|t] [-u <user>]" WM_HELP_CONF, ARGV0);
+    print_out("Usage: %s -[V|d|f|h|t] [-u <user>]" WM_HELP_CONF, ARGV0);
 #else
-    print_out("Usage: %s -[d|f|h|t]" WM_HELP_CONF, ARGV0);
+    print_out("Usage: %s -[V|d|f|h|t]" WM_HELP_CONF, ARGV0);
 #endif
     print_out(" ");
+    print_out("    -V    Version and license message.");
     print_out("    -d    Increase debug mode.");
     print_out("    -f    Run in foreground.");
     print_out("    -h    Print this help.");
@@ -237,7 +243,12 @@ void wm_setup()
     // Read the configuration (/etc/wazuh-manager/wazuh-manager.conf on the manager, ossec.conf on the
     // agent) and internal options
 
-    if (wm_config() < 0) {
+    // A positive answer is a section the daemon can run without (a module falls back to its defaults and
+    // the reader has logged why), but a configuration test reports it: the start must not pass a file a
+    // reader refused.
+    const int config_rc = wm_config();
+
+    if (config_rc < 0 || (config_rc > 0 && flag_test_config)) {
         exit(EXIT_FAILURE);
     }
 

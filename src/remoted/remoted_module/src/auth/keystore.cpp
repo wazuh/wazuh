@@ -355,11 +355,11 @@ namespace remoted::auth
                     {
                         LOGFN_WARN(logFn(),
                                    "'%s' is not readable (errno=%d); keeping the previously loaded keys. %llu failed "
-                                   "attempt(s) in the last %d s.",
+                                   "attempt(s) %s.",
                                    m_path.c_str(),
                                    errno,
                                    static_cast<unsigned long long>(d.total),
-                                   remoted::common::LogThrottle::kDefaultWindowSeconds);
+                                   d.period().c_str());
                     }
                 }
                 // kReloadUnstable already logged its own warning inside reload().

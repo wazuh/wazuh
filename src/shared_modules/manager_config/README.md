@@ -82,7 +82,18 @@ credential resolver (`src/init/credentials/wazuh-manager-resolve-credentials.py`
   `remote.https` strings carry the `maxLength` of `remote-config.h` (255 for `bind_addr`, `global_prefix` and
   `ciphers`, 511 for the four paths). The pattern uses plain groups only: rapidjson's internal regex engine has no
   `(?:…)`, and its `^`/`$` anchor the whole pattern, so the alternation is wrapped in one group to read the same in
-  Python. `cluster.bind_addr` is not an `ip`: clusterd binds it through asyncio, which also accepts a host name.
+  Python. `cluster.bind_addr` is not an `ip`: clusterd binds it through asyncio, which also accepts a host name, so it
+  is a `#/definitions/host` (a host name of dot-separated labels — letters, digits, `-` and `_`, which container names
+  carry — or an `ip`); every `indexer.hosts` entry is a `#/definitions/url` (`http://` or `https://`, a host name,
+  IPv4 address or bracketed IPv6 address, an optional `:port` and path), so `https://` alone is refused.
+- **Durations and sizes stop where the readers would**: `w_parse_time()`, `w_parse_size()` and
+  `Utils::parseStrToTime()` overflow on long digit strings (or throw, for `std::stol`), and the consumers keep the
+  result in an `int` (`rids_closing_time` refuses more than `INT_MAX`, the task manager casts
+  `agents_disconnection_time`). The `duration*` patterns therefore cap the digits per unit (9 in seconds, 7 in
+  minutes, 5 in hours, 4 in days, 3 in weeks; at most 999999999 seconds) and the integer form carries the same
+  `maximum`; `size` caps them so the byte count stays below 10^15, and refuses zero in any unit (`0K`), which
+  remoted's reader refuses. Leading zeros stay free. An integer too long for `strtoll()` stays text in
+  `xmlToJson`, so the pattern — not `maximum` — refuses it; `parity.py` mirrors that limit.
 - **`remote.legacy.local_ip` has no default**: the installer omits it for an IPv6 listener so that remoted applies its own
   default.
 - **An empty file is invalid** (XML needs a root); the minimal valid document is

@@ -315,7 +315,9 @@ def test_master_handler_init():
         assert master_handler.cluster_name == ""
         assert master_handler.node_type == ""
         assert master_handler.task_loggers == {}
-        assert master_handler.tag == "Worker"
+        # Not a worker until its hello says so; the hello then tags it 'Worker <name>'.
+        assert master_handler.tag == "Incoming connection"
+        assert master_handler.peer_tag == "Worker"
         assert master_handler.current_zip_limit == cluster_items['intervals']['communication']['max_zip_size']
         assert cv.get() == master_handler.tag
 

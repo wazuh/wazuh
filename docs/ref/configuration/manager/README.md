@@ -48,14 +48,21 @@ element is rejected as a duplicate.
     (`'/'` for syntax problems, which name the line instead). A missing file is
     `(1239): Configuration file not found: '<file>'.`; a file that exists but cannot be read is
     `(1244): Invalid configuration at '/': configuration file cannot be read: <file>: <reason>.`
+  - Durations and sizes are judged to the limits the daemons read them with: a size is at least one byte
+    in any unit (`0K` is refused), and a duration or size has at most as many digits as its unit allows
+    without overflowing a reader (a duration at most 999999999 seconds; the limits per unit are in
+    [the reference](reference.md)). `cluster.bind_addr` must be a host name or an IP address, and every
+    `indexer.hosts` entry an `http://` or `https://` URL that names a host.
   - What `validate` does not judge, and the start does: where the TLS files lie and what they hold (the
     credential check refuses a path outside `/etc/wazuh-manager/certs`, an expired or mismatched pair —
     [Credentials](../../getting-started/credentials.md)), the internal options (read only by each daemon at
     start), and what only a running system shows (an address this host does not have, a port another
     program holds). The API's `PUT` runs the same `validate`, so it has the same limits.
+    `wazuh-manager-control check` runs the whole pre-start sequence below — validation, credentials and
+    every daemon's `-t` — without stopping or starting anything.
   - `get <key.path>` prints one option of the **effective** document (defaults applied): scalars as
     plain text, objects and lists as JSON. `dump` prints the whole effective document.
-- `bin/wazuh-manager-control start|restart|reload` validates the file first (with
+- `bin/wazuh-manager-control start|restart|reload|check` validates the file first (with
   `--skip-file-checks`) and refuses to start any daemon when it is invalid: the CLI's verdict on stderr
   and as `wazuh-manager-control: ERROR: (1244): …` in `logs/wazuh-manager.log`, then
   `wazuh-manager.conf: Configuration error. Exiting` (`{"error":20,…}` with `-j`). After the credential
@@ -141,18 +148,24 @@ below, and a value outside the range stops the daemon at start with
 
 `wazuh-manager-control` runs `bin/wazuh-manager-modulesd -t` before every start and then starts it
 with no flags, or with `-d` after `wazuh-manager-control enable debug`. Usage:
-`wazuh-manager-modulesd -[d|f|h|t] [-u <user>] [-c <config>]`.
+`wazuh-manager-modulesd -[V|d|f|h|t] [-u <user>] [-c <config>]`.
 
 | Flag | Effect |
 |---|---|
+| `-V` | Print the version and license and exit with status `0` |
 | `-d` | Raise the debug level by one; repeat it (`-dd`) for level 2. When given, `wazuh_modules.debug` is ignored |
 | `-f` | Run in the foreground instead of as a daemon |
-| `-t` | Test the configuration and exit: load `wazuh-manager.conf` and the internal options, then validate the whole file, including the certificate files it names. Exit `0` when valid, `1` otherwise. Implies `-f` |
+| `-t` | Test the configuration and exit: load `wazuh-manager.conf` and the internal options, read every section the modules use, then validate the whole file, including the certificate files it names. Exit `0` when valid, `1` otherwise — also when a module's reader refuses a section it borrows (the task manager reads `global` and `remote`) and logs an `ERROR`, which a running daemon only warns about and replaces with its defaults. Implies `-f` |
 | `-c <config>` | Manager configuration file to read (default `/etc/wazuh-manager/wazuh-manager.conf`) |
 | `-u <user>` | User the daemon switches to at start, after raising its file descriptor limit (default `wazuh-manager`); the group is always `wazuh-manager` |
 | `-h` | Print the usage and exit with status `1` |
 
 Any other flag prints the usage and exits with status `1`.
+
+The exit status of `-h` is not the same for every daemon: the C daemons (`wazuh-manager-remoted`,
+`wazuh-manager-authd`, `wazuh-manager-db`, `wazuh-manager-modulesd`) print the usage and exit `1`, as
+for an unknown flag, while `wazuh-manager-analysisd` (the engine) and `wazuh-manager-conf` exit `0`.
+`-V` exits `0` wherever it exists. Scripts should not read success from `-h`.
 
 ---
 

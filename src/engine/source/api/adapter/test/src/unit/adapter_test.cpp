@@ -2,6 +2,7 @@
 #include <gtest/gtest.h>
 
 #include <api/adapter/adapter.hpp>
+#include <api/adapter/helpers.hpp>
 
 #include "generic_request.pb.h"
 
@@ -166,4 +167,19 @@ TEST(ApiAdapterTest, ParseResponse)
     ASSERT_EQ(res.status, httplib::StatusCode::OK_200);
     auto gotProtoRes = parseResponse<TestRes>(res);
     ASSERT_EQ(protoRes.status(), gotProtoRes.status());
+}
+
+TEST(ApiAdapterTest, TruncateForMessageKeepsShortValues)
+{
+    EXPECT_EQ(api::adapter::helpers::truncateForMessage("standard"), "standard");
+    const std::string atLimit(api::adapter::helpers::MAX_ECHOED_INPUT_LENGTH, 'a');
+    EXPECT_EQ(api::adapter::helpers::truncateForMessage(atLimit), atLimit);
+}
+
+TEST(ApiAdapterTest, TruncateForMessageBoundsLongValues)
+{
+    const std::string value(10240, 'a');
+    const auto truncated = api::adapter::helpers::truncateForMessage(value);
+    EXPECT_EQ(truncated, std::string(api::adapter::helpers::MAX_ECHOED_INPUT_LENGTH, 'a') + "... (10240 bytes)");
+    EXPECT_EQ(api::adapter::helpers::truncateForMessage("abcdef", 3), "abc... (6 bytes)");
 }

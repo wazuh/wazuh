@@ -101,7 +101,10 @@ case "$1" in
             # Delete old .save
             find ${CONF_DIR}/ -type f  -name "*save" -exec rm -f {} \;
 
-            # Rename the files
+            # Rename the files. -name tests the basename only, so the agent groups under shared/ are
+            # renamed too, on purpose: dpkg has already deleted the package's own files there, and the
+            # rest are kept like every other file. Only a file whose own name contains "shared" keeps
+            # its name (the RPM's save_conf does the same).
             find ${CONF_DIR}/ -type f ! -name "*shared*" -exec mv {} {}.save \;
 
             if [ -d "${DIR}/api" ]; then

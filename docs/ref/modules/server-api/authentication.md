@@ -172,6 +172,9 @@ agent's key needs `administrator`.
 ### Auditing a disclosure
 
 Every disclosure is recorded as a `secret_read` line naming the user and the fields, never the value.
+The fields are every value the mask would have hidden: `authd.pass`, `cluster.key` and each credential-named
+field, such as the `access_key` and `secret_key` of a group's `agent.conf`
+(`secret_read: user='alice' served in clear: access_key, secret_key`).
 It lands in the log of the process that served the read: `logs/api.log` on the master for
 `GET /cluster/local/config`, for the group configuration endpoints, and for the two node-configuration
 endpoints when the master answers them itself; `logs/cluster.log` of the worker when a node-configuration

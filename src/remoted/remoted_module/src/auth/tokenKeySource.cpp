@@ -680,13 +680,13 @@ namespace remoted::auth
                     {
                         LOGFN_WARN(logFn(),
                                    "'%s' is not a valid enrollment token store (%s); keeping the previous %zu "
-                                   "token(s). %llu failed load(s) in the last %d s. The file is written by "
+                                   "token(s). %llu failed load(s) %s. The file is written by "
                                    "wazuh-manager-authd on the master node and must not be edited by hand.",
                                    m_path.c_str(),
                                    reason.c_str(),
                                    kept,
                                    static_cast<unsigned long long>(d.total),
-                                   remoted::common::LogThrottle::kDefaultWindowSeconds);
+                                   d.period().c_str());
                     }
                     return false;
                 }
@@ -702,14 +702,14 @@ namespace remoted::auth
                         LOGFN_WARN(logFn(),
                                    "%zu record(s) of the enrollment token store '%s' could not be read (%s) "
                                    "and were dropped; the other %zu token(s) are replicated. %llu such load(s) "
-                                   "in the last %d s. The file is written by wazuh-manager-authd on the master "
+                                   "%s. The file is written by wazuh-manager-authd on the master "
                                    "node and must not be edited by hand.",
                                    skipped,
                                    m_path.c_str(),
                                    reason.c_str(),
                                    replica->size(),
                                    static_cast<unsigned long long>(d.total),
-                                   remoted::common::LogThrottle::kDefaultWindowSeconds);
+                                   d.period().c_str());
                     }
                 }
 

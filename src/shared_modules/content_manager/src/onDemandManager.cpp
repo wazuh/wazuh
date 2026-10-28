@@ -112,10 +112,10 @@ void OnDemandManager::dispatch(const std::string& topic,
         if (const auto decision = m_laneFullThrottle.record())
         {
             logWarn(WM_CONTENTUPDATER,
-                    "Rejected %llu on-demand update(s) with 503 in the last %d s: the on-demand lane is full "
+                    "Rejected %llu on-demand update(s) with 503 %s: the on-demand lane is full "
                     "(%zu slot(s)) (last topic: '%s').",
                     static_cast<unsigned long long>(decision.total),
-                    wazuh::uds_http::LogThrottle::kDefaultWindowSeconds,
+                    decision.period().c_str(),
                     QUEUE_SLOTS,
                     topic.c_str());
         }
@@ -134,9 +134,9 @@ void OnDemandManager::logUnknownTopic(const std::string& topic)
     if (const auto decision = m_unknownTopicThrottle.record())
     {
         logWarn(WM_CONTENTUPDATER,
-                "Rejected %llu on-demand request(s) with 404 in the last %d s: unknown topic (last: '%s').",
+                "Rejected %llu on-demand request(s) with 404 %s: unknown topic (last: '%s').",
                 static_cast<unsigned long long>(decision.total),
-                wazuh::uds_http::LogThrottle::kDefaultWindowSeconds,
+                decision.period().c_str(),
                 topic.c_str());
     }
 }
@@ -236,10 +236,10 @@ void OnDemandManager::run()
                 if (const auto decision = m_inProgressThrottle.record())
                 {
                     logInfo(WM_CONTENTUPDATER,
-                            "Answered %llu on-demand request(s) with 409 in the last %d s: an update for that topic "
+                            "Answered %llu on-demand request(s) with 409 %s: an update for that topic "
                             "was already running (last: '%s').",
                             static_cast<unsigned long long>(decision.total),
-                            wazuh::uds_http::LogThrottle::kDefaultWindowSeconds,
+                            decision.period().c_str(),
                             job.topic.c_str());
                 }
                 job.responder->send(

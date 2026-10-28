@@ -58,9 +58,10 @@ printf '%s' '<password>' | /var/wazuh-manager/bin/wazuh-manager-keystore -f inde
 | `-g` | Print the stored value instead of writing one; exits 1 when the key is not set or empty. Cannot be combined with `-v`/`-vp` |
 | `-h` | Print the usage |
 
-The tool exits 0 on success and 1 on any error, printing the error to standard error (and, for an
-argument error, the usage to standard output). There is no delete operation; the resolver's
-`--clear` mode removes the whole database instead.
+The tool exits 0 on success and 1 otherwise. An error is printed to standard error (and, for an
+argument error, the usage to standard output). The one silent exit 1 is `-g` on a key that is not
+set or is empty: that is an answer, not an error, so nothing is printed. There is no delete
+operation; the resolver's `--clear` mode removes the whole database instead.
 
 Components read the credentials once per process: restart the manager after changing them.
 
@@ -70,14 +71,26 @@ Every `get()` and `put()` — from the CLI, from `keystore_server` and from the 
 the credentials at start (the Indexer Connector inside the vulnerability scanner, inventory sync and
 the engine) — opens the database for that one operation and closes it again. RocksDB allows a single
 open handle per database, so two operations at the same moment contend for its lock. The second one
-waits: it retries the open with a short, growing backoff for up to 5 seconds, then fails with
-`Failed to open RocksDB database '…': it is locked by another handle or process and was still locked
-after 5000 ms` (the CLI prints it and exits 1). Operations take milliseconds, so running the CLI
-while the manager starts or runs is safe.
+waits: it retries the open with a growing backoff, each step randomized so that callers that collided
+once do not collide again on every retry. A daemon waits up to 5 seconds, then fails that one
+request (`keystore_server` answers it with `{"status": "error", …}`). The CLI waits up to 30 seconds,
+then prints `The keystore is busy: other Wazuh processes kept it locked for 30 s. Nothing was read or
+written. Run the command again.` and exits 1.
+
+Operations take milliseconds, so running the CLI while the manager starts or runs is safe. A heavy
+burst of reads through `keystore.sock` (hundreds at once) can still outlast a wait: nothing is
+changed when that happens, so retry the command, or the request, on exit 1.
 
 A held lock is never treated as damage. The database is repaired (RocksDB `RepairDB`, which may not
 recover every value) only when opening it reports corruption; any other open error is reported
 without a repair.
+
+## Design decisions
+
+| Decision | Why |
+|---|---|
+| The database is opened per operation, never held open by a daemon | A RocksDB handle holds the database's `LOCK` file for as long as it lives. The keystore is shared by separate processes — modulesd (`keystore_server`, the Indexer Connector), the engine and the CLI — and a long-lived handle in any one of them would lock every other one out for the life of that process; the CLI, which the resolver runs before every start, would never get in. The cost is about one open per request (some ten a minute at idle), which is cheap next to the lock contention a long-lived handle would turn into a permanent refusal |
+| Contention is waited out with a jittered backoff; the CLI waits longer than the daemons | Callers that lost the same race used to retry on the same schedule and collide again, so under a burst some exhausted their wait without ever seeing the lock free. Randomizing each step spreads them out. Daemons keep a short wait (5 s) because they are answering a caller that retries; the CLI waits 30 s because it runs once, and a burst of daemon reads should delay it, not fail it |
 
 ## `keystore_server`
 

@@ -282,7 +282,7 @@ The `normalization.output` section of the response is the fully decoded WCS docu
 | `<status>` | `event.outcome: "..."` | |
 | `<id>` | `event.code: "..."` | |
 | `<url>` | `url.original: "..."` | |
-| `<data>` | `event.original: "..."` | Context-dependent — may map to other fields depending on the decoder. |
+| `<data>` | `message: "..."` or a decoder-specific field | Context-dependent — map to the field the decoder extracts (verify with logtest). `event.original` keeps the raw log but is not searchable in the event indices, so a rule can never match on it. |
 | `<extra_data>` | No direct equivalent | Map to the appropriate WCS field based on what the decoder extracts (verify with logtest). |
 | **Metadata and output** | | |
 | `<description>` | `metadata.title` + `metadata.description` | Split: `title` is short (required), `description` is detailed. |
@@ -325,12 +325,12 @@ In 4.x, `<match>` and `<regex>` search the **raw log string** before any field e
      selection:
        event.action: "authentication-failed"
    ```
-3. **If the raw text was not decoded into a specific field** — fall back to `event.original`, which holds the raw log line:
+3. **If the text was not decoded into a specific field** — fall back to `message`, the free-text part of the log that many decoders set (check with logtest that yours does). Do not use `event.original`: it holds the raw log line, but it is not searchable in the event indices, so a condition on it can never match:
    ```yaml
    detection:
      condition: selection
      selection:
-       event.original|contains: "illegal user"
+       message|contains: "illegal user"
    ```
 4. **For a list of keyword alternatives across all event fields** (not targeting a specific field) — use `keywords` detection:
    ```yaml
@@ -341,7 +341,7 @@ In 4.x, `<match>` and `<regex>` search the **raw log string** before any field e
      condition: keywords
    ```
 
-`keywords` is closest to a raw-log `<match>` but has no field targeting. Always prefer a specific WCS field when one exists.
+`keywords` is closest to a raw-log `<match>` but has no field targeting, and, like any condition, it cannot match text that is only in `event.original`. Always prefer a specific WCS field when one exists.
 
 **Example: translating a 4.x regex alternation**
 
@@ -369,11 +369,11 @@ detection:
 ```
 
 ```yaml
-# 5.x option C: regex on event.original (last resort)
+# 5.x option C: regex on message (last resort; only when the decoder sets message)
 detection:
   condition: selection
   selection:
-    event.original|re: "illegal user|invalid user"
+    message|re: "illegal user|invalid user"
 ```
 
 #### Negating conditions
@@ -412,12 +412,12 @@ Modifiers are appended to field names using the pipe (`|`) character and transfo
 
 | Modifier | Meaning | Example |
 |---|---|---|
-| `\|contains` | Substring match (wildcard on both sides) | `event.original\|contains: "invalid user"` |
+| `\|contains` | Substring match (wildcard on both sides) | `message\|contains: "invalid user"` |
 | `\|startswith` | Value begins with string (wildcard at end) | `process.name\|startswith: "cmd"` |
 | `\|endswith` | Value ends with string (wildcard at start) | `file.name\|endswith: ".exe"` |
-| `\|re` | Regular expression match | `event.original\|re: "illegal user\|invalid user"` |
+| `\|re` | Regular expression match | `message\|re: "illegal user\|invalid user"` |
 | `\|re\|i` | Case-insensitive regex | `process.name\|re\|i: "^powershell"` |
-| `\|re\|m` | Multi-line regex (`^`/`$` match line boundaries) | `event.original\|re\|m: "^error"` |
+| `\|re\|m` | Multi-line regex (`^`/`$` match line boundaries) | `message\|re\|m: "^error"` |
 | `\|re\|s` | Single-line regex (`.` also matches newlines) | `message\|re\|s: "begin.*end"` |
 | `\|exists` | Field is present (`true`) or absent (`false`) | `user.name\|exists: true` |
 | `\|cidr` | IPv4 or IPv6 address falls within the CIDR range | `source.ip\|cidr: "10.0.0.0/8"` |
@@ -1197,7 +1197,7 @@ Common mappings:
 | `status` | `event.outcome` |
 | `id` | `event.code` |
 | `url` | `url.original` |
-| `data` | `event.original` or context-dependent |
+| `data` | `message` or context-dependent (never `event.original`, which is not searchable) |
 | `system_name` | `host.name` |
 | `program_name` | `process.name` |
 | `hostname` | `observer.hostname` |

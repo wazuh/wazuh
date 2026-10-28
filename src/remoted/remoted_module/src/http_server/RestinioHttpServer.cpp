@@ -191,10 +191,10 @@ namespace
             {
                 const auto message = builder();
                 LOGFN_DEBUG1(restinioLogFn(),
-                             "%s (%llu occurrence(s) in the last %d s)",
+                             "%s (%llu occurrence(s) %s)",
                              message.c_str(),
                              static_cast<unsigned long long>(decision.total),
-                             remoted::common::LogThrottle::kDefaultWindowSeconds);
+                             decision.period().c_str());
             }
         }
 
@@ -219,10 +219,10 @@ namespace
         if (const auto refused = throttle.record())
         {
             LOGFN_WARN(logFn(),
-                       "Refused %llu connection(s) in the last %d s: too many TLS handshakes in progress from one "
+                       "Refused %llu connection(s) %s: too many TLS handshakes in progress from one "
                        "address (last one: %s). See 'remoted.max_handshakes_per_source'.",
                        static_cast<unsigned long long>(refused.total),
-                       remoted::common::LogThrottle::kDefaultWindowSeconds,
+                       refused.period().c_str(),
                        peer.c_str());
         }
     }
@@ -233,10 +233,10 @@ namespace
         if (const auto expired = throttle.record())
         {
             LOGFN_WARN(logFn(),
-                       "Closed %llu connection(s) in the last %d s that did not complete the TLS handshake in time "
+                       "Closed %llu connection(s) %s that did not complete the TLS handshake in time "
                        "(last one: %s). See 'remoted.http_read_timeout'.",
                        static_cast<unsigned long long>(expired.total),
-                       remoted::common::LogThrottle::kDefaultWindowSeconds,
+                       expired.period().c_str(),
                        peer.empty() ? "unknown" : peer.c_str());
         }
     }
@@ -396,11 +396,11 @@ namespace
             if (const auto rejected = rejectThrottle().record())
             {
                 LOGFN_WARN(logFn(),
-                           "verification_mode=full rejected %llu connection(s) in the last %d s: the client "
+                           "verification_mode=full rejected %llu connection(s) %s: the client "
                            "certificate does not list the address the peer connected from (last one: %s). "
                            "Behind a TLS-terminating proxy the peer is the proxy, not the agent.",
                            static_cast<unsigned long long>(rejected.total),
-                           remoted::common::LogThrottle::kDefaultWindowSeconds,
+                           rejected.period().c_str(),
                            peerIp.c_str());
             }
         }
@@ -1029,10 +1029,10 @@ namespace
         if (const auto aborted = throttle.record())
         {
             LOGFN_WARN(logFn(),
-                       "Aborted %llu streamed response(s) in the last %d s. No terminating chunk is sent, so the "
+                       "Aborted %llu streamed response(s) %s. No terminating chunk is sent, so the "
                        "peer sees a truncated body and retries. Last reason: %s",
                        static_cast<unsigned long long>(aborted.total),
-                       remoted::common::LogThrottle::kDefaultWindowSeconds,
+                       aborted.period().c_str(),
                        reason);
         }
     }
@@ -1416,11 +1416,11 @@ namespace remoted::http
                                     {
                                         LOGFN_WARN(logFn(),
                                                    "In-flight request memory budget exhausted: shed %llu request(s) "
-                                                   "with 503 in the last %d s (%zu request(s) currently resident, "
+                                                   "with 503 %s (%zu request(s) currently resident, "
                                                    "%zu byte(s) still available). Consider increasing the value of "
                                                    "'max_inflight_bytes'.",
                                                    static_cast<unsigned long long>(shed.total),
-                                                   remoted::common::LogThrottle::kDefaultWindowSeconds,
+                                                   shed.period().c_str(),
                                                    budget->inFlightCount(),
                                                    budget->availableBytes());
                                     }

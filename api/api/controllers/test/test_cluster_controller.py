@@ -508,6 +508,31 @@ async def test_put_restart_reload_messages(mock_dapi, endpoint, operation, verb,
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("mock_request", ["cluster_controller"], indirect=True)
+@pytest.mark.parametrize('endpoint, operation', [(put_restart, 'restart'), (put_reload, 'reload')])
+@patch('api.controllers.cluster_controller.DistributedAPI.__init__', return_value=None)
+async def test_put_restart_reload_master_failure(mock_dapi, endpoint, operation, mock_request):
+    """A refusal on the master is reported as a failed item, not dropped."""
+    from wazuh.core.exception import WazuhError
+    from wazuh.core.results import AffectedItemsWazuhResult
+
+    workers_result = AffectedItemsWazuhResult(none_msg='none')
+    master_result = AffectedItemsWazuhResult(none_msg='none')
+    master_result.add_failed_item(id_='master-node',
+                                  error=WazuhError(1904, extra_message={'action': operation, 'detail': 'exit code 1'}))
+
+    with patch('api.controllers.cluster_controller.get_system_nodes', new=AsyncMock(return_value=['master-node'])), \
+            patch('api.controllers.cluster_controller.DistributedAPI.distribute_function',
+                  new=AsyncMock(side_effect=[workers_result, master_result])):
+        response = await endpoint(nodes_list='*')
+
+    body = json.loads(response.body)
+    assert body['data']['affected_items'] == []
+    assert body['data']['failed_items'][0]['error']['code'] == 1904
+    assert body['data']['failed_items'][0]['id'] == ['master-node']
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("mock_request", ["cluster_controller"], indirect=True)
 @patch('api.controllers.cluster_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
 @patch('api.controllers.cluster_controller.remove_nones_to_dict')
 @patch('api.controllers.cluster_controller.DistributedAPI.__init__', return_value=None)

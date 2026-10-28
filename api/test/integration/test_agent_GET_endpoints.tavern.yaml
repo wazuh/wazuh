@@ -820,6 +820,19 @@ stages:
         data:
           <<: *affected_empty_answer
 
+  - name: Filter by a CIDR registration IP
+    request:
+      verify: False
+      <<: *get_agents
+      params:
+        registerIP: 10.255.255.0/24
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          <<: *affected_empty_answer
+
   - name: Try to show agents using an invalid IP
     request:
       verify: False

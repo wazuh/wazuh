@@ -3,7 +3,8 @@
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 """wazuh-manager-control (src/init/wazuh-server.sh) around the resolver: the single JSON document of `-j`, the
-manager log lines it writes for the resolver, the checks `reload` runs, and that it acts on the daemons itself.
+manager log lines it writes for the resolver, the checks `reload` runs, the `check` action, and that it acts on the
+daemons itself.
 
 The script runs in a scratch home with stub daemons, a stub `wazuh-manager-conf` and a stub resolver; nothing of
 the host's manager is read or touched. A stub `systemctl` on the PATH records any call, so a test can assert the
@@ -30,7 +31,9 @@ CONF_STUB = """#!/bin/sh
 skip=no
 for a in "$@"; do [ "$a" = --skip-file-checks ] && skip=yes; done
 case " $* " in
-    *" validate"*) exit 0 ;;
+    *" validate"*)
+        [ -n "$FAIL_VALIDATE" ] && { echo "(1244): Invalid configuration at '/remote': bad." >&2; exit 1; }
+        exit 0 ;;
     *" get cluster.node_type"*) [ $skip = yes ] || exit 1; echo master ;;
     *" get auth.disabled"*) [ $skip = yes ] || exit 1; echo false ;;
 esac
@@ -256,3 +259,75 @@ def test_start_relaunches_a_daemon_that_died(manager):
     assert manager.run("start", systemctl=True).returncode == 0
     assert any(name.startswith("wazuh-manager-apid-") for name in os.listdir(run_dir))
     assert manager.systemctl_calls() == []
+
+
+def _pid_files(manager):
+    return sorted(name for name in os.listdir(os.path.join(manager.home, "var", "run")) if name.endswith(".pid"))
+
+
+def test_check_passes_without_starting_anything(manager):
+    result = manager.run("-j", "check", systemctl=True)
+    assert result.returncode == 0, result.stderr
+    assert one_document(result.stdout) == {"error": 0, "data": []}
+    assert "configuration test output" in result.stderr
+    assert _pid_files(manager) == []
+    assert manager.systemctl_calls() == []
+    plain = manager.run("check")
+    assert plain.returncode == 0 and plain.stdout.strip() == "Configuration and credentials checks passed."
+
+
+@pytest.mark.parametrize("env, document", [
+    ({"FAIL_VALIDATE": "1"}, {"error": 20, "message": "wazuh-manager.conf: Configuration error."}),
+    ({"UNSAFE": "1"}, {"error": 22, "message": "Unsafe credentials."}),
+    ({"FAIL_T": "remoted"}, {"error": 20, "message": "wazuh-manager-remoted: Configuration error."}),
+])
+def test_check_refuses_as_a_start_would(manager, env, document):
+    """Same refusal, same -j code as the start, and the same text without -j."""
+    result = manager.run("-j", "check", **env)
+    assert result.returncode == 1
+    assert one_document(result.stdout) == document
+    plain = manager.run("check", **env)
+    assert plain.returncode == 1
+    assert plain.stdout.strip() == document["message"][:-1] + ". Exiting"
+    start = manager.run("-j", "start", **env)
+    assert start.returncode == 1 and one_document(start.stdout) == document
+
+
+def test_check_leaves_a_running_manager_alone(manager):
+    """A refused check stops nothing, removes no marker and releases no lock it never took."""
+    assert manager.run("start").returncode == 0
+    running = _pid_files(manager)
+    run_dir = os.path.join(manager.home, "var", "run")
+    _write(os.path.join(run_dir, "wazuh-manager-authd.failed"), "start\n", mode=0o644)
+    lock = os.path.join(manager.home, "var", "start-script-lock")
+    os.makedirs(lock)
+    _write(os.path.join(lock, "pid"), f"{os.getpid()}\n", mode=0o644)
+
+    result = manager.run("-j", "check", FAIL_T="remoted")
+    assert result.returncode == 1
+    assert _pid_files(manager) == running
+    assert os.path.isdir(lock)
+    assert not os.path.exists(os.path.join(run_dir, "wazuh-manager-remoted.failed"))
+    assert os.path.exists(os.path.join(run_dir, "wazuh-manager-authd.failed"))
+    assert manager.run("check").returncode == 0
+    assert os.path.exists(os.path.join(run_dir, "wazuh-manager-authd.failed"))
+    shutil.rmtree(lock)
+
+
+def test_check_logs_its_refusal(manager):
+    assert manager.run("check", FAIL_VALIDATE="1").returncode == 1
+    assert "wazuh-manager-control: ERROR: (1244): Invalid configuration at '/remote': bad." in manager.log()
+
+
+@pytest.mark.parametrize("argv, message", [(("-j", "bogus"), "Invalid action: bogus."),
+                                           (("-j",), "Missing action.")])
+def test_json_invalid_action_is_one_document(manager, argv, message):
+    result = manager.run(*argv)
+    assert result.returncode == 1
+    assert one_document(result.stdout) == {"error": 1, "message": message}
+
+
+def test_disable_usage(manager):
+    result = manager.run("disable")
+    assert result.returncode == 1
+    assert "Usage: " in result.stdout and "disable debug]" not in result.stdout

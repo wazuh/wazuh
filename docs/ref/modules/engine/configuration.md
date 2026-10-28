@@ -51,7 +51,7 @@ comes from the `WAZUH_INDEXER_HOSTS` and `WAZUH_INDEXER_SSL_*` variables instead
 ## Command-line options
 
 ```
-wazuh-manager-analysisd [-f] [-t] [-d [-d]] [-h]
+wazuh-manager-analysisd [-f] [-t] [-d [-d]] [-h] [-V]
 ```
 
 | Option | Effect |
@@ -59,7 +59,8 @@ wazuh-manager-analysisd [-f] [-t] [-d [-d]] [-h]
 | `-f` | Run in the foreground instead of daemonizing. |
 | `-t` | Test the configuration and exit. In manager mode it validates `/etc/wazuh-manager/wazuh-manager.conf`, including the files it references, and exits `0`, or prints `Error loading configuration: <reason>` to stderr and exits `1`. It does not read the internal options file. In standalone mode it exits `0` without checking anything. |
 | `-d` | Debug logging for this run: once for debug, twice or more for trace. It takes priority over `analysisd.debug` (`analysisd.logging_level` in standalone mode). |
-| `-h` | Print the usage and exit `0`. An unknown option does the same. |
+| `-h` | Print the usage to stdout and exit `0`. An unknown option prints the error and the usage to stderr and exits `1`. |
+| `-V` | Print the version (`Wazuh v<version> - Wazuh Inc.`) to stderr, as the other manager daemons do, and exit `0`. |
 
 `wazuh-manager-control start` runs `wazuh-manager-analysisd -t` (with `-d` while debug is enabled with
 `wazuh-manager-control enable debug`) as one of its start checks, then launches the daemon **without any option**.

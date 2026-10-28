@@ -115,10 +115,10 @@ public:
             if (const auto decision = unavailableThrottle.record())
             {
                 logWarn(LOGTAG,
-                        "Status answered unavailable %llu time(s) in the last %d s: the global database is "
+                        "Status answered unavailable %llu time(s) %s: the global database is "
                         "missing expected tables.",
                         static_cast<unsigned long long>(decision.total),
-                        wazuh::uds_http::LogThrottle::kDefaultWindowSeconds);
+                        decision.period().c_str());
             }
             resObj.status = "unavailable";
             return wazuh::uds_http::HttpResponse::json(503, serializeToJSON(resObj));

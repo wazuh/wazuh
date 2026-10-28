@@ -146,7 +146,7 @@ command-line options, for running it by hand:
 | `-d` | Enable debug messages; repeat (`-dd`) for more verbosity |
 | `-V` | Print the version and exit |
 | `-r` | Run as root instead of dropping privileges to `wazuh-manager` |
-| `-t` | Read and check the cluster configuration, then exit (`0` when valid, `1` otherwise) |
+| `-t` | Read and check the cluster configuration, then exit (`0` when valid, `1` otherwise). A valid configuration prints nothing; a refused one prints `ERROR: <reason>` on standard error and also writes it to `logs/cluster.log` |
 | `-c <file>` | Configuration file to read the `<cluster>` section from (default `/etc/wazuh-manager/wazuh-manager.conf`) |
 | `-h` | Print the help and exit |
 
@@ -177,7 +177,10 @@ it works on any node (a worker forwards node and health queries to the master).
 | `-u`, `--usage` | Print usage examples |
 | `-h`, `--help` | Print the help |
 
-`-a`, `-l`, `-i` and `-u` are mutually exclusive; with none of them the help is printed. For example:
+`-a`, `-l`, `-i` and `-u` are mutually exclusive; with none of them the help is printed. An error is
+printed as `Error <code>: <message>` (as `agent_groups` prints it), or `Internal error: <message>`,
+and the command exits `1`: a node named with `-fn` that is not connected gives
+`Error 1730: Node does not exist`, with `-l` and `-i` alike. For example:
 
 ```bash
 /var/wazuh-manager/bin/cluster_control -l

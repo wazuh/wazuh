@@ -238,8 +238,12 @@ cycle `only_events_after` is stamped anew and every document older than that ins
 Documents already in the stream that must not be dispatched are removed from the stream itself. A
 `WARNING` that repeats every cycle for the same `_id` means the page is being held, one of the two
 cases above; an `ERROR … Error during active response processing` that repeats every cycle means an
-exception escaped the poller and the cursor is not moving, which is a defect in the poller rather
-than in the data.
+exception escaped the poller and the cursor is not moving. Check the message first: when it carries the
+indexer's `429` (for example a `circuit_breaking_exception` while the indexer's heap is exhausted), the
+indexer is refusing searches, the poller is not at fault, and reading resumes on its own with the next
+cycle the indexer accepts; size the indexer's heap rather than touching the bookmark. Any other
+exception repeating every cycle is a defect in the poller rather than in the data. A stopped or
+unreachable indexer is not this line: it is the `WARNING` `Cannot connect to Wazuh Indexer`.
 
 ### The cluster
 

@@ -171,67 +171,155 @@ def test_get_cluster_status():
         assert {'running': 'no'} == status
 
 
-@pytest.mark.skip(reason="execd socket no longer exists in manager after agent-manager separation")
-def test_manager_restart():
-    """Verify that manager_restart send to the manager the restart request."""
-    with patch('wazuh.core.cluster.utils.open', side_effect=None):
-        with patch('fcntl.lockf', side_effect=None):
-            with pytest.raises(WazuhInternalError, match='.* 1901 .*'):
-                utils.manager_restart()
+@pytest.mark.parametrize('function, action, message', [
+    (utils.manager_restart, 'restart', 'Restart request sent'),
+    (utils.manager_reload, 'reload', 'Reload request sent'),
+])
+def test_manager_restart_reload_control_socket(function, action, message):
+    """With the control socket available, the action is sent there and its answer must start with 'ok'."""
+    with patch('wazuh.core.cluster.utils.open', side_effect=None), patch('fcntl.lockf', side_effect=None), \
+            patch('os.path.exists', return_value=True), \
+            patch('wazuh.core.cluster.utils._run_service_control') as run_helper, \
+            patch('socket.socket.connect', side_effect=None), patch('socket.socket.close', side_effect=None):
+        # send/recv fails (socket error)
+        with pytest.raises(WazuhInternalError, match='.* 1014 .*'):
+            function()
 
-            with patch('os.path.exists', return_value=True):
-                with pytest.raises(WazuhInternalError, match='.* 1902 .*'):
-                    utils.manager_restart()
+        with patch('socket.socket.send', side_effect=None) as send:
+            # Response doesn't start with 'ok'
+            with patch('socket.socket.recv', return_value=b'err Service control rejected action\n'):
+                with pytest.raises(WazuhInternalError, match='.* 1014 .*'):
+                    function()
 
-                with patch('socket.socket.connect', side_effect=None):
-                    # Test when send/recv fails (socket error)
-                    with pytest.raises(WazuhInternalError, match='.* 1014 .*'):
-                        utils.manager_restart()
+            with patch('socket.socket.recv', return_value=b'ok accepted\n'):
+                assert WazuhResult({'message': message}) == function()
+            send.assert_called_with(action.encode())
 
-                    with patch('socket.socket.send', side_effect=None):
-                        # Test when response doesn't start with 'ok'
-                        with patch('socket.socket.recv', return_value=b'error: invalid command\n'):
-                            with patch('socket.socket.close', side_effect=None):
-                                with pytest.raises(WazuhInternalError, match='.* 1014 .*'):
-                                    utils.manager_restart()
-
-                        # Test successful restart (response starts with 'ok')
-                        with patch('socket.socket.recv', return_value=b'ok\n'):
-                            with patch('socket.socket.close', side_effect=None):
-                                status = utils.manager_restart()
-                                assert WazuhResult({'message': 'Restart request sent'}) == status
+    run_helper.assert_not_called()
 
 
-def test_manager_reload():
-    """Verify that manager_reload sends the reload request to the manager."""
-    with patch('wazuh.core.cluster.utils.open', side_effect=None):
-        with patch('fcntl.lockf', side_effect=None):
-            # Socket path does not exist
-            with pytest.raises(WazuhInternalError, match='.* 1901 .*'):
-                utils.manager_reload()
+HELPER_ACCEPT = """#!/bin/sh
+echo "$@" > "$0.args"
+[ "$(cut -d' ' -f6 /proc/$$/stat)" = "$$" ] && echo yes > "$0.setsid"
+printf 1 >&3
+exec 3>&-
+{after}
+"""
 
-            with patch('os.path.exists', return_value=True):
-                # Socket connection error
-                with pytest.raises(WazuhInternalError, match='.* 1902 .*'):
-                    utils.manager_reload()
 
-                with patch('socket.socket.connect', side_effect=None):
-                    # send/recv fails (socket error)
-                    with pytest.raises(WazuhInternalError, match='.* 1014 .*'):
-                        utils.manager_reload()
+@pytest.fixture
+def service_control(tmp_path):
+    """Install a stand-in service-control helper under a temporary installation directory.
 
-                    with patch('socket.socket.send', side_effect=None):
-                        # Response doesn't start with 'ok'
-                        with patch('socket.socket.recv', return_value=b'error: invalid command\n'):
-                            with patch('socket.socket.close', side_effect=None):
-                                with pytest.raises(WazuhInternalError, match='.* 1014 .*'):
-                                    utils.manager_reload()
+    Returns a function that writes the helper's body and gives its path.
+    """
+    (tmp_path / 'bin').mkdir()
+    (tmp_path / 'var' / 'run').mkdir(parents=True)
+    helper = tmp_path / 'bin' / utils.SERVICE_CONTROL_NAME
 
-                        # Successful reload (response starts with 'ok')
-                        with patch('socket.socket.recv', return_value=b'ok\n'):
-                            with patch('socket.socket.close', side_effect=None):
-                                result = utils.manager_reload()
-                                assert WazuhResult({'message': 'Reload request sent'}) == result
+    def write(body):
+        helper.write_text(body)
+        helper.chmod(0o755)
+        return helper
+
+    with patch('wazuh.core.common.WAZUH_PATH', str(tmp_path)), \
+            patch('wazuh.core.common.CONTROL_SOCKET', str(tmp_path / 'queue' / 'sockets' / 'control.sock')), \
+            patch('wazuh.core.cluster.utils.api_operation_lockfile', str(tmp_path / 'var' / 'run' / '.lock')), \
+            patch('wazuh.core.cluster.utils.threading.Thread',
+                  side_effect=lambda target, args, daemon: MagicMock(start=lambda: target(*args))):
+        yield write
+
+
+@pytest.mark.parametrize('function, action, message', [
+    (utils.manager_restart, 'restart', 'Restart request sent'),
+    (utils.manager_reload, 'reload', 'Reload request sent'),
+])
+def test_manager_restart_reload_without_control_socket(service_control, function, action, message):
+    """Without the control socket, the action is run through the service-control helper, in a new session."""
+    helper = service_control(HELPER_ACCEPT.format(after='exit 0'))
+
+    assert WazuhResult({'message': message}) == function()
+    assert open(f'{helper}.args').read().strip() == action
+    assert open(f'{helper}.setsid').read().strip() == 'yes'
+
+
+def test_manager_restart_connection_refused(service_control, tmp_path):
+    """A control socket that refuses the connection (modulesd is gone) also falls back to the helper."""
+    helper = service_control(HELPER_ACCEPT.format(after='exit 0'))
+    stale = tmp_path / 'queue' / 'sockets' / 'control.sock'
+    stale.parent.mkdir(parents=True)
+    stale.write_text('')
+
+    assert WazuhResult({'message': 'Restart request sent'}) == utils.manager_restart()
+    assert open(f'{helper}.args').read().strip() == 'restart'
+
+
+@pytest.mark.parametrize('function, action', [(utils.manager_restart, 'restart'), (utils.manager_reload, 'reload')])
+def test_manager_restart_reload_helper_refuses(service_control, function, action):
+    """A refusal of the helper is a 1904 error that names the action, the exit code and the helper's reason."""
+    service_control('#!/bin/sh\necho "wazuh-manager-service-control: unauthorized caller" >&2\nexit 1\n')
+
+    with pytest.raises(WazuhError, match='.* 1904 .*') as exc:
+        function()
+
+    assert exc.value.message == (f'The manager service-control helper refused the {action} request '
+                                 '(exit code 1: wazuh-manager-service-control: unauthorized caller)')
+
+
+def test_manager_restart_helper_no_answer(service_control):
+    """A helper that neither accepts nor exits within the timeout is killed and reported."""
+    service_control('#!/bin/sh\nexec sleep 30\n')
+
+    with patch('wazuh.core.cluster.utils.SERVICE_CONTROL_TIMEOUT', 0.2), \
+            pytest.raises(WazuhError, match='.* 1904 .*') as exc:
+        utils.manager_restart()
+
+    assert 'no answer within 0.2 seconds' in exc.value.message
+
+
+def test_manager_restart_helper_missing(service_control):
+    """A helper that cannot be run is a 1903 internal error."""
+    with pytest.raises(WazuhInternalError, match='.* 1903 .*') as exc:
+        utils.manager_restart()
+
+    assert utils.SERVICE_CONTROL_NAME in exc.value.message
+
+
+@pytest.mark.parametrize('function, action', [(utils.manager_restart, 'restart'), (utils.manager_reload, 'reload')])
+def test_manager_restart_reload_helper_check_refuses(service_control, function, action):
+    """A refusal of the check the helper runs after accepting (before systemctl) is still answered as a 1904."""
+    service_control(HELPER_ACCEPT.format(
+        after='echo "wazuh-manager-service-control: the manager configuration or credentials check failed; '
+              'the manager was not restarted" >&2\nexit 1'))
+
+    with pytest.raises(WazuhError, match='.* 1904 .*') as exc:
+        function()
+
+    assert exc.value.message == (f'The manager service-control helper refused the {action} request (exit code 1: '
+                                 'wazuh-manager-service-control: the manager configuration or credentials check '
+                                 'failed; the manager was not restarted)')
+
+
+def test_manager_restart_helper_fails_after_handing_over(service_control, caplog):
+    """Once the helper has become what it runs (systemctl), the request is answered and a failure is only logged."""
+    service_control(HELPER_ACCEPT.format(after="exec sh -c 'sleep 0.3; echo \"cannot restart\" >&2; exit 1'"))
+
+    with caplog.at_level(logging.ERROR, logger='wazuh'):
+        assert WazuhResult({'message': 'Restart request sent'}) == utils.manager_restart()
+
+    assert 'The manager restart run by wazuh-manager-service-control failed (exit code 1): cannot restart' \
+           in caplog.text
+
+
+def test_manager_restart_helper_check_outlasts_the_wait(service_control, caplog):
+    """A check longer than the wait does not hold the answer: the request is accepted and its outcome logged."""
+    service_control(HELPER_ACCEPT.format(after='sleep 0.5\necho "check failed" >&2\nexit 1'))
+
+    with patch('wazuh.core.cluster.utils.SERVICE_CONTROL_CHECK_TIMEOUT', 0.1), \
+            caplog.at_level(logging.ERROR, logger='wazuh'):
+        assert WazuhResult({'message': 'Restart request sent'}) == utils.manager_restart()
+
+    assert 'failed (exit code 1): check failed' in caplog.text
 
 
 def test_get_cluster_items():

@@ -1,8 +1,16 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 #include <gtest/gtest.h>
 
+#include <atomic>
+#include <chrono>
+#include <cstring>
 #include <filesystem>
 #include <thread>
+
+#include <sys/socket.h>
+#include <sys/time.h>
+#include <sys/un.h>
+#include <unistd.h>
 
 #include <base/behaviour.hpp>
 #include <base/logging.hpp>
@@ -599,3 +607,121 @@ INSTANTIATE_TEST_SUITE_P(
                               "/test",
                               [](httplib::Client& cli, const std::string& route, const httplib::Headers& headers)
                               { return cli.Put(route.c_str(), headers, "test", "text/plain"); })));
+
+/*******************************************************************************
+ * Requests without Content-Length
+ ******************************************************************************/
+namespace
+{
+/**
+ * @brief Send a raw request over the unix socket and read the whole answer.
+ *
+ * The write side stays open, as a client waiting for its answer keeps it. Gives up after `timeoutSec`.
+ */
+std::string rawRequest(const std::filesystem::path& socketPath, const std::string& request, int timeoutSec = 3)
+{
+    const int fd = ::socket(AF_UNIX, SOCK_STREAM, 0);
+    if (fd < 0)
+    {
+        return {};
+    }
+
+    sockaddr_un addr {};
+    addr.sun_family = AF_UNIX;
+    std::strncpy(addr.sun_path, socketPath.c_str(), sizeof(addr.sun_path) - 1);
+    if (::connect(fd, reinterpret_cast<sockaddr*>(&addr), sizeof(addr)) != 0)
+    {
+        ::close(fd);
+        return {};
+    }
+
+    timeval tv {};
+    tv.tv_sec = timeoutSec;
+    ::setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
+
+    if (::write(fd, request.data(), request.size()) != static_cast<ssize_t>(request.size()))
+    {
+        ::close(fd);
+        return {};
+    }
+
+    std::string answer;
+    char buf[1024];
+    for (;;)
+    {
+        const auto n = ::read(fd, buf, sizeof(buf));
+        if (n <= 0)
+        {
+            break;
+        }
+        answer.append(buf, static_cast<size_t>(n));
+    }
+    ::close(fd);
+    return answer;
+}
+} // namespace
+
+class NoContentLengthTest
+    : public ServerTest
+    , public ::testing::WithParamInterface<std::pair<httpsrv::Method, std::string>>
+{
+};
+
+TEST_P(NoContentLengthTest, RequestWithoutLengthReachesTheHandlerWithAnEmptyBody)
+{
+    const auto& [method, methodName] = GetParam();
+    std::atomic<int> handlerCalls {0};
+    std::atomic<bool> emptyBody {false};
+
+    m_srv->template addRoute<httplib::Request, httplib::Response>(
+        method,
+        "/test",
+        [&handlerCalls, &emptyBody](const httplib::Request& req, httplib::Response& res)
+        {
+            ++handlerCalls;
+            emptyBody = req.body.empty();
+            res.status = 200;
+            res.set_content("OK", "text/plain");
+        });
+    m_srv->start(getSocketPath("test.sock"));
+
+    const auto start = std::chrono::steady_clock::now();
+    const auto answer = rawRequest(getSocketPath("test.sock"),
+                                   methodName + " /test HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n");
+    const auto elapsed = std::chrono::steady_clock::now() - start;
+
+    EXPECT_EQ(answer.rfind("HTTP/1.1 200", 0), 0u) << answer;
+    EXPECT_NE(answer.find("OK"), std::string::npos) << answer;
+    EXPECT_EQ(handlerCalls.load(), 1);
+    EXPECT_TRUE(emptyBody.load());
+    // Answered at once, not after the server's read timeout
+    EXPECT_LT(elapsed, std::chrono::seconds(2));
+}
+
+INSTANTIATE_TEST_SUITE_P(ServerP,
+                         NoContentLengthTest,
+                         ::testing::Values(std::make_pair(httpsrv::Method::POST, std::string {"POST"}),
+                                           std::make_pair(httpsrv::Method::PUT, std::string {"PUT"}),
+                                           std::make_pair(httpsrv::Method::DELETE, std::string {"DELETE"})));
+
+TEST_F(ServerTest, BodyWithExplicitLengthIsStillRead)
+{
+    std::string received;
+    m_srv->template addRoute<httplib::Request, httplib::Response>(
+        httpsrv::Method::POST,
+        "/test",
+        [&received](const httplib::Request& req, httplib::Response& res)
+        {
+            received = req.body;
+            res.status = 200;
+            res.set_content("OK", "text/plain");
+        });
+    m_srv->start(getSocketPath("test.sock"));
+
+    const auto answer =
+        rawRequest(getSocketPath("test.sock"),
+                   "POST /test HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\nContent-Length: 4\r\n\r\nabcd");
+
+    EXPECT_EQ(answer.rfind("HTTP/1.1 200", 0), 0u) << answer;
+    EXPECT_EQ(received, "abcd");
+}

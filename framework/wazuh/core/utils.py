@@ -1827,12 +1827,13 @@ class WazuhDBQueryGroupBy(WazuhDBQuery):
         self.filter_fields = filter_fields
 
     def _get_total_items(self):
-        # take total items without grouping, and add the group by clause just after getting total items
-        WazuhDBQuery._get_total_items(self)
+        # Group before counting, so the total is the number of rows answered (one per combination of the fields),
+        # as everywhere else, and not the number of items grouped in them (that is each row's 'count').
         self.select.add('count')
         self.inverse_fields['COUNT(*)'] = 'count'
         self.fields['count'] = 'COUNT(*)'
         self.query += ' GROUP BY ' + ','.join(map(lambda x: self.fields[x], self.filter_fields['fields']))
+        WazuhDBQuery._get_total_items(self)
 
     def _add_select_to_query(self):
         WazuhDBQuery._add_select_to_query(self)

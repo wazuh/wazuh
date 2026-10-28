@@ -149,11 +149,11 @@ namespace
                 if (const auto d = clockSkewThrottle.record())
                 {
                     LOGFN_WARN(logFn(),
-                               "Rejected %llu request(s) in the last %d s whose token fell outside the accepted "
+                               "Rejected %llu request(s) %s whose token fell outside the accepted "
                                "time window (%s). Check clock synchronization between the agents and the manager; "
                                "the window is set by 'jwt_max_age' and 'jwt_clock_skew' (remoted internal options).",
                                static_cast<unsigned long long>(d.total),
-                               LogThrottle::kDefaultWindowSeconds,
+                               d.period().c_str(),
                                remoted::auth::toString(err));
                 }
                 break;
@@ -162,13 +162,13 @@ namespace
                 if (const auto d = bodyTooLargeThrottle.record())
                 {
                     LOGFN_WARN(logFn(),
-                               "Rejected %llu request(s) with 413 in the last %d s: the body exceeded the "
+                               "Rejected %llu request(s) with 413 %s: the body exceeded the "
                                "authenticated-body cap. Consider increasing the value of 'auth_max_body_size' or, "
                                "for zstd bodies, 'auth_max_decoded_body_size' -- or 'max_inflight_bytes_per_agent' "
                                "on /stateful, whose vulnerability-detection first sync carries a host's whole "
                                "inventory and cannot be split by the agent.",
                                static_cast<unsigned long long>(d.total),
-                               LogThrottle::kDefaultWindowSeconds);
+                               d.period().c_str());
                 }
                 break;
 
@@ -176,12 +176,12 @@ namespace
                 if (const auto d = unusableKeyThrottle.record())
                 {
                     LOGFN_WARN(logFn(),
-                               "Rejected %llu request(s) in the last %d s from agent(s) whose key could not be used: "
+                               "Rejected %llu request(s) %s from agent(s) whose key could not be used: "
                                "the key column in client.keys did not decode to the 32-byte key the bearer profile "
                                "requires (64 lowercase hex chars). "
                                "Re-enroll the affected agent(s).",
                                static_cast<unsigned long long>(d.total),
-                               LogThrottle::kDefaultWindowSeconds);
+                               d.period().c_str());
                 }
                 break;
 
@@ -189,13 +189,13 @@ namespace
                 if (const auto d = enrollmentKeyUnavailableThrottle.record())
                 {
                     LOGFN_WARN(logFn(),
-                               "Rejected %llu Password-mode /enroll request(s) in the last %d s: the enrollment "
+                               "Rejected %llu Password-mode /enroll request(s) %s: the enrollment "
                                "password key is unavailable (etc/authd.pass is missing, unreadable, invalid, or -- "
                                "on a cluster worker -- not yet synced from the master). Password-mode enrollment "
                                "will keep failing until it becomes available; this is NOT an agent credential "
                                "problem, so re-enrolling will not fix it.",
                                static_cast<unsigned long long>(d.total),
-                               LogThrottle::kDefaultWindowSeconds);
+                               d.period().c_str());
                 }
                 break;
 
@@ -205,10 +205,10 @@ namespace
                     // Security-relevant: the request's MAC verified, so this is a legitimately
                     // authenticated agent submitting a batch attributed to a different agent id.
                     LOGFN_WARN(logFn(),
-                               "Rejected %llu authenticated request(s) in the last %d s whose payload claimed a "
+                               "Rejected %llu authenticated request(s) %s whose payload claimed a "
                                "different agent id than the one that signed them (authenticated agent '%.*s').",
                                static_cast<unsigned long long>(d.total),
-                               LogThrottle::kDefaultWindowSeconds,
+                               d.period().c_str(),
                                static_cast<int>(agentContext.size()),
                                agentContext.data());
                 }
@@ -220,11 +220,11 @@ namespace
                     // Names the agent of the request that emits the line; the count covers every
                     // agent shed since the last one. An honest agent never reaches the default cap.
                     LOGFN_WARN(logFn(),
-                               "Rejected %llu request(s) with 503 in the last %d s from agent(s) already holding "
+                               "Rejected %llu request(s) with 503 %s from agent(s) already holding "
                                "their share: 'max_requests_per_agent' open requests or 'max_inflight_bytes_per_agent' "
                                "decoded bytes (agent '%.*s'). Investigate the agent before raising either value.",
                                static_cast<unsigned long long>(d.total),
-                               LogThrottle::kDefaultWindowSeconds,
+                               d.period().c_str(),
                                static_cast<int>(agentContext.size()),
                                agentContext.data());
                 }

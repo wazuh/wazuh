@@ -622,6 +622,100 @@ TEST_F(BuildPolicyTest, BuildPolicyWithDisabledIntegration)
     EXPECT_EQ(builtPolicy->name().toStr(), namespaceId.toStr());
 }
 
+// Per-space counters: a test-mode build must not register or reuse the space's metrics
+class BuildPolicySpaceCountersTest : public BuildPolicyTest
+{
+protected:
+    fastmetrics::MockManager* metricsManager()
+    {
+        auto& manager = SingletonLocator::instance<fastmetrics::IManager>();
+        return dynamic_cast<fastmetrics::MockManager*>(&manager);
+    }
+
+    void expectMinimalPolicy(const NamespaceId& namespaceId, const std::string& originSpace)
+    {
+        auto policy = dataType::Policy("test-policy",
+                                       true,
+                                       "550e8400-e29b-41d4-a716-446655440003",
+                                       {"550e8400-e29b-41d4-a716-446655440001"},
+                                       {},
+                                       {},
+                                       {},
+                                       originSpace,
+                                       "",
+                                       false,
+                                       false,
+                                       true);
+        auto integration = dataType::Integration("550e8400-e29b-41d4-a716-446655440001",
+                                                 "test-integration",
+                                                 true,
+                                                 "system-activity",
+                                                 std::nullopt,
+                                                 {},
+                                                 {"550e8400-e29b-41d4-a716-446655440003"},
+                                                 false);
+        auto defaultParent = json::Json(R"({"name": "decoder/default-parent/0", "enabled": true})");
+        auto rootDecoder = json::Json(R"({"name": "decoder/root/0", "enabled": true})");
+
+        EXPECT_CALL(*m_mocks->m_spStore, getNSReader(testing::_))
+            .WillRepeatedly(testing::Return(m_mocks->m_spNSReader));
+        EXPECT_CALL(*m_mocks->m_spNSReader, getPolicy()).WillRepeatedly(testing::Return(policy));
+        EXPECT_CALL(*m_mocks->m_spNSReader, getNamespaceId()).WillRepeatedly(testing::ReturnRef(namespaceId));
+        EXPECT_CALL(*m_mocks->m_spNSReader, getIntegrationByUUID("550e8400-e29b-41d4-a716-446655440001"))
+            .WillRepeatedly(testing::Return(integration));
+        EXPECT_CALL(*m_mocks->m_spNSReader, resolveNameFromUUID("550e8400-e29b-41d4-a716-446655440003"))
+            .WillRepeatedly(testing::Return(std::make_tuple("decoder/root/0", ResourceType::DECODER)));
+        EXPECT_CALL(*m_mocks->m_spNSReader, getAssetByUUID("550e8400-e29b-41d4-a716-446655440002"))
+            .WillRepeatedly(testing::Return(defaultParent));
+        EXPECT_CALL(*m_mocks->m_spNSReader, getAssetByUUID("550e8400-e29b-41d4-a716-446655440003"))
+            .WillRepeatedly(testing::Return(rootDecoder));
+        EXPECT_CALL(*m_mocks->m_spNSReader, assetExistsByUUID(testing::_)).WillRepeatedly(testing::Return(true));
+        EXPECT_CALL(*m_mocks->m_spNSReader, assetExistsByName(testing::_)).WillRepeatedly(testing::Return(true));
+        EXPECT_CALL(*m_mocks->m_spNSReader, getOutputsForSpace(testing::_))
+            .WillRepeatedly(testing::Return(std::vector<json::Json> {}));
+    }
+};
+
+TEST_F(BuildPolicySpaceCountersTest, TestModeRegistersNoSpaceCounters)
+{
+    NamespaceId namespaceId("logtest_abcdef");
+    expectMinimalPolicy(namespaceId, "standard");
+
+    auto* manager = metricsManager();
+    ASSERT_NE(manager, nullptr);
+    EXPECT_CALL(*manager, getOrCreateCounter(testing::_, testing::_, testing::_)).Times(0);
+
+    auto builtPolicy = m_builder->buildPolicy(namespaceId, true);
+    ASSERT_NE(builtPolicy, nullptr);
+}
+
+TEST_F(BuildPolicySpaceCountersTest, ProductionModeRegistersTheOriginSpaceCounters)
+{
+    NamespaceId namespaceId("cmsync_standard_abcdef");
+    expectMinimalPolicy(namespaceId, "standard");
+
+    auto* manager = metricsManager();
+    ASSERT_NE(manager, nullptr);
+    EXPECT_CALL(*manager, getOrCreateCounter(testing::_, testing::_, testing::_)).Times(testing::AnyNumber());
+    EXPECT_CALL(*manager,
+                getOrCreateCounter(fastmetrics::names::space_events_discarded("standard"), testing::_, testing::_))
+        .Times(1);
+    EXPECT_CALL(
+        *manager,
+        getOrCreateCounter(fastmetrics::names::space_events_discarded_prefilter("standard"), testing::_, testing::_))
+        .Times(1);
+    EXPECT_CALL(
+        *manager,
+        getOrCreateCounter(fastmetrics::names::space_events_discarded_postfilter("standard"), testing::_, testing::_))
+        .Times(1);
+    EXPECT_CALL(*manager,
+                getOrCreateCounter(fastmetrics::names::space_events_unclassified("standard"), testing::_, testing::_))
+        .Times(1);
+
+    auto builtPolicy = m_builder->buildPolicy(namespaceId, false);
+    ASSERT_NE(builtPolicy, nullptr);
+}
+
 class BuildPolicyAdvancedTest : public ::testing::Test
 {
 protected:

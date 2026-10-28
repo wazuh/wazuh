@@ -1083,6 +1083,10 @@ The checks that most often refuse a promotion, with the error the Engine returns
 | The root decoder is disabled, or not part of any enabled integration | `The root decoder '<name>' [id: '<id>'] is disabled; enable it before using this policy`, or `... is required by the policy decoders but is not part of its enabled content ...` |
 
 `logtest_<hex>` is the temporary namespace of that one validation request, not a space the user created.
+With `load_in_tester: true` it becomes the namespace of the tester session named after the space, and only such
+a tester-created namespace is ever deleted when that session is replaced or removed (`DELETE /logtest`): a
+session attached to any other namespace, such as a synchronized `cmsync_<space>_<hex>` one, is refused with 400
+instead, so a test call can never delete content a route runs.
 
 Because promotion always builds the whole space, removing content by promoting an empty or incomplete space
 is refused by the same checks. To stop using a space's content, disable the space's policy in the Wazuh
@@ -2576,7 +2580,10 @@ Total number of entries removed by the periodic TTL cleanup.
 
 #### Per-space metrics
 
-These metrics are created dynamically per space.
+These metrics are created dynamically per space, when a route builds the space's policy. They count production
+traffic only: a policy built in test mode (a tester session, `POST /logtest`, `POST /content/validate/policy`)
+creates and moves no per-space metric, so a test run neither changes the counters of the space it copies nor
+registers metrics for a temporary space. Registered metrics are never removed while the engine runs.
 
 The metric name includes the space name:
 
@@ -2645,13 +2652,15 @@ Engine messages, including those of the Indexer Connector, use the `wazuh-manage
 2026/09/28 16:39:34 wazuh-manager-analysisd: INFO: Engine started
 ```
 
-Warning and error lines include a context tag in brackets that identifies the internal
-component that produced the message:
+Most warning and error lines include a context tag in brackets that identifies the internal
+component that produced the message (some lines carry none). The indexer connector's host monitor
+marks its lines on the component tag instead, as `wazuh-manager-analysisd(monitoring):`:
 
 ```
 2026/09/28 19:42:00 wazuh-manager-analysisd: WARNING: [CMSync] Check 'custom' space in wazuh-indexer - Attempt 3/3: No available server. Unavailable nodes: https://127.0.0.1:9200: Could not connect to server
 2026/09/28 19:42:00 wazuh-manager-analysisd: WARNING: [CM::Sync] Failed to synchronize namespace for space 'custom': Check 'custom' space in wazuh-indexer::CMSync failed after 3 attempts: No available server. Unavailable nodes: https://127.0.0.1:9200: Could not connect to server
 2026/04/14 20:09:46 wazuh-manager-analysisd: WARNING: [IOC::Sync] Synchronization cycle failed: No available server
+2026/10/27 23:25:29 wazuh-manager-analysisd(monitoring): WARNING: Indexer node 'https://127.0.0.1:9200' reports a PERMANENT circuit breaker (HTTP 429 circuit_breaking_exception: [parent] Data too large, ...)
 ```
 
 When debug level is active, additional diagnostic messages appear and **every** line (not only the

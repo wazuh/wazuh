@@ -13,6 +13,7 @@
 #include <rapidjson/stringbuffer.h>
 #include <rapidjson/writer.h>
 
+#include <cerrno>
 #include <fstream>
 #include <sstream>
 #include <system_error>
@@ -75,10 +76,17 @@ namespace manager_config
                               "configuration file larger than " + std::to_string(detail::MAX_XML_BYTES) +
                                   " bytes: " + file.string()};
             }
+            // A regular file that cannot be opened (permission denied...): the reason is open()'s errno, which
+            // the stream does not keep, so it is read right after the attempt.
+            errno = 0;
             std::ifstream in(file, std::ios::binary);
             if (!in)
             {
-                return Error {"", "configuration file cannot be read: " + file.string()};
+                const int error = errno;
+                return Error {
+                    "",
+                    "configuration file cannot be read: " + file.string() + ": " +
+                        (error != 0 ? std::generic_category().message(error) : std::string {"cannot open the file"})};
             }
             std::stringstream buffer;
             buffer << in.rdbuf();

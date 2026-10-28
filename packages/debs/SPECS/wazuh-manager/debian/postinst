@@ -23,7 +23,8 @@ case "$1" in
     WAZUH_TMP_DIR="${WAZUH_GLOBAL_TMP_DIR}/manager_config_files"
     WAZUH_PRESERVE_DIR="${WAZUH_GLOBAL_TMP_DIR}/manager_upgrade_preserve"
     OSMYSHELL="/sbin/nologin"
-    SCRIPTS_DIR="${WAZUH_GLOBAL_TMP_DIR}/manager_installation_scripts"
+    # Shipped by the package and kept (debian/rules), unlike the working state in ${WAZUH_GLOBAL_TMP_DIR}.
+    SCRIPTS_DIR="/usr/share/wazuh-manager/installation_scripts"
 
     # ${CONF_DIR}, logs/, queue/db/ and api/configuration/ are writable by ${GROUP}, so anything in
     # them may be a link the service account planted, and chmod has no -h. Nothing here changes a
@@ -56,8 +57,12 @@ case "$1" in
 
     # ${CONF_DIR} and data/ are writable by ${GROUP}: --remove-destination replaces a link planted
     # at a destination instead of writing (and chowning, with -a) through it.
+    # The schema copy is product, not configuration: the one this package unpacked stays.
     restore_upgrade_preserve() {
         if [ -d "${WAZUH_PRESERVE_DIR}/etc" ]; then
+            if [ -f "${CONF_DIR}/wazuh-manager.schema.json" ]; then
+                rm -f "${WAZUH_PRESERVE_DIR}/etc/wazuh-manager.schema.json"
+            fi
             mkdir -p "${CONF_DIR}"
             cp -a --remove-destination "${WAZUH_PRESERVE_DIR}/etc/." "${CONF_DIR}/"
         fi
@@ -76,9 +81,9 @@ case "$1" in
         fi
     }
 
-    if [ -d /run/systemd/system ]; then
-        rm -f /etc/init.d/wazuh-manager
-    fi
+    # /etc/init.d/wazuh-manager stays on a systemd host too: it is a conffile, so deleting it leaves
+    # dpkg --verify reporting it missing, and systemd ignores an init script whose name a native
+    # unit (/usr/lib/systemd/system/wazuh-manager.service) already has.
 
     if [ ! -f ${OSMYSHELL} ]; then
         if [ -f "/bin/false" ]; then
@@ -347,18 +352,13 @@ case "$1" in
         rm -f ${DIR}/bin/manage_agents
     fi
 
-    # Delete installation scripts
-    if [ -d ${SCRIPTS_DIR} ]; then
-        rm -rf ${SCRIPTS_DIR}
-    fi
-
     # Delete tmp directory
     if [ -d ${WAZUH_TMP_DIR} ]; then
         rm -r ${WAZUH_TMP_DIR}
     fi
 
     # If the parent directory is empty, delete it
-    if [ -z "$(ls -A ${WAZUH_GLOBAL_TMP_DIR})" ]; then
+    if [ -d ${WAZUH_GLOBAL_TMP_DIR} ] && [ -z "$(ls -A ${WAZUH_GLOBAL_TMP_DIR})" ]; then
         rm -rf ${WAZUH_GLOBAL_TMP_DIR}
     fi
 

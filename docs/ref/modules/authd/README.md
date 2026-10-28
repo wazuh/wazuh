@@ -41,8 +41,9 @@ material; that one is the order things happen in.
    closed, and so is one that sends more than 68 KiB without a newline; at most 999 connections
    are served at once (`Too many connections. Rejecting.` past that).
 
-   Only `A:'<agent_name>'` is mandatory. The other fields are optional, but those present must
-   appear in the order shown:
+   Only `A:'<agent_name>'` is mandatory and comes first. The other fields are optional and may
+   follow it in any order; each is read once, and anything after the fields authd recognises (a
+   repeated field, an unknown one) is ignored. A request without `V:` is not version-checked:
    - `A:'<agent_name>'` — the name the agent wants to register under (required). It must pass
      `OS_IsValidName()` (2–128 letters, digits, `-`, `_` or `.`, not starting with `.`), or the
      answer is `ERROR: Invalid agent name: <name>`.
@@ -349,7 +350,11 @@ inside the window of [`remoted.jwt_max_age` and `remoted.jwt_clock_skew`](config
 
 On success the entry is rotated in place — same id, new key, new secret — and the writer issues
 `global set-agent-credentials` instead of an insert: nothing is deleted, no indexer purge is recorded,
-groups are kept unless the request named some, and the `<force>` guards play no part. Refusals: `9026`
+groups are kept unless the request named some, and the `<force>` guards play no part. The **name and
+address are not kept**: the entry takes the request's `name`, and its address is what `ip` resolves to
+on `POST /enroll` — so a request without `ip` registers `any` again (or the connection's source address
+under [`use_source_ip`](configuration.md#use_source_ip)), even for an agent registered with an address
+or network before. Refusals: `9026`
 (no such agent, or a row without a secret — enrolled over 1515, or a `global.db` rebuilt from
 `client.keys`), `9027` (malformed, another `kid`, bad signature, or combined with `token_id`, `id` or
 `key`), `9028` (outside the window); a name or IP owned by *another* agent still answers `9008`/`9007`.

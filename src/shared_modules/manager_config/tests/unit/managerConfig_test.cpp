@@ -19,6 +19,8 @@
 #include <sstream>
 #include <string>
 
+#include <unistd.h>
+
 #include "manager_config/manager_config.hpp"
 #include "manager_config/manager_config_c.h"
 #include "xmlToJson.hpp"
@@ -240,6 +242,24 @@ TEST(Load, UnreadablePathReportsTheSystemErrorNotNotFound)
     EXPECT_NE(error->message.find("cannot be read: " + VECTORS.string() + ": "), std::string::npos) << error->what();
 }
 
+TEST(Load, UnopenableFileNamesTheReason)
+{
+    // A regular file the caller may not open: the message carries open()'s reason, as for every other access error.
+    if (::geteuid() == 0)
+    {
+        GTEST_SKIP() << "root opens a file whatever its mode";
+    }
+    const auto file =
+        std::filesystem::temp_directory_path() / ("manager_config_unopenable_" + std::to_string(::getpid()));
+    std::ofstream(file) << "<wazuh_config/>";
+    std::filesystem::permissions(file, std::filesystem::perms::none);
+    auto error = manager_config::validateFile(file, noFiles());
+    std::filesystem::remove(file);
+    ASSERT_TRUE(error.has_value());
+    EXPECT_NE(error->message.find("cannot be read: " + file.string() + ": Permission denied"), std::string::npos)
+        << error->what();
+}
+
 // ---------------------------------------------------------------------------------------------------
 // Schema and XML-level rejections, driven by the shared vectors
 // ---------------------------------------------------------------------------------------------------
@@ -344,10 +364,88 @@ TEST(Schema, IpOptionsAcceptOnlyWhatRemotedAccepts)
             parseKo(wrap(std::string("<remote><legacy><local_ip>") + address + "</local_ip></legacy></remote>"));
         EXPECT_EQ(legacy.pointer, "/remote/legacy/local_ip") << address;
     }
-    // clusterd binds through Python's asyncio, which also resolves a host name: only emptiness is refused.
+    // clusterd binds through Python's asyncio, which also resolves a host name: cluster.bind_addr takes one
+    // (Schema.ClusterBindAddrIsAHostAndIndexerHostsNameOne).
     parseOk("<wazuh_config><cluster><key>0123456789abcdef0123456789abcdef</key><bind_addr>localhost</bind_addr>"
             "</cluster>" +
             std::string(INDEXER_SECTION) + "</wazuh_config>");
+}
+
+TEST(Schema, ClusterBindAddrIsAHostAndIndexerHostsNameOne)
+{
+    const auto cluster = [](const std::string& address)
+    {
+        return "<wazuh_config><cluster><key>0123456789abcdef0123456789abcdef</key><bind_addr>" + address +
+               "</bind_addr></cluster>" + std::string(INDEXER_SECTION) + "</wazuh_config>";
+    };
+    for (const char* address :
+         {"0.0.0.0", "127.0.0.1", "::", "fe80::1", "localhost", "wazuh_master", "node-1.example.com", "a.b."})
+    {
+        parseOk(cluster(address));
+    }
+    for (const char* address : {"not a host!", "-leading-dash", "host:1516", "a..b", "10.0.0.0/8"})
+    {
+        const auto error = parseKo(cluster(address));
+        EXPECT_EQ(error.pointer, "/cluster/bind_addr") << address;
+        EXPECT_NE(error.message.find("pattern"), std::string::npos) << error.what();
+    }
+
+    const auto indexer = [](const std::string& host)
+    {
+        return "<wazuh_config>" + std::string(CLUSTER_SECTION) + "<indexer><hosts><host>" + host +
+               "</host></hosts></indexer></wazuh_config>";
+    };
+    for (const char* host : {"https://127.0.0.1:9200",
+                             "http://localhost",
+                             "https://indexer-1.example.com:9200/",
+                             "https://[::1]:9200",
+                             "https://[fd00::5]/prefix"})
+    {
+        parseOk(indexer(host));
+    }
+    for (const char* host : {"https://", "http://:9200", "https://not a host", "https://host:", "localhost:9200"})
+    {
+        const auto error = parseKo(indexer(host));
+        EXPECT_EQ(error.pointer, "/indexer/hosts/0") << host;
+    }
+}
+
+TEST(Schema, DurationsAndSizesStopWhereTheReadersWould)
+{
+    // w_parse_time() and w_parse_size() overflow, and their consumers keep an int, past these spellings; a zero
+    // with a unit is still zero, which every reader below refuses.
+    parseOk(wrap("<global><agents_disconnection_time>999w</agents_disconnection_time></global>"
+                 "<remote><legacy><rids_closing_time>999999999</rids_closing_time></legacy>"
+                 "<https><max_body_size>999999G</max_body_size></https></remote>"
+                 "<wdb><backup database=\"global\"><interval>9999d</interval></backup></wdb>"));
+    const struct
+    {
+        const char* body;
+        const char* pointer;
+    } rejected[] = {
+        {"<global><agents_disconnection_time>15250284452472w</agents_disconnection_time></global>",
+         "/global/agents_disconnection_time"},
+        {"<global><agents_disconnection_time>1000w</agents_disconnection_time></global>",
+         "/global/agents_disconnection_time"},
+        {"<global><agents_disconnection_time>1000000000</agents_disconnection_time></global>",
+         "/global/agents_disconnection_time"},
+        {"<remote><legacy><rids_closing_time>0m</rids_closing_time></legacy></remote>",
+         "/remote/legacy/rids_closing_time"},
+        {"<remote><legacy><rids_closing_time>0</rids_closing_time></legacy></remote>",
+         "/remote/legacy/rids_closing_time"},
+        {"<remote><https><max_body_size>0K</max_body_size></https></remote>", "/remote/https/max_body_size"},
+        {"<remote><https><max_body_size>1000000G</max_body_size></https></remote>", "/remote/https/max_body_size"},
+        {"<wdb><backup database=\"global\"><interval>99999999999999999999</interval></backup></wdb>",
+         "/wdb/backup/global/interval"},
+        {"<vulnerability-detection><feed-update-interval>99999999m</feed-update-interval></vulnerability-detection>",
+         "/vulnerability-detection/feed-update-interval"},
+        {"<auth><force><after_registration_time>100000d</after_registration_time></force></auth>",
+         "/auth/force/after_registration_time"},
+    };
+    for (const auto& item : rejected)
+    {
+        EXPECT_EQ(parseKo(wrap(item.body)).pointer, item.pointer) << item.body;
+    }
 }
 
 TEST(Schema, HttpsStringsAreCappedAtRemotedBufferSizes)

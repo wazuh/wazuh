@@ -17,6 +17,7 @@ import wazuh.core.cluster.cluster
 import wazuh.core.cluster.utils
 from wazuh.core.cluster import control, local_client
 from wazuh.core.common import DECIMALS_DATE_FORMAT
+from wazuh.core.exception import WazuhException
 from wazuh.core.utils import get_utc_strptime
 
 
@@ -129,9 +130,11 @@ async def print_health(config: dict, more: bool, filter_node: Union[str, list]):
         return total_seconds
 
     lc = local_client.LocalClient()
+    # Also when nodes are named: the health answer leaves out a node that does not exist, while this
+    # request refuses it (1730).
+    nodes = await control.get_nodes(lc, filter_node=filter_node)
     if filter_node is None:
-        filter_node = await control.get_nodes(lc, filter_node=filter_node)
-        filter_node = [node['name'] for node in filter_node['items']]
+        filter_node = [node['name'] for node in nodes['items']]
     result = await control.get_health(lc, filter_node=filter_node)
     msg2 = ""
 
@@ -259,9 +262,9 @@ def main():
 
     logging.basicConfig(level=logging.DEBUG if args.debug else logging.ERROR, format='%(levelname)s: %(message)s')
 
-    cluster_config = wazuh.core.cluster.utils.read_config()
-    wazuh.core.cluster.cluster.check_cluster_config(config=cluster_config)
     try:
+        cluster_config = wazuh.core.cluster.utils.read_config()
+        wazuh.core.cluster.cluster.check_cluster_config(config=cluster_config)
         if args.filter_status and not args.list_agents:
             logging.error("Wrong arguments.")
             usage()
@@ -283,8 +286,14 @@ def main():
         asyncio.run(my_function(*my_args))
     except KeyboardInterrupt:
         pass
+    except WazuhException as e:
+        # The same format as agent_groups.
+        print(f"Error {e.code}: {e.message}")
+        if args.debug:
+            raise
+        sys.exit(1)
     except Exception as e:
-        logging.error(e)
+        print(f"Internal error: {e}")
         if args.debug:
             raise
         sys.exit(1)

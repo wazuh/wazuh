@@ -431,16 +431,15 @@ components:
             title: "Method Not Allowed"
             detail: "Specified method is invalid for this resource"
 
-    WrongContentTypeResponse:
-      description: "Response to report an invalid content-type"
+    UnsupportedMediaTypeResponse:
+      description: "The request body is sent with a content-type the operation does not accept"
       content:
         application/json:
           schema:
             $ref: '#/components/schemas/RequestError'
           example:
-            title: "Wazuh Error"
-            detail: "The body type is not the one specified in the content-type"
-            error: 6002
+            title: "Unsupported Media Type"
+            detail: "Invalid Content-type (text/plain), expected ['application/json']"
 
     RequestTooLargeResponse:
       description: "The request body exceeded the size accepted for this endpoint. Two limits can
@@ -460,6 +459,18 @@ components:
             title: "Request Entity Too Large"
             detail: "Maximum content size limit (10485760) exceeded (10534912 bytes read)"
             error: 413
+
+    ExpectationFailedResponse:
+      description: "The request carries an `Expect` header other than `100-continue`. The check applies to every
+      request, before its body is read"
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/RequestError'
+          example:
+            title: "Expectation failed"
+            detail: "Unknown Expect"
+            code: 417
 
     TooManyRequestsResponse:
       description: "Maximum number of request per minute reached"
@@ -3942,17 +3953,19 @@ components:
       in: query
       name: ip
       description: "Filter by the IP used by the agent to communicate with the manager. If it's not available, it will
-      have the same value as registerIP"
+      have the same value as registerIP. IPv4, IPv6 and CIDR values (`192.168.1.0/24`) are accepted; the value must
+      match exactly"
       schema:
         type: string
-        format: alphanumeric
+        format: ip_filter
     registerIP:
       in: query
       name: registerIP
-      description: "Filter by the IP used when registering the agent"
+      description: "Filter by the IP used when registering the agent. IPv4, IPv6 and CIDR values (`192.168.1.0/24`,
+      `any`) are accepted; the value must match exactly"
       schema:
         type: string
-        format: alphanumeric
+        format: ip_filter
     force_single_group:
       in: query
       name: force_single_group
@@ -4319,10 +4332,12 @@ paths:
           $ref: '#/components/responses/PermissionDeniedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
-        '406':
-          $ref: '#/components/responses/WrongContentTypeResponse'
         '413':
           $ref: '#/components/responses/RequestTooLargeResponse'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaTypeResponse'
+        '417':
+          $ref: '#/components/responses/ExpectationFailedResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
@@ -5009,10 +5024,12 @@ paths:
           $ref: '#/components/responses/PermissionDeniedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
-        '406':
-          $ref: '#/components/responses/WrongContentTypeResponse'
         '413':
           $ref: '#/components/responses/RequestTooLargeResponse'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaTypeResponse'
+        '417':
+          $ref: '#/components/responses/ExpectationFailedResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
@@ -5113,8 +5130,12 @@ paths:
           $ref: '#/components/responses/PermissionDeniedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
-        '406':
-          $ref: '#/components/responses/WrongContentTypeResponse'
+        '413':
+          $ref: '#/components/responses/RequestTooLargeResponse'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaTypeResponse'
+        '417':
+          $ref: '#/components/responses/ExpectationFailedResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
     get:
@@ -5648,7 +5669,8 @@ paths:
         - Agents
       summary: "List agents distinct"
       description: "Return all the different combinations that agents have for the selected fields. It also indicates
-      the total number of agents that have each combination"
+      the total number of agents that have each combination (`count`). `total_affected_items` is the number of
+      combinations"
       operationId: api.controllers.agent_controller.get_agent_fields
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/agent:read'
@@ -5682,7 +5704,7 @@ paths:
                     - os:
                         version: "N/A"
                       count: 1
-                  total_affected_items: 3
+                  total_affected_items: 2
                   total_failed_items: 0
                   failed_items: []
                 message: 'All selected agents information was returned'
@@ -5978,6 +6000,10 @@ paths:
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '413':
           $ref: '#/components/responses/RequestTooLargeResponse'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaTypeResponse'
+        '417':
+          $ref: '#/components/responses/ExpectationFailedResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
@@ -6206,10 +6232,12 @@ paths:
           $ref: '#/components/responses/ResourceNotFoundResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
-        '406':
-          $ref: '#/components/responses/WrongContentTypeResponse'
         '413':
           $ref: '#/components/responses/RequestTooLargeResponse'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaTypeResponse'
+        '417':
+          $ref: '#/components/responses/ExpectationFailedResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
@@ -7095,10 +7123,12 @@ paths:
           $ref: '#/components/responses/ResourceNotFoundResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
-        '406':
-          $ref: '#/components/responses/WrongContentTypeResponse'
         '413':
           $ref: '#/components/responses/RequestTooLargeResponse'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaTypeResponse'
+        '417':
+          $ref: '#/components/responses/ExpectationFailedResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
@@ -8360,6 +8390,10 @@ paths:
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '413':
           $ref: '#/components/responses/RequestTooLargeResponse'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaTypeResponse'
+        '417':
+          $ref: '#/components/responses/ExpectationFailedResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
@@ -8547,8 +8581,6 @@ paths:
           $ref: '#/components/responses/UnauthorizedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
-        '406':
-          $ref: '#/components/responses/WrongContentTypeResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
@@ -8795,10 +8827,12 @@ paths:
           $ref: '#/components/responses/UnauthorizedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
-        '406':
-          $ref: '#/components/responses/WrongContentTypeResponse'
         '413':
           $ref: '#/components/responses/RequestTooLargeResponse'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaTypeResponse'
+        '417':
+          $ref: '#/components/responses/ExpectationFailedResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
@@ -8849,8 +8883,6 @@ paths:
           $ref: '#/components/responses/UnauthorizedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
-        '406':
-          $ref: '#/components/responses/WrongContentTypeResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
@@ -8909,10 +8941,12 @@ paths:
           $ref: '#/components/responses/UnauthorizedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
-        '406':
-          $ref: '#/components/responses/WrongContentTypeResponse'
         '413':
           $ref: '#/components/responses/RequestTooLargeResponse'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaTypeResponse'
+        '417':
+          $ref: '#/components/responses/ExpectationFailedResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
@@ -9069,10 +9103,12 @@ paths:
           $ref: '#/components/responses/PermissionDeniedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
-        '406':
-          $ref: '#/components/responses/WrongContentTypeResponse'
         '413':
           $ref: '#/components/responses/RequestTooLargeResponse'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaTypeResponse'
+        '417':
+          $ref: '#/components/responses/ExpectationFailedResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
@@ -9185,10 +9221,12 @@ paths:
           $ref: '#/components/responses/PermissionDeniedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
-        '406':
-          $ref: '#/components/responses/WrongContentTypeResponse'
         '413':
           $ref: '#/components/responses/RequestTooLargeResponse'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaTypeResponse'
+        '417':
+          $ref: '#/components/responses/ExpectationFailedResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
@@ -9315,10 +9353,12 @@ paths:
           $ref: '#/components/responses/PermissionDeniedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
-        '406':
-          $ref: '#/components/responses/WrongContentTypeResponse'
         '413':
           $ref: '#/components/responses/RequestTooLargeResponse'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaTypeResponse'
+        '417':
+          $ref: '#/components/responses/ExpectationFailedResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
@@ -9427,10 +9467,12 @@ paths:
           $ref: '#/components/responses/UnauthorizedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
-        '406':
-          $ref: '#/components/responses/WrongContentTypeResponse'
         '413':
           $ref: '#/components/responses/RequestTooLargeResponse'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaTypeResponse'
+        '417':
+          $ref: '#/components/responses/ExpectationFailedResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
@@ -9576,10 +9618,12 @@ paths:
           $ref: '#/components/responses/PermissionDeniedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
-        '406':
-          $ref: '#/components/responses/WrongContentTypeResponse'
         '413':
           $ref: '#/components/responses/RequestTooLargeResponse'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaTypeResponse'
+        '417':
+          $ref: '#/components/responses/ExpectationFailedResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
@@ -9702,10 +9746,12 @@ paths:
           $ref: '#/components/responses/PermissionDeniedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
-        '406':
-          $ref: '#/components/responses/WrongContentTypeResponse'
         '413':
           $ref: '#/components/responses/RequestTooLargeResponse'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaTypeResponse'
+        '417':
+          $ref: '#/components/responses/ExpectationFailedResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
@@ -10141,10 +10187,12 @@ paths:
           $ref: '#/components/responses/UnauthorizedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
-        '406':
-          $ref: '#/components/responses/WrongContentTypeResponse'
         '413':
           $ref: '#/components/responses/RequestTooLargeResponse'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaTypeResponse'
+        '417':
+          $ref: '#/components/responses/ExpectationFailedResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 

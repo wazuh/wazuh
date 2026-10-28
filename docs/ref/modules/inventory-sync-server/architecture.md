@@ -224,8 +224,10 @@ Two pieces coordinate the lane with the rest of the system:
   [vulnerability-scanner's architecture.md](../vulnerability-scanner/architecture.md#feed-update-rescan-scanvd--rescandisconnectedagents))
   and a session scan for the SAME agent never race: the scanner can pause new dispatches for an
   agent and wait (up to 30 s) for what is already running to drain before it rescans that agent.
-  There is no fleet-wide coordination — each feed-update rescan fences only the one agent it is
-  about to scan.
+  Only the disconnected-agent sweep can actually wait here, for a session of that agent the
+  pipeline is applying. An on-demand rescan runs on the scan lane, which already holds the agent;
+  that hold is the caller's own and is not waited for, so the scan starts at once. There is no
+  fleet-wide coordination — each feed-update rescan fences only the one agent it is about to scan.
 
 The scanner itself stays behind a **neutral view interface** — flat `string_view`/span structs —
 so the boundary between the two modules carries no FlatBuffers types in either direction. The
@@ -236,7 +238,9 @@ The same lane also runs **on-demand rescans** (`POST /_internal/vd/scan`): one a
 no inventory — the scanner reads the agent's stored packages and writes its findings itself, so the
 answer is the scan's own outcome. Running it here is what puts it under the same per-agent exclusion
 as the agent's sessions. A request for an agent that already has a scan in flight is refused at once
-with `409 scan_in_progress` instead of waiting behind it. Statuses are in the
+with `409 scan_in_progress` instead of waiting behind it. Once admitted, it waits only for a free
+lane worker (and, rarely, for a session of the same agent that started in between); the scanner's
+per-agent fence does not wait for the lane's own hold. Statuses are in the
 [API reference](api-reference.md#on-demand-vulnerability-scans).
 
 ## Agent deletion

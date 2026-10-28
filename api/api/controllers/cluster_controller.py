@@ -643,6 +643,8 @@ async def put_restart(pretty: bool = False, nodes_list: str = '*') -> ConnexionR
         if master_result.total_affected_items > 0:
             result.affected_items.insert(0, master_node)
             result.total_affected_items += 1
+        if master_result.total_failed_items > 0:
+            result.add_failed_items_from(master_result)
 
     return json_response(result, pretty=pretty, status_code=202)
 

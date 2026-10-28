@@ -45,6 +45,13 @@ if(${TARGET} STREQUAL "agent")
     list(APPEND wmodules_flags "-Wl,--wrap,sleep -Wl,--wrap,exit")
 endif()
 
+# The task manager's reader of the sections it borrows (`global`, `remote`): a refusal is reported to
+# wm_config(), which makes `-t` fail. Manager only.
+if(${TARGET} STREQUAL "manager")
+    list(APPEND wmodules_names "test_wm_task_manager_read_json")
+    list(APPEND wmodules_flags "-Wl,--wrap,_merror -Wl,--wrap,_mwarn -Wl,--wrap,_mdebug1")
+endif()
+
 # The listener loop, in its own binary so that wrapping close and accept does not reach the
 # other wmcom tests.
 list(APPEND wmodules_names "test_wmcom_main")

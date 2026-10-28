@@ -85,7 +85,13 @@ static void maybe_log_events_queue_drop(void) {
         atomic_compare_exchange_strong_explicit(&s_last_events_drop_warn, &last, now,
                                                 memory_order_relaxed, memory_order_relaxed)) {
         size_t count = atomic_exchange_explicit(&s_pending_events_drop, 0, memory_order_relaxed);
-        mwarn("Events queue discarded %zu event(s) in the last 90 seconds.", count);
+        /* The count covers the time since the previous warning, which can be far longer than the
+         * window; the first warning covers everything since the start. */
+        if (last == 0) {
+            mwarn("Events queue discarded %zu event(s) so far.", count);
+        } else {
+            mwarn("Events queue discarded %zu event(s) in the last %ld s.", count, (long)(now - last));
+        }
     }
 }
 
@@ -102,6 +108,78 @@ wnotify_t * notify = NULL;
 size_t global_counter;
 
 _Atomic (time_t) current_ts;
+
+/* Rejections of legacy frames that have not authenticated (decrypted with a registered key). Any
+ * peer can produce them at line rate, so each reason has its own throttle: the first occurrence is
+ * a WARNING at once, the others in the next REM_REJECT_LOG_WINDOW seconds go to debug level and are
+ * counted into the following WARNING. One throttle per reason, so a noisy cause cannot hide another.
+ * The lines name the source address only: before the frame decrypts, the agent ID it carries is a
+ * claim anyone can make. current_ts (refreshed every second) is the clock, so no time() call is
+ * added to the receive path. */
+typedef enum {
+    REM_REJECT_FORMAT,  /* "!<id>!" header not terminated */
+    REM_REJECT_ID,      /* the claimed ID is not registered for the source address */
+    REM_REJECT_SOURCE,  /* no ID in the frame, and the source address is no agent's */
+    REM_REJECT_EMPTY,   /* nothing after the header */
+    REM_REJECT_DECRYPT, /* did not decrypt with the key it claims */
+    REM_REJECT_REASONS
+} rem_reject_reason_t;
+
+#define REM_REJECT_LOG_WINDOW 90
+#define REM_REJECT_LOG_NEVER ((time_t)-1)
+
+typedef struct {
+    _Atomic time_t last;    /* when the last WARNING was emitted; REM_REJECT_LOG_NEVER: none yet */
+    _Atomic size_t pending; /* occurrences not yet reported in a WARNING */
+} rem_reject_log_t;
+
+static rem_reject_log_t rem_reject_log[REM_REJECT_REASONS] = {
+    [0 ... REM_REJECT_REASONS - 1] = {.last = REM_REJECT_LOG_NEVER, .pending = 0}};
+
+#ifdef WAZUH_UNIT_TESTING
+/* Forget every reason's history, so each test starts from a quiet log. */
+void rem_reject_log_reset(void) {
+    for (int i = 0; i < REM_REJECT_REASONS; i++) {
+        atomic_store_explicit(&rem_reject_log[i].last, REM_REJECT_LOG_NEVER, memory_order_relaxed);
+        atomic_store_explicit(&rem_reject_log[i].pending, 0, memory_order_relaxed);
+    }
+}
+#endif
+
+STATIC void rem_log_rejected_frame(rem_reject_reason_t reason, const char *format, ...) __attribute__((format(printf, 2, 3)));
+
+STATIC void rem_log_rejected_frame(rem_reject_reason_t reason, const char *format, ...) {
+    char message[OS_SIZE_1024];
+    rem_reject_log_t *slot = &rem_reject_log[reason];
+    va_list args;
+
+    va_start(args, format);
+    vsnprintf(message, sizeof(message), format, args);
+    va_end(args);
+
+    atomic_fetch_add_explicit(&slot->pending, 1, memory_order_relaxed);
+
+    time_t now = current_ts;
+    time_t last = atomic_load_explicit(&slot->last, memory_order_relaxed);
+
+    /* A clock stepped backwards opens the window instead of holding it shut. Exactly one thread
+     * wins the CAS; the others stay counted and are folded into a WARNING. */
+    if ((last != REM_REJECT_LOG_NEVER && now >= last && now - last < REM_REJECT_LOG_WINDOW) ||
+        !atomic_compare_exchange_strong_explicit(&slot->last, &last, now, memory_order_relaxed, memory_order_relaxed)) {
+        mdebug1("%s", message);
+        return;
+    }
+
+    size_t count = atomic_exchange_explicit(&slot->pending, 0, memory_order_relaxed);
+
+    if (count <= 1) {
+        mwarn("%s", message);
+    } else if (last == REM_REJECT_LOG_NEVER || now < last) {
+        mwarn("%s (and %zu more like it so far)", message, count - 1);
+    } else {
+        mwarn("%s (and %zu more like it in the last %ld s)", message, count - 1, (long)(now - last));
+    }
+}
 
 extern remoted_state_t remoted_state;
 STATIC void handle_outgoing_data_to_tcp_socket(int sock_client);
@@ -1177,7 +1255,6 @@ STATIC void HandleSecureMessage(const message_t *message, w_indexed_queue_t * co
     char cleartext_msg[OS_MAXSTR + 1];
     char srcmsg[OS_FLSIZE + 1];
     char srcip[IPSIZE + 1] = {0};
-    char agname[KEYSIZE + 1] = {0};
     char *agentid_str = NULL;
     char buffer[OS_MAXSTR + 1] = "";
     char *tmp_msg;
@@ -1226,7 +1303,7 @@ STATIC void HandleSecureMessage(const message_t *message, w_indexed_queue_t * co
         }
 
         if (*tmp_msg != '!') {
-            merror(ENCFORMAT_ERROR, "(unknown)", srcip);
+            rem_log_rejected_frame(REM_REJECT_FORMAT, "Incorrectly formatted message from '%s'.", srcip);
 
             if (message->sock >= 0) {
                 _close_sock(&keys, message->sock);
@@ -1244,17 +1321,14 @@ STATIC void HandleSecureMessage(const message_t *message, w_indexed_queue_t * co
         agentid = OS_IsAllowedDynamicID(&keys, buffer + 1, srcip);
 
         if (agentid == -1) {
-            int id = OS_IsAllowedID(&keys, buffer + 1);
-
-            if (id < 0) {
-                snprintf(agname, sizeof(agname), "unknown");
-            } else {
-                snprintf(agname, sizeof(agname), "%s", keys.keyentries[id]->name);
-            }
-
             key_unlock();
 
-            mwarn(ENC_IP_ERROR, buffer + 1, srcip, agname);
+            /* The ID is only what the frame claims: no agent is named until a frame decrypts. */
+            rem_log_rejected_frame(REM_REJECT_ID,
+                                   "Message from '%s' claims agent ID '%.16s', which is not registered for that "
+                                   "source address.",
+                                   srcip,
+                                   buffer + 1);
 
             rem_inc_recv_unknown();
             return;
@@ -1332,7 +1406,7 @@ STATIC void HandleSecureMessage(const message_t *message, w_indexed_queue_t * co
         if (agentid < 0) {
             key_unlock();
 
-            mwarn(DENYIP_WARN " Source agent ID is unknown.", srcip);
+            rem_log_rejected_frame(REM_REJECT_SOURCE, DENYIP_WARN " Source agent ID is unknown.", srcip);
 
             rem_inc_recv_unknown();
             return;
@@ -1379,7 +1453,7 @@ STATIC void HandleSecureMessage(const message_t *message, w_indexed_queue_t * co
     }
 
     if (recv_b <= 0) {
-        mwarn("Received message is empty from '%s'", srcip);
+        rem_log_rejected_frame(REM_REJECT_EMPTY, "Received message is empty from '%s'", srcip);
         key_unlock();
         if (message->sock >= 0) {
             _close_sock(&keys, message->sock);
@@ -1399,7 +1473,7 @@ STATIC void HandleSecureMessage(const message_t *message, w_indexed_queue_t * co
         key_unlock();
 
         if (message->sock >= 0) {
-            mwarn("Decrypt the message fail from '%s', socket %d", srcip, message->sock);
+            rem_log_rejected_frame(REM_REJECT_DECRYPT, "Decrypt the message fail from '%s', socket %d", srcip, message->sock);
             _close_sock(&keys, message->sock);
         }
 

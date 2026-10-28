@@ -347,55 +347,84 @@ static bool purge_in_flight_locked(const char *agent_id) {
     return false;
 }
 
-/* Client-caused rejections share one throttle (w_auth_log_client_rejection()). */
+/* Client-caused rejections, throttled per reason (w_auth_log_client_rejection()): a frequent reason,
+ * such as a wrong password, must not hide another, nor lend it its log level. A reason is the format
+ * of its call site; reasons past the table share its last slot. */
+typedef struct {
+    const char *reason;       /* NULL: free slot */
+    time_t last;              /* when this reason was last logged */
+    unsigned long suppressed; /* rejections of this reason logged at debug level since then */
+    bool suppressed_warn;     /* one of them would have been a WARNING */
+} client_reject_log_t;
+
 static pthread_mutex_t client_reject_log_mutex = PTHREAD_MUTEX_INITIALIZER;
-static time_t client_reject_log_last = 0; /* 0: nothing logged yet */
-static unsigned long client_reject_log_suppressed = 0;
+static client_reject_log_t client_reject_log[AUTH_CLIENT_REJECT_LOG_REASONS];
 
 void w_auth_client_rejection_log_reset(void) {
     w_mutex_lock(&client_reject_log_mutex);
-    client_reject_log_last = 0;
-    client_reject_log_suppressed = 0;
+    memset(client_reject_log, 0, sizeof(client_reject_log));
     w_mutex_unlock(&client_reject_log_mutex);
 }
 
-void w_auth_log_client_rejection(bool info, const char *format, ...) {
-    char message[OS_SIZE_2048];
+void w_auth_client_rejection_log(const char *reason, bool info, const char *message, time_t now) {
+    client_reject_log_t *slot = NULL;
     unsigned long suppressed = 0;
+    time_t since = 0;
     bool emit = false;
-    va_list args;
-    time_t now = time(NULL);
-
-    va_start(args, format);
-    vsnprintf(message, sizeof(message), format, args);
-    va_end(args);
+    bool warn = !info;
 
     w_mutex_lock(&client_reject_log_mutex);
-    /* A clock stepped backwards opens the window instead of holding it shut. */
-    if (client_reject_log_last == 0 || now < client_reject_log_last ||
-        now - client_reject_log_last >= AUTH_CLIENT_REJECT_LOG_WINDOW) {
-        emit = true;
-        suppressed = client_reject_log_suppressed;
-        client_reject_log_suppressed = 0;
-        client_reject_log_last = now;
-    } else {
-        client_reject_log_suppressed++;
+
+    for (int i = 0; i < AUTH_CLIENT_REJECT_LOG_REASONS; i++) {
+        if (client_reject_log[i].reason == NULL || strcmp(client_reject_log[i].reason, reason) == 0 ||
+            i == AUTH_CLIENT_REJECT_LOG_REASONS - 1) {
+            slot = &client_reject_log[i];
+            break;
+        }
     }
+
+    /* A clock stepped backwards opens the window instead of holding it shut. */
+    if (slot->reason == NULL || now < slot->last || now - slot->last >= AUTH_CLIENT_REJECT_LOG_WINDOW) {
+        emit = true;
+        suppressed = slot->reason == NULL ? 0 : slot->suppressed;
+        since = slot->reason == NULL ? 0 : now - slot->last;
+        /* The summary stands for the suppressed ones too: it takes the highest level among them. */
+        warn = warn || (suppressed > 0 && slot->suppressed_warn);
+        slot->reason = reason;
+        slot->last = now;
+        slot->suppressed = 0;
+        slot->suppressed_warn = false;
+    } else {
+        slot->suppressed++;
+        slot->suppressed_warn = slot->suppressed_warn || !info;
+    }
+
     w_mutex_unlock(&client_reject_log_mutex);
 
     if (!emit) {
         mdebug1("%s", message);
     } else if (suppressed == 0) {
-        if (info) {
-            minfo("%s", message);
-        } else {
+        if (warn) {
             mwarn("%s", message);
+        } else {
+            minfo("%s", message);
         }
-    } else if (info) {
-        minfo("%s (%lu more rejected enrollment request(s) since the previous report)", message, suppressed);
+    } else if (warn) {
+        mwarn("%s (and %lu more like it in the last %ld s)", message, suppressed, (long)since);
     } else {
-        mwarn("%s (%lu more rejected enrollment request(s) since the previous report)", message, suppressed);
+        minfo("%s (and %lu more like it in the last %ld s)", message, suppressed, (long)since);
     }
+}
+
+void w_auth_log_client_rejection(bool info, const char *format, ...) {
+    char message[OS_SIZE_2048];
+    va_list args;
+
+    va_start(args, format);
+    vsnprintf(message, sizeof(message), format, args);
+    va_end(args);
+
+    w_auth_client_rejection_log(format, info, message, time(NULL));
 }
 
 /* Static regex for group validation */
@@ -535,107 +564,120 @@ w_err_t w_auth_parse_data(const char* buf,
         return OS_INVALID;
     }
 
-    /* Check for valid agent version */
-    const char * agent_version_token = " V:";
-    if (strncmp(buf, agent_version_token, 3) == 0) {
-        char version[OS_BUFFER_SIZE+1] = {0};
-        sscanf(buf," V:\'%2048[^\']\"",version);
+    /* The optional fields, in any order. An agent writes V, G, IP and K in that order, but nothing may
+     * depend on it: a field skipped for arriving "late" would skip its check -- the version one above
+     * all. Each is read once; anything else (a repeated field, an unknown one, the trailing newline)
+     * ends the list and is ignored, as it always was. */
+    bool seen_version = false;
+    bool seen_groups = false;
+    bool seen_ip = false;
+    bool seen_key = false;
 
-        /* Validate the version */
-        if (buf[strlen(version) + 4] != '\'') {
-            w_auth_log_client_rejection(false, "Unterminated version field");
-            snprintf(response, OS_SIZE_2048, "ERROR: Unterminated version field");
-            return OS_INVALID;
-        }
+    while (*buf != '\0') {
+        if (!seen_version && strncmp(buf, " V:", 3) == 0) {
+            char version[OS_BUFFER_SIZE+1] = {0};
+            seen_version = true;
+            sscanf(buf," V:\'%2048[^\']\"",version);
 
-        if (!config.allow_higher_versions && compare_wazuh_versions(__wazuh_version, version, false) < 0) {
-            w_auth_log_client_rejection(false, "Incompatible version for new agent from: %s", ip);
-            snprintf(response, OS_SIZE_2048, "ERROR: %s", HC_INVALID_VERSION_RESPONSE);
-            return OS_INVALID;
-        }
-
-        /* Forward the string pointer V:'........' 3 for " V:", 2 for '' */
-        buf += strlen(version) + 5;
-    }
-
-    /* Check for valid centralized group */
-    const char * centralized_group_token = " G:";
-    if (strncmp(buf, centralized_group_token, 3) == 0) {
-        char tmp_groups[OS_SIZE_65536+1] = {0};
-        sscanf(buf," G:\'%65536[^\']\"",tmp_groups);
-
-        /* Validate the group name */
-        if (buf[strlen(tmp_groups) + 4] != '\'') {
-            w_auth_log_client_rejection(false, "Unterminated group field");
-            snprintf(response, OS_SIZE_2048, "ERROR: Unterminated group field");
-            return OS_INVALID;
-        }
-
-        if (0 > w_validate_group_name(tmp_groups, response)) {
-            w_auth_log_client_rejection(false, "Invalid group name: %.255s... ,", tmp_groups);
-            return OS_INVALID;
-        }
-        *groups = wstr_delete_repeated_groups(tmp_groups);
-        if (!*groups) {
-            snprintf(response, OS_SIZE_2048, "ERROR: Insuficient memory");
-            return OS_MEMERR;
-        }
-        mdebug1("Group(s) is: %s",*groups);
-
-        /* Forward the string pointer G:'........' 3 for " G:", 2 for '' */
-        buf += strlen(tmp_groups) + 5;
-    }
-
-    /* Check for IP when client uses -i option */
-    char client_source_ip[IPSIZE + 1] = {0};
-    const char * client_source_ip_token = " IP:";
-    if (strncmp(buf, client_source_ip_token, 4) == 0) {
-        char format[15];
-        sprintf(format, " IP:\'%%%d[^\' ]\"", IPSIZE);
-        sscanf(buf, format, client_source_ip);
-
-        if (buf[strlen(client_source_ip) + 5] != '\'') {
-            w_auth_log_client_rejection(false, "Unterminated IP field");
-            snprintf(response, OS_SIZE_2048, "ERROR: Unterminated IP field");
-            return OS_INVALID;
-        }
-
-        /* If IP: != 'src' overwrite the provided ip */
-        if (strncmp(client_source_ip,"src",3) != 0) {
-            os_ip *aux_ip;
-            os_calloc(1, sizeof(os_ip), aux_ip);
-            if (!OS_IsValidIP(client_source_ip, aux_ip)) {
-                w_auth_log_client_rejection(false, "Invalid IP: '%s'", client_source_ip);
-                snprintf(response, OS_SIZE_2048, "ERROR: Invalid IP: %s", client_source_ip);
-                w_free_os_ip(aux_ip);
+            /* Validate the version */
+            if (buf[strlen(version) + 4] != '\'') {
+                w_auth_log_client_rejection(false, "Unterminated version field");
+                snprintf(response, OS_SIZE_2048, "ERROR: Unterminated version field");
                 return OS_INVALID;
             }
-            snprintf(ip, IPSIZE, "%s", aux_ip->ip);
-            w_free_os_ip(aux_ip);
-        }
 
-        /* Forward the string pointer IP:'........' 4 for " IP:", 2 for '' */
-        buf += strlen(client_source_ip) + 6;
-    } else {
-        if (!config.flags.use_source_ip) {
-            // use_source-ip = 0 and no -I argument in agent
-            snprintf(ip, IPSIZE, "any");
+            if (!config.allow_higher_versions && compare_wazuh_versions(__wazuh_version, version, false) < 0) {
+                w_auth_log_client_rejection(false, "Incompatible version for new agent from: %s", ip);
+                snprintf(response, OS_SIZE_2048, "ERROR: %s", HC_INVALID_VERSION_RESPONSE);
+                return OS_INVALID;
+            }
+
+            /* Forward the string pointer V:'........' 3 for " V:", 2 for '' */
+            buf += strlen(version) + 5;
+
+        } else if (!seen_groups && strncmp(buf, " G:", 3) == 0) {
+            /* Check for valid centralized group */
+            char tmp_groups[OS_SIZE_65536+1] = {0};
+            seen_groups = true;
+            sscanf(buf," G:\'%65536[^\']\"",tmp_groups);
+
+            /* Validate the group name */
+            if (buf[strlen(tmp_groups) + 4] != '\'') {
+                w_auth_log_client_rejection(false, "Unterminated group field");
+                snprintf(response, OS_SIZE_2048, "ERROR: Unterminated group field");
+                return OS_INVALID;
+            }
+
+            if (0 > w_validate_group_name(tmp_groups, response)) {
+                w_auth_log_client_rejection(false, "Invalid group name: %.255s... ,", tmp_groups);
+                return OS_INVALID;
+            }
+            *groups = wstr_delete_repeated_groups(tmp_groups);
+            if (!*groups) {
+                snprintf(response, OS_SIZE_2048, "ERROR: Insuficient memory");
+                return OS_MEMERR;
+            }
+            mdebug1("Group(s) is: %s",*groups);
+
+            /* Forward the string pointer G:'........' 3 for " G:", 2 for '' */
+            buf += strlen(tmp_groups) + 5;
+
+        } else if (!seen_ip && strncmp(buf, " IP:", 4) == 0) {
+            /* Check for IP when client uses -i option */
+            char client_source_ip[IPSIZE + 1] = {0};
+            char format[15];
+            seen_ip = true;
+            sprintf(format, " IP:\'%%%d[^\' ]\"", IPSIZE);
+            sscanf(buf, format, client_source_ip);
+
+            if (buf[strlen(client_source_ip) + 5] != '\'') {
+                w_auth_log_client_rejection(false, "Unterminated IP field");
+                snprintf(response, OS_SIZE_2048, "ERROR: Unterminated IP field");
+                return OS_INVALID;
+            }
+
+            /* If IP: != 'src' overwrite the provided ip */
+            if (strncmp(client_source_ip,"src",3) != 0) {
+                os_ip *aux_ip;
+                os_calloc(1, sizeof(os_ip), aux_ip);
+                if (!OS_IsValidIP(client_source_ip, aux_ip)) {
+                    w_auth_log_client_rejection(false, "Invalid IP: '%s'", client_source_ip);
+                    snprintf(response, OS_SIZE_2048, "ERROR: Invalid IP: %s", client_source_ip);
+                    w_free_os_ip(aux_ip);
+                    return OS_INVALID;
+                }
+                snprintf(ip, IPSIZE, "%s", aux_ip->ip);
+                w_free_os_ip(aux_ip);
+            }
+
+            /* Forward the string pointer IP:'........' 4 for " IP:", 2 for '' */
+            buf += strlen(client_source_ip) + 6;
+
+        } else if (!seen_key && strncmp(buf, " K:", 3) == 0) {
+            /* Check for key hash when the agent already has one*/
+            char format[15] = {0};
+            seen_key = true;
+            os_calloc(1, sizeof(os_sha1), *key_hash);
+            sprintf(format, " K:\'%%%ld[^\']\"", sizeof(os_sha1) - 1);
+            sscanf(buf, format, *key_hash);
+
+            if (buf[strlen(*key_hash) + 4] != '\'') {
+                w_auth_log_client_rejection(false, "Unterminated key field");
+                snprintf(response, OS_SIZE_2048, "ERROR: Unterminated key field");
+                return OS_INVALID;
+            }
+
+            /* Forward the string pointer K:'........' 3 for " K:", 2 for '' */
+            buf += strlen(*key_hash) + 5;
+
+        } else {
+            break;
         }
     }
 
-    /* Check for key hash when the agent already has one*/
-    const char * key_hash_token = " K:";
-    if (strncmp(buf, key_hash_token, 3) == 0) {
-        os_calloc(1, sizeof(os_sha1), *key_hash);
-        char format[15] = {0};
-        sprintf(format, " K:\'%%%ld[^\']\"", sizeof(os_sha1) - 1);
-        sscanf(buf, format, *key_hash);
-
-        if (buf[strlen(*key_hash) + 4] != '\'') {
-            w_auth_log_client_rejection(false, "Unterminated key field");
-            snprintf(response, OS_SIZE_2048, "ERROR: Unterminated key field");
-            return OS_INVALID;
-        }
+    if (!seen_ip && !config.flags.use_source_ip) {
+        // use_source-ip = 0 and no -I argument in agent
+        snprintf(ip, IPSIZE, "any");
     }
 
     return OS_SUCCESS;

@@ -397,7 +397,7 @@ def render_human(summary: dict[str, Any], sender: dict[str, Any]) -> str:
     if scan.get("sent"):
         # 200 means the re-scan was queued by VD (it will run): the VD module
         # scans afterward, one agent at a time. Whether the scans happened is
-        # in modulesd's log (reason=feed_update).
+        # in modulesd's log (reason=on_demand).
         L.append("  VD re-scan requests (/scan/vd)")
         L.append(f"    sent={scan.get('sent',0):,} 200(queued)={scan.get('s200',0):,} "
                  f"409={scan.get('s409',0)} 503={scan.get('s503',0)} other={scan.get('other',0)}")

@@ -290,7 +290,14 @@ namespace wazuh::uds_http
                 s.on_message_complete = [](llhttp_t* p)
                 {
                     of(p)->messageComplete = true;
-                    return 0;
+                    // Stop at the end of the FIRST message. One request per connection is the
+                    // contract, but a peer may still pipeline a second one into the same read:
+                    // letting llhttp run on would parse it into this same request (its target
+                    // appended to ours), pause again at its head and report HeadersReady after
+                    // the request was already complete -- a state the session never answers, so
+                    // the connection hung until a phase timeout. Whatever follows is ignored; the
+                    // response carries Connection: close.
+                    return static_cast<int>(HPE_PAUSED);
                 };
                 return s;
             }();
@@ -379,13 +386,20 @@ namespace wazuh::uds_http
 
     RequestParser::Feed RequestParser::interpret(int error, const char* data, std::size_t length)
     {
+        if (error == HPE_PAUSED && m_impl->messageComplete)
+        {
+            // Paused by on_message_complete: the request is whole. Any bytes after it (a pipelined
+            // request) are deliberately dropped -- see the callback.
+            return Feed::Complete;
+        }
+
         if (error == HPE_PAUSED)
         {
             // llhttp stopped inside on_headers_complete. error_pos is the resume point, so
             // everything from it to the end of the chunk is body (or the start of a pipelined
-            // request, which we do not support -- the peer sends Connection: close and one request
-            // per connection). requestParser_test pins this byte accounting exactly, because an
-            // off-by-one here would silently corrupt every body that shares a read with its head.
+            // request, which we do not serve -- parsing stops at the end of the first message).
+            // requestParser_test pins this byte accounting exactly, because an off-by-one here
+            // would silently corrupt every body that shares a read with its head.
             const auto* resumeAt = llhttp_get_error_pos(&m_impl->parser);
             if (resumeAt != nullptr && data != nullptr && resumeAt >= data && resumeAt < data + length)
             {
