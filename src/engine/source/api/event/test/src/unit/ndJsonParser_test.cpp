@@ -3,8 +3,10 @@
 
 #include <algorithm>
 #include <chrono>
+#include <cstdint>
 #include <memory>
 #include <string>
+#include <thread>
 #include <tuple>
 #include <utility>
 #include <vector>
@@ -14,6 +16,7 @@
 #include <base/behaviour.hpp>
 #include <base/eventParser.hpp>
 #include <base/json.hpp>
+#include <base/utils/timeUtils.hpp>
 
 using namespace api::event::protocol;
 using namespace base::test;
@@ -234,14 +237,15 @@ std::vector<base::Event> makeResultHE(Args&&... args)
 // ===================== Runner that adapts parseNDJson() to the old test shape =====================
 //
 // Uses the single hook to build a vector<base::Event>.
-// parseNDJson hook receives IngestEvent = { shared_ptr<const json::Json> header, std::string rawEvent }
+// parseNDJson hook receives IngestEvent = { shared_ptr<const json::Json> header, std::string rawEvent, int64_t
+// receivedAtNs }
 static std::vector<base::Event> runNDJson(std::string_view batch)
 {
     std::vector<base::Event> out;
 
     EventHook hook = [&](IngestEvent&& ingest)
     {
-        base::Event ev = base::eventParsers::parseLegacyEvent(std::string_view {ingest.second}, *ingest.first);
+        base::Event ev = base::eventParsers::parseLegacyEvent(std::string_view {ingest.rawEvent}, *ingest.header);
         out.push_back(std::move(ev));
     };
 
@@ -513,3 +517,149 @@ INSTANTIATE_TEST_SUITE_P(
 
         // FailsWhenEventMarkerIsMalformed
         EventT(std::string {"H " + HDR1 + "\nE\t" + EV1}, FAILURE(), CaseMode::RunnerThrows, "")));
+
+// ===================== Reception stamp (outside the parametrized suite) =====================
+
+namespace
+{
+// The agent id must live under /wazuh/agent/id (AgentMetadataCache requirement).
+const std::string STAMP_HDR = R"({"wazuh":{"agent":{"id":"001","name":"a"}}})";
+
+std::string stampEvent(int i)
+{
+    return "1:[100] (agent) any->syslog {\"message\":\"" + std::to_string(i) + "\"}";
+}
+
+std::string stampBatch(int n)
+{
+    std::string batch = "H " + STAMP_HDR + "\n";
+    for (int i = 1; i <= n; ++i)
+    {
+        batch += "E " + stampEvent(i) + "\n";
+    }
+    return batch;
+}
+} // namespace
+
+TEST(NdJsonParserStamp, StampsInBatchOrder)
+{
+    const auto batch = stampBatch(5);
+
+    int64_t counter = 0;
+    std::function<int64_t()> stamp = [&counter]()
+    {
+        return ++counter;
+    };
+
+    std::vector<int64_t> stamps;
+    std::vector<const json::Json*> headers;
+    std::vector<std::string> raws;
+    EventHook hook = [&](IngestEvent&& ev)
+    {
+        stamps.push_back(ev.receivedAtNs);
+        headers.push_back(ev.header.get());
+        raws.push_back(ev.rawEvent);
+    };
+
+    ASSERT_NO_THROW(parseNDJson(batch, hook, makeAgentMetadataCache(), stamp));
+
+    ASSERT_EQ(stamps, (std::vector<int64_t> {1, 2, 3, 4, 5}));
+    ASSERT_EQ(headers.size(), 5u);
+    ASSERT_NE(headers[0], nullptr);
+    for (const auto* h : headers)
+    {
+        EXPECT_EQ(h, headers[0]);
+    }
+    ASSERT_EQ(raws.size(), 5u);
+    for (std::size_t i = 0; i < raws.size(); ++i)
+    {
+        const std::string suffix = "\"message\":\"" + std::to_string(i + 1) + "\"}";
+        ASSERT_GE(raws[i].size(), suffix.size());
+        EXPECT_EQ(raws[i].compare(raws[i].size() - suffix.size(), suffix.size(), suffix), 0) << raws[i];
+    }
+}
+
+TEST(NdJsonParserStamp, DefaultStampIsGlobalAndUnique)
+{
+    // Push the process-wide clock one hour ahead: harmless, it only shifts the values.
+    const int64_t F = base::utils::time::systemEpochNanos() + 3'600'000'000'000;
+    base::utils::time::receptionClock().next(F);
+
+    constexpr int THREADS = 8;
+    constexpr int BATCHES = 50;
+    constexpr int EVENTS = 10;
+
+    const auto batch = stampBatch(EVENTS);
+    const auto cache = makeAgentMetadataCache();
+
+    std::vector<std::vector<int64_t>> perThread(THREADS);
+    std::vector<char> orderedOk(THREADS, 1); // one flag per thread, no shared writes
+
+    std::vector<std::thread> threads;
+    threads.reserve(THREADS);
+    for (int t = 0; t < THREADS; ++t)
+    {
+        threads.emplace_back(
+            [&, t]()
+            {
+                auto& mine = perThread[t];
+                mine.reserve(BATCHES * EVENTS);
+                EventHook hook = [&mine](IngestEvent&& ev)
+                {
+                    mine.push_back(ev.receivedAtNs);
+                };
+
+                for (int b = 0; b < BATCHES; ++b)
+                {
+                    const auto start = mine.size();
+                    parseNDJson(batch, hook, cache);
+                    for (std::size_t i = start + 1; i < mine.size(); ++i)
+                    {
+                        if (mine[i] <= mine[i - 1])
+                        {
+                            orderedOk[t] = 0;
+                        }
+                    }
+                }
+            });
+    }
+    for (auto& th : threads)
+    {
+        th.join();
+    }
+
+    std::vector<int64_t> all;
+    for (const auto& v : perThread)
+    {
+        all.insert(all.end(), v.begin(), v.end());
+    }
+
+    ASSERT_EQ(all.size(), static_cast<std::size_t>(THREADS * BATCHES * EVENTS));
+    ASSERT_EQ(all.size(), 4000u);
+    for (const auto s : all)
+    {
+        ASSERT_GT(s, F);
+    }
+    std::sort(all.begin(), all.end());
+    EXPECT_EQ(std::adjacent_find(all.begin(), all.end()), all.end()) << "duplicated reception stamp";
+    for (int t = 0; t < THREADS; ++t)
+    {
+        EXPECT_TRUE(orderedOk[t]) << "thread " << t << " saw non-increasing stamps within a batch";
+    }
+}
+
+TEST(NdJsonParserStamp, NullHookNeverStamps)
+{
+    const auto batch = stampBatch(3);
+
+    int calls = 0;
+    std::function<int64_t()> stamp = [&calls]()
+    {
+        ++calls;
+        return int64_t {1};
+    };
+
+    EventHook empty {};
+    ASSERT_NO_THROW(parseNDJson(batch, empty, makeAgentMetadataCache(), stamp));
+    EXPECT_EQ(calls, 0);
+}

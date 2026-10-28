@@ -22,6 +22,7 @@ Events are received from `wazuh-manager-remoted`, which is responsible for recei
 from the vulnerability scanner of `wazuh-manager-modulesd`, both over the engine's ingest socket
 `/var/wazuh-manager/queue/sockets/engine-ingest-http.sock` (`POST /events/enriched`).
 The data flow begins when an event enters the orchestrator and continues until it is processed by the security policy.
+The API parser assigns each event a reception timestamp before enqueueing it; the router worker formats that timestamp into `@timestamp` and generates `wazuh.event.id` before policy processing.
 Below is a high-level flowchart illustrating this process.
 
 
@@ -230,7 +231,7 @@ Processed event:
     ],
     "outcome": "success"
   },
-  "@timestamp": "2026-04-14T19:29:51.105Z",
+  "@timestamp": "2026-04-14T19:29:51.105000000Z",
   "cloud": {
     "provider": "aws",
     "account": {

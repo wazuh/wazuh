@@ -65,6 +65,25 @@ Header: [include/base/process.hpp](include/base/process.hpp). Implementation: [s
 
 Injection: `ProcessSysCalls` groups 13 system calls (`fork`, `setsid`, `umask`, `open`, `dup2`, `close`, `fchmod`, `write`, `setgroups`, `setgid`, `setuid`, `seteuid`, `sysconf`); an empty member is the real call. Outside the seam is `_exit` (checked by `GoDaemonFunctionalTest.ParentsSkipExitHandlers`); `umask` is injectable, but a test that leaves it empty gets the real `umask(027)` applied to itself. `UserLookup` and `GroupLookup` are injectable as well.
 
+## Time Utilities
+
+Header: [include/base/utils/timeUtils.hpp](include/base/utils/timeUtils.hpp). Implementation: [src/utils/timeUtils.cpp](src/utils/timeUtils.cpp). Namespace `base::utils::time`.
+
+The reception timestamp of an event comes from a process-wide clock whose values never repeat and never go back, so events ingested in this process get distinct, ordered timestamps even when the wall clock ties or steps backwards. The price of a backward step of Δ is that stamps run ahead of the wall clock for up to Δ, advancing one nanosecond per event; a restart or another node starts its own sequence.
+
+| Function | Behaviour |
+|---|---|
+| `systemEpochNanos` | `int64_t`, nanoseconds since the epoch read from `std::chrono::system_clock` (wall clock, not monotonic). `noexcept`. |
+| `StrictlyIncreasingClock::next(now)` | Returns `max(now, last + 1)`, published with a CAS loop over a `std::atomic<int64_t>`: it never repeats or goes back and is safe from any number of threads. `now` defaults to `systemEpochNanos()`; only tests inject it. `noexcept`. |
+| `receptionClock` | The `StrictlyIncreasingClock` (function-local static) shared by every ingest thread. |
+| `epochNanosToISO8601` | Formats nanoseconds as `YYYY-MM-DDTHH:MM:SS.nnnnnnnnnZ`: UTC, always 9 fraction digits, reentrant (`gmtime_r`), no `date` library. Negative values floor to the previous second. |
+
+`getCurrentISO8601()` is unchanged (millisecond precision, used elsewhere).
+
+Consumers: the `api/event` NDJSON parser (`ndJsonParser.hpp`) stamps `receivedAtNs` with `receptionClock().next()`; the `router` `RouterWorker` uses that value, or `receptionClock().next()` when it is 0, and `TesterWorker` calls `receptionClock().next()`; both format it with `epochNanosToISO8601`.
+
+Tests: `TimeUtilsTest.StrictClock*`, `TimeUtilsTest.EpochNanosToISO8601*` and `TimeUtilsTest.ReceptionClockIsSharedAndIncreasing` in [timeUtils_test.cpp](test/src/unit/utils/timeUtils_test.cpp) (run in `base_utest`).
+
 ## Testing
 
 Three binaries are built with `ENGINE_TEST=y` (see [CMakeLists.txt](CMakeLists.txt)):

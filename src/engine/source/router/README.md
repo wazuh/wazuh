@@ -41,9 +41,9 @@ The **Router** module is the event-processing core of the Wazuh Engine, responsi
 
 ### Event Flow
 
-1. **Production path**: An external caller invokes `postEvent()` on the Orchestrator, which pushes the `IngestEvent` (JSON + original string) into the shared `ProdQueue`. N `RouterWorker` threads compete to dequeue events. Each worker generates a timestamp (ISO 8601) and an event id (UUIDv4), indexes the raw event when the raw event indexer is enabled, parses it via `parseLegacyEvent`, sets `/@timestamp` and `/wazuh/event/id` (plus `/wazuh/cluster/name` and `/wazuh/cluster/node` when the manager configuration is loaded), and calls `Router::ingest()` which iterates the priority-sorted `Table` and feeds the event into every *enabled* `Environment`.
+1. **Production path**: An external caller invokes `postEvent()` on the Orchestrator, which pushes the `IngestEvent` (batch header + original string + reception stamp, see [Reception timestamp](#reception-timestamp)) into the shared `ProdQueue`. The event arrives **already stamped**: `receivedAtNs` was taken by the API parser when the batch was received. N `RouterWorker` threads compete to dequeue events. Each worker formats that stamp as an ISO 8601 UTC string with nine fractional digits (`epochNanosToISO8601`) and generates an event id (UUIDv4), indexes the raw event when the raw event indexer is enabled, parses it via `parseLegacyEvent`, sets `/@timestamp` and `/wazuh/event/id` (plus `/wazuh/cluster/name` and `/wazuh/cluster/node` when the manager configuration is loaded), and calls `Router::ingest()` which iterates the priority-sorted `Table` and feeds the event into every *enabled* `Environment`.
 
-2. **Testing path**: A caller invokes `ingestTest()`, which wraps the event + options + callback into a `TestingTuple` and pushes it into the `TestQueue`. A single `TesterWorker` dequeues the tuple, stamps the event with `@timestamp` (ISO 8601) and `wazuh/event/id` (UUIDv4), subscribes to the requested asset traces on the `bk::IController`, runs the event through the pipeline, collects trace output, and delivers the result via the callback/future.
+2. **Testing path**: A caller invokes `ingestTest()`, which wraps the event + options + callback into a `TestingTuple` and pushes it into the `TestQueue`. A single `TesterWorker` dequeues the tuple, stamps the event with `@timestamp` (taken from the same shared reception clock and formatted with the same nine-digit formatter as production) and `wazuh/event/id` (UUIDv4), subscribes to the requested asset traces on the `bk::IController`, runs the event through the pipeline, collects trace output, and delivers the result via the callback/future.
 
 ## Key Concepts
 
@@ -96,7 +96,12 @@ router/
 Combines `IRouterAPI` and `ITesterAPI` into a single interface consumed by API handlers.
 
 ```cpp
-using IngestEvent = std::pair<std::shared_ptr<const json::Json>, std::string>;
+struct IngestEvent
+{
+    std::shared_ptr<const json::Json> header; ///< Batch header, shared by every event of the batch.
+    std::string rawEvent;                     ///< One event of the batch, continuation lines unindented.
+    int64_t receivedAtNs {0};                 ///< Reception stamp (ns since the Unix epoch) from receptionClock(); 0 = not stamped.
+};
 
 class IOrchestratorAPI : public IRouterAPI, public ITesterAPI {};
 ```
@@ -177,6 +182,18 @@ Every route mutation (add, remove, rebuild, priority change, hot swap) is replic
 2. Under the Orchestrator's unique lock, for each router worker: the `Router` builds a new `Environment` without holding its own table lock, then swaps it in and enables the entry under its unique lock. Workers keep routing events meanwhile.
 3. Persists the updated configuration.
 
+### Reception timestamp
+
+`@timestamp` is fixed **when the batch is received**, not when a worker dequeues the event. The API parser (`api::event::protocol::parseNDJson`, `src/engine/source/api/event/include/api/event/ndJsonParser.hpp`) takes one stamp per event from `base::utils::time::receptionClock()` on the HTTP thread, right before building the `IngestEvent`, and stores it in `receivedAtNs` (nanoseconds since the Unix epoch). The clock is a single process-wide `StrictlyIncreasingClock` (`max(now, last + 1)` published with a CAS loop), so:
+
+- two events never share a stamp, and stamps never go back, across every ingest thread of this process (after a backward wall-clock step the stamps advance one nanosecond per event until the wall clock catches up: ordering wins over wall-clock fidelity);
+- the events of one batch keep their stamps in batch order, which is what the dashboard sorts by;
+- the raw document (raw event indexer) and the processed event carry the **same** value, since both are formatted from `receivedAtNs` in `RouterWorker` ([worker.cpp](src/worker.cpp)) with `epochNanosToISO8601` (`YYYY-MM-DDTHH:MM:SS.nnnnnnnnnZ`, UTC, always nine digits);
+- an unstamped event (`receivedAtNs == 0`, a producer that bypasses the parser) falls back to `receptionClock().next()` at dequeue time, so `@timestamp` is never empty;
+- decoders may still overwrite `@timestamp` later in the pipeline (for instance from a date inside the log); the stamp is the value they start from.
+
+The tester path (`TesterWorker`) has no parser in front of it: it takes its stamp from the same clock at dequeue time and formats it with the same function, so test output shows the same format as production. Why: stamping at dequeue time in N parallel workers, with a coarser clock, produced equal and inverted `@timestamp` values inside one batch (wazuh/wazuh#40763).
+
 ### Router Ingestion
 
 `Router::ingest()` iterates the priority-sorted `Table` under a shared lock. Each enabled `Environment` receives a **copy** of the event; the copy budget is the table size, so when every entry is enabled the last one receives the moved original instead of a copy.
@@ -189,7 +206,7 @@ Every route mutation (add, remove, rebuild, priority change, hot swap) is replic
 3. Runs the event through the controller (`ingestGet`).
 4. Collects trace output into `test::Output` and unsubscribes.
 
-The `TesterWorker` thread picks `TestingTuple` items from the test queue, stamps the event with `@timestamp` and `wazuh/event/id` (mirroring the production path), and invokes `Tester::ingestTest()`. The result is delivered to the caller via the callback. The `Orchestrator` exposes both a `std::future`-based and callback-based API for test ingestion.
+The `TesterWorker` thread picks `TestingTuple` items from the test queue, stamps the event with `@timestamp` (taken at dequeue time from the shared reception clock and formatted with `epochNanosToISO8601`, whereas the production worker formats the stamp the API parser already took — see [Reception timestamp](#reception-timestamp)) and `wazuh/event/id`, and invokes `Tester::ingestTest()`. The result is delivered to the caller via the callback. The `Orchestrator` exposes both a `std::future`-based and callback-based API for test ingestion.
 
 ### Table (Priority Container)
 
@@ -220,7 +237,7 @@ Unit tests cover each internal class independently using GMock:
 - **`environmentBuilder_test`**: Policy build, controller creation, error handling
 - **`router_test`**: Entry CRUD, priority changes, event ingestion, hot swap
 - **`tester_test`**: Entry CRUD, rename, test ingestion with traces, asset listing
-- **`worker_test`**: RouterWorker/TesterWorker lifecycle, event processing, sentinel skipping, `@timestamp`/`wazuh.event.id` stamping
+- **`worker_test`**: RouterWorker/TesterWorker lifecycle, event processing, sentinel skipping, `@timestamp`/`wazuh.event.id` stamping, reception-stamp formatting (raw and event share the parser stamp), unstamped-event fallback to the shared clock, tester stamp format
 - **`orchestrator_test`**: Full lifecycle, multi-worker replication, store persistence, queue contention, worker pool expansion
 - **`entryConverter_test`**: JSON ↔ Entry round-trip conversion
 

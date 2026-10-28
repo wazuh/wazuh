@@ -30,6 +30,9 @@ paths:
         The listener exists only while `analysisd.server_enable_event_processing` is `true` (the default).
 
         The handler only splits the batch and queues each event; it answers 200 as soon as the batch is queued.
+        Each event is stamped with a reception timestamp when it is queued, from a process-wide clock (nanoseconds
+        since the epoch, strictly increasing within one engine process), so the events of a batch keep their order and never share a stamp in that process; after a backward wall-clock step the stamps keep increasing one nanosecond per event until the wall clock catches up.
+        The router worker formats that stamp into `@timestamp` with nine fractional digits; decoders can overwrite it.
         Each event line is parsed later by a router worker: a malformed event line does not fail the request,
         it is dropped with the log line `Failed processing queued event in router worker: <reason>`.
 

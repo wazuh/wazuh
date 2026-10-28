@@ -18,9 +18,9 @@ namespace
 std::string
 makeRawIndexPayload(const IngestEvent& queuedEvent, const std::string& timestamp, const std::string& eventId)
 {
-    json::Json rawDoc(*queuedEvent.first);
+    json::Json rawDoc(*queuedEvent.header);
     rawDoc.setString(timestamp, "/@timestamp");
-    rawDoc.setString(queuedEvent.second, "/event/original");
+    rawDoc.setString(queuedEvent.rawEvent, "/event/original");
     rawDoc.setString(eventId, "/wazuh/event/id");
     return rawDoc.str();
 }
@@ -68,14 +68,17 @@ void RouterWorker::start()
                 }
 
                 // Sentinel used to wake up workers (e.g. test path)
-                if (queuedEvent.first == nullptr || queuedEvent.second.empty())
+                if (queuedEvent.header == nullptr || queuedEvent.rawEvent.empty())
                 {
                     continue;
                 }
 
                 try
                 {
-                    const auto timestamp = base::utils::time::getCurrentISO8601();
+                    const auto receivedAtNs = queuedEvent.receivedAtNs != 0
+                                                  ? queuedEvent.receivedAtNs
+                                                  : base::utils::time::receptionClock().next();
+                    const auto timestamp = base::utils::time::epochNanosToISO8601(receivedAtNs);
                     const auto eventId = base::utils::generators::generateUUIDv4();
 
                     // Raw indexing (now throttled by queue drain)
@@ -85,7 +88,7 @@ void RouterWorker::start()
                     }
 
                     // Parse, enrich and forward to router
-                    auto event = base::eventParsers::parseLegacyEvent(queuedEvent.second, *queuedEvent.first);
+                    auto event = base::eventParsers::parseLegacyEvent(queuedEvent.rawEvent, *queuedEvent.header);
                     event->setString(timestamp, "/@timestamp");
                     event->setString(eventId, "/wazuh/event/id");
                     if (enrichClusterInfo)
@@ -147,7 +150,8 @@ void TesterWorker::start()
                 {
                     auto& [event, opt, callback] = *testEvent;
 
-                    const auto timestamp = base::utils::time::getCurrentISO8601();
+                    const auto timestamp =
+                        base::utils::time::epochNanosToISO8601(base::utils::time::receptionClock().next());
                     const auto eventId = base::utils::generators::generateUUIDv4();
                     event->setString(timestamp, "/@timestamp");
                     event->setString(eventId, "/wazuh/event/id");
