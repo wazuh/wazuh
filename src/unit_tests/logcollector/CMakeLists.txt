@@ -121,7 +121,7 @@ else()
                                     -Wl,--wrap,time -Wl,--wrap,can_read -Wl,--wrap,w_ftell -Wl,--wrap,w_expression_match \
                                     -Wl,--wrap,fgetpos -Wl,--wrap=w_update_file_status -Wl,--wrap,_merror \
                                     -Wl,--wrap=w_get_hash_context -Wl,--wrap=_fseeki64 -Wl,--wrap=OS_SHA1_Stream_Bytes \
-                                    -Wl,--wrap=w_fseek -Wl,--wrap,wfopen -Wl,--wrap,feof")
+                                    -Wl,--wrap=w_fseek -Wl,--wrap,wfopen -Wl,--wrap,feof -Wl,--wrap,w_msg_hash_queues_push")
 
     list(APPEND logcollector_names "test_read_journal")
     list(APPEND logcollector_flags "-Wl,--wrap,_mwarn -Wl,--wrap,fgets -Wl,--wrap,remove -Wl,--wrap,fgetc \
@@ -173,6 +173,13 @@ else()
                                     -Wl,--wrap=w_get_hash_context -Wl,--wrap=OS_SHA1_Stream_Bytes -Wl,--wrap=w_fseek \
                                     -Wl,--wrap,wfopen -Wl,--wrap,w_msg_hash_queues_push -Wl,--wrap,check_ignore_and_restrict \
                                     -Wl,--wrap,_merror -Wl,--wrap,feof -Wl,--wrap,EVP_MD_CTX_copy ${DEBUG_OP_WRAPPERS}")
+
+    list(APPEND logcollector_names "test_read_json")
+    list(APPEND logcollector_flags "-Wl,--wrap,fopen -Wl,--wrap,popen -Wl,--wrap,fclose -Wl,--wrap,fflush -Wl,--wrap,fgets \
+                                    -Wl,--wrap,fread -Wl,--wrap,fwrite -Wl,--wrap,remove -Wl,--wrap,fseek -Wl,--wrap=fgetc \
+                                    -Wl,--wrap,can_read -Wl,--wrap,w_ftell -Wl,--wrap,fgetpos -Wl,--wrap=w_get_hash_context \
+                                    -Wl,--wrap,wfopen -Wl,--wrap,w_msg_hash_queues_push -Wl,--wrap,check_ignore_and_restrict \
+                                    -Wl,--wrap,_merror -Wl,--wrap,feof -Wl,--wrap=w_fseek -Wl,--wrap=w_update_file_status")
 
     list(APPEND logcollector_names "test_read_sql_logs")
     list(APPEND logcollector_flags "-Wl,--wrap,fopen -Wl,--wrap,popen -Wl,--wrap,fclose -Wl,--wrap,fflush -Wl,--wrap,fgets \
