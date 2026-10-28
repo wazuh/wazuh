@@ -35,6 +35,8 @@ Each check of the release test must have one of the following statuses:
 | :yellow_circle: | The check passed, with failures that were already present on the previous release |
 | :red_circle: | The check failed: something that worked on the previous release fails on `{{TAG}}` |
 
+When `{{TAG}}` has no previous release, such as the first release candidate of a major version, the report gives no verdict and each check is judged on `{{TAG}}` alone: :green_circle: when it passed, :red_circle: when it failed.
+
 Post the report the release test generates as a comment. It holds the checks, the coverage of rules and decoders, the results per integration, the live results, and each regression. Events that fail on both releases are known failures: they are counted, not listed, since they are not caused by `{{TAG}}`.
 
 ## Conclusion
