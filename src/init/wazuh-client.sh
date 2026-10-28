@@ -190,6 +190,7 @@ start_service()
     rm -rf $TO_DELETE
 
     start_deadline=`expr \`date +%s\` + ${MAX_ITERATION}`
+    STARTED=""
 
     # We actually start them now.
     for i in ${SDAEMONS}; do
@@ -225,12 +226,19 @@ start_service()
             fi
             if [ $failed = true ]; then
                 echo "${i} did not start";
-                # Leave the agent stopped, not half started: the daemons before this one are running.
-                stop_service;
+                # Stop what this start brought up, so the agent is not left half started; daemons
+                # that were already running stay. A reload keeps wazuh-agentd up, so it stops nothing.
+                # The deadline already took most of the unit's TimeoutSec: one second per daemon.
+                if [ -z "${RELOADING}" ]; then
+                    DAEMONS="${STARTED} ${i}"
+                    MAX_KILL_TRIES=2
+                    stop_service;
+                fi
                 unlock;
                 exit 1;
             fi
             echo "Started ${i}..."
+            STARTED="${STARTED} ${i}"
         else
             echo "${i} already running..."
         fi
@@ -382,6 +390,7 @@ restart)
     restart_service
     ;;
 reload)
+    RELOADING=1
     DAEMONS=$(echo $DAEMONS | sed 's/wazuh-agentd//')
     if is_systemd; then
         SYSTEMD_VERSION=$(systemctl --version | awk 'NR==1 {print $2}')
