@@ -34,6 +34,26 @@ namespace remoted::control
         return out;
     }
 
+    /// Inverse of toGroupsCsv(): "" is no groups; anything else splits on every comma and keeps
+    /// every empty entry (leading, trailing or doubled) so group-name validation can reject it.
+    inline std::vector<std::string> fromGroupsCsv(const std::string& csv)
+    {
+        std::vector<std::string> groups;
+        if (csv.empty())
+        {
+            return groups;
+        }
+
+        size_t start = 0;
+        for (size_t comma = csv.find(','); comma != std::string::npos; comma = csv.find(',', start))
+        {
+            groups.push_back(csv.substr(start, comma - start));
+            start = comma + 1;
+        }
+        groups.push_back(csv.substr(start));
+        return groups;
+    }
+
     /// The /download resource_id the agent must use for its shared configuration.
     ///
     /// Opaque to the agent by contract: it passes this through verbatim and never parses it,

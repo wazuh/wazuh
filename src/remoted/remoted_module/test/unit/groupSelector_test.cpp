@@ -48,6 +48,26 @@ TEST(GroupSelectorTest, KeepsDuplicatesAndEmptyEntriesVerbatim)
     EXPECT_EQ(toGroupsCsv({"web", "", "db"}), "web,,db");
 }
 
+TEST(GroupSelectorTest, FromGroupsCsvKeepsEveryEmptyEntry)
+{
+    using Groups = std::vector<std::string>;
+
+    EXPECT_EQ(fromGroupsCsv("a,"), (Groups {"a", ""}));
+    EXPECT_EQ(fromGroupsCsv(",a"), (Groups {"", "a"}));
+    EXPECT_EQ(fromGroupsCsv(","), (Groups {"", ""}));
+}
+
+TEST(GroupSelectorTest, FromGroupsCsvRoundTrips)
+{
+    using Groups = std::vector<std::string>;
+
+    for (const auto& groups : {Groups {"default"}, Groups {"web", "db", "default"}, Groups {"a", "a"}})
+    {
+        EXPECT_EQ(fromGroupsCsv(toGroupsCsv(groups)), groups);
+    }
+    EXPECT_EQ(fromGroupsCsv(""), Groups {});
+}
+
 TEST(GroupSelectorTest, EmptyGroupListYieldsTheDefaultToken)
 {
     EXPECT_EQ(makeConfigToken(""), "default");

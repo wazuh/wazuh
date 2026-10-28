@@ -639,6 +639,33 @@ TEST(ControlHandlerTest, NotifyReturnsRealConfigHashWhenMergedMgExists)
     EXPECT_EQ(j["agent"]["config_token"], "default");
 }
 
+// The file exists, so only the group-name grammar can keep config_hash at "0": /download would
+// refuse the same name, and the hash must not promise bytes it will never serve.
+TEST(ControlHandlerTest, PublishesHashZeroWhenAGroupIsOutsideTheGrammar)
+{
+    auto wdb = std::make_shared<WdbRouter>();
+    wdb->onSelectAgentGroup([](const std::string&) { return "ok [{\"group\":\"a:b\"}]"; });
+    HandlerFixture h(wdb, [](const std::string&) { return "{\"tasks\":[]}"; });
+
+    const auto mergedMg = h.env.base / "shared" / "a:b" / "merged.mg";
+    fs::create_directories(mergedMg.parent_path());
+    {
+        std::ofstream f(mergedMg, std::ios::binary);
+        f << "hello";
+    }
+
+    NotifyData data;
+    data.version = "5.0.0";
+    Waiter<HttpResponse> w;
+    h.handler->handleNotify(1, data, [&](const HttpResponse& r) { w.complete(r); });
+    ASSERT_TRUE(w.wait(3000ms));
+    EXPECT_EQ(w.value.status, 200);
+
+    auto j = nlohmann::json::parse(w.value.body);
+    EXPECT_EQ(j["agent"]["config_hash"], "0");
+    EXPECT_EQ(j["agent"]["config_token"], "a:b");
+}
+
 // The token is what /download resolves, and config_hash is what the agent verifies the bytes
 // against, so the two must always describe the SAME merged.mg. For a multigroup agent that
 // means the token has to carry every group, comma-joined in wdb's order -- the same CSV the

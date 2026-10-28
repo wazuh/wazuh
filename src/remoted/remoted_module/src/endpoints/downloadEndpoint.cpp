@@ -10,6 +10,7 @@
 
 #include "downloadEndpoint.hpp"
 #include "common/logThrottle.hpp"
+#include "control/groupConfigPath.hpp"
 
 #include "loggerHelper.h"
 
@@ -38,7 +39,7 @@ namespace
         return instance;
     }
 
-    /// Longest accepted resource id. MAX_GROUP_NAME for a group; also a sane bound for a filename.
+    /// Longest accepted WPK filename.
     constexpr std::size_t MAX_RESOURCE_ID_SIZE {255};
 
     /// Wire spellings of ResourceType.
@@ -63,23 +64,11 @@ namespace
     /// Basename of a merged centralized configuration (SHAREDCFG_FILENAME).
     constexpr auto MERGED_CONFIG_FILENAME {"merged.mg"};
 
-    /// Characters wazuh accepts in a single group name (w_validate_group_name's set, minus comma).
-    bool isGroupNameChar(char c)
-    {
-        return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '.' || c == ':' ||
-               c == ';' || c == '_' || c == '-' || c == '=' || c == '+' || c == '!' || c == '@' || c == '(' || c == ')';
-    }
-
-    /// Stricter set for a value that gets joined into a path.
+    /// Characters of a WPK filename, a value that gets joined into a path.
     bool isWpkNameChar(char c)
     {
         return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '.' || c == '_' ||
                c == '-';
-    }
-
-    bool isDotOrDotDot(std::string_view value)
-    {
-        return value == "." || value == "..";
     }
 
     bool endsWith(std::string_view value, std::string_view suffix)
@@ -136,24 +125,6 @@ namespace remoted::endpoints::download
     // Request parsing and grammars
     // -----------------------------------------------------------------------
 
-    bool isValidGroupName(std::string_view group)
-    {
-        if (group.empty() || group.size() > MAX_RESOURCE_ID_SIZE || isDotOrDotDot(group))
-        {
-            return false;
-        }
-
-        for (const char c : group)
-        {
-            if (!isGroupNameChar(c))
-            {
-                return false;
-            }
-        }
-
-        return true;
-    }
-
     bool isValidGroupSelector(std::string_view selector)
     {
         if (selector.empty() || selector.size() > MAX_MULTIGROUP_SELECTOR_SIZE)
@@ -171,7 +142,7 @@ namespace remoted::endpoints::download
             const auto entry = selector.substr(
                 start, separator == std::string_view::npos ? std::string_view::npos : separator - start);
 
-            if (!isValidGroupName(entry))
+            if (!remoted::control::isValidGroupName(entry))
             {
                 return false;
             }

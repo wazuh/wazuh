@@ -28,7 +28,8 @@ namespace remoted::control
          * set.
          * @param groupsCsv Raw comma-separated group list, in the order returned
          *                  by wdb's `select-agent-group`. No URL-encoding.
-         * @return The resolved merged.mg path, or an empty string on invalid input.
+         * @return The resolved merged.mg path, or an empty string when a group name is invalid. An
+         *         empty @p groupsCsv is the "default" group.
          */
         std::string getMergedMgPath(const std::string& groupsCsv) const;
 

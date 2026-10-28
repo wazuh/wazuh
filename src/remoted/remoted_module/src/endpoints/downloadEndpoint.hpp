@@ -100,25 +100,14 @@ namespace remoted::endpoints::download
     std::variant<DownloadRequest, RequestError> parseRequest(std::string_view body);
 
     /**
-     * @brief Whether @p group is a syntactically valid single group name.
-     *
-     * Mirrors wazuh's own grammar (`w_validate_group_name`): non-empty, at most MAX_GROUP_NAME
-     * (255) bytes, drawn from `[A-Za-z0-9.:;_=+!@()-]`, excluding the comma (that separates entries
-     * in a selector -- see isValidGroupSelector()).
-     *
-     * `.` and `..` are rejected explicitly, and that matters: a single group name IS joined into a
-     * path (`<sharedDir>/<group>/merged.mg`), so this grammar is the containment boundary for
-     * configs just as isValidWpkFilename() is for packages.
-     */
-    bool isValidGroupName(std::string_view group);
-
-    /**
      * @brief Whether @p selector is a valid `resource_id` for a `config` request.
      *
-     * Accepts either one group name, or several separated by commas -- wazuh's own multigroup form,
-     * the same grammar `w_validate_group_name` accepts for a multigroup. Every entry must satisfy
-     * isValidGroupName(), so an empty entry, a leading/trailing comma or a doubled comma is
-     * rejected. Total length is capped at MAX_MULTIGROUP_SELECTOR_SIZE.
+     * Accepts either one group name, or several separated by commas -- wazuh's own multigroup form.
+     * Every entry must satisfy remoted::control::isValidGroupName(), the grammar /control resolves
+     * with, so an empty entry, a leading/trailing comma or a doubled comma is rejected. That grammar
+     * has no path separator and excludes `.` and `..`, which makes it the containment boundary for a
+     * single group name joined into `<sharedDir>/<group>/merged.mg`. Total length is capped at
+     * MAX_MULTIGROUP_SELECTOR_SIZE.
      *
      * Only the single-group form is ever joined into a path; a multi-entry selector is HASHED
      * (see multigroupDirName()), so the directory it names is hex by construction.

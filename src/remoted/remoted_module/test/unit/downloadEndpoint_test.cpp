@@ -404,38 +404,20 @@ TEST(DownloadParseRequestTest, ReportsAnInvalidResourceIdDistinctlyFromAMalforme
     EXPECT_EQ(std::get<RequestError>(parsed), RequestError::InvalidResourceId);
 }
 
+TEST(DownloadParseRequestTest, RejectsGroupNamesOutsideTheStrictGrammar)
+{
+    for (const auto* id : {"a:b", "x=y", "g1;rm"})
+    {
+        const auto parsed = parseRequest(std::string {R"({"resource_type":"config","resource_id":")"} + id + R"("})");
+
+        ASSERT_TRUE(std::holds_alternative<RequestError>(parsed)) << id;
+        EXPECT_EQ(std::get<RequestError>(parsed), RequestError::InvalidResourceId) << id;
+    }
+}
+
 // ---------------------------------------------------------------------------
 // Resource-id grammars
 // ---------------------------------------------------------------------------
-
-TEST(DownloadGroupNameTest, AcceptsWazuhsGroupGrammar)
-{
-    EXPECT_TRUE(isValidGroupName("default"));
-    EXPECT_TRUE(isValidGroupName("web-servers"));
-    EXPECT_TRUE(isValidGroupName("centos_8.1"));
-    EXPECT_TRUE(isValidGroupName("a:b;c=d+e!f@g(h)"));
-    EXPECT_TRUE(isValidGroupName(std::string(255, 'g')));
-}
-
-TEST(DownloadGroupNameTest, RejectsPathAndSeparatorCharacters)
-{
-    EXPECT_FALSE(isValidGroupName(""));
-    EXPECT_FALSE(isValidGroupName("."));
-    EXPECT_FALSE(isValidGroupName(".."));
-    EXPECT_FALSE(isValidGroupName("../../etc/shadow"));
-    EXPECT_FALSE(isValidGroupName("a/b"));
-    EXPECT_FALSE(isValidGroupName("a\\b"));
-    EXPECT_FALSE(isValidGroupName(std::string("a\0b", 3)));
-    EXPECT_FALSE(isValidGroupName("%2e%2e%2f"));
-    EXPECT_FALSE(isValidGroupName("caf\xc3\xa9"));
-    EXPECT_FALSE(isValidGroupName(std::string(256, 'g')));
-}
-
-TEST(DownloadGroupNameTest, RejectsACommaAsASingleGroupName)
-{
-    // A single group name never contains a comma; the CSV form is a selector, checked separately.
-    EXPECT_FALSE(isValidGroupName("default,web-servers"));
-}
 
 TEST(DownloadGroupSelectorTest, AcceptsOneGroupOrAMultigroupCsv)
 {
@@ -485,7 +467,7 @@ TEST(DownloadWpkNameTest, RejectsAnythingThatCouldLeaveTheUpgradeDirectory)
     EXPECT_FALSE(isValidWpkFilename("./a.wpk")); // starts with a dot
     EXPECT_FALSE(isValidWpkFilename(std::string("a\0.wpk", 6)));
     EXPECT_FALSE(isValidWpkFilename("a b.wpk"));
-    EXPECT_FALSE(isValidWpkFilename("a:b.wpk")); // allowed in a group name, not in a filename
+    EXPECT_FALSE(isValidWpkFilename("a:b.wpk")); // outside [A-Za-z0-9._-]
     EXPECT_FALSE(isValidWpkFilename(std::string(252, 'a') + ".wpk"));
 }
 
