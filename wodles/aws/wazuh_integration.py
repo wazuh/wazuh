@@ -17,6 +17,7 @@ import configparser
 import contextlib
 import copy
 import gzip
+import inspect
 import io
 import json
 import operator
@@ -24,7 +25,8 @@ import re
 import zipfile
 import zlib
 
-from botocore import config, exceptions
+from botocore import config, credentials, exceptions
+from botocore.session import get_session
 from datetime import datetime
 from datetime import timezone
 from os import path
@@ -37,6 +39,85 @@ DEFAULT_GOV_REGIONS = {'us-gov-east-1', 'us-gov-west-1'}
 SERVICES_REQUIRING_REGION = {'inspector', 'inspector2', 'cloudwatchlogs', 'ec2'}
 WAZUH_DEFAULT_RETRY_CONFIGURATION = {aws_tools.RETRY_ATTEMPTS_KEY: 10, aws_tools.RETRY_MODE_BOTO_KEY: 'standard'}
 MESSAGE_HEADER = "1:Wazuh-AWS:"
+# botocore's default refresh windows (seconds before expiration), too wide for sessions of 900 seconds
+ROLE_SESSION_ADVISORY_REFRESH = 15 * 60
+ROLE_SESSION_MANDATORY_REFRESH = 10 * 60
+# botocore takes the refresh windows as arguments since 1.34.0
+REFRESH_WINDOWS_AS_ARGUMENTS = 'advisory_timeout' in inspect.signature(
+    credentials.RefreshableCredentials.create_from_metadata).parameters
+EXPIRED_TOKEN_ERROR_CODES = {'ExpiredToken', 'ExpiredTokenException'}
+
+
+class RoleCredentials(credentials.RefreshableCredentials):
+    """Credentials of an assumed role, which botocore refreshes before a request once they are close to expiring.
+
+    They are also refreshed when AWS refuses the current token as expired before that (e.g. if the local clock is
+    behind AWS's).
+    """
+    refused = False
+
+    @classmethod
+    def assume(cls, sts_client, assume_role_kwargs: dict) -> 'RoleCredentials':
+        """Assume the role and return its refreshable credentials, with refresh windows scaled to its session.
+
+        Parameters
+        ----------
+        sts_client : botocore.client.STS
+            Client used to assume the role, now and on every refresh.
+        assume_role_kwargs : dict
+            Arguments of the AssumeRole call.
+
+        Returns
+        -------
+        RoleCredentials
+            Credentials of the role session.
+        """
+        def assume_role() -> dict:
+            sts_credentials = sts_client.assume_role(**assume_role_kwargs)['Credentials']
+            return {'access_key': sts_credentials['AccessKeyId'],
+                    'secret_key': sts_credentials['SecretAccessKey'],
+                    'token': sts_credentials['SessionToken'],
+                    'expiry_time': sts_credentials['Expiration'].isoformat()}
+
+        def refresh() -> dict:
+            aws_tools.debug(f"+++ Refreshing the session of the role '{assume_role_kwargs['RoleArn']}'", 2)
+            metadata = assume_role()
+            instance.refused = False
+            return metadata
+
+        metadata = assume_role()
+        expiration = datetime.fromisoformat(metadata['expiry_time'])
+        session_duration = int((expiration - datetime.now(timezone.utc)).total_seconds())
+        windows = {'advisory_timeout': min(ROLE_SESSION_ADVISORY_REFRESH, session_duration // 3),
+                   'mandatory_timeout': min(ROLE_SESSION_MANDATORY_REFRESH, session_duration // 6)}
+        if REFRESH_WINDOWS_AS_ARGUMENTS:
+            instance = cls.create_from_metadata(metadata=metadata, refresh_using=refresh, method='assume-role',
+                                                **windows)
+        else:
+            instance = cls.create_from_metadata(metadata=metadata, refresh_using=refresh, method='assume-role')
+            instance._advisory_refresh_timeout = windows['advisory_timeout']
+            instance._mandatory_refresh_timeout = windows['mandatory_timeout']
+        return instance
+
+    def refresh_needed(self, refresh_in=None) -> bool:
+        return self.refused or super().refresh_needed(refresh_in)
+
+    def retry_on_expired_token(self, response, request_dict: dict, **kwargs):
+        """botocore 'needs-retry' handler that retries once a request refused for an expired token, after refreshing
+        the credentials.
+
+        Returns
+        -------
+        int or None
+            Seconds to wait before retrying the request, None to let the other handlers decide.
+        """
+        if response is None or response[1].get('Error', {}).get('Code') not in EXPIRED_TOKEN_ERROR_CODES \
+                or request_dict['context'].get('role_session_refreshed'):
+            return None
+        request_dict['context']['role_session_refreshed'] = True
+        self.refused = True
+        aws_tools.debug('+++ The role session expired before it was refreshed. Retrying the request', 1)
+        return 0
 
 
 class WazuhIntegration:
@@ -231,15 +312,16 @@ class WazuhIntegration:
                 if iam_role_duration is not None:
                     assume_role_kwargs['DurationSeconds'] = iam_role_duration
 
-                sts_role_assumption = sts_client.assume_role(**assume_role_kwargs)
-
-                sts_session = boto3.Session(aws_access_key_id=sts_role_assumption['Credentials']['AccessKeyId'],
-                                            aws_secret_access_key=sts_role_assumption['Credentials']['SecretAccessKey'],
-                                            aws_session_token=sts_role_assumption['Credentials']['SessionToken'],
+                role_credentials = RoleCredentials.assume(sts_client, assume_role_kwargs)
+                # boto3.Session only takes static credentials: set the refreshable ones in its botocore session
+                botocore_session = get_session()
+                botocore_session._credentials = role_credentials
+                sts_session = boto3.Session(botocore_session=botocore_session,
                                             region_name=conn_args.get('region_name'))
 
                 client = sts_session.client(service_name=service_name, endpoint_url=service_endpoint,
                                             **self.connection_config)
+                client.meta.events.register('needs-retry', role_credentials.retry_on_expired_token)
             else:
                 client = boto_session.client(service_name=service_name, endpoint_url=service_endpoint,
                                              **self.connection_config)

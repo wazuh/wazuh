@@ -2,6 +2,7 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
+import copy
 import gzip
 import os
 import socket
@@ -9,11 +10,14 @@ import sqlite3
 import sys
 import zipfile
 import zlib
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from json import dumps
 from unittest.mock import MagicMock, patch, call
 
 import pytest
+from botocore import config
+from botocore.awsrequest import AWSResponse
+from freezegun import freeze_time
 
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '.'))
 import aws_utils as utils
@@ -26,6 +30,14 @@ TEST_METADATA_SCHEMA = "schema_metadata_test.sql"
 TEST_METADATA_DEPRECATED_TABLES_SCHEMA = "schema_metadata_deprecated_tables_test.sql"
 METADATA_TABLE_NAME = 'metadata'
 DB_TABLENAME = "test_table"
+
+
+def get_sts_role_assumption(session: int, expires_in: int) -> dict:
+    """Return an AssumeRole response whose credentials are numbered after the session and expire in the given
+    seconds."""
+    return {'Credentials': {'AccessKeyId': f'AK{session}', 'SecretAccessKey': f'SK{session}',
+                            'SessionToken': f'TOKEN{session}',
+                            'Expiration': datetime.now(timezone.utc) + timedelta(seconds=expires_in)}}
 
 
 @patch('wazuh_integration.WazuhIntegration.get_client')
@@ -182,21 +194,16 @@ def test_wazuh_integration_get_client(iam_role_arn, service_name, external_id):
                                                     external_id=external_id)
     service_name = "logs" if service_name == "cloudwatchlogs" else service_name
     conn_kwargs = {'region_name': None}
-    sts_kwargs = {'aws_access_key_id': None, 'aws_secret_access_key': None, 'aws_session_token': utils.TEST_TOKEN,
-                  'region_name': None}
     assume_role_kwargs = {'RoleArn': iam_role_arn, 'RoleSessionName': 'WazuhLogParsing',
                           'DurationSeconds': utils.TEST_IAM_ROLE_DURATION}
     if external_id:
         assume_role_kwargs['ExternalId'] = external_id
 
-    sts_role_assumption = {
-        'Credentials': {'AccessKeyId': None, 'SecretAccessKey': None, 'SessionToken': utils.TEST_TOKEN}}
-
     mock_boto_session = MagicMock()
     mock_sts_session = MagicMock()
     mock_sts_client = MagicMock()
     mock_boto_session.client.return_value = mock_sts_client
-    mock_sts_client.assume_role.return_value = sts_role_assumption
+    mock_sts_client.assume_role.return_value = get_sts_role_assumption(1, utils.TEST_IAM_ROLE_DURATION)
 
     with patch('wazuh_integration.utils.find_wazuh_path', return_value=utils.TEST_WAZUH_PATH), \
             patch('wazuh_integration.utils.get_wazuh_version', return_value=utils.WAZUH_VERSION), \
@@ -204,13 +211,20 @@ def test_wazuh_integration_get_client(iam_role_arn, service_name, external_id):
         instance = wazuh_integration.WazuhIntegration(**kwargs)
 
         if iam_role_arn:
-            mock_session.assert_has_calls([call(**conn_kwargs), call(**sts_kwargs)])
+            assert mock_session.call_args_list[0] == call(**conn_kwargs)
+            sts_session_kwargs = mock_session.call_args_list[1].kwargs
+            assert sts_session_kwargs['region_name'] is None
+            role_credentials = sts_session_kwargs['botocore_session'].get_credentials()
+            assert isinstance(role_credentials, wazuh_integration.RoleCredentials)
+            assert tuple(role_credentials.get_frozen_credentials()) == ('AK1', 'SK1', 'TOKEN1')
             mock_boto_session.client.assert_called_with(service_name='sts', endpoint_url=utils.TEST_SERVICE_ENDPOINT,
                                                         **instance.connection_config)
-            mock_sts_client.assume_role.assert_called_with(**assume_role_kwargs)
+            mock_sts_client.assume_role.assert_called_once_with(**assume_role_kwargs)
             mock_sts_session.client.assert_called_with(service_name=service_name,
                                                        endpoint_url=utils.TEST_SERVICE_ENDPOINT,
                                                        **instance.connection_config)
+            mock_sts_session.client.return_value.meta.events.register.assert_called_once_with(
+                'needs-retry', role_credentials.retry_on_expired_token)
         else:
             mock_session.assert_called_with(**conn_kwargs)
             mock_boto_session.client.assert_called_with(service_name=service_name,
@@ -230,6 +244,168 @@ def test_wazuh_integration_get_client_handles_exceptions_on_botocore_error():
         with pytest.raises(SystemExit) as e:
             wazuh_integration.WazuhIntegration(**utils.get_wazuh_integration_parameters())
         assert e.value.code == utils.INVALID_CREDENTIALS_ERROR_CODE
+
+
+def get_role_client(service_name: str, sts_role_assumptions: list, iam_role_duration: int = None,
+                    status_codes: list = None):
+    """Create a real botocore client with `get_client` and an IAM Role, without reaching AWS.
+
+    Parameters
+    ----------
+    service_name : str
+        Name of the service.
+    sts_role_assumptions : list
+        Responses of the mocked AssumeRole calls.
+    iam_role_duration : int
+        Duration of the role session.
+    status_codes : list
+        HTTP status codes of the responses to the client requests: 200, 400 for an expired token or 403 for an
+        access denied.
+
+    Returns
+    -------
+    tuple
+        The client, the mocked AssumeRole call, and the session token each request was signed with.
+    """
+    with patch('wazuh_integration.utils.find_wazuh_path', return_value=utils.TEST_WAZUH_PATH), \
+            patch('wazuh_integration.utils.get_wazuh_version', return_value=utils.WAZUH_VERSION), \
+            patch('wazuh_integration.WazuhIntegration.get_client'):
+        instance = wazuh_integration.WazuhIntegration(**utils.get_wazuh_integration_parameters())
+    retries = copy.deepcopy(wazuh_integration.WAZUH_DEFAULT_RETRY_CONFIGURATION)
+    instance.connection_config = {'config': config.Config(region_name=utils.TEST_REGION, retries=retries)}
+    mock_boto_session = MagicMock()
+    mock_boto_session.client.return_value.assume_role.side_effect = sts_role_assumptions
+    boto3_session = wazuh_integration.boto3.Session
+    with patch('wazuh_integration.boto3.Session',
+               side_effect=lambda **kwargs: boto3_session(**kwargs) if 'botocore_session' in kwargs
+               else mock_boto_session):
+        client = instance.get_client(access_key=None, secret_key=None, profile=None,
+                                     iam_role_arn=utils.TEST_IAM_ROLE_ARN, service_name=service_name,
+                                     iam_role_duration=iam_role_duration)
+
+    session_tokens = []
+    status_codes = list(status_codes or [])
+
+    def send(request, **kwargs):
+        session_tokens.append(request.headers['X-Amz-Security-Token'].decode())
+        status_code = status_codes.pop(0) if status_codes else 200
+        # SQS uses the JSON or the query protocol depending on the botocore version, S3 uses REST-XML
+        protocol = client.meta.service_model.protocol
+        error_code = {400: 'ExpiredToken', 403: 'AccessDenied'}.get(status_code)
+        error = f'<Error><Code>{error_code}</Code><Message>{error_code}</Message></Error>'
+        if status_code == 200:
+            body, headers = b'{}' if protocol == 'json' else b'<Response/>', {}
+        elif protocol == 'json':
+            body = dumps({'__type': f'com.amazon.coral.service#{error_code}', 'message': error_code}).encode()
+            headers = {'x-amzn-query-error': f'{error_code};Sender'}
+        else:
+            body = (error if protocol == 'rest-xml' else f'<ErrorResponse>{error}</ErrorResponse>').encode()
+            headers = {}
+        return AWSResponse(request.url, status_code, headers, MagicMock(stream=lambda: iter([body])))
+
+    client.meta.events.register('before-send', send)
+    return client, mock_boto_session.client.return_value.assume_role, session_tokens
+
+
+def send_request(client, service_name: str):
+    """Send a request of the subscriber with the given client."""
+    if service_name == 'sqs':
+        client.delete_message(QueueUrl='https://sqs.us-east-1.amazonaws.com/123455678912/queue', ReceiptHandle='h')
+    else:
+        client.get_object(Bucket=utils.TEST_BUCKET, Key='key')
+
+
+@pytest.mark.parametrize('windows_as_arguments', [True, False])
+@pytest.mark.parametrize('iam_role_duration, refresh_window', [(900, 300), (1300, 433), (3600, 900), (None, 900)])
+def test_wazuh_integration_get_client_refreshes_role_session_before_it_expires(iam_role_duration, refresh_window,
+                                                                               windows_as_arguments):
+    """Test `get_client` returns a client which assumes the role again once its session is about to expire, and not
+    before, even if the session is shorter than botocore's default refresh window.
+
+    Parameters
+    ----------
+    iam_role_duration : int
+        Duration of the role session.
+    refresh_window : int
+        Seconds before the end of the session in which it is refreshed.
+    windows_as_arguments : bool
+        Whether botocore takes the refresh windows as arguments (since 1.34.0).
+    """
+    if windows_as_arguments and not wazuh_integration.REFRESH_WINDOWS_AS_ARGUMENTS:
+        pytest.skip('botocore older than 1.34.0')
+    session_duration = iam_role_duration or 3600
+    with freeze_time(datetime.now(timezone.utc)) as frozen_time, \
+            patch('wazuh_integration.REFRESH_WINDOWS_AS_ARGUMENTS', windows_as_arguments):
+        client, mock_assume_role, session_tokens = get_role_client(
+            's3', [get_sts_role_assumption(1, session_duration), get_sts_role_assumption(2, session_duration)],
+            iam_role_duration)
+        send_request(client, 's3')
+        frozen_time.tick(timedelta(seconds=session_duration - refresh_window - 1))
+        send_request(client, 's3')
+        assert mock_assume_role.call_count == 1
+        frozen_time.tick(timedelta(seconds=2))
+        send_request(client, 's3')
+
+    assert mock_assume_role.call_count == 2
+    assert session_tokens == ['TOKEN1', 'TOKEN1', 'TOKEN2']
+
+
+@pytest.mark.parametrize('service_name', ['sqs', 's3'])
+def test_wazuh_integration_get_client_retries_once_when_role_session_expired(service_name):
+    """Test the client returned by `get_client` assumes the role again and retries a request refused for an expired
+    token, even if its local expiration had not been reached, and keeps using the new session afterwards.
+
+    Parameters
+    ----------
+    service_name : str
+        Name of the service.
+    """
+    client, mock_assume_role, session_tokens = get_role_client(
+        service_name, [get_sts_role_assumption(1, 900), get_sts_role_assumption(2, 900)], 900, status_codes=[400])
+    send_request(client, service_name)
+    send_request(client, service_name)
+
+    assert mock_assume_role.call_count == 2
+    assert session_tokens == ['TOKEN1', 'TOKEN2', 'TOKEN2']
+
+
+@pytest.mark.parametrize('service_name', ['sqs', 's3'])
+def test_wazuh_integration_get_client_does_not_retry_other_errors(service_name):
+    """Test the client returned by `get_client` neither assumes the role again nor retries a request refused for a
+    reason other than an expired token.
+
+    Parameters
+    ----------
+    service_name : str
+        Name of the service.
+    """
+    client, mock_assume_role, session_tokens = get_role_client(
+        service_name, [get_sts_role_assumption(1, 900), get_sts_role_assumption(2, 900)], 900, status_codes=[403])
+    with pytest.raises(wazuh_integration.exceptions.ClientError, match='AccessDenied'):
+        send_request(client, service_name)
+
+    assert mock_assume_role.call_count == 1
+    assert session_tokens == ['TOKEN1']
+
+
+@pytest.mark.parametrize('service_name', ['sqs', 's3'])
+def test_wazuh_integration_get_client_does_not_retry_twice_when_role_session_expired(service_name):
+    """Test the client returned by `get_client` raises the error of a request refused for an expired token after
+    retrying it once with a new session.
+
+    Parameters
+    ----------
+    service_name : str
+        Name of the service.
+    """
+    client, mock_assume_role, session_tokens = get_role_client(
+        service_name, [get_sts_role_assumption(session, 900) for session in (1, 2, 3)], 900,
+        status_codes=[400, 400, 400])
+    with pytest.raises(wazuh_integration.exceptions.ClientError, match='ExpiredToken'):
+        send_request(client, service_name)
+
+    assert mock_assume_role.call_count == 2
+    assert session_tokens == ['TOKEN1', 'TOKEN2']
 
 
 @pytest.mark.parametrize('access_key, secret_key, profile', [

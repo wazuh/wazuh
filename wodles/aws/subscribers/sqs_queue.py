@@ -93,7 +93,7 @@ class AWSSQSQueue(wazuh_integration.WazuhIntegration):
             self.client.delete_message(QueueUrl=self.sqs_url, ReceiptHandle=message["handle"])
             aws_tools.debug(f'Message deleted from queue: {self.sqs_name}', 2)
         except Exception as e:
-            aws_tools.debug(f'ERROR: Error deleting message from SQS: {e}', 1)
+            aws_tools.error(f'Error deleting message from SQS: {e}')
             sys.exit(21)
 
     def fetch_messages(self) -> dict:
@@ -110,7 +110,7 @@ class AWSSQSQueue(wazuh_integration.WazuhIntegration):
                                                MaxNumberOfMessages=10, MessageAttributeNames=['All'],
                                                WaitTimeSeconds=20)
         except Exception as e:
-            aws_tools.debug(f'ERROR: Error receiving message from SQS: {e}', 1)
+            aws_tools.error(f'Error receiving message from SQS: {e}')
             sys.exit(21)
 
     def get_messages(self) -> list:
