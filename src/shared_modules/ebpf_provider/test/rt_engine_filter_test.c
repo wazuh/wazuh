@@ -271,7 +271,7 @@ int main(int argc, char** argv)
     filter.cgroup_mode = RT_CGROUP_MODE_ALLOWLIST;
 
     const rt_handle_t h = rt_open(&filter);
-    if (h != NULL && subsys >= 0 && rt_set_cgroup_v1_subsys(h, (unsigned int)subsys) != 0)
+    if (h != NULL && subsys >= 0 && rt_set_cgroup_v1_subsys(h, controller, (unsigned int)subsys) != 0)
     {
         /* Without this the program reads bpf_get_current_cgroup_id(), which on
          * such a host identifies nothing — so every event would be filtered

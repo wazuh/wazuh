@@ -32,6 +32,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
+#include <sys/utsname.h>
 #include <unistd.h>
 
 static int g_failures = 0;
@@ -408,10 +409,34 @@ static void test_cgroup_mode_probe(void)
  * reasonable and nothing to flag it. The engine refuses rather than leaving
  * that to the caller.
  * ------------------------------------------------------------------------- */
+/* Whether this kernel is `major.minor` or newer.
+ *
+ * Needed because one assertion below is only true on an older kernel: the row
+ * order of /proc/cgroups stopped matching `enum cgroup_subsys_id` in 6.12, so
+ * demanding that the two agree would fail on a correct newer host. Returns 0
+ * when the release cannot be read, which keeps the stricter assertion — a
+ * parse failure should not quietly relax a check. */
+static int kernel_is_at_least(int major, int minor)
+{
+    struct utsname info;
+    int got_major = 0;
+    int got_minor = 0;
+
+    if (uname(&info) != 0)
+    {
+        return 0;
+    }
+    if (sscanf(info.release, "%d.%d", &got_major, &got_minor) != 2)
+    {
+        return 0;
+    }
+    return (got_major > major) || (got_major == major && got_minor >= minor);
+}
+
 static void test_v1_subsys_configuration(void)
 {
     /* NULL handle: the documented contract for every setter. */
-    CHECK(rt_set_cgroup_v1_subsys(NULL, 4) == -1, "rt_set_cgroup_v1_subsys(NULL) must fail");
+    CHECK(rt_set_cgroup_v1_subsys(NULL, "memory", 4) == -1, "rt_set_cgroup_v1_subsys(NULL) must fail");
     CHECK(rt_cgroup_id_is_usable(NULL) == 0, "a NULL handle has no usable cgroup id");
 
     /* The index this host would configure, resolved the way the engine's
@@ -428,6 +453,60 @@ static void test_v1_subsys_configuration(void)
     CHECK(wz_cgroup_subsys_index("systemd") == -1,
           "name=systemd is not a subsystem; the engine cannot key on it");
     CHECK(wz_cgroup_subsys_index("no_such_controller") == -1, "an unknown controller must not resolve");
+
+    /* THE SAME QUESTION ASKED OF THE KERNEL ITSELF.
+     *
+     * /proc/cgroups is only a good guess at the enum order: since 6.12,
+     * proc_cgroupstats_show() skips a controller built without v1 files, so
+     * every row after the missing one reads one short of its real id. The
+     * engine prefers the kernel's BTF for exactly that reason. */
+    CHECK(rt_cgroup_subsys_index_from_btf(NULL) == -1, "a NULL controller cannot resolve");
+    CHECK(rt_cgroup_subsys_index_from_btf("") == -1, "an empty controller cannot resolve");
+    CHECK(rt_cgroup_subsys_index_from_btf("no_such_controller") == -1,
+          "an unknown controller has no enumerator to find");
+
+    {
+        const int memory_btf = rt_cgroup_subsys_index_from_btf("memory");
+
+        if (memory_btf < 0)
+        {
+            /* No kernel BTF, or a libbpf too old to read it. Falling back is
+             * the designed behaviour, not a failure — so this is reported and
+             * not asserted. */
+            printf("  (no kernel BTF here; the /proc/cgroups fallback is what would be used)\n");
+        }
+        else
+        {
+            printf("  (memory is %d by BTF, %d by /proc/cgroups row order)\n", memory_btf, memory);
+
+            /* The name mapping, which is the one piece of this that could be
+             * silently wrong: /proc/cgroups prints a controller's LEGACY name
+             * and the enum uses its current one, and for `blkio` those differ
+             * — the enumerator is `io_cgrp_id`. A lookup that simply appended
+             * "_cgrp_id" would find nothing and fall back without a word. */
+            CHECK(rt_cgroup_subsys_index_from_btf("blkio") >= 0,
+                  "blkio must resolve through its enum spelling, io_cgrp_id");
+
+            /* Whether the two readings MUST agree depends on the kernel. Below
+             * 6.12 nothing skips rows, so a disagreement would mean this
+             * lookup is wrong. From 6.12 a disagreement is the defect the
+             * lookup exists to correct, so it is reported rather than failed. */
+            if (!kernel_is_at_least(6, 12))
+            {
+                CHECK(memory_btf == memory,
+                      "below 6.12 the row order IS the enum order; BTF says %d and /proc/cgroups %d",
+                      memory_btf,
+                      memory);
+            }
+            else if (memory_btf != memory)
+            {
+                printf("  (6.12+ row skew present on this host: BTF %d vs row %d — the engine would use "
+                       "BTF and warn)\n",
+                       memory_btf,
+                       memory);
+            }
+        }
+    }
 
     /* THE REFUSAL. Asserted through the pure predicate rather than through the
      * setter, because the setter needs a loaded handle this test has no way to

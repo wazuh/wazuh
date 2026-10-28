@@ -832,7 +832,11 @@ bool ContainerEventDrain::start(const DrainConfig& config, ReconcileHandler hand
             return false;
         }
 
-        if (rt_set_cgroup_v1_subsys(impl->handle, static_cast<unsigned int>(subsys)) != 0)
+        /* The name as well as the index: the engine prefers the kernel's own
+         * enum and keeps our /proc/cgroups reading only as the fallback. On a
+         * 6.12 or newer kernel the two can disagree, and there the row order
+         * is the wrong one -- see wz_cgroup_subsys_index(). */
+        if (rt_set_cgroup_v1_subsys(impl->handle, controller, static_cast<unsigned int>(subsys)) != 0)
         {
             /* The host offered a usable controller and the engine would not
              * take it. The engine has already said why on its own logger. */

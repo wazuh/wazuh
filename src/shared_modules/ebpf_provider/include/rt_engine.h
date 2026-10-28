@@ -196,11 +196,25 @@ int rt_set_cgroup_mode(rt_handle_t handle, int mode);
  * program can read one directly — so cgroup_id becomes a real per-container
  * value and the allowlist filters exactly as it does elsewhere.
  *
- * `subsys_index` is the controller's position in the kernel's
- * `enum cgroup_subsys_id`, which is build-dependent and must be resolved at
- * runtime — wz_cgroup_subsys_index() in shared_modules/common does it from
- * /proc/cgroups. It MUST name the same controller the caller resolves
- * container paths under, or the two will key on different hierarchies.
+ * The program needs the controller's position in the kernel's
+ * `enum cgroup_subsys_id`, which is build-dependent and has to be resolved at
+ * runtime. Both arguments describe the SAME controller — the one the caller
+ * resolves container paths under, or the two halves key on different
+ * hierarchies — and the engine picks which reading to trust:
+ *
+ * - `controller` is its name, e.g. "memory". The engine looks its enumerator
+ *   up in the kernel's own BTF, which is authoritative.
+ * - `fallback_index` is the caller's own reading, from
+ *   wz_cgroup_subsys_index() in shared_modules/common, and is used only when
+ *   BTF cannot answer: no kernel BTF, or a libbpf too old to read it.
+ *
+ * The split exists because the fallback is not reliable on every kernel. Since
+ * 6.12, proc_cgroupstats_show() omits a controller built without v1 files, so
+ * the row order it reports runs short of the real enum ids from that point on
+ * — see wz_cgroup_subsys_index(). When the two readings disagree the engine
+ * uses BTF and says so at warn level, because nothing else on such a host
+ * reports the problem: userspace matches controllers by name, so containers
+ * still resolve and only the kernel-side read is misdirected.
  *
  * MUST NOT be called on a unified or hybrid host: there a controller is only
  * enabled where an ancestor enabled it, so the read can return an ancestor's
@@ -208,7 +222,24 @@ int rt_set_cgroup_mode(rt_handle_t handle, int mode);
  * rt_host_cgroup_v1() is zero rather than left to the caller.
  *
  * Returns 0 on success, -1 otherwise. */
-int rt_set_cgroup_v1_subsys(rt_handle_t handle, unsigned int subsys_index);
+int rt_set_cgroup_v1_subsys(rt_handle_t handle, const char* controller, unsigned int fallback_index);
+
+/* A v1 controller's value in the kernel's `enum cgroup_subsys_id`, read from
+ * the running kernel's BTF.
+ *
+ * Needs no handle and no loaded BPF object: it binds libbpf on demand and reads
+ * /sys/kernel/btf/vmlinux. Exposed so a consumer can compare it against its own
+ * /proc/cgroups reading, which is the only way to detect the 6.12 row skew
+ * described above.
+ *
+ * The binding is process-wide and happens once, so a consumer that passes its
+ * own libbpf path to rt_open() must call this AFTER that open — calling it
+ * first would bind the system libbpf and the path would then be ignored.
+ * rt_set_cgroup_v1_subsys() is not affected: it runs on an already-open handle.
+ *
+ * Returns the id, or -1 when BTF cannot answer — which is a reason to fall back
+ * to /proc/cgroups, not an error. */
+int rt_cgroup_subsys_index_from_btf(const char* controller);
 
 /* Non-zero when this handle's events carry a cgroup_id that identifies a
  * container: always on a unified or hybrid host, and on a legacy host once

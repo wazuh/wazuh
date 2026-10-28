@@ -95,6 +95,25 @@ struct libbpf_api
      * still incrementing the entry. Absent on kernels/libbpf builds without
      * BPF_MAP_LOOKUP_AND_DELETE_ELEM for hash maps, hence optional. */
     int (*map_lookup_and_delete_elem)(int, const void*, void*);
+
+    /* BTF, for reading a v1 controller's `enum cgroup_subsys_id` value out of
+     * the running kernel rather than inferring it from the row order of
+     * /proc/cgroups -- see rt_subsys_index_from_btf().
+     *
+     * OPTIONAL, deliberately. btf__load_vmlinux_btf() arrived in libbpf 0.5,
+     * and an engine that refused to start without it would turn a host that
+     * merely falls back to /proc/cgroups into a host with no eBPF at all. The
+     * resolver below treats a null entry exactly as it treats a kernel with no
+     * BTF.
+     *
+     * btf__type_by_id() returns a `const struct btf_type*`; it is held as
+     * `const void*` so this file can read the record through its own
+     * declaration without shadowing the UAPI type's name. */
+    struct btf* (*btf_load_vmlinux)(void);
+    int (*btf_find_by_name_kind)(const struct btf*, const char*, unsigned int);
+    const void* (*btf_type_by_id)(const struct btf*, unsigned int);
+    const char* (*btf_name_by_offset)(const struct btf*, unsigned int);
+    void (*btf_free)(struct btf*);
 };
 
 static struct libbpf_api g_libbpf;
@@ -231,6 +250,28 @@ static int ensure_libbpf_loaded(const struct rt_log_target* log, const char* lib
      * reported cgroup and a narrow race with the BPF side, not correctness of
      * the visible-loss guarantee. */
     *(void**)(&g_libbpf.map_lookup_and_delete_elem) = dlsym(mod, "bpf_map_lookup_and_delete_elem");
+
+    /* Also optional, and for a different reason: these are a correctness
+     * improvement on one rare class of host, not a requirement anywhere. A
+     * libbpf too old to have them leaves the engine exactly as capable as it
+     * was before they existed. Resolved as a set -- a partial set is no use,
+     * so one missing symbol disables the lot rather than leaving a half-built
+     * path to be discovered at the call. */
+    *(void**)(&g_libbpf.btf_load_vmlinux) = dlsym(mod, "btf__load_vmlinux_btf");
+    *(void**)(&g_libbpf.btf_find_by_name_kind) = dlsym(mod, "btf__find_by_name_kind");
+    *(void**)(&g_libbpf.btf_type_by_id) = dlsym(mod, "btf__type_by_id");
+    *(void**)(&g_libbpf.btf_name_by_offset) = dlsym(mod, "btf__name_by_offset");
+    *(void**)(&g_libbpf.btf_free) = dlsym(mod, "btf__free");
+    if (!g_libbpf.btf_load_vmlinux || !g_libbpf.btf_find_by_name_kind || !g_libbpf.btf_type_by_id ||
+        !g_libbpf.btf_name_by_offset || !g_libbpf.btf_free)
+    {
+        g_libbpf.btf_load_vmlinux = NULL;
+        rt_log(log,
+               RT_LOG_INFO,
+               "libbpf at '%s' has no usable BTF API; a v1 controller's subsystem index will be taken from "
+               "/proc/cgroups instead",
+               bound);
+    }
 
     g_libbpf.module = mod;
     return 1;
@@ -690,12 +731,212 @@ int rt_set_cgroup_mode(rt_handle_t handle, int mode)
     return 0;
 }
 
-int rt_set_cgroup_v1_subsys(rt_handle_t handle, unsigned int subsys_index)
+/* BTF record layouts, taken from the kernel's UAPI <linux/btf.h>.
+ *
+ * Declared rather than included, for the reason rt_libbpf_shim.h gives for
+ * libbpf's own types: this file must build on a host with no BPF development
+ * headers. Unlike a library's internal structs these are a frozen kernel ABI --
+ * BTF is a serialization format carrying its own version field, so a layout
+ * change would be a new version and not a silent reinterpretation of these
+ * bytes. Named rt_* so a translation unit that also includes <linux/btf.h>
+ * cannot collide with them. */
+#define RT_BTF_KIND_ENUM 6
+#define RT_BTF_KIND_ENUM64 19
+
+struct rt_btf_type
+{
+    unsigned int name_off;
+    unsigned int info; /* bits 0-15 vlen, bits 24-28 kind */
+    union
+    {
+        unsigned int size;
+        unsigned int type;
+    } u;
+};
+
+struct rt_btf_enum
+{
+    unsigned int name_off;
+    int val;
+};
+
+struct rt_btf_enum64
+{
+    unsigned int name_off;
+    unsigned int val_lo32;
+    unsigned int val_hi32;
+};
+
+/* How a controller is spelled in `enum cgroup_subsys_id`.
+ *
+ * Almost always "<name>_cgrp_id". The exception is that /proc/cgroups prints a
+ * controller's LEGACY name while the enum uses its current one, and for one
+ * controller those differ: the file says `blkio` where the enum says
+ * `io_cgrp_id`. Same subsystem, two spellings, and the lookup matches on the
+ * string. */
+static int rt_cgroup_subsys_enumerator(const char* controller, char* out, size_t out_len)
+{
+    const char* name = controller;
+
+    if (strcmp(controller, "blkio") == 0)
+    {
+        name = "io";
+    }
+
+    const int written = snprintf(out, out_len, "%s_cgrp_id", name);
+    return (written > 0 && (size_t)written < out_len) ? 0 : -1;
+}
+
+/* A controller's value in the kernel's own `enum cgroup_subsys_id`.
+ *
+ * The authority, where the row order of /proc/cgroups is only a good guess.
+ * Since 6.12 proc_cgroupstats_show() skips a controller built without v1 files
+ * -- cgroup1_subsys_absent(), which is what CONFIG_MEMCG_V1=n and
+ * CONFIG_CPUSETS_V1=n produce -- while the enumerator stays, because
+ * SUBSYS(memory) sits behind CONFIG_MEMCG and SUBSYS(cpuset) behind
+ * CONFIG_CPUSETS. Every row after the missing one then reads one short of its
+ * real id and the program is pointed at a different controller's cgroup.
+ * Reading the enum itself cannot drift that way, on any kernel.
+ *
+ * Called once, while configuring a legacy host, and never on a unified or
+ * hybrid one.
+ *
+ * Returns the id, or -1 whenever BTF cannot answer: no libbpf BTF API, no
+ * kernel BTF, no such enum, no such enumerator. Each of those means "fall back
+ * to /proc/cgroups", not "fail". */
+static int rt_subsys_index_from_btf(const char* controller, const struct rt_log_target* log)
+{
+    char wanted[64];
+
+    if (!controller || !controller[0] || !g_libbpf.btf_load_vmlinux)
+    {
+        return -1;
+    }
+    if (rt_cgroup_subsys_enumerator(controller, wanted, sizeof(wanted)) != 0)
+    {
+        return -1;
+    }
+
+    struct btf* btf = g_libbpf.btf_load_vmlinux();
+    if (!btf)
+    {
+        rt_log(log,
+               RT_LOG_INFO,
+               "no kernel BTF available; taking the v1 subsystem index for '%s' from /proc/cgroups",
+               controller);
+        return -1;
+    }
+
+    int found = -1;
+
+    /* ENUM and ENUM64 carry the same information under different kinds, and
+     * which one a given kernel's BTF used is not ours to predict. */
+    const unsigned int kinds[2] = {RT_BTF_KIND_ENUM, RT_BTF_KIND_ENUM64};
+
+    for (unsigned int k = 0; k < 2 && found < 0; ++k)
+    {
+        const int id = g_libbpf.btf_find_by_name_kind(btf, "cgroup_subsys_id", kinds[k]);
+        if (id < 0)
+        {
+            continue;
+        }
+
+        const struct rt_btf_type* type = (const struct rt_btf_type*)g_libbpf.btf_type_by_id(btf, (unsigned int)id);
+        if (!type)
+        {
+            continue;
+        }
+
+        const unsigned int vlen = type->info & 0xffffu;
+
+        for (unsigned int i = 0; i < vlen; ++i)
+        {
+            unsigned int name_off;
+            int value;
+
+            if (kinds[k] == RT_BTF_KIND_ENUM)
+            {
+                const struct rt_btf_enum* members = (const struct rt_btf_enum*)(type + 1);
+                name_off = members[i].name_off;
+                value = members[i].val;
+            }
+            else
+            {
+                const struct rt_btf_enum64* members = (const struct rt_btf_enum64*)(type + 1);
+                if (members[i].val_hi32 != 0)
+                {
+                    /* A subsystem id cannot need 64 bits. Reading the high
+                     * word only to refuse it keeps a malformed or unexpected
+                     * entry from being truncated into a plausible index. */
+                    continue;
+                }
+                name_off = members[i].name_off;
+                value = (int)members[i].val_lo32;
+            }
+
+            const char* name = g_libbpf.btf_name_by_offset(btf, name_off);
+            if (name && strcmp(name, wanted) == 0)
+            {
+                found = value;
+                break;
+            }
+        }
+    }
+
+    g_libbpf.btf_free(btf);
+    return found;
+}
+
+int rt_cgroup_subsys_index_from_btf(const char* controller)
+{
+    if (!ensure_libbpf_loaded(NULL, NULL))
+    {
+        return -1;
+    }
+    return rt_subsys_index_from_btf(controller, NULL);
+}
+
+int rt_set_cgroup_v1_subsys(rt_handle_t handle, const char* controller, unsigned int fallback_index)
 {
     struct rt_engine_handle* h = (struct rt_engine_handle*)handle;
     if (!h || h->filter_cfg_fd < 0)
     {
         return -1;
+    }
+
+    /* The kernel's own enum first, the caller's /proc/cgroups reading second.
+     * Both name the SAME controller -- the caller passes what it resolved
+     * container paths under -- so this chooses between two readings of one
+     * question rather than between two controllers. */
+    unsigned int subsys_index = fallback_index;
+    const int from_btf = rt_subsys_index_from_btf(controller, &h->log);
+
+    if (from_btf >= 0)
+    {
+        subsys_index = (unsigned int)from_btf;
+
+        if (subsys_index != fallback_index)
+        {
+            /* THE 6.12 CASE, caught in the act. The row order of /proc/cgroups
+             * stopped matching the enum when proc_cgroupstats_show() began
+             * skipping controllers built without v1 files, and a host where
+             * that happens would otherwise read a different controller's
+             * cgroup and attribute nothing, with every other sign healthy:
+             * userspace matches controllers by name, so containers still
+             * resolve and still carry keys. Logged at warn because the
+             * disagreement IS the diagnosis -- nothing else on this host will
+             * report it. */
+            rt_log(&h->log,
+                   RT_LOG_WARN,
+                   "the '%s' controller is at index %u in the kernel's enum but at row %u of "
+                   "/proc/cgroups; using %u. A kernel 6.12 or newer omits the row of a controller built "
+                   "without v1 files (CONFIG_MEMCG_V1=n, CONFIG_CPUSETS_V1=n), which shifts every row "
+                   "after it",
+                   controller ? controller : "?",
+                   subsys_index,
+                   fallback_index,
+                   subsys_index);
+        }
     }
 
     /* Refused rather than trusted to the caller. On a unified or hybrid host
@@ -749,8 +990,11 @@ int rt_set_cgroup_v1_subsys(rt_handle_t handle, unsigned int subsys_index)
     h->v1_subsys_configured = 1;
     rt_log(&h->log,
            RT_LOG_INFO,
-           "reading container cgroup ids from v1 controller subsystem %u; cgroup filtering is available",
-           subsys_index);
+           "reading container cgroup ids from v1 controller '%s' (subsystem %u, resolved from %s); cgroup "
+           "filtering is available",
+           controller ? controller : "?",
+           subsys_index,
+           (from_btf >= 0) ? "kernel BTF" : "/proc/cgroups");
     return 0;
 }
 
