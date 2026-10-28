@@ -1,0 +1,14 @@
+- name: Process rules match the kernel task name
+  description: Run a SCA scan with process rules for processes whose argv[0] does not carry their name
+  configuration_parameters:
+    ENABLED: 'yes'
+    INTERVAL: 5
+    POLICY_FILE: ruleset/sca/process_rules.yaml
+  metadata:
+    policy_file: process_rules.yaml
+    expected_results:
+      '1': Passed
+      '2': Passed
+      '3': Passed
+      '4': Passed
+      '5': Failed

@@ -1,0 +1,8 @@
+- name: Policy with unmet requirements is reported
+  description: Run a SCA scan with a policy whose requirements fail and check the skip is logged at INFO
+  configuration_parameters:
+    ENABLED: 'yes'
+    INTERVAL: 5
+    POLICY_FILE: ruleset/sca/requirements_not_met.yaml
+  metadata:
+    policy_file: requirements_not_met.yaml
