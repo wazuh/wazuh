@@ -310,6 +310,16 @@ static void expect_recovery_sync(AgentSyncProtocolHandle* handle) {
     expect_any_always(__wrap__minfo, formatted_msg);
 }
 
+// A container row the resync did not queue must not stay counted as reported: the
+// integrity checksum covers the sync=1 rows and the DataClean already removed this
+// one from the manager, so leaving it at 1 mismatches forever.
+static void expect_container_demote(void) {
+    expect_string(__wrap_fim_db_set_sync_flag, table_name, FIMDB_FILE_TABLE_NAME);
+    expect_any(__wrap_fim_db_set_sync_flag, item);
+    expect_value(__wrap_fim_db_set_sync_flag, sync_value, 0);
+    will_return(__wrap_fim_db_set_sync_flag, 0);
+}
+
 static cJSON* container_recovery_item(const char* container_id, const char* path) {
     cJSON* item = cJSON_CreateObject();
     cJSON_AddStringToObject(item, "path", path);
@@ -381,6 +391,7 @@ static void test_fim_recovery_resync_skips_container_rows_without_handler(void *
 
     fim_recovery_set_container_row_handler(NULL);
     expect_recovery_start(handle, test_items);
+    expect_container_demote();
     expect_recovery_sync(handle);
 
     assert_true(fim_recovery_persist_table_and_resync(FIMDB_FILE_TABLE_NAME, handle, &mock_directories, "retry note"));
@@ -400,6 +411,7 @@ static void test_fim_recovery_resync_reports_container_row_failure(void **state)
     expect_string(mock_container_row_handler, container_id, "abc123");
     expect_string(mock_container_row_handler, path, "/tmp/c.txt");
     expect_string(__wrap__merror, formatted_msg, "Failed to recover container file abc123:/tmp/c.txt");
+    expect_container_demote();
     expect_recovery_sync(handle);
 
     assert_true(fim_recovery_persist_table_and_resync(FIMDB_FILE_TABLE_NAME, handle, &mock_directories, "retry note"));

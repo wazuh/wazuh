@@ -195,12 +195,40 @@ bool fim_recovery_persist_table_and_resync(char* table_name, AgentSyncProtocolHa
             // to the layer that sent it in the first place.
             const char* container_id = cJSON_GetStringValue(cJSON_GetObjectItem(item_copy, "container_id"));
             if (container_id && *container_id) {
+                int queued = 0;
+
                 if (!container_row_handler) {
                     mdebug2("Skipping recovery of container file (container monitoring is off): %s:%s",
                             container_id, path);
-                } else if (container_row_handler(item_copy) < 0) {
-                    merror("Failed to recover container file %s:%s", container_id, path);
+                } else {
+                    queued = container_row_handler(item_copy);
+                    if (queued < 0) {
+                        merror("Failed to recover container file %s:%s", container_id, path);
+                    }
                 }
+
+                if (queued <= 0) {
+                    // The DataClean above removed this row's document from the manager and
+                    // nothing here put it back, so sync=1 is no longer true. It is also not
+                    // harmless: the integrity checksum covers the sync=1 rows and is compared
+                    // against a manager that no longer holds this one, so it mismatches, which
+                    // orders a full resync, which reaches this same line and skips the row
+                    // again -- every integrity_interval, for as long as the agent runs. Unlike
+                    // an orphaned HOST path, nothing else ever clears it: handle_orphaned_delete
+                    // runs on the scheduled scan, and with container monitoring off there is no
+                    // container scan to run it.
+                    //
+                    // Demoting also leaves the row where the ordinary promotion pass can report
+                    // it again if container monitoring comes back.
+                    pending_sync_item_t demoted = {.json = item_copy, .sync_value = 0};
+
+                    if (fim_db_set_sync_flag(table_name, &demoted, 0) != 0) {
+                        mdebug1("Could not clear the reporting flag of container file %s:%s; the next "
+                                "integrity check will order another resync.",
+                                container_id, path);
+                    }
+                }
+
                 cJSON_Delete(item_copy);
                 continue;
             }
