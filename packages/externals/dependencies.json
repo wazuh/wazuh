@@ -210,11 +210,11 @@
     },
     {
       "name": "cpp-httplib",
-      "version": "0.25.0",
-      "revision": "v0.25.0",
+      "version": "0.51.0",
+      "revision": "v0.51.0",
       "source": "upstream",
       "url": "https://github.com/yhirose/cpp-httplib/archive/refs/tags/v{version}.tar.gz",
-      "upstream_sha256": "ac7c59fa72325d4cb9f73af266312d82632ac35a5c4c8a1be620c1f946ec9cea",
+      "upstream_sha256": "d740ced75352f44e9d66d08806dc231b5621bb3592b5a5d5b2bd890a9a9d86cc",
       "format": "tar.gz",
       "strip": 1,
       "patches": [],
@@ -226,7 +226,7 @@
       ],
       "built": false,
       "cpe": "cpe:2.3:a:yhirose:cpp-httplib:*:*:*:*:*:*:*:*",
-      "purl": "pkg:github/yhirose/cpp-httplib@v0.25.0",
+      "purl": "pkg:github/yhirose/cpp-httplib@v0.51.0",
       "license": "MIT",
       "author": "yhirose",
       "homepage": "https://github.com/yhirose/cpp-httplib"
