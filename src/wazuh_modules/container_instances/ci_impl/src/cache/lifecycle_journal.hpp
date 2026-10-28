@@ -51,9 +51,10 @@ namespace wazuh::container_instances
         /// inside a container running an init system.
         ///
         /// Its own class, and deliberately not part of `identity`. The container
-        /// has not moved: it is filed under the same key, its files and packages
-        /// are untouched, and anything that re-scans on this would re-walk the
-        /// whole container every time a timer fired inside it.
+        /// has not moved: it is filed under the same key, and its files and
+        /// packages are untouched, so an INVENTORY consumer owes no work for it.
+        /// Folding it into `identity` would re-collect every data class each time
+        /// a timer fired inside a container.
         ///
         /// But it cannot be left unpublished either. A consumer that filters
         /// events in the kernel by exact cgroup id has to admit the new cgroup
@@ -62,6 +63,17 @@ namespace wazuh::container_instances
         /// there is no periodic full list to pick it up from. Suppressing this
         /// made the common systemd case (units starting a second after the
         /// container does) silently unmonitored.
+        ///
+        /// The filtering consumer, though, DOES pay for this class, and not
+        /// cheaply. Until a cgroup is admitted its events are dropped in the
+        /// kernel, so the window between a unit's cgroup appearing and reaching
+        /// the allowlist is a window of writes nobody can enumerate; the only
+        /// recovery is to re-walk the container (ContainerEventRouter::
+        /// escalateDelta). A container running short-lived units gets a fresh
+        /// inode per activation and therefore a walk per activation. That trade
+        /// is accepted -- the alternative is keeping the gap -- but it is the
+        /// reason to keep this class narrow and never widen it to cgroup churn
+        /// that cannot have dropped anything.
         ///
         /// Consumers that do not filter in the kernel must ignore it explicitly
         /// rather than fall into the unknown-class rule, which re-scans

@@ -378,12 +378,24 @@ class ContainerEventRouter
 
             if (m_filtering)
             {
-                /* Once per CONTAINER, not once per cgroup it added. A container
-                 * running an init system publishes several -- `init.scope` plus
-                 * one per unit -- and onDrops() re-walks the whole container, so
-                 * doing it per cgroup is N-1 walks of the same tree and a
-                 * discovery_escalations count that no longer matches the number
-                 * of containers discovered. */
+                /* EVERY added cgroup escalates, including one added to a
+                 * container already in the map. Under the kernel filter an
+                 * un-admitted cgroup's events never reach userspace, so a unit's
+                 * writes between its cgroup appearing and being admitted are
+                 * simply gone -- nothing can enumerate them, and re-walking the
+                 * container is the only recovery. The cost is real and accepted
+                 * rather than overlooked: a container driving short-lived units
+                 * gets a fresh inode per activation and so a walk per
+                 * activation. Skipping the walk when the container is already
+                 * mapped would trade that cost for silently missed changes,
+                 * which is the hole this path exists to close.
+                 *
+                 * Once per CONTAINER, though, not once per cgroup it added. A
+                 * container running an init system publishes several --
+                 * `init.scope` plus one per unit -- and onDrops() re-walks the
+                 * whole container, so doing it per cgroup is N-1 walks of the
+                 * same tree and a discovery_escalations count that no longer
+                 * matches the number of containers discovered. */
                 std::set<std::string> escalated;
 
                 for (const auto& entry : delta.added)
