@@ -304,3 +304,42 @@ TEST_F(ContainerReportingTest, RowCeilingHoldsAcrossCappedPassesAndFreesVanished
     EXPECT_EQ(persisted[0], (std::pair<std::string, int> {"a:/etc/a", OPERATION_CREATE}));
     EXPECT_EQ(fim_db_count_container_rows("a", nullptr), 2);
 }
+
+// A container the listing refused and a container the listing never saw both read
+// as "may not report", and used to be indistinguishable: one set held both. They
+// need opposite treatment -- the refused one stays withheld, the unseen one means
+// the snapshot predates it and has to be retaken -- so the distinction is pinned
+// here. Without it a container started after the agent is silent for the life of
+// the process, under the default configuration.
+TEST_F(ContainerReportingTest, AdmissionTellsARefusedContainerFromAnUnknownOne)
+{
+    admission = {{"a", true}, {"b", false}};
+    files["a"] = {"/etc/one"};
+    files["b"] = {"/etc/one"};
+    fim_run_container_baseline();
+
+    EXPECT_NE(fim_container_is_admitted("a"), 0);
+    EXPECT_EQ(fim_container_is_admitted("b"), 0) << "the cap refused it";
+    EXPECT_EQ(fim_container_is_admitted("c"), 0);
+
+    EXPECT_EQ(fim_container_admission_is_stale("a"), 0);
+    EXPECT_EQ(fim_container_admission_is_stale("b"), 0) << "refused is not unknown: do not re-ask";
+    EXPECT_NE(fim_container_admission_is_stale("c"), 0) << "created after the snapshot: re-ask";
+}
+
+// A failed listing must not install an empty snapshot, or every container would
+// read as unknown and re-ask on every batch.
+TEST_F(ContainerReportingTest, AFailedListingLeavesTheAdmissionSnapshotAlone)
+{
+    admission = {{"a", true}, {"b", false}};
+    files["a"] = {"/etc/one"};
+    fim_run_container_baseline();
+    ASSERT_EQ(fim_container_admission_is_stale("b"), 0);
+
+    connector_available = false;
+    listed = false;
+    fim_run_container_baseline();
+
+    EXPECT_NE(fim_container_is_admitted("a"), 0) << "the previous answer stands";
+    EXPECT_EQ(fim_container_admission_is_stale("b"), 0) << "the previous answer stands";
+}

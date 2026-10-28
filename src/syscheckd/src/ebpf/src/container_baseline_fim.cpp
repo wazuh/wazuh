@@ -790,6 +790,39 @@ namespace
         }
     }
 
+    /// Takes one container listing and installs it as the admission snapshot.
+    ///
+    /// The snapshot is only replaced when the connector actually answered: a
+    /// failed listing reports no containers, and applying that would withhold
+    /// every container's rows over a momentary blip.
+    ///
+    /// @return cbaseline_list_containers()' own count, negative when it could
+    ///         not be asked -- which also says whether a stale sweep may run.
+    int refreshContainerAdmission(ContainerListing& listing)
+    {
+        const int listed = cbaseline_list_containers(CB_DEFAULT_CONNECTOR_SOCKET_PATH, container_id_sink, &listing);
+
+        if (listed < 0) return listed;
+
+        std::vector<const char*> known;
+        std::vector<const char*> admitted;
+        known.reserve(listing.known.size());
+        admitted.reserve(listing.admitted.size());
+
+        for (const auto& id : listing.known)
+        {
+            known.push_back(id.c_str());
+        }
+
+        for (const auto& id : listing.admitted)
+        {
+            admitted.push_back(id.c_str());
+        }
+
+        fim_container_set_admission(known.data(), known.size(), admitted.data(), admitted.size());
+
+        return listed;
+    }
 
     /// Is `path` inside the configured monitored path `root`?
     ///
@@ -944,6 +977,31 @@ namespace
             DeleteUnlinkedPaths(request, paths, path_count);
             fim_free_container_monitored_paths(paths);
             return;
+        }
+
+        // The admission snapshot is taken once, by the startup walk. A container
+        // created after it is in neither of its sets, which the storage path can
+        // only read as "may not report" -- so every row below would be stored
+        // sync=0 and stay that way for the life of the process, since nothing
+        // else retakes the listing. That is silence under the DEFAULT config,
+        // where no cap is configured at all.
+        //
+        // Ask again for exactly that container, and only for it: once refreshed
+        // it is known whether or not it was admitted, so a container the cap
+        // genuinely refuses does not re-ask on its next batch.
+        if (fim_container_admission_is_stale(request.container_id.c_str()))
+        {
+            ContainerListing refreshed;
+
+            if (refreshContainerAdmission(refreshed) < 0)
+            {
+                // Withheld for now rather than reported regardless: the next event
+                // for this container asks again, and the cap is not something to
+                // override because one listing failed.
+                LogDebug("Container FIM reconcile: could not refresh admission for the new container '%s'; "
+                         "its rows stay withheld until a listing succeeds.",
+                         request.container_id.c_str());
+            }
         }
 
         try
@@ -1140,21 +1198,8 @@ extern "C" void fim_run_container_baseline(void)
     try
     {
         ContainerListing listing;
-        const int listed = cbaseline_list_containers(CB_DEFAULT_CONNECTOR_SOCKET_PATH, container_id_sink, &listing);
+        const int listed = refreshContainerAdmission(listing);
         const std::set<std::string>& known = listing.known;
-
-        if (listed >= 0)
-        {
-            std::vector<const char*> admitted;
-            admitted.reserve(listing.admitted.size());
-
-            for (const auto& id : listing.admitted)
-            {
-                admitted.push_back(id.c_str());
-            }
-
-            fim_container_set_admitted(admitted.data(), admitted.size());
-        }
 
         BaselineDriver driver;
 

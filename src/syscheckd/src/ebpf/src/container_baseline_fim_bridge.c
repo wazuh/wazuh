@@ -637,28 +637,30 @@ void fim_container_doc_budget_initialize(const char* container_id)
     synced_docs_unlock();
 }
 
-/* Containers allowed to report, as a set. NULL means "not told yet", which
- * reads as admit-everything -- see fim_container_is_admitted().
+/* Containers allowed to report, and every container the listing that decided
+ * that knew about. NULL means "not told yet", which reads as admit-everything
+ * -- see fim_container_is_admitted().
+ *
+ * TWO sets rather than one, because absence from the admitted set has two
+ * opposite causes. A container the cap refused must stay withheld; a container
+ * that started after the listing was taken is not refused at all, and reading
+ * it as refused is what left it silent for the life of the process. Only the
+ * known set can tell them apart -- see fim_container_admission_is_stale().
  *
  * Guarded by synced_docs_mutex, like the counts above, so a reconcile cannot
- * replace the set while a row is being decided against it. */
+ * replace the sets while a row is being decided against them. */
 static OSHash* container_admitted = NULL;
+static OSHash* container_known = NULL;
 static int container_admission_known = 0;
 
-void fim_container_set_admitted(const char** container_ids, size_t count)
+/* A set of container ids, or NULL when it could not be built. */
+static OSHash* container_id_set(const char** container_ids, size_t count)
 {
-    if (container_ids == NULL && count > 0) {
-        return;
+    OSHash* set = OSHash_Create();
+    if (set == NULL) {
+        return NULL;
     }
-
-    OSHash* replacement = OSHash_Create();
-    if (replacement == NULL) {
-        /* Fail OPEN. A set we could not build is not grounds for silencing
-         * every container -- the same reasoning as the count slot below. */
-        merror("Container FIM: could not build the admitted container set; retaining previous admission.");
-        return;
-    }
-    OSHash_SetFreeDataPointer(replacement, free);
+    OSHash_SetFreeDataPointer(set, free);
 
     for (size_t i = 0; i < count; ++i) {
         if (container_ids[i] == NULL || *container_ids[i] == '\0') {
@@ -668,22 +670,79 @@ void fim_container_set_admitted(const char** container_ids, size_t count)
         int* marker = NULL;
         os_calloc(1, sizeof(int), marker);
         *marker = 1;
-        if (OSHash_Add(replacement, container_ids[i], marker) != 2) {
+        if (OSHash_Add(set, container_ids[i], marker) != 2) {
             os_free(marker);
         }
     }
 
+    return set;
+}
+
+void fim_container_set_admission(const char** known_ids,
+                                 size_t known_count,
+                                 const char** admitted_ids,
+                                 size_t admitted_count)
+{
+    if ((known_ids == NULL && known_count > 0) || (admitted_ids == NULL && admitted_count > 0)) {
+        return;
+    }
+
+    OSHash* known_set = container_id_set(known_ids, known_count);
+    OSHash* admitted_set = container_id_set(admitted_ids, admitted_count);
+
+    if (known_set == NULL || admitted_set == NULL) {
+        /* Fail OPEN. A set we could not build is not grounds for silencing
+         * every container -- the same reasoning as the count slot below.
+         * Both or neither: a known set without its admitted set would read
+         * every container as refused. */
+        merror("Container FIM: could not build the admitted container set; retaining previous admission.");
+        if (known_set != NULL) {
+            OSHash_Free(known_set);
+        }
+        if (admitted_set != NULL) {
+            OSHash_Free(admitted_set);
+        }
+        return;
+    }
+
     synced_docs_lock();
-    OSHash* previous = container_admitted;
-    container_admitted = replacement;
+    OSHash* previous_known = container_known;
+    OSHash* previous_admitted = container_admitted;
+    container_known = known_set;
+    container_admitted = admitted_set;
     container_admission_known = 1;
     synced_docs_unlock();
 
-    if (previous != NULL) {
-        OSHash_Free(previous);
+    if (previous_known != NULL) {
+        OSHash_Free(previous_known);
+    }
+    if (previous_admitted != NULL) {
+        OSHash_Free(previous_admitted);
     }
 
     fim_container_reconcile_admission();
+}
+
+void fim_container_set_admitted(const char** container_ids, size_t count)
+{
+    /* Everything this caller knows of, it admits. */
+    fim_container_set_admission(container_ids, count, container_ids, count);
+}
+
+int fim_container_admission_is_stale(const char* container_id)
+{
+    if (container_id == NULL || *container_id == '\0') {
+        return 0; /* Not a container row; no admission to be stale about. */
+    }
+
+    synced_docs_lock();
+    /* Before the first listing nothing is stale: everything reports already,
+     * so there is no silence to break. */
+    const int stale = container_admission_known != 0 && container_known != NULL
+                      && OSHash_Get(container_known, container_id) == NULL;
+    synced_docs_unlock();
+
+    return stale;
 }
 
 int fim_container_is_admitted(const char* container_id)

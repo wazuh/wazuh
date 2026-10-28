@@ -148,6 +148,27 @@ void fim_container_reconcile_admission(void);
 void fim_container_set_admitted(const char** container_ids, size_t count);
 
 /**
+ * @brief Install a listing's admission answer: what it knew, and what of that
+ *        it admitted.
+ *
+ * Both sets come from ONE listing on purpose. Admission is read per row on the
+ * storage path, so a row decided between two separate calls would be weighed
+ * against a known set from one listing and an admitted set from another.
+ *
+ * Call ONLY when the connector actually answered -- see
+ * fim_container_set_admitted(), which is this with the two sets equal.
+ *
+ * @param known_ids      Every container the listing reported, admitted or not.
+ * @param known_count    How many.
+ * @param admitted_ids   The subset allowed to report. Copied; caller keeps ownership.
+ * @param admitted_count How many. Zero is a real answer -- no container reports.
+ */
+void fim_container_set_admission(const char** known_ids,
+                                 size_t known_count,
+                                 const char** admitted_ids,
+                                 size_t admitted_count);
+
+/**
  * @brief Whether a container may report. Non-zero when it may.
  *
  * True for every container until fim_container_set_admitted() has been called,
@@ -155,6 +176,20 @@ void fim_container_set_admitted(const char** container_ids, size_t count);
  * going silently quiet.
  */
 int fim_container_is_admitted(const char* container_id);
+
+/**
+ * @brief Whether the admission snapshot predates this container. Non-zero when it does.
+ *
+ * A container created after the snapshot was taken is in neither set, and
+ * fim_container_is_admitted() cannot tell that from the cap having refused it:
+ * both read as "may not report". Left alone it stores every row sync=0 for the
+ * life of the process, because nothing else retakes the listing.
+ *
+ * Ask this before storing a container's rows; when it says yes, take a fresh
+ * listing and install it. Once installed the container is known either way, so
+ * this costs one listing per container, not one per batch.
+ */
+int fim_container_admission_is_stale(const char* container_id);
 
 /**
  * @brief Build one container row's stateful document and offer it to the manager.
