@@ -11,9 +11,37 @@
 #ifndef _SYSINFO_WIN_TEST_H
 #define _SYSINFO_WIN_TEST_H
 
+#include <cstdlib>
+#include <string>
 #include "gtest/gtest.h"
 #include "gmock/gmock.h"
 #include "utilsWrapperWin.hpp"
+
+// Sets TZ for the lifetime of the object and restores the previous value.
+class ScopedTimezone
+{
+    public:
+        explicit ScopedTimezone(const char* tz)
+        {
+            const auto* previous = std::getenv("TZ");
+            m_previous = previous != nullptr ? previous : "";
+            set(tz);
+        }
+
+        ~ScopedTimezone()
+        {
+            set(m_previous.c_str());
+        }
+
+    private:
+        static void set(const char* tz)
+        {
+            _putenv_s("TZ", tz);
+            _tzset();
+        }
+
+        std::string m_previous;
+};
 
 class SysInfoWinTest : public ::testing::Test
 {

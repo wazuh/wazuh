@@ -27,6 +27,19 @@ namespace
         tzset();
 #endif
     }
+
+    // Wine's C runtime takes the offset from TZ but never applies its DST rule
+    bool timezoneHasDST()
+    {
+        std::tm summer {};
+        summer.tm_year = 2026 - 1900;
+        summer.tm_mon = 6;
+        summer.tm_mday = 1;
+        summer.tm_hour = 12;
+        summer.tm_isdst = -1;
+        std::mktime(&summer);
+        return summer.tm_isdst > 0;
+    }
 } // namespace
 
 void TimeUtilsTest::SetUp()
@@ -135,8 +148,40 @@ TEST_F(TimeUtilsTest, TimestampToISO8601)
     std::tm utc {};
     gmtime_r(&now, &utc);
     std::ostringstream expected;
-    expected << std::put_time(&utc, "%FT%T") << ".000Z";
+    expected << std::put_time(&utc, "%Y-%m-%dT%H:%M:%S") << ".000Z";
     EXPECT_EQ(expected.str(), Utils::timestampToISO8601(Utils::getTimestamp(now, false)));
+}
+
+TEST_F(TimeUtilsTest, TimestampToISO8601FromUTC)
+{
+    // A UTC input is not shifted by the host offset, whatever the time zone
+    const char* const timezones[] {"UTC", "PST8PDT", "JST-9"};
+
+    for (const auto* tz : timezones)
+    {
+        setTimezone(tz);
+        EXPECT_EQ("2026-10-23T18:02:28.000Z", Utils::timestampToISO8601("2026/10/23 18:02:28", true)) << tz;
+        EXPECT_EQ("2026-12-01T18:02:28.000Z", Utils::timestampToISO8601("2026/12/01 18:02:28", true)) << tz;
+    }
+
+    // ISO8601 input is returned normalized
+    EXPECT_EQ("2025-11-26T12:00:01.000Z", Utils::timestampToISO8601("2025-11-26T12:00:01Z", true));
+    EXPECT_EQ("", Utils::timestampToISO8601("21:00:00", true));
+}
+
+TEST_F(TimeUtilsTest, TimestampToISO8601FromLocalTimeHonoursDST)
+{
+    setTimezone("PST8PDT");
+    // December: PST, UTC-8
+    EXPECT_EQ("2026-12-01T18:02:28.000Z", Utils::timestampToISO8601("2026/12/01 10:02:28"));
+
+    if (!timezoneHasDST())
+    {
+        GTEST_SKIP() << "The C runtime does not apply the DST rule of TZ";
+    }
+
+    // October: PDT, UTC-7
+    EXPECT_EQ("2026-10-23T18:02:28.000Z", Utils::timestampToISO8601("2026/10/23 11:02:28"));
 }
 
 TEST_F(TimeUtilsTest, RawTimestampToISO8601)

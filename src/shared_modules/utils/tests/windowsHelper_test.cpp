@@ -12,10 +12,40 @@
 #ifdef WIN32
 #include "windowsHelper_test.h"
 #include "windowsHelper.h"
+#include <cstdlib>
 
-void WindowsHelperTest::SetUp() {};
+namespace
+{
+    void setTimezone(const char* tz)
+    {
+        _putenv_s("TZ", tz);
+        _tzset();
+    }
 
-void WindowsHelperTest::TearDown() {};
+    // Wine's C runtime takes the offset from TZ but never applies its DST rule
+    bool timezoneHasDST()
+    {
+        std::tm summer {};
+        summer.tm_year = 2026 - 1900;
+        summer.tm_mon = 6;
+        summer.tm_mday = 1;
+        summer.tm_hour = 12;
+        summer.tm_isdst = -1;
+        std::mktime(&summer);
+        return summer.tm_isdst > 0;
+    }
+} // namespace
+
+void WindowsHelperTest::SetUp()
+{
+    const auto* tz = std::getenv("TZ");
+    m_timezone = tz != nullptr ? tz : "";
+};
+
+void WindowsHelperTest::TearDown()
+{
+    setTimezone(m_timezone.c_str());
+};
 
 TEST_F(WindowsHelperTest, ipv6NetMask_64)
 {
@@ -232,13 +262,31 @@ TEST_F(WindowsHelperTest, normalizeTimestampUnknownRegistryInstallDateValue)
 
 TEST_F(WindowsHelperTest, normalizeTimestampNotEqual)
 {
-    std::string RegistryInstallDateValue = "20220214";
+    std::string RegistryInstallDateValue = "20220213";
     std::string RegistryModificationDateValue = "2022/02/15 14:04:50";
-    std::string expected = "2022/02/14 00:00:00";
+    std::string expected = "2022/02/13 00:00:00";
 
+    setTimezone("UTC0");
     std::string result = Utils::normalizeTimestamp(RegistryInstallDateValue, RegistryModificationDateValue);
 
     EXPECT_EQ(expected, result);
+}
+
+TEST_F(WindowsHelperTest, normalizeTimestampNotEqualReturnsLocalMidnightInUTC)
+{
+    // InstallDate is a local date; its midnight comes back in UTC
+    setTimezone("JST-9");
+    EXPECT_EQ("2026/10/19 15:00:00", Utils::normalizeTimestamp("20261020", "2026/10/23 18:02:28"));
+
+    setTimezone("PST8PDT");
+    EXPECT_EQ("2026/12/01 08:00:00", Utils::normalizeTimestamp("20261201", "2026/12/03 18:02:28"));
+
+    if (!timezoneHasDST())
+    {
+        GTEST_SKIP() << "The C runtime does not apply the DST rule of TZ";
+    }
+
+    EXPECT_EQ("2026/10/20 07:00:00", Utils::normalizeTimestamp("20261020", "2026/10/23 18:02:28"));
 }
 
 TEST_F(WindowsHelperTest, normalizeTimestampEqual)
@@ -247,9 +295,44 @@ TEST_F(WindowsHelperTest, normalizeTimestampEqual)
     std::string RegistryModificationDateValue = "2022/02/15 14:04:50";
     std::string expected = "2022/02/15 14:04:50";
 
+    setTimezone("UTC0");
     std::string result = Utils::normalizeTimestamp(RegistryInstallDateValue, RegistryModificationDateValue);
 
     EXPECT_EQ(expected, result);
+}
+
+TEST_F(WindowsHelperTest, normalizeTimestampInstallDateUnderAnyOffsetIsTheModificationTime)
+{
+    // InstallDate was written in an unknown time zone: the modification time is kept when it falls on InstallDate
+    // under some offset from UTC-12 to UTC+14
+    setTimezone("JST-9");
+    // 2026/10/23 18:02:28 UTC is 2026/10/24 03:02:28 in UTC+9
+    EXPECT_EQ("2026/10/23 18:02:28", Utils::normalizeTimestamp("20261024", "2026/10/23 18:02:28"));
+    // Written under a zone behind UTC, scanned in UTC+9: InstallDate is the UTC date, not the local one
+    EXPECT_EQ("2026/10/23 18:02:28", Utils::normalizeTimestamp("20261023", "2026/10/23 18:02:28"));
+    // No offset puts 2026/10/23 18:02:28 UTC on 2026/10/22: the key was rewritten later, so InstallDate wins
+    EXPECT_EQ("2026/10/21 15:00:00", Utils::normalizeTimestamp("20261022", "2026/10/23 18:02:28"));
+
+    // Bounds: 2026/10/22 00:00 at UTC+14 and 2026/10/22 23:59:59 at UTC-12
+    setTimezone("PST8");
+    EXPECT_EQ("2026/10/21 10:00:00", Utils::normalizeTimestamp("20261022", "2026/10/21 10:00:00"));
+    EXPECT_EQ("2026/10/22 08:00:00", Utils::normalizeTimestamp("20261022", "2026/10/21 09:59:59"));
+    EXPECT_EQ("2026/10/23 11:59:59", Utils::normalizeTimestamp("20261022", "2026/10/23 11:59:59"));
+    EXPECT_EQ("2026/10/22 08:00:00", Utils::normalizeTimestamp("20261022", "2026/10/23 12:00:00"));
+}
+
+TEST_F(WindowsHelperTest, normalizeTimestampInvalidInstallDate)
+{
+    const std::string RegistryModificationDateValue = "2026/10/23 18:02:28";
+
+    setTimezone("JST-9");
+
+    const char* const installDates[] {"00000000", "19691231", "20261301", "20261000", "20260231", "20261032"};
+
+    for (const auto* installDate : installDates)
+    {
+        EXPECT_ANY_THROW(Utils::normalizeTimestamp(installDate, RegistryModificationDateValue)) << installDate;
+    }
 }
 
 TEST_F(WindowsHelperTest, normalizeTimestampWrongRegistryInstallDateValue)

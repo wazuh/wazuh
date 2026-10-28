@@ -162,9 +162,10 @@ namespace Utils
      * @brief Convert a timestamp to ISO8601 format.
      *
      * @param timestamp Timestamp to convert. Format: "YYYY/MM/DD hh:mm:ss", or ISO8601, which is returned normalized.
+     * @param utc If true, "YYYY/MM/DD hh:mm:ss" is a UTC time; otherwise it is a local time.
      * @return std::string ISO8601 timestamp or empty string.
      */
-    static std::string timestampToISO8601(const std::string& timestamp)
+    static std::string timestampToISO8601(const std::string& timestamp, const bool utc = false)
     {
         std::tm tm {};
         std::istringstream ss(timestamp);
@@ -173,7 +174,23 @@ namespace Utils
         {
             return normalizeTimestampISO8601(timestamp);
         }
-        std::time_t time = std::mktime(&tm);
+
+        std::time_t time;
+
+        if (utc)
+        {
+#ifdef WIN32
+            time = _mkgmtime(&tm);
+#else
+            time = timegm(&tm);
+#endif
+        }
+        else
+        {
+            // Let mktime work out whether DST applies on that date.
+            tm.tm_isdst = -1;
+            time = std::mktime(&tm);
+        }
 
         std::ostringstream output;
         struct tm const* localTime = gmtime_r(&time, &tm);

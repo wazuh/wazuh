@@ -20,6 +20,57 @@
 void SysInfoWinTest::SetUp() {};
 void SysInfoWinTest::TearDown() {};
 
+TEST_F(SysInfoWinTest, InstallTimeIsTheKeyModificationTimeInUTC)
+{
+    // UTC+9 and UTC-8, without DST rules, so the expected values do not depend on the C runtime
+    const char* const timezones[] {"JST-9", "PST8"};
+
+    for (const auto* tz : timezones)
+    {
+        const ScopedTimezone timezone { tz };
+
+        // No InstallDate: the key's last write time, not shifted by the host offset
+        EXPECT_EQ("2026-10-23T18:02:28.000Z", PackageWindowsHelper::getInstallTime("", "2026/10/23 18:02:28")) << tz;
+    }
+
+    // InstallDate is the key's local date, which differs from its UTC date
+    {
+        const ScopedTimezone timezone { "JST-9" };
+        // 2026/10/23 18:02:28 UTC is 2026/10/24 03:02:28 in UTC+9
+        EXPECT_EQ("2026-10-23T18:02:28.000Z", PackageWindowsHelper::getInstallTime("20261024", "2026/10/23 18:02:28"));
+    }
+    {
+        const ScopedTimezone timezone { "PST8" };
+        // 2026/10/24 03:02:28 UTC is 2026/10/23 19:02:28 in UTC-8
+        EXPECT_EQ("2026-10-24T03:02:28.000Z", PackageWindowsHelper::getInstallTime("20261023", "2026/10/24 03:02:28"));
+    }
+
+    // Installed while the host was in another time zone: InstallDate is the key's UTC date, not its local date
+    {
+        const ScopedTimezone timezone { "JST-9" };
+        EXPECT_EQ("2026-10-26T17:44:00.000Z", PackageWindowsHelper::getInstallTime("20261026", "2026/10/26 17:44:00"));
+    }
+}
+
+TEST_F(SysInfoWinTest, InstallTimeFromAnEarlierInstallDateIsItsLocalMidnightInUTC)
+{
+    const ScopedTimezone timezone { "JST-9" };
+
+    EXPECT_EQ("2026-10-19T15:00:00.000Z", PackageWindowsHelper::getInstallTime("20261020", "2026/10/23 18:02:28"));
+}
+
+TEST_F(SysInfoWinTest, InstallTimeWithAnInvalidInstallDateIsTheKeyModificationTime)
+{
+    const ScopedTimezone timezone { "JST-9" };
+
+    const char* const installDates[] {"00000000", "19691231", "20261301", "20261000", "2026102", "2026102a"};
+
+    for (const auto* installDate : installDates)
+    {
+        EXPECT_EQ("2026-10-23T18:02:28.000Z", PackageWindowsHelper::getInstallTime(installDate, "2026/10/23 18:02:28")) << installDate;
+    }
+}
+
 TEST_F(SysInfoWinTest, test_extract_HFValue_7618)
 {
     // Invalid cases
