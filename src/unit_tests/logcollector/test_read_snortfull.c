@@ -30,6 +30,15 @@ extern int maximum_lines;
 /* Bytes the stored hash must cover. NULL skips the check */
 static const char *stored_bytes = NULL;
 
+/* What logcollector keeps between two reads of a file: the offset and the hash context the reader stored */
+static int64_t kept_offset = 0;
+static EVP_MD_CTX *kept_context = NULL;
+
+/* What the writer has appended to the file so far, and copies of its lines for the mocked fgets */
+static char written[2048];
+static char line_pool[64][256];
+static size_t lines_in_pool = 0;
+
 /* Setup & Teardown */
 
 static int group_setup(void **state) {
@@ -45,6 +54,11 @@ static int group_teardown(void **state) {
 static int test_teardown(void **state) {
     maximum_lines = 0;
     stored_bytes = NULL;
+    EVP_MD_CTX_free(kept_context);
+    kept_context = NULL;
+    kept_offset = 0;
+    written[0] = '\0';
+    lines_in_pool = 0;
     return 0;
 }
 
@@ -91,10 +105,21 @@ int __wrap_feof(FILE *stream) {
     return __real_feof(stream);
 }
 
-/* The context hashes for real, so the tests can check the hash stored with the offset */
+/* The context hashes for real, so the tests can check the hash stored with the offset.
+ * It starts from the hash kept by the previous read, as the real one does. */
 bool __wrap_w_get_hash_context(logreader *lf, EVP_MD_CTX **context, int64_t position) {
     EVP_DigestInit(*context, EVP_sha1());
+    if (kept_context != NULL) {
+        EVP_MD_CTX_copy(*context, kept_context);
+    }
     return mock_type(bool);
+}
+
+/* Takes over the context, as the real one does, when the test asks to keep it for the next read */
+static void keep_state(int64_t pos, EVP_MD_CTX *context) {
+    EVP_MD_CTX_free(kept_context);
+    kept_context = context;
+    kept_offset = pos;
 }
 
 int __wrap_w_update_file_status(const char *path, int64_t pos, EVP_MD_CTX *context) {
@@ -105,6 +130,8 @@ int __wrap_w_update_file_status(const char *path, int64_t pos, EVP_MD_CTX *conte
     bool free_context = mock_type(bool);
     if (free_context) {
         EVP_MD_CTX_free(context);
+    } else {
+        keep_state(pos, context);
     }
     return mock_type(int);
 }
@@ -201,11 +228,16 @@ static void expect_queued(const char *msg, size_t size) {
     will_return(__wrap_w_msg_hash_queues_push, 0);
 }
 
-static void expect_prologue(void) {
-    mock_position = 0;
+/* Expect a read that starts at offset, where the previous one left the file */
+static void expect_prologue_at(int64_t offset) {
+    mock_position = offset;
     expect_any(__wrap_w_ftell, x);
-    will_return(__wrap_w_ftell, (int64_t) 0);
+    will_return(__wrap_w_ftell, offset);
     will_return(__wrap_w_get_hash_context, true);
+}
+
+static void expect_prologue(void) {
+    expect_prologue_at(0);
 }
 
 static void expect_epilogue(void) {
@@ -262,6 +294,89 @@ static void expect_stored_state(int64_t pos, const char *bytes) {
     will_return(__wrap_w_update_file_status, true);
     will_return(__wrap_w_update_file_status, 0);
 }
+
+/* The same, but the state stays for the next read, as it does in logcollector. The bytes are the written ones */
+static void expect_kept_state(int64_t pos) {
+    static char covered[sizeof(written)];
+
+    snprintf(covered, sizeof(covered), "%.*s", (int) pos, written);
+    stored_bytes = covered;
+    expect_value(__wrap_w_update_file_status, pos, pos);
+    will_return(__wrap_w_update_file_status, false);
+    will_return(__wrap_w_update_file_status, 0);
+}
+
+/* Reads in a row */
+
+static void write_to_file(const char *bytes) {
+    assert_true(strlen(written) + strlen(bytes) < sizeof(written));
+    strcat(written, bytes);
+}
+
+/* A copy of a line of the file that stays valid until the read ends */
+static char *copy_line(const char *text, size_t len) {
+    assert_true(lines_in_pool < sizeof(line_pool) / sizeof(line_pool[0]));
+    assert_true(len < sizeof(line_pool[0]));
+
+    char *line = line_pool[lines_in_pool++];
+    memcpy(line, text, len);
+    line[len] = '\0';
+    return line;
+}
+
+/* Expect a read that goes from offset to the end of what has been written, the last line maybe unfinished */
+static void expect_read_from(int64_t offset) {
+    const char *at = written + offset;
+    bool unfinished = false;
+
+    expect_prologue_at(offset);
+
+    while (*at != '\0' && !unfinished) {
+        const char *end = strchr(at, '\n');
+        size_t len = end ? (size_t) (end - at) + 1 : strlen(at);
+        char *line = copy_line(at, len);
+
+        unfinished = (end == NULL);
+        if (unfinished) {
+            expect_unfinished_line(line);
+        } else {
+            expect_line(line);
+        }
+        at += len;
+    }
+
+    if (!unfinished) {
+        expect_end_of_file();
+    }
+}
+
+static void expect_queued_message(const char *msg) {
+    expect_queued(msg, strlen(msg) + 1);
+}
+
+/* Expect the read to end inside an alert: the reader goes back to its header and keeps that state */
+static void expect_read_back_to(int64_t offset) {
+    expect_rewind(offset);
+    expect_kept_state(offset);
+    expect_any(__wrap__mdebug2, formatted_msg);
+}
+
+/* Expect the read to end at the end of what has been written, with no alert open */
+static void expect_read_to_end(void) {
+    expect_any(__wrap_w_ftell, x);
+    will_return(__wrap_w_ftell, mock_position);
+    expect_kept_state(mock_position);
+    expect_any(__wrap__mdebug2, formatted_msg);
+}
+
+/* What Snort writes for alert id, and the message the reader sends for it */
+#define HEADER(id)         "[**] [1:" id ":1] Alert " id " [**]\n"
+#define CLASSIFICATION     "[Classification: Misc activity] [Priority: 3] \n"
+#define DATE_AND_PACKET    "10/06-08:25:55.608163 10.0.0.1 -> 10.0.0.2\n" \
+                           "ICMP TTL:64 TOS:0x0 ID:1 IpLen:20 DgmLen:84\n\n"
+#define ALERT(id)          HEADER(id) CLASSIFICATION DATE_AND_PACKET
+#define MESSAGE(id)        "[**] [1:" id ":1] Alert " id " [**] [Classification: Misc activity] [Priority: 3] " \
+                           "10.0.0.1 -> 10.0.0.2"
 
 /* Tests */
 
@@ -951,6 +1066,106 @@ void test_read_snortfull_unfinished_line_after_alert(void **state) {
     assert_int_equal(rc, 0);
 }
 
+/**
+ * Test: the writer flushes the first bytes of the next header and finishes the alert in a second write.
+ * The first read sends the alert before it and goes back to the cut header. The second read starts there, with
+ * the hash the first one kept: it sends the finished alert once and does not replay the one sent before.
+ */
+void test_read_snortfull_header_cut_by_writer_is_sent_once(void **state) {
+    logreader lf = {0};
+    lf.file = "test.log";
+    lf.fp = (FILE *) 1;
+    int rc;
+
+    write_to_file(ALERT("1001") "[**] [1:10");
+    expect_read_from(0);
+    expect_queued_message(MESSAGE("1001"));
+    expect_read_back_to((int64_t) strlen(ALERT("1001")));
+
+    read_snortfull(&lf, &rc, 0);
+
+    assert_int_equal(rc, 0);
+    assert_int_equal(kept_offset, (int64_t) strlen(ALERT("1001")));
+
+    write_to_file("02:1] Alert 1002 [**]\n" CLASSIFICATION DATE_AND_PACKET);
+    expect_read_from(kept_offset);
+    expect_queued_message(MESSAGE("1002"));
+    expect_read_to_end();
+
+    read_snortfull(&lf, &rc, 0);
+
+    assert_int_equal(rc, 0);
+}
+
+/**
+ * Test: the writer is slow, and flushes the header and classification of an alert a read before its date line.
+ * A read that finds nothing new goes back to the same header with the same hash: the alert is not hashed twice
+ * or sent early. Once the writer finishes it, the next read sends it once, and the alert after it too.
+ */
+void test_read_snortfull_open_alert_waits_for_slow_writer(void **state) {
+    logreader lf = {0};
+    lf.file = "test.log";
+    lf.fp = (FILE *) 1;
+    int rc;
+
+    write_to_file(ALERT("1001") HEADER("1002") CLASSIFICATION);
+    expect_read_from(0);
+    expect_queued_message(MESSAGE("1001"));
+    expect_read_back_to((int64_t) strlen(ALERT("1001")));
+
+    read_snortfull(&lf, &rc, 0);
+
+    assert_int_equal(rc, 0);
+    assert_int_equal(kept_offset, (int64_t) strlen(ALERT("1001")));
+
+    expect_read_from(kept_offset);
+    expect_read_back_to((int64_t) strlen(ALERT("1001")));
+
+    read_snortfull(&lf, &rc, 0);
+
+    assert_int_equal(rc, 0);
+    assert_int_equal(kept_offset, (int64_t) strlen(ALERT("1001")));
+
+    write_to_file(DATE_AND_PACKET ALERT("1003"));
+    expect_read_from(kept_offset);
+    expect_queued_message(MESSAGE("1002"));
+    expect_queued_message(MESSAGE("1003"));
+    expect_read_to_end();
+
+    read_snortfull(&lf, &rc, 0);
+
+    assert_int_equal(rc, 0);
+}
+
+/**
+ * Test: the writer flushes in the middle of the classification line of the first alert of the file.
+ * The first read sends nothing and goes back to the start of the file; the second sends the alert once.
+ */
+void test_read_snortfull_line_cut_in_alert_is_sent_once(void **state) {
+    logreader lf = {0};
+    lf.file = "test.log";
+    lf.fp = (FILE *) 1;
+    int rc;
+
+    write_to_file(HEADER("1001") "[Classification: Misc act");
+    expect_read_from(0);
+    expect_read_back_to(0);
+
+    read_snortfull(&lf, &rc, 0);
+
+    assert_int_equal(rc, 0);
+    assert_int_equal(kept_offset, 0);
+
+    write_to_file("ivity] [Priority: 3] \n" DATE_AND_PACKET);
+    expect_read_from(kept_offset);
+    expect_queued_message(MESSAGE("1001"));
+    expect_read_to_end();
+
+    read_snortfull(&lf, &rc, 0);
+
+    assert_int_equal(rc, 0);
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test(test_read_snortfull_complete_record),
@@ -973,6 +1188,9 @@ int main(void) {
         cmocka_unit_test_teardown(test_read_snortfull_line_limit_shorter_than_alert, test_teardown),
         cmocka_unit_test_teardown(test_read_snortfull_unfinished_line_in_alert, test_teardown),
         cmocka_unit_test_teardown(test_read_snortfull_unfinished_line_after_alert, test_teardown),
+        cmocka_unit_test_teardown(test_read_snortfull_header_cut_by_writer_is_sent_once, test_teardown),
+        cmocka_unit_test_teardown(test_read_snortfull_open_alert_waits_for_slow_writer, test_teardown),
+        cmocka_unit_test_teardown(test_read_snortfull_line_cut_in_alert_is_sent_once, test_teardown),
     };
 
     return cmocka_run_group_tests(tests, group_setup, group_teardown);
