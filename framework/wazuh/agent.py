@@ -24,7 +24,8 @@ from wazuh.core.exception import WazuhError, WazuhInternalError, WazuhException,
 from wazuh.core.results import WazuhResult, AffectedItemsWazuhResult
 from wazuh.core.utils import WazuhVersion, chmod_r, chown_r, get_hash, mkdir_with_mode, process_array, clear_temporary_caches, \
     full_copy, validate_query
-from wazuh.rbac.decorators import audit_agent_keys_read, expose_resources, async_list_handler, mask_sensitive_config
+from wazuh.rbac.decorators import audit_agent_keys_read, expose_resources, async_list_handler, mask_sensitive_config, \
+    permitted_agent_ids
 
 logger = logging.getLogger('wazuh')
 
@@ -1015,6 +1016,8 @@ def get_agent_groups(group_list: list = None, offset: int = 0, limit: int = None
         with WazuhDBQueryGroup(**rbac_filters, limit=None) as group_query:
             query_data = group_query.run()
 
+            _count_readable_agents(query_data['items'])
+
             for group in query_data['items']:
                 if group_list and group['name'] not in group_list:
                     continue
@@ -1040,6 +1043,39 @@ def get_agent_groups(group_list: list = None, offset: int = 0, limit: int = None
         result.total_affected_items = data['totalItems']
 
     return result
+
+
+def _count_readable_agents(groups: list):
+    """Make each group's `count` the number of its agents the caller may read (`agent:read`).
+
+    The group query counts every agent assigned to a group; a caller limited to some agents must not learn how many
+    others there are. Nothing is queried when the caller may read every agent.
+
+    Parameters
+    ----------
+    groups : list
+        Groups as returned by `WazuhDBQueryGroup`, each with `name` and `count`.
+    """
+    if not any('count' in group for group in groups):
+        return
+
+    system_agents = get_agents_info()
+    readable_agents = permitted_agent_ids() & system_agents
+    if readable_agents == system_agents:
+        return
+
+    counts = dict.fromkeys((group['name'] for group in groups), 0)
+    if readable_agents:
+        rbac_filters = get_rbac_filters(system_resources=system_agents, permitted_resources=list(readable_agents))
+        with WazuhDBQueryAgents(limit=None, select=['group'], **rbac_filters) as agent_query:
+            for agent in agent_query.run()['items']:
+                for name in agent.get('group') or []:
+                    if name in counts:
+                        counts[name] += 1
+
+    for group in groups:
+        if 'count' in group:
+            group['count'] = counts[group['name']]
 
 
 @expose_resources(actions=["group:read"], resources=["group:id:{group_list}"], post_proc_func=None)

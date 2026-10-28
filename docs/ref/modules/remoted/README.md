@@ -99,7 +99,11 @@ components:
 | `{"command":"assigngroup",...}` | Assigns the `default` group to a 4.x agent that has none; a worker's remoted sends it to the master's through the cluster |
 
 Any message that does not start with `{` is taken as a request to forward to a 4.x agent over the
-legacy channel, and is refused with `err Legacy delivery disabled` when that channel is off.
+legacy channel, written `<agent id> <payload>`. It is refused with `err Legacy delivery disabled` when
+that channel is off, `err Request has no agent id` when there is no space after the id, and
+`err Agent not found` when the id is not in remoted's legacy keystore. A forward that cannot be
+delivered is answered `err Cannot send request`, `err Maximum attempts exceeded` or
+`err Response timeout` (`err Internal error` when remoted cannot queue it); otherwise the agent's own answer is relayed.
 
 ## Command line
 
@@ -110,10 +114,10 @@ for running the daemon by hand.
 
 | Option | Effect |
 |---|---|
-| `-t` | Test the configuration and exit: validates `wazuh-manager.conf` with file checks on (the TLS files must exist) and every `remoted.*` internal option, including the HTTPS agent server's; exits non-zero on the first error |
+| `-t` | Test the configuration and exit: validates `wazuh-manager.conf` with file checks on (the TLS files must exist) and every `remoted.*` internal option, including the HTTPS agent server's, then loads `remote.https.certificate` and `key` (which must match) and, when `verification_mode` is `certificate` or `full`, `remote.https.ca` the way the listener does, so a file that does not hold a PEM certificate or key fails here instead of at the next start; exits non-zero on the first error |
 | `-d` | Debug logging; repeat to raise the level. When given, the [`remoted.debug`](configuration.md#remoteddebug) internal option is not read |
 | `-f` | Run in the foreground instead of detaching |
-| `-c <config>` | Configuration file to read instead of `/etc/wazuh-manager/wazuh-manager.conf`; the enrollment policy remoted takes from its `auth` section comes from the same file |
+| `-c <config>` | Configuration file to read instead of `/etc/wazuh-manager/wazuh-manager.conf`; the enrollment policy remoted takes from its `auth` section comes from the same file. A relative path is resolved against the directory the command runs from |
 | `-D <dir>` | Home directory to change into instead of `/var/wazuh-manager`; it wins over the `WAZUH_MANAGER_FORCE_HOME` and `WAZUH_MANAGER_HOME` environment variables |
 | `-u <user>` / `-g <group>` | User and group to run as, `wazuh-manager` by default |
 | `-m` | Do not build the groups' `merged.mg` files, as if [`remoted.merge_shared`](configuration.md#remotedmerge_shared) were `0` |

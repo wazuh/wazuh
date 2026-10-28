@@ -22,6 +22,10 @@
 #include "../wrappers/wazuh/shared/validate_op_wrappers.h"
 #include "../wrappers/externals/openssl/ssl_lib_wrappers.h"
 
+#include <openssl/evp.h>
+#include <openssl/pem.h>
+#include <openssl/x509.h>
+
 /* main-server.c is compiled with WAZUH_UNIT_TESTING, which turns its file-scope
  * `static` declarations into externally-linkable ones (see auth.c for the same
  * pattern). g_client_pool, sweep_idle_clients(), handle_ssl_read() and
@@ -30,6 +34,7 @@ extern struct client * g_client_pool[AUTH_POOL];
 extern void sweep_idle_clients(void);
 extern int handle_ssl_read(struct client *client);
 extern void enqueue_pending_key(int ret, uint32_t index_client);
+extern int authd_test_tls_material(const char *home_path);
 
 /* Same minimal reimplementation of keys_init() as test_auth_add.c: it's a
  * file-local helper in auth.c with no header, so every test file that needs a
@@ -304,6 +309,148 @@ static void test_enqueue_pending_key_rollback_keeps_other_key(void ** state) {
     assert_null(g_client_pool[TEST_SLOT]);
 }
 
+/* authd_test_tls_material(): what `-t` loads of the port-1515 listener's TLS material. Real OpenSSL on
+ * files under a private temporary directory: a self-signed pair generated at setup, its certificate
+ * standing in for the agents' CA, plus a text file and the private key as the two wrong CAs. */
+
+static char tls_dir[] = "/tmp/authd_tls_test_XXXXXX";
+static char tls_cert[PATH_MAX];
+static char tls_key[PATH_MAX];
+static char tls_text[PATH_MAX];
+
+static int setup_tls_material(void ** state) {
+    EVP_PKEY *pkey = NULL;
+    X509 *x509 = NULL;
+    FILE *fp;
+
+    if (!mkdtemp(tls_dir)) {
+        return -1;
+    }
+
+    snprintf(tls_cert, sizeof(tls_cert), "%s/cert.pem", tls_dir);
+    snprintf(tls_key, sizeof(tls_key), "%s/key.pem", tls_dir);
+    snprintf(tls_text, sizeof(tls_text), "%s/ca.txt", tls_dir);
+
+    if (pkey = EVP_EC_gen("P-256"), !pkey) {
+        return -1;
+    }
+
+    x509 = X509_new();
+    ASN1_INTEGER_set(X509_get_serialNumber(x509), 1);
+    X509_gmtime_adj(X509_getm_notBefore(x509), 0);
+    X509_gmtime_adj(X509_getm_notAfter(x509), 3600);
+    X509_set_pubkey(x509, pkey);
+    X509_NAME_add_entry_by_txt(X509_get_subject_name(x509), "CN", MBSTRING_ASC, (const unsigned char *)"authd-test", -1, -1, 0);
+    X509_set_issuer_name(x509, X509_get_subject_name(x509));
+    X509_sign(x509, pkey, EVP_sha256());
+
+    fp = fopen(tls_cert, "w");
+    PEM_write_X509(fp, x509);
+    fclose(fp);
+
+    fp = fopen(tls_key, "w");
+    PEM_write_PrivateKey(fp, pkey, NULL, NULL, 0, NULL, NULL);
+    fclose(fp);
+
+    fp = fopen(tls_text, "w");
+    fputs("not a certificate\n", fp);
+    fclose(fp);
+
+    X509_free(x509);
+    EVP_PKEY_free(pkey);
+
+    memset(&config.flags, 0, sizeof(config.flags));
+    config.flags.remote_enrollment = 1;
+    config.flags.legacy_enrollment = 1;
+    config.port = 1515;
+    os_strdup(DEFAULT_CIPHERS, config.ciphers);
+    os_strdup(tls_cert, config.manager_cert);
+    os_strdup(tls_key, config.manager_key);
+    config.agent_ca = NULL;
+
+    return 0;
+}
+
+static int teardown_tls_material(void ** state) {
+    os_free(config.ciphers);
+    os_free(config.manager_cert);
+    os_free(config.manager_key);
+    os_free(config.agent_ca);
+    unlink(tls_cert);
+    unlink(tls_key);
+    unlink(tls_text);
+    rmdir(tls_dir);
+    strcpy(tls_dir, "/tmp/authd_tls_test_XXXXXX");
+    return 0;
+}
+
+static void test_tls_material_valid_pair_and_ca(void ** state) {
+    os_strdup(tls_cert, config.agent_ca);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "Peer verification requested.");
+    expect_string(__wrap__mdebug1, formatted_msg, "Returning CTX for server.");
+
+    assert_int_equal(authd_test_tls_material("/var/wazuh-manager"), 0);
+}
+
+static void test_tls_material_valid_pair_without_ca(void ** state) {
+    expect_string(__wrap__mdebug1, formatted_msg, "Returning CTX for server.");
+
+    assert_int_equal(authd_test_tls_material("/var/wazuh-manager"), 0);
+}
+
+static void test_tls_material_text_file_as_ca_fails(void ** state) {
+    /* expect_string() keeps the pointer, not a copy: one buffer per expected line */
+    char expected_ca[OS_MAXSTR];
+    char expected[OS_MAXSTR];
+
+    os_strdup(tls_text, config.agent_ca);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "Peer verification requested.");
+    snprintf(expected_ca, sizeof(expected_ca), "Unable to read CA certificate file \"%s\"", tls_text);
+    expect_string(__wrap__merror, formatted_msg, expected_ca);
+    snprintf(expected, sizeof(expected),
+             "SSL context setup failed (certificate '%s', key '%s', CA '%s'): the enrollment listener on port 1515 would not start.",
+             tls_cert, tls_key, tls_text);
+    expect_string(__wrap__merror, formatted_msg, expected);
+
+    assert_int_equal(authd_test_tls_material("/var/wazuh-manager"), -1);
+}
+
+static void test_tls_material_key_as_ca_fails(void ** state) {
+    /* expect_string() keeps the pointer, not a copy: one buffer per expected line */
+    char expected_ca[OS_MAXSTR];
+    char expected[OS_MAXSTR];
+
+    os_strdup(tls_key, config.agent_ca);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "Peer verification requested.");
+    snprintf(expected_ca, sizeof(expected_ca), "Unable to read CA certificate file \"%s\"", tls_key);
+    expect_string(__wrap__merror, formatted_msg, expected_ca);
+    snprintf(expected, sizeof(expected),
+             "SSL context setup failed (certificate '%s', key '%s', CA '%s'): the enrollment listener on port 1515 would not start.",
+             tls_cert, tls_key, tls_key);
+    expect_string(__wrap__merror, formatted_msg, expected);
+
+    assert_int_equal(authd_test_tls_material("/var/wazuh-manager"), -1);
+}
+
+/* The start never loads the material when authd or its listener is off, so neither does the test run:
+ * the CA here is wrong and no log line is expected. */
+static void test_tls_material_skipped_when_authd_disabled(void ** state) {
+    os_strdup(tls_text, config.agent_ca);
+    config.flags.disabled = 1;
+
+    assert_int_equal(authd_test_tls_material("/var/wazuh-manager"), 0);
+}
+
+static void test_tls_material_skipped_without_legacy_listener(void ** state) {
+    os_strdup(tls_text, config.agent_ca);
+    config.flags.legacy_enrollment = 0;
+
+    assert_int_equal(authd_test_tls_material("/var/wazuh-manager"), 0);
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test_teardown(test_handle_ssl_read_partial_record_waits_without_error, teardown_read_client),
@@ -316,6 +463,12 @@ int main(void) {
         cmocka_unit_test_teardown(test_sweep_idle_clients_closes_completed_handshake_with_partial_request, teardown_pool),
         cmocka_unit_test_setup_teardown(test_enqueue_pending_key_inserts_own_key, setup_pending_key, teardown_pending_key),
         cmocka_unit_test_setup_teardown(test_enqueue_pending_key_rollback_keeps_other_key, setup_pending_key, teardown_pending_key),
+        cmocka_unit_test_setup_teardown(test_tls_material_valid_pair_and_ca, setup_tls_material, teardown_tls_material),
+        cmocka_unit_test_setup_teardown(test_tls_material_valid_pair_without_ca, setup_tls_material, teardown_tls_material),
+        cmocka_unit_test_setup_teardown(test_tls_material_text_file_as_ca_fails, setup_tls_material, teardown_tls_material),
+        cmocka_unit_test_setup_teardown(test_tls_material_key_as_ca_fails, setup_tls_material, teardown_tls_material),
+        cmocka_unit_test_setup_teardown(test_tls_material_skipped_when_authd_disabled, setup_tls_material, teardown_tls_material),
+        cmocka_unit_test_setup_teardown(test_tls_material_skipped_without_legacy_listener, setup_tls_material, teardown_tls_material),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

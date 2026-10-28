@@ -302,6 +302,13 @@ carries, and the same id is written to the raw-event copy when raw indexing is e
 
 ```
 
+> [!NOTE]
+> This output needs the standard policy's `aws` integration to be **enabled**. Most standard integrations,
+> `aws` among them, ship disabled, and the policy build skips a disabled integration's decoders, so with the
+> shipped content the same input (for example sent through `/logtest`) comes out unclassified. Enable the
+> integration in the Wazuh dashboard first; see
+> [Enable the integration's ruleset first](../integrations/README.md#enable-the-integrations-ruleset-first).
+
 ### Policy processing
 
 The policy is the operational graph applied to each event. It defines an ordered pipeline of stages:
@@ -1072,7 +1079,8 @@ imports it into a temporary namespace and builds it exactly as it would run. A p
 that build does. Nothing is checked earlier, so a mistake made while editing the draft surfaces only at
 promotion.
 
-The checks that most often refuse a promotion, with the error the Engine returns:
+The checks that most often refuse a promotion, with the error the Engine returns (all but the first come from
+building the policy, so the Engine returns them prefixed with `Failed to create the testing environment: `):
 
 | Cause | Error |
 |-------|-------|
@@ -1087,6 +1095,24 @@ With `load_in_tester: true` it becomes the namespace of the tester session named
 a tester-created namespace is ever deleted when that session is replaced or removed (`DELETE /logtest`): a
 session attached to any other namespace, such as a synchronized `cmsync_<space>_<hex>` one, is refused with 400
 instead, so a test call can never delete content a route runs.
+
+> [!WARNING]
+> **A test build is a real build, outputs included.** Only the Engine's default outputs are left out of a test
+> build; the outputs a validated policy lists in `policy.outputs` are built like any other asset:
+>
+> - every event run against the session (`POST /logtest`, or a tester run on the internal API) is delivered
+>   through them — an indexer output writes a real document to its index, a file output appends a line to its
+>   channel;
+> - building the policy (any validation of a policy with integrations, even with `load_in_tester: false`)
+>   already creates a file output's channel directory `logs/<space>-<channel>/`, its store entry
+>   `data/store/streamlog/<space>-<channel>/` and an open file in `wazuh-manager-analysisd`, and none of this
+>   is removed with the session or its namespace. `<space>` is the caller's `space` value, so a validation
+>   named after a production space writes into that space's channels.
+>
+> The policies the Wazuh Indexer sends carry no `outputs`, so the dashboard's logtest writes nothing. When you
+> call the API by hand, leave `policy.outputs` empty. Also note that the `test` space used by the
+> [Public API Reference](public-api-reference.md) examples is the **dashboard's own** test session: loading or
+> deleting it replaces the session the dashboard's logtest runs against. Use another `space` name.
 
 Because promotion always builds the whole space, removing content by promoting an empty or incomplete space
 is refused by the same checks. To stop using a space's content, disable the space's policy in the Wazuh
@@ -1291,9 +1317,13 @@ Each integration has the following fields:
 | name | Yes | Human-readable title of the integration (stored under `metadata.title`) |
 | `enabled` | Yes | Boolean. Disabled integrations are skipped when building the policy |
 | `category` | Yes | One of the allowed categories (see below) |
-| `decoders` | No (empty when absent) | Ordered list of decoder identifiers that belong to this integration (no duplicates) |
-| `kvdbs` | No (empty when absent) | List of KVDB identifiers used by this integration's decoders (no duplicates) |
+| `decoders` | Yes (may be empty) | Ordered list of decoder identifiers that belong to this integration (no duplicates). An absent key is refused with `Path '/decoders' not found` |
+| `kvdbs` | Yes (may be empty) | List of KVDB identifiers used by this integration's decoders (no duplicates). An absent key is refused with `Path '/kvdbs' not found` |
 | `default_parent` | No | Identifier of the fallback parent decoder. Used for decoders in this integration that do not declare an explicit parent |
+
+Most integrations of the **standard** space ship with `enabled: false`; their events are not classified until
+the integration is enabled in the Wazuh dashboard (see
+[Enable the integration's ruleset first](../integrations/README.md#enable-the-integrations-ruleset-first)).
 
 #### Integration categories
 

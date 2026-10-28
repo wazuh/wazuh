@@ -43,3 +43,17 @@ int __wrap_remoted_module_tls_leaf_signer_pem(char* buffer, size_t capacity) {
 
     return written;
 }
+
+int __wrap_remoted_module_validate_tls(__attribute__((unused)) const remoted_module_config_t* configuration,
+                                       char* error,
+                                       size_t capacity) {
+    const char* reason = mock_ptr_type(const char*);
+    int result = mock_type(int);
+
+    if (reason != NULL && error != NULL && capacity > 0) {
+        strncpy(error, reason, capacity - 1);
+        error[capacity - 1] = '\0';
+    }
+
+    return result;
+}

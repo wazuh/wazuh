@@ -357,3 +357,19 @@ TEST(StringUtilsTest, ReplaceWithEmptyString)
     EXPECT_TRUE(base::utils::string::replaceAll(string_base, "remove", ""));
     EXPECT_EQ(string_base, " this  this");
 }
+
+TEST(TruncateForMessage, KeepsValuesUpToTheLimit)
+{
+    EXPECT_EQ(base::utils::string::truncateForMessage(""), "");
+    EXPECT_EQ(base::utils::string::truncateForMessage("standard"), "standard");
+    const std::string atLimit(base::utils::string::MAX_ECHOED_INPUT_LENGTH, 'a');
+    EXPECT_EQ(base::utils::string::truncateForMessage(atLimit), atLimit);
+}
+
+TEST(TruncateForMessage, BoundsLongerValues)
+{
+    const std::string value(base::utils::string::MAX_ECHOED_INPUT_LENGTH + 1, 'b');
+    EXPECT_EQ(base::utils::string::truncateForMessage(value),
+              std::string(base::utils::string::MAX_ECHOED_INPUT_LENGTH, 'b') + "... (129 bytes)");
+    EXPECT_EQ(base::utils::string::truncateForMessage("abcdef", 3), "abc... (6 bytes)");
+}

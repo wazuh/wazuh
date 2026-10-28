@@ -133,6 +133,7 @@ class WazuhDBQueryAgents(WazuhDBQuery):
         if filters is None:
             filters = {}
         unify_wazuh_version_format(filters)
+        expand_ipv6_filters(filters)
         if min_select_fields is None:
             min_select_fields = {"id"}
         backend = WazuhDBBackend(query_format="global")
@@ -358,14 +359,16 @@ class WazuhDBQueryAgents(WazuhDBQuery):
         if field_name == "group" and q_filter["value"] is not None:
             valid_group_operators = {"=", "!=", "~"}
 
+            # Group names are case-sensitive (two names that differ only in case are two groups), so '=' and '!='
+            # match the name exactly: instr() is case-sensitive and, unlike LIKE, has no wildcard characters.
             if q_filter["operator"] == "=":
                 self.query += (
-                    f"(',' || {self.fields[field_name]} || ',') LIKE :{field_filter}"
+                    f"instr(',' || {self.fields[field_name]} || ',', :{field_filter}) > 0"
                 )
-                self.request[field_filter] = f"%,{q_filter['value']},%"
+                self.request[field_filter] = f",{q_filter['value']},"
             elif q_filter["operator"] == "!=":
-                self.query += f"NOT (',' || {self.fields[field_name]} || ',') LIKE :{field_filter}"
-                self.request[field_filter] = f"%,{q_filter['value']},%"
+                self.query += f"NOT instr(',' || {self.fields[field_name]} || ',', :{field_filter}) > 0"
+                self.request[field_filter] = f",{q_filter['value']},"
             elif q_filter["operator"] == "LIKE":
                 self.query += f"{self.fields[field_name]} LIKE :{field_filter}"
                 self.request[field_filter] = f"%{q_filter['value']}%"
@@ -1392,6 +1395,54 @@ def unify_wazuh_version_format(filters: dict):
             filters["version"] = f"wazuh {'v' if 'v' not in wv else ''}{wv}"
         elif re.match(r"^wazuh \d+\.\d+\.\d+$", wv, re.IGNORECASE):
             filters["version"] = f"{wv.replace(' ', ' v')}"
+
+
+def expand_ipv6(value: str) -> str:
+    """Write an IPv6 address, or IPv6 network, in the form the agent registry stores it.
+
+    The manager stores IPv6 addresses expanded and in upper case (`OS_ExpandIPv6`), with the prefix length kept
+    unless it is 0. Anything that is not an IPv6 address is returned unchanged.
+
+    Parameters
+    ----------
+    value : str
+        Address, optionally with a `/prefix`.
+
+    Returns
+    -------
+    str
+        The stored form of an IPv6 value, or `value` itself.
+    """
+    if not isinstance(value, str) or ':' not in value:
+        return value
+    address, separator, prefix = value.partition('/')
+    try:
+        expanded = ipaddress.IPv6Address(address).exploded.upper()
+        if separator:
+            prefix_length = int(prefix)
+            if not 0 <= prefix_length <= 128:
+                return value
+            if prefix_length:
+                expanded = f'{expanded}/{prefix_length}'
+    except ValueError:
+        return value
+    return expanded
+
+
+def expand_ipv6_filters(filters: dict):
+    """Write the IPv6 values of the `ip` and `registerIP` filters in the form the agent registry stores them.
+
+    Parameters
+    ----------
+    filters : dict
+        Dictionary field filters required by the user.
+    """
+    for name in ('ip', 'registerIP'):
+        value = filters.get(name)
+        if isinstance(value, list):
+            filters[name] = [expand_ipv6(item) for item in value]
+        elif value is not None:
+            filters[name] = expand_ipv6(value)
 
 
 def format_fields(field_name: str, value: str) -> str:

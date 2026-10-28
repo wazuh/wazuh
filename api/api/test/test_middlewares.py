@@ -1914,6 +1914,45 @@ async def test_access_log_warns_on_429(mock_req):
             f'Maximum number of requests per minute reached. IP: {mock_req.client.host}. User: wazuh.')
 
 
+@pytest.mark.asyncio
+@freeze_time(datetime(1970, 1, 1, 0, 0, 10))
+@pytest.mark.parametrize('code, context, expected', [
+    # Refused by the authenticated limit before authentication ran: no identity yet, still authenticated
+    (6001, {}, 'Maximum number of requests per minute reached. IP: ip. User: wazuh.'),
+    (6001, {'user': 'wazuh'}, 'Maximum number of requests per minute reached. IP: ip. User: wazuh.'),
+    (6005, {}, 'Maximum number of unauthenticated requests per minute reached. IP: ip.'),
+])
+async def test_access_log_names_the_limit_that_refused(mock_req, code, context, expected):
+    """The 429 warning names the limit the request hit, not whether the context carries an identity."""
+    middleware = CheckRateLimitsMiddleware(AsyncApp(__name__))
+    mock_req.url = MagicMock()
+    mock_req.url.path = '/agents'
+    mock_req.scope = {'path': '/agents', 'extensions': {}}
+    api_conf = {'access': {'max_request_per_minute': 300, 'max_unauthenticated_request_per_minute': 10}}
+
+    with patch('api.middlewares.configuration.api_conf', new=api_conf), \
+            patch('api.middlewares.is_authenticated_bucket_exhausted', new=AsyncMock(return_value=code == 6001)), \
+            patch('api.middlewares.charge_unauthenticated_request', new=AsyncMock(return_value=code)), \
+            pytest.raises(ProblemException) as exc_info:
+        await middleware.dispatch(request=mock_req, call_next=AsyncMock(side_effect=Unauthorized()))
+    assert exc_info.value.ext.get('code') == code
+
+    response = MagicMock()
+    response.status_code = 429
+    mock_req.json = AsyncMock(return_value={})
+    mock_req.query_params = {}
+    mock_req.method = 'GET'
+    mock_req.context = context
+    mock_req.headers = {'Authorization': 'Basic ' + base64.b64encode(b'wazuh:pass').decode()}
+
+    with patch('api.middlewares.custom_logging'), \
+            patch('api.middlewares.rate_limit_warnings', new={}), \
+            patch('api.middlewares.logger.warning') as mock_warning:
+        await access_log(request=mock_req, response=response, prev_time=datetime(1970, 1, 1, 0, 0, 10).timestamp())
+
+    mock_warning.assert_called_once_with(expected)
+
+
 def test_warn_rate_limited_is_throttled():
     """One WARNING per client and user and interval, carrying the count of the refusals it stood for."""
     with patch('api.middlewares.rate_limit_warnings', new={}), \

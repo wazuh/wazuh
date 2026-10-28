@@ -530,6 +530,23 @@ CheckRemoteXmlSafe()
     esac
 }
 
+# A TLS file the credential check judges must lie directly in ${CONF_DIR}/certs, named by an
+# absolute path with no empty, "." or ".." component: the rule of certs_name() in
+# init/credentials/wazuh-manager-resolve-credentials.py, which refuses every start otherwise.
+CheckRemoteCertsPath()
+{
+    [ -z "$2" ] && return 0
+    case "$2" in
+        "${CONF_DIR}/certs/"*)
+            case "${2#"${CONF_DIR}/certs/"}" in
+                ''|.|..|*/*) ;;
+                *) return 0;;
+            esac
+            ;;
+    esac
+    RemoteVarError "$1" "$2" "expected an absolute path to a file directly in ${CONF_DIR}/certs (the start refuses any other location)"
+}
+
 CheckRemotePort()
 {
     [ -z "$2" ] && return 0
@@ -679,6 +696,12 @@ ValidateRemoteVars()
                            WAZUH_REMOTE_HTTPS_CIPHERS WAZUH_REMOTE_HTTPS_GLOBAL_PREFIX; do
         eval "REMOTE_VAR_VALUE=\${${REMOTE_VAR_NAME}}"
         CheckRemoteXmlSafe "$REMOTE_VAR_NAME" "$REMOTE_VAR_VALUE"
+    done
+
+    for REMOTE_VAR_NAME in WAZUH_REMOTE_HTTPS_CERTIFICATE WAZUH_REMOTE_HTTPS_KEY \
+                           WAZUH_REMOTE_HTTPS_CA_CERTIFICATE; do
+        eval "REMOTE_VAR_VALUE=\${${REMOTE_VAR_NAME}}"
+        CheckRemoteCertsPath "$REMOTE_VAR_NAME" "$REMOTE_VAR_VALUE"
     done
 
     CheckRemotePort "WAZUH_REMOTE_HTTPS_PORT" "${WAZUH_REMOTE_HTTPS_PORT}"
@@ -907,12 +930,17 @@ InstallCommon()
 
   ${INSTALL} -d -m 0770 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/logs
   ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/logs/wazuh
-  ${INSTALL} -m 0660 -o ${WAZUH_USER} -g ${WAZUH_GROUP} /dev/null ${INSTALLDIR}/logs/${WAZUH_LOGFILE}
-  ${INSTALL} -m 0660 -o ${WAZUH_USER} -g ${WAZUH_GROUP} /dev/null ${INSTALLDIR}/logs/${WAZUH_LOGJSON}
-
+  # Create the log files only when absent: an update must not truncate the
+  # running history (installing /dev/null over them would empty them).
+  LOG_FILES="${WAZUH_LOGFILE} ${WAZUH_LOGJSON}"
   if [ ${INSTYPE} = 'agent' ]; then
-      ${INSTALL} -m 0660 -o ${WAZUH_USER} -g ${WAZUH_GROUP} /dev/null ${INSTALLDIR}/logs/active-responses.log
+      LOG_FILES="${LOG_FILES} active-responses.log"
   fi
+  for LOG_FILE in ${LOG_FILES}; do
+      if [ ! -e ${INSTALLDIR}/logs/${LOG_FILE} ] && [ ! -L ${INSTALLDIR}/logs/${LOG_FILE} ]; then
+          ${INSTALL} -m 0660 -o ${WAZUH_USER} -g ${WAZUH_GROUP} /dev/null ${INSTALLDIR}/logs/${LOG_FILE}
+      fi
+  done
 
     if [ ${INSTYPE} = 'agent' ]; then
         ${INSTALL} -d -m 0750 -o root -g 0 ${INSTALLDIR}/bin

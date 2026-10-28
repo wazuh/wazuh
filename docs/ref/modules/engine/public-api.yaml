@@ -237,11 +237,33 @@ paths:
         (`Refusing to replace space '<space>': its namespace '<namespace>' was not created by the tester`): the
         temporary resources are deleted and the old session and its namespace are left untouched.
 
+        **`space: test` is the Wazuh dashboard's own test session.** The examples below use it; sending
+        `validate_and_load_testing` as written replaces the session the dashboard's logtest runs against
+        (until the dashboard loads its policy again). Use another `space` name for your own tests.
+
+        ## Side effects of the policy's outputs
+
+        The policy is built exactly as it would run, **outputs included** (only the engine's default outputs are
+        left out of a test build). An output listed in `policy.outputs`:
+        - is created whenever the policy is built (a policy with integrations), even with
+          `load_in_tester: false`: a **file** output creates its channel directory `logs/<space>-<channel>/`,
+          its store entry `data/store/streamlog/<space>-<channel>/` and an open file in
+          `wazuh-manager-analysisd`. None of this is removed with the temporary namespace, the session or its
+          namespace, so each new `space` or channel name leaves one more set behind. `<space>` is the caller's
+          `space`, so a name such as `standard` writes into a production channel;
+        - with `load_in_tester: true`, **delivers every `/logtest` event** run against the session: an indexer
+          output writes a real document to its index, a file output appends a line to its channel.
+
+        The policies the Wazuh Indexer sends carry no `outputs`; leave `policy.outputs` empty when validating
+        a policy by hand.
+
         ## Notes
         - A unique temporary namespace and session name is generated per request
           (`logtest_<hex>` when `load_in_tester` is true, `tmp_policy_validate_<hex>` otherwise).
         - If the Tester API is not available, the request fails immediately.
-        - Any import or instantiation failure is returned as a 400 with the underlying error message.
+        - Any import or instantiation failure is returned as a 400 with the underlying error message. A failure
+          to instantiate the policy (the temporary tester session) starts with
+          `Failed to create the testing environment: `.
         - This is the only point where the Engine checks the content as a whole. Resource names, for
           example, are unique per type within the imported policy, so a policy carrying two decoders with
           the same name is refused here (`import_failed_duplicate_name`), even though the Wazuh Indexer
@@ -463,6 +485,14 @@ paths:
         If tracing is enabled (`trace_level` other than `NONE`), the endpoint retrieves the list of policy assets
         from the testing session and traces all of them.
 
+        **The event is processed for real, outputs included.** A test run goes through the session policy's
+        own outputs: when the policy given to `POST /content/validate/policy` lists `outputs`, every run writes
+        the event through them — an indexer output indexes a real document, a file output appends a line to
+        its channel. The policies the Wazuh Indexer sends carry no `outputs`, so its logtest writes nothing.
+
+        **`space: test` is the Wazuh dashboard's own test session**: the examples run against it, which works
+        only after the dashboard (or a `validate_and_load_testing` call) has loaded it.
+
         After the pipeline finishes, temporary fields (root key starts with `_`) are removed from the
         output event, which is then validated against the Wazuh Common Schema (WCS). Validation is
         **non-blocking**: the pipeline result is always returned regardless of validation errors.
@@ -485,7 +515,8 @@ paths:
 
         Request rules, checked in this order:
         - `queue` must be 1..255.
-        - `trace_level` must be `NONE`, `ASSET_ONLY` or `ALL` (case-insensitive).
+        - `trace_level` is optional: absent or empty means `NONE`; otherwise it must be `NONE`, `ASSET_ONLY` or
+          `ALL` (case-insensitive).
         - `metadata` is **optional**. When present it must be a JSON object that is either empty or has
           `wazuh` (an object) as its only key; every leaf under `wazuh` must be a field of the event
           schema with a value of the right type. The object is merged into the event root.
@@ -751,6 +782,9 @@ paths:
         with 400 and nothing is deleted: that namespace may be live content a route uses.
 
         This operation is idempotent: if there is no session named `space`, it returns **OK**.
+
+        The example deletes `space: test`, the Wazuh dashboard's own test session; the dashboard's logtest
+        fails until the dashboard loads its policy again.
       requestBody:
         required: true
         content:
@@ -985,8 +1019,9 @@ paths:
           the asset must pass the builder's shallow validation.
         - **integration**: `id`, `metadata.title`, `enabled` and `category` are required; `category` must be one of
           `access-management`, `applications`, `cloud-services`, `network-activity`, `other`, `security`,
-          `system-activity`, `unclassified`; `decoders[]` and `kvdbs[]` may be empty, but every entry must be a non-empty,
-          valid identifier and no entry may repeat;
+          `system-activity`, `unclassified`; `decoders[]` and `kvdbs[]` must both be present (an absent one is
+          refused with `Path '/decoders' not found` or `Path '/kvdbs' not found`) but may be empty; every entry
+          must be a non-empty, valid identifier and no entry may repeat;
           `default_parent`, if present, must be a non-empty identifier.
         - **kvdb**: `id`, `metadata.title`, `enabled` and a `content` JSON object are required.
 
@@ -1645,7 +1680,6 @@ components:
       - queue
       - location
       - event
-      - trace_level
       - space
       properties:
         space:
@@ -1671,7 +1705,7 @@ components:
           - NONE
           - ASSET_ONLY
           - ALL
-          description: Level of traces (case-insensitive)
+          description: Level of traces (case-insensitive). Optional; absent or empty means NONE.
     LogtestDelete_Request:
       type: object
       required:

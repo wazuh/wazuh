@@ -331,3 +331,56 @@ def test_disable_usage(manager):
     result = manager.run("disable")
     assert result.returncode == 1
     assert "Usage: " in result.stdout and "disable debug]" not in result.stdout
+
+
+def _lock_held(manager):
+    return os.path.exists(os.path.join(manager.home, "var", "start-script-lock"))
+
+
+@pytest.mark.parametrize("action", ["enable", "disable"])
+@pytest.mark.parametrize("option", [None, "bogus"])
+def test_toggle_refusal_releases_the_lock(manager, action, option):
+    argv = (action,) if option is None else (action, option)
+    result = manager.run(*argv)
+    assert result.returncode == 1 and "Usage: " in result.stdout
+    assert not _lock_held(manager)
+    assert not os.path.exists(manager.bin(".process_list"))
+
+
+@pytest.mark.parametrize("argv, message", [
+    (("-j", "enable"), "Missing enable option."),
+    (("-j", "disable", "bogus"), "Invalid disable option: bogus."),
+])
+def test_json_toggle_refusal_is_one_document(manager, argv, message):
+    result = manager.run(*argv)
+    assert result.returncode == 1
+    document = one_document(result.stdout)
+    assert document["error"] == 1 and document["message"].startswith(message)
+    assert not _lock_held(manager)
+
+
+@pytest.mark.parametrize("action, line", [("enable", 'DEBUG_CLI="-d"'), ("disable", 'DEBUG_CLI=""')])
+def test_json_toggle_is_one_document(manager, action, line):
+    result = manager.run("-j", action, "debug")
+    assert result.returncode == 0
+    assert one_document(result.stdout) == {"error": 0, "data": []}
+    assert not _lock_held(manager)
+    with open(manager.bin(".process_list")) as handle:
+        assert handle.read().splitlines()[-1] == line
+
+
+def test_json_help_is_one_document(manager):
+    result = manager.run("-j", "help")
+    assert result.returncode == 1
+    assert one_document(result.stdout)["message"].startswith("Usage: ")
+
+
+@pytest.mark.parametrize("argv, message", [
+    (("-j", 'a"b\\c\td'), 'Invalid action: a"b\\c d.'),
+    (("-j", "info", '-q"'), 'Invalid flag: -q".'),
+    (("-j", "enable", 'x"y'), 'Invalid enable option: x"y.'),
+])
+def test_json_escapes_the_argument(manager, argv, message):
+    result = manager.run(*argv)
+    assert result.returncode == 1
+    assert one_document(result.stdout)["message"].startswith(message)

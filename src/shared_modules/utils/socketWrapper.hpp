@@ -511,6 +511,35 @@ public:
         ssize_t ret;
         bool dataToRead = true;
 
+        const auto deliverPacket = [&]()
+        {
+            auto headerDataSize = TCommunicationProtocol::getHeaderSize(m_recvDataBuffer);
+            auto dataOffset = TCommunicationProtocol::getDataOffset(headerDataSize);
+            auto headerOffset = TCommunicationProtocol::getHeaderOffset();
+
+            // The inner header size is untrusted too: it must fit inside the packet just read.
+            if (static_cast<uint64_t>(dataOffset) > m_totalReadSize)
+            {
+                resetReadState();
+                throw std::runtime_error {"Invalid header size."};
+            }
+
+            m_readPosition = 0;
+            m_readSize = PACKET_FIELD_SIZE;
+            m_status = SocketStatus::HEADER;
+
+            callback(m_sock,
+                     m_recvDataBuffer.data() + dataOffset,
+                     m_totalReadSize - dataOffset,
+                     m_recvDataBuffer.data() + headerOffset,
+                     headerDataSize);
+
+            if (m_totalReadSize > BUFFER_MAX_SIZE)
+            {
+                shrinkRecvBuffer();
+            }
+        };
+
         if (m_sock != INVALID_SOCKET)
         {
             while (dataToRead)
@@ -563,10 +592,19 @@ public:
                                 m_recvDataBuffer.resize(static_cast<size_t>(m_totalReadSize) + 1);
                             }
 
-                            // We have read the entire header, now we need to read the body.
-                            m_readPosition = 0;
-                            m_readSize = m_totalReadSize;
-                            m_status = SocketStatus::BODY;
+                            if (m_totalReadSize == 0)
+                            {
+                                // An empty packet has no body to wait for: recv() of zero bytes would never
+                                // complete it, leaving the peer without an answer. Deliver it now.
+                                deliverPacket();
+                            }
+                            else
+                            {
+                                // We have read the entire header, now we need to read the body.
+                                m_readPosition = 0;
+                                m_readSize = m_totalReadSize;
+                                m_status = SocketStatus::BODY;
+                            }
                         }
                     }
                 }
@@ -602,31 +640,7 @@ public:
                         }
                         else
                         {
-                            auto headerDataSize = TCommunicationProtocol::getHeaderSize(m_recvDataBuffer);
-                            auto dataOffset = TCommunicationProtocol::getDataOffset(headerDataSize);
-                            auto headerOffset = TCommunicationProtocol::getHeaderOffset();
-
-                            // The inner header size is untrusted too: it must fit inside the packet just read.
-                            if (static_cast<uint64_t>(dataOffset) > m_totalReadSize)
-                            {
-                                resetReadState();
-                                throw std::runtime_error {"Invalid header size."};
-                            }
-
-                            m_readPosition = 0;
-                            m_readSize = PACKET_FIELD_SIZE;
-                            m_status = SocketStatus::HEADER;
-
-                            callback(m_sock,
-                                     m_recvDataBuffer.data() + dataOffset,
-                                     m_totalReadSize - dataOffset,
-                                     m_recvDataBuffer.data() + headerOffset,
-                                     headerDataSize);
-
-                            if (m_totalReadSize > BUFFER_MAX_SIZE)
-                            {
-                                shrinkRecvBuffer();
-                            }
+                            deliverPacket();
                         }
                     }
                 }

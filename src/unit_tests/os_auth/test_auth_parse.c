@@ -18,6 +18,7 @@
 #include "auth.h"
 
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
+#include "../wrappers/externals/pcre2/pcre2_wrappers.h"
 
 //Expected log messages to be checked on mocked log functions
 typedef struct _mocked_log {
@@ -99,6 +100,16 @@ parse_evaluator parse_values_default_cfg [] = {
     { "OSSEC A:'agent4' V:'v5.6.0'", "192.0.0.1", NULL,                 {NULL, NULL, NULL, NULL}, {OS_INVALID,"ERROR: Agent version must be lower or equal to manager version"},          {NULL, "Incompatible version for new agent from: 192.0.0.1", NULL, "Received request for a new agent (agent4) from: 192.0.0.1", NULL} },
     /* A version after another field is still checked */
     { "OSSEC A:'agent4' G:'Group1' V:'v5.6.0'", "192.0.0.1", NULL,      {NULL, NULL, NULL, NULL}, {OS_INVALID,"ERROR: Agent version must be lower or equal to manager version"},          {NULL, "Incompatible version for new agent from: 192.0.0.1", NULL, "Received request for a new agent (agent4) from: 192.0.0.1", "Group(s) is: Group1"} },
+    /* The address is answered and registered in one form: a dotted mask as its prefix length, IPv6 expanded */
+    { "OSSEC A:'agent14' IP:'10.22.0.0/255.255.0.0'", "192.0.0.1", NULL,                        {"10.22.0.0/16", "agent14", NULL, NULL},                      {OS_SUCCESS,""}, {NULL, NULL, NULL, "Received request for a new agent (agent14) from: 192.0.0.1", NULL} },
+    { "OSSEC A:'agent15' IP:'10.22.0.0/16'", "192.0.0.1", NULL,                                 {"10.22.0.0/16", "agent15", NULL, NULL},                      {OS_SUCCESS,""}, {NULL, NULL, NULL, "Received request for a new agent (agent15) from: 192.0.0.1", NULL} },
+    { "OSSEC A:'agent16' IP:'10.30.0.0/32'", "192.0.0.1", NULL,                                 {"10.30.0.0", "agent16", NULL, NULL},                         {OS_SUCCESS,""}, {NULL, NULL, NULL, "Received request for a new agent (agent16) from: 192.0.0.1", NULL} },
+    { "OSSEC A:'agent17' V:'v4.14.0-rc1'", "192.0.0.1", NULL,                                   {"192.0.0.1", "agent17", NULL, NULL},                         {OS_SUCCESS,""}, {NULL, NULL, NULL, "Received request for a new agent (agent17) from: 192.0.0.1", NULL} },
+    /* What POST /enroll refuses, port 1515 refuses too */
+    { "OSSEC A:'agent5' IP:'10.22.0.0/255.0.255.0'", "192.0.0.1", NULL, {NULL, NULL, NULL, NULL}, {OS_INVALID,"ERROR: Invalid IP: 10.22.0.0/255.0.255.0"},         {NULL, "Invalid IP: '10.22.0.0/255.0.255.0'", NULL, "Received request for a new agent (agent5) from: 192.0.0.1", NULL} },
+    { "OSSEC A:'agent5' IP:'!10.31.0.5'", "192.0.0.1", NULL,            {NULL, NULL, NULL, NULL}, {OS_INVALID,"ERROR: Invalid IP: !10.31.0.5"},                    {NULL, "Invalid IP: '!10.31.0.5'", NULL, "Received request for a new agent (agent5) from: 192.0.0.1", NULL} },
+    { "OSSEC A:'agent5' V:''", "192.0.0.1", NULL,                       {NULL, NULL, NULL, NULL}, {OS_INVALID,"ERROR: Invalid version"},                           {NULL, "Invalid version for new agent from: 192.0.0.1", NULL, "Received request for a new agent (agent5) from: 192.0.0.1", NULL} },
+    { "OSSEC A:'agent5' V:'vX'", "192.0.0.1", NULL,                     {NULL, NULL, NULL, NULL}, {OS_INVALID,"ERROR: Invalid version"},                           {NULL, "Invalid version for new agent from: 192.0.0.1", NULL, "Received request for a new agent (agent5) from: 192.0.0.1", NULL} },
 
     {0}
 };
@@ -142,13 +153,9 @@ static void test_w_auth_parse_data(void **state) {
     char *key_hash = NULL;
     w_err_t err;
 
-    unsigned int max = config.flags.use_source_ip == 1 ? 5 : 1;
-    for (unsigned int a = 0; a < max; a++) {
-        expect_any(__wrap_OS_IsValidIP, ip_address);
-        expect_any(__wrap_OS_IsValidIP, final_ip);
-        will_return(__wrap_OS_IsValidIP, -2);
-    }
-
+    /* OS_IsValidIP() and OS_CIDRtoStr() run for real: the form an address is registered with is
+     * what these rows check. That needs the real PCRE2, which this binary mocks by default. */
+    w_test_pcre2_wrappers(false);
     for (unsigned i=0; parse_values[i].buffer; i++) {
         /* Client-caused rejections are throttled; each row is a fresh first occurrence. */
         w_auth_client_rejection_log_reset();
@@ -179,6 +186,7 @@ static void test_w_auth_parse_data(void **state) {
         os_free(groups);
         os_free(key_hash);
     }
+    w_test_pcre2_wrappers(true);
 }
 
 /* A burst of client mistakes logs one WARNING per window, not one ERROR per request: the rest go to

@@ -82,8 +82,10 @@ An empty value counts as unset for a password. A value that breaks a rule is rep
 replaced by a generated one**: the start refuses until you fix it. A `local.env` that is unsafe or malformed is
 rejected as a whole, and then nothing is generated or seeded from defaults in that run either.
 
-`local.env` holds `NAME=value` lines. Whitespace at the start and end of a line is trimmed, blank lines and `#`
-comments are skipped, and one pair of matching single or double quotes around the value is removed. Nothing is
+`local.env` holds `NAME=value` lines. Whitespace at the start and end of a line is trimmed, blank lines and
+comment lines (a `#` as the first character after the leading whitespace) are skipped, and one pair of matching
+single or double quotes around the value is removed. Only whole-line comments exist: a `#` after a value is part of
+the value (`NAME=abc # note` sets `abc # note`). Nothing is
 expanded or unescaped. No whitespace is allowed around the `=`:
 
 | Line | Result |
@@ -213,6 +215,8 @@ openssl x509 -noout -subject -fingerprint -sha256 -in /etc/wazuh-dashboard/certs
 # the Server API's certificate verifies against it, for that name
 openssl s_client -connect <manager>:55000 -CAfile /etc/wazuh-dashboard/certs/manager-ca.pem \
     -verify_hostname <manager> -verify_return_error </dev/null 2>&1 | grep 'Verify return code'
+# (when <manager> is an IP address, use -verify_ip <manager> instead of -verify_hostname: an IP SAN
+# never matches -verify_hostname)
 # and the password logs in (curl prompts for it, so it does not reach the process list)
 curl --cacert /etc/wazuh-dashboard/certs/manager-ca.pem -u wazuh-internal-client \
     -X POST "https://<manager>:55000/security/user/authenticate"
@@ -229,14 +233,16 @@ same way ([Rotation](#rotation)).
 ## The resolver and its modes
 
 ```text
-wazuh-manager-resolve-credentials [--install|--upgrade|--prestart|--check|--clear] [-q] [-H <home>]
+wazuh-manager-resolve-credentials {--install|--upgrade|--prestart|--check|--clear} [-q] [-H <home>]
 ```
+
+A mode is required: without one the resolver prints its usage and exits `2`.
 
 | Mode | Called by | Does | Exit |
 |------|-----------|------|------|
 | `--install` | DEB `postinst` and RPM `%post` on a fresh install, `install.sh` on a fresh install | seeds the passwords, stores the indexer password, mints the CA when nothing is there, issues the two server pairs (and, on a master, the [dashboard client pair](#what-the-dashboard-takes-from-the-manager)), imports the indexer trust | always `0` |
 | `--upgrade` | DEB `postinst` and RPM `%post` on an upgrade, `install.sh` on an update | completes passwords, keystore and indexer trust; publishes the CA in `export/ca.pem` when the copy there is absent or differs; issues a missing dashboard client pair; validates the CA and the server pairs, never mints a CA or issues a server pair | always `0` |
-| `--prestart` (default) | `wazuh-manager-control` before the daemons start, on `start`, `restart` and `reload` (skipped while `wazuh-manager-modulesd` is running) | every `--check` test, then what `--upgrade` does, then the `--check` tests again on the result; refuses the start when anything is missing, invalid or unsafe | `0` or `1` |
+| `--prestart` | `wazuh-manager-control` before the daemons start, on `start`, `restart` and `reload` (skipped while `wazuh-manager-modulesd` is running) | every `--check` test, then what `--upgrade` does, then the `--check` tests again on the result; refuses the start when anything is missing, invalid or unsafe | `0` or `1` |
 | `--check` | `wazuh-manager-control` on `start`, `restart` and `reload`, once the configuration file itself has been validated | read-only: no lock, nothing written, and no subprocess but `wazuh-manager-conf --skip-file-checks dump`, which reads the [configured file names](#configured-file-names); reports `UNSAFE` and `INVALID`, and `MISSING` only for what `--prestart` could not complete either (the CA, the bundle and the server pairs, created at `--install` only, and indexer files with nothing in the export to import) | `0` or `1` |
 | `--clear` | you | removes what the resolver made ([Container images](#container-images)) | `0` or `1` |
 
@@ -288,8 +294,9 @@ ever carries a secret.
 
 `wazuh-manager-control` relays those lines to standard error and to `logs/wazuh-manager.log` (dated and tagged
 like every log line: `<date> wazuh-manager-control: ERROR: UNSAFE …`, a resolver `WARNING` as `WARNING`), starts
-nothing, exits `1`, and says why (the error codes appear only in the `-j` output). When the start ran under
-systemd because the shell command handed it over, the same message, code and lines reach the shell:
+nothing, exits `1`, and says why (the error codes appear only in the `-j` output). `wazuh-manager-control` never
+calls `systemctl`: run from a shell it prints them there, and under `systemctl start wazuh-manager` the unit's
+`ExecStart` runs the same script, so the same message and lines reach the journal (`journalctl -u wazuh-manager`):
 
 | When | stdout | With `-j` | Log line |
 |------|--------|-----------|----------|

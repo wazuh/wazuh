@@ -587,7 +587,7 @@ int ReadSecMSG(keystore *keys, char *buffer, char *cleartext, int id, unsigned i
         w_mutex_unlock(&keys->keyentries[id]->mutex);
         return KS_RIDS;
     }
-    mwarn(ENCKEY_ERROR, keys->keyentries[id]->id, srcip);
+    preauth_mwarn(ENCKEY_ERROR, keys->keyentries[id]->id, srcip);
     return KS_ENCKEY;
 
 authenticated:

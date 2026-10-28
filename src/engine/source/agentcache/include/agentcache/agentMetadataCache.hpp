@@ -106,7 +106,7 @@ public:
      * @return GetResult Pair of {shared pointer to the parsed header, Operation describing whether
      *         the entry was Retrieved (hit), Inserted (new agent) or Updated (header replaced)}.
      * @throws std::runtime_error If headerStr is not valid JSON, or if `/wazuh/agent/id`
-     *         is missing or not a string containing a positive numeric value.
+     *         is missing or not a non-empty string of decimal digits (`000`, the manager itself, is valid).
      */
     GetResult getOrParse(std::string_view headerStr)
     {
@@ -137,7 +137,7 @@ public:
         if (agentIdSv.empty()
             || !std::all_of(agentIdSv.begin(), agentIdSv.end(), [](char c) { return c >= '0' && c <= '9'; }))
         {
-            throw std::runtime_error("AgentMetadataCache: /wazuh/agent/id must be a non-empty positive numeric string");
+            throw std::runtime_error("AgentMetadataCache: /wazuh/agent/id must be a non-empty string of digits");
         }
 
         std::string agentId(agentIdSv);

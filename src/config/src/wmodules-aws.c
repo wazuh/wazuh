@@ -155,17 +155,17 @@ int wm_aws_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
                 free(aws_config->bucket);
                 os_strdup(nodes[i]->content, aws_config->bucket);
             } else {
-                mtdebug2(WM_AWS_LOGTAG, "Found a bucket tag");
+                mtdebug2(wm_config_logtag(WM_AWS_LOGTAG), "Found a bucket tag");
                 // Create bucket node
                 if (cur_bucket) {
                     os_calloc(1, sizeof(wm_aws_bucket), cur_bucket->next);
                     cur_bucket = cur_bucket->next;
-                    mtdebug2(WM_AWS_LOGTAG, "Creating another bucket structure");
+                    mtdebug2(wm_config_logtag(WM_AWS_LOGTAG), "Creating another bucket structure");
                 } else {
                     // First bucket
                     os_calloc(1, sizeof(wm_aws_bucket), cur_bucket);
                     aws_config->buckets = cur_bucket;
-                    mtdebug2(WM_AWS_LOGTAG, "Creating first bucket structure");
+                    mtdebug2(wm_config_logtag(WM_AWS_LOGTAG), "Creating first bucket structure");
                 }
 
                 // Expand bucket Child Nodes
@@ -184,7 +184,7 @@ int wm_aws_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
                         || !strcmp(*nodes[i]->values, SERVER_ACCESS_BUCKET_TYPE)) {
                         os_strdup(*nodes[i]->values, cur_bucket->type);
                     } else {
-                        mterror(WM_AWS_LOGTAG, "Invalid bucket type '%s'. Valid ones are '%s', '%s', '%s', '%s', '%s', "
+                        mterror(wm_config_logtag(WM_AWS_LOGTAG), "Invalid bucket type '%s'. Valid ones are '%s', '%s', '%s', '%s', '%s', "
                                                "'%s', %s', %s', %s', %s' or '%s'",
                             *nodes[i]->values, CLOUDTRAIL_BUCKET_TYPE, CONFIG_BUCKET_TYPE, GUARDDUTY_BUCKET_TYPE, VPCFLOW_BUCKET_TYPE,
                             WAF_BUCKET_TYPE, CISCO_UMBRELLA_BUCKET_TYPE, CUSTOM_BUCKET_TYPE, ALB_BUCKET_TYPE, CLB_BUCKET_TYPE, NLB_BUCKET_TYPE,
@@ -193,15 +193,15 @@ int wm_aws_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
                         return OS_INVALID;
                     }
                 } else {
-                    mterror(WM_AWS_LOGTAG, "Attribute name '%s' is not valid. The valid one is '%s'.", *nodes[i]->attributes, XML_BUCKET_TYPE);
+                    mterror(wm_config_logtag(WM_AWS_LOGTAG), "Attribute name '%s' is not valid. The valid one is '%s'.", *nodes[i]->attributes, XML_BUCKET_TYPE);
                     OS_ClearNode(children);
                     return OS_INVALID;
                 }
 
-                mtdebug2(WM_AWS_LOGTAG, "Loop through child nodes");
+                mtdebug2(wm_config_logtag(WM_AWS_LOGTAG), "Loop through child nodes");
                 for (j = 0; children[j]; j++) {
 
-                    mtdebug2(WM_AWS_LOGTAG, "Parse child node: %s", children[j]->element);
+                    mtdebug2(wm_config_logtag(WM_AWS_LOGTAG), "Parse child node: %s", children[j]->element);
 
                     if (!children[j]->element) {
                         merror(XML_ELEMNULL);
@@ -347,37 +347,37 @@ int wm_aws_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
         // for services
         } else if (!strcmp(nodes[i]->element, XML_SERVICE)) {
 
-            mtdebug2(WM_AWS_LOGTAG, "Found a service tag");
+            mtdebug2(wm_config_logtag(WM_AWS_LOGTAG), "Found a service tag");
 
             if (!nodes[i]->attributes) {
-                mterror(WM_AWS_LOGTAG, "Undefined type for service.");
+                mterror(wm_config_logtag(WM_AWS_LOGTAG), "Undefined type for service.");
                 return OS_INVALID;
             }
             // Create service node
             if (cur_service) {
                 os_calloc(1, sizeof(wm_aws_service), cur_service->next);
                 cur_service = cur_service->next;
-                mtdebug2(WM_AWS_LOGTAG, "Creating another service structure");
+                mtdebug2(wm_config_logtag(WM_AWS_LOGTAG), "Creating another service structure");
             } else {
                 // First service
                 os_calloc(1, sizeof(wm_aws_service), cur_service);
                 aws_config->services = cur_service;
-                mtdebug2(WM_AWS_LOGTAG, "Creating first service structure");
+                mtdebug2(wm_config_logtag(WM_AWS_LOGTAG), "Creating first service structure");
             }
 
             // type is an attribute of the service tag
             if (!strcmp(*nodes[i]->attributes, XML_SERVICE_TYPE)) {
                 if (!nodes[i]->values) {
-                    mterror(WM_AWS_LOGTAG, "Empty service type. Valid ones are '%s' or '%s'", INSPECTOR_SERVICE_TYPE, CLOUDWATCHLOGS_SERVICE_TYPE);
+                    mterror(wm_config_logtag(WM_AWS_LOGTAG), "Empty service type. Valid ones are '%s' or '%s'", INSPECTOR_SERVICE_TYPE, CLOUDWATCHLOGS_SERVICE_TYPE);
                     return OS_INVALID;
                 } else if (!strcmp(*nodes[i]->values, INSPECTOR_SERVICE_TYPE) || !strcmp(*nodes[i]->values, CLOUDWATCHLOGS_SERVICE_TYPE)) {
                     os_strdup(*nodes[i]->values, cur_service->type);
                 } else {
-                    mterror(WM_AWS_LOGTAG, "Invalid service type '%s'. Valid ones are '%s' or '%s'", *nodes[i]->values, INSPECTOR_SERVICE_TYPE, CLOUDWATCHLOGS_SERVICE_TYPE);
+                    mterror(wm_config_logtag(WM_AWS_LOGTAG), "Invalid service type '%s'. Valid ones are '%s' or '%s'", *nodes[i]->values, INSPECTOR_SERVICE_TYPE, CLOUDWATCHLOGS_SERVICE_TYPE);
                     return OS_INVALID;
                 }
             } else {
-                mterror(WM_AWS_LOGTAG, "Attribute name '%s' is not valid. The valid one is '%s'.", *nodes[i]->attributes, XML_SERVICE_TYPE);
+                mterror(wm_config_logtag(WM_AWS_LOGTAG), "Attribute name '%s' is not valid. The valid one is '%s'.", *nodes[i]->attributes, XML_SERVICE_TYPE);
                 return OS_INVALID;
             }
 
@@ -387,10 +387,10 @@ int wm_aws_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
                 continue;
             }
 
-            mtdebug2(WM_AWS_LOGTAG, "Loop through child nodes");
+            mtdebug2(wm_config_logtag(WM_AWS_LOGTAG), "Loop through child nodes");
             for (j = 0; children[j]; j++) {
 
-                mtdebug2(WM_AWS_LOGTAG, "Parse child node: %s", children[j]->element);
+                mtdebug2(wm_config_logtag(WM_AWS_LOGTAG), "Parse child node: %s", children[j]->element);
 
                 if (!children[j]->element) {
                     merror(XML_ELEMNULL);
@@ -519,10 +519,10 @@ int wm_aws_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
         // for subscriber
         } else if (!strcmp(nodes[i]->element, XML_SUBSCRIBER)) {
 
-            mtdebug2(WM_AWS_LOGTAG, "Found a subscriber tag");
+            mtdebug2(wm_config_logtag(WM_AWS_LOGTAG), "Found a subscriber tag");
 
             if (!nodes[i]->attributes) {
-                mterror(WM_AWS_LOGTAG, "Undefined type for subscriber.");
+                mterror(wm_config_logtag(WM_AWS_LOGTAG), "Undefined type for subscriber.");
                 return OS_INVALID;
             }
 
@@ -530,30 +530,30 @@ int wm_aws_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
             if (cur_subscriber) {
                 os_calloc(1, sizeof(wm_aws_subscriber), cur_subscriber->next);
                 cur_subscriber = cur_subscriber->next;
-                mtdebug2(WM_AWS_LOGTAG, "Creating another subscriber structure");
+                mtdebug2(wm_config_logtag(WM_AWS_LOGTAG), "Creating another subscriber structure");
             } else {
                 // First subscriber
                 os_calloc(1, sizeof(wm_aws_subscriber), cur_subscriber);
                 aws_config->subscribers = cur_subscriber;
-                mtdebug2(WM_AWS_LOGTAG, "Creating first subscriber structure");
+                mtdebug2(wm_config_logtag(WM_AWS_LOGTAG), "Creating first subscriber structure");
             }
 
             // type is an attribute of the subscriber tag
             if (!strcmp(*nodes[i]->attributes, XML_SUBSCRIBER_TYPE)) {
                 if (!nodes[i]->values) {
-                    mterror(WM_AWS_LOGTAG, "Empty subscriber type. Valid ones are '%s', '%s' or '%s'",
+                    mterror(wm_config_logtag(WM_AWS_LOGTAG), "Empty subscriber type. Valid ones are '%s', '%s' or '%s'",
                         SECURITY_LAKE_SUBSCRIBER_TYPE, BUCKETS_SUBSCRIBER_TYPE, SECURITY_HUB_SUBSCRIBER_TYPE);
                     return OS_INVALID;
                 } else if (!strcmp(*nodes[i]->values, SECURITY_LAKE_SUBSCRIBER_TYPE) || !strcmp(*nodes[i]->values, BUCKETS_SUBSCRIBER_TYPE) || !strcmp(*nodes[i]->values, SECURITY_HUB_SUBSCRIBER_TYPE)) {
                     os_strdup(*nodes[i]->values, cur_subscriber->type);
                 } else {
-                    mterror(WM_AWS_LOGTAG, "Invalid subscriber type '%s'. Valid ones are '%s', '%s' or '%s'",
+                    mterror(wm_config_logtag(WM_AWS_LOGTAG), "Invalid subscriber type '%s'. Valid ones are '%s', '%s' or '%s'",
                         *nodes[i]->values, SECURITY_LAKE_SUBSCRIBER_TYPE, BUCKETS_SUBSCRIBER_TYPE,
                         SECURITY_HUB_SUBSCRIBER_TYPE);
                     return OS_INVALID;
                 }
             } else {
-                mterror(WM_AWS_LOGTAG, "Attribute name '%s' is not valid. The valid one is '%s'.", *nodes[i]->attributes, XML_SUBSCRIBER_TYPE);
+                mterror(wm_config_logtag(WM_AWS_LOGTAG), "Attribute name '%s' is not valid. The valid one is '%s'.", *nodes[i]->attributes, XML_SUBSCRIBER_TYPE);
                 return OS_INVALID;
             }
 
@@ -563,10 +563,10 @@ int wm_aws_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
                 continue;
             }
 
-            mtdebug2(WM_AWS_LOGTAG, "Loop through child nodes");
+            mtdebug2(wm_config_logtag(WM_AWS_LOGTAG), "Loop through child nodes");
             for (j = 0; children[j]; j++) {
 
-                mtdebug2(WM_AWS_LOGTAG, "Parse child node: %s", children[j]->element);
+                mtdebug2(wm_config_logtag(WM_AWS_LOGTAG), "Parse child node: %s", children[j]->element);
 
                 if (!children[j]->element) {
                     merror(XML_ELEMNULL);
@@ -671,7 +671,7 @@ int wm_aws_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
 
     // Support legacy config
     if (aws_config->bucket) {
-        mtwarn(WM_AWS_LOGTAG, "Deprecated config defined; please use current config definition at module '%s'.", WM_AWS_CONTEXT.name);
+        mtwarn(wm_config_logtag(WM_AWS_LOGTAG), "Deprecated config defined; please use current config definition at module '%s'.", WM_AWS_CONTEXT.name);
 
         // Create bucket node
         if (cur_bucket) {
@@ -710,7 +710,7 @@ int wm_aws_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
     }
 
     if (!aws_config->buckets && !aws_config->services  && !aws_config->subscribers) {
-        mtwarn(WM_AWS_LOGTAG, "No buckets, services or subscribers definitions found at module '%s'.", WM_AWS_CONTEXT.name);
+        mtwarn(wm_config_logtag(WM_AWS_LOGTAG), "No buckets, services or subscribers definitions found at module '%s'.", WM_AWS_CONTEXT.name);
         return OS_INVALID;
     }
 

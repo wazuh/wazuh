@@ -84,7 +84,9 @@ the level. Manager tags are the manager daemon names (`wazuh-manager-db`, `wazuh
 …); a module inside modulesd logs as `wazuh-manager-modulesd:<module>`. Two manager programs that are not
 daemons write to the same file under their own name: `wazuh-manager-control` (a refused start, restart, reload or
 check, and the credential resolver's lines it relays) and `bin/verify-agent-conf` (`verify-agent-conf`, when it
-checks a shared `agent.conf`). Agent tags are the agent's daemon names (`wazuh-agentd`,
+checks a shared `agent.conf`; the SCA, AWS and Google Cloud blocks it checks are reported as
+`verify-agent-conf:sca`, `verify-agent-conf:aws-s3`, `verify-agent-conf:gcp-pubsub` and
+`verify-agent-conf:gcp-bucket`). Agent tags are the agent's daemon names (`wazuh-agentd`,
 `wazuh-modulesd:<module>`, …).
 
 ### Plain

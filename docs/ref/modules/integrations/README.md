@@ -19,6 +19,29 @@ and the manager does not start. To monitor a service, install an agent on a host
 - [Microsoft Graph Security API](microsoft-graph.md) – Collect Microsoft Graph resources such as security alerts and incidents.
 - [Docker Listener](docker.md) – Forward Docker daemon events.
 
+## Enable the integration's ruleset first
+
+Collecting the logs is only half of an integration: the manager's engine (`wazuh-manager-analysisd`) must
+also have the decoders that classify them. Those decoders come in the **standard** space's content, which
+the engine pulls from `wazuh-indexer`, grouped into one **integration** per log source, and each
+integration carries an `enabled` flag. When the engine builds the policy it skips every disabled
+integration and its decoders (see [Integrations](../engine/README.md#integrations) in the engine
+reference).
+
+Most standard integrations **ship disabled**, among them `docker`, `aws`, `gcp`, `github`, `azure` and
+`aws-amazon-security-lake`. Until the matching integration is enabled, the
+agent module runs, the events reach the manager and are counted, but they stay **unclassified** and no
+document reaches the integration's indices, with no error anywhere.
+
+So before configuring an agent module:
+
+1. In the Wazuh dashboard, enable the integration for that log source in the standard ruleset. Content is
+   managed in `wazuh-indexer`, never on the manager (see
+   [Content Management](../engine/README.md#content-management-managing-the-engines-processing)).
+2. Wait for the engine's next content synchronization (CMSync), which pulls the change and rebuilds the
+   policy; no manager restart is needed.
+3. Then configure the agent module as its page describes, and check that its events are indexed.
+
 ## Where each integration runs
 
 | Integration | Configuration block | Implementation | Agent platforms |

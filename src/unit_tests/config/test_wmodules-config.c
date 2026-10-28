@@ -144,6 +144,32 @@ static void test_Test_WModule_sca_invalid_content_is_reported(void **state) {
     assert_int_equal(Test_WModule(TEST_CONF_PATH), -1);
 }
 
+/* verify-agent-conf runs the SCA reader too: its errors carry the running program's tag, not the
+ * modulesd tag the configuration library was built with. */
+static void test_Test_WModule_sca_error_uses_program_tag(void **state) {
+    const char *previous_name = __local_name;
+
+    if (write_conf("<agent_config>"
+                    "<sca>"
+                    "<enabled>invalid</enabled>"
+                    "</sca>"
+                    "</agent_config>") != 0) {
+        fail();
+    }
+
+    OS_SetName("verify-agent-conf");
+
+    expect_string(__wrap__mterror, tag, "verify-agent-conf:sca");
+    expect_string(__wrap__mterror, formatted_msg, "Invalid content for tag 'enabled'");
+    expect_string(__wrap__merror, formatted_msg, "(1202): Configuration error at 'test_wmodules-config.conf'.");
+    expect_string(__wrap__merror, formatted_msg, "(1207): WModule remote configuration in 'test_wmodules-config.conf' is corrupted.");
+
+    const int ret = Test_WModule(TEST_CONF_PATH);
+    __local_name = previous_name;
+
+    assert_int_equal(ret, -1);
+}
+
 /* When the manager parses its own configuration (agent_cfg = 0), the warning
  * must still be raised: syscollector genuinely does not belong there. */
 static void test_Read_WModule_syscollector_warns_without_agent_cfg(void **state) {
@@ -179,6 +205,7 @@ int main(void) {
         cmocka_unit_test_teardown(test_Test_WModule_github_invalid_content_is_reported, teardown_conf_file),
         cmocka_unit_test_teardown(test_Test_WModule_sca_valid_content_is_accepted, teardown_conf_file),
         cmocka_unit_test_teardown(test_Test_WModule_sca_invalid_content_is_reported, teardown_conf_file),
+        cmocka_unit_test_teardown(test_Test_WModule_sca_error_uses_program_tag, teardown_conf_file),
         cmocka_unit_test(test_Read_WModule_syscollector_warns_without_agent_cfg),
     };
     return cmocka_run_group_tests(tests, NULL, NULL);

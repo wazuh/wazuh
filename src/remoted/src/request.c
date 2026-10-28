@@ -29,6 +29,8 @@ static const char * WR_INTERNAL_ERROR = "err Internal error";
 static const char * WR_SEND_ERROR = "err Cannot send request";
 static const char * WR_ATTEMPT_ERROR = "err Maximum attempts exceeded";
 static const char * WR_TIMEOUT_ERROR = "err Response timeout";
+static const char * WR_NO_AGENT_ID_ERROR = "err Request has no agent id";
+static const char * WR_NO_AGENT_ERROR = "err Agent not found";
 
 static OSHash * req_table;
 static pthread_mutex_t mutex_table = PTHREAD_MUTEX_INITIALIZER;
@@ -112,6 +114,7 @@ void * req_dispatch(req_node_t * node) {
     // Get agent ID and payload
     if (_payload = strchr(node->buffer, ' '), !_payload) {
         merror("Request has no agent id.");
+        OS_SendSecureTCP(node->sock, strlen(WR_NO_AGENT_ID_ERROR), WR_NO_AGENT_ID_ERROR);
         goto cleanup;
     }
 
@@ -137,6 +140,7 @@ void * req_dispatch(req_node_t * node) {
     key_unlock();
     if (protocol < 0) {
         merror(AR_NOAGENT_ERROR, agentid);
+        OS_SendSecureTCP(node->sock, strlen(WR_NO_AGENT_ERROR), WR_NO_AGENT_ERROR);
         goto cleanup;
     }
 

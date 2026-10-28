@@ -67,7 +67,7 @@ Server::Server(const std::string& id, size_t payloadMaxBytes, bool enableDetaile
         });
 
     m_srv->set_error_handler(
-        [this](const httplib::Request&, httplib::Response& res) -> httplib::Server::HandlerResponse
+        [this](const httplib::Request& req, httplib::Response& res) -> httplib::Server::HandlerResponse
         {
             if (res.status == httplib::StatusCode::PayloadTooLarge_413)
             {
@@ -88,6 +88,26 @@ Server::Server(const std::string& id, size_t payloadMaxBytes, bool enableDetaile
                         "text/plain");
                 }
                 return httplib::Server::HandlerResponse::Handled;
+            }
+            if (res.status == httplib::StatusCode::NotFound_404 && res.body.empty())
+            {
+                // httplib answers 404 for any unmatched method + path. When the path exists under another method,
+                // say so (405 with an Allow header) instead of claiming the route does not exist.
+                const auto allow = allowedOtherMethods(req.path, req.method);
+                if (!allow.has_value())
+                {
+                    res.set_content("Not found: no such route.", "text/plain");
+                    return httplib::Server::HandlerResponse::Handled;
+                }
+                if (!allow->empty())
+                {
+                    res.status = httplib::StatusCode::MethodNotAllowed_405;
+                    res.set_header("Allow", *allow);
+                    res.set_content(fmt::format("Method not allowed. Allowed: {}.", *allow), "text/plain");
+                    return httplib::Server::HandlerResponse::Handled;
+                }
+                // The route's own handler answered 404: leave its answer as it is.
+                return httplib::Server::HandlerResponse::Unhandled;
             }
             if (res.status == httplib::StatusCode::BadRequest_400 && res.body.empty())
             {
@@ -166,7 +186,37 @@ void Server::addRoute(Method method,
         throw std::runtime_error(fmt::format("[Server] {} failed to add route: {}", m_id, e.what()));
     }
 
+    {
+        std::lock_guard<std::mutex> lock {m_routesMutex};
+        m_routeMethods[route].insert(methodToStr(method));
+    }
+
     LOG_DEBUG("[Server] {} added route: {} {}", m_id, methodToStr(method), route);
+}
+
+std::optional<std::string> Server::allowedOtherMethods(const std::string& path, const std::string& method) const
+{
+    std::lock_guard<std::mutex> lock {m_routesMutex};
+    auto it = m_routeMethods.find(path);
+    if (it == m_routeMethods.end())
+    {
+        return std::nullopt;
+    }
+    if (it->second.count(method) != 0)
+    {
+        return std::string {};
+    }
+
+    std::string allow;
+    for (const auto& registered : it->second)
+    {
+        if (!allow.empty())
+        {
+            allow += ", ";
+        }
+        allow += registered;
+    }
+    return allow;
 }
 
 void Server::applyPayloadLimit()

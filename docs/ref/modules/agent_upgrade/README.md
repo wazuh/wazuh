@@ -81,6 +81,9 @@ Agents that cannot be upgraded are listed first, as `Agent <ID> upgrade failed. 
 version rules and per-agent errors are in [Agent upgrades](../task_manager/agent-upgrades.md#version-constraints);
 building and signing a custom WPK is described in `tools/agent-upgrade/README.md`.
 
+The command exits `0` only when every requested agent got an upgrade task; it exits `1` when any
+agent got none (each one listed as above) or on an error, so a script can trust a `0`.
+
 To verify the result, check the agent's version (`GET /agents?agents_list=<ID>&select=version`) once
 it reconnects, or the agent's log.
 

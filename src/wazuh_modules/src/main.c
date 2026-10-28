@@ -59,6 +59,11 @@ int main(int argc, char **argv)
     /* Set the name */
     OS_SetName(ARGV0);
 
+#ifndef CLIENT
+    // A relative -c names a file in the caller's directory: remember it before the chdir below.
+    char * start_cwd = getcwd(NULL, 0);
+#endif
+
     // Define current working directory
     char * home_path = w_homedir(argv[0]);
     if (chdir(home_path) == -1) {
@@ -99,7 +104,7 @@ int main(int argc, char **argv)
             if (!optarg) {
                 merror_exit("-c needs an argument");
             }
-            wm_config_path = optarg;
+            wm_config_path = wm_resolve_config_path(optarg, start_cwd);
             break;
 #endif
 #ifdef WAZUH_RUNTIME_USER
@@ -112,6 +117,10 @@ int main(int argc, char **argv)
             wm_help();
         }
     }
+
+#ifndef CLIENT
+    os_free(start_cwd);
+#endif
 
     // Get default debug level
 
@@ -299,6 +308,12 @@ void wm_setup()
     if (wm_check() < 0) {
         mdebug1("No configuration defined. Exiting...");
         exit(EXIT_SUCCESS);
+    }
+
+    // A configuration test only reads: no PID file (nor the exit handler that deletes it) and no
+    // children pool, so a configuration check writes nothing under var/run.
+    if (flag_test_config) {
+        return;
     }
 
     // Register cleanup function before CreatePID to avoid dangling PID files

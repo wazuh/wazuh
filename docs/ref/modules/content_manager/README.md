@@ -99,5 +99,7 @@ The Content Manager logs to `/var/wazuh-manager/logs/wazuh-manager.log` under th
 | `IndexerDownloader: Starting incremental update from offset <n>` | An incremental download started |
 | `IndexerDownloader: Initial load download phase complete — <n> documents, cursor: '<n>'` | A full download finished |
 | `IndexerDownloader: Incremental update download phase complete — <n> documents, new cursor: '<n>'` | An incremental download finished |
+| `IndexerDownloader: Slice <i> failed: <error>` | One slice of a sliced full download failed; the whole download fails with it and is retried (same warning/debug split as the line below) |
 | `IndexerDownloader: Initial load failed (<error>) — retrying in 30s.` | The indexer failed during a full download (a warning from the third attempt on; earlier attempts log at debug level) |
+| `IndexerDownloader: Stop requested <when> — aborting.` (or `— slice <i> aborting.`, or `… while waiting for …`) | The module is stopping; the wait or download in progress is abandoned |
 | `Action for 'vulnerability_feed_manager' failed: <error>.` | The update ended with an error; the next scheduled run retries it |

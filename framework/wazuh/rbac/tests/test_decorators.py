@@ -1322,3 +1322,25 @@ def test_list_handler_keeps_1701_for_explicit_ids(db_setup):
 
     dropped = db_setup.list_handler(node_result(), add_denied=False, exclude_codes=[1701, 1703])
     assert not dropped.failed_items
+
+
+# ---------------------------------------------------------------------------
+# Tests for permitted_agent_ids (agents a caller may read, for functions exposed under another action)
+# ---------------------------------------------------------------------------
+
+@pytest.mark.parametrize('rbac, expected', [
+    ({'rbac_mode': 'white'}, set()),
+    ({'rbac_mode': 'white', 'agent:read': {'agent:id:*': 'allow'}}, {'001', '002', '003'}),
+    ({'rbac_mode': 'white', 'agent:read': {'agent:id:002': 'allow'}}, {'002'}),
+    ({'rbac_mode': 'white', 'agent:read': {'agent:group:web': 'allow'}}, {'001', '003'}),
+    ({'rbac_mode': 'white', 'agent:read': {'agent:id:*': 'allow', 'agent:group:web': 'deny'}}, {'002'}),
+    ({'rbac_mode': 'black'}, {'001', '002', '003'}),
+    ({'rbac_mode': 'black', 'agent:read': {'agent:id:001': 'deny'}}, {'002', '003'}),
+])
+def test_permitted_agent_ids(db_setup, rbac, expected):
+    """agent:id and agent:group grants and denies, and the RBAC mode, resolve as for an agent:id:* request."""
+    db_setup.rbac.set(rbac)
+    with patch('wazuh.rbac.decorators.get_agents_info', return_value={'001', '002', '003'}), \
+            patch('wazuh.rbac.decorators.expand_group', side_effect=lambda group: {'001', '003'} if group == 'web'
+                  else set()):
+        assert db_setup.permitted_agent_ids() == expected

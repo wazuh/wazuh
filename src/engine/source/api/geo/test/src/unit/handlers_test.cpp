@@ -288,6 +288,42 @@ INSTANTIATE_TEST_SUITE_P(
             []() { return userErrorResponse<eEngine::geo::DbGet_Response>("IP cannot be empty"); },
             [](auto&) {}),
 
+        // Not an IP address: refused before any database lookup
+        HandlerT(
+            []()
+            {
+                eEngine::geo::DbGet_Request protoReq;
+                protoReq.set_ip("not-an-ip");
+                return createRequest<eEngine::geo::DbGet_Request>(protoReq);
+            },
+            [](const std::shared_ptr<::geo::IManager>& geoManager) { return getDb(geoManager); },
+            []() { return userErrorResponse<eEngine::geo::DbGet_Response>("Invalid IP address: not-an-ip"); },
+            [](auto& mock) { EXPECT_CALL(mock, getLocator(testing::_)).Times(0); }),
+
+        // IPv6 address: accepted and looked up
+        HandlerT(
+            []()
+            {
+                eEngine::geo::DbGet_Request protoReq;
+                protoReq.set_ip("2001:db8::1");
+                return createRequest<eEngine::geo::DbGet_Request>(protoReq);
+            },
+            [](const std::shared_ptr<::geo::IManager>& geoManager) { return getDb(geoManager); },
+            []()
+            {
+                eEngine::geo::DbGet_Response protoRes;
+                protoRes.set_status(eEngine::ReturnStatus::OK);
+                protoRes.mutable_data()->CopyFrom(makeDbGetDataStruct(/*withCity=*/false, /*withAsn=*/false));
+                return userResponse<eEngine::geo::DbGet_Response>(protoRes);
+            },
+            [](auto& mock)
+            {
+                EXPECT_CALL(mock, getLocator(::geo::Type::CITY))
+                    .WillOnce(testing::Return(::geo::ErrorCode::DB_TYPE_NOT_AVAILABLE));
+                EXPECT_CALL(mock, getLocator(::geo::Type::ASN))
+                    .WillOnce(testing::Return(::geo::ErrorCode::DB_TYPE_NOT_AVAILABLE));
+            }),
+
         // Wrong request type
         HandlerT(
             []()

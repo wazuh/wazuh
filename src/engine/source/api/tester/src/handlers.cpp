@@ -688,8 +688,8 @@ adapter::RouteHandler runPost(const std::shared_ptr<::router::ITesterAPI>& teste
                 {
                     if (policyAssets.find(asset) == policyAssets.end())
                     {
-                        res =
-                            adapter::userErrorResponse<ResponseType>(fmt::format("Asset {} not found in store", asset));
+                        const auto message = fmt::format("Asset {} not found in store", truncateForMessage(asset));
+                        res = adapter::userErrorResponse<ResponseType>(message);
                         return;
                     }
                     requestAssets.insert(asset);
@@ -804,13 +804,19 @@ adapter::RouteHandler publicRunPost(const std::shared_ptr<::router::ITesterAPI>&
 
         const auto queue = static_cast<uint8_t>(q);
 
-        // Checks params
+        // Checks params: an absent or empty trace level means NONE (callers such as the indexer's logtest only
+        // forward the field when their user sets it).
         using OTraceLavel = ::router::test::Options::TraceLevel;
-        OTraceLavel traceLevel = ::router::test::Options::stringToTraceLevel(protoReq.trace_level());
+        OTraceLavel traceLevel = OTraceLavel::NONE;
+        if (!protoReq.trace_level().empty())
+        {
+            traceLevel = ::router::test::Options::stringToTraceLevel(protoReq.trace_level());
+        }
         if (traceLevel == OTraceLavel::UNKNOWN)
         {
+            const auto shownLevel = truncateForMessage(protoReq.trace_level());
             res = adapter::userErrorResponse<ResponseType>(
-                fmt::format("Invalid trace level: {}. Only support: NONE, ASSET_ONLY, ALL", protoReq.trace_level()));
+                fmt::format("Invalid trace level: {}. Only support: NONE, ASSET_ONLY, ALL", shownLevel));
             return;
         }
 

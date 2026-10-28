@@ -76,6 +76,9 @@ general_request_lock = asyncio.Lock()
 
 # Rolling-window length used by the general_request_stats buckets below
 RATE_LIMIT_WINDOW_SECONDS = 60
+# Error code of the authenticated request limit, and the scope `extensions` key recording which limit refused a request
+AUTHENTICATED_RATE_LIMIT_CODE = 6001
+RATE_LIMIT_CODE_KEY = 'wazuh_rate_limit_code'
 
 # Prefix length an IPv6 client is grouped by in the pre-authentication limiters
 CLIENT_IPV6_PREFIX = 64
@@ -126,6 +129,30 @@ def warn_throttled(key: tuple, message: str):
     if suppressed:
         message += f' {suppressed} more request(s) refused since the previous warning.'
     logger.warning(message)
+
+
+def rate_limited(request: Request, code: int) -> MaxRequestsException:
+    """Build the 429 for `request` and record which limit refused it, for `access_log`.
+
+    The record goes into the scope's `extensions`, the dict `WazuhAccessLoggerMiddleware` creates before dispatching,
+    which every copy of the scope shares.
+
+    Parameters
+    ----------
+    request : Request
+        Request refused.
+    code : int
+        Wazuh error code of the limit hit (6001 authenticated, 6005 unauthenticated).
+
+    Returns
+    -------
+    MaxRequestsException
+        Exception to raise.
+    """
+    extensions = request.scope.get('extensions')
+    if isinstance(extensions, dict):
+        extensions[RATE_LIMIT_CODE_KEY] = code
+    return MaxRequestsException(code=code)
 
 
 def warn_rate_limited(host: str, user: str, authenticated: bool = True):
@@ -387,7 +414,12 @@ async def access_log(request: ConnexionRequest, response: Response, prev_time: t
     # A blocked client (6000) is logged where the block is enforced, `check_blocked_ip`: a 403 here can
     # equally be an RBAC or run_as refusal.
     if response.status_code == 429:
-        warn_rate_limited(host, user, authenticated=log_body)
+        # A request refused by the authenticated limit before authentication ran (its bucket was already
+        # exhausted) has no identity in the context, but it is an authenticated caller's: go by the limit hit.
+        extensions = request.scope.get('extensions') if hasattr(request, 'scope') else None
+        rate_limit_code = extensions.get(RATE_LIMIT_CODE_KEY) if isinstance(extensions, dict) else None
+        authenticated = log_body if rate_limit_code is None else rate_limit_code == AUTHENTICATED_RATE_LIMIT_CODE
+        warn_rate_limited(host, user, authenticated=authenticated)
 
 
 def get_login_attempt_key(request: Request) -> tuple:
@@ -706,7 +738,7 @@ class CheckRateLimitsMiddleware(BaseHTTPMiddleware):
         charge the unauthenticated bucket only for a request that just failed authentication."""
         max_requests = configuration.api_conf['access']['max_request_per_minute']
         if await is_authenticated_bucket_exhausted(request, max_requests):
-            raise MaxRequestsException(code=6001)
+            raise rate_limited(request, AUTHENTICATED_RATE_LIMIT_CODE)
 
         try:
             return await call_next(request)
@@ -714,7 +746,7 @@ class CheckRateLimitsMiddleware(BaseHTTPMiddleware):
             max_unauthenticated = configuration.api_conf['access']['max_unauthenticated_request_per_minute']
             error_code = await charge_unauthenticated_request(request, max_unauthenticated, 6005)
             if error_code:
-                raise MaxRequestsException(code=error_code)
+                raise rate_limited(request, error_code)
             raise
 
 
@@ -735,10 +767,10 @@ class CheckAuthenticatedRateLimitMiddleware(BaseHTTPMiddleware):
             error_code = await charge_unauthenticated_request(request, max_unauthenticated, 6005)
         else:
             max_requests = configuration.api_conf['access']['max_request_per_minute']
-            error_code = await charge_authenticated_request(request, max_requests, 6001)
+            error_code = await charge_authenticated_request(request, max_requests, AUTHENTICATED_RATE_LIMIT_CODE)
 
         if error_code:
-            raise MaxRequestsException(code=error_code)
+            raise rate_limited(request, error_code)
         else:
             return await call_next(request)
 

@@ -224,24 +224,27 @@ async def print_health(config: dict, more: bool, filter_node: Union[str, list]):
 def usage():
     """Show the usage of the parameters."""
     msg = """
-    {0} [-h] [-d] [-fn [FILTER_NODE ...]] [-fs [FILTER_STATUS ...]][-a | -l | -i [HEALTH]]
+    {0} [-h] [-d] [-fn [FILTER_NODE ...]] [-fs [FILTER_STATUS ...]] [-a | -l | -i [more] | -u]
     Usage:
     \t-l                                    # List all nodes present in a cluster
     \t-l -fn <node_name>                    # List certain nodes that belong to the cluster
     \t-a                                    # List all agents connected to the cluster
     \t-a -fs <agent_status>                 # List agents with certain status
     \t-i                                    # Check cluster health
+    \t-i more                               # Check cluster health, with the detailed report
     \t-i -fn <node_name>                    # Check certain node's health
+    \t-u                                    # Show this usage
 
 
     Params:
-    \t-l, --list
+    \t-l, --list-nodes
     \t-d, --debug
     \t-h, --help
     \t-fn, --filter-node
     \t-fs, --filter-agent-status
     \t-a, --list-agents
     \t-i, --health
+    \t-u, --usage
 
     """.format(path.basename(sys.argv[0]))
     print(msg)
@@ -259,17 +262,16 @@ def main():
     exclusive.add_argument('-i', '--health', action='store', nargs='?', const='health', help='Show cluster health')
     exclusive.add_argument('-u', '--usage', action='store_true', help='Show usage')
     args = parser.parse_args()
+    if args.filter_status is not None and not args.list_agents:
+        # An argument error like any other: argparse's usage on stderr and exit code 2.
+        parser.error('argument -fs/--filter-agent-status: only allowed with -a/--list-agents')
 
     logging.basicConfig(level=logging.DEBUG if args.debug else logging.ERROR, format='%(levelname)s: %(message)s')
 
     try:
         cluster_config = wazuh.core.cluster.utils.read_config()
         wazuh.core.cluster.cluster.check_cluster_config(config=cluster_config)
-        if args.filter_status and not args.list_agents:
-            logging.error("Wrong arguments.")
-            usage()
-            sys.exit(1)
-        elif args.list_agents:
+        if args.list_agents:
             my_function, my_args = print_agents, (args.filter_status,)
         elif args.list_nodes:
             my_function, my_args = print_nodes, (args.filter_node,)

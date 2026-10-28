@@ -200,7 +200,7 @@ def test_manager_restart_reload_control_socket(function, action, message):
 
 HELPER_ACCEPT = """#!/bin/sh
 echo "$@" > "$0.args"
-[ "$(cut -d' ' -f6 /proc/$$/stat)" = "$$" ] && echo yes > "$0.setsid"
+[ "$(cut -d' ' -f5 /proc/$$/stat)" = "$$" ] && echo yes > "$0.pgroup"
 printf 1 >&3
 exec 3>&-
 {after}
@@ -235,12 +235,43 @@ def service_control(tmp_path):
     (utils.manager_reload, 'reload', 'Reload request sent'),
 ])
 def test_manager_restart_reload_without_control_socket(service_control, function, action, message):
-    """Without the control socket, the action is run through the service-control helper, in a new session."""
+    """Without the control socket, the action is run through the service-control helper, in its own process group."""
     helper = service_control(HELPER_ACCEPT.format(after='exit 0'))
 
     assert WazuhResult({'message': message}) == function()
     assert open(f'{helper}.args').read().strip() == action
-    assert open(f'{helper}.setsid').read().strip() == 'yes'
+    assert open(f'{helper}.pgroup').read().strip() == 'yes'
+
+
+def test_manager_restart_helper_spawn_without_setsid(service_control):
+    """The helper is spawned with attributes every interpreter supports.
+
+    The bundled interpreter is built without POSIX_SPAWN_SETSID, so `posix_spawn(..., setsid=True)` raises
+    NotImplementedError there. Simulate that interpreter on any host: the fallback must still run the helper.
+    """
+    helper = service_control(HELPER_ACCEPT.format(after='exit 0'))
+    real_posix_spawn = os.posix_spawn
+
+    def posix_spawn_without_setsid(*args, **kwargs):
+        if kwargs.get('setsid'):
+            raise NotImplementedError('posix_spawn: setsid unavailable on this platform')
+        return real_posix_spawn(*args, **kwargs)
+
+    with patch('wazuh.core.cluster.utils.os.posix_spawn', side_effect=posix_spawn_without_setsid):
+        assert WazuhResult({'message': 'Restart request sent'}) == utils.manager_restart()
+
+    assert open(f'{helper}.args').read().strip() == 'restart'
+
+
+def test_manager_restart_helper_spawn_not_implemented(service_control):
+    """A spawn attribute the interpreter lacks is a 1903 internal error, never an unhandled exception."""
+    service_control(HELPER_ACCEPT.format(after='exit 0'))
+
+    with patch('wazuh.core.cluster.utils.os.posix_spawn', side_effect=NotImplementedError('unavailable')), \
+            pytest.raises(WazuhInternalError, match='.* 1903 .*') as exc:
+        utils.manager_restart()
+
+    assert 'unavailable' in exc.value.message
 
 
 def test_manager_restart_connection_refused(service_control, tmp_path):

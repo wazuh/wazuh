@@ -282,10 +282,11 @@ static int wm_task_manager_read_remoted(wm_task_manager *data) {
 /* Reader of the `task-manager` section of the effective document (/etc/wazuh-manager/wazuh-manager.conf, see
  * mconf-config.h). `module` is the instance default_modules[] already initialised through
  * wm_task_manager_read(NULL, NULL, module). The schema guarantees non-negative integers; 0 keeps the
- * module default, as with the XML reader.
+ * module default, as with the XML reader. A value above INT_MAX is refused here.
  *
- * Returns 0, or 1 when `global` or `remote` was refused: the module runs on its defaults for what it
- * needed from them, and wm_config() passes the 1 on so that `wazuh-manager-modulesd -t` fails. */
+ * Returns 0, or 1 when `global` or `remote` was refused or an integer was out of range: the module runs
+ * on its defaults for what it needed from them, and wm_config() passes the 1 on so that
+ * `wazuh-manager-modulesd -t` fails. */
 int wm_task_manager_read_json(const cJSON *section, wmodule *module) {
     if (module == NULL || module->data == NULL) {
         return 0;
@@ -326,12 +327,26 @@ int wm_task_manager_read_json(const cJSON *section, wmodule *module) {
         { XML_MAX_TASKS_PER_POLL, &data->max_tasks_per_poll },
     };
 
+    /* The schema gives these a minimum but no maximum, and cJSON saturates valueint at INT_MAX, so
+     * the range is checked on valuedouble: a value the module cannot hold is refused (the module
+     * keeps its default) rather than silently clamped, and the 1 makes `-t` fail on it. */
     for (size_t i = 0; i < sizeof(settings) / sizeof(settings[0]); i++) {
         const cJSON *item = cJSON_GetObjectItem(section, settings[i].key);
 
-        if (cJSON_IsNumber(item) && item->valueint >= 0) {
-            *settings[i].value = item->valueint;
+        if (!cJSON_IsNumber(item)) {
+            continue;
         }
+
+        if (item->valuedouble < 0 || item->valuedouble > (double)INT_MAX) {
+            char *text = cJSON_PrintUnformatted(item);
+            merror("Invalid value for element '%s': %s is out of range (0 to %d); the module default applies.",
+                   settings[i].key, text != NULL ? text : "(null)", INT_MAX);
+            free(text);
+            degraded = 1;
+            continue;
+        }
+
+        *settings[i].value = item->valueint;
     }
 
     return degraded;

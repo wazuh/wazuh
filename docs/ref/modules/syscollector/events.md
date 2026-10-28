@@ -776,12 +776,17 @@ On Linux, `user.last_login` is the newest of the `lastlog` record, the `lastlog2
 
 ## Event Processing
 
-Syscollector events are processed by the Inventory Harvester and stored directly in Wazuh Indexer without going through traditional rule processing, since they represent inventory state rather than security events.
+Syscollector events reach the manager through remoted's authenticated HTTPS listener, which forwards
+them to the [Inventory Sync Server](../inventory-sync-server/README.md). It writes them directly to the
+`wazuh-states-inventory-*` indices of the Wazuh Indexer without going through the engine's rule
+processing, since they represent inventory state rather than security events. Syscollector's VD sessions
+(packages, OS and hotfixes) also drive the vulnerability scan.
 
 ## Integration
 
 Access syscollector inventory data through:
 
-- **Wazuh API**: REST endpoints for querying current inventory state
 - **Wazuh Dashboard**: Built-in inventory visualization
-- **Direct Database**: Query Wazuh Indexer for raw event data
+- **Wazuh Indexer**: Query the `wazuh-states-inventory-*` indices directly
+
+The manager's REST API has no inventory endpoints in this version.

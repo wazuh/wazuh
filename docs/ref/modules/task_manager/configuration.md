@@ -19,8 +19,10 @@ upgrade path is an internal option.
 
 The `<task-manager>` block accepts the four queue options below and the two
 [agent-upgrade options](#xml-options). The four below are non-negative integers (seconds unless noted);
-a value of `0` — or omitting the option — makes the module fall back to its built-in default. They
-are read once, when `wazuh-manager-modulesd` starts.
+a value of `0` — or omitting the option — makes the module fall back to its built-in default. The
+largest accepted value is `2147483647`: a larger one is logged as an error, the module keeps its
+default, and `wazuh-manager-control check` (and so `start`) refuses the configuration. They are read
+once, when `wazuh-manager-modulesd` starts.
 
 ### task_ttl
 
@@ -29,7 +31,7 @@ Time-to-live for a **pending** agent task, measured from its `create_time`. On e
 handed out. Manager tasks are never expired by age.
 
 - **Default value:** `3600` (1 hour)
-- **Allowed values:** integer ≥ 0 (seconds). `0` means "use default".
+- **Allowed values:** integer 0–2147483647 (seconds). `0` means "use default".
 - **Note:** for agents below v5.0.0, `remoted`'s own `remoted.legacy_task_polling_interval` (default
   `900`s, see [remoted configuration](../remoted/configuration.md#remotedlegacy_task_polling_interval)) must be configured comfortably
   smaller than this value, or a `remote_upgrade` task created just after a poll cycle can expire
@@ -46,7 +48,7 @@ deletions freed to the filesystem in 1 MiB steps, and checkpoints the database W
 separate daily `VACUUM`.
 
 - **Default value:** `300` (5 minutes)
-- **Allowed values:** integer ≥ 0 (seconds). `0` means "use default".
+- **Allowed values:** integer 0–2147483647 (seconds). `0` means "use default".
 
 ### max_payload_bytes
 
@@ -54,7 +56,7 @@ Maximum accepted size of a single task payload, after JSON serialization. A requ
 rejected with HTTP `413` and a `payload_too_large` body. It applies to agent tasks and manager tasks alike.
 
 - **Default value:** `1048576` (1 MiB)
-- **Allowed values:** integer ≥ 0 (bytes). `0` means "use default".
+- **Allowed values:** integer 0–2147483647 (bytes). `0` means "use default".
 - **Note:** the manager-task routes are served in the transport's `Control` class, whose own body cap
   defaults to 64 KiB. The module raises that cap to this value plus envelope overhead, so the limit
   you configure is the one that applies — but a value raised far beyond the payloads a producer
@@ -65,7 +67,7 @@ rejected with HTTP `413` and a `payload_too_large` body. It applies to agent tas
 Maximum number of tasks returned by one `POST /v1/tasks/pending` call, oldest first. Additional pending tasks remain `pending` and are returned on subsequent polls.
 
 - **Default value:** `100`
-- **Allowed values:** integer ≥ 0. `0` means "use default".
+- **Allowed values:** integer 0–2147483647. `0` means "use default".
 
 ---
 

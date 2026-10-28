@@ -39,10 +39,13 @@ list(APPEND wmodules_names "test_wmcom")
 list(APPEND wmodules_flags "-Wl,--wrap,getModulesConfig -Wl,--wrap,getModulesInternalOptions \
                             -Wl,--wrap,w_query_agentd -Wl,--wrap,_merror -Wl,--wrap,_mdebug1")
 
-# wm_handler() lives in main.c, which WMODULES_O leaves out: the test includes it.
+# wm_handler() and wm_setup() live in main.c, which WMODULES_O leaves out: the test includes it.
 if(${TARGET} STREQUAL "agent")
     list(APPEND wmodules_names "test_wm_main")
-    list(APPEND wmodules_flags "-Wl,--wrap,sleep -Wl,--wrap,exit")
+    list(APPEND wmodules_flags "-Wl,--wrap,sleep -Wl,--wrap,exit -Wl,--wrap,wm_config -Wl,--wrap,wm_check \
+                                -Wl,--wrap,w_read_agent_batch -Wl,--wrap,getDefine_Int_default \
+                                -Wl,--wrap,Privsep_GetGroup -Wl,--wrap,Privsep_SetGroup -Wl,--wrap,CreatePID \
+                                -Wl,--wrap,wm_children_pool_init")
 endif()
 
 # The task manager's reader of the sections it borrows (`global`, `remote`): a refusal is reported to

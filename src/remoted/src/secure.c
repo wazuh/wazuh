@@ -122,6 +122,7 @@ typedef enum {
     REM_REJECT_SOURCE,  /* no ID in the frame, and the source address is no agent's */
     REM_REJECT_EMPTY,   /* nothing after the header */
     REM_REJECT_DECRYPT, /* did not decrypt with the key it claims */
+    REM_REJECT_SIZE,    /* TCP length prefix above the maximum message size */
     REM_REJECT_REASONS
 } rem_reject_reason_t;
 
@@ -178,6 +179,22 @@ STATIC void rem_log_rejected_frame(rem_reject_reason_t reason, const char *forma
         mwarn("%s (and %zu more like it so far)", message, count - 1);
     } else {
         mwarn("%s (and %zu more like it in the last %ld s)", message, count - 1, (long)(now - last));
+    }
+}
+
+/* The textual address of a legacy peer, for the rejection lines above; "unknown" for a family the
+ * receive path does not serve. */
+STATIC void rem_peer_address(const struct sockaddr_storage *addr, char *out, size_t size) {
+    switch (addr->ss_family) {
+    case AF_INET:
+        get_ipv4_string(((const struct sockaddr_in *)addr)->sin_addr, out, size);
+        break;
+    case AF_INET6:
+        get_ipv6_string(((const struct sockaddr_in6 *)addr)->sin6_addr, out, size);
+        break;
+    default:
+        snprintf(out, size, "unknown");
+        break;
     }
 }
 
@@ -759,8 +776,17 @@ void w_remoted_preflight_tls_files(void) {
 
 void w_remoted_validate_module_config(void) {
     remoted_module_config_t rm_config;
+    char tls_error[OS_SIZE_1024] = {0};
+
     w_remoted_build_module_config(&logr, &rm_config);
     remoted_module_control_config(&rm_config);
+
+    /* The files themselves, loaded with the listener's own code: the validation that runs before
+     * this only checks that they exist, so a private key given as remote.https.ca, or a text file
+     * as the certificate, would otherwise pass and stop the next start. */
+    if (remoted_module_validate_tls(&rm_config, tls_error, sizeof(tls_error)) != 0) {
+        merror_exit(REMOTED_TLS_FILES_INVALID, tls_error);
+    }
 }
 
 /* Handle secure connections */
@@ -1113,10 +1139,15 @@ STATIC void handle_incoming_data_from_tcp_socket(int sock_client)
     int recv_b = nb_recv(&netbuffer_recv, sock_client);
 
     switch (recv_b) {
-    case -2:
-        mwarn("Too big message size from socket [%d].", sock_client);
+    case -2: {
+        /* The length prefix comes before any authentication: a throttled line naming the peer. */
+        char srcip[IPSIZE + 1] = {0};
+
+        rem_peer_address(&netbuffer_recv.buffers[sock_client].peer_info, srcip, sizeof(srcip));
+        rem_log_rejected_frame(REM_REJECT_SIZE, "Too big message size from '%s', socket %d.", srcip, sock_client);
         _close_sock(&keys, sock_client);
         return;
+    }
 
     case -1:
         switch (errno) {
@@ -1475,6 +1506,8 @@ STATIC void HandleSecureMessage(const message_t *message, w_indexed_queue_t * co
         if (message->sock >= 0) {
             rem_log_rejected_frame(REM_REJECT_DECRYPT, "Decrypt the message fail from '%s', socket %d", srcip, message->sock);
             _close_sock(&keys, message->sock);
+        } else {
+            rem_log_rejected_frame(REM_REJECT_DECRYPT, "Decrypt the message fail from '%s'", srcip);
         }
 
         if (sock_idle >= 0) {

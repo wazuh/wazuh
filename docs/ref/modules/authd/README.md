@@ -47,12 +47,20 @@ material; that one is the order things happen in.
    - `A:'<agent_name>'` — the name the agent wants to register under (required). It must pass
      `OS_IsValidName()` (2–128 letters, digits, `-`, `_` or `.`, not starting with `.`), or the
      answer is `ERROR: Invalid agent name: <name>`.
-   - `V:'<version>'` — the agent's Wazuh version. A version newer than the manager's is refused
+   - `V:'<version>'` — the agent's Wazuh version, in the form `POST /enroll` accepts: an optional
+     `v` or `V`, one to four dot-separated numbers and an optional `-` or `+` suffix of letters,
+     digits, `.` and `-` (64 bytes at most); anything else, an empty value included, is answered
+     `ERROR: Invalid version`. A version newer than the manager's is refused
      unless [`<agents><allow_higher_versions>`](configuration.md#agents--allow_higher_versions) is `yes`.
    - `G:'<groups>'` — comma-separated centralized group(s) to assign the agent to at enrollment
      time, instead of the `default` group.
    - `IP:'<ip>'` — the address to register the agent with. `IP:'src'` registers the connection's
-     source address; any other value must be a valid IP and is registered as given. Without this
+     source address. Any other value must be an IPv4 or IPv6 address, optionally with a mask, or
+     `any`; it is registered, and echoed in the answer, in the form the agent registry records:
+     an IPv4 mask in dotted form becomes its prefix length (`10.22.0.0/255.255.0.0` →
+     `10.22.0.0/16`), a full-length mask is dropped (`10.30.0.0/32` → `10.30.0.0`), and an IPv6
+     address is expanded in upper case. A non-contiguous dotted mask and a leading `!` are
+     answered `ERROR: Invalid IP: <value>`, as `POST /enroll` refuses them. Without this
      field the agent is registered as `any`, or with its source address when
      [`use_source_ip`](configuration.md#use_source_ip) is `yes`.
    - `K:'<key_hash>'` — the SHA-1 hash of the agent's current key, if it already has one. It is
@@ -173,7 +181,7 @@ wazuh-manager-authd -[VhdtfP] [-u user] [-g group] [-D dir] [-p port] [-c cipher
 | `-V` | Print the version and license, then exit. | — |
 | `-h` | Print the help message, then exit with status `1`. | — |
 | `-d` | Enable debug logging. Repeat it (`-dd`) to raise the level. When given, `authd.debug` in the internal options is not read. | off |
-| `-t` | Read and validate `/etc/wazuh-manager/wazuh-manager.conf`, then exit `0` on success. Unlike a normal start, it also checks that the configured certificate and CA files exist (`auth.ssl_*` and `remote.https.*`). Nothing is bound or started. | — |
+| `-t` | Read and validate `/etc/wazuh-manager/wazuh-manager.conf`, then exit `0` on success. Unlike a normal start, it also checks that the configured certificate and CA files exist (`auth.ssl_*` and `remote.https.*`). When the port-1515 listener would start (authd not disabled, `remote_enrollment` and `legacy_enrollment` on), it also loads `ssl_manager_cert`, `ssl_manager_key` and, when set, `ssl_agent_ca` exactly as the start does, so a file that is not a PEM certificate or key, or a key that does not match its certificate, fails the test. Nothing is bound or started. | — |
 | `-f` | Run in the foreground instead of daemonizing. **Also forces [`disabled`](configuration.md#disabled) to `no`**, so the daemon starts even when the configuration disables it. | off |
 | `-u <user>` | User the daemon switches to after startup. | `wazuh-manager` |
 | `-g <group>` | Group the daemon switches to after startup. | `wazuh-manager` |

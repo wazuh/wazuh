@@ -199,8 +199,26 @@ refuse()
     fi
 }
 
+# json_string <text>: <text> as the body of a JSON string -- backslashes and quotes escaped, control characters
+# (an argument may carry a newline or a tab) turned into spaces.
+json_string()
+{
+    printf '%s' "$1" | tr '\001-\037' ' ' | sed -e 's/\\/\\\\/g' -e 's/"/\\"/g'
+}
+
+# json_error <message>: the one document a -j failure prints, {"error":1,"message":"<message>"}. printf, not echo:
+# dash's echo would undo the escaping.
+json_error()
+{
+    printf '{"error":1,"message":"%s"}' "$(json_string "$1")"
+}
+
 help()
 {
+    if [ $USE_JSON = true ]; then
+        json_error "Usage: $0 [-j] {start|stop|restart|reload|check|status|enable|disable|info [-v -r -t]}."
+        exit 1;
+    fi
     # Help message
     echo ""
     echo "Usage: $0 [-j] {start|stop|restart|reload|check|status|enable|disable|info [-v -r -t]}";
@@ -211,48 +229,46 @@ help()
     exit 1;
 }
 
-# Enables additional daemons
-enable()
+# check_toggle <enable|disable> <option>: refuses a missing or unknown option with the usage, exit 1. Runs before
+# lock(), so a refusal never leaves the start lock behind.
+check_toggle()
 {
-    if [ -z "$1" ]; then
-        echo ""
-        echo "Enable options: debug"
-        echo "Usage: $0 enable debug"
+    if [ "$2" = "debug" ]; then
+        return 0;
+    fi
+    if [ $USE_JSON = true ]; then
+        if [ -z "$2" ]; then
+            json_error "Missing $1 option. Usage: $0 $1 debug."
+        else
+            json_error "Invalid $1 option: $2. Usage: $0 $1 debug."
+        fi
         exit 1;
     fi
-
-    if [ "$1" = "debug" ]; then
-        echo "DEBUG_CLI=\"-d\"" >> ${PLIST};
+    echo ""
+    if [ -n "$2" ]; then
+        echo "Invalid $1 option."
+        echo ""
+    fi
+    if [ "$1" = "enable" ]; then
+        echo "Enable options: debug"
     else
-        echo ""
-        echo "Invalid enable option."
-        echo ""
-        echo "Enable options: debug"
-        echo "Usage: $0 enable debug"
-        exit 1;
+        echo "Disable options: debug"
     fi
+    echo "Usage: $0 $1 debug"
+    exit 1;
 }
 
-
-# Disables additional daemons
-disable()
+# toggle <enable|disable>: records the debug switch (already validated by check_toggle) in bin/.process_list,
+# which this script sources -- the last line wins.
+toggle()
 {
-    if [ -z "$1" ]; then
-        echo ""
-        echo "Disable options: debug"
-        echo "Usage: $0 disable debug"
-        exit 1;
-    fi
-
-    if [ "$1" = "debug" ]; then
-        echo "DEBUG_CLI=\"\"" >> ${PLIST};
+    if [ "$1" = "enable" ]; then
+        echo "DEBUG_CLI=\"-d\"" >> ${PLIST};
     else
-        echo ""
-        echo "Invalid disable option."
-        echo ""
-        echo "Disable options: debug"
-        echo "Usage: $0 disable debug"
-        exit 1;
+        echo "DEBUG_CLI=\"\"" >> ${PLIST};
+    fi
+    if [ $USE_JSON = true ]; then
+        echo -n '{"error":0,"data":[]}'
     fi
 }
 
@@ -832,7 +848,7 @@ info()
             -t) info_key="WAZUH_TYPE"; info_value="${TYPE}" ;;
              *)
                 if [ $USE_JSON = true ]; then
-                    echo -n '{"error":1,"message":"Invalid flag: '"${1}"'."}'
+                    json_error "Invalid flag: ${1}."
                     exit 1
                 fi
                 echo "Invalid flag: ${1}" && help ;;
@@ -938,15 +954,10 @@ status)
     status
     unlock
     ;;
-enable)
+enable|disable)
+    check_toggle "$action" "$arg"
     lock
-    enable "$arg";
-    unlock
-    RETVAL=0
-    ;;
-disable)
-    lock
-    disable "$arg";
+    toggle "$action"
     unlock
     RETVAL=0
     ;;
@@ -961,9 +972,9 @@ help)
     # With -j, one JSON document and nothing else, like every other answer.
     if [ $USE_JSON = true ]; then
         if [ -n "$action" ]; then
-            echo -n '{"error":1,"message":"Invalid action: '"${action}"'."}'
+            json_error "Invalid action: ${action}."
         else
-            echo -n '{"error":1,"message":"Missing action."}'
+            json_error "Missing action."
         fi
         exit 1
     fi

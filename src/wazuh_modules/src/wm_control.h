@@ -25,6 +25,21 @@ typedef struct wm_control_t {
 wmodule *wm_control_read();
 
 /**
+ * @brief Render untrusted control-socket input for a log line
+ *
+ * Copies at most the first 128 bytes of @p input into @p dst, escaping a newline, carriage
+ * return, tab and backslash as \n, \r, \t and \\, and any other non-printable or non-ASCII
+ * byte as \xHH, so a client cannot forge or flood log lines. Longer input ends in
+ * "...[truncated]".
+ *
+ * @param input Client input (NUL-terminated); NULL renders as an empty string
+ * @param dst Destination buffer; 128 * 4 + 15 bytes always hold the full rendering
+ * @param dst_size Size of @p dst
+ * @return const char* @p dst, or "" when @p dst is unusable
+ */
+const char *wm_control_log_input(const char *input, char *dst, size_t dst_size);
+
+/**
  * @brief Dispatch control commands and execute corresponding actions
  *
  * Parses incoming commands and routes them to appropriate handlers.

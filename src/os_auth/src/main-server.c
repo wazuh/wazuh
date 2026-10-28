@@ -61,6 +61,9 @@ static void* run_authpass_watcher(void *arg);
 /* Signal handler */
 static void handler(int signum);
 
+/* Load the listener's TLS material the way the start does (used by -t) */
+static int authd_test_tls_material(const char *home_path);
+
 /* Exit handler */
 static void cleanup();
 
@@ -133,6 +136,30 @@ static void help_authd(char * home_path)
     print_out(" ");
     os_free(home_path);
     exit(1);
+}
+
+/* The test run's share of the start: the port-1515 listener's TLS material (certificate, key and,
+ * when configured, the agents' CA) loaded through the same os_ssl_keys() call the start makes, so a
+ * file the start would refuse ("Unable to read CA certificate file") fails `-t` -- and with it
+ * `wazuh-manager-control check` and every start that runs it -- instead of leaving authd down after
+ * a restart. Loaded only when the start would load it: a disabled authd or a closed legacy listener
+ * never reads these files. Returns 0 when the material loads or is not used, -1 otherwise. */
+static int authd_test_tls_material(const char *home_path) {
+    SSL_CTX *test_ctx;
+
+    if (config.flags.disabled || !config.flags.remote_enrollment || !config.flags.legacy_enrollment) {
+        return 0;
+    }
+
+    if (test_ctx = os_ssl_keys(1, home_path, config.ciphers, config.manager_cert, config.manager_key, config.agent_ca), !test_ctx) {
+        merror("SSL context setup failed (certificate '%s', key '%s', CA '%s'): the enrollment listener on "
+               "port %hu would not start.", config.manager_cert, config.manager_key,
+               config.agent_ca ? config.agent_ca : "none", config.port);
+        return -1;
+    }
+
+    SSL_CTX_free(test_ctx);
+    return 0;
 }
 
 static void set_non_blocking(int fd) {
@@ -413,6 +440,11 @@ int main(int argc, char **argv)
     if (test_config) {
         /* Start-up does not require the certificate files to exist; the test run does. */
         if (w_mconf_validate(WAZUHCONF) < 0) {
+            merror_exit(CONFIG_ERROR, WAZUHCONF);
+        }
+        /* The files must also hold what the listener loads: a CA that is not a PEM certificate
+         * passes the validation above and still stops the start. */
+        if (authd_test_tls_material(home_path) < 0) {
             merror_exit(CONFIG_ERROR, WAZUHCONF);
         }
         exit(0);

@@ -37,6 +37,7 @@ with patch('wazuh.core.common.wazuh_uid'):
             reload_agents, \
             check_uninstall_permission, ERROR_CODES_UPGRADE_SOCKET
         from wazuh.core.agent import Agent, WazuhDBQueryGroup
+        import wazuh.agent as wazuh_agent
         from wazuh import WazuhError, WazuhException, WazuhInternalError
         from wazuh.core.results import WazuhResult, AffectedItemsWazuhResult
         from wazuh.core.tests.test_agent import InitAgent
@@ -730,6 +731,45 @@ def test_agent_get_agent_groups_leading_zeros(socket_mock, send_mock, mock_get_g
 
     assert queried_names == ['007']
     assert [item['name'] for item in group_result.affected_items] == ['007']
+
+
+@pytest.mark.parametrize('readable', [set(), {'006'}, {'008'}, {'001', '007', '008'}])
+@patch('wazuh.core.common.CLIENT_KEYS', new=os.path.join(test_agent_path, 'client.keys'))
+@patch('wazuh.core.common.SHARED_PATH', new=test_shared_path)
+@patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
+@patch('socket.socket.connect')
+def test_agent_get_agent_groups_counts_only_readable_agents(socket_mock, send_mock, readable):
+    """A group's count leaves out the agents the caller may not read."""
+    groups = ['group-1', 'group-2', 'group-empty']
+    expected = {group: 0 for group in groups}
+    for (group, agent_id) in test_data.cur.execute(
+            'SELECT `group`.name, belongs.id_agent FROM `group` JOIN belongs ON `group`.id = belongs.id_group'):
+        if group in expected and str(agent_id).zfill(3) in readable:
+            expected[group] += 1
+
+    with patch('wazuh.agent.permitted_agent_ids', return_value=readable):
+        result = get_agent_groups(groups)
+
+    counts = {item['name']: item['count'] for item in result.affected_items}
+    assert {'group-1', 'group-2'} <= counts.keys()
+    assert counts == {name: expected[name] for name in counts}
+
+
+@patch('wazuh.core.common.CLIENT_KEYS', new=os.path.join(test_agent_path, 'client.keys'))
+@patch('wazuh.core.common.SHARED_PATH', new=test_shared_path)
+@patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
+@patch('socket.socket.connect')
+def test_agent_get_agent_groups_counts_every_agent_when_all_readable(socket_mock, send_mock):
+    """A caller who may read every agent gets the stored counts, and no extra agent query is run."""
+    with patch('wazuh.agent.permitted_agent_ids', side_effect=lambda: wazuh_agent.get_agents_info()), \
+            patch('wazuh.agent.WazuhDBQueryAgents') as agent_query:
+        result = get_agent_groups(['group-1', 'group-2'])
+
+    agent_query.assert_not_called()
+    stored = dict(test_data.cur.execute('SELECT `group`.name, count(belongs.id_agent) FROM `group` LEFT JOIN belongs '
+                                        'ON `group`.id = belongs.id_group GROUP BY `group`.name').fetchall())
+    counts = {item['name']: item['count'] for item in result.affected_items}
+    assert counts == {'group-1': stored['group-1'], 'group-2': stored['group-2']} == {'group-1': 2, 'group-2': 2}
 
 
 @pytest.mark.parametrize('db_global, system_groups, error_code', [

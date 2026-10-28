@@ -472,7 +472,7 @@ adapter::RouteHandler policyValidate(std::shared_ptr<cm::crud::ICrudService> cru
             {
                 const int lifetime = 0;
                 ::router::test::EntryPost entryPost(tmpSessionName, tmpNsId, lifetime);
-                entryPost.description("wazuh-indexer auto created session");
+                entryPost.description("Created by /content/validate/policy");
 
                 auto err = testerLocked->postTestEntry(entryPost);
                 if (base::isError(err))

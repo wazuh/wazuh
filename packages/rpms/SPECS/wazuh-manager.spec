@@ -377,7 +377,7 @@ fix_global_db() {
   for DB_FILE in global.db*; do
     if [ -f "${DB_FILE}" ] && [ ! -L "${DB_FILE}" ]; then
       chown -h wazuh-manager:wazuh-manager "${DB_FILE}"
-      as_service_user chmod 660 "${DB_FILE}" || true
+      as_service_user chmod 640 "${DB_FILE}" || true
     fi
   done
 }

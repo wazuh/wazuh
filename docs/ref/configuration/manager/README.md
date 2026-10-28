@@ -20,7 +20,10 @@ Upgrades preserve it; DEB upgrades leave the regenerated defaults next to it as 
 
 The file is parsed as **well-formed XML**: a single `<wazuh_config>` root without attributes, no
 unescaped `&` or `<`, `<!-- -->` comments only (with no `--` inside), at most 1 MiB and 16 levels of
-nesting. XML entities (`&amp;`, `&lt;`…) are decoded into the values. Values are typed by the schema:
+nesting. An XML declaration (`<?xml …?>`), a processing instruction or a `<!DOCTYPE …>` is accepted and
+ignored without a message; nothing declared in a DOCTYPE is applied, and a reference to an entity it declares
+is refused as a raw `&`. The predefined XML entities (`&amp;`, `&lt;`…) and character references are decoded
+into the values. Values are typed by the schema:
 booleans are written `yes`/`no` (any case; `true`/`false` are rejected), numbers as digits, enumerated
 values in any case, and lists in any of three forms: one child per item
 (`<hosts><host>…</host></hosts>`), a comma-separated value (`<protocol>tcp,udp</protocol>`), or the
@@ -59,7 +62,24 @@ element is rejected as a duplicate.
     start), and what only a running system shows (an address this host does not have, a port another
     program holds). The API's `PUT` runs the same `validate`, so it has the same limits.
     `wazuh-manager-control check` runs the whole pre-start sequence below — validation, credentials and
-    every daemon's `-t` — without stopping or starting anything.
+    every daemon's `-t` — without stopping or starting anything. Through those `-t` runs it also judges
+    what the TLS files hold: `wazuh-manager-remoted -t` loads `remote.https.certificate` and `key` (and
+    `remote.https.ca` when `verification_mode` needs it), and `wazuh-manager-authd -t` loads the
+    `auth.ssl_*` files when authd will start, so a file that is not a usable PEM certificate, key or CA is
+    refused before anything stops.
+  - What even `wazuh-manager-control check` does not judge, so that a value passes it and still stops a
+    daemon at start:
+    - the engine's `analysisd.*` internal options: its `-t` returns before it reads the internal-options
+      file, so an out-of-range value stops `wazuh-manager-analysisd` before it writes its pid file
+      (`Failed to obtain PID for wazuh-manager-analysisd`);
+    - `wazuh.thread_stack_size`: read only when a thread is created, which no `-t` does, so an
+      out-of-range value stops `wazuh-manager-remoted` or `wazuh-manager-modulesd` at start with `(2302)`;
+    - memory: `remote.legacy.queue_size` (and any other size the schema bounds only from below) is judged
+      by type and range, not against what the host can allocate — see the option in
+      [the reference](reference.md);
+    - what the cluster protocol can carry: a `cluster.name` or `cluster.node_name` outside
+      `[A-Za-z0-9_-]` passes every check, and a worker so named never joins its master (see
+      [Cluster configuration](../../modules/cluster/configuration.md)).
   - `get <key.path>` prints one option of the **effective** document (defaults applied): scalars as
     plain text, objects and lists as JSON. `dump` prints the whole effective document.
 - `bin/wazuh-manager-control start|restart|reload|check` validates the file first (with
@@ -142,7 +162,7 @@ below, and a value outside the range stops the daemon at start with
 | `wazuh_modules.kill_timeout` | `10` | `0`-`3600` | Seconds a module's child process gets to exit at shutdown before it is killed; no manager module starts one |
 | `wazuh_modules.socket_timeout` | `1` | `1`-`60` | Longest time, in seconds, a local client of the `wazuh-manager-modulesd` request socket can go without sending the next part of its request, or without reading the reply, before the connection is dropped. It bounds each wait, not the whole request |
 | `wazuh_modules.unmask_credentials` | `0` | `0`-`1` | Reports module credentials in clear instead of as `*****`; read and range-checked, but the modules that hold credentials run only on agents |
-| `wazuh.thread_stack_size` | `8192` | `2048`-`65536` | Stack size, in KiB, of the threads `wazuh-manager-remoted` and `wazuh-manager-modulesd` start; read at each thread creation |
+| `wazuh.thread_stack_size` | `8192` | `2048`-`65536` | Stack size, in KiB, of the threads `wazuh-manager-remoted` and `wazuh-manager-modulesd` start; read at each thread creation, so no daemon's `-t` reads it and `wazuh-manager-control check` passes an out-of-range value that then stops the daemon at start |
 
 ### `wazuh-manager-modulesd` command line
 

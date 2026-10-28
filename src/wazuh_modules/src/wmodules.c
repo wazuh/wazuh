@@ -38,6 +38,23 @@ const char *wm_config_path = WAZUHCONF;
 #endif
 volatile sig_atomic_t wm_shutdown_requested = 0;
 
+char *wm_resolve_config_path(const char *path, const char *cwd) {
+    char *resolved = NULL;
+
+    if (path[0] == '/' || cwd == NULL || cwd[0] == '\0') {
+        os_strdup(path, resolved);
+        return resolved;
+    }
+
+    const size_t cwd_len = strlen(cwd);
+    const char *separator = cwd[cwd_len - 1] == '/' ? "" : "/";
+    const size_t size = cwd_len + strlen(separator) + strlen(path) + 1;
+
+    os_malloc(size, resolved);
+    snprintf(resolved, size, "%s%s%s", cwd, separator, path);
+    return resolved;
+}
+
 void wm_sleep_interruptible(int seconds) {
     for (int i = 0; i < seconds && !wm_shutdown_requested; i++) {
         sleep(1);

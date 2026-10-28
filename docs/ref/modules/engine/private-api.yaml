@@ -651,6 +651,9 @@ paths:
         the MaxMind MMDB files store (they are not mapped to WCS field names).
 
         If a database is not available or the IP is not found in it, its object is empty.
+
+        `ip` must be an IPv4 or IPv6 address literal; any other value (a host name, a CIDR, `not-an-ip`) is
+        refused with 400 `Invalid IP address: <ip>` before any lookup.
       requestBody:
         required: true
         content:
@@ -703,6 +706,11 @@ paths:
                   value:
                     status: ERROR
                     error: IP cannot be empty
+                invalidIp:
+                  summary: Not an IP address
+                  value:
+                    status: ERROR
+                    error: 'Invalid IP address: not-an-ip'
         '500':
           $ref: '#/components/responses/InternalServerError_500'
   /_internal/geo/db/list:

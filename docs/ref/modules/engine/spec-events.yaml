@@ -135,7 +135,7 @@ paths:
                 missingAgentId:
                   value: {"error":"NDJson parser error, AgentMetadataCache: missing or non-string /wazuh/agent/id in header","code":400}
                 invalidAgentId:
-                  value: {"error":"NDJson parser error, AgentMetadataCache: /wazuh/agent/id must be a non-empty positive numeric string","code":400}
+                  value: {"error":"NDJson parser error, AgentMetadataCache: /wazuh/agent/id must be a non-empty string of digits","code":400}
                 missingEventMarker:
                   value: {"error":"NDJson parser error, Expected 'E ' at event start","code":400}
         "500":

@@ -611,6 +611,55 @@ INSTANTIATE_TEST_SUITE_P(
             []()
             { return userErrorResponse<eEngine::tester::RunPost_Response>("event is required and cannot be empty"); },
             []() { return makeSchemaValidator(true); },
+        },
+        // An absent trace level means NONE: no asset lookup, the event still runs
+        LogtestPostCase {
+            "TraceLevelAbsentMeansNone",
+            []()
+            {
+                eEngine::tester::PublicRunPost_Request protoReq;
+                protoReq.set_queue(1);
+                protoReq.set_location("/var/log/test");
+                protoReq.set_event("some event");
+                protoReq.set_space("test-session");
+                return protoReq;
+            },
+            [](auto& tester)
+            {
+                EXPECT_CALL(tester, getAssets(testing::_)).Times(0);
+                EXPECT_CALL(tester, ingestTest(testing::_, testing::_))
+                    .WillOnce(
+                        [](auto&&, auto&&)
+                        {
+                            std::promise<base::RespOrError<::router::test::Output>> p;
+                            p.set_value(makeOutput(R"({"status":"ok"})"));
+                            return p.get_future();
+                        });
+            },
+            []() { return makeRunPostSuccessResponse(R"({"status":"ok"})"); },
+            []() { return makeSchemaValidator(true); },
+        },
+        // An unknown trace level is refused and echoed bounded
+        LogtestPostCase {
+            "TraceLevelInvalidIsBounded",
+            []()
+            {
+                eEngine::tester::PublicRunPost_Request protoReq;
+                protoReq.set_queue(1);
+                protoReq.set_location("/var/log/test");
+                protoReq.set_event("some event");
+                protoReq.set_trace_level(std::string(5000, 'V'));
+                protoReq.set_space("test-session");
+                return protoReq;
+            },
+            [](auto& tester) { EXPECT_CALL(tester, ingestTest(testing::_, testing::_)).Times(0); },
+            []()
+            {
+                const std::string shown = std::string(128, 'V') + "... (5000 bytes)";
+                const std::string message = "Invalid trace level: " + shown + ". Only support: NONE, ASSET_ONLY, ALL";
+                return userErrorResponse<eEngine::tester::RunPost_Response>(message);
+            },
+            []() { return makeSchemaValidator(true); },
         }));
 
 /***********************************************************************

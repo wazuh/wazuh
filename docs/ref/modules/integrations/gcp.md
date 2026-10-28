@@ -19,6 +19,9 @@ Each event is sent with `integration` set to `gcp` and the Google Cloud log unde
 - A service account and its JSON key file, stored on the agent host.
 - The Google Cloud client libraries for Python (Pub/Sub and Cloud Storage) and `pytz`, installed for
   the agent host's `python3`.
+- The `gcp` integration **enabled** in the manager's standard ruleset. It ships disabled, and until
+  it is enabled the events arrive but are never classified or indexed — see
+  [Enable the integration's ruleset first](README.md#enable-the-integrations-ruleset-first).
 
 ## Configuration
 

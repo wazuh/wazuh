@@ -177,7 +177,9 @@ it works on any node (a worker forwards node and health queries to the master).
 | `-u`, `--usage` | Print usage examples |
 | `-h`, `--help` | Print the help |
 
-`-a`, `-l`, `-i` and `-u` are mutually exclusive; with none of them the help is printed. An error is
+`-a`, `-l`, `-i` and `-u` are mutually exclusive; with none of them the help is printed. A wrong combination of
+arguments (for example `-fs` without `-a`) prints the usage and the reason on standard error and exits
+`2`, before the cluster configuration is read. An error is
 printed as `Error <code>: <message>` (as `agent_groups` prints it), or `Internal error: <message>`,
 and the command exits `1`: a node named with `-fn` that is not connected gives
 `Error 1730: Node does not exist`, with `-l` and `-i` alike. For example:

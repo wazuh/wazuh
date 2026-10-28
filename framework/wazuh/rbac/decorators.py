@@ -659,6 +659,27 @@ def require_every_role_update() -> None:
                                    title="Permission Denied")
 
 
+def permitted_agent_ids(action: str = 'agent:read') -> set:
+    """IDs of the agents the caller holds `action` over, resolved as `@expose_resources` resolves an agent list.
+
+    For a function exposed under another action that still reports something about agents (a group's agent
+    count), so it can leave out the agents the caller could not read. `agent:id` and `agent:group` grants, denies
+    and the RBAC mode are applied exactly as for `agent:id:*`.
+
+    Parameters
+    ----------
+    action : str
+        Action over the agents.
+
+    Returns
+    -------
+    set
+        Agent IDs, zero-padded to three digits.
+    """
+    _, required, _ = _get_required_permissions(actions=[action], resources=['agent:id:{agent_list}'])
+    return set(_match_permissions(required, rbac.get()['rbac_mode'])['agent:id'])
+
+
 def can_read_secrets() -> bool:
     """Check whether the current user may read the sensitive configuration values of THIS node in clear.
 

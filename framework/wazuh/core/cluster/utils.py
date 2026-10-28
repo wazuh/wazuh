@@ -185,8 +185,13 @@ def _run_service_control(action: str) -> None:
 
     This is the path the control module takes, used directly when the control socket is unavailable (modulesd is
     not running). The helper reports acceptance by writing '1' on descriptor 3 before it runs the action; it runs in
-    a new session so that stopping this daemon, which the action does, does not stop it. A refusal of the check it
-    runs after accepting is reported too, when it comes within `SERVICE_CONTROL_CHECK_TIMEOUT` seconds.
+    its own process group so that stopping this daemon, which the action does, does not stop it. A refusal of the
+    check it runs after accepting is reported too, when it comes within `SERVICE_CONTROL_CHECK_TIMEOUT` seconds.
+
+    The helper is spawned with `os.posix_spawn`, the only primitive that both places the status pipe on descriptor 3
+    and runs no Python code in the child. It gets a new process group (`setpgroup`), not a new session: `setsid`
+    needs POSIX_SPAWN_SETSID, which the bundled interpreter is built without (it raises NotImplementedError). This
+    daemon has no controlling terminal and nothing signals its session, so the process group detaches it equally.
 
     Parameters
     ----------
@@ -215,12 +220,13 @@ def _run_service_control(action: str) -> None:
                                            (os.POSIX_SPAWN_DUP2, devnull, 1),
                                            (os.POSIX_SPAWN_DUP2, stderr_w, 2),
                                            (os.POSIX_SPAWN_DUP2, status_w, SERVICE_CONTROL_STATUS_FD)],
-                             setsid=True)
-    except OSError as e:
+                             setpgroup=0)
+    except (OSError, NotImplementedError) as e:
+        # NotImplementedError: a spawn attribute the interpreter was built without.
         for fd in (status_r, stderr_r):
             if fd is not None:
                 os.close(fd)
-        raise WazuhInternalError(1903, extra_message=f"{helper}: {e.strerror}")
+        raise WazuhInternalError(1903, extra_message=f"{helper}: {getattr(e, 'strerror', None) or e}")
     finally:
         for fd in (status_w, stderr_w, devnull):
             if fd is not None:

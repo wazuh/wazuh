@@ -33,7 +33,10 @@ For module overview and architecture, see [Cluster Module](README.md).
 Specifies the name of the cluster this node belongs to.
 
 - **Default value:** `wazuh`
-- **Allowed values:** Any non-empty string
+- **Allowed values:** Any non-empty string; use only letters, digits, `_` and `-`. The worker's
+  handshake sends its node name, cluster name, role and version separated by spaces, so a cluster
+  name with a space breaks the handshake and no worker ever joins. No check refuses such a name:
+  `wazuh-manager-control check` and the start both accept it.
 - **Note:** All nodes in the same cluster must use the same name: the master refuses a worker whose
   cluster name differs (error `3030`, `Worker does not belong to the same cluster`). The name is also
   an input of the `settings_hash` the manager reports to agents.
@@ -44,7 +47,8 @@ Specifies the name of the current node of the cluster.
 
 - **Default value:** `node01`
 - **Allowed values:** Any non-empty string; a **worker** name must also consist only of letters,
-  digits, `_` and `-`, or the master refuses it (error `3060`, `Invalid node name format`)
+  digits, `_` and `-`, or the master refuses it (error `3060`, `Invalid node name format`). No check
+  refuses such a name beforehand: the worker starts and never joins
 - **Note:** Each node must have a unique name. The master refuses a worker whose name is already
   connected (error `3028`, `Worker node ID already exists`) or equals its own (error `3029`,
   `Connected worker with same name as the master`).

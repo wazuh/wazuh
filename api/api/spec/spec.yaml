@@ -432,7 +432,8 @@ components:
             detail: "Specified method is invalid for this resource"
 
     UnsupportedMediaTypeResponse:
-      description: "The request body is sent with a content-type the operation does not accept"
+      description: "The request body is sent with a content-type the operation does not accept, or with no
+      Content-Type header at all (error 6002)"
       content:
         application/json:
           schema:
@@ -4104,6 +4105,8 @@ paths:
                 license_url: "https://github.com/wazuh/wazuh/blob/v5.0.0-rc2/LICENSE"
                 hostname: "wazuh"
                 timestamp: "2019-04-02T08:08:11Z"
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
 
   /agents:
     delete:
@@ -7559,7 +7562,12 @@ paths:
       tags:
         - Cluster
       summary: "Restart nodes"
-      description: "Restart all nodes in the cluster or a list of them"
+      description: "Restart all nodes in the cluster or a list of them. This operation is answered while a core daemon is down (no error 1017), so a node can be
+      recovered remotely. Each node hands the action to the manager's control module; when its control
+      socket is missing or refuses the connection (wazuh-manager-modulesd is not running), the node runs
+      the service-control helper itself and logs a WARNING. A refusal by the helper, including the
+      configuration and credentials check it runs first, is a failed item with error 1904 and the manager
+      keeps running; a helper that cannot be run is error 1903."
       operationId: api.controllers.cluster_controller.put_restart
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/cluster:read'
@@ -7606,7 +7614,13 @@ paths:
       tags:
         - Cluster
       summary: "Reload Wazuh manager"
-      description: "Restart Wazuh manager daemons in all nodes in the cluster or a list of them, keeping active agent connections"
+      description: "Restart Wazuh manager daemons in all nodes in the cluster or a list of them, keeping active
+      agent connections. This operation is answered while a core daemon is down (no error 1017), so a node can be
+      recovered remotely. Each node hands the action to the manager's control module; when its control
+      socket is missing or refuses the connection (wazuh-manager-modulesd is not running), the node runs
+      the service-control helper itself and logs a WARNING. A refusal by the helper, including the
+      configuration and credentials check it runs first, is a failed item with error 1904 and the manager
+      keeps running; a helper that cannot be run is error 1903."
       operationId: api.controllers.cluster_controller.put_reload
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/cluster:read'
@@ -8298,6 +8312,8 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/InvalidCredentialsResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
@@ -8498,6 +8514,8 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
@@ -8579,6 +8597,8 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
@@ -8825,6 +8845,8 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '413':
@@ -8881,6 +8903,8 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
@@ -8939,6 +8963,8 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '413':
@@ -9465,6 +9491,8 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '413':
@@ -10185,6 +10213,8 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '413':
@@ -10221,6 +10251,8 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':

@@ -4,7 +4,12 @@
 
 #include <algorithm>
 #include <limits>
+#include <map>
 #include <memory>
+#include <mutex>
+#include <optional>
+#include <set>
+#include <string>
 #include <thread>
 
 #include <proc.hpp>
@@ -41,6 +46,21 @@ private:
     std::filesystem::path m_socketPath;     ///< Socket path where the server is listening
     size_t m_payloadMaxBytes {0};           ///< Maximum allowed payload size in bytes. 0 means unlimited.
     bool m_enableDetailedLogging {true};    ///< Enable detailed request/response logging
+
+    /// Registered methods per literal route path, to tell a wrong method (405) from an unknown route (404).
+    std::map<std::string, std::set<std::string>> m_routeMethods;
+    /// Guards m_routeMethods: routes may be added while the server is serving.
+    mutable std::mutex m_routesMutex;
+
+    /**
+     * @brief Methods registered for a route path, joined for an Allow header ("GET, POST").
+     *
+     * @param path Request path.
+     * @param method Request method.
+     * @return std::optional<std::string> std::nullopt when the path has no route at all; an empty string when it has
+     * one for this method; else the methods it has.
+     */
+    std::optional<std::string> allowedOtherMethods(const std::string& path, const std::string& method) const;
 
     /**
      * @brief Apply the payload size limit to the server.

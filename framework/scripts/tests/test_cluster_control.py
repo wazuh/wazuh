@@ -209,24 +209,27 @@ def test_usage(basename_mock, print_mock):
     cluster_control.usage()
 
     msg = """
-    {0} [-h] [-d] [-fn [FILTER_NODE ...]] [-fs [FILTER_STATUS ...]][-a | -l | -i [HEALTH]]
+    {0} [-h] [-d] [-fn [FILTER_NODE ...]] [-fs [FILTER_STATUS ...]] [-a | -l | -i [more] | -u]
     Usage:
     \t-l                                    # List all nodes present in a cluster
     \t-l -fn <node_name>                    # List certain nodes that belong to the cluster
     \t-a                                    # List all agents connected to the cluster
     \t-a -fs <agent_status>                 # List agents with certain status
     \t-i                                    # Check cluster health
+    \t-i more                               # Check cluster health, with the detailed report
     \t-i -fn <node_name>                    # Check certain node's health
+    \t-u                                    # Show this usage
 
 
     Params:
-    \t-l, --list
+    \t-l, --list-nodes
     \t-d, --debug
     \t-h, --help
     \t-fn, --filter-node
     \t-fs, --filter-agent-status
     \t-a, --list-agents
     \t-i, --health
+    \t-u, --usage
 
     """.format(basename_mock.return_value)
     print_mock.assert_called_once_with(msg)
@@ -292,6 +295,10 @@ async def test_main(get_cluster_status_mock, read_config_mock, check_cluster_con
         def print_help(self):
             self.called = True
 
+        def error(self, message):
+            self.error_message = message
+            raise SystemExit(2)
+
     def run_mock(*args, **kwargs):
         asyncio.gather(args[0])
 
@@ -301,14 +308,14 @@ async def test_main(get_cluster_status_mock, read_config_mock, check_cluster_con
     exclusive_mock = ExclusiveMock()
 
     with patch('scripts.cluster_control.usage', return_value='') as usage_mock:
-        # Check if cluster is disabled and first condition
-        cluster_control.main()
-        usage_mock.assert_called_once_with()
-        exit_mock.assert_called_with(1)
-        read_config_mock.assert_called_once_with()
-        check_cluster_config.assert_called_once_with(config=read_config_mock.return_value)
-        logging_mock.assert_called_once_with(level=logging.ERROR, format='%(levelname)s: %(message)s')
-        exit_mock.reset_mock()
+        # -fs without -a is an argument error, reported by argparse (exit code 2) before anything is read
+        with pytest.raises(SystemExit) as exit_info:
+            cluster_control.main()
+        assert exit_info.value.code == 2
+        assert parser_mock.return_value.error_message == \
+               'argument -fs/--filter-agent-status: only allowed with -a/--list-agents'
+        usage_mock.assert_not_called()
+        read_config_mock.assert_not_called()
 
         # Here we will check if the expected parameters were not modified
         assert parser_mock.return_value.storage == [
@@ -340,12 +347,15 @@ async def test_main(get_cluster_status_mock, read_config_mock, check_cluster_con
 
         # Test the fifth condition
         get_cluster_status_mock.return_value['enabled'] = 'yes'
-        args_mock.filter_status = False
+        args_mock.filter_status = None  # argparse's default when -fs is not given
         args_mock.usage = True
 
         cluster_control.main()
         # sys.exit is mocked, so main() goes on past it; the exit it asked for comes first.
         assert exit_mock.call_args_list[0] == call(0)
+        read_config_mock.assert_called_once_with()
+        check_cluster_config.assert_called_once_with(config=read_config_mock.return_value)
+        logging_mock.assert_called_once_with(level=logging.ERROR, format='%(levelname)s: %(message)s')
 
         # Test the first exception
         usage_mock.side_effect = KeyboardInterrupt()
@@ -404,6 +414,14 @@ async def test_main(get_cluster_status_mock, read_config_mock, check_cluster_con
     # sys.exit is mocked, so main() goes on past it; the exit it asked for comes first.
     assert exit_mock.call_args_list[0] == call(0)
     assert parser_mock.called is True
+
+    # An empty -fs (no status given) without -a is refused too
+    args_mock.filter_status = []
+    read_config_mock.reset_mock()
+    with pytest.raises(SystemExit) as exit_info:
+        cluster_control.main()
+    assert exit_info.value.code == 2
+    read_config_mock.assert_not_called()
 
 
 @pytest.mark.parametrize('argv', [['-l', '-fn', 'unknown'], ['-i', '-fn', 'unknown'], ['-i', 'more', '-fn', 'unknown']])

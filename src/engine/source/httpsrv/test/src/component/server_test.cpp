@@ -725,3 +725,62 @@ TEST_F(ServerTest, BodyWithExplicitLengthIsStillRead)
     EXPECT_EQ(answer.rfind("HTTP/1.1 200", 0), 0u) << answer;
     EXPECT_EQ(received, "abcd");
 }
+
+TEST_F(ServerTest, WrongMethodOnExistingRouteIs405WithAllow)
+{
+    m_srv->template addRoute<httplib::Request, httplib::Response>(httpsrv::Method::POST,
+                                                                  "/test",
+                                                                  [](const httplib::Request&, httplib::Response& res)
+                                                                  {
+                                                                      res.status = 200;
+                                                                      res.set_content("OK", "text/plain");
+                                                                  });
+    m_srv->start(getSocketPath("test.sock"));
+
+    httplib::Client cli(getSocketPath("test.sock").string(), true);
+    cli.set_address_family(AF_UNIX);
+
+    auto res = cli.Get("/test");
+
+    ASSERT_TRUE(res);
+    EXPECT_EQ(res->status, 405);
+    EXPECT_EQ(res->get_header_value("Allow"), "POST");
+    EXPECT_EQ(res->body, "Method not allowed. Allowed: POST.");
+}
+
+TEST_F(ServerTest, UnknownRouteIs404WithReason)
+{
+    m_srv->template addRoute<httplib::Request, httplib::Response>(httpsrv::Method::POST,
+                                                                  "/test",
+                                                                  [](const httplib::Request&, httplib::Response& res)
+                                                                  {
+                                                                      res.status = 200;
+                                                                      res.set_content("OK", "text/plain");
+                                                                  });
+    m_srv->start(getSocketPath("test.sock"));
+
+    httplib::Client cli(getSocketPath("test.sock").string(), true);
+    cli.set_address_family(AF_UNIX);
+
+    auto res = cli.Post("/other", "x", "text/plain");
+
+    ASSERT_TRUE(res);
+    EXPECT_EQ(res->status, 404);
+    EXPECT_EQ(res->body, "Not found: no such route.");
+}
+
+TEST_F(ServerTest, HandlerOwn404IsKept)
+{
+    m_srv->template addRoute<httplib::Request, httplib::Response>(
+        httpsrv::Method::POST, "/test", [](const httplib::Request&, httplib::Response& res) { res.status = 404; });
+    m_srv->start(getSocketPath("test.sock"));
+
+    httplib::Client cli(getSocketPath("test.sock").string(), true);
+    cli.set_address_family(AF_UNIX);
+
+    auto res = cli.Post("/test", "x", "text/plain");
+
+    ASSERT_TRUE(res);
+    EXPECT_EQ(res->status, 404);
+    EXPECT_TRUE(res->body.empty());
+}

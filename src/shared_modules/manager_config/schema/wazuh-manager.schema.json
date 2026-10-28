@@ -199,7 +199,7 @@
               "type": "integer",
               "minimum": 1,
               "default": 131072,
-              "description": "Event queue size (events). Values above 262144 are accepted with a warning."
+              "description": "Event queue size (events). Values above 262144 are accepted with a warning. wazuh-manager-remoted allocates the whole queue when it starts, one pointer (8 bytes on a 64-bit host) per event slot, before any event arrives, plus the memory of every event waiting in it: 2147483648 asks for 16 GiB at once. No check compares the value with the memory of the host, so a size it cannot allocate passes wazuh-manager-control check and stops remoted at start."
             },
             "rids_closing_time": {
               "allOf": [
@@ -469,7 +469,7 @@
             }
           ],
           "default": "/etc/wazuh-manager/certs/remoted.pem",
-          "description": "Manager certificate (PEM). Absolute path directly inside /etc/wazuh-manager/certs (checked unless auth.disabled): the credential check of wazuh-manager-control start refuses any other location, a relative path included."
+          "description": "Manager certificate (PEM). The file must exist even when auth.disabled is true: the validation with file checks that runs before every start checks it whatever authd does. While authd is enabled it must also be an absolute path directly inside /etc/wazuh-manager/certs: the credential check of wazuh-manager-control start refuses any other location, a relative path included."
         },
         "ssl_manager_key": {
           "allOf": [
@@ -478,7 +478,7 @@
             }
           ],
           "default": "/etc/wazuh-manager/certs/remoted-key.pem",
-          "description": "Manager private key (PEM). Absolute path directly inside /etc/wazuh-manager/certs (checked unless auth.disabled): the credential check of wazuh-manager-control start refuses any other location, a relative path included."
+          "description": "Manager private key (PEM). The file must exist even when auth.disabled is true: the validation with file checks that runs before every start checks it whatever authd does. While authd is enabled it must also be an absolute path directly inside /etc/wazuh-manager/certs: the credential check of wazuh-manager-control start refuses any other location, a relative path included."
         },
         "remote_enrollment": {
           "type": "boolean",
@@ -640,25 +640,25 @@
           "type": "integer",
           "minimum": 0,
           "default": 3600,
-          "description": "Seconds a pending agent task may wait, from its creation, before it is expired. Manager tasks never expire."
+          "description": "Seconds a pending agent task may wait, from its creation, before it is expired. Manager tasks never expire. 0 = the module default (3600). At most 2147483647: wazuh-manager-conf validate accepts a larger value, but wazuh-manager-modulesd -t refuses it, so wazuh-manager-control check and the start do; a running modulesd logs an error and keeps the default."
         },
         "cleanup_interval": {
           "type": "integer",
           "minimum": 0,
           "default": 300,
-          "description": "Seconds between cleanup passes."
+          "description": "Seconds between cleanup passes. 0 = the module default (300). At most 2147483647: wazuh-manager-conf validate accepts a larger value, but wazuh-manager-modulesd -t refuses it, so wazuh-manager-control check and the start do; a running modulesd logs an error and keeps the default."
         },
         "max_payload_bytes": {
           "type": "integer",
           "minimum": 0,
           "default": 1048576,
-          "description": "Maximum task payload."
+          "description": "Maximum task payload. 0 = the module default (1048576). At most 2147483647: wazuh-manager-conf validate accepts a larger value, but wazuh-manager-modulesd -t refuses it, so wazuh-manager-control check and the start do; a running modulesd logs an error and keeps the default."
         },
         "max_tasks_per_poll": {
           "type": "integer",
           "minimum": 0,
           "default": 100,
-          "description": "Tasks handed out per poll."
+          "description": "Tasks handed out per poll. 0 = the module default (100). At most 2147483647: wazuh-manager-conf validate accepts a larger value, but wazuh-manager-modulesd -t refuses it, so wazuh-manager-control check and the start do; a running modulesd logs an error and keeps the default."
         },
         "upgrade_enabled": {
           "type": "boolean",
@@ -682,13 +682,13 @@
           "type": "string",
           "minLength": 1,
           "default": "wazuh",
-          "description": "Cluster name."
+          "description": "Cluster name. Use only letters, digits, _ and -: the worker handshake separates its fields with spaces, so a name with a space passes every check and no worker ever joins."
         },
         "node_name": {
           "type": "string",
           "minLength": 1,
           "default": "node01",
-          "description": "This node's name."
+          "description": "This node's name. Use only letters, digits, _ and -: the master refuses a worker whose name has any other character (error 3060), and no check refuses such a name beforehand."
         },
         "node_type": {
           "description": "Role of this node in the cluster.",

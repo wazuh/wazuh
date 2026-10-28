@@ -45,6 +45,7 @@
 #include <stdexcept>
 #include <string>
 #include <string_view>
+#include <system_error>
 #include <unordered_set>
 #include <utility>
 #include <variant>
@@ -754,7 +755,10 @@ namespace
         return remoted::http::X509Ptr {certificate};
     }
 
-    TlsSetup createTlsContext(const remoted::http::HttpServerConfig& config)
+    // The listener's context up to its certificate and private key: everything both the start
+    // (createTlsContext()) and the configuration test (validateTlsMaterial()) load, through one code
+    // path so that `-t` refuses exactly the files the start would.
+    asio::ssl::context makeServerTlsContext(const remoted::http::HttpServerConfig& config)
     {
         checkTlsFileReadable(config.certificatePath, "certificate");
         checkTlsFileReadable(config.privateKeyPath, "private key");
@@ -777,6 +781,28 @@ namespace
 
         context.use_certificate_chain_file(config.certificatePath);
         context.use_private_key_file(config.privateKeyPath, asio::ssl::context::pem);
+
+        return context;
+    }
+
+    // The CA that verifies agent client certificates, loaded only in the modes that use it. A file
+    // holding no certificate (a private key, a text file) is refused here with its path named.
+    void loadClientCaFile(asio::ssl::context& context, const remoted::http::HttpServerConfig& config)
+    {
+        try
+        {
+            context.load_verify_file(config.caPath);
+        }
+        catch (const std::system_error& e)
+        {
+            throw std::runtime_error("The configured TLS CA '" + config.caPath +
+                                     "' holds no certificate the listener can load (" + e.what() + ")");
+        }
+    }
+
+    TlsSetup createTlsContext(const remoted::http::HttpServerConfig& config)
+    {
+        auto context = makeServerTlsContext(config);
 
         // Start-time evaluation of the leaf just loaded, against the CA file as it is on disk right
         // now: expiry (the historical warning) and whether that CA signs it (GET /cacerts must not
@@ -903,7 +929,7 @@ namespace
         // proxy that is the proxy, never the agent, whichever of the two modes is configured.
         if (config.verificationMode != remoted::http::ClientVerificationMode::None)
         {
-            context.load_verify_file(config.caPath);
+            loadClientCaFile(context, config);
             context.set_verify_mode(asio::ssl::verify_peer | asio::ssl::verify_fail_if_no_peer_cert);
 
             // Mandatory once client certificates are requested. OpenSSL refuses to resume a
@@ -1258,6 +1284,21 @@ namespace
 
 namespace remoted::http
 {
+    void validateTlsMaterial(const HttpServerConfig& config)
+    {
+        auto context = makeServerTlsContext(config);
+
+        if (SSL_CTX_check_private_key(context.native_handle()) != 1)
+        {
+            throw std::runtime_error("The configured TLS private key does not match the certificate");
+        }
+
+        if (config.verificationMode != ClientVerificationMode::None)
+        {
+            loadClientCaFile(context, config);
+        }
+    }
+
     bool certificateMatchesPeerIp(X509* certificate, const std::string& peerIp)
     {
         // X509_check_ip_asc() parses the textual address itself and compares it against the

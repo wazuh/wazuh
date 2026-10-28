@@ -94,7 +94,7 @@ The diagram shows the engine boundary and its relationships with the outside wor
 
 ### Server
 
-Two HTTP servers running on Unix Domain Sockets under `/var/wazuh-manager/queue/sockets/`. The **events** socket, `engine-ingest-http.sock`, receives raw events (`POST /events/enriched`) from `wazuh-manager-remoted` and the vulnerability scanner. The **management API** socket, `engine-api-http.sock`, exposes the operations used by the Server API (metrics and status), the readiness check of `wazuh-manager-control start`, and the internal development tools: managing routes, running tester sessions, applying content changes, querying GeoIP/IOC state, reading the raw-event indexer status, controlling the event dumper, and reading metrics. Both sockets speak HTTP with JSON bodies; the schema for every request and response is defined in protobuf. See [api-reference.md](./api-reference.md). The events handler stamps each event with a reception timestamp on receipt, from a strictly increasing process clock, so the events of a batch keep their order and never share a stamp (network arrival order between concurrent requests is not guaranteed); decoders can overwrite `@timestamp`.
+Two HTTP servers running on Unix Domain Sockets under `/var/wazuh-manager/queue/sockets/`. The **events** socket, `engine-ingest-http.sock`, receives raw events (`POST /events/enriched`) from `wazuh-manager-remoted` and the vulnerability scanner. The **management API** socket, `engine-api-http.sock`, exposes the operations used by the Server API (metrics and status), the readiness check of `wazuh-manager-control start`, and the internal development tools: managing routes, running tester sessions, applying content changes, querying GeoIP/IOC state, reading the raw-event indexer status, controlling the event dumper, and reading metrics. Both sockets speak HTTP. The events socket takes the H/E batch format (`application/x-wev1`: one `H <json-metadata>` header line, then one `E <queue>:<location>:<message>` line per event; see the [Events API Reference](./api-events-reference.md)); the management API takes JSON bodies whose request and response schemas are defined in protobuf (see [api-reference.md](./api-reference.md)). The events handler stamps each event with a reception timestamp on receipt, from a strictly increasing process clock, so the events of a batch keep their order and never share a stamp (network arrival order between concurrent requests is not guaranteed); decoders can overwrite `@timestamp`.
 
 ### Orchestrator
 
@@ -159,7 +159,7 @@ sequenceDiagram
     participant IC as Indexer Connector
     participant Indexer as wazuh-indexer
 
-    Remoted->>Server: Raw event (HTTP/UDS, JSON)
+    Remoted->>Server: H/E event batch (HTTP over UDS, application/x-wev1)
     Server->>Orchestrator: Forward event
     Orchestrator->>Backend: Fan-out (one copy per active policy)
     Note over Backend: pre-filter → decoders → enrichment → post-filter → outputs

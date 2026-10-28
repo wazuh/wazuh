@@ -146,6 +146,8 @@ def create_command() -> dict:
 
 
 async def main():
+    """Run the command. It exits 1 when an error stops it or when any requested agent gets no upgrade task."""
+    status = 0
     try:
         # Capture Ctrl + C
         signal(SIGINT, signal_handler)
@@ -174,18 +176,27 @@ async def main():
                 print(f"\nUpgrade tasks created for {result.total_affected_items} agent(s).")
                 print("Note: Agents will execute upgrades autonomously. Use agent logs to track progress.")
 
+        if len(result.failed_items.keys()) > 0:
+            status = 1
+
     except WazuhError as wazuh_err:
         print(f"Error {wazuh_err.code}: {wazuh_err.message}")
         if args.debug:
             raise
+        status = 1
     except ProblemException as e:
         print(f"Error {getattr(e, 'ext', {}).get('code', e.status)}: {str(e.detail)}")
         if args.debug:
             raise
+        status = 1
     except Exception as unexpected_err:
         print(f"Internal error: {str(unexpected_err)}")
         if args.debug:
             raise
+        status = 1
+
+    if status:
+        exit(status)
 
 
 if __name__ == "__main__":

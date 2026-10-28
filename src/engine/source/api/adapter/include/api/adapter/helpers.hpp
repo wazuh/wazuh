@@ -13,11 +13,12 @@
 #include <api/adapter/adapter.hpp>
 #include <base/json.hpp>
 #include <base/name.hpp>
+#include <base/utils/stringUtils.hpp>
 
 namespace api::adapter::helpers
 {
 /// Longest piece of request input an error message repeats back.
-inline constexpr std::size_t MAX_ECHOED_INPUT_LENGTH = 128;
+inline constexpr std::size_t MAX_ECHOED_INPUT_LENGTH = base::utils::string::MAX_ECHOED_INPUT_LENGTH;
 
 /**
  * @brief Bound a request value before an error message repeats it back.
@@ -28,11 +29,7 @@ inline constexpr std::size_t MAX_ECHOED_INPUT_LENGTH = 128;
  */
 inline std::string truncateForMessage(std::string_view value, std::size_t maxLength = MAX_ECHOED_INPUT_LENGTH)
 {
-    if (value.size() <= maxLength)
-    {
-        return std::string {value};
-    }
-    return fmt::format("{}... ({} bytes)", value.substr(0, maxLength), value.size());
+    return base::utils::string::truncateForMessage(value, maxLength);
 }
 
 template<typename T>

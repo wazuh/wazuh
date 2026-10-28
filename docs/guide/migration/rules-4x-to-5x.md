@@ -243,9 +243,18 @@ curl -sk -u admin:admin -X POST \
     "space": "test",
     "queue": 1,
     "location": "/var/log/auth.log",
-    "event": "<the raw log line you want to match>"
+    "event": "<the raw log line you want to match>",
+    "trace_level": "NONE"
   }'
 ```
+
+`space` is where the integration lives: `test` for one you promoted there from your draft (see
+[Step 11](#step-11-deploy-and-test)), `standard` for a Wazuh-curated one — an integration that is not in
+the named space is refused with 400 (`... not found in the 'test' space`). `trace_level` (`NONE`,
+`ASSET_ONLY` or `ALL`) is optional on current managers, where an absent value means `NONE`; keep it so the
+call also works against a manager that still requires it. A standard integration must also be
+**enabled** to decode anything: most ship disabled (see
+[Enable the integration's ruleset first](../../ref/modules/integrations/README.md#enable-the-integrations-ruleset-first)).
 
 The `normalization.output` section of the response is the fully decoded WCS document. The field paths you see there are the exact paths to use in your `detection` block.
 

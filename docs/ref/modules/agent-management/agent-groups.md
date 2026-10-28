@@ -37,7 +37,9 @@ groups at once, up to 128.
 A group name may contain `a-z`, `A-Z`, `0-9`, `_`, `-` and `.`, up to 128 characters through the API
 and up to 255 with `agent_groups`;
 `.`, `..` and `all` are refused, and so is `default`, which always exists
-and cannot be deleted. A new group directory is created `wazuh-manager:wazuh-manager`, mode `0700`,
+and cannot be deleted. Names are case-sensitive: `Web` and `web` are two groups, with their own directories
+and configurations, and looking up a group's agents (`GET /groups/{group_id}/agents`, `GET /agents?group=`,
+`agent_groups -l -g`) matches the name exactly. A new group directory is created `wazuh-manager:wazuh-manager`, mode `0700`,
 with its `agent.conf` at mode `0660`.
 
 ## Managing groups with the Wazuh API

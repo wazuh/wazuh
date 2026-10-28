@@ -427,7 +427,8 @@ also when the option is absent; only a prefix of `/` leaves the paths bare — s
 `GET /wazuh-manager/` (with or without the trailing slash) — and the unprefixed paths answer
 `404`. The prefixed path is what travels on the wire and what the router matches, exactly:
 case-sensitive (`/WAZUH-MANAGER/cacerts` is a `404`) and never percent-decoded (any `%`-encoded
-path, such as `/wazuh-manager/%63acerts`, is a `404`); the only tolerance is a single trailing `/`.
+path, such as `/wazuh-manager/%63acerts`, is a `404`); the only tolerances are a single trailing `/`
+and a query string, which is accepted and ignored (`/wazuh-manager/cacerts?x=1` is `/cacerts`).
 Agents send the full prefixed target. The token does not bind it, so a prefix mismatch is a `404`,
 never a `401`.
 
@@ -646,7 +647,10 @@ one line per cause and 90 seconds, the rest folded into the next line, which cou
 [registered address](#registered-address-ip-column) is logged the same way at `INFO`.
 Transport-level diagnostics reported by the HTTP library itself (TLS handshake errors, malformed
 HTTP, socket resets, and breaches of the `remoted.http_max_*` limits) are logged at
-`remoted.debug=1`, not surfaced by default: these are per-connection events driven overwhelmingly by
+`remoted.debug=1`, not surfaced by default. The client of such a request gets no HTTP answer: an
+oversized URL, header or header count, a request carrying both `Content-Length` and
+`Transfer-Encoding`, or a bare-LF line ending closes the connection with no `400` or `431`. They are
+not surfaced by default because these are per-connection events driven overwhelmingly by
 client behavior — a portscanner, or negative-test traffic like `tools/send_stateless.py --all` — not
 a manager-side problem, so they are not logged unthrottled at warning/error level the way
 `max_inflight_bytes`/`max_deferred_requests` exhaustion or a genuine startup failure are. The one
@@ -1196,9 +1200,9 @@ replay store either: a captured token could be replayed inside its window, bound
 | Field | Required | Notes |
 | --- | --- | --- |
 | `name` | yes | 2-128 chars, no leading `.`, charset `[A-Za-z0-9._-]` only — `OS_IsValidName()`, the same rule the legacy port-1515 path applies, so both enrollment paths accept exactly the same names. `authd`'s local socket separately enforces a looser *storage-safety* floor (no whitespace/control bytes, no leading `#`/`!`, ≤128 chars) for all of its callers, the API included; this endpoint holds the tighter line itself rather than relying on that floor. |
-| `version` | yes | Rejected if its major or minor is higher than the manager's (a higher patch alone is accepted, as on port 1515) unless `authd`'s own `<auth><agents><allow_higher_versions>` is `yes` (not `remote`'s, which governs `/control`; this keeps `/enroll` in step with port 1515) — `authd`'s local socket performs no version check of its own, so this endpoint enforces it. |
+| `version` | yes | Must be well formed — an optional `v`/`V`, one to four dot-separated numbers and an optional `-`/`+` suffix of letters, digits, `.` and `-`, 64 bytes at most — or the answer is `400` (port 1515 answers `ERROR: Invalid version` to the same values). Rejected if its major or minor is higher than the manager's (a higher patch alone is accepted, as on port 1515) unless `authd`'s own `<auth><agents><allow_higher_versions>` is `yes` (not `remote`'s, which governs `/control`; this keeps `/enroll` in step with port 1515) — `authd`'s local socket performs no version check of its own, so this endpoint enforces it. |
 | `groups` | no | Comma-separated, passed through unchanged. |
-| `ip` | no | The grammar port 1515 accepts: an IPv4 or IPv6 address, optionally a network — `/<prefix>`, or for IPv4 a dotted mask (`10.5.0.0/255.255.0.0`) that is forwarded as its prefix length (`10.5.0.0/16`), the form the registry records either way. An empty prefix (`10.0.0.0/`), a prefix past 32/128 and a non-contiguous mask are `400`. Or one of two sentinels: `any` (no override), or `src` — mirrors legacy port 1515's own wire sentinel (an agent configured with its own client-side `use_source_ip` sends this instead of a literal address); see IP resolution below. |
+| `ip` | no | The grammar port 1515 accepts: an IPv4 or IPv6 address, optionally a network — `/<prefix>`, or for IPv4 a dotted mask (`10.5.0.0/255.255.0.0`) that is forwarded as its prefix length (`10.5.0.0/16`), the form the registry records either way. An empty prefix (`10.0.0.0/`), a prefix past 32/128, a non-contiguous mask and a leading `!` are `400`, and port 1515 refuses the same values (`ERROR: Invalid IP`). A full-length mask (`/32`, `/128`) is forwarded and echoed in the response as sent, while the registry records the bare address. Or one of two sentinels: `any` (no override), or `src` — mirrors legacy port 1515's own wire sentinel (an agent configured with its own client-side `use_source_ip` sends this instead of a literal address); see IP resolution below. |
 | `key_hash` | no | Opaque hash of the agent's current key, if it has one — drives `authd`'s force/key-mismatch decision, same as port 1515's `K:` field. |
 
 `force`, `id`, and a raw `key` are never sent, even though `authd`'s local socket accepts all three

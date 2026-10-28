@@ -702,14 +702,17 @@ time are closed. Authenticated connections are never subject to it.
   message arrives. If the workers fall more than this many seconds behind the input queue (for example
   while a large 4.x fleet reconnects after a restart), legitimate agents are closed too and have to
   reconnect. If those closures show up without an attack, raise this value
-- **Note:** A message rejected before it decrypts — an unterminated `!<id>!` header, an ID not
-  registered for the source address, a source address that is no agent's, an empty message, or one
-  that does not decrypt — is logged by remoted as a `WARNING` naming the source address, not an
-  agent: the ID it carries is only a claim until it decrypts. Each of those reasons is throttled on
-  its own: the first is logged at once, the others in the next 90 seconds at debug level, and the
-  next logged one ends with `(and <n> more like it in the last <s> s)`. A message that reaches the
-  decryption step and fails there also gets that step's own line (`(1403)`, `(1404)`, `(1406)`,
-  or a decompression error), which names the ID the message claims and is not throttled
+- **Note:** A message rejected before it decrypts — a TCP length prefix above the maximum message
+  size, an unterminated `!<id>!` header, an ID not registered for the source address, a source
+  address that is no agent's, an empty message, or one that does not decrypt (TCP or UDP) — is
+  logged by remoted as a `WARNING` naming the source address, not an agent: the ID it carries is only
+  a claim until it decrypts. Each of those reasons is throttled on its own: the first is logged at
+  once, the others in the next 90 seconds at debug level, and the next logged one ends with
+  `(and <n> more like it in the last <s> s)`. A message that reaches the decryption step and fails
+  there also gets that step's own detail (`(1403)`, `(1404)`, `(1406)`, or a decompression error),
+  which names the ID the message claims and is therefore logged at debug level only. A message whose
+  checksum matches has proved the agent's key, so a malformed counter field after it is still an
+  `ERROR` `(1403)` naming that agent
 
 ### remoted.unauthenticated_max
 

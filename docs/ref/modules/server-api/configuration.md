@@ -52,8 +52,8 @@ runs and debugging:
 |--------|--------|
 | `-f` | Run in the foreground, logging to the console as well as to the log files |
 | `-r` | Run as root: do not drop privileges to `wazuh-manager` (otherwise governed by [`drop_privileges`](#drop_privileges)) |
-| `-c <file>` | Use this API configuration file (merged over the built-in defaults) instead of `api.yaml`; a file that does not exist is error `2004` |
-| `-t` | Validate the configuration file given with `-c` and exit |
+| `-c <file>` | Use this API configuration file (merged over the built-in defaults) instead of `api.yaml`; when starting, a file that does not exist is error `2004` |
+| `-t` | Validate the configuration file given with `-c` (or `api.yaml`) and exit: `0` when it is valid, otherwise `Configuration not valid. ERROR: <reason>` (no error code; a missing `-c` file included) and exit `1` |
 | `-V` | Print the version and exit |
 | `-d` | Accepted, but has no effect: the log level is [`logs.level`](#logs) |
 
@@ -204,8 +204,9 @@ fixed 60-second window that starts with the first request it counts.
 
 Refusals are recorded in `api.log` at `WARNING` level at most once a minute, the next line adding
 `<n> more request(s) refused since the previous warning`: `Maximum number of requests per minute
-reached` once per client address and user, `Maximum number of unauthenticated requests per minute
-reached` and `IP blocked due to exceeded number of logins attempts` once per client (grouped as the
+reached` (error `6001`, also when the request is refused before its token is checked because the caller's
+quota is already spent) once per client address and user, `Maximum number of unauthenticated requests per
+minute reached` (`6005`) and `IP blocked due to exceeded number of logins attempts` once per client (grouped as the
 lockout groups it), whatever user name the requests claim.
 
 See [Request rate limiting](#request-rate-limiting) and

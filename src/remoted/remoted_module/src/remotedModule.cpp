@@ -9,7 +9,11 @@
  */
 
 #include "remotedModule.hpp"
+#include "http_server/RestinioHttpServer.hpp"
+#include "http_server/httpServerConfig.hpp"
 #include "remotedModuleFacade.hpp"
+
+#include <cstdio>
 
 namespace Log
 {
@@ -125,6 +129,40 @@ extern "C"
             // certificate of the bundle"; the caller refuses to deliver on either.
             return -1;
         }
+    }
+
+    int remoted_module_validate_tls(const remoted_module_config_t* configuration, char* error, size_t capacity)
+    {
+        const auto report = [error, capacity](const char* reason)
+        {
+            if (error != nullptr && capacity > 0)
+            {
+                std::snprintf(error, capacity, "%s", reason);
+            }
+        };
+
+        try
+        {
+            remoted_module_config_t config {};
+            if (configuration)
+            {
+                config = *configuration;
+            }
+
+            remoted::http::validateTlsMaterial(remoted::http::buildHttpServerConfig(config));
+            return 0;
+        }
+        catch (const std::exception& e)
+        {
+            report(e.what());
+        }
+        catch (...)
+        {
+            // Nothing may cross back into C.
+            report("non-standard exception");
+        }
+
+        return -1;
     }
 
 #ifdef __cplusplus

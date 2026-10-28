@@ -500,6 +500,74 @@ void add_remove(const keyentry *entry) {
 }
 
 
+/* The agent version grammar POST /enroll applies (remoted's isValidVersion()): an optional 'v' or
+ * 'V', one to four dot-separated numbers, and an optional build suffix after '-' or '+' made of
+ * letters, digits, '.' and '-'; 64 bytes at most. A 4.x or 5.x agent always sends its own version in
+ * this form ("v4.14.0"), so an empty or malformed V: can only come from something else. */
+static bool w_auth_is_valid_version(const char *version) {
+    const char *p = version;
+    int numbers = 0;
+
+    if (strlen(version) == 0 || strlen(version) > 64) {
+        return false;
+    }
+
+    if (*p == 'v' || *p == 'V') {
+        p++;
+    }
+
+    while (true) {
+        if (!isdigit((unsigned char)*p)) {
+            return false;
+        }
+        while (isdigit((unsigned char)*p)) {
+            p++;
+        }
+        if (++numbers == 4 || *p != '.') {
+            break;
+        }
+        p++;
+    }
+
+    if (*p == '-' || *p == '+') {
+        p++;
+        if (*p == '\0') {
+            return false;
+        }
+        for (; *p != '\0'; p++) {
+            if (!isalnum((unsigned char)*p) && *p != '.' && *p != '-') {
+                return false;
+            }
+        }
+    }
+
+    return *p == '\0';
+}
+
+/* The form the agent registry records an address in, which is also the one the agent is answered
+ * with: the plain address (IPv6 expanded), or the network with its mask as a prefix length
+ * ("10.22.0.0/16" for "10.22.0.0/255.255.0.0"). OS_AddKey() takes the address text up to the '/' and
+ * keyentry_registered_ip() renders the mask through OS_CIDRtoStr(); this does the same, so nothing
+ * an agent is told differs from what client.keys and global.db hold. -1 for a mask the registry
+ * cannot record (a non-contiguous dotted one), which would otherwise narrow the entry to the bare
+ * address. */
+static int w_auth_registered_ip_form(os_ip *parsed, char *out, size_t size) {
+    char *slash = strchr(parsed->ip, '/');
+    int result;
+
+    if (slash) {
+        *slash = '\0';
+    }
+
+    result = OS_CIDRtoStr(parsed, out, size);
+
+    if (slash) {
+        *slash = '/';
+    }
+
+    return result;
+}
+
 w_err_t w_auth_parse_data(const char* buf,
                           char *response,
                           const char *authpass,
@@ -586,6 +654,12 @@ w_err_t w_auth_parse_data(const char* buf,
                 return OS_INVALID;
             }
 
+            if (!w_auth_is_valid_version(version)) {
+                w_auth_log_client_rejection(false, "Invalid version for new agent from: %s", ip);
+                snprintf(response, OS_SIZE_2048, "ERROR: Invalid version");
+                return OS_INVALID;
+            }
+
             if (!config.allow_higher_versions && compare_wazuh_versions(__wazuh_version, version, false) < 0) {
                 w_auth_log_client_rejection(false, "Incompatible version for new agent from: %s", ip);
                 snprintf(response, OS_SIZE_2048, "ERROR: %s", HC_INVALID_VERSION_RESPONSE);
@@ -636,17 +710,21 @@ w_err_t w_auth_parse_data(const char* buf,
                 return OS_INVALID;
             }
 
-            /* If IP: != 'src' overwrite the provided ip */
+            /* If IP: != 'src' overwrite the provided ip, in the form it is registered with. A
+             * leading '!' (a negation to OS_IsValidIP(), meaningless for an address to register) and
+             * a non-contiguous dotted mask are refused, as POST /enroll refuses them. */
             if (strncmp(client_source_ip,"src",3) != 0) {
+                char registered_ip[IPSIZE + 1] = {0};
                 os_ip *aux_ip;
                 os_calloc(1, sizeof(os_ip), aux_ip);
-                if (!OS_IsValidIP(client_source_ip, aux_ip)) {
+                if (client_source_ip[0] == '!' || !OS_IsValidIP(client_source_ip, aux_ip) ||
+                    w_auth_registered_ip_form(aux_ip, registered_ip, sizeof(registered_ip)) != 0) {
                     w_auth_log_client_rejection(false, "Invalid IP: '%s'", client_source_ip);
                     snprintf(response, OS_SIZE_2048, "ERROR: Invalid IP: %s", client_source_ip);
                     w_free_os_ip(aux_ip);
                     return OS_INVALID;
                 }
-                snprintf(ip, IPSIZE, "%s", aux_ip->ip);
+                snprintf(ip, IPSIZE, "%s", registered_ip);
                 w_free_os_ip(aux_ip);
             }
 

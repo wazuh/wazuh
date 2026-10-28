@@ -3436,16 +3436,17 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="wazuh-manager-resolve-credentials",
         description="Set up and check the manager's passwords and trust material. Runs as root.")
-    modes = parser.add_mutually_exclusive_group()
+    # A mode is required: --prestart writes and must never run while modulesd holds the keystore, which only
+    # wazuh-manager-control checks before calling it, so a bare call must not pick it.
+    modes = parser.add_mutually_exclusive_group(required=True)
     for mode, text in (("install", "fresh installation (package postinst/%%post, install.sh); always exits 0"),
                        ("upgrade", "upgrade of an installed manager; always exits 0"),
-                       ("prestart", "before every start (default): check, then complete what is missing"),
+                       ("prestart", "before every start (manager stopped): check, then complete what is missing"),
                        ("check", "read-only checks of every file; exits 1 on any problem"),
                        ("clear", "remove the material this manager created (manager stopped)")):
         modes.add_argument(f"--{mode}", dest="mode", action="store_const", const=mode, help=text)
     parser.add_argument("-q", dest="quiet", action="store_true", help="print problems only")
     parser.add_argument("-H", dest="home", metavar="HOME", help=f"installation home (default {DEFAULT_HOME})")
-    parser.set_defaults(mode="prestart")
     return parser
 
 

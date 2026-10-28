@@ -841,7 +841,13 @@ TEST(PolicyValidateTesterNamespace, PromoteReplacesATesterNamespace)
 
     EXPECT_CALL(*crud, importNamespace(testerNamespace(), ::testing::_, ::testing::_, ::testing::_))
         .WillOnce(::testing::Return(makeValidatedPolicy(true)));
-    EXPECT_CALL(*testerApi, postTestEntry(::testing::_)).WillOnce(::testing::Return(base::noError()));
+    // The session says which route made it, whoever the caller is
+    const auto describedByRoute = [](const ::router::test::EntryPost& post)
+    {
+        return post.description().has_value() && post.description().value() == "Created by /content/validate/policy";
+    };
+    EXPECT_CALL(*testerApi, postTestEntry(::testing::Truly(describedByRoute)))
+        .WillOnce(::testing::Return(base::noError()));
     EXPECT_CALL(*testerApi, getTestEntry("standard"))
         .WillOnce(::testing::Return(makeTestEntry("standard", "logtest_aaaaaa")));
     EXPECT_CALL(*testerApi, deleteTestEntry("standard")).WillOnce(::testing::Return(base::noError()));

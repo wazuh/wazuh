@@ -1686,10 +1686,17 @@ components:
         ip:
           type: string
           description: |
-            A syntactic IPv4/IPv6/CIDR value, or one of two sentinels: `any` (no override) or `src`
-            (use the observed peer address -- the agent-side sentinel, mirroring legacy port 1515's
-            own wire sentinel). Never forwarded to `authd` literally as `src`. If the manager's
-            `use_source_ip` is enabled it overrides whatever the body claims.
+            An IPv4 or IPv6 address, optionally with a mask, or one of two sentinels: `any` (no
+            override) or `src` (use the observed peer address -- the agent-side sentinel, mirroring
+            legacy port 1515's own wire sentinel). Never forwarded to `authd` literally as `src`. An
+            IPv4 mask may be a prefix length or dotted (`255.255.0.0`), and an IPv4 address may come
+            IPv4-mapped (`::ffff:a.b.c.d`); a dotted mask is rewritten as its prefix length
+            (`10.22.0.0/255.255.0.0` -> `10.22.0.0/16`). Answered `400` (`Invalid field: ip`) for anything
+            else: a non-contiguous dotted mask, a leading `!`, an empty or
+            out-of-range prefix. Port 1515's `IP:` field takes the same grammar. The response's
+            `ip` echoes the value as forwarded, so a full-length mask (`/32`, `/128`) is echoed
+            although the registry records the bare address. If the manager's `use_source_ip` is
+            enabled it overrides whatever the body claims.
           example: 10.0.0.15
         key_hash:
           type: string

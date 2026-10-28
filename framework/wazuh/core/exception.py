@@ -540,7 +540,7 @@ class WazuhException(Exception):
                               f'configuration-file'},
         6006: {'message': 'Too many login attempts are being processed',
                'remediation': 'Try again later'},
-        6002: {'message': 'The body type is not the one specified in the content-type'},
+        6002: {'message': 'The request body has no content-type or one the operation does not accept'},
         6003: {'message': 'Error trying to load the JWT secret',
                'remediation': 'Make sure you have the right permissions: WAZUH_PATH/api/configuration/security/'
                               'jwt_secret'},
@@ -839,12 +839,13 @@ class WazuhTooManyRequests(WazuhError):
     _default_title = "Too Many Requests"
 
 
-class WazuhNotAcceptable(WazuhError):
+class WazuhUnsupportedMediaType(WazuhError):
     """
-    This type of exception is raised as a controlled response to a not acceptable request
+    This type of exception is raised as a controlled response to a request body whose content type is missing or is
+    not one the operation accepts
     """
     _default_type = "about:blank"
-    _default_title = "Not Acceptable"
+    _default_title = "Unsupported Media Type"
 
 class IndexerUnavailableError(WazuhIndexerError):
     """

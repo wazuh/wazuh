@@ -26,6 +26,9 @@ Each record is sent as the OCSF JSON object itself; it is not wrapped in an `aws
 - AWS credentials on the agent host that are allowed to assume that role (see
   [Authentication](aws-cloudtrail.md#authentication)).
 - The `boto3` and `pyarrow` Python packages installed for the agent host's `python3`.
+- The `aws-amazon-security-lake` integration **enabled** in the manager's standard ruleset. It ships
+  disabled, and until it is enabled the events arrive but are never classified or indexed — see
+  [Enable the integration's ruleset first](README.md#enable-the-integrations-ruleset-first).
 
 ## Configuration
 

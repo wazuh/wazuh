@@ -149,6 +149,51 @@ async def test_main(mock_list_outdated, mock_exit, mock_signal, capfd):
         assert 'Upgrade tasks created for 1 agent(s).' in out
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize('failed_items, affected, expected_exit', [
+    ({'1701': ['999']}, 0, [call(1)]),           # every agent failed
+    ({'1701': ['999']}, 1, [call(1)]),           # some agent got no task
+    ({}, 2, []),                                 # every agent got its task
+])
+@patch('scripts.agent_upgrade.signal')
+@patch('scripts.agent_upgrade.exit')
+async def test_main_exit_status(mock_exit, mock_signal, failed_items, affected, expected_exit, capfd):
+    """The command exits 1 when any requested agent gets no upgrade task, and 0 (no exit call) otherwise."""
+    agent_upgrade.arg_parser = MagicMock()
+    agent_upgrade.args = MagicMock()
+    agent_upgrade.args.list_outdated = False
+    agent_upgrade.args.agents = ['999']
+    agent_upgrade.args.silent = False
+    agent_upgrade.args.file = ''
+    agent_upgrade.args.execute = ''
+    task_results = MagicMock()
+    task_results.failed_items = failed_items
+    task_results.total_affected_items = affected
+
+    with patch('scripts.agent_upgrade.cluster_utils.forward_function', return_value=task_results):
+        await agent_upgrade.main()
+
+    assert mock_exit.call_args_list == expected_exit
+
+
+@pytest.mark.asyncio
+@patch('scripts.agent_upgrade.signal')
+@patch('scripts.agent_upgrade.exit')
+async def test_main_error_exit_status(mock_exit, mock_signal, capfd):
+    """An error that stops the command exits 1."""
+    agent_upgrade.args = MagicMock()
+    agent_upgrade.args.list_outdated = False
+    agent_upgrade.args.debug = False
+    agent_upgrade.args.file = ''
+    agent_upgrade.args.execute = ''
+
+    with patch('scripts.agent_upgrade.cluster_utils.forward_function', side_effect=WazuhError(1000)):
+        await agent_upgrade.main()
+
+    mock_exit.assert_called_once_with(1)
+    assert capfd.readouterr().out == 'Error 1000: Wazuh Internal Error\n'
+
+
+@pytest.mark.asyncio
 async def test_main_ko(capfd):
     """Check that expected exceptions are raised in main function."""
     agent_upgrade.args = MagicMock()

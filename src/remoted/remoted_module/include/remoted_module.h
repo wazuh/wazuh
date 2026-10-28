@@ -348,6 +348,22 @@ extern "C"
      */
     EXPORTED int remoted_module_tls_leaf_signer_pem(char* buffer, size_t capacity);
 
+    /**
+     * @brief Load the HTTPS listener's TLS material the way remoted_module_start() would, without
+     *        starting anything: the certificate and private key (and that they match), and the CA
+     *        that verifies agent client certificates when `remote.https.verification_mode` loads it.
+     *
+     * For remoted's configuration test (`-t`, run by `wazuh-manager-control check` and before every
+     * start): a file that exists but does not hold what the listener loads -- a private key given as
+     * the CA, a text file -- is refused there instead of leaving remoted down after a restart.
+     *
+     * @param configuration Module configuration, as remoted builds it for the start (NULL -> defaults).
+     * @param error Receives a NUL-terminated reason on failure (truncated to @p capacity); may be NULL.
+     * @param capacity Bytes available at @p error.
+     * @return 0 when everything loads, -1 otherwise.
+     */
+    EXPORTED int remoted_module_validate_tls(const remoted_module_config_t* configuration, char* error, size_t capacity);
+
 #ifdef __cplusplus
 }
 #endif
@@ -357,5 +373,6 @@ typedef void (*remoted_module_start_func)(full_log_fnc_t callbackLog, const remo
 typedef void (*remoted_module_stop_func)(void);
 typedef int (*remoted_module_tls_ca_matches_leaf_func)(void);
 typedef int (*remoted_module_tls_leaf_signer_pem_func)(char* buffer, size_t capacity);
+typedef int (*remoted_module_validate_tls_func)(const remoted_module_config_t* configuration, char* error, size_t capacity);
 
 #endif // _REMOTED_MODULE_H

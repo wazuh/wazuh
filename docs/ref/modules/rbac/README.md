@@ -23,7 +23,16 @@ seeded from `framework/wazuh/rbac/default/*.yaml`, and is managed through the `/
 action no policy mentions gets: `white` (the default) denies it, `black` allows it. A user's policies
 are applied in order (its roles, then each role's policies, by the `position` they were linked at), and
 a later policy overrides an earlier one on the same resource: a `deny` applied after an `allow` removes
-that resource.
+that resource. "The same resource" means the same agents, groups or nodes once each policy's resources are
+expanded, not the same resource string: `agent:group:<name>` stands for the agents in that group, so an
+`agent:id:*` allow applied after an `agent:group:web` deny gives back every agent of `web`, and an
+`agent:group:web` deny applied after an `agent:id:*` allow removes them. Put a deny after the allows it
+must narrow.
+
+A change to what a token was issued with revokes the affected tokens, which then get `401` and must log in
+again: linking or unlinking a user's roles or a role's policies, updating or deleting a role, policy or
+rule, and updating a user (its password or `allow_run_as`) or deleting it revoke the tokens of the users
+concerned; linking or unlinking a role's rules revokes every `run_as` token.
 
 ### Resources
 

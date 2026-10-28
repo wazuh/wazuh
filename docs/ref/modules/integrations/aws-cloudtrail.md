@@ -16,6 +16,9 @@ and sends each CloudTrail record to the manager with `integration` set to `aws` 
 - An AWS account with a CloudTrail trail delivering logs to an S3 bucket.
 - AWS credentials that can read the bucket (see [Authentication](#authentication)).
 - The `boto3` Python package installed for the agent host's `python3`.
+- The `aws` integration **enabled** in the manager's standard ruleset. It ships disabled, and until
+  it is enabled the events arrive but are never classified or indexed — see
+  [Enable the integration's ruleset first](README.md#enable-the-integrations-ruleset-first).
 
 ## Configuration
 

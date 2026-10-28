@@ -2054,6 +2054,76 @@ void test_HandleSecureMessage_close_idle_sock_decrypt_fail(void** state)
     batch_queue_free(events_queue);
 }
 
+/* UDP has no connection to close, but a frame that does not decrypt is still a pre-authentication
+ * rejection: the same throttled line, naming the source address and never the claimed agent. */
+void test_HandleSecureMessage_udp_decrypt_fail(void** state)
+{
+    rem_reject_log_reset(); // a quiet log: the rejection is the first of its kind
+
+    char buffer[OS_MAXSTR + 1] = "12!";
+    message_t message = {.buffer = buffer, .size = 4, .sock = USING_UDP_NO_CLIENT_SOCKET};
+    struct sockaddr_in peer_info;
+    w_indexed_queue_t * control_msg_queue = indexed_queue_init(10);
+    w_rr_queue_t * events_queue = batch_queue_init(10);
+    batch_queue_set_dispose(events_queue, (void (*)(void *))dispose_evt_item);
+
+    current_ts = 61;
+
+    logr.connection_overtake_time = 60;
+
+    keyentry** keyentries;
+    os_calloc(2, sizeof(keyentry*), keyentries);
+    keys.keyentries = keyentries;
+
+    keyentry* key = NULL;
+    os_calloc(1, sizeof(keyentry), key);
+
+    os_calloc(1, sizeof(os_ip), key->ip);
+
+    key->id = strdup("001");
+    key->sock = -1;
+    key->keyid = 1;
+    key->rcvd = 0;
+    key->ip->ip = "127.0.0.1";
+
+    keys.keyentries[1] = key;
+
+    global_counter = 0;
+
+    peer_info.sin_family = AF_INET;
+    peer_info.sin_addr.s_addr = inet_addr("127.0.0.1");
+    memcpy(&message.addr, &peer_info, sizeof(peer_info));
+
+    expect_function_call(__wrap_key_lock_read);
+
+    expect_string(__wrap_OS_IsAllowedIP, srcip, "127.0.0.1");
+    will_return(__wrap_OS_IsAllowedIP, 1);
+
+    // ReadSecMSG
+    expect_value(__wrap_ReadSecMSG, keys, &keys);
+    expect_string(__wrap_ReadSecMSG, buffer, buffer);
+    expect_value(__wrap_ReadSecMSG, id, 1);
+    expect_string(__wrap_ReadSecMSG, srcip, "127.0.0.1");
+    will_return(__wrap_ReadSecMSG, message.size);
+    will_return(__wrap_ReadSecMSG, buffer);
+    will_return(__wrap_ReadSecMSG, KS_ENCKEY);
+
+    expect_function_call(__wrap_key_unlock);
+
+    expect_string(__wrap__mwarn, formatted_msg, "Decrypt the message fail from '127.0.0.1'");
+
+    expect_function_call(__wrap_rem_inc_recv_unknown);
+
+    HandleSecureMessage(&message, control_msg_queue, events_queue);
+
+    os_free(key->id);
+    os_free(key->ip);
+    os_free(key);
+    os_free(keyentries);
+    indexed_queue_free(control_msg_queue);
+    batch_queue_free(events_queue);
+}
+
 void test_HandleSecureMessage_close_idle_sock_control_msg_succes(void** state)
 {
     char buffer[OS_MAXSTR + 1] = "#!-12!";
@@ -3599,11 +3669,23 @@ void test_handle_incoming_data_from_udp_socket_success(void** state)
 void test_handle_incoming_data_from_tcp_socket_too_big_message(void** state)
 {
     int sock_client = 8;
+    sockbuffer_t slots[9];
+    sockbuffer_t *saved_slots = netbuffer_recv.buffers;
+    struct sockaddr_in *peer = (struct sockaddr_in *)&slots[sock_client].peer_info;
+
+    rem_reject_log_reset(); // a quiet log: the rejection is the first of its kind
+
+    // The length prefix comes before any authentication: the line names the peer's address (kept
+    // in the connection's netbuffer slot since accept()) and goes through the per-reason throttle.
+    memset(slots, 0, sizeof(slots));
+    peer->sin_family = AF_INET;
+    peer->sin_addr.s_addr = inet_addr("192.0.2.8");
+    netbuffer_recv.buffers = slots;
 
     expect_value(__wrap_nb_recv, sock, sock_client);
     will_return(__wrap_nb_recv, -2);
 
-    expect_string(__wrap__mwarn, formatted_msg, "Too big message size from socket [8].");
+    expect_string(__wrap__mwarn, formatted_msg, "Too big message size from '192.0.2.8', socket 8.");
 
     expect_function_call(__wrap_key_lock_read);
 
@@ -3625,6 +3707,8 @@ void test_handle_incoming_data_from_tcp_socket_too_big_message(void** state)
     expect_string(__wrap__mdebug1, formatted_msg, "TCP peer disconnected [8]");
 
     handle_incoming_data_from_tcp_socket(sock_client);
+
+    netbuffer_recv.buffers = saved_slots;
 }
 
 void test_handle_incoming_data_from_tcp_socket_case_0(void** state)
@@ -4259,6 +4343,91 @@ void test_remoted_module_control_config_silent_below_disconnection_time(void** s
     assert_int_equal(rm_config.vd_scan_write_timeout_sec, 5);
 }
 
+/* Tests w_remoted_validate_module_config: what `remoted -t` resolves of the module configuration,
+ * ending with the HTTPS listener's TLS material loaded through the module (wrapped here; the loading
+ * itself is pinned by remotedModule_test.cpp's RemotedModuleValidateTls cases). */
+
+// Every getDefine_Int_default the builder makes, in its fixed order (same queue as the
+// w_remoted_build_module_config test above), plus its `auth` section.
+static void queue_validate_module_config_build(void)
+{
+    // http_*
+    will_return(__wrap_getDefine_Int_default, 0);
+    will_return(__wrap_getDefine_Int_default, 0);
+    will_return(__wrap_getDefine_Int_default, 10);
+    will_return(__wrap_getDefine_Int_default, 10);
+    will_return(__wrap_getDefine_Int_default, 30);
+    will_return(__wrap_getDefine_Int_default, 2048);
+    will_return(__wrap_getDefine_Int_default, 256);
+    will_return(__wrap_getDefine_Int_default, 8192);
+    will_return(__wrap_getDefine_Int_default, 64);
+    will_return(__wrap_getDefine_Int_default, 4);
+    will_return(__wrap_getDefine_Int_default, 2);
+    will_return(__wrap_getDefine_Int_default, 8192);
+    will_return(__wrap_getDefine_Int_default, 65536); // http_stream_chunk_size
+    will_return(__wrap_getDefine_Int_default, 1);     // http_content_encoding_enabled
+    // memory-management
+    will_return(__wrap_getDefine_Int_default, 268435456);
+    will_return(__wrap_getDefine_Int_default, 256);
+    will_return(__wrap_getDefine_Int_default, 32);
+    will_return(__wrap_getDefine_Int_default, 128);
+    will_return(__wrap_getDefine_Int_default, 6);
+    will_return(__wrap_getDefine_Int_default, 0);
+    // downstream_*
+    will_return(__wrap_getDefine_Int_default, 2);
+    will_return(__wrap_getDefine_Int_default, 5);
+    will_return(__wrap_getDefine_Int_default, 5);
+    will_return(__wrap_getDefine_Int_default, 20);
+    will_return(__wrap_getDefine_Int_default, 20);
+    will_return(__wrap_getDefine_Int_default, 0);
+    will_return(__wrap_getDefine_Int_default, 0);
+    will_return(__wrap_getDefine_Int_default, 10485760);
+    // jwt_* / auth_*
+    will_return(__wrap_getDefine_Int_default, 60);
+    will_return(__wrap_getDefine_Int_default, 30);
+    will_return(__wrap_getDefine_Int_default, 5242880);
+    will_return(__wrap_getDefine_Int_default, 33554432);
+
+    expect_string(__wrap_w_mconf_section, section, "auth");
+    will_return(__wrap_w_mconf_section, mock_auth_section(0, 1, 1, 1, 1));
+    will_return(__wrap_getDefine_Int_default, 10);  // enroll_password_refresh_interval
+    will_return(__wrap_getDefine_Int_default, 2);   // authd_connect_timeout
+    will_return(__wrap_getDefine_Int_default, 0);   // authd_response_timeout
+    will_return(__wrap_getDefine_Int_default, 256); // authd_max_queue_size
+    will_return(__wrap_getDefine_Int_default, 8);   // authd_worker_threads
+}
+
+void test_w_remoted_validate_module_config_tls_loads(void** state)
+{
+    (void) state;
+    logr.global.agents_disconnection_time = 900;
+
+    queue_validate_module_config_build();
+    queue_control_config_defines(60);
+    will_return(__wrap_remoted_module_validate_tls, NULL);
+    will_return(__wrap_remoted_module_validate_tls, 0);
+
+    // No expect_string for __wrap__merror_exit: exiting here fails the test.
+    w_remoted_validate_module_config();
+}
+
+void test_w_remoted_validate_module_config_tls_refused(void** state)
+{
+    (void) state;
+    logr.global.agents_disconnection_time = 900;
+
+    queue_validate_module_config_build();
+    queue_control_config_defines(60);
+    will_return(__wrap_remoted_module_validate_tls,
+                "The configured TLS CA 'certs/remoted-key.pem' holds no certificate the listener can load (load_verify_file)");
+    will_return(__wrap_remoted_module_validate_tls, -1);
+    expect_string(__wrap__merror_exit, formatted_msg,
+                  "Cannot start the HTTPS agent listener: The configured TLS CA 'certs/remoted-key.pem' holds no "
+                  "certificate the listener can load (load_verify_file).");
+
+    expect_assert_failure(w_remoted_validate_module_config());
+}
+
 /* Tests w_remoted_check_tls_files: the preflight that fails closed before remoted writes its PID file. The
  * five messages are pinned verbatim (the integration test test_https_cert_missing matches them in the log). */
 
@@ -4591,6 +4760,7 @@ int main(void)
         cmocka_unit_test(test_HandleSecureMessage_close_idle_sock_disabled_2),
         cmocka_unit_test(test_HandleSecureMessage_close_idle_sock_recv_fail),
         cmocka_unit_test(test_HandleSecureMessage_close_idle_sock_decrypt_fail),
+        cmocka_unit_test(test_HandleSecureMessage_udp_decrypt_fail),
         cmocka_unit_test(test_HandleSecureMessage_close_idle_sock_control_msg_succes),
         cmocka_unit_test(test_HandleSecureMessage_close_same_sock),
         cmocka_unit_test(test_HandleSecureMessage_close_same_sock_2),
@@ -4667,6 +4837,9 @@ int main(void)
         // Tests remoted_module_control_config
         cmocka_unit_test(test_remoted_module_control_config_warns_when_throttle_reaches_disconnection_time),
         cmocka_unit_test(test_remoted_module_control_config_silent_below_disconnection_time),
+        // Tests w_remoted_validate_module_config
+        cmocka_unit_test(test_w_remoted_validate_module_config_tls_loads),
+        cmocka_unit_test(test_w_remoted_validate_module_config_tls_refused),
         // Tests w_remoted_check_tls_files
         cmocka_unit_test(test_w_remoted_check_tls_files_ok),
         cmocka_unit_test(test_w_remoted_check_tls_files_cert_missing),

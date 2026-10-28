@@ -3,6 +3,7 @@
 #define _STRING_UTILS_H
 
 #include <algorithm>
+#include <cstddef>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -121,6 +122,25 @@ inline bool endsWith(std::string_view str, std::string_view suffix)
     }
 
     return str.compare(str.size() - suffix.size(), suffix.size(), suffix) == 0;
+}
+
+/// Longest piece of caller input an error message repeats back.
+inline constexpr std::size_t MAX_ECHOED_INPUT_LENGTH = 128;
+
+/**
+ * @brief Bound a caller-supplied value before an error message repeats it back.
+ *
+ * @param value The value taken from the caller.
+ * @param maxLength Longest text kept (MAX_ECHOED_INPUT_LENGTH by default).
+ * @return std::string The value itself when it fits, else its first characters followed by "... (<n> bytes)".
+ */
+inline std::string truncateForMessage(std::string_view value, std::size_t maxLength = MAX_ECHOED_INPUT_LENGTH)
+{
+    if (value.size() <= maxLength)
+    {
+        return std::string {value};
+    }
+    return std::string {value.substr(0, maxLength)} + "... (" + std::to_string(value.size()) + " bytes)";
 }
 
 /**

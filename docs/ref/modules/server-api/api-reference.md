@@ -115,7 +115,7 @@ curl -k -X GET "https://localhost:55000/agents?select=id,name,status,ip&sort=-id
   -H "Authorization: Bearer $TOKEN"
 ```
 
-Key filters: `agents_list`, `status`, `older_than`, `os.type`, `os.platform`, `os.version`, `os.major`, `os.minor`, `os.arch`, `os.name`, `version`, `group`, `name`, `ip`, `registerIP` (an exact match; IPv4, IPv6 and CIDR values such as `10.0.0.0/24` are accepted, so an agent registered for a range is found by that range).
+Key filters: `agents_list`, `status`, `older_than`, `os.type`, `os.platform`, `os.version`, `os.major`, `os.minor`, `os.arch`, `os.name`, `version`, `group`, `name`, `ip`, `registerIP` (an exact match; IPv4, IPv6 and CIDR values such as `10.0.0.0/24` are accepted, so an agent registered for a range is found by that range; an IPv6 value matches in any spelling, compact or expanded, since it is rewritten to the expanded form the manager stores, for example `fd00:e2e::/64` to `FD00:0E2E:0000:0000:0000:0000:0000:0000/64`). `group` matches a group name exactly, case included: `Web` and `web` are two groups. Inside `q` an IPv6 value is not rewritten and must be given in the stored, expanded form.
 
 #### Add agent
 
@@ -496,9 +496,9 @@ field operator value[;connector field operator value]
 | `~` | Contains (SQL `LIKE`) |
 
 Any other operator (`>=`, `<=`, `~=`) is rejected: with error `1409` (*Invalid query operator*) on the
-collections queried through `wazuh-manager-db` (agents, groups, MITRE), and with error `1407` (*Query does
-not match expected format*) on the collections the framework filters in memory (for example users, roles,
-policies, enrollment tokens and cluster nodes).
+collections whose `q` is turned into a `wazuh-manager-db` query (agents), and with error `1407` (*Query does
+not match expected format*) on the collections the framework filters in memory (groups, MITRE, users,
+roles, policies, enrollment tokens and cluster nodes, for example).
 Clauses can be grouped with parentheses: `(status=active,status=pending);os.platform=ubuntu`.
 
 ### Connectors
@@ -568,9 +568,8 @@ Errors follow a structured JSON response format.
 | 403       | Forbidden         | RBAC denied, or the client IP is blocked after too many failed logins (`6000`) |
 | 404       | Not Found         | Invalid endpoint, or the named resource does not exist: a group (`1710`), a file in a group (`1006`), a cluster node (`1730`) |
 | 405       | Method Not Allowed | Invalid HTTP method     |
-| 406       | Not Acceptable    | Reserved for a body the handler cannot take under its `Content-Type` (`6002`); a `Content-Type` the operation does not declare is answered with `415` first, so no operation returns it today |
 | 413       | Payload Too Large | Request body too large   |
-| 415       | Unsupported Media Type | A `Content-Type` the operation does not accept |
+| 415       | Unsupported Media Type | A `Content-Type` the operation does not accept, or a body sent with no `Content-Type` at all (`6002`) |
 | 417       | Expectation Failed | An `Expect` header other than `100-continue` |
 | 429       | Too Many Requests | Rate limit exceeded (`6001` authenticated, `6005` unauthenticated), or too many logins already waiting for their password check (`6006`) |
 | 500       | Internal Error    | Check manager logs       |
@@ -602,9 +601,9 @@ Agents are the exception to the 404 rule. Every endpoint that names agents, the 
 included (`GET /agents/{agent_id}/key`, `PUT /agents/{agent_id}/group/{group_id}`,
 `PUT /agents/{agent_id}/restart`), answers `200` with the unknown agent as a failed item (`1701`), the
 same shape a list of agents gets, where some may exist and others not. A missing group or cluster node
-named in the same request is still a `404`, except in the node lists of `GET /cluster/nodes` and
-`GET /cluster/healthcheck` (`nodes_list`): there an unknown node is a failed item (`1730`, *Node does not
-exist*) of a `200` answer, next to the nodes that exist.
+named in the same request is still a `404`, except in the node lists of `GET /cluster/nodes`,
+`GET /cluster/healthcheck` and `GET /cluster/configuration/validation` (`nodes_list`): there an unknown
+node is a failed item (`1730`, *Node does not exist*) of a `200` answer, next to the nodes that exist.
 
 While one of the core daemons (`wazuh-manager-modulesd`, `wazuh-manager-analysisd`, `wazuh-manager-db`,
 `wazuh-manager-remoted`) is stopped, failed or restarting, requests are refused with `500` and error
