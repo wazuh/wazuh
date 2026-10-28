@@ -80,4 +80,20 @@ std::vector<pid_t> ResolvePidsForContainer(const std::string& container_id);
 /// wraps (kind/k3d) don't get masked.
 std::string ExtractContainerIdFromCgroupPath(const std::string& cgroup_path);
 
+/// @brief Pick the cgroup path to read a container id from, out of the whole
+///        contents of one /proc/<pid>/cgroup file.
+///
+/// Exposed for unit testing, and pure for the same reason: the choice between
+/// the unified line and a numbered controller line is where a legacy host was
+/// getting nothing at all, and it is not testable through the reader that owns
+/// it (which opens /proc directly).
+///
+/// The unified line WINS only when it names something. Whether a legacy host
+/// emits one is kernel-dependent -- measured absent on CentOS Stream 8
+/// (4.18.0-326) and on Ubuntu 22.04 forced to v1, and present as a useless
+/// `0::/` on a newer kernel (18-cgroup-v1-unified-resolver-plan.md, corrected
+/// 2026-10-06) -- so taking it unconditionally mapped every process on such a
+/// host to the root, and no PID to any container.
+std::string SelectCgroupPathFromProcCgroup(const std::string& proc_cgroup_contents);
+
 } // namespace wazuh::container_baseline

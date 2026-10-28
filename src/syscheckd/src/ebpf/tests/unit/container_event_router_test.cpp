@@ -473,3 +473,202 @@ TEST(ContainerEventRouterTest, AnEventForACgroupWhoseContainerDiedIsNoLongerAttr
     ASSERT_EQ(1u, batches[0].paths.size());
     EXPECT_EQ("/before", batches[0].paths[0]);
 }
+
+/* --- delta-driven updates --------------------------------------------------
+ *
+ * The router applies the same escalation rule whichever way the list arrived.
+ * These exist because the two paths could drift apart silently: a container
+ * walked by one and not the other shows up as missing file events, not as a
+ * failure.
+ */
+
+TEST(ContainerEventRouterTest, FilteredADeltaAddedContainerIsWalkedLikeAListedOne)
+{
+    Fixture f;
+    f.router.setFiltering(true);
+
+    f.router.applyContainerDelta({CgroupDeltaEvent {CgroupDeltaEvent::Kind::added, 300, "container-new"}});
+
+    f.staging.release();
+    const auto batches = DrainBatches(f.staging);
+
+    ASSERT_EQ(1u, batches.size());
+    EXPECT_EQ("container-new", batches[0].container_id);
+    EXPECT_TRUE(batches[0].suspect);
+}
+
+TEST(ContainerEventRouterTest, StoppedContainerDeniesCgroupWithoutEscalating)
+{
+    // The whole point of telling a stop from a deletion. Its cgroup must stop
+    // being admitted — there is no process behind it — but it must not be
+    // re-walked: nothing in it changed, and its rows stay.
+    Fixture f;
+    f.router.setFiltering(true);
+
+    f.router.applyContainerDelta({CgroupDeltaEvent {CgroupDeltaEvent::Kind::added, 310, "container-a"}});
+    f.staging.release();
+    ASSERT_EQ(1u, DrainBatches(f.staging).size()); // the add
+
+    const auto delta =
+        f.router.applyContainerDelta({CgroupDeltaEvent {CgroupDeltaEvent::Kind::changed, 0, "container-a"}});
+
+    ASSERT_EQ(1u, delta.removed.size());
+    EXPECT_EQ(310u, delta.removed.front()) << "the kernel must stop admitting a cgroup with nothing behind it";
+    EXPECT_TRUE(DrainBatches(f.staging).empty()) << "a stop is not a reason to re-walk";
+}
+
+TEST(ContainerEventRouterTest, ADeltaForAContainerWhoseEventsArrivedFirstStillEscalates)
+{
+    Fixture f;
+
+    f.router.onEvent(320, "/some/path"); // arrives before anyone knows whose it is
+    f.router.applyContainerDelta({CgroupDeltaEvent {CgroupDeltaEvent::Kind::added, 320, "container-late"}});
+
+    f.staging.release();
+    const auto batches = DrainBatches(f.staging);
+
+    ASSERT_EQ(1u, batches.size());
+    EXPECT_EQ("container-late", batches[0].container_id);
+    EXPECT_TRUE(batches[0].suspect) << "its early paths were discarded, so only a walk can account for them";
+}
+
+TEST(ContainerEventRouterTest, UnfilteredADeltaAddedContainerIsNotWalked)
+{
+    // Same asymmetry as the whole-list path: without the kernel filter its
+    // events were arriving all along, so there is nothing to make up for.
+    Fixture f;
+
+    f.router.applyContainerDelta({CgroupDeltaEvent {CgroupDeltaEvent::Kind::added, 330, "container-quiet"}});
+
+    f.staging.release();
+    EXPECT_TRUE(DrainBatches(f.staging).empty());
+    EXPECT_EQ(0u, f.router.stats().discovery_escalations);
+}
+
+/* ---------------------------------------------------------------------------
+ * An init-system container occupies several cgroups: PID 1 in `init.scope` and
+ * one per unit. It is FILED under a single key, chosen deterministically, so its
+ * identity cannot flap -- but the kernel filter matches an event's cgroup id by
+ * equality, so the others have to be admitted too or everything the container's
+ * units do is discarded before any of this code sees it.
+ * ------------------------------------------------------------------------- */
+
+TEST(ContainerEventRouterTest, FilteredAnEventFromANonCanonicalCgroupIsAttributed)
+{
+    Fixture f;
+    f.router.setFiltering(true);
+
+    // init.scope is the canonical key; the two unit cgroups travel beside it.
+    const auto delta = f.router.applyContainerList({{11, "container-init"}, {12, "container-init"},
+                                                    {13, "container-init"}});
+
+    // All three have to reach the kernel allowlist. Checking the delta the
+    // drain feeds to rt_allow_cgroup, which is the thing that decides whether
+    // an event is ever delivered -- not the store's liveness set.
+    std::vector<std::uint64_t> allowed;
+    for (const auto& entry : delta.added)
+    {
+        allowed.push_back(entry.first);
+    }
+    std::sort(allowed.begin(), allowed.end());
+    EXPECT_EQ((std::vector<std::uint64_t> {11, 12, 13}), allowed);
+
+    // One walk for the container, not one per cgroup it occupies: a discovery
+    // escalation re-walks the whole container, so three of them would be two
+    // walks of the same tree and a count that no longer matches the number of
+    // containers discovered.
+    EXPECT_EQ(1u, f.router.stats().discovery_escalations);
+
+    f.staging.release();
+    const auto discovery = DrainBatches(f.staging);
+    EXPECT_EQ(1u, discovery.size()) << "one batch for the container, not one per cgroup";
+
+    // The event a service inside the container produces: a cgroup that is NOT
+    // the one the container is filed under.
+    EXPECT_TRUE(f.router.onEvent(12, "/etc/shadow"));
+
+    f.staging.release();
+    const auto batches = DrainBatches(f.staging);
+    const auto* batch = FindBatch(batches, "container-init");
+    ASSERT_NE(nullptr, batch) << "a unit's event must reach the consumer, attributed to its container";
+    EXPECT_NE(batch->paths.end(), std::find(batch->paths.begin(), batch->paths.end(), std::string {"/etc/shadow"}));
+    EXPECT_EQ(0u, f.router.stats().unattributed);
+}
+
+TEST(ContainerEventRouterTest, AllOfAContainersCgroupsAreWithdrawnWhenItGoes)
+{
+    Fixture f;
+    f.router.setFiltering(true);
+    f.router.applyContainerList({{11, "container-init"}, {12, "container-init"}, {13, "container-init"}});
+
+    // Gone from the list entirely. Every one of its inodes has to be denied in
+    // the kernel: they are reused, and one left behind would admit whatever
+    // inherits it while the map no longer has an entry to attribute it to.
+    const auto delta = f.router.applyContainerList({});
+
+    std::vector<std::uint64_t> removed {delta.removed.begin(), delta.removed.end()};
+    std::sort(removed.begin(), removed.end());
+    EXPECT_EQ((std::vector<std::uint64_t> {11, 12, 13}), removed);
+
+    EXPECT_FALSE(f.router.onEvent(12, "/etc/shadow")) << "a withdrawn cgroup is no longer attributed";
+}
+
+TEST(ContainerEventRouterTest, ADeltaRemovalWithdrawsEveryCgroupTheContainerHeld)
+{
+    Fixture f;
+    f.router.setFiltering(true);
+
+    CgroupDeltaEvent added;
+    added.kind = CgroupDeltaEvent::Kind::added;
+    added.container_id = "container-init";
+    added.cgroup_id = 11;
+    added.extra_cgroup_ids = {12, 13};
+    f.router.applyContainerDelta({added});
+
+    CgroupDeltaEvent removed;
+    removed.kind = CgroupDeltaEvent::Kind::removed;
+    removed.container_id = "container-init";
+    removed.cgroup_id = 11;
+
+    // The removal names one key. Before eraseByContainerIdLocked returned all
+    // of them, the other two stayed in the map pointing at a container that had
+    // gone, and stayed admitted in the kernel.
+    const auto delta = f.router.applyContainerDelta({removed});
+
+    std::vector<std::uint64_t> withdrawn {delta.removed.begin(), delta.removed.end()};
+    std::sort(withdrawn.begin(), withdrawn.end());
+    EXPECT_EQ((std::vector<std::uint64_t> {11, 12, 13}), withdrawn);
+}
+
+TEST(ContainerEventRouterTest, ADeltaDropsOnlyTheUnitCgroupsThatWentAway)
+{
+    Fixture f;
+    f.router.setFiltering(true);
+
+    CgroupDeltaEvent added;
+    added.kind = CgroupDeltaEvent::Kind::added;
+    added.container_id = "container-init";
+    added.cgroup_id = 11;
+    added.extra_cgroup_ids = {12, 13};
+    f.router.applyContainerDelta({added});
+
+    // A unit exited and another started: 13 is gone, 14 is new, and the
+    // container itself has not moved.
+    CgroupDeltaEvent changed;
+    changed.kind = CgroupDeltaEvent::Kind::changed;
+    changed.container_id = "container-init";
+    changed.cgroup_id = 11;
+    changed.extra_cgroup_ids = {12, 14};
+    const auto delta = f.router.applyContainerDelta({changed});
+
+    EXPECT_EQ((std::vector<std::uint64_t> {13}), std::vector<std::uint64_t>(delta.removed.begin(),
+                                                                           delta.removed.end()));
+    ASSERT_EQ(1u, delta.added.size());
+    EXPECT_EQ(14u, delta.added[0].first);
+
+    // Still attributed through the keys it kept.
+    EXPECT_TRUE(f.router.onEvent(11, "/a"));
+    EXPECT_TRUE(f.router.onEvent(12, "/b"));
+    EXPECT_TRUE(f.router.onEvent(14, "/c"));
+    EXPECT_FALSE(f.router.onEvent(13, "/d"));
+}

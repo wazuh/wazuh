@@ -35,6 +35,8 @@ namespace wazuh::container_instances
             record.image = container.image;
             record.imageDigest = container.imageDigest;
             record.restartCount = container.restartCount;
+            record.state = container.state;
+            record.startedAt = container.startedAt;
             record.podUid = pod.uid;
             record.podName = pod.name;
             record.podNamespace = pod.podNamespace;
@@ -67,15 +69,26 @@ namespace wazuh::container_instances
     void KubernetesConnector::reconcile()
     {
         const auto scan = m_resolver.scan();
-        std::unordered_map<std::string, std::uint64_t> inodeByContainerId;
-        for (const auto& entry : scan.containers)
-        {
-            inodeByContainerId.emplace(entry.containerId, entry.inode);
-        }
+        // The host's key, not simply the cgroup inode: on a legacy hierarchy the
+        // cgroup inode is a number no event ever carries, so keying on it answers
+        // every correlation lookup with a miss while looking entirely healthy.
+        // One key per container, chosen deterministically -- see
+        // hostKeysByContainerId().
+        const auto inodeByContainerId = hostKeysByContainerId(scan);
         const auto inodeFor = [&inodeByContainerId](const std::string& containerId)
         {
             const auto it = inodeByContainerId.find(containerId);
             return (it != inodeByContainerId.end()) ? it->second : 0;
+        };
+        // The rest of the container's cgroups travel beside the chosen one, so a
+        // consumer filtering events in the kernel can admit them all; without
+        // them an init-system container's units are filtered out before anyone
+        // sees them. See extraHostKeysByContainerId().
+        const auto extraKeysByContainerId = extraHostKeysByContainerId(scan);
+        const auto extraKeysFor = [&extraKeysByContainerId](const std::string& containerId)
+        {
+            const auto it = extraKeysByContainerId.find(containerId);
+            return (it != extraKeysByContainerId.end()) ? it->second : std::vector<std::uint64_t> {};
         };
 
         m_ownersGeneration = m_workloadIndex.generation();
@@ -105,12 +118,22 @@ namespace wazuh::container_instances
             for (const auto& container : pod.containers)
             {
                 auto record = makeRecord(pod, container, ownerChain, m_nodeName);
-                record.cgroupId = inodeFor(container.containerId);
+                record.hostKey = inodeFor(container.containerId);
+                record.extraHostKeys = extraKeysFor(container.containerId);
                 records.push_back(std::move(record));
             }
         }
 
-        m_store.applySnapshot(KUBERNETES_SOURCE, std::move(records), scan.allInodes, std::chrono::steady_clock::now());
+        // Before the move, and before the store sees them: this reads the
+        // records as they are about to be published, which is the only point
+        // where "the runtime says these exist" and "none of them resolved" are
+        // both in hand. Host-namespace and Kata containers never reach this
+        // vector, which is correct -- they are attributed as verdicts, not by
+        // a record key, so their absence here cannot look like a failure.
+        m_attributionHealth.observe(records, m_logger);
+
+        m_store.applySnapshot(
+            KUBERNETES_SOURCE, std::move(records), scan.allHostKeys, std::chrono::steady_clock::now());
         for (const auto& [inode, reason] : verdicts)
         {
             m_store.upsertVerdict(inode, reason);
@@ -282,7 +305,13 @@ namespace wazuh::container_instances
                                              container,
                                              workloads ? k8s::resolveOwnerChain(pod, *workloads) : pod.ownerRefs,
                                              m_nodeName);
-                    record.cgroupId = cgroupInode;
+                    // The key the query asked about, not a decision about which key
+                    // this container is filed under: the store keeps the one the
+                    // reconcile chose and records this as another way to reach the
+                    // container. See AliasEntry -- re-keying here made the key flap
+                    // between this cgroup and the reconcile's, and every flip was
+                    // published as `changed`.
+                    record.hostKey = cgroupInode;
                     m_store.upsertResolved(KUBERNETES_SOURCE, std::move(record));
                     return RefreshOutcome::resolved;
                 }

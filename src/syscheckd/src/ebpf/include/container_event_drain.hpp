@@ -60,6 +60,11 @@ struct DrainConfig
      * is not its install directory — so the caller resolves it. */
     std::string bpf_object_path;
 
+    /* Absolute path to the libbpf the agent ships. Empty leaves the engine
+     * resolving bare sonames, which binds the host's libbpf — too old on a
+     * legacy RHEL-family host to carry the symbols the engine needs. */
+    std::string libbpf_path;
+
     /* container_instances IPC socket. */
     std::string connector_socket_path;
 

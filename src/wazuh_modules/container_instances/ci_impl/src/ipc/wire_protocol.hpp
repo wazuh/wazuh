@@ -12,7 +12,18 @@
 namespace wazuh::container_instances::wire
 {
 
-    inline constexpr int PROTOCOL_VERSION = 1;
+    /// Version 2 renames the resolve key: `cgroup_id` becomes `key_kind` +
+    /// `key`, because on a legacy cgroup hierarchy the number is a MOUNT
+    /// NAMESPACE inode and a field called `cgroup_id` carrying one is exactly
+    /// the silent lie this work exists to remove.
+    inline constexpr int PROTOCOL_VERSION = 2;
+
+    /// The oldest version still answered. The two sides cannot be upgraded
+    /// atomically — modulesd and syscheckd are separate processes restarted by
+    /// separate units — so for one release the server speaks both and answers
+    /// each caller in the version it asked in. Raise this to 2 once no shipped
+    /// consumer sends 1, and the alias below goes with it.
+    inline constexpr int PROTOCOL_VERSION_MIN = 1;
 
     [[nodiscard]] inline std::string verdictReasonToString(VerdictReason reason)
     {
@@ -33,6 +44,7 @@ namespace wazuh::container_instances::wire
             case QueryResponse::ErrorCode::badRequest: return "bad_request";
             case QueryResponse::ErrorCode::unsupportedVersion: return "unsupported_version";
             case QueryResponse::ErrorCode::internal: return "internal";
+            case QueryResponse::ErrorCode::keyKindMismatch: return "key_kind_mismatch";
         }
         return "internal";
     }
@@ -40,10 +52,16 @@ namespace wazuh::container_instances::wire
     namespace detail
     {
 
-        [[nodiscard]] inline QueryResponse makeError(QueryResponse::ErrorCode code, std::string message)
+        /// `version` is the one the CALLER asked in, so an error envelope is
+        /// readable by the client that caused it. It defaults to the oldest
+        /// version for the two cases where the request never got far enough to
+        /// say: malformed JSON, and a version this build does not speak.
+        [[nodiscard]] inline QueryResponse
+        makeError(QueryResponse::ErrorCode code, std::string message, int version = PROTOCOL_VERSION_MIN)
         {
             QueryResponse response;
             response.status = QueryResponse::Status::error;
+            response.version = version;
             response.errorCode = code;
             response.errorMessage = std::move(message);
             return response;
@@ -51,7 +69,11 @@ namespace wazuh::container_instances::wire
 
         /// cgroup_id travels as a decimal string: st_ino is 64-bit and cJSON-based
         /// consumers parse JSON numbers as double (silent corruption above 2^53).
-        [[nodiscard]] inline std::optional<std::uint64_t> parseCgroupId(const nlohmann::json& value)
+        /// Every 64-bit value on this protocol travels as a decimal STRING,
+        /// because cJSON — which some clients use — parses JSON numbers as
+        /// doubles and silently rounds above 2^53. Applies to cgroup inodes and
+        /// to the journal's epoch and sequence alike.
+        [[nodiscard]] inline std::optional<std::uint64_t> parseDecimalU64(const nlohmann::json& value)
         {
             if (!value.is_string())
             {
@@ -84,19 +106,29 @@ namespace wazuh::container_instances::wire
             return detail::makeError(QueryResponse::ErrorCode::badRequest, "malformed JSON");
         }
 
-        if (!parsed.contains("version") || !parsed["version"].is_number_integer() ||
-            parsed["version"].get<int>() != PROTOCOL_VERSION)
+        if (!parsed.contains("version") || !parsed["version"].is_number_integer())
+        {
+            return detail::makeError(QueryResponse::ErrorCode::unsupportedVersion,
+                                     "missing or unsupported protocol version");
+        }
+
+        // A RANGE, where this was strict equality. Equality meant the two sides
+        // had to move in one step, which they cannot: a consumer may be
+        // restarted minutes after the module, and in between every query it
+        // makes is refused.
+        const auto version = parsed["version"].get<int>();
+        if (version < PROTOCOL_VERSION_MIN || version > PROTOCOL_VERSION)
         {
             return detail::makeError(QueryResponse::ErrorCode::unsupportedVersion,
                                      "missing or unsupported protocol version");
         }
 
         QueryRequest request;
-        request.version = PROTOCOL_VERSION;
+        request.version = version;
 
         if (parsed.contains("op") && !parsed["op"].is_string())
         {
-            return detail::makeError(QueryResponse::ErrorCode::badRequest, "unknown op");
+            return detail::makeError(QueryResponse::ErrorCode::badRequest, "unknown op", version);
         }
         const auto op = parsed.value("op", "");
         if (op == "status")
@@ -107,24 +139,84 @@ namespace wazuh::container_instances::wire
         if (op == "list")
         {
             request.op = QueryRequest::Op::list;
+
+            // Additive, and silently ignored by a server that predates it —
+            // which is the whole reason the delta rides `list` rather than
+            // arriving as a new op. An old server answers with the full set and
+            // no epoch, and the client takes that as "deltas unavailable here"
+            // without an error path on either side.
+            //
+            // Both halves must be present and well-formed to count: a cursor
+            // with one half missing is a client bug, and serving it as "read
+            // from the start" would quietly hand back a full set forever.
+            if (parsed.contains("since_epoch") && parsed.contains("since_seq"))
+            {
+                const auto epoch = detail::parseDecimalU64(parsed["since_epoch"]);
+                const auto seq = detail::parseDecimalU64(parsed["since_seq"]);
+
+                if (!epoch || !seq)
+                {
+                    return detail::makeError(QueryResponse::ErrorCode::badRequest,
+                                             "since_epoch and since_seq must be decimal strings",
+                                             version);
+                }
+                request.since = LifecycleCursor {*epoch, *seq};
+            }
+
             return request;
         }
         if (op != "resolve")
         {
-            return detail::makeError(QueryResponse::ErrorCode::badRequest, "unknown op");
+            return detail::makeError(QueryResponse::ErrorCode::badRequest, "unknown op", version);
         }
 
         request.op = QueryRequest::Op::resolve;
-        if (!parsed.contains("cgroup_id"))
+
+        /* The key, in either spelling.
+         *
+         * v2 states which space the number is drawn from; v1 had no way to say
+         * so because there was only ever one. The alias is not merely tolerated
+         * — it is how a not-yet-upgraded consumer keeps working for one
+         * release. It means `cgroup`, which is what v1 always meant, and the
+         * store refuses it on a host keyed by anything else rather than
+         * matching an unrelated number that happens to be in range.
+         */
+        if (parsed.contains("key"))
         {
-            return detail::makeError(QueryResponse::ErrorCode::badRequest, "cgroup_id missing");
+            const auto key = detail::parseDecimalU64(parsed["key"]);
+            if (!key)
+            {
+                return detail::makeError(QueryResponse::ErrorCode::badRequest, "key must be a decimal string", version);
+            }
+            request.hostKey = *key;
+
+            if (!parsed.contains("key_kind") || !parsed["key_kind"].is_string() ||
+                !keyKindFromName(parsed["key_kind"].get<std::string>(), request.keyKind))
+            {
+                // Never defaulted. A missing or unknown kind would be guessed
+                // as `cgroup`, and on a legacy host that guess silently asks in
+                // the wrong space — the exact confusion `key_kind` was added to
+                // end.
+                return detail::makeError(QueryResponse::ErrorCode::badRequest,
+                                         "key requires a known key_kind (\"cgroup\" or \"mnt_ns\")",
+                                         version);
+            }
         }
-        const auto cgroupId = detail::parseCgroupId(parsed["cgroup_id"]);
-        if (!cgroupId)
+        else if (parsed.contains("cgroup_id"))
         {
-            return detail::makeError(QueryResponse::ErrorCode::badRequest, "cgroup_id must be a decimal string");
+            const auto hostKey = detail::parseDecimalU64(parsed["cgroup_id"]);
+            if (!hostKey)
+            {
+                return detail::makeError(
+                    QueryResponse::ErrorCode::badRequest, "cgroup_id must be a decimal string", version);
+            }
+            request.hostKey = *hostKey;
+            request.keyKind = KeyKind::cgroupInode;
         }
-        request.cgroupId = *cgroupId;
+        else
+        {
+            return detail::makeError(QueryResponse::ErrorCode::badRequest, "key missing", version);
+        }
 
         if (parsed.contains("container_id") && parsed["container_id"].is_string())
         {
@@ -143,7 +235,7 @@ namespace wazuh::container_instances::wire
     }
 
     /// Docker records omit the Kubernetes-only keys entirely (absent, not null).
-    [[nodiscard]] inline nlohmann::json recordToJson(const ContainerRecord& record)
+    [[nodiscard]] inline nlohmann::json recordToJson(const ContainerRecord& record, KeyKind keyKind)
     {
         nlohmann::json data;
         data["runtime"] = (record.runtime == ContainerRuntime::kubernetes) ? "kubernetes" : "docker";
@@ -152,9 +244,55 @@ namespace wazuh::container_instances::wire
         data["image"] = record.image;
         data["image_digest"] = record.imageDigest;
         data["restart_count"] = record.restartCount;
+
+        // Additive, and omitted when the runtime did not report them rather
+        // than sent empty: an absent key is how every optional field on this
+        // protocol already reads, and a consumer that knows neither is
+        // unaffected either way.
+        if (!record.startedAt.empty())
+        {
+            data["started_at"] = record.startedAt;
+        }
+        if (record.pid != 0)
+        {
+            data["pid"] = record.pid;
+        }
         data["node_name"] = record.nodeName;
         data["labels"] = record.labels;
-        data["cgroup_id"] = std::to_string(record.cgroupId);
+        data["key"] = std::to_string(record.hostKey);
+
+        /* `cgroup_id` is emitted ONLY when it is one.
+         *
+         * The obvious back-compat move is to keep writing it unconditionally,
+         * and on a legacy host that writes a mount-namespace inode under a key
+         * named `cgroup_id`. A v1 consumer would take it at face value, hand it
+         * to the kernel allowlist, and monitor nothing — with every log line
+         * reporting success. Omitting it instead makes such a consumer read 0,
+         * which it already understands as "not resolved yet". */
+        if (keyKind == KeyKind::cgroupInode)
+        {
+            data["cgroup_id"] = std::to_string(record.hostKey);
+        }
+
+        /* The container's other cgroups, under the same guard and for the same
+         * reason as `cgroup_id`: on a legacy host these are not cgroup ids and
+         * a consumer handing them to the kernel allowlist would admit unrelated
+         * inodes. Omitted entirely when empty, which is the ordinary case, so
+         * the common reply does not grow.
+         *
+         * Additive: a client that does not know the key reads the reply exactly
+         * as before. */
+        if (keyKind == KeyKind::cgroupInode && !record.extraHostKeys.empty())
+        {
+            auto extraKeys = nlohmann::json::array();
+
+            for (const auto key : record.extraHostKeys)
+            {
+                extraKeys.push_back(std::to_string(key));
+            }
+
+            data["extra_cgroup_ids"] = std::move(extraKeys);
+        }
 
         if (record.runtime == ContainerRuntime::kubernetes)
         {
@@ -187,16 +325,104 @@ namespace wazuh::container_instances::wire
         return data;
     }
 
+    /// Names rather than a bitmask integer, because a consumer that meets a
+    /// class it does not know must be able to see that it did. An unrecognised
+    /// NAME is visibly unrecognised; an unrecognised BIT in an integer silently
+    /// reads as zero, and a consumer would skip the re-scan it owed.
+    [[nodiscard]] inline nlohmann::json changeMaskToNames(unsigned int mask)
+    {
+        auto names = nlohmann::json::array();
+
+        if ((mask & LIFECYCLE_IDENTITY) != 0)
+            names.push_back("identity");
+        if ((mask & LIFECYCLE_IMAGE) != 0)
+            names.push_back("image");
+        if ((mask & LIFECYCLE_MOUNTS) != 0)
+            names.push_back("mounts");
+        if ((mask & LIFECYCLE_NETWORK) != 0)
+            names.push_back("network");
+        if ((mask & LIFECYCLE_METADATA) != 0)
+            names.push_back("metadata");
+        if ((mask & LIFECYCLE_KEYS) != 0)
+            names.push_back("keys");
+
+        return names;
+    }
+
+    [[nodiscard]] inline const char* lifecycleKindToString(LifecycleKind kind)
+    {
+        switch (kind)
+        {
+            case LifecycleKind::added: return "added";
+            case LifecycleKind::changed: return "changed";
+            case LifecycleKind::removed: return "removed";
+        }
+        return "changed";
+    }
+
+    /// Adds the delta keys to a `list` reply. Everything here is additive: a
+    /// client that does not know these keys reads the reply exactly as before.
+    inline void serialiseDelta(const LifecycleDelta& delta, nlohmann::json& body, KeyKind keyKind)
+    {
+        // The cursor to come back with. Decimal strings for the 2^53 reason
+        // above; its presence is also how a client detects that this server
+        // supports deltas at all.
+        body["epoch"] = std::to_string(delta.cursor.epoch);
+        body["seq"] = std::to_string(delta.cursor.seq);
+
+        if (delta.resyncRequired)
+        {
+            // The full set already rode along in `containers`. Saying so
+            // explicitly rather than letting the client infer it from an empty
+            // event list, which is also what "nothing changed" looks like.
+            body["resync_required"] = true;
+            return;
+        }
+
+        auto events = nlohmann::json::array();
+
+        for (const auto& event : delta.events)
+        {
+            nlohmann::json entry;
+            entry["seq"] = std::to_string(event.seq);
+            entry["kind"] = lifecycleKindToString(event.kind);
+            entry["container_id"] = event.containerId;
+            // Carried on every kind, removals included: a consumer cannot act
+            // on a removal it cannot map back to the key it filed the
+            // container under.
+            entry["key"] = std::to_string(event.hostKey);
+            if (keyKind == KeyKind::cgroupInode)
+            {
+                entry["cgroup_id"] = std::to_string(event.hostKey);
+            }
+
+            if (event.kind == LifecycleKind::changed)
+            {
+                entry["changed"] = changeMaskToNames(event.changed);
+            }
+            if (event.record)
+            {
+                entry["data"] = recordToJson(*event.record, keyKind);
+            }
+
+            events.push_back(std::move(entry));
+        }
+
+        body["events"] = std::move(events);
+    }
+
     [[nodiscard]] inline std::string serializeResponse(const QueryResponse& response)
     {
         nlohmann::json body;
-        body["version"] = PROTOCOL_VERSION;
+        // The version the CALLER asked in, not this build's newest.
+        body["version"] = response.version;
 
         switch (response.status)
         {
             case QueryResponse::Status::resolved:
                 body["status"] = "resolved";
-                body["data"] = response.record ? recordToJson(*response.record) : nlohmann::json::object();
+                body["data"] =
+                    response.record ? recordToJson(*response.record, response.keyKind) : nlohmann::json::object();
                 break;
             case QueryResponse::Status::pending:
                 body["status"] = "pending";
@@ -217,6 +443,10 @@ namespace wazuh::container_instances::wire
                     data["verdicts"] = response.stats->verdicts;
                 }
                 data["connector"] = response.connectorName;
+
+                // How a consumer learns which key to send, instead of probing
+                // the host itself and risking a different answer.
+                data["key_kind"] = keyKindName(response.keyKind);
                 body["data"] = std::move(data);
 
                 // Unconditional for a `list` reply, empty array included. A
@@ -234,10 +464,15 @@ namespace wazuh::container_instances::wire
                     {
                         if (record)
                         {
-                            containers.push_back(recordToJson(*record));
+                            containers.push_back(recordToJson(*record, response.keyKind));
                         }
                     }
                     body["containers"] = std::move(containers);
+                }
+
+                if (response.delta)
+                {
+                    serialiseDelta(*response.delta, body, response.keyKind);
                 }
                 break;
             }

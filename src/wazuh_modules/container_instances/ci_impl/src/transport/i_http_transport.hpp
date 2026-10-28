@@ -32,6 +32,21 @@ namespace wazuh::container_instances
         TlsOptions tls;
         std::chrono::milliseconds connectTimeout {10000};
         std::chrono::milliseconds totalTimeout {30000}; ///< 0 = unlimited (streams).
+
+        /// Streams only: invoked from the transfer loop roughly every poll
+        /// interval, whether or not any data arrived. Empty = not wanted.
+        ///
+        /// An unterminated stream (totalTimeout 0) delivers no callback at all
+        /// while the server is silent, so a consumer that must act on the
+        /// PASSAGE OF TIME — rather than on data — has nowhere to do it. The
+        /// transfer loop already wakes on a fixed interval to poll the stop
+        /// token; this exposes that existing tick instead of each caller
+        /// growing a thread and a mutex to recreate it.
+        ///
+        /// Called on the thread that invoked stream(), between chunks, so it
+        /// shares the caller's single-threaded context and must not block for
+        /// long: the transfer makes no progress while it runs.
+        std::function<void()> onIdle;
     };
 
     struct HttpResponse

@@ -42,6 +42,12 @@ extern "C" {
 
 /* Opaque libbpf handles — only ever held and passed back as pointers. */
 struct bpf_object;
+/* BTF, for reading `enum cgroup_subsys_id` out of the running kernel. Opaque
+ * like the rest: the engine never dereferences it. The BTF *record* layouts it
+ * does have to read are declared in rt_engine.c under its own names rather than
+ * here, so that shadowing them can never collide with <linux/btf.h> in a
+ * translation unit that includes both. */
+struct btf;
 struct bpf_object_open_opts;
 struct bpf_program;
 struct bpf_link;

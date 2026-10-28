@@ -38,7 +38,10 @@
  * without its headers. See rt_libbpf_shim.h for why the types are shadowed. */
 #include "rt_libbpf_shim.h"
 
+#include "cgroup_host_mode.h"
+
 #include <dlfcn.h>
+#include <errno.h>
 
 #include <stdarg.h>
 #include <stdio.h>
@@ -50,6 +53,11 @@
  * must stay in step: the BPF side reads these keys. */
 #define FILTER_CFG_KEY_MODE 0
 #define FILTER_CFG_KEY_SKIP 1
+/* index+1, so an unwritten slot means "not configured" and stays
+ * distinguishable from subsystem 0, which is a real controller. Must match
+ * bpf/rt_file.bpf.c. */
+#define FILTER_CFG_KEY_V1_SUBSYS 2
+#define RT_V1_SUBSYS_MAX         64
 
 #define BPF_OBJ_PATH_FALLBACK "rt_file.bpf.o"
 #define LSM_LIST_FILE "/sys/kernel/security/lsm"
@@ -87,6 +95,25 @@ struct libbpf_api
      * still incrementing the entry. Absent on kernels/libbpf builds without
      * BPF_MAP_LOOKUP_AND_DELETE_ELEM for hash maps, hence optional. */
     int (*map_lookup_and_delete_elem)(int, const void*, void*);
+
+    /* BTF, for reading a v1 controller's `enum cgroup_subsys_id` value out of
+     * the running kernel rather than inferring it from the row order of
+     * /proc/cgroups -- see rt_subsys_index_from_btf().
+     *
+     * OPTIONAL, deliberately. btf__load_vmlinux_btf() arrived in libbpf 0.5,
+     * and an engine that refused to start without it would turn a host that
+     * merely falls back to /proc/cgroups into a host with no eBPF at all. The
+     * resolver below treats a null entry exactly as it treats a kernel with no
+     * BTF.
+     *
+     * btf__type_by_id() returns a `const struct btf_type*`; it is held as
+     * `const void*` so this file can read the record through its own
+     * declaration without shadowing the UAPI type's name. */
+    struct btf* (*btf_load_vmlinux)(void);
+    int (*btf_find_by_name_kind)(const struct btf*, const char*, unsigned int);
+    const void* (*btf_type_by_id)(const struct btf*, unsigned int);
+    const char* (*btf_name_by_offset)(const struct btf*, unsigned int);
+    void (*btf_free)(struct btf*);
 };
 
 static struct libbpf_api g_libbpf;
@@ -128,31 +155,15 @@ rt_log(const struct rt_log_target* target, int level, const char* fmt, ...)
     }
 }
 
-/* cgroup v1 vs v2, decided from the mount layout rather than from events.
+/* The hierarchy probe moved to shared_modules/common/cgroup_host_mode.h, so
+ * that container_instances asks the same question of the same code rather
+ * than carrying a second copy that can drift (#37203 O4). What used to be
+ * local to this file is now the policy the whole feature shares; the only
+ * thing kept here is the engine's own reading of the answer.
  *
- * On a v2 (unified) hierarchy the root cgroupfs exposes cgroup.controllers; on
- * a pure v1 host it does not, and bpf_get_current_cgroup_id() collapses to a
- * constant, making every event's cgroup_id useless as a correlation key
- * (spike #37396 ADR-002). A hybrid host mounts v2 at /sys/fs/cgroup/unified,
- * which is treated as v2-capable here: the ids that helper returns are the
- * unified hierarchy's, so they do correlate.
- *
- * Deliberately userspace-side: the version is a host constant, and detecting
- * it in the BPF program would need a config map written at load time — see the
- * RT_F_CGROUP_V1 note in rt_open(). */
-static int detect_cgroup_v1(void)
-{
-    struct stat st;
-    if (stat("/sys/fs/cgroup/cgroup.controllers", &st) == 0)
-    {
-        return 0;
-    }
-    if (stat("/sys/fs/cgroup/unified/cgroup.controllers", &st) == 0)
-    {
-        return 0;
-    }
-    return 1;
-}
+ * Still deliberately userspace-side: the hierarchy is a host constant, and
+ * detecting it in the BPF program would need a config map written at load
+ * time — see the RT_F_CGROUP_V1 note in rt_open(). */
 
 #define RT_RESOLVE_SYM(field, sym)                                                                                   \
     do                                                                                                               \
@@ -160,13 +171,17 @@ static int detect_cgroup_v1(void)
         *(void**)(&g_libbpf.field) = dlsym(mod, sym);                                                               \
         if (!g_libbpf.field)                                                                                         \
         {                                                                                                            \
-            rt_log(log, RT_LOG_ERROR, "libbpf missing symbol '%s'", sym);                                            \
+            rt_log(log,                                                                                              \
+                   RT_LOG_ERROR,                                                                                     \
+                   "libbpf at '%s' is missing symbol '%s'; it is too old for this engine",                           \
+                   bound,                                                                                            \
+                   sym);                                                                                             \
             dlclose(mod);                                                                                           \
             return 0;                                                                                               \
         }                                                                                                            \
     } while (0)
 
-static int ensure_libbpf_loaded(const struct rt_log_target* log)
+static int ensure_libbpf_loaded(const struct rt_log_target* log, const char* libbpf_path)
 {
     if (g_libbpf_resolved)
     {
@@ -174,16 +189,43 @@ static int ensure_libbpf_loaded(const struct rt_log_target* log)
     }
     g_libbpf_resolved = 1;
 
-    void* mod = dlopen(LIBBPF_SONAME_PRIMARY, RTLD_NOW);
+    /* The caller's own copy first. A bare soname binds whatever the host has,
+     * and a host libbpf old enough to lack one of the symbols below fails the
+     * open outright — see rt_filter.libbpf_path. */
+    const char* bound = NULL;
+    void* mod = NULL;
+    if (libbpf_path && libbpf_path[0])
+    {
+        mod = dlopen(libbpf_path, RTLD_NOW);
+        if (mod)
+        {
+            bound = libbpf_path;
+        }
+        else
+        {
+            rt_log(log,
+                   RT_LOG_WARN,
+                   "dlopen('%s') failed (%s); falling back to the system libbpf, which may be too old",
+                   libbpf_path,
+                   dlerror());
+        }
+    }
+    if (!mod)
+    {
+        mod = dlopen(LIBBPF_SONAME_PRIMARY, RTLD_NOW);
+        bound = LIBBPF_SONAME_PRIMARY;
+    }
     if (!mod)
     {
         mod = dlopen(LIBBPF_SONAME_FALLBACK, RTLD_NOW);
+        bound = LIBBPF_SONAME_FALLBACK;
     }
     if (!mod)
     {
         rt_log(log, RT_LOG_ERROR, "dlopen(libbpf) failed: %s", dlerror());
         return 0;
     }
+    rt_log(log, RT_LOG_INFO, "libbpf bound from '%s'", bound);
 
     RT_RESOLVE_SYM(open_file, "bpf_object__open_file");
     RT_RESOLVE_SYM(load, "bpf_object__load");
@@ -208,6 +250,28 @@ static int ensure_libbpf_loaded(const struct rt_log_target* log)
      * reported cgroup and a narrow race with the BPF side, not correctness of
      * the visible-loss guarantee. */
     *(void**)(&g_libbpf.map_lookup_and_delete_elem) = dlsym(mod, "bpf_map_lookup_and_delete_elem");
+
+    /* Also optional, and for a different reason: these are a correctness
+     * improvement on one rare class of host, not a requirement anywhere. A
+     * libbpf too old to have them leaves the engine exactly as capable as it
+     * was before they existed. Resolved as a set -- a partial set is no use,
+     * so one missing symbol disables the lot rather than leaving a half-built
+     * path to be discovered at the call. */
+    *(void**)(&g_libbpf.btf_load_vmlinux) = dlsym(mod, "btf__load_vmlinux_btf");
+    *(void**)(&g_libbpf.btf_find_by_name_kind) = dlsym(mod, "btf__find_by_name_kind");
+    *(void**)(&g_libbpf.btf_type_by_id) = dlsym(mod, "btf__type_by_id");
+    *(void**)(&g_libbpf.btf_name_by_offset) = dlsym(mod, "btf__name_by_offset");
+    *(void**)(&g_libbpf.btf_free) = dlsym(mod, "btf__free");
+    if (!g_libbpf.btf_load_vmlinux || !g_libbpf.btf_find_by_name_kind || !g_libbpf.btf_type_by_id ||
+        !g_libbpf.btf_name_by_offset || !g_libbpf.btf_free)
+    {
+        g_libbpf.btf_load_vmlinux = NULL;
+        rt_log(log,
+               RT_LOG_INFO,
+               "libbpf at '%s' has no usable BTF API; a v1 controller's subsystem index will be taken from "
+               "/proc/cgroups instead",
+               bound);
+    }
 
     g_libbpf.module = mod;
     return 1;
@@ -246,7 +310,8 @@ struct rt_engine_handle
     int filter_cfg_fd;
     int cgroup_allow_fd;
 
-    int cgroup_v1;
+    wz_cgroup_mode_t cgroup_mode;
+    int v1_subsys_configured;
 
     /* Rejected-record accounting; reported once per handle so a stale object
      * cannot flood the log. */
@@ -429,7 +494,7 @@ rt_handle_t rt_open(const struct rt_filter* filter)
         return NULL;
     }
 
-    if (!ensure_libbpf_loaded(&log))
+    if (!ensure_libbpf_loaded(&log, filter->libbpf_path))
     {
         rt_log(&log, RT_LOG_ERROR, "libbpf unavailable — falling back is the caller's responsibility");
         return NULL;
@@ -447,8 +512,8 @@ rt_handle_t rt_open(const struct rt_filter* filter)
     h->filter_cfg_fd = -1;
     h->cgroup_allow_fd = -1;
 
-    h->cgroup_v1 = detect_cgroup_v1();
-    if (h->cgroup_v1)
+    h->cgroup_mode = wz_cgroup_mode();
+    if (!wz_cgroup_mode_has_usable_cgroup_id(h->cgroup_mode))
     {
         /* Worth an explicit line: on such a host cgroup_id correlates nothing,
          * so a consumer that keys containers on it silently attributes every
@@ -460,9 +525,30 @@ rt_handle_t rt_open(const struct rt_filter* filter)
          * built or loaded in this development environment; until that lands,
          * rt_host_cgroup_v1() is the only reliable source and a consumer MUST
          * use it rather than testing ev->flags. */
-        rt_log(&h->log, RT_LOG_WARN,
-               "host uses cgroup v1: every event's cgroup_id is a constant, not a correlation key — "
-               "consumers must correlate on mnt_ns instead (see rt_host_cgroup_v1())");
+        /* The advice this used to give — "correlate on mnt_ns instead" — was
+         * written when the helper's limit looked like the kernel's. It is not:
+         * rt_set_cgroup_v1_subsys() points the program at a v1 controller's own
+         * cgroups, and from then on cgroup_id identifies a container and the
+         * allowlist filters normally. Measured on a pure v1 host: the helper
+         * returns 1 for every task, while the controller read returns 6403 and
+         * 6435 for two containers, matching stat() of their directories. */
+        rt_log(&h->log,
+               RT_LOG_WARN,
+               "host cgroup hierarchy is %s: bpf_get_current_cgroup_id() reports the unified "
+               "hierarchy, which this host does not have, so an event's cgroup_id identifies nothing "
+               "until a consumer calls rt_set_cgroup_v1_subsys()",
+               wz_cgroup_mode_name(h->cgroup_mode));
+    }
+    else
+    {
+        /* Say it on the healthy path too. "Which hierarchy did the agent
+         * think it was on?" is the first question asked of any attribution
+         * bug, and an answer that only appears when the answer is bad leaves
+         * the common case indistinguishable from the probe never running. */
+        rt_log(&h->log,
+               RT_LOG_INFO,
+               "host cgroup hierarchy is %s: cgroup_id is a usable correlation key",
+               wz_cgroup_mode_name(h->cgroup_mode));
     }
 
     const char* obj_path = (filter->bpf_obj_path && filter->bpf_obj_path[0]) ? filter->bpf_obj_path : BPF_OBJ_PATH_FALLBACK;
@@ -487,6 +573,77 @@ rt_handle_t rt_open(const struct rt_filter* filter)
                "or insufficient privilege)");
         abort_open(h);
         return NULL;
+    }
+
+    /* CONFIGURE BEFORE ATTACHING. The maps exist as soon as the object is
+     * loaded, and the moment a program is attached it begins writing events
+     * into the ring — so anything configured after the attach loop below leaves
+     * a window in which the program runs with an unconfigured filter.
+     *
+     * That window is not harmless, for two reasons that compound:
+     *
+     *   event_is_wanted() treats an unwritten mode as SUBMIT, deliberately, so
+     *   that an engine whose userspace never wrote one cannot silently deliver
+     *   nothing. Configured late, that default applies to the window instead of
+     *   to a misconfigured consumer, and the whole host's file traffic is
+     *   admitted — which is exactly what the consumer asking for ALLOWLIST was
+     *   trying to avoid, and what its "start closed" comment says it gets.
+     *
+     *   On a host with no unified hierarchy the ids on those events are worse
+     *   than unwanted, they are meaningless: current_container_cgroup_id()
+     *   falls back to bpf_get_current_cgroup_id(), which there reports the
+     *   default hierarchy's root — inode 1, plus a packed generation on a RHEL
+     *   8 family kernel. That key matches no inode on the host, so the consumer
+     *   can neither attribute it nor conclude it is not a container; it retries
+     *   the cold-cache resolve forever. ONE event caught in this window is
+     *   enough to log that failure on every resolver cycle for the life of the
+     *   process.
+     *
+     * Writing the configuration first closes it: a consumer that opened in
+     * allowlist mode filters against an empty allowlist from the first attached
+     * program onwards, and delivers nothing until it seeds one. */
+    h->filter_cfg_fd = g_libbpf.find_map_fd_by_name(h->obj, "filter_cfg");
+    h->cgroup_allow_fd = g_libbpf.find_map_fd_by_name(h->obj, "cgroup_allow_map");
+
+    /* Write the requested mode. An object that predates filtering has neither
+     * map: unfiltered is what it does anyway, so ALL is satisfied silently and
+     * only ALLOWLIST is an error — asking to filter and getting everything is
+     * a correctness surprise, not a degradation to absorb quietly. */
+    if (h->filter_cfg_fd < 0 || h->cgroup_allow_fd < 0)
+    {
+        if (filter->cgroup_mode != RT_CGROUP_MODE_ALL)
+        {
+            rt_log(&h->log, RT_LOG_ERROR,
+                   "cgroup filtering requested but this BPF object has no filtering maps: every event "
+                   "on the host would be delivered. Rebuild rt_file.bpf.o.");
+            abort_open(h);
+            return NULL;
+        }
+    }
+    else if (rt_set_cgroup_mode(h, filter->cgroup_mode) != 0)
+    {
+        rt_log(&h->log, RT_LOG_ERROR, "could not set cgroup filter mode %d", filter->cgroup_mode);
+        abort_open(h);
+        return NULL;
+    }
+
+    /* Per-event work this consumer opted out of. An object that predates the
+     * mask has a one-slot filter_cfg, so the write fails: that is a degradation
+     * (every field is computed, as before) and not a correctness problem, so it
+     * warns rather than refusing the open — the opposite of the mode above,
+     * which changes which events arrive. */
+    if (filter->skip_mask != 0 && h->filter_cfg_fd >= 0)
+    {
+        const unsigned int key = FILTER_CFG_KEY_SKIP;
+        const unsigned int value = filter->skip_mask;
+
+        if (g_libbpf.map_update_elem(h->filter_cfg_fd, &key, &value, 0 /* BPF_ANY */) != 0)
+        {
+            rt_log(&h->log, RT_LOG_WARN,
+                   "could not apply skip mask 0x%x; every per-event field will be computed. Rebuild "
+                   "rt_file.bpf.o to honour it.",
+                   filter->skip_mask);
+        }
     }
 
     struct bpf_program* prog = NULL;
@@ -545,50 +702,6 @@ rt_handle_t rt_open(const struct rt_filter* filter)
                "attributable to a cgroup. Rebuild rt_file.bpf.o to enable rt_drain_drops().");
     }
 
-    h->filter_cfg_fd = g_libbpf.find_map_fd_by_name(h->obj, "filter_cfg");
-    h->cgroup_allow_fd = g_libbpf.find_map_fd_by_name(h->obj, "cgroup_allow_map");
-
-    /* Write the requested mode. An object that predates filtering has neither
-     * map: unfiltered is what it does anyway, so ALL is satisfied silently and
-     * only ALLOWLIST is an error — asking to filter and getting everything is
-     * a correctness surprise, not a degradation to absorb quietly. */
-    if (h->filter_cfg_fd < 0 || h->cgroup_allow_fd < 0)
-    {
-        if (filter->cgroup_mode != RT_CGROUP_MODE_ALL)
-        {
-            rt_log(&h->log, RT_LOG_ERROR,
-                   "cgroup filtering requested but this BPF object has no filtering maps: every event "
-                   "on the host would be delivered. Rebuild rt_file.bpf.o.");
-            abort_open(h);
-            return NULL;
-        }
-    }
-    else if (rt_set_cgroup_mode(h, filter->cgroup_mode) != 0)
-    {
-        rt_log(&h->log, RT_LOG_ERROR, "could not set cgroup filter mode %d", filter->cgroup_mode);
-        abort_open(h);
-        return NULL;
-    }
-
-    /* Per-event work this consumer opted out of. An object that predates the
-     * mask has a one-slot filter_cfg, so the write fails: that is a degradation
-     * (every field is computed, as before) and not a correctness problem, so it
-     * warns rather than refusing the open — the opposite of the mode above,
-     * which changes which events arrive. */
-    if (filter->skip_mask != 0 && h->filter_cfg_fd >= 0)
-    {
-        const unsigned int key = FILTER_CFG_KEY_SKIP;
-        const unsigned int value = filter->skip_mask;
-
-        if (g_libbpf.map_update_elem(h->filter_cfg_fd, &key, &value, 0 /* BPF_ANY */) != 0)
-        {
-            rt_log(&h->log, RT_LOG_WARN,
-                   "could not apply skip mask 0x%x; every per-event field will be computed. Rebuild "
-                   "rt_file.bpf.o to honour it.",
-                   filter->skip_mask);
-        }
-    }
-
     rt_log(&h->log, RT_LOG_INFO,
            "eBPF engine ready: %u program(s) attached, ABI %d.%d, cgroup filter %s, skip mask 0x%x",
            h->link_count, RT_ABI_MAJOR, RT_ABI_MINOR,
@@ -616,6 +729,283 @@ int rt_set_cgroup_mode(rt_handle_t handle, int mode)
         return -1;
     }
     return 0;
+}
+
+/* BTF record layouts, taken from the kernel's UAPI <linux/btf.h>.
+ *
+ * Declared rather than included, for the reason rt_libbpf_shim.h gives for
+ * libbpf's own types: this file must build on a host with no BPF development
+ * headers. Unlike a library's internal structs these are a frozen kernel ABI --
+ * BTF is a serialization format carrying its own version field, so a layout
+ * change would be a new version and not a silent reinterpretation of these
+ * bytes. Named rt_* so a translation unit that also includes <linux/btf.h>
+ * cannot collide with them. */
+#define RT_BTF_KIND_ENUM 6
+#define RT_BTF_KIND_ENUM64 19
+
+struct rt_btf_type
+{
+    unsigned int name_off;
+    unsigned int info; /* bits 0-15 vlen, bits 24-28 kind */
+    union
+    {
+        unsigned int size;
+        unsigned int type;
+    } u;
+};
+
+struct rt_btf_enum
+{
+    unsigned int name_off;
+    int val;
+};
+
+struct rt_btf_enum64
+{
+    unsigned int name_off;
+    unsigned int val_lo32;
+    unsigned int val_hi32;
+};
+
+/* How a controller is spelled in `enum cgroup_subsys_id`.
+ *
+ * Almost always "<name>_cgrp_id". The exception is that /proc/cgroups prints a
+ * controller's LEGACY name while the enum uses its current one, and for one
+ * controller those differ: the file says `blkio` where the enum says
+ * `io_cgrp_id`. Same subsystem, two spellings, and the lookup matches on the
+ * string. */
+static int rt_cgroup_subsys_enumerator(const char* controller, char* out, size_t out_len)
+{
+    const char* name = controller;
+
+    if (strcmp(controller, "blkio") == 0)
+    {
+        name = "io";
+    }
+
+    const int written = snprintf(out, out_len, "%s_cgrp_id", name);
+    return (written > 0 && (size_t)written < out_len) ? 0 : -1;
+}
+
+/* A controller's value in the kernel's own `enum cgroup_subsys_id`.
+ *
+ * The authority, where the row order of /proc/cgroups is only a good guess.
+ * Since 6.12 proc_cgroupstats_show() skips a controller built without v1 files
+ * -- cgroup1_subsys_absent(), which is what CONFIG_MEMCG_V1=n and
+ * CONFIG_CPUSETS_V1=n produce -- while the enumerator stays, because
+ * SUBSYS(memory) sits behind CONFIG_MEMCG and SUBSYS(cpuset) behind
+ * CONFIG_CPUSETS. Every row after the missing one then reads one short of its
+ * real id and the program is pointed at a different controller's cgroup.
+ * Reading the enum itself cannot drift that way, on any kernel.
+ *
+ * Called once, while configuring a legacy host, and never on a unified or
+ * hybrid one.
+ *
+ * Returns the id, or -1 whenever BTF cannot answer: no libbpf BTF API, no
+ * kernel BTF, no such enum, no such enumerator. Each of those means "fall back
+ * to /proc/cgroups", not "fail". */
+static int rt_subsys_index_from_btf(const char* controller, const struct rt_log_target* log)
+{
+    char wanted[64];
+
+    if (!controller || !controller[0] || !g_libbpf.btf_load_vmlinux)
+    {
+        return -1;
+    }
+    if (rt_cgroup_subsys_enumerator(controller, wanted, sizeof(wanted)) != 0)
+    {
+        return -1;
+    }
+
+    struct btf* btf = g_libbpf.btf_load_vmlinux();
+    if (!btf)
+    {
+        rt_log(log,
+               RT_LOG_INFO,
+               "no kernel BTF available; taking the v1 subsystem index for '%s' from /proc/cgroups",
+               controller);
+        return -1;
+    }
+
+    int found = -1;
+
+    /* ENUM and ENUM64 carry the same information under different kinds, and
+     * which one a given kernel's BTF used is not ours to predict. */
+    const unsigned int kinds[2] = {RT_BTF_KIND_ENUM, RT_BTF_KIND_ENUM64};
+
+    for (unsigned int k = 0; k < 2 && found < 0; ++k)
+    {
+        const int id = g_libbpf.btf_find_by_name_kind(btf, "cgroup_subsys_id", kinds[k]);
+        if (id < 0)
+        {
+            continue;
+        }
+
+        const struct rt_btf_type* type = (const struct rt_btf_type*)g_libbpf.btf_type_by_id(btf, (unsigned int)id);
+        if (!type)
+        {
+            continue;
+        }
+
+        const unsigned int vlen = type->info & 0xffffu;
+
+        for (unsigned int i = 0; i < vlen; ++i)
+        {
+            unsigned int name_off;
+            int value;
+
+            if (kinds[k] == RT_BTF_KIND_ENUM)
+            {
+                const struct rt_btf_enum* members = (const struct rt_btf_enum*)(type + 1);
+                name_off = members[i].name_off;
+                value = members[i].val;
+            }
+            else
+            {
+                const struct rt_btf_enum64* members = (const struct rt_btf_enum64*)(type + 1);
+                if (members[i].val_hi32 != 0)
+                {
+                    /* A subsystem id cannot need 64 bits. Reading the high
+                     * word only to refuse it keeps a malformed or unexpected
+                     * entry from being truncated into a plausible index. */
+                    continue;
+                }
+                name_off = members[i].name_off;
+                value = (int)members[i].val_lo32;
+            }
+
+            const char* name = g_libbpf.btf_name_by_offset(btf, name_off);
+            if (name && strcmp(name, wanted) == 0)
+            {
+                found = value;
+                break;
+            }
+        }
+    }
+
+    g_libbpf.btf_free(btf);
+    return found;
+}
+
+int rt_cgroup_subsys_index_from_btf(const char* controller)
+{
+    if (!ensure_libbpf_loaded(NULL, NULL))
+    {
+        return -1;
+    }
+    return rt_subsys_index_from_btf(controller, NULL);
+}
+
+int rt_set_cgroup_v1_subsys(rt_handle_t handle, const char* controller, unsigned int fallback_index)
+{
+    struct rt_engine_handle* h = (struct rt_engine_handle*)handle;
+    if (!h || h->filter_cfg_fd < 0)
+    {
+        return -1;
+    }
+
+    /* The kernel's own enum first, the caller's /proc/cgroups reading second.
+     * Both name the SAME controller -- the caller passes what it resolved
+     * container paths under -- so this chooses between two readings of one
+     * question rather than between two controllers. */
+    unsigned int subsys_index = fallback_index;
+    const int from_btf = rt_subsys_index_from_btf(controller, &h->log);
+
+    if (from_btf >= 0)
+    {
+        subsys_index = (unsigned int)from_btf;
+
+        if (subsys_index != fallback_index)
+        {
+            /* THE 6.12 CASE, caught in the act. The row order of /proc/cgroups
+             * stopped matching the enum when proc_cgroupstats_show() began
+             * skipping controllers built without v1 files, and a host where
+             * that happens would otherwise read a different controller's
+             * cgroup and attribute nothing, with every other sign healthy:
+             * userspace matches controllers by name, so containers still
+             * resolve and still carry keys. Logged at warn because the
+             * disagreement IS the diagnosis -- nothing else on this host will
+             * report it. */
+            rt_log(&h->log,
+                   RT_LOG_WARN,
+                   "the '%s' controller is at index %u in the kernel's enum but at row %u of "
+                   "/proc/cgroups; using %u. A kernel 6.12 or newer omits the row of a controller built "
+                   "without v1 files (CONFIG_MEMCG_V1=n, CONFIG_CPUSETS_V1=n), which shifts every row "
+                   "after it",
+                   controller ? controller : "?",
+                   subsys_index,
+                   fallback_index,
+                   subsys_index);
+        }
+    }
+
+    /* Refused rather than trusted to the caller. On a unified or hybrid host
+     * css_set.subsys[i] can point at an ANCESTOR cgroup — the nearest one
+     * where controller i is enabled — so this read would attribute a
+     * container's events to its parent slice, with a number that looks
+     * entirely reasonable. The helper is correct there and must be used. */
+    if (!wz_cgroup_v1_subsys_read_allowed(h->cgroup_mode, (int)subsys_index))
+    {
+        rt_log(&h->log,
+               RT_LOG_ERROR,
+               "refusing to read cgroup ids from a v1 controller on a %s host: the helper is correct here "
+               "and the controller read can resolve to an ancestor cgroup",
+               wz_cgroup_mode_name(h->cgroup_mode));
+        return -1;
+    }
+
+    if (subsys_index >= RT_V1_SUBSYS_MAX)
+    {
+        rt_log(&h->log, RT_LOG_ERROR, "cgroup subsystem index %u out of range", subsys_index);
+        return -1;
+    }
+
+    const unsigned int key = FILTER_CFG_KEY_V1_SUBSYS;
+    const unsigned int value = subsys_index + 1u;
+
+    /* Probe the slot before writing it. 'filter_cfg' grew a third entry when
+     * the legacy controller read was added, and an array map rejects a key
+     * past its end -- so a loaded object that predates that change fails here
+     * and nowhere else. Without this the caller sees only a generic write
+     * failure and reports that the HOST has no usable controller, which sends
+     * whoever reads the log looking at cgroups instead of at a stale build
+     * artifact. */
+    unsigned int probe = 0;
+    if (g_libbpf.map_lookup_elem(h->filter_cfg_fd, &key, &probe) != 0)
+    {
+        rt_log(&h->log,
+               RT_LOG_ERROR,
+               "the loaded rt_file.bpf.o is too old: its 'filter_cfg' map has no slot %u, which is where "
+               "the v1 cgroup controller index goes. Rebuild rt_file.bpf.o.",
+               key);
+        return -1;
+    }
+
+    if (g_libbpf.map_update_elem(h->filter_cfg_fd, &key, &value, 0 /* BPF_ANY */) != 0)
+    {
+        rt_log(&h->log, RT_LOG_ERROR, "could not configure the v1 cgroup subsystem index: %s", strerror(errno));
+        return -1;
+    }
+
+    h->v1_subsys_configured = 1;
+    rt_log(&h->log,
+           RT_LOG_INFO,
+           "reading container cgroup ids from v1 controller '%s' (subsystem %u, resolved from %s); cgroup "
+           "filtering is available",
+           controller ? controller : "?",
+           subsys_index,
+           (from_btf >= 0) ? "kernel BTF" : "/proc/cgroups");
+    return 0;
+}
+
+int rt_cgroup_id_is_usable(rt_handle_t handle)
+{
+    const struct rt_engine_handle* h = (const struct rt_engine_handle*)handle;
+    if (!h)
+    {
+        return 0;
+    }
+    return wz_cgroup_mode_has_usable_cgroup_id(h->cgroup_mode) || h->v1_subsys_configured;
 }
 
 int rt_allow_cgroup(rt_handle_t handle, unsigned long long cgroup_id)
@@ -793,5 +1183,6 @@ int rt_abi_minor(void)
 int rt_host_cgroup_v1(rt_handle_t handle)
 {
     const struct rt_engine_handle* h = (const struct rt_engine_handle*)handle;
-    return h ? h->cgroup_v1 : detect_cgroup_v1();
+    const wz_cgroup_mode_t mode = h ? h->cgroup_mode : wz_cgroup_mode();
+    return wz_cgroup_mode_has_usable_cgroup_id(mode) ? 0 : 1;
 }

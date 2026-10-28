@@ -64,6 +64,20 @@ struct rt_filter
      * consumer-agnostic constraint. */
     const char* bpf_obj_path;
 
+    /* Absolute path to the libbpf shared object this engine should bind, or
+     * NULL to resolve the bare `libbpf.so.1` / `libbpf.so` sonames as before.
+     *
+     * The sonames alone are not enough for a packaged agent. No Wazuh binary
+     * carries an RPATH, so a bare dlopen() binds whatever libbpf the HOST
+     * happens to have — and on a legacy RHEL-family host that is libbpf 0.5.0,
+     * which predates bpf_program__set_autoload() and so fails this engine's
+     * mandatory symbol resolution. The agent ships its own libbpf precisely to
+     * avoid depending on the host's; it just was not being asked for.
+     *
+     * Kept as a caller-supplied path, like bpf_obj_path above, because the
+     * engine deliberately has no opinion on Wazuh's install-path layout. */
+    const char* libbpf_path;
+
     /* Optional diagnostics sink; NULL keeps the stderr behaviour. */
     rt_log_fn log;
     void* log_user;
@@ -174,6 +188,67 @@ int rt_deny_cgroup(rt_handle_t handle, unsigned long long cgroup_id);
  * leaves a window in which the allowlist is empty and so nothing is delivered. */
 int rt_set_cgroup_mode(rt_handle_t handle, int mode);
 
+/* Read container cgroup ids from a v1 controller hierarchy instead of from
+ * bpf_get_current_cgroup_id().
+ *
+ * ONLY for a host with no unified hierarchy. There, the helper reports nothing
+ * useful, but the v1 controllers' cgroups carry ids of the same kind and the
+ * program can read one directly — so cgroup_id becomes a real per-container
+ * value and the allowlist filters exactly as it does elsewhere.
+ *
+ * The program needs the controller's position in the kernel's
+ * `enum cgroup_subsys_id`, which is build-dependent and has to be resolved at
+ * runtime. Both arguments describe the SAME controller — the one the caller
+ * resolves container paths under, or the two halves key on different
+ * hierarchies — and the engine picks which reading to trust:
+ *
+ * - `controller` is its name, e.g. "memory". The engine looks its enumerator
+ *   up in the kernel's own BTF, which is authoritative.
+ * - `fallback_index` is the caller's own reading, from
+ *   wz_cgroup_subsys_index() in shared_modules/common, and is used only when
+ *   BTF cannot answer: no kernel BTF, or a libbpf too old to read it.
+ *
+ * The split exists because the fallback is not reliable on every kernel. Since
+ * 6.12, proc_cgroupstats_show() omits a controller built without v1 files, so
+ * the row order it reports runs short of the real enum ids from that point on
+ * — see wz_cgroup_subsys_index(). When the two readings disagree the engine
+ * uses BTF and says so at warn level, because nothing else on such a host
+ * reports the problem: userspace matches controllers by name, so containers
+ * still resolve and only the kernel-side read is misdirected.
+ *
+ * MUST NOT be called on a unified or hybrid host: there a controller is only
+ * enabled where an ancestor enabled it, so the read can return an ancestor's
+ * cgroup and attribute a container's events to its parent slice. Refused when
+ * rt_host_cgroup_v1() is zero rather than left to the caller.
+ *
+ * Returns 0 on success, -1 otherwise. */
+int rt_set_cgroup_v1_subsys(rt_handle_t handle, const char* controller, unsigned int fallback_index);
+
+/* A v1 controller's value in the kernel's `enum cgroup_subsys_id`, read from
+ * the running kernel's BTF.
+ *
+ * Needs no handle and no loaded BPF object: it binds libbpf on demand and reads
+ * /sys/kernel/btf/vmlinux. Exposed so a consumer can compare it against its own
+ * /proc/cgroups reading, which is the only way to detect the 6.12 row skew
+ * described above.
+ *
+ * The binding is process-wide and happens once, so a consumer that passes its
+ * own libbpf path to rt_open() must call this AFTER that open — calling it
+ * first would bind the system libbpf and the path would then be ignored.
+ * rt_set_cgroup_v1_subsys() is not affected: it runs on an already-open handle.
+ *
+ * Returns the id, or -1 when BTF cannot answer — which is a reason to fall back
+ * to /proc/cgroups, not an error. */
+int rt_cgroup_subsys_index_from_btf(const char* controller);
+
+/* Non-zero when this handle's events carry a cgroup_id that identifies a
+ * container: always on a unified or hybrid host, and on a legacy host once
+ * rt_set_cgroup_v1_subsys() has succeeded.
+ *
+ * Consumers should branch on THIS rather than on rt_host_cgroup_v1(), which
+ * reports the host's hierarchy and not whether attribution is available. */
+int rt_cgroup_id_is_usable(rt_handle_t handle);
+
 /* Reports one cgroup's dropped-event count. `drops` is the number lost since
  * the previous drain for that cgroup, never a running total. */
 typedef void (*rt_drop_fn)(unsigned long long cgroup_id, unsigned int drops, void* user);
@@ -215,10 +290,16 @@ int rt_drain_drops(rt_handle_t handle, rt_drop_fn cb, void* user);
 int rt_abi_major(void);
 int rt_abi_minor(void);
 
-/* Non-zero when this host uses cgroup v1, i.e. when bpf_get_current_cgroup_id()
- * — and therefore every event's cgroup_id — is not a usable correlation key
- * and mnt_ns must be used instead (spike #37396 ADR-002). Determined once at
- * rt_open() from the cgroup mount layout, not from the events.
+/* Non-zero when this host has no unified cgroup hierarchy, i.e. when
+ * bpf_get_current_cgroup_id() — which reports the task's cgroup in THAT
+ * hierarchy — identifies nothing (spike #37396 ADR-002; measured on a pure v1
+ * host, where it returns 1 for every task). Determined once at rt_open() from
+ * the cgroup mount layout, not from the events.
+ *
+ * This reports the HOST'S HIERARCHY, not whether attribution is available:
+ * rt_set_cgroup_v1_subsys() makes cgroup_id usable on exactly these hosts.
+ * Consumers deciding whether they can attribute events want
+ * rt_cgroup_id_is_usable() instead.
  *
  * NOTE: the per-event RT_F_CGROUP_V1 flag is NOT yet set by the BPF program;
  * this accessor is currently the only reliable source. See rt_engine.c. */

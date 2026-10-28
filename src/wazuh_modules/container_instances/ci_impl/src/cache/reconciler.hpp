@@ -23,7 +23,13 @@ namespace wazuh::container_instances
                a.podUid == b.podUid && a.podName == b.podName && a.podNamespace == b.podNamespace &&
                a.nodeName == b.nodeName && a.labels == b.labels && a.annotations == b.annotations &&
                a.ownerRefs == b.ownerRefs && a.network == b.network && a.ociMounts == b.ociMounts &&
-               a.cgroupId == b.cgroupId;
+               a.hostKey == b.hostKey && a.state == b.state && a.startedAt == b.startedAt && a.pid == b.pid &&
+               // The container's OTHER cgroups. Omitted here, a reconcile that
+               // saw a new unit cgroup and nothing else compared EQUAL: the
+               // record was never replaced, so the store kept the old key set
+               // and the journal was never given anything to publish. The whole
+               // LIFECYCLE_KEYS class is unreachable without this.
+               a.extraHostKeys == b.extraHostKeys;
     }
 
     /// Pure full-snapshot diff on the container-id string. The store applies the

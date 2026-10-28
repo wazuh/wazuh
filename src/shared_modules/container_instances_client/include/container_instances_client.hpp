@@ -5,10 +5,13 @@
 #include <sys/un.h>
 #include <unistd.h>
 
+#include "container_key_kind.h"
 #include <chrono>
 #include <cstdint>
-#include <json.hpp>
+
 #include <cstring>
+#include <json.hpp>
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -41,7 +44,21 @@ namespace wazuh::container_instances_client
     {
         std::string runtime;
         std::string containerId;
+
+        /// The container's HOST KEY, which is a cgroup inode only on a host
+        /// keyed that way — see ContainerEventRef::cgroupId.
         std::uint64_t cgroupId {0};
+
+        /// The container's OTHER host keys, when it occupies more than one
+        /// cgroup (an init system inside the container: `init.scope` plus one
+        /// per unit). Empty on the ordinary single-cgroup container, and empty
+        /// on a host whose keys are not cgroup ids -- the producer omits the
+        /// field there for the same reason it omits `cgroup_id`.
+        ///
+        /// A consumer that filters events in the kernel by exact cgroup id has
+        /// to admit these as well as `cgroupId`, or everything the container's
+        /// units do is discarded before it sees any of it.
+        std::vector<std::uint64_t> extraCgroupIds;
 
         /// The container's FULL record as the `list` reply carried it — the same
         /// object a `resolve` would return in its "data" field (runtime, name,
@@ -55,6 +72,67 @@ namespace wazuh::container_instances_client
         /// so on a 100-container node this is the difference between 101
         /// connections and 1.
         nlohmann::json record;
+    };
+
+    /// One transition of the published container set.
+    struct ContainerEventRef
+    {
+        enum class Kind
+        {
+            added,
+            changed,
+            removed
+        };
+
+        std::uint64_t seq {0};
+        Kind kind {Kind::changed};
+        std::string containerId;
+
+        /// Last known HOST KEY, present on removals too — a consumer keyed on
+        /// it cannot act on a removal it cannot map back to one.
+        ///
+        /// A cgroup inode on a host keyed that way, a mount-namespace inode on
+        /// one that is not; hostKeyKind() says which, and the name is kept only
+        /// because consumers already spell it this way.
+        std::uint64_t cgroupId {0};
+
+        /// The container's other host keys, as ContainerRef::extraCgroupIds.
+        /// Read from this event's `data`, so it is empty on a removal (which
+        /// carries no record) -- a consumer withdraws a removed container's
+        /// keys from what it already holds, not from the event.
+        std::vector<std::uint64_t> extraCgroupIds;
+
+        /// Change classes as NAMES, verbatim from the wire. Deliberately not
+        /// decoded into a bitmask here: a class this build does not know must
+        /// stay visible so the consumer can treat it as "re-scan everything"
+        /// rather than silently dropping it, which an unknown bit would do.
+        std::vector<std::string> changed;
+
+        /// Absent for removals.
+        nlohmann::json record;
+    };
+
+    /// Reply to a cursor read. The three unhappy outcomes are deliberately
+    /// distinct, because collapsing any two of them loses data:
+    ///
+    ///   available=false        nothing was obtained. NEVER sweep: this is
+    ///                          indistinguishable from "no containers" only if
+    ///                          the caller lets it be.
+    ///   deltaSupported=false   the server predates cursors. Fall back to
+    ///                          whole-list diffing; `containers` holds the set.
+    ///   resyncRequired         the cursor could not be served. `containers`
+    ///                          holds the full set, already fetched.
+    struct ContainerDelta
+    {
+        bool available {false};
+        bool deltaSupported {false};
+        bool resyncRequired {false};
+
+        std::uint64_t epoch {0};
+        std::uint64_t seq {0};
+
+        std::vector<ContainerEventRef> events;
+        std::vector<ContainerRef> containers;
     };
 
     /// Synchronous, connect-per-request client for the Container Instances query
@@ -73,15 +151,36 @@ namespace wazuh::container_instances_client
         {
         }
 
+        /// Resolve by whatever identifier this host uses.
+        ///
+        /// The KIND is sent, not assumed. On a host where the cgroup id is a
+        /// constant the producer files containers under mount namespaces
+        /// instead, and the two are both ordinary 64-bit inode numbers — asked
+        /// for in the wrong space they do not error, they simply never match,
+        /// and the caller is told the container is unknown.
+        [[nodiscard]] LookupResult resolve(wz_container_key_kind_t kind, std::uint64_t key) const
+        {
+            return roundTrip(resolveRequest(kind, key, nullptr));
+        }
+
+        [[nodiscard]] LookupResult
+        resolve(wz_container_key_kind_t kind, std::uint64_t key, const std::string& containerId) const
+        {
+            return roundTrip(resolveRequest(kind, key, &containerId));
+        }
+
+        /// Kept for callers that have not moved yet, and for hosts where the
+        /// cgroup id IS the key. Equivalent to resolve(WZ_CONTAINER_KEY_CGROUP,
+        /// ...), and refused by the producer on a host keyed otherwise — which
+        /// is the correct answer, not a regression.
         [[nodiscard]] LookupResult resolveByCgroupId(std::uint64_t cgroupId) const
         {
-            return roundTrip(R"({"version":1,"op":"resolve","cgroup_id":")" + std::to_string(cgroupId) + R"("})");
+            return resolve(WZ_CONTAINER_KEY_CGROUP, cgroupId);
         }
 
         [[nodiscard]] LookupResult resolveByCgroupId(std::uint64_t cgroupId, const std::string& containerId) const
         {
-            return roundTrip(R"({"version":1,"op":"resolve","cgroup_id":")" + std::to_string(cgroupId) +
-                             R"(","container_id":")" + containerId + R"("})");
+            return resolve(WZ_CONTAINER_KEY_CGROUP, cgroupId, containerId);
         }
 
         /// @brief List every container the connector currently knows about.
@@ -104,7 +203,7 @@ namespace wazuh::container_instances_client
                 *reachable = false;
             }
 
-            const auto reply = roundTrip(R"({"version":1,"op":"list"})");
+            const auto reply = roundTrip(R"({"version":2,"op":"list"})");
             if (reply.json.empty())
             {
                 return result;
@@ -131,48 +230,246 @@ namespace wazuh::container_instances_client
 
             for (const auto& item : *containersIt)
             {
-                if (!item.is_object())
+                auto ref = parseContainerRef(item);
+                if (ref)
                 {
-                    continue;
+                    result.push_back(std::move(*ref));
                 }
-
-                ContainerRef ref;
-                if (const auto it = item.find("runtime"); it != item.end() && it->is_string())
-                {
-                    ref.runtime = it->get<std::string>();
-                }
-                if (const auto it = item.find("container_id"); it != item.end() && it->is_string())
-                {
-                    ref.containerId = it->get<std::string>();
-                }
-                if (const auto it = item.find("cgroup_id"); it != item.end() && it->is_string())
-                {
-                    try
-                    {
-                        ref.cgroupId = std::stoull(it->get<std::string>());
-                    }
-                    catch (...)
-                    {
-                        ref.cgroupId = 0;
-                    }
-                }
-                if (ref.containerId.empty())
-                {
-                    continue;
-                }
-                ref.record = item;
-                result.push_back(std::move(ref));
             }
 
             return result;
         }
 
+        /// @brief Read forward from `from`, instead of fetching the whole set.
+        ///
+        /// Rides the same `list` op with two extra fields, so a server that
+        /// predates cursors answers normally and simply omits the epoch —
+        /// which is how `deltaSupported` is detected. There is no error path
+        /// for talking to an old server, by design.
+        ///
+        /// Pass a default-constructed cursor to start following from cold; that
+        /// reports `resyncRequired` with the full set attached, which is the
+        /// same shape as recovering from a gap and so needs no separate
+        /// handling in the caller.
+        [[nodiscard]] ContainerDelta listContainersSince(std::uint64_t epoch, std::uint64_t seq) const
+        {
+            ContainerDelta delta;
+
+            const auto request = std::string {R"({"version":2,"op":"list","since_epoch":")"} + std::to_string(epoch) +
+                                 R"(","since_seq":")" + std::to_string(seq) + R"("})";
+
+            const auto reply = roundTrip(request);
+            if (reply.json.empty())
+            {
+                return delta; // available stays false: do not sweep.
+            }
+
+            const auto parsed = nlohmann::json::parse(reply.json, nullptr, false);
+            if (parsed.is_discarded() || !parsed.is_object() || parsed.value("status", "") != "ok")
+            {
+                return delta;
+            }
+
+            const auto containersIt = parsed.find("containers");
+            if (containersIt == parsed.end() || !containersIt->is_array())
+            {
+                return delta;
+            }
+
+            // A well-formed `ok` list reply: whatever else is true, the
+            // connector answered and its view is authoritative.
+            delta.available = true;
+
+            for (const auto& item : *containersIt)
+            {
+                auto ref = parseContainerRef(item);
+                if (ref)
+                {
+                    delta.containers.push_back(std::move(*ref));
+                }
+            }
+
+            const auto epochIt = parsed.find("epoch");
+            if (epochIt == parsed.end() || !epochIt->is_string())
+            {
+                // An older server. It answered with the full set, which the
+                // caller diffs as it always did.
+                return delta;
+            }
+
+            delta.deltaSupported = true;
+            delta.epoch = parseDecimalU64(*epochIt);
+            delta.seq = parseDecimalU64(parsed.value("seq", std::string {"0"}));
+            delta.resyncRequired = parsed.value("resync_required", false);
+
+            if (delta.resyncRequired)
+            {
+                // containers already holds the full set; events are meaningless.
+                return delta;
+            }
+
+            const auto eventsIt = parsed.find("events");
+            if (eventsIt == parsed.end() || !eventsIt->is_array())
+            {
+                return delta; // supported, nothing changed.
+            }
+
+            for (const auto& item : *eventsIt)
+            {
+                if (!item.is_object())
+                {
+                    continue;
+                }
+
+                ContainerEventRef event;
+                event.seq = parseDecimalU64(item.value("seq", std::string {"0"}));
+                event.containerId = item.value("container_id", std::string {});
+                // `key` first, `cgroup_id` as the fallback for a producer that
+                // predates v2. `key` is the host key WHATEVER ITS KIND, so on a
+                // legacy host this is a mount-namespace inode -- the field's
+                // name is historical, not a promise. The producer omits
+                // `cgroup_id` where it would not be one, which protects a v1
+                // consumer that reads that field; it does not make this one a
+                // cgroup id. A consumer that can only act on cgroup ids asks
+                // hostKeyKind() and refuses, as the FIM drain does.
+                event.cgroupId = parseDecimalU64(item.value("key", item.value("cgroup_id", std::string {"0"})));
+
+                if (const auto data = item.find("data"); data != item.end() && data->is_object())
+                {
+                    event.extraCgroupIds = parseDecimalU64Array(*data, "extra_cgroup_ids");
+                }
+
+                if (event.containerId.empty())
+                {
+                    continue;
+                }
+
+                const auto kind = item.value("kind", std::string {});
+                if (kind == "added")
+                {
+                    event.kind = ContainerEventRef::Kind::added;
+                }
+                else if (kind == "removed")
+                {
+                    event.kind = ContainerEventRef::Kind::removed;
+                }
+                else if (kind == "changed")
+                {
+                    event.kind = ContainerEventRef::Kind::changed;
+                }
+                else
+                {
+                    // A kind this build does not know. Skipping it would drop a
+                    // transition silently and leave the caller's view wrong
+                    // with no way to notice; a resync is the conservative read.
+                    delta.resyncRequired = true;
+                    delta.events.clear();
+                    return delta;
+                }
+
+                if (const auto it = item.find("changed"); it != item.end() && it->is_array())
+                {
+                    for (const auto& name : *it)
+                    {
+                        if (name.is_string())
+                        {
+                            event.changed.push_back(name.get<std::string>());
+                        }
+                    }
+                }
+                if (const auto it = item.find("data"); it != item.end())
+                {
+                    event.record = *it;
+                }
+
+                delta.events.push_back(std::move(event));
+            }
+
+            return delta;
+        }
+
+        /// Where this client connects. Exposed so a caller can tell "the
+        /// producer has not answered yet" from "there is no producer on this
+        /// host at all" without paying a connect timeout to find out.
+        [[nodiscard]] const std::string& socketPath() const
+        {
+            return m_socketPath;
+        }
+
         [[nodiscard]] std::string status() const
         {
-            return roundTrip(R"({"version":1,"op":"status"})").json;
+            return roundTrip(R"({"version":2,"op":"status"})").json;
+        }
+
+        /// Which key space the PRODUCER is publishing, straight from `status`.
+        ///
+        /// A consumer needs this because the two sides pick their key
+        /// independently: the producer from the cgroup layout, this consumer
+        /// from what the eBPF engine can read. They are meant to reach the same
+        /// answer through the same shared selector, and when they do not, every
+        /// lookup silently misses — the store holds numbers from one kernfs tree
+        /// and the events carry numbers from another. Asking is cheap and makes
+        /// the disagreement reportable instead of invisible.
+        ///
+        /// `std::nullopt` means the producer did not say, which is also how an
+        /// older producer answers; the caller should treat that as "cannot
+        /// verify" rather than as a mismatch.
+        [[nodiscard]] std::optional<wz_container_key_kind_t> hostKeyKind() const
+        {
+            const auto reply = status();
+            if (reply.empty())
+            {
+                return std::nullopt;
+            }
+
+            try
+            {
+                const auto parsed = nlohmann::json::parse(reply);
+                const auto data = parsed.find("data");
+                if (data == parsed.end() || !data->is_object())
+                {
+                    return std::nullopt;
+                }
+                const auto kind = data->find("key_kind");
+                if (kind == data->end() || !kind->is_string())
+                {
+                    return std::nullopt;
+                }
+
+                wz_container_key_kind_t out {};
+                if (wz_container_key_kind_from_name(kind->get<std::string>().c_str(), &out) == 1)
+                {
+                    return out;
+                }
+            }
+            catch (const std::exception&)
+            {
+                return std::nullopt;
+            }
+
+            return std::nullopt;
         }
 
     private:
+        /// Builds a v2 resolve line. Kept in one place so the key and its kind
+        /// cannot be sent apart — a key with no kind is refused by the
+        /// producer, which is correct but would be a pointless round trip.
+        [[nodiscard]] static std::string
+        resolveRequest(wz_container_key_kind_t kind, std::uint64_t key, const std::string* containerId)
+        {
+            std::string line = R"({"version":2,"op":"resolve","key_kind":")";
+            line += wz_container_key_kind_name(kind);
+            line += R"(","key":")";
+            line += std::to_string(key);
+            line += R"(")";
+            if (containerId != nullptr)
+            {
+                line += R"(,"container_id":")" + *containerId + R"(")";
+            }
+            line += "}";
+            return line;
+        }
+
         [[nodiscard]] LookupResult roundTrip(const std::string& request) const
         {
             LookupResult result;
@@ -241,6 +538,102 @@ namespace wazuh::container_instances_client
                 result.status = LookupStatus::notContainer;
             }
             return result;
+        }
+
+        /// One container record from a `list` reply or an event's `data`.
+        /// nullopt when it carries no container id, which is the only field
+        /// without which nothing downstream can use it.
+        [[nodiscard]] static std::optional<ContainerRef> parseContainerRef(const nlohmann::json& item)
+        {
+            if (!item.is_object())
+            {
+                return std::nullopt;
+            }
+
+            ContainerRef ref;
+            if (const auto it = item.find("runtime"); it != item.end() && it->is_string())
+            {
+                ref.runtime = it->get<std::string>();
+            }
+            if (const auto it = item.find("container_id"); it != item.end() && it->is_string())
+            {
+                ref.containerId = it->get<std::string>();
+            }
+            if (auto it = item.find("key"); it != item.end() && it->is_string())
+            {
+                ref.cgroupId = parseDecimalU64(*it);
+            }
+            else if (it = item.find("cgroup_id"); it != item.end() && it->is_string())
+            {
+                ref.cgroupId = parseDecimalU64(*it);
+            }
+            ref.extraCgroupIds = parseDecimalU64Array(item, "extra_cgroup_ids");
+            if (ref.containerId.empty())
+            {
+                return std::nullopt;
+            }
+            ref.record = item;
+            return ref;
+        }
+
+        /// An array of those decimal strings, under `key` of `object`, skipping
+        /// anything that is not one. Absent, not an array, or empty all give an
+        /// empty vector, which every caller already treats as "no extra keys" --
+        /// so a producer that does not send the field, and one that sends it
+        /// malformed, both degrade to today's behaviour rather than to a throw.
+        [[nodiscard]] static std::vector<std::uint64_t> parseDecimalU64Array(const nlohmann::json& object,
+                                                                            const char* key)
+        {
+            std::vector<std::uint64_t> out;
+
+            const auto it = object.find(key);
+
+            if (it == object.end() || !it->is_array())
+            {
+                return out;
+            }
+
+            for (const auto& value : *it)
+            {
+                if (const auto parsed = parseDecimalU64(value); parsed != 0)
+                {
+                    out.push_back(parsed);
+                }
+            }
+
+            return out;
+        }
+
+        /// 64-bit values travel as decimal strings on this protocol: cJSON
+        /// parses JSON numbers as doubles and silently rounds above 2^53.
+        /// Anything unparseable reads as 0, which every caller already treats
+        /// as "not known".
+        [[nodiscard]] static std::uint64_t parseDecimalU64(const nlohmann::json& value)
+        {
+            if (!value.is_string())
+            {
+                return 0;
+            }
+            try
+            {
+                return std::stoull(value.get<std::string>());
+            }
+            catch (...)
+            {
+                return 0;
+            }
+        }
+
+        [[nodiscard]] static std::uint64_t parseDecimalU64(const std::string& value)
+        {
+            try
+            {
+                return std::stoull(value);
+            }
+            catch (...)
+            {
+                return 0;
+            }
         }
 
         std::string m_socketPath;

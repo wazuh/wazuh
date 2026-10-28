@@ -19,15 +19,19 @@ CLANG   ?= clang
 BPFTOOL ?= bpftool
 ARCH    := $(shell uname -m | sed 's/x86_64/x86/;s/aarch64/arm64/')
 
-INCLUDES := -Iinclude -Ibpf
+# ../common carries cgroup_host_mode.h, which rt_engine.c includes. The CMake
+# build supplies it globally; this standalone one has to name it, and without
+# it every target here fails to compile.
+INCLUDES := -Iinclude -Ibpf -I../common
 
 all: rt_engine_harness
 
 vmlinux.h:
 	$(BPFTOOL) btf dump file /sys/kernel/btf/vmlinux format c > bpf/vmlinux.h
 
-rt_file.bpf.o: bpf/rt_file.bpf.c vmlinux.h include/rt_event_contract.h
+rt_file.bpf.o: bpf/rt_file.bpf.c vmlinux.h include/rt_event_contract.h tools/check_bpf_symbols.sh
 	$(CLANG) -O2 -g -target bpf -D__TARGET_ARCH_$(ARCH) $(INCLUDES) -Ibpf -c bpf/rt_file.bpf.c -o $@
+	./tools/check_bpf_symbols.sh $@
 
 rt_engine.o: src/rt_engine.c include/rt_engine.h include/rt_event_contract.h
 	$(CC) -O2 -Wall -Wextra $(INCLUDES) -c src/rt_engine.c -o $@

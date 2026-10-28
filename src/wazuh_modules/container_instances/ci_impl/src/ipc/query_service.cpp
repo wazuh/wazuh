@@ -32,6 +32,10 @@ namespace wazuh::container_instances
                     response.status = QueryResponse::Status::error;
                     response.errorCode = QueryResponse::ErrorCode::internal;
                     break;
+                case LookupResult::Status::wrongKeyKind:
+                    response.status = QueryResponse::Status::error;
+                    response.errorCode = QueryResponse::ErrorCode::keyKindMismatch;
+                    break;
             }
             return response;
         }
@@ -58,15 +62,44 @@ namespace wazuh::container_instances
 
     QueryResponse QueryService::handle(const QueryRequest& request)
     {
+        /* Stamped once, here, rather than at each of the half-dozen points a
+         * response is constructed below. Those are easy to add to and easy to
+         * forget, and a reply that forgot its version is answered in v1 — which
+         * a v2 client rejects outright, turning a working server into an
+         * unreachable one for the newest consumer only. */
+        auto response = dispatch(request);
+        response.version = request.version;
+        response.keyKind = m_store.keyKind();
+        return response;
+    }
+
+    QueryResponse QueryService::dispatch(const QueryRequest& request)
+    {
         try
         {
             if (request.op == QueryRequest::Op::list)
             {
                 QueryResponse response;
                 response.status = QueryResponse::Status::ok;
-                response.containers = m_store.listContainers();
                 response.listReply = true;
                 response.connectorName = m_connectorName;
+
+                if (!request.since)
+                {
+                    // No cursor: the reply this op has always given.
+                    response.containers = m_store.listContainers();
+                    return response;
+                }
+
+                auto delta = m_store.lifecycleSince(*request.since);
+
+                // On resync the journal hands back the full set, which goes out
+                // through `containers` — the key every client already reads —
+                // so recovery needs no second call and no special case beyond
+                // noticing the flag.
+                response.containers = delta.resyncRequired ? delta.containers : std::vector<ContainerRecordPtr> {};
+                response.delta = std::move(delta);
+
                 return response;
             }
             if (request.op == QueryRequest::Op::status)
@@ -92,9 +125,19 @@ namespace wazuh::container_instances
 
     QueryResponse QueryService::resolve(const QueryRequest& request)
     {
-        const auto byCgroup = m_store.lookupByCgroup(request.cgroupId);
+        // request.keyKind, not the store's: asking with the store's own kind
+        // would make every mismatch match, which is precisely the check the
+        // typed key exists to perform.
+        const auto byCgroup = m_store.lookup(HostKey {request.keyKind, request.hostKey});
         if (byCgroup.status != LookupResult::Status::miss)
         {
+            // wrongKeyKind lands here too, and must NOT fall through to the
+            // secondary keys or the cold path below: resolving a number from
+            // the wrong key space reinterprets it in this host's space, which
+            // either never settles or settles on an unrelated container. The
+            // producer and the consumer disagree about the host — a deployment
+            // fault, answered once and loudly rather than papered over per
+            // query.
             return fromLookup(byCgroup);
         }
 
@@ -117,7 +160,7 @@ namespace wazuh::container_instances
             }
         }
 
-        return coldResolve(request.cgroupId);
+        return coldResolve(request.hostKey);
     }
 
     QueryResponse QueryService::coldResolve(std::uint64_t cgroupInode)
@@ -152,7 +195,7 @@ namespace wazuh::container_instances
                     const auto outcome = binding.refresher->refreshOne(entry->containerId, cgroupInode);
                     if (outcome == RefreshOutcome::resolved)
                     {
-                        const auto lookup = m_store.lookupByCgroup(cgroupInode);
+                        const auto lookup = m_store.lookup(HostKey {m_store.keyKind(), cgroupInode});
                         if (lookup.status != LookupResult::Status::miss)
                         {
                             return fromLookup(lookup);

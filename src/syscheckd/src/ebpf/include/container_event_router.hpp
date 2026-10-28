@@ -71,6 +71,7 @@
 
 #include <atomic>
 #include <cstdint>
+#include <set>
 #include <string>
 #include <utility>
 #include <vector>
@@ -276,20 +277,17 @@ class ContainerEventRouter
          * other route. What changes is the trigger, not the work. */
         CgroupListDelta applyContainerList(const std::vector<std::pair<std::uint64_t, std::string>>& containers)
         {
-            auto delta = m_map.install(containers);
+            return escalateDelta(m_map.install(containers));
+        }
 
-            escalate(delta.escalate);
-
-            if (m_filtering)
-            {
-                for (const auto& entry : delta.added)
-                {
-                    bump(m_stats.discovery_escalations);
-                    m_staging.onDrops(entry.second);
-                }
-            }
-
-            return delta;
+        /* The same, from transitions rather than a whole list.
+         *
+         * Shares escalateDelta() with applyContainerList deliberately: which
+         * way the list arrived is a transport detail, and the rule for what has
+         * to be re-walked must not be able to drift between the two. */
+        CgroupListDelta applyContainerDelta(const std::vector<CgroupDeltaEvent>& events)
+        {
+            return escalateDelta(m_map.applyDelta(events));
         }
 
         /* Apply one on-demand resolution.
@@ -370,6 +368,47 @@ class ContainerEventRouter
         void bump(std::atomic<unsigned long long>& counter)
         {
             counter.fetch_add(1, std::memory_order_relaxed);
+        }
+
+        /* Escalates what a map update says needs re-walking, and hands the
+         * delta back for the caller to apply to the kernel filter. */
+        CgroupListDelta escalateDelta(CgroupListDelta delta)
+        {
+            escalate(delta.escalate);
+
+            if (m_filtering)
+            {
+                /* EVERY added cgroup escalates, including one added to a
+                 * container already in the map. Under the kernel filter an
+                 * un-admitted cgroup's events never reach userspace, so a unit's
+                 * writes between its cgroup appearing and being admitted are
+                 * simply gone -- nothing can enumerate them, and re-walking the
+                 * container is the only recovery. The cost is real and accepted
+                 * rather than overlooked: a container driving short-lived units
+                 * gets a fresh inode per activation and so a walk per
+                 * activation. Skipping the walk when the container is already
+                 * mapped would trade that cost for silently missed changes,
+                 * which is the hole this path exists to close.
+                 *
+                 * Once per CONTAINER, though, not once per cgroup it added. A
+                 * container running an init system publishes several --
+                 * `init.scope` plus one per unit -- and onDrops() re-walks the
+                 * whole container, so doing it per cgroup is N-1 walks of the
+                 * same tree and a discovery_escalations count that no longer
+                 * matches the number of containers discovered. */
+                std::set<std::string> escalated;
+
+                for (const auto& entry : delta.added)
+                {
+                    if (escalated.insert(entry.second).second)
+                    {
+                        bump(m_stats.discovery_escalations);
+                        m_staging.onDrops(entry.second);
+                    }
+                }
+            }
+
+            return delta;
         }
 
         void escalate(const std::vector<std::string>& container_ids)

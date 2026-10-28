@@ -18,6 +18,16 @@
 #include <mutex>
 #include <sqlite3.h>
 #include <thread>
+#include <cstring>
+#if defined(__linux__)
+// Only the lifecycle-notification test needs these, and it already skips itself
+// everywhere else -- but an include is not covered by a skip inside the test
+// body, and Windows has none of these headers. Same guard, same reason, as the
+// notification include in syscollectorImp.cpp.
+#include <sys/socket.h>
+#include <sys/un.h>
+#include <unistd.h>
+#endif
 
 #include "syscollectorImp_test.h"
 #include "syscollector.hpp"
@@ -595,6 +605,431 @@ TEST_F(SyscollectorImpTest, intervalSeconds)
     }
 }
 
+/* --- which pass runs, and when ------------------------------------------
+ *
+ * Two things ask for a container pass and they must not be conflated. The
+ * scheduled one is the reconciliation FLOOR: it walks every container, and it
+ * is the only thing that re-establishes what is actually on the node, because
+ * no delta can report a container the module itself never learned about. The
+ * notification-driven one scans what changed and nothing more.
+ *
+ * The rule that is easy to lose in a refactor, and expensive to lose in
+ * production, is that the second must never postpone the first.
+ */
+
+TEST(ContainerPassDecisionTest, ANotificationScansOnlyWhatChanged)
+{
+    const auto decision = decideContainerPass(/*scheduled=*/false, /*requested=*/true);
+
+    EXPECT_TRUE(decision.run);
+    EXPECT_TRUE(decision.delta_only);
+    EXPECT_FALSE(decision.advance_deadline)
+            << "a notification that moved the deadline would let container churn postpone the floor for ever";
+}
+
+TEST(ContainerPassDecisionTest, TheScheduledPassWalksEverything)
+{
+    const auto decision = decideContainerPass(/*scheduled=*/true, /*requested=*/false);
+
+    EXPECT_TRUE(decision.run);
+    EXPECT_FALSE(decision.delta_only);
+    EXPECT_TRUE(decision.advance_deadline);
+}
+
+TEST(ContainerPassDecisionTest, AScheduledPassSubsumesAPendingNotification)
+{
+    // Both at once: doing the targeted pass as well would re-walk containers
+    // the whole-node pass is about to visit anyway.
+    const auto decision = decideContainerPass(/*scheduled=*/true, /*requested=*/true);
+
+    EXPECT_TRUE(decision.run);
+    EXPECT_FALSE(decision.delta_only) << "the thorough pass covers the targeted one";
+    EXPECT_TRUE(decision.advance_deadline);
+}
+
+TEST(ContainerPassDecisionTest, NothingAskedSoNothingRuns)
+{
+    const auto decision = decideContainerPass(/*scheduled=*/false, /*requested=*/false);
+
+    EXPECT_FALSE(decision.run);
+    EXPECT_FALSE(decision.advance_deadline)
+            << "moving the deadline without running would silently skip a floor pass";
+}
+
+TEST_F(SyscollectorImpTest, aLifecycleNotificationBringsTheContainerPassForward)
+{
+#ifndef __linux__
+    GTEST_SKIP() << "The container baseline pass is Linux-only";
+#else
+    // With the interval at 100 s and scan_on_start off, NOTHING schedules a
+    // container pass inside this test's lifetime. So any pass observed here was
+    // caused by the notification and nothing else — which is the point: a
+    // container that starts and stops inside one interval would otherwise be
+    // inventoried late or not at all.
+    const auto spInfoWrapper {std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
+    EXPECT_CALL(*spInfoWrapper, hardware()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_HARDWARE_JSON)));
+    EXPECT_CALL(*spInfoWrapper, os()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_OS_JSON)));
+    EXPECT_CALL(*spInfoWrapper, networks()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_NETWORKS_JSON)));
+    EXPECT_CALL(*spInfoWrapper, ports()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_PORTS_JSON)));
+    EXPECT_CALL(*spInfoWrapper, hotfixes()).WillRepeatedly(Return(R"([])"_json));
+    EXPECT_CALL(*spInfoWrapper, processes(_)).Times(testing::AnyNumber()).WillRepeatedly(testing::InvokeArgument<0>
+                                                                                         (nlohmann::json::parse(EXPECT_CALL_PROCESSES_JSON)));
+    EXPECT_CALL(*spInfoWrapper, packages(_)).Times(testing::AnyNumber()).WillRepeatedly(testing::InvokeArgument<0>
+                                                                                        (R"({"name":"TEXT", "version_":"TEXT", "vendor":"TEXT", "installed":"TEXT", "path":"TEXT", "architecture":"TEXT", "category":"TEXT", "description":"TEXT", "size":"TEXT", "priority":"TEXT", "multiarch":"TEXT", "source":"TEXT", "os_patch":"TEXT"})"_json));
+    EXPECT_CALL(*spInfoWrapper, groups()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_GROUPS_JSON)));
+    EXPECT_CALL(*spInfoWrapper, users()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_USERS_JSON)));
+    EXPECT_CALL(*spInfoWrapper, services()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_SERVICES_JSON)));
+    EXPECT_CALL(*spInfoWrapper,
+                browserExtensions()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_BROWSER_EXTENSIONS_JSON)));
+
+    // The watcher binds relative to the working directory, so the directory has
+    // to exist before it starts or the bind fails and it gives up.
+    ASSERT_EQ(0, ::system("mkdir -p queue/sockets"));
+
+    LogCapture logCapture;
+    std::mutex logMutex;
+    auto captureLogFunction = [&logCapture, &logMutex](modules_log_level_t level, const std::string & log)
+    {
+        std::lock_guard<std::mutex> lock(logMutex);
+        logCapture.capture(level, log);
+    };
+
+    std::thread t
+    {
+        [&spInfoWrapper, &captureLogFunction]()
+        {
+            Syscollector::instance().init(spInfoWrapper,
+                                          reportFunction,
+                                          persistFunction,
+                                          captureLogFunction,
+                                          SYSCOLLECTOR_DB_PATH,
+                                          "",
+                                          "",
+                                          100,    // host interval
+                                          false,  // scan_on_start: nothing runs by itself
+                                          true, true, true, true, true, true, true, true, true, true, true, true,
+                                          false,  // notify_on_first_scan
+                                          true,   // container_baseline
+                                          100);   // container interval, far beyond this test
+
+            Syscollector::instance().start();
+        }
+    };
+
+    // Let the watcher bind before anything is sent to it. A datagram to a
+    // socket nobody has bound is silently discarded, which would make this test
+    // pass or fail on timing rather than on behaviour.
+    std::this_thread::sleep_for(std::chrono::seconds{3});
+
+    const int fd = ::socket(AF_UNIX, SOCK_DGRAM, 0);
+    ASSERT_GE(fd, 0);
+
+    sockaddr_un address {};
+    address.sun_family = AF_UNIX;
+    std::strncpy(address.sun_path, "queue/sockets/syscollector-ci-notify", sizeof(address.sun_path) - 1);
+
+    const std::string payload = R"({"epoch":"1","seq":"1"})";
+    const auto sent = ::sendto(fd,
+                               payload.data(),
+                               payload.size(),
+                               0,
+                               reinterpret_cast<const sockaddr*>(&address),
+                               sizeof(address));
+    ::close(fd);
+    ASSERT_GE(sent, 0) << "nothing bound the notification socket, so this test proved nothing";
+
+    // Generous next to the ~4.5 s the first pass costs when no
+    // container_instances socket exists, and still an order of magnitude below
+    // the 100 s interval that is the only other way a pass could happen.
+    std::this_thread::sleep_for(std::chrono::seconds{10});
+    Syscollector::instance().destroy();
+
+    if (t.joinable())
+    {
+        t.join();
+    }
+
+    size_t containerPasses = 0;
+    {
+        std::lock_guard<std::mutex> lock(logMutex);
+
+        for (const auto& entry : logCapture.logs)
+        {
+            if (entry.message.find("Starting container baseline scan") != std::string::npos)
+            {
+                ++containerPasses;
+            }
+        }
+    }
+
+    EXPECT_GE(containerPasses, 1u)
+            << "the interval is 100 s and scan_on_start is off, so a pass can only have come from the notification";
+#endif
+}
+
+TEST_F(SyscollectorImpTest, aLifecycleNotificationIsHonouredOnTheDefaultCoupledCadence)
+{
+#ifndef __linux__
+    GTEST_SKIP() << "The container baseline pass is Linux-only";
+#else
+    // The same proof as the test above, on <container_baseline_interval> = 0 --
+    // the DEFAULT, and so the configuration nearly every deployment runs. That
+    // path waited on a predicate naming only m_stopping, so the flag the
+    // watcher set was never read and the notification bought nothing at all:
+    // the container waited out the host interval exactly as before.
+    //
+    // With the host interval at 100 s and scan_on_start off, nothing else can
+    // produce a pass inside this test's lifetime.
+    const auto spInfoWrapper {std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
+    EXPECT_CALL(*spInfoWrapper, hardware()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_HARDWARE_JSON)));
+    EXPECT_CALL(*spInfoWrapper, os()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_OS_JSON)));
+    EXPECT_CALL(*spInfoWrapper, networks()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_NETWORKS_JSON)));
+    EXPECT_CALL(*spInfoWrapper, ports()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_PORTS_JSON)));
+    EXPECT_CALL(*spInfoWrapper, hotfixes()).WillRepeatedly(Return(R"([])"_json));
+    EXPECT_CALL(*spInfoWrapper, processes(_)).Times(testing::AnyNumber()).WillRepeatedly(testing::InvokeArgument<0>
+                                                                                         (nlohmann::json::parse(EXPECT_CALL_PROCESSES_JSON)));
+    EXPECT_CALL(*spInfoWrapper, packages(_)).Times(testing::AnyNumber()).WillRepeatedly(testing::InvokeArgument<0>
+                                                                                        (R"({"name":"TEXT", "version_":"TEXT", "vendor":"TEXT", "installed":"TEXT", "path":"TEXT", "architecture":"TEXT", "category":"TEXT", "description":"TEXT", "size":"TEXT", "priority":"TEXT", "multiarch":"TEXT", "source":"TEXT", "os_patch":"TEXT"})"_json));
+    EXPECT_CALL(*spInfoWrapper, groups()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_GROUPS_JSON)));
+    EXPECT_CALL(*spInfoWrapper, users()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_USERS_JSON)));
+    EXPECT_CALL(*spInfoWrapper, services()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_SERVICES_JSON)));
+    EXPECT_CALL(*spInfoWrapper,
+                browserExtensions()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_BROWSER_EXTENSIONS_JSON)));
+
+    ASSERT_EQ(0, ::system("mkdir -p queue/sockets"));
+
+    LogCapture logCapture;
+    std::mutex logMutex;
+    auto captureLogFunction = [&logCapture, &logMutex](modules_log_level_t level, const std::string & log)
+    {
+        std::lock_guard<std::mutex> lock(logMutex);
+        logCapture.capture(level, log);
+    };
+
+    std::thread t
+    {
+        [&spInfoWrapper, &captureLogFunction]()
+        {
+            Syscollector::instance().init(spInfoWrapper,
+                                          reportFunction,
+                                          persistFunction,
+                                          captureLogFunction,
+                                          SYSCOLLECTOR_DB_PATH,
+                                          "",
+                                          "",
+                                          100,    // host interval
+                                          false,  // scan_on_start: nothing runs by itself
+                                          true, true, true, true, true, true, true, true, true, true, true, true,
+                                          false,  // notify_on_first_scan
+                                          true,   // container_baseline
+                                          0);     // container interval 0: the coupled cadence, the default
+
+            Syscollector::instance().start();
+        }
+    };
+
+    std::this_thread::sleep_for(std::chrono::seconds{3});
+
+    const int fd = ::socket(AF_UNIX, SOCK_DGRAM, 0);
+    ASSERT_GE(fd, 0);
+
+    sockaddr_un address {};
+    address.sun_family = AF_UNIX;
+    std::strncpy(address.sun_path, "queue/sockets/syscollector-ci-notify", sizeof(address.sun_path) - 1);
+
+    const std::string payload = R"({"epoch":"1","seq":"1"})";
+    const auto sent = ::sendto(fd,
+                               payload.data(),
+                               payload.size(),
+                               0,
+                               reinterpret_cast<const sockaddr*>(&address),
+                               sizeof(address));
+    ::close(fd);
+    ASSERT_GE(sent, 0) << "nothing bound the notification socket, so this test proved nothing";
+
+    std::this_thread::sleep_for(std::chrono::seconds{10});
+    Syscollector::instance().destroy();
+
+    if (t.joinable())
+    {
+        t.join();
+    }
+
+    size_t containerPasses = 0;
+    size_t hostScans = 0;
+    {
+        std::lock_guard<std::mutex> lock(logMutex);
+
+        for (const auto& entry : logCapture.logs)
+        {
+            if (entry.message.find("Starting container baseline scan") != std::string::npos)
+            {
+                ++containerPasses;
+            }
+
+            if (entry.message.find("Starting evaluation") != std::string::npos)
+            {
+                ++hostScans;
+            }
+        }
+    }
+
+    EXPECT_GE(containerPasses, 1u)
+            << "on the default cadence the notification must still bring the container pass forward; "
+            "the host interval is 100 s and scan_on_start is off, so nothing else could have run one";
+
+    // The other half of the fix: waking early serves the container without
+    // dragging the host scan forward with it. A relative timeout would have
+    // restarted the host interval on every notification instead.
+    EXPECT_EQ(0u, hostScans)
+            << "a notification must not trigger -- or reschedule -- the 100 s host scan";
+#endif
+}
+
+TEST_F(SyscollectorImpTest, stoppingDoesNotDeadlockAgainstAnArrivingNotification)
+{
+#ifndef __linux__
+    GTEST_SKIP() << "The container notification watcher is Linux-only";
+#else
+    // The watcher the two tests above rely on is joined by start(), and the join
+    // used to happen with the scan mutex still held -- syncLoop() returns holding
+    // it. The watcher takes that same mutex once poll() hands it a notification,
+    // so a notification arriving around the stop left the watcher blocked on the
+    // mutex and start() blocked on the watcher: modulesd stopped answering its
+    // stop entirely, and only SIGKILL ended it.
+    //
+    // Reproduced by keeping notifications arriving THROUGHOUT the stop. A pass
+    // holds the mutex for seconds at a time here, so a watcher waiting on it when
+    // the loop exits is the ordinary case rather than a narrow race.
+    const auto spInfoWrapper {std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
+    EXPECT_CALL(*spInfoWrapper, hardware()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_HARDWARE_JSON)));
+    EXPECT_CALL(*spInfoWrapper, os()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_OS_JSON)));
+    EXPECT_CALL(*spInfoWrapper, networks()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_NETWORKS_JSON)));
+    EXPECT_CALL(*spInfoWrapper, ports()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_PORTS_JSON)));
+    EXPECT_CALL(*spInfoWrapper, hotfixes()).WillRepeatedly(Return(R"([])"_json));
+    EXPECT_CALL(*spInfoWrapper, processes(_)).Times(testing::AnyNumber()).WillRepeatedly(testing::InvokeArgument<0>
+                                                                                         (nlohmann::json::parse(EXPECT_CALL_PROCESSES_JSON)));
+    EXPECT_CALL(*spInfoWrapper, packages(_)).Times(testing::AnyNumber()).WillRepeatedly(testing::InvokeArgument<0>
+                                                                                        (R"({"name":"TEXT", "version_":"TEXT", "vendor":"TEXT", "installed":"TEXT", "path":"TEXT", "architecture":"TEXT", "category":"TEXT", "description":"TEXT", "size":"TEXT", "priority":"TEXT", "multiarch":"TEXT", "source":"TEXT", "os_patch":"TEXT"})"_json));
+    EXPECT_CALL(*spInfoWrapper, groups()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_GROUPS_JSON)));
+    EXPECT_CALL(*spInfoWrapper, users()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_USERS_JSON)));
+    EXPECT_CALL(*spInfoWrapper, services()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_SERVICES_JSON)));
+    EXPECT_CALL(*spInfoWrapper,
+                browserExtensions()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_BROWSER_EXTENSIONS_JSON)));
+
+    ASSERT_EQ(0, ::system("mkdir -p queue/sockets"));
+
+    // Heap-allocated and joined through a watchdog, because the failure this
+    // test is about is a HANG: a joinable std::thread going out of scope calls
+    // std::terminate, which would take the whole suite down with no report of
+    // which case failed. On the failure path it is deliberately leaked instead.
+    auto* moduleThread = new std::thread
+    {
+        [&spInfoWrapper]()
+        {
+            Syscollector::instance().init(spInfoWrapper,
+                                          reportFunction,
+                                          persistFunction,
+                                          logFunction,
+                                          SYSCOLLECTOR_DB_PATH,
+                                          "",
+                                          "",
+                                          100,    // host interval: nothing else wakes this loop
+                                          false,  // scan_on_start
+                                          true, true, true, true, true, true, true, true, true, true, true, true,
+                                          false,  // notify_on_first_scan
+                                          true,   // container_baseline: this is what starts the watcher
+                                          0);     // coupled cadence, the default
+
+            Syscollector::instance().start();
+        }
+    };
+
+    std::this_thread::sleep_for(std::chrono::seconds{3});
+
+    std::atomic<bool> senderStop{false};
+    std::atomic<size_t> delivered{0};
+    std::thread sender
+    {
+        [&senderStop, &delivered]()
+        {
+            const std::string payload = R"({"epoch":"1","seq":"1"})";
+
+            sockaddr_un address {};
+            address.sun_family = AF_UNIX;
+            std::strncpy(address.sun_path, "queue/sockets/syscollector-ci-notify", sizeof(address.sun_path) - 1);
+
+            while (!senderStop.load())
+            {
+                const int fd = ::socket(AF_UNIX, SOCK_DGRAM, 0);
+
+                if (fd >= 0)
+                {
+                    if (::sendto(fd,
+                                 payload.data(),
+                                 payload.size(),
+                                 0,
+                                 reinterpret_cast<const sockaddr*>(&address),
+                                 sizeof(address)) >= 0)
+                    {
+                        ++delivered;
+                    }
+
+                    ::close(fd);
+                }
+
+                std::this_thread::sleep_for(std::chrono::milliseconds{5});
+            }
+        }
+    };
+
+    // Long enough for the first notification to start a container pass, which is
+    // what holds the scan mutex while the next notifications queue up behind it.
+    std::this_thread::sleep_for(std::chrono::seconds{3});
+
+    Syscollector::instance().destroy();
+
+    std::promise<void> joined;
+    auto joinedFuture = joined.get_future();
+    std::thread waiter{[moduleThread, &joined]()
+    {
+        moduleThread->join();
+        joined.set_value();
+    }};
+
+    const bool stopped = joinedFuture.wait_for(std::chrono::seconds{60}) == std::future_status::ready;
+
+    senderStop = true;
+    sender.join();
+
+    if (!stopped)
+    {
+        // Both threads are stuck on each other and will never return. Detached
+        // and leaked on purpose: there is nothing left to join.
+        waiter.detach();
+        FAIL() << "the module thread did not return 60 s after destroy(): start() joins the notification "
+               "watcher while still holding the scan mutex, and the watcher was waiting for that mutex";
+    }
+
+    waiter.join();
+    delete moduleThread;
+
+    // Without this the case is vacuous: nothing bound the socket, no watcher
+    // ever took the mutex, and a clean stop proves only that there was nothing
+    // to deadlock against.
+    EXPECT_LT(0u, delivered.load()) << "no notification was ever delivered, so this test proved nothing";
+
+    // The first destroy() ran while a pass held the scan mutex, so it skipped the
+    // teardown by design (it try_locks). Now that the loop is gone the mutex is
+    // free, and this second call releases the resources the rest of the suite
+    // expects to be released.
+    Syscollector::instance().destroy();
+#endif
+}
+
 TEST_F(SyscollectorImpTest, containerBaselineRunsOnItsOwnIntervalNotTheHostOne)
 {
 #ifndef __linux__
@@ -613,9 +1048,9 @@ TEST_F(SyscollectorImpTest, containerBaselineRunsOnItsOwnIntervalNotTheHostOne)
     EXPECT_CALL(*spInfoWrapper, ports()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_PORTS_JSON)));
     EXPECT_CALL(*spInfoWrapper, hotfixes()).WillRepeatedly(Return(R"([])"_json));
     EXPECT_CALL(*spInfoWrapper, processes(_)).Times(testing::AnyNumber()).WillRepeatedly(testing::InvokeArgument<0>
-            (nlohmann::json::parse(EXPECT_CALL_PROCESSES_JSON)));
+                                                                                         (nlohmann::json::parse(EXPECT_CALL_PROCESSES_JSON)));
     EXPECT_CALL(*spInfoWrapper, packages(_)).Times(testing::AnyNumber()).WillRepeatedly(testing::InvokeArgument<0>
-            (R"({"name":"TEXT", "version_":"TEXT", "vendor":"TEXT", "installed":"TEXT", "path":"TEXT", "architecture":"TEXT", "category":"TEXT", "description":"TEXT", "size":"TEXT", "priority":"TEXT", "multiarch":"TEXT", "source":"TEXT", "os_patch":"TEXT"})"_json));
+                                                                                        (R"({"name":"TEXT", "version_":"TEXT", "vendor":"TEXT", "installed":"TEXT", "path":"TEXT", "architecture":"TEXT", "category":"TEXT", "description":"TEXT", "size":"TEXT", "priority":"TEXT", "multiarch":"TEXT", "source":"TEXT", "os_patch":"TEXT"})"_json));
     EXPECT_CALL(*spInfoWrapper, groups()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_GROUPS_JSON)));
     EXPECT_CALL(*spInfoWrapper, users()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_USERS_JSON)));
     EXPECT_CALL(*spInfoWrapper, services()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_SERVICES_JSON)));
@@ -7091,4 +7526,102 @@ TEST_F(SyscollectorImpTest, SyncModule_VDGenericFailurePastToleranceLogsWarning)
                                      " times in a row: Manager reported a feed version mismatch (409) for this session."));
 
     Syscollector::instance().destroy();
+}
+
+/* --- container row sweeps, and the ordering helpers they share the module with
+ *
+ * Two ways to decide that a container's stored rows must go, and the difference
+ * between them is the whole safety argument: sweepContainerRows() is TOLD which
+ * containers went, while sweepContainerRowsNotIn() infers it from absence in a
+ * whole-node list. Neither had any coverage, which is an uncomfortable place to
+ * be for a pair of functions whose failure mode is deleting inventory that
+ * should have been kept.
+ */
+
+TEST_F(SyscollectorImpTest, SweepContainerRowsCountsOnlyTheContainersItWasNamed)
+{
+#ifndef __linux__
+    GTEST_SKIP() << "Container row sweeps are Linux-only";
+#else
+    const auto spInfoWrapper {std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
+
+    Syscollector::instance().init(spInfoWrapper, reportFunction, persistFunction, logFunction,
+                                  SYSCOLLECTOR_DB_PATH, "", "",
+                                  3600, false, false, false, false, false, false, false,
+                                  false, false, false, false, false, false, false);
+
+    // An empty id names no container, and the scope it would produce is the
+    // HOST's own rows -- container_id is "" for those. So it is skipped, and
+    // not counted either: the return value is what the caller logs as the
+    // number of containers removed.
+    EXPECT_EQ(Syscollector::instance().sweepContainerRows({"", "gone-1", "gone-2"}), 2u);
+
+    // Nothing named is not an error, and nothing stored is not either: a
+    // container whose rows this agent never held sweeps cleanly.
+    EXPECT_EQ(Syscollector::instance().sweepContainerRows({}), 0u);
+
+    Syscollector::instance().destroy();
+#endif
+}
+
+TEST_F(SyscollectorImpTest, SweepContainerRowsNotInKeepsEverythingWhenThereAreNoContainerRows)
+{
+#ifndef __linux__
+    GTEST_SKIP() << "Container row sweeps are Linux-only";
+#else
+    const auto spInfoWrapper {std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
+
+    Syscollector::instance().init(spInfoWrapper, reportFunction, persistFunction, logFunction,
+                                  SYSCOLLECTOR_DB_PATH, "", "",
+                                  3600, false, false, false, false, false, false, false,
+                                  false, false, false, false, false, false, false);
+
+    // No container has ever been inventoried here, so there is nothing absent
+    // from the list to delete. The host's own rows carry container_id = "" and
+    // the query excludes them explicitly -- without that, a node running no
+    // containers at all would sweep its entire host inventory on every pass.
+    EXPECT_EQ(Syscollector::instance().sweepContainerRowsNotIn({"still-here"}), 0u);
+
+    // Same answer for an empty keep set, which is what a whole-node list
+    // returns on a host whose last container just went.
+    EXPECT_EQ(Syscollector::instance().sweepContainerRowsNotIn({}), 0u);
+
+    Syscollector::instance().destroy();
+#endif
+}
+
+TEST_F(SyscollectorImpTest, TheScanMutexCanBeHeldFromOutsideTheModule)
+{
+    // wm_sync_module takes this around a synchronization so a scan cannot start
+    // half way through one. Nothing else covered the pair.
+    Syscollector::instance().lockScanMutex();
+    EXPECT_FALSE(Syscollector::instance().isScanning()) << "no scan is running, so holding the lock cannot report one";
+    Syscollector::instance().unlockScanMutex();
+}
+
+TEST_F(SyscollectorImpTest, OrderingFieldsAreTableSpecificAndUnknownTablesHaveNone)
+{
+    EXPECT_EQ(Syscollector::instance().getFirstPrimaryKeyField(OS_TABLE), std::string {OS_ORDER_BY});
+
+    // Packages order by more than one field: name alone is not stable enough to
+    // page through, which is what the ordering exists for.
+    EXPECT_EQ(Syscollector::instance().getFirstPrimaryKeyField(PACKAGES_TABLE), std::string {PACKAGES_ORDER_BY});
+
+    // An unknown table yields no ordering rather than a guess, so the caller
+    // builds no ORDER BY at all instead of one naming a column that is not there.
+    EXPECT_TRUE(Syscollector::instance().getFirstPrimaryKeyField("dbsync_not_a_table").empty());
+}
+
+TEST_F(SyscollectorImpTest, AnOrderByClauseSplitsEveryFieldAndCarriesTheDirection)
+{
+    EXPECT_EQ(Syscollector::instance().buildOrderByClause(PACKAGES_ORDER_BY, true),
+              "name COLLATE NOCASE ASC, type COLLATE NOCASE ASC");
+
+    EXPECT_EQ(Syscollector::instance().buildOrderByClause(OS_ORDER_BY, false),
+              "os_name COLLATE NOCASE DESC");
+
+    // No fields means no clause -- not "ORDER BY", which would not parse.
+    EXPECT_TRUE(Syscollector::instance().buildOrderByClause("", true).empty());
 }
