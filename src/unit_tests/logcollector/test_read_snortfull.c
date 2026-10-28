@@ -1190,6 +1190,48 @@ void test_read_snortfull_line_cut_in_alert_is_sent_once(void **state) {
     assert_int_equal(rc, 0);
 }
 
+/**
+ * Test: a line that is not part of an alert comes right after its header.
+ * It is a format error. The reader stops, and stores the state after the bad line, which was hashed.
+ */
+void test_read_snortfull_unknown_line_after_header(void **state) {
+    logreader lf = {0};
+    lf.file = "test.log";
+    lf.fp = (FILE *) 1;
+    int rc;
+
+    write_to_file(HEADER("1001") "not a snort line\n");
+    expect_prologue_at(0);
+    expect_lines(written);
+    expect_string(__wrap__merror, formatted_msg, "Bad formated snort full file.");
+    expect_stored_state((int64_t) strlen(written), written);
+
+    read_snortfull(&lf, &rc, 0);
+
+    assert_int_equal(rc, -1);
+}
+
+/**
+ * Test: a line that is neither an AppID line nor the date line comes after the classification.
+ * It is a format error, and the alert is not sent.
+ */
+void test_read_snortfull_unknown_line_after_classification(void **state) {
+    logreader lf = {0};
+    lf.file = "test.log";
+    lf.fp = (FILE *) 1;
+    int rc;
+
+    write_to_file(HEADER("1001") CLASSIFICATION "not a snort line\n");
+    expect_prologue_at(0);
+    expect_lines(written);
+    expect_string(__wrap__merror, formatted_msg, "Bad formated snort full file.");
+    expect_stored_state((int64_t) strlen(written), written);
+
+    read_snortfull(&lf, &rc, 0);
+
+    assert_int_equal(rc, -1);
+}
+
 #define HASH_SAVE_ERROR "Could not save the hash state of 'test.log' at the start of an alert. Trying again later."
 
 /**
@@ -1253,6 +1295,8 @@ int main(void) {
         cmocka_unit_test_teardown(test_read_snortfull_open_alert_waits_for_slow_writer, test_teardown),
         cmocka_unit_test_teardown(test_read_snortfull_line_cut_in_alert_is_sent_once, test_teardown),
         cmocka_unit_test_teardown(test_read_snortfull_hash_copy_fails_at_header, test_teardown),
+        cmocka_unit_test_teardown(test_read_snortfull_unknown_line_after_header, test_teardown),
+        cmocka_unit_test_teardown(test_read_snortfull_unknown_line_after_classification, test_teardown),
     };
 
     return cmocka_run_group_tests(tests, group_setup, group_teardown);
