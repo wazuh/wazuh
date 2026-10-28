@@ -15,7 +15,7 @@ In 5.x the ruleset is not in this repository: the Wazuh indexer syncs it from CT
 | Engine | `wazuh/wazuh` | Decodes the event. The manager runs it on agent events, and the indexer bundles a copy for logtest. |
 | Ruleset Management | `wazuh/wazuh-indexer-plugins` | Matches the Sigma rules: the standard detectors write a finding for each matching event. |
 
-The Threat Intel team deploys the previous release and `{{TAG}}` from their official Docker images, side by side, syncs both to the same ruleset version and runs the test on each. Only the release differs between them, so a difference is caused by `{{TAG}}`. The Threat Intel team starts the run: this template lists no workflow.
+The Threat Intel team deploys `{{TAG}}` from its official Docker images, syncs it to the current ruleset, and runs a set of stable test events: events whose decoders and rules have not changed across recent ruleset versions, so their result depends on `{{TAG}}`. Every one must pass. The Threat Intel team starts the run: this template lists no workflow.
 
 ## Ruleset tests information
 |  |  |
@@ -32,12 +32,9 @@ Each check of the release test must have one of the following statuses:
 |Color| Details |
 |:--:|:--|
 | :green_circle: | The check passed |
-| :yellow_circle: | The check passed, with failures that were already present on the previous release |
-| :red_circle: | The check failed: something that worked on the previous release fails on `{{TAG}}` |
+| :red_circle: | The check failed |
 
-When `{{TAG}}` has no previous release, such as the first release candidate of a major version, the report gives no verdict and each check is judged on `{{TAG}}` alone: :green_circle: when it passed, :red_circle: when it failed.
-
-Post the report the release test generates as a comment. It holds the checks, the coverage of rules and decoders, the results per integration, the live results, and each regression. Events that fail on both releases are known failures: they are counted, not listed, since they are not caused by `{{TAG}}`.
+Post the report the release test generates as a comment. It holds the checks, the coverage of rules and decoders, the results per integration, the live results, and each failure.
 
 ## Conclusion
 List every new or known issue that appeared while testing this task, with its link, before closing this issue.
@@ -46,7 +43,7 @@ List every new or known issue that appeared while testing this task, with its li
 |---|---|---|---|---|
 |  | Ruleset content synced |  |  |  |
 |  | Standard detectors built |  |  |  |
-|  | Fixtures replay through logtest (engine bundled in the indexer, rule matching) |  |  |  |
+|  | Stable test events through logtest (engine bundled in the indexer, rule matching) |  |  |  |
 |  | Live decoding by the manager's engine |  |  |  |
 |  | Live findings by the indexer's detectors |  |  |  |
 
