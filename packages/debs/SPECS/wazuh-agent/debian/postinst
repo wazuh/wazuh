@@ -254,13 +254,20 @@ case "$1" in
 
     if [ ! -z "$2" ]; then
         if [ -f ${WAZUH_TMP_DIR}/wazuh.restart ] ; then
+            # An agent that does not start must not fail the package: under set -e it would stay
+            # half-configured, and every later apt run would fail with it. A token bootstrap the
+            # manager refuses is one such case.
+            RESTART_FAILED=""
             if command -v systemctl > /dev/null 2>&1 && systemctl > /dev/null 2>&1; then
                 systemctl daemon-reload > /dev/null 2>&1
-                systemctl restart wazuh-agent.service > /dev/null 2>&1
+                systemctl restart wazuh-agent.service > /dev/null 2>&1 || RESTART_FAILED="yes"
             elif command -v service > /dev/null 2>&1 ; then
-                service wazuh-agent restart > /dev/null 2>&1
+                service wazuh-agent restart > /dev/null 2>&1 || RESTART_FAILED="yes"
             else
-                ${DIR}/bin/wazuh-control restart > /dev/null 2>&1
+                ${DIR}/bin/wazuh-control restart > /dev/null 2>&1 || RESTART_FAILED="yes"
+            fi
+            if [ -n "${RESTART_FAILED}" ]; then
+                echo "wazuh-agent: the agent did not start after the upgrade; see ${DIR}/logs/ossec.log for the reason. If the manager refused the enrollment, fix the cause on the manager and start the agent again." >&2
             fi
         fi
     fi
