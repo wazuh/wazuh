@@ -145,6 +145,16 @@ def test_load_rules_from_file_unknown(mock_load):
      {'exists': 'true'},
      [
          {'filename': 'two.xml', 'exists': 'true'},
+     ]),
+    # The same file listed twice, as with a rule_include of a file in a rule_dir, filtered out by two parameters
+    ([
+         {'filename': 'one.xml', 'relative_dirname': 'etc/rules', 'status': 'enabled'},
+         {'filename': 'two.xml', 'relative_dirname': 'ruleset/rules', 'status': 'disabled'},
+         {'filename': 'one.xml', 'relative_dirname': 'etc/rules', 'status': 'enabled'}
+     ],
+     {'status': 'disabled', 'relative_dirname': 'ruleset/rules'},
+     [
+         {'filename': 'two.xml', 'relative_dirname': 'ruleset/rules', 'status': 'disabled'},
      ])
 ])
 def test_remove_files(tmp_data, parameters, expected_result):
