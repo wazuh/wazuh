@@ -251,7 +251,13 @@ WriteLogs()
       if [ -f "$FILE" ] || [ "X$SKIP_CHECK_FILE" = "Xyes" ]; then
         # Print
         if [ "$MODE" = "echo" ]; then
-            EchoLocalfile "$FILE"
+            case "$FILE" in
+                */logs/active-responses.log|*/dpkg.log)
+                    ;;
+                *)
+                    echo "    -- $FILE"
+                    ;;
+            esac
         # Add to the configuration file
         elif [ "$MODE" = "add" ]; then
           echo "  <localfile>" >> $NEWCONFIG
@@ -277,28 +283,15 @@ WriteLogs()
 }
 
 ##########
-# EchoLocalfile <location>
-# Lists a default log file in the installer summary. The active-response and package manager logs
-# are left out.
-##########
-EchoLocalfile()
-{
-    case "$1" in
-        */logs/active-responses.log|*/dpkg.log|*/apt/history.log|*/dnf.log|*/dnf.rpm.log)
-            ;;
-        *)
-            echo "    -- $1"
-            ;;
-    esac
-}
-
-##########
 # WriteLogBlocks <mode>
 # Each localfile-logs/*.xml file holds one <localfile> block, for sources that need more than a log
-# format and a location. The block is written as is when the file in its <location> exists.
+# format and a location. The block is written as is when the file in its <location> exists. The
+# installer summary does not list them, as they are package manager logs, like dpkg.log.
 ##########
 WriteLogBlocks()
 {
+    [ "$1" = "add" ] || return 0
+
     for _lb_file in ${LOCALFILES_BLOCKS}; do
         [ -f "${_lb_file}" ] || continue
 
@@ -317,13 +310,8 @@ WriteLogBlocks()
             continue
         fi
 
-        # The shipped blocks are package manager logs, which the installer summary leaves out.
-        if [ "$1" = "echo" ]; then
-            EchoLocalfile "${_lb_location}"
-        elif [ "$1" = "add" ]; then
-            cat "${_lb_file}" >> $NEWCONFIG
-            echo "" >> $NEWCONFIG
-        fi
+        cat "${_lb_file}" >> $NEWCONFIG
+        echo "" >> $NEWCONFIG
     done
 }
 

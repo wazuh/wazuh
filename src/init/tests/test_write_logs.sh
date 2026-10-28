@@ -9,13 +9,15 @@
 # etc/templates/config/generic/localfile-logs: the journald source when journalctl is available, one
 # block per template line whose file exists, and the *.xml blocks whose <location> exists. The
 # packages run it through add_localfiles.sh on fresh installs. Each case runs it on the shipped
-# templates, with their /var/log paths moved under a scratch directory, and compares the whole output.
+# templates, with every absolute path moved under a scratch root so that only the files a case creates
+# exist, and compares the whole output.
 #
 # Plain POSIX sh; CI runs it under dash and bash:
 #   sh src/init/tests/test_write_logs.sh
 #   bash src/init/tests/test_write_logs.sh
 
 REPO=$(cd "$(dirname "$0")/../../.." && pwd)
+SH=$(command -v sh)
 TMP=$(mktemp -d)
 trap 'rm -rf "$TMP"' EXIT
 
@@ -34,19 +36,27 @@ same() {
     fi
 }
 
-LOG="$TMP/var/log"
+ROOT="$TMP/root"
+LOG="$ROOT/var/log"
 INSTALL="$TMP/install"
 
-# The shipped templates, reading the log files of the scratch host.
-mkdir -p "$TMP/templates"
+# A copy of the installer scripts and the shipped templates, reading the files of the scratch root:
+# the location of a template line starts at its first ':/', and a block's after <location>.
+TREE="$TMP/tree"
+TEMPLATES="$TREE/etc/templates/config/generic/localfile-logs"
+mkdir -p "$TREE/src/init" "$TEMPLATES"
+for script in add_localfiles.sh shared.sh inst-functions.sh template-select.sh; do
+    cp "$REPO/src/init/$script" "$TREE/src/init/"
+done
+cp "$REPO/VERSION.json" "$TREE/"
 for template in "$REPO"/etc/templates/config/generic/localfile-logs/*; do
-    sed -e "s|/var/log/|$LOG/|g" "$template" > "$TMP/templates/$(basename "$template")"
+    sed -e "s|:/|:$ROOT/|" -e "s|<location>/|<location>$ROOT/|" "$template" > "$TEMPLATES/$(basename "$template")"
 done
 
-# Two PATHs with the tools WriteLogs uses, one of them with a journalctl.
+# Two PATHs with the tools the scripts use, one of them with a journalctl.
 for dir in no-journald journald; do
     mkdir -p "$TMP/bin-$dir"
-    for tool in cat cut grep sed head; do
+    for tool in cat cut grep sed head rm uname id whoami dirname; do
         ln -s "$(command -v $tool)" "$TMP/bin-$dir/$tool"
     done
 done
@@ -55,7 +65,7 @@ chmod +x "$TMP/bin-journald/journalctl"
 
 # host <file>...: the scratch host has only these log files.
 host() {
-    rm -rf "$TMP/var"
+    rm -rf "$ROOT"
     for file in "$@"; do
         mkdir -p "$(dirname "$LOG/$file")"
         : > "$LOG/$file"
@@ -63,13 +73,12 @@ host() {
 }
 
 # write_logs <journald|no-journald> <add|echo> [blocks pattern]: what WriteLogs writes (add) or prints
-# (echo), sourced from the repository root as the packages do.
+# (echo), sourced from the root of the copy as the packages do.
 write_logs() {
     rm -f "$TMP/ossec.conf"
     (
-        cd "$REPO" && . ./src/init/inst-functions.sh
-        LOCALFILES_TEMPLATE="$TMP/templates/*.template"
-        LOCALFILES_BLOCKS="${3:-$TMP/templates/*.xml}"
+        cd "$TREE" && . ./src/init/inst-functions.sh
+        LOCALFILES_BLOCKS="${3:-$LOCALFILES_BLOCKS}"
         NEWCONFIG="$TMP/ossec.conf"
         INSTALLDIR="$INSTALL"
         PATH="$TMP/bin-$1"
@@ -106,13 +115,13 @@ dnf="  <localfile>
     <log_format>syslog</log_format>
     <location>$LOG/dnf.log</location>
     <restrict>^\\S+ (DDEBUG Command: |WARNING |ERROR |CRITICAL )</restrict>
-    <ignore>^\\S+ DDEBUG Command: dnf makecache</ignore>
+    <ignore>^\\S+ DDEBUG Command: \\S+( -\\S+)* makecache\\b</ignore>
     <ignore>^\\S+ WARNING (=+|WARNING:)\\s*\$</ignore>
   </localfile>"
 dnf_rpm="  <localfile>
     <log_format>syslog</log_format>
     <location>$LOG/dnf.rpm.log</location>
-    <ignore>--- logging initialized ---</ignore>
+    <ignore>^\\S+ INFO --- logging initialized ---\\s*\$</ignore>
   </localfile>"
 
 # ------------------------------------------------------------------------------- package managers
@@ -138,7 +147,7 @@ same "Red Hat family without journald" \
 host
 same "No package manager logs" "$(blocks "$journald" "$active_responses")" "$(write_logs journald add)"
 
-# The installer summary leaves the package manager logs out, as it does with dpkg.log.
+# The installer summary lists neither dpkg.log nor the blocks, which are all package manager logs.
 host dpkg.log apt/history.log dnf.log dnf.rpm.log syslog
 same "Installer summary" "    -- $LOG/syslog" "$(write_logs no-journald echo)"
 
@@ -168,16 +177,13 @@ for block in "$REPO"/etc/templates/config/generic/localfile-logs/*.xml; do
 done
 
 # ------------------------------------------------------------------------------- add_localfiles.sh
-# The packages run it with the installation directory and append its output to ossec.conf. The blocks
-# depend on this host's log files, so only the wrapper and the installation directory are checked.
-add_localfiles=$(sh "$REPO/src/init/add_localfiles.sh" "$INSTALL")
-same "add_localfiles.sh opens <ossec_config>" "<ossec_config>" "$(printf '%s\n' "$add_localfiles" | sed -n 2p)"
-same "add_localfiles.sh closes <ossec_config>" "</ossec_config>" "$(printf '%s\n' "$add_localfiles" | tail -n 1)"
-case "$add_localfiles" in
-    *"$active_responses"*) pass "add_localfiles.sh uses the installation directory" ;;
-    *) fail "add_localfiles.sh uses the installation directory" "no '$INSTALL/logs/active-responses.log' block" ;;
-esac
-same "add_localfiles.sh removes its temporary file" no "$([ -e "$REPO/localfiles.temp" ] && echo yes || echo no)"
+# The packages run it with the installation directory and append its output to ossec.conf.
+host dpkg.log apt/history.log
+same "add_localfiles.sh" \
+    "$(printf '\n<ossec_config>\n'; blocks "$journald" "$active_responses" "$(localfile syslog "$LOG/dpkg.log")" "$apt"
+       printf '\n\n</ossec_config>')" \
+    "$(PATH="$TMP/bin-journald" "$SH" "$TREE/src/init/add_localfiles.sh" "$INSTALL" 2>&1)"
+same "add_localfiles.sh removes its temporary file" no "$([ -e "$TREE/localfiles.temp" ] && echo yes || echo no)"
 
 echo "test_write_logs: $((checks - failures))/$checks passed"
 [ "$failures" = 0 ]
