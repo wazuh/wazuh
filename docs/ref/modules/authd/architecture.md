@@ -255,7 +255,7 @@ agents never send one. The id is first rewritten to its canonical spelling (`OS_
 
 ## Duplicate handling and force replacement
 
-When the name or IP already exists, `w_auth_replace_agent()` decides whether the newcomer may take it
+When the name or IP already exists, `w_auth_check_replace_agent()` decides whether the newcomer may take it
 over. **Every guard has to allow it**, and they are evaluated in this order — the first one that
 refuses ends the decision:
 
@@ -274,8 +274,14 @@ flowchart TB
     G5 -->|"matches"| X6["refuse:<br/>key already exists<br/>on the manager"]
     G5 -->|"differs / absent"| G6{"deletion backlog<br/>full?"}
     G6 -->|yes| X7["refuse:<br/>can't be replaced: too many<br/>deletions are in progress"]
-    G6 -->|no| OK["Removing old agent<br/>add_remove + OS_DeleteKey"]
+    G6 -->|no| OK["replaceable<br/>(nothing removed yet)"]
 ```
+
+The IP holder and the name holder (when they are two different agents) are judged separately, and
+**nothing is removed until both are allowed and every other check of the request has passed**: a
+request carrying one agent's IP and another, non-replaceable agent's name is refused and removes
+neither. Only then does `w_auth_remove_replaced_agent()` run `add_remove()` and `OS_DeleteKey()` on
+each.
 
 The disconnection guard is skipped when `disconnected_time` is disabled or the existing agent has
 never connected. A refusal is logged as `Duplicate name '<name>', rejecting enrollment. <reason>` (or
@@ -394,7 +400,7 @@ flowchart LR
 
 Three things about those doors are worth calling out:
 
-- **An enrollment whose name already exists is a removal.** `w_auth_replace_agent()` calls the same
+- **An enrollment whose name or IP already exists is a removal.** `w_auth_remove_replaced_agent()` calls the same
   two functions the API path calls, so a fleet that re-enrolls with names that already exist generates
   one deletion per agent without anyone touching the API. Any reasoning about deletion load has to
   account for it.

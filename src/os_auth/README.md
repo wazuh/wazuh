@@ -59,7 +59,7 @@ it would erase why.
 | RNF-4 | An id is never handed out twice, across restarts and across a rebuilt counter | `last_id` in the state file + in-memory reservation; invariant 4 |
 | RNF-5 | Fail towards "cleaned up later", never towards "deleted something alive" | every ordering decision in the removal path; invariant 5 |
 | RNF-6 | Deterministic shutdown: no thread can park the daemon on a network budget | there is no network call left in this daemon's deletion path; the writer's wazuh-db calls are bounded by `authd.wdb_timeout` |
-| RNF-7 | Every refusal is observable and attributable to one guard | one message per guard in `w_auth_replace_agent()`; the `9001`–`9031` table |
+| RNF-7 | Every refusal is observable and attributable to one guard | one message per guard in `w_auth_check_replace_agent()`; the `9001`–`9031` table |
 | RNF-8 | Unit-testable orchestration without a live indexer or manager | seams + the suites in [Tests](#tests) |
 | RNF-9 | Record local-socket credentials before returning them, and retry pending database persistence | the identity journal (`identity_journal.c`) records the transition before the answer and the writer replays it until `global commit`; a line that cannot be written refuses the operation (`9031`) — invariant 7, D13, `test_identity_journal.c`; recovery gaps are listed below |
 
@@ -95,6 +95,7 @@ it, inventory-sync applies it — and all three depend on these:
 | D11 | **The token store has one writer — the master — and a use is reserved before the agent exists** | Workers receive `etc/enrollment_tokens.json` from the cluster sync and only read it, so there is nothing to reconcile; consuming after `OS_AddNewAgent()` would leave an agent to roll back when the token turns out exhausted, while reserving first costs only an `etoken_store_release()` on refusal. The reservation is held for the whole add (the store mutex is not), and a `dead` purge skips a token that holds one: it may still get its use back, and an entry taken away in the meantime could not receive it. `--all` takes it anyway — emptying the store is an order, not a cleanup |
 | D12 | **Re-enrollment rotates the entry in place; `global.db` holds the authoritative secret** | A delete + add under one lock keeps the id and its documents (no `add_remove()`, no purge). `client.keys` is copied to every worker and read by remoted; the secret is verified on the master and is also retained in its local identity journal while persistence is pending |
 | D13 | **The identity journal is not `fsync`ed** (`identity_journal.c`) | What it recovers from is a crashed process and an unreachable wazuh-db, not a power cut with the page still in cache. An `fsync` per enrollment would be paid by every agent, on the request path, in front of the answer — for a failure mode the rest of the design does not claim to survive. The bound that does hold is admission: a transition that cannot be appended is refused (`9031`) rather than performed unrecorded |
+| D14 | **A replacement is performed only once the whole request is admitted** (`w_auth_validate_data()`, `local_add()`) | The duplicate-IP and duplicate-name holders are judged by `w_auth_check_replace_agent()`, which removes nothing, and removed by `w_auth_remove_replaced_agent()` only after every refusal path has passed. Judging and removing the IP holder before the name check let a request carrying one agent's IP and another, non-replaceable agent's name delete the first and then be refused — an agent lost with nothing enrolled in its place, and invisible until the next keystore write. The remaining post-removal failures (`OS_AddNewAgent()` internal error, a journal append that fails on I/O) are not refusals of the request's content |
 
 ## Layout
 
@@ -233,7 +234,7 @@ cleanup can also discard entries that are no longer owed. The rules that follow 
   not check affected rows. The writer's first pass (`wdb_set_agent_credentials()` in `run_writer()`)
   can mark a zero-row UPDATE applied, so `identity_apply_pending()` skips the repair read
   (`identity_apply()`), and the entry is forgotten on commit.
-- `local_add()` force-deletes colliding agents (`w_auth_replace_agent()`) before its
+- `local_add()` force-deletes colliding agents (`w_auth_remove_replaced_agent()`) before its
   `identity_journal_append()`. Append failure removes only the new entry; the initial capacity check
   (`identity_journal_full()`) does not reserve a slot or test filesystem writability.
 - `identity_commit_and_forget()` doubles the retry delay from 32 to 64 seconds before applying the
@@ -297,9 +298,10 @@ A removal is requested in two ways, and after `add_remove()` they are indistingu
 
 - **`DELETE /agents`** through the **server API**, which reaches `local_remove()`. One request per agent:
   the framework loops, so a bulk delete arrives as N sequential socket round trips.
-- **An enrollment whose name already exists**, which reaches `w_auth_replace_agent()`. That function
-  logs *"Removing old agent"*, calls `add_remove()` and `OS_DeleteKey()` — the same two calls the API
-  path makes.
+- **An enrollment whose name or IP already exists**, which reaches `w_auth_check_replace_agent()` and,
+  once the whole request is admitted, `w_auth_remove_replaced_agent()`. The latter calls
+  `add_remove()` and `OS_DeleteKey()` — the same two calls the API path makes — after *"Removing old
+  agent"* is logged.
 
 The second one matters for scale: **a fleet that re-enrolls with names that already exist generates
 one deletion per agent, without anyone calling the API.** Any reasoning about deletion load has to
@@ -562,7 +564,7 @@ All guards are evaluated together and every one has to allow it. With the defaul
 replaced when it has never connected or the disconnection guard allows it, was registered at least
 an hour ago, and the enrolling agent presents no `key_hash` or a different one. For an agent that has
 connected, the disconnection guard takes the **status** as the verdict and the timestamp only as its
-measure (`w_auth_replace_agent()`): any status other than `disconnected` is refused as *not
+measure (`w_auth_check_replace_agent()`): any status other than `disconnected` is refused as *not
 disconnected* — an `active` agent with a stale nonzero `disconnection_time` included — and so is a
 `disconnected` agent whose `disconnection_time` is `0` or younger than the threshold.
 
@@ -581,7 +583,7 @@ comply with the registration time to be removed"* until `after_registration_time
    trip capped by `authd.wdb_timeout`; a failure there is a phase that did not complete, not a stall.
 2. **Minimise I/O under `mutex_keys`.** The reusable-id preflight and re-enrollment credential
    reads run before taking it. This is not a no-I/O guarantee: `local_add()` and `local_reenroll()`
-   append the identity journal while holding it, and `w_auth_replace_agent()` queries wazuh-db
+   append the identity journal while holding it, and `w_auth_check_replace_agent()` queries wazuh-db
    during locked duplicate checks. Journal mutexes do not release the outer keystore lock.
 3. **A recorded purge always runs.** Never cancelled, and its task type has no attempt budget;
    refused insertions and refused deletions are the price.

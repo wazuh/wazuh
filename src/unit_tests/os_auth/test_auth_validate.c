@@ -207,6 +207,73 @@ static void test_w_auth_validate_data(void **state) {
     assert_true(index >= 0);
 }
 
+static cJSON *agent_info_row(const char *connection_status) {
+    cJSON *j_agent_info_array = cJSON_CreateArray();
+    cJSON *j_agent_info = cJSON_CreateObject();
+    cJSON_AddStringToObject(j_agent_info, "connection_status", connection_status);
+    cJSON_AddNumberToObject(j_agent_info, "disconnection_time", 0);
+    cJSON_AddNumberToObject(j_agent_info, "date_add", 1632255744);
+    cJSON_AddItemToArray(j_agent_info_array, j_agent_info);
+    return j_agent_info_array;
+}
+
+static void test_w_auth_validate_data_refused_name_removes_no_agent(void **state) {
+    /* The IP of one agent and the name of another: the IP holder (001) is replaceable, the name holder
+     * (002) is not. The enrollment is refused for the name, and the IP holder must survive it -- judging
+     * and removing it before the name check ran deleted it with nothing enrolled in its place. */
+    char response[2048] = {0};
+    w_err_t err;
+
+    config.force_options.disconnected_time_enabled = false;
+    config.force_options.after_registration_time = 0;
+
+    expect_value(__wrap_wdb_get_agent_info, id, 1);
+    will_return(__wrap_wdb_get_agent_info, agent_info_row("active"));
+    expect_value(__wrap_wdb_get_agent_info, id, 2);
+    will_return(__wrap_wdb_get_agent_info, NULL);
+
+    expect_string(__wrap__minfo, formatted_msg, "Duplicate name '"EXISTENT_AGENT2"', rejecting enrollment. "
+                                                "Failed to get agent-info for agent '002'");
+    err = w_auth_validate_data(response, EXISTENT_IP1, EXISTENT_AGENT2, NULL, NULL);
+    assert_int_equal(err, OS_INVALID);
+    assert_string_equal(response, "ERROR: Duplicate agent name: "EXISTENT_AGENT2"");
+
+    assert_int_equal(keys.keysize, 3);
+    assert_true(OS_IsAllowedIP(&keys, EXISTENT_IP1) >= 0);
+    assert_true(OS_IsAllowedName(&keys, EXISTENT_AGENT1) >= 0);
+    assert_true(OS_IsAllowedName(&keys, EXISTENT_AGENT2) >= 0);
+    assert_null(queue_remove);
+}
+
+static void test_w_auth_validate_data_same_holder_is_judged_and_removed_once(void **state) {
+    /* One agent holding both the IP and the name: one verdict (a second wazuh-db query would have no
+     * mock), one removal. */
+    char response[2048] = {0};
+    w_err_t err;
+
+    expect_any(__wrap_OS_IsValidIP, ip_address);
+    expect_any(__wrap_OS_IsValidIP, final_ip);
+    will_return(__wrap_OS_IsValidIP, -1);
+    int index = OS_AddNewAgent(&keys, NULL, NEW_AGENT1, NEW_IP1, NULL, 0);
+    assert_true(index >= 0);
+    char id[16];
+    snprintf(id, sizeof(id), "%s", keys.keyentries[index]->id);
+    const unsigned int keysize = keys.keysize;
+
+    expect_value(__wrap_wdb_get_agent_info, id, atoi(id));
+    will_return(__wrap_wdb_get_agent_info, agent_info_row("never_connected"));
+
+    char expected[256];
+    snprintf(expected, sizeof(expected), "Duplicate IP '"NEW_IP1"'. Removing old agent '"NEW_AGENT1"' (id '%s').", id);
+    expect_string(__wrap__minfo, formatted_msg, expected);
+    err = w_auth_validate_data(response, NEW_IP1, NEW_AGENT1, NULL, NULL);
+    assert_int_equal(err, OS_SUCCESS);
+    assert_string_equal(response, "");
+
+    assert_int_equal(keys.keysize, keysize - 1);
+    assert_true(OS_IsAllowedID(&keys, id) < 0);
+}
+
 static void test_w_auth_validate_data_replace_agent(void **state) {
     char response[2048] = {0};
     w_err_t err;
@@ -365,13 +432,13 @@ static void test_w_auth_validate_groups_special_characters(void **state) {
     assert_string_equal(response, "ERROR: Invalid group name: group@test");
 }
 
-static void test_w_auth_replace_agent_force_disabled(void **state) {
+static void test_w_auth_check_replace_agent_force_disabled(void **state) {
     w_err_t err;
     keyentry key;
     keyentry_init(&key, NEW_AGENT1, AGENT1_ID, NEW_IP1, NULL);
     char* str_result = NULL;
 
-    err = w_auth_replace_agent(&key, NULL, &config.force_options, &str_result, NULL);
+    err = w_auth_check_replace_agent(&key, NULL, &config.force_options, &str_result, NULL);
 
     assert_int_equal(err, OS_INVALID);
     assert_string_equal(str_result, "Agent '001' won't be removed because the force option is disabled.");
@@ -379,7 +446,7 @@ static void test_w_auth_replace_agent_force_disabled(void **state) {
     os_free(str_result);
 }
 
-static void test_w_auth_replace_agent_agent_info_failed(void **state) {
+static void test_w_auth_check_replace_agent_agent_info_failed(void **state) {
     w_err_t err;
     keyentry key;
     keyentry_init(&key, NEW_AGENT1, AGENT1_ID, NEW_IP1, NULL);
@@ -389,7 +456,7 @@ static void test_w_auth_replace_agent_agent_info_failed(void **state) {
     expect_value(__wrap_wdb_get_agent_info, id, 1);
     will_return(__wrap_wdb_get_agent_info, NULL);
 
-    err = w_auth_replace_agent(&key, NULL, &config.force_options, &str_result, NULL);
+    err = w_auth_check_replace_agent(&key, NULL, &config.force_options, &str_result, NULL);
 
     config.force_options.enabled = 0;
     assert_int_equal(err, OS_INVALID);
@@ -398,7 +465,7 @@ static void test_w_auth_replace_agent_agent_info_failed(void **state) {
     os_free(str_result);
 }
 
-static void test_w_auth_replace_agent_not_disconnected(void **state) {
+static void test_w_auth_check_replace_agent_not_disconnected(void **state) {
     w_err_t err;
     bool warn = false;
     keyentry key;
@@ -426,7 +493,7 @@ static void test_w_auth_replace_agent_not_disconnected(void **state) {
     config.force_options.disconnected_time_enabled = true;
     config.force_options.disconnected_time = 100;
 
-    err = w_auth_replace_agent(&key, NULL, &config.force_options, &str_result, &warn);
+    err = w_auth_check_replace_agent(&key, NULL, &config.force_options, &str_result, &warn);
 
     assert_int_equal(err, OS_INVALID);
     assert_true(warn);
@@ -462,7 +529,7 @@ static void assert_replace_refused_with_stale_disconnection_time(char *connectio
     config.force_options.disconnected_time_enabled = true;
     config.force_options.disconnected_time = 100;
 
-    err = w_auth_replace_agent(&key, NULL, &config.force_options, &str_result, &warn);
+    err = w_auth_check_replace_agent(&key, NULL, &config.force_options, &str_result, &warn);
 
     config.force_options.disconnected_time_enabled = false;
     config.force_options.disconnected_time = 0;
@@ -474,17 +541,17 @@ static void assert_replace_refused_with_stale_disconnection_time(char *connectio
     os_free(str_result);
 }
 
-static void test_w_auth_replace_agent_active_with_stale_disconnection_time(void **state) {
+static void test_w_auth_check_replace_agent_active_with_stale_disconnection_time(void **state) {
     /* remoted stamps every agent disconnected on start; a live agent that is set active again by a
      * write that does not clear disconnection_time must still not be replaceable. */
     assert_replace_refused_with_stale_disconnection_time("active");
 }
 
-static void test_w_auth_replace_agent_pending_with_stale_disconnection_time(void **state) {
+static void test_w_auth_check_replace_agent_pending_with_stale_disconnection_time(void **state) {
     assert_replace_refused_with_stale_disconnection_time("pending");
 }
 
-static void test_w_auth_replace_agent_not_disconnected_long_enough(void **state) {
+static void test_w_auth_check_replace_agent_not_disconnected_long_enough(void **state) {
     w_err_t err;
     keyentry key;
     keyentry_init(&key, NEW_AGENT1, AGENT1_ID, NEW_IP1, NULL);
@@ -511,7 +578,7 @@ static void test_w_auth_replace_agent_not_disconnected_long_enough(void **state)
     config.force_options.disconnected_time_enabled = true;
     config.force_options.disconnected_time = 100;
 
-    err = w_auth_replace_agent(&key, NULL, &config.force_options, &str_result, NULL);
+    err = w_auth_check_replace_agent(&key, NULL, &config.force_options, &str_result, NULL);
 
     config.force_options.disconnected_time_enabled = false;
     config.force_options.disconnected_time = 0;
@@ -522,7 +589,7 @@ static void test_w_auth_replace_agent_not_disconnected_long_enough(void **state)
     os_free(str_result);
 }
 
-static void test_w_auth_replace_agent_not_old_enough(void **state) {
+static void test_w_auth_check_replace_agent_not_old_enough(void **state) {
     w_err_t err;
     keyentry key;
     keyentry_init(&key, NEW_AGENT1, AGENT1_ID, NEW_IP1, NULL);
@@ -550,7 +617,7 @@ static void test_w_auth_replace_agent_not_old_enough(void **state) {
 
     config.force_options.after_registration_time = 100;
 
-    err = w_auth_replace_agent(&key, NULL, &config.force_options, &str_result, NULL);
+    err = w_auth_check_replace_agent(&key, NULL, &config.force_options, &str_result, NULL);
 
     config.force_options.after_registration_time = 0;
 
@@ -560,7 +627,7 @@ static void test_w_auth_replace_agent_not_old_enough(void **state) {
     os_free(str_result);
 }
 
-static void test_w_auth_replace_agent_existent_key_hash(void **state) {
+static void test_w_auth_check_replace_agent_existent_key_hash(void **state) {
     w_err_t err;
     keyentry key;
     keyentry_init(&key, NEW_AGENT1, AGENT1_ID, NEW_IP1, "1234");
@@ -587,7 +654,7 @@ static void test_w_auth_replace_agent_existent_key_hash(void **state) {
     config.force_options.after_registration_time = 0;
     config.force_options.key_mismatch = true;
 
-    err = w_auth_replace_agent(&key, key_hash, &config.force_options, &str_result, NULL);
+    err = w_auth_check_replace_agent(&key, key_hash, &config.force_options, &str_result, NULL);
 
     config.force_options.key_mismatch = false;
 
@@ -597,7 +664,7 @@ static void test_w_auth_replace_agent_existent_key_hash(void **state) {
     os_free(str_result);
 }
 
-static void test_w_auth_replace_agent_success(void **state) {
+static void test_w_auth_check_replace_agent_success(void **state) {
     w_err_t err;
     keyentry key;
     keyentry_init(&key, NEW_AGENT1, AGENT1_ID, NEW_IP1, NULL);
@@ -623,7 +690,7 @@ static void test_w_auth_replace_agent_success(void **state) {
     config.force_options.disconnected_time_enabled = false;
     config.force_options.after_registration_time = 1;
 
-    err = w_auth_replace_agent(&key, NULL, &config.force_options, &str_result, NULL);
+    err = w_auth_check_replace_agent(&key, NULL, &config.force_options, &str_result, NULL);
 
     config.force_options.after_registration_time = 0;
 
@@ -633,7 +700,7 @@ static void test_w_auth_replace_agent_success(void **state) {
     os_free(str_result);
 }
 
-static void test_w_auth_replace_agent_backlog_full(void **state) {
+static void test_w_auth_check_replace_agent_backlog_full(void **state) {
     /* A replacement IS a deletion, so it takes phase 0 like any other. It is also the higher-volume
      * one -- a mass re-enrollment produces one per agent -- and the gate has to be HERE, before
      * add_remove() and OS_DeleteKey(): one line further down the agent is out of the keystore and
@@ -671,7 +738,7 @@ static void test_w_auth_replace_agent_backlog_full(void **state) {
 
     expect_any(__wrap__mwarn, formatted_msg); // phase 0 refusing
 
-    err = w_auth_replace_agent(&key, NULL, &config.force_options, &str_result, NULL);
+    err = w_auth_check_replace_agent(&key, NULL, &config.force_options, &str_result, NULL);
 
     purge_pending_rows_update(0);
     config.max_pending_deletes = 0;
@@ -692,17 +759,19 @@ int main(void) {
         cmocka_unit_test(test_w_auth_validate_groups_invalid_characters),
         cmocka_unit_test(test_w_auth_validate_groups_special_characters),
         cmocka_unit_test_setup(test_w_auth_validate_data, setup_validate_force_disabled),
+        cmocka_unit_test_setup(test_w_auth_validate_data_refused_name_removes_no_agent, setup_validate_force_enabled),
         cmocka_unit_test_setup(test_w_auth_validate_data_replace_agent, setup_validate_force_enabled),
-        cmocka_unit_test_setup(test_w_auth_replace_agent_force_disabled, setup_validate_force_disabled),
-        cmocka_unit_test_setup(test_w_auth_replace_agent_agent_info_failed, setup_validate_force_disabled),
-        cmocka_unit_test_setup(test_w_auth_replace_agent_not_disconnected_long_enough, setup_validate_force_enabled),
-        cmocka_unit_test_setup(test_w_auth_replace_agent_not_disconnected, setup_validate_force_enabled),
-        cmocka_unit_test_setup(test_w_auth_replace_agent_active_with_stale_disconnection_time, setup_validate_force_enabled),
-        cmocka_unit_test_setup(test_w_auth_replace_agent_pending_with_stale_disconnection_time, setup_validate_force_enabled),
-        cmocka_unit_test_setup(test_w_auth_replace_agent_not_old_enough, setup_validate_force_enabled),
-        cmocka_unit_test_setup(test_w_auth_replace_agent_existent_key_hash, setup_validate_force_enabled),
-        cmocka_unit_test_setup(test_w_auth_replace_agent_success, setup_validate_force_enabled),
-        cmocka_unit_test_setup(test_w_auth_replace_agent_backlog_full, setup_validate_force_enabled),
+        cmocka_unit_test_setup(test_w_auth_validate_data_same_holder_is_judged_and_removed_once, setup_validate_force_enabled),
+        cmocka_unit_test_setup(test_w_auth_check_replace_agent_force_disabled, setup_validate_force_disabled),
+        cmocka_unit_test_setup(test_w_auth_check_replace_agent_agent_info_failed, setup_validate_force_disabled),
+        cmocka_unit_test_setup(test_w_auth_check_replace_agent_not_disconnected_long_enough, setup_validate_force_enabled),
+        cmocka_unit_test_setup(test_w_auth_check_replace_agent_not_disconnected, setup_validate_force_enabled),
+        cmocka_unit_test_setup(test_w_auth_check_replace_agent_active_with_stale_disconnection_time, setup_validate_force_enabled),
+        cmocka_unit_test_setup(test_w_auth_check_replace_agent_pending_with_stale_disconnection_time, setup_validate_force_enabled),
+        cmocka_unit_test_setup(test_w_auth_check_replace_agent_not_old_enough, setup_validate_force_enabled),
+        cmocka_unit_test_setup(test_w_auth_check_replace_agent_existent_key_hash, setup_validate_force_enabled),
+        cmocka_unit_test_setup(test_w_auth_check_replace_agent_success, setup_validate_force_enabled),
+        cmocka_unit_test_setup(test_w_auth_check_replace_agent_backlog_full, setup_validate_force_enabled),
     };
 
     return cmocka_run_group_tests(tests, setup_group, teardown_group);

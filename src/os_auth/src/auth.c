@@ -575,11 +575,11 @@ w_err_t w_auth_parse_data(const char* buf,
     return OS_SUCCESS;
 }
 
-w_err_t w_auth_replace_agent(keyentry *key,
-                             const char *key_hash,
-                             authd_force_options_t *force_options,
-                             char** str_result,
-                             bool *warn) {
+w_err_t w_auth_check_replace_agent(keyentry *key,
+                                   const char *key_hash,
+                                   authd_force_options_t *force_options,
+                                   char** str_result,
+                                   bool *warn) {
 
     cJSON *j_agent_info = NULL;
     cJSON *j_date_add = NULL;
@@ -658,14 +658,13 @@ w_err_t w_auth_replace_agent(keyentry *key,
 
     cJSON_Delete(j_agent_info);
 
-    /* Replace the agent */
+    /* The verdict only: nothing is removed here. */
     if (replace_agent) {
-        /* PHASE 0, on this path too. A replacement IS a deletion -- add_remove() and OS_DeleteKey()
-         * are one line below -- and it is the higher-volume one: a mass re-enrollment produces one
-         * per agent, where the local socket produces one per API call. Without this the journal and
-         * the row backlog would grow past the bound that the delete path is refused against, and
-         * past the point where anything can still be refused: one line down the agent is out of the
-         * keystore and the enrollment has been answered.
+        /* PHASE 0, on this path too. A replacement IS a deletion -- w_auth_remove_replaced_agent()
+         * performs it once the whole request has been admitted -- and it is the higher-volume one: a
+         * mass re-enrollment produces one per agent, where the local socket produces one per API
+         * call. Without this the journal and the row backlog would grow past the bound that the
+         * delete path is refused against.
          *
          * Refusing the ENROLLMENT is the whole point. The agent keeps its registration, the
          * enrolling one is told to come back, and nothing has been deleted that cannot be
@@ -679,11 +678,14 @@ w_err_t w_auth_replace_agent(keyentry *key,
 
         snprintf(message, OS_SIZE_128, "Removing old agent '%s' (id '%s').", key->name, key->id);
         os_strdup(message, *str_result);
-        add_remove(key);
-        OS_DeleteKey(&keys, key->id, 0);
         return OS_SUCCESS;
     }
     return OS_INVALID;
+}
+
+void w_auth_remove_replaced_agent(keyentry *key) {
+    add_remove(key);
+    OS_DeleteKey(&keys, key->id, 0);
 }
 
 w_err_t w_auth_validate_data(char *response,
@@ -692,9 +694,19 @@ w_err_t w_auth_validate_data(char *response,
                              const char *groups,
                              const char *key_hash) {
     int index = 0;
-    char* str_result = NULL;
+    char *ip_result = NULL;
+    char *name_result = NULL;
+    keyentry *ip_holder = NULL;
+    keyentry *name_holder = NULL;
     w_err_t result = OS_SUCCESS;
     bool warn = false;
+
+    /* Every refusal is decided BEFORE anything is removed. A replacement is a deletion, so judging the
+     * IP holder and removing it before the name check ran let a request carrying one agent's IP and
+     * another agent's name delete the first and then be refused for the second: an agent gone, and
+     * nothing enrolled in its place. Both holders are judged first and removed only once the request
+     * is admitted. The pointers stay valid in between: mutex_keys is held by the caller, and
+     * OS_DeleteKey() moves entry pointers, never the entries they point to. */
 
     /* Validate the group(s) name(s) */
     if (groups) {
@@ -703,35 +715,47 @@ w_err_t w_auth_validate_data(char *response,
 
     /* Check for duplicate IP */
     if (result != OS_INVALID && strcmp(ip, "any") != 0 && (index = OS_IsAllowedIP(&keys, ip), index >= 0)) {
-        if(OS_SUCCESS == w_auth_replace_agent(keys.keyentries[index], key_hash, &config.force_options, &str_result, &warn)) {
-            minfo("Duplicate IP '%s'. %s", ip, str_result);
-        } else {
+        ip_holder = keys.keyentries[index];
+        if (OS_SUCCESS != w_auth_check_replace_agent(ip_holder, key_hash, &config.force_options, &ip_result, &warn)) {
             if (warn) {
-                mwarn("Duplicate IP '%s', rejecting enrollment. %s", ip, str_result);
+                mwarn("Duplicate IP '%s', rejecting enrollment. %s", ip, ip_result);
             } else {
-                minfo("Duplicate IP '%s', rejecting enrollment. %s", ip, str_result);
+                minfo("Duplicate IP '%s', rejecting enrollment. %s", ip, ip_result);
             }
             snprintf(response, OS_SIZE_2048, "ERROR: Duplicate IP: %s", ip);
             result = OS_INVALID;
         }
     }
 
-    /* Check for duplicate name */
-    if (result != OS_INVALID && (index = OS_IsAllowedName(&keys, agentname), index >= 0)) {
-        if(OS_SUCCESS == w_auth_replace_agent(keys.keyentries[index], key_hash, &config.force_options, &str_result, &warn)) {
-            minfo("Duplicate name. %s", str_result);
-        } else {
+    /* Check for duplicate name. The IP holder may be this same agent; it has been judged already. */
+    if (result != OS_INVALID && (index = OS_IsAllowedName(&keys, agentname), index >= 0)
+        && keys.keyentries[index] != ip_holder) {
+        name_holder = keys.keyentries[index];
+        if (OS_SUCCESS != w_auth_check_replace_agent(name_holder, key_hash, &config.force_options, &name_result, &warn)) {
             if (warn) {
-                mwarn("Duplicate name '%s', rejecting enrollment. %s", agentname, str_result);
+                mwarn("Duplicate name '%s', rejecting enrollment. %s", agentname, name_result);
             } else {
-                minfo("Duplicate name '%s', rejecting enrollment. %s", agentname, str_result);
+                minfo("Duplicate name '%s', rejecting enrollment. %s", agentname, name_result);
             }
             snprintf(response, OS_SIZE_2048, "ERROR: Duplicate agent name: %s", agentname);
             result = OS_INVALID;
         }
     }
 
-    os_free(str_result);
+    /* Admitted: only now are the replaced agents removed. */
+    if (result != OS_INVALID) {
+        if (ip_holder) {
+            minfo("Duplicate IP '%s'. %s", ip, ip_result);
+            w_auth_remove_replaced_agent(ip_holder);
+        }
+        if (name_holder) {
+            minfo("Duplicate name. %s", name_result);
+            w_auth_remove_replaced_agent(name_holder);
+        }
+    }
+
+    os_free(ip_result);
+    os_free(name_result);
     return result;
 }
 

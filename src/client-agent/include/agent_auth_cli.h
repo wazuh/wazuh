@@ -69,7 +69,7 @@ typedef struct {
     agent_auth_source_t source;
     const char *token_file;   /**< --token-file's path; NULL when the token comes from stdin */
     /** Authorises replacing an existing registration. The agent receives a NEW id -- the
-     *  manager deletes the colliding entry and inserts a fresh one (w_auth_replace_agent()),
+     *  manager deletes the colliding entry and inserts a fresh one (w_auth_remove_replaced_agent()),
      *  so this is not a renewal of the same identity. */
     bool force_enroll;
     /** Point the agent at its manager without registering again: the trust anchor, and the

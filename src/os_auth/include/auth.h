@@ -153,7 +153,8 @@ w_err_t w_auth_parse_data(const char* buf,
 /**
  * @brief Validates if new enrollment is possible with provided data.
  * With force configuration disabled, if enrollment data is already registered, validation will fail.
- * With force configuration enabled, duplicated entry will be removed.
+ * With force configuration enabled, duplicated entries will be removed -- but only once every check has
+ * passed: a refused enrollment never removes an agent.
  * @param response 2048 length buffer where the error response will be copied
  * @param ip New enrollment ip direction
  * @param agentname New enrollment agent name
@@ -167,18 +168,27 @@ w_err_t w_auth_validate_data(char *response,
                              const char *hash_key);
 
 /**
- * @brief Validates if the old agent can be replaced and removes it.
- * @param key Key structure of the agent to be removed
+ * @brief Decides whether the old agent can be replaced. Removes nothing: the caller removes it with
+ * w_auth_remove_replaced_agent() once the whole request is known to succeed.
+ * @param key Key structure of the agent to be replaced
  * @param hash_key Hash of the key on the agent
  * @param force_options Force configuration structure to define how the agent replacement must be handled.
  * @param str_result A message related to the result of the agent replacement. Must be freed by the caller.
  * @param warn Set to true when the rejection reflects a live identity conflict (the existing agent is still connected and does not self-heal); false for transient or expected rejections. May be NULL.
+ * @return OS_SUCCESS if the agent may be replaced, OS_INVALID otherwise.
  * */
-w_err_t w_auth_replace_agent(keyentry *key,
-                             const char *key_hash,
-                             authd_force_options_t *force_options,
-                             char** str_result,
-                             bool *warn);
+w_err_t w_auth_check_replace_agent(keyentry *key,
+                                   const char *key_hash,
+                                   authd_force_options_t *force_options,
+                                   char** str_result,
+                                   bool *warn);
+
+/**
+ * @brief Removes an agent that w_auth_check_replace_agent() admitted for replacement: queues its
+ * deletion and drops it from the keystore. Must be called under mutex_keys; `key` is freed.
+ * @param key Key structure of the agent to be removed
+ * */
+void w_auth_remove_replaced_agent(keyentry *key);
 
 /**
  * @brief Adds new agent with provided enrollment data.
