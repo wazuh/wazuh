@@ -82,8 +82,8 @@ pinned by `wazuh_metrics_utest` (ctest label `wazuh_metrics_utest`).
 
 Expose `dumpJson(manager, {"<module_name>"})` on a `GET` route of your
 [UDS HTTP Server](../uds-http-server/integration-guide.md) socket, registered as
-`RouteClass::Liveness` so it is budget-exempt. Capture the manager as a `weak_ptr`, and
-answer 503 if it has expired.
+`RouteClass::Liveness` (or `Control`, as the Task Manager does) so it is budget-exempt.
+Capture the manager as a `weak_ptr`, and answer 503 if it has expired.
 
 ## Documenting
 

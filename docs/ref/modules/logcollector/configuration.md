@@ -265,6 +265,16 @@ File check interval for detecting log file changes.
 - **Format:** `logcollector.loop_timeout=2`
 - **Note:** Controls how frequently Logcollector checks monitored files for changes
 
+### logcollector.ip_update_interval
+
+How often Logcollector refreshes the cached host IP address it exposes to its output-format
+placeholders (`src/shared/src/log_builder.c`).
+
+- **Default value:** `60` (seconds)
+- **Allowed values:** Integer from `0` to `3600`; `0` never refreshes the address after start
+- **Format:** `logcollector.ip_update_interval=60`
+- **Note:** Agent only; the manager reads no `logcollector.*` key
+
 ### logcollector.open_attempts
 
 Number of attempts to open a log file before giving up.

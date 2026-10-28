@@ -159,7 +159,7 @@ ERROR: Enrollment rejected by the manager: invalid request. Invalid Group(s) Nam
 with the manager naming the first one it could not find:
 
 ```console
-wazuh-manager-authd: ERROR: Invalid group: web
+wazuh-manager-authd: WARNING: Invalid group: web
 ```
 
 4.X validates groups the same way, so this is not a change in what a manager accepts. It matters when an agent is upgraded *and* pointed at a different manager than the one it was installed against: a rebuilt manager, a migration, or a group since deleted.

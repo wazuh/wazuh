@@ -423,7 +423,11 @@ proxy, a WAF) rather than by remoted. Treat it as a sign to look at the intermed
 ## Endpoints
 
 The listener exposes **ten** agent-facing routes. Every one of them except `GET /`, `GET /cacerts`
-and `POST /enroll` is authenticated with the bearer token above.
+and `POST /enroll` is authenticated with the bearer token above. Whether or not its bullet lists
+them, every authenticated route can also answer the shared `503 Service unavailable` of the
+capacity limits (the byte budget, the deferred-work limiter, the agent's own share) and the
+`500 Internal server error` the gateway answers when a handler raises — see
+[Error responses](#error-responses).
 
 Every path on this page is the endpoint's **logical** path. The server exposes each endpoint under
 [`remote.https.global_prefix`](configuration.md#httpsglobal_prefix) — `/wazuh-manager/` by default,
@@ -473,7 +477,8 @@ manager-local Unix socket (`GET /`, `GET /metrics`, `GET /status`, `GET /tls` on
   change detection for config and settings), and clean disconnection (`shutdown`). Returns **`200
   OK`** with a JSON response on success, **`400`** on malformed requests, **`401`** on auth
   failures, **`409`** when the agent's version is higher than this manager allows, or **`503`** when
-  wazuh-db is unreachable (a task-manager failure still answers `200`, with an empty `tasks`). See
+  wazuh-db is unreachable (`{"error":"dependency_unavailable","dependency":"wazuh-db"}`; a
+  task-manager failure still answers `200`, with an empty `tasks`). See
   [Control endpoint](#control-endpoint-post-control) below for details.
 - **`POST /stateful`** — authenticated inventory synchronization. Once the signature is verified,
   the module relays the body opaquely (stamping the authenticated identity as `X-Wazuh-Agent-Id`)
@@ -1337,8 +1342,9 @@ Accepted identifiers:
 > must equal the selector `/control` handed that agent as `config_token` — the same string
 > `config_hash` was computed over — and anything else is answered `403`. The manager resolves that
 > selector from the agent registry `/control` already maintains, so the check costs no wazuh-db
-> round trip; an agent whose membership the manager has never established (it never completed
-> `/control/startup`, or its entry was evicted) is **denied, not served**.
+> round trip; an agent whose membership the manager has never read from wazuh-db (no `startup`
+> and no group-refreshing `notify` has succeeded for it since remoted started, or its entry was
+> evicted — a `shutdown` alone creates an entry with no membership) is **denied, not served**.
 >
 > The comparison is exact, including the order of a multigroup CSV: `a,b` and `b,a` name different
 > merged files, and only one of them is the file `config_hash` refers to.
@@ -1369,7 +1375,7 @@ instead.
 | Body empty, over 4 KiB, not a JSON object, wrong member count, or a non-string member | `400` | `Invalid request format` |
 | `resource_type` is neither `config` nor `wpk` | `400` | `Invalid resource type` |
 | `resource_id` fails the grammar for its type | `400` | `Invalid resource identifier` |
-| `resource_type: config` and `resource_id` is not the requesting agent's own selector, or the manager has no established membership for it | `403` | `Forbidden` |
+| `resource_type: config` and `resource_id` is not the requesting agent's own selector, or the manager has never read the agent's group membership from wazuh-db (no successful `startup` or group-refreshing `notify`, or an evicted entry) | `403` | `Forbidden` |
 | Resource absent, not a regular file, or `O_NOFOLLOW` rejected a symlink | `404` | `Resource not found` |
 | Unexpected `errno` while opening or stat-ing | `500` | `Internal server error` |
 

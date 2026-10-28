@@ -1715,8 +1715,8 @@ components:
         queue:
           type: integer
           minimum: 1
-          maximum: 255
-          description: Queue number where the event will be injected (engine/input queue)
+          maximum: 127
+          description: Queue number where the event will be injected (engine/input queue); its numeric value, at most 127 (the indexer stores it as a signed byte)
         location:
           type: string
           description: Event source/location label (e.g., file path, agent name, or custom identifier)

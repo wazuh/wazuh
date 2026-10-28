@@ -212,7 +212,7 @@ HTTPS listening port.
 Address the HTTPS listener binds to.
 
 - **Default value:** `0.0.0.0` (all IPv4 interfaces)
-- **Allowed values:** Valid IPv4 or IPv6 address
+- **Allowed values:** Valid IPv4 or IPv6 address, at most 255 characters
 - **Note:** `0.0.0.0` is IPv4-only. `::` listens on IPv6 only by default -- it does **not** also
   accept IPv4 connections unless `dual_stack` is explicitly set to `yes` -- see
   [HTTPS Agent API: Bind address](https-events-api.md#bind-address-ipv4-ipv6-and-dual-stack)
@@ -259,6 +259,7 @@ Whether an IPv6 `bind_addr` (e.g. `::`) also accepts IPv4 clients on the same so
 Path to the TLS certificate chain (PEM) presented by the server.
 
 - **Default value:** `/etc/wazuh-manager/certs/remoted.pem` (any other value must also be an absolute path directly in `/etc/wazuh-manager/certs`; see the credential note below)
+- **Allowed values:** a path of at most 511 characters
 - **Note:** the manager issues this file at installation and never reissues it. To use your own PKI, overwrite it — a leaf of the CA in
   `ca_certificate`, issued by the installation assistant's `wazuh-certs-tool` — as
   `root:wazuh-manager 640` before the first start. Missing: `wazuh-manager-control start`
@@ -266,10 +267,12 @@ Path to the TLS certificate chain (PEM) presented by the server.
   Present but unreadable by the service user: `wazuh-manager-remoted` exits with
   `Cannot start the HTTPS agent listener: …`. The same message names the CA certificate
   (`remote.https.ca`) when `verification_mode` is `certificate` or `full` and that file is missing or unreadable.
-- **Note:** at startup, and again every 24 hours while it runs, the manager warns if this
-  certificate has expired (`The TLS certificate '<path>' has expired; …`) or expires within 30 days
-  (`The TLS certificate '<path>' expires in <n> day(s); …`), so a silent outage for verifying agents
-  can be prevented before it happens.
+- **Note:** at startup, and again every 24 hours while it runs, the manager logs an ERROR if this
+  certificate has expired (`The TLS certificate '<path>' has expired; agents that verify the manager
+  certificate will reject the connection until it is renewed.`) and a WARNING while fewer than 30
+  days remain (`The TLS certificate '<path>' expires in <n> day(s); renew it to avoid an outage for
+  agents that verify the manager certificate.`), so a silent outage for verifying agents can be
+  prevented before it happens.
 - **Note:** before every start the credential resolver checks the configured pair, which must be directly in
   `/etc/wazuh-manager/certs` under any name; see
   [Configured file names](../../getting-started/credentials.md#configured-file-names).
@@ -279,6 +282,7 @@ Path to the TLS certificate chain (PEM) presented by the server.
 Path to the TLS private key (PEM) matching `certificate`.
 
 - **Default value:** `/etc/wazuh-manager/certs/remoted-key.pem`
+- **Allowed values:** a path of at most 511 characters
 - **Note:** provisioned together with `certificate`, same ownership and the same fail-closed
   behaviour when missing (`(1244) … '/remote/https/key': file not found`) or unreadable by the
   service user.
@@ -292,6 +296,7 @@ Path to a CA bundle (PEM) used to verify client (agent) certificates.
 
 - **Default value:** empty (not set). Empty means "no client-verification CA configured": no
   `verification_mode` is inferred from it, and verification stays off.
+- **Allowed values:** a path of at most 511 characters
 - **Note:** Only read when `verification_mode` is `certificate` or `full`. If one of those modes is
   set explicitly with no `ca`, the module falls back to `/etc/wazuh-manager/certs/root-ca.pem`. Setting `ca` without `verification_mode` turns verification on — see the special
   case below.
@@ -316,6 +321,7 @@ A file it cannot parse to the end is refused whole rather than served up to its 
   writes the option explicitly). Like the listener certificate, the file is issued by the credential
   resolver at installation (`root:wazuh-manager 640`), or provisioned by the operator together with
   the listener certificate it signs.
+- **Allowed values:** a non-empty path of at most 511 characters
 - **Note:** this is **not** the client-verification CA (`ca`): `ca` verifies agent certificates,
   `ca_certificate` is what agents use to verify the manager. An empty value is rejected at startup
   (`(1244): Invalid configuration at '/remote/https/ca_certificate': does not satisfy 'minLength'`).

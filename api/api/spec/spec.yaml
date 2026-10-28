@@ -992,8 +992,8 @@ components:
           type: string
           format: names
         ip:
-          description: "If this is not included, the API will get the IP automatically. Allowed values:
-          IP, IP/NET, ANY"
+          description: "Address the agent is registered with. If this is not included, the agent is
+          registered with `any`. Allowed values: IP, IP/NET, ANY"
           type: string
           format: alphanumeric_symbols
         force:

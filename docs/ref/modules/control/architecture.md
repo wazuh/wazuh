@@ -251,7 +251,7 @@ gate go through the control socket.
 
 | Failure | Behaviour |
 |---------|-----------|
-| Bind | `Unable to bind to socket '<path>': ...` logged; the listener returns and the socket stays absent (API error `1901`) |
+| Bind | `Unable to bind to socket '<path>': ...` logged; the listener returns and the socket stays absent. The API then logs `Control socket has not been created` (`1901`) as a warning and runs `wazuh-manager-service-control` itself (see the [README](README.md#manager-restart-and-reload)) |
 | `select()` | `At process_control(): select(): ...` and modulesd exits |
 | `accept()` | logged (unless `EINTR`), next connection |
 | Receive error, empty or oversized message | logged, no answer sent |

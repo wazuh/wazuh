@@ -46,7 +46,7 @@ developer side.
 |----|----------|-----|
 | D-1 | `<CONF>` is the fixed `/etc/wazuh-manager`; `-H` moves the home only | the same constant the C, C++ and Python code use; no variable may redirect where root writes |
 | D-2 | Called from `wazuh-manager-control`, not from the unit's `ExecStartPre` | the control script already orders `--check` after the configuration file's own validation (`validate --skip-file-checks`, so the TLS names it reads come from a file the validator accepts), before the full validation that checks the files exist, and before the stop of a restart |
-| D-3 | Seeds through `framework/python/bin/python3 -I framework/scripts/rbac_control.py`, not `bin/rbac_control` | the wrapper runs `dirname`, `basename` and `sed`; the resolver must run no host tool |
+| D-3 | Seeds through `framework/python/bin/python3 -I framework/scripts/rbac_control.py`, not `bin/rbac_control` | the wrapper (`framework/wrappers/generic_wrapper.sh`) runs `dirname`, `basename`, `pwd` and `tr` from `PATH`; the resolver must run no host tool |
 | D-4 | Accepts a group-writable `<CONF>` (its owner and group are checked) and opens nothing in it by name twice | `authd`, `remoted` and the Server API write there; every entry is checked on its own descriptor |
 | D-5 | `ca/` and `export/` (both `root:root 0700`) are told apart by content, and the test is repeated on the descriptors a writing run uses | their specs are identical, so only what they hold reveals a swap, and a rename between a test by name and the write must not redirect it |
 | D-6 | A stale `export/ca.pem` is published again by every writing mode, and `--check` lets the start go on | it is what staging a CA again by hand leaves, not an attack; refusing it left the manager down until someone ran `--install` by hand |
@@ -166,8 +166,8 @@ manager integration workflow.
 - **Why not `ExecStartPre=` in the unit?** `wazuh-manager-control` must run `--check` between the two
   validations of the configuration (after the file's own, before the one that checks the files it names) and,
   on a restart, before stopping anything; the unit cannot express that order (D-2).
-- **Why not `bin/rbac_control seed`?** The wrapper runs host tools; the resolver runs the same Python script
-  directly (D-3).
+- **Why not `bin/rbac_control seed`?** The wrapper runs host tools (`dirname`, `basename`, `pwd`, `tr`); the
+  resolver runs the same Python script directly (D-3).
 - **Why are some checks repeated after the lock?** `<CONF>` is writable by the service group, so `ca/` and
   `export/` can be renamed between a check by name and the write; the write descriptors are checked again (D-5).
 - **Why does `--clear` not read pid files?** Their directory is writable by the service account; the pid is taken

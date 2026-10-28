@@ -142,7 +142,10 @@ Colon-separated list of TLS 1.3 cipher suites accepted by the enrollment TLS ses
 
 ### ssl_agent_ca
 
-Path to the CA certificate used to verify agent client certificates during mutual TLS.
+Path to the CA certificate used to verify agent client certificates during the TLS handshake of the
+**port-1515 listener only** (legacy 4.x enrollment). When set, a 4.x agent without a certificate
+this CA signed cannot complete the handshake. `POST /enroll` never reads it: the HTTPS listener's
+client-certificate policy is remoted's own (`remote.https`).
 
 - **Default value:** empty (agent certificate verification disabled)
 - **Allowed values:** Path to a PEM-encoded CA certificate, absolute or relative to the Wazuh install
@@ -151,9 +154,10 @@ Path to the CA certificate used to verify agent client certificates during mutua
 
 ### ssl_verify_host
 
-Verify that the agent certificate names the address the agent connects from: a matching subject
-alternative name is looked for first, then the subject CN. Requires `ssl_agent_ca` to be set;
-without it the option has no effect. A certificate that does not match closes the connection.
+Verify that the agent certificate presented on port 1515 names the address the agent connects
+from: a matching subject alternative name is looked for first, then the subject CN. Requires
+`ssl_agent_ca` to be set; without it the option has no effect, and like `ssl_agent_ca` it plays no
+part in `POST /enroll`. A certificate that does not match closes the connection.
 
 - **Default value:** `no`
 - **Allowed values:** `yes`, `no`
@@ -211,7 +215,7 @@ Minimum time an agent must have been disconnected before it can be forcibly re-e
 - **Default value:** `1h` with `enabled="yes"`
 - **Allowed values:** Time value with optional suffix — `s`, `m`, `h`, `d`; attribute `enabled`: `yes`/`no`
 
-```xml
+```xml,fragment
 <!-- Enable the check, require 2h disconnection -->
 <disconnected_time enabled="yes">2h</disconnected_time>
 
@@ -235,7 +239,7 @@ Accept enrollment from agents running a newer Wazuh version than the manager.
 
 **Note:** This option controls the **enrollment gate**: port 1515 and remoted's `POST /enroll` both read it. There is an independent option with the same name under `<remote><agents>` that controls the **connection gate** (remoted's agent connections). Both must be set to `yes` for a higher-version agent to both enroll and connect. Setting them differently — for example allowing enrollment but not connection — will result in agents that obtain keys but cannot communicate, which is difficult to diagnose.
 
-```xml
+```xml,fragment
 <agents>
   <allow_higher_versions>no</allow_higher_versions>
 </agents>
@@ -412,7 +416,7 @@ Standard enrollment with password protection:
 
 ### Secure Configuration with TLS
 
-Mutual TLS with client certificate verification:
+Mutual TLS with client certificate verification on the port-1515 listener:
 
 ```xml
 <auth>

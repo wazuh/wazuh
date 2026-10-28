@@ -140,8 +140,9 @@ global backup restore {"snapshot":"global.db-backup-2026-09-30-03:00:00.gz","sav
 
 > **Note on `backup restore`:** `snapshot` must be a bare file name in `backup/db/` as `global backup get`
 > lists it: the `global.db-backup` prefix, a `.gz` suffix, only letters, digits and `-_.:`, no `..`. Any
-> other name, including the most recent file when `snapshot` is omitted, is rejected with
-> `err Invalid snapshot name` before any pre-restore backup is taken.
+> other name is rejected with `err Invalid snapshot name` before any pre-restore backup is taken; the
+> same check applies to the most recent file chosen when `snapshot` is omitted. When `backup/db/` holds
+> no backup at all the answer is `err Unable to found a snapshot to restore`.
 
 > **Note on `insert-agent`:** `id` (number), `name` (string) and `date_add` (number) are required; `ip`,
 > `register_ip`, `internal_key`, `reenroll_secret` and `group` are optional strings. A missing required
@@ -183,12 +184,18 @@ Only these two databases exist; the daemon accepts no other `<database>` target.
 
 | Table | Purpose |
 |-------|---------|
-| `agent` | One row per registered agent: identity, OS info, version, group, connection status, and the `reenroll_secret` column (64 hex chars) handed to the agent at enrollment — the only place it is stored (never in `client.keys`; `NULL` for rows imported from `client.keys` by the [database module](../database-sync/README.md), which cannot re-enroll until they enroll again). Declared in `schema_global.sql` with `user_version` still 1 — no upgrade step, so a `global.db` created by an earlier 5.0.0 development build lacks the column and must be recreated |
+| `agent` | One row per registered agent: identity, OS info, version, group, connection status, and the `reenroll_secret` column (64 hex chars) handed to the agent at enrollment — the only place it is stored (never in `client.keys`; `NULL` for rows imported from `client.keys` by the [database module](../database-sync/README.md), which cannot re-enroll until they enroll again) |
 | `group` | Named agent groups |
 | `belongs` | Agent-to-group assignments with priority ordering |
 | `metadata` | Key-value store for global metadata |
 
 Connection status values: `pending`, `never_connected`, `active`, `disconnected`.
+
+The schema's `user_version` is `1` and the upgrade runner has no migration step: a `global.db` whose
+`user_version` is anything else is **disabled** when first opened (`DB(global) Unsupported schema
+version <n> (expected: 1..1). Disabling database.` in the log), after which every `global` query
+answers `err DB global disabled.`, the HTTP data routes answer `500` and `GET /v1/status` answers
+`503`. Stop the manager and move the file away to have it recreated.
 
 > **Note on tasks:** `wazuh-manager-db` no longer stores tasks. `tasks.db` and the `task` actor moved
 > to the Task Manager module, which owns that database outright and serves it over its own socket.

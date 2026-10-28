@@ -69,8 +69,9 @@ list: `ca/`, `export/` and `local.env` are root's.
 | `WAZUH_MANAGER_APID_CERT_SANS` | subject alternative names of the Server API pair; never inherits remoted's list | discovered |
 
 `WAZUH_MANAGER_CERT_SANS` is gone: it named the indexer client pair, which now comes from the indexer. When it is
-set, a run that issues a server pair prints `WARNING: WAZUH_MANAGER_CERT_SANS is ignored` and goes on (a run that
-issues nothing does not read it).
+set, a run that issues a server pair prints
+`resolve-credentials: WARNING: WAZUH_MANAGER_CERT_SANS is ignored: it named the indexer client pair, which now comes from the indexer`
+and goes on (a run that issues nothing does not read it).
 
 Each key is looked up in order, and the first value found wins:
 
@@ -243,7 +244,7 @@ A mode is required: without one the resolver prints its usage and exits `2`.
 | `--install` | DEB `postinst` and RPM `%post` on a fresh install, `install.sh` on a fresh install | seeds the passwords, stores the indexer password, mints the CA when nothing is there, issues the two server pairs (and, on a master, the [dashboard client pair](#what-the-dashboard-takes-from-the-manager)), imports the indexer trust | always `0` |
 | `--upgrade` | DEB `postinst` and RPM `%post` on an upgrade, `install.sh` on an update | completes passwords, keystore and indexer trust; publishes the CA in `export/ca.pem` when the copy there is absent or differs; issues a missing dashboard client pair; validates the CA and the server pairs, never mints a CA or issues a server pair | always `0` |
 | `--prestart` | `wazuh-manager-control` before the daemons start, on `start`, `restart` and `reload` (skipped while `wazuh-manager-modulesd` is running) | every `--check` test, then what `--upgrade` does, then the `--check` tests again on the result; refuses the start when anything is missing, invalid or unsafe | `0` or `1` |
-| `--check` | `wazuh-manager-control` on `start`, `restart` and `reload`, once the configuration file itself has been validated | read-only: no lock, nothing written, and no subprocess but `wazuh-manager-conf --skip-file-checks dump`, which reads the [configured file names](#configured-file-names); reports `UNSAFE` and `INVALID`, and `MISSING` only for what `--prestart` could not complete either (the CA, the bundle and the server pairs, created at `--install` only, and indexer files with nothing in the export to import) | `0` or `1` |
+| `--check` | `wazuh-manager-control` on `start`, `restart`, `reload` and `check`, once the configuration file itself has been validated | read-only: no lock, nothing written, and no subprocess but `wazuh-manager-conf --skip-file-checks dump`, which reads the [configured file names](#configured-file-names); reports `UNSAFE` and `INVALID`, and `MISSING` only for what `--prestart` could not complete either (the CA, the bundle and the server pairs, created at `--install` only, and indexer files with nothing in the export to import) | `0` or `1` |
 | `--clear` | you | removes what the resolver made ([Container images](#container-images)) | `0` or `1` |
 
 `-q` prints only problems. `-H` names a non-default installation directory; the configuration directory is

@@ -268,7 +268,7 @@ Three statuses are worth calling out:
 
 | Status | Meaning | What the caller does |
 |---|---|---|
-| `409` `scan_in_progress` | That agent already has a scan in flight | Defers without consuming a retry attempt |
+| `409` `scan_in_progress` (body `{"error":"scan_in_progress","code":409,"retryable":true}`) | That agent already has a scan in flight | Defers without consuming a retry attempt |
 | `404` `agent_not_found` | The agent has no record to scan, most likely deleted between the request and its execution | Stops; retrying cannot produce one |
 | `503` `no vulnerability scanner on this node` | Vulnerability detection is disabled here, or its scanner failed to start | Retries, and dead-letters the task once `vd_scan`'s attempt budget runs out. Deliberately not a `200`: the task row would read `completed` for a scan that never ran |
 

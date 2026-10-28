@@ -101,5 +101,10 @@ The Content Manager logs to `/var/wazuh-manager/logs/wazuh-manager.log` under th
 | `IndexerDownloader: Incremental update download phase complete — <n> documents, new cursor: '<n>'` | An incremental download finished |
 | `IndexerDownloader: Slice <i> failed: <error>` | One slice of a sliced full download failed; the whole download fails with it and is retried (same warning/debug split as the line below) |
 | `IndexerDownloader: Initial load failed (<error>) — retrying in 30s.` | The indexer failed during a full download (a warning from the third attempt on; earlier attempts log at debug level) |
+| `IndexerDownloader: Indexer index not ready (0 documents) — retrying in 30s.` | A full download found the feed index empty (a warning from the third attempt on; earlier attempts log at debug level) |
 | `IndexerDownloader: Stop requested <when> — aborting.` (or `— slice <i> aborting.`, or `… while waiting for …`) | The module is stopping; the wait or download in progress is abandoned |
 | `Action for 'vulnerability_feed_manager' failed: <error>.` | The update ended with an error; the next scheduled run retries it |
+| `Rejected <n> on-demand request(s) with 404 <period>: unknown topic (last: '<topic>').` | `POST /ondemand` named a topic that is not registered (throttled: one line per burst) |
+| `Rejected <n> on-demand update(s) with 503 <period>: the on-demand lane is full (4 slot(s)) (last topic: '<topic>').` | More than 4 on-demand requests were waiting; the extra ones were refused |
+| `Answered <n> on-demand request(s) with 409 <period>: an update for that topic was already running (last: '<topic>').` | The on-demand request coincided with a run in progress; nothing was lost |
+| `On-demand lane stopped; <n> queued update(s) were answered 503.` | The module stopped with on-demand requests still queued |

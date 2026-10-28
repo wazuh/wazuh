@@ -65,8 +65,10 @@ how to read back what `wazuh-manager-modulesd` read.
 
 ## When a schedule fires
 
-The scheduler thread asks `tasks.db` for the schedules whose next run has come due, once per
-the scheduler's own wake, and applies four rules to each.
+On every wake, the scheduler thread asks `tasks.db` for the schedules whose next run has come due
+and applies four rules to each. A schedule row whose id this build does not define is pushed one
+day out and reported at WARN as `Ignoring unknown schedule '<id>'; this build has no definition for
+it.`
 
 ### Node scope
 

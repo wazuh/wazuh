@@ -1664,7 +1664,7 @@ content:
 
 In this example:
 
-- the KVDB name is `example_kvdb` (`metadata.title`); it may contain only letters, digits, `_` and `-`
+- the KVDB name is `example_kvdb` (`metadata.title`, non-empty); helpers look it up by that exact string
 - the lookup keys are `key_1`, `key_2`, `key_3`, `key_4`, and `key_5`
 - each key stores a JSON value that can later be retrieved, matched, or merged by a helper
 
@@ -2269,24 +2269,26 @@ These parsers will generate fields which are type-compatible with Wazuh Indexer.
 | float       | float        | Codified as decimal representation in string format. A single-precision 32-bit IEEE 754 floating point number, restricted to finite values. |
 | scaled_float| scaled_float | Codified as decimal representation in string format. The scaling factor is defined in the schema.    |
 | double      | double       | Codified as decimal representation in string format. A double-precision 64-bit IEEE 754 floating point number, restricted to finite values. |
+| half_float  | half_float   | Codified as decimal representation in string format. A half-precision floating point number, `-65504` to `65504`. |
 | long        | long         | Codified as decimal representation in string format. A signed 64-bit integer with a minimum value of `-2^63` and a maximum value of `2^63-1`. |
+| unsigned_long, token_count | unsigned_long | Codified as decimal representation in string format. An unsigned 64-bit integer, `0` to `2^64-1`. |
+| integer     | integer      | Codified as decimal representation in string format. A signed 32-bit integer, `-2^31` to `2^31-1`. |
+| short       | short        | Codified as decimal representation in string format. A signed 16-bit integer, `-32768` to `32767`. |
 | byte        | byte         | Codified as a decimal representation in string format. A signed 8-bit integer with a minimum value of `-128` and a maximum value of `127`. |
 | object      | -            | -                                                                                                    |
 | array       | -            | -                                                                                                    |
 | nested      | -            | -                                                                                                    |
-| text        | text         | A string sequence of characters that represent full-text values.                                     |
-| keyword     | text         | A string sequence of characters that represent full-text values.                                     |
+| text, keyword, wildcard, match_only_text, constant_keyword, completion, search_as_you_type, semantic | text | A string sequence of characters that represent full-text values.                                     |
 | ip          | ip           | A string with IPv4 or IPv6 address.                                                                  |
-| date        | date         | Date codified as string. All dates are converted to a unified date in UTC timezone.                  |
+| date, date_nanos | date    | Date codified as string. All dates are converted to a unified date in UTC timezone.                  |
 | geo_point   | -            | -                                                                                                    |
 | binary      | binary       | A codified base64 string.                                                                            |
 
-Aditionally we define some types for the purpose to use specific parsers, normally used to parse objects or structured types from an input text. This is the case for `url` field for example.
-
-| Type        | Parser     | Description                                                                                           |
-|-------------|------------|-------------------------------------------------------------------------------------------------------|
-| url         | uri        | Parses URI text and generates the URL object with all the parsed parts.                               |
-| useragent   | useragent  | Parses a user agent string. It does not build the user agent object; this can be done with the OpenSearch plugin. |
+A field whose type has no parser (`object`, `nested`, `geo_point`, `flat_object`, the range types, ...) cannot be the
+target of a field expression. The `uri` and `useragent` parsers, which build an object from a URL or a user-agent
+string, are bound to no schema type: the shipped `schema/wazuh-logpar-overrides/0` document, which could bind a field
+to another parser, is empty, so they are used only when named explicitly in a temporary field (`<_url/uri>`,
+`<_ua/useragent>`). Every parser is described in the [Parsers](ref-parser.md) reference.
 
 ## Metrics
 

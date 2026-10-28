@@ -52,11 +52,11 @@ plaintext and is protected by its file permissions alone.
 
 ### Threat addressed
 
-Earlier versions encrypted each payload as a Fernet token under the static
-cluster key and sent a 20-byte header (`!2I12s`: counter, length, command)
-**outside** the token. Nothing in a token tied it to a connection, a position
-or a header, and the decrypt applied no TTL. An attacker with only a capture of
-cluster traffic, and no key, could therefore:
+Each frame carries a 20-byte plaintext header (`!2I12s`: counter, length,
+command) **outside** the Fernet token that encrypts the payload. If the token
+were produced under the static cluster key alone, nothing in it would tie it
+to a connection, a position or a header, and no TTL is applied on decrypt. An
+attacker with only a capture of cluster traffic, and no key, could then:
 
 - **Replay a session**: open a new connection and resend a worker's captured
   `hello` (accepted whenever that worker is not connected at the time), then
@@ -187,8 +187,8 @@ constants of `framework/wazuh/core/cluster/`, not configuration:
 
 - **Forward secrecy.** The nonces travel in clear, so anyone who holds the
   cluster key and a capture can derive the session keys. Ephemeral key
-  agreement and TLS are out of scope (see the closed #4517). Key compromise
-  remains the event described in
+  agreement and TLS are out of scope. Key compromise remains the event
+  described in
   [Cluster Key Compromise](#cluster-key-compromise).
 - **Protection against an on-path attacker who drops or resets connections.**
   The nodes detect the break and reconnect, but cannot prevent it.

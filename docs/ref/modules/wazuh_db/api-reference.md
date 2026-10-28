@@ -28,6 +28,14 @@ Every route answers `500` when the database connection cannot be obtained, and `
 handler throws — except `/v1/status`, which answers `503` in both cases, because for that route
 being unable to serve is the answer rather than a fault.
 
+The transport answers before any handler runs for a request no route serves: a path none of the
+rows above lists is `404 Unknown endpoint`; a listed path with another method is `405 Method not
+allowed for this endpoint`, with an `Allow` header naming the methods it does serve. Both are logged
+as one `WARNING` per 90 s window under the `wazuh-manager-db` tag (`Answered N request(s) … with
+404: no route for …`). A declared `Content-Length` larger than the server could ever admit is refused
+with `413` at the headers, before any body byte is read; `GET /v1/agents/groups` additionally caps a
+body at 64 KiB and `GET /v1/status` at 4 KiB, though neither takes one.
+
 ---
 
 ## `GET /v1/status`

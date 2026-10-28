@@ -395,14 +395,18 @@ A node logging `Cannot serve /control startup: wazuh-manager-db is not answering
 ### Verify the daemons really started
 
 The startup sequence reports success per daemon, but a daemon that dies immediately afterwards is
-not caught. Check the process list rather than the startup output:
+not caught. Ask for the status rather than reading the startup output; it checks every daemon's pid
+file against the live processes and exits `1` when one is down:
 
 ```bash
-ps -eo args | grep -oE 'wazuh-manager-[a-z]+' | sort -u
+/var/wazuh-manager/bin/wazuh-manager-control status
 ```
 
-Expect `analysisd`, `clusterd`, `db`, `modulesd` and `remoted` on every node, `authd` unless
-`auth.disabled` is set, and `apid` on the master only.
+Expect `wazuh-manager-analysisd`, `wazuh-manager-clusterd`, `wazuh-manager-db`,
+`wazuh-manager-modulesd` and `wazuh-manager-remoted` running on every node, `wazuh-manager-authd`
+unless `auth.disabled` is set, and `wazuh-manager-apid` on the master only. In a process list the
+two Python daemons appear as `python3 …/wazuh_manager_clusterd.py` and
+`python3 …/wazuh_manager_apid.py`, not under their `wazuh-manager-` names.
 
 ### Take it out of rotation manually
 

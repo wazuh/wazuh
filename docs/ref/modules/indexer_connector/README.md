@@ -1,6 +1,6 @@
 # Indexer Connector
 
-The Indexer Connector is a shared library (`libindexer_connector`) that handles all data indexing operations between the Wazuh Manager and the Wazuh Indexer (OpenSearch). It is the Filebeat replacement introduced in Wazuh 5.0.
+The Indexer Connector is a shared library (`libindexer_connector`) that handles all data indexing operations between the Wazuh Manager and the Wazuh Indexer (OpenSearch).
 
 Source: `src/shared_modules/indexer_connector/`
 
@@ -12,9 +12,9 @@ The Indexer Connector is not a standalone daemon. It is linked into the processe
 
 - **Vulnerability Scanner** (`wazuh-manager-modulesd`) — indexes detections into `wazuh-states-vulnerabilities`, and reads its feed through the [Content Manager](../content_manager/README.md)
 - **Inventory Sync Server** (`wazuh-manager-modulesd`) — indexes the agents' state (inventory, FIM, SCA) and the `wazuh-agent-config`/`wazuh-agent-stats` documents
-- **Engine** (`wazuh-manager-analysisd`) — indexes processed events through its outputs, and reads its content from the `wazuh-threatintel-*` indices
+- **Engine** (`wazuh-manager-analysisd`) — wraps `IndexerConnectorAsync` in its `wiconnector` module (`src/engine/source/wiconnector/`) to index processed events through its outputs and to read its content from the `wazuh-threatintel-*` indices
 
-The Python framework does not use this library: its indexer client reads the same `indexer` section, and the same keystore credentials through the `keystore_server` socket (see [Keystore](../keystore/README.md#keystore_server)).
+The Python framework does not use this library: its indexer client reads the same `indexer` section, and the same keystore credentials through the `keystore_server` socket (see [Keystore](../keystore/README.md#keystore_server)), again for every client it builds.
 
 The library provides these classes:
 
@@ -27,7 +27,7 @@ The library provides these classes:
 ## How it works
 
 1. The caller instantiates a connector with a JSON configuration built from the `indexer` section of `wazuh-manager.conf` (see [Configuration](configuration.md)). A connector without `hosts` fails (`No hosts found in the configuration`), and so does one whose single CA file does not exist (`The CA root certificate file: '<path>' does not exist.`). With several CA files, they are concatenated into `tmp/root-ca-merged.pem` under the manager home.
-2. Credentials (`username`/`password`) are read once per process from the `indexer` column family of the [keystore](../keystore/README.md) and cached: changing them takes a restart. If either is empty, the connector fails with `No indexer credentials found in the keystore. ...`.
+2. Credentials (`username`/`password`) are read once per process from the `indexer` column family of the [keystore](../keystore/README.md) and cached: changing them takes a restart of every process that links the library (`wazuh-manager-modulesd` and `wazuh-manager-analysisd`). If either is empty, the connector fails with `No indexer credentials found in the keystore. ...`.
 3. A background health-monitor thread polls `GET /_cat/health` on every configured host (5-second timeout) every `monitoring_interval_seconds` (default 10; the engine sets it from `analysisd.indexer_monitoring_interval`, range 1–3600). A host answering `green` or `yellow` is available. A host answering HTTP 429 (for example a tripped circuit breaker) is throttled: it stays in rotation and the requests sent to it back off on their own 429s; this is logged once as `Indexer node '<host>' is throttling requests (<reason>); it stays in rotation and requests back off.`, with a warning when the breaker reports `PERMANENT` durability, and as `Indexer node '<host>' accepts requests again.` when it clears. Any other answer or error (a transport failure, 401/403, any other 4xx, a 5xx, a red cluster) marks it unavailable, logged once as `Indexer node '<host>' is no longer available. Reason: <reason>` (a `401` gives `Unauthorized - Check indexer credentials`, with the indexer's error type and reason in parentheses after `Unauthorized` when its answer carries them) and again as `Indexer node '<host>' is available again.` when it recovers. An unreachable host does not fail the construction.
 4. A server-selector performs round-robin load balancing across available nodes. Selection has no side effects: availability probes (`isAvailable()`, true while some host is not down, and the stricter `hasAvailableServer()`, true only while some host is neither down nor throttled) never advance the round-robin cursor, and a host is consumed from the rotation only by the request actually sent to it, so traffic distributes uniformly across healthy nodes. When every host is down, a request fails with `No available server. Unavailable nodes: <host>: <reason>` (an `IndexerConnectorException`, like every other connector failure); the background flush thread logs it as a warning, `Error processing bulk: No available server. …`.
 5. Documents are accumulated in memory (both sync and async) and flushed as OpenSearch Bulk API requests.
@@ -55,9 +55,9 @@ The library provides these classes:
   see a document that has not been refreshed yet.
 - A `deleteById()` of a document that is not there is a per-item `404 not_found`, which is not an
   error and is not reported: deletes are idempotent.
-- Up to `analysisd.indexer_bulk_max_bytes` bytes per flush batch (default 8 MB; always takes at least one item, even if it exceeds the threshold on its own).
-- A batch is sent as soon as the queue holds `bulk_max_bytes`, and otherwise at least every 20 seconds (configurable via `analysisd.indexer_flush_interval`, range 1–3600).
-- If the queue exceeds `analysisd.indexer_queue_max_bytes` (default 64 MB, maps to `max_queue_bytes` in the connector config), new events are dropped and counted until it drains. The same counter (`getDroppedEvents()`, published by the engine as `indexer.events.dropped`) also counts the events of batches discarded after an indexer response (see below).
+- Up to `bulk_max_bytes` bytes per flush batch (connector default 4 MB; the engine sets it from `analysisd.indexer_bulk_max_bytes`, default 8 MB). A batch always takes at least one item, even if it exceeds the threshold on its own.
+- A batch is sent as soon as the queue holds `bulk_max_bytes`, and otherwise at least every `flush_interval_seconds` (default 20; the engine sets it from `analysisd.indexer_flush_interval`, range 1–3600).
+- If the queue exceeds `max_queue_bytes` (connector default 0, unlimited; the engine sets it from `analysisd.indexer_queue_max_bytes`, default 64 MB), new events are dropped and counted until it drains. The same counter (`getDroppedEvents()`, published by the engine as `indexer.events.dropped`) also counts the events of batches discarded after an indexer response (see below).
 - The queue is in-memory only: buffered events are discarded (not retried) if the manager stops or restarts.
 
 ### Retry and backoff behavior
@@ -84,7 +84,7 @@ Both connectors retry transient failures using an exponential backoff with jitte
 **How the delay scales:**
 
 - **1st failure** - sleeps a random value between the base delay (`RetryDelay`, fixed at 1 second) and 1.5 times it, never above the cap - so the very first retry is never faster than configured, and connectors that failed in the same instant (one 429 seen by all of them) do not retry in lockstep.
-- **Each subsequent consecutive failure** - doubles the delay, capped at `analysisd.indexer_max_retry_delay` (`max_retry_delay_seconds` in the connector config; default 15s, range 1-3600), and sleeps a random value between the *previous* step and the new capped step (jitter avoids many managers retrying in lockstep).
+- **Each subsequent consecutive failure** - doubles the delay, capped at `max_retry_delay_seconds` (default 15 s; the engine sets it from `analysisd.indexer_max_retry_delay`, range 1-3600), and sleeps a random value between the *previous* step and the new capped step (jitter avoids many managers retrying in lockstep).
 - **On success** (or, for async, a response confirmed not cluster-blocked) - the failure counter resets, so the next failure starts again from the base delay.
 
 Example with the defaults (base = 1s, max = 15s):
@@ -106,7 +106,8 @@ failure. `0` disables the corresponding bound. Without the budget, a persistent 
 unreachable indexer blocks the flushing worker (and, in inventory sync, the shard behind it) forever,
 long after the caller's response window closed. The deadline only gates the sleeps: one in-flight
 request can still overshoot it by up to `request_timeout_seconds`. The indexer's `Retry-After`
-header is not honored — the transport does not expose response headers (tracked in #38942).
+header is not honored — the transport hands the connector only the status code and the body of an
+error response.
 
 ### Delete-by-query
 

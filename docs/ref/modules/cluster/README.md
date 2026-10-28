@@ -81,7 +81,8 @@ cluster through a load balancer is described in [What the cluster replicates, an
 The Wazuh server cluster is managed by the `wazuh-manager-clusterd` daemon, which runs on **every**
 node and implements a master–worker architecture. Every connection is opened by a worker to the
 address in `<cluster><nodes>`; the master answers and pushes data over those connections. The
-cluster traffic is encrypted with `<cluster><key>`.
+cluster traffic is encrypted with per-connection keys derived from `<cluster><key>` (see
+[Transport Protection](../../security/cluster-model.md#transport-protection)).
 
 When a worker connects, the master refuses it if its node name is not made of letters, digits, `_`
 and `-` (error `3060`), is already connected (`3028`) or equals the master's own (`3029`), if its
@@ -95,7 +96,7 @@ Periodic tasks, with their intervals (internal, not configurable):
 |---|---|---|---|
 | Keep alive | worker | 60 s | Sends a keep-alive to the master. After 2 failed attempts in a row the worker disconnects. |
 | Keep alive | master | 60 s | Closes the connection of a worker that has sent no keep-alive for 120 s. |
-| Integrity check / Integrity sync | worker | 9 s | Sends the metadata of its synchronized files to the master, which compares it with its own and sends back the files that are missing, different or extra. |
+| Integrity check / Integrity sync | worker | 9 s | Sends the metadata of its synchronized files to the master, which compares it with its own and sends back the missing and different files plus the list of extra ones, which the worker deletes. |
 | Local integrity | master | 8 s | Recalculates the metadata (BLAKE2b hash, modification time) of its synchronized files, so the comparison is not repeated for each worker. |
 | Agent-info sync | worker | 10 s | Sends the agent information held by its local `wazuh-manager-db` (status, keep-alive, agent metadata) to the master's `wazuh-manager-db`. |
 | Local agent-groups | master | 10 s, after a 30 s start delay | Reads the agent-group assignments not yet synchronized from its `wazuh-manager-db` and broadcasts them to every connected worker. |
@@ -155,7 +156,10 @@ The debug level can also be set with the `wazuh_clusterd.debug` internal option 
 `-d`. When the option is absent or `0`, the `-d` level applies, so `wazuh-manager-control enable debug`
 (which starts every daemon with `-d`) raises the cluster log to debug level 1.
 
-All cluster logs are written to `/var/wazuh-manager/logs/cluster.log`.
+All cluster logs are written to `/var/wazuh-manager/logs/cluster.log`, in the form
+`<date> <level>: [<tag>] [<subtag>] <message>`. The daemon rotates the file itself at midnight into
+`/var/wazuh-manager/logs/cluster/<YYYY>/<Mon>/cluster.log-<DD>.gz` (mode `0640`, directories
+`0750`); it is not rotated by the manager's log rotation task.
 
 ---
 

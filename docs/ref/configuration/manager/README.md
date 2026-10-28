@@ -57,9 +57,10 @@ element is rejected as a duplicate.
     without overflowing a reader (a duration at most 999999999 seconds; the limits per unit are in
     [the reference](reference.md)). `cluster.bind_addr` must be a host name or an IP address, and every
     `indexer.hosts` entry an `http://` or `https://` URL that names a host.
-  - What `validate` does not judge, and the start does: the `indexer.ssl` certificate and key (one set
-    without the other passes `validate` and the API's `PUT`; the other half keeps its default file, and the
-    credential check refuses the resulting pair at the next start with error 22), where the TLS files lie and what they hold (the
+  - What `validate` does not judge, and the start does: the `indexer.ssl` certificate and key (both default
+    to empty, so one set without the other passes `validate` and the API's `PUT`; the credential check refuses
+    it at the next start with `INVALID indexer.ssl.<missing>: must be set together with indexer.ssl.<other>`,
+    error 22), where the TLS files lie and what they hold (the
     credential check refuses a path outside `/etc/wazuh-manager/certs`, an expired or mismatched pair —
     [Credentials](../../getting-started/credentials.md)), the internal options (read only by each daemon at
     start), and what only a running system shows (an address this host does not have, a port another
@@ -82,9 +83,9 @@ element is rejected as a duplicate.
     - memory: `remote.legacy.queue_size` is judged by type and range (at most 134217728, which asks for
       1 GiB of queue slots at start), not against what the host can allocate — see the option in
       [the reference](reference.md);
-    - what the cluster protocol can carry: a `cluster.name` or `cluster.node_name` outside
-      `[A-Za-z0-9_-]` passes every check, and a worker so named never joins its master (see
-      [Cluster configuration](../../modules/cluster/configuration.md)).
+    - what the cluster protocol can carry: the schema only requires `cluster.name` and `cluster.node_name`
+      to be non-empty — the names the handshake cannot carry are listed in
+      [Cluster configuration](../../modules/cluster/configuration.md).
   - `get <key.path>` prints one option of the **effective** document (defaults applied): scalars as
     plain text, objects and lists as JSON. A key the effective document does not hold exits `2` with
     `wazuh-manager-conf: '<key.path>' is not set` — an option with no default left out of the file, and
@@ -116,7 +117,7 @@ element is rejected as a duplicate.
 | Module | Section | Internal Options |
 |--------|---------|------------------|
 | [Server API](../../modules/server-api/configuration.md) | - (`api.yaml`) | - |
-| [Authentication](../../modules/authd/configuration.md) | `auth` | `authd.*`, `auth.timeout_seconds`, `auth.timeout_microseconds` |
+| [Authentication](../../modules/authd/configuration.md) | `auth`, `remote` (`legacy.enabled`, and `https.port`/`global_prefix` for the enrollment tokens it mints; read-only consumer) | `authd.*`, `auth.timeout_seconds`, `auth.timeout_microseconds`; shared with other daemons: `remoted.jwt_max_age`, `remoted.jwt_clock_skew` (also Remoted) and `wazuh_modules.manager_task_max_pending_deletes` (also the Task Manager) |
 | [Cluster](../../modules/cluster/configuration.md) | `cluster` | `wazuh_clusterd.debug` |
 | [Database Sync](../../modules/database-sync/configuration.md) | - | `wazuh_database.*` |
 | [Engine](../../modules/engine/configuration.md) | `cluster`, `logging`, `indexer` (read-only consumer) | `analysisd.*` |
@@ -124,8 +125,8 @@ element is rejected as a duplicate.
 | [Inventory Sync Server](../../modules/inventory-sync-server/configuration.md) | `indexer` (read-only consumer) | `wazuh_modules.inventory_sync_server_*` |
 | [Logging](../../modules/logging/configuration.md) | `logging` | - |
 | [Remoted](../../modules/remoted/configuration.md) | `remote` (`legacy`, `https`, `agents`), `global` (read-only consumer) | `remoted.*`, `fim.*_limit`, `sca.checks_limit`, `syscollector.*_limit` |
-| [Task Manager](../../modules/task_manager/configuration.md) (incl. [agent upgrades](../../modules/task_manager/agent-upgrades.md)) | `task-manager`, `global` ([`agents_disconnection_time`](../../modules/task_manager/configuration.md#agents_disconnection_time) is documented here), `remote` (delivery gates, read-only consumer) | `wazuh_modules.manager_task_*`, `wazuh_modules.upgrade_*` |
-| [Vulnerability Scanner](../../modules/vulnerability-scanner/configuration.md) | `vulnerability-detection` | `vulnerability-detection.*`, `wazuh_modules.indexer_*` |
+| [Task Manager](../../modules/task_manager/configuration.md) (incl. [agent upgrades](../../modules/task_manager/agent-upgrades.md)) | `task-manager`, `global` ([`agents_disconnection_time`](../../modules/task_manager/configuration.md#agents_disconnection_time) is documented here), `remote` (delivery gates, read-only consumer) | `wazuh_modules.manager_task_*` (except `manager_task_create_timeout`, read only by the Vulnerability Scanner; `manager_task_max_pending_deletes` is also read by authd), `wazuh_modules.upgrade_*` |
+| [Vulnerability Scanner](../../modules/vulnerability-scanner/configuration.md) | `vulnerability-detection`, `indexer` (read-only consumer) | `vulnerability-detection.*`, `wazuh_modules.indexer_*`, `wazuh_modules.manager_task_create_timeout` |
 | [Wazuh DB](../../modules/wazuh_db/configuration.md) | `wdb` | `wazuh_db.*` |
 
 Every option, with its type, default, constraints and description, is listed in the
@@ -183,7 +184,7 @@ with no flags, or with `-d` after `wazuh-manager-control enable debug`. Usage:
 | `-V` | Print the version and license and exit with status `0` |
 | `-d` | Raise the debug level by one; repeat it (`-dd`) for level 2. When given, `wazuh_modules.debug` is ignored |
 | `-f` | Run in the foreground instead of as a daemon |
-| `-t` | Test the configuration and exit: load `wazuh-manager.conf` and the internal options, read every section the modules use, then validate the whole file, including the certificate files it names. Exit `0` when valid, `1` otherwise — also when a module's reader refuses a section it borrows (the task manager reads `global` and `remote`) and logs an `ERROR`, which a running daemon only warns about and replaces with its defaults. Implies `-f` |
+| `-t` | Test the configuration and exit: load `wazuh-manager.conf` and the internal options, read every section the modules use, then validate the whole file, including the certificate files it names. Exit `0` when valid, `1` otherwise — also when a module's reader refuses a section it borrows (the task manager reads `global` and `remote`): the reader logs a `WARNING` and falls back to its defaults, which a running daemon accepts and `-t` refuses. Implies `-f` |
 | `-c <config>` | Manager configuration file to read (default `/etc/wazuh-manager/wazuh-manager.conf`). A relative path is resolved against the directory the command runs from |
 | `-u <user>` | User the daemon switches to at start, after raising its file descriptor limit (default `wazuh-manager`); the group is always `wazuh-manager` |
 | `-h` | Print the usage and exit with status `1` |
@@ -216,12 +217,9 @@ Two limits apply to every daemon, and they have different owners:
 | `wazuh_db.rlimit_nofile` | `65536` | `1024`-`1048576` |
 | `wazuh_modules.rlimit_nofile` | `65536` | `8192`-`1048576` |
 
-`wazuh-manager-analysisd` (the engine) has no option: at start it raises its own soft limit to a
-fixed `8192`, never above the hard limit it inherited and never below what it already had, and logs
-`File descriptor limit is <n>, below the 8192 requested by the engine. …` when the hard limit is lower.
-Its HTTP servers hold one descriptor per client connection, and its IoC store is a RocksDB database
-opened with RocksDB's default `max_open_files` (`-1`, every file kept open), so its usage grows with the
-size of the IoC data. `authd`, `apid` and `clusterd` keep the limits they inherit.
+`wazuh-manager-analysisd` (the engine) has no option: it raises its own soft limit to a fixed `8192` the
+same way — see [Process limits](../../modules/engine/configuration.md#process-limits). `authd`, `apid`
+and `clusterd` keep the limits they inherit.
 
 When the hard limit is below the option, the daemon runs with the hard limit and logs a warning
 naming both values, for example

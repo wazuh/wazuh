@@ -58,7 +58,7 @@ Because the account's operator chooses the context, the flag puts every role lin
 
 **Neither user ships with a password.** `rbac/default/users.yaml` carries none: each is seeded with the value the credential resolver supplies (`WAZUH_MANAGER_API_PASSWORD`, `WAZUH_MANAGER_WUI_PASSWORD`), or with a freshly generated 32-character password when nothing supplies one, and the result is published in `/etc/wazuh-manager/export/credentials.env` (readable by root only; the dashboard on the same host reads its password there). Only a master seeds: the Server API runs there. Two installations therefore never share a credential. An already-seeded database is never reseeded, so both keys are ignored from that point on however they are set. See [Credentials](../../getting-started/credentials.md).
 
-They are reserved IDs (`<= MAX_ID_RESERVED`), so only another reserved user can change their password — `update_user` needs a `current_user` naming who is asking, which the API takes from the token's `sub`.
+They are reserved IDs (`<= MAX_ID_RESERVED`), so only another reserved user, logged in without `run_as`, can change their password or their `allow_run_as` flag — `update_user` and `edit_run_as` need a `current_user` naming who is asking, which the API takes from the token's `sub`, and refuse a `run_as` token with `5011` whoever holds it.
 
 The `administrator` role these two users carry is also the only one that receives `secrets_read`,
 the policy behind `cluster:read_secrets` and `agent:read_secrets`. An `rbac.db` seeded **before** that policy existed does not

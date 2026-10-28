@@ -60,7 +60,7 @@ The following components should be included in your Wazuh manager backup strateg
   - `store/` - engine content store (schemas, enrichment definitions)
   - `ruleset/` - ruleset content the engine's content manager synchronizes from the indexer
   - `kvdb-ioc/` - IOC key-value store
-  - `mmdb/`, `tzdb/` - GeoIP and timezone databases, reinstalled with the package
+  - `mmdb/`, `tzdb/` - GeoIP and timezone databases, shipped by the package (an upgrade keeps `mmdb/` with the rest of `data/` and replaces only `tzdb/`), so they need no backup of their own
 
 #### Optional Data
 

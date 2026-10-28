@@ -316,11 +316,9 @@ protocols are in use:
 ## Logging Architecture
 
 ### Custom Log Rotation (`core/wlogging.py`)
-- The `CustomFileRotatingHandler` class extends Python's logging to:
-  - Rotate log files when they reach a size threshold
-  - Compress rotated files with **gzip**
-  - Set file permissions to `0o640`
-  - Store rotated logs in a dedicated directory
+- `logs/api.log` and `logs/api.json` are rotated by the API process itself, with two handlers that extend Python's logging:
+  - `TimeBasedFileRotatingHandler` rotates at midnight (the default), `SizeBasedFileRotatingHandler` when the file reaches `logs.max_size.size` (when `logs.max_size.enabled` is `true`, which replaces the midnight rotation)
+  - The rotated file is compressed with **gzip** into `logs/api/<YYYY>/<Mon>/api.log-<DD>.gz` (`api.json-<DD>.gz`; a size rotation appends `_<n>`, counted from `1` within the day), the directory created with mode `0750` and the file set to `0640`
 
 ### API Access Logging (`api/alogging.py`)
 - Every API request generates an access log entry, including one for a request the API rejected: the entry is written after the response, so a body the OpenAPI validator refused has still been recorded

@@ -328,7 +328,7 @@ Provides 5 CLI entry points that exercise the API via `api-communication`:
 
 | CLI Command | Module | Domain |
 |------------|--------|--------|
-| `engine-router` | `engine_router` | Route CRUD, table, `ingest` (sends a `QueuePost_Request`, which `get_endpoint` does not map — the command fails; the engine has no such route) |
+| `engine-router` | `engine_router` | Route CRUD and table (`add`, `delete`, `get`, `list`, `reload`, `update`); `router.proto` still declares `QueuePost_Request`, which no route serves and `get_endpoint` does not map |
 | `engine-test` | `engine_test` | Tester sessions, integration test runs |
 | `engine-event-dumper` | `engine_event_dumper` | Event Dumper activate/deactivate/status |
 | `engine-public` | `engine_public` | Content validation, IOC, logtest cleanup, status |

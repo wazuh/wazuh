@@ -110,8 +110,10 @@ delivered is answered `err Cannot send request`, `err Maximum attempts exceeded`
 
 `/var/wazuh-manager/bin/wazuh-manager-remoted` is started by `wazuh-manager-control start` (the
 `wazuh-manager` systemd unit runs that command), which passes no option except `-d` after
-`wazuh-manager-control enable debug`, and runs `-t` on it before every start. The other options are
-for running the daemon by hand.
+`wazuh-manager-control enable debug`, and runs `-t` on it before every start. `wazuh-manager-control
+reload` restarts every daemon **except** remoted, so agents stay connected — it still runs remoted's
+`-t`, but a changed `<remote>` option or `remoted.*` internal option takes effect only on `restart`.
+The other options are for running the daemon by hand.
 
 | Option | Effect |
 |---|---|

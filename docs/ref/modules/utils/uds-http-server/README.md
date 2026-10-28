@@ -17,7 +17,7 @@ Five servers, each on its own socket under `/var/wazuh-manager/queue/sockets/`:
 | Consumer | Daemon | Socket | Routes | Transport settings |
 |---|---|---|---|---|
 | Inventory Sync Server | `wazuh-manager-modulesd` | `inventory-sync-http.sock` | [API reference](../../inventory-sync-server/api-reference.md) | `wazuh_modules.inventory_sync_server_*` internal options — [configuration](../../inventory-sync-server/configuration.md) |
-| Task Manager | `wazuh-manager-modulesd` | `task-http.sock` | [API reference](../../task_manager/api-reference.md) | I/O threads: `wazuh_modules.manager_task_io_threads` ([threading](../../task_manager/manager-tasks.md#threading)); body cap of `POST /v1/manager-tasks`: [`max_payload_bytes`](../../task_manager/configuration.md#max_payload_bytes) + 64 KiB; the rest fixed in code |
+| Task Manager | `wazuh-manager-modulesd` | `task-http.sock` | [API reference](../../task_manager/api-reference.md) | I/O threads: `wazuh_modules.manager_task_io_threads` ([threading](../../task_manager/manager-tasks.md#threading)); body cap of `POST /v1/manager-tasks`: [`max_payload_bytes`](../../task_manager/configuration.md#max_payload_bytes) + 64 KiB; the rest fixed in code (server-wide body cap 8 MiB) |
 | Vulnerability Scanner | `wazuh-manager-modulesd` | `vd-http.sock` | [Local HTTP API](../../vulnerability-scanner/api-reference.md#local-http-api-vd-httpsock) | Fixed in code: 2 I/O threads, 3600 s response backstop |
 | Wazuh DB | `wazuh-manager-db` | `wdb-http.sock` | [API reference](../../wazuh_db/api-reference.md) | Fixed in code: the library defaults |
 | Remoted admin socket | `wazuh-manager-remoted` | `remote-admin-http.sock` | `GET /`, `GET /metrics`, `GET /status`, `GET /tls` — [Local admin socket](../../remoted/README.md#local-admin-socket) | Fixed in code: 2 I/O threads, 64 connections, 16 reserved for control |
@@ -92,11 +92,20 @@ name (`<name>` below is the consumer's, for example `inventory sync`):
 | WARN | `Closed <n> connection(s) <period> that timed out before a response was due (last phase: …).` | Slow or vanished peer while reading the request or writing the reply |
 | WARN | `Failed to accept <n> <name> connection(s) <period>: <reason>. The listener is still accepting; peers will retry.` | Transient `accept()` failure, usually descriptor exhaustion |
 | ERROR | `<n> request(s) failed while being dispatched <period> and were answered 500 (last: …).` | The handler threw |
+| ERROR | `Could not bring up <n> accepted <name> connection(s) <period> (last: …).` | An accepted connection could not be set up (allocation failure); it was closed |
+| ERROR | `The <name> server's I/O threads caught <n> exception(s) <period> and resumed (last: …).` | An I/O thread hit an exception outside any handler and re-entered its loop |
 | INFO | `Removing the existing socket at '<path>' (a leftover from an unclean shutdown) before binding.` | A stale socket file was replaced at start |
-| WARN | `Not unlinking '<path>': another process has re-bound it since this server started.` | Two servers fought over one socket path (double start) |
+| WARN | `Could not set mode <mode> on '<path>': <reason>. The peer may not be able to connect.` | The post-`bind()` `chmod` failed; the socket keeps the umask's mode |
+| WARN | `reserved control connections (<n>) exceed a quarter of the <cap>-connection cap; clamping to <n>.` | A consumer configured more reserved headroom than the clamp allows |
+| WARN | `The in-flight byte budget (<n>) is below one maximum-size request (<n>); raising it, …` / `… cannot fit one request's fixed overhead (<n>) plus a minimal body; raising it, …` | A too-small budget was raised at start so that not every request is rejected |
+| ERROR | `The <name> server's acceptor did not close within 2 s; a request handler is not returning. Continuing to shut down.` | `stopAccepting()` overran its first bounded wait |
+| WARN | `<n> <name> request(s) had not been answered after <drain> s; closing their connections. The peer will see them fail rather than time out.` | `stop()` force-closed deferred replies still outstanding after the drain window |
+| ERROR | `The <name> server's I/O threads did not drain within 2 s; forcing the I/O context to stop.` | `stop()` overran its last bounded wait |
+| WARN | `Not unlinking '<path>': another process has re-bound it since this server started.` / `Not unlinking '<path>': something removed it since this server started.` | Two servers fought over one socket path (double start), or the file was deleted underneath |
 
-A malformed request (`400`) and a peer that leaves while its reply is pending are logged
-only at debug level.
+A malformed request (`400`), a peer that leaves while its reply is pending and a response
+that could not be written are logged only at debug level. The shutdown INFO lines are in
+[Architecture](architecture.md#two-phase-shutdown-s1s2s3).
 
 ## Related
 

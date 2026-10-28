@@ -121,7 +121,7 @@ Key filters: `agents_list`, `status`, `older_than`, `os.type`, `os.platform`, `o
 
 #### Add agent
 
-**`POST /agents`** — Create a new agent (`name` required; `ip` defaults to the one detected). Returns the agent ID and registration key.
+**`POST /agents`** — Create a new agent (`name` required; `ip` takes an address, a network in CIDR form or `any`, and defaults to `any`, so the agent may connect from any address). Returns the agent ID and registration key.
 
 ```bash
 curl -k -X POST "https://localhost:55000/agents?pretty=true" \
@@ -577,7 +577,7 @@ Errors follow a structured JSON response format.
 | 415       | Unsupported Media Type | A `Content-Type` the operation does not accept, or a body sent with no `Content-Type` at all (`6002`), on every operation that takes a body, the `run_as` login included |
 | 417       | Expectation Failed | An `Expect` header other than `100-continue` |
 | 429       | Too Many Requests | Rate limit exceeded (`6001` authenticated, `6005` unauthenticated), or too many logins already waiting for their password check (`6006`) |
-| 500       | Internal Error    | Check manager logs       |
+| 500       | Internal Error    | Check `logs/api.log`; also a request that exceeded `intervals.request_timeout` without `wait_for_complete=true` (`3021`), or a core daemon that is down (`1017`, below) |
 
 ### Exception Hierarchy
 

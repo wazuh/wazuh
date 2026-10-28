@@ -74,18 +74,19 @@ A manager installed with `install.sh` has no package to remove it: `sudo tools/p
 prompt, run from a source checkout) stops it and deletes `/var/wazuh-manager`, `/etc/wazuh-manager`, the
 units and the user. It also removes any Wazuh package and an agent in `/var/ossec`.
 
-An `install.sh` run over a DEB or RPM rewrites the package's own unit in `/usr/lib/systemd/system`.
-On a Debian host, an `install.sh` from an earlier build wrote a second copy to
-`/etc/systemd/system/wazuh-manager.service` instead. No package owns that copy, so `dpkg --purge` and
-`rpm -e` leave it behind, still registering a service for the removed `/var/wazuh-manager`. Delete it after
-the removal:
+An `install.sh` run over a DEB or RPM rewrites the package's own unit in `/usr/lib/systemd/system`
+(and removes any copy under `/etc/systemd/system`). With no package unit in place — a plain source
+installation, or an `install.sh` run after a package was removed — it writes
+`/etc/systemd/system/wazuh-manager.service` on every host but RHEL and CentOS, which get `/usr/lib`.
+Every package installation or upgrade deletes that `/etc/systemd/system` copy (the DEB `postinst` and the
+RPM `%posttrans` both do), so it survives only on a host whose package was removed and never installed
+again. No package owns it, so `dpkg --purge` and `rpm -e` leave it behind, still registering a service for
+the removed `/var/wazuh-manager`. Delete it after the removal:
 
 ```bash
 sudo rm -f /etc/systemd/system/wazuh-manager.service
 sudo systemctl daemon-reload
 ```
-
-Installing a package again also deletes that copy.
 
 ## Agent
 

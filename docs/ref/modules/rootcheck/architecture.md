@@ -426,8 +426,9 @@ rootcheck.sleep=50
 Enable verbose logging:
 
 ```bash
-# Add to internal_options.conf
-rootcheck.debug=2
+# Add to internal_options.conf. Rootcheck runs inside wazuh-syscheckd, so its
+# debug level is syscheck.debug (0-2); there is no rootcheck.debug key.
+syscheck.debug=2
 
 # Restart agent
 /var/ossec/bin/wazuh-control restart

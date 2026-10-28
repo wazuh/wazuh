@@ -236,6 +236,9 @@ definition for wazuh_modules.<option>: '<value>'.`
 | `wazuh_modules.manager_task_claim_grace` | 30 s | 1–3600 | Slack before a claimed row is considered reclaimable |
 | `wazuh_modules.manager_task_wdb_timeout` | 10 s | 1–600 | Deadline on each agent-removal request the retention sweep sends to `wazuh-manager-authd`. The recurring handlers' wazuh-db queries use a fixed 10 s socket deadline instead |
 
+A `manager_task_backoff_base` or `manager_task_defer_base` above `manager_task_backoff_cap` is
+lowered to the cap when the module starts.
+
 `manager_task_max_attempts` and `manager_task_max_defer` are **defaults**. The registry carries
 per-type overrides, and `agent_delete_indexer` sets both to unbounded. Those overrides are not
 operator knobs: a deployment that gave agent deletion a finite budget would silently reintroduce

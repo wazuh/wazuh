@@ -96,6 +96,9 @@ vs <-->|3| cm
 %% Modulesd ↔ Gateway (UDS relay: POST /stateful → queue/sockets/inventory-sync-http.sock)
 remoted <-->|3| is
 
+%% An agent's on-demand rescan request is relayed to the scanner's own socket (queue/sockets/vd-http.sock)
+remoted -->|3| vs
+
 %% Remoted asks for an agent's pending tasks and hands them back in the POST /control response
 remoted -->|4,5| tm
 
@@ -119,6 +122,7 @@ clusterd -->|4,8| ks
 %% Management → Internal
 api -->|5,6| tm
 api -->|6| engine & wdb & remoted
+api -->|3,6| vs
 api -->|1,6,10| authd
 api -->|7| ctrl
 api -->|8| clusterd
@@ -213,7 +217,7 @@ checking the files the configuration names, so a missing certificate does not hi
 
 | Action | Behaviour |
 | ------ | --------- |
-| `start` | Runs the four pre-start checks below, empties `tmp/`, then starts each daemon that is not already running. `wazuh-manager-analysisd` counts as started once its API answers on `queue/sockets/engine-api-http.sock`; the script waits for its pid file for up to 10 seconds and then probes the API up to 120 times, a second apart, before giving up with `wazuh-manager-analysisd did not respond correctly after 120 attempts.` A daemon that fails to start stops the sequence with `<daemon> did not start correctly.` and exit status `1`. |
+| `start` | Runs the four pre-start checks below, empties `tmp/`, then starts each daemon that is not already running. `wazuh-manager-analysisd` counts as started once its API answers on `queue/sockets/engine-api-http.sock`; the script waits for its pid file for up to 10 seconds (`Failed to obtain PID for wazuh-manager-analysisd` when it never appears) and then probes the API up to 120 times — each probe gives the engine 5 seconds to answer, then the script waits a second — before giving up with `wazuh-manager-analysisd did not respond correctly after 120 attempts.` (an engine that exits meanwhile ends the wait at once with `wazuh-manager-analysisd died during the readiness check.`). A daemon that fails to start stops the sequence with `<daemon> did not start correctly.` and exit status `1`. |
 | `stop` | Stops every daemon: `SIGTERM`, then up to 30 seconds for each before `SIGKILL` (`Process <daemon> couldn't be terminated. It will be killed.`). |
 | `restart` | Runs the first three pre-start checks **while the manager is still running** (a refusal leaves it up), stops every daemon, resolves credentials, and starts them again. |
 | `reload` | `restart` for every daemon except `wazuh-manager-remoted`, which keeps running, so agent connections stay up. Its checks still include `wazuh-manager-remoted -t`: remoted reads the configuration at its next restart, so a `remote` change it would refuse is refused now, while the manager is up. |
@@ -349,7 +353,7 @@ Below, `HTTP` is HTTP/1.1 over the socket, reachable with `curl --unix-socket`. 
 | `queue/sockets/remote-admin-http.sock`   | wazuh-manager-remoted | HTTP     | Operator-facing admin and metrics endpoint                         |
 | `queue/sockets/engine-api-http.sock`     | wazuh-manager-analysisd | HTTP     | Engine API: content (`_internal/content/*`, `content/validate/*`), IOC (`content/ioc/*`), router, tester and `logtest`, GeoIP databases, metrics, `status`, event dumper, raw event indexer status; see [Engine API reference](modules/engine/api-reference.md) |
 | `queue/sockets/engine-ingest-http.sock`  | wazuh-manager-analysisd | HTTP     | Event ingestion                                                    |
-| `queue/sockets/inventory-sync-http.sock` | modulesd (Inventory Sync Server) | HTTP     | Stateful sync, agent-reported stats and config, agent deletion      |
+| `queue/sockets/inventory-sync-http.sock` | modulesd (Inventory Sync Server) | HTTP     | Stateful sync (`POST /stateful`), agent-reported stats and config (`POST /stats`, `POST /config`), the two manager-task routes the Task Manager drives (`POST /_internal/agents/delete`, `POST /_internal/vd/scan`), `GET /metrics` and the `GET /` liveness probe; see [Inventory Sync Server API reference](modules/inventory-sync-server/api-reference.md) |
 | `queue/sockets/vd-http.sock`             | modulesd (Vulnerability Scanner) | HTTP     | On-demand scans and feed operations, called by remoted and the API |
 | `queue/sockets/keystore.sock`            | modulesd (Keystore Server) | Framed   | Indexer credential retrieval, called by clusterd (the framework's `KeystoreClient`, from its Indexer tasks) |
 | `queue/sockets/control.sock`             | modulesd (Control)    | Raw      | Daemon restart and reload: one unframed command per connection, a NUL-terminated reply, then the manager closes it ([Control](modules/control/README.md)) |

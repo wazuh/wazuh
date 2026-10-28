@@ -64,7 +64,7 @@ and `504` when a handler has not answered within the transport's 300 s response 
 | `400` | `invalid_json` | the body is not valid JSON (a valid non-object body is treated as `{}`) |
 | `400` | `parsing_error` | a required field is missing, empty or out of range — the message names it |
 | `404` | `not_found` | `/v1/manager-tasks/get` for an id with no row |
-| `413` | `payload_too_large` | the serialized `payload` exceeds `max_payload_bytes` (message `payload exceeds max_payload_bytes`) |
+| `413` | `payload_too_large` | the serialized `payload` exceeds `max_payload_bytes` (message `payload exceeds max_payload_bytes (<limit>)` on the agent-task routes, `payload exceeds max_payload_bytes` on `/v1/manager-tasks`) |
 | `500` | `internal_error` | an unexpected exception in the handler, including `/v1/tasks` failing to store its row (logged; the message says "see the manager log") |
 | `503` | `queue_full` | `/v1/manager-tasks`: the type's admission bound is reached (body also carries `"result":"queue_full"`) |
 
@@ -172,8 +172,11 @@ id back as `last_task_id` until a page comes back empty.
 deliberate ways:
 
 - **They are asynchronous.** The handler parses the body, hands the batch to the upgrade worker pool
-  and returns without answering; the reply is sent from the pool when the batch finishes, at most
-  [`upgrade_batch_deadline`](configuration.md#internal-options-the-upgrade-path-adds) (180 s) later.
+  and returns without answering; the reply is sent from the pool when the batch finishes, normally
+  within [`upgrade_batch_deadline`](configuration.md#internal-options-the-upgrade-path-adds) (180 s).
+  The deadline is checked between downloads, not inside one: a transfer already in flight when it
+  passes runs out its own `upgrade_download_timeout` first, and the per-agent wazuh-db lookups that
+  precede the downloads are bounded by their own 10 s socket deadline instead.
 - **They always answer `200`**, including for a body that could not be parsed. The verdicts are in
   the body, and the Server API turns each per-agent `error` into an exception code by adding 1810; a
   non-2xx would make that client raise before it ever read them.
@@ -212,7 +215,7 @@ without an `agent`. The per-agent codes:
 | 2 | 1812 | `Required parameters in json message where not found` (or the parser's own text) — also every agent of a request larger than `upgrade_max_agents` |
 | 3 | 1813 | `JSON parameter not recognized` (or the parser's own text) |
 | 4 | 1814 | `Task manager communication error` — the batch queue is full, the module is shutting down, or the rows could not be stored; the Server API halves the chunk and retries |
-| 6 | 1816 | `Agent information not found in database` — no such agent in this node's wazuh-db, the query did not complete, or the agent's record is missing what a repository upgrade needs (platform, architecture, OS major version — and minor on Ubuntu — or a readable agent version). In a cluster the Server API drops it for an agent another node reported on, so it reaches the top level only when no node could create the task |
+| 6 | 1816 | `Agent information not found in database` — no such agent in this node's wazuh-db, the query did not complete, or the agent's record is missing what a repository upgrade needs (platform, architecture, OS major version — and minor on Ubuntu — or a readable agent version). After five consecutive lookups that did not complete in one batch, the remaining agents get this code without being queried. In a cluster the Server API drops it for an agent another node reported on, so it reaches the top level only when no node could create the task |
 | 7 | 1817 | `The WPK for this platform is not available` |
 | 8 | 1818 | `Remote upgrade is not available for this agent version` |
 | 9 | 1819 | `Direct upgrade to v5.0.0 is not supported. Please upgrade to v4.14.x first` |

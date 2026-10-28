@@ -71,8 +71,9 @@ Two consequences drive every rule on this page:
    reads it (see [4.8](#48-the-manager-sees-the-balancers-address)) — and, on the flip side, a header
    the manager relies on is not protected by it.
 
-There is one more property with no way around it: **remoted has no plaintext listener.** The
-connection to it is always TLS.
+There is one more property with no way around it: **the HTTPS events API has no plaintext
+listener.** The connection to port `1517` is always TLS (the legacy `1514` listener for 4.x agents
+is a separate protocol and not what this page balances).
 
 ## 3. The two deployment models
 
@@ -152,8 +153,10 @@ untouched (passthrough). A prefix mismatch between agent and manager surfaces as
 If you cannot align the prefix end to end, give remoted its **own port or hostname**. Query
 strings and extra headers are fine — they are forwarded unchanged as long as the proxy does not
 rewrite the target. Repeated slashes are not: an empty segment (`/wazuh-manager//stateless`) does
-not route and is answered `404`. (Percent-encoded spellings of a path also route — the
-router decodes ordinary bytes for matching — so this changes nothing for a well-behaved client.)
+not route and is answered `404`. Neither does a percent-encoded spelling of a route
+(`/wazuh-manager/%73tateless`): matching is exact and case-sensitive, so it is answered `404` too —
+which changes nothing for a well-behaved client, as no route path contains a byte that needs
+encoding.
 
 ### 4.2. The backend connection must be TLS 1.3
 

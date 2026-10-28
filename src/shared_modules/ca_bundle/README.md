@@ -101,7 +101,7 @@ src/shared_modules/ca_bundle/
 ##
 ```
 
-`Publication` is the generation (Unix seconds) and must parse as a 64-bit integer; all four fields
+`Publication` is the generation (Unix seconds) and must parse as a non-negative 64-bit integer; all four fields
 must be present on their own lines, in this order, between the fences, or the block is no block
 (D-3). `Updated` and `Written by` are for the operator reading the file; nothing is decided from
 them.

@@ -62,15 +62,17 @@ The tool exits 0 on success and 1 otherwise. An error is printed to standard err
 argument error, the usage to standard output); any argument not in the table is refused as
 `Unknown option: <argument>` before the keystore is opened. The one silent exit 1 is `-g` on a key that is not
 set or is empty: that is an answer, not an error, so nothing is printed. There is no delete
-operation; the resolver's `--clear` mode removes the whole database instead.
+operation; the resolver's `--clear` mode empties the whole `queue/keystore/` directory instead.
 
-Components read the credentials once per process: restart the manager after changing them.
+The C++ components read the credentials once per process (`wazuh-manager-modulesd`,
+`wazuh-manager-analysisd`): restart the manager after changing them. The Python framework reads them
+again for every Indexer client it builds.
 
 ## Concurrent access
 
 Every `get()` and `put()` — from the CLI, from `keystore_server` and from the C++ components that read
-the credentials at start (the Indexer Connector inside the vulnerability scanner, inventory sync and
-the engine) — opens the database for that one operation and closes it again. RocksDB allows a single
+the credentials at start (the Indexer Connector inside the vulnerability scanner, the inventory sync
+server and the engine) — opens the database for that one operation and closes it again. RocksDB allows a single
 open handle per database, so two operations at the same moment contend for its lock. The second one
 waits: it retries the open with a growing backoff, each step randomized so that callers that collided
 once do not collide again on every retry. A daemon waits up to 5 seconds, then fails that one

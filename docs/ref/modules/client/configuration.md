@@ -616,6 +616,11 @@ agent.https_backoff_cap=60000
 # in seconds (default: 60, range 1-86400)
 agent.https_rejected_retry_interval=60
 
+# Compress request bodies with zstd (default: 1, range 0-1). On a 415 the
+# agent retries once uncompressed and disables compression for that stream;
+# see the remoted timing-tuning page for the manager-side switch.
+agent.https_compression_enabled=1
+
 # Largest WPK accepted by a remote_upgrade download, in bytes
 # (default: 209715200 = 200 MiB)
 agent.https_wpk_max_download_bytes=209715200

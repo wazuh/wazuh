@@ -111,7 +111,7 @@ The agent's daemons read these sections from `agent.conf` (`read_main_elements()
 | `<agent-info>` | Agent info module |
 | `<gcp-pubsub>`, `<gcp-bucket>` | Google Cloud modules |
 | `<github>`, `<office365>`, `<ms-graph>` | Cloud log collection modules |
-| `<agent>` (or its 4.x spelling `<client>`) | Only its `<batch>` child; any other child is an error |
+| `<agent>` (or its 4.x spelling `<client>`) | Only its `<batch>` child (`<force_reconnect_interval>` is warned about and ignored); any other child is an error |
 
 Sections that are read only from the agent's local `ossec.conf`:
 
@@ -122,6 +122,8 @@ Sections that are read only from the agent's local `ossec.conf`:
 - `<anti_tampering>` (Unix agents): read from the local file only; ignored in `agent.conf`. Windows
   agents do not know the section, so there it makes the file invalid.
 - `<logging>`: ignored in `agent.conf`.
+- `<cluster>`: ignored. `<client_buffer>` (4.x event buffering, replaced by `<agent><batch>`) is ignored
+  with the info line `'client_buffer' is no longer used and will be ignored.`
 
 A manager-only section (`global`, `remote`, `auth`, `wdb`, `indexer`, `vulnerability-detection`,
 `vulnerability-detector`, `task-manager`) is skipped with the warning `<section> configuration is only set in the manager.` A

@@ -252,9 +252,9 @@ at or above half of it).
   '/global/agents_disconnection_time': ...`, so no daemon starts.
 - **Effect:** an agent whose last keepalive is older than this is marked `disconnected` by the
   [disconnection sweep](schedules.md#agent_disconnect_sweep), which runs on the master node only.
-  Read when `wazuh-manager-modulesd` starts; if `global` cannot be read the module logs `Cannot read
-  the global configuration; the agent disconnection sweep will use its default window.` and uses
-  900 s.
+  Read when `wazuh-manager-modulesd` starts; if `global` cannot be read, modulesd logs `Cannot read
+  the global configuration; the agent disconnection sweep will use its default window.`, uses
+  900 s, and fails `wazuh-manager-modulesd -t` — so `wazuh-manager-control` refuses the start.
 
 ```xml
 <global>
@@ -295,7 +295,8 @@ number](schedules.md#window-and-interval-are-not-the-same-number).
 Because these are internal options with no XML element, configuration on disk does not show what is
 in effect. The values `wazuh-manager-modulesd` read at start-up are reported by the node's
 active-configuration endpoint, in the `task-manager` entry of `wmodules`, under `recurring_tasks`
-(and the upgrade options under `agent_upgrade`):
+(and, under `agent_upgrade`, only the two XML options `enabled` and `wpk_repository` — the
+`upgrade_*` internal options are not reported):
 
 ```bash
 curl -k -X GET "https://localhost:55000/cluster/<node_name>/configuration/wmodules/wmodules" \
@@ -350,8 +351,8 @@ one `remote_upgrade` agent task per agent.
 
 | Option | Default | Meaning |
 | --- | --- | --- |
-| `<upgrade_enabled>` | `yes` | `no` refuses every upgrade request, per agent, with *Upgrade procedure could not start* (Server API error 1827) |
-| `<wpk_repository>` | none | Repository to fetch WPKs from, `host/path` with or without a scheme; with no scheme, `https://` is prepended (`http://` when the request sets `use_http`). A request's own `wpk_repo` overrides it. Unset, the repository is derived from the target version: `packages.wazuh.com/<major>.x/wpk/`, or `packages.wazuh.com/wpk/` for a target below v4.0.0 |
+| `<upgrade_enabled>` | `yes` | `no` refuses every upgrade request, per agent, with *Upgrade procedure could not start* (Server API error 1827); modulesd says so once at start, at INFO: `Agent upgrades are disabled by configuration; the upgrade routes will refuse every request.` |
+| `<wpk_repository>` | none | Non-empty string (an empty element fails validation). Repository to fetch WPKs from, `host/path` with or without a scheme; with no scheme, `https://` is prepended (`http://` when the request sets `use_http`). A request's own `wpk_repo` overrides it. Unset, the repository is derived from the target version: `packages.wazuh.com/<major>.x/wpk/`, or `packages.wazuh.com/wpk/` for a target below v4.0.0 |
 
 ```xml
 <task-manager>
@@ -368,9 +369,10 @@ Two settings outside `<task-manager>` also matter: `remote.legacy.enabled` decid
 agent can be reached at all, and `remote.https.verification_mode` decides whether an agent that
 is about to become v5.x will be able to reconnect afterwards. The Task Manager reads both **once, when
 `wazuh-manager-modulesd` starts**, so after changing either run `wazuh-manager-control restart`
-(`reload` restarts modulesd but not remoted). If the `remote` section cannot be read, the module logs
+(`reload` restarts modulesd but not remoted). If the `remote` section cannot be read, modulesd logs
 `Cannot read the remote configuration; the agent upgrade delivery checks will be skipped.` and both
-gates let every agent through.
+gates let every agent through — but the same refusal fails `wazuh-manager-modulesd -t`, so under
+`wazuh-manager-control` the start is refused before that can happen.
 
 ### Internal options the upgrade path adds
 

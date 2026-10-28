@@ -53,7 +53,7 @@ runs and debugging:
 | `-f` | Run in the foreground, logging to the console as well as to the log files |
 | `-r` | Run as root: do not drop privileges to `wazuh-manager` (otherwise governed by [`drop_privileges`](#drop_privileges)) |
 | `-c <file>` | Use this API configuration file (merged over the built-in defaults) instead of `api.yaml`; when starting, a file that does not exist is error `2004` |
-| `-t` | Validate the configuration file given with `-c` (or `api.yaml`) and exit: `0` when it is valid, otherwise `Configuration not valid. ERROR: <reason>` (no error code; a missing `-c` file included) and exit `1` |
+| `-t` | Validate the configuration file given with `-c` (without `-c`, only the built-in defaults, never `api.yaml`) and exit: `0` when it is valid, otherwise `Configuration not valid. ERROR: <reason>` (no error code; a missing `-c` file included) and exit `1` |
 | `-V` | Print the version and exit |
 | `-d` | Accepted, but has no effect: the log level is [`logs.level`](#logs) |
 
@@ -153,7 +153,8 @@ checks and the SAN discovery are in [Server pairs](../../getting-started/credent
 [Subject alternative names](../../getting-started/credentials.md#subject-alternative-names).
 
 `wazuh-manager-apid` generates no certificate. When `enabled` is `true` and the configured pair is
-missing, not readable by `wazuh-manager`, or the key does not match the certificate, it logs error
+missing, not readable by `wazuh-manager`, or the key does not match the certificate — or `use_ca` is
+`true` and `ca` is missing, or `ssl_ciphers` selects no cipher even uppercased — it logs error
 `2003` naming the files in `logs/api.log` and does not start.
 
 A connection the HTTP server cannot read a request from (a TLS probe such as `openssl s_client` that sends

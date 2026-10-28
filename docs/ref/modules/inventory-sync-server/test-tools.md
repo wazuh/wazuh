@@ -193,8 +193,10 @@ Set it explicitly only to deliberately exercise the mismatch path.
 
 The `--config` file is the same JSON the QA suite uses (`qa/config.json`): a
 `clusterName` (which the driver stamps into every session's `Start.cluster_name`, since the server
-answers `403` on a cluster mismatch) and the `<indexer>` block with the hosts the module and the
-scanner should reach.
+answers `403` on a cluster mismatch; `cluster01` when absent), the `<indexer>` block with the hosts
+the module and the scanner should reach, and the indexer `username`/`password`, which the driver
+seeds into the keystore under `queue/keystore` in its working directory because the indexer
+connector refuses to start without them.
 
 ## The integration QA (`qa/`)
 
@@ -204,7 +206,8 @@ its real socket: it regenerates the Python FlatBuffers bindings from the shared 
 STATE in a real OpenSearch (documents, `_id` shape, the `wazuh.*` overlay) rather than protocol
 acks. It covers the validation matrix and identity rejections, ingestion and per-document skips,
 cleans and the composed full resync, checksum verification (including `search_after` pagination),
-metadata/group reconciliation with the `global_version` guard, agent deletion, and the VD
+metadata/group reconciliation with the `global_version` guard, the agent groups/host that `/stats`
+and `/config` copy from their reports, agent deletion, the on-demand scan route and the VD
 legitimate-skip lane. `qa/README.md` documents how to run it locally; CI runs it in the
 `5_testintegration_inventory-sync-server.yml` workflow.
 

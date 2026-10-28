@@ -1197,8 +1197,8 @@ since it's the same client instance — this is the rest of its contract. `getOf
 
 `ScanVdMetrics` (`scanvd/scanVdMetrics.hpp`) caches the `remoted.scanvd.*` counter family —
 admission decisions only, since that is all this handler does: `requests.total`,
-`version_mismatch`, `queue_full` (VD's lane at capacity), `invalid_agent`, `accepted` (VD queued
-it), `indexer_unavailable` (VD reports no healthy indexer host — its own cause, kept off the
+`version_mismatch`, `queue_full` (VD answered `scan_queue_full`: the Task Manager's admission bound
+for `vd_scan` tasks is reached), `invalid_agent`, `accepted` (VD recorded it), `indexer_unavailable` (VD reports no healthy indexer host — its own cause, kept off the
 relay window below), `vd_error` (any other relayed 503: unreachable, not ready, stopping).
 Resolved from the facade's shared `wazuh_metrics` registry via `makeScanVdMetrics()` and
 incremented inline at each outcome — same shape (and same null-object contract) as

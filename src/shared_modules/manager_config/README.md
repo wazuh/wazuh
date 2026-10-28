@@ -132,8 +132,11 @@ manager_config/
 ├── schema/wazuh-manager.schema.json
 ├── include/manager_config/{manager_config.hpp, manager_config_c.h}
 ├── src/{xmlToJson,schemaValidate,defaults,semantics,manager_config,manager_config_c}.cpp
+├── src/embeddedSchema.hpp.in       # configure_file() -> <build>/generated/embeddedSchema.hpp
+├── cli/manager-conf.cpp            # bin/wazuh-manager-conf
 └── tests/
     ├── unit/managerConfig_test.cpp   # target manager_config_utest
+    ├── cli/manager_conf_cli_test.sh  # test manager_config_cli, over bin/wazuh-manager-conf
     ├── vectors/{valid,invalid}/*.conf + expected/*.json   # shared with parity.py
     └── parity.py                     # jsonschema Draft4 must agree with the library on every vector
 ```
@@ -174,7 +177,9 @@ ctest --test-dir $WAZUH_REPO/src/build -L manager_config --output-on-failure
 `-L manager_config` is the module-wide ctest label and runs the three registered tests:
 `manager_config_utest` (GTest over the library), `manager_config_cli` (the end-to-end script over
 `bin/wazuh-manager-conf` — hence the second build target above, which is not a dependency of the test
-binary) and `manager_config_parity` (registered when a `python3` is found; it imports `jsonschema`).
+binary) and `manager_config_parity` (registered when `find_program` finds a `python3` in `$TMP_PY_VENV/bin` — `/bin`
+when the variable is unset — and nowhere else; it imports `jsonschema`, so a venv without it fails the
+test rather than skipping it).
 `-L manager_config_utest` selects the GTest alone. To run a suite by hand:
 
 ```bash

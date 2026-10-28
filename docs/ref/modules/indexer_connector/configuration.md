@@ -112,7 +112,9 @@ printf '%s' 'wazuh-manager' | /var/wazuh-manager/bin/wazuh-manager-keystore -f i
 printf '%s' '<password>' | /var/wazuh-manager/bin/wazuh-manager-keystore -f indexer -k password
 ```
 
-Each process reads the credentials once, so restart the manager after changing them.
+The C daemons that link the connector (`wazuh-manager-modulesd`, `wazuh-manager-analysisd`) read the
+credentials once per process, so restart the manager after changing them. The Python framework (API,
+cluster) reads them again for every Indexer client it builds and needs no restart.
 
 ---
 
