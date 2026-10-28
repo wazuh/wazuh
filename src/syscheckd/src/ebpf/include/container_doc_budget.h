@@ -27,7 +27,8 @@
  * different control.
  */
 
-typedef struct container_budget_decision_t {
+typedef struct container_budget_decision_t
+{
     int sync_flag;   /* 1 = report this row to the manager, 0 = withhold it. */
     int count_delta; /* How the caller must move the container-scope counter. */
 } container_budget_decision_t;

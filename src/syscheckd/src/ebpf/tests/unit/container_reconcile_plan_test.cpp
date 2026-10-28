@@ -25,22 +25,22 @@ using namespace fim_container_events;
 namespace
 {
 
-Batch PathBatch(const std::string& container_id, const std::vector<std::string>& paths)
-{
-    Batch batch;
-    batch.container_id = container_id;
-    batch.paths = paths;
-    batch.suspect = false;
-    return batch;
-}
+    Batch PathBatch(const std::string& container_id, const std::vector<std::string>& paths)
+    {
+        Batch batch;
+        batch.container_id = container_id;
+        batch.paths = paths;
+        batch.suspect = false;
+        return batch;
+    }
 
-Batch SuspectBatch(const std::string& container_id)
-{
-    Batch batch;
-    batch.container_id = container_id;
-    batch.suspect = true;
-    return batch;
-}
+    Batch SuspectBatch(const std::string& container_id)
+    {
+        Batch batch;
+        batch.container_id = container_id;
+        batch.suspect = true;
+        return batch;
+    }
 
 } // namespace
 
@@ -89,7 +89,8 @@ TEST(ContainerReconcilePlanTest, NoPathBatchMayEverAuthoriseDeletion)
     // host-form artifact, or that the container just restarted. Two of the
     // three make a DELETE a false positive, and nothing at the point of the
     // read can tell them apart.
-    const std::vector<std::vector<std::string>> shapes = {
+    const std::vector<std::vector<std::string>> shapes =
+    {
         {},
         {"/etc/passwd"},
         {"/a", "/b", "/c"},
@@ -98,14 +99,17 @@ TEST(ContainerReconcilePlanTest, NoPathBatchMayEverAuthoriseDeletion)
         {""},
     };
 
-    for (const auto& container_id : {std::string("container-a"), std::string("")})
+    for (const auto& container_id :
+            {
+                std::string("container-a"), std::string("")
+            })
     {
         for (const auto& paths : shapes)
         {
             const auto request = PlanFor(PathBatch(container_id, paths));
 
             EXPECT_FALSE(request.may_detect_deletions)
-                << "container='" << container_id << "' with " << paths.size() << " path(s)";
+                    << "container='" << container_id << "' with " << paths.size() << " path(s)";
             EXPECT_EQ(ReconcileMode::rereadPaths, request.mode);
         }
     }

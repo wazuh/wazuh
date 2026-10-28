@@ -900,18 +900,18 @@ int fim_db_count_container_rows(const char* container_id, const char* path)
     {
         int count = 0;
         auto query = SelectQuery::builder()
-                         .table(FIMDB_FILE_TABLE_NAME)
-                         .columnList({"COUNT(*) AS count"})
-                         .rowFilter(filter)
-                         .build();
+                     .table(FIMDB_FILE_TABLE_NAME)
+                     .columnList({"COUNT(*) AS count"})
+                     .rowFilter(filter)
+                     .build();
         FIMDB::instance().executeQuery(query.query(),
-                                       [&count](ReturnTypeCallback type, const nlohmann::json& row)
-                                       {
-                                           if (type == SELECTED)
-                                           {
-                                               count = row.at("count").get<int>();
-                                           }
-                                       });
+                                       [&count](ReturnTypeCallback type, const nlohmann::json & row)
+        {
+            if (type == SELECTED)
+            {
+                count = row.at("count").get<int>();
+            }
+        });
         return count;
     }
     catch (const std::exception& ex)
@@ -933,20 +933,20 @@ cJSON* fim_db_get_container_paths(const char* container_id)
     {
         std::vector<std::string> paths;
         auto query = SelectQuery::builder()
-                         .table(FIMDB_FILE_TABLE_NAME)
-                         .columnList({"path"})
-                         .rowFilter("WHERE container_id=" + sqlQuoted(container_id))
-                         .build();
+                     .table(FIMDB_FILE_TABLE_NAME)
+                     .columnList({"path"})
+                     .rowFilter("WHERE container_id=" + sqlQuoted(container_id))
+                     .build();
         FIMDB::instance().executeQuery(query.query(),
-                                       [&paths](ReturnTypeCallback type, const nlohmann::json& row)
-                                       {
-                                           const auto it = row.find("path");
+                                       [&paths](ReturnTypeCallback type, const nlohmann::json & row)
+        {
+            const auto it = row.find("path");
 
-                                           if (type == SELECTED && it != row.end() && it->is_string())
-                                           {
-                                               paths.push_back(it->get<std::string>());
-                                           }
-                                       });
+            if (type == SELECTED && it != row.end() && it->is_string())
+            {
+                paths.push_back(it->get<std::string>());
+            }
+        });
 
         std::unique_ptr<cJSON, decltype(&cJSON_Delete)> result {cJSON_CreateArray(), cJSON_Delete};
 
@@ -984,18 +984,18 @@ int fim_db_count_synced_container_docs(const char* container_id)
     {
         int count = 0;
         auto query = SelectQuery::builder()
-                         .table(FIMDB_FILE_TABLE_NAME)
-                         .columnList({"COUNT(*) AS count"})
-                         .rowFilter(containerScopeFilter(container_id, 1))
-                         .build();
+                     .table(FIMDB_FILE_TABLE_NAME)
+                     .columnList({"COUNT(*) AS count"})
+                     .rowFilter(containerScopeFilter(container_id, 1))
+                     .build();
         FIMDB::instance().executeQuery(query.query(),
-                                       [&count](ReturnTypeCallback type, const nlohmann::json& row)
-                                       {
-                                           if (type == SELECTED)
-                                           {
-                                               count = row.at("count").get<int>();
-                                           }
-                                       });
+                                       [&count](ReturnTypeCallback type, const nlohmann::json & row)
+        {
+            if (type == SELECTED)
+            {
+                count = row.at("count").get<int>();
+            }
+        });
         return count;
     }
     catch (const std::exception& ex)

@@ -79,360 +79,360 @@
 namespace fim_container_events
 {
 
-struct RouterStats
-{
-    unsigned long long routed{0};        /* events staged against a container */
-    unsigned long long host_events{0};   /* events discarded as host-cgroup traffic */
-    unsigned long long unattributed{0};  /* events whose cgroup is not yet identified */
-    unsigned long long drops_routed{0};  /* drop reports escalated to a container */
-    unsigned long long drops_host{0};    /* drop reports discarded as host traffic */
-    unsigned long long drops_deferred{0};/* drop reports for a not-yet-identified cgroup */
-    unsigned long long global_escalations{0}; /* whole-node re-baselines requested */
-    unsigned long long late_escalations{0};   /* containers identified after their events */
-    unsigned long long renames_routed{0};     /* renames escalated (source path is never reported) */
-    unsigned long long discovery_escalations{0}; /* containers walked because the kernel filter had not reached them */
-};
+    struct RouterStats
+    {
+        unsigned long long routed{0};        /* events staged against a container */
+        unsigned long long host_events{0};   /* events discarded as host-cgroup traffic */
+        unsigned long long unattributed{0};  /* events whose cgroup is not yet identified */
+        unsigned long long drops_routed{0};  /* drop reports escalated to a container */
+        unsigned long long drops_host{0};    /* drop reports discarded as host traffic */
+        unsigned long long drops_deferred{0};/* drop reports for a not-yet-identified cgroup */
+        unsigned long long global_escalations{0}; /* whole-node re-baselines requested */
+        unsigned long long late_escalations{0};   /* containers identified after their events */
+        unsigned long long renames_routed{0};     /* renames escalated (source path is never reported) */
+        unsigned long long discovery_escalations{0}; /* containers walked because the kernel filter had not reached them */
+    };
 
-class ContainerEventRouter
-{
-    public:
-        ContainerEventRouter(CgroupContainerMap& map, ContainerEventStaging& staging)
-            : m_map(map)
-            , m_staging(staging)
-        {
-        }
-
-        /* --- drain thread ------------------------------------------------- */
-
-        /* One file event, triggered by `pid` (0 when unknown). Returns true when
-         * it was attributed to a container.
-         *
-         * The pid is not routing information — it is carried through for the
-         * staging buffer's settle (D16), which releases a path early once the
-         * writer that triggered it has exited. */
-        bool onEvent(std::uint64_t cgroup_id, const std::string& path, unsigned int pid = 0)
-        {
-            const auto resolution = m_map.classify(cgroup_id);
-
-            switch (resolution.klass)
+    class ContainerEventRouter
+    {
+        public:
+            ContainerEventRouter(CgroupContainerMap& map, ContainerEventStaging& staging)
+                : m_map(map)
+                , m_staging(staging)
             {
-                case CgroupClass::container:
-                    bump(m_stats.routed);
-                    m_staging.onEvent(resolution.container_id, path, pid);
-                    return true;
-
-                case CgroupClass::notContainer:
-                    /* Host traffic. Host FIM already covers it, and the
-                     * container consumer has no state to reconcile it against. */
-                    bump(m_stats.host_events);
-                    return false;
-
-                case CgroupClass::unknown:
-                default:
-                    /* classify() has filed the cgroup for the resolver. The path
-                     * is not recoverable, but the container will be re-walked
-                     * once it is identified — see this file's header. */
-                    bump(m_stats.unattributed);
-                    return false;
-            }
-        }
-
-        /* One UNLINK event. Returns true when it was attributed to a container.
-         *
-         * Same routing as onEvent() — the difference is entirely in what the
-         * staging buffer does with it. */
-        bool onUnlink(std::uint64_t cgroup_id, const std::string& path)
-        {
-            const auto resolution = m_map.classify(cgroup_id);
-
-            switch (resolution.klass)
-            {
-                case CgroupClass::container:
-                    bump(m_stats.routed);
-                    m_staging.onUnlink(resolution.container_id, path);
-                    return true;
-
-                case CgroupClass::notContainer:
-                    bump(m_stats.host_events);
-                    return false;
-
-                case CgroupClass::unknown:
-                default:
-                    /* Same as onEvent(): the cgroup is filed, and if it turns
-                     * out to be a container it is re-walked — which finds the
-                     * deletion. See this file's header. */
-                    bump(m_stats.unattributed);
-                    return false;
-            }
-        }
-
-        /* One cgroup's dropped-event count, from rt_drain_drops(). `count` is
-         * loss since the previous drain, so any non-zero value means this
-         * cgroup's changed-path set is incomplete. */
-        void onDrops(std::uint64_t cgroup_id, unsigned int count)
-        {
-            if (count == 0)
-            {
-                return;
             }
 
-            const auto resolution = m_map.classify(cgroup_id);
+            /* --- drain thread ------------------------------------------------- */
 
-            switch (resolution.klass)
+            /* One file event, triggered by `pid` (0 when unknown). Returns true when
+             * it was attributed to a container.
+             *
+             * The pid is not routing information — it is carried through for the
+             * staging buffer's settle (D16), which releases a path early once the
+             * writer that triggered it has exited. */
+            bool onEvent(std::uint64_t cgroup_id, const std::string& path, unsigned int pid = 0)
             {
-                case CgroupClass::container:
-                    bump(m_stats.drops_routed);
-                    m_staging.onDrops(resolution.container_id);
-                    return;
+                const auto resolution = m_map.classify(cgroup_id);
 
-                case CgroupClass::notContainer:
-                    bump(m_stats.drops_host);
-                    return;
-
-                case CgroupClass::unknown:
-                default:
-                    /* Deliberately NOT a global escalation: on a busy host in
-                     * RT_CGROUP_MODE_ALL that would re-baseline the node
-                     * continuously. classify() filed the cgroup, so resolution
-                     * escalates it if it turns out to matter. */
-                    bump(m_stats.drops_deferred);
-                    return;
-            }
-        }
-
-        /* A rename. The engine reports the DESTINATION path only — bpf/
-         * rt_file.bpf.c's kprobe__vfs_rename builds its path from `new_dentry`
-         * — so the source path is never named by any event, before or after.
-         *
-         * Staging just the destination would therefore be silently wrong:
-         * `mv /etc/passwd /etc/passwd.bak` inside a container would reconcile
-         * the new name and leave the stored row for /etc/passwd describing a
-         * file that no longer exists, with nothing to ever correct it. A
-         * deletion that FIM never reports is the worst class of bug this
-         * consumer can have.
-         *
-         * So a rename escalates its container instead. That sounds expensive and
-         * is not: Suspect is a set keyed by container in the staging buffer, so
-         * any number of renames between two consumer batches coalesces into one
-         * re-walk. A package upgrade renaming a thousand files costs exactly
-         * what one renaming a single file costs.
-         *
-         * The real fix belongs in the engine — appending the source path to the
-         * event record, a MINOR ABI bump. It is not free: the record grows from
-         * 12,416 to ~16,512 bytes, cutting the 8 MiB ring from ~675 records to
-         * ~508 for every event class to fix one. Worth measuring before taking.
-         */
-        void onRename(std::uint64_t cgroup_id)
-        {
-            const auto resolution = m_map.classify(cgroup_id);
-
-            switch (resolution.klass)
-            {
-                case CgroupClass::container:
-                    bump(m_stats.renames_routed);
-                    m_staging.onDrops(resolution.container_id);
-                    return;
-
-                case CgroupClass::notContainer:
-                    bump(m_stats.host_events);
-                    return;
-
-                case CgroupClass::unknown:
-                default:
-                    /* Same reasoning as an unidentified cgroup's drops: the
-                     * cgroup is filed, and resolution escalates it if it turns
-                     * out to be a container. */
-                    bump(m_stats.unattributed);
-                    return;
-            }
-        }
-
-        /* Loss the engine could not attribute to any cgroup — a BPF object with
-         * no per-cgroup map, or a drop recorded while that map was full. Nothing
-         * is known about what changed, so everything is suspect. */
-        void onUnattributedDrops()
-        {
-            bump(m_stats.global_escalations);
-            m_staging.onUnattributedDrops();
-        }
-
-        /* --- resolver thread ---------------------------------------------- */
-
-        /* Apply a connector list refresh and escalate every container whose
-         * events (or losses) predated its identification. Returns the cgroup
-         * delta, so a caller that filters in the kernel can keep its allowlist
-         * in step with the map.
-         *
-         * When filtering is on, a container that is merely NEW to the list
-         * escalates as well, and that difference is the whole reason this
-         * returns anything. In RT_CGROUP_MODE_ALL "new to the list" says
-         * nothing about what was missed: its events had been arriving all
-         * along, either attributed or filed as unknown, and the unknown path
-         * already escalates. In allowlist mode they were discarded in the
-         * kernel before anyone could file anything, so the only honest account
-         * of what changed inside that container is a walk.
-         *
-         * This costs one walk per newly listed container, which is also the
-         * cost today — an unlisted container's first event escalates it by the
-         * other route. What changes is the trigger, not the work. */
-        CgroupListDelta applyContainerList(const std::vector<std::pair<std::uint64_t, std::string>>& containers)
-        {
-            return escalateDelta(m_map.install(containers));
-        }
-
-        /* The same, from transitions rather than a whole list.
-         *
-         * Shares escalateDelta() with applyContainerList deliberately: which
-         * way the list arrived is a transport detail, and the rule for what has
-         * to be re-walked must not be able to drift between the two. */
-        CgroupListDelta applyContainerDelta(const std::vector<CgroupDeltaEvent>& events)
-        {
-            return escalateDelta(m_map.applyDelta(events));
-        }
-
-        /* Apply one on-demand resolution.
-         *
-         * Deliberately NOT given the filtering treatment above: reaching here
-         * at all means an event for this cgroup was delivered, so either
-         * filtering is off or the cgroup was already allowed. There is no
-         * "never saw its events" case to cover. */
-        void applyContainerResolution(std::uint64_t cgroup_id, const std::string& container_id)
-        {
-            if (m_map.noteContainer(cgroup_id, container_id))
-            {
-                escalate({container_id});
-            }
-        }
-
-        void applyNotContainer(std::uint64_t cgroup_id)
-        {
-            m_map.noteNotContainer(cgroup_id);
-        }
-
-        /* Call once per resolver cycle. The map cannot escalate on its own when
-         * it had no room to queue a cgroup — nobody will ever resolve it — so
-         * that overflow is the one case that has to become a whole-node
-         * re-baseline. */
-        void pumpUnknownOverflow()
-        {
-            if (m_map.takeUnknownOverflow())
-            {
-                onUnattributedDrops();
-            }
-        }
-
-        /* Tell the router that its owner discards events in the kernel for any
-         * cgroup not on an allowlist, which changes what a newly listed
-         * container means. Set before the first refresh that should act on it;
-         * see applyContainerList(). */
-        void setFiltering(bool filtering)
-        {
-            m_filtering = filtering;
-        }
-
-        RouterStats stats() const
-        {
-            RouterStats out;
-            out.routed = m_stats.routed.load(std::memory_order_relaxed);
-            out.host_events = m_stats.host_events.load(std::memory_order_relaxed);
-            out.unattributed = m_stats.unattributed.load(std::memory_order_relaxed);
-            out.drops_routed = m_stats.drops_routed.load(std::memory_order_relaxed);
-            out.drops_host = m_stats.drops_host.load(std::memory_order_relaxed);
-            out.drops_deferred = m_stats.drops_deferred.load(std::memory_order_relaxed);
-            out.global_escalations = m_stats.global_escalations.load(std::memory_order_relaxed);
-            out.discovery_escalations = m_stats.discovery_escalations.load(std::memory_order_relaxed);
-            out.late_escalations = m_stats.late_escalations.load(std::memory_order_relaxed);
-            out.renames_routed = m_stats.renames_routed.load(std::memory_order_relaxed);
-            return out;
-        }
-
-    private:
-        /* The drain thread and the resolver thread both count, so these cannot
-         * be plain integers. Relaxed ordering is enough: they are diagnostics,
-         * never read to make a decision, and the drain must not pay for a lock
-         * it does not need. */
-        struct Counters
-        {
-            std::atomic<unsigned long long> routed{0};
-            std::atomic<unsigned long long> host_events{0};
-            std::atomic<unsigned long long> unattributed{0};
-            std::atomic<unsigned long long> drops_routed{0};
-            std::atomic<unsigned long long> drops_host{0};
-            std::atomic<unsigned long long> drops_deferred{0};
-            std::atomic<unsigned long long> global_escalations{0};
-            std::atomic<unsigned long long> late_escalations{0};
-            std::atomic<unsigned long long> renames_routed{0};
-            std::atomic<unsigned long long> discovery_escalations{0};
-        };
-
-        void bump(std::atomic<unsigned long long>& counter)
-        {
-            counter.fetch_add(1, std::memory_order_relaxed);
-        }
-
-        /* Escalates what a map update says needs re-walking, and hands the
-         * delta back for the caller to apply to the kernel filter. */
-        CgroupListDelta escalateDelta(CgroupListDelta delta)
-        {
-            escalate(delta.escalate);
-
-            if (m_filtering)
-            {
-                /* EVERY added cgroup escalates, including one added to a
-                 * container already in the map. Under the kernel filter an
-                 * un-admitted cgroup's events never reach userspace, so a unit's
-                 * writes between its cgroup appearing and being admitted are
-                 * simply gone -- nothing can enumerate them, and re-walking the
-                 * container is the only recovery. The cost is real and accepted
-                 * rather than overlooked: a container driving short-lived units
-                 * gets a fresh inode per activation and so a walk per
-                 * activation. Skipping the walk when the container is already
-                 * mapped would trade that cost for silently missed changes,
-                 * which is the hole this path exists to close.
-                 *
-                 * Once per CONTAINER, though, not once per cgroup it added. A
-                 * container running an init system publishes several --
-                 * `init.scope` plus one per unit -- and onDrops() re-walks the
-                 * whole container, so doing it per cgroup is N-1 walks of the
-                 * same tree and a discovery_escalations count that no longer
-                 * matches the number of containers discovered. */
-                std::set<std::string> escalated;
-
-                for (const auto& entry : delta.added)
+                switch (resolution.klass)
                 {
-                    if (escalated.insert(entry.second).second)
-                    {
-                        bump(m_stats.discovery_escalations);
-                        m_staging.onDrops(entry.second);
-                    }
+                    case CgroupClass::container:
+                        bump(m_stats.routed);
+                        m_staging.onEvent(resolution.container_id, path, pid);
+                        return true;
+
+                    case CgroupClass::notContainer:
+                        /* Host traffic. Host FIM already covers it, and the
+                         * container consumer has no state to reconcile it against. */
+                        bump(m_stats.host_events);
+                        return false;
+
+                    case CgroupClass::unknown:
+                    default:
+                        /* classify() has filed the cgroup for the resolver. The path
+                         * is not recoverable, but the container will be re-walked
+                         * once it is identified — see this file's header. */
+                        bump(m_stats.unattributed);
+                        return false;
                 }
             }
 
-            return delta;
-        }
-
-        void escalate(const std::vector<std::string>& container_ids)
-        {
-            for (const auto& container_id : container_ids)
+            /* One UNLINK event. Returns true when it was attributed to a container.
+             *
+             * Same routing as onEvent() — the difference is entirely in what the
+             * staging buffer does with it. */
+            bool onUnlink(std::uint64_t cgroup_id, const std::string& path)
             {
-                bump(m_stats.late_escalations);
+                const auto resolution = m_map.classify(cgroup_id);
 
-                /* Suspect, not a path reconcile: whatever changed before this
-                 * container was identified cannot be enumerated, so the only
-                 * honest action is to re-walk it. */
-                m_staging.onDrops(container_id);
+                switch (resolution.klass)
+                {
+                    case CgroupClass::container:
+                        bump(m_stats.routed);
+                        m_staging.onUnlink(resolution.container_id, path);
+                        return true;
+
+                    case CgroupClass::notContainer:
+                        bump(m_stats.host_events);
+                        return false;
+
+                    case CgroupClass::unknown:
+                    default:
+                        /* Same as onEvent(): the cgroup is filed, and if it turns
+                         * out to be a container it is re-walked — which finds the
+                         * deletion. See this file's header. */
+                        bump(m_stats.unattributed);
+                        return false;
+                }
             }
-        }
 
-        CgroupContainerMap& m_map;
-        ContainerEventStaging& m_staging;
+            /* One cgroup's dropped-event count, from rt_drain_drops(). `count` is
+             * loss since the previous drain, so any non-zero value means this
+             * cgroup's changed-path set is incomplete. */
+            void onDrops(std::uint64_t cgroup_id, unsigned int count)
+            {
+                if (count == 0)
+                {
+                    return;
+                }
 
-        /* Written once at startup, before the resolver thread exists, and read
-         * on that thread only. Not atomic because there is no second writer. */
-        bool m_filtering{false};
+                const auto resolution = m_map.classify(cgroup_id);
 
-        Counters m_stats;
-};
+                switch (resolution.klass)
+                {
+                    case CgroupClass::container:
+                        bump(m_stats.drops_routed);
+                        m_staging.onDrops(resolution.container_id);
+                        return;
+
+                    case CgroupClass::notContainer:
+                        bump(m_stats.drops_host);
+                        return;
+
+                    case CgroupClass::unknown:
+                    default:
+                        /* Deliberately NOT a global escalation: on a busy host in
+                         * RT_CGROUP_MODE_ALL that would re-baseline the node
+                         * continuously. classify() filed the cgroup, so resolution
+                         * escalates it if it turns out to matter. */
+                        bump(m_stats.drops_deferred);
+                        return;
+                }
+            }
+
+            /* A rename. The engine reports the DESTINATION path only — bpf/
+             * rt_file.bpf.c's kprobe__vfs_rename builds its path from `new_dentry`
+             * — so the source path is never named by any event, before or after.
+             *
+             * Staging just the destination would therefore be silently wrong:
+             * `mv /etc/passwd /etc/passwd.bak` inside a container would reconcile
+             * the new name and leave the stored row for /etc/passwd describing a
+             * file that no longer exists, with nothing to ever correct it. A
+             * deletion that FIM never reports is the worst class of bug this
+             * consumer can have.
+             *
+             * So a rename escalates its container instead. That sounds expensive and
+             * is not: Suspect is a set keyed by container in the staging buffer, so
+             * any number of renames between two consumer batches coalesces into one
+             * re-walk. A package upgrade renaming a thousand files costs exactly
+             * what one renaming a single file costs.
+             *
+             * The real fix belongs in the engine — appending the source path to the
+             * event record, a MINOR ABI bump. It is not free: the record grows from
+             * 12,416 to ~16,512 bytes, cutting the 8 MiB ring from ~675 records to
+             * ~508 for every event class to fix one. Worth measuring before taking.
+             */
+            void onRename(std::uint64_t cgroup_id)
+            {
+                const auto resolution = m_map.classify(cgroup_id);
+
+                switch (resolution.klass)
+                {
+                    case CgroupClass::container:
+                        bump(m_stats.renames_routed);
+                        m_staging.onDrops(resolution.container_id);
+                        return;
+
+                    case CgroupClass::notContainer:
+                        bump(m_stats.host_events);
+                        return;
+
+                    case CgroupClass::unknown:
+                    default:
+                        /* Same reasoning as an unidentified cgroup's drops: the
+                         * cgroup is filed, and resolution escalates it if it turns
+                         * out to be a container. */
+                        bump(m_stats.unattributed);
+                        return;
+                }
+            }
+
+            /* Loss the engine could not attribute to any cgroup — a BPF object with
+             * no per-cgroup map, or a drop recorded while that map was full. Nothing
+             * is known about what changed, so everything is suspect. */
+            void onUnattributedDrops()
+            {
+                bump(m_stats.global_escalations);
+                m_staging.onUnattributedDrops();
+            }
+
+            /* --- resolver thread ---------------------------------------------- */
+
+            /* Apply a connector list refresh and escalate every container whose
+             * events (or losses) predated its identification. Returns the cgroup
+             * delta, so a caller that filters in the kernel can keep its allowlist
+             * in step with the map.
+             *
+             * When filtering is on, a container that is merely NEW to the list
+             * escalates as well, and that difference is the whole reason this
+             * returns anything. In RT_CGROUP_MODE_ALL "new to the list" says
+             * nothing about what was missed: its events had been arriving all
+             * along, either attributed or filed as unknown, and the unknown path
+             * already escalates. In allowlist mode they were discarded in the
+             * kernel before anyone could file anything, so the only honest account
+             * of what changed inside that container is a walk.
+             *
+             * This costs one walk per newly listed container, which is also the
+             * cost today — an unlisted container's first event escalates it by the
+             * other route. What changes is the trigger, not the work. */
+            CgroupListDelta applyContainerList(const std::vector<std::pair<std::uint64_t, std::string>>& containers)
+            {
+                return escalateDelta(m_map.install(containers));
+            }
+
+            /* The same, from transitions rather than a whole list.
+             *
+             * Shares escalateDelta() with applyContainerList deliberately: which
+             * way the list arrived is a transport detail, and the rule for what has
+             * to be re-walked must not be able to drift between the two. */
+            CgroupListDelta applyContainerDelta(const std::vector<CgroupDeltaEvent>& events)
+            {
+                return escalateDelta(m_map.applyDelta(events));
+            }
+
+            /* Apply one on-demand resolution.
+             *
+             * Deliberately NOT given the filtering treatment above: reaching here
+             * at all means an event for this cgroup was delivered, so either
+             * filtering is off or the cgroup was already allowed. There is no
+             * "never saw its events" case to cover. */
+            void applyContainerResolution(std::uint64_t cgroup_id, const std::string& container_id)
+            {
+                if (m_map.noteContainer(cgroup_id, container_id))
+                {
+                    escalate({container_id});
+                }
+            }
+
+            void applyNotContainer(std::uint64_t cgroup_id)
+            {
+                m_map.noteNotContainer(cgroup_id);
+            }
+
+            /* Call once per resolver cycle. The map cannot escalate on its own when
+             * it had no room to queue a cgroup — nobody will ever resolve it — so
+             * that overflow is the one case that has to become a whole-node
+             * re-baseline. */
+            void pumpUnknownOverflow()
+            {
+                if (m_map.takeUnknownOverflow())
+                {
+                    onUnattributedDrops();
+                }
+            }
+
+            /* Tell the router that its owner discards events in the kernel for any
+             * cgroup not on an allowlist, which changes what a newly listed
+             * container means. Set before the first refresh that should act on it;
+             * see applyContainerList(). */
+            void setFiltering(bool filtering)
+            {
+                m_filtering = filtering;
+            }
+
+            RouterStats stats() const
+            {
+                RouterStats out;
+                out.routed = m_stats.routed.load(std::memory_order_relaxed);
+                out.host_events = m_stats.host_events.load(std::memory_order_relaxed);
+                out.unattributed = m_stats.unattributed.load(std::memory_order_relaxed);
+                out.drops_routed = m_stats.drops_routed.load(std::memory_order_relaxed);
+                out.drops_host = m_stats.drops_host.load(std::memory_order_relaxed);
+                out.drops_deferred = m_stats.drops_deferred.load(std::memory_order_relaxed);
+                out.global_escalations = m_stats.global_escalations.load(std::memory_order_relaxed);
+                out.discovery_escalations = m_stats.discovery_escalations.load(std::memory_order_relaxed);
+                out.late_escalations = m_stats.late_escalations.load(std::memory_order_relaxed);
+                out.renames_routed = m_stats.renames_routed.load(std::memory_order_relaxed);
+                return out;
+            }
+
+        private:
+            /* The drain thread and the resolver thread both count, so these cannot
+             * be plain integers. Relaxed ordering is enough: they are diagnostics,
+             * never read to make a decision, and the drain must not pay for a lock
+             * it does not need. */
+            struct Counters
+            {
+                std::atomic<unsigned long long> routed{0};
+                std::atomic<unsigned long long> host_events{0};
+                std::atomic<unsigned long long> unattributed{0};
+                std::atomic<unsigned long long> drops_routed{0};
+                std::atomic<unsigned long long> drops_host{0};
+                std::atomic<unsigned long long> drops_deferred{0};
+                std::atomic<unsigned long long> global_escalations{0};
+                std::atomic<unsigned long long> late_escalations{0};
+                std::atomic<unsigned long long> renames_routed{0};
+                std::atomic<unsigned long long> discovery_escalations{0};
+            };
+
+            void bump(std::atomic<unsigned long long>& counter)
+            {
+                counter.fetch_add(1, std::memory_order_relaxed);
+            }
+
+            /* Escalates what a map update says needs re-walking, and hands the
+             * delta back for the caller to apply to the kernel filter. */
+            CgroupListDelta escalateDelta(CgroupListDelta delta)
+            {
+                escalate(delta.escalate);
+
+                if (m_filtering)
+                {
+                    /* EVERY added cgroup escalates, including one added to a
+                     * container already in the map. Under the kernel filter an
+                     * un-admitted cgroup's events never reach userspace, so a unit's
+                     * writes between its cgroup appearing and being admitted are
+                     * simply gone -- nothing can enumerate them, and re-walking the
+                     * container is the only recovery. The cost is real and accepted
+                     * rather than overlooked: a container driving short-lived units
+                     * gets a fresh inode per activation and so a walk per
+                     * activation. Skipping the walk when the container is already
+                     * mapped would trade that cost for silently missed changes,
+                     * which is the hole this path exists to close.
+                     *
+                     * Once per CONTAINER, though, not once per cgroup it added. A
+                     * container running an init system publishes several --
+                     * `init.scope` plus one per unit -- and onDrops() re-walks the
+                     * whole container, so doing it per cgroup is N-1 walks of the
+                     * same tree and a discovery_escalations count that no longer
+                     * matches the number of containers discovered. */
+                    std::set<std::string> escalated;
+
+                    for (const auto& entry : delta.added)
+                    {
+                        if (escalated.insert(entry.second).second)
+                        {
+                            bump(m_stats.discovery_escalations);
+                            m_staging.onDrops(entry.second);
+                        }
+                    }
+                }
+
+                return delta;
+            }
+
+            void escalate(const std::vector<std::string>& container_ids)
+            {
+                for (const auto& container_id : container_ids)
+                {
+                    bump(m_stats.late_escalations);
+
+                    /* Suspect, not a path reconcile: whatever changed before this
+                     * container was identified cannot be enumerated, so the only
+                     * honest action is to re-walk it. */
+                    m_staging.onDrops(container_id);
+                }
+            }
+
+            CgroupContainerMap& m_map;
+            ContainerEventStaging& m_staging;
+
+            /* Written once at startup, before the resolver thread exists, and read
+             * on that thread only. Not atomic because there is no second writer. */
+            bool m_filtering{false};
+
+            Counters m_stats;
+    };
 
 } // namespace fim_container_events
 

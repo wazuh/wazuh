@@ -27,37 +27,40 @@ using namespace fim_container_events;
 namespace
 {
 
-constexpr std::size_t kMaxPaths = 64;
-constexpr std::size_t kMaxContainers = 32;
+    constexpr std::size_t kMaxPaths = 64;
+    constexpr std::size_t kMaxContainers = 32;
 
-/* Everything the consumer would see, in the order it would see it. */
-std::vector<Batch> DrainBatches(ContainerEventStaging& staging)
-{
-    std::vector<Batch> out;
-    Batch batch;
-
-    while (staging.nextBatch(batch, 0))
+    /* Everything the consumer would see, in the order it would see it. */
+    std::vector<Batch> DrainBatches(ContainerEventStaging& staging)
     {
-        out.push_back(batch);
+        std::vector<Batch> out;
+        Batch batch;
+
+        while (staging.nextBatch(batch, 0))
+        {
+            out.push_back(batch);
+        }
+
+        return out;
     }
 
-    return out;
-}
+    const Batch* FindBatch(const std::vector<Batch>& batches, const std::string& container_id)
+    {
+        const auto it = std::find_if(batches.begin(),
+                                     batches.end(),
+                                     [&container_id](const Batch & b)
+        {
+            return b.container_id == container_id;
+        });
+        return it == batches.end() ? nullptr : &*it;
+    }
 
-const Batch* FindBatch(const std::vector<Batch>& batches, const std::string& container_id)
-{
-    const auto it = std::find_if(batches.begin(),
-                                 batches.end(),
-                                 [&container_id](const Batch& b) { return b.container_id == container_id; });
-    return it == batches.end() ? nullptr : &*it;
-}
-
-struct Fixture
-{
-    CgroupContainerMap map;
-    ContainerEventStaging staging{kMaxPaths, kMaxContainers};
-    ContainerEventRouter router{map, staging};
-};
+    struct Fixture
+    {
+        CgroupContainerMap map;
+        ContainerEventStaging staging{kMaxPaths, kMaxContainers};
+        ContainerEventRouter router{map, staging};
+    };
 
 } // namespace
 
@@ -560,16 +563,18 @@ TEST(ContainerEventRouterTest, FilteredAnEventFromANonCanonicalCgroupIsAttribute
 
     // init.scope is the canonical key; the two unit cgroups travel beside it.
     const auto delta = f.router.applyContainerList({{11, "container-init"}, {12, "container-init"},
-                                                    {13, "container-init"}});
+        {13, "container-init"}});
 
     // All three have to reach the kernel allowlist. Checking the delta the
     // drain feeds to rt_allow_cgroup, which is the thing that decides whether
     // an event is ever delivered -- not the store's liveness set.
     std::vector<std::uint64_t> allowed;
+
     for (const auto& entry : delta.added)
     {
         allowed.push_back(entry.first);
     }
+
     std::sort(allowed.begin(), allowed.end());
     EXPECT_EQ((std::vector<std::uint64_t> {11, 12, 13}), allowed);
 
@@ -662,7 +667,7 @@ TEST(ContainerEventRouterTest, ADeltaDropsOnlyTheUnitCgroupsThatWentAway)
     const auto delta = f.router.applyContainerDelta({changed});
 
     EXPECT_EQ((std::vector<std::uint64_t> {13}), std::vector<std::uint64_t>(delta.removed.begin(),
-                                                                           delta.removed.end()));
+                                                                            delta.removed.end()));
     ASSERT_EQ(1u, delta.added.size());
     EXPECT_EQ(14u, delta.added[0].first);
 

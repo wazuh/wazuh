@@ -60,15 +60,19 @@ static std::vector<struct bpf_link*> global_links;
 static bool is_bpf_lsm_active()
 {
     std::ifstream file(LSM_LIST_FILE);
+
     if (!file)
     {
         return false;
     }
+
     std::string lsm_list;
+
     if (!std::getline(file, lsm_list))
     {
         return false;
     }
+
     // Pad with commas for uniform boundary matching (e.g. ",lockdown,bpf," contains ",bpf,")
     return ("," + lsm_list + ",").find(",bpf,") != std::string::npos;
 }
@@ -89,6 +93,7 @@ static void destroy_global_links()
             bpf_helpers->bpf_link_destroy(l);
         }
     }
+
     global_links.clear();
 }
 
@@ -113,11 +118,13 @@ static int libbpf_print(int level, const char* format, va_list args)
     {
         msg.pop_back();
     }
+
     // Verifier logs can be megabytes long and end with the rejection reason: keep the tail
     if (msg.size() > LIBBPF_LOG_MAX)
     {
         msg.erase(0, msg.size() - LIBBPF_LOG_MAX);
     }
+
     fimebpf::instance().m_loggingFunction(level == LIBBPF_DEBUG ? LOG_DEBUG_VERBOSE : LOG_DEBUG, msg.c_str());
     return 0;
 }
@@ -162,15 +169,16 @@ static char* get_cached_name(id_cache_t<std::string>& cache, uint32_t id, char* 
     const auto name = resolve_cached(cache,
                                      id,
                                      [resolve](uint32_t value) -> std::string
-                                     {
-                                         const std::unique_ptr<char, decltype(&free)> resolved(
-                                             resolve(static_cast<int>(value)), free);
-                                         if (!resolved)
-                                         {
-                                             return {};
-                                         }
-                                         return resolved.get();
-                                     });
+    {
+        const std::unique_ptr<char, decltype(&free)> resolved(
+            resolve(static_cast<int>(value)), free);
+
+        if (!resolved)
+        {
+            return {};
+        }
+        return resolved.get();
+    });
     return name.empty() ? nullptr : strdup(name.c_str());
 }
 
@@ -195,16 +203,18 @@ static int get_login_gid(unsigned int uid)
     return resolve_cached(cache,
                           uid,
                           [](uint32_t id)
-                          {
-                              struct passwd pwd {};
-                              struct passwd* result = nullptr;
-                              char buf[16384];
-                              if (getpwuid_r(id, &pwd, buf, sizeof(buf), &result) != 0 || result == nullptr)
-                              {
-                                  return -1;
-                              }
-                              return static_cast<int>(pwd.pw_gid);
-                          });
+    {
+        struct passwd pwd {};
+        struct passwd* result = nullptr;
+        char buf[16384];
+
+        if (getpwuid_r(id, &pwd, buf, sizeof(buf), &result) != 0 || result == nullptr)
+        {
+            return -1;
+        }
+
+        return static_cast<int>(pwd.pw_gid);
+    });
 }
 
 /* Callback for normal whodata events */
@@ -216,6 +226,7 @@ int handle_event(void* ctx, void* data, size_t data_sz)
     auto e = static_cast<file_event*>(data);
     auto logFn = fimebpf::instance().m_loggingFunction;
     auto confFn = fimebpf::instance().m_fim_configuration_directory;
+
     if (!logFn || !confFn)
     {
         return 0;
@@ -237,6 +248,7 @@ int handle_event(void* ctx, void* data, size_t data_sz)
                                                                      .login_uid = e->login_uid,
                                                                      .inode = e->inode,
                                                                      .dev = e->dev});
+
         if (!kernelEventQueue.push(std::move(event)))
         {
             if (!ebpf_kernel_queue_full_reported)
@@ -261,6 +273,7 @@ int healthcheck_event(void* ctx, void* data, size_t data_sz)
     {
         event_received = true;
     }
+
     return 0;
 }
 
@@ -270,6 +283,7 @@ static void
 log_healthcheck_message(modules_log_level_t level, const char* format, const char* action, const char* detail = nullptr)
 {
     auto logFn = fimebpf::instance().m_loggingFunction;
+
     if (!logFn)
     {
         return;
@@ -295,6 +309,7 @@ static bool wait_for_healthcheck_event(ring_buffer* rb, char* detail, size_t det
     while (!event_received)
     {
         int ret = bpf_helpers->ring_buffer_poll(rb, WAIT_MS);
+
         if (ret < 0)
         {
             logFn(LOG_ERROR, FIM_ERROR_EBPF_RINGBUFF_CONSUME);
@@ -323,6 +338,7 @@ static bool create_healthcheck_file(const char* file_path, char* detail, size_t 
     }
 
     std::ofstream file(file_path);
+
     if (!file.is_open())
     {
         snprintf(error_message, sizeof(error_message), FIM_ERROR_EBPF_HEALTHCHECK_FILE, file_path);
@@ -358,6 +374,7 @@ static bool modify_healthcheck_file_metadata(const char* file_path, char* detail
     struct stat file_stat = {};
 
     int fd = open(file_path, O_RDONLY);
+
     if (fd < 0)
     {
         snprintf(detail, detail_size, FIM_EBPF_HEALTHCHECK_STAT_DETAIL, file_path, strerror(errno));
@@ -454,15 +471,15 @@ int init_libbpf(std::unique_ptr<DynamicLibraryWrapper> local_sym_load)
     bpf_helpers->ebpf_pop_events = (ebpf_pop_events_t)ebpf_pop_events;
     bpf_helpers->init_bpfobj = (init_bpfobj_t)init_bpfobj;
     bpf_helpers->bpf_object_destroy_skeleton = (bpf_object__destroy_skeleton_t)local_sym_load->getFunctionSymbol(
-        bpf_helpers->module, "bpf_object__destroy_skeleton");
+                                                   bpf_helpers->module, "bpf_object__destroy_skeleton");
     bpf_helpers->bpf_object_open_skeleton = (bpf_object__open_skeleton_t)local_sym_load->getFunctionSymbol(
-        bpf_helpers->module, "bpf_object__open_skeleton");
+                                                bpf_helpers->module, "bpf_object__open_skeleton");
     bpf_helpers->bpf_object_load_skeleton = (bpf_object__load_skeleton_t)local_sym_load->getFunctionSymbol(
-        bpf_helpers->module, "bpf_object__load_skeleton");
+                                                bpf_helpers->module, "bpf_object__load_skeleton");
     bpf_helpers->bpf_object_attach_skeleton = (bpf_object__attach_skeleton_t)local_sym_load->getFunctionSymbol(
-        bpf_helpers->module, "bpf_object__attach_skeleton");
+                                                  bpf_helpers->module, "bpf_object__attach_skeleton");
     bpf_helpers->bpf_object_detach_skeleton = (bpf_object__detach_skeleton_t)local_sym_load->getFunctionSymbol(
-        bpf_helpers->module, "bpf_object__detach_skeleton");
+                                                  bpf_helpers->module, "bpf_object__detach_skeleton");
 
     bpf_helpers->bpf_object_open_file =
         (bpf_object__open_file_t)local_sym_load->getFunctionSymbol(bpf_helpers->module, "bpf_object__open_file");
@@ -483,13 +500,13 @@ int init_libbpf(std::unique_ptr<DynamicLibraryWrapper> local_sym_load)
     bpf_helpers->bpf_link_destroy =
         (bpf_link__destroy_t)local_sym_load->getFunctionSymbol(bpf_helpers->module, "bpf_link__destroy");
     bpf_helpers->bpf_object_find_map_fd_by_name = (bpf_object__find_map_fd_by_name_t)local_sym_load->getFunctionSymbol(
-        bpf_helpers->module, "bpf_object__find_map_fd_by_name");
+                                                      bpf_helpers->module, "bpf_object__find_map_fd_by_name");
     bpf_helpers->bpf_program_set_autoload = (bpf_program__set_autoload_t)local_sym_load->getFunctionSymbol(
-        bpf_helpers->module, "bpf_program__set_autoload");
+                                                bpf_helpers->module, "bpf_program__set_autoload");
     bpf_helpers->bpf_program_autoload =
         (bpf_program__autoload_t)local_sym_load->getFunctionSymbol(bpf_helpers->module, "bpf_program__autoload");
     bpf_helpers->bpf_program_section_name = (bpf_program__section_name_t)local_sym_load->getFunctionSymbol(
-        bpf_helpers->module, "bpf_program__section_name");
+                                                bpf_helpers->module, "bpf_program__section_name");
     bpf_helpers->bpf_program_name =
         (bpf_program__name_t)local_sym_load->getFunctionSymbol(bpf_helpers->module, "bpf_program__name");
     bpf_helpers->libbpf_set_print =
@@ -500,6 +517,7 @@ int init_libbpf(std::unique_ptr<DynamicLibraryWrapper> local_sym_load)
     {
         return (... && (ptrs != nullptr));
     };
+
     if (!all_loaded(bpf_helpers->init_ring_buffer,
                     bpf_helpers->ebpf_pop_events,
                     bpf_helpers->init_bpfobj,
@@ -546,6 +564,7 @@ void close_libbpf(std::unique_ptr<DynamicLibraryWrapper> local_sym_load)
         {
             local_sym_load->freeLibrary(bpf_helpers->module);
         }
+
         bpf_helpers.reset();
     }
 }
@@ -579,6 +598,7 @@ static void select_programs(bpf_object* obj, bool use_lsm, bool prefer_dpath)
     {
         const char* sec = bpf_helpers->bpf_program_section_name(prog);
         const char* name = bpf_helpers->bpf_program_name(prog);
+
         if (!sec)
         {
             continue;
@@ -594,7 +614,7 @@ static void select_programs(bpf_object* obj, bool use_lsm, bool prefer_dpath)
 
         const bool keep =
             !(use_lsm ? (is_create_or_unlink_kprobe || (is_lsm && (prefer_dpath ? is_walk_variant : is_dpath_variant)))
-                      : is_lsm);
+              : is_lsm);
 
         bpf_helpers->bpf_program_set_autoload(prog, keep);
 
@@ -615,6 +635,7 @@ static void select_programs(bpf_object* obj, bool use_lsm, bool prefer_dpath)
 static int load_and_attach(const char* bpfobj_path, bool use_lsm, bool final_attempt)
 {
     auto logFn = fimebpf::instance().m_loggingFunction;
+
     if (!logFn || !bpf_helpers)
     {
         return 1;
@@ -627,6 +648,7 @@ static int load_and_attach(const char* bpfobj_path, bool use_lsm, bool final_att
     while (true)
     {
         obj = bpf_helpers->bpf_object_open_file(bpfobj_path, nullptr);
+
         if (!obj)
         {
             char error_message[4200];
@@ -667,6 +689,7 @@ static int load_and_attach(const char* bpfobj_path, bool use_lsm, bool final_att
         }
 
         struct bpf_link* link = (struct bpf_link*)bpf_helpers->bpf_program_attach(prog);
+
         if (bpf_link_is_error(link))
         {
             const int saved_errno = errno;
@@ -680,6 +703,7 @@ static int load_and_attach(const char* bpfobj_path, bool use_lsm, bool final_att
                      strerror(saved_errno));
             logFn(fail_level, error_message);
             logFn(fail_level, FIM_ERROR_EBPF_OBJ_ATTACH);
+
             for (struct bpf_link* installed : links)
             {
                 if (bpf_helpers->bpf_link_destroy)
@@ -687,10 +711,12 @@ static int load_and_attach(const char* bpfobj_path, bool use_lsm, bool final_att
                     bpf_helpers->bpf_link_destroy(installed);
                 }
             }
+
             bpf_helpers->bpf_object_close(obj);
             global_obj = nullptr;
             return 1;
         }
+
         links.push_back(link);
     }
 
@@ -708,6 +734,7 @@ int init_bpfobj()
     {
         return 1;
     }
+
     abspathFn(BPF_OBJ_INSTALL_PATH, bpfobj_path, sizeof(bpfobj_path));
 
     g_bpf_lsm_active = bpf_helpers->is_bpf_lsm_active ? bpf_helpers->is_bpf_lsm_active() : is_bpf_lsm_active();
@@ -721,6 +748,7 @@ int init_bpfobj()
     if (g_bpf_lsm_active)
     {
         logFn(LOG_INFO, FIM_EBPF_LSM_KPROBE_FALLBACK);
+
         if (load_and_attach(bpfobj_path, false, true) == 0)
         {
             g_bpf_lsm_active = false;
@@ -734,12 +762,14 @@ int init_bpfobj()
 int init_ring_buffer(ring_buffer** rb, ring_buffer_sample_fn sample_cb)
 {
     auto logFn = fimebpf::instance().m_loggingFunction;
+
     if (!logFn)
     {
         return 1;
     }
 
     int rb_fd = bpf_helpers->bpf_object_find_map_fd_by_name(global_obj, "rb");
+
     if (rb_fd < 0)
     {
         logFn(LOG_ERROR, FIM_ERROR_EBPF_RINGBUFF_MAP);
@@ -750,6 +780,7 @@ int init_ring_buffer(ring_buffer** rb, ring_buffer_sample_fn sample_cb)
     }
 
     *rb = bpf_helpers->ring_buffer_new(rb_fd, sample_cb, nullptr, nullptr);
+
     if (!*rb)
     {
         logFn(LOG_ERROR, FIM_ERROR_EBPF_RINGBUFF_NEW);
@@ -766,6 +797,7 @@ int init_ring_buffer(ring_buffer** rb, ring_buffer_sample_fn sample_cb)
 void ebpf_pop_events(fim::BoundedQueue<std::unique_ptr<dynamic_file_event>>& local_kernelEventQueue)
 {
     auto logFn = fimebpf::instance().m_loggingFunction;
+
     if (!logFn)
     {
         return;
@@ -786,10 +818,12 @@ void ebpf_pop_events(fim::BoundedQueue<std::unique_ptr<dynamic_file_event>>& loc
         if (event)
         {
             whodata_evt* w_evt = (whodata_evt*)calloc(1, sizeof(whodata_evt));
+
             if (!w_evt)
             {
                 continue;
             }
+
             w_evt->path = strdup(event->filename.c_str());
             w_evt->process_name = strdup(event->comm.c_str());
             w_evt->user_id = num_to_str(event->uid);
@@ -798,17 +832,20 @@ void ebpf_pop_events(fim::BoundedQueue<std::unique_ptr<dynamic_file_event>>& loc
             w_evt->group_name = get_group_cached(event->gid);
             w_evt->effective_uid = num_to_str(event->euid);
             w_evt->effective_name = get_user_cached(event->euid);
-            if (event->login_uid != (uint32_t)-1)
+
+            if (event->login_uid != (uint32_t) -1)
             {
                 w_evt->audit_uid = num_to_str(event->login_uid);
                 w_evt->audit_name = get_user_cached(event->login_uid);
                 int audit_gid_val = get_login_gid(event->login_uid);
+
                 if (audit_gid_val >= 0)
                 {
                     w_evt->audit_gid = num_to_str((unsigned int)audit_gid_val);
                     w_evt->audit_group_name = get_group_cached(static_cast<uint32_t>(audit_gid_val));
                 }
             }
+
             w_evt->inode = num_to_str(event->inode);
             w_evt->dev = num_to_str(event->dev);
             w_evt->process_id = event->pid;
@@ -828,134 +865,138 @@ extern "C"
 {
 #endif
 
-    void fimebpf_initialize(bool (*fim_conf)(const char*),
-                            char* (*getUser)(int),
-                            char* (*getGroup)(int),
-                            void (*fimWhodataEvent)(whodata_evt*),
-                            void (*freeWhodataEvent)(whodata_evt*),
-                            void (*loggingFn)(modules_log_level_t, const char*),
-                            char* (*abspathFn)(const char*, char*, size_t),
-                            bool (*fimShutdownProcessOn)(),
-                            unsigned int syscheckQueueSize)
+void fimebpf_initialize(bool (*fim_conf)(const char*),
+                        char* (*getUser)(int),
+                        char* (*getGroup)(int),
+                        void (*fimWhodataEvent)(whodata_evt*),
+                        void (*freeWhodataEvent)(whodata_evt*),
+                        void (*loggingFn)(modules_log_level_t, const char*),
+                        char* (*abspathFn)(const char*, char*, size_t),
+                        bool (*fimShutdownProcessOn)(),
+                        unsigned int syscheckQueueSize)
+{
+    fimebpf::instance().initialize(fim_conf,
+                                   getUser,
+                                   getGroup,
+                                   fimWhodataEvent,
+                                   freeWhodataEvent,
+                                   loggingFn,
+                                   abspathFn,
+                                   fimShutdownProcessOn,
+                                   syscheckQueueSize);
+}
+
+int ebpf_whodata_healthcheck()
+{
+    ring_buffer* rb = nullptr;
+    auto logFn = fimebpf::instance().m_loggingFunction;
+    auto abspathFn = fimebpf::instance().m_abspath;
+    char ebpf_hc_abs_path[PATH_MAX] = {0};
+    bool healthcheck_failed = false;
+
+    if (!bpf_helpers)
     {
-        fimebpf::instance().initialize(fim_conf,
-                                       getUser,
-                                       getGroup,
-                                       fimWhodataEvent,
-                                       freeWhodataEvent,
-                                       loggingFn,
-                                       abspathFn,
-                                       fimShutdownProcessOn,
-                                       syscheckQueueSize);
+        bpf_helpers = std::make_unique<w_bpf_helpers_t>();
     }
 
-    int ebpf_whodata_healthcheck()
+    if (!bpf_helpers)
     {
-        ring_buffer* rb = nullptr;
-        auto logFn = fimebpf::instance().m_loggingFunction;
-        auto abspathFn = fimebpf::instance().m_abspath;
-        char ebpf_hc_abs_path[PATH_MAX] = {0};
-        bool healthcheck_failed = false;
-
-        if (!bpf_helpers)
-        {
-            bpf_helpers = std::make_unique<w_bpf_helpers_t>();
-        }
-
-        if (!bpf_helpers)
-        {
-            return 1;
-        }
-
-        if (!bpf_helpers->init_libbpf)
-        {
-            bpf_helpers->init_libbpf = (init_libbpf_t)init_libbpf;
-        }
-
-        kernelEventQueue.setMaxSize(fimebpf::instance().m_queue_size);
-
-        if (!logFn || bpf_helpers->init_libbpf(std::move(sym_load)))
-        {
-            return 1;
-        }
-
-        if (bpf_helpers->init_bpfobj() || bpf_helpers->init_ring_buffer(&rb, healthcheck_event))
-        {
-            release_bpf();
-            return 1;
-        }
-
-        event_received = false;
-        abspathFn(EBPF_HC_FILE, ebpf_hc_abs_path, sizeof(ebpf_hc_abs_path));
-
-        if (std::remove(ebpf_hc_abs_path) == 0)
-        {
-            logFn(LOG_DEBUG_VERBOSE, FIM_EBPF_HEALTHCHECK_CLEANUP);
-        }
-
-        bool file_created = run_healthcheck_action(rb, "create file", ebpf_hc_abs_path, create_healthcheck_file, true);
-
-        healthcheck_failed |= !file_created;
-
-        healthcheck_failed |= !run_healthcheck_action(
-            rb, "modify content", ebpf_hc_abs_path, modify_healthcheck_file_content, file_created);
-
-        healthcheck_failed |= !run_healthcheck_action(
-            rb, "modify metadata", ebpf_hc_abs_path, modify_healthcheck_file_metadata, file_created);
-
-        healthcheck_failed |=
-            !run_healthcheck_action(rb, "delete file", ebpf_hc_abs_path, delete_healthcheck_file, file_created);
-
-        // Free healthcheck ring buffer
-        bpf_helpers->ring_buffer_free(rb);
-
-        if (std::remove(ebpf_hc_abs_path) != 0 && errno != ENOENT)
-        {
-            char error_message[4200] = {0};
-            snprintf(error_message, sizeof(error_message), FIM_ERROR_EBPF_HEALTHCHECK_FILE_DEL, ebpf_hc_abs_path);
-            logFn(LOG_ERROR, error_message);
-        }
-
-        if (healthcheck_failed)
-        {
-            release_bpf();
-            return 1;
-        }
-
-        logFn(LOG_INFO, FIM_EBPF_HEALTHCHECK_SUCCESS);
-        return 0;
+        return 1;
     }
 
-    int ebpf_whodata()
+    if (!bpf_helpers->init_libbpf)
     {
-        auto logFn = fimebpf::instance().m_loggingFunction;
-        ring_buffer* rb = nullptr;
-        int ret;
+        bpf_helpers->init_libbpf = (init_libbpf_t)init_libbpf;
+    }
 
-        if (!logFn || bpf_helpers->init_ring_buffer(&rb, handle_event))
-        {
-            return 1;
-        }
+    kernelEventQueue.setMaxSize(fimebpf::instance().m_queue_size);
 
-        std::thread ebpf_pop_thread([&]() { bpf_helpers->ebpf_pop_events(kernelEventQueue); });
-        ebpf_pop_thread.detach();
+    if (!logFn || bpf_helpers->init_libbpf(std::move(sym_load)))
+    {
+        return 1;
+    }
 
-        while (!fimebpf::instance().m_fim_shutdown_process_on())
-        {
-            ret = bpf_helpers->ring_buffer_poll(rb, WAIT_MS);
-            if (ret < 0)
-            {
-                logFn(LOG_ERROR, FIM_ERROR_EBPF_RINGBUFF_CONSUME);
-                break;
-            }
-        }
-
-        bpf_helpers->ring_buffer_free(rb);
+    if (bpf_helpers->init_bpfobj() || bpf_helpers->init_ring_buffer(&rb, healthcheck_event))
+    {
         release_bpf();
-        close_libbpf(std::move(sym_load));
-
-        return 0;
+        return 1;
     }
+
+    event_received = false;
+    abspathFn(EBPF_HC_FILE, ebpf_hc_abs_path, sizeof(ebpf_hc_abs_path));
+
+    if (std::remove(ebpf_hc_abs_path) == 0)
+    {
+        logFn(LOG_DEBUG_VERBOSE, FIM_EBPF_HEALTHCHECK_CLEANUP);
+    }
+
+    bool file_created = run_healthcheck_action(rb, "create file", ebpf_hc_abs_path, create_healthcheck_file, true);
+
+    healthcheck_failed |= !file_created;
+
+    healthcheck_failed |= !run_healthcheck_action(
+                              rb, "modify content", ebpf_hc_abs_path, modify_healthcheck_file_content, file_created);
+
+    healthcheck_failed |= !run_healthcheck_action(
+                              rb, "modify metadata", ebpf_hc_abs_path, modify_healthcheck_file_metadata, file_created);
+
+    healthcheck_failed |=
+        !run_healthcheck_action(rb, "delete file", ebpf_hc_abs_path, delete_healthcheck_file, file_created);
+
+    // Free healthcheck ring buffer
+    bpf_helpers->ring_buffer_free(rb);
+
+    if (std::remove(ebpf_hc_abs_path) != 0 && errno != ENOENT)
+    {
+        char error_message[4200] = {0};
+        snprintf(error_message, sizeof(error_message), FIM_ERROR_EBPF_HEALTHCHECK_FILE_DEL, ebpf_hc_abs_path);
+        logFn(LOG_ERROR, error_message);
+    }
+
+    if (healthcheck_failed)
+    {
+        release_bpf();
+        return 1;
+    }
+
+    logFn(LOG_INFO, FIM_EBPF_HEALTHCHECK_SUCCESS);
+    return 0;
+}
+
+int ebpf_whodata()
+{
+    auto logFn = fimebpf::instance().m_loggingFunction;
+    ring_buffer* rb = nullptr;
+    int ret;
+
+    if (!logFn || bpf_helpers->init_ring_buffer(&rb, handle_event))
+    {
+        return 1;
+    }
+
+    std::thread ebpf_pop_thread([&]()
+    {
+        bpf_helpers->ebpf_pop_events(kernelEventQueue);
+    });
+    ebpf_pop_thread.detach();
+
+    while (!fimebpf::instance().m_fim_shutdown_process_on())
+    {
+        ret = bpf_helpers->ring_buffer_poll(rb, WAIT_MS);
+
+        if (ret < 0)
+        {
+            logFn(LOG_ERROR, FIM_ERROR_EBPF_RINGBUFF_CONSUME);
+            break;
+        }
+    }
+
+    bpf_helpers->ring_buffer_free(rb);
+    release_bpf();
+    close_libbpf(std::move(sym_load));
+
+    return 0;
+}
 
 #ifdef __cplusplus
 }

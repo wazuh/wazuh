@@ -28,33 +28,33 @@
 namespace fim_container_events
 {
 
-/* Pacing for unresolved cgroups. They are waiting on container_instances to
- * answer a query, not to announce anything, so no notification will arrive for
- * them and they need a cadence of their own. */
-constexpr int RESOLVE_PACING_MS = 200;
+    /* Pacing for unresolved cgroups. They are waiting on container_instances to
+     * answer a query, not to announce anything, so no notification will arrive for
+     * them and they need a cadence of their own. */
+    constexpr int RESOLVE_PACING_MS = 200;
 
-/// Milliseconds to block before the next resolver pass.
-///
-/// @param until_refresh  time left before the scheduled full refresh is due.
-/// @param has_unresolved whether any cgroup is still awaiting identification.
-///
-/// Never negative: a deadline already passed means "wake immediately", and
-/// handing poll() a negative timeout would make it block forever — the one
-/// mistake here that would look like a hang rather than a slowdown.
-[[nodiscard]] inline int resolverWaitMs(std::chrono::milliseconds until_refresh, bool has_unresolved)
-{
-    if (until_refresh.count() < 0)
+    /// Milliseconds to block before the next resolver pass.
+    ///
+    /// @param until_refresh  time left before the scheduled full refresh is due.
+    /// @param has_unresolved whether any cgroup is still awaiting identification.
+    ///
+    /// Never negative: a deadline already passed means "wake immediately", and
+    /// handing poll() a negative timeout would make it block forever — the one
+    /// mistake here that would look like a hang rather than a slowdown.
+    [[nodiscard]] inline int resolverWaitMs(std::chrono::milliseconds until_refresh, bool has_unresolved)
     {
-        until_refresh = std::chrono::milliseconds {0};
-    }
+        if (until_refresh.count() < 0)
+        {
+            until_refresh = std::chrono::milliseconds {0};
+        }
 
-    if (has_unresolved)
-    {
-        until_refresh = std::min(until_refresh, std::chrono::milliseconds {RESOLVE_PACING_MS});
-    }
+        if (has_unresolved)
+        {
+            until_refresh = std::min(until_refresh, std::chrono::milliseconds {RESOLVE_PACING_MS});
+        }
 
-    return static_cast<int>(until_refresh.count());
-}
+        return static_cast<int>(until_refresh.count());
+    }
 
 } // namespace fim_container_events
 

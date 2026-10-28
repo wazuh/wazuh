@@ -52,92 +52,92 @@
 namespace fim_container_events
 {
 
-enum class ReconcileMode
-{
-    /* Nothing is known about what changed — unattributable kernel loss, or
-     * cgroups the map had no room to queue. Re-baseline every container. */
-    rebaselineAll,
-
-    /* One container changed in ways that cannot be enumerated: reported loss,
-     * a rename (C21), a staging budget overflow, or events that arrived before
-     * the container was identified. Walk it. */
-    rewalkContainer,
-
-    /* A known, complete set of paths changed in a known container. Re-read
-     * exactly those. */
-    rereadPaths,
-
-    /* The kernel reported these paths UNLINKED in a known container. Delete
-     * exactly those rows.
-     *
-     * This is NOT the inference D15 forbids, and the distinction is the whole
-     * point: D15 refuses to read a FAILED READ as a removal, because a failed
-     * read has three causes and two of them are wrong. RT_EV_FILE_UNLINK is the
-     * kernel stating the removal, so there is nothing to infer. Discarding it
-     * and then re-deriving "deleted" from a read that finds nothing — which is
-     * what the spike branch did — is exactly backwards. */
-    deletePaths,
-};
-
-struct ReconcileRequest
-{
-    ReconcileMode mode{ReconcileMode::rereadPaths};
-
-    /* Empty for rebaselineAll. */
-    std::string container_id;
-
-    /* Populated for rereadPaths (paths to re-read) and for deletePaths (rows to
-     * remove). One list, because the mode already says which it is. */
-    std::vector<std::string> paths;
-
-    /* Whether this action may use delete detection AT ALL. False for every
-     * path reconcile, without exception — see this file's header. */
-    bool may_detect_deletions{false};
-
-    /* Nothing to do. A path batch that carries no paths is a no-op, and
-     * deliberately NOT promoted to a walk: promoting it would turn "I have
-     * nothing to reconcile" into "delete whatever I cannot find", which is the
-     * exact inference D15 forbids. */
-    bool empty() const
+    enum class ReconcileMode
     {
-        return (mode == ReconcileMode::rereadPaths || mode == ReconcileMode::deletePaths) && paths.empty();
-    }
-};
+        /* Nothing is known about what changed — unattributable kernel loss, or
+         * cgroups the map had no room to queue. Re-baseline every container. */
+        rebaselineAll,
 
-inline ReconcileRequest PlanFor(const Batch& batch)
-{
-    ReconcileRequest request;
+        /* One container changed in ways that cannot be enumerated: reported loss,
+         * a rename (C21), a staging budget overflow, or events that arrived before
+         * the container was identified. Walk it. */
+        rewalkContainer,
 
-    if (batch.suspect)
+        /* A known, complete set of paths changed in a known container. Re-read
+         * exactly those. */
+        rereadPaths,
+
+        /* The kernel reported these paths UNLINKED in a known container. Delete
+         * exactly those rows.
+         *
+         * This is NOT the inference D15 forbids, and the distinction is the whole
+         * point: D15 refuses to read a FAILED READ as a removal, because a failed
+         * read has three causes and two of them are wrong. RT_EV_FILE_UNLINK is the
+         * kernel stating the removal, so there is nothing to infer. Discarding it
+         * and then re-deriving "deleted" from a read that finds nothing — which is
+         * what the spike branch did — is exactly backwards. */
+        deletePaths,
+    };
+
+    struct ReconcileRequest
     {
-        /* A walk sees whole directories, so it can tell a deleted file from an
-         * unreadable one. This is the only place deletions may come from. */
-        request.may_detect_deletions = true;
+        ReconcileMode mode{ReconcileMode::rereadPaths};
+
+        /* Empty for rebaselineAll. */
+        std::string container_id;
+
+        /* Populated for rereadPaths (paths to re-read) and for deletePaths (rows to
+         * remove). One list, because the mode already says which it is. */
+        std::vector<std::string> paths;
+
+        /* Whether this action may use delete detection AT ALL. False for every
+         * path reconcile, without exception — see this file's header. */
+        bool may_detect_deletions{false};
+
+        /* Nothing to do. A path batch that carries no paths is a no-op, and
+         * deliberately NOT promoted to a walk: promoting it would turn "I have
+         * nothing to reconcile" into "delete whatever I cannot find", which is the
+         * exact inference D15 forbids. */
+        bool empty() const
+        {
+            return (mode == ReconcileMode::rereadPaths || mode == ReconcileMode::deletePaths) && paths.empty();
+        }
+    };
+
+    inline ReconcileRequest PlanFor(const Batch& batch)
+    {
+        ReconcileRequest request;
+
+        if (batch.suspect)
+        {
+            /* A walk sees whole directories, so it can tell a deleted file from an
+             * unreadable one. This is the only place deletions may come from. */
+            request.may_detect_deletions = true;
+            request.container_id = batch.container_id;
+            request.mode =
+                batch.container_id.empty() ? ReconcileMode::rebaselineAll : ReconcileMode::rewalkContainer;
+            return request;
+        }
+
         request.container_id = batch.container_id;
-        request.mode =
-            batch.container_id.empty() ? ReconcileMode::rebaselineAll : ReconcileMode::rewalkContainer;
+
+        /* may_detect_deletions stays FALSE for both of these. It governs whether a
+         * walk may derive deletions from ABSENT rows, which neither of them does:
+         * a re-read never deletes, and an unlink deletes one named row because an
+         * event named it. */
+        request.may_detect_deletions = false;
+
+        if (!batch.unlinked.empty())
+        {
+            request.mode = ReconcileMode::deletePaths;
+            request.paths = batch.unlinked;
+            return request;
+        }
+
+        request.mode = ReconcileMode::rereadPaths;
+        request.paths = batch.paths;
         return request;
     }
-
-    request.container_id = batch.container_id;
-
-    /* may_detect_deletions stays FALSE for both of these. It governs whether a
-     * walk may derive deletions from ABSENT rows, which neither of them does:
-     * a re-read never deletes, and an unlink deletes one named row because an
-     * event named it. */
-    request.may_detect_deletions = false;
-
-    if (!batch.unlinked.empty())
-    {
-        request.mode = ReconcileMode::deletePaths;
-        request.paths = batch.unlinked;
-        return request;
-    }
-
-    request.mode = ReconcileMode::rereadPaths;
-    request.paths = batch.paths;
-    return request;
-}
 
 } // namespace fim_container_events
 
