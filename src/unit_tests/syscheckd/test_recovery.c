@@ -300,9 +300,14 @@ static void expect_recovery_start(AgentSyncProtocolHandle* handle, cJSON* items)
 }
 
 static void expect_recovery_sync(AgentSyncProtocolHandle* handle) {
-    expect_value(__wrap_asp_sync_module, handle, handle);
-    expect_value(__wrap_asp_sync_module, mode, MODE_DELTA);
-    will_return(__wrap_asp_sync_module, true);
+    expect_value(__wrap_asp_sync_module_bounded, handle, handle);
+    expect_value(__wrap_asp_sync_module_bounded, mode, MODE_DELTA);
+    expect_value(__wrap_asp_sync_module_bounded, max_blocks, 10);
+    will_return(__wrap_asp_sync_module_bounded, true);
+
+    // The sync reports its outcome through minfo, which every other test in this
+    // file also lets through rather than pinning to a message.
+    expect_any_always(__wrap__minfo, formatted_msg);
 }
 
 static cJSON* container_recovery_item(const char* container_id, const char* path) {
