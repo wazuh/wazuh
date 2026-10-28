@@ -488,6 +488,12 @@ void LogCollectorStart()
     /* Create the input threads */
     w_create_input_threads();
 
+#if defined(Darwin) || (defined(__linux__) && defined(WAZUH_UNIT_TESTING))
+    if (macos_processes != NULL) {
+        w_create_thread(w_macos_log_reader, NULL);
+    }
+#endif
+
     /* Start up message */
     minfo(STARTUP_MSG, (int)getpid());
     mdebug1(CURRENT_FILES, current_files, maximum_files);
@@ -2175,12 +2181,6 @@ void * w_input_thread(__attribute__((unused)) void * t_id){
                             current->read(current, &r, 0);
                         }
                     }
-#if defined(Darwin) || (defined(__linux__) && defined(WAZUH_UNIT_TESTING))
-                    /* Read the macOS `log` process output */
-                    else if (current->macos_log != NULL && current->macos_log->state != LOG_NOT_RUNNING) {
-                        current->read(current, &r, 0);
-                    }
-#endif
 #ifdef __linux__
                     /* Read the journald logs */
                     else if (current->journal_log != NULL) {
@@ -3094,6 +3094,37 @@ void w_macos_release_log_execution(void) {
     macos_log_shutdown = 1;
     w_macos_release_log_show();
     w_macos_release_log_stream();
+}
+
+void * w_macos_log_reader(__attribute__((unused)) void * arg) {
+
+    bool running = true;
+    int r = 0;
+
+    while (running && FOREVER()) {
+        rwlock_lock_read(&files_update_rwlock);
+
+        /* logff may be shifted or reallocated while the files lock is released */
+        logreader * lf = logff;
+        while (lf->logformat && (lf->macos_log == NULL || lf->macos_log->state == LOG_NOT_RUNNING)) {
+            lf++;
+        }
+
+        running = !macos_log_shutdown && lf->logformat != NULL;
+        if (running) {
+            w_mutex_lock(&lf->mutex);
+            lf->read(lf, &r, 0);
+            w_mutex_unlock(&lf->mutex);
+        }
+
+        rwlock_unlock(&files_update_rwlock);
+
+        if (running) {
+            w_time_delay(MACOS_LOG_READ_INTERVAL_MS);
+        }
+    }
+
+    return NULL;
 }
 
 #endif
