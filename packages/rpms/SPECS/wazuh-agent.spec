@@ -757,13 +757,25 @@ fi
 
 if [ -f %{_localstatedir}/tmp/wazuh.restart ]; then
   rm -f %{_localstatedir}/tmp/wazuh.restart
+  # An agent that does not start does not fail the transaction; say so instead of staying silent.
+  RESTART_FAILED=""
+  LOG_SIZE=$(stat -c %%s %{_localstatedir}/logs/ossec.log 2> /dev/null || echo 0)
   if command -v systemctl > /dev/null 2>&1 && systemctl > /dev/null 2>&1 ; then
     systemctl daemon-reload > /dev/null 2>&1
-    systemctl restart wazuh-agent.service > /dev/null 2>&1
+    RESTART_OUTPUT=$(systemctl restart wazuh-agent.service 2>&1) || RESTART_FAILED="yes"
   elif command -v service > /dev/null 2>&1; then
-    service wazuh-agent restart > /dev/null 2>&1
+    RESTART_OUTPUT=$(service wazuh-agent restart 2>&1) || RESTART_FAILED="yes"
   else
-    %{_localstatedir}/bin/wazuh-control restart > /dev/null 2>&1
+    RESTART_OUTPUT=$(%{_localstatedir}/bin/wazuh-control restart 2>&1) || RESTART_FAILED="yes"
+  fi
+  if [ -n "${RESTART_FAILED}" ]; then
+    # The reason is in what the daemons logged during the restart (systemctl only says the
+    # unit failed). A refused token is logged as INFO, so it is matched by its text.
+    { printf '%%s\n' "${RESTART_OUTPUT}" | grep -vE '^[0-9/]+ [0-9:]+ [^ ]+: (INFO|WARNING):'
+      tail -c +$((LOG_SIZE + 1)) %{_localstatedir}/logs/ossec.log 2> /dev/null \
+          | grep -E '^[0-9/]+ [0-9:]+ [^ ]+: (ERROR|CRITICAL):|Enrollment rejected' | tail -n 10
+    } | awk '!seen[$0]++' >&2
+    echo "wazuh-agent: the agent did not start after the upgrade and was stopped; see %{_localstatedir}/logs/ossec.log for the reason. If the manager refused the enrollment, fix the cause on the manager and start the agent again, or enroll it with a new token: '%{_localstatedir}/bin/wazuh-agent-auth --token-file <file>'." >&2
   fi
 fi
 

@@ -225,6 +225,8 @@ start_service()
             fi
             if [ $failed = true ]; then
                 echo "${i} did not start";
+                # Leave the agent stopped, not half started: the daemons before this one are running.
+                stop_service;
                 unlock;
                 exit 1;
             fi
