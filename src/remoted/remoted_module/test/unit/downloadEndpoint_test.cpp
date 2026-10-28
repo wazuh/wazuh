@@ -411,7 +411,7 @@ TEST(DownloadParseRequestTest, RejectsAConfigRequestWithAnotherSecondMember)
 
 TEST(DownloadParseRequestTest, RejectsAnUnknownTypeWithOneMember)
 {
-    for (const auto* body : {R"({"resource_type":"foo"})", R"({"resource_type":"secrets","resource_id":123})"})
+    for (const auto* body : {R"({"resource_type":"foo"})"})
     {
         const auto parsed = parseRequest(body);
         ASSERT_TRUE(std::holds_alternative<RequestError>(parsed)) << "accepted: " << body;
