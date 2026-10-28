@@ -54,16 +54,16 @@ namespace remoted::control
         return groups;
     }
 
-    /// The /download resource_id the agent must use for its shared configuration.
+    /// The config_token /control publishes: the group selector, the same CSV config_hash was
+    /// computed over, so the two provably name the same merged.mg.
     ///
-    /// Opaque to the agent by contract: it passes this through verbatim and never parses it,
-    /// which is exactly what lets this value change without shipping a new agent. Today it IS
-    /// the group selector -- the same CSV config_hash was computed over, so the two provably
-    /// name the same merged.mg.
+    /// Informational: the agent does not read it. Its /download request names no resource and
+    /// the manager derives the selector from the agent's groups, so a resource_id an older agent
+    /// still sends is only compared with that selector.
     ///
-    /// Never empty: /download needs some resource to name, and an agent with no groups is
-    /// implicitly in "default". The substitution is defensive only, since every site that
-    /// writes AgentEntry::groups goes through membershipGroups() below.
+    /// Never empty: an agent with no groups is implicitly in "default". The substitution is
+    /// defensive only, since every site that writes AgentEntry::groups goes through
+    /// membershipGroups() below.
     inline std::string makeConfigToken(const std::string& groupsCsv)
     {
         return groupsCsv.empty() ? std::string {"default"} : groupsCsv;

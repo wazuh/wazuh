@@ -287,8 +287,8 @@ certificate is not misissued.
 
 ### 7.2 Group memberships: configuration download on any node
 
-`POST /download` for `resource_type: config` is served only for the selector the agent's own groups
-produce. Each node keeps the groups of the agents it serves **in its own memory**, and nothing
+`POST /download` for `resource_type: config` is served from the selector the node derives from the
+agent's own groups; the agent sends no selector. Each node keeps the groups of the agents it serves **in its own memory**, and nothing
 replicates that cache. But a node that holds no fresh membership for the agent (it never served
 it a `/control`, it restarted, or the cached entry is older than
 [`remoted.control_groups_refresh_interval`](../remoted/configuration.md#remotedcontrol_groups_refresh_interval),
@@ -317,11 +317,15 @@ What can still appear, and why:
 |---|---|---|
 | `503`, body `{"error":"dependency_unavailable","dependency":"wazuh-db"}` | This node's database has no row for the agent yet. A node adds new agents to its database as `client.keys` reaches it, so this falls inside the [§7.1](#71-replicated-state-brief-401s-after-enrollment) window | On its own. The agent retries, and is never served `default` meanwhile |
 | The same `503` | This node's `wazuh-manager-db` did not answer in time | When the database answers again. Sustained on one node, that node is degraded ([troubleshooting §9](lb-troubleshooting.md#9-some-agents-work-some-do-not-with-no-pattern)) |
-| `403` | The agent's groups changed and this node has not applied the change yet: the master sends group changes to the workers every 10 seconds. Also right after an agent enrolls into a group other than `default`, while a worker holds its row but not its groups yet | Once the node applies the change, within a round or two |
+| `200`, but the agent discards the file | The agent's groups changed and the node that answers has not applied the change yet (the master sends group changes to the workers every 10 seconds), or applied it when the node that advertised the hash had not. Also right after an agent enrolls into a group other than `default`, while a worker holds its row but not its groups yet. When the Notify and the download reach nodes that differ, the download carries a hash other than the advertised one, and the agent logs the WARN `Downloaded config hash ... does not match the advertised ...; discarding it` and repeats the download on every Notify. When both reach the same lagging node the hash matches: the agent applies, with no warning, the configuration of the groups that node sees until it converges | Once the nodes converge on the change, within a round or two |
+| `404` | The node still reports a group that was deleted, so the path derived from it no longer exists. The agent logs it at DEBUG1, with no WARN | Once the node applies the change |
+| `403` | Only for an agent that still sends a `resource_id` that is not the selector the node derives | Once the node applies the change, within a round or two |
 
-The three are counted apart on each node: `remoted.download.no_row`, `remoted.download.unavailable`
-and `remoted.download.denied` (see [troubleshooting §4](lb-troubleshooting.md#4-403-but-only-on-configuration-download)
-and [§7](lb-troubleshooting.md#7-503-service-unavailable)).
+Each node counts them apart: `remoted.download.no_row` and `remoted.download.unavailable` for the two
+`503`s, `remoted.download.not_found` for the `404` and `remoted.download.denied` for the `403` (see
+[troubleshooting §4](lb-troubleshooting.md#4-403-but-only-on-configuration-download) and
+[§7](lb-troubleshooting.md#7-503-service-unavailable)). The discarded `200` counts as an ordinary started download; the
+agent's WARN is its only trace.
 
 Two further properties worth knowing:
 

@@ -439,9 +439,10 @@ paths:
         `notify` is the hot path -- a keepalive every 10 s by default. Its response tells the agent
         whether anything changed: `settings_hash` (over `limits` + `cluster.name` only, cached
         process-wide and therefore identical for every agent -- a different value means re-`startup`),
-        `config_hash` (a different value means fetch `merged.mg` via `POST /download`, sending
-        `agent.config_token` back verbatim as the `resource_id` -- the token is opaque to the
-        agent, which must never derive that identifier from `agent.groups` itself),
+        `config_hash` (a different value means fetch `merged.mg` via `POST /download`, which names
+        no resource: the manager derives it from the agent's own groups; `agent.config_token` is
+        still published, as the selector in CSV form or `default` when the agent has no groups, and
+        a 5.x agent ignores it),
         `ca_generation` (issue #39319, RF-3: the generation the CA bundle `GET /cacerts` would serve
         right now is published under, costing this hot path no extra file read -- see that route's
         own description for what an agent does with a rotation once it sees one here), a strictly
@@ -726,23 +727,27 @@ paths:
 
         | `resource_type` | `resource_id` | Resolves to |
         | --- | --- | --- |
-        | `config` | one group name | `/etc/wazuh-manager/shared/<group>/merged.mg` |
-        | `config` | several, comma-separated | `var/multigroups/<sha256(resource_id)[0..32)>/merged.mg` |
-        | `wpk` | a package filename | `var/upgrade/<filename>` |
+        | `config` | absent (optional) | the file of the agent's own groups, derived by the manager |
+        | `config` | present | the same file, only if it equals the derived selector |
+        | `wpk` | a package filename (required) | `var/upgrade/<filename>` |
 
-        The comma-separated form is wazuh's multigroup selector: it lets an agent in several groups
-        fetch its **effective** configuration, and needs no database lookup because the directory
-        name is the first 32 hex characters of the SHA-256 of the selector verbatim.
+        For `config` the manager derives the selector from the requesting agent's groups, resolves it
+        with the function that computes `config_hash`, and serves the file it names: one group, as
+        `/etc/wazuh-manager/shared/<group>/merged.mg`; several, as
+        `var/multigroups/<sha256(csv)[0..32)>/merged.mg`, with the groups in the manager's order; none,
+        as `default`. No database lookup is needed to find the file once the groups are known, because
+        the multigroup directory name is the first 32 hex characters of the SHA-256 of the CSV.
 
-        **A `config` download is authorized against the requesting agent's own groups.**
-        `resource_id` must equal the selector `/control` handed that agent as `config_token` -- the
-        same string `config_hash` was computed over -- and anything else is `403`. The selector is
-        resolved from the agent registry `/control` maintains when the agent's membership there is
-        fresh (established within `remoted.control_groups_refresh_interval`); otherwise -- first
-        contact with this node, a restarted manager, an expired or never-established entry -- it is
-        read from the node's local `wazuh-manager-db` before answering. An agent that database has no
-        row for is never served `default`: like a database that does not answer in time, it is
-        `503`, and the agent retries. The comparison is exact, multigroup order included.
+        **A `config` download is authorized against the requesting agent's own groups.** The groups
+        come from the agent registry `/control` maintains when the agent's membership there is fresh
+        (established within `remoted.control_groups_refresh_interval`); otherwise -- first contact
+        with this node, a restarted manager, an expired or never-established entry -- they are read
+        from the node's local `wazuh-manager-db` before answering. An agent that database has no row
+        for is never served `default`: like a database that does not answer in time, it is `503`,
+        and the agent retries. A `resource_id`, when sent, is only compared with the derived
+        selector, exactly and with the multigroup order included, and anything else is `403`; it
+        never takes part in building the path. The path is built from the derived groups, each
+        validated as a group name (no `/`, not `.` or `..`).
 
         **`wpk` downloads are not authorized this way.** A package's authority is the agent's
         pending upgrade task, which `/control` does not carry, so any authenticated agent may still
@@ -759,6 +764,9 @@ paths:
           application/json:
             schema: { $ref: "#/components/schemas/DownloadRequest" }
             examples:
+              derivedConfig:
+                summary: The selector is derived by the manager from the agent's groups
+                value: { resource_type: config }
               singleGroup:
                 value: { resource_type: config, resource_id: web-servers }
               multigroup:
@@ -779,7 +787,10 @@ paths:
               schema: { $ref: "#/components/schemas/ErrorResponse" }
               examples:
                 invalidRequestFormat:
-                  summary: Empty, over 4 KiB, not an object, wrong member count, non-string member
+                  summary: >
+                    Empty, over 4 KiB, not an object, a non-string member, a single member that is not
+                    `resource_type: config`, an empty object, `wpk` without `resource_id`, two members without `resource_id`, or three
+                    members
                   value: { error: "Invalid request format", code: 400 }
                 invalidResourceType:
                   value: { error: "Invalid resource type", code: 400 }
@@ -791,10 +802,11 @@ paths:
           description: |
             Two different producers answer `403` on this route, with the same flat shape:
 
-            - **this endpoint**, when `resource_type` is `config` and `resource_id` is not the
-              requesting agent's own selector. Decided before the path is resolved, so it is
-              indistinguishable from a request for a group that does not exist -- there is no oracle
-              for enumerating group names.
+            - **this endpoint**, when `resource_type` is `config` and either a `resource_id` is
+              present and differs from the selector derived for the requesting agent, the group
+              source's verdict is `Deny`, or the derived selector is empty. Decided before the path is
+              resolved, so it is indistinguishable from a request for a group that does not exist --
+              there is no oracle for enumerating group names.
             - **the shared transport**, with `verification_mode` `full`, when the client certificate
               does not carry the connecting peer's address (see the API description). That one
               applies to every route.
@@ -811,7 +823,8 @@ paths:
         "404":
           description: |
             Absent, not a regular file, or `O_NOFOLLOW` refused a symlink -- deliberately
-            indistinguishable to the agent.
+            indistinguishable to the agent. For `config` it also covers a derived selector that maps
+            to no path, or whose `merged.mg` does not exist on this node.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/ErrorResponse" }
@@ -1609,11 +1622,12 @@ components:
     DownloadRequest:
       type: object
       additionalProperties: false
-      required: [resource_type, resource_id]
+      required: [resource_type]
       description: |
-        Exactly these two members, both strings. An unknown extra member is a rejection, not
-        something skipped -- so a field a newer agent adds can never be silently ignored by an older
-        manager. The whole body is capped at 4 KiB before parsing.
+        `resource_type`, alone or with `resource_id`, both strings. `resource_id` is optional for
+        `config` and required for `wpk`. Any other member is a rejection, not something skipped -- so
+        a field a newer agent adds can never be silently ignored by an older manager. The whole body
+        is capped at 4 KiB before parsing.
       properties:
         resource_type:
           type: string
@@ -1623,14 +1637,17 @@ components:
           minLength: 1
           maxLength: 4096
           description: |
-            For `config`: one group name, or several comma-separated (the multigroup selector). A
-            group name is at most 255 bytes, is not `.` or `..`, and draws from
-            `a-z A-Z 0-9 . : ; _ - = + ! @ ( )` -- note the absence of `/`. Every entry of a
-            selector must be valid on its own, which rejects leading, trailing and doubled commas;
-            the whole selector is capped at 4096 bytes.
+            For `config`: optional; when present, it must equal the selector the manager derives for
+            the agent (see the `POST /download` description): a single group name or several
+            comma-separated.
+            Each name is 1 to 255 bytes, is not `.` or `..`, and draws from `A-Za-z0-9._-`. Every
+            entry of a selector must be valid on its own, which rejects leading, trailing and doubled
+            commas. The 4096-byte cap applies only to a `resource_id` that is sent, and in practice the
+            4 KiB cap on the whole body applies first: a selector over about 4053 bytes is answered
+            `400` `Invalid request format`. The derived selector has no cap.
 
-            For `wpk`: a filename of at most 255 bytes that must not begin with a dot, must end in
-            `.wpk`, and draws from the stricter `a-z A-Z 0-9 . _ -`.
+            For `wpk`: required; a filename of at most 255 bytes that must not begin with a dot, must
+            end in `.wpk`, and draws from `A-Za-z0-9._-`.
           example: web-servers
 
     ScanVdRequest:

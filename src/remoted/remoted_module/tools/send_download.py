@@ -11,9 +11,9 @@ What it verifies beyond "did it return 200":
 
   * `Transfer-Encoding: chunked` is present and `Content-Length` is absent -- the
     endpoint must stream, not buffer.
-  * The received bytes are IDENTICAL to the file `resource_id` names. The manager serves
-    exactly what is requested, so the expectation is derived from the request alone -- this
-    tool never reads the manager's database.
+  * The received bytes are IDENTICAL to the file the manager derives for the agent from its
+    groups. The tool is told that selector (--resource-id, --selectors) and computes the
+    expected path and hash from it -- it never reads the manager's database.
   * With --watch-rss, remoted's peak RSS, exact CPU time, fd count and throughput during
     the transfer. RSS answers the issue's "memory usage is constant regardless of file
     size"; CPU is read as a /proc counter delta rather than sampled as a percentage, so
@@ -21,8 +21,14 @@ What it verifies beyond "did it return 200":
 
 Requires: pip install requests
 
+A `config` request carries only {"resource_type":"config"}, as the agent sends it; the
+manager derives the groups itself. --send-resource-id adds the `resource_id` member that
+older agents still send, which must equal the derived selector.
+
 Examples:
-  python3 send_download.py                            # config download for agent 001's group
+  python3 send_download.py                            # config download for agent 001
+  python3 send_download.py --resource-id web-servers,databases   # expects that selector's file
+  python3 send_download.py --resource-id default --send-resource-id   # older agent's form
   python3 send_download.py --all                      # every success/failure scenario
   python3 send_download.py --resource-type wpk --resource-id pkg.wpk
   python3 send_download.py --simulate 20 --repeat 5   # 20 concurrent simulated agents
@@ -48,7 +54,8 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 DEFAULT_MANAGER_HOME = "/var/wazuh-manager"
 TARGET = "/download"
 
-# Mirrors MAX_RESOURCE_ID_SIZE in downloadEndpoint.cpp.
+# Mirrors MAX_RESOURCE_ID_SIZE in downloadEndpoint.cpp: the longest WPK filename and the
+# longest single group name.
 MAX_RESOURCE_ID_SIZE = 255
 
 # --- Manager-side layout ---------------------------------------------------
@@ -122,10 +129,11 @@ def multigroup_dir_name(selector: str) -> str:
 
 
 def expected_config_path(paths: ManagerPaths, selector: str) -> str:
-    """The file the manager should serve for a `config` request naming `selector`.
+    """The file the manager should serve an agent whose derived selector is `selector`.
 
-    resource_id is taken at face value -- no group lookup. One group joins under etc/shared;
-    a comma-separated selector is hashed into var/multigroups, exactly as wazuh-db names it.
+    `selector` is the agent's groups, comma-separated in the manager's order; no group lookup
+    happens here. One group joins under etc/shared; several are hashed into var/multigroups,
+    exactly as wazuh-db names it; none is `default`.
     """
     selector = selector or "default"
     if "," in selector:
@@ -146,9 +154,11 @@ def sha256_file(path: str):
 
 # --- The request itself ----------------------------------------------------
 
-def request_body(resource_type: str, resource_id: str) -> bytes:
+def request_body(resource_type: str, resource_id=None) -> bytes:
     # Built by hand rather than with json.dumps so a scenario can send a deliberately
-    # malformed body through the same path as a valid one.
+    # malformed body through the same path as a valid one. A None resource_id omits the member.
+    if resource_id is None:
+        return ('{"resource_type":"%s"}' % resource_type).encode()
     return ('{"resource_type":"%s","resource_id":"%s"}' % (resource_type, resource_id)).encode()
 
 
@@ -332,37 +342,41 @@ class ProcWatcher:
 # 400 but with distinct messages; anything that does not resolve to a readable regular
 # file is 404.
 #
-# Authorization (#38683): a `config` request is served only when resource_id equals the
-# selector /control handed THIS agent as config_token. Anything else is 403, decided before
-# the path is resolved -- so a group the agent is not in answers the same whether or not it
-# exists on the manager, which is the property the two denial scenarios below pin together.
-# 404 therefore now means "your own group's merged.mg is not on disk", not "no such group".
+# Authorization: the manager derives the selector from the agent's own groups, and a
+# `resource_id`, when sent, must equal it. Any other value is 403, decided before the path is
+# resolved -- so a group the agent is not in answers the same whether or not it exists on the
+# manager, which is the property the two denial scenarios below pin together. 404 therefore
+# means "the derived selector has no merged.mg on disk", not "no such group".
 #
-# One case this script cannot stage by itself: an agent with no registry entry at all (it
-# never sent /control/startup, or its entry was evicted). Reproduce it by restarting remoted
-# and running send_download.py BEFORE send_control.py -- the answer must be 403, not 200.
+# One case this script cannot stage by itself: an agent whose groups the manager cannot read.
+# With no registry entry (it never sent /control/startup, or its entry was evicted) the manager
+# asks wazuh-db: a row is served with 200, no row answers 503 until it reaches this node.
+# Reproduce it by restarting remoted and running send_download.py BEFORE send_control.py.
 # `wpk` requests are deliberately NOT authorized (their authority is the pending upgrade
 # task, which /control does not carry), which is why valid_wpk below still expects 200.
 
 def build_scenarios(group, unknown_group, other_group, wpk_name):
     scenarios = [
         ("valid_config", 200, request_body("config", group)),
+        ("valid_config_without_resource_id", 200, request_body("config")),
         ("malformed_not_json", 400, b"not json at all"),
         ("malformed_empty", 400, b""),
         ("malformed_array", 400, b"[]"),
-        ("malformed_missing_field", 400, b'{"resource_type":"config"}'),
         ("malformed_extra_field", 400, b'{"resource_type":"config","resource_id":"a","x":1}'),
         ("malformed_wrong_type", 400, b'{"resource_type":"config","resource_id":123}'),
+        ("config_with_unknown_second_member", 400, b'{"resource_type":"config","x":"a"}'),
         ("unknown_resource_type", 400, request_body("secrets", "a")),
         ("resource_type_case_sensitive", 400, request_body("CONFIG", group)),
         ("invalid_id_traversal", 400, request_body("config", "../../etc/shadow")),
         ("invalid_id_slash", 400, request_body("config", "a/b")),
         ("invalid_id_dotdot", 400, request_body("config", "..")),
         ("invalid_id_empty", 400, request_body("config", "")),
+        ("invalid_id_outside_group_grammar", 400, request_body("config", "web:servers")),
         ("invalid_id_too_long", 400, request_body("config", "g" * (MAX_RESOURCE_ID_SIZE + 1))),
         ("multigroup_selector_trailing_comma", 400, request_body("config", "web-servers,")),
         ("multigroup_selector_doubled_comma", 400, request_body("config", "web,,servers")),
         ("multigroup_selector_traversal_entry", 400, request_body("config", "web-servers,..")),
+        ("wpk_without_resource_id", 400, request_body("wpk")),
         ("wpk_without_extension", 400, request_body("wpk", "package")),
         ("wpk_traversal", 400, request_body("wpk", "../../etc/shadow.wpk")),
         ("group_that_does_not_exist_is_denied", 403, request_body("config", unknown_group)),
@@ -425,7 +439,7 @@ def enrolled_agents(paths: ManagerPaths, limit=None):
     return agents
 
 
-def simulate(base_url, agents, repeat, expected):
+def simulate(base_url, agents, repeat, expected, send_resource_id=False):
     """Fires `repeat` config downloads per agent, all concurrently, and checks every one
     byte-for-byte. Concurrency is where a per-connection streaming bug shows up: a shared
     buffer or a mis-scoped descriptor produces interleaved or truncated bodies here and
@@ -439,7 +453,8 @@ def simulate(base_url, agents, repeat, expected):
     def one(job):
         agent_id, key, _ = job
         want = expected.get(agent_id)
-        result = post_download(base_url, agent_id, key, request_body("config", want["selector"]))
+        body = request_body("config", want["selector"] if send_resource_id else None)
+        result = post_download(base_url, agent_id, key, body)
         return agent_id, result, want
 
     started = time.time()
@@ -474,13 +489,14 @@ def simulate(base_url, agents, repeat, expected):
 def resolve_expectations(paths, agents, selectors):
     """Works out which file the manager should serve each simulated agent.
 
-    Selectors are assigned round-robin so concurrent agents pull DIFFERENT files -- that is
-    what catches a per-connection streaming bug, since shared or mis-scoped state shows up
-    as one agent receiving another's body.
+    Each selector is the one the manager must derive for that agent (its groups), assigned
+    round-robin so concurrent agents pull DIFFERENT files -- that is what catches a
+    per-connection streaming bug, since shared or mis-scoped state shows up as one agent
+    receiving another's body.
 
-    No database is consulted: `/download` takes `resource_id` at face value, so the
-    expectation follows from the request alone. Reading global.db here would only re-create
-    the group-aware model the endpoint deliberately does not have.
+    No database is consulted: the selectors are given, and the manager derives the real ones
+    from its own data, so a selector that does not match the agent's groups shows up as a
+    403 or a body mismatch rather than being corrected here.
     """
     expected = {}
     for index, (agent_id, _) in enumerate(agents):
@@ -510,8 +526,13 @@ def main():
                              "shared/ are always read from /etc/wazuh-manager.")
     parser.add_argument("--resource-type", default="config", choices=("config", "wpk"))
     parser.add_argument("--resource-id", default=None,
-                        help="Group name or WPK filename. Defaults to 'default' for --resource-type config; "
-                             "required for wpk.")
+                        help="For --resource-type config, the selector the manager must derive for the agent "
+                             "(its groups, comma-separated; 'default' when not given): it only computes the "
+                             "expected file, and is sent only with --send-resource-id. For wpk, the WPK "
+                             "filename (required, always sent).")
+    parser.add_argument("--send-resource-id", action="store_true",
+                        help="Also send the resource_id member that older agents send (single download and "
+                             "--simulate). It must equal the selector the manager derives, or the answer is 403.")
     parser.add_argument("--all", action="store_true", help="Run every success/failure scenario.")
     parser.add_argument("--simulate", type=int, metavar="N",
                         help="Simulate N enrolled agents downloading concurrently.")
@@ -519,18 +540,20 @@ def main():
                         help="Downloads per simulated agent, all in flight at once. Above the manager's "
                              "remoted.max_requests_per_agent (6 by default) the excess is answered 503 by design.")
     parser.add_argument("--selectors", default="default",
-                        help="Semicolon-separated resource_ids to hand the simulated agents, "
-                             "round-robin (';' because ',' already separates a multigroup). "
-                             "Different selectors make concurrent agents pull different files, "
-                             "e.g. 'web-servers;web-servers,databases;default'.")
+                        help="Semicolon-separated selectors the manager must derive for the simulated "
+                             "agents, assigned round-robin (';' because ',' already separates a "
+                             "multigroup). They only compute the expected files; with "
+                             "--send-resource-id they are also sent. Different selectors make "
+                             "concurrent agents pull different files, e.g. "
+                             "'web-servers;web-servers,databases;default'.")
     parser.add_argument("--watch-rss", action="store_true",
                         help="Sample wazuh-manager-remoted's RSS during the transfers.")
     parser.add_argument("--unknown-group", default="a-group-that-does-not-exist",
-                        help="Group that must NOT exist on the manager; the denial scenario proves "
-                             "it answers 403, not 404.")
+                        help="Group that must NOT exist on the manager; sent as a resource_id, it "
+                             "must answer 403, not 404.")
     parser.add_argument("--other-group", default="databases",
-                        help="Group that DOES exist but this agent is not in; must answer 403 "
-                             "identically to --unknown-group (no enumeration oracle). The default "
+                        help="Group that DOES exist but this agent is not in; sent as a resource_id, it "
+                             "must answer 403 identically to --unknown-group (no enumeration oracle). The default "
                              "is absent from a stock install, in which case that scenario is "
                              "skipped with a warning rather than passing for the wrong reason.")
     parser.add_argument("--wpk", default=None, help="WPK filename staged under var/upgrade.")
@@ -549,16 +572,17 @@ def main():
         selectors = [s for s in args.selectors.split(";") if s] or ["default"]
         expected = resolve_expectations(paths, agents, selectors)
         for agent_id, want in list(expected.items())[:5]:
-            print(f"  agent {agent_id}: requests '{want['selector']}' -> {want['path']} "
+            print(f"  agent {agent_id}: selector '{want['selector']}' -> {want['path']} "
                   f"{'(unreadable)' if not want['sha256'] else ''}")
         watcher = ProcWatcher(remoted_pid() if args.watch_rss else None)
         with watcher:
-            ok = simulate(args.url, agents, args.repeat, expected)
+            ok = simulate(args.url, agents, args.repeat, expected, args.send_resource_id)
         if args.watch_rss:
             print(f"  {watcher.report()}")
         return 0 if ok else 1
 
     agent_key = read_agent_key(args.agent_id, paths.client_keys)
+    # The selector the manager must derive for this agent; valid_config sends it as resource_id.
     default_group = args.resource_id or "default"
 
     if args.all:
@@ -588,7 +612,8 @@ def main():
     if not resource_id:
         raise SystemExit("--resource-id is required for a wpk download")
 
-    body = request_body(args.resource_type, resource_id)
+    send_id = args.resource_type == "wpk" or args.send_resource_id
+    body = request_body(args.resource_type, resource_id if send_id else None)
     print(f"--> POST {args.url.rstrip('/')}{prefixed(TARGET)}  {body.decode()}")
 
     watcher = ProcWatcher(remoted_pid() if args.watch_rss else None)

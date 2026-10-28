@@ -18,7 +18,7 @@ flowchart TD
     S -->|"401, intermittent,<br/>right after enrolling"| A["§1 Expected.<br/>Clears within ~25 s."]
     S -->|"401, every request,<br/>not new agents"| B["§2 Clock drift or<br/>a key that did not replicate"]
     S -->|"404 on every request"| C["§3 global_prefix mismatch"]
-    S -->|"403, only on<br/>configuration download"| D["§4 Brief around a group change;<br/>otherwise not the agent's selector"]
+    S -->|"403, only on<br/>configuration download"| D["§4 An older agent's selector;<br/>new agents see a WARN instead"]
     S -->|"413"| E["§5 Batch over the body cap"]
     S -->|"502"| F["§6 May be an oversized batch,<br/>not a failing node"]
     S -->|"503"| G["§7 Back-pressure, the master is<br/>unreachable, or wazuh-db"]
@@ -139,37 +139,49 @@ A proxy that strips or adds a path segment produces the same `404`.
 
 ## 4. `403`, but only on configuration download
 
-**Expected only briefly, around a group change.** Routing does not cause it: a node that has not
-served the agent a `/control` reads the agent's groups from its own database instead of refusing
+**A `403` comes only from an agent that still sends a `resource_id`.** A new agent sends no
+selector: the node derives it from the agent's groups, so a group change that a node has not applied
+yet never produces a `403` for it. Routing does not cause one either: a node that has not served the
+agent a `/control` reads the agent's groups from its own database instead of refusing
 (see [§7.2 of the architecture page](lb.md#72-group-memberships-configuration-download-on-any-node)).
 
-A configuration download is served only for the selector the agent's groups produce **on the node
-that answers**. Nodes can disagree on those groups for a short while:
+The master sends group changes to the workers every **10 seconds**, so nodes can disagree on an
+agent's groups for a short while. What a new agent sees:
 
-* The agent's groups changed on the master. The agent got its new `config_token` from a node that
-  has applied the change, and the download reached one that has not. The master sends group changes
-  to the workers every **10 seconds**; the refusing node accepts the new selector once it applies
-  them.
-* The reverse: a token issued before the change, presented to a node that has already applied it.
-  That refusal is the change taking effect; the agent's next notify hands it the new token.
-* Right after an agent enrolls into a group other than `default`, a worker can hold the agent's row
-  before its groups and read it as `default` until the next round.
+* (a) The download reaches a node that has not applied the change: `200` with the previous
+  `merged.mg`.
+* (b) The reverse: the hash was advertised by a node that had not applied the change and the
+  download reaches one that has: `200` with the new `merged.mg`.
+* (c) Right after an agent enrolls into a group other than `default`, a worker can hold the agent's
+  row before its groups and read it as `default` until the next round.
+* (d) The node that has not applied the change still reports a group that was deleted: `404`, with
+  the agent logging it at DEBUG1 and no WARN.
+
+In (a) to (c), when the Notify and the download reach nodes that differ, the downloaded hash differs
+from the advertised one, so the agent discards the file and logs a WARN, `Downloaded config hash
+<actual> does not match the advertised <expected>; discarding it.` It repeats the download on every
+Notify until the node converges. When both reach the same lagging node, the hash matches and the
+agent applies, with no warning, the configuration of the groups that node sees, until the node
+converges and the next Notify advertises the new hash.
 
 **Confirm it is this and not something else:**
 
 * It affects only configuration downloads. WPK downloads are not gated this way.
-* `remoted.download.denied` increments on the refusing node:
+* In (a) to (c) the agent's WARN with `Downloaded config hash` is the only trace, and only when the
+  Notify and the download reached different nodes; no denial or error counter moves. In (d), `remoted.download.not_found` increments on the node that answered. `denied`
+  increments only for a request with a `resource_id` that is not the derived selector, a `Deny`
+  verdict or an empty selector:
 
   ```bash
   curl -s --unix-socket /var/wazuh-manager/queue/sockets/remote-admin-http.sock \
-    http://localhost/metrics | grep -E 'remoted\.download\.(denied|no_row|unavailable)'
+    http://localhost/metrics | grep -E 'remoted\.download\.(denied|not_found|no_row|unavailable)'
   ```
 
 * It stops within a round or two of the change.
 
-**Escalate if** it persists for an agent whose groups have not changed. Either the nodes disagree on
-the agent's groups (a worker that is not receiving group updates from the master), or something is
-requesting a selector that is not the agent's own.
+**Escalate if** the WARN or the `404` persists for an agent whose groups have not changed (a worker
+that is not receiving group updates from the master), or `denied` keeps rising: something is sending
+a `resource_id` that is not the agent's own selector.
 
 ---
 
@@ -441,7 +453,7 @@ from the balancer yourself and restart it.
 | `401` right after enrolling | replication window | **yes**, clears within ~25 s |
 | `401` persistent | clock drift | no |
 | `401 token_unknown` | token not replicated yet | **yes**, clears within ~15 s |
-| `403` on configuration download | a group change that node has not applied yet | **briefly**, within a round or two (10 s each) |
+| `403` on configuration download | an older agent sending a `resource_id` that is not its selector; a new agent sees the `Downloaded config hash` WARN during a group change instead | no for the `403`; the WARN clears **briefly**, within a round or two (10 s each) |
 | `404` on everything | `global_prefix` mismatch, or path rewriting | no |
 | `413` | batch over the 5 MiB auth cap | **yes**, the agent splits it |
 | `502` | oversized batch, or backend down | check size first |
