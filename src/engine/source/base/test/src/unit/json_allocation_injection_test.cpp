@@ -171,6 +171,46 @@ TEST(JsonAllocationInjectionTest, AppendJsonLeavesArrayUnchangedOrComplete)
     EXPECT_GE(points, 1u);
 }
 
+/**
+ * Appending onto a scalar target replaces it with a one-element array; the array buffer is the only allocation
+ * after the target is touched. It comes from the pool, so the pool is filled first (a pad near the 64 KB chunk) to
+ * push that allocation onto the base allocator. Returns the allocation points hit over all pad sizes.
+ */
+size_t sweepScalarTarget(const std::function<void(json::Json&)>& op)
+{
+    size_t points = 0;
+    for (size_t pad = RAPIDJSON_ALLOCATOR_DEFAULT_CHUNK_CAPACITY - 1024;
+         pad <= RAPIDJSON_ALLOCATOR_DEFAULT_CHUNK_CAPACITY;
+         pad += 16)
+    {
+        const auto makeDoc = [pad]()
+        {
+            json::Json doc(R"({"k":"keep-me"})");
+            doc.setString(std::string(pad, 'p'), "/pad");
+            return doc;
+        };
+        points += sweep(makeDoc, op, expectUnchanged);
+        if (testing::Test::HasFatalFailure())
+        {
+            break;
+        }
+    }
+    return points;
+}
+
+TEST(JsonAllocationInjectionTest, AppendStringOnScalarTargetLeavesDocumentUnchanged)
+{
+    const auto points = sweepScalarTarget([](json::Json& doc) { doc.appendString("v", "/k"); });
+    EXPECT_GE(points, 1u);
+}
+
+TEST(JsonAllocationInjectionTest, AppendJsonOnScalarTargetLeavesDocumentUnchanged)
+{
+    const json::Json element("7");
+    const auto points = sweepScalarTarget([&](json::Json& doc) { doc.appendJson(element, "/k"); });
+    EXPECT_GE(points, 1u);
+}
+
 TEST(JsonAllocationInjectionTest, MergeKeepsDocumentUsable)
 {
     const json::Json source(fmt::format(R"({{"x":"{}","y":"{}"}})", bigString('x'), bigString('y')).c_str());

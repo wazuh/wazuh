@@ -1705,12 +1705,17 @@ void Json::appendString(std::string_view value, std::string_view path)
         auto* val = pp.Get(m_document);
         if (val)
         {
-            if (!val->IsArray())
+            if (val->IsArray())
             {
-                val->SetArray();
+                val->PushBack(v, m_document.GetAllocator());
             }
-
-            val->PushBack(v, m_document.GetAllocator());
+            else
+            {
+                // Built apart so that an allocation failure leaves the scalar in place
+                json::Value arr(rapidjson::kArrayType);
+                arr.PushBack(v, m_document.GetAllocator());
+                *val = arr;
+            }
         }
         else
         {
@@ -1735,11 +1740,16 @@ void Json::appendJson(const Json& value, std::string_view path)
         auto* val = pp.Get(m_document);
         if (val)
         {
-            if (!val->IsArray())
+            if (val->IsArray())
             {
-                val->SetArray();
+                val->PushBack(rapidValue, m_document.GetAllocator());
             }
-            val->PushBack(rapidValue, m_document.GetAllocator());
+            else
+            {
+                json::Value arr(rapidjson::kArrayType);
+                arr.PushBack(rapidValue, m_document.GetAllocator());
+                *val = arr;
+            }
         }
         else
         {
