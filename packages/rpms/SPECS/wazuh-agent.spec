@@ -807,5 +807,5 @@ rm -fr %{buildroot}
 %endif
 
 %changelog
-* Wed Oct 28 2026 support <info@wazuh.com> - 4.14.10
+* Thu Nov 05 2026 support <info@wazuh.com> - 4.14.10
 - More info: https://documentation.wazuh.com/current/release-notes/release-4-14-10.html
