@@ -205,15 +205,16 @@ def load_rules_from_file(rule_filename: str, rule_relative_path: str, rule_statu
 
 
 def _remove_files(tmp_data, parameters):
-    data = list(tmp_data)
-    for d in tmp_data:
+    def keep(d):
         for key, value in parameters.items():
             if key == 'status':
-                value and value != Status.S_ALL.value and value != d[key] and data.remove(d)
-            elif value and value != d[key] and d in data:
-                data.remove(d)
+                if value and value != Status.S_ALL.value and value != d[key]:
+                    return False
+            elif value and value != d[key]:
+                return False
+        return True
 
-    return data
+    return [d for d in tmp_data if keep(d)]
 
 
 def item_format(data, all_items, exclude_filenames):
