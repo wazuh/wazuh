@@ -458,7 +458,7 @@ class FakeManager final
             // Size of the session as the manager would see it. Agent builds compile the fake
             // against cpp-httplib 0.10.9 (http-request's EXTERNAL_DEPS_VERSION=19 default), which
             // knows nothing about zstd and hands a `Content-Encoding: zstd` body over untouched;
-            // the manager tree's 0.25.0 (+CPPHTTPLIB_ZSTD_SUPPORT) inflates it before the handler
+            // the manager tree's 0.51.0 (+CPPHTTPLIB_ZSTD_SUPPORT) inflates it before the handler
             // runs. Inflate here whenever the body is still a zstd frame so the compression test
             // proves the same thing -- wire bytes back to the full session -- under both.
             const auto statefulBytes = [](const httplib::Request & request) -> std::size_t
