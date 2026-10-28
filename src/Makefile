@@ -91,7 +91,7 @@ USE_AUDIT=no
 DISABLE_JEMALLOC?=no
 IMAGE_TRUST_CHECKS?=1
 CA_NAME?=Microsoft Identity Verification Root Certificate Authority 2020
-HTTP_REQUEST_BRANCH?=803cab4347fe8b7f5cdbfa69949c22bd1ae35c49
+HTTP_REQUEST_BRANCH?=897ef968b49a798f948a3156045be6cf81f8dc3c
 
 # The `# deps-recipe` blocks hold what reaches the external dependencies build and go into their pool keys
 # (packages/externals/deps.py); an option that changes how the dependencies compile goes inside one. The test,
