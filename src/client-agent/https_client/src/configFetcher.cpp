@@ -44,8 +44,7 @@ ConfigFetcher::ConfigFetcher(const ModuleConfig& config, IHttpPerformer& perform
 {
 }
 
-std::shared_ptr<SpoolFile> ConfigFetcher::fetch(const std::string& expectedHash,
-                                                const std::string& resourceId, Waiter& waiter)
+std::shared_ptr<SpoolFile> ConfigFetcher::fetch(const std::string& expectedHash, Waiter& waiter)
 {
     std::shared_ptr<SpoolFile> spool = m_spoolFactory.spool(nullptr, 0); // Empty target file.
 
@@ -55,8 +54,7 @@ std::shared_ptr<SpoolFile> ConfigFetcher::fetch(const std::string& expectedHash,
         return nullptr;
     }
 
-    const std::string body =
-        R"({"resource_type":"config","resource_id":")" + resourceId + R"("})";
+    const std::string body = R"({"resource_type":"config"})";
     HttpRequestSpec spec;
     spec.target = "/download";
     spec.body = reinterpret_cast<const uint8_t*>(body.data());
@@ -67,11 +65,9 @@ std::shared_ptr<SpoolFile> ConfigFetcher::fetch(const std::string& expectedHash,
 
     // Operational visibility (send-time debug log, mirroring controlStream.cpp's
     // sendStartup()/sendNotify()/sendShutdown()): confirms the download was
-    // actually attempted and for which resource, so a log reader can tell
-    // "never attempted" from "attempted and failed" without source-level
-    // reasoning.
-    LOGFN_DEBUG2(m_logFn, "Sending /download (resource_type=config, resource_id='%s').",
-                 resourceId.c_str());
+    // actually attempted, so a log reader can tell "never attempted" from
+    // "attempted and failed" without source-level reasoning.
+    LOGFN_DEBUG2(m_logFn, "Sending /download (resource_type=config).");
 
     const auto result = m_sender.send(spec, waiter, m_config.downloadMaxAttempts);
 
@@ -82,15 +78,13 @@ std::shared_ptr<SpoolFile> ConfigFetcher::fetch(const std::string& expectedHash,
         // resolve to real content -- e.g. its "0" sentinel for "nothing resolved yet for this
         // group set" right after a group membership change (confirmed with the manager team)
         // -- and the next notify simply re-triggers it either way.
-        LOGFN_DEBUG1(m_logFn, "Config download for resource '%s' failed (%s)%s; "
-                     "the next notify re-triggers it.", resourceId.c_str(),
+        LOGFN_DEBUG1(m_logFn, "Config download failed (%s)%s; the next notify re-triggers it.",
                      outcomeName(result.outcome),
                      transportReason(result.response.curlError).c_str());
         return nullptr;
     }
 
-    LOGFN_DEBUG2(m_logFn, "Config download (resource_id='%s') delivered by the manager.",
-                 resourceId.c_str());
+    LOGFN_DEBUG2(m_logFn, "Config download delivered by the manager.");
 
     const auto actualHash = sha256FileHex(spool->path());
 
