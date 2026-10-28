@@ -172,9 +172,10 @@ TEST(JsonAllocationInjectionTest, AppendJsonLeavesArrayUnchangedOrComplete)
 }
 
 /**
- * Appending onto a scalar target replaces it with a one-element array; the array buffer is the only allocation
- * after the target is touched. It comes from the pool, so the pool is filled first (a pad near the 64 KB chunk) to
- * push that allocation onto the base allocator. Returns the allocation points hit over all pad sizes.
+ * Mutations on `{"k":"keep-me"}` whose only allocations after the target is touched are small (the one-element array
+ * of an append onto a scalar, the member table and the name of a created path level) come from the pool, so the pool
+ * is filled first (a pad near the 64 KB chunk) to push them onto the base allocator. Returns the allocation points
+ * hit over all pad sizes.
  */
 size_t sweepScalarTarget(const std::function<void(json::Json&)>& op)
 {
@@ -208,6 +209,24 @@ TEST(JsonAllocationInjectionTest, AppendJsonOnScalarTargetLeavesDocumentUnchange
 {
     const json::Json element("7");
     const auto points = sweepScalarTarget([&](json::Json& doc) { doc.appendJson(element, "/k"); });
+    EXPECT_GE(points, 1u);
+}
+
+TEST(JsonAllocationInjectionTest, SetThroughScalarLeavesDocumentUnchanged)
+{
+    const auto points = sweepScalarTarget([](json::Json& doc) { doc.setString("v", "/k/x"); });
+    EXPECT_GE(points, 1u);
+}
+
+TEST(JsonAllocationInjectionTest, SetMissingObjectPathLeavesDocumentUnchanged)
+{
+    const auto points = sweepScalarTarget([](json::Json& doc) { doc.setString("v", "/a/b/c"); });
+    EXPECT_GE(points, 1u);
+}
+
+TEST(JsonAllocationInjectionTest, SetMissingArrayPathLeavesDocumentUnchanged)
+{
+    const auto points = sweepScalarTarget([](json::Json& doc) { doc.setString("v", "/a/2/c"); });
     EXPECT_GE(points, 1u);
 }
 

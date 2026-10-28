@@ -33,6 +33,119 @@ std::vector<json::Pointer::Token> asMemberTokens(const json::Pointer& pointer)
     return tokens;
 }
 
+// `Pointer::Set` that leaves the document as it was when an allocation fails. rapidjson's `Create()` resets a scalar
+// on the path with `SetObject()`/`SetArray()` and adds the missing levels one at a time, before the allocations that
+// can fail. Here the part of the path that exists is only read; the missing part is built apart and attached in one
+// step (`AddMember`, `Reserve` and `PushBack` reallocate before they touch the node). Same semantics as `Create()`:
+// a name token turns a non-object into an object, an index token turns a scalar into an array padded with nulls,
+// `-` appends to an array.
+void setValue(json::Document& document, const json::Pointer::Token* tokens, size_t count, json::Value& value)
+{
+    auto& allocator = document.GetAllocator();
+    const auto isName = [](const json::Pointer::Token& t)
+    {
+        return t.index == rapidjson::kPointerInvalidIndex;
+    };
+    const auto isAppend = [](const json::Pointer::Token& t)
+    {
+        return t.length == 1 && t.name[0] == '-';
+    };
+
+    json::Value* node = &document;
+    size_t i = 0;
+    for (; i < count; ++i)
+    {
+        const auto& t = tokens[i];
+        if (node->IsArray())
+        {
+            if (isName(t) || t.index >= node->Size())
+            {
+                break;
+            }
+            node = &(*node)[t.index];
+        }
+        else if (node->IsObject())
+        {
+            const auto member = node->FindMember(json::Value(rapidjson::StringRef(t.name, t.length)));
+            if (member == node->MemberEnd())
+            {
+                break;
+            }
+            node = &member->value;
+        }
+        else
+        {
+            break;
+        }
+    }
+
+    if (i == count)
+    {
+        *node = value; // noexcept move
+        return;
+    }
+
+    // Levels below the attach point, innermost first, around the value
+    const auto wrap = [&](const json::Pointer::Token& t, json::Value& inner)
+    {
+        json::Value level;
+        if (isName(t))
+        {
+            level.SetObject();
+            json::Value name(t.name, t.length, allocator);
+            level.AddMember(name, inner, allocator);
+        }
+        else
+        {
+            level.SetArray();
+            level.Reserve(t.index + 1, allocator);
+            while (level.Size() < t.index)
+            {
+                level.PushBack(json::Value(), allocator);
+            }
+            level.PushBack(inner, allocator);
+        }
+        return level;
+    };
+    json::Value chain;
+    chain = value;
+    for (size_t j = count; j > i + 1; --j)
+    {
+        chain = wrap(tokens[j - 1], chain);
+    }
+
+    const auto& t = tokens[i];
+    if (node->IsObject())
+    {
+        json::Value name(t.name, t.length, allocator);
+        node->AddMember(name, chain, allocator);
+    }
+    else if (node->IsArray() && isAppend(t))
+    {
+        node->PushBack(chain, allocator);
+    }
+    else if (node->IsArray() && !isName(t))
+    {
+        node->Reserve(t.index + 1, allocator);
+        while (node->Size() < t.index)
+        {
+            node->PushBack(json::Value(), allocator);
+        }
+        node->PushBack(chain, allocator);
+    }
+    else
+    {
+        // A scalar, or an array addressed by a name: the node itself is replaced
+        chain = wrap(t, chain);
+        *node = chain;
+    }
+}
+
+void setValue(json::Document& document, const json::Pointer& pointer, json::Value& value)
+{
+    setValue(document, pointer.GetTokens(), pointer.GetTokenCount(), value);
+}
+
 // Exact-size copies of sub-values (Json(const json::Value&)): the pool of the new document is sized to what
 // CopyFrom will allocate, instead of the 64 KB chunk of a default document. The walk below mirrors rapidjson's
 // allocations; if it ever falls short the pool simply grows, it never corrupts.
@@ -413,7 +526,7 @@ void Json::set(std::string_view ptrPath, const Json& value)
     {
         // The copy is complete before the target node is touched: an allocation failure leaves the document as it was
         json::Value copy {value.m_document, m_document.GetAllocator()};
-        fieldPtr.Set(m_document, copy);
+        setValue(m_document, fieldPtr, copy);
     }
     else
     {
@@ -441,11 +554,12 @@ void Json::set(std::string_view basePtrPath, std::string_view referencePtrPath)
         // Copied before the target is created: the copy cannot fail halfway, and the reference stays valid while
         // the target path grows the tree
         json::Value copy {*reference, m_document.GetAllocator()};
-        fieldPtr.Set(m_document, copy);
+        setValue(m_document, fieldPtr, copy);
     }
     else
     {
-        fieldPtr.Set(m_document, json::Value());
+        json::Value null;
+        setValue(m_document, fieldPtr, null);
     }
 }
 
@@ -1528,7 +1642,8 @@ void Json::setNull(std::string_view path)
 
     if (pp.IsValid())
     {
-        pp.Set(m_document, json::Value().SetNull());
+        json::Value null;
+        setValue(m_document, pp, null);
         return;
     }
 
@@ -1541,7 +1656,8 @@ void Json::setBool(bool value, std::string_view path)
 
     if (pp.IsValid())
     {
-        pp.Set(m_document, value);
+        json::Value v(value);
+        setValue(m_document, pp, v);
         return;
     }
 
@@ -1554,7 +1670,8 @@ void Json::setInt(int value, std::string_view path)
 
     if (pp.IsValid())
     {
-        pp.Set(m_document, value);
+        json::Value v(value);
+        setValue(m_document, pp, v);
         return;
     }
 
@@ -1567,7 +1684,8 @@ void Json::setInt64(int64_t value, std::string_view path)
 
     if (pp.IsValid())
     {
-        pp.Set(m_document, value);
+        json::Value v(value);
+        setValue(m_document, pp, v);
     }
     else
     {
@@ -1581,7 +1699,8 @@ void Json::setUint64(uint64_t value, std::string_view path)
 
     if (pp.IsValid())
     {
-        pp.Set(m_document, value);
+        json::Value v(value);
+        setValue(m_document, pp, v);
     }
     else
     {
@@ -1595,7 +1714,8 @@ void Json::setFloat(float_t value, std::string_view path)
 
     if (pp.IsValid())
     {
-        pp.Set(m_document, value);
+        json::Value v(value);
+        setValue(m_document, pp, v);
     }
     else
     {
@@ -1609,7 +1729,8 @@ void Json::setDouble(double_t value, std::string_view path)
 
     if (pp.IsValid())
     {
-        pp.Set(m_document, value);
+        json::Value v(value);
+        setValue(m_document, pp, v);
         return;
     }
 
@@ -1625,7 +1746,7 @@ void Json::setStringAsMembers(std::string_view value, std::string_view path)
         const auto tokens = asMemberTokens(pp);
         const auto* data = value.data() ? value.data() : "";
         json::Value v(data, static_cast<rapidjson::SizeType>(value.size()), m_document.GetAllocator());
-        json::Pointer(tokens.data(), tokens.size()).Set(m_document, v);
+        setValue(m_document, tokens.data(), tokens.size(), v);
         return;
     }
 
@@ -1639,7 +1760,8 @@ void Json::setNullAsMembers(std::string_view path)
     if (pp.IsValid())
     {
         const auto tokens = asMemberTokens(pp);
-        json::Pointer(tokens.data(), tokens.size()).Set(m_document, json::Value().SetNull());
+        json::Value null;
+        setValue(m_document, tokens.data(), tokens.size(), null);
         return;
     }
 
@@ -1654,7 +1776,7 @@ void Json::setString(std::string_view value, std::string_view path)
     {
         const auto* data = value.data() ? value.data() : "";
         json::Value v(data, static_cast<rapidjson::SizeType>(value.size()), m_document.GetAllocator());
-        pp.Set(m_document, v);
+        setValue(m_document, pp, v);
         return;
     }
 
@@ -1667,7 +1789,8 @@ void Json::setArray(std::string_view path)
 
     if (pp.IsValid())
     {
-        pp.Set(m_document, json::Value().SetArray());
+        json::Value arr(rapidjson::kArrayType);
+        setValue(m_document, pp, arr);
         return;
     }
 
@@ -1680,7 +1803,8 @@ void Json::setObject(std::string_view path)
 
     if (pp.IsValid())
     {
-        pp.Set(m_document, json::Value().SetObject());
+        json::Value obj(rapidjson::kObjectType);
+        setValue(m_document, pp, obj);
         return;
     }
 
@@ -1722,7 +1846,7 @@ void Json::appendString(std::string_view value, std::string_view path)
             json::Value vArray;
             vArray.SetArray();
             vArray.PushBack(v, m_document.GetAllocator());
-            pp.Set(m_document, vArray);
+            setValue(m_document, pp, vArray);
         }
         return;
     }
@@ -1756,7 +1880,7 @@ void Json::appendJson(const Json& value, std::string_view path)
             json::Value vArray;
             vArray.SetArray();
             vArray.PushBack(rapidValue, m_document.GetAllocator());
-            pp.Set(m_document, vArray);
+            setValue(m_document, pp, vArray);
         }
     }
     else
