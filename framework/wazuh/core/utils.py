@@ -146,6 +146,69 @@ def previous_month(n: int = 1) -> datetime.date:
     return date.replace(hour=00, minute=00, second=00, microsecond=00)
 
 
+def _distinct_key(value) -> typing.Hashable:
+    """Get a hashable key of a value, equal for two values only when the values compare equal.
+
+    Parameters
+    ----------
+    value
+        Value to get the key of.
+
+    Raises
+    ------
+    TypeError
+        If the value contains a type whose equality the key cannot represent.
+
+    Returns
+    -------
+    typing.Hashable
+        Key of the value.
+    """
+    if type(value) is dict:
+        return dict, frozenset((k, _distinct_key(v)) for k, v in value.items())
+    if type(value) is list:
+        return list, tuple(_distinct_key(v) for v in value)
+    if isinstance(value, tuple):
+        return tuple, tuple(_distinct_key(v) for v in value)
+
+    hash(value)
+    return value
+
+
+def get_distinct_items(array: list) -> list:
+    """Remove the repeated items of a list, keeping the first occurrence of each one.
+
+    Items are compared by equality. When an item cannot be turned into a hashable key, every item is compared
+    against the ones already kept instead.
+
+    Parameters
+    ----------
+    array : list
+        Items to process.
+
+    Returns
+    -------
+    list
+        Distinct items, in their original order.
+    """
+    distinct_array = []
+    try:
+        keys = [_distinct_key(element) for element in array]
+    except TypeError:
+        for element in array:
+            if element not in distinct_array:
+                distinct_array.append(element)
+        return distinct_array
+
+    seen = set()
+    for key, element in zip(keys, array):
+        if key not in seen:
+            seen.add(key)
+            distinct_array.append(element)
+
+    return distinct_array
+
+
 def process_array(array: list, search_text: str = None, complementary_search: bool = False,
                   search_in_fields: list = None, select: list = None, sort_by: list = None,
                   sort_ascending: bool = True, allowed_sort_fields: list = None, offset: int = 0, limit: int = None,
@@ -224,12 +287,7 @@ def process_array(array: list, search_text: str = None, complementary_search: bo
                              allowed_select_fields=allowed_select_fields)
 
     if distinct:
-        distinct_array = []
-        for element in array:
-            if element not in distinct_array:
-                distinct_array.append(element)
-
-        array = distinct_array
+        array = get_distinct_items(array)
 
     return {'items': cut_array(array, offset=offset, limit=limit), 'totalItems': len(array)}
 
