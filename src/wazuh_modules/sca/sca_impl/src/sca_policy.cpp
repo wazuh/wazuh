@@ -65,7 +65,7 @@ void SCAPolicy::Scan(
 
         requirementsOk = resultEvaluator.Result();
 
-        if (requirementsOk == sca::CheckResult::NotRun)
+        if (requirementsOk == sca::CheckResult::NotRun || requirementsOk == sca::CheckResult::NotApplicable)
         {
             requirementsReason = resultEvaluator.GetUnresolvedReason();
         }
@@ -126,8 +126,18 @@ void SCAPolicy::Scan(
     else
     {
         // Without this a policy whose requirements fail only shows its checks as not
-        // applicable, and the reason is visible at debug level only.
-        LoggingHelper::getInstance().log(LOG_INFO, "Policy \"" + m_id + "\" skipped: its requirements are not met.");
+        // applicable, and the reason is visible at debug level only. A requirement rule that
+        // cannot be evaluated (an invalid rule) is not a failed one, so say which it was.
+        if (requirementsOk == sca::CheckResult::NotApplicable)
+        {
+            LoggingHelper::getInstance().log(LOG_INFO,
+                                             "Policy \"" + m_id + "\" skipped: its requirements could not be evaluated: " +
+                                             requirementsReason);
+        }
+        else
+        {
+            LoggingHelper::getInstance().log(LOG_INFO, "Policy \"" + m_id + "\" skipped: its requirements are not met.");
+        }
 
         for (const auto& check : m_checks)
         {

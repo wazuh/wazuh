@@ -324,6 +324,56 @@ TEST_F(ProcessRuleEvaluatorTest, CompoundValueNeedsOneNameToSatisfyEveryTerm)
     EXPECT_EQ(withMaster.Evaluate(), RuleResult::Found);
 }
 
+TEST_F(ProcessRuleEvaluatorTest, PlainTermInsideCompoundMatchesCaseInsensitively)
+{
+    m_ctx.rule = "SSHD && !r:worker";
+
+    m_processesMock = []
+    {
+        return std::vector<std::string> {"systemd", "sshd"};
+    };
+
+    auto evaluator = CreateEvaluator();
+    EXPECT_EQ(evaluator.Evaluate(), RuleResult::Found);
+}
+
+TEST_F(ProcessRuleEvaluatorTest, NegatedPlainValueIsATerm)
+{
+    // As in 4.x, "!sshd" holds for any process that is not sshd; "not p:sshd" is the rule for "sshd is not running"
+    m_ctx.rule = "!sshd";
+
+    m_processesMock = []
+    {
+        return std::vector<std::string> {"sshd"};
+    };
+
+    auto onlySshd = CreateEvaluator();
+    EXPECT_EQ(onlySshd.Evaluate(), RuleResult::NotFound);
+
+    m_fsMock = std::make_unique<MockFileSystemWrapper>();
+    m_sysInfoMock = std::make_unique<MockSysInfo>();
+    m_processesMock = []
+    {
+        return std::vector<std::string> {"sshd", "systemd"};
+    };
+
+    auto withOthers = CreateEvaluator();
+    EXPECT_EQ(withOthers.Evaluate(), RuleResult::Found);
+}
+
+TEST_F(ProcessRuleEvaluatorTest, CaseSensitiveRegexIsNotLowercased)
+{
+    m_ctx.rule = "r:(?-i)^NGINX$";
+
+    m_processesMock = []
+    {
+        return std::vector<std::string> {"nginx"};
+    };
+
+    auto evaluator = CreateEvaluator();
+    EXPECT_EQ(evaluator.Evaluate(), RuleResult::NotFound);
+}
+
 TEST_F(ProcessRuleEvaluatorTest, ContentPatternIsRejectedInsteadOfIgnored)
 {
     m_ctx.rule = "nginx";

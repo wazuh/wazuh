@@ -92,8 +92,9 @@ def test_process_rules(test_configuration, test_metadata, prepare_cis_policies_f
                        set_wazuh_configuration, configure_local_internal_options, clean_sca_db, start_test_processes,
                        daemons_handler, wait_for_sca_enabled):
     '''
-    description: Check that process rules ('p:') match a running process by its kernel task name, without case, and
-                 with a regex value, also when the process rewrote its argv[0] or was started through an interpreter.
+    description: Check that process rules ('p:') match a running process by its kernel task name, without case
+                 (also for a plain term of a compound value), and with a regex value, also when the process
+                 rewrote its argv[0] or was started through an interpreter.
 
     test_phases:
         - Copy the process rules policy into the agent.
@@ -138,7 +139,8 @@ def test_process_rules(test_configuration, test_metadata, prepare_cis_policies_f
             brief: Wait for the sca Module to start before starting the test.
 
     assertions:
-        - Verify the process rules of a running process pass for its kernel task name, in any case and as a regex.
+        - Verify the process rules of a running process pass for its kernel task name, in any case, as a regex and
+          as a compound value.
         - Verify the process rule of a process that is not running fails.
 
     input_description:

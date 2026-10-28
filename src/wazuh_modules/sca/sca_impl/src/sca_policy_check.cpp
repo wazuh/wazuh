@@ -708,35 +708,25 @@ RuleResult ProcessRuleEvaluator::Evaluate()
         return RuleResult::Invalid;
     }
 
-    // As in 4.x, the value may be a pattern (r:, n:, their ! negations, &&) matched against each name;
-    // a plain value is compared case-insensitively.
-    const auto isPattern = sca::IsRegexOrNumericPattern(m_ctx.rule) || m_ctx.rule.find(" && ") != std::string::npos;
-    const auto lowerRule = Utils::toLowerCase(m_ctx.rule);
-
+    // As in 4.x, the value is a pattern (r:, n:, a ! negation, &&) matched against each name, and plain
+    // values, alone or inside &&, are compared case-insensitively. Names are not lowercased, so
+    // r:(?-i) keeps a regex case-sensitive.
     auto result = RuleResult::NotFound;
 
     if (const auto processes = TryFunc([this] { return m_getProcesses(); }))
     {
         for (const auto& process : processes.value())
         {
-            if (isPattern)
+            const auto patternMatch = sca::PatternMatches(process, m_ctx.rule, m_ctx.regexEngine, true);
+
+            if (!patternMatch)
             {
-                const auto patternMatch = sca::PatternMatches(process, m_ctx.rule, m_ctx.regexEngine);
-
-                if (!patternMatch)
-                {
-                    LoggingHelper::getInstance().log(LOG_DEBUG, "Invalid pattern '" + m_ctx.rule + "' for process rule evaluation");
-                    m_lastUnresolvedReason = "Invalid pattern '" + m_ctx.rule + "' for process rule";
-                    return RuleResult::Invalid;
-                }
-
-                if (*patternMatch)
-                {
-                    result = RuleResult::Found;
-                    break;
-                }
+                LoggingHelper::getInstance().log(LOG_DEBUG, "Invalid pattern '" + m_ctx.rule + "' for process rule evaluation");
+                m_lastUnresolvedReason = "Invalid pattern '" + m_ctx.rule + "' for process rule";
+                return RuleResult::Invalid;
             }
-            else if (Utils::toLowerCase(process) == lowerRule)
+
+            if (*patternMatch)
             {
                 result = RuleResult::Found;
                 break;

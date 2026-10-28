@@ -251,6 +251,40 @@ TEST_F(SCAPolicyTest, UnmetRequirementsAreLoggedAtInfo)
     EXPECT_NE(line, logs.end());
 }
 
+TEST_F(SCAPolicyTest, InvalidRequirementsAreLoggedAtInfoWithTheReason)
+{
+    std::vector<std::pair<modules_log_level_t, std::string>> logs;
+    LoggingHelper::setLogCallback([&logs](const modules_log_level_t level, const char* log)
+    {
+        logs.emplace_back(level, log);
+    });
+
+    auto requirements = MakeCheck("requirements", "all",
+    {{RuleResult::Invalid, "Patterns ('->') are not supported in process rule 'nginx'", "p:nginx -> r:master"}});
+
+    std::vector<Check> checks;
+    checks.push_back(MakeCheck("1009", "all", {{RuleResult::Found, ""}}));
+
+    const auto reported = RunPolicy(std::move(requirements), std::move(checks));
+    LoggingHelper::setLogCallback([](const modules_log_level_t /* level */, const char* /* log */) {});
+
+    ASSERT_EQ(reported.size(), 1U);
+    EXPECT_EQ(reported[0].result, "Not applicable");
+
+    const auto line = std::find_if(logs.begin(), logs.end(), [](const auto & log)
+    {
+        return log.first == LOG_INFO &&
+               log.second.find("Policy \"test_policy\" skipped: its requirements could not be evaluated: ") == 0 &&
+               log.second.find("Patterns ('->') are not supported in process rule 'nginx'") != std::string::npos;
+    });
+
+    EXPECT_NE(line, logs.end());
+    EXPECT_EQ(std::count_if(logs.begin(), logs.end(), [](const auto & log)
+    {
+        return log.second.find("its requirements are not met") != std::string::npos;
+    }), 0);
+}
+
 TEST_F(SCAPolicyTest, MetRequirementsLogNothingAtInfo)
 {
     std::vector<modules_log_level_t> levels;

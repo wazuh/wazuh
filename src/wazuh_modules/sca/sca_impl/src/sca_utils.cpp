@@ -5,6 +5,8 @@
 
 #include <pcre2.h>
 
+#include <algorithm>
+#include <cctype>
 #include <map>
 #include <optional>
 #include <sstream>
@@ -162,7 +164,23 @@ namespace
         throw std::runtime_error("Invalid operator in numeric comparison");
     }
 
-    bool EvaluateMinterm(const std::string& minterm, const std::string& content, sca::RegexEngineType engine)
+    bool EqualsIgnoreCase(const std::string& lhs, const std::string& rhs)
+    {
+        return lhs.size() == rhs.size() &&
+               std::equal(lhs.begin(),
+                          lhs.end(),
+                          rhs.begin(),
+                          [](const char a, const char b)
+        {
+            // std::tolower is undefined for negative values other than EOF
+            return std::tolower(static_cast<unsigned char>(a)) == std::tolower(static_cast<unsigned char>(b));
+        });
+    }
+
+    bool EvaluateMinterm(const std::string& minterm,
+                         const std::string& content,
+                         sca::RegexEngineType engine,
+                         bool caseInsensitiveValues)
     {
         if (minterm.size() >= 2 && minterm.compare(0, 2, "r:") == 0)
         {
@@ -179,7 +197,7 @@ namespace
             return EvaluateNumericRegexComparison(content, expression, engine);
         }
 
-        return content == minterm;
+        return caseInsensitiveValues ? EqualsIgnoreCase(content, minterm) : content == minterm;
     }
 
 } // namespace
@@ -258,7 +276,10 @@ namespace sca
         return std::nullopt;
     }
 
-    std::optional<bool> PatternMatches(const std::string& content, const std::string& pattern, RegexEngineType engine)
+    std::optional<bool> PatternMatches(const std::string& content,
+                                       const std::string& pattern,
+                                       RegexEngineType engine,
+                                       bool caseInsensitiveValues)
     {
         try
         {
@@ -304,7 +325,7 @@ namespace sca
 
                 while (std::getline(stream, line))
                 {
-                    if (EvaluateMinterm(minterm, line, engine))
+                    if (EvaluateMinterm(minterm, line, engine, caseInsensitiveValues))
                     {
                         return false; // A line matched the negated pattern → fail
                     }
@@ -323,7 +344,7 @@ namespace sca
 
                 for (const auto& [negated, minterm] : minterms)
                 {
-                    const bool match = EvaluateMinterm(minterm, line, engine);
+                    const bool match = EvaluateMinterm(minterm, line, engine, caseInsensitiveValues);
 
                     if ((negated && match) || (!negated && !match))
                     {

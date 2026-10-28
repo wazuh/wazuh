@@ -63,3 +63,12 @@ checks:
     condition: all
     rules:
       - p:wzsca-absent
+
+  - id: 6
+    name: Case-insensitive plain term in a compound value
+    description: Plain terms of a compound process value are compared without case
+    rationale: Test_6
+    remediation: Test_6
+    condition: all
+    rules:
+      - p:WZSCA-PROC && !r:wzsca-absent
