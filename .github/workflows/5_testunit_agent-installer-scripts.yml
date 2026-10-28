@@ -22,6 +22,9 @@ on:
       - "src/init/template-select.sh"
       - "etc/templates/config/generic/localfile-logs/**"
       - "src/init/tests/test_write_logs.sh"
+      # wazuh-client.sh (wazuh-control), run against stub daemons.
+      - "src/init/wazuh-client.sh"
+      - "src/init/tests/test_wazuh_control.sh"
   workflow_dispatch:
 
 concurrency:
@@ -64,3 +67,7 @@ jobs:
       - name: Default log files under bash (inst-functions.sh WriteLogs, add_localfiles.sh)
         if: ${{ !cancelled() }}
         run: bash src/init/tests/test_write_logs.sh
+
+      - name: Daemons left running when one does not start (wazuh-client.sh)
+        if: ${{ !cancelled() }}
+        run: bash src/init/tests/test_wazuh_control.sh

@@ -302,6 +302,8 @@ Verify the agent is running:
 sudo systemctl status wazuh-agent
 ```
 
+The package restarts the agent only if it was running before the upgrade. If the agent does not start again, the upgrade still completes. It prints the errors the agent logged to `/var/ossec/logs/ossec.log` while starting, such as the manager refusing the enrollment, followed by a notice starting with `wazuh-agent: the agent did not start after the upgrade`. The agent stays stopped until the cause is fixed.
+
 #### Red Hat-based platforms
 
 Upgrade the package:
@@ -316,6 +318,8 @@ Verify the agent is running:
 sudo systemctl status wazuh-agent
 ```
 
+The package behaves as on Debian-based platforms when the agent does not start again after the upgrade.
+
 #### SUSE-based platforms
 
 Upgrade the package:
@@ -329,6 +333,8 @@ Verify the agent is running:
 ```bash
 sudo systemctl status wazuh-agent
 ```
+
+The package behaves as on Debian-based platforms when the agent does not start again after the upgrade.
 
 ### macOS
 
