@@ -14,6 +14,7 @@
 
 #include <stdexcept>
 #include <string>
+#include <type_traits>
 
 #include "embeddedSchema.hpp"
 
@@ -37,9 +38,11 @@ namespace manager_config::detail
 
         /// rapidjson reports the outermost keyword ("allOf" for the `allOf: [{$ref}]` wrappers of the schema); its
         /// error tree nests the real failure under "errors". Walk down to the innermost keyword so the message names
-        /// the constraint the user broke ("pattern", "maximum"...), like the Python validator does.
+        /// the constraint the user broke ("pattern", "maximum"...), like the Python validator does. `detail` is set
+        /// to that keyword's error object (for "type", the one listing the "expected" types), or left untouched.
         template<typename ValueType>
-        std::string innermostKeyword(const ValueType& error, const std::string& fallback)
+        std::string
+        innermostKeyword(const ValueType& error, const std::string& fallback, const ValueType** detail = nullptr)
         {
             if (!error.IsObject() || error.MemberCount() == 0)
             {
@@ -53,15 +56,54 @@ namespace manager_config::detail
                 {
                     if (errors->value.IsArray() && !errors->value.Empty())
                     {
-                        return innermostKeyword(errors->value[0], keyword);
+                        return innermostKeyword(errors->value[0], keyword, detail);
                     }
                     if (errors->value.IsObject())
                     {
-                        return innermostKeyword(errors->value, keyword);
+                        return innermostKeyword(errors->value, keyword, detail);
                     }
                 }
             }
+            if (detail != nullptr)
+            {
+                *detail = &first.value;
+            }
             return keyword;
+        }
+
+        /// Whether a "type" error object (or an array of them, when one value broke it twice) lists "boolean"
+        /// among the expected types: only then is the yes/no spelling of booleans worth pointing out.
+        template<typename ValueType>
+        bool expectsBoolean(const ValueType& detail)
+        {
+            if (detail.IsArray())
+            {
+                for (const auto& entry : detail.GetArray())
+                {
+                    if (expectsBoolean(entry))
+                    {
+                        return true;
+                    }
+                }
+                return false;
+            }
+            if (!detail.IsObject())
+            {
+                return false;
+            }
+            const auto expected = detail.FindMember("expected");
+            if (expected == detail.MemberEnd() || !expected->value.IsArray())
+            {
+                return false;
+            }
+            for (const auto& type : expected->value.GetArray())
+            {
+                if (type.IsString() && std::string(type.GetString()) == "boolean")
+                {
+                    return true;
+                }
+            }
+            return false;
         }
 
     } // namespace
@@ -89,7 +131,9 @@ namespace manager_config::detail
             return std::nullopt;
         }
         const std::string outer = validator.GetInvalidSchemaKeyword() ? validator.GetInvalidSchemaKeyword() : "schema";
-        const std::string keyword = innermostKeyword(validator.GetError(), outer);
+        using ErrorValue = std::remove_cv_t<std::remove_reference_t<decltype(validator.GetError())>>;
+        const ErrorValue* detail = nullptr;
+        const std::string keyword = innermostKeyword(validator.GetError(), outer, &detail);
         std::string message = "does not satisfy '" + keyword + "'";
         if (keyword == "additionalProperties")
         {
@@ -97,7 +141,11 @@ namespace manager_config::detail
         }
         else if (keyword == "type")
         {
-            message = "wrong value type (does not satisfy 'type'); booleans are yes/no";
+            message = "wrong value type (does not satisfy 'type')";
+            if (detail != nullptr && expectsBoolean(*detail))
+            {
+                message += "; booleans are yes/no";
+            }
         }
         else if (keyword == "required")
         {

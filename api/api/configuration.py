@@ -220,7 +220,13 @@ def read_yaml_config(config_file: str = CONFIG_FILE_PATH, default_conf: dict = N
         dict_to_lowercase(configuration, skip_keys=PRESERVE_CASE_SENSITIVITY_FIELDS)
 
         schema = security_config_schema if config_file == SECURITY_CONFIG_PATH else api_config_schema
-        configuration = fill_dict(default_conf, configuration, schema)
+        try:
+            configuration = fill_dict(default_conf, configuration, schema)
+        except APIError as e:
+            # Name the file that was read, which `-t -c <file>` may have chosen.
+            if e.code != 2000:
+                raise
+            raise APIError(2000, details=e.details, config_file=config_file) from None
 
     # Append Wazuh prefixes to all relative paths in configuration
     append_wazuh_prefixes(configuration, {CERTS_PATH: [('https', 'key'), ('https', 'cert'), ('https', 'ca')]})

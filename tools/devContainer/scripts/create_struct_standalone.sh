@@ -22,7 +22,6 @@ mkdir -p "${ENGINE_ALLOWED_FIELDS_PATH}"
 mkdir -p "$ENGINE_STANDALONE_DIR/logs"
 mkdir -p "$ENGINE_STANDALONE_DIR/tzdb"
 mkdir -p "$ENGINE_STANDALONE_DIR/kvdb"
-mkdir -p "$ENGINE_STANDALONE_DIR/queue/indexer/" # For rocksdb indexer conector
 mkdir -p "$ENGINE_STANDALONE_DIR/outputs" # For cmsync output files
 
 

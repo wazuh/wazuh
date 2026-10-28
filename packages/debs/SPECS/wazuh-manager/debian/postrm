@@ -69,9 +69,11 @@ case "$1" in
             # wazuh-manager.
             if [ -d ${DIR}/tmp/conffiles ] && [ ! -L ${DIR}/tmp/conffiles ] \
                 && [ -n "$(find ${DIR}/tmp/conffiles -maxdepth 0 -user 0)" ]; then
-                # Move files from ${DIR}/tmp to ${CONF_DIR}
+                # Move files from ${DIR}/tmp to ${CONF_DIR}. Under its own name, like every other
+                # file kept: the "Delete old .save" step below would delete an agent.conf.save
+                # written here, and the rename step after it adds the suffix.
                 if [ -f ${DIR}/tmp/conffiles/shared/default/agent.conf ]; then
-                    mv ${DIR}/tmp/conffiles/shared/default/agent.conf ${CONF_DIR}/shared/default/agent.conf.save
+                    mv -fT ${DIR}/tmp/conffiles/shared/default/agent.conf ${CONF_DIR}/shared/default/agent.conf
                 fi
 
                 # Move files from ${DIR}/tmp to ${DIR}/api
@@ -118,6 +120,27 @@ case "$1" in
             groupdel wazuh-manager > /dev/null 2>&1 || true
         fi
         rm -rf ${DIR} ${CONF_DIR}
+
+        # The package never enables the service, but the operator does (systemctl enable, or
+        # update-rc.d on a host without systemd), and a purge must not leave that behind for a
+        # later fresh install to come up enabled at boot. systemctl disable cannot be used here:
+        # dpkg has already removed the unit file, and disable refuses a unit it cannot find. So the
+        # enablement links are removed by name; only links are touched, and they work the same in
+        # a chroot or an image build where systemd is not running.
+        for UNIT_LINK in /etc/systemd/system/*.wants/wazuh-manager.service /etc/systemd/system/*.requires/wazuh-manager.service; do
+            if [ -L "${UNIT_LINK}" ]; then
+                rm -f "${UNIT_LINK}"
+            fi
+        done
+        if command -v deb-systemd-helper > /dev/null 2>&1; then
+            deb-systemd-helper purge wazuh-manager.service > /dev/null 2>&1 || true
+        fi
+        if [ -d /run/systemd/system ] && command -v systemctl > /dev/null 2>&1; then
+            systemctl daemon-reload > /dev/null 2>&1 || true
+        fi
+        if command -v update-rc.d > /dev/null 2>&1; then
+            update-rc.d wazuh-manager remove > /dev/null 2>&1 || true
+        fi
     ;;
 
     upgrade)

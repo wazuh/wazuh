@@ -3,6 +3,7 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
+import json
 import os
 from datetime import timezone, datetime
 from unittest.mock import patch
@@ -12,6 +13,7 @@ import pytest
 with patch('wazuh.core.common.wazuh_uid'):
     with patch('wazuh.core.common.wazuh_gid'):
         from wazuh.core.manager import *
+        from wazuh.core.utils import get_localtime
 
 test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data', 'manager')
 ossec_log_path = '{0}/ossec_log.log'.format(test_data_path)
@@ -87,14 +89,38 @@ def test_get_status(manager_conf_mock, manager_glob, manager_exists, test_manage
         manager_exists.assert_any_call("/proc/0234")
 
 
-def test_get_wazuh_log_fields():
+def test_get_wazuh_log_fields(monkeypatch):
     """Test get_wazuh_log_fields() method returns a tuple"""
+    monkeypatch.setenv('TZ', 'UTC')
     result = get_wazuh_log_fields('2020/07/14 06:10:40 rootcheck: INFO: Ending rootcheck scan.')
     assert isinstance(result, tuple), 'The result is not a tuple'
     assert result[0] == datetime(2020, 7, 14, 6, 10, 40, tzinfo=timezone.utc)
     assert result[1] == 'wazuh-rootcheck'
     assert result[2] == 'info'
-    assert result[3] == ' Ending rootcheck scan.'
+    assert result[3] == 'Ending rootcheck scan.'
+
+
+@pytest.mark.parametrize('tz, expected_utc', [
+    ('UTC', datetime(2020, 7, 14, 6, 10, 40, tzinfo=timezone.utc)),
+    # CEST (UTC+2) in July.
+    ('Europe/Madrid', datetime(2020, 7, 14, 4, 10, 40, tzinfo=timezone.utc)),
+    # EST (UTC-5) in January.
+    ('America/New_York', datetime(2020, 1, 14, 11, 10, 40, tzinfo=timezone.utc)),
+])
+@pytest.mark.parametrize('log_format', [LoggingFormat.plain, LoggingFormat.json])
+def test_get_wazuh_log_fields_local_time(monkeypatch, tz, expected_utc, log_format):
+    """The manager log is stamped in the host's local time, so the parsed timestamp is converted to UTC."""
+    monkeypatch.setenv('TZ', tz)
+    local = expected_utc.astimezone(get_localtime()).strftime('%Y/%m/%d %H:%M:%S')
+    # The fixture times above are the local wall clock the log carries.
+    assert local.endswith('06:10:40')
+    line = f'{local} wazuh-manager-remoted: INFO: Started.' if log_format == LoggingFormat.plain else \
+        json.dumps({'timestamp': local, 'tag': 'wazuh-manager-remoted', 'level': 'INFO', 'description': 'Started.'})
+
+    result = get_wazuh_log_fields(line, log_format=log_format)
+
+    assert result[0] == expected_utc
+    assert result[3] == 'Started.'
 
 
 def test_get_wazuh_log_fields_ko():

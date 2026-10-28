@@ -570,7 +570,7 @@ int main(int argc, char **argv)
         if (ctx = os_ssl_keys(1, home_path, config.ciphers, config.manager_cert, config.manager_key, config.agent_ca), !ctx) {
             merror("SSL context setup failed (certificate '%s', key '%s'). authd reuses the HTTPS agent "
                    "listener's pair, issued at installation and never reissued at start: check that both files "
-                   "are owned by the service user and mode 0640, or provision them; see 'Credentials' in the "
+                   "are owned by root:wazuh-manager with mode 0640, or provision them; see 'Credentials' in the "
                    "installation guide. Exiting.", config.manager_cert, config.manager_key);
             exit(1);
         }

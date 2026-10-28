@@ -443,11 +443,12 @@ sudo sh -c '[ -f /var/wazuh-manager/queue/db/global.db ] \
 **Issue: Agents not reconnecting after manager upgrade**
 
 ```bash
-# Verify manager is listening on agent ports
-sudo netstat -tulpn | grep wazuh-manager
+# Verify the manager is listening: 1517 (agents), 1514 (legacy agents, only when
+# enabled), 1515 (enrollment), 1516 (cluster), 55000 (Server API, master only)
+sudo ss -ltunp '( sport = :1514 or sport = :1515 or sport = :1516 or sport = :1517 or sport = :55000 )'
 
-# Check remoted process
-ps aux | grep wazuh-manager-remoted
+# Check that every daemon is running (remoted included)
+sudo /var/wazuh-manager/bin/wazuh-manager-control status
 
 # Review remoted logs
 sudo tail -f /var/wazuh-manager/logs/wazuh-manager.log | grep remoted
@@ -466,8 +467,8 @@ sudo grep -A10 "<cluster>" /etc/wazuh-manager/wazuh-manager.conf
 ping <master_node_ip>
 telnet <master_node_ip> 1516
 
-# Check cluster daemon
-ps aux | grep wazuh-manager-clusterd
+# Check the cluster daemon (a Python process, listed by status)
+sudo /var/wazuh-manager/bin/wazuh-manager-control status
 
 # Review cluster logs
 sudo tail -100 /var/wazuh-manager/logs/cluster.log

@@ -18,7 +18,7 @@ so an agent id travels in a header (`X-Wazuh-Agent-Id`) rather than in the path.
 | Method | Path | Success | Notes |
 |---|---|---|---|
 | `GET` | `/v1/status` | `200` | Readiness: can this daemon serve? See [`GET /v1/status`](#get-v1status). `503` when it is running but the global database cannot answer. |
-| `GET` | `/v1/agents/groups` | `200` | The groups one agent belongs to, in priority order. Requires the `X-Wazuh-Agent-Id` header; `400` without it, `500` when it is not a number. |
+| `GET` | `/v1/agents/groups` | `200` | The groups one agent belongs to, in priority order. Requires the `X-Wazuh-Agent-Id` header; `400` without it or when it is not a numeric agent id. |
 | `GET` | `/v1/agents/all` | `200` | Every agent with every field, `id` ascending. |
 | `POST` | `/v1/agents/summary` | `200` | Counts of agents by status, by group and by OS, for all agents or for the ids in the body. |
 | `GET` | `/v1/agents/sync` | `200` | The agents whose `sync_status` marks them as pending, and **marks them synced** as a side effect. |
@@ -62,7 +62,9 @@ It checks that the `agent`, `belongs` and `group` tables exist — the tables ag
 read. `remoted` reads an agent's groups from the `agent` table with `global select-agent-group` on
 `wdb.sock`, and a failure there makes it answer `503 dependency_unavailable` on `POST /control`;
 [`GET /v1/agents/groups`](#get-v1agentsgroups) joins `belongs` and `group`. A `503` for missing
-tables also logs the warning `Status: the global database is missing expected tables`.
+tables also logs a `WARNING` under the `wazuh-manager-db` tag (`Status answered unavailable N
+time(s) in the last 90 s: the global database is missing expected tables.`), at most once per 90
+seconds so a polling load balancer does not flood the log.
 
 **This is a readiness answer, not a liveness one.** A process that is up is not necessarily a
 process that can work: `wazuh-manager-db` can be running and accepting connections on this socket
@@ -90,8 +92,11 @@ The body is a bare JSON array of group names, not an object.
 
 The agent id travels in the `X-Wazuh-Agent-Id` header because the router is exact-match and cannot
 carry it as a path segment. Without the header the route answers `400 Missing header:
-X-Wazuh-Agent-Id` without touching the database. A header that is not a number makes the handler
-throw, which the server answers `500 Internal server error`.
+X-Wazuh-Agent-Id` without touching the database. The value must be decimal digits only (leading
+zeros allowed, as in `001`) within the signed 32-bit range; anything else — `abc`, `1abc`, `-1`, a
+space, an overflow — answers `400 Invalid header: X-Wazuh-Agent-Id must be a numeric agent id`,
+also without touching the database. Both rejections are logged as a `WARNING` under the
+`wazuh-manager-db` tag at most once per 90 seconds, with the count of requests the line stands for.
 
 An agent that exists but belongs to no group answers `[]`; the route does not distinguish that from an
 id that does not exist.

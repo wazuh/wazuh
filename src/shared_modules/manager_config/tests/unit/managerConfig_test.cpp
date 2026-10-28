@@ -230,6 +230,16 @@ TEST(Load, MissingFileIsAnError)
     EXPECT_NE(error->message.find("not found"), std::string::npos);
 }
 
+TEST(Load, UnreadablePathReportsTheSystemErrorNotNotFound)
+{
+    // A directory stands in for every access error that is not ENOENT (a permission error cannot be produced
+    // reliably when the suite runs as root).
+    auto error = manager_config::validateFile(VECTORS, noFiles());
+    ASSERT_TRUE(error.has_value());
+    EXPECT_EQ(error->message.find("not found"), std::string::npos) << error->what();
+    EXPECT_NE(error->message.find("cannot be read: " + VECTORS.string() + ": "), std::string::npos) << error->what();
+}
+
 // ---------------------------------------------------------------------------------------------------
 // Schema and XML-level rejections, driven by the shared vectors
 // ---------------------------------------------------------------------------------------------------
@@ -263,6 +273,15 @@ TEST(Schema, YesNoIsBooleanAndTrueFalseIsRejected)
     EXPECT_NE(error.message.find("booleans are yes/no"), std::string::npos) << error.what();
 }
 
+TEST(Schema, BooleanHintOnlyForBooleanOptions)
+{
+    // An integer option given text is a type error too, but not a boolean one.
+    const auto error = parseKo(wrap("<remote><https><port>abc</port></https></remote>"));
+    EXPECT_EQ(error.pointer, "/remote/https/port");
+    EXPECT_NE(error.message.find("does not satisfy 'type'"), std::string::npos) << error.what();
+    EXPECT_EQ(error.message.find("yes/no"), std::string::npos) << error.what();
+}
+
 TEST(Schema, CiphersAcceptOnlyTheSuitesTheDaemonsAccept)
 {
     // remoted and authd accept exactly these five TLS 1.3 suites; a well-formed name outside them must fail
@@ -278,6 +297,90 @@ TEST(Schema, CiphersAcceptOnlyTheSuitesTheDaemonsAccept)
             parseKo(wrap(std::string("<remote><https><ciphers>") + ciphers + "</ciphers></https></remote>"));
         EXPECT_EQ(remote.pointer, "/remote/https/ciphers") << ciphers;
     }
+}
+
+TEST(Schema, IpOptionsAcceptOnlyWhatRemotedAccepts)
+{
+    // The addresses remoted's reader takes for remote.legacy.local_ip and remote.https.bind_addr: one IPv4 or
+    // IPv6 address, no CIDR prefix, netmask, host name or 'any'. Anything else used to pass validate and stop
+    // remoted at its configuration test.
+    for (const char* address : {"0.0.0.0",
+                                "127.0.0.1",
+                                "255.255.255.255",
+                                "::",
+                                "::1",
+                                "fe80::1",
+                                "2001:db8::",
+                                "1:2:3:4:5:6:7:8",
+                                "1:2:3:4:5:6::8",
+                                "::ffff:10.0.0.1",
+                                "::FFFF:10.0.0.1"})
+    {
+        parseOk(wrap(std::string("<remote><https><bind_addr>") + address + "</bind_addr></https><legacy><local_ip>" +
+                     address + "</local_ip></legacy></remote>"));
+    }
+    for (const char* address : {"not-an-ip",
+                                "999.1.1.1",
+                                "256.0.0.1",
+                                "01.2.3.4",
+                                "1.2.3",
+                                "1.2.3.4.5",
+                                "10.0.0.0/8",
+                                "10.0.0.1/255.0.0.0",
+                                "::1/128",
+                                "1::2::3",
+                                ":::",
+                                "12345::",
+                                "1:2:3:4:5:6:7:8:9",
+                                "any",
+                                "localhost",
+                                "!10.0.0.1"})
+    {
+        const auto https =
+            parseKo(wrap(std::string("<remote><https><bind_addr>") + address + "</bind_addr></https></remote>"));
+        EXPECT_EQ(https.pointer, "/remote/https/bind_addr") << address;
+        EXPECT_NE(https.message.find("pattern"), std::string::npos) << https.what();
+        const auto legacy =
+            parseKo(wrap(std::string("<remote><legacy><local_ip>") + address + "</local_ip></legacy></remote>"));
+        EXPECT_EQ(legacy.pointer, "/remote/legacy/local_ip") << address;
+    }
+    // clusterd binds through Python's asyncio, which also resolves a host name: only emptiness is refused.
+    parseOk("<wazuh_config><cluster><key>0123456789abcdef0123456789abcdef</key><bind_addr>localhost</bind_addr>"
+            "</cluster>" +
+            std::string(INDEXER_SECTION) + "</wazuh_config>");
+}
+
+TEST(Schema, HttpsStringsAreCappedAtRemotedBufferSizes)
+{
+    // remote-config.h caps these at 255 and 511 characters (one less than remoted_module's C buffers).
+    const std::string prefix = "/" + std::string(254, 'a');
+    parseOk(wrap("<remote><https><global_prefix>" + prefix + "</global_prefix></https></remote>"));
+    const auto longPrefix =
+        parseKo(wrap("<remote><https><global_prefix>" + prefix + "a</global_prefix></https></remote>"));
+    EXPECT_EQ(longPrefix.pointer, "/remote/https/global_prefix");
+    EXPECT_NE(longPrefix.message.find("maxLength"), std::string::npos) << longPrefix.what();
+
+    const std::string path = "/" + std::string(510, 'p');
+    for (const char* option : {"ca", "ca_certificate"})
+    {
+        parseOk(wrap(std::string("<remote><https><") + option + ">" + path + "</" + option + "></https></remote>"));
+        const auto error = parseKo(
+            wrap(std::string("<remote><https><") + option + ">" + path + "p</" + option + "></https></remote>"));
+        EXPECT_EQ(error.pointer, std::string("/remote/https/") + option);
+        EXPECT_NE(error.message.find("maxLength"), std::string::npos) << error.what();
+    }
+    const auto key =
+        parseKo(wrap("<remote><https><certificate>/c.pem</certificate><key>" + path + "p</key></https></remote>"));
+    EXPECT_EQ(key.pointer, "/remote/https/key");
+
+    std::string ciphers = "TLS_AES_128_GCM_SHA256";
+    while (ciphers.size() <= 255)
+    {
+        ciphers += ":TLS_AES_128_GCM_SHA256";
+    }
+    const auto longCiphers = parseKo(wrap("<remote><https><ciphers>" + ciphers + "</ciphers></https></remote>"));
+    EXPECT_EQ(longCiphers.pointer, "/remote/https/ciphers");
+    EXPECT_NE(longCiphers.message.find("maxLength"), std::string::npos) << longCiphers.what();
 }
 
 TEST(Schema, FeedUpdateIntervalRejectsZeroInAnyUnit)

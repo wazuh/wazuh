@@ -1093,7 +1093,7 @@ class Handler(asyncio.Protocol):
         try:
             command, payload = self.process_request(command, payload)
         except exception.WazuhException as e:
-            self.logger.error(f"Internal error processing request '{command}': {e}")
+            self.log_request_error(command, e)
             command, payload = b'err', json.dumps(e, cls=WazuhJSONEncoder).encode()
         except Exception as e:
             self.logger.error(f"Unhandled error processing request '{command}': {e}", exc_info=True)
@@ -1103,6 +1103,18 @@ class Handler(asyncio.Protocol):
             msgs = self.msg_build(command, counter, payload)
             for msg in msgs:
                 self.push(msg)
+
+    def log_request_error(self, command: bytes, error: exception.WazuhException) -> None:
+        """Log an error raised while processing a request. The error is sent back to the requester either way.
+
+        Parameters
+        ----------
+        command : bytes
+            Command being processed.
+        error : WazuhException
+            Error raised.
+        """
+        self.logger.error(f"Internal error processing request '{command}': {error}")
 
     def close(self):
         """Close the connection."""

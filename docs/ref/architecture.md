@@ -201,21 +201,23 @@ Every tool is installed in `/var/wazuh-manager/bin/`.
 wazuh-manager-control [-j] {start|stop|restart|reload|status|enable|disable|info [-v -r -t]}
 ```
 
-`-j` switches the output to one JSON document and is recognised only as the **first** argument. The
+`-j` switches the output to one JSON document on standard output (diagnostics such as a daemon's own `-t`
+output go to standard error) and is recognised only as the **first** argument. The
 daemons it manages are, in order, `wazuh-manager-clusterd`, `-modulesd`, `-remoted`, `-analysisd`,
 `-db`, `-authd` and `-apid`; `start` launches them in the reverse order. Two are skipped by `start` and
-`status` (`stop` stops whatever is running): `wazuh-manager-apid` unless `bin/wazuh-manager-conf get
-cluster.node_type` is `master`, and `wazuh-manager-authd` when `auth.disabled` is `true`.
+`status` (`stop` stops whatever is running): `wazuh-manager-apid` unless `bin/wazuh-manager-conf --skip-file-checks get
+cluster.node_type` is `master`, and `wazuh-manager-authd` when `auth.disabled` is `true` (both read without
+checking the files the configuration names, so a missing certificate does not hide a running apid from `status`).
 
 | Action | Behaviour |
 | ------ | --------- |
 | `start` | Runs the four pre-start checks below, empties `tmp/`, then starts each daemon that is not already running. `wazuh-manager-analysisd` counts as started once its API answers on `queue/sockets/engine-api-http.sock`; the script waits for its pid file for up to 10 seconds and then probes the API up to 120 times, a second apart, before giving up with `wazuh-manager-analysisd did not respond correctly after 120 attempts.` A daemon that fails to start stops the sequence with `<daemon> did not start correctly.` and exit status `1`. |
 | `stop` | Stops every daemon: `SIGTERM`, then up to 30 seconds for each before `SIGKILL` (`Process <daemon> couldn't be terminated. It will be killed.`). |
 | `restart` | Runs the first three pre-start checks **while the manager is still running** (a refusal leaves it up), stops every daemon, resolves credentials, and starts them again. |
-| `reload` | `restart` for every daemon except `wazuh-manager-remoted`, which keeps running, so agent connections stay up. |
+| `reload` | `restart` for every daemon except `wazuh-manager-remoted`, which keeps running, so agent connections stay up. Its checks still include `wazuh-manager-remoted -t`: remoted reads the configuration at its next restart, so a `remote` change it would refuse is refused now, while the manager is up. |
 | `status` | Prints `<daemon> is running...` or `<daemon> not running...` per daemon (`refused its configuration...` or `failed to start...` when the last `start` left that verdict in `var/run/<daemon>.failed`), and exits `1` when any daemon is down. |
-| `enable debug` / `disable debug` | Make every later start pass `-d` to the daemons (or stop doing so), recorded in `bin/.process_list`. `debug` is the only accepted option. |
-| `info` | Prints `WAZUH_VERSION`, `WAZUH_REVISION` and `WAZUH_TYPE` (`manager`); `-v`, `-r` and `-t` print one of them alone. |
+| `enable debug` / `disable debug` | Make every later start pass `-d` to the daemons (or stop doing so), recorded in `bin/.process_list`. `debug` is the only accepted option. The exception is `wazuh-manager-analysisd`: only its `-t` gets `-d`, and it is started with no flags, so the engine's level is set by the internal option `analysisd.debug` ([Engine configuration](modules/engine/configuration.md)). |
+| `info` | Prints `WAZUH_VERSION`, `WAZUH_REVISION` and `WAZUH_TYPE` (`manager`); `-v`, `-r` and `-t` print one of them alone. With `-j`, `{"error":0,"data":[…]}` holds the three, or the one asked for; an unknown flag is `{"error":1,…}`. |
 
 Before `start`, `restart` and `reload` touch any daemon, four checks run, and the first one that fails
 refuses the command:
@@ -232,7 +234,9 @@ Every refusal prints one line ending in `Exiting` (for example `wazuh-manager.co
 Exiting` or `Unresolved credentials. Exiting`), records the reason in `logs/wazuh-manager.log` (except
 when the engine's own `-t` refuses, which prints its reason on stderr only), and exits
 `1`. The error codes (`20` for the configuration, `21` for an unresolved credential, `22` for an unsafe or
-invalid one or a check that could not run) appear only in the `-j` output. The messages, codes and log
+invalid one or a check that could not run, `1` for anything else — another invocation holding the lock, a
+daemon that did not start) appear only in the `-j` output, as
+`{"error":<code>,"message":"<reason>."}`. The messages, codes and log
 lines of each step are in [When the manager does not start](getting-started/credentials.md#when-the-manager-does-not-start).
 When `bin/wazuh-manager-resolve-credentials` is missing or not executable, steps 2 and 4 are skipped. A
 configuration so broken that `cluster.node_type` cannot be read surfaces as `Invalid cluster
@@ -243,6 +247,26 @@ so redirect `start` to a file rather than piping it: a pipe never sees end-of-fi
 appears to hang. On a systemd host the `wazuh-manager` unit drives the same script (`ExecStart`, `ExecStop`, `ExecReload`); its
 `TimeoutStartSec=180` bounds `start` and also `reload` (systemd times `ExecReload` with the start timeout), which
 covers the engine wait in both; `stop` is bounded by `TimeoutSec=45`.
+
+**`wazuh-manager-control` always acts on the daemons itself**, whoever runs it: `start` launches every daemon
+that is not running (and reports `already running` for the rest), even while the unit is `active`, and the
+caller's environment and standard error reach the checks. Typed in a shell on a systemd host, it therefore starts
+the daemons outside the unit — outside its control group, its sandbox (`ProtectSystem`, `PrivateTmp`, …) and its
+accounting, and systemd does not know they exist. To keep them inside the unit, restart a running manager with
+`systemctl restart wazuh-manager`; use the script directly to relaunch a single daemon that died, or on hosts
+without systemd.
+
+#### Daemons are not supervised
+
+Nothing restarts a daemon that dies. The unit is `Type=forking` with `RemainAfterExit=yes` and no
+`Restart=`, so it stays `active` after a crash; `wazuh-manager-control status` shows the daemon as `not
+running...` (or `failed to start...`) and exits `1`, and `GET /cluster/{node_id}/status` reports it. Recover with
+`systemctl restart wazuh-manager`, or relaunch only the dead daemon with `wazuh-manager-control start` (it
+runs outside the unit then; see above). While one of
+the core daemons the Server API depends on is down, the API keeps answering login, its status queries and the
+restart endpoints, so the manager can still be inspected and restarted remotely; every other call answers
+error `1017` (*Some Wazuh daemons are not ready yet*) until the daemon is back. The core daemons are
+`wazuh-manager-modulesd`, `-remoted`, `-analysisd` and `-db`.
 
 ### Data Flow
 

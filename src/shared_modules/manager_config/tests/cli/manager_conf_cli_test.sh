@@ -76,6 +76,16 @@ else
     fail cli_validate_missing_file_exact "exit $rc; err='$(cat "$TMP/err")'"
 fi
 
+# A path that exists but is not a readable file is not "not found": the reason is named instead.
+mkdir -p "$TMP/a-directory.conf"
+rc=$(run "$CLI" validate -f "$TMP/a-directory.conf")
+if [ "$rc" = 1 ] && [ ! -s "$TMP/out" ] && ! grep -q '(1239)' "$TMP/err" \
+    && [ "$(cat "$TMP/err")" = "(1244): Invalid configuration at '/': configuration file cannot be read: $TMP/a-directory.conf: not a regular file." ]; then
+    pass cli_validate_not_a_file
+else
+    fail cli_validate_not_a_file "exit $rc; err='$(cat "$TMP/err")'"
+fi
+
 # The installer emits absolute /etc/wazuh-manager/certs/... paths, which would make this check depend on
 # the build host; a relative copy is resolved against -H instead, which is the semantics under test.
 mkdir -p "$TMP/emptyhome"

@@ -33,8 +33,13 @@ paths:
         Each event is stamped with a reception timestamp when it is queued, from a process-wide clock (nanoseconds
         since the epoch, strictly increasing within one engine process), so the events of a batch keep their order and never share a stamp in that process; after a backward wall-clock step the stamps keep increasing one nanosecond per event until the wall clock catches up.
         The router worker formats that stamp into `@timestamp` with nine fractional digits; decoders can overwrite it.
-        Each event line is parsed later by a router worker: a malformed event line does not fail the request,
-        it is dropped with the log line `Failed processing queued event in router worker: <reason>`.
+        Each event line is parsed later by a router worker: a malformed event line does not fail the request.
+        It is dropped and counted in the `router.events.malformed` metric; each worker logs the first one as
+        `Dropped a malformed event: <reason>` (WARNING), then at most one line per minute that adds how many it
+        dropped since its previous report.
+
+        The `Content-Type` header is not checked. The manager's own senders (remoted, the vulnerability
+        scanner) send `application/x-wev1`.
 
         ## Wire Format
 
@@ -74,7 +79,7 @@ paths:
       requestBody:
         required: true
         content:
-          application/x-ndjson:
+          application/x-wev1:
             schema:
               type: string
               description: |

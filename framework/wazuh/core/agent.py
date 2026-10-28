@@ -95,6 +95,7 @@ class WazuhDBQueryAgents(WazuhDBQuery):
         remove_extra_fields: bool = True,
         distinct: bool = False,
         rbac_negate: bool = True,
+        normalize_versions: bool = True,
     ):
         """Class constructor.
 
@@ -126,6 +127,8 @@ class WazuhDBQueryAgents(WazuhDBQuery):
             Look for distinct values.
         rbac_negate : bool
             Whether to use IN or NOT IN on RBAC resources.
+        normalize_versions : bool
+            Whether to return the agents' versions in the 'vX.Y.Z' form or as stored.
         """
         if filters is None:
             filters = {}
@@ -156,6 +159,7 @@ class WazuhDBQueryAgents(WazuhDBQuery):
             rbac_negate=rbac_negate,
         )
         self.remove_extra_fields = remove_extra_fields
+        self.normalize_versions = normalize_versions
 
     def run(self) -> dict:
         """Execute the query and format the result.
@@ -166,7 +170,7 @@ class WazuhDBQueryAgents(WazuhDBQuery):
             Query result.
         """
         result = super().run()
-        if "version" in self.fields:
+        if "version" in self.fields and getattr(self, "normalize_versions", True):
             self._normalize_retrieved_versions(result)
 
         return result
@@ -627,6 +631,34 @@ class WazuhDBQueryGroupByAgents(WazuhDBQueryGroupBy, WazuhDBQueryAgents):
         ]
 
         return WazuhDBQuery._format_data_into_dictionary(self)
+
+    def run(self) -> dict:
+        """Execute the query, merging the groups that only differed in how the agent version was stored.
+
+        Agents report their version with or without the leading 'v' ('5.0.0', 'v5.0.0'), and the GROUP BY
+        runs on the stored text, so one version can come back as two groups once normalized. They are
+        merged here, adding up their counts.
+
+        Returns
+        -------
+        dict
+            Query result.
+        """
+        result = super().run()
+        if "version" not in self.filter_fields["fields"] or not self.normalize_versions:
+            return result
+
+        merged = {}
+        for item in result["items"]:
+            key = json.dumps({k: v for k, v in item.items() if k != "count"}, sort_keys=True, default=str)
+            if key in merged:
+                merged[key]["count"] = merged[key].get("count", 0) + item.get("count", 0)
+            else:
+                merged[key] = item
+        # totalItems counts the agents, not the groups, so merging leaves it as is.
+        result["items"] = list(merged.values())
+
+        return result
 
 
 class Agent:

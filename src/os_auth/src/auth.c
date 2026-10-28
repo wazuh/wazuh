@@ -347,10 +347,76 @@ static bool purge_in_flight_locked(const char *agent_id) {
     return false;
 }
 
+/* Client-caused rejections share one throttle (w_auth_log_client_rejection()). */
+static pthread_mutex_t client_reject_log_mutex = PTHREAD_MUTEX_INITIALIZER;
+static time_t client_reject_log_last = 0; /* 0: nothing logged yet */
+static unsigned long client_reject_log_suppressed = 0;
+
+void w_auth_client_rejection_log_reset(void) {
+    w_mutex_lock(&client_reject_log_mutex);
+    client_reject_log_last = 0;
+    client_reject_log_suppressed = 0;
+    w_mutex_unlock(&client_reject_log_mutex);
+}
+
+void w_auth_log_client_rejection(bool info, const char *format, ...) {
+    char message[OS_SIZE_2048];
+    unsigned long suppressed = 0;
+    bool emit = false;
+    va_list args;
+    time_t now = time(NULL);
+
+    va_start(args, format);
+    vsnprintf(message, sizeof(message), format, args);
+    va_end(args);
+
+    w_mutex_lock(&client_reject_log_mutex);
+    /* A clock stepped backwards opens the window instead of holding it shut. */
+    if (client_reject_log_last == 0 || now < client_reject_log_last ||
+        now - client_reject_log_last >= AUTH_CLIENT_REJECT_LOG_WINDOW) {
+        emit = true;
+        suppressed = client_reject_log_suppressed;
+        client_reject_log_suppressed = 0;
+        client_reject_log_last = now;
+    } else {
+        client_reject_log_suppressed++;
+    }
+    w_mutex_unlock(&client_reject_log_mutex);
+
+    if (!emit) {
+        mdebug1("%s", message);
+    } else if (suppressed == 0) {
+        if (info) {
+            minfo("%s", message);
+        } else {
+            mwarn("%s", message);
+        }
+    } else if (info) {
+        minfo("%s (%lu more rejected enrollment request(s) since the previous report)", message, suppressed);
+    } else {
+        mwarn("%s (%lu more rejected enrollment request(s) since the previous report)", message, suppressed);
+    }
+}
+
 /* Static regex for group validation */
 static regex_t w_auth_group_regex;
 static bool w_auth_group_regex_compiled = false;
 static pthread_mutex_t w_auth_group_regex_mutex = PTHREAD_MUTEX_INITIALIZER;
+
+/* The address an entry was registered with, as the database stores it: the CIDR text when it is a
+ * network ("10.9.0.0/24"), otherwise the plain address. The keystore keeps the mask apart from the
+ * address text (entry->ip->ip is "10.9.0.0"), so copying that text alone dropped the mask from
+ * global.db while client.keys, written through the same OS_CIDRtoStr(), kept it. */
+static char *keyentry_registered_ip(const keyentry *entry) {
+    char cidr[IPSIZE + 1];
+
+    /* ipv4/ipv6 share one pointer (a union): without a parsed address there is no mask to render. */
+    if (entry->ip->ipv4 == NULL) {
+        return strdup(entry->ip->ip);
+    }
+
+    return strdup(OS_CIDRtoStr(entry->ip, cidr, IPSIZE) ? entry->ip->ip : cidr);
+}
 
 // Append key to insertion queue
 void add_insert(const keyentry *entry, const char *group, const char *reenroll_secret, long long journal_seq) {
@@ -359,7 +425,7 @@ void add_insert(const keyentry *entry, const char *group, const char *reenroll_s
     os_calloc(1, sizeof(struct keynode), node);
     node->id = strdup(entry->id);
     node->name = strdup(entry->name);
-    node->ip = strdup(entry->ip->ip);
+    node->ip = keyentry_registered_ip(entry);
     node->raw_key = strdup(entry->raw_key);
     node->group = group ? strdup(group) : NULL;
     node->reenroll_secret = reenroll_secret ? strdup(reenroll_secret) : NULL;
@@ -376,7 +442,7 @@ void add_rotate(const keyentry *entry, const char *group, const char *reenroll_s
     os_calloc(1, sizeof(struct keynode), node);
     node->id = strdup(entry->id);
     node->name = strdup(entry->name);
-    node->ip = strdup(entry->ip->ip);
+    node->ip = keyentry_registered_ip(entry);
     node->raw_key = strdup(entry->raw_key);
     node->group = group ? strdup(group) : NULL;
     node->reenroll_secret = strdup(reenroll_secret);
@@ -430,7 +496,7 @@ w_err_t w_auth_parse_data(const char* buf,
         }
 
         if (parseok == 0) {
-            minfo("Invalid password provided by %s. Closing connection.", ip);
+            w_auth_log_client_rejection(true, "Invalid password provided by %s. Closing connection.", ip);
             snprintf(response, OS_SIZE_2048, "ERROR: Invalid password");
             return OS_INVALID;
         }
@@ -458,13 +524,13 @@ w_err_t w_auth_parse_data(const char* buf,
     buf++;
 
     if (!parseok) {
-        merror("Invalid request for new agent from: %s", ip);
+        w_auth_log_client_rejection(false, "Invalid request for new agent from: %s", ip);
         snprintf(response, OS_SIZE_2048, "ERROR: Invalid request for new agent");
         return OS_INVALID;
     }
 
     if (!OS_IsValidName(*agentname)) {
-        merror("Invalid agent name: %s from %s", *agentname, ip);
+        w_auth_log_client_rejection(false, "Invalid agent name: %s from %s", *agentname, ip);
         snprintf(response, OS_SIZE_2048, "ERROR: Invalid agent name: %s", *agentname);
         return OS_INVALID;
     }
@@ -477,13 +543,13 @@ w_err_t w_auth_parse_data(const char* buf,
 
         /* Validate the version */
         if (buf[strlen(version) + 4] != '\'') {
-            merror("Unterminated version field");
+            w_auth_log_client_rejection(false, "Unterminated version field");
             snprintf(response, OS_SIZE_2048, "ERROR: Unterminated version field");
             return OS_INVALID;
         }
 
         if (!config.allow_higher_versions && compare_wazuh_versions(__wazuh_version, version, false) < 0) {
-            merror("Incompatible version for new agent from: %s", ip);
+            w_auth_log_client_rejection(false, "Incompatible version for new agent from: %s", ip);
             snprintf(response, OS_SIZE_2048, "ERROR: %s", HC_INVALID_VERSION_RESPONSE);
             return OS_INVALID;
         }
@@ -500,13 +566,13 @@ w_err_t w_auth_parse_data(const char* buf,
 
         /* Validate the group name */
         if (buf[strlen(tmp_groups) + 4] != '\'') {
-            merror("Unterminated group field");
+            w_auth_log_client_rejection(false, "Unterminated group field");
             snprintf(response, OS_SIZE_2048, "ERROR: Unterminated group field");
             return OS_INVALID;
         }
 
         if (0 > w_validate_group_name(tmp_groups, response)) {
-            merror("Invalid group name: %.255s... ,",tmp_groups);
+            w_auth_log_client_rejection(false, "Invalid group name: %.255s... ,", tmp_groups);
             return OS_INVALID;
         }
         *groups = wstr_delete_repeated_groups(tmp_groups);
@@ -529,7 +595,7 @@ w_err_t w_auth_parse_data(const char* buf,
         sscanf(buf, format, client_source_ip);
 
         if (buf[strlen(client_source_ip) + 5] != '\'') {
-            merror("Unterminated IP field");
+            w_auth_log_client_rejection(false, "Unterminated IP field");
             snprintf(response, OS_SIZE_2048, "ERROR: Unterminated IP field");
             return OS_INVALID;
         }
@@ -539,7 +605,7 @@ w_err_t w_auth_parse_data(const char* buf,
             os_ip *aux_ip;
             os_calloc(1, sizeof(os_ip), aux_ip);
             if (!OS_IsValidIP(client_source_ip, aux_ip)) {
-                merror("Invalid IP: '%s'", client_source_ip);
+                w_auth_log_client_rejection(false, "Invalid IP: '%s'", client_source_ip);
                 snprintf(response, OS_SIZE_2048, "ERROR: Invalid IP: %s", client_source_ip);
                 w_free_os_ip(aux_ip);
                 return OS_INVALID;
@@ -566,7 +632,7 @@ w_err_t w_auth_parse_data(const char* buf,
         sscanf(buf, format, *key_hash);
 
         if (buf[strlen(*key_hash) + 4] != '\'') {
-            merror("Unterminated key field");
+            w_auth_log_client_rejection(false, "Unterminated key field");
             snprintf(response, OS_SIZE_2048, "ERROR: Unterminated key field");
             return OS_INVALID;
         }
@@ -816,7 +882,7 @@ w_err_t w_auth_validate_groups(const char *groups, char *response) {
 
         /* Check limit */
         if (max_multigroups > MAX_GROUPS_PER_MULTIGROUP) {
-            merror("Maximum multigroup reached: Limit is %d",MAX_GROUPS_PER_MULTIGROUP);
+            w_auth_log_client_rejection(false, "Maximum multigroup reached: Limit is %d", MAX_GROUPS_PER_MULTIGROUP);
             if (response) {
                 snprintf(response, OS_SIZE_2048, "ERROR: Maximum multigroup reached: Limit is %d", MAX_GROUPS_PER_MULTIGROUP);
             }
@@ -826,7 +892,7 @@ w_err_t w_auth_validate_groups(const char *groups, char *response) {
 
         /* Validate group name format */
         if (regexec(&w_auth_group_regex, group, 0, NULL, 0) != 0) {
-            merror("Invalid group name '%s': contains forbidden characters", group);
+            w_auth_log_client_rejection(false, "Invalid group name '%s': contains forbidden characters", group);
             if (response) {
                 snprintf(response, OS_SIZE_2048, "ERROR: Invalid group name: %s", group);
             }
@@ -836,7 +902,7 @@ w_err_t w_auth_validate_groups(const char *groups, char *response) {
 
         /* Explicit check for directory references (. and ..) */
         if (strcmp(group, ".") == 0 || strcmp(group, "..") == 0) {
-            merror("Invalid group name '%s': directory reference not allowed", group);
+            w_auth_log_client_rejection(false, "Invalid group name '%s': directory reference not allowed", group);
             if (response) {
                 snprintf(response, OS_SIZE_2048, "ERROR: Invalid group name: %s", group);
             }
@@ -848,7 +914,7 @@ w_err_t w_auth_validate_groups(const char *groups, char *response) {
         snprintf(dir, PATH_MAX + 1, SHAREDCFG_DIR "/%s", group);
         dp = wopendir(dir);
         if (!dp) {
-            merror("Invalid group: %.255s",group);
+            w_auth_log_client_rejection(false, "Invalid group: %.255s", group);
             if (response) {
                 snprintf(response, OS_SIZE_2048, "ERROR: Invalid group: %s", group);
             }

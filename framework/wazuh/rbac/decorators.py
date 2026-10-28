@@ -629,7 +629,9 @@ def require_role_update(role_ids) -> None:
     denied = required - allowed
 
     if denied:
-        raise WazuhPermissionError(4000, extra_message='Resource type: role:id',
+        # The ids of a raised exception are not rendered in the API response, so the message names them.
+        missing = ', '.join(f'role:id:{role_id}' for role_id in sorted(denied, key=int))
+        raise WazuhPermissionError(4000, extra_message=f'Resource type: role:id, resources: {missing}',
                                    ids={int(role_id) for role_id in denied}, title="Permission Denied")
 
 

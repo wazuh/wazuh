@@ -4029,6 +4029,7 @@ components:
           - 'node:id'
           - 'policy:id'
           - 'role:id'
+          - 'rule:id'
           - 'user:id'
 
 tags:
@@ -5355,7 +5356,9 @@ paths:
       tags:
         - Agents
       summary: "List outdated agents"
-      description: "Return the list of outdated agents"
+      description: "Return the list of agents whose version is older than the manager's. Versions are compared as
+      versions, with or without their leading 'v': an agent on the manager's version or a newer one is not listed, and
+      neither is one that never reported a version."
       operationId: api.controllers.agent_controller.get_agent_outdated
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/agent:read'
@@ -6965,7 +6968,8 @@ paths:
       summary: "Get node config"
       description: "Return the manager configuration (/etc/wazuh-manager/wazuh-manager.conf) used in node {node_id}: the effective document
       (schema defaults applied) as JSON, or the file as XML text with 'raw'. The 'section' and 'field' parameters will be
-      ignored if 'raw' parameter is provided."
+      ignored if 'raw' parameter is provided. 'field' is looked up inside 'section': without it the request is refused
+      with error 1103."
       operationId: api.controllers.cluster_controller.get_configuration_node
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/cluster:read'
@@ -7418,15 +7422,15 @@ paths:
                     - timestamp: '2021-05-27T12:18:08Z'
                       tag: wazuh-manager-remoted
                       level: debug
-                      description: " TCP socket 20 already in keystore. Updating..."
+                      description: "TCP socket 20 already in keystore. Updating..."
                     - timestamp: '2021-05-27T12:18:08Z'
                       tag: wazuh-manager-remoted
                       level: debug
-                      description: " Agent '003' group is 'default'"
+                      description: "Agent '003' group is 'default'"
                     - timestamp: '2021-05-27T12:18:08Z'
                       tag: wazuh-manager-remoted
                       level: debug
-                      description: " Agent '003' with group 'default' file 'merged.mg' MD5
+                      description: "Agent '003' with group 'default' file 'merged.mg' MD5
                         '9a016508cea1e997ab8569f5cfab30f5'"
                   total_affected_items: 3
                   total_failed_items: 0
@@ -7822,7 +7826,9 @@ paths:
       tags:
         - MITRE
       summary: "Get MITRE metadata"
-      description: "Return the metadata from MITRE database"
+      description: "Return the metadata from MITRE database: 'db_version' is the version of the database layout and
+      'mitre_version' the STIX specification version of the bundle it was built from (spec_version, for example 2.0),
+      not the ATT&CK release."
       operationId: api.controllers.mitre_controller.get_metadata
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/mitre:read'

@@ -74,16 +74,18 @@ struct Options
     int debugCount {0};
 };
 
-void printUsage(const char* progName)
+/// Print the usage and exit: to stdout with EXIT_SUCCESS for -h, to stderr with EXIT_FAILURE for an invalid option.
+[[noreturn]] void printUsage(const char* progName, int exitCode)
 {
-    std::cout << "Usage: " << progName << " [options]\n"
-              << "Options:\n"
-              << "  -f    Run in foreground (do not daemonize)\n"
-              << "  -t    Test configuration\n"
-              << "  -d    Run in debug mode. This option may be repeated to increase the verbosity of the debug "
-                 "messages.\n"
-              << "  -h    Show this help message and exit\n";
-    std::exit(EXIT_SUCCESS);
+    auto& out = (exitCode == EXIT_SUCCESS) ? std::cout : std::cerr;
+    out << "Usage: " << progName << " [options]\n"
+        << "Options:\n"
+        << "  -f    Run in foreground (do not daemonize)\n"
+        << "  -t    Test configuration\n"
+        << "  -d    Run in debug mode. This option may be repeated to increase the verbosity of the debug "
+           "messages.\n"
+        << "  -h    Show this help message and exit\n";
+    std::exit(exitCode);
 }
 
 Options parseOptions(int argc, char* argv[])
@@ -97,8 +99,8 @@ Options parseOptions(int argc, char* argv[])
             case 'f': opts.runForeground = true; break;
             case 't': opts.testConfig = true; break;
             case 'd': ++opts.debugCount; break;
-            case 'h':
-            default: printUsage(argv[0]);
+            case 'h': printUsage(argv[0], EXIT_SUCCESS);
+            default: printUsage(argv[0], EXIT_FAILURE); // getopt already printed the invalid option
         }
     }
     return opts;

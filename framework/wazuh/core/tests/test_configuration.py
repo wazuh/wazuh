@@ -23,7 +23,7 @@ with patch('wazuh.core.common.wazuh_uid'):
         from wazuh.tests.util import RBAC_bypasser
 
         wazuh.rbac.decorators.expose_resources = RBAC_bypasser
-        from wazuh.core.exception import WazuhError, WazuhInternalError
+        from wazuh.core.exception import WazuhError, WazuhInternalError, WazuhResourceNotFound
         from wazuh.core import configuration
 
 parent_directory = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
@@ -258,8 +258,10 @@ def test_get_agent_conf():
         configuration.get_agent_conf(group_id='noexists')
 
     with patch('wazuh.core.common.SHARED_PATH', new=os.path.join(parent_directory, tmp_path, 'configuration')):
-        with pytest.raises(WazuhError, match=".* 1006 .*"):
+        # A missing file is a missing resource (404), named as requested and never by its absolute path.
+        with pytest.raises(WazuhResourceNotFound, match=".* 1006 .*") as exc_info:
             configuration.get_agent_conf(group_id='default', filename='noexists.conf')
+        assert exc_info.value.message.endswith(': noexists.conf')
 
     with patch('wazuh.core.common.SHARED_PATH', new=os.path.join(parent_directory, tmp_path, 'configuration')):
         with patch('wazuh.core.configuration.load_wazuh_xml', return_value=Exception):
@@ -277,9 +279,10 @@ def test_get_file_conf():
                                         raw=True)
 
     with patch('wazuh.core.common.SHARED_PATH', new=os.path.join(parent_directory, tmp_path, 'configuration')):
-        with pytest.raises(WazuhError, match=".* 1006 .*"):
+        with pytest.raises(WazuhResourceNotFound, match=".* 1006 .*") as exc_info:
             configuration.get_file_conf(filename='noexists.conf', group_id='default', type_conf='conf',
                                         raw=True)
+        assert exc_info.value.message.endswith(': noexists.conf')
 
     with patch('wazuh.core.common.SHARED_PATH', new=os.path.join(parent_directory, tmp_path, 'configuration')):
         assert isinstance(configuration.get_file_conf(filename='agent.conf', group_id='default', type_conf='conf'),
@@ -308,9 +311,12 @@ def test_get_file_conf_path_traversal():
     """Check that a filename resolving outside the group directory is rejected and not read."""
     with patch('wazuh.core.common.SHARED_PATH', new=os.path.join(parent_directory, tmp_path, 'configuration')):
         with patch('builtins.open') as mock_open_fn:
-            with pytest.raises(WazuhError, match=".* 1006 .*"):
+            with pytest.raises(WazuhError, match=".* 1006 .*") as exc_info:
                 configuration.get_file_conf(filename='../ossec.conf', group_id='default', raw=True)
             mock_open_fn.assert_not_called()
+        # Refused (400), not missing, and without disclosing where the shared directory lives.
+        assert not isinstance(exc_info.value, WazuhResourceNotFound)
+        assert parent_directory not in exc_info.value.message
 
 
 INVALID_GROUP_IDS = ['../', '..', '../..', '../../etc', '/etc', 'a/b', '.', '', pytest.param('a' * 256, id='too_long')]
@@ -442,6 +448,47 @@ def test_upload_group_configuration(mock_open, mock_wazuh_uid, mock_wazuh_gid):
                                 configuration.upload_group_configuration('default',
                                                                          "<agent_config>new_config</agent_config>")
                                 mock_remove.assert_called_once()
+
+
+@pytest.mark.parametrize('prolog', [
+    '<?xml version="1.0" encoding="UTF-8"?>\n',
+    "<?xml version='1.0'?>",
+    '\ufeff  <?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n\n',
+])
+def test_upload_group_configuration_accepts_xml_declaration(prolog):
+    """A standard XML declaration at the start of agent.conf is accepted and not written to the group file."""
+    written = []
+    with patch('wazuh.core.common.SHARED_PATH', new=os.path.join(parent_directory, tmp_path, 'configuration')), \
+            patch('wazuh.core.configuration.tempfile.mkstemp', return_value=['mock_handle', 'mock_tmp_file']), \
+            patch('wazuh.core.configuration.open', mock_open()) as mocked_open, \
+            patch('wazuh.core.configuration.subprocess.check_output', return_value=True), \
+            patch('wazuh.core.configuration.safe_move'), \
+            patch('wazuh.core.configuration.common.wazuh_uid'), \
+            patch('wazuh.core.configuration.common.wazuh_gid'):
+        mocked_open.return_value.write.side_effect = written.append
+        assert isinstance(configuration.upload_group_configuration(
+            'default', f"{prolog}<agent_config><localfile>x</localfile></agent_config>"), str)
+
+    assert written and '<?xml' not in ''.join(written)
+    assert '<agent_config>' in ''.join(written)
+
+
+@pytest.mark.parametrize('content', [
+    # A DTD or an entity is still refused, with or without a declaration in front of it.
+    '<?xml version="1.0"?>\n<!DOCTYPE agent_config [<!ENTITY x "y">]>\n<agent_config>&x;</agent_config>',
+    '<!DOCTYPE agent_config [<!ENTITY x "y">]>\n<agent_config>&x;</agent_config>',
+    # A declaration anywhere but at the start is not a prolog.
+    '<agent_config></agent_config>\n<?xml version="1.0"?>',
+])
+@patch('builtins.open')
+def test_upload_group_configuration_still_refuses_dtd(mock_open_builtin, content):
+    """Stripping the declaration does not let a DTD, an entity or a misplaced declaration through."""
+    with patch('wazuh.core.common.SHARED_PATH', new=os.path.join(parent_directory, tmp_path, 'configuration')), \
+            patch('wazuh.core.configuration.tempfile.mkstemp', return_value=['mock_handle', 'mock_tmp_file']), \
+            patch('wazuh.core.configuration.os.path.exists', return_value=True), \
+            patch('wazuh.core.configuration.remove'):
+        with pytest.raises(WazuhError, match=".* 1113 .*"):
+            configuration.upload_group_configuration('default', content)
 
 
 @patch('builtins.open')

@@ -91,7 +91,7 @@ Utility functions `methodToStr()` and `strToMethod()` convert between enum and s
 |---------|----------------|
 | **Unix Domain Socket** | `set_address_family(AF_UNIX)`, binds to file path |
 | **Thread pool** | `CPPHTTPLIB_THREAD_POOL_COUNT` (unless predefined) = `cpp_get_nproc() - 1` clamped to `[2, 16]` (`include/httpsrv/server.hpp`) |
-| **Payload limit** | `set_payload_max_length()` — `413` with `Payload too large. Max allowed: <n> bytes (<n/1024> KiB).` (or `Payload too large.` when unlimited); a 413 body set by a handler is kept |
+| **Payload limit** | `set_payload_max_length()` — `413` with `Payload too large. Max allowed: <n> bytes (<n/1024> KiB).` (or `Payload too large.` when unlimited); a 413 body set by a handler is kept. httplib's separate 8 KiB cap on `application/x-www-form-urlencoded` bodies is lifted (`CPPHTTPLIB_FORM_URL_ENCODED_PAYLOAD_MAX_LENGTH` in `server.hpp`), so the content type never changes the limit |
 | **Exception safety** | `set_exception_handler()` logs the exception at ERROR and answers `500` with `Internal server error` |
 | **Logging** | Detailed mode: TRACE before the handler (method, path, body) and after it (request body truncated to 1024 chars, response status and body); minimal mode: one TRACE line per request |
 | **Socket path** | `start()` throws if the path is empty, the server is running or the parent directory is missing; an existing socket file is removed first |
@@ -256,7 +256,7 @@ httpsrv/
 | `ServerStartTwice` | Double start throws |
 | `ServerStop` | Clean shutdown |
 | `RouteTest.*` (GET/POST/PUT/DELETE) | Adding routes before/after start and twice, serving, not serving when stopped, the ignored override, `500` on an uncaught handler exception |
-| `BodyRouteTest.*` | Payload at the limit accepted, over the limit `413`, unlimited accepts a large body, a handler's own `413` body preserved |
+| `BodyRouteTest.*` | Payload at the limit accepted, over the limit `413`, unlimited accepts a large body (also form-urlencoded), a handler's own `413` body preserved |
 
 Build and run:
 

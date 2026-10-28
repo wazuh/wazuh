@@ -36,7 +36,9 @@ namespace remoted::auth
         // DSO-hidden global) into every other translation unit that includes keystore.hpp -- the
         // module's tests do, and they're linked into a separate binary. Same pattern as
         // deferredForwarder.cpp/authGateway.cpp.
-        constexpr auto KEYSTORE_LOGTAG {"wazuh-manager-remoted:keystore"};
+        // "client-keys", not "keystore": this is the agent registry (client.keys), and the manager's
+        // secrets keystore (wazuh-manager-keystore) is a different thing an operator must not confuse.
+        constexpr auto KEYSTORE_LOGTAG {"wazuh-manager-remoted:client-keys"};
 
         // One shared instance instead of a `LogFn {TAG}` temporary per log call: LogFn holds a
         // std::string and this tag is well past the SSO threshold, so the temporary form

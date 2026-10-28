@@ -22,7 +22,7 @@ wazuh-manager-db -[Vhdtf] [-c config]
 | Flag | Effect |
 |------|--------|
 | `-V` | Print the version and license, exit `0` |
-| `-h` | Print the usage, exit `0` (an unknown flag does the same) |
+| `-h` | Print the usage, exit `1` (an unknown flag does the same), like the other manager daemons |
 | `-d` | Debug output; repeat it (`-dd`) for more. When given, `wazuh_db.debug` is not read |
 | `-t` | Test the configuration and exit: `0` when valid; otherwise the error is logged and it exits `1` with `Invalid configuration block for Wazuh-DB.` Unlike a normal start, the test also requires the certificate files the configuration names to exist |
 | `-f` | Run in the foreground instead of daemonizing |
@@ -91,10 +91,39 @@ due <JSON>
 group hash) it received. `get-all-agents context` instead streams every row as its own `due` message
 on the same connection and ends with `ok []`.
 
+### `global sql`
+
+`global sql <statement>` runs one arbitrary SQLite statement on `global.db` and answers its rows as a
+JSON array of objects (`ok [{"<column>":<value>,…},…]`, `ok []` when nothing matches), or `err Cannot
+execute Global database query; <SQLite error>`. It is the framework's main read path: every
+`WazuhDBQuery` over agents and groups (`framework/wazuh/core/utils.py`) is sent as `global sql
+SELECT …`. Unlike `mitre sql`, nothing restricts it to reads: an `UPDATE`, `DELETE` or `DROP` sent
+this way is executed on the live registry, outside the validation every dedicated command applies
+(and inside the daemon's open deferred transaction, if there is one, so it commits on the same clock
+as other writes). Only the first statement of the text is run. Whoever can write to `wdb.sock` — mode
+`0660`, owned by `wazuh-manager`, so root and the `wazuh-manager` user and group — can therefore
+change any row; the socket's permissions are the whole access control.
+
+### JSON commands
+
 A message that starts with `{` is not a database query but a JSON command:
 `{"command":"getstats"}` returns the query counters and timings, and
 `{"command":"getconfig","parameters":{"section":"wdb"}}` (or `"internal"`) returns the effective
 configuration. Both answer `{"error":<code>,"message":…,"data":…}`.
+
+`getstats`'s `data` holds:
+
+| Field | Meaning |
+|-------|---------|
+| `uptime` | The **Unix time (seconds) the daemon started**, not a duration: the time it has been up is `timestamp - uptime` |
+| `timestamp` | The Unix time (seconds) of this answer |
+| `name` | `wazuh-manager-db` |
+| `metrics.queries.received` | Queries received since start, all targets |
+| `metrics.queries.received_breakdown` | The same count per target (`global`, `mitre`) and, under `global_breakdown`, per command: `db` (`backup`, `sql`, `vacuum`, `commit`, `get_fragmentation`) and `tables` (`agent`, `belongs`, `group`, one counter per command named as on the wire, such as `insert-agent`) |
+| `metrics.time.execution` | Total time spent running queries since start, in milliseconds |
+| `metrics.time.execution_breakdown` | That time with the same breakdown as the counters, plus `db.open` (time spent opening `global.db`), in milliseconds |
+
+Counters and times are cumulative since the daemon started; nothing resets them while it runs.
 
 ### Example queries
 

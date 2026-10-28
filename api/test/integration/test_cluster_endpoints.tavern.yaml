@@ -98,6 +98,35 @@ stages:
           total_affected_items: 3
           total_failed_items: 0
 
+  - name: Get cluster healthcheck of a node that is not in the cluster
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/cluster/healthcheck"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        nodes_list: 'worker1,noexists'
+    response:
+      status_code: 200
+      json:
+        error: 2
+        data:
+          affected_items:
+            - info:
+                name: 'worker1'
+                ip: !anystr
+                version: !anystr
+                type: !anystr
+              status: !anything
+          failed_items:
+            - error:
+                code: 1730
+              id:
+                - noexists
+          total_affected_items: 1
+          total_failed_items: 1
+
 ---
 test_name: GET /cluster/local/info
 
@@ -526,6 +555,20 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
+
+  - name: A field without a section is refused, not ignored
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/cluster/master-node/configuration"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        field: name
+    response:
+      status_code: 400
+      json:
+        error: 1103
 
 ---
 test_name: GET /cluster/configuration/validation

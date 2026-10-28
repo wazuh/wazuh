@@ -108,6 +108,13 @@ json::Json makeConnectionConfig(const std::string& ipField, const std::string& p
     return json::Json {doc.c_str()};
 }
 
+std::string strAt(const json::Json& doc, const std::string& path)
+{
+    std::string out;
+    doc.getString(out, path);
+    return out;
+}
+
 base::Event makeEvent(const std::string& jsonStr)
 {
     return std::make_shared<json::Json>(jsonStr.c_str());
@@ -358,4 +365,77 @@ TEST(IocEnrichmentTest, TestModeConnectionMatchFound)
     evalExpression(expr, event);
 
     EXPECT_TRUE(event->exists("/wazuh/threat/enrichments"));
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Test: Several indicator documents under one key yield one entry each (indicator is always an object)
+// ─────────────────────────────────────────────────────────────────────────────
+TEST(IocEnrichmentTest, KvdbLookupMultipleDocumentsYieldOneEntryEach)
+{
+    auto mockKvdb = std::make_shared<ioc::kvdb::MockKVDBManager>();
+    auto config = makeHashConfig("file.hash.md5");
+
+    json::Json iocData(R"([{"id": "1", "provider": "a"}, {"id": "2", "provider": "b"}])");
+    EXPECT_CALL(*mockKvdb, get(std::string_view("ioc_hashes_md5"), std::string_view("deadbeef")))
+        .WillOnce(Return(std::optional<json::Json>(iocData)));
+
+    auto enrichBuilder = getIocEnrichmentBuilder(mockKvdb, config, "hash_md5");
+    auto [expr, name] = enrichBuilder(false);
+
+    auto event = makeEvent(R"({"file": {"hash": {"md5": "DEADBEEF"}}})");
+    evalExpression(expr, event);
+
+    const auto entries = event->getArray("/wazuh/threat/enrichments");
+    ASSERT_TRUE(entries.has_value());
+    ASSERT_EQ(entries->size(), 2U);
+    for (std::size_t i = 0; i < entries->size(); ++i)
+    {
+        const auto& entry = entries->at(i);
+        EXPECT_TRUE(entry.isObject("/indicator"));
+        EXPECT_EQ(strAt(entry, "/indicator/id"), std::to_string(i + 1));
+        EXPECT_EQ(strAt(entry, "/matched/field"), "file.hash.md5");
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Test: A numeric confidence is written as a keyword (string), as WCS maps it
+// ─────────────────────────────────────────────────────────────────────────────
+TEST(IocEnrichmentTest, NumericConfidenceIsWrittenAsString)
+{
+    auto mockKvdb = std::make_shared<ioc::kvdb::MockKVDBManager>();
+    auto config = makeHashConfig("file.hash.md5");
+
+    json::Json iocData(R"({"id": "1", "confidence": 100})");
+    EXPECT_CALL(*mockKvdb, get(std::string_view("ioc_hashes_md5"), std::string_view("deadbeef")))
+        .WillOnce(Return(std::optional<json::Json>(iocData)));
+
+    auto enrichBuilder = getIocEnrichmentBuilder(mockKvdb, config, "hash_md5");
+    auto [expr, name] = enrichBuilder(false);
+
+    auto event = makeEvent(R"({"file": {"hash": {"md5": "deadbeef"}}})");
+    evalExpression(expr, event);
+
+    EXPECT_TRUE(event->isString("/wazuh/threat/enrichments/0/indicator/confidence"));
+    EXPECT_EQ(strAt(*event, "/wazuh/threat/enrichments/0/indicator/confidence"), "100");
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Test: A string confidence is kept as is
+// ─────────────────────────────────────────────────────────────────────────────
+TEST(IocEnrichmentTest, StringConfidenceIsKept)
+{
+    auto mockKvdb = std::make_shared<ioc::kvdb::MockKVDBManager>();
+    auto config = makeHashConfig("file.hash.md5");
+
+    json::Json iocData(R"({"id": "1", "confidence": "High"})");
+    EXPECT_CALL(*mockKvdb, get(std::string_view("ioc_hashes_md5"), std::string_view("deadbeef")))
+        .WillOnce(Return(std::optional<json::Json>(iocData)));
+
+    auto enrichBuilder = getIocEnrichmentBuilder(mockKvdb, config, "hash_md5");
+    auto [expr, name] = enrichBuilder(false);
+
+    auto event = makeEvent(R"({"file": {"hash": {"md5": "deadbeef"}}})");
+    evalExpression(expr, event);
+
+    EXPECT_EQ(strAt(*event, "/wazuh/threat/enrichments/0/indicator/confidence"), "High");
 }

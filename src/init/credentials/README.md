@@ -45,7 +45,7 @@ developer side.
 | ID | Decision | Why |
 |----|----------|-----|
 | D-1 | `<CONF>` is the fixed `/etc/wazuh-manager`; `-H` moves the home only | the same constant the C, C++ and Python code use; no variable may redirect where root writes |
-| D-2 | Called from `wazuh-manager-control`, not from the unit's `ExecStartPre` | the control script already orders `--check` before the configuration validation and before the stop of a restart |
+| D-2 | Called from `wazuh-manager-control`, not from the unit's `ExecStartPre` | the control script already orders `--check` after the configuration file's own validation (`validate --skip-file-checks`, so the TLS names it reads come from a file the validator accepts), before the full validation that checks the files exist, and before the stop of a restart |
 | D-3 | Seeds through `framework/python/bin/python3 -I framework/scripts/rbac_control.py`, not `bin/rbac_control` | the wrapper runs `dirname`, `basename` and `sed`; the resolver must run no host tool |
 | D-4 | Accepts a group-writable `<CONF>` (its owner and group are checked) and opens nothing in it by name twice | `authd`, `remoted` and the Server API write there; every entry is checked on its own descriptor |
 | D-5 | `ca/` and `export/` (both `root:root 0700`) are told apart by content, and the test is repeated on the descriptors a writing run uses | their specs are identical, so only what they hold reveals a swap, and a rename between a test by name and the write must not redirect it |
@@ -65,13 +65,14 @@ developer side.
 | D-19 | Only the indexer material's validity window is a warning: a CA or client pair that passes with every validity window left out (signatures, issuer, CA constraints and purpose all hold; a CA renewed in place after the pair it issued expired included) does not refuse the start; it is kept in place and imported only into a gap, never over a pair valid now; a new CA is judged with its pair as a set, and a rotation to a set the clock refuses waits while the set in place is valid. Everything else, the server pairs included, still refuses the whole start | an expired client pair or a clock behind at boot stopped every daemon although only the indexer connection was affected, and the connector already refuses unusable material at the handshake and retries; a server pair is what the agents and the dashboard verify, so it stays a refusal |
 | D-20 | The dashboard pair's owner is decided by `export/.dashboard-client.issued`, which records each file's SHA-256 (the new one and, during a rewrite, the previous one) and is written before the files; a present file matching neither makes the pair the operator's | only the resolver's own pair may be reissued or removed; a pair replaced by hand keeps the old marker and must not be overwritten, and an interrupted reissue (each file is replaced atomically) must be finished, not taken for a manual replacement |
 | D-21 | Each judgement --check and the writing modes share is one function (the CA and bundle, the server pairs, the indexer trust, the published passwords, `export/ca.pem`, the dashboard pair, the node role read from the one configuration dump); --check reports its diagnosis, the writing modes act on it, and `--prestart` then runs the read-only checks again on what it wrote | a rule fixed in one path and not in the other let `--check` and the start disagree: a restart refused before the stop, or a start going on with material the check would refuse |
+| D-22 | A supplied `WAZUH_MANAGER_NODE_NAME` is judged in every mode, `--check` included, as the passwords and the SAN lists are: a valid DNS name of at most 64 characters, else `INVALID` with the texts of the issuing steps (so a run that reaches them prints each line once). The CA's tighter 50-character limit still applies only when a CA is minted, and an unset variable (the host name stands in) is judged only when something is issued | the key table promises `INVALID` for a bad name, and `--check` accepted one that the next issuing run would refuse |
 
 ## Architecture
 
 ```mermaid
 flowchart TD
     A[main: argv, root check] --> B{mode}
-    B -->|--check| C[preflight: CONF, local.env, indexer env, supplied values, SAN lists]
+    B -->|--check| C[preflight: CONF, local.env, indexer env, supplied values, SAN lists, node name]
     C --> T[configured names: wazuh-manager-conf dump, api.yaml]
     T --> D[run_checks: CA and bundle, pairs, export, certs entries, indexer trust, swaps]
     B -->|--install / --upgrade / --prestart| E[preflight]
@@ -145,7 +146,8 @@ manager integration workflow.
 | `test_pairs.py` | server pair profile, keep / half / missing, issuer validity, chains through intermediate CAs, CA purpose, the common-name length of the node name, unparsable certificates in the pairs and the bundle |
 | `test_sans.py` | explicit SAN lists; discovery on a stubbed address dump; the netlink reply parser on crafted messages; the real kernel's dump, on the host and in a scratch network namespace |
 | `test_indexer_trust.py` | the import rule, markers, `clientAuth`, interrupted imports and their recovery, connector chains through intermediate CAs, the CA and pair imported together or not at all, unparsable indexer CA and connector certificates, validity windows as warnings (in place, first import, never over a valid pair, structural defects still refused), the client pair described (DN, SANs) |
-| `test_check.py` | `--check` is read-only and reports only the `MISSING` `--prestart` cannot complete; the whole-tree checks; `--prestart` checks first; a stale `export/ca.pem` published again |
+| `test_check.py` | `--check` is read-only and reports only the `MISSING` `--prestart` cannot complete; the whole-tree checks; `--prestart` checks first; a stale `export/ca.pem` published again; a supplied node name judged on every run |
+| `test_control_script.py` | `wazuh-manager-control` around the resolver, in a scratch home with stub daemons: one JSON document with `-j` (`start`, `info -v/-r/-t`), resolver lines logged in the daemons' format, `reload` running `remoted -t`, the role read without file checks, and every action run directly (never through `systemctl`), a `start` relaunching a daemon that died |
 | `test_dashboard_pair.py` | the dashboard client pair: profile and modes, issued in every writing mode on a master only, no CA key, reissue on CA change and expiry, interrupted writes, operator pairs (kept, defects as warnings, `--clear`), unsafe entries, the `ca/`–`export/` swap |
 | `test_configured_paths.py` | pairs and bundle under configured names, names outside `certs/` refused unread, turned-off listeners, reading `wazuh-manager.conf` and `api.yaml`, the indexer's CA list and client pair under configured names (union of CAs, empty list, no pair, certificate and key together, `--clear`) |
 | `test_clear.py` | `--clear`: liveness, what goes and what stays, no link followed, nothing removed when unsafe |
@@ -160,8 +162,9 @@ manager integration workflow.
 
 ## Developer FAQ
 
-- **Why not `ExecStartPre=` in the unit?** `wazuh-manager-control` must run `--check` before validating the
-  configuration and, on a restart, before stopping anything; the unit cannot express that order (D-2).
+- **Why not `ExecStartPre=` in the unit?** `wazuh-manager-control` must run `--check` between the two
+  validations of the configuration (after the file's own, before the one that checks the files it names) and,
+  on a restart, before stopping anything; the unit cannot express that order (D-2).
 - **Why not `bin/rbac_control seed`?** The wrapper runs host tools; the resolver runs the same Python script
   directly (D-3).
 - **Why are some checks repeated after the lock?** `<CONF>` is writable by the service group, so `ca/` and

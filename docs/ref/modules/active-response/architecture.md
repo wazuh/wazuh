@@ -268,7 +268,8 @@ All lines are in `logs/cluster.log`, tagged `[Active Response]`. Every path that
 says so at `WARNING` or above; `wazuh_clusterd.debug=2` adds the query, the page size, each `mget`,
 each task and each hold.
 
-Each cycle ends with one `INFO` summary. A healthy cycle is one sentence:
+A cycle that read, sent, held or discarded something ends with one `INFO` summary; an idle cycle
+logs its summary at `DEBUG`. A healthy cycle is one sentence:
 
 ```
 Created 3 task(s) for 2 of 2 active response(s) read.
@@ -301,8 +302,8 @@ reached counts as held, together with the not-visible-yet case.
 
 | Level | Message | Meaning | What to do |
 |---|---|---|---|
-| INFO | `Starting` / `Finished in N.NNNs.` | one polling cycle | nothing |
-| INFO | `Created T task(s) for D of R active response(s) read.` (`Held: H.`, `Discarded: reason=n, ….` only when non-zero) | the cycle summary described above | nothing when it is one sentence; otherwise the WARNING or ERROR for each discard is above it |
+| DEBUG / INFO | `Starting` (always DEBUG) / `Finished in N.NNNs.` (INFO only when the cycle handled something, DEBUG when idle) | one polling cycle | nothing |
+| INFO / DEBUG | `Created T task(s) for D of R active response(s) read.` (`Held: H.`, `Discarded: reason=n, ….` only when non-zero) | the cycle summary described above | nothing when it is one sentence; otherwise the WARNING or ERROR for each discard is above it |
 | WARNING | ``Discarding active response document `<id>` (`<index>`). Reason: <schema error>`` | the document fails `AR_SCHEMA`; terminal | fix the channel, or the client that wrote the document; the document itself is skipped |
 | WARNING | ``Active response `<id>` carries no usable event reference. Discarding it.`` | `event.index` or `event.doc_id` missing, empty or not a string, or `event.index` outside the allow-list; terminal, and reached only when schema validation is skipped | same |
 | WARNING | ``Expected event `<doc_id>` (`<index>`) not found after <grace>s. Discarding active response `<id>`.`` | the referenced event never became visible; terminal | check that the monitored index still holds the event; a wrong `event.index` lands here once the response is older than the grace window |

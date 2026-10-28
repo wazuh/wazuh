@@ -23,7 +23,8 @@ with patch('wazuh.common.wazuh_uid'):
         wazuh.rbac.decorators.expose_resources = RBAC_bypasser
         from wazuh.core.cluster.local_server import *
         from wazuh.core.cluster.dapi import dapi
-        from wazuh.core.exception import WazuhClusterError
+        from wazuh.core.exception import WazuhClusterError, WazuhError, WazuhInternalError, \
+            WazuhResourceNotFound
 
 async def wait_function_called(func_mock):
     while not func_mock.call_count:
@@ -300,6 +301,27 @@ async def test_LocalServerHandlerMaster_get_nodes(event_loop):
 
     lshm = LocalServerHandlerMaster(server=ServerMock(), loop=event_loop, fernet_key=None, cluster_items={})
     assert lshm.get_nodes(arguments=b"{\"test\": \"a\"}") == (b'ok', b'{"get_node": "a"}')
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize('error, level', [
+    (WazuhResourceNotFound(1730), 'debug'),
+    (WazuhError(1728), 'debug'),
+    (WazuhInternalError(1000), 'error'),
+    (WazuhClusterError(3022), 'error'),
+])
+async def test_LocalServerHandler_log_request_error(event_loop, error, level):
+    """A local caller's own mistake (a WazuhError, such as an unknown node) is not logged as an error of the node."""
+    logger = logging.getLogger('test_log_request_error')
+    lshm = LocalServerHandlerMaster(server=None, loop=event_loop, fernet_key=None, cluster_items={}, logger=logger)
+    with patch.object(logger, 'debug') as debug_mock, patch.object(logger, 'error') as error_mock:
+        lshm.log_request_error(b'get_nodes', error)
+
+    if level == 'debug':
+        debug_mock.assert_called_once_with(f"Request '{b'get_nodes'}' refused: {error}")
+        error_mock.assert_not_called()
+    else:
+        error_mock.assert_called_once_with(f"Internal error processing request '{b'get_nodes'}': {error}")
 
 
 @pytest.mark.asyncio

@@ -46,6 +46,7 @@
 
 #define AUTH_IDLE_CONN_TIMEOUT 30   /* Seconds a connection may stay idle before completing its enrolment request */
 #define AUTH_EPOLL_WAIT_MS     1000 /* epoll_wait tick used to sweep idle connections */
+#define AUTH_CLIENT_REJECT_LOG_WINDOW 90 /* Seconds between two logged client-caused rejections (as remoted) */
 
 #define full(i, j) ((i + 1) % AUTH_POOL == j)
 #define empty(i, j) (i == j)
@@ -131,6 +132,25 @@ w_err_t w_auth_validate_groups(const char *groups, char *response);
  * @brief Cleanup compiled regex for group validation (for testing)
  * */
 void w_auth_validate_groups_cleanup(void);
+
+/**
+ * @brief Log an enrollment refused because of what the client sent (bad name, group, version, IP,
+ *        password or a malformed request).
+ *
+ * The client's mistake is not a manager error, so it is logged at WARNING (INFO when @p info is
+ * true), and throttled: one line per AUTH_CLIENT_REJECT_LOG_WINDOW seconds across all such
+ * rejections. That line names how many were suppressed since the previous one; each suppressed
+ * rejection is still logged at debug level.
+ *
+ * @param info true to log at INFO instead of WARNING.
+ * @param format printf-style message.
+ */
+void w_auth_log_client_rejection(bool info, const char *format, ...) __attribute__((format(printf, 2, 3)));
+
+/**
+ * @brief Forget the client-rejection throttle state, so the next rejection is logged (for testing).
+ */
+void w_auth_client_rejection_log_reset(void);
 
 /**
  * @brief Parse a raw buffer from agent request into enrollment data.

@@ -63,6 +63,10 @@ namespace remoted::common
             bool emit {false};            ///< True for exactly one caller per window.
             std::uint64_t suppressed {0}; ///< Occurrences NOT logged since the last emission.
             std::uint64_t total {0};      ///< suppressed + 1: how many occurrences this line stands for.
+            /// Whole seconds since the previous emission, i.e. the real period `total` covers
+            /// (which can be far longer than the window: suppressed occurrences are only reported
+            /// by the next one). -1 for the first emission ever, which covers only itself.
+            std::int64_t secondsSinceLastEmit {-1};
 
             /// @brief Lets a Decision be used directly in an `if`.
             explicit operator bool() const noexcept
@@ -103,7 +107,9 @@ namespace remoted::common
             // fetch_add and this exchange is folded into THIS line; one recorded after it is
             // carried into the next window -- so no occurrence is ever lost or counted twice.
             const auto total = m_pending.exchange(0, std::memory_order_relaxed);
-            return {true, total > 0 ? total - 1 : 0, total};
+            const std::int64_t sinceLast =
+                previous == kNever ? -1 : static_cast<std::int64_t>((now - previous) / 1'000'000'000);
+            return {true, total > 0 ? total - 1 : 0, total, sinceLast};
         }
 
         /// @brief Occurrences counted but not yet reported.

@@ -552,7 +552,9 @@ def get_agent_conf(group_id: str = None, offset: int = 0, limit: int = common.DA
     WazuhResourceNotFound(1710)
         Group was not found.
     WazuhError(1006)
-        agent.conf does not exist or there is a problem with the permissions.
+        The file resolves outside the group directory.
+    WazuhResourceNotFound(1006)
+        The file does not exist.
     WazuhError(1101)
         Requested component does not exist.
 
@@ -573,10 +575,11 @@ def get_agent_conf(group_id: str = None, offset: int = 0, limit: int = common.DA
     base_path = os_path.realpath(base_path)
     if os_path.commonpath([base_path, shared_path]) != shared_path or \
             os_path.commonpath([os_path.realpath(agent_conf), base_path]) != base_path:
-        raise WazuhError(1006, agent_conf)
+        raise WazuhError(1006, filename)
 
+    # Name the file as requested: the absolute path would disclose the installation layout.
     if not os_path.exists(agent_conf):
-        raise WazuhError(1006, agent_conf)
+        raise WazuhResourceNotFound(1006, filename)
 
     try:
         # Read RAW file
@@ -617,7 +620,9 @@ def get_file_conf(filename: str, group_id: str = None, type_conf: str = None, ra
     WazuhResourceNotFound(1710)
         Group was not found.
     WazuhError(1006)
-        The file does not exist or there is a problem with the permissions.
+        The file resolves outside the group directory.
+    WazuhResourceNotFound(1006)
+        The file does not exist.
     WazuhError(1104)
         Invalid file type.
 
@@ -639,10 +644,11 @@ def get_file_conf(filename: str, group_id: str = None, type_conf: str = None, ra
     base_path = os_path.realpath(base_path)
     if os_path.commonpath([base_path, shared_path]) != shared_path or \
             os_path.commonpath([os_path.realpath(file_path), base_path]) != base_path:
-        raise WazuhError(1006, file_path)
+        raise WazuhError(1006, filename)
 
+    # Name the file as requested: the absolute path would disclose the installation layout.
     if not os_path.exists(file_path):
-        raise WazuhError(1006, file_path)
+        raise WazuhResourceNotFound(1006, filename)
 
     if raw:
         with open(file_path, 'r') as raw_data:
@@ -763,6 +769,11 @@ def get_internal_options_value(high_name: str, low_name: str, max_: int, min_: i
     return option
 
 
+# A leading XML declaration (`<?xml version="1.0" encoding="UTF-8"?>`), optionally after a byte order mark and
+# whitespace.
+XML_DECLARATION_REGEX = re.compile(r'\A\ufeff?\s*<\?xml(?:\s[^<>]*)?\?>')
+
+
 def upload_group_configuration(group_id: str, file_content: str) -> str:
     """Update group configuration.
 
@@ -816,6 +827,10 @@ def upload_group_configuration(group_id: str, file_content: str) -> str:
             # Replace every custom entity
             for character, replacement in custom_entities.items():
                 file_content = re.sub(replacement.replace('\\', '\\\\'), character, file_content)
+
+            # A standard XML declaration is only valid at the very start of a document, and the content is wrapped
+            # below, so drop a leading one. Nothing else is stripped: a DTD or an entity is still refused.
+            file_content = XML_DECLARATION_REGEX.sub('', file_content, count=1)
 
             # Beautify xml file using a defusedxml.minidom.parseString
             xml = parseString(f'<root>\n{file_content}\n</root>')

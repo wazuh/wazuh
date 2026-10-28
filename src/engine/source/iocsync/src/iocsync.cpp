@@ -366,9 +366,9 @@ void IocSync::saveStateToStore()
     }
 }
 
-bool IocSync::syncIOCType(SyncedIOCDatabase& dbState,
-                          const std::unordered_map<std::string, std::string>& remoteTypeHashes,
-                          const std::shared_ptr<ioc::kvdb::IKVDBManager>& kvdbiocPtr)
+IocSync::TypeSyncResult IocSync::syncIOCType(SyncedIOCDatabase& dbState,
+                                             const std::unordered_map<std::string, std::string>& remoteTypeHashes,
+                                             const std::shared_ptr<ioc::kvdb::IKVDBManager>& kvdbiocPtr)
 {
     try
     {
@@ -379,7 +379,7 @@ bool IocSync::syncIOCType(SyncedIOCDatabase& dbState,
         if (remoteHashIt == remoteTypeHashes.end())
         {
             LOG_WARNING("[IOC::Sync] Hash not found for IOC type '{}', skipping", dbState.getIocType());
-            return false;
+            return TypeSyncResult::SKIPPED;
         }
 
         const auto& remoteHash = remoteHashIt->second;
@@ -390,7 +390,7 @@ bool IocSync::syncIOCType(SyncedIOCDatabase& dbState,
         if (remoteHash == dbState.getLastDataHash() && existDb)
         {
             LOG_DEBUG("[IOC::Sync] No changes detected for IOC type '{}'", dbState.getIocType());
-            return false;
+            return TypeSyncResult::UNCHANGED;
         }
 
         // Log sync reason
@@ -415,13 +415,13 @@ bool IocSync::syncIOCType(SyncedIOCDatabase& dbState,
             if (!downloadAndPopulateDB(dbState.getIocType(), tempDBName))
             {
                 LOG_DEBUG("[IOC::Sync] IOC consumer is not ready for type '{}', skipping", dbState.getIocType());
-                return false;
+                return TypeSyncResult::SKIPPED;
             }
         }
         catch (const std::exception& e)
         {
             LOG_WARNING("[IOC::Sync] Failed to download IOCs for type '{}': {}", dbState.getIocType(), e.what());
-            return false;
+            return TypeSyncResult::FAILED;
         }
 
         // Ensure target DB exists
@@ -441,7 +441,7 @@ bool IocSync::syncIOCType(SyncedIOCDatabase& dbState,
             }
             LOG_WARNING(
                 "[IOC::Sync] Failed to ensure target database for IOC type '{}': {}", dbState.getIocType(), e.what());
-            return false;
+            return TypeSyncResult::FAILED;
         }
 
         // Perform atomic hot-swap
@@ -463,19 +463,19 @@ bool IocSync::syncIOCType(SyncedIOCDatabase& dbState,
             }
             LOG_WARNING(
                 "[IOC::Sync] Failed to hot-swap database for IOC type '{}': {}", dbState.getIocType(), e.what());
-            return false;
+            return TypeSyncResult::FAILED;
         }
 
         // Update state
         dbState.setLastDataHash(remoteHash);
 
         LOG_INFO("[IOC::Sync] Synchronized IOC type '{}'", dbState.getIocType());
-        return true;
+        return TypeSyncResult::UPDATED;
     }
     catch (const std::exception& e)
     {
         LOG_WARNING("[IOC::Sync] Failed to synchronize database for IOC type '{}': {}", dbState.getIocType(), e.what());
-        return false;
+        return TypeSyncResult::FAILED;
     }
 }
 
@@ -549,13 +549,25 @@ void IocSync::synchronize()
             dbState.setSyncStatus(base::SyncStatus::UPDATING);
             updateIocStatusSnapshot();
 
-            if (syncIOCType(dbState, remoteTypeHashes, kvdbiocPtr))
+            switch (syncIOCType(dbState, remoteTypeHashes, kvdbiocPtr))
             {
-                dbState.setLastSuccessfulUpdate(static_cast<uint32_t>(std::time(nullptr)));
-                stateChanged = true;
+                case TypeSyncResult::UPDATED:
+                    dbState.setLastSuccessfulUpdate(static_cast<uint32_t>(std::time(nullptr)));
+                    stateChanged = true;
+                    dbState.setSyncStatus(base::SyncStatus::READY);
+                    break;
+                case TypeSyncResult::UNCHANGED: dbState.setSyncStatus(base::SyncStatus::READY); break;
+                case TypeSyncResult::SKIPPED:
+                    // Same rule as a skipped cycle: no usable version yet → FAILED; an existing one stays READY.
+                    dbState.setSyncStatus(dbState.getLastDataHash().empty() ? base::SyncStatus::FAILED
+                                                                            : base::SyncStatus::READY);
+                    break;
+                case TypeSyncResult::FAILED:
+                default:
+                    // The attempt errored: report it, even when an older version stays available.
+                    dbState.setSyncStatus(base::SyncStatus::FAILED);
+                    break;
             }
-
-            dbState.setSyncStatus(base::SyncStatus::READY);
             updateIocStatusSnapshot();
         }
 

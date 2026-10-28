@@ -4,6 +4,7 @@
 
 import logging
 import operator
+import re
 import time
 from os import chmod, path, listdir, rename
 from shutil import rmtree
@@ -1078,6 +1079,10 @@ def get_group_files(group_list: list = None, offset: int = 0, limit: int = None,
 
     Raises
     ------
+    WazuhResourceNotFound(1710)
+        If the group does not exist.
+    WazuhResourceNotFound(1006)
+        If the group has no directory.
     WazuhInternalError(1727)
         If there was an error listing group files.
     WazuhError
@@ -1098,13 +1103,12 @@ def get_group_files(group_list: list = None, offset: int = 0, limit: int = None,
                                       )
     if group_id:
         if not Agent.group_exists(group_id):
-            result.add_failed_item(id_=group_id, error=WazuhResourceNotFound(1710))
-            return result
+            raise WazuhResourceNotFound(1710, group_id)
         group_path = path.join(common.SHARED_PATH, group_id)
 
     if not path.exists(group_path):
-        result.add_failed_item(id_=group_path, error=WazuhError(1006))
-        return result
+        # The group exists but has no directory: name the group, never the absolute path.
+        raise WazuhResourceNotFound(1006, group_id)
 
     try:
         data = []
@@ -1484,8 +1488,22 @@ def get_outdated_agents(agent_list: list = None, offset: int = 0, limit: int = c
         if q:
             # A ')' in q closing a group it never opened would close the wrapper and escape the version condition
             validate_query(q)
+
+        # Agents store their version as they report it ('v5.0.0', '5.0.0', 'Wazuh v4.14.0'), so a text comparison
+        # with the manager's would list an up-to-date agent and a newer one. Compare each stored version
+        # semantically and query the agents whose stored version is older than the manager's.
+        with WazuhDBQueryAgents(select=['version'], distinct=True, limit=None, query=q or '',
+                                normalize_versions=False, **rbac_filters) as db_query:
+            stored_versions = {item.get('version') for item in db_query.run()['items']}
+
+        outdated_versions = sorted(version for version in stored_versions
+                                   if _is_older_version(version, manager_version))
+        if not outdated_versions:
+            return result
+
+        version_query = ','.join(f'version={version}' for version in outdated_versions)
         with WazuhDBQueryAgents(offset=offset, limit=limit, sort=sort, search=search, select=select,
-                                query=f"version!={manager_version}" + (f";({q})" if q else ''),
+                                query=f"({version_query})" + (f";({q})" if q else ''),
                                 **rbac_filters) as db_query:
             data = db_query.run()
 
@@ -1493,6 +1511,33 @@ def get_outdated_agents(agent_list: list = None, offset: int = 0, limit: int = c
         result.total_affected_items = data['totalItems']
 
     return result
+
+
+def _is_older_version(version: str, reference: str) -> bool:
+    """Whether a stored agent version is older than the reference one.
+
+    A missing or unparseable version is not considered older, and neither is one the query language could not
+    express as a value.
+
+    Parameters
+    ----------
+    version : str
+        Agent version as stored ('v5.0.0', '5.0.0', 'Wazuh v4.14.0').
+    reference : str
+        Version to compare with.
+
+    Returns
+    -------
+    bool
+        True if `version` is older than `reference`.
+    """
+    if not isinstance(version, str) or not re.fullmatch(r'[\w .\-]+', version):
+        return False
+
+    try:
+        return WazuhVersion(version) < WazuhVersion(reference)
+    except ValueError:
+        return False
 
 
 @expose_resources(actions=["agent:upgrade"], resources=["agent:id:{agent_list}"],

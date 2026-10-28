@@ -33,7 +33,7 @@ material; that one is the order things happen in.
    OSSEC A:'<agent_name>' V:'<version>' G:'<groups>' IP:'<ip>' K:'<key_hash>'
    ```
    If `use_password` is enabled, the request must be prefixed with the enrollment password,
-   `OSSEC PASS: <password> OSSEC A:'…'`, or it is answered `ERROR: Invalid password`. The schema
+   `OSSEC PASS: <password> OSSEC A:'…'`, or it is answered `ERROR: Invalid password. Unable to add agent`. The schema
    default is `no`; the configuration the installer generates sets it to `yes`. The master
    generates the password at first start; see [use_password configuration](configuration.md#use_password).
 
@@ -524,7 +524,7 @@ it at its credential check (`Unresolved credentials`, error 21 with `-j`, the mi
 often because the service user cannot read them — authd logs
 `SSL context setup failed (certificate '<cert>', key '<key>'). authd reuses the HTTPS agent
 listener's pair, issued at installation and never reissued at start: check that both files are owned
-by the service user and mode 0640, or provision them; see 'Credentials' in the installation guide.
+by root:wazuh-manager with mode 0640, or provision them; see 'Credentials' in the installation guide.
 Exiting.` and exits. authd builds that context only when it opens port 1515
 (`remote_enrollment` and `legacy_enrollment` both on).
 

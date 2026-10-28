@@ -46,6 +46,9 @@ reverse_list()
 
 # Reverse order of daemons
 SDAEMONS=$(reverse_list "${DAEMONS}")
+# Every daemon's configuration test, in start order. Fixed: reload narrows DAEMONS and SDAEMONS to what it
+# restarts, but remoted's configuration is still read at its next restart, so it is still tested.
+CHECK_DAEMONS="${SDAEMONS}"
 
 ## Locking for the start/stop
 LOCK="${DIR}/var/start-script-lock"
@@ -124,8 +127,13 @@ lock()
 
         # We tried MAX_ITERATION times to acquire the lock.
         if [ "$i" = "${MAX_ITERATION}" ]; then
-            echo "ERROR: Another instance is locking this process."
-            echo "If you are sure that no other instance is running, please remove ${LOCK}"
+            if [ $USE_JSON = true ]; then
+                echo -n '{"error":1,"message":"Another instance is locking this process."}'
+                echo "If you are sure that no other instance is running, please remove ${LOCK}" >&2
+            else
+                echo "ERROR: Another instance is locking this process."
+                echo "If you are sure that no other instance is running, please remove ${LOCK}"
+            fi
             exit 1
         fi
     done
@@ -134,6 +142,35 @@ lock()
 unlock()
 {
     rm -rf ${LOCK}
+}
+
+# log_lines <level> <text>: each non-empty line of <text> into logs/wazuh-manager.log in the daemons' own
+# format (date, tag, level), so a reason relayed from a tool is dated and attributed like every other line.
+# The credential resolver's own prefixes are folded into that format: "resolve-credentials: WARNING: x"
+# becomes a WARNING and other "resolve-credentials: x" progress an INFO; every other line takes <level>.
+log_lines()
+{
+    _log_level=$1
+    printf '%s\n' "$2" | while IFS= read -r _log_line; do
+        case "${_log_line}" in
+            "") continue ;;
+            "resolve-credentials: WARNING: "*) _line_level="WARNING"; _log_line="${_log_line#resolve-credentials: WARNING: }" ;;
+            "resolve-credentials: "*) _line_level="INFO"; _log_line="${_log_line#resolve-credentials: }" ;;
+            *) _line_level="${_log_level}" ;;
+        esac
+        echo "$(date '+%Y/%m/%d %H:%M:%S') wazuh-manager-control: ${_line_level}: ${_log_line}" >> ${DIR}/logs/wazuh-manager.log 2>/dev/null
+    done
+}
+
+# refuse <code> <reason>: the one line a refusal prints -- "<reason>. Exiting", or with -j the JSON
+# document {"error":<code>,"message":"<reason>."}.
+refuse()
+{
+    if [ $USE_JSON = true ]; then
+        echo -n '{"error":'"$1"',"message":"'"$2"'."}'
+    else
+        echo "$2. Exiting"
+    fi
 }
 
 help()
@@ -191,9 +228,16 @@ disable()
     fi
 }
 
+# Effective values only: the referenced files are not this lookup's business (testconfig() checks them), and a
+# missing certificate must not blank the role -- `status` would then silently leave a running apid out.
 get_node_type()
 {
-    ${MCONF} get cluster.node_type 2>/dev/null
+    ${MCONF} --skip-file-checks get cluster.node_type 2>/dev/null
+}
+
+auth_disabled()
+{
+    [ "$(${MCONF} --skip-file-checks get auth.disabled 2>/dev/null)" = "true" ]
 }
 
 status()
@@ -213,7 +257,7 @@ status()
         fi
 
         ## Mirror start_service(): authd is not started when auth.disabled is true.
-        if [ "$i" = "wazuh-manager-authd" ] && [ "$(${MCONF} get auth.disabled 2>/dev/null)" = "true" ]; then
+        if [ "$i" = "wazuh-manager-authd" ] && auth_disabled; then
             continue
         fi
 
@@ -277,12 +321,8 @@ validateconfig()
     echo "${MCONF_VERDICT}" >&2
     # With the fail-fast no daemon starts, so nothing else records the reason where operators (and
     # the integration tests) look for it: surface the verdict in the manager log too.
-    echo "$(date '+%Y/%m/%d %H:%M:%S') wazuh-manager-control: ERROR: ${MCONF_VERDICT}" >> ${DIR}/logs/wazuh-manager.log 2>/dev/null
-    if [ $USE_JSON = true ]; then
-        echo -n '{"error":20,"message":"'${WAZUH_CONF}': Configuration error."}'
-    else
-        echo "${WAZUH_CONF}: Configuration error. Exiting"
-    fi
+    log_lines ERROR "${MCONF_VERDICT}"
+    refuse 20 "${WAZUH_CONF}: Configuration error"
     rm -f ${DIR}/var/run/*.start
     rm -f ${DIR}/var/run/.restart
     # Before lock() on both paths, like checkcredentials() and testconfig(): see the note there.
@@ -340,15 +380,9 @@ checkcredentials()
         *MISSING*) CHECK_REASON="Unresolved credentials"; CHECK_LOG="unresolved credentials"; CHECK_ERROR=21 ;;
         *)         CHECK_REASON="Cannot check the credentials"; CHECK_LOG="cannot check the credentials" ;;
     esac
-    echo "$(date '+%Y/%m/%d %H:%M:%S') wazuh-manager-control: ERROR: ${CHECK_LOG}" >> ${DIR}/logs/wazuh-manager.log 2>/dev/null
-    if [ -n "${CHECK_VERDICT}" ]; then
-        echo "${CHECK_VERDICT}" >> ${DIR}/logs/wazuh-manager.log 2>/dev/null
-    fi
-    if [ $USE_JSON = true ]; then
-        echo -n '{"error":'"${CHECK_ERROR}"',"message":"'"${CHECK_REASON}"'."}'
-    else
-        echo "${CHECK_REASON}. Exiting"
-    fi
+    log_lines ERROR "${CHECK_LOG}"
+    log_lines ERROR "${CHECK_VERDICT}"
+    refuse ${CHECK_ERROR} "${CHECK_REASON}"
     rm -f ${DIR}/var/run/*.start
     rm -f ${DIR}/var/run/.restart
     # Like testconfig(), this runs before lock() on both paths: unlock() is `rm -rf ${LOCK}`, so it
@@ -414,21 +448,17 @@ resolvecredentials()
         printf '%s\n' "${CREDENTIALS_VERDICT}" | while IFS= read -r line; do
             case "${line}" in
                 "resolve-credentials: WARNING: "*)
-                    echo "$(date '+%Y/%m/%d %H:%M:%S') wazuh-manager-control: WARNING: ${line#resolve-credentials: WARNING: }" >> ${DIR}/logs/wazuh-manager.log 2>/dev/null
+                    log_lines WARNING "${line}"
                     ;;
             esac
         done
     fi
     if [ ${CREDENTIALS_STATUS} != 0 ]; then
-        echo "$(date '+%Y/%m/%d %H:%M:%S') wazuh-manager-control: ERROR: unresolved credentials" >> ${DIR}/logs/wazuh-manager.log 2>/dev/null
+        log_lines ERROR "unresolved credentials"
         # No daemon starts, so nothing else records which key was missing where operators (and the
         # integration tests) look for it.
-        echo "${CREDENTIALS_VERDICT}" >> ${DIR}/logs/wazuh-manager.log 2>/dev/null
-        if [ $USE_JSON = true ]; then
-            echo -n '{"error":21,"message":"Unresolved credentials."}'
-        else
-            echo "Unresolved credentials. Exiting"
-        fi
+        log_lines ERROR "${CREDENTIALS_VERDICT}"
+        refuse 21 "Unresolved credentials"
         rm -f ${DIR}/var/run/*.start
         rm -f ${DIR}/var/run/.restart
         # unlock() is `rm -rf ${LOCK}`, so calling it on the start path -- which has not taken the
@@ -449,15 +479,14 @@ testconfig()
     # keys checkcredentials() has already vouched for, and every other file the options name.
     validateconfig
 
-    # Then each daemon checks what is not configuration (files, sockets, keys).
-    for i in ${SDAEMONS}; do
-        ${DIR}/bin/${i} -t ${DEBUG_CLI};
+    # Then each daemon checks what is not configuration (files, sockets, keys). All of them, on reload
+    # too: remoted keeps running then, but reads this configuration at its next restart, and a value only
+    # its own test refuses would otherwise surface as a manager that does not come back. A test's own
+    # output goes to stderr, so that `-j` keeps writing a single JSON document to stdout.
+    for i in ${CHECK_DAEMONS}; do
+        ${DIR}/bin/${i} -t ${DEBUG_CLI} 1>&2;
         if [ $? != 0 ]; then
-            if [ $USE_JSON = true ]; then
-                echo -n '{"error":20,"message":"'${i}': Configuration error."}'
-            else
-                echo "${i}: Configuration error. Exiting"
-            fi
+            refuse 20 "${i}: Configuration error"
             # Unconditionally: the wipe at the top of this function already replaced the old
             # .restart guard's job, and keeping the guard here would leave a restart with a
             # refused configuration reporting plain "not running".
@@ -475,7 +504,12 @@ get_wazuh_engine_pid()
     local ticks=0
     local pidfile
 
-    ${DIR}/bin/wazuh-manager-analysisd
+    # Its output goes anywhere but this function's stdout, which the caller captures as the pid.
+    if [ $USE_JSON = true ]; then
+        ${DIR}/bin/wazuh-manager-analysisd > /dev/null 2>&1
+    else
+        ${DIR}/bin/wazuh-manager-analysisd 1>&2
+    fi
 
     while [ $ticks -lt $max_ticks ]; do
         for pidfile in ${DIR}/var/run/wazuh-manager-analysisd-*.pid; do
@@ -515,7 +549,7 @@ wait_for_wazuh_engine_ready()
 
     ENGINE_PID=$(get_wazuh_engine_pid)
     if [ $? -ne 0 ]; then
-        echo "Failed to obtain PID for wazuh-manager-analysisd"
+        echo "Failed to obtain PID for wazuh-manager-analysisd" >&2
         return 1
     fi
 
@@ -527,7 +561,7 @@ wait_for_wazuh_engine_ready()
         fi
 
         if ! kill -0 "$ENGINE_PID" 2>/dev/null; then
-            echo "wazuh-manager-analysisd died during the readiness check."
+            echo "wazuh-manager-analysisd died during the readiness check." >&2
             return 1
         fi
 
@@ -535,7 +569,7 @@ wait_for_wazuh_engine_ready()
         sleep 1
     done
 
-    echo "wazuh-manager-analysisd did not respond correctly after $max_attempts attempts."
+    echo "wazuh-manager-analysisd did not respond correctly after $max_attempts attempts." >&2
     kill $ENGINE_PID
     return 1
 }
@@ -556,8 +590,12 @@ start_service()
     done
 
     node_type=$(get_node_type);
-    if [ -z $node_type ]; then
-        echo "Invalid cluster configuration, check the ${CONF_DIR}/${WAZUH_CONF} file."
+    if [ -z "$node_type" ]; then
+        if [ $USE_JSON = true ]; then
+            refuse 20 "${WAZUH_CONF}: Invalid cluster configuration"
+        else
+            echo "Invalid cluster configuration, check the ${CONF_DIR}/${WAZUH_CONF} file."
+        fi
         unlock;
         exit 1;
     fi
@@ -574,10 +612,8 @@ start_service()
         fi
 
         ## If wazuh-manager-authd is disabled (auth.disabled: true), don't try to start it.
-        if [ "$i" = "wazuh-manager-authd" ]; then
-             if [ "$(${MCONF} get auth.disabled 2>/dev/null)" = "true" ]; then
-                continue
-             fi
+        if [ "$i" = "wazuh-manager-authd" ] && auth_disabled; then
+            continue
         fi
         if [ $USE_JSON = true ] && [ $first = false ]; then
             echo -n ','
@@ -604,7 +640,8 @@ start_service()
             fi
             if [ $failed = true ]; then
                 if [ $USE_JSON = true ]; then
-                    echo -n '{"daemon":"'${i}'","status":"error"}'
+                    # Closes the document: the exit below leaves no later point to do it.
+                    echo -n '{"daemon":"'${i}'","status":"error"}]}'
                 else
                     echo "${i} did not start correctly.";
                 fi
@@ -770,11 +807,21 @@ info()
         fi
     else
         case "${1}" in
-            -v) echo "${VERSION}" ;;
-            -r) echo "${REVISION}" ;;
-            -t) echo "${TYPE}" ;;
-             *) echo "Invalid flag: ${1}" && help ;;
+            -v) info_key="WAZUH_VERSION"; info_value="${VERSION}" ;;
+            -r) info_key="WAZUH_REVISION"; info_value="${REVISION}" ;;
+            -t) info_key="WAZUH_TYPE"; info_value="${TYPE}" ;;
+             *)
+                if [ $USE_JSON = true ]; then
+                    echo -n '{"error":1,"message":"Invalid flag: '"${1}"'."}'
+                    exit 1
+                fi
+                echo "Invalid flag: ${1}" && help ;;
         esac
+        if [ $USE_JSON = true ]; then
+            echo -n '{"error":0,"data":[{"'"${info_key}"'":"'"${info_value}"'"}]}'
+        else
+            echo "${info_value}"
+        fi
     fi
 }
 

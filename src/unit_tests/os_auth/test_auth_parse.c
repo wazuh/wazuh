@@ -86,14 +86,14 @@ parse_evaluator parse_values_default_cfg [] = {
 
     { "OSSEC A:'agent0'", "192.0.0.1", "pass123",                       {NULL, NULL, NULL, NULL}, {OS_INVALID,"ERROR: Invalid password"},              {NULL, NULL, "Invalid password provided by 192.0.0.1. Closing connection.", NULL, NULL} },
     { "OSSEC PASS: pass124 OSSEC A:'agent0'", "192.0.0.1", "pass123",   {NULL, NULL, NULL, NULL}, {OS_INVALID,"ERROR: Invalid password"},              {NULL, NULL, "Invalid password provided by 192.0.0.1. Closing connection.", NULL, NULL} },
-    { "OSSEC PASS: pass124 OSSEC A:'agent0'", "192.0.0.1", NULL,        {NULL, NULL, NULL, NULL}, {OS_INVALID,"ERROR: Invalid request for new agent"}, {"Invalid request for new agent from: 192.0.0.1", NULL, NULL, NULL, NULL} },
-    { "OSSEC A:''", "192.0.0.1", NULL,                                  {NULL, NULL, NULL, NULL}, {OS_INVALID,"ERROR: Invalid agent name: "},          {"Invalid agent name:  from 192.0.0.1", NULL, NULL, "Received request for a new agent () from: 192.0.0.1", NULL} },
-    { "OSSEC A:'inv;agent'", "192.0.0.1", NULL,                         {NULL, NULL, NULL, NULL}, {OS_INVALID,"ERROR: Invalid agent name: inv;agent"}, {"Invalid agent name: inv;agent from 192.0.0.1", NULL, NULL, "Received request for a new agent (inv;agent) from: 192.0.0.1", NULL} },
-    { "OSSEC A:'agent3' G:'Group1,Group2", "192.0.0.1", NULL,           {NULL, NULL, NULL, NULL}, {OS_INVALID,"ERROR: Unterminated group field"}, {"Unterminated group field", NULL, NULL, "Received request for a new agent (agent3) from: 192.0.0.1", NULL} },
-    { "OSSEC A:'agent3' G:'Group1,Group2' IP:'192.0.0.3 K:'ABC123'", "192.0.0.1", NULL,           {NULL, NULL, NULL, NULL}, {OS_INVALID,"ERROR: Unterminated IP field"}, {"Unterminated IP field", NULL, NULL, "Received request for a new agent (agent3) from: 192.0.0.1", "Group(s) is: Group1,Group2"} },
-    { "OSSEC A:'agent3' G:'Group1,Group2' IP:'192.0.0.3' K:'ABC123", "192.0.0.1", NULL,           {NULL, NULL, NULL, NULL}, {OS_INVALID,"ERROR: Unterminated key field"}, {"Unterminated key field", NULL, NULL, "Received request for a new agent (agent3) from: 192.0.0.1", "Group(s) is: Group1,Group2"} },
-    { "OSSEC A:'agent3' V:'v4.5.0", "192.0.0.1", NULL,                  {NULL, NULL, NULL, NULL}, {OS_INVALID,"ERROR: Unterminated version field"},    {"Unterminated version field", NULL, NULL, "Received request for a new agent (agent3) from: 192.0.0.1", NULL} },
-    { "OSSEC A:'agent4' V:'v5.6.0'", "192.0.0.1", NULL,                 {NULL, NULL, NULL, NULL}, {OS_INVALID,"ERROR: Agent version must be lower or equal to manager version"},          {"Incompatible version for new agent from: 192.0.0.1", NULL, NULL, "Received request for a new agent (agent4) from: 192.0.0.1", NULL} },
+    { "OSSEC PASS: pass124 OSSEC A:'agent0'", "192.0.0.1", NULL,        {NULL, NULL, NULL, NULL}, {OS_INVALID,"ERROR: Invalid request for new agent"}, {NULL, "Invalid request for new agent from: 192.0.0.1", NULL, NULL, NULL} },
+    { "OSSEC A:''", "192.0.0.1", NULL,                                  {NULL, NULL, NULL, NULL}, {OS_INVALID,"ERROR: Invalid agent name: "},          {NULL, "Invalid agent name:  from 192.0.0.1", NULL, "Received request for a new agent () from: 192.0.0.1", NULL} },
+    { "OSSEC A:'inv;agent'", "192.0.0.1", NULL,                         {NULL, NULL, NULL, NULL}, {OS_INVALID,"ERROR: Invalid agent name: inv;agent"}, {NULL, "Invalid agent name: inv;agent from 192.0.0.1", NULL, "Received request for a new agent (inv;agent) from: 192.0.0.1", NULL} },
+    { "OSSEC A:'agent3' G:'Group1,Group2", "192.0.0.1", NULL,           {NULL, NULL, NULL, NULL}, {OS_INVALID,"ERROR: Unterminated group field"}, {NULL, "Unterminated group field", NULL, "Received request for a new agent (agent3) from: 192.0.0.1", NULL} },
+    { "OSSEC A:'agent3' G:'Group1,Group2' IP:'192.0.0.3 K:'ABC123'", "192.0.0.1", NULL,           {NULL, NULL, NULL, NULL}, {OS_INVALID,"ERROR: Unterminated IP field"}, {NULL, "Unterminated IP field", NULL, "Received request for a new agent (agent3) from: 192.0.0.1", "Group(s) is: Group1,Group2"} },
+    { "OSSEC A:'agent3' G:'Group1,Group2' IP:'192.0.0.3' K:'ABC123", "192.0.0.1", NULL,           {NULL, NULL, NULL, NULL}, {OS_INVALID,"ERROR: Unterminated key field"}, {NULL, "Unterminated key field", NULL, "Received request for a new agent (agent3) from: 192.0.0.1", "Group(s) is: Group1,Group2"} },
+    { "OSSEC A:'agent3' V:'v4.5.0", "192.0.0.1", NULL,                  {NULL, NULL, NULL, NULL}, {OS_INVALID,"ERROR: Unterminated version field"},    {NULL, "Unterminated version field", NULL, "Received request for a new agent (agent3) from: 192.0.0.1", NULL} },
+    { "OSSEC A:'agent4' V:'v5.6.0'", "192.0.0.1", NULL,                 {NULL, NULL, NULL, NULL}, {OS_INVALID,"ERROR: Agent version must be lower or equal to manager version"},          {NULL, "Incompatible version for new agent from: 192.0.0.1", NULL, "Received request for a new agent (agent4) from: 192.0.0.1", NULL} },
 
     {0}
 };
@@ -145,6 +145,8 @@ static void test_w_auth_parse_data(void **state) {
     }
 
     for (unsigned i=0; parse_values[i].buffer; i++) {
+        /* Client-caused rejections are throttled; each row is a fresh first occurrence. */
+        w_auth_client_rejection_log_reset();
         set_expected_log(&parse_values[i].expected_log);
         response[0] = '\0';
         strncpy(ip, parse_values[i].src_ip, IPSIZE);
@@ -174,11 +176,41 @@ static void test_w_auth_parse_data(void **state) {
     }
 }
 
+/* A burst of client mistakes logs one WARNING per window, not one ERROR per request: the rest go to
+ * debug, and the next reported one says how many were folded into it. */
+static void test_client_rejections_are_throttled(void **state) {
+    char response[2048] = {0};
+    char ip[IPSIZE + 1];
+    char *agentname = NULL;
+    char *groups = NULL;
+    char *key_hash = NULL;
+
+    w_auth_client_rejection_log_reset();
+
+    strncpy(ip, "192.0.0.1", IPSIZE);
+    expect_string(__wrap__mdebug1, formatted_msg, "Received request for a new agent (inv;agent) from: 192.0.0.1");
+    expect_string(__wrap__mwarn, formatted_msg, "Invalid agent name: inv;agent from 192.0.0.1");
+    assert_int_equal(w_auth_parse_data("OSSEC A:'inv;agent'", response, NULL, ip, &agentname, &groups, &key_hash), OS_INVALID);
+    os_free(agentname);
+
+    for (int i = 0; i < 3; i++) {
+        strncpy(ip, "192.0.0.1", IPSIZE);
+        expect_string(__wrap__mdebug1, formatted_msg, "Received request for a new agent (inv;agent) from: 192.0.0.1");
+        expect_string(__wrap__mdebug1, formatted_msg, "Invalid agent name: inv;agent from 192.0.0.1");
+        assert_int_equal(w_auth_parse_data("OSSEC A:'inv;agent'", response, NULL, ip, &agentname, &groups, &key_hash), OS_INVALID);
+        os_free(agentname);
+    }
+
+    /* Nothing logged at WARNING by the suppressed ones; the window state is dropped for the next case. */
+    w_auth_client_rejection_log_reset();
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         /* w_auth_parse_data tests*/
         cmocka_unit_test_setup(test_w_auth_parse_data, setup_parse_default),
         cmocka_unit_test_setup(test_w_auth_parse_data, setup_parse_use_src_ip_cfg_0),
+        cmocka_unit_test_setup(test_client_rejections_are_throttled, setup_parse_default),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

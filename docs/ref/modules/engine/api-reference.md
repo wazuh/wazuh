@@ -28,7 +28,11 @@ These apply to every route on `engine-api-http.sock`:
   `Error: Handler is not initialized`; an exception escaping a handler is answered 500 with the plain-text
   body `Internal server error`.
 - A body larger than `analysisd.server_api_payload_max_bytes` (default `0`, unlimited) is answered with 413 and a
-  plain-text message.
+  plain-text message (`Payload too large. Max allowed: <n> bytes (<n/1024> KiB).`), before any handler runs. This is
+  the only server-wide size limit, whatever the request's `Content-Type`. Routes with their own per-type limits
+  (the content routes) answer their 413 with a JSON body.
+- Send `Content-Type: application/json`. The server does not require it, but `curl -d` otherwise labels the body
+  `application/x-www-form-urlencoded`.
 
 The internal options named here are described in [Engine Configuration Reference](configuration.md).
 
@@ -36,4 +40,8 @@ The internal options named here are described in [Engine Configuration Reference
 
 ```bash
 curl --unix-socket /var/wazuh-manager/queue/sockets/engine-api-http.sock http://localhost/status
+
+curl --unix-socket /var/wazuh-manager/queue/sockets/engine-api-http.sock \
+  -X POST http://localhost/metrics/list \
+  -H "Content-Type: application/json" -d '{}'
 ```

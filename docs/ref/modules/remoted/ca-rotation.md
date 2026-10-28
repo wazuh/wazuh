@@ -31,6 +31,11 @@ come after step 4 has landed everywhere, never before.
 | 4 | On every node: reissue the listener pair under the new CA, stage the new CA in `/etc/wazuh-manager/ca/` and reissue the Server API pair (see [The manager's own CA](#the-managers-own-ca-and-the-server-api-pair)), then **restart the manager** (`wazuh-manager-control restart` or `systemctl restart wazuh-manager`) | **Yes — the only restart in the whole procedure** | The listener now presents a leaf signed by the new CA |
 | 5 | `wazuh-manager-certs remove <old-ca-identity>` on the master, only once step 4 has completed on every node; then repeat step 2 (`--from-master`) on every worker | No | The old CA leaves the bundle. A worker keeps the old bundle until it pulls: `--from-master` is the only write a worker accepts |
 
+On a fresh install the bundle has never been published: remoted serves it (generation `0`), but
+`wazuh-manager-certs check` exits `1` with `no publication block (unpublished)` until the first
+`stamp` (on a worker, `--from-master`). That is the expected state before a first rotation, not a
+broken bundle.
+
 Steps 1–3 are what make the switch in step 4 safe: by the time the leaf changes, every reachable
 agent has already had the chance to add the new CA to what it trusts, so the moment the listener
 starts presenting a leaf signed by it, agents keep verifying without interruption. Step 5 is cleanup,

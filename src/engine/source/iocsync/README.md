@@ -57,7 +57,7 @@ The module runs as the `ioc-sync-task` scheduler task (created in `main.cpp` onl
 2. **Pre-flight consumer check**: `isConsumerReadyForSync(IOC_ENRICHMENT_CONSUMER_ID)` (with retry) — the `cti:catalog:consumer:iocs` document in `.wazuh-cti-consumers` must have `status` `"ready"` and a non-zero `local_offset`; otherwise the cycle is skipped
 3. **Check remote index**: Verify the IOC data index (`wazuh-threatintel-enrichments`) exists in the Wazuh Indexer. A missing index (404) returns `false` and skips the cycle without retrying; any other error is retried and then fails the cycle
 4. **Fetch remote hashes**: Get the per-type hash map (`__ioc_type_hashes__`) from the indexer; `std::nullopt` (consumer not ready) skips the cycle
-5. **For each IOC type** (marked `UPDATING` in the status snapshot while it runs, `READY` after):
+5. **For each IOC type** (marked `UPDATING` in the status snapshot while it runs; afterwards `READY` when it was updated or already current, `FAILED` when its sync errored — even if the previous version stays available — and, when it was skipped, `FAILED` only if it holds no version yet):
    - Compare remote hash against locally stored hash
    - No remote hash for the type → skip with a warning
    - If identical and DB exists → skip
@@ -190,7 +190,7 @@ class IIocSync {
 
 **`synchronize()`**: Acquires the KVDB manager, checks consumer readiness and remote availability, fetches hashes, iterates all configured IOC types calling `syncIOCType()` for each, and persists state if anything changed.
 
-**`syncIOCType()`**: Per-type logic — compares hashes, downloads to temp DB via `downloadAndPopulateDB()`, ensures target exists, performs `hotSwap()`, updates local hash. Returns `true` if the database was updated.
+**`syncIOCType()`**: Per-type logic — compares hashes, downloads to temp DB via `downloadAndPopulateDB()`, ensures target exists, performs `hotSwap()`, updates local hash. Returns a `TypeSyncResult`: `UPDATED` (database replaced), `UNCHANGED` (hash matches), `SKIPPED` (no remote hash for the type, or the consumer turned not ready) or `FAILED` (download, target creation or hot-swap error). `synchronize()` maps it to the type's `status`, so an error is never reported as `ready`.
 
 **`downloadAndPopulateDB()`**: Streams IOC documents from the indexer in batches of `m_iocSyncBatchSize` via `streamIocsByType()`, passing `IOC_ENRICHMENT_CONSUMER_ID` for consumer validation. Returns `bool` (false if consumer not ready). Each document's key is normalized to lowercase. Values are stored via `ioc::kvdb::details::updateValueInDB()` which appends to arrays if the key already exists. On consumer-not-ready or download failure, rolls back the temp database.
 
@@ -213,7 +213,7 @@ Tracks per-type sync state with JSON serialization:
 
 ## Testing
 
-`iocsync_status_test.cpp` (`iocsync_utest`) covers the status snapshot and failure reporting with mocked store, indexer connector and KVDB manager: initial status, failed cycles marking unsynced types `FAILED`, an index-check error retried then failing the cycle, a missing IOC index not retried, and restoring `last_successful_update` from the store.
+`iocsync_status_test.cpp` (`iocsync_utest`) covers the status snapshot and failure reporting with mocked store, indexer connector and KVDB manager: initial status, failed cycles marking unsynced types `FAILED`, a failed per-type download reported `FAILED` while the old version stays available, a successful per-type sync reported `READY`, a type with no remote hash and no version reported `FAILED`, an index-check error retried then failing the cycle, a missing IOC index not retried, and restoring `last_successful_update` from the store.
 
 ## Consumers
 

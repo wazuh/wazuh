@@ -811,7 +811,9 @@ char* local_dispatch(const char *input) {
     return output;
 
 fail:
-    merror("ERROR %d: %s.", ERRORS[ierror].code, ERRORS[ierror].message);
+    // No "ERROR" in the text: the logger already prints the level, and "ERROR: ERROR 9022: ..." read
+    // as a stutter.
+    merror("Local request failed with error %d: %s.", ERRORS[ierror].code, ERRORS[ierror].message);
     response = local_create_error_response(ERRORS[ierror].code, ERRORS[ierror].message);
     output = cJSON_PrintUnformatted(response);
     cJSON_Delete(response);
@@ -1285,7 +1287,7 @@ cJSON* local_add_clustered(const char *name, const char *ip, const char *groups,
         response = local_create_error_response(master_error_code, message);
     } else {
         // Transport failure, or an unparseable response: either way, no clean answer.
-        merror("ERROR %d: %s.", ERRORS[ENOMASTERCOMM].code, ERRORS[ENOMASTERCOMM].message);
+        merror("Error %d: %s.", ERRORS[ENOMASTERCOMM].code, ERRORS[ENOMASTERCOMM].message);
         response = local_create_error_response(ERRORS[ENOMASTERCOMM].code, ERRORS[ENOMASTERCOMM].message);
     }
 

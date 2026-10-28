@@ -49,7 +49,10 @@ namespace
 
     wazuh::uds_http::HttpResponse badRequest(const char* reason)
     {
-        return wazuh::uds_http::HttpResponse::json(400, std::string {R"({"error":")"} + reason + R"(","code":400})");
+        // Built as JSON, not concatenated, so a reason holding quotes still yields a valid body. Ordered to
+        // keep the documented {"error":...,"code":...} shape.
+        return wazuh::uds_http::HttpResponse::json(400,
+                                                   nlohmann::ordered_json {{"error", reason}, {"code", 400}}.dump());
     }
 
     /// One body for both 503 causes on purpose: "the module is stopping" and "the indexer is

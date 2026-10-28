@@ -112,8 +112,9 @@ and `routine`.
 ## Rotation
 
 On the manager, `wazuh-manager.log` and `wazuh-manager.json` are rotated daily, and when they exceed a
-size threshold, into `logs/wazuh/<YYYY>/<Mon>/wazuh-<DD>.log` and `.json` (with a `-<NNN>` counter
-for further rotations of the same day). The schedule and its internal options are described in
+size threshold, into `logs/wazuh/<YYYY>/<Mon>/wazuh-<DD>.log.gz` and `.json.gz` (with a `-<NNN>` counter
+for further rotations of the same day). The rotated files are gzip-compressed by default; with the internal
+option `wazuh_modules.manager_task_log_compress=0` they stay plain `.log` and `.json`. The schedule and its internal options are described in
 [Recurring manager tasks](../task_manager/schedules.md).
 
 ---

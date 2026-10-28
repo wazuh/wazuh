@@ -265,6 +265,17 @@ credentials from the keystore (see [Configuration sources](#configuration-source
 | `analysisd.geo_manifest_url` | `WAZUH_GEO_MANIFEST_URL` | URL of the GeoIP database manifest used to check for updates. | `https://api.pre.cloud.wazuh.com/maxmind_geoip/manifest.json` | both |
 | `analysisd.geo_download_timeout` | `WAZUH_GEO_DOWNLOAD_TIMEOUT` | Timeout in milliseconds for downloading the GeoIP database. | `60000` (60 s) | both |
 
+> **Note:** the default `analysisd.geo_manifest_url` points to the **pre-production** Wazuh cloud endpoint
+> (`api.pre.cloud.wazuh.com`), so the GeoIP databases a default installation downloads come from it. To use another
+> manifest, set the option in `/etc/wazuh-manager/wazuh-manager-internal-options.conf` and restart the manager:
+>
+> ```ini
+> analysisd.geo_manifest_url=https://<your-manifest-host>/<path>/manifest.json
+> ```
+>
+> The `WAZUH_GEO_MANIFEST_URL` environment variable overrides the file, but the `wazuh-manager` systemd unit sets no
+> environment, so it only reaches an engine started by hand (or in standalone mode, where the file is not read).
+
 ### Time-zone database
 
 | Setting | Env var | Description | Default | Mode |

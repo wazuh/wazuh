@@ -15,6 +15,7 @@
 #include <uds_http_server/logThrottle.hpp>
 
 #include <chrono>
+#include <json.hpp>
 #include <string>
 #include <utility>
 #include <variant>
@@ -33,8 +34,10 @@ namespace
 
     wazuh::uds_http::HttpResponse errorResponse(int status, const std::string& reason)
     {
-        return wazuh::uds_http::HttpResponse::json(
-            status, std::string {R"({"error":")"} + reason + R"(","code":)" + std::to_string(status) + "}");
+        // Built as JSON, not concatenated, so a reason holding quotes still yields a valid body. Ordered to
+        // keep the documented {"error":...,"code":...} shape.
+        return wazuh::uds_http::HttpResponse::json(status,
+                                                   nlohmann::ordered_json {{"error", reason}, {"code", status}}.dump());
     }
 
     /// One body for every 503 cause on purpose: "stopping", "indexer unreachable" and "no

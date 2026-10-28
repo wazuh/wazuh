@@ -136,4 +136,36 @@ INSTANTIATE_TEST_SUITE_P(
             R"({})",
             R"({"wazuh":{"protocol":{"queue":49,"location":"[A] (Alice) any->home"}},"event":{"original":"Hello"}})"}));
 
+/// Returns the what() of the runtime_error thrown by parseLegacyEvent, or "" when nothing is thrown.
+std::string legacyParseError(std::string_view input)
+{
+    try
+    {
+        base::eventParsers::parseLegacyEvent(input, json::Json(R"({})"));
+    }
+    catch (const std::runtime_error& e)
+    {
+        return e.what();
+    }
+    return {};
+}
+
+// The reported reason must match the actual defect of the line.
+TEST(EventParserReasonTest, ShortLineReportsLength)
+{
+    EXPECT_NE(legacyParseError("1:a").find("at least 5 bytes"), std::string::npos);
+}
+
+TEST(EventParserReasonTest, LongLineWithoutQueueSeparatorReportsMissingSeparator)
+{
+    const auto reason = legacyParseError("this is not a wazuh event");
+    EXPECT_EQ(reason.find("at least 5 bytes"), std::string::npos) << reason;
+    EXPECT_NE(reason.find("missing ':' after the one-byte queue identifier"), std::string::npos) << reason;
+}
+
+TEST(EventParserReasonTest, MissingLocationSeparatorIsReported)
+{
+    EXPECT_NE(legacyParseError("1:location-without-message").find("missing unescaped ':'"), std::string::npos);
+}
+
 } // namespace

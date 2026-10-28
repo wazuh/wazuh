@@ -19,7 +19,7 @@ Most `GET` endpoints that return a list accept these standard parameters (`prett
 | `offset` | int | `0` | First element to return (max: 2,147,483,647) |
 | `limit` | int | `500` | Max elements to return (1 to 100,000) |
 | `search` | string | — | Free-text search (prefix `-` for complementary) |
-| `sort` | string | — | Sort by fields (`+` asc, `-` desc, dot notation for nested) |
+| `sort` | string | — | Sort by fields (comma-separated, dot notation for nested); one leading `+` (asc, default) or `-` (desc) applies to the whole list, e.g. `-name,id` |
 | `select` | string | — | Fields to return (comma-separated) |
 | `q` | string | — | Query filter (see [Query filter syntax](#query-filter-syntax)) |
 | `distinct` | boolean | `false` | Return distinct values |
@@ -319,6 +319,8 @@ curl -k -X PUT "https://localhost:55000/security/user/revoke" \
 ### MITRE ATT&CK
 
 The bundled dataset is MITRE ATT&CK Enterprise **v19.2** (STIX 2.0 bundle from github.com/mitre/cti), loaded into `var/db/mitre.db` at installation time.
+`GET /mitre/metadata` does not report that release: its `mitre_version` is the bundle's STIX
+`spec_version` (`2.0`), and `db_version` the version of the database layout.
 
 **`GET /mitre/techniques`** — Query MITRE techniques with full details (tactics, mitigations, software, groups, references).
 
@@ -327,8 +329,8 @@ The bundled dataset is MITRE ATT&CK Enterprise **v19.2** (STIX 2.0 bundle from g
 curl -k -X GET "https://localhost:55000/mitre/techniques?search=phishing&limit=3&pretty=true" \
   -H "Authorization: Bearer $TOKEN"
 
-# Get by technique ID
-curl -k -X GET "https://localhost:55000/mitre/techniques?technique_ids=T1566&pretty=true" \
+# Get by ATT&CK ID (T1566); `technique_ids` takes the STIX IDs (attack-pattern--…) instead
+curl -k -X GET "https://localhost:55000/mitre/techniques?q=external_id%3DT1566&pretty=true" \
   -H "Authorization: Bearer $TOKEN"
 ```
 
@@ -371,7 +373,7 @@ Other MITRE endpoints: `/mitre/tactics`, `/mitre/groups`, `/mitre/software`, `/m
 | PUT | `/agents/group/{group_id}/restart` | Restart group (v5.0.0+) |
 | PUT | `/agents/group/{group_id}/reload` | Reload group config (v5.0.0+) |
 | GET | `/agents/no_group` | Without group |
-| GET | `/agents/outdated` | Outdated agents |
+| GET | `/agents/outdated` | Agents older than the manager (versions compared as versions, `5.0.0` equals `v5.0.0`) |
 | PUT | `/agents/upgrade` | Upgrade agents |
 | PUT | `/agents/upgrade_custom` | Custom upgrade |
 | PUT | `/agents/scan/vulnerability` | Request on-demand vulnerability scan |
@@ -561,9 +563,9 @@ Errors follow a structured JSON response format.
 | 400       | Bad Request       | Invalid parameters       |
 | 401       | Unauthorized      | Invalid credentials, or an invalid or expired token |
 | 403       | Forbidden         | RBAC denied, or the client IP is blocked after too many failed logins (`6000`) |
-| 404       | Not Found         | Invalid endpoint, or the named resource (group, cluster node) does not exist |
+| 404       | Not Found         | Invalid endpoint, or the named resource does not exist: a group (`1710`), a file in a group (`1006`), a cluster node (`1730`) |
 | 405       | Method Not Allowed | Invalid HTTP method     |
-| 406       | Not Acceptable    | The body does not match its `Content-Type` (`6002`) |
+| 406       | Not Acceptable    | Reserved for a body the handler cannot take under its `Content-Type` (`6002`); a `Content-Type` the operation does not declare is answered with `415` first, so no operation returns it today |
 | 413       | Payload Too Large | Request body too large   |
 | 415       | Unsupported Media Type | A `Content-Type` the operation does not accept |
 | 417       | Expectation Failed | An `Expect` header other than `100-continue` |
@@ -592,6 +594,19 @@ All exceptions inherit from `WazuhException` (defined in `core/exception.py`), w
 | 8000–8999 | Vulnerability scan errors | Scanner or feed not ready, scan queue full |
 
 Error responses include a `dapi_errors` field in cluster deployments.
+
+Agents are the exception to the 404 rule. Every endpoint that names agents, the single-agent paths
+included (`GET /agents/{agent_id}/key`, `PUT /agents/{agent_id}/group/{group_id}`,
+`PUT /agents/{agent_id}/restart`), answers `200` with the unknown agent as a failed item (`1701`), the
+same shape a list of agents gets, where some may exist and others not. A missing group or cluster node
+named in the same request is still a `404`.
+
+While one of the core daemons (`wazuh-manager-modulesd`, `wazuh-manager-analysisd`, `wazuh-manager-db`,
+`wazuh-manager-remoted`) is stopped, failed or restarting, requests are refused with `500` and error
+`1017`, naming the node and the daemons. Logging in and out, the status and health endpoints
+(`GET /cluster/status`, `GET /cluster/healthcheck`, `GET /cluster/{node_id}/status`) and
+`PUT /cluster/restart` and `PUT /cluster/reload` keep working, so a node can be inspected and restarted
+remotely.
 
 These codes are the framework's catalog (`framework/wazuh/core/exception.py`). The API process has a
 separate, startup-only catalog (`api/api/api_exception.py`) whose codes overlap numerically: `2000`

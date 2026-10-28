@@ -166,7 +166,8 @@ namespace remoted::control
                 // framework's WazuhVersion parser raises on anything outside MAJOR.MINOR.PATCH
                 // or this exact placeholder). A well-formed version that's merely too high for
                 // this manager's policy is safe to persist as-is and worth keeping visible.
-                const std::string& versionToStore = versionMalformed ? UNKNOWN_VERSION_PLACEHOLDER : data.version;
+                const std::string versionToStore =
+                    versionMalformed ? std::string(UNKNOWN_VERSION_PLACEHOLDER) : canonicalVersion(data.version);
                 m_wdbClient->updateStatusCode(
                     id, AgentStatusCode::InvalidVersion, versionToStore, "", syncStatus, [](SocketError) {});
 
@@ -188,7 +189,7 @@ namespace remoted::control
 
             m_wdbClient->getAgentGroups(
                 id,
-                [this, id, version = data.version, callback = std::move(callback)](
+                [this, id, version = canonicalVersion(data.version), callback = std::move(callback)](
                     SocketError err, std::vector<std::string> groups) mutable
                 {
                     if (err != SocketError::None)
@@ -283,8 +284,9 @@ namespace remoted::control
 
             // Per design, /notify does not validate the version (only /startup does);
             // this keeps the hot path allocation-free. Host bounds are still checked
-            // so we don't forward oversized strings to wdb.
-            if (data.host && !isValidHostInfo(*data.host))
+            // so we don't forward oversized strings to wdb, and a host block of the
+            // wrong JSON type is refused rather than silently dropped.
+            if (data.hostMalformed || (data.host && !isValidHostInfo(*data.host)))
             {
                 // Throttle invalid host info rejections
                 if (const auto throttle = invalidHostInfoThrottle().record())
@@ -494,7 +496,7 @@ namespace remoted::control
                     LOGFN_DEBUG2(logFn(), "Agent %u: writing full agent data to wdb.", id);
                     const std::string syncStatus = m_config.isWorkerNode ? "syncreq" : "synced";
                     m_wdbClient->updateAgentData(
-                        id, data.version, "active", syncStatus, &(*data.host), [](SocketError) {});
+                        id, canonicalVersion(data.version), "active", syncStatus, &(*data.host), [](SocketError) {});
                 }
                 else
                 {

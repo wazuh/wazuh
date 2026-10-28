@@ -64,12 +64,13 @@ list: `ca/`, `export/` and `local.env` are root's.
 | `WAZUH_MANAGER_API_PASSWORD` | password of the Server API user `wazuh` | generated |
 | `WAZUH_MANAGER_WUI_PASSWORD` | password of `wazuh-internal-client`, the user the dashboard authenticates as | generated |
 | `WAZUH_INDEXER_MANAGER_PASSWORD` | password of the `wazuh-manager` user on the indexer | read from the indexer's `/etc/wazuh-indexer/export/credentials.env` when the indexer runs on this host; otherwise the start refuses (`MISSING`) |
-| `WAZUH_MANAGER_NODE_NAME` | common name and first DNS name of both pairs, and the CA's common name `wazuh-manager-<node>` when the CA is minted; a valid DNS name of at most 64 characters (the limit of a certificate's common name), and of at most 50 when the CA is minted, so that `wazuh-manager-<node>` fits. A longer one is `INVALID` and nothing is minted or issued | the host name up to its first dot |
+| `WAZUH_MANAGER_NODE_NAME` | common name and first DNS name of both pairs, and the CA's common name `wazuh-manager-<node>` when the CA is minted; a valid DNS name of at most 64 characters (the limit of a certificate's common name), and of at most 50 when the CA is minted, so that `wazuh-manager-<node>` fits. A value that breaks either rule is `INVALID` and nothing is minted or issued; every run judges a supplied value, `--check` included, so it also refuses a start (`Invalid credentials`, error 22) | the host name up to its first dot |
 | `WAZUH_MANAGER_REMOTED_CERT_SANS` | subject alternative names of the agent listener pair | discovered ([Subject alternative names](#subject-alternative-names)) |
 | `WAZUH_MANAGER_APID_CERT_SANS` | subject alternative names of the Server API pair; never inherits remoted's list | discovered |
 
 `WAZUH_MANAGER_CERT_SANS` is gone: it named the indexer client pair, which now comes from the indexer. When it is
-set, the resolver prints `WARNING: WAZUH_MANAGER_CERT_SANS is ignored` and goes on.
+set, a run that issues a server pair prints `WARNING: WAZUH_MANAGER_CERT_SANS is ignored` and goes on (a run that
+issues nothing does not read it).
 
 Each key is looked up in order, and the first value found wins:
 
@@ -107,7 +108,8 @@ export WAZUH_INDEXER_MANAGER_PASSWORD='Str0ng.Pass+01'
 sudo apt-get install wazuh-manager
 ```
 
-systemd starts the manager from a clean environment, so a value needed at start belongs in `local.env`.
+systemd starts the manager from a clean environment, so a value needed at start belongs in `local.env`. Only
+`wazuh-manager-control start` run by hand sees the variables exported in its shell.
 
 ## The password policy
 
@@ -247,7 +249,8 @@ steps, which follow what the resolver did rather than what it was asked: `Server
 an `UNSAFE` or `INVALID` entry writes nothing at all), then, when any `MISSING`,
 `INVALID` or `UNSAFE` line was reported or the resolver did not exit `0`, `Credential resolution is incomplete: the
 manager does not start until every MISSING, INVALID or UNSAFE entry reported above is resolved.` with the command
-to repeat once they are fixed, `sudo /var/wazuh-manager/bin/wazuh-manager-resolve-credentials --install`: it
+to repeat once they are fixed, `/var/wazuh-manager/bin/wazuh-manager-resolve-credentials --install -H
+/var/wazuh-manager` (as root): it
 is the only mode that issues what the install could not, and on material already in place it only validates.
 
 A fresh install with no indexer on the host:
@@ -278,8 +281,10 @@ ever carries a secret.
 | `UNSAFE` | an entry root may not trust: wrong owner or mode (a secret readable by others than root), a link, a directory where a file belongs | `UNSAFE /etc/wazuh-manager/local.env: group-writable` |
 | `WARNING` | indexer material that only the clock refuses: the indexer CA, a listed CA file, the client pair or a CA on its path is expired or not valid yet, and nothing else is wrong with it. It **does not** refuse the start; the indexer connection fails until the material is renewed or the clock is right | `resolve-credentials: WARNING: /etc/wazuh-manager/certs/indexer-connector.pem: expired on 2026-10-14 20:03:45 UTC; the indexer connection fails until it is renewed or the clock is right` |
 
-`wazuh-manager-control` relays those lines to standard error and to `logs/wazuh-manager.log`, starts nothing,
-exits `1`, and says why (the error codes appear only in the `-j` output):
+`wazuh-manager-control` relays those lines to standard error and to `logs/wazuh-manager.log` (dated and tagged
+like every log line: `<date> wazuh-manager-control: ERROR: UNSAFE …`, a resolver `WARNING` as `WARNING`), starts
+nothing, exits `1`, and says why (the error codes appear only in the `-j` output). When the start ran under
+systemd because the shell command handed it over, the same message, code and lines reach the shell:
 
 | When | stdout | With `-j` | Log line |
 |------|--------|-----------|----------|
@@ -371,7 +376,7 @@ indexer's CA and a client pair the indexer issued for it:
 
 | `<CONF>/ca/` holds | `--install` | `--upgrade` and `--prestart` |
 |--------------------|-------------|------------------------------|
-| nothing, and `certs/` holds no pair and no `root-ca.pem` | mints a CA (RSA 2048, SHA-256, ten years, `CN=wazuh-manager-<node>`) and the marker | `MISSING …/ca/root-ca.pem` |
+| nothing, and `certs/` holds no pair and no `root-ca.pem` | mints a CA (RSA 2048, SHA-256, ten years backdated one day, `CN=wazuh-manager-<node>`) and the marker | `MISSING …/ca/root-ca.pem` |
 | nothing, but pairs or `root-ca.pem` are already in `certs/` | `MISSING …/ca/root-ca.pem: stage the CA that issued the pairs` (never a second CA beside existing material) | same |
 | `root-ca.pem` and `root-ca.key` | validated and used to issue what is missing | validated |
 | `root-ca.pem` alone | validated; nothing can be issued here, the pairs must be staged | validated |

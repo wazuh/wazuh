@@ -64,6 +64,21 @@ argument error, the usage to standard output). There is no delete operation; the
 
 Components read the credentials once per process: restart the manager after changing them.
 
+## Concurrent access
+
+Every `get()` and `put()` — from the CLI, from `keystore_server` and from the C++ components that read
+the credentials at start (the Indexer Connector inside the vulnerability scanner, inventory sync and
+the engine) — opens the database for that one operation and closes it again. RocksDB allows a single
+open handle per database, so two operations at the same moment contend for its lock. The second one
+waits: it retries the open with a short, growing backoff for up to 5 seconds, then fails with
+`Failed to open RocksDB database '…': it is locked by another handle or process and was still locked
+after 5000 ms` (the CLI prints it and exits 1). Operations take milliseconds, so running the CLI
+while the manager starts or runs is safe.
+
+A held lock is never treated as damage. The database is repaired (RocksDB `RepairDB`, which may not
+recover every value) only when opening it reports corruption; any other open error is reported
+without a repair.
+
 ## `keystore_server`
 
 `keystore_server` (source: `src/wazuh_modules/keystore_server/`) is the modulesd module that exposes

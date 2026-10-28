@@ -794,6 +794,27 @@ def test_master_handler_get_nodes():
     assert master_handler.server.get_connected_nodes_flag is True
 
 
+@pytest.mark.parametrize('command, error, level', [
+    (b'get_nodes', exception.WazuhResourceNotFound(1730), 'debug'),
+    (b'get_health', exception.WazuhError(1728), 'debug'),
+    (b'get_nodes', exception.WazuhInternalError(1000), 'error'),
+    # A WazuhError in a worker's own exchange is still this node's error.
+    (b'syn_i_w_m', exception.WazuhError(3001), 'error'),
+])
+def test_master_handler_log_request_error(command, error, level):
+    """A worker relaying its local client's mistake (an unknown node name) is not logged as an error."""
+    master_handler = get_master_handler()
+    with patch.object(master_handler.logger, 'debug') as debug_mock, \
+            patch.object(master_handler.logger, 'error') as error_mock:
+        master_handler.log_request_error(command, error)
+
+    if level == 'debug':
+        debug_mock.assert_called_once_with(f"Request '{command}' refused: {error}")
+        error_mock.assert_not_called()
+    else:
+        error_mock.assert_called_once_with(f"Internal error processing request '{command}': {error}")
+
+
 def test_master_handler_get_health():
     """Check if the 'get_health' request is being properly processed."""
 

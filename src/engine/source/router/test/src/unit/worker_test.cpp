@@ -2,12 +2,15 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include <atomic>
 #include <chrono>
 #include <future>
 #include <mutex>
 #include <optional>
 #include <regex>
+#include <string>
 #include <thread>
+#include <vector>
 
 #include <base/json.hpp>
 #include <base/logging.hpp>
@@ -253,6 +256,51 @@ TEST_F(WorkerTest, RouterWorkerSkipsSentinelEvent)
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
     worker.stop();
     // Should not crash - sentinels are silently skipped
+}
+
+// A line the legacy parser rejects is dropped and counted in router.events.malformed (never ingested).
+TEST_F(WorkerTest, RouterWorkerCountsMalformedEvent)
+{
+    auto mockQueue = std::make_shared<fastqueue::mocks::MockQueue<IngestEvent>>();
+
+    auto& manager = SingletonLocator::instance<fastmetrics::IManager>();
+    auto* mockMetrics = dynamic_cast<fastmetrics::MockManager*>(&manager);
+    ASSERT_NE(mockMetrics, nullptr);
+
+    auto malformedCounter = std::make_shared<NiceMock<fastmetrics::MockCounter>>();
+    std::atomic<int> malformedAdds {0};
+    EXPECT_CALL(*malformedCounter, add(1u)).WillRepeatedly([&](uint64_t) { malformedAdds.fetch_add(1); });
+    EXPECT_CALL(*mockMetrics, getOrCreateCounter(fastmetrics::names::ROUTER_EVENTS_MALFORMED, _, _))
+        .WillRepeatedly(Return(malformedCounter));
+
+    auto agentJson = std::make_shared<json::Json>(R"({"agent":{"id":"001","name":"test"}})");
+    const std::vector<std::string> lines {"this is not a wazuh event", "1:a", "1:location-without-message"};
+
+    std::atomic<std::size_t> callCount {0};
+    ON_CALL(*mockQueue, waitPop(_, _))
+        .WillByDefault(
+            [&](IngestEvent& ev, int64_t) -> bool
+            {
+                const auto c = callCount.fetch_add(1);
+                if (c < lines.size())
+                {
+                    ev = IngestEvent {agentJson, lines[c]};
+                    return true;
+                }
+                std::this_thread::sleep_for(std::chrono::milliseconds(5));
+                return false;
+            });
+
+    RouterWorker worker(m_envBuilder, mockQueue, m_mockRawIndexer, nullptr);
+    worker.start();
+
+    for (int i = 0; i < 400 && malformedAdds.load() < static_cast<int>(lines.size()); ++i)
+    {
+        std::this_thread::sleep_for(std::chrono::milliseconds(5));
+    }
+    worker.stop();
+
+    EXPECT_EQ(malformedAdds.load(), static_cast<int>(lines.size()));
 }
 
 TEST_F(WorkerTest, RouterWorkerGetReturnsRouter)

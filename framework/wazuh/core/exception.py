@@ -169,7 +169,7 @@ class WazuhException(Exception):
                'remediation': 'The necessary size for the key is 64 characters at least'
                },
         1710: {'message': 'The group does not exist',
-               'remediation': 'Please, use `GET /agents/groups` to find all available groups'
+               'remediation': 'Please, use `GET /groups` to find all available groups'
                },
         1711: {'message': 'The group already exists',
                'remediation': 'Please, use another group ID'
@@ -195,7 +195,7 @@ class WazuhException(Exception):
                'remediation': 'Please enable authd or check if there is any error'
                },
         1727: {'message': 'Error listing group files',
-               'remediation': 'Please, use `GET /agents/groups/:group_id/files` to get all available group files'
+               'remediation': 'Please, use `GET /groups/{group_id}/files` to get all available group files'
                },
         1728: {'message': 'Invalid node type',
                'remediation': f'Valid types are `master` and `worker`. Please, visit https://documentation.wazuh.com/'
@@ -257,9 +257,10 @@ class WazuhException(Exception):
                               'is still listed'
                },
         1768: {'message': 'Enrollment token refused',
-               'remediation': 'The address must be one of the names in the listener certificate '
-                              '(remote.https.certificate) and the certificate must be signed by '
-                              'remote.https.ca_certificate; see the detail'
+               'remediation': 'The detail names the reason. A request field (address, description, prefix, ttl) '
+                              'must be corrected as it says; a refusal about the listener certificate means the '
+                              'address must be one of the names in remote.https.certificate, signed by '
+                              'remote.https.ca_certificate'
                },
         1769: {'message': 'Enrollment tokens can only be managed on the master node',
                'remediation': 'Send the request to the master node; workers only replicate the token store'

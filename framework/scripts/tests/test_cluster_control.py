@@ -12,6 +12,7 @@ from uvloop import EventLoopPolicy, Loop
 import pytest
 
 import scripts.cluster_control as cluster_control
+from wazuh.core.exception import WazuhResourceNotFound
 
 @pytest.fixture(scope="session")
 def event_loop() -> Loop:
@@ -344,7 +345,8 @@ async def test_main(get_cluster_status_mock, read_config_mock, check_cluster_con
         args_mock.usage = True
 
         cluster_control.main()
-        exit_mock.assert_called_with(0)
+        # sys.exit is mocked, so main() goes on past it; the exit it asked for comes first.
+        assert exit_mock.call_args_list[0] == call(0)
 
         # Test the first exception
         usage_mock.side_effect = KeyboardInterrupt()
@@ -397,7 +399,26 @@ async def test_main(get_cluster_status_mock, read_config_mock, check_cluster_con
     args_mock.health = False
     args_mock.debug = False
 
+    exit_mock.reset_mock()
     cluster_control.main()
 
-    exit_mock.assert_called_with(0)
+    # sys.exit is mocked, so main() goes on past it; the exit it asked for comes first.
+    assert exit_mock.call_args_list[0] == call(0)
     assert parser_mock.called is True
+
+
+@patch('scripts.cluster_control.sys.exit', side_effect=SystemExit)
+@patch('scripts.cluster_control.asyncio.run', side_effect=WazuhResourceNotFound(1730))
+@patch('logging.error')
+@patch('logging.basicConfig')
+@patch('wazuh.core.cluster.cluster.check_cluster_config')
+@patch('wazuh.core.cluster.utils.read_config', return_value='')
+def test_main_exits_non_zero_on_error(read_config_mock, check_cluster_config_mock, basic_config_mock,
+                                      logging_error_mock, asyncio_run_mock, exit_mock):
+    """An error (here, an unknown node name) is printed and the command exits with 1."""
+    with patch('sys.argv', ['cluster_control', '-l', '-fn', 'unknown']):
+        with pytest.raises(SystemExit):
+            cluster_control.main()
+
+    logging_error_mock.assert_called_once_with(asyncio_run_mock.side_effect)
+    exit_mock.assert_called_once_with(1)

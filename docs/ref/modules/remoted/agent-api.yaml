@@ -277,8 +277,8 @@ paths:
         expected) is an invalid token.
 
         The `request-target` is the raw path + query exactly as sent (no percent-decoding, no query
-        reordering, no normalization) and is matched by the router as is; the token does not cover it,
-        nor the body.
+        reordering, no normalization) and is matched by the router as is -- case-sensitive, and any
+        percent-encoded path answers 404 -- ; the token does not cover it, nor the body.
 
         The body MAY optionally be compressed with `Content-Encoding: zstd`. Decompression happens
         only **after** authentication succeeds, so an unauthenticated request never spends CPU/memory
@@ -471,12 +471,12 @@ paths:
             examples:
               startup:
                 summary: Sent on connect or after a configuration reload
-                value: { type: startup, version: "5.0.0" }
+                value: { type: startup, version: "v5.0.0" }
               notify:
                 summary: Periodic keepalive, with host metadata on first report or on change
                 value:
                   type: notify
-                  agent: { version: "5.0.0" }
+                  agent: { version: "v5.0.0" }
                   host:
                     hostname: ubuntu-test
                     architecture: x86_64
@@ -557,7 +557,7 @@ paths:
                   summary: startup only, malformed version
                   value: { error: "invalid_version" }
                 invalidHostInfo:
-                  summary: notify only (a host field over its length limit)
+                  summary: notify only (host or host.os not an object, a host field not a string, or one over its length limit)
                   value: { error: "invalid_host_info" }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "409":
@@ -571,8 +571,8 @@ paths:
             state and re-trying `startup` on a slow cadence, whereas the `400` above is terminal.
 
             Either way the manager also writes `status_code = invalid_version` to global.db; a
-            well-formed version is stored as reported, while a malformed one is stored as the `N/A`
-            sentinel.
+            well-formed version is stored with a `v` prefix (`5.1.0` as `v5.1.0`), while a malformed
+            one is stored as the `N/A` sentinel.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/CodeOnlyError" }
@@ -1106,7 +1106,7 @@ paths:
               enroll:
                 value:
                   name: web-server-01
-                  version: "5.0.0"
+                  version: "v5.0.0"
                   groups: "default,web-servers"
                   ip: 10.0.0.15
       responses:
@@ -1537,8 +1537,9 @@ components:
             The agent's product version. Rejected with `409 invalid_version` if its major or minor
             is higher than the manager's and `<remote><agents><allow_higher_versions>` is `no`, or
             with `400 invalid_version` if it is malformed (empty, over 64 characters, or not
-            `[v]MAJOR[.MINOR[.PATCH[.EXTRA]]]` with an optional `+`/`-` suffix).
-          example: "5.0.0"
+            `[v]MAJOR[.MINOR[.PATCH[.EXTRA]]]` with an optional `+`/`-` suffix). `5.0.0`, `v5.0.0` and
+            `V5.0.0` are all accepted; the manager stores the version as `v5.0.0`.
+          example: "v5.0.0"
 
     ControlNotify:
       type: object
@@ -1551,7 +1552,10 @@ components:
         agent:
           type: object
           properties:
-            version: { type: string, example: "5.0.0" }
+            version:
+              type: string
+              description: Not validated here (only `startup` validates it); stored with a `v` prefix (`v5.0.0`) whichever spelling arrives.
+              example: "v5.0.0"
         host:
           type: object
           properties:
@@ -1674,7 +1678,7 @@ components:
             alone is accepted) unless `authd`'s `<auth><agents><allow_higher_versions>` is `yes` --
             not `remote`'s, which governs `/control`. `authd`'s local socket performs no version
             check of its own, so this endpoint enforces it.
-          example: "5.0.0"
+          example: "v5.0.0"
         groups:
           type: string
           description: Comma-separated, passed through to `authd` unchanged.

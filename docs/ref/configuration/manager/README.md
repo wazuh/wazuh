@@ -35,16 +35,24 @@ element is rejected as a duplicate.
   `$WAZUH_MANAGER_HOME`, else the parent of the `bin/` directory holding the program. `-V` prints the
   version. Exit status: `0` success, `1` invalid configuration, missing file or usage error, `2` key not
   set (`get`).
-  - `validate` checks the XML syntax, the schema (types, ranges, enums, unknown options), the cross-field
-    rules (a certificate and its key set together, no `.`/`..` segment in `remote.https.global_prefix`,
-    distinct listener ports — `remote.legacy.port` counts only when the legacy listener is enabled and
-    `auth.port` only when authd is not disabled) and, unless `--skip-file-checks`, the existence of the
+  - `validate` checks the XML syntax, the schema (types, ranges, enums, unknown options, the address
+    syntax of `remote.legacy.local_ip` and `remote.https.bind_addr`, the lengths the daemons cap), the
+    cross-field rules (a certificate and its key set together, no `.`/`..` segment in
+    `remote.https.global_prefix`, distinct listener ports — `remote.legacy.port` counts only when the legacy
+    listener is enabled and `auth.port` only while authd's port-1515 listener starts; the Server API port,
+    55000 by default, lives in `api.yaml` and is **not** compared with them) and, unless `--skip-file-checks`, the existence of the
     certificate files the configuration names (`remote.https.certificate`, `key`, `ca`,
     `ca_certificate`, `auth.ssl_agent_ca`, `ssl_manager_cert`, `ssl_manager_key`; `indexer.ssl.*` is not
     checked). Silent on success; on failure it prints the JSON pointer of the offending option:
     `(1244): Invalid configuration at '/remote/legacy/port': does not satisfy 'maximum' [...]`
     (`'/'` for syntax problems, which name the line instead). A missing file is
-    `(1239): Configuration file not found: '<file>'.`
+    `(1239): Configuration file not found: '<file>'.`; a file that exists but cannot be read is
+    `(1244): Invalid configuration at '/': configuration file cannot be read: <file>: <reason>.`
+  - What `validate` does not judge, and the start does: where the TLS files lie and what they hold (the
+    credential check refuses a path outside `/etc/wazuh-manager/certs`, an expired or mismatched pair —
+    [Credentials](../../getting-started/credentials.md)), the internal options (read only by each daemon at
+    start), and what only a running system shows (an address this host does not have, a port another
+    program holds). The API's `PUT` runs the same `validate`, so it has the same limits.
   - `get <key.path>` prints one option of the **effective** document (defaults applied): scalars as
     plain text, objects and lists as JSON. `dump` prints the whole effective document.
 - `bin/wazuh-manager-control start|restart|reload` validates the file first (with
@@ -107,7 +115,7 @@ Scanner) also read the process-wide `wazuh_modules.*` options documented in
 |---|---|
 | `cluster` | `wazuh-manager-control restart` or `reload` (clusterd re-reads the file on both) |
 | `indexer` | Python consumers re-read the file when its modification time changes; `wazuh-manager-modulesd` and the engine read it at start |
-| every other section | at daemon start (`restart`); note that `reload` does **not** restart `wazuh-manager-remoted`, so a change in `remote` needs `restart` |
+| every other section | at daemon start (`restart`); note that `reload` does **not** restart `wazuh-manager-remoted`, so a change in `remote` needs `restart` (`reload` still runs `wazuh-manager-remoted -t`, so it refuses a `remote` change that the next `restart` would) |
 
 ---
 

@@ -126,3 +126,26 @@ TEST(LogThrottleTest, ConcurrentRecordsNeitherLoseNorDoubleCount)
 
     EXPECT_EQ(reported.load() + throttle.pending(), static_cast<std::uint64_t>(kThreads) * kPerThread);
 }
+
+// The emitted line must be able to say what period its count really covers: suppressed
+// occurrences are only reported by the next one, which can arrive long after the window, so a
+// message that printed the window length would misattribute them.
+TEST(LogThrottleTest, EmissionReportsTheRealTimeSinceThePreviousOne)
+{
+    LogThrottle throttle {std::chrono::seconds {1}};
+
+    const auto first = throttle.record();
+    ASSERT_TRUE(first.emit);
+    EXPECT_EQ(first.secondsSinceLastEmit, -1) << "the first emission has no previous one";
+
+    ASSERT_FALSE(throttle.record().emit);
+    std::this_thread::sleep_for(std::chrono::milliseconds {1200});
+
+    const auto second = throttle.record();
+    ASSERT_TRUE(second.emit);
+    EXPECT_EQ(second.total, 2U);
+    EXPECT_GE(second.secondsSinceLastEmit, 1);
+    EXPECT_LT(second.secondsSinceLastEmit, 30);
+
+    EXPECT_EQ(throttle.record().secondsSinceLastEmit, -1) << "a suppressed decision carries no period";
+}

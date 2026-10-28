@@ -2558,18 +2558,9 @@ stages:
       params:
         limit: 1
     response:
-      status_code: 200
+      status_code: 404
       json:
-        error: 1
-        data:
-          affected_items: []
-          total_affected_items: 0
-          total_failed_items: 1
-          failed_items:
-            - error:
-                code: 1710
-              id:
-                - wrong_group
+        error: 1710
 
   - name: Try get the files of a bad group name (no alphanumeric)
     request:
@@ -2842,9 +2833,10 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
-      status_code: 400
+      status_code: 404
       json:
         error: 1006
+        detail: !re_search "permissions: agent\\.mg$"
 
 ---
 test_name: GET /agents?name=agent_name

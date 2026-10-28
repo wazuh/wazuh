@@ -17,7 +17,7 @@ seeded from `framework/wazuh/rbac/default/*.yaml`, and is managed through the `/
 | User | An API account. Authenticates with `POST /security/user/authenticate` |
 | Role | A named set of policies, linked to users directly or through rules |
 | Policy | A list of `actions`, a list of `resources` and an `effect` (`allow` or `deny`) |
-| Rule | A condition on an authorization context. A user with `allow_run_as` that logs in with `POST /security/user/authenticate/run_as` receives the roles of every rule its context matches — this is how the Wazuh dashboard maps its logged-in user to Wazuh roles (a "role mapping") |
+| Rule | A condition on an authorization context. A user with `allow_run_as` that logs in with `POST /security/user/authenticate/run_as` receives the roles of every rule its context matches, and only those: the roles linked to the account itself are not added, and a context that matches no rule yields a token with no role. This is how the Wazuh dashboard maps its logged-in user to Wazuh roles (a "role mapping") |
 
 `rbac_mode` in the [security configuration](../server-api/configuration.md#rbac_mode) sets what an
 action no policy mentions gets: `white` (the default) denies it, `black` allows it. A user's policies

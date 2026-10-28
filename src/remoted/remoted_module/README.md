@@ -192,7 +192,12 @@ src/http_server/
   unprefixed paths answer `404`, and the health route `"/"` is registered as the bare prefix so
   `GET /<prefix>` and `GET /<prefix>/` both answer. `request.target` is **never rewritten** — the
   router matches the raw (prefixed) target, so agents send the full prefixed path and proxies must
-  forward it untouched (the bearer token does not bind it: a mismatch is a `404`). Canonicalization lives in one place
+  forward it untouched (the bearer token does not bind it: a mismatch is a `404`). Matching is
+  exact: routes are registered case-sensitive (`path2regex::options_t::sensitive(true)`), and a
+  path containing any percent-encoding answers `404` before the route runs (RESTinio's express
+  router would otherwise decode `%63` to `c`), so the auth gateway, the rate-limit gates and the
+  handlers only ever see the exact spelling; the one tolerance kept is a single trailing `/`.
+  Canonicalization lives in one place
   (`normalizeGlobalPrefix()`, called by `RestinioHttpServer::start()`; invalid values throw like
   a missing certificate). Public HTTPS listener only — the local admin socket is not prefixed.
 - **Two-phase shutdown:** `stopAccepting()` closes the acceptor and drains the handler worker pool
@@ -980,7 +985,13 @@ The HTTP endpoint registration. Parses the JSON body (validates it's an object w
 extracts the agent ID from the authenticated request, and dispatches to the appropriate
 `ControlHandler` method. Returns:
 - `400` — invalid_body, invalid_json, invalid_agent_id, unknown_message_type; `invalid_host_info`
-  (from `notify`); `invalid_version` (malformed `startup` version)
+  (from `notify`: a host field over its bound, or — flagged by the parser in
+  `NotifyData::hostMalformed` — `host`/`host.os` not an object or a host field not a string; absent
+  and `null` mean "not reported"); `invalid_version` (malformed `startup` version)
+
+Every version written to wazuh-db goes through `canonicalVersion()` (`controlTypes.hpp`), so
+`5.0.0`, `v5.0.0` and `V5.0.0` are all stored as `v5.0.0` — the framework compares stored versions
+as strings, and two spellings of one version split its listings.
 - `409` — `invalid_version` (a `startup` version higher than policy allows)
 - `503` — `{"error":"dependency_unavailable","dependency":"wazuh-db"}` (group membership unreadable)
 - `200` — success + JSON response body
@@ -2956,7 +2967,7 @@ their assertions are *recorded observations*: a dependency bump may change those
 | File | What it records | What actually guards the feature |
 |---|---|---|
 | `jwtCppSpike_test.cpp` | vendored jwt-cpp 0.7.2 on duplicate JSON members, base64url padding and alphabet, `NumericDate` types, leeway, NUL-containing keys — i.e. which checks the library does **not** do, so the profile verifier owns them | `jwtVerify_test.cpp`, `jwtProfileTypes_test.cpp` |
-| `routerSemanticsSpike_test.cpp` | RESTinio `express_router` matching: `"/p/"` does not match `"/p"` while bare `"/q"` matches `"/q/"`, case-insensitivity, `%2F` left undecoded, handlers seeing the raw target | `globalPrefixE2E_test.cpp`, `httpServer_test.cpp`'s `GlobalPrefixTransportTest` |
+| `routerSemanticsSpike_test.cpp` | RESTinio `express_router` matching: `"/p/"` does not match `"/p"` while bare `"/q"` matches `"/q/"`, case-sensitive matching and every percent-encoded path a `404` (exact matching), handlers seeing the raw target | `globalPrefixE2E_test.cpp`, `httpServer_test.cpp`'s `GlobalPrefixTransportTest` |
 
 Both carry comments marking a hypothesis as confirmed or refuted by the run that produced them.
 Separately, `DISABLED_`-prefixed cases (`jwtCppSpike_test.cpp`'s traits benchmark,

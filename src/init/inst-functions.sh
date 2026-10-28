@@ -1526,6 +1526,16 @@ InstallLocal()
         chmod 0750 "${INSTALLDIR}/framework/wazuh/core"
     fi
 
+    # Recompile the bundled Python's bytecode as hash-based .pyc files, checked against the
+    # source's contents rather than its modification time. The packages normalise the mtimes of
+    # what they ship (dpkg-deb clamps them to the changelog date), which makes every
+    # timestamp-based .pyc stale: each import then recompiles in memory, and a run as root (the
+    # credential resolver in postinst, a manual start) rewrites the file as root:root, unreadable
+    # by the service account. The rewritten files are given back to the group the rest of the
+    # tree has (py_compile replaces each file, so it comes out owned by root:root).
+    ${INSTALLDIR}/framework/python/bin/python3 -I -m compileall -q -f -j 0 --invalidation-mode checked-hash ${INSTALLDIR}/framework/python/lib
+    find ${INSTALLDIR}/framework/python/lib \( -name '*.pyc' -o -name __pycache__ \) -exec chown root:${WAZUH_GROUP} {} +
+
     generateSchemaFiles
 
     installIndexerTemplates
@@ -1559,7 +1569,6 @@ InstallLocal()
 
     # Install Vulnerability Detector files
     ${INSTALL} -d -m 0770 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/vd
-    ${INSTALL} -d -m 0770 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/indexer
 
 
     # Install Task Manager files

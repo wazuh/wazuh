@@ -41,6 +41,11 @@ Options: `--socket`, `--path` (default `/stateful`), `--method`, `--size`, `--re
 empty string omits it), `--health`, `--bad-route`, `--quiet`. The exit code is `0` only when every
 response was a 2xx, so it can anchor a shell check.
 
+The server answers an over-budget request from its headers and closes the connection without
+reading the body, so the tool's write of the rest of the body fails; it then reads the `413` already
+waiting on the socket and prints it. Only when no answer arrived does it report the write error
+(`failed: [Errno 32] Broken pipe`).
+
 Sending a VALID session requires a FlatBuffers `FullSession` body, which this script deliberately
 does not build — that is the integration driver's job below.
 

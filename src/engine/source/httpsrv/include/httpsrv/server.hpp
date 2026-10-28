@@ -3,6 +3,7 @@
 #define _HTTPSRV_SERVER_HPP
 
 #include <algorithm>
+#include <limits>
 #include <memory>
 #include <thread>
 
@@ -11,6 +12,13 @@
 // Clamp httplib worker threads to the [2, 16] range based on available hardware.
 #ifndef CPPHTTPLIB_THREAD_POOL_COUNT
 #define CPPHTTPLIB_THREAD_POOL_COUNT ((std::min)(16u, (std::max)(2u, cpp_get_nproc() > 1u ? cpp_get_nproc() - 1u : 1u)))
+#endif
+
+// httplib caps an application/x-www-form-urlencoded body at 8 KiB on its own (413 before any handler runs). The
+// engine never reads form fields, so lift that cap: the configured payload limit (set_payload_max_length) is the
+// only one. This header is the engine's only include of httplib.h, so every engine translation unit agrees.
+#ifndef CPPHTTPLIB_FORM_URL_ENCODED_PAYLOAD_MAX_LENGTH
+#define CPPHTTPLIB_FORM_URL_ENCODED_PAYLOAD_MAX_LENGTH ((std::numeric_limits<std::size_t>::max)())
 #endif
 
 #include <httplib.h>

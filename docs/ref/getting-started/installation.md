@@ -215,12 +215,15 @@ the installation directory `/var/wazuh-manager`, and the credential check refuse
 ### Start the manager
 
 On a fresh installation neither the packages nor `install.sh` start or enable the service: you start
-it when the deployment is ready. (An upgrade restarts a manager that was running before it.) Set
+it when the deployment is ready. (An upgrade restarts a manager that was running before it.) An
+enablement you made earlier does not carry over a purge (`dpkg --purge`, `rpm -e`): it is removed with the
+package, so a later installation starts disabled; `dpkg --remove` keeps it. Set
 `USER_AUTO_START="y"` in `etc/preloaded-vars.conf` to have `install.sh` start it anyway. A fresh package
 install ends by printing where the Server API passwords are (only when it published them: a resolver run
 stopped by an unsafe or invalid entry writes nothing), whether the credential
-resolution is incomplete and the command that completes it, and the command to start the service (and to
-enable it at boot, when systemd is running).
+resolution is incomplete and the command that completes it
+(`/var/wazuh-manager/bin/wazuh-manager-resolve-credentials --install -H /var/wazuh-manager`, run as root), and
+the command to start the service (and to enable it at boot, when systemd is running).
 
 Every start first validates the configuration file, then checks the credentials and certificates, the files the
 configuration names and each daemon's own test, and finally completes the passwords and the indexer credential;

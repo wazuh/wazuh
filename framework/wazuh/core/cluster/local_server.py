@@ -10,7 +10,7 @@ import random
 from typing import Tuple, Union, Dict
 
 import uvloop
-from wazuh.core import common
+from wazuh.core import common, exception
 from wazuh.core.cluster import client, cluster, server
 from wazuh.core.cluster import common as c_common
 from wazuh.core.cluster.dapi import dapi
@@ -38,6 +38,24 @@ class LocalServerHandler(server.AbstractServerHandler):
         # Modify filter tags with context vars.
         context_tag.set(self.tag)
         self.logger.debug('Connection received in local server.')
+
+    def log_request_error(self, command: bytes, error: exception.WazuhException) -> None:
+        """Log an error raised while processing a local client's request.
+
+        A `WazuhError` is the caller's own mistake (an unknown node name, a bad filter): the API or the CLI that
+        sent the request reports it, so it is not an error of this node and is only logged at debug level.
+
+        Parameters
+        ----------
+        command : bytes
+            Command being processed.
+        error : WazuhException
+            Error raised.
+        """
+        if isinstance(error, exception.WazuhError):
+            self.logger.debug(f"Request '{command}' refused: {error}")
+        else:
+            super().log_request_error(command, error)
 
     def process_request(self, command: bytes, data: bytes) -> Tuple[bytes, bytes]:
         """Define commands for local servers for both worker and master nodes.

@@ -14,8 +14,10 @@ callback contract, the internal configuration object) are in the developer READM
 
 ## How an update runs
 
-The topic is updated once when the Vulnerability Scanner registers it, then every
-`feed-update-interval` (default `60m`), and on demand (see [On-demand updates](#on-demand-updates)).
+The topic is updated once when the Vulnerability Scanner registers it, then `feed-update-interval`
+(default `60m`) after the previous scheduled update **finished** — the interval is counted from the
+end of one run, not from its start, so a run that takes 10 minutes moves every later run by 10
+minutes — and on demand (see [On-demand updates](#on-demand-updates)).
 Two updates of the same topic never overlap: a scheduled run that finds one in progress is skipped.
 
 Each update:

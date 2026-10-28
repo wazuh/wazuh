@@ -205,6 +205,13 @@ paths:
         and KVDBs carry their name in `metadata.title`; the policy's own `metadata.title` is optional
         (`Untitled Policy` when absent).
 
+        The `policy` object requires `enabled` (boolean), `root_decoder` (an identifier, or `null`),
+        `integrations`, `filters` and `enrichments` (arrays of identifiers, possibly empty) and
+        `index_unclassified_events` and `index_discarded_events` (booleans); `outputs`, `origin_space`, `hash`
+        and `cleanup_decoder_variables` (default `true`) are optional. Every resource needs an `id`.
+
+        `space` may contain only letters, digits and `_`.
+
         ## Validation strategy
 
         - **Policy without integrations** (`policy.integrations` is empty): validated by
@@ -252,7 +259,11 @@ paths:
                       root_decoder: <decoder_uuid>
                       integrations:
                       - <integration_uuid>
+                      filters: []
+                      enrichments: []
                       enabled: true
+                      index_unclassified_events: false
+                      index_discarded_events: false
                     resources:
                       kvdbs: []
                       decoders:
@@ -282,8 +293,13 @@ paths:
                     policy:
                       metadata:
                         title: <policy_name>
+                      root_decoder: null
                       integrations: []
+                      filters: []
+                      enrichments: []
                       enabled: true
+                      index_unclassified_events: false
+                      index_discarded_events: false
                     resources:
                       decoders: []
                       integrations: []
@@ -304,7 +320,10 @@ paths:
                       - <integration_uuid>
                       filters:
                       - <filter_uuid>
+                      enrichments: []
                       enabled: true
+                      index_unclassified_events: false
+                      index_discarded_events: false
                     resources:
                       kvdbs:
                       - id: <kvdb_uuid>
@@ -352,8 +371,13 @@ paths:
                     policy:
                       metadata:
                         title: <policy_name>
+                      root_decoder: null
                       integrations: []
+                      filters: []
+                      enrichments: []
                       enabled: false
+                      index_unclassified_events: false
+                      index_discarded_events: false
                     resources:
                       decoders: []
                       integrations: []
@@ -584,7 +608,7 @@ paths:
                 $ref: '#/components/schemas/TesterRunPost_Response'
               examples:
                 ok_with_wazuh_metadata:
-                  summary: OK - `metadata.wazuh` contributes Wazuh-scoped fields
+                  summary: OK - `metadata.wazuh` contributes Wazuh-scoped fields (integration title and category come from the loaded content)
                   value:
                     status: OK
                     result:
@@ -594,16 +618,19 @@ paths:
                             queue: 1
                             location: syscheck
                           integration:
-                            category: security
-                            name: integration/wazuh-core/0
+                            category: <integration_category>
+                            name: <integration_title>
                             decoders:
-                            - core-wazuh-message
-                            - integrations
+                            - decoder/core-wazuh-message/0
                           agent:
                             name: AgentName
+                          space:
+                            name: test
+                          event:
+                            id: 0b9d5e4c-7f3a-4c1e-9a52-3e8f6d2b1a47
                         event:
                           original: File /etc/passwd modified
-                        '@timestamp': '2025-12-26T17:33:22Z'
+                        '@timestamp': '2025-12-26T17:33:22.105Z'
                       asset_traces:
                       - asset: decoder/core-wazuh-message/0
                         success: true
@@ -918,8 +945,9 @@ paths:
         independently from other assets (referenced decoders and KVDBs need not exist).
 
         The request body must be a JSON object with a non-empty `type` and a non-empty `resource` object.
-        `resource.id` must be present for integrations and KVDBs; identifiers are opaque (any UUID version
-        or other format is accepted).
+        `resource.id` must be present for every type (decoders, filters, integrations and KVDBs); identifiers are
+        opaque (any UUID version or other format is accepted: non-empty, at most 256 characters, no control
+        characters).
 
         The request body size is limited by:
         - `analysisd.api_resource_payload_max_bytes` (default 50000), for every type except `kvdb`
@@ -1033,7 +1061,7 @@ paths:
                     status: ERROR
                     error: "Failed to validate resource of type 'integration': Integration category is not valid: ossec"
         '413':
-          description: Payload Too Large. The body exceeds the limit for its type.
+          description: 'Payload Too Large. The body exceeds the limit for its type (JSON body below). A body over `analysisd.server_api_payload_max_bytes`, when that limit is set, is refused by the server before this handler with a plain-text 413 (`Payload too large. Max allowed: <n> bytes (<n/1024> KiB).`), whatever the `Content-Type`.'
           content:
             application/json:
               schema:
@@ -1482,7 +1510,8 @@ components:
       properties:
         space:
           type: string
-          description: Target space/session name (e.g. test, standard). Determines which tester session to promote into.
+          pattern: '^[A-Za-z0-9_]+$'
+          description: Target space/session name (e.g. test, standard). Determines which tester session to promote into. Letters, digits and `_` only.
         load_in_tester:
           type: boolean
           description: If true, load testing policies into the Tester environment.
@@ -1557,7 +1586,7 @@ components:
           - ready
           - updating
           - failed
-          description: 'Current synchronization state: ready (idle), updating (syncing), or failed (last sync errored).'
+          description: 'Current synchronization state: ready (idle), updating (syncing), or failed (last sync errored). For an IOC type, failed is also reported when a sync cycle could not run (indexer or consumer not ready) and the type holds no version yet; a type that holds one stays ready in that case.'
         hash:
           type: string
           description: Last known content hash. Empty string if never synced.

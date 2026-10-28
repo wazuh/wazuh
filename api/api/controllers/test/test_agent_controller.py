@@ -302,7 +302,8 @@ async def test_get_agent_key(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_
                                       is_async=False,
                                       wait_for_complete=False,
                                       logger=ANY,
-                                      rbac_permissions=mock_request.context['token_info']['rbac_policies']
+                                      rbac_permissions=mock_request.context['token_info']['rbac_policies'],
+                                      current_user=mock_request.context['token_info'].get('sub', '')
                                       )
     mock_exc.assert_called_once_with(mock_dfunc.return_value)
     mock_remove.assert_called_once_with(f_kwargs)
@@ -687,7 +688,8 @@ async def test_get_group_config(mock_exc, mock_dapi, mock_remove, mock_dfunc, mo
                                       is_async=False,
                                       wait_for_complete=False,
                                       logger=ANY,
-                                      rbac_permissions=mock_request.context['token_info']['rbac_policies']
+                                      rbac_permissions=mock_request.context['token_info']['rbac_policies'],
+                                      current_user=mock_request.context['token_info'].get('sub', '')
                                       )
     mock_exc.assert_called_once_with(mock_dfunc.return_value)
     mock_remove.assert_called_once_with(f_kwargs)
@@ -781,7 +783,8 @@ async def test_get_group_file(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock
                                       is_async=False,
                                       wait_for_complete=False,
                                       logger=ANY,
-                                      rbac_permissions=mock_request.context['token_info']['rbac_policies']
+                                      rbac_permissions=mock_request.context['token_info']['rbac_policies'],
+                                      current_user=mock_request.context['token_info'].get('sub', '')
                                       )
     mock_exc.assert_called_once_with(mock_dfunc.return_value)
     mock_remove.assert_called_once_with(f_kwargs)

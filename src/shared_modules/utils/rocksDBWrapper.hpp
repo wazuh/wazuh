@@ -19,6 +19,7 @@
 #include "rocksDBOptions.hpp"
 #include "rocksDBSharedBuffers.hpp"
 #include <algorithm>
+#include <chrono>
 #include <filesystem>
 #include <memory>
 #include <rocksdb/db.h>
@@ -29,12 +30,16 @@
 #include <rocksdb/write_batch.h>
 #include <stdexcept>
 #include <string>
+#include <thread>
 #include <unordered_map>
 #include <utility>
 #include <vector>
 
 namespace Utils
 {
+    /// Default time a constructor keeps retrying while another handle holds the database lock.
+    constexpr std::chrono::milliseconds ROCKSDB_DEFAULT_LOCK_RETRY_TIMEOUT {5000};
+
     class RocksDBTransaction;
     class IRocksDBWrapper
     {
@@ -81,15 +86,20 @@ namespace Utils
          * @param enableWal Whether to enable WAL or not.
          * @param repairIfCorrupt Whether to repair the database if it is found corrupt while opening.
          *                        WARNING: this process might not recover all data.
+         *                        Only a corruption status is repaired: a lock held by another handle or
+         *                        process, or any other error, is never repaired.
          * @param useSharedBuffers Whether to use the process-wide shared read cache / write buffer
          *                        manager instead of a private one.
          * @param readCacheSize Size in bytes of the private block cache.
+         * @param lockRetryTimeout How long the constructor keeps retrying, with a bounded backoff, while
+         *                        the database lock is held by another handle or process. Zero tries once.
          */
         explicit TRocksDBWrapper(std::string dbPath,
                                  const bool enableWal = true,
                                  const bool repairIfCorrupt = true,
                                  const bool useSharedBuffers = false,
-                                 const size_t readCacheSize = 16 * 1024 * 1024)
+                                 const size_t readCacheSize = 16 * 1024 * 1024,
+                                 const std::chrono::milliseconds lockRetryTimeout = ROCKSDB_DEFAULT_LOCK_RETRY_TIMEOUT)
             : m_enableWal {enableWal}
             , m_path {std::move(dbPath)}
             , m_logFn(makeLibLogFn("rocksdb"))
@@ -110,95 +120,87 @@ namespace Utils
             rocksdb::Options options = RocksDBOptions::buildDBOptions(m_writeManager, m_readCache);
             rocksdb::ColumnFamilyOptions columnFamilyOptions = RocksDBOptions::buildColumnFamilyOptions(m_readCache);
 
-            T* dbRawPtr;
+            T* dbRawPtr {nullptr};
             std::vector<rocksdb::ColumnFamilyDescriptor> columnsDescriptors;
+            std::vector<rocksdb::ColumnFamilyHandle*> columnHandles;
             const std::filesystem::path databasePath {m_path};
 
             // Create directories recursively if they do not exist
             std::filesystem::create_directories(databasePath);
 
-            // Get a list of the existing columns descriptors.
-            if (const auto databaseFile {databasePath / "CURRENT"}; std::filesystem::exists(databaseFile))
+            // Lists the column families and opens the database with them. Listing reads the MANIFEST
+            // without the lock, so it is repeated on every attempt: a writer may have rotated it.
+            const auto tryOpen = [&]() -> rocksdb::Status
             {
-                // Read columns names.
-                std::vector<std::string> columnsNames;
-                if (auto listStatus {T::ListColumnFamilies(options, m_path, &columnsNames)}; !listStatus.ok())
+                columnsDescriptors.clear();
+                columnHandles.clear();
+
+                // Get a list of the existing columns descriptors.
+                if (const auto databaseFile {databasePath / "CURRENT"}; std::filesystem::exists(databaseFile))
                 {
-                    if (!repairIfCorrupt)
+                    // Read columns names.
+                    std::vector<std::string> columnsNames;
+                    if (auto listStatus {T::ListColumnFamilies(options, m_path, &columnsNames)}; !listStatus.ok())
                     {
-                        throw std::runtime_error("Failed to list columns, '" + m_path +
-                                                 "' won't be repaired: " + std::string {listStatus.getState()});
+                        return listStatus;
                     }
-                    repairDB(listStatus);
-                    listStatus = T::ListColumnFamilies(options, m_path, &columnsNames);
-                    if (!listStatus.ok())
+
+                    // Create a set of column descriptors. This includes the default column.
+                    for (auto& columnName : columnsNames)
                     {
-                        throw std::runtime_error("Failed to list columns after repair: " +
-                                                 std::string {listStatus.getState()});
+                        columnsDescriptors.emplace_back(columnName, columnFamilyOptions);
                     }
                 }
-
-                // Create a set of column descriptors. This includes the default column.
-                for (auto& columnName : columnsNames)
+                else
                 {
-                    columnsDescriptors.emplace_back(columnName, columnFamilyOptions);
+                    // Database doesn't exist: Set just the default column descriptor.
+                    columnsDescriptors.emplace_back(rocksdb::kDefaultColumnFamilyName, columnFamilyOptions);
                 }
-            }
-            else
-            {
-                // Database doesn't exist: Set just the default column descriptor.
-                columnsDescriptors.emplace_back(rocksdb::kDefaultColumnFamilyName, columnFamilyOptions);
-            }
 
-            // Create a vector of column handles.
-            // This vector will be used to store the column handles created by the Open method and based on the
-            // columnsDescriptors.
-            std::vector<rocksdb::ColumnFamilyHandle*> columnHandles;
-            columnHandles.reserve(columnsDescriptors.size());
+                // Vector used to store the column handles created by the Open method, based on the
+                // columnsDescriptors.
+                columnHandles.reserve(columnsDescriptors.size());
 
-            // Open database with a list of columns descriptors.
-            // Compare if T is a rocksdb::DB or rocksdb::TransactionDB.
-            if constexpr (std::is_same_v<T, rocksdb::DB>)
-            {
-                if (auto status {T::Open(options, m_path, columnsDescriptors, &columnHandles, &dbRawPtr)}; !status.ok())
+                // Open database with a list of columns descriptors.
+                // Compare if T is a rocksdb::DB or rocksdb::TransactionDB.
+                if constexpr (std::is_same_v<T, rocksdb::DB>)
                 {
-                    if (!repairIfCorrupt)
-                    {
-                        throw std::runtime_error("Failed to open RocksDB, '" + m_path +
-                                                 "' won't be repaired: " + std::string {status.getState()});
-                    }
-
-                    repairDB(status);
-                    status = T::Open(options, m_path, columnsDescriptors, &columnHandles, &dbRawPtr);
-                    if (!status.ok())
-                    {
-                        throw std::runtime_error("Failed to open RocksDB database after repair. Reason: " +
-                                                 std::string {status.getState()});
-                    }
+                    return T::Open(options, m_path, columnsDescriptors, &columnHandles, &dbRawPtr);
                 }
-            }
-            else
-            {
-                if (auto status {T::Open(options,
-                                         rocksdb::TransactionDBOptions(),
-                                         m_path,
-                                         columnsDescriptors,
-                                         &columnHandles,
-                                         &dbRawPtr)};
-                    !status.ok())
+                else
                 {
-                    repairDB(status);
-                    status = T::Open(options,
-                                     rocksdb::TransactionDBOptions(),
-                                     m_path,
-                                     columnsDescriptors,
-                                     &columnHandles,
-                                     &dbRawPtr);
-                    if (!status.ok())
-                    {
-                        throw std::runtime_error("Failed to open Transaction RocksDB database after repair. Reason: " +
-                                                 std::string {status.getState()});
-                    }
+                    return T::Open(options,
+                                   rocksdb::TransactionDBOptions(),
+                                   m_path,
+                                   columnsDescriptors,
+                                   &columnHandles,
+                                   &dbRawPtr);
+                }
+            };
+
+            if (auto status {openRetryingWhileLocked(tryOpen, lockRetryTimeout)}; !status.ok())
+            {
+                if (isLockContention(status))
+                {
+                    throw std::runtime_error("Failed to open RocksDB database '" + m_path +
+                                             "': it is locked by another handle or process and was still locked "
+                                             "after " +
+                                             std::to_string(lockRetryTimeout.count()) +
+                                             " ms. Reason: " + status.ToString());
+                }
+
+                if (!repairIfCorrupt)
+                {
+                    throw std::runtime_error("Failed to open RocksDB, '" + m_path +
+                                             "' won't be repaired: " + status.ToString());
+                }
+
+                repairDB(status);
+                status = openRetryingWhileLocked(tryOpen, lockRetryTimeout);
+                if (!status.ok())
+                {
+                    throw std::runtime_error("Failed to open RocksDB database '" + m_path +
+                                             "' after repair. Reason: " + status.ToString());
                 }
             }
             // Assigns the raw pointer to the unique_ptr. When db goes out of scope, it will automatically delete
@@ -795,27 +797,90 @@ namespace Utils
         LogFn m_logFn;
 
         /**
-         * @brief Will try to repair the database if it is corrupt or throw exception if something failed.
+         * @brief Whether an open status means another handle or process holds the database lock.
+         *
+         * RocksDB reports a held lock as an IOError: "While lock file" when another process owns it
+         * (EAGAIN/EACCES from fcntl), "lock hold by current process" when another handle of this process
+         * owns it. Busy and TryAgain are treated the same way.
+         *
+         * @param status Status returned by ListColumnFamilies or Open.
+         * @return true if the failure is lock contention, which is transient and never corruption.
+         */
+        static bool isLockContention(const rocksdb::Status& status)
+        {
+            if (status.IsBusy() || status.IsTryAgain())
+            {
+                return true;
+            }
+            if (!status.IsIOError())
+            {
+                return false;
+            }
+            const auto message {status.ToString()};
+            return message.find("While lock file") != std::string::npos ||
+                   message.find("lock hold by current process") != std::string::npos;
+        }
+
+        /**
+         * @brief Runs an open attempt, retrying with a bounded exponential backoff while the database lock
+         *        is held elsewhere (or a file vanished under a concurrent writer).
+         *
+         * @param attempt Callable returning the status of one open attempt.
+         * @param timeout Total time to keep retrying. Zero tries once.
+         * @return rocksdb::Status Status of the last attempt.
+         */
+        template<typename Attempt>
+        static rocksdb::Status openRetryingWhileLocked(Attempt&& attempt, const std::chrono::milliseconds timeout)
+        {
+            constexpr std::chrono::milliseconds INITIAL_DELAY {10};
+            constexpr std::chrono::milliseconds MAX_DELAY {250};
+
+            const auto deadline {std::chrono::steady_clock::now() + timeout};
+            auto delay {INITIAL_DELAY};
+            auto status {attempt()};
+
+            // A missing file while listing is transient too: a writer holding the lock may have rotated the
+            // MANIFEST between the read of CURRENT and the open of the MANIFEST it named.
+            while (isLockContention(status) || status.IsPathNotFound())
+            {
+                const auto now {std::chrono::steady_clock::now()};
+                if (now >= deadline)
+                {
+                    break;
+                }
+                std::this_thread::sleep_for(std::min<std::chrono::steady_clock::duration>(delay, deadline - now));
+                delay = std::min(delay * 2, MAX_DELAY);
+                status = attempt();
+            }
+            return status;
+        }
+
+        /**
+         * @brief Repairs the database if the open failure is a corruption, or throws.
+         *
+         * Only Status::Corruption is repaired. Any other error, in particular an IOError for a lock held
+         * by another handle or process, is never treated as corruption: repairing a live database is
+         * unsafe and RepairDB would need the same lock anyway.
          *
          * @param errorStatus The status of the failed operation.
          */
         void repairDB(const rocksdb::Status& errorStatus)
         {
-            if (errorStatus.code() == rocksdb::Status::kIOError || errorStatus.code() == rocksdb::Status::kCorruption)
+            if (errorStatus.IsCorruption())
             {
                 rocksdb::Options options;
                 if (const auto repairStatus {rocksdb::RepairDB(m_path, options)}; !repairStatus.ok())
                 {
-                    throw std::runtime_error("Failed to repair RocksDB database. Reason: " +
-                                             std::string {repairStatus.getState()});
+                    throw std::runtime_error("Failed to repair RocksDB database '" + m_path +
+                                             "'. Reason: " + repairStatus.ToString());
                 }
                 LOGFN_WARN(m_logFn, "Database '%s' was repaired because it was corrupt.", m_path.c_str());
             }
             else
             {
-                throw std::runtime_error("Failed to open RocksDB database, repair not tried because the error "
-                                         "wasn't corruption. Code: " +
-                                         std::to_string(errorStatus.code()) + " Reason: " + errorStatus.getState());
+                throw std::runtime_error("Failed to open RocksDB database '" + m_path +
+                                         "', repair not tried because the error wasn't corruption. Code: " +
+                                         std::to_string(errorStatus.code()) + " Reason: " + errorStatus.ToString());
             }
         }
 

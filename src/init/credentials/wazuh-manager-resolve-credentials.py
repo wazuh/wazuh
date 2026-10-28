@@ -1188,6 +1188,24 @@ def node_name(lookup: Lookup, report: Report) -> Optional[str]:
     return None
 
 
+def validate_node_name(lookup: Lookup, report: Report) -> None:
+    """Every mode's test of a supplied WAZUH_MANAGER_NODE_NAME, whether or not anything is about to be minted or
+    issued, as for the passwords and the SAN lists: a valid DNS name that fits a certificate's common name. The
+    tighter limit of the CA's common name applies only when a CA is minted. The texts are those of the issuing
+    steps, so a run that reaches them prints each problem once. An unset variable is not judged here: the host
+    name stands in for it only when something is issued."""
+    found = lookup.get(NODE_NAME_VAR)
+    if found is None:
+        return
+    name, source = found
+    if not valid_dns_name(name):
+        report.problem(INVALID, NODE_NAME_VAR, f"not a valid DNS name (set in {source})")
+    elif len(name) > COMMON_NAME_MAX:
+        report.problem(INVALID, NODE_NAME_VAR,
+                       f"too long for a certificate's common name ({COMMON_NAME_MAX} characters at most; "
+                       f"set in {source})")
+
+
 def read_optional(parent: Dir, name: str, spec: Spec, report: Report) -> Tuple[bool, Optional[bytes]]:
     """(present, content). An entry that is present but unsafe is reported and comes back as (True, None)."""
     try:
@@ -3065,6 +3083,7 @@ def preflight(paths: Paths, report: Report, environ: Mapping[str, str]) -> Optio
     lookup = build_lookup(paths, conf, report, environ)
     validate_supplied(lookup, report)
     validate_san_lists(lookup, report)
+    validate_node_name(lookup, report)
     return conf, lookup
 
 

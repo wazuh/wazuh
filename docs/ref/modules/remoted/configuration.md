@@ -228,8 +228,9 @@ similar spelling: nothing on disk is looked up under it.
   segments, no percent-encoding; at most 255 characters. Any other value is rejected as a
   configuration error (`wazuh-manager-remoted -t` reports it).
 - **Note:** the prefix is a routing matter only. The manager routes on the request target exactly
-  as sent — prefix included — so agents must send the full prefixed path, and any proxy in between
-  must forward the path untouched. The bearer token does not bind the target, so a prefix mismatch
+  as sent — prefix included, case-sensitive, with no percent-decoding (any `%`-encoded path answers
+  `404`; only a single trailing `/` is tolerated) — so agents must send the full prefixed path, and
+  any proxy in between must forward the path untouched. The bearer token does not bind the target, so a prefix mismatch
   between agent and manager (or a proxy-side rewrite) surfaces as `404`, never as `401`. The prefix
   counts toward `remoted.http_max_url_size`. Only the public HTTPS listener is prefixed; the
   local admin socket is not. See

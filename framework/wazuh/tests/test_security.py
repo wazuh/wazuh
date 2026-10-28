@@ -299,6 +299,9 @@ def test_edit_run_as_enable_requires_every_existing_role(db_setup, rbac_context,
 
     assert exc.value.code == 4000
     assert exc.value.ids == _existing_role_ids(security) - granted
+    # The missing roles are named in the message too: a raised exception's ids never reach the response.
+    assert exc.value.message.endswith(
+        'resources: ' + ', '.join(f'role:id:{i}' for i in sorted(_existing_role_ids(security) - granted)))
 
 
 def test_edit_run_as_enable_requires_roles_not_created_yet(db_setup, rbac_context):

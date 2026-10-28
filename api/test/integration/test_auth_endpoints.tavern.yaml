@@ -873,7 +873,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
-      status_code: 400
+      status_code: 404
       json:
         error: 1006
 

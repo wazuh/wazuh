@@ -561,6 +561,18 @@ if [ $1 = 0 ]; then
   fi
   %{_localstatedir}/bin/wazuh-manager-control stop > /dev/null 2>&1
 
+  # The package never enables the service, but the operator does (systemctl enable, or chkconfig
+  # on a host without systemd), and an erase must not leave that behind for a later fresh install
+  # to come up enabled at boot. Here, while the unit file is still installed: systemctl disable
+  # refuses a unit it cannot find. It edits links only, so it also works in a chroot or an image
+  # build where systemd is not running (--no-reload, as rpm's own %%systemd_preun does).
+  if command -v systemctl > /dev/null 2>&1; then
+    systemctl --no-reload disable wazuh-manager.service > /dev/null 2>&1 || true
+  fi
+  if [ -f %{_initrddir}/wazuh-manager ] && command -v chkconfig > /dev/null 2>&1; then
+    chkconfig --del wazuh-manager > /dev/null 2>&1 || true
+  fi
+
 fi
 
 %postun
@@ -837,7 +849,6 @@ rm -fr %{buildroot}
 %dir %attr(770, wazuh-manager, wazuh-manager) %{_localstatedir}/queue/tasks
 %dir %attr(770, wazuh-manager, wazuh-manager) %{_localstatedir}/queue/sockets
 %dir %attr(770, wazuh-manager, wazuh-manager) %{_localstatedir}/queue/vd
-%dir %attr(770, wazuh-manager, wazuh-manager) %{_localstatedir}/queue/indexer
 %dir %attr(750, wazuh-manager, wazuh-manager) %{_localstatedir}/queue/authd
 %dir %attr(750, wazuh-manager, wazuh-manager) %{_localstatedir}/queue/keystore
 %dir %attr(750, wazuh-manager, wazuh-manager) %{_localstatedir}/data

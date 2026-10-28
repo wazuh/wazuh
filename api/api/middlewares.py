@@ -87,6 +87,47 @@ LOGIN_USERNAME_MAX_LENGTH = 64
 # for all of them
 LOGIN_CLIENT_ATTEMPTS_FACTOR = 10
 
+# A client over its rate limit gets a 429 per request; the WARNING naming it is written at most once per
+# this many seconds for each client and user, with the count of the refusals in between.
+RATE_LIMIT_WARNING_INTERVAL_SECONDS = 60
+# Most clients and users that interval is tracked for at once.
+RATE_LIMIT_WARNING_MAX_KEYS = 10000
+rate_limit_warnings: dict = {}
+
+
+def warn_rate_limited(host: str, user: str):
+    """Log that `user` at `host` was refused for exceeding the request rate, at most once per interval.
+
+    The refusals that are not logged are counted and reported on the next warning for the same client and user.
+
+    Parameters
+    ----------
+    host : str
+        Client address.
+    user : str
+        User the request was made as.
+    """
+    now = time.time()
+    key = (host, user)
+    entry = rate_limit_warnings.get(key)
+    if entry is not None and now - entry['since'] < RATE_LIMIT_WARNING_INTERVAL_SECONDS:
+        entry['suppressed'] += 1
+        return
+
+    suppressed = entry['suppressed'] if entry is not None else 0
+    if entry is None and len(rate_limit_warnings) >= RATE_LIMIT_WARNING_MAX_KEYS:
+        for expired in [k for k, v in rate_limit_warnings.items()
+                        if now - v['since'] >= RATE_LIMIT_WARNING_INTERVAL_SECONDS]:
+            del rate_limit_warnings[expired]
+        if len(rate_limit_warnings) >= RATE_LIMIT_WARNING_MAX_KEYS:
+            rate_limit_warnings.clear()
+    rate_limit_warnings[key] = {'since': now, 'suppressed': 0}
+
+    message = f'Maximum number of requests per minute reached. IP: {host}. User: {user}.'
+    if suppressed:
+        message += f' {suppressed} more request(s) refused since the previous warning.'
+    logger.warning(message)
+
 
 def get_client_key(host: str) -> str:
     """Return the key the pre-authentication limiters charge `host` under.
@@ -320,12 +361,10 @@ async def access_log(request: ConnexionRequest, response: Response, prev_time: t
 
     custom_logging(user, host, method, path, query, body, time_diff, response.status_code,
                    hash_auth_context=hash_auth_context, headers=headers)
-    if response.status_code == 403 and \
-        path in {LOGIN_ENDPOINT, RUN_AS_LOGIN_ENDPOINT} and \
-            method in {'GET', 'POST'}:
-        logger.warning(f'IP blocked due to exceeded number of logins attempts: {host}. User: {user!r}.')
+    # A blocked client (6000) is logged where the block is enforced, `check_blocked_ip`: a 403 here can
+    # equally be an RBAC or run_as refusal.
     if response.status_code == 429:
-        logger.warning(f'Maximum number of requests per minute reached. IP: {host}. User: {user}.')
+        warn_rate_limited(host, user)
 
 
 def get_login_attempt_key(request: Request) -> tuple:
@@ -396,6 +435,9 @@ async def check_blocked_ip(request: Request):
                 ip_block.discard(key)
 
         if any(key in ip_block for key in limits):
+            host = request.client.host if request.client else ''
+            logger.warning(f'IP blocked due to exceeded number of logins attempts: {host}. '
+                           f'User: {get_login_attempt_key(request)[1]!r}.')
             raise BlockedIPException(
                 status=403,
                 title="Permission Denied",

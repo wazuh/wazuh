@@ -581,10 +581,15 @@ paths:
                 $ref: '#/components/schemas/Response'
               examples:
                 bad_event_format:
-                  summary: Event not in `<queue>:<location>:<message>` form
+                  summary: Event shorter than `<queue>:<location>:<message>` allows
                   value:
                     status: ERROR
                     error: 'Error parsing event: Invalid format: event must be at least 5 bytes ("<byte>:<location>:<message>")'
+                missing_queue_separator:
+                  summary: No `:` after the one-byte queue identifier
+                  value:
+                    status: ERROR
+                    error: 'Error parsing event: Invalid format: missing '':'' after the one-byte queue identifier ("<byte>:<location>:<message>")'
                 missing_separator:
                   summary: No unescaped `:` between location and message
                   value:

@@ -116,8 +116,10 @@ unless `-q` is given.
 | `-u` | `--usage` |
 
 Only one of `-l`, `-c`, `-a`, `-s`, `-r` may be given (otherwise it prints
-`Invalid options: Bad argument combination.` and exits `1`); `-h` prints argparse's help. Errors are
-printed as `Error <code>: <message>`.
+`Invalid options: Bad argument combination.` and exits `1`); `-h` prints argparse's help. Every
+error, an unknown agent or group included, is printed as `Error <code>: <message>` (for example
+`Error 1701: Agent does not exist`) and exits `1`; an unexpected failure prints `Internal error: <message>`
+and exits `1` too. Answering anything but `y` to a confirmation prints `Cancelled.` and exits `0`.
 
 ## Verifying assignments
 

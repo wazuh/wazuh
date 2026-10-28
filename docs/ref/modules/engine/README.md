@@ -141,7 +141,8 @@ Input event example:
 
 ```
 
-Processed event:
+Processed event (the router adds `@timestamp` and `wazuh.event.id`, a random UUID that every output of the event
+carries, and the same id is written to the raw-event copy when raw indexing is enabled):
 ```json
 {
   "wazuh": {
@@ -171,6 +172,9 @@ Processed event:
       "name": "wazuh",
       "node": "node01"
     },
+    "event": {
+      "id": "0b9d5e4c-7f3a-4c1e-9a52-3e8f6d2b1a47"
+    },
     "integration": {
       "category": "cloud-services",
       "name": "aws",
@@ -186,7 +190,7 @@ Processed event:
       "enrichments": [
         {
           "indicator": {
-            "confidence": 100,
+            "confidence": "100",
             "feed": {
               "name": "dyingbreeds_"
             },
@@ -269,24 +273,21 @@ Processed event:
     "ip": "8.8.8.8",
     "port": 8010,
     "as": {
-      "number": 55990,
+      "number": 15169,
       "organization": {
-        "name": "Huawei Cloud Service data center"
+        "name": "Google LLC"
       }
     },
     "geo": {
-      "city_name": "Shanghai",
-      "continent_code": "AS",
-      "continent_name": "Asia",
-      "country_iso_code": "CN",
-      "country_name": "China",
+      "continent_code": "NA",
+      "continent_name": "North America",
+      "country_iso_code": "US",
+      "country_name": "United States",
       "location": {
-        "lat": 31.2222,
-        "lon": 121.4581
+        "lat": 37.751,
+        "lon": -97.822
       },
-      "timezone": "Asia/Shanghai",
-      "region_iso_code": "SH",
-      "region_name": "Shanghai"
+      "timezone": "America/Chicago"
     }
   },
   "related": {
@@ -698,10 +699,13 @@ Depending on the observed field and the configured IOC types, this enrichment ma
 In particular, network IOC matching is not limited to plain IP values. For connection-based enrichment, the observed value is built from the relevant event fields as a connection key, typically combining IP address and port.
 
 If a match is found, one entry is appended to the `wazuh.threat.enrichments` array for each matched
-indicator. The entry carries the stored indicator document under `indicator` and, under
+indicator document. The entry carries that document under `indicator` (always an object) and, under
 `matched.field`, the event field the value was read from — for a connection match, both fields,
-comma-separated. For example (the `indicator` content is the document stored for that IOC; its
-shape is shown only as a placeholder):
+comma-separated. When several threat-intelligence documents share the same value (the same hash,
+URL or `ip:port` from different feeds), the IOC database keeps them all under that key and the match
+appends one entry per document, each with the same `matched.field`. A numeric `indicator.confidence`
+is written as a string, because the schema maps it as a keyword. For example (the `indicator`
+content is the document stored for that IOC; its shape is shown only as a placeholder):
 
 ```json
 {
@@ -2420,7 +2424,7 @@ Current indexer output queue byte utilization as a percentage of the configured 
 
 ##### `indexer.events.dropped`
 
-Total number of events dropped in the indexer path: events refused by a full queue, plus events of batches discarded after an indexer response for their `_bulk` status (500, 502, 504 or any other status the connector does not retry, or 503 retries exhausted). A `413` batch the async connector can no longer shrink (bulk threshold at its minimum), and failed items inside a successful response, are not counted.
+Number of events dropped in the indexer path since the indexer connector started. It is a pull metric (type `pull` in the dump): the engine reads the connector's own count on every read, so a reset does not change it, and it reads `0` while no connector exists. It counts events refused by a full queue, plus events of batches discarded after an indexer response for their `_bulk` status (500, 502, 504 or any other status the connector does not retry, or 503 retries exhausted). A `413` batch the async connector can no longer shrink (bulk threshold at its minimum), and failed items inside a successful response, are not counted.
 
 **Used for:** detecting loss conditions and overload situations.
 
@@ -2494,9 +2498,17 @@ Total number of events successfully processed by the router.
 
 ##### `router.events.dropped`
 
-Total number of events dropped by the router.
+Total number of events dropped by the router because its input queue was full.
 
 **Used for:** troubleshooting overload or discard scenarios.
+
+---
+
+##### `router.events.malformed`
+
+Total number of input lines the router workers dropped because they are not a valid `<byte>:<location>:<message>` event (too short, no `:` after the queue byte, no unescaped `:` between location and message, empty location). Such a line is never decoded or indexed as an event (it still reaches the raw-event index when that is enabled). Each worker logs the first one as a WARNING with the reason, then at most one line per minute that also reports how many it dropped since its previous report.
+
+**Used for:** detecting a sender that emits lines in the wrong format.
 
 ---
 

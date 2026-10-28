@@ -12,7 +12,15 @@
 
 #include "rocksDBWrapper_test.hpp"
 #include <algorithm>
+#include <chrono>
 #include <fstream>
+#include <thread>
+#ifndef _WIN32
+#include <fcntl.h>
+#include <signal.h>
+#include <sys/wait.h>
+#include <unistd.h>
+#endif
 
 /**
  * @brief Tests the put function
@@ -743,3 +751,212 @@ TEST_F(RocksDBWrapperTest, CorruptAndRepairTest)
     EXPECT_ANY_THROW({ db_wrapper = std::make_unique<Utils::RocksDBWrapper>(m_databaseFolder, false, false); });
     EXPECT_NO_THROW({ db_wrapper = std::make_unique<Utils::RocksDBWrapper>(m_databaseFolder, false, true); });
 }
+
+/**
+ * @brief A second handle of the same process waits for the lock instead of repairing the live database.
+ */
+TEST_F(RocksDBWrapperTest, LockHeldByAnotherHandleIsRetriedUntilReleased)
+{
+    db_wrapper->put("key", "value");
+
+    std::thread releaser(
+        [this]()
+        {
+            std::this_thread::sleep_for(std::chrono::milliseconds(300));
+            db_wrapper.reset();
+        });
+
+    std::unique_ptr<Utils::RocksDBWrapper> second;
+    EXPECT_NO_THROW({
+        second = std::make_unique<Utils::RocksDBWrapper>(
+            m_databaseFolder, true, true, false, 16 * 1024 * 1024, std::chrono::milliseconds(5000));
+    });
+    releaser.join();
+
+    ASSERT_NE(second, nullptr);
+    std::string value;
+    EXPECT_TRUE(second->get("key", value));
+    EXPECT_EQ(value, "value");
+    EXPECT_FALSE(std::filesystem::exists(m_databaseFolder / "lost"));
+
+    db_wrapper = std::move(second);
+}
+
+/**
+ * @brief A lock that outlives the retry window fails with a lock message and never repairs the database.
+ */
+TEST_F(RocksDBWrapperTest, LockHeldPersistentlyFailsWithoutRepair)
+{
+    db_wrapper->put("key", "value");
+
+    const auto start {std::chrono::steady_clock::now()};
+    try
+    {
+        Utils::RocksDBWrapper second(
+            m_databaseFolder, true, true, false, 16 * 1024 * 1024, std::chrono::milliseconds(200));
+        FAIL() << "Opening a locked database must throw";
+    }
+    catch (const std::runtime_error& e)
+    {
+        EXPECT_NE(std::string(e.what()).find("locked by another handle or process"), std::string::npos) << e.what();
+        EXPECT_EQ(std::string(e.what()).find("repair"), std::string::npos) << e.what();
+    }
+    EXPECT_GE(std::chrono::steady_clock::now() - start, std::chrono::milliseconds(200));
+
+    // The live handle is untouched and no repair ran.
+    EXPECT_FALSE(std::filesystem::exists(m_databaseFolder / "lost"));
+    std::string value;
+    EXPECT_TRUE(db_wrapper->get("key", value));
+    EXPECT_EQ(value, "value");
+}
+
+/**
+ * @brief A zero retry window tries once.
+ */
+TEST_F(RocksDBWrapperTest, LockHeldWithZeroTimeoutFailsImmediately)
+{
+    EXPECT_THROW(
+        {
+            Utils::RocksDBWrapper second(
+                m_databaseFolder, true, true, false, 16 * 1024 * 1024, std::chrono::milliseconds(0));
+        },
+        std::runtime_error);
+    EXPECT_FALSE(std::filesystem::exists(m_databaseFolder / "lost"));
+}
+
+/**
+ * @brief An error that is not corruption is never repaired, even when repair is allowed.
+ */
+TEST_F(RocksDBWrapperTest, NonCorruptionErrorIsNotRepaired)
+{
+    db_wrapper->put("key", "value");
+    db_wrapper.reset();
+
+    // CURRENT names a MANIFEST that does not exist: a missing file, not a corruption status.
+    {
+        std::ofstream current(m_databaseFolder / "CURRENT", std::ios::trunc);
+        current << "MANIFEST-999999\n";
+    }
+
+    EXPECT_THROW(
+        {
+            Utils::RocksDBWrapper second(
+                m_databaseFolder, true, true, false, 16 * 1024 * 1024, std::chrono::milliseconds(50));
+        },
+        std::runtime_error);
+    EXPECT_FALSE(std::filesystem::exists(m_databaseFolder / "lost"));
+
+    // Let the fixture tear down on a fresh database.
+    std::filesystem::remove_all(m_databaseFolder);
+    db_wrapper = std::make_unique<Utils::RocksDBWrapper>(m_databaseFolder);
+}
+
+#ifndef _WIN32
+namespace
+{
+    /**
+     * @brief Forks a child that holds the RocksDB LOCK file the way another process would, with no RocksDB code
+     *        in the child.
+     *
+     * @param lockFile Path to the LOCK file.
+     * @param holdFor How long the child keeps the lock.
+     * @return pid_t Child pid, after it holds the lock; -1 on failure.
+     */
+    pid_t holdLockInChild(const std::filesystem::path& lockFile, const std::chrono::milliseconds holdFor)
+    {
+        int ready[2];
+        if (pipe(ready) != 0)
+        {
+            return -1;
+        }
+
+        const auto pid {fork()};
+        if (pid == 0)
+        {
+            close(ready[0]);
+            const int fd {open(lockFile.c_str(), O_RDWR | O_CREAT, 0644)};
+            struct flock lock {};
+            lock.l_type = F_WRLCK;
+            lock.l_whence = SEEK_SET;
+            const char status {(fd >= 0 && fcntl(fd, F_SETLK, &lock) == 0) ? '1' : '0'};
+            if (write(ready[1], &status, 1) != 1)
+            {
+                _exit(1);
+            }
+            usleep(static_cast<useconds_t>(holdFor.count() * 1000));
+            _exit(0);
+        }
+
+        close(ready[1]);
+        char status {'0'};
+        const auto readBytes {read(ready[0], &status, 1)};
+        close(ready[0]);
+        if (pid < 0 || readBytes != 1 || status != '1')
+        {
+            if (pid > 0)
+            {
+                kill(pid, SIGKILL);
+                waitpid(pid, nullptr, 0);
+            }
+            return -1;
+        }
+        return pid;
+    }
+} // namespace
+
+/**
+ * @brief A lock held by another process is waited for, then the database opens with its data.
+ */
+TEST_F(RocksDBWrapperTest, LockHeldByAnotherProcessIsRetriedUntilReleased)
+{
+    db_wrapper->put("key", "value");
+    db_wrapper.reset();
+
+    const auto child {holdLockInChild(m_databaseFolder / "LOCK", std::chrono::milliseconds(300))};
+    ASSERT_GT(child, 0);
+
+    EXPECT_NO_THROW({
+        db_wrapper = std::make_unique<Utils::RocksDBWrapper>(
+            m_databaseFolder, true, true, false, 16 * 1024 * 1024, std::chrono::milliseconds(5000));
+    });
+    waitpid(child, nullptr, 0);
+
+    ASSERT_NE(db_wrapper, nullptr);
+    std::string value;
+    EXPECT_TRUE(db_wrapper->get("key", value));
+    EXPECT_EQ(value, "value");
+    EXPECT_FALSE(std::filesystem::exists(m_databaseFolder / "lost"));
+}
+
+/**
+ * @brief A lock held by another process past the retry window fails with a lock message, no repair.
+ */
+TEST_F(RocksDBWrapperTest, LockHeldByAnotherProcessPersistentlyFailsWithoutRepair)
+{
+    db_wrapper->put("key", "value");
+    db_wrapper.reset();
+
+    const auto child {holdLockInChild(m_databaseFolder / "LOCK", std::chrono::milliseconds(5000))};
+    ASSERT_GT(child, 0);
+
+    try
+    {
+        Utils::RocksDBWrapper second(
+            m_databaseFolder, true, true, false, 16 * 1024 * 1024, std::chrono::milliseconds(200));
+        FAIL() << "Opening a database locked by another process must throw";
+    }
+    catch (const std::runtime_error& e)
+    {
+        EXPECT_NE(std::string(e.what()).find("locked by another handle or process"), std::string::npos) << e.what();
+    }
+
+    kill(child, SIGKILL);
+    waitpid(child, nullptr, 0);
+
+    EXPECT_FALSE(std::filesystem::exists(m_databaseFolder / "lost"));
+    db_wrapper = std::make_unique<Utils::RocksDBWrapper>(m_databaseFolder);
+    std::string value;
+    EXPECT_TRUE(db_wrapper->get("key", value));
+    EXPECT_EQ(value, "value");
+}
+#endif

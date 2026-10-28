@@ -163,6 +163,7 @@ Constants and per-space formatters in `interface/fastmetrics/metric_names.hpp`, 
 | `router.queue.bytes.usage.percent` | PULL | `router/src/orchestrator.cpp` |
 | `router.events.processed` | COUNTER | `router/src/worker.cpp` |
 | `router.events.dropped` | COUNTER | `router/src/orchestrator.cpp` |
+| `router.events.malformed` | COUNTER | `router/src/worker.cpp` |
 | `router.eps.1m` | PULL | `router/src/orchestrator.cpp` (`SlidingWindowRate`, 60 s) |
 | `router.eps.5m` | PULL | `router/src/orchestrator.cpp` (`SlidingWindowRate`, 300 s) |
 | `router.eps.30m` | PULL | `router/src/orchestrator.cpp` (`SlidingWindowRate`, 1800 s) |

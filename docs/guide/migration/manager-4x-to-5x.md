@@ -526,7 +526,7 @@ sudo /var/wazuh-manager/bin/wazuh-manager-control status
 grep -E "keystore|authd" /var/wazuh-manager/logs/wazuh-manager.log | tail
 ```
 
-Expected: every daemon running, `wazuh-manager-remoted:keystore: INFO: Loaded N agent key(s)
+Expected: every daemon running, `wazuh-manager-remoted:client-keys: INFO: Loaded N agent key(s)
 from '/etc/wazuh-manager/client.keys'.` with your agent count, and authd `Accepting connections on port 1515.
 Shared-password enrollment is required.`
 Then confirm the registry through the API, with the `wazuh` password published in

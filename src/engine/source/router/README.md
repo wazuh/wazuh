@@ -41,7 +41,7 @@ The **Router** module is the event-processing core of the Wazuh Engine, responsi
 
 ### Event Flow
 
-1. **Production path**: An external caller invokes `postEvent()` on the Orchestrator, which pushes the `IngestEvent` (batch header + original string + reception stamp, see [Reception timestamp](#reception-timestamp)) into the shared `ProdQueue`. The event arrives **already stamped**: `receivedAtNs` was taken by the API parser when the batch was received. N `RouterWorker` threads compete to dequeue events. Each worker formats that stamp as an ISO 8601 UTC string with nine fractional digits (`epochNanosToISO8601`) and generates an event id (UUIDv4), indexes the raw event when the raw event indexer is enabled, parses it via `parseLegacyEvent`, sets `/@timestamp` and `/wazuh/event/id` (plus `/wazuh/cluster/name` and `/wazuh/cluster/node` when the manager configuration is loaded), and calls `Router::ingest()` which iterates the priority-sorted `Table` and feeds the event into every *enabled* `Environment`.
+1. **Production path**: An external caller invokes `postEvent()` on the Orchestrator, which pushes the `IngestEvent` (batch header + original string + reception stamp, see [Reception timestamp](#reception-timestamp)) into the shared `ProdQueue`. The event arrives **already stamped**: `receivedAtNs` was taken by the API parser when the batch was received. N `RouterWorker` threads compete to dequeue events. Each worker formats that stamp as an ISO 8601 UTC string with nine fractional digits (`epochNanosToISO8601`) and generates an event id (UUIDv4), indexes the raw event when the raw event indexer is enabled, parses it via `parseLegacyEvent` (a line it rejects is dropped, counted in `router.events.malformed` and logged as a WARNING at most once per minute per worker, with the count dropped since the previous line — `LogThrottle` in `src/logThrottle.hpp`), sets `/@timestamp` and `/wazuh/event/id` (plus `/wazuh/cluster/name` and `/wazuh/cluster/node` when the manager configuration is loaded), and calls `Router::ingest()` which iterates the priority-sorted `Table` and feeds the event into every *enabled* `Environment`.
 
 2. **Testing path**: A caller invokes `ingestTest()`, which wraps the event + options + callback into a `TestingTuple` and pushes it into the `TestQueue`. A single `TesterWorker` dequeues the tuple, stamps the event with `@timestamp` (taken from the same shared reception clock and formatted with the same nine-digit formatter as production) and `wazuh/event/id` (UUIDv4), subscribes to the requested asset traces on the `bk::IController`, runs the event through the pipeline, collects trace output, and delivers the result via the callback/future.
 
@@ -152,7 +152,7 @@ The `Orchestrator` constructor:
 
 1. Validates the `Options` struct (thread count 0–128, non-null store/builder/controller maker/queues, timeout > 0); a failure throws `std::runtime_error`. The raw indexer is optional.
 2. Creates a shared `EnvironmentBuilder` from the builder and controller maker.
-3. Registers the router metrics (`router.queue.*`, `router.eps.{1m,5m,30m}`, `router.events.dropped`; the workers add `router.events.processed`), names in `fastmetrics/interface/fastmetrics/metric_names.hpp`.
+3. Registers the router metrics (`router.queue.*`, `router.eps.{1m,5m,30m}`, `router.events.dropped`; the workers add `router.events.processed` and `router.events.malformed`), names in `fastmetrics/interface/fastmetrics/metric_names.hpp`.
 4. Loads persisted router/tester configuration from the Store (`router/router/0`, `router/tester/0`).
 5. Resolves the target pool size: `m_numThreads`, or the number of CPUs when it is `0` (`analysisd.orchestrator_threads`, default `0`).
 6. Creates exactly **1** `RouterWorker` synchronously, initialized with the saved route table. Additional workers are deferred to `expandWorkerPool()` (see below).
@@ -237,7 +237,8 @@ Unit tests cover each internal class independently using GMock:
 - **`environmentBuilder_test`**: Policy build, controller creation, error handling
 - **`router_test`**: Entry CRUD, priority changes, event ingestion, hot swap
 - **`tester_test`**: Entry CRUD, rename, test ingestion with traces, asset listing
-- **`worker_test`**: RouterWorker/TesterWorker lifecycle, event processing, sentinel skipping, `@timestamp`/`wazuh.event.id` stamping, reception-stamp formatting (raw and event share the parser stamp), unstamped-event fallback to the shared clock, tester stamp format
+- **`worker_test`**: RouterWorker/TesterWorker lifecycle, event processing, sentinel skipping, `@timestamp`/`wazuh.event.id` stamping, reception-stamp formatting (raw and event share the parser stamp), unstamped-event fallback to the shared clock, tester stamp format, malformed lines counted in `router.events.malformed`
+- **`logThrottle_test`**: `LogThrottle` logs the first occurrence, suppresses the rest of the window and reports the suppressed count
 - **`orchestrator_test`**: Full lifecycle, multi-worker replication, store persistence, queue contention, worker pool expansion
 - **`entryConverter_test`**: JSON ↔ Entry round-trip conversion
 

@@ -505,7 +505,9 @@ void wdb_help() {
     print_out("    -f          Run in foreground.");
     print_out("    -c <config> Configuration file to use (default: %s)", WAZUHCONF);
 
-    exit(EXIT_SUCCESS);
+    // Exit non-zero, like remoted and modulesd: this also runs for an unknown option, which must
+    // not read as success to a script.
+    exit(EXIT_FAILURE);
 }
 
 void handler(int signum) {

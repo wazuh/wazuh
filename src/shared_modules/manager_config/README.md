@@ -43,7 +43,7 @@ credential resolver (`src/init/credentials/wazuh-manager-resolve-credentials.py`
   `size`, `port`…) are reused through `allOf: [{$ref}]`.
 - **Schema-driven typing** over the pugixml DOM: the target type of every element decides the conversion, so
   `<disabled>no</disabled>` is the boolean `false`, `<port>1514</port>` is an integer, `<protocol>tcp,udp</protocol>`
-  and `<hosts><host>…</host></hosts>` are arrays, and `true`/`false` fail with `type` ("booleans are yes/no").
+  and `<hosts><host>…</host></hosts>` are arrays, and `true`/`false` fail with `type` ("booleans are yes/no" — the hint is added only when the option expects a boolean).
   Text is otherwise kept verbatim — whitespace included — so the schema names what is wrong.
 - **Strictness pass over the raw text** before conversion: pugixml tolerates an unescaped `&` that is not a valid
   reference and `--` inside comments; both are rejected with their line, like every malformed-XML error
@@ -74,6 +74,15 @@ credential resolver (`src/init/credentials/wazuh-manager-resolve-credentials.py`
   every manager runs as a cluster node, and `wazuh-manager-analysisd` cannot start with zero indexer hosts,
   so a document that omits either section, or one whose `<cluster>` omits `<key>`, fails with `required` at
   `validate` time instead of leaving the effective document with a gap that only breaks a daemon on restart.
+- **The schema refuses what remoted's reader refuses**, so `validate` (and an API `PUT`) is the whole verdict on
+  those options instead of a `wazuh-manager-remoted -t` at the next restart: `#/definitions/ip` (`remote.legacy.local_ip`,
+  `remote.https.bind_addr`) is a pattern for exactly the addresses `OS_IsValidIP()` returns `1` for (one IPv4
+  dotted quad, optionally `::ffff:`-prefixed, or one full or compressed IPv6 address; no CIDR, netmask, `any` or host
+  name — the `!` negation it also tolerates is refused, since it means nothing for a bind address), and the
+  `remote.https` strings carry the `maxLength` of `remote-config.h` (255 for `bind_addr`, `global_prefix` and
+  `ciphers`, 511 for the four paths). The pattern uses plain groups only: rapidjson's internal regex engine has no
+  `(?:…)`, and its `^`/`$` anchor the whole pattern, so the alternation is wrapped in one group to read the same in
+  Python. `cluster.bind_addr` is not an `ip`: clusterd binds it through asyncio, which also accepts a host name.
 - **`remote.legacy.local_ip` has no default**: the installer omits it for an IPv6 listener so that remoted applies its own
   default.
 - **An empty file is invalid** (XML needs a root); the minimal valid document is
@@ -178,7 +187,7 @@ it is the reference for the Python framework and the seed of the 5.0→5.1 conve
 
 | Situation | Message |
 |---|---|
-| file missing, unreadable or larger than 1 MiB | plain message, empty JSON pointer (`configuration file not found: <path>`, `… cannot be read: …`, `… larger than 1048576 bytes: …`). The CLI checks the file itself first and reports a missing one as `(1239): Configuration file not found: '<path>'.`; the C daemons render the loader's message under `(1244)` |
+| file missing, unreadable or larger than 1 MiB | plain message, empty JSON pointer (`configuration file not found: <path>` only when the path does not exist; `configuration file cannot be read: <path>: <system error>` for any other access error, a directory included; `… larger than 1048576 bytes: …`). The CLI checks the file itself first and reports a missing one as `(1239): Configuration file not found: '<path>'.` and any other access error as `(1244): Invalid configuration at '/': configuration file cannot be read: <path>: <reason>.`; the C daemons render the loader's message under `(1244)` |
 | malformed XML, raw `&`, `--` in a comment, second root, wrong root | `invalid XML: … (line N)` / specific message with the line, empty JSON pointer |
 | schema / semantics | JSON pointer + violated keyword (`/remote/https/port: does not satisfy 'maximum' … [schema …]`). `bin/wazuh-manager-conf` renders it as `(1244): Invalid configuration at '<pointer>': <reason>.` (`'/'` for an empty pointer); the C daemons put the file path in the subject and `Error::what()` (`<pointer>: <reason>`) in the reason |
 

@@ -425,8 +425,11 @@ Every path on this page is the endpoint's **logical** path. The server exposes e
 [`remote.https.global_prefix`](configuration.md#httpsglobal_prefix) — `/wazuh-manager/` by default,
 also when the option is absent; only a prefix of `/` leaves the paths bare — so `POST /stateless` becomes `POST /wazuh-manager/stateless`, the health probe becomes
 `GET /wazuh-manager/` (with or without the trailing slash) — and the unprefixed paths answer
-`404`. The prefixed path is what travels on the wire and what the router matches: agents send the
-full prefixed target. The token does not bind it, so a prefix mismatch is a `404`, never a `401`.
+`404`. The prefixed path is what travels on the wire and what the router matches, exactly:
+case-sensitive (`/WAZUH-MANAGER/cacerts` is a `404`) and never percent-decoded (any `%`-encoded
+path, such as `/wazuh-manager/%63acerts`, is a `404`); the only tolerance is a single trailing `/`.
+Agents send the full prefixed target. The token does not bind it, so a prefix mismatch is a `404`,
+never a `401`.
 
 The module's own statistics and readiness are **not** served here: they live on a separate
 manager-local Unix socket (`GET /`, `GET /metrics`, `GET /status`, `GET /tls` on
@@ -560,9 +563,14 @@ mid-write rather than adopting a torn read.
 ## Diagnosing rejections and capacity problems
 
 Every condition where a setting may need changing is logged to `wazuh-manager.log` and names the setting.
-Because these are per-request conditions, repeated occurrences are collapsed to **one line per 90
-seconds per condition**, with the suppressed count folded into the message, so a burst or an outage
-produces a readable summary instead of thousands of identical lines:
+Because these are per-request conditions, repeated occurrences are collapsed to **at most one line
+per 90 seconds per condition**, so a burst or an outage produces a readable summary instead of
+thousands of identical lines. The first occurrence is logged at once. Later ones inside the window
+are counted, not logged, and are reported by the **next occurrence after the window** — there is no
+timer flushing them — so that line's count covers everything since the previous line, which can be
+longer than 90 s when the condition paused. The rate-limit lines say so explicitly ("refused N
+request(s) with 429 since the previous report T s ago"); for an exact total at any moment, read the
+counter on [`GET /metrics`](metrics.md):
 
 ```
 wazuh-manager-remoted:forwarder: WARNING: Deferred-work slots exhausted (capacity 128): shed 4812
@@ -660,7 +668,7 @@ No hashes are included in the startup response.
 ```json
 {
   "type": "startup",
-  "version": "5.0.0"
+  "version": "v5.0.0"
 }
 ```
 
@@ -703,7 +711,11 @@ deliberately skips the check to keep the hot path fast. A rejection also writes
 | Cause | HTTP | wazuh-db `version` column |
 | --- | --- | --- |
 | Version is malformed (empty, over 64 characters, or not `[v]MAJOR[.MINOR[.PATCH[.EXTRA]]]` with an optional `+`/`-` suffix) | `400` | `N/A` sentinel — the framework's version parser raises on anything else, which would break the whole agent listing |
-| Version is well-formed but has a higher major or minor than the manager's (a higher patch alone is accepted), and `<remote><agents><allow_higher_versions>` is `no` | `409` | stored as reported |
+| Version is well-formed but has a higher major or minor than the manager's (a higher patch alone is accepted), and `<remote><agents><allow_higher_versions>` is `no` | `409` | stored with a `v` prefix (`5.1.0` as `v5.1.0`) |
+
+Whatever spelling the agent sends — `5.0.0`, `v5.0.0` or `V5.0.0`, all accepted — the manager writes
+the version to wazuh-db as `v5.0.0`, on `startup` and on `notify` alike, so one version never
+appears under two spellings in the agent listing.
 
 The split matters to the agent: `400` is terminal, while `409` puts it in its `REJECTED` state,
 re-trying `startup` on a slow cadence — because a policy rejection can start succeeding with no
@@ -774,7 +786,7 @@ update), which had no equivalent once agent-manager connections became stateless
 {
   "type": "notify",
   "agent": {
-    "version": "5.0.0"
+    "version": "v5.0.0"
   },
   "host": {
     "hostname": "ubuntu-test",
@@ -897,7 +909,11 @@ every 300 seconds.
 
 ### Error handling
 
-Errors follow the same pattern as `/stateless` (see [Error responses](#error-responses) above).
+Authentication (`401`) and transport rejections (`413`, `429`, `503` when shed) follow the same
+pattern as `/stateless` (see [Error responses](#error-responses) above). The endpoint's own
+rejections below do **not**: their body is `{"error":"<code>"}` alone, with no numeric `code` member,
+and the `503` adds the dependency that is not answering —
+`{"error":"dependency_unavailable","dependency":"wazuh-db"}`.
 Control-specific conditions:
 
 | Condition                                  | HTTP  | `error` message        |
@@ -908,7 +924,7 @@ Control-specific conditions:
 | Unknown message type                       | `400` | `unknown_message_type` |
 | Malformed agent version (startup only)     | `400` | `invalid_version`      |
 | Agent version higher than allowed (startup only) | `409` | `invalid_version` |
-| Invalid host info format (notify only)     | `400` | `invalid_host_info`    |
+| `host` block invalid (notify only): `host` or `host.os` not an object, a `host`/`host.os` field not a string, or a string over its bound (hostname 255, ip 45, the others 128 bytes); an absent or `null` field is accepted | `400` | `invalid_host_info` |
 | wazuh-db unavailable (get groups)          | `503` | `dependency_unavailable` |
 
 The two version rejections deliberately carry different statuses even though they share an `error`
@@ -975,6 +991,10 @@ the agent already has (offsets only ever move forward) and retries. It never ove
 local value with an older `current_version`.
 
 ### Error handling
+
+Like `/control`'s own rejections, every row below answers `{"error":"<code>"}` with no numeric
+`code` member (the `409` adds `current_version`); only the authentication and transport rejections
+take the `/stateless` shape described in [Error responses](#error-responses).
 
 | Condition                                        | HTTP  | `error` message                                               |
 | ------------------------------------------------ | ----- | ------------------------------------------------------------- |
@@ -1159,7 +1179,7 @@ replay store either: a captured token could be replayed inside its window, bound
 ```json
 {
   "name": "web-server-01",
-  "version": "5.0.0",
+  "version": "v5.0.0",
   "groups": "default,web-servers",
   "ip": "10.0.0.15"
 }

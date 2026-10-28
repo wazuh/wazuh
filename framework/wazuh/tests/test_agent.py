@@ -761,11 +761,13 @@ def test_agent_get_group_files(group_list):
     group_list : List of str
         List of groups to get their files.
     """
-    result = get_group_files(group_list=group_list)
-    # Assert 'items' contains agent.conf and merged.mg and 'hash' is not empty
-    if result.total_failed_items != 0:
-        assert list(result.failed_items.keys())[0].code == 1710
+    if group_list == ['invalid-group']:
+        # A missing group is a missing resource (404), not a 200 with a failed item.
+        with pytest.raises(WazuhResourceNotFound, match='.* 1710 .*'):
+            get_group_files(group_list=group_list)
     else:
+        result = get_group_files(group_list=group_list)
+        # Assert 'items' contains agent.conf and merged.mg and 'hash' is not empty
         assert result.total_affected_items == 2
         assert set(item['filename'] for item in result.affected_items).difference(
             set(['agent.conf', 'merged.mg'])) == set()
@@ -775,7 +777,7 @@ def test_agent_get_group_files(group_list):
 
 @pytest.mark.parametrize('shared_path, group_list, group_exists, side_effect, expected_exception', [
     (test_shared_path, ['none'], False, None, WazuhResourceNotFound(1710)),
-    ('invalid-path', ['default'], True, None, WazuhError(1006)),
+    ('invalid-path', ['default'], True, None, WazuhResourceNotFound(1006)),
     (test_shared_path, ['default'], True, WazuhError(1405), WazuhError(1405)),
     (test_shared_path, ['default'], True, WazuhException(1400), WazuhInternalError(1727))
 ])
@@ -800,11 +802,11 @@ def test_agent_get_group_files_exceptions(mock_group_exists, mock_process_array,
     with patch('wazuh.core.common.SHARED_PATH', new=shared_path):
         mock_group_exists.return_value = group_exists
         mock_process_array.side_effect = side_effect
-        try:
-            result = get_group_files(group_list=group_list)
-            assert list(result.failed_items.keys())[0] == expected_exception
-        except (WazuhError, WazuhInternalError) as e:
-            assert e.code == expected_exception.code, 'The exception raised is not the one expected.'
+        with pytest.raises(type(expected_exception)) as exc_info:
+            get_group_files(group_list=group_list)
+        assert exc_info.value.code == expected_exception.code, 'The exception raised is not the one expected.'
+        # A missing group or directory is a 404 naming the group, never the absolute path.
+        assert 'invalid-path' not in str(exc_info.value)
 
 
 @pytest.mark.parametrize('group_id', [
@@ -1377,6 +1379,56 @@ def test_agent_get_outdated_agents(socket_mock, send_mock):
         assert item['id'] in outdated_agents
     # Check failed items
     assert result.total_failed_items == 0
+
+
+@pytest.mark.parametrize('version_10, expected', [
+    # Stored without the leading 'v': the same version as the manager, so not outdated.
+    ('5.0.0', ['001', '002', '005']),
+    # Newer than the manager: not outdated either.
+    ('v5.1.0', ['001', '002', '005']),
+    ('4.14.0', ['001', '002', '005', '010']),
+    ('v5.0.0-rc1', ['001', '002', '005', '010']),
+])
+@patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
+@patch('socket.socket.connect')
+def test_agent_get_outdated_agents_compares_versions(socket_mock, send_mock, version_10, expected):
+    """An agent is outdated only when its version is older than the manager's, whatever its stored form."""
+    test_data.cur.execute("UPDATE agent SET version = ? WHERE id = 10", (version_10,))
+    try:
+        result = get_outdated_agents(agent_list=short_agent_list)
+        assert sorted(item['id'] for item in result.affected_items) == expected
+        assert result.total_affected_items == len(expected)
+
+        # q still narrows the outdated set.
+        result = get_outdated_agents(agent_list=short_agent_list, q='id=002')
+        assert [item['id'] for item in result.affected_items] == ['002']
+    finally:
+        test_data.cur.execute("UPDATE agent SET version = 'v5.0.0' WHERE id = 10")
+
+
+@patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
+@patch('socket.socket.connect')
+def test_agent_get_outdated_agents_none(socket_mock, send_mock):
+    """Nothing is returned when no permitted agent is older than the manager."""
+    result = get_outdated_agents(agent_list=['003', '004', '010'])
+    assert result.affected_items == []
+    assert result.total_affected_items == 0
+
+
+@patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
+@patch('socket.socket.connect')
+def test_agent_get_distinct_agents_merges_version_forms(socket_mock, send_mock):
+    """'5.0.0' and 'v5.0.0' are one version, so they are one group with the counts added up."""
+    test_data.cur.execute("UPDATE agent SET version = '5.0.0' WHERE id = 2")
+    try:
+        result = get_distinct_agents(agent_list=full_agent_list, fields=['version'])
+        versions = [item['version'] for item in result.affected_items]
+        assert versions.count('v5.0.0') == 1
+        assert next(item['count'] for item in result.affected_items if item['version'] == 'v5.0.0') == 2
+        # The total counts agents, not groups.
+        assert result.total_affected_items == len(full_agent_list)
+    finally:
+        test_data.cur.execute("UPDATE agent SET version = 'Wazuh v4.2.0' WHERE id = 2")
 
 
 @patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)

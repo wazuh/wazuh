@@ -41,6 +41,9 @@ group. The paths are `CONTROL_SOCK` in `src/shared/include/defs.h`; the framewor
 | `<command> <args>` | `err Unexpected arguments` | Any argument after the command is rejected |
 | anything else | `Err` | Unknown command (logged as `Unknown command: '<command>'`) |
 
+Every manager reply ends in a NUL byte (`ok accepted\0`, `Err\0`): strip it, not only whitespace, before
+comparing (`.rstrip('\x00')` in Python).
+
 The manager also checks the peer's credentials (`SO_PEERCRED`): a connection from any user other than
 `root` or `wazuh-manager` is closed without an answer and logged as
 `Rejected unauthorized control socket peer.`
@@ -104,7 +107,9 @@ modulesd and becomes `root` before running:
 | `reload` | polls `systemctl is-active wazuh-manager.service` once a second, up to 60 times: `active` → `systemctl reload wazuh-manager.service`; `inactive` or `failed` → `bin/wazuh-manager-control reload`; any other state, or a failed query → wait | `bin/wazuh-manager-control reload` |
 
 The unit's `ExecReload` is `wazuh-manager-control reload`, which restarts every daemon except
-`wazuh-manager-remoted`, so agent connections stay up.
+`wazuh-manager-remoted`, so agent connections stay up. On a systemd host this helper and the unit keep the
+daemons inside the unit; `wazuh-manager-control` run by hand acts on the daemons itself and does not (see
+[`wazuh-manager-control`](../../architecture.md#wazuh-manager-control)).
 
 On any refusal it prints `wazuh-manager-service-control: <reason>` on standard error and exits `1`;
 `-h` prints the usage and exits `0`. When modulesd runs it, standard error is not the manager log, so
@@ -118,6 +123,18 @@ Run by hand (as `root`), it does exactly what an API restart does:
 ```bash
 /var/wazuh-manager/bin/wazuh-manager-service-control restart
 ```
+
+### A daemon that dies is not restarted
+
+Restart and reload are the only recovery the manager has: nothing supervises the daemons. The unit
+(`Type=forking`, `RemainAfterExit=yes`, no `Restart=`) stays `active` when one of them crashes;
+`wazuh-manager-control status` reports it as `not running...` and exits `1`. Recover with
+`systemctl restart wazuh-manager`, or remotely with `PUT /cluster/restart`: while one of the core daemons
+(`wazuh-manager-modulesd`, `-remoted`, `-analysisd`, `-db`) is down, the Server API still answers login, the
+status queries and the restart and reload endpoints, and every other call with error `1017`. Since
+`wm_control` lives in `wazuh-manager-modulesd`, the API's restart needs modulesd itself to be running
+(error `1901` otherwise); with modulesd down, restart from a shell (`systemctl restart wazuh-manager`, or
+`wazuh-manager-control start` to relaunch only the dead daemon, outside the unit).
 
 ## Agent restart and reload
 
@@ -161,7 +178,7 @@ def send_control_command(command):
     sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
     sock.connect('/var/wazuh-manager/queue/sockets/control.sock')
     sock.send(command.encode())
-    response = sock.recv(1024).decode().strip()
+    response = sock.recv(1024).decode().rstrip('\x00')
     sock.close()
     return response
 

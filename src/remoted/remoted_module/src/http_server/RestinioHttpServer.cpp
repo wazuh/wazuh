@@ -475,6 +475,18 @@ namespace
         }
     }
 
+    // The single 404 every unrouted target gets: no route matched, or the target is a variant
+    // spelling (percent-encoded) of one that would have.
+    template<typename Request>
+    restinio::request_handling_status_t notFound(const Request& request)
+    {
+        return request->create_response(restinio::status_not_found())
+            .append_header(restinio::http_field::content_type, "application/json")
+            .set_body(R"({"error":"not_found"})")
+            .connection_close()
+            .done();
+    }
+
     // TODO: Do we need to perform this transformation here? Or will the data already be in client.keys?
     std::string normalizeRemoteAddress(asio::ip::address address)
     {
@@ -1335,9 +1347,17 @@ namespace remoted::http
                                               : route.path == "/" ? prefix
                                                                   : prefix + route.path;
 
+                // Exact matching, as documented (case and percent-encoding variants used to
+                // route): path2regex compares case-sensitively here, and the handler below refuses
+                // any target whose path is percent-encoded, which RESTinio's express router would
+                // otherwise decode ("%63" == 'c') before matching. Route paths and the global
+                // prefix never contain '%' (normalizeGlobalPrefix() rejects it), so no encoded
+                // spelling can be the exact target of a route. The only tolerance kept is
+                // path2regex's single trailing '/', which the health probe relies on (S9).
                 requestRouter->add_handler(
                     toRestinioMethod(method),
                     routePath,
+                    restinio::path2regex::options_t {}.sensitive(true),
                     [pool,
                      budget,
                      budgetThrottle,
@@ -1357,6 +1377,11 @@ namespace remoted::http
                         std::shared_ptr<remoted::http::IHttpResponder> responder;
                         try
                         {
+                            if (request->header().path().find('%') != restinio::string_view_t::npos)
+                            {
+                                return notFound(request);
+                            }
+
                             // ClientVerificationMode::Full: the connection's client certificate did
                             // not list the address it came from, so nothing on it may be served.
                             // Checked here rather than per route so it also covers the
@@ -1491,15 +1516,7 @@ namespace remoted::http
                     });
             }
 
-            requestRouter->non_matched_request_handler(
-                [](auto request)
-                {
-                    return request->create_response(restinio::status_not_found())
-                        .append_header(restinio::http_field::content_type, "application/json")
-                        .set_body(R"({"error":"not_found"})")
-                        .connection_close()
-                        .done();
-                });
+            requestRouter->non_matched_request_handler([](auto request) { return notFound(request); });
 
             return requestRouter;
         }

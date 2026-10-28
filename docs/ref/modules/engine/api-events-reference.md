@@ -11,8 +11,9 @@ local ingestion socket, `/var/wazuh-manager/queue/sockets/engine-ingest-http.soc
 
 A request is answered 200 once its batch is split and queued: the header line and the batch framing are
 checked synchronously (400 on failure), but each event line is parsed later by a router worker, so a malformed
-event is dropped with the log line `Failed processing queued event in router worker: <reason>` while the
-request still succeeds.
+event is dropped while the request still succeeds. Each dropped line is counted in the `router.events.malformed`
+metric; each router worker logs the first one as the WARNING `Dropped a malformed event: <reason>`, then at most one
+line per minute that also reports how many it dropped since its previous report.
 
 Each event receives a reception timestamp when it is queued, taken from a process-wide clock (nanoseconds since the
 epoch, strictly increasing within one engine process): the events of a batch keep their order and two events never share a stamp in that process. The router

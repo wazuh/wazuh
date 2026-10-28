@@ -146,6 +146,21 @@ def test_authd_errors(mock_socket, authd_code, authd_message, expected_class, ex
             'Enrollment token refused: ', '', 1) or expected_code != 1768
 
 
+@patch('wazuh.core.enrollment_token.WazuhSocketJSON')
+def test_description_refusal_remediation(mock_socket):
+    """A refused description is a request-field refusal: its remediation does not send the operator to the
+    listener certificate alone."""
+    mock_socket.return_value.receive.side_effect = WazuhException(
+        9025, 'Enrollment token refused: description contains a control character', cmd_error=True)
+
+    with pytest.raises(WazuhError) as exc:
+        enrollment_token.create_token('wazuh-master', description='a\nb')
+
+    assert exc.value.code == 1768
+    assert exc.value.message.endswith('description contains a control character')
+    assert 'description' in exc.value.remediation
+
+
 @pytest.mark.parametrize('authd_code', [9022, 9025, 9004, 9015, 9029, 9001, 1014])
 @patch('wazuh.core.enrollment_token.WazuhSocketJSON')
 def test_authd_socket_is_closed_on_every_error(mock_socket, authd_code):

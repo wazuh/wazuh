@@ -98,8 +98,12 @@ between agent and manager does not invalidate it.
 Three differences worth knowing before reading logs:
 
 - Every credential failure — unknown agent, key mismatch, address not allowed, bad signature, stale
-  or malformed token — collapses to a single generic **`401`** (with `WWW-Authenticate: Bearer`). The specific cause is deliberately not
-  exposed to the client; it is in the manager log and in the `remoted.auth.reject.*` metrics.
+  or malformed token — answers **`401`** with the same generic message. What the agent gets is a
+  coarse **failure class** — `unknown_agent`, `stale_token`, `invalid_signature` or
+  `invalid_request` — in the body's `code` and in the `WWW-Authenticate: Bearer` challenge, which
+  tells it what to do (re-enroll, fix its clock, keep its credential, send one). The precise cause is
+  deliberately not exposed; it is in the manager log and in the `remoted.auth.reject.*` metrics. See
+  [Error responses](../../ref/modules/remoted/https-events-api.md#error-responses).
 - Capacity is shed with **`503`**. The manager processes what it has capacity for instead of buffering into a fixed queue, which is why `<queue_size>` no longer applies to this channel.
 - Rate limiting is a separate mechanism that answers **`429 Too Many Requests`** with a `Retry-After`. It applies only to `POST /enroll` and `GET /cacerts`; see [HTTPS Agent API](../../ref/modules/remoted/https-events-api.md) and [the `remote.https` rate options](../../ref/modules/remoted/configuration.md#rate-limits-of-the-unauthenticated-routes).
 

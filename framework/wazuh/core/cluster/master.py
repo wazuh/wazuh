@@ -241,6 +241,27 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
                            'last_keep_alive': self.last_keepalive}
                 }
 
+    # Queries a worker relays on behalf of one of its local clients (the API, cluster_control).
+    RELAYED_CLIENT_QUERIES = frozenset({b'get_nodes', b'get_health'})
+
+    def log_request_error(self, command: bytes, error: exception.WazuhException) -> None:
+        """Log an error raised while processing a worker's request.
+
+        A `WazuhError` in a query relayed for a local client (an unknown node name) is the caller's own mistake and
+        is reported by it, so it is only logged at debug level.
+
+        Parameters
+        ----------
+        command : bytes
+            Command being processed.
+        error : WazuhException
+            Error raised.
+        """
+        if command in self.RELAYED_CLIENT_QUERIES and isinstance(error, exception.WazuhError):
+            self.logger.debug(f"Request '{command}' refused: {error}")
+        else:
+            super().log_request_error(command, error)
+
     def process_request(self, command: bytes, data: bytes) -> Tuple[bytes, bytes]:
         """Define all available commands that can be received from a worker node.
 

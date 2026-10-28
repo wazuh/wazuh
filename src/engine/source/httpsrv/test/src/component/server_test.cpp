@@ -466,6 +466,60 @@ TEST_P(BodyRouteTest, PayloadUnlimitedAcceptsLargePayload)
     ASSERT_EQ(receivedSize.load(), kBigPayload);
 }
 
+// httplib's own 8 KiB cap on form-urlencoded bodies must not apply: only the configured payload limit does.
+TEST_P(BodyRouteTest, PayloadUnlimitedAcceptsLargeFormUrlEncodedBody)
+{
+    auto [method, route, /*cliReq*/ _] = GetParam();
+
+    if (method != httpsrv::Method::POST && method != httpsrv::Method::PUT)
+    {
+        GTEST_SKIP() << "No request body for this method in current parametrization.";
+    }
+
+    constexpr size_t kUnlimited = 0;
+    constexpr size_t kBigPayload = 64 * 1024; // well over httplib's default 8 KiB form limit
+    constexpr const char* kFormType = "application/x-www-form-urlencoded";
+
+    m_srv->stop();
+    m_srv.reset();
+    m_srv = std::make_shared<httpsrv::Server>("test", kUnlimited);
+
+    std::atomic<int> handlerCalls {0};
+    std::atomic<size_t> receivedSize {0};
+
+    auto handler = [&](const httplib::Request& req, httplib::Response& res)
+    {
+        handlerCalls++;
+        receivedSize = req.body.size();
+        res.status = 200;
+        res.set_content("OK", "text/plain");
+    };
+
+    m_srv->template addRoute<httplib::Request, httplib::Response>(method, route, handler);
+    m_srv->start(getSocketPath("test.sock"));
+
+    httplib::Client cli(getSocketPath("test.sock").string(), true);
+    cli.set_address_family(AF_UNIX);
+
+    httplib::Headers headers {};
+    const auto body = makePayload(kBigPayload);
+
+    httplib::Result res;
+    if (method == httpsrv::Method::POST)
+    {
+        res = cli.Post(route.c_str(), headers, body, kFormType);
+    }
+    else // PUT
+    {
+        res = cli.Put(route.c_str(), headers, body, kFormType);
+    }
+
+    ASSERT_TRUE(res);
+    ASSERT_EQ(res->status, 200);
+    ASSERT_EQ(handlerCalls.load(), 1);
+    ASSERT_EQ(receivedSize.load(), kBigPayload);
+}
+
 TEST_P(BodyRouteTest, HandlerCustom413BodyIsPreserved)
 {
     auto [method, route, /*cliReq*/ _] = GetParam();

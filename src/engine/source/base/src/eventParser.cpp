@@ -26,9 +26,14 @@ Event parseLegacyEvent(std::string_view rawEvent, const json::Json& agentMetadat
     auto parseEvent = std::make_shared<json::Json>();
 
     // "<byte>:a:b" is at least 5 bytes.
-    if (rawEvent.size() < 5 || rawEvent[1] != ':')
+    if (rawEvent.size() < 5)
     {
         throw std::runtime_error("Invalid format: event must be at least 5 bytes (\"<byte>:<location>:<message>\")");
+    }
+    if (rawEvent[1] != ':')
+    {
+        throw std::runtime_error(
+            "Invalid format: missing ':' after the one-byte queue identifier (\"<byte>:<location>:<message>\")");
     }
 
     // Extract the queue identifier

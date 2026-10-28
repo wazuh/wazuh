@@ -341,7 +341,8 @@ static void test_w_auth_validate_groups(void **state) {
 
     /* Non existent group*/
     will_return(__wrap_opendir, 0);
-    expect_string(__wrap__merror, formatted_msg, "Invalid group: "UNKNOWN_GROUP);
+    w_auth_client_rejection_log_reset();
+    expect_string(__wrap__mwarn, formatted_msg, "Invalid group: "UNKNOWN_GROUP);
     response[0] = '\0';
     err = w_auth_validate_groups(UNKNOWN_GROUP, response);
     assert_int_equal(err, OS_INVALID);
@@ -363,7 +364,8 @@ static void test_w_auth_validate_groups(void **state) {
     will_return(__wrap_opendir, 1);
     will_return(__wrap_closedir, 0);
     will_return(__wrap_opendir, 0);
-    expect_string(__wrap__merror, formatted_msg, "Invalid group: "UNKNOWN_GROUP);
+    w_auth_client_rejection_log_reset();
+    expect_string(__wrap__mwarn, formatted_msg, "Invalid group: "UNKNOWN_GROUP);
     response[0] = '\0';
     err = w_auth_validate_groups(EXISTENT_GROUP1","EXISTENT_GROUP2","UNKNOWN_GROUP, response);
     assert_int_equal(err, OS_INVALID);
@@ -377,7 +379,8 @@ static void test_w_auth_validate_groups_parent_directory(void **state) {
     char response[2048] = {0};
 
     /* Group name ".." should be rejected (explicit check after regex) */
-    expect_string(__wrap__merror, formatted_msg, "Invalid group name '..': directory reference not allowed");
+    w_auth_client_rejection_log_reset();
+    expect_string(__wrap__mwarn, formatted_msg, "Invalid group name '..': directory reference not allowed");
     response[0] = '\0';
     err = w_auth_validate_groups("..", response);
     assert_int_equal(err, OS_INVALID);
@@ -389,7 +392,8 @@ static void test_w_auth_validate_groups_current_directory(void **state) {
     char response[2048] = {0};
 
     /* Group name "." should be rejected (explicit check after regex) */
-    expect_string(__wrap__merror, formatted_msg, "Invalid group name '.': directory reference not allowed");
+    w_auth_client_rejection_log_reset();
+    expect_string(__wrap__mwarn, formatted_msg, "Invalid group name '.': directory reference not allowed");
     response[0] = '\0';
     err = w_auth_validate_groups(".", response);
     assert_int_equal(err, OS_INVALID);
@@ -401,7 +405,8 @@ static void test_w_auth_validate_groups_multigroup_with_parent_dir(void **state)
     char response[2048] = {0};
 
     /* Multigroup "..,default" should be rejected (explicit check after regex) */
-    expect_string(__wrap__merror, formatted_msg, "Invalid group name '..': directory reference not allowed");
+    w_auth_client_rejection_log_reset();
+    expect_string(__wrap__mwarn, formatted_msg, "Invalid group name '..': directory reference not allowed");
     response[0] = '\0';
     err = w_auth_validate_groups("..,default", response);
     assert_int_equal(err, OS_INVALID);
@@ -413,7 +418,8 @@ static void test_w_auth_validate_groups_invalid_characters(void **state) {
     char response[2048] = {0};
 
     /* Group name with slash should be rejected */
-    expect_string(__wrap__merror, formatted_msg, "Invalid group name 'group/subgroup': contains forbidden characters");
+    w_auth_client_rejection_log_reset();
+    expect_string(__wrap__mwarn, formatted_msg, "Invalid group name 'group/subgroup': contains forbidden characters");
     response[0] = '\0';
     err = w_auth_validate_groups("group/subgroup", response);
     assert_int_equal(err, OS_INVALID);
@@ -425,7 +431,8 @@ static void test_w_auth_validate_groups_special_characters(void **state) {
     char response[2048] = {0};
 
     /* Group name with special characters should be rejected */
-    expect_string(__wrap__merror, formatted_msg, "Invalid group name 'group@test': contains forbidden characters");
+    w_auth_client_rejection_log_reset();
+    expect_string(__wrap__mwarn, formatted_msg, "Invalid group name 'group@test': contains forbidden characters");
     response[0] = '\0';
     err = w_auth_validate_groups("group@test", response);
     assert_int_equal(err, OS_INVALID);

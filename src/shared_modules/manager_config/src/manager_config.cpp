@@ -61,7 +61,13 @@ namespace manager_config
             const auto size = std::filesystem::file_size(file, ec);
             if (ec)
             {
-                return Error {"", "configuration file not found: " + file.string()};
+                // Only a path that is not there is "not found"; anything else (permission denied, a directory...)
+                // is reported as the system names it, so the operator is not sent looking for a missing file.
+                if (ec == std::errc::no_such_file_or_directory || ec == std::errc::not_a_directory)
+                {
+                    return Error {"", "configuration file not found: " + file.string()};
+                }
+                return Error {"", "configuration file cannot be read: " + file.string() + ": " + ec.message()};
             }
             if (size > detail::MAX_XML_BYTES)
             {

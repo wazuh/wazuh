@@ -95,9 +95,20 @@ async def get_health_nodes(lc: local_client.LocalClient,
                                       none_msg='No healthcheck information was returned'
                                       )
 
+    non_existent_nodes = set()
+    if filter_node is not None:
+        # A node that is not part of the cluster is reported as such, as GET /cluster/nodes does.
+        filter_node = [filter_node] if isinstance(filter_node, str) else filter_node
+        nodes = set(filter_node).intersection(set(common.cluster_nodes.get()))
+        non_existent_nodes = set(filter_node) - nodes
+        filter_node = list(nodes)
+
     data = await get_health(lc, filter_node=filter_node)
     for v in data['nodes'].values():
         result.affected_items.append(v)
+
+    for node in non_existent_nodes:
+        result.add_failed_item(id_=node, error=WazuhResourceNotFound(1730))
 
     result.affected_items = sorted(result.affected_items, key=lambda i: i['info']['name'])
     result.total_affected_items = len(result.affected_items)
