@@ -201,20 +201,86 @@ static void retry_from(logreader *lf, int64_t position) {
     }
 }
 
+/* What a read keeps while it goes through the file */
+typedef struct {
+    logreader *lf;
+    EVP_MD_CTX *context;       /* Hash of the file up to position */
+    bool has_hash;             /* False if the file has no hash state: only the position is kept */
+    int64_t position;          /* End of the last line used */
+    alert_start_t alert_start;
+} read_state_t;
+
+static void begin_read(read_state_t *state, logreader *lf) {
+    /* Obtain context to calculate hash */
+    state->lf = lf;
+    state->context = EVP_MD_CTX_new();
+    state->position = w_ftell(lf->fp);
+    state->has_hash = w_get_hash_context(lf, &state->context, state->position);
+    state->alert_start.position = state->position;
+    state->alert_start.context = NULL;
+}
+
+/* Move the position past the line just read, adding the line to the hash if the file has one */
+static void consume_line(read_state_t *state, const char *str) {
+    if (state->has_hash) {
+        w_hash_read_line(state->lf, state->context, str, &state->position);
+    } else {
+        state->position = w_ftell(state->lf->fp);
+    }
+}
+
+/* Remember where the alert that starts with the line about to be hashed begins. Returns false if it could not */
+static bool save_alert_start(read_state_t *state) {
+    if (!mark_alert_start(&state->alert_start, state->position, state->has_hash ? state->context : NULL)) {
+        merror("Could not save the hash state of '%s' at the start of an alert. Trying again later.",
+               state->lf->file);
+        return false;
+    }
+    return true;
+}
+
+/* Keep the offset and the hash for the next read and for a restart. The status table takes the context */
+static void store_state(read_state_t *state) {
+    if (state->has_hash) {
+        w_update_file_status(state->lf->file, state->position, state->context);
+    } else {
+        EVP_MD_CTX_free(state->context);
+    }
+    EVP_MD_CTX_free(state->alert_start.context);
+}
+
+/* The bad line was hashed: store the state so the next read and a restart resume after it */
+static void stop_on_bad_line(read_state_t *state) {
+    merror("Bad formated snort full file.");
+    store_state(state);
+}
+
+/* The next read starts at the alert still open or at the line left unread, if there is one, or after the
+ * last line used */
+static void finish_read(read_state_t *state, bool alert_is_open, bool line_left_unread) {
+    if (alert_is_open) {
+        restore_alert_start(&state->alert_start, &state->context, &state->position);
+    }
+
+    /* Without an open alert, position is the start of the line left unread, which was not hashed */
+    if (alert_is_open || line_left_unread) {
+        retry_from(state->lf, state->position);
+    } else {
+        state->position = w_ftell(state->lf->fp);
+    }
+    store_state(state);
+}
+
 /* Read snort_full files */
 void *read_snortfull(logreader *lf, int *rc, int drop_it) {
     alert_t alert = { ALERT_NONE, {0} };
+    read_state_t state;
     char str[OS_MAX_LOG_SIZE] = {0};
     int lines = 0;
     bool line_left_unread = false;
 
     *rc = 0;
-
-    /* Obtain context to calculate hash */
-    EVP_MD_CTX *context = EVP_MD_CTX_new();
-    int64_t current_position = w_ftell(lf->fp);
-    bool is_valid_context_file = w_get_hash_context(lf, &context, current_position);
-    alert_start_t alert_start = { current_position, NULL };
+    begin_read(&state, lf);
 
     while (can_read() && !line_limit_reached(lines, &alert) && fgets(str, sizeof(str), lf->fp)) {
 
@@ -227,33 +293,20 @@ void *read_snortfull(logreader *lf, int *rc, int drop_it) {
         }
 
         if (alert.stage == ALERT_NONE && is_alert_header(str)) {
-            if (!mark_alert_start(&alert_start, current_position, is_valid_context_file ? context : NULL)) {
-                merror("Could not save the hash state of '%s' at the start of an alert. Trying again later.",
-                       lf->file);
+            if (!save_alert_start(&state)) {
                 *rc = -1;
                 line_left_unread = true;
                 break;
             }
         }
 
-        if (is_valid_context_file) {
-            w_hash_read_line(lf, context, str, &current_position);
-        } else {
-            current_position = w_ftell(lf->fp);
-        }
+        consume_line(&state, str);
 
         line_result_t result = strip_line_end(str) ? add_line(&alert, str) : LINE_REJECTED;
 
         if (result == LINE_REJECTED) {
-            merror("Bad formated snort full file.");
             *rc = -1;
-            EVP_MD_CTX_free(alert_start.context);
-            /* The bad line was hashed: store the state so the next read and a restart resume after it */
-            if (is_valid_context_file) {
-                w_update_file_status(lf->file, current_position, context);
-            } else {
-                EVP_MD_CTX_free(context);
-            }
+            stop_on_bad_line(&state);
             return (NULL);
         }
 
@@ -262,24 +315,7 @@ void *read_snortfull(logreader *lf, int *rc, int drop_it) {
         }
     }
 
-    /* The read stopped before the date line of the alert being assembled */
-    if (alert.stage != ALERT_NONE) {
-        restore_alert_start(&alert_start, &context, &current_position);
-    }
-
-    /* Without an open alert, current_position is the start of the line left unread, which was not hashed */
-    if (alert.stage != ALERT_NONE || line_left_unread) {
-        retry_from(lf, current_position);
-    } else {
-        current_position = w_ftell(lf->fp);
-    }
-    EVP_MD_CTX_free(alert_start.context);
-
-    if (is_valid_context_file) {
-        w_update_file_status(lf->file, current_position, context);
-    } else {
-        EVP_MD_CTX_free(context);
-    }
+    finish_read(&state, alert.stage != ALERT_NONE, line_left_unread);
 
     mdebug2("Read %d lines from %s", lines, lf->file);
     return (NULL);
