@@ -27,6 +27,9 @@
 /* Globals */
 extern int maximum_lines;
 
+/* Bytes the stored hash must cover. NULL skips the check */
+static const char *stored_bytes = NULL;
+
 /* Setup & Teardown */
 
 static int group_setup(void **state) {
@@ -39,18 +42,58 @@ static int group_teardown(void **state) {
     return 0;
 }
 
+static int test_teardown(void **state) {
+    maximum_lines = 0;
+    stored_bytes = NULL;
+    return 0;
+}
+
+/* Hash checks */
+
+static void sha1_hex(EVP_MD_CTX *context, char *hex) {
+    unsigned char digest[SHA_DIGEST_LENGTH];
+    EVP_MD_CTX *copy = EVP_MD_CTX_new();
+
+    EVP_MD_CTX_copy(copy, context);
+    EVP_DigestFinal_ex(copy, digest, NULL);
+    EVP_MD_CTX_free(copy);
+
+    for (int i = 0; i < SHA_DIGEST_LENGTH; i++) {
+        snprintf(hex + 2 * i, 3, "%02x", digest[i]);
+    }
+}
+
+static void assert_stored_hash(EVP_MD_CTX *context) {
+    char stored[2 * SHA_DIGEST_LENGTH + 1];
+    char expected[2 * SHA_DIGEST_LENGTH + 1];
+    EVP_MD_CTX *bytes = EVP_MD_CTX_new();
+
+    EVP_DigestInit(bytes, EVP_sha1());
+    EVP_DigestUpdate(bytes, stored_bytes, strlen(stored_bytes));
+    sha1_hex(bytes, expected);
+    EVP_MD_CTX_free(bytes);
+
+    sha1_hex(context, stored);
+    assert_string_equal(stored, expected);
+}
+
 /* Wraps */
 
 int __wrap_can_read() {
     return mock_type(int);
 }
 
+/* The context hashes for real, so the tests can check the hash stored with the offset */
 bool __wrap_w_get_hash_context(logreader *lf, EVP_MD_CTX **context, int64_t position) {
+    EVP_DigestInit(*context, EVP_sha1());
     return mock_type(bool);
 }
 
 int __wrap_w_update_file_status(const char *path, int64_t pos, EVP_MD_CTX *context) {
     check_expected(pos);
+    if (stored_bytes != NULL) {
+        assert_stored_hash(context);
+    }
     bool free_context = mock_type(bool);
     if (free_context) {
         EVP_MD_CTX_free(context);
@@ -61,6 +104,7 @@ int __wrap_w_update_file_status(const char *path, int64_t pos, EVP_MD_CTX *conte
 void __wrap_OS_SHA1_Stream_Bytes(EVP_MD_CTX *c, const char * buf, size_t len) {
     function_called();
     check_expected(len);
+    EVP_DigestUpdate(c, buf, len);
 }
 
 int __wrap_w_msg_hash_queues_push(const char *str, char *file, unsigned long size, logtarget *log_target, char queue_mq) {
@@ -169,6 +213,38 @@ static void expect_epilogue(void) {
     will_return(__wrap_w_update_file_status, 0);
 
     expect_any(__wrap__mdebug2, formatted_msg);
+}
+
+/* Expect a line to be read from a file whose hash state could not be obtained */
+static void expect_line_unhashed(char *line) {
+    will_return(__wrap_can_read, 1);
+    expect_any(__wrap_fgets, __stream);
+    will_return(__wrap_fgets, line);
+    mock_position += (int64_t) strlen(line);
+    expect_any(__wrap_w_ftell, x);
+    will_return(__wrap_w_ftell, mock_position);
+}
+
+static void expect_end_of_file(void) {
+    will_return(__wrap_can_read, 1);
+    expect_any(__wrap_fgets, __stream);
+    will_return(__wrap_fgets, NULL);
+}
+
+/* Expect the reader to go back to pos, so the next read starts there */
+static void expect_rewind(int64_t pos) {
+    expect_string(__wrap__mdebug2, formatted_msg, "Message not complete from 'test.log'. Trying again.");
+    expect_any(__wrap_w_fseek, x);
+    expect_value(__wrap_w_fseek, pos, pos);
+    will_return(__wrap_w_fseek, 0);
+}
+
+/* Expect the offset pos to be stored, with the hash of the bytes before it */
+static void expect_stored_state(int64_t pos, const char *bytes) {
+    stored_bytes = bytes;
+    expect_value(__wrap_w_update_file_status, pos, pos);
+    will_return(__wrap_w_update_file_status, true);
+    will_return(__wrap_w_update_file_status, 0);
 }
 
 /* Tests */
@@ -556,6 +632,147 @@ void test_read_snortfull_bad_line_keeps_state(void **state) {
     assert_int_equal(rc, -1);
 }
 
+/**
+ * Test: the file ends right after an alert's header, the writer has not flushed the rest yet.
+ * Nothing is queued and the reader goes back to the header, offset and hash included, so the next read
+ * assembles the alert from its first line.
+ */
+void test_read_snortfull_eof_after_header(void **state) {
+    logreader lf = {0};
+    lf.file = "test.log";
+    lf.fp = (FILE *) 1;
+    int rc;
+
+    char line1[] = "[**] [1:1000001:0] Test alert [**]\n";
+
+    expect_prologue();
+
+    expect_line(line1);
+    expect_end_of_file();
+
+    expect_rewind(0);
+    expect_stored_state(0, "");
+    expect_any(__wrap__mdebug2, formatted_msg);
+
+    read_snortfull(&lf, &rc, 0);
+
+    assert_int_equal(rc, 0);
+}
+
+/**
+ * Test: a complete alert, then the header and classification of the next one at the end of the file.
+ * The first alert is queued; the reader goes back to the second alert's header, and the stored hash
+ * covers the first alert only.
+ */
+void test_read_snortfull_eof_after_classification(void **state) {
+    logreader lf = {0};
+    lf.file = "test.log";
+    lf.fp = (FILE *) 1;
+    int rc;
+
+    char line1[] = "[**] [1:1000001:1] First alert [**]\n";
+    char line2[] = "[Classification: Misc activity] [Priority: 3] \n";
+    char line3[] = "10/06-08:25:55.608163 10.0.0.1 -> 10.0.0.2\n";
+    char line4[] = "ICMP TTL:64 TOS:0x0 ID:1 IpLen:20 DgmLen:84\n";
+    char line5[] = "\n";
+    char line6[] = "[**] [1:1000002:1] Second alert [**]\n";
+    char line7[] = "[Classification: Misc activity] [Priority: 3] \n";
+    char first_alert[256];
+
+    snprintf(first_alert, sizeof(first_alert), "%s%s%s%s%s", line1, line2, line3, line4, line5);
+
+    expect_prologue();
+
+    expect_line(line1);
+    expect_line(line2);
+    expect_line(line3);
+
+    const char *msg = "[**] [1:1000001:1] First alert [**] [Classification: Misc activity] [Priority: 3] "
+                      "10.0.0.1 -> 10.0.0.2";
+    expect_queued(msg, strlen(msg) + 1);
+
+    expect_line(line4);
+    expect_line(line5);
+    expect_line(line6);
+    expect_line(line7);
+    expect_end_of_file();
+
+    expect_rewind((int64_t) strlen(first_alert));
+    expect_stored_state((int64_t) strlen(first_alert), first_alert);
+    expect_any(__wrap__mdebug2, formatted_msg);
+
+    read_snortfull(&lf, &rc, 0);
+
+    assert_int_equal(rc, 0);
+}
+
+/**
+ * Test: reading is paused in the middle of an alert.
+ * The reader goes back to the alert's header.
+ */
+void test_read_snortfull_paused_mid_alert(void **state) {
+    logreader lf = {0};
+    lf.file = "test.log";
+    lf.fp = (FILE *) 1;
+    int rc;
+
+    char line1[] = "[**] [1:1000001:0] Test alert [**]\n";
+    char line2[] = "[Classification: Attempted Information Leak] [Priority: 2]\n";
+
+    expect_prologue();
+
+    expect_line(line1);
+    expect_line(line2);
+    will_return(__wrap_can_read, 0);
+
+    expect_rewind(0);
+    expect_stored_state(0, "");
+    expect_any(__wrap__mdebug2, formatted_msg);
+
+    read_snortfull(&lf, &rc, 0);
+
+    assert_int_equal(rc, 0);
+}
+
+/**
+ * Test: the file ends in the middle of an alert, and its hash state could not be obtained.
+ * The reader still goes back to the alert's header; no state is stored.
+ */
+void test_read_snortfull_eof_mid_alert_unhashed(void **state) {
+    logreader lf = {0};
+    lf.file = "test.log";
+    lf.fp = (FILE *) 1;
+    int rc;
+
+    char line1[] = "[**] [1:1000001:0] Test alert [**]\n";
+    char line2[] = "[Classification: Attempted Information Leak] [Priority: 2]\n";
+    char line3[] = "01/13-15:30:00.000000 10.0.0.1:1234 -> 10.0.0.2:80\n";
+    char line4[] = "[**] [1:1000002:0] Unfinished alert [**]\n";
+
+    mock_position = 0;
+    expect_any(__wrap_w_ftell, x);
+    will_return(__wrap_w_ftell, (int64_t) 0);
+    will_return(__wrap_w_get_hash_context, false);
+
+    expect_line_unhashed(line1);
+    expect_line_unhashed(line2);
+    expect_line_unhashed(line3);
+
+    const char *msg = "[**] [1:1000001:0] Test alert [**] [Classification: Attempted Information Leak] [Priority: 2] "
+                      "10.0.0.1:1234 -> 10.0.0.2:80";
+    expect_queued(msg, strlen(msg) + 1);
+
+    expect_line_unhashed(line4);
+    expect_end_of_file();
+
+    expect_rewind((int64_t) (strlen(line1) + strlen(line2) + strlen(line3)));
+    expect_any(__wrap__mdebug2, formatted_msg);
+
+    read_snortfull(&lf, &rc, 0);
+
+    assert_int_equal(rc, 0);
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test(test_read_snortfull_complete_record),
@@ -570,6 +787,10 @@ int main(void) {
         cmocka_unit_test(test_read_snortfull_date_with_year),
         cmocka_unit_test(test_read_snortfull_crlf),
         cmocka_unit_test(test_read_snortfull_appid),
+        cmocka_unit_test_teardown(test_read_snortfull_eof_after_header, test_teardown),
+        cmocka_unit_test_teardown(test_read_snortfull_eof_after_classification, test_teardown),
+        cmocka_unit_test_teardown(test_read_snortfull_paused_mid_alert, test_teardown),
+        cmocka_unit_test_teardown(test_read_snortfull_eof_mid_alert_unhashed, test_teardown),
     };
 
     return cmocka_run_group_tests(tests, group_setup, group_teardown);

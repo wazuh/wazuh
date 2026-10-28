@@ -31,6 +31,40 @@ static int is_date_line(const char *str) {
     return str[2] == '/' && (str[5] == '-' || (str[5] == '/' && str[8] == '-'));
 }
 
+static bool is_alert_header(const char *str) {
+    return strncmp(str, "[**] [", 6) == 0;
+}
+
+/* Where the alert being assembled starts, to read it again if the read stops before its date line */
+typedef struct {
+    int64_t position;
+    EVP_MD_CTX *context; /* Hash context at position. NULL if the file is not hashed */
+} alert_start_t;
+
+/* Called before the header line is hashed, so the copy does not cover it */
+static void mark_alert_start(alert_start_t *start, int64_t position, EVP_MD_CTX *context) {
+    start->position = position;
+    if (start->context != NULL) {
+        EVP_MD_CTX_copy(start->context, context);
+    }
+}
+
+/* Take the offset and the hash back to the start of the alert being assembled */
+static void restore_alert_start(const alert_start_t *start, EVP_MD_CTX *context, int64_t *position) {
+    *position = start->position;
+    if (start->context != NULL) {
+        EVP_MD_CTX_copy(context, start->context);
+    }
+}
+
+/* Make the next read start at position */
+static void retry_from(logreader *lf, int64_t position) {
+    mdebug2("Message not complete from '%s'. Trying again.", lf->file);
+    if (position >= 0) {
+        w_fseek(lf->fp, position, SEEK_SET);
+    }
+}
+
 /* Read snort_full files */
 void *read_snortfull(logreader *lf, int *rc, int drop_it) {
     const char *one = "one";
@@ -47,13 +81,20 @@ void *read_snortfull(logreader *lf, int *rc, int drop_it) {
     EVP_MD_CTX *context = EVP_MD_CTX_new();
     int64_t current_position = w_ftell(lf->fp);
     bool is_valid_context_file = w_get_hash_context(lf, &context, current_position);
+    alert_start_t alert_start = { current_position, is_valid_context_file ? EVP_MD_CTX_new() : NULL };
 
     while (can_read() && (!maximum_lines || lines < maximum_lines) && fgets(str, sizeof(str), lf->fp)) {
 
         lines++;
 
+        if (p == NULL && is_alert_header(str)) {
+            mark_alert_start(&alert_start, current_position, context);
+        }
+
         if (is_valid_context_file) {
             w_hash_read_line(lf, context, str, &current_position);
+        } else {
+            current_position = w_ftell(lf->fp);
         }
 
         /* Remove \n at the end of the string */
@@ -68,7 +109,7 @@ void *read_snortfull(logreader *lf, int *rc, int drop_it) {
 
         /* First part of the message */
         if (p == NULL) {
-            if (strncmp(str, "[**] [", 6) == 0) {
+            if (is_alert_header(str)) {
                 snprintf(f_msg, sizeof(f_msg), "%s", str);
                 p = one;
             }
@@ -135,6 +176,7 @@ file_error:
 
         merror("Bad formated snort full file.");
         *rc = -1;
+        EVP_MD_CTX_free(alert_start.context);
         /* The bad line was hashed: store the state so the next read and a restart resume after it */
         if (is_valid_context_file) {
             w_update_file_status(lf->file, current_position, context);
@@ -145,7 +187,14 @@ file_error:
 
     }
 
-    current_position = w_ftell(lf->fp);
+    /* The read stopped before the date line of the alert being assembled */
+    if (p != NULL) {
+        restore_alert_start(&alert_start, context, &current_position);
+        retry_from(lf, current_position);
+    } else {
+        current_position = w_ftell(lf->fp);
+    }
+    EVP_MD_CTX_free(alert_start.context);
 
     if (is_valid_context_file) {
         w_update_file_status(lf->file, current_position, context);
