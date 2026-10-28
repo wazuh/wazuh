@@ -130,6 +130,29 @@
       "homepage": "https://github.com/google/benchmark"
     },
     {
+      "name": "brotli",
+      "version": "1.2.1",
+      "revision": "v1.2.1",
+      "source": "upstream",
+      "url": "https://github.com/google/brotli/archive/refs/tags/v{version}.tar.gz",
+      "upstream_sha256": "98d35d11a78dc453aebb7d10c3748f3f73ff78c8267c0dc697b8631f67bf7e8f",
+      "format": "tar.gz",
+      "strip": 1,
+      "patches": [],
+      "targets": [
+        "agent",
+        "manager"
+      ],
+      "platforms": [
+        "linux"
+      ],
+      "cpe": "cpe:2.3:a:google:brotli:*:*:*:*:*:*:*:*",
+      "purl": "pkg:github/google/brotli@v1.2.1",
+      "license": "MIT",
+      "author": "The Brotli Authors",
+      "homepage": "https://github.com/google/brotli"
+    },
+    {
       "name": "bzip2",
       "version": "1.0.8",
       "revision": "bzip2-1.0.8",
@@ -256,7 +279,8 @@
         "libyaml",
         "openssl",
         "sqlite",
-        "zlib"
+        "zlib",
+        "brotli"
       ],
       "cpe": "cpe:2.3:a:python:python:*:*:*:*:*:*:*:*",
       "purl": "pkg:github/python/cpython@v3.12.14",
@@ -286,7 +310,8 @@
       ],
       "links": [
         "openssl",
-        "zlib"
+        "zlib",
+        "brotli"
       ],
       "cpe": "cpe:2.3:a:haxx:curl:*:*:*:*:*:*:*:*",
       "purl": "pkg:github/curl/curl@curl-8_20_0",

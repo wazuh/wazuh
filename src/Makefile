@@ -513,7 +513,7 @@ EXTERNAL_RES := cJSON openssl zlib sqlite libyaml curl libpcre2 nlohmann flatbuf
 # production (ext_audit/ext_procps are gated IS_LINUX AND IS_AGENT).
 ifneq (${TARGET},winagent)
 ifeq (${uname_S}, Linux)
-	EXTERNAL_RES += audit-userspace procps
+	EXTERNAL_RES += audit-userspace procps brotli
 endif
 endif
 

@@ -276,6 +276,56 @@ set_target_properties(
 add_dependencies(ext_libyaml libyaml_external)
 # deps-entry libyaml: end
 
+# deps-entry brotli: begin
+# ------------------------------------------------------------------------------
+# brotli (Linux only: the decoder curl links for Accept-Encoding: br)
+# ------------------------------------------------------------------------------
+# Static, PIC, installed inside its own tree so the pool tarball carries the
+# include/ and lib/ layout curl's --with-brotli=DIR expects. CMAKE_INSTALL_LIBDIR
+# is pinned to lib: GNUInstallDirs would pick lib64 on the x86_64 builders.
+# Other platforms keep a no-op target so curl's DEPENDS resolves everywhere.
+
+if(IS_LINUX)
+  set(BROTLI_INSTALL_DIR ${EXTERNAL_DIR}/brotli/install)
+  if(EXISTS ${BROTLI_INSTALL_DIR}/lib/libbrotlidec.a)
+    message(STATUS "Using precompiled brotli library")
+    add_custom_target(brotli_external)
+  else()
+    ExternalProject_Add(
+      brotli_external
+      SOURCE_DIR ${EXTERNAL_DIR}/brotli
+      BINARY_DIR ${EXTERNAL_DIR}/brotli/build
+      CMAKE_ARGS ${DEPS_CMAKE_ARGS}
+                 -DBUILD_SHARED_LIBS=OFF
+                 -DBROTLI_BUILD_TOOLS=OFF
+                 -DBROTLI_DISABLE_TESTS=ON
+                 -DCMAKE_POSITION_INDEPENDENT_CODE=ON
+                 -DCMAKE_INSTALL_PREFIX=${BROTLI_INSTALL_DIR}
+                 -DCMAKE_INSTALL_LIBDIR=lib
+      INSTALL_COMMAND ${CMAKE_COMMAND} --install ${EXTERNAL_DIR}/brotli/build
+      BUILD_BYPRODUCTS ${BROTLI_INSTALL_DIR}/lib/libbrotlidec.a
+                       ${BROTLI_INSTALL_DIR}/lib/libbrotlicommon.a)
+  endif()
+
+  # The headers appear only after brotli installs; CMake refuses an INTERFACE include
+  # directory that does not exist at generate time, so create it up front.
+  file(MAKE_DIRECTORY ${BROTLI_INSTALL_DIR}/include)
+  add_library(ext_brotlidec STATIC IMPORTED GLOBAL)
+  set_target_properties(
+    ext_brotlidec PROPERTIES IMPORTED_LOCATION
+                             ${BROTLI_INSTALL_DIR}/lib/libbrotlidec.a)
+  add_dependencies(ext_brotlidec brotli_external)
+  target_include_directories(ext_brotlidec INTERFACE ${BROTLI_INSTALL_DIR}/include)
+
+  add_library(ext_brotlicommon STATIC IMPORTED GLOBAL)
+  set_target_properties(
+    ext_brotlicommon PROPERTIES IMPORTED_LOCATION
+                                ${BROTLI_INSTALL_DIR}/lib/libbrotlicommon.a)
+  add_dependencies(ext_brotlicommon brotli_external)
+else()
+  add_custom_target(brotli_external)
+endif()
+# deps-entry brotli: end
 # deps-entry curl: begin
 # ------------------------------------------------------------------------------
 # curl (depends on OpenSSL)
@@ -323,6 +373,7 @@ if(IS_WINDOWS)
       --disable-ldap
       --without-libidn2
       --without-libpsl
+      --without-brotli
       --without-zstd)
 elseif(IS_LINUX)
   if(IS_AARCH64)
@@ -347,7 +398,7 @@ elseif(IS_LINUX)
       --disable-ldap
       --without-libidn2
       --without-libpsl
-      --without-brotli
+      --with-brotli=${BROTLI_INSTALL_DIR}
       --without-nghttp2
       --without-zstd
       ${CURL_BUILD_FLAG})
@@ -387,7 +438,7 @@ else()
     BUILD_COMMAND ${CMAKE_MAKE_PROGRAM} -C lib
     BUILD_IN_SOURCE TRUE
     INSTALL_COMMAND ""
-    DEPENDS openssl_external zlib_external
+    DEPENDS openssl_external zlib_external brotli_external
     BUILD_BYPRODUCTS ${EXTERNAL_DIR}/curl/lib/.libs/libcurl.a)
 endif()
 
@@ -1613,6 +1664,11 @@ if(IS_LINUX
    OR IS_DARWIN
    OR IS_WINDOWS)
   list(APPEND WAZUHEXT_WHOLE_LIBS ext_curl)
+endif()
+
+# curl's Brotli decoder (Linux only); dec before common for the static link order
+if(IS_LINUX)
+  list(APPEND WAZUHEXT_WHOLE_LIBS ext_brotlidec ext_brotlicommon)
 endif()
 
 # Non-Windows additions
