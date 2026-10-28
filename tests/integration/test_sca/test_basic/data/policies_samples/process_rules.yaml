@@ -1,0 +1,74 @@
+policy:
+  id: process_rules
+  file: process_rules.yaml
+  name: SCA process rules
+  description: Mock policy checking that process rules match the kernel task name of a running process
+  references:
+    - https://documentation.wazuh.com/current/user-manual/capabilities/sec-config-assessment/index.html
+
+requirements:
+  name: Linux platform
+  description: Requirements for running the policy against Linux.
+  condition: all
+  rules:
+    - f:/proc/sys/kernel/ostype -> Linux
+
+checks:
+
+  # The test starts a copy of sleep named wzsca-proc whose argv[0] is rewritten to
+  # "wzsca: master process" (as nginx does), so only the kernel task name carries the name.
+  - id: 1
+    name: Process with a rewritten argv[0]
+    description: Process rule matching a process that rewrote its argv[0]
+    rationale: Test_1
+    remediation: Test_1
+    condition: all
+    rules:
+      - p:wzsca-proc
+
+  # The test starts a script named wzsca-script through its shebang line, so argv[0] is the
+  # interpreter and only the kernel task name carries the script name.
+  - id: 2
+    name: Script run through its interpreter
+    description: Process rule matching a script started through its shebang line
+    rationale: Test_2
+    remediation: Test_2
+    condition: all
+    rules:
+      - p:wzsca-script
+
+  - id: 3
+    name: Case-insensitive process name
+    description: Process rule values are compared without case
+    rationale: Test_3
+    remediation: Test_3
+    condition: all
+    rules:
+      - p:WZSCA-PROC
+
+  - id: 4
+    name: Regex process value
+    description: Process rule values accept a regex pattern
+    rationale: Test_4
+    remediation: Test_4
+    condition: all
+    rules:
+      - p:r:^wzsca-pr
+
+  - id: 5
+    name: Process not running
+    description: Process rule for a process that is not running
+    rationale: Test_5
+    remediation: Test_5
+    condition: all
+    rules:
+      - p:wzsca-absent
+
+  - id: 6
+    name: Case-insensitive plain term in a compound value
+    description: Plain terms of a compound process value are compared without case
+    rationale: Test_6
+    remediation: Test_6
+    condition: all
+    rules:
+      - p:WZSCA-PROC && !r:wzsca-absent

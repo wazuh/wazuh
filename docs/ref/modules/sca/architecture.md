@@ -727,8 +727,10 @@ Stores individual security checks:
 
 Fixed reasons:
 
-- `Policy requirements not met`: the policy does not apply to the host, so all its checks are
-  `Not applicable`.
+- `Policy requirements not met`: the policy does not apply to the host, or its requirements could not
+  be evaluated, so all its checks are `Not applicable`. The agent logs which one at INFO level:
+  `Policy "<id>" skipped: its requirements are not met.` or
+  `Policy "<id>" skipped: its requirements could not be evaluated: <reason>`.
 - `None of the check's rules could be evaluated on this system`: the check has no rule left to run,
   because none of them could be parsed on this agent.
 - `Unknown reason`: a rule could not be evaluated and gave no reason.

@@ -11,7 +11,21 @@
 #ifndef _SYS_INFO_INTERFACE
 #define _SYS_INFO_INTERFACE
 
+#include <functional>
+#include <string>
+
 #include "json.hpp"
+
+// The names a process can be matched by. comm is the kernel task name
+// (/proc/<pid>/comm on Linux): it survives a process rewriting its argv[0] (nginx's
+// "nginx: master process ...") and names a script rather than its interpreter
+// (firewalld instead of python3). Empty where the platform has no such name.
+struct ProcessNames
+{
+    std::string name;
+    std::string commandLine;
+    std::string comm;
+};
 
 class ISysInfo
 {
@@ -33,6 +47,23 @@ class ISysInfo
         virtual nlohmann::json browserExtensions() = 0;
         virtual void packages(std::function<void(nlohmann::json&)>) = 0;
         virtual void processes(std::function<void(nlohmann::json&)>) = 0;
+
+        // Lightweight process listing for callers that only match processes by name.
+        // The default derives name and commandLine from processes() and leaves comm
+        // empty; platforms whose process name can differ from comm override it.
+        virtual void processNames(std::function<void(const ProcessNames&)> callback)
+        {
+            processes([&callback](nlohmann::json & process)
+            {
+                const auto stringField = [&process](const char* key)
+                {
+                    const auto it = process.find(key);
+                    return it != process.end() && it->is_string() ? it->get<std::string>() : std::string {};
+                };
+
+                callback({stringField("name"), stringField("command_line"), {}});
+            });
+        }
 
         // Releases any per-thread resources allocated on the calling thread, on the
         // calling thread, before that thread exits. Must be called explicitly instead of

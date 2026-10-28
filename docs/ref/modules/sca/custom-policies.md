@@ -271,6 +271,56 @@ c:systemctl is-enabled cups -> r:^enabled
 
 ---
 
+## Patterns
+
+The value after `->`, and the value of a process rule, is either a plain value or a pattern.
+
+| Form | Passes when |
+|------|-------------|
+| `r:REGEX` | `REGEX` matches |
+| `!r:REGEX` | `REGEX` does not match |
+| `n:REGEX compare OPERATOR NUMBER` | the number captured by `REGEX` satisfies the comparison |
+| `!n:REGEX compare OPERATOR NUMBER` | the comparison is not satisfied |
+| `TERM && TERM ...` | every term holds (see below) |
+| `!VALUE` (as a term) | the plain value does not match |
+| Any other value | plain value, compared as described below |
+
+- **Where patterns apply:** for files and commands, the value is a pattern only when it starts with `r:`,
+  `!r:`, `n:` or `!n:`. Any other value is taken whole as a plain value, even if it contains `&&` or starts
+  with `!`: `f:/etc/hosts -> 127.0.0.1 localhost && r:x` looks for that exact line. Inside a pattern, a term
+  without `r:` or `n:` is a plain value, and a leading `!` negates it (`r:^Port && !Port 22`). For processes,
+  every value is a pattern (see [Processes](#processes)).
+
+- **Engine:** every regular expression is PCRE2. The `regex_type` field of policies and checks is ignored.
+- **Case:** regular expressions in `r:` and `n:` terms are case-insensitive, so `r:permitrootlogin` matches
+  `PermitRootLogin`. Start the expression with `(?-i)` to make it case-sensitive: `r:(?-i)^PermitRootLogin`.
+- **Lines:** the content is split into lines, and a pattern passes when one line satisfies every term. In
+  `f:/etc/ssh/sshd_config -> !r:^# && r:Port\s+22`, the same line must not be a comment and must set the port.
+  A single negated term is the exception: `!r:REGEX` on its own passes only when no line matches.
+- **Numbers:** `n:` takes the first capture group of `REGEX` (the whole match if it has no group) as an integer.
+  `OPERATOR` is one of `<`, `<=`, `==`, `!=`, `>=` or `>`.
+- **Plain values** are compared whole, never as a substring, alone or as a term of `&&`:
+  - files: a line equal to the value, case-sensitive (`f:/proc/sys/net/ipv4/ip_forward -> 1`);
+  - commands: the whole output, standard output or standard error, without its trailing newlines,
+    case-sensitive;
+  - processes: a process name equal to the value, case-insensitive.
+- **Commands:** patterns are matched against standard output and standard error separately. A match in
+  either counts.
+- **Errors:** a regular expression that does not compile, or an `n:` term without `compare`, makes the rule
+  invalid. The check is reported as `Not applicable` with the reason, and an error is logged.
+
+Examples:
+
+```yaml
+f:/etc/ssh/sshd_config -> r:^\s*PermitRootLogin\s+no
+f:/etc/ssh/sshd_config -> !r:^\s*PermitEmptyPasswords\s+yes
+f:/etc/login.defs -> n:^PASS_MAX_DAYS\s+(\d+) compare <= 365
+c:sysctl net.ipv4.ip_forward -> r:=\s*0$
+c:stat -L /etc/passwd -> r:(?-i)Access:\s*\(0644
+```
+
+---
+
 ## Rule examples by type
 
 ### Files
@@ -288,6 +338,41 @@ c:systemctl is-enabled cups -> r:^enabled
 
 - `p:process_name`
 - `not p:process_name`
+- `p:r:REGEX`
+- `p:r:REGEX && !r:REGEX`
+
+A process rule matches when any running process has a name that matches the value. The names
+checked are the process name, its executable path or argv[0], and, on Linux, the kernel task name
+(`/proc/<pid>/comm`). The kernel task name lets `p:nginx` match a process that rewrites its argv[0]
+(`nginx: master process ...`) and `p:firewalld` match a script run through its interpreter
+(`/usr/bin/python3 -s /usr/sbin/firewalld`). The kernel truncates it to 15 characters.
+
+The value is matched as a pattern (see [Patterns](#patterns)) against each name, and with `&&` every term
+must hold on the same name. Plain values, alone or as a term of `&&`, are compared case-insensitively:
+`p:NGINX` and `p:NGINX && !r:worker` both match `nginx`. On Linux the names do not include the process
+arguments. A process rule takes no content pattern: `p:process_name -> r:REGEX` is reported as invalid.
+
+To require that a process is not running, negate the rule (`not p:...`). A negated term such as
+`p:!sshd` or `p:!r:REGEX` passes as soon as any process has a name that does not match, which is almost
+always.
+
+Examples, with nginx running (master and workers) and firewalld running through `/usr/bin/python3`:
+
+| Rule | Result | Why |
+|------|--------|-----|
+| `p:nginx` | Passed | kernel task name `nginx` |
+| `p:NGINX` | Passed | plain values ignore case |
+| `p:firewalld` | Passed | kernel task name of the script |
+| `p:r:^nginx$` | Passed | kernel task name |
+| `p:r:^nginx: master process` | Passed | argv[0] of the master |
+| `p:r:(?-i)NGINX` | Failed | case-sensitive expression |
+| `p:r:nginx && !r:worker` | Passed | the master's names do not contain `worker` |
+| `p:NGINX && !r:worker` | Passed | plain terms ignore case inside `&&` too |
+| `p:r:^nginx$ && r:master` | Failed | no single name satisfies both terms |
+| `p:n:^python(\d+)$ compare >= 3` | Passed | process name `python3` |
+| `p:r:/usr/sbin/firewalld` | Failed | on Linux the script path is an argument, not a name |
+| `not p:r:^telnetd$` | Passed | no such process |
+| `p:nginx -> r:master` | Not applicable | process rules take no content pattern |
 
 ### Commands
 
