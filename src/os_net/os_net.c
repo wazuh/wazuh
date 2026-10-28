@@ -141,8 +141,8 @@ int OS_Bindportudp(u_int16_t _port, const char *_ip, int ipv6)
 }
 
 #ifndef WIN32
-/* Platforms without the *at family (HP-UX, Solaris before 11) fall back to path-based calls. */
-#if defined(HPUX) || (defined(SUN_MAJOR_VERSION) && SUN_MAJOR_VERSION < 11)
+/* Platforms without the *at family (HP-UX, AIX, Solaris before 11) fall back to path-based calls. */
+#if defined(HPUX) || defined(AIX) || (defined(SUN_MAJOR_VERSION) && SUN_MAJOR_VERSION < 11)
 #define OS_BIND_NO_AT
 #endif
 
