@@ -8,11 +8,15 @@
  * Foundation.
  */
 
+#include "control/controlConfig.hpp"
+#include "control/hashCache.hpp"
 #include "endpoints/downloadEndpoint.hpp"
 
 #include <wazuh_metrics/manager.hpp>
 
 #include <gtest/gtest.h>
+
+#include <openssl/evp.h>
 
 #include <fcntl.h>
 #include <unistd.h>
@@ -304,7 +308,25 @@ namespace
         return DownloadRequest {ResourceType::Config, std::move(group)};
     }
 
+    /// Lower-case hex SHA-256 of @p bytes, computed independently of the code under test.
+    std::string sha256Hex(const std::string& bytes)
+    {
+        unsigned char digest[EVP_MAX_MD_SIZE];
+        unsigned int length {0};
+        EVP_Digest(bytes.data(), bytes.size(), digest, &length, EVP_sha256(), nullptr);
+
+        constexpr char HEX[] = "0123456789abcdef";
+        std::string out;
+        for (unsigned int i = 0; i < length; ++i)
+        {
+            out.push_back(HEX[digest[i] >> 4]);
+            out.push_back(HEX[digest[i] & 0x0F]);
+        }
+        return out;
+    }
+
     constexpr auto VALID_CONFIG_BODY {R"({"resource_type":"config","resource_id":"web-servers"})"};
+    constexpr auto DERIVED_CONFIG_BODY {R"({"resource_type":"config"})"};
 } // namespace
 
 // ---------------------------------------------------------------------------
@@ -329,6 +351,23 @@ TEST(DownloadParseRequestTest, AcceptsAWpkRequest)
     EXPECT_EQ(std::get<DownloadRequest>(parsed).resourceId, "wazuh_agent_v5.0.1_linux_x86_64.wpk");
 }
 
+TEST(DownloadParseRequestTest, AcceptsAConfigRequestWithoutAResourceId)
+{
+    const auto parsed = parseRequest(DERIVED_CONFIG_BODY);
+
+    ASSERT_TRUE(std::holds_alternative<DownloadRequest>(parsed));
+    EXPECT_EQ(std::get<DownloadRequest>(parsed).type, ResourceType::Config);
+    EXPECT_FALSE(std::get<DownloadRequest>(parsed).resourceId.has_value());
+}
+
+TEST(DownloadParseRequestTest, RejectsAWpkRequestWithoutAResourceId)
+{
+    const auto parsed = parseRequest(R"({"resource_type":"wpk"})");
+
+    ASSERT_TRUE(std::holds_alternative<RequestError>(parsed));
+    EXPECT_EQ(std::get<RequestError>(parsed), RequestError::Malformed);
+}
+
 TEST(DownloadParseRequestTest, AcceptsMembersInEitherOrder)
 {
     EXPECT_TRUE(std::holds_alternative<DownloadRequest>(
@@ -342,16 +381,37 @@ TEST(DownloadParseRequestTest, RejectsMalformedBodies)
         "not json",                                                  // not JSON
         "[]",                                                        // not an object
         R"("a string")",                                             // not an object
-        R"({"resource_type":"config"})",                             // missing resource_id
         R"({"resource_id":"web-servers"})",                          // missing resource_type
         R"({"resource_type":"config","resource_id":"a","extra":1})", // additionalProperties: false
         R"({"resource_type":1,"resource_id":"a"})",                  // wrong type
         R"({"resource_type":"config","resource_id":123})",           // wrong type
         R"({"resource_type":"config","resource_id":null})",          // wrong type
+        R"({"resource_type":"secrets","resource_id":123})",          // unknown type, wrong type
         R"({"resource_type":"config","resource_id":"a",)",           // truncated
     };
 
     for (const auto* body : bodies)
+    {
+        const auto parsed = parseRequest(body);
+        ASSERT_TRUE(std::holds_alternative<RequestError>(parsed)) << "accepted: " << body;
+        EXPECT_EQ(std::get<RequestError>(parsed), RequestError::Malformed) << "body: " << body;
+    }
+}
+
+TEST(DownloadParseRequestTest, RejectsAConfigRequestWithAnotherSecondMember)
+{
+    for (const auto* body :
+         {R"({"resource_type":"config","x":"y"})", R"({"resource_type":"config","resource_id":"a","x":1})"})
+    {
+        const auto parsed = parseRequest(body);
+        ASSERT_TRUE(std::holds_alternative<RequestError>(parsed)) << "accepted: " << body;
+        EXPECT_EQ(std::get<RequestError>(parsed), RequestError::Malformed) << "body: " << body;
+    }
+}
+
+TEST(DownloadParseRequestTest, RejectsAnUnknownTypeWithOneMember)
+{
+    for (const auto* body : {R"({"resource_type":"foo"})", R"({"resource_type":"secrets","resource_id":123})"})
     {
         const auto parsed = parseRequest(body);
         ASSERT_TRUE(std::holds_alternative<RequestError>(parsed)) << "accepted: " << body;
@@ -412,6 +472,24 @@ TEST(DownloadParseRequestTest, RejectsGroupNamesOutsideTheStrictGrammar)
 
         ASSERT_TRUE(std::holds_alternative<RequestError>(parsed)) << id;
         EXPECT_EQ(std::get<RequestError>(parsed), RequestError::InvalidResourceId) << id;
+    }
+}
+
+TEST(DownloadParseRequestTest, RejectsAnEmptyResourceIdInsteadOfDerivingOne)
+{
+    const auto parsed = parseRequest(R"({"resource_type":"config","resource_id":""})");
+
+    ASSERT_TRUE(std::holds_alternative<RequestError>(parsed));
+    EXPECT_EQ(std::get<RequestError>(parsed), RequestError::InvalidResourceId);
+}
+
+TEST(DownloadParseRequestTest, RejectsTraversableGroupNames)
+{
+    // Anything traversable must be rejected during parsing.
+    for (const auto* hostile : {"../../etc", "..", ".", "a/b"})
+    {
+        const auto body = std::string {R"({"resource_type":"config","resource_id":")"} + hostile + R"("})";
+        ASSERT_TRUE(std::holds_alternative<RequestError>(parseRequest(body))) << "accepted hostile group: " << hostile;
     }
 }
 
@@ -493,64 +571,28 @@ TEST(DownloadErrorResponseTest, MapsNotFoundAndInternalDistinctly)
 // locateResource
 // ---------------------------------------------------------------------------
 
-TEST(DownloadLocateTest, ConfigResolvesUnderTheSharedDirectoryUsingTheRequestedGroup)
+TEST(DownloadLocateTest, ConfigIsNotResolvedByLocateResource)
 {
-    // locateResource() maps a resource id to a path and nothing else; authorization happens above
-    // it, in the handler (see DownloadHandlerTest's denial cases).
+    // A config path depends on the agent's groups, so the handler resolves it after authorizing.
     const auto result = locateResource(configRequest("web-servers"), {});
 
-    EXPECT_EQ(result.error, LocateError::None);
-    EXPECT_EQ(result.path, std::string {remoted::paths::kSharedDir} + "/web-servers/merged.mg");
+    EXPECT_EQ(result.error, LocateError::NotFound);
+    EXPECT_TRUE(result.path.empty());
 }
 
-TEST(DownloadLocateTest, AnyRequestedGroupResolvesRegardlessOfTheAgent)
+TEST(DownloadLocateTest, WpkWithoutAResourceIdIsNotFound)
 {
-    // This layer is identity-free BY DESIGN: it cannot tell whose group it is, which is what keeps
-    // its containment argument about the id grammars and O_NOFOLLOW alone. The membership check
-    // that decides whose group it may be lives in the handler above it.
-    for (const auto* group : {"web-servers", "databases", "default", "some-other-team"})
-    {
-        const auto result = locateResource(configRequest(group), {});
-        EXPECT_EQ(result.error, LocateError::None);
-        EXPECT_EQ(result.path, std::string {remoted::paths::kSharedDir} + "/" + group + "/merged.mg");
-    }
+    const auto result = locateResource(DownloadRequest {ResourceType::Wpk, std::nullopt}, {});
+
+    EXPECT_EQ(result.error, LocateError::NotFound);
+    EXPECT_TRUE(result.path.empty());
 }
 
-TEST(DownloadMultigroupDirNameTest, MatchesWhatWazuhDbComputesForTheSameSelector)
-{
-    // wazuh-db builds the directory with OS_SHA256_String_sized(csv, out, WDB_GROUP_HASH_SIZE),
-    // WDB_GROUP_HASH_SIZE == 32, i.e. the first SIXTEEN digest bytes as 32 lowercase hex characters.
-    // Pinned literals: the first 32 hex characters of sha256 over each selector verbatim.
-    EXPECT_EQ(multigroupDirName("web-servers,databases"), "97d668590155b0b50fb09c254d636adc");
-    EXPECT_EQ(multigroupDirName("alpha,beta"), "76ba5a3bc22ef0b439168b9a5c771ceb");
-    EXPECT_EQ(multigroupDirName("default,web-servers"), "b9d4f26372114529987a9805a4049313");
-}
-
-TEST(DownloadMultigroupDirNameTest, IsOrderSensitiveJustLikeWazuhDb)
-{
-    // The CSV is hashed verbatim, so a reordered selector names a different (non-existent)
-    // directory. Sorting here would point at a directory the manager never created.
-    EXPECT_NE(multigroupDirName("web-servers,databases"), multigroupDirName("databases,web-servers"));
-}
-
-TEST(DownloadLocateTest, AMultigroupSelectorResolvesUnderVarMultigroups)
-{
-    const auto result = locateResource(configRequest("web-servers,databases"), {});
-
-    EXPECT_EQ(result.error, LocateError::None);
-    EXPECT_EQ(result.path, "var/multigroups/97d668590155b0b50fb09c254d636adc/merged.mg");
-}
-
-TEST(DownloadLocateTest, HonoursInjectedBaseDirectories)
+TEST(DownloadLocateTest, HonoursInjectedWpkDirectory)
 {
     ResourcePaths paths;
-    paths.sharedDir = "/tmp/shared";
-    paths.multigroupsDir = "/tmp/multigroups";
     paths.wpkDir = "/tmp/upgrade";
 
-    EXPECT_EQ(locateResource(configRequest("a"), paths).path, "/tmp/shared/a/merged.mg");
-    EXPECT_EQ(locateResource(configRequest("a,b"), paths).path,
-              "/tmp/multigroups/" + multigroupDirName("a,b") + "/merged.mg");
     EXPECT_EQ(locateResource(DownloadRequest {ResourceType::Wpk, "p.wpk"}, paths).path, "/tmp/upgrade/p.wpk");
 }
 
@@ -560,17 +602,6 @@ TEST(DownloadLocateTest, WpkResolvesUnderTheUpgradeDirectory)
 
     EXPECT_EQ(result.error, LocateError::None);
     EXPECT_EQ(result.path, "var/upgrade/wazuh_agent_v5.0.1_linux_x86_64.wpk");
-}
-
-TEST(DownloadLocateTest, HostileGroupNamesNeverReachLocateResource)
-{
-    // Config now joins agent input into a path, so the grammar is the containment boundary for
-    // both resource types. Anything traversable must be rejected during parsing.
-    for (const auto* hostile : {"../../etc", "..", ".", "a/b"})
-    {
-        const auto body = std::string {R"({"resource_type":"config","resource_id":")"} + hostile + R"("})";
-        ASSERT_TRUE(std::holds_alternative<RequestError>(parseRequest(body))) << "accepted hostile group: " << hostile;
-    }
 }
 
 // ---------------------------------------------------------------------------
@@ -907,8 +938,9 @@ TEST(DownloadHandlerTest, StreamsTheEffectiveConfigForAMultigroupSelector)
     const std::string selector = "web-servers,databases";
     dir.makeDir("shared/web-servers");
     dir.writeFile("shared/web-servers/merged.mg", "SINGLE GROUP - must not be served");
-    dir.makeDir("multigroups/" + multigroupDirName(selector));
-    dir.writeFile("multigroups/" + multigroupDirName(selector) + "/merged.mg", "EFFECTIVE MULTIGROUP CONFIG");
+    const std::string multigroupDir {"97d668590155b0b50fb09c254d636adc"};
+    dir.makeDir("multigroups/" + multigroupDir);
+    dir.writeFile("multigroups/" + multigroupDir + "/merged.mg", "EFFECTIVE MULTIGROUP CONFIG");
 
     ResourcePaths paths;
     paths.sharedDir = dir.path() + "/shared";
@@ -990,12 +1022,13 @@ TEST(DownloadHandlerTest, ServesTheAgentsOwnSelector)
 
 TEST(DownloadHandlerTest, ServesTheAgentsOwnMultigroupSelector)
 {
-    // The multigroup directory is sha256(csv)[0:8] over the selector verbatim; the agent is
+    // The multigroup directory is named after sha256(csv) over the selector verbatim; the agent is
     // entitled to exactly the CSV /control gave it.
     TempDir dir;
     const std::string selector {"web-servers,databases"};
-    dir.makeDir("multigroups/" + multigroupDirName(selector));
-    dir.writeFile("multigroups/" + multigroupDirName(selector) + "/merged.mg", "effective config\n");
+    const std::string multigroupDir {"97d668590155b0b50fb09c254d636adc"};
+    dir.makeDir("multigroups/" + multigroupDir);
+    dir.writeFile("multigroups/" + multigroupDir + "/merged.mg", "effective config\n");
 
     ResourcePaths paths;
     paths.multigroupsDir = dir.path() + "/multigroups";
@@ -1215,6 +1248,202 @@ TEST(DownloadHandlerTest, AnswersServiceUnavailableForASupersededLookup)
 
     const auto failed = answerFor(remoted::endpoints::GroupVerdictKind::Unavailable);
     EXPECT_EQ(superseded->body, failed->body); // the same answer on the wire
+}
+
+// -----------------------------------------------------------------------------
+// A config request without resource_id: the selector is whatever the group source derives for the
+// authenticated agent. allowingSourceFor() would deny these bodies, so they go through runHandlerAs.
+// -----------------------------------------------------------------------------
+
+TEST(DownloadHandlerTest, ServesTheDerivedSelectorWithoutAResourceId)
+{
+    TempDir dir;
+    dir.makeDir("shared/web-servers");
+    dir.makeDir("shared/default");
+    dir.writeFile("shared/web-servers/merged.mg", "WEB SERVERS CONFIG");
+    dir.writeFile("shared/default/merged.mg", "DEFAULT CONFIG");
+
+    ResourcePaths paths;
+    paths.sharedDir = dir.path() + "/shared";
+
+    const auto web = runHandlerAs(DERIVED_CONFIG_BODY, "web-servers", paths);
+    EXPECT_EQ(web->status, 200);
+    EXPECT_TRUE(web->streamed);
+    EXPECT_EQ(web->body, "WEB SERVERS CONFIG");
+
+    const auto fallback = runHandlerAs(DERIVED_CONFIG_BODY, "default", paths);
+    EXPECT_EQ(fallback->status, 200);
+    EXPECT_EQ(fallback->body, "DEFAULT CONFIG");
+}
+
+TEST(DownloadHandlerTest, ServesTheDerivedMultigroupWithoutAResourceId)
+{
+    // The CSV is deliberately not in alphabetical order: the directory is named after the verbatim selector.
+    TempDir dir;
+    dir.makeDir("shared/web-servers");
+    dir.writeFile("shared/web-servers/merged.mg", "SINGLE GROUP - must not be served");
+    dir.makeDir("multigroups/97d668590155b0b50fb09c254d636adc");
+    dir.writeFile("multigroups/97d668590155b0b50fb09c254d636adc/merged.mg", "EFFECTIVE MULTIGROUP CONFIG");
+
+    ResourcePaths paths;
+    paths.sharedDir = dir.path() + "/shared";
+    paths.multigroupsDir = dir.path() + "/multigroups";
+
+    const auto responder = runHandlerAs(DERIVED_CONFIG_BODY, "web-servers,databases", paths);
+
+    EXPECT_EQ(responder->status, 200);
+    EXPECT_TRUE(responder->streamed);
+    EXPECT_EQ(responder->body, "EFFECTIVE MULTIGROUP CONFIG");
+}
+
+TEST(DownloadHandlerTest, ServesTheFileControlHashesForTheSameGroups)
+{
+    // The TempDir is declared first so the cache's directory watcher is destroyed before the tree goes.
+    TempDir dir;
+    dir.makeDir("shared");
+    dir.makeDir("multigroups");
+
+    remoted::control::Config config;
+    config.sharedGroupsRoot = dir.path() + "/shared";
+    config.multiGroupsRoot = dir.path() + "/multigroups";
+    config.clusterName = "wazuh";
+    config.limits = nlohmann::json::object();
+    remoted::control::HashCache cache(config);
+
+    ResourcePaths paths;
+    paths.sharedDir = config.sharedGroupsRoot;
+    paths.multigroupsDir = config.multiGroupsRoot;
+
+    for (const std::string csv : {"default", "web-servers", "alpha,beta"})
+    {
+        const auto mergedMg = cache.getMergedMgPath(csv);
+        ASSERT_EQ(mergedMg.rfind(dir.path() + "/", 0), 0U) << csv;
+
+        const auto relative = mergedMg.substr(dir.path().size() + 1);
+        dir.makeDir(relative.substr(0, relative.rfind('/')));
+        const std::string contents = "CONFIG FOR " + csv + "\n";
+        dir.writeFile(relative, contents);
+
+        const auto responder = runHandlerAs(DERIVED_CONFIG_BODY, csv, paths);
+
+        EXPECT_EQ(responder->status, 200) << csv;
+        EXPECT_EQ(responder->body, contents) << csv;
+        // /control announces this hash as config_hash, so /download must serve the bytes it covers.
+        EXPECT_EQ(cache.getConfigHash(mergedMg), sha256Hex(responder->body)) << csv;
+    }
+}
+
+TEST(DownloadHandlerTest, AnswersFourHundredAndFourWhenTheDerivedSelectorHasNoPath)
+{
+    TempDir dir;
+    ResourcePaths paths;
+    paths.sharedDir = dir.path() + "/shared";
+    paths.multigroupsDir = dir.path() + "/multigroups";
+
+    wazuh::metrics::Manager manager;
+    const auto metrics = makeDownloadMetrics(manager);
+    auto responder = std::make_shared<RecordingResponder>();
+    auto body = std::make_shared<std::string>(DERIVED_CONFIG_BODY);
+
+    makeHandler(paths, metrics, sourceFor("a:b"))(authenticatedRequest(body), responder);
+
+    EXPECT_EQ(responder->status, 404);
+    EXPECT_NE(responder->body.find("Resource not found"), std::string::npos);
+    EXPECT_FALSE(responder->streamed);
+    EXPECT_EQ(metrics.notFound->get(), 1U);
+    EXPECT_EQ(metrics.started->get(), 0U);
+}
+
+TEST(DownloadHandlerTest, DeniesAnEmptySelectorVerdictWithoutAResourceId)
+{
+    // An empty selector is not "default": serving it would hand out a group the agent is not known to be in.
+    TempDir dir;
+    dir.makeDir("shared/default");
+    dir.writeFile("shared/default/merged.mg", "DEFAULT CONFIG");
+
+    ResourcePaths paths;
+    paths.sharedDir = dir.path() + "/shared";
+
+    const auto responder = runHandlerAs(DERIVED_CONFIG_BODY, std::string {}, paths);
+
+    EXPECT_EQ(responder->status, 403);
+    EXPECT_FALSE(responder->streamed);
+}
+
+TEST(DownloadHandlerTest, DeniesADenyVerdictThatCarriesASelectorWithoutAResourceId)
+{
+    // Only a Selector verdict authorizes: whatever else a source answers, its selector is not served.
+    TempDir dir;
+    dir.makeDir("shared/web-servers");
+    dir.writeFile("shared/web-servers/merged.mg", "own group\n");
+    ResourcePaths paths;
+    paths.sharedDir = dir.path() + "/shared";
+    const auto source = std::make_shared<ScriptedAgentGroupSource>();
+    auto responder = std::make_shared<RecordingResponder>();
+    auto body = std::make_shared<std::string>(DERIVED_CONFIG_BODY);
+
+    makeHandler(paths, {}, source)(authenticatedRequest(body), responder);
+    source->deliver(remoted::endpoints::GroupVerdict {remoted::endpoints::GroupVerdictKind::Deny, "web-servers"});
+
+    EXPECT_EQ(responder->status, 403);
+    EXPECT_FALSE(responder->streamed);
+}
+
+TEST(DownloadHandlerTest, AnswersTheSameDenialsWithoutAResourceId)
+{
+    const auto withResourceId = runHandlerAs(VALID_CONFIG_BODY, std::nullopt);
+    ASSERT_EQ(withResourceId->status, 403);
+
+    const auto denied = runHandlerAs(DERIVED_CONFIG_BODY, std::nullopt);
+    EXPECT_EQ(denied->status, 403);
+    EXPECT_EQ(denied->body, withResourceId->body);
+
+    auto unwired = std::make_shared<RecordingResponder>();
+    auto body = std::make_shared<std::string>(DERIVED_CONFIG_BODY);
+    EXPECT_NO_THROW(makeHandler({}, {}, nullptr)(authenticatedRequest(body), unwired));
+    EXPECT_EQ(unwired->status, 403);
+    EXPECT_EQ(unwired->body, withResourceId->body);
+}
+
+TEST(DownloadHandlerTest, AnswersTheSameServiceUnavailableWithoutAResourceId)
+{
+    for (const auto kind : {remoted::endpoints::GroupVerdictKind::Unavailable,
+                            remoted::endpoints::GroupVerdictKind::NoRow,
+                            remoted::endpoints::GroupVerdictKind::Superseded})
+    {
+        const auto source = std::make_shared<ScriptedAgentGroupSource>();
+        auto responder = std::make_shared<RecordingResponder>();
+        auto body = std::make_shared<std::string>(DERIVED_CONFIG_BODY);
+
+        makeHandler({}, {}, source)(authenticatedRequest(body), responder);
+        source->deliver(remoted::endpoints::GroupVerdict {kind, {}});
+
+        EXPECT_EQ(responder->status, 503);
+        EXPECT_NE(responder->body.find("dependency_unavailable"), std::string::npos);
+    }
+}
+
+TEST(DownloadHandlerTest, ContinuesAfterADeferredVerdictWithoutAResourceId)
+{
+    TempDir dir;
+    dir.makeDir("shared/web-servers");
+    dir.writeFile("shared/web-servers/merged.mg", "own group\n");
+    ResourcePaths paths;
+    paths.sharedDir = dir.path() + "/shared";
+    const auto source = std::make_shared<ScriptedAgentGroupSource>();
+    auto responder = std::make_shared<RecordingResponder>();
+    auto body = std::make_shared<std::string>(DERIVED_CONFIG_BODY);
+
+    makeHandler(paths, {}, source)(authenticatedRequest(body), responder);
+
+    ASSERT_TRUE(source->pending());
+    EXPECT_FALSE(responder->answered);
+
+    source->deliver(remoted::endpoints::GroupVerdict {remoted::endpoints::GroupVerdictKind::Selector, "web-servers"});
+
+    EXPECT_EQ(responder->status, 200);
+    EXPECT_TRUE(responder->streamed);
+    EXPECT_EQ(responder->body, "own group\n");
 }
 
 TEST(DownloadHandlerTest, WpkRequestsNeverResolve)

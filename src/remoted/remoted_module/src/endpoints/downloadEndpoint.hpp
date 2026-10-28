@@ -44,13 +44,15 @@ namespace remoted::endpoints::download
     struct DownloadRequest
     {
         ResourceType type {ResourceType::Config};
-        std::string resourceId; ///< Group name (Config) or WPK filename (Wpk).
+        /// Group selector (Config) or WPK filename (Wpk). Empty only for a Config request that did
+        /// not send one: the selector is then derived from the authenticated agent's own groups.
+        std::optional<std::string> resourceId;
     };
 
     /// @brief Why a request body was rejected before anything was looked up.
     enum class RequestError
     {
-        Malformed,           ///< Not JSON, not an object, missing/extra field, wrong type, or over the size cap.
+        Malformed, ///< Not JSON, not an object, an unexpected set of members, wrong type, or over the size cap.
         UnknownResourceType, ///< Well-formed, but `resource_type` is not `config` or `wpk`.
         InvalidResourceId    ///< Well-formed, but `resource_id` fails the grammar for its type.
     };
@@ -92,8 +94,10 @@ namespace remoted::endpoints::download
      * @brief Parse and syntactically validate a `/download` request body.
      *
      * Pure: no filesystem, no lookup, no logging. Rejects (as Malformed) anything that is not a
-     * JSON object carrying exactly `resource_type` and `resource_id`, both strings -- an unknown
-     * extra member is a rejection, matching the schema's `additionalProperties: false`.
+     * JSON object. `resource_type` is always required. A `config` request carries either that
+     * member alone or `resource_id` as well (in either order); a `wpk` request needs both. Any
+     * other member, or a `resource_id` that is not a string, is a rejection, matching the schema's
+     * `additionalProperties: false`.
      *
      * @param body Verified request body bytes (a view into the transport buffer; not NUL-terminated).
      */
@@ -104,13 +108,14 @@ namespace remoted::endpoints::download
      *
      * Accepts either one group name, or several separated by commas -- wazuh's own multigroup form.
      * Every entry must satisfy remoted::control::isValidGroupName(), the grammar /control resolves
-     * with, so an empty entry, a leading/trailing comma or a doubled comma is rejected. That grammar
-     * has no path separator and excludes `.` and `..`, which makes it the containment boundary for a
-     * single group name joined into `<sharedDir>/<group>/merged.mg`. Total length is capped at
-     * MAX_MULTIGROUP_SELECTOR_SIZE.
+     * with, so an empty entry, a leading/trailing comma or a doubled comma is rejected. Total length
+     * is capped at MAX_MULTIGROUP_SELECTOR_SIZE. This only validates what the request claims: the
+     * served path is built from the agent's derived selector, whose names
+     * remoted::control::resolveMergedConfigPath() validates again.
      *
      * Only the single-group form is ever joined into a path; a multi-entry selector is HASHED
-     * (see multigroupDirName()), so the directory it names is hex by construction.
+     * (see remoted::control::resolveMergedConfigPath()), so the directory it names is hex by
+     * construction.
      */
     bool isValidGroupSelector(std::string_view selector);
 
@@ -130,20 +135,6 @@ namespace remoted::endpoints::download
     /// @brief Client-visible `{"error","code"}` response for a resource that could not be located.
     remoted::http::HttpResponse errorResponseFor(LocateError error);
 
-    /**
-     * @brief Directory name a multigroup selector maps to under `var/multigroups`.
-     *
-     * Computed here, never looked up. wazuh-db is what NAMES that directory on disk, as
-     * `OS_SHA256_String_sized(csv, out, WDB_GROUP_HASH_SIZE)` with WDB_GROUP_HASH_SIZE == 32 -- the
-     * first 32 lowercase hex characters of the SHA-256, i.e. the first SIXTEEN digest bytes.
-     * Replicating that formula is exactly what keeps this endpoint free of any database access; if
-     * the two ever diverge, every multi-group agent silently stops receiving configuration.
-     *
-     * @warning Order-sensitive, since the digest is over the selector verbatim: `"a,b"` and `"b,a"`
-     * are different directories. An agent must send its groups in the order the manager reported.
-     */
-    std::string multigroupDirName(const std::string& groupSelector);
-
     /// @brief Outcome of resolving a request to a concrete file.
     struct LocateResult
     {
@@ -152,47 +143,19 @@ namespace remoted::endpoints::download
     };
 
     /**
-     * @brief Resolve a verified request to the file to serve.
+     * @brief Resolve a verified WPK request to the file to serve: `<wpkDir>/<resourceId>`.
      *
-     * `resource_id` names what the agent is asking for and the manager serves exactly that:
-     *   - Config, one group   -> `<sharedDir>/<resourceId>/merged.mg`
-     *   - Config, several     -> `<multigroupsDir>/<sha256(resourceId)[0..32)>/merged.mg`
-     *   - Wpk                 -> `<wpkDir>/<resourceId>`
+     * A `config` request is not resolved here: its path depends on the agent's groups, so the
+     * handler derives it with remoted::control::resolveMergedConfigPath() once the agent is
+     * authorized, and this function answers NotFound for one. An empty `resourceId` is NotFound too.
      *
-     * The multigroup form is what lets an agent in several groups fetch its EFFECTIVE configuration
-     * rather than one member group's. The selector is hashed, never joined, so it needs no database
-     * and cannot traverse.
+     * The WPK form joins agent-supplied input into a path, so containment rests on the grammar in
+     * isValidWpkFilename(): no `/`, no `.`/`..`, no leading dot. Loosening it to admit a separator
+     * would break that and require a realpath() containment check instead. `O_NOFOLLOW`
+     * (openRegularFile()) covers the final component, which here is the agent-supplied one.
      *
-     * The single-group and WPK forms join agent-supplied input into a path, so containment rests on
-     * the grammars in isValidGroupSelector()/isValidWpkFilename(): no `/`, no `.`/`..`, no leading
-     * dot. That is what stops the agent-supplied component from naming anything outside the base
-     * directory, and loosening either grammar to admit a separator would break it and require a
-     * realpath() containment check instead.
-     *
-     * `O_NOFOLLOW` (openRegularFile()) covers only the FINAL component of the path, which differs
-     * per form:
-     *   - Wpk           -> `<wpkDir>/<resourceId>`, one agent-supplied component, and it is the one
-     *                      opened, so O_NOFOLLOW applies to it directly.
-     *   - Config        -> `<sharedDir>/<group>/merged.mg`. The component opened is `merged.mg`
-     *                      (manager-owned); the agent-supplied `<group>` is an intermediate
-     *                      DIRECTORY, which O_NOFOLLOW does not check. A symlinked group directory
-     *                      would therefore be followed.
-     *
-     * That last case is not agent-exploitable -- planting it requires write access to the manager's
-     * own /etc/wazuh-manager/shared, at which point the configuration being served is already the attacker's --
-     * so it is called out as a limit of the mechanism rather than treated as a hole. Adding a
-     * realpath() containment check is what would close it if that assumption ever weakens.
-     *
-     * @note This function is deliberately identity-free: it maps a resource id to a path and
-     * nothing else, which is what keeps the containment argument above about the id GRAMMARS and
-     * O_NOFOLLOW alone. Authorization happens ABOVE it, in makeHandler(): a config request is
-     * served only when `resource_id` equals the selector the agent's own groups produce, so by the
-     * time a path is resolved here the caller is entitled to it. Do not add an identity check to
-     * this layer, and do not remove the one above it.
-     *
-     * `/control` must report `config_hash` over the file this resolves to for the selector it hands
-     * the agent, or that agent re-downloads on every notify -- the same selector both sides derive
-     * through remoted::control::makeConfigToken(), which is why they cannot disagree.
+     * Deliberately identity-free: it maps a resource id to a path and nothing else. WPK requests
+     * are not authorized against groups (their authority is the agent's pending upgrade task).
      */
     LocateResult locateResource(const DownloadRequest& request, const ResourcePaths& paths);
 
@@ -322,7 +285,14 @@ namespace remoted::endpoints::download
      * @param groups Resolves the selector the calling agent is entitled to. Required, with no
      * default: a config download is authorized against it, so silently defaulting it would mean
      * "serve anything to anyone". A null pointer, and an agent the source does not know, are both
-     * DENIED (403) -- there is no fallback to the id the request itself carries.
+     * DENIED (403). The file served is the one that selector names; a `resource_id` in the request
+     * is optional and, when present, must equal that selector or the request is refused (403).
+     *
+     * The config path joins each validated group name (no separator, not `.` or `..`) into
+     * `<sharedDir>/<group>/merged.mg`. `O_NOFOLLOW` covers only the final component, `merged.mg`, so
+     * a symlinked group directory would be followed; planting one needs write access to the
+     * manager's own shared directory, at which point the configuration served is already the
+     * attacker's. A realpath() containment check would close it if that assumption weakens.
      */
     remoted::endpoints::AuthenticatedHandler
     makeHandler(ResourcePaths paths, DownloadMetrics metrics, std::shared_ptr<const IAgentGroupSource> groups);
