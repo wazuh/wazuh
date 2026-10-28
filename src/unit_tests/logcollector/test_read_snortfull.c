@@ -39,6 +39,9 @@ static char written[2048];
 static char line_pool[64][256];
 static size_t lines_in_pool = 0;
 
+/* How many calls to EVP_MD_CTX_copy work before one fails, to test the reader without memory. Negative: none fails */
+static int copies_before_failure = -1;
+
 /* Setup & Teardown */
 
 static int group_setup(void **state) {
@@ -59,6 +62,7 @@ static int test_teardown(void **state) {
     kept_offset = 0;
     written[0] = '\0';
     lines_in_pool = 0;
+    copies_before_failure = -1;
     return 0;
 }
 
@@ -103,6 +107,18 @@ int __wrap_feof(FILE *stream) {
         return mock_type(int);
     }
     return __real_feof(stream);
+}
+
+extern int __real_EVP_MD_CTX_copy(EVP_MD_CTX *out, const EVP_MD_CTX *in);
+int __wrap_EVP_MD_CTX_copy(EVP_MD_CTX *out, const EVP_MD_CTX *in) {
+    if (copies_before_failure == 0) {
+        copies_before_failure = -1;
+        return 0;
+    }
+    if (copies_before_failure > 0) {
+        copies_before_failure--;
+    }
+    return __real_EVP_MD_CTX_copy(out, in);
 }
 
 /* The context hashes for real, so the tests can check the hash stored with the offset.
@@ -265,11 +281,16 @@ static void expect_line_unhashed(char *line) {
     will_return(__wrap_w_ftell, mock_position);
 }
 
-/* Expect the last line of the file, still being written, to be read without its line end */
-static void expect_unfinished_line(char *line) {
+/* Expect a line to be read and not used: the reader stops before it, so the next read starts there */
+static void expect_line_left_unread(char *line) {
     will_return(__wrap_can_read, 1);
     expect_any(__wrap_fgets, __stream);
     will_return(__wrap_fgets, line);
+}
+
+/* Expect the last line of the file, still being written, to be read without its line end */
+static void expect_unfinished_line(char *line) {
+    expect_line_left_unread(line);
     will_return(__wrap_feof, 1);
 }
 
@@ -324,17 +345,14 @@ static char *copy_line(const char *text, size_t len) {
     return line;
 }
 
-/* Expect a read that goes from offset to the end of what has been written, the last line maybe unfinished */
-static void expect_read_from(int64_t offset) {
-    const char *at = written + offset;
+/* Expect the lines of text to be read. Returns true if the last one is unfinished: nothing is read after it */
+static bool expect_lines(const char *text) {
     bool unfinished = false;
 
-    expect_prologue_at(offset);
-
-    while (*at != '\0' && !unfinished) {
-        const char *end = strchr(at, '\n');
-        size_t len = end ? (size_t) (end - at) + 1 : strlen(at);
-        char *line = copy_line(at, len);
+    while (*text != '\0' && !unfinished) {
+        const char *end = strchr(text, '\n');
+        size_t len = end ? (size_t) (end - text) + 1 : strlen(text);
+        char *line = copy_line(text, len);
 
         unfinished = (end == NULL);
         if (unfinished) {
@@ -342,10 +360,16 @@ static void expect_read_from(int64_t offset) {
         } else {
             expect_line(line);
         }
-        at += len;
+        text += len;
     }
+    return unfinished;
+}
 
-    if (!unfinished) {
+/* Expect a read that goes from offset to the end of what has been written, the last line maybe unfinished */
+static void expect_read_from(int64_t offset) {
+    expect_prologue_at(offset);
+
+    if (!expect_lines(written + offset)) {
         expect_end_of_file();
     }
 }
@@ -1166,6 +1190,43 @@ void test_read_snortfull_line_cut_in_alert_is_sent_once(void **state) {
     assert_int_equal(rc, 0);
 }
 
+#define HASH_SAVE_ERROR "Could not save the hash state of 'test.log' at the start of an alert. Trying again later."
+
+/**
+ * Test: the hash context cannot be copied at the header of the second alert (no memory).
+ * The reader could not go back to that header later, so it does not start the alert: it stops before the
+ * header, stores the offset and the hash up to there, and reports the error. The next read starts at that
+ * header and sends the alert once, without reading the first alert again.
+ */
+void test_read_snortfull_hash_copy_fails_at_header(void **state) {
+    logreader lf = {0};
+    lf.file = "test.log";
+    lf.fp = (FILE *) 1;
+    int rc;
+
+    write_to_file(ALERT("1001") ALERT("1002"));
+    copies_before_failure = 1;
+    expect_prologue_at(0);
+    expect_lines(ALERT("1001"));
+    expect_queued_message(MESSAGE("1001"));
+    expect_line_left_unread(copy_line(HEADER("1002"), strlen(HEADER("1002"))));
+    expect_string(__wrap__merror, formatted_msg, HASH_SAVE_ERROR);
+    expect_read_back_to((int64_t) strlen(ALERT("1001")));
+
+    read_snortfull(&lf, &rc, 0);
+
+    assert_int_equal(rc, -1);
+    assert_int_equal(kept_offset, (int64_t) strlen(ALERT("1001")));
+
+    expect_read_from(kept_offset);
+    expect_queued_message(MESSAGE("1002"));
+    expect_read_to_end();
+
+    read_snortfull(&lf, &rc, 0);
+
+    assert_int_equal(rc, 0);
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test(test_read_snortfull_complete_record),
@@ -1191,6 +1252,7 @@ int main(void) {
         cmocka_unit_test_teardown(test_read_snortfull_header_cut_by_writer_is_sent_once, test_teardown),
         cmocka_unit_test_teardown(test_read_snortfull_open_alert_waits_for_slow_writer, test_teardown),
         cmocka_unit_test_teardown(test_read_snortfull_line_cut_in_alert_is_sent_once, test_teardown),
+        cmocka_unit_test_teardown(test_read_snortfull_hash_copy_fails_at_header, test_teardown),
     };
 
     return cmocka_run_group_tests(tests, group_setup, group_teardown);

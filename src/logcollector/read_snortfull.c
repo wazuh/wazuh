@@ -46,19 +46,39 @@ typedef struct {
     EVP_MD_CTX *context; /* Hash context at position. NULL if the file is not hashed */
 } alert_start_t;
 
-/* Called before the header line is hashed, so the copy does not cover it */
-static void mark_alert_start(alert_start_t *start, int64_t position, EVP_MD_CTX *context) {
-    start->position = position;
-    if (start->context != NULL) {
-        EVP_MD_CTX_copy(start->context, context);
+static EVP_MD_CTX *copy_context(const EVP_MD_CTX *context) {
+    EVP_MD_CTX *copy = EVP_MD_CTX_new();
+
+    if (copy != NULL && EVP_MD_CTX_copy(copy, context) != 1) {
+        EVP_MD_CTX_free(copy);
+        copy = NULL;
     }
+    return copy;
 }
 
-/* Take the offset and the hash back to the start of the alert being assembled */
-static void restore_alert_start(const alert_start_t *start, EVP_MD_CTX *context, int64_t *position) {
+/* Called before the header line is hashed, so the copy does not cover it. A NULL context means that the file
+ * is not hashed. Returns false, and keeps the previous start, if the hash could not be copied */
+static bool mark_alert_start(alert_start_t *start, int64_t position, const EVP_MD_CTX *context) {
+    EVP_MD_CTX *saved = NULL;
+
+    if (context != NULL && (saved = copy_context(context)) == NULL) {
+        return false;
+    }
+    EVP_MD_CTX_free(start->context);
+    start->context = saved;
+    start->position = position;
+    return true;
+}
+
+/* Take the offset and the hash back to the start of the alert being assembled. The hash is swapped, not
+ * copied, so going back cannot fail; start ends up with the hash that was left behind */
+static void restore_alert_start(alert_start_t *start, EVP_MD_CTX **context, int64_t *position) {
     *position = start->position;
     if (start->context != NULL) {
-        EVP_MD_CTX_copy(context, start->context);
+        EVP_MD_CTX *left_behind = *context;
+
+        *context = start->context;
+        start->context = left_behind;
     }
 }
 
@@ -79,7 +99,7 @@ void *read_snortfull(logreader *lf, int *rc, int drop_it) {
     char str[OS_MAX_LOG_SIZE] = {0};
     char f_msg[OS_MAX_LOG_SIZE] = {0};
     int lines = 0;
-    bool unfinished_line = false;
+    bool line_left_unread = false;
 
     *rc = 0;
 
@@ -87,7 +107,7 @@ void *read_snortfull(logreader *lf, int *rc, int drop_it) {
     EVP_MD_CTX *context = EVP_MD_CTX_new();
     int64_t current_position = w_ftell(lf->fp);
     bool is_valid_context_file = w_get_hash_context(lf, &context, current_position);
-    alert_start_t alert_start = { current_position, is_valid_context_file ? EVP_MD_CTX_new() : NULL };
+    alert_start_t alert_start = { current_position, NULL };
 
     /* The line limit does not cut an alert: going back to its header instead would never get past an
      * alert longer than the limit */
@@ -97,12 +117,18 @@ void *read_snortfull(logreader *lf, int *rc, int drop_it) {
 
         /* Read it again whole, once the writer finishes it */
         if (is_unfinished_line(lf, str)) {
-            unfinished_line = true;
+            line_left_unread = true;
             break;
         }
 
         if (p == NULL && is_alert_header(str)) {
-            mark_alert_start(&alert_start, current_position, context);
+            if (!mark_alert_start(&alert_start, current_position, is_valid_context_file ? context : NULL)) {
+                merror("Could not save the hash state of '%s' at the start of an alert. Trying again later.",
+                       lf->file);
+                *rc = -1;
+                line_left_unread = true;
+                break;
+            }
         }
 
         if (is_valid_context_file) {
@@ -203,11 +229,11 @@ file_error:
 
     /* The read stopped before the date line of the alert being assembled */
     if (p != NULL) {
-        restore_alert_start(&alert_start, context, &current_position);
+        restore_alert_start(&alert_start, &context, &current_position);
     }
 
-    /* Without an open alert, current_position is the start of the unfinished line, which was not hashed */
-    if (p != NULL || unfinished_line) {
+    /* Without an open alert, current_position is the start of the line left unread, which was not hashed */
+    if (p != NULL || line_left_unread) {
         retry_from(lf, current_position);
     } else {
         current_position = w_ftell(lf->fp);
