@@ -315,8 +315,10 @@ def send_request(client, service_name: str):
         client.get_object(Bucket=utils.TEST_BUCKET, Key='key')
 
 
+@pytest.mark.parametrize('windows_as_arguments', [True, False])
 @pytest.mark.parametrize('iam_role_duration, refresh_window', [(900, 300), (1300, 433), (3600, 900), (None, 900)])
-def test_wazuh_integration_get_client_refreshes_role_session_before_it_expires(iam_role_duration, refresh_window):
+def test_wazuh_integration_get_client_refreshes_role_session_before_it_expires(iam_role_duration, refresh_window,
+                                                                               windows_as_arguments):
     """Test `get_client` returns a client which assumes the role again once its session is about to expire, and not
     before, even if the session is shorter than botocore's default refresh window.
 
@@ -326,9 +328,14 @@ def test_wazuh_integration_get_client_refreshes_role_session_before_it_expires(i
         Duration of the role session.
     refresh_window : int
         Seconds before the end of the session in which it is refreshed.
+    windows_as_arguments : bool
+        Whether botocore takes the refresh windows as arguments (since 1.34.0).
     """
-    session_duration = iam_role_duration or wazuh_integration.DEFAULT_ROLE_SESSION_DURATION
-    with freeze_time(datetime.now(timezone.utc)) as frozen_time:
+    if windows_as_arguments and not wazuh_integration.REFRESH_WINDOWS_AS_ARGUMENTS:
+        pytest.skip('botocore older than 1.34.0')
+    session_duration = iam_role_duration or 3600
+    with freeze_time(datetime.now(timezone.utc)) as frozen_time, \
+            patch('wazuh_integration.REFRESH_WINDOWS_AS_ARGUMENTS', windows_as_arguments):
         client, mock_assume_role, session_tokens = get_role_client(
             's3', [get_sts_role_assumption(1, session_duration), get_sts_role_assumption(2, session_duration)],
             iam_role_duration)

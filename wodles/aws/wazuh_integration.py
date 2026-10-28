@@ -17,6 +17,7 @@ import configparser
 import contextlib
 import copy
 import gzip
+import inspect
 import io
 import json
 import operator
@@ -38,11 +39,12 @@ DEFAULT_GOV_REGIONS = {'us-gov-east-1', 'us-gov-west-1'}
 SERVICES_REQUIRING_REGION = {'inspector', 'inspector2', 'cloudwatchlogs', 'ec2'}
 WAZUH_DEFAULT_RETRY_CONFIGURATION = {aws_tools.RETRY_ATTEMPTS_KEY: 10, aws_tools.RETRY_MODE_BOTO_KEY: 'standard'}
 MESSAGE_HEADER = "1:Wazuh-AWS:"
-# STS default when no DurationSeconds is requested
-DEFAULT_ROLE_SESSION_DURATION = 3600
 # botocore's default refresh windows (seconds before expiration), too wide for sessions of 900 seconds
 ROLE_SESSION_ADVISORY_REFRESH = 15 * 60
 ROLE_SESSION_MANDATORY_REFRESH = 10 * 60
+# botocore takes the refresh windows as arguments since 1.34.0
+REFRESH_WINDOWS_AS_ARGUMENTS = 'advisory_timeout' in inspect.signature(
+    credentials.RefreshableCredentials.create_from_metadata).parameters
 EXPIRED_TOKEN_ERROR_CODES = {'ExpiredToken', 'ExpiredTokenException'}
 
 
@@ -55,8 +57,8 @@ class RoleCredentials(credentials.RefreshableCredentials):
     refused = False
 
     @classmethod
-    def assume(cls, sts_client, assume_role_kwargs: dict, duration: int = None) -> 'RoleCredentials':
-        """Assume the role and return its refreshable credentials.
+    def assume(cls, sts_client, assume_role_kwargs: dict) -> 'RoleCredentials':
+        """Assume the role and return its refreshable credentials, with refresh windows scaled to its session.
 
         Parameters
         ----------
@@ -64,8 +66,6 @@ class RoleCredentials(credentials.RefreshableCredentials):
             Client used to assume the role, now and on every refresh.
         assume_role_kwargs : dict
             Arguments of the AssumeRole call.
-        duration : int
-            Duration of the role session in seconds. STS default if None.
 
         Returns
         -------
@@ -85,11 +85,18 @@ class RoleCredentials(credentials.RefreshableCredentials):
             instance.refused = False
             return metadata
 
-        duration = duration or DEFAULT_ROLE_SESSION_DURATION
-        instance = cls.create_from_metadata(metadata=assume_role(), refresh_using=refresh, method='assume-role')
-        # Set after creating them: botocore takes them as arguments only since 1.34.0
-        instance._advisory_refresh_timeout = min(ROLE_SESSION_ADVISORY_REFRESH, duration // 3)
-        instance._mandatory_refresh_timeout = min(ROLE_SESSION_MANDATORY_REFRESH, duration // 6)
+        metadata = assume_role()
+        expiration = datetime.fromisoformat(metadata['expiry_time'])
+        session_duration = int((expiration - datetime.now(timezone.utc)).total_seconds())
+        windows = {'advisory_timeout': min(ROLE_SESSION_ADVISORY_REFRESH, session_duration // 3),
+                   'mandatory_timeout': min(ROLE_SESSION_MANDATORY_REFRESH, session_duration // 6)}
+        if REFRESH_WINDOWS_AS_ARGUMENTS:
+            instance = cls.create_from_metadata(metadata=metadata, refresh_using=refresh, method='assume-role',
+                                                **windows)
+        else:
+            instance = cls.create_from_metadata(metadata=metadata, refresh_using=refresh, method='assume-role')
+            instance._advisory_refresh_timeout = windows['advisory_timeout']
+            instance._mandatory_refresh_timeout = windows['mandatory_timeout']
         return instance
 
     def refresh_needed(self, refresh_in=None) -> bool:
@@ -305,7 +312,7 @@ class WazuhIntegration:
                 if iam_role_duration is not None:
                     assume_role_kwargs['DurationSeconds'] = iam_role_duration
 
-                role_credentials = RoleCredentials.assume(sts_client, assume_role_kwargs, iam_role_duration)
+                role_credentials = RoleCredentials.assume(sts_client, assume_role_kwargs)
                 # boto3.Session only takes static credentials: set the refreshable ones in its botocore session
                 botocore_session = get_session()
                 botocore_session._credentials = role_credentials
