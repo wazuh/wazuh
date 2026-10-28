@@ -139,7 +139,7 @@ A proxy that strips or adds a path segment produces the same `404`.
 
 ## 4. `403`, but only on configuration download
 
-**A `403` comes only from an agent that still sends a `resource_id`.** A new agent sends no
+**In practice a `403` comes only from an agent that still sends a `resource_id`.** A new agent sends no
 selector: the node derives it from the agent's groups, so a group change that a node has not applied
 yet never produces a `403` for it. Routing does not cause one either: a node that has not served the
 agent a `/control` reads the agent's groups from its own database instead of refusing

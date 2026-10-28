@@ -84,7 +84,7 @@ namespace remoted::endpoints::download
     /**
      * @brief Upper bound on the request body accepted before parsing.
      *
-     * A real `/download` body is about 80 bytes. Capping here -- well below the authenticated-body
+     * A real `/download` body is under 100 bytes. Capping here -- well below the authenticated-body
      * limit -- means a pathologically large or deeply nested JSON blob is rejected outright instead
      * of costing CPU and heap proportional to its size. Same reasoning as `/stateless`'s H-line cap.
      */

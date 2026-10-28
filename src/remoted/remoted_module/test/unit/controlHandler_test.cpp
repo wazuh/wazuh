@@ -571,8 +571,8 @@ TEST(ControlHandlerTest, NotifyReturnsGroupsSettingsHashAndTasks)
     EXPECT_EQ(j["agent"]["groups"][0], "default");
     // No merged.mg file exists in the group dir, so config_hash must be "0".
     EXPECT_EQ(j["agent"]["config_hash"], "0");
-    // config_token is always present and never empty, even when nothing resolved: the agent
-    // needs some resource to name on /download, and the next notify re-triggers the download.
+    // config_token is always present and never empty, even when nothing resolved, and the
+    // next notify re-triggers the download.
     EXPECT_EQ(j["agent"]["config_token"], "default");
     EXPECT_TRUE(j.contains("settings_hash"));
     EXPECT_EQ(j["settings_hash"].get<std::string>().size(), 64U); // sha256 hex
@@ -666,7 +666,7 @@ TEST(ControlHandlerTest, PublishesHashZeroWhenAGroupIsOutsideTheGrammar)
     EXPECT_EQ(j["agent"]["config_token"], "a:b");
 }
 
-// The token is what /download resolves, and config_hash is what the agent verifies the bytes
+// The token is the selector /download derives for the agent, and config_hash is what the agent verifies the bytes
 // against, so the two must always describe the SAME merged.mg. For a multigroup agent that
 // means the token has to carry every group, comma-joined in wdb's order -- the same CSV the
 // multigroups directory name is hashed from -- and must never be re-sorted or truncated to

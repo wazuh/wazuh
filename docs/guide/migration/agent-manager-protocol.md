@@ -61,7 +61,7 @@ by default (`POST /wazuh-manager/control`). Full contracts in
 | `5:` dbsync deltas | **Removed.** Not supported in 5.0. |
 | `s:` incremental inventory sync | `POST /stateful` — whole sessions only; the manager no longer accepts incremental syncs |
 | `merged.mg` pushed down the connection | `POST /download` with `{"resource_type":"config"}`, triggered by a `config_hash` change in a `notify` response |
-| WPK package pushed for remote upgrade | `POST /download` with `{"resource_type":"wpk"}` |
+| WPK package pushed for remote upgrade | `POST /download` with `{"resource_type":"wpk","resource_id":"<file>.wpk"}` |
 | `u:upgrade_module:` upgrade acknowledgment | Still honored on the legacy channel, so remote upgrade of a 4.x agent keeps working |
 | Feed-update rescan driven by the manager | `POST /scan/vd`, requested by the agent when a `notify` response reports a newer `vd_feed_offset` |
 | `GET /agents/{id}/stats/{component}` on the server API | `POST /stats`, reported by the agent when `<agent><stats_report>` enables it (off by default) and indexed into `wazuh-agent-stats` |
