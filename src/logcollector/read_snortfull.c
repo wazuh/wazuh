@@ -35,6 +35,11 @@ static bool is_alert_header(const char *str) {
     return strncmp(str, "[**] [", 6) == 0;
 }
 
+/* A line without its line end at the end of the file is still being written */
+static bool is_unfinished_line(logreader *lf, const char *str) {
+    return strchr(str, '\n') == NULL && feof(lf->fp);
+}
+
 /* Where the alert being assembled starts, to read it again if the read stops before its date line */
 typedef struct {
     int64_t position;
@@ -74,6 +79,7 @@ void *read_snortfull(logreader *lf, int *rc, int drop_it) {
     char str[OS_MAX_LOG_SIZE] = {0};
     char f_msg[OS_MAX_LOG_SIZE] = {0};
     int lines = 0;
+    bool unfinished_line = false;
 
     *rc = 0;
 
@@ -88,6 +94,12 @@ void *read_snortfull(logreader *lf, int *rc, int drop_it) {
     while (can_read() && (!maximum_lines || lines < maximum_lines || p != NULL) && fgets(str, sizeof(str), lf->fp)) {
 
         lines++;
+
+        /* Read it again whole, once the writer finishes it */
+        if (is_unfinished_line(lf, str)) {
+            unfinished_line = true;
+            break;
+        }
 
         if (p == NULL && is_alert_header(str)) {
             mark_alert_start(&alert_start, current_position, context);
@@ -192,6 +204,10 @@ file_error:
     /* The read stopped before the date line of the alert being assembled */
     if (p != NULL) {
         restore_alert_start(&alert_start, context, &current_position);
+    }
+
+    /* Without an open alert, current_position is the start of the unfinished line, which was not hashed */
+    if (p != NULL || unfinished_line) {
         retry_from(lf, current_position);
     } else {
         current_position = w_ftell(lf->fp);

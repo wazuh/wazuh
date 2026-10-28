@@ -83,6 +83,14 @@ int __wrap_can_read() {
     return mock_type(int);
 }
 
+extern int __real_feof(FILE *stream);
+int __wrap_feof(FILE *stream) {
+    if (test_mode) {
+        return mock_type(int);
+    }
+    return __real_feof(stream);
+}
+
 /* The context hashes for real, so the tests can check the hash stored with the offset */
 bool __wrap_w_get_hash_context(logreader *lf, EVP_MD_CTX **context, int64_t position) {
     EVP_DigestInit(*context, EVP_sha1());
@@ -223,6 +231,14 @@ static void expect_line_unhashed(char *line) {
     mock_position += (int64_t) strlen(line);
     expect_any(__wrap_w_ftell, x);
     will_return(__wrap_w_ftell, mock_position);
+}
+
+/* Expect the last line of the file, still being written, to be read without its line end */
+static void expect_unfinished_line(char *line) {
+    will_return(__wrap_can_read, 1);
+    expect_any(__wrap_fgets, __stream);
+    will_return(__wrap_fgets, line);
+    will_return(__wrap_feof, 1);
 }
 
 static void expect_end_of_file(void) {
@@ -603,7 +619,7 @@ void test_read_snortfull_consecutive_full_records(void **state) {
 }
 
 /**
- * Test: a line that breaks the record format.
+ * Test: a line that breaks the record format, without a line end before the end of the file.
  * The reader stops with an error, but the state covering the bad line is stored, so the next read and a
  * restart resume after it instead of hashing from a stale state.
  */
@@ -619,6 +635,7 @@ void test_read_snortfull_bad_line_keeps_state(void **state) {
     expect_prologue();
 
     expect_line(line1);
+    will_return(__wrap_feof, 0);
     expect_line(line2);
 
     expect_string(__wrap__merror, formatted_msg, "Bad formated snort full file.");
@@ -868,6 +885,72 @@ void test_read_snortfull_line_limit_shorter_than_alert(void **state) {
     assert_int_equal(rc, 0);
 }
 
+/**
+ * Test: the writer flushed an alert in the middle of its classification line.
+ * The unfinished line is not a format error: the reader goes back to the alert's header.
+ */
+void test_read_snortfull_unfinished_line_in_alert(void **state) {
+    logreader lf = {0};
+    lf.file = "test.log";
+    lf.fp = (FILE *) 1;
+    int rc;
+
+    char line1[] = "[**] [1:1000001:0] Test alert [**]\n";
+    char line2[] = "[Classification: Attempted Inf";
+
+    expect_prologue();
+
+    expect_line(line1);
+    expect_unfinished_line(line2);
+
+    expect_rewind(0);
+    expect_stored_state(0, "");
+    expect_any(__wrap__mdebug2, formatted_msg);
+
+    read_snortfull(&lf, &rc, 0);
+
+    assert_int_equal(rc, 0);
+}
+
+/**
+ * Test: a complete alert, then the first bytes of the next header at the end of the file.
+ * The first alert is queued and the reader goes back to the start of the unfinished line.
+ */
+void test_read_snortfull_unfinished_line_after_alert(void **state) {
+    logreader lf = {0};
+    lf.file = "test.log";
+    lf.fp = (FILE *) 1;
+    int rc;
+
+    char line1[] = "[**] [1:1000001:0] Test alert [**]\n";
+    char line2[] = "[Classification: Attempted Information Leak] [Priority: 2]\n";
+    char line3[] = "01/13-15:30:00.000000 10.0.0.1:1234 -> 10.0.0.2:80\n";
+    char line4[] = "[**] [1:10";
+    char alert[256];
+
+    snprintf(alert, sizeof(alert), "%s%s%s", line1, line2, line3);
+
+    expect_prologue();
+
+    expect_line(line1);
+    expect_line(line2);
+    expect_line(line3);
+
+    const char *msg = "[**] [1:1000001:0] Test alert [**] [Classification: Attempted Information Leak] [Priority: 2] "
+                      "10.0.0.1:1234 -> 10.0.0.2:80";
+    expect_queued(msg, strlen(msg) + 1);
+
+    expect_unfinished_line(line4);
+
+    expect_rewind((int64_t) strlen(alert));
+    expect_stored_state((int64_t) strlen(alert), alert);
+    expect_any(__wrap__mdebug2, formatted_msg);
+
+    read_snortfull(&lf, &rc, 0);
+
+    assert_int_equal(rc, 0);
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test(test_read_snortfull_complete_record),
@@ -888,6 +971,8 @@ int main(void) {
         cmocka_unit_test_teardown(test_read_snortfull_eof_mid_alert_unhashed, test_teardown),
         cmocka_unit_test_teardown(test_read_snortfull_line_limit_on_header, test_teardown),
         cmocka_unit_test_teardown(test_read_snortfull_line_limit_shorter_than_alert, test_teardown),
+        cmocka_unit_test_teardown(test_read_snortfull_unfinished_line_in_alert, test_teardown),
+        cmocka_unit_test_teardown(test_read_snortfull_unfinished_line_after_alert, test_teardown),
     };
 
     return cmocka_run_group_tests(tests, group_setup, group_teardown);
