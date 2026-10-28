@@ -116,9 +116,9 @@ def get_rules(rule_ids: list = None, status: str = None, group: str = None, pci_
     parameters = {'groups': group, 'pci_dss': pci_dss, 'gpg13': gpg13, 'gdpr': gdpr, 'hipaa': hipaa,
                   'nist_800_53': nist_800_53, 'tsc': tsc, 'mitre': mitre, 'relative_dirname': relative_dirname,
                   'filename': filename, 'id': rule_ids, 'level': levels, 'status': status}
-    original_rules = list(rules)
+    filtered_rules = list()
     no_existent_ids = rule_ids[:]
-    for r in original_rules:
+    for r in rules:
         if r['id'] in no_existent_ids:
             no_existent_ids.remove(r['id'])
         for key, value in parameters.items():
@@ -129,8 +129,10 @@ def get_rules(rule_ids: list = None, status: str = None, group: str = None, pci_
                         (key == 'filename' and r[key] not in filename) or \
                         (key == 'status' and r[key] not in value) or \
                         (not isinstance(value, list) and value not in r[key]):
-                    rules.remove(r)
                     break
+        else:
+            filtered_rules.append(r)
+    rules = filtered_rules
 
     for rule_id in no_existent_ids:
         result.add_failed_item(id_=rule_id, error=WazuhError(1208))
