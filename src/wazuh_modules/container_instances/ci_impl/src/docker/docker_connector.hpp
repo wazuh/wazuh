@@ -2,6 +2,7 @@
 
 #include "../cache/i_metadata_store.hpp"
 #include "../cgroup/i_cgroup_resolver.hpp"
+#include "../core/attribution_health.hpp"
 #include "../core/cache_entry.hpp"
 #include "../core/i_container_connector.hpp"
 #include "../core/i_on_demand_refresher.hpp"
@@ -54,6 +55,10 @@ namespace wazuh::container_instances
         IMetadataStore& m_store;
         SourceId m_source;
         Logger m_logger;
+
+        /// Watches for the one failure on this path that is otherwise silent:
+        /// records published with no cgroup key at all. See AttributionHealth.
+        AttributionHealth m_attributionHealth;
 
         /// (id, action, timeNano) of recent events: dedupe across since= resume
         /// overlap. Pruned by timestamp, guarded for refreshOne concurrency.

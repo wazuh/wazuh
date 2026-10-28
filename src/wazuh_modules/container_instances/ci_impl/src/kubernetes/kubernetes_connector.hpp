@@ -2,6 +2,7 @@
 
 #include "../cache/i_metadata_store.hpp"
 #include "../cgroup/i_cgroup_resolver.hpp"
+#include "../core/attribution_health.hpp"
 #include "../core/i_container_connector.hpp"
 #include "../core/i_on_demand_refresher.hpp"
 #include "../core/logger.hpp"
@@ -50,6 +51,10 @@ namespace wazuh::container_instances
         const IWorkloadIndexSource& m_workloadIndex;
         std::string m_nodeName;
         Logger m_logger;
+
+        /// Watches for the one failure on this path that is otherwise silent:
+        /// records published with no cgroup key at all. See AttributionHealth.
+        AttributionHealth m_attributionHealth;
 
         /// Connector-thread state (watch sink and reconcile run on it exclusively).
         std::unordered_map<std::string, PodSnapshot> m_podsByUid;

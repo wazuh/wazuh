@@ -124,6 +124,14 @@ namespace wazuh::container_instances
             }
         }
 
+        // Before the move, and before the store sees them: this reads the
+        // records as they are about to be published, which is the only point
+        // where "the runtime says these exist" and "none of them resolved" are
+        // both in hand. Host-namespace and Kata containers never reach this
+        // vector, which is correct -- they are attributed as verdicts, not by
+        // a record key, so their absence here cannot look like a failure.
+        m_attributionHealth.observe(records, m_logger);
+
         m_store.applySnapshot(
             KUBERNETES_SOURCE, std::move(records), scan.allHostKeys, std::chrono::steady_clock::now());
         for (const auto& [inode, reason] : verdicts)

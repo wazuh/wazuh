@@ -98,6 +98,12 @@ namespace wazuh::container_instances
             }
         }
 
+        // Before the move, and before the store sees them: this reads the
+        // records as they are about to be published, which is the only point
+        // where "the runtime says these exist" and "none of them resolved" are
+        // both in hand.
+        m_attributionHealth.observe(records, m_logger);
+
         m_store.applySnapshot(m_source, std::move(records), scan.allHostKeys, std::chrono::steady_clock::now());
         m_lastReconcile = std::chrono::steady_clock::now();
         m_reconcilePending = false;
