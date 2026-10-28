@@ -12,6 +12,7 @@
 | Issue | Comment |
 |-------|---------|
 | [#35897](https://github.com/wazuh/wazuh/issues/35897) | Unified the Content Manager across the manager: the Engine's ruleset and IoC sync and the Vulnerability Scanner's feed now share one library that validates the CTI consumer inside the download snapshot; the `content_manager` modulesd module is removed |
+| [#38735](https://github.com/wazuh/wazuh/issues/38735) | Changed `POST /download` for `resource_type: config` to derive the configuration from the requesting agent's groups, so the request carries no `resource_id`, and the agent no longer sends one. Group names in a `resource_id` are limited to `A-Za-z0-9._-`. Upgrade every manager node before any agent: a manager without this change answers `400` to an agent that omits `resource_id`. |
 
 #### Removed
 
