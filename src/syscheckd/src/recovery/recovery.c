@@ -109,6 +109,23 @@ void fim_recovery_set_container_row_handler(fim_recovery_container_row_handler_t
     container_row_handler = handler;
 }
 
+static fim_recovery_container_lock_t container_lock = NULL;
+static fim_recovery_container_lock_t container_unlock = NULL;
+
+void fim_recovery_set_container_locking(fim_recovery_container_lock_t lock,
+                                        fim_recovery_container_lock_t unlock) {
+    /* Both or neither. Half a pair is worse than none: taking a lock nothing
+     * releases stops the container layer for good. */
+    if (lock == NULL || unlock == NULL) {
+        container_lock = NULL;
+        container_unlock = NULL;
+        return;
+    }
+
+    container_lock = lock;
+    container_unlock = unlock;
+}
+
 bool fim_recovery_persist_table_and_resync(char* table_name, AgentSyncProtocolHandle* handle, const OSList *directories_list,
                                            const char* retry_note){
     int increase_result = fim_db_increase_each_entry_version(table_name);
@@ -197,6 +214,17 @@ bool fim_recovery_persist_table_and_resync(char* table_name, AgentSyncProtocolHa
             if (container_id && *container_id) {
                 int queued = 0;
 
+                /* Around BOTH writes below, for the whole of this row. The handler
+                 * charges the container's document budget and hands the document to
+                 * the manager, and the demote after it updates file_entry; the
+                 * container layer does the same things from its own threads, under
+                 * this same lock, and holds it across walks that keep a scoped
+                 * transaction open. Taking it per row rather than per table lets
+                 * such a walk wait for one row instead of for the whole resync. */
+                if (container_lock) {
+                    container_lock();
+                }
+
                 if (!container_row_handler) {
                     mdebug2("Skipping recovery of container file (container monitoring is off): %s:%s",
                             container_id, path);
@@ -227,6 +255,10 @@ bool fim_recovery_persist_table_and_resync(char* table_name, AgentSyncProtocolHa
                                 "integrity check will order another resync.",
                                 container_id, path);
                     }
+                }
+
+                if (container_unlock) {
+                    container_unlock();
                 }
 
                 cJSON_Delete(item_copy);

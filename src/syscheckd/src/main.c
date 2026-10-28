@@ -519,6 +519,13 @@ int main(int argc, char **argv)
         fim_container_baseline_set_host_api(&container_host_api);
         fim_recovery_set_container_row_handler(fim_container_recover_row);
 
+        // Registered together with the handler, and only here: recovery runs on the
+        // sync thread while the container walk and the reconcile consumer run on
+        // theirs, and nothing else stops the two writing the same container's rows
+        // at once. With container monitoring off there is no second writer, which
+        // is exactly when this stays unregistered.
+        fim_recovery_set_container_locking(fim_container_state_lock, fim_container_state_unlock);
+
         // Subscribe BEFORE walking (#37396 / #37532). The drain stages container
         // file events from here on, so a file changed while the walk is running
         // is reconciled afterwards instead of falling into the gap between "the

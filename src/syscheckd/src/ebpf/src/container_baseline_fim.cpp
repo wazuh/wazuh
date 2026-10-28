@@ -1171,6 +1171,16 @@ namespace
 
 } // namespace
 
+extern "C" void fim_container_state_lock(void)
+{
+    container_state_mutex.lock();
+}
+
+extern "C" void fim_container_state_unlock(void)
+{
+    container_state_mutex.unlock();
+}
+
 extern "C" void fim_container_reconcile_admission(void)
 {
     std::lock_guard<std::recursive_mutex> lock(container_state_mutex);

@@ -276,11 +276,28 @@ static void test_fim_recovery_persist_table_and_resync_success(void **state) {
     check_fim_recovery_file_id("");
 }
 
+// Recovery runs on the sync thread; the container layer walks and reconciles on
+// its own, under a lock recovery does not hold unless it is given one. These
+// count the calls so a test can assert the row was handled inside it.
+static int container_lock_depth = 0;
+static int container_lock_taken = 0;
+static int container_locked_during_handler = 0;
+
+static void mock_container_lock(void) {
+    ++container_lock_depth;
+    ++container_lock_taken;
+}
+
+static void mock_container_unlock(void) {
+    --container_lock_depth;
+}
+
 static int mock_container_row_result = 1;
 
 static int mock_container_row_handler(const cJSON* row) {
     const char* container_id = cJSON_GetStringValue(cJSON_GetObjectItem(row, "container_id"));
     const char* path = cJSON_GetStringValue(cJSON_GetObjectItem(row, "path"));
+    container_locked_during_handler = container_lock_depth;
     check_expected(container_id);
     check_expected(path);
     return mock_container_row_result;
@@ -417,6 +434,70 @@ static void test_fim_recovery_resync_reports_container_row_failure(void **state)
     assert_true(fim_recovery_persist_table_and_resync(FIMDB_FILE_TABLE_NAME, handle, &mock_directories, "retry note"));
     fim_recovery_set_container_row_handler(NULL);
     mock_container_row_result = 1;
+}
+
+// The container layer writes the same rows from its own threads, holding a lock
+// recovery knows nothing about. Both of recovery's writes -- handing the document
+// to the manager, and demoting the row it could not send -- have to happen inside
+// that lock, or one of them lands in the middle of a walk's open scoped
+// transaction. Balance matters as much as coverage: a lock left held stops the
+// container layer for the life of the process.
+static void test_fim_recovery_container_rows_are_handled_under_the_container_lock(void **state) {
+    (void)state;
+    AgentSyncProtocolHandle* handle = (AgentSyncProtocolHandle*)0x1234;
+    expect_any_always(__wrap__mdebug1, formatted_msg);
+
+    cJSON* test_items = cJSON_CreateArray();
+    cJSON_AddItemToArray(test_items, container_recovery_item("abc123", "/tmp/c.txt"));
+
+    container_lock_depth = 0;
+    container_lock_taken = 0;
+    container_locked_during_handler = 0;
+    fim_recovery_set_container_locking(mock_container_lock, mock_container_unlock);
+    fim_recovery_set_container_row_handler(mock_container_row_handler);
+    mock_container_row_result = 0; // Not queued, so the demote runs too.
+
+    expect_recovery_start(handle, test_items);
+    expect_string(mock_container_row_handler, container_id, "abc123");
+    expect_string(mock_container_row_handler, path, "/tmp/c.txt");
+    expect_container_demote();
+    expect_recovery_sync(handle);
+
+    assert_true(fim_recovery_persist_table_and_resync(FIMDB_FILE_TABLE_NAME, handle, &mock_directories, "retry note"));
+
+    assert_int_equal(container_lock_taken, 1);
+    assert_int_equal(container_locked_during_handler, 1);
+    assert_int_equal(container_lock_depth, 0);
+
+    fim_recovery_set_container_locking(NULL, NULL);
+    fim_recovery_set_container_row_handler(NULL);
+    mock_container_row_result = 1;
+}
+
+// Half a pair would be worse than none: a lock taken with nothing to release it
+// stops the container layer for good, so an incomplete registration clears both.
+static void test_fim_recovery_half_a_container_lock_pair_is_refused(void **state) {
+    (void)state;
+    AgentSyncProtocolHandle* handle = (AgentSyncProtocolHandle*)0x1234;
+    expect_any_always(__wrap__mdebug1, formatted_msg);
+    expect_any_always(__wrap__mdebug2, formatted_msg);
+
+    cJSON* test_items = cJSON_CreateArray();
+    cJSON_AddItemToArray(test_items, container_recovery_item("abc123", "/tmp/c.txt"));
+
+    container_lock_depth = 0;
+    container_lock_taken = 0;
+    fim_recovery_set_container_locking(mock_container_lock, NULL);
+    fim_recovery_set_container_row_handler(NULL);
+
+    expect_recovery_start(handle, test_items);
+    expect_container_demote();
+    expect_recovery_sync(handle);
+
+    assert_true(fim_recovery_persist_table_and_resync(FIMDB_FILE_TABLE_NAME, handle, &mock_directories, "retry note"));
+
+    assert_int_equal(container_lock_taken, 0);
+    assert_int_equal(container_lock_depth, 0);
 }
 
 // Test: Persist and resync with failed synchronization
@@ -1559,6 +1640,8 @@ int main(void) {
         cmocka_unit_test(test_fim_recovery_resync_routes_container_rows_to_handler),
         cmocka_unit_test(test_fim_recovery_resync_skips_container_rows_without_handler),
         cmocka_unit_test(test_fim_recovery_resync_reports_container_row_failure),
+        cmocka_unit_test(test_fim_recovery_container_rows_are_handled_under_the_container_lock),
+        cmocka_unit_test(test_fim_recovery_half_a_container_lock_pair_is_refused),
         cmocka_unit_test(test_fim_recovery_persist_table_and_resync_failure),
         cmocka_unit_test(test_fim_recovery_persist_table_and_resync_version_increase_failure),
         cmocka_unit_test(test_fim_recovery_persist_table_and_resync_null_items),

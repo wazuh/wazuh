@@ -131,6 +131,22 @@ void fim_container_doc_budget_report(void);
 void fim_container_reconcile_admission(void);
 
 /**
+ * @brief Take and release the lock that serialises container FIM state.
+ *
+ * Everything that walks containers, sweeps them or reconciles their reporting
+ * holds this for the whole of its work, open scoped transactions included. A
+ * writer that does not take it can land a single-row write in the middle of
+ * one of those transactions, which is how a baseline once lost 502 of the 504
+ * rows it had just read on a real node.
+ *
+ * Exposed as a plain pair because the one caller that needs it -- recovery --
+ * is C, deliberately does not link this library, and reaches both through
+ * function pointers it is handed at startup.
+ */
+void fim_container_state_lock(void);
+void fim_container_state_unlock(void);
+
+/**
  * @brief Record which containers may report to the manager (#37532).
  *
  * A different question from the document budget above: that one bounds how much
