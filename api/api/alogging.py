@@ -28,10 +28,13 @@ MAX_LOGGED_BODY_SIZE = 8 * 1024
 # `client_secret`, `x-api-key` and `accessToken` are all covered without the false positives
 # (`keyword`, `monkey`, `tokenizer`) a plain substring test would bring.
 SENSITIVE_FIELD_NAMES = frozenset({
-    'authorization', 'cookie', 'credential', 'credentials', 'key', 'passwd', 'password',
-    'pwd', 'secret', 'token',
+    'authorization', 'bearer', 'cookie', 'credential', 'credentials', 'key', 'passphrase', 'passwd',
+    'password', 'pwd', 'secret', 'session_id', 'token',
 })
 SENSITIVE_FIELD_SUFFIXES = tuple(f'_{name}' for name in SENSITIVE_FIELD_NAMES)
+# Words that mark a secret anywhere in a compound name, not only at its tail: `api_secret_value`,
+# `secret_value`.
+SENSITIVE_FIELD_WORDS = frozenset({'secret'})
 
 # Value written in place of a sensitive one.
 REDACTED_VALUE = '****'
@@ -61,7 +64,8 @@ def is_sensitive_field(name: str) -> bool:
     # either half.
     for candidate in (name.lower().replace('-', '_'),
                       _WORD_BOUNDARY.sub('_', name).lower().replace('-', '_')):
-        if candidate in SENSITIVE_FIELD_NAMES or candidate.endswith(SENSITIVE_FIELD_SUFFIXES):
+        if candidate in SENSITIVE_FIELD_NAMES or candidate.endswith(SENSITIVE_FIELD_SUFFIXES) \
+                or not SENSITIVE_FIELD_WORDS.isdisjoint(candidate.split('_')):
             return True
     return False
 
@@ -323,7 +327,11 @@ def set_logging(log_filepath, log_level='INFO', foreground_mode=False) -> dict:
         },
         "loggers": {
             "wazuh-api": {"handlers": hdls, "level": log_level, "propagate": False},
-            "start-stop-api": {"handlers": hdls, "level": 'INFO', "propagate": False}
+            "start-stop-api": {"handlers": hdls, "level": 'INFO', "propagate": False},
+            # The framework logs under `wazuh` (the restart/reload fallback to the service-control helper, the
+            # agent upgrade exclusions...). In clusterd that logger writes cluster.log; here it writes api.log, or
+            # those records would only reach Python's last-resort handler, i.e. the daemon's /dev/null stderr.
+            "wazuh": {"handlers": hdls, "level": log_level, "propagate": False}
         }
     }
 

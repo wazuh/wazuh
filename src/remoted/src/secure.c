@@ -115,7 +115,9 @@ _Atomic (time_t) current_ts;
  * counted into the following WARNING. One throttle per reason, so a noisy cause cannot hide another.
  * The lines name the source address only: before the frame decrypts, the agent ID it carries is a
  * claim anyone can make. current_ts (refreshed every second) is the clock, so no time() call is
- * added to the receive path. */
+ * added to the receive path. REM_REJECT_KEY_IN_USE is the one reason raised after a frame
+ * authenticated (two hosts sharing one key keep producing it at their send rate), so its line may
+ * name the agent. */
 typedef enum {
     REM_REJECT_FORMAT,  /* "!<id>!" header not terminated */
     REM_REJECT_ID,      /* the claimed ID is not registered for the source address */
@@ -123,6 +125,7 @@ typedef enum {
     REM_REJECT_EMPTY,   /* nothing after the header */
     REM_REJECT_DECRYPT, /* did not decrypt with the key it claims */
     REM_REJECT_SIZE,    /* TCP length prefix above the maximum message size */
+    REM_REJECT_KEY_IN_USE, /* authenticated, but the agent already has a live session elsewhere */
     REM_REJECT_REASONS
 } rem_reject_reason_t;
 
@@ -172,6 +175,14 @@ STATIC void rem_log_rejected_frame(rem_reject_reason_t reason, const char *forma
     }
 
     size_t count = atomic_exchange_explicit(&slot->pending, 0, memory_order_relaxed);
+
+    /* The count goes before the sentence's own full stop, not after it ("socket 39. (and ...") */
+    if (count > 1) {
+        size_t len = strlen(message);
+        if (len > 0 && message[len - 1] == '.') {
+            message[len - 1] = '\0';
+        }
+    }
 
     if (count <= 1) {
         mwarn("%s", message);
@@ -1280,6 +1291,59 @@ STATIC void * close_fp_main(void * args) {
     return NULL;
 }
 
+/**
+ * @brief Decide what a frame arriving on a connection other than the agent's current one does to that session.
+ *
+ * Call it only once the frame has decrypted with the agent's key, holding the key lock for reading and not
+ * the entry mutex (taken and released here). A frame that never authenticated proves nothing about who sent
+ * it, so it must never get this far: it would let anyone who knows an agent ID close that agent's session.
+ *
+ * - The current connection has been quiet longer than connection_overtake_time: the new one takes over.
+ *   The old socket is returned in sock_idle for the caller to close once it releases the key lock.
+ * - Otherwise the frame is refused. The warning is held back until the conflict outlives the overtake
+ *   window: an agent that reconnects before its old session is closed self-heals, a shared key does not.
+ *
+ * @param agentid Index of the agent in the keystore.
+ * @param message Frame being handled.
+ * @param srcip Source address of the frame.
+ * @param sock_idle Output: the agent's previous socket when it is taken over, unchanged otherwise.
+ * @return true to go on handling the frame, false to refuse it.
+ */
+static bool rem_resolve_session_conflict(int agentid, const message_t *message, const char *srcip, int *sock_idle) {
+    keyentry *entry = keys.keyentries[agentid];
+    bool accept = true;
+
+    w_mutex_lock(&entry->mutex);
+
+    if ((entry->sock >= 0) && (entry->sock != message->sock)) {
+        if ((logr.connection_overtake_time > 0) && (current_ts - entry->rcvd) > logr.connection_overtake_time) {
+            *sock_idle = entry->sock;
+
+            mdebug2("Idle socket [%d] from agent ID '%s' will be closed.", *sock_idle, entry->id);
+
+            entry->rcvd = current_ts;
+            entry->conflict_ts = 0;
+        } else {
+            if (entry->conflict_ts == 0) {
+                entry->conflict_ts = current_ts;
+            }
+
+            if ((logr.connection_overtake_time <= 0) || (current_ts - entry->conflict_ts) > logr.connection_overtake_time) {
+                rem_log_rejected_frame(REM_REJECT_KEY_IN_USE, "Agent key already in use: agent ID '%s' (source IP: %s)",
+                                       entry->id, srcip);
+            } else {
+                mdebug2("Agent ID '%s' reconnected from '%s' before its previous session was closed.", entry->id, srcip);
+            }
+
+            accept = false;
+        }
+    }
+
+    w_mutex_unlock(&entry->mutex);
+
+    return accept;
+}
+
 STATIC void HandleSecureMessage(const message_t *message, w_indexed_queue_t * control_msg_queue, w_rr_queue_t * batch_queue) {
     int agentid;
     const int protocol = (message->sock == USING_UDP_NO_CLIENT_SOCKET) ? REMOTED_NET_PROTOCOL_UDP : REMOTED_NET_PROTOCOL_TCP;
@@ -1363,43 +1427,6 @@ STATIC void HandleSecureMessage(const message_t *message, w_indexed_queue_t * co
 
             rem_inc_recv_unknown();
             return;
-        } else {
-            w_mutex_lock(&keys.keyentries[agentid]->mutex);
-
-            if ((keys.keyentries[agentid]->sock >= 0) && (keys.keyentries[agentid]->sock != message->sock)) {
-                if ((logr.connection_overtake_time > 0) && (current_ts - keys.keyentries[agentid]->rcvd) > logr.connection_overtake_time) {
-                    sock_idle = keys.keyentries[agentid]->sock;
-
-                    mdebug2("Idle socket [%d] from agent ID '%s' will be closed.", sock_idle, keys.keyentries[agentid]->id);
-
-                    keys.keyentries[agentid]->rcvd = current_ts;
-                    keys.keyentries[agentid]->conflict_ts = 0;
-                } else {
-                    // Warn only if the conflict outlives the overtake window: a reconnect self-heals,
-                    // a shared key does not.
-                    if (keys.keyentries[agentid]->conflict_ts == 0) {
-                        keys.keyentries[agentid]->conflict_ts = current_ts;
-                    }
-
-                    if ((logr.connection_overtake_time <= 0) || (current_ts - keys.keyentries[agentid]->conflict_ts) > logr.connection_overtake_time) {
-                        mwarn("Agent key already in use: agent ID '%s' (source IP: %s)", keys.keyentries[agentid]->id, srcip);
-                    } else {
-                        mdebug2("Agent ID '%s' reconnected from '%s' before its previous session was closed.", keys.keyentries[agentid]->id, srcip);
-                    }
-
-                    w_mutex_unlock(&keys.keyentries[agentid]->mutex);
-                    key_unlock();
-
-                    if (message->sock >= 0) {
-                        _close_sock(&keys, message->sock);
-                    }
-
-                    rem_inc_recv_unknown();
-                    return;
-                }
-            }
-
-            w_mutex_unlock(&keys.keyentries[agentid]->mutex);
         }
     } else if (strncmp(buffer, "#ping", 5) == 0) {
             const char *msg = "#pong";
@@ -1441,57 +1468,18 @@ STATIC void HandleSecureMessage(const message_t *message, w_indexed_queue_t * co
 
             rem_inc_recv_unknown();
             return;
-        } else {
-            w_mutex_lock(&keys.keyentries[agentid]->mutex);
-
-            if ((keys.keyentries[agentid]->sock >= 0) && (keys.keyentries[agentid]->sock != message->sock)) {
-                if ((logr.connection_overtake_time > 0) && (current_ts - keys.keyentries[agentid]->rcvd) > logr.connection_overtake_time) {
-                    sock_idle = keys.keyentries[agentid]->sock;
-
-                    mdebug2("Idle socket [%d] from agent ID '%s' will be closed.", sock_idle, keys.keyentries[agentid]->id);
-
-                    keys.keyentries[agentid]->rcvd = current_ts;
-                    keys.keyentries[agentid]->conflict_ts = 0;
-                } else {
-                    // Warn only if the conflict outlives the overtake window: a reconnect self-heals,
-                    // a shared key does not.
-                    if (keys.keyentries[agentid]->conflict_ts == 0) {
-                        keys.keyentries[agentid]->conflict_ts = current_ts;
-                    }
-
-                    if ((logr.connection_overtake_time <= 0) || (current_ts - keys.keyentries[agentid]->conflict_ts) > logr.connection_overtake_time) {
-                        mwarn("Agent key already in use: agent ID '%s' (source IP: %s)", keys.keyentries[agentid]->id, srcip);
-                    } else {
-                        mdebug2("Agent ID '%s' reconnected from '%s' before its previous session was closed.", keys.keyentries[agentid]->id, srcip);
-                    }
-
-                    w_mutex_unlock(&keys.keyentries[agentid]->mutex);
-                    key_unlock();
-
-                    if (message->sock >= 0) {
-                        _close_sock(&keys, message->sock);
-                    }
-
-                    rem_inc_recv_unknown();
-                    return;
-                }
-            }
-
-            w_mutex_unlock(&keys.keyentries[agentid]->mutex);
         }
 
         tmp_msg = buffer;
     }
 
+    /* Until the frame decrypts, the agent it names is only a claim: nothing below may touch that agent's
+     * session (its current socket, rcvd or conflict_ts) before ReadSecMSG succeeds. */
     if (recv_b <= 0) {
         rem_log_rejected_frame(REM_REJECT_EMPTY, "Received message is empty from '%s'", srcip);
         key_unlock();
         if (message->sock >= 0) {
             _close_sock(&keys, message->sock);
-        }
-
-        if (sock_idle >= 0) {
-            _close_sock(&keys, sock_idle);
         }
 
         rem_inc_recv_unknown();
@@ -1510,8 +1498,16 @@ STATIC void HandleSecureMessage(const message_t *message, w_indexed_queue_t * co
             rem_log_rejected_frame(REM_REJECT_DECRYPT, "Decrypt the message fail from '%s'", srcip);
         }
 
-        if (sock_idle >= 0) {
-            _close_sock(&keys, sock_idle);
+        rem_inc_recv_unknown();
+        return;
+    }
+
+    /* Authenticated: only now may this connection take over the agent's session, or be refused as a conflict. */
+    if (!rem_resolve_session_conflict(agentid, message, srcip, &sock_idle)) {
+        key_unlock();
+
+        if (message->sock >= 0) {
+            _close_sock(&keys, message->sock);
         }
 
         rem_inc_recv_unknown();

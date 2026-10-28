@@ -123,8 +123,12 @@ Without a usable pair the manager **fails closed**, in four layers, from the out
    can read, since the validator runs as root and cannot tell. `wazuh-manager-authd` fails the same way on the same files (`SSL context
    setup failed (certificate '…', key '…'). authd reuses the HTTPS agent listener's pair, …`).
 4. **The module itself** fails to load a pair that passed both probes but is unusable (corrupt PEM,
-   key/certificate mismatch): the ERROR names which of the two is the problem and, as with every
-   other startup failure, `remoted` does not start.
+   key/certificate mismatch): the error names the file it could not load, followed by OpenSSL's
+   reason (`Cannot start the HTTPS agent listener: The configured TLS certificate '<c>' cannot be
+   loaded (use_certificate_chain_file: no start line (PEM routines))`, and the same with `TLS private key
+   '<k>'`, where a key that does not belong to the certificate reads `key values mismatch …`; the
+   parenthesised OpenSSL library name at the end varies with the failure) and, as with
+   every other startup failure, `remoted` does not start.
 
 `remote.https.ca_certificate` must be readable at start, since 5.x agents bootstrap their trust from
 `GET /cacerts`: the credential resolver's check (step 1) refuses it when it is not
@@ -335,7 +339,7 @@ deliberately coarser than the manager's own diagnosis (which stays in its log an
 | `unknown_agent` | `Bearer error="invalid_token", error_description="unknown_agent"` | the `kid` is not in `client.keys` (never enrolled, removed, or `#`/`!`-marked) | re-enroll |
 | `stale_token` | `Bearer error="invalid_token", error_description="stale_token"` | the token is outside the accepted window (expired, older than `jwt_max_age + jwt_clock_skew`, or issued more than `jwt_clock_skew` s in the future) | correct its clock (the `Date` header is the manager's) and retry |
 | `invalid_signature` | `Bearer error="invalid_token", error_description="invalid_signature"` | the credential does not work for that identity: bad MAC, not a `wazuh-agent+jwt` (grammar, header or claims), `sub`/`iss` naming another agent, peer address outside the entry's `ip` column, or an entry whose key does not decode | **not** re-enroll; keep the credential and report |
-| `invalid_request` | `Bearer error="invalid_request"` | no usable credential was presented: `Authorization` missing, not `Bearer`, or malformed | send a credential |
+| `invalid_request` | `Bearer error="invalid_request"` | no usable credential was presented: `Authorization` missing, not `Bearer` (the scheme is matched case-insensitively, so `bearer` is accepted), or malformed | send a credential |
 | `token_unknown` / `token_expired` / `token_revoked` | `Bearer error="invalid_token", error_description="token_…"` | `POST /enroll` only: the enrollment token's own state | obtain a new token from the operator |
 | `enrollment_key_unavailable` | `Bearer` (no error code: the server could not judge the credential) | `POST /enroll` only, Password mode: the manager's enrollment password is not available on this node | retry later; nothing to fix on the agent |
 
@@ -427,8 +431,9 @@ also when the option is absent; only a prefix of `/` leaves the paths bare — s
 `GET /wazuh-manager/` (with or without the trailing slash) — and the unprefixed paths answer
 `404`. The prefixed path is what travels on the wire and what the router matches, exactly:
 case-sensitive (`/WAZUH-MANAGER/cacerts` is a `404`) and never percent-decoded (any `%`-encoded
-path, such as `/wazuh-manager/%63acerts`, is a `404`); the only tolerances are a single trailing `/`
-and a query string, which is accepted and ignored (`/wazuh-manager/cacerts?x=1` is `/cacerts`).
+path, such as `/wazuh-manager/%63acerts`, is a `404`); the only tolerances are a single trailing `/`,
+a query string and a fragment, which are accepted and ignored (`/wazuh-manager/cacerts?x=1` and
+`/wazuh-manager/cacerts#x` are `/cacerts`).
 Agents send the full prefixed target. The token does not bind it, so a prefix mismatch is a `404`,
 never a `401`.
 
@@ -1201,8 +1206,8 @@ replay store either: a captured token could be replayed inside its window, bound
 | --- | --- | --- |
 | `name` | yes | 2-128 chars, no leading `.`, charset `[A-Za-z0-9._-]` only — `OS_IsValidName()`, the same rule the legacy port-1515 path applies, so both enrollment paths accept exactly the same names. `authd`'s local socket separately enforces a looser *storage-safety* floor (no whitespace/control bytes, no leading `#`/`!`, ≤128 chars) for all of its callers, the API included; this endpoint holds the tighter line itself rather than relying on that floor. |
 | `version` | yes | Must be well formed — an optional `v`/`V`, one to four dot-separated numbers and an optional `-`/`+` suffix of letters, digits, `.` and `-`, 64 bytes at most — or the answer is `400` (port 1515 answers `ERROR: Invalid version` to the same values). Rejected if its major or minor is higher than the manager's (a higher patch alone is accepted, as on port 1515) unless `authd`'s own `<auth><agents><allow_higher_versions>` is `yes` (not `remote`'s, which governs `/control`; this keeps `/enroll` in step with port 1515) — `authd`'s local socket performs no version check of its own, so this endpoint enforces it. |
-| `groups` | no | Comma-separated, passed through unchanged. |
-| `ip` | no | The grammar port 1515 accepts: an IPv4 or IPv6 address, optionally a network — `/<prefix>`, or for IPv4 a dotted mask (`10.5.0.0/255.255.0.0`) that is forwarded as its prefix length (`10.5.0.0/16`), the form the registry records either way. An empty prefix (`10.0.0.0/`), a prefix past 32/128, a non-contiguous mask and a leading `!` are `400`, and port 1515 refuses the same values (`ERROR: Invalid IP`). A full-length mask (`/32`, `/128`) is forwarded and echoed in the response as sent, while the registry records the bare address. Or one of two sentinels: `any` (no override), or `src` — mirrors legacy port 1515's own wire sentinel (an agent configured with its own client-side `use_source_ip` sends this instead of a literal address); see IP resolution below. |
+| `groups` | no | Comma-separated, forwarded unchanged; `authd` drops repeated names. A list that names no group (`""`, `","`) is the same as no `groups` field: the agent joins `default`. Empty members next to real names (`"default,"`, `",default"`) are accepted and the agent's groups are recorded without them, whereas port 1515 refuses such a `G:` with `ERROR: Invalid group name`. |
+| `ip` | no | The grammar port 1515 accepts: an IPv4 or IPv6 address, optionally a network — `/<prefix>`, or for IPv4 a dotted mask (`10.5.0.0/255.255.0.0`) that is forwarded as its prefix length (`10.5.0.0/16`), the form the registry records either way. An empty prefix (`10.0.0.0/`), a prefix past 32/128, a non-contiguous mask and a leading `!` are `400`, and port 1515 refuses the same values (`ERROR: Invalid IP`). A full-length mask (`/32`, `/128`) names a single host: it is registered as the bare address, answered in that form, and refused with `409` when another agent already holds that address, exactly like the bare spelling. Networks (`10.5.0.0/16`) are never duplicates of one another, overlapping or not. Or one of two sentinels: `any` (no override), or `src` — mirrors legacy port 1515's own wire sentinel (an agent configured with its own client-side `use_source_ip` sends this instead of a literal address); see IP resolution below. |
 | `key_hash` | no | Opaque hash of the agent's current key, if it has one — drives `authd`'s force/key-mismatch decision, same as port 1515's `K:` field. |
 
 `force`, `id`, and a raw `key` are never sent, even though `authd`'s local socket accepts all three
@@ -1255,7 +1260,7 @@ master node's `authd` predates it.
 | Empty or over 16 KiB once decoded, malformed JSON, missing or invalid `name`/`version`, a non-string `groups`/`key_hash`, invalid `ip` | `400` | Rejected before `authd` is ever contacted. A zstd body that would decode past 16 KiB is a `413` instead. |
 | Agent version newer than allowed | `400` | See `version` in the request table above. The manager logs a throttled `WARNING` naming the agent, its address and both versions. |
 | `authd` bad function/args/name/ip/groups (9003–9006, 9014, 9017) | `400` | Passed through with `authd`'s own message. `9017` ("Invalid agent name") is unreachable from this endpoint in practice: `isValidName()` above is strictly tighter than the local socket's storage-safety floor, so any name `authd` would reject with `9017` was already refused locally with a `400`. It is mapped for completeness, not as a path clients should expect. |
-| `authd` duplicate ip/name/id (9007/9008/9012) | `409` | |
+| `authd` duplicate ip/name/id (9007/9008/9012) | `409` | The address is compared in its registered form, so `10.0.0.15/32` duplicates `10.0.0.15`. |
 | `authd` internal/parse/key-generation failure (9001/9002/9009) | `500` | |
 | `authd` refused a caller-supplied key or id (9019/9020) | `400` | unreachable from `/enroll` (self-enrollment never sends a key or an id); mapped for completeness |
 | Any other `authd` error code | `500` | Passed through with `authd`'s own code and message. |
@@ -1643,7 +1648,7 @@ python3 send_control.py --url https://127.0.0.1:1517 --type startup --tamper
 
 # run every success/failure scenario
 python3 send_control.py --url https://127.0.0.1:1517 --all
-# options: --url (default https://127.0.0.1:9443), --agent-id, --client-keys, --version
+# options: --url (default https://127.0.0.1:1517), --agent-id, --client-keys, --version
 ```
 
 `src/remoted/remoted_module/tools/send_scan_vd.py` does the same for `POST /scan/vd`, and can
@@ -1659,7 +1664,7 @@ python3 send_scan_vd.py --url https://127.0.0.1:1517 --feed-offset 1
 # run every success/failure scenario (missing/invalid type, missing/negative feed_offset,
 # oversized body, auth failures, ...), including the matching- and mismatched-offset cases
 python3 send_scan_vd.py --url https://127.0.0.1:1517 --all
-# options: --url (default https://127.0.0.1:9443), --agent-id, --client-keys
+# options: --url (default https://127.0.0.1:1517), --agent-id, --client-keys
 ```
 
 `src/remoted/remoted_module/tools/send_download.py` exercises `POST /download`. Its configuration
@@ -1677,7 +1682,7 @@ python3 send_download.py --url https://127.0.0.1:1517 --all
 
 # concurrency + memory check: N agents downloading at once, sampling remoted's RSS
 python3 send_download.py --url https://127.0.0.1:1517 --simulate 50 --repeat 4 --selectors 'default;web,prod' --watch-rss
-# options: --url (default https://127.0.0.1:9443), --manager-home, --resource-id, --unknown-group,
+# options: --url (default https://127.0.0.1:1517), --manager-home, --resource-id, --unknown-group,
 #          --other-group (default databases), --selectors, --simulate N, --repeat, --watch-rss
 ```
 

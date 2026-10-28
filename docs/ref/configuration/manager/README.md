@@ -40,7 +40,8 @@ element is rejected as a duplicate.
   set (`get`).
   - `validate` checks the XML syntax, the schema (types, ranges, enums, unknown options, the address
     syntax of `remote.legacy.local_ip` and `remote.https.bind_addr`, the lengths the daemons cap), the
-    cross-field rules (a certificate and its key set together, no `.`/`..` segment in
+    cross-field rules (a certificate and its key set together — `remote.https.certificate`/`key` and
+    `auth.ssl_manager_cert`/`ssl_manager_key` only; the `indexer.ssl` pair is not paired here — no `.`/`..` segment in
     `remote.https.global_prefix`, distinct listener ports — `remote.legacy.port` counts only when the legacy
     listener is enabled and `auth.port` only while authd's port-1515 listener starts; the Server API port,
     55000 by default, lives in `api.yaml` and is **not** compared with them) and, unless `--skip-file-checks`, the existence of the
@@ -56,7 +57,9 @@ element is rejected as a duplicate.
     without overflowing a reader (a duration at most 999999999 seconds; the limits per unit are in
     [the reference](reference.md)). `cluster.bind_addr` must be a host name or an IP address, and every
     `indexer.hosts` entry an `http://` or `https://` URL that names a host.
-  - What `validate` does not judge, and the start does: where the TLS files lie and what they hold (the
+  - What `validate` does not judge, and the start does: the `indexer.ssl` certificate and key (one set
+    without the other passes `validate` and the API's `PUT`; the other half keeps its default file, and the
+    credential check refuses the resulting pair at the next start with error 22), where the TLS files lie and what they hold (the
     credential check refuses a path outside `/etc/wazuh-manager/certs`, an expired or mismatched pair —
     [Credentials](../../getting-started/credentials.md)), the internal options (read only by each daemon at
     start), and what only a running system shows (an address this host does not have, a port another
@@ -65,7 +68,9 @@ element is rejected as a duplicate.
     every daemon's `-t` — without stopping or starting anything. Through those `-t` runs it also judges
     what the TLS files hold: `wazuh-manager-remoted -t` loads `remote.https.certificate` and `key` (and
     `remote.https.ca` when `verification_mode` needs it), and `wazuh-manager-authd -t` loads the
-    `auth.ssl_*` files when authd will start, so a file that is not a usable PEM certificate, key or CA is
+    `auth.ssl_*` files when authd's legacy enrollment listener (1515) will start — authd enabled, with
+    `remote_enrollment` and `legacy_enrollment` on; enrollment through the HTTPS listener uses remoted's pair
+    and never reads them — so a file that is not a usable PEM certificate, key or CA is
     refused before anything stops.
   - What even `wazuh-manager-control check` does not judge, so that a value passes it and still stops a
     daemon at start:
@@ -74,14 +79,17 @@ element is rejected as a duplicate.
       (`Failed to obtain PID for wazuh-manager-analysisd`);
     - `wazuh.thread_stack_size`: read only when a thread is created, which no `-t` does, so an
       out-of-range value stops `wazuh-manager-remoted` or `wazuh-manager-modulesd` at start with `(2302)`;
-    - memory: `remote.legacy.queue_size` (and any other size the schema bounds only from below) is judged
-      by type and range, not against what the host can allocate — see the option in
+    - memory: `remote.legacy.queue_size` is judged by type and range (at most 134217728, which asks for
+      1 GiB of queue slots at start), not against what the host can allocate — see the option in
       [the reference](reference.md);
     - what the cluster protocol can carry: a `cluster.name` or `cluster.node_name` outside
       `[A-Za-z0-9_-]` passes every check, and a worker so named never joins its master (see
       [Cluster configuration](../../modules/cluster/configuration.md)).
   - `get <key.path>` prints one option of the **effective** document (defaults applied): scalars as
-    plain text, objects and lists as JSON. `dump` prints the whole effective document.
+    plain text, objects and lists as JSON. A key the effective document does not hold exits `2` with
+    `wazuh-manager-conf: '<key.path>' is not set` — an option with no default left out of the file, and
+    equally a key the schema does not know (a misspelling is not reported as such). `dump` prints the whole
+    effective document.
 - `bin/wazuh-manager-control start|restart|reload|check` validates the file first (with
   `--skip-file-checks`) and refuses to start any daemon when it is invalid: the CLI's verdict on stderr
   and as `wazuh-manager-control: ERROR: (1244): …` in `logs/wazuh-manager.log`, then
@@ -176,7 +184,7 @@ with no flags, or with `-d` after `wazuh-manager-control enable debug`. Usage:
 | `-d` | Raise the debug level by one; repeat it (`-dd`) for level 2. When given, `wazuh_modules.debug` is ignored |
 | `-f` | Run in the foreground instead of as a daemon |
 | `-t` | Test the configuration and exit: load `wazuh-manager.conf` and the internal options, read every section the modules use, then validate the whole file, including the certificate files it names. Exit `0` when valid, `1` otherwise — also when a module's reader refuses a section it borrows (the task manager reads `global` and `remote`) and logs an `ERROR`, which a running daemon only warns about and replaces with its defaults. Implies `-f` |
-| `-c <config>` | Manager configuration file to read (default `/etc/wazuh-manager/wazuh-manager.conf`) |
+| `-c <config>` | Manager configuration file to read (default `/etc/wazuh-manager/wazuh-manager.conf`). A relative path is resolved against the directory the command runs from |
 | `-u <user>` | User the daemon switches to at start, after raising its file descriptor limit (default `wazuh-manager`); the group is always `wazuh-manager` |
 | `-h` | Print the usage and exit with status `1` |
 

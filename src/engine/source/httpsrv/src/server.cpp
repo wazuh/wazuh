@@ -50,6 +50,12 @@ Server::Server(const std::string& id, size_t payloadMaxBytes, bool enableDetaile
     // Apply payload limit
     applyPayloadLimit();
 
+    // One request per connection: every answer carries `Connection: close` and the connection is closed after it.
+    // httplib reads each request through a fresh stream, so the bytes of a pipelined second request already read
+    // with the first one were discarded: that request got no answer and the connection hung for the keep-alive
+    // timeout. Closing tells the client to send it again on a new connection.
+    m_srv->set_keep_alive_max_count(1);
+
     // A request with neither Content-Length nor Transfer-Encoding has an empty body (RFC 9112, section 6.3).
     // httplib instead reads such a POST/PUT body until the peer closes the connection, so a client that sends
     // no body and waits for the answer got a bare 400 after the read timeout, before any handler ran. Declare
@@ -207,8 +213,15 @@ std::optional<std::string> Server::allowedOtherMethods(const std::string& path, 
         return std::string {};
     }
 
+    // httplib answers HEAD with the GET handler, so a path served by GET also allows HEAD.
+    auto methods = it->second;
+    if (methods.count("GET") != 0)
+    {
+        methods.insert("HEAD");
+    }
+
     std::string allow;
-    for (const auto& registered : it->second)
+    for (const auto& registered : methods)
     {
         if (!allow.empty())
         {

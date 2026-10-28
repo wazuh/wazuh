@@ -364,6 +364,24 @@ stages:
     response:
       <<: *unsupported_media_type
 
+  # The body is a context the schema accepts: with no Content-Type the framework decodes it as JSON before the
+  # handler runs, so only a valid body reaches the Content-Type check. No token is issued.
+  - name: A valid JSON context sent with no Content-Type header
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/security/user/authenticate/run_as"
+      method: POST
+      headers:
+        Authorization: "Basic {basic_auth_context}"
+      data: '{{"user_name": "admin"}}'
+    response:
+      status_code: 415
+      json:
+        title: Unsupported Media Type
+        error: 6002
+      verify_response_with:
+        - function: tavern_utils:test_no_internal_details
+
 ---
 test_name: 415 on a body sent with no content-type
 

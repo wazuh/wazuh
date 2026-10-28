@@ -789,16 +789,19 @@ adapter::RouteHandler publicRunPost(const std::shared_ptr<::router::ITesterAPI>&
 
         auto [tester, protoReq] = adapter::getRes(result);
 
+        // The indexer stores the queue as a signed byte: a value above 127 would never be indexed.
         const uint32_t q = protoReq.queue();
         if (q == 0)
         {
-            res = adapter::userErrorResponse<ResponseType>("queue is required and must be non-zero (1..255)");
+            res = adapter::userErrorResponse<ResponseType>(
+                fmt::format("queue is required and must be non-zero (1..{})", base::eventParsers::MAX_QUEUE_ID));
             return;
         }
 
-        if (q > std::numeric_limits<uint8_t>::max())
+        if (q > static_cast<uint32_t>(base::eventParsers::MAX_QUEUE_ID))
         {
-            res = adapter::userErrorResponse<ResponseType>(fmt::format("Invalid queue: {} (must be 1..255)", q));
+            res = adapter::userErrorResponse<ResponseType>(
+                fmt::format("Invalid queue: {} (must be 1..{})", q, base::eventParsers::MAX_QUEUE_ID));
             return;
         }
 

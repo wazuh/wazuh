@@ -975,7 +975,7 @@ consists of a JSON object with the following key elements:
   "name": "schema/engine-schema/0",
   "fields": {
     "@timestamp": {
-      "type": "date"
+      "type": "date_nanos"
     },
     "agent.build.original": {
       "type": "keyword"
@@ -1110,9 +1110,12 @@ instead, so a test call can never delete content a route runs.
 >   named after a production space writes into that space's channels.
 >
 > The policies the Wazuh Indexer sends carry no `outputs`, so the dashboard's logtest writes nothing. When you
-> call the API by hand, leave `policy.outputs` empty. Also note that the `test` space used by the
-> [Public API Reference](public-api-reference.md) examples is the **dashboard's own** test session: loading or
-> deleting it replaces the session the dashboard's logtest runs against. Use another `space` name.
+> call the API by hand, leave `policy.outputs` empty. The Wazuh dashboard's logtest and its `test` session run
+> on the engine bundled with wazuh-indexer, not on this manager's engine: on the manager socket the `test` space
+> used by the [Public API Reference](public-api-reference.md) examples is an ordinary session name. Only when you
+> call the engine inside wazuh-indexer does loading or deleting `test` replace the session the dashboard's
+> logtest runs against; use another `space` name there. For the same reason, changes to this manager's engine
+> API reach dashboard users only through the wazuh-indexer package.
 
 Because promotion always builds the whole space, removing content by promoting an empty or incomplete space
 is refused by the same checks. To stop using a space's content, disable the space's policy in the Wazuh

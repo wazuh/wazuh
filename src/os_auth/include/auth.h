@@ -165,6 +165,21 @@ void w_auth_client_rejection_log(const char *reason, bool info, const char *mess
 void w_auth_client_rejection_log_reset(void);
 
 /**
+ * @brief The form an address to register is recorded in, and answered with, by every enrollment path.
+ *
+ * The plain address (IPv6 expanded, "::ffff:" unmapped) when it carries no mask or a full-length one
+ * (/32, /128, /255.255.255.255), else the network with its mask as a prefix length ("10.22.0.0/16"
+ * for "10.22.0.0/255.255.0.0"). The duplicate-IP check matches this form, so a host written with a
+ * full-length mask is the same address as the bare one.
+ *
+ * @param ip Address as received. Not "any": callers handle that sentinel themselves.
+ * @param out Buffer for the registered form.
+ * @param size Size of @p out (IPSIZE + 1 holds every valid value).
+ * @return 0 on success; -1 for an invalid address, a leading '!' or a non-contiguous dotted mask.
+ */
+int w_auth_registered_ip(const char *ip, char *out, size_t size);
+
+/**
  * @brief Parse a raw buffer from agent request into enrollment data.
  * @param buf Raw buffer to be parsed
  * @param response 2048 length buffer where the error response will be copied

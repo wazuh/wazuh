@@ -232,10 +232,14 @@ The complete WCS field list is at the [WCS field reference (CSV)](https://github
 
 #### Finding the right WCS field
 
-The authoritative way to find the WCS field path for a given log value is to run a sample log through logtest:
+The authoritative way to find the WCS field path for a given log value is to run a sample log through logtest.
+The calls in this guide go to the Wazuh Indexer as its `admin` user, whose password is generated at install:
+it is the `WAZUH_INDEXER_ADMIN_PASSWORD` line of `/etc/wazuh-indexer/export/credentials.env` on the indexer host
+(readable by root only). Load it into the shell first:
 
 ```bash
-curl -sk -u admin:admin -X POST \
+INDEXER_ADMIN_PASSWORD=$(sudo sh -c '. /etc/wazuh-indexer/export/credentials.env && printf %s "$WAZUH_INDEXER_ADMIN_PASSWORD"')
+curl -sk -u "admin:${INDEXER_ADMIN_PASSWORD}" -X POST \
   "https://localhost:9200/_plugins/_content_manager/logtest" \
   -H 'Content-Type: application/json' \
   -d '{
@@ -250,9 +254,9 @@ curl -sk -u admin:admin -X POST \
 
 `space` is where the integration lives: `test` for one you promoted there from your draft (see
 [Step 11](#step-11-deploy-and-test)), `standard` for a Wazuh-curated one — an integration that is not in
-the named space is refused with 400 (`... not found in the 'test' space`). `trace_level` (`NONE`,
-`ASSET_ONLY` or `ALL`) is optional on current managers, where an absent value means `NONE`; keep it so the
-call also works against a manager that still requires it. A standard integration must also be
+the named space is refused with 400 (`... not found in the 'test' space`). Always send `trace_level` (`NONE`,
+`ASSET_ONLY` or `ALL`): this logtest runs on the engine bundled with the Wazuh Indexer, which requires it.
+A standard integration must also be
 **enabled** to decode anything: most ship disabled (see
 [Enable the integration's ruleset first](../../ref/modules/integrations/README.md#enable-the-integrations-ruleset-first)).
 
@@ -475,7 +479,7 @@ When migrating, you must **create a new custom integration** in user space (Draf
 Rules are linked to an integration at creation time via the API. The integration must be in the draft space, `logsource.product` must equal its `metadata.title`, and `metadata.title` must be unique within the draft space (a duplicate is refused with `409`). The example assumes an integration titled `o365`:
 
 ```bash
-curl -sk -u admin:admin -X POST \
+curl -sk -u "admin:${INDEXER_ADMIN_PASSWORD}" -X POST \
   "https://localhost:9200/_plugins/_content_manager/rules" \
   -H 'Content-Type: application/json' \
   -d '{

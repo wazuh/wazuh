@@ -765,7 +765,10 @@ paths:
       tags:
       - Event Dumper
       summary: Activate the event dumper
-      description: Activates the event dumper (the `event-dumps` stream log channel).
+      description: |
+        Activates the event dumper (the `event-dumps` stream log channel) and logs the INFO line
+        `Event dumper activated: every incoming event is now written to its log`. Like every route, it ignores
+        unknown body fields. The channel's directories stay after deactivation.
       requestBody:
         required: false
         content:
@@ -784,7 +787,7 @@ paths:
       tags:
       - Event Dumper
       summary: Deactivate the event dumper
-      description: Deactivates the event dumper.
+      description: Deactivates the event dumper and logs the INFO line `Event dumper deactivated`.
       requestBody:
         required: false
         content:

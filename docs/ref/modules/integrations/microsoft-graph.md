@@ -11,8 +11,9 @@ It is an agent module, built into the agent's `wazuh-modulesd` and available on 
 - A Microsoft 365 or Azure AD tenant with admin access.
 - An Azure AD application registered with Microsoft Graph Security API permissions.
 - The application's tenant ID, client ID, and client secret.
-- The integration that decodes Microsoft Graph events **enabled** in the manager's standard
-  ruleset. Most standard integrations ship disabled, and a disabled one's events arrive but are never
+- The `azure` integration **enabled** in the manager's standard ruleset: it owns the Microsoft Graph
+  decoders (`decoder/ms-graph/0` and the other `decoder/ms-graph*` ones), shared with the
+  [Azure](azure.md) module. It ships disabled, and until it is enabled the events arrive but are never
   classified or indexed — see [Enable the integration's ruleset first](README.md#enable-the-integrations-ruleset-first).
 
 ## Azure AD application setup

@@ -180,8 +180,10 @@ empty. Omit `status` to see every row of that type.
 
 The two return different shapes. The list is deliberately narrow — one row is `task_id`,
 `agent_id`, `status`, `create_time` and `last_error`, enough to see *what* failed and why without
-paging whole payloads. `/get` returns the full row: add `attempts`, `defer_count`, `owner`,
-`claim_time`, `next_attempt_at`, `end_time`, the `payload`, and — for a scheduled run — the
+paging whole payloads. `/get` returns the full row: add `attempts`, `defer_count`, `owner` and
+`claim_time` (present only while the row is `claimed`: both are cleared when it is requeued or
+reaches a terminal state, so a finished task does not show when it started),
+`next_attempt_at`, `end_time`, the `payload`, and — for a scheduled run — the
 `schedule_id` and `scheduled_run_at` it belongs to. Asking for an id that does not exist answers
 `404` rather than an empty row.
 

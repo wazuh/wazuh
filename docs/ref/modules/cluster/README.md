@@ -169,16 +169,16 @@ it works on any node (a worker forwards node and health queries to the master).
 | `-l`, `--list-nodes` | List the connected nodes: name, type, version and address |
 | `-l -fn <node> [<node> …]` | List only the named nodes |
 | `-a`, `--list-agents` | List the agents: ID, name, IP, status and version |
-| `-a -fs <status> [<status> …]` | List only the agents with the given statuses (`-fs` is accepted only with `-a`) |
+| `-a -fs <status> [<status> …]` | List only the agents with the given statuses: `active`, `disconnected`, `never_connected` or `pending` (`-fs` is accepted only with `-a`) |
 | `-i`, `--health` | Show the last completed synchronizations of each connected worker |
-| `-i more` | Show the detailed health report: keep-alive, integrity check and sync, agent-info and agent-groups timings |
+| `-i more` | Show the detailed health report of every node, the master included (the `Connected nodes (<n>)` count includes it): keep-alive, integrity check and sync, agent-info and agent-groups timings |
 | `-i -fn <node> [<node> …]` | Health of the named nodes only |
 | `-d`, `--debug` | Print debug messages |
 | `-u`, `--usage` | Print usage examples |
 | `-h`, `--help` | Print the help |
 
 `-a`, `-l`, `-i` and `-u` are mutually exclusive; with none of them the help is printed. A wrong combination of
-arguments (for example `-fs` without `-a`) prints the usage and the reason on standard error and exits
+arguments (for example `-fs` without `-a`, or a status `-fs` does not know) prints the usage and the reason on standard error and exits
 `2`, before the cluster configuration is read. An error is
 printed as `Error <code>: <message>` (as `agent_groups` prints it), or `Internal error: <message>`,
 and the command exits `1`: a node named with `-fn` that is not connected gives

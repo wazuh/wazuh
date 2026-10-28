@@ -94,14 +94,15 @@ components:
 
 | Command | Answer |
 |---|---|
-| `{"command":"getstats"}` | The legacy channel's counters (`metrics.bytes`, `metrics.messages`, `metrics.queues`, `metrics.tcp_sessions`, ...); the Server API's `GET /cluster/{node_id}/daemons/stats` reads them from here |
+| `{"command":"getstats"}` | The legacy channel's counters (`metrics.bytes`, `metrics.messages`, `metrics.queues`, `metrics.tcp_sessions`, ...); the Server API's `GET /cluster/{node_id}/daemons/stats` reads them from here. Its `uptime` is the time remoted started, as Unix epoch seconds, not a duration (the API renders it as a date) |
 | `{"command":"getconfig","parameters":{"section":"remote"\|"internal"\|"global"}}` | The effective `remote` or `global` section, or the resolved `remoted.*` internal options; served by `GET /cluster/{node_id}/configuration/request/{section}` |
 | `{"command":"assigngroup",...}` | Assigns the `default` group to a 4.x agent that has none; a worker's remoted sends it to the master's through the cluster |
 
 Any message that does not start with `{` is taken as a request to forward to a 4.x agent over the
 legacy channel, written `<agent id> <payload>`. It is refused with `err Legacy delivery disabled` when
 that channel is off, `err Request has no agent id` when there is no space after the id, and
-`err Agent not found` when the id is not in remoted's legacy keystore. A forward that cannot be
+`err Agent not found` when the id is not in remoted's legacy keystore (these two are logged at
+debug level only, since the caller has the reason). A forward that cannot be
 delivered is answered `err Cannot send request`, `err Maximum attempts exceeded` or
 `err Response timeout` (`err Internal error` when remoted cannot queue it); otherwise the agent's own answer is relayed.
 

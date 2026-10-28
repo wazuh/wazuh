@@ -20,6 +20,9 @@ from wazuh.core.common import DECIMALS_DATE_FORMAT
 from wazuh.core.exception import WazuhException
 from wazuh.core.utils import get_utc_strptime
 
+# Agent connection statuses `-fs` filters by.
+AGENT_STATUSES = ('active', 'disconnected', 'never_connected', 'pending')
+
 
 def __print_table(data: map, headers: dict, show_header: bool = False):
     """Pretty print list of lists.
@@ -139,8 +142,10 @@ async def print_health(config: dict, more: bool, filter_node: Union[str, list]):
     msg2 = ""
 
     msg1 = f"Cluster name: {config['name']}\n\n"
+    # `n_connected_nodes` counts the workers only, as the synchronization summary lists them; the detailed report
+    # lists every node it got, the master included, so it counts them all.
     msg1 += f"Last completed synchronization for connected nodes ({result['n_connected_nodes']}):\n" if not more \
-        else f"Connected nodes ({result['n_connected_nodes']}):"
+        else f"Connected nodes ({len(result['nodes'])}):"
 
     for node, node_info in sorted(result["nodes"].items()):
         msg2 += f"\n    {node} ({node_info['info']['ip']})\n"
@@ -265,6 +270,10 @@ def main():
     if args.filter_status is not None and not args.list_agents:
         # An argument error like any other: argparse's usage on stderr and exit code 2.
         parser.error('argument -fs/--filter-agent-status: only allowed with -a/--list-agents')
+    unknown_status = [status for status in args.filter_status or [] if status not in AGENT_STATUSES]
+    if unknown_status:
+        parser.error(f"argument -fs/--filter-agent-status: invalid status {', '.join(unknown_status)} "
+                     f"(choose from {', '.join(AGENT_STATUSES)})")
 
     logging.basicConfig(level=logging.DEBUG if args.debug else logging.ERROR, format='%(levelname)s: %(message)s')
 

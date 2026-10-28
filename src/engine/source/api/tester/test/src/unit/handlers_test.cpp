@@ -511,7 +511,7 @@ INSTANTIATE_TEST_SUITE_P(
             []()
             {
                 return userErrorResponse<eEngine::tester::RunPost_Response>(
-                    "queue is required and must be non-zero (1..255)");
+                    "queue is required and must be non-zero (1..127)");
             },
             []() { return makeSchemaValidator(true); },
         },
@@ -533,7 +533,23 @@ INSTANTIATE_TEST_SUITE_P(
             },
             [](auto& tester) { EXPECT_CALL(tester, ingestTest(testing::_, testing::_)).Times(0); },
             []()
-            { return userErrorResponse<eEngine::tester::RunPost_Response>("Invalid queue: 300 (must be 1..255)"); },
+            { return userErrorResponse<eEngine::tester::RunPost_Response>("Invalid queue: 300 (must be 1..127)"); },
+            []() { return makeSchemaValidator(true); },
+        },
+        LogtestPostCase {
+            "QueueAbove127",
+            []()
+            {
+                eEngine::tester::PublicRunPost_Request protoReq;
+                protoReq.set_queue(128);
+                protoReq.set_location("/var/log/test");
+                protoReq.set_event("some event");
+                protoReq.set_trace_level("NONE");
+                return protoReq;
+            },
+            [](auto& tester) { EXPECT_CALL(tester, ingestTest(testing::_, testing::_)).Times(0); },
+            []()
+            { return userErrorResponse<eEngine::tester::RunPost_Response>("Invalid queue: 128 (must be 1..127)"); },
             []() { return makeSchemaValidator(true); },
         },
         LogtestPostCase {

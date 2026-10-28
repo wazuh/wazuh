@@ -659,7 +659,26 @@ TEST(RemotedModuleValidateTls, RefusesATextFileAsTheCertificate)
 
     char error[512] = {0};
     EXPECT_EQ(remoted_module_validate_tls(&cfg, error, sizeof(error)), -1);
-    EXPECT_NE(error[0], '\0');
+    // The file, not only the OpenSSL call that refused it
+    EXPECT_NE(std::string {error}.find(text), std::string::npos) << error;
+
+    std::remove(text.c_str());
+}
+
+TEST(RemotedModuleValidateTls, RefusesATextFileAsThePrivateKeyNamingIt)
+{
+    TempTlsFiles tls;
+    const auto text = makeTempPath("rmt-utest-text-key");
+    {
+        std::ofstream out {text};
+        out << "not a private key\n";
+    }
+    auto cfg = makeConfig(tls);
+    std::snprintf(cfg.private_key_path, sizeof(cfg.private_key_path), "%s", text.c_str());
+
+    char error[512] = {0};
+    EXPECT_EQ(remoted_module_validate_tls(&cfg, error, sizeof(error)), -1);
+    EXPECT_NE(std::string {error}.find(text), std::string::npos) << error;
 
     std::remove(text.c_str());
 }

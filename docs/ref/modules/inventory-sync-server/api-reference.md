@@ -73,7 +73,9 @@ Two details worth knowing:
   here, nor in the index template: `wazuh-agent-stats` is mapped `dynamic: strict_allow_templates`, so a
   module or metric it does not declare under `statistics` is mapped by a dynamic template from the type
   of its first value. A metric whose type later changes makes the indexer reject the whole document,
-  and the previous one stays; the write is fire-and-forget, so that rejection is silent here.
+  and the previous one stays; the write is fire-and-forget, so the agent is still answered `200`,
+  and the indexer connector logs the rejection as one escaped, size-capped WARNING
+  (`Error indexing document (type mapper_parsing_exception - reason: '…') - Associated event: …`).
 
 `400` when the body is not a JSON object, when `modules` is missing, is not an object, is empty, or
 holds a module whose body is not an object. The empty case is a rejection on purpose: indexing a

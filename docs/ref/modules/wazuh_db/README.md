@@ -26,7 +26,7 @@ wazuh-manager-db -[Vhdtf] [-c config]
 | `-d` | Debug output; repeat it (`-dd`) for more. When given, `wazuh_db.debug` is not read |
 | `-t` | Test the configuration and exit: `0` when valid; otherwise the error is logged and it exits `1` with `Invalid configuration block for Wazuh-DB.` Unlike a normal start, the test also requires the certificate files the configuration names to exist |
 | `-f` | Run in the foreground instead of daemonizing |
-| `-c <config>` | Read this configuration file instead of `/etc/wazuh-manager/wazuh-manager.conf` |
+| `-c <config>` | Read this configuration file instead of `/etc/wazuh-manager/wazuh-manager.conf`. A relative path is resolved against the directory the command runs from |
 
 The internal options (`wazuh_db.*`, see [Wazuh DB Configuration](configuration.md#internal-options)) are
 read before any of this, so an invalid one makes even `-t` exit with `(2302)`.

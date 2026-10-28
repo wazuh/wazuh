@@ -1078,6 +1078,10 @@ class Agent:
             raise e
 
         self.id = data["id"]
+        # authd answers with the address in the form it registered (a full-length mask dropped, a
+        # dotted mask as a prefix length, IPv6 expanded), which is what the agent list will show.
+        if isinstance(data.get("ip"), str):
+            self.ip = data["ip"]
         self.internal_key = data["key"]
         self.key = self.compute_key()
 
@@ -1211,7 +1215,10 @@ class Agent:
 
         if replace:
             if not agent_groups.issubset(set(replace_list)):
-                raise WazuhError(1752)
+                # replace_list holds the groups the caller may modify assignments of: name the ones it may not
+                denied = ', '.join(sorted(agent_groups - set(replace_list)))
+                raise WazuhError(1752, extra_message=f"the caller lacks 'group:modify_assignments' over the "
+                                                     f"agent's current group(s) {denied}")
         else:
             # Check if the group already belongs to the agent
             if group_id in agent_groups:

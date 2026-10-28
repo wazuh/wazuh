@@ -156,6 +156,10 @@ checks and the SAN discovery are in [Server pairs](../../getting-started/credent
 missing, not readable by `wazuh-manager`, or the key does not match the certificate, it logs error
 `2003` naming the files in `logs/api.log` and does not start.
 
+A connection the HTTP server cannot read a request from (a TLS probe such as `openssl s_client` that sends
+no valid request, a scanner) is logged by the HTTP server as `WARNING: Invalid HTTP request received.`,
+with no peer address; the access log has no line for it, since no request was read.
+
 A client that verifies the API trusts the manager's CA, published for clients on the same host in
 `/etc/wazuh-manager/export/ca.pem` (the same CA as in `ca/root-ca.pem` and `certs/root-ca.pem`), and checks any of
 those names or addresses. What the dashboard takes from there, and how to copy it to a dashboard on another host, is
@@ -169,7 +173,7 @@ configured pair before every start and refuses a path outside that directory
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `level` | `info` | `debug2`, `debug`, `info`, `warning`, `error` or `critical`. `debug2` also writes each request's headers, with credential values (`Authorization`, `Proxy-Authorization`, `Cookie`, API keys) masked |
+| `level` | `info` | `debug2`, `debug`, `info`, `warning`, `error` or `critical`. It applies to the framework's messages too (the `wazuh` logger: the restart fallback, upgrade exclusions, indexer warnings), which the API writes to the same files. `debug2` also writes each request's headers, with credential values (`Authorization`, `Proxy-Authorization`, `Cookie`, API keys) masked |
 | `format` | `plain` | `plain` (`logs/api.log`), `json` (`logs/api.json`), or both: `plain,json` / `json,plain` |
 | `max_size.enabled` | `false` | Rotate by size instead of at midnight |
 | `max_size.size` | `1M` | `<number>K` or `<number>M`, at least `1M` (error `2011` otherwise) |

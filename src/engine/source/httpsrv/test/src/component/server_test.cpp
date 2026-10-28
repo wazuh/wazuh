@@ -784,3 +784,88 @@ TEST_F(ServerTest, HandlerOwn404IsKept)
     EXPECT_EQ(res->status, 404);
     EXPECT_TRUE(res->body.empty());
 }
+
+TEST_F(ServerTest, WrongMethodOnGetRouteAllowsHead)
+{
+    m_srv->template addRoute<httplib::Request, httplib::Response>(httpsrv::Method::GET,
+                                                                  "/test",
+                                                                  [](const httplib::Request&, httplib::Response& res)
+                                                                  {
+                                                                      res.status = 200;
+                                                                      res.set_content("OK", "text/plain");
+                                                                  });
+    m_srv->start(getSocketPath("test.sock"));
+
+    httplib::Client cli(getSocketPath("test.sock").string(), true);
+    cli.set_address_family(AF_UNIX);
+
+    auto res = cli.Post("/test", "x", "text/plain");
+
+    ASSERT_TRUE(res);
+    EXPECT_EQ(res->status, 405);
+    EXPECT_EQ(res->get_header_value("Allow"), "GET, HEAD");
+    EXPECT_EQ(res->body, "Method not allowed. Allowed: GET, HEAD.");
+
+    // HEAD is served by the GET handler, as the Allow header says
+    auto head = cli.Head("/test");
+    ASSERT_TRUE(head);
+    EXPECT_EQ(head->status, 200);
+}
+
+/*******************************************************************************
+ * One request per connection
+ ******************************************************************************/
+TEST_F(ServerTest, AnswerClosesTheConnection)
+{
+    m_srv->template addRoute<httplib::Request, httplib::Response>(httpsrv::Method::GET,
+                                                                  "/test",
+                                                                  [](const httplib::Request&, httplib::Response& res)
+                                                                  {
+                                                                      res.status = 200;
+                                                                      res.set_content("OK", "text/plain");
+                                                                  });
+    m_srv->start(getSocketPath("test.sock"));
+
+    httplib::Client cli(getSocketPath("test.sock").string(), true);
+    cli.set_address_family(AF_UNIX);
+
+    // Sequential requests on one client still work: each one opens its own connection
+    for (int i = 0; i < 2; ++i)
+    {
+        auto res = cli.Get("/test");
+        ASSERT_TRUE(res);
+        EXPECT_EQ(res->status, 200);
+        EXPECT_EQ(res->body, "OK");
+        EXPECT_EQ(res->get_header_value("Connection"), "close");
+        EXPECT_FALSE(res->has_header("Keep-Alive"));
+    }
+}
+
+TEST_F(ServerTest, PipelinedRequestIsNotLeftHanging)
+{
+    std::atomic<int> handlerCalls {0};
+    m_srv->template addRoute<httplib::Request, httplib::Response>(
+        httpsrv::Method::GET,
+        "/test",
+        [&handlerCalls](const httplib::Request&, httplib::Response& res)
+        {
+            ++handlerCalls;
+            res.status = 200;
+            res.set_content("OK", "text/plain");
+        });
+    m_srv->start(getSocketPath("test.sock"));
+
+    // Two requests in one write, keep-alive implied (HTTP/1.1, no Connection header)
+    const std::string one {"GET /test HTTP/1.1\r\nHost: localhost\r\n\r\n"};
+    const auto start = std::chrono::steady_clock::now();
+    const auto answer = rawRequest(getSocketPath("test.sock"), one + one);
+    const auto elapsed = std::chrono::steady_clock::now() - start;
+
+    // The first is answered and the connection closed at once, so the client knows to resend the second
+    EXPECT_EQ(answer.rfind("HTTP/1.1 200", 0), 0u) << answer;
+    EXPECT_NE(answer.find("Connection: close"), std::string::npos) << answer;
+    EXPECT_EQ(answer.find("HTTP/1.1", 1), std::string::npos) << answer;
+    EXPECT_EQ(handlerCalls.load(), 1);
+    // Closed at once, not after the keep-alive timeout (the raw client gives up after 3 s)
+    EXPECT_LT(elapsed, std::chrono::seconds(2));
+}

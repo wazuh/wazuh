@@ -13,6 +13,7 @@
 #include "contentOnDemand.hpp"
 #include "sharedDefs.hpp"
 
+#include <algorithm>
 #include <utility>
 
 namespace content_manager
@@ -127,17 +128,49 @@ void OnDemandManager::dispatch(const std::string& topic,
     m_wake.notify_one();
 }
 
+std::string OnDemandManager::loggableTopic(const std::string& topic)
+{
+    static constexpr char HEX[] = "0123456789abcdef";
+    const auto kept = std::min(topic.size(), LOGGED_TOPIC_MAX);
+    std::string out;
+    out.reserve(kept + 3);
+    for (std::size_t i = 0; i < kept; ++i)
+    {
+        const auto byte = static_cast<unsigned char>(topic[i]);
+        if (byte < 0x20 || byte == 0x7f)
+        {
+            out += "\\x";
+            out += HEX[byte >> 4];
+            out += HEX[byte & 0x0f];
+        }
+        else if (byte == '\\')
+        {
+            out += "\\\\";
+        }
+        else
+        {
+            out += static_cast<char>(byte);
+        }
+    }
+    if (topic.size() > kept)
+    {
+        out += "...";
+    }
+    return out;
+}
+
 void OnDemandManager::logUnknownTopic(const std::string& topic)
 {
     // Shared by both lookups -- the inline one and the worker's re-check after the topic was
     // removed while the job waited. Same condition from the caller's side, same window.
     if (const auto decision = m_unknownTopicThrottle.record())
     {
+        // An unknown topic is the caller's raw input: never quote it verbatim.
         logWarn(WM_CONTENTUPDATER,
                 "Rejected %llu on-demand request(s) with 404 %s: unknown topic (last: '%s').",
                 static_cast<unsigned long long>(decision.total),
                 decision.period().c_str(),
-                topic.c_str());
+                loggableTopic(topic).c_str());
     }
 }
 

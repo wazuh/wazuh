@@ -66,7 +66,7 @@ framework function as the API, broadcast to every cluster node.
 | `--package_type <rpm\|deb>` | Package family for a Linux agent whose distribution does not imply one |
 | `-f`, `--file <WPK>` | Custom WPK: a bare file name, or a path inside `/var/wazuh-manager/var/upgrade/`. The file must already be there (on every cluster node); the CLI exits with an error otherwise |
 | `-x`, `--execute <installer>` | Installer inside a custom WPK. Default: `upgrade.bat` for Windows agents, `upgrade.sh` otherwise |
-| `-s`, `--silent` | Print nothing on success or per-agent failure |
+| `-s`, `--silent` | Print nothing on success or per-agent failure, and no framework warning on standard error; an error that stops the command is still printed |
 | `-d`, `--debug` | Re-raise errors with a traceback |
 
 `-f` or `-x` selects the custom path, on which `-v`, `-r`, `-F`, `--http` and `--package_type` are

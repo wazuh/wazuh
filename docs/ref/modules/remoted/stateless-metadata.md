@@ -31,6 +31,11 @@ is active.
 4. Remoted builds the batch header from the cached metadata
 5. The batch is forwarded to the engine in the `x-wev1` framing
 
+The version is copied as the keep-alive carries it, after the `<uname> - ` part and up to ` / `: a 4.x
+agent's header therefore has `wazuh.agent.version` set to `Wazuh v4.14.3`, with the `Wazuh ` prefix, while
+a 5.x agent's own header (HTTPS path) carries `v5.0.0`. The same text is what wazuh-db stores for the agent,
+so the indexed events and the agent's database record of a mixed fleet use both forms.
+
 See [Event Protocol](event-protocol.md) for the wire format, including the exact header shape and
 the single-space `H `/`E ` line prefixes.
 

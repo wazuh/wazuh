@@ -5,6 +5,7 @@
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import argparse
+import logging
 import warnings
 from asyncio import run
 from os.path import abspath, basename, dirname, isfile, join
@@ -69,7 +70,8 @@ def get_script_arguments() -> argparse.Namespace:
                                  join(common.WAZUH_PATH, 'var', 'upgrade')))
     parser.add_argument("-d", "--debug", action="store_true", help="Debug mode.")
     parser.add_argument("-x", "--execute", type=str,
-                        help="Executable filename in the WPK custom file. [Default: upgrade.sh]")
+                        help="Executable filename in the WPK custom file. [Default: upgrade.bat for Windows agents, "
+                             "upgrade.sh otherwise]")
     parser.add_argument("--http", action="store_true", help="Uses http protocol instead of https.")
     parser.add_argument("--package_type", type=str, help="Use rpm or deb packages for linux platforms.")
 
@@ -151,6 +153,11 @@ async def main():
     try:
         # Capture Ctrl + C
         signal(SIGINT, signal_handler)
+
+        # The framework logs under `wazuh`, which has no handler in this command: its warnings (such as the
+        # agents left out of the upgrade) would reach stderr through Python's last-resort handler.
+        if args.silent:
+            logging.getLogger('wazuh').addHandler(logging.NullHandler())
 
         # Check arguments
         if args.list_outdated:

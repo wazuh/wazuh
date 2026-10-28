@@ -52,6 +52,18 @@ The manager also checks the peer's credentials (`SO_PEERCRED`): a connection fro
 `root` or `wazuh-manager` is closed without an answer and logged as
 `Rejected unauthorized control socket peer.`
 
+The manager socket serves **one client at a time**: the next connection waits in the listen backlog until
+the current one is answered and closed. A client that connects and sends nothing within **3 seconds** is
+disconnected without an answer and logged as a warning,
+`A local client sent no command within 3 seconds; connection closed.`, so one idle client cannot hold the
+socket for longer than that. The limit is **per client**, though, and clients are served one after another:
+idle clients waiting in the backlog add up, 3 seconds each, so four of them delay the next command by about
+12 seconds — longer than the API's default `request_timeout` of 10 seconds. While modulesd itself is stopped or busy, a connection is accepted by the
+kernel but not served: the API's `PUT /cluster/restart` or `PUT /cluster/reload` can then time out (it does
+not fall back to the helper, which it runs only when the socket is missing or refuses the connection), and
+the queued command **is still carried out** once modulesd reads it. Check `wazuh-manager-control status`
+before retrying a restart that timed out.
+
 `ok accepted` means the action was **accepted**, not that it finished: the restart or reload runs
 afterwards, in a process modulesd does not wait for.
 
@@ -74,7 +86,9 @@ command to `control.sock` and require an answer starting with `ok`. When `contro
 refuses the connection (modulesd is not running), the API runs
 [`wazuh-manager-service-control`](#wazuh-manager-service-control) itself, as `wm_control` would, and logs
 `Control socket has not been created. Using wazuh-manager-service-control` (or the connection error) as a
-warning in `logs/api.log`: a manager whose modulesd died can still be restarted remotely.
+warning in `logs/api.log`, followed by `Manager restart accepted by wazuh-manager-service-control` (or `run
+by`) at info level; on a worker restarted through the master these lines go to the worker's
+`logs/cluster.log`. A manager whose modulesd died can still be restarted remotely.
 
 | Error | When |
 |-------|------|
@@ -151,7 +165,12 @@ Run by hand (as `root`), it does exactly what an API restart does:
 Restart and reload are the only recovery the manager has: nothing supervises the daemons. The unit
 (`Type=forking`, `RemainAfterExit=yes`, no `Restart=`) stays `active` when one of them crashes;
 `wazuh-manager-control status` reports it as `not running...` and exits `1`. Recover with
-`systemctl restart wazuh-manager`, or remotely with `PUT /cluster/restart`: while one of the core daemons
+`wazuh-manager-control check && systemctl restart wazuh-manager`, or remotely with `PUT /cluster/restart`.
+A plain `systemctl restart` runs no check before its `ExecStop`: when the start that follows refuses the
+configuration or a credential, the manager stays **down** until it is fixed and started. Check first (the
+API's helper does), or use `wazuh-manager-control restart`, which refuses before it stops anything but
+relaunches the daemons outside the unit (see
+[`wazuh-manager-control`](../../architecture.md#wazuh-manager-control)). While one of the core daemons
 (`wazuh-manager-modulesd`, `-remoted`, `-analysisd`, `-db`) is down, the Server API still answers login, the
 status queries and the restart and reload endpoints, and every other call with error `1017`. `wm_control`
 lives in `wazuh-manager-modulesd`; with modulesd down the API runs `wazuh-manager-service-control` itself

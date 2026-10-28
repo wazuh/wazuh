@@ -178,6 +178,26 @@ void test_fake_tag(void **state) {
 
 }
 
+void test_invalid_bucket_type(void **state) {
+    const char *string =
+        "<disabled>no</disabled>\n"
+        "<time>15:05</time>\n"
+        "<run_on_start>no</run_on_start>\n"
+        "<skip_on_error>yes</skip_on_error>\n"
+        "<bucket type=\"bogus\">\n"
+        "    <name>wazuh-aws-wodle</name>\n"
+        "</bucket>\n"
+    ;
+    test_structure *test = *state;
+    /* Every valid type is quoted on both sides. */
+    expect_string(__wrap__mterror, tag, WM_AWS_TEST_LOGTAG);
+    expect_string(__wrap__mterror, formatted_msg,
+                  "Invalid bucket type 'bogus'. Valid ones are 'cloudtrail', 'config', 'guardduty', 'vpcflow', "
+                  "'waf', 'cisco_umbrella', 'custom', 'alb', 'clb', 'nlb' or 'server_access'");
+    test->nodes = string_to_xml_node(string, &(test->xml));
+    assert_int_equal(wm_aws_read(&(test->xml), test->nodes, test->module), -1);
+}
+
 void test_read_scheduling_monthday_configuration(void **state) {
     const char *string =
         "<disabled>no</disabled>\n"
@@ -433,6 +453,7 @@ int main(void) {
     };
     const struct CMUnitTest tests_without_startup[] = {
         cmocka_unit_test_setup_teardown(test_fake_tag, setup_test_read, teardown_test_read),
+        cmocka_unit_test_setup_teardown(test_invalid_bucket_type, setup_test_read, teardown_test_read),
         cmocka_unit_test_setup_teardown(test_read_scheduling_monthday_configuration, setup_test_read, teardown_test_read),
         cmocka_unit_test_setup_teardown(test_read_scheduling_weekday_configuration, setup_test_read, teardown_test_read),
         cmocka_unit_test_setup_teardown(test_read_scheduling_daytime_configuration, setup_test_read, teardown_test_read),

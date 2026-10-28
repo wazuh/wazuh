@@ -24,12 +24,13 @@ These apply to every route on `engine-api-http.sock`:
   is sent with `Content-Length: 0` or with no `Content-Length` (and no `Transfer-Encoding`) at all; the handler
   then names the missing field. `POST /content/validate/policy` is the exception: it reads `full_policy` from the
   raw body, so an empty body is rejected with 400 and `Error parsing request body: <details>`.
-  A body that does not parse is rejected with 400 and `Failed to parse protobuff json request: <details>`.
+  A body that does not parse is rejected with 400 and `Failed to parse protobuff json request: <details>`, where
+  `<details>` is the parser's message cut to its first 256 characters, followed by `... (<n> bytes)`.
   A request the server cannot read at all is answered 400 with the plain-text body
   `Bad request: the request could not be read.` before any handler runs.
 - Responses carry a JSON body with a `status` field (`OK` or `ERROR`) and, on error, an `error` message.
-  An error that repeats a value from the request (a metric, space or session name, a `trace_level`, an asset or
-  an IP address) cuts it to its first 128 characters, followed by `... (<n> bytes)`.
+  An error that repeats a value from the request (a metric, space, session or namespace name, a resource UUID, a
+  `trace_level`, an asset or an IP address) cuts it to its first 128 characters, followed by `... (<n> bytes)`.
   The server labels these bodies `Content-Type: application/json`.
 - Validation failures are 400. A handler whose backing component is gone answers 500 with
   `Error: Handler is not initialized`; an exception escaping a handler is answered 500 with the plain-text
@@ -40,8 +41,13 @@ These apply to every route on `engine-api-http.sock`:
   (the content routes) answer their 413 with a JSON body.
 - A request for a path no route serves is answered 404 with the plain-text body `Not found: no such route.`; a
   path served under another method only is answered 405 with an `Allow` header and the plain-text body
-  `Method not allowed. Allowed: <methods>.` (every route is `POST` except `GET /status`, `GET /content/ioc/state` and `DELETE /logtest`).
-  The same applies on the events socket.
+  `Method not allowed. Allowed: <methods>.` (every route is `POST` except `GET /status`, `GET /content/ioc/state` and `DELETE /logtest`;
+  `HEAD` is answered like `GET` and listed beside it). The same applies on the events socket.
+- One request per connection, on both sockets: every answer carries `Connection: close` and the server closes the
+  connection after it, so a request pipelined behind another on the same connection is not answered: send each
+  request on its own connection (clients that do not pipeline, such as `curl` and `httpx`, open a new one after
+  `Connection: close` on their own). Do not half-close the
+  connection (`shutdown(SHUT_WR)`) after sending a request: the server then sends no answer.
 - Send `Content-Type: application/json`. The server does not require it, but `curl -d` otherwise labels the body
   `application/x-www-form-urlencoded`.
 

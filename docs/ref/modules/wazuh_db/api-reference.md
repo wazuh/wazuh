@@ -22,7 +22,7 @@ so an agent id travels in a header (`X-Wazuh-Agent-Id`) rather than in the path.
 | `GET` | `/v1/agents/all` | `200` | Every agent with every field, `id` ascending. |
 | `POST` | `/v1/agents/summary` | `200` | Counts of agents by status, by group and by OS, for all agents or for the ids in the body. |
 | `GET` | `/v1/agents/sync` | `200` | The agents whose `sync_status` marks them as pending, and **marks them synced** as a side effect. |
-| `POST` | `/v1/agents/sync` | `200` | Applies an agent state update sent by another node. Empty body on success; `500` on a malformed body. |
+| `POST` | `/v1/agents/sync` | `200` | Applies an agent state update sent by another node. Empty body on success; `400` on a malformed body. |
 
 Every route answers `500` when the database connection cannot be obtained, and `500` when the
 handler throws — except `/v1/status`, which answers `503` in both cases, because for that route
@@ -137,8 +137,10 @@ why it is classified as a data-plane route and can be shed under back-pressure.
 
 Counts for the server API's agent overview. The body is optional: empty, it counts every agent; a JSON
 array of agent ids (for example `[1,2,7]`), it counts only those, so `[]` counts nothing and answers
-`{}`. The id list is not parsed as JSON: every run of digits in the body is taken as an id. Answers
-three maps:
+`{}`. The id list is not parsed as JSON: the body is split into maximal runs of digits and `-`, and
+each run's leading integer is taken as an id when it fits a 32-bit `int` (a run that does not is
+dropped). A leading `-` is part of the number, so `[-1]` names no agent rather than agent 1, and
+`1-2` names agent 1 only. Answers three maps:
 
 ```json
 {"agents_by_status":{"active":42,"disconnected":3},
@@ -202,7 +204,12 @@ A field absent from an entry is written as an empty string or `0`. Every applied
 
 Success answers an **empty body** with `200`, not a JSON document.
 
-A malformed JSON body, or an entry without `id`, raises out of the handler and is answered
-`500 Internal server error` by the server's catch-all — there is no `400` for it, which is a known
-rough edge of this route rather than a deliberate contract. Entries applied before the failing one
-stay applied.
+A body that is not valid JSON, an entry without `id`, or a field of the wrong type is answered
+`400 Malformed request body` (`text/plain`). Numbers are converted rather than checked: in a numeric field
+(`id` included) a fraction is truncated (`99999.5` reads as `99999`) and a boolean reads as `1` or `0`
+(`"id": true` addresses agent 1), so only a string, an array, an object or `null` there is the wrong type.
+A text field takes only a string. Every 400 is logged as one WARNING under the `wazuh-manager-db`
+tag, throttled to one line per 90 s window that carries the count and the route, never the body:
+`Rejected <n> request(s) to /v1/agents/sync with 400 so far|in the last <s> s: malformed request body.`
+Nothing is written for a body that does not parse; for an entry that fails later, the entries
+applied before it stay applied (the groups are not one transaction).

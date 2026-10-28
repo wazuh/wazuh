@@ -2215,7 +2215,8 @@ sets, HS256, time rules, identity — is verified by the shared `JwtRequestToken
 `shared_modules/utils/jwt/` (header-only over jwt-cpp's base64url, rapidjson SAX for a strict
 pre-parse and OpenSSL's `EVP_Q_mac`; the same library the agent signs with and the fake managers
 of the agent's tests verify with). `AuthMiddleware::authenticate(protocolVersion, authorization,
-peerAddress, now)` is a single call: `protocol-version` first, `Bearer` scheme, `peekKid()` to
+peerAddress, now)` is a single call: `protocol-version` first, `Bearer` scheme (matched
+case-insensitively, RFC 7235 §2.1), `peekKid()` to
 resolve the CANDIDATE key from the keystore (and the registered-address verdict in the same pass),
 then the verifier, then `AuthError`. Nothing from the token is trusted before its signature except
 the bounded `kid` used for the lookup, and the algorithm is fixed to HS256 — never read from the
@@ -2981,10 +2982,8 @@ ctest --test-dir src/build -R '^remoted_module_utest$' -V
 
 ### Manual / end-to-end (`tools/send_stateless.py`)
 
-> **Port trap:** `send_stateless.py`, `send_agent_json.py` and `send_enroll.py` default to
-> `https://127.0.0.1:1517`, the product's own port; `send_control.py`, `send_scan_vd.py` and
-> `send_download.py` default to `https://127.0.0.1:9443` (a development listener). Against a
-> default installation the latter three need `--url https://127.0.0.1:1517`.
+> **Port:** every sender defaults to `https://127.0.0.1:1517`, the product's own port; pass `--url`
+> for another listener.
 
 Mints the `wazuh-agent+jwt` bearer and sends `POST /stateless` requests exactly as `AuthMiddleware`
 expects (shared `tools/wire_jwt.py`, pure standard library; agent key read straight from
@@ -3064,7 +3063,7 @@ python3 tools/send_scan_vd.py --url https://127.0.0.1:1517 --auto-offset        
 python3 tools/send_scan_vd.py --url https://127.0.0.1:1517 --feed-offset 1                # 409 if the manager's offset differs from 1,
                                                               # prints the manager's real current_version
 python3 tools/send_scan_vd.py --url https://127.0.0.1:1517 --all                          # every /scan/vd success/failure scenario
-# options (both): --url (default https://127.0.0.1:9443), --agent-id, --client-keys, --all,
+# options (both): --url (default https://127.0.0.1:1517), --agent-id, --client-keys, --all,
 #          --global-prefix
 #   send_control.py: --type {startup,notify,shutdown} (required unless --all), --version,
 #          --with-host, --tamper
@@ -3094,7 +3093,7 @@ python3 tools/send_download.py --url https://127.0.0.1:1517 --all               
                                                         #   unknown group -> 403, another agent's
                                                         #   selector -> 403
 python3 tools/send_download.py --url https://127.0.0.1:1517 --simulate 8 --repeat 20 --watch-rss   # concurrency + memory check
-# options: --url (default https://127.0.0.1:9443), --manager-home, --resource-id, --selectors,
+# options: --url (default https://127.0.0.1:1517), --manager-home, --resource-id, --selectors,
 #          --unknown-group, --other-group, --agent-id, --global-prefix
 ```
 

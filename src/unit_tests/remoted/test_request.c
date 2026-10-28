@@ -65,7 +65,8 @@ void test_req_dispatch_unknown_agent_is_answered(void ** state) {
     expect_string(__wrap__mdebug2, formatted_msg, "Sending request: '#!-req a1 #!-test'");
     expect_string(__wrap_w_get_agent_net_protocol_from_keystore, agent_id, "999");
     will_return(__wrap_w_get_agent_net_protocol_from_keystore, -1);
-    expect_string(__wrap__merror, formatted_msg, "(1320): Agent '999' not found.");
+    // Debug: the caller is answered with the reason
+    expect_string(__wrap__mdebug1, formatted_msg, "(1320): Agent '999' not found.");
     expect_answer("err Agent not found");
 
     req_dispatch(node);
@@ -76,7 +77,7 @@ void test_req_dispatch_request_without_agent_id_is_answered(void ** state) {
     req_node_t * node = add_request("a2", "no-agent-id");
 
     expect_string(__wrap__mdebug2, formatted_msg, "Running request dispatcher thread. Counter=a2");
-    expect_string(__wrap__merror, formatted_msg, "Request has no agent id.");
+    expect_string(__wrap__mdebug1, formatted_msg, "Request has no agent id.");
     expect_answer("err Request has no agent id");
 
     req_dispatch(node);

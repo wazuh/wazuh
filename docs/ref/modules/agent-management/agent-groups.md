@@ -34,8 +34,9 @@ groups at once, up to 128.
     └── agent.conf
 ```
 
-A group name may contain `a-z`, `A-Z`, `0-9`, `_`, `-` and `.`, up to 128 characters through the API
-and up to 255 with `agent_groups`;
+A group name may contain `a-z`, `A-Z`, `0-9`, `_`, `-` and `.`, up to 128 characters when the API
+creates it and up to 255 when `agent_groups` does (the API still lists, assigns and deletes a longer
+group made with `agent_groups`);
 `.`, `..` and `all` are refused, and so is `default`, which always exists
 and cannot be deleted. Names are case-sensitive: `Web` and `web` are two groups, with their own directories
 and configurations, and looking up a group's agents (`GET /groups/{group_id}/agents`, `GET /agents?group=`,
@@ -78,9 +79,13 @@ curl -k -X PUT "https://<MANAGER_IP>:55000/agents/001/group/web-servers" \
 
 Errors you may meet: `1710` the group does not exist, `1711` it already exists, `1712` `default`
 cannot be deleted, `1713` the name is taken by a file in `/etc/wazuh-manager/shared/` (such as
-`agent-template.conf`), `1722` invalid name, `1734` the agent is not in that
+`agent-template.conf`), `1734` the agent is not in that
 group, `1737` the agent already has 128 groups, `1745` the agent's only group is `default`, `1751` the
-agent already belongs to the group.
+agent already belongs to the group, `1752` `force_single_group=true` was asked but the caller lacks
+`group:modify_assignments` over one of the agent's current groups (the message names them). An invalid
+group name never reaches these checks through the API: the request schema refuses it with a `400` that
+carries no error code (`title` *Bad Request* and a `detail` naming the parameter). Error `1722` (*Incorrect
+format for group_id*) is what the `agent_groups` tool below reports for the same name.
 
 Removing an agent from its last group other than `default` puts it back in `default`.
 

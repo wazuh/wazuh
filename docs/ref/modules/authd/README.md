@@ -53,9 +53,12 @@ material; that one is the order things happen in.
      `ERROR: Invalid version`. A version newer than the manager's is refused
      unless [`<agents><allow_higher_versions>`](configuration.md#agents--allow_higher_versions) is `yes`.
    - `G:'<groups>'` — comma-separated centralized group(s) to assign the agent to at enrollment
-     time, instead of the `default` group.
-   - `IP:'<ip>'` — the address to register the agent with. `IP:'src'` registers the connection's
-     source address. Any other value must be an IPv4 or IPv6 address, optionally with a mask, or
+     time, instead of the `default` group. An empty value or an empty member (`G:''`,
+     `G:'default,'`) is refused with `ERROR: Invalid group name`; `POST /enroll` and the local
+     socket instead take a list naming no group as no list, and record the others without the
+     empty members.
+   - `IP:'<ip>'` — the address to register the agent with. `IP:'src'` (exactly that word) registers the
+     connection's source address. Any other value must be an IPv4 or IPv6 address, optionally with a mask, or
      `any`; it is registered, and echoed in the answer, in the form the agent registry records:
      an IPv4 mask in dotted form becomes its prefix length (`10.22.0.0/255.255.0.0` →
      `10.22.0.0/16`), a full-length mask is dropped (`10.30.0.0/32` → `10.30.0.0`), and an IPv6
@@ -440,13 +443,19 @@ A request is a single-line JSON object:
     the two *enrollment* paths (port 1515 and `POST /enroll`) enforce on the names they mint: it
     refuses only what the `<id> <name> <ip> <key>` line format cannot represent, so names that
     the API has always accepted — containing `%`, a single character, or a leading `.` — keep
-    working. The local socket applies neither `use_source_ip` nor the agent-version check: the
-    `ip` is registered as given, and the request carries no version.
+    working. The local socket applies neither `use_source_ip` nor the agent-version check, and the
+    request carries no version. The `ip` is registered, checked for duplicates and answered in the
+    form port 1515 registers it in (a dotted mask as its prefix length, a full-length mask dropped,
+    IPv6 expanded), so `10.0.0.15/32` is a duplicate (`9007`) of an agent at `10.0.0.15`; a
+    leading `!`, a non-contiguous dotted mask and anything that is not an address answer
+    `9006 No such IP`.
   - `id` (optional) — request a specific agent ID instead of letting authd assign the next one; must
     be a positive integer no greater than `2147483647` (the width `client.keys` and the database
     store it in) and other than `0` (reserved for the manager), or the request fails with
     `9020 Invalid agent ID`
-  - `groups` (optional) — comma-separated centralized group(s) to assign
+  - `groups` (optional) — comma-separated centralized group(s) to assign; repeated names are
+    dropped, and a list naming no group (`""`, `","`) is the same as no `groups` argument (the
+    agent joins `default`; a re-enrolling agent keeps its groups)
   - `key` (optional) — a caller-supplied key instead of a randomly generated one; must be exactly 64 lowercase hex chars (32 bytes), otherwise the request fails with `9019 Invalid agent key`
   - `key_hash` (optional) — hash of the agent's current key, used the same way as the `K:` field
     in the network protocol when deciding whether a `force` replacement applies

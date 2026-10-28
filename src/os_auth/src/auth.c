@@ -409,10 +409,17 @@ void w_auth_client_rejection_log(const char *reason, bool info, const char *mess
         } else {
             minfo("%s", message);
         }
-    } else if (warn) {
-        mwarn("%s (and %lu more like it in the last %ld s)", message, suppressed, (long)since);
     } else {
-        minfo("%s (and %lu more like it in the last %ld s)", message, suppressed, (long)since);
+        /* The count goes before the sentence's own full stop, not after it ("connection. (and ...") */
+        int len = (int)strlen(message);
+        if (len > 0 && message[len - 1] == '.') {
+            len--;
+        }
+        if (warn) {
+            mwarn("%.*s (and %lu more like it in the last %ld s)", len, message, suppressed, (long)since);
+        } else {
+            minfo("%.*s (and %lu more like it in the last %ld s)", len, message, suppressed, (long)since);
+        }
     }
 }
 
@@ -568,6 +575,25 @@ static int w_auth_registered_ip_form(os_ip *parsed, char *out, size_t size) {
     return result;
 }
 
+int w_auth_registered_ip(const char *ip, char *out, size_t size) {
+    os_ip *parsed;
+    int result = -1;
+
+    /* A leading '!' is a negation to OS_IsValidIP(), which skips it: meaningless for an address to
+     * register, and accepting it would register the address it negates. */
+    if (ip == NULL || ip[0] == '!') {
+        return -1;
+    }
+
+    os_calloc(1, sizeof(os_ip), parsed);
+    if (OS_IsValidIP(ip, parsed)) {
+        result = w_auth_registered_ip_form(parsed, out, size);
+    }
+    w_free_os_ip(parsed);
+
+    return result;
+}
+
 w_err_t w_auth_parse_data(const char* buf,
                           char *response,
                           const char *authpass,
@@ -683,7 +709,8 @@ w_err_t w_auth_parse_data(const char* buf,
             }
 
             if (0 > w_validate_group_name(tmp_groups, response)) {
-                w_auth_log_client_rejection(false, "Invalid group name: %.255s... ,", tmp_groups);
+                /* The reason the agent is answered with, without its "ERROR: " prefix */
+                w_auth_log_client_rejection(false, "%s", strncmp(response, "ERROR: ", 7) ? response : response + 7);
                 return OS_INVALID;
             }
             *groups = wstr_delete_repeated_groups(tmp_groups);
@@ -711,21 +738,16 @@ w_err_t w_auth_parse_data(const char* buf,
             }
 
             /* If IP: != 'src' overwrite the provided ip, in the form it is registered with. A
-             * leading '!' (a negation to OS_IsValidIP(), meaningless for an address to register) and
-             * a non-contiguous dotted mask are refused, as POST /enroll refuses them. */
-            if (strncmp(client_source_ip,"src",3) != 0) {
+             * leading '!' and a non-contiguous dotted mask are refused, as POST /enroll refuses them.
+             * The sentinel is the exact word: "srcx" is an invalid address, not "src". */
+            if (strcmp(client_source_ip, "src") != 0) {
                 char registered_ip[IPSIZE + 1] = {0};
-                os_ip *aux_ip;
-                os_calloc(1, sizeof(os_ip), aux_ip);
-                if (client_source_ip[0] == '!' || !OS_IsValidIP(client_source_ip, aux_ip) ||
-                    w_auth_registered_ip_form(aux_ip, registered_ip, sizeof(registered_ip)) != 0) {
+                if (w_auth_registered_ip(client_source_ip, registered_ip, sizeof(registered_ip)) != 0) {
                     w_auth_log_client_rejection(false, "Invalid IP: '%s'", client_source_ip);
                     snprintf(response, OS_SIZE_2048, "ERROR: Invalid IP: %s", client_source_ip);
-                    w_free_os_ip(aux_ip);
                     return OS_INVALID;
                 }
                 snprintf(ip, IPSIZE, "%s", registered_ip);
-                w_free_os_ip(aux_ip);
             }
 
             /* Forward the string pointer IP:'........' 4 for " IP:", 2 for '' */

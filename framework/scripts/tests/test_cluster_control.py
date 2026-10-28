@@ -130,7 +130,7 @@ async def test_print_health(get_health_mock, get_nodes_mock, local_client_mock, 
         # Call print_health
         await cluster_control.print_health(config=config, more=more, filter_node=filter_node)
         print_mock.assert_has_calls([call(f"Cluster name: {config['name']}\n\n"
-                                          f"Connected nodes ({get_health_mock.return_value['n_connected_nodes']}):"),
+                                          f"Connected nodes ({len(get_health_mock.return_value['nodes'])}):"),
                                      call(f"\n    wazuh_worker2 ({worker_info['ip']})\n        "
                                           f"Version: {worker_info['version']}\n        "
                                           f"Type: {worker_info['type']}\n        "
@@ -461,3 +461,35 @@ def test_main_exits_non_zero_on_internal_error(read_config_mock, check_cluster_c
 
     print_mock.assert_called_once_with('Internal error: boom')
     exit_mock.assert_called_once_with(1)
+
+
+@pytest.mark.parametrize('statuses', [['bogus'], ['active', 'bogus']])
+@patch('wazuh.core.cluster.utils.read_config', return_value='')
+def test_main_rejects_unknown_agent_status(read_config_mock, statuses, capsys):
+    """An -fs value that is not an agent status is an argument error (exit code 2), before anything is read."""
+    with patch('sys.argv', ['cluster_control', '-a', '-fs', *statuses]):
+        with pytest.raises(SystemExit) as exit_info:
+            cluster_control.main()
+
+    assert exit_info.value.code == 2
+    assert 'invalid status bogus (choose from active, disconnected, never_connected, pending)' in capsys.readouterr().err
+    read_config_mock.assert_not_called()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize('more, expected', [
+    (True, 'Connected nodes (1):'),
+    (False, 'Last completed synchronization for connected nodes (0):\n'),
+])
+@patch('builtins.print')
+@patch('scripts.cluster_control.local_client.LocalClient')
+@patch('scripts.cluster_control.control.get_nodes', return_value={'items': [{'name': 'node01'}]})
+@patch('scripts.cluster_control.control.get_health',
+       return_value={'n_connected_nodes': 0,
+                     'nodes': {'node01': {'info': {'ip': '127.0.0.1', 'version': '5.0.0', 'type': 'master'}}}})
+async def test_print_health_counts_listed_nodes(get_health_mock, get_nodes_mock, local_client_mock, print_mock,
+                                                more, expected):
+    """The detailed report counts every node it lists (a lone master is 1); the summary counts the workers."""
+    await cluster_control.print_health(config={'name': 'wazuh'}, more=more, filter_node=None)
+
+    assert print_mock.call_args_list[0] == call(f'Cluster name: wazuh\n\n{expected}')

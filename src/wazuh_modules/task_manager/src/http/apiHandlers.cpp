@@ -14,7 +14,10 @@
 #include "taskManagerLog.hpp"
 
 #include <cstddef>
+#include <cstdint>
 #include <ctime>
+#include <limits>
+#include <string>
 #include <utility>
 
 namespace
@@ -41,14 +44,52 @@ namespace
         return it->get<std::string>();
     }
 
-    std::optional<Timestamp> optionalTime(const nlohmann::json& body, const char* key)
+    /**
+     * @brief Read an optional integer field without narrowing it.
+     *
+     * An absent key leaves @p out empty and succeeds. A present one succeeds only when it is a JSON
+     * integer that @p T holds exactly: a fraction, a string, null or a value outside @p T's range is
+     * a failure, so the caller answers 400 rather than silently wrapping or using a default.
+     *
+     * @return false when the field is present but not an in-range integer.
+     */
+    template<typename T>
+    bool readInteger(const nlohmann::json& body, const char* key, std::optional<T>& out)
     {
+        out.reset();
         const auto it {body.find(key)};
-        if (it == body.end() || !it->is_number())
+        if (it == body.end())
         {
-            return std::nullopt;
+            return true;
         }
-        return it->get<Timestamp>();
+        if (it->is_number_unsigned())
+        {
+            const auto value {it->get<std::uint64_t>()};
+            if (value > static_cast<std::uint64_t>(std::numeric_limits<T>::max()))
+            {
+                return false;
+            }
+            out = static_cast<T>(value);
+            return true;
+        }
+        if (it->is_number_integer())
+        {
+            const auto value {it->get<std::int64_t>()};
+            if (value < static_cast<std::int64_t>(std::numeric_limits<T>::min()) ||
+                value > static_cast<std::int64_t>(std::numeric_limits<T>::max()))
+            {
+                return false;
+            }
+            out = static_cast<T>(value);
+            return true;
+        }
+        return false;
+    }
+
+    task_manager::http::ApiResponse notAnInteger(const char* key)
+    {
+        return task_manager::http::ApiResponse::error(
+            400, "parsing_error", std::string {key} + " must be an integer within range");
     }
 
     bool optionalBool(const nlohmann::json& body, const char* key, const bool fallback)
@@ -59,16 +100,6 @@ namespace
             return fallback;
         }
         return it->get<bool>();
-    }
-
-    int optionalInt(const nlohmann::json& body, const char* key, const int fallback)
-    {
-        const auto it {body.find(key)};
-        if (it == body.end() || !it->is_number_integer())
-        {
-            return fallback;
-        }
-        return it->get<int>();
     }
 } // namespace
 
@@ -172,7 +203,11 @@ namespace task_manager::http
             return ApiResponse::error(400, "parsing_error", "task_type is required");
         }
 
-        const auto createTime {optionalTime(body, "create_time")};
+        std::optional<Timestamp> createTime;
+        if (!readInteger(body, "create_time", createTime))
+        {
+            return notAnInteger("create_time");
+        }
         if (!createTime.has_value())
         {
             return ApiResponse::error(400, "parsing_error", "create_time is required");
@@ -385,9 +420,21 @@ namespace task_manager::http
         request.payload = std::move(serialized);
         request.agentId = optionalString(body, "agent_id");
         request.scheduleId = optionalString(body, "schedule_id");
-        request.scheduledRunAt = optionalTime(body, "scheduled_run_at");
-        request.createTime = optionalTime(body, "create_time").value_or(nowSeconds());
-        request.nextAttemptAt = optionalTime(body, "next_attempt_at");
+
+        if (!readInteger(body, "scheduled_run_at", request.scheduledRunAt))
+        {
+            return notAnInteger("scheduled_run_at");
+        }
+        std::optional<Timestamp> createTime;
+        if (!readInteger(body, "create_time", createTime))
+        {
+            return notAnInteger("create_time");
+        }
+        request.createTime = createTime.value_or(nowSeconds());
+        if (!readInteger(body, "next_attempt_at", request.nextAttemptAt))
+        {
+            return notAnInteger("next_attempt_at");
+        }
 
         // The descriptor is the authority on coalescing and admission, not the request. A producer
         // that could choose either would be able to bypass the bound that protects the queue --
@@ -402,7 +449,12 @@ namespace task_manager::http
         else
         {
             request.coalesce = optionalBool(body, "coalesce", false);
-            request.maxPending = optionalInt(body, "max_pending", storage::UNBOUNDED);
+            std::optional<int> maxPending;
+            if (!readInteger(body, "max_pending", maxPending))
+            {
+                return notAnInteger("max_pending");
+            }
+            request.maxPending = maxPending.value_or(storage::UNBOUNDED);
         }
 
         const auto outcome {m_store.createManagerTask(request)};
@@ -490,9 +542,16 @@ namespace task_manager::http
         }
 
         const auto after {optionalString(body, "last_task_id").value_or(std::string {})};
-        const auto limit {optionalInt(body, "limit", storage::DEFAULT_PAGE_SIZE)};
+        // Within int, the store keeps its documented rules (<= 0 is the default page, above
+        // MAX_PAGE_SIZE is clamped); anything else is refused rather than wrapped.
+        std::optional<int> limit;
+        if (!readInteger(body, "limit", limit))
+        {
+            return notAnInteger("limit");
+        }
 
-        const auto rows {m_store.listManagerTasks(*taskType, status, after, limit)};
+        const auto rows {
+            m_store.listManagerTasks(*taskType, status, after, limit.value_or(storage::DEFAULT_PAGE_SIZE))};
 
         nlohmann::json out = nlohmann::json::array();
         for (const auto& row : rows)

@@ -115,7 +115,9 @@ curl -k -X GET "https://localhost:55000/agents?select=id,name,status,ip&sort=-id
   -H "Authorization: Bearer $TOKEN"
 ```
 
-Key filters: `agents_list`, `status`, `older_than`, `os.type`, `os.platform`, `os.version`, `os.major`, `os.minor`, `os.arch`, `os.name`, `version`, `group`, `name`, `ip`, `registerIP` (an exact match; IPv4, IPv6 and CIDR values such as `10.0.0.0/24` are accepted, so an agent registered for a range is found by that range; an IPv6 value matches in any spelling, compact or expanded, since it is rewritten to the expanded form the manager stores, for example `fd00:e2e::/64` to `FD00:0E2E:0000:0000:0000:0000:0000:0000/64`). `group` matches a group name exactly, case included: `Web` and `web` are two groups. Inside `q` an IPv6 value is not rewritten and must be given in the stored, expanded form.
+Key filters: `agents_list`, `status`, `older_than`, `os.type`, `os.platform`, `os.version`, `os.major`, `os.minor`, `os.arch`, `os.name`, `version`, `group`, `name`, `ip`, `registerIP` (an exact match against the stored text; IPv4, IPv6 and CIDR values such as `10.0.0.0/24` are accepted, so an agent registered for a range is found by that range; an IPv6 value matches in any spelling, compact or expanded, since it is rewritten to the expanded form the manager stores, for example `fd00:e2e::/64` to `FD00:0E2E:0000:0000:0000:0000:0000:0000/64`). A mask is **not** rewritten: registration stores a single address without its mask and a network as `<address>/<prefix length>`, so `10.250.0.1/32` or `10.250.6.0/255.255.255.0` finds nothing — give `10.250.0.1` and `10.250.6.0/24`.
+
+`version` is rewritten to the form a 4.x agent's version is stored in: `4.14.3`, `v4.14.3` and `wazuh 4.14.3` all become `wazuh v4.14.3`, which matches a 4.x agent's stored `Wazuh v4.14.3`. A 5.x agent's version is stored as `v5.0.0`, without the `Wazuh` prefix, so the `version` filter **never matches a 5.x agent**; `q` is not rewritten, so `q=version~5.0.0` (contains) finds the agents of that version in either stored form. Responses show both generations as `vX.Y.Z`. `group` matches a group name exactly, case included: `Web` and `web` are two groups. Inside `q` an IPv6 value is not rewritten and must be given in the stored, expanded form.
 
 #### Add agent
 
@@ -377,7 +379,7 @@ Other MITRE endpoints: `/mitre/tactics`, `/mitre/groups`, `/mitre/software`, `/m
 | PUT | `/agents/upgrade` | Upgrade agents |
 | PUT | `/agents/upgrade_custom` | Custom upgrade |
 | PUT | `/agents/scan/vulnerability` | Request on-demand vulnerability scan |
-| GET | `/agents/uninstall` | Check whether the calling user has permission to uninstall the given agents |
+| GET | `/agents/uninstall` | Check whether the calling user holds `agent:uninstall` (resource `*:*:*`); it takes no agent list |
 | GET | `/agents/stats/distinct` | Distinct fields: one row per combination of the `fields` values, with the `count` of agents that have it; `total_affected_items` counts the rows |
 | GET | `/agents/summary` | Summary |
 | GET | `/agents/summary/os` | OS summary |
@@ -532,7 +534,9 @@ to Python's own cross-type comparison: `=` matches nothing and `!=` matches ever
 whose type the field cannot address is a property of the record, not of the query -- the same
 clause evaluates normally against a differently-typed record -- so it excludes only its own record,
 and `q` is reported invalid with a 400 once, after the whole collection, only when no record could
-evaluate the clause at all. The `search` parameter is case-insensitive and matches the
+evaluate the clause at all. A field that no record has is not an error here: `q=nosuchfield=x` answers
+`200` with no items, where the agents collection, filtered in SQL, refuses it with error `1408`
+(*Field does not exist*, listing the available fields). The `search` parameter is case-insensitive and matches the
 rendered value, so `search=true` also finds records
 whose boolean field is set. `~` is case-sensitive on a boolean field, unlike `=`/`!=`/`search`: it
 matches the exact rendered value (`q=revoked~True`, `q=revoked~False`), not `true`/`false`.
@@ -548,7 +552,8 @@ curl -k -X GET "https://localhost:55000/agents?q=status%3Dactive" \
 curl -k -X GET "https://localhost:55000/agents?q=status%3Dactive%3Bos.name~Ubuntu" \
   -H "Authorization: Bearer $TOKEN"
 
-# Agents whose OS platform is not Windows
+# Agents whose OS platform is set and is not Windows (`!=` never matches a NULL field, so agents that have
+# never connected, which have no OS yet, are left out)
 curl -k -X GET "https://localhost:55000/agents?q=os.platform!%3Dwindows" \
   -H "Authorization: Bearer $TOKEN"
 ```
@@ -566,10 +571,10 @@ Errors follow a structured JSON response format.
 | 400       | Bad Request       | Invalid parameters       |
 | 401       | Unauthorized      | Invalid credentials, or an invalid or expired token |
 | 403       | Forbidden         | RBAC denied, or the client IP is blocked after too many failed logins (`6000`) |
-| 404       | Not Found         | Invalid endpoint, or the named resource does not exist: a group (`1710`), a file in a group (`1006`), a cluster node (`1730`) |
+| 404       | Not Found         | Invalid endpoint, or the named resource does not exist: a group (`1710`), a file in a group (`1006`), a cluster node (`1730`), an enrollment token (`1767`) |
 | 405       | Method Not Allowed | Invalid HTTP method     |
-| 413       | Payload Too Large | Request body too large   |
-| 415       | Unsupported Media Type | A `Content-Type` the operation does not accept, or a body sent with no `Content-Type` at all (`6002`) |
+| 413       | Payload Too Large | Request body too large. The body carries `"error": 413` (the HTTP status, not an error code) |
+| 415       | Unsupported Media Type | A `Content-Type` the operation does not accept, or a body sent with no `Content-Type` at all (`6002`), on every operation that takes a body, the `run_as` login included |
 | 417       | Expectation Failed | An `Expect` header other than `100-continue` |
 | 429       | Too Many Requests | Rate limit exceeded (`6001` authenticated, `6005` unauthenticated), or too many logins already waiting for their password check (`6006`) |
 | 500       | Internal Error    | Check manager logs       |

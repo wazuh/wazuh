@@ -19,7 +19,7 @@ UUID in `wazuh.event.id`. There is no rootcheck-specific object: the detection i
 
 ```json
 {
-  "@timestamp": "2026-10-27T17:57:49.700Z",
+  "@timestamp": "2026-10-27T17:57:49.700412839Z",
   "wazuh": {
     "protocol": {
       "queue": 57,
@@ -82,7 +82,7 @@ The detection fields the engine adds to the common structure above (`wazuh.*` om
 
 ```json
 {
-  "@timestamp": "2026-10-27T18:09:03.483Z",
+  "@timestamp": "2026-10-27T18:09:03.483127506Z",
   "event": {
     "original": "File '/dev/shm/e2etest' present on /dev. Possible hidden file.",
     "dataset": "wazuh.rootcheck",
@@ -127,7 +127,7 @@ event keeps the whole message in `event.original`. The ECS classification (`even
 
 | Field | Description | Example |
 |-------|-------------|---------|
-| `@timestamp` | When the engine processed the event | `2026-10-27T18:09:03.483Z` |
+| `@timestamp` | When the engine received the event, in UTC with nine fractional digits (nanoseconds) | `2026-10-27T18:09:03.483127506Z` |
 | `wazuh.protocol.location` | Source of the message | `rootcheck` |
 | `wazuh.integration.name` | Integration that decoded it | `wazuh-rootcheck` |
 | `wazuh.agent.id`, `wazuh.agent.name`, `wazuh.agent.version` | Reporting agent | `001`, `tomas`, `v5.0.0` |

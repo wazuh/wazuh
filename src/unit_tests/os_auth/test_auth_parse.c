@@ -108,6 +108,12 @@ parse_evaluator parse_values_default_cfg [] = {
     /* What POST /enroll refuses, port 1515 refuses too */
     { "OSSEC A:'agent5' IP:'10.22.0.0/255.0.255.0'", "192.0.0.1", NULL, {NULL, NULL, NULL, NULL}, {OS_INVALID,"ERROR: Invalid IP: 10.22.0.0/255.0.255.0"},         {NULL, "Invalid IP: '10.22.0.0/255.0.255.0'", NULL, "Received request for a new agent (agent5) from: 192.0.0.1", NULL} },
     { "OSSEC A:'agent5' IP:'!10.31.0.5'", "192.0.0.1", NULL,            {NULL, NULL, NULL, NULL}, {OS_INVALID,"ERROR: Invalid IP: !10.31.0.5"},                    {NULL, "Invalid IP: '!10.31.0.5'", NULL, "Received request for a new agent (agent5) from: 192.0.0.1", NULL} },
+    /* A refused group list is logged with the reason the agent is answered with */
+    { "OSSEC A:'agent5' G:'default,'", "192.0.0.1", NULL,               {NULL, NULL, NULL, NULL}, {OS_INVALID,"ERROR: Invalid group name: default,... cannot start or end with ','"}, {NULL, "Invalid group name: default,... cannot start or end with ','", NULL, "Received request for a new agent (agent5) from: 192.0.0.1", NULL} },
+    /* The sentinel is the exact word "src", not every value starting with it */
+    { "OSSEC A:'agent18' IP:'src'", "192.0.0.1", NULL,                                          {"192.0.0.1", "agent18", NULL, NULL},                         {OS_SUCCESS,""}, {NULL, NULL, NULL, "Received request for a new agent (agent18) from: 192.0.0.1", NULL} },
+    { "OSSEC A:'agent5' IP:'srcx'", "192.0.0.1", NULL,                  {NULL, NULL, NULL, NULL}, {OS_INVALID,"ERROR: Invalid IP: srcx"},                          {NULL, "Invalid IP: 'srcx'", NULL, "Received request for a new agent (agent5) from: 192.0.0.1", NULL} },
+    { "OSSEC A:'agent5' IP:'src10.1.1.1'", "192.0.0.1", NULL,           {NULL, NULL, NULL, NULL}, {OS_INVALID,"ERROR: Invalid IP: src10.1.1.1"},                   {NULL, "Invalid IP: 'src10.1.1.1'", NULL, "Received request for a new agent (agent5) from: 192.0.0.1", NULL} },
     { "OSSEC A:'agent5' V:''", "192.0.0.1", NULL,                       {NULL, NULL, NULL, NULL}, {OS_INVALID,"ERROR: Invalid version"},                           {NULL, "Invalid version for new agent from: 192.0.0.1", NULL, "Received request for a new agent (agent5) from: 192.0.0.1", NULL} },
     { "OSSEC A:'agent5' V:'vX'", "192.0.0.1", NULL,                     {NULL, NULL, NULL, NULL}, {OS_INVALID,"ERROR: Invalid version"},                           {NULL, "Invalid version for new agent from: 192.0.0.1", NULL, "Received request for a new agent (agent5) from: 192.0.0.1", NULL} },
 
@@ -186,6 +192,43 @@ static void test_w_auth_parse_data(void **state) {
         os_free(groups);
         os_free(key_hash);
     }
+    w_test_pcre2_wrappers(true);
+}
+
+/* The form every enrollment path (1515 above, and the local socket behind POST /enroll, POST /agents
+ * and auth.sock) registers, checks for duplicates and answers an address in. The IP tree is keyed by
+ * the bare address, so a full-length mask has to disappear here or the duplicate-IP check misses. */
+static void test_w_auth_registered_ip(void **state) {
+    static const struct {
+        const char *input;
+        const char *expected; /* NULL: refused */
+    } rows[] = {
+        { "10.30.0.1",                  "10.30.0.1" },
+        { "10.30.0.1/32",               "10.30.0.1" },
+        { "10.30.0.1/255.255.255.255",  "10.30.0.1" },
+        { "::ffff:10.30.0.1",           "10.30.0.1" },
+        { "2001:db8::1/128",            "2001:0DB8:0000:0000:0000:0000:0000:0001" },
+        { "10.22.0.0/16",               "10.22.0.0/16" },
+        { "10.22.0.0/255.255.0.0",      "10.22.0.0/16" },
+        { "10.22.0.0/255.0.255.0",      NULL },
+        { "!10.31.0.5",                 NULL },
+        { "src",                        NULL },
+        { "10.30.0.300",                NULL },
+        { "",                           NULL },
+    };
+    char out[IPSIZE + 1];
+
+    w_test_pcre2_wrappers(false);
+    for (size_t i = 0; i < sizeof(rows) / sizeof(rows[0]); i++) {
+        memset(out, 0, sizeof(out));
+        if (rows[i].expected) {
+            assert_int_equal(w_auth_registered_ip(rows[i].input, out, sizeof(out)), 0);
+            assert_string_equal(out, rows[i].expected);
+        } else {
+            assert_int_equal(w_auth_registered_ip(rows[i].input, out, sizeof(out)), -1);
+        }
+    }
+    assert_int_equal(w_auth_registered_ip(NULL, out, sizeof(out)), -1);
     w_test_pcre2_wrappers(true);
 }
 
@@ -271,6 +314,16 @@ static void test_client_rejection_summary(void **state) {
     expect_string(__wrap__minfo, formatted_msg, "sixth (and 1 more like it in the last 100 s)");
     w_auth_client_rejection_log("reason-a", true, "sixth", 1300);
 
+    /* A message ending its own sentence gets the count before that full stop, not after it. */
+    expect_string(__wrap__minfo, formatted_msg, "Closing connection.");
+    w_auth_client_rejection_log("reason-b", true, "Closing connection.", 2000);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "Closing connection.");
+    w_auth_client_rejection_log("reason-b", true, "Closing connection.", 2010);
+
+    expect_string(__wrap__minfo, formatted_msg, "Closing connection (and 1 more like it in the last 100 s)");
+    w_auth_client_rejection_log("reason-b", true, "Closing connection.", 2100);
+
     w_auth_client_rejection_log_reset();
 }
 
@@ -279,6 +332,7 @@ int main(void) {
         /* w_auth_parse_data tests*/
         cmocka_unit_test_setup(test_w_auth_parse_data, setup_parse_default),
         cmocka_unit_test_setup(test_w_auth_parse_data, setup_parse_use_src_ip_cfg_0),
+        cmocka_unit_test(test_w_auth_registered_ip),
         cmocka_unit_test_setup(test_client_rejections_are_throttled, setup_parse_default),
         cmocka_unit_test_setup(test_client_rejections_are_throttled_per_reason, setup_parse_default),
         cmocka_unit_test(test_client_rejection_summary),

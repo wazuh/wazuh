@@ -210,7 +210,9 @@ paths:
         `index_unclassified_events` and `index_discarded_events` (booleans); `outputs`, `origin_space`, `hash`
         and `cleanup_decoder_variables` (default `true`) are optional. Every resource needs an `id`.
 
-        `space` may contain only letters, digits and `_`.
+        `space` may contain only letters, digits and `_`. Another character is refused with 400 and
+        `'origin_space' contains invalid characters: '<space>'. ...`: the `space` value becomes the policy's
+        `origin_space`, and the message names that field.
 
         ## Validation strategy
 
@@ -237,9 +239,12 @@ paths:
         (`Refusing to replace space '<space>': its namespace '<namespace>' was not created by the tester`): the
         temporary resources are deleted and the old session and its namespace are left untouched.
 
-        **`space: test` is the Wazuh dashboard's own test session.** The examples below use it; sending
-        `validate_and_load_testing` as written replaces the session the dashboard's logtest runs against
-        (until the dashboard loads its policy again). Use another `space` name for your own tests.
+        **`space: test` is the name the Wazuh dashboard gives its own test session — on the engine bundled with
+        wazuh-indexer, not on this manager's engine.** The dashboard's logtest runs there; on this manager's
+        socket `test` is an ordinary session name, and the examples below use it. When you call the engine inside
+        wazuh-indexer instead, sending `validate_and_load_testing` as written replaces the session the
+        dashboard's logtest runs against (until the dashboard loads its policy again): use another `space` name
+        for your own tests there.
 
         ## Side effects of the policy's outputs
 
@@ -380,7 +385,7 @@ paths:
                       filters:
                       - name: filter/prefilter/0
                         metadata:
-                          description: Default filter to allow all events (for default ruleset)
+                          description: Sample pre-filter that lets through only events whose host.os.platform is ubuntu
                           author:
                             name: Wazuh, Inc.
                             url: https://wazuh.com
@@ -490,8 +495,11 @@ paths:
         the event through them — an indexer output indexes a real document, a file output appends a line to
         its channel. The policies the Wazuh Indexer sends carry no `outputs`, so its logtest writes nothing.
 
-        **`space: test` is the Wazuh dashboard's own test session**: the examples run against it, which works
-        only after the dashboard (or a `validate_and_load_testing` call) has loaded it.
+        The examples run against `space: test`, which works only after a `validate_and_load_testing` call has
+        loaded it. The Wazuh dashboard's logtest and its `test` session run on the engine bundled with
+        wazuh-indexer, not on this manager's engine, so the dashboard loading its policy does not create the
+        session here. That engine is the one that requires `trace_level`; changes to this API reach dashboard
+        users only through the wazuh-indexer package.
 
         After the pipeline finishes, temporary fields (root key starts with `_`) are removed from the
         output event, which is then validated against the Wazuh Common Schema (WCS). Validation is
@@ -514,7 +522,9 @@ paths:
         pipeline produced an output event. Errors are sorted by path, with kind as tiebreaker.
 
         Request rules, checked in this order:
-        - `queue` must be 1..255.
+        - `queue` must be 1..127: the indexer stores `wazuh.protocol.queue` as a signed byte. It is the queue's
+          numeric value, not its character: an agent's log-collector queue `1` arrives as `49`, so send `49` to
+          reproduce it.
         - `trace_level` is optional: absent or empty means `NONE`; otherwise it must be `NONE`, `ASSET_ONLY` or
           `ALL` (case-insensitive).
         - `metadata` is **optional**. When present it must be a JSON object that is either empty or has
@@ -524,6 +534,12 @@ paths:
         - `space` must not be empty.
         - `location` cannot be empty. It is stored as given in `wazuh.protocol.location`; the event text goes
           to `event.original` and the queue to `wazuh.protocol.queue`.
+        - the session named by `space` must exist, or the answer is `400` with
+          `The '<space>' environment does not exist.`
+
+        `@timestamp` in the output is the time the engine took the test event, in UTC with nine fractional
+        digits (nanoseconds), as on every event the engine processes, unless a decoder of the session
+        overwrites it.
       requestBody:
         required: true
         content:
@@ -672,12 +688,12 @@ paths:
                             id: 0b9d5e4c-7f3a-4c1e-9a52-3e8f6d2b1a47
                         event:
                           original: File /etc/passwd modified
-                        '@timestamp': '2025-12-26T17:33:22.105Z'
+                        '@timestamp': '2025-12-26T17:33:22.105284917Z'
                       asset_traces:
                       - asset: decoder/core-wazuh-message/0
                         success: true
                         traces:
-                        - '@timestamp: get_date -> Success'
+                        - '<operation> -> Success'
                       validation:
                         valid: true
                         errors: []
@@ -715,12 +731,12 @@ paths:
                   summary: Queue missing or zero
                   value:
                     status: ERROR
-                    error: queue is required and must be non-zero (1..255)
+                    error: queue is required and must be non-zero (1..127)
                 invalid_queue:
-                  summary: Queue out of allowed range (1..255)
+                  summary: Queue out of allowed range (1..127)
                   value:
                     status: ERROR
-                    error: 'Invalid queue: 300 (must be 1..255)'
+                    error: 'Invalid queue: 300 (must be 1..127)'
                 invalid_trace_level:
                   summary: Unsupported trace level
                   value:
@@ -761,6 +777,11 @@ paths:
                   value:
                     status: ERROR
                     error: 'Error parsing event: Invalid format: location cannot be empty'
+                missing_session:
+                  summary: No tester session named `space` exists (load one with `POST /content/validate/policy` and `load_in_tester` first)
+                  value:
+                    status: ERROR
+                    error: The 'test' environment does not exist.
                 timeout:
                   summary: The test run did not finish within analysisd.server_api_timeout
                   value:
@@ -783,8 +804,9 @@ paths:
 
         This operation is idempotent: if there is no session named `space`, it returns **OK**.
 
-        The example deletes `space: test`, the Wazuh dashboard's own test session; the dashboard's logtest
-        fails until the dashboard loads its policy again.
+        The example deletes `space: test`. On this manager's engine that is an ordinary session name; the
+        Wazuh dashboard's own `test` session lives in the engine bundled with wazuh-indexer, where deleting it
+        makes the dashboard's logtest fail until the dashboard loads its policy again.
       requestBody:
         required: true
         content:
@@ -927,24 +949,29 @@ paths:
       tags:
       - Content
       summary: Get IOC synchronization state
-      description: 'Retrieves the current state of the IOC manager, including:
+      description: 'Retrieves the state of the IOC file loads requested through `POST /content/ioc/update`:
 
-        - **hash**: MD5 hash of the last successfully synchronized IOC file
+        - **hash**: MD5 hash of the last IOC file loaded successfully
 
-        - **updating**: Boolean indicating if a synchronization is currently in progress
+        - **updating**: Boolean indicating if a file load is currently in progress
 
-        - **lastError**: Error message from the last failed synchronization (empty if last sync succeeded)
+        - **lastError**: Error message from the last failed file load (empty if the last load succeeded)
+
+
+        Only file loads through `POST /content/ioc/update` write this state. The engine''s periodic IOC
+        synchronization from the Wazuh Indexer never does: its progress and failures are reported per IOC
+        type by `GET /status`, as `ioc.<type>.status` (`ready`, `updating` or `failed`) with its `hash`,
+        `available` and `last_successful_update`. A failing indexer synchronization leaves this endpoint
+        unchanged.
 
 
         This endpoint is useful for:
 
-        - Monitoring IOC synchronization status
+        - Checking whether a file load is being processed
 
-        - Checking if updates are being processed
+        - Diagnosing a failed file load
 
-        - Diagnosing synchronization failures
-
-        - Verifying which IOC file version is currently active
+        - Verifying which IOC file version was loaded last
 
         '
       responses:

@@ -125,7 +125,7 @@ Capacity, in messages, of the input queue between the legacy listener and the me
 workers ([`remoted.worker_pool`](#remotedworker_pool)).
 
 - **Default value:** `131072`
-- **Allowed values:** Positive integer
+- **Allowed values:** Integer from `1` to `134217728`
 - **Note:** Values greater than `262144` are accepted with the warning `Queue size is very high. The
   application may run out of memory.` A message arriving at a full queue is discarded (see
   [Queue Byte Limits](#queue-byte-limits) for how discards are reported)
@@ -179,11 +179,18 @@ connection from the same agent may take it over.
 
 - **Default value:** `60`
 - **Allowed values:** Integer from `0` to `3600` (seconds)
-- **Note:** While the current session has been active more recently than this, a message arriving on
-  a second connection with the same agent key is dropped and that connection closed; once the conflict
-  outlasts the window remoted logs `Agent key already in use: agent ID '<id>' (source IP: <ip>)`
-  (two hosts sharing one key). `0` disables overtaking altogether: the second connection is always
-  refused and the warning is logged at once.
+- **Note:** Only a message that decrypts with the agent's key counts as "from the same agent". A
+  message that merely claims the agent's ID and fails to decrypt is rejected like any other bad frame
+  (its connection closed, the throttled `Decrypt the message fail` line logged) and never touches the
+  agent's session: the current connection stays open, and no takeover or conflict is recorded,
+  however long that session has been idle.
+- **Note:** While the current session has been active more recently than this, an authenticated
+  message arriving on a second connection with the same agent key is dropped and that connection
+  closed; once the conflict outlasts the window remoted logs
+  `Agent key already in use: agent ID '<id>' (source IP: <ip>)` (two hosts sharing one key). `0`
+  disables overtaking altogether: the second connection is always refused and the warning is logged
+  at once. The warning is throttled like the other rejections: at most one line every 90 seconds,
+  ending in `(and <n> more like it in the last <s> s)`; the repeats in between go to debug level.
 
 ---
 

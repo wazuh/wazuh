@@ -6,6 +6,7 @@ import sys
 from unittest.mock import ANY, AsyncMock, MagicMock, call, patch
 
 import pytest
+from connexion.exceptions import ProblemException
 from connexion.lifecycle import ConnexionResponse
 from connexion.testing import TestContext
 
@@ -109,15 +110,17 @@ async def test_login_user_ko(mock_token, mock_exc, mock_dapi, mock_remove, mock_
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize('raw', [True, False])
+@patch('api.controllers.security_controller.Body.validate_content_type')
 @patch('api.controllers.security_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
 @patch('api.controllers.security_controller.remove_nones_to_dict')
 @patch('api.controllers.security_controller.DistributedAPI.__init__', return_value=None)
 @patch('api.controllers.security_controller.raise_if_exc', return_value=CustomAffectedItems())
 @patch('api.controllers.security_controller.generate_token', return_value='token')
-async def test_run_as_login(mock_token, mock_exc, mock_dapi, mock_remove, mock_dfunc,
+async def test_run_as_login(mock_token, mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_validate,
                             raw, mock_request):
     """Verify 'run_as_login' endpoint is working as expected."""
     result = await run_as_login(user='001', raw=raw)
+    mock_validate.assert_called_once_with(mock_request, expected_content_type=JSON_CONTENT_TYPE)
     auth_context = await mock_request.json()
     f_kwargs = {'user_id': '001', 'auth_context': auth_context}
     mock_dapi.assert_called_once_with(f=preprocessor.get_permissions,
@@ -140,12 +143,13 @@ async def test_run_as_login(mock_token, mock_exc, mock_dapi, mock_remove, mock_d
     {},
     {'user_name': 'wazuh-admin'},
 ])
+@patch('api.controllers.security_controller.Body.validate_content_type')
 @patch('api.controllers.security_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
 @patch('api.controllers.security_controller.remove_nones_to_dict')
 @patch('api.controllers.security_controller.DistributedAPI.__init__', return_value=None)
 @patch('api.controllers.security_controller.raise_if_exc', return_value=CustomAffectedItems())
 @patch('api.controllers.security_controller.generate_token', return_value='token')
-async def test_run_as_login_auth_context(mock_token, mock_exc, mock_dapi, mock_remove, mock_dfunc,
+async def test_run_as_login_auth_context(mock_token, mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_validate,
                                          auth_context, mock_request):
     """Verify 'run_as_login' forwards any object authorization context, empty included."""
     mock_request.json = AsyncMock(return_value=auth_context)
@@ -161,13 +165,14 @@ async def test_run_as_login_auth_context(mock_token, mock_exc, mock_dapi, mock_r
 
 
 @pytest.mark.asyncio
+@patch('api.controllers.security_controller.Body.validate_content_type')
 @patch('api.controllers.security_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
 @patch('api.controllers.security_controller.remove_nones_to_dict')
 @patch('api.controllers.security_controller.DistributedAPI.__init__', return_value=None)
 @patch('api.controllers.security_controller.raise_if_exc', return_value=CustomAffectedItems())
 @patch('api.controllers.security_controller.generate_token', return_value='token')
 @pytest.mark.parametrize('mock_bool', [True, False])
-async def test_run_as_login_ko(mock_token, mock_exc, mock_dapi, mock_remove, mock_dfunc,
+async def test_run_as_login_ko(mock_token, mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_validate,
                                mock_bool, mock_request):
     """Verify 'run_as_login' endpoint is handling WazuhException as expected."""
     mock_token.side_effect = WazuhException(999)
@@ -183,6 +188,23 @@ async def test_run_as_login_ko(mock_token, mock_exc, mock_dapi, mock_remove, moc
     assert mock_exc.call_count == 2
     mock_remove.assert_called_once_with(f_kwargs)
     assert isinstance(result, ConnexionResponse)
+
+
+
+@pytest.mark.asyncio
+@patch('api.controllers.security_controller.DistributedAPI.__init__', return_value=None)
+@patch('api.controllers.security_controller.generate_token', return_value='token')
+async def test_run_as_login_requires_json_content_type(mock_token, mock_dapi, mock_request):
+    """Verify 'run_as_login' refuses a body sent with no Content-Type (6002, HTTP 415) before resolving it."""
+    with patch.object(mock_request, 'mimetype', None, create=True):
+        with pytest.raises(ProblemException) as exc_info:
+            await run_as_login(user='001', raw=False)
+
+    assert exc_info.value.status == 415
+    assert exc_info.value.ext['code'] == 6002
+
+    mock_dapi.assert_not_called()
+    mock_token.assert_not_called()
 
 
 @pytest.mark.asyncio

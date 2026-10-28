@@ -1202,8 +1202,9 @@ void test_HandleSecureMessage_invalid_message(void** state)
 
 void test_HandleSecureMessage_different_sock(void** state)
 {
-    char buffer[OS_MAXSTR + 1] = "!12!";
-    message_t message = {.buffer = buffer, .size = 4, .sock = 1};
+    rem_reject_log_reset(); // the warning is throttled per reason: start from a quiet log
+    char buffer[OS_MAXSTR + 1] = "!12!AAA";
+    message_t message = {.buffer = buffer, .size = 7, .sock = 1};
     struct sockaddr_in peer_info;
     w_indexed_queue_t * control_msg_queue = indexed_queue_init(10);
     w_rr_queue_t * events_queue = batch_queue_init(10);
@@ -1239,6 +1240,15 @@ void test_HandleSecureMessage_different_sock(void** state)
     expect_string(__wrap_OS_IsAllowedDynamicID, id, "12");
     expect_string(__wrap_OS_IsAllowedDynamicID, srcip, "127.0.0.1");
     will_return(__wrap_OS_IsAllowedDynamicID, 0);
+
+    // ReadSecMSG: the frame authenticates, so the conflict is real
+    expect_value(__wrap_ReadSecMSG, keys, &keys);
+    expect_string(__wrap_ReadSecMSG, buffer, "AAA");
+    expect_value(__wrap_ReadSecMSG, id, 0);
+    expect_string(__wrap_ReadSecMSG, srcip, "127.0.0.1");
+    will_return(__wrap_ReadSecMSG, 3);
+    will_return(__wrap_ReadSecMSG, "AAA");
+    will_return(__wrap_ReadSecMSG, KS_VALID);
 
     expect_function_call(__wrap_key_unlock);
 
@@ -1276,6 +1286,7 @@ void test_HandleSecureMessage_different_sock(void** state)
 
 void test_HandleSecureMessage_different_sock_2(void** state)
 {
+    rem_reject_log_reset(); // the warning is throttled per reason: start from a quiet log
     char buffer[OS_MAXSTR + 1] = "12!";
     message_t message = {.buffer = buffer, .size = 4, .sock = 1};
     struct sockaddr_in peer_info;
@@ -1313,6 +1324,15 @@ void test_HandleSecureMessage_different_sock_2(void** state)
     expect_string(__wrap_OS_IsAllowedIP, srcip, "127.0.0.1");
     will_return(__wrap_OS_IsAllowedIP, 0);
 
+    // ReadSecMSG: the frame authenticates, so the conflict is real
+    expect_value(__wrap_ReadSecMSG, keys, &keys);
+    expect_string(__wrap_ReadSecMSG, buffer, buffer);
+    expect_value(__wrap_ReadSecMSG, id, 0);
+    expect_string(__wrap_ReadSecMSG, srcip, "127.0.0.1");
+    will_return(__wrap_ReadSecMSG, message.size);
+    will_return(__wrap_ReadSecMSG, buffer);
+    will_return(__wrap_ReadSecMSG, KS_VALID);
+
     expect_function_call(__wrap_key_unlock);
 
     expect_string(__wrap__mwarn, formatted_msg, "Agent key already in use: agent ID '001' (source IP: 127.0.0.1)");
@@ -1349,8 +1369,8 @@ void test_HandleSecureMessage_different_sock_2(void** state)
 
 void test_HandleSecureMessage_conflict_first_seen(void** state)
 {
-    char buffer[OS_MAXSTR + 1] = "!12!";
-    message_t message = {.buffer = buffer, .size = 4, .sock = 1};
+    char buffer[OS_MAXSTR + 1] = "!12!AAA";
+    message_t message = {.buffer = buffer, .size = 7, .sock = 1};
     struct sockaddr_in peer_info;
     w_indexed_queue_t * control_msg_queue = indexed_queue_init(10);
     w_rr_queue_t * events_queue = batch_queue_init(10);
@@ -1386,6 +1406,15 @@ void test_HandleSecureMessage_conflict_first_seen(void** state)
     expect_string(__wrap_OS_IsAllowedDynamicID, id, "12");
     expect_string(__wrap_OS_IsAllowedDynamicID, srcip, "127.0.0.1");
     will_return(__wrap_OS_IsAllowedDynamicID, 0);
+
+    // ReadSecMSG: the frame authenticates, so the conflict is real
+    expect_value(__wrap_ReadSecMSG, keys, &keys);
+    expect_string(__wrap_ReadSecMSG, buffer, "AAA");
+    expect_value(__wrap_ReadSecMSG, id, 0);
+    expect_string(__wrap_ReadSecMSG, srcip, "127.0.0.1");
+    will_return(__wrap_ReadSecMSG, 3);
+    will_return(__wrap_ReadSecMSG, "AAA");
+    will_return(__wrap_ReadSecMSG, KS_VALID);
 
     expect_function_call(__wrap_key_unlock);
 
@@ -1425,8 +1454,9 @@ void test_HandleSecureMessage_conflict_first_seen(void** state)
 
 void test_HandleSecureMessage_conflict_persists(void** state)
 {
-    char buffer[OS_MAXSTR + 1] = "!12!";
-    message_t message = {.buffer = buffer, .size = 4, .sock = 1};
+    rem_reject_log_reset(); // the warning is throttled per reason: start from a quiet log
+    char buffer[OS_MAXSTR + 1] = "!12!AAA";
+    message_t message = {.buffer = buffer, .size = 7, .sock = 1};
     struct sockaddr_in peer_info;
     w_indexed_queue_t * control_msg_queue = indexed_queue_init(10);
     w_rr_queue_t * events_queue = batch_queue_init(10);
@@ -1463,6 +1493,15 @@ void test_HandleSecureMessage_conflict_persists(void** state)
     expect_string(__wrap_OS_IsAllowedDynamicID, srcip, "127.0.0.1");
     will_return(__wrap_OS_IsAllowedDynamicID, 0);
 
+    // ReadSecMSG: the frame authenticates, so the conflict is real
+    expect_value(__wrap_ReadSecMSG, keys, &keys);
+    expect_string(__wrap_ReadSecMSG, buffer, "AAA");
+    expect_value(__wrap_ReadSecMSG, id, 0);
+    expect_string(__wrap_ReadSecMSG, srcip, "127.0.0.1");
+    will_return(__wrap_ReadSecMSG, 3);
+    will_return(__wrap_ReadSecMSG, "AAA");
+    will_return(__wrap_ReadSecMSG, KS_VALID);
+
     expect_function_call(__wrap_key_unlock);
 
     expect_string(__wrap__mwarn, formatted_msg, "Agent key already in use: agent ID '001' (source IP: 127.0.0.1)");
@@ -1488,6 +1527,100 @@ void test_HandleSecureMessage_conflict_persists(void** state)
 
     expect_function_call(__wrap_rem_inc_recv_unknown);
 
+    HandleSecureMessage(&message, control_msg_queue, events_queue);
+
+    os_free(key->id);
+    os_free(key);
+    os_free(keyentries);
+    indexed_queue_free(control_msg_queue);
+    batch_queue_free(events_queue);
+}
+
+/* One authenticated duplicate-session frame, with the throttled key-in-use line expected at the given level. */
+static void expect_authenticated_conflict(message_t *message, bool warning)
+{
+    expect_function_call(__wrap_key_lock_read);
+
+    expect_string(__wrap_OS_IsAllowedDynamicID, id, "12");
+    expect_string(__wrap_OS_IsAllowedDynamicID, srcip, "127.0.0.1");
+    will_return(__wrap_OS_IsAllowedDynamicID, 0);
+
+    expect_value(__wrap_ReadSecMSG, keys, &keys);
+    expect_string(__wrap_ReadSecMSG, buffer, "AAA");
+    expect_value(__wrap_ReadSecMSG, id, 0);
+    expect_string(__wrap_ReadSecMSG, srcip, "127.0.0.1");
+    will_return(__wrap_ReadSecMSG, 3);
+    will_return(__wrap_ReadSecMSG, "AAA");
+    will_return(__wrap_ReadSecMSG, KS_VALID);
+
+    expect_function_call(__wrap_key_unlock);
+
+    if (warning) {
+        expect_string(__wrap__mwarn, formatted_msg, "Agent key already in use: agent ID '001' (source IP: 127.0.0.1)");
+    } else {
+        expect_string(__wrap__mdebug1, formatted_msg, "Agent key already in use: agent ID '001' (source IP: 127.0.0.1)");
+    }
+
+    expect_function_call(__wrap_key_lock_read);
+
+    expect_value(__wrap_OS_DeleteSocket, sock, message->sock);
+    will_return(__wrap_OS_DeleteSocket, 0);
+
+    expect_function_call(__wrap_key_unlock);
+
+    expect_value(__wrap_nb_close_socket, sock, message->sock);
+    will_return(__wrap_nb_close_socket, true);
+    expect_function_call(__wrap_rem_dec_tcp);
+
+    expect_value(__wrap_rem_setCounter, fd, 1);
+    expect_value(__wrap_rem_setCounter, counter, 0);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "TCP peer disconnected [1]");
+
+    expect_function_call(__wrap_rem_inc_recv_unknown);
+}
+
+/* Two hosts sharing one key keep producing the conflict at their send rate: the WARNING is throttled
+ * like the other rejections, the repeat inside the window goes to debug level. */
+void test_HandleSecureMessage_conflict_warning_is_throttled(void** state)
+{
+    rem_reject_log_reset(); // the warning is throttled per reason: start from a quiet log
+    char buffer[OS_MAXSTR + 1] = "!12!AAA";
+    message_t message = {.buffer = buffer, .size = 7, .sock = 1};
+    struct sockaddr_in peer_info;
+    w_indexed_queue_t * control_msg_queue = indexed_queue_init(10);
+    w_rr_queue_t * events_queue = batch_queue_init(10);
+    batch_queue_set_dispose(events_queue, (void (*)(void *))dispose_evt_item);
+
+    logr.connection_overtake_time = 60;
+    current_ts = 200;
+
+    keyentry** keyentries;
+    os_calloc(1, sizeof(keyentry*), keyentries);
+    keys.keyentries = keyentries;
+
+    keyentry* key = NULL;
+    os_calloc(1, sizeof(keyentry), key);
+
+    key->id = strdup("001");
+    key->sock = 4;
+    key->keyid = 1;
+    key->rcvd = 200;         // not idle, no overtake
+    key->conflict_ts = 100;  // conflict older than the window -> warn
+
+    keys.keyentries[0] = key;
+
+    global_counter = 0;
+
+    peer_info.sin_family = AF_INET;
+    peer_info.sin_addr.s_addr = inet_addr("127.0.0.1");
+    memcpy(&message.addr, &peer_info, sizeof(peer_info));
+
+    expect_authenticated_conflict(&message, true);
+    HandleSecureMessage(&message, control_msg_queue, events_queue);
+
+    strcpy(buffer, "!12!AAA");
+    expect_authenticated_conflict(&message, false);
     HandleSecureMessage(&message, control_msg_queue, events_queue);
 
     os_free(key->id);
@@ -1692,6 +1825,7 @@ void test_HandleSecureMessage_close_idle_sock_2(void** state)
 
 void test_HandleSecureMessage_close_idle_sock_disabled(void** state)
 {
+    rem_reject_log_reset(); // the warning is throttled per reason: start from a quiet log
     char buffer[OS_MAXSTR + 1] = "12!";
     message_t message = {.buffer = buffer, .size = 4, .sock = 1};
     struct sockaddr_in peer_info;
@@ -1730,6 +1864,15 @@ void test_HandleSecureMessage_close_idle_sock_disabled(void** state)
     expect_string(__wrap_OS_IsAllowedIP, srcip, "127.0.0.1");
     will_return(__wrap_OS_IsAllowedIP, 1);
 
+    // ReadSecMSG: the frame authenticates, so the conflict is real
+    expect_value(__wrap_ReadSecMSG, keys, &keys);
+    expect_string(__wrap_ReadSecMSG, buffer, buffer);
+    expect_value(__wrap_ReadSecMSG, id, 1);
+    expect_string(__wrap_ReadSecMSG, srcip, "127.0.0.1");
+    will_return(__wrap_ReadSecMSG, message.size);
+    will_return(__wrap_ReadSecMSG, buffer);
+    will_return(__wrap_ReadSecMSG, KS_VALID);
+
     expect_function_call(__wrap_key_unlock);
 
     expect_string(__wrap__mwarn, formatted_msg, "Agent key already in use: agent ID '001' (source IP: 127.0.0.1)");
@@ -1767,6 +1910,7 @@ void test_HandleSecureMessage_close_idle_sock_disabled(void** state)
 
 void test_HandleSecureMessage_close_idle_sock_disabled_2(void** state)
 {
+    rem_reject_log_reset(); // the warning is throttled per reason: start from a quiet log
     char buffer[OS_MAXSTR + 1] = "!12!AAA";
     message_t message = {.buffer = buffer, .size = 7, .sock = 1};
     struct sockaddr_in peer_info;
@@ -1806,6 +1950,15 @@ void test_HandleSecureMessage_close_idle_sock_disabled_2(void** state)
     expect_string(__wrap_OS_IsAllowedDynamicID, srcip, "127.0.0.1");
     will_return(__wrap_OS_IsAllowedDynamicID, 1);
 
+    // ReadSecMSG: the frame authenticates, so the conflict is real
+    expect_value(__wrap_ReadSecMSG, keys, &keys);
+    expect_string(__wrap_ReadSecMSG, buffer, "AAA");
+    expect_value(__wrap_ReadSecMSG, id, 1);
+    expect_string(__wrap_ReadSecMSG, srcip, "127.0.0.1");
+    will_return(__wrap_ReadSecMSG, 3);
+    will_return(__wrap_ReadSecMSG, "AAA");
+    will_return(__wrap_ReadSecMSG, KS_VALID);
+
     expect_function_call(__wrap_key_unlock);
 
     expect_string(__wrap__mwarn, formatted_msg, "Agent key already in use: agent ID '001' (source IP: 127.0.0.1)");
@@ -1841,7 +1994,8 @@ void test_HandleSecureMessage_close_idle_sock_disabled_2(void** state)
     batch_queue_free(events_queue);
 }
 
-void test_HandleSecureMessage_close_idle_sock_recv_fail(void** state)
+/* An empty frame never authenticates: the agent's quiet session must survive it untouched. */
+void test_HandleSecureMessage_idle_sock_kept_on_empty_frame(void** state)
 {
     rem_reject_log_reset(); // a quiet log: the rejection is the first of its kind
 
@@ -1868,7 +2022,8 @@ void test_HandleSecureMessage_close_idle_sock_recv_fail(void** state)
     key->id = strdup("001");
     key->sock = 4;
     key->keyid = 1;
-    key->rcvd = 0;
+    key->rcvd = 0;          // idle past the overtake window
+    key->conflict_ts = 7;
     key->ip->ip = "127.0.0.1";
 
     keys.keyentries[1] = key;
@@ -1881,59 +2036,37 @@ void test_HandleSecureMessage_close_idle_sock_recv_fail(void** state)
 
     expect_function_call(__wrap_key_lock_read);
 
-    // OS_IsAllowedDynamicID
     expect_string(__wrap_OS_IsAllowedIP, srcip, "127.0.0.1");
     will_return(__wrap_OS_IsAllowedIP, 1);
-
-    expect_string(__wrap__mdebug2, formatted_msg, "Idle socket [4] from agent ID '001' will be closed.");
 
     expect_string(__wrap__mwarn, formatted_msg, "Received message is empty from '127.0.0.1'");
 
     expect_function_call(__wrap_key_unlock);
 
-    // Close new socket
+    // Only the new socket is closed
     expect_function_call(__wrap_key_lock_read);
 
-    // OS_DeleteSocket
     expect_value(__wrap_OS_DeleteSocket, sock, message.sock);
     will_return(__wrap_OS_DeleteSocket, 0);
 
     expect_function_call(__wrap_key_unlock);
 
-    // nb_close_socket
     expect_value(__wrap_nb_close_socket, sock, message.sock);
     will_return(__wrap_nb_close_socket, true);
     expect_function_call(__wrap_rem_dec_tcp);
 
-    // rem_setCounter
     expect_value(__wrap_rem_setCounter, fd, 1);
     expect_value(__wrap_rem_setCounter, counter, 0);
 
     expect_string(__wrap__mdebug1, formatted_msg, "TCP peer disconnected [1]");
 
-    // Close idle socket
-    expect_function_call(__wrap_key_lock_read);
-
-    // OS_DeleteSocket
-    expect_value(__wrap_OS_DeleteSocket, sock, key->sock);
-    will_return(__wrap_OS_DeleteSocket, 0);
-
-    expect_function_call(__wrap_key_unlock);
-
-    // nb_close_socket
-    expect_value(__wrap_nb_close_socket, sock, key->sock);
-    will_return(__wrap_nb_close_socket, true);
-    expect_function_call(__wrap_rem_dec_tcp);
-
-    // rem_setCounter
-    expect_value(__wrap_rem_setCounter, fd, 4);
-    expect_value(__wrap_rem_setCounter, counter, 0);
-
-    expect_string(__wrap__mdebug1, formatted_msg, "TCP peer disconnected [4]");
-
     expect_function_call(__wrap_rem_inc_recv_unknown);
 
     HandleSecureMessage(&message, control_msg_queue, events_queue);
+
+    assert_int_equal(key->sock, 4);
+    assert_int_equal(key->rcvd, 0);
+    assert_int_equal(key->conflict_ts, 7);
 
     os_free(key->id);
     os_free(key->ip);
@@ -1943,12 +2076,14 @@ void test_HandleSecureMessage_close_idle_sock_recv_fail(void** state)
     batch_queue_free(events_queue);
 }
 
-void test_HandleSecureMessage_close_idle_sock_decrypt_fail(void** state)
+/* A frame that claims a quiet agent's ID but does not decrypt proves nothing about its sender: it is
+ * rejected like any bad frame, and the agent's session (socket, rcvd, conflict_ts) is left as it was. */
+void test_HandleSecureMessage_idle_sock_kept_on_decrypt_fail(void** state)
 {
     rem_reject_log_reset(); // a quiet log: the rejection is the first of its kind
 
-    char buffer[OS_MAXSTR + 1] = "12!";
-    message_t message = {.buffer = buffer, .size = 4, .sock = 1};
+    char buffer[OS_MAXSTR + 1] = "!12!AAA";
+    message_t message = {.buffer = buffer, .size = 7, .sock = 1};
     struct sockaddr_in peer_info;
     w_indexed_queue_t * control_msg_queue = indexed_queue_init(10);
     w_rr_queue_t * events_queue = batch_queue_init(10);
@@ -1970,7 +2105,8 @@ void test_HandleSecureMessage_close_idle_sock_decrypt_fail(void** state)
     key->id = strdup("001");
     key->sock = 4;
     key->keyid = 1;
-    key->rcvd = 0;
+    key->rcvd = 0;          // idle past the overtake window
+    key->conflict_ts = 7;
     key->ip->ip = "127.0.0.1";
 
     keys.keyentries[1] = key;
@@ -1983,68 +2119,47 @@ void test_HandleSecureMessage_close_idle_sock_decrypt_fail(void** state)
 
     expect_function_call(__wrap_key_lock_read);
 
-    // OS_IsAllowedDynamicID
-    expect_string(__wrap_OS_IsAllowedIP, srcip, "127.0.0.1");
-    will_return(__wrap_OS_IsAllowedIP, 1);
+    expect_string(__wrap_OS_IsAllowedDynamicID, id, "12");
+    expect_string(__wrap_OS_IsAllowedDynamicID, srcip, "127.0.0.1");
+    will_return(__wrap_OS_IsAllowedDynamicID, 1);
 
-    expect_string(__wrap__mdebug2, formatted_msg, "Idle socket [4] from agent ID '001' will be closed.");
-
-    // ReadSecMSG
+    // ReadSecMSG: the frame does not decrypt
     expect_value(__wrap_ReadSecMSG, keys, &keys);
-    expect_string(__wrap_ReadSecMSG, buffer, buffer);
+    expect_string(__wrap_ReadSecMSG, buffer, "AAA");
     expect_value(__wrap_ReadSecMSG, id, 1);
     expect_string(__wrap_ReadSecMSG, srcip, "127.0.0.1");
-    will_return(__wrap_ReadSecMSG, message.size);
-    will_return(__wrap_ReadSecMSG, buffer);
-    will_return(__wrap_ReadSecMSG, -1);
+    will_return(__wrap_ReadSecMSG, 3);
+    will_return(__wrap_ReadSecMSG, "AAA");
+    will_return(__wrap_ReadSecMSG, KS_ENCKEY);
 
     expect_function_call(__wrap_key_unlock);
 
     expect_string(__wrap__mwarn, formatted_msg, "Decrypt the message fail from '127.0.0.1', socket 1");
 
-    // Close new socket
+    // Only the new socket is closed
     expect_function_call(__wrap_key_lock_read);
 
-    // OS_DeleteSocket
     expect_value(__wrap_OS_DeleteSocket, sock, message.sock);
     will_return(__wrap_OS_DeleteSocket, 0);
 
     expect_function_call(__wrap_key_unlock);
 
-    // nb_close_socket
     expect_value(__wrap_nb_close_socket, sock, message.sock);
     will_return(__wrap_nb_close_socket, true);
     expect_function_call(__wrap_rem_dec_tcp);
 
-    // rem_setCounter
     expect_value(__wrap_rem_setCounter, fd, 1);
     expect_value(__wrap_rem_setCounter, counter, 0);
 
     expect_string(__wrap__mdebug1, formatted_msg, "TCP peer disconnected [1]");
 
-    // Close idle socket
-    expect_function_call(__wrap_key_lock_read);
-
-    // OS_DeleteSocket
-    expect_value(__wrap_OS_DeleteSocket, sock, key->sock);
-    will_return(__wrap_OS_DeleteSocket, 0);
-
-    expect_function_call(__wrap_key_unlock);
-
-    // nb_close_socket
-    expect_value(__wrap_nb_close_socket, sock, key->sock);
-    will_return(__wrap_nb_close_socket, true);
-    expect_function_call(__wrap_rem_dec_tcp);
-
-    // rem_setCounter
-    expect_value(__wrap_rem_setCounter, fd, 4);
-    expect_value(__wrap_rem_setCounter, counter, 0);
-
-    expect_string(__wrap__mdebug1, formatted_msg, "TCP peer disconnected [4]");
-
     expect_function_call(__wrap_rem_inc_recv_unknown);
 
     HandleSecureMessage(&message, control_msg_queue, events_queue);
+
+    assert_int_equal(key->sock, 4);
+    assert_int_equal(key->rcvd, 0);
+    assert_int_equal(key->conflict_ts, 7);
 
     os_free(key->id);
     os_free(key->ip);
@@ -2052,6 +2167,110 @@ void test_HandleSecureMessage_close_idle_sock_decrypt_fail(void** state)
     os_free(keyentries);
     indexed_queue_free(control_msg_queue);
     batch_queue_free(events_queue);
+}
+
+/* A frame that does not decrypt while the agent's session is active is no evidence of a shared key:
+ * no "Agent key already in use" warning, no conflict recorded, and the active session stays. */
+static void run_active_sock_decrypt_fail_test(time_t conflict_ts)
+{
+    rem_reject_log_reset(); // a quiet log: the rejection is the first of its kind
+
+    char buffer[OS_MAXSTR + 1] = "!12!AAA";
+    message_t message = {.buffer = buffer, .size = 7, .sock = 1};
+    struct sockaddr_in peer_info;
+    w_indexed_queue_t * control_msg_queue = indexed_queue_init(10);
+    w_rr_queue_t * events_queue = batch_queue_init(10);
+    batch_queue_set_dispose(events_queue, (void (*)(void *))dispose_evt_item);
+
+    logr.connection_overtake_time = 60;
+    current_ts = 200;
+
+    keyentry** keyentries;
+    os_calloc(1, sizeof(keyentry*), keyentries);
+    keys.keyentries = keyentries;
+
+    keyentry* key = NULL;
+    os_calloc(1, sizeof(keyentry), key);
+
+    os_calloc(1, sizeof(os_ip), key->ip);
+
+    key->id = strdup("001");
+    key->sock = 4;
+    key->keyid = 1;
+    key->rcvd = 200;                // not idle
+    key->conflict_ts = conflict_ts;
+    key->ip->ip = "127.0.0.1";
+
+    keys.keyentries[0] = key;
+
+    global_counter = 0;
+
+    peer_info.sin_family = AF_INET;
+    peer_info.sin_addr.s_addr = inet_addr("127.0.0.1");
+    memcpy(&message.addr, &peer_info, sizeof(peer_info));
+
+    expect_function_call(__wrap_key_lock_read);
+
+    expect_string(__wrap_OS_IsAllowedDynamicID, id, "12");
+    expect_string(__wrap_OS_IsAllowedDynamicID, srcip, "127.0.0.1");
+    will_return(__wrap_OS_IsAllowedDynamicID, 0);
+
+    // ReadSecMSG: the frame does not decrypt
+    expect_value(__wrap_ReadSecMSG, keys, &keys);
+    expect_string(__wrap_ReadSecMSG, buffer, "AAA");
+    expect_value(__wrap_ReadSecMSG, id, 0);
+    expect_string(__wrap_ReadSecMSG, srcip, "127.0.0.1");
+    will_return(__wrap_ReadSecMSG, 3);
+    will_return(__wrap_ReadSecMSG, "AAA");
+    will_return(__wrap_ReadSecMSG, KS_ENCKEY);
+
+    expect_function_call(__wrap_key_unlock);
+
+    // The only warning is the throttled pre-authentication rejection
+    expect_string(__wrap__mwarn, formatted_msg, "Decrypt the message fail from '127.0.0.1', socket 1");
+
+    expect_function_call(__wrap_key_lock_read);
+
+    expect_value(__wrap_OS_DeleteSocket, sock, message.sock);
+    will_return(__wrap_OS_DeleteSocket, 0);
+
+    expect_function_call(__wrap_key_unlock);
+
+    expect_value(__wrap_nb_close_socket, sock, message.sock);
+    will_return(__wrap_nb_close_socket, true);
+    expect_function_call(__wrap_rem_dec_tcp);
+
+    expect_value(__wrap_rem_setCounter, fd, 1);
+    expect_value(__wrap_rem_setCounter, counter, 0);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "TCP peer disconnected [1]");
+
+    expect_function_call(__wrap_rem_inc_recv_unknown);
+
+    HandleSecureMessage(&message, control_msg_queue, events_queue);
+
+    assert_int_equal(key->sock, 4);
+    assert_int_equal(key->rcvd, 200);
+    assert_int_equal(key->conflict_ts, conflict_ts);
+
+    os_free(key->id);
+    os_free(key->ip);
+    os_free(key);
+    os_free(keyentries);
+    indexed_queue_free(control_msg_queue);
+    batch_queue_free(events_queue);
+}
+
+// A conflict already older than the window: an authenticated frame would warn, this one must not.
+void test_HandleSecureMessage_active_sock_decrypt_fail_no_key_in_use_warning(void** state)
+{
+    run_active_sock_decrypt_fail_test(100);
+}
+
+// No conflict yet: an unauthenticated frame must not open one.
+void test_HandleSecureMessage_active_sock_decrypt_fail_records_no_conflict(void** state)
+{
+    run_active_sock_decrypt_fail_test(0);
 }
 
 /* UDP has no connection to close, but a frame that does not decrypt is still a pre-authentication
@@ -3528,6 +3747,26 @@ void test_rem_log_rejected_frame_throttles_per_reason(void** state)
     rem_log_rejected_frame(REM_REJECT_EMPTY, "Received message is empty from '%s'", "192.0.2.4");
 }
 
+/* A message that ends its own sentence gets the count before that full stop, not after it. */
+void test_rem_log_rejected_frame_summary_has_one_full_stop(void** state)
+{
+    rem_reject_log_reset();
+
+    current_ts = 1000;
+    expect_string(__wrap__mwarn, formatted_msg, "Too big message size from '192.0.2.1', socket 39.");
+    rem_log_rejected_frame(REM_REJECT_SIZE, "Too big message size from '%s', socket %d.", "192.0.2.1", 39);
+
+    current_ts = 1010;
+    expect_string(__wrap__mdebug1, formatted_msg, "Too big message size from '192.0.2.1', socket 39.");
+    rem_log_rejected_frame(REM_REJECT_SIZE, "Too big message size from '%s', socket %d.", "192.0.2.1", 39);
+
+    current_ts = 1100;
+    expect_string(__wrap__mwarn,
+                  formatted_msg,
+                  "Too big message size from '192.0.2.1', socket 39 (and 1 more like it in the last 100 s)");
+    rem_log_rejected_frame(REM_REJECT_SIZE, "Too big message size from '%s', socket %d.", "192.0.2.1", 39);
+}
+
 /* A frame claiming an ID that is not registered for its source address names the address and the
  * claim, never an agent: nothing has decrypted yet. */
 void test_HandleSecureMessage_unregistered_id_names_no_agent(void** state)
@@ -4754,12 +4993,15 @@ int main(void)
         cmocka_unit_test(test_HandleSecureMessage_different_sock_2),
         cmocka_unit_test(test_HandleSecureMessage_conflict_first_seen),
         cmocka_unit_test(test_HandleSecureMessage_conflict_persists),
+        cmocka_unit_test(test_HandleSecureMessage_conflict_warning_is_throttled),
         cmocka_unit_test(test_HandleSecureMessage_close_idle_sock),
         cmocka_unit_test(test_HandleSecureMessage_close_idle_sock_2),
         cmocka_unit_test(test_HandleSecureMessage_close_idle_sock_disabled),
         cmocka_unit_test(test_HandleSecureMessage_close_idle_sock_disabled_2),
-        cmocka_unit_test(test_HandleSecureMessage_close_idle_sock_recv_fail),
-        cmocka_unit_test(test_HandleSecureMessage_close_idle_sock_decrypt_fail),
+        cmocka_unit_test(test_HandleSecureMessage_idle_sock_kept_on_empty_frame),
+        cmocka_unit_test(test_HandleSecureMessage_idle_sock_kept_on_decrypt_fail),
+        cmocka_unit_test(test_HandleSecureMessage_active_sock_decrypt_fail_no_key_in_use_warning),
+        cmocka_unit_test(test_HandleSecureMessage_active_sock_decrypt_fail_records_no_conflict),
         cmocka_unit_test(test_HandleSecureMessage_udp_decrypt_fail),
         cmocka_unit_test(test_HandleSecureMessage_close_idle_sock_control_msg_succes),
         cmocka_unit_test(test_HandleSecureMessage_close_same_sock),
@@ -4804,6 +5046,7 @@ int main(void)
         cmocka_unit_test(test_HandleSecureMessage_ping_udp_send_fails),
         // Tests the throttled rejections of unauthenticated legacy frames
         cmocka_unit_test(test_rem_log_rejected_frame_throttles_per_reason),
+        cmocka_unit_test(test_rem_log_rejected_frame_summary_has_one_full_stop),
         cmocka_unit_test(test_HandleSecureMessage_unregistered_id_names_no_agent),
         cmocka_unit_test(test_HandleSecureMessage_unterminated_id_header),
         // Tests send_control_ack

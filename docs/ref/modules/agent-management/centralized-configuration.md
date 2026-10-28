@@ -158,7 +158,10 @@ syntax error names the line (`(1226): Error reading XML file '<file>': <error> (
 `PUT /groups/<GROUP_NAME>/configuration` runs the same check (`verify-agent-conf -f`) on the body
 before it replaces `agent.conf`, and refuses an invalid one with error `1113` (not well-formed XML) or
 `1114` (invalid configuration), or `1115` when `verify-agent-conf` fails without an error line the
-API can parse, without touching the file. The `1114` detail is the reason `verify-agent-conf` gives
+API can parse, without touching the file. A document type declaration (`<!DOCTYPE …>`, and with it any
+entity definition) is not allowed in the body: it is refused with `1113` too, as `not well-formed (invalid
+token)`, and the line and column in that message count from the API's own wrapper around the body, not
+from the body itself. The `1114` detail is the reason `verify-agent-conf` gives
 (for an unknown section, `Invalid element in the configuration: '<section>'.`) and names the file as
 `<GROUP_NAME>/agent.conf`. A leading XML declaration (`<?xml version="1.0"?>`) in the body is accepted and
 dropped, so the file written has none. On disk it is the other way round: `verify-agent-conf` refuses an `agent.conf` that starts with an XML

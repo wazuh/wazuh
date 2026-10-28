@@ -1507,6 +1507,60 @@ static void test_local_get_never_returns_the_secret(void **state) {
     cJSON_Delete(response);
 }
 
+// A group list naming no group is no list: the agent is queued with none, which the writer turns into
+// `default` -- what remoted tells the agent. Queued as "" it was registered with no group at all.
+static void test_local_add_with_an_empty_group_list_goes_to_default(void **state) {
+    (void)state;
+    static const char *const lists[] = { "", ",", ",," };
+    static const char *const names[] = { "empty-groups-1", "empty-groups-2", "empty-groups-3" };
+    char request[256];
+
+    EXPECT_LOG_INFO();
+    EXPECT_LOG_DEBUG2();
+    for (size_t i = 0; i < sizeof(lists) / sizeof(lists[0]); i++) {
+        // The only add that reaches the keystore: OS_AddKey() validates the ip through OS_IsValidIP().
+        expect_any(__wrap_OS_IsValidIP, ip_address);
+        expect_any(__wrap_OS_IsValidIP, final_ip);
+        will_return(__wrap_OS_IsValidIP, -1);
+        snprintf(request, sizeof(request),
+                 "{\"function\":\"add\",\"arguments\":{\"name\":\"%s\",\"ip\":\"any\",\"groups\":\"%s\"}}", names[i], lists[i]);
+        cJSON *response = dispatch(request);
+        assert_int_equal(response_error(response), 0);
+        cJSON_Delete(response);
+
+        struct keynode *node = queue_insert;
+        while (node && strcmp(node->name, names[i]) != 0) {
+            node = node->next;
+        }
+        assert_non_null(node);
+        assert_null(node->group);
+    }
+}
+
+// A leading '!' is a negation to OS_IsValidIP(), which skips it: the socket used to register the
+// address it negates. Refused before anything is parsed, like 1515 and POST /enroll refuse it.
+static void test_local_add_refuses_a_negated_ip(void **state) {
+    (void)state;
+    EXPECT_LOG_DEBUG2();
+    EXPECT_LOG_WARN();
+    cJSON *response = dispatch("{\"function\":\"add\",\"arguments\":{\"name\":\"negated-agent\",\"ip\":\"!10.31.0.5\"}}");
+    assert_int_equal(response_error(response), 9006);
+    cJSON_Delete(response);
+    assert_int_equal(OS_IsAllowedName(&keys, "negated-agent"), -1);
+}
+
+// A worker refuses it too, instead of forwarding it to the master.
+static void test_add_on_worker_refuses_a_negated_ip(void **state) {
+    (void)state;
+    EXPECT_LOG_WARN();
+    EXPECT_LOG_ERROR();
+    config.worker_node = TRUE;
+    cJSON *response = dispatch("{\"function\":\"add\",\"arguments\":{\"name\":\"wk-negated\",\"ip\":\"!10.31.0.5\"}}");
+    assert_int_equal(response_error(response), 9006);
+    cJSON_Delete(response);
+    config.worker_node = FALSE;
+}
+
 static void test_add_with_token_on_worker_forwards_it(void **state) {
     (void)state;
     EXPECT_LOG_DEBUG2();
@@ -1925,12 +1979,14 @@ static void test_a_refused_enrollment_removes_no_agent(void **state) {
     config.force_options.after_registration_time = 0;
 
     // A holds the IP the request carries; B holds the name. OS_IsValidIP() runs in the duplicate-IP
-    // check and again in OS_AddKey().
+    // check (the registered form of the address, which reads the parsed netmask: -3) and again in
+    // OS_AddKey().
     char id_a[16];
     char id_b[16];
     expect_any_count(__wrap_OS_IsValidIP, ip_address, 2);
     expect_any_count(__wrap_OS_IsValidIP, final_ip, 2);
-    will_return_count(__wrap_OS_IsValidIP, -1, 2);
+    will_return(__wrap_OS_IsValidIP, -3);
+    will_return(__wrap_OS_IsValidIP, -1);
     cJSON *response = dispatch("{\"function\":\"add\",\"arguments\":{\"name\":\"ip-holder\",\"ip\":\"10.9.9.9\"}}");
     assert_int_equal(response_error(response), 0);
     snprintf(id_a, sizeof(id_a), "%s", data_string(response, "id"));
@@ -1942,7 +1998,7 @@ static void test_a_refused_enrollment_removes_no_agent(void **state) {
     // and A must survive it. Judging A and removing it before the name check deleted it here.
     expect_any(__wrap_OS_IsValidIP, ip_address);
     expect_any(__wrap_OS_IsValidIP, final_ip);
-    will_return(__wrap_OS_IsValidIP, -1);
+    will_return(__wrap_OS_IsValidIP, -3);
     expect_value(__wrap_wdb_get_agent_info, id, atoi(id_a));
     will_return(__wrap_wdb_get_agent_info, replaceable_row(atoi(id_a)));
     expect_value(__wrap_wdb_get_agent_info, id, atoi(id_b));
@@ -1961,7 +2017,8 @@ static void test_a_refused_enrollment_removes_no_agent(void **state) {
     // The same request once B is replaceable too: admitted, and both holders are removed by it.
     expect_any_count(__wrap_OS_IsValidIP, ip_address, 2);
     expect_any_count(__wrap_OS_IsValidIP, final_ip, 2);
-    will_return_count(__wrap_OS_IsValidIP, -1, 2);
+    will_return(__wrap_OS_IsValidIP, -3);
+    will_return(__wrap_OS_IsValidIP, -1);
     expect_value(__wrap_wdb_get_agent_info, id, atoi(id_a));
     will_return(__wrap_wdb_get_agent_info, replaceable_row(atoi(id_a)));
     expect_value(__wrap_wdb_get_agent_info, id, atoi(id_b));
@@ -2282,6 +2339,9 @@ int main(void) {
         cmocka_unit_test(test_local_add_returns_and_queues_a_reenroll_secret),
         cmocka_unit_test(test_local_add_stores_a_caller_supplied_id_in_its_canonical_spelling),
         cmocka_unit_test(test_local_get_never_returns_the_secret),
+        cmocka_unit_test(test_local_add_with_an_empty_group_list_goes_to_default),
+        cmocka_unit_test(test_local_add_refuses_a_negated_ip),
+        cmocka_unit_test(test_add_on_worker_refuses_a_negated_ip),
         cmocka_unit_test(test_reenroll_unknown_agent_9026),
         cmocka_unit_test(test_reenroll_without_secret_9026),
         cmocka_unit_test(test_reenroll_invalid_bearer_9027),

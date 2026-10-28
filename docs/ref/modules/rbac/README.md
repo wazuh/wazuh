@@ -185,6 +185,12 @@ re-seeded with new defaults unless `CURRENT_ORM_VERSION` in `framework/wazuh/rba
 The default users `wazuh` and `wazuh-internal-client` both hold `administrator`; see
 [Default Users](../server-api/authentication.md#default-users).
 
+`users_admin` is not held to the role check a password reset or enabling run_as applies (see
+[Default Users](../server-api/authentication.md#default-users)) when it deletes: `security:delete` on `user:id:*` lets it delete
+any user but the reserved ones (IDs 1 and 2) and itself, including one linked to `administrator` or with run_as
+enabled, and `DELETE /security/users?user_ids=all` deletes all of them at once. Deleting grants the caller nothing, so it is
+not an escalation, but grant `users_admin` only to whom you would trust with removing administrators.
+
 ### Default rules
 
 | Rule | Matches the authorization context |

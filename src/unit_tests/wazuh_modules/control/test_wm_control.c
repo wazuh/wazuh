@@ -42,6 +42,7 @@ static int sent_responses;
 static int closed_fds[2];
 static size_t closed_fds_count;
 static bool shutdown_after_credentials;
+static int recv_errno_on_empty;
 
 /* ------------------------------------------------------------------ */
 /* Setup / teardown                                                     */
@@ -54,6 +55,7 @@ static int setup_test_mode(void **state) {
     sent_responses = 0;
     closed_fds_count = 0;
     shutdown_after_credentials = false;
+    recv_errno_on_empty = 0;
     return 0;
 }
 
@@ -116,10 +118,19 @@ int __wrap_OS_RecvUnix(int socket, int size, char *buffer) {
         memcpy(buffer, message, length);
     } else if (length == -1) {
         errno = ECONNRESET;
+    } else if (length == 0 && recv_errno_on_empty != 0) {
+        errno = recv_errno_on_empty;
     }
     received_commands++;
     wm_shutdown_requested = 1;
     return length;
+}
+
+int __wrap_OS_SetRecvTimeout(int socket, long seconds, long useconds) {
+    check_expected(socket);
+    check_expected(seconds);
+    check_expected(useconds);
+    return mock_type(int);
 }
 
 int __wrap_OS_SendUnix(int socket, const char *message, int size) {
@@ -214,6 +225,14 @@ static void expect_control_peer(uid_t peer_uid, int socket, int peer) {
     will_return(__wrap_getsockopt, 0);
 }
 
+/* An accepted peer gets a receive timeout, so a client that sends nothing cannot hold the socket. */
+static void expect_peer_recv_timeout(int peer) {
+    expect_value(__wrap_OS_SetRecvTimeout, socket, peer);
+    expect_value(__wrap_OS_SetRecvTimeout, seconds, 3);
+    expect_value(__wrap_OS_SetRecvTimeout, useconds, 0);
+    will_return(__wrap_OS_SetRecvTimeout, 0);
+}
+
 /* ------------------------------------------------------------------ */
 /* process_control peer authorization tests                            */
 /* ------------------------------------------------------------------ */
@@ -224,6 +243,7 @@ static void test_control_peer_uid_matches_process_uid(void **state) {
     const char command[] = "unknown";
 
     expect_control_peer(getuid(), socket, peer);
+    expect_peer_recv_timeout(peer);
 
     expect_value(__wrap_OS_RecvUnix, socket, peer);
     expect_value(__wrap_OS_RecvUnix, size, OS_MAXSTR);
@@ -274,6 +294,7 @@ static void test_control_peer_closed_on_receive_error(void **state) {
     char expected_msg[OS_SIZE_256];
 
     expect_control_peer(getuid(), socket, peer);
+    expect_peer_recv_timeout(peer);
 
     expect_value(__wrap_OS_RecvUnix, socket, peer);
     expect_value(__wrap_OS_RecvUnix, size, OS_MAXSTR);
@@ -298,6 +319,7 @@ static void test_control_peer_closed_on_empty_message(void **state) {
     const int peer = 101;
 
     expect_control_peer(getuid(), socket, peer);
+    expect_peer_recv_timeout(peer);
 
     expect_value(__wrap_OS_RecvUnix, socket, peer);
     expect_value(__wrap_OS_RecvUnix, size, OS_MAXSTR);
@@ -306,6 +328,31 @@ static void test_control_peer_closed_on_empty_message(void **state) {
 
     expect_string(__wrap__mtinfo, tag, WM_CONTROL_TEST_LOGTAG);
     expect_string(__wrap__mtinfo, formatted_msg, "Empty message from local client.");
+
+    WM_CONTROL_CONTEXT.start(NULL);
+
+    assert_int_equal(received_commands, 1);
+    assert_int_equal(sent_responses, 0);
+    assert_int_equal(closed_fds_count, 2);
+    assert_int_equal(closed_fds[0], peer);
+    assert_int_equal(closed_fds[1], socket);
+}
+
+static void test_control_peer_closed_on_receive_timeout(void **state) {
+    const int socket = 100;
+    const int peer = 101;
+
+    expect_control_peer(getuid(), socket, peer);
+    expect_peer_recv_timeout(peer);
+
+    expect_value(__wrap_OS_RecvUnix, socket, peer);
+    expect_value(__wrap_OS_RecvUnix, size, OS_MAXSTR);
+    will_return(__wrap_OS_RecvUnix, NULL);
+    will_return(__wrap_OS_RecvUnix, 0);
+    recv_errno_on_empty = EAGAIN;
+
+    expect_string(__wrap__mtwarn, tag, WM_CONTROL_TEST_LOGTAG);
+    expect_string(__wrap__mtwarn, formatted_msg, "A local client sent no command within 3 seconds; connection closed.");
 
     WM_CONTROL_CONTEXT.start(NULL);
 
@@ -676,6 +723,7 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_control_peer_unrelated_uid_is_rejected,     setup_test_mode, teardown_test_mode),
         cmocka_unit_test_setup_teardown(test_control_peer_closed_on_receive_error,       setup_test_mode, teardown_test_mode),
         cmocka_unit_test_setup_teardown(test_control_peer_closed_on_empty_message,       setup_test_mode, teardown_test_mode),
+        cmocka_unit_test_setup_teardown(test_control_peer_closed_on_receive_timeout,     setup_test_mode, teardown_test_mode),
         /* wm_control_dispatch */
         cmocka_unit_test_setup_teardown(test_dispatch_restart,            setup_test_mode, teardown_test_mode),
         cmocka_unit_test_setup_teardown(test_dispatch_reload,             setup_test_mode, teardown_test_mode),

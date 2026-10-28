@@ -1681,7 +1681,9 @@ components:
           example: "v5.0.0"
         groups:
           type: string
-          description: Comma-separated, passed through to `authd` unchanged.
+          description: |
+            Comma-separated, passed through to `authd` unchanged. A list naming no group (`""`,
+            `","`) is the same as no `groups` field: the agent joins `default`.
           example: "default,web-servers"
         ip:
           type: string
@@ -1693,9 +1695,12 @@ components:
             IPv4-mapped (`::ffff:a.b.c.d`); a dotted mask is rewritten as its prefix length
             (`10.22.0.0/255.255.0.0` -> `10.22.0.0/16`). Answered `400` (`Invalid field: ip`) for anything
             else: a non-contiguous dotted mask, a leading `!`, an empty or
-            out-of-range prefix. Port 1515's `IP:` field takes the same grammar. The response's
-            `ip` echoes the value as forwarded, so a full-length mask (`/32`, `/128`) is echoed
-            although the registry records the bare address. If the manager's `use_source_ip` is
+            out-of-range prefix. A value this check accepts can still be refused by `authd`, which
+            judges the address again before registering it: `::/0` passes here and is answered `400`
+            with authd's own code, `{"error":{"code":9006,"message":"No such IP"}}`. Port 1515's `IP:`
+            field takes the same grammar. The response's
+            `ip` is the registered form: a full-length mask (`/32`, `/128`) is the bare address,
+            and is a duplicate (`409`) of an agent already registered at it. If the manager's `use_source_ip` is
             enabled it overrides whatever the body claims.
           example: 10.0.0.15
         key_hash:

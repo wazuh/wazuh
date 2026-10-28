@@ -3,6 +3,7 @@
 
 #include <api/adapter/adapter.hpp>
 #include <api/adapter/helpers.hpp>
+#include <eMessages/tester.pb.h>
 
 #include "generic_request.pb.h"
 
@@ -128,6 +129,25 @@ TEST(ApiAdapterTest, ParseRequest)
     auto gotProtoRes = parseResponse<TestRes>(error);
     ASSERT_EQ(gotProtoRes.status(), expectedProtoRes.status());
     ASSERT_EQ(gotProtoRes.error(), expectedProtoRes.error());
+}
+
+TEST(ApiAdapterTest, ParseRequestBoundsAParserMessageThatRepeatsTheValue)
+{
+    // A wrong-typed value is quoted in full by the protobuf parser's message
+    const std::string longValue(5000, 'Z');
+    httplib::Request req;
+    req.body = R"({"queue":")" + longValue + R"("})";
+
+    auto res = parseRequest<eEngine::tester::PublicRunPost_Request, TestRes>(req);
+
+    ASSERT_TRUE(isError(res));
+    auto error = getErrorResp(res);
+    ASSERT_EQ(error.status, httplib::StatusCode::BadRequest_400);
+    const auto gotError = parseResponse<TestRes>(error).error();
+    const std::string prefix {"Failed to parse protobuff json request: "};
+    EXPECT_EQ(gotError.rfind(prefix, 0), 0u) << gotError;
+    EXPECT_EQ(gotError.find(longValue), std::string::npos);
+    EXPECT_LE(gotError.size(), prefix.size() + MAX_PARSE_ERROR_LENGTH + std::string {"... (99999 bytes)"}.size());
 }
 
 TEST(ApiAdapterTest, CreateRequest)

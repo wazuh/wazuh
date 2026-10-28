@@ -185,7 +185,7 @@ int wm_aws_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
                         os_strdup(*nodes[i]->values, cur_bucket->type);
                     } else {
                         mterror(wm_config_logtag(WM_AWS_LOGTAG), "Invalid bucket type '%s'. Valid ones are '%s', '%s', '%s', '%s', '%s', "
-                                               "'%s', %s', %s', %s', %s' or '%s'",
+                                               "'%s', '%s', '%s', '%s', '%s' or '%s'",
                             *nodes[i]->values, CLOUDTRAIL_BUCKET_TYPE, CONFIG_BUCKET_TYPE, GUARDDUTY_BUCKET_TYPE, VPCFLOW_BUCKET_TYPE,
                             WAF_BUCKET_TYPE, CISCO_UMBRELLA_BUCKET_TYPE, CUSTOM_BUCKET_TYPE, ALB_BUCKET_TYPE, CLB_BUCKET_TYPE, NLB_BUCKET_TYPE,
                             SERVER_ACCESS_BUCKET_TYPE);

@@ -51,6 +51,11 @@ The package manager will automatically:
 - Resolve credentials with `bin/wazuh-manager-resolve-credentials --upgrade`, which fills in a missing password or keystore entry, imports the indexer's CA and client pair when they changed, and validates the manager's CA and server pairs without ever minting or issuing one (see [The resolver and its modes](getting-started/credentials.md#the-resolver-and-its-modes))
 - Restart the service, only if it was running before the upgrade
 
+The package also deletes `/etc/systemd/system/wazuh-manager.service`, a copy of its unit that an earlier
+`install.sh` overlay on a Debian host may have written, so the unit it ships in `/usr/lib/systemd/system`
+is the one systemd loads. An `install.sh` run over a package rewrites that `/usr/lib` unit in place
+([Installed layout](getting-started/installation.md#installed-layout)).
+
 ### File preservation
 
 During a 5.x to 5.x upgrade, the package and source upgrade scripts apply a **preserve / restore** mechanism that guarantees the following behavior:

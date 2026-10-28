@@ -25,6 +25,9 @@
 #define MANAGER_SERVICE_CONTROL_BIN "bin/wazuh-manager-service-control"
 #define MANAGER_SERVICE_CONTROL_STATUS_FD 3
 #define MANAGER_SERVICE_CONTROL_TIMEOUT_MS 5000
+/* The control socket serves one client at a time: a client that connects and sends nothing must not
+ * hold it (and every restart or reload behind it) for longer than this. */
+#define WM_CONTROL_RECV_TIMEOUT_S 3
 
 /* Client input is logged at most this many bytes long, escaped (see wm_control_log_input). */
 #define WM_CONTROL_LOG_INPUT_MAX 128
@@ -441,6 +444,10 @@ static void *process_control() {
         }
 #endif
 
+        if (OS_SetRecvTimeout(peer, WM_CONTROL_RECV_TIMEOUT_S, 0) < 0) {
+            mtwarn(WM_CONTROL_LOGTAG, "Cannot set a receive timeout on a control socket client: %s", strerror(errno));
+        }
+
         os_calloc(OS_MAXSTR + 1, sizeof(char), buffer);
 
 #ifdef CLIENT
@@ -465,12 +472,19 @@ static void *process_control() {
             }
         }
 #else
+        errno = 0;
         switch (length = OS_RecvUnix(peer, OS_MAXSTR, buffer), length) {
         case -1:
             mterror(WM_CONTROL_LOGTAG, "At process_control(): OS_RecvUnix(): %s", strerror(errno));
             break;
         case 0:
-            mtinfo(WM_CONTROL_LOGTAG, "Empty message from local client.");
+            /* OS_RecvUnix() returns 0 for a receive error too; a timeout leaves EAGAIN. */
+            if (errno == EAGAIN || errno == EWOULDBLOCK) {
+                mtwarn(WM_CONTROL_LOGTAG, "A local client sent no command within %d seconds; connection closed.",
+                       WM_CONTROL_RECV_TIMEOUT_S);
+            } else {
+                mtinfo(WM_CONTROL_LOGTAG, "Empty message from local client.");
+            }
             break;
         case OS_MAXLEN:
             mterror(WM_CONTROL_LOGTAG, "Received message > %i", MAX_DYN_STR);

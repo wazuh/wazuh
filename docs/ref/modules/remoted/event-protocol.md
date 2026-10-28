@@ -79,7 +79,7 @@ The header is a JSON object conforming to Elastic Common Schema (ECS):
 |-------|------|----------|-------------|---------|
 | `wazuh.agent.id` | string | **Yes** | Agent numeric ID | `"001"` |
 | `wazuh.agent.name` | string | No | Agent name | `"web-server-01"` |
-| `wazuh.agent.version` | string | No | Wazuh agent version | `"v5.0.0"` |
+| `wazuh.agent.version` | string | No | Wazuh agent version: `v5.0.0` from a 5.x agent; on the legacy path, the 4.x keep-alive's text, with its prefix (`Wazuh v4.14.3`) | `"v5.0.0"` |
 | `wazuh.agent.groups` | array[string] | No | Agent groups | `["web", "production"]` |
 | `wazuh.agent.host.architecture` | string | No | CPU architecture | `"x86_64"` |
 | `wazuh.agent.host.hostname` | string | No | System hostname | `"web-server-01"` |
@@ -192,7 +192,8 @@ Trailing newlines are trimmed from each event; blank lines between events are sk
 
 - `200`: the batch was parsed and its events queued for processing.
 - `400`: the batch could not be parsed (`{"error": "<parser message>", "code": 400}`); nothing of it
-  is ingested. The engine logs `[API::Event] Failed to parse request: '<message>'`.
+  is ingested. The engine logs `[API::Event] Failed to parse request: '<message>'` at most once per minute,
+  with the count of requests rejected since the previous line.
 - `500`: internal error in the engine.
 
 The engine's event server sets no request-size limit of its own. On the HTTPS path, remoted maps these

@@ -779,8 +779,26 @@ namespace
             throw std::runtime_error("Unable to configure the requested TLS 1.3 ciphersuite list");
         }
 
-        context.use_certificate_chain_file(config.certificatePath);
-        context.use_private_key_file(config.privateKeyPath, asio::ssl::context::pem);
+        // Each failure names its file, as loadClientCaFile() does: asio's own message names only the
+        // OpenSSL call ("use_certificate_chain_file: no start line").
+        try
+        {
+            context.use_certificate_chain_file(config.certificatePath);
+        }
+        catch (const std::system_error& e)
+        {
+            throw std::runtime_error("The configured TLS certificate '" + config.certificatePath +
+                                     "' cannot be loaded (" + e.what() + ")");
+        }
+        try
+        {
+            context.use_private_key_file(config.privateKeyPath, asio::ssl::context::pem);
+        }
+        catch (const std::system_error& e)
+        {
+            throw std::runtime_error("The configured TLS private key '" + config.privateKeyPath +
+                                     "' cannot be loaded (" + e.what() + ")");
+        }
 
         return context;
     }

@@ -50,7 +50,7 @@ Time between two backups.
 Number of backup files kept. After each backup, the oldest files are deleted until this many remain.
 
 - **Default value:** `3`
-- **Allowed values:** integer ≥ 1 (no upper bound)
+- **Allowed values:** integer from 1 to 2147483647
 - **Note:** Every file whose name starts with `global.db-backup` counts, including `-pre_restore`
   backups.
 

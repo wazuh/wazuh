@@ -323,17 +323,13 @@ Wazuh 5.0 raises the minimum TLS protocol version of the manager's legacy enroll
 
 Do not carry a 4.x `<auth><ciphers>` value into `wazuh-manager.conf`. In 5.0 it is a colon-separated list of TLS 1.3 ciphersuite names, and `wazuh-manager-authd` accepts only these: `TLS_AES_128_GCM_SHA256`, `TLS_AES_256_GCM_SHA384`, `TLS_CHACHA20_POLY1305_SHA256`, `TLS_AES_128_CCM_SHA256`, `TLS_AES_128_CCM_8_SHA256`. Omit the option to use the default, `TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256`.
 
-A 4.x-style OpenSSL cipher-list string (for example the 4.x default, `HIGH:!ADH:!EXP:!MD5:!RC4:!3DES:!CAMELLIA:@STRENGTH`) does not match the schema's `TLS_<NAME>[:TLS_<NAME>...]` pattern, so `wazuh-manager-control start` refuses the configuration before starting any daemon, logging:
+The schema's pattern lists those five names, so anything else is refused before any daemon starts: a 4.x-style OpenSSL cipher-list string (for example the 4.x default, `HIGH:!ADH:!EXP:!MD5:!RC4:!3DES:!CAMELLIA:@STRENGTH`), and equally a value of the right shape that names a suite outside the list (`TLS_AES_256_CBC_SHA`). `wazuh-manager-control start` logs:
 
 ```console
 (1244): Invalid configuration at '/auth/ciphers': does not satisfy 'pattern' [...]
 ```
 
-A value of the right shape that names a ciphersuite outside the list above passes that check and is refused by `wazuh-manager-authd`'s own configuration check, which `wazuh-manager-control start` also runs before starting anything (`wazuh-manager-authd: Configuration error. Exiting`):
-
-```console
-ERROR: Invalid TLS 1.3 cipher suite 'TLS_AES_256_CBC_SHA' in 'ciphers' option
-```
+`wazuh-manager-authd` has its own check with its own message (`Invalid TLS 1.3 cipher suite '<name>' in 'ciphers' option`), but a value from `wazuh-manager.conf` never reaches it, since the schema refuses the same names first; only a list passed on authd's command line with `-c` is judged there.
 
 `<auth><ssl_auto_negotiate>` was removed entirely. Carried into `wazuh-manager.conf` it is an unknown option, and the manager refuses to start:
 

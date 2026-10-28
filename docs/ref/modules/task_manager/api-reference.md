@@ -81,7 +81,7 @@ and `504` when a handler has not answered within the transport's 300 s response 
 |---|---|---|
 | `agent_id` | yes | non-empty string |
 | `task_type` | yes | non-empty string |
-| `create_time` | yes | number, Unix seconds, within `[now - 1 year, now + 60 s]` — otherwise `Timestamp is too old (>1 year)` / `Timestamp is in the future` |
+| `create_time` | yes | integer, Unix seconds, within `[now - 1 year, now + 60 s]` — otherwise `Timestamp is too old (>1 year)` / `Timestamp is in the future`; a fraction, string, `null` or a value outside the signed 64-bit range is `create_time must be an integer within range` |
 | `payload` | yes | any JSON value; stored serialized, capped at `max_payload_bytes` |
 | `source_id` | no | string; part of the task id derivation — **an absent `source_id` and an empty one produce the same id** |
 
@@ -126,6 +126,10 @@ Rows are described in [Manager tasks](manager-tasks.md). Statuses: `pending`, `c
 | `next_attempt_at` | no | Unix seconds; defaults to `create_time` |
 | `coalesce`, `max_pending` | no | **honoured only for a task type this build does not know** — a registered type takes both from its descriptor |
 
+The three times must be integers in the signed 64-bit range and an honoured `max_pending` an
+integer in the 32-bit `int` range; anything else (a fraction, a string, `null`, a value out of range)
+answers `400` `parsing_error` `<field> must be an integer within range`.
+
 Answers `200` `{"result": "created"|"coalesced"|"collided", "task_id": "<id>"}`, or `503` with
 `"result": "queue_full"`. `collided` means a row with that `task_id` already exists and nothing was
 written. On `coalesced` the `task_id` is the **surviving** row's, not the requested one — returning the
@@ -152,7 +156,9 @@ asks).
 ### `POST /v1/manager-tasks/list`
 
 `{"task_type"}` (required), plus optional `status` (an unknown value is a `400`), `last_task_id` and
-`limit` (default 100, at most 1000; a value of 0 or less means the default). Answers `200` `{"tasks": [{"task_id", "status", "create_time", "agent_id"?,
+`limit` (default 100, at most 1000 — a larger value is clamped; a value of 0 or less means the default;
+anything but an integer in the 32-bit `int` range — a fraction, a string, `null` — answers `400`
+`parsing_error` `limit must be an integer within range`). Answers `200` `{"tasks": [{"task_id", "status", "create_time", "agent_id"?,
 "last_error"?}, …]}` — deliberately narrow; use `/get` for the full row. Paged on task id: pass the last
 id back as `last_task_id` until a page comes back empty.
 
@@ -177,7 +183,7 @@ deliberate ways:
 | Field | Route | Required | Rule |
 |---|---|---|---|
 | `agents` | both | yes | non-empty array of positive integer agent ids (missing or empty: error 2; a non-integer or non-positive id: error 3); more than [`upgrade_max_agents`](configuration.md#internal-options-the-upgrade-path-adds) (500) answers every agent with error 2 |
-| `request_time` | both | yes | number, Unix seconds, non-zero, within `[now - 1 year, now + 60 s]`; it becomes the task's `create_time`, so every cluster node derives the same task id |
+| `request_time` | both | yes | number, Unix seconds, non-zero, within `[now - 1 year, now + 60 s]`; a fraction is accepted and truncated to whole seconds (`1767225600.9` is `1767225600`, and one that truncates to `0` is the missing case below); it becomes the task's `create_time`, so every cluster node derives the same task id. Missing or `0`: error 3 `Missing required parameter: request_time`; not a number: error 3; outside the window (any magnitude): error 2 `Parameter "request_time" is in the future` / `is too old (>1 year)` |
 | `version` | `/upgrade` | no | target version; defaults to the manager's own |
 | `wpk_repo` | `/upgrade` | no | repository for this request; overrides [`<wpk_repository>`](configuration.md#xml-options) |
 | `use_http` | `/upgrade` | no | boolean; `http://` instead of `https://` when the repository names no scheme |

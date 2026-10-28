@@ -15,7 +15,13 @@ The supported operating systems and architectures are listed once, per package:
   [`<remote><legacy><enabled>`](modules/remoted/configuration.md#legacyenabled) is on (the configuration the
   installer generates turns it on); with it off, only 5.x agents can connect. They enroll through
   `wazuh-manager-authd`'s TLS port 1515, gated by `<auth><legacy_enrollment>`, which follows
-  `<remote><legacy><enabled>` when it is not set. A 4.x agent upgrades to 5.x
+  `<remote><legacy><enabled>` when it is not set. On that channel a 4.x agent's events, keep-alives,
+  centralized configuration and remote upgrade work, but not active response or its state: the manager discards its
+  inventory (`s:`) and dbsync (`5:`) messages, so it has no inventory and no FIM or SCA state on a 5.x
+  manager, and with no package inventory it gets **no vulnerability detection** (an on-demand scan of an
+  agent below 5.0.0 is refused with `1764`). See
+  [What the legacy channel still carries](../guide/migration/agent-manager-protocol.md#what-the-legacy-channel-still-carries)
+  and [Requesting an on-demand scan](modules/vulnerability-scanner/api-reference.md#response). A 4.x agent upgrades to 5.x
   only from 4.14.0 or later, by package or remotely (see [Agent upgrades](modules/task_manager/agent-upgrades.md));
   an older one has to reach 4.14 first.
 - **An agent newer than the manager** (a higher major or minor; a higher patch is always accepted) is

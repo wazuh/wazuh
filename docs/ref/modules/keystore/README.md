@@ -59,7 +59,8 @@ printf '%s' '<password>' | /var/wazuh-manager/bin/wazuh-manager-keystore -f inde
 | `-h` | Print the usage |
 
 The tool exits 0 on success and 1 otherwise. An error is printed to standard error (and, for an
-argument error, the usage to standard output). The one silent exit 1 is `-g` on a key that is not
+argument error, the usage to standard output); any argument not in the table is refused as
+`Unknown option: <argument>` before the keystore is opened. The one silent exit 1 is `-g` on a key that is not
 set or is empty: that is an answer, not an error, so nothing is printed. There is no delete
 operation; the resolver's `--clear` mode removes the whole database instead.
 
@@ -89,7 +90,7 @@ without a repair.
 
 | Decision | Why |
 |---|---|
-| The database is opened per operation, never held open by a daemon | A RocksDB handle holds the database's `LOCK` file for as long as it lives. The keystore is shared by separate processes — modulesd (`keystore_server`, the Indexer Connector), the engine and the CLI — and a long-lived handle in any one of them would lock every other one out for the life of that process; the CLI, which the resolver runs before every start, would never get in. The cost is about one open per request (some ten a minute at idle), which is cheap next to the lock contention a long-lived handle would turn into a permanent refusal |
+| The database is opened per operation, never held open by a daemon | A RocksDB handle holds the database's `LOCK` file for as long as it lives. The keystore is shared by separate processes — modulesd (`keystore_server`, the Indexer Connector), the engine and the CLI — and a long-lived handle in any one of them would lock every other one out for the life of that process; the CLI, which the resolver runs before every start, would never get in. The cost is one open per request, which is cheap next to the lock contention a long-lived handle would turn into a permanent refusal. At idle the requests come from the master's framework, two (`username`, `password`) each time it builds an Indexer client: the active-response poll every 30 s (`active_response_polling`), which builds two clients per cycle even when it finds nothing (one to search for active responses, one to look up their events), and the indexer check, disconnected-agent and metrics tasks every 5 to 10 minutes — about nine to ten opens a minute. Each open of the read-write database writes a new `MANIFEST`, write-ahead log and `OPTIONS` file, so the file numbers in `queue/keystore/` climb several times faster than the opens; they are not an open counter |
 | Contention is waited out with a jittered backoff; the CLI waits longer than the daemons | Callers that lost the same race used to retry on the same schedule and collide again, so under a burst some exhausted their wait without ever seeing the lock free. Randomizing each step spreads them out. Daemons keep a short wait (5 s) because they are answering a caller that retries; the CLI waits 30 s because it runs once, and a burst of daemon reads should delay it, not fail it |
 
 ## `keystore_server`
@@ -110,7 +111,9 @@ credentials the framework's Indexer client needs.
   to start. Its log tag is `wazuh-manager-modulesd:keystore-server`.
 - **Transport:** the Unix domain socket `/var/wazuh-manager/queue/sockets/keystore.sock`, mode 0660,
   speaking the size-prefixed socket protocol used elsewhere in modulesd. Socket permissions are its
-  only access control.
+  only access control. An empty frame is answered with an error; a client that sends part of a frame and then
+  goes quiet keeps its connection open (there is no idle timeout), which costs nothing to other clients
+  because the server is event-driven.
 - **Protocol:** a pipe-delimited text query answered with JSON — `GET|<columnFamily>|<key>`,
   `PUT|<columnFamily>|<key>|<value>`, `DELETE|<columnFamily>|<key>` (a DELETE is implemented as a
   PUT of an empty value). Successful responses look like

@@ -47,6 +47,12 @@ The configuration directory is fixed: a source installation with a custom instal
 resolves against the installation directory. No daemon writes `certs/`; only root does (the credential resolver, and `wazuh-manager-certs` for the CA bundle). What
 `dpkg --purge` and `rpm -e` remove from each directory is described in [Uninstall](../uninstall.md).
 
+The systemd unit is `/usr/lib/systemd/system/wazuh-manager.service` from a package. `install.sh` writes it
+there too on Red Hat and CentOS 7 or later, and over a package that already installed it (an overlay), so the
+package keeps owning it. On other hosts it writes `/etc/systemd/system/wazuh-manager.service`, which no package
+owns. A copy left there by an earlier overlay outlives a package purge: see
+[Uninstall](../uninstall.md#installed-or-overlaid-from-sources).
+
 ### Installation variables
 
 The `<remote>` block of the generated `/etc/wazuh-manager/wazuh-manager.conf` can be customized at installation time through environment variables. They are honored by the DEB and RPM packages and by the source installer (`install.sh`, also through `etc/preloaded-vars.conf`). When a variable is not set, the default value is used.

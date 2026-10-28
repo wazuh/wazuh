@@ -70,6 +70,13 @@ def test_delete_pid():
             delete_pid(tmpfile.name.split('/')[3].split('-')[0], '255')
 
 
+def _child(pid: int, euid: int = None) -> MagicMock:
+    """Return a mocked child process running under `euid` (this process's own by default)."""
+    child = MagicMock(pid=pid)
+    child.uids.return_value.effective = os.geteuid() if euid is None else euid
+    return child
+
+
 @patch('wazuh.core.pyDaemonModule.common.OS_PIDFILE_PATH', new='')
 @patch('wazuh.core.pyDaemonModule.psutil.Process')
 def test_delete_child_pids_matches_pid_exactly(mock_process):
@@ -77,7 +84,7 @@ def test_delete_child_pids_matches_pid_exactly(mock_process):
     with TemporaryDirectory() as tmpdirname:
         for pid in (16, 161):
             open(os.path.join(tmpdirname, f'wazuh-manager-apid_auth-{pid}.pid'), 'w').close()
-        child = MagicMock(pid=16)
+        child = _child(16)
         mock_process.return_value.children.return_value = [child]
 
         with patch('wazuh.core.pyDaemonModule.common.WAZUH_PATH', new=tmpdirname):
@@ -100,7 +107,7 @@ def test_delete_child_pids(mock_process, kill_effect, log_level, expected):
     """Check that a child that already exited is logged at debug level, other errors at error level,
     and the child's pidfile is removed in every case."""
     logger = MagicMock()
-    child = MagicMock(pid=16)
+    child = _child(16)
     child.kill.side_effect = kill_effect
     mock_process.return_value.children.return_value = [child]
 
@@ -124,3 +131,21 @@ def test_delete_child_pids(mock_process, kill_effect, log_level, expected):
     else:
         logger.debug.assert_not_called()
         logger.error.assert_not_called()
+
+
+@patch('wazuh.core.pyDaemonModule.common.OS_PIDFILE_PATH', new='')
+@patch('wazuh.core.pyDaemonModule.psutil.Process')
+def test_delete_child_pids_leaves_other_users_processes(mock_process):
+    """A descendant running as another user (the setuid service-control helper and the `systemctl` it becomes) is
+    neither killed nor reported as an error, while the daemon's own children still are."""
+    logger = MagicMock()
+    own, foreign = _child(16), _child(17, euid=os.geteuid() + 1)
+    mock_process.return_value.children.return_value = [own, foreign]
+
+    with TemporaryDirectory() as tmpdirname, patch('wazuh.core.pyDaemonModule.common.WAZUH_PATH', new=tmpdirname):
+        delete_child_pids('wazuh-manager-apid', 1234, logger)
+
+    own.kill.assert_called_once()
+    foreign.kill.assert_not_called()
+    logger.error.assert_not_called()
+    logger.debug.assert_called_once_with('Process with ID 17 runs as another user; leaving it running.')

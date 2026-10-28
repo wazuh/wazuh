@@ -48,7 +48,8 @@ def test_get_script_arguments(mock_ArgumentParser):
                   "filename or a path inside that directory are accepted.".format(
                       join(agent_upgrade.common.WAZUH_PATH, 'var', 'upgrade'))),
         call('-d', '--debug', action='store_true', help='Debug mode.'),
-        call('-x', '--execute', type=str, help='Executable filename in the WPK custom file. [Default: upgrade.sh]'),
+        call('-x', '--execute', type=str, help='Executable filename in the WPK custom file. [Default: upgrade.bat '
+                                               'for Windows agents, upgrade.sh otherwise]'),
         call('--http', action='store_true', help='Uses http protocol instead of https.')
     ])
 
@@ -173,6 +174,45 @@ async def test_main_exit_status(mock_exit, mock_signal, failed_items, affected, 
         await agent_upgrade.main()
 
     assert mock_exit.call_args_list == expected_exit
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize('silent', [True, False])
+@patch('scripts.agent_upgrade.signal')
+@patch('scripts.agent_upgrade.exit')
+async def test_main_silent_hides_framework_warnings(mock_exit, mock_signal, silent, capfd):
+    """With -s, a warning the framework logs while upgrading reaches neither stdout nor stderr."""
+    import logging
+    framework_logger = logging.getLogger('wazuh')
+    saved_handlers = framework_logger.handlers[:]
+    agent_upgrade.arg_parser = MagicMock()
+    agent_upgrade.args = MagicMock()
+    agent_upgrade.args.list_outdated = False
+    agent_upgrade.args.agents = ['999']
+    agent_upgrade.args.silent = silent
+    agent_upgrade.args.file = ''
+    agent_upgrade.args.execute = ''
+    task_results = MagicMock()
+    task_results.failed_items = {}
+    task_results.total_affected_items = 1
+
+    def forward(*args, **kwargs):
+        framework_logger.warning('upgrade_agents: agent(s) not present in client.keys, excluded: %s', ['999'])
+        return task_results
+
+    # As in the installed command, no handler is configured anywhere (pytest's own capture handlers sit on the root)
+    try:
+        with patch('scripts.agent_upgrade.cluster_utils.forward_function', side_effect=forward), \
+                patch.object(logging.getLogger(), 'handlers', []):
+            await agent_upgrade.main()
+    finally:
+        framework_logger.handlers = saved_handlers
+
+    out, err = capfd.readouterr()
+    if silent:
+        assert out == '' and err == ''
+    else:
+        assert 'not present in client.keys' in err
 
 
 @pytest.mark.asyncio

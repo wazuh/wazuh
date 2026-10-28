@@ -7,6 +7,7 @@
 #include <stdexcept>
 
 #include <base/logging.hpp>
+#include <base/utils/stringUtils.hpp>
 
 #include <cmstore/cmstore.hpp>
 
@@ -170,7 +171,7 @@ void CMStore::deleteNamespace(const NamespaceId& nsId)
     auto it = m_namespaces.find(nsId);
     if (it == m_namespaces.end())
     {
-        throw std::runtime_error("Namespace does not exist: " + nsId.toStr());
+        throw std::runtime_error("Namespace does not exist: " + base::utils::string::truncateForMessage(nsId.toStr()));
     }
 
     // Check if read-only namespace (forbidden)
@@ -207,7 +208,7 @@ void CMStore::renameNamespace(const NamespaceId& from, const NamespaceId& to)
     auto itFrom = m_namespaces.find(from);
     if (itFrom == m_namespaces.end())
     {
-        throw std::runtime_error("Namespace does not exist: " + from.toStr());
+        throw std::runtime_error("Namespace does not exist: " + base::utils::string::truncateForMessage(from.toStr()));
     }
 
     if (m_namespaces.find(to) != m_namespaces.end())
@@ -291,7 +292,7 @@ std::shared_ptr<ICMstoreNS> CMStore::getNS(const NamespaceId& nsId)
     auto it = m_namespaces.find(nsId);
     if (it == m_namespaces.end())
     {
-        throw std::runtime_error("Namespace does not exist: " + nsId.toStr());
+        throw std::runtime_error("Namespace does not exist: " + base::utils::string::truncateForMessage(nsId.toStr()));
     }
     return it->second;
 }
@@ -303,7 +304,7 @@ std::shared_ptr<ICMStoreNSReader> CMStore::getNSReader(const NamespaceId& nsId) 
     auto it = m_namespaces.find(nsId);
     if (it == m_namespaces.end())
     {
-        throw std::runtime_error("Namespace does not exist: " + nsId.toStr());
+        throw std::runtime_error("Namespace does not exist: " + base::utils::string::truncateForMessage(nsId.toStr()));
     }
     return it->second;
 }

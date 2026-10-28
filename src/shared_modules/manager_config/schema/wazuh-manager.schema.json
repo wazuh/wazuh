@@ -198,8 +198,9 @@
             "queue_size": {
               "type": "integer",
               "minimum": 1,
+              "maximum": 134217728,
               "default": 131072,
-              "description": "Event queue size (events). Values above 262144 are accepted with a warning. wazuh-manager-remoted allocates the whole queue when it starts, one pointer (8 bytes on a 64-bit host) per event slot, before any event arrives, plus the memory of every event waiting in it: 2147483648 asks for 16 GiB at once. No check compares the value with the memory of the host, so a size it cannot allocate passes wazuh-manager-control check and stops remoted at start."
+              "description": "Event queue size (events). Values above 262144 are accepted with a warning. wazuh-manager-remoted allocates the whole queue when it starts, one pointer (8 bytes on a 64-bit host) per event slot, before any event arrives, plus the memory of every event waiting in it: the maximum, 134217728, asks for 1 GiB at once. No check compares the value with the memory of the host, so a size it cannot allocate passes wazuh-manager-control check and stops remoted at start."
             },
             "rids_closing_time": {
               "allOf": [
@@ -455,12 +456,12 @@
             }
           ],
           "default": "",
-          "description": "CA used to verify agent certificates during enrollment. Empty = disabled."
+          "description": "CA used to verify agent certificates during legacy enrollment (port 1515, 4.x agents) only; enrollment through the HTTPS listener never reads it. Empty = disabled."
         },
         "ssl_verify_host": {
           "type": "boolean",
           "default": false,
-          "description": "Verify the agent certificate host name."
+          "description": "Verify the agent certificate host name during legacy enrollment (port 1515) when ssl_agent_ca is set."
         },
         "ssl_manager_cert": {
           "allOf": [
@@ -469,7 +470,7 @@
             }
           ],
           "default": "/etc/wazuh-manager/certs/remoted.pem",
-          "description": "Manager certificate (PEM). The file must exist even when auth.disabled is true: the validation with file checks that runs before every start checks it whatever authd does. While authd is enabled it must also be an absolute path directly inside /etc/wazuh-manager/certs: the credential check of wazuh-manager-control start refuses any other location, a relative path included."
+          "description": "Manager certificate (PEM) of the legacy enrollment listener (1515); wazuh-manager-authd loads it only when that listener starts. The file must exist even when auth.disabled is true: the validation with file checks that runs before every start checks it whatever authd does. It must also be an absolute path directly inside /etc/wazuh-manager/certs, auth.disabled or not: the credential check of wazuh-manager-control start and check refuses any other location, a relative path included. Only the content of the file goes unjudged while auth.disabled is true."
         },
         "ssl_manager_key": {
           "allOf": [
@@ -478,7 +479,7 @@
             }
           ],
           "default": "/etc/wazuh-manager/certs/remoted-key.pem",
-          "description": "Manager private key (PEM). The file must exist even when auth.disabled is true: the validation with file checks that runs before every start checks it whatever authd does. While authd is enabled it must also be an absolute path directly inside /etc/wazuh-manager/certs: the credential check of wazuh-manager-control start refuses any other location, a relative path included."
+          "description": "Manager private key (PEM) of the legacy enrollment listener (1515); wazuh-manager-authd loads it only when that listener starts. The file must exist even when auth.disabled is true: the validation with file checks that runs before every start checks it whatever authd does. It must also be an absolute path directly inside /etc/wazuh-manager/certs, auth.disabled or not: the credential check of wazuh-manager-control start and check refuses any other location, a relative path included. Only the content of the file goes unjudged while auth.disabled is true."
         },
         "remote_enrollment": {
           "type": "boolean",
@@ -535,6 +536,7 @@
                 "max_files": {
                   "type": "integer",
                   "minimum": 1,
+                  "maximum": 2147483647,
                   "default": 3,
                   "description": "Backups kept on disk."
                 }

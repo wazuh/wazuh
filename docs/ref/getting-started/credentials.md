@@ -325,8 +325,10 @@ A refusal at step 1 or 3 prints `wazuh-manager.conf: Configuration error. Exitin
 validator's verdict to `logs/wazuh-manager.log`. When `bin/wazuh-manager-resolve-credentials` is missing or not
 executable, step 2 and `--prestart` are skipped and the start goes on with no credential check at all.
 
-All of it happens on `restart` before anything is stopped. A refused `restart` therefore leaves the running daemons
-as they are. `--prestart` runs after the stop and completes what it can (the Server API database, the keystore, an
+All of it happens on `wazuh-manager-control restart` (and on an API restart, whose helper runs `check` first)
+before anything is stopped. A refused `restart` therefore leaves the running daemons as they are. A plain
+`systemctl restart` is different: systemd stops the manager before the start runs any check, so a refusal leaves
+the manager down. Run `wazuh-manager-control check` before `systemctl restart`. `--prestart` runs after the stop and completes what it can (the Server API database, the keystore, an
 import from the indexer's export). What it can still refuse that `--check` does not look for is what lives outside
 the files: the indexer password, kept in the keystore, which is not read while the daemons are running, and a
 Server API database that could not be created.
@@ -457,8 +459,10 @@ The resolver checks the files the daemons are configured to serve, under whateve
   While authd keeps the default names, `remoted.pem` is still issued for it. A bundle under another name is
   never created either (`… stage the agents' CA bundle there`).
 - **A turned-off listener** (`auth.disabled` set to `yes`, `https.enabled: false` in `api.yaml`, or `no` in any
-  case, quoted or not, as the Server API reads it) has its pair neither checked nor reported missing. `--install`
-  still issues the default pairs whose names are configured.
+  case, quoted or not, as the Server API reads it) has its pair's files neither judged nor reported missing, but its
+  configured names still obey the location rule above: a name outside `/etc/wazuh-manager/certs` is `INVALID` and
+  refuses the start (error 22) even while that listener is off. `--install` still issues the default pairs whose
+  names are configured.
 - **Reading the configuration.** Every mode, `--check` included, reads `wazuh-manager.conf` through
   `wazuh-manager-conf --skip-file-checks dump` and parses `api.yaml`; an absent `api.yaml`, or an option it does
   not set, means the Server API's default. When either cannot be read (the reader fails, does not answer within 60

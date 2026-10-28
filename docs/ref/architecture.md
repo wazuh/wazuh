@@ -245,7 +245,9 @@ When `bin/wazuh-manager-resolve-credentials` is missing or not executable, steps
 configuration so broken that `cluster.node_type` cannot be read surfaces as `Invalid cluster
 configuration, check the /etc/wazuh-manager/wazuh-manager.conf file.`
 
-An unknown action prints the usage and exits `1`; with `-j` it prints only `{"error":1,"message":"Invalid action: <action>."}` (or `Missing action.`). The daemons inherit the command's standard output,
+An unknown action prints the usage and exits `1`; with `-j` it prints only `{"error":1,"message":"Invalid action: <action>."}` (or `Missing action.`).
+Anything after `start`, `stop`, `restart`, `reload`, `check` or `status` is ignored, not refused:
+`wazuh-manager-control check extra` is `check`. The daemons inherit the command's standard output,
 so redirect `start` to a file rather than piping it: a pipe never sees end-of-file and the command
 appears to hang. On a systemd host the `wazuh-manager` unit drives the same script (`ExecStart`, `ExecStop`, `ExecReload`); its
 `TimeoutStartSec=180` bounds `start` and also `reload` (systemd times `ExecReload` with the start timeout), which
@@ -277,7 +279,8 @@ daemon that died, or on hosts without systemd.
 Nothing restarts a daemon that dies. The unit is `Type=forking` with `RemainAfterExit=yes` and no
 `Restart=`, so it stays `active` after a crash; `wazuh-manager-control status` shows the daemon as `not
 running...` (or `failed to start...`) and exits `1`, and `GET /cluster/{node_id}/status` reports it. Recover with
-`systemctl restart wazuh-manager`, or relaunch only the dead daemon with `wazuh-manager-control start` (it
+`wazuh-manager-control check && systemctl restart wazuh-manager` (a plain `systemctl restart` stops the manager
+before any check, so a refused start leaves it down; see above), or relaunch only the dead daemon with `wazuh-manager-control start` (it
 runs outside the unit then; see above). While one of
 the core daemons the Server API depends on is down, the API keeps answering login, its status queries and the
 restart endpoints, so the manager can still be inspected and restarted remotely; every other call answers
@@ -337,7 +340,7 @@ Naming rules, which apply to any socket added later:
 - When a component owns more than one socket of the same protocol, a qualifier names the plane: `api` for a control or query interface, `ingest` for a data-path intake, `admin` for an operator-facing endpoint.
 - Every socket lives in `queue/sockets/`, endpoints kept apart from data. Bind, then `chmod` to 0660: `bind()` applies the umask.
 
-Below, `HTTP` is HTTP/1.1 over the socket, reachable with `curl --unix-socket`. `Framed` is the legacy protocol: a 4-byte little-endian length header followed by a text or JSON payload.
+Below, `HTTP` is HTTP/1.1 over the socket, reachable with `curl --unix-socket`. `Framed` is the legacy protocol: a 4-byte little-endian length header followed by a text or JSON payload. `Raw` is the bare payload with no length header.
 
 | Socket                                   | Owner                 | Protocol | Purpose                                                            |
 | ---------------------------------------- | --------------------- | -------- | ------------------------------------------------------------------ |
@@ -349,7 +352,7 @@ Below, `HTTP` is HTTP/1.1 over the socket, reachable with `curl --unix-socket`. 
 | `queue/sockets/inventory-sync-http.sock` | modulesd (Inventory Sync Server) | HTTP     | Stateful sync, agent-reported stats and config, agent deletion      |
 | `queue/sockets/vd-http.sock`             | modulesd (Vulnerability Scanner) | HTTP     | On-demand scans and feed operations, called by remoted and the API |
 | `queue/sockets/keystore.sock`            | modulesd (Keystore Server) | Framed   | Indexer credential retrieval, called by clusterd (the framework's `KeystoreClient`, from its Indexer tasks) |
-| `queue/sockets/control.sock`             | modulesd (Control)    | Framed   | Daemon restart and reload                                          |
+| `queue/sockets/control.sock`             | modulesd (Control)    | Raw      | Daemon restart and reload: one unframed command per connection, a NUL-terminated reply, then the manager closes it ([Control](modules/control/README.md)) |
 | `queue/sockets/wmodules.sock`            | wazuh-manager-modulesd | Framed   | Active configuration (`getconfig wmodules`, `getconfig internal_options`, `getallconfig`), read by the Server API for the `wmodules` component of `GET /cluster/{node_id}/configuration/{component}/{configuration}`. Its generic `query <module>` verb has no taker on the manager: no manager module implements it |
 | `queue/sockets/wdb.sock`                 | wazuh-manager-db      | Framed   | Legacy wdb query protocol                                          |
 | `queue/sockets/wdb-http.sock`            | wazuh-manager-db      | HTTP     | Agent sync and summary REST API, used by clusterd and the API; also `GET /v1/status`, the daemon's readiness answer |
