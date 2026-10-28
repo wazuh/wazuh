@@ -69,6 +69,13 @@
         </active-response>
     </ossec_config>
 
+## Default log files (localfile-logs)
+`WriteLogs()` in `src/init/inst-functions.sh` writes the default `<localfile>` blocks of the agent from `generic/localfile-logs/`, at installation time (the packages run it through `src/init/add_localfiles.sh` on fresh installations only):
+
+- A `journald` block with no filter, when `journalctl` is available.
+- One block per line of the `*.template` files, in the form `[skip_check_exist:]<log_format>:<location>`. The block is written only when the file exists, unless the line starts with `skip_check_exist:`. `INSTALL_DIR` in the location is replaced with the installation directory. A log format that starts with `[!journald] ` is skipped when `journalctl` is available, as the journal already holds those events.
+- The `*.xml` files, each with one complete `<localfile>` block, for sources that need more than a log format and a location (for example `multi-line-regex` or `restrict`). The block is copied as is when the file in its `<location>` exists.
+
 ## Search template
 The script looks for the appropriate template depending on the version indicated or detected. If you specify a distribution and its version, the script will initially look for the template of that version, and in case of not finding it, it will go through the folder tree until it reaches the generic version.
 

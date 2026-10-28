@@ -20,6 +20,7 @@ GLOBAL_TEMPLATE="./etc/templates/config/generic/global.template"
 LOGGING_TEMPLATE="./etc/templates/config/generic/logging.template"
 
 LOCALFILES_TEMPLATE="./etc/templates/config/generic/localfile-logs/*.template"
+LOCALFILES_BLOCKS="./etc/templates/config/generic/localfile-logs/*.xml"
 
 AUTH_TEMPLATE="./etc/templates/config/generic/auth.template"
 CLUSTER_TEMPLATE="./etc/templates/config/generic/cluster.template"
@@ -251,7 +252,7 @@ WriteLogs()
         # Print
         if [ "$MODE" = "echo" ]; then
             case "$FILE" in
-                */logs/active-responses.log|/var/log/dpkg.log)
+                */logs/active-responses.log|*/dpkg.log)
                     ;;
                 *)
                     echo "    -- $FILE"
@@ -277,6 +278,41 @@ WriteLogs()
       fi
   done
   IFS="$OLD_IFS"  # Restore the IFS
+
+  WriteLogBlocks "$MODE"
+}
+
+##########
+# WriteLogBlocks <mode>
+# Each localfile-logs/*.xml file holds one <localfile> block, for sources that need more than a log
+# format and a location. The block is written as is when the file in its <location> exists. The
+# installer summary does not list them, as they are package manager logs, like dpkg.log.
+##########
+WriteLogBlocks()
+{
+    [ "$1" = "add" ] || return 0
+
+    for _lb_file in ${LOCALFILES_BLOCKS}; do
+        [ -f "${_lb_file}" ] || continue
+
+        _lb_location=""
+        while IFS= read -r _lb_line || [ -n "${_lb_line}" ]; do
+            case "${_lb_line}" in
+                *"<location>"*"</location>"*)
+                    _lb_location="${_lb_line#*"<location>"}"
+                    _lb_location="${_lb_location%%"</location>"*}"
+                    break
+                    ;;
+            esac
+        done < "${_lb_file}"
+
+        if [ -z "${_lb_location}" ] || [ ! -f "${_lb_location}" ]; then
+            continue
+        fi
+
+        cat "${_lb_file}" >> $NEWCONFIG
+        echo "" >> $NEWCONFIG
+    done
 }
 
 ##########

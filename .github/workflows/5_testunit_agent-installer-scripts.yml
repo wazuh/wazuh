@@ -5,15 +5,23 @@ on:
     types: [synchronize, opened, reopened, ready_for_review]
     paths:
       - ".github/workflows/5_testunit_agent-installer-scripts.yml"
-      # The two scripts under test. Each suite runs its target in a throwaway install directory
-      # with stubbed binaries (wazuh-agentd --show-token, curl, rpm), so nothing else is built,
-      # installed or sourced.
+      # register_configure_agent.sh and pkg_installer.sh. Each of their suites runs its target in a
+      # throwaway install directory with stubbed binaries (wazuh-agentd --show-token, curl, rpm), so
+      # nothing else is built, installed or sourced.
       - "src/init/register_configure_agent.sh"
       - "src/init/pkg_installer.sh"
       - "src/init/tests/test_enrollment_token.sh"
       - "src/init/tests/test_register_configure_agent.sh"
       - "src/init/tests/test_pkg_installer_ca.sh"
       - "src/init/tests/test_pkg_installer_state.sh"
+      # The default <localfile> blocks the packages add to ossec.conf: add_localfiles.sh and the
+      # scripts it sources, run on a copy of them and of the localfile-logs templates.
+      - "src/init/inst-functions.sh"
+      - "src/init/add_localfiles.sh"
+      - "src/init/shared.sh"
+      - "src/init/template-select.sh"
+      - "etc/templates/config/generic/localfile-logs/**"
+      - "src/init/tests/test_write_logs.sh"
   workflow_dispatch:
 
 concurrency:
@@ -47,3 +55,12 @@ jobs:
 
       - name: Agent state file (pkg_installer.sh)
         run: bash src/init/tests/test_pkg_installer_state.sh
+
+      # The deb postinst runs it under dash, the rpm %post under bash.
+      - name: Default log files under dash (inst-functions.sh WriteLogs, add_localfiles.sh)
+        if: ${{ !cancelled() }}
+        run: sh src/init/tests/test_write_logs.sh
+
+      - name: Default log files under bash (inst-functions.sh WriteLogs, add_localfiles.sh)
+        if: ${{ !cancelled() }}
+        run: bash src/init/tests/test_write_logs.sh

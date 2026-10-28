@@ -143,3 +143,7 @@ Collects entries from the Linux systemd journal. Entries can be filtered by jour
   <filter field="SYSLOG_IDENTIFIER">^sshd$</filter>
 </localfile>
 ```
+
+On Linux hosts with `journalctl`, the agent installation adds a `journald` block with no `<filter>`, so the whole journal is read. The plain syslog files whose events are also in the journal (`/var/log/messages`, `/var/log/auth.log`, `/var/log/secure`, `/var/log/syslog`, `/var/log/kern.log` and the mail logs) are then left out of the default configuration.
+
+When several `journald` blocks are configured, they are merged into one reader that keeps an entry if it matches the filters of any block. A block with no filter does not add to that set: once any block has a filter, only the entries that match some filter are read. Adding a block with a filter therefore stops the default block from reading the whole journal.
