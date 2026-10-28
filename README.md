@@ -132,7 +132,7 @@ Here you can find all the automation tools maintained by the Wazuh team.
 <!-- third-party:begin -->
 | Software                                                                | Version    | Author                          | License                                                                      |
 | ----------------------------------------------------------------------- | ---------- | ------------------------------- | ---------------------------------------------------------------------------- |
-| [abseil-cpp](https://github.com/abseil/abseil-cpp)                      | 20240116.3 | Google Inc.                     | Apache 2.0 License                                                           |
+| [abseil-cpp](https://github.com/abseil/abseil-cpp)                      | 20250127.2 | Google Inc.                     | Apache 2.0 License                                                           |
 | [asio](https://github.com/chriskohlhoff/asio)                           | 1.38.2     | Christopher M. Kohlhoff         | Boost Software License 1.0                                                   |
 | [bzip2](https://github.com/libarchive/bzip2)                            | 1.0.8      | Julian Seward                   | BSD License                                                                  |
 | [cJSON](https://github.com/DaveGamble/cJSON)                            | 1.7.18     | Dave Gamble                     | MIT License                                                                  |
