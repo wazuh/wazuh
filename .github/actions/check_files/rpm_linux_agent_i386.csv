@@ -160,7 +160,7 @@ full_filename,owner_name,group_name,mode,type,prot_permissions,size_bytes,size_e
 /var/ossec/wodles/gcloud/buckets/access_logs.py,root,wazuh,750,file,-rwxr-x---,1870,0.1
 /var/ossec/wodles/aws/aws_tools.py,root,wazuh,750,file,-rwxr-x---,17341,0.1
 /var/ossec/wodles/aws/aws-s3,root,wazuh,750,file,-rwxr-x---,10237,0.1
-/var/ossec/wodles/aws/wazuh_integration.py,root,wazuh,750,file,-rwxr-x---,27012,0.1
+/var/ossec/wodles/aws/wazuh_integration.py,root,wazuh,750,file,-rwxr-x---,27484,0.1
 /var/ossec/wodles/aws/__init__.py,root,wazuh,750,file,-rwxr-x---,177,0.1
 /var/ossec/wodles/aws/buckets_s3/load_balancers.py,root,wazuh,750,file,-rwxr-x---,8118,0.1
 /var/ossec/wodles/aws/buckets_s3/__init__.py,root,wazuh,750,file,-rwxr-x---,640,0.1
