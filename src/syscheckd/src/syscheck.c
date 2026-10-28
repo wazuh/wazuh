@@ -333,10 +333,34 @@ static bool fim_whodata_active_ebpf(const char *path) {
     return active;
 }
 
+void fim_ebpf_update_dirs() {
+    char **paths = NULL;
+    OSListNode *node_it;
+
+    if (!syscheck.enable_whodata || syscheck.whodata_provider != EBPF_PROVIDER) {
+        return;
+    }
+
+    w_rwlock_rdlock(&syscheck.directories_lock);
+    OSList_foreach(node_it, syscheck.directories) {
+        directory_t *dir_it = node_it->data;
+        if (dir_it->options & WHODATA_ACTIVE) {
+            char *real_path = fim_get_real_path(dir_it);
+            paths = os_AddStrArray(real_path, paths);
+            os_free(real_path);
+        }
+    }
+    w_rwlock_unlock(&syscheck.directories_lock);
+
+    fimebpf_set_monitored_dirs(paths);
+    free_strarray(paths);
+}
+
 void check_ebpf_availability() {
     minfo(FIM_EBPF_INIT);
     fimebpf_initialize(fim_whodata_active_ebpf, get_user, get_group, fim_whodata_event,
                        free_whodata_event, loggingFunction, abspath, fim_shutdown_process_on, syscheck.queue_size);
+    fim_ebpf_update_dirs();
     if (ebpf_whodata_healthcheck()) {
         mwarn(FIM_ERROR_EBPF_HEALTHCHECK);
 

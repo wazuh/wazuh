@@ -52,6 +52,10 @@ All notable changes to this project will be documented in this file.
 - Fixed the `ms-graph` configuration reported by the Server API leaving out the name of each resource and all its relationships but the last. `api_auth` is now an array with one item per block, and each resource lists its `name` and a `relationships` array. ([#40580](https://github.com/wazuh/wazuh/pull/40580))
 - Fixed `wazuh-syscheckd` crashing and leaving a core file when it is stopped or restarted during a FIM scan or synchronization. ([#40692](https://github.com/wazuh/wazuh/pull/40692))
 
+#### Changed
+
+- FIM eBPF whodata now drops events for unmonitored paths in the kernel. ([#40633](https://github.com/wazuh/wazuh/pull/40633))
+
 ## [v4.14.10]
 
 ### Manager
