@@ -134,6 +134,7 @@ Here you can find all the automation tools maintained by the Wazuh team.
 | ----------------------------------------------------------------------- | ---------- | ------------------------------- | ---------------------------------------------------------------------------- |
 | [abseil-cpp](https://github.com/abseil/abseil-cpp)                      | 20240116.3 | Google Inc.                     | Apache 2.0 License                                                           |
 | [asio](https://github.com/chriskohlhoff/asio)                           | 1.38.2     | Christopher M. Kohlhoff         | Boost Software License 1.0                                                   |
+| [Brotli](https://github.com/google/brotli)                              | 1.2.1      | The Brotli Authors              | MIT License                                                                  |
 | [bzip2](https://github.com/libarchive/bzip2)                            | 1.0.8      | Julian Seward                   | BSD License                                                                  |
 | [cJSON](https://github.com/DaveGamble/cJSON)                            | 1.7.18     | Dave Gamble                     | MIT License                                                                  |
 | [concurrentqueue](https://github.com/cameron314/concurrentqueue)        | 1.0.4      | Cameron Desrochers              | BSD 2-Clause or Boost Software License 1.0                                   |

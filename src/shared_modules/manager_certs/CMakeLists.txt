@@ -53,7 +53,7 @@ target_link_libraries(manager_certs_core PUBLIC ca_bundle)
 # archives its own dependencies drag in, which links fine with the devcontainer's linker and fails
 # with the package build's -- the quartet and its order come from src/external/CMakeLists.txt, which
 # bundles these same two archives into libwazuhext.
-target_link_libraries(manager_certs_core PRIVATE ext_curl ssl crypto ext_zlib rt dl m pthread)
+target_link_libraries(manager_certs_core PRIVATE ext_curl ext_brotlidec ext_brotlicommon ssl crypto ext_zlib rt dl m pthread)
 
 # bin/wazuh-manager-certs: inspect / check, and the four writing commands (add / remove /
 # prune-expired / stamp); --from-master lands in a later stage. Installed by InstallLocal(), like
