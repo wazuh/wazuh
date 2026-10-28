@@ -2683,6 +2683,13 @@ SyncModuleResult Syscollector::syncModule(Mode mode)
                 // within the next cycle or two.
                 m_logFunction(LOG_INFO, "Syscollector VD synchronization deferred: " + vdResult.failureReason);
             }
+            else if (vdResult.feedNotReady)
+            {
+                // Not a real failure either: a new manager answers this while it loads its CVE
+                // feed, which can take more than half an hour. Checked before managerNotReady,
+                // which is also set, so it never reaches the "failed N times in a row" WARNING.
+                m_logFunction(LOG_INFO, "Syscollector VD synchronization deferred: " + vdResult.failureReason);
+            }
             else if ((vdResult.managerNotReady || vdResult.localTransportUnavailable) &&
                      vdResult.consecutiveFailures <= SYNC_MANAGER_NOT_READY_TOLERANCE)
             {

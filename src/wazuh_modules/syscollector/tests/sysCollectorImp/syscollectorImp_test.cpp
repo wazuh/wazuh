@@ -6579,3 +6579,30 @@ TEST_F(SyscollectorImpTest, SyncModule_VDGenericFailurePastToleranceLogsWarning)
 
     Syscollector::instance().destroy();
 }
+
+// --- Vulnerability feed not ready (issue #40683) ------------------------------------------------
+// A new manager answers every VD session this way while it loads its CVE feed, which can take more
+// than half an hour. It is expected, so it stays at INFO however long the streak gets: it must
+// never reach the "failed N times in a row" WARNING that sends the operator to check the network.
+TEST_F(SyscollectorImpTest, SyncModule_VDFeedNotReadyLogsDeferredEvenPastTolerance)
+{
+    const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
+
+    INIT_SYSCOLLECTOR_WITH_MOCKED_VD_SYNC(
+        spInfoWrapper,
+        SyncModuleResult{.failureReason = "The manager's vulnerability feed is not ready yet; packages and OS "
+                                          "inventory will be synchronized once it is.",
+                         .managerNotReady = true,
+                         .consecutiveFailures = SYNC_MANAGER_NOT_READY_TOLERANCE + 1,
+                         .feedNotReady = true});
+
+    Syscollector::instance().syncModule(Mode::DELTA);
+
+    EXPECT_TRUE(logCapture->contains(LOG_INFO,
+                                     "Syscollector VD synchronization deferred: The manager's vulnerability feed is "
+                                     "not ready yet; packages and OS inventory will be synchronized once it is."));
+    EXPECT_FALSE(logCapture->contains(LOG_WARNING, "Syscollector VD synchronization failed"));
+
+    Syscollector::instance().destroy();
+}

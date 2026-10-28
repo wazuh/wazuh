@@ -733,6 +733,51 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleStoppedDoesNotCountTowardsStreak)
     EXPECT_EQ(stoppedResult.consecutiveFailures, 1u);
 }
 
+// A new manager answers every VD session this way for as long as its feed loads, several sync
+// cycles (#40683). The first session after the load is then answered 409, because the agent still
+// carries the feed offset it had before. If the not-ready answers counted, that 409 would already be
+// past SYNC_MANAGER_NOT_READY_TOLERANCE and reported as "failed N times in a row" at WARNING. They
+// leave the streak where it was, as a stop does.
+TEST_F(AgentSyncProtocolTest, SynchronizeModuleFeedNotReadyDoesNotCountTowardsStreak)
+{
+    mockQueue = std::make_shared<MockPersistentQueue>();
+    LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
+    protocol = std::make_unique<AgentSyncProtocol>("test_module_vd", ":memory:", testLogger, mockQueue,
+                                                   mockSyncTransport, /*isFeedBased=*/true);
+
+    std::vector<PersistedData> testData =
+    {
+        {0, "memory_id_1", "memory_index_1", "memory_data_1", Operation::CREATE, 1}
+    };
+    EXPECT_CALL(*mockQueue, fetchAndMarkForSync(_) )
+    .WillRepeatedly(Return(testData));
+
+    const auto syncAnsweredWith = [this](int httpCode, const std::string & body)
+    {
+        SyncModuleResult result;
+        std::thread syncThread([this, &result]()
+        {
+            result = protocol->synchronizeModule(Mode::DELTA);
+        });
+        std::this_thread::sleep_for(std::chrono::milliseconds(delay));
+        feedHttpResult(httpCode, body);
+        syncThread.join();
+        return result;
+    };
+
+    for (unsigned int answer = 1; answer <= SYNC_MANAGER_NOT_READY_TOLERANCE + 1; ++answer)
+    {
+        const auto notReady = syncAnsweredWith(503, R"({"error":"vulnerability feed not ready","code":503})");
+        EXPECT_TRUE(notReady.feedNotReady);
+        EXPECT_EQ(notReady.consecutiveFailures, 0u) << "not-ready answer " << answer;
+    }
+
+    const auto mismatch = syncAnsweredWith(409, R"({"current_version":1176036,"error":"version_mismatch"})");
+    EXPECT_FALSE(mismatch.success);
+    EXPECT_FALSE(mismatch.feedNotReady);
+    EXPECT_EQ(mismatch.consecutiveFailures, 1u);
+}
+
 // The first successful sync clears the streak, so a later manager-not-ready failure starts again at 1
 // and modules go back to reporting it at INFO instead of staying escalated.
 TEST_F(AgentSyncProtocolTest, SynchronizeModuleSuccessResetsConsecutiveFailures)
@@ -3391,6 +3436,86 @@ TEST_F(AgentSyncProtocolTest, ParseResponseBufferWithUnrecognizedBodyFallsBackTo
 
     // Not valid JSON at all -- must not throw past the parser.
     bool response = feedHttpResult(409, "not json");
+
+    EXPECT_TRUE(response);
+
+    syncThread.join();
+}
+
+// The manager answers a vulnerability-detection session with this 503 while its feed is still
+// loading, more than half an hour on a new manager (#40683). It is an expected state, not a
+// communication failure: it gets its own reason and flag, on top of the managerNotReady every 503
+// sets.
+TEST_F(AgentSyncProtocolTest, ParseResponseBufferWithFeedNotReadyReportsItsOwnReason)
+{
+    mockQueue = std::make_shared<MockPersistentQueue>();
+    LoggerFunc testLogger = [](modules_log_level_t, const std::string&)
+    {
+    };
+    protocol = std::make_unique<AgentSyncProtocol>("test_module_vd", ":memory:", testLogger, mockQueue,
+                                                   mockSyncTransport, /*isFeedBased=*/true);
+
+    std::thread syncThread(
+        [this]()
+    {
+        std::vector<PersistedData> testData =
+        {
+            {0, "test_id_1", "test_index_1", "test_data_1", Operation::CREATE, 1}
+        };
+
+        EXPECT_CALL(*mockQueue, fetchAndMarkForSync(_) ).WillOnce(Return(testData));
+        EXPECT_CALL(*mockQueue, resetSyncingItems()).Times(1);
+
+        SyncModuleResult syncResult = protocol->synchronizeModule(Mode::DELTA);
+        EXPECT_FALSE(syncResult.success);
+        EXPECT_TRUE(syncResult.feedNotReady);
+        EXPECT_TRUE(syncResult.managerNotReady);
+        EXPECT_EQ(syncResult.failureReason,
+                  "The manager's vulnerability feed is not ready yet; packages and OS inventory will be "
+                  "synchronized once it is.");
+    });
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(delay));
+
+    bool response = feedHttpResult(503, R"({"error":"vulnerability feed not ready","code":503})");
+
+    EXPECT_TRUE(response);
+
+    syncThread.join();
+}
+
+// Every other 503 (indexer unreachable, no capacity, shutting down) carries the manager's generic
+// body and keeps being reported as the manager not being ready.
+TEST_F(AgentSyncProtocolTest, ParseResponseBufferWithServiceUnavailableKeepsManagerNotReady)
+{
+    mockQueue = std::make_shared<MockPersistentQueue>();
+    LoggerFunc testLogger = [](modules_log_level_t, const std::string&)
+    {
+    };
+    protocol = std::make_unique<AgentSyncProtocol>("test_module_vd", ":memory:", testLogger, mockQueue,
+                                                   mockSyncTransport, /*isFeedBased=*/true);
+
+    std::thread syncThread(
+        [this]()
+    {
+        std::vector<PersistedData> testData =
+        {
+            {0, "test_id_1", "test_index_1", "test_data_1", Operation::CREATE, 1}
+        };
+
+        EXPECT_CALL(*mockQueue, fetchAndMarkForSync(_) ).WillOnce(Return(testData));
+        EXPECT_CALL(*mockQueue, resetSyncingItems()).Times(1);
+
+        SyncModuleResult syncResult = protocol->synchronizeModule(Mode::DELTA);
+        EXPECT_FALSE(syncResult.success);
+        EXPECT_FALSE(syncResult.feedNotReady);
+        EXPECT_TRUE(syncResult.managerNotReady);
+        EXPECT_EQ(syncResult.failureReason, "Failed to communicate with the manager.");
+    });
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(delay));
+
+    bool response = feedHttpResult(503, R"({"error":"Service unavailable","code":503})");
 
     EXPECT_TRUE(response);
 
