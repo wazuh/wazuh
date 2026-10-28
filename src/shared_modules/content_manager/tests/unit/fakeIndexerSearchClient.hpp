@@ -132,7 +132,8 @@ public:
                                    std::chrono::seconds {2},
                                    [this, sliceId]
                                    {
-                                       return m_index->searchCalls % m_index->lockstepSlices == sliceId ||
+                                       return m_index->lockstepSlices == 0 ||
+                                              m_index->searchCalls % m_index->lockstepSlices == sliceId ||
                                               (m_index->stopCondition && m_index->stopCondition->check());
                                    });
         }
@@ -142,6 +143,9 @@ public:
 
         if (ordinal == m_index->failAtRequest)
         {
+            // The failed slice stops searching: release the others from waiting for its turn.
+            m_index->lockstepSlices = 0;
+            m_index->turn.notify_all();
             throw std::runtime_error(m_index->failWhat);
         }
         if (ordinal == m_index->stopAtRequest && m_index->stopCondition)

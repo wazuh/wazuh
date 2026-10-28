@@ -72,8 +72,8 @@ places:
 The Vulnerability Scanner deletes the whole `queue/vd/vd_updater/` directory when it finds its own
 feed database (`queue/vd/feed`) incomplete or unreadable at start, which forces the next update to be
 an initial load. It keeps the directory when the database is incomplete only because an initial load
-was interrupted (the global maps sit near the end of the feed); that load then continues from its
-cursor.
+was interrupted (the global maps sit near the end of the feed) and the database still holds the CVEs
+that load stored; that load then continues from its cursor.
 
 ## On-demand updates
 

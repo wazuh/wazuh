@@ -1106,13 +1106,15 @@ private:
         std::mutex cursorMutex;
         // Resume bookkeeping, all under cursorMutex, which also covers each page delivery: the last
         // offset each slice delivered and which slices ran out of documents. Every slice pages in
-        // offset order, so every document with an
-        // offset at or below the lowest unfinished frontier was delivered by every slice; once the
-        // consumer answers "flushed" that frontier is durable and becomes the cursor an interrupted
-        // load resumes from (a slice that was ahead re-reads at most what it read since the flush).
+        // offset order, so every document with an offset at or below the lowest unfinished frontier
+        // was delivered by every slice; once the consumer answers "flushed" that frontier is durable
+        // and becomes the cursor an interrupted load resumes from (a slice that was ahead re-reads at
+        // most what it read since the flush). Once a slice fails no other slice delivers: a consumer
+        // failure may have dropped pages it had accepted, which a later "flushed" would not cover.
         const uint64_t startOffset = startCursor.empty() ? 0ULL : std::stoull(startCursor);
         std::vector<uint64_t> sliceFrontier(numSlices, startOffset);
         std::vector<bool> sliceFinished(numSlices, false);
+        bool attemptFailed = false;
         uint64_t persistedOffset = startOffset;
         std::vector<std::thread> threads;
         std::vector<std::string> errors;
@@ -1136,6 +1138,7 @@ private:
                 std::optional<nlohmann::json> searchAfter = std::nullopt;
                 size_t sliceProcessed = 0;
                 std::string sliceCursor = startCursor;
+                bool abandoned = false;
                 auto t0 = std::chrono::steady_clock::now();
 
                 while (true)
@@ -1167,7 +1170,21 @@ private:
                         // deliver an unflushed page and advance its frontier between this page's
                         // "flushed" answer and the minimum computed from it.
                         std::lock_guard<std::mutex> lock(cursorMutex);
-                        const bool flushed = processPage(context, hitArray, sliceCursor);
+                        if (attemptFailed)
+                        {
+                            abandoned = true;
+                            break;
+                        }
+                        bool flushed = false;
+                        try
+                        {
+                            flushed = processPage(context, hitArray, sliceCursor);
+                        }
+                        catch (...)
+                        {
+                            attemptFailed = true;
+                            throw;
+                        }
                         sliceProcessed += hitArray.size();
                         if (!sliceCursor.empty())
                         {
@@ -1210,7 +1227,7 @@ private:
 
                 totalProcessed += sliceProcessed;
 
-                if (!context.spUpdaterBaseContext->spStopCondition->check())
+                if (!abandoned && !context.spUpdaterBaseContext->spStopCondition->check())
                 {
                     std::lock_guard<std::mutex> lock(cursorMutex);
                     sliceFinished[sliceId] = true;
@@ -1250,12 +1267,18 @@ private:
                         sliceId,
                         sliceId + 1,
                         numSlices,
-                        stopped ? "interrupted" : "complete",
+                        abandoned ? "abandoned after another slice failed"
+                        : stopped ? "interrupted"
+                                  : "complete",
                         sliceProcessed,
                         elapsed);
             }
             catch (const std::exception& e)
             {
+                {
+                    std::lock_guard<std::mutex> lock(cursorMutex);
+                    attemptFailed = true;
+                }
                 std::lock_guard<std::mutex> lock(errorsMutex);
                 errors.push_back("Slice " + std::to_string(sliceId) + ": " + e.what());
                 if (escalateLogs)

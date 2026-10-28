@@ -51,6 +51,7 @@ namespace
         std::set<std::string> durable;
         std::vector<std::string> unflushed;
         size_t violations {0};
+        size_t failAtPage {0}; ///< That page fails and drops every unflushed id, as the VD drops its open batch.
     };
 } // namespace
 
@@ -96,6 +97,15 @@ protected:
                     delivered->lastCompletionCursor = message.value("cursor", std::string {});
                     makeDurable(*delivered);
                     return {0, "indexer_complete", true};
+                }
+                if (delivered->failAtPage != 0 && delivered->pages + 1 == delivered->failAtPage)
+                {
+                    delivered->failAtPage = 0;
+                    delivered->unflushed.clear();
+                    std::lock_guard<std::mutex> indexLock(m_index->mutex);
+                    m_index->lockstepSlices = 0;
+                    m_index->turn.notify_all();
+                    return {0, "", false};
                 }
                 for (const auto& resource : message.at("data"))
                 {
@@ -254,8 +264,10 @@ TEST_F(IndexerDownloaderTest, SlicedLoadDeliversEveryDocumentOnce)
 TEST_F(IndexerDownloaderTest, FailedPageResumesFromTheLastSafeCursorSliced)
 {
     // Pages 1-6 are delivered (flushes after pages 3 and 6), request 7 fails: the surviving slice
-    // finishes its half, the attempt is discarded, and the retry must start after the lowest offset
-    // both slices had delivered when the consumer last answered "flushed".
+    // stops delivering, the attempt is discarded, and the retry must start after the lowest offset
+    // both slices had delivered when the consumer last answered "flushed". Lockstep slices make both
+    // flushes cover pages of each slice, so that point is past offset 0.
+    m_index->lockstepSlices = 2;
     m_index->failAtRequest = 7;
 
     run(2);
@@ -271,6 +283,22 @@ TEST_F(IndexerDownloaderTest, FailedPageResumesFromTheLastSafeCursorSliced)
     EXPECT_FALSE(retry.hasSearchAfter);
     EXPECT_LT(m_delivered->ids.size(), 2 * (GLOBAL_DOCS + CVE_DOCS)) << "re-reads are bounded by the flush";
     EXPECT_EQ(m_context->data.at("cursor").get<std::string>(), std::to_string(FIRST_CVE_OFFSET + CVE_DOCS - 1));
+    EXPECT_EQ(durabilityViolations(), 0u);
+}
+
+TEST_F(IndexerDownloaderTest, ConsumerFailureInOneSliceStopsTheOthersFromAdvancingTheCursor)
+{
+    // Page 5 fails in the consumer, which drops the unflushed page 4 with its open batch. No other slice
+    // may deliver after that: a later "flushed" would persist a cursor above the dropped documents and
+    // the retry (`offset > cursor`) would never read them again.
+    m_index->lockstepSlices = 2;
+    m_delivered->failAtPage = 5;
+
+    run(2);
+
+    EXPECT_EQ(m_delivered->completions, 1u);
+    EXPECT_EQ(m_index->pitsCreated, 2u);
+    EXPECT_EQ(m_delivered->durable.size(), GLOBAL_DOCS + CVE_DOCS) << "no document is silently missing";
     EXPECT_EQ(durabilityViolations(), 0u);
 }
 
