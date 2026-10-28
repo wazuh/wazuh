@@ -141,6 +141,19 @@ def test_get_decoders_files_filters(status, relative_dirname, filename, expected
     assert result_files == expected_files
 
 
+def test_get_decoders_files_filename_list():
+    """Test that the decoder files of a list of names are listed once and returned in the order of the list."""
+    filenames = ['test3_decoders.xml', 'non_existing.xml', 'test1_decoders.xml', 'test3_decoders.xml']
+    expected = [item for name in filenames for item in decoder.get_decoders_files(filename=name).affected_items]
+
+    with patch('wazuh.core.rule.format_rule_decoder_file', wraps=decoder.format_rule_decoder_file) as format_mock:
+        result = decoder.get_decoders_files(filename=filenames)
+
+    format_mock.assert_called_once()
+    assert {item['filename'] for item in result.affected_items} == {'test1_decoders.xml', 'test3_decoders.xml'}
+    assert result.affected_items == expected
+
+
 @pytest.mark.parametrize('filename, relative_dirname, result', [
     ('test1_decoders.xml', None, 'tests/data/decoders/test1_decoders.xml'),
     ('test3_decoders.xml', None, 'tests/data/etc/decoders/test3_decoders.xml'),
