@@ -1131,7 +1131,7 @@ def test_handler_data_received_ok():
         assert handler.div_msg_box[123] == b'bytes2'
 
         # Test except
-        handler.div_msg_box = {123: b"bytes"}
+        handler.div_msg_box = {123: bytearray(b"bytes")}
         handler.data_received(b"message")
         assert handler.div_msg_box[123] == b'bytesbytes2'
 
@@ -1163,7 +1163,7 @@ def test_handler_data_received_ko():
     with patch('wazuh.core.cluster.common.Handler.get_messages', return_value=[(b"bytes1", 123, b"bytes2", b"bytes3")]):
         with patch('cryptography.fernet.Fernet.decrypt', side_effect=cryptography.fernet.InvalidToken):
             with patch('wazuh.core.cluster.common.Handler.dispatch') as dispatch_mock:
-                handler.div_msg_box = {123: b"bytes"}
+                handler.div_msg_box = {123: bytearray(b"bytes")}
                 handler.data_received(b"message")
 
                 dispatch_mock.assert_not_called()
@@ -1229,6 +1229,55 @@ def test_handler_session_round_trip():
     assert connector.received == [(b'dapi', 3, b'request')]
     acceptor.transport.close.assert_not_called()
     connector.transport.close.assert_not_called()
+
+
+def test_handler_session_divided_before_handshake_refused():
+    """A divided message from a peer that has not proven the key is refused at its first frame header."""
+    connector, acceptor = connected_pair()
+    connector.request_chunk = acceptor.request_chunk = 64
+    divided = frames(connector, b'sendsync', 10, b'B' * 500)
+
+    # Header of the first frame only: nothing of its payload has to arrive to be refused
+    acceptor.data_received(divided[:acceptor.header_len])
+
+    acceptor.transport.close.assert_called_once()
+    assert '3063' in acceptor.logger.error.call_args[0][0]
+    assert acceptor.div_msg_box == {}
+    assert acceptor.received == []
+
+
+def test_handler_session_divided_chunk_too_large_refused():
+    """After the handshake, a divided frame declaring more than MAX_CHUNK_SIZE is refused at its header."""
+    connector, acceptor = connected_pair()
+    acceptor.data_received(frames(connector, b'hello', 7, b'worker1'))
+    assert acceptor.recv_seq == 1
+
+    header = struct.pack(acceptor.header_format, 8, cluster_common.MAX_CHUNK_SIZE + 1,
+                         b'sendsync --' + cluster_common.InBuffer.divide_flag)
+    acceptor.data_received(header)
+
+    acceptor.transport.close.assert_called_once()
+    assert '3063' in acceptor.logger.error.call_args[0][0]
+    assert acceptor.div_msg_box == {}
+
+
+def test_handler_session_divided_accumulated_in_place():
+    """The chunks of a divided message are appended to one buffer, not copied into a new one per chunk."""
+    connector, acceptor = connected_pair()
+    acceptor.data_received(frames(connector, b'hello', 7, b'worker1'))
+    connector.request_chunk = acceptor.request_chunk = 64
+    divided = frames(connector, b'sendsync', 10, b'B' * 500)
+    frame_len = connector.request_chunk
+
+    acceptor.data_received(divided[:frame_len])
+    buffer = acceptor.div_msg_box[10]
+    assert isinstance(buffer, bytearray)
+    acceptor.data_received(divided[frame_len:2 * frame_len])
+    assert acceptor.div_msg_box[10] is buffer
+
+    acceptor.data_received(divided[2 * frame_len:])
+    assert acceptor.received[-1] == (b'sendsync', 10, b'B' * 500)
+    assert acceptor.div_msg_box == {}
 
 
 def test_handler_session_preamble_split_across_reads():
