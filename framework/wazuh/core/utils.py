@@ -1224,6 +1224,10 @@ def load_wazuh_xml(xml_path, data=None):
 
     root = fromstring(f"{entities}<root_tag>{data}</root_tag>", forbid_entities=False)
     for element in root.iter():
+        # Once the namespace is dropped a prefixed tag would shadow a plain one with the same name
+        children = [child.tag for child in element]
+        if {tag.rpartition('}')[2] for tag in children if '}' in tag} & {tag for tag in children if '}' not in tag}:
+            raise ValueError(f"Namespaced and plain elements share a name inside '{element.tag}'")
         element.tag = element.tag.rpartition('}')[2]
 
     return root
@@ -2198,7 +2202,11 @@ def validate_wazuh_xml(content: str, config_file: bool = False):
     WazuhError(1113)
         XML syntax error.
     """
-    uncommented = re.sub(r'<!.*?(?:-->|!>)', '', content, flags=re.DOTALL)
+    # Text after the last terminator cannot close a comment; scanning it for each '<!' would be quadratic
+    end = max((i + len(token) for token in ('-->', '!>') if (i := content.rfind(token)) != -1), default=0)
+    uncommented = re.sub(r'<!.*?(?:-->|!>)', '', content[:end], flags=re.DOTALL) + content[end:]
+    # os_xml reads a '<' preceded by an odd number of backslashes as text
+    uncommented = re.sub(r'(?<!\\)((?:\\\\)*)\\<', r'\1\\&lt;', uncommented)
     # -- characters are not allowed in XML comments
     content = replace_in_comments(content, '--', '%wildcard%')
 
