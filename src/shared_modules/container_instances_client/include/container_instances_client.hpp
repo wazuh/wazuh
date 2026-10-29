@@ -12,6 +12,7 @@
 #include <cstring>
 #include <json.hpp>
 #include <optional>
+#include <set>
 #include <string>
 #include <utility>
 #include <vector>
@@ -163,6 +164,17 @@ namespace wazuh::container_instances_client
         /// startup "not resolved yet" and "gone" look identical on the wire, and
         /// acting on the second deletes a live container's state.
         bool complete {true};
+
+        /// Every container the server currently admits, as of this reply.
+        ///
+        /// Admission is not carried by the lifecycle stream -- a container
+        /// readmitted because another freed a slot has no event of its own -- so
+        /// a consumer that tracks admission from events alone goes stale the
+        /// moment a cap starts binding. `admittedKnown` says the server sent it;
+        /// false means a server too old to, and the caller must then keep doing
+        /// whatever it did before rather than read the empty set as "nobody".
+        bool admittedKnown {false};
+        std::set<std::string> admitted;
 
         std::uint64_t epoch {0};
         std::uint64_t seq {0};
@@ -359,6 +371,21 @@ namespace wazuh::container_instances_client
             if (withheldIt != parsed.end() && withheldIt->is_number_unsigned())
             {
                 delta.complete = (withheldIt->get<std::uint64_t>() == 0);
+            }
+
+            const auto admittedIt = parsed.find("admitted");
+
+            if (admittedIt != parsed.end() && admittedIt->is_array())
+            {
+                delta.admittedKnown = true;
+
+                for (const auto& id : *admittedIt)
+                {
+                    if (id.is_string())
+                    {
+                        delta.admitted.insert(id.get<std::string>());
+                    }
+                }
             }
 
             for (const auto& item : *containersIt)

@@ -495,6 +495,26 @@ namespace wazuh::container_instances::wire
                     // not keyed yet, so absence from it does not mean removal and
                     // a stale-row sweep must wait for a later reply.
                     body["withheld"] = response.withheldFromList;
+
+                    // The WHOLE admitted set, on every list reply including a
+                    // delta one.
+                    //
+                    // Admission is deliberately not a field on the record and
+                    // not a lifecycle event -- see admittedIds(), which explains
+                    // that journalling it would make every admission shift look
+                    // like a container change. The consequence is that a delta
+                    // reply only tells a consumer about containers that HAVE an
+                    // event, while recomputeAdmittedLocked() moves admission for
+                    // containers that have none: readmit one because another
+                    // freed a slot, and the only notice of it is here. Sending
+                    // the set is what keeps "a separate query" from meaning "a
+                    // question the delta stream can never answer" (#37532 / R3).
+                    auto admittedIds = nlohmann::json::array();
+                    for (const auto& id : response.admitted)
+                    {
+                        admittedIds.push_back(id);
+                    }
+                    body["admitted"] = std::move(admittedIds);
                 }
 
                 if (response.delta)

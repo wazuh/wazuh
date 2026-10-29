@@ -171,6 +171,33 @@ TEST(ContainerAdmissionWireTest, TheClientReadsAdmissionOffADeltaEvent)
     EXPECT_FALSE(parsed.events[1].synced);
 }
 
+/* The admitted set rides every list reply, so a consumer learns about an
+ * admission change for a container that produced no lifecycle event -- which
+ * is how a readmitted container is readmitted at all. A reader that predates
+ * the key must not read its absence as "nobody is admitted".
+ */
+TEST(ContainerAdmissionWireTest, TheAdmittedSetRoundTripsAndIsOptional)
+{
+    QueryResponse response;
+    response.status = QueryResponse::Status::ok;
+    response.listReply = true;
+    response.admitted = {"a", "b"};
+
+    const auto parsed = nlohmann::json::parse(wire::serializeResponse(response));
+    ASSERT_TRUE(parsed.contains("admitted"));
+
+    const auto read = wazuh::container_instances_client::ContainerInstancesClient::parseListReply(parsed);
+    EXPECT_TRUE(read.admittedKnown);
+    EXPECT_EQ(read.admitted, (std::set<std::string> {"a", "b"}));
+
+    // A reply from before the key existed.
+    nlohmann::json legacy;
+    legacy["containers"] = nlohmann::json::array();
+    const auto old = wazuh::container_instances_client::ContainerInstancesClient::parseListReply(legacy);
+    EXPECT_FALSE(old.admittedKnown) << "absent must not read as an empty admitted set";
+    EXPECT_TRUE(old.admitted.empty());
+}
+
 /* A server that predates the key sends no `synced`, and the reader must leave
  * its default standing. The opposite default silently stops a working agent
  * from reporting anything about the container.

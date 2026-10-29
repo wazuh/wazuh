@@ -33,6 +33,7 @@
 #include <cstring>
 #include <map>
 #include <optional>
+#include <set>
 #include <thread>
 #include <utility>
 #include <vector>
@@ -151,6 +152,44 @@ namespace fim_container_events
         }
 
         return refreshed;
+    }
+
+    /* Fold the connector's whole admitted set into a view built from events.
+     *
+     * The lifecycle stream carries admission only for containers that HAVE an
+     * event, and recomputeAdmittedLocked() moves it for containers that do not:
+     * readmit one because another freed a slot under containers.synced_limit,
+     * and no event is journalled for it. A view merged from events alone
+     * therefore keeps a readmitted container withheld, or keeps reporting one
+     * the cap has since pushed out (#37532 / R3).
+     *
+     * Positive always, negative only from a complete reply. Membership in the
+     * set is the connector's own answer and can be taken at once; absence from
+     * it means "not admitted" ONLY when the reply covered every container, for
+     * the same reason the sweeps wait -- on a partial reply an unresolved
+     * container is missing from `admitted` for want of a key, and reading that
+     * as a withdrawal is R1 again by another route. */
+    void applyAdmittedSet(std::map<std::string, bool>& view,
+                          const std::set<std::string>& admitted,
+                          bool admittedKnown,
+                          bool complete)
+    {
+        if (!admittedKnown)
+        {
+            return; /* A server too old to send it; leave the view as it was. */
+        }
+
+        for (auto& [containerId, isAdmitted] : view)
+        {
+            if (admitted.count(containerId) != 0)
+            {
+                isAdmitted = true;
+            }
+            else if (complete)
+            {
+                isAdmitted = false;
+            }
+        }
     }
 
     struct ContainerEventDrain::Impl
@@ -555,6 +594,10 @@ namespace fim_container_events
                         updated[event.containerId] = event.synced;
                     }
                 }
+
+                /* ...and then the set, which is the only place an admission
+                 * change with no event of its own can reach this view. */
+                applyAdmittedSet(updated, delta.admitted, delta.admittedKnown, delta.complete);
 
                 publishAdmission(updated);
             }

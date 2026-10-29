@@ -25,6 +25,11 @@ namespace fim_container_events
         const std::map<std::string, bool>& current,
         const std::vector<wazuh::container_instances_client::ContainerRef>& refs,
         bool complete);
+
+    void applyAdmittedSet(std::map<std::string, bool>& view,
+                          const std::set<std::string>& admitted,
+                          bool admittedKnown,
+                          bool complete);
 } // namespace fim_container_events
 
 namespace
@@ -262,6 +267,49 @@ TEST(ContainerDrainAdmissionView, AnIncompleteListUpsertsAndACompleteOneReplaces
     EXPECT_EQ(mergeAdmissionView(current, {bWithheld}, false),
     (std::map<std::string, bool> {{"a", true}, {"b", false}}))
             << "a container the partial list names is updated from it";
+}
+
+TEST(ContainerDrainAdmissionView, TheAdmittedSetReachesContainersWithNoEventOfTheirOwn)
+{
+    using fim_container_events::applyAdmittedSet;
+
+    // b was pushed out by the cap earlier; a is reporting.
+    const std::map<std::string, bool> start = {{"a", true}, {"b", false}};
+
+    // a stops, freeing a slot, and the connector readmits b. b has no lifecycle
+    // event of its own -- recomputeAdmittedLocked() journals nothing -- so a
+    // view merged from events alone would keep it withheld for ever.
+    {
+        auto view = start;
+        applyAdmittedSet(view, {"a", "b"}, true, true);
+        EXPECT_EQ(view, (std::map<std::string, bool> {{"a", true}, {"b", true}}))
+                << "a readmitted container must not need an event of its own to be readmitted";
+    }
+
+    // The other direction: the cap tightened and a is out. A complete reply is
+    // authoritative about absence, so the cap actually starts biting.
+    {
+        auto view = start;
+        applyAdmittedSet(view, {"b"}, true, true);
+        EXPECT_EQ(view, (std::map<std::string, bool> {{"a", false}, {"b", true}}));
+    }
+
+    // On a PARTIAL reply, absence is not a withdrawal: an unresolved container
+    // is missing from the set for want of a key, and reading that as "not
+    // admitted" is the same false retraction the sweeps are held back to avoid.
+    {
+        auto view = start;
+        applyAdmittedSet(view, {"b"}, true, false);
+        EXPECT_EQ(view, (std::map<std::string, bool> {{"a", true}, {"b", true}}))
+                << "a partial reply may add admission but never take it away";
+    }
+
+    // A server too old to send the set leaves the view exactly as it was.
+    {
+        auto view = start;
+        applyAdmittedSet(view, {}, false, true);
+        EXPECT_EQ(view, start);
+    }
 }
 
 TEST_F(ContainerReportingTest, RunTimeAdmissionPromotesAndDoesNotOnlyRetract)
