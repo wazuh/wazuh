@@ -131,7 +131,7 @@ namespace wazuh::container_instances
         /// for as long as it ran.
         ///
         /// Publishing the ids separately answers the existence question without
-        /// answering the key question (#37532 / R8).
+        /// answering the key question (#37532).
         [[nodiscard]] virtual std::set<std::string> unkeyedContainerIds() const = 0;
 
         /// Everything a `list` reply needs, taken together under one lock.

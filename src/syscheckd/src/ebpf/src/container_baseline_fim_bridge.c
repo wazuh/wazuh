@@ -833,7 +833,7 @@ static int container_row_sync_flag(const cJSON* row, int operation)
          * reported row reported -- so this gate was the one way it could
          * happen, and admission now changes at run time from the resolver
          * thread, so a file event lands inside that window routinely
-         * (#37532 / R6, and N7 of the previous round).
+         * (#37532).
          *
          * Leave the column alone instead. The reconciliation that follows the
          * de-admission still sees sync=1 and retracts the row properly, which

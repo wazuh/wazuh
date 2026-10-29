@@ -130,7 +130,7 @@ namespace fim_container_events
      * So an incomplete list is a set of upserts: what it names is applied, what
      * it omits is left exactly as it was. The caller does the same for the kernel
      * filter, with applyContainerDelta() in place of applyContainerList()
-     * (#37532 / R1).
+     * (#37532).
      *
      * Free and pure so the rule can be tested without a connector -- the absence
      * of any seam here is why the drain kept reading a partial list as the whole
@@ -162,14 +162,16 @@ namespace fim_container_events
      * readmit one because another freed a slot under containers.synced_limit,
      * and no event is journalled for it. A view merged from events alone
      * therefore keeps a readmitted container withheld, or keeps reporting one
-     * the cap has since pushed out (#37532 / R3).
+     * the cap has since pushed out (#37532).
      *
      * Positive always, negative only from a complete reply. Membership in the
      * set is the connector's own answer and can be taken at once; absence from
      * it means "not admitted" ONLY when the reply covered every container, for
      * the same reason the sweeps wait -- on a partial reply an unresolved
      * container is missing from `admitted` for want of a key, and reading that
-     * as a withdrawal is R1 again by another route. */
+     * as a withdrawal retracts a live container's rows -- the same false
+     * withdrawal a partial FULL LIST causes, reached through the delta
+     * path instead. */
     void applyAdmittedSet(std::map<std::string, bool>& view,
                           const std::set<std::string>& admitted,
                           bool admittedKnown,

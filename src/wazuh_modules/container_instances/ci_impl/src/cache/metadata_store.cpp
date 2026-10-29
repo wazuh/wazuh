@@ -659,7 +659,7 @@ namespace
         // APIs) is published when EITHER record is resolved, so counting the
         // unresolved records left `withheld` above zero while the container sat
         // in the list -- and a consumer that waits for a complete list before
-        // cleaning up then waits for ever (#37532 / R7).
+        // cleaning up then waits for ever (#37532).
         //
         // So: known ids, minus the ids at least one source can publish.
         std::set<std::string> known;

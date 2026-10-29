@@ -1264,7 +1264,7 @@ extern "C" void fim_container_reconcile_admission(void)
     // containers.synced_limit -- had its rows left at sync=0 with nothing to
     // promote them until the next whole-node baseline. Paired with a retraction
     // that could fire on a withheld list, a live container's FIM state left the
-    // manager and could not come back (#37532 / R2).
+    // manager and could not come back (#37532).
     //
     // Retract first: that releases the document budget of the containers that
     // just lost admission, so the promotion below can spend what they freed in
@@ -1344,7 +1344,7 @@ extern "C" void fim_run_container_baseline(void)
             // Existence, not identifiability. A container the resolver cannot
             // key is absent from `known` but has not gone anywhere, so it is
             // kept -- which is what lets the sweep run at all while one of them
-            // is around (#37532 / R8).
+            // is around (#37532).
             std::set<std::string> present {known};
             present.insert(listing.unkeyed.begin(), listing.unkeyed.end());
             driver.sweepStale(present);

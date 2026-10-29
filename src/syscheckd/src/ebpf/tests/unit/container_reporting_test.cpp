@@ -254,9 +254,9 @@ TEST_F(ContainerReportingTest, AdmissionRetractsRetainsAndRestoresUnchangedRows)
 
 /* The three rules above are only worth anything if the refresh actually
  * applies them, and for a long time nothing checked that it did: the drain
- * reads its list behind a pimpl with a live socket, so R1 shipped with the
- * partial-listing rule written down and never reached. These drive the whole
- * decision for one reply.
+ * reads its list behind a pimpl with a live socket, so the partial-listing
+ * rule shipped written down in a comment and never reached by the code.
+ * These drive the whole decision for one reply.
  */
 TEST(ContainerListRefresh, AnUnansweredQueryChangesNothingAtAll)
 {

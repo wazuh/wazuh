@@ -501,7 +501,7 @@ namespace wazuh::container_instances::wire
                     // for a container the resolver cannot key. `withheld` alone
                     // could only say "do not trust the list yet", which on a node
                     // with one permanently unkeyable container means "never sweep
-                    // again" (#37532 / R8).
+                    // again" (#37532).
                     auto unkeyed = nlohmann::json::array();
                     for (const auto& id : response.unkeyedIds)
                     {
@@ -521,7 +521,7 @@ namespace wazuh::container_instances::wire
                     // containers that have none: readmit one because another
                     // freed a slot, and the only notice of it is here. Sending
                     // the set is what keeps "a separate query" from meaning "a
-                    // question the delta stream can never answer" (#37532 / R3).
+                    // question the delta stream can never answer" (#37532).
                     auto admittedIds = nlohmann::json::array();
                     for (const auto& id : response.admitted)
                     {

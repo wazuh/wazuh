@@ -2931,9 +2931,9 @@ void Syscollector::scanContainerBaseline(const std::vector<std::string>& only_th
     };
     // The connector withholds a running container until its resolver can key it,
     // so a successful reply can still omit one -- absence from the keyed list is
-    // not removal (#37532 / N5). It reports those ids separately, which is what
+    // not removal (#37532). It reports those ids separately, which is what
     // lets the sweep below answer "is this container gone?" without waiting for
-    // every container to be keyed (#37532 / R8).
+    // every container to be keyed (#37532).
     std::set<std::string> unkeyedIds;
     const auto unkeyedSink = [](const char* containerId, void* userData)
     {
@@ -3014,7 +3014,7 @@ void Syscollector::scanContainerBaseline(const std::vector<std::string>& only_th
         //
         // A connector that names them needs no wait: they are in the set above,
         // and a container that can never be keyed no longer blocks cleanup for
-        // as long as it runs (#37532 / R8).
+        // as long as it runs (#37532).
         m_logFunction(LOG_WARNING,
                       "Container list is incomplete and this connector does not report which containers "
                       "it could not identify; skipping stale-container cleanup until it does. Rows for "
