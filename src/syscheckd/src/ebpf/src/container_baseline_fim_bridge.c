@@ -637,6 +637,32 @@ void fim_container_doc_budget_initialize(const char* container_id)
     synced_docs_unlock();
 }
 
+int fim_container_doc_budget_has_headroom(const char* container_id)
+{
+    if (container_id == NULL || *container_id == '\0') {
+        return 1;
+    }
+
+    const int limit = (host_config() != NULL) ? host_config()->container_file_limit : 0;
+
+    if (limit <= 0) {
+        return 1; /* Unlimited: every withheld row can still be granted. */
+    }
+
+    synced_docs_lock();
+    const int* slot = (container_doc_counts != NULL)
+                      ? (const int*)OSHash_Get(container_doc_counts, container_id)
+                      : NULL;
+    /* No counter yet means nothing has been counted, which is headroom. Fail
+     * OPEN for the same reason every other unknown here does: the cost of
+     * being wrong is one wasted pass, and the cost the other way is a row that
+     * could report and never gets offered the chance. */
+    const int current = (slot != NULL) ? *slot : 0;
+    synced_docs_unlock();
+
+    return current < limit;
+}
+
 /* What one listing decided, in the three states a container can actually be
  * in. NULL means "not told yet", which reads as admit-everything -- see
  * fim_container_is_admitted().

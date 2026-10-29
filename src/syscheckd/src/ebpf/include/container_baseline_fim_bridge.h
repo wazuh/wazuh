@@ -119,6 +119,19 @@ void fim_container_doc_budget_initialize(const char* container_id);
  * which is how the original scope-blind fill stayed invisible (23.4). Logs
  * nothing when nothing was refused, and clears the tally either way.
  */
+/**
+ * @brief Whether a withheld row of this container could be reported now.
+ *
+ * Non-zero when the container-scope budget is unlimited or has a slot free, so
+ * the promotion pass has something to gain by reading its withheld rows. Zero
+ * means every one of them would be refused, and reading them costs a query, a
+ * parse, a normalisation and a schema validation each to learn nothing.
+ *
+ * Call after fim_container_doc_budget_initialize(), which is what seeds the
+ * count this reads.
+ */
+int fim_container_doc_budget_has_headroom(const char* container_id);
+
 void fim_container_doc_budget_report(void);
 
 /**

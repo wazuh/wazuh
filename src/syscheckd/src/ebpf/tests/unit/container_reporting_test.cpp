@@ -36,6 +36,7 @@ namespace
     std::set<std::string> unkeyed;
     bool unkeyed_known = true;
     bool reject_persistence = false;
+    std::size_t persist_attempts = 0;
     int file_size = 1;
 
     class ContainerReportingTest : public testing::Test
@@ -53,6 +54,7 @@ namespace
                 unkeyed.clear();
                 unkeyed_known = true;
                 reject_persistence = false;
+                persist_attempts = 0;
                 file_size = 1;
                 fim_db_init(FIM_DB_MEMORY, [](modules_log_level_t, const char*) {}, 1000, 0, nullptr);
                 fim_container_doc_budget_release("a");
@@ -81,6 +83,11 @@ namespace
 
 extern "C" bool container_reporting_test_persist(const char* id, int operation, int sync_flag)
 {
+    /* Every OFFER, sent or withheld. `persisted` records only what the manager
+     * would receive, which cannot tell a row that was refused from one that was
+     * never read -- and that difference is the whole of the promotion skip. */
+    ++persist_attempts;
+
     if (reject_persistence)
         return false;
 
@@ -830,6 +837,48 @@ TEST_F(ContainerReportingTest, AFailedRetractionIsReportedAndRetried)
     ASSERT_EQ(persisted.size(), 1u);
     EXPECT_EQ(persisted[0], (std::pair<std::string, int> {"b:/etc/one", OPERATION_DELETE}));
     EXPECT_TRUE(warnings.empty()) << "nothing is owed any more";
+}
+
+// Once a container has spent its document budget, container_budget_decide()
+// refuses every withheld row it is offered. Offering them anyway costs a query,
+// a parse, a normalisation and a schema validation each, on every reconcile --
+// and a reconcile runs on every admission change and every whole-node baseline,
+// so a node sitting at its ceiling pays that for ever to learn nothing (#37532).
+TEST_F(ContainerReportingTest, AFullBudgetIsNotOfferedItsWithheldRowsAgain)
+{
+    container_reporting_test_host(2);
+    files = {{"a", {"/etc/one", "/etc/two", "/etc/three"}}};
+    admission = {{"a", true}};
+    listed = false;
+    fim_run_container_baseline();
+
+    // Two reported, one over the ceiling.
+    int reported = 0;
+
+    for (const char* path : {"/etc/one", "/etc/two", "/etc/three"})
+    {
+        reported += (syncFlag("a", path) == 1) ? 1 : 0;
+    }
+
+    ASSERT_EQ(reported, 2);
+
+    // A reconcile with nothing changed. The budget is full, so the one withheld
+    // row cannot be granted and must not be read.
+    persist_attempts = 0;
+    const char* known[] = {"a"};
+    fim_container_set_admission(known, 1, known, 1, NULL, 0);
+
+    EXPECT_EQ(persist_attempts, 0u) << "a full budget refuses every withheld row; reading them learns nothing";
+
+    // ...and the skip must not outlive the condition. Freeing the budget makes
+    // the next reconcile offer the withheld row again.
+    fim_container_doc_budget_release("a");
+    container_reporting_test_host(10);
+    persist_attempts = 0;
+    fim_container_set_admission(known, 1, known, 1, NULL, 0);
+
+    EXPECT_GT(persist_attempts, 0u) << "with room again, the withheld row must get its chance";
+    EXPECT_EQ(syncFlag("a", "/etc/three"), 1);
 }
 
 TEST_F(ContainerReportingTest, PersistenceFailureDoesNotMarkRowsAsReported)

@@ -1167,18 +1167,14 @@ namespace
 
     using JsonPtr = std::unique_ptr<cJSON, decltype(&cJSON_Delete)>;
 
-    void updateContainerReporting(bool promote)
+    /// @param ids The distinct container ids in file_entry. Passed in rather
+    ///        than read here because a reconcile runs this twice, in opposite
+    ///        directions, over one and the same set -- and that query is a
+    ///        SELECT DISTINCT over every FIM row on the node.
+    void updateContainerReporting(bool promote, const cJSON* ids)
     {
-        JsonPtr ids {fim_db_get_distinct_container_ids(FIMDB_FILE_TABLE_NAME), cJSON_Delete};
-
-        if (!ids)
-        {
-            LogError("Container FIM: could not read containers for reporting reconciliation.");
-            return;
-        }
-
         const cJSON* id_json = nullptr;
-        cJSON_ArrayForEach(id_json, ids.get())
+        cJSON_ArrayForEach(id_json, ids)
         {
             const char* container_id = cJSON_GetStringValue(id_json);
 
@@ -1191,6 +1187,18 @@ namespace
                 continue;
 
             fim_container_doc_budget_initialize(container_id);
+
+            // Nothing to gain from re-offering withheld rows to a budget that
+            // is full: container_budget_decide() refuses every one of them, and
+            // learning that costs a query, a parse, a normalisation and a schema
+            // validation per row, on every reconcile -- which is every admission
+            // change and every whole-node baseline. A retraction is never
+            // skipped: it frees slots rather than spending them (#37532).
+            if (promote && fim_container_doc_budget_has_headroom(container_id) == 0)
+            {
+                continue;
+            }
+
             JsonPtr rows {fim_db_get_container_rows(container_id, promote ? 0 : 1), cJSON_Delete};
 
             if (!rows)
@@ -1297,8 +1305,16 @@ extern "C" void fim_container_reconcile_admission(void)
     // Retract first: that releases the document budget of the containers that
     // just lost admission, so the promotion below can spend what they freed in
     // the same pass. The two passes touch disjoint sets of containers.
-    updateContainerReporting(false);
-    updateContainerReporting(true);
+    JsonPtr ids {fim_db_get_distinct_container_ids(FIMDB_FILE_TABLE_NAME), cJSON_Delete};
+
+    if (!ids)
+    {
+        LogError("Container FIM: could not read containers for reporting reconciliation.");
+        return;
+    }
+
+    updateContainerReporting(false, ids.get());
+    updateContainerReporting(true, ids.get());
 }
 
 extern "C" void fim_run_container_baseline(void)
@@ -1378,7 +1394,18 @@ extern "C" void fim_run_container_baseline(void)
             driver.sweepStale(present);
         }
 
-        updateContainerReporting(true);
+        {
+            JsonPtr ids {fim_db_get_distinct_container_ids(FIMDB_FILE_TABLE_NAME), cJSON_Delete};
+
+            if (ids)
+            {
+                updateContainerReporting(true, ids.get());
+            }
+            else
+            {
+                LogError("Container FIM: could not read containers for reporting reconciliation.");
+            }
+        }
 
         if (driver.malformedRows() > 0)
         {
