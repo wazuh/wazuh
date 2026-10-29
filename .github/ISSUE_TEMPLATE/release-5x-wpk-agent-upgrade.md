@@ -48,18 +48,18 @@ We aim to test each WPK package on a modern platform that supports it.
 ## Download the manager package
 
 ```shell
-curl -LsO https://packages-dev.wazuh.com/pre-release/apt/pool/main/w/wazuh-manager/wazuh-manager_{{VERSION}}-1_amd64.deb
-curl -LsO https://packages-dev.wazuh.com/pre-release/yum/wazuh-manager-{{VERSION}}-1.x86_64.rpm
+curl -fLsO https://packages-dev.wazuh.com/pre-release/apt/pool/main/w/wazuh-manager/wazuh-manager_{{VERSION}}-1_amd64.deb
+curl -fLsO https://packages-dev.wazuh.com/pre-release/yum/wazuh-manager-{{VERSION}}-1.x86_64.rpm
 ```
 
 ## Download the WPK packages
 
 ```shell
-curl -LsO https://packages-dev.wazuh.com/pre-release/wpk/linux/deb/amd64/wazuh_agent_v{{VERSION}}_linux_amd64.deb.wpk
-curl -LsO https://packages-dev.wazuh.com/pre-release/wpk/linux/rpm/x86_64/wazuh_agent_v{{VERSION}}_linux_x86_64.rpm.wpk
-curl -LsO https://packages-dev.wazuh.com/pre-release/wpk/macos/pkg/intel64/wazuh_agent_v{{VERSION}}_macos_intel64.pkg.wpk
-curl -LsO https://packages-dev.wazuh.com/pre-release/wpk/macos/pkg/arm64/wazuh_agent_v{{VERSION}}_macos_arm64.pkg.wpk
-curl -LsO https://packages-dev.wazuh.com/pre-release/wpk/windows/wazuh_agent_v{{VERSION}}_windows.wpk
+curl -fLsO https://packages-staging.xdrsiem.wazuh.info/pre-release/5.x/wpk/linux/deb/amd64/wazuh_agent_v{{VERSION}}_linux_amd64.deb.wpk
+curl -fLsO https://packages-staging.xdrsiem.wazuh.info/pre-release/5.x/wpk/linux/rpm/x86_64/wazuh_agent_v{{VERSION}}_linux_x86_64.rpm.wpk
+curl -fLsO https://packages-staging.xdrsiem.wazuh.info/pre-release/5.x/wpk/macos/pkg/intel64/wazuh_agent_v{{VERSION}}_macos_intel64.pkg.wpk
+curl -fLsO https://packages-staging.xdrsiem.wazuh.info/pre-release/5.x/wpk/macos/pkg/arm64/wazuh_agent_v{{VERSION}}_macos_arm64.pkg.wpk
+curl -fLsO https://packages-staging.xdrsiem.wazuh.info/pre-release/5.x/wpk/windows/wazuh_agent_v{{VERSION}}_windows.wpk
 ```
 
 ## Report procedure
