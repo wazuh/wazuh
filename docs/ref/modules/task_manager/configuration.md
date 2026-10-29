@@ -146,10 +146,9 @@ curl --unix-socket /var/wazuh-manager/queue/sockets/task-http.sock http://localh
 # {"status":"ok"}
 ```
 
-If the module cannot start — it cannot bind its socket or open `tasks.db`, or
-`manager_task_delete_timeout` does not exceed `manager_task_vd_scan_timeout` — it logs `Task manager
-failed to start: <reason>` and modulesd exits with `Cannot start the task manager module.` These
-happen at module start, after `wazuh-manager-modulesd -t` has already passed. A missing
+If the module cannot start — for example, it cannot bind its socket or open `tasks.db` — it logs
+`Task manager failed to start: <reason>` and modulesd exits with `Cannot start the task manager module.`
+The timeout-pair rule is checked by `wazuh-manager-modulesd -t`, before the daemon starts. A missing
 `lib/libtask_manager.so` exits with `Unable to load libtask_manager.so (<reason>); the installation
 is broken.`
 

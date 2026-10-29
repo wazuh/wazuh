@@ -322,6 +322,7 @@ protocols are in use:
 
 ### API Access Logging (`api/alogging.py`)
 - Every API request generates an access log entry, including one for a request the API rejected: the entry is written after the response, so a body the OpenAPI validator refused has still been recorded
+- If a client disconnects before sending the body declared by `Content-Length`, the API treats the body as empty and continues request handling. The attempt still reaches the normal authentication and rate-limit checks and is written to the access log after the response; it does not produce an ASGI traceback
 - The entry carries the query string, and the request body whenever the caller was authenticated and the body is under `MAX_LOGGED_BODY_SIZE`, with sensitive values **masked** as `****` by `redact_sensitive_fields`, at any depth of the body and inside arrays
 - A field is masked when its name matches `password`, `passwd`, `pwd`, `passphrase`, `key`, `token`, `secret`, `credential`, `credentials`, `authorization`, `bearer`, `session_id` or `cookie`, case-insensitively, either exactly or as the tail of a compound name — `api_key`, `x-api-key`, `clientSecret`, `sessionId` and `accessToken` all match, `keyword` and `monkey` do not. `secret` also matches as any word of a compound name (`api_secret_value`), `secretary` does not. Hyphens and camelCase boundaries are folded before matching, and the plain lowercased spelling is tested too, so `PaSsWoRd` is caught as well as `accessToken`
 - This is a denylist: a secret sent under a field name outside that set is still written to the log

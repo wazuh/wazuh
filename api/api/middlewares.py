@@ -13,7 +13,7 @@ import asyncio
 
 from typing import Optional
 
-from starlette.requests import Request
+from starlette.requests import ClientDisconnect, Request
 from starlette.responses import Response
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 from starlette.middleware.cors import CORSMiddleware
@@ -350,7 +350,7 @@ async def access_log(request: ConnexionRequest, response: Response, prev_time: t
     if body_read and (log_body or path == RUN_AS_LOGIN_ENDPOINT):
         try:
             body = await request.json()
-        except RecursionError:
+        except (ClientDisconnect, json.JSONDecodeError, RecursionError):
             body = {}
 
     # Neither the query nor the body is masked here. `custom_logging` redacts both, recursively
@@ -883,7 +883,14 @@ class WazuhAccessLoggerMiddleware(BaseHTTPMiddleware):
         content_length = get_declared_content_length(request)
         if content_length is not None and 0 < content_length <= max_cached_body:
             # Related to https://github.com/wazuh/wazuh/issues/24060.
-            await request.body()
+            try:
+                await request.body()
+            except ClientDisconnect:
+                # Keep the request flowing through authentication and rate limiting even when the
+                # peer disappears before sending its declared body. BaseHTTPMiddleware replays this
+                # cached empty body downstream, so neither the endpoint nor access_log reads the
+                # disconnected receive channel again.
+                request._body = b''
 
         response = await call_next(request)
 

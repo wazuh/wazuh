@@ -14,7 +14,7 @@ import jwt
 import pytest
 import time
 
-from starlette.requests import Request
+from starlette.requests import ClientDisconnect, Request
 from starlette.responses import Response
 
 from connexion import AsyncApp
@@ -1422,6 +1422,31 @@ async def test_wazuh_access_logger_middleware_reads_loggable_body():
     assert not hasattr(request, '_json')
 
 
+@pytest.mark.asyncio
+async def test_wazuh_access_logger_middleware_continues_after_client_disconnect():
+    """A disconnected body still reaches rate limiting and produces an access-log attempt."""
+    response = MagicMock()
+    response.status_code = 400
+    request = build_request(content_length=12, receive=AsyncMock(return_value={'type': 'http.disconnect'}))
+    endpoint = AsyncMock(return_value=response)
+    rate_limits = CheckAuthenticatedRateLimitMiddleware(AsyncApp(__name__), dispatch=endpoint)
+
+    async def dispatch_with_rate_limits(request):
+        return await rate_limits.dispatch(request, endpoint)
+
+    middleware = WazuhAccessLoggerMiddleware(AsyncApp(__name__), dispatch=dispatch_with_rate_limits)
+
+    with patch('api.middlewares.charge_unauthenticated_request', new=AsyncMock(return_value=0)) as charge, \
+         patch('api.middlewares.access_log') as mock_access_log, \
+         patch('api.middlewares.ConnexionRequest.from_starlette_request', return_value=request):
+        assert await middleware.dispatch(request=request, call_next=dispatch_with_rate_limits) == response
+
+    assert request._body == b''
+    charge.assert_awaited_once()
+    endpoint.assert_awaited_once()
+    mock_access_log.assert_awaited_once()
+
+
 @pytest.mark.parametrize('body', [
     b'{"a": ',                          # unparsable
     b'[' * 4000 + b']' * 4000,          # nested past the interpreter's recursion limit
@@ -1658,6 +1683,27 @@ async def test_access_log_survives_an_unparsable_body(mock_req):
         await access_log(request=mock_req, response=response,
                          prev_time=datetime(1970, 1, 1, 0, 0, 10).timestamp())
 
+    assert mock_custom_logging.call_args.args[5] == {}
+
+
+@pytest.mark.asyncio
+async def test_access_log_survives_client_disconnect_while_parsing_body(mock_req):
+    """A disconnect during access-log body parsing must not suppress the log line."""
+    response = MagicMock()
+    response.status_code = 400
+    mock_req._body = b''
+    mock_req.json = AsyncMock(side_effect=ClientDisconnect)
+    mock_req.query_params = {}
+    mock_req.method = 'POST'
+    mock_req.context = {'user': 'wazuh'}
+    mock_req.scope = {'path': '/agents'}
+    mock_req.headers = {'content-type': 'application/json'}
+
+    with patch('api.middlewares.custom_logging') as mock_custom_logging:
+        await access_log(request=mock_req, response=response,
+                         prev_time=datetime(1970, 1, 1, 0, 0, 10).timestamp())
+
+    mock_custom_logging.assert_called_once()
     assert mock_custom_logging.call_args.args[5] == {}
 
 

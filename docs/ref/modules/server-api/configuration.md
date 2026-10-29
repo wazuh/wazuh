@@ -23,8 +23,9 @@ For module overview and architecture, see [Server API Module](README.md).
 **XML Section:** None. **Internal Options:** None.
 
 Both YAML files are merged over built-in defaults (`api/api/configuration.py`) and validated against a
-JSON schema (`api/api/validator.py`) when `wazuh-manager-apid` starts: an unknown option or a value of
-the wrong type stops it with error `2000`. Every string value is lowercased except `https.key`,
+JSON schema (`api/api/validator.py`) when `wazuh-manager-apid` starts or runs `-t`: an unknown option or a value of
+the wrong type stops it with error `2000`. The `-t` check also validates the configured API log size
+and, when HTTPS is enabled, that the cipher list selects a usable cipher. Every string value is lowercased except `https.key`,
 `https.cert`, `https.ca` and `https.ssl_ciphers`, and the strings `yes`/`no` are read as booleans. A change to `api.yaml`
 takes effect when `wazuh-manager-apid` restarts: under systemd with
 `/var/wazuh-manager/bin/wazuh-manager-control check && systemctl restart wazuh-manager`, or with
