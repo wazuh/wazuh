@@ -26,6 +26,7 @@
 #include <algorithm>
 #include <array>
 #include <atomic>
+#include <cctype>
 #include <cerrno>
 #include <chrono>
 #include <condition_variable>
@@ -38,6 +39,7 @@
 #include <optional>
 #include <stdexcept>
 #include <string>
+#include <string_view>
 #include <system_error>
 #include <thread>
 #include <utility>
@@ -800,7 +802,69 @@ namespace wazuh::uds_http
 
                 m_route = route;
                 armTimer(Phase::Body, std::chrono::seconds {m_state->config.bodyTimeoutSec});
-                return m_parser.resume();
+                const auto verdict = m_parser.resume();
+
+                // Admitted, and the body is still outstanding: a peer waiting on its expectation would
+                // otherwise sit out its own timeout before sending the body (libcurl's is 1 s).
+                if (verdict == RequestParser::Feed::Incomplete && m_state->config.expectContinue && expectsContinue())
+                {
+                    writeInterimContinue();
+                }
+                return verdict;
+            }
+
+            bool expectsContinue()
+            {
+                const auto& headers = m_parser.request().headers;
+                const auto it = headers.find("expect");
+                if (it == headers.end())
+                {
+                    return false;
+                }
+                std::string value = it->second;
+                std::transform(value.begin(),
+                               value.end(),
+                               value.begin(),
+                               [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+                return value == "100-continue";
+            }
+
+            /**
+             * @brief Writes the interim "100 Continue" while the read for the body proceeds.
+             *
+             * One read and one write may be outstanding on a socket at the same time, two writes may
+             * not: a final response that becomes ready while this write is in flight (the peer sent the
+             * body without waiting and the handler answered inline) is parked by deliver() and written
+             * from this completion.
+             */
+            void writeInterimContinue()
+            {
+                static constexpr std::string_view INTERIM {"HTTP/1.1 100 Continue\r\n\r\n"};
+                m_interimWriting = true;
+                auto self = shared_from_this();
+                asio::async_write(m_socket,
+                                  asio::buffer(INTERIM.data(), INTERIM.size()),
+                                  asio::bind_executor(m_strand,
+                                                      [self](const std::error_code& ec, std::size_t)
+                                                      {
+                                                          self->m_interimWriting = false;
+                                                          if (ec)
+                                                          {
+                                                              // The peer is gone; nothing can be answered.
+                                                              self->m_parkedResponse.reset();
+                                                              self->m_finished = true;
+                                                              self->m_timer.cancel();
+                                                              self->closeSocket();
+                                                              self->unregisterSelf();
+                                                              return;
+                                                          }
+                                                          if (self->m_parkedResponse)
+                                                          {
+                                                              auto parked = std::move(*self->m_parkedResponse);
+                                                              self->m_parkedResponse.reset();
+                                                              self->deliver(std::move(parked));
+                                                          }
+                                                      }));
             }
 
             const Route* matchRoute()
@@ -1022,6 +1086,12 @@ namespace wazuh::uds_http
                 {
                     return;
                 }
+                if (m_interimWriting)
+                {
+                    // Never two writes in flight: the interim completion delivers it.
+                    m_parkedResponse = std::move(response);
+                    return;
+                }
                 m_finished = true;
                 m_timer.cancel();
 
@@ -1216,6 +1286,9 @@ namespace wazuh::uds_http
             Phase m_phase {Phase::Header};
             bool m_finished {false};
             bool m_dispatched {false};
+            /// An interim "100 Continue" write is in flight; deliver() parks the final response.
+            bool m_interimWriting {false};
+            std::optional<HttpResponse> m_parkedResponse;
             bool m_unregistered {false};
 
             std::string m_writeHead;
