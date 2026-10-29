@@ -518,3 +518,44 @@ TEST(RequestParserTest, APipelinedRequestAfterABodyIsIgnored)
     EXPECT_EQ("/inventory/sync", parser.request().target);
     EXPECT_EQ("abc", parser.request().body);
 }
+
+/*
+ * The header map keeps the last value of a repeated name. A handler that must insist on exactly one
+ * occurrence (an identity header) can only do so if the parser also says which names repeated.
+ */
+TEST(RequestParserTest, RecordsRepeatedHeaderNamesLowerCased)
+{
+    RequestParser parser {defaultLimits()};
+    const std::string request {"POST /inventory/sync HTTP/1.1\r\nHost: localhost\r\n"
+                               "X-Id: 1\r\nx-id: 2\r\nContent-Length: 0\r\n\r\n"};
+
+    ASSERT_EQ(Feed::Complete, feedChunks(parser, {request}));
+
+    const auto& seen = parser.request();
+    EXPECT_EQ(1U, seen.duplicateHeaders.size());
+    EXPECT_EQ(1U, seen.duplicateHeaders.count("x-id"));
+    EXPECT_EQ("2", seen.headers.at("x-id")) << "the map still keeps the last value";
+}
+
+TEST(RequestParserTest, SingleHeadersLeaveTheDuplicateSetEmpty)
+{
+    RequestParser parser {defaultLimits()};
+
+    ASSERT_EQ(Feed::Complete, feedChunks(parser, {peerRequest()}));
+
+    EXPECT_TRUE(parser.request().duplicateHeaders.empty());
+}
+
+// llhttp delivers a name that straddles a read boundary in two callbacks; that is one header, not two.
+TEST(RequestParserTest, AHeaderSplitAcrossFeedsIsNotADuplicate)
+{
+    RequestParser parser {defaultLimits()};
+    const std::string request {"POST /inventory/sync HTTP/1.1\r\nHost: localhost\r\n"
+                               "X-Wazuh-Agent-Id: 001\r\nContent-Length: 0\r\n\r\n"};
+    const auto split = request.find("Agent-Id");
+
+    ASSERT_EQ(Feed::Complete, feedChunks(parser, {request.substr(0, split), request.substr(split)}));
+
+    EXPECT_TRUE(parser.request().duplicateHeaders.empty());
+    EXPECT_EQ("001", parser.request().headers.at("x-wazuh-agent-id"));
+}

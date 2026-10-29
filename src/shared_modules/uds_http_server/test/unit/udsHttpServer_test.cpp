@@ -26,6 +26,7 @@
 #include <mutex>
 #include <string>
 #include <thread>
+#include <unordered_set>
 #include <vector>
 
 using wazuh::uds_http::HttpRequest;
@@ -35,6 +36,7 @@ using wazuh::uds_http::makeUdsHttpServer;
 using wazuh::uds_http::Method;
 using wazuh::uds_http::UdsHttpServerConfig;
 using wazuh::uds_http::test::peerRequest;
+using wazuh::uds_http::test::sendHeadThenBody;
 using wazuh::uds_http::test::sendRaw;
 using wazuh::uds_http::test::uniqueSocketPath;
 
@@ -1193,4 +1195,205 @@ TEST(UdsHttpServerTest, PipelinedRequestsGetTheFirstAnsweredAndTheConnectionClos
     EXPECT_EQ(2, calls.load()) << "one dispatch per connection; the pipelined requests never run";
     std::lock_guard<std::mutex> lock(targetsMutex);
     EXPECT_EQ((std::vector<std::string> {"/first", "/inventory/sync"}), targets);
+}
+
+namespace
+{
+    /// Echoes the request body back, inline.
+    wazuh::uds_http::RouteHandler bodyEchoHandler()
+    {
+        return [](std::shared_ptr<const HttpRequest> request, std::shared_ptr<IHttpResponder> responder)
+        {
+            responder->send(HttpResponse::json(200, request->body));
+        };
+    }
+
+    /// A request head that carries an expectation and declares @p length body bytes.
+    std::string headExpecting(const std::string& path, std::size_t length, const std::string& expectation)
+    {
+        return "POST " + path + " HTTP/1.1\r\nHost: localhost\r\nContent-Type: application/json\r\n" +
+               "Content-Length: " + std::to_string(length) + "\r\nExpect: " + expectation +
+               "\r\nConnection: close\r\n\r\n";
+    }
+
+    constexpr auto INTERIM_CONTINUE = "HTTP/1.1 100 Continue\r\n\r\n";
+
+    /// The final response of a stream that may start with one interim 100.
+    std::string finalStatusLine(const std::string& raw)
+    {
+        auto start = raw.rfind(INTERIM_CONTINUE, 0) == 0 ? std::string(INTERIM_CONTINUE).size() : 0;
+        return raw.substr(start, raw.find("\r\n", start) - start);
+    }
+} // namespace
+
+// A handler that needs exactly one occurrence of a header can tell a repeated one apart.
+TEST(UdsHttpServerTest, HandlerSeesDuplicateHeaderNames)
+{
+    const auto path = uniqueSocketPath("dup");
+    std::unordered_set<std::string> seen;
+    std::string lastValue;
+
+    auto server = makeUdsHttpServer();
+    server->addRoute(Method::Post,
+                     "/events",
+                     [&](std::shared_ptr<const HttpRequest> request, std::shared_ptr<IHttpResponder> responder)
+                     {
+                         seen = request->duplicateHeaders;
+                         lastValue = request->headers.at("x-wazuh-agent-id");
+                         responder->send(HttpResponse::json(200, "{}"));
+                     });
+    server->start(configFor(path));
+
+    const auto response = sendRaw(path,
+                                  "POST /events HTTP/1.1\r\nHost: localhost\r\nX-Wazuh-Agent-Id: 001\r\n"
+                                  "X-Wazuh-Agent-Id: 002\r\nContent-Length: 0\r\nConnection: close\r\n\r\n");
+
+    ASSERT_EQ(200, response.status);
+    EXPECT_EQ(std::unordered_set<std::string> {"x-wazuh-agent-id"}, seen);
+    EXPECT_EQ("002", lastValue);
+}
+
+// Off by default: the wire stays exactly as it was for every existing consumer.
+TEST(UdsHttpServerTest, ExpectContinueOffSendsNoInterimResponse)
+{
+    const auto path = uniqueSocketPath("exoff");
+    auto server = makeUdsHttpServer();
+    server->addRoute(Method::Post, "/events", bodyEchoHandler());
+    server->start(configFor(path));
+
+    const std::string body {R"({"a":1})"};
+    const auto result = sendHeadThenBody(
+        path, headExpecting("/events", body.size(), "100-continue"), body, std::chrono::milliseconds {300});
+
+    ASSERT_TRUE(result.connected);
+    EXPECT_TRUE(result.beforeBody.empty()) << result.beforeBody;
+    EXPECT_EQ(0U, result.raw.rfind("HTTP/1.1 200 ", 0)) << result.raw;
+}
+
+TEST(UdsHttpServerTest, ExpectContinueOnSendsInterimThenFinal)
+{
+    const auto path = uniqueSocketPath("exon");
+    auto config = configFor(path);
+    config.expectContinue = true;
+    auto server = makeUdsHttpServer();
+    server->addRoute(Method::Post, "/events", bodyEchoHandler());
+    server->start(config);
+
+    const std::string body {R"({"echo":"me"})"};
+    const auto result = sendHeadThenBody(
+        path, headExpecting("/events", body.size(), "100-continue"), body, std::chrono::milliseconds {300});
+
+    ASSERT_TRUE(result.connected);
+    EXPECT_EQ(INTERIM_CONTINUE, result.beforeBody) << "the interim answer arrives before the body is sent";
+    EXPECT_EQ("HTTP/1.1 200 OK", finalStatusLine(result.raw)) << result.raw;
+    EXPECT_NE(std::string::npos, result.raw.find("\r\n\r\n" + body)) << "the final response carries the echoed body";
+}
+
+// Refused at the head: the peer learns it before sending a body it would only have to discard.
+TEST(UdsHttpServerTest, ExpectContinueOnOversizeAnswers413WithoutInterim)
+{
+    const auto path = uniqueSocketPath("ex413");
+    auto config = configFor(path);
+    config.expectContinue = true;
+    config.maxBodySize = 16;
+    auto server = makeUdsHttpServer();
+    server->addRoute(Method::Post, "/events", bodyEchoHandler());
+    server->start(config);
+
+    const auto result =
+        sendHeadThenBody(path, headExpecting("/events", 1024, "100-continue"), "", std::chrono::milliseconds {300});
+
+    ASSERT_TRUE(result.connected);
+    EXPECT_EQ(0U, result.beforeBody.rfind("HTTP/1.1 413 ", 0)) << result.beforeBody;
+    EXPECT_EQ(std::string::npos, result.raw.find("100 Continue"));
+}
+
+TEST(UdsHttpServerTest, ExpectContinueOnBudgetExhaustedAnswers503WithoutInterim)
+{
+    const auto path = uniqueSocketPath("ex503");
+    auto config = configFor(path);
+    config.expectContinue = true;
+    config.maxBodySize = 64 * 1024;
+    config.maxInFlightBytes = config.maxBodySize + (16U * 1024U); // room for exactly one request
+    auto server = makeUdsHttpServer();
+    server->addRoute(Method::Post, "/events", bodyEchoHandler());
+    server->start(config);
+
+    // The first request is admitted and holds its reservation while its body never comes.
+    asio::io_context ioc;
+    asio::local::stream_protocol::socket holder {ioc};
+    holder.connect(asio::local::stream_protocol::endpoint {path});
+    asio::write(holder, asio::buffer(headExpecting("/events", 48 * 1024, "100-continue")));
+    std::this_thread::sleep_for(std::chrono::milliseconds {200});
+
+    const auto result = sendHeadThenBody(
+        path, headExpecting("/events", 48 * 1024, "100-continue"), "", std::chrono::milliseconds {300});
+
+    ASSERT_TRUE(result.connected);
+    EXPECT_EQ(0U, result.beforeBody.rfind("HTTP/1.1 503 ", 0)) << result.beforeBody;
+    EXPECT_EQ(std::string::npos, result.raw.find("100 Continue"));
+
+    std::error_code ignore;
+    holder.close(ignore);
+}
+
+// The body is already complete when the head is admitted: no interim answer is owed.
+TEST(UdsHttpServerTest, ExpectContinueOnBodyAlreadySentSkipsInterim)
+{
+    const auto path = uniqueSocketPath("exall");
+    auto config = configFor(path);
+    config.expectContinue = true;
+    auto server = makeUdsHttpServer();
+    server->addRoute(Method::Post, "/events", bodyEchoHandler());
+    server->start(config);
+
+    const std::string body {R"({"b":2})"};
+    const auto response = sendRaw(path, headExpecting("/events", body.size(), "100-continue") + body);
+
+    ASSERT_TRUE(response.connected);
+    EXPECT_EQ(200, response.status) << response.raw;
+    EXPECT_EQ(body, response.body);
+}
+
+// The body follows the head at once and the handler answers inline, so the final response can
+// become ready while the interim write is still in flight. Every stream must still be one optional
+// interim answer followed by exactly one final response.
+TEST(UdsHttpServerTest, ExpectContinueOnNeverOverlapsWrites)
+{
+    const auto path = uniqueSocketPath("exrace");
+    auto config = configFor(path);
+    config.expectContinue = true;
+    config.ioThreads = 4;
+    auto server = makeUdsHttpServer();
+    server->addRoute(Method::Post, "/events", bodyEchoHandler());
+    server->start(config);
+
+    const std::string body(2048, 'z');
+    for (int i = 0; i < 200; ++i)
+    {
+        const auto result = sendHeadThenBody(
+            path, headExpecting("/events", body.size(), "100-continue"), body, std::chrono::milliseconds {0});
+        ASSERT_TRUE(result.connected);
+        ASSERT_EQ("HTTP/1.1 200 OK", finalStatusLine(result.raw)) << "iteration " << i << ": " << result.raw;
+        ASSERT_EQ(result.raw.find("HTTP/1.1 200 "), result.raw.rfind("HTTP/1.1 200 ")) << "one final response only";
+        ASSERT_EQ(body.size(), result.raw.size() - result.raw.find("\r\n\r\n", result.raw.find("HTTP/1.1 200 ")) - 4);
+    }
+}
+
+TEST(UdsHttpServerTest, ExpectContinueIgnoresOtherExpectations)
+{
+    const auto path = uniqueSocketPath("exother");
+    auto config = configFor(path);
+    config.expectContinue = true;
+    auto server = makeUdsHttpServer();
+    server->addRoute(Method::Post, "/events", bodyEchoHandler());
+    server->start(config);
+
+    const std::string body {"{}"};
+    const auto result = sendHeadThenBody(
+        path, headExpecting("/events", body.size(), "something-else"), body, std::chrono::milliseconds {300});
+
+    ASSERT_TRUE(result.connected);
+    EXPECT_TRUE(result.beforeBody.empty()) << result.beforeBody;
+    EXPECT_EQ(0U, result.raw.rfind("HTTP/1.1 200 ", 0)) << result.raw;
 }
