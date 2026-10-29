@@ -779,15 +779,32 @@ static int container_row_sync_flag(const cJSON* row, int operation)
      * row's own stored flag, so a row the manager never saw still reports no
      * deletion, and one it did see is still withdrawn. Suppressing that would
      * strand the row on the manager with nothing left to remove it. */
+    const cJSON* sync_json = cJSON_GetObjectItem(row, "sync");
+    const int stored_sync = cJSON_IsNumber(sync_json) ? sync_json->valueint : 0;
+
     if (has_container && operation != OPERATION_DELETE
             && !fim_container_is_admitted(id_json->valuestring)) {
-        return 0;
+        /* Withhold the document -- but a row the manager ALREADY holds may not
+         * be demoted on the strength of this check.
+         *
+         * Returning 0 writes that 0 to the stored column, and it is a 1 -> 0
+         * with no DELETE behind it: updateContainerReporting() retracts by
+         * selecting sync=1, so the row drops out of the only query that could
+         * ever withdraw it and the manager keeps the document for good. The
+         * budget never does this -- container_budget_decide() keeps a modified
+         * reported row reported -- so this gate was the one way it could
+         * happen, and admission now changes at run time from the resolver
+         * thread, so a file event lands inside that window routinely
+         * (#37532 / R6, and N7 of the previous round).
+         *
+         * Leave the column alone instead. The reconciliation that follows the
+         * de-admission still sees sync=1 and retracts the row properly, which
+         * is the DELETE that pairs the demotion. */
+        return (stored_sync == 1) ? FIM_CONTAINER_SYNC_UNCHANGED : 0;
     }
 
     const int limit = (host_config() != NULL) ? host_config()->container_file_limit : 0;
 
-    const cJSON* sync_json = cJSON_GetObjectItem(row, "sync");
-    const int stored_sync = cJSON_IsNumber(sync_json) ? sync_json->valueint : 0;
     if (has_container && operation == OPERATION_DELETE && stored_sync == 0) {
         return 0;
     }
@@ -987,7 +1004,15 @@ int fim_container_recover_row(const cJSON* row)
                                                 (uint64_t)cJSON_GetNumberValue(version));
     os_free(id);
     cJSON_free(json);
-    return result;
+
+    /* Recovery is the one caller for which "withheld" does NOT mean the manager
+     * may still hold the document: it re-sends into an index the manager has
+     * just cleared, so a row withheld here is a row the manager does not have,
+     * and sync=0 is simply the truth. FIM_CONTAINER_SYNC_UNCHANGED exists to
+     * protect a document that is still out there, which on this path there is
+     * not -- and passing it up would make recovery log a failure and demote the
+     * row anyway, for a case that is neither a failure nor a surprise. */
+    return (result == FIM_CONTAINER_SYNC_UNCHANGED) ? 0 : result;
 }
 
 /* Host FIM's own alert vocabulary. Duplicated from file.c's static table

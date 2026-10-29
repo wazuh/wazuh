@@ -86,7 +86,10 @@ extern "C" bool container_reporting_test_persist(const char* id, int operation, 
     if (reject_persistence)
         return false;
 
-    if (sync_flag)
+    /* == 1, not truthiness: validate_and_persist_fim_event() sends only on
+     * exactly 1, and the flag has negative values that mean "do not write the
+     * column" rather than "report this". */
+    if (sync_flag == 1)
         persisted.emplace_back(id, operation);
 
     return true;
@@ -296,6 +299,34 @@ TEST_F(ContainerReportingTest, RunTimeAdmissionPromotesAndDoesNotOnlyRetract)
     EXPECT_EQ(persisted[0], (std::pair<std::string, int> {"b:/etc/one", OPERATION_DELETE}));
     EXPECT_EQ(syncFlag("b", "/etc/one"), 0);
     EXPECT_EQ(syncFlag("a", "/etc/one"), 1);
+}
+
+TEST_F(ContainerReportingTest, AnUnadmittedContainersModificationNeverDemotesAReportedRow)
+{
+    container_reporting_test_host(0);
+
+    // b is known but may not report. Admission now changes at run time from the
+    // resolver thread, so a file event for b can land at any moment after this.
+    const char* known[] = {"a", "b"};
+    const char* onlyA[] = {"a"};
+    fim_container_set_admission(known, 2, onlyA, 1);
+    persisted.clear();
+
+    // A row the manager ALREADY holds (sync=1), modified while b is withheld.
+    // Writing 0 to its column here would be a 1 -> 0 with no DELETE behind it,
+    // and updateContainerReporting() retracts by selecting sync=1 -- so the row
+    // would drop out of the only query that could ever withdraw it.
+    const char* reported = R"({"container_id":"b","path":"/etc/one","version":1,"size":1,"sync":1})";
+    EXPECT_EQ(fim_persist_baseline_row("b:/etc/one", OPERATION_MODIFY, "wazuh-states-fim-files", reported, 2),
+              FIM_CONTAINER_SYNC_UNCHANGED)
+            << "the stored column must be left for the retraction to find";
+    EXPECT_TRUE(persisted.empty()) << "a withheld container still reports nothing";
+
+    // A row the manager never had is plainly withheld, exactly as before.
+    const char* unreported = R"({"container_id":"b","path":"/etc/two","version":1,"size":1,"sync":0})";
+    EXPECT_EQ(fim_persist_baseline_row("b:/etc/two", OPERATION_MODIFY, "wazuh-states-fim-files", unreported, 2), 0)
+            << "nothing is owed for a row the manager never saw";
+    EXPECT_TRUE(persisted.empty());
 }
 
 TEST_F(ContainerReportingTest, FirstScanWithholdsAndUnavailableConnectorKeepsRows)

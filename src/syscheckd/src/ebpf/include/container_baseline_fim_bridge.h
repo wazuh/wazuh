@@ -208,12 +208,22 @@ int fim_container_is_admitted(const char* container_id);
 int fim_container_admission_is_stale(const char* container_id);
 
 /**
+ * @brief The stored sync column must be left exactly as it is.
+ *
+ * Returned when a row is withheld for a reason that says nothing about whether
+ * the manager already holds it. Negative, so the existing `>= 0` guards every
+ * caller already applies before writing the column do the right thing with it.
+ */
+#define FIM_CONTAINER_SYNC_UNCHANGED (-2)
+
+/**
  * @brief Build one container row's stateful document and offer it to the manager.
  *
  * @return The reporting decision -- 1 reported, 0 withheld by the budget -- which
  *         the caller writes back to the row's sync column once the transaction
  *         holding it has closed. -1 when the document could not be built or did
- *         not validate, in which case nothing must be written back.
+ *         not validate, and FIM_CONTAINER_SYNC_UNCHANGED when the column must be
+ *         left alone; in neither case may anything be written back.
  */
 int fim_persist_baseline_row(const char* id,
                              int operation,
