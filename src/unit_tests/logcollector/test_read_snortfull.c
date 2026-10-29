@@ -1248,8 +1248,9 @@ void test_read_snortfull_unknown_line_after_classification(void **state) {
 /**
  * Test: the hash context cannot be copied at the header of the second alert (no memory).
  * The reader could not go back to that header later, so it does not start the alert: it stops before the
- * header, stores the offset and the hash up to there, and reports the error. The next read starts at that
- * header and sends the alert once, without reading the first alert again.
+ * header, stores the offset and the hash up to there, and reports the error. The file is not badly formatted,
+ * so the read does not fail. The next read starts at that header and sends the alert once, without reading the
+ * first alert again.
  */
 void test_read_snortfull_hash_copy_fails_at_header(void **state) {
     logreader lf = {0};
@@ -1268,7 +1269,7 @@ void test_read_snortfull_hash_copy_fails_at_header(void **state) {
 
     read_snortfull(&lf, &rc, 0);
 
-    assert_int_equal(rc, -1);
+    assert_int_equal(rc, 0);
     assert_int_equal(kept_offset, (int64_t) strlen(ALERT("1001")));
 
     expect_read_from(kept_offset);

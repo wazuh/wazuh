@@ -312,7 +312,6 @@ void *read_snortfull(logreader *lf, int *rc, int drop_it) {
         if (is_alert_header(str)) {
             discard_open_alert(&alert, lf->file);
             if (!save_alert_start(&state)) {
-                *rc = -1;
                 line_left_unread = true;
                 break;
             }
