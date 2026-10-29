@@ -101,13 +101,18 @@ runs:
         fi
         # The newest run may be a different package flavor; take the newest one with a matching artifact.
         errf="$(mktemp)"
+        trap 'rm -f "${errf}"' EXIT
         for id in ${ids}; do
-          listing="$(aws s3 ls "${BUCKET}/${REPO}/${PRODUCER_WF}/${id}/" --recursive 2>"${errf}" || true)"
-          if [ -s "${errf}" ]; then
+          rc=0
+          listing="$(aws s3 ls "${BUCKET}/${REPO}/${PRODUCER_WF}/${id}/" --recursive 2>"${errf}")" || rc=$?
+          # aws s3 ls exits 1 with empty stderr for an empty prefix; any other failure is real, and warnings on success are ignored.
+          if [ "${rc}" -ne 0 ] && { [ "${rc}" -ne 1 ] || [ -s "${errf}" ]; }; then
             cat "${errf}"
             echo "::error::Could not list the S3 artifacts of ${PRODUCER_WF} run ${id}"
             exit 1
           fi
+          # aws.exe on Windows ends lines with CRLF, which breaks the end-of-line anchor below.
+          listing="$(tr -d '\r' <<< "${listing}")"
           if grep -qE "/${PRODUCER_WF}/${id}/${NAME_RE}(\.zip)?$" <<< "${listing}"; then
             echo "Resolved build run ${id} on branch ${BASE_BRANCH}"
             echo "build_run_id=${id}" >> "$GITHUB_OUTPUT"
