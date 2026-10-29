@@ -9,6 +9,10 @@ All notable changes to this project will be documented in this file.
 
 - Optimized wazuh-db startup by executing agent schema creation in a single transaction. ([#40458](https://github.com/wazuh/wazuh/pull/40458))
 
+#### Fixed
+
+- Fixed the configuration upload validation to also apply the `upload_configuration.remote_commands` setting to the `prefilter_cmd` option of the `syscheck` section. ([#40792](https://github.com/wazuh/wazuh/pull/40792))
+
 ### Agent
 
 #### Fixed
