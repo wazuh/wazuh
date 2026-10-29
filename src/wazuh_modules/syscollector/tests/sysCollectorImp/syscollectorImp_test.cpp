@@ -7172,6 +7172,7 @@ TEST_F(SyscollectorImpTest, AdmissionRetractsAndRestoresRetainedRows)
         module.m_admittedContainers.erase("b");
         module.m_admissionReconciled = false;
         module.setAdmittedContainers({{"a", true}, {"b", false}});
+        module.retractDeAdmittedContainers();
         ASSERT_EQ(events.size(), 1u);
 
         if (events.size() == 1u)
@@ -7196,6 +7197,7 @@ TEST_F(SyscollectorImpTest, AdmissionRetractsAndRestoresRetainedRows)
         EXPECT_EQ(flags(), (std::map<std::string, int> {{"", 1}, {"a", 1}, {"b", 0}}));
         EXPECT_TRUE(module.m_admissionReconciled);
         module.setAdmittedContainers({{"a", true}, {"b", false}});
+        module.retractDeAdmittedContainers();
         EXPECT_EQ(events.size(), 1u) << "unchanged admission must not repeat DELETEs";
         EXPECT_FALSE(module.m_admissionRetractionPending)
                 << "a cap that is merely still biting owes no second pass over every table";
@@ -7541,9 +7543,11 @@ TEST_F(SyscollectorImpTest, ContainerBaselineAdmissionAndCleanup)
     auto persist = module.m_persistDiffFunction;
     module.m_persistDiffFunction = {};
     module.setAdmittedContainers({{"b", false}});
+    module.retractDeAdmittedContainers();
     EXPECT_EQ(flags().at("b"), 1) << "failed retraction must retain the local reporting flag";
     module.m_persistDiffFunction = persist;
     module.setAdmittedContainers({{"b", false}});
+    module.retractDeAdmittedContainers();
     EXPECT_EQ(flags().at("b"), 0);
     module.m_containerDocumentLimits["unknown-index"] = 1;
     module.promoteItemsAfterScan();
@@ -7557,6 +7561,127 @@ TEST_F(SyscollectorImpTest, ContainerBaselineAdmissionAndCleanup)
     module.m_containerDocumentLimits.clear();
     module.m_containerDocumentCounts.clear();
     module.m_admittedContainers.clear();
+    module.m_admissionKnown = false;
+    module.m_containerAdmissionWithholding = false;
+    module.m_containerRowsPurged = false;
+#else
+    GTEST_SKIP() << "Container baseline transport is Linux-only";
+#endif
+}
+
+TEST_F(SyscollectorImpTest, RetractionSeesRowsReportedInTheSamePass)
+{
+#if defined(__linux__)
+    struct ResetHooks
+    {
+        ~ResetHooks()
+        {
+            containerScanHook = {};
+            containerListHook = {};
+        }
+    } resetHooks;
+    const auto info = std::make_shared<MockSysInfo>();
+    EXPECT_CALL(*info, releaseThreadResources()).Times(testing::AnyNumber());
+    auto& module = Syscollector::instance();
+    std::vector<Operation_t> events;
+    module.init(
+        info,
+        reportFunction,
+        [&events](const std::string&, Operation_t op, const std::string&, const std::string&, uint64_t)
+    {
+        events.push_back(op);
+    },
+    logFunction,
+    SYSCOLLECTOR_DB_PATH,
+    "",
+    "",
+    3600,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false);
+    module.m_containerBaseline = true;
+    module.m_containerRowsPurged = false;
+    module.m_containerDocumentCounts.clear();
+    module.m_knownContainerIds.clear();
+    module.m_admittedContainers.clear();
+    module.m_admissionKnown = false;
+    module.m_admissionReconciled = false;
+
+    // Unlimited is the whole precondition. With a per-container cap set, a new
+    // row is withheld as it is scanned and only promoted after the listing, so
+    // promotion already sees the admission this pass settled on and a withdrawn
+    // container is simply never promoted. At 0 the row is reported as it is
+    // scanned and its sync=1 is deferred to the end of the pass -- which is the
+    // only way a row the manager already holds can still read sync=0 when the
+    // retraction goes looking for it.
+    module.m_containerDocumentLimits["wazuh-states-inventory-processes"] = 0;
+
+    // b is withdrawn by the very listing that follows the scan reporting it.
+    // Nothing was known about admission beforehand, so the scan reports it:
+    // "not heard from the connector yet" means report, not withhold.
+    std::map<std::string, bool> admitted = {{"a", true}, {"b", false}};
+    containerListHook = [&](cb_container_id_sink_t sink, void* ctx)
+    {
+        for (const auto& [id, allowed] : admitted) sink(id.c_str(), allowed, ctx);
+
+        return static_cast<int>(admitted.size());
+    };
+    containerScanHook = [&](cb_dbsync_row_sink_t sink, cb_container_status_sink_t status, void* ctx)
+    {
+        for (const auto& id :
+                {
+                    std::string {"a"}, std::string {"b"}
+                })
+        {
+            const nlohmann::json row = {{"container_id", id}, {"pid", "123"}, {"name", "worker"}};
+            sink(id.c_str(), PROCESSES_TABLE, row.dump().c_str(), ctx);
+            cb_container_status_t outcome {};
+            outcome.container_id = id.c_str();
+            status(&outcome, ctx);
+        }
+
+        return 2;
+    };
+    auto flags = [&]()
+    {
+        std::map<std::string, int> rows;
+        auto query = SelectQuery::builder().table(PROCESSES_TABLE).columnList({"container_id", "sync"}).build();
+        module.m_spDBSync->selectRows(query.query(),
+                                      [&](ReturnTypeCallback, const nlohmann::json & row)
+        {
+            rows[row.at("container_id").get<std::string>()] = row.at("sync").get<int>();
+        });
+        return rows;
+    };
+
+    module.runContainerBaselinePass();
+
+    // The DELETE is owed in THIS pass. Retracting from inside the scan read
+    // `WHERE sync=1` before the line that sets it, found nothing for b, and
+    // cleared the latch -- so b's document stayed on the manager with nothing
+    // left that could ever remove it.
+    EXPECT_EQ(std::count(events.begin(), events.end(), OPERATION_DELETE), 1)
+            << "a container withdrawn in the pass that reported it must be retracted in that pass";
+    EXPECT_EQ(flags(), (std::map<std::string, int> {{"a", 1}, {"b", 0}}));
+    EXPECT_FALSE(module.m_admissionRetractionPending)
+            << "the obligation was discharged, so nothing is owed";
+
+    module.destroy();
+    module.m_containerDocumentLimits.clear();
+    module.m_containerDocumentCounts.clear();
+    module.m_admittedContainers.clear();
+    module.m_knownContainerIds.clear();
     module.m_admissionKnown = false;
     module.m_containerAdmissionWithholding = false;
     module.m_containerRowsPurged = false;

@@ -3074,6 +3074,12 @@ void Syscollector::scan()
     // can filter by sync=1 and only include items within document limits
     updateSyncFlagInDB(itemsToUpdateSync, 1);
 
+    // The coupled cadence (<container_baseline_interval> = 0) runs the container
+    // pass from here instead of runContainerBaselinePass(), so the retraction it
+    // may have queued has to be discharged here too -- and for the same reason,
+    // after the flags above. It costs a predicate when nothing is owed.
+    retractDeAdmittedContainers();
+
     // Promote items to fill available slots after scan completes
     // This calculates available space (limit - current count) and promotes
     // unsynced items with deterministic ordering
