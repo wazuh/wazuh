@@ -24,7 +24,7 @@ try:
     from google.api_core import exceptions as google_exceptions
     import pytz
 except ImportError as e:
-    raise exceptions.GCloudError(errcode=1003, package=e.name)
+    raise exceptions.GCloudError(errcode=1003, error=e) from e
 
 
 class WazuhGCloudBucket(WazuhGCloudIntegration):
