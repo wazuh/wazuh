@@ -12,7 +12,6 @@
 #ifndef _NETWORK_LINUX_ADDRESS_RESOLVER_H
 #define _NETWORK_LINUX_ADDRESS_RESOLVER_H
 
-#include <arpa/inet.h>
 #include <cerrno>
 #include <ifaddrs.h>
 #include <linux/netlink.h>
@@ -30,6 +29,14 @@
 #include <utility>
 #include <vector>
 #include "stringHelper.h"
+#include "networkHelper.h"
+
+// The kernel flags a dump when the addresses change while it runs; it is worth asking again.
+class NetlinkDumpInterrupted final : public std::runtime_error
+{
+    public:
+        using std::runtime_error::runtime_error;
+};
 
 struct IPv4AddressRecord
 {
@@ -75,12 +82,6 @@ class NetworkLinuxAddressResolver final
                     return m_fd;
                 }
         };
-
-        static std::string ipv4ToString(const void* address)
-        {
-            char buffer[INET_ADDRSTRLEN] {};
-            return inet_ntop(AF_INET, address, buffer, sizeof(buffer)) ? buffer : "";
-        }
 
         static std::vector<IPv4AddressRecord> requestDump()
         {
@@ -151,19 +152,33 @@ class NetworkLinuxAddressResolver final
                     continue;
                 }
 
+                // The kernel can set the flag on any message of the dump, NLMSG_DONE included.
+                if (header->nlmsg_flags & NLM_F_DUMP_INTR)
+                {
+                    throw NetlinkDumpInterrupted { "Netlink address dump interrupted" };
+                }
+
                 if (NLMSG_DONE == header->nlmsg_type)
                 {
+                    // NLMSG_DONE carries the dump's own result.
+                    int result { 0 };
+
+                    if (header->nlmsg_len >= NLMSG_LENGTH(sizeof(result)))
+                    {
+                        std::memcpy(&result, NLMSG_DATA(header), sizeof(result));
+                    }
+
+                    if (result < 0)
+                    {
+                        throw std::runtime_error { "Netlink address dump failed" };
+                    }
+
                     return false;
                 }
 
                 if (NLMSG_ERROR == header->nlmsg_type)
                 {
                     throw std::runtime_error { "Netlink address dump failed" };
-                }
-
-                if (header->nlmsg_flags & NLM_F_DUMP_INTR)
-                {
-                    throw std::runtime_error { "Netlink address dump interrupted" };
                 }
 
                 if (RTM_NEWADDR != header->nlmsg_type || header->nlmsg_len < NLMSG_LENGTH(sizeof(ifaddrmsg)))
@@ -189,11 +204,11 @@ class NetworkLinuxAddressResolver final
 
                     if (IFA_LOCAL == attribute->rta_type && payloadLength >= sizeof(in_addr))
                     {
-                        localAddress = ipv4ToString(RTA_DATA(attribute));
+                        localAddress = Utils::NetworkHelper::IAddressToBinary(AF_INET, RTA_DATA(attribute));
                     }
                     else if (IFA_ADDRESS == attribute->rta_type && payloadLength >= sizeof(in_addr))
                     {
-                        peerAddress = ipv4ToString(RTA_DATA(attribute));
+                        peerAddress = Utils::NetworkHelper::IAddressToBinary(AF_INET, RTA_DATA(attribute));
                     }
                     else if (IFA_LABEL == attribute->rta_type && payloadLength > 0)
                     {
@@ -213,7 +228,7 @@ class NetworkLinuxAddressResolver final
             return true;
         }
 
-        // An interrupted dump is retried: the kernel flags it when the addresses change while it runs.
+        // Only an interrupted dump is retried; any other failure would fail again.
         static std::vector<IPv4AddressRecord> dumpIPv4Addresses()
         {
             for (auto attempt { 1 }; ; ++attempt)
@@ -222,7 +237,7 @@ class NetworkLinuxAddressResolver final
                 {
                     return requestDump();
                 }
-                catch (const std::runtime_error&)
+                catch (const NetlinkDumpInterrupted&)
                 {
                     if (attempt >= DUMP_ATTEMPTS)
                     {
@@ -233,7 +248,9 @@ class NetworkLinuxAddressResolver final
         }
 
         // Link names come from the AF_PACKET entries of the same getifaddrs() snapshot, so they
-        // match the interfaces being reported. if_indextoname() covers a link without one.
+        // match the interfaces being reported. if_indextoname() covers a link without one. An address
+        // whose link cannot be named keeps its slot with an empty name, so the entries after it that
+        // share its label and address still get their own links.
         static IPv4AddressLinks resolveLinks(const std::vector<IPv4AddressRecord>& records, ifaddrs* addresses)
         {
             std::map<unsigned int, std::string> linkNames;
@@ -256,24 +273,28 @@ class NetworkLinuxAddressResolver final
                 {
                     char linkName[IF_NAMESIZE] {};
 
-                    if (!if_indextoname(record.index, linkName))
+                    if (if_indextoname(record.index, linkName))
                     {
-                        continue;
+                        it = linkNames.emplace(record.index, linkName).first;
                     }
-
-                    it = linkNames.emplace(record.index, linkName).first;
                 }
 
+                const auto linkName { linkNames.end() == it ? std::string {} : it->second };
                 // Without IFA_LABEL, getifaddrs() names the address after its link.
-                const auto label { record.label.empty() ? it->second : record.label };
-                links[std::make_pair(label, record.address)].push_back(it->second);
+                const auto label { record.label.empty() ? linkName : record.label };
+
+                if (!label.empty())
+                {
+                    links[std::make_pair(label, record.address)].push_back(linkName);
+                }
             }
 
             return links;
         }
 
         // Regroups the entries kept by NetworkUnixHelper::getNetworks() by the link that holds them,
-        // in getifaddrs() order. Entries not found in links keep the name cut at the first ':'.
+        // in getifaddrs() order. Entries not found in links, or whose link is unnamed, keep the name
+        // cut at the first ':'.
         // getifaddrs() and the dump list the addresses in the same kernel order, so entries that share
         // a label and an address take their links in turn.
         static std::map<std::string, std::vector<ifaddrs*>> groupByLink(ifaddrs* addresses,
@@ -298,12 +319,12 @@ class NetworkLinuxAddressResolver final
                 if (ifa->ifa_name && ifa->ifa_addr && AF_INET == ifa->ifa_addr->sa_family)
                 {
                     const auto key { std::make_pair(std::string { ifa->ifa_name },
-                                                    ipv4ToString(&reinterpret_cast<const sockaddr_in*>(ifa->ifa_addr)->sin_addr)) };
+                                                    Utils::NetworkHelper::IAddressToBinary(AF_INET, &reinterpret_cast<const sockaddr_in*>(ifa->ifa_addr)->sin_addr)) };
                     const auto it { links.find(key) };
                     // Counted for unselected entries too, so the positions stay aligned with the dump.
                     const auto position { consumed[key]++ };
 
-                    if (links.end() != it && position < it->second.size())
+                    if (links.end() != it && position < it->second.size() && !it->second[position].empty())
                     {
                         linkName = it->second[position];
                     }

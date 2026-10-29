@@ -11,6 +11,7 @@
 #include <deque>
 #include "gtest/gtest.h"
 #include "network/networkLinuxAddressResolver.h"
+#include "networkUnixHelper.h"
 
 namespace
 {
@@ -33,6 +34,19 @@ namespace
     Attribute labelAttribute(const std::string& label)
     {
         return { IFA_LABEL, std::vector<char>(label.c_str(), label.c_str() + label.size() + 1) };
+    }
+
+    void appendDone(std::vector<char>& buffer, const int result, const unsigned short flags = NLM_F_MULTI)
+    {
+        const auto offset { buffer.size() };
+        buffer.resize(offset + NLMSG_SPACE(sizeof(result)), 0);
+
+        auto header { reinterpret_cast<nlmsghdr*>(buffer.data() + offset) };
+        header->nlmsg_len = NLMSG_LENGTH(sizeof(result));
+        header->nlmsg_type = NLMSG_DONE;
+        header->nlmsg_flags = flags;
+        header->nlmsg_seq = SEQUENCE;
+        std::memcpy(NLMSG_DATA(header), &result, sizeof(result));
     }
 
     void appendMessage(std::vector<char>& buffer,
@@ -149,34 +163,38 @@ namespace
             }
     };
 
-    std::vector<std::string> missingHostAddresses()
-    {
-        ifaddrs* addresses { nullptr };
+    using IPv4Keys = std::vector<std::pair<std::string, std::string>>;
 
-        if (0 != getifaddrs(&addresses))
+    // (label, address) of every host IPv4 address, in getifaddrs() order and in dump order.
+    std::pair<IPv4Keys, IPv4Keys> hostIPv4Keys()
+    {
+        ifaddrs* list { nullptr };
+
+        if (0 != getifaddrs(&list))
         {
-            return { "getifaddrs() failed" };
+            throw std::runtime_error { "getifaddrs() failed" };
         }
 
-        const auto links { NetworkLinuxAddressResolver::resolveLinks(NetworkLinuxAddressResolver::dumpIPv4Addresses(), addresses) };
-        std::vector<std::string> missing;
+        const std::unique_ptr<ifaddrs, Utils::IfAddressSmartDeleter> addresses { list };
+        IPv4Keys snapshot;
 
-        for (auto ifa { addresses }; ifa; ifa = ifa->ifa_next)
+        for (auto ifa { addresses.get() }; ifa; ifa = ifa->ifa_next)
         {
-            if (ifa->ifa_addr && AF_INET == ifa->ifa_addr->sa_family)
+            if (ifa->ifa_name && ifa->ifa_addr && AF_INET == ifa->ifa_addr->sa_family)
             {
-                char address[INET_ADDRSTRLEN] {};
-                inet_ntop(AF_INET, &reinterpret_cast<sockaddr_in*>(ifa->ifa_addr)->sin_addr, address, sizeof(address));
-
-                if (links.end() == links.find(std::make_pair(std::string { ifa->ifa_name }, std::string { address })))
-                {
-                    missing.push_back(std::string { ifa->ifa_name } + " " + address);
-                }
+                snapshot.emplace_back(ifa->ifa_name, Utils::NetworkHelper::IAddressToBinary(AF_INET, &reinterpret_cast<sockaddr_in*>(ifa->ifa_addr)->sin_addr));
             }
         }
 
-        freeifaddrs(addresses);
-        return missing;
+        IPv4Keys dump;
+
+        for (const auto& record : NetworkLinuxAddressResolver::dumpIPv4Addresses())
+        {
+            char linkName[IF_NAMESIZE] {};
+            dump.emplace_back(record.label.empty() && if_indextoname(record.index, linkName) ? linkName : record.label, record.address);
+        }
+
+        return { snapshot, dump };
     }
 }
 
@@ -291,7 +309,47 @@ TEST(NetworkLinuxAddressResolverTest, InterruptedDumpThrows)
     appendMessage(buffer, RTM_NEWADDR, AF_INET, 2, { ipv4Attribute(IFA_LOCAL, "172.20.0.3") }, NLM_F_MULTI | NLM_F_DUMP_INTR);
 
     std::vector<IPv4AddressRecord> records;
-    EXPECT_THROW(NetworkLinuxAddressResolver::parseAddressMessages(buffer.data(), buffer.size(), SEQUENCE, records), std::runtime_error);
+    EXPECT_THROW(NetworkLinuxAddressResolver::parseAddressMessages(buffer.data(), buffer.size(), SEQUENCE, records), NetlinkDumpInterrupted);
+}
+
+TEST(NetworkLinuxAddressResolverTest, InterruptedDoneThrows)
+{
+    std::vector<char> buffer;
+    appendMessage(buffer, RTM_NEWADDR, AF_INET, 2, { ipv4Attribute(IFA_LOCAL, "172.20.0.3") });
+    appendDone(buffer, 0, NLM_F_MULTI | NLM_F_DUMP_INTR);
+
+    std::vector<IPv4AddressRecord> records;
+    EXPECT_THROW(NetworkLinuxAddressResolver::parseAddressMessages(buffer.data(), buffer.size(), SEQUENCE, records), NetlinkDumpInterrupted);
+}
+
+TEST(NetworkLinuxAddressResolverTest, FailedDoneThrows)
+{
+    std::vector<char> buffer;
+    appendDone(buffer, -ENOBUFS);
+
+    std::vector<IPv4AddressRecord> records;
+
+    try
+    {
+        NetworkLinuxAddressResolver::parseAddressMessages(buffer.data(), buffer.size(), SEQUENCE, records);
+        FAIL() << "A failed dump must throw";
+    }
+    catch (const NetlinkDumpInterrupted&)
+    {
+        FAIL() << "A failed dump must not be retried";
+    }
+    catch (const std::runtime_error&)
+    {
+    }
+}
+
+TEST(NetworkLinuxAddressResolverTest, SuccessfulDoneEndsTheDump)
+{
+    std::vector<char> buffer;
+    appendDone(buffer, 0);
+
+    std::vector<IPv4AddressRecord> records;
+    EXPECT_FALSE(NetworkLinuxAddressResolver::parseAddressMessages(buffer.data(), buffer.size(), SEQUENCE, records));
 }
 
 TEST(NetworkLinuxAddressResolverTest, ResolvesLinkNamesFromTheSnapshot)
@@ -337,20 +395,24 @@ TEST(NetworkLinuxAddressResolverTest, KeepsEveryLinkOfASharedLabelAndAddress)
     EXPECT_EQ(expected, NetworkLinuxAddressResolver::resolveLinks(records, list.head()));
 }
 
-TEST(NetworkLinuxAddressResolverTest, SkipsAddressOfAnUnknownLink)
+TEST(NetworkLinuxAddressResolverTest, KeepsTheSlotOfAnUnknownLink)
 {
     IfaddrsList list;
     list.addLink("eth0", 0, 2);
+    list.addLink("d1", 0, 5);
 
     const std::vector<IPv4AddressRecord> records
     {
         { 2, "", "172.20.0.3" },
         { 0, "vip", "192.0.2.10" },
+        { 5, "vip", "192.0.2.10" },
+        { 0, "", "198.51.100.1" },
     };
 
     const IPv4AddressLinks expected
     {
         { { "eth0", "172.20.0.3" }, { "eth0" } },
+        { { "vip", "192.0.2.10" }, { "", "d1" } },
     };
     EXPECT_EQ(expected, NetworkLinuxAddressResolver::resolveLinks(records, list.head()));
 }
@@ -398,14 +460,19 @@ TEST(NetworkLinuxAddressResolverTest, GroupsLabelledAddressesByLink)
 TEST(NetworkLinuxAddressResolverTest, SharedLabelAndAddressGoToEachLinkInTurn)
 {
     IfaddrsList list;
+    list.addLink("lo", IFF_LOOPBACK, 1);
     const auto d0 { list.addLink("d0", 0, 4) };
     const auto d1 { list.addLink("d1", 0, 5) };
+    // Not selected by the helper, but it still takes the first link of the key.
+    list.addIPv4("vip", IFF_LOOPBACK, "10.0.0.5");
     const auto d0Vip { list.addIPv4("vip", 0, "10.0.0.5") };
     const auto d1Vip { list.addIPv4("vip", 0, "10.0.0.5") };
+    // Beyond the links in the dump: keeps its label.
+    const auto extraVip { list.addIPv4("vip", 0, "10.0.0.5") };
 
     const IPv4AddressLinks links
     {
-        { { "vip", "10.0.0.5" }, { "d0", "d1" } },
+        { { "vip", "10.0.0.5" }, { "lo", "d0", "d1" } },
     };
 
     const auto groups { NetworkLinuxAddressResolver::groupByLink(list.head(), list.helperGroups(), links) };
@@ -414,6 +481,29 @@ TEST(NetworkLinuxAddressResolverTest, SharedLabelAndAddressGoToEachLinkInTurn)
     {
         { "d0", { d0, d0Vip } },
         { "d1", { d1, d1Vip } },
+        { "vip", { extraVip } },
+    };
+    EXPECT_EQ(expected, groups);
+}
+
+TEST(NetworkLinuxAddressResolverTest, UnnamedLinkKeepsLabelGrouping)
+{
+    IfaddrsList list;
+    const auto d1 { list.addLink("d1", 0, 5) };
+    const auto goneVip { list.addIPv4("vip", 0, "10.0.0.5") };
+    const auto d1Vip { list.addIPv4("vip", 0, "10.0.0.5") };
+
+    const IPv4AddressLinks links
+    {
+        { { "vip", "10.0.0.5" }, { "", "d1" } },
+    };
+
+    const auto groups { NetworkLinuxAddressResolver::groupByLink(list.head(), list.helperGroups(), links) };
+
+    const std::map<std::string, std::vector<ifaddrs*>> expected
+    {
+        { "d1", { d1, d1Vip } },
+        { "vip", { goneVip } },
     };
     EXPECT_EQ(expected, groups);
 }
@@ -436,15 +526,17 @@ TEST(NetworkLinuxAddressResolverTest, KeepsLabelGroupingWithoutLinks)
     EXPECT_EQ(expected, groups);
 }
 
-TEST(NetworkLinuxAddressResolverTest, ResolvesEveryHostIPv4Address)
+TEST(NetworkLinuxAddressResolverTest, DumpListsHostIPv4AddressesInGetifaddrsOrder)
 {
-    // The dump and getifaddrs() are two snapshots; compare again before failing in case an address changed in between.
-    auto missing { missingHostAddresses() };
+    // groupByLink() pairs both lists by position. They are two snapshots, so compare again
+    // before failing in case an address changed in between.
+    std::pair<IPv4Keys, IPv4Keys> keys;
+    ASSERT_NO_THROW(keys = hostIPv4Keys());
 
-    if (!missing.empty())
+    if (keys.first != keys.second)
     {
-        missing = missingHostAddresses();
+        ASSERT_NO_THROW(keys = hostIPv4Keys());
     }
 
-    EXPECT_TRUE(missing.empty()) << ::testing::PrintToString(missing);
+    EXPECT_EQ(keys.first, keys.second);
 }
