@@ -273,6 +273,8 @@ TEST_F(SysInfoNetworkBSDTest, Test_ParseGateway_NotDefaultRoute)
     appendRoute(table, 1, RTF_UP | RTF_GATEWAY | RTF_BLACKHOLE, { sockaddrIn6("::"), sockaddrIn6("::1"), netmask(0, 0) });
     // Default route without RTF_GATEWAY
     appendRoute(table, 1, RTF_UP, { sockaddrIn6("::"), sockaddrIn6("::1"), netmask(0, 0) });
+    // Default route that is not up
+    appendRoute(table, 1, RTF_GATEWAY, { sockaddrIn6("::"), sockaddrIn6("::1"), netmask(0, 0) });
 
     EXPECT_EQ("", NetworkBSDInterface::parseGateway(table.data(), table.size(), 1, AF_INET6));
 }

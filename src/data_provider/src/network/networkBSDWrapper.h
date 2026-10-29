@@ -109,7 +109,7 @@ class NetworkBSDInterface final : public INetworkInterfaceWrapper
                 p = msgEnd;
 
                 if ((msg->rtm_addrs & (RTA_DST | RTA_GATEWAY)) != (RTA_DST | RTA_GATEWAY) ||
-                        !(msg->rtm_flags & RTF_GATEWAY) ||
+                        (msg->rtm_flags & (RTF_UP | RTF_GATEWAY)) != (RTF_UP | RTF_GATEWAY) ||
                         (msg->rtm_flags & (RTF_REJECT | RTF_BLACKHOLE)) ||
                         msg->rtm_index != ifIndex)
                 {
