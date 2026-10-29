@@ -192,6 +192,46 @@ namespace fim_container_events
         }
     }
 
+    /* What to do with an admission view the drain has just recomputed. */
+    enum class AdmissionPublish
+    {
+        nothing, /* identical to what is already installed */
+        defer,   /* hold it: not safe to install, or not the whole node yet */
+        install
+    };
+
+    /* Two reasons to hold an admission snapshot back, and one trap in holding it.
+     *
+     * not released  installing runs a reconciliation that reads and writes
+     *               file_entry, and the baseline walk's scoped transaction is
+     *               open until release. Same hazard
+     *               fim_container_events_release() exists for.
+     * not complete  the reply omits running containers the resolver cannot key
+     *               yet. Installing it marks them "known and refused" rather
+     *               than "not heard of", which retracts live rows -- R1, and at
+     *               a cold start the view it merges into is EMPTY, so there is
+     *               no previous answer to protect them either.
+     *
+     * The trap: the caller records the new view whether or not it installs it,
+     * so "publish when it next CHANGES" silently means never on a quiet node --
+     * the change has already been absorbed. `unpublished` is what remembers
+     * that the installed snapshot is behind the view, so the next call that can
+     * install does, with or without a further change (#37532 / R5). */
+    AdmissionPublish decideAdmissionPublish(bool changed, bool unpublished, bool released, bool complete)
+    {
+        if (!changed && !unpublished)
+        {
+            return AdmissionPublish::nothing;
+        }
+
+        if (!released || !complete)
+        {
+            return AdmissionPublish::defer;
+        }
+
+        return AdmissionPublish::install;
+    }
+
     struct ContainerEventDrain::Impl
     {
         explicit Impl(const DrainConfig& cfg)
@@ -599,7 +639,7 @@ namespace fim_container_events
                  * change with no event of its own can reach this view. */
                 applyAdmittedSet(updated, delta.admitted, delta.admittedKnown, delta.complete);
 
-                publishAdmission(updated);
+                publishAdmission(updated, delta.complete);
             }
 
             /* Advanced only after the events have been applied. A crash in between
@@ -626,6 +666,14 @@ namespace fim_container_events
          * fim_container_admission_is_stale() exists to tell apart. */
         std::map<std::string, bool> admission_view;
 
+        /* The installed snapshot is behind admission_view. See
+         * decideAdmissionPublish() for why a "publish on change" rule alone
+         * loses the update that was deferred. */
+        bool admission_unpublished {false};
+
+        /* So the deferral is said once, not every resolver cycle. */
+        bool admission_deferral_logged {false};
+
         /* Hands the view to the FIM side, which owns what to do about it.
          *
          * ONLY when something actually changed: installing it runs a
@@ -643,12 +691,38 @@ namespace fim_container_events
          * installs admission from it, so nothing is lost by waiting: the view is
          * still tracked meanwhile, and the first change AFTER release publishes
          * it. */
-        void publishAdmission(const std::map<std::string, bool>& updated)
+        void publishAdmission(const std::map<std::string, bool>& updated, bool complete)
         {
             const bool changed = (updated != admission_view);
             admission_view = updated;
 
-            if (!changed || !staging.released()) return;
+            const auto decision = decideAdmissionPublish(changed, admission_unpublished, staging.released(), complete);
+
+            if (decision == AdmissionPublish::nothing) return;
+
+            if (decision == AdmissionPublish::defer)
+            {
+                admission_unpublished = true;
+
+                /* Said once, and at a level an operator sees: until this
+                 * clears, containers.synced_limit is not being applied and
+                 * every container reports. The walk used to be relied on to
+                 * install admission in the meantime, and no longer can -- it
+                 * refuses a partial listing for the same reason this does. */
+                if (!complete && staging.released() && !admission_deferral_logged)
+                {
+                    admission_deferral_logged = true;
+                    LogWarn("Container FIM: holding the admission snapshot until every running container is "
+                            "resolved. Until then every container reports and containers.synced_limit is not "
+                            "applied. A container whose cgroup no process reports never resolves, so this "
+                            "state persisting is worth looking into.");
+                }
+
+                return;
+            }
+
+            admission_unpublished = false;
+            admission_deferral_logged = false;
 
             std::vector<const char*> known;
             std::vector<const char*> admitted;
@@ -713,7 +787,7 @@ namespace fim_container_events
 
             syncAllowlist(complete ? router.applyContainerList(containers)
                           : router.applyContainerDelta(upserts));
-            publishAdmission(mergeAdmissionView(admission_view, refs, complete));
+            publishAdmission(mergeAdmissionView(admission_view, refs, complete), complete);
         }
 
         /* Mirror a list refresh into the kernel filter.

@@ -30,6 +30,15 @@ namespace fim_container_events
                           const std::set<std::string>& admitted,
                           bool admittedKnown,
                           bool complete);
+
+    enum class AdmissionPublish
+    {
+        nothing,
+        defer,
+        install
+    };
+
+    AdmissionPublish decideAdmissionPublish(bool changed, bool unpublished, bool released, bool complete);
 } // namespace fim_container_events
 
 namespace
@@ -310,6 +319,34 @@ TEST(ContainerDrainAdmissionView, TheAdmittedSetReachesContainersWithNoEventOfTh
         applyAdmittedSet(view, {}, false, true);
         EXPECT_EQ(view, start);
     }
+}
+
+TEST(ContainerDrainAdmissionView, ADeferredAdmissionSnapshotIsNotLostOnAQuietNode)
+{
+    using fim_container_events::AdmissionPublish;
+    using fim_container_events::decideAdmissionPublish;
+
+    // Nothing to say.
+    EXPECT_EQ(decideAdmissionPublish(false, false, true, true), AdmissionPublish::nothing);
+
+    // The ordinary case.
+    EXPECT_EQ(decideAdmissionPublish(true, false, true, true), AdmissionPublish::install);
+
+    // Held back before the baseline walk released, and held back while the
+    // reply still omits containers the resolver cannot key -- installing that
+    // marks them refused rather than unheard-of, which retracts live rows.
+    EXPECT_EQ(decideAdmissionPublish(true, false, false, true), AdmissionPublish::defer);
+    EXPECT_EQ(decideAdmissionPublish(true, false, true, false), AdmissionPublish::defer);
+
+    // THE case. The caller already recorded the view it could not install, so
+    // the next poll sees no change -- and on a quiet node no further change is
+    // coming. Waiting for one means the cap is never applied at all.
+    EXPECT_EQ(decideAdmissionPublish(false, true, true, true), AdmissionPublish::install)
+            << "a snapshot deferred once must still be installed when nothing changes again";
+
+    // ...but being owed one is not a reason to install it early.
+    EXPECT_EQ(decideAdmissionPublish(false, true, false, true), AdmissionPublish::defer);
+    EXPECT_EQ(decideAdmissionPublish(false, true, true, false), AdmissionPublish::defer);
 }
 
 TEST_F(ContainerReportingTest, RunTimeAdmissionPromotesAndDoesNotOnlyRetract)
