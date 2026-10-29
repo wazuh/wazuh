@@ -135,6 +135,13 @@ namespace wazuh::uds_http
             pendingName.shrink_to_fit();
             pendingValue.shrink_to_fit();
 
+            // The map keeps the last value; remember that the name repeated so a handler can still
+            // insist on exactly one. Bounded by maxHeaderCount names, inside the derived overhead.
+            if (owner->m_request.headers.count(pendingName) != 0)
+            {
+                owner->m_request.duplicateHeaders.insert(pendingName);
+            }
+
             owner->m_request.headers.insert_or_assign(std::move(pendingName), std::move(pendingValue));
             pendingName.clear();
             pendingValue.clear();
