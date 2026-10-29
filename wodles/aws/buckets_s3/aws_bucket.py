@@ -4,7 +4,6 @@
 
 import copy
 import sys
-import botocore
 import json
 import csv
 import zipfile
@@ -16,6 +15,11 @@ from datetime import datetime, timedelta
 
 sys.path.insert(0, path.dirname(path.dirname(path.abspath(__file__))))
 import wazuh_integration
+# `botocore` must be imported after `wazuh_integration`: that module exits with
+# code 4 and the "boto3 module is required" message when `boto3` is missing.
+# Importing `botocore` first dies with an uncaught `ModuleNotFoundError` instead,
+# which the manager then reports only as `Unknown error.`
+import botocore
 import aws_tools
 
 MAX_RECORD_RETENTION = 500

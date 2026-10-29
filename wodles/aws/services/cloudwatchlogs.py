@@ -7,13 +7,18 @@ import re
 import sqlite3
 import sys
 
-import botocore
 from datetime import datetime
 from datetime import timezone
 from os import path
 
 sys.path.append(path.dirname(path.realpath(__file__)))
 import aws_service
+# `botocore` must be imported after `aws_service`: importing it transitively runs
+# the `boto3` check in `wazuh_integration`, which exits with code 4 and the
+# "boto3 module is required" message when `boto3` is missing. Importing
+# `botocore` first dies with an uncaught `ModuleNotFoundError` instead, which
+# the manager then reports only as `Unknown error.`
+import botocore
 
 sys.path.insert(0, path.dirname(path.dirname(path.abspath(__file__))))
 import aws_tools
