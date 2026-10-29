@@ -163,6 +163,7 @@ Constants and per-space formatters in `interface/fastmetrics/metric_names.hpp`, 
 | `router.queue.bytes.usage.percent` | PULL | `router/src/orchestrator.cpp` |
 | `router.events.processed` | COUNTER | `router/src/worker.cpp` |
 | `router.events.dropped` | COUNTER | `router/src/orchestrator.cpp` |
+| `router.events.malformed` | COUNTER | `router/src/worker.cpp` |
 | `router.eps.1m` | PULL | `router/src/orchestrator.cpp` (`SlidingWindowRate`, 60 s) |
 | `router.eps.5m` | PULL | `router/src/orchestrator.cpp` (`SlidingWindowRate`, 300 s) |
 | `router.eps.30m` | PULL | `router/src/orchestrator.cpp` (`SlidingWindowRate`, 1800 s) |
@@ -173,10 +174,10 @@ Constants and per-space formatters in `interface/fastmetrics/metric_names.hpp`, 
 | `agent.cache.evictions` | COUNTER | `agentcache` (`AgentMetadataCache`) |
 | `server.bytes.received` | COUNTER | `api/event` |
 | `server.events.received` | COUNTER | `api/event` |
-| `space.{name}.events.unclassified` | COUNTER | `builder/src/policy/policy.cpp` (per-space) |
-| `space.{name}.events.discarded` | COUNTER | `builder/src/policy/policy.cpp` (per-space) |
-| `space.{name}.events.discarded.prefilter` | COUNTER | `builder/src/policy/policy.cpp` (per-space) |
-| `space.{name}.events.discarded.postfilter` | COUNTER | `builder/src/policy/policy.cpp` (per-space) |
+| `space.{name}.events.unclassified` | COUNTER | `builder/src/policy/policy.cpp` (per-space; production builds only, a test-mode policy uses unregistered counters) |
+| `space.{name}.events.discarded` | COUNTER | `builder/src/policy/policy.cpp` (per-space; production builds only, a test-mode policy uses unregistered counters) |
+| `space.{name}.events.discarded.prefilter` | COUNTER | `builder/src/policy/policy.cpp` (per-space; production builds only, a test-mode policy uses unregistered counters) |
+| `space.{name}.events.discarded.postfilter` | COUNTER | `builder/src/policy/policy.cpp` (per-space; production builds only, a test-mode policy uses unregistered counters) |
 
 No engine module registers a `GAUGE_INT` today; the type is exercised only by the tests.
 
@@ -209,7 +210,7 @@ api::metrics::handlers::registerHandlers(metricsManager, apiServer, "wazuh-manag
 |--------|-------------|
 | **router** | Creates counters for processed/dropped events, registers queue and EPS pull metrics via `SlidingWindowRate`, increments counters in the worker event loop |
 | **agentcache** | Creates hit/insertion/update/eviction counters and the `agent.cache.entries` pull metric |
-| **builder** | Creates per-space counters for unclassified/discarded events in policy pipelines |
+| **builder** | Creates per-space counters for unclassified/discarded events in production policy pipelines (none for a test-mode policy) |
 | **api/event** | Creates counters for bytes/events received on the ingest endpoint |
 | **api/metrics** | Exposes metrics via HTTP API (get, list, enable/disable, dump) |
 | **main.cpp** | Registers indexer pull metrics and the `api/metrics` handlers |

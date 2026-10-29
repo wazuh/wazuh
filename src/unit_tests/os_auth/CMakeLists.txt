@@ -6,7 +6,7 @@ include_directories(${SRC_FOLDER}/os_auth/src)
 include(${SRC_FOLDER}/unit_tests/wrappers/wazuh/shared/shared.cmake)
 # Generate Analysisd tests
 list(APPEND os_auth_names "test_auth_parse")
-list(APPEND os_auth_flags "${DEBUG_OP_WRAPPERS} -Wl,--wrap,OS_IsValidIP")
+list(APPEND os_auth_flags "${DEBUG_OP_WRAPPERS}")
 list(APPEND os_auth_names "test_auth_validate")
 list(APPEND os_auth_flags "${DEBUG_OP_WRAPPERS} \
                            -Wl,--wrap,opendir -Wl,--wrap,closedir -Wl,--wrap,OS_RemoveAgentGroup -Wl,--wrap,add_remove \

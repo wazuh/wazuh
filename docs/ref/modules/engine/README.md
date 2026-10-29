@@ -141,7 +141,8 @@ Input event example:
 
 ```
 
-Processed event:
+Processed event (the router adds `@timestamp` and `wazuh.event.id`, a random UUID that every output of the event
+carries, and the same id is written to the raw-event copy when raw indexing is enabled):
 ```json
 {
   "wazuh": {
@@ -171,6 +172,9 @@ Processed event:
       "name": "wazuh",
       "node": "node01"
     },
+    "event": {
+      "id": "0b9d5e4c-7f3a-4c1e-9a52-3e8f6d2b1a47"
+    },
     "integration": {
       "category": "cloud-services",
       "name": "aws",
@@ -186,7 +190,7 @@ Processed event:
       "enrichments": [
         {
           "indicator": {
-            "confidence": 100,
+            "confidence": "100",
             "feed": {
               "name": "dyingbreeds_"
             },
@@ -269,24 +273,21 @@ Processed event:
     "ip": "8.8.8.8",
     "port": 8010,
     "as": {
-      "number": 55990,
+      "number": 15169,
       "organization": {
-        "name": "Huawei Cloud Service data center"
+        "name": "Google LLC"
       }
     },
     "geo": {
-      "city_name": "Shanghai",
-      "continent_code": "AS",
-      "continent_name": "Asia",
-      "country_iso_code": "CN",
-      "country_name": "China",
+      "continent_code": "NA",
+      "continent_name": "North America",
+      "country_iso_code": "US",
+      "country_name": "United States",
       "location": {
-        "lat": 31.2222,
-        "lon": 121.4581
+        "lat": 37.751,
+        "lon": -97.822
       },
-      "timezone": "Asia/Shanghai",
-      "region_iso_code": "SH",
-      "region_name": "Shanghai"
+      "timezone": "America/Chicago"
     }
   },
   "related": {
@@ -300,6 +301,13 @@ Processed event:
 }
 
 ```
+
+> [!NOTE]
+> This output needs the standard policy's `aws` integration to be **enabled**. Most standard integrations,
+> `aws` among them, ship disabled, and the policy build skips a disabled integration's decoders, so with the
+> shipped content the same input (for example sent through `/logtest`) comes out unclassified. Enable the
+> integration in the Wazuh dashboard first; see
+> [Enable the integration's ruleset first](../integrations/README.md#enable-the-integrations-ruleset-first).
 
 ### Policy processing
 
@@ -698,10 +706,13 @@ Depending on the observed field and the configured IOC types, this enrichment ma
 In particular, network IOC matching is not limited to plain IP values. For connection-based enrichment, the observed value is built from the relevant event fields as a connection key, typically combining IP address and port.
 
 If a match is found, one entry is appended to the `wazuh.threat.enrichments` array for each matched
-indicator. The entry carries the stored indicator document under `indicator` and, under
+indicator document. The entry carries that document under `indicator` (always an object) and, under
 `matched.field`, the event field the value was read from — for a connection match, both fields,
-comma-separated. For example (the `indicator` content is the document stored for that IOC; its
-shape is shown only as a placeholder):
+comma-separated. When several threat-intelligence documents share the same value (the same hash,
+URL or `ip:port` from different feeds), the IOC database keeps them all under that key and the match
+appends one entry per document, each with the same `matched.field`. A numeric `indicator.confidence`
+is written as a string, because the schema maps it as a keyword. For example (the `indicator`
+content is the document stored for that IOC; its shape is shown only as a placeholder):
 
 ```json
 {
@@ -964,7 +975,7 @@ consists of a JSON object with the following key elements:
   "name": "schema/engine-schema/0",
   "fields": {
     "@timestamp": {
-      "type": "date"
+      "type": "date_nanos"
     },
     "agent.build.original": {
       "type": "keyword"
@@ -1068,7 +1079,8 @@ imports it into a temporary namespace and builds it exactly as it would run. A p
 that build does. Nothing is checked earlier, so a mistake made while editing the draft surfaces only at
 promotion.
 
-The checks that most often refuse a promotion, with the error the Engine returns:
+The checks that most often refuse a promotion, with the error the Engine returns (all but the first come from
+building the policy, so the Engine returns them prefixed with `Failed to create the testing environment: `):
 
 | Cause | Error |
 |-------|-------|
@@ -1079,6 +1091,31 @@ The checks that most often refuse a promotion, with the error the Engine returns
 | The root decoder is disabled, or not part of any enabled integration | `The root decoder '<name>' [id: '<id>'] is disabled; enable it before using this policy`, or `... is required by the policy decoders but is not part of its enabled content ...` |
 
 `logtest_<hex>` is the temporary namespace of that one validation request, not a space the user created.
+With `load_in_tester: true` it becomes the namespace of the tester session named after the space, and only such
+a tester-created namespace is ever deleted when that session is replaced or removed (`DELETE /logtest`): a
+session attached to any other namespace, such as a synchronized `cmsync_<space>_<hex>` one, is refused with 400
+instead, so a test call can never delete content a route runs.
+
+> [!WARNING]
+> **A test build is a real build, outputs included.** Only the Engine's default outputs are left out of a test
+> build; the outputs a validated policy lists in `policy.outputs` are built like any other asset:
+>
+> - every event run against the session (`POST /logtest`, or a tester run on the internal API) is delivered
+>   through them — an indexer output writes a real document to its index, a file output appends a line to its
+>   channel;
+> - building the policy (any validation of a policy with integrations, even with `load_in_tester: false`)
+>   already creates a file output's channel directory `logs/<space>-<channel>/`, its store entry
+>   `data/store/streamlog/<space>-<channel>/` and an open file in `wazuh-manager-analysisd`, and none of this
+>   is removed with the session or its namespace. `<space>` is the caller's `space` value, so a validation
+>   named after a production space writes into that space's channels.
+>
+> The policies the Wazuh Indexer sends carry no `outputs`, so the dashboard's logtest writes nothing. When you
+> call the API by hand, leave `policy.outputs` empty. The Wazuh dashboard's logtest and its `test` session run
+> on the engine bundled with wazuh-indexer, not on this manager's engine: on the manager socket the `test` space
+> used by the [Public API Reference](public-api-reference.md) examples is an ordinary session name. Only when you
+> call the engine inside wazuh-indexer does loading or deleting `test` replace the session the dashboard's
+> logtest runs against; use another `space` name there. For the same reason, changes to this manager's engine
+> API reach dashboard users only through the wazuh-indexer package.
 
 Because promotion always builds the whole space, removing content by promoting an empty or incomplete space
 is refused by the same checks. To stop using a space's content, disable the space's policy in the Wazuh
@@ -1283,9 +1320,13 @@ Each integration has the following fields:
 | name | Yes | Human-readable title of the integration (stored under `metadata.title`) |
 | `enabled` | Yes | Boolean. Disabled integrations are skipped when building the policy |
 | `category` | Yes | One of the allowed categories (see below) |
-| `decoders` | No (empty when absent) | Ordered list of decoder identifiers that belong to this integration (no duplicates) |
-| `kvdbs` | No (empty when absent) | List of KVDB identifiers used by this integration's decoders (no duplicates) |
+| `decoders` | Yes (may be empty) | Ordered list of decoder identifiers that belong to this integration (no duplicates). An absent key is refused with `Path '/decoders' not found` |
+| `kvdbs` | Yes (may be empty) | List of KVDB identifiers used by this integration's decoders (no duplicates). An absent key is refused with `Path '/kvdbs' not found` |
 | `default_parent` | No | Identifier of the fallback parent decoder. Used for decoders in this integration that do not declare an explicit parent |
+
+Most integrations of the **standard** space ship with `enabled: false`; their events are not classified until
+the integration is enabled in the Wazuh dashboard (see
+[Enable the integration's ruleset first](../integrations/README.md#enable-the-integrations-ruleset-first)).
 
 #### Integration categories
 
@@ -1623,7 +1664,7 @@ content:
 
 In this example:
 
-- the KVDB name is `example_kvdb` (`metadata.title`); it may contain only letters, digits, `_` and `-`
+- the KVDB name is `example_kvdb` (`metadata.title`, non-empty); helpers look it up by that exact string
 - the lookup keys are `key_1`, `key_2`, `key_3`, `key_4`, and `key_5`
 - each key stores a JSON value that can later be retrieved, matched, or merged by a helper
 
@@ -2228,24 +2269,26 @@ These parsers will generate fields which are type-compatible with Wazuh Indexer.
 | float       | float        | Codified as decimal representation in string format. A single-precision 32-bit IEEE 754 floating point number, restricted to finite values. |
 | scaled_float| scaled_float | Codified as decimal representation in string format. The scaling factor is defined in the schema.    |
 | double      | double       | Codified as decimal representation in string format. A double-precision 64-bit IEEE 754 floating point number, restricted to finite values. |
+| half_float  | half_float   | Codified as decimal representation in string format. A half-precision floating point number, `-65504` to `65504`. |
 | long        | long         | Codified as decimal representation in string format. A signed 64-bit integer with a minimum value of `-2^63` and a maximum value of `2^63-1`. |
+| unsigned_long, token_count | unsigned_long | Codified as decimal representation in string format. An unsigned 64-bit integer, `0` to `2^64-1`. |
+| integer     | integer      | Codified as decimal representation in string format. A signed 32-bit integer, `-2^31` to `2^31-1`. |
+| short       | short        | Codified as decimal representation in string format. A signed 16-bit integer, `-32768` to `32767`. |
 | byte        | byte         | Codified as a decimal representation in string format. A signed 8-bit integer with a minimum value of `-128` and a maximum value of `127`. |
 | object      | -            | -                                                                                                    |
 | array       | -            | -                                                                                                    |
 | nested      | -            | -                                                                                                    |
-| text        | text         | A string sequence of characters that represent full-text values.                                     |
-| keyword     | text         | A string sequence of characters that represent full-text values.                                     |
+| text, keyword, wildcard, match_only_text, constant_keyword, completion, search_as_you_type, semantic | text | A string sequence of characters that represent full-text values.                                     |
 | ip          | ip           | A string with IPv4 or IPv6 address.                                                                  |
-| date        | date         | Date codified as string. All dates are converted to a unified date in UTC timezone.                  |
+| date, date_nanos | date    | Date codified as string. All dates are converted to a unified date in UTC timezone.                  |
 | geo_point   | -            | -                                                                                                    |
 | binary      | binary       | A codified base64 string.                                                                            |
 
-Aditionally we define some types for the purpose to use specific parsers, normally used to parse objects or structured types from an input text. This is the case for `url` field for example.
-
-| Type        | Parser     | Description                                                                                           |
-|-------------|------------|-------------------------------------------------------------------------------------------------------|
-| url         | uri        | Parses URI text and generates the URL object with all the parsed parts.                               |
-| useragent   | useragent  | Parses a user agent string. It does not build the user agent object; this can be done with the OpenSearch plugin. |
+A field whose type has no parser (`object`, `nested`, `geo_point`, `flat_object`, the range types, ...) cannot be the
+target of a field expression. The `uri` and `useragent` parsers, which build an object from a URL or a user-agent
+string, are bound to no schema type: the shipped `schema/wazuh-logpar-overrides/0` document, which could bind a field
+to another parser, is empty, so they are used only when named explicitly in a temporary field (`<_url/uri>`,
+`<_ua/useragent>`). Every parser is described in the [Parsers](ref-parser.md) reference.
 
 ## Metrics
 
@@ -2420,7 +2463,7 @@ Current indexer output queue byte utilization as a percentage of the configured 
 
 ##### `indexer.events.dropped`
 
-Total number of events dropped in the indexer path: events refused by a full queue, plus events of batches discarded after an indexer response for their `_bulk` status (500, 502, 504 or any other status the connector does not retry, or 503 retries exhausted). A `413` batch the async connector can no longer shrink (bulk threshold at its minimum), and failed items inside a successful response, are not counted.
+Number of events dropped in the indexer path since the indexer connector started. It is a pull metric (type `pull` in the dump): the engine reads the connector's own count on every read, so a reset does not change it, and it reads `0` while no connector exists. It counts events refused by a full queue, plus events of batches discarded after an indexer response for their `_bulk` status (500, 502, 504 or any other status the connector does not retry, or 503 retries exhausted). A `413` batch the async connector can no longer shrink (bulk threshold at its minimum), and failed items inside a successful response, are not counted.
 
 **Used for:** detecting loss conditions and overload situations.
 
@@ -2494,9 +2537,17 @@ Total number of events successfully processed by the router.
 
 ##### `router.events.dropped`
 
-Total number of events dropped by the router.
+Total number of events dropped by the router because its input queue was full.
 
 **Used for:** troubleshooting overload or discard scenarios.
+
+---
+
+##### `router.events.malformed`
+
+Total number of input lines the router workers dropped because they are not a valid `<byte>:<location>:<message>` event (too short, no `:` after the queue byte, no unescaped `:` between location and message, empty location). Such a line is never decoded or indexed as an event (it still reaches the raw-event index when that is enabled). Each worker logs the first one as a WARNING with the reason, then at most one line per minute that also reports how many it dropped since its previous report.
+
+**Used for:** detecting a sender that emits lines in the wrong format.
 
 ---
 
@@ -2564,7 +2615,10 @@ Total number of entries removed by the periodic TTL cleanup.
 
 #### Per-space metrics
 
-These metrics are created dynamically per space.
+These metrics are created dynamically per space, when a route builds the space's policy. They count production
+traffic only: a policy built in test mode (a tester session, `POST /logtest`, `POST /content/validate/policy`)
+creates and moves no per-space metric, so a test run neither changes the counters of the space it copies nor
+registers metrics for a temporary space. Registered metrics are never removed while the engine runs.
 
 The metric name includes the space name:
 
@@ -2633,13 +2687,15 @@ Engine messages, including those of the Indexer Connector, use the `wazuh-manage
 2026/09/28 16:39:34 wazuh-manager-analysisd: INFO: Engine started
 ```
 
-Warning and error lines include a context tag in brackets that identifies the internal
-component that produced the message:
+Most warning and error lines include a context tag in brackets that identifies the internal
+component that produced the message (some lines carry none). The indexer connector's host monitor
+marks its lines on the component tag instead, as `wazuh-manager-analysisd(monitoring):`:
 
 ```
 2026/09/28 19:42:00 wazuh-manager-analysisd: WARNING: [CMSync] Check 'custom' space in wazuh-indexer - Attempt 3/3: No available server. Unavailable nodes: https://127.0.0.1:9200: Could not connect to server
 2026/09/28 19:42:00 wazuh-manager-analysisd: WARNING: [CM::Sync] Failed to synchronize namespace for space 'custom': Check 'custom' space in wazuh-indexer::CMSync failed after 3 attempts: No available server. Unavailable nodes: https://127.0.0.1:9200: Could not connect to server
 2026/04/14 20:09:46 wazuh-manager-analysisd: WARNING: [IOC::Sync] Synchronization cycle failed: No available server
+2026/10/27 23:25:29 wazuh-manager-analysisd(monitoring): WARNING: Indexer node 'https://127.0.0.1:9200' reports a PERMANENT circuit breaker (HTTP 429 circuit_breaking_exception: [parent] Data too large, ...)
 ```
 
 When debug level is active, additional diagnostic messages appear and **every** line (not only the

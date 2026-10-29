@@ -235,6 +235,33 @@ def test_WazuhDBQueryAgents_parse_legacy_filters(mock_socket_conn):
         'Query returned does not match the expected one'
 
 
+@pytest.mark.parametrize('value, expected', [
+    ('fd00:e2e::/64', 'FD00:0E2E:0000:0000:0000:0000:0000:0000/64'),
+    ('FD00:0E2E:0000:0000:0000:0000:0000:0000/64', 'FD00:0E2E:0000:0000:0000:0000:0000:0000/64'),
+    ('::1', '0000:0000:0000:0000:0000:0000:0000:0001'),
+    ('fd00::1/0', 'FD00:0000:0000:0000:0000:0000:0000:0001'),
+    ('10.99.0.0/24', '10.99.0.0/24'),
+    ('any', 'any'),
+    ('fd00::zz', 'fd00::zz'),
+    ('fd00::1/129', 'fd00::1/129'),
+    (None, None),
+])
+def test_expand_ipv6(value, expected):
+    """IPv6 values are written as the registry stores them (OS_ExpandIPv6); anything else is left alone."""
+    assert expand_ipv6(value) == expected
+
+
+@patch('socket.socket.connect')
+def test_WazuhDBQueryAgents_expands_ipv6_filters(mock_socket_conn):
+    """The ip and registerIP filters match the stored, expanded form of a compact IPv6 value."""
+    query_agent = WazuhDBQueryAgents(filters={'ip': 'fd00:e2e::/64', 'registerIP': ['::1', '10.0.0.1'],
+                                              'name': 'fd00::1'})
+
+    assert query_agent.legacy_filters['ip'] == 'FD00:0E2E:0000:0000:0000:0000:0000:0000/64'
+    assert query_agent.legacy_filters['registerIP'] == ['0000:0000:0000:0000:0000:0000:0000:0001', '10.0.0.1']
+    assert query_agent.legacy_filters['name'] == 'fd00::1'
+
+
 @patch('socket.socket.connect')
 def test_WazuhDBQueryAgents_parse_legacy_filters_older_than_keeps_q_grouped(mock_socket_conn):
     """An OR in the user's q must not absorb the older_than condition appended after it."""
@@ -292,6 +319,53 @@ def test_WazuhDBQueryAgents_unbalanced_q_is_rejected(mock_socket_conn, q):
         query_agent._add_filters_to_query()
 
 
+@pytest.mark.parametrize('operator, value, expected', [
+    ('=', 'e2e-g2', ['001']),
+    ('=', 'E2E-G2', ['002']),
+    ('=', 'e2e_g2', []),
+    ('!=', 'e2e-g2', ['002', '003']),
+])
+@patch('socket.socket.connect')
+def test_WazuhDBQueryAgents_group_filter_is_exact(mock_socket_conn, operator, value, expected):
+    """'=' and '!=' on group match the name exactly: case-only variants and LIKE wildcards never match."""
+    query_agent = WazuhDBQueryAgents()
+    query_agent.query = ''
+    query_agent._process_filter('group', 'group0', {'value': value, 'operator': operator})
+
+    conn = sqlite3.connect(':memory:')
+    conn.execute('CREATE TABLE agent (id TEXT, `group` TEXT)')
+    conn.executemany('INSERT INTO agent VALUES (?, ?)',
+                     [('001', 'default,e2e-g2'), ('002', 'E2E-G2'), ('003', 'e2e-x2')])
+    rows = conn.execute(f'SELECT id FROM agent WHERE {query_agent.query} ORDER BY id',
+                        {'group0': query_agent.request['group0']}).fetchall()
+
+    assert [row[0] for row in rows] == expected
+
+
+@pytest.mark.parametrize('q, expected', [
+    ("group=e2e'g2", []),
+    ('group=e2e"g2', []),
+    ("group!=e2e'g2", ['001', '002', '003']),
+])
+@patch('socket.socket.connect')
+def test_WazuhDBQueryAgents_group_filter_with_a_quote_is_exact(mock_socket_conn, q, expected):
+    """A quote in a q value is matched literally: '=' stays an exact match and '!=' stays a negation (neither is
+    turned into a LIKE where the quote is a wildcard)."""
+    query_agent = WazuhDBQueryAgents(query=q)
+    query_agent.query = 'SELECT id FROM agent'
+    query_agent._add_filters_to_query()
+
+    assert 'LIKE' not in query_agent.query
+    conn = sqlite3.connect(':memory:')
+    conn.execute('CREATE TABLE agent (id TEXT, `group` TEXT)')
+    conn.executemany('INSERT INTO agent VALUES (?, ?)',
+                     [('001', 'default,e2e-g2'), ('002', 'E2E-G2'), ('003', 'e2e-x2')])
+    params = {k: v for k, v in query_agent.request.items() if f':{k}' in query_agent.query}
+    rows = conn.execute(f'{query_agent.query} ORDER BY id', params).fetchall()
+
+    assert [row[0] for row in rows] == expected
+
+
 @pytest.mark.parametrize('field_name, field_filter, q_filter', [
     ('group', 'field', {'value': '1', 'operator': '='}),
     ('group', 'test', {'value': '1', 'operator': '!='}),
@@ -312,7 +386,7 @@ def test_WazuhDBQueryAgents_process_filter(mock_socket_conn, field_name, field_f
     q_filter : dict
         Query to filter in database.
     """
-    equal_regex = r"\(',' || [\w`]+ || ','\) LIKE :\w+"
+    equal_regex = r"instr\(',' \|\| `group` \|\| ',', :\w+\) > 0"
     not_equal_regex = f"NOT {equal_regex}"
     like_regex = r"[\w`]+ LIKE :\w+"
 
@@ -326,8 +400,11 @@ def test_WazuhDBQueryAgents_process_filter(mock_socket_conn, field_name, field_f
     if field_name == 'group':
         if q_filter['operator'] == '=':
             assert re.search(equal_regex, query_agent.query)
+            assert not query_agent.query.startswith('NOT')
+            assert query_agent.request[field_filter] == f",{q_filter['value']},"
         elif q_filter['operator'] == '!=':
             assert re.search(not_equal_regex, query_agent.query)
+            assert query_agent.request[field_filter] == f",{q_filter['value']},"
         elif q_filter['operator'] == 'LIKE':
             assert re.search(like_regex, query_agent.query)
         else:
@@ -796,6 +873,21 @@ def test_agent_add_authd_ko(mock_wazuh_socket, mocked_exception, expected_except
 
 
 @patch('wazuh.core.agent.WazuhSocketJSON')
+def test_agent_add_authd_keeps_the_registered_ip(mock_wazuh_socket):
+    """The agent reports the address authd registered, not the spelling the caller sent."""
+    agent = Agent()
+    agent.ip = '10.30.0.1/32'
+    mock_wazuh_socket.return_value.receive.return_value = {'id': '005', 'name': 'test_add', 'ip': '10.30.0.1',
+                                                           'key': 'abcd'}
+
+    with patch.object(Agent, 'compute_key', return_value='key'):
+        agent._add_authd('test_add', '10.30.0.1/32')
+
+    assert agent.ip == '10.30.0.1'
+    assert agent.id == '005'
+
+
+@patch('wazuh.core.agent.WazuhSocketJSON')
 def test_agent_add_authd_unrecorded_transition(mock_wazuh_socket):
     """authd's 9031 means it refused the enrollment rather than hand out credentials it could not
     record (issue #39078, H03), so the API says so instead of leaking the socket's own code."""
@@ -1002,8 +1094,11 @@ async def test_agent_add_group_to_agent_ko(agent_groups_mock):
             await Agent.add_group_to_agent('test_group', '002')
 
     # Group cannot be replaced because it is not in replace_list (not enough permissions in rbac)
-    with pytest.raises(WazuhError, match='.* 1752 .*'):
+    with pytest.raises(WazuhError, match='.* 1752 .*') as exc_info:
         await Agent.add_group_to_agent('test_group', '002', replace=True, replace_list=['other'])
+    # The message names the permission and the groups it is missing over
+    assert "'group:modify_assignments'" in exc_info.value.message
+    assert exc_info.value.message.endswith("current group(s) default")
 
     # The group already belongs to the agent
     with pytest.raises(WazuhError, match='.* 1751 .*'):

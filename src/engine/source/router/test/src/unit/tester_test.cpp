@@ -278,6 +278,16 @@ TEST_F(TesterTest, FailtureGetEntry)
     EXPECT_STREQ(std::get<base::Error>(error).message.c_str(), "The 'Test' environment does not exist.");
 }
 
+TEST_F(TesterTest, FailtureGetEntryBoundsLongName)
+{
+    const std::string longName(5000, 'x');
+    auto error = m_test->getEntry(longName);
+
+    ASSERT_TRUE(std::holds_alternative<base::Error>(error));
+    EXPECT_EQ(std::get<base::Error>(error).message,
+              "The '" + std::string(128, 'x') + "... (5000 bytes)' environment does not exist.");
+}
+
 TEST_F(TesterTest, SuccessGetEntry)
 {
     auto entryPostOne = router::test::EntryPost {ENVIRONMENT_NAME, POLICY_NAMESPACE, LIFESPAM};

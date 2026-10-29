@@ -34,8 +34,10 @@ namespace
 
     wazuh::uds_http::HttpResponse errorResponse(int status, const std::string& reason)
     {
-        return wazuh::uds_http::HttpResponse::json(
-            status, std::string {R"({"error":")"} + reason + R"(","code":)" + std::to_string(status) + "}");
+        // Built as JSON, not concatenated, so a reason holding quotes still yields a valid body. Ordered to
+        // keep the documented {"error":...,"code":...} shape.
+        return wazuh::uds_http::HttpResponse::json(status,
+                                                   nlohmann::ordered_json {{"error", reason}, {"code", status}}.dump());
     }
 
     /**
@@ -147,10 +149,10 @@ namespace invsync::endpoints::delete_agent
                 if (const auto decision = goneThrottle.record())
                 {
                     LOGFN_DEBUG1(logFn(),
-                                 "Rejected %llu agent deletion(s) with 503 in the last %d s: the module is shutting "
+                                 "Rejected %llu agent deletion(s) with 503 %s: the module is shutting "
                                  "down and the indexer connector is already gone.",
                                  static_cast<unsigned long long>(decision.total),
-                                 wazuh::uds_http::LogThrottle::kDefaultWindowSeconds);
+                                 decision.period().c_str());
                 }
                 deps.requestCounters.count(503);
                 responder->send(errorResponse(503, "Service unavailable"));
@@ -161,11 +163,11 @@ namespace invsync::endpoints::delete_agent
                 if (const auto decision = unavailableThrottle.record())
                 {
                     LOGFN_WARN(logFn(),
-                               "Rejected %llu agent deletion(s) with 503 in the last %d s: no configured indexer "
+                               "Rejected %llu agent deletion(s) with 503 %s: no configured indexer "
                                "host is currently healthy. Check the <indexer> hosts and that the indexer is "
                                "running.",
                                static_cast<unsigned long long>(decision.total),
-                               wazuh::uds_http::LogThrottle::kDefaultWindowSeconds);
+                               decision.period().c_str());
                 }
                 deps.requestCounters.count(503);
                 responder->send(errorResponse(503, "Service unavailable"));
@@ -246,11 +248,11 @@ namespace invsync::endpoints::delete_agent
                 if (const auto decision = capacityThrottle.record())
                 {
                     LOGFN_WARN(logFn(),
-                               "Rejected %llu agent deletion(s) with 503 in the last %d s: the sync pipeline queue "
+                               "Rejected %llu agent deletion(s) with 503 %s: the sync pipeline queue "
                                "is full. Consider raising 'inventory_sync_server_sync_workers' or "
                                "'inventory_sync_server_sync_queue_bytes'.",
                                static_cast<unsigned long long>(decision.total),
-                               wazuh::uds_http::LogThrottle::kDefaultWindowSeconds);
+                               decision.period().c_str());
                 }
 
                 // The handler keeps its own reference to the responder, independent of the copy that

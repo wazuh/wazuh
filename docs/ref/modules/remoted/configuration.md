@@ -125,7 +125,7 @@ Capacity, in messages, of the input queue between the legacy listener and the me
 workers ([`remoted.worker_pool`](#remotedworker_pool)).
 
 - **Default value:** `131072`
-- **Allowed values:** Positive integer
+- **Allowed values:** Integer from `1` to `134217728`
 - **Note:** Values greater than `262144` are accepted with the warning `Queue size is very high. The
   application may run out of memory.` A message arriving at a full queue is discarded (see
   [Queue Byte Limits](#queue-byte-limits) for how discards are reported)
@@ -169,7 +169,7 @@ Idle time after which remoted closes an agent's open RIDS (message-counter) file
 `queue/rids/`. It is also the period of the thread that looks for such files.
 
 - **Default value:** `5m` (300 seconds)
-- **Allowed values:** Time value with optional suffix: `s` (seconds), `m` (minutes), `h` (hours), `d` (days), `w` (weeks). Bare number defaults to seconds. `0` passes the schema but is replaced by the default with a warning.
+- **Allowed values:** Time value with optional suffix: `s` (seconds), `m` (minutes), `h` (hours), `d` (days), `w` (weeks). Bare number defaults to seconds. At least 1 second: `0`, in any unit, is refused by the configuration check.
 - **Example:** `300`, `5m`, `300s` are all equivalent
 
 ### legacy.connection_overtake_time
@@ -179,11 +179,18 @@ connection from the same agent may take it over.
 
 - **Default value:** `60`
 - **Allowed values:** Integer from `0` to `3600` (seconds)
-- **Note:** While the current session has been active more recently than this, a message arriving on
-  a second connection with the same agent key is dropped and that connection closed; once the conflict
-  outlasts the window remoted logs `Agent key already in use: agent ID '<id>' (source IP: <ip>)`
-  (two hosts sharing one key). `0` disables overtaking altogether: the second connection is always
-  refused and the warning is logged at once.
+- **Note:** Only a message that decrypts with the agent's key counts as "from the same agent". A
+  message that merely claims the agent's ID and fails to decrypt is rejected like any other bad frame
+  (its connection closed, the throttled `Decrypt the message fail` line logged) and never touches the
+  agent's session: the current connection stays open, and no takeover or conflict is recorded,
+  however long that session has been idle.
+- **Note:** While the current session has been active more recently than this, an authenticated
+  message arriving on a second connection with the same agent key is dropped and that connection
+  closed; once the conflict outlasts the window remoted logs
+  `Agent key already in use: agent ID '<id>' (source IP: <ip>)` (two hosts sharing one key). `0`
+  disables overtaking altogether: the second connection is always refused and the warning is logged
+  at once. The warning is throttled like the other rejections: at most one line every 90 seconds,
+  ending in `(and <n> more like it in the last <s> s)`; the repeats in between go to debug level.
 
 ---
 
@@ -205,7 +212,7 @@ HTTPS listening port.
 Address the HTTPS listener binds to.
 
 - **Default value:** `0.0.0.0` (all IPv4 interfaces)
-- **Allowed values:** Valid IPv4 or IPv6 address
+- **Allowed values:** Valid IPv4 or IPv6 address, at most 255 characters
 - **Note:** `0.0.0.0` is IPv4-only. `::` listens on IPv6 only by default -- it does **not** also
   accept IPv4 connections unless `dual_stack` is explicitly set to `yes` -- see
   [HTTPS Agent API: Bind address](https-events-api.md#bind-address-ipv4-ipv6-and-dual-stack)
@@ -228,8 +235,9 @@ similar spelling: nothing on disk is looked up under it.
   segments, no percent-encoding; at most 255 characters. Any other value is rejected as a
   configuration error (`wazuh-manager-remoted -t` reports it).
 - **Note:** the prefix is a routing matter only. The manager routes on the request target exactly
-  as sent — prefix included — so agents must send the full prefixed path, and any proxy in between
-  must forward the path untouched. The bearer token does not bind the target, so a prefix mismatch
+  as sent — prefix included, case-sensitive, with no percent-decoding (any `%`-encoded path answers
+  `404`; only a single trailing `/` is tolerated) — so agents must send the full prefixed path, and
+  any proxy in between must forward the path untouched. The bearer token does not bind the target, so a prefix mismatch
   between agent and manager (or a proxy-side rewrite) surfaces as `404`, never as `401`. The prefix
   counts toward `remoted.http_max_url_size`. Only the public HTTPS listener is prefixed; the
   local admin socket is not. See
@@ -251,6 +259,7 @@ Whether an IPv6 `bind_addr` (e.g. `::`) also accepts IPv4 clients on the same so
 Path to the TLS certificate chain (PEM) presented by the server.
 
 - **Default value:** `/etc/wazuh-manager/certs/remoted.pem` (any other value must also be an absolute path directly in `/etc/wazuh-manager/certs`; see the credential note below)
+- **Allowed values:** a path of at most 511 characters
 - **Note:** the manager issues this file at installation and never reissues it. To use your own PKI, overwrite it — a leaf of the CA in
   `ca_certificate`, issued by the installation assistant's `wazuh-certs-tool` — as
   `root:wazuh-manager 640` before the first start. Missing: `wazuh-manager-control start`
@@ -258,10 +267,12 @@ Path to the TLS certificate chain (PEM) presented by the server.
   Present but unreadable by the service user: `wazuh-manager-remoted` exits with
   `Cannot start the HTTPS agent listener: …`. The same message names the CA certificate
   (`remote.https.ca`) when `verification_mode` is `certificate` or `full` and that file is missing or unreadable.
-- **Note:** at startup, and again every 24 hours while it runs, the manager warns if this
-  certificate has expired (`The TLS certificate '<path>' has expired; …`) or expires within 30 days
-  (`The TLS certificate '<path>' expires in <n> day(s); …`), so a silent outage for verifying agents
-  can be prevented before it happens.
+- **Note:** at startup, and again every 24 hours while it runs, the manager logs an ERROR if this
+  certificate has expired (`The TLS certificate '<path>' has expired; agents that verify the manager
+  certificate will reject the connection until it is renewed.`) and a WARNING while fewer than 30
+  days remain (`The TLS certificate '<path>' expires in <n> day(s); renew it to avoid an outage for
+  agents that verify the manager certificate.`), so a silent outage for verifying agents can be
+  prevented before it happens.
 - **Note:** before every start the credential resolver checks the configured pair, which must be directly in
   `/etc/wazuh-manager/certs` under any name; see
   [Configured file names](../../getting-started/credentials.md#configured-file-names).
@@ -271,6 +282,7 @@ Path to the TLS certificate chain (PEM) presented by the server.
 Path to the TLS private key (PEM) matching `certificate`.
 
 - **Default value:** `/etc/wazuh-manager/certs/remoted-key.pem`
+- **Allowed values:** a path of at most 511 characters
 - **Note:** provisioned together with `certificate`, same ownership and the same fail-closed
   behaviour when missing (`(1244) … '/remote/https/key': file not found`) or unreadable by the
   service user.
@@ -284,6 +296,7 @@ Path to a CA bundle (PEM) used to verify client (agent) certificates.
 
 - **Default value:** empty (not set). Empty means "no client-verification CA configured": no
   `verification_mode` is inferred from it, and verification stays off.
+- **Allowed values:** a path of at most 511 characters
 - **Note:** Only read when `verification_mode` is `certificate` or `full`. If one of those modes is
   set explicitly with no `ca`, the module falls back to `/etc/wazuh-manager/certs/root-ca.pem`. Setting `ca` without `verification_mode` turns verification on — see the special
   case below.
@@ -308,6 +321,7 @@ A file it cannot parse to the end is refused whole rather than served up to its 
   writes the option explicitly). Like the listener certificate, the file is issued by the credential
   resolver at installation (`root:wazuh-manager 640`), or provisioned by the operator together with
   the listener certificate it signs.
+- **Allowed values:** a non-empty path of at most 511 characters
 - **Note:** this is **not** the client-verification CA (`ca`): `ca` verifies agent certificates,
   `ca_certificate` is what agents use to verify the manager. An empty value is rejected at startup
   (`(1244): Invalid configuration at '/remote/https/ca_certificate': does not satisfy 'minLength'`).
@@ -701,6 +715,17 @@ time are closed. Authenticated connections are never subject to it.
   message arrives. If the workers fall more than this many seconds behind the input queue (for example
   while a large 4.x fleet reconnects after a restart), legitimate agents are closed too and have to
   reconnect. If those closures show up without an attack, raise this value
+- **Note:** A message rejected before it decrypts — a TCP length prefix above the maximum message
+  size, an unterminated `!<id>!` header, an ID not registered for the source address, a source
+  address that is no agent's, an empty message, or one that does not decrypt (TCP or UDP) — is
+  logged by remoted as a `WARNING` naming the source address, not an agent: the ID it carries is only
+  a claim until it decrypts. Each of those reasons is throttled on its own: the first is logged at
+  once, the others in the next 90 seconds at debug level, and the next logged one ends with
+  `(and <n> more like it in the last <s> s)`. A message that reaches the decryption step and fails
+  there also gets that step's own detail (`(1403)`, `(1404)`, `(1406)`, or a decompression error),
+  which names the ID the message claims and is therefore logged at debug level only. A message whose
+  checksum matches has proved the agent's key, so a malformed counter field after it is still an
+  `ERROR` `(1403)` naming that agent
 
 ### remoted.unauthenticated_max
 
@@ -1652,11 +1677,13 @@ HTTPS channel, whose equivalent is [`remoted.max_inflight_bytes`](#remotedmax_in
   total over the limit is dropped until space is freed. The count limit
   ([`legacy.queue_size`](#legacyqueue_size)) drops the same way.
 - Input-queue drops count in `metrics.messages.received_breakdown.discarded` and are logged as
-  `Input queue discarded <n> event(s) in the last 90 seconds.`, at most once every 90 seconds.
+  `Input queue discarded <n> event(s) in the last <s> s.`, at most once every 90 seconds; `<s>` is
+  the real time since the previous line, and the first line says `so far` instead.
 - Events-queue drops (its byte limit, [`remoted.batch_events_capacity`](#remotedbatch_events_capacity)
   or [`remoted.batch_events_per_agent_capacity`](#remotedbatch_events_per_agent_capacity)) count in
   `metrics.messages.received_breakdown.events_failed` and are logged as
-  `Events queue discarded <n> event(s) in the last 90 seconds.`, at most once every 90 seconds.
+  `Events queue discarded <n> event(s) in the last <s> s.`, at most once every 90 seconds, with the
+  same wording rules.
 
 ### Guidelines
 

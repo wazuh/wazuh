@@ -430,7 +430,8 @@ async def get_agent_key(agent_id: str, pretty: bool = False, wait_for_complete: 
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           logger=logger,
-                          rbac_permissions=request.context['token_info']['rbac_policies']
+                          rbac_permissions=request.context['token_info']['rbac_policies'],
+                          current_user=request.context['token_info'].get('sub', '')
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
@@ -966,7 +967,8 @@ async def get_group_config(group_id: str, pretty: bool = False, wait_for_complet
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           logger=logger,
-                          rbac_permissions=request.context['token_info']['rbac_policies']
+                          rbac_permissions=request.context['token_info']['rbac_policies'],
+                          current_user=request.context['token_info'].get('sub', '')
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
@@ -1110,7 +1112,8 @@ async def get_group_file(group_id: str, file_name: str, raw: bool = False, prett
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           logger=logger,
-                          rbac_permissions=request.context['token_info']['rbac_policies']
+                          rbac_permissions=request.context['token_info']['rbac_policies'],
+                          current_user=request.context['token_info'].get('sub', '')
                           )
     data = raise_if_exc(await dapi.distribute_function())
 

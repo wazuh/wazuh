@@ -81,7 +81,8 @@ cluster through a load balancer is described in [What the cluster replicates, an
 The Wazuh server cluster is managed by the `wazuh-manager-clusterd` daemon, which runs on **every**
 node and implements a master–worker architecture. Every connection is opened by a worker to the
 address in `<cluster><nodes>`; the master answers and pushes data over those connections. The
-cluster traffic is encrypted with `<cluster><key>`.
+cluster traffic is encrypted with per-connection keys derived from `<cluster><key>` (see
+[Transport Protection](../../security/cluster-model.md#transport-protection)).
 
 When a worker connects, the master refuses it if its node name is not made of letters, digits, `_`
 and `-` (error `3060`), is already connected (`3028`) or equals the master's own (`3029`), if its
@@ -95,7 +96,7 @@ Periodic tasks, with their intervals (internal, not configurable):
 |---|---|---|---|
 | Keep alive | worker | 60 s | Sends a keep-alive to the master. After 2 failed attempts in a row the worker disconnects. |
 | Keep alive | master | 60 s | Closes the connection of a worker that has sent no keep-alive for 120 s. |
-| Integrity check / Integrity sync | worker | 9 s | Sends the metadata of its synchronized files to the master, which compares it with its own and sends back the files that are missing, different or extra. |
+| Integrity check / Integrity sync | worker | 9 s | Sends the metadata of its synchronized files to the master, which compares it with its own and sends back the missing and different files plus the list of extra ones, which the worker deletes. |
 | Local integrity | master | 8 s | Recalculates the metadata (BLAKE2b hash, modification time) of its synchronized files, so the comparison is not repeated for each worker. |
 | Agent-info sync | worker | 10 s | Sends the agent information held by its local `wazuh-manager-db` (status, keep-alive, agent metadata) to the master's `wazuh-manager-db`. |
 | Local agent-groups | master | 10 s, after a 30 s start delay | Reads the agent-group assignments not yet synchronized from its `wazuh-manager-db` and broadcasts them to every connected worker. |
@@ -146,7 +147,7 @@ command-line options, for running it by hand:
 | `-d` | Enable debug messages; repeat (`-dd`) for more verbosity |
 | `-V` | Print the version and exit |
 | `-r` | Run as root instead of dropping privileges to `wazuh-manager` |
-| `-t` | Read and check the cluster configuration, then exit (`0` when valid, `1` otherwise) |
+| `-t` | Read and check the cluster configuration, then exit (`0` when valid, `1` otherwise). A valid configuration prints nothing; a refused one prints `ERROR: <reason>` on standard error and also writes it to `logs/cluster.log` |
 | `-c <file>` | Configuration file to read the `<cluster>` section from (default `/etc/wazuh-manager/wazuh-manager.conf`) |
 | `-h` | Print the help and exit |
 
@@ -155,7 +156,10 @@ The debug level can also be set with the `wazuh_clusterd.debug` internal option 
 `-d`. When the option is absent or `0`, the `-d` level applies, so `wazuh-manager-control enable debug`
 (which starts every daemon with `-d`) raises the cluster log to debug level 1.
 
-All cluster logs are written to `/var/wazuh-manager/logs/cluster.log`.
+All cluster logs are written to `/var/wazuh-manager/logs/cluster.log`, in the form
+`<date> <level>: [<tag>] [<subtag>] <message>`. The daemon rotates the file itself at midnight into
+`/var/wazuh-manager/logs/cluster/<YYYY>/<Mon>/cluster.log-<DD>.gz` (mode `0640`, directories
+`0750`); it is not rotated by the manager's log rotation task.
 
 ---
 
@@ -169,15 +173,20 @@ it works on any node (a worker forwards node and health queries to the master).
 | `-l`, `--list-nodes` | List the connected nodes: name, type, version and address |
 | `-l -fn <node> [<node> …]` | List only the named nodes |
 | `-a`, `--list-agents` | List the agents: ID, name, IP, status and version |
-| `-a -fs <status> [<status> …]` | List only the agents with the given statuses (`-fs` is accepted only with `-a`) |
+| `-a -fs <status> [<status> …]` | List only the agents with the given statuses: `active`, `disconnected`, `never_connected` or `pending` (`-fs` is accepted only with `-a`) |
 | `-i`, `--health` | Show the last completed synchronizations of each connected worker |
-| `-i more` | Show the detailed health report: keep-alive, integrity check and sync, agent-info and agent-groups timings |
+| `-i more` | Show the detailed health report of every node, the master included (the `Connected nodes (<n>)` count includes it): keep-alive, integrity check and sync, agent-info and agent-groups timings |
 | `-i -fn <node> [<node> …]` | Health of the named nodes only |
 | `-d`, `--debug` | Print debug messages |
 | `-u`, `--usage` | Print usage examples |
 | `-h`, `--help` | Print the help |
 
-`-a`, `-l`, `-i` and `-u` are mutually exclusive; with none of them the help is printed. For example:
+`-a`, `-l`, `-i` and `-u` are mutually exclusive; with none of them the help is printed. A wrong combination of
+arguments (for example `-fs` without `-a`, or a status `-fs` does not know) prints the usage and the reason on standard error and exits
+`2`, before the cluster configuration is read. An error is
+printed as `Error <code>: <message>` (as `agent_groups` prints it), or `Internal error: <message>`,
+and the command exits `1`: a node named with `-fn` that is not connected gives
+`Error 1730: Node does not exist`, with `-l` and `-i` alike. For example:
 
 ```bash
 /var/wazuh-manager/bin/cluster_control -l

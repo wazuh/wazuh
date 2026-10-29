@@ -149,6 +149,18 @@ def test_read_wrong_configuration(mock_exists, config):
                 configuration.read_yaml_config()
 
 
+def test_read_wrong_configuration_names_the_file(tmp_path):
+    """Error 2000 names the file that was read, not a placeholder."""
+    config_file = tmp_path / 'my-api.yaml'
+    config_file.write_text('invalid_option: 1\n')
+
+    with pytest.raises(api_exception.APIError, match=r'\b2000\b') as exc_info:
+        configuration.read_yaml_config(config_file=str(config_file))
+
+    assert f'({config_file})' in str(exc_info.value)
+    assert 'WAZUH_PATH' not in str(exc_info.value)
+
+
 @pytest.mark.parametrize('config, expected_msg', [
     ({}, False),
     ({'cache': {}}, False),

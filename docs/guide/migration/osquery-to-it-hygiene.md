@@ -265,7 +265,7 @@ into the equivalent data available through the Wazuh 5.0 IT Hygiene index.
 SELECT pid, name, path, cmdline, state, ppid, start_time, uid, gid FROM processes;
 ```
 
-**Wazuh 5.0 index** (`wazuh-states-inventory-processes-*`):
+**Wazuh 5.0 index** (`wazuh-states-inventory-processes`):
 
 | OSquery field (`data.osquery.columns.*`) | Wazuh 5.0 field | Notes |
 |---|---|---|
@@ -449,7 +449,7 @@ SELECT uid, gid FROM user_groups;
 SELECT header FROM sudoers;
 ```
 
-**Wazuh 5.0 index** (`wazuh-states-inventory-users-*`):
+**Wazuh 5.0 index** (`wazuh-states-inventory-users`):
 
 | OSquery source table | OSquery field | Wazuh 5.0 field | Notes |
 |---|---|---|---|
@@ -669,7 +669,7 @@ SELECT gid, gid_signed, groupname FROM groups;
 SELECT uid, gid FROM user_groups;
 ```
 
-**Wazuh 5.0 index** (`wazuh-states-inventory-groups-*`):
+**Wazuh 5.0 index** (`wazuh-states-inventory-groups`):
 
 | OSquery source table | OSquery field | Wazuh 5.0 field | Notes |
 |---|---|---|---|
@@ -823,7 +823,7 @@ SELECT id, description, sub_state, load_state, active_state, unit_file_state,
        fragment_path, source_path, user FROM systemd_units;
 ```
 
-**Wazuh 5.0 index** (`wazuh-states-inventory-services-*`):
+**Wazuh 5.0 index** (`wazuh-states-inventory-services`):
 
 | OSquery field (Windows `services`) | OSquery field (Linux `systemd_units`) | Wazuh 5.0 field | Notes |
 |---|---|---|---|
@@ -1159,16 +1159,16 @@ Rebuild any visualizations or dashboards using the field mapping tables in
 
 | Old index (4.x) | Old field path | New index (5.0) | New field |
 |---|---|---|---|
-| `wazuh-alerts-*` (rule group `osquery`) | `data.osquery.columns.username` | `wazuh-states-inventory-users-*` | `user.name` |
-| `wazuh-alerts-*` (rule group `osquery`) | `data.osquery.columns.uid` | `wazuh-states-inventory-users-*` | `user.id` |
-| `wazuh-alerts-*` (rule group `osquery`) | `data.osquery.columns.name` (processes) | `wazuh-states-inventory-processes-*` | `process.name` |
-| `wazuh-alerts-*` (rule group `osquery`) | `data.osquery.columns.pid` | `wazuh-states-inventory-processes-*` | `process.pid` |
-| `wazuh-alerts-*` (rule group `osquery`) | `data.osquery.columns.groupname` | `wazuh-states-inventory-groups-*` | `group.name` |
-| `wazuh-alerts-*` (rule group `osquery`) | `data.osquery.columns.gid` | `wazuh-states-inventory-groups-*` | `group.id` |
-| `wazuh-alerts-*` (rule group `osquery`) | `data.osquery.columns.name` (chrome_extensions) | `wazuh-states-inventory-browser-extensions-*` | `package.name` |
-| `wazuh-alerts-*` (rule group `osquery`) | `data.osquery.columns.identifier` | `wazuh-states-inventory-browser-extensions-*` | `package.id` |
-| `wazuh-alerts-*` (rule group `osquery`) | `data.osquery.columns.id` (services) | `wazuh-states-inventory-services-*` | `service.id` |
-| `wazuh-alerts-*` (rule group `osquery`) | `data.osquery.columns.active_state` | `wazuh-states-inventory-services-*` | `service.state` |
+| `wazuh-alerts-*` (rule group `osquery`) | `data.osquery.columns.username` | `wazuh-states-inventory-users` | `user.name` |
+| `wazuh-alerts-*` (rule group `osquery`) | `data.osquery.columns.uid` | `wazuh-states-inventory-users` | `user.id` |
+| `wazuh-alerts-*` (rule group `osquery`) | `data.osquery.columns.name` (processes) | `wazuh-states-inventory-processes` | `process.name` |
+| `wazuh-alerts-*` (rule group `osquery`) | `data.osquery.columns.pid` | `wazuh-states-inventory-processes` | `process.pid` |
+| `wazuh-alerts-*` (rule group `osquery`) | `data.osquery.columns.groupname` | `wazuh-states-inventory-groups` | `group.name` |
+| `wazuh-alerts-*` (rule group `osquery`) | `data.osquery.columns.gid` | `wazuh-states-inventory-groups` | `group.id` |
+| `wazuh-alerts-*` (rule group `osquery`) | `data.osquery.columns.name` (chrome_extensions) | `wazuh-states-inventory-browser-extensions` | `package.name` |
+| `wazuh-alerts-*` (rule group `osquery`) | `data.osquery.columns.identifier` | `wazuh-states-inventory-browser-extensions` | `package.id` |
+| `wazuh-alerts-*` (rule group `osquery`) | `data.osquery.columns.id` (services) | `wazuh-states-inventory-services` | `service.id` |
+| `wazuh-alerts-*` (rule group `osquery`) | `data.osquery.columns.active_state` | `wazuh-states-inventory-services` | `service.state` |
 
 ### Step 6 – Recreate alerting monitors in 5.0
 

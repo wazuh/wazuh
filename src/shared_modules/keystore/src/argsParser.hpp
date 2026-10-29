@@ -46,7 +46,9 @@ public:
      * @param argv Arguments.
      */
     explicit CmdLineArgs(int argc, char* argv[])
-        : m_columnFamily {paramValueOf(argc, argv, "-f")}
+        // The unknown-option check runs first, so a mistyped flag is named instead of being
+        // reported as a missing -f or -k (or silently ignored next to them).
+        : m_columnFamily {(rejectUnknownSwitches(argc, argv), paramValueOf(argc, argv, "-f"))}
         , m_key {paramValueOf(argc, argv, "-k")}
         , m_value {paramValueOf(argc, argv, "-v", std::make_pair(false, ""))}
         , m_valuePath {paramValueOf(argc, argv, "-vp", std::make_pair(false, ""))}
@@ -127,6 +129,34 @@ public:
     }
 
 private:
+    /**
+     * @brief Throws on the first argument that is not a known option, skipping the value that
+     *        follows -f, -k, -v and -vp (a value may itself start with '-'). -h prints the usage and
+     *        exits wherever it appears, as paramValueOf() does.
+     */
+    static void rejectUnknownSwitches(int argc, char* argv[])
+    {
+        for (auto i = 1; i < argc; ++i)
+        {
+            const std::string currentValue {argv[i]};
+
+            if (currentValue == "-h")
+            {
+                showHelp();
+                std::exit(0);
+            }
+
+            if (currentValue == "-f" || currentValue == "-k" || currentValue == "-v" || currentValue == "-vp")
+            {
+                ++i;
+            }
+            else if (currentValue != "-g")
+            {
+                throw CmdLineArgsException {"Unknown option: " + currentValue};
+            }
+        }
+    }
+
     static bool hasSwitch(int argc, char* argv[], const std::string& switchValue)
     {
         for (auto i = 1; i < argc; ++i)

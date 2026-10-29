@@ -94,7 +94,7 @@ The diagram shows the engine boundary and its relationships with the outside wor
 
 ### Server
 
-Two HTTP servers running on Unix Domain Sockets under `/var/wazuh-manager/queue/sockets/`. The **events** socket, `engine-ingest-http.sock`, receives raw events (`POST /events/enriched`) from `wazuh-manager-remoted` and the vulnerability scanner. The **management API** socket, `engine-api-http.sock`, exposes the operations used by the Server API (metrics and status), the readiness check of `wazuh-manager-control start`, and the internal development tools: managing routes, running tester sessions, applying content changes, querying GeoIP/IOC state, reading the raw-event indexer status, controlling the event dumper, and reading metrics. Both sockets speak HTTP with JSON bodies; the schema for every request and response is defined in protobuf. See [api-reference.md](./api-reference.md). The events handler stamps each event with a reception timestamp on receipt, from a strictly increasing process clock, so the events of a batch keep their order and never share a stamp (network arrival order between concurrent requests is not guaranteed); decoders can overwrite `@timestamp`.
+Two HTTP servers running on Unix Domain Sockets under `/var/wazuh-manager/queue/sockets/`. The **events** socket, `engine-ingest-http.sock`, receives raw events (`POST /events/enriched`) from `wazuh-manager-remoted` and the vulnerability scanner. The **management API** socket, `engine-api-http.sock`, exposes the operations used by the Server API (metrics and status), the readiness check of `wazuh-manager-control start`, and the internal development tools: managing routes, running tester sessions, applying content changes, querying GeoIP/IOC state, reading the raw-event indexer status, controlling the event dumper, and reading metrics. Both sockets speak HTTP. The events socket takes the H/E batch format (`application/x-wev1`: one `H <json-metadata>` header line, then one `E <queue>:<location>:<message>` line per event; see the [Events API Reference](./api-events-reference.md)); the management API takes JSON bodies whose request and response schemas are defined in protobuf (see [api-reference.md](./api-reference.md)). The events handler stamps each event with a reception timestamp on receipt, from a strictly increasing process clock, so the events of a batch keep their order and never share a stamp (network arrival order between concurrent requests is not guaranteed); decoders can overwrite `@timestamp`.
 
 ### Orchestrator
 
@@ -138,7 +138,7 @@ Stream Log provides asynchronous, rotating log channels with size-based and time
 
 ### Configuration
 
-The local configuration is loaded once at startup — `analysisd.*` internal options overridable by `WAZUH_*` environment variables, the `<indexer>` section of the XML `wazuh-manager.conf`, and the indexer credentials from the keystore (see [Engine configuration](./configuration.md#configuration-sources)); every module reads from it. Runtime parameters are also pulled periodically (`analysisd.remote_conf_sync_interval`) from `wazuh-indexer` as **remote configuration**, so operators can tune behaviour without restarting the engine; in this version the only one is `index_raw_events`, which switches the raw-event indexer on or off. A value the consuming module rejects is discarded and the previous one kept.
+The local configuration is loaded once at startup — `analysisd.*` internal options overridable by `WAZUH_*` environment variables, the `<indexer>` section of the XML `wazuh-manager.conf`, and the indexer credentials from the keystore (see [Engine configuration](./configuration.md#configuration-sources)); every module reads from it. Runtime parameters are also pulled periodically (`analysisd.remote_conf_sync_interval`) from `wazuh-indexer` as **remote configuration**, so operators can tune behaviour without restarting the engine; in this version the only one is `index_raw_events` (the `engine` section of the `.wazuh-settings` index, default `false`), which switches the raw-event indexer on or off. When it is on, every input event is also indexed unprocessed, with its `@timestamp` and `wazuh.event.id`, into the `wazuh-events-raw-v5` index; `POST /_internal/raweventindexer/status` reports the current state. A value the consuming module rejects is discarded and the previous one kept.
 
 ---
 
@@ -159,7 +159,7 @@ sequenceDiagram
     participant IC as Indexer Connector
     participant Indexer as wazuh-indexer
 
-    Remoted->>Server: Raw event (HTTP/UDS, JSON)
+    Remoted->>Server: H/E event batch (HTTP over UDS, application/x-wev1)
     Server->>Orchestrator: Forward event
     Orchestrator->>Backend: Fan-out (one copy per active policy)
     Note over Backend: pre-filter → decoders → enrichment → post-filter → outputs

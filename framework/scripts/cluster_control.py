@@ -17,7 +17,11 @@ import wazuh.core.cluster.cluster
 import wazuh.core.cluster.utils
 from wazuh.core.cluster import control, local_client
 from wazuh.core.common import DECIMALS_DATE_FORMAT
+from wazuh.core.exception import WazuhException
 from wazuh.core.utils import get_utc_strptime
+
+# Agent connection statuses `-fs` filters by.
+AGENT_STATUSES = ('active', 'disconnected', 'never_connected', 'pending')
 
 
 def __print_table(data: map, headers: dict, show_header: bool = False):
@@ -129,15 +133,19 @@ async def print_health(config: dict, more: bool, filter_node: Union[str, list]):
         return total_seconds
 
     lc = local_client.LocalClient()
+    # Also when nodes are named: the health answer leaves out a node that does not exist, while this
+    # request refuses it (1730).
+    nodes = await control.get_nodes(lc, filter_node=filter_node)
     if filter_node is None:
-        filter_node = await control.get_nodes(lc, filter_node=filter_node)
-        filter_node = [node['name'] for node in filter_node['items']]
+        filter_node = [node['name'] for node in nodes['items']]
     result = await control.get_health(lc, filter_node=filter_node)
     msg2 = ""
 
     msg1 = f"Cluster name: {config['name']}\n\n"
+    # `n_connected_nodes` counts the workers only, as the synchronization summary lists them; the detailed report
+    # lists every node it got, the master included, so it counts them all.
     msg1 += f"Last completed synchronization for connected nodes ({result['n_connected_nodes']}):\n" if not more \
-        else f"Connected nodes ({result['n_connected_nodes']}):"
+        else f"Connected nodes ({len(result['nodes'])}):"
 
     for node, node_info in sorted(result["nodes"].items()):
         msg2 += f"\n    {node} ({node_info['info']['ip']})\n"
@@ -221,24 +229,27 @@ async def print_health(config: dict, more: bool, filter_node: Union[str, list]):
 def usage():
     """Show the usage of the parameters."""
     msg = """
-    {0} [-h] [-d] [-fn [FILTER_NODE ...]] [-fs [FILTER_STATUS ...]][-a | -l | -i [HEALTH]]
+    {0} [-h] [-d] [-fn [FILTER_NODE ...]] [-fs [FILTER_STATUS ...]] [-a | -l | -i [more] | -u]
     Usage:
     \t-l                                    # List all nodes present in a cluster
     \t-l -fn <node_name>                    # List certain nodes that belong to the cluster
     \t-a                                    # List all agents connected to the cluster
     \t-a -fs <agent_status>                 # List agents with certain status
     \t-i                                    # Check cluster health
+    \t-i more                               # Check cluster health, with the detailed report
     \t-i -fn <node_name>                    # Check certain node's health
+    \t-u                                    # Show this usage
 
 
     Params:
-    \t-l, --list
+    \t-l, --list-nodes
     \t-d, --debug
     \t-h, --help
     \t-fn, --filter-node
     \t-fs, --filter-agent-status
     \t-a, --list-agents
     \t-i, --health
+    \t-u, --usage
 
     """.format(path.basename(sys.argv[0]))
     print(msg)
@@ -256,17 +267,20 @@ def main():
     exclusive.add_argument('-i', '--health', action='store', nargs='?', const='health', help='Show cluster health')
     exclusive.add_argument('-u', '--usage', action='store_true', help='Show usage')
     args = parser.parse_args()
+    if args.filter_status is not None and not args.list_agents:
+        # An argument error like any other: argparse's usage on stderr and exit code 2.
+        parser.error('argument -fs/--filter-agent-status: only allowed with -a/--list-agents')
+    unknown_status = [status for status in args.filter_status or [] if status not in AGENT_STATUSES]
+    if unknown_status:
+        parser.error(f"argument -fs/--filter-agent-status: invalid status {', '.join(unknown_status)} "
+                     f"(choose from {', '.join(AGENT_STATUSES)})")
 
     logging.basicConfig(level=logging.DEBUG if args.debug else logging.ERROR, format='%(levelname)s: %(message)s')
 
-    cluster_config = wazuh.core.cluster.utils.read_config()
-    wazuh.core.cluster.cluster.check_cluster_config(config=cluster_config)
     try:
-        if args.filter_status and not args.list_agents:
-            logging.error("Wrong arguments.")
-            usage()
-            sys.exit(1)
-        elif args.list_agents:
+        cluster_config = wazuh.core.cluster.utils.read_config()
+        wazuh.core.cluster.cluster.check_cluster_config(config=cluster_config)
+        if args.list_agents:
             my_function, my_args = print_agents, (args.filter_status,)
         elif args.list_nodes:
             my_function, my_args = print_nodes, (args.filter_node,)
@@ -283,10 +297,17 @@ def main():
         asyncio.run(my_function(*my_args))
     except KeyboardInterrupt:
         pass
-    except Exception as e:
-        logging.error(e)
+    except WazuhException as e:
+        # The same format as agent_groups.
+        print(f"Error {e.code}: {e.message}")
         if args.debug:
             raise
+        sys.exit(1)
+    except Exception as e:
+        print(f"Internal error: {e}")
+        if args.debug:
+            raise
+        sys.exit(1)
 
 
 if __name__ == '__main__':

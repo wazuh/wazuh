@@ -152,17 +152,14 @@ flowchart TB
 |---|---|---|
 | Certificate the agent validates | **each manager node's** | the **balancer's** |
 | Certificate the balancer validates | — | each manager node's |
-| Balancing granularity | per **connection** | per **request** |
-| Can the balancer read or log paths | no | yes |
 
-### Balancing granularity is not a detail
-
-A TCP front end balances **connections**. An agent that keeps one connection open stays on one node
-for its lifetime. An HTTP front end balances **requests**, so consecutive requests from the same
-agent land on different nodes.
-
-That choice changes how visible everything in [§7](#7-what-an-agent-observes-while-the-cluster-catches-up)
-is. Neither is wrong; the deployment has to know which one it picked.
+The full comparison of the two models (balancing granularity, filtering, mTLS, logging) is in
+[The two deployment models](../remoted/load-balancers/README.md#3-the-two-deployment-models). One
+difference matters here: a TCP front end balances **connections**, so an agent that keeps one
+connection open stays on one node for its lifetime, while an HTTP front end balances **requests**,
+so consecutive requests from the same agent land on different nodes. That choice changes how visible
+everything in [§7](#7-what-an-agent-observes-while-the-cluster-catches-up) is. Neither is wrong; the
+deployment has to know which one it picked.
 
 ---
 
@@ -406,9 +403,8 @@ command line rather than in `config.yml`:
 ./wazuh-certs-tool.sh -A --agent-san <agent-facing address>
 ```
 
-`-as`/`--agent-san` adds the address to the subject alternative name of every agent listener
-certificate, on top of each manager node's own `ip` and `dns` entries. Repeat it for more than one
-address.
+`--agent-san` adds the address to the subject alternative name of every manager node's listener
+certificate, on top of each node's own `ip` and `dns` entries. Repeat it for more than one address.
 
 `config.yml` then only describes the deployment itself:
 
@@ -447,12 +443,10 @@ nodes:
         - "<agent-facing address>"
 ```
 
-`-A` issues it along with everything else, or `-lb`/`--load-balancer-certificates` issues only those
-entries. The manager leaves keep their own names, which is what the balancer validates when it
-re-encrypts to the backend.
-
-> `ip` accepts a list, as `dns` does, for a node reachable at more than one address. Every item
-> reaches the certificate; the first is the address the components are configured with.
+`-A` issues it along with everything else. The manager leaves keep their own names, which is what
+the balancer validates when it re-encrypts to the backend. The lab under
+`src/remoted/remoted_module/tools/load_balancer/` (`generate_certs.sh`) issues its PKI exactly this
+way.
 
 ##### Deploy and verify
 

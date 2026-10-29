@@ -511,7 +511,7 @@ INSTANTIATE_TEST_SUITE_P(
             []()
             {
                 return userErrorResponse<eEngine::tester::RunPost_Response>(
-                    "queue is required and must be non-zero (1..255)");
+                    "queue is required and must be non-zero (1..127)");
             },
             []() { return makeSchemaValidator(true); },
         },
@@ -533,7 +533,23 @@ INSTANTIATE_TEST_SUITE_P(
             },
             [](auto& tester) { EXPECT_CALL(tester, ingestTest(testing::_, testing::_)).Times(0); },
             []()
-            { return userErrorResponse<eEngine::tester::RunPost_Response>("Invalid queue: 300 (must be 1..255)"); },
+            { return userErrorResponse<eEngine::tester::RunPost_Response>("Invalid queue: 300 (must be 1..127)"); },
+            []() { return makeSchemaValidator(true); },
+        },
+        LogtestPostCase {
+            "QueueAbove127",
+            []()
+            {
+                eEngine::tester::PublicRunPost_Request protoReq;
+                protoReq.set_queue(128);
+                protoReq.set_location("/var/log/test");
+                protoReq.set_event("some event");
+                protoReq.set_trace_level("NONE");
+                return protoReq;
+            },
+            [](auto& tester) { EXPECT_CALL(tester, ingestTest(testing::_, testing::_)).Times(0); },
+            []()
+            { return userErrorResponse<eEngine::tester::RunPost_Response>("Invalid queue: 128 (must be 1..127)"); },
             []() { return makeSchemaValidator(true); },
         },
         LogtestPostCase {
@@ -610,6 +626,55 @@ INSTANTIATE_TEST_SUITE_P(
             [](auto& tester) { EXPECT_CALL(tester, ingestTest(testing::_, testing::_)).Times(0); },
             []()
             { return userErrorResponse<eEngine::tester::RunPost_Response>("event is required and cannot be empty"); },
+            []() { return makeSchemaValidator(true); },
+        },
+        // An absent trace level means NONE: no asset lookup, the event still runs
+        LogtestPostCase {
+            "TraceLevelAbsentMeansNone",
+            []()
+            {
+                eEngine::tester::PublicRunPost_Request protoReq;
+                protoReq.set_queue(1);
+                protoReq.set_location("/var/log/test");
+                protoReq.set_event("some event");
+                protoReq.set_space("test-session");
+                return protoReq;
+            },
+            [](auto& tester)
+            {
+                EXPECT_CALL(tester, getAssets(testing::_)).Times(0);
+                EXPECT_CALL(tester, ingestTest(testing::_, testing::_))
+                    .WillOnce(
+                        [](auto&&, auto&&)
+                        {
+                            std::promise<base::RespOrError<::router::test::Output>> p;
+                            p.set_value(makeOutput(R"({"status":"ok"})"));
+                            return p.get_future();
+                        });
+            },
+            []() { return makeRunPostSuccessResponse(R"({"status":"ok"})"); },
+            []() { return makeSchemaValidator(true); },
+        },
+        // An unknown trace level is refused and echoed bounded
+        LogtestPostCase {
+            "TraceLevelInvalidIsBounded",
+            []()
+            {
+                eEngine::tester::PublicRunPost_Request protoReq;
+                protoReq.set_queue(1);
+                protoReq.set_location("/var/log/test");
+                protoReq.set_event("some event");
+                protoReq.set_trace_level(std::string(5000, 'V'));
+                protoReq.set_space("test-session");
+                return protoReq;
+            },
+            [](auto& tester) { EXPECT_CALL(tester, ingestTest(testing::_, testing::_)).Times(0); },
+            []()
+            {
+                const std::string shown = std::string(128, 'V') + "... (5000 bytes)";
+                const std::string message = "Invalid trace level: " + shown + ". Only support: NONE, ASSET_ONLY, ALL";
+                return userErrorResponse<eEngine::tester::RunPost_Response>(message);
+            },
             []() { return makeSchemaValidator(true); },
         }));
 
@@ -1224,7 +1289,7 @@ INSTANTIATE_TEST_SUITE_P(
             "NamespaceExistsDeletesNamespaceAndSession",
             [](auto& tester, auto& store)
             {
-                const auto entry = makeEntry("test", "policy_validate_x");
+                const auto entry = makeEntry("test", "logtest_x");
                 EXPECT_CALL(tester, getTestEntry("test")).WillOnce(::testing::Return(entry));
                 EXPECT_CALL(store, existsNamespace(::testing::_)).WillOnce(::testing::Return(true));
                 EXPECT_CALL(store, deleteNamespace(::testing::_)).WillOnce(::testing::Return());
@@ -1236,7 +1301,7 @@ INSTANTIATE_TEST_SUITE_P(
             "NamespaceMissingDeletesSessionOnly",
             [](auto& tester, auto& store)
             {
-                const auto entry = makeEntry("test", "policy_validate_x");
+                const auto entry = makeEntry("test", "logtest_x");
                 EXPECT_CALL(tester, getTestEntry("test")).WillOnce(::testing::Return(entry));
                 EXPECT_CALL(store, existsNamespace(::testing::_)).WillOnce(::testing::Return(false));
                 EXPECT_CALL(store, deleteNamespace(::testing::_)).Times(0);
@@ -1248,7 +1313,7 @@ INSTANTIATE_TEST_SUITE_P(
             "NamespaceDeleteFailsReturnsError",
             [](auto& tester, auto& store)
             {
-                const auto entry = makeEntry("test", "policy_validate_x");
+                const auto entry = makeEntry("test", "logtest_x");
                 EXPECT_CALL(tester, getTestEntry("test")).WillOnce(::testing::Return(entry));
                 EXPECT_CALL(store, existsNamespace(::testing::_)).WillOnce(::testing::Return(true));
                 EXPECT_CALL(store, deleteNamespace(::testing::_))
@@ -1258,14 +1323,46 @@ INSTANTIATE_TEST_SUITE_P(
             []()
             {
                 return userErrorResponse<eEngine::GenericStatus_Response>(
-                    "Cleanup: failed deleting namespace 'policy_validate_x': boom");
+                    "Cleanup: failed deleting namespace 'logtest_x': boom");
+            },
+        },
+        LogtestDeleteCase {
+            "ForeignNamespaceIsRefused",
+            [](auto& tester, auto& store)
+            {
+                const auto entry = makeEntry("test", "cmsync_standard_abcdef");
+                EXPECT_CALL(tester, getTestEntry("test")).WillOnce(::testing::Return(entry));
+                EXPECT_CALL(store, existsNamespace(::testing::_)).Times(0);
+                EXPECT_CALL(store, deleteNamespace(::testing::_)).Times(0);
+                EXPECT_CALL(tester, deleteTestEntry(::testing::_)).Times(0);
+            },
+            []()
+            {
+                return userErrorResponse<eEngine::GenericStatus_Response>(
+                    "Refusing to delete space 'test': its namespace 'cmsync_standard_abcdef' was not created by the "
+                    "tester");
+            },
+        },
+        LogtestDeleteCase {
+            "BarePrefixNamespaceIsRefused",
+            [](auto& tester, auto& store)
+            {
+                const auto entry = makeEntry("test", "logtest_");
+                EXPECT_CALL(tester, getTestEntry("test")).WillOnce(::testing::Return(entry));
+                EXPECT_CALL(store, deleteNamespace(::testing::_)).Times(0);
+                EXPECT_CALL(tester, deleteTestEntry(::testing::_)).Times(0);
+            },
+            []()
+            {
+                return userErrorResponse<eEngine::GenericStatus_Response>(
+                    "Refusing to delete space 'test': its namespace 'logtest_' was not created by the tester");
             },
         },
         LogtestDeleteCase {
             "SessionDeleteFailsReturnsError",
             [](auto& tester, auto& store)
             {
-                const auto entry = makeEntry("test", "policy_validate_x");
+                const auto entry = makeEntry("test", "logtest_x");
                 EXPECT_CALL(tester, getTestEntry("test")).WillOnce(::testing::Return(entry));
                 EXPECT_CALL(store, existsNamespace(::testing::_)).WillOnce(::testing::Return(true));
                 EXPECT_CALL(store, deleteNamespace(::testing::_)).WillOnce(::testing::Return());

@@ -17,7 +17,7 @@ Three documentation layers cover this module, each with its own job:
 
 - **This README** — the developer's map: how the pieces fit, which invariants are load-bearing,
   where to touch what, and WHY it is built this way ([requirements](#requirements),
-  [design decisions](#design-decisions-d1d30), [developer FAQ](#developer-faq)).
+  [design decisions](#design-decisions-d1d31), [developer FAQ](#developer-faq)).
 - **[`docs/ref/modules/inventory-sync-server/`](../../../docs/ref/modules/inventory-sync-server/README.md)**
   — the operator- and integrator-facing reference:
   [architecture](../../../docs/ref/modules/inventory-sync-server/architecture.md),
@@ -38,7 +38,7 @@ purge means for enrollment.
 
 Distilled (and translated) from the migration's design corpus, where they were extracted from the
 legacy module's observable behavior before this rewrite. They are inlined here because the corpus
-is not part of the repository, and the D-numbers they cite are the [design decisions](#design-decisions-d1d30)
+is not part of the repository, and the D-numbers they cite are the [design decisions](#design-decisions-d1d31)
 below. Status: **kept** = the module provides it; **superseded by D-n** = deliberately replaced.
 
 ### Functional (RF)
@@ -105,7 +105,7 @@ pipeline satisfies it structurally rather than by discipline:
 | REQ-VDQ-9 | No RocksDB in the VD path (or at all) | kept (D9 — the module has NO local store) |
 | REQ-VDQ-10 | Queue observability: depth, ages, outcomes, durations | kept (`vd.lane.*`, `vd.scans.*` metrics — see [Statistics](#statistics-d18)) |
 
-## Design decisions (D1–D30)
+## Design decisions (D1–D31)
 
 The numbered decisions the requirements above refer to, in their original numbering. The
 [official architecture page](../../../docs/ref/modules/inventory-sync-server/architecture.md)
@@ -143,6 +143,7 @@ carries the narrative version of the load-bearing ones; this is the complete cat
 | D28 | One agent may have only `inventory_sync_server_max_sessions_per_agent` sessions (default 2) admitted and not yet answered, across the pipeline and the scan lane, counted by the validated agent id. One more is answered `503` and counted as `sync.agent_busy.total`. remoted caps what an agent has open on its side, but it gives up at its downstream deadline (`remoted.downstream_stateful_response_timeout`, 20 s) and frees the agent's slot there, while nothing here cancels admitted work. Without a count of its own, one agent could re-send on every timeout and fill the global `sync_queue_bytes` and the scan lane for everyone. The count is taken right after validation (`AgentSessionLimiter`) and released when the session is answered: the endpoint wraps the responder in an `AdmittedSessionResponder`, and the worker, the lane or a shutdown always answers through it, whether or not anyone is still listening. Two is the session being applied plus one re-send after such a timeout. The re-sends after that are refused instead of queued as duplicates of work already in progress. Kept as a count, not deduplicated by session: the server has no session id (D3) |
 | D29 | Nothing an agent sends can make `stageBulk()` throw. A throw there fails the worker's whole open batch, other agents' co-batched sessions included, because the pipeline cannot tell it from a connector failure (the buffer state is unknown after a failed `bulkIndex`). Two inputs did. A non-object value on the overlay's path (`"wazuh":"x"`, `"wazuh":{"agent":[1]}`, …) made `operator[]` throw, so the overlay is now built once per session and applied with `merge_patch()`, which replaces such a value; the agent's other `wazuh.*` fields survive, as before. `Start` strings that are not valid UTF-8 made every document's `dump()` throw (nlohmann checks UTF-8 when serializing, the Verifier never looks inside a string), so validation answers them `400` (step 9, after D25), with nlohmann's own `dump()` as the judge. As a backstop, any other `nlohmann::json::exception` while building a document skips that DOCUMENT with a WARN (D24's family). Only connector errors still leave `stageBulk()`, and those really do poison the batch |
 | D30 | A by-query (metadata, groups, a Cleans deletion, the by-query half of a whole-agent deletion) whose version-conflict allowance runs out is answered `503` with `Retry-After` and the reason body `indexer contention`, counted as `sync.indexer.conflict.exhausted`, not `500`. The connector reports it as `ConflictsExhausted`, apart from a shard failure: nothing was corrupted, every document the query reached is at the version a writer left it, and what kept the conflicts alive through three attempts is a competing writer of the same agent's documents, almost always a duplicate of the same session re-sent by the agent after remoted stopped waiting (D28). A `500` is read as a server failure by the agent, by remoted's counters and by the QA gates; the contention is retryable, so it is told apart and the delay (the connector's own `max_retry_duration_seconds`: the first copy cannot keep conflicting longer than its allowance) keeps the re-send from racing the first copy again. The rewrite the groups query does on every document of the agent stays: the version stamp it sets is the fence the bulk path's `external_gte` deltas are ordered against, so an unstamped document would let a stale delta through |
+| D31 | `ServerScanCoordinator`'s quiesce wait does not count the CALLER's own scan-lane hold. An on-demand rescan (`POST /_internal/vd/scan`) runs `triggerAgentScan()` synchronously on the lane worker that acquired the agent, and the scanner fences that agent from inside the scan; the wait counted the lane's own hold as in flight, so every on-demand scan waited the full 30 s bound for itself before scanning. The registry records the thread of each acquisition and `waitUntilIdle(…, ignoreCallersScanHold)` treats a scan-lane hold of the calling thread as idle. Nothing else is exempt: a pipeline session, or a scan another thread holds, is still waited for. The fence is not simply skipped for on-demand scans because the scanner, behind the neutral boundary, does not know who holds what; the registry does |
 
 ## Layout
 
@@ -158,11 +159,12 @@ inventory_sync_server/
 │   ├── inventorySyncServerTestHooks.cpp # the factory-override hooks declared in include/
 │   ├── schema/syncSchema.hpp          # THE binding to the generated FlatBuffers code (alias fb::)
 │   ├── common/                        # agentId (canonical id), clusterIdentity, metricNames (D18),
-│   │                                  #   jsonNestingDepth (D24)
+│   │                                  #   jsonNestingDepth (D24), agentMetadataLimits (D26 + /stats, /config)
 │   ├── http_server/                   # udsHttpServerConfig: C-ABI config -> the shared transport's config
 │   ├── endpoints/                     # route policies: syncEndpoint (POST /stateful),
 │   │                                  #   deleteAgentEndpoint (POST /_internal/agents/delete),
-│   │                                  #   vdScanEndpoint (POST /_internal/vd/scan), stats, config,
+│   │                                  #   vdScanEndpoint (POST /_internal/vd/scan), stats, config
+│   │                                  #   (+ reportedAgentMetadata: the agent's groups/host they copy),
 │   │                                  #   metricsEndpoint (GET /metrics)
 │   ├── indexer/                       # seam over the shared indexer_connector: interfaces + adapters
 │   ├── sync/                          # the ingestion pipeline:
@@ -375,8 +377,9 @@ request also holds its in-flight byte reservation).
 
 An agent id is a **string**: `001` is agent 001, and `1`, `01` or `0001` are not other spellings of
 it. `common/agentId.hpp` defines the one canonical spelling — digits that fit a 32-bit unsigned value,
-zero-padded to at least three characters (`001`, `1000`) — by delegating to remoted's own
-`jwt/canonicalAgentId.hpp`, the rule its token verifier enforces on `kid`/`sub`. Every document `_id`,
+zero-padded to at least three characters (`001`, `1000`) — by delegating to the shared
+`src/shared_modules/utils/jwt/canonicalAgentId.hpp`, the rule remoted's token verifier enforces on
+`kid`/`sub`. Every document `_id`,
 `wazuh.agent.id` and query uses that form, and the session stores the AUTHENTICATED id, never the
 claim. `isCanonicalAgentId()` gates every `X-Wazuh-Agent-Id` (`/stateful`, `/stats`, `/config`) and
 the claim compared against it; `canonicalAgentId()` normalizes the `agent_id` of the two `_internal`
@@ -536,7 +539,8 @@ disconnected agents — see [vulnerability-scanner's
 architecture.md](../../../docs/ref/modules/vulnerability-scanner/architecture.md#feed-update-rescan-scanvd--rescandisconnectedagents)
 for both paths) and a session scan for the SAME agent never race: it can pause an agent (both
 lanes then treat it as busy) and wait, bounded (30 s, configurable for tests), for what is running
-to drain; on timeout it lifts the fence and reports failure. There is no fleet-wide coordination here — each feed-update rescan fences
+to drain; on timeout it lifts the fence and reports failure. The caller's own scan-lane hold is not
+waited for (D31): an on-demand rescan fences its agent from the very lane worker that holds it. There is no fleet-wide coordination here — each feed-update rescan fences
 only the one agent it is about to scan, the same way a lane session does. On `stop()` it
 unregisters FIRST, before the lane dies under the scanner's feet.
 
@@ -587,7 +591,9 @@ it never does.
 Manager's dispatcher, executing a durable `agent_delete_indexer` row that authd created after
 removing the agent from `client.keys` and wazuh-db. remoted has no downstream route to it, and
 `_internal` marks it as a contract between two daemons of the same version with no compatibility
-promise. POST because the dispatcher's C-side HTTP helper (`uhttp_*`, libcurl) only speaks POST.
+promise. POST because the dispatcher's HTTP client (`UdsHttpClient` in
+`src/wazuh_modules/task_manager/src/handlers/udsHttpClient.hpp`, a per-worker libcurl handle) only
+speaks POST.
 
 **The agent id travels in the BODY** — `{"agent_id": "7"}` — not in `X-Wazuh-Agent-Id`. The dispatcher
 POSTs a task row's `PAYLOAD` verbatim and sets no headers of its own, so the body is the only channel
@@ -796,9 +802,13 @@ application (`sessionProcessor_test`), workers/ordering/group-commit/failure map
 and the cross-lane interlock (`vdScanLane_test`), deletion (`deleteAgentEndpoint_test`), the
 startup gate and teardown order (`indexerGating_test`), schema pinning (`schemaRoundtrip_test`),
 the transport configuration (`udsHttpServerConfig_test`; the transport itself is tested in
-`src/shared_modules/uds_http_server/test/`) — and `statefulEndpointE2E_test`, which boots the REAL
-module through the C ABI and drives the full contract matrix over a real socket with only the
-indexer faked.
+`src/shared_modules/uds_http_server/test/`), the remaining seams one file each
+(`agentInFlightRegistry_test`, `agentSessionLimiter_test`, `serverScanCoordinator_test`,
+`vdScanEndpoint_test`, `vdScannerAdapter_test`, `statsEndpoint_test`, `configEndpoint_test`,
+`reportedAgentMetadata_test`, `metricsEndpoint_test`, `jsonNestingDepth_test`, `clusterIdentity_test`,
+`indexerConnectorConfig_test`, `indexerSyncSeam_test`, `inventorySyncServerModule_test`) — and
+`statefulEndpointE2E_test`, which boots the REAL module through the C ABI and drives the full
+contract matrix over a real socket with only the indexer faked.
 
 ```bash
 cmake --build src/build -j --target inventory_sync_server_utest
@@ -843,7 +853,7 @@ What it pins about THIS module (scenario map in
   `feed_offset` gate's `409 version_mismatch`), `contract_delete_under_load`.
 - **`feed_offset` for VDFirst/VDSync sessions**: `agent` mode learns it live from remoted's
   `/control` `vd_feed_offset` (the same signal a real agent uses); `uds` mode has no `/control` to
-  learn it from, so pass `-vd-feed-offset` explicitly against a target whose feed offset is not 0
+  learn it from, so pass `--vd-feed-offset` explicitly against a target whose feed offset is not 0
   — see [SCENARIOS.md](../../../tools/manager_benchmark/SCENARIOS.md) for which scenarios need it.
 - **Real captured payloads** (`real_*` scenarios) for production-shaped sessions, including a full
   first connection at fidelity (the 27,726-document Windows FIM registry corpus in one session).

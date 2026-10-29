@@ -19,7 +19,8 @@ sudo dpkg --purge wazuh-manager
 ```
 
 `--purge` deletes `/var/wazuh-manager`, `/etc/wazuh-manager` (credentials included) and the `wazuh-manager` user
-and group.
+and group, and removes the service's boot enablement if you enabled it, so a later installation starts
+disabled again. `--remove` keeps that enablement, as it keeps the configuration.
 
 To remove the package but keep the configuration files:
 
@@ -28,11 +29,22 @@ sudo dpkg --remove wazuh-manager
 ```
 
 `--remove` deletes `queue/` (the wazuh-db databases, `tasks.db`, the keystore), `var/`, `logs/`,
-`data/`, `stats/`, `framework/` and the API directory, and keeps `/etc/wazuh-manager` with every file renamed
-to `<name>.save`, the agent groups under `shared/` included (only a file whose name contains `shared` keeps
-its name); `api.yaml` is kept as `api/configuration/api.yaml.save`. The CA's private key
+`data/`, `framework/` and the API directory, and keeps `/etc/wazuh-manager` with every file renamed
+to `<name>.save`, the agent groups under `shared/` included (the `default` group's `agent.conf` is kept as
+`shared/default/agent.conf.save`; only a file whose name contains `shared` keeps its name); `api.yaml` is
+kept as `api/configuration/api.yaml.save`. The database backups under `/var/wazuh-manager/backup/db` are kept
+too. The CA's private key
 `ca/root-ca.key.save` and `local.env.save` are among them. The manager never reads a `.save` file; delete those
 two when you no longer need them. The user and the group are left untouched.
+
+Only the latest `.save` set survives. Each removal first deletes every `.save` file already in
+`/etc/wazuh-manager` and `/var/wazuh-manager/api`, then renames the current files. If you reinstall from
+this state, the new installation issues its own CA. A later `--remove` then replaces the earlier
+`ca/root-ca.key.save` with the new CA's key, with no warning. A reinstall that **fails** does the same before
+any new key exists: when dpkg rolls back a failed install (`postrm abort-install`, or `disappear`), the
+package script deletes the old `.save` set, `ca/root-ca.key.save` included, and renames whatever is left.
+Copy the `.save` files you need (at least `ca/root-ca.key.save` and `local.env.save`) out of
+`/etc/wazuh-manager` and `/var/wazuh-manager/api` before you reinstall.
 
 ### Red Hat-based platforms
 
@@ -42,7 +54,7 @@ Remove the package:
 sudo rpm -e wazuh-manager
 ```
 
-`rpm -e` deletes the `wazuh-manager` user and group and the state directories under `/var/wazuh-manager`
+`rpm -e` disables the service at boot if you enabled it, and deletes the `wazuh-manager` user and group and the state directories under `/var/wazuh-manager`
 (`queue/`, `var/`, `logs/`, `data/`, `api/`, `bin/` and the rest). Under `/etc/wazuh-manager`, RPM removes the
 files the package lists (`wazuh-manager.conf`, `client.keys`, `wazuh-manager-internal-options.conf`,
 `shared/agent-template.conf` and the `default` group's files included), and the files it does not own, such as
@@ -53,6 +65,28 @@ gone, which it is whenever it holds anything the package did not install. Everyt
 `/etc/wazuh-manager` and in `/var/wazuh-manager`, is handed to `root:root` with no group or other access,
 because the account that owned part of it no longer exists. Back up anything you want to keep before running
 it, and delete `/etc/wazuh-manager` and `/var/wazuh-manager` by hand when the leftovers are no longer needed.
+As on Debian, only the latest `.save` set survives: each erase deletes the `.save` files of an earlier one
+before it renames.
+
+### Installed or overlaid from sources
+
+A manager installed with `install.sh` has no package to remove it: `sudo tools/purge_wazuh.sh` (root, no
+prompt, run from a source checkout) stops it and deletes `/var/wazuh-manager`, `/etc/wazuh-manager`, the
+units and the user. It also removes any Wazuh package and an agent in `/var/ossec`.
+
+An `install.sh` run over a DEB or RPM rewrites the package's own unit in `/usr/lib/systemd/system`
+(and removes any copy under `/etc/systemd/system`). With no package unit in place — a plain source
+installation, or an `install.sh` run after a package was removed — it writes
+`/etc/systemd/system/wazuh-manager.service` on every host but RHEL and CentOS, which get `/usr/lib`.
+Every package installation or upgrade deletes that `/etc/systemd/system` copy (the DEB `postinst` and the
+RPM `%posttrans` both do), so it survives only on a host whose package was removed and never installed
+again. No package owns it, so `dpkg --purge` and `rpm -e` leave it behind, still registering a service for
+the removed `/var/wazuh-manager`. Delete it after the removal:
+
+```bash
+sudo rm -f /etc/systemd/system/wazuh-manager.service
+sudo systemctl daemon-reload
+```
 
 ## Agent
 

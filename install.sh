@@ -110,6 +110,10 @@ RestoreUpgradePreserve()
     if [ -d "${UPGRADE_PRESERVE_DIR}/etc" ]; then
         PRESERVE_ETC_DIR=$(InstalledEtcDir)
         mkdir -p "${PRESERVE_ETC_DIR}" || return 1
+        # The schema copy is product, not configuration: the one this run installed stays.
+        if [ "X${INSTYPE}" = "Xmanager" ] && [ -f "${PRESERVE_ETC_DIR}/wazuh-manager.schema.json" ]; then
+            rm -f "${UPGRADE_PRESERVE_DIR}/etc/wazuh-manager.schema.json" || return 1
+        fi
         ${UPGRADE_PRESERVE_RESTORE_CP} "${UPGRADE_PRESERVE_DIR}/etc/." "${PRESERVE_ETC_DIR}/" || return 1
     fi
 

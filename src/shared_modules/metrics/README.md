@@ -72,8 +72,8 @@ format an operator reads as the
 [Metrics Library page](../../../docs/ref/modules/utils/metrics/README.md#querying-a-modules-metrics).
 They are the single copy; the requirements and decisions above say why. Two details of the dump
 that only a developer needs: the envelope `name` is `DumpOptions::daemonName`, and an empty
-`DumpOptions::timestampISO` means the current UTC time, formatted `%Y-%m-%dT%H:%M:%SZ`; a pull
-metric's `value` is a double, a gauge's is signed.
+`DumpOptions::timestampISO` means the current UTC time, formatted `%Y-%m-%dT%H:%M:%SZ`
+(`DumpOptions::pretty` switches the compact default to a pretty-printed document).
 
 ## Layout
 

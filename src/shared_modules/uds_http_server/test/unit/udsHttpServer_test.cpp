@@ -1129,3 +1129,68 @@ TEST(UdsHttpServerTest, ASecondRequestIsShedWith503WhileTheBudgetIsHeldByADeferr
 
     EXPECT_EQ(202, first.get().status);
 }
+
+/**
+ * @brief Two valid requests pipelined on one connection: the first is answered at once and the
+ *        connection closes; the second is never dispatched.
+ *
+ * The phase timeouts are set to production-like values on purpose: the failure this pins was a
+ * connection held, unanswered, until one of them fired.
+ */
+TEST(UdsHttpServerTest, PipelinedRequestsGetTheFirstAnsweredAndTheConnectionClosed)
+{
+    const auto path = uniqueSocketPath("pipeline");
+    std::atomic<int> calls {0};
+    std::mutex targetsMutex;
+    std::vector<std::string> targets;
+
+    auto server = makeUdsHttpServer();
+    const auto record = [&](std::shared_ptr<const HttpRequest> request, std::shared_ptr<IHttpResponder> responder)
+    {
+        ++calls;
+        {
+            std::lock_guard<std::mutex> lock(targetsMutex);
+            targets.push_back(request->target);
+        }
+        responder->send(HttpResponse::json(200, R"({"ok":true})"));
+    };
+    const wazuh::uds_http::RouteOptions control {wazuh::uds_http::RouteClass::Control};
+    server->addRoute(Method::Get, "/first", record, control);
+    server->addRoute(Method::Get, "/second", record, control);
+    server->addRoute(Method::Post, "/inventory/sync", record);
+
+    auto config = configFor(path);
+    config.headerTimeoutSec = 30;
+    config.bodyTimeoutSec = 30;
+    config.responseTimeoutSec = 30;
+    server->start(config);
+
+    // Bodyless, no Connection header -- what a hand-rolled client sends.
+    {
+        const auto start = std::chrono::steady_clock::now();
+        const auto response =
+            sendRaw(path, "GET /first HTTP/1.1\r\nHost: h\r\n\r\nGET /second HTTP/1.1\r\nHost: h\r\n\r\n");
+        const auto elapsed = std::chrono::steady_clock::now() - start;
+
+        ASSERT_TRUE(response.connected);
+        EXPECT_EQ(200, response.status);
+        EXPECT_EQ("close", response.header("Connection"));
+        EXPECT_LT(elapsed, std::chrono::seconds {2}) << "the connection must not wait out a phase timeout";
+        EXPECT_EQ(std::string::npos, response.raw.find("HTTP/1.1", 1)) << "exactly one response";
+    }
+
+    // With bodies and Connection: close, as the in-tree peers write them.
+    {
+        const auto start = std::chrono::steady_clock::now();
+        const auto response = sendRaw(
+            path, peerRequest("POST", "/inventory/sync", "one") + peerRequest("POST", "/inventory/sync?second", "two"));
+        const auto elapsed = std::chrono::steady_clock::now() - start;
+
+        EXPECT_EQ(200, response.status);
+        EXPECT_LT(elapsed, std::chrono::seconds {2});
+    }
+
+    EXPECT_EQ(2, calls.load()) << "one dispatch per connection; the pipelined requests never run";
+    std::lock_guard<std::mutex> lock(targetsMutex);
+    EXPECT_EQ((std::vector<std::string> {"/first", "/inventory/sync"}), targets);
+}

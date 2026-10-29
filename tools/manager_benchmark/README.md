@@ -213,7 +213,7 @@ step and with an `initial_delay` so the documents it re-scans have landed first 
 path from a VDFirst session's scan: remoted relays the VD module's admission, which records a
 durable `vd_scan` task in the Task Manager, and the Task Manager's dispatcher later runs it through
 the inventory sync server. Its `200` means **recorded and will run**, not scanned: the scans
-themselves show up in the manager's log as `reason=feed_update`. Full contract in
+themselves show up in the manager's log as `reason=on_demand`. Full contract in
 [`docu/14-scan-vd.md`](tool_simulator/docu/14-scan-vd.md).
 
 ## Manager preparation (agent mode)
@@ -395,7 +395,7 @@ documented for a synthetic client until now).
 ## Related
 
 - System under test: [`docs/ref/modules/inventory-sync-server/`](../../docs/ref/modules/inventory-sync-server/README.md)
-- The module's developer map (requirements, design decisions D1–D30, developer FAQ):
+- The module's developer map (requirements, design decisions D1–D31, developer FAQ):
   [`inventory_sync_server/README.md`](../../src/wazuh_modules/inventory_sync_server/README.md)
 - Correctness (not performance): the integration QA in [`inventory_sync_server/qa/`](../../src/wazuh_modules/inventory_sync_server/qa/README.md)
 - Runtime statistics the monitor scrapes: `GET /metrics`, documented in the inventory sync server's

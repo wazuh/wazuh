@@ -350,3 +350,23 @@ def test_prestart_checks_first(resolver, sandbox):
     assert os.listdir(sandbox.certs) == ["root-ca.pem"]
     assert not os.path.exists(os.path.join(sandbox.conf, "ca", "root-ca.pem"))
     assert not os.path.exists(os.path.join(sandbox.conf, "export", "ca.pem"))
+
+
+@pytest.mark.parametrize("name, reason", [
+    ("not_a_dns_name", "not a valid DNS name (set in {source})"),
+    ("a" * 40 + "." + "b" * 40, "too long for a certificate's common name (64 characters at most; set in {source})"),
+])
+def test_check_invalid_node_name(resolver, sandbox, name, reason):
+    """A supplied node name is judged on every start, as the passwords are, not only when something is issued."""
+    sandbox.stage_ca()
+    local_env = os.path.join(sandbox.conf, "local.env")
+    sandbox.write(local_env, f"WAZUH_MANAGER_NODE_NAME={name}\n")
+    code, _, err = run(resolver, sandbox, "--check")
+    assert code == 1, err
+    assert f"INVALID WAZUH_MANAGER_NODE_NAME: {reason.format(source=local_env + ":1")}" in err.splitlines(), err
+
+
+def test_check_accepts_a_valid_node_name(resolver, sandbox):
+    sandbox.stage_ca()
+    sandbox.write(os.path.join(sandbox.conf, "local.env"), "WAZUH_MANAGER_NODE_NAME=" + "a" * 31 + "." + "b" * 32 + "\n")
+    assert run(resolver, sandbox, "--check")[0::2] == (0, "")

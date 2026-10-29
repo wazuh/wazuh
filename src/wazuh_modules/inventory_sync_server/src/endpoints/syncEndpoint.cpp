@@ -15,6 +15,7 @@
 #include <uds_http_server/logThrottle.hpp>
 
 #include <chrono>
+#include <json.hpp>
 #include <string>
 #include <utility>
 #include <variant>
@@ -33,8 +34,10 @@ namespace
 
     wazuh::uds_http::HttpResponse errorResponse(int status, const std::string& reason)
     {
-        return wazuh::uds_http::HttpResponse::json(
-            status, std::string {R"({"error":")"} + reason + R"(","code":)" + std::to_string(status) + "}");
+        // Built as JSON, not concatenated, so a reason holding quotes still yields a valid body. Ordered to
+        // keep the documented {"error":...,"code":...} shape.
+        return wazuh::uds_http::HttpResponse::json(status,
+                                                   nlohmann::ordered_json {{"error", reason}, {"code", status}}.dump());
     }
 
     /// One body for every 503 cause on purpose: "stopping", "indexer unreachable" and "no
@@ -102,19 +105,19 @@ namespace invsync::endpoints::sync
                     if (const auto decision = identityThrottle.record())
                     {
                         LOGFN_WARN(logFn(),
-                                   "Rejected %llu request(s) with 403 in the last %d s: the session's identity does "
+                                   "Rejected %llu request(s) with 403 %s: the session's identity does "
                                    "not match the authenticated one (last: agent '%s').",
                                    static_cast<unsigned long long>(decision.total),
-                                   wazuh::uds_http::LogThrottle::kDefaultWindowSeconds,
+                                   decision.period().c_str(),
                                    agentIdIt->second.c_str());
                     }
                 }
                 else if (const auto decision = rejectedThrottle.record())
                 {
                     LOGFN_DEBUG1(logFn(),
-                                 "Rejected %llu invalid session(s) with 400 in the last %d s (last: %s).",
+                                 "Rejected %llu invalid session(s) with 400 %s (last: %s).",
                                  static_cast<unsigned long long>(decision.total),
-                                 wazuh::uds_http::LogThrottle::kDefaultWindowSeconds,
+                                 decision.period().c_str(),
                                  failure->reason.c_str());
                 }
                 deps.requestCounters.count(failure->status);
@@ -137,12 +140,12 @@ namespace invsync::endpoints::sync
                     if (const auto decision = agentBusyThrottle.record())
                     {
                         LOGFN_WARN(logFn(),
-                                   "Rejected %llu session(s) with 503 in the last %d s from agent(s) that already had "
+                                   "Rejected %llu session(s) with 503 %s from agent(s) that already had "
                                    "'inventory_sync_server_max_sessions_per_agent' sessions pending (last: agent "
                                    "'%s'). An agent re-sending faster than its sessions are applied points at a slow "
                                    "indexer or scanner, or at a misbehaving agent.",
                                    static_cast<unsigned long long>(decision.total),
-                                   wazuh::uds_http::LogThrottle::kDefaultWindowSeconds,
+                                   decision.period().c_str(),
                                    session.agentId.c_str());
                     }
                     if (deps.agentBusyTotal)
@@ -180,10 +183,10 @@ namespace invsync::endpoints::sync
                     if (const auto decision = vdThrottle.record())
                     {
                         LOGFN_DEBUG1(logFn(),
-                                     "Answered 503 + Retry-After to %llu vulnerability-detection session(s) in the "
-                                     "last %d s: the CVE feed is not ready, or the scanner is still starting up.",
+                                     "Answered 503 + Retry-After to %llu vulnerability-detection session(s) %s: "
+                                     "the CVE feed is not ready, or the scanner is still starting up.",
                                      static_cast<unsigned long long>(decision.total),
-                                     wazuh::uds_http::LogThrottle::kDefaultWindowSeconds);
+                                     decision.period().c_str());
                     }
                     auto response = errorResponse(503, "vulnerability feed not ready");
                     response.headers.emplace_back("Retry-After", std::to_string(deps.vdRetryAfterSeconds));
@@ -209,11 +212,11 @@ namespace invsync::endpoints::sync
                         if (const auto decision = vdThrottle.record())
                         {
                             LOGFN_WARN(logFn(),
-                                       "Rejected %llu vulnerability-detection session(s) with 503 in the last %d s: "
+                                       "Rejected %llu vulnerability-detection session(s) with 503 %s: "
                                        "the scan lane queue is full (scans are slow; the agents retry next cycle). "
                                        "Consider raising 'inventory_sync_server_vd_scan_queue_slots'.",
                                        static_cast<unsigned long long>(decision.total),
-                                       wazuh::uds_http::LogThrottle::kDefaultWindowSeconds);
+                                       decision.period().c_str());
                         }
                         // The lane itself counts vd.capacity.503.total at the refusal.
                         deps.requestCounters.count(503);
@@ -237,10 +240,10 @@ namespace invsync::endpoints::sync
                 if (const auto decision = goneThrottle.record())
                 {
                     LOGFN_DEBUG1(logFn(),
-                                 "Rejected %llu session(s) with 503 in the last %d s: the module is shutting down "
+                                 "Rejected %llu session(s) with 503 %s: the module is shutting down "
                                  "and the indexer connector is already gone.",
                                  static_cast<unsigned long long>(decision.total),
-                                 wazuh::uds_http::LogThrottle::kDefaultWindowSeconds);
+                                 decision.period().c_str());
                 }
                 deps.requestCounters.count(503);
                 responder->send(serviceUnavailable());
@@ -251,10 +254,10 @@ namespace invsync::endpoints::sync
                 if (const auto decision = unavailableThrottle.record())
                 {
                     LOGFN_WARN(logFn(),
-                               "Rejected %llu session(s) with 503 in the last %d s: no configured indexer host is "
+                               "Rejected %llu session(s) with 503 %s: no configured indexer host is "
                                "currently healthy. Check the <indexer> hosts and that the indexer is running.",
                                static_cast<unsigned long long>(decision.total),
-                               wazuh::uds_http::LogThrottle::kDefaultWindowSeconds);
+                               decision.period().c_str());
                 }
                 deps.requestCounters.count(503);
                 responder->send(serviceUnavailable());
@@ -281,11 +284,11 @@ namespace invsync::endpoints::sync
                 if (const auto decision = capacityThrottle.record())
                 {
                     LOGFN_WARN(logFn(),
-                               "Rejected %llu session(s) with 503 in the last %d s: the sync pipeline queue is full. "
+                               "Rejected %llu session(s) with 503 %s: the sync pipeline queue is full. "
                                "Consider raising 'inventory_sync_server_sync_workers' or "
                                "'inventory_sync_server_sync_queue_bytes'.",
                                static_cast<unsigned long long>(decision.total),
-                               wazuh::uds_http::LogThrottle::kDefaultWindowSeconds);
+                               decision.period().c_str());
                 }
                 // The pipeline itself counts sync.pipeline.shed.total at the refusal.
                 deps.requestCounters.count(503);

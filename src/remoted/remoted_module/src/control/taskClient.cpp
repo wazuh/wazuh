@@ -156,9 +156,9 @@ namespace remoted::control
                     if (const auto throttle = stoppingThrottle().record())
                     {
                         LOGFN_DEBUG1(logFn(),
-                                     "Task client is stopping: rejected %llu request(s) in the last %d s.",
+                                     "Task client is stopping: rejected %llu request(s) %s.",
                                      throttle.total,
-                                     remoted::common::LogThrottle::kDefaultWindowSeconds);
+                                     throttle.period().c_str());
                     }
                     reject(SocketError::Stopping, {});
                     return;
@@ -168,10 +168,10 @@ namespace remoted::control
                 if (const auto throttle = queueFullThrottle().record())
                 {
                     LOGFN_WARN(logFn(),
-                               "Task client queue full (max=%u): dropped %llu request(s) in the last %d s.",
+                               "Task client queue full (max=%u): dropped %llu request(s) %s.",
                                m_maxQueueSize,
                                throttle.total,
-                               remoted::common::LogThrottle::kDefaultWindowSeconds);
+                               throttle.period().c_str());
                 }
                 reject(SocketError::QueueFull, {});
             }
@@ -265,10 +265,10 @@ namespace remoted::control
                     if (const auto throttle = timeoutThrottle().record())
                     {
                         LOGFN_WARN(logFn(),
-                                   "Task manager query timeout (deadline=%u ms): %llu timeout(s) in the last %d s.",
+                                   "Task manager query timeout (deadline=%u ms): %llu timeout(s) %s.",
                                    m_deadlineMs,
                                    throttle.total,
-                                   remoted::common::LogThrottle::kDefaultWindowSeconds);
+                                   throttle.period().c_str());
                     }
                     req.callback(SocketError::Timeout, {});
                     continue;
@@ -280,10 +280,10 @@ namespace remoted::control
                     if (const auto throttle = connectFailThrottle().record())
                     {
                         LOGFN_ERROR(logFn(),
-                                    "Failed to reach the task manager socket at %s: %llu failure(s) in the last %d s.",
+                                    "Failed to reach the task manager socket at %s: %llu failure(s) %s.",
                                     m_taskSocketPath.c_str(),
                                     throttle.total,
-                                    remoted::common::LogThrottle::kDefaultWindowSeconds);
+                                    throttle.period().c_str());
                     }
                     req.callback(SocketError::Io, {});
                     continue;
@@ -295,10 +295,10 @@ namespace remoted::control
                     if (const auto throttle = ioErrorThrottle().record())
                     {
                         LOGFN_WARN(logFn(),
-                                   "Task manager I/O error (%s): %llu error(s) in the last %d s.",
+                                   "Task manager I/O error (%s): %llu error(s) %s.",
                                    remoted::downstream::toString(error),
                                    throttle.total,
-                                   remoted::common::LogThrottle::kDefaultWindowSeconds);
+                                   throttle.period().c_str());
                     }
                     req.callback(SocketError::Io, {});
                     continue;
@@ -310,10 +310,10 @@ namespace remoted::control
                     if (const auto throttle = protocolErrorThrottle().record())
                     {
                         LOGFN_WARN(logFn(),
-                                   "Task manager answered HTTP %d: %llu error(s) in the last %d s.",
+                                   "Task manager answered HTTP %d: %llu error(s) %s.",
                                    response.status,
                                    throttle.total,
-                                   remoted::common::LogThrottle::kDefaultWindowSeconds);
+                                   throttle.period().c_str());
                     }
                     req.callback(SocketError::ProtocolError, {});
                     continue;
@@ -340,9 +340,9 @@ namespace remoted::control
                     if (const auto throttle = protocolErrorThrottle().record())
                     {
                         LOGFN_WARN(logFn(),
-                                   "Task manager returned error response: %llu error(s) in the last %d s.",
+                                   "Task manager returned error response: %llu error(s) %s.",
                                    throttle.total,
-                                   remoted::common::LogThrottle::kDefaultWindowSeconds);
+                                   throttle.period().c_str());
                     }
                     callback(SocketError::ProtocolError, {});
                     return;
@@ -377,9 +377,9 @@ namespace remoted::control
                 if (const auto throttle = protocolErrorThrottle().record())
                 {
                     LOGFN_WARN(logFn(),
-                               "Task manager JSON parse error: %llu error(s) in the last %d s.",
+                               "Task manager JSON parse error: %llu error(s) %s.",
                                throttle.total,
-                               remoted::common::LogThrottle::kDefaultWindowSeconds);
+                               throttle.period().c_str());
                 }
                 callback(SocketError::ProtocolError, {});
             }

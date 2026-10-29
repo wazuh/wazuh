@@ -4,6 +4,7 @@
 
 import logging
 import operator
+import re
 import time
 from os import chmod, path, listdir, rename
 from shutil import rmtree
@@ -23,7 +24,8 @@ from wazuh.core.exception import WazuhError, WazuhInternalError, WazuhException,
 from wazuh.core.results import WazuhResult, AffectedItemsWazuhResult
 from wazuh.core.utils import WazuhVersion, chmod_r, chown_r, get_hash, mkdir_with_mode, process_array, clear_temporary_caches, \
     full_copy, validate_query
-from wazuh.rbac.decorators import audit_agent_keys_read, expose_resources, async_list_handler, mask_sensitive_config
+from wazuh.rbac.decorators import audit_agent_keys_read, expose_resources, async_list_handler, mask_sensitive_config, \
+    permitted_agent_ids
 
 logger = logging.getLogger('wazuh')
 
@@ -1014,6 +1016,8 @@ def get_agent_groups(group_list: list = None, offset: int = 0, limit: int = None
         with WazuhDBQueryGroup(**rbac_filters, limit=None) as group_query:
             query_data = group_query.run()
 
+            _count_readable_agents(query_data['items'])
+
             for group in query_data['items']:
                 if group_list and group['name'] not in group_list:
                     continue
@@ -1039,6 +1043,39 @@ def get_agent_groups(group_list: list = None, offset: int = 0, limit: int = None
         result.total_affected_items = data['totalItems']
 
     return result
+
+
+def _count_readable_agents(groups: list):
+    """Make each group's `count` the number of its agents the caller may read (`agent:read`).
+
+    The group query counts every agent assigned to a group; a caller limited to some agents must not learn how many
+    others there are. Nothing is queried when the caller may read every agent.
+
+    Parameters
+    ----------
+    groups : list
+        Groups as returned by `WazuhDBQueryGroup`, each with `name` and `count`.
+    """
+    if not any('count' in group for group in groups):
+        return
+
+    system_agents = get_agents_info()
+    readable_agents = permitted_agent_ids() & system_agents
+    if readable_agents == system_agents:
+        return
+
+    counts = dict.fromkeys((group['name'] for group in groups), 0)
+    if readable_agents:
+        rbac_filters = get_rbac_filters(system_resources=system_agents, permitted_resources=list(readable_agents))
+        with WazuhDBQueryAgents(limit=None, select=['group'], **rbac_filters) as agent_query:
+            for agent in agent_query.run()['items']:
+                for name in agent.get('group') or []:
+                    if name in counts:
+                        counts[name] += 1
+
+    for group in groups:
+        if 'count' in group:
+            group['count'] = counts[group['name']]
 
 
 @expose_resources(actions=["group:read"], resources=["group:id:{group_list}"], post_proc_func=None)
@@ -1078,6 +1115,10 @@ def get_group_files(group_list: list = None, offset: int = 0, limit: int = None,
 
     Raises
     ------
+    WazuhResourceNotFound(1710)
+        If the group does not exist.
+    WazuhResourceNotFound(1006)
+        If the group has no directory.
     WazuhInternalError(1727)
         If there was an error listing group files.
     WazuhError
@@ -1098,13 +1139,12 @@ def get_group_files(group_list: list = None, offset: int = 0, limit: int = None,
                                       )
     if group_id:
         if not Agent.group_exists(group_id):
-            result.add_failed_item(id_=group_id, error=WazuhResourceNotFound(1710))
-            return result
+            raise WazuhResourceNotFound(1710, group_id)
         group_path = path.join(common.SHARED_PATH, group_id)
 
     if not path.exists(group_path):
-        result.add_failed_item(id_=group_path, error=WazuhError(1006))
-        return result
+        # The group exists but has no directory: name the group, never the absolute path.
+        raise WazuhResourceNotFound(1006, group_id)
 
     try:
         data = []
@@ -1484,8 +1524,22 @@ def get_outdated_agents(agent_list: list = None, offset: int = 0, limit: int = c
         if q:
             # A ')' in q closing a group it never opened would close the wrapper and escape the version condition
             validate_query(q)
+
+        # Agents store their version as they report it ('v5.0.0', '5.0.0', 'Wazuh v4.14.0'), so a text comparison
+        # with the manager's would list an up-to-date agent and a newer one. Compare each stored version
+        # semantically and query the agents whose stored version is older than the manager's.
+        with WazuhDBQueryAgents(select=['version'], distinct=True, limit=None, query=q or '',
+                                normalize_versions=False, **rbac_filters) as db_query:
+            stored_versions = {item.get('version') for item in db_query.run()['items']}
+
+        outdated_versions = sorted(version for version in stored_versions
+                                   if _is_older_version(version, manager_version))
+        if not outdated_versions:
+            return result
+
+        version_query = ','.join(f'version={version}' for version in outdated_versions)
         with WazuhDBQueryAgents(offset=offset, limit=limit, sort=sort, search=search, select=select,
-                                query=f"version!={manager_version}" + (f";({q})" if q else ''),
+                                query=f"({version_query})" + (f";({q})" if q else ''),
                                 **rbac_filters) as db_query:
             data = db_query.run()
 
@@ -1493,6 +1547,37 @@ def get_outdated_agents(agent_list: list = None, offset: int = 0, limit: int = c
         result.total_affected_items = data['totalItems']
 
     return result
+
+
+def _is_older_version(version: str, reference: str) -> bool:
+    """Whether a stored agent version is older than the reference one.
+
+    Only major, minor and patch count, as in the upgrade's own check (the task manager's `compareVersions`): an agent
+    on a pre-release of the manager's version ('v5.0.0-rc1' against 'v5.0.0') is not older, because an upgrade
+    request for it is refused as already up to date (1820). A missing or unparseable version is not considered older,
+    and neither is one the query language could not express as a value.
+
+    Parameters
+    ----------
+    version : str
+        Agent version as stored ('v5.0.0', '5.0.0', 'Wazuh v4.14.0').
+    reference : str
+        Version to compare with.
+
+    Returns
+    -------
+    bool
+        True if `version` is older than `reference`.
+    """
+    if not isinstance(version, str) or not re.fullmatch(r'[\w .\-]+', version):
+        return False
+
+    release = re.compile(r'(?:Wazuh )?v?(\d+)\.(\d+)\.(\d+)')
+    agent_match, reference_match = release.match(version), release.match(reference or '')
+    if not agent_match or not reference_match:
+        return False
+
+    return tuple(map(int, agent_match.groups())) < tuple(map(int, reference_match.groups()))
 
 
 @expose_resources(actions=["agent:upgrade"], resources=["agent:id:{agent_list}"],

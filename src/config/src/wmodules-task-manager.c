@@ -192,30 +192,34 @@ int wm_task_manager_read(__attribute__((unused)) const OS_XML *xml, __attribute_
  * w_mconf_load(), so there is no effective document to read at that point. This function runs from
  * the section dispatch, which is after it.
  *
- * A read failure returns 0, the "no opinion" sentinel, and the module applies its own default. A
+ * A read failure leaves 0, the "no opinion" sentinel, and the module applies its own default. A
  * warning rather than a fatal error: inside modulesd, exiting here would take every other module
- * down over one `global` problem.
+ * down over one `global` problem. The caller still reports it, so that `-t` fails on it.
  *
- * @return Seconds, or 0 to leave the choice to the module.
+ * @param[out] seconds Seconds, or 0 to leave the choice to the module.
+ * @return 0 when the section was read, 1 when it was refused.
  */
-static int wm_task_manager_disconnection_time(void) {
+static int wm_task_manager_disconnection_time(int *seconds) {
     _Config global_config;
     cJSON *section = w_mconf_section("global");
 
     memset(&global_config, 0, sizeof(global_config));
+    *seconds = 0;
 
     if (section == NULL || Read_Global_JSON(section, &global_config) < 0) {
         mwarn("Cannot read the global configuration; the agent disconnection sweep will use its "
               "default window.");
         cJSON_Delete(section);
-        return 0;
+        return 1;
     }
 
     cJSON_Delete(section);
 
     /* Read_Global_JSON rejects anything below 1 and leaves the struct untouched, so a zero here
-     * means the key was absent -- which is the same sentinel. */
-    return global_config.agents_disconnection_time > 0 ? (int)global_config.agents_disconnection_time : 0;
+     * means the key was absent -- which is the same sentinel. The schema caps the value far below
+     * INT_MAX. */
+    *seconds = global_config.agents_disconnection_time > 0 ? (int)global_config.agents_disconnection_time : 0;
+    return 0;
 }
 
 /**
@@ -231,9 +235,12 @@ static int wm_task_manager_disconnection_time(void) {
  *
  * On failure the validity flag stays 0 and the module fails the delivery gates OPEN. A `remote`
  * problem is remoted's to report; blocking every upgrade on it would turn one daemon's
- * configuration error into a fleet-wide outage of an unrelated feature.
+ * configuration error into a fleet-wide outage of an unrelated feature. The caller still reports
+ * it, so that `-t` fails on it.
+ *
+ * @return 0 when the section was read, 1 when it was refused.
  */
-static void wm_task_manager_read_remoted(wm_task_manager *data) {
+static int wm_task_manager_read_remoted(wm_task_manager *data) {
     remoted remoted_config;
     cJSON *section = w_mconf_section("remote");
 
@@ -244,7 +251,9 @@ static void wm_task_manager_read_remoted(wm_task_manager *data) {
     memset(&remoted_config, 0, sizeof(remoted_config));
     remoted_config.https.verification_mode = REMOTED_HTTPS_VERIFY_UNSET;
 
-    if (section != NULL && Read_Remote_JSON(section, &remoted_config) >= 0) {
+    const int read = section != NULL && Read_Remote_JSON(section, &remoted_config) >= 0;
+
+    if (read) {
         data->remoted_config_read = 1;
         data->remoted_legacy_enabled = remoted_config.legacy_enabled ? 1 : 0;
         data->remoted_verification_mode = remoted_config.https.verification_mode;
@@ -266,12 +275,18 @@ static void wm_task_manager_read_remoted(wm_task_manager *data) {
     os_free(remoted_config.https.ca);
     os_free(remoted_config.https.ca_certificate);
     os_free(remoted_config.https.ciphers);
+
+    return read ? 0 : 1;
 }
 
 /* Reader of the `task-manager` section of the effective document (/etc/wazuh-manager/wazuh-manager.conf, see
  * mconf-config.h). `module` is the instance default_modules[] already initialised through
  * wm_task_manager_read(NULL, NULL, module). The schema guarantees non-negative integers; 0 keeps the
- * module default, as with the XML reader. */
+ * module default, as with the XML reader. A value above INT_MAX is refused here.
+ *
+ * Returns 0, or 1 when `global` or `remote` was refused or an integer was out of range: the module runs
+ * on its defaults for what it needed from them, and wm_config() passes the 1 on so that
+ * `wazuh-manager-modulesd -t` fails. */
 int wm_task_manager_read_json(const cJSON *section, wmodule *module) {
     if (module == NULL || module->data == NULL) {
         return 0;
@@ -283,11 +298,11 @@ int wm_task_manager_read_json(const cJSON *section, wmodule *module) {
      * `section` is -- the sweep needs its interval, and the upgrade gates need remoted's delivery
      * settings. On a manager the defaults step inserts every absent section, so `section` is only NULL
      * when a caller passes no document; the guard is defensive, not a "section removed" path. */
-    data->disconnection_time = wm_task_manager_disconnection_time();
-    wm_task_manager_read_remoted(data);
+    int degraded = wm_task_manager_disconnection_time(&data->disconnection_time);
+    degraded |= wm_task_manager_read_remoted(data);
 
     if (section == NULL) {
-        return 0;
+        return degraded;
     }
 
     data->upgrade_enabled =
@@ -312,13 +327,27 @@ int wm_task_manager_read_json(const cJSON *section, wmodule *module) {
         { XML_MAX_TASKS_PER_POLL, &data->max_tasks_per_poll },
     };
 
+    /* The schema gives these a minimum but no maximum, and cJSON saturates valueint at INT_MAX, so
+     * the range is checked on valuedouble: a value the module cannot hold is refused (the module
+     * keeps its default) rather than silently clamped, and the 1 makes `-t` fail on it. */
     for (size_t i = 0; i < sizeof(settings) / sizeof(settings[0]); i++) {
         const cJSON *item = cJSON_GetObjectItem(section, settings[i].key);
 
-        if (cJSON_IsNumber(item) && item->valueint >= 0) {
-            *settings[i].value = item->valueint;
+        if (!cJSON_IsNumber(item)) {
+            continue;
         }
+
+        if (item->valuedouble < 0 || item->valuedouble > (double)INT_MAX) {
+            char *text = cJSON_PrintUnformatted(item);
+            merror("Invalid value for element '%s': %s is out of range (0 to %d); the module default applies.",
+                   settings[i].key, text != NULL ? text : "(null)", INT_MAX);
+            free(text);
+            degraded = 1;
+            continue;
+        }
+
+        *settings[i].value = item->valueint;
     }
 
-    return 0;
+    return degraded;
 }

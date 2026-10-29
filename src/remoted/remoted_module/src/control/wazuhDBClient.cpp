@@ -155,10 +155,10 @@ namespace remoted::control
                 if (const auto throttle = queueFullThrottle().record())
                 {
                     LOGFN_WARN(logFn(),
-                               "WazuhDB queue full (max=%u): dropped %llu request(s) in the last %d s.",
+                               "WazuhDB queue full (max=%u): dropped %llu request(s) %s.",
                                m_maxQueueSize,
                                throttle.total,
-                               remoted::common::LogThrottle::kDefaultWindowSeconds);
+                               throttle.period().c_str());
                 }
                 reject(SocketError::QueueFull, "");
             }
@@ -182,10 +182,10 @@ namespace remoted::control
             if (const auto throttle = timeoutThrottle().record())
             {
                 LOGFN_WARN(logFn(),
-                           "WazuhDB query timeout (deadline=%u ms): %llu timeout(s) in the last %d s.",
+                           "WazuhDB query timeout (deadline=%u ms): %llu timeout(s) %s.",
                            m_deadlineMs,
                            throttle.total,
-                           remoted::common::LogThrottle::kDefaultWindowSeconds);
+                           throttle.period().c_str());
             }
             callback(SocketError::Timeout, "");
         }
@@ -270,10 +270,10 @@ namespace remoted::control
                     if (const auto throttle = connectFailThrottle().record())
                     {
                         LOGFN_ERROR(logFn(),
-                                    "Failed to connect to WazuhDB socket at %s: %llu failure(s) in the last %d s.",
+                                    "Failed to connect to WazuhDB socket at %s: %llu failure(s) %s.",
                                     m_wdbSocketPath.c_str(),
                                     throttle.total,
-                                    remoted::common::LogThrottle::kDefaultWindowSeconds);
+                                    throttle.period().c_str());
                     }
                     return false;
                 }
@@ -353,10 +353,8 @@ namespace remoted::control
                     incWdbError(m_metrics);
                     if (const auto throttle = ioErrorThrottle().record())
                     {
-                        LOGFN_WARN(logFn(),
-                                   "WazuhDB I/O error: %llu error(s) in the last %d s.",
-                                   throttle.total,
-                                   remoted::common::LogThrottle::kDefaultWindowSeconds);
+                        LOGFN_WARN(
+                            logFn(), "WazuhDB I/O error: %llu error(s) %s.", throttle.total, throttle.period().c_str());
                     }
                     req.callback(SocketError::Io, "");
                     needsReconnect = true;
@@ -431,10 +429,9 @@ namespace remoted::control
                       if (const auto throttle = nonOkResponseThrottle().record())
                       {
                           LOGFN_WARN(logFn(),
-                                     "WazuhDB returned a non-ok response to getAgentGroups: %llu error(s) in the "
-                                     "last %d s.",
+                                     "WazuhDB returned a non-ok response to getAgentGroups: %llu error(s) %s.",
                                      throttle.total,
-                                     remoted::common::LogThrottle::kDefaultWindowSeconds);
+                                     throttle.period().c_str());
                       }
                       callback(SocketError::ProtocolError, {});
                       return;
@@ -479,10 +476,9 @@ namespace remoted::control
                       if (const auto throttle = parseErrorThrottle().record())
                       {
                           LOGFN_WARN(logFn(),
-                                     "WazuhDB getAgentGroups: could not parse the response: %llu error(s) in the "
-                                     "last %d s.",
+                                     "WazuhDB getAgentGroups: could not parse the response: %llu error(s) %s.",
                                      throttle.total,
-                                     remoted::common::LogThrottle::kDefaultWindowSeconds);
+                                     throttle.period().c_str());
                       }
                       callback(SocketError::ProtocolError, {});
                   }

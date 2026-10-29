@@ -19,7 +19,6 @@ package com.wazuh.api.engine.metrics;
  * Metric types (returned as lowercase strings):
  *   "counter"    - Monotonically increasing counter (atomic, lock-free)
  *   "gauge_int"  - Integer gauge (instantaneous value)
- *   "gauge_dbl"  - Double gauge (instantaneous value, e.g., EPS rates)
  *   "pull"       - On-demand callback metric (lazy evaluation)
  */
 
@@ -70,7 +69,7 @@ message Get_Response
     ReturnStatus status = 1;   // Status of the query
     optional string error = 2; // Error message if status is ERROR
     optional string name = 3;  // Resolved metric name (full internal name)
-    optional string type = 4;  // Metric type: "counter", "gauge_int", "gauge_dbl", "pull"
+    optional string type = 4;  // Metric type: "counter", "gauge_int", "pull"
     optional bool enabled = 5; // Whether metric collection is enabled
     optional double value = 6; // Current metric value
 }
@@ -120,7 +119,7 @@ message MetricEntry
 {
     optional string name =
         1; // Metric name (for global: full name; for per-space: suffix without "space.<name>." prefix)
-    optional string type = 2;  // Metric type: "counter", "gauge_int", "gauge_dbl", "pull"
+    optional string type = 2;  // Metric type: "counter", "gauge_int", "pull"
     optional bool enabled = 3; // Whether metric collection is enabled
     optional double value = 4; // Current metric value
 }

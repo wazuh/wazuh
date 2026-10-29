@@ -1072,6 +1072,71 @@ TEST_F(IndexerConnectorAsyncTest, ClusterBlockExceptionItemsAreDiscardedNotRetri
     EXPECT_NE(receivedData[1].find("value5"), std::string::npos);
 }
 
+TEST(IndexerPrintableForLogTest, ControlBytesAreEscapedAndTheEntryTerminatorDropped)
+{
+    EXPECT_EQ(printableForLog("{\"create\":{}}\n{\"a\":\"b\"}\n"), R"({"create":{}}\n{"a":"b"})");
+    EXPECT_EQ(printableForLog("x\r\t\x01\x7fy"), R"(x\r\t\x01\x7fy)");
+    EXPECT_EQ(printableForLog(""), "");
+}
+
+TEST(IndexerPrintableForLogTest, LongTextIsCappedOnACharacterBoundary)
+{
+    const std::string text(LOGGED_TEXT_MAX + 100, 'a');
+    EXPECT_EQ(printableForLog(text), std::string(LOGGED_TEXT_MAX, 'a') + "... (612 bytes)");
+
+    const std::string exact(LOGGED_TEXT_MAX, 'b');
+    EXPECT_EQ(printableForLog(exact), exact) << "nothing cut, nothing appended";
+
+    // A two-byte character straddling the cap is dropped whole, never split.
+    const std::string straddling = std::string(3, 'c') + "\xc3\xa9" + "dd";
+    EXPECT_EQ(printableForLog(straddling, 4), "ccc... (7 bytes)");
+}
+
+// A per-item indexing error quotes the document, which is event content: the WARNING stays one
+// escaped, bounded line instead of spilling the raw multi-line NDJSON entry into the log.
+TEST_F(IndexerConnectorAsyncTest, ADocumentErrorIsLoggedOnOneBoundedLine)
+{
+    // Installed before the connector: its threads log until the connector is destroyed.
+    ScopedLogCapture logs;
+
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .WillRepeatedly(Invoke(
+            [](RequestParamsVariant, auto postParams, ConfigurationParameters)
+            {
+                std::string response = R"({"took":1,"errors":true,"items":[{"create":{"status":400,"error":{)"
+                                       R"("type":"mapper_parsing_exception","reason":"bad\nvalue"}}}]})";
+                if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                {
+                    std::get<TPostRequestParameters<const std::string&>>(postParams).onSuccess(response);
+                }
+                else
+                {
+                    std::get<TPostRequestParameters<std::string&&>>(postParams).onSuccess(std::move(response));
+                }
+            }));
+
+    IndexerConnectorAsyncImplRetryableBulk connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+    connector.bulkIndexDataStream("wazuh-events-v5-test", R"({"field":")" + std::string(2000, 'z') + R"(END"})");
+
+    const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(10);
+    while (!logs.contains("Error indexing document") && std::chrono::steady_clock::now() < deadline)
+    {
+        std::this_thread::sleep_for(std::chrono::milliseconds(20));
+    }
+
+    ASSERT_TRUE(logs.containsAtLevel(
+        Log::LOGLEVEL_WARNING, R"(Error indexing document (type mapper_parsing_exception - reason: 'bad\nvalue'))"));
+    // WARNING only: the DEBUG2 "Bulk data" line deliberately carries the raw bulk.
+    EXPECT_EQ(logs.countAtLevel(Log::LOGLEVEL_WARNING, R"(}\n{"field":"zzz)"), 1u)
+        << "the action/document separator is escaped";
+    EXPECT_EQ(logs.countAtLevel(Log::LOGLEVEL_WARNING, "\n"), 0u) << "no raw newline may reach the line";
+    EXPECT_EQ(logs.countAtLevel(Log::LOGLEVEL_WARNING, "zEND"), 0u) << "the document is capped";
+    EXPECT_EQ(logs.countAtLevel(Log::LOGLEVEL_WARNING, " bytes)"), 1u);
+}
+
 // Verifies a cluster_block_exception makes IndexerBulkQueue pause before the next bulk, and that the
 // pause is ordered before that next send. With this fixture's limits (RetryDelay = 1s, the default
 // MaxRetryDelay = 15s, at least twice the base) nextDelay() is never below baseDelay: a first occurrence is

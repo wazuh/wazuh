@@ -17,7 +17,7 @@ list(APPEND tests_names "test_wm_control")
 # stay inside the same translation unit and therefore exercise the real function.
 list(APPEND tests_flags "-Wl,--wrap,w_query_agentd -Wl,--wrap,wm_control_check_systemd -Wl,--wrap,wm_control_execute_action \
                          -Wl,--wrap,OS_BindUnixDomainWithPerms -Wl,--wrap,wm_select_interruptible \
-                         -Wl,--wrap,accept -Wl,--wrap,getsockopt -Wl,--wrap,getuid -Wl,--wrap,OS_RecvUnix -Wl,--wrap,OS_SendUnix \
+                         -Wl,--wrap,accept -Wl,--wrap,getsockopt -Wl,--wrap,getuid -Wl,--wrap,OS_RecvUnix -Wl,--wrap,OS_SetRecvTimeout -Wl,--wrap,OS_SendUnix \
                          -Wl,--wrap,fork -Wl,--wrap,pipe -Wl,--wrap,poll -Wl,--wrap,read -Wl,--wrap,close \
                          -Wl,--wrap,waitpid -Wl,--wrap,kill -Wl,--wrap,CreateThread \
                          -Wl,--wrap,getpid -Wl,--wrap,access -Wl,--wrap,fopen -Wl,--wrap,fgets -Wl,--wrap,fclose \

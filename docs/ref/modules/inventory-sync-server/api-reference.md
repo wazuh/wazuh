@@ -73,7 +73,9 @@ Two details worth knowing:
   here, nor in the index template: `wazuh-agent-stats` is mapped `dynamic: strict_allow_templates`, so a
   module or metric it does not declare under `statistics` is mapped by a dynamic template from the type
   of its first value. A metric whose type later changes makes the indexer reject the whole document,
-  and the previous one stays; the write is fire-and-forget, so that rejection is silent here.
+  and the previous one stays; the write is fire-and-forget, so the agent is still answered `200`,
+  and the indexer connector logs the rejection as one escaped, size-capped WARNING
+  (`Error indexing document (type mapper_parsing_exception - reason: '…') - Associated event: …`).
 
 `400` when the body is not a JSON object, when `modules` is missing, is not an object, is empty, or
 holds a module whose body is not an object. The empty case is a rejection on purpose: indexing a
@@ -266,7 +268,7 @@ Three statuses are worth calling out:
 
 | Status | Meaning | What the caller does |
 |---|---|---|
-| `409` `scan_in_progress` | That agent already has a scan in flight | Defers without consuming a retry attempt |
+| `409` `scan_in_progress` (body `{"error":"scan_in_progress","code":409,"retryable":true}`) | That agent already has a scan in flight | Defers without consuming a retry attempt |
 | `404` `agent_not_found` | The agent has no record to scan, most likely deleted between the request and its execution | Stops; retrying cannot produce one |
 | `503` `no vulnerability scanner on this node` | Vulnerability detection is disabled here, or its scanner failed to start | Retries, and dead-letters the task once `vd_scan`'s attempt budget runs out. Deliberately not a `200`: the task row would read `completed` for a scan that never ran |
 

@@ -18,15 +18,23 @@ so an agent id travels in a header (`X-Wazuh-Agent-Id`) rather than in the path.
 | Method | Path | Success | Notes |
 |---|---|---|---|
 | `GET` | `/v1/status` | `200` | Readiness: can this daemon serve? See [`GET /v1/status`](#get-v1status). `503` when it is running but the global database cannot answer. |
-| `GET` | `/v1/agents/groups` | `200` | The groups one agent belongs to, in priority order. Requires the `X-Wazuh-Agent-Id` header; `400` without it, `500` when it is not a number. |
+| `GET` | `/v1/agents/groups` | `200` | The groups one agent belongs to, in priority order. Requires the `X-Wazuh-Agent-Id` header; `400` without it or when it is not a numeric agent id. |
 | `GET` | `/v1/agents/all` | `200` | Every agent with every field, `id` ascending. |
 | `POST` | `/v1/agents/summary` | `200` | Counts of agents by status, by group and by OS, for all agents or for the ids in the body. |
 | `GET` | `/v1/agents/sync` | `200` | The agents whose `sync_status` marks them as pending, and **marks them synced** as a side effect. |
-| `POST` | `/v1/agents/sync` | `200` | Applies an agent state update sent by another node. Empty body on success; `500` on a malformed body. |
+| `POST` | `/v1/agents/sync` | `200` | Applies an agent state update sent by another node. Empty body on success; `400` on a malformed body. |
 
 Every route answers `500` when the database connection cannot be obtained, and `500` when the
 handler throws — except `/v1/status`, which answers `503` in both cases, because for that route
 being unable to serve is the answer rather than a fault.
+
+The transport answers before any handler runs for a request no route serves: a path none of the
+rows above lists is `404 Unknown endpoint`; a listed path with another method is `405 Method not
+allowed for this endpoint`, with an `Allow` header naming the methods it does serve. Both are logged
+as one `WARNING` per 90 s window under the `wazuh-manager-db` tag (`Answered N request(s) … with
+404: no route for …`). A declared `Content-Length` larger than the server could ever admit is refused
+with `413` at the headers, before any body byte is read; `GET /v1/agents/groups` additionally caps a
+body at 64 KiB and `GET /v1/status` at 4 KiB, though neither takes one.
 
 ---
 
@@ -62,7 +70,10 @@ It checks that the `agent`, `belongs` and `group` tables exist — the tables ag
 read. `remoted` reads an agent's groups from the `agent` table with `global select-agent-group` on
 `wdb.sock`, and a failure there makes it answer `503 dependency_unavailable` on `POST /control`;
 [`GET /v1/agents/groups`](#get-v1agentsgroups) joins `belongs` and `group`. A `503` for missing
-tables also logs the warning `Status: the global database is missing expected tables`.
+tables also logs a `WARNING` under the `wazuh-manager-db` tag (`Status answered unavailable N
+time(s) in the last <s> s: the global database is missing expected tables.`, or `… so far: …` on
+the first one), at most once per 90 seconds so a polling load balancer does not flood the log;
+`<s>` is the real time since the previous such line.
 
 **This is a readiness answer, not a liveness one.** A process that is up is not necessarily a
 process that can work: `wazuh-manager-db` can be running and accepting connections on this socket
@@ -90,8 +101,11 @@ The body is a bare JSON array of group names, not an object.
 
 The agent id travels in the `X-Wazuh-Agent-Id` header because the router is exact-match and cannot
 carry it as a path segment. Without the header the route answers `400 Missing header:
-X-Wazuh-Agent-Id` without touching the database. A header that is not a number makes the handler
-throw, which the server answers `500 Internal server error`.
+X-Wazuh-Agent-Id` without touching the database. The value must be decimal digits only (leading
+zeros allowed, as in `001`) within the signed 32-bit range; anything else — `abc`, `1abc`, `-1`, a
+space, an overflow — answers `400 Invalid header: X-Wazuh-Agent-Id must be a numeric agent id`,
+also without touching the database. Both rejections are logged as a `WARNING` under the
+`wazuh-manager-db` tag at most once per 90 seconds, with the count of requests the line stands for.
 
 An agent that exists but belongs to no group answers `[]`; the route does not distinguish that from an
 id that does not exist.
@@ -131,8 +145,10 @@ why it is classified as a data-plane route and can be shed under back-pressure.
 
 Counts for the server API's agent overview. The body is optional: empty, it counts every agent; a JSON
 array of agent ids (for example `[1,2,7]`), it counts only those, so `[]` counts nothing and answers
-`{}`. The id list is not parsed as JSON: every run of digits in the body is taken as an id. Answers
-three maps:
+`{}`. The id list is not parsed as JSON: the body is split into maximal runs of digits and `-`, and
+each run's leading integer is taken as an id when it fits a 32-bit `int` (a run that does not is
+dropped). A leading `-` is part of the number, so `[-1]` names no agent rather than agent 1, and
+`1-2` names agent 1 only. Answers three maps:
 
 ```json
 {"agents_by_status":{"active":42,"disconnected":3},
@@ -196,7 +212,12 @@ A field absent from an entry is written as an empty string or `0`. Every applied
 
 Success answers an **empty body** with `200`, not a JSON document.
 
-A malformed JSON body, or an entry without `id`, raises out of the handler and is answered
-`500 Internal server error` by the server's catch-all — there is no `400` for it, which is a known
-rough edge of this route rather than a deliberate contract. Entries applied before the failing one
-stay applied.
+A body that is not valid JSON, an entry without `id`, or a field of the wrong type is answered
+`400 Malformed request body` (`text/plain`). Numbers are converted rather than checked: in a numeric field
+(`id` included) a fraction is truncated (`99999.5` reads as `99999`) and a boolean reads as `1` or `0`
+(`"id": true` addresses agent 1), so only a string, an array, an object or `null` there is the wrong type.
+A text field takes only a string. Every 400 is logged as one WARNING under the `wazuh-manager-db`
+tag, throttled to one line per 90 s window that carries the count and the route, never the body:
+`Rejected <n> request(s) to /v1/agents/sync with 400 so far|in the last <s> s: malformed request body.`
+Nothing is written for a body that does not parse; for an entry that fails later, the entries
+applied before it stay applied (the groups are not one transaction).

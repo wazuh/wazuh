@@ -548,6 +548,7 @@ The re-enrollment secret is retained in `agent.reenroll_secret` in `global.db` a
 | `Enrollment password synchronized from the master node and now available at '…'` / `Enrollment password reloaded from '…'` | a worker picked up the password the cluster synced (the authpass watcher, or a port-1515 request) |
 | `Enrollment password required but not available yet. Rejecting request from <ip>…` | a worker with `use_password` that has not received `authd.pass` yet; logged once until it arrives |
 | `Invalid password provided by <ip>. Closing connection.` | a port-1515 request without the right `OSSEC PASS:` prefix |
+| `Invalid agent name: …`, `Invalid group: …`, `Invalid group name '…': …`, `Invalid group name: …` (the reason the agent is answered with), `Maximum multigroup reached: Limit is N`, `Invalid IP: '…'`, `Invalid version for new agent from: …`, `Incompatible version for new agent from: …`, `Unterminated … field`, `Invalid request for new agent from: …` | an enrollment refused for what the client sent. Logged at `WARNING` (the password line above at `INFO`), never `ERROR`: the manager is fine. Each of these (and the password line) has its own throttle, so a frequent one never hides another: at most one line per message and 90 seconds, the rest at debug level, and a line that follows suppressed ones ends with `(and N more like it in the last S s)`, S being the time since that message's previous line. Such a line takes the highest level among the ones it stands for |
 | `Accepting connections on port <port>. …` / `Port <port> was set as disabled.` | whether the port-1515 listener opened (`remote_enrollment` and `legacy_enrollment` both on) |
 | `Recovered N agent deletion(s) that were interrupted...` | startup reconciliation found deletions whose task was never created, and is creating them now |
 | `Dropped N journaled deletion(s) whose agents are still listed in client.keys` | those deletions never became final; nothing is owed |
@@ -564,10 +565,14 @@ The re-enrollment secret is retained in `agent.reenroll_secret` in `global.db` a
 | `Discarded N recorded identity transition(s) whose agent is no longer in client.keys and M superseded by a later one.` | startup reconciliation dropped what is no longer owed |
 | `Enrollment token 'X' minted for '…' (expires …, max_uses …, credential …)…` | a mint; never the secret or the token text |
 | `Agent key generated for agent 'N' (requested by <address>)` / `… (requested locally)` | a new agent on the local socket: the agent's peer address when the request came through remoted's `POST /enroll` (also when a worker forwarded it), `locally` for the server API |
-| `Enrollment token 'X' used by agent 'N' (U/M).` / `Enrollment token 'X' revoked.` | the token paths; `U/M` is uses spent against `max_uses` (`U/unlimited` when it is `0`, the default). A refused token logs `ERROR 902x: …`; a re-enrollment the master's verification refuses (`9026`–`9028`) logs at debug level only |
+| `Enrollment token 'X' used by agent 'N' (U/M).` / `Enrollment token 'X' revoked.` | the token paths; `U/M` is uses spent against `max_uses` (`U/unlimited` when it is `0`, the default). A refused token logs `Local request failed with error 902x: …` at `ERROR` (the line every refusal decided by the socket dispatcher itself logs); a re-enrollment the master's verification refuses (`9026`–`9028`) logs at debug level only |
 | `The enrollment token store holds N of the 5000 tokens it accepts…` | 80% of the cap reached; purge before it binds |
 | `Could not load the enrollment tokens from '…'` | the store could not be loaded at start; enrollments presenting a token are refused until it is fixed |
 | `Agent 'N' (id 'I') re-enrolled: key and re-enrollment secret rotated.` | a rotation in place; nothing was deleted |
+| `Agent 'I' (N) deleted (requested locally)` | a `remove` over the local socket (`DELETE /agents`) was admitted; the writer completes it |
+| `Duplicate ID 'I', rejecting the insertion: delete the agent and let its deletion finish before reusing the ID.` | the `9012` path of an explicit-id insertion |
+| `Unable to store the rotated credentials of agent I 'N' in the database. …` / `Could not commit the credentials of N agent(s) to the database. …` | a database write or `global commit` failed; the entries stay in the identity journal and the writer retries on its own clock. The agents keep the credentials they were given |
+| `Recorded credentials of agent 'I' written to the database (enrollment recovered)` / `… (rotation recovered)` | a retried journal entry reached the database |
 
 The purge's own outcome — the `deleteByQuery` and its flush — is reported by
 [inventory_sync_server](../inventory-sync-server/architecture.md#agent-deletion) and recorded as the

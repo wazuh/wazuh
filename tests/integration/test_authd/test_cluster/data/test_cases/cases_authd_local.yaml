@@ -239,6 +239,39 @@
     groups:
       - 'Group1'
 
+- name: 'Address in its registered form'
+  description: 'A full-length mask is the bare address (also for the duplicate-IP check), a dotted mask is answered as its prefix length, a negated address and a non-contiguous mask are refused.'
+  configuration_parameters:
+  metadata:
+    cases:
+    -
+      input: '{"arguments":{"name":"user_a","ip":"192.0.1.1/32"},"function":"add"}'
+      output: '{"error":9007,"message":"Duplicate IP"}'
+    -
+      input: '{"arguments":{"name":"user_b","ip":"192.0.1.1/255.255.255.255"},"function":"add"}'
+      output: '{"error":9007,"message":"Duplicate IP"}'
+    -
+      input: '{"arguments":{"name":"user_c","ip":"!192.0.3.1"},"function":"add"}'
+      output: '{"error":9006,"message":"No such IP"}'
+    -
+      input: '{"arguments":{"name":"user_d","ip":"10.22.0.0/255.0.255.0"},"function":"add"}'
+      output: '{"error":9006,"message":"No such IP"}'
+    -
+      input: '{"arguments":{"name":"user_e","ip":"192.0.2.0/255.255.255.0"},"function":"add"}'
+      output: '{"error":0,"data":{"id":"002","name":"user_e","ip":"192.0.2.0/24","key":'
+    -
+      input: '{"arguments":{"name":"user_f","ip":"192.0.4.1/32"},"function":"add"}'
+      output: '{"error":0,"data":{"id":"003","name":"user_f","ip":"192.0.4.1","key":'
+    pre_existent_agents:
+    -
+      id: '001'
+      name: 'test_user'
+      ip: '192.0.1.1'
+      key: 'SecretKey'
+      connection_status: 'active'
+    groups:
+      -
+
 - name: 'Unknown function'
   description: 'A well-formed request naming a function authd does not serve is answered as such.'
   configuration_parameters:

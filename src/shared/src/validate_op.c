@@ -1088,7 +1088,7 @@ int OS_CIDRtoStr(const os_ip * ip, char * string, size_t size) {
         return ((snprintf(string, size, "%s/%u", ip->ip, imask) < (int)size) - 1);
 
     } else if (!is_ipv6 && (ip->ipv4->netmask != 0xFFFFFFFF) && strcmp(ip->ip, "any")) {
-        if (_mask_inited) {
+        if (!_mask_inited) {
             _init_masks();
         }
 

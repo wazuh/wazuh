@@ -167,6 +167,11 @@ def test_format_agent_id_rejects_non_string(value):
     "value, format",
     [
         ("test.33alphanumeric:", "alphanumeric"),
+        ("192.168.1.10", "ip_filter"),
+        ("192.168.1.0/24", "ip_filter"),
+        ("fd00:abcd::1", "ip_filter"),
+        ("fd00:abcd::/64", "ip_filter"),
+        ("any", "ip_filter"),
         ("cGVwZQ==", "base64"),
         ("AB0264EA00FD9BCDCF1A5B88BC1BDEA4", "hash"),
         ("file_test-33.xml", "names"),
@@ -202,6 +207,8 @@ def test_validation_json_ok(value, format):
     "value, format",
     [
         ("~test.33alphanumeric:", "alphanumeric"),
+        ("10.0.0.0/24;", "ip_filter"),
+        ("10.0.0.*", "ip_filter"),
         ("cGVwZQ===", "base64"),
         ("AB0264EA00FD9BCDCF1A5B88BC1BDEA4.", "hash"),
         ("../../file_test-33.xml", "names"),

@@ -212,6 +212,17 @@ def test_body_validate_content_type_ko():
     with pytest.raises(ProblemException) as exc:
         TestModel.validate_content_type(request, 'application/xml')
 
+    assert exc.value.status == 415
+    assert exc.value.ext['code'] == 6002
+
+
+@pytest.mark.parametrize('mimetype', ['', None])
+def test_body_validate_content_type_missing(mimetype):
+    """A body sent with no Content-Type is refused as an unsupported media type (415), not as not acceptable."""
+    with pytest.raises(ProblemException) as exc:
+        TestModel.validate_content_type(RequestMock(mimetype), JSON_CONTENT_TYPE)
+
+    assert exc.value.status == 415
     assert exc.value.ext['code'] == 6002
 
 

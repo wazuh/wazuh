@@ -27,6 +27,18 @@ Beyond that baseline, disk space requirements depend on:
 
 The storage capacity should be calculated based on your expected alert volume and desired retention policy.
 
+#### All-in-one hosts
+
+The minimum specifications are for the manager alone. When the indexer (and the dashboard) run on the
+same host, size the host for all of them: the indexer's memory comes on top of the manager's, and its
+heap must be large enough for the content the manager downloads from it. On a host with about 8 GB of
+RAM, the indexer's default 1 GB heap was observed to trip its circuit breaker: the indexer answers `429`
+to the manager's content requests, some indicator-of-compromise types never finish loading into the engine, and
+the engine and the node keep reporting `ready: false`. Give the indexer a larger heap and the host the
+memory for it, following the indexer's own sizing guidance; the manager log shows the
+`Indexer node '<host>' is throttling requests` warning (see the
+[indexer connector](../modules/indexer_connector/configuration.md)) while it lasts.
+
 The manager does not monitor its own host. To monitor it, install an agent on it (see [Monitoring the server host](installation.md#monitoring-the-server-host)) and add the agent usage below.
 
 ## Agent

@@ -49,11 +49,7 @@ int main(int argc, char ** argv)
 
     OS_SetName(ARGV0);
 
-    // Define current working directory
     char * home_path = w_homedir(argv[0]);
-    if (chdir(home_path) == -1) {
-        merror_exit(CHDIR_ERROR, home_path, errno, strerror(errno));
-    }
 
     // Keep SQLite's temporary files (sorts, VACUUM) under the installation directory's tmp/ instead of the
     // host's /var/tmp or /tmp. SQLite reads the variable once, on its first initialization, so this must run
@@ -100,6 +96,22 @@ int main(int argc, char ** argv)
                 wdb_help();
             }
         }
+    }
+
+    /* A relative -c names a file under the directory the command runs from, like any other command's
+     * path argument: resolve it before the chdir() below moves the working directory to the
+     * installation home, where the same relative path would name another file. */
+    char cfg_path[PATH_MAX];
+    if (!isabspath(cfg)) {
+        if (!abspath(cfg, cfg_path, sizeof(cfg_path))) {
+            merror_exit("Cannot resolve the configuration file path '%s': %s (%d)", cfg, strerror(errno), errno);
+        }
+        cfg = cfg_path;
+    }
+
+    // Define current working directory
+    if (chdir(home_path) == -1) {
+        merror_exit(CHDIR_ERROR, home_path, errno, strerror(errno));
     }
 
     // Read internal options
@@ -505,7 +517,9 @@ void wdb_help() {
     print_out("    -f          Run in foreground.");
     print_out("    -c <config> Configuration file to use (default: %s)", WAZUHCONF);
 
-    exit(EXIT_SUCCESS);
+    // Exit non-zero, like remoted and modulesd: this also runs for an unknown option, which must
+    // not read as success to a script.
+    exit(EXIT_FAILURE);
 }
 
 void handler(int signum) {

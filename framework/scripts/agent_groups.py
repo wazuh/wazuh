@@ -15,11 +15,11 @@ debug = False
 
 try:
     import wazuh.agent as agent
-    from wazuh.core.exception import WazuhError
+    from wazuh.core.exception import WazuhException
     from wazuh.core.cluster import utils as cluster_utils
 except Exception as e:
     print("Error importing 'Wazuh' package.\n\n{0}\n".format(e))
-    exit()
+    exit(1)
 
 
 # Functions
@@ -37,6 +37,17 @@ def get_stdin(msg: str) -> str:
         Answer given by standard input.
     """
     return input(msg)
+
+
+def raise_first_failure(result):
+    """Raise the first failed item of a result, so the command reports it and exits with a non-zero code.
+
+    Parameters
+    ----------
+    result : AffectedItemsWazuhResult
+        Result with no affected items.
+    """
+    raise next(iter(result.failed_items))
 
 
 def signal_handler(n_signal, frame):
@@ -73,13 +84,11 @@ async def show_group(agent_id: str):
     cluster_utils.raise_if_exc(agent_info)
 
     if agent_info.total_affected_items == 0:
-        msg = list(agent_info.failed_items.keys())[0]
-    else:
-        agent_info = agent_info.affected_items[0]
-        str_group = ', '.join(agent_info['group']) if 'group' in agent_info else "Null"
-        msg = f"The agent '{agent_info['name']}' with ID '{agent_info['id']}' belongs to groups: {str_group}."
+        raise_first_failure(agent_info)
 
-    print(msg)
+    agent_info = agent_info.affected_items[0]
+    str_group = ', '.join(agent_info['group']) if 'group' in agent_info else "Null"
+    print(f"The agent '{agent_info['name']}' with ID '{agent_info['id']}' belongs to groups: {str_group}.")
 
 
 async def show_agents_with_group(group_id: str):
@@ -163,8 +172,7 @@ async def unset_group(agent_id: str, group_id: str = None, quiet: bool = False):
         cluster_utils.raise_if_exc(agent_info)
 
         if agent_info.total_affected_items == 0:
-            print(list(agent_info.failed_items.keys())[0])
-            return
+            raise_first_failure(agent_info)
 
         group_list = agent_info.affected_items[0].get('group') or []
         if not group_list:
@@ -176,12 +184,10 @@ async def unset_group(agent_id: str, group_id: str = None, quiet: bool = False):
                                                   is_async=True)
     cluster_utils.raise_if_exc(result)
 
-    if result.total_affected_items != 0:
-        msg = f"Agent '{agent_id}' removed from {', '.join(result.affected_items)}."
-    else:
-        msg = list(result.failed_items.keys())[0]
+    if result.total_affected_items == 0:
+        raise_first_failure(result)
 
-    print(msg)
+    print(f"Agent '{agent_id}' removed from {', '.join(result.affected_items)}.")
 
 
 async def remove_group(group_id: str, quiet: bool = False):
@@ -202,9 +208,9 @@ async def remove_group(group_id: str, quiet: bool = False):
         cluster_utils.raise_if_exc(result)
 
         if result.total_affected_items == 0:
-            msg = list(result.failed_items.keys())[0]
-        else:
-            msg = f'Group {group_id} removed.'
+            raise_first_failure(result)
+
+        msg = f'Group {group_id} removed.'
     else:
         msg = 'Cancelled.'
 
@@ -240,10 +246,10 @@ async def set_group(agent_id: str, group_id: str, quiet: bool = False, replace: 
         )
         cluster_utils.raise_if_exc(result)
 
-        if result.total_affected_items != 0:
-            msg = f"Group '{group_id}' added to agent '{agent_id}'."
-        else:
-            msg = list(result.failed_items.keys())[0]
+        if result.total_affected_items == 0:
+            raise_first_failure(result)
+
+        msg = f"Group '{group_id}' added to agent '{agent_id}'."
 
     else:
         msg = 'Cancelled.'
@@ -394,17 +400,39 @@ async def main():
         await show_groups()
 
 
-if __name__ == "__main__":
-    args = get_script_arguments()
+def run(script_args: argparse.Namespace) -> int:
+    """Run the command and return its exit code.
+
+    Every error, a failed item included, is printed as `Error <code>: <message>` and exits with 1.
+
+    Parameters
+    ----------
+    script_args : argparse.Namespace
+        Arguments passed to the script.
+
+    Returns
+    -------
+    int
+        0 on success, 1 on any error.
+    """
+    global args
+    args = script_args
 
     try:
         asyncio.run(main())
-
-    except WazuhError as e:
-        print("Error {0}: {1}".format(e.code, e.message))
+    except WazuhException as e:
+        print(f"Error {e.code}: {e.message}")
         if args.debug:
             raise
+        return 1
     except Exception as e:
-        print("Internal error: {0}".format(str(e)))
+        print(f"Internal error: {e}")
         if args.debug:
             raise
+        return 1
+
+    return 0
+
+
+if __name__ == "__main__":
+    exit(run(get_script_arguments()))

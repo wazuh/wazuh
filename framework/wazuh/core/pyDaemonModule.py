@@ -125,9 +125,15 @@ def delete_child_pids(name: str, ppid: int, logger: logging.Logger):
         Logger object.
     """
     filenames = glob.glob(path.join(common.WAZUH_PATH, common.OS_PIDFILE_PATH, f'{name}*.pid'))
+    own_uid = os.geteuid()
 
     for process in psutil.Process(ppid).children(recursive=True):
         try:
+            # A descendant running under another user is not ours to stop: the privileged service-control helper
+            # (setuid) and the `systemctl` it becomes. Killing it would abort the restart that stops this daemon.
+            if process.uids().effective != own_uid:
+                logger.debug(f'Process with ID {process.pid} runs as another user; leaving it running.')
+                continue
             process.kill()
         except psutil.NoSuchProcess:
             logger.debug(f'Process with ID {process.pid} had already exited.')

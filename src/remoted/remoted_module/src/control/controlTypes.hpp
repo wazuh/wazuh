@@ -64,6 +64,10 @@ namespace remoted::control
     {
         std::string version;
         std::optional<HostInfo> host;
+        /// The body carried a host block (or one of its fields) of the wrong JSON type: `host` or
+        /// `host.os` not an object, or a host/os field not a string. Rejected as invalid_host_info
+        /// exactly like an out-of-bounds string, instead of being silently dropped.
+        bool hostMalformed {false};
     };
 
     struct ShutdownData
@@ -87,6 +91,32 @@ namespace remoted::control
 
         static const std::regex versionRegex(R"(^[vV]?\d+(\.\d+){0,3}([+\-][A-Za-z0-9.\-]+)?$)");
         return std::regex_match(version, versionRegex);
+    }
+
+    /**
+     * @brief The canonical spelling of an agent version as stored in wazuh-db: a lowercase 'v'
+     * prefix ("v5.0.0").
+     *
+     * Agents may send "5.0.0", "v5.0.0" or "V5.0.0" (isValidVersion() accepts all three), but the
+     * framework compares stored versions as strings (outdated agents, distinct listings), so two
+     * spellings of one version must never coexist in global.db. A value that does not start with a
+     * digit or 'v'/'V' (empty, or the "N/A" placeholder) is returned unchanged.
+     */
+    inline std::string canonicalVersion(const std::string& version)
+    {
+        if (version.empty())
+        {
+            return version;
+        }
+        if (version[0] == 'V')
+        {
+            return "v" + version.substr(1);
+        }
+        if (version[0] >= '0' && version[0] <= '9')
+        {
+            return "v" + version;
+        }
+        return version;
     }
 
     /**

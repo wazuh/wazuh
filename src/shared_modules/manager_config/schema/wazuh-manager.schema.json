@@ -19,57 +19,74 @@
       "maximum": 65535
     },
     "duration": {
-      "description": "Seconds as an integer, or a string with a unit suffix: s, m, h, d, w (same grammar as w_parse_time).",
+      "description": "Seconds as an integer, or a string with a unit suffix: s, m, h, d, w (w_parse_time grammar). At most 999999999 seconds: a string has at most 9 digits in seconds, 7 in minutes, 5 in hours, 4 in days, 3 in weeks, leading zeros aside, so that no reader overflows.",
       "type": [
         "integer",
         "string"
       ],
       "minimum": 0,
-      "pattern": "^[0-9]+[smhdw]?$"
+      "maximum": 999999999,
+      "pattern": "^0*([0-9]{1,9}s?|[0-9]{1,7}m|[0-9]{1,5}h|[0-9]{1,4}d|[0-9]{1,3}w)$"
     },
     "duration_nonzero": {
-      "description": "A duration (same grammar as duration) that must be at least 1 second: zero, in any unit, is rejected.",
+      "description": "A duration (same grammar and limits as duration) that must be at least 1 second: zero, in any unit, is rejected.",
       "type": [
         "integer",
         "string"
       ],
       "minimum": 1,
-      "pattern": "^0*[1-9][0-9]*[smhdw]?$"
+      "maximum": 999999999,
+      "pattern": "^0*([1-9][0-9]{0,8}s?|[1-9][0-9]{0,6}m|[1-9][0-9]{0,4}h|[1-9][0-9]{0,3}d|[1-9][0-9]{0,2}w)$"
     },
     "duration_no_weeks": {
-      "description": "Seconds as an integer, or a string with a unit suffix: s, m, h, d (authd get_time_interval grammar).",
+      "description": "Seconds as an integer, or a string with a unit suffix: s, m, h, d (no weeks). At most 999999999 seconds: a string has at most 9 digits in seconds, 7 in minutes, 5 in hours, 4 in days, leading zeros aside, so that no reader overflows.",
       "type": [
         "integer",
         "string"
       ],
       "minimum": 0,
-      "pattern": "^[0-9]+[smhd]?$"
+      "maximum": 999999999,
+      "pattern": "^0*([0-9]{1,9}s?|[0-9]{1,7}m|[0-9]{1,5}h|[0-9]{1,4}d)$"
     },
     "duration_no_weeks_nonzero": {
-      "description": "A duration (same grammar as duration_no_weeks) that must be at least 1 second: zero, in any unit, is rejected.",
+      "description": "A duration (same grammar and limits as duration_no_weeks) that must be at least 1 second: zero, in any unit, is rejected.",
       "type": [
         "integer",
         "string"
       ],
       "minimum": 1,
-      "pattern": "^0*[1-9][0-9]*[smhd]?$"
+      "maximum": 999999999,
+      "pattern": "^0*([1-9][0-9]{0,8}s?|[1-9][0-9]{0,6}m|[1-9][0-9]{0,4}h|[1-9][0-9]{0,3}d)$"
     },
     "size": {
-      "description": "Bytes as an integer, or a string with a unit suffix: B, K, M, G (w_parse_size grammar, case-insensitive).",
+      "description": "Bytes as an integer, or a string with a unit suffix: B, K, M, G (w_parse_size grammar, case-insensitive). At least 1 byte, so zero is rejected in any unit; at most 15 digits in bytes, 12 in K, 9 in M, 6 in G (leading zeros aside), so that no reader overflows.",
       "type": [
         "integer",
         "string"
       ],
       "minimum": 1,
-      "pattern": "^[0-9]+[bBkKmMgG]?$"
+      "maximum": 999999999999999,
+      "pattern": "^0*([1-9][0-9]{0,14}[bB]?|[1-9][0-9]{0,11}[kK]|[1-9][0-9]{0,8}[mM]|[1-9][0-9]{0,5}[gG])$"
     },
     "path": {
       "description": "File path, absolute or relative to the manager home.",
       "type": "string"
     },
     "ip": {
+      "description": "One IPv4 address in dotted-quad form (optionally prefixed with ::ffff:) or one IPv6 address in full or compressed form, with no CIDR prefix or netmask.",
       "type": "string",
-      "minLength": 1
+      "pattern": "^((::[fF]{4}:)?(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])\\.(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])\\.(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])\\.(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])|([0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,6}:[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,5}(:[0-9a-fA-F]{1,4}){1,2}|([0-9a-fA-F]{1,4}:){1,4}(:[0-9a-fA-F]{1,4}){1,3}|([0-9a-fA-F]{1,4}:){1,3}(:[0-9a-fA-F]{1,4}){1,4}|([0-9a-fA-F]{1,4}:){1,2}(:[0-9a-fA-F]{1,4}){1,5}|[0-9a-fA-F]{1,4}:(:[0-9a-fA-F]{1,4}){1,6}|([0-9a-fA-F]{1,4}:){1,7}:|:(:[0-9a-fA-F]{1,4}){1,7}|::)$"
+    },
+    "host": {
+      "description": "A host name (letters, digits, '-' and '_' in dot-separated labels of at most 63 characters) or an IP address (the ip definition).",
+      "type": "string",
+      "maxLength": 253,
+      "pattern": "^([A-Za-z0-9_]([A-Za-z0-9_-]{0,61}[A-Za-z0-9_])?(\\.[A-Za-z0-9_]([A-Za-z0-9_-]{0,61}[A-Za-z0-9_])?)*\\.?|(::[fF]{4}:)?(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])\\.(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])\\.(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])\\.(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])|([0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,6}:[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,5}(:[0-9a-fA-F]{1,4}){1,2}|([0-9a-fA-F]{1,4}:){1,4}(:[0-9a-fA-F]{1,4}){1,3}|([0-9a-fA-F]{1,4}:){1,3}(:[0-9a-fA-F]{1,4}){1,4}|([0-9a-fA-F]{1,4}:){1,2}(:[0-9a-fA-F]{1,4}){1,5}|[0-9a-fA-F]{1,4}:(:[0-9a-fA-F]{1,4}){1,6}|([0-9a-fA-F]{1,4}:){1,7}:|:(:[0-9a-fA-F]{1,4}){1,7}|::)$"
+    },
+    "url": {
+      "description": "An http:// or https:// URL naming a host: a host name or IPv4 address, or an IPv6 address in brackets, then an optional :port and path.",
+      "type": "string",
+      "pattern": "^https?://([A-Za-z0-9_]([A-Za-z0-9_-]{0,61}[A-Za-z0-9_])?(\\.[A-Za-z0-9_]([A-Za-z0-9_-]{0,61}[A-Za-z0-9_])?)*\\.?|\\[((::[fF]{4}:)?(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])\\.(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])\\.(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])\\.(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])|([0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,6}:[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,5}(:[0-9a-fA-F]{1,4}){1,2}|([0-9a-fA-F]{1,4}:){1,4}(:[0-9a-fA-F]{1,4}){1,3}|([0-9a-fA-F]{1,4}:){1,3}(:[0-9a-fA-F]{1,4}){1,4}|([0-9a-fA-F]{1,4}:){1,2}(:[0-9a-fA-F]{1,4}){1,5}|[0-9a-fA-F]{1,4}:(:[0-9a-fA-F]{1,4}){1,6}|([0-9a-fA-F]{1,4}:){1,7}:|:(:[0-9a-fA-F]{1,4}){1,7}|::)\\])(:[0-9]{1,5})?(/[^ ]*)?$"
     },
     "tls13_ciphers": {
       "description": "Colon-separated TLS 1.3 cipher suites, each one of TLS_AES_128_GCM_SHA256, TLS_AES_256_GCM_SHA384, TLS_CHACHA20_POLY1305_SHA256, TLS_AES_128_CCM_SHA256, TLS_AES_128_CCM_8_SHA256 (the suites remoted and authd accept).",
@@ -176,22 +193,23 @@
                   "$ref": "#/definitions/ip"
                 }
               ],
-              "description": "Bind address. Absent: 0.0.0.0, or every IPv6 interface (::) when ipv6 is enabled; remoted applies that default, not the schema."
+              "description": "Bind address: one IPv4 or IPv6 address, without a CIDR prefix, netmask or host name. Absent: 0.0.0.0, or every IPv6 interface (::) when ipv6 is enabled; remoted applies that default, not the schema."
             },
             "queue_size": {
               "type": "integer",
               "minimum": 1,
+              "maximum": 134217728,
               "default": 131072,
-              "description": "Event queue size (events). Values above 262144 are accepted with a warning."
+              "description": "Event queue size (events). Values above 262144 are accepted with a warning. wazuh-manager-remoted allocates the whole queue when it starts, one pointer (8 bytes on a 64-bit host) per event slot, before any event arrives, plus the memory of every event waiting in it: the maximum, 134217728, asks for 1 GiB at once. No check compares the value with the memory of the host, so a size it cannot allocate passes wazuh-manager-control check and stops remoted at start."
             },
             "rids_closing_time": {
               "allOf": [
                 {
-                  "$ref": "#/definitions/duration"
+                  "$ref": "#/definitions/duration_nonzero"
                 }
               ],
               "default": "5m",
-              "description": "Idle time before a RIDS counter file is closed."
+              "description": "Idle time before a RIDS counter file is closed (minimum 1 second; 0 is rejected)."
             },
             "connection_overtake_time": {
               "type": "integer",
@@ -222,14 +240,16 @@
                   "$ref": "#/definitions/ip"
                 }
               ],
+              "maxLength": 255,
               "default": "0.0.0.0",
-              "description": "Bind address (IPv4 or IPv6)."
+              "description": "Bind address: one IPv4 or IPv6 address, without a CIDR prefix, netmask or host name."
             },
             "global_prefix": {
               "type": "string",
               "pattern": "^/([A-Za-z0-9._~-]+/)*[A-Za-z0-9._~-]*$",
+              "maxLength": 255,
               "default": "/wazuh-manager/",
-              "description": "Path prefix of every HTTPS route. Must start with '/', may only contain A-Z a-z 0-9 . _ ~ - and '/', no empty, '.' or '..' segments."
+              "description": "Path prefix of every HTTPS route, at most 255 characters. Must start with '/', may only contain A-Z a-z 0-9 . _ ~ - and '/', no empty, '.' or '..' segments."
             },
             "certificate": {
               "allOf": [
@@ -237,8 +257,9 @@
                   "$ref": "#/definitions/path"
                 }
               ],
+              "maxLength": 511,
               "default": "/etc/wazuh-manager/certs/remoted.pem",
-              "description": "Server certificate (PEM). Absolute path directly inside /etc/wazuh-manager/certs: the credential check of wazuh-manager-control start refuses any other location, a relative path included."
+              "description": "Server certificate (PEM), at most 511 characters. Absolute path directly inside /etc/wazuh-manager/certs: the credential check of wazuh-manager-control start refuses any other location, a relative path included."
             },
             "key": {
               "allOf": [
@@ -246,8 +267,9 @@
                   "$ref": "#/definitions/path"
                 }
               ],
+              "maxLength": 511,
               "default": "/etc/wazuh-manager/certs/remoted-key.pem",
-              "description": "Server private key (PEM). Must be set together with 'certificate'. Absolute path directly inside /etc/wazuh-manager/certs: the credential check of wazuh-manager-control start refuses any other location, a relative path included."
+              "description": "Server private key (PEM), at most 511 characters. Must be set together with 'certificate'. Absolute path directly inside /etc/wazuh-manager/certs: the credential check of wazuh-manager-control start refuses any other location, a relative path included."
             },
             "ca": {
               "allOf": [
@@ -255,8 +277,9 @@
                   "$ref": "#/definitions/path"
                 }
               ],
+              "maxLength": 511,
               "default": "",
-              "description": "CA bundle used to verify agent certificates. Empty = client certificate verification disabled, unless 'verification_mode' is set explicitly, in which case /etc/wazuh-manager/certs/root-ca.pem is used."
+              "description": "CA bundle used to verify agent certificates, at most 511 characters. Empty = client certificate verification disabled, unless 'verification_mode' is set explicitly, in which case /etc/wazuh-manager/certs/root-ca.pem is used."
             },
             "ca_certificate": {
               "allOf": [
@@ -265,8 +288,9 @@
                 }
               ],
               "minLength": 1,
+              "maxLength": 511,
               "default": "/etc/wazuh-manager/certs/root-ca.pem",
-              "description": "CA certificate that signs the listener certificate; served on GET /cacerts and pinned by enrollment tokens. Not the client-verification CA ('ca'). Absolute path directly inside /etc/wazuh-manager/certs: the credential check of wazuh-manager-control start refuses any other location, a relative path included."
+              "description": "CA certificate that signs the listener certificate, at most 511 characters; served on GET /cacerts and pinned by enrollment tokens. Not the client-verification CA ('ca'). Absolute path directly inside /etc/wazuh-manager/certs: the credential check of wazuh-manager-control start refuses any other location, a relative path included."
             },
             "verification_mode": {
               "enum": [
@@ -282,8 +306,9 @@
                   "$ref": "#/definitions/tls13_ciphers"
                 }
               ],
+              "maxLength": 255,
               "default": "TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256",
-              "description": "TLS 1.3 cipher suites the HTTPS listener negotiates."
+              "description": "TLS 1.3 cipher suites the HTTPS listener negotiates, at most 255 characters."
             },
             "max_body_size": {
               "allOf": [
@@ -431,12 +456,12 @@
             }
           ],
           "default": "",
-          "description": "CA used to verify agent certificates during enrollment. Empty = disabled."
+          "description": "CA used to verify agent certificates during legacy enrollment (port 1515, 4.x agents) only; enrollment through the HTTPS listener never reads it. Empty = disabled."
         },
         "ssl_verify_host": {
           "type": "boolean",
           "default": false,
-          "description": "Verify the agent certificate host name."
+          "description": "Verify the agent certificate host name during legacy enrollment (port 1515) when ssl_agent_ca is set."
         },
         "ssl_manager_cert": {
           "allOf": [
@@ -445,7 +470,7 @@
             }
           ],
           "default": "/etc/wazuh-manager/certs/remoted.pem",
-          "description": "Manager certificate (PEM). Absolute path directly inside /etc/wazuh-manager/certs (checked unless auth.disabled): the credential check of wazuh-manager-control start refuses any other location, a relative path included."
+          "description": "Manager certificate (PEM) of the legacy enrollment listener (1515); wazuh-manager-authd loads it only when that listener starts. The file must exist even when auth.disabled is true: the validation with file checks that runs before every start checks it whatever authd does. It must also be an absolute path directly inside /etc/wazuh-manager/certs, auth.disabled or not: the credential check of wazuh-manager-control start and check refuses any other location, a relative path included. Only the content of the file goes unjudged while auth.disabled is true."
         },
         "ssl_manager_key": {
           "allOf": [
@@ -454,7 +479,7 @@
             }
           ],
           "default": "/etc/wazuh-manager/certs/remoted-key.pem",
-          "description": "Manager private key (PEM). Absolute path directly inside /etc/wazuh-manager/certs (checked unless auth.disabled): the credential check of wazuh-manager-control start refuses any other location, a relative path included."
+          "description": "Manager private key (PEM) of the legacy enrollment listener (1515); wazuh-manager-authd loads it only when that listener starts. The file must exist even when auth.disabled is true: the validation with file checks that runs before every start checks it whatever authd does. It must also be an absolute path directly inside /etc/wazuh-manager/certs, auth.disabled or not: the credential check of wazuh-manager-control start and check refuses any other location, a relative path included. Only the content of the file goes unjudged while auth.disabled is true."
         },
         "remote_enrollment": {
           "type": "boolean",
@@ -511,6 +536,7 @@
                 "max_files": {
                   "type": "integer",
                   "minimum": 1,
+                  "maximum": 2147483647,
                   "default": 3,
                   "description": "Backups kept on disk."
                 }
@@ -563,12 +589,11 @@
         "hosts": {
           "type": "array",
           "items": {
-            "type": "string",
-            "pattern": "^https?://"
+            "$ref": "#/definitions/url"
           },
           "minItems": 1,
           "uniqueItems": true,
-          "description": "Indexer URLs (scheme://host:port)."
+          "description": "Indexer URLs: http:// or https://, then a host name, an IPv4 address or an IPv6 address in brackets, then an optional :port and path (https://indexer:9200)."
         },
         "ssl": {
           "description": "TLS material of the indexer connection. Every path must be absolute and directly inside /etc/wazuh-manager/certs: the credential check of wazuh-manager-control start refuses any other location, a relative path included.",
@@ -617,25 +642,25 @@
           "type": "integer",
           "minimum": 0,
           "default": 3600,
-          "description": "Seconds a pending agent task may wait, from its creation, before it is expired. Manager tasks never expire."
+          "description": "Seconds a pending agent task may wait, from its creation, before it is expired. Manager tasks never expire. 0 = the module default (3600). At most 2147483647: wazuh-manager-conf validate accepts a larger value, but wazuh-manager-modulesd -t refuses it, so wazuh-manager-control check and the start do; a running modulesd logs an error and keeps the default."
         },
         "cleanup_interval": {
           "type": "integer",
           "minimum": 0,
           "default": 300,
-          "description": "Seconds between cleanup passes."
+          "description": "Seconds between cleanup passes. 0 = the module default (300). At most 2147483647: wazuh-manager-conf validate accepts a larger value, but wazuh-manager-modulesd -t refuses it, so wazuh-manager-control check and the start do; a running modulesd logs an error and keeps the default."
         },
         "max_payload_bytes": {
           "type": "integer",
           "minimum": 0,
           "default": 1048576,
-          "description": "Maximum task payload."
+          "description": "Maximum task payload. 0 = the module default (1048576). At most 2147483647: wazuh-manager-conf validate accepts a larger value, but wazuh-manager-modulesd -t refuses it, so wazuh-manager-control check and the start do; a running modulesd logs an error and keeps the default."
         },
         "max_tasks_per_poll": {
           "type": "integer",
           "minimum": 0,
           "default": 100,
-          "description": "Tasks handed out per poll."
+          "description": "Tasks handed out per poll. 0 = the module default (100). At most 2147483647: wazuh-manager-conf validate accepts a larger value, but wazuh-manager-modulesd -t refuses it, so wazuh-manager-control check and the start do; a running modulesd logs an error and keeps the default."
         },
         "upgrade_enabled": {
           "type": "boolean",
@@ -659,13 +684,13 @@
           "type": "string",
           "minLength": 1,
           "default": "wazuh",
-          "description": "Cluster name."
+          "description": "Cluster name. Use only letters, digits, _ and -: the worker handshake separates its fields with spaces, so a name with a space passes every check and no worker ever joins."
         },
         "node_name": {
           "type": "string",
           "minLength": 1,
           "default": "node01",
-          "description": "This node's name."
+          "description": "This node's name. Use only letters, digits, _ and -: the master refuses a worker whose name has any other character (error 3060), and no check refuses such a name beforehand."
         },
         "node_type": {
           "description": "Role of this node in the cluster.",
@@ -690,11 +715,11 @@
         "bind_addr": {
           "allOf": [
             {
-              "$ref": "#/definitions/ip"
+              "$ref": "#/definitions/host"
             }
           ],
           "default": "127.0.0.1",
-          "description": "Address the master listens on for worker connections. Ignored on workers."
+          "description": "Address the master listens on for worker connections: a host name (at most 253 characters) or an IP address. Ignored on workers."
         },
         "nodes": {
           "type": "array",

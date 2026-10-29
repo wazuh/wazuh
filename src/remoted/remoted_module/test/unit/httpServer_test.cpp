@@ -3302,31 +3302,33 @@ TEST_F(GlobalPrefixTransportTest, HealthAnswersBothSpellingsUnderPrefix)
     EXPECT_EQ(statusOf(remoted::test::sendGetRequest(m_port, "/wazuh-manager?probe=1")), 200);
 }
 
-TEST_F(GlobalPrefixTransportTest, CaseVariantMatches)
+TEST_F(GlobalPrefixTransportTest, CaseVariantIs404)
 {
     startServer("/wazuh-manager/");
 
-    // Pinned RESTinio behavior (spike S3): express matching is case-insensitive. Same surface
-    // as today -- on authenticated routes the MAC covers the real bytes either way.
-    EXPECT_EQ(statusOf(remoted::test::sendGetRequest(m_port, "/WAZUH-MANAGER/")), 200);
+    // The router matches the target exactly as sent (spike S3): a case variant of the prefix
+    // or of the route is a different target.
+    const auto upper = remoted::test::sendGetRequest(m_port, "/WAZUH-MANAGER/");
+    EXPECT_EQ(statusOf(upper), 404);
+    EXPECT_NE(upper.find(R"({"error":"not_found"})"), std::string::npos) << upper;
+    EXPECT_EQ(statusOf(post("/wazuh-manager/ECHO")), 404);
 }
 
-TEST_F(GlobalPrefixTransportTest, PercentEncodedSpellingsRouteButTheTargetStaysRaw)
+TEST_F(GlobalPrefixTransportTest, PercentEncodedSpellingsAre404)
 {
     startServer("/wazuh-manager/");
 
-    // Pinned RESTinio behavior: the express router percent-DECODES ordinary bytes before
-    // matching ("%2D" == '-', so this spelling routes), while an encoded slash ("%2F") never
-    // becomes a path separator (spike S5, and the second assertion below). Predates the prefix
-    // -- it applies to every route equally -- and is harmless under the verbatim-MAC contract:
-    // the handler-observed target stays the RAW encoded bytes, so the MAC covers exactly what
-    // was sent either way.
+    // RESTinio's express router would percent-DECODE ordinary bytes before matching ("%2D" ==
+    // '-'); the server refuses any percent-encoded path, so only the exact spelling routes and
+    // the handlers, the auth gateway and the rate-limit gates only ever see that spelling.
     const auto encoded = post("/wazuh%2Dmanager/echo");
-    EXPECT_EQ(statusOf(encoded), 200);
-    EXPECT_NE(encoded.find("/wazuh%2Dmanager/echo"), std::string::npos)
-        << "the transport must never hand the decoded spelling to handlers/auth: " << encoded;
-
+    EXPECT_EQ(statusOf(encoded), 404);
+    EXPECT_NE(encoded.find(R"({"error":"not_found"})"), std::string::npos) << encoded;
+    EXPECT_EQ(statusOf(post("/wazuh-manager/%65cho")), 404);
     EXPECT_EQ(statusOf(post("/wazuh-manager%2Fecho")), 404);
+
+    // The exact spelling still routes, a '%' in the query included.
+    EXPECT_EQ(statusOf(post("/wazuh-manager/echo?q=%41")), 200);
 }
 
 TEST_F(GlobalPrefixTransportTest, IdentityPrefixBehavesAsToday)

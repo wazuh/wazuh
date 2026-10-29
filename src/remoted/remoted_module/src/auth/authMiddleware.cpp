@@ -19,6 +19,7 @@
 
 #include <openssl/crypto.h>
 
+#include <cctype>
 #include <chrono>
 #include <cstddef>
 #include <cstdint>
@@ -48,10 +49,27 @@ namespace remoted::auth
             return instance;
         }
 
-        // The only credential scheme the request path accepts. Exact, case-sensitive spelling: RFC 7235
-        // lets schemes be case-insensitive, but the profile is closed and a client that spells it
-        // differently is not this profile's client. Anything else is malformed, never "unsupported".
-        constexpr std::string_view kBearerScheme {"Bearer "};
+        // The only credential scheme the request path accepts, followed by one space. Matched
+        // case-insensitively, as RFC 7235 2.1 defines auth schemes ("bearer" and "BEARER" are the same
+        // scheme). Anything else is malformed, never "unsupported".
+        constexpr std::string_view kBearerScheme {"bearer "};
+
+        // True when the header starts with the scheme and carries something after it.
+        bool hasBearerScheme(std::string_view header)
+        {
+            if (header.size() <= kBearerScheme.size())
+            {
+                return false;
+            }
+            for (std::size_t i = 0; i < kBearerScheme.size(); ++i)
+            {
+                if (std::tolower(static_cast<unsigned char>(header[i])) != kBearerScheme[i])
+                {
+                    return false;
+                }
+            }
+            return true;
+        }
 
     } // namespace
 
@@ -194,8 +212,7 @@ namespace remoted::auth
         {
             return AuthError::MissingAuthorization;
         }
-        if (authorizationHeader.size() <= kBearerScheme.size() ||
-            authorizationHeader.substr(0, kBearerScheme.size()) != kBearerScheme)
+        if (!hasBearerScheme(authorizationHeader))
         {
             return AuthError::MalformedAuthorization;
         }
@@ -234,12 +251,12 @@ namespace remoted::auth
             if (const auto d = addressNotAllowedThrottle().record())
             {
                 LOGFN_INFO(logFn(),
-                           "Rejected %llu request(s) in the last %d s coming from an address the agent is not "
+                           "Rejected %llu request(s) %s coming from an address the agent is not "
                            "registered with (most recently agent %u from '%.*s'). client.keys restricts that agent to "
                            "a fixed address; re-enroll it with the address it actually connects from, or with 'any' if "
                            "that address changes or the agent reaches the manager through a load balancer.",
                            static_cast<unsigned long long>(d.total),
-                           remoted::common::LogThrottle::kDefaultWindowSeconds,
+                           d.period().c_str(),
                            kid->numeric(),
                            static_cast<int>(peerIp.size()),
                            peerIp.data());

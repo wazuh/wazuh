@@ -137,8 +137,8 @@ namespace remoted::metrics
      *
      * The latency histogram (`remoted.http.<endpoint>.latency`, microseconds, gateway receipt
      * to response delivery) is resolved only for the endpoints whose latency actually answers a
-     * tuning question (/stateless, /stateful); elsewhere it stays null and observeLatency() is
-     * a no-op. Default-constructed the whole struct is the null object.
+     * tuning question (/stateless, /stateful, /enroll); elsewhere it stays null and
+     * observeLatency() is a no-op. Default-constructed the whole struct is the null object.
      */
     struct EndpointHttpMetrics
     {

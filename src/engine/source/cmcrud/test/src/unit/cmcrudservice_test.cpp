@@ -323,6 +323,28 @@ TEST_F(CrudServiceNamespaceTest, DeleteNamespace_StoreFailureIsWrapped)
     }
 }
 
+TEST_F(CrudServiceNamespaceTest, DeleteNamespace_LongIdIsTruncatedInTheError)
+{
+    const std::string longId(5000, 'a');
+    const NamespaceId nsId {longId};
+
+    EXPECT_CALL(*store, deleteNamespace(_)).Times(1).WillOnce(Throw(std::runtime_error {"low-level error"}));
+
+    try
+    {
+        service->deleteNamespace(nsId);
+        FAIL() << "Expected std::runtime_error";
+    }
+    catch (const std::runtime_error& e)
+    {
+        const std::string what {e.what()};
+        EXPECT_EQ(what.find(longId), std::string::npos);
+        EXPECT_THAT(what,
+                    ::testing::HasSubstr("Failed to delete namespace '" + std::string(128, 'a') + "... (5000 bytes)'"));
+        EXPECT_THAT(what, ::testing::HasSubstr("low-level error"));
+    }
+}
+
 // ---------------------------------------------------------------------
 // upsertPolicy
 // ---------------------------------------------------------------------

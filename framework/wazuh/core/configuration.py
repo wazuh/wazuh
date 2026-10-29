@@ -133,7 +133,9 @@ def _insert_section(json_dst: dict, section_name: str, section_data: dict):
         Section be added.
     """
 
-    if CONF_SECTIONS.get(section_name, {}).get('type') == 'duplicate':
+    # A section this table does not describe (for example <labels> or a wodle such as aws-s3) is kept as written,
+    # one entry per occurrence, as a 'duplicate' section is: dropping it would hide part of the configuration.
+    if CONF_SECTIONS.get(section_name, {}).get('type', 'duplicate') == 'duplicate':
         if section_name in json_dst:
             json_dst[section_name].append(section_data)  # Append new values
         else:
@@ -552,7 +554,9 @@ def get_agent_conf(group_id: str = None, offset: int = 0, limit: int = common.DA
     WazuhResourceNotFound(1710)
         Group was not found.
     WazuhError(1006)
-        agent.conf does not exist or there is a problem with the permissions.
+        The file resolves outside the group directory.
+    WazuhResourceNotFound(1006)
+        The file does not exist.
     WazuhError(1101)
         Requested component does not exist.
 
@@ -573,10 +577,11 @@ def get_agent_conf(group_id: str = None, offset: int = 0, limit: int = common.DA
     base_path = os_path.realpath(base_path)
     if os_path.commonpath([base_path, shared_path]) != shared_path or \
             os_path.commonpath([os_path.realpath(agent_conf), base_path]) != base_path:
-        raise WazuhError(1006, agent_conf)
+        raise WazuhError(1006, filename)
 
+    # Name the file as requested: the absolute path would disclose the installation layout.
     if not os_path.exists(agent_conf):
-        raise WazuhError(1006, agent_conf)
+        raise WazuhResourceNotFound(1006, filename)
 
     try:
         # Read RAW file
@@ -617,7 +622,9 @@ def get_file_conf(filename: str, group_id: str = None, type_conf: str = None, ra
     WazuhResourceNotFound(1710)
         Group was not found.
     WazuhError(1006)
-        The file does not exist or there is a problem with the permissions.
+        The file resolves outside the group directory.
+    WazuhResourceNotFound(1006)
+        The file does not exist.
     WazuhError(1104)
         Invalid file type.
 
@@ -639,10 +646,11 @@ def get_file_conf(filename: str, group_id: str = None, type_conf: str = None, ra
     base_path = os_path.realpath(base_path)
     if os_path.commonpath([base_path, shared_path]) != shared_path or \
             os_path.commonpath([os_path.realpath(file_path), base_path]) != base_path:
-        raise WazuhError(1006, file_path)
+        raise WazuhError(1006, filename)
 
+    # Name the file as requested: the absolute path would disclose the installation layout.
     if not os_path.exists(file_path):
-        raise WazuhError(1006, file_path)
+        raise WazuhResourceNotFound(1006, filename)
 
     if raw:
         with open(file_path, 'r') as raw_data:
@@ -763,6 +771,13 @@ def get_internal_options_value(high_name: str, low_name: str, max_: int, min_: i
     return option
 
 
+# A leading XML declaration (`<?xml version="1.0" encoding="UTF-8"?>`), optionally after a byte order mark and
+# whitespace.
+XML_DECLARATION_REGEX = re.compile(r'\A\ufeff?\s*<\?xml(?:\s[^<>]*)?\?>')
+# verify-agent-conf's "<reader> remote configuration in '<file>' is corrupted." (RCONFIG_ERROR).
+REMOTE_CONFIG_CORRUPTED_CODE = '1207'
+
+
 def upload_group_configuration(group_id: str, file_content: str) -> str:
     """Update group configuration.
 
@@ -817,6 +832,10 @@ def upload_group_configuration(group_id: str, file_content: str) -> str:
             for character, replacement in custom_entities.items():
                 file_content = re.sub(replacement.replace('\\', '\\\\'), character, file_content)
 
+            # A standard XML declaration is only valid at the very start of a document, and the content is wrapped
+            # below, so drop a leading one. Nothing else is stripped: a DTD or an entity is still refused.
+            file_content = XML_DECLARATION_REGEX.sub('', file_content, count=1)
+
             # Beautify xml file using a defusedxml.minidom.parseString
             xml = parseString(f'<root>\n{file_content}\n</root>')
 
@@ -857,12 +876,19 @@ def upload_group_configuration(group_id: str, file_content: str) -> str:
             # Example of desired output:
             # Invalid element in the configuration: 'agent_conf'.
             # Syscheck remote configuration in '/var/wazuh-manager/tmp/api_tmp_file_2019-01-08-01-1546959069.xml' is corrupted.
+            #
+            # The tool runs its readers in turn and the first one to fail adds a (1207) line naming itself, whatever
+            # the cause: an unknown section is reported by the Syscheck reader. That line says nothing the others do
+            # not, so it is kept only when it is the only one. The temporary file is reported as the group's file.
+            output = e.output.decode().replace(tmp_file_path, f"{group_id}/agent.conf")
             output_regex = re.findall(pattern=r"\d{4}\/\d{2}\/\d{2} \d{2}:\d{2}:\d{2} verify-agent-conf: ERROR: "
-                                              r"\(\d+\): ([\w \/ \_ \- \. ' :]+)", string=e.output.decode())
-            if output_regex:
-                raise WazuhError(1114, ' '.join(output_regex))
+                                              r"\((\d+)\): ([\w \/ \_ \- \. ' :]+)", string=output)
+            messages = [message for code, message in output_regex if code != REMOTE_CONFIG_CORRUPTED_CODE] or \
+                       [message for _, message in output_regex]
+            if messages:
+                raise WazuhError(1114, ' '.join(messages))
             else:
-                raise WazuhError(1115, e.output.decode())
+                raise WazuhError(1115, output)
         except Exception as e:
             raise WazuhInternalError(1743, str(e))
 

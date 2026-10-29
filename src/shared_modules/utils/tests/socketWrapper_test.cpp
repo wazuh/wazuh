@@ -485,6 +485,44 @@ TEST_F(SocketWrapperTest, ReadDeliversPacketAndShrinksTheBuffer)
     EXPECT_EQ(socketWrapper.recvBufferSize(), static_cast<size_t>(BUFFER_MAX_SIZE));
 }
 
+TEST_F(SocketWrapperTest, ReadDeliversEmptyPacketWithoutWaitingForABody)
+{
+    constexpr int SOCK {123};
+    Socket<OSWrapper, SizeHeaderProtocol> socketWrapper {SOCK};
+    int calls {0};
+
+    // A zero length prefix used to leave the socket waiting on a recv() of zero bytes that never completes.
+    EXPECT_CALL(socketWrapper, recv(SOCK, _, 0, _)).Times(0);
+    EXPECT_CALL(socketWrapper, recv(SOCK, _, PACKET_FIELD_SIZE, _))
+        .WillOnce(Invoke(recvBytes(lengthPrefix(0))))
+        .WillOnce(Invoke(recvWouldBlock));
+    EXPECT_CALL(socketWrapper, shutdown(SOCK, _)).WillOnce(Return(0));
+    EXPECT_CALL(socketWrapper, close(SOCK)).WillOnce(Return(0));
+
+    EXPECT_NO_THROW(socketWrapper.read(
+        [&](const int sock, const char*, uint32_t dataSize, const char*, uint32_t headerSize)
+        {
+            ++calls;
+            EXPECT_EQ(sock, SOCK);
+            EXPECT_EQ(dataSize, 0u);
+            EXPECT_EQ(headerSize, 0u);
+        }));
+    EXPECT_EQ(calls, 1);
+}
+
+TEST_F(SocketWrapperTest, ReadRejectsEmptyPacketForAnInnerHeaderProtocol)
+{
+    constexpr int SOCK {123};
+    Socket<OSWrapper, AppendHeaderProtocol> socketWrapper {SOCK};
+
+    // An empty packet cannot carry the inner header-size field: it is rejected, never left pending.
+    EXPECT_CALL(socketWrapper, recv(SOCK, _, _, _)).WillOnce(Invoke(recvBytes(lengthPrefix(0))));
+    EXPECT_CALL(socketWrapper, shutdown(SOCK, _)).WillOnce(Return(0));
+    EXPECT_CALL(socketWrapper, close(SOCK)).WillOnce(Return(0));
+
+    EXPECT_THROW(socketWrapper.read(UNEXPECTED_CALLBACK), std::runtime_error);
+}
+
 TEST_F(SocketWrapperTest, ReadRejectsInnerHeaderLargerThanThePacket)
 {
     constexpr int SOCK {123};

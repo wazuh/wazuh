@@ -11,6 +11,9 @@ It is an agent module, built into the agent's `wazuh-modulesd` and available on 
 - A Microsoft 365 tenant with admin access.
 - An Azure AD application registered with the required API permissions.
 - The application's tenant ID, client ID, and client secret.
+- The `o365` integration (its decoder is `decoder/o365-default/0`) **enabled** in the manager's standard
+  ruleset. It ships disabled, and until it is enabled the events arrive but are never classified or
+  indexed — see [Enable the integration's ruleset first](README.md#enable-the-integrations-ruleset-first).
 
 ## Azure AD application setup
 

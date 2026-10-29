@@ -104,7 +104,15 @@ INSTANTIATE_TEST_SUITE_P(
         EventParserParam {"1:2:", R"({"agent":{"name":"test"}})", std::nullopt},
         EventParserParam {"1::3", R"({"agent":{"name":"test"}})", std::nullopt},
         EventParserParam {":2:3", R"({"agent":{"name":"test"}})", std::nullopt},
-        EventParserParam {"::3", R"({"agent":{"name":"test"}})", std::nullopt}));
+        EventParserParam {"::3", R"({"agent":{"name":"test"}})", std::nullopt},
+        // Highest queue byte the indexer stores (signed byte)
+        EventParserParam {"\x7F:loc:msg",
+                          R"({})",
+                          R"({"wazuh":{"protocol":{"queue":127,"location":"loc"}},"event":{"original":"msg"}})"},
+        // Queue bytes above 0x7F are refused
+        EventParserParam {"\x80:loc:msg", R"({})", std::nullopt},
+        EventParserParam {"\xC3:loc:msg", R"({})", std::nullopt},
+        EventParserParam {"\xFF:loc:msg", R"({})", std::nullopt}));
 
 INSTANTIATE_TEST_SUITE_P(
     ParseLegacyEventWithAgent,
@@ -135,5 +143,43 @@ INSTANTIATE_TEST_SUITE_P(
             "1:[A] (Alice) any->home:Hello",
             R"({})",
             R"({"wazuh":{"protocol":{"queue":49,"location":"[A] (Alice) any->home"}},"event":{"original":"Hello"}})"}));
+
+/// Returns the what() of the runtime_error thrown by parseLegacyEvent, or "" when nothing is thrown.
+std::string legacyParseError(std::string_view input)
+{
+    try
+    {
+        base::eventParsers::parseLegacyEvent(input, json::Json(R"({})"));
+    }
+    catch (const std::runtime_error& e)
+    {
+        return e.what();
+    }
+    return {};
+}
+
+// The reported reason must match the actual defect of the line.
+TEST(EventParserReasonTest, ShortLineReportsLength)
+{
+    EXPECT_NE(legacyParseError("1:a").find("at least 5 bytes"), std::string::npos);
+}
+
+TEST(EventParserReasonTest, LongLineWithoutQueueSeparatorReportsMissingSeparator)
+{
+    const auto reason = legacyParseError("this is not a wazuh event");
+    EXPECT_EQ(reason.find("at least 5 bytes"), std::string::npos) << reason;
+    EXPECT_NE(reason.find("missing ':' after the one-byte queue identifier"), std::string::npos) << reason;
+}
+
+TEST(EventParserReasonTest, MissingLocationSeparatorIsReported)
+{
+    EXPECT_NE(legacyParseError("1:location-without-message").find("missing unescaped ':'"), std::string::npos);
+}
+
+TEST(EventParserReasonTest, QueueByteAbove7FIsReported)
+{
+    const auto reason = legacyParseError("\xC3:location:message");
+    EXPECT_NE(reason.find("queue identifier 0xC3 is not a 7-bit byte"), std::string::npos) << reason;
+}
 
 } // namespace

@@ -66,7 +66,7 @@ framework function as the API, broadcast to every cluster node.
 | `--package_type <rpm\|deb>` | Package family for a Linux agent whose distribution does not imply one |
 | `-f`, `--file <WPK>` | Custom WPK: a bare file name, or a path inside `/var/wazuh-manager/var/upgrade/`. The file must already be there (on every cluster node); the CLI exits with an error otherwise |
 | `-x`, `--execute <installer>` | Installer inside a custom WPK. Default: `upgrade.bat` for Windows agents, `upgrade.sh` otherwise |
-| `-s`, `--silent` | Print nothing on success or per-agent failure |
+| `-s`, `--silent` | Print nothing on success or per-agent failure, and no framework warning on standard error; an error that stops the command is still printed |
 | `-d`, `--debug` | Re-raise errors with a traceback |
 
 `-f` or `-x` selects the custom path, on which `-v`, `-r`, `-F`, `--http` and `--package_type` are
@@ -80,6 +80,9 @@ Note: Agents will execute upgrades autonomously. Use agent logs to track progres
 Agents that cannot be upgraded are listed first, as `Agent <ID> upgrade failed. Status: <error>`. The
 version rules and per-agent errors are in [Agent upgrades](../task_manager/agent-upgrades.md#version-constraints);
 building and signing a custom WPK is described in `tools/agent-upgrade/README.md`.
+
+The command exits `0` only when every requested agent got an upgrade task; it exits `1` when any
+agent got none (each one listed as above) or on an error, so a script can trust a `0`.
 
 To verify the result, check the agent's version (`GET /agents?agents_list=<ID>&select=version`) once
 it reconnects, or the agent's log.

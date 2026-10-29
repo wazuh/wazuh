@@ -33,7 +33,7 @@ material; that one is the order things happen in.
    OSSEC A:'<agent_name>' V:'<version>' G:'<groups>' IP:'<ip>' K:'<key_hash>'
    ```
    If `use_password` is enabled, the request must be prefixed with the enrollment password,
-   `OSSEC PASS: <password> OSSEC A:'…'`, or it is answered `ERROR: Invalid password`. The schema
+   `OSSEC PASS: <password> OSSEC A:'…'`, or it is answered `ERROR: Invalid password. Unable to add agent`. The schema
    default is `no`; the configuration the installer generates sets it to `yes`. The master
    generates the password at first start; see [use_password configuration](configuration.md#use_password).
 
@@ -41,17 +41,29 @@ material; that one is the order things happen in.
    closed, and so is one that sends more than 68 KiB without a newline; at most 999 connections
    are served at once (`Too many connections. Rejecting.` past that).
 
-   Only `A:'<agent_name>'` is mandatory. The other fields are optional, but those present must
-   appear in the order shown:
+   Only `A:'<agent_name>'` is mandatory and comes first. The other fields are optional and may
+   follow it in any order; each is read once, and anything after the fields authd recognises (a
+   repeated field, an unknown one) is ignored. A request without `V:` is not version-checked:
    - `A:'<agent_name>'` — the name the agent wants to register under (required). It must pass
      `OS_IsValidName()` (2–128 letters, digits, `-`, `_` or `.`, not starting with `.`), or the
      answer is `ERROR: Invalid agent name: <name>`.
-   - `V:'<version>'` — the agent's Wazuh version. A version newer than the manager's is refused
+   - `V:'<version>'` — the agent's Wazuh version, in the form `POST /enroll` accepts: an optional
+     `v` or `V`, one to four dot-separated numbers and an optional `-` or `+` suffix of letters,
+     digits, `.` and `-` (64 bytes at most); anything else, an empty value included, is answered
+     `ERROR: Invalid version`. A version newer than the manager's is refused
      unless [`<agents><allow_higher_versions>`](configuration.md#agents--allow_higher_versions) is `yes`.
    - `G:'<groups>'` — comma-separated centralized group(s) to assign the agent to at enrollment
-     time, instead of the `default` group.
-   - `IP:'<ip>'` — the address to register the agent with. `IP:'src'` registers the connection's
-     source address; any other value must be a valid IP and is registered as given. Without this
+     time, instead of the `default` group. An empty value or an empty member (`G:''`,
+     `G:'default,'`) is refused with `ERROR: Invalid group name`; `POST /enroll` and the local
+     socket instead take a list naming no group as no list, and record the others without the
+     empty members.
+   - `IP:'<ip>'` — the address to register the agent with. `IP:'src'` (exactly that word) registers the
+     connection's source address. Any other value must be an IPv4 or IPv6 address, optionally with a mask, or
+     `any`; it is registered, and echoed in the answer, in the form the agent registry records:
+     an IPv4 mask in dotted form becomes its prefix length (`10.22.0.0/255.255.0.0` →
+     `10.22.0.0/16`), a full-length mask is dropped (`10.30.0.0/32` → `10.30.0.0`), and an IPv6
+     address is expanded in upper case. A non-contiguous dotted mask and a leading `!` are
+     answered `ERROR: Invalid IP: <value>`, as `POST /enroll` refuses them. Without this
      field the agent is registered as `any`, or with its source address when
      [`use_source_ip`](configuration.md#use_source_ip) is `yes`.
    - `K:'<key_hash>'` — the SHA-1 hash of the agent's current key, if it already has one. It is
@@ -171,8 +183,8 @@ wazuh-manager-authd -[VhdtfP] [-u user] [-g group] [-D dir] [-p port] [-c cipher
 | --- | --- | --- |
 | `-V` | Print the version and license, then exit. | — |
 | `-h` | Print the help message, then exit with status `1`. | — |
-| `-d` | Enable debug logging. Repeat it (`-dd`) to raise the level. When given, `authd.debug` in the internal options is not read. | off |
-| `-t` | Read and validate `/etc/wazuh-manager/wazuh-manager.conf`, then exit `0` on success. Unlike a normal start, it also checks that the configured certificate and CA files exist (`auth.ssl_*` and `remote.https.*`). Nothing is bound or started. | — |
+| `-d` | Enable debug logging. Repeat it (`-dd`) to raise the level. When given (or with `-t`), `authd.debug` in the internal options is not read. | off |
+| `-t` | Read and validate `/etc/wazuh-manager/wazuh-manager.conf`, then exit `0` on success. Unlike a normal start, it also checks that the configured certificate and CA files exist (`auth.ssl_*` and `remote.https.*`). When the port-1515 listener would start (authd not disabled, `remote_enrollment` and `legacy_enrollment` on), it also loads `ssl_manager_cert`, `ssl_manager_key` and, when set, `ssl_agent_ca` exactly as the start does, so a file that is not a PEM certificate or key, or a key that does not match its certificate, fails the test. Nothing is bound or started. | — |
 | `-f` | Run in the foreground instead of daemonizing. **Also forces [`disabled`](configuration.md#disabled) to `no`**, so the daemon starts even when the configuration disables it. | off |
 | `-u <user>` | User the daemon switches to after startup. | `wazuh-manager` |
 | `-g <group>` | Group the daemon switches to after startup. | `wazuh-manager` |
@@ -219,8 +231,8 @@ For example, replace `mgr.example.com` with a name in the listener certificate's
 sudo /var/wazuh-manager/bin/wazuh-manager-authd --create-enrollment-token --address mgr.example.com --ttl 30d
 ```
 
-The CLI prints the token alone on stdout and its id, endpoint,
-expiry and pin on stderr; `--show-token` decodes one offline (argument, `--token-file` or stdin), printing
+The CLI prints the token alone on stdout and, on stderr, its id, endpoint, expiry, pin (when it
+pins rather than embeds the CA) and whether it carries a credential; `--show-token` decodes one offline (argument, `--token-file` or stdin), printing
 its id but not its credential. An inline token requires `--show-token=<token>`; a separate positional argument
 is not consumed. `--purge-enrollment-tokens` removes dead tokens by default; `--all` also removes
 usable tokens and requires interactive confirmation or `--force`. The server API offers the same
@@ -349,7 +361,11 @@ inside the window of [`remoted.jwt_max_age` and `remoted.jwt_clock_skew`](config
 
 On success the entry is rotated in place — same id, new key, new secret — and the writer issues
 `global set-agent-credentials` instead of an insert: nothing is deleted, no indexer purge is recorded,
-groups are kept unless the request named some, and the `<force>` guards play no part. Refusals: `9026`
+groups are kept unless the request named some, and the `<force>` guards play no part. The **name and
+address are not kept**: the entry takes the request's `name`, and its address is what `ip` resolves to
+on `POST /enroll` — so a request without `ip` registers `any` again (or the connection's source address
+under [`use_source_ip`](configuration.md#use_source_ip)), even for an agent registered with an address
+or network before. Refusals: `9026`
 (no such agent, or a row without a secret — enrolled over 1515, or a `global.db` rebuilt from
 `client.keys`), `9027` (malformed, another `kid`, bad signature, or combined with `token_id`, `id` or
 `key`), `9028` (outside the window); a name or IP owned by *another* agent still answers `9008`/`9007`.
@@ -427,13 +443,19 @@ A request is a single-line JSON object:
     the two *enrollment* paths (port 1515 and `POST /enroll`) enforce on the names they mint: it
     refuses only what the `<id> <name> <ip> <key>` line format cannot represent, so names that
     the API has always accepted — containing `%`, a single character, or a leading `.` — keep
-    working. The local socket applies neither `use_source_ip` nor the agent-version check: the
-    `ip` is registered as given, and the request carries no version.
+    working. The local socket applies neither `use_source_ip` nor the agent-version check, and the
+    request carries no version. The `ip` is registered, checked for duplicates and answered in the
+    form port 1515 registers it in (a dotted mask as its prefix length, a full-length mask dropped,
+    IPv6 expanded), so `10.0.0.15/32` is a duplicate (`9007`) of an agent at `10.0.0.15`; a
+    leading `!`, a non-contiguous dotted mask and anything that is not an address answer
+    `9006 No such IP`.
   - `id` (optional) — request a specific agent ID instead of letting authd assign the next one; must
     be a positive integer no greater than `2147483647` (the width `client.keys` and the database
     store it in) and other than `0` (reserved for the manager), or the request fails with
     `9020 Invalid agent ID`
-  - `groups` (optional) — comma-separated centralized group(s) to assign
+  - `groups` (optional) — comma-separated centralized group(s) to assign; repeated names are
+    dropped, and a list naming no group (`""`, `","`) is the same as no `groups` argument (the
+    agent joins `default`; a re-enrolling agent keeps its groups)
   - `key` (optional) — a caller-supplied key instead of a randomly generated one; must be exactly 64 lowercase hex chars (32 bytes), otherwise the request fails with `9019 Invalid agent key`
   - `key_hash` (optional) — hash of the agent's current key, used the same way as the `K:` field
     in the network protocol when deciding whether a `force` replacement applies
@@ -524,7 +546,7 @@ it at its credential check (`Unresolved credentials`, error 21 with `-j`, the mi
 often because the service user cannot read them — authd logs
 `SSL context setup failed (certificate '<cert>', key '<key>'). authd reuses the HTTPS agent
 listener's pair, issued at installation and never reissued at start: check that both files are owned
-by the service user and mode 0640, or provision them; see 'Credentials' in the installation guide.
+by root:wazuh-manager with mode 0640, or provision them; see 'Credentials' in the installation guide.
 Exiting.` and exits. authd builds that context only when it opens port 1515
 (`remote_enrollment` and `legacy_enrollment` both on).
 

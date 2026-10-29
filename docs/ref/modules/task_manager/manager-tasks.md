@@ -180,8 +180,10 @@ empty. Omit `status` to see every row of that type.
 
 The two return different shapes. The list is deliberately narrow — one row is `task_id`,
 `agent_id`, `status`, `create_time` and `last_error`, enough to see *what* failed and why without
-paging whole payloads. `/get` returns the full row: add `attempts`, `defer_count`, `owner`,
-`claim_time`, `next_attempt_at`, `end_time`, the `payload`, and — for a scheduled run — the
+paging whole payloads. `/get` returns the full row: add `attempts`, `defer_count`, `owner` and
+`claim_time` (present only while the row is `claimed`: both are cleared when it is requeued or
+reaches a terminal state, so a finished task does not show when it started),
+`next_attempt_at`, `end_time`, the `payload`, and — for a scheduled run — the
 `schedule_id` and `scheduled_run_at` it belongs to. Asking for an id that does not exist answers
 `404` rather than an empty row.
 
@@ -233,6 +235,9 @@ definition for wazuh_modules.<option>: '<value>'.`
 | `wazuh_modules.manager_task_sweep_interval` | 60 s | 1–3600 | How often ownership is swept and stalls are reported |
 | `wazuh_modules.manager_task_claim_grace` | 30 s | 1–3600 | Slack before a claimed row is considered reclaimable |
 | `wazuh_modules.manager_task_wdb_timeout` | 10 s | 1–600 | Deadline on each agent-removal request the retention sweep sends to `wazuh-manager-authd`. The recurring handlers' wazuh-db queries use a fixed 10 s socket deadline instead |
+
+A `manager_task_backoff_base` or `manager_task_defer_base` above `manager_task_backoff_cap` is
+lowered to the cap when the module starts.
 
 `manager_task_max_attempts` and `manager_task_max_defer` are **defaults**. The registry carries
 per-type overrides, and `agent_delete_indexer` sets both to unbounded. Those overrides are not

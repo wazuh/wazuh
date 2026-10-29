@@ -125,7 +125,7 @@ The `adapter` module (header-only) provides template helpers for the proto↔HTT
 
 | Utility | Purpose |
 |---------|---------|
-| `parseRequest<Req, Res>(req)` | Deserialize JSON body → protobuf `Req`. Returns `ResOrErrorResp<Req>` (a 400 `Failed to parse protobuff json request: …` on failure) |
+| `parseRequest<Req, Res>(req)` | Deserialize JSON body → protobuf `Req`. Returns `ResOrErrorResp<Req>` (a 400 `Failed to parse protobuff json request: …` on failure, the parser message cut to `MAX_PARSE_ERROR_LENGTH` = 256 characters by `truncateForMessage`) |
 | `userResponse<Res>(res)` | Serialize protobuf `Res` → 200 JSON response |
 | `userErrorResponse<Res>(msg)` | 400 error with protobuf error envelope |
 | `internalErrorResponse<Res>(msg)` | 500 error with protobuf error envelope |
@@ -178,6 +178,7 @@ adapter::RouteHandler activateDumper(const std::shared_ptr<::dumper::IDumper>& d
 
         // 3. Execute domain logic via the interface
         dumper->activate();
+        LOG_INFO_L(lambdaName.c_str(), "Event dumper activated: every incoming event is now written to its log");
 
         // 4. Build and return the protobuf response
         ResponseType eResponse;
@@ -327,7 +328,7 @@ Provides 5 CLI entry points that exercise the API via `api-communication`:
 
 | CLI Command | Module | Domain |
 |------------|--------|--------|
-| `engine-router` | `engine_router` | Route CRUD, table, `ingest` (sends a `QueuePost_Request`, which `get_endpoint` does not map — the command fails; the engine has no such route) |
+| `engine-router` | `engine_router` | Route CRUD and table (`add`, `delete`, `get`, `list`, `reload`, `update`); `router.proto` still declares `QueuePost_Request`, which no route serves and `get_endpoint` does not map |
 | `engine-test` | `engine_test` | Tester sessions, integration test runs |
 | `engine-event-dumper` | `engine_event_dumper` | Event Dumper activate/deactivate/status |
 | `engine-public` | `engine_public` | Content validation, IOC, logtest cleanup, status |

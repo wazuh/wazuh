@@ -60,7 +60,7 @@ The following components should be included in your Wazuh manager backup strateg
   - `store/` - engine content store (schemas, enrichment definitions)
   - `ruleset/` - ruleset content the engine's content manager synchronizes from the indexer
   - `kvdb-ioc/` - IOC key-value store
-  - `mmdb/`, `tzdb/` - GeoIP and timezone databases, reinstalled with the package
+  - `mmdb/`, `tzdb/` - GeoIP and timezone databases, shipped by the package (an upgrade keeps `mmdb/` with the rest of `data/` and replaces only `tzdb/`), so they need no backup of their own
 
 #### Optional Data
 
@@ -363,14 +363,14 @@ fi
 
 ```bash
 # Configuration directory, in the modes the installer applies: root-owned, with
-# the files the daemons write at run time (client.keys, enrollment_tokens.json,
+# the files the daemons write at run time (client.keys, enrollment_tokens.json, authd.pass,
 # the shared groups, the engine outputs) owned by the service account. The globs
 # run inside the root shell -- unprivileged they expand to nothing.
 sudo sh -c 'cd /etc/wazuh-manager || exit 1
     chown -R root:wazuh-manager .
     chmod 770 . shared
     chown -R wazuh-manager:wazuh-manager shared/* outputs
-    for F in client.keys enrollment_tokens.json; do
+    for F in client.keys enrollment_tokens.json authd.pass; do
         [ -f "$F" ] && chown wazuh-manager:wazuh-manager "$F"
     done
     chmod 660 client.keys wazuh-manager.conf'
@@ -682,7 +682,7 @@ docker compose exec -u root wazuh.manager sh -c '
     chown -R root:wazuh-manager /etc/wazuh-manager
     chmod 770 /etc/wazuh-manager /etc/wazuh-manager/shared
     chown -R wazuh-manager:wazuh-manager /etc/wazuh-manager/shared/* /etc/wazuh-manager/outputs
-    for F in client.keys enrollment_tokens.json; do
+    for F in client.keys enrollment_tokens.json authd.pass; do
         [ -f "/etc/wazuh-manager/$F" ] && chown wazuh-manager:wazuh-manager "/etc/wazuh-manager/$F"
     done
     chmod 660 /etc/wazuh-manager/wazuh-manager.conf
@@ -914,7 +914,7 @@ sudo sh -c 'cd /etc/wazuh-manager || exit 1
     chown -R root:wazuh-manager .
     chmod 770 . shared
     chown -R wazuh-manager:wazuh-manager shared/* outputs
-    for F in client.keys enrollment_tokens.json; do
+    for F in client.keys enrollment_tokens.json authd.pass; do
         [ -f "$F" ] && chown wazuh-manager:wazuh-manager "$F"
     done
     chmod 660 client.keys wazuh-manager.conf

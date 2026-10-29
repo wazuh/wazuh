@@ -201,10 +201,10 @@ namespace invsync::endpoints::config
                 if (const auto decision = goneThrottle.record())
                 {
                     LOGFN_DEBUG1(logFn(),
-                                 "Rejected %llu config document(s) with 503 in the last %d s: the module is shutting "
+                                 "Rejected %llu config document(s) with 503 %s: the module is shutting "
                                  "down and the indexer connector is already gone.",
                                  static_cast<unsigned long long>(decision.total),
-                                 wazuh::uds_http::LogThrottle::kDefaultWindowSeconds);
+                                 decision.period().c_str());
                 }
                 responder->send(serviceUnavailable());
                 return;
@@ -217,10 +217,10 @@ namespace invsync::endpoints::config
                 if (const auto decision = unavailableThrottle.record())
                 {
                     LOGFN_WARN(logFn(),
-                               "Rejected %llu config document(s) with 503 in the last %d s: no configured indexer host "
+                               "Rejected %llu config document(s) with 503 %s: no configured indexer host "
                                "is currently healthy. Check the <indexer> hosts and that the indexer is running.",
                                static_cast<unsigned long long>(decision.total),
-                               wazuh::uds_http::LogThrottle::kDefaultWindowSeconds);
+                               decision.period().c_str());
                 }
                 responder->send(serviceUnavailable());
                 return;
@@ -271,10 +271,10 @@ namespace invsync::endpoints::config
                 if (const auto decision = metadataThrottle.record())
                 {
                     LOGFN_DEBUG1(logFn(),
-                                 "Accepted %llu agent config report(s) in the last %d s with reported groups or "
+                                 "Accepted %llu agent config report(s) %s with reported groups or "
                                  "host fields left empty because they failed validation (last from agent '%s').",
                                  static_cast<unsigned long long>(decision.total),
-                                 wazuh::uds_http::LogThrottle::kDefaultWindowSeconds,
+                                 decision.period().c_str(),
                                  agentIdIt->second.c_str());
                 }
             }
@@ -300,9 +300,9 @@ namespace invsync::endpoints::config
             if (const auto decision = acceptedThrottle.record())
             {
                 LOGFN_DEBUG1(logFn(),
-                             "Indexed %llu agent config document(s) in the last %d s.",
+                             "Indexed %llu agent config document(s) %s.",
                              static_cast<unsigned long long>(decision.total),
-                             wazuh::uds_http::LogThrottle::kDefaultWindowSeconds);
+                             decision.period().c_str());
             }
 
             // The protocol-defined acknowledgment: an empty object, not the enriched document.

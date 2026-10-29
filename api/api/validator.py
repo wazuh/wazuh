@@ -13,6 +13,8 @@ from wazuh.core import common
 from wazuh.core.exception import WazuhError
 
 _alphanumeric_param = re.compile(r'^[\w,\-.+\s:]+$')
+# IPv4, IPv6 or a CIDR range (an agent registered for a range keeps it as its registerIP).
+_ip_filter = re.compile(r'^[\w,\-.\s:/]+$')
 _symbols_alphanumeric_param = re.compile(r'^[\w,*<>!\-.+\s:/()\[\]\'\"|=~#]+$')
 _base64 = re.compile(r'^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$')
 _group_names = re.compile(r'^(?!^(\.{1,2}|all)$)[A-Za-z0-9.\-_]+$')
@@ -324,6 +326,11 @@ def check_component_configuration_pair(component: str, configuration: str, is_ma
 @Draft4Validator.FORMAT_CHECKER.checks("alphanumeric")
 def format_alphanumeric(value):
     return check_exp(value, _alphanumeric_param)
+
+
+@Draft4Validator.FORMAT_CHECKER.checks("ip_filter")
+def format_ip_filter(value):
+    return check_exp(value, _ip_filter)
 
 
 @Draft4Validator.FORMAT_CHECKER.checks("alphanumeric_symbols")

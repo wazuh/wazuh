@@ -66,9 +66,11 @@ entry per metric, sorted by name:
 Reading notes:
 
 - **Counters** are cumulative since `wazuh-manager-remoted` started. There are no rates in the dump: derive events-per-second externally by
-  diffing counters between polls (the in-repo scraper
-  `tools/devContainer/scripts/monitor.py` does exactly this).
-- **Pull metrics** (`"type": "pull"`) are read at dump time from live components. While the
+  diffing counters between polls (the in-repo benchmark scraper
+  `tools/devContainer/scripts/bench_collect.py` reads this socket; the rates are derived
+  afterwards from its samples).
+- **Pull metrics** (`"type": "pull"`) are read at dump time from live components and are
+  written as JSON doubles (`"value": 12.0`, not `12`), whatever their unit. While the
   module is stopped (or a component is torn down) they read `0` — the documented quiesced
   value, not an error.
 - **Histograms** carry their distribution in `summary` (values in microseconds); `value` is
@@ -121,7 +123,7 @@ of the bundle and whether it signs the served one, the chain verdict — read th
 
 | Metric | Type | Unit | Meaning | Tuning |
 |---|---|---|---|---|
-| `remoted.server.tls.cert_expiry_days` | gauge (pull, signed) | days | Whole days until the served certificate's `notAfter`; **negative once expired** (the first 24 h past expiry read `-1`). The only signed value in the catalog — alert on `< 30`, which is also when remoted starts logging a WARN | [`https.certificate`](configuration.md#httpscertificate) — renew the certificate |
+| `remoted.server.tls.cert_expiry_days` | gauge (pull, double) | days | Whole days until the served certificate's `notAfter`; **negative once expired** (the first 24 h past expiry read `-1`). The only signed value in the catalog, and the one registered as a double rather than an integer — alert on `< 30`, which is also when remoted starts logging a WARN | [`https.certificate`](configuration.md#httpscertificate) — renew the certificate |
 | `remoted.server.tls.ca_matches_leaf` | gauge (pull) | flag | `1` when the served certificate **chains** to a certificate of the configured CA file — a full validation: the leaf's own issuer, present as a still-valid, self-signed `CA:TRUE` anchor. `0` when it does not (including a CA that merely signs the certificate, one that has expired and one without `CA:TRUE`) **or** the file could not be read (the log line tells which) | [`https.ca_certificate`](configuration.md#httpsca_certificate) — the CA that must have ISSUED [`https.certificate`](configuration.md#httpscertificate) |
 
 ### Deferred forwarding — `remoted.forwarder.deferred.*`
@@ -157,7 +159,7 @@ sits at the same classification point as the throttled log line naming the same 
 | `remoted.forwarder.error.connect` | counter | count | Could not connect to the downstream socket (nothing listening) | diagnostic — start/repair the downstream service |
 | `remoted.forwarder.error.connect_timeout` | counter | count | The connect deadline elapsed | [`remoted.downstream_connect_timeout`](configuration.md#remoteddownstream_connect_timeout) |
 | `remoted.forwarder.error.write_timeout` | counter | count | The request-body write deadline elapsed (peer not reading) | [`remoted.downstream_write_timeout`](configuration.md#remoteddownstream_write_timeout) |
-| `remoted.forwarder.error.response_timeout` | counter | count | The post-send response deadline elapsed. On `/stateful` the session is still being applied downstream, so the `503` sent here carries `Retry-After`; a run of these ahead of `sync.indexer.conflict.exhausted` on the sync server is the re-send racing the first copy | [`remoted.downstream_response_timeout`](configuration.md#remoteddownstream_response_timeout), [`remoted.downstream_stateful_response_timeout`](configuration.md#remoteddownstream_stateful_response_timeout) and [`remoted.downstream_stateful_retry_after`](configuration.md#remoteddownstream_stateful_retry_after) (for `/stateful`) |
+| `remoted.forwarder.error.response_timeout` | counter | count | The post-send response deadline elapsed. On `/stateful` the session is still being applied downstream, so the `503` sent here carries `Retry-After` (unless `remoted.downstream_stateful_retry_after` is `0`); a run of these ahead of `sync.indexer.conflict.exhausted` on the sync server is the re-send racing the first copy | [`remoted.downstream_response_timeout`](configuration.md#remoteddownstream_response_timeout), [`remoted.downstream_stateful_response_timeout`](configuration.md#remoteddownstream_stateful_response_timeout) and [`remoted.downstream_stateful_retry_after`](configuration.md#remoteddownstream_stateful_retry_after) (for `/stateful`) |
 | `remoted.forwarder.error.transport` | counter | count | Socket read/write error or unexpected close mid-exchange | diagnostic |
 | `remoted.forwarder.error.protocol` | counter | count | The downstream response was not valid HTTP | diagnostic |
 | `remoted.forwarder.error.response_too_large` | counter | count | Downstream response body over the cap | [`remoted.downstream_max_response_body_size`](configuration.md#remoteddownstream_max_response_body_size) |
@@ -198,11 +200,11 @@ useful than the status —
 | `2xx` | Success (202 for `/stateless`, 200 elsewhere) | — |
 | `400` | Client fault: empty body, bad batch, payload-identity mismatch | diagnostic — agent-side content |
 | `403` | Identity rejection relayed from the sync server (`/stateful` contract); on `/enroll`, enrollment administratively disabled, or `authd` refusing a verified enrollment token (9022/9023/9024) | diagnostic — the sync server's own view is [`sync.requests.total.*`](../inventory-sync-server/metrics.md#request-outcomes--syncrequeststotalcode); for `/enroll` see [`remoted.enroll.disabled`](#agent-enrollment--remotedenroll) and `remoted.enroll.token.*` |
-| `409` | Checksum mismatch relayed from the sync server (`/stateful` contract) | diagnostic — same cross-reference as `403` |
+| `409` | Checksum mismatch relayed from the sync server (`/stateful` contract); on `/enroll`, `authd` reporting a duplicate ip/name/id (9007/9008/9012) or a re-enrollment already in progress (9030, also [`remoted.enroll.reenroll.rejected_in_progress`](#agent-enrollment--remotedenroll)) | diagnostic — same cross-reference as `403` |
 | `413` | Body over the accepted size, on the wire or once decoded | [`remoted.auth_max_body_size`](configuration.md#remotedauth_max_body_size), [`remoted.auth_max_decoded_body_size`](configuration.md#remotedauth_max_decoded_body_size), [`https.max_body_size`](configuration.md#httpsmax_body_size) |
 | `429` | The endpoint's rate limit refused the request before the handler ran. Structurally zero except on `/enroll` and `/cacerts`, the two rate-limited routes | [the `remote.https` rate options](configuration.md#rate-limits-of-the-unauthenticated-routes); the cause is [`remoted.<endpoint>.rate_limited`](#rate-limits--remotedendpointrate_limit) |
-| `500` | Internal error while building the reply | diagnostic — a bug signal, report it |
-| `503` | Downstream failure or a deferred-limiter shed | [`remoted.max_deferred_requests`](configuration.md#remotedmax_deferred_requests) for the limiter share; the [downstream failures](#downstream-failures--remotedforwarder) family for the rest |
+| `500` | Internal error while building the reply; on `/enroll`, also an `authd` internal/parse/key-generation failure (9001/9002/9009) or any `authd` code the route does not map | diagnostic — a bug signal, report it |
+| `503` | Downstream failure or a deferred-limiter shed; on `/enroll`, `authd` at `max_agents` (9013), a worker rejection or failed forward to the master (9015/9016), a credential it could not journal (9031) — all in `remoted.enroll.authd_error` — or no clean answer from `authd` (`remoted.enroll.authd_unavailable`); on `/cacerts`, the `ca_mismatch` refusal (`remoted.cacerts.ca_mismatch`) | [`remoted.max_deferred_requests`](configuration.md#remotedmax_deferred_requests) for the limiter share; the [downstream failures](#downstream-failures--remotedforwarder) family for the forwarded routes; the `enroll`/`cacerts` families for theirs |
 | `other` | Any status outside the set above. Includes `/enroll` authentication `401`/encoding `415` responses and `/cacerts`'s `404`; other routes' gateway rejections are excluded | [`remoted.http_content_encoding_enabled`](configuration.md#remotedhttp_content_encoding_enabled) for the `415` share, which [`remoted.auth.reject.bad_encoding`](#authentication-rejections--remotedauthreject) counts by cause |
 
 Rejections produced by the **auth gateway** (bad MAC, clock skew, oversized body caught at
@@ -221,7 +223,10 @@ rejection — the most common `/enroll` failure — is counted in **`other`**; r
 ### Request latency — `remoted.http.<endpoint>.latency`
 
 End-to-end request time in microseconds, stamped when the auth gateway picks the request up
-and observed when the response is delivered. Only the endpoints whose latency answers a tuning
+and observed on the forwarder's post-processing pool, right before the response is handed to
+the transport. Only **forwarded** requests are timed: a deferred-limiter `503` and the
+endpoint's own pre-forward `400` (empty body, payload identity) are counted in `responses.*`
+but never observed here. Only the endpoints whose latency answers a tuning
 question carry one; `/stats` and `/config` share `/stateful`'s downstream and would add no new
 signal.
 
@@ -300,7 +305,7 @@ except the pulls at the end (the `authd` queue and the token store).
 |---|---|---|
 | `remoted.enroll.accepted` | `authd` created the agent (or rotated a re-enrolling agent's credentials) and the key was returned | — |
 | `remoted.enroll.rejected_auth` | The enrollment credential check failed — every `401` of the route: the shared-password `wazuh-enroll+jwt` bearer, an enrollment token this node refused (unknown, expired, revoked, bad signature), or a re-enrollment bearer `authd` refused (9026/9027/9028). The same check also refuses a missing or unsupported `protocol-version` (`400`) and a body over `remoted.auth_max_body_size` (`413`), and those count here too. mTLS failures are not here: the listener already refused the connection | diagnostic — the per-cause split is [`remoted.auth.reject.*`](#authentication-rejections--remotedauthreject); the per-credential split is `remoted.enroll.token.*` / `remoted.enroll.reenroll.*` below |
-| `remoted.enroll.rejected_validation` | Rejected locally before reaching `authd`: undecodable `Content-Encoding`, malformed/invalid body, or a version this manager does not allow | [`remoted.http_content_encoding_enabled`](configuration.md#remotedhttp_content_encoding_enabled); version policy is `<allow_higher_versions>` |
+| `remoted.enroll.rejected_validation` | Rejected locally before reaching `authd`: an unsupported or undecodable `Content-Encoding` (`415`/`400`), a zstd body decoding past the route's 16 KiB cap (`413`), a malformed/invalid body, or a version this manager does not allow | [`remoted.http_content_encoding_enabled`](configuration.md#remotedhttp_content_encoding_enabled); version policy is `<allow_higher_versions>` |
 | `remoted.enroll.disabled` | Enrollment is administratively off, so the request was answered `403` without touching `authd` | the manager's enrollment setting (the route always exists, so this is distinguishable from a `404`) |
 | `remoted.enroll.authd_error` | `authd` answered, and refused on its own business rules (duplicate name, agent limit, cluster forwarding) — including the `403` it gives a verified enrollment token it will not consume (9022 not found or revoked, 9023 expired, 9024 uses exhausted) | diagnostic — `authd`'s own limits; the mapped status is in the `enroll` response cells |
 | `remoted.enroll.authd_unavailable` | No clean answer from `authd`: a full request queue, an unreachable socket, a timeout, or the module shutting down | see the queue metrics below to tell saturation apart from the rest |
@@ -391,7 +396,7 @@ task-manager clients.
 | `remoted.control.startup` | counter | count | `{"type":"startup"}` messages handled | diagnostic — fleet behavior |
 | `remoted.control.notify` | counter | count | Keepalive messages handled | diagnostic — fleet size × keepalive cadence |
 | `remoted.control.shutdown` | counter | count | `{"type":"shutdown"}` messages handled | diagnostic |
-| `remoted.control.rejected` | counter | count | The endpoint's own 400s (invalid body/JSON/agent-id/type) — an agent/manager version-drift signal | [`agents.allow_higher_versions`](configuration.md#agentsallow_higher_versions) for version drift; otherwise diagnostic |
+| `remoted.control.rejected` | counter | count | The endpoint's own 400s for a malformed request: invalid body, JSON, agent id or message type — a sign of non-agent traffic or an agent/manager protocol drift. A `startup` refused for its **version** (`400`/`409 invalid_version`) is **not** here: it is counted in `remoted.control.startup` like an accepted one, and surfaces only in the throttled log line | diagnostic — the throttled log names the field; [`agents.allow_higher_versions`](configuration.md#agentsallow_higher_versions) governs the version rejections this counter does not see |
 | `remoted.control.wdb_error` | counter | count | wazuh-db round trips that failed: a timeout (counted from when the request was queued, so it includes a request that expired in the queue), an I/O error, or a full queue | [`remoted.control_wdb_roundtrip_deadline`](configuration.md#remotedcontrol_wdb_roundtrip_deadline), [`remoted.control_wdb_max_queue_size`](configuration.md#remotedcontrol_wdb_max_queue_size) |
 | `remoted.control.wdb.latency` | histogram | microseconds | **Successful** wazuh-db round-trip time (timeouts are counted by `wdb_error`, never observed here — the histogram means "how long a healthy round trip takes") | [`remoted.control_wdb_roundtrip_deadline`](configuration.md#remotedcontrol_wdb_roundtrip_deadline), [`remoted.control_wdb_request_connections`](configuration.md#remotedcontrol_wdb_request_connections) |
 | `remoted.control.task_fetch` | counter | count | Pending-task fetches from the task manager that succeeded | — |
@@ -419,7 +424,7 @@ unit `count`.
 |---|---|
 | `remoted.scanvd.requests.total` | Requests reaching the handler |
 | `remoted.scanvd.accepted` | 200: VD queued the scan (it will run) |
-| `remoted.scanvd.queue_full` | 503: VD's scan dispatch queue at capacity. **Not** `vd.capacity.503.total`, which the inventory sync server raises for its own VD lane on a different socket ([inventory sync server metrics](../inventory-sync-server/metrics.md#vulnerability-detection-lane--vd)) |
+| `remoted.scanvd.queue_full` | 503: VD answered `scan_queue_full` — the Task Manager's admission bound for pending `vd_scan` tasks is reached, so the scan could not be recorded ([vulnerability scanner metrics](../vulnerability-scanner/metrics.md)). **Not** `vd.capacity.503.total`, which the inventory sync server raises for its own VD lane on a different socket ([inventory sync server metrics](../inventory-sync-server/metrics.md#vulnerability-detection-lane--vd)) |
 | `remoted.scanvd.indexer_unavailable` | 503: VD reports no healthy indexer host |
 | `remoted.scanvd.vd_error` | 503 for any other reason: VD unreachable, not ready, unexpected answer |
 | `remoted.scanvd.version_mismatch` | 409: requested feed offset != current offset |
@@ -575,7 +580,7 @@ The group names map onto the catalog sections above one-for-one:
 | `downstream` | [`remoted.forwarder.*`](#downstream-failures--remotedforwarder), with `error.*` under `errors` and [`deferred.*`](#deferred-forwarding--remotedforwarderdeferred) under `deferred` |
 | `backpressure` | [`remoted.server.budget.*`](#public-transport-backpressure--remotedserverbudget), plus `remoted.server.connections.open` / `.max` as `connections_open` / `connections_max` |
 | `downloads` | [`remoted.download.*`](#downloads--remoteddownload) except `denied` |
-| `tls` | [`remoted.server.tls.*`](#tls-listener-certificate--remotedservertls) — `cert_expiry_days` is the catalog's one signed integer |
+| `tls` | [`remoted.server.tls.*`](#tls-listener-certificate--remotedservertls) — `cert_expiry_days` is the catalog's one signed (and double-valued) metric, negative once expired |
 | `cacerts` | [`remoted.cacerts.*`](#ca-distribution--remotedcacerts), with [`remoted.cacerts.rate_limit.*`](#rate-limits--remotedendpointrate_limit) under `rate_limit` |
 | `vd_scan` | [`remoted.scanvd.*`](#vd-scan-admission--remotedscanvd) |
 

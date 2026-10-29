@@ -1,6 +1,6 @@
 # Upgrade
 
-This guide provides instructions for upgrading the Wazuh manager from an earlier 5.x version, and Wazuh agents to 5.x. The upgrade installs the new version's files and then restores the whole previous `/etc/wazuh-manager` and every `data/*` entry except `data/tzdb` over them (see [File preservation](#file-preservation)). A **package** upgrade (DEB or RPM) restarts a manager that was running when it started and leaves a stopped one stopped: the packages never enable or start the service on their own. An **`install.sh`** update always starts the manager at its end, whether or not it was running before.
+This guide provides instructions for upgrading the Wazuh manager from an earlier 5.x version, and Wazuh agents to 5.x. The upgrade installs the new version's files and then restores the whole previous `/etc/wazuh-manager` (except the `wazuh-manager.schema.json` copy, which stays the new one) and every `data/*` entry except `data/tzdb` over them (see [File preservation](#file-preservation)). A **package** upgrade (DEB or RPM) restarts a manager that was running when it started and leaves a stopped one stopped: the packages never enable or start the service on their own. An **`install.sh`** update always starts the manager at its end, whether or not it was running before.
 
 **Important**: Upgrading the Wazuh **manager** from version 4.x to 5.x is **not supported**: the 5.x package (and `install.sh`) refuses to install over a 4.x manager, or beside one, with `ERROR: Upgrade from Wazuh manager versions prior to 5.x is not supported.` A 5.x manager is always a fresh installation; [Manager migration from 4.x to 5.0](../guide/migration/manager-4x-to-5x.md) describes how to carry agent keys, registry, groups and API users into it. Wazuh **agents** upgrade to 5.x from 4.14.0 or later, and a 4.x agent can connect to a 5.x manager through the legacy listener (see [Compatibility](compatibility.md)).
 
@@ -51,13 +51,18 @@ The package manager will automatically:
 - Resolve credentials with `bin/wazuh-manager-resolve-credentials --upgrade`, which fills in a missing password or keystore entry, imports the indexer's CA and client pair when they changed, and validates the manager's CA and server pairs without ever minting or issuing one (see [The resolver and its modes](getting-started/credentials.md#the-resolver-and-its-modes))
 - Restart the service, only if it was running before the upgrade
 
+The package also deletes `/etc/systemd/system/wazuh-manager.service`, a copy of its unit that an earlier
+`install.sh` overlay on a Debian host may have written, so the unit it ships in `/usr/lib/systemd/system`
+is the one systemd loads. An `install.sh` run over a package rewrites that `/usr/lib` unit in place
+([Installed layout](getting-started/installation.md#installed-layout)).
+
 ### File preservation
 
 During a 5.x to 5.x upgrade, the package and source upgrade scripts apply a **preserve / restore** mechanism that guarantees the following behavior:
 
 | Path | Result after upgrade |
 |---|---|
-| `/etc/wazuh-manager` | Preserved from the previous installation: the whole directory is copied back over the newly installed files. |
+| `/etc/wazuh-manager` | Preserved from the previous installation: the whole directory is copied back over the newly installed files, except `wazuh-manager.schema.json`, which is part of the product and always the new version's copy. `shared/` comes back exactly as it was: the update moves nothing between `shared/` and its groups, so a customised `shared/agent-template.conf` stays the template and is never sent to agents. |
 | `data/*` (except `data/tzdb`) | Preserved from the previous installation: copied back over the newly installed files. |
 | `data/tzdb` | Not preserved by the upgrade backup/restore flow; updated from the new package or source timezone database. |
 | `bin/`, libraries, assets | Replaced by the new package. |
@@ -67,9 +72,9 @@ This applies to `.deb`, `.rpm`, and source-based upgrades.
 File contents are preserved for the paths listed above. Ownership and modes depend on the stack:
 
 - **DEB and RPM** copy the preserved files back with `cp -a`, so their ownership and modes come back as they were. Both then re-own `data/ruleset/` and `data/kvdb-ioc/` to `wazuh-manager:wazuh-manager`, and the DEB `postinst` additionally re-applies the package's own ownership and modes to every path the package ships, with one script for the installation directory (`restore-permissions.sh`) and one for the configuration directory (`restore-permissions-conf.sh`). Below a directory `wazuh-manager` can write (such as `/etc/wazuh-manager`, `logs/` or `queue/`), a path that is, or passes through, a symbolic link is left untouched, and so is a file with a second hard link.
-- **Source** (`install.sh`) copies them back with `cp -R`, so the ownership and modes are the ones the installer assigns, not the ones the files had.
+- **Source** (`install.sh`) copies them back with `cp -R`, which keeps the destination's ownership and mode wherever the destination already exists: a file or directory the installer has just written keeps the owner and mode the installer gave it, not the ones the preserved copy had. An update installs over the existing tree, so a file the installer leaves alone is its own destination and keeps its owner and mode as well. Only a preserved path missing from the destination when the copy runs is created anew, owned by `root:root`, with the preserved mode less the installer's `umask`; the start that follows judges the credential files' owners and modes (`Unsafe credentials. Exiting` on a mismatch — see [Credentials](getting-started/credentials.md)).
 
-**Seeing new defaults.** Because `/etc/wazuh-manager` and `data/*` are restored after the new files are installed, a file the new version ships under them that the previous installation also had — the configuration with its new default values, the `wazuh-manager.schema.json` copy, the engine outputs under `outputs/default/`, the metrics templates under `indexer-plugins/`, the engine store documents under `data/store/` — comes back with its previous content, so a change to it reaches fresh installations only. On DEB manager upgrades a `wazuh-manager.conf.new` side-file is written alongside the live config so you can compare changes manually. On RPM no equivalent side-file is generated for the preserved paths; compare against the package defaults manually if needed.
+**Seeing new defaults.** Because `/etc/wazuh-manager` and `data/*` are restored after the new files are installed, a file the new version ships under them that the previous installation also had — the configuration with its new default values, the engine outputs under `outputs/default/`, the metrics templates under `indexer-plugins/`, the engine store documents under `data/store/` — comes back with its previous content, so a change to it reaches fresh installations only. The `wazuh-manager.schema.json` copy is the exception: every installation and upgrade leaves the new version's copy (`root:wazuh-manager`, `0640`). On DEB manager upgrades a `wazuh-manager.conf.new` side-file is written alongside the live config so you can compare changes manually. On RPM no equivalent side-file is generated for the preserved paths; compare against the package defaults manually if needed.
 
 The `WAZUH_REMOTE_*` installation variables described in [Installation](getting-started/installation.md) also shape that `wazuh-manager.conf.new`, so an upgrade run with them exported produces a side-file that already carries those values. If one of them holds an invalid value the side-file is not written and the upgrade reports a warning and continues: the live configuration is preserved either way.
 
@@ -443,11 +448,12 @@ sudo sh -c '[ -f /var/wazuh-manager/queue/db/global.db ] \
 **Issue: Agents not reconnecting after manager upgrade**
 
 ```bash
-# Verify manager is listening on agent ports
-sudo netstat -tulpn | grep wazuh-manager
+# Verify the manager is listening: 1517 (agents), 1514 (legacy agents, only when
+# enabled), 1515 (enrollment), 1516 (cluster), 55000 (Server API, master only)
+sudo ss -ltunp '( sport = :1514 or sport = :1515 or sport = :1516 or sport = :1517 or sport = :55000 )'
 
-# Check remoted process
-ps aux | grep wazuh-manager-remoted
+# Check that every daemon is running (remoted included)
+sudo /var/wazuh-manager/bin/wazuh-manager-control status
 
 # Review remoted logs
 sudo tail -f /var/wazuh-manager/logs/wazuh-manager.log | grep remoted
@@ -466,8 +472,8 @@ sudo grep -A10 "<cluster>" /etc/wazuh-manager/wazuh-manager.conf
 ping <master_node_ip>
 telnet <master_node_ip> 1516
 
-# Check cluster daemon
-ps aux | grep wazuh-manager-clusterd
+# Check the cluster daemon (a Python process, listed by status)
+sudo /var/wazuh-manager/bin/wazuh-manager-control status
 
 # Review cluster logs
 sudo tail -100 /var/wazuh-manager/logs/cluster.log

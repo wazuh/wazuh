@@ -192,7 +192,12 @@ src/http_server/
   unprefixed paths answer `404`, and the health route `"/"` is registered as the bare prefix so
   `GET /<prefix>` and `GET /<prefix>/` both answer. `request.target` is **never rewritten** — the
   router matches the raw (prefixed) target, so agents send the full prefixed path and proxies must
-  forward it untouched (the bearer token does not bind it: a mismatch is a `404`). Canonicalization lives in one place
+  forward it untouched (the bearer token does not bind it: a mismatch is a `404`). Matching is
+  exact: routes are registered case-sensitive (`path2regex::options_t::sensitive(true)`), and a
+  path containing any percent-encoding answers `404` before the route runs (RESTinio's express
+  router would otherwise decode `%63` to `c`), so the auth gateway, the rate-limit gates and the
+  handlers only ever see the exact spelling; the one tolerance kept is a single trailing `/`.
+  Canonicalization lives in one place
   (`normalizeGlobalPrefix()`, called by `RestinioHttpServer::start()`; invalid values throw like
   a missing certificate). Public HTTPS listener only — the local admin socket is not prefixed.
 - **Two-phase shutdown:** `stopAccepting()` closes the acceptor and drains the handler worker pool
@@ -980,7 +985,13 @@ The HTTP endpoint registration. Parses the JSON body (validates it's an object w
 extracts the agent ID from the authenticated request, and dispatches to the appropriate
 `ControlHandler` method. Returns:
 - `400` — invalid_body, invalid_json, invalid_agent_id, unknown_message_type; `invalid_host_info`
-  (from `notify`); `invalid_version` (malformed `startup` version)
+  (from `notify`: a host field over its bound, or — flagged by the parser in
+  `NotifyData::hostMalformed` — `host`/`host.os` not an object or a host field not a string; absent
+  and `null` mean "not reported"); `invalid_version` (malformed `startup` version)
+
+Every version written to wazuh-db goes through `canonicalVersion()` (`controlTypes.hpp`), so
+`5.0.0`, `v5.0.0` and `V5.0.0` are all stored as `v5.0.0` — the framework compares stored versions
+as strings, and two spellings of one version split its listings.
 - `409` — `invalid_version` (a `startup` version higher than policy allows)
 - `503` — `{"error":"dependency_unavailable","dependency":"wazuh-db"}` (group membership unreadable)
 - `200` — success + JSON response body
@@ -1186,8 +1197,8 @@ since it's the same client instance — this is the rest of its contract. `getOf
 
 `ScanVdMetrics` (`scanvd/scanVdMetrics.hpp`) caches the `remoted.scanvd.*` counter family —
 admission decisions only, since that is all this handler does: `requests.total`,
-`version_mismatch`, `queue_full` (VD's lane at capacity), `invalid_agent`, `accepted` (VD queued
-it), `indexer_unavailable` (VD reports no healthy indexer host — its own cause, kept off the
+`version_mismatch`, `queue_full` (VD answered `scan_queue_full`: the Task Manager's admission bound
+for `vd_scan` tasks is reached), `invalid_agent`, `accepted` (VD recorded it), `indexer_unavailable` (VD reports no healthy indexer host — its own cause, kept off the
 relay window below), `vd_error` (any other relayed 503: unreachable, not ready, stopping).
 Resolved from the facade's shared `wazuh_metrics` registry via `makeScanVdMetrics()` and
 incremented inline at each outcome — same shape (and same null-object contract) as
@@ -2204,7 +2215,8 @@ sets, HS256, time rules, identity — is verified by the shared `JwtRequestToken
 `shared_modules/utils/jwt/` (header-only over jwt-cpp's base64url, rapidjson SAX for a strict
 pre-parse and OpenSSL's `EVP_Q_mac`; the same library the agent signs with and the fake managers
 of the agent's tests verify with). `AuthMiddleware::authenticate(protocolVersion, authorization,
-peerAddress, now)` is a single call: `protocol-version` first, `Bearer` scheme, `peekKid()` to
+peerAddress, now)` is a single call: `protocol-version` first, `Bearer` scheme (matched
+case-insensitively, RFC 7235 §2.1), `peekKid()` to
 resolve the CANDIDATE key from the keystore (and the registered-address verdict in the same pass),
 then the verifier, then `AuthError`. Nothing from the token is trusted before its signature except
 the bounded `kid` used for the lookup, and the algorithm is fixed to HS256 — never read from the
@@ -2956,7 +2968,7 @@ their assertions are *recorded observations*: a dependency bump may change those
 | File | What it records | What actually guards the feature |
 |---|---|---|
 | `jwtCppSpike_test.cpp` | vendored jwt-cpp 0.7.2 on duplicate JSON members, base64url padding and alphabet, `NumericDate` types, leeway, NUL-containing keys — i.e. which checks the library does **not** do, so the profile verifier owns them | `jwtVerify_test.cpp`, `jwtProfileTypes_test.cpp` |
-| `routerSemanticsSpike_test.cpp` | RESTinio `express_router` matching: `"/p/"` does not match `"/p"` while bare `"/q"` matches `"/q/"`, case-insensitivity, `%2F` left undecoded, handlers seeing the raw target | `globalPrefixE2E_test.cpp`, `httpServer_test.cpp`'s `GlobalPrefixTransportTest` |
+| `routerSemanticsSpike_test.cpp` | RESTinio `express_router` matching: `"/p/"` does not match `"/p"` while bare `"/q"` matches `"/q/"`, case-sensitive matching and every percent-encoded path a `404` (exact matching), handlers seeing the raw target | `globalPrefixE2E_test.cpp`, `httpServer_test.cpp`'s `GlobalPrefixTransportTest` |
 
 Both carry comments marking a hypothesis as confirmed or refuted by the run that produced them.
 Separately, `DISABLED_`-prefixed cases (`jwtCppSpike_test.cpp`'s traits benchmark,
@@ -2970,10 +2982,8 @@ ctest --test-dir src/build -R '^remoted_module_utest$' -V
 
 ### Manual / end-to-end (`tools/send_stateless.py`)
 
-> **Port trap:** `send_stateless.py`, `send_agent_json.py` and `send_enroll.py` default to
-> `https://127.0.0.1:1517`, the product's own port; `send_control.py`, `send_scan_vd.py` and
-> `send_download.py` default to `https://127.0.0.1:9443` (a development listener). Against a
-> default installation the latter three need `--url https://127.0.0.1:1517`.
+> **Port:** every sender defaults to `https://127.0.0.1:1517`, the product's own port; pass `--url`
+> for another listener.
 
 Mints the `wazuh-agent+jwt` bearer and sends `POST /stateless` requests exactly as `AuthMiddleware`
 expects (shared `tools/wire_jwt.py`, pure standard library; agent key read straight from
@@ -3053,7 +3063,7 @@ python3 tools/send_scan_vd.py --url https://127.0.0.1:1517 --auto-offset        
 python3 tools/send_scan_vd.py --url https://127.0.0.1:1517 --feed-offset 1                # 409 if the manager's offset differs from 1,
                                                               # prints the manager's real current_version
 python3 tools/send_scan_vd.py --url https://127.0.0.1:1517 --all                          # every /scan/vd success/failure scenario
-# options (both): --url (default https://127.0.0.1:9443), --agent-id, --client-keys, --all,
+# options (both): --url (default https://127.0.0.1:1517), --agent-id, --client-keys, --all,
 #          --global-prefix
 #   send_control.py: --type {startup,notify,shutdown} (required unless --all), --version,
 #          --with-host, --tamper
@@ -3083,7 +3093,7 @@ python3 tools/send_download.py --url https://127.0.0.1:1517 --all               
                                                         #   unknown group -> 403, another agent's
                                                         #   selector -> 403
 python3 tools/send_download.py --url https://127.0.0.1:1517 --simulate 8 --repeat 20 --watch-rss   # concurrency + memory check
-# options: --url (default https://127.0.0.1:9443), --manager-home, --resource-id, --selectors,
+# options: --url (default https://127.0.0.1:1517), --manager-home, --resource-id, --selectors,
 #          --unknown-group, --other-group, --agent-id, --global-prefix
 ```
 

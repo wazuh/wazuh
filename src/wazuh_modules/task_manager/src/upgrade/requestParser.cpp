@@ -15,6 +15,9 @@ namespace
     using namespace task_manager;
     using namespace task_manager::upgrade;
 
+    /// @brief 2^63: the first double no int64 Timestamp can hold.
+    constexpr double TIMESTAMP_DOUBLE_LIMIT {9223372036854775808.0};
+
     /// @brief Wire-format strings. Every one of these reaches a user through the Server API verbatim.
     ParseFailure typeFailure(const char* key, const char* expectation)
     {
@@ -85,7 +88,21 @@ namespace
             return false;
         }
 
-        out = static_cast<Timestamp>(it->get<double>());
+        // Judged as a double before the cast: converting a value outside the int64 range is
+        // undefined, and any such value is outside the window anyway.
+        const auto raw {it->get<double>()};
+        if (raw >= TIMESTAMP_DOUBLE_LIMIT)
+        {
+            failure = {UpgradeError::ParsingRequiredParameter, "Parameter \"request_time\" is in the future"};
+            return false;
+        }
+        if (raw <= -TIMESTAMP_DOUBLE_LIMIT)
+        {
+            failure = {UpgradeError::ParsingRequiredParameter, "Parameter \"request_time\" is too old (>1 year)"};
+            return false;
+        }
+
+        out = static_cast<Timestamp>(raw);
 
         // Zero is how the retired parser spelled "absent", and it is also a timestamp no caller can
         // legitimately mean, so it keeps the original message rather than the window one.

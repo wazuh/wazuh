@@ -48,13 +48,17 @@ A fresh installation seeds `rbac.db` from `rbac/default/*.yaml` with exactly two
 
 Only `wazuh-internal-client` can authenticate with an authorization context, because resolving one into roles is the dashboard's mechanism for mapping the indexer user who logged in onto a Wazuh role (see the rules in `rbac/default/rules.yaml`). `wazuh` has no use for it, so the flag is off: `POST /security/user/authenticate/run_as` as `wazuh` answers `403` with error `6004`. Either flag can be changed with `PUT /security/users/{user_id}/run_as`.
 
+A `run_as` token carries only the roles of the rules the context matched: the roles linked to the account
+(`administrator` for both default users) are not added to them, so a context that matches no rule logs in
+with no role at all. A plain login (`POST /security/user/authenticate`) carries the account's own roles.
+
 The flag on its own does not grant the shipped mappings, which is easy to miss. `RBAChecker.get_user_roles` evaluates a rule holding a reserved ID — the five in `rules.yaml` get IDs `1..5`, while rules created through the API start at `100` — only when the caller is user ID 2. Enabling `allow_run_as` on any other account therefore lets it resolve **custom rules only**, and a context that matches one grants that role whatever the account's own role links say.
 
 Because the account's operator chooses the context, the flag puts every role linked to such a rule within reach — the rules linked **when it logs in**, not when the flag was enabled. Any role can gain a custom rule later, `administrator` included (an SSO mapping usually does exactly that), so an account with the flag reaches every role, present or future. `PUT /security/users/{user_id}/run_as` with `allow_run_as=true` therefore asks for what linking any role directly would (`POST /security/users/{user_id}/roles`): `security:update` over **every** role, on top of `security:edit_run_as`. In `white` RBAC mode that means an allow on `role:id:*` — listing every role that exists today is not enough — and in both modes no deny on any existing role. It answers `403` with error `4000`, listing the existing roles missing, or naming `role:id:*` when only the wildcard is. Disabling the flag asks for nothing more. A password reset of another user (`PUT /security/users/{user_id}`) is held to the same standard: `security:update` over the roles linked to that user, and over every role when its flag is on; resetting your own password is exempt. The stock `users_admin` role holds no `role:id` permission, so on its own it can disable run_as but never enable it, and reset the password only of users without the flag that are linked to no role.
 
 **Neither user ships with a password.** `rbac/default/users.yaml` carries none: each is seeded with the value the credential resolver supplies (`WAZUH_MANAGER_API_PASSWORD`, `WAZUH_MANAGER_WUI_PASSWORD`), or with a freshly generated 32-character password when nothing supplies one, and the result is published in `/etc/wazuh-manager/export/credentials.env` (readable by root only; the dashboard on the same host reads its password there). Only a master seeds: the Server API runs there. Two installations therefore never share a credential. An already-seeded database is never reseeded, so both keys are ignored from that point on however they are set. See [Credentials](../../getting-started/credentials.md).
 
-They are reserved IDs (`<= MAX_ID_RESERVED`), so only another reserved user can change their password — `update_user` needs a `current_user` naming who is asking, which the API takes from the token's `sub`.
+They are reserved IDs (`<= MAX_ID_RESERVED`), so only another reserved user, logged in without `run_as`, can change their password or their `allow_run_as` flag — `update_user` and `edit_run_as` need a `current_user` naming who is asking, which the API takes from the token's `sub`, and refuse a `run_as` token with `5011` whoever holds it.
 
 The `administrator` role these two users carry is also the only one that receives `secrets_read`,
 the policy behind `cluster:read_secrets` and `agent:read_secrets`. An `rbac.db` seeded **before** that policy existed does not
@@ -168,10 +172,14 @@ agent's key needs `administrator`.
 ### Auditing a disclosure
 
 Every disclosure is recorded as a `secret_read` line naming the user and the fields, never the value.
-It lands in `logs/api.log` for `GET /cluster/local/config`, which the API process serves, and in
-`logs/cluster.log` for the two node-configuration endpoints, which run inside the answering node's
-`wazuh-manager-clusterd`. `GET /agents/{agent_id}/key` records its own line the same way, naming the
-agents served rather than a field. If the masking itself fails, the request fails: a response nobody could
+The fields are every value the mask would have hidden: `authd.pass`, `cluster.key` and each credential-named
+field, such as the `access_key` and `secret_key` of a group's `agent.conf`
+(`secret_read: user='alice' served in clear: access_key, secret_key`).
+It lands in the log of the process that served the read: `logs/api.log` on the master for
+`GET /cluster/local/config`, for the group configuration endpoints, and for the two node-configuration
+endpoints when the master answers them itself; `logs/cluster.log` of the worker when a node-configuration
+request names a worker and is forwarded to its `wazuh-manager-clusterd`. `GET /agents/{agent_id}/key`
+records its own line the same way, naming the agents served rather than a field. If the masking itself fails, the request fails: a response nobody could
 mask is not served.
 
 ---

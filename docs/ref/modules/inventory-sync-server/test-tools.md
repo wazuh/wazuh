@@ -41,6 +41,11 @@ Options: `--socket`, `--path` (default `/stateful`), `--method`, `--size`, `--re
 empty string omits it), `--health`, `--bad-route`, `--quiet`. The exit code is `0` only when every
 response was a 2xx, so it can anchor a shell check.
 
+The server answers an over-budget request from its headers and closes the connection without
+reading the body, so the tool's write of the rest of the body fails; it then reads the `413` already
+waiting on the socket and prints it. Only when no answer arrived does it report the write error
+(`failed: [Errno 32] Broken pipe`).
+
 Sending a VALID session requires a FlatBuffers `FullSession` body, which this script deliberately
 does not build — that is the integration driver's job below.
 
@@ -188,8 +193,10 @@ Set it explicitly only to deliberately exercise the mismatch path.
 
 The `--config` file is the same JSON the QA suite uses (`qa/config.json`): a
 `clusterName` (which the driver stamps into every session's `Start.cluster_name`, since the server
-answers `403` on a cluster mismatch) and the `<indexer>` block with the hosts the module and the
-scanner should reach.
+answers `403` on a cluster mismatch; `cluster01` when absent), the `<indexer>` block with the hosts
+the module and the scanner should reach, and the indexer `username`/`password`, which the driver
+seeds into the keystore under `queue/keystore` in its working directory because the indexer
+connector refuses to start without them.
 
 ## The integration QA (`qa/`)
 
@@ -199,7 +206,8 @@ its real socket: it regenerates the Python FlatBuffers bindings from the shared 
 STATE in a real OpenSearch (documents, `_id` shape, the `wazuh.*` overlay) rather than protocol
 acks. It covers the validation matrix and identity rejections, ingestion and per-document skips,
 cleans and the composed full resync, checksum verification (including `search_after` pagination),
-metadata/group reconciliation with the `global_version` guard, agent deletion, and the VD
+metadata/group reconciliation with the `global_version` guard, the agent groups/host that `/stats`
+and `/config` copy from their reports, agent deletion, the on-demand scan route and the VD
 legitimate-skip lane. `qa/README.md` documents how to run it locally; CI runs it in the
 `5_testintegration_inventory-sync-server.yml` workflow.
 

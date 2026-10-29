@@ -3,6 +3,7 @@
 
 #include <api/adapter/baseHandler_test.hpp>
 #include <api/dumper/handlers.hpp>
+#include <base/logging.hpp>
 #include <dumper/mockDumper.hpp>
 #include <eMessages/event_dumper.pb.h>
 
@@ -131,3 +132,29 @@ INSTANTIATE_TEST_SUITE_P(
                     "reque\n^");
             },
             [](auto&) {})));
+
+// Switching full event capture on or off leaves an INFO line
+TEST(DumperHandlerLogTest, ActivateAndDeactivateAreLogged)
+{
+    logging::testInit(logging::Level::Info);
+    auto dumper = std::make_shared<testing::NiceMock<MockDumper>>();
+    auto activate = activateDumper(dumper);
+    auto deactivate = deactivateDumper(dumper);
+
+    httplib::Request req;
+    httplib::Response res;
+
+    testing::internal::CaptureStdout();
+    activate(req, res);
+    auto logs = testing::internal::GetCapturedStdout();
+    EXPECT_EQ(res.status, httplib::StatusCode::OK_200);
+    EXPECT_NE(logs.find("Event dumper activated"), std::string::npos) << logs;
+
+    testing::internal::CaptureStdout();
+    deactivate(req, res);
+    logs = testing::internal::GetCapturedStdout();
+    EXPECT_EQ(res.status, httplib::StatusCode::OK_200);
+    EXPECT_NE(logs.find("Event dumper deactivated"), std::string::npos) << logs;
+
+    logging::testInit();
+}

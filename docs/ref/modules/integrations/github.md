@@ -10,6 +10,9 @@ It is an agent module, built into the agent's `wazuh-modulesd` and available on 
 
 - A GitHub organization with admin access.
 - A personal access token with the `admin:org` scope (specifically `read:audit_log`).
+- The `github` integration **enabled** in the manager's standard ruleset. It ships disabled, and
+  until it is enabled the events arrive but are never classified or indexed — see
+  [Enable the integration's ruleset first](README.md#enable-the-integrations-ruleset-first).
 
 ## GitHub setup
 

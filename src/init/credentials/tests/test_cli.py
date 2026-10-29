@@ -57,21 +57,27 @@ def test_usage_errors_exit_2(resolver, sandbox, argv):
     assert sandbox.tree_state() == before
 
 
-@pytest.mark.parametrize("mode", ["--install", "--upgrade", "--prestart", "--check", "--clear", None])
+@pytest.mark.parametrize("mode", ["--install", "--upgrade", "--prestart", "--check", "--clear"])
 def test_non_root(resolver, sandbox, monkeypatch, mode):
     monkeypatch.setattr(resolver.os, "geteuid", lambda: 1000)
     before = sandbox.tree_state()
-    code, _, err = run_main(resolver, [mode] if mode else [], sandbox)
+    code, _, err = run_main(resolver, [mode], sandbox)
     assert code == 2
     assert "must run as root" in err
     assert sandbox.tree_state() == before
 
 
-def test_default_mode_is_prestart(resolver, sandbox, monkeypatch):
+@pytest.mark.parametrize("argv", [[], ["-q"], ["-H", "/opt/wazuh-manager"]])
+def test_no_mode_is_a_usage_error(resolver, sandbox, monkeypatch, capsys, argv):
+    """A bare call runs nothing: --prestart writes, and only wazuh-manager-control knows modulesd is down."""
     called = []
-    monkeypatch.setitem(resolver.MODE_HANDLERS, "prestart", lambda paths, report, environ: called.append(1) or 0)
-    code, _, _ = run_main(resolver, [], sandbox)
-    assert code == 0 and called == [1]
+    for mode in resolver.MODES:
+        monkeypatch.setitem(resolver.MODE_HANDLERS, mode, lambda paths, report, environ: called.append(1) or 0)
+    before = sandbox.tree_state()
+    code, _, _ = run_main(resolver, argv, sandbox)
+    assert code == 2 and called == []
+    assert "usage: wazuh-manager-resolve-credentials" in capsys.readouterr().err
+    assert sandbox.tree_state() == before
 
 
 def test_H_sets_the_home_only(resolver, sandbox, monkeypatch):

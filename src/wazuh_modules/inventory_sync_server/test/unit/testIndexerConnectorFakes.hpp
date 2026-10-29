@@ -31,6 +31,7 @@
 #include <atomic>
 #include <condition_variable>
 #include <deque>
+#include <functional>
 #include <memory>
 #include <mutex>
 #include <optional>
@@ -109,6 +110,9 @@ namespace invsync::test
         /// What the scanner fake's scanAgent() reports -- the ON-DEMAND scan, which reports its
         /// failures by value rather than by exception. Defaults to Ok.
         std::atomic<invsync::vd::AgentScanOutcome> m_vdAgentScanOutcome {invsync::vd::AgentScanOutcome::Ok};
+        /// Run by the scanner fake's scanAgent() on the lane worker, after the gate -- where the
+        /// real scanner fences the agent through the coordinator. Set before enqueueing.
+        std::function<void(const std::string& agentId)> m_scanAgentHook;
         /// While true, scan() BLOCKS until openScanGate() -- for cross-lane ordering tests.
         bool m_scanGateClosed {false};
         std::condition_variable m_scanGateCv;
@@ -496,6 +500,10 @@ namespace invsync::test
             // mid-scan has to be able to park an on-demand scan the same way, and the ordering
             // tests read both from one timeline.
             m_events->waitAtScanGate();
+            if (m_events->m_scanAgentHook)
+            {
+                m_events->m_scanAgentHook(agentId);
+            }
             m_events->recordSyncOp("scanAgent", agentId, {}, {}, {});
             return m_events->m_vdAgentScanOutcome.load();
         }

@@ -144,7 +144,7 @@ scan entry points, in the order a real agent does. Its `vd_*` lane first sends t
 `POST /scan/vd {"type":"feed_update","feed_offset":N}` with the offset the agent learned from
 `/control`. **remoted relays VD's admission** of a re-scan of that already-indexed inventory: VD
 records a durable `vd_scan` task in the Task Manager, whose dispatcher later runs it through the
-inventory sync server's `POST /_internal/vd/scan`, one `reason=feed_update` scan per agent. Two
+inventory sync server's `POST /_internal/vd/scan`, one `reason=on_demand` scan per agent. Two
 things to keep in mind when reading a run:
 
 - **`200` means recorded, not scanned.** VD answers at admission, once the task row exists, and
@@ -152,7 +152,7 @@ things to keep in mind when reading a run:
   is capped at 1) and keeps one pending task per agent, so 100 requests are 100 serialized scans
   and the sender's `scan_latency_ms_*` is admission time. remoted's admin socket exposes the
   `remoted.scanvd.*` admission counters over `GET /metrics`, and modulesd's log is the evidence the
-  scans ran: `grep -c "reason=feed_update" /var/wazuh-manager/logs/wazuh-manager.log`.
+  scans ran: `grep -c "reason=on_demand" /var/wazuh-manager/logs/wazuh-manager.log`.
 - **The feed must be loaded**, or every request answers `409 version_mismatch` against offset 0.
   Check with `curl --unix-socket queue/sockets/vd-http.sock http://localhost/vulnerability-detector/offset`
   and wait for `CVE feed fully loaded — per-agent scans unblocked` in the log.

@@ -46,6 +46,8 @@
 
 #define AUTH_IDLE_CONN_TIMEOUT 30   /* Seconds a connection may stay idle before completing its enrolment request */
 #define AUTH_EPOLL_WAIT_MS     1000 /* epoll_wait tick used to sweep idle connections */
+#define AUTH_CLIENT_REJECT_LOG_WINDOW 90 /* Seconds between two logged client-caused rejections of one reason (as remoted) */
+#define AUTH_CLIENT_REJECT_LOG_REASONS 32 /* Distinct reasons throttled apart; any more share one slot */
 
 #define full(i, j) ((i + 1) % AUTH_POOL == j)
 #define empty(i, j) (i == j)
@@ -131,6 +133,51 @@ w_err_t w_auth_validate_groups(const char *groups, char *response);
  * @brief Cleanup compiled regex for group validation (for testing)
  * */
 void w_auth_validate_groups_cleanup(void);
+
+/**
+ * @brief Log an enrollment refused because of what the client sent (bad name, group, version, IP,
+ *        password or a malformed request).
+ *
+ * The client's mistake is not a manager error, so it is logged at WARNING (INFO when @p info is
+ * true), and throttled per reason -- the reason being @p format, so one call site is one reason:
+ * one line per AUTH_CLIENT_REJECT_LOG_WINDOW seconds for each, so a frequent reason never hides
+ * another. That line names how many of its kind were suppressed and over what period; each
+ * suppressed rejection is still logged at debug level.
+ *
+ * @param info true to log at INFO instead of WARNING.
+ * @param format printf-style message.
+ */
+void w_auth_log_client_rejection(bool info, const char *format, ...) __attribute__((format(printf, 2, 3)));
+
+/**
+ * @brief The throttle behind w_auth_log_client_rejection(), with the clock passed in (for testing).
+ *
+ * @param reason What identifies the reason (w_auth_log_client_rejection() passes its format).
+ * @param info true to log at INFO instead of WARNING.
+ * @param message The formatted message.
+ * @param now The current time.
+ */
+void w_auth_client_rejection_log(const char *reason, bool info, const char *message, time_t now);
+
+/**
+ * @brief Forget the client-rejection throttle state, so the next rejection is logged (for testing).
+ */
+void w_auth_client_rejection_log_reset(void);
+
+/**
+ * @brief The form an address to register is recorded in, and answered with, by every enrollment path.
+ *
+ * The plain address (IPv6 expanded, "::ffff:" unmapped) when it carries no mask or a full-length one
+ * (/32, /128, /255.255.255.255), else the network with its mask as a prefix length ("10.22.0.0/16"
+ * for "10.22.0.0/255.255.0.0"). The duplicate-IP check matches this form, so a host written with a
+ * full-length mask is the same address as the bare one.
+ *
+ * @param ip Address as received. Not "any": callers handle that sentinel themselves.
+ * @param out Buffer for the registered form.
+ * @param size Size of @p out (IPSIZE + 1 holds every valid value).
+ * @return 0 on success; -1 for an invalid address, a leading '!' or a non-contiguous dotted mask.
+ */
+int w_auth_registered_ip(const char *ip, char *out, size_t size);
 
 /**
  * @brief Parse a raw buffer from agent request into enrollment data.

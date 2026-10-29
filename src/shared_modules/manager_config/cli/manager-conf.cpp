@@ -24,6 +24,7 @@
 #include <filesystem>
 #include <string>
 #include <string_view>
+#include <system_error>
 #include <variant>
 #include <vector>
 
@@ -243,10 +244,22 @@ namespace
                                                    ? std::filesystem::path(Utils::MANAGER_CONF_DIR) / DEFAULT_FILE_NAME
                                                    : std::filesystem::path(file);
         std::error_code ec;
-        if (!std::filesystem::is_regular_file(filePath, ec))
+        const auto fileStatus = std::filesystem::status(filePath, ec);
+        if (!std::filesystem::exists(fileStatus))
         {
+            // Only a path that is not there is "not found"; a permission error names itself instead.
+            if (ec && ec != std::errc::no_such_file_or_directory && ec != std::errc::not_a_directory)
+            {
+                return reportInvalid(
+                    {"", "configuration file cannot be read: " + filePath.string() + ": " + ec.message()});
+            }
             std::fprintf(stderr, NO_CONFIG "\n", filePath.c_str());
             return EXIT_INVALID;
+        }
+        if (!std::filesystem::is_regular_file(fileStatus))
+        {
+            return reportInvalid(
+                {"", "configuration file cannot be read: " + filePath.string() + ": not a regular file"});
         }
 
         manager_config::LoadOptions options;

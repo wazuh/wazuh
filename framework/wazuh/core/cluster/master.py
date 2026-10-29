@@ -31,6 +31,8 @@ from wazuh.core.indexer.disconnected_agents import DisconnectedAgentSyncTasks
 
 
 DEFAULT_DATE: str = 'n/a'
+# Log tag of an incoming cluster connection until its hello identifies it as a worker.
+UNIDENTIFIED_PEER_TAG = "Incoming connection"
 
 
 class ReceiveIntegrityTask(c_common.ReceiveFileTask):
@@ -185,6 +187,9 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
             Arguments for the parent class constructor.
         """
         super().__init__(**kwargs, tag="Worker")
+        # A connection is a worker only once its hello says so (and passes the checks): until then nothing tells it
+        # apart from any other peer that reached the cluster port.
+        self.tag = UNIDENTIFIED_PEER_TAG
         # Sync availability variables. Used to prevent sync process from overlapping.
         self.sync_agent_info_free = True
         self.sync_integrity_free = [True, utils.get_utc_now()]
@@ -240,6 +245,27 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
                            'last_sync_full_agentgroup': self.send_full_agent_groups_status,
                            'last_keep_alive': self.last_keepalive}
                 }
+
+    # Queries a worker relays on behalf of one of its local clients (the API, cluster_control).
+    RELAYED_CLIENT_QUERIES = frozenset({b'get_nodes', b'get_health'})
+
+    def log_request_error(self, command: bytes, error: exception.WazuhException) -> None:
+        """Log an error raised while processing a worker's request.
+
+        A `WazuhError` in a query relayed for a local client (an unknown node name) is the caller's own mistake and
+        is reported by it, so it is only logged at debug level.
+
+        Parameters
+        ----------
+        command : bytes
+            Command being processed.
+        error : WazuhException
+            Error raised.
+        """
+        if command in self.RELAYED_CLIENT_QUERIES and isinstance(error, exception.WazuhError):
+            self.logger.debug(f"Request '{command}' refused: {error}")
+        else:
+            super().log_request_error(command, error)
 
     def process_request(self, command: bytes, data: bytes) -> Tuple[bytes, bytes]:
         """Define all available commands that can be received from a worker node.

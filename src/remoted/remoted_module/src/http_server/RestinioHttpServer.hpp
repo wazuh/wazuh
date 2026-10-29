@@ -36,6 +36,20 @@ namespace remoted::http
     bool certificateMatchesPeerIp(X509* certificate, const std::string& peerIp);
 
     /**
+     * @brief Load the listener's TLS material the way start() does, without binding anything.
+     *
+     * The certificate chain and private key (and that they match), plus the CA that verifies agent
+     * client certificates in the modes that load it (verificationMode other than None). Built
+     * through the same helpers start() uses, so the configuration test refuses exactly the files
+     * the start would. The CA published on GET /cacerts is not loaded here: the start does not
+     * refuse it either (it only reports its status).
+     *
+     * @param config Resolved listener configuration.
+     * @throws std::exception naming the file and the reason, on the first one that does not load.
+     */
+    void validateTlsMaterial(const HttpServerConfig& config);
+
+    /**
      * @brief RESTinio + OpenSSL implementation of IHttpServer.
      *
      * All RESTinio/asio types are hidden behind a PImpl so this header (and every

@@ -167,6 +167,10 @@ Wazuh packages are available in different repositories depending on the release 
 
 ### Package paths by format
 
+The paths below apply to the nightly, pre-release and production repositories. The nightly backup keeps every
+file directly under its timestamp directory, with no `apt/`, `yum/`, `macos/` or `windows/` subpath, under the
+same file names (for example `.../nightly-backup/<TIMESTAMP>/wazuh-manager_5.0.0-latest_amd64.deb`).
+
 **DEB packages:**
 ```
 apt/pool/main/w/<component>/<component>_<version>[-<revision>]_<arch>.deb

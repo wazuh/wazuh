@@ -143,7 +143,13 @@ runInit()
             type=agent
         fi
         # RHEL 8 services must to be installed in /usr/lib/systemd/system/
-        if [ "${DIST_NAME}" = "rhel" -a "${DIST_VER}" -ge "7" ] || [ "${DIST_NAME}" = "centos" -a "${DIST_VER}" -ge "7" ]; then
+        # A unit already in /usr/lib is the one a DEB or RPM ships (both install it there): an
+        # overlay of that package rewrites it in place instead of adding an /etc/systemd/system
+        # copy, which no package owns, outlives the package's purge and keeps registering a
+        # service for the removed home. AllowServiceRegistration() below still refuses a unit
+        # that points at another home.
+        if [ "${DIST_NAME}" = "rhel" -a "${DIST_VER}" -ge "7" ] || [ "${DIST_NAME}" = "centos" -a "${DIST_VER}" -ge "7" ] \
+            || [ -f /usr/lib/systemd/system/wazuh-$type.service ]; then
             SERVICE_UNIT_PATH=/usr/lib/systemd/system/wazuh-$type.service
             RHEL_SYSTEMD_LAYOUT="yes"
         else
@@ -166,7 +172,9 @@ runInit()
             rm -f /etc/systemd/system/wazuh-$type.service
         fi
         GenerateService wazuh-$type.service > ${SERVICE_UNIT_PATH}
-        chown root:$file_permissions ${SERVICE_UNIT_PATH}
+        # root:root 0644, as the DEB and RPM packages install it (the redirection above follows umask).
+        chown root:root ${SERVICE_UNIT_PATH}
+        chmod 0644 ${SERVICE_UNIT_PATH}
         systemctl daemon-reload
 
         rm -f /etc/rc.d/init.d/${service}

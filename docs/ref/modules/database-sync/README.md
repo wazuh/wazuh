@@ -7,7 +7,8 @@ registry `/etc/wazuh-manager/client.keys` and the group directories under `/etc/
 
 **Daemon:** `wazuh-manager-modulesd` (log tag `wazuh-manager-modulesd:database`)
 
-**Component:** Manager-only — the module is compiled out of the agent build.
+**Component:** Manager-only — an agent's `wazuh-modulesd` never registers it (`wm_config()` in
+`src/wazuh_modules/src/wmodules.c` adds it in the manager build only).
 
 **Source:** `src/wazuh_modules/src/wm_database.c`
 

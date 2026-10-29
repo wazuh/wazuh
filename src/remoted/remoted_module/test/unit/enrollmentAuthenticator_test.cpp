@@ -197,6 +197,14 @@ TEST_F(PasswordFixture, ValidBearerIsAccepted)
     EXPECT_EQ(run(validBearer()), std::nullopt);
 }
 
+// RFC 7235 2.1: the auth scheme is case-insensitive, as on every other authenticated route
+TEST_F(PasswordFixture, TheSchemeIsMatchedCaseInsensitively)
+{
+    const std::string token = validBearer().substr(7);
+    EXPECT_EQ(run("bearer " + token), std::nullopt);
+    EXPECT_EQ(run("BEARER " + token), std::nullopt);
+}
+
 TEST_F(PasswordFixture, TheFrozenVectorTokenIsAcceptedWithTheVectorPassword)
 {
     // Interop pin: the manager's HKDF + verifier accept the token every other implementation
@@ -213,11 +221,8 @@ TEST_F(PasswordFixture, MissingAuthorizationHeaderIsRejected)
 
 TEST_F(PasswordFixture, NonBearerSchemesAreRejectedAsMalformed)
 {
-    for (const auto* header : {"Wazuh 001:1784238000:00112233445566778899aabbccddeeff",
-                               "Basic dXNlcjpwYXNz",
-                               "bearer abc.def.ghi",
-                               "Bearer",
-                               "Bearer "})
+    for (const auto* header :
+         {"Wazuh 001:1784238000:00112233445566778899aabbccddeeff", "Basic dXNlcjpwYXNz", "Bearer", "Bearer "})
     {
         const auto err = run(header);
         ASSERT_TRUE(err.has_value()) << header;

@@ -12,6 +12,7 @@ import hashlib
 import json
 import jwt
 import pytest
+import time
 
 from starlette.requests import Request
 from starlette.responses import Response
@@ -25,6 +26,7 @@ from connexion.exceptions import ProblemException, OAuthProblem, Unauthorized
 from freezegun import freeze_time
 
 from wazuh.core.exception import WazuhInternalError
+from wazuh.core.utils import get_utc_now
 
 from api.middlewares import charge_unauthenticated_request, charge_authenticated_request, \
     is_authenticated_bucket_exhausted, check_blocked_ip, \
@@ -34,7 +36,7 @@ from api.middlewares import charge_unauthenticated_request, charge_authenticated
     RUN_AS_LOGIN_ENDPOINT, AUTH_CONTEXT_MAX_PAYLOAD_SIZE, CheckAuthContextSizeMiddleware, CheckRateLimitsMiddleware, \
     CheckAuthenticatedRateLimitMiddleware, WazuhAccessLoggerMiddleware, CheckBlockedIP, SecureHeadersMiddleware, \
     CheckExpectHeaderMiddleware, secure_headers, access_log, get_declared_content_length, read_capped_body, \
-    CACHED_BODY_KEY, AUTH_CONTEXT_NOT_LOGGED
+    CACHED_BODY_KEY, AUTH_CONTEXT_NOT_LOGGED, warn_rate_limited, RATE_LIMIT_WARNING_INTERVAL_SECONDS
 from api.alogging import MAX_LOGGED_BODY_SIZE
 from api.api_exception import ExpectFailedException, PayloadTooLargeException
 
@@ -142,10 +144,16 @@ async def test_middlewares_check_blocked_ip(mock_req):
 @freeze_time(datetime(1970, 1, 1))
 @pytest.mark.asyncio
 async def test_middlewares_check_blocked_ip_ko(mock_req):
-    """Test if `check_blocked_ip` raises an exception if the IP is still blocked."""
-    with patch('api.middlewares.ConnexionRequest.from_starlette_request', returns_value=mock_req):
+    """Test if `check_blocked_ip` raises an exception if the IP is still blocked, and logs the block."""
+    with patch('api.middlewares.ConnexionRequest.from_starlette_request', returns_value=mock_req), \
+         patch('api.middlewares.rate_limit_warnings', new={}), \
+         patch('api.middlewares.logger.warning') as mock_log_warning:
         with pytest.raises(ProblemException) as exc_info:
             await check_blocked_ip(mock_req)
+
+    mock_log_warning.assert_called_once_with(
+        f"IP blocked due to exceeded number of logins attempts: {mock_req.client.host}. "
+        f"User: {get_login_attempt_key(mock_req)[1]!r}.")
 
     assert exc_info.value.status == 403
     assert exc_info.value.title == "Permission Denied"
@@ -1014,12 +1022,9 @@ async def test_access_log(json_body, q_password, b_password, b_key, c_user,
             endpoint, mock_req.query_params, expected_body, 0.0, response.status_code,
             hash_auth_context=hash, headers=mock_req.headers
         )
-        if status_code == 403 and \
-            endpoint in {LOGIN_ENDPOINT, RUN_AS_LOGIN_ENDPOINT} and \
-                method in {'GET', 'POST'}:
-            mock_log_warning.assert_called_once_with(
-                f"IP blocked due to exceeded number of logins attempts: {mock_req.client.host}. "
-                f"User: {expected_user!r}.")
+        # A 403 on a login endpoint is not necessarily a blocked client (an RBAC or run_as refusal is
+        # also a 403): the block is logged by `check_blocked_ip`, never here.
+        assert not any('IP blocked' in str(c) for c in mock_log_warning.call_args_list)
 
 
 @pytest.mark.asyncio
@@ -1900,12 +1905,149 @@ async def test_access_log_warns_on_429(mock_req):
 
     with TestContext(operation=operation), \
         patch('api.middlewares.custom_logging'), \
+        patch('api.middlewares.rate_limit_warnings', new={}), \
         patch('api.middlewares.logger.warning') as mock_warning:
         expected_time = datetime(1970, 1, 1, 0, 0, 10).timestamp()
         await access_log(request=mock_req, response=response, prev_time=expected_time)
 
         mock_warning.assert_called_once_with(
             f'Maximum number of requests per minute reached. IP: {mock_req.client.host}. User: wazuh.')
+
+
+@pytest.mark.asyncio
+@freeze_time(datetime(1970, 1, 1, 0, 0, 10))
+@pytest.mark.parametrize('code, context, expected', [
+    # Refused by the authenticated limit before authentication ran: no identity yet, still authenticated
+    (6001, {}, 'Maximum number of requests per minute reached. IP: ip. User: wazuh.'),
+    (6001, {'user': 'wazuh'}, 'Maximum number of requests per minute reached. IP: ip. User: wazuh.'),
+    (6005, {}, 'Maximum number of unauthenticated requests per minute reached. IP: ip.'),
+])
+async def test_access_log_names_the_limit_that_refused(mock_req, code, context, expected):
+    """The 429 warning names the limit the request hit, not whether the context carries an identity."""
+    middleware = CheckRateLimitsMiddleware(AsyncApp(__name__))
+    mock_req.url = MagicMock()
+    mock_req.url.path = '/agents'
+    mock_req.scope = {'path': '/agents', 'extensions': {}}
+    api_conf = {'access': {'max_request_per_minute': 300, 'max_unauthenticated_request_per_minute': 10}}
+
+    with patch('api.middlewares.configuration.api_conf', new=api_conf), \
+            patch('api.middlewares.is_authenticated_bucket_exhausted', new=AsyncMock(return_value=code == 6001)), \
+            patch('api.middlewares.charge_unauthenticated_request', new=AsyncMock(return_value=code)), \
+            pytest.raises(ProblemException) as exc_info:
+        await middleware.dispatch(request=mock_req, call_next=AsyncMock(side_effect=Unauthorized()))
+    assert exc_info.value.ext.get('code') == code
+
+    response = MagicMock()
+    response.status_code = 429
+    mock_req.json = AsyncMock(return_value={})
+    mock_req.query_params = {}
+    mock_req.method = 'GET'
+    mock_req.context = context
+    mock_req.headers = {'Authorization': 'Basic ' + base64.b64encode(b'wazuh:pass').decode()}
+
+    with patch('api.middlewares.custom_logging'), \
+            patch('api.middlewares.rate_limit_warnings', new={}), \
+            patch('api.middlewares.logger.warning') as mock_warning:
+        await access_log(request=mock_req, response=response, prev_time=datetime(1970, 1, 1, 0, 0, 10).timestamp())
+
+    mock_warning.assert_called_once_with(expected)
+
+
+def test_warn_rate_limited_is_throttled():
+    """One WARNING per client and user and interval, carrying the count of the refusals it stood for."""
+    with patch('api.middlewares.rate_limit_warnings', new={}), \
+            patch('api.middlewares.logger.warning') as mock_warning, \
+            freeze_time(datetime(1970, 1, 1, 0, 0, 10)) as frozen:
+        for _ in range(5):
+            warn_rate_limited('1.2.3.4', 'wazuh')
+        warn_rate_limited('1.2.3.4', 'other')
+        assert mock_warning.call_args_list == [
+            call('Maximum number of requests per minute reached. IP: 1.2.3.4. User: wazuh.'),
+            call('Maximum number of requests per minute reached. IP: 1.2.3.4. User: other.'),
+        ]
+
+        mock_warning.reset_mock()
+        frozen.tick(RATE_LIMIT_WARNING_INTERVAL_SECONDS)
+        warn_rate_limited('1.2.3.4', 'wazuh')
+        mock_warning.assert_called_once_with(
+            'Maximum number of requests per minute reached. IP: 1.2.3.4. User: wazuh. '
+            '4 more request(s) refused since the previous warning.')
+
+
+def test_warn_rate_limited_unauthenticated_is_keyed_by_client():
+    """An unauthenticated caller rotating the user it claims still gets one WARNING per client and interval."""
+    with patch('api.middlewares.rate_limit_warnings', new={}), \
+            patch('api.middlewares.logger.warning') as mock_warning, \
+            freeze_time(datetime(1970, 1, 1, 0, 0, 10)) as frozen:
+        for i in range(16):
+            warn_rate_limited('1.2.3.4', f'user{i}', authenticated=False)
+        # Another address of the same IPv6 /64 is the same client.
+        warn_rate_limited('2001:db8::1', 'a', authenticated=False)
+        warn_rate_limited('2001:db8::2', 'b', authenticated=False)
+        assert mock_warning.call_args_list == [
+            call('Maximum number of unauthenticated requests per minute reached. IP: 1.2.3.4.'),
+            call('Maximum number of unauthenticated requests per minute reached. IP: 2001:db8::1.'),
+        ]
+
+        mock_warning.reset_mock()
+        frozen.tick(RATE_LIMIT_WARNING_INTERVAL_SECONDS)
+        warn_rate_limited('1.2.3.4', 'user99', authenticated=False)
+        mock_warning.assert_called_once_with(
+            'Maximum number of unauthenticated requests per minute reached. IP: 1.2.3.4. '
+            '15 more request(s) refused since the previous warning.')
+
+
+@pytest.mark.asyncio
+async def test_access_log_unauthenticated_429_is_keyed_by_client(mock_req):
+    """A 429 for a caller the API did not authenticate is not keyed by the user it claims."""
+    response = MagicMock()
+    response.status_code = 429
+    mock_req.query_params = {}
+    mock_req.method = 'POST'
+    mock_req.context = {}
+    mock_req.scope = {'path': '/security/user/authenticate'}
+    mock_req.headers = {'content-type': 'None'}
+
+    with TestContext(operation=MagicMock()), \
+            patch('api.middlewares.custom_logging'), \
+            patch('api.middlewares.rate_limit_warnings', new={}), \
+            patch('api.middlewares.AbstractSecurityHandler.get_auth_header_value') as mock_auth, \
+            patch('api.middlewares.logger.warning') as mock_warning:
+        for name in ('alice', 'bob', 'carol'):
+            mock_auth.return_value = ('basic', base64.b64encode(f'{name}:x'.encode()).decode())
+            await access_log(request=mock_req, response=response, prev_time=time.time())
+
+    mock_warning.assert_called_once_with(
+        f'Maximum number of unauthenticated requests per minute reached. IP: {mock_req.client.host}.')
+
+
+@pytest.mark.asyncio
+async def test_check_blocked_ip_warning_is_throttled(mock_req):
+    """A blocked client retrying, under any user name, logs one WARNING per interval."""
+    api_conf = {'access': {'block_time': 300, 'max_login_attempts': 50}}
+    now = get_utc_now().timestamp()
+    with patch('api.middlewares.ip_stats', new={CLIENT_KEY: {'attempts': 500, 'timestamp': now}}), \
+            patch('api.middlewares.ip_block', new={CLIENT_KEY}), \
+            patch('api.middlewares.configuration.api_conf', new=api_conf), \
+            patch('api.middlewares.rate_limit_warnings', new={}), \
+            patch('api.middlewares.logger.warning') as mock_warning:
+        for _ in range(6):
+            with pytest.raises(ProblemException):
+                await check_blocked_ip(mock_req)
+
+    mock_warning.assert_called_once()
+    assert 'IP blocked due to exceeded number of logins attempts' in mock_warning.call_args[0][0]
+
+
+def test_warn_rate_limited_bounds_its_memory():
+    """The tracked clients never exceed RATE_LIMIT_WARNING_MAX_KEYS."""
+    with patch('api.middlewares.rate_limit_warnings', new={}) as warnings, \
+            patch('api.middlewares.RATE_LIMIT_WARNING_MAX_KEYS', 3), \
+            patch('api.middlewares.logger.warning') as mock_warning:
+        for i in range(10):
+            warn_rate_limited(f'10.0.0.{i}', 'wazuh')
+        assert len(warnings) <= 3
+        assert mock_warning.call_count == 10
 
 
 @pytest.mark.asyncio

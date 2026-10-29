@@ -10,11 +10,16 @@
 #include <fastmetrics/registry.hpp>
 #include <rawevtindexer/iraweventindexer.hpp>
 
+#include "logThrottle.hpp"
+
 namespace router
 {
 
 namespace
 {
+/// Minimum time between two log lines about malformed events, per worker.
+constexpr auto MALFORMED_EVENT_LOG_WINDOW = std::chrono::seconds(60);
+
 std::string
 makeRawIndexPayload(const IngestEvent& queuedEvent, const std::string& timestamp, const std::string& eventId)
 {
@@ -58,6 +63,9 @@ void RouterWorker::start()
             // Cache metric pointer before hot path loop (one-time map lookup ~50ns)
             auto eventsProcessedCounter =
                 fastmetrics::manager().getOrCreateCounter(fastmetrics::names::ROUTER_EVENTS_PROCESSED);
+            auto eventsMalformedCounter =
+                fastmetrics::manager().getOrCreateCounter(fastmetrics::names::ROUTER_EVENTS_MALFORMED);
+            LogThrottle malformedLog {MALFORMED_EVENT_LOG_WINDOW};
 
             while (m_isRunning)
             {
@@ -88,7 +96,32 @@ void RouterWorker::start()
                     }
 
                     // Parse, enrich and forward to router
-                    auto event = base::eventParsers::parseLegacyEvent(queuedEvent.rawEvent, *queuedEvent.header);
+                    base::Event event;
+                    try
+                    {
+                        event = base::eventParsers::parseLegacyEvent(queuedEvent.rawEvent, *queuedEvent.header);
+                    }
+                    catch (const std::exception& e)
+                    {
+                        // A malformed line is dropped: counted always, logged at most once per window.
+                        eventsMalformedCounter->add(1);
+                        if (const auto suppressed = malformedLog.record(LogThrottle::Clock::now()); suppressed)
+                        {
+                            if (*suppressed == 0)
+                            {
+                                LOG_WARNING_L(functionName.c_str(), "Dropped a malformed event: {}", e.what());
+                            }
+                            else
+                            {
+                                LOG_WARNING_L(functionName.c_str(),
+                                              "Dropped a malformed event: {} ({} more malformed events dropped "
+                                              "since the previous report)",
+                                              e.what(),
+                                              *suppressed);
+                            }
+                        }
+                        continue;
+                    }
                     event->setString(timestamp, "/@timestamp");
                     event->setString(eventId, "/wazuh/event/id");
                     if (enrichClusterInfo)

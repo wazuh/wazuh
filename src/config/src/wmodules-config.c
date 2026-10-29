@@ -24,6 +24,23 @@ static const struct {
 
 #define DEPRECATED_MODULES_COUNT (sizeof(DEPRECATED_MODULES) / sizeof(DEPRECATED_MODULES[0]))
 
+const char *wm_config_logtag(const char *tag) {
+#ifdef CLIENT
+    return tag;
+#else
+    static char buffer[OS_SIZE_256];
+    const size_t prefix_len = strlen(ARGV0);
+
+    if (tag == NULL || __local_name == NULL || strcmp(__local_name, ARGV0) == 0 ||
+        strncmp(tag, ARGV0, prefix_len) != 0) {
+        return tag;
+    }
+
+    snprintf(buffer, sizeof(buffer), "%s%s", __local_name, tag + prefix_len);
+    return buffer;
+#endif
+}
+
 // Read wodle element
 
 int Read_WModule(const OS_XML *xml, xml_node *node, void *d1, void *d2)

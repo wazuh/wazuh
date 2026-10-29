@@ -184,7 +184,7 @@ int wm_gcp_pubsub_read(xml_node **nodes, wmodule *module) {
             gcp->pull_on_start = pull_on_start;
         }
         else if (!strcmp(nodes[i]->element, XML_LOGGING)) {
-            mtdebug1(WM_GCP_PUBSUB_LOGTAG, "Tag '%s' from the '%s' module is deprecated. This setting will be skipped.", XML_LOGGING, WM_GCP_PUBSUB_CONTEXT.name);
+            mtdebug1(wm_config_logtag(WM_GCP_PUBSUB_LOGTAG), "Tag '%s' from the '%s' module is deprecated. This setting will be skipped.", XML_LOGGING, WM_GCP_PUBSUB_CONTEXT.name);
         }
         else if (is_sched_tag(nodes[i]->element)) {
             // Do nothing
@@ -267,20 +267,20 @@ int wm_gcp_bucket_read(const OS_XML *xml, xml_node **nodes, wmodule *module) {
             gcp->run_on_start = run_on_start;
         }
         else if (!strcmp(nodes[i]->element, XML_LOGGING)) {
-	    mtdebug1(WM_GCP_BUCKET_LOGTAG, "Tag '%s' from the '%s' module is deprecated. This setting will be skipped.", XML_LOGGING, WM_GCP_BUCKET_CONTEXT.name);
+	    mtdebug1(wm_config_logtag(WM_GCP_BUCKET_LOGTAG), "Tag '%s' from the '%s' module is deprecated. This setting will be skipped.", XML_LOGGING, WM_GCP_BUCKET_CONTEXT.name);
 	}
         else if (!strcmp(nodes[i]->element, XML_BUCKET)) {
-            mtdebug2(WM_GCP_BUCKET_LOGTAG, "Found a bucket tag");
+            mtdebug2(wm_config_logtag(WM_GCP_BUCKET_LOGTAG), "Found a bucket tag");
             // Create bucket node
             if (cur_bucket) {
                 os_calloc(1, sizeof(wm_gcp_bucket), cur_bucket->next);
                 cur_bucket = cur_bucket->next;
-                mtdebug2(WM_GCP_BUCKET_LOGTAG, "Creating another bucket structure");
+                mtdebug2(wm_config_logtag(WM_GCP_BUCKET_LOGTAG), "Creating another bucket structure");
             } else {
                 // First bucket
                 os_calloc(1, sizeof(wm_gcp_bucket), cur_bucket);
                 gcp->buckets = cur_bucket;
-                mtdebug2(WM_GCP_BUCKET_LOGTAG, "Creating first bucket structure");
+                mtdebug2(wm_config_logtag(WM_GCP_BUCKET_LOGTAG), "Creating first bucket structure");
             }
 
             // Expand bucket Child Nodes
@@ -310,10 +310,10 @@ int wm_gcp_bucket_read(const OS_XML *xml, xml_node **nodes, wmodule *module) {
                 return OS_INVALID;
             }
 
-            mtdebug2(WM_GCP_BUCKET_LOGTAG, "Loop thru child nodes");
+            mtdebug2(wm_config_logtag(WM_GCP_BUCKET_LOGTAG), "Loop thru child nodes");
             for (j = 0; children[j]; j++) {
 
-                mtdebug2(WM_GCP_BUCKET_LOGTAG, "Parse child node: %s", children[j]->element);
+                mtdebug2(wm_config_logtag(WM_GCP_BUCKET_LOGTAG), "Parse child node: %s", children[j]->element);
 
                 // Start
                 if (!strcmp(children[j]->element, XML_BUCKET_NAME)) {

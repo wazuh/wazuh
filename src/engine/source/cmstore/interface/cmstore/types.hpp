@@ -11,6 +11,7 @@
 #include <vector>
 
 #include <base/name.hpp>
+#include <base/utils/stringUtils.hpp>
 
 #include <cmstore/dataintegration.hpp>
 #include <cmstore/datakvdb.hpp>
@@ -136,7 +137,8 @@ public:
     {
         if (!isValidName(m_namespace))
         {
-            throw std::runtime_error(fmt::format("Invalid namespace ID: {}", m_namespace));
+            throw std::runtime_error(
+                fmt::format("Invalid namespace ID: {}", base::utils::string::truncateForMessage(m_namespace)));
         }
     }
 

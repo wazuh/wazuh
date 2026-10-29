@@ -152,13 +152,13 @@ namespace remoted::control
                 {
                     LOGFN_WARN(logFn(),
                                "Agent %u rejected for invalid version '%s' (manager=%s, allow_higher=%d): %llu "
-                               "rejection(s) in the last %d s.",
+                               "rejection(s) %s.",
                                id,
                                data.version.c_str(),
                                m_config.managerVersion.c_str(),
                                m_config.allowHigherVersions,
                                throttle.total,
-                               remoted::common::LogThrottle::kDefaultWindowSeconds);
+                               throttle.period().c_str());
                 }
 
                 const std::string syncStatus = m_config.isWorkerNode ? "syncreq_status" : "synced";
@@ -166,7 +166,8 @@ namespace remoted::control
                 // framework's WazuhVersion parser raises on anything outside MAJOR.MINOR.PATCH
                 // or this exact placeholder). A well-formed version that's merely too high for
                 // this manager's policy is safe to persist as-is and worth keeping visible.
-                const std::string& versionToStore = versionMalformed ? UNKNOWN_VERSION_PLACEHOLDER : data.version;
+                const std::string versionToStore =
+                    versionMalformed ? std::string(UNKNOWN_VERSION_PLACEHOLDER) : canonicalVersion(data.version);
                 m_wdbClient->updateStatusCode(
                     id, AgentStatusCode::InvalidVersion, versionToStore, "", syncStatus, [](SocketError) {});
 
@@ -188,7 +189,7 @@ namespace remoted::control
 
             m_wdbClient->getAgentGroups(
                 id,
-                [this, id, version = data.version, callback = std::move(callback)](
+                [this, id, version = canonicalVersion(data.version), callback = std::move(callback)](
                     SocketError err, std::vector<std::string> groups) mutable
                 {
                     if (err != SocketError::None)
@@ -201,10 +202,10 @@ namespace remoted::control
                         {
                             LOGFN_ERROR(logFn(),
                                         "Cannot serve /control startup: wazuh-manager-db is not answering, so "
-                                        "this agent's groups cannot be read (%llu failure(s) in the last %d s). "
+                                        "this agent's groups cannot be read (%llu failure(s) %s). "
                                         "Agents are being told to retry; check that wazuh-manager-db is running.",
                                         throttle.total,
-                                        remoted::common::LogThrottle::kDefaultWindowSeconds);
+                                        throttle.period().c_str());
                         }
 
                         // 503, not 500. remoted itself is fine -- it is a dependency that is not
@@ -283,17 +284,18 @@ namespace remoted::control
 
             // Per design, /notify does not validate the version (only /startup does);
             // this keeps the hot path allocation-free. Host bounds are still checked
-            // so we don't forward oversized strings to wdb.
-            if (data.host && !isValidHostInfo(*data.host))
+            // so we don't forward oversized strings to wdb, and a host block of the
+            // wrong JSON type is refused rather than silently dropped.
+            if (data.hostMalformed || (data.host && !isValidHostInfo(*data.host)))
             {
                 // Throttle invalid host info rejections
                 if (const auto throttle = invalidHostInfoThrottle().record())
                 {
                     LOGFN_WARN(logFn(),
-                               "Agent %u notify rejected for invalid host info: %llu rejection(s) in the last %d s.",
+                               "Agent %u notify rejected for invalid host info: %llu rejection(s) %s.",
                                id,
                                throttle.total,
-                               remoted::common::LogThrottle::kDefaultWindowSeconds);
+                               throttle.period().c_str());
                 }
 
                 HttpResponse response;
@@ -328,11 +330,10 @@ namespace remoted::control
                         {
                             LOGFN_ERROR(logFn(),
                                         "Cannot serve /control notify: wazuh-manager-db is not answering and this "
-                                        "agent has no cached group membership to fall back on (%llu failure(s) in "
-                                        "the last %d s). Agents are being told to retry; check that "
-                                        "wazuh-manager-db is running.",
+                                        "agent has no cached group membership to fall back on (%llu failure(s) %s). "
+                                        "Agents are being told to retry; check that wazuh-manager-db is running.",
                                         throttle.total,
-                                        remoted::common::LogThrottle::kDefaultWindowSeconds);
+                                        throttle.period().c_str());
                         }
 
                         // 503 for the same reason as the startup path above: a dependency is
@@ -362,10 +363,9 @@ namespace remoted::control
                         if (const auto throttle = notifyWdbErrorThrottle().record())
                         {
                             LOGFN_WARN(logFn(),
-                                       "Failed to get agent groups from wdb for notify: %llu failure(s) in the "
-                                       "last %d s.",
+                                       "Failed to get agent groups from wdb for notify: %llu failure(s) %s.",
                                        throttle.total,
-                                       remoted::common::LogThrottle::kDefaultWindowSeconds);
+                                       throttle.period().c_str());
                         }
                     }
 
@@ -494,7 +494,7 @@ namespace remoted::control
                     LOGFN_DEBUG2(logFn(), "Agent %u: writing full agent data to wdb.", id);
                     const std::string syncStatus = m_config.isWorkerNode ? "syncreq" : "synced";
                     m_wdbClient->updateAgentData(
-                        id, data.version, "active", syncStatus, &(*data.host), [](SocketError) {});
+                        id, canonicalVersion(data.version), "active", syncStatus, &(*data.host), [](SocketError) {});
                 }
                 else
                 {
@@ -521,10 +521,10 @@ namespace remoted::control
                         {
                             LOGFN_DEBUG1(logFn(),
                                          "Agent %u: pending-task fetch failed, answering with no tasks: %llu "
-                                         "failure(s) in the last %d s.",
+                                         "failure(s) %s.",
                                          id,
                                          throttle.total,
-                                         remoted::common::LogThrottle::kDefaultWindowSeconds);
+                                         throttle.period().c_str());
                         }
                     }
 

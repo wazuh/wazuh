@@ -257,7 +257,8 @@ def test_AbstractServerHandler_hello(event_loop):
     abstract_server_handler = AbstractServerHandler(server="Test", loop=event_loop, fernet_key=fernet_key,
                                                     cluster_items={"test": "server"})
     abstract_server_handler.server = ServerMock()
-    abstract_server_handler.tag = "FixBehaviour"
+    abstract_server_handler.tag = "Unidentified"
+    abstract_server_handler.peer_tag = "FixBehaviour"
     abstract_server_handler.broadcast_reader = Mock()
 
     with patch("wazuh.core.cluster.server.context_tag", ContextVar("tag", default="")) as mock_contextvar:

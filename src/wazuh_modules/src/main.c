@@ -33,6 +33,7 @@ static void wm_drop_privileges(const char *user); // Drop manager privileges per
 #endif
 
 static int flag_foreground = 0;         // Running in foreground.
+static int flag_test_config = 0;        // -t: test the configuration and exit.
 
 static pthread_mutex_t sig_lock = PTHREAD_MUTEX_INITIALIZER;
 
@@ -50,13 +51,18 @@ int main(int argc, char **argv)
 #endif
 #ifdef WAZUH_RUNTIME_USER
     const char *runtime_user = WAZUH_RUNTIME_USER;
-    const char *getopt_options = "dfhtu:" WM_GETOPT_CONF;
+    const char *getopt_options = "Vdfhtu:" WM_GETOPT_CONF;
 #else
-    const char *getopt_options = "dfht" WM_GETOPT_CONF;
+    const char *getopt_options = "Vdfht" WM_GETOPT_CONF;
 #endif
 
     /* Set the name */
     OS_SetName(ARGV0);
+
+#ifndef CLIENT
+    // A relative -c names a file in the caller's directory: remember it before the chdir below.
+    char * start_cwd = getcwd(NULL, 0);
+#endif
 
     // Define current working directory
     char * home_path = w_homedir(argv[0]);
@@ -75,6 +81,9 @@ int main(int argc, char **argv)
 
     while ((c = getopt(argc, argv, getopt_options)) != -1) {
         switch (c) {
+        case 'V':
+            print_version();
+            break;
         case 'd':
             nowDebug();
             wm_debug = 1;
@@ -87,6 +96,7 @@ int main(int argc, char **argv)
             break;
         case 't':
             test_config = 1;
+            flag_test_config = 1;
             flag_foreground = 1;
             break;
 #ifndef CLIENT
@@ -94,7 +104,7 @@ int main(int argc, char **argv)
             if (!optarg) {
                 merror_exit("-c needs an argument");
             }
-            wm_config_path = optarg;
+            wm_config_path = wm_resolve_config_path(optarg, start_cwd);
             break;
 #endif
 #ifdef WAZUH_RUNTIME_USER
@@ -107,6 +117,10 @@ int main(int argc, char **argv)
             wm_help();
         }
     }
+
+#ifndef CLIENT
+    os_free(start_cwd);
+#endif
 
     // Get default debug level
 
@@ -211,11 +225,12 @@ void wm_help()
 #define WM_HELP_CONF " [-c <config>]"
 #endif
 #ifdef WAZUH_RUNTIME_USER
-    print_out("Usage: %s -[d|f|h|t] [-u <user>]" WM_HELP_CONF, ARGV0);
+    print_out("Usage: %s -[V|d|f|h|t] [-u <user>]" WM_HELP_CONF, ARGV0);
 #else
-    print_out("Usage: %s -[d|f|h|t]" WM_HELP_CONF, ARGV0);
+    print_out("Usage: %s -[V|d|f|h|t]" WM_HELP_CONF, ARGV0);
 #endif
     print_out(" ");
+    print_out("    -V    Version and license message.");
     print_out("    -d    Increase debug mode.");
     print_out("    -f    Run in foreground.");
     print_out("    -h    Print this help.");
@@ -237,7 +252,12 @@ void wm_setup()
     // Read the configuration (/etc/wazuh-manager/wazuh-manager.conf on the manager, ossec.conf on the
     // agent) and internal options
 
-    if (wm_config() < 0) {
+    // A positive answer is a section the daemon can run without (a module falls back to its defaults and
+    // the reader has logged why), but a configuration test reports it: the start must not pass a file a
+    // reader refused.
+    const int config_rc = wm_config();
+
+    if (config_rc < 0 || (config_rc > 0 && flag_test_config)) {
         exit(EXIT_FAILURE);
     }
 
@@ -288,6 +308,12 @@ void wm_setup()
     if (wm_check() < 0) {
         mdebug1("No configuration defined. Exiting...");
         exit(EXIT_SUCCESS);
+    }
+
+    // A configuration test only reads: no PID file (nor the exit handler that deletes it) and no
+    // children pool, so a configuration check writes nothing under var/run.
+    if (flag_test_config) {
+        return;
     }
 
     // Register cleanup function before CreatePID to avoid dangling PID files

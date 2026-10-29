@@ -14,6 +14,7 @@
 #include "homedirHelper.hpp"
 #include "keyStore.hpp"
 #include "loggerHelper.h"
+#include <chrono>
 #include <filesystem>
 #include <fstream>
 #include <functional>
@@ -115,12 +116,13 @@ int main(int argc, char* argv[])
             dropPrivilegesIfAvailable();
 
             std::string stored;
-            Keystore::get(family, key, stored);
+            Keystore::get(family, key, stored, Keystore::CLI_LOCK_WAIT);
 
             if (stored.empty())
             {
                 // Absent and empty are the same thing here, and both mean "not set". Exiting
-                // non-zero rather than printing nothing is what lets a shell test it directly.
+                // non-zero rather than printing nothing is what lets a shell test it directly. Silent
+                // on purpose: "not set" is an answer, not an error.
                 return 1;
             }
 
@@ -161,7 +163,17 @@ int main(int argc, char* argv[])
         }
 
         dropPrivilegesIfAvailable();
-        Keystore::put(family, key, secret);
+        Keystore::put(family, key, secret, Keystore::CLI_LOCK_WAIT);
+    }
+    catch (const KeystoreLockTimeout&)
+    {
+        // The daemons open the keystore per operation, so a burst of their reads can keep it locked
+        // longer than this command waited. Say so plainly: the RocksDB message names files, not the
+        // remedy, and nothing was changed, so running it again is always safe.
+        std::cerr << "The keystore is busy: other Wazuh processes kept it locked for "
+                  << std::chrono::duration_cast<std::chrono::seconds>(Keystore::CLI_LOCK_WAIT).count()
+                  << " s. Nothing was read or written. Run the command again.\n";
+        return 1;
     }
     catch (const CmdLineArgsException& e)
     {

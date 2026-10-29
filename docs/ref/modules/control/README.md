@@ -38,12 +38,31 @@ group. The paths are `CONTROL_SOCK` in `src/shared/include/defs.h`; the framewor
 | `reload` | `ok accepted` | Same, for a reload |
 | `restart` / `reload` | `err Service control rejected action` | The helper refused the request, or did not confirm it within 5 seconds |
 | `restart` / `reload` | `err Cannot create service control pipe`, `err Cannot fork` | modulesd could not start the helper |
-| `<command> <args>` | `err Unexpected arguments` | Any argument after the command is rejected |
+| `<command> <args>` | `err Unexpected arguments` | Any argument after the command is rejected (logged as a warning, `Unexpected arguments for command: '<command>'`) |
 | anything else | `Err` | Unknown command (logged as `Unknown command: '<command>'`) |
+
+A `<command>` is logged as the client sent it, made safe for a one-line log: `\n`, `\r`, `\t` and `\\` stand
+for a newline, carriage return, tab and backslash, any other control or non-ASCII byte is written `\xHH`, and only
+the first 128 bytes are kept — a longer command ends in `...[truncated]`.
+
+Every manager reply ends in a NUL byte (`ok accepted\0`, `Err\0`): strip it, not only whitespace, before
+comparing (`.rstrip('\x00')` in Python).
 
 The manager also checks the peer's credentials (`SO_PEERCRED`): a connection from any user other than
 `root` or `wazuh-manager` is closed without an answer and logged as
 `Rejected unauthorized control socket peer.`
+
+The manager socket serves **one client at a time**: the next connection waits in the listen backlog until
+the current one is answered and closed. A client that connects and sends nothing within **3 seconds** is
+disconnected without an answer and logged as a warning,
+`A local client sent no command within 3 seconds; connection closed.`, so one idle client cannot hold the
+socket for longer than that. The limit is **per client**, though, and clients are served one after another:
+idle clients waiting in the backlog add up, 3 seconds each, so four of them delay the next command by about
+12 seconds — longer than the API's default `request_timeout` of 10 seconds. While modulesd itself is stopped or busy, a connection is accepted by the
+kernel but not served: the API's `PUT /cluster/restart` or `PUT /cluster/reload` can then time out (it does
+not fall back to the helper, which it runs only when the socket is missing or refuses the connection), and
+the queued command **is still carried out** once modulesd reads it. Check `wazuh-manager-control status`
+before retrying a restart that timed out.
 
 `ok accepted` means the action was **accepted**, not that it finished: the restart or reload runs
 afterwards, in a process modulesd does not wait for.
@@ -63,12 +82,18 @@ full stop and start of the service, as `restart` is.
 
 The Server API is the usual client: `PUT /cluster/restart` and `PUT /cluster/reload` call
 `manager_restart()` / `manager_reload()` in `framework/wazuh/core/cluster/utils.py`, which send the
-command to `control.sock` and require an answer starting with `ok`.
+command to `control.sock` and require an answer starting with `ok`. When `control.sock` does not exist or
+refuses the connection (modulesd is not running), the API runs
+[`wazuh-manager-service-control`](#wazuh-manager-service-control) itself, as `wm_control` would, and logs
+`Control socket has not been created. Using wazuh-manager-service-control` (or the connection error) as a
+warning in `logs/api.log`, followed by `Manager restart accepted by wazuh-manager-service-control` (or `run
+by`) at info level; on a worker restarted through the master these lines go to the worker's
+`logs/cluster.log`. A manager whose modulesd died can still be restarted remotely.
 
 | Error | When |
 |-------|------|
-| `1901` *Control socket has not been created* | `control.sock` does not exist (modulesd is not running) |
-| `1902` *Connection to control socket failed* | The socket exists but the connection failed |
+| `1903` *The manager service-control helper could not be run* | The socket is unavailable and the helper could not be started (missing, wrong owner or mode) |
+| `1904` *The manager service-control helper refused the restart request* (or *reload*) | The socket is unavailable and the helper refused the request, did not accept it within 5 seconds, or its check refused the restart within 4 seconds of accepting it; the message carries the helper's exit code and output |
 | `1014` *Error communicating with socket* | The answer did not start with `ok` (for example `err Service control rejected action`), or the exchange failed |
 
 Both routes require the `cluster:read` and `cluster:restart` RBAC actions.
@@ -100,17 +125,33 @@ modulesd and becomes `root` before running:
 
 | Action | systemd is PID 1 | No systemd |
 |--------|------------------|------------|
-| `restart` | `/usr/bin/systemctl restart wazuh-manager.service` | `bin/wazuh-manager-control restart` |
-| `reload` | polls `systemctl is-active wazuh-manager.service` once a second, up to 60 times: `active` → `systemctl reload wazuh-manager.service`; `inactive` or `failed` → `bin/wazuh-manager-control reload`; any other state, or a failed query → wait | `bin/wazuh-manager-control reload` |
+| `restart` | `bin/wazuh-manager-control check`, then `/usr/bin/systemctl restart wazuh-manager.service` | `bin/wazuh-manager-control restart` (it runs the same checks before stopping anything) |
+| `reload` | polls `systemctl is-active wazuh-manager.service` once a second, up to 60 times: `active` → `bin/wazuh-manager-control check`, then `systemctl reload wazuh-manager.service`; `inactive` or `failed` → `bin/wazuh-manager-control reload`; any other state, or a failed query → wait | `bin/wazuh-manager-control reload` (it runs the same checks before stopping anything) |
+
+The unit's `ExecStop` stops every daemon before its `ExecStart` checks anything, so before handing a
+restart or reload to systemd the helper runs [`wazuh-manager-control check`](../../architecture.md#wazuh-manager-control)
+— the configuration, the credentials and every daemon's `-t`, without stopping or starting anything — as
+`root`, with the cleared environment. When the check fails the helper calls no `systemctl`, prints
+`wazuh-manager-service-control: the manager configuration or credentials check failed; the manager was not restarted`
+on standard error and exits `1`: the manager keeps running on its previous configuration, and the check's own
+`wazuh-manager-control: ERROR: …` lines are in `logs/wazuh-manager.log`. Without systemd,
+`wazuh-manager-control restart|reload` runs the same checks before it stops anything.
 
 The unit's `ExecReload` is `wazuh-manager-control reload`, which restarts every daemon except
-`wazuh-manager-remoted`, so agent connections stay up.
+`wazuh-manager-remoted`, so agent connections stay up. On a systemd host this helper and the unit keep the
+daemons inside the unit; `wazuh-manager-control` run by hand acts on the daemons itself and does not (see
+[`wazuh-manager-control`](../../architecture.md#wazuh-manager-control)).
 
 On any refusal it prints `wazuh-manager-service-control: <reason>` on standard error and exits `1`;
 `-h` prints the usage and exits `0`. When modulesd runs it, standard error is not the manager log, so
 the only trace there is modulesd's `Privileged service control rejected or could not execute '<action>'`.
-A failure after acceptance (for example `cannot determine a safe manager service state` when the unit
-never settles during the 60 seconds) leaves no trace in `logs/wazuh-manager.log` at all; check
+The check runs **after** acceptance. Through `wm_control` the API has already answered `200` when a check
+refuses the restart, and the reason is only in `logs/wazuh-manager.log` (the check's lines). When the API runs
+the helper itself (modulesd is down), it waits up to 4 seconds after acceptance: a refusal in that time comes
+back as error `1904`; a later one is logged in `logs/api.log` (`The manager restart run by
+wazuh-manager-service-control failed (exit code 1): …`). Any
+other failure after acceptance (for example `cannot determine a safe manager service state` when the unit
+never settles during the 60 seconds) leaves no trace in `logs/wazuh-manager.log`; check
 `systemctl status wazuh-manager` or `wazuh-manager-control status`.
 
 Run by hand (as `root`), it does exactly what an API restart does:
@@ -118,6 +159,24 @@ Run by hand (as `root`), it does exactly what an API restart does:
 ```bash
 /var/wazuh-manager/bin/wazuh-manager-service-control restart
 ```
+
+### A daemon that dies is not restarted
+
+Restart and reload are the only recovery the manager has: nothing supervises the daemons. The unit
+(`Type=forking`, `RemainAfterExit=yes`, no `Restart=`) stays `active` when one of them crashes;
+`wazuh-manager-control status` reports it as `not running...` and exits `1`. Recover with
+`wazuh-manager-control check && systemctl restart wazuh-manager`, or remotely with `PUT /cluster/restart`.
+A plain `systemctl restart` runs no check before its `ExecStop`: when the start that follows refuses the
+configuration or a credential, the manager stays **down** until it is fixed and started. Check first (the
+API's helper does), or use `wazuh-manager-control restart`, which refuses before it stops anything but
+relaunches the daemons outside the unit (see
+[`wazuh-manager-control`](../../architecture.md#wazuh-manager-control)). While one of the core daemons
+(`wazuh-manager-modulesd`, `-remoted`, `-analysisd`, `-db`) is down, the Server API still answers login, the
+status queries and the restart and reload endpoints, and every other call with error `1017`. `wm_control`
+lives in `wazuh-manager-modulesd`; with modulesd down the API runs `wazuh-manager-service-control` itself
+(see [Manager restart and reload](#manager-restart-and-reload)), so `PUT /cluster/restart` still works as long
+as `wazuh-manager-apid` runs. From a shell, `wazuh-manager-control start` relaunches only the dead daemon,
+outside the unit.
 
 ## Agent restart and reload
 
@@ -161,7 +220,7 @@ def send_control_command(command):
     sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
     sock.connect('/var/wazuh-manager/queue/sockets/control.sock')
     sock.send(command.encode())
-    response = sock.recv(1024).decode().strip()
+    response = sock.recv(1024).decode().rstrip('\x00')
     sock.close()
     return response
 

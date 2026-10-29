@@ -1429,7 +1429,6 @@ class WazuhDBQuery(object):
         self.query_operators = QUERY_OPERATORS
         self.query_separators = QUERY_SEPARATORS
         self.special_characters = "\'\""
-        self.wildcard_equal_fields = set()
         self.query_regex = QUERY_REGEX
         self.date_fields = date_fields
         self.extra_fields = extra_fields
@@ -1452,15 +1451,9 @@ class WazuhDBQuery(object):
             except ValueError:
                 pass
 
-        # Replace special characters with wildcards
-        for sp_char in self.special_characters:
-            if isinstance(query_filter['value'], str) and sp_char in query_filter['value']:
-                if query_filter['operator'] != 'LIKE':
-                    # If original operator was not LIKE, do not append % at the beginning and end of the string
-                    self.wildcard_equal_fields.add(query_filter['field'])
-
-                query_filter['value'] = query_filter['value'].replace(sp_char, '_')
-                query_filter['operator'] = 'LIKE'
+        # Quotes in the value are kept as they are and the operator is never changed: every value is bound (SQLite) or
+        # rendered as a quoted literal (`WazuhDBBackend._substitute_params`), so rewriting a quote into a LIKE wildcard
+        # would only turn `!=` into a positive match and lose the exact match of `=`.
 
     def _add_limit_to_query(self):
         if self.limit:
@@ -1608,7 +1601,7 @@ class WazuhDBQuery(object):
             if q_filter['value'] is not None:
                 self.request[field_filter] = q_filter['value'] if field_name != "version" else re.sub(
                     r'([a-zA-Z])([v])', r'\1 \2', q_filter['value'])
-                if q_filter['operator'] == 'LIKE' and q_filter['field'] not in self.wildcard_equal_fields:
+                if q_filter['operator'] == 'LIKE':
                     self.request[field_filter] = "%{}%".format(self.request[field_filter])
                 self.query += '{} {} :{}'.format(self.fields[field_name].split(' as ')[0], q_filter['operator'],
                                                  field_filter)
@@ -1827,12 +1820,13 @@ class WazuhDBQueryGroupBy(WazuhDBQuery):
         self.filter_fields = filter_fields
 
     def _get_total_items(self):
-        # take total items without grouping, and add the group by clause just after getting total items
-        WazuhDBQuery._get_total_items(self)
+        # Group before counting, so the total is the number of rows answered (one per combination of the fields),
+        # as everywhere else, and not the number of items grouped in them (that is each row's 'count').
         self.select.add('count')
         self.inverse_fields['COUNT(*)'] = 'count'
         self.fields['count'] = 'COUNT(*)'
         self.query += ' GROUP BY ' + ','.join(map(lambda x: self.fields[x], self.filter_fields['fields']))
+        WazuhDBQuery._get_total_items(self)
 
     def _add_select_to_query(self):
         WazuhDBQuery._add_select_to_query(self)

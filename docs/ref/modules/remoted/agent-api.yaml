@@ -43,9 +43,12 @@ info:
     With `<remote><https><verification_mode>full`, any route (including `GET /` and `GET /cacerts`)
     answers `403` `{"error":"Client certificate does not match the peer address","code":403}` when
     the client certificate does not carry the connecting peer's address. A path that matches no
-    route answers `404` `{"error":"not_found"}` and closes the connection. Any route can also
-    answer `500` `{"error":"Internal server error","code":500}` when its handler fails
-    unexpectedly, whether or not the route lists it.
+    route -- or a known path with the wrong method: no route answers `405` -- answers `404`
+    `{"error":"not_found"}` and closes the connection. Every route can answer `500`
+    `{"error":"Internal server error","code":500}` when its handler fails unexpectedly (the auth
+    gateway catches the exception), and every authenticated route the capacity `503`
+    `{"error":"Service unavailable","code":503}` of the in-flight byte budget and the per-agent
+    share, in the flat shape, whatever error shape the route's own answers use.
 
     The module's own statistics are not served here. They live on a separate manager-local Unix
     socket (`queue/sockets/remote-admin-http.sock`), unreachable from an agent.
@@ -277,8 +280,8 @@ paths:
         expected) is an invalid token.
 
         The `request-target` is the raw path + query exactly as sent (no percent-decoding, no query
-        reordering, no normalization) and is matched by the router as is; the token does not cover it,
-        nor the body.
+        reordering, no normalization) and is matched by the router as is -- case-sensitive, and any
+        percent-encoded path answers 404 -- ; the token does not cover it, nor the body.
 
         The body MAY optionally be compressed with `Content-Encoding: zstd`. Decompression happens
         only **after** authentication succeeds, so an unauthenticated request never spends CPU/memory
@@ -471,12 +474,12 @@ paths:
             examples:
               startup:
                 summary: Sent on connect or after a configuration reload
-                value: { type: startup, version: "5.0.0" }
+                value: { type: startup, version: "v5.0.0" }
               notify:
-                summary: Periodic keepalive, with host metadata on first report or on change
+                summary: Periodic keepalive; the agent carries `host` on every notify once it has collected it
                 value:
                   type: notify
-                  agent: { version: "5.0.0" }
+                  agent: { version: "v5.0.0" }
                   host:
                     hostname: ubuntu-test
                     architecture: x86_64
@@ -490,7 +493,10 @@ paths:
           description: |
             Message accepted. The body depends on `type`: `startup` returns the agent's limits,
             cluster name and groups; `notify` returns change-detection hashes, `ca_generation`, the
-            VD feed offset and any pending tasks; `shutdown` returns an empty object.
+            VD feed offset and any pending tasks; `shutdown` returns an empty object. On a `notify`
+            every field is always present: `tasks` is `[]` when there is no work, `config_hash` is
+            the literal `"0"` when the selector resolves to no `merged.mg` (or it cannot be hashed),
+            and `config_token` is never empty (`default` for an empty selector).
           content:
             application/json:
               schema:
@@ -537,11 +543,15 @@ paths:
             `startup` only -- `notify` deliberately skips the version check to keep the hot path
             fast. A well-formed version that is merely too high for this manager's policy is a `409`
             instead; see that response.
-            The route's own rejections carry only `error` (no `code`); the shared ones keep the
-            `ErrorResponse` shape.
+            The route's own rejections carry only `error` (no `code`); the shared ones
+            (`Missing required header: protocol-version`, `Unsupported protocol-version`,
+            `Malformed compressed body`) keep the `ErrorResponse` shape.
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/CodeOnlyError" }
+              schema:
+                oneOf:
+                  - $ref: "#/components/schemas/CodeOnlyError"
+                  - $ref: "#/components/schemas/ErrorResponse"
               examples:
                 invalidBody:
                   summary: Empty body or over 64 KiB
@@ -557,8 +567,11 @@ paths:
                   summary: startup only, malformed version
                   value: { error: "invalid_version" }
                 invalidHostInfo:
-                  summary: notify only (a host field over its length limit)
+                  summary: notify only (host or host.os not an object, a host field not a string, or one over its length limit)
                   value: { error: "invalid_host_info" }
+                missingProtocolVersion:
+                  summary: Shared rejection, flat shape with `code`
+                  value: { error: "Missing required header: protocol-version", code: 400 }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "409":
           description: |
@@ -571,8 +584,8 @@ paths:
             state and re-trying `startup` on a slow cadence, whereas the `400` above is terminal.
 
             Either way the manager also writes `status_code = invalid_version` to global.db; a
-            well-formed version is stored as reported, while a malformed one is stored as the `N/A`
-            sentinel.
+            well-formed version is stored with a `v` prefix (`5.1.0` as `v5.1.0`), while a malformed
+            one is stored as the `N/A` sentinel.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/CodeOnlyError" }
@@ -581,11 +594,18 @@ paths:
                   value: { error: "invalid_version" }
         "413": { $ref: "#/components/responses/PayloadTooLarge" }
         "415": { $ref: "#/components/responses/UnsupportedContentEncoding" }
+        "500": { $ref: "#/components/responses/InternalError" }
         "503":
           description: |
-            A dependency this route needs is not answering, so the request cannot be served right
-            now -- but the condition clears by itself when that dependency returns, and the agent
-            retries it as back-pressure rather than as a server fault.
+            Two producers, two shapes. The shared transport answers the flat
+            `{"error":"Service unavailable","code":503}` when this agent already holds its share
+            (`remoted.max_requests_per_agent` open requests or `remoted.max_inflight_bytes_per_agent`
+            decoded bytes) or the in-flight byte budget is exhausted; see `ServiceUnavailable`.
+
+            The route itself answers `dependency_unavailable` when a dependency it needs is not
+            answering, so the request cannot be served right now -- but the condition clears by
+            itself when that dependency returns, and the agent retries it as back-pressure rather
+            than as a server fault.
 
             Today that dependency is `wazuh-manager-db`, consulted to resolve the agent's groups.
             `startup` always answers this way when it is unavailable; `notify` only when there is
@@ -601,14 +621,19 @@ paths:
           content:
             application/json:
               schema:
-                type: object
-                required: [error, dependency]
-                properties:
-                  error: { type: string, enum: [dependency_unavailable] }
-                  dependency: { type: string, example: wazuh-db }
+                oneOf:
+                  - type: object
+                    required: [error, dependency]
+                    properties:
+                      error: { type: string, enum: [dependency_unavailable] }
+                      dependency: { type: string, example: wazuh-db }
+                  - $ref: "#/components/schemas/ErrorResponse"
               examples:
                 dependencyUnavailable:
                   value: { error: "dependency_unavailable", dependency: "wazuh-db" }
+                capacity:
+                  summary: The shared transport's own shed, flat shape
+                  value: { error: "Service unavailable", code: 503 }
 
   /stateful:
     post:
@@ -738,8 +763,10 @@ paths:
         `resource_id` must equal the selector `/control` handed that agent as `config_token` -- the
         same string `config_hash` was computed over -- and anything else is `403`. The selector is
         resolved from the agent registry `/control` maintains, so no wazuh-db round trip is added
-        here; an agent whose membership was never established (no `/control/startup`, or an evicted
-        entry) is denied rather than served. The comparison is exact, multigroup order included.
+        here; an agent whose membership was never read from wazuh-db (no successful `startup` or
+        group-refreshing `notify` since remoted started, or an evicted entry -- a `shutdown` alone
+        creates an entry with no membership) is denied rather than served. The comparison is exact,
+        multigroup order included.
 
         **`wpk` downloads are not authorized this way.** A package's authority is the agent's
         pending upgrade task, which `/control` does not carry, so any authenticated agent may still
@@ -818,14 +845,25 @@ paths:
         "413": { $ref: "#/components/responses/PayloadTooLarge" }
         "415": { $ref: "#/components/responses/UnsupportedContentEncoding" }
         "500":
-          description: An unexpected `errno` while opening or stat-ing the resource.
+          description: An unexpected `errno` while opening or stat-ing the resource, or a handler failure.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/ErrorResponse" }
               examples:
                 internalError:
                   value: { error: "Internal server error", code: 500 }
-        "503": { $ref: "#/components/responses/ServiceUnavailable" }
+        "503":
+          description: |
+            Out of capacity: the in-flight byte budget is exhausted, or this agent already holds
+            its share (`remoted.max_requests_per_agent` open requests or
+            `remoted.max_inflight_bytes_per_agent` decoded bytes). This route has no downstream
+            service, so nothing else produces it. No `Retry-After`.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+              examples:
+                serviceUnavailable:
+                  value: { error: "Service unavailable", code: 503 }
 
   /stats:
     post:
@@ -888,6 +926,7 @@ paths:
         "401": { $ref: "#/components/responses/Unauthorized" }
         "413": { $ref: "#/components/responses/PayloadTooLarge" }
         "415": { $ref: "#/components/responses/UnsupportedContentEncoding" }
+        "500": { $ref: "#/components/responses/InternalError" }
         "503": { $ref: "#/components/responses/ServiceUnavailable" }
 
   /config:
@@ -947,6 +986,7 @@ paths:
         "401": { $ref: "#/components/responses/Unauthorized" }
         "413": { $ref: "#/components/responses/PayloadTooLarge" }
         "415": { $ref: "#/components/responses/UnsupportedContentEncoding" }
+        "500": { $ref: "#/components/responses/InternalError" }
         "503": { $ref: "#/components/responses/ServiceUnavailable" }
 
   /scan/vd:
@@ -995,11 +1035,15 @@ paths:
         "400":
           description: |
             Malformed or rejected request (including agent id `000`, which is `invalid_agent_id`).
-            The route's own rejections carry only `error`; the shared ones keep the `ErrorResponse`
-            shape.
+            The route's own rejections carry only `error`; the shared ones
+            (`Missing required header: protocol-version`, `Unsupported protocol-version`,
+            `Malformed compressed body`) keep the `ErrorResponse` shape.
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/CodeOnlyError" }
+              schema:
+                oneOf:
+                  - $ref: "#/components/schemas/CodeOnlyError"
+                  - $ref: "#/components/schemas/ErrorResponse"
               examples:
                 invalidBody:
                   summary: Empty or over 4 KiB
@@ -1029,14 +1073,23 @@ paths:
                   value: { error: version_mismatch, current_version: 12345680 }
         "413": { $ref: "#/components/responses/PayloadTooLarge" }
         "415": { $ref: "#/components/responses/UnsupportedContentEncoding" }
+        "500": { $ref: "#/components/responses/InternalError" }
         "503":
           description: |
             Not accepted; the agent retries on its next notify cycle and its pending state survives.
-            The `error` code names the actual cause for an operator reading the exchange.
+            The `error` code names the actual cause for an operator reading the exchange. The
+            shared transport's capacity shed (byte budget, or this agent's own share) answers the
+            flat `{"error":"Service unavailable","code":503}` instead.
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/ScanVdError" }
+              schema:
+                oneOf:
+                  - $ref: "#/components/schemas/ScanVdError"
+                  - $ref: "#/components/schemas/ErrorResponse"
               examples:
+                capacity:
+                  summary: The shared transport's own shed, flat shape
+                  value: { error: "Service unavailable", code: 503 }
                 scanQueueFull:
                   summary: Also indexer_unavailable / task_create_failed
                   value: { error: "scan_queue_full" }
@@ -1106,7 +1159,7 @@ paths:
               enroll:
                 value:
                   name: web-server-01
-                  version: "5.0.0"
+                  version: "v5.0.0"
                   groups: "default,web-servers"
                   ip: 10.0.0.15
       responses:
@@ -1375,6 +1428,20 @@ components:
               value: { error: "Invalid client authentication", code: stale_token }
             invalidSignature:
               value: { error: "Invalid client authentication", code: invalid_signature }
+            invalidRequest:
+              summary: No usable `Authorization` header (challenge `Bearer error="invalid_request"`)
+              value: { error: "Invalid client authentication", code: invalid_request }
+
+    InternalError:
+      description: |
+        The route's handler raised an unexpected error; the auth gateway catches it and answers
+        this flat body so the daemon keeps running. A bug signal, not a condition to retry around.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ErrorResponse" }
+          examples:
+            internalError:
+              value: { error: "Internal server error", code: 500 }
 
     PayloadTooLarge:
       description: |
@@ -1537,21 +1604,27 @@ components:
             The agent's product version. Rejected with `409 invalid_version` if its major or minor
             is higher than the manager's and `<remote><agents><allow_higher_versions>` is `no`, or
             with `400 invalid_version` if it is malformed (empty, over 64 characters, or not
-            `[v]MAJOR[.MINOR[.PATCH[.EXTRA]]]` with an optional `+`/`-` suffix).
-          example: "5.0.0"
+            `[v]MAJOR[.MINOR[.PATCH[.EXTRA]]]` with an optional `+`/`-` suffix). `5.0.0`, `v5.0.0` and
+            `V5.0.0` are all accepted; the manager stores the version as `v5.0.0`.
+          example: "v5.0.0"
 
     ControlNotify:
       type: object
       required: [type]
       description: |
-        Periodic keepalive. Unlike `startup`, `version` lives under `agent`. `host` is optional and
-        sent on the first keepalive or whenever a value changes.
+        Periodic keepalive. Unlike `startup`, `version` lives under `agent`. `host` is optional:
+        the 5.x agent sends it on every notify once it has collected its host metadata (its own
+        `ip` from the first successful connection on), and the manager writes it to wazuh-db only
+        when the keepalive throttle allows (the first host-carrying notify always does).
       properties:
         type: { type: string, enum: [notify] }
         agent:
           type: object
           properties:
-            version: { type: string, example: "5.0.0" }
+            version:
+              type: string
+              description: Not validated here (only `startup` validates it); stored with a `v` prefix (`v5.0.0`) whichever spelling arrives.
+              example: "v5.0.0"
         host:
           type: object
           properties:
@@ -1674,18 +1747,30 @@ components:
             alone is accepted) unless `authd`'s `<auth><agents><allow_higher_versions>` is `yes` --
             not `remote`'s, which governs `/control`. `authd`'s local socket performs no version
             check of its own, so this endpoint enforces it.
-          example: "5.0.0"
+          example: "v5.0.0"
         groups:
           type: string
-          description: Comma-separated, passed through to `authd` unchanged.
+          description: |
+            Comma-separated, passed through to `authd` unchanged. A list naming no group (`""`,
+            `","`) is the same as no `groups` field: the agent joins `default`.
           example: "default,web-servers"
         ip:
           type: string
           description: |
-            A syntactic IPv4/IPv6/CIDR value, or one of two sentinels: `any` (no override) or `src`
-            (use the observed peer address -- the agent-side sentinel, mirroring legacy port 1515's
-            own wire sentinel). Never forwarded to `authd` literally as `src`. If the manager's
-            `use_source_ip` is enabled it overrides whatever the body claims.
+            An IPv4 or IPv6 address, optionally with a mask, or one of two sentinels: `any` (no
+            override) or `src` (use the observed peer address -- the agent-side sentinel, mirroring
+            legacy port 1515's own wire sentinel). Never forwarded to `authd` literally as `src`. An
+            IPv4 mask may be a prefix length or dotted (`255.255.0.0`), and an IPv4 address may come
+            IPv4-mapped (`::ffff:a.b.c.d`); a dotted mask is rewritten as its prefix length
+            (`10.22.0.0/255.255.0.0` -> `10.22.0.0/16`). Answered `400` (`Invalid field: ip`) for anything
+            else: a non-contiguous dotted mask, a leading `!`, an empty or
+            out-of-range prefix. A value this check accepts can still be refused by `authd`, which
+            judges the address again before registering it: `::/0` passes here and is answered `400`
+            with authd's own code, `{"error":{"code":9006,"message":"No such IP"}}`. Port 1515's `IP:`
+            field takes the same grammar. The response's
+            `ip` is the registered form: a full-length mask (`/32`, `/128`) is the bare address,
+            and is a duplicate (`409`) of an agent already registered at it. If the manager's `use_source_ip` is
+            enabled it overrides whatever the body claims.
           example: 10.0.0.15
         key_hash:
           type: string

@@ -49,7 +49,10 @@ namespace
 
     wazuh::uds_http::HttpResponse badRequest(const char* reason)
     {
-        return wazuh::uds_http::HttpResponse::json(400, std::string {R"({"error":")"} + reason + R"(","code":400})");
+        // Built as JSON, not concatenated, so a reason holding quotes still yields a valid body. Ordered to
+        // keep the documented {"error":...,"code":...} shape.
+        return wazuh::uds_http::HttpResponse::json(400,
+                                                   nlohmann::ordered_json {{"error", reason}, {"code", 400}}.dump());
     }
 
     /// One body for both 503 causes on purpose: "the module is stopping" and "the indexer is
@@ -173,10 +176,10 @@ namespace invsync::endpoints::stats
                 if (const auto decision = goneThrottle.record())
                 {
                     LOGFN_DEBUG1(logFn(),
-                                 "Rejected %llu stats document(s) with 503 in the last %d s: the module is shutting "
+                                 "Rejected %llu stats document(s) with 503 %s: the module is shutting "
                                  "down and the indexer connector is already gone.",
                                  static_cast<unsigned long long>(decision.total),
-                                 wazuh::uds_http::LogThrottle::kDefaultWindowSeconds);
+                                 decision.period().c_str());
                 }
                 responder->send(serviceUnavailable());
                 return;
@@ -189,10 +192,10 @@ namespace invsync::endpoints::stats
                 if (const auto decision = unavailableThrottle.record())
                 {
                     LOGFN_WARN(logFn(),
-                               "Rejected %llu stats document(s) with 503 in the last %d s: no configured indexer host "
+                               "Rejected %llu stats document(s) with 503 %s: no configured indexer host "
                                "is currently healthy. Check the <indexer> hosts and that the indexer is running.",
                                static_cast<unsigned long long>(decision.total),
-                               wazuh::uds_http::LogThrottle::kDefaultWindowSeconds);
+                               decision.period().c_str());
                 }
                 responder->send(serviceUnavailable());
                 return;
@@ -233,10 +236,10 @@ namespace invsync::endpoints::stats
                 if (const auto decision = metadataThrottle.record())
                 {
                     LOGFN_DEBUG1(logFn(),
-                                 "Accepted %llu agent stats report(s) in the last %d s with reported groups or "
+                                 "Accepted %llu agent stats report(s) %s with reported groups or "
                                  "host fields left empty because they failed validation (last from agent '%s').",
                                  static_cast<unsigned long long>(decision.total),
-                                 wazuh::uds_http::LogThrottle::kDefaultWindowSeconds,
+                                 decision.period().c_str(),
                                  agentIdIt->second.c_str());
                 }
             }
@@ -260,9 +263,9 @@ namespace invsync::endpoints::stats
             if (const auto decision = indexedThrottle.record())
             {
                 LOGFN_DEBUG1(logFn(),
-                             "Queued %llu agent stats document(s) for indexing in the last %d s.",
+                             "Queued %llu agent stats document(s) for indexing %s.",
                              static_cast<unsigned long long>(decision.total),
-                             wazuh::uds_http::LogThrottle::kDefaultWindowSeconds);
+                             decision.period().c_str());
             }
 
             // The protocol's acknowledgment: an empty object. The agent has nothing to read back.

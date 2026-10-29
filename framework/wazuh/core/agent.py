@@ -95,6 +95,7 @@ class WazuhDBQueryAgents(WazuhDBQuery):
         remove_extra_fields: bool = True,
         distinct: bool = False,
         rbac_negate: bool = True,
+        normalize_versions: bool = True,
     ):
         """Class constructor.
 
@@ -126,10 +127,13 @@ class WazuhDBQueryAgents(WazuhDBQuery):
             Look for distinct values.
         rbac_negate : bool
             Whether to use IN or NOT IN on RBAC resources.
+        normalize_versions : bool
+            Whether to return the agents' versions in the 'vX.Y.Z' form or as stored.
         """
         if filters is None:
             filters = {}
         unify_wazuh_version_format(filters)
+        expand_ipv6_filters(filters)
         if min_select_fields is None:
             min_select_fields = {"id"}
         backend = WazuhDBBackend(query_format="global")
@@ -156,6 +160,7 @@ class WazuhDBQueryAgents(WazuhDBQuery):
             rbac_negate=rbac_negate,
         )
         self.remove_extra_fields = remove_extra_fields
+        self.normalize_versions = normalize_versions
 
     def run(self) -> dict:
         """Execute the query and format the result.
@@ -166,7 +171,7 @@ class WazuhDBQueryAgents(WazuhDBQuery):
             Query result.
         """
         result = super().run()
-        if "version" in self.fields:
+        if "version" in self.fields and getattr(self, "normalize_versions", True):
             self._normalize_retrieved_versions(result)
 
         return result
@@ -354,14 +359,16 @@ class WazuhDBQueryAgents(WazuhDBQuery):
         if field_name == "group" and q_filter["value"] is not None:
             valid_group_operators = {"=", "!=", "~"}
 
+            # Group names are case-sensitive (two names that differ only in case are two groups), so '=' and '!='
+            # match the name exactly: instr() is case-sensitive and, unlike LIKE, has no wildcard characters.
             if q_filter["operator"] == "=":
                 self.query += (
-                    f"(',' || {self.fields[field_name]} || ',') LIKE :{field_filter}"
+                    f"instr(',' || {self.fields[field_name]} || ',', :{field_filter}) > 0"
                 )
-                self.request[field_filter] = f"%,{q_filter['value']},%"
+                self.request[field_filter] = f",{q_filter['value']},"
             elif q_filter["operator"] == "!=":
-                self.query += f"NOT (',' || {self.fields[field_name]} || ',') LIKE :{field_filter}"
-                self.request[field_filter] = f"%,{q_filter['value']},%"
+                self.query += f"NOT instr(',' || {self.fields[field_name]} || ',', :{field_filter}) > 0"
+                self.request[field_filter] = f",{q_filter['value']},"
             elif q_filter["operator"] == "LIKE":
                 self.query += f"{self.fields[field_name]} LIKE :{field_filter}"
                 self.request[field_filter] = f"%{q_filter['value']}%"
@@ -627,6 +634,35 @@ class WazuhDBQueryGroupByAgents(WazuhDBQueryGroupBy, WazuhDBQueryAgents):
         ]
 
         return WazuhDBQuery._format_data_into_dictionary(self)
+
+    def run(self) -> dict:
+        """Execute the query, merging the groups that only differed in how the agent version was stored.
+
+        Agents report their version with or without the leading 'v' ('5.0.0', 'v5.0.0'), and the GROUP BY
+        runs on the stored text, so one version can come back as two groups once normalized. They are
+        merged here, adding up their counts.
+
+        Returns
+        -------
+        dict
+            Query result.
+        """
+        result = super().run()
+        if "version" not in self.filter_fields["fields"] or not self.normalize_versions:
+            return result
+
+        merged = {}
+        for item in result["items"]:
+            key = json.dumps({k: v for k, v in item.items() if k != "count"}, sort_keys=True, default=str)
+            if key in merged:
+                merged[key]["count"] = merged[key].get("count", 0) + item.get("count", 0)
+            else:
+                merged[key] = item
+        # totalItems counts the rows, so it loses the ones merged away.
+        result["totalItems"] -= len(result["items"]) - len(merged)
+        result["items"] = list(merged.values())
+
+        return result
 
 
 class Agent:
@@ -1042,6 +1078,10 @@ class Agent:
             raise e
 
         self.id = data["id"]
+        # authd answers with the address in the form it registered (a full-length mask dropped, a
+        # dotted mask as a prefix length, IPv6 expanded), which is what the agent list will show.
+        if isinstance(data.get("ip"), str):
+            self.ip = data["ip"]
         self.internal_key = data["key"]
         self.key = self.compute_key()
 
@@ -1175,7 +1215,10 @@ class Agent:
 
         if replace:
             if not agent_groups.issubset(set(replace_list)):
-                raise WazuhError(1752)
+                # replace_list holds the groups the caller may modify assignments of: name the ones it may not
+                denied = ', '.join(sorted(agent_groups - set(replace_list)))
+                raise WazuhError(1752, extra_message=f"the caller lacks 'group:modify_assignments' over the "
+                                                     f"agent's current group(s) {denied}")
         else:
             # Check if the group already belongs to the agent
             if group_id in agent_groups:
@@ -1359,6 +1402,54 @@ def unify_wazuh_version_format(filters: dict):
             filters["version"] = f"wazuh {'v' if 'v' not in wv else ''}{wv}"
         elif re.match(r"^wazuh \d+\.\d+\.\d+$", wv, re.IGNORECASE):
             filters["version"] = f"{wv.replace(' ', ' v')}"
+
+
+def expand_ipv6(value: str) -> str:
+    """Write an IPv6 address, or IPv6 network, in the form the agent registry stores it.
+
+    The manager stores IPv6 addresses expanded and in upper case (`OS_ExpandIPv6`), with the prefix length kept
+    unless it is 0. Anything that is not an IPv6 address is returned unchanged.
+
+    Parameters
+    ----------
+    value : str
+        Address, optionally with a `/prefix`.
+
+    Returns
+    -------
+    str
+        The stored form of an IPv6 value, or `value` itself.
+    """
+    if not isinstance(value, str) or ':' not in value:
+        return value
+    address, separator, prefix = value.partition('/')
+    try:
+        expanded = ipaddress.IPv6Address(address).exploded.upper()
+        if separator:
+            prefix_length = int(prefix)
+            if not 0 <= prefix_length <= 128:
+                return value
+            if prefix_length:
+                expanded = f'{expanded}/{prefix_length}'
+    except ValueError:
+        return value
+    return expanded
+
+
+def expand_ipv6_filters(filters: dict):
+    """Write the IPv6 values of the `ip` and `registerIP` filters in the form the agent registry stores them.
+
+    Parameters
+    ----------
+    filters : dict
+        Dictionary field filters required by the user.
+    """
+    for name in ('ip', 'registerIP'):
+        value = filters.get(name)
+        if isinstance(value, list):
+            filters[name] = [expand_ipv6(item) for item in value]
+        elif value is not None:
+            filters[name] = expand_ipv6(value)
 
 
 def format_fields(field_name: str, value: str) -> str:

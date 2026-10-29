@@ -42,10 +42,10 @@ paths:
               $ref: '#/components/schemas/RoutePost_Request'
             example:
               route:
-                name: default
-                namespaceId: standard
+                name: cmsync_standard
+                namespaceId: cmsync_standard_3f9a
                 priority: 1
-                description: Default route
+                description: Route of the standard space
       responses:
         '200':
           $ref: '#/components/responses/GenericSuccess_200'
@@ -154,10 +154,10 @@ paths:
               example:
                 status: OK
                 route:
-                  name: default
-                  namespaceId: standard
+                  name: cmsync_standard
+                  namespaceId: cmsync_standard_3f9a
                   priority: 1
-                  description: Default route
+                  description: Route of the standard space
                   entry_status: ENABLED
                   uptime: 3600
         '400':
@@ -215,7 +215,7 @@ paths:
                   summary: The namespace's policy cannot be rebuilt
                   value:
                     status: ERROR
-                    error: "Failed to reload the route: Failed to create environment with policy 'standard': <details>"
+                    error: "Failed to reload the route: Failed to create environment with policy 'cmsync_standard_3f9a': <details>"
         '500':
           $ref: '#/components/responses/InternalServerError_500'
   /_internal/router/route/patchPriority:
@@ -289,10 +289,10 @@ paths:
               example:
                 status: OK
                 table:
-                - name: default
-                  namespaceId: standard
+                - name: cmsync_standard
+                  namespaceId: cmsync_standard_3f9a
                   priority: 1
-                  description: Default route
+                  description: Route of the standard space
                   entry_status: ENABLED
                   uptime: 3600
         '400':
@@ -314,7 +314,7 @@ paths:
             example:
               session:
                 name: testing
-                namespaceId: standard
+                namespaceId: cmsync_standard_3f9a
                 lifetime: 0
                 description: Manual test session
       responses:
@@ -351,7 +351,7 @@ paths:
                   summary: The namespace's policy has no assets
                   value:
                     status: ERROR
-                    error: "Failed to create the testing environment: Policy 'standard' has no assets"
+                    error: "Failed to create the testing environment: Policy 'cmsync_standard_3f9a' has no assets"
         '500':
           $ref: '#/components/responses/InternalServerError_500'
   /_internal/tester/session/delete:
@@ -581,10 +581,15 @@ paths:
                 $ref: '#/components/schemas/Response'
               examples:
                 bad_event_format:
-                  summary: Event not in `<queue>:<location>:<message>` form
+                  summary: Event shorter than `<queue>:<location>:<message>` allows
                   value:
                     status: ERROR
                     error: 'Error parsing event: Invalid format: event must be at least 5 bytes ("<byte>:<location>:<message>")'
+                missing_queue_separator:
+                  summary: No `:` after the one-byte queue identifier
+                  value:
+                    status: ERROR
+                    error: 'Error parsing event: Invalid format: missing '':'' after the one-byte queue identifier ("<byte>:<location>:<message>")'
                 missing_separator:
                   summary: No unescaped `:` between location and message
                   value:
@@ -646,6 +651,9 @@ paths:
         the MaxMind MMDB files store (they are not mapped to WCS field names).
 
         If a database is not available or the IP is not found in it, its object is empty.
+
+        `ip` must be an IPv4 or IPv6 address literal; any other value (a host name, a CIDR, `not-an-ip`) is
+        refused with 400 `Invalid IP address: <ip>` before any lookup.
       requestBody:
         required: true
         content:
@@ -698,6 +706,11 @@ paths:
                   value:
                     status: ERROR
                     error: IP cannot be empty
+                invalidIp:
+                  summary: Not an IP address
+                  value:
+                    status: ERROR
+                    error: 'Invalid IP address: not-an-ip'
         '500':
           $ref: '#/components/responses/InternalServerError_500'
   /_internal/geo/db/list:
@@ -752,7 +765,10 @@ paths:
       tags:
       - Event Dumper
       summary: Activate the event dumper
-      description: Activates the event dumper (the `event-dumps` stream log channel).
+      description: |
+        Activates the event dumper (the `event-dumps` stream log channel) and logs the INFO line
+        `Event dumper activated: every incoming event is now written to its log`. Like every route, it ignores
+        unknown body fields. The channel's directories stay after deactivation.
       requestBody:
         required: false
         content:
@@ -771,7 +787,7 @@ paths:
       tags:
       - Event Dumper
       summary: Deactivate the event dumper
-      description: Deactivates the event dumper.
+      description: Deactivates the event dumper and logs the INFO line `Event dumper deactivated`.
       requestBody:
         required: false
         content:
@@ -875,8 +891,8 @@ paths:
               example:
                 status: OK
                 spaces:
-                - standard
-                - custom
+                - cmsync_standard_3f9a
+                - logtest_8c41d2
         '400':
           $ref: '#/components/responses/BadRequest_400'
         '500':

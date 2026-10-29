@@ -16,6 +16,7 @@
 #include "vd/vdScanLane.hpp"
 
 #include <gtest/gtest.h>
+#include <json.hpp>
 
 #include <chrono>
 #include <future>
@@ -191,6 +192,11 @@ TEST(SyncEndpointTest, GarbageIs400)
     ASSERT_TRUE(responder->captured.has_value());
     EXPECT_EQ(400, responder->captured->status);
     EXPECT_NE(std::string::npos, responder->captured->body.find(R"("code":400)"));
+
+    // Whatever the validator's reason says, the reply is valid JSON carrying it.
+    const auto reply = nlohmann::json::parse(responder->captured->body, nullptr, /*allow_exceptions=*/false);
+    ASSERT_TRUE(reply.is_object()) << responder->captured->body;
+    EXPECT_TRUE(reply.contains("error") && reply.at("error").is_string()) << responder->captured->body;
 }
 
 TEST(SyncEndpointTest, AnIdentityMismatchIs403)

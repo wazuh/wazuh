@@ -45,6 +45,7 @@ if(ENGINE_BUILD_TEST)
       api::cmcrud
       GTest::gtest_main
       cmcrud::mocks
+      router::mocks
       api::adapter::test
   )
 

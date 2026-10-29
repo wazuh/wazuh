@@ -26,13 +26,24 @@ Event parseLegacyEvent(std::string_view rawEvent, const json::Json& agentMetadat
     auto parseEvent = std::make_shared<json::Json>();
 
     // "<byte>:a:b" is at least 5 bytes.
-    if (rawEvent.size() < 5 || rawEvent[1] != ':')
+    if (rawEvent.size() < 5)
     {
         throw std::runtime_error("Invalid format: event must be at least 5 bytes (\"<byte>:<location>:<message>\")");
     }
+    if (rawEvent[1] != ':')
+    {
+        throw std::runtime_error(
+            "Invalid format: missing ':' after the one-byte queue identifier (\"<byte>:<location>:<message>\")");
+    }
 
-    // Extract the queue identifier
+    // Extract the queue identifier. The indexer stores it as a signed byte, so a value above 0x7F would be decoded and
+    // then refused at indexing time, lost uncounted: refuse it here, where the drop is counted as malformed.
     const int queue = static_cast<unsigned char>(rawEvent[0]);
+    if (queue > MAX_QUEUE_ID)
+    {
+        throw std::runtime_error(fmt::format(
+            "Invalid format: queue identifier 0x{:02X} is not a 7-bit byte (0x00..0x{:02X})", queue, MAX_QUEUE_ID));
+    }
     parseEvent->setInt(queue, EVENT_QUEUE_ID);
 
     // Extract location, start searching at index 2 (first character of location).

@@ -80,7 +80,9 @@
  * ca_path[512], ca_certificate_path[512], ciphers[256]) that secure.c's HandleSecure() copies
  * these values into via snprintf. Each limit is one less than its buffer size, to leave room for the NUL terminator.
  * A value that doesn't fit must be rejected here instead of silently truncated: past
- * this point it is a plain char* with no length limit until it reaches that buffer. */
+ * this point it is a plain char* with no length limit until it reaches that buffer.
+ * The manager configuration schema mirrors each limit as the field's maxLength, so
+ * `wazuh-manager-conf validate` refuses the same values: change both together. */
 #define REMOTED_HTTPS_BIND_ADDR_MAX_LEN     255
 #define REMOTED_HTTPS_GLOBAL_PREFIX_MAX_LEN 255
 #define REMOTED_HTTPS_CERTIFICATE_MAX_LEN   511

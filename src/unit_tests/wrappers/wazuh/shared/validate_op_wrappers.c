@@ -59,6 +59,12 @@ int __wrap_OS_IsValidIP(const char *ip_address, os_ip *final_ip) {
         if (ret == 2) {
             os_calloc(1, sizeof(os_ipv4), final_ip->ipv4);
             ret = 1;
+        } else if (ret == 3) {
+            /* -3: a parsed IPv4 host, as the real parser leaves it (full-length netmask), for callers
+             * that read the netmask back (the registered form of an address). */
+            os_calloc(1, sizeof(os_ipv4), final_ip->ipv4);
+            final_ip->ipv4->netmask = 0xFFFFFFFF;
+            ret = 1;
         }
     }
 

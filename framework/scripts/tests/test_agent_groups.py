@@ -16,6 +16,7 @@ with patch('wazuh.core.common.wazuh_uid'):
         wazuh.rbac.decorators.expose_resources = RBAC_bypasser
         from scripts import agent_groups
         from wazuh import agent
+        from wazuh.core.exception import WazuhError, WazuhInternalError
 
 
 @patch('scripts.agent_groups.exit')
@@ -59,7 +60,7 @@ async def test_show_group(print_mock: MagicMock):
 
     async def forward_function(func, f_kwargs):
         return AffectedItems(affected_items=[{'id': 1, 'name': 'a', 'count': 1}, {'id': 2, 'name': 'b', 'count': 2}],
-                             failed_items={'a': 'b'})
+                             failed_items={WazuhError(1701): {'0'}})
 
     with patch('scripts.agent_groups.cluster_utils.forward_function', side_effect=forward_function) as forward_mock:
         agent_id = '1'
@@ -68,8 +69,10 @@ async def test_show_group(print_mock: MagicMock):
         print_mock.assert_has_calls([call("The agent 'a' with ID '1' belongs to groups: Null.")])
         print_mock.reset_mock()
 
-        await agent_groups.show_group('0')
-        print_mock.assert_has_calls([call('a')])
+        # A failed item is raised, so the command reports it and exits non-zero.
+        with pytest.raises(WazuhError, match='.* 1701 .*'):
+            await agent_groups.show_group('0')
+        print_mock.assert_not_called()
 
 
 @pytest.mark.asyncio
@@ -174,18 +177,18 @@ async def test_unset_group(print_mock):
 
     # All groups of an unknown agent
     with patch('scripts.agent_groups.cluster_utils.forward_function',
-               return_value=AffectedItems([], {'Agent does not exist': {'999'}})) as forward_mock:
-        await agent_groups.unset_group(agent_id='999', quiet=True)
+               return_value=AffectedItems([], {WazuhError(1701): {'999'}})) as forward_mock:
+        with pytest.raises(WazuhError, match='.* 1701 .*'):
+            await agent_groups.unset_group(agent_id='999', quiet=True)
         forward_mock.assert_called_once()
-        print_mock.assert_called_once_with('Agent does not exist')
-        print_mock.reset_mock()
+        print_mock.assert_not_called()
 
     # The removal fails
     with patch('scripts.agent_groups.cluster_utils.forward_function',
-               return_value=AffectedItems([], {'a': {'testing'}})):
-        await agent_groups.unset_group(agent_id='99', group_id='testing', quiet=True)
-        print_mock.assert_called_once_with('a')
-        print_mock.reset_mock()
+               return_value=AffectedItems([], {WazuhError(1734): {'testing'}})):
+        with pytest.raises(WazuhError, match='.* 1734 .*'):
+            await agent_groups.unset_group(agent_id='99', group_id='testing', quiet=True)
+        print_mock.assert_not_called()
 
     # Cancelled
     with patch('scripts.agent_groups.cluster_utils.forward_function') as forward_mock:
@@ -209,7 +212,7 @@ async def test_remove_group(print_mock):
             AffectedItems.called = True
 
     async def forward_function(func, f_kwargs):
-        return AffectedItems(affected_items=[{'testing': ['a', 'b']}], failed_items={'a': 'b'})
+        return AffectedItems(affected_items=[{'testing': ['a', 'b']}], failed_items={WazuhError(1710): {'testing'}})
 
     with patch('scripts.agent_groups.cluster_utils.forward_function', side_effect=forward_function) as forward_mock:
         with patch('scripts.agent_groups.get_stdin', return_value='y') as get_stdin_mock:
@@ -220,9 +223,9 @@ async def test_remove_group(print_mock):
             print_mock.reset_mock()
             get_stdin_mock.reset_mock()
 
-            await agent_groups.remove_group(group_id='testing', quiet=True)
-            print_mock.assert_has_calls([call('a')])
-            print_mock.reset_mock()
+            with pytest.raises(WazuhError, match='.* 1710 .*'):
+                await agent_groups.remove_group(group_id='testing', quiet=True)
+            print_mock.assert_not_called()
             get_stdin_mock.reset_mock()
 
         with patch('scripts.agent_groups.get_stdin', return_value='n'):
@@ -244,7 +247,8 @@ async def test_set_group(print_mock):
             AffectedItems.called = True
 
     async def forward_function(func, f_kwargs, is_async):
-        return AffectedItems(affected_items=[{'testing': ['agent0', 'agent1']}], failed_items={'a': 'b'})
+        return AffectedItems(affected_items=[{'testing': ['agent0', 'agent1']}],
+                             failed_items={WazuhError(1701): {'002'}})
 
     with patch('scripts.agent_groups.cluster_utils.forward_function', side_effect=forward_function) as forward_mock:
         with patch('scripts.agent_groups.get_stdin', return_value='y') as get_stdin_mock:
@@ -258,9 +262,9 @@ async def test_set_group(print_mock):
             print_mock.reset_mock()
             get_stdin_mock.reset_mock()
 
-            await agent_groups.set_group(agent_id=2, group_id='testing', quiet=True)
-            print_mock.assert_has_calls([call('a')])
-            print_mock.reset_mock()
+            with pytest.raises(WazuhError, match='.* 1701 .*'):
+                await agent_groups.set_group(agent_id=2, group_id='testing', quiet=True)
+            print_mock.assert_not_called()
             get_stdin_mock.reset_mock()
 
         with patch('scripts.agent_groups.get_stdin', return_value='n'):
@@ -527,3 +531,27 @@ async def test_main(print_mock, usage_mock, show_groups_mock, show_agents_with_g
     await agent_groups.main()
     invalid_option_mock.assert_called_once_with("Missing agent ID or group.")
     invalid_option_mock.reset_mock()
+
+
+@pytest.mark.parametrize('error, expected_output', [
+    (None, None),
+    (WazuhError(1701), 'Error 1701: Agent does not exist'),
+    (WazuhInternalError(1000), 'Error 1000: Wazuh Internal Error'),
+    (ValueError('boom'), 'Internal error: boom'),
+])
+@patch('builtins.print')
+def test_run(print_mock, error, expected_output):
+    """Every error is printed as `Error <code>: <message>` (or as an internal error) and exits with 1."""
+    async def main():
+        if error:
+            raise error
+
+    with patch('scripts.agent_groups.main', side_effect=main):
+        exit_code = agent_groups.run(MagicMock(debug=False))
+
+    if error is None:
+        assert exit_code == 0
+        print_mock.assert_not_called()
+    else:
+        assert exit_code == 1
+        print_mock.assert_called_once_with(expected_output)

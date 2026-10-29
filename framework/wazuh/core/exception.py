@@ -10,6 +10,10 @@ from wazuh.core.common import AGENT_NAME_LEN_LIMIT, MAX_GROUPS_PER_MULTIGROUP, M
 
 GENERIC_ERROR_MSG = "Wazuh Internal Error. See log for more detail"
 DOCU_VERSION = 'current' if __version__ == '' else '.'.join(__version__.split('.')[:2]).lstrip('v')
+# The sections and fields of wazuh-manager.conf are those of the manager configuration schema.
+MANAGER_CONF_REFERENCE_REMEDIATION = ('See the manager configuration reference for the sections and fields of '
+                                      'wazuh-manager.conf, or run `/var/wazuh-manager/bin/wazuh-manager-conf dump` '
+                                      'on the node to list them with their effective values')
 
 class WazuhException(Exception):
     """
@@ -51,21 +55,14 @@ class WazuhException(Exception):
         # Configuration: 1100 - 1199
         1101: {'message': 'Requested component does not exist'},
         1102: {'message': 'Invalid section',
-               'remediation': f'Please, visit the official documentation (https://documentation.wazuh.com/'
-                              f'{DOCU_VERSION}/user-manual/reference/ossec-conf/index.html) '
-                              'to get more information about configuration sections'},
+               'remediation': MANAGER_CONF_REFERENCE_REMEDIATION},
         1103: {'message': 'Invalid field in section',
-               'remediation': f'Please, visit the official documentation (https://documentation.wazuh.com/'
-                              f'{DOCU_VERSION}/user-manual/reference/ossec-conf/index.html) '
-                              'to get more information about configuration sections'},
+               'remediation': MANAGER_CONF_REFERENCE_REMEDIATION},
         1104: {'message': 'Invalid type',
                'remediation': 'Insert a valid type'},
         1105: 'Error reading API configuration',
         1106: {'message': 'Requested section not present in configuration',
-               'remediation': 'Please, check your configuration file. '
-                              f'You can visit the official documentation (https://documentation.wazuh.com/'
-                              f'{DOCU_VERSION}/user-manual/reference/ossec-conf/index.html) '
-                              'to get more information about configuration sections'},
+               'remediation': f'Please, check your configuration file. {MANAGER_CONF_REFERENCE_REMEDIATION}'},
         1107: 'Internal options file not found',
         1108: 'Value not found in internal_options.conf',
         1109: 'Option must be a digit',
@@ -169,7 +166,7 @@ class WazuhException(Exception):
                'remediation': 'The necessary size for the key is 64 characters at least'
                },
         1710: {'message': 'The group does not exist',
-               'remediation': 'Please, use `GET /agents/groups` to find all available groups'
+               'remediation': 'Please, use `GET /groups` to find all available groups'
                },
         1711: {'message': 'The group already exists',
                'remediation': 'Please, use another group ID'
@@ -195,7 +192,7 @@ class WazuhException(Exception):
                'remediation': 'Please enable authd or check if there is any error'
                },
         1727: {'message': 'Error listing group files',
-               'remediation': 'Please, use `GET /agents/groups/:group_id/files` to get all available group files'
+               'remediation': 'Please, use `GET /groups/{group_id}/files` to get all available group files'
                },
         1728: {'message': 'Invalid node type',
                'remediation': f'Valid types are `master` and `worker`. Please, visit https://documentation.wazuh.com/'
@@ -257,9 +254,10 @@ class WazuhException(Exception):
                               'is still listed'
                },
         1768: {'message': 'Enrollment token refused',
-               'remediation': 'The address must be one of the names in the listener certificate '
-                              '(remote.https.certificate) and the certificate must be signed by '
-                              'remote.https.ca_certificate; see the detail'
+               'remediation': 'The detail names the reason. A request field (address, description, prefix, ttl) '
+                              'must be corrected as it says; a refusal about the listener certificate means the '
+                              'address must be one of the names in remote.https.certificate, signed by '
+                              'remote.https.ca_certificate'
                },
         1769: {'message': 'Enrollment tokens can only be managed on the master node',
                'remediation': 'Send the request to the master node; workers only replicate the token store'
@@ -302,6 +300,15 @@ class WazuhException(Exception):
         1901: {'message': 'Control socket has not been created'
                },
         1902: {'message': 'Connection to control socket failed'
+               },
+        1903: {'message': 'The manager service-control helper could not be run',
+               'remediation': 'Check that `bin/wazuh-manager-service-control` is installed as `root:wazuh-manager` '
+                              'with mode 4750, or restart the manager on the node with `systemctl restart '
+                              'wazuh-manager`'
+               },
+        1904: {'message': 'The manager service-control helper refused the {action} request ({detail})',
+               'remediation': 'Run `wazuh-manager-control check` as root on the node to see why, fix the cause and '
+                              'send the request again'
                },
         1908: {'message': 'Error validating configuration',
                'remediation': 'Please, fix the corrupted files'
@@ -533,7 +540,7 @@ class WazuhException(Exception):
                               f'configuration-file'},
         6006: {'message': 'Too many login attempts are being processed',
                'remediation': 'Try again later'},
-        6002: {'message': 'The body type is not the one specified in the content-type'},
+        6002: {'message': 'The request body has no content-type or one the operation does not accept'},
         6003: {'message': 'Error trying to load the JWT secret',
                'remediation': 'Make sure you have the right permissions: WAZUH_PATH/api/configuration/security/'
                               'jwt_secret'},
@@ -832,12 +839,13 @@ class WazuhTooManyRequests(WazuhError):
     _default_title = "Too Many Requests"
 
 
-class WazuhNotAcceptable(WazuhError):
+class WazuhUnsupportedMediaType(WazuhError):
     """
-    This type of exception is raised as a controlled response to a not acceptable request
+    This type of exception is raised as a controlled response to a request body whose content type is missing or is
+    not one the operation accepts
     """
     _default_type = "about:blank"
-    _default_title = "Not Acceptable"
+    _default_title = "Unsupported Media Type"
 
 class IndexerUnavailableError(WazuhIndexerError):
     """

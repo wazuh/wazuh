@@ -19,7 +19,7 @@ Most `GET` endpoints that return a list accept these standard parameters (`prett
 | `offset` | int | `0` | First element to return (max: 2,147,483,647) |
 | `limit` | int | `500` | Max elements to return (1 to 100,000) |
 | `search` | string | — | Free-text search (prefix `-` for complementary) |
-| `sort` | string | — | Sort by fields (`+` asc, `-` desc, dot notation for nested) |
+| `sort` | string | — | Sort by fields (comma-separated, dot notation for nested); one leading `+` (asc, default) or `-` (desc) applies to the whole list, e.g. `-name,id` |
 | `select` | string | — | Fields to return (comma-separated) |
 | `q` | string | — | Query filter (see [Query filter syntax](#query-filter-syntax)) |
 | `distinct` | boolean | `false` | Return distinct values |
@@ -115,11 +115,13 @@ curl -k -X GET "https://localhost:55000/agents?select=id,name,status,ip&sort=-id
   -H "Authorization: Bearer $TOKEN"
 ```
 
-Key filters: `agents_list`, `status`, `older_than`, `os.type`, `os.platform`, `os.version`, `os.major`, `os.minor`, `os.arch`, `os.name`, `version`, `group`, `name`, `ip`, `registerIP`.
+Key filters: `agents_list`, `status`, `older_than`, `os.type`, `os.platform`, `os.version`, `os.major`, `os.minor`, `os.arch`, `os.name`, `version`, `group`, `name`, `ip`, `registerIP` (an exact match against the stored text; IPv4, IPv6 and CIDR values such as `10.0.0.0/24` are accepted, so an agent registered for a range is found by that range; an IPv6 value matches in any spelling, compact or expanded, since it is rewritten to the expanded form the manager stores, for example `fd00:e2e::/64` to `FD00:0E2E:0000:0000:0000:0000:0000:0000/64`). A mask is **not** rewritten: registration stores a single address without its mask and a network as `<address>/<prefix length>`, so `10.250.0.1/32` or `10.250.6.0/255.255.255.0` finds nothing — give `10.250.0.1` and `10.250.6.0/24`.
+
+`version` is rewritten to the form a 4.x agent's version is stored in: `4.14.3`, `v4.14.3` and `wazuh 4.14.3` all become `wazuh v4.14.3`, which matches a 4.x agent's stored `Wazuh v4.14.3`. A 5.x agent's version is stored as `v5.0.0`, without the `Wazuh` prefix, so the `version` filter **never matches a 5.x agent**; `q` is not rewritten, so `q=version~5.0.0` (contains) finds the agents of that version in either stored form. Responses show both generations as `vX.Y.Z`. `group` matches a group name exactly, case included: `Web` and `web` are two groups. Inside `q` an IPv6 value is not rewritten and must be given in the stored, expanded form.
 
 #### Add agent
 
-**`POST /agents`** — Create a new agent (`name` required; `ip` defaults to the one detected). Returns the agent ID and registration key.
+**`POST /agents`** — Create a new agent (`name` required; `ip` takes an address, a network in CIDR form or `any`, and defaults to `any`, so the agent may connect from any address). Returns the agent ID and registration key.
 
 ```bash
 curl -k -X POST "https://localhost:55000/agents?pretty=true" \
@@ -319,6 +321,8 @@ curl -k -X PUT "https://localhost:55000/security/user/revoke" \
 ### MITRE ATT&CK
 
 The bundled dataset is MITRE ATT&CK Enterprise **v19.2** (STIX 2.0 bundle from github.com/mitre/cti), loaded into `var/db/mitre.db` at installation time.
+`GET /mitre/metadata` does not report that release: its `mitre_version` is the bundle's STIX
+`spec_version` (`2.0`), and `db_version` the version of the database layout.
 
 **`GET /mitre/techniques`** — Query MITRE techniques with full details (tactics, mitigations, software, groups, references).
 
@@ -327,8 +331,8 @@ The bundled dataset is MITRE ATT&CK Enterprise **v19.2** (STIX 2.0 bundle from g
 curl -k -X GET "https://localhost:55000/mitre/techniques?search=phishing&limit=3&pretty=true" \
   -H "Authorization: Bearer $TOKEN"
 
-# Get by technique ID
-curl -k -X GET "https://localhost:55000/mitre/techniques?technique_ids=T1566&pretty=true" \
+# Get by ATT&CK ID (T1566); `technique_ids` takes the STIX IDs (attack-pattern--…) instead
+curl -k -X GET "https://localhost:55000/mitre/techniques?q=external_id%3DT1566&pretty=true" \
   -H "Authorization: Bearer $TOKEN"
 ```
 
@@ -371,12 +375,12 @@ Other MITRE endpoints: `/mitre/tactics`, `/mitre/groups`, `/mitre/software`, `/m
 | PUT | `/agents/group/{group_id}/restart` | Restart group (v5.0.0+) |
 | PUT | `/agents/group/{group_id}/reload` | Reload group config (v5.0.0+) |
 | GET | `/agents/no_group` | Without group |
-| GET | `/agents/outdated` | Outdated agents |
+| GET | `/agents/outdated` | Agents older than the manager (versions compared as versions, `5.0.0` equals `v5.0.0`; only major, minor and patch count, as in the upgrade check, so `v5.0.0-rc1` is not outdated against a `v5.0.0` manager) |
 | PUT | `/agents/upgrade` | Upgrade agents |
 | PUT | `/agents/upgrade_custom` | Custom upgrade |
 | PUT | `/agents/scan/vulnerability` | Request on-demand vulnerability scan |
-| GET | `/agents/uninstall` | Check whether the calling user has permission to uninstall the given agents |
-| GET | `/agents/stats/distinct` | Distinct fields |
+| GET | `/agents/uninstall` | Check whether the calling user holds `agent:uninstall` (resource `*:*:*`); it takes no agent list |
+| GET | `/agents/stats/distinct` | Distinct fields: one row per combination of the `fields` values, with the `count` of agents that have it; `total_affected_items` counts the rows |
 | GET | `/agents/summary` | Summary |
 | GET | `/agents/summary/os` | OS summary |
 | GET | `/agents/summary/status` | Status summary |
@@ -388,7 +392,7 @@ Other MITRE endpoints: `/mitre/tactics`, `/mitre/groups`, `/mitre/software`, `/m
 | POST | `/groups` | Create group |
 | DELETE | `/groups` | Delete groups |
 | GET | `/groups/{group_id}/agents` | Group agents |
-| GET | `/groups/{group_id}/configuration` | Group config |
+| GET | `/groups/{group_id}/configuration` | Group config, as JSON: one entry per set of `<agent_config>` filters, with those `filters` and the `config` of every block that has them. Sections are keyed by tag (a wodle by its `name`); `syscheck`, `rootcheck`, `sca`, `syscollector` and `client` sections are merged into one object, any other section is a list with one object per occurrence, including sections the manager does not know |
 | PUT | `/groups/{group_id}/configuration` | Update group config |
 | GET | `/groups/{group_id}/files` | Group files |
 | GET | `/groups/{group_id}/files/{file_name}` | File content |
@@ -493,7 +497,10 @@ field operator value[;connector field operator value]
 | `<` | Less than |
 | `~` | Contains (SQL `LIKE`) |
 
-Any other operator (`>=`, `<=`, `~=`) is rejected with error `1409` (*Invalid query operator*).
+Any other operator (`>=`, `<=`, `~=`) is rejected: with error `1409` (*Invalid query operator*) on the
+collections whose `q` is turned into a `wazuh-manager-db` query (agents), and with error `1407` (*Query does
+not match expected format*) on the collections the framework filters in memory (groups, MITRE, users,
+roles, policies, enrollment tokens and cluster nodes, for example).
 Clauses can be grouped with parentheses: `(status=active,status=pending);os.platform=ubuntu`.
 
 ### Connectors
@@ -527,7 +534,9 @@ to Python's own cross-type comparison: `=` matches nothing and `!=` matches ever
 whose type the field cannot address is a property of the record, not of the query -- the same
 clause evaluates normally against a differently-typed record -- so it excludes only its own record,
 and `q` is reported invalid with a 400 once, after the whole collection, only when no record could
-evaluate the clause at all. The `search` parameter is case-insensitive and matches the
+evaluate the clause at all. A field that no record has is not an error here: `q=nosuchfield=x` answers
+`200` with no items, where the agents collection, filtered in SQL, refuses it with error `1408`
+(*Field does not exist*, listing the available fields). The `search` parameter is case-insensitive and matches the
 rendered value, so `search=true` also finds records
 whose boolean field is set. `~` is case-sensitive on a boolean field, unlike `=`/`!=`/`search`: it
 matches the exact rendered value (`q=revoked~True`, `q=revoked~False`), not `true`/`false`.
@@ -543,7 +552,8 @@ curl -k -X GET "https://localhost:55000/agents?q=status%3Dactive" \
 curl -k -X GET "https://localhost:55000/agents?q=status%3Dactive%3Bos.name~Ubuntu" \
   -H "Authorization: Bearer $TOKEN"
 
-# Agents whose OS platform is not Windows
+# Agents whose OS platform is set and is not Windows (`!=` never matches a NULL field, so agents that have
+# never connected, which have no OS yet, are left out)
 curl -k -X GET "https://localhost:55000/agents?q=os.platform!%3Dwindows" \
   -H "Authorization: Bearer $TOKEN"
 ```
@@ -561,14 +571,13 @@ Errors follow a structured JSON response format.
 | 400       | Bad Request       | Invalid parameters       |
 | 401       | Unauthorized      | Invalid credentials, or an invalid or expired token |
 | 403       | Forbidden         | RBAC denied, or the client IP is blocked after too many failed logins (`6000`) |
-| 404       | Not Found         | Invalid endpoint, or the named resource (group, cluster node) does not exist |
+| 404       | Not Found         | Invalid endpoint, or the named resource does not exist: a group (`1710`), a file in a group (`1006`), a cluster node (`1730`), an enrollment token (`1767`) |
 | 405       | Method Not Allowed | Invalid HTTP method     |
-| 406       | Not Acceptable    | The body does not match its `Content-Type` (`6002`) |
-| 413       | Payload Too Large | Request body too large   |
-| 415       | Unsupported Media Type | A `Content-Type` the operation does not accept |
+| 413       | Payload Too Large | Request body too large. The body carries `"error": 413` (the HTTP status, not an error code) |
+| 415       | Unsupported Media Type | A `Content-Type` the operation does not accept, or a body sent with no `Content-Type` at all (`6002`), on every operation that takes a body, the `run_as` login included |
 | 417       | Expectation Failed | An `Expect` header other than `100-continue` |
 | 429       | Too Many Requests | Rate limit exceeded (`6001` authenticated, `6005` unauthenticated), or too many logins already waiting for their password check (`6006`) |
-| 500       | Internal Error    | Check manager logs       |
+| 500       | Internal Error    | Check `logs/api.log`; also a request that exceeded `intervals.request_timeout` without `wait_for_complete=true` (`3021`), or a core daemon that is down (`1017`, below) |
 
 ### Exception Hierarchy
 
@@ -592,6 +601,32 @@ All exceptions inherit from `WazuhException` (defined in `core/exception.py`), w
 | 8000–8999 | Vulnerability scan errors | Scanner or feed not ready, scan queue full |
 
 Error responses include a `dapi_errors` field in cluster deployments.
+
+Agents are the exception to the 404 rule. Every endpoint that names agents, the single-agent paths
+included (`GET /agents/{agent_id}/key`, `PUT /agents/{agent_id}/group/{group_id}`,
+`PUT /agents/{agent_id}/restart`), answers `200` with the unknown agent as a failed item (`1701`), the
+same shape a list of agents gets, where some may exist and others not. A missing group or cluster node
+named in the same request is still a `404`, except in the node lists of `GET /cluster/nodes`,
+`GET /cluster/healthcheck` and `GET /cluster/configuration/validation` (`nodes_list`): there an unknown
+node is a failed item (`1730`, *Node does not exist*) of a `200` answer, next to the nodes that exist.
+
+While one of the core daemons (`wazuh-manager-modulesd`, `wazuh-manager-analysisd`, `wazuh-manager-db`,
+`wazuh-manager-remoted`) is stopped, failed or restarting, requests are refused with `500` and error
+`1017`, naming the node and the daemons. Logging in and out, the status and health endpoints
+(`GET /cluster/status`, `GET /cluster/healthcheck`, `GET /cluster/{node_id}/status`) and
+`PUT /cluster/restart` and `PUT /cluster/reload` keep working, so a node can be inspected and restarted
+remotely. They work without `wazuh-manager-modulesd` too: when its control socket (`control.sock`) does not
+exist or refuses the connection, the node runs `bin/wazuh-manager-service-control restart|reload` itself
+(the helper modulesd would run) and logs a `WARNING` naming the socket error. The node waits up to 5
+seconds for the helper to accept, then up to 4 more for the configuration and credentials check it runs
+before handing the action to systemd. A refusal in either is a failed item `1904` (*The manager
+service-control helper refused the restart request*, with its exit code and reason, such as `the manager
+configuration or credentials check failed; the manager was not restarted`), and the manager keeps running; a
+helper that cannot be run is `1903`. A failure the node no longer waits for (a longer check, or `systemctl`
+itself) is logged as an `ERROR` in `api.log` (`cluster.log` on a worker): `The manager restart run by
+wazuh-manager-service-control failed (exit code 1): …`. While modulesd runs, the request goes through its
+control socket instead, which answers as soon as the helper accepts. See
+[the control module](../control/README.md#manager-restart-and-reload).
 
 These codes are the framework's catalog (`framework/wazuh/core/exception.py`). The API process has a
 separate, startup-only catalog (`api/api/api_exception.py`) whose codes overlap numerically: `2000`

@@ -431,16 +431,16 @@ components:
             title: "Method Not Allowed"
             detail: "Specified method is invalid for this resource"
 
-    WrongContentTypeResponse:
-      description: "Response to report an invalid content-type"
+    UnsupportedMediaTypeResponse:
+      description: "The request body is sent with a content-type the operation does not accept, or with no
+      Content-Type header at all (error 6002)"
       content:
         application/json:
           schema:
             $ref: '#/components/schemas/RequestError'
           example:
-            title: "Wazuh Error"
-            detail: "The body type is not the one specified in the content-type"
-            error: 6002
+            title: "Unsupported Media Type"
+            detail: "Invalid Content-type (text/plain), expected ['application/json']"
 
     RequestTooLargeResponse:
       description: "The request body exceeded the size accepted for this endpoint. Two limits can
@@ -460,6 +460,18 @@ components:
             title: "Request Entity Too Large"
             detail: "Maximum content size limit (10485760) exceeded (10534912 bytes read)"
             error: 413
+
+    ExpectationFailedResponse:
+      description: "The request carries an `Expect` header other than `100-continue`. The check applies to every
+      request, before its body is read"
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/RequestError'
+          example:
+            title: "Expectation failed"
+            detail: "Unknown Expect"
+            code: 417
 
     TooManyRequestsResponse:
       description: "Maximum number of request per minute reached"
@@ -980,8 +992,8 @@ components:
           type: string
           format: names
         ip:
-          description: "If this is not included, the API will get the IP automatically. Allowed values:
-          IP, IP/NET, ANY"
+          description: "Address the agent is registered with. If this is not included, the agent is
+          registered with `any`. Allowed values: IP, IP/NET, ANY"
           type: string
           format: alphanumeric_symbols
         force:
@@ -3801,7 +3813,7 @@ components:
     version:
       in: query
       name: version
-      description: "Filter by agents version using one of the following formats: 'X.Y.Z', 'vX.Y.Z', 'wazuh X.Y.Z' or 'wazuh vX.Y.Z'. For example: '4.4.0'"
+      description: "Filter by agents version using one of the following formats: 'X.Y.Z', 'vX.Y.Z', 'wazuh X.Y.Z' or 'wazuh vX.Y.Z'. For example: '4.4.0'. The value is rewritten to the form a 4.x agent's version is stored in ('Wazuh vX.Y.Z'), so it matches 4.x agents only: a 5.x agent's version is stored as 'vX.Y.Z' and is never matched. Use `q=version~X.Y.Z` to find agents of either generation"
       schema:
         type: string
         format: alphanumeric
@@ -3942,17 +3954,19 @@ components:
       in: query
       name: ip
       description: "Filter by the IP used by the agent to communicate with the manager. If it's not available, it will
-      have the same value as registerIP"
+      have the same value as registerIP. IPv4, IPv6 and CIDR values (`192.168.1.0/24`) are accepted; the value must
+      match exactly"
       schema:
         type: string
-        format: alphanumeric
+        format: ip_filter
     registerIP:
       in: query
       name: registerIP
-      description: "Filter by the IP used when registering the agent"
+      description: "Filter by the IP used when registering the agent. IPv4, IPv6 and CIDR values (`192.168.1.0/24`,
+      `any`) are accepted; the value must match exactly"
       schema:
         type: string
-        format: alphanumeric
+        format: ip_filter
     force_single_group:
       in: query
       name: force_single_group
@@ -4029,6 +4043,7 @@ components:
           - 'node:id'
           - 'policy:id'
           - 'role:id'
+          - 'rule:id'
           - 'user:id'
 
 tags:
@@ -4090,6 +4105,8 @@ paths:
                 license_url: "https://github.com/wazuh/wazuh/blob/v5.0.0-rc2/LICENSE"
                 hostname: "wazuh"
                 timestamp: "2019-04-02T08:08:11Z"
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
 
   /agents:
     delete:
@@ -4318,10 +4335,12 @@ paths:
           $ref: '#/components/responses/PermissionDeniedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
-        '406':
-          $ref: '#/components/responses/WrongContentTypeResponse'
         '413':
           $ref: '#/components/responses/RequestTooLargeResponse'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaTypeResponse'
+        '417':
+          $ref: '#/components/responses/ExpectationFailedResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
@@ -5008,10 +5027,12 @@ paths:
           $ref: '#/components/responses/PermissionDeniedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
-        '406':
-          $ref: '#/components/responses/WrongContentTypeResponse'
         '413':
           $ref: '#/components/responses/RequestTooLargeResponse'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaTypeResponse'
+        '417':
+          $ref: '#/components/responses/ExpectationFailedResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
@@ -5112,8 +5133,12 @@ paths:
           $ref: '#/components/responses/PermissionDeniedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
-        '406':
-          $ref: '#/components/responses/WrongContentTypeResponse'
+        '413':
+          $ref: '#/components/responses/RequestTooLargeResponse'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaTypeResponse'
+        '417':
+          $ref: '#/components/responses/ExpectationFailedResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
     get:
@@ -5355,7 +5380,9 @@ paths:
       tags:
         - Agents
       summary: "List outdated agents"
-      description: "Return the list of outdated agents"
+      description: "Return the list of agents whose version is older than the manager's. Versions are compared as
+      versions, with or without their leading 'v': an agent on the manager's version or a newer one is not listed, and
+      neither is one that never reported a version."
       operationId: api.controllers.agent_controller.get_agent_outdated
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/agent:read'
@@ -5645,7 +5672,8 @@ paths:
         - Agents
       summary: "List agents distinct"
       description: "Return all the different combinations that agents have for the selected fields. It also indicates
-      the total number of agents that have each combination"
+      the total number of agents that have each combination (`count`). `total_affected_items` is the number of
+      combinations"
       operationId: api.controllers.agent_controller.get_agent_fields
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/agent:read'
@@ -5679,7 +5707,7 @@ paths:
                     - os:
                         version: "N/A"
                       count: 1
-                  total_affected_items: 3
+                  total_affected_items: 2
                   total_failed_items: 0
                   failed_items: []
                 message: 'All selected agents information was returned'
@@ -5975,6 +6003,10 @@ paths:
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '413':
           $ref: '#/components/responses/RequestTooLargeResponse'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaTypeResponse'
+        '417':
+          $ref: '#/components/responses/ExpectationFailedResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
@@ -6203,10 +6235,12 @@ paths:
           $ref: '#/components/responses/ResourceNotFoundResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
-        '406':
-          $ref: '#/components/responses/WrongContentTypeResponse'
         '413':
           $ref: '#/components/responses/RequestTooLargeResponse'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaTypeResponse'
+        '417':
+          $ref: '#/components/responses/ExpectationFailedResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
@@ -6965,7 +6999,8 @@ paths:
       summary: "Get node config"
       description: "Return the manager configuration (/etc/wazuh-manager/wazuh-manager.conf) used in node {node_id}: the effective document
       (schema defaults applied) as JSON, or the file as XML text with 'raw'. The 'section' and 'field' parameters will be
-      ignored if 'raw' parameter is provided."
+      ignored if 'raw' parameter is provided. 'field' is looked up inside 'section': without it the request is refused
+      with error 1103."
       operationId: api.controllers.cluster_controller.get_configuration_node
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/cluster:read'
@@ -7091,10 +7126,12 @@ paths:
           $ref: '#/components/responses/ResourceNotFoundResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
-        '406':
-          $ref: '#/components/responses/WrongContentTypeResponse'
         '413':
           $ref: '#/components/responses/RequestTooLargeResponse'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaTypeResponse'
+        '417':
+          $ref: '#/components/responses/ExpectationFailedResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
@@ -7418,15 +7455,15 @@ paths:
                     - timestamp: '2021-05-27T12:18:08Z'
                       tag: wazuh-manager-remoted
                       level: debug
-                      description: " TCP socket 20 already in keystore. Updating..."
+                      description: "TCP socket 20 already in keystore. Updating..."
                     - timestamp: '2021-05-27T12:18:08Z'
                       tag: wazuh-manager-remoted
                       level: debug
-                      description: " Agent '003' group is 'default'"
+                      description: "Agent '003' group is 'default'"
                     - timestamp: '2021-05-27T12:18:08Z'
                       tag: wazuh-manager-remoted
                       level: debug
-                      description: " Agent '003' with group 'default' file 'merged.mg' MD5
+                      description: "Agent '003' with group 'default' file 'merged.mg' MD5
                         '9a016508cea1e997ab8569f5cfab30f5'"
                   total_affected_items: 3
                   total_failed_items: 0
@@ -7525,7 +7562,12 @@ paths:
       tags:
         - Cluster
       summary: "Restart nodes"
-      description: "Restart all nodes in the cluster or a list of them"
+      description: "Restart all nodes in the cluster or a list of them. This operation is answered while a core daemon is down (no error 1017), so a node can be
+      recovered remotely. Each node hands the action to the manager's control module; when its control
+      socket is missing or refuses the connection (wazuh-manager-modulesd is not running), the node runs
+      the service-control helper itself and logs a WARNING. A refusal by the helper, including the
+      configuration and credentials check it runs first, is a failed item with error 1904 and the manager
+      keeps running; a helper that cannot be run is error 1903."
       operationId: api.controllers.cluster_controller.put_restart
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/cluster:read'
@@ -7572,7 +7614,13 @@ paths:
       tags:
         - Cluster
       summary: "Reload Wazuh manager"
-      description: "Restart Wazuh manager daemons in all nodes in the cluster or a list of them, keeping active agent connections"
+      description: "Restart Wazuh manager daemons in all nodes in the cluster or a list of them, keeping active
+      agent connections. This operation is answered while a core daemon is down (no error 1017), so a node can be
+      recovered remotely. Each node hands the action to the manager's control module; when its control
+      socket is missing or refuses the connection (wazuh-manager-modulesd is not running), the node runs
+      the service-control helper itself and logs a WARNING. A refusal by the helper, including the
+      configuration and credentials check it runs first, is a failed item with error 1904 and the manager
+      keeps running; a helper that cannot be run is error 1903."
       operationId: api.controllers.cluster_controller.put_reload
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/cluster:read'
@@ -7822,7 +7870,9 @@ paths:
       tags:
         - MITRE
       summary: "Get MITRE metadata"
-      description: "Return the metadata from MITRE database"
+      description: "Return the metadata from MITRE database: 'db_version' is the version of the database layout and
+      'mitre_version' the STIX specification version of the bundle it was built from (spec_version, for example 2.0),
+      not the ATT&CK release."
       operationId: api.controllers.mitre_controller.get_metadata
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/mitre:read'
@@ -8262,6 +8312,8 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/InvalidCredentialsResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
@@ -8354,6 +8406,10 @@ paths:
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '413':
           $ref: '#/components/responses/RequestTooLargeResponse'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaTypeResponse'
+        '417':
+          $ref: '#/components/responses/ExpectationFailedResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
@@ -8458,6 +8514,8 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
@@ -8539,10 +8597,10 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
-        '406':
-          $ref: '#/components/responses/WrongContentTypeResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
@@ -8787,12 +8845,16 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
-        '406':
-          $ref: '#/components/responses/WrongContentTypeResponse'
         '413':
           $ref: '#/components/responses/RequestTooLargeResponse'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaTypeResponse'
+        '417':
+          $ref: '#/components/responses/ExpectationFailedResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
@@ -8841,10 +8903,10 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
-        '406':
-          $ref: '#/components/responses/WrongContentTypeResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
@@ -8901,12 +8963,16 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
-        '406':
-          $ref: '#/components/responses/WrongContentTypeResponse'
         '413':
           $ref: '#/components/responses/RequestTooLargeResponse'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaTypeResponse'
+        '417':
+          $ref: '#/components/responses/ExpectationFailedResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
@@ -9063,10 +9129,12 @@ paths:
           $ref: '#/components/responses/PermissionDeniedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
-        '406':
-          $ref: '#/components/responses/WrongContentTypeResponse'
         '413':
           $ref: '#/components/responses/RequestTooLargeResponse'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaTypeResponse'
+        '417':
+          $ref: '#/components/responses/ExpectationFailedResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
@@ -9179,10 +9247,12 @@ paths:
           $ref: '#/components/responses/PermissionDeniedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
-        '406':
-          $ref: '#/components/responses/WrongContentTypeResponse'
         '413':
           $ref: '#/components/responses/RequestTooLargeResponse'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaTypeResponse'
+        '417':
+          $ref: '#/components/responses/ExpectationFailedResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
@@ -9309,10 +9379,12 @@ paths:
           $ref: '#/components/responses/PermissionDeniedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
-        '406':
-          $ref: '#/components/responses/WrongContentTypeResponse'
         '413':
           $ref: '#/components/responses/RequestTooLargeResponse'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaTypeResponse'
+        '417':
+          $ref: '#/components/responses/ExpectationFailedResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
@@ -9419,12 +9491,16 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
-        '406':
-          $ref: '#/components/responses/WrongContentTypeResponse'
         '413':
           $ref: '#/components/responses/RequestTooLargeResponse'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaTypeResponse'
+        '417':
+          $ref: '#/components/responses/ExpectationFailedResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
@@ -9570,10 +9646,12 @@ paths:
           $ref: '#/components/responses/PermissionDeniedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
-        '406':
-          $ref: '#/components/responses/WrongContentTypeResponse'
         '413':
           $ref: '#/components/responses/RequestTooLargeResponse'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaTypeResponse'
+        '417':
+          $ref: '#/components/responses/ExpectationFailedResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
@@ -9696,10 +9774,12 @@ paths:
           $ref: '#/components/responses/PermissionDeniedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
-        '406':
-          $ref: '#/components/responses/WrongContentTypeResponse'
         '413':
           $ref: '#/components/responses/RequestTooLargeResponse'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaTypeResponse'
+        '417':
+          $ref: '#/components/responses/ExpectationFailedResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
@@ -10133,12 +10213,16 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
-        '406':
-          $ref: '#/components/responses/WrongContentTypeResponse'
         '413':
           $ref: '#/components/responses/RequestTooLargeResponse'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaTypeResponse'
+        '417':
+          $ref: '#/components/responses/ExpectationFailedResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
@@ -10167,6 +10251,8 @@ paths:
           $ref: '#/components/responses/ResponseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':

@@ -3,7 +3,13 @@
 #define _HTTPSRV_SERVER_HPP
 
 #include <algorithm>
+#include <limits>
+#include <map>
 #include <memory>
+#include <mutex>
+#include <optional>
+#include <set>
+#include <string>
 #include <thread>
 
 #include <proc.hpp>
@@ -11,6 +17,13 @@
 // Clamp httplib worker threads to the [2, 16] range based on available hardware.
 #ifndef CPPHTTPLIB_THREAD_POOL_COUNT
 #define CPPHTTPLIB_THREAD_POOL_COUNT ((std::min)(16u, (std::max)(2u, cpp_get_nproc() > 1u ? cpp_get_nproc() - 1u : 1u)))
+#endif
+
+// httplib caps an application/x-www-form-urlencoded body at 8 KiB on its own (413 before any handler runs). The
+// engine never reads form fields, so lift that cap: the configured payload limit (set_payload_max_length) is the
+// only one. This header is the engine's only include of httplib.h, so every engine translation unit agrees.
+#ifndef CPPHTTPLIB_FORM_URL_ENCODED_PAYLOAD_MAX_LENGTH
+#define CPPHTTPLIB_FORM_URL_ENCODED_PAYLOAD_MAX_LENGTH ((std::numeric_limits<std::size_t>::max)())
 #endif
 
 #include <httplib.h>
@@ -33,6 +46,21 @@ private:
     std::filesystem::path m_socketPath;     ///< Socket path where the server is listening
     size_t m_payloadMaxBytes {0};           ///< Maximum allowed payload size in bytes. 0 means unlimited.
     bool m_enableDetailedLogging {true};    ///< Enable detailed request/response logging
+
+    /// Registered methods per literal route path, to tell a wrong method (405) from an unknown route (404).
+    std::map<std::string, std::set<std::string>> m_routeMethods;
+    /// Guards m_routeMethods: routes may be added while the server is serving.
+    mutable std::mutex m_routesMutex;
+
+    /**
+     * @brief Methods registered for a route path, joined for an Allow header ("GET, POST").
+     *
+     * @param path Request path.
+     * @param method Request method.
+     * @return std::optional<std::string> std::nullopt when the path has no route at all; an empty string when it has
+     * one for this method; else the methods it has.
+     */
+    std::optional<std::string> allowedOtherMethods(const std::string& path, const std::string& method) const;
 
     /**
      * @brief Apply the payload size limit to the server.

@@ -541,6 +541,12 @@ char* local_dispatch(const char *input) {
                     ierror = EINVGROUP;
                     goto fail;
                 }
+                // A list naming no group ("", ",") is no list: the agent goes to `default`, which is
+                // what remoted tells it. Passed on, it registered the agent with no group at all
+                // (and wiped the groups of an agent re-enrolling).
+                if (groups[strspn(groups, ",")] == '\0') {
+                    os_free(groups);
+                }
             }
 
             if (get_optional_string_arg(arguments, "key_hash", &key_hash) < 0 ||
@@ -637,7 +643,17 @@ char* local_dispatch(const char *input) {
                     goto fail;
                 }
                 // Self-enrollment shape. force is ignored for workers, as on port 1515: the master
-                // assigns the ID, generates the key, and decides force-replace itself.
+                // assigns the ID, generates the key, and decides force-replace itself. The address
+                // travels in its registered form, which is also what this node answers with.
+                char registered_ip[IPSIZE + 1] = {0};
+                if (strcmp(ip, "any")) {
+                    if (w_auth_registered_ip(ip, registered_ip, sizeof(registered_ip)) != 0) {
+                        mwarn("Not valid IP '%s'", ip);
+                        ierror = ENOIP;
+                        goto fail;
+                    }
+                    ip = registered_ip;
+                }
                 response = local_add_clustered(name, ip, groups, key_hash, token_id, reenroll_kid, reenroll_bearer, source);
             } else if (reenroll_kid) {
                 // force is irrelevant here: nothing is replaced, the agent's own entry is rotated in place,
@@ -811,7 +827,9 @@ char* local_dispatch(const char *input) {
     return output;
 
 fail:
-    merror("ERROR %d: %s.", ERRORS[ierror].code, ERRORS[ierror].message);
+    // No "ERROR" in the text: the logger already prints the level, and "ERROR: ERROR 9022: ..." read
+    // as a stutter.
+    merror("Local request failed with error %d: %s.", ERRORS[ierror].code, ERRORS[ierror].message);
     response = local_create_error_response(ERRORS[ierror].code, ERRORS[ierror].message);
     output = cJSON_PrintUnformatted(response);
     cJSON_Delete(response);
@@ -947,20 +965,15 @@ cJSON* local_add(const char *id,
         goto fail;
     }
 
-    /* Check for duplicate IP */
+    /* Check for duplicate IP, on the form the address is registered in: the IP tree is keyed by the
+     * bare address, so a host written "/32", "/128" or "/255.255.255.255" has to be looked up (and
+     * stored, and answered) without its mask, or it would land next to the agent already there. */
     if (strcmp(ip, "any")) {
-        os_ip *aux_ip;
-        os_calloc(1, sizeof(os_ip), aux_ip);
-
-        if (!OS_IsValidIP(ip, aux_ip)) {
+        if (w_auth_registered_ip(ip, _ip, sizeof(_ip)) != 0) {
             mwarn("Not valid IP '%s'", ip);
-            w_free_os_ip(aux_ip);
             ierror = ENOIP;
             goto fail;
         }
-
-        strncpy(_ip, aux_ip->ip, IPSIZE);
-        w_free_os_ip(aux_ip);
 
         if (index = OS_IsAllowedIP(&keys, _ip), index >= 0) {
             ip_holder = keys.keyentries[index];
@@ -1150,18 +1163,12 @@ static cJSON* local_reenroll(const char *kid, const char *bearer, const char *na
      * may keep its own. No force rules: nothing is replaced, and the secret already proved this caller IS
      * the agent. */
     if (strcmp(ip, "any")) {
-        os_ip *aux_ip;
-        os_calloc(1, sizeof(os_ip), aux_ip);
-
-        if (!OS_IsValidIP(ip, aux_ip)) {
+        // The registered form, as local_add() checks it: a full-length mask is the bare address.
+        if (w_auth_registered_ip(ip, _ip, sizeof(_ip)) != 0) {
             mwarn("Not valid IP '%s'", ip);
-            w_free_os_ip(aux_ip);
             ierror = ENOIP;
             goto fail;
         }
-
-        strncpy(_ip, aux_ip->ip, IPSIZE);
-        w_free_os_ip(aux_ip);
 
         if (other = OS_IsAllowedIP(&keys, _ip), other >= 0 && other != index) {
             mdebug1("Re-enrollment of agent '%s' refused: IP '%s' belongs to agent '%s'.", kid, _ip, keys.keyentries[other]->id);
@@ -1285,7 +1292,7 @@ cJSON* local_add_clustered(const char *name, const char *ip, const char *groups,
         response = local_create_error_response(master_error_code, message);
     } else {
         // Transport failure, or an unparseable response: either way, no clean answer.
-        merror("ERROR %d: %s.", ERRORS[ENOMASTERCOMM].code, ERRORS[ENOMASTERCOMM].message);
+        merror("Error %d: %s.", ERRORS[ENOMASTERCOMM].code, ERRORS[ENOMASTERCOMM].message);
         response = local_create_error_response(ERRORS[ENOMASTERCOMM].code, ERRORS[ENOMASTERCOMM].message);
     }
 

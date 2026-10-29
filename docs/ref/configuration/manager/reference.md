@@ -37,7 +37,7 @@ Options shared by remoted and the task manager's disconnection sweep.
 
 | Option | Type | Default | Constraints | Description |
 |---|---|---|---|---|
-| `agents_disconnection_time` | integer or string | `15m` | >= 1; `^0*[1-9][0-9]*[smhdw]?$` | Time without keep-alives after which an agent is marked disconnected (minimum 1 second; 0 is rejected). |
+| `agents_disconnection_time` | integer or string | `15m` | 1-999999999; `^0*([1-9][0-9]{0,8}s?\|[1-9][0-9]{0,6}m\|[1-9][0-9]{0,4}h\|[1-9][0-9]{0,3}d\|[1-9][0-9]{0,2}w)$` | Time without keep-alives after which an agent is marked disconnected (minimum 1 second; 0 is rejected). |
 
 ## `logging`
 
@@ -59,21 +59,21 @@ wazuh-manager-remoted listeners.
 | `legacy.port` | integer | `1514` | 1-65535 | Listening port. |
 | `legacy.protocol` | list of enum | `["tcp"]` | items one of `tcp`, `udp`; at least 1 item; at most 2 items; unique | Transport protocols to listen on. |
 | `legacy.ipv6` | boolean | `false` |  | Listen on IPv6. |
-| `legacy.local_ip` | string |  | not empty | Bind address. Absent: 0.0.0.0, or every IPv6 interface (::) when ipv6 is enabled; remoted applies that default, not the schema. |
-| `legacy.queue_size` | integer | `131072` | >= 1 | Event queue size (events). Values above 262144 are accepted with a warning. |
-| `legacy.rids_closing_time` | integer or string | `5m` | >= 0; `^[0-9]+[smhdw]?$` | Idle time before a RIDS counter file is closed. |
+| `legacy.local_ip` | string |  | `^((::[fF]{4}:)?(25[0-5]\|2[0-4][0-9]\|1[0-9][0-9]\|[1-9]?[0-9])\.(25[0-5]\|2[0-4][0-9]\|1[0-9][0-9]\|[1-9]?[0-9])\.(25[0-5]\|2[0-4][0-9]\|1[0-9][0-9]\|[1-9]?[0-9])\.(25[0-5]\|2[0-4][0-9]\|1[0-9][0-9]\|[1-9]?[0-9])\|([0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}\|([0-9a-fA-F]{1,4}:){1,6}:[0-9a-fA-F]{1,4}\|([0-9a-fA-F]{1,4}:){1,5}(:[0-9a-fA-F]{1,4}){1,2}\|([0-9a-fA-F]{1,4}:){1,4}(:[0-9a-fA-F]{1,4}){1,3}\|([0-9a-fA-F]{1,4}:){1,3}(:[0-9a-fA-F]{1,4}){1,4}\|([0-9a-fA-F]{1,4}:){1,2}(:[0-9a-fA-F]{1,4}){1,5}\|[0-9a-fA-F]{1,4}:(:[0-9a-fA-F]{1,4}){1,6}\|([0-9a-fA-F]{1,4}:){1,7}:\|:(:[0-9a-fA-F]{1,4}){1,7}\|::)$` | Bind address: one IPv4 or IPv6 address, without a CIDR prefix, netmask or host name. Absent: 0.0.0.0, or every IPv6 interface (::) when ipv6 is enabled; remoted applies that default, not the schema. |
+| `legacy.queue_size` | integer | `131072` | 1-134217728 | Event queue size (events). Values above 262144 are accepted with a warning. wazuh-manager-remoted allocates the whole queue when it starts, one pointer (8 bytes on a 64-bit host) per event slot, before any event arrives, plus the memory of every event waiting in it: the maximum, 134217728, asks for 1 GiB at once. No check compares the value with the memory of the host, so a size it cannot allocate passes wazuh-manager-control check and stops remoted at start. |
+| `legacy.rids_closing_time` | integer or string | `5m` | 1-999999999; `^0*([1-9][0-9]{0,8}s?\|[1-9][0-9]{0,6}m\|[1-9][0-9]{0,4}h\|[1-9][0-9]{0,3}d\|[1-9][0-9]{0,2}w)$` | Idle time before a RIDS counter file is closed (minimum 1 second; 0 is rejected). |
 | `legacy.connection_overtake_time` | integer | `60` | 0-3600 | Seconds before an agent may take over an existing connection. |
 | `https` | mapping |  |  | HTTPS agent listener served by remoted_module. |
 | `https.port` | integer | `1517` | 1-65535 | Listening port. |
-| `https.bind_addr` | string | `0.0.0.0` | not empty | Bind address (IPv4 or IPv6). |
-| `https.global_prefix` | string | `/wazuh-manager/` | `^/([A-Za-z0-9._~-]+/)*[A-Za-z0-9._~-]*$` | Path prefix of every HTTPS route. Must start with '/', may only contain A-Z a-z 0-9 . _ ~ - and '/', no empty, '.' or '..' segments. |
-| `https.certificate` | string | `/etc/wazuh-manager/certs/remoted.pem` |  | Server certificate (PEM). Absolute path directly inside /etc/wazuh-manager/certs: the credential check of wazuh-manager-control start refuses any other location, a relative path included. |
-| `https.key` | string | `/etc/wazuh-manager/certs/remoted-key.pem` |  | Server private key (PEM). Must be set together with 'certificate'. Absolute path directly inside /etc/wazuh-manager/certs: the credential check of wazuh-manager-control start refuses any other location, a relative path included. |
-| `https.ca` | string | `""` |  | CA bundle used to verify agent certificates. Empty = client certificate verification disabled, unless 'verification_mode' is set explicitly, in which case /etc/wazuh-manager/certs/root-ca.pem is used. |
-| `https.ca_certificate` | string | `/etc/wazuh-manager/certs/root-ca.pem` | not empty | CA certificate that signs the listener certificate; served on GET /cacerts and pinned by enrollment tokens. Not the client-verification CA ('ca'). Absolute path directly inside /etc/wazuh-manager/certs: the credential check of wazuh-manager-control start refuses any other location, a relative path included. |
+| `https.bind_addr` | string | `0.0.0.0` | `^((::[fF]{4}:)?(25[0-5]\|2[0-4][0-9]\|1[0-9][0-9]\|[1-9]?[0-9])\.(25[0-5]\|2[0-4][0-9]\|1[0-9][0-9]\|[1-9]?[0-9])\.(25[0-5]\|2[0-4][0-9]\|1[0-9][0-9]\|[1-9]?[0-9])\.(25[0-5]\|2[0-4][0-9]\|1[0-9][0-9]\|[1-9]?[0-9])\|([0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}\|([0-9a-fA-F]{1,4}:){1,6}:[0-9a-fA-F]{1,4}\|([0-9a-fA-F]{1,4}:){1,5}(:[0-9a-fA-F]{1,4}){1,2}\|([0-9a-fA-F]{1,4}:){1,4}(:[0-9a-fA-F]{1,4}){1,3}\|([0-9a-fA-F]{1,4}:){1,3}(:[0-9a-fA-F]{1,4}){1,4}\|([0-9a-fA-F]{1,4}:){1,2}(:[0-9a-fA-F]{1,4}){1,5}\|[0-9a-fA-F]{1,4}:(:[0-9a-fA-F]{1,4}){1,6}\|([0-9a-fA-F]{1,4}:){1,7}:\|:(:[0-9a-fA-F]{1,4}){1,7}\|::)$` | Bind address: one IPv4 or IPv6 address, without a CIDR prefix, netmask or host name. |
+| `https.global_prefix` | string | `/wazuh-manager/` | `^/([A-Za-z0-9._~-]+/)*[A-Za-z0-9._~-]*$` | Path prefix of every HTTPS route, at most 255 characters. Must start with '/', may only contain A-Z a-z 0-9 . _ ~ - and '/', no empty, '.' or '..' segments. |
+| `https.certificate` | string | `/etc/wazuh-manager/certs/remoted.pem` |  | Server certificate (PEM), at most 511 characters. Absolute path directly inside /etc/wazuh-manager/certs: the credential check of wazuh-manager-control start refuses any other location, a relative path included. |
+| `https.key` | string | `/etc/wazuh-manager/certs/remoted-key.pem` |  | Server private key (PEM), at most 511 characters. Must be set together with 'certificate'. Absolute path directly inside /etc/wazuh-manager/certs: the credential check of wazuh-manager-control start refuses any other location, a relative path included. |
+| `https.ca` | string | `""` |  | CA bundle used to verify agent certificates, at most 511 characters. Empty = client certificate verification disabled, unless 'verification_mode' is set explicitly, in which case /etc/wazuh-manager/certs/root-ca.pem is used. |
+| `https.ca_certificate` | string | `/etc/wazuh-manager/certs/root-ca.pem` | not empty | CA certificate that signs the listener certificate, at most 511 characters; served on GET /cacerts and pinned by enrollment tokens. Not the client-verification CA ('ca'). Absolute path directly inside /etc/wazuh-manager/certs: the credential check of wazuh-manager-control start refuses any other location, a relative path included. |
 | `https.verification_mode` | enum |  | one of `none`, `certificate`, `full` | Agent certificate verification. Absent: 'certificate' when 'ca' is set, 'none' otherwise. |
-| `https.ciphers` | string | `TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256` | `^(TLS_AES_128_GCM_SHA256\|TLS_AES_256_GCM_SHA384\|TLS_CHACHA20_POLY1305_SHA256\|TLS_AES_128_CCM_SHA256\|TLS_AES_128_CCM_8_SHA256)(:(TLS_AES_128_GCM_SHA256\|TLS_AES_256_GCM_SHA384\|TLS_CHACHA20_POLY1305_SHA256\|TLS_AES_128_CCM_SHA256\|TLS_AES_128_CCM_8_SHA256))*$` | TLS 1.3 cipher suites the HTTPS listener negotiates. |
-| `https.max_body_size` | integer or string | `10M` | >= 1; `^[0-9]+[bBkKmMgG]?$` | Maximum HTTP request body the transport accepts; a larger request is dropped without a response. Keep it above remoted.auth_max_body_size (internal option, 5 MiB by default). |
+| `https.ciphers` | string | `TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256` | `^(TLS_AES_128_GCM_SHA256\|TLS_AES_256_GCM_SHA384\|TLS_CHACHA20_POLY1305_SHA256\|TLS_AES_128_CCM_SHA256\|TLS_AES_128_CCM_8_SHA256)(:(TLS_AES_128_GCM_SHA256\|TLS_AES_256_GCM_SHA384\|TLS_CHACHA20_POLY1305_SHA256\|TLS_AES_128_CCM_SHA256\|TLS_AES_128_CCM_8_SHA256))*$` | TLS 1.3 cipher suites the HTTPS listener negotiates, at most 255 characters. |
+| `https.max_body_size` | integer or string | `10M` | 1-999999999999999; `^0*([1-9][0-9]{0,14}[bB]?\|[1-9][0-9]{0,11}[kK]\|[1-9][0-9]{0,8}[mM]\|[1-9][0-9]{0,5}[gG])$` | Maximum HTTP request body the transport accepts; a larger request is dropped without a response. Keep it above remoted.auth_max_body_size (internal option, 5 MiB by default). |
 | `https.dual_stack` | boolean | `false` |  | Accept IPv4 clients on an IPv6 bind address (clears IPV6_V6ONLY). Only applies when bind_addr is an IPv6 address; 'no' keeps the socket IPv6-only. |
 | `https.enroll_rate_limit` | integer | `100` | 0-100000 | Sustained POST /enroll requests per second this manager forwards to authd, counted for the node as a whole and not per agent. 0 disables the limit. Applied after the credential check, so a request that fails it never spends it (a verified enrollment also after its body checks), and kept as two buckets of this rate: one for enrollments whose password or enrollment token (with uses left) was verified, one for re-enrollments, enrollments without a credential and enrollment tokens with no uses left. Requests over it get 429 without reaching authd. Short bursts are absorbed: each bucket may serve twice this value back to back before the rate paces it. |
 | `https.cacerts_rate_limit` | integer | `50` | 0-100000 | Sustained GET /cacerts requests per second this manager serves, counted for the endpoint as a whole and not per agent. 0 disables the limit. Requests over it get 429. Short bursts are absorbed: the endpoint may serve twice this value back to back before the rate paces it. |
@@ -95,15 +95,15 @@ wazuh-manager-authd enrollment service (also read by remoted for HTTPS enrollmen
 | `force.key_mismatch` | boolean | `true` |  | Force when the agent key does not match. |
 | `force.disconnected_time` | mapping |  |  | Force when the existing agent has been disconnected longer than 'value'. |
 | `force.disconnected_time.enabled` | boolean | `true` |  | Whether the disconnection time is checked before forcing the re-enrollment. |
-| `force.disconnected_time.value` | integer or string | `1h` | >= 0; `^[0-9]+[smhd]?$` | Minimum time the existing agent must have been disconnected. |
-| `force.after_registration_time` | integer or string | `1h` | >= 0; `^[0-9]+[smhd]?$` | Do not force within this time after the previous registration. |
+| `force.disconnected_time.value` | integer or string | `1h` | 0-999999999; `^0*([0-9]{1,9}s?\|[0-9]{1,7}m\|[0-9]{1,5}h\|[0-9]{1,4}d)$` | Minimum time the existing agent must have been disconnected. |
+| `force.after_registration_time` | integer or string | `1h` | 0-999999999; `^0*([0-9]{1,9}s?\|[0-9]{1,7}m\|[0-9]{1,5}h\|[0-9]{1,4}d)$` | Do not force within this time after the previous registration. |
 | `purge` | boolean | `false` |  | Purge removed agents from the key store. |
 | `use_password` | boolean | `false` |  | Require the shared password (/etc/wazuh-manager/authd.pass). |
 | `ciphers` | string | `TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256` | `^(TLS_AES_128_GCM_SHA256\|TLS_AES_256_GCM_SHA384\|TLS_CHACHA20_POLY1305_SHA256\|TLS_AES_128_CCM_SHA256\|TLS_AES_128_CCM_8_SHA256)(:(TLS_AES_128_GCM_SHA256\|TLS_AES_256_GCM_SHA384\|TLS_CHACHA20_POLY1305_SHA256\|TLS_AES_128_CCM_SHA256\|TLS_AES_128_CCM_8_SHA256))*$` | TLS 1.3 cipher suites accepted for enrollment. |
-| `ssl_agent_ca` | string | `""` |  | CA used to verify agent certificates during enrollment. Empty = disabled. |
-| `ssl_verify_host` | boolean | `false` |  | Verify the agent certificate host name. |
-| `ssl_manager_cert` | string | `/etc/wazuh-manager/certs/remoted.pem` |  | Manager certificate (PEM). Absolute path directly inside /etc/wazuh-manager/certs (checked unless auth.disabled): the credential check of wazuh-manager-control start refuses any other location, a relative path included. |
-| `ssl_manager_key` | string | `/etc/wazuh-manager/certs/remoted-key.pem` |  | Manager private key (PEM). Absolute path directly inside /etc/wazuh-manager/certs (checked unless auth.disabled): the credential check of wazuh-manager-control start refuses any other location, a relative path included. |
+| `ssl_agent_ca` | string | `""` |  | CA used to verify agent certificates during legacy enrollment (port 1515, 4.x agents) only; enrollment through the HTTPS listener never reads it. Empty = disabled. |
+| `ssl_verify_host` | boolean | `false` |  | Verify the agent certificate host name during legacy enrollment (port 1515) when ssl_agent_ca is set. |
+| `ssl_manager_cert` | string | `/etc/wazuh-manager/certs/remoted.pem` |  | Manager certificate (PEM) of the legacy enrollment listener (1515); wazuh-manager-authd loads it only when that listener starts. The file must exist even when auth.disabled is true: the validation with file checks that runs before every start checks it whatever authd does. It must also be an absolute path directly inside /etc/wazuh-manager/certs, auth.disabled or not: the credential check of wazuh-manager-control start and check refuses any other location, a relative path included. Only the content of the file goes unjudged while auth.disabled is true. |
+| `ssl_manager_key` | string | `/etc/wazuh-manager/certs/remoted-key.pem` |  | Manager private key (PEM) of the legacy enrollment listener (1515); wazuh-manager-authd loads it only when that listener starts. The file must exist even when auth.disabled is true: the validation with file checks that runs before every start checks it whatever authd does. It must also be an absolute path directly inside /etc/wazuh-manager/certs, auth.disabled or not: the credential check of wazuh-manager-control start and check refuses any other location, a relative path included. Only the content of the file goes unjudged while auth.disabled is true. |
 | `remote_enrollment` | boolean | `true` |  | Accept enrollment through the HTTPS listener. |
 | `legacy_enrollment` | boolean |  |  | Accept enrollment through the legacy TLS port (1515), used only by 4.x agents. No default of its own: when absent it follows remote.legacy.enabled, so a configuration without the remote.legacy block has no legacy enrollment either. An explicit value always wins. |
 | `agents` | mapping |  |  | Agent version policy of the enrollment service. |
@@ -118,8 +118,8 @@ wazuh-manager-db.
 | `backup` | mapping |  |  | Periodic backups of the wazuh-db databases (backup/db/). |
 | `backup.global` | mapping |  |  | Periodic backup of the global database. |
 | `backup.global.enabled` | boolean | `true` |  | Whether the global database is backed up periodically. |
-| `backup.global.interval` | integer or string | `1d` | >= 1; `^0*[1-9][0-9]*[smhdw]?$` | Time between backups (minimum 1 second; 0 is rejected). |
-| `backup.global.max_files` | integer | `3` | >= 1 | Backups kept on disk. |
+| `backup.global.interval` | integer or string | `1d` | 1-999999999; `^0*([1-9][0-9]{0,8}s?\|[1-9][0-9]{0,6}m\|[1-9][0-9]{0,4}h\|[1-9][0-9]{0,3}d\|[1-9][0-9]{0,2}w)$` | Time between backups (minimum 1 second; 0 is rejected). |
+| `backup.global.max_files` | integer | `3` | 1-2147483647 | Backups kept on disk. |
 
 ## `vulnerability-detection`
 
@@ -128,7 +128,7 @@ Vulnerability scanner module (modulesd).
 | Option | Type | Default | Constraints | Description |
 |---|---|---|---|---|
 | `enabled` | boolean | `true` |  | Whether the vulnerability scanner module runs. |
-| `feed-update-interval` | integer or string | `60m` | >= 1; `^0*[1-9][0-9]*[smhd]?$` | Time between CTI feed updates (minimum 1 second; 0 is rejected). |
+| `feed-update-interval` | integer or string | `60m` | 1-999999999; `^0*([1-9][0-9]{0,8}s?\|[1-9][0-9]{0,6}m\|[1-9][0-9]{0,4}h\|[1-9][0-9]{0,3}d)$` | Time between CTI feed updates (minimum 1 second; 0 is rejected). |
 | `pageSize` | integer | `100` | 1-10000 | Indexer page size used by the scanner. |
 | `numSlices` | integer | `2` | 1-32 | Parallel indexer slices. |
 
@@ -140,7 +140,7 @@ Wazuh indexer connection shared by modulesd, the engine and the cluster. Mandato
 
 | Option | Type | Default | Constraints | Description |
 |---|---|---|---|---|
-| `hosts` | list of string |  | items match `^https?://`; at least 1 item; unique; **required** | Indexer URLs (scheme://host:port). |
+| `hosts` | list of string |  | at least 1 item; unique; **required** | Indexer URLs: http:// or https://, then a host name, an IPv4 address or an IPv6 address in brackets, then an optional :port and path (https://indexer:9200). |
 | `ssl` | mapping |  |  | TLS material of the indexer connection. Every path must be absolute and directly inside /etc/wazuh-manager/certs: the credential check of wazuh-manager-control start refuses any other location, a relative path included. |
 | `ssl.certificate_authorities` | list of string | `[]` |  | CA bundles (PEM). |
 | `ssl.certificate` | string | `""` |  | Client certificate (PEM). Empty = no client certificate. |
@@ -152,10 +152,10 @@ Task manager module. Also serves remote agent upgrades.
 
 | Option | Type | Default | Constraints | Description |
 |---|---|---|---|---|
-| `task_ttl` | integer | `3600` | >= 0 | Seconds a pending agent task may wait, from its creation, before it is expired. Manager tasks never expire. |
-| `cleanup_interval` | integer | `300` | >= 0 | Seconds between cleanup passes. |
-| `max_payload_bytes` | integer | `1048576` | >= 0 | Maximum task payload. |
-| `max_tasks_per_poll` | integer | `100` | >= 0 | Tasks handed out per poll. |
+| `task_ttl` | integer | `3600` | >= 0 | Seconds a pending agent task may wait, from its creation, before it is expired. Manager tasks never expire. 0 = the module default (3600). At most 2147483647: wazuh-manager-conf validate accepts a larger value, but wazuh-manager-modulesd -t refuses it, so wazuh-manager-control check and the start do; a running modulesd logs an error and keeps the default. |
+| `cleanup_interval` | integer | `300` | >= 0 | Seconds between cleanup passes. 0 = the module default (300). At most 2147483647: wazuh-manager-conf validate accepts a larger value, but wazuh-manager-modulesd -t refuses it, so wazuh-manager-control check and the start do; a running modulesd logs an error and keeps the default. |
+| `max_payload_bytes` | integer | `1048576` | >= 0 | Maximum task payload. 0 = the module default (1048576). At most 2147483647: wazuh-manager-conf validate accepts a larger value, but wazuh-manager-modulesd -t refuses it, so wazuh-manager-control check and the start do; a running modulesd logs an error and keeps the default. |
+| `max_tasks_per_poll` | integer | `100` | >= 0 | Tasks handed out per poll. 0 = the module default (100). At most 2147483647: wazuh-manager-conf validate accepts a larger value, but wazuh-manager-modulesd -t refuses it, so wazuh-manager-control check and the start do; a running modulesd logs an error and keeps the default. |
 | `upgrade_enabled` | boolean | `true` |  | Whether the manager serves remote agent upgrades (WPK upgrades requested through the API). |
 | `wpk_repository` | string |  | not empty | WPK repository (host/path). A value with an http:// or https:// scheme is kept as given; without one, https:// (or http:// when the upgrade asks for it) is prepended. No default: left unset, the repository is picked from the target agent version. |
 
@@ -167,11 +167,11 @@ Cluster identity and transport (wazuh-manager-clusterd; name/node_name/node_type
 
 | Option | Type | Default | Constraints | Description |
 |---|---|---|---|---|
-| `name` | string | `wazuh` | not empty | Cluster name. |
-| `node_name` | string | `node01` | not empty | This node's name. |
+| `name` | string | `wazuh` | not empty | Cluster name. Use only letters, digits, _ and -: the worker handshake separates its fields with spaces, so a name with a space passes every check and no worker ever joins. |
+| `node_name` | string | `node01` | not empty | This node's name. Use only letters, digits, _ and -: the master refuses a worker whose name has any other character (error 3060), and no check refuses such a name beforehand. |
 | `node_type` | enum | `master` | one of `master`, `worker` | Role of this node in the cluster. |
 | `key` | string |  | `^[A-Za-z0-9]{32}$`; **required** | 32-character shared key; the installer generates a random one. |
 | `port` | integer | `1516` | 1025-65534 | Cluster port. |
-| `bind_addr` | string | `127.0.0.1` | not empty | Address the master listens on for worker connections. Ignored on workers. |
+| `bind_addr` | string | `127.0.0.1` | `^([A-Za-z0-9_]([A-Za-z0-9_-]{0,61}[A-Za-z0-9_])?(\.[A-Za-z0-9_]([A-Za-z0-9_-]{0,61}[A-Za-z0-9_])?)*\.?\|(::[fF]{4}:)?(25[0-5]\|2[0-4][0-9]\|1[0-9][0-9]\|[1-9]?[0-9])\.(25[0-5]\|2[0-4][0-9]\|1[0-9][0-9]\|[1-9]?[0-9])\.(25[0-5]\|2[0-4][0-9]\|1[0-9][0-9]\|[1-9]?[0-9])\.(25[0-5]\|2[0-4][0-9]\|1[0-9][0-9]\|[1-9]?[0-9])\|([0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}\|([0-9a-fA-F]{1,4}:){1,6}:[0-9a-fA-F]{1,4}\|([0-9a-fA-F]{1,4}:){1,5}(:[0-9a-fA-F]{1,4}){1,2}\|([0-9a-fA-F]{1,4}:){1,4}(:[0-9a-fA-F]{1,4}){1,3}\|([0-9a-fA-F]{1,4}:){1,3}(:[0-9a-fA-F]{1,4}){1,4}\|([0-9a-fA-F]{1,4}:){1,2}(:[0-9a-fA-F]{1,4}){1,5}\|[0-9a-fA-F]{1,4}:(:[0-9a-fA-F]{1,4}){1,6}\|([0-9a-fA-F]{1,4}:){1,7}:\|:(:[0-9a-fA-F]{1,4}){1,7}\|::)$` | Address the master listens on for worker connections: a host name (at most 253 characters) or an IP address. Ignored on workers. |
 | `nodes` | list of string | `["127.0.0.1"]` | items not empty; at least 1 item | Master node address(es). |
 | `hidden` | boolean | `false` |  | Hide this node in cluster listings. Currently read by no component: setting it has no effect. |

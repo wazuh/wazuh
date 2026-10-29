@@ -741,6 +741,49 @@ def test_secret_read_is_audited_for_the_bare_cluster_key(db_setup):
     assert 'secret_read' in line and 'cluster.key' in line and '264ae8ec9f19' not in line
 
 
+@pytest.mark.parametrize('payload_factory', [
+    # A group file read raw: the configuration is a WazuhResult whose 'data' is the XML text.
+    lambda: WazuhResult({'data': '<agent_config>\n  <wodle name="aws-s3">\n    <bucket>\n'
+                                 '      <access_key>AKIA0123</access_key>\n      <secret_key>s3cr3t</secret_key>\n'
+                                 '    </bucket>\n  </wodle>\n</agent_config>\n'}),
+    # The same group configuration read as JSON: the names are keys at any depth.
+    lambda: AffectedItemsWazuhResult(affected_items=[
+        {'config': {'wodle': {'name': 'aws-s3', 'bucket': {'access_key': 'AKIA0123', 'secret_key': 's3cr3t'}}}}]),
+])
+def test_secret_read_is_audited_for_credential_named_fields(db_setup, payload_factory):
+    """A group file or configuration served in clear with credential-named fields names the user and the fields,
+    as the masking would have hidden them, and never their values."""
+    db_setup.rbac.set({'rbac_mode': 'white', 'cluster:read_secrets': {'node:id:master-node': 'allow'}})
+    db_setup.current_user.set('auditor')
+
+    @db_setup.mask_sensitive_config()
+    def get_group_conf():
+        return payload_factory()
+
+    with patch.object(db_setup.logger, 'info') as mock_info:
+        get_group_conf()
+
+    mock_info.assert_called_once()
+    line = mock_info.call_args[0][0]
+    assert line == "secret_read: user='auditor' served in clear: access_key, secret_key"
+    assert 'AKIA0123' not in line and 's3cr3t' not in line
+
+
+def test_no_audit_line_for_a_group_file_without_credentials(db_setup):
+    """A group file with no credential-named field is not a disclosure."""
+    db_setup.rbac.set({'rbac_mode': 'white', 'cluster:read_secrets': {'node:id:master-node': 'allow'}})
+
+    @db_setup.mask_sensitive_config()
+    def get_group_conf():
+        return WazuhResult({'data': '<agent_config>\n  <localfile>\n    <location>/var/log/syslog</location>\n'
+                                    '  </localfile>\n</agent_config>\n'})
+
+    with patch.object(db_setup.logger, 'info') as mock_info:
+        get_group_conf()
+
+    mock_info.assert_not_called()
+
+
 # Tests for unmask_xml_by_path (the write-side twin of the masking)
 
 _UNMASK_KEY = 'c98b62a9b6169ac5f67dae55ae4a9088'
@@ -1279,3 +1322,25 @@ def test_list_handler_keeps_1701_for_explicit_ids(db_setup):
 
     dropped = db_setup.list_handler(node_result(), add_denied=False, exclude_codes=[1701, 1703])
     assert not dropped.failed_items
+
+
+# ---------------------------------------------------------------------------
+# Tests for permitted_agent_ids (agents a caller may read, for functions exposed under another action)
+# ---------------------------------------------------------------------------
+
+@pytest.mark.parametrize('rbac, expected', [
+    ({'rbac_mode': 'white'}, set()),
+    ({'rbac_mode': 'white', 'agent:read': {'agent:id:*': 'allow'}}, {'001', '002', '003'}),
+    ({'rbac_mode': 'white', 'agent:read': {'agent:id:002': 'allow'}}, {'002'}),
+    ({'rbac_mode': 'white', 'agent:read': {'agent:group:web': 'allow'}}, {'001', '003'}),
+    ({'rbac_mode': 'white', 'agent:read': {'agent:id:*': 'allow', 'agent:group:web': 'deny'}}, {'002'}),
+    ({'rbac_mode': 'black'}, {'001', '002', '003'}),
+    ({'rbac_mode': 'black', 'agent:read': {'agent:id:001': 'deny'}}, {'002', '003'}),
+])
+def test_permitted_agent_ids(db_setup, rbac, expected):
+    """agent:id and agent:group grants and denies, and the RBAC mode, resolve as for an agent:id:* request."""
+    db_setup.rbac.set(rbac)
+    with patch('wazuh.rbac.decorators.get_agents_info', return_value={'001', '002', '003'}), \
+            patch('wazuh.rbac.decorators.expand_group', side_effect=lambda group: {'001', '003'} if group == 'web'
+                  else set()):
+        assert db_setup.permitted_agent_ids() == expected

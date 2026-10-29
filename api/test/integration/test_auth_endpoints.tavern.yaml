@@ -364,6 +364,54 @@ stages:
     response:
       <<: *unsupported_media_type
 
+  # The body is a context the schema accepts: with no Content-Type the framework decodes it as JSON before the
+  # handler runs, so only a valid body reaches the Content-Type check. No token is issued.
+  - name: A valid JSON context sent with no Content-Type header
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/security/user/authenticate/run_as"
+      method: POST
+      headers:
+        Authorization: "Basic {basic_auth_context}"
+      data: '{{"user_name": "admin"}}'
+    response:
+      status_code: 415
+      json:
+        title: Unsupported Media Type
+        error: 6002
+      verify_response_with:
+        - function: tavern_utils:test_no_internal_details
+
+---
+test_name: 415 on a body sent with no content-type
+
+# The JSON routes get a body their schema accepts: with no Content-Type the framework decodes it as JSON and
+# validates it before the handler runs, so only a valid body reaches the Content-Type check (and nothing is created).
+marks:
+  - parametrize:
+      key: [method, path, body]
+      vals:
+        - ["POST", "/groups", '{{"group_id": "tavern_no_ctype"}}']
+        - ["PUT", "/groups/default/configuration", "x"]
+        - ["POST", "/security/users", '{{"username": "tavern_no_ctype", "password": "Tavern_NoCtype_1!"}}']
+
+stages:
+  - name: A body with no Content-Type header
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}{path}"
+      method: "{method}"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      data: "{body}"
+    response:
+      status_code: 415
+      json:
+        title: Unsupported Media Type
+        error: 6002
+      verify_response_with:
+        - function: tavern_utils:test_no_internal_details
+
 ---
 test_name: 404 on routes the spec does not declare
 
@@ -873,7 +921,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
-      status_code: 400
+      status_code: 404
       json:
         error: 1006
 

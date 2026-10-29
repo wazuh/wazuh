@@ -233,17 +233,22 @@ def main():
         os.chown(f'{common.WAZUH_PATH}/logs/cluster.log', common.wazuh_uid(), common.wazuh_gid())
         os.chmod(f'{common.WAZUH_PATH}/logs/cluster.log', 0o660)  # nosec B103
 
+    def configuration_error(error: Exception):
+        """Log why the configuration was refused and exit 1; under -t, also say it on the terminal."""
+        main_logger.error(error)
+        if args.test_config:
+            print(f"ERROR: {error}", file=sys.stderr)
+        sys.exit(1)
+
     try:
         cluster_configuration = cluster_utils.read_config(config_file=args.config_file)
     except Exception as e:
-        main_logger.error(e)
-        sys.exit(1)
+        configuration_error(e)
 
     try:
         wazuh.core.cluster.cluster.check_cluster_config(cluster_configuration)
     except Exception as e:
-        main_logger.error(e)
-        sys.exit(1)
+        configuration_error(e)
 
     if args.test_config:
         sys.exit(0)

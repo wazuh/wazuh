@@ -369,22 +369,19 @@ Rootcheck is designed to detect common evasion techniques:
          ↓
 6. Manager analysisd receives
          ↓
-7. Decode rootcheck message
+7. Decode rootcheck message (decoder/wazuh-rootcheck/0)
          ↓
-8. Match against rules (50x series)
+8. Normalize to ECS fields (event.*, file.*, threat.indicator.*)
          ↓
-9. Generate indexed alert
-         ↓
-10. Send to the indexer (and file outputs, if configured)
+9. Send to the indexer (and file outputs, if configured)
 ```
 
 ### Alert Processing on Manager
 
-Rootcheck alerts are processed by rules in the 510-550 range:
-
-- **Rule 510:** Generic rootcheck alert
-- **Rule 51x:** Specific detection types
-- **No database storage:** Unlike pre-5.0 versions
+The engine has no rules: `decoder/core-wazuh-message/0` and then `decoder/wazuh-rootcheck/0` (from the content the
+manager synchronizes) decode each rootcheck message into an event of the `wazuh-rootcheck` integration, which is
+indexed in the `wazuh-events-v5-security` data stream. Event shapes and fields: [Output Samples](output-samples.md).
+Nothing is stored in a manager database, unlike pre-5.0 versions.
 
 ## Changes in Wazuh 5.0
 
@@ -429,8 +426,9 @@ rootcheck.sleep=50
 Enable verbose logging:
 
 ```bash
-# Add to internal_options.conf
-rootcheck.debug=2
+# Add to internal_options.conf. Rootcheck runs inside wazuh-syscheckd, so its
+# debug level is syscheck.debug (0-2); there is no rootcheck.debug key.
+syscheck.debug=2
 
 # Restart agent
 /var/ossec/bin/wazuh-control restart

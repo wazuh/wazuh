@@ -160,6 +160,29 @@ TEST_F(AgentMetadataCacheTest, GetOrParse_EmptyAgentId_Throws)
     EXPECT_EQ(cache.size(), 0);
 }
 
+TEST_F(AgentMetadataCacheTest, GetOrParse_ManagerAgentId_Accepted)
+{
+    // "000" is the manager itself: any string of digits is a valid id
+    auto result = cache.getOrParse(R"({"wazuh":{"agent":{"id":"000","name":"manager"}}})");
+
+    ASSERT_NE(result.first, nullptr);
+    EXPECT_EQ(result.second, Op::Inserted);
+    EXPECT_EQ(cache.size(), 1);
+}
+
+TEST_F(AgentMetadataCacheTest, GetOrParse_NonNumericAgentId_Message)
+{
+    try
+    {
+        cache.getOrParse(HEADER_NON_NUMERIC_ID);
+        FAIL() << "Expected std::runtime_error";
+    }
+    catch (const std::runtime_error& e)
+    {
+        EXPECT_STREQ(e.what(), "AgentMetadataCache: /wazuh/agent/id must be a non-empty string of digits");
+    }
+}
+
 TEST_F(AgentMetadataCacheTest, EvictStale_RemovesExpiredEntries)
 {
     FakeClock fakeClock;

@@ -2,6 +2,8 @@
 #include <gtest/gtest.h>
 
 #include <api/adapter/adapter.hpp>
+#include <api/adapter/helpers.hpp>
+#include <eMessages/tester.pb.h>
 
 #include "generic_request.pb.h"
 
@@ -129,6 +131,25 @@ TEST(ApiAdapterTest, ParseRequest)
     ASSERT_EQ(gotProtoRes.error(), expectedProtoRes.error());
 }
 
+TEST(ApiAdapterTest, ParseRequestBoundsAParserMessageThatRepeatsTheValue)
+{
+    // A wrong-typed value is quoted in full by the protobuf parser's message
+    const std::string longValue(5000, 'Z');
+    httplib::Request req;
+    req.body = R"({"queue":")" + longValue + R"("})";
+
+    auto res = parseRequest<eEngine::tester::PublicRunPost_Request, TestRes>(req);
+
+    ASSERT_TRUE(isError(res));
+    auto error = getErrorResp(res);
+    ASSERT_EQ(error.status, httplib::StatusCode::BadRequest_400);
+    const auto gotError = parseResponse<TestRes>(error).error();
+    const std::string prefix {"Failed to parse protobuff json request: "};
+    EXPECT_EQ(gotError.rfind(prefix, 0), 0u) << gotError;
+    EXPECT_EQ(gotError.find(longValue), std::string::npos);
+    EXPECT_LE(gotError.size(), prefix.size() + MAX_PARSE_ERROR_LENGTH + std::string {"... (99999 bytes)"}.size());
+}
+
 TEST(ApiAdapterTest, CreateRequest)
 {
     TestReq protoReq;
@@ -166,4 +187,19 @@ TEST(ApiAdapterTest, ParseResponse)
     ASSERT_EQ(res.status, httplib::StatusCode::OK_200);
     auto gotProtoRes = parseResponse<TestRes>(res);
     ASSERT_EQ(protoRes.status(), gotProtoRes.status());
+}
+
+TEST(ApiAdapterTest, TruncateForMessageKeepsShortValues)
+{
+    EXPECT_EQ(api::adapter::helpers::truncateForMessage("standard"), "standard");
+    const std::string atLimit(api::adapter::helpers::MAX_ECHOED_INPUT_LENGTH, 'a');
+    EXPECT_EQ(api::adapter::helpers::truncateForMessage(atLimit), atLimit);
+}
+
+TEST(ApiAdapterTest, TruncateForMessageBoundsLongValues)
+{
+    const std::string value(10240, 'a');
+    const auto truncated = api::adapter::helpers::truncateForMessage(value);
+    EXPECT_EQ(truncated, std::string(api::adapter::helpers::MAX_ECHOED_INPUT_LENGTH, 'a') + "... (10240 bytes)");
+    EXPECT_EQ(api::adapter::helpers::truncateForMessage("abcdef", 3), "abc... (6 bytes)");
 }

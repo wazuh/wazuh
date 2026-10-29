@@ -52,6 +52,8 @@
 #define REMOTED_TLS_FILES_MISSING_CA_CERTIFICATE "Cannot start the HTTPS agent listener: the CA certificate '%s' " \
     "that remoted publishes on /cacerts for agent enrollment is missing or unreadable by the service user." \
     REMOTED_TLS_FILES_CA_CERTIFICATE_HINT
+/* remoted -t: a TLS file that exists but does not load (a private key given as the CA, a text file). */
+#define REMOTED_TLS_FILES_INVALID "Cannot start the HTTPS agent listener: %s."
 
 /* Pending data structure */
 
@@ -114,7 +116,9 @@ void rem_check_unauthenticated_cap(void);
 void w_remoted_preflight_tls_files(void);
 
 /* Resolve every internal option the C++ module config owns, so 'remoted -t' refuses the same
- * values the daemon would. RemotedConfig() only reaches the options resolved in config.c. */
+ * values the daemon would. RemotedConfig() only reaches the options resolved in config.c. It also
+ * loads the HTTPS listener's certificate, key and (when verification_mode uses it) client CA through
+ * the module, so a file the start cannot load fails the test run instead of the next restart. */
 void w_remoted_validate_module_config(void);
 
 /* Poll connected legacy (< v5.0.0) agents and deliver their pending remote_upgrade tasks */

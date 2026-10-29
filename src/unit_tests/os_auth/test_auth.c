@@ -25,6 +25,7 @@
 #include "../wrappers/externals/openssl/rand_wrappers.h"
 #include "../wrappers/wazuh/shared/file_op_wrappers.h"
 #include "../wrappers/libc/stdio_wrappers.h"
+#include "../wrappers/externals/pcre2/pcre2_wrappers.h"
 
 /* The fake (non-NULL) FILE* handed back by the wfopen mock. */
 #define FAKE_FP ((FILE *)1)
@@ -340,6 +341,93 @@ static void test_w_authd_read_password_too_long_returns_null(void **state) {
     assert_null(w_authd_read_password(AUTHD_PASS));
 }
 
+/* The insertion queue is what the writer turns into the global.db row: the address must be queued
+ * as it was registered, a network keeping its mask, as client.keys does. */
+extern struct keynode *queue_insert;
+extern struct keynode * volatile *insert_tail;
+
+static void free_queued_inserts(void) {
+    struct keynode *cur = queue_insert;
+
+    while (cur) {
+        struct keynode *next = cur->next;
+        os_free(cur->id);
+        os_free(cur->name);
+        os_free(cur->ip);
+        os_free(cur->group);
+        os_free(cur->raw_key);
+        os_free(cur->reenroll_secret);
+        os_free(cur);
+        cur = next;
+    }
+    queue_insert = NULL;
+    insert_tail = &queue_insert;
+}
+
+/* Queues an entry registered with `registered`, built the way OS_AddKey() builds it (the mask kept
+ * apart from the address text), through add_insert() or add_rotate(). */
+static void queue_registered(const char *registered, int rotate) {
+    keyentry entry;
+    char *slash;
+
+    memset(&entry, 0, sizeof(entry));
+
+    os_calloc(1, sizeof(os_ip), entry.ip);
+    /* Parse with the real PCRE2: this binary wraps it with mocks by default. */
+    w_test_pcre2_wrappers(false);
+    assert_int_not_equal(OS_IsValidIP(registered, entry.ip), 0);
+    w_test_pcre2_wrappers(true);
+    if ((slash = strchr(entry.ip->ip, '/')) != NULL) {
+        *slash = '\0';
+    }
+    entry.id = (char *)"001";
+    entry.name = (char *)"agent1";
+    entry.raw_key = (char *)"key";
+
+    free_queued_inserts();
+    if (rotate) {
+        add_rotate(&entry, NULL, "secret", 0);
+    } else {
+        add_insert(&entry, NULL, NULL, 0);
+    }
+    w_free_os_ip(entry.ip);
+
+    assert_non_null(queue_insert);
+}
+
+static void test_add_insert_keeps_the_mask_of_an_ipv4_network(void **state) {
+    queue_registered("10.9.0.0/24", 0);
+    assert_string_equal(queue_insert->ip, "10.9.0.0/24");
+    free_queued_inserts();
+}
+
+static void test_add_rotate_keeps_the_mask_of_an_ipv4_network(void **state) {
+    queue_registered("10.9.0.0/24", 1);
+    assert_string_equal(queue_insert->ip, "10.9.0.0/24");
+    assert_true(queue_insert->rotate);
+    free_queued_inserts();
+}
+
+static void test_add_insert_queues_a_host_address_unchanged(void **state) {
+    queue_registered("192.168.1.10", 0);
+    assert_string_equal(queue_insert->ip, "192.168.1.10");
+    free_queued_inserts();
+}
+
+static void test_add_insert_queues_any_unchanged(void **state) {
+    queue_registered("any", 0);
+    assert_string_equal(queue_insert->ip, "any");
+    free_queued_inserts();
+}
+
+static void test_add_insert_keeps_the_mask_of_an_ipv6_network(void **state) {
+    queue_registered("fd00:1::/64", 0);
+    const size_t len = strlen(queue_insert->ip);
+    assert_true(len > 3);
+    assert_string_equal(queue_insert->ip + len - 3, "/64");
+    free_queued_inserts();
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test(test_w_generate_random_pass_success),
@@ -361,6 +449,11 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_w_authd_read_password_missing_returns_null, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_w_authd_read_password_short_returns_null, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_w_authd_read_password_spaces_only_returns_null, test_setup, test_teardown),
+        cmocka_unit_test(test_add_insert_keeps_the_mask_of_an_ipv4_network),
+        cmocka_unit_test(test_add_rotate_keeps_the_mask_of_an_ipv4_network),
+        cmocka_unit_test(test_add_insert_queues_a_host_address_unchanged),
+        cmocka_unit_test(test_add_insert_queues_any_unchanged),
+        cmocka_unit_test(test_add_insert_keeps_the_mask_of_an_ipv6_network),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

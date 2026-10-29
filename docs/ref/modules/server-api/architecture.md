@@ -316,15 +316,13 @@ protocols are in use:
 ## Logging Architecture
 
 ### Custom Log Rotation (`core/wlogging.py`)
-- The `CustomFileRotatingHandler` class extends Python's logging to:
-  - Rotate log files when they reach a size threshold
-  - Compress rotated files with **gzip**
-  - Set file permissions to `0o640`
-  - Store rotated logs in a dedicated directory
+- `logs/api.log` and `logs/api.json` are rotated by the API process itself, with two handlers that extend Python's logging:
+  - `TimeBasedFileRotatingHandler` rotates at midnight (the default), `SizeBasedFileRotatingHandler` when the file reaches `logs.max_size.size` (when `logs.max_size.enabled` is `true`, which replaces the midnight rotation)
+  - The rotated file is compressed with **gzip** into `logs/api/<YYYY>/<Mon>/api.log-<DD>.gz` (`api.json-<DD>.gz`; a size rotation appends `_<n>`, counted from `1` within the day), the directory created with mode `0750` and the file set to `0640`
 
 ### API Access Logging (`api/alogging.py`)
 - Every API request generates an access log entry, including one for a request the API rejected: the entry is written after the response, so a body the OpenAPI validator refused has still been recorded
 - The entry carries the query string, and the request body whenever the caller was authenticated and the body is under `MAX_LOGGED_BODY_SIZE`, with sensitive values **masked** as `****` by `redact_sensitive_fields`, at any depth of the body and inside arrays
-- A field is masked when its name matches `password`, `passwd`, `pwd`, `key`, `token`, `secret`, `credential`, `credentials`, `authorization` or `cookie`, case-insensitively, either exactly or as the tail of a compound name — `api_key`, `x-api-key`, `clientSecret` and `accessToken` all match, `keyword` and `monkey` do not. Hyphens and camelCase boundaries are folded before matching, and the plain lowercased spelling is tested too, so `PaSsWoRd` is caught as well as `accessToken`
+- A field is masked when its name matches `password`, `passwd`, `pwd`, `passphrase`, `key`, `token`, `secret`, `credential`, `credentials`, `authorization`, `bearer`, `session_id` or `cookie`, case-insensitively, either exactly or as the tail of a compound name — `api_key`, `x-api-key`, `clientSecret`, `sessionId` and `accessToken` all match, `keyword` and `monkey` do not. `secret` also matches as any word of a compound name (`api_secret_value`), `secretary` does not. Hyphens and camelCase boundaries are folded before matching, and the plain lowercased spelling is tested too, so `PaSsWoRd` is caught as well as `accessToken`
 - This is a denylist: a secret sent under a field name outside that set is still written to the log
 - The `run_as` authorization context is **not** written out at `info` level. It is arbitrary third-party JSON under names the denylist cannot anticipate, so the entry carries only its `hash_auth_context`; raise `logs.level` to `debug` to see the context itself

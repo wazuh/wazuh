@@ -22,6 +22,7 @@
 #include <wazuh_metrics/manager.hpp>
 
 #include <gtest/gtest.h>
+#include <json.hpp>
 
 #include <atomic>
 #include <chrono>
@@ -215,7 +216,14 @@ TEST(VdScanEndpoint, ABodyThatNamesNoAgentIs400)
     {
         auto responder = std::make_shared<FutureResponder>();
         fixture.handler(scanRequest(body), responder);
-        EXPECT_EQ(400, responder->get().status) << "body='" << body << "'";
+        const auto response = responder->get();
+        EXPECT_EQ(400, response.status) << "body='" << body << "'";
+
+        // The reasons quote the member name, so the reply must be built as JSON, not concatenated.
+        const auto reply = nlohmann::json::parse(response.body, nullptr, /*allow_exceptions=*/false);
+        ASSERT_TRUE(reply.is_object()) << "reply is not valid JSON: '" << response.body << "'";
+        EXPECT_TRUE(reply.contains("error") && reply.at("error").is_string()) << response.body;
+        EXPECT_EQ(400, reply.value("code", 0)) << response.body;
     }
 
     EXPECT_TRUE(fixture.events->syncOps().empty()) << "nothing may reach the scanner on a 400";

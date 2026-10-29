@@ -104,6 +104,17 @@ void test_Read_WazuhDB_JSON_rejects_zero_interval_and_max_files(void **state)
     cJSON_Delete(max_files);
 }
 
+void test_Read_WazuhDB_JSON_rejects_max_files_above_int_max(void **state)
+{
+    /* cJSON saturates valueint at INT_MAX: the value used to be accepted and silently clamped */
+    cJSON *max_files = cJSON_Parse("{\"backup\":{\"global\":{\"max_files\":2147483648}}}");
+
+    expect_string(__wrap__merror, formatted_msg, "(1235): Invalid value for element 'max_files': 2147483648.");
+    assert_int_equal(Read_WazuhDB_JSON(max_files), OS_INVALID);
+
+    cJSON_Delete(max_files);
+}
+
 int main(void)
 {
     const struct CMUnitTest tests[] = {
@@ -113,6 +124,7 @@ int main(void)
         cmocka_unit_test(test_Read_WazuhDB_JSON_absent_keeps_defaults),
         cmocka_unit_test(test_Read_WazuhDB_JSON_null_section_keeps_defaults),
         cmocka_unit_test(test_Read_WazuhDB_JSON_rejects_zero_interval_and_max_files),
+        cmocka_unit_test(test_Read_WazuhDB_JSON_rejects_max_files_above_int_max),
     };
 
     return cmocka_run_group_tests(tests, wazuh_db_setup, wazuh_db_teardown);

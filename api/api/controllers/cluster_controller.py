@@ -16,6 +16,7 @@ from api.util import remove_nones_to_dict, parse_api_param, raise_if_exc
 from api.validator import check_component_configuration_pair
 from wazuh.core.cluster.control import get_system_nodes
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
+from wazuh.core.exception import WazuhError
 from wazuh.core.results import AffectedItemsWazuhResult
 
 logger = logging.getLogger('wazuh-api')
@@ -322,6 +323,10 @@ async def get_configuration_node(node_id: str, pretty: bool = False, wait_for_co
             raw=False (default) -> ConnexionResponse (application/json)
         If any exception was raised, it will return a ConnexionResponse with details.
     """
+    if field is not None and section is None and not raw:
+        # A field is looked up inside a section: without one it would be silently ignored.
+        raise_if_exc(WazuhError(1103, extra_message="'field' requires 'section'"))
+
     f_kwargs = {'node_id': node_id,
                 'section': section,
                 'field': field,
@@ -562,6 +567,25 @@ async def get_api_config(pretty: bool = False, wait_for_complete: bool = False,
     return json_response(data, pretty=pretty)
 
 
+def _use_operation_messages(result: AffectedItemsWazuhResult, result_kwargs: dict):
+    """Give the merged answer of the workers the messages of the operation it reports.
+
+    When no worker is selected (a single node, or only the master), the distributed request answers with the
+    node listing it was resolved against, whose messages are about returning node information.
+
+    Parameters
+    ----------
+    result : AffectedItemsWazuhResult
+        Merged answer of the workers.
+    result_kwargs : dict
+        Default result arguments of the operation, with its `all_msg`, `some_msg` and `none_msg`.
+    """
+    if isinstance(result, AffectedItemsWazuhResult):
+        result.all_msg = result_kwargs['all_msg']
+        result.some_msg = result_kwargs['some_msg']
+        result.none_msg = result_kwargs['none_msg']
+
+
 async def put_restart(pretty: bool = False, nodes_list: str = '*') -> ConnexionResponse:
     """Restarts all nodes in the cluster or a list of them.
 
@@ -606,6 +630,7 @@ async def put_restart(pretty: bool = False, nodes_list: str = '*') -> ConnexionR
                         nodes=nodes
                         )
     result = raise_if_exc(await dapi.distribute_function())
+    _use_operation_messages(result, manager._restart_default_result_kwargs)
 
     if nodes_list == '*' or master_node in nodes_list:
         dapi_master = DistributedAPI(
@@ -618,6 +643,8 @@ async def put_restart(pretty: bool = False, nodes_list: str = '*') -> ConnexionR
         if master_result.total_affected_items > 0:
             result.affected_items.insert(0, master_node)
             result.total_affected_items += 1
+        if master_result.total_failed_items > 0:
+            result.add_failed_items_from(master_result)
 
     return json_response(result, pretty=pretty, status_code=202)
 
@@ -666,6 +693,7 @@ async def put_reload(pretty: bool = False, nodes_list: str = '*') -> ConnexionRe
                         nodes=nodes
                         )
     result = raise_if_exc(await dapi.distribute_function())
+    _use_operation_messages(result, manager._reload_default_result_kwargs)
 
     if nodes_list == '*' or master_node in nodes_list:
         dapi_master = DistributedAPI(

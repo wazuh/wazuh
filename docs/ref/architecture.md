@@ -96,6 +96,9 @@ vs <-->|3| cm
 %% Modulesd ↔ Gateway (UDS relay: POST /stateful → queue/sockets/inventory-sync-http.sock)
 remoted <-->|3| is
 
+%% An agent's on-demand rescan request is relayed to the scanner's own socket (queue/sockets/vd-http.sock)
+remoted -->|3| vs
+
 %% Remoted asks for an agent's pending tasks and hands them back in the POST /control response
 remoted -->|4,5| tm
 
@@ -119,6 +122,7 @@ clusterd -->|4,8| ks
 %% Management → Internal
 api -->|5,6| tm
 api -->|6| engine & wdb & remoted
+api -->|3,6| vs
 api -->|1,6,10| authd
 api -->|7| ctrl
 api -->|8| clusterd
@@ -198,24 +202,29 @@ Every tool is installed in `/var/wazuh-manager/bin/`.
 #### wazuh-manager-control
 
 ```text
-wazuh-manager-control [-j] {start|stop|restart|reload|status|enable|disable|info [-v -r -t]}
+wazuh-manager-control [-j] {start|stop|restart|reload|check|status|enable|disable|info [-v -r -t]}
 ```
 
-`-j` switches the output to one JSON document and is recognised only as the **first** argument. The
+`-j` switches the output to one JSON document on standard output (diagnostics such as a daemon's own `-t`
+output go to standard error) and is recognised only as the **first** argument. Every answer is that one document,
+refusals and usage errors included (`{"error":1,"message":"Invalid action: <action>."}`, the `help` usage, a
+missing or unknown `enable`/`disable` option), with the arguments it repeats escaped as JSON strings. The
 daemons it manages are, in order, `wazuh-manager-clusterd`, `-modulesd`, `-remoted`, `-analysisd`,
 `-db`, `-authd` and `-apid`; `start` launches them in the reverse order. Two are skipped by `start` and
-`status` (`stop` stops whatever is running): `wazuh-manager-apid` unless `bin/wazuh-manager-conf get
-cluster.node_type` is `master`, and `wazuh-manager-authd` when `auth.disabled` is `true`.
+`status` (`stop` stops whatever is running): `wazuh-manager-apid` unless `bin/wazuh-manager-conf --skip-file-checks get
+cluster.node_type` is `master`, and `wazuh-manager-authd` when `auth.disabled` is `true` (both read without
+checking the files the configuration names, so a missing certificate does not hide a running apid from `status`).
 
 | Action | Behaviour |
 | ------ | --------- |
-| `start` | Runs the four pre-start checks below, empties `tmp/`, then starts each daemon that is not already running. `wazuh-manager-analysisd` counts as started once its API answers on `queue/sockets/engine-api-http.sock`; the script waits for its pid file for up to 10 seconds and then probes the API up to 120 times, a second apart, before giving up with `wazuh-manager-analysisd did not respond correctly after 120 attempts.` A daemon that fails to start stops the sequence with `<daemon> did not start correctly.` and exit status `1`. |
+| `start` | Runs the four pre-start checks below, empties `tmp/`, then starts each daemon that is not already running. `wazuh-manager-analysisd` counts as started once its API answers on `queue/sockets/engine-api-http.sock`; the script waits for its pid file for up to 10 seconds (`Failed to obtain PID for wazuh-manager-analysisd` when it never appears) and then probes the API up to 120 times — each probe gives the engine 5 seconds to answer, then the script waits a second — before giving up with `wazuh-manager-analysisd did not respond correctly after 120 attempts.` (an engine that exits meanwhile ends the wait at once with `wazuh-manager-analysisd died during the readiness check.`). A daemon that fails to start stops the sequence with `<daemon> did not start correctly.` and exit status `1`. |
 | `stop` | Stops every daemon: `SIGTERM`, then up to 30 seconds for each before `SIGKILL` (`Process <daemon> couldn't be terminated. It will be killed.`). |
 | `restart` | Runs the first three pre-start checks **while the manager is still running** (a refusal leaves it up), stops every daemon, resolves credentials, and starts them again. |
-| `reload` | `restart` for every daemon except `wazuh-manager-remoted`, which keeps running, so agent connections stay up. |
+| `reload` | `restart` for every daemon except `wazuh-manager-remoted`, which keeps running, so agent connections stay up. Its checks still include `wazuh-manager-remoted -t`: remoted reads the configuration at its next restart, so a `remote` change it would refuse is refused now, while the manager is up. |
+| `check` | Runs the first three pre-start checks and nothing else: no daemon is stopped or started, no lock is taken, and the `var/run/<daemon>.failed` verdicts of the last start are left alone. Exits `0` when a start would pass them (`Configuration and credentials checks passed.`, or `{"error":0,"data":[]}` with `-j`) and `1` otherwise, with the same message, `-j` error code (`20`, `21` or `22`) and log lines the start would print. Run it as `root`, like `start`: the credential check refuses any other user. Step 4 is not part of it — it opens the keystore, which must not happen while the manager is up — so what only step 4 refuses (an indexer password in neither the keystore nor any source, the resolver's lock held for over 60 seconds) passes the check and still refuses the start that follows. |
 | `status` | Prints `<daemon> is running...` or `<daemon> not running...` per daemon (`refused its configuration...` or `failed to start...` when the last `start` left that verdict in `var/run/<daemon>.failed`), and exits `1` when any daemon is down. |
-| `enable debug` / `disable debug` | Make every later start pass `-d` to the daemons (or stop doing so), recorded in `bin/.process_list`. `debug` is the only accepted option. |
-| `info` | Prints `WAZUH_VERSION`, `WAZUH_REVISION` and `WAZUH_TYPE` (`manager`); `-v`, `-r` and `-t` print one of them alone. |
+| `enable debug` / `disable debug` | Make every later start pass `-d` to the daemons (or stop doing so), recorded in `bin/.process_list`. `debug` is the only accepted option: a missing or other option prints the usage (one `{"error":1,…}` document with `-j`) and exits `1` before the start lock is taken; success prints nothing, or `{"error":0,"data":[]}` with `-j`. The exception is `wazuh-manager-analysisd`: only its `-t` gets `-d`, and it is started with no flags, so the engine's level is set by the internal option `analysisd.debug` ([Engine configuration](modules/engine/configuration.md)). |
+| `info` | Prints `WAZUH_VERSION`, `WAZUH_REVISION` and `WAZUH_TYPE` (`manager`); `-v`, `-r` and `-t` print one of them alone. With `-j`, `{"error":0,"data":[…]}` holds the three, or the one asked for; an unknown flag is `{"error":1,…}`. |
 
 Before `start`, `restart` and `reload` touch any daemon, four checks run, and the first one that fails
 refuses the command:
@@ -232,17 +241,58 @@ Every refusal prints one line ending in `Exiting` (for example `wazuh-manager.co
 Exiting` or `Unresolved credentials. Exiting`), records the reason in `logs/wazuh-manager.log` (except
 when the engine's own `-t` refuses, which prints its reason on stderr only), and exits
 `1`. The error codes (`20` for the configuration, `21` for an unresolved credential, `22` for an unsafe or
-invalid one or a check that could not run) appear only in the `-j` output. The messages, codes and log
+invalid one or a check that could not run, `1` for anything else — another invocation holding the lock, a
+daemon that did not start) appear only in the `-j` output, as
+`{"error":<code>,"message":"<reason>."}`. The messages, codes and log
 lines of each step are in [When the manager does not start](getting-started/credentials.md#when-the-manager-does-not-start).
 When `bin/wazuh-manager-resolve-credentials` is missing or not executable, steps 2 and 4 are skipped. A
 configuration so broken that `cluster.node_type` cannot be read surfaces as `Invalid cluster
 configuration, check the /etc/wazuh-manager/wazuh-manager.conf file.`
 
-An unknown action prints the usage and exits `1`. The daemons inherit the command's standard output,
+An unknown action prints the usage and exits `1`; with `-j` it prints only `{"error":1,"message":"Invalid action: <action>."}` (or `Missing action.`).
+Anything after `start`, `stop`, `restart`, `reload`, `check` or `status` is ignored, not refused:
+`wazuh-manager-control check extra` is `check`. The daemons inherit the command's standard output,
 so redirect `start` to a file rather than piping it: a pipe never sees end-of-file and the command
 appears to hang. On a systemd host the `wazuh-manager` unit drives the same script (`ExecStart`, `ExecStop`, `ExecReload`); its
 `TimeoutStartSec=180` bounds `start` and also `reload` (systemd times `ExecReload` with the start timeout), which
 covers the engine wait in both; `stop` is bounded by `TimeoutSec=45`.
+
+**`wazuh-manager-control` always acts on the daemons itself**, whoever runs it: `start` launches every daemon
+that is not running (and reports `already running` for the rest), even while the unit is `active`, and the
+caller's environment and standard error reach the checks. Typed in a shell on a systemd host, it therefore starts
+the daemons outside the unit — outside its control group, its sandbox (`ProtectSystem`, `PrivateTmp`, …) and its
+accounting, and systemd does not know they exist.
+
+The shell `wazuh-manager-control restart` and `systemctl restart wazuh-manager` are therefore **not
+equivalent**. The script checks first and stops nothing when a check fails, but it relaunches the daemons outside
+the unit. `systemctl restart` keeps them inside the unit, but its `ExecStop` stops every daemon before its
+`ExecStart` runs any check, so a configuration the start refuses leaves the manager **down**. On a systemd host,
+check first and then restart through the unit:
+
+```bash
+/var/wazuh-manager/bin/wazuh-manager-control check && systemctl restart wazuh-manager
+```
+
+The Server API's `PUT /cluster/restart` and `PUT /cluster/reload` do exactly that: `wazuh-manager-service-control`
+runs `wazuh-manager-control check` before it calls `systemctl`, and a failed check leaves the manager running
+([Control](modules/control/README.md#wazuh-manager-service-control)). Use the script directly to relaunch a single
+daemon that died, or on hosts without systemd.
+
+#### Daemons are not supervised
+
+Nothing restarts a daemon that dies. The unit is `Type=forking` with `RemainAfterExit=yes` and no
+`Restart=`, so it stays `active` after a crash; `wazuh-manager-control status` shows the daemon as `not
+running...` (or `failed to start...`) and exits `1`, and `GET /cluster/{node_id}/status` reports it. Recover with
+`wazuh-manager-control check && systemctl restart wazuh-manager` (a plain `systemctl restart` stops the manager
+before any check, so a refused start leaves it down; see above), or relaunch only the dead daemon with `wazuh-manager-control start` (it
+runs outside the unit then; see above). While one of
+the core daemons the Server API depends on is down, the API keeps answering login, its status queries and the
+restart endpoints, so the manager can still be inspected and restarted remotely; every other call answers
+error `1017` (*Some Wazuh daemons are not ready yet*) until the daemon is back. The core daemons are
+`wazuh-manager-modulesd`, `-remoted`, `-analysisd` and `-db`. The restart endpoints work with
+`wazuh-manager-modulesd` down too: when its control socket is gone, the API runs `wazuh-manager-service-control`
+itself ([Control](modules/control/README.md#manager-restart-and-reload)); only `wazuh-manager-apid` has to be
+running.
 
 ### Data Flow
 
@@ -256,7 +306,7 @@ covers the engine wait in both; `stop` is bounded by `TimeoutSec=45`.
 
     Task delivery is fire-and-forget from the manager's perspective either way: the manager never learns what came of an upgrade. See [Agent upgrades](modules/task_manager/agent-upgrades.md) for the version gates and the WPK rules.
 6. **API Query** — Client sends an HTTPS request to the **Server API**. The API connects directly to **Engine** (`queue/sockets/engine-api-http.sock`), **Wazuh DB** (`queue/sockets/wdb.sock` and `queue/sockets/wdb-http.sock`), **Remoted** (`queue/sockets/remote.sock` and `queue/sockets/remote-admin-http.sock`), **Auth** (`queue/sockets/auth.sock`), **Vulnerability Scanner** (`queue/sockets/vd-http.sock`), or **Task Manager** (`queue/sockets/task-http.sock`) depending on the endpoint. Agent restart and reload are the Task Manager cases: the API creates one `agent_restart` or `agent_reload` task per agent, in bulk requests of up to 500, and answers as soon as they are recorded — the agent picks the task up on its next `POST /control`. The **DAPI** layer transparently routes requests across cluster nodes.
-7. **Manager Restart/Reload** — Client sends a restart or reload request via **API** → **wm_control** module (`queue/sockets/control.sock`), which runs `bin/wazuh-manager-service-control restart|reload`. That helper runs `systemctl restart|reload wazuh-manager.service` when systemd is PID 1, and `bin/wazuh-manager-control restart|reload` otherwise; see [Control](modules/control/README.md#manager-restart-and-reload).
+7. **Manager Restart/Reload** — Client sends a restart or reload request via **API** → **wm_control** module (`queue/sockets/control.sock`), which runs `bin/wazuh-manager-service-control restart|reload` (the API runs the helper itself when `control.sock` is gone). When systemd is PID 1 the helper runs `bin/wazuh-manager-control check` and then, only if it passes, `systemctl restart|reload wazuh-manager.service`; otherwise it runs `bin/wazuh-manager-control restart|reload`, which checks before it stops anything. Any other command is answered `Err` and logged as `Unknown command: '<command>'`, escaped (`\n`, `\r`, `\t`, `\\`, `\xHH` for other control or non-ASCII bytes) and cut to 128 bytes with `...[truncated]`. See [Control](modules/control/README.md#manager-restart-and-reload).
 8. **Cluster Sync** — **Clusterd** synchronizes agent registration and shared configuration between master and worker nodes using Fernet-encrypted connections. It reads/writes agent state via **Wazuh DB** (`queue/sockets/wdb-http.sock`) and connects to the **Wazuh Indexer** (via Python opensearchpy) for active response dispatch, agent sync, and metrics — reading the Indexer credentials from the **Keystore Server** (`queue/sockets/keystore.sock`) first, since they are never held in the cluster configuration. Its Indexer-dependent jobs are supervised: availability is re-checked every 300s and the jobs are cancelled and restarted with exponential backoff (capped at 3600s) whenever the Indexer becomes unreachable; an unusable Indexer configuration is reported once and re-checked every 300s instead, and any wait ends early when `wazuh-manager.conf` changes. The API forwards cluster queries to Clusterd (`queue/sockets/cluster-internal.sock`).
 9. **Agent Monitoring** — **Remoted** refreshes each agent's keep-alive in **Wazuh DB** (`queue/sockets/wdb.sock`). Marking silent agents disconnected, deleting long-disconnected ones and rotating the manager's logs are recurring **Task Manager** jobs inside **Modulesd**. These are the only Task Manager work that still reaches **Wazuh DB**, and it does so through modulesd's host callbacks rather than for its own storage — the agent queries live there, the task rows do not — see [Recurring manager tasks](modules/task_manager/schedules.md).
 10. **Agent Deletion** — Client sends a delete request via **API** → **Auth** (`queue/sockets/auth.sock`). Auth removes the agent from **Wazuh DB** (`queue/sockets/wdb.sock`), journals the deletion, and records an `agent_delete_indexer` manager task with **Task Manager** (`queue/sockets/task-http.sock`) — a durable intent, keyed by a deterministic id so a retry of the same journal line collapses onto the same row rather than deleting twice. Task Manager then executes it against **Inventory Sync Server**'s delete endpoint (`queue/sockets/inventory-sync-http.sock`) to remove every document of that agent from the **Indexer** — its state documents (`wazuh-states-*`) plus its reported configuration and statistics (`wazuh-agent-config`, `wazuh-agent-stats`). This task type never gives up: attempts and deferrals are unbounded and a 4xx requeues, because an agent whose documents outlive it is a data-retention problem rather than a transient one.
@@ -294,7 +344,7 @@ Naming rules, which apply to any socket added later:
 - When a component owns more than one socket of the same protocol, a qualifier names the plane: `api` for a control or query interface, `ingest` for a data-path intake, `admin` for an operator-facing endpoint.
 - Every socket lives in `queue/sockets/`, endpoints kept apart from data. Bind, then `chmod` to 0660: `bind()` applies the umask.
 
-Below, `HTTP` is HTTP/1.1 over the socket, reachable with `curl --unix-socket`. `Framed` is the legacy protocol: a 4-byte little-endian length header followed by a text or JSON payload.
+Below, `HTTP` is HTTP/1.1 over the socket, reachable with `curl --unix-socket`. `Framed` is the legacy protocol: a 4-byte little-endian length header followed by a text or JSON payload. `Raw` is the bare payload with no length header.
 
 | Socket                                   | Owner                 | Protocol | Purpose                                                            |
 | ---------------------------------------- | --------------------- | -------- | ------------------------------------------------------------------ |
@@ -303,10 +353,10 @@ Below, `HTTP` is HTTP/1.1 over the socket, reachable with `curl --unix-socket`. 
 | `queue/sockets/remote-admin-http.sock`   | wazuh-manager-remoted | HTTP     | Operator-facing admin and metrics endpoint                         |
 | `queue/sockets/engine-api-http.sock`     | wazuh-manager-analysisd | HTTP     | Engine API: content (`_internal/content/*`, `content/validate/*`), IOC (`content/ioc/*`), router, tester and `logtest`, GeoIP databases, metrics, `status`, event dumper, raw event indexer status; see [Engine API reference](modules/engine/api-reference.md) |
 | `queue/sockets/engine-ingest-http.sock`  | wazuh-manager-analysisd | HTTP     | Event ingestion                                                    |
-| `queue/sockets/inventory-sync-http.sock` | modulesd (Inventory Sync Server) | HTTP     | Stateful sync, agent-reported stats and config, agent deletion      |
+| `queue/sockets/inventory-sync-http.sock` | modulesd (Inventory Sync Server) | HTTP     | Stateful sync (`POST /stateful`), agent-reported stats and config (`POST /stats`, `POST /config`), the two manager-task routes the Task Manager drives (`POST /_internal/agents/delete`, `POST /_internal/vd/scan`), `GET /metrics` and the `GET /` liveness probe; see [Inventory Sync Server API reference](modules/inventory-sync-server/api-reference.md) |
 | `queue/sockets/vd-http.sock`             | modulesd (Vulnerability Scanner) | HTTP     | On-demand scans and feed operations, called by remoted and the API |
 | `queue/sockets/keystore.sock`            | modulesd (Keystore Server) | Framed   | Indexer credential retrieval, called by clusterd (the framework's `KeystoreClient`, from its Indexer tasks) |
-| `queue/sockets/control.sock`             | modulesd (Control)    | Framed   | Daemon restart and reload                                          |
+| `queue/sockets/control.sock`             | modulesd (Control)    | Raw      | Daemon restart and reload: one unframed command per connection, a NUL-terminated reply, then the manager closes it ([Control](modules/control/README.md)) |
 | `queue/sockets/wmodules.sock`            | wazuh-manager-modulesd | Framed   | Active configuration (`getconfig wmodules`, `getconfig internal_options`, `getallconfig`), read by the Server API for the `wmodules` component of `GET /cluster/{node_id}/configuration/{component}/{configuration}`. Its generic `query <module>` verb has no taker on the manager: no manager module implements it |
 | `queue/sockets/wdb.sock`                 | wazuh-manager-db      | Framed   | Legacy wdb query protocol                                          |
 | `queue/sockets/wdb-http.sock`            | wazuh-manager-db      | HTTP     | Agent sync and summary REST API, used by clusterd and the API; also `GET /v1/status`, the daemon's readiness answer |

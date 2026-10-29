@@ -25,6 +25,15 @@
 #define MANAGER_SERVICE_CONTROL_BIN "bin/wazuh-manager-service-control"
 #define MANAGER_SERVICE_CONTROL_STATUS_FD 3
 #define MANAGER_SERVICE_CONTROL_TIMEOUT_MS 5000
+/* The control socket serves one client at a time: a client that connects and sends nothing must not
+ * hold it (and every restart or reload behind it) for longer than this. */
+#define WM_CONTROL_RECV_TIMEOUT_S 3
+
+/* Client input is logged at most this many bytes long, escaped (see wm_control_log_input). */
+#define WM_CONTROL_LOG_INPUT_MAX 128
+#define WM_CONTROL_LOG_TRUNCATED "...[truncated]"
+/* Worst case: every byte becomes "\xHH", plus the truncation mark and the terminator. */
+#define WM_CONTROL_LOG_INPUT_SIZE (WM_CONTROL_LOG_INPUT_MAX * 4 + sizeof(WM_CONTROL_LOG_TRUNCATED))
 
 static void *wm_control_main();
 static void wm_control_destroy();
@@ -308,12 +317,60 @@ size_t wm_control_execute_action(const char *action, const char *service, char *
 #endif
 }
 
+const char *wm_control_log_input(const char *input, char *dst, size_t dst_size) {
+    static const char hex[] = "0123456789abcdef";
+    size_t in = 0;
+    size_t out = 0;
+
+    if (dst == NULL || dst_size == 0) {
+        return "";
+    }
+
+    for (; input != NULL && input[in] != '\0' && in < WM_CONTROL_LOG_INPUT_MAX; in++) {
+        const unsigned char c = (unsigned char)input[in];
+        char esc[5] = {0};
+
+        switch (c) {
+        case '\n': esc[0] = '\\'; esc[1] = 'n'; break;
+        case '\r': esc[0] = '\\'; esc[1] = 'r'; break;
+        case '\t': esc[0] = '\\'; esc[1] = 't'; break;
+        case '\\': esc[0] = '\\'; esc[1] = '\\'; break;
+        default:
+            if (c < 0x20 || c >= 0x7f) {
+                esc[0] = '\\';
+                esc[1] = 'x';
+                esc[2] = hex[c >> 4];
+                esc[3] = hex[c & 0x0f];
+            } else {
+                esc[0] = (char)c;
+            }
+        }
+
+        const size_t esc_len = strlen(esc);
+        if (out + esc_len >= dst_size) {
+            break;
+        }
+        memcpy(dst + out, esc, esc_len);
+        out += esc_len;
+    }
+
+    dst[out] = '\0';
+
+    if (input != NULL && input[in] != '\0' && out + sizeof(WM_CONTROL_LOG_TRUNCATED) <= dst_size) {
+        memcpy(dst + out, WM_CONTROL_LOG_TRUNCATED, sizeof(WM_CONTROL_LOG_TRUNCATED));
+    }
+
+    return dst;
+}
+
 size_t wm_control_dispatch(char *command, char **output) {
+    char safe_command[WM_CONTROL_LOG_INPUT_SIZE];
     char *args = strchr(command, ' ');
     if (args) {
         *args = '\0';
 #ifndef CLIENT
-        mtwarn(WM_CONTROL_LOGTAG, "Unexpected arguments for command: '%s'", command);
+        mtwarn(WM_CONTROL_LOGTAG, "Unexpected arguments for command: '%s'",
+               wm_control_log_input(command, safe_command, sizeof(safe_command)));
         os_strdup("err Unexpected arguments", *output);
         return strlen(*output);
 #else
@@ -321,7 +378,8 @@ size_t wm_control_dispatch(char *command, char **output) {
 #endif
     }
 
-    mtdebug2(WM_CONTROL_LOGTAG, "Dispatching command: '%s'", command);
+    mtdebug2(WM_CONTROL_LOGTAG, "Dispatching command: '%s'",
+             wm_control_log_input(command, safe_command, sizeof(safe_command)));
 
 #ifdef CLIENT
     const char *service = "wazuh-agent";
@@ -336,7 +394,8 @@ size_t wm_control_dispatch(char *command, char **output) {
         return wm_control_execute_action("reload", service, output);
 
     } else {
-        mterror(WM_CONTROL_LOGTAG, "Unknown command: '%s'", command);
+        mterror(WM_CONTROL_LOGTAG, "Unknown command: '%s'",
+                wm_control_log_input(command, safe_command, sizeof(safe_command)));
         os_strdup("Err", *output);
         return strlen(*output);
     }
@@ -385,6 +444,10 @@ static void *process_control() {
         }
 #endif
 
+        if (OS_SetRecvTimeout(peer, WM_CONTROL_RECV_TIMEOUT_S, 0) < 0) {
+            mtwarn(WM_CONTROL_LOGTAG, "Cannot set a receive timeout on a control socket client: %s", strerror(errno));
+        }
+
         os_calloc(OS_MAXSTR + 1, sizeof(char), buffer);
 
 #ifdef CLIENT
@@ -409,12 +472,19 @@ static void *process_control() {
             }
         }
 #else
+        errno = 0;
         switch (length = OS_RecvUnix(peer, OS_MAXSTR, buffer), length) {
         case -1:
             mterror(WM_CONTROL_LOGTAG, "At process_control(): OS_RecvUnix(): %s", strerror(errno));
             break;
         case 0:
-            mtinfo(WM_CONTROL_LOGTAG, "Empty message from local client.");
+            /* OS_RecvUnix() returns 0 for a receive error too; a timeout leaves EAGAIN. */
+            if (errno == EAGAIN || errno == EWOULDBLOCK) {
+                mtwarn(WM_CONTROL_LOGTAG, "A local client sent no command within %d seconds; connection closed.",
+                       WM_CONTROL_RECV_TIMEOUT_S);
+            } else {
+                mtinfo(WM_CONTROL_LOGTAG, "Empty message from local client.");
+            }
             break;
         case OS_MAXLEN:
             mterror(WM_CONTROL_LOGTAG, "Received message > %i", MAX_DYN_STR);

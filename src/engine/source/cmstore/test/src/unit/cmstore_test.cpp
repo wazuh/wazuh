@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 #include <filesystem>
 #include <fstream>
+#include <functional>
 #include <memory>
+#include <string>
 
 #include <base/logging.hpp>
 #include <base/name.hpp>
@@ -1176,6 +1178,49 @@ TEST_F(CMStoreTest, GetNSNonexistentThrows)
     EXPECT_THROW(store->getNS(cm::store::NamespaceId("missing")), std::runtime_error);
 }
 
+TEST_F(CMStoreTest, MissingNamespaceErrorTruncatesALongId)
+{
+    auto store = makeStore();
+    const std::string longId(5000, 'a');
+    const cm::store::NamespaceId nsId(longId);
+
+    const auto expectThrowsTruncated = [&](const std::function<void()>& call)
+    {
+        try
+        {
+            call();
+            FAIL() << "Expected std::runtime_error";
+        }
+        catch (const std::runtime_error& e)
+        {
+            const std::string what = e.what();
+            EXPECT_EQ(what.find(longId), std::string::npos);
+            EXPECT_NE(what.find("Namespace does not exist: " + std::string(128, 'a') + "... (5000 bytes)"),
+                      std::string::npos)
+                << what;
+        }
+    };
+
+    expectThrowsTruncated([&]() { store->getNS(nsId); });
+    expectThrowsTruncated([&]() { store->getNSReader(nsId); });
+    expectThrowsTruncated([&]() { store->deleteNamespace(nsId); });
+    expectThrowsTruncated([&]() { store->renameNamespace(nsId, cm::store::NamespaceId("other")); });
+}
+
+TEST_F(CMStoreTest, InvalidNamespaceIdErrorTruncatesTheValue)
+{
+    const std::string longId = std::string(5000, 'a') + "-";
+    try
+    {
+        cm::store::NamespaceId nsId(longId);
+        FAIL() << "Expected std::runtime_error";
+    }
+    catch (const std::runtime_error& e)
+    {
+        EXPECT_STREQ(e.what(), ("Invalid namespace ID: " + std::string(128, 'a') + "... (5001 bytes)").c_str());
+    }
+}
+
 TEST_F(CMStoreTest, LoadExistingNamespacesFromDisk)
 {
     // Create a namespace directory on disk first
@@ -1458,6 +1503,23 @@ TEST(PolicyTest, OriginSpaceValidationIsLinear)
     EXPECT_THROW(
         cm::store::dataType::Policy("title", true, validUUID(), {}, {}, {}, {}, longInvalid, "", false, false, true),
         std::runtime_error);
+}
+
+TEST(PolicyTest, InvalidOriginSpaceErrorTruncatesTheValue)
+{
+    std::string longInvalid(5000, 'a');
+    longInvalid.back() = '-';
+    try
+    {
+        cm::store::dataType::Policy("title", true, validUUID(), {}, {}, {}, {}, longInvalid, "", false, false, true);
+        FAIL() << "Expected std::runtime_error";
+    }
+    catch (const std::runtime_error& e)
+    {
+        const std::string what {e.what()};
+        EXPECT_EQ(what.find(longInvalid), std::string::npos);
+        EXPECT_NE(what.find("'" + std::string(128, 'a') + "... (5000 bytes)'"), std::string::npos) << what;
+    }
 }
 
 TEST(PolicyTest, ConstructorNonV4RootDecoderAccepted)

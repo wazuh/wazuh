@@ -347,10 +347,112 @@ static bool purge_in_flight_locked(const char *agent_id) {
     return false;
 }
 
+/* Client-caused rejections, throttled per reason (w_auth_log_client_rejection()): a frequent reason,
+ * such as a wrong password, must not hide another, nor lend it its log level. A reason is the format
+ * of its call site; reasons past the table share its last slot. */
+typedef struct {
+    const char *reason;       /* NULL: free slot */
+    time_t last;              /* when this reason was last logged */
+    unsigned long suppressed; /* rejections of this reason logged at debug level since then */
+    bool suppressed_warn;     /* one of them would have been a WARNING */
+} client_reject_log_t;
+
+static pthread_mutex_t client_reject_log_mutex = PTHREAD_MUTEX_INITIALIZER;
+static client_reject_log_t client_reject_log[AUTH_CLIENT_REJECT_LOG_REASONS];
+
+void w_auth_client_rejection_log_reset(void) {
+    w_mutex_lock(&client_reject_log_mutex);
+    memset(client_reject_log, 0, sizeof(client_reject_log));
+    w_mutex_unlock(&client_reject_log_mutex);
+}
+
+void w_auth_client_rejection_log(const char *reason, bool info, const char *message, time_t now) {
+    client_reject_log_t *slot = NULL;
+    unsigned long suppressed = 0;
+    time_t since = 0;
+    bool emit = false;
+    bool warn = !info;
+
+    w_mutex_lock(&client_reject_log_mutex);
+
+    for (int i = 0; i < AUTH_CLIENT_REJECT_LOG_REASONS; i++) {
+        if (client_reject_log[i].reason == NULL || strcmp(client_reject_log[i].reason, reason) == 0 ||
+            i == AUTH_CLIENT_REJECT_LOG_REASONS - 1) {
+            slot = &client_reject_log[i];
+            break;
+        }
+    }
+
+    /* A clock stepped backwards opens the window instead of holding it shut. */
+    if (slot->reason == NULL || now < slot->last || now - slot->last >= AUTH_CLIENT_REJECT_LOG_WINDOW) {
+        emit = true;
+        suppressed = slot->reason == NULL ? 0 : slot->suppressed;
+        since = slot->reason == NULL ? 0 : now - slot->last;
+        /* The summary stands for the suppressed ones too: it takes the highest level among them. */
+        warn = warn || (suppressed > 0 && slot->suppressed_warn);
+        slot->reason = reason;
+        slot->last = now;
+        slot->suppressed = 0;
+        slot->suppressed_warn = false;
+    } else {
+        slot->suppressed++;
+        slot->suppressed_warn = slot->suppressed_warn || !info;
+    }
+
+    w_mutex_unlock(&client_reject_log_mutex);
+
+    if (!emit) {
+        mdebug1("%s", message);
+    } else if (suppressed == 0) {
+        if (warn) {
+            mwarn("%s", message);
+        } else {
+            minfo("%s", message);
+        }
+    } else {
+        /* The count goes before the sentence's own full stop, not after it ("connection. (and ...") */
+        int len = (int)strlen(message);
+        if (len > 0 && message[len - 1] == '.') {
+            len--;
+        }
+        if (warn) {
+            mwarn("%.*s (and %lu more like it in the last %ld s)", len, message, suppressed, (long)since);
+        } else {
+            minfo("%.*s (and %lu more like it in the last %ld s)", len, message, suppressed, (long)since);
+        }
+    }
+}
+
+void w_auth_log_client_rejection(bool info, const char *format, ...) {
+    char message[OS_SIZE_2048];
+    va_list args;
+
+    va_start(args, format);
+    vsnprintf(message, sizeof(message), format, args);
+    va_end(args);
+
+    w_auth_client_rejection_log(format, info, message, time(NULL));
+}
+
 /* Static regex for group validation */
 static regex_t w_auth_group_regex;
 static bool w_auth_group_regex_compiled = false;
 static pthread_mutex_t w_auth_group_regex_mutex = PTHREAD_MUTEX_INITIALIZER;
+
+/* The address an entry was registered with, as the database stores it: the CIDR text when it is a
+ * network ("10.9.0.0/24"), otherwise the plain address. The keystore keeps the mask apart from the
+ * address text (entry->ip->ip is "10.9.0.0"), so copying that text alone dropped the mask from
+ * global.db while client.keys, written through the same OS_CIDRtoStr(), kept it. */
+static char *keyentry_registered_ip(const keyentry *entry) {
+    char cidr[IPSIZE + 1];
+
+    /* ipv4/ipv6 share one pointer (a union): without a parsed address there is no mask to render. */
+    if (entry->ip->ipv4 == NULL) {
+        return strdup(entry->ip->ip);
+    }
+
+    return strdup(OS_CIDRtoStr(entry->ip, cidr, IPSIZE) ? entry->ip->ip : cidr);
+}
 
 // Append key to insertion queue
 void add_insert(const keyentry *entry, const char *group, const char *reenroll_secret, long long journal_seq) {
@@ -359,7 +461,7 @@ void add_insert(const keyentry *entry, const char *group, const char *reenroll_s
     os_calloc(1, sizeof(struct keynode), node);
     node->id = strdup(entry->id);
     node->name = strdup(entry->name);
-    node->ip = strdup(entry->ip->ip);
+    node->ip = keyentry_registered_ip(entry);
     node->raw_key = strdup(entry->raw_key);
     node->group = group ? strdup(group) : NULL;
     node->reenroll_secret = reenroll_secret ? strdup(reenroll_secret) : NULL;
@@ -376,7 +478,7 @@ void add_rotate(const keyentry *entry, const char *group, const char *reenroll_s
     os_calloc(1, sizeof(struct keynode), node);
     node->id = strdup(entry->id);
     node->name = strdup(entry->name);
-    node->ip = strdup(entry->ip->ip);
+    node->ip = keyentry_registered_ip(entry);
     node->raw_key = strdup(entry->raw_key);
     node->group = group ? strdup(group) : NULL;
     node->reenroll_secret = strdup(reenroll_secret);
@@ -405,6 +507,93 @@ void add_remove(const keyentry *entry) {
 }
 
 
+/* The agent version grammar POST /enroll applies (remoted's isValidVersion()): an optional 'v' or
+ * 'V', one to four dot-separated numbers, and an optional build suffix after '-' or '+' made of
+ * letters, digits, '.' and '-'; 64 bytes at most. A 4.x or 5.x agent always sends its own version in
+ * this form ("v4.14.0"), so an empty or malformed V: can only come from something else. */
+static bool w_auth_is_valid_version(const char *version) {
+    const char *p = version;
+    int numbers = 0;
+
+    if (strlen(version) == 0 || strlen(version) > 64) {
+        return false;
+    }
+
+    if (*p == 'v' || *p == 'V') {
+        p++;
+    }
+
+    while (true) {
+        if (!isdigit((unsigned char)*p)) {
+            return false;
+        }
+        while (isdigit((unsigned char)*p)) {
+            p++;
+        }
+        if (++numbers == 4 || *p != '.') {
+            break;
+        }
+        p++;
+    }
+
+    if (*p == '-' || *p == '+') {
+        p++;
+        if (*p == '\0') {
+            return false;
+        }
+        for (; *p != '\0'; p++) {
+            if (!isalnum((unsigned char)*p) && *p != '.' && *p != '-') {
+                return false;
+            }
+        }
+    }
+
+    return *p == '\0';
+}
+
+/* The form the agent registry records an address in, which is also the one the agent is answered
+ * with: the plain address (IPv6 expanded), or the network with its mask as a prefix length
+ * ("10.22.0.0/16" for "10.22.0.0/255.255.0.0"). OS_AddKey() takes the address text up to the '/' and
+ * keyentry_registered_ip() renders the mask through OS_CIDRtoStr(); this does the same, so nothing
+ * an agent is told differs from what client.keys and global.db hold. -1 for a mask the registry
+ * cannot record (a non-contiguous dotted one), which would otherwise narrow the entry to the bare
+ * address. */
+static int w_auth_registered_ip_form(os_ip *parsed, char *out, size_t size) {
+    char *slash = strchr(parsed->ip, '/');
+    int result;
+
+    if (slash) {
+        *slash = '\0';
+    }
+
+    result = OS_CIDRtoStr(parsed, out, size);
+
+    if (slash) {
+        *slash = '/';
+    }
+
+    return result;
+}
+
+int w_auth_registered_ip(const char *ip, char *out, size_t size) {
+    os_ip *parsed;
+    int result = -1;
+
+    /* A leading '!' is a negation to OS_IsValidIP(), which skips it: meaningless for an address to
+     * register, and accepting it would register the address it negates. */
+    if (ip == NULL || ip[0] == '!') {
+        return -1;
+    }
+
+    os_calloc(1, sizeof(os_ip), parsed);
+    if (OS_IsValidIP(ip, parsed)) {
+        result = w_auth_registered_ip_form(parsed, out, size);
+    }
+    w_free_os_ip(parsed);
+
+    return result;
+}
+
 w_err_t w_auth_parse_data(const char* buf,
                           char *response,
                           const char *authpass,
@@ -430,7 +619,7 @@ w_err_t w_auth_parse_data(const char* buf,
         }
 
         if (parseok == 0) {
-            minfo("Invalid password provided by %s. Closing connection.", ip);
+            w_auth_log_client_rejection(true, "Invalid password provided by %s. Closing connection.", ip);
             snprintf(response, OS_SIZE_2048, "ERROR: Invalid password");
             return OS_INVALID;
         }
@@ -458,118 +647,137 @@ w_err_t w_auth_parse_data(const char* buf,
     buf++;
 
     if (!parseok) {
-        merror("Invalid request for new agent from: %s", ip);
+        w_auth_log_client_rejection(false, "Invalid request for new agent from: %s", ip);
         snprintf(response, OS_SIZE_2048, "ERROR: Invalid request for new agent");
         return OS_INVALID;
     }
 
     if (!OS_IsValidName(*agentname)) {
-        merror("Invalid agent name: %s from %s", *agentname, ip);
+        w_auth_log_client_rejection(false, "Invalid agent name: %s from %s", *agentname, ip);
         snprintf(response, OS_SIZE_2048, "ERROR: Invalid agent name: %s", *agentname);
         return OS_INVALID;
     }
 
-    /* Check for valid agent version */
-    const char * agent_version_token = " V:";
-    if (strncmp(buf, agent_version_token, 3) == 0) {
-        char version[OS_BUFFER_SIZE+1] = {0};
-        sscanf(buf," V:\'%2048[^\']\"",version);
+    /* The optional fields, in any order. An agent writes V, G, IP and K in that order, but nothing may
+     * depend on it: a field skipped for arriving "late" would skip its check -- the version one above
+     * all. Each is read once; anything else (a repeated field, an unknown one, the trailing newline)
+     * ends the list and is ignored, as it always was. */
+    bool seen_version = false;
+    bool seen_groups = false;
+    bool seen_ip = false;
+    bool seen_key = false;
 
-        /* Validate the version */
-        if (buf[strlen(version) + 4] != '\'') {
-            merror("Unterminated version field");
-            snprintf(response, OS_SIZE_2048, "ERROR: Unterminated version field");
-            return OS_INVALID;
-        }
+    while (*buf != '\0') {
+        if (!seen_version && strncmp(buf, " V:", 3) == 0) {
+            char version[OS_BUFFER_SIZE+1] = {0};
+            seen_version = true;
+            sscanf(buf," V:\'%2048[^\']\"",version);
 
-        if (!config.allow_higher_versions && compare_wazuh_versions(__wazuh_version, version, false) < 0) {
-            merror("Incompatible version for new agent from: %s", ip);
-            snprintf(response, OS_SIZE_2048, "ERROR: %s", HC_INVALID_VERSION_RESPONSE);
-            return OS_INVALID;
-        }
-
-        /* Forward the string pointer V:'........' 3 for " V:", 2 for '' */
-        buf += strlen(version) + 5;
-    }
-
-    /* Check for valid centralized group */
-    const char * centralized_group_token = " G:";
-    if (strncmp(buf, centralized_group_token, 3) == 0) {
-        char tmp_groups[OS_SIZE_65536+1] = {0};
-        sscanf(buf," G:\'%65536[^\']\"",tmp_groups);
-
-        /* Validate the group name */
-        if (buf[strlen(tmp_groups) + 4] != '\'') {
-            merror("Unterminated group field");
-            snprintf(response, OS_SIZE_2048, "ERROR: Unterminated group field");
-            return OS_INVALID;
-        }
-
-        if (0 > w_validate_group_name(tmp_groups, response)) {
-            merror("Invalid group name: %.255s... ,",tmp_groups);
-            return OS_INVALID;
-        }
-        *groups = wstr_delete_repeated_groups(tmp_groups);
-        if (!*groups) {
-            snprintf(response, OS_SIZE_2048, "ERROR: Insuficient memory");
-            return OS_MEMERR;
-        }
-        mdebug1("Group(s) is: %s",*groups);
-
-        /* Forward the string pointer G:'........' 3 for " G:", 2 for '' */
-        buf += strlen(tmp_groups) + 5;
-    }
-
-    /* Check for IP when client uses -i option */
-    char client_source_ip[IPSIZE + 1] = {0};
-    const char * client_source_ip_token = " IP:";
-    if (strncmp(buf, client_source_ip_token, 4) == 0) {
-        char format[15];
-        sprintf(format, " IP:\'%%%d[^\' ]\"", IPSIZE);
-        sscanf(buf, format, client_source_ip);
-
-        if (buf[strlen(client_source_ip) + 5] != '\'') {
-            merror("Unterminated IP field");
-            snprintf(response, OS_SIZE_2048, "ERROR: Unterminated IP field");
-            return OS_INVALID;
-        }
-
-        /* If IP: != 'src' overwrite the provided ip */
-        if (strncmp(client_source_ip,"src",3) != 0) {
-            os_ip *aux_ip;
-            os_calloc(1, sizeof(os_ip), aux_ip);
-            if (!OS_IsValidIP(client_source_ip, aux_ip)) {
-                merror("Invalid IP: '%s'", client_source_ip);
-                snprintf(response, OS_SIZE_2048, "ERROR: Invalid IP: %s", client_source_ip);
-                w_free_os_ip(aux_ip);
+            /* Validate the version */
+            if (buf[strlen(version) + 4] != '\'') {
+                w_auth_log_client_rejection(false, "Unterminated version field");
+                snprintf(response, OS_SIZE_2048, "ERROR: Unterminated version field");
                 return OS_INVALID;
             }
-            snprintf(ip, IPSIZE, "%s", aux_ip->ip);
-            w_free_os_ip(aux_ip);
-        }
 
-        /* Forward the string pointer IP:'........' 4 for " IP:", 2 for '' */
-        buf += strlen(client_source_ip) + 6;
-    } else {
-        if (!config.flags.use_source_ip) {
-            // use_source-ip = 0 and no -I argument in agent
-            snprintf(ip, IPSIZE, "any");
+            if (!w_auth_is_valid_version(version)) {
+                w_auth_log_client_rejection(false, "Invalid version for new agent from: %s", ip);
+                snprintf(response, OS_SIZE_2048, "ERROR: Invalid version");
+                return OS_INVALID;
+            }
+
+            if (!config.allow_higher_versions && compare_wazuh_versions(__wazuh_version, version, false) < 0) {
+                w_auth_log_client_rejection(false, "Incompatible version for new agent from: %s", ip);
+                snprintf(response, OS_SIZE_2048, "ERROR: %s", HC_INVALID_VERSION_RESPONSE);
+                return OS_INVALID;
+            }
+
+            /* Forward the string pointer V:'........' 3 for " V:", 2 for '' */
+            buf += strlen(version) + 5;
+
+        } else if (!seen_groups && strncmp(buf, " G:", 3) == 0) {
+            /* Check for valid centralized group */
+            char tmp_groups[OS_SIZE_65536+1] = {0};
+            seen_groups = true;
+            sscanf(buf," G:\'%65536[^\']\"",tmp_groups);
+
+            /* Validate the group name */
+            if (buf[strlen(tmp_groups) + 4] != '\'') {
+                w_auth_log_client_rejection(false, "Unterminated group field");
+                snprintf(response, OS_SIZE_2048, "ERROR: Unterminated group field");
+                return OS_INVALID;
+            }
+
+            if (0 > w_validate_group_name(tmp_groups, response)) {
+                /* The reason the agent is answered with, without its "ERROR: " prefix */
+                w_auth_log_client_rejection(false, "%s", strncmp(response, "ERROR: ", 7) ? response : response + 7);
+                return OS_INVALID;
+            }
+            *groups = wstr_delete_repeated_groups(tmp_groups);
+            if (!*groups) {
+                snprintf(response, OS_SIZE_2048, "ERROR: Insuficient memory");
+                return OS_MEMERR;
+            }
+            mdebug1("Group(s) is: %s",*groups);
+
+            /* Forward the string pointer G:'........' 3 for " G:", 2 for '' */
+            buf += strlen(tmp_groups) + 5;
+
+        } else if (!seen_ip && strncmp(buf, " IP:", 4) == 0) {
+            /* Check for IP when client uses -i option */
+            char client_source_ip[IPSIZE + 1] = {0};
+            char format[15];
+            seen_ip = true;
+            sprintf(format, " IP:\'%%%d[^\' ]\"", IPSIZE);
+            sscanf(buf, format, client_source_ip);
+
+            if (buf[strlen(client_source_ip) + 5] != '\'') {
+                w_auth_log_client_rejection(false, "Unterminated IP field");
+                snprintf(response, OS_SIZE_2048, "ERROR: Unterminated IP field");
+                return OS_INVALID;
+            }
+
+            /* If IP: != 'src' overwrite the provided ip, in the form it is registered with. A
+             * leading '!' and a non-contiguous dotted mask are refused, as POST /enroll refuses them.
+             * The sentinel is the exact word: "srcx" is an invalid address, not "src". */
+            if (strcmp(client_source_ip, "src") != 0) {
+                char registered_ip[IPSIZE + 1] = {0};
+                if (w_auth_registered_ip(client_source_ip, registered_ip, sizeof(registered_ip)) != 0) {
+                    w_auth_log_client_rejection(false, "Invalid IP: '%s'", client_source_ip);
+                    snprintf(response, OS_SIZE_2048, "ERROR: Invalid IP: %s", client_source_ip);
+                    return OS_INVALID;
+                }
+                snprintf(ip, IPSIZE, "%s", registered_ip);
+            }
+
+            /* Forward the string pointer IP:'........' 4 for " IP:", 2 for '' */
+            buf += strlen(client_source_ip) + 6;
+
+        } else if (!seen_key && strncmp(buf, " K:", 3) == 0) {
+            /* Check for key hash when the agent already has one*/
+            char format[15] = {0};
+            seen_key = true;
+            os_calloc(1, sizeof(os_sha1), *key_hash);
+            sprintf(format, " K:\'%%%ld[^\']\"", sizeof(os_sha1) - 1);
+            sscanf(buf, format, *key_hash);
+
+            if (buf[strlen(*key_hash) + 4] != '\'') {
+                w_auth_log_client_rejection(false, "Unterminated key field");
+                snprintf(response, OS_SIZE_2048, "ERROR: Unterminated key field");
+                return OS_INVALID;
+            }
+
+            /* Forward the string pointer K:'........' 3 for " K:", 2 for '' */
+            buf += strlen(*key_hash) + 5;
+
+        } else {
+            break;
         }
     }
 
-    /* Check for key hash when the agent already has one*/
-    const char * key_hash_token = " K:";
-    if (strncmp(buf, key_hash_token, 3) == 0) {
-        os_calloc(1, sizeof(os_sha1), *key_hash);
-        char format[15] = {0};
-        sprintf(format, " K:\'%%%ld[^\']\"", sizeof(os_sha1) - 1);
-        sscanf(buf, format, *key_hash);
-
-        if (buf[strlen(*key_hash) + 4] != '\'') {
-            merror("Unterminated key field");
-            snprintf(response, OS_SIZE_2048, "ERROR: Unterminated key field");
-            return OS_INVALID;
-        }
+    if (!seen_ip && !config.flags.use_source_ip) {
+        // use_source-ip = 0 and no -I argument in agent
+        snprintf(ip, IPSIZE, "any");
     }
 
     return OS_SUCCESS;
@@ -816,7 +1024,7 @@ w_err_t w_auth_validate_groups(const char *groups, char *response) {
 
         /* Check limit */
         if (max_multigroups > MAX_GROUPS_PER_MULTIGROUP) {
-            merror("Maximum multigroup reached: Limit is %d",MAX_GROUPS_PER_MULTIGROUP);
+            w_auth_log_client_rejection(false, "Maximum multigroup reached: Limit is %d", MAX_GROUPS_PER_MULTIGROUP);
             if (response) {
                 snprintf(response, OS_SIZE_2048, "ERROR: Maximum multigroup reached: Limit is %d", MAX_GROUPS_PER_MULTIGROUP);
             }
@@ -826,7 +1034,7 @@ w_err_t w_auth_validate_groups(const char *groups, char *response) {
 
         /* Validate group name format */
         if (regexec(&w_auth_group_regex, group, 0, NULL, 0) != 0) {
-            merror("Invalid group name '%s': contains forbidden characters", group);
+            w_auth_log_client_rejection(false, "Invalid group name '%s': contains forbidden characters", group);
             if (response) {
                 snprintf(response, OS_SIZE_2048, "ERROR: Invalid group name: %s", group);
             }
@@ -836,7 +1044,7 @@ w_err_t w_auth_validate_groups(const char *groups, char *response) {
 
         /* Explicit check for directory references (. and ..) */
         if (strcmp(group, ".") == 0 || strcmp(group, "..") == 0) {
-            merror("Invalid group name '%s': directory reference not allowed", group);
+            w_auth_log_client_rejection(false, "Invalid group name '%s': directory reference not allowed", group);
             if (response) {
                 snprintf(response, OS_SIZE_2048, "ERROR: Invalid group name: %s", group);
             }
@@ -848,7 +1056,7 @@ w_err_t w_auth_validate_groups(const char *groups, char *response) {
         snprintf(dir, PATH_MAX + 1, SHAREDCFG_DIR "/%s", group);
         dp = wopendir(dir);
         if (!dp) {
-            merror("Invalid group: %.255s",group);
+            w_auth_log_client_rejection(false, "Invalid group: %.255s", group);
             if (response) {
                 snprintf(response, OS_SIZE_2048, "ERROR: Invalid group: %s", group);
             }

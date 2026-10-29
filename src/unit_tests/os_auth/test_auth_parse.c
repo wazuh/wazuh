@@ -18,6 +18,7 @@
 #include "auth.h"
 
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
+#include "../wrappers/externals/pcre2/pcre2_wrappers.h"
 
 //Expected log messages to be checked on mocked log functions
 typedef struct _mocked_log {
@@ -83,17 +84,38 @@ parse_evaluator parse_values_default_cfg [] = {
     { "OSSEC PASS: pass123 OSSEC A:'agent9' IP:'192.0.0.3' K:'ABC123'", "192.0.0.1", "pass123",   {"192.0.0.3", "agent9", NULL, "ABC123"},                      {OS_SUCCESS,""}, {NULL, NULL, NULL, "Received request for a new agent (agent9) from: 192.0.0.1", NULL} },
     { "OSSEC A:'agent10' G:'Group1,Group2' IP:'192.0.0.3' K:'ABC123'", "192.0.0.1", NULL,         {"192.0.0.3", "agent10", "Group1,Group2", "ABC123"},          {OS_SUCCESS,""}, {NULL, NULL, NULL, "Received request for a new agent (agent10) from: 192.0.0.1", "Group(s) is: Group1,Group2"} },
     { "OSSEC A:'agent11' V:'v4.5.0'", "192.0.0.1", NULL,                                          {"192.0.0.1", "agent11", NULL, NULL},                         {OS_SUCCESS,""}, {NULL, NULL, NULL, "Received request for a new agent (agent11) from: 192.0.0.1", NULL} },
+    /* The optional fields are read in any order */
+    { "OSSEC A:'agent12' G:'Group1' V:'v4.5.0'", "192.0.0.1", NULL,                               {"192.0.0.1", "agent12", "Group1", NULL},                     {OS_SUCCESS,""}, {NULL, NULL, NULL, "Received request for a new agent (agent12) from: 192.0.0.1", "Group(s) is: Group1"} },
+    { "OSSEC A:'agent13' K:'ABC123' G:'Group1' V:'v4.5.0'", "192.0.0.1", NULL,                    {"192.0.0.1", "agent13", "Group1", "ABC123"},                 {OS_SUCCESS,""}, {NULL, NULL, NULL, "Received request for a new agent (agent13) from: 192.0.0.1", "Group(s) is: Group1"} },
 
     { "OSSEC A:'agent0'", "192.0.0.1", "pass123",                       {NULL, NULL, NULL, NULL}, {OS_INVALID,"ERROR: Invalid password"},              {NULL, NULL, "Invalid password provided by 192.0.0.1. Closing connection.", NULL, NULL} },
     { "OSSEC PASS: pass124 OSSEC A:'agent0'", "192.0.0.1", "pass123",   {NULL, NULL, NULL, NULL}, {OS_INVALID,"ERROR: Invalid password"},              {NULL, NULL, "Invalid password provided by 192.0.0.1. Closing connection.", NULL, NULL} },
-    { "OSSEC PASS: pass124 OSSEC A:'agent0'", "192.0.0.1", NULL,        {NULL, NULL, NULL, NULL}, {OS_INVALID,"ERROR: Invalid request for new agent"}, {"Invalid request for new agent from: 192.0.0.1", NULL, NULL, NULL, NULL} },
-    { "OSSEC A:''", "192.0.0.1", NULL,                                  {NULL, NULL, NULL, NULL}, {OS_INVALID,"ERROR: Invalid agent name: "},          {"Invalid agent name:  from 192.0.0.1", NULL, NULL, "Received request for a new agent () from: 192.0.0.1", NULL} },
-    { "OSSEC A:'inv;agent'", "192.0.0.1", NULL,                         {NULL, NULL, NULL, NULL}, {OS_INVALID,"ERROR: Invalid agent name: inv;agent"}, {"Invalid agent name: inv;agent from 192.0.0.1", NULL, NULL, "Received request for a new agent (inv;agent) from: 192.0.0.1", NULL} },
-    { "OSSEC A:'agent3' G:'Group1,Group2", "192.0.0.1", NULL,           {NULL, NULL, NULL, NULL}, {OS_INVALID,"ERROR: Unterminated group field"}, {"Unterminated group field", NULL, NULL, "Received request for a new agent (agent3) from: 192.0.0.1", NULL} },
-    { "OSSEC A:'agent3' G:'Group1,Group2' IP:'192.0.0.3 K:'ABC123'", "192.0.0.1", NULL,           {NULL, NULL, NULL, NULL}, {OS_INVALID,"ERROR: Unterminated IP field"}, {"Unterminated IP field", NULL, NULL, "Received request for a new agent (agent3) from: 192.0.0.1", "Group(s) is: Group1,Group2"} },
-    { "OSSEC A:'agent3' G:'Group1,Group2' IP:'192.0.0.3' K:'ABC123", "192.0.0.1", NULL,           {NULL, NULL, NULL, NULL}, {OS_INVALID,"ERROR: Unterminated key field"}, {"Unterminated key field", NULL, NULL, "Received request for a new agent (agent3) from: 192.0.0.1", "Group(s) is: Group1,Group2"} },
-    { "OSSEC A:'agent3' V:'v4.5.0", "192.0.0.1", NULL,                  {NULL, NULL, NULL, NULL}, {OS_INVALID,"ERROR: Unterminated version field"},    {"Unterminated version field", NULL, NULL, "Received request for a new agent (agent3) from: 192.0.0.1", NULL} },
-    { "OSSEC A:'agent4' V:'v5.6.0'", "192.0.0.1", NULL,                 {NULL, NULL, NULL, NULL}, {OS_INVALID,"ERROR: Agent version must be lower or equal to manager version"},          {"Incompatible version for new agent from: 192.0.0.1", NULL, NULL, "Received request for a new agent (agent4) from: 192.0.0.1", NULL} },
+    { "OSSEC PASS: pass124 OSSEC A:'agent0'", "192.0.0.1", NULL,        {NULL, NULL, NULL, NULL}, {OS_INVALID,"ERROR: Invalid request for new agent"}, {NULL, "Invalid request for new agent from: 192.0.0.1", NULL, NULL, NULL} },
+    { "OSSEC A:''", "192.0.0.1", NULL,                                  {NULL, NULL, NULL, NULL}, {OS_INVALID,"ERROR: Invalid agent name: "},          {NULL, "Invalid agent name:  from 192.0.0.1", NULL, "Received request for a new agent () from: 192.0.0.1", NULL} },
+    { "OSSEC A:'inv;agent'", "192.0.0.1", NULL,                         {NULL, NULL, NULL, NULL}, {OS_INVALID,"ERROR: Invalid agent name: inv;agent"}, {NULL, "Invalid agent name: inv;agent from 192.0.0.1", NULL, "Received request for a new agent (inv;agent) from: 192.0.0.1", NULL} },
+    { "OSSEC A:'agent3' G:'Group1,Group2", "192.0.0.1", NULL,           {NULL, NULL, NULL, NULL}, {OS_INVALID,"ERROR: Unterminated group field"}, {NULL, "Unterminated group field", NULL, "Received request for a new agent (agent3) from: 192.0.0.1", NULL} },
+    { "OSSEC A:'agent3' G:'Group1,Group2' IP:'192.0.0.3 K:'ABC123'", "192.0.0.1", NULL,           {NULL, NULL, NULL, NULL}, {OS_INVALID,"ERROR: Unterminated IP field"}, {NULL, "Unterminated IP field", NULL, "Received request for a new agent (agent3) from: 192.0.0.1", "Group(s) is: Group1,Group2"} },
+    { "OSSEC A:'agent3' G:'Group1,Group2' IP:'192.0.0.3' K:'ABC123", "192.0.0.1", NULL,           {NULL, NULL, NULL, NULL}, {OS_INVALID,"ERROR: Unterminated key field"}, {NULL, "Unterminated key field", NULL, "Received request for a new agent (agent3) from: 192.0.0.1", "Group(s) is: Group1,Group2"} },
+    { "OSSEC A:'agent3' V:'v4.5.0", "192.0.0.1", NULL,                  {NULL, NULL, NULL, NULL}, {OS_INVALID,"ERROR: Unterminated version field"},    {NULL, "Unterminated version field", NULL, "Received request for a new agent (agent3) from: 192.0.0.1", NULL} },
+    { "OSSEC A:'agent4' V:'v5.6.0'", "192.0.0.1", NULL,                 {NULL, NULL, NULL, NULL}, {OS_INVALID,"ERROR: Agent version must be lower or equal to manager version"},          {NULL, "Incompatible version for new agent from: 192.0.0.1", NULL, "Received request for a new agent (agent4) from: 192.0.0.1", NULL} },
+    /* A version after another field is still checked */
+    { "OSSEC A:'agent4' G:'Group1' V:'v5.6.0'", "192.0.0.1", NULL,      {NULL, NULL, NULL, NULL}, {OS_INVALID,"ERROR: Agent version must be lower or equal to manager version"},          {NULL, "Incompatible version for new agent from: 192.0.0.1", NULL, "Received request for a new agent (agent4) from: 192.0.0.1", "Group(s) is: Group1"} },
+    /* The address is answered and registered in one form: a dotted mask as its prefix length, IPv6 expanded */
+    { "OSSEC A:'agent14' IP:'10.22.0.0/255.255.0.0'", "192.0.0.1", NULL,                        {"10.22.0.0/16", "agent14", NULL, NULL},                      {OS_SUCCESS,""}, {NULL, NULL, NULL, "Received request for a new agent (agent14) from: 192.0.0.1", NULL} },
+    { "OSSEC A:'agent15' IP:'10.22.0.0/16'", "192.0.0.1", NULL,                                 {"10.22.0.0/16", "agent15", NULL, NULL},                      {OS_SUCCESS,""}, {NULL, NULL, NULL, "Received request for a new agent (agent15) from: 192.0.0.1", NULL} },
+    { "OSSEC A:'agent16' IP:'10.30.0.0/32'", "192.0.0.1", NULL,                                 {"10.30.0.0", "agent16", NULL, NULL},                         {OS_SUCCESS,""}, {NULL, NULL, NULL, "Received request for a new agent (agent16) from: 192.0.0.1", NULL} },
+    { "OSSEC A:'agent17' V:'v4.14.0-rc1'", "192.0.0.1", NULL,                                   {"192.0.0.1", "agent17", NULL, NULL},                         {OS_SUCCESS,""}, {NULL, NULL, NULL, "Received request for a new agent (agent17) from: 192.0.0.1", NULL} },
+    /* What POST /enroll refuses, port 1515 refuses too */
+    { "OSSEC A:'agent5' IP:'10.22.0.0/255.0.255.0'", "192.0.0.1", NULL, {NULL, NULL, NULL, NULL}, {OS_INVALID,"ERROR: Invalid IP: 10.22.0.0/255.0.255.0"},         {NULL, "Invalid IP: '10.22.0.0/255.0.255.0'", NULL, "Received request for a new agent (agent5) from: 192.0.0.1", NULL} },
+    { "OSSEC A:'agent5' IP:'!10.31.0.5'", "192.0.0.1", NULL,            {NULL, NULL, NULL, NULL}, {OS_INVALID,"ERROR: Invalid IP: !10.31.0.5"},                    {NULL, "Invalid IP: '!10.31.0.5'", NULL, "Received request for a new agent (agent5) from: 192.0.0.1", NULL} },
+    /* A refused group list is logged with the reason the agent is answered with */
+    { "OSSEC A:'agent5' G:'default,'", "192.0.0.1", NULL,               {NULL, NULL, NULL, NULL}, {OS_INVALID,"ERROR: Invalid group name: default,... cannot start or end with ','"}, {NULL, "Invalid group name: default,... cannot start or end with ','", NULL, "Received request for a new agent (agent5) from: 192.0.0.1", NULL} },
+    /* The sentinel is the exact word "src", not every value starting with it */
+    { "OSSEC A:'agent18' IP:'src'", "192.0.0.1", NULL,                                          {"192.0.0.1", "agent18", NULL, NULL},                         {OS_SUCCESS,""}, {NULL, NULL, NULL, "Received request for a new agent (agent18) from: 192.0.0.1", NULL} },
+    { "OSSEC A:'agent5' IP:'srcx'", "192.0.0.1", NULL,                  {NULL, NULL, NULL, NULL}, {OS_INVALID,"ERROR: Invalid IP: srcx"},                          {NULL, "Invalid IP: 'srcx'", NULL, "Received request for a new agent (agent5) from: 192.0.0.1", NULL} },
+    { "OSSEC A:'agent5' IP:'src10.1.1.1'", "192.0.0.1", NULL,           {NULL, NULL, NULL, NULL}, {OS_INVALID,"ERROR: Invalid IP: src10.1.1.1"},                   {NULL, "Invalid IP: 'src10.1.1.1'", NULL, "Received request for a new agent (agent5) from: 192.0.0.1", NULL} },
+    { "OSSEC A:'agent5' V:''", "192.0.0.1", NULL,                       {NULL, NULL, NULL, NULL}, {OS_INVALID,"ERROR: Invalid version"},                           {NULL, "Invalid version for new agent from: 192.0.0.1", NULL, "Received request for a new agent (agent5) from: 192.0.0.1", NULL} },
+    { "OSSEC A:'agent5' V:'vX'", "192.0.0.1", NULL,                     {NULL, NULL, NULL, NULL}, {OS_INVALID,"ERROR: Invalid version"},                           {NULL, "Invalid version for new agent from: 192.0.0.1", NULL, "Received request for a new agent (agent5) from: 192.0.0.1", NULL} },
 
     {0}
 };
@@ -137,14 +159,12 @@ static void test_w_auth_parse_data(void **state) {
     char *key_hash = NULL;
     w_err_t err;
 
-    unsigned int max = config.flags.use_source_ip == 1 ? 5 : 1;
-    for (unsigned int a = 0; a < max; a++) {
-        expect_any(__wrap_OS_IsValidIP, ip_address);
-        expect_any(__wrap_OS_IsValidIP, final_ip);
-        will_return(__wrap_OS_IsValidIP, -2);
-    }
-
+    /* OS_IsValidIP() and OS_CIDRtoStr() run for real: the form an address is registered with is
+     * what these rows check. That needs the real PCRE2, which this binary mocks by default. */
+    w_test_pcre2_wrappers(false);
     for (unsigned i=0; parse_values[i].buffer; i++) {
+        /* Client-caused rejections are throttled; each row is a fresh first occurrence. */
+        w_auth_client_rejection_log_reset();
         set_expected_log(&parse_values[i].expected_log);
         response[0] = '\0';
         strncpy(ip, parse_values[i].src_ip, IPSIZE);
@@ -172,6 +192,139 @@ static void test_w_auth_parse_data(void **state) {
         os_free(groups);
         os_free(key_hash);
     }
+    w_test_pcre2_wrappers(true);
+}
+
+/* The form every enrollment path (1515 above, and the local socket behind POST /enroll, POST /agents
+ * and auth.sock) registers, checks for duplicates and answers an address in. The IP tree is keyed by
+ * the bare address, so a full-length mask has to disappear here or the duplicate-IP check misses. */
+static void test_w_auth_registered_ip(void **state) {
+    static const struct {
+        const char *input;
+        const char *expected; /* NULL: refused */
+    } rows[] = {
+        { "10.30.0.1",                  "10.30.0.1" },
+        { "10.30.0.1/32",               "10.30.0.1" },
+        { "10.30.0.1/255.255.255.255",  "10.30.0.1" },
+        { "::ffff:10.30.0.1",           "10.30.0.1" },
+        { "2001:db8::1/128",            "2001:0DB8:0000:0000:0000:0000:0000:0001" },
+        { "10.22.0.0/16",               "10.22.0.0/16" },
+        { "10.22.0.0/255.255.0.0",      "10.22.0.0/16" },
+        { "10.22.0.0/255.0.255.0",      NULL },
+        { "!10.31.0.5",                 NULL },
+        { "src",                        NULL },
+        { "10.30.0.300",                NULL },
+        { "",                           NULL },
+    };
+    char out[IPSIZE + 1];
+
+    w_test_pcre2_wrappers(false);
+    for (size_t i = 0; i < sizeof(rows) / sizeof(rows[0]); i++) {
+        memset(out, 0, sizeof(out));
+        if (rows[i].expected) {
+            assert_int_equal(w_auth_registered_ip(rows[i].input, out, sizeof(out)), 0);
+            assert_string_equal(out, rows[i].expected);
+        } else {
+            assert_int_equal(w_auth_registered_ip(rows[i].input, out, sizeof(out)), -1);
+        }
+    }
+    assert_int_equal(w_auth_registered_ip(NULL, out, sizeof(out)), -1);
+    w_test_pcre2_wrappers(true);
+}
+
+/* A burst of client mistakes logs one WARNING per window, not one ERROR per request: the rest go to
+ * debug, and the next reported one says how many were folded into it. */
+static void test_client_rejections_are_throttled(void **state) {
+    char response[2048] = {0};
+    char ip[IPSIZE + 1];
+    char *agentname = NULL;
+    char *groups = NULL;
+    char *key_hash = NULL;
+
+    w_auth_client_rejection_log_reset();
+
+    strncpy(ip, "192.0.0.1", IPSIZE);
+    expect_string(__wrap__mdebug1, formatted_msg, "Received request for a new agent (inv;agent) from: 192.0.0.1");
+    expect_string(__wrap__mwarn, formatted_msg, "Invalid agent name: inv;agent from 192.0.0.1");
+    assert_int_equal(w_auth_parse_data("OSSEC A:'inv;agent'", response, NULL, ip, &agentname, &groups, &key_hash), OS_INVALID);
+    os_free(agentname);
+
+    for (int i = 0; i < 3; i++) {
+        strncpy(ip, "192.0.0.1", IPSIZE);
+        expect_string(__wrap__mdebug1, formatted_msg, "Received request for a new agent (inv;agent) from: 192.0.0.1");
+        expect_string(__wrap__mdebug1, formatted_msg, "Invalid agent name: inv;agent from 192.0.0.1");
+        assert_int_equal(w_auth_parse_data("OSSEC A:'inv;agent'", response, NULL, ip, &agentname, &groups, &key_hash), OS_INVALID);
+        os_free(agentname);
+    }
+
+    /* Nothing logged at WARNING by the suppressed ones; the window state is dropped for the next case. */
+    w_auth_client_rejection_log_reset();
+}
+
+/* Each reason has its own window: a stream of wrong passwords (INFO) does not hide a different
+ * rejection, nor log it at INFO. */
+static void test_client_rejections_are_throttled_per_reason(void **state) {
+    char response[2048] = {0};
+    char ip[IPSIZE + 1];
+    char *agentname = NULL;
+    char *groups = NULL;
+    char *key_hash = NULL;
+
+    w_auth_client_rejection_log_reset();
+
+    strncpy(ip, "192.0.0.1", IPSIZE);
+    expect_string(__wrap__minfo, formatted_msg, "Invalid password provided by 192.0.0.1. Closing connection.");
+    assert_int_equal(w_auth_parse_data("OSSEC PASS: bad OSSEC A:'agent0'", response, "pass123", ip, &agentname, &groups, &key_hash), OS_INVALID);
+
+    strncpy(ip, "192.0.0.1", IPSIZE);
+    expect_string(__wrap__mdebug1, formatted_msg, "Invalid password provided by 192.0.0.1. Closing connection.");
+    assert_int_equal(w_auth_parse_data("OSSEC PASS: bad OSSEC A:'agent0'", response, "pass123", ip, &agentname, &groups, &key_hash), OS_INVALID);
+
+    strncpy(ip, "192.0.0.1", IPSIZE);
+    expect_string(__wrap__mdebug1, formatted_msg, "Received request for a new agent (inv;agent) from: 192.0.0.1");
+    expect_string(__wrap__mwarn, formatted_msg, "Invalid agent name: inv;agent from 192.0.0.1");
+    assert_int_equal(w_auth_parse_data("OSSEC A:'inv;agent'", response, NULL, ip, &agentname, &groups, &key_hash), OS_INVALID);
+    os_free(agentname);
+
+    w_auth_client_rejection_log_reset();
+}
+
+/* The line closing a window names how many of its kind it stands for and the real period, at the
+ * highest level among them. */
+static void test_client_rejection_summary(void **state) {
+    w_auth_client_rejection_log_reset();
+
+    expect_string(__wrap__minfo, formatted_msg, "first");
+    w_auth_client_rejection_log("reason-a", true, "first", 1000);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "second");
+    w_auth_client_rejection_log("reason-a", true, "second", 1010);
+
+    /* The same reason reported at WARNING once inside the window lifts the summary to WARNING. */
+    expect_string(__wrap__mdebug1, formatted_msg, "third");
+    w_auth_client_rejection_log("reason-a", false, "third", 1020);
+
+    expect_string(__wrap__mwarn, formatted_msg, "fourth (and 2 more like it in the last 200 s)");
+    w_auth_client_rejection_log("reason-a", true, "fourth", 1200);
+
+    /* Back to INFO once nothing louder was folded in. */
+    expect_string(__wrap__mdebug1, formatted_msg, "fifth");
+    w_auth_client_rejection_log("reason-a", true, "fifth", 1210);
+
+    expect_string(__wrap__minfo, formatted_msg, "sixth (and 1 more like it in the last 100 s)");
+    w_auth_client_rejection_log("reason-a", true, "sixth", 1300);
+
+    /* A message ending its own sentence gets the count before that full stop, not after it. */
+    expect_string(__wrap__minfo, formatted_msg, "Closing connection.");
+    w_auth_client_rejection_log("reason-b", true, "Closing connection.", 2000);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "Closing connection.");
+    w_auth_client_rejection_log("reason-b", true, "Closing connection.", 2010);
+
+    expect_string(__wrap__minfo, formatted_msg, "Closing connection (and 1 more like it in the last 100 s)");
+    w_auth_client_rejection_log("reason-b", true, "Closing connection.", 2100);
+
+    w_auth_client_rejection_log_reset();
 }
 
 int main(void) {
@@ -179,6 +332,10 @@ int main(void) {
         /* w_auth_parse_data tests*/
         cmocka_unit_test_setup(test_w_auth_parse_data, setup_parse_default),
         cmocka_unit_test_setup(test_w_auth_parse_data, setup_parse_use_src_ip_cfg_0),
+        cmocka_unit_test(test_w_auth_registered_ip),
+        cmocka_unit_test_setup(test_client_rejections_are_throttled, setup_parse_default),
+        cmocka_unit_test_setup(test_client_rejections_are_throttled_per_reason, setup_parse_default),
+        cmocka_unit_test(test_client_rejection_summary),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

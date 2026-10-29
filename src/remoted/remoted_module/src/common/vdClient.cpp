@@ -118,11 +118,10 @@ namespace remoted::common
         if (const auto throttle = queryFailureThrottle().record())
         {
             LOGFN_WARN(logFn(),
-                       "Failed to query VD module, returning last known offset: %llu (%llu occurrence(s) in the "
-                       "last %d s).",
+                       "Failed to query VD module, returning last known offset: %llu (%llu occurrence(s) %s).",
                        m_cachedOffset,
                        throttle.total,
-                       LogThrottle::kDefaultWindowSeconds);
+                       throttle.period().c_str());
         }
         return m_hasValue ? m_cachedOffset : 0;
     }
@@ -147,10 +146,10 @@ namespace remoted::common
                 if (const auto throttle = queryFailureThrottle().record())
                 {
                     LOGFN_WARN(logFn(),
-                               "Failed to query VD offset: status=%d (%llu occurrence(s) in the last %d s).",
+                               "Failed to query VD offset: status=%d (%llu occurrence(s) %s).",
                                res ? res->status : 0,
                                throttle.total,
-                               LogThrottle::kDefaultWindowSeconds);
+                               throttle.period().c_str());
                 }
                 return {false, 0};
             }
@@ -166,10 +165,10 @@ namespace remoted::common
                 if (const auto throttle = queryFailureThrottle().record())
                 {
                     LOGFN_WARN(logFn(),
-                               "Failed to parse VD offset response: %s (%llu occurrence(s) in the last %d s).",
+                               "Failed to parse VD offset response: %s (%llu occurrence(s) %s).",
                                e.what(),
                                throttle.total,
-                               LogThrottle::kDefaultWindowSeconds);
+                               throttle.period().c_str());
                 }
                 return {false, 0};
             }
@@ -179,10 +178,10 @@ namespace remoted::common
             if (const auto throttle = queryFailureThrottle().record())
             {
                 LOGFN_WARN(logFn(),
-                           "Failed to connect to VD module: %s (%llu occurrence(s) in the last %d s).",
+                           "Failed to connect to VD module: %s (%llu occurrence(s) %s).",
                            e.what(),
                            throttle.total,
-                           LogThrottle::kDefaultWindowSeconds);
+                           throttle.period().c_str());
             }
             return {false, 0};
         }

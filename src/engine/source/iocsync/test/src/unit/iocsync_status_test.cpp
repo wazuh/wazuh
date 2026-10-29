@@ -157,3 +157,96 @@ TEST_F(IocSyncStatusTest, RestoresLastSuccessfulUpdateFromStore)
     EXPECT_EQ(status[0].hash, "deadbeef");
     EXPECT_EQ(status[0].lastSuccessfulUpdate, 1700000000U);
 }
+
+namespace
+{
+/// Persisted state with one IOC type that already holds a synced version.
+json::Json singleSyncedTypeState()
+{
+    json::Json state;
+    state.setArray();
+    json::Json entry;
+    entry.setString("hash_md5", "/ioc_type");
+    entry.setString("oldhash", "/last_data_hash");
+    entry.setInt64(1700000000, "/last_successful_update");
+    state.appendJson(entry);
+    return state;
+}
+} // namespace
+
+// A per-type sync that errors must report FAILED (not READY), while the old version stays available.
+TEST_F(IocSyncStatusTest, FailedTypeDownloadReportsFailedAndKeepsOldVersion)
+{
+    EXPECT_CALL(*store, existsDoc(_)).WillOnce(Return(true));
+    EXPECT_CALL(*store, readDoc(_)).WillOnce(Return(store::mocks::storeReadDocResp(singleSyncedTypeState())));
+    EXPECT_CALL(*kvdb, exists(_)).WillRepeatedly(Return(true));
+
+    IocSync sync(indexer, kvdb, store, DEFAULT_RETRIES, DEFAULT_WAIT, DEFAULT_BATCH);
+
+    EXPECT_CALL(*indexer, isConsumerReadyForSync(_)).WillOnce(Return(true));
+    EXPECT_CALL(*indexer, existsIocDataIndex()).WillOnce(Return(true));
+    EXPECT_CALL(*indexer, getIocTypeHashes(_))
+        .WillOnce(Return(std::optional<std::unordered_map<std::string, std::string>>(
+            std::unordered_map<std::string, std::string> {{"hash_md5", "newhash"}})));
+    EXPECT_CALL(*kvdb, add(_)).Times(1);
+    EXPECT_CALL(*indexer, streamIocsByType(_, _, _, _)).WillOnce(Throw(std::runtime_error("indexer timeout")));
+    EXPECT_CALL(*kvdb, remove(_)).Times(1); // temporary database rolled back
+
+    sync.synchronize();
+
+    const auto status = sync.getIocStatus();
+    ASSERT_EQ(status.size(), 1U);
+    EXPECT_EQ(status[0].status, base::SyncStatus::FAILED);
+    EXPECT_TRUE(status[0].available);
+    EXPECT_EQ(status[0].hash, "oldhash");
+    EXPECT_EQ(status[0].lastSuccessfulUpdate, 1700000000U);
+}
+
+// A successful per-type sync reports READY with the new hash and persists the state.
+TEST_F(IocSyncStatusTest, SuccessfulTypeSyncReportsReady)
+{
+    EXPECT_CALL(*store, existsDoc(_)).WillOnce(Return(true));
+    EXPECT_CALL(*store, readDoc(_)).WillOnce(Return(store::mocks::storeReadDocResp(singleSyncedTypeState())));
+    EXPECT_CALL(*kvdb, exists(_)).WillRepeatedly(Return(true));
+
+    IocSync sync(indexer, kvdb, store, DEFAULT_RETRIES, DEFAULT_WAIT, DEFAULT_BATCH);
+
+    EXPECT_CALL(*indexer, isConsumerReadyForSync(_)).WillOnce(Return(true));
+    EXPECT_CALL(*indexer, existsIocDataIndex()).WillOnce(Return(true));
+    EXPECT_CALL(*indexer, getIocTypeHashes(_))
+        .WillOnce(Return(std::optional<std::unordered_map<std::string, std::string>>(
+            std::unordered_map<std::string, std::string> {{"hash_md5", "newhash"}})));
+    EXPECT_CALL(*kvdb, add(_)).Times(1);
+    EXPECT_CALL(*indexer, streamIocsByType(_, _, _, _)).WillOnce(Return(std::optional<std::size_t>(0)));
+    EXPECT_CALL(*kvdb, hotSwap(_, _)).Times(1);
+    EXPECT_CALL(*store, upsertDoc(_, _)).WillOnce(Return(store::mocks::storeOk()));
+
+    sync.synchronize();
+
+    const auto status = sync.getIocStatus();
+    ASSERT_EQ(status.size(), 1U);
+    EXPECT_EQ(status[0].status, base::SyncStatus::READY);
+    EXPECT_TRUE(status[0].available);
+    EXPECT_EQ(status[0].hash, "newhash");
+    EXPECT_GT(status[0].lastSuccessfulUpdate, 1700000000U);
+}
+
+// A type with no remote hash and no usable version is reported FAILED; nothing is downloaded.
+TEST_F(IocSyncStatusTest, MissingRemoteHashForUnsyncedTypeReportsFailed)
+{
+    auto sync = createFirstSetup();
+
+    EXPECT_CALL(*indexer, isConsumerReadyForSync(_)).WillOnce(Return(true));
+    EXPECT_CALL(*indexer, existsIocDataIndex()).WillOnce(Return(true));
+    EXPECT_CALL(*indexer, getIocTypeHashes(_))
+        .WillOnce(Return(std::optional<std::unordered_map<std::string, std::string>>(
+            std::unordered_map<std::string, std::string> {})));
+
+    sync->synchronize();
+
+    for (const auto& s : sync->getIocStatus())
+    {
+        EXPECT_EQ(s.status, base::SyncStatus::FAILED);
+        EXPECT_FALSE(s.available);
+    }
+}

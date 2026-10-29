@@ -515,9 +515,9 @@ Both test executables are registered with `gtest_discover_tests`, so `ctest` see
 
 | Suite | File | ~Tests | Coverage |
 |-------|------|--------|----------|
-| `ChannelHandlerTest` | `unit/channel_test.cpp` | 34 | Validation, writing, rotation (size & time), compression, store persistence, error paths. |
+| `ChannelHandlerTest` | `unit/channel_test.cpp` | 35 | Validation, writing, rotation (size & time), compression, store persistence, error paths. |
 | `LogManagerTest` | `unit/logger_test.cpp` | 17 | Channel creation, destroy, writer lifecycle, edge cases. |
-| `ChannelHandlerComponentTest` | `component/channel_test.cpp` | 74 | Real-filesystem rotation, compression, retention, crash recovery, concurrency. |
+| `ChannelHandlerComponentTest` | `component/channel_test.cpp` | 76 | Real-filesystem rotation, compression, retention, crash recovery, concurrency. |
 | `LogManagerComponentTest` | `component/logger_test.cpp` | 22 | Real-filesystem channel management and concurrent writers. |
 
 ---

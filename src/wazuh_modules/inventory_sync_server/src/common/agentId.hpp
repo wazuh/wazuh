@@ -21,7 +21,7 @@
  * zero-padded to at least three characters ("001", "1000"). Every document `_id`,
  * `wazuh.agent.id` and query uses it, so a deletion always matches what indexing wrote.
  *
- * Both helpers delegate to remoted's own definition (jwt/canonicalAgentId.hpp) rather than
+ * Both helpers delegate to the shared definition (src/shared_modules/utils/jwt/canonicalAgentId.hpp) rather than
  * restating it, so the two daemons cannot drift apart.
  */
 

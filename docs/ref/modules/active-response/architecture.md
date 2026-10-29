@@ -238,8 +238,12 @@ cycle `only_events_after` is stamped anew and every document older than that ins
 Documents already in the stream that must not be dispatched are removed from the stream itself. A
 `WARNING` that repeats every cycle for the same `_id` means the page is being held, one of the two
 cases above; an `ERROR … Error during active response processing` that repeats every cycle means an
-exception escaped the poller and the cursor is not moving, which is a defect in the poller rather
-than in the data.
+exception escaped the poller and the cursor is not moving. Check the message first: when it carries the
+indexer's `429` (for example a `circuit_breaking_exception` while the indexer's heap is exhausted), the
+indexer is refusing searches, the poller is not at fault, and reading resumes on its own with the next
+cycle the indexer accepts; size the indexer's heap rather than touching the bookmark. Any other
+exception repeating every cycle is a defect in the poller rather than in the data. A stopped or
+unreachable indexer is not this line: it is the `WARNING` `Cannot connect to Wazuh Indexer`.
 
 ### The cluster
 
@@ -268,7 +272,8 @@ All lines are in `logs/cluster.log`, tagged `[Active Response]`. Every path that
 says so at `WARNING` or above; `wazuh_clusterd.debug=2` adds the query, the page size, each `mget`,
 each task and each hold.
 
-Each cycle ends with one `INFO` summary. A healthy cycle is one sentence:
+A cycle that read, sent, held or discarded something ends with one `INFO` summary; an idle cycle
+logs its summary at `DEBUG`. A healthy cycle is one sentence:
 
 ```
 Created 3 task(s) for 2 of 2 active response(s) read.
@@ -301,8 +306,8 @@ reached counts as held, together with the not-visible-yet case.
 
 | Level | Message | Meaning | What to do |
 |---|---|---|---|
-| INFO | `Starting` / `Finished in N.NNNs.` | one polling cycle | nothing |
-| INFO | `Created T task(s) for D of R active response(s) read.` (`Held: H.`, `Discarded: reason=n, ….` only when non-zero) | the cycle summary described above | nothing when it is one sentence; otherwise the WARNING or ERROR for each discard is above it |
+| DEBUG / INFO | `Starting` (always DEBUG) / `Finished in N.NNNs.` (INFO only when the cycle handled something, DEBUG when idle) | one polling cycle | nothing |
+| INFO / DEBUG | `Created T task(s) for D of R active response(s) read.` (`Held: H.`, `Discarded: reason=n, ….` only when non-zero) | the cycle summary described above | nothing when it is one sentence; otherwise the WARNING or ERROR for each discard is above it |
 | WARNING | ``Discarding active response document `<id>` (`<index>`). Reason: <schema error>`` | the document fails `AR_SCHEMA`; terminal | fix the channel, or the client that wrote the document; the document itself is skipped |
 | WARNING | ``Active response `<id>` carries no usable event reference. Discarding it.`` | `event.index` or `event.doc_id` missing, empty or not a string, or `event.index` outside the allow-list; terminal, and reached only when schema validation is skipped | same |
 | WARNING | ``Expected event `<doc_id>` (`<index>`) not found after <grace>s. Discarding active response `<id>`.`` | the referenced event never became visible; terminal | check that the monitored index still holds the event; a wrong `event.index` lands here once the response is older than the grace window |

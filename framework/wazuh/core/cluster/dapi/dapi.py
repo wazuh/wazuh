@@ -31,6 +31,28 @@ from wazuh.core.wazuh_socket import wazuh_sendsync
 
 authentication_funcs = {'check_token', 'check_user_master', 'get_permissions', 'get_security_conf'}
 
+# Functions that run even while a basic service is down, so that an operator can still log in, see what is
+# wrong and restart the manager through the API. Identified by (module, name) rather than by object, because
+# importing api.authentication or wazuh.security here would be circular, and because a request forwarded
+# through the cluster is rebuilt from exactly these two attributes.
+SERVICE_RECOVERY_FUNCS = frozenset({
+    # Token issuance and validation (login, run_as login, every authenticated request).
+    ('api.authentication', 'check_user_master'),
+    ('api.authentication', 'check_token'),
+    ('api.authentication', 'get_security_conf'),
+    ('wazuh.rbac.preprocessor', 'get_permissions'),
+    # Logout.
+    ('wazuh.security', 'revoke_current_user_tokens'),
+    # Status and health.
+    ('wazuh.core.manager', 'status'),
+    ('wazuh.manager', 'get_status'),
+    ('wazuh.cluster', 'get_status_json'),
+    ('wazuh.cluster', 'get_health_nodes'),
+    # Recovery.
+    ('wazuh.manager', 'restart'),
+    ('wazuh.manager', 'reload'),
+})
+
 node_info = wazuh.core.cluster.cluster.get_node()
 pools = common.mp_pools.get()
 if node_info['type'] == 'master':
@@ -217,8 +239,11 @@ class DistributedAPI:
         The basic services wazuh needs to be running are: wazuh-manager-modulesd, wazuh-manager-remoted,
         wazuh-manager-analysisd
         and wazuh-manager-db
+
+        Login, logout, the status and health checks and the restart/reload of the manager are not refused (see
+        SERVICE_RECOVERY_FUNCS): they are what an operator needs to recover a node remotely.
         """
-        if self.f == wazuh.core.manager.status:
+        if (getattr(self.f, '__module__', None), getattr(self.f, '__name__', None)) in SERVICE_RECOVERY_FUNCS:
             return
 
         status = wazuh.core.manager.status()

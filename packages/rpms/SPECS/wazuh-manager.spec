@@ -377,7 +377,7 @@ fix_global_db() {
   for DB_FILE in global.db*; do
     if [ -f "${DB_FILE}" ] && [ ! -L "${DB_FILE}" ]; then
       chown -h wazuh-manager:wazuh-manager "${DB_FILE}"
-      as_service_user chmod 660 "${DB_FILE}" || true
+      as_service_user chmod 640 "${DB_FILE}" || true
     fi
   done
 }
@@ -561,6 +561,18 @@ if [ $1 = 0 ]; then
   fi
   %{_localstatedir}/bin/wazuh-manager-control stop > /dev/null 2>&1
 
+  # The package never enables the service, but the operator does (systemctl enable, or chkconfig
+  # on a host without systemd), and an erase must not leave that behind for a later fresh install
+  # to come up enabled at boot. Here, while the unit file is still installed: systemctl disable
+  # refuses a unit it cannot find. It edits links only, so it also works in a chroot or an image
+  # build where systemd is not running (--no-reload, as rpm's own %%systemd_preun does).
+  if command -v systemctl > /dev/null 2>&1; then
+    systemctl --no-reload disable wazuh-manager.service > /dev/null 2>&1 || true
+  fi
+  if [ -f %{_initrddir}/wazuh-manager ] && command -v chkconfig > /dev/null 2>&1; then
+    chkconfig --del wazuh-manager > /dev/null 2>&1 || true
+  fi
+
 fi
 
 %postun
@@ -572,8 +584,9 @@ CONF_DIR="%{_sysconfdir}/wazuh-manager"
 # the two find commands it replaces made. MODE "drop" deletes the *.save left by an earlier erase;
 # MODE "rename" then renames every other regular file in DIR and below to *.save. Two passes, never
 # one: a single loop would rename client.keys onto client.keys.save and then reach that name and
-# delete it. *rpmsave files and anything whose name contains "shared" keep their names. Links are
-# neither followed nor renamed.
+# delete it. *rpmsave files and any file whose own name (not its path: the agent groups under shared/
+# are renamed too, as the DEB postrm does) contains "shared" keep their names. Links are neither
+# followed nor renamed.
 save_conf() {
   for SAVE_ENTRY in "$2"/* "$2"/.[!.]* "$2"/..?*; do
     if [ -L "${SAVE_ENTRY}" ]; then
@@ -612,7 +625,6 @@ if [ $1 = 0 ];then
   rm -rf %{_localstatedir}/queue/
   rm -rf %{_localstatedir}/framework/
   rm -rf %{_localstatedir}/api/
-  rm -rf %{_localstatedir}/stats/
   rm -rf %{_localstatedir}/var/
   rm -rf %{_localstatedir}/bin/
   rm -rf %{_localstatedir}/logs/
@@ -646,9 +658,13 @@ if [ -d "${UPGRADE_PRESERVE_DIR}" ]; then
   # A subshell on its own, not the left side of an || list: the shell ignores set -e inside a
   # command whose failure is tested, and a failed copy would otherwise go unnoticed and the
   # snapshot be deleted below.
+  # The schema copy is product, not configuration: the one this package installed stays.
   (
     set -e
     if [ -d "${UPGRADE_PRESERVE_DIR}/etc" ]; then
+      if [ -f "${CONF_DIR}/wazuh-manager.schema.json" ]; then
+        rm -f "${UPGRADE_PRESERVE_DIR}/etc/wazuh-manager.schema.json"
+      fi
       mkdir -p "${CONF_DIR}"
       cp -a --remove-destination "${UPGRADE_PRESERVE_DIR}/etc/." "${CONF_DIR}/"
     fi
@@ -837,7 +853,6 @@ rm -fr %{buildroot}
 %dir %attr(770, wazuh-manager, wazuh-manager) %{_localstatedir}/queue/tasks
 %dir %attr(770, wazuh-manager, wazuh-manager) %{_localstatedir}/queue/sockets
 %dir %attr(770, wazuh-manager, wazuh-manager) %{_localstatedir}/queue/vd
-%dir %attr(770, wazuh-manager, wazuh-manager) %{_localstatedir}/queue/indexer
 %dir %attr(750, wazuh-manager, wazuh-manager) %{_localstatedir}/queue/authd
 %dir %attr(750, wazuh-manager, wazuh-manager) %{_localstatedir}/queue/keystore
 %dir %attr(750, wazuh-manager, wazuh-manager) %{_localstatedir}/data

@@ -19,8 +19,10 @@ upgrade path is an internal option.
 
 The `<task-manager>` block accepts the four queue options below and the two
 [agent-upgrade options](#xml-options). The four below are non-negative integers (seconds unless noted);
-a value of `0` — or omitting the option — makes the module fall back to its built-in default. They
-are read once, when `wazuh-manager-modulesd` starts.
+a value of `0` — or omitting the option — makes the module fall back to its built-in default. The
+largest accepted value is `2147483647`: a larger one is logged as an error, the module keeps its
+default, and `wazuh-manager-control check` (and so `start`) refuses the configuration. They are read
+once, when `wazuh-manager-modulesd` starts.
 
 ### task_ttl
 
@@ -29,7 +31,7 @@ Time-to-live for a **pending** agent task, measured from its `create_time`. On e
 handed out. Manager tasks are never expired by age.
 
 - **Default value:** `3600` (1 hour)
-- **Allowed values:** integer ≥ 0 (seconds). `0` means "use default".
+- **Allowed values:** integer 0–2147483647 (seconds). `0` means "use default".
 - **Note:** for agents below v5.0.0, `remoted`'s own `remoted.legacy_task_polling_interval` (default
   `900`s, see [remoted configuration](../remoted/configuration.md#remotedlegacy_task_polling_interval)) must be configured comfortably
   smaller than this value, or a `remote_upgrade` task created just after a poll cycle can expire
@@ -46,7 +48,7 @@ deletions freed to the filesystem in 1 MiB steps, and checkpoints the database W
 separate daily `VACUUM`.
 
 - **Default value:** `300` (5 minutes)
-- **Allowed values:** integer ≥ 0 (seconds). `0` means "use default".
+- **Allowed values:** integer 0–2147483647 (seconds). `0` means "use default".
 
 ### max_payload_bytes
 
@@ -54,7 +56,7 @@ Maximum accepted size of a single task payload, after JSON serialization. A requ
 rejected with HTTP `413` and a `payload_too_large` body. It applies to agent tasks and manager tasks alike.
 
 - **Default value:** `1048576` (1 MiB)
-- **Allowed values:** integer ≥ 0 (bytes). `0` means "use default".
+- **Allowed values:** integer 0–2147483647 (bytes). `0` means "use default".
 - **Note:** the manager-task routes are served in the transport's `Control` class, whose own body cap
   defaults to 64 KiB. The module raises that cap to this value plus envelope overhead, so the limit
   you configure is the one that applies — but a value raised far beyond the payloads a producer
@@ -65,7 +67,7 @@ rejected with HTTP `413` and a `payload_too_large` body. It applies to agent tas
 Maximum number of tasks returned by one `POST /v1/tasks/pending` call, oldest first. Additional pending tasks remain `pending` and are returned on subsequent polls.
 
 - **Default value:** `100`
-- **Allowed values:** integer ≥ 0. `0` means "use default".
+- **Allowed values:** integer 0–2147483647. `0` means "use default".
 
 ---
 
@@ -153,17 +155,32 @@ is broken.`
 
 ### Inspect the tasks database
 
-The Task Manager is the **sole owner** of `tasks.db`: Wazuh DB has no `task` actor, and there is
-no protocol to query it through. Read it directly, and only read it — the module holds the
-database open in WAL mode:
+The Task Manager is the **sole owner** of `tasks.db`: Wazuh DB has no `task` actor. Manager tasks
+are inspected through the module's own routes, which is what [Manager tasks](manager-tasks.md)
+documents — for example, how many `vd_scan` tasks are waiting:
 
 ```bash
-sqlite3 -readonly /var/wazuh-manager/queue/tasks/tasks.db \
-  "SELECT STATUS, COUNT(*) FROM TASKS GROUP BY STATUS;"
+curl --unix-socket /var/wazuh-manager/queue/sockets/task-http.sock \
+     -H 'Content-Type: application/json' \
+     -d '{"task_type":"vd_scan","status":"pending"}' \
+     http://localhost/v1/manager-tasks/count
 ```
 
-Manager tasks live in the same file and are better inspected through the module's own endpoints,
-which is what [Manager tasks](manager-tasks.md) documents.
+Agent tasks have no read-only route (`/v1/tasks/pending` marks what it returns as delivered). To
+look at them, or at anything the routes do not answer, query a **copy** of the database, never the
+live file. The module holds it open in WAL mode, and opening it in place — even with
+`sqlite3 -readonly`, and especially as root — can create or take over its `-wal` and `-shm` files
+next to the running module:
+
+```bash
+d=$(mktemp -d)
+cp /var/wazuh-manager/queue/tasks/tasks.db "$d/"
+cp /var/wazuh-manager/queue/tasks/tasks.db-wal "$d/" 2>/dev/null   # recent writes not yet checkpointed
+sqlite3 "$d/tasks.db" "SELECT STATUS, COUNT(*) FROM TASKS GROUP BY STATUS;"
+rm -rf "$d"
+```
+
+The copy is a snapshot taken while the module writes, so a count may be off by the rows in flight.
 
 ### Monitor Logs
 
@@ -235,9 +252,9 @@ at or above half of it).
   '/global/agents_disconnection_time': ...`, so no daemon starts.
 - **Effect:** an agent whose last keepalive is older than this is marked `disconnected` by the
   [disconnection sweep](schedules.md#agent_disconnect_sweep), which runs on the master node only.
-  Read when `wazuh-manager-modulesd` starts; if `global` cannot be read the module logs `Cannot read
-  the global configuration; the agent disconnection sweep will use its default window.` and uses
-  900 s.
+  Read when `wazuh-manager-modulesd` starts; if `global` cannot be read, modulesd logs `Cannot read
+  the global configuration; the agent disconnection sweep will use its default window.`, uses
+  900 s, and fails `wazuh-manager-modulesd -t` — so `wazuh-manager-control` refuses the start.
 
 ```xml
 <global>
@@ -278,7 +295,8 @@ number](schedules.md#window-and-interval-are-not-the-same-number).
 Because these are internal options with no XML element, configuration on disk does not show what is
 in effect. The values `wazuh-manager-modulesd` read at start-up are reported by the node's
 active-configuration endpoint, in the `task-manager` entry of `wmodules`, under `recurring_tasks`
-(and the upgrade options under `agent_upgrade`):
+(and, under `agent_upgrade`, only the two XML options `enabled` and `wpk_repository` — the
+`upgrade_*` internal options are not reported):
 
 ```bash
 curl -k -X GET "https://localhost:55000/cluster/<node_name>/configuration/wmodules/wmodules" \
@@ -333,8 +351,8 @@ one `remote_upgrade` agent task per agent.
 
 | Option | Default | Meaning |
 | --- | --- | --- |
-| `<upgrade_enabled>` | `yes` | `no` refuses every upgrade request, per agent, with *Upgrade procedure could not start* (Server API error 1827) |
-| `<wpk_repository>` | none | Repository to fetch WPKs from, `host/path` with or without a scheme; with no scheme, `https://` is prepended (`http://` when the request sets `use_http`). A request's own `wpk_repo` overrides it. Unset, the repository is derived from the target version: `packages.wazuh.com/<major>.x/wpk/`, or `packages.wazuh.com/wpk/` for a target below v4.0.0 |
+| `<upgrade_enabled>` | `yes` | `no` refuses every upgrade request, per agent, with *Upgrade procedure could not start* (Server API error 1827); modulesd says so once at start, at INFO: `Agent upgrades are disabled by configuration; the upgrade routes will refuse every request.` |
+| `<wpk_repository>` | none | Non-empty string (an empty element fails validation). Repository to fetch WPKs from, `host/path` with or without a scheme; with no scheme, `https://` is prepended (`http://` when the request sets `use_http`). A request's own `wpk_repo` overrides it. Unset, the repository is derived from the target version: `packages.wazuh.com/<major>.x/wpk/`, or `packages.wazuh.com/wpk/` for a target below v4.0.0 |
 
 ```xml
 <task-manager>
@@ -351,9 +369,10 @@ Two settings outside `<task-manager>` also matter: `remote.legacy.enabled` decid
 agent can be reached at all, and `remote.https.verification_mode` decides whether an agent that
 is about to become v5.x will be able to reconnect afterwards. The Task Manager reads both **once, when
 `wazuh-manager-modulesd` starts**, so after changing either run `wazuh-manager-control restart`
-(`reload` restarts modulesd but not remoted). If the `remote` section cannot be read, the module logs
+(`reload` restarts modulesd but not remoted). If the `remote` section cannot be read, modulesd logs
 `Cannot read the remote configuration; the agent upgrade delivery checks will be skipped.` and both
-gates let every agent through.
+gates let every agent through — but the same refusal fails `wazuh-manager-modulesd -t`, so under
+`wazuh-manager-control` the start is refused before that can happen.
 
 ### Internal options the upgrade path adds
 

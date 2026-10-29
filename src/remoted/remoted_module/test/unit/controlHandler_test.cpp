@@ -317,7 +317,8 @@ TEST(ControlHandlerTest, StartupHigherVersionReturns409WhenAllowHigherFalse)
             c.find("\"status_code\":1") != std::string::npos)
         {
             sawStatusCode = true;
-            EXPECT_NE(c.find("\"version\":\"5.9.9\""), std::string::npos);
+            // Persisted in the canonical "v" spelling, like every other stored version.
+            EXPECT_NE(c.find("\"version\":\"v5.9.9\""), std::string::npos);
             EXPECT_EQ(c.find("\"version\":\"N/A\""), std::string::npos);
         }
     }
@@ -407,7 +408,7 @@ TEST(ControlHandlerTest, StartupPersistsAcceptedVersionWithOkStatusCode)
         // persists it together with host metadata, which the agent may take a
         // while to report, and GET /agents must not show a versionless agent.
         if (c.find("global update-status-code") != std::string::npos &&
-            c.find("\"status_code\":0") != std::string::npos && c.find("\"version\":\"5.0.0\"") != std::string::npos &&
+            c.find("\"status_code\":0") != std::string::npos && c.find("\"version\":\"v5.0.0\"") != std::string::npos &&
             c.find("\"connection_status\":\"pending\"") != std::string::npos)
         {
             sawVersionPersist = true;
@@ -675,7 +676,7 @@ TEST(ControlHandlerTest, NotifyFirstHostMetadataBypassesKeepaliveThrottle)
         if (c.find("global update-agent-data") != std::string::npos)
         {
             ++fullUpdates;
-            EXPECT_NE(c.find("\"version\":\"5.0.0\""), std::string::npos);
+            EXPECT_NE(c.find("\"version\":\"v5.0.0\""), std::string::npos);
             EXPECT_NE(c.find("\"os_name\":\"macOS\""), std::string::npos);
         }
         if (c.find("global update-keepalive") != std::string::npos &&
@@ -1015,4 +1016,97 @@ TEST(ControlHandlerTest, NotifyAfterStartupBypassesKeepaliveThrottle)
     std::this_thread::sleep_for(50ms); // settle so a stray extra write would be visible
 
     EXPECT_EQ(fullUpdates(), 2);
+}
+
+// =============================================================================
+// Stored version spelling: "5.0.0", "v5.0.0" and "V5.0.0" are accepted on input but always
+// persisted as "v5.0.0", so one version never appears under two spellings in global.db.
+// =============================================================================
+
+TEST(ControlHandlerTest, StartupPersistsPrefixedVersionUnchanged)
+{
+    auto wdb = std::make_shared<WdbRouter>();
+    wdb->onSelectAgentGroup([](const std::string&) { return "ok [{\"group\":\"default\"}]"; });
+    HandlerFixture h(wdb, [](const std::string&) { return "{\"tasks\":[]}"; });
+
+    StartupData data;
+    data.version = "V5.0.0";
+    Waiter<HttpResponse> w;
+    h.handler->handleStartup(8, data, [&](const HttpResponse& r) { w.complete(r); });
+    ASSERT_TRUE(w.wait(3000ms));
+    EXPECT_EQ(w.value.status, 200);
+
+    const auto sawCanonical = [&]
+    {
+        for (const auto& c : wdb->commands())
+        {
+            if (c.find("global update-status-code") != std::string::npos &&
+                c.find("\"version\":\"v5.0.0\"") != std::string::npos)
+            {
+                return true;
+            }
+        }
+        return false;
+    };
+    for (int i = 0; i < 200 && !sawCanonical(); ++i)
+    {
+        std::this_thread::sleep_for(5ms);
+    }
+    EXPECT_TRUE(sawCanonical());
+    for (const auto& c : wdb->commands())
+    {
+        EXPECT_EQ(c.find("\"version\":\"V5.0.0\""), std::string::npos) << c;
+        EXPECT_EQ(c.find("\"version\":\"vv"), std::string::npos) << c;
+    }
+}
+
+TEST(ControlHandlerTest, NotifyPersistsUnprefixedVersionInCanonicalForm)
+{
+    auto wdb = std::make_shared<WdbRouter>();
+    wdb->onSelectAgentGroup([](const std::string&) { return "ok [{\"group\":\"default\"}]"; });
+    HandlerFixture h(wdb, [](const std::string&) { return "{\"tasks\":[]}"; });
+
+    NotifyData data = notifyWithHost(); // version "5.0.0"
+    Waiter<HttpResponse> w;
+    h.handler->handleNotify(9, data, [&](const HttpResponse& r) { w.complete(r); });
+    ASSERT_TRUE(w.wait(3000ms));
+    EXPECT_EQ(w.value.status, 200);
+
+    const auto fullUpdate = [&]() -> std::optional<std::string>
+    {
+        for (const auto& c : wdb->commands())
+        {
+            if (c.find("global update-agent-data") != std::string::npos)
+            {
+                return c;
+            }
+        }
+        return std::nullopt;
+    };
+    for (int i = 0; i < 200 && !fullUpdate(); ++i)
+    {
+        std::this_thread::sleep_for(5ms);
+    }
+    const auto update = fullUpdate();
+    ASSERT_TRUE(update.has_value());
+    EXPECT_NE(update->find("\"version\":\"v5.0.0\""), std::string::npos) << *update;
+}
+
+TEST(ControlHandlerTest, NotifyWithMalformedHostReturns400WithoutWriting)
+{
+    auto wdb = std::make_shared<WdbRouter>();
+    HandlerFixture h(wdb, [](const std::string&) { return "{\"tasks\":[]}"; });
+
+    NotifyData data;
+    data.version = "v5.0.0";
+    data.hostMalformed = true; // set by the endpoint parser on a wrong JSON type
+
+    Waiter<HttpResponse> w;
+    h.handler->handleNotify(1, data, [&](const HttpResponse& r) { w.complete(r); });
+    ASSERT_TRUE(w.wait(3000ms));
+
+    EXPECT_EQ(w.value.status, 400);
+    EXPECT_NE(w.value.body.find("invalid_host_info"), std::string::npos);
+    std::this_thread::sleep_for(50ms);
+    EXPECT_TRUE(wdb->commands().empty());
 }

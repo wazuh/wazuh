@@ -1111,3 +1111,31 @@ def test_main_drops_privileges_before_opening_logs_and_any_ssl_work():
                  and any(isinstance(inner, ast.Call) and _call_name(inner) == 'pyDaemon'
                          for stmt in node.body for inner in ast.walk(stmt)))
     assert 'args.foreground' in ast.unparse(guard.test)
+
+
+def test_test_config_refuses_a_missing_explicit_file(apid, tmp_path, capsys):
+    """`-t -c <file>` fails when the named file does not exist, instead of validating the defaults."""
+    apid.read_yaml_config = MagicMock()
+    missing = str(tmp_path / 'missing.yaml')
+
+    with pytest.raises(SystemExit) as exc:
+        apid.test_config(missing)
+
+    assert exc.value.code == 1
+    assert f"'{missing}' does not exist" in capsys.readouterr().out
+    apid.read_yaml_config.assert_not_called()
+
+
+@pytest.mark.parametrize('named', [True, False], ids=['-c file', 'no -c'])
+def test_test_config_reads_an_existing_file(apid, tmp_path, named):
+    """An existing file, or none named at all, is read and passes when valid."""
+    apid.read_yaml_config = MagicMock()
+    config = tmp_path / 'api.yaml'
+    config.write_text('logs:\n  level: info\n')
+    config_file = str(config) if named else None
+
+    with pytest.raises(SystemExit) as exc:
+        apid.test_config(config_file)
+
+    assert exc.value.code == 0
+    apid.read_yaml_config.assert_called_once_with(config_file=config_file)

@@ -24,6 +24,7 @@
 #include <mutex>
 #include <string>
 #include <unistd.h>
+#include <utility>
 
 #include <gtest/gtest.h>
 
@@ -374,7 +375,7 @@ TEST(EnrollmentEndpointTest, ValidCidrIpIsAccepted)
 
 TEST(EnrollmentEndpointTest, OverlongCidrPrefixIsRejectedWith400NotAnUncaughtException)
 {
-    // All-digit but too many digits to fit in an int -- isValidIpOrCidr()'s std::stoi() call used
+    // All-digit but too many digits to fit in an int -- the prefix parser's std::stoi() call used
     // to let std::out_of_range escape uncaught for input like this; it must be rejected as an
     // ordinary invalid request, not crash or bubble up as an unhandled exception.
     const auto response = run(openModeConfig(),
@@ -382,6 +383,73 @@ TEST(EnrollmentEndpointTest, OverlongCidrPrefixIsRejectedWith400NotAnUncaughtExc
                               makeUniqueSocketPath("enrollment_endpoint_overlong_prefix"));
     EXPECT_EQ(response.status, 400);
 }
+
+// What `ip` forwards to authd: the grammar port 1515 accepts (OS_IsValidIP()), a dotted IPv4 mask
+// rewritten as the prefix length the registry records whichever port the agent enrolled through.
+class EnrollmentEndpointIpTest : public ::testing::TestWithParam<std::pair<const char*, const char*>>
+{
+};
+
+TEST_P(EnrollmentEndpointIpTest, ValidIpIsForwardedInRegistryForm)
+{
+    std::string captured;
+    std::mutex mu;
+    const std::string path = makeUniqueSocketPath("enrollment_endpoint_ip_form");
+    FakeUdsServer server(path,
+                         [&](const std::string& req)
+                         {
+                             std::lock_guard<std::mutex> lock(mu);
+                             captured = req;
+                             return R"({"error":0,"data":{"id":"1","name":"n","ip":"i","key":"k"}})";
+                         });
+
+    Config config = openModeConfig();
+    config.useSourceIp = false;
+    const nlohmann::json body = {{"name", "agent1"}, {"version", "5.0.0"}, {"ip", GetParam().first}};
+    const auto response = run(config, body.dump(), path, "203.0.113.7");
+    EXPECT_EQ(response.status, 200);
+
+    std::lock_guard<std::mutex> lock(mu);
+    const auto j = nlohmann::json::parse(captured);
+    EXPECT_EQ(j["arguments"]["ip"], GetParam().second);
+}
+
+INSTANTIATE_TEST_SUITE_P(
+    AcceptedForms,
+    EnrollmentEndpointIpTest,
+    ::testing::Values(std::make_pair("10.5.0.0/255.255.0.0", "10.5.0.0/16"), // dotted mask, as 1515 accepts
+                      std::make_pair("10.0.0.0/255.255.255.255", "10.0.0.0/32"),
+                      std::make_pair("0.0.0.0/0.0.0.0", "0.0.0.0/0"),
+                      std::make_pair("10.0.0.0/24", "10.0.0.0/24"),
+                      std::make_pair("10.0.0.1", "10.0.0.1"),
+                      std::make_pair("::ffff:10.0.0.0/255.0.0.0", "::ffff:10.0.0.0/8"), // IPv4-mapped
+                      std::make_pair("2001:db8::/64", "2001:db8::/64"),
+                      std::make_pair("2001:db8::/08", "2001:db8::/8"),
+                      std::make_pair("any", "any")));
+
+class EnrollmentEndpointInvalidIpTest : public ::testing::TestWithParam<const char*>
+{
+};
+
+TEST_P(EnrollmentEndpointInvalidIpTest, IsRejectedWith400)
+{
+    const nlohmann::json body = {{"name", "agent1"}, {"version", "5.0.0"}, {"ip", GetParam()}};
+    const auto response =
+        run(openModeConfig(), body.dump(), makeUniqueSocketPath("enrollment_endpoint_invalid_ip_form"));
+    EXPECT_EQ(response.status, 400);
+}
+
+INSTANTIATE_TEST_SUITE_P(RejectedForms,
+                         EnrollmentEndpointInvalidIpTest,
+                         ::testing::Values("10.0.0.0/",              // empty prefix: 1515 refuses it too
+                                           "10.0.0.0/33",            // past the IPv4 maximum
+                                           "10.0.0.0/08",            // leading zero, refused by 1515
+                                           "10.0.0.0/255.0.255.0",   // non-contiguous mask: not recordable
+                                           "10.0.0.0/255.255.0",     // not a dotted mask
+                                           "2001:db8::/129",         // past the IPv6 maximum
+                                           "2001:db8::/255.255.0.0", // dotted mask on IPv6
+                                           "2001:db8::/",
+                                           "10.0.0.0//24"));
 
 TEST(EnrollmentEndpointTest, VersionTooNewIsRejectedWhenNotAllowed)
 {

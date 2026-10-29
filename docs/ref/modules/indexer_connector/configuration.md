@@ -40,8 +40,9 @@ The installer writes this section:
 List of Indexer node URLs, one per `<host>` child element.
 
 - **Default value:** None (required)
-- **Allowed values:** URLs starting with `http://` or `https://` (e.g. `https://10.0.0.1:9200`); at
-  least one, no duplicates
+- **Allowed values:** URLs starting with `http://` or `https://` that name a host — a host name, an IPv4
+  address, or an IPv6 address in brackets — then an optional `:port` and path (e.g. `https://10.0.0.1:9200`,
+  `https://[fd00::1]:9200`); at least one, no duplicates. `https://` alone is refused
 - **Note:** The connector load-balances requests round-robin across the hosts its health monitor
   sees as available, and skips the ones that are not.
 
@@ -111,7 +112,9 @@ printf '%s' 'wazuh-manager' | /var/wazuh-manager/bin/wazuh-manager-keystore -f i
 printf '%s' '<password>' | /var/wazuh-manager/bin/wazuh-manager-keystore -f indexer -k password
 ```
 
-Each process reads the credentials once, so restart the manager after changing them.
+The C daemons that link the connector (`wazuh-manager-modulesd`, `wazuh-manager-analysisd`) read the
+credentials once per process, so restart the manager after changing them. The Python framework (API,
+cluster) reads them again for every Indexer client it builds and needs no restart.
 
 ---
 

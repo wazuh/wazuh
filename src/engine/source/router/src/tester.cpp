@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 #include "tester.hpp"
 
+#include <base/utils/stringUtils.hpp>
+
 namespace
 {
 /**
@@ -10,6 +12,14 @@ inline int64_t getStartTime()
 {
     auto startTime = std::chrono::system_clock::now();
     return std::chrono::duration_cast<std::chrono::seconds>(startTime.time_since_epoch()).count();
+}
+
+/**
+ * @brief Bound a session name before an error message repeats it back (names come from API callers).
+ */
+inline std::string echoName(const std::string& name)
+{
+    return base::utils::string::truncateForMessage(name);
 }
 
 } // namespace
@@ -91,7 +101,7 @@ base::OptError Tester::addEntry(const test::EntryPost& entryPost, bool ignoreFai
         std::unique_lock<std::shared_mutex> lock {m_mutex};
         if (m_table.find(entryPost.name()) != m_table.end())
         {
-            return base::Error {fmt::format("The '{}' environment already exists.", entryPost.name())};
+            return base::Error {fmt::format("The '{}' environment already exists.", echoName(entryPost.name()))};
         }
 
         m_table.emplace(entryPost.name(), std::move(entry));
@@ -106,7 +116,7 @@ base::OptError Tester::removeEntry(const std::string& name)
     auto it = m_table.find(name);
     if (it == m_table.end())
     {
-        return base::Error {fmt::format("The '{}' environment does not exist.", name)};
+        return base::Error {fmt::format("The '{}' environment does not exist.", echoName(name))};
     }
     m_table.erase(it);
     return std::nullopt;
@@ -118,7 +128,7 @@ base::OptError Tester::rebuildEntry(const std::string& name)
     auto it = m_table.find(name);
     if (it == m_table.end())
     {
-        return base::Error {fmt::format("The '{}' environment does not exist.", name)};
+        return base::Error {fmt::format("The '{}' environment does not exist.", echoName(name))};
     }
     auto& entry = it->second;
     try
@@ -129,7 +139,7 @@ base::OptError Tester::rebuildEntry(const std::string& name)
     }
     catch (const std::exception& e)
     {
-        return base::Error {fmt::format("Failed to create the '{}' environment: {}", name, e.what())};
+        return base::Error {fmt::format("Failed to create the '{}' environment: {}", echoName(name), e.what())};
     }
     return std::nullopt;
 }
@@ -141,12 +151,12 @@ base::OptError Tester::renameEntry(const std::string& from, const std::string& t
     auto it = m_table.find(from);
     if (it == m_table.end())
     {
-        return base::Error {fmt::format("Error renaming session: The '{}' environment does not exist", from)};
+        return base::Error {fmt::format("Error renaming session: The '{}' environment does not exist", echoName(from))};
     }
 
     if (m_table.find(to) != m_table.end())
     {
-        return base::Error {fmt::format("Error renaming session: The '{}' environment already exists", to)};
+        return base::Error {fmt::format("Error renaming session: The '{}' environment already exists", echoName(to))};
     }
 
     auto node = m_table.extract(it);
@@ -163,12 +173,12 @@ base::OptError Tester::enableEntry(const std::string& name)
     auto it = m_table.find(name);
     if (it == m_table.end())
     {
-        return base::Error {fmt::format("The '{}' environment does not exist.", name)};
+        return base::Error {fmt::format("The '{}' environment does not exist.", echoName(name))};
     }
     auto& entry = it->second;
     if (entry.controller() == nullptr)
     {
-        return base::Error {fmt::format("The '{}' environment is not builded", name)};
+        return base::Error {fmt::format("The '{}' environment is not builded", echoName(name))};
     }
     entry.status(env::State::ENABLED);
     return std::nullopt;
@@ -191,7 +201,7 @@ base::RespOrError<test::Entry> Tester::getEntry(const std::string& name) const
     auto it = m_table.find(name);
     if (it == m_table.end())
     {
-        return base::Error {fmt::format("The '{}' environment does not exist.", name)};
+        return base::Error {fmt::format("The '{}' environment does not exist.", echoName(name))};
     }
     return it->second;
 }
@@ -204,13 +214,13 @@ base::RespOrError<test::Output> Tester::ingestTest(base::Event&& event, const te
     auto it = m_table.find(opt.environmentName());
     if (it == m_table.end())
     {
-        return base::Error {fmt::format("The '{}' environment does not exist.", opt.environmentName())};
+        return base::Error {fmt::format("The '{}' environment does not exist.", echoName(opt.environmentName()))};
     }
     auto& entry = it->second;
 
     if (entry.status() != env::State::ENABLED || entry.controller() == nullptr)
     {
-        return base::Error {fmt::format("The '{}' environment is not enabled", opt.environmentName())};
+        return base::Error {fmt::format("The '{}' environment is not enabled", echoName(opt.environmentName()))};
     }
 
     // Configure the environment
@@ -244,12 +254,12 @@ base::RespOrError<std::unordered_set<std::string>> Tester::getAssets(const std::
     auto it = m_table.find(name);
     if (it == m_table.end())
     {
-        return base::Error {fmt::format("The '{}' environment does not exist.", name)};
+        return base::Error {fmt::format("The '{}' environment does not exist.", echoName(name))};
     }
     auto& entry = it->second;
     if (entry.status() != env::State::ENABLED || entry.controller() == nullptr)
     {
-        return base::Error {fmt::format("The '{}' environment is not builded", name)};
+        return base::Error {fmt::format("The '{}' environment is not builded", echoName(name))};
     }
     return entry.controller()->getTraceables();
 }

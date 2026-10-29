@@ -239,6 +239,19 @@ namespace
         EXPECT_EQ(std::get<VerifiedAgent>(result).agentId, "001");
     }
 
+    // RFC 7235 2.1: the auth scheme is case-insensitive
+    TEST(Middleware, TheSchemeIsMatchedCaseInsensitively)
+    {
+        Fixture f;
+        const std::string token = bearer("001").substr(7);
+        for (const auto* scheme : {"bearer ", "BEARER ", "bEaReR "})
+        {
+            const auto result = f.run("1", scheme + token);
+            ASSERT_TRUE(std::holds_alternative<VerifiedAgent>(result)) << scheme << ": " << toString(errorOf(result));
+            EXPECT_EQ(std::get<VerifiedAgent>(result).agentId, "001");
+        }
+    }
+
     TEST(Middleware, TheFrozenVectorAuthenticatesAtItsOwnTime)
     {
         Fixture f;
@@ -310,8 +323,6 @@ namespace
         const std::string token = bearer("001").substr(7);
         const std::vector<std::string> malformed {
             "Wazuh 001:1784238000:00112233445566778899aabbccddeeff", // an unknown scheme
-            "bearer " + token,                                       // wrong case
-            "BEARER " + token,
             "Bearer",
             "Bearer ",
             "Basic " + token,

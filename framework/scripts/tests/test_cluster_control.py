@@ -12,6 +12,7 @@ from uvloop import EventLoopPolicy, Loop
 import pytest
 
 import scripts.cluster_control as cluster_control
+from wazuh.core.exception import WazuhResourceNotFound
 
 @pytest.fixture(scope="session")
 def event_loop() -> Loop:
@@ -129,7 +130,7 @@ async def test_print_health(get_health_mock, get_nodes_mock, local_client_mock, 
         # Call print_health
         await cluster_control.print_health(config=config, more=more, filter_node=filter_node)
         print_mock.assert_has_calls([call(f"Cluster name: {config['name']}\n\n"
-                                          f"Connected nodes ({get_health_mock.return_value['n_connected_nodes']}):"),
+                                          f"Connected nodes ({len(get_health_mock.return_value['nodes'])}):"),
                                      call(f"\n    wazuh_worker2 ({worker_info['ip']})\n        "
                                           f"Version: {worker_info['version']}\n        "
                                           f"Type: {worker_info['type']}\n        "
@@ -178,9 +179,8 @@ async def test_print_health(get_health_mock, get_nodes_mock, local_client_mock, 
              call(worker_status['last_sync_agentinfo']['date_end_master'], '%Y-%m-%dT%H:%M:%S.%fZ'),
              call(worker_status['last_sync_agentinfo']['date_start_master'], '%Y-%m-%dT%H:%M:%S.%fZ')])
 
-        # filter_node dependant assertions
-        filter_node and get_nodes_mock.assert_not_called()
-        filter_node or get_nodes_mock.assert_called_once()
+        # The nodes are always resolved, so that a node that does not exist is refused (1730).
+        get_nodes_mock.assert_called_once_with(local_client_mock.return_value, filter_node=filter_node)
         get_health_mock.assert_called_once_with(
             local_client_mock.return_value,
             filter_node=filter_node or [get_nodes_mock.return_value['items'][0]['name']])
@@ -209,24 +209,27 @@ def test_usage(basename_mock, print_mock):
     cluster_control.usage()
 
     msg = """
-    {0} [-h] [-d] [-fn [FILTER_NODE ...]] [-fs [FILTER_STATUS ...]][-a | -l | -i [HEALTH]]
+    {0} [-h] [-d] [-fn [FILTER_NODE ...]] [-fs [FILTER_STATUS ...]] [-a | -l | -i [more] | -u]
     Usage:
     \t-l                                    # List all nodes present in a cluster
     \t-l -fn <node_name>                    # List certain nodes that belong to the cluster
     \t-a                                    # List all agents connected to the cluster
     \t-a -fs <agent_status>                 # List agents with certain status
     \t-i                                    # Check cluster health
+    \t-i more                               # Check cluster health, with the detailed report
     \t-i -fn <node_name>                    # Check certain node's health
+    \t-u                                    # Show this usage
 
 
     Params:
-    \t-l, --list
+    \t-l, --list-nodes
     \t-d, --debug
     \t-h, --help
     \t-fn, --filter-node
     \t-fs, --filter-agent-status
     \t-a, --list-agents
     \t-i, --health
+    \t-u, --usage
 
     """.format(basename_mock.return_value)
     print_mock.assert_called_once_with(msg)
@@ -292,6 +295,10 @@ async def test_main(get_cluster_status_mock, read_config_mock, check_cluster_con
         def print_help(self):
             self.called = True
 
+        def error(self, message):
+            self.error_message = message
+            raise SystemExit(2)
+
     def run_mock(*args, **kwargs):
         asyncio.gather(args[0])
 
@@ -301,14 +308,14 @@ async def test_main(get_cluster_status_mock, read_config_mock, check_cluster_con
     exclusive_mock = ExclusiveMock()
 
     with patch('scripts.cluster_control.usage', return_value='') as usage_mock:
-        # Check if cluster is disabled and first condition
-        cluster_control.main()
-        usage_mock.assert_called_once_with()
-        exit_mock.assert_called_with(1)
-        read_config_mock.assert_called_once_with()
-        check_cluster_config.assert_called_once_with(config=read_config_mock.return_value)
-        logging_mock.assert_called_once_with(level=logging.ERROR, format='%(levelname)s: %(message)s')
-        exit_mock.reset_mock()
+        # -fs without -a is an argument error, reported by argparse (exit code 2) before anything is read
+        with pytest.raises(SystemExit) as exit_info:
+            cluster_control.main()
+        assert exit_info.value.code == 2
+        assert parser_mock.return_value.error_message == \
+               'argument -fs/--filter-agent-status: only allowed with -a/--list-agents'
+        usage_mock.assert_not_called()
+        read_config_mock.assert_not_called()
 
         # Here we will check if the expected parameters were not modified
         assert parser_mock.return_value.storage == [
@@ -340,11 +347,15 @@ async def test_main(get_cluster_status_mock, read_config_mock, check_cluster_con
 
         # Test the fifth condition
         get_cluster_status_mock.return_value['enabled'] = 'yes'
-        args_mock.filter_status = False
+        args_mock.filter_status = None  # argparse's default when -fs is not given
         args_mock.usage = True
 
         cluster_control.main()
-        exit_mock.assert_called_with(0)
+        # sys.exit is mocked, so main() goes on past it; the exit it asked for comes first.
+        assert exit_mock.call_args_list[0] == call(0)
+        read_config_mock.assert_called_once_with()
+        check_cluster_config.assert_called_once_with(config=read_config_mock.return_value)
+        logging_mock.assert_called_once_with(level=logging.ERROR, format='%(levelname)s: %(message)s')
 
         # Test the first exception
         usage_mock.side_effect = KeyboardInterrupt()
@@ -397,7 +408,88 @@ async def test_main(get_cluster_status_mock, read_config_mock, check_cluster_con
     args_mock.health = False
     args_mock.debug = False
 
+    exit_mock.reset_mock()
     cluster_control.main()
 
-    exit_mock.assert_called_with(0)
+    # sys.exit is mocked, so main() goes on past it; the exit it asked for comes first.
+    assert exit_mock.call_args_list[0] == call(0)
     assert parser_mock.called is True
+
+    # An empty -fs (no status given) without -a is refused too
+    args_mock.filter_status = []
+    read_config_mock.reset_mock()
+    with pytest.raises(SystemExit) as exit_info:
+        cluster_control.main()
+    assert exit_info.value.code == 2
+    read_config_mock.assert_not_called()
+
+
+@pytest.mark.parametrize('argv', [['-l', '-fn', 'unknown'], ['-i', '-fn', 'unknown'], ['-i', 'more', '-fn', 'unknown']])
+@patch('builtins.print')
+@patch('scripts.cluster_control.sys.exit', side_effect=SystemExit)
+@patch('scripts.cluster_control.control.get_health', return_value={'n_connected_nodes': 0, 'nodes': {}})
+@patch('scripts.cluster_control.control.get_nodes', side_effect=WazuhResourceNotFound(1730))
+@patch('scripts.cluster_control.local_client.LocalClient')
+@patch('logging.basicConfig')
+@patch('wazuh.core.cluster.cluster.check_cluster_config')
+@patch('wazuh.core.cluster.utils.read_config', return_value={'name': 'wazuh'})
+def test_main_exits_non_zero_on_unknown_node(read_config_mock, check_cluster_config_mock, basic_config_mock,
+                                             local_client_mock, get_nodes_mock, get_health_mock, exit_mock,
+                                             print_mock, argv):
+    """An unknown node name, listed or health-checked, is printed as agent_groups prints an error and exits 1."""
+    with patch('sys.argv', ['cluster_control', *argv]):
+        with pytest.raises(SystemExit):
+            cluster_control.main()
+
+    print_mock.assert_called_once_with('Error 1730: Node does not exist')
+    exit_mock.assert_called_once_with(1)
+    get_health_mock.assert_not_called()
+
+
+@patch('builtins.print')
+@patch('scripts.cluster_control.sys.exit', side_effect=SystemExit)
+@patch('scripts.cluster_control.asyncio.run', side_effect=RuntimeError('boom'))
+@patch('logging.basicConfig')
+@patch('wazuh.core.cluster.cluster.check_cluster_config')
+@patch('wazuh.core.cluster.utils.read_config', return_value='')
+def test_main_exits_non_zero_on_internal_error(read_config_mock, check_cluster_config_mock, basic_config_mock,
+                                               asyncio_run_mock, exit_mock, print_mock):
+    """Any other error is printed as an internal error and exits 1."""
+    with patch('sys.argv', ['cluster_control', '-l']):
+        with pytest.raises(SystemExit):
+            cluster_control.main()
+
+    print_mock.assert_called_once_with('Internal error: boom')
+    exit_mock.assert_called_once_with(1)
+
+
+@pytest.mark.parametrize('statuses', [['bogus'], ['active', 'bogus']])
+@patch('wazuh.core.cluster.utils.read_config', return_value='')
+def test_main_rejects_unknown_agent_status(read_config_mock, statuses, capsys):
+    """An -fs value that is not an agent status is an argument error (exit code 2), before anything is read."""
+    with patch('sys.argv', ['cluster_control', '-a', '-fs', *statuses]):
+        with pytest.raises(SystemExit) as exit_info:
+            cluster_control.main()
+
+    assert exit_info.value.code == 2
+    assert 'invalid status bogus (choose from active, disconnected, never_connected, pending)' in capsys.readouterr().err
+    read_config_mock.assert_not_called()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize('more, expected', [
+    (True, 'Connected nodes (1):'),
+    (False, 'Last completed synchronization for connected nodes (0):\n'),
+])
+@patch('builtins.print')
+@patch('scripts.cluster_control.local_client.LocalClient')
+@patch('scripts.cluster_control.control.get_nodes', return_value={'items': [{'name': 'node01'}]})
+@patch('scripts.cluster_control.control.get_health',
+       return_value={'n_connected_nodes': 0,
+                     'nodes': {'node01': {'info': {'ip': '127.0.0.1', 'version': '5.0.0', 'type': 'master'}}}})
+async def test_print_health_counts_listed_nodes(get_health_mock, get_nodes_mock, local_client_mock, print_mock,
+                                                more, expected):
+    """The detailed report counts every node it lists (a lone master is 1); the summary counts the workers."""
+    await cluster_control.print_health(config={'name': 'wazuh'}, more=more, filter_node=None)
+
+    assert print_mock.call_args_list[0] == call(f'Cluster name: wazuh\n\n{expected}')

@@ -123,6 +123,17 @@ int main(int argc, char **argv)
         }
     }
 
+    /* A relative -c names a file under the directory the command runs from, like any other command's
+     * path argument: resolve it before the chdir() below moves the working directory to the
+     * installation home, where the same relative path would name another file. */
+    char cfg_path[PATH_MAX];
+    if (!isabspath(cfg)) {
+        if (!abspath(cfg, cfg_path, sizeof(cfg_path))) {
+            merror_exit("Cannot resolve the configuration file path '%s': %s (%d)", cfg, strerror(errno), errno);
+        }
+        cfg = cfg_path;
+    }
+
     /* Change working directory */
     if (chdir(home_path) == -1) {
         merror_exit(CHDIR_ERROR, home_path, errno, strerror(errno));

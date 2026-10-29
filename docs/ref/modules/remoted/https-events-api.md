@@ -123,8 +123,12 @@ Without a usable pair the manager **fails closed**, in four layers, from the out
    can read, since the validator runs as root and cannot tell. `wazuh-manager-authd` fails the same way on the same files (`SSL context
    setup failed (certificate '…', key '…'). authd reuses the HTTPS agent listener's pair, …`).
 4. **The module itself** fails to load a pair that passed both probes but is unusable (corrupt PEM,
-   key/certificate mismatch): the ERROR names which of the two is the problem and, as with every
-   other startup failure, `remoted` does not start.
+   key/certificate mismatch): the error names the file it could not load, followed by OpenSSL's
+   reason (`Cannot start the HTTPS agent listener: The configured TLS certificate '<c>' cannot be
+   loaded (use_certificate_chain_file: no start line (PEM routines))`, and the same with `TLS private key
+   '<k>'`, where a key that does not belong to the certificate reads `key values mismatch …`; the
+   parenthesised OpenSSL library name at the end varies with the failure) and, as with
+   every other startup failure, `remoted` does not start.
 
 `remote.https.ca_certificate` must be readable at start, since 5.x agents bootstrap their trust from
 `GET /cacerts`: the credential resolver's check (step 1) refuses it when it is not
@@ -335,7 +339,7 @@ deliberately coarser than the manager's own diagnosis (which stays in its log an
 | `unknown_agent` | `Bearer error="invalid_token", error_description="unknown_agent"` | the `kid` is not in `client.keys` (never enrolled, removed, or `#`/`!`-marked) | re-enroll |
 | `stale_token` | `Bearer error="invalid_token", error_description="stale_token"` | the token is outside the accepted window (expired, older than `jwt_max_age + jwt_clock_skew`, or issued more than `jwt_clock_skew` s in the future) | correct its clock (the `Date` header is the manager's) and retry |
 | `invalid_signature` | `Bearer error="invalid_token", error_description="invalid_signature"` | the credential does not work for that identity: bad MAC, not a `wazuh-agent+jwt` (grammar, header or claims), `sub`/`iss` naming another agent, peer address outside the entry's `ip` column, or an entry whose key does not decode | **not** re-enroll; keep the credential and report |
-| `invalid_request` | `Bearer error="invalid_request"` | no usable credential was presented: `Authorization` missing, not `Bearer`, or malformed | send a credential |
+| `invalid_request` | `Bearer error="invalid_request"` | no usable credential was presented: `Authorization` missing, not `Bearer` (the scheme is matched case-insensitively, so `bearer` is accepted), or malformed | send a credential |
 | `token_unknown` / `token_expired` / `token_revoked` | `Bearer error="invalid_token", error_description="token_…"` | `POST /enroll` only: the enrollment token's own state | obtain a new token from the operator |
 | `enrollment_key_unavailable` | `Bearer` (no error code: the server could not judge the credential) | `POST /enroll` only, Password mode: the manager's enrollment password is not available on this node | retry later; nothing to fix on the agent |
 
@@ -419,14 +423,23 @@ proxy, a WAF) rather than by remoted. Treat it as a sign to look at the intermed
 ## Endpoints
 
 The listener exposes **ten** agent-facing routes. Every one of them except `GET /`, `GET /cacerts`
-and `POST /enroll` is authenticated with the bearer token above.
+and `POST /enroll` is authenticated with the bearer token above. Whether or not its bullet lists
+them, every authenticated route can also answer the shared `503 Service unavailable` of the
+capacity limits (the byte budget, the deferred-work limiter, the agent's own share) and the
+`500 Internal server error` the gateway answers when a handler raises — see
+[Error responses](#error-responses).
 
 Every path on this page is the endpoint's **logical** path. The server exposes each endpoint under
 [`remote.https.global_prefix`](configuration.md#httpsglobal_prefix) — `/wazuh-manager/` by default,
 also when the option is absent; only a prefix of `/` leaves the paths bare — so `POST /stateless` becomes `POST /wazuh-manager/stateless`, the health probe becomes
 `GET /wazuh-manager/` (with or without the trailing slash) — and the unprefixed paths answer
-`404`. The prefixed path is what travels on the wire and what the router matches: agents send the
-full prefixed target. The token does not bind it, so a prefix mismatch is a `404`, never a `401`.
+`404`. The prefixed path is what travels on the wire and what the router matches, exactly:
+case-sensitive (`/WAZUH-MANAGER/cacerts` is a `404`) and never percent-decoded (any `%`-encoded
+path, such as `/wazuh-manager/%63acerts`, is a `404`); the only tolerances are a single trailing `/`,
+a query string and a fragment, which are accepted and ignored (`/wazuh-manager/cacerts?x=1` and
+`/wazuh-manager/cacerts#x` are `/cacerts`).
+Agents send the full prefixed target. The token does not bind it, so a prefix mismatch is a `404`,
+never a `401`.
 
 The module's own statistics and readiness are **not** served here: they live on a separate
 manager-local Unix socket (`GET /`, `GET /metrics`, `GET /status`, `GET /tls` on
@@ -464,7 +477,8 @@ manager-local Unix socket (`GET /`, `GET /metrics`, `GET /status`, `GET /tls` on
   change detection for config and settings), and clean disconnection (`shutdown`). Returns **`200
   OK`** with a JSON response on success, **`400`** on malformed requests, **`401`** on auth
   failures, **`409`** when the agent's version is higher than this manager allows, or **`503`** when
-  wazuh-db is unreachable (a task-manager failure still answers `200`, with an empty `tasks`). See
+  wazuh-db is unreachable (`{"error":"dependency_unavailable","dependency":"wazuh-db"}`; a
+  task-manager failure still answers `200`, with an empty `tasks`). See
   [Control endpoint](#control-endpoint-post-control) below for details.
 - **`POST /stateful`** — authenticated inventory synchronization. Once the signature is verified,
   the module relays the body opaquely (stamping the authenticated identity as `X-Wazuh-Agent-Id`)
@@ -560,13 +574,19 @@ mid-write rather than adopting a torn read.
 ## Diagnosing rejections and capacity problems
 
 Every condition where a setting may need changing is logged to `wazuh-manager.log` and names the setting.
-Because these are per-request conditions, repeated occurrences are collapsed to **one line per 90
-seconds per condition**, with the suppressed count folded into the message, so a burst or an outage
-produces a readable summary instead of thousands of identical lines:
+Because these are per-request conditions, repeated occurrences are collapsed to **at most one line
+per 90 seconds per condition**, so a burst or an outage produces a readable summary instead of
+thousands of identical lines. The first occurrence is logged at once. Later ones inside the window
+are counted, not logged, and are reported by the **next occurrence after the window** — there is no
+timer flushing them — so that line's count covers everything since the previous line, which can be
+longer than 90 s when the condition paused. Every such line names the period its count really
+covers: `in the last T s`, T being the time since the previous line, or `so far` on the first (the
+rate-limit lines: "refused N request(s) with 429 since the previous report T s ago"); for an exact
+total at any moment, read the counter on [`GET /metrics`](metrics.md):
 
 ```
 wazuh-manager-remoted:forwarder: WARNING: Deferred-work slots exhausted (capacity 128): shed 4812
-request(s) with 503 in the last 90 s. Consider increasing the value of 'max_deferred_requests', or
+request(s) with 503 in the last 140 s. Consider increasing the value of 'max_deferred_requests', or
 investigate why the downstream service is not keeping up.
 ```
 
@@ -626,11 +646,21 @@ Four more that are not about tuning:
   fails inside the module with an ERROR naming which of the two is the problem. See
   [Certificate provisioning and fail-closed start](#certificate-provisioning-and-fail-closed-start).
 
-Client-side rejections (malformed or unauthenticated requests) are logged at debug level only —
-visible with `remoted.debug=2` — because an unauthenticated peer controls how many it can trigger.
+Rejections of unauthenticated requests (no bearer, an unknown agent, a bad signature) are logged at
+debug level only — visible with `remoted.debug=2` — because an unauthenticated peer controls how many
+it can trigger. A malformed request from an agent that **did** authenticate (an invalid `/control` or
+`/scan/vd` body, an unknown `/control` type, a payload naming another agent) and the rejections that
+point at a manager-side setting (a token outside the clock-skew window, a body over the
+authenticated-body cap, an unusable key in `client.keys`) are logged as throttled `WARNING`s instead:
+one line per cause and 90 seconds, the rest folded into the next line, which counts them —
+`… 12 request(s) in the last 140 s …`, or `… so far` on the first. A peer outside the agent's
+[registered address](#registered-address-ip-column) is logged the same way at `INFO`.
 Transport-level diagnostics reported by the HTTP library itself (TLS handshake errors, malformed
 HTTP, socket resets, and breaches of the `remoted.http_max_*` limits) are logged at
-`remoted.debug=1`, not surfaced by default: these are per-connection events driven overwhelmingly by
+`remoted.debug=1`, not surfaced by default. The client of such a request gets no HTTP answer: an
+oversized URL, header or header count, a request carrying both `Content-Length` and
+`Transfer-Encoding`, or a bare-LF line ending closes the connection with no `400` or `431`. They are
+not surfaced by default because these are per-connection events driven overwhelmingly by
 client behavior — a portscanner, or negative-test traffic like `tools/send_stateless.py --all` — not
 a manager-side problem, so they are not logged unthrottled at warning/error level the way
 `max_inflight_bytes`/`max_deferred_requests` exhaustion or a genuine startup failure are. The one
@@ -660,7 +690,7 @@ No hashes are included in the startup response.
 ```json
 {
   "type": "startup",
-  "version": "5.0.0"
+  "version": "v5.0.0"
 }
 ```
 
@@ -703,7 +733,11 @@ deliberately skips the check to keep the hot path fast. A rejection also writes
 | Cause | HTTP | wazuh-db `version` column |
 | --- | --- | --- |
 | Version is malformed (empty, over 64 characters, or not `[v]MAJOR[.MINOR[.PATCH[.EXTRA]]]` with an optional `+`/`-` suffix) | `400` | `N/A` sentinel — the framework's version parser raises on anything else, which would break the whole agent listing |
-| Version is well-formed but has a higher major or minor than the manager's (a higher patch alone is accepted), and `<remote><agents><allow_higher_versions>` is `no` | `409` | stored as reported |
+| Version is well-formed but has a higher major or minor than the manager's (a higher patch alone is accepted), and `<remote><agents><allow_higher_versions>` is `no` | `409` | stored with a `v` prefix (`5.1.0` as `v5.1.0`) |
+
+Whatever spelling the agent sends — `5.0.0`, `v5.0.0` or `V5.0.0`, all accepted — the manager writes
+the version to wazuh-db as `v5.0.0`, on `startup` and on `notify` alike, so one version never
+appears under two spellings in the agent listing.
 
 The split matters to the agent: `400` is terminal, while `409` puts it in its `REJECTED` state,
 re-trying `startup` on a slow cadence — because a policy rejection can start succeeding with no
@@ -774,7 +808,7 @@ update), which had no equivalent once agent-manager connections became stateless
 {
   "type": "notify",
   "agent": {
-    "version": "5.0.0"
+    "version": "v5.0.0"
   },
   "host": {
     "hostname": "ubuntu-test",
@@ -897,7 +931,11 @@ every 300 seconds.
 
 ### Error handling
 
-Errors follow the same pattern as `/stateless` (see [Error responses](#error-responses) above).
+Authentication (`401`) and transport rejections (`413`, `429`, `503` when shed) follow the same
+pattern as `/stateless` (see [Error responses](#error-responses) above). The endpoint's own
+rejections below do **not**: their body is `{"error":"<code>"}` alone, with no numeric `code` member,
+and the `503` adds the dependency that is not answering —
+`{"error":"dependency_unavailable","dependency":"wazuh-db"}`.
 Control-specific conditions:
 
 | Condition                                  | HTTP  | `error` message        |
@@ -908,7 +946,7 @@ Control-specific conditions:
 | Unknown message type                       | `400` | `unknown_message_type` |
 | Malformed agent version (startup only)     | `400` | `invalid_version`      |
 | Agent version higher than allowed (startup only) | `409` | `invalid_version` |
-| Invalid host info format (notify only)     | `400` | `invalid_host_info`    |
+| `host` block invalid (notify only): `host` or `host.os` not an object, a `host`/`host.os` field not a string, or a string over its bound (hostname 255, ip 45, the others 128 bytes); an absent or `null` field is accepted | `400` | `invalid_host_info` |
 | wazuh-db unavailable (get groups)          | `503` | `dependency_unavailable` |
 
 The two version rejections deliberately carry different statuses even though they share an `error`
@@ -975,6 +1013,10 @@ the agent already has (offsets only ever move forward) and retries. It never ove
 local value with an older `current_version`.
 
 ### Error handling
+
+Like `/control`'s own rejections, every row below answers `{"error":"<code>"}` with no numeric
+`code` member (the `409` adds `current_version`); only the authentication and transport rejections
+take the `/stateless` shape described in [Error responses](#error-responses).
 
 | Condition                                        | HTTP  | `error` message                                               |
 | ------------------------------------------------ | ----- | ------------------------------------------------------------- |
@@ -1159,7 +1201,7 @@ replay store either: a captured token could be replayed inside its window, bound
 ```json
 {
   "name": "web-server-01",
-  "version": "5.0.0",
+  "version": "v5.0.0",
   "groups": "default,web-servers",
   "ip": "10.0.0.15"
 }
@@ -1168,9 +1210,9 @@ replay store either: a captured token could be replayed inside its window, bound
 | Field | Required | Notes |
 | --- | --- | --- |
 | `name` | yes | 2-128 chars, no leading `.`, charset `[A-Za-z0-9._-]` only — `OS_IsValidName()`, the same rule the legacy port-1515 path applies, so both enrollment paths accept exactly the same names. `authd`'s local socket separately enforces a looser *storage-safety* floor (no whitespace/control bytes, no leading `#`/`!`, ≤128 chars) for all of its callers, the API included; this endpoint holds the tighter line itself rather than relying on that floor. |
-| `version` | yes | Rejected if its major or minor is higher than the manager's (a higher patch alone is accepted, as on port 1515) unless `authd`'s own `<auth><agents><allow_higher_versions>` is `yes` (not `remote`'s, which governs `/control`; this keeps `/enroll` in step with port 1515) — `authd`'s local socket performs no version check of its own, so this endpoint enforces it. |
-| `groups` | no | Comma-separated, passed through unchanged. |
-| `ip` | no | Syntactic IPv4/IPv6/CIDR check, or one of two sentinels: `any` (no override), or `src` — mirrors legacy port 1515's own wire sentinel (an agent configured with its own client-side `use_source_ip` sends this instead of a literal address); see IP resolution below. |
+| `version` | yes | Must be well formed — an optional `v`/`V`, one to four dot-separated numbers and an optional `-`/`+` suffix of letters, digits, `.` and `-`, 64 bytes at most — or the answer is `400` (port 1515 answers `ERROR: Invalid version` to the same values). Rejected if its major or minor is higher than the manager's (a higher patch alone is accepted, as on port 1515) unless `authd`'s own `<auth><agents><allow_higher_versions>` is `yes` (not `remote`'s, which governs `/control`; this keeps `/enroll` in step with port 1515) — `authd`'s local socket performs no version check of its own, so this endpoint enforces it. |
+| `groups` | no | Comma-separated, forwarded unchanged; `authd` drops repeated names. A list that names no group (`""`, `","`) is the same as no `groups` field: the agent joins `default`. Empty members next to real names (`"default,"`, `",default"`) are accepted and the agent's groups are recorded without them, whereas port 1515 refuses such a `G:` with `ERROR: Invalid group name`. |
+| `ip` | no | The grammar port 1515 accepts: an IPv4 or IPv6 address, optionally a network — `/<prefix>`, or for IPv4 a dotted mask (`10.5.0.0/255.255.0.0`) that is forwarded as its prefix length (`10.5.0.0/16`), the form the registry records either way. An empty prefix (`10.0.0.0/`), a prefix past 32/128, a non-contiguous mask and a leading `!` are `400`, and port 1515 refuses the same values (`ERROR: Invalid IP`). A full-length mask (`/32`, `/128`) names a single host: it is registered as the bare address, answered in that form, and refused with `409` when another agent already holds that address, exactly like the bare spelling. Networks (`10.5.0.0/16`) are never duplicates of one another, overlapping or not. Or one of two sentinels: `any` (no override), or `src` — mirrors legacy port 1515's own wire sentinel (an agent configured with its own client-side `use_source_ip` sends this instead of a literal address); see IP resolution below. |
 | `key_hash` | no | Opaque hash of the agent's current key, if it has one — drives `authd`'s force/key-mismatch decision, same as port 1515's `K:` field. |
 
 `force`, `id`, and a raw `key` are never sent, even though `authd`'s local socket accepts all three
@@ -1223,7 +1265,7 @@ master node's `authd` predates it.
 | Empty or over 16 KiB once decoded, malformed JSON, missing or invalid `name`/`version`, a non-string `groups`/`key_hash`, invalid `ip` | `400` | Rejected before `authd` is ever contacted. A zstd body that would decode past 16 KiB is a `413` instead. |
 | Agent version newer than allowed | `400` | See `version` in the request table above. The manager logs a throttled `WARNING` naming the agent, its address and both versions. |
 | `authd` bad function/args/name/ip/groups (9003–9006, 9014, 9017) | `400` | Passed through with `authd`'s own message. `9017` ("Invalid agent name") is unreachable from this endpoint in practice: `isValidName()` above is strictly tighter than the local socket's storage-safety floor, so any name `authd` would reject with `9017` was already refused locally with a `400`. It is mapped for completeness, not as a path clients should expect. |
-| `authd` duplicate ip/name/id (9007/9008/9012) | `409` | |
+| `authd` duplicate ip/name/id (9007/9008/9012) | `409` | The address is compared in its registered form, so `10.0.0.15/32` duplicates `10.0.0.15`. |
 | `authd` internal/parse/key-generation failure (9001/9002/9009) | `500` | |
 | `authd` refused a caller-supplied key or id (9019/9020) | `400` | unreachable from `/enroll` (self-enrollment never sends a key or an id); mapped for completeness |
 | Any other `authd` error code | `500` | Passed through with `authd`'s own code and message. |
@@ -1300,8 +1342,9 @@ Accepted identifiers:
 > must equal the selector `/control` handed that agent as `config_token` — the same string
 > `config_hash` was computed over — and anything else is answered `403`. The manager resolves that
 > selector from the agent registry `/control` already maintains, so the check costs no wazuh-db
-> round trip; an agent whose membership the manager has never established (it never completed
-> `/control/startup`, or its entry was evicted) is **denied, not served**.
+> round trip; an agent whose membership the manager has never read from wazuh-db (no `startup`
+> and no group-refreshing `notify` has succeeded for it since remoted started, or its entry was
+> evicted — a `shutdown` alone creates an entry with no membership) is **denied, not served**.
 >
 > The comparison is exact, including the order of a multigroup CSV: `a,b` and `b,a` name different
 > merged files, and only one of them is the file `config_hash` refers to.
@@ -1332,7 +1375,7 @@ instead.
 | Body empty, over 4 KiB, not a JSON object, wrong member count, or a non-string member | `400` | `Invalid request format` |
 | `resource_type` is neither `config` nor `wpk` | `400` | `Invalid resource type` |
 | `resource_id` fails the grammar for its type | `400` | `Invalid resource identifier` |
-| `resource_type: config` and `resource_id` is not the requesting agent's own selector, or the manager has no established membership for it | `403` | `Forbidden` |
+| `resource_type: config` and `resource_id` is not the requesting agent's own selector, or the manager has never read the agent's group membership from wazuh-db (no successful `startup` or group-refreshing `notify`, or an evicted entry) | `403` | `Forbidden` |
 | Resource absent, not a regular file, or `O_NOFOLLOW` rejected a symlink | `404` | `Resource not found` |
 | Unexpected `errno` while opening or stat-ing | `500` | `Internal server error` |
 
@@ -1611,7 +1654,7 @@ python3 send_control.py --url https://127.0.0.1:1517 --type startup --tamper
 
 # run every success/failure scenario
 python3 send_control.py --url https://127.0.0.1:1517 --all
-# options: --url (default https://127.0.0.1:9443), --agent-id, --client-keys, --version
+# options: --url (default https://127.0.0.1:1517), --agent-id, --client-keys, --version
 ```
 
 `src/remoted/remoted_module/tools/send_scan_vd.py` does the same for `POST /scan/vd`, and can
@@ -1627,7 +1670,7 @@ python3 send_scan_vd.py --url https://127.0.0.1:1517 --feed-offset 1
 # run every success/failure scenario (missing/invalid type, missing/negative feed_offset,
 # oversized body, auth failures, ...), including the matching- and mismatched-offset cases
 python3 send_scan_vd.py --url https://127.0.0.1:1517 --all
-# options: --url (default https://127.0.0.1:9443), --agent-id, --client-keys
+# options: --url (default https://127.0.0.1:1517), --agent-id, --client-keys
 ```
 
 `src/remoted/remoted_module/tools/send_download.py` exercises `POST /download`. Its configuration
@@ -1645,7 +1688,7 @@ python3 send_download.py --url https://127.0.0.1:1517 --all
 
 # concurrency + memory check: N agents downloading at once, sampling remoted's RSS
 python3 send_download.py --url https://127.0.0.1:1517 --simulate 50 --repeat 4 --selectors 'default;web,prod' --watch-rss
-# options: --url (default https://127.0.0.1:9443), --manager-home, --resource-id, --unknown-group,
+# options: --url (default https://127.0.0.1:1517), --manager-home, --resource-id, --unknown-group,
 #          --other-group (default databases), --selectors, --simulate N, --repeat, --watch-rss
 ```
 

@@ -17,13 +17,22 @@ seeded from `framework/wazuh/rbac/default/*.yaml`, and is managed through the `/
 | User | An API account. Authenticates with `POST /security/user/authenticate` |
 | Role | A named set of policies, linked to users directly or through rules |
 | Policy | A list of `actions`, a list of `resources` and an `effect` (`allow` or `deny`) |
-| Rule | A condition on an authorization context. A user with `allow_run_as` that logs in with `POST /security/user/authenticate/run_as` receives the roles of every rule its context matches — this is how the Wazuh dashboard maps its logged-in user to Wazuh roles (a "role mapping") |
+| Rule | A condition on an authorization context. A user with `allow_run_as` that logs in with `POST /security/user/authenticate/run_as` receives the roles of every rule its context matches, and only those: the roles linked to the account itself are not added, and a context that matches no rule yields a token with no role. This is how the Wazuh dashboard maps its logged-in user to Wazuh roles (a "role mapping") |
 
 `rbac_mode` in the [security configuration](../server-api/configuration.md#rbac_mode) sets what an
 action no policy mentions gets: `white` (the default) denies it, `black` allows it. A user's policies
 are applied in order (its roles, then each role's policies, by the `position` they were linked at), and
 a later policy overrides an earlier one on the same resource: a `deny` applied after an `allow` removes
-that resource.
+that resource. "The same resource" means the same agents, groups or nodes once each policy's resources are
+expanded, not the same resource string: `agent:group:<name>` stands for the agents in that group, so an
+`agent:id:*` allow applied after an `agent:group:web` deny gives back every agent of `web`, and an
+`agent:group:web` deny applied after an `agent:id:*` allow removes them. Put a deny after the allows it
+must narrow.
+
+A change to what a token was issued with revokes the affected tokens, which then get `401` and must log in
+again: linking or unlinking a user's roles or a role's policies, updating or deleting a role, policy or
+rule, and updating a user (its password or `allow_run_as`) or deleting it revoke the tokens of the users
+concerned; linking or unlinking a role's rules revokes every `run_as` token.
 
 ### Resources
 
@@ -175,6 +184,12 @@ re-seeded with new defaults unless `CURRENT_ORM_VERSION` in `framework/wazuh/rba
 
 The default users `wazuh` and `wazuh-internal-client` both hold `administrator`; see
 [Default Users](../server-api/authentication.md#default-users).
+
+`users_admin` is not held to the role check a password reset or enabling run_as applies (see
+[Default Users](../server-api/authentication.md#default-users)) when it deletes: `security:delete` on `user:id:*` lets it delete
+any user but the reserved ones (IDs 1 and 2) and itself, including one linked to `administrator` or with run_as
+enabled, and `DELETE /security/users?user_ids=all` deletes all of them at once. Deleting grants the caller nothing, so it is
+not an escalation, but grant `users_admin` only to whom you would trust with removing administrators.
 
 ### Default rules
 

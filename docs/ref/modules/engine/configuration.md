@@ -33,9 +33,9 @@ comes from the `WAZUH_INDEXER_HOSTS` and `WAZUH_INDEXER_SSL_*` variables instead
 - File syntax: one `analysisd.<setting>=<value>` per line. A line starting with `#` is a comment, and an unescaped
   `#` ends the value (`\#` keeps it); surrounding quotes are removed. A list setting takes comma-separated values
   without brackets (`[a,b]` stops the engine at start-up).
-- Lines whose key does not start with `analysisd.` are skipped silently (a line with no `.` before its `=` logs
-  `Invalid configuration line ignored: '<line>'`), and so is an `analysisd.*` key the engine does not know (a
-  misspelled setting has no effect). A missing or unreadable file only logs the warning
+- Lines whose key does not start with `analysisd.` are skipped silently (a line with no `=`, or with no `.` before
+  it, logs `Invalid configuration line ignored: '<line>'`), and so is an `analysisd.*` key the engine does not know
+  (a misspelled setting has no effect). A missing or unreadable file only logs the warning
   `Failed to load configuration: Cannot open configuration file: <path>`, and the defaults apply.
 - Boolean settings only accept `true`/`false` (case-insensitive). A value in the file that does not match the
   setting's type (for example `analysisd.dumper_enabled=yes` or `analysisd.event_queue_size=10k`) stops the engine at
@@ -51,7 +51,7 @@ comes from the `WAZUH_INDEXER_HOSTS` and `WAZUH_INDEXER_SSL_*` variables instead
 ## Command-line options
 
 ```
-wazuh-manager-analysisd [-f] [-t] [-d [-d]] [-h]
+wazuh-manager-analysisd [-f] [-t] [-d [-d]] [-h] [-V]
 ```
 
 | Option | Effect |
@@ -59,7 +59,8 @@ wazuh-manager-analysisd [-f] [-t] [-d [-d]] [-h]
 | `-f` | Run in the foreground instead of daemonizing. |
 | `-t` | Test the configuration and exit. In manager mode it validates `/etc/wazuh-manager/wazuh-manager.conf`, including the files it references, and exits `0`, or prints `Error loading configuration: <reason>` to stderr and exits `1`. It does not read the internal options file. In standalone mode it exits `0` without checking anything. |
 | `-d` | Debug logging for this run: once for debug, twice or more for trace. It takes priority over `analysisd.debug` (`analysisd.logging_level` in standalone mode). |
-| `-h` | Print the usage and exit `0`. An unknown option does the same. |
+| `-h` | Print the usage to stdout and exit `0`. An unknown option prints the error and the usage to stderr and exits `1`. |
+| `-V` | Print the version (`Wazuh v<version> - Wazuh Inc.`) to stderr, as the other manager daemons do, and exit `0`. |
 
 `wazuh-manager-control start` runs `wazuh-manager-analysisd -t` (with `-d` while debug is enabled with
 `wazuh-manager-control enable debug`) as one of its start checks, then launches the daemon **without any option**.
@@ -187,7 +188,7 @@ reads); they must remain owned by `wazuh-manager` (see [Process privileges](#pro
 | Setting | Env var | Description | Default | Mode |
 |:--|:--|:--|:--:|:--:|
 | `analysisd.store_path` | `WAZUH_STORE_PATH` | Directory holding the engine's compiled policy store. | `/var/wazuh-manager/data/store` | both |
-| `analysisd.output_path` | `WAZUH_OUTPUTS_PATH` | Directory holding the default output definitions. | `/etc/wazuh-manager/outputs/` | both |
+| `analysisd.output_path` | `WAZUH_OUTPUTS_PATH` | Directory holding the default output definitions. In standalone mode the default is `etc/outputs/` under the working directory. | `/etc/wazuh-manager/outputs/` | both |
 | `analysisd.kvdb_ioc_path` | `WAZUH_KVDB_IOC_PATH` | Directory holding the IoC key-value databases. | `/var/wazuh-manager/data/kvdb-ioc` | both |
 | `analysisd.kvdb_ioc_input_path` | `WAZUH_KVDB_IOC_INPUT_PATH` | The only directory `POST /content/ioc/update` accepts IoC feed files from; the path must resolve to a regular file inside it. The manager installer does not create it: in manager mode the IOC set comes from the in-process indexer sync, so every request to this endpoint is rejected until an operator creates the directory, readable by the `wazuh-manager` user (for example `wazuh-manager:wazuh-manager`, `0750`). In standalone mode `run_engine.sh` sets it to the bundle's `data/` directory, where `wazuh-indexer` writes `iocs.ndjson`. | `/var/wazuh-manager/data/ioc-input` | both |
 | `analysisd.cm_ruleset_path` | `WAZUH_CM_RULESET_PATH` | Directory holding the content-manager ruleset synced from `wazuh-indexer`. | `/var/wazuh-manager/data/ruleset` | both |
@@ -247,7 +248,7 @@ credentials from the keystore (see [Configuration sources](#configuration-source
 | `analysisd.remote_conf_indexer_connector_max_retries` | `WAZUH_REMOTE_CONF_INDEXER_CONNECTOR_MAX_RETRIES` | Maximum retry attempts for remote configuration requests to the Wazuh Indexer. | `3` | both |
 | `analysisd.remote_conf_indexer_connector_retry_interval` | `WAZUH_REMOTE_CONF_INDEXER_CONNECTOR_RETRY_INTERVAL` | Seconds between retry attempts for remote configuration synchronization. | `5` | both |
 | `analysisd.cm_sync_interval` | `WAZUH_CM_SYNC_INTERVAL` | Seconds between content synchronization cycles from the Wazuh Indexer. | `120` | both |
-| `analysisd.cm_sync_retry_interval` | `WAZUH_CM_SYNC_RETRY_INTERVAL` | Seconds until the next content synchronization cycle while a space has no route and its policy is not disabled (the indexer failed, or the content is not ready yet). A policy with no integrations or no root decoder counts as disabled, so it does not trigger the early retry. Replaces `analysisd.cm_sync_interval` until every space is loaded, and is capped at it. `0` disables the early retry. | `30` | both |
+| `analysisd.cm_sync_retry_interval` | `WAZUH_CM_SYNC_RETRY_INTERVAL` | Seconds until the next content synchronization cycle while a space has no route and its policy is not disabled (the indexer failed, or the content is not ready yet). A policy with no integrations or no root decoder counts as disabled, so it does not trigger the early retry. Replaces `analysisd.cm_sync_interval` until every space is loaded, and is capped at it. `0` disables the early retry. Allowed range: `0` to `3600`, else the engine fails to start. | `30` | both |
 | `analysisd.cmsync_indexer_connector_sync_batch_size` | `WAZUH_CMSYNC_INDEXER_CONNECTOR_SYNC_BATCH_SIZE` | Maximum number of content documents requested per Wazuh Indexer page during content synchronization. | `100` | both |
 | `analysisd.cmsync_indexer_connector_max_retries` | `WAZUH_CMSYNC_INDEXER_CONNECTOR_MAX_RETRIES` | Maximum retry attempts for content synchronization requests to the Wazuh Indexer. | `3` | both |
 | `analysisd.cmsync_indexer_connector_retry_interval` | `WAZUH_CMSYNC_INDEXER_CONNECTOR_RETRY_INTERVAL` | Seconds between retry attempts for content synchronization. | `5` | both |
@@ -264,6 +265,17 @@ credentials from the keystore (see [Configuration sources](#configuration-source
 | `analysisd.geo_db_path` | `WAZUH_GEO_DB_PATH` | Directory holding the downloaded GeoIP (MaxMind) database. Only read while GeoIP sync is enabled. | `/var/wazuh-manager/data/mmdb` | both |
 | `analysisd.geo_manifest_url` | `WAZUH_GEO_MANIFEST_URL` | URL of the GeoIP database manifest used to check for updates. | `https://api.pre.cloud.wazuh.com/maxmind_geoip/manifest.json` | both |
 | `analysisd.geo_download_timeout` | `WAZUH_GEO_DOWNLOAD_TIMEOUT` | Timeout in milliseconds for downloading the GeoIP database. | `60000` (60 s) | both |
+
+> **Note:** the default `analysisd.geo_manifest_url` points to the **pre-production** Wazuh cloud endpoint
+> (`api.pre.cloud.wazuh.com`), so the GeoIP databases a default installation downloads come from it. To use another
+> manifest, set the option in `/etc/wazuh-manager/wazuh-manager-internal-options.conf` and restart the manager:
+>
+> ```ini
+> analysisd.geo_manifest_url=https://<your-manifest-host>/<path>/manifest.json
+> ```
+>
+> The `WAZUH_GEO_MANIFEST_URL` environment variable overrides the file, but the `wazuh-manager` systemd unit sets no
+> environment, so it only reaches an engine started by hand (or in standalone mode, where the file is not read).
 
 ### Time-zone database
 

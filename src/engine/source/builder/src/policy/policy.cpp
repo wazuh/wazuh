@@ -13,6 +13,46 @@
 namespace builder::policy
 {
 
+namespace
+{
+/**
+ * @brief Counter that is never registered in the metrics manager.
+ *
+ * Test-mode policies (tester sessions, logtest, policy validation) run sample events through a copy of
+ * a space's pipeline. Their per-space counters must neither move the production counters of the space
+ * they were copied from nor register metrics for temporary spaces that nothing can remove later.
+ */
+class DetachedCounter final : public fastmetrics::ICounter
+{
+public:
+    const std::string& name() const override
+    {
+        static const std::string empty;
+        return empty;
+    }
+    fastmetrics::MetricType type() const override { return fastmetrics::MetricType::COUNTER; }
+    bool isEnabled() const override { return false; }
+    void enable() override {}
+    void disable() override {}
+    void reset() override {}
+    double value() const override { return 0.0; }
+    void add(uint64_t /*delta*/) override {}
+    uint64_t get() const override { return 0; }
+};
+
+/**
+ * @brief Get the per-space counter for a policy: the registered one in production, a detached one in test mode.
+ */
+std::shared_ptr<fastmetrics::ICounter> spaceCounter(const std::string& metricName, bool isTestMode)
+{
+    if (isTestMode)
+    {
+        return std::make_shared<DetachedCounter>();
+    }
+    return fastmetrics::manager().getOrCreateCounter(metricName);
+}
+} // namespace
+
 Policy::Policy(const cm::store::NamespaceId& namespaceId,
                const std::shared_ptr<cm::store::ICMStore>& cmStore,
                const std::shared_ptr<defs::IDefinitionsBuilder>& definitionsBuilder,
@@ -76,8 +116,8 @@ Policy::Policy(const cm::store::NamespaceId& namespaceId,
 
         // Discarded events filter (based on policy configuration)
         {
-            auto discardedCounter = fastmetrics::manager().getOrCreateCounter(
-                fastmetrics::names::space_events_discarded(policyData.getOriginSpace()));
+            auto discardedCounter =
+                spaceCounter(fastmetrics::names::space_events_discarded(policyData.getOriginSpace()), isTestMode);
             auto [exp, traceable] =
                 builders::enrichment::getDiscardedEventsFilter(policyData, isTestMode, discardedCounter);
             preEnrichmentOps.push_back(exp);
@@ -119,14 +159,13 @@ Policy::Policy(const cm::store::NamespaceId& namespaceId,
         return enrichmentExp;
     }();
 
-    // Build the expression with per-space pre/post filter discard counters
+    // Build the expression with per-space pre/post filter discard counters (detached in test mode)
     const auto spaceName = policyData.getOriginSpace();
     auto preFilterDiscardCounter =
-        fastmetrics::manager().getOrCreateCounter(fastmetrics::names::space_events_discarded_prefilter(spaceName));
+        spaceCounter(fastmetrics::names::space_events_discarded_prefilter(spaceName), isTestMode);
     auto postFilterDiscardCounter =
-        fastmetrics::manager().getOrCreateCounter(fastmetrics::names::space_events_discarded_postfilter(spaceName));
-    auto unclassifiedCounter =
-        fastmetrics::manager().getOrCreateCounter(fastmetrics::names::space_events_unclassified(spaceName));
+        spaceCounter(fastmetrics::names::space_events_discarded_postfilter(spaceName), isTestMode);
+    auto unclassifiedCounter = spaceCounter(fastmetrics::names::space_events_unclassified(spaceName), isTestMode);
 
     auto expr = factory::buildExpression(
         policyGraph, preEnrichmentExp, enrichmentExp, preFilterDiscardCounter, postFilterDiscardCounter);

@@ -69,3 +69,23 @@ TEST(ServerScanCoordinatorTest, AFenceThatCannotQuiesceInTimeIsRefusedAndLeavesN
     fixture.registry->release("001", AgentInFlightRegistry::Lane::Pipeline);
     EXPECT_TRUE(fixture.registry->isFree("001"));
 }
+
+/**
+ * The on-demand rescan reaches the fence from the scan-lane worker that already holds the agent.
+ * With the production bound (30 s) the fence must be granted at once: the caller's own hold keeps
+ * every pipeline session out already, and waiting for it is waiting for oneself.
+ */
+TEST(ServerScanCoordinatorTest, TheCallersOwnScanHoldDoesNotDelayTheFence)
+{
+    CoordinatorUnderTest fixture {std::chrono::seconds {30}};
+    ASSERT_TRUE(fixture.registry->tryAcquire("001", AgentInFlightRegistry::Lane::Scan, false));
+
+    const auto start = std::chrono::steady_clock::now();
+    EXPECT_TRUE(fixture.coordinator->pauseAgent("001", "on-demand scan"));
+    EXPECT_LT(std::chrono::steady_clock::now() - start, std::chrono::seconds {1});
+    EXPECT_TRUE(fixture.registry->isPaused("001"));
+
+    fixture.coordinator->resumeAgent("001");
+    fixture.registry->release("001", AgentInFlightRegistry::Lane::Scan);
+    EXPECT_TRUE(fixture.registry->isFree("001"));
+}

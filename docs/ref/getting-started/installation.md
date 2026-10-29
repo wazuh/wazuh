@@ -47,6 +47,12 @@ The configuration directory is fixed: a source installation with a custom instal
 resolves against the installation directory. No daemon writes `certs/`; only root does (the credential resolver, and `wazuh-manager-certs` for the CA bundle). What
 `dpkg --purge` and `rpm -e` remove from each directory is described in [Uninstall](../uninstall.md).
 
+The systemd unit is `/usr/lib/systemd/system/wazuh-manager.service` from a package. `install.sh` writes it
+there too on Red Hat and CentOS 7 or later, and over a package that already installed it (an overlay), so the
+package keeps owning it. On other hosts it writes `/etc/systemd/system/wazuh-manager.service`, which no package
+owns. A copy left there by an earlier overlay outlives a package purge: see
+[Uninstall](../uninstall.md#installed-or-overlaid-from-sources).
+
 ### Installation variables
 
 The `<remote>` block of the generated `/etc/wazuh-manager/wazuh-manager.conf` can be customized at installation time through environment variables. They are honored by the DEB and RPM packages and by the source installer (`install.sh`, also through `etc/preloaded-vars.conf`). When a variable is not set, the default value is used.
@@ -91,14 +97,14 @@ Options marked "not set" are only written to the configuration file when their v
 
 The generated configuration always contains a `<legacy>` block with `<enabled>yes</enabled>`, so an installed manager listens for 4.x agents on port `1514/tcp` as well as on the HTTPS listener (`1517`). That is the installer's choice, not the configuration default: a `<remote>` block with no `<legacy>` block leaves the legacy listener off. Install with `WAZUH_REMOTE_LEGACY_ENABLED='no'`, or set [`legacy.enabled`](../modules/remoted/configuration.md#legacyenabled) to `no` afterwards, for a manager that serves 5.x agents only.
 
-Write `WAZUH_REMOTE_HTTPS_MAX_BODY_SIZE` as the configuration accepts it — a byte count with an optional single-letter suffix (`B`, `K`, `M`, `G`), such as `20M`. The installer's own check also lets a two-letter suffix such as `20MB` through, which the configuration validator then refuses, aborting a fresh installation.
+Write `WAZUH_REMOTE_HTTPS_MAX_BODY_SIZE` as the configuration accepts it — a byte count with an optional single-letter suffix (`B`, `K`, `M`, `G`), such as `20M`. The installer refuses anything else — a two-letter suffix such as `20MB`, zero, or more digits than the configuration accepts — before writing the configuration.
 
 `WAZUH_REMOTE_HTTPS_CERTIFICATE` and `WAZUH_REMOTE_HTTPS_KEY` must be provided together. Pointing them anywhere other than the default `/etc/wazuh-manager/certs/remoted.pem`/`remoted-key.pem` opts out of the certificates the manager issues for itself: the referenced files are then provisioned and managed by the administrator (see [Using certificates issued elsewhere](#using-certificates-issued-elsewhere) and [Credentials](credentials.md#certificates)). `WAZUH_REMOTE_HTTPS_VERIFICATION_MODE` values `certificate` and `full` require `WAZUH_REMOTE_HTTPS_CA`.
 
 `WAZUH_REMOTE_HTTPS_GLOBAL_PREFIX` is the URL path every HTTPS endpoint is served under (for example, `/stateless` is exposed as `/wazuh-manager/stateless`). Set it to `/` to serve the endpoints unprefixed. Agents must be configured with the same prefix: the request signature covers the full request path exactly as sent, so a proxy in between must forward it untouched, and a prefix mismatch between agent and manager surfaces as `404`.
 
 > [!IMPORTANT]
-> `WAZUH_REMOTE_HTTPS_CERTIFICATE`, `WAZUH_REMOTE_HTTPS_KEY` and `WAZUH_REMOTE_HTTPS_CA_CERTIFICATE` must name files directly in `/etc/wazuh-manager/certs`, given as absolute paths as the defaults are, such as `/etc/wazuh-manager/certs/remoted.crt`. The credential check that runs before every start refuses any other location, a relative path included (it resolves against the installation directory `/var/wazuh-manager`), with `Invalid credentials. Exiting` and `INVALID remote.https.certificate: … is outside /etc/wazuh-manager/certs, the only place the resolver checks …`; it also requires each file to be `root:wazuh-manager` `0640` (`Unsafe credentials. Exiting` otherwise). The credential resolver issues only the default `remoted.pem`/`remoted-key.pem` pair and `root-ca.pem` bundle: a file under another name is yours to provision before the manager is started, and while it is absent the start is refused with `Unresolved credentials. Exiting` (`MISSING …: configured as remote.https.certificate …; stage the pair …`). See [Configured file names](credentials.md#configured-file-names).
+> `WAZUH_REMOTE_HTTPS_CERTIFICATE`, `WAZUH_REMOTE_HTTPS_KEY` and `WAZUH_REMOTE_HTTPS_CA_CERTIFICATE` must name files directly in `/etc/wazuh-manager/certs`, given as absolute paths as the defaults are, such as `/etc/wazuh-manager/certs/remoted.crt`. The installer refuses any other value before it writes the configuration (`ERROR: Invalid value '…' for installation variable WAZUH_REMOTE_HTTPS_CERTIFICATE: expected an absolute path to a file directly in /etc/wazuh-manager/certs …`, exit 1). A path edited into `wazuh-manager.conf` later is judged by the credential check that runs before every start, which refuses any other location, a relative path included (it resolves against the installation directory `/var/wazuh-manager`), with `Invalid credentials. Exiting` and `INVALID remote.https.certificate: … is outside /etc/wazuh-manager/certs, the only place the resolver checks …`; it also requires each file to be `root:wazuh-manager` `0640` (`Unsafe credentials. Exiting` otherwise). The credential resolver issues only the default `remoted.pem`/`remoted-key.pem` pair and `root-ca.pem` bundle: a file under another name is yours to provision before the manager is started, and while it is absent the start is refused with `Unresolved credentials. Exiting` (`MISSING …: configured as remote.https.certificate …; stage the pair …`). See [Configured file names](credentials.md#configured-file-names).
 >
 > `WAZUH_REMOTE_HTTPS_CA` is not checked by the resolver. Give it as an absolute path; a relative one resolves against `/var/wazuh-manager` (every daemon runs with it as its working directory), so `wazuh-manager-remoted` opens a path exactly as `wazuh-manager-conf validate` checked it. Under the systemd unit (`ProtectHome=yes`, `PrivateTmp=yes`) a file under `/home`, `/root`, `/run/user` or the host's `/tmp` is not visible. When the file is missing, `wazuh-manager-control start` refuses to start anything (`(1244): Invalid configuration at '/remote/https/ca': file not found: …`); when it exists but the `wazuh-manager` user cannot read it and `verification_mode` is `certificate` or `full`, `wazuh-manager-remoted` exits at startup (`Cannot start the HTTPS agent listener: …`).
 
@@ -215,12 +221,15 @@ the installation directory `/var/wazuh-manager`, and the credential check refuse
 ### Start the manager
 
 On a fresh installation neither the packages nor `install.sh` start or enable the service: you start
-it when the deployment is ready. (An upgrade restarts a manager that was running before it.) Set
+it when the deployment is ready. (An upgrade restarts a manager that was running before it.) An
+enablement you made earlier does not carry over a purge (`dpkg --purge`, `rpm -e`): it is removed with the
+package, so a later installation starts disabled; `dpkg --remove` keeps it. Set
 `USER_AUTO_START="y"` in `etc/preloaded-vars.conf` to have `install.sh` start it anyway. A fresh package
 install ends by printing where the Server API passwords are (only when it published them: a resolver run
 stopped by an unsafe or invalid entry writes nothing), whether the credential
-resolution is incomplete and the command that completes it, and the command to start the service (and to
-enable it at boot, when systemd is running).
+resolution is incomplete and the command that completes it
+(`/var/wazuh-manager/bin/wazuh-manager-resolve-credentials --install -H /var/wazuh-manager`, run as root), and
+the command to start the service (and to enable it at boot, when systemd is running).
 
 Every start first validates the configuration file, then checks the credentials and certificates, the files the
 configuration names and each daemon's own test, and finally completes the passwords and the indexer credential;

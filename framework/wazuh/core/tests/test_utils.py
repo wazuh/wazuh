@@ -987,10 +987,14 @@ def test_failed_test_get_timeframe_in_seconds(time):
         utils.get_timeframe_in_seconds(time)
 
 
-@pytest.mark.parametrize('query_filter, expected_query_filter, expected_wef', [
-    ({'operator': 'LIKE', 'value': 'user\'s'}, {'operator': 'LIKE', 'value': 'user_s'}, set()),
+@pytest.mark.parametrize('query_filter, expected_query_filter', [
+    ({'operator': 'LIKE', 'value': 'user\'s'}, {'operator': 'LIKE', 'value': 'user\'s'}),
     ({'operator': '=', 'value': 'user\'s', 'field': 'description'},
-     {'operator': 'LIKE', 'value': 'user_s', 'field': 'description'}, {'description'}),
+     {'operator': '=', 'value': 'user\'s', 'field': 'description'}),
+    ({'operator': '!=', 'value': 'say "hi"', 'field': 'description'},
+     {'operator': '!=', 'value': 'say "hi"', 'field': 'description'}),
+    ({'operator': '=', 'value': '{"a": 1}', 'field': 'description'},
+     {'operator': '=', 'value': '{"a":1}', 'field': 'description'}),
 ])
 @patch('wazuh.core.utils.path.exists', return_value=True)
 @patch('glob.glob', return_value=True)
@@ -998,8 +1002,8 @@ def test_failed_test_get_timeframe_in_seconds(time):
 @patch('socket.socket.connect')
 @patch('wazuh.core.utils.common.MAXIMUM_DATABASE_LIMIT', new=10)
 def test_WazuhDBQuery_protected_clean_filter(mock_socket_conn, mock_conn_db, mock_glob, mock_exists,
-                                             query_filter, expected_query_filter, expected_wef):
-    """Test WazuhDBQuery._clean_filter function."""
+                                             query_filter, expected_query_filter):
+    """Test WazuhDBQuery._clean_filter function: a quote never changes the operator nor the value."""
     query = utils.WazuhDBQuery(offset=0, limit=500, table='agent', sort=None,
                                search=None, select=None, filters=None,
                                fields={'1': None, '2': None},
@@ -1008,8 +1012,7 @@ def test_WazuhDBQuery_protected_clean_filter(mock_socket_conn, mock_conn_db, moc
                                count=5, get_data=None)
 
     query._clean_filter(query_filter)
-    assert query_filter == expected_query_filter, 'query_filter should have been updated, but it was not'
-    assert query.wildcard_equal_fields == expected_wef
+    assert query_filter == expected_query_filter
 
 
 @pytest.mark.parametrize('limit, error, expected_exception', [
@@ -1471,6 +1474,14 @@ def test_WazuhDBQuery_protected_add_filters_to_query(mock_process, mock_socket_c
         ],
         'SELECT {0} FROM agent WHERE ((status = :status$0 COLLATE NOCASE) OR ((id != :id$0 COLLATE NOCASE) ' \
         'AND ((group = :group$0 COLLATE NOCASE) OR (group = :group$1 COLLATE NOCASE))))',
+    ),
+    # A quote in the value keeps the operator: '!=' is still a negation and '=' still an exact match.
+    (
+        [
+            {'value': "o'brien", 'operator': '!=', 'field': 'status$0', 'separator': 'AND', 'level': 0},
+            {'value': 'say "hi"', 'operator': '=', 'field': 'id$0', 'separator': '', 'level': 0},
+        ],
+        'SELECT {0} FROM agent WHERE (status != :status$0 COLLATE NOCASE) AND (id = :id$0 COLLATE NOCASE)',
     ),
 ])
 @patch('wazuh.core.utils.WazuhDBBackend.connect_to_db')
