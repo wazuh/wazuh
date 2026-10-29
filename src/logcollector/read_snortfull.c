@@ -57,7 +57,8 @@ static bool is_unfinished_line(logreader *lf, const char *str) {
 typedef enum {
     ALERT_NONE,                 /* Between alerts */
     ALERT_AFTER_HEADER,         /* The header is read: the classification comes next */
-    ALERT_AFTER_CLASSIFICATION  /* The classification is read: AppID lines and the date line come next */
+    ALERT_AFTER_CLASSIFICATION, /* The classification is read: the AppID line or the date line comes next */
+    ALERT_AFTER_APPID           /* The AppID line is read: the date line comes next */
 } alert_stage_t;
 
 /* The alert being assembled from its lines */
@@ -101,22 +102,28 @@ static line_result_t add_second_line(alert_t *alert, const char *str) {
     return LINE_REJECTED;
 }
 
-static line_result_t add_third_line(alert_t *alert, const char *str) {
-    const char *text;
+static line_result_t add_date_line(alert_t *alert, const char *str) {
+    const char *text = date_line_text(str);
 
-    /* Snort with OpenAppID writes "[AppID: <name>] " before the date line */
+    if (text == NULL) {
+        return LINE_REJECTED;
+    }
+
+    append_part(alert->message, sizeof(alert->message), text);
+    alert->stage = ALERT_NONE;
+    return ALERT_COMPLETE;
+}
+
+static line_result_t add_third_line(alert_t *alert, const char *str) {
+    /* Snort with OpenAppID writes one "[AppID: <name>] " line before the date line */
     if (strncmp(str, "[AppID: ", 8) == 0) {
         append_part(alert->message, sizeof(alert->message), str);
+        alert->stage = ALERT_AFTER_APPID;
         return LINE_ACCEPTED;
     }
 
     /* Third line has the 01/13-15 (date) */
-    if ((text = date_line_text(str)) != NULL) {
-        append_part(alert->message, sizeof(alert->message), text);
-        alert->stage = ALERT_NONE;
-        return ALERT_COMPLETE;
-    }
-    return LINE_REJECTED;
+    return add_date_line(alert, str);
 }
 
 static line_result_t add_line(alert_t *alert, const char *str) {
@@ -125,6 +132,8 @@ static line_result_t add_line(alert_t *alert, const char *str) {
         return add_second_line(alert, str);
     case ALERT_AFTER_CLASSIFICATION:
         return add_third_line(alert, str);
+    case ALERT_AFTER_APPID:
+        return add_date_line(alert, str);
     default:
         return add_first_line(alert, str);
     }
@@ -153,8 +162,8 @@ static bool strip_line_end(char *str) {
     return true;
 }
 
-/* The line limit does not cut an alert: going back to its header instead would never get past an alert
- * longer than the limit */
+/* The line limit does not cut an alert: the read goes on to its date line, three lines more at most, instead of
+ * going back to its header and reading it again */
 static bool line_limit_reached(int lines, const alert_t *alert) {
     return maximum_lines && lines >= maximum_lines && alert->stage == ALERT_NONE;
 }
