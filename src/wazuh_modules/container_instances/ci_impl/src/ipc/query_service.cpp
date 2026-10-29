@@ -84,34 +84,32 @@ namespace wazuh::container_instances
                 response.listReply = true;
                 response.connectorName = m_connectorName;
 
-                // Read once for the whole reply, before either branch below
-                // builds its record set, so every record in one reply is
-                // stamped against the same decision. Reading it per record
-                // would let a reconcile land mid-serialisation and ship a reply
-                // that admits a container in one key and withholds it in
-                // another.
-                response.admitted = m_store.admittedIds();
+                // ONE read for the whole reply. Not three accessors in a row:
+                // a consumer sweeps the rows of every container absent from
+                // both the list and the unkeyed ids, so the two sets have to be
+                // taken at the same instant or a container moving between them
+                // -- which is a container restarting -- falls out of both and
+                // has everything deleted. Per-record reads would be worse
+                // still, shipping a reply that admits a container under one key
+                // and withholds it under another.
+                auto snapshot = m_store.listSnapshot(request.since);
+                response.admitted = std::move(snapshot.admitted);
+                response.unkeyedIds = std::move(snapshot.unkeyed);
 
-                // Read beside the admitted set, for the same reason: one decision
-                // per reply. A consumer that sweeps on absence needs to know this
-                // list is the whole node before it acts on what is missing from it.
-                response.unkeyedIds = m_store.unkeyedContainerIds();
-
-                if (!request.since)
+                if (!snapshot.delta)
                 {
                     // No cursor: the reply this op has always given.
-                    response.containers = m_store.listContainers();
+                    response.containers = std::move(snapshot.containers);
                     return response;
                 }
-
-                auto delta = m_store.lifecycleSince(*request.since);
 
                 // On resync the journal hands back the full set, which goes out
                 // through `containers` — the key every client already reads —
                 // so recovery needs no second call and no special case beyond
                 // noticing the flag.
-                response.containers = delta.resyncRequired ? delta.containers : std::vector<ContainerRecordPtr> {};
-                response.delta = std::move(delta);
+                response.containers = snapshot.delta->resyncRequired ? std::move(snapshot.containers)
+                                                                     : std::vector<ContainerRecordPtr> {};
+                response.delta = std::move(*snapshot.delta);
 
                 return response;
             }

@@ -46,6 +46,30 @@ namespace wazuh::container_instances
         std::optional<TimePoint> lastReconcile;
     };
 
+    /// Everything one `list` reply says, taken together.
+    ///
+    /// The three sets below answer one question between them -- which
+    /// containers exist, which of those can be attributed, and which of THOSE
+    /// may report -- and a consumer reads them as one answer: it sweeps the
+    /// rows of every container absent from `containers` and `unkeyed` alike.
+    ///
+    /// Read one at a time they are three answers taken at three instants, and
+    /// a container that is keyed when the first is taken and unkeyed when the
+    /// second is -- a container restarting, which is when its records are
+    /// replaced -- appears in NEITHER. The consumer then deletes every row it
+    /// has for a container that is simply starting again (#37532).
+    struct ListSnapshot
+    {
+        std::vector<ContainerRecordPtr> containers;
+        std::set<std::string> admitted;
+        std::set<std::string> unkeyed;
+
+        /// Set only when a cursor was supplied. On resync it carries the whole
+        /// current set, which is `containers` -- the same vector, from the same
+        /// instant, rather than a second list built a moment later.
+        std::optional<LifecycleDelta> delta;
+    };
+
     /// Concurrent metadata cache. Threading contract:
     ///  - applySnapshot: exactly one caller, the connector thread.
     ///  - upsertPending/upsertVerdict: targeted single-key writes from IPC workers.
@@ -109,6 +133,15 @@ namespace wazuh::container_instances
         /// Publishing the ids separately answers the existence question without
         /// answering the key question (#37532 / R8).
         [[nodiscard]] virtual std::set<std::string> unkeyedContainerIds() const = 0;
+
+        /// Everything a `list` reply needs, taken together under one lock.
+        ///
+        /// `since` asks for the lifecycle delta as well, from the same instant.
+        /// The separate accessors remain for callers that genuinely want one of
+        /// them; anything that acts on the RELATIONSHIP between them must use
+        /// this, because reading them one at a time lets a container fall
+        /// between two of the sets -- see ListSnapshot.
+        [[nodiscard]] virtual ListSnapshot listSnapshot(const std::optional<LifecycleCursor>& since) const = 0;
 
         /// How many containers may report; <= 0 means unlimited, which is the
         /// shipped default. Pushed by the manager, so it changes at runtime.

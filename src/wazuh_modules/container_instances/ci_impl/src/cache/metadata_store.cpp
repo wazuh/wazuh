@@ -143,6 +143,11 @@ namespace wazuh::container_instances
     std::vector<ContainerRecordPtr> MetadataStore::listContainers() const
     {
         std::shared_lock lock(m_mutex);
+        return listContainersLocked();
+    }
+
+    std::vector<ContainerRecordPtr> MetadataStore::listContainersLocked() const
+    {
         std::vector<ContainerRecordPtr> result;
         std::unordered_set<std::string> seen;
         std::size_t withheld = 0;
@@ -613,10 +618,36 @@ namespace
         return m_admitted;
     }
 
+    ListSnapshot MetadataStore::listSnapshot(const std::optional<LifecycleCursor>& since) const
+    {
+        // ONE lock for the whole reply. These are views of the same instant and
+        // a consumer acts on how they relate -- a container absent from the
+        // list and from the unkeyed ids is one it deletes the rows of. Taken
+        // under separate locks, a container being replaced between two reads is
+        // in neither, and the consumer deletes everything it holds for a
+        // container that is merely restarting (#37532).
+        std::shared_lock lock(m_mutex);
+
+        ListSnapshot snapshot {listContainersLocked(), m_admitted, unkeyedContainerIdsLocked(), std::nullopt};
+
+        if (since)
+        {
+            // The resync set the journal attaches is the list we just built, so
+            // the two cannot disagree about which containers exist.
+            snapshot.delta = m_journal.since(*since, snapshot.containers);
+        }
+
+        return snapshot;
+    }
+
     std::set<std::string> MetadataStore::unkeyedContainerIds() const
     {
         std::shared_lock lock(m_mutex);
+        return unkeyedContainerIdsLocked();
+    }
 
+    std::set<std::string> MetadataStore::unkeyedContainerIdsLocked() const
+    {
         // Counted here rather than read off m_withheldReported, which is a
         // "last value logged" marker and is SIZE_MAX until listContainers() has
         // run once -- the exact moment a consumer most needs a truthful answer.
@@ -844,25 +875,7 @@ namespace
     LifecycleDelta MetadataStore::lifecycleSince(const LifecycleCursor& from) const
     {
         std::shared_lock lock(m_mutex);
-
-        // listContainers() would take the lock again; build the resync set here
-        // under the one we already hold.
-        std::vector<ContainerRecordPtr> current;
-        std::unordered_set<std::string> seen;
-
-        for (const auto& [source, records] : m_bySource)
-        {
-            for (const auto& [containerId, record] : records)
-            {
-                if (!record || (record->hostKey == 0 && isRunning(record->state)) || !seen.insert(containerId).second)
-                {
-                    continue;
-                }
-                current.push_back(record);
-            }
-        }
-
-        return m_journal.since(from, current);
+        return m_journal.since(from, listContainersLocked());
     }
 
     LifecycleCursor MetadataStore::lifecycleCursor() const

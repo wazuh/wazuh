@@ -5,6 +5,8 @@
 
 #include <cstdint>
 #include <functional>
+#include <optional>
+#include <set>
 #include <string>
 #include <vector>
 
@@ -292,5 +294,98 @@ struct ContainerListStatus
 int ListContainers(const std::string& connector_socket_path, const ContainerIdSink& sink,
                    ContainerListStatus* status = nullptr,
                    const UnkeyedIdSink& unkeyedSink = {});
+
+/// One answer from the connector, kept whole.
+///
+/// The ids, the coverage flags and the payload all describe THIS answer and no
+/// other. They are one value because holding them in separate variables is
+/// exactly what went wrong: the quiescence retry below replaced the list on
+/// each disagreeing poll and left the flags and the unkeyed ids behind from the
+/// first one. The caller then had a list from the last poll, a completeness
+/// flag from the first, and an unkeyed set from the first -- and a container
+/// that restarted in between was in neither the list nor the unkeyed ids.
+/// Every consumer sweeps on exactly that pair, so it lost every FIM and
+/// inventory row it had (#37532).
+///
+/// Templated on the payload so this header needs none of the client's types.
+template <typename Payload>
+struct PolledListing
+{
+    Payload payload {};
+
+    /// Ids the connector could key, which is what `payload` describes.
+    std::set<std::string> ids;
+
+    /// Ids it knows of but could not key. They EXIST; only an attribution key
+    /// is missing.
+    std::set<std::string> unkeyed;
+
+    bool complete {false};
+    bool unkeyedKnown {false};
+
+    /// Every container this answer says exists. What "the node's containers"
+    /// means to a caller that sweeps on absence -- and what quiescence is
+    /// waiting to see settle, because a container restarting leaves `ids` for
+    /// `unkeyed` rather than leaving the node.
+    [[nodiscard]] std::set<std::string> settledIds() const
+    {
+        std::set<std::string> all = ids;
+        all.insert(unkeyed.begin(), unkeyed.end());
+        return all;
+    }
+};
+
+/// Poll until two consecutive answers name the same containers.
+///
+/// `poll` returns nothing when the connector did not answer, which ends the
+/// wait without disturbing `listing`: a failed poll is not an empty node. Any
+/// answer replaces `listing` whole, so the caller cannot end up holding half of
+/// one reply and half of another.
+///
+/// @return whether two consecutive answers agreed. False means the attempts ran
+///         out while containers were still appearing and disappearing; the
+///         caller proceeds with the last answer and re-checks next time rather
+///         than blocking.
+template <typename Payload>
+bool SettleContainerListing(PolledListing<Payload>& listing,
+                            int attempts,
+                            const std::function<std::optional<PolledListing<Payload>>()>& poll,
+                            const std::function<void()>& betweenPolls = {})
+{
+    auto lastIds = listing.settledIds();
+
+    for (int attempt = 1; attempt <= attempts; ++attempt)
+    {
+        if (betweenPolls)
+        {
+            betweenPolls();
+        }
+
+        auto next = poll();
+
+        if (!next)
+        {
+            // The connector went away mid-check. Keep the last answer it did
+            // give rather than adopting a failed poll's empty one.
+            return false;
+        }
+
+        auto nextIds = next->settledIds();
+
+        // Adopted BEFORE the comparison decides anything, and whole. Adopting
+        // only on the disagreeing path left the caller holding the
+        // second-to-last answer on the settled path.
+        listing = std::move(*next);
+
+        if (nextIds == lastIds)
+        {
+            return true;
+        }
+
+        lastIds = std::move(nextIds);
+    }
+
+    return false;
+}
 
 } // namespace wazuh::container_baseline

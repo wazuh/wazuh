@@ -46,6 +46,7 @@ namespace wazuh::container_instances
         [[nodiscard]] std::set<std::string> admittedIds() const override;
 
         [[nodiscard]] std::set<std::string> unkeyedContainerIds() const override;
+        [[nodiscard]] ListSnapshot listSnapshot(const std::optional<LifecycleCursor>& since) const override;
         void setSyncLimit(int limit) override;
 
         void applySnapshot(const SourceId& source,
@@ -92,6 +93,14 @@ namespace wazuh::container_instances
         /// The record listContainers() would publish for this id, or null.
         /// Visibility, not existence — that distinction is the whole contract.
         [[nodiscard]] ContainerRecordPtr visibleRecordLocked(const std::string& containerId) const;
+
+        /// listContainers() and unkeyedContainerIds() with the lock already
+        /// held, so listSnapshot() can take all three at one instant. The
+        /// mutex is a shared_mutex, so a second shared acquisition on this
+        /// thread would deadlock behind a waiting writer -- these exist for
+        /// that reason, not for tidiness.
+        [[nodiscard]] std::vector<ContainerRecordPtr> listContainersLocked() const;
+        [[nodiscard]] std::set<std::string> unkeyedContainerIdsLocked() const;
 
         /// Every id listContainers() would publish, ordered. The admission rule
         /// is fed from visibility rather than existence so that a running record

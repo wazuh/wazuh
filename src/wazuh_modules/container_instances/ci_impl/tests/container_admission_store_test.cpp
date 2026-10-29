@@ -26,10 +26,13 @@
 
 #include <gtest/gtest.h>
 
+#include <atomic>
 #include <chrono>
 #include <functional>
+#include <optional>
 #include <set>
 #include <string>
+#include <thread>
 
 using namespace wazuh::container_instances;
 
@@ -125,6 +128,101 @@ TEST(ContainerAdmissionStoreTest, WithheldCountsContainersTheListOmitsNotUnresol
     EXPECT_EQ(ListedIds(store), (std::set<std::string> {"shared"}));
     EXPECT_EQ(store.unkeyedContainerIds(), (std::set<std::string> {"ghost"}))
         << "and the sweeps need its id, not just a count, to keep its rows";
+}
+
+// A container RESTARTING is one whose record is replaced: keyed, then unkeyed
+// for as long as the resolver takes to catch up, then keyed again. Both
+// consumers keep the rows of every container in the list OR in the unkeyed
+// ids, and delete the rest -- so the two sets have to describe one instant. Read
+// one after the other they do not, and a container crossing between them while
+// the reads are in flight is in neither, which costs it every row it has
+// (#37532).
+TEST(ContainerAdmissionStoreTest, ARestartingContainerIsNeverAbsentFromBothSets)
+{
+    auto store = MakeStore();
+
+    // Seeded before the reader starts. Without this the reader's first poll can
+    // beat the writer's first snapshot and report a container that does not
+    // exist yet as lost -- the harness measuring itself rather than the store.
+    store.applySnapshot(
+        kDocker, {MakeRecord("steady", InodeFor("steady")), MakeRecord("flap", InodeFor("flap"))}, {}, Now());
+
+    std::atomic<bool> writerDone {false};
+    std::atomic<int> reads {0};
+    std::atomic<int> lost {0};
+
+    std::thread writer(
+        [&]
+        {
+            for (int i = 0; i < 20000; ++i)
+            {
+                // hostKey 0 while running is precisely "exists, not keyed yet".
+                store.applySnapshot(
+                    kDocker, {MakeRecord("steady", InodeFor("steady")), MakeRecord("flap", 0)}, {}, Now());
+                store.applySnapshot(kDocker,
+                                    {MakeRecord("steady", InodeFor("steady")), MakeRecord("flap", InodeFor("flap"))},
+                                    {},
+                                    Now());
+            }
+            writerDone.store(true);
+        });
+
+    while (!writerDone.load())
+    {
+        const auto snapshot = store.listSnapshot(std::nullopt);
+
+        std::set<std::string> present = snapshot.unkeyed;
+
+        for (const auto& record : snapshot.containers)
+        {
+            present.insert(record->containerId);
+        }
+
+        reads.fetch_add(1);
+
+        if (present.count("flap") == 0)
+        {
+            lost.fetch_add(1);
+        }
+    }
+
+    writer.join();
+
+    ASSERT_GT(reads.load(), 0) << "the reader never ran, so this proves nothing";
+    EXPECT_EQ(lost.load(), 0) << "a restarting container fell between the list and the unkeyed ids in " << lost.load()
+                              << " of " << reads.load() << " reads; a consumer would delete every row it holds for it";
+}
+
+// ...and the snapshot must still be the three accessors, not merely consistent
+// with itself. A quiet store is enough to pin that.
+TEST(ContainerAdmissionStoreTest, TheSnapshotAgreesWithTheAccessorsItReplaces)
+{
+    auto store = MakeStore();
+    store.setSyncLimit(1);
+    store.applySnapshot(kDocker, {MakeRecord("a", InodeFor("a")), MakeRecord("b", InodeFor("b"))}, {}, Now());
+    store.applySnapshot(kCri, {MakeRecord("ghost", 0)}, {}, Now());
+
+    const auto snapshot = store.listSnapshot(std::nullopt);
+
+    std::set<std::string> listed;
+
+    for (const auto& record : snapshot.containers)
+    {
+        listed.insert(record->containerId);
+    }
+
+    EXPECT_EQ(listed, ListedIds(store));
+    EXPECT_EQ(snapshot.admitted, store.admittedIds());
+    EXPECT_EQ(snapshot.unkeyed, store.unkeyedContainerIds());
+    EXPECT_EQ(snapshot.unkeyed, (std::set<std::string> {"ghost"}));
+    EXPECT_FALSE(snapshot.delta) << "no cursor was asked for";
+
+    // With a cursor the delta rides along, built from the very list above
+    // rather than from a second one taken a moment later.
+    const auto followed = store.listSnapshot(std::optional<LifecycleCursor> {LifecycleCursor {}});
+    ASSERT_TRUE(followed.delta);
+    EXPECT_TRUE(followed.delta->resyncRequired) << "a default cursor is from another store lifetime";
+    EXPECT_EQ(followed.delta->containers.size(), followed.containers.size());
 }
 
 TEST(ContainerAdmissionStoreTest, WithheldContainersAreStillPublished)
