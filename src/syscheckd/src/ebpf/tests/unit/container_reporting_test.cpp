@@ -351,6 +351,58 @@ TEST(ContainerListRefresh, ADeltaMergesItsEventsAndThenTheAdmittedSet)
             << "the removal drops out, and the readmission arrives with no event of its own";
 }
 
+// Keyed-complete and enumerated are different claims about one reply, and the
+// drain used to have a single flag for both. Admission needs the second: it
+// decides who may report, which is a question about ids.
+TEST(ContainerListRefresh, AnIncompleteReplyThatNamesWhatItCouldNotKeyStillDecidesAdmission)
+{
+    using wazuh::container_instances_client::ContainerDelta;
+    using wazuh::container_instances_client::ContainerRef;
+    using fim_container_events::AdmissionPublish;
+    using fim_container_events::decideAdmissionPublish;
+    using fim_container_events::planListRefresh;
+
+    ContainerRef keyed;
+    keyed.containerId = "a";
+    keyed.cgroupId = 11;
+    keyed.synced = true;
+
+    ContainerDelta delta;
+    delta.available = true;
+    delta.deltaSupported = false; // a full list
+    delta.complete = false;       // ...that "stuck" is missing from
+    delta.containers = {keyed};
+    delta.unkeyedKnown = true;
+    delta.unkeyed = {"stuck"};
+
+    const auto plan = planListRefresh(delta, {});
+
+    ASSERT_TRUE(plan.act);
+    EXPECT_FALSE(plan.complete) << "there is no cgroup id to put in the map for 'stuck'";
+    EXPECT_TRUE(plan.enumerated) << "but the reply does name every container that exists";
+    EXPECT_FALSE(plan.installWholeList);
+    EXPECT_EQ(plan.unkeyed, (std::set<std::string> {"stuck"}));
+
+    EXPECT_EQ(plan.admissionView, (std::map<std::string, bool> {{"a", true}}))
+            << "an unkeyed id is not an admission answer in either direction";
+
+    for (const auto& [cgroup, id] : plan.containers)
+    {
+        EXPECT_NE(id, "stuck") << "an id with no host key must never reach the cgroup map";
+    }
+
+    for (const auto& event : plan.events)
+    {
+        EXPECT_NE(event.container_id, "stuck") << "nor the kernel filter, by any other route";
+    }
+
+    // And that is enough to install. Waiting for 'stuck' to be keyed means
+    // waiting for as long as it runs.
+    EXPECT_EQ(decideAdmissionPublish(true, false, true, plan.enumerated), AdmissionPublish::install);
+    EXPECT_EQ(decideAdmissionPublish(true, false, true, false), AdmissionPublish::defer)
+            << "a connector too old to say what it could not key leaves nothing to go on";
+}
+
 TEST(ContainerDrainAdmissionView, AnIncompleteListUpsertsAndACompleteOneReplaces)
 {
     using wazuh::container_instances_client::ContainerRef;
@@ -473,7 +525,7 @@ TEST_F(ContainerReportingTest, RunTimeAdmissionPromotesAndDoesNotOnlyRetract)
     persisted.clear();
     const char* known[] = {"a", "b"};
     const char* admitted[] = {"a", "b"};
-    fim_container_set_admission(known, 2, admitted, 2);
+    fim_container_set_admission(known, 2, admitted, 2, NULL, 0);
 
     ASSERT_EQ(persisted.size(), 1u) << "the newly admitted container's row must be promoted now";
     EXPECT_EQ(persisted[0], (std::pair<std::string, int> {"b:/etc/one", OPERATION_CREATE}));
@@ -482,7 +534,7 @@ TEST_F(ContainerReportingTest, RunTimeAdmissionPromotesAndDoesNotOnlyRetract)
     // ...and the same path must still retract, which is all it used to do.
     persisted.clear();
     const char* onlyA[] = {"a"};
-    fim_container_set_admission(known, 2, onlyA, 1);
+    fim_container_set_admission(known, 2, onlyA, 1, NULL, 0);
 
     ASSERT_EQ(persisted.size(), 1u);
     EXPECT_EQ(persisted[0], (std::pair<std::string, int> {"b:/etc/one", OPERATION_DELETE}));
@@ -498,7 +550,7 @@ TEST_F(ContainerReportingTest, AnUnadmittedContainersModificationNeverDemotesARe
     // resolver thread, so a file event for b can land at any moment after this.
     const char* known[] = {"a", "b"};
     const char* onlyA[] = {"a"};
-    fim_container_set_admission(known, 2, onlyA, 1);
+    fim_container_set_admission(known, 2, onlyA, 1, NULL, 0);
     persisted.clear();
 
     // A row the manager ALREADY holds (sync=1), modified while b is withheld.
@@ -543,6 +595,59 @@ TEST_F(ContainerReportingTest, AnUnkeyableContainerKeepsItsFimStateWithoutBlocki
             << "a container nobody can key has not gone anywhere";
     EXPECT_EQ(syncFlag("ghost", "/etc/one"), -1)
             << "and it must not have kept the sweep from removing one that has";
+}
+
+// Absence from the admitted set has three causes, and only one of them is a
+// refusal. The cap ranks the containers the connector can publish, so one it
+// cannot key was never ranked at all -- reading that as "refused" withheld a
+// container's documents on the strength of a decision nobody took (#37532).
+TEST_F(ContainerReportingTest, AContainerThatCannotBeKeyedIsNotARefusedContainer)
+{
+    const char* known[] = {"a", "b", "stuck"};
+    const char* admitted[] = {"a"};
+    const char* unkeyedIds[] = {"stuck"};
+    fim_container_set_admission(known, 3, admitted, 1, unkeyedIds, 1);
+
+    EXPECT_NE(fim_container_is_admitted("a"), 0);
+    EXPECT_EQ(fim_container_is_admitted("b"), 0) << "the cap ranked it and said no";
+    EXPECT_NE(fim_container_is_admitted("stuck"), 0)
+            << "the cap never ranked it: it ranks what the connector can publish";
+
+    // And it is KNOWN, so a batch of its rows does not re-ask for a listing
+    // that would answer the same way -- for a container that can never be
+    // keyed, that is one listing per batch, for ever.
+    EXPECT_EQ(fim_container_admission_is_stale("stuck"), 0);
+    EXPECT_NE(fim_container_admission_is_stale("nobody"), 0) << "created after the snapshot: re-ask";
+}
+
+// The whole point of splitting the two questions apart. A container whose
+// cgroup no process reports never resolves, so a listing that waits for every
+// container to be keyed is never complete again -- the snapshot was installed
+// once and then frozen, and every container that started afterwards was absent
+// from it and read as refused for the life of the process (#37532).
+TEST_F(ContainerReportingTest, AnUnkeyableContainerDoesNotFreezeAdmissionForTheWholeNode)
+{
+    files = {{"a", {"/etc/one"}}};
+    admission = {{"a", true}};
+    listed = false;
+    fim_run_container_baseline();
+    ASSERT_EQ(syncFlag("a", "/etc/one"), 1);
+
+    // From here on the node always holds one container nobody can key, so no
+    // listing is ever complete again. "late" starts afterwards and the
+    // connector admits it.
+    files = {{"a", {"/etc/one"}}, {"late", {"/etc/one"}}};
+    admission = {{"a", true}, {"late", true}};
+    unkeyed = {"stuck"};
+    unkeyed_known = true;
+    listed = false;
+    fim_run_container_baseline();
+
+    EXPECT_NE(fim_container_is_admitted("late"), 0)
+            << "the connector admitted it; a container nobody can key is no reason to refuse it";
+    EXPECT_EQ(syncFlag("late", "/etc/one"), 1)
+            << "a container that started after the unkeyable one must still reach the manager";
+    EXPECT_EQ(fim_container_admission_is_stale("late"), 0) << "the snapshot was replaced, not frozen";
 }
 
 TEST_F(ContainerReportingTest, FirstScanWithholdsAndUnavailableConnectorKeepsRows)

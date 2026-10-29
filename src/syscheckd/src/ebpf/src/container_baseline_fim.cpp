@@ -776,10 +776,12 @@ namespace
         std::set<std::string> known;
         std::set<std::string> admitted;
 
-        /// Containers that exist but have no attribution key yet, so `known`
-        /// omits them. They must survive a stale sweep and must NOT reach the
-        /// admission snapshot: existing and being identifiable are different
-        /// facts (#37532 / R8).
+        /// Containers that exist but have no attribution key yet, so the keyed
+        /// listing omits them. They must survive a stale sweep, and they reach
+        /// the admission snapshot as their own category -- known to exist, and
+        /// ranked by nothing, because the cap ranks what the connector can
+        /// publish. They must never reach `admitted` or the cgroup map:
+        /// existing and being identifiable are different facts (#37532).
         std::set<std::string> unkeyed;
 
         /// Whether `known` is the whole node. False when the connector is still
@@ -835,24 +837,35 @@ namespace
         listing.complete = (listStatus.complete != 0);
         listing.unkeyedKnown = (listStatus.unkeyed_known != 0);
 
-        if (!listing.complete)
+        // What the snapshot needs is every container that EXISTS, by id -- it
+        // decides who may report, and that question never touches an
+        // attribution key. `complete` answers a different one: whether every
+        // container in the list is keyed, which is what the cgroup map needs.
+        //
+        // Gating on `complete` conflated the two. A container whose cgroup no
+        // process reports never resolves, so `complete` stayed false for as
+        // long as it ran, the snapshot was never replaced again, and every
+        // container that started afterwards was absent from it and read as
+        // refused -- silent for the life of the process (#37532).
+        //
+        // So install as soon as the connector has named what it could not key,
+        // and let the unkeyed ids ride along as their own category.
+        if (!listing.complete && !listing.unkeyedKnown)
         {
-            // Installing a partial listing would drop every container the
-            // resolver has not keyed yet out of the admitted set, and
-            // fim_container_is_admitted() answers 0 for anything absent from it
-            // -- so a container that was reporting a moment ago would silently
-            // stop. Keeping the previous snapshot is what carries its admission
-            // across the gap; before the first listing there is no snapshot and
-            // the bridge is fail-open, which is the same safe direction. A
-            // container that appears while the list is incomplete waits one
-            // cycle to be admitted (#37532 / N5).
+            // An older connector that reports neither. Nothing distinguishes a
+            // container it omitted from one that is gone, so keep the previous
+            // snapshot: before the first listing there is none and the bridge
+            // is fail-open, which is the same safe direction. A container that
+            // appears meanwhile waits one cycle to be admitted (#37532).
             return listed;
         }
 
         std::vector<const char*> known;
         std::vector<const char*> admitted;
-        known.reserve(listing.known.size());
+        std::vector<const char*> unkeyed;
+        known.reserve(listing.known.size() + listing.unkeyed.size());
         admitted.reserve(listing.admitted.size());
+        unkeyed.reserve(listing.unkeyed.size());
 
         for (const auto& id : listing.known)
         {
@@ -864,7 +877,17 @@ namespace
             admitted.push_back(id.c_str());
         }
 
-        fim_container_set_admission(known.data(), known.size(), admitted.data(), admitted.size());
+        // Known as well as unkeyed: the bridge treats absence from `known` as
+        // "this snapshot predates the container" and retakes the listing, which
+        // for one that can never be keyed would mean retaking it per batch.
+        for (const auto& id : listing.unkeyed)
+        {
+            known.push_back(id.c_str());
+            unkeyed.push_back(id.c_str());
+        }
+
+        fim_container_set_admission(
+            known.data(), known.size(), admitted.data(), admitted.size(), unkeyed.data(), unkeyed.size());
 
         return listed;
     }

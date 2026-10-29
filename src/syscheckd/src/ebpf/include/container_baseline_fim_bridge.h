@@ -174,15 +174,24 @@ void fim_container_set_admitted(const char** container_ids, size_t count);
  * Call ONLY when the connector actually answered -- see
  * fim_container_set_admitted(), which is this with the two sets equal.
  *
- * @param known_ids      Every container the listing reported, admitted or not.
+ * @param known_ids      Every container the listing reported, admitted or not,
+ *                       including the ones it could not key.
  * @param known_count    How many.
  * @param admitted_ids   The subset allowed to report. Copied; caller keeps ownership.
  * @param admitted_count How many. Zero is a real answer -- no container reports.
+ * @param unkeyed_ids    The subset the connector knows of but cannot attribute
+ *                       events to yet, so the cap never ranked them. They are
+ *                       withheld by nothing and report; see
+ *                       fim_container_is_admitted(). May be NULL with a count
+ *                       of zero when the caller admits everything it knows.
+ * @param unkeyed_count  How many.
  */
 void fim_container_set_admission(const char** known_ids,
                                  size_t known_count,
                                  const char** admitted_ids,
-                                 size_t admitted_count);
+                                 size_t admitted_count,
+                                 const char** unkeyed_ids,
+                                 size_t unkeyed_count);
 
 /**
  * @brief Whether a container may report. Non-zero when it may.
@@ -190,6 +199,10 @@ void fim_container_set_admission(const char** known_ids,
  * True for every container until fim_container_set_admitted() has been called,
  * so an agent that has not reached the connector keeps reporting rather than
  * going silently quiet.
+ *
+ * Also true for a container the listing reported as unkeyed: the cap ranks what
+ * the connector can publish, and one it cannot key was never ranked, so nothing
+ * refused it. Only a container the cap considered and turned down reads false.
  */
 int fim_container_is_admitted(const char* container_id);
 

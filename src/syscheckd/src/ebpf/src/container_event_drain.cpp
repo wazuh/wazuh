@@ -199,25 +199,34 @@ namespace fim_container_events
      *               file_entry, and the baseline walk's scoped transaction is
      *               open until release. Same hazard
      *               fim_container_events_release() exists for.
-     * not complete  the reply omits running containers the resolver cannot key
-     *               yet. Installing it marks them "known and refused" rather
-     *               than "not heard of", which retracts live rows -- R1, and at
-     *               a cold start the view it merges into is EMPTY, so there is
-     *               no previous answer to protect them either.
+     * not enumerated  the reply does not name every container that exists --
+     *                 an older connector that reports neither the unkeyed ids
+     *                 nor a complete list. Installing it marks the containers
+     *                 it omits "known and refused" rather than "not heard of",
+     *                 which retracts live rows, and at a cold start the view it
+     *                 merges into is EMPTY, so there is no previous answer to
+     *                 protect them either.
+     *
+     * What this deliberately does NOT wait for is every container to be KEYED.
+     * It used to, and a container whose cgroup no process reports never is, so
+     * the snapshot was never installed again and every container that started
+     * afterwards read as refused for the life of the process (#37532). An
+     * unkeyed container has an id, which is all admission needs; only the
+     * cgroup map needs the key.
      *
      * The trap: the caller records the new view whether or not it installs it,
      * so "publish when it next CHANGES" silently means never on a quiet node --
      * the change has already been absorbed. `unpublished` is what remembers
      * that the installed snapshot is behind the view, so the next call that can
-     * install does, with or without a further change (#37532 / R5). */
-    AdmissionPublish decideAdmissionPublish(bool changed, bool unpublished, bool released, bool complete)
+     * install does, with or without a further change (#37532). */
+    AdmissionPublish decideAdmissionPublish(bool changed, bool unpublished, bool released, bool enumerated)
     {
         if (!changed && !unpublished)
         {
             return AdmissionPublish::nothing;
         }
 
-        if (!released || !complete)
+        if (!released || !enumerated)
         {
             return AdmissionPublish::defer;
         }
@@ -230,6 +239,12 @@ namespace fim_container_events
     {
         ListRefreshPlan plan;
         plan.complete = delta.complete;
+
+        /* Keyed-complete and enumerated are different claims, and only the
+         * second is what admission needs. A connector too old to report its
+         * unkeyed ids leaves `complete` as the only evidence either way. */
+        plan.enumerated = delta.complete || delta.unkeyedKnown;
+        plan.unkeyed = delta.unkeyed;
 
         /* unreachable: nothing was obtained. Change NOTHING -- install()
          * replaces the positive map, so applying an empty list from a connector
@@ -698,7 +713,7 @@ namespace fim_container_events
 
             syncAllowlist(plan.installWholeList ? router.applyContainerList(plan.containers)
                           : router.applyContainerDelta(plan.events));
-            publishAdmission(plan.admissionView, plan.complete);
+            publishAdmission(plan.admissionView, plan.unkeyed, plan.enumerated);
 
             /* Advanced only after the plan has been applied. A crash in between
              * replays it, which is harmless — the map converges to the same place
@@ -723,6 +738,11 @@ namespace fim_container_events
          * confused with absent (never heard of), which is exactly what
          * fim_container_admission_is_stale() exists to tell apart. */
         std::map<std::string, bool> admission_view;
+
+        /* The third state, kept out of the map above on purpose: the connector
+         * knows these exist but cannot key them, so the cap never ranked them
+         * and present-and-false would be a refusal that was never decided. */
+        std::set<std::string> admission_unkeyed;
 
         /* The installed snapshot is behind admission_view. See
          * decideAdmissionPublish() for why a "publish on change" rule alone
@@ -749,12 +769,16 @@ namespace fim_container_events
          * installs admission from it, so nothing is lost by waiting: the view is
          * still tracked meanwhile, and the first change AFTER release publishes
          * it. */
-        void publishAdmission(const std::map<std::string, bool>& updated, bool complete)
+        void publishAdmission(const std::map<std::string, bool>& updated,
+                              const std::set<std::string>& unkeyedIds,
+                              bool enumerated)
         {
-            const bool changed = (updated != admission_view);
+            const bool changed = (updated != admission_view) || (unkeyedIds != admission_unkeyed);
             admission_view = updated;
+            admission_unkeyed = unkeyedIds;
 
-            const auto decision = decideAdmissionPublish(changed, admission_unpublished, staging.released(), complete);
+            const auto decision =
+                decideAdmissionPublish(changed, admission_unpublished, staging.released(), enumerated);
 
             if (decision == AdmissionPublish::nothing) return;
 
@@ -766,14 +790,18 @@ namespace fim_container_events
                  * clears, containers.synced_limit is not being applied and
                  * every container reports. The walk used to be relied on to
                  * install admission in the meantime, and no longer can -- it
-                 * refuses a partial listing for the same reason this does. */
-                if (!complete && staging.released() && !admission_deferral_logged)
+                 * refuses the same reply for the same reason this does.
+                 *
+                 * Reaching this at all now means a connector too old to say
+                 * what it could not key, so it is a version mismatch rather
+                 * than something that clears on its own. */
+                if (!enumerated && staging.released() && !admission_deferral_logged)
                 {
                     admission_deferral_logged = true;
-                    LogWarn("Container FIM: holding the admission snapshot until every running container is "
-                            "resolved. Until then every container reports and containers.synced_limit is not "
-                            "applied. A container whose cgroup no process reports never resolves, so this "
-                            "state persisting is worth looking into.");
+                    LogWarn("Container FIM: holding the admission snapshot because the container connector does "
+                            "not report the containers it could not identify, so this agent cannot tell one that "
+                            "is gone from one it has not resolved. Until that clears every container reports and "
+                            "containers.synced_limit is not applied.");
                 }
 
                 return;
@@ -784,7 +812,9 @@ namespace fim_container_events
 
             std::vector<const char*> known;
             std::vector<const char*> admitted;
-            known.reserve(admission_view.size());
+            std::vector<const char*> unkeyed;
+            known.reserve(admission_view.size() + admission_unkeyed.size());
+            unkeyed.reserve(admission_unkeyed.size());
 
             for (const auto& [id, is_admitted] : admission_view)
             {
@@ -796,7 +826,18 @@ namespace fim_container_events
                 }
             }
 
-            fim_container_set_admission(known.data(), known.size(), admitted.data(), admitted.size());
+            /* Known as well as unkeyed. The bridge reads absence from the known
+             * set as "the snapshot predates this container" and retakes the
+             * listing to settle it; for one that can never be keyed that would
+             * be a listing per batch, for an answer that would not change. */
+            for (const auto& id : admission_unkeyed)
+            {
+                known.push_back(id.c_str());
+                unkeyed.push_back(id.c_str());
+            }
+
+            fim_container_set_admission(
+                known.data(), known.size(), admitted.data(), admitted.size(), unkeyed.data(), unkeyed.size());
         }
 
         /* Mirror a list refresh into the kernel filter.

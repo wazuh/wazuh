@@ -637,20 +637,32 @@ void fim_container_doc_budget_initialize(const char* container_id)
     synced_docs_unlock();
 }
 
-/* Containers allowed to report, and every container the listing that decided
- * that knew about. NULL means "not told yet", which reads as admit-everything
- * -- see fim_container_is_admitted().
+/* What one listing decided, in the three states a container can actually be
+ * in. NULL means "not told yet", which reads as admit-everything -- see
+ * fim_container_is_admitted().
  *
- * TWO sets rather than one, because absence from the admitted set has two
- * opposite causes. A container the cap refused must stay withheld; a container
- * that started after the listing was taken is not refused at all, and reading
- * it as refused is what left it silent for the life of the process. Only the
- * known set can tell them apart -- see fim_container_admission_is_stale().
+ * THREE sets rather than one, because absence from the admitted set has three
+ * opposite causes and silencing a container is the wrong answer to two of them:
+ *
+ *   refused       the cap ranked it and said no. Stays withheld.
+ *   not heard of  it started after the listing was taken. Not refused at all,
+ *                 and reading it as refused is what left it silent for the life
+ *                 of the process -- fim_container_admission_is_stale() spots
+ *                 this and the caller retakes the listing.
+ *   unrankable    the connector knows it exists but cannot key it, so it never
+ *                 entered the ranking the cap applies. Nothing refused it
+ *                 either, and waiting for it to be keyed before deciding
+ *                 anything is what froze admission for the whole node.
+ *
+ * The last one is why a container nobody can key must still appear in `known`:
+ * leaving it out would make every one of its row batches read as stale and
+ * retake the listing, which is the cost the known set exists to avoid.
  *
  * Guarded by synced_docs_mutex, like the counts above, so a reconcile cannot
  * replace the sets while a row is being decided against them. */
 static OSHash* container_admitted = NULL;
 static OSHash* container_known = NULL;
+static OSHash* container_unkeyed = NULL;
 static int container_admission_known = 0;
 
 /* A set of container ids, or NULL when it could not be built. */
@@ -681,20 +693,25 @@ static OSHash* container_id_set(const char** container_ids, size_t count)
 void fim_container_set_admission(const char** known_ids,
                                  size_t known_count,
                                  const char** admitted_ids,
-                                 size_t admitted_count)
+                                 size_t admitted_count,
+                                 const char** unkeyed_ids,
+                                 size_t unkeyed_count)
 {
-    if ((known_ids == NULL && known_count > 0) || (admitted_ids == NULL && admitted_count > 0)) {
+    if ((known_ids == NULL && known_count > 0) || (admitted_ids == NULL && admitted_count > 0)
+            || (unkeyed_ids == NULL && unkeyed_count > 0)) {
         return;
     }
 
     OSHash* known_set = container_id_set(known_ids, known_count);
     OSHash* admitted_set = container_id_set(admitted_ids, admitted_count);
+    OSHash* unkeyed_set = container_id_set(unkeyed_ids, unkeyed_count);
 
-    if (known_set == NULL || admitted_set == NULL) {
+    if (known_set == NULL || admitted_set == NULL || unkeyed_set == NULL) {
         /* Fail OPEN. A set we could not build is not grounds for silencing
          * every container -- the same reasoning as the count slot below.
-         * Both or neither: a known set without its admitted set would read
-         * every container as refused. */
+         * All three or none: a known set without its admitted set would read
+         * every container as refused, and without its unkeyed set every
+         * container the resolver cannot key would read the same way. */
         merror("Container FIM: could not build the admitted container set; retaining previous admission.");
         if (known_set != NULL) {
             OSHash_Free(known_set);
@@ -702,14 +719,19 @@ void fim_container_set_admission(const char** known_ids,
         if (admitted_set != NULL) {
             OSHash_Free(admitted_set);
         }
+        if (unkeyed_set != NULL) {
+            OSHash_Free(unkeyed_set);
+        }
         return;
     }
 
     synced_docs_lock();
     OSHash* previous_known = container_known;
     OSHash* previous_admitted = container_admitted;
+    OSHash* previous_unkeyed = container_unkeyed;
     container_known = known_set;
     container_admitted = admitted_set;
+    container_unkeyed = unkeyed_set;
     container_admission_known = 1;
     synced_docs_unlock();
 
@@ -719,14 +741,17 @@ void fim_container_set_admission(const char** known_ids,
     if (previous_admitted != NULL) {
         OSHash_Free(previous_admitted);
     }
+    if (previous_unkeyed != NULL) {
+        OSHash_Free(previous_unkeyed);
+    }
 
     fim_container_reconcile_admission();
 }
 
 void fim_container_set_admitted(const char** container_ids, size_t count)
 {
-    /* Everything this caller knows of, it admits. */
-    fim_container_set_admission(container_ids, count, container_ids, count);
+    /* Everything this caller knows of, it admits -- so nothing is unrankable. */
+    fim_container_set_admission(container_ids, count, container_ids, count, NULL, 0);
 }
 
 int fim_container_admission_is_stale(const char* container_id)
@@ -752,9 +777,22 @@ int fim_container_is_admitted(const char* container_id)
     }
 
     synced_docs_lock();
+    /* Admitted outright, or never ranked in the first place.
+     *
+     * A container the connector knows of but cannot key is in `known` and in
+     * neither `admitted` nor the ranking that produced it: the cap weighs
+     * containers the connector can publish, and this one it cannot. Reading
+     * that as a refusal withheld the container's documents on the strength of
+     * a decision that was never taken about it -- and because the whole
+     * snapshot used to wait for every container to be keyed, one that never is
+     * froze admission for the node and silenced every container that started
+     * afterwards (#37532). Fail open here, which is the same direction as the
+     * not-told-yet case above it, and leave the cap to rank what it can. */
     const int admitted = (container_admission_known == 0 || container_admitted == NULL)
                          ? 1
-                         : (OSHash_Get(container_admitted, container_id) != NULL);
+                         : (OSHash_Get(container_admitted, container_id) != NULL
+                            || (container_unkeyed != NULL
+                                && OSHash_Get(container_unkeyed, container_id) != NULL));
     synced_docs_unlock();
 
     return admitted;

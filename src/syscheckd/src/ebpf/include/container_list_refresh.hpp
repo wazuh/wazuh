@@ -25,12 +25,13 @@
  * socket behind it, so for a long time nothing here could be tested at all --
  * and every rule in it was learned the same way, by shipping it wrong:
  *
- *   R1  a partial reply read as the whole node, which retracted live
- *       containers
- *   R3  admission tracked from lifecycle events alone, which never hear about
- *       a container readmitted when another freed a slot
- *   R5  a snapshot deferred before the walk released and then never installed,
- *       because the view it was compared against had already absorbed it
+ *   - a partial reply read as the whole node, which retracted live containers
+ *   - admission tracked from lifecycle events alone, which never hear about a
+ *     container readmitted when another freed a slot
+ *   - a snapshot deferred before the walk released and then never installed,
+ *     because the view it was compared against had already absorbed it
+ *   - that deferral made permanent by a container nobody can key, which held
+ *     the single completeness flag false for as long as it ran
  *
  * So the decision is a pure function over the reply and the current view, and
  * the drain is left executing a plan it did not have to think about.
@@ -56,13 +57,27 @@ namespace fim_container_events
         /// or one upsert per container of a partial full list.
         std::vector<CgroupDeltaEvent> events;
 
-        /// The admission view this reply leaves behind.
+        /// The admission view this reply leaves behind: the containers it could
+        /// key, and whether the cap admitted each. Never holds an unkeyed id.
         std::map<std::string, bool> admissionView;
 
-        /// Whether the reply covered every running container. Carried through
-        /// because installing an admission snapshot built from a partial reply
-        /// marks the containers it omits as refused rather than unheard-of.
+        /// Containers the connector knows of but cannot key, so the cap never
+        /// ranked them. Kept apart from `admissionView` because "refused" and
+        /// "never ranked" are opposite answers, and apart from `containers`
+        /// and `events` because an id with no cgroup id must not reach the map.
+        std::set<std::string> unkeyed;
+
+        /// Whether every container in the reply is KEYED. Gates the cgroup map
+        /// only: install() removes what the list omits, and an unkeyed
+        /// container has no cgroup id to put there in the first place.
         bool complete {false};
+
+        /// Whether the reply names every container that EXISTS, keyed or not.
+        /// Gates the admission snapshot, which decides who may report and never
+        /// touches an attribution key. These were one flag until a container
+        /// nobody could key held `complete` false for as long as it ran and
+        /// froze admission for the whole node (#37532).
+        bool enumerated {false};
     };
 
     /// What to do with an admission view the drain has just recomputed.
@@ -93,7 +108,7 @@ namespace fim_container_events
     [[nodiscard]] AdmissionPublish decideAdmissionPublish(bool changed,
                                                           bool unpublished,
                                                           bool released,
-                                                          bool complete);
+                                                          bool enumerated);
 
 } // namespace fim_container_events
 
