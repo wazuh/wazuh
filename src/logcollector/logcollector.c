@@ -2751,14 +2751,16 @@ STATIC void w_save_file_status() {
         written = false;
     }
 
-    if (!written) {
-        remove(LOCALFILE_STATUS_TMP);
-    } else if (rename_ex(LOCALFILE_STATUS_TMP, LOCALFILE_STATUS) != 0) {
+    if (written && rename_ex(LOCALFILE_STATUS_TMP, LOCALFILE_STATUS) != 0) {
 #ifdef WIN32
         DWORD error = GetLastError();
         merror(RENAME_ERROR, LOCALFILE_STATUS_TMP, LOCALFILE_STATUS, (int) error, win_strerror(error));
 #endif
-        remove(LOCALFILE_STATUS_TMP);
+        written = false;
+    }
+
+    if (!written && remove(LOCALFILE_STATUS_TMP) != 0) {
+        mdebug1(DELETE_ERROR, LOCALFILE_STATUS_TMP, errno, strerror(errno));
     }
 
     os_free(str);
