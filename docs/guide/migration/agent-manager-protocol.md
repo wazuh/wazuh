@@ -147,7 +147,7 @@ there is no automatic migration.
 | `<remote><denied-ips>` | Same |
 
 **New** — the HTTPS listener's own block, `<remote><https>`: `port`, `bind_addr`, `global_prefix`,
-`certificate`, `key`, `ca`, `ca_certificate`, `verification_mode`, `ciphers`, `max_body_size`,
+`certificate`, `key`, `ca`, `ca_certificate`, `verification_mode`, `ciphers`, `groups`, `max_body_size`,
 `dual_stack`, `enroll_rate_limit`, `cacerts_rate_limit`; and `<remote><legacy><enabled>` and
 `<ca_delivery>` for the legacy channel. `<remote><agents>` is unchanged. See
 [Remoted configuration](../../ref/modules/remoted/configuration.md#https-configuration).

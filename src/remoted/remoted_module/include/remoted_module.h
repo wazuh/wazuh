@@ -200,6 +200,8 @@ extern "C"
                                        ///< (empty -> module default).
         char ciphers[256];             ///< TLS 1.3 ciphersuite override (SSL_CTX_set_ciphersuites() naming scheme;
                                        ///< empty -> library default).
+        char groups[256];              ///< TLS key exchange groups (SSL_CTX_set1_groups_list() naming scheme;
+                                       ///< empty -> library default, or what OPENSSL_CONF sets).
         int verification_mode;         ///< REMOTED_MODULE_HTTPS_VERIFY_* (client-certificate verification).
         int dual_stack;                ///< REMOTED_MODULE_HTTPS_DUAL_STACK_*; only applies to an IPv6 bind address.
 
@@ -363,6 +365,20 @@ extern "C"
      * @return 0 when everything loads, -1 otherwise.
      */
     EXPORTED int remoted_module_validate_tls(const remoted_module_config_t* configuration, char* error, size_t capacity);
+
+    /**
+     * @brief Initialise the OpenSSL the HTTPS listener uses, loading its configuration file (OPENSSL_CONF, or the
+     *        library's default file) now.
+     *
+     * OpenSSL reads that file once, when the process first uses it. remoted calls this before it drops to the
+     * service account, so the file only has to be readable by root, as for the other components; left to the
+     * listener's start, the file would be read as the service account and silently skipped when that account
+     * cannot read it. Called from inside the module so that it initialises the same OpenSSL the listener's
+     * contexts are built with. Idempotent; a missing file is not an error (the library defaults apply).
+     *
+     * @return 0 on success, -1 when OpenSSL could not be initialised.
+     */
+    EXPORTED int remoted_module_init_tls_library(void);
 
 #ifdef __cplusplus
 }

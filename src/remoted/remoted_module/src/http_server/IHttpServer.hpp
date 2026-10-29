@@ -274,6 +274,7 @@ namespace remoted::http
         /// at a temporary directory of their own.
         std::string caPublicationRecordPath {"var/run/remoted-ca-bundle/record.json"};
         std::string ciphers;                                                    ///< TLS 1.3 ciphersuite override
+        std::string groups; ///< TLS key exchange groups; empty -> library default, or what OPENSSL_CONF sets
         ClientVerificationMode verificationMode {ClientVerificationMode::None}; ///< Client-certificate strictness.
         DualStackMode dualStackMode {DualStackMode::Unset}; ///< IPV6_V6ONLY override (IPv6 bind only).
         std::size_t ioThreads {2};                          ///< RESTinio/asio I/O threads (accept + read/write).

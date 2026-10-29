@@ -4593,6 +4593,7 @@ void test_w_remoted_build_module_config_all_fields_populated(void** state)
     test_logr.https.ca = "/etc/remoted-https/ca.crt";
     test_logr.https.ca_certificate = "/etc/remoted-https/listener-ca.crt";
     test_logr.https.ciphers = "HIGH:!ADH";
+    test_logr.https.groups = "X25519:P-256";
     test_logr.https.verification_mode = REMOTED_HTTPS_VERIFY_CERTIFICATE;
     test_logr.https.max_body_size = 12345;
     test_logr.https.dual_stack = REMOTED_HTTPS_DUAL_STACK_YES;
@@ -4672,6 +4673,7 @@ void test_w_remoted_build_module_config_all_fields_populated(void** state)
     assert_string_equal(rm_config.ca_path, "/etc/remoted-https/ca.crt");
     assert_string_equal(rm_config.ca_certificate_path, "/etc/remoted-https/listener-ca.crt");
     assert_string_equal(rm_config.ciphers, "HIGH:!ADH");
+    assert_string_equal(rm_config.groups, "X25519:P-256");
     // cluster_name is populated by HandleSecure() itself, not this helper.
     assert_string_equal(rm_config.cluster_name, "");
 
@@ -5130,6 +5132,7 @@ void test_w_remoted_build_module_config_null_https_strings_leave_buffers_empty(v
     assert_string_equal(rm_config.ca_path, "");
     assert_string_equal(rm_config.ca_certificate_path, "");
     assert_string_equal(rm_config.ciphers, "");
+    assert_string_equal(rm_config.groups, "");
 
     assert_false(rm_config.enrollment_enabled);
 }

@@ -15,6 +15,7 @@
 #include "shared.h"
 #include "os_net.h"
 #include "remoted.h"
+#include "remoted_module.h"
 
 /* Global variables */
 keystore keys;
@@ -72,6 +73,13 @@ void HandleRemote(int uid)
         }
     }
 
+
+    /* Load the OpenSSL configuration of the HTTPS listener (OPENSSL_CONF) while still root: OpenSSL reads it
+     * once, at its first use, and the listener's first TLS context comes after the drop below, where a file
+     * the service account cannot read would be skipped without a word. */
+    if (remoted_module_init_tls_library() != 0) {
+        merror("Could not initialise the TLS library of the HTTPS listener.");
+    }
 
     /* Revoke privileges */
     if (Privsep_SetUser(uid) < 0) {

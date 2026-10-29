@@ -694,7 +694,8 @@ ValidateRemoteVars()
 
     for REMOTE_VAR_NAME in WAZUH_REMOTE_HTTPS_CERTIFICATE WAZUH_REMOTE_HTTPS_KEY \
                            WAZUH_REMOTE_HTTPS_CA WAZUH_REMOTE_HTTPS_CA_CERTIFICATE \
-                           WAZUH_REMOTE_HTTPS_CIPHERS WAZUH_REMOTE_HTTPS_GLOBAL_PREFIX; do
+                           WAZUH_REMOTE_HTTPS_CIPHERS WAZUH_REMOTE_HTTPS_GROUPS \
+                           WAZUH_REMOTE_HTTPS_GLOBAL_PREFIX; do
         eval "REMOTE_VAR_VALUE=\${${REMOTE_VAR_NAME}}"
         CheckRemoteXmlSafe "$REMOTE_VAR_NAME" "$REMOTE_VAR_VALUE"
     done
@@ -791,6 +792,9 @@ WriteRemote()
     fi
     if [ -n "${WAZUH_REMOTE_HTTPS_CIPHERS}" ]; then
         echo "      <ciphers>${WAZUH_REMOTE_HTTPS_CIPHERS}</ciphers>" >> $NEWCONFIG
+    fi
+    if [ -n "${WAZUH_REMOTE_HTTPS_GROUPS}" ]; then
+        echo "      <groups>${WAZUH_REMOTE_HTTPS_GROUPS}</groups>" >> $NEWCONFIG
     fi
     if [ -n "${WAZUH_REMOTE_HTTPS_MAX_BODY_SIZE}" ]; then
         echo "      <max_body_size>${WAZUH_REMOTE_HTTPS_MAX_BODY_SIZE}</max_body_size>" >> $NEWCONFIG

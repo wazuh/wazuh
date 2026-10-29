@@ -823,6 +823,6 @@ TEST(Schema, EmbeddedSchemaIsValidJsonWithSixtyNineLeaves)
     };
     walk(schema);
     // Bump this deliberately, never to make the test pass: it is the guard that a schema option was
-    // added or removed on purpose. Last changed by the two remote.https rate limits (67 -> 69).
-    EXPECT_EQ(leaves, 69u);
+    // added or removed on purpose. Last changed by remote.https.groups (69 -> 70).
+    EXPECT_EQ(leaves, 70u);
 }

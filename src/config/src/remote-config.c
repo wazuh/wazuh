@@ -376,6 +376,11 @@ int Read_Remote_JSON(const struct cJSON *remote, void *d1)
             return (OS_INVALID);
         }
 
+        // The names are the schema's to check; the module's TLS context refuses one its OpenSSL lacks, at '-t' too.
+        if (w_remoted_json_https_string(https, "groups", REMOTED_HTTPS_GROUPS_MAX_LEN, NULL, &logr->https.groups) == OS_INVALID) {
+            return (OS_INVALID);
+        }
+
         if (item = cJSON_GetObjectItem(https, "max_body_size"), item != NULL) {
             long max_body_size = w_mconf_json_size(item);
 
