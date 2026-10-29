@@ -7199,7 +7199,7 @@ TEST_F(SyscollectorImpTest, AdmissionRetractsAndRestoresRetainedRows)
         module.setAdmittedContainers({{"a", true}, {"b", false}});
         module.retractDeAdmittedContainers();
         EXPECT_EQ(events.size(), 1u) << "unchanged admission must not repeat DELETEs";
-        EXPECT_FALSE(module.m_admissionRetractionPending)
+        EXPECT_TRUE(module.m_pendingRetractions.empty() && !module.m_globalReconcilePending)
                 << "a cap that is merely still biting owes no second pass over every table";
         module.applyDocumentLimit(index, PROCESSES_TABLE, 0, Syscollector::LimitScope::container, "b");
         EXPECT_EQ(events.size(), 1u) << "an unlimited document budget must not bypass admission";
@@ -7674,7 +7674,7 @@ TEST_F(SyscollectorImpTest, RetractionSeesRowsReportedInTheSamePass)
     EXPECT_EQ(std::count(events.begin(), events.end(), OPERATION_DELETE), 1)
             << "a container withdrawn in the pass that reported it must be retracted in that pass";
     EXPECT_EQ(flags(), (std::map<std::string, int> {{"a", 1}, {"b", 0}}));
-    EXPECT_FALSE(module.m_admissionRetractionPending)
+    EXPECT_TRUE(module.m_pendingRetractions.empty() && !module.m_globalReconcilePending)
             << "the obligation was discharged, so nothing is owed";
 
     module.destroy();
@@ -7688,6 +7688,60 @@ TEST_F(SyscollectorImpTest, RetractionSeesRowsReportedInTheSamePass)
 #else
     GTEST_SKIP() << "Container baseline transport is Linux-only";
 #endif
+}
+
+TEST_F(SyscollectorImpTest, RetractionIsScopedToTheContainersThatLostAdmission)
+{
+    const auto info = std::make_shared<MockSysInfo>();
+    EXPECT_CALL(*info, releaseThreadResources()).Times(testing::AnyNumber());
+    auto& module = Syscollector::instance();
+    module.init(
+        info,
+        reportFunction,
+    [](const std::string&, Operation_t, const std::string&, const std::string&, uint64_t) {},
+    logFunction,
+    SYSCOLLECTOR_DB_PATH,
+    "",
+    "",
+    3600,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false);
+
+    // A process past its restart reconcile: the stored flags have already been
+    // checked once, so nothing here may re-arm the global pass.
+    module.m_admissionKnown = true;
+    module.m_admissionReconciled = true;
+    module.m_globalReconcilePending = false;
+    module.m_pendingRetractions.clear();
+    module.m_admittedContainers = {"a", "b", "c"};
+
+    module.setAdmittedContainers({{"a", true}, {"b", false}, {"c", true}});
+
+    EXPECT_EQ(module.m_pendingRetractions, (std::set<std::string> {"b"}))
+            << "only the container that lost admission is owed a retraction, so only its "
+            "rows need reading -- a bool here meant scanning every reported container row "
+            "of all thirteen tables to find it";
+    EXPECT_FALSE(module.m_globalReconcilePending)
+            << "the global pass is for the restart case alone";
+
+    module.destroy();
+    module.m_pendingRetractions.clear();
+    module.m_admittedContainers.clear();
+    module.m_admissionKnown = false;
+    module.m_admissionReconciled = false;
+    module.m_containerAdmissionWithholding = false;
 }
 
 TEST_F(SyscollectorImpTest, queryCommandGetVDFirstSyncCompletedDefaultsToFalse)

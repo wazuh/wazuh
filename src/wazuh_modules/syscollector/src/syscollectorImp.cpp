@@ -5104,12 +5104,23 @@ void Syscollector::setAdmittedContainers(const std::map<std::string, bool>& disc
 
     std::lock_guard<std::mutex> lock(m_limitsMutex);
     m_containerAdmissionWithholding = (admitted.size() != discovered.size());
-    const bool lostAdmission = std::any_of(m_admittedContainers.begin(),
-                                           m_admittedContainers.end(),
-                                           [&admitted](const auto & id)
+
+
+    // WHICH containers lost admission, not merely that one did. Recording the ids
+    // is what lets the discharge below read only their rows: the alternative is a
+    // `WHERE sync=1 AND container_id<>''` over all thirteen tables, which on a node
+    // of any size walks every reported container row to find the handful that moved
+    // -- and usually finds none at all, because the commonest way to lose admission
+    // is to stop existing, and the stale-container sweep has already deleted those
+    // rows by the time this runs (#37532).
+    for (const auto& containerId : m_admittedContainers)
     {
-        return admitted.count(id) == 0;
-    });
+        if (admitted.count(containerId) == 0)
+        {
+            m_pendingRetractions.insert(containerId);
+        }
+    }
+
     m_admittedContainers = std::move(admitted);
     m_admissionKnown = true;
 
@@ -5131,8 +5142,10 @@ void Syscollector::setAdmittedContainers(const std::map<std::string, bool>& disc
     // that no longer holds -- and then clear the latch, so nothing would retry.
     // The manager would keep documents for a container the agent has stopped
     // admitting.
-    m_admissionRetractionPending =
-        m_admissionRetractionPending || lostAdmission || (m_containerAdmissionWithholding && !m_admissionReconciled);
+    if (m_containerAdmissionWithholding && !m_admissionReconciled)
+    {
+        m_globalReconcilePending = true;
+    }
 }
 
 /// Sends the stateful DELETEs owed for containers that are no longer admitted, and
@@ -5142,7 +5155,7 @@ void Syscollector::retractDeAdmittedContainers()
 {
     std::lock_guard<std::mutex> lock(m_limitsMutex);
 
-    if (!m_admissionRetractionPending || !m_spDBSync)
+    if ((m_pendingRetractions.empty() && !m_globalReconcilePending) || !m_spDBSync)
     {
         return;
     }
@@ -5154,32 +5167,58 @@ void Syscollector::retractDeAdmittedContainers()
             m_logFunction(LOG_ERROR, "Cannot retract de-admitted container inventory without persistence.");
         }
 
-        // Deliberately still pending: the rows are reported and must not stay that way.
+        // Deliberately still owed: the rows are reported and must not stay that way.
         return;
     }
 
+    // Taken before the work, and cleared only here, so a container retracted now is
+    // not asked for again next pass. On the failure path above neither is touched.
+    const bool globalPass = m_globalReconcilePending;
+    std::set<std::string> owed;
+    owed.swap(m_pendingRetractions);
+    m_globalReconcilePending = false;
     m_admissionReconciled = true;
-    m_admissionRetractionPending = false;
 
-    // Inspect stored flags as well as the previous set: after restart an
-    // already-reported container may never have been admitted in this process.
+    // One scoped read per container that actually owes something. The global form
+    // survives for the restart case alone: there the stored flags, not the admitted
+    // set, are the only record of what was reported, so there is no id to scope by.
+    std::vector<std::string> rowFilters;
+
+    if (globalPass)
+    {
+        rowFilters.emplace_back("WHERE sync=1 AND container_id<>''");
+    }
+    else
+    {
+        for (const auto& containerId : owed)
+        {
+            // scopeFilter() falls back to the broad predicate for an id it cannot
+            // safely quote, so a hostile id costs a wide read, never an injection.
+            rowFilters.emplace_back("WHERE sync=1" + scopeFilter(LimitScope::container, containerId));
+        }
+    }
+
     for (const auto& [table, index] : INDEX_MAP)
     {
         std::vector<nlohmann::json> records;
-        auto query = SelectQuery::builder()
-                     .table(table)
-                     .columnList({"*"})
-                     .rowFilter("WHERE sync=1 AND container_id<>''")
-                     .build();
-        m_spDBSync->selectRows(query.query(),
-                               [&records, this](ReturnTypeCallback type, const nlohmann::json & row)
+
+        for (const auto& rowFilter : rowFilters)
         {
-            if (type == SELECTED &&
-                    !isContainerAdmittedLocked(row.at(CONTAINER_ID_COLUMN).get<std::string>()))
+            auto query = SelectQuery::builder()
+                         .table(table)
+                         .columnList({"*"})
+                         .rowFilter(rowFilter)
+                         .build();
+            m_spDBSync->selectRows(query.query(),
+                                   [&records, this](ReturnTypeCallback type, const nlohmann::json & row)
             {
-                records.push_back(row);
-            }
-        });
+                if (type == SELECTED &&
+                        !isContainerAdmittedLocked(row.at(CONTAINER_ID_COLUMN).get<std::string>()))
+                {
+                    records.push_back(row);
+                }
+            });
+        }
 
         std::vector<std::pair<std::string, nlohmann::json>> demoted;
 

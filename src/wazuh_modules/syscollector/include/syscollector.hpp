@@ -931,7 +931,7 @@ class EXPORTED Syscollector final
         // biting cap from re-reading every container row of every table on every scan.
         bool m_admissionReconciled {false};
 
-        // Whether rows are still owed a retraction.
+        // WHICH containers are still owed a retraction.
         //
         // Separate from the latch above because the two answer different questions,
         // and the difference is load-bearing: setAdmittedContainers() replaces the
@@ -940,7 +940,21 @@ class EXPORTED Syscollector final
         // fail -- there may be no persistence callback yet. Holding the obligation
         // here means a failed retraction is retried on the next pass instead of being
         // dropped along with the signal that raised it.
-        bool m_admissionRetractionPending {false};
+        //
+        // A set and not a bool, because a bool cannot say which container lost
+        // admission, so discharging it meant re-reading every reported container row
+        // of all thirteen tables to find the one that did. A container vanishing from
+        // the runtime is the common case, and by the time the retraction runs the
+        // stale-container sweep has already deleted its rows -- so the global scan
+        // walked the whole node to find nothing at all.
+        std::set<std::string> m_pendingRetractions;
+
+        // The one obligation the set above cannot express. After a restart the stored
+        // sync=1 flags have never been checked against admission in THIS process, and
+        // the containers that need taking back are exactly the ones the set never saw
+        // lose admission, because it was empty when they did. That case, and only that
+        // case, still needs the global pass -- once per process.
+        bool m_globalReconcilePending {false};
 
         // Mutex for thread-safe access to limits and counts
         std::mutex                                                               m_limitsMutex;
