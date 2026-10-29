@@ -47,11 +47,16 @@ namespace
 {
     std::function<int(cb_dbsync_row_sink_t, cb_container_status_sink_t, void*)> containerScanHook;
     std::function<int(cb_container_id_sink_t, void*)> containerListHook;
+
+    // What the hooked listing claims about its own completeness. True is the
+    // ordinary case and keeps every test that predates partial listings reading
+    // the same; set it false to model a connector still resolving.
+    bool containerListComplete {true};
 } // namespace
 
 extern "C" int
 __real_cbaseline_run_syscollector_dbsync(const char*, cb_dbsync_row_sink_t, cb_container_status_sink_t, void*);
-extern "C" int __real_cbaseline_list_containers(const char*, cb_container_id_sink_t, void*);
+extern "C" int __real_cbaseline_list_containers_ex(const char*, cb_container_id_sink_t, void*, int*);
 
 extern "C" int __wrap_cbaseline_run_syscollector_dbsync(const char* socket,
                                                         cb_dbsync_row_sink_t sink,
@@ -62,9 +67,23 @@ extern "C" int __wrap_cbaseline_run_syscollector_dbsync(const char* socket,
            : __real_cbaseline_run_syscollector_dbsync(socket, sink, status, ctx);
 }
 
-extern "C" int __wrap_cbaseline_list_containers(const char* socket, cb_container_id_sink_t sink, void* ctx)
+extern "C" int
+__wrap_cbaseline_list_containers_ex(const char* socket, cb_container_id_sink_t sink, void* ctx, int* out_complete)
 {
-    return containerListHook ? containerListHook(sink, ctx) : __real_cbaseline_list_containers(socket, sink, ctx);
+    if (!containerListHook)
+    {
+        return __real_cbaseline_list_containers_ex(socket, sink, ctx, out_complete);
+    }
+
+    const int listed = containerListHook(sink, ctx);
+
+    if (out_complete != nullptr)
+    {
+        // A listing that failed is never complete, matching the real shim.
+        *out_complete = (listed >= 0 && containerListComplete) ? 1 : 0;
+    }
+
+    return listed;
 }
 #endif
 
@@ -7426,6 +7445,7 @@ TEST_F(SyscollectorImpTest, ContainerBaselineAdmissionAndCleanup)
         {
             containerScanHook = {};
             containerListHook = {};
+            containerListComplete = true;
         }
     } resetHooks;
     const auto info = std::make_shared<MockSysInfo>();
@@ -7578,6 +7598,7 @@ TEST_F(SyscollectorImpTest, RetractionSeesRowsReportedInTheSamePass)
         {
             containerScanHook = {};
             containerListHook = {};
+            containerListComplete = true;
         }
     } resetHooks;
     const auto info = std::make_shared<MockSysInfo>();
@@ -7742,6 +7763,134 @@ TEST_F(SyscollectorImpTest, RetractionIsScopedToTheContainersThatLostAdmission)
     module.m_admissionKnown = false;
     module.m_admissionReconciled = false;
     module.m_containerAdmissionWithholding = false;
+}
+
+TEST_F(SyscollectorImpTest, APartialListingNeitherSweepsNorDeAdmits)
+{
+#if defined(__linux__)
+    struct ResetHooks
+    {
+        ~ResetHooks()
+        {
+            containerScanHook = {};
+            containerListHook = {};
+            containerListComplete = true;
+        }
+    } resetHooks;
+    const auto info = std::make_shared<MockSysInfo>();
+    EXPECT_CALL(*info, releaseThreadResources()).Times(testing::AnyNumber());
+    auto& module = Syscollector::instance();
+    std::vector<Operation_t> events;
+    module.init(
+        info,
+        reportFunction,
+        [&events](const std::string&, Operation_t op, const std::string&, const std::string&, uint64_t)
+    {
+        events.push_back(op);
+    },
+    logFunction,
+    SYSCOLLECTOR_DB_PATH,
+    "",
+    "",
+    3600,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false);
+    module.m_containerBaseline = true;
+    module.m_containerRowsPurged = false;
+    module.m_containerDocumentCounts.clear();
+    module.m_containerDocumentLimits.clear();
+    module.m_knownContainerIds.clear();
+    module.m_admittedContainers.clear();
+    module.m_pendingRetractions.clear();
+    module.m_globalReconcilePending = false;
+    module.m_admissionKnown = false;
+    module.m_admissionReconciled = false;
+
+    std::map<std::string, bool> admitted = {{"a", true}, {"b", true}};
+    std::set<std::string> scanned = {"a", "b"};
+    containerListHook = [&](cb_container_id_sink_t sink, void* ctx)
+    {
+        for (const auto& [id, allowed] : admitted) sink(id.c_str(), allowed, ctx);
+
+        return static_cast<int>(admitted.size());
+    };
+    containerScanHook = [&](cb_dbsync_row_sink_t sink, cb_container_status_sink_t status, void* ctx)
+    {
+        for (const auto& id : scanned)
+        {
+            const nlohmann::json row = {{"container_id", id}, {"pid", "123"}, {"name", "worker"}};
+            sink(id.c_str(), PROCESSES_TABLE, row.dump().c_str(), ctx);
+            cb_container_status_t outcome {};
+            outcome.container_id = id.c_str();
+            status(&outcome, ctx);
+        }
+
+        return static_cast<int>(scanned.size());
+    };
+    auto flags = [&]()
+    {
+        std::map<std::string, int> rows;
+        auto query = SelectQuery::builder().table(PROCESSES_TABLE).columnList({"container_id", "sync"}).build();
+        module.m_spDBSync->selectRows(query.query(),
+                                      [&](ReturnTypeCallback, const nlohmann::json & row)
+        {
+            rows[row.at("container_id").get<std::string>()] = row.at("sync").get<int>();
+        });
+        return rows;
+    };
+
+    module.runContainerBaselinePass();
+    ASSERT_EQ(flags(), (std::map<std::string, int> {{"a", 1}, {"b", 1}}));
+
+    // b drops out of the listing -- but the connector says it is still resolving,
+    // so the absence is "not keyed yet", not "removed". Deleting on it here is
+    // the false-delete flood; so is retracting b for an admission it never lost.
+    events.clear();
+    admitted.erase("b");
+    scanned.erase("b");
+    containerListComplete = false;
+    module.runContainerBaselinePass();
+
+    EXPECT_EQ(flags(), (std::map<std::string, int> {{"a", 1}, {"b", 1}}))
+            << "an incomplete listing may neither sweep a container's rows nor demote them";
+    EXPECT_EQ(std::count(events.begin(), events.end(), OPERATION_DELETE), 0)
+            << "nothing was removed, so nothing may be withdrawn from the manager";
+    EXPECT_TRUE(module.m_pendingRetractions.empty())
+            << "absence from a partial listing is not a loss of admission";
+    EXPECT_EQ(module.m_admittedContainers.count("b"), 1u)
+            << "b keeps the admission it held, so its rows keep reporting";
+
+    // The same absence, now from a listing that claims to be the whole node.
+    containerListComplete = true;
+    module.runContainerBaselinePass();
+    EXPECT_EQ(flags().count("b"), 0u) << "a complete listing is authoritative, so b really is gone";
+
+    module.destroy();
+    module.m_containerDocumentCounts.clear();
+    module.m_containerDocumentLimits.clear();
+    module.m_admittedContainers.clear();
+    module.m_knownContainerIds.clear();
+    module.m_pendingRetractions.clear();
+    module.m_globalReconcilePending = false;
+    module.m_admissionKnown = false;
+    module.m_admissionReconciled = false;
+    module.m_containerAdmissionWithholding = false;
+    module.m_containerRowsPurged = false;
+#else
+    GTEST_SKIP() << "Container baseline transport is Linux-only";
+#endif
 }
 
 TEST_F(SyscollectorImpTest, queryCommandGetVDFirstSyncCompletedDefaultsToFalse)

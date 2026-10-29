@@ -154,6 +154,16 @@ namespace wazuh::container_instances_client
         bool deltaSupported {false};
         bool resyncRequired {false};
 
+        /// Whether `containers` is the whole node. False when the server says it is
+        /// still withholding running containers its resolver has not keyed.
+        ///
+        /// Defaults to true, and stays true when the server does not send the key,
+        /// so an older connector reads exactly as it did before. A caller that
+        /// deletes rows for containers absent from the list MUST check this: at
+        /// startup "not resolved yet" and "gone" look identical on the wire, and
+        /// acting on the second deletes a live container's state.
+        bool complete {true};
+
         std::uint64_t epoch {0};
         std::uint64_t seq {0};
 
@@ -220,13 +230,26 @@ namespace wazuh::container_instances_client
         ///        list would then delete every stored row the moment the
         ///        connector blips. Callers that only iterate what they got can
         ///        keep ignoring it.
-        [[nodiscard]] std::vector<ContainerRef> listContainers(bool* reachable = nullptr) const
+        /// @param complete Optional out-param, set to false when the server says it
+        ///        is still withholding running containers its resolver has not keyed.
+        ///        Set to true for any well-formed reply that does not say so,
+        ///        including one from a server too old to know the key. A caller that
+        ///        derives DELETIONS from this list must check it: `reachable` only
+        ///        says the connector answered, not that it answered about every
+        ///        container, and at startup the two differ.
+        [[nodiscard]] std::vector<ContainerRef> listContainers(bool* reachable = nullptr,
+                                                               bool* complete = nullptr) const
         {
             std::vector<ContainerRef> result;
 
             if (reachable != nullptr)
             {
                 *reachable = false;
+            }
+
+            if (complete != nullptr)
+            {
+                *complete = false;
             }
 
             const auto reply = roundTrip(R"({"version":2,"op":"list"})");
@@ -248,10 +271,19 @@ namespace wazuh::container_instances_client
             }
 
             // From here the reply is a well-formed `ok` list: an empty array now
-            // means "no containers", which is authoritative.
+            // means "no containers", which is authoritative -- as far as it goes.
             if (reachable != nullptr)
             {
                 *reachable = true;
+            }
+
+            if (complete != nullptr)
+            {
+                // Absent key means a server from before this existed, which only
+                // ever sent complete lists.
+                const auto withheldIt = parsed.find("withheld");
+                *complete = (withheldIt == parsed.end() || !withheldIt->is_number_unsigned() ||
+                             withheldIt->get<std::uint64_t>() == 0);
             }
 
             for (const auto& item : *containersIt)
@@ -316,8 +348,18 @@ namespace wazuh::container_instances_client
             }
 
             // A well-formed `ok` list reply: whatever else is true, the
-            // connector answered and its view is authoritative.
+            // connector answered.
             delta.available = true;
+
+            // ...but answering is not the same as answering completely. Absent
+            // key means a server from before this existed, which only ever sent
+            // complete lists, so the default stands.
+            const auto withheldIt = parsed.find("withheld");
+
+            if (withheldIt != parsed.end() && withheldIt->is_number_unsigned())
+            {
+                delta.complete = (withheldIt->get<std::uint64_t>() == 0);
+            }
 
             for (const auto& item : *containersIt)
             {

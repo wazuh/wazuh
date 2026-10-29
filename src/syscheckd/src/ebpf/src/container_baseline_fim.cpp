@@ -775,6 +775,11 @@ namespace
     {
         std::set<std::string> known;
         std::set<std::string> admitted;
+
+        /// Whether `known` is the whole node. False when the connector is still
+        /// withholding running containers its resolver has not keyed, in which
+        /// case absence from `known` does not mean the container is gone.
+        bool complete {false};
     };
 
     void container_id_sink(const char* container_id, int synced, void* user_data)
@@ -797,12 +802,31 @@ namespace
     /// every container's rows over a momentary blip.
     ///
     /// @return cbaseline_list_containers()' own count, negative when it could
-    ///         not be asked -- which also says whether a stale sweep may run.
+    ///         not be asked. That, AND listing.complete, is what says whether a
+    ///         stale sweep may run.
     int refreshContainerAdmission(ContainerListing& listing)
     {
-        const int listed = cbaseline_list_containers(CB_DEFAULT_CONNECTOR_SOCKET_PATH, container_id_sink, &listing);
+        int listComplete = 0;
+        const int listed = cbaseline_list_containers_ex(
+                               CB_DEFAULT_CONNECTOR_SOCKET_PATH, container_id_sink, &listing, &listComplete);
 
         if (listed < 0) return listed;
+
+        listing.complete = (listComplete != 0);
+
+        if (!listing.complete)
+        {
+            // Installing a partial listing would drop every container the
+            // resolver has not keyed yet out of the admitted set, and
+            // fim_container_is_admitted() answers 0 for anything absent from it
+            // -- so a container that was reporting a moment ago would silently
+            // stop. Keeping the previous snapshot is what carries its admission
+            // across the gap; before the first listing there is no snapshot and
+            // the bridge is fail-open, which is the same safe direction. A
+            // container that appears while the list is incomplete waits one
+            // cycle to be admitted (#37532 / N5).
+            return listed;
+        }
 
         std::vector<const char*> known;
         std::vector<const char*> admitted;
@@ -1240,6 +1264,17 @@ extern "C" void fim_run_container_baseline(void)
         {
             LogError("Container FIM baseline: container connector unavailable, "
                      "skipping stale-container cleanup to avoid false deletions.");
+        }
+        else if (!listing.complete)
+        {
+            // The connector answered but is still withholding running containers
+            // it cannot key yet. They are missing from `known` for want of an
+            // attribution key, not for want of a container, and this sweep
+            // deletes on absence -- it would wipe a live container's whole FIM
+            // baseline and re-seed it next cycle, the exact false-delete flood
+            // the unreachable branch above exists to prevent.
+            LogDebug("Container FIM baseline: container list still incomplete, "
+                     "skipping stale-container cleanup until every running container is resolved.");
         }
         else
         {

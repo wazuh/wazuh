@@ -38,6 +38,7 @@
     FRIEND_TEST(SyscollectorImpTest, ContainerBaselineAdmissionAndCleanup);                                            \
     FRIEND_TEST(SyscollectorImpTest, RetractionSeesRowsReportedInTheSamePass);                                         \
     FRIEND_TEST(SyscollectorImpTest, RetractionIsScopedToTheContainersThatLostAdmission);                              \
+    FRIEND_TEST(SyscollectorImpTest, APartialListingNeitherSweepsNorDeAdmits);                                         \
     FRIEND_TEST(SyscollectorIdentityTest, AbsentMarkerIsAdoptedWithoutResync);                                         \
     FRIEND_TEST(SyscollectorIdentityTest, UnchangedIdIsANoOp);                                                         \
     FRIEND_TEST(SyscollectorIdentityTest, UnknownIdIsANoOp);                                                           \

@@ -283,15 +283,31 @@ extern "C" int cbaseline_lifecycle_since(const char*         connector_socket_pa
     return reported;
 }
 
-extern "C" int cbaseline_list_containers(const char* connector_socket_path, cb_container_id_sink_t sink, void* user_data)
+extern "C" int cbaseline_list_containers_ex(const char*            connector_socket_path,
+                                            cb_container_id_sink_t sink,
+                                            void*                  user_data,
+                                            int*                   out_complete)
 {
+    if (out_complete != nullptr) *out_complete = 0;
+
     // -1, not 0: "no socket configured" is no more an authorisation to delete
     // rows than "socket unreachable" is. See the header's contract.
     if (connector_socket_path == nullptr) return -1;
-    return ListContainers(
+
+    bool complete = false;
+    const int listed = ListContainers(
         connector_socket_path,
         [sink, user_data](const std::string& containerId, bool synced) {
             if (sink == nullptr) return;
             sink(containerId.c_str(), synced ? 1 : 0, user_data);
-        });
+        },
+        &complete);
+
+    if (out_complete != nullptr) *out_complete = complete ? 1 : 0;
+    return listed;
+}
+
+extern "C" int cbaseline_list_containers(const char* connector_socket_path, cb_container_id_sink_t sink, void* user_data)
+{
+    return cbaseline_list_containers_ex(connector_socket_path, sink, user_data, nullptr);
 }

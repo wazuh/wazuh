@@ -2929,7 +2929,12 @@ void Syscollector::scanContainerBaseline(const std::vector<std::string>& only_th
             (*ids)[containerId] = (synced != 0);
         }
     };
-    const int listed = cbaseline_list_containers(CB_DEFAULT_CONNECTOR_SOCKET_PATH, idSink, &discovered);
+    // listComplete, not just listed: the connector withholds a running container
+    // until its resolver can key it, so a successful reply can still omit one.
+    // Absence from a partial list is not removal (#37532 / N5).
+    int listComplete = 0;
+    const int listed =
+        cbaseline_list_containers_ex(CB_DEFAULT_CONNECTOR_SOCKET_PATH, idSink, &discovered, &listComplete);
 
     // EVERY known container, admitted or not. The sweep below deletes what is
     // absent from this set, and a container whose rows are merely withheld has
@@ -2946,7 +2951,7 @@ void Syscollector::scanContainerBaseline(const std::vector<std::string>& only_th
 
     if (listed >= 0)
     {
-        setAdmittedContainers(discovered);
+        setAdmittedContainers(discovered, listComplete != 0);
     }
 
     // Containers still in the DB but no longer known to container_instances
@@ -2978,6 +2983,19 @@ void Syscollector::scanContainerBaseline(const std::vector<std::string>& only_th
         m_logFunction(LOG_WARNING,
                       "Container connector unavailable; skipping stale-container cleanup "
                       "to avoid deleting rows for containers that still exist.");
+    }
+    else if (listComplete == 0)
+    {
+        // The connector answered, but said it is still withholding running
+        // containers its resolver has not keyed. Those are absent from
+        // `discoveredIds` for want of an attribution key, not for want of a
+        // container, and this sweep deletes on absence. Same trade as the
+        // unreachable case above, for the same reason: a stale row costs one
+        // cycle of accuracy, deleting a live container's rows costs a
+        // false-delete flood plus a full re-seed.
+        m_logFunction(LOG_DEBUG,
+                      "Container list is still incomplete; skipping stale-container cleanup "
+                      "until the connector has resolved every running container.");
     }
     else
     {
@@ -5090,7 +5108,7 @@ std::string Syscollector::scopeFilter(LimitScope scope, const std::string& conta
     return " AND container_id='" + containerId + "'";
 }
 
-void Syscollector::setAdmittedContainers(const std::map<std::string, bool>& discovered)
+void Syscollector::setAdmittedContainers(const std::map<std::string, bool>& discovered, bool listComplete)
 {
     std::set<std::string> admitted;
 
@@ -5105,6 +5123,22 @@ void Syscollector::setAdmittedContainers(const std::map<std::string, bool>& disc
     std::lock_guard<std::mutex> lock(m_limitsMutex);
     m_containerAdmissionWithholding = (admitted.size() != discovered.size());
 
+    // A partial listing omits running containers the connector cannot key yet.
+    // Dropping those from the admitted set would read as a de-admission, retract
+    // rows the manager should keep, and re-admit them a cycle later -- the same
+    // false DELETE the stale sweep is held back to avoid. Carry them instead, and
+    // let the next complete listing be the one that may take admission away
+    // (#37532 / N5).
+    if (!listComplete)
+    {
+        for (const auto& containerId : m_admittedContainers)
+        {
+            if (discovered.count(containerId) == 0)
+            {
+                admitted.insert(containerId);
+            }
+        }
+    }
 
     // WHICH containers lost admission, not merely that one did. Recording the ids
     // is what lets the discharge below read only their rows: the alternative is a

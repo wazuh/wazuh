@@ -611,6 +611,35 @@ namespace
         return m_admitted;
     }
 
+    std::size_t MetadataStore::withheldFromListCount() const
+    {
+        std::shared_lock lock(m_mutex);
+
+        // Counted here rather than read off m_withheldReported, which is a
+        // "last value logged" marker and is SIZE_MAX until listContainers() has
+        // run once -- the exact moment a consumer most needs a truthful answer.
+        // The predicate is listContainers()' own, and must stay that way: this
+        // number is only meaningful as the count of ids that call omits.
+        // A set, not a counter: a container reported through two sources
+        // (cri-dockerd publishes the same one through both APIs) is one member
+        // of the list, so it is one omission from it -- the same de-duplication
+        // listContainers() does with `seen`.
+        std::set<std::string> withheld;
+
+        for (const auto& [source, records] : m_bySource)
+        {
+            for (const auto& [containerId, record] : records)
+            {
+                if (record && record->hostKey == 0 && isRunning(record->state))
+                {
+                    withheld.insert(containerId);
+                }
+            }
+        }
+
+        return withheld.size();
+    }
+
     void MetadataStore::setSyncLimit(int limit)
     {
         std::unique_lock lock(m_mutex);

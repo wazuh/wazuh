@@ -103,6 +103,11 @@ namespace wazuh::container_instances
         /// wrong when no cap is configured.
         std::set<std::string> admitted;
 
+        /// How many running containers `containers` omits because the resolver has
+        /// not keyed them yet. Zero means the list is the whole node, which is what
+        /// a consumer needs before it may delete rows for anything absent from it.
+        std::size_t withheldFromList {0};
+
         std::optional<VerdictReason> reason; ///< notContainer.
         int retryAfterMs {0};                ///< pending.
         std::optional<StoreStats> stats;     ///< ok.

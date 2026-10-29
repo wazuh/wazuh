@@ -163,7 +163,9 @@ ContainerContextPtr ContextFromRecord(const nlohmann::json& data)
 // connect/send/recv/close against a 2-worker server with a 1 s timeout, so
 // dropping the follow-ups takes a 100-container node from 101 connections per
 // baseline to 1.
-std::vector<ContainerIdentity> DiscoverContainers(const std::string& socket_path, bool* reachable = nullptr)
+std::vector<ContainerIdentity> DiscoverContainers(const std::string& socket_path,
+                                                  bool* reachable = nullptr,
+                                                  bool* complete = nullptr)
 {
     wazuh::container_instances_client::ContainerInstancesClient client(socket_path);
     std::vector<ContainerIdentity> out;
@@ -171,6 +173,13 @@ std::vector<ContainerIdentity> DiscoverContainers(const std::string& socket_path
     if (reachable != nullptr)
     {
         *reachable = false;
+    }
+
+    // Pessimistic until a reply says otherwise, exactly like `reachable`: an
+    // unanswered query is not a complete list of nothing.
+    if (complete != nullptr)
+    {
+        *complete = false;
     }
 
     std::vector<wazuh::container_instances_client::ContainerRef> refs;
@@ -183,11 +192,17 @@ std::vector<ContainerIdentity> DiscoverContainers(const std::string& socket_path
     for (int attempt = 1; attempt <= attempts; ++attempt)
     {
         bool polled = false;
-        auto listed = client.listContainers(&polled);
+        bool answeredCompletely = false;
+        auto listed = client.listContainers(&polled, &answeredCompletely);
         if (polled)
         {
             answered = true;
             refs = std::move(listed);
+
+            if (complete != nullptr)
+            {
+                *complete = answeredCompletely;
+            }
         }
 
         // Two different reasons to poll again, and they must not be conflated:
@@ -678,10 +693,16 @@ int RunSyscollectorDbsyncBaselineForContainers(const std::string&              c
     return RunSyscollectorDbsyncBaselineFrom([&selected]() { return selected; }, pids, sink, status_sink);
 }
 
-int ListContainers(const std::string& connector_socket_path, const ContainerIdSink& sink)
+int ListContainers(const std::string& connector_socket_path, const ContainerIdSink& sink, bool* complete)
 {
     bool reachable = false;
-    const auto identities = DiscoverContainers(connector_socket_path, &reachable);
+    bool listIsComplete = false;
+    const auto identities = DiscoverContainers(connector_socket_path, &reachable, &listIsComplete);
+
+    if (complete != nullptr)
+    {
+        *complete = listIsComplete;
+    }
 
     // -1, not 0. Callers use this list as the authority on what still exists
     // and delete the rows of everything absent from it, so an unreachable

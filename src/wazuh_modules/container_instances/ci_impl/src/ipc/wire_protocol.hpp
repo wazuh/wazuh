@@ -488,6 +488,13 @@ namespace wazuh::container_instances::wire
                         }
                     }
                     body["containers"] = std::move(containers);
+
+                    // Additive, like the delta keys: a client that does not read
+                    // this key behaves exactly as before. Non-zero says the list
+                    // above omits that many running containers the resolver has
+                    // not keyed yet, so absence from it does not mean removal and
+                    // a stale-row sweep must wait for a later reply.
+                    body["withheld"] = response.withheldFromList;
                 }
 
                 if (response.delta)

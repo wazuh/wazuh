@@ -352,6 +352,25 @@ EXPORTED int cbaseline_list_containers(const char*            connector_socket_p
                                        cb_container_id_sink_t sink,
                                        void*                  user_data);
 
+/* As cbaseline_list_containers(), and additionally reports whether the list is
+ * the WHOLE node. `out_complete` (optional) is set to 0 when the connector is
+ * still withholding running containers its resolver has not keyed yet, and to 1
+ * when the list omits nothing. It is always 0 on failure.
+ *
+ * IMPORTANT: a non-negative return says only that the connector answered. It
+ * does NOT say the answer covered every container. The connector deliberately
+ * omits a running container until it can key it, so during agent startup -- and
+ * whenever a container's cgroup is momentarily unattributable -- "not resolved
+ * yet" and "removed" are the same absence on the wire. A caller that deletes
+ * rows for containers missing from this list MUST require a non-negative return
+ * AND out_complete != 0, or it will delete a live container's stored state and
+ * re-create it on the next cycle.
+ */
+EXPORTED int cbaseline_list_containers_ex(const char*            connector_socket_path,
+                                          cb_container_id_sink_t sink,
+                                          void*                  user_data,
+                                          int*                   out_complete);
+
 #ifdef __cplusplus
 }
 #endif

@@ -94,6 +94,18 @@ namespace wazuh::container_instances
         /// a container from it would delete its rows rather than withhold them.
         [[nodiscard]] virtual std::set<std::string> admittedIds() const = 0;
 
+        /// How many running containers listContainers() is CURRENTLY withholding
+        /// because the resolver has not keyed them yet. Zero means the list is the
+        /// whole node.
+        ///
+        /// The consumers' stale sweeps delete on absence from that list, so without
+        /// this they cannot tell "this container is gone" from "this container is
+        /// not resolved yet" -- and at startup, when the resolver is still walking,
+        /// the second reads exactly like the first. Publishing the count lets a
+        /// consumer hold its sweep for a cycle instead of deleting a live
+        /// container's rows and re-creating them on the next pass.
+        [[nodiscard]] virtual std::size_t withheldFromListCount() const = 0;
+
         /// How many containers may report; <= 0 means unlimited, which is the
         /// shipped default. Pushed by the manager, so it changes at runtime.
         virtual void setSyncLimit(int limit) = 0;

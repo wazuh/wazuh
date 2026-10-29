@@ -92,6 +92,11 @@ namespace wazuh::container_instances
                 // another.
                 response.admitted = m_store.admittedIds();
 
+                // Read beside the admitted set, for the same reason: one decision
+                // per reply. A consumer that sweeps on absence needs to know this
+                // list is the whole node before it acts on what is missing from it.
+                response.withheldFromList = m_store.withheldFromListCount();
+
                 if (!request.since)
                 {
                     // No cursor: the reply this op has always given.

@@ -270,6 +270,11 @@ using ContainerIdSink = std::function<void(const std::string&, bool)>;
 ///         failed query yields an empty list, and treating that as "nothing
 ///         exists" deletes every container's stored rows on a momentary
 ///         connector blip.
-int ListContainers(const std::string& connector_socket_path, const ContainerIdSink& sink);
+/// @param complete Optional out-param: false when the connector is still
+///        withholding running containers its resolver has not keyed, so absence
+///        from this list does NOT mean removal. Callers that delete on absence
+///        must require both a non-negative return AND `complete`.
+int ListContainers(const std::string& connector_socket_path, const ContainerIdSink& sink,
+                   bool* complete = nullptr);
 
 } // namespace wazuh::container_baseline

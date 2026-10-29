@@ -493,7 +493,11 @@ class EXPORTED Syscollector final
          * same class of mistake as sweeping against an empty list, differing
          * only in being recoverable.
          */
-        void setAdmittedContainers(const std::map<std::string, bool>& discovered);
+        /// @param listComplete Whether `discovered` is the whole node. False when the
+        ///        connector is still withholding running containers it cannot key yet,
+        ///        in which case absence from `discovered` must not be read as a loss of
+        ///        admission -- see the body.
+        void setAdmittedContainers(const std::map<std::string, bool>& discovered, bool listComplete = true);
 
         /// Discharges the retraction that setAdmittedContainers() recorded, once the
         /// pass has written its sync flags. Separate from it because the scan reports
