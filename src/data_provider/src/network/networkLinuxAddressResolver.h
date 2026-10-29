@@ -13,11 +13,13 @@
 #define _NETWORK_LINUX_ADDRESS_RESOLVER_H
 
 #include <arpa/inet.h>
+#include <cerrno>
 #include <ifaddrs.h>
 #include <linux/netlink.h>
 #include <linux/rtnetlink.h>
 #include <net/if.h>
 #include <netinet/in.h>
+#include <netpacket/packet.h>
 #include <sys/socket.h>
 #include <unistd.h>
 #include <cstring>
@@ -36,13 +38,16 @@ struct IPv4AddressRecord
     std::string address;
 };
 
-// (label reported by getifaddrs(), IPv4 address) -> name of the link that holds the address.
-using IPv4AddressLinks = std::map<std::pair<std::string, std::string>, std::string>;
+// (label reported by getifaddrs(), IPv4 address) -> links that hold it, in dump order.
+using IPv4AddressLinks = std::map<std::pair<std::string, std::string>, std::vector<std::string>>;
 
 // getifaddrs() names IPv4 addresses after their label, which can be any string, and does not
 // expose the owning link. These helpers recover it from the kernel's RTM_GETADDR dump.
 class NetworkLinuxAddressResolver final
 {
+        static constexpr unsigned int DUMP_SEQUENCE { 1 };
+        static constexpr int DUMP_ATTEMPTS { 3 };
+
         class NetlinkSocket final
         {
                 int m_fd;
@@ -77,14 +82,75 @@ class NetworkLinuxAddressResolver final
             return inet_ntop(AF_INET, address, buffer, sizeof(buffer)) ? buffer : "";
         }
 
+        static std::vector<IPv4AddressRecord> requestDump()
+        {
+            NetlinkSocket netlink;
+
+            struct
+            {
+                nlmsghdr header;
+                ifaddrmsg message;
+            } request {};
+
+            request.header.nlmsg_len = NLMSG_LENGTH(sizeof(ifaddrmsg));
+            request.header.nlmsg_type = RTM_GETADDR;
+            request.header.nlmsg_flags = NLM_F_REQUEST | NLM_F_DUMP;
+            request.header.nlmsg_seq = DUMP_SEQUENCE;
+            request.message.ifa_family = AF_INET;
+
+            sockaddr_nl kernel {};
+            kernel.nl_family = AF_NETLINK;
+
+            if (sendto(netlink.fd(), &request, request.header.nlmsg_len, 0, reinterpret_cast<sockaddr*>(&kernel), sizeof(kernel)) < 0)
+            {
+                throw std::runtime_error { "Cannot request the netlink address dump" };
+            }
+
+            std::vector<IPv4AddressRecord> records;
+            std::vector<char> buffer(32768);
+            auto pending { true };
+
+            while (pending)
+            {
+                sockaddr_nl sender {};
+                socklen_t senderLength { sizeof(sender) };
+                const auto received { recvfrom(netlink.fd(), buffer.data(), buffer.size(), 0, reinterpret_cast<sockaddr*>(&sender), &senderLength) };
+
+                if (received < 0 && EINTR == errno)
+                {
+                    continue;
+                }
+
+                if (received <= 0)
+                {
+                    throw std::runtime_error { "Cannot read the netlink address dump" };
+                }
+
+                // Only the kernel answers the dump.
+                if (0 != sender.nl_pid)
+                {
+                    continue;
+                }
+
+                pending = parseAddressMessages(buffer.data(), static_cast<size_t>(received), DUMP_SEQUENCE, records);
+            }
+
+            return records;
+        }
+
     public:
         // Parses one buffer of an RTM_GETADDR reply. Returns false once the dump is complete.
-        static bool parseAddressMessages(const void* buffer, const size_t length, std::vector<IPv4AddressRecord>& records)
+        static bool parseAddressMessages(const void* buffer, const size_t length, const unsigned int sequence, std::vector<IPv4AddressRecord>& records)
         {
             auto remaining { static_cast<int>(length) };
 
             for (auto header { static_cast<const nlmsghdr*>(buffer) }; NLMSG_OK(header, remaining); header = NLMSG_NEXT(header, remaining))
             {
+                if (sequence != header->nlmsg_seq)
+                {
+                    continue;
+                }
+
                 if (NLMSG_DONE == header->nlmsg_type)
                 {
                     return false;
@@ -147,58 +213,60 @@ class NetworkLinuxAddressResolver final
             return true;
         }
 
-        static IPv4AddressLinks getIPv4AddressLinks()
+        // An interrupted dump is retried: the kernel flags it when the addresses change while it runs.
+        static std::vector<IPv4AddressRecord> dumpIPv4Addresses()
         {
-            NetlinkSocket netlink;
-
-            struct
+            for (auto attempt { 1 }; ; ++attempt)
             {
-                nlmsghdr header;
-                ifaddrmsg message;
-            } request {};
-
-            request.header.nlmsg_len = NLMSG_LENGTH(sizeof(ifaddrmsg));
-            request.header.nlmsg_type = RTM_GETADDR;
-            request.header.nlmsg_flags = NLM_F_REQUEST | NLM_F_DUMP;
-            request.header.nlmsg_seq = 1;
-            request.message.ifa_family = AF_INET;
-
-            sockaddr_nl kernel {};
-            kernel.nl_family = AF_NETLINK;
-
-            if (sendto(netlink.fd(), &request, request.header.nlmsg_len, 0, reinterpret_cast<sockaddr*>(&kernel), sizeof(kernel)) < 0)
-            {
-                throw std::runtime_error { "Cannot request the netlink address dump" };
-            }
-
-            std::vector<IPv4AddressRecord> records;
-            std::vector<char> buffer(32768);
-            auto pending { true };
-
-            while (pending)
-            {
-                const auto received { recv(netlink.fd(), buffer.data(), buffer.size(), 0) };
-
-                if (received <= 0)
+                try
                 {
-                    throw std::runtime_error { "Cannot read the netlink address dump" };
+                    return requestDump();
                 }
+                catch (const std::runtime_error&)
+                {
+                    if (attempt >= DUMP_ATTEMPTS)
+                    {
+                        throw;
+                    }
+                }
+            }
+        }
 
-                pending = parseAddressMessages(buffer.data(), static_cast<size_t>(received), records);
+        // Link names come from the AF_PACKET entries of the same getifaddrs() snapshot, so they
+        // match the interfaces being reported. if_indextoname() covers a link without one.
+        static IPv4AddressLinks resolveLinks(const std::vector<IPv4AddressRecord>& records, ifaddrs* addresses)
+        {
+            std::map<unsigned int, std::string> linkNames;
+
+            for (auto ifa { addresses }; ifa; ifa = ifa->ifa_next)
+            {
+                if (ifa->ifa_name && ifa->ifa_addr && AF_PACKET == ifa->ifa_addr->sa_family)
+                {
+                    linkNames.emplace(reinterpret_cast<const sockaddr_ll*>(ifa->ifa_addr)->sll_ifindex, ifa->ifa_name);
+                }
             }
 
             IPv4AddressLinks links;
 
             for (const auto& record : records)
             {
-                char linkName[IF_NAMESIZE] {};
+                auto it { linkNames.find(record.index) };
 
-                if (if_indextoname(record.index, linkName))
+                if (linkNames.end() == it)
                 {
-                    // Without IFA_LABEL, getifaddrs() names the address after its link.
-                    const auto label { record.label.empty() ? std::string { linkName } : record.label };
-                    links.emplace(std::make_pair(label, record.address), linkName);
+                    char linkName[IF_NAMESIZE] {};
+
+                    if (!if_indextoname(record.index, linkName))
+                    {
+                        continue;
+                    }
+
+                    it = linkNames.emplace(record.index, linkName).first;
                 }
+
+                // Without IFA_LABEL, getifaddrs() names the address after its link.
+                const auto label { record.label.empty() ? it->second : record.label };
+                links[std::make_pair(label, record.address)].push_back(it->second);
             }
 
             return links;
@@ -206,6 +274,8 @@ class NetworkLinuxAddressResolver final
 
         // Regroups the entries kept by NetworkUnixHelper::getNetworks() by the link that holds them,
         // in getifaddrs() order. Entries not found in links keep the name cut at the first ':'.
+        // getifaddrs() and the dump list the addresses in the same kernel order, so entries that share
+        // a label and an address take their links in turn.
         static std::map<std::string, std::vector<ifaddrs*>> groupByLink(ifaddrs* addresses,
                                                                         const std::map<std::string, std::vector<ifaddrs*>>& networkInterfaces,
                                                                         const IPv4AddressLinks& links)
@@ -217,29 +287,32 @@ class NetworkLinuxAddressResolver final
                 selected.insert(interface.second.begin(), interface.second.end());
             }
 
+            std::map<std::pair<std::string, std::string>, size_t> consumed;
             std::map<std::string, std::vector<ifaddrs*>> groups;
 
             for (auto ifa { addresses }; ifa; ifa = ifa->ifa_next)
             {
-                if (selected.find(ifa) == selected.end())
+                const auto isSelected { selected.find(ifa) != selected.end() };
+                std::string linkName { isSelected ? Utils::substrOnFirstOccurrence(ifa->ifa_name, ":") : "" };
+
+                if (ifa->ifa_name && ifa->ifa_addr && AF_INET == ifa->ifa_addr->sa_family)
                 {
-                    continue;
-                }
+                    const auto key { std::make_pair(std::string { ifa->ifa_name },
+                                                    ipv4ToString(&reinterpret_cast<const sockaddr_in*>(ifa->ifa_addr)->sin_addr)) };
+                    const auto it { links.find(key) };
+                    // Counted for unselected entries too, so the positions stay aligned with the dump.
+                    const auto position { consumed[key]++ };
 
-                auto linkName { Utils::substrOnFirstOccurrence(ifa->ifa_name, ":") };
-
-                if (ifa->ifa_addr && AF_INET == ifa->ifa_addr->sa_family)
-                {
-                    const auto address { ipv4ToString(&reinterpret_cast<const sockaddr_in*>(ifa->ifa_addr)->sin_addr) };
-                    const auto it { links.find(std::make_pair(std::string { ifa->ifa_name }, address)) };
-
-                    if (links.end() != it)
+                    if (links.end() != it && position < it->second.size())
                     {
-                        linkName = it->second;
+                        linkName = it->second[position];
                     }
                 }
 
-                groups[linkName].push_back(ifa);
+                if (isSelected)
+                {
+                    groups[linkName].push_back(ifa);
+                }
             }
 
             return groups;

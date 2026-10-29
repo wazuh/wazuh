@@ -413,7 +413,7 @@ nlohmann::json SysInfo::getNetworks() const
 
     try
     {
-        addressLinks = NetworkLinuxAddressResolver::getIPv4AddressLinks();
+        addressLinks = NetworkLinuxAddressResolver::resolveLinks(NetworkLinuxAddressResolver::dumpIPv4Addresses(), interfacesAddress.get());
     }
     catch (...)
     {
