@@ -41,6 +41,10 @@ class AWSConfigBucket(aws_bucket.AWSLogsBucket):
             LIMIT 1;"""
         self._leading_zero_regex = re.compile(r'/(0)(?P<num>\d)')
         self._extract_date_regex = re.compile(r'\d{4}/\d{1,2}/\d{1,2}')
+        # AWS Config writes the month and day without leading zeros. Its marker is cut to the year folder, so a key
+        # of that year cannot keep the following ones from being listed
+        self.key_date_regex = re.compile(r'(\d{4})/(\d{1,2})/(\d{1,2})(?!\d)')
+        self.rewinds_marker = False
 
     def _format_created_date(self, date: str) -> str:
         """
@@ -150,11 +154,15 @@ class AWSConfigBucket(aws_bucket.AWSLogsBucket):
                 # Normalize month and day to two digits
                 month = month.zfill(2)
                 day = day.zfill(2)
-                return datetime(int(year), int(month), int(day))
+                try:
+                    return datetime(int(year), int(month), int(day))
+                except ValueError:
+                    return None
 
         filtered_files = super()._filter_bucket_files(bucket_files, **kwargs)
 
-        sorted_files = sorted(filtered_files, key=lambda x: extract_date_from_key(x['Key']))
+        # The files without a valid date go last, to be skipped as they cannot be the marker
+        sorted_files = sorted(filtered_files, key=lambda x: extract_date_from_key(x['Key']) or datetime.max)
 
         if self.only_logs_after is None:
             for sorted_file in sorted_files:

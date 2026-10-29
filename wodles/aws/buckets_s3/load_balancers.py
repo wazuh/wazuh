@@ -22,7 +22,8 @@ class AWSLBBucket(AWSCustomBucket):
 
         self.sql_find_keys_processed = """
             SELECT
-                log_key
+                log_key,
+                processed_date
             FROM
                 {table_name}
             WHERE
@@ -58,7 +59,7 @@ class AWSLBBucket(AWSCustomBucket):
         marker of their region, as the next fetch would list them again and process them as new.
 
         The table has no region column and holds every region of the bucket, so the window of each region is
-        taken from its own greatest key, which is the first one of its prefix in descending order.
+        taken from its own greatest key that can be a marker, the first one of its prefix in descending order.
         """
         aws_tools.debug("+++ DB Maintenance", 1)
         aws_account_id = aws_account_id if aws_account_id else self.aws_account_id
@@ -67,19 +68,20 @@ class AWSLBBucket(AWSCustomBucket):
                 return
 
             params = {'bucket_path': self.bucket_path, 'aws_account_id': aws_account_id}
-            keys = [row[0] for row in self.db_cursor.execute(
-                self.sql_find_keys_processed.format(table_name=self.db_table_name), params).fetchall()]
+            rows = self.db_cursor.execute(
+                self.sql_find_keys_processed.format(table_name=self.db_table_name), params).fetchall()
 
             service_prefix = self.get_service_prefix(aws_account_id)
             window_markers = {}
             keys_to_delete = []
-            for index, key in enumerate(keys):
+            for index, (key, processed_date) in enumerate(rows):
                 region = key[len(service_prefix):].split('/', 1)[0] if key.startswith(service_prefix) else None
-                if region and region not in window_markers:
+                if region and region not in window_markers and \
+                        self.is_valid_marker(key, aws_account_id, region, self.get_written_date(processed_date)):
                     window_markers[region] = self.rewind_marker_to_day_folder(key, aws_account_id, region)
 
                 # Keys out of the service prefix belong to other buckets with the same path, which keep their own
-                if index >= self.retain_db_records and region and key < window_markers[region]:
+                if index >= self.retain_db_records and region in window_markers and key < window_markers[region]:
                     keys_to_delete.append({**params, 'log_key': key})
 
             self.db_cursor.executemany(self.sql_delete_key.format(table_name=self.db_table_name), keys_to_delete)

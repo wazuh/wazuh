@@ -176,3 +176,24 @@ def test_filter_and_sort_bucket_files(bucket_file):
     # Check the order of the files
     assert filtered_sorted_files[0]["Key"] == "AWSLogs/xxxxxxx/Config/us-east-1/2024/05/18/some_log_file_1"
     assert filtered_sorted_files[1]["Key"] == "AWSLogs/xxxxxxx/Config/us-east-1/2024/05/19/some_log_file_2"
+
+
+@pytest.mark.parametrize('only_logs_after', [None, datetime(2024, 5, 18)])
+def test_filter_and_sort_bucket_files_without_valid_date(only_logs_after):
+    """Test '_filter_bucket_files' sorts the files without a valid date last instead of failing, so they reach the
+    check that skips them, or leaves them out when only_logs_after is set."""
+    instance = utils.get_mocked_bucket(class_=config.AWSConfigBucket)
+    instance.only_logs_after = only_logs_after
+    invalid_files = [
+        {"Key": "AWSLogs/xxxxxxx/Config/us-east-1/2024/99/99/some_log_file_4", "LastModified": datetime(2024, 5, 19)},
+        {"Key": "AWSLogs/xxxxxxx/Config/us-east-1/zzzz/some_log_file_5", "LastModified": datetime(2024, 5, 19)},
+    ]
+
+    filtered_sorted_files = [file['Key'] for file in instance._filter_bucket_files(invalid_files + bucket_files)]
+
+    expected = [file['Key'] for file in sorted(bucket_files, key=lambda file: file['Key'])]
+    if only_logs_after:
+        assert filtered_sorted_files == expected[1:]
+    else:
+        assert filtered_sorted_files == expected + [file['Key'] for file in invalid_files]
+

@@ -226,25 +226,31 @@ def test_aws_vpc_flow_bucket_db_count_region(custom_database, region: str, flow_
     assert instance.db_count_region(utils.TEST_ACCOUNT_ID, region, flow_log_id) == expected_count
 
 
-@pytest.mark.parametrize('expected_db_count', [VPC_SCHEMA_COUNT, 0])
-def test_aws_vpc_flow_bucket_db_maintenance(custom_database, expected_db_count: int):
-    """Test 'db_maintenance' function deletes rows from a table until the count is equal to 'retain_db_records'."""
-    utils.database_execute_script(custom_database, TEST_VPCFLOW_SCHEMA)
+@pytest.mark.parametrize('retain_db_records, expected_deleted_days', [
+    (0, ['2019/04/13']),
+    (2, ['2019/04/13']),
+    (3, []),
+])
+def test_aws_vpc_flow_bucket_db_maintenance(custom_database, retain_db_records: int, expected_deleted_days: list):
+    """Test 'db_maintenance' function deletes the rows of a flow log beyond 'retain_db_records', except the ones of the
+    window of the rewound marker, which the next fetch lists again."""
     instance = utils.get_mocked_bucket(class_=vpcflow.AWSVPCFlowBucket, bucket=utils.TEST_BUCKET)
     instance.db_connector = custom_database
     instance.db_cursor = instance.db_connector.cursor()
-    instance.db_table_name = TEST_TABLE_NAME
-    instance.retain_db_records = expected_db_count
+    instance.db_cursor.execute(instance.sql_create_table.format(table_name=instance.db_table_name))
+    instance.retain_db_records = retain_db_records
 
-    assert utils.database_execute_query(instance.db_connector, utils.SQL_COUNT_ROWS.format(
-        table_name=instance.db_table_name)) == VPC_SCHEMA_COUNT
+    full_prefix = instance.get_full_prefix(utils.TEST_ACCOUNT_ID, utils.TEST_REGION)
+    keys = {day: f'{full_prefix}{day}/{utils.TEST_ACCOUNT_ID}_vpcflowlogs_{utils.TEST_REGION}_{TEST_FLOW_LOG_ID}_'
+                 f'{day.replace("/", "")}T0945Z_c23ab7.log.gz' for day in ['2019/04/13', '2019/04/14', '2019/04/15']}
+    for key in keys.values():
+        instance.mark_complete(utils.TEST_ACCOUNT_ID, utils.TEST_REGION, {'Key': key}, TEST_FLOW_LOG_ID)
 
-    with patch('aws_bucket.AWSBucket.db_count_region', return_value=VPC_SCHEMA_COUNT):
-        instance.db_maintenance(aws_account_id=utils.TEST_ACCOUNT_ID, aws_region=utils.TEST_REGION,
-                                flow_log_id=TEST_FLOW_LOG_ID)
+    instance.db_maintenance(aws_account_id=utils.TEST_ACCOUNT_ID, aws_region=utils.TEST_REGION,
+                            flow_log_id=TEST_FLOW_LOG_ID)
 
-    assert utils.database_execute_query(instance.db_connector, utils.SQL_COUNT_ROWS.format(
-        table_name=instance.db_table_name)) == expected_db_count
+    remaining = {row[0] for row in custom_database.execute(f'SELECT log_key FROM {instance.db_table_name}')}
+    assert remaining == {key for day, key in keys.items() if day not in expected_deleted_days}
 
 
 def test_aws_vpc_flow_bucket_mark_complete(custom_database):
