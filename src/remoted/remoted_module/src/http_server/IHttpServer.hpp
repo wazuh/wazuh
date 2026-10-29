@@ -220,6 +220,30 @@ namespace remoted::http
     using RouteHandler = std::function<void(std::shared_ptr<const HttpRequest>, std::shared_ptr<IHttpResponder>)>;
 
     /**
+     * @brief Reserves @p bytes against the in-flight byte budget, for as long as the returned token
+     *        is kept alive; nullopt when they do not fit right now.
+     *
+     * The transport hands one to a StreamResponderDecorator so the decorator can charge memory it
+     * allocates for a transfer (see IHttpServer::tryReserveInFlightBytes()) without knowing the budget.
+     */
+    using ReserveBytesFn = std::function<std::optional<InFlightBudget::Reservation>(std::size_t bytes)>;
+
+    /**
+     * @brief Hook the transport calls once per request to a Streamable route, on the I/O thread and
+     *        before the handler is queued, to wrap the responder the handler will receive.
+     *
+     * It sees the request's headers (the neutral copy, body included) and the transport's own
+     * responder, and returns the responder to hand down: the argument itself to leave the request
+     * alone, or a decorator over it. This is how a transport-level concern that depends on the
+     * request (response content-coding negotiation) gets in without the transport knowing about it,
+     * the way HttpServerConfig::onCaRecordReady keeps the CA record out of it. Must be cheap and
+     * must not block. If it throws, the request is served without it (the failure is logged,
+     * throttled): a hook exists to add something optional, so its failure must not fail the request.
+     */
+    using StreamResponderDecorator = std::function<std::shared_ptr<IHttpResponder>(
+        const HttpRequest& request, std::shared_ptr<IHttpResponder> responder, const ReserveBytesFn& reserve)>;
+
+    /**
      * @brief Client-certificate verification strictness for the HTTPS listener.
      *
      * Mirrors REMOTED_MODULE_HTTPS_VERIFY_* in remoted_module.h (the C-ABI) and
@@ -298,9 +322,11 @@ namespace remoted::http
         /// Bytes per chunk for a streamed response body. Per in-flight transfer, so the worst-case
         /// cost is this times the number of simultaneous streams. See remoted.http_stream_chunk_size.
         std::size_t streamChunkSize {64U * 1024U};
-        /// Whether a streamed response is compressed with zstd when the client offers it in
-        /// `Accept-Encoding`. The same gate as request-body decoding (remoted.http_content_encoding_enabled).
-        bool contentEncodingEnabled {true};
+        /// Optional hook applied to the responder of every Streamable route (see
+        /// StreamResponderDecorator). Empty: handlers get the transport's own responder. remoted
+        /// installs the response content-coding decorator here when
+        /// remoted.http_content_encoding_enabled is on (see buildHttpServerConfig()).
+        StreamResponderDecorator decorateStreamResponder {};
         /// Max in-flight (unprocessed) request payload bytes before new requests get 503. 0 disables the limit.
         std::size_t maxInFlightBytes {256U * 1024U * 1024U};
         /// Max simultaneous TCP connections (bounds the read-phase peak: maxParallelConnections * maxBodySize).

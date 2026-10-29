@@ -13,6 +13,7 @@
 #include "http_server/IHttpServer.hpp"
 #include "http_server/inFlightBudget.hpp"
 #include "http_server/zstdCompressingByteSource.hpp"
+#include "zstdTestHelper.hpp"
 
 #include <gtest/gtest.h>
 
@@ -34,38 +35,12 @@ using remoted::common::ZstdEncoder;
 using remoted::http::IByteSource;
 using remoted::http::InFlightBudget;
 using remoted::http::ZstdCompressingByteSource;
+using remoted::testutil::alwaysReserve;
+using remoted::testutil::configLikeText;
+using remoted::testutil::incompressibleBytes;
 
 namespace
 {
-    bool alwaysReserve(std::size_t)
-    {
-        return true;
-    }
-
-    std::string configLikeText(std::size_t size)
-    {
-        std::string text;
-        text.reserve(size + 64);
-        for (std::size_t i = 0; text.size() < size; ++i)
-        {
-            text += "<localfile><location>/var/log/app" + std::to_string(i % 97) + ".log</location></localfile>\n";
-        }
-        text.resize(size);
-        return text;
-    }
-
-    std::string incompressibleBytes(std::size_t size)
-    {
-        std::string bytes(size, '\0');
-        std::uint32_t state = 0x9E3779B9U;
-        for (auto& byte : bytes)
-        {
-            state = state * 1664525U + 1013904223U;
-            byte = static_cast<char>(state >> 24);
-        }
-        return bytes;
-    }
-
     /// Serves @p data in pieces of at most @p slice bytes. Optionally throws on the @p throwAtRead'th
     /// call to read() (1-based), or instead of reporting end-of-stream, the way FileByteSource does
     /// when the file changed under the transfer.

@@ -10,6 +10,7 @@
 
 #include "common/zstdDecoder.hpp"
 #include "common/zstdEncoder.hpp"
+#include "zstdTestHelper.hpp"
 
 #include <gtest/gtest.h>
 
@@ -23,40 +24,12 @@
 using remoted::common::zstdDecode;
 using remoted::common::ZstdDecodeError;
 using remoted::common::ZstdEncoder;
+using remoted::testutil::alwaysReserve;
+using remoted::testutil::configLikeText;
+using remoted::testutil::incompressibleBytes;
 
 namespace
 {
-    bool alwaysReserve(std::size_t)
-    {
-        return true;
-    }
-
-    /// Text shaped like a merged.mg: repetitive, so it compresses well.
-    std::string configLikeText(std::size_t size)
-    {
-        std::string text;
-        text.reserve(size + 64);
-        for (std::size_t i = 0; text.size() < size; ++i)
-        {
-            text += "<localfile><location>/var/log/app" + std::to_string(i % 97) + ".log</location></localfile>\n";
-        }
-        text.resize(size);
-        return text;
-    }
-
-    /// Deterministic bytes zstd cannot shrink, so the compressor has to emit output as it goes.
-    std::string incompressibleBytes(std::size_t size)
-    {
-        std::string bytes(size, '\0');
-        std::uint32_t state = 0x9E3779B9U;
-        for (auto& byte : bytes)
-        {
-            state = state * 1664525U + 1013904223U;
-            byte = static_cast<char>(state >> 24);
-        }
-        return bytes;
-    }
-
     /// Feeds @p plain in @p slice-byte pieces and finishes the frame, writing through an output
     /// buffer of @p capacity bytes. Returns the whole frame.
     std::string compressFully(std::string_view plain, std::size_t slice, std::size_t capacity)

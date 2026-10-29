@@ -31,6 +31,7 @@ remoted_module/
 │   ├── common/                     # ns remoted::common — leaf utilities with no layer of their own:
 │   │                               #   logThrottle.hpp (rate-limited logging), zstdDecoder.hpp/.cpp,
 │   │                               #   zstdEncoder.hpp/.cpp (streaming zstd-3 compressor for responses),
+│   │                               #   contentEncoding.hpp (the "zstd" wire token, spelled once),
 │   │                               #   vdClient.hpp/.cpp (cached VD feed-offset UDS client, see below),
 │   │                               #   requestOutcomeMetrics.hpp (per-endpoint responses.* + latency),
 │   │                               #   installPaths.hpp (socket and data paths, relative to the home;
@@ -103,8 +104,13 @@ src/http_server/
 ├── IHttpServer.hpp          # neutral interface + types (Method/HttpRequest/HttpResponse/
 │                            #   IHttpResponder/HttpServerConfig). No transport types leak here.
 ├── inFlightBudget.hpp       # global in-flight byte budget + RAII Reservation (backpressure/503)
-├── compressingResponder.hpp # IHttpResponder decorator: zstd-compresses a streamed body (see "Streamed
-│                            #   responses"); installed per request by the route lambda
+├── responseEncoding.hpp     # IResponseEncoding: a content coding a streamed body can be sent in (token,
+│                            #   memoryRequired(), wrap()); the response-side counterpart of IBodyDecoder
+├── compressingResponder.hpp # CompressingResponder (codec-neutral IHttpResponder decorator) and
+│                            #   makeResponseEncodingDecorator(): the Accept-Encoding negotiation, the
+│                            #   hook the transport calls (see "Streamed responses")
+├── zstdResponseEncoding.hpp # ZstdResponseEncoding + makeZstdResponseDecorator(): the ONLY file that ties
+│                            #   the response path to zstd
 ├── zstdCompressingByteSource.hpp/.cpp # IByteSource decorator behind it; owns the budget reservation
 ├── tlsCertificateStatus.hpp/.cpp # served-leaf expiry + chain verdict + TlsCertificateMonitor (pure
 │                            #   functions over X509); re-exports ca_bundle's X509Ptr,
@@ -118,7 +124,8 @@ src/http_server/
 ├── caRecordEvents.hpp/.cpp  # CaRecordEvent derivation + the bounded CaRecordEventMailbox
 ├── fileRead.hpp/.cpp        # bounded, injectable POSIX read + failure cause
 ├── endpointRateLimiter.hpp/.cpp # token bucket per endpoint (GET /cacerts, POST /enroll)
-├── headerUtils.hpp          # case-insensitive header lookup + acceptsZstd() (Accept-Encoding offer)
+├── headerUtils.hpp          # case-insensitive header lookup + equalsIgnoreCase() + acceptsEncoding()
+│                            #   (does an Accept-Encoding offer a given coding)
 ├── httpServerConfig.hpp/.cpp# buildHttpServerConfig(): C-ABI struct -> HttpServerConfig (+ fallbacks)
 ├── httpServerFactory.hpp    # makeHttpServer() -> the single transport swap point
 ├── handshakeLedger.hpp/.cpp # connections holding a slot, which are mid-handshake and from where; the
@@ -1964,14 +1971,30 @@ before the pump runs; the per-chunk loop is deliberately uninstrumented) — cat
   a truncated file that looks complete. RESTinio always fires the write callback (with
   `write_was_not_executed` if the connection died first), so an aborted transfer always releases its
   descriptor — verified: 25 mid-transfer disconnects left the fd count unchanged.
-- **Compression is the transport's, negotiated per request.** A `config` download is sent as one
+- **Content coding is negotiated per request, behind one hook.** A `config` download is sent as one
   zstd frame (level 3) when the request offers `zstd` in `Accept-Encoding` and
-  `remoted.http_content_encoding_enabled` is on (the same gate as request-body decoding). The route
-  lambda in `RestinioHttpServer::buildRouter()` is where the request headers and the responder are
-  both at hand, so it wraps the streamable responder in a `CompressingResponder`; handlers and the
-  auth gateway never see it. The decorator order is therefore `transport <- CompressingResponder
-  <- Admitted/Metered (gateway) <- handler`, which is what lets the agent's slot (held by
-  `AdmittedByteSource`) live exactly as long as the compressed transfer.
+  `remoted.http_content_encoding_enabled` is on (the same gate as request-body decoding). The
+  transport knows nothing about codings: the route lambda in `RestinioHttpServer::buildRouter()` is
+  where the request headers and the responder are both at hand, so it calls
+  `HttpServerConfig::decorateStreamResponder` (an empty `std::function` by default) for every
+  request to a `Streamable` route, handing it the request, the transport's responder and a
+  `ReserveBytesFn` over the in-flight budget. `buildHttpServerConfig()` installs
+  `makeZstdResponseDecorator()` there when the flag is on, so the flag is decided in one tested
+  place. Handlers and the auth gateway never see any of it. The decorator order is therefore
+  `transport <- CompressingResponder <- Admitted/Metered (gateway) <- handler`, which is what lets
+  the agent's slot (held by `AdmittedByteSource`) live exactly as long as the encoded transfer.
+  - **The codec is an interface, not a callable.** The same choice `IBodyDecoder` made for the
+    request side: `IResponseEncoding` (token, `memoryRequired()`, `wrap()`), implemented only by
+    `ZstdResponseEncoding`. `makeResponseEncodingDecorator()` takes the codings in server preference
+    order and picks the first one the client offers, so another coding means one new class and one
+    more entry where the decorator is built. `common/contentEncoding.hpp` holds the `"zstd"` token
+    that the request decoder, the `Accept-Encoding` negotiation and the `Content-Encoding` header
+    all use, and `headerUtils.hpp`'s `equalsIgnoreCase()` is the one case-insensitive comparison
+    both directions share.
+  - **A failing hook degrades, it does not fail the request.** If the hook throws, the request is
+    served with the transport's own responder (a plain body) and the failure is logged, throttled.
+    The hook exists to add something optional, and RESTinio would otherwise turn the exception into
+    a `501`.
   - **`send()` is delegated untouched**, so a `400`/`403`/`404`/`500` body is plain JSON, byte for
     byte what it was without the feature. `stream()` compresses unless the response says
     `StreamResponse::compressible == false` (the download handler sets it for a WPK, which is
@@ -3023,8 +3046,12 @@ frame finished through a one-byte output buffer, an unfinished frame is not deco
 and the inner slice size; an inner failure mid-stream or in place of the end leaves a truncated
 frame; the reservation lives as long as the source), `compressingResponder_test.cpp` (`send()` is
 untouched; a not-compressible or refused-reservation stream is passed through unchanged, with no
-`Content-Encoding`), `headerUtils_test.cpp` (`acceptsZstd()`: case, lists, `q=0`, malformed
-weights, `*`/`identity`) and `compressedDownloadE2E_test.cpp` (real TLS, real `AuthGateway` and
+`Content-Encoding`; the decorator and `makeResponseEncodingDecorator()` are exercised with a fake
+coding too, so the codec-neutrality is tested, including the server's preference order),
+`headerUtils_test.cpp` (`acceptsEncoding()`: case, lists, `q=0`, malformed weights,
+`*`/`identity`, any token), `httpServer_test.cpp` (`HttpServerStreamDecoratorTest`: the hook sees
+the request headers and its responder is the handler's, is never called for a buffered route, and a
+throwing hook degrades to a plain response) and `compressedDownloadE2E_test.cpp` (real TLS, real `AuthGateway` and
 `/download` handler: offered, not offered, gate off, WPK, error bodies byte-identical, no room for
 a compressor, the budget charged during the transfer and released after, an aborted transfer with
 no terminating chunk).

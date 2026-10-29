@@ -22,8 +22,10 @@
 #include "endpoints/iAgentGroupSource.hpp"
 #include "http_server/IHttpServer.hpp"
 #include "http_server/httpServerFactory.hpp"
+#include "http_server/zstdResponseEncoding.hpp"
 
 #include "testTlsServer.hpp"
+#include "zstdTestHelper.hpp"
 
 #include <gtest/gtest.h>
 
@@ -55,6 +57,8 @@ using remoted::common::zstdDecode;
 using remoted::common::ZstdDecodeError;
 using remoted::common::ZstdEncoder;
 using remoted::endpoints::AuthGateway;
+using remoted::testutil::alwaysReserve;
+using remoted::testutil::configLikeText;
 
 namespace
 {
@@ -87,11 +91,6 @@ namespace
 
         ::close(probe);
         return port;
-    }
-
-    bool alwaysReserve(std::size_t)
-    {
-        return true;
     }
 
     int statusOf(const std::string& rawResponse)
@@ -152,19 +151,6 @@ namespace
             return *text;
         }
         return std::nullopt;
-    }
-
-    /// merged.mg-shaped text: repetitive, several chunks long.
-    std::string configLikeText(std::size_t size)
-    {
-        std::string text;
-        text.reserve(size + 64);
-        for (std::size_t i = 0; text.size() < size; ++i)
-        {
-            text += "<localfile><location>/var/log/app" + std::to_string(i % 97) + ".log</location></localfile>\n";
-        }
-        text.resize(size);
-        return text;
     }
 
     class FixedGroupSource final : public remoted::endpoints::IAgentGroupSource
@@ -248,7 +234,10 @@ namespace
             config.certificatePath = m_cert->certPath;
             config.privateKeyPath = m_cert->keyPath;
             config.caPublicationRecordPath = "";
-            config.contentEncodingEnabled = contentEncodingEnabled;
+            if (contentEncodingEnabled)
+            {
+                config.decorateStreamResponder = remoted::http::makeZstdResponseDecorator();
+            }
             ASSERT_NO_THROW(m_server->start(config));
         }
 
@@ -464,6 +453,7 @@ TEST_F(CompressedDownloadE2ETest, TheCompressorIsChargedToTheBudgetWhileTheTrans
     config.certificatePath = m_cert->certPath;
     config.privateKeyPath = m_cert->keyPath;
     config.caPublicationRecordPath = "";
+    config.decorateStreamResponder = remoted::http::makeZstdResponseDecorator();
     ASSERT_NO_THROW(m_server->start(config));
     const auto before = m_server->diagnostics().budgetAvailableBytes;
 
@@ -526,6 +516,7 @@ TEST_F(CompressedDownloadE2ETest, ASourceThatFailsMidTransferLeavesATruncatedFra
     config.certificatePath = m_cert->certPath;
     config.privateKeyPath = m_cert->keyPath;
     config.caPublicationRecordPath = "";
+    config.decorateStreamResponder = remoted::http::makeZstdResponseDecorator();
     config.writeTimeoutSec = 2;
     config.requestTimeoutSec = 2;
     ASSERT_NO_THROW(m_server->start(config));

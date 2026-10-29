@@ -8,12 +8,23 @@
  * Foundation.
  */
 
+#include "common/contentEncoding.hpp"
 #include "http_server/headerUtils.hpp"
 
 #include <gtest/gtest.h>
 
-using remoted::http::acceptsZstd;
+using remoted::http::acceptsEncoding;
+using remoted::http::equalsIgnoreCase;
 using remoted::http::headerValue;
+
+namespace
+{
+    // The offer every AcceptsZstdTest case is about; the parser itself is codec-neutral.
+    bool acceptsZstd(std::string_view acceptEncoding)
+    {
+        return acceptsEncoding(acceptEncoding, remoted::common::kZstdContentEncoding);
+    }
+} // namespace
 
 TEST(HeaderUtilsTest, FindsAnAlreadyLowercaseName)
 {
@@ -134,4 +145,22 @@ TEST(AcceptsZstdTest, IgnoresParametersThatAreNotAWeight)
     EXPECT_TRUE(acceptsZstd("zstd;level=3"));
     EXPECT_TRUE(acceptsZstd("zstd;level=3;q=0.5"));
     EXPECT_FALSE(acceptsZstd("zstd;level=3;q=0"));
+}
+
+TEST(AcceptsEncodingTest, WorksForAnyCodingToken)
+{
+    EXPECT_TRUE(acceptsEncoding("gzip, br", "br"));
+    EXPECT_TRUE(acceptsEncoding("BR;q=0.5", "br"));
+    EXPECT_FALSE(acceptsEncoding("gzip, br", "zstd"));
+    EXPECT_FALSE(acceptsEncoding("br;q=0", "br"));
+    EXPECT_FALSE(acceptsEncoding("zstd", ""));
+}
+
+TEST(EqualsIgnoreCaseTest, ComparesBothSidesWithoutRegardToCase)
+{
+    EXPECT_TRUE(equalsIgnoreCase("zstd", "zstd"));
+    EXPECT_TRUE(equalsIgnoreCase("ZsTd", "zStD"));
+    EXPECT_TRUE(equalsIgnoreCase("", ""));
+    EXPECT_FALSE(equalsIgnoreCase("zstd", "zst"));
+    EXPECT_FALSE(equalsIgnoreCase("zstd", "zstx"));
 }

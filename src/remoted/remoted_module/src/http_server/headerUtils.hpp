@@ -62,6 +62,28 @@ namespace remoted::http
         return {};
     }
 
+    /**
+     * @brief ASCII case-insensitive comparison of two header values or tokens.
+     *
+     * HTTP token values (a content coding, a parameter name) are conventionally lowercase, but
+     * nothing guarantees a peer sends them that way.
+     */
+    inline bool equalsIgnoreCase(std::string_view a, std::string_view b)
+    {
+        if (a.size() != b.size())
+        {
+            return false;
+        }
+        for (std::size_t i = 0; i < a.size(); ++i)
+        {
+            if (std::tolower(static_cast<unsigned char>(a[i])) != std::tolower(static_cast<unsigned char>(b[i])))
+            {
+                return false;
+            }
+        }
+        return true;
+    }
+
     namespace detail
     {
         inline std::string_view trimBlanks(std::string_view text)
@@ -75,22 +97,6 @@ namespace remoted::http
                 text.remove_suffix(1);
             }
             return text;
-        }
-
-        inline bool equalsIgnoreCase(std::string_view text, std::string_view lowerName)
-        {
-            if (text.size() != lowerName.size())
-            {
-                return false;
-            }
-            for (std::size_t i = 0; i < text.size(); ++i)
-            {
-                if (static_cast<char>(std::tolower(static_cast<unsigned char>(text[i]))) != lowerName[i])
-                {
-                    return false;
-                }
-            }
-            return true;
         }
 
         /// RFC 9110 12.4.2 qvalue (`0[.ddd]` or `1[.000]`): true only when it is well formed and not zero.
@@ -122,16 +128,17 @@ namespace remoted::http
     } // namespace detail
 
     /**
-     * @brief Whether an `Accept-Encoding` value offers `zstd`.
+     * @brief Whether an `Accept-Encoding` value offers the content coding @p token.
      *
      * Reduced to what agents send: a comma-separated list, the coding compared case-insensitively,
      * and a `q` weight where zero means "not acceptable". `*` and `identity` are deliberately not
-     * interpreted, so a client has to name `zstd` to get it. A malformed weight reads as "not
+     * interpreted, so a client has to name the coding to get it. A malformed weight reads as "not
      * offered": the failure direction is a plain response, which every client accepts.
      *
      * @param acceptEncoding The header's raw value (empty when absent).
+     * @param token          The coding to look for, e.g. "zstd".
      */
-    inline bool acceptsZstd(std::string_view acceptEncoding)
+    inline bool acceptsEncoding(std::string_view acceptEncoding, std::string_view token)
     {
         while (!acceptEncoding.empty())
         {
@@ -140,7 +147,7 @@ namespace remoted::http
             acceptEncoding = comma == std::string_view::npos ? std::string_view {} : acceptEncoding.substr(comma + 1);
 
             const auto semicolon = member.find(';');
-            if (!detail::equalsIgnoreCase(detail::trimBlanks(member.substr(0, semicolon)), "zstd"))
+            if (!equalsIgnoreCase(detail::trimBlanks(member.substr(0, semicolon)), token))
             {
                 continue;
             }
@@ -154,7 +161,7 @@ namespace remoted::http
 
                 const auto equals = parameter.find('=');
                 if (equals != std::string_view::npos &&
-                    detail::equalsIgnoreCase(detail::trimBlanks(parameter.substr(0, equals)), "q"))
+                    equalsIgnoreCase(detail::trimBlanks(parameter.substr(0, equals)), "q"))
                 {
                     return detail::isPositiveQValue(detail::trimBlanks(parameter.substr(equals + 1)));
                 }

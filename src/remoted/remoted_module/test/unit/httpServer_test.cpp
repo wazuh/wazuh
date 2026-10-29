@@ -15,6 +15,7 @@
 #include "http_server/caPublicationRecord.hpp"
 #include "http_server/caRecordEvents.hpp"
 #include "http_server/certificateDescriptor.hpp"
+#include "http_server/headerUtils.hpp"
 #include "http_server/httpServerConfig.hpp"
 #include "http_server/httpServerFactory.hpp"
 #include "http_server/tlsCertificateStatus.hpp"
@@ -59,6 +60,7 @@
 #include <iterator>
 #include <limits>
 #include <memory>
+#include <mutex>
 #include <optional>
 #include <stdexcept>
 #include <string>
@@ -333,19 +335,20 @@ TEST(HttpServerConfigTest, MaxHandshakesPerSourceHonorsZeroOnlyWhenSet)
     EXPECT_EQ(buildHttpServerConfig(raw).maxHandshakesPerSource, 32U);
 }
 
-TEST(HttpServerConfigTest, ContentEncodingFollowsTheRemotedFlag)
+TEST(HttpServerConfigTest, TheResponseEncodingHookFollowsTheRemotedFlag)
 {
     // The flag arrives resolved from remoted (default enabled, see secure.c); a hand-zeroed struct
-    // is the only way to see it off, and it must stay off rather than fall back to the C++ default.
+    // is the only way to see it off, and it must stay off rather than fall back to a default.
     auto raw = zeroedConfig();
 
     raw.http_content_encoding_enabled = true;
-    EXPECT_TRUE(buildHttpServerConfig(raw).contentEncodingEnabled);
+    EXPECT_TRUE(static_cast<bool>(buildHttpServerConfig(raw).decorateStreamResponder));
 
     raw.http_content_encoding_enabled = false;
-    EXPECT_FALSE(buildHttpServerConfig(raw).contentEncodingEnabled);
+    EXPECT_FALSE(static_cast<bool>(buildHttpServerConfig(raw).decorateStreamResponder));
 
-    EXPECT_TRUE(HttpServerConfig {}.contentEncodingEnabled) << "a directly built config keeps the documented default";
+    EXPECT_FALSE(static_cast<bool>(HttpServerConfig {}.decorateStreamResponder))
+        << "a directly built config decorates nothing";
 }
 
 TEST(HttpServerConfigTest, StructValuesWin)
@@ -3502,5 +3505,210 @@ TEST(HttpServerTest, TlsInventoryFollowsTheCaFileButNotTheLeafFile)
     EXPECT_EQ(fourth.ca.lastReadFailure->consecutive, 1U);
     EXPECT_EQ(server->tlsInventory().ca.lastReadFailure->consecutive, 2U);
 
+    server->stop();
+}
+
+// ---------------------------------------------------------------------------
+// The stream-responder decorator hook (HttpServerConfig::decorateStreamResponder)
+// ---------------------------------------------------------------------------
+
+namespace
+{
+    /// Marks whatever a handler streams, to prove the hook's responder is the one the handler gets.
+    class MarkingResponder final : public IHttpResponder
+    {
+    public:
+        explicit MarkingResponder(std::shared_ptr<IHttpResponder> inner)
+            : m_inner {std::move(inner)}
+        {
+        }
+
+        void send(HttpResponse response) override
+        {
+            m_inner->send(std::move(response));
+        }
+
+        void stream(StreamResponse response) override
+        {
+            response.headers.emplace_back("X-Decorated", "1");
+            m_inner->stream(std::move(response));
+        }
+
+    private:
+        std::shared_ptr<IHttpResponder> m_inner;
+    };
+
+    RouteHandler streamsHello()
+    {
+        return [](std::shared_ptr<const HttpRequest>, std::shared_ptr<IHttpResponder> responder)
+        {
+            StreamResponse response;
+            response.source = std::make_shared<BufferByteSource>("hello");
+            responder->stream(std::move(response));
+        };
+    }
+} // namespace
+
+TEST(HttpServerStreamDecoratorTest, SeesTheRequestHeadersAndItsResponderIsTheOneTheHandlerGets)
+{
+    auto certOpt = remoted::test::generateTestCertificate("rmt_stream_decorator");
+    if (!certOpt)
+    {
+        GTEST_SKIP() << "openssl not available to generate a test certificate";
+    }
+    remoted::test::ScratchFileCleanup cleanup {{certOpt->certPath, certOpt->keyPath}};
+
+    auto server = makeHttpServer();
+    server->addRoute(Method::Post, "/stream", streamsHello(), /*countAgainstBudget=*/true, ResponseMode::Streamable);
+
+    std::mutex mutex;
+    std::string seenOffer;
+    std::atomic_bool reserved {false};
+
+    HttpServerConfig config;
+    config.caPublicationRecordPath = "";
+    config.port = static_cast<std::uint16_t>(32000 + (::getpid() % 1000));
+    config.certificatePath = certOpt->certPath;
+    config.privateKeyPath = certOpt->keyPath;
+    config.decorateStreamResponder = [&](const HttpRequest& request,
+                                         std::shared_ptr<IHttpResponder> responder,
+                                         const ReserveBytesFn& reserve) -> std::shared_ptr<IHttpResponder>
+    {
+        {
+            const std::lock_guard<std::mutex> lock {mutex};
+            seenOffer = headerValue(request.headers, "accept-encoding");
+        }
+        reserved = reserve(1024).has_value();
+        return std::make_shared<MarkingResponder>(std::move(responder));
+    };
+    server->start(config);
+
+    const auto raw = remoted::test::sendSignedRequest(
+        config.port, remoted::test::testAgentKey(), "/stream", "{}", 0, "Accept-Encoding: x-test\r\n");
+    server->stop();
+
+    ASSERT_FALSE(raw.empty());
+    const auto [head, body] = remoted::test::splitResponse(raw);
+    EXPECT_TRUE(headerPresent(head, "x-decorated: 1")) << head;
+
+    std::vector<std::size_t> sizes;
+    bool complete = false;
+    EXPECT_EQ(remoted::test::decodeChunked(body, sizes, complete), "hello");
+    EXPECT_TRUE(complete);
+
+    const std::lock_guard<std::mutex> lock {mutex};
+    EXPECT_EQ(seenOffer, "x-test");
+    EXPECT_TRUE(reserved.load()) << "the transport hands the hook a working reserve function";
+}
+
+TEST(HttpServerStreamDecoratorTest, IsNeverCalledForARouteThatCannotStream)
+{
+    auto certOpt = remoted::test::generateTestCertificate("rmt_stream_decorator_buffered");
+    if (!certOpt)
+    {
+        GTEST_SKIP() << "openssl not available to generate a test certificate";
+    }
+    remoted::test::ScratchFileCleanup cleanup {{certOpt->certPath, certOpt->keyPath}};
+
+    auto server = makeHttpServer();
+    server->addRoute(Method::Post,
+                     "/plain",
+                     [](std::shared_ptr<const HttpRequest>, std::shared_ptr<IHttpResponder> responder)
+                     { responder->send(HttpResponse::json(200, R"({"ok":true})")); });
+
+    std::atomic_int calls {0};
+    HttpServerConfig config;
+    config.caPublicationRecordPath = "";
+    config.port = static_cast<std::uint16_t>(33000 + (::getpid() % 1000));
+    config.certificatePath = certOpt->certPath;
+    config.privateKeyPath = certOpt->keyPath;
+    config.decorateStreamResponder =
+        [&calls](const HttpRequest&, std::shared_ptr<IHttpResponder> responder, const ReserveBytesFn&)
+    {
+        ++calls;
+        return responder;
+    };
+    server->start(config);
+
+    const auto raw = remoted::test::sendSignedRequest(
+        config.port, remoted::test::testAgentKey(), "/plain", "{}", 0, "Accept-Encoding: x-test\r\n");
+    server->stop();
+
+    ASSERT_FALSE(raw.empty());
+    EXPECT_NE(raw.find("200 OK"), std::string::npos) << raw;
+    EXPECT_EQ(calls.load(), 0) << "a buffered route has nothing to decorate";
+}
+
+TEST(HttpServerStreamDecoratorTest, ARequestWithoutAHookIsServedByTheTransportsOwnResponder)
+{
+    auto certOpt = remoted::test::generateTestCertificate("rmt_stream_no_decorator");
+    if (!certOpt)
+    {
+        GTEST_SKIP() << "openssl not available to generate a test certificate";
+    }
+    remoted::test::ScratchFileCleanup cleanup {{certOpt->certPath, certOpt->keyPath}};
+
+    auto server = makeHttpServer();
+    server->addRoute(Method::Post, "/stream", streamsHello(), /*countAgainstBudget=*/true, ResponseMode::Streamable);
+
+    HttpServerConfig config;
+    config.caPublicationRecordPath = "";
+    config.port = static_cast<std::uint16_t>(34000 + (::getpid() % 1000));
+    config.certificatePath = certOpt->certPath;
+    config.privateKeyPath = certOpt->keyPath;
+    server->start(config);
+
+    const auto raw = remoted::test::sendSignedRequest(
+        config.port, remoted::test::testAgentKey(), "/stream", "{}", 0, "Accept-Encoding: zstd\r\n");
+    server->stop();
+
+    ASSERT_FALSE(raw.empty());
+    const auto [head, body] = remoted::test::splitResponse(raw);
+    EXPECT_FALSE(headerPresent(head, "content-encoding")) << head;
+    std::vector<std::size_t> sizes;
+    bool complete = false;
+    EXPECT_EQ(remoted::test::decodeChunked(body, sizes, complete), "hello");
+}
+
+TEST(HttpServerStreamDecoratorTest, AHookThatThrowsDegradesToAnUndecoratedResponse)
+{
+    auto certOpt = remoted::test::generateTestCertificate("rmt_stream_decorator_throws");
+    if (!certOpt)
+    {
+        GTEST_SKIP() << "openssl not available to generate a test certificate";
+    }
+    remoted::test::ScratchFileCleanup cleanup {{certOpt->certPath, certOpt->keyPath}};
+
+    auto server = makeHttpServer();
+    server->addRoute(Method::Post, "/stream", streamsHello(), /*countAgainstBudget=*/true, ResponseMode::Streamable);
+
+    HttpServerConfig config;
+    config.caPublicationRecordPath = "";
+    config.port = static_cast<std::uint16_t>(35000 + (::getpid() % 1000));
+    config.certificatePath = certOpt->certPath;
+    config.privateKeyPath = certOpt->keyPath;
+    config.decorateStreamResponder = [](const HttpRequest&,
+                                        std::shared_ptr<IHttpResponder>,
+                                        const ReserveBytesFn&) -> std::shared_ptr<IHttpResponder>
+    {
+        throw std::runtime_error("the hook failed");
+    };
+    server->start(config);
+
+    // Twice: the failure of one request must not leave the server unable to serve the next.
+    for (int i = 0; i < 2; ++i)
+    {
+        const auto raw = remoted::test::sendSignedRequest(
+            config.port, remoted::test::testAgentKey(), "/stream", "{}", 0, "Accept-Encoding: x-test\r\n");
+
+        ASSERT_FALSE(raw.empty()) << "no answer at all to a request whose hook threw";
+        const auto [head, body] = remoted::test::splitResponse(raw);
+        EXPECT_NE(head.find(" 200 "), std::string::npos) << head;
+        EXPECT_FALSE(headerPresent(head, "x-decorated")) << head;
+        std::vector<std::size_t> sizes;
+        bool complete = false;
+        EXPECT_EQ(remoted::test::decodeChunked(body, sizes, complete), "hello");
+        EXPECT_TRUE(complete);
+    }
     server->stop();
 }

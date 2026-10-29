@@ -13,10 +13,8 @@
 #include "caPublicationRecord.hpp"
 #include "caRecordEvents.hpp"
 #include "common/logThrottle.hpp"
-#include "compressingResponder.hpp"
 #include "guardedTlsSocket.hpp"
 #include "handshakeLedger.hpp"
-#include "headerUtils.hpp"
 #include "httpServerConfig.hpp"
 #include "httpServerFactory.hpp"
 #include "inFlightBudget.hpp"
@@ -1028,6 +1026,30 @@ namespace
     }
 
     /**
+     * @brief Reports a StreamResponderDecorator that threw, throttled, at WARN.
+     *
+     * The request is served as if no hook were installed, so the cost of the failure is a plain
+     * response rather than a failed download. Throttled for the same reason as warnStreamAborted():
+     * a hook that fails will fail on every request, and one line each would flood the log.
+     *
+     * @param reason Exception text; passed as an ARGUMENT, never as the format string.
+     */
+    void warnStreamDecoratorFailed(const char* reason)
+    {
+        static remoted::common::LogThrottle throttle;
+
+        if (const auto failed = throttle.record())
+        {
+            LOGFN_WARN(logFn(),
+                       "The stream responder decorator failed %llu time(s) in the last %d s; those responses were "
+                       "served without it. Last reason: %s",
+                       static_cast<unsigned long long>(failed.total),
+                       remoted::common::LogThrottle::kDefaultWindowSeconds,
+                       reason);
+        }
+    }
+
+    /**
      * @brief Drives a chunked transfer: read a chunk on a worker, write it, repeat.
      *
      * The alternation is the whole point. read() blocks on disk, so it must not run on an I/O
@@ -1382,7 +1404,7 @@ namespace remoted::http
                 const auto countAgainstBudget = route.countAgainstBudget;
                 const auto responseMode = route.mode;
                 const auto streamChunkSize = m_config.streamChunkSize;
-                const auto contentEncodingEnabled = m_config.contentEncodingEnabled;
+                const auto decorateStreamResponder = m_config.decorateStreamResponder;
 
                 // The pattern actually handed to the router is the route's logical path served
                 // under the global prefix. The "/" route (the health probe) is registered as the
@@ -1408,7 +1430,7 @@ namespace remoted::http
                      countAgainstBudget,
                      responseMode,
                      streamChunkSize,
-                     contentEncodingEnabled,
+                     decorateStreamResponder,
                      rejectedConnections](auto request, auto) -> restinio::request_handling_status_t
                     {
                         // Transport-level exception barrier, covering every registered route at
@@ -1488,14 +1510,29 @@ namespace remoted::http
                                 responder =
                                     std::make_shared<RestinioStreamableResponder>(request, streamGate, streamChunkSize);
 
-                                // Compression is negotiated per request and lives entirely here:
+                                // The one place the request's headers and the responder are both at
+                                // hand, so a transport-level concern that depends on the request
+                                // (response content-coding) is applied here, through the hook, and
                                 // handlers and the auth gateway see an ordinary responder.
-                                if (contentEncodingEnabled &&
-                                    acceptsZstd(headerValue(context->request.headers, "accept-encoding")))
+                                if (decorateStreamResponder)
                                 {
-                                    responder = std::make_shared<CompressingResponder>(
-                                        std::move(responder),
-                                        [budget](std::size_t bytes) { return budget->tryReserveUncounted(bytes); });
+                                    // Passed by copy: if the hook throws, `responder` is still the
+                                    // transport's own and the request is served without it.
+                                    try
+                                    {
+                                        responder = decorateStreamResponder(
+                                            context->request,
+                                            responder,
+                                            [budget](std::size_t bytes) { return budget->tryReserveUncounted(bytes); });
+                                    }
+                                    catch (const std::exception& e)
+                                    {
+                                        warnStreamDecoratorFailed(e.what());
+                                    }
+                                    catch (...)
+                                    {
+                                        warnStreamDecoratorFailed("non-standard exception");
+                                    }
                                 }
                             }
                             else

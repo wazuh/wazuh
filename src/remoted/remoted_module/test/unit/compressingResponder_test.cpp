@@ -13,6 +13,9 @@
 #include "http_server/IHttpServer.hpp"
 #include "http_server/compressingResponder.hpp"
 #include "http_server/inFlightBudget.hpp"
+#include "http_server/responseEncoding.hpp"
+#include "http_server/zstdResponseEncoding.hpp"
+#include "zstdTestHelper.hpp"
 
 #include <gtest/gtest.h>
 
@@ -29,19 +32,21 @@
 using remoted::common::zstdDecode;
 using remoted::common::ZstdEncoder;
 using remoted::http::CompressingResponder;
+using remoted::http::HttpRequest;
 using remoted::http::HttpResponse;
 using remoted::http::IByteSource;
 using remoted::http::IHttpResponder;
 using remoted::http::InFlightBudget;
+using remoted::http::IResponseEncoding;
+using remoted::http::makeResponseEncodingDecorator;
+using remoted::http::makeZstdResponseDecorator;
+using remoted::http::ReserveBytesFn;
 using remoted::http::StreamResponse;
+using remoted::http::ZstdResponseEncoding;
+using remoted::testutil::alwaysReserve;
 
 namespace
 {
-    bool alwaysReserve(std::size_t)
-    {
-        return true;
-    }
-
     class StringSource final : public IByteSource
     {
     public:
@@ -118,6 +123,7 @@ namespace
             : budget {budgetBytes}
             , inner {std::make_shared<RecordingResponder>()}
             , responder {inner,
+                         std::make_shared<const ZstdResponseEncoding>(),
                          [this](std::size_t bytes)
                          {
                              ++reserveCalls;
@@ -230,7 +236,9 @@ TEST(CompressingResponder, ARefusedReservationServesThePlainBody)
 TEST(CompressingResponder, ABudgetThatRefusesEverythingServesPlain)
 {
     auto inner = std::make_shared<RecordingResponder>();
-    CompressingResponder refusing {inner, [](std::size_t) { return std::optional<InFlightBudget::Reservation> {}; }};
+    CompressingResponder refusing {inner,
+                                   std::make_shared<const ZstdResponseEncoding>(),
+                                   [](std::size_t) { return std::optional<InFlightBudget::Reservation> {}; }};
 
     StreamResponse response;
     response.source = std::make_shared<StringSource>("x");
@@ -274,6 +282,7 @@ TEST(CompressingResponder, TransfersDoNotShareACompressor)
     const auto before = fixture.budget.availableBytes();
     auto second = std::make_shared<RecordingResponder>();
     CompressingResponder other {second,
+                                std::make_shared<const ZstdResponseEncoding>(),
                                 [&fixture](std::size_t bytes) { return fixture.budget.tryReserveUncounted(bytes); }};
 
     fixture.responder.stream(fixture.streamOf("first"));
@@ -286,4 +295,204 @@ TEST(CompressingResponder, TransfersDoNotShareACompressor)
     ASSERT_TRUE(std::holds_alternative<std::string>(secondFrame));
     EXPECT_EQ(std::get<std::string>(first), "first");
     EXPECT_EQ(std::get<std::string>(secondFrame), "second");
+}
+
+// ---------------------------------------------------------------------------
+// Codec neutrality and negotiation: nothing below mentions zstd except where it is the codec under test
+// ---------------------------------------------------------------------------
+
+namespace
+{
+    /// A stand-in coding: prefixes the body with "ENC:". Proves the decorator and the factory work
+    /// for any IResponseEncoding, not just the one the manager ships.
+    class FakeEncoding final : public IResponseEncoding
+    {
+    public:
+        explicit FakeEncoding(std::string token, std::size_t memory = 1000)
+            : m_token {std::move(token)}
+            , m_memory {memory}
+        {
+        }
+
+        std::string_view token() const noexcept override
+        {
+            return m_token;
+        }
+
+        std::size_t memoryRequired() const override
+        {
+            return m_memory;
+        }
+
+        std::shared_ptr<IByteSource> wrap(std::shared_ptr<IByteSource> inner,
+                                          InFlightBudget::Reservation reservation) const override
+        {
+            return std::make_shared<PrefixSource>(std::move(inner), std::move(reservation));
+        }
+
+    private:
+        class PrefixSource final : public IByteSource
+        {
+        public:
+            PrefixSource(std::shared_ptr<IByteSource> inner, InFlightBudget::Reservation reservation)
+                : m_inner {std::move(inner)}
+                , m_reservation {std::move(reservation)}
+            {
+            }
+
+            std::size_t read(char* buffer, std::size_t capacity) override
+            {
+                if (!m_prefixed)
+                {
+                    m_prefixed = true;
+                    std::memcpy(buffer, "ENC:", 4);
+                    return 4;
+                }
+                return m_inner->read(buffer, capacity);
+            }
+
+        private:
+            std::shared_ptr<IByteSource> m_inner;
+            InFlightBudget::Reservation m_reservation;
+            bool m_prefixed {false};
+        };
+
+        std::string m_token;
+        std::size_t m_memory;
+    };
+
+    HttpRequest requestOffering(const std::string& acceptEncoding, const std::string& headerName = "Accept-Encoding")
+    {
+        HttpRequest request;
+        if (!acceptEncoding.empty())
+        {
+            request.headers.emplace(headerName, acceptEncoding);
+        }
+        return request;
+    }
+
+    /// Runs @p responder's stream() and returns what the transport underneath received.
+    std::shared_ptr<RecordingResponder> streamThrough(const std::shared_ptr<IHttpResponder>& responder,
+                                                      const std::shared_ptr<RecordingResponder>& transport,
+                                                      std::string body = "body")
+    {
+        StreamResponse response;
+        response.source = std::make_shared<StringSource>(std::move(body));
+        responder->stream(std::move(response));
+        return transport;
+    }
+
+    ReserveBytesFn reserveFrom(InFlightBudget& budget, int* calls = nullptr)
+    {
+        return [&budget, calls](std::size_t bytes)
+        {
+            if (calls != nullptr)
+            {
+                ++*calls;
+            }
+            return budget.tryReserveUncounted(bytes);
+        };
+    }
+} // namespace
+
+TEST(CompressingResponder, WorksForAnyEncodingItIsGiven)
+{
+    InFlightBudget budget {1024U * 1024U};
+    auto transport = std::make_shared<RecordingResponder>();
+    CompressingResponder responder {
+        transport, std::make_shared<const FakeEncoding>("x-test", 1000), reserveFrom(budget)};
+
+    StreamResponse response;
+    response.source = std::make_shared<StringSource>("abc");
+    responder.stream(std::move(response));
+
+    EXPECT_EQ(headerOf(*transport->received, "Content-Encoding"), "x-test");
+    EXPECT_EQ(transport->drainStream(), "ENC:abc");
+    EXPECT_EQ(budget.availableBytes(), 1024U * 1024U - 1000U)
+        << "the encoding's own memoryRequired() is what is reserved";
+
+    transport->received.reset();
+    EXPECT_EQ(budget.availableBytes(), 1024U * 1024U);
+}
+
+TEST(ResponseEncodingDecorator, LeavesTheResponderAloneWhenNothingIsOffered)
+{
+    InFlightBudget budget {1024U * 1024U};
+    auto transport = std::make_shared<RecordingResponder>();
+    const auto decorate = makeResponseEncodingDecorator({std::make_shared<const FakeEncoding>("x-test")});
+
+    EXPECT_EQ(decorate(requestOffering(""), transport, reserveFrom(budget)), transport) << "no Accept-Encoding at all";
+    EXPECT_EQ(decorate(requestOffering("gzip, br"), transport, reserveFrom(budget)), transport) << "none of ours";
+    EXPECT_EQ(decorate(requestOffering("x-test;q=0"), transport, reserveFrom(budget)), transport) << "refused";
+    EXPECT_EQ(decorate(requestOffering("*"), transport, reserveFrom(budget)), transport) << "wildcard is not an offer";
+}
+
+TEST(ResponseEncodingDecorator, WrapsWhenTheClientOffersACodingTheServerHas)
+{
+    InFlightBudget budget {1024U * 1024U};
+    auto transport = std::make_shared<RecordingResponder>();
+    const auto decorate = makeResponseEncodingDecorator({std::make_shared<const FakeEncoding>("x-test")});
+
+    const auto decorated = decorate(requestOffering("gzip, x-test"), transport, reserveFrom(budget));
+
+    ASSERT_NE(decorated, transport);
+    streamThrough(decorated, transport);
+    EXPECT_EQ(headerOf(*transport->received, "Content-Encoding"), "x-test");
+}
+
+TEST(ResponseEncodingDecorator, ReadsTheHeaderWhateverCaseTheTransportReportsIt)
+{
+    InFlightBudget budget {1024U * 1024U};
+    auto transport = std::make_shared<RecordingResponder>();
+    const auto decorate = makeResponseEncodingDecorator({std::make_shared<const FakeEncoding>("x-test")});
+
+    for (const auto* name : {"Accept-Encoding", "accept-encoding", "ACCEPT-ENCODING"})
+    {
+        EXPECT_NE(decorate(requestOffering("X-TEST", name), transport, reserveFrom(budget)), transport) << name;
+    }
+}
+
+TEST(ResponseEncodingDecorator, TheServersPreferenceDecidesWhenTheClientOffersSeveral)
+{
+    InFlightBudget budget {1024U * 1024U};
+    const auto decorate = makeResponseEncodingDecorator(
+        {std::make_shared<const FakeEncoding>("x-first"), std::make_shared<const FakeEncoding>("x-second")});
+
+    // The client lists its second choice first; the server's order still wins.
+    auto both = std::make_shared<RecordingResponder>();
+    streamThrough(decorate(requestOffering("x-second, x-first"), both, reserveFrom(budget)), both);
+    EXPECT_EQ(headerOf(*both->received, "Content-Encoding"), "x-first");
+
+    // And a client that only offers the less preferred one gets that one.
+    auto only = std::make_shared<RecordingResponder>();
+    streamThrough(decorate(requestOffering("x-second"), only, reserveFrom(budget)), only);
+    EXPECT_EQ(headerOf(*only->received, "Content-Encoding"), "x-second");
+}
+
+TEST(ResponseEncodingDecorator, UsesTheReserveFunctionTheTransportHandsIt)
+{
+    InFlightBudget budget {1024U * 1024U};
+    int calls = 0;
+    auto transport = std::make_shared<RecordingResponder>();
+    const auto decorate = makeResponseEncodingDecorator({std::make_shared<const FakeEncoding>("x-test")});
+
+    streamThrough(decorate(requestOffering("x-test"), transport, reserveFrom(budget, &calls)), transport);
+
+    EXPECT_EQ(calls, 1);
+}
+
+TEST(ResponseEncodingDecorator, ZstdIsJustOneEncodingBehindTheSameHook)
+{
+    InFlightBudget budget {64U * 1024U * 1024U};
+    auto transport = std::make_shared<RecordingResponder>();
+    const auto decorate = makeZstdResponseDecorator();
+    const std::string plain(50000, 'x');
+
+    streamThrough(
+        decorate(requestOffering("deflate, gzip, br, zstd"), transport, reserveFrom(budget)), transport, plain);
+
+    EXPECT_EQ(headerOf(*transport->received, "Content-Encoding"), "zstd");
+    const auto decoded = zstdDecode(transport->drainStream(), alwaysReserve, alwaysReserve);
+    ASSERT_TRUE(std::holds_alternative<std::string>(decoded));
+    EXPECT_EQ(std::get<std::string>(decoded), plain);
 }

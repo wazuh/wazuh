@@ -14,6 +14,8 @@
 #include <zstd.h>
 
 #include <algorithm>
+#include <cstddef>
+#include <cstdint>
 #include <stdexcept>
 #include <string>
 #include <string_view>
@@ -159,6 +161,38 @@ namespace remoted::testutil
 
         out.resize(output.pos);
         return out;
+    }
+
+    /// Grants every reservation: for tests that are not about the reservation mechanism itself.
+    inline bool alwaysReserve(std::size_t)
+    {
+        return true;
+    }
+
+    /// Text shaped like a merged.mg: repetitive, so it compresses well.
+    inline std::string configLikeText(std::size_t size)
+    {
+        std::string text;
+        text.reserve(size + 64);
+        for (std::size_t i = 0; text.size() < size; ++i)
+        {
+            text += "<localfile><location>/var/log/app" + std::to_string(i % 97) + ".log</location></localfile>\n";
+        }
+        text.resize(size);
+        return text;
+    }
+
+    /// Deterministic bytes zstd cannot shrink, so a compressor has to emit output as it goes.
+    inline std::string incompressibleBytes(std::size_t size)
+    {
+        std::string bytes(size, '\0');
+        std::uint32_t state = 0x9E3779B9U;
+        for (auto& byte : bytes)
+        {
+            state = state * 1664525U + 1013904223U;
+            byte = static_cast<char>(state >> 24);
+        }
+        return bytes;
     }
 
 } // namespace remoted::testutil
