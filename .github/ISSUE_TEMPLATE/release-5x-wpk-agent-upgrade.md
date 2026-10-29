@@ -26,7 +26,7 @@ This test involves the following steps:
 1. Set up the previous released version of the agent: install it and connect it to the manager.
 2. Perform a remote upgrade:
    ```shell
-   /var/ossec/bin/agent_upgrade -a <ID> -f /var/ossec/tmp/wazuh_agent_v{{VERSION}}_<PLATFORM>.wpk
+   /var/wazuh-manager/bin/agent_upgrade -a <ID> -f /var/wazuh-manager/var/upgrade/wazuh_agent_v{{VERSION}}_<PLATFORM>.wpk
    ```
 3. Verify that the upgrade completes successfully and that the agent version is updated correctly.
 
