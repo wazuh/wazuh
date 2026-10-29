@@ -42,6 +42,69 @@ static void _log(int level, const char *tag, const char * file, int line, const 
 void WinSetError();
 #endif
 
+#ifndef WIN32
+/* Opens the log file at @p path for appending. logs/ is writable by the service account, so the name may
+ * be a link, hard link or FIFO that account planted, and a daemon logs as root until it drops privileges:
+ * the file is opened relative to its directory without following a link, and only a lone regular file is
+ * written (w_openat_nofollow_vetted). A file this call creates gets its mode, and when root its group,
+ * through the descriptor, never by path. */
+static FILE * open_log_file(const char * path) {
+    const int flags = O_WRONLY | O_APPEND | O_CLOEXEC | O_NONBLOCK | O_NOCTTY;
+    const char * name = strrchr(path, '/');
+    char dir[PATH_MAX + 1] = ".";
+    bool created = false;
+    FILE * fp;
+    int fd;
+
+    if (name) {
+        if ((size_t)(name - path) >= sizeof(dir)) {
+            return NULL;
+        }
+        memcpy(dir, path, name - path);
+        dir[name - path] = '\0';
+        name++;
+    } else {
+        name = path;
+    }
+
+    if (fd = w_openat_nofollow_vetted(dir, name, flags, 0), fd < 0 && errno == ENOENT) {
+        if (fd = w_openat_nofollow_vetted(dir, name, flags | O_CREAT | O_EXCL, 0660), fd >= 0) {
+            created = true;
+        } else if (errno == EEXIST) {
+            // Created by another process in between: append to theirs.
+            fd = w_openat_nofollow_vetted(dir, name, flags, 0);
+        }
+    }
+
+    if (fd < 0) {
+        return NULL;
+    }
+
+    if (created) {
+        // The mode given to open() is filtered by the umask; fchmod sets it exactly. Failures keep the file.
+        if (fchmod(fd, 0660)) {
+            // Don't log anything
+        }
+
+        if (getuid() == 0) {
+            gid_t group;
+
+            if (group = Privsep_GetGroup(GROUPGLOBAL), group != (gid_t)-1) {
+                if (fchown(fd, 0, group)) {
+                    // Don't log anything
+                }
+            }
+        }
+    }
+
+    if (fp = fdopen(fd, "a"), !fp) {
+        close(fd);
+    }
+
+    return fp;
+}
+#endif
+
 static void print_stderr_msg(char* timestamp, const char *tag, const char * file, int line, const char * func, const char* level, const char *msg, bool use_va_list, va_list args2) {
     (void)fprintf(stderr, "%s ", timestamp);
 
@@ -67,7 +130,9 @@ static void _log_function(int level, const char *tag, const char * file, int lin
     FILE *fp;
     char jsonstr[OS_MAXSTR];
     char *output;
+#ifdef WIN32
     char logfile[PATH_MAX + 1];
+#endif
     char * filename;
     char *timestamp = w_get_timestamp(time(NULL));
 
@@ -122,30 +187,7 @@ static void _log_function(int level, const char *tag, const char * file, int lin
     if (!plain_only && flags.log_json) {
 
 #ifndef WIN32
-        int oldmask;
-
-        strncpy(logfile, LOGJSONFILE, sizeof(logfile) - 1);
-        logfile[sizeof(logfile) - 1] = '\0';
-
-        if (!IsFile(logfile)) {
-            fp = wfopen(logfile, "a");
-        } else {
-            oldmask = umask(0006);
-            fp = wfopen(logfile, "w");
-            umask(oldmask);
-
-            // Make sure that the group is ossec
-
-            if (fp && getuid() == 0) {
-                gid_t group;
-
-                if (group = Privsep_GetGroup(GROUPGLOBAL), group != (gid_t)-1) {
-                    if (chown(logfile, 0, group)) {
-                        // Don't log anything
-                    }
-                }
-            }
-        }
+        fp = open_log_file(LOGJSONFILE);
 #else
         strncpy(logfile, LOGJSONFILE, sizeof(logfile) - 1);
         logfile[sizeof(logfile) - 1] = '\0';
@@ -188,30 +230,7 @@ static void _log_function(int level, const char *tag, const char * file, int lin
       /* Log directly to the plain log file (LOGFILE, relative to the installation directory) */
 
 #ifndef WIN32
-        int oldmask;
-
-        strncpy(logfile, LOGFILE, sizeof(logfile) - 1);
-        logfile[sizeof(logfile) - 1] = '\0';
-
-        if (!IsFile(logfile)) {
-            fp = wfopen(logfile, "a");
-        } else {
-            oldmask = umask(0006);
-            fp = wfopen(logfile, "w");
-            umask(oldmask);
-
-            // Make sure that the group is ossec
-
-            if (fp && getuid() == 0) {
-                gid_t group;
-
-                if (group = Privsep_GetGroup(GROUPGLOBAL), group != (gid_t)-1) {
-                    if (chown(logfile, 0, group)) {
-                        // Don't log anything
-                    }
-                }
-            }
-        }
+        fp = open_log_file(LOGFILE);
 #else
         strncpy(logfile, LOGFILE, sizeof(logfile) - 1);
         logfile[sizeof(logfile) - 1] = '\0';

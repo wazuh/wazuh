@@ -84,7 +84,10 @@ new_tree() {
         printf '%s' "${DAEMON_STUB}" > "${dir}/bin/${daemon}"
     done
     printf '%s' "${CONF_STUB}" > "${dir}/bin/wazuh-manager-conf"
-    printf '#!/bin/sh\nexit 0\n' > "${dir}/framework/python/bin/python3"
+    # The engine probe passes; service_write's calls (-I -c <code> <path> <append|replace>) run the host's
+    # interpreter, so the markers and log lines it writes are the real snippet's.
+    printf '#!/bin/sh\ncase "$5" in append|replace) exec python3 "$@" ;; esac\nexit 0\n' \
+        > "${dir}/framework/python/bin/python3"
     chmod +x "${dir}/bin/"* "${dir}/framework/python/bin/python3"
 
 }

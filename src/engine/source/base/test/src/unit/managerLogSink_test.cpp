@@ -38,8 +38,8 @@ namespace
 {
 constexpr auto NOW = "2026/10/14 12:34:56";
 constexpr auto TAG = "wazuh-manager-analysisd";
-constexpr int APPEND_FLAGS = O_WRONLY | O_APPEND | O_CLOEXEC;
-constexpr int CREATE_FLAGS = O_WRONLY | O_APPEND | O_CREAT | O_EXCL | O_CLOEXEC;
+constexpr int APPEND_FLAGS = O_WRONLY | O_APPEND | O_CLOEXEC | O_NOFOLLOW | O_NONBLOCK | O_NOCTTY;
+constexpr int CREATE_FLAGS = APPEND_FLAGS | O_CREAT | O_EXCL;
 
 /// Per-case working directory. A threadsafe death test child re-executes the binary and re-runs SetUp with the parent's
 /// environment: only there is the directory the parent exported in BASE_MANAGER_UTEST_CASE_DIR adopted (and never
@@ -260,6 +260,14 @@ ManagerLogDeps fakeDeps(const std::shared_ptr<FakeSys>& sys)
             }
         }
         return sys->defaultOpen(call);
+    };
+    // Every file of the fake file system is a lone regular file.
+    deps.fstat = [](int, struct stat* buf)
+    {
+        *buf = {};
+        buf->st_mode = S_IFREG | 0660;
+        buf->st_nlink = 1;
+        return 0;
     };
     deps.fchown = [sys](int fd, uid_t uid, gid_t gid)
     {
@@ -680,6 +688,54 @@ TEST_F(ManagerLogSinkTest, RenameBetweenWrites)
 
     EXPECT_EQ(readFile(rotated), plainLine("INFO", "first line"));
     EXPECT_EQ(readFile(plainPath()), plainLine("INFO", "second line"));
+}
+
+TEST_F(ManagerLogSinkTest, PlantedSymlinkNotFollowed)
+{
+    // Real system calls: what is under test is what the kernel does with a link at the log's name.
+    ManagerLogDeps deps;
+    deps.now = []()
+    {
+        return std::string(NOW);
+    };
+    deps.isRoot = []()
+    {
+        return false;
+    };
+    base::logging::initManager(options(true, false, false), deps);
+
+    // A dangling link (creation through it) and a link to an existing file (append through it).
+    const auto missing = m_dir / "missing-target";
+    fs::create_symlink(missing, plainPath());
+    base::logging::write(Level::Err, TAG, "/a/x.cpp", 1, "f", "through a dangling link");
+    EXPECT_FALSE(fs::exists(missing));
+
+    const auto existing = m_dir / "existing-target";
+    std::ofstream(existing) << "untouched\n";
+    fs::remove(plainPath());
+    fs::create_symlink(existing, plainPath());
+    base::logging::write(Level::Err, TAG, "/a/x.cpp", 2, "f", "through a link");
+    EXPECT_EQ(readFile(existing), "untouched\n");
+}
+
+TEST_F(ManagerLogSinkTest, HardLinkNotWritten)
+{
+    ManagerLogDeps deps;
+    deps.now = []()
+    {
+        return std::string(NOW);
+    };
+    deps.isRoot = []()
+    {
+        return false;
+    };
+    base::logging::initManager(options(true, false, false), deps);
+
+    const auto other = m_dir / "other-file";
+    std::ofstream(other) << "untouched\n";
+    fs::create_hard_link(other, plainPath());
+    base::logging::write(Level::Err, TAG, "/a/x.cpp", 1, "f", "into a hard link");
+    EXPECT_EQ(readFile(other), "untouched\n");
 }
 
 TEST_F(ManagerLogSinkTest, CriticalIsError)

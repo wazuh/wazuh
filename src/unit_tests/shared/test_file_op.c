@@ -91,68 +91,94 @@ char * __wrap_getenv(const char *name) {
     return mock_type(char *);
 }
 
-void test_CreatePID_success(void **state)
-{
-    (void) state;
-    int ret;
-    char* content = NULL;
+/* Tests CreatePID */
 
-    *state = content;
+// Against the real file system, like the w_fopen_nofollow tests: the property under test is what the
+// operating system does with a link planted at the pid file's name. CreatePID writes var/run relative to
+// the working directory, so each test runs inside a fresh directory.
 
-    expect_string(__wrap_fopen, path, "var/run/test-2345.pid");
-    expect_string(__wrap_fopen, mode, "a");
-    will_return(__wrap_fopen, 1);
+static char pid_dir[PATH_MAX + 1];
+static char pid_old_cwd[PATH_MAX + 1];
 
-    expect_value(__wrap_fprintf, __stream, 1);
-    expect_string(__wrap_fprintf, formatted_msg, "2345\n");
-    will_return(__wrap_fprintf, 0);
-
-    expect_string(__wrap_chmod, path, "var/run/test-2345.pid");
-    will_return(__wrap_chmod, 0);
-
-    expect_value(__wrap_fclose, _File, 1);
-    will_return(__wrap_fclose, 0);
-
-    ret = CreatePID("test", 2345);
-    assert_int_equal(0, ret);
+static int setup_create_pid(void **state) {
+    test_mode = 0;
+    assert_non_null(getcwd(pid_old_cwd, sizeof(pid_old_cwd)));
+    snprintf(pid_dir, sizeof(pid_dir), "/tmp/wazuh_create_pid_XXXXXX");
+    assert_non_null(mkdtemp(pid_dir));
+    assert_int_equal(chdir(pid_dir), 0);
+    assert_int_equal(mkdir("var", 0750), 0);
+    assert_int_equal(mkdir("var/run", 0770), 0);
+    return 0;
 }
 
-void test_CreatePID_failure_chmod(void **state)
+// remove(), not unlink()/rmdir(): those wrappers always expect a mock, remove()'s honours test_mode.
+static int teardown_create_pid(void **state) {
+    remove("var/run/test-2345.pid");
+    remove("victim");
+    remove("var/run");
+    remove("var");
+    assert_int_equal(chdir(pid_old_cwd), 0);
+    remove(pid_dir);
+    test_mode = 1;
+    return 0;
+}
+
+void test_CreatePID_success(void **state)
 {
-    (void) state;
-    int ret;
+    char content[16] = {0};
+    struct stat statbuf;
+    int fd;
 
-    expect_string(__wrap_fopen, path, "var/run/test-2345.pid");
-    expect_string(__wrap_fopen, mode, "a");
-    will_return(__wrap_fopen, 1);
+    assert_int_equal(CreatePID("test", 2345), 0);
 
-    expect_value(__wrap_fprintf, __stream, 1);
-    expect_string(__wrap_fprintf, formatted_msg, "2345\n");
-    will_return(__wrap_fprintf, 0);
+    fd = open("var/run/test-2345.pid", O_RDONLY);
+    assert_int_not_equal(fd, -1);
+    assert_int_equal(read(fd, content, sizeof(content) - 1), 5);
+    close(fd);
+    assert_string_equal(content, "2345\n");
 
-    expect_string(__wrap_chmod, path, "var/run/test-2345.pid");
-    will_return(__wrap_chmod, 1);
+    assert_int_equal(stat("var/run/test-2345.pid", &statbuf), 0);
+    assert_int_equal(statbuf.st_mode & 07777, 0640);
+}
 
-    expect_string(__wrap__merror, formatted_msg, "(1127): Could not chmod object 'var/run/test-2345.pid' due to [(0)-(Success)].");
+void test_CreatePID_symlink_not_followed(void **state)
+{
+    // A link planted at the pid file's name, to a file that does not exist yet.
+    assert_int_equal(symlink("../../victim", "var/run/test-2345.pid"), 0);
 
-    expect_value(__wrap_fclose, _File, 1);
-    will_return(__wrap_fclose, 0);
+    assert_int_equal(CreatePID("test", 2345), -1);
 
-    ret = CreatePID("test", 2345);
-    assert_int_equal(-1, ret);
+    // Not created through the link.
+    errno = 0;
+    assert_int_equal(open("victim", O_RDONLY), -1);
+    assert_int_equal(errno, ENOENT);
+}
+
+void test_CreatePID_hardlink_rejected(void **state)
+{
+    char content[16] = {0};
+    int fd;
+
+    fd = open("victim", O_WRONLY | O_CREAT | O_TRUNC, 0644);
+    assert_int_not_equal(fd, -1);
+    close(fd);
+    assert_int_equal(link("victim", "var/run/test-2345.pid"), 0);
+
+    assert_int_equal(CreatePID("test", 2345), -1);
+
+    // The linked file is left empty.
+    fd = open("victim", O_RDONLY);
+    assert_int_not_equal(fd, -1);
+    assert_int_equal(read(fd, content, sizeof(content) - 1), 0);
+    close(fd);
 }
 
 void test_CreatePID_failure_fopen(void **state)
 {
-    (void) state;
-    int ret;
+    // No var/run to create the file in.
+    assert_int_equal(remove("var/run"), 0);
 
-    expect_string(__wrap_fopen, path, "var/run/test-2345.pid");
-    expect_string(__wrap_fopen, mode, "a");
-    will_return(__wrap_fopen, NULL);
-
-    ret = CreatePID("test", 2345);
-    assert_int_equal(-1, ret);
+    assert_int_equal(CreatePID("test", 2345), -1);
 }
 
 void test_DeletePID_success(void **state)
@@ -3222,9 +3248,10 @@ int main(void) {
     const struct CMUnitTest tests[] = {
 #ifndef TEST_WINAGENT
 #ifndef W_VETTED_TEST_NO_O_NOFOLLOW
-        cmocka_unit_test(test_CreatePID_success),
-        cmocka_unit_test(test_CreatePID_failure_chmod),
-        cmocka_unit_test(test_CreatePID_failure_fopen),
+        cmocka_unit_test_setup_teardown(test_CreatePID_success, setup_create_pid, teardown_create_pid),
+        cmocka_unit_test_setup_teardown(test_CreatePID_symlink_not_followed, setup_create_pid, teardown_create_pid),
+        cmocka_unit_test_setup_teardown(test_CreatePID_hardlink_rejected, setup_create_pid, teardown_create_pid),
+        cmocka_unit_test_setup_teardown(test_CreatePID_failure_fopen, setup_create_pid, teardown_create_pid),
         cmocka_unit_test(test_DeletePID_success),
         cmocka_unit_test(test_DeletePID_failure),
         cmocka_unit_test(test_w_is_compressed_gz_file_uncompressed),

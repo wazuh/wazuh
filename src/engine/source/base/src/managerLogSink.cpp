@@ -83,6 +83,13 @@ void fillDefaults(base::logging::ManagerLogDeps& deps)
             return ::open(path, flags, mode);
         };
     }
+    if (!deps.fstat)
+    {
+        deps.fstat = [](int fd, struct stat* buf)
+        {
+            return ::fstat(fd, buf);
+        };
+    }
     if (!deps.fchown)
     {
         deps.fchown = [](int fd, uid_t uid, gid_t gid)
@@ -191,25 +198,47 @@ void appendJsonString(std::string& out, std::string_view str)
     out.push_back('"');
 }
 
+/// Keep @p fd only when it is a lone regular file (the C logger's w_openat_nofollow_vetted rule): O_NOFOLLOW rules
+/// out a link at the last component and O_NONBLOCK a FIFO without a reader, but not a FIFO with one, a device or a
+/// hard link to another file.
+/// @return @p fd, or -1 after closing it.
+int vetLogFile(const base::logging::ManagerLogDeps& deps, int fd)
+{
+    if (fd < 0)
+    {
+        return fd;
+    }
+    struct stat st {};
+    if (deps.fstat(fd, &st) != 0 || !S_ISREG(st.st_mode) || st.st_nlink != 1)
+    {
+        (void)deps.close(fd);
+        return -1;
+    }
+    return fd;
+}
+
 /// Open a log file for appending, creating it (0660, group of the manager when root) if it does not exist.
+/// logs/ is writable by the service account, which can plant a link, hard link or FIFO at the log's name, and the
+/// engine logs as root until it drops privileges: the name is never followed as a link and only a lone regular file is
+/// written. O_NONBLOCK makes no difference to a regular file's writes.
 /// @return The descriptor, or -1 (the line is dropped for this destination).
 int openLogFile(const base::logging::ManagerLogOptions& options,
                 const base::logging::ManagerLogDeps& deps,
                 const std::string& path)
 {
-    constexpr int APPEND_FLAGS = O_WRONLY | O_APPEND | O_CLOEXEC;
+    constexpr int APPEND_FLAGS = O_WRONLY | O_APPEND | O_CLOEXEC | O_NOFOLLOW | O_NONBLOCK | O_NOCTTY;
 
     int fd = deps.open(path.c_str(), APPEND_FLAGS, 0);
     if (fd >= 0 || errno != ENOENT)
     {
-        return fd;
+        return vetLogFile(deps, fd);
     }
 
-    fd = deps.open(path.c_str(), APPEND_FLAGS | O_CREAT | O_EXCL, LOG_FILE_MODE);
+    fd = vetLogFile(deps, deps.open(path.c_str(), APPEND_FLAGS | O_CREAT | O_EXCL, LOG_FILE_MODE));
     if (fd < 0)
     {
         // Somebody else created it in between: append to theirs
-        return errno == EEXIST ? deps.open(path.c_str(), APPEND_FLAGS, 0) : -1;
+        return errno == EEXIST ? vetLogFile(deps, deps.open(path.c_str(), APPEND_FLAGS, 0)) : -1;
     }
 
     // Failures of fchmod/fchown keep the file: the line is still written.

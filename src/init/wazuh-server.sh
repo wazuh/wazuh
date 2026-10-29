@@ -147,13 +147,50 @@ unlock()
     rm -rf ${LOCK}
 }
 
+# logs/ and var/run/ are writable by the wazuh-manager account, so any name in them may be a link (or a
+# FIFO) that account planted, and a shell redirection run as root follows it: root would create, append to
+# or truncate any file the account chooses. service_write is therefore the only writer of this script
+# there. It switches to wazuh-manager first, so a planted name can only lead to a file that account could
+# already write, and opens without following a link, without blocking and only a regular file. It is the
+# bundled interpreter because the package declares coreutils only (no setpriv), and chroot --userspec, the
+# maintainer scripts' switch, needs CAP_SYS_CHROOT, which the unit's bounding set leaves out.
+SERVICE_WRITE='import grp, os, pwd, stat, sys
+path, mode = sys.argv[1], sys.argv[2]
+if os.geteuid() == 0:
+    gid = grp.getgrnam("wazuh-manager").gr_gid
+    uid = pwd.getpwnam("wazuh-manager").pw_uid
+    os.setgroups([])
+    os.setresgid(gid, gid, gid)
+    os.setresuid(uid, uid, uid)
+flags = os.O_WRONLY | os.O_CREAT | os.O_NOFOLLOW | os.O_NONBLOCK | os.O_NOCTTY | os.O_CLOEXEC
+flags |= os.O_APPEND if mode == "append" else os.O_TRUNC
+fd = os.open(path, flags, 0o660)
+if not stat.S_ISREG(os.fstat(fd).st_mode):
+    sys.exit(1)
+with os.fdopen(fd, "wb") as target:
+    target.write(sys.stdin.buffer.read())'
+
+# service_write <path> <append|replace>: standard input into <path>, as SERVICE_WRITE above describes.
+# replace first removes what is there as root (rm unlinks a link, never follows it): a marker an earlier
+# version left root-owned could not be rewritten by wazuh-manager. Errors are discarded, as the redirections
+# it replaces discarded them.
+service_write()
+{
+    if [ "$2" != "append" ]; then
+        rm -f "$1"
+    fi
+    ${DIR}/framework/python/bin/python3 -I -c "${SERVICE_WRITE}" "$1" "$2" 2>/dev/null
+}
+
 # log_lines <level> <text>: each non-empty line of <text> into logs/wazuh-manager.log in the daemons' own
 # format (date, tag, level), so a reason relayed from a tool is dated and attributed like every other line.
 # The credential resolver's own prefixes are folded into that format: "resolve-credentials: WARNING: x"
 # becomes a WARNING and other "resolve-credentials: x" progress an INFO; every other line takes <level>.
+# printf, not echo: a line may quote a configured value, and some shells' echo expands its backslashes.
 log_lines()
 {
     _log_level=$1
+    [ -n "$2" ] || return 0
     printf '%s\n' "$2" | while IFS= read -r _log_line; do
         case "${_log_line}" in
             "") continue ;;
@@ -161,8 +198,8 @@ log_lines()
             "resolve-credentials: "*) _line_level="INFO"; _log_line="${_log_line#resolve-credentials: }" ;;
             *) _line_level="${_log_level}" ;;
         esac
-        echo "$(date '+%Y/%m/%d %H:%M:%S') wazuh-manager-control: ${_line_level}: ${_log_line}" >> ${DIR}/logs/wazuh-manager.log 2>/dev/null
-    done
+        printf '%s\n' "$(date '+%Y/%m/%d %H:%M:%S') wazuh-manager-control: ${_line_level}: ${_log_line}"
+    done | service_write ${DIR}/logs/wazuh-manager.log append
 }
 
 # clear_verdicts: forgets the verdicts of a previous start (var/run/*.failed), which this run's replaces. A
@@ -539,7 +576,7 @@ testconfig()
             # old .restart guard's job, and keeping the guard here would leave a restart with a
             # refused configuration reporting plain "not running". A check leaves the markers alone.
             if [ "${CHECK_ONLY}" != true ]; then
-                echo "refused" > ${DIR}/var/run/${i}.failed
+                echo "refused" | service_write ${DIR}/var/run/${i}.failed replace
             fi
             abort_start
         fi
@@ -674,7 +711,7 @@ start_service()
         if [ $? = 0 ]; then
             ## Create starting flag
             failed=false
-            touch ${DIR}/var/run/${i}.start
+            service_write ${DIR}/var/run/${i}.start replace < /dev/null
 
             if [ "$i" = "wazuh-manager-analysisd" ]; then
                 wait_for_wazuh_engine_ready
@@ -696,7 +733,7 @@ start_service()
                 fi
                 rm -f ${DIR}/var/run/${i}.start
                 # Same marker the framework reads as 'failed'; the content tells status why.
-                echo "start" > ${DIR}/var/run/${i}.failed
+                echo "start" | service_write ${DIR}/var/run/${i}.failed replace
                 rm -f ${DIR}/var/run/*.start
                 rm -f ${DIR}/var/run/.restart
                 # Leave the manager stopped, not half started: under the unit (KillMode=process) systemd
@@ -909,7 +946,7 @@ check_service()
 
 restart_service()
 {
-    touch ${DIR}/var/run/.restart
+    service_write ${DIR}/var/run/.restart replace < /dev/null
     validateconfig --skip-file-checks
     checkcredentials
     testconfig
