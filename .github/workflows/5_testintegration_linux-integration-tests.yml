@@ -46,7 +46,7 @@ on:
       base_branch:
         description: 'Base branch'
         required: true
-        default: 'main'
+        default: '5.0.0'
       build_run_id:
         description: 'Build run ID to download from (optional; default: latest successful build on base_branch)'
         required: false
