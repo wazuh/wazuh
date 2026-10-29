@@ -171,7 +171,7 @@ TXN_HANDLE dbsync_create_txn(const DBSYNC_HANDLE handle,
     return txn;
 }
 
-int dbsync_close_txn(const TXN_HANDLE txn)
+static int closeTxn(const TXN_HANDLE txn, const bool keepRows)
 {
     auto retVal { -1 };
     std::string errorMessage;
@@ -184,7 +184,7 @@ int dbsync_close_txn(const TXN_HANDLE txn)
     {
         try
         {
-            PipelineFactory::instance().destroy(txn);
+            PipelineFactory::instance().destroy(txn, keepRows);
             retVal = 0;
         }
         catch (const DbSync::dbsync_error& ex)
@@ -203,6 +203,16 @@ int dbsync_close_txn(const TXN_HANDLE txn)
 
     log_message(errorMessage);
     return retVal;
+}
+
+int dbsync_close_txn(const TXN_HANDLE txn)
+{
+    return closeTxn(txn, false);
+}
+
+int dbsync_close_txn_keep_rows(const TXN_HANDLE txn)
+{
+    return closeTxn(txn, true);
 }
 
 int dbsync_sync_txn_row(const TXN_HANDLE txn,
