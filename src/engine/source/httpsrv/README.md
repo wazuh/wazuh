@@ -153,6 +153,38 @@ and [private](../../../../docs/ref/modules/engine/private-api-reference.md) API 
 | `api::status` | `GET /status` | API |
 | `api::event` | `POST /events/enriched` | Event |
 
+## UdsServer (shared `uds_http_server` transport)
+
+`httpsrv::UdsServer` serves a socket on the manager's shared HTTP-over-UDS transport
+(`src/shared_modules/uds_http_server`, linked PRIVATE: no transport type appears in an httpsrv
+header). It coexists with the cpp-httplib `httpsrv::Server` while the engine moves its servers over.
+
+- **Neutral types** (`interface/httpsrv/types.hpp`): `Request` (method, raw target, lower-cased
+  headers, `header()`, `headerCount()` — 2 means "more than once" — and a zero-copy `body` view
+  kept alive by `owner`), `Response` (status, body, content type) and the synchronous
+  `RouteHandler = void(const Request&, Response&)`. `Request::fromOwned()` builds one outside a
+  transport (tests).
+- **Executor** (`BoundedExecutor`): the transport's I/O threads never run a handler. Each admitted
+  request becomes a job of a fixed pool with a bounded queue (`executorThreads`, `executorQueue`).
+- **Answers the server writes itself**: executor queue full ⇒ `503 {"error":"Server busy","code":503}`;
+  stopping ⇒ `503 {"error":"Server shutting down","code":503}`; handler threw ⇒ `500` `Internal server error`
+  (`text/plain`). The transport adds its own `404/405/411/413/431/503/504` (see
+  `docs/ref/modules/utils/uds-http-server/`).
+- **Shutdown** (`shutdown()` for one server, `shutdownAll()` for several, default deadline 10 s):
+  1. `stopAccepting()` on every server — no new request reaches a handler, replies still go out;
+  2. `closeAdmission()` on every executor — nothing new is queued, queued requests keep running;
+  3. `drainUntil(deadline)` in parallel — at the deadline, unstarted requests get the shutdown `503`
+     and running ones are reported as abandoned;
+  4. `stop()` on every transport, before the caller destroys what the handlers use.
+  An executor always **joins** its workers, even past the deadline (with a WARN), so a slow
+  handler can never run into a destroyed dependency.
+- **Stats** (`stats()`): in-flight bytes/requests and sessions from the transport, queue depth,
+  running handlers, and `503`/`500` counters by cause.
+- `Options`: name and log tag, `maxConnections`, `maxInFlightBytes` (0 = transport default),
+  `maxBodySize`, executor size, `expectContinue` (answer `Expect: 100-continue` once admitted),
+  `detailedLogging` (one TRACE line per request, no bodies). I/O threads, timeouts and the `0660`
+  socket mode are the transport's.
+
 ## Dependencies
 
 | Dependency | CMake Target | Role |
@@ -160,6 +192,7 @@ and [private](../../../../docs/ref/modules/engine/private-api-reference.md) API 
 | `base` | `base` (via `httpsrv::ihttpsrv` and directly) | Logging, process utilities, `cpp_get_nproc()` |
 | `httplib` | header-only (`httplib.h`), reached through the `eMessages` link | HTTP server implementation |
 | `eMessages` | `eMessages` (public) | Protobuf definitions (transitive) |
+| `uds_http_server` | `wazuh_uds_http_server` (**private**, registered by an `if(NOT TARGET)` guard) | Transport of `UdsServer` |
 
 `api::adapter` links `httpsrv`; the engine executable links it directly (`src/engine/CMakeLists.txt`).
 
@@ -220,17 +253,24 @@ signal arrives.
 httpsrv/
 ├── CMakeLists.txt                                   # Build: ihttpsrv (INTERFACE), httpsrv (STATIC)
 ├── interface/httpsrv/
-│   └── iserver.hpp                                  # IServer<> CRTP interface (start, stop, addRoute, isRunning)
+│   ├── iserver.hpp                                  # IServer<> CRTP interface (start, stop, addRoute, isRunning)
+│   └── types.hpp                                    # Method, Request/Response, RouteHandler, RouteOptions
 ├── include/httpsrv/
-│   └── server.hpp                                   # Server class declaration (httplib wrapper)
+│   ├── server.hpp                                   # Server class declaration (httplib wrapper)
+│   ├── boundedExecutor.hpp                          # Fixed worker pool with a bounded queue
+│   └── udsServer.hpp                                # UdsServer, shutdownAll()
 ├── src/
-│   └── server.cpp                                   # Server implementation (bind, listen, route dispatch, logging)
+│   ├── server.cpp                                   # Server implementation (bind, listen, route dispatch, logging)
+│   ├── boundedExecutor.cpp
+│   └── udsServer.cpp
 └── test/src/
     ├── generic_request.proto                        # Test protobuf definition
     ├── generic_request.pb.h                         # Generated protobuf header
     ├── generic_request.pb.cc                        # Generated protobuf source
     ├── unit/
-    │   └── server_test.cpp                          # Unit tests (create, start/stop, socket paths, addRoute)
+    │   ├── server_test.cpp                          # Unit tests (create, start/stop, socket paths, addRoute)
+    │   ├── boundedExecutor_test.cpp                 # Queue bound, admission, drain deadline, join
+    │   └── udsServer_test.cpp                       # UdsServer over a real socket
     └── component/
         └── server_test.cpp                          # Component tests over a real UDS client (routes, payload limits)
 ```
@@ -250,6 +290,8 @@ httpsrv/
 | `StartAlreadyStarted` | A second `start()` throws |
 | `AddRoute`, `AddOverrideRoute` | Route registration, including the same route twice |
 | `IsRunning` | `isRunning()` before and after start |
+| `BoundedExecutorTest.*` | Every job runs once; full queue and closed admission refuse; the drain runs queued jobs, rejects the unstarted ones at the deadline and reports running ones; the destructor joins a job that outlived the deadline |
+| `UdsServerTest.*` | Neutral request/response round trip; a repeated header counted as 2; executor full ⇒ `503` busy; handler throw ⇒ `500` text; a running reply delivered within the deadline; unstarted requests ⇒ shutdown `503`; `shutdownAll()` stops every server; socket mode `0660`; a path that is not a socket refused (and kept); `expectContinue` reaches the wire |
 
 ### Component Tests (`httpsrv_ctest`)
 
