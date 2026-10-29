@@ -157,6 +157,9 @@ int main(int argc, char* argv[])
 
         exitHandler.add([]() { logging::stop(); });
         logging::start(logConfig);
+        // Shared-library lines logged through Log::GLOBAL_LOG_FUNCTION (the HTTP transport, the indexer
+        // connector) reach this sink too; without it they are dropped in standalone mode.
+        Log::assignLogFunction(logging::createStandaloneLogFunction());
 
         if (logConfig.enableRotation)
         {
