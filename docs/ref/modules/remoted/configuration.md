@@ -139,7 +139,10 @@ Accept connections from agents running a Wazuh version higher than the manager.
 - **Note:** "Higher" means a higher major or minor version: an agent one patch release ahead (5.0.1
   against a 5.0.0 manager) is always accepted, on the HTTPS and the legacy paths alike. Enable when
   upgrading agents to a new minor or major before the manager
-- **Note:** Applies to an agent's `POST /control` `startup` and to 4.x keep-alives. It does **not**
+- **Note:** Applies to an agent's `POST /control` `startup` and to a 4.x agent's startup message
+  (`#!-agent startup`), which carries its version. A 4.x keep-alive is **not** checked: an agent
+  already connected keeps sending them whatever its version, and is checked again only on its next
+  startup. It does **not**
   govern enrollment: `POST /enroll` follows authd's own
   [`<auth><agents><allow_higher_versions>`](../authd/configuration.md#agents--allow_higher_versions),
   so the two must be raised together for a newer agent to both enroll and connect
@@ -191,6 +194,18 @@ connection from the same agent may take it over.
   disables overtaking altogether: the second connection is always refused and the warning is logged
   at once. The warning is throttled like the other rejections: at most one line every 90 seconds,
   ending in `(and <n> more like it in the last <s> s)`; the repeats in between go to debug level.
+- **Note:** Only a message whose counters are **ahead** of the last ones remoted accepted from that
+  agent may take a session over, whatever [`remoted.verify_msg_id`](#remotedverify_msg_id) says. A
+  captured message replayed on a new connection decrypts, but its counters are equal to or older than
+  the stored ones, so it is refused and its connection closed, however long the current session has
+  been idle; the agent's session, its idle time and its stored counters are left untouched. Remoted
+  logs `Frame for agent ID '<id>' from '<ip>' is not newer than the last one accepted from that agent:
+  it cannot take over the agent's current connection.`, throttled like the warning above. A real agent
+  that reconnects is never affected: its counters only grow, and they are kept across its restarts in
+  its own `queue/rids/sender_counter`. An agent whose counter was reset while it kept its key (its
+  `sender_counter` deleted, or the same key imported again) cannot take over a stale session until that
+  session is closed; re-enroll it, or delete its `queue/rids/<id>` on the manager, to start its counters
+  again
 
 ---
 
@@ -384,15 +399,20 @@ protocol version.
 Maximum accepted HTTP request body size, enforced by the transport.
 
 - **Default value:** `10M` (10 MiB)
-- **Allowed values:** Positive byte count with an optional single-letter suffix (`B`, `K`, `M`, `G`, case-insensitive). `K`/`M`/`G` are binary multiples; a bare number is bytes. Suffixes such as `MB` are rejected.
+- **Allowed values:** Positive byte count with an optional single-letter suffix (`B`, `K`, `M`, `G`, case-insensitive), at most `1G` (1073741824 bytes; `1024M`, `1048576K`). `K`/`M`/`G` are binary multiples; a bare number is bytes. Suffixes such as `MB` are rejected.
 - **Effect:** Raising the limit admits larger wire bodies and increases potential memory use per connection;
   lowering it rejects larger requests at the transport. The authentication and shared-memory limits still apply.
+  While requests are read, the peak is roughly [`remoted.max_parallel_connections`](#remotedmax_parallel_connections)
+  (256 by default) times this value.
 - **Note:** Keep it **above** [`remoted.auth_max_body_size`](#remotedauth_max_body_size) (5 MiB by
   default). Breaching *this* cap is not a `413`: the parser fails on `Content-Length` and the
   connection is closed with no response at all, which an agent cannot tell apart from a network
   failure — so it never splits its batch and retries the same bytes indefinitely. The auth limit is
   what produces the `413` the agent acts on. Setting the two equal makes the closed connection the
-  only outcome, because the `Content-Length` check always fires first.
+  only outcome, because the `Content-Length` check always fires first. A value at or below it is
+  accepted, but both the configuration check (`wazuh-manager-remoted -t`, run by every start) and
+  remoted's start log a `WARNING`: `'remote.https.max_body_size' (<n> bytes) is not above
+  'remoted.auth_max_body_size' (<m> bytes): …`
 
 ### Rate limits of the unauthenticated routes
 
@@ -726,6 +746,8 @@ time are closed. Authenticated connections are never subject to it.
   which names the ID the message claims and is therefore logged at debug level only. A message whose
   checksum matches has proved the agent's key, so a malformed counter field after it is still an
   `ERROR` `(1403)` naming that agent
+- **Note:** Over TCP, each of those rejections also closes the connection at once (`TCP peer
+  disconnected [<socket>]` at debug level): a peer that sent one never waits for this timeout
 
 ### remoted.unauthenticated_max
 
@@ -844,6 +866,12 @@ to detect replayed messages.
 - **Note:** `1` requires `remoted.worker_pool` set to `1`; with more workers remoted refuses to
   start, because message order cannot be guaranteed. It checks only messages on the legacy (4.x)
   listener; HTTPS agents are authenticated per request with their bearer token.
+- **Note:** With `0` an older or repeated message is still accepted on the connection the agent is
+  using (with several workers, messages of one connection may be handled out of order), but it never
+  moves the stored counters back and never takes over the agent's session from another connection
+  (see [`legacy.connection_overtake_time`](#legacyconnection_overtake_time)). It is not discarded, so
+  a replayed message delivered on its own (over UDP, or on a new connection while the agent has no
+  session) is still processed: set `1` where that matters.
 
 ### remoted.batch_events_per_agent_capacity
 

@@ -460,21 +460,8 @@ void ChannelHandler::writeMessage(const std::string& message)
  */
 void ChannelHandler::validateChannelName(const std::string& channelName)
 {
-    // Validate length
-    if (channelName.empty())
-    {
-        throw std::runtime_error("Channel name cannot be empty");
-    }
-    else if (channelName.length() > 255)
-    {
-        throw std::runtime_error("Channel name cannot exceed 255 characters");
-    }
-
-    // Only allow alphanumeric characters, underscores, and dashes in channel names
-    if (!std::regex_match(channelName, std::regex("^[a-zA-Z0-9_-]+$")))
-    {
-        throw std::runtime_error("Channel name can only contain alphanumeric characters, underscores, and dashes");
-    }
+    // One rule for every caller: the interface's check, which the builder also applies before creating a channel
+    streamlog::validateChannelName(channelName);
 }
 
 /**

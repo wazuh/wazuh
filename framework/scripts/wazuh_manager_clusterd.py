@@ -234,8 +234,14 @@ def main():
         os.chmod(f'{common.WAZUH_PATH}/logs/cluster.log', 0o660)  # nosec B103
 
     def configuration_error(error: Exception):
-        """Log why the configuration was refused and exit 1; under -t, also say it on the terminal."""
-        main_logger.error(error)
+        """Log why the configuration was refused and exit 1; under -t, also say it on the terminal.
+
+        A -t run on a copy (-c naming another file) only prints: its verdict is about that copy, and
+        written to the running node's cluster.log it would read as an error of the live configuration."""
+        testing_copy = args.test_config and \
+            os.path.realpath(args.config_file) != os.path.realpath(common.MANAGER_CONF)
+        if not testing_copy:
+            main_logger.error(error)
         if args.test_config:
             print(f"ERROR: {error}", file=sys.stderr)
         sys.exit(1)

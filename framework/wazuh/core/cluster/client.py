@@ -14,6 +14,12 @@ import uvloop
 from wazuh.core.cluster import common
 from wazuh.core.cluster.utils import context_tag
 
+# Consecutive connections the master closes before the handshake completes, with no reason given to this node,
+# after which a warning is logged, and how many more between two warnings. The master closes a connection it cannot
+# decrypt, which is what a different cluster key looks like from this side.
+HANDSHAKE_CLOSED_FIRST_WARNING = 3
+HANDSHAKE_CLOSED_WARNING_EVERY = 30
+
 
 class AbstractClientManager:
     """
@@ -60,6 +66,8 @@ class AbstractClientManager:
         self.client = None
         self.extra_args = {}
         self.loop = asyncio.get_running_loop()
+        # Consecutive connections the master closed before the handshake completed.
+        self.handshake_closed_count = 0
 
     def add_tasks(self) -> List[Tuple[Awaitable[Any], Tuple]]:
         """Add client tasks to the task list.
@@ -173,8 +181,11 @@ class AbstractClient(common.Handler):
 
             self.logger.info("Successfully connected to master.")
             self.connected = True
+            if self.server is not None:
+                self.server.handshake_closed_count = 0
         except Exception as e:
             self.logger.error(f"Could not connect to master: {str(e)}.")
+            self.close_reason_logged = True
             self.transport.close()
 
     def connection_made(self, transport):
@@ -207,6 +218,8 @@ class AbstractClient(common.Handler):
         self._cancel_payload_deadline()
         if exc is None:
             self.logger.info('The master closed the connection')
+            if not self.connected and not self.close_reason_logged:
+                self._count_handshake_closed()
         elif isinstance(exc, (ConnectionResetError, ConnectionAbortedError)):
             # The peer forcibly closed the connection (e.g. a TCP reset while the master was shutting down).
             # This is transient and recoverable: the client automatically retries the connection, so it is
@@ -222,6 +235,22 @@ class AbstractClient(common.Handler):
 
         if self.server is not None and self.server.client is self:
             self.server.client = None
+
+    def _count_handshake_closed(self):
+        """Count a connection the master closed before the handshake completed, and warn when it keeps happening.
+
+        The master gives no reason to a peer whose messages it cannot decrypt, so without this warning a node
+        configured with a different cluster key would only log that the master closed the connection.
+        """
+        if self.server is None:
+            return
+        self.server.handshake_closed_count = count = getattr(self.server, 'handshake_closed_count', 0) + 1
+        if count == HANDSHAKE_CLOSED_FIRST_WARNING or \
+                (count > HANDSHAKE_CLOSED_FIRST_WARNING and
+                 (count - HANDSHAKE_CLOSED_FIRST_WARNING) % HANDSHAKE_CLOSED_WARNING_EVERY == 0):
+            self.logger.warning(f"The master closed the connection before the handshake completed {count} times in a "
+                                f"row. Check that the cluster key of this node is the same as the master's: the "
+                                f"master closes the connections it cannot decrypt and logs why.")
 
     def _cancel_all_tasks(self):
         """Cancel all asyncio tasks and clients."""

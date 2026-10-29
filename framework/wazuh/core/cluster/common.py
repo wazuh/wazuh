@@ -418,6 +418,9 @@ class Handler(asyncio.Protocol):
         self.server = None
         # Handle for the per-message payload-completion deadline timer.
         self._payload_deadline = None
+        # Whether the reason this connection is being closed was already logged, so connection_lost does not log
+        # a second, reason-less line for it.
+        self.close_reason_logged = False
 
     def _start_payload_deadline(self) -> None:
         """Arm a timer that closes this connection if the payload never completes."""
@@ -437,6 +440,7 @@ class Handler(asyncio.Protocol):
     def _close_on_payload_deadline(self) -> None:
         """Close the transport when a declared payload never arrives within the deadline."""
         self.logger.warning("Closing connection: incomplete message payload not received within deadline.")
+        self.close_reason_logged = True
         if self.transport is not None:
             self.transport.close()
         self._payload_deadline = None
@@ -1064,11 +1068,13 @@ class Handler(asyncio.Protocol):
                     f"Details: {e.message} bytes received, but the maximum allowed is {MAX_TOTAL_SIZE} bytes. "
                     f"Closing connection."
                 )
+                self.close_reason_logged = True
                 if self.transport:
                     self.close()
                 return
             elif e.code in SESSION_ERROR_CODES:
                 self.logger.error(f"[Cluster] {e}. Closing connection.")
+                self.close_reason_logged = True
                 if self.transport:
                     self.close()
                 return

@@ -50,11 +50,14 @@ paths:
         ```
 
         - **Header line** (`H `): JSON object with agent and cluster metadata, merged into every event of the
-          batch. It must hold `wazuh.agent.id` as a non-empty string of digits.
+          batch. It must hold `wazuh.agent.id` as a non-empty string of digits. On a manager the router then
+          overwrites `wazuh.cluster.name` and `wazuh.cluster.node` with the receiving node's `cluster.name` and
+          `cluster.node_name`, whatever the header says; only a standalone engine keeps the header's values.
         - **Event lines** (`E `): Legacy event format `<queue_byte>:<location>:<message>`; a `:` inside the
           location is escaped as `|:`. The queue byte is stored as its numeric value (an agent's `1` is `49`) and
-          must be at most `0x7F`, the largest value the indexer's signed-byte mapping holds; a line with a higher
-          byte is dropped as malformed.
+          must be `0x01` to `0x7F`, the range `/logtest` accepts too: `0x00` is no queue, and `0x7F` is the
+          largest value the indexer's signed-byte mapping holds. A line with any other byte is dropped as
+          malformed.
         - **Event delimiter**: The 3-byte sequence `\nE ` (newline + E + space) separates events.
 
         ## Multi-line Events (Continuation-line Indentation)
@@ -78,7 +81,8 @@ paths:
 
         See the `examples` section below for more detailed scenarios. They use agent `999`: a batch sent to a
         running manager is processed like any other, so the engine indexes its events under the agent ID of the
-        header. Use an ID no real agent has, never one of your agents', when you try them.
+        header, and an event a rule matches also creates a findings document (`wazuh-findings-v5-<category>`).
+        Use an ID no real agent has, never one of your agents', when you try them.
 
       requestBody:
         required: true

@@ -95,6 +95,9 @@ expanded or unescaped. No whitespace is allowed around the `=`:
 | `NAME= value` | accepted, and the space is part of the value: a password then breaks the rule, `INVALID NAME: may only use A-Z a-z 0-9 and . , _ + : @ % ^ = ~ - (set in /etc/wazuh-manager/local.env:<line>)` |
 
 ```bash
+# Before installing the package only: /etc/wazuh-manager does not exist yet (the package sets its group)
+sudo install -d -m 0770 -o root -g root /etc/wazuh-manager
+# Before or after installing
 sudo install -m 0600 -o root -g root /dev/null /etc/wazuh-manager/local.env
 sudo tee /etc/wazuh-manager/local.env > /dev/null <<'EOF'
 WAZUH_INDEXER_MANAGER_PASSWORD='<the wazuh-manager password on the indexer>'
@@ -260,10 +263,13 @@ steps, which follow what the resolver did rather than what it was asked: `Server
 /etc/wazuh-manager/export/credentials.env (readable by root only).` only when that file exists (a run stopped by
 an `UNSAFE` or `INVALID` entry writes nothing at all), then, when any `MISSING`,
 `INVALID` or `UNSAFE` line was reported or the resolver did not exit `0`, `Credential resolution is incomplete: the
-manager does not start until every MISSING, INVALID or UNSAFE entry reported above is resolved.` with the command
-to repeat once they are fixed, `/var/wazuh-manager/bin/wazuh-manager-resolve-credentials --install -H
-/var/wazuh-manager` (as root): it
-is the only mode that issues what the install could not, and on material already in place it only validates.
+manager does not start until every MISSING, INVALID or UNSAFE entry reported above is resolved.` and what to do
+next. When the CA, the agents' bundle or a server pair is missing, an entry is `INVALID` or `UNSAFE`, or the
+resolver did not exit `0`, that is the command to repeat once they are fixed,
+`/var/wazuh-manager/bin/wazuh-manager-resolve-credentials --install -H /var/wazuh-manager` (as root): it is the
+only mode that issues what the install could not, and on material already in place it only validates. When only
+what the manager consumes is missing (the indexer's password, CA or client pair), it says `Supply them as each
+entry above says, then start the manager: the start completes them, no new --install is needed.`
 
 A fresh install with no indexer on the host:
 
@@ -494,8 +500,11 @@ For the indexer connection:
 Each pair has its own list: `WAZUH_MANAGER_REMOTED_CERT_SANS` and `WAZUH_MANAGER_APID_CERT_SANS`. The Server API
 list never inherits remoted's. A list holds comma-separated entries: `DNS:name`, `IP:address`, or a bare value
 (an address when it has a colon or only digits and dots, a name otherwise). Zone ids, prefixes and wildcards are
-refused, and an invalid list stops the issuance of both pairs before any is written. `localhost`, `127.0.0.1` and
-`::1` are always appended.
+refused, and an invalid list stops the issuance of both pairs before any is written. Every run judges a list that
+is set, `--check` included, whether or not a pair is about to be issued: while an invalid one stays in the
+environment or in `local.env`, every start is refused
+(`INVALID WAZUH_MANAGER_REMOTED_CERT_SANS: … (set in /etc/wazuh-manager/local.env:<line>)`, `Invalid credentials`,
+error 22), even though the pairs are already issued. `localhost`, `127.0.0.1` and `::1` are always appended.
 
 When a list is unset, the names are discovered:
 
@@ -569,7 +578,9 @@ through, and the `--prestart` that follows finishes it.
 
 To run the manager on your own PKI, stage the CA in `<CONF>/ca/`, the server pairs and the bundle in
 `<CONF>/certs/`, and for an indexer on another host its CA, the client pair it issued for this node and the
-indexer password, before installing or before the next start. The procedure, with the commands, is in
+indexer password. The CA and `local.env` can be staged before installing, in a `root:root` `/etc/wazuh-manager`
+you create; the files of `certs/` need the `wazuh-manager` group, so they are staged after installing, before the
+first start (a Debian package also re-owns files staged before it). The procedure, with the commands, is in
 [Using certificates issued elsewhere](installation.md#using-certificates-issued-elsewhere). Staged files carry
 no marker, so the resolver validates them at every start and never replaces them.
 
@@ -578,8 +589,10 @@ no marker, so the resolver validates them at every start and never replaces them
 Every node resolves credentials for itself. The cluster synchronizes `client.keys`, `authd.pass`,
 `enrollment_tokens.json`, `shared/` and `var/multigroups/`, and none of `ca/`, `export/`, `local.env` or `certs/`.
 
-- **Stage the same CA on every node before installing**, in `<CONF>/ca/` (`root-ca.pem`, and `root-ca.key` where
-  pairs are issued). A node that mints its own CA trusts only itself, and an agent that reaches another node will
+- **Stage the same CA on every node before installing**, in `<CONF>/ca/` (`root-ca.pem` `0644` and, where pairs
+  are issued, `root-ca.key` `0400`, both `root:root`, in a `root:root` `0700` directory). Create
+  `/etc/wazuh-manager` first (`sudo install -d -m 0770 -o root -g root /etc/wazuh-manager`): the package sets its
+  group and leaves `ca/` as staged. A node that mints its own CA trusts only itself, and an agent that reaches another node will
   not trust what it presents. Each node presents its own listener pair, which must name the addresses agents use
   to reach that node (behind a load balancer, the balancer's name as well).
 - **Back up each node's credentials with it.** The cluster does not restore them: a worker's backup must carry

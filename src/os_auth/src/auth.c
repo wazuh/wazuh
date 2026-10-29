@@ -925,11 +925,8 @@ w_err_t w_auth_validate_data(char *response,
     if (result != OS_INVALID && strcmp(ip, "any") != 0 && (index = OS_IsAllowedIP(&keys, ip), index >= 0)) {
         ip_holder = keys.keyentries[index];
         if (OS_SUCCESS != w_auth_check_replace_agent(ip_holder, key_hash, &config.force_options, &ip_result, &warn)) {
-            if (warn) {
-                mwarn("Duplicate IP '%s', rejecting enrollment. %s", ip, ip_result);
-            } else {
-                minfo("Duplicate IP '%s', rejecting enrollment. %s", ip, ip_result);
-            }
+            /* Throttled: an agent retrying a refused enrollment repeats it at its own rate. */
+            w_auth_log_client_rejection(!warn, "Duplicate IP '%s', rejecting enrollment. %s", ip, ip_result);
             snprintf(response, OS_SIZE_2048, "ERROR: Duplicate IP: %s", ip);
             result = OS_INVALID;
         }
@@ -940,11 +937,7 @@ w_err_t w_auth_validate_data(char *response,
         && keys.keyentries[index] != ip_holder) {
         name_holder = keys.keyentries[index];
         if (OS_SUCCESS != w_auth_check_replace_agent(name_holder, key_hash, &config.force_options, &name_result, &warn)) {
-            if (warn) {
-                mwarn("Duplicate name '%s', rejecting enrollment. %s", agentname, name_result);
-            } else {
-                minfo("Duplicate name '%s', rejecting enrollment. %s", agentname, name_result);
-            }
+            w_auth_log_client_rejection(!warn, "Duplicate name '%s', rejecting enrollment. %s", agentname, name_result);
             snprintf(response, OS_SIZE_2048, "ERROR: Duplicate agent name: %s", agentname);
             result = OS_INVALID;
         }
@@ -1182,14 +1175,15 @@ char *w_authd_load_password(const char *path, bool *generated) {
         return pass;
     }
 
-    /* No file: generate and persist. umask 0137 (file mode 0640) avoids a world-readable create/chmod window. */
+    /* No file: generate and persist. umask 0117 (file mode 0660, the mode the cluster syncs it with)
+     * avoids a world-readable create/chmod window. */
     char *pass = w_generate_random_pass();
 
     if (!pass) {
         merror_exit("Unable to generate random password. Exiting.");
     }
 
-    mode_t old_umask = umask(0137);
+    mode_t old_umask = umask(0117);
     fp = wfopen(path, "w");
     int saved_errno = errno;    /* before umask() can clobber it */
     umask(old_umask);

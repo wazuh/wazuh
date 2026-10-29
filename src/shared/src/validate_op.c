@@ -291,7 +291,7 @@ int getDefine_Int(const char *high_name, const char *low_name, int min, int max)
 
 static int parse_define_int_value(const char *high_name, const char *low_name, char *value, int min, int max)
 {
-    int ret;
+    long long parsed = 0;
     int valid = 1;
     const char *pt = value;
 
@@ -299,9 +299,11 @@ static int parse_define_int_value(const char *high_name, const char *low_name, c
      * negative value; the range check below rejects it everywhere else. */
     if (*pt == '-') {
         pt++;
-        if (*pt == '\0') {
-            valid = 0;
-        }
+    }
+
+    /* At least one digit, and nothing but digits after the optional sign. */
+    if (*pt == '\0') {
+        valid = 0;
     }
 
     for (; valid && *pt != '\0'; pt++) {
@@ -310,8 +312,18 @@ static int parse_define_int_value(const char *high_name, const char *low_name, c
         }
     }
 
-    ret = atoi(value);
-    if (!valid || (ret < min) || (ret > max)) {
+    /* strtoll instead of atoi: a value past the integer range must be refused, not wrapped
+     * (e.g. 4294967298 read as 2). */
+    if (valid) {
+        char *end = NULL;
+        errno = 0;
+        parsed = strtoll(value, &end, 10);
+        if (errno == ERANGE || end == value || *end != '\0' || parsed < INT_MIN || parsed > INT_MAX) {
+            valid = 0;
+        }
+    }
+
+    if (!valid || (parsed < min) || (parsed > max)) {
         /* Free the value before exiting: the message needs a copy of it. */
         char shown[OS_SIZE_256];
         snprintf(shown, sizeof(shown), "%s", value);
@@ -319,7 +331,7 @@ static int parse_define_int_value(const char *high_name, const char *low_name, c
         merror_exit(INV_DEF, high_name, low_name, shown);
     }
 
-    return ret;
+    return (int)parsed;
 }
 
 /* Get an integer definition with a fallback default value.

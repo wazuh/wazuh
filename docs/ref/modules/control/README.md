@@ -145,14 +145,17 @@ daemons inside the unit; `wazuh-manager-control` run by hand acts on the daemons
 On any refusal it prints `wazuh-manager-service-control: <reason>` on standard error and exits `1`;
 `-h` prints the usage and exits `0`. When modulesd runs it, standard error is not the manager log, so
 the only trace there is modulesd's `Privileged service control rejected or could not execute '<action>'`.
-The check runs **after** acceptance. Through `wm_control` the API has already answered `200` when a check
-refuses the restart, and the reason is only in `logs/wazuh-manager.log` (the check's lines). When the API runs
+The check runs **after** acceptance. Through `wm_control` the API has already answered `202` (`Restart request
+sent`, or `Reload request sent`) when a check refuses the restart, and the reason is only in `logs/wazuh-manager.log` (the check's lines). When the API runs
 the helper itself (modulesd is down), it waits up to 4 seconds after acceptance: a refusal in that time comes
 back as error `1904`; a later one is logged in `logs/api.log` (`The manager restart run by
 wazuh-manager-service-control failed (exit code 1): …`). Any
 other failure after acceptance (for example `cannot determine a safe manager service state` when the unit
 never settles during the 60 seconds) leaves no trace in `logs/wazuh-manager.log`; check
-`systemctl status wazuh-manager` or `wazuh-manager-control status`.
+`systemctl status wazuh-manager` or `wazuh-manager-control status`. A daemon that passes the check but then
+does not start (an engine that dies on an out-of-range internal option, for example) fails the start, and the
+start stops every daemon it had already launched: a failed restart leaves the manager stopped, a failed reload
+leaves only `wazuh-manager-remoted` running, never a partial set inside a failed unit.
 
 Run by hand (as `root`), it does exactly what an API restart does:
 

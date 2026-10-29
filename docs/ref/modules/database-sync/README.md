@@ -17,8 +17,11 @@ registry `/etc/wazuh-manager/client.keys` and the group directories under `/etc/
 **At start, on every node (master and worker):**
 
 - **Agent reconciliation.** Every agent in `client.keys` (other than `000`) missing from `global.db` is
-  inserted with its name, registration IP and key, and no re-enrollment secret, so such an agent cannot
-  re-enroll with a secret until it enrolls again. Every agent in `global.db` with no line in
+  inserted with its name, registration IP (as `client.keys` spells it, `any` included) and key, and no
+  re-enrollment secret, so such an agent cannot re-enroll with a secret until it enrolls again. Its
+  registration date (`date_add`) is the one `queue/agents-timestamp` records for it; when that file has
+  no line for the agent — as on a worker, which forwards enrollments to the master — it is the time the
+  row is inserted. Every agent in `global.db` with no line in
   `client.keys` is deleted, together with its message-counter file `queue/rids/<id>` and its line in
   `queue/agents-timestamp`.
 - **Group reconciliation.** Every group in `global.db` whose directory under `/etc/wazuh-manager/shared/` no longer

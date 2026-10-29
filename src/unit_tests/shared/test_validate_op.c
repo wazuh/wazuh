@@ -1414,7 +1414,13 @@ static int setup_local_defines(void **state)
           "agent.good_value=7\n"
           "agent.negative_value=-5\n"
           "agent.lone_minus=-\n"
-          "agent.inner_minus=1-2\n",
+          "agent.inner_minus=1-2\n"
+          "agent.wraps_to_two=4294967298\n"
+          "agent.wraps_to_zero=4294967296\n"
+          "agent.past_long_long=99999999999999999999\n"
+          "agent.below_int_min=-2147483649\n"
+          "agent.int_max=2147483647\n"
+          "agent.plus_sign=+5\n",
           fp);
     fclose(fp);
 
@@ -1430,7 +1436,7 @@ static int teardown_local_defines(void **state)
     return 0;
 }
 
-/* Accepted, an empty value becomes 0, which passes the range check only where the minimum is 0. */
+/* Refused: an empty value carries no digit, even where 0 would be in range. */
 void getDefine_Int_default_empty_value_exits(void **state)
 {
     (void)state;
@@ -1487,6 +1493,60 @@ void getDefine_Int_default_inner_minus_exits(void **state)
     expect_string(__wrap__merror_exit, formatted_msg, "(2302): Invalid definition for agent.inner_minus: '1-2'.");
 
     expect_assert_failure(getDefine_Int_default("agent", "inner_minus", -20, 19, 0));
+}
+
+/* A value past the int range is refused, never wrapped (4294967298 was read as 2, 4294967296 as 0). */
+void getDefine_Int_default_wrapping_value_exits(void **state)
+{
+    (void)state;
+
+    expect_string(__wrap__merror_exit, formatted_msg, "(2302): Invalid definition for agent.wraps_to_two: '4294967298'.");
+
+    expect_assert_failure(getDefine_Int_default("agent", "wraps_to_two", 0, 2, 0));
+}
+
+void getDefine_Int_default_wrapping_to_zero_exits(void **state)
+{
+    (void)state;
+
+    expect_string(__wrap__merror_exit, formatted_msg, "(2302): Invalid definition for agent.wraps_to_zero: '4294967296'.");
+
+    expect_assert_failure(getDefine_Int_default("agent", "wraps_to_zero", 0, 2, 0));
+}
+
+void getDefine_Int_default_past_long_long_exits(void **state)
+{
+    (void)state;
+
+    expect_string(__wrap__merror_exit, formatted_msg,
+                  "(2302): Invalid definition for agent.past_long_long: '99999999999999999999'.");
+
+    expect_assert_failure(getDefine_Int_default("agent", "past_long_long", INT_MIN, INT_MAX, 0));
+}
+
+void getDefine_Int_default_below_int_min_exits(void **state)
+{
+    (void)state;
+
+    expect_string(__wrap__merror_exit, formatted_msg, "(2302): Invalid definition for agent.below_int_min: '-2147483649'.");
+
+    expect_assert_failure(getDefine_Int_default("agent", "below_int_min", INT_MIN, INT_MAX, 0));
+}
+
+void getDefine_Int_default_int_max_is_read(void **state)
+{
+    (void)state;
+
+    assert_int_equal(getDefine_Int_default("agent", "int_max", 0, INT_MAX, 0), INT_MAX);
+}
+
+void getDefine_Int_default_plus_sign_exits(void **state)
+{
+    (void)state;
+
+    expect_string(__wrap__merror_exit, formatted_msg, "(2302): Invalid definition for agent.plus_sign: '+5'.");
+
+    expect_assert_failure(getDefine_Int_default("agent", "plus_sign", 0, 10, 0));
 }
 
 int main(void) {
@@ -1569,6 +1629,18 @@ int main(void) {
         cmocka_unit_test_setup_teardown(getDefine_Int_default_lone_minus_exits, setup_local_defines,
                                         teardown_local_defines),
         cmocka_unit_test_setup_teardown(getDefine_Int_default_inner_minus_exits, setup_local_defines,
+                                        teardown_local_defines),
+        cmocka_unit_test_setup_teardown(getDefine_Int_default_wrapping_value_exits, setup_local_defines,
+                                        teardown_local_defines),
+        cmocka_unit_test_setup_teardown(getDefine_Int_default_wrapping_to_zero_exits, setup_local_defines,
+                                        teardown_local_defines),
+        cmocka_unit_test_setup_teardown(getDefine_Int_default_past_long_long_exits, setup_local_defines,
+                                        teardown_local_defines),
+        cmocka_unit_test_setup_teardown(getDefine_Int_default_below_int_min_exits, setup_local_defines,
+                                        teardown_local_defines),
+        cmocka_unit_test_setup_teardown(getDefine_Int_default_int_max_is_read, setup_local_defines,
+                                        teardown_local_defines),
+        cmocka_unit_test_setup_teardown(getDefine_Int_default_plus_sign_exits, setup_local_defines,
                                         teardown_local_defines),
     };
 

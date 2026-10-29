@@ -99,10 +99,11 @@ address to the manager, the address check fails. The metric is
 
 ## 3. `404` on every request
 
-**One node has a different `global_prefix`.** What that looks like depends on the balancing model:
-under termination, a third of *requests* fail across the whole fleet; under passthrough, a third of
-*agents* land there and fail **every** request for the life of the connection. The second is the
-report you are more likely to receive.
+**One node has a different `global_prefix`.** Without stickiness on the balancer, a third of
+*requests* fail across the whole fleet (on a three-node cluster), under passthrough as under
+termination: a 5.x agent opens a new connection per request, so every agent reaches that node now
+and then. With source-address stickiness, a third of *agents* land there and fail **every** request
+instead.
 
 This is the hardest failure to spot, because the node produces **no counter and no per-request log
 line**: the request is discarded by the router before any route runs. A node rejecting 100% of agent

@@ -291,7 +291,7 @@ paths:
         `413` here means the frame didn't fit in the capacity free at that moment, or would decode
         past `remoted.auth_max_decoded_body_size` (32 MiB default), and a highly-compressed body can
         never balloon past either in memory first. Any `Content-Encoding`
-        value other than `zstd` is rejected with `415` (so is `zstd` itself when
+        value other than `zstd`, an empty one included, is rejected with `415` (so is `zstd` itself when
         `remoted.http_content_encoding_enabled` is `0`); a missing header is treated as an
         uncompressed body, unchanged from today.
 

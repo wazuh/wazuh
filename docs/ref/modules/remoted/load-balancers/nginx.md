@@ -327,4 +327,4 @@ What each status code tells you:
 
 The load-balancer lab in the source tree runs one working configuration,
 `src/remoted/remoted_module/tools/load_balancer/base/nginx/nginx.conf` (passthrough on 1517,
-termination on 1518, plus legacy 1514/1515).
+termination on 1518, plus legacy 1514 and 1515 to every node).

@@ -1293,7 +1293,7 @@ async def test_worker_handler_update_master_files_in_worker_ok(wazuh_gid_mock, w
             safe_join_mock.assert_called_once_with('/zip/path', 'filename1')
             wazuh_uid_mock.assert_called_with()
             wazuh_gid_mock.assert_called_with()
-            mkdir_with_mode_mock.assert_any_call("queue/testing")
+            mkdir_with_mode_mock.assert_any_call("queue/testing", 0o770)
             assert safe_move_mock.call_count == 2
             open_mock.assert_called_once()
             path_exists_mock.assert_called_once()

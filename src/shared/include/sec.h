@@ -104,7 +104,11 @@ typedef enum key_states {
     KS_VALID,
     KS_RIDS,
     KS_CORRUPT,
-    KS_ENCKEY
+    KS_ENCKEY,
+    /* Manager only, with remoted.verify_msg_id=0: the message authenticated, but its counters are not
+     * ahead of the agent's stored ones (an older or replayed frame). It is accepted, the stored counters
+     * are left as they are, and it must not take over the agent's session. Never returned to an agent. */
+    KS_STALE
 } key_states;
 
 #define KEYSTORE_INITIALIZER { NULL, NULL, NULL, NULL, 0, 0, 0, 0, { 0, 0 }, NULL, 0, NULL, PTHREAD_MUTEX_INITIALIZER }

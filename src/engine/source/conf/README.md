@@ -10,7 +10,7 @@ The **conf** module provides the unified configuration system for the Wazuh engi
 
 Each configuration option is declared as a typed **unit** (`UConf<T>`) tied to a key, an environment variable name, and a default value. At runtime, `Conf::get<T>(key)` resolves the final value by checking the three sources in priority order.
 
-The only consumer is [main.cpp](../main.cpp): it builds one `conf::Conf` over `/etc/wazuh-manager/wazuh-manager-internal-options.conf`, reads each setting with `confManager.get<T>(conf::key::…)` and passes the values to the module constructors. The operator-facing list of settings (keys, environment variables, defaults, ranges) is [configuration.md](../../../../docs/ref/modules/engine/configuration.md); the units themselves are registered in the `Conf` constructor in [src/conf.cpp](src/conf.cpp).
+The only consumer is [main.cpp](../main.cpp): it builds one `conf::Conf` over `/etc/wazuh-manager/wazuh-manager-internal-options.conf` (and a throw-away one under `-t`, only to call `load()`), reads each setting with `confManager.get<T>(conf::key::…)` and passes the values to the module constructors. The operator-facing list of settings (keys, environment variables, defaults, ranges) is [configuration.md](../../../../docs/ref/modules/engine/configuration.md); the units themselves are registered in the `Conf` constructor in [src/conf.cpp](src/conf.cpp).
 
 ## Architecture
 
@@ -49,6 +49,8 @@ Every configuration option is internally represented as a `UConf<T>` object (wra
 - **Environment variable name** — the OS env var to check first
 - **Default value** — fallback if neither env var nor file provides a value
 - **Type tag** (`UnitConfType`) — used during file validation
+- **Allowed range** (integer units only, optional) — an inclusive `conf::Range {min, max}` checked by `load()` on
+  the effective value
 
 Supported types:
 
@@ -137,8 +139,10 @@ conf/
 |--------|-------------|
 | `Conf(shared_ptr<IFileLoader>)` | Construct and register all default configuration units |
 | `addUnit<T>(key, envName, default)` | Register a new typed configuration option (before `load()`) |
-| `load()` | Load file configuration and validate types; can only be called once |
+| `addUnit<T>(key, envName, default, Range)` | Same, for an integer option with an inclusive allowed range; the default must be inside it |
+| `load()` | Load file configuration, validate types, then check every ranged option's effective value; can only be called once |
 | `get<T>(key)` | Resolve the configuration value with env → file → default priority |
+| `getRange(key)` | The allowed range of a key, or `std::nullopt` |
 
 ### `IFileLoader` / `FileLoader` (include/conf/fileLoader.hpp)
 
@@ -165,6 +169,14 @@ On `load()`, the file-loaded `OptionMap` is validated against the declared units
 
 Invalid values cause `load()` to throw `std::runtime_error`, preventing the engine from starting with a misconfigured file.
 
+Then, for every unit registered with a `Range`, `load()` resolves the effective value exactly as `get<T>()` does
+(environment variable, else file, else default) and throws `std::runtime_error` when it is outside the range:
+`Invalid value for key '<key>' from the <source>: '<value>'. Allowed range: <min> to <max>.`, `<source>` being
+`internal options file` or `environment variable '<VAR>'`. The ranges are registered once, in the `Conf`
+constructor, and are the only copy: `main.cpp` no longer checks them, and both a start and `wazuh-manager-analysisd -t`
+call `load()`, so `-t` (and `wazuh-manager-control check`, which runs it) refuses every value a start would refuse.
+A range is checked even when the module that reads the key is disabled.
+
 ### Environment Variable Parsing
 
 `UConf<T>::getEnvValue()` handles per-type parsing:
@@ -183,7 +195,9 @@ Invalid values cause `load()` to throw `std::runtime_error`, preventing the engi
 | Duplicate key or env name | `addUnit` throws `std::invalid_argument` |
 | `addUnit` after `load()` | Throws `std::logic_error` |
 | Double `load()` call | Throws `std::logic_error` |
-| Invalid file value type | `load()` throws `std::runtime_error` (`main.cpp` logs `Error loading configuration: …` and exits with failure) |
+| Invalid file value type | `load()` throws `std::runtime_error` (`main.cpp` logs `Error loading configuration: …` and exits with failure; `-t` prints it to stderr and exits `1`) |
+| Effective value outside its range | `load()` throws `std::runtime_error`, handled as above |
+| Bad range at registration (empty, negative for `size_t`, default outside) | `addUnit` throws `std::logic_error` |
 | Missing or unreadable file | `FileLoader` logs a warning and returns an empty map |
 | Invalid env var at `get()` time | Warning logged, falls through to next source |
 | Invalid file value at `get()` time | Warning logged, falls through to default |

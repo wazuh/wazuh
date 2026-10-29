@@ -114,8 +114,9 @@ services:
     depends_on: [wazuh-master, wazuh-worker1, wazuh-worker2]
 
   # ---- Real 4.x agent, legacy channel, through the same balancer ----------------
-  # Enrollment on 1515 reaches the master only; events on 1514 are spread across all
-  # three nodes. This is the mixed-fleet front end a migration actually needs.
+  # Enrollment on 1515 and events on 1514 are spread across all three nodes (a worker
+  # forwards the enrollment to the master). This is the mixed-fleet front end a
+  # migration actually needs.
   wazuh-agent4-a:
     image: lab-agent4:4.14.1
     hostname: wazuh-agent4-a

@@ -636,8 +636,10 @@ start_service()
         exit 1;
     fi
 
-    # We actually start them now.
+    # We actually start them now. STARTED lists the daemons this run brought up, so that a failure stops
+    # those and only those: a daemon that was already running stays.
     first=true
+    STARTED=""
     if [ $USE_JSON = true ]; then
         echo -n '{"error":0,"data":['
     fi
@@ -686,9 +688,23 @@ start_service()
                 echo "start" > ${DIR}/var/run/${i}.failed
                 rm -f ${DIR}/var/run/*.start
                 rm -f ${DIR}/var/run/.restart
+                # Leave the manager stopped, not half started: under the unit (KillMode=process) systemd
+                # kills only this script, so the daemons it already launched would keep running inside a
+                # failed unit -- authd answering enrollments, wazuh-db serving a manager that is down. Stop
+                # what this run started, the failed daemon included (it may have left a process behind);
+                # daemons that were already running (remoted across a reload) stay. With -j its report is
+                # dropped: the document above is the only one. stop_service() reuses $i, so it runs last.
+                DAEMONS="${STARTED} ${i}"
+                MAX_KILL_TRIES=10
+                if [ $USE_JSON = true ]; then
+                    stop_service > /dev/null 2>&1
+                else
+                    stop_service
+                fi
                 unlock;
                 exit 1;
             fi
+            STARTED="${STARTED} ${i}"
             if [ $USE_JSON = true ]; then
                 echo -n '{"daemon":"'${i}'","status":"running"}'
             else

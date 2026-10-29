@@ -239,25 +239,27 @@ paths:
         (`Refusing to replace space '<space>': its namespace '<namespace>' was not created by the tester`): the
         temporary resources are deleted and the old session and its namespace are left untouched.
 
-        **`space: test` is the name the Wazuh dashboard gives its own test session — on the engine bundled with
-        wazuh-indexer, not on this manager's engine.** The dashboard's logtest runs there; on this manager's
-        socket `test` is an ordinary session name, and the examples below use it. When you call the engine inside
-        wazuh-indexer instead, sending `validate_and_load_testing` as written replaces the session the
-        dashboard's logtest runs against (until the dashboard loads its policy again): use another `space` name
-        for your own tests there.
+        **The Wazuh dashboard's logtest does not run on this manager's engine** but on the engine bundled with
+        wazuh-indexer, against the session wazuh-indexer creates for each space: it is named after the space
+        (`standard`, for example) and described as `wazuh-indexer auto created session`. On this manager's
+        socket no session exists until a request loads one, and the `test` space the examples below use is an
+        ordinary name. When you call the engine inside wazuh-indexer instead, loading a space name that
+        wazuh-indexer uses (such as `standard`) replaces the session the dashboard's logtest runs against for that
+        space (until wazuh-indexer loads its policy again): use a name of your own, such as `test`, there.
 
         ## Side effects of the policy's outputs
 
         The policy is built exactly as it would run, **outputs included** (only the engine's default outputs are
         left out of a test build). An output listed in `policy.outputs`:
-        - is created whenever the policy is built (a policy with integrations), even with
-          `load_in_tester: false`: a **file** output creates its channel directory `logs/<space>-<channel>/`,
-          its store entry `data/store/streamlog/<space>-<channel>/` and an open file in
-          `wazuh-manager-analysisd`. None of this is removed with the temporary namespace, the session or its
-          namespace, so each new `space` or channel name leaves one more set behind. `<space>` is the caller's
-          `space`, so a name such as `standard` writes into a production channel;
+        - is checked, but writes nothing, while the policy is only validated: a **file** output's channel name
+          must be valid (letters, digits, `_` and `-`), and its channel is not created, so `load_in_tester: false`
+          leaves no channel directory, store entry or open file behind;
         - with `load_in_tester: true`, **delivers every `/logtest` event** run against the session: an indexer
-          output writes a real document to its index, a file output appends a line to its channel.
+          output writes a real document to its index, and a file output creates its channel on the first event
+          (directory `logs/<space>-<channel>/`, store entry `data/store/streamlog/<space>-<channel>/`, an open
+          file in `wazuh-manager-analysisd`) and appends a line to it. Deleting the session does not remove the
+          channel: the file stays open until the manager restarts, and the directory and the store entry stay on
+          disk. `<space>` is the caller's `space`, so a name such as `standard` writes into a production channel.
 
         The policies the Wazuh Indexer sends carry no `outputs`; leave `policy.outputs` empty when validating
         a policy by hand.
@@ -496,10 +498,11 @@ paths:
         its channel. The policies the Wazuh Indexer sends carry no `outputs`, so its logtest writes nothing.
 
         The examples run against `space: test`, which works only after a `validate_and_load_testing` call has
-        loaded it. The Wazuh dashboard's logtest and its `test` session run on the engine bundled with
-        wazuh-indexer, not on this manager's engine, so the dashboard loading its policy does not create the
-        session here. That engine is the one that requires `trace_level`; changes to this API reach dashboard
-        users only through the wazuh-indexer package.
+        loaded it. The Wazuh dashboard's logtest runs on the engine bundled with wazuh-indexer, not on this
+        manager's engine, against the session wazuh-indexer creates for the space (named after it, such as
+        `standard`), so the dashboard loading its policy does not create any session here. That engine is the
+        one that requires `trace_level`; changes to this API reach dashboard users only through the
+        wazuh-indexer package.
 
         After the pipeline finishes, temporary fields (root key starts with `_`) are removed from the
         output event, which is then validated against the Wazuh Common Schema (WCS). Validation is
@@ -804,9 +807,10 @@ paths:
 
         This operation is idempotent: if there is no session named `space`, it returns **OK**.
 
-        The example deletes `space: test`. On this manager's engine that is an ordinary session name; the
-        Wazuh dashboard's own `test` session lives in the engine bundled with wazuh-indexer, where deleting it
-        makes the dashboard's logtest fail until the dashboard loads its policy again.
+        The example deletes `space: test`, an ordinary session name on this manager's engine. The Wazuh
+        dashboard's logtest sessions live in the engine bundled with wazuh-indexer, one per space and named after
+        it (such as `standard`); deleting one there makes the dashboard's logtest for that space fail until
+        wazuh-indexer loads its policy again.
       requestBody:
         required: true
         content:

@@ -151,11 +151,18 @@ exit 0
 # The configuration directory is fixed, outside the installation directory.
 CONF_DIR="%{_sysconfdir}/wazuh-manager"
 
+# print_unsupported_manager_upgrade VERSION [host]: the refusal of a manager older than 5.0, as the
+# package being upgraded or, with "host", anywhere on this host (a fresh install is refused beside it).
 print_unsupported_manager_upgrade() {
   DETECTED_VERSION="${1:-unknown}"
+  if [ "${2:-}" = "host" ]; then
+    UNSUPPORTED_REASON="A Wazuh manager older than 5.0 is installed on this host: Wazuh manager 5.x can neither upgrade it nor be installed beside it."
+  else
+    UNSUPPORTED_REASON="Upgrade from Wazuh manager versions prior to 5.x is not supported."
+  fi
   cat <<EOF >&2
 ==============================================================
-ERROR: Upgrade from Wazuh manager versions prior to 5.x is not supported.
+ERROR: ${UNSUPPORTED_REASON}
 
 Detected installed version: ${DETECTED_VERSION#v}
 
@@ -234,7 +241,7 @@ if ! is_pre5 "${OLD_VERSION}" && [ -f /var/ossec/VERSION.json ] && [ -x /var/oss
   OLD_VERSION=$(json_version /var/ossec/VERSION.json 2>/dev/null) || OLD_VERSION=""
 fi
 if is_pre5 "${OLD_VERSION}"; then
-  print_unsupported_manager_upgrade "${OLD_VERSION}"
+  print_unsupported_manager_upgrade "${OLD_VERSION}" host
   exit 1
 fi
 
@@ -503,6 +510,7 @@ rm -f ${CONF_DIR}/shared/merged.mg  >/dev/null 2>&1
 CRED_STATUS=0
 CRED_ERR=""
 CRED_INCOMPLETE="no"
+CRED_NEEDS_INSTALL="no"
 if [ -x %{_localstatedir}/bin/wazuh-manager-resolve-credentials ]; then
   if [ "$1" -eq 1 ]; then
     CRED_MODE="--install"
@@ -516,6 +524,13 @@ if [ -x %{_localstatedir}/bin/wazuh-manager-resolve-credentials ]; then
   if [ "${CRED_STATUS}" -ne 0 ] || printf '%%s\n' "${CRED_ERR}" | grep -q -E '^(MISSING|INVALID|UNSAFE) '; then
     CRED_INCOMPLETE="yes"
   fi
+  # Only --install mints the CA and issues the bundle and the server pairs, and an unsafe or invalid
+  # entry may have stopped the run before it did. Everything else it reports missing (the indexer
+  # password, the indexer's CA and client pair, rbac.db) the start completes.
+  if [ "${CRED_STATUS}" -ne 0 ] || printf '%%s\n' "${CRED_ERR}" \
+      | grep -q -E "^(INVALID|UNSAFE) |^MISSING ${CONF_DIR}/(ca/|certs/(root-ca|remoted|apid)\.pem)"; then
+    CRED_NEEDS_INSTALL="yes"
+  fi
 fi
 
 # Delete the installation files used to configure the manager
@@ -526,17 +541,23 @@ rm -rf %{_localstatedir}/packages_files
 # went. Only on a fresh install ($1 = 1): an upgrade or a reinstall finds the passwords already set.
 # install.sh prints its own start hint, so this lives in the package only.
 #
-# The password hint is printed only when the resolver published the file: a worker publishes nothing
-# (the Server API runs on the master), and a run stopped by an unsafe or invalid entry writes nothing
-# at all. When the resolver reported a problem, the manager refuses to start until it is fixed, and
-# only --install issues what the install could not, so that is the command to repeat.
+# The password hint is printed only when the resolver published the file: a run stopped by an unsafe
+# or invalid entry writes nothing at all, and a configuration kept from an earlier install may make
+# this node a worker, which publishes nothing (the Server API runs on the master). When the resolver
+# reported a problem, the manager refuses to start until it is fixed. Only --install issues the CA and
+# the server pairs, so it is the command to repeat when one of those is missing or the run stopped
+# early; what else is missing (the indexer's password and files) the start resolves, once supplied.
 if [ "$1" -eq 1 ]; then
   if [ -f "${CONF_DIR}/export/credentials.env" ]; then
     echo "Server API passwords saved in ${CONF_DIR}/export/credentials.env (readable by root only)."
   fi
   if [ "${CRED_INCOMPLETE}" = "yes" ]; then
     echo "Credential resolution is incomplete: the manager does not start until every MISSING, INVALID or UNSAFE entry reported above is resolved."
-    echo "Fix them, then run: %{_localstatedir}/bin/wazuh-manager-resolve-credentials --install -H %{_localstatedir}"
+    if [ "${CRED_NEEDS_INSTALL}" = "yes" ]; then
+      echo "Fix them, then run: %{_localstatedir}/bin/wazuh-manager-resolve-credentials --install -H %{_localstatedir}"
+    else
+      echo "Supply them as each entry above says, then start the manager: the start completes them, no new --install is needed."
+    fi
   fi
   if command -v systemctl > /dev/null 2>&1 && systemctl > /dev/null 2>&1; then
     echo "Start the manager and enable it at boot: systemctl enable --now wazuh-manager"
@@ -871,8 +892,8 @@ rm -fr %{buildroot}
 %dir %attr(770, wazuh-manager, wazuh-manager) %{_localstatedir}/data/store/schema/wazuh-logpar-overrides
 %dir %attr(750, wazuh-manager, wazuh-manager) %{_localstatedir}/data/tzdb
 %dir %attr(750, wazuh-manager, wazuh-manager) %{_localstatedir}/data/tzdb/iana
-%attr(660, wazuh-manager, wazuh-manager) %{_localstatedir}/data/mmdb/GeoLite2-ASN.mmdb
-%attr(660, wazuh-manager, wazuh-manager) %{_localstatedir}/data/mmdb/GeoLite2-City.mmdb
+%attr(640, wazuh-manager, wazuh-manager) %{_localstatedir}/data/mmdb/GeoLite2-ASN.mmdb
+%attr(640, wazuh-manager, wazuh-manager) %{_localstatedir}/data/mmdb/GeoLite2-City.mmdb
 %attr(660, wazuh-manager, wazuh-manager) %{_localstatedir}/data/store/enrichment/geo/0
 %attr(660, wazuh-manager, wazuh-manager) %{_localstatedir}/data/store/enrichment/ioc/0
 %attr(660, wazuh-manager, wazuh-manager) %{_localstatedir}/data/store/geo/mmdb/0

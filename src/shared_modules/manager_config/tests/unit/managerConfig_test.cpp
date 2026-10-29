@@ -293,6 +293,15 @@ TEST(Schema, YesNoIsBooleanAndTrueFalseIsRejected)
     EXPECT_NE(error.message.find("booleans are yes/no"), std::string::npos) << error.what();
 }
 
+TEST(Schema, UnknownTopLevelOptionNamesTheSchemaRoot)
+{
+    // The rule broken is the root's additionalProperties, whose schema pointer is empty: never "[schema ]".
+    const auto error = parseKo(wrap("<github><enabled>yes</enabled></github>"));
+    EXPECT_EQ(error.pointer, "/github");
+    EXPECT_NE(error.message.find("[schema /]"), std::string::npos) << error.what();
+    EXPECT_EQ(error.message.find("[schema ]"), std::string::npos) << error.what();
+}
+
 TEST(Schema, BooleanHintOnlyForBooleanOptions)
 {
     // An integer option given text is a type error too, but not a boolean one.
@@ -416,7 +425,7 @@ TEST(Schema, DurationsAndSizesStopWhereTheReadersWould)
     // with a unit is still zero, which every reader below refuses.
     parseOk(wrap("<global><agents_disconnection_time>999w</agents_disconnection_time></global>"
                  "<remote><legacy><rids_closing_time>999999999</rids_closing_time></legacy>"
-                 "<https><max_body_size>999999G</max_body_size></https></remote>"
+                 "<https><max_body_size>1G</max_body_size></https></remote>"
                  "<wdb><backup database=\"global\"><interval>9999d</interval></backup></wdb>"));
     const struct
     {
@@ -435,6 +444,7 @@ TEST(Schema, DurationsAndSizesStopWhereTheReadersWould)
          "/remote/legacy/rids_closing_time"},
         {"<remote><https><max_body_size>0K</max_body_size></https></remote>", "/remote/https/max_body_size"},
         {"<remote><https><max_body_size>1000000G</max_body_size></https></remote>", "/remote/https/max_body_size"},
+        {"<remote><https><max_body_size>2G</max_body_size></https></remote>", "/remote/https/max_body_size"},
         {"<wdb><backup database=\"global\"><interval>99999999999999999999</interval></backup></wdb>",
          "/wdb/backup/global/interval"},
         {"<vulnerability-detection><feed-update-interval>99999999m</feed-update-interval></vulnerability-detection>",
@@ -445,6 +455,21 @@ TEST(Schema, DurationsAndSizesStopWhereTheReadersWould)
     for (const auto& item : rejected)
     {
         EXPECT_EQ(parseKo(wrap(item.body)).pointer, item.pointer) << item.body;
+    }
+}
+
+TEST(Schema, HttpsMaxBodySizeIsCappedAtOneGibibyte)
+{
+    // The read phase buffers up to one body per connection, so the cap bounds that peak; 1G in every spelling.
+    for (const char* size : {"1G", "1g", "1024M", "1048576K", "1073741824", "1073741824B", "0001G", "1"})
+    {
+        parseOk(wrap(std::string("<remote><https><max_body_size>") + size + "</max_body_size></https></remote>"));
+    }
+    for (const char* size : {"2G", "1025M", "1048577K", "1073741825", "1073741825B", "10737418240", "0G"})
+    {
+        const auto error =
+            parseKo(wrap(std::string("<remote><https><max_body_size>") + size + "</max_body_size></https></remote>"));
+        EXPECT_EQ(error.pointer, "/remote/https/max_body_size") << size;
     }
 }
 

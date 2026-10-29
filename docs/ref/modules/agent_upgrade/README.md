@@ -58,7 +58,7 @@ framework function as the API, broadcast to every cluster node.
 | Flag | Meaning |
 |------|---------|
 | `-a`, `--agents <ID> [<ID> …]` | Agents to upgrade. Without `-a` (and without `-l`) the help is printed |
-| `-l`, `--list_outdated` | List the agents older than the manager and exit |
+| `-l`, `--list_outdated` | List the agents older than the manager and exit; the list always comes from the master, also when run on a worker |
 | `-v`, `--version <version>` | Target version. Default: the manager's own version |
 | `-r`, `--repository <host/path>` | WPK repository. Default: `task-manager.wpk_repository`, else `packages.wazuh.com/<major>.x/wpk/` for the target version |
 | `-F`, `--force` | Skip the overridable version checks |

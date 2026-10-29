@@ -158,6 +158,65 @@ class LocalServerHandler(server.AbstractServerHandler):
         """
         raise NotImplementedError
 
+    @staticmethod
+    def relay_error(future: asyncio.Future) -> Union[exception.WazuhException, None]:
+        """Get the error, if any, of a request relayed to another cluster node.
+
+        A peer answers a failed request with an `err` reply, which `send_request` returns as an exception object
+        instead of raising it; a request that could not be sent or answered raises instead.
+
+        Parameters
+        ----------
+        future : asyncio.Future
+            Relayed request.
+
+        Returns
+        -------
+        WazuhException or None
+            The error to send to the local client, or None if the request succeeded.
+        """
+        if future.cancelled():
+            return exception.WazuhClusterError(3020, extra_message='the relayed request was cancelled')
+        error = future.exception()
+        if error is None and isinstance(future.result(), Exception):
+            error = future.result()
+        if error is None or isinstance(error, exception.WazuhException):
+            return error
+        return exception.WazuhInternalError(1000, extra_message=str(error))
+
+    def send_error_to_local_client(self, command: bytes, error: exception.WazuhException):
+        """Answer the local client with an `err` reply, so it does not wait for a response that will never come.
+
+        The reply has the shape of the one sent when this node raises the error itself.
+
+        Parameters
+        ----------
+        command : bytes
+            Command the local client sent.
+        error : WazuhException
+            Error to send.
+        """
+        self.log_request_error(command, error)
+        send_res = asyncio.create_task(self.log_exceptions(
+            self.send_request(command=b'err', data=json.dumps(error, cls=c_common.WazuhJSONEncoder).encode())))
+        send_res.add_done_callback(self.send_res_callback)
+
+    def get_dapi_relay_response(self, command: bytes, future: asyncio.Future):
+        """Answer the local client if a DAPI request could not be relayed.
+
+        Callback of the DAPI relays. On success the peer answers later through a 'dapi_res' or 'dapi_err'
+        request, so nothing is sent here.
+
+        Parameters
+        ----------
+        command : bytes
+            Command the local client sent.
+        future : asyncio.Future
+            Relayed request.
+        """
+        if (error := self.relay_error(future)) is not None:
+            self.send_error_to_local_client(command, error)
+
     def get_send_file_response(self, future):
         """Forward the 'send_file' response to the API.
 
@@ -265,8 +324,9 @@ class LocalServerHandlerMaster(LocalServerHandler):
             node_name, request = data.split(b' ', 1)
             node_name = node_name.decode()
             if node_name in self.server.node.clients:
-                asyncio.create_task(self.log_exceptions(
-                    self.server.node.clients[node_name].send_request(b'dapi', self.name.encode() + b' ' + request)))
+                relay = asyncio.create_task(
+                    self.server.node.clients[node_name].send_request(b'dapi', self.name.encode() + b' ' + request))
+                relay.add_done_callback(functools.partial(self.get_dapi_relay_response, command))
                 return b'ok', b'Request forwarded to worker node'
             else:
                 raise WazuhClusterError(3022)
@@ -388,8 +448,9 @@ class LocalServerHandlerWorker(LocalServerHandler):
         if command == b'dapi':
             if self.server.node.client is None:
                 raise WazuhClusterError(3023)
-            asyncio.create_task(self.log_exceptions(
-                self.server.node.client.send_request(b'dapi', self.name.encode() + b' ' + data)))
+            request = asyncio.create_task(
+                self.server.node.client.send_request(b'dapi', self.name.encode() + b' ' + data))
+            request.add_done_callback(functools.partial(self.get_dapi_relay_response, command))
             return b'ok', b'Added request to API requests queue'
         elif command == b'sendsync':
             if self.server.node.client is None:
@@ -460,14 +521,15 @@ class LocalServerHandlerWorker(LocalServerHandler):
         if self.server.node.client is None:
             raise WazuhClusterError(3023)
         else:
-            request = asyncio.create_task(self.log_exceptions(self.server.node.client.send_request(command, arguments)))
+            request = asyncio.create_task(self.server.node.client.send_request(command, arguments))
             request.add_done_callback(functools.partial(self.get_api_response, command))
             return b'ok', b'Sent request to master node'
 
     def get_api_response(self, in_command, future):
         """Forward response sent by the master to the local client.
 
-        Callback of the send_request_to_master method.
+        Callback of the send_request_to_master method. An error, whether the master answered with one or the request
+        could not be relayed, is sent to the local client as an `err` reply, as if this node had raised it.
 
         Parameters
         ----------
@@ -476,6 +538,10 @@ class LocalServerHandlerWorker(LocalServerHandler):
         future : asyncio.Future object
             Request result.
         """
+        if (error := self.relay_error(future)) is not None:
+            self.send_error_to_local_client(in_command, error)
+            return
+
         send_res = asyncio.create_task(self.log_exceptions(
             self.send_request(command=b'dapi_res' if in_command == b'dapi' else b'control_res', data=future.result())))
         send_res.add_done_callback(self.send_res_callback)

@@ -883,9 +883,12 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
                                        cluster_items['files'].get('excluded_files', []),
                                        cluster_items['files'].get('excluded_extensions', [])):
                     raise exception.WazuhClusterError(3062, extra_message=f"File is in excluded list: {filename_}")
-                # Create destination dir if it doesn't exist.
-                if not os.path.exists(os.path.dirname(full_filename_path)):
-                    utils.mkdir_with_mode(os.path.dirname(full_filename_path))
+                # Create destination dir if it doesn't exist. A group directory directly under shared/
+                # gets 0700, the mode the API gives it on the master.
+                dest_dir = os.path.dirname(full_filename_path)
+                if not os.path.exists(dest_dir):
+                    is_group_dir = os.path.dirname(os.path.normpath(dest_dir)) == os.path.normpath(common.SHARED_PATH)
+                    utils.mkdir_with_mode(dest_dir, 0o700 if is_group_dir else 0o770)
                 # Move the file from zipdir (directory containing unzipped files) to local_path(filename).
                 safe_move(safe_join(zip_path, filename_), full_filename_path,
                           permissions=cluster_items['files'][item_key]['permissions'],

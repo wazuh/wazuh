@@ -48,6 +48,23 @@ static void move_netdata(keystore *keys, const keystore *old_keys)
     }
 }
 
+/* The key an agent is indexed by in keys->keytree_ip, its single-host address, in the registered form
+ * authd looks an address up by. Returns false for a network: networks are not indexed, since the tree
+ * answers "which agent holds this one address". Indexed by its bare base address (the "/" stripped), a
+ * network made a host equal to that base address a duplicate of it, while a host elsewhere in its range
+ * was not, and two agents registered with the same network shared, and overwrote, one key. */
+static bool keytree_ip_key(const os_ip *ip, char *out, size_t size) {
+    bool parsed = (strchr(ip->ip, ':') != NULL) ? (ip->ipv6 != NULL) : (ip->ipv4 != NULL);
+
+    if (!parsed || OS_CIDRtoStr(ip, out, size) != 0) {
+        strncpy(out, ip->ip, size - 1);
+        out[size - 1] = '\0';
+        return true;
+    }
+
+    return strchr(out, '/') == NULL;
+}
+
 static void save_removed_key(keystore *keys, const char *key) {
     os_realloc(keys->removed_keys, (keys->removed_keys_size + 1) * sizeof(char*), keys->removed_keys);
     keys->removed_keys[keys->removed_keys_size++] = strdup(key);
@@ -61,6 +78,7 @@ int OS_AddKey(keystore *keys, const char *id, const char *name, const char *ip, 
 
     char *tmp_str;
     char _finalstr[KEYSIZE];
+    char ip_key[IPSIZE + 1];
 
     /* Allocate for the whole structure */
     keys->keyentries = (keyentry **)realloc(keys->keyentries,
@@ -89,9 +107,9 @@ int OS_AddKey(keystore *keys, const char *id, const char *name, const char *ip, 
         *tmp_str = '\0';
     }
 
-    rbtree_insert(keys->keytree_ip,
-               keys->keyentries[keys->keysize]->ip->ip,
-               keys->keyentries[keys->keysize]);
+    if (keytree_ip_key(keys->keyentries[keys->keysize]->ip, ip_key, sizeof(ip_key))) {
+        rbtree_insert(keys->keytree_ip, ip_key, keys->keyentries[keys->keysize]);
+    }
 
     /* Agent name */
     os_strdup(name, keys->keyentries[keys->keysize]->name);
@@ -549,7 +567,14 @@ int OS_DeleteKey(keystore *keys, const char *id, int purge) {
     }
 
     rbtree_delete(keys->keytree_id, id);
-    rbtree_delete(keys->keytree_ip, keys->keyentries[i]->ip->ip);
+
+    /* Several agents may share an IP key ("any"): only the first is indexed, so remove the key only
+     * when it is this agent's, never another agent's entry. */
+    char ip_key[IPSIZE + 1];
+    if (keytree_ip_key(keys->keyentries[i]->ip, ip_key, sizeof(ip_key)) &&
+        rbtree_get(keys->keytree_ip, ip_key) == keys->keyentries[i]) {
+        rbtree_delete(keys->keytree_ip, ip_key);
+    }
 
     if (keys->keyentries[i]->sock >= 0) {
         char strsock[16] = "";

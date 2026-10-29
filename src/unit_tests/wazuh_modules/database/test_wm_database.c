@@ -116,6 +116,9 @@ void test_sync_keys_with_wdb_insert(void **state) {
     will_return(__wrap_OS_CIDRtoStr, test_ip);
     will_return(__wrap_OS_CIDRtoStr, 0);
 
+    expect_value(__wrap_get_agent_date_added, agent_id, 1);
+    will_return(__wrap_get_agent_date_added, (time_t)1700000000);
+
     expect_value(__wrap_wdb_insert_agent, id, 1);
     expect_string(__wrap_wdb_insert_agent, name, keys.keyentries[0]->name);
     expect_string(__wrap_wdb_insert_agent, register_ip, test_ip);
@@ -125,6 +128,52 @@ void test_sync_keys_with_wdb_insert(void **state) {
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-manager-modulesd:database");
     expect_string(__wrap__mtdebug1, formatted_msg, "Couldn't insert agent '001' in the database.");
+
+    will_return(__wrap_rbtree_keys, ids);
+
+    expect_string(__wrap_OS_IsAllowedID, id, keys.keyentries[0]->id);
+    will_return(__wrap_OS_IsAllowedID, 0);
+
+    sync_keys_with_wdb(&keys);
+}
+
+/* A worker has no queue/agents-timestamp entry for the agents it mirrors: the row gets the time it is
+ * mirrored instead of date_add 0. */
+void test_sync_keys_with_wdb_insert_no_timestamp(void **state) {
+    keystore keys = *((keystore *)*state);
+    keys.keysize = 1;
+
+    rb_tree *tree = NULL;
+    os_calloc(1, sizeof(rb_tree), tree);
+
+    char *test_ip = "any";
+
+    char **ids = NULL;
+    ids = os_AddStrArray("001", ids);
+
+    will_return(__wrap_wdb_get_all_agents_rbtree, tree);
+
+    expect_value(__wrap_rbtree_get, tree, tree);
+    expect_string(__wrap_rbtree_get, key, keys.keyentries[0]->id);
+    will_return(__wrap_rbtree_get, NULL);
+
+    expect_string(__wrap__mtdebug2, tag, "wazuh-manager-modulesd:database");
+    expect_string(__wrap__mtdebug2, formatted_msg, "Synchronizing agent 001 'agent1'.");
+
+    expect_value(__wrap_get_agent_date_added, agent_id, 1);
+    will_return(__wrap_get_agent_date_added, (time_t)0);
+
+    expect_any(__wrap_OS_CIDRtoStr, ip);
+    expect_value(__wrap_OS_CIDRtoStr, size, IPSIZE);
+    will_return(__wrap_OS_CIDRtoStr, test_ip);
+    will_return(__wrap_OS_CIDRtoStr, 0);
+
+    expect_value(__wrap_wdb_insert_agent, id, 1);
+    expect_string(__wrap_wdb_insert_agent, name, keys.keyentries[0]->name);
+    expect_string(__wrap_wdb_insert_agent, register_ip, test_ip);
+    expect_string(__wrap_wdb_insert_agent, internal_key, keys.keyentries[0]->raw_key);
+    expect_value(__wrap_wdb_insert_agent, keep_date, 0);
+    will_return(__wrap_wdb_insert_agent, 0);
 
     will_return(__wrap_rbtree_keys, ids);
 
@@ -189,6 +238,9 @@ void test_sync_keys_with_wdb_insert_delete(void **state) {
     expect_value(__wrap_OS_CIDRtoStr, size, IPSIZE);
     will_return(__wrap_OS_CIDRtoStr, test_ip);
     will_return(__wrap_OS_CIDRtoStr, 0);
+
+    expect_value(__wrap_get_agent_date_added, agent_id, 1);
+    will_return(__wrap_get_agent_date_added, (time_t)1700000000);
 
     expect_value(__wrap_wdb_insert_agent, id, 1);
     expect_string(__wrap_wdb_insert_agent, name, keys.keyentries[0]->name);
@@ -276,6 +328,7 @@ int main()
     const struct CMUnitTest tests[] = {
         // sync_keys_with_wdb
         cmocka_unit_test_setup_teardown(test_sync_keys_with_wdb_insert, setup_keys_to_db, teardown_keys_to_db),
+        cmocka_unit_test_setup_teardown(test_sync_keys_with_wdb_insert_no_timestamp, setup_keys_to_db, teardown_keys_to_db),
         cmocka_unit_test_setup_teardown(test_sync_keys_with_wdb_delete, setup_keys_to_db, teardown_keys_to_db),
         cmocka_unit_test_setup_teardown(test_sync_keys_with_wdb_insert_delete, setup_keys_to_db, teardown_keys_to_db),
         cmocka_unit_test_setup_teardown(test_sync_keys_with_wdb_null, setup_keys_to_db, teardown_keys_to_db),

@@ -42,8 +42,15 @@ comes from the `WAZUH_INDEXER_HOSTS` and `WAZUH_INDEXER_SSL_*` variables instead
   start-up with `Error loading configuration: Invalid configuration type for key '<key>'. …` in
   `wazuh-manager.log`. An environment variable that cannot be converted is logged as a warning and the file value or
   the default is used.
-- `wazuh-manager-analysisd -t` (run by every `wazuh-manager-control start`) never reads this file, so a bad
-  `analysisd.*` value passes the start checks and then stops the daemon.
+- A setting with an allowed range (stated in its description below) is checked on its effective value, whatever
+  its source: a value outside the range stops the engine at start-up with `Error loading configuration: Invalid
+  value for key '<key>' from the <source>: '<value>'. Allowed range: <min> to <max>.`, where `<source>` is
+  `internal options file` or `environment variable '<variable>'`. A range applies even where the setting is not
+  used (for example the indexer settings while event processing is disabled).
+- `wazuh-manager-analysisd -t` (run by every `wazuh-manager-control start`, `restart`, `reload` and `check`) loads
+  this file the same way and applies the same type and range checks, so a bad `analysisd.*` value is refused
+  before the manager is stopped. It reads the environment of the shell that runs it, while the `wazuh-manager`
+  systemd unit starts the engine with no environment.
 - In standalone mode the file is never loaded: only the environment variable and the default apply.
 - `Mode` in the tables tells where a setting is read: `both`, `manager` (only when the engine runs inside
   `wazuh-manager`) or `standalone` (only in standalone mode, so only its environment variable can set it).
@@ -57,7 +64,7 @@ wazuh-manager-analysisd [-f] [-t] [-d [-d]] [-h] [-V]
 | Option | Effect |
 |--------|--------|
 | `-f` | Run in the foreground instead of daemonizing. |
-| `-t` | Test the configuration and exit. In manager mode it validates `/etc/wazuh-manager/wazuh-manager.conf`, including the files it references, and exits `0`, or prints `Error loading configuration: <reason>` to stderr and exits `1`. It does not read the internal options file. In standalone mode it exits `0` without checking anything. |
+| `-t` | Test the configuration and exit. In manager mode it validates `/etc/wazuh-manager/wazuh-manager.conf`, including the files it references, then loads the internal options file as a start does (types and [ranges](#how-values-are-resolved)), and exits `0`, or prints `Error loading configuration: <reason>` to stderr and exits `1`. In standalone mode it exits `0` without checking anything. |
 | `-d` | Debug logging for this run: once for debug, twice or more for trace. It takes priority over `analysisd.debug` (`analysisd.logging_level` in standalone mode). |
 | `-h` | Print the usage to stdout and exit `0`. An unknown option prints the error and the usage to stderr and exits `1`. |
 | `-V` | Print the version (`Wazuh v<version> - Wazuh Inc.`) to stderr, as the other manager daemons do, and exit `0`. |
@@ -197,7 +204,7 @@ reads); they must remain owned by `wazuh-manager` (see [Process privileges](#pro
 
 | Setting | Env var | Description | Default | Mode |
 |:--|:--|:--|:--:|:--:|
-| `analysisd.event_queue_size` | `WAZUH_EVENT_QUEUE_SIZE` | Maximum number of events waiting in the router input queue. Events can be dropped when this queue is full. Minimum `8192`; a smaller value stops the engine at start-up. | `131072` | both |
+| `analysisd.event_queue_size` | `WAZUH_EVENT_QUEUE_SIZE` | Maximum number of events waiting in the router input queue. Events can be dropped when this queue is full. Allowed range: `8192` to `2147483647`, else the engine fails to start. | `131072` | both |
 | `analysisd.event_queue_eps` | `WAZUH_EVENT_QUEUE_EPS` | Maximum number of events per second the router takes from its input queue. `0` means unlimited. Above this rate the queue fills up and new events are dropped (`router.events.dropped`). | `0` | both |
 | `analysisd.event_queue_max_bytes` | `WAZUH_EVENT_QUEUE_MAX_BYTES` | Maximum total byte size of events waiting in the router input queue. Events are dropped when this quota is full. `0` means unlimited. | `33554432` (32 MB) | both |
 
@@ -205,7 +212,7 @@ reads); they must remain owned by `wazuh-manager` (see [Process privileges](#pro
 
 | Setting | Env var | Description | Default | Mode |
 |:--|:--|:--|:--:|:--:|
-| `analysisd.agent_metadata_cache_ttl` | `WAZUH_AGENT_METADATA_CACHE_TTL` | Time-to-live in seconds for cached agent metadata. | `300` | both |
+| `analysisd.agent_metadata_cache_ttl` | `WAZUH_AGENT_METADATA_CACHE_TTL` | Time-to-live in seconds for cached agent metadata. Allowed range: `1` to `86400`, else the engine fails to start. | `300` | both |
 | `analysisd.agent_metadata_cache_clean_interval` | `WAZUH_AGENT_METADATA_CACHE_CLEAN_INTERVAL` | Interval in seconds between best-effort evictions of stale agent metadata cache entries. | `60` | both |
 
 ### Orchestrator
@@ -297,7 +304,7 @@ links to the current file.
 |:--|:--|:--|:--:|:--:|
 | `analysisd.streamlog_base_path` | `WAZUH_STREAMLOG_BASE_PATH` | Base directory for the events and dumper stream-log files. | `/var/wazuh-manager/logs/` | both |
 | `analysisd.streamlog_compress` | `WAZUH_STREAMLOG_SHOULD_COMPRESS` | Whether rotated stream-log files (events and dumper) are compressed. | `true` | both |
-| `analysisd.streamlog_compression_level` | `WAZUH_STREAMLOG_COMPRESSION_LEVEL` | Compression level applied to rotated stream-log files (events and dumper). | `5` | both |
+| `analysisd.streamlog_compression_level` | `WAZUH_STREAMLOG_COMPRESSION_LEVEL` | Compression level applied to rotated stream-log files (events and dumper). Allowed range: `1` to `9`, else the engine fails to start (also while `analysisd.streamlog_compress` is `false`). | `5` | both |
 | `analysisd.streamlog_events_pattern` | `WAZUH_STREAMLOG_EVENTS_PATTERN` | File-name pattern for the events stream log, relative to `analysisd.streamlog_base_path`. | `${YYYY}/${MMM}/wazuh-${name}-${DD}` | both |
 | `analysisd.streamlog_events_max_size` | `WAZUH_STREAMLOG_EVENTS_MAX_SIZE` | Maximum size in bytes of one events stream-log file before rotation. `0` disables size-based rotation; a value below `1048576` (1 MB) is raised to 1 MB. | `0` | both |
 | `analysisd.streamlog_events_buffer_size` | `WAZUH_STREAMLOG_EVENTS_BUFFER_SIZE` | Capacity, in messages, of the events stream log's write queue (`0` means the default). | `1048576` | both |
@@ -324,7 +331,7 @@ file.
 | Setting | Env var | Description | Default | Mode |
 |:--|:--|:--|:--:|:--:|
 | `analysisd.server_api_socket` | `WAZUH_SERVER_API_SOCKET` | Unix domain socket path for the engine's HTTP API server. Do not change it on a manager: the readiness probe of `wazuh-manager-control start` and the Server API use the fixed default path. | `/var/wazuh-manager/queue/sockets/engine-api-http.sock` | both |
-| `analysisd.server_api_timeout` | `WAZUH_SERVER_API_TIMEOUT` | Tester timeout in milliseconds: how long a test run (`/logtest`, `/_internal/tester/run/post`) waits for the event's result before answering `400` with `Timeout waiting for ingestTest`. A value below `1` stops the engine at start-up. | `5000` (5 s) | both |
+| `analysisd.server_api_timeout` | `WAZUH_SERVER_API_TIMEOUT` | Tester timeout in milliseconds: how long a test run (`/logtest`, `/_internal/tester/run/post`) waits for the event's result before answering `400` with `Timeout waiting for ingestTest`. Allowed range: `1` to `2147483647`, else the engine fails to start. | `5000` (5 s) | both |
 | `analysisd.server_api_payload_max_bytes` | `WAZUH_SERVER_API_PAYLOAD_MAX_BYTES` | Maximum request payload size in bytes for the engine's HTTP API server. `0` means unlimited. A negative value is clamped to `0` with a warning. | `0` | both |
 | `analysisd.server_enriched_events_socket` | `WAZUH_SERVER_ENRICHED_EVENTS_SOCKET` | Unix domain socket path for the engine's enriched-events HTTP ingest server (`POST /events/enriched`). Do not change it on a manager: `wazuh-manager-remoted` and the vulnerability scanner send events to the fixed default path. | `/var/wazuh-manager/queue/sockets/engine-ingest-http.sock` | both |
 | `analysisd.server_enable_event_processing` | `WAZUH_SERVER_ENABLE_EVENT_PROCESSING` | Master switch for the event-processing pipeline (indexer connector, stream loggers, raw-event indexer, remote-conf and CM/IOC sync, dumper, enriched-events HTTP server). With `false` the manager starts but processes no events: there is no event dumper (its routes answer `500`), and `GET /status` — which the readiness probe of `wazuh-manager-control start` uses — answers with no `spaces` or `ioc` entries and `ready: false`. | `true` | both |
@@ -468,11 +475,12 @@ messages listed in [Command-line options](#command-line-options). Look for the r
 grep wazuh-manager-analysisd /var/wazuh-manager/logs/wazuh-manager.log | grep -E "ERROR|CRITICAL|WARNING"
 ```
 
-- `Error loading configuration: Invalid configuration type for key …` — a bad `analysisd.*` value; fix the line in
-  `wazuh-manager-internal-options.conf`.
+- `Error loading configuration: Invalid configuration type for key …` or `Error loading configuration: Invalid value
+  for key '<key>' … Allowed range: …` — a bad `analysisd.*` value; fix the line in
+  `wazuh-manager-internal-options.conf`. `wazuh-manager-control check` (or `wazuh-manager-analysisd -t`) reports the
+  same error without stopping the manager.
 - A permission error naming a path under `/var/wazuh-manager` — see
   [Switching back to `true` after running as `root`](#switching-back-to-true-after-running-as-root).
-- A range error such as `analysisd.indexer_bulk_max_bytes must be between …` — a setting outside its allowed range.
 
 ### Events being dropped
 

@@ -116,7 +116,10 @@ Uninstall 4.x, then install 5.0 following [Installation](../../ref/getting-start
 The order is enforced. The DEB `preinst` and the RPM `%pre` refuse to install, fresh install or
 upgrade, while a 4.x manager is still on the host (an `/etc/ossec-init.conf` of type `server` or
 `local`, or a `/var/ossec` whose `bin/wazuh-control info -t` answers `server`), and `install.sh`
-refuses when the `wazuh-manager` installation it finds is older than 5.x. Nothing is changed:
+refuses when the `wazuh-manager` installation it finds is older than 5.x. Nothing is changed. An
+upgrade of the old package is refused with the message below; a fresh package install beside a 4.x
+manager says instead `ERROR: A Wazuh manager older than 5.0 is installed on this host: Wazuh manager
+5.x can neither upgrade it nor be installed beside it.`, followed by the same lines:
 
 ```console
 ERROR: Upgrade from Wazuh manager versions prior to 5.x is not supported.
@@ -200,12 +203,15 @@ openssl req -new -nodes -newkey rsa:2048 -keyout indexer-connector-key.pem -out 
 printf 'basicConstraints=CA:FALSE\nkeyUsage=digitalSignature,keyEncipherment\nextendedKeyUsage=clientAuth\n' > connector.ext
 openssl x509 -req -in connector.csr -CA root-ca.pem -CAkey root-ca.key -CAcreateserial -days 3650 -sha256 \
     -extfile connector.ext -out indexer-connector.pem
-sudo install -m 0640 -o root -g root root-ca.pem /etc/wazuh-manager/certs/indexer-ca.pem
-sudo install -m 0640 -o root -g root indexer-connector.pem indexer-connector-key.pem /etc/wazuh-manager/certs/
+sudo install -m 0640 -o root -g wazuh-manager root-ca.pem /etc/wazuh-manager/certs/indexer-ca.pem
+sudo install -m 0640 -o root -g wazuh-manager indexer-connector.pem indexer-connector-key.pem /etc/wazuh-manager/certs/
 ```
 
-The files can be root-owned at this point: the installer sets everything in `certs/` to `root:wazuh-manager`
-`0640`. Staged without an import marker, they are validated at every start and never replaced.
+Stage them after installing the package, before the first start: the `wazuh-manager` group exists only from then,
+and nothing re-owns a file staged later, so every file in `certs/` must already be `root:wazuh-manager` `0640`. A
+file with any other group or mode refuses the start (`UNSAFE /etc/wazuh-manager/certs/indexer-ca.pem: group is
+root, not wazuh-manager`, `Unsafe credentials. Exiting`). Staged without an import marker, they are validated at
+every start and never replaced.
 
 Two requirements come from the fleet rather than from whoever signs:
 
@@ -226,15 +232,18 @@ error `2003` in `logs/api.log` and does not start. A client of the API trusts th
 case).
 
 When the install issued no listener pair, the manager refuses to start, before any daemon runs, with the
-configuration validator's verdict:
+credential check's verdict:
 
 ```console
-(1244): Invalid configuration at '/remote/https/certificate': file not found: /etc/wazuh-manager/certs/remoted.pem (issued by the credential resolver at installation, or provisioned externally, e.g. with wazuh-certs-tool).
+MISSING /etc/wazuh-manager/certs/remoted.pem: run --install to issue it, or stage the pair
+Unresolved credentials. Exiting
 ```
 
-Place the pair and start it again; nothing has to be reinstalled. A pair that exists but is unreadable by the
-service user passes that check and stops `wazuh-manager-remoted` instead, with
-`Cannot start the HTTPS agent listener: ...`.
+Place the pair, or run `sudo /var/wazuh-manager/bin/wazuh-manager-resolve-credentials --install` with the CA and
+its key in `ca/`, and start it again; nothing has to be reinstalled. A pair with another owner, group or mode is
+refused the same way, as unsafe, for example `UNSAFE /etc/wazuh-manager/certs/remoted-key.pem: mode is 0600, not
+0640` followed by `Unsafe credentials. Exiting`. Both refusals are also written to
+`/var/wazuh-manager/logs/wazuh-manager.log`; with `wazuh-manager-control -j start` they are errors `21` and `22`.
 
 ### Install it out of the fleet's reach
 

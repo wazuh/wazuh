@@ -168,7 +168,10 @@ namespace manager_config::detail
                 }
             }
         }
-        message += " [schema " + pointerToString(validator.GetInvalidSchemaPointer()) + "]";
+        // The schema root stringifies as the empty pointer (an unknown top-level option breaks the root's
+        // additionalProperties); show it as '/', as the subject of a document-level error is shown.
+        const auto schemaPointer = pointerToString(validator.GetInvalidSchemaPointer());
+        message += " [schema " + (schemaPointer.empty() ? std::string("/") : schemaPointer) + "]";
         return Error {pointerToString(validator.GetInvalidDocumentPointer()), message};
     }
 

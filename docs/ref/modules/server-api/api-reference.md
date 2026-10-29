@@ -18,7 +18,7 @@ Most `GET` endpoints that return a list accept these standard parameters (`prett
 | `wait_for_complete` | boolean | `false` | Disable the request timeout (`intervals.request_timeout`) |
 | `offset` | int | `0` | First element to return (max: 2,147,483,647) |
 | `limit` | int | `500` | Max elements to return (1 to 100,000) |
-| `search` | string | — | Free-text search (prefix `-` for complementary) |
+| `search` | string | — | Free-text search (prefix `-` for complementary). It matches the **stored** value of each field, not the one a response renders: a 4.x agent's version is stored as `Wazuh v4.14.5`, so `search=wazuh` finds 4.x agents although responses show `v4.14.5` |
 | `sort` | string | — | Sort by fields (comma-separated, dot notation for nested); one leading `+` (asc, default) or `-` (desc) applies to the whole list, e.g. `-name,id` |
 | `select` | string | — | Fields to return (comma-separated) |
 | `q` | string | — | Query filter (see [Query filter syntax](#query-filter-syntax)) |
@@ -117,7 +117,13 @@ curl -k -X GET "https://localhost:55000/agents?select=id,name,status,ip&sort=-id
 
 Key filters: `agents_list`, `status`, `older_than`, `os.type`, `os.platform`, `os.version`, `os.major`, `os.minor`, `os.arch`, `os.name`, `version`, `group`, `name`, `ip`, `registerIP` (an exact match against the stored text; IPv4, IPv6 and CIDR values such as `10.0.0.0/24` are accepted, so an agent registered for a range is found by that range; an IPv6 value matches in any spelling, compact or expanded, since it is rewritten to the expanded form the manager stores, for example `fd00:e2e::/64` to `FD00:0E2E:0000:0000:0000:0000:0000:0000/64`). A mask is **not** rewritten: registration stores a single address without its mask and a network as `<address>/<prefix length>`, so `10.250.0.1/32` or `10.250.6.0/255.255.255.0` finds nothing — give `10.250.0.1` and `10.250.6.0/24`.
 
-`version` is rewritten to the form a 4.x agent's version is stored in: `4.14.3`, `v4.14.3` and `wazuh 4.14.3` all become `wazuh v4.14.3`, which matches a 4.x agent's stored `Wazuh v4.14.3`. A 5.x agent's version is stored as `v5.0.0`, without the `Wazuh` prefix, so the `version` filter **never matches a 5.x agent**; `q` is not rewritten, so `q=version~5.0.0` (contains) finds the agents of that version in either stored form. Responses show both generations as `vX.Y.Z`. `group` matches a group name exactly, case included: `Web` and `web` are two groups. Inside `q` an IPv6 value is not rewritten and must be given in the stored, expanded form.
+`version` is rewritten to the form a 4.x agent's version is stored in: `4.14.3`, `v4.14.3` and `wazuh 4.14.3` all become `wazuh v4.14.3`, which matches a 4.x agent's stored `Wazuh v4.14.3`. A 5.x agent's version is stored as `v5.0.0`, without the `Wazuh` prefix, so the `version` filter **never matches a 5.x agent**; `q` is not rewritten, so `q=version~5.0.0` (contains) finds the agents of that version in either stored form. Responses show both generations as `vX.Y.Z`. In `q`, `version<` and `version>` compare **versions**, not text,
+whichever generation stored them: the operand is `vX.Y.Z`, `X.Y.Z`, `Wazuh vX.Y.Z` or a shortened `vX`/`vX.Y` (missing
+parts read as `0`), a pre-release suffix such as `-rc2` is ignored on both sides, an agent with no version (never
+connected) never matches, and an operand that is not a version is refused with `1407`. So `q=version<v5.0.0` finds
+the 4.x agents and `q=version>v4.14.5` leaves a `v4.14.5` agent out. `GET /agents/outdated` lists the agents older
+than the manager. The 4.x `node_name` field no longer exists on agents: it cannot be selected, sorted or filtered
+by (`select=node_name` is refused with `1724`, `sort` with `1403`, `q` with `1408`). `group` matches a group name exactly, case included: `Web` and `web` are two groups. Inside `q` an IPv6 value is not rewritten and must be given in the stored, expanded form.
 
 #### Add agent
 
@@ -413,7 +419,7 @@ Other MITRE endpoints: `/mitre/tactics`, `/mitre/groups`, `/mitre/software`, `/m
 | GET | `/cluster/{node_id}/info` | Node info |
 | GET | `/cluster/{node_id}/configuration` | Node config. Sensitive values are masked unless the caller holds `cluster:read_secrets` over that node |
 | PUT | `/cluster/{node_id}/configuration` | Update node config. A cluster key sent back masked keeps the current one; changing it, or changing the indexer section, requires `cluster:read_secrets` over that node (`1132` otherwise) |
-| GET | `/cluster/{node_id}/configuration/{component}/{configuration}` | Active config. `auth/auth` carries the enrollment password, masked unless the caller holds `cluster:read_secrets` over that node; serving it in clear is logged as `secret_read` in that node's `cluster.log` |
+| GET | `/cluster/{node_id}/configuration/{component}/{configuration}` | Active config, from the daemon that holds it. The valid pairs are `auth/auth`, `request/global`, `request/remote`, `request/internal` (remoted's `remoted.*` internal options), `wazuh-manager-db/wdb`, `wazuh-manager-db/internal` (`wazuh_db.*` internal options) and `wmodules/wmodules`; any other pair is an error. `auth/auth` carries the enrollment password, masked unless the caller holds `cluster:read_secrets` over that node; serving it in clear is logged as `secret_read` in that node's `cluster.log` |
 | GET | `/cluster/{node_id}/daemons/stats` | Daemon stats |
 | GET | `/cluster/{node_id}/daemons/remoted/tls` | TLS certificate validity of remoted's listener and its CA bundle (dates, `x509-sha256` identities, which CA signs the leaf). `available: false` with a `reason` when remoted on that node cannot answer |
 | GET | `/cluster/{node_id}/logs` | Node logs |
@@ -495,13 +501,16 @@ field operator value[;connector field operator value]
 | `!=` | Not equals |
 | `>` | Greater than |
 | `<` | Less than |
-| `~` | Contains (SQL `LIKE`) |
+| `~` | Contains. `%` and `_` are literal characters, as on the collections filtered in memory, not `LIKE` wildcards: `q=name~web_01` does not match `webX01` |
 
 Any other operator (`>=`, `<=`, `~=`) is rejected: with error `1409` (*Invalid query operator*) on the
 collections whose `q` is turned into a `wazuh-manager-db` query (agents), and with error `1407` (*Query does
 not match expected format*) on the collections the framework filters in memory (groups, MITRE, users,
 roles, policies, enrollment tokens and cluster nodes, for example).
 Clauses can be grouped with parentheses: `(status=active,status=pending);os.platform=ubuntu`.
+A value holds letters, digits, spaces, `_ - . : ? \ / ' " = @ % < > { }`, `[ ]` and balanced parentheses, plus
+`+` on the collections filtered in memory and `$` on the agents collection. Any other character (`*`, `#`, `&`, `|`, `!`, ...) makes the clause invalid:
+error `1407`, on every collection — the value is never cut at that character and matched by what precedes it.
 
 ### Connectors
 
@@ -574,7 +583,7 @@ Errors follow a structured JSON response format.
 | 404       | Not Found         | Invalid endpoint, or the named resource does not exist: a group (`1710`), a file in a group (`1006`), a cluster node (`1730`), an enrollment token (`1767`) |
 | 405       | Method Not Allowed | Invalid HTTP method     |
 | 413       | Payload Too Large | Request body too large. The body carries `"error": 413` (the HTTP status, not an error code) |
-| 415       | Unsupported Media Type | A `Content-Type` the operation does not accept, or a body sent with no `Content-Type` at all (`6002`), on every operation that takes a body, the `run_as` login included |
+| 415       | Unsupported Media Type | A `Content-Type` the operation does not accept, or a body sent with no `Content-Type` at all (`6002`), on every operation that takes a body, the `run_as` login included. `PUT /cluster/{node_id}/configuration` accepts `application/octet-stream`, but a body with no `Content-Type` is still refused there, not read as one |
 | 417       | Expectation Failed | An `Expect` header other than `100-continue` |
 | 429       | Too Many Requests | Rate limit exceeded (`6001` authenticated, `6005` unauthenticated), or too many logins already waiting for their password check (`6006`) |
 | 500       | Internal Error    | Check `logs/api.log`; also a request that exceeded `intervals.request_timeout` without `wait_for_complete=true` (`3021`), or a core daemon that is down (`1017`, below) |
@@ -609,6 +618,12 @@ same shape a list of agents gets, where some may exist and others not. A missing
 named in the same request is still a `404`, except in the node lists of `GET /cluster/nodes`,
 `GET /cluster/healthcheck` and `GET /cluster/configuration/validation` (`nodes_list`): there an unknown
 node is a failed item (`1730`, *Node does not exist*) of a `200` answer, next to the nodes that exist.
+
+`DELETE /agents/{agent_id}/group/{group_id}` is the exception to that exception: it names exactly one agent and
+one group and answers with a message, not with affected and failed items. An unknown agent is a `404` with
+`1701`, an unknown group a `404` with `1710`, and removing the agent from a group it cannot leave is a plain
+`400` — `1745` when `default` is its only group, `1734` when it does not belong to the group. Use
+`DELETE /agents/group?group_id=<group>&agents_list=<id>` for the failed-item shape.
 
 While one of the core daemons (`wazuh-manager-modulesd`, `wazuh-manager-analysisd`, `wazuh-manager-db`,
 `wazuh-manager-remoted`) is stopped, failed or restarting, requests are refused with `500` and error

@@ -2273,6 +2273,13 @@ only `unknown_agent` latches the agent into its credential-dead state or makes e
 stored re-enrollment secret (`client-agent/src/enrollment.c`), and every other class keeps the
 credential and retries.
 
+`unknown_agent` is not always final on a cluster: a worker's keystore is its own `client.keys`, which
+the cluster's integrity sync brings from the master about 10 seconds after an enrollment (sometimes a
+few more), so a worker answers `unknown_agent` to an agent enrolled moments before until the file
+arrives. The agent recovers on its own (by retrying, or by enrolling again where it took the answer for
+the loss of its identity); the answer stays the honest one for that node's view, and nothing on the
+manager side waits for the sync.
+
 Because `unknown_agent` is answered before any signature check, it is an **accepted existence
 oracle**: an unauthenticated peer can tell an enrolled id from a free one, both on the authenticated
 routes and, through authd's 9026 vs 9027, on `/enroll`. That is inherent to the class: an agent whose

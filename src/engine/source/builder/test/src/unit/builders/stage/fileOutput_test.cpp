@@ -91,3 +91,73 @@ TEST_F(FileOutputBuilderTest, PropagatesInvalidComposedChannelName)
     EXPECT_THROW(fileOutputBuilder(json::Json("\"wazuh-events-v5\""), mocks->ctx, logManager, TEST_BASE_CONFIG),
                  std::runtime_error);
 }
+
+// A test build (tester session, /content/validate/policy) creates no channel: the first event does.
+TEST_F(FileOutputBuilderTest, TestModeDoesNotCreateTheChannelAtBuild)
+{
+    ON_CALL(*mocks->ctx, isTestMode()).WillByDefault(testing::Return(true));
+
+    auto logManager = std::make_shared<testing::NiceMock<streamlog::mocks::MockILogManager>>();
+    EXPECT_CALL(*logManager, ensureAndGetWriter(testing::_, testing::_, testing::_)).Times(0);
+
+    base::Expression expression;
+    ASSERT_NO_THROW(expression =
+                        fileOutputBuilder(json::Json("\"wazuh-events-v5\""), mocks->ctx, logManager, TEST_BASE_CONFIG));
+    ASSERT_TRUE(expression->isTerm());
+    EXPECT_EQ(expression->getName(), "write.output(file/test_space-wazuh-events-v5)");
+}
+
+TEST_F(FileOutputBuilderTest, TestModeRejectsAnInvalidChannelNameAtBuild)
+{
+    ON_CALL(*mocks->ctx, isTestMode()).WillByDefault(testing::Return(true));
+    mocks->context.originSpace = "invalid space";
+
+    auto logManager = std::make_shared<testing::NiceMock<streamlog::mocks::MockILogManager>>();
+    EXPECT_CALL(*logManager, ensureAndGetWriter(testing::_, testing::_, testing::_)).Times(0);
+
+    EXPECT_THROW(fileOutputBuilder(json::Json("\"wazuh-events-v5\""), mocks->ctx, logManager, TEST_BASE_CONFIG),
+                 std::runtime_error);
+}
+
+TEST_F(FileOutputBuilderTest, TestModeCreatesTheChannelOnTheFirstEventOnly)
+{
+    ON_CALL(*mocks->ctx, isTestMode()).WillByDefault(testing::Return(true));
+
+    auto logManager = std::make_shared<testing::NiceMock<streamlog::mocks::MockILogManager>>();
+    auto writer = std::make_shared<testing::NiceMock<streamlog::mocks::MockWriterEvent>>();
+
+    auto expression = fileOutputBuilder(json::Json("\"wazuh-events-v5\""), mocks->ctx, logManager, TEST_BASE_CONFIG);
+    auto fn = expression->getPtr<base::Term<base::EngineOp>>()->getFn();
+
+    EXPECT_CALL(*logManager, ensureAndGetWriter("test_space-wazuh-events-v5", testing::_, "json"))
+        .WillOnce(testing::Return(writer));
+    EXPECT_CALL(*writer, CallOperator(testing::_)).Times(2).WillRepeatedly(testing::Return(true));
+
+    auto result = fn(std::make_shared<json::Json>(R"({"a":1})"));
+    EXPECT_TRUE(result.success());
+    result = fn(std::make_shared<json::Json>(R"({"a":2})"));
+    EXPECT_TRUE(result.success());
+}
+
+TEST_F(FileOutputBuilderTest, TestModeRetriesAChannelThatCouldNotBeCreated)
+{
+    ON_CALL(*mocks->ctx, isTestMode()).WillByDefault(testing::Return(true));
+
+    auto logManager = std::make_shared<testing::NiceMock<streamlog::mocks::MockILogManager>>();
+    auto writer = std::make_shared<testing::NiceMock<streamlog::mocks::MockWriterEvent>>();
+
+    auto expression = fileOutputBuilder(json::Json("\"wazuh-events-v5\""), mocks->ctx, logManager, TEST_BASE_CONFIG);
+    auto fn = expression->getPtr<base::Term<base::EngineOp>>()->getFn();
+
+    EXPECT_CALL(*logManager, ensureAndGetWriter("test_space-wazuh-events-v5", testing::_, "json"))
+        .WillOnce(testing::Throw(std::runtime_error("base path not writable")))
+        .WillOnce(testing::Return(writer));
+    EXPECT_CALL(*writer, CallOperator(testing::_)).WillOnce(testing::Return(true));
+
+    auto result = fn(std::make_shared<json::Json>(R"({"a":1})"));
+    EXPECT_FALSE(result.success());
+    EXPECT_NE(result.trace().find("base path not writable"), std::string::npos);
+
+    result = fn(std::make_shared<json::Json>(R"({"a":2})"));
+    EXPECT_TRUE(result.success());
+}

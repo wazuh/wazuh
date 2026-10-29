@@ -115,9 +115,9 @@ _Atomic (time_t) current_ts;
  * counted into the following WARNING. One throttle per reason, so a noisy cause cannot hide another.
  * The lines name the source address only: before the frame decrypts, the agent ID it carries is a
  * claim anyone can make. current_ts (refreshed every second) is the clock, so no time() call is
- * added to the receive path. REM_REJECT_KEY_IN_USE is the one reason raised after a frame
- * authenticated (two hosts sharing one key keep producing it at their send rate), so its line may
- * name the agent. */
+ * added to the receive path. REM_REJECT_KEY_IN_USE and REM_REJECT_STALE are the reasons raised after a
+ * frame authenticated (two hosts sharing one key keep producing the first at their send rate, a replay
+ * the second at the attacker's), so their lines may name the agent. */
 typedef enum {
     REM_REJECT_FORMAT,  /* "!<id>!" header not terminated */
     REM_REJECT_ID,      /* the claimed ID is not registered for the source address */
@@ -126,6 +126,7 @@ typedef enum {
     REM_REJECT_DECRYPT, /* did not decrypt with the key it claims */
     REM_REJECT_SIZE,    /* TCP length prefix above the maximum message size */
     REM_REJECT_KEY_IN_USE, /* authenticated, but the agent already has a live session elsewhere */
+    REM_REJECT_STALE,   /* authenticated, not ahead of the stored counters, on a connection that is not the session's */
     REM_REJECT_REASONS
 } rem_reject_reason_t;
 
@@ -560,6 +561,25 @@ STATIC void remoted_enrollment_config(remoted_module_config_t *rm_config) {
  *        constants that are deliberately not internal options. Extracted out of
  *        HandleSecure() so it's unit-testable without starting the module.
  */
+/**
+ * @brief Warn when remote.https.max_body_size is not above remoted.auth_max_body_size.
+ *
+ * The transport cap must stay above the authenticated-body cap: a request over the latter gets a 413, on
+ * which an agent splits its batch, while one over the former is cut off with no answer at all, which the
+ * agent cannot tell from a network failure, so it resends the same batch forever. Not fatal: both values
+ * are legal on their own. 0 is the module's default transport cap (10 MiB).
+ */
+STATIC void w_remoted_check_body_caps(const remoted_module_config_t *rm_config) {
+    if (rm_config->http_max_body_size > 0 && (long long)rm_config->http_max_body_size <= rm_config->auth_max_body_size) {
+        mwarn("'remote.https.max_body_size' (%ld bytes) is not above 'remoted.auth_max_body_size' (%lld bytes): "
+              "an agent request between the two is closed with no answer instead of being refused with 413, and the "
+              "agent keeps resending it. Set 'remote.https.max_body_size' above %lld bytes.",
+              rm_config->http_max_body_size,
+              rm_config->auth_max_body_size,
+              rm_config->auth_max_body_size);
+    }
+}
+
 STATIC void w_remoted_build_module_config(const remoted *logr, remoted_module_config_t *rm_config) {
     memset(rm_config, 0, sizeof(*rm_config));
 
@@ -613,6 +633,9 @@ STATIC void w_remoted_build_module_config(const remoted *logr, remoted_module_co
     if (logr->https.ciphers) {
         snprintf(rm_config->ciphers, sizeof(rm_config->ciphers), "%s", logr->https.ciphers);
     }
+
+    /* Built for '-t' and for the start alike, so both report it */
+    w_remoted_check_body_caps(rm_config);
 }
 
 STATIC char* build_limits_json(const module_limits_t *limits) {
@@ -1298,6 +1321,9 @@ STATIC void * close_fp_main(void * args) {
  * the entry mutex (taken and released here). A frame that never authenticated proves nothing about who sent
  * it, so it must never get this far: it would let anyone who knows an agent ID close that agent's session.
  *
+ * - The frame is stale (its counters are not ahead of the agent's stored ones, see KS_STALE): it is
+ *   refused without touching the session, whatever the overtake window. A captured frame replayed on a new
+ *   connection proves only that someone once saw it, so it must never displace the agent.
  * - The current connection has been quiet longer than connection_overtake_time: the new one takes over.
  *   The old socket is returned in sock_idle for the caller to close once it releases the key lock.
  * - Otherwise the frame is refused. The warning is held back until the conflict outlives the overtake
@@ -1306,17 +1332,24 @@ STATIC void * close_fp_main(void * args) {
  * @param agentid Index of the agent in the keystore.
  * @param message Frame being handled.
  * @param srcip Source address of the frame.
+ * @param stale Whether ReadSecMSG() reported the frame as stale (KS_STALE).
  * @param sock_idle Output: the agent's previous socket when it is taken over, unchanged otherwise.
  * @return true to go on handling the frame, false to refuse it.
  */
-static bool rem_resolve_session_conflict(int agentid, const message_t *message, const char *srcip, int *sock_idle) {
+static bool rem_resolve_session_conflict(int agentid, const message_t *message, const char *srcip, bool stale, int *sock_idle) {
     keyentry *entry = keys.keyentries[agentid];
     bool accept = true;
 
     w_mutex_lock(&entry->mutex);
 
     if ((entry->sock >= 0) && (entry->sock != message->sock)) {
-        if ((logr.connection_overtake_time > 0) && (current_ts - entry->rcvd) > logr.connection_overtake_time) {
+        if (stale) {
+            rem_log_rejected_frame(REM_REJECT_STALE,
+                                   "Frame for agent ID '%s' from '%s' is not newer than the last one accepted from "
+                                   "that agent: it cannot take over the agent's current connection.",
+                                   entry->id, srcip);
+            accept = false;
+        } else if ((logr.connection_overtake_time > 0) && (current_ts - entry->rcvd) > logr.connection_overtake_time) {
             *sock_idle = entry->sock;
 
             mdebug2("Idle socket [%d] from agent ID '%s' will be closed.", *sock_idle, entry->id);
@@ -1425,6 +1458,12 @@ STATIC void HandleSecureMessage(const message_t *message, w_indexed_queue_t * co
                                    srcip,
                                    buffer + 1);
 
+            /* Like every other rejection before the frame decrypts: nothing a peer sends after an
+             * unknown ID can authenticate, so do not hold its connection until the unauthenticated timeout. */
+            if (message->sock >= 0) {
+                _close_sock(&keys, message->sock);
+            }
+
             rem_inc_recv_unknown();
             return;
         }
@@ -1466,6 +1505,10 @@ STATIC void HandleSecureMessage(const message_t *message, w_indexed_queue_t * co
 
             rem_log_rejected_frame(REM_REJECT_SOURCE, DENYIP_WARN " Source agent ID is unknown.", srcip);
 
+            if (message->sock >= 0) {
+                _close_sock(&keys, message->sock);
+            }
+
             rem_inc_recv_unknown();
             return;
         }
@@ -1487,7 +1530,8 @@ STATIC void HandleSecureMessage(const message_t *message, w_indexed_queue_t * co
     }
 
     /* Decrypt the message */
-    if (r = ReadSecMSG(&keys, tmp_msg, cleartext_msg, agentid, recv_b - 1, &msg_length, srcip, &tmp_msg), r != KS_VALID) {
+    if (r = ReadSecMSG(&keys, tmp_msg, cleartext_msg, agentid, recv_b - 1, &msg_length, srcip, &tmp_msg),
+        r != KS_VALID && r != KS_STALE) {
         /* If duplicated, a warning was already generated */
         key_unlock();
 
@@ -1503,7 +1547,7 @@ STATIC void HandleSecureMessage(const message_t *message, w_indexed_queue_t * co
     }
 
     /* Authenticated: only now may this connection take over the agent's session, or be refused as a conflict. */
-    if (!rem_resolve_session_conflict(agentid, message, srcip, &sock_idle)) {
+    if (!rem_resolve_session_conflict(agentid, message, srcip, r == KS_STALE, &sock_idle)) {
         key_unlock();
 
         if (message->sock >= 0) {

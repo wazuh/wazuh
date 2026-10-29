@@ -15,8 +15,12 @@ checked synchronously (400 on failure; the engine logs the first rejected batch 
 requests it rejected since its previous report), but each event line is parsed later by a router worker, so a malformed
 event is dropped while the request still succeeds. Each dropped line is counted in the `router.events.malformed`
 metric; each router worker logs the first one as the WARNING `Dropped a malformed event: <reason>`, then at most one
-line per minute that also reports how many it dropped since its previous report. A line whose queue byte is above
-`0x7F` is malformed: the indexer maps `wazuh.protocol.queue` as a signed byte and would refuse the event.
+line per minute that also reports how many it dropped since its previous report. A line whose queue byte is
+outside `0x01`..`0x7F` is malformed: `0x00` is no queue (`/logtest` refuses queue `0` too), and the indexer maps
+`wazuh.protocol.queue` as a signed byte, so it would refuse a value above `0x7F`.
+
+On a manager the router overwrites `wazuh.cluster.name` and `wazuh.cluster.node` in every event with the receiving
+node's `cluster.name` and `cluster.node_name`, whatever the batch header carries.
 
 Each event receives a reception timestamp when it is queued, taken from a process-wide clock (nanoseconds since the
 epoch, strictly increasing within one engine process): the events of a batch keep their order and two events never share a stamp in that process. The router

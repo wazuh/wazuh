@@ -155,12 +155,16 @@ Standard master node configuration:
   <node_type>master</node_type>
   <key>9d273b53510fef702b54a92e9cffc82e</key>
   <port>1516</port>
-  <bind_addr>0.0.0.0</bind_addr>
+  <bind_addr>MASTER_NODE_IP</bind_addr>
   <nodes>
     <node>MASTER_NODE_IP</node>
   </nodes>
 </cluster>
 ```
+
+`MASTER_NODE_IP` is the master's address on the management network. Only the master listens on the cluster port,
+on `bind_addr`: avoid `0.0.0.0` on a host whose other interfaces face agents or users (see the
+[cluster security model](../../security/cluster-model.md#deployment-assumptions)).
 
 ### Worker Node
 

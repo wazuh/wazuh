@@ -46,7 +46,9 @@ ResOrErrorResp<T> tryGetProperty(bool exists, PropGetter<T> propGetter, std::str
         }
         catch (const std::exception& e)
         {
-            return Error {userErrorResponse<Res>(fmt::format("Invalid {} {}: {}", field, prop, e.what()))};
+            // "Invalid policy name: …", but "Invalid name: …" (not "Invalid name name") when both are the same
+            const auto subject = (field == prop) ? std::string(field) : fmt::format("{} {}", field, prop);
+            return Error {userErrorResponse<Res>(fmt::format("Invalid {}: {}", subject, e.what()))};
         }
     }
     return Error {userErrorResponse<Res>(fmt::format("Missing /{}", field))};

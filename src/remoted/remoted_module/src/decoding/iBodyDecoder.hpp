@@ -15,6 +15,7 @@
 
 #include <cstddef>
 #include <functional>
+#include <optional>
 #include <string_view>
 
 namespace remoted::decoding
@@ -37,13 +38,15 @@ namespace remoted::decoding
     /**
      * @brief Parse a raw `Content-Encoding` header value.
      *
-     * @param header Raw header value; empty when the header was absent.
+     * @param header Raw header value; std::nullopt when the header was absent.
      * @return The matching ContentEncoding. Matching is case-insensitive, since HTTP token values
      *         are conventionally lowercase but nothing guarantees a client sends them that way.
-     *         Anything unrecognized maps to ContentEncoding::Unsupported -- note this says nothing
-     *         about whether a recognized encoding is *enabled*, which is an IBodyDecoder policy.
+     *         Anything unrecognized maps to ContentEncoding::Unsupported -- an empty value included:
+     *         a header that is present names an encoding, and an empty name is none this build
+     *         implements, so it is not taken for an absent header. Note this says nothing about
+     *         whether a recognized encoding is *enabled*, which is an IBodyDecoder policy.
      */
-    ContentEncoding parseContentEncoding(std::string_view header);
+    ContentEncoding parseContentEncoding(std::optional<std::string_view> header);
 
     /**
      * @brief Caller-side charge for the memory a decode takes, called as the decoded output grows

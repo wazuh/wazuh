@@ -16,7 +16,7 @@ than nothing, but it is configured in a way that **hides** everything this lab l
 | There | Here | Why it matters |
 |---|---|---|
 | `balance source` | `roundrobin` | Source hashing pins each agent to one node. The cross-node `/download` 403 never appears |
-| `mode tcp` only | passthrough **and** termination | Only termination balances per request; TCP balances per connection |
+| `mode tcp` only | passthrough **and** termination | Termination balances per request; TCP balances per connection, which with 5.x agents (one connection per request) is per request too — both front ends are kept to show that |
 | `1517` not published | published | — |
 | Keys pre-seeded, enrollment off | real enrollment with `authd.pass` | Without enrolling there is no propagation to measure |
 | One certificate shared by three nodes | one leaf per node | `cluster.json` does not replicate `/etc/wazuh-manager/certs/` |
@@ -84,9 +84,9 @@ setup always reinstalls from the current PKI so that cannot happen halfway.
 | 21518 | HAProxy | TLS termination + re-encryption (L7), balances **requests** |
 | 21519 | HAProxy | Termination with a leaf from a **different CA**, to model a public edge |
 | 31517 / 31518 | NGINX | Passthrough / termination |
-| 21514 / 21515 | HAProxy | Legacy: `1514` to every node, `1515` to the master only |
+| 21514 / 21515 | HAProxy | Legacy: `1514` and `1515` to every node (a worker forwards enrollment to the master) |
 | 41517 / 41518 / 41519 | master / worker1 / worker2 | Direct, bypassing the balancer |
-| 31514 / 31515 | NGINX | Legacy: `1514` / `1515` |
+| 31514 / 31515 | NGINX | Legacy: `1514` and `1515` to every node |
 | 45000 | master | Server API (`55000`), used to mint tokens |
 | 28404 | HAProxy | Statistics, `/stats` |
 | 49200 | Indexer | OpenSearch, client certificate required |

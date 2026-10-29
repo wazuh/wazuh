@@ -47,14 +47,15 @@ class TestModel(bm.Body):
 
 
 class RequestMock:
-    """Class Request mock."""
+    """Class Request mock. Like connexion's request, it reports a missing Content-Type as `application/octet-stream`."""
 
     def __init__(self, content_type):
         self._content_type = content_type
+        self.headers = {'content-type': content_type} if content_type is not None else {}
 
     @property
     def mimetype(self):
-        return self._content_type
+        return self._content_type or 'application/octet-stream'
 
 
 class ToDictObject:
@@ -211,6 +212,17 @@ def test_body_validate_content_type_ko():
 
     with pytest.raises(ProblemException) as exc:
         TestModel.validate_content_type(request, 'application/xml')
+
+    assert exc.value.status == 415
+    assert exc.value.ext['code'] == 6002
+
+
+@pytest.mark.parametrize('content_type', ['', None])
+def test_body_validate_content_type_missing_when_octet_stream_is_accepted(content_type):
+    """A body with no Content-Type is refused even by an operation that accepts `application/octet-stream`, the
+    type the request object reports for a missing header."""
+    with pytest.raises(ProblemException) as exc:
+        TestModel.validate_content_type(RequestMock(content_type), ('application/octet-stream', 'application/xml'))
 
     assert exc.value.status == 415
     assert exc.value.ext['code'] == 6002

@@ -146,11 +146,13 @@ static int teardown_group(void **state) {
 
 int setup_validate_force_disabled(void **state) {
     config.force_options.enabled = 0;
+    w_auth_client_rejection_log_reset(); // rejections are throttled per reason
     return 0;
 }
 
 int setup_validate_force_enabled(void **state) {
     config.force_options.enabled = 1;
+    w_auth_client_rejection_log_reset(); // rejections are throttled per reason
     return 0;
 }
 
@@ -272,6 +274,48 @@ static void test_w_auth_validate_data_same_holder_is_judged_and_removed_once(voi
 
     assert_int_equal(keys.keysize, keysize - 1);
     assert_true(OS_IsAllowedID(&keys, id) < 0);
+}
+
+/* Networks are not indexed in the host-IP tree: a host equal to a network's base address is no duplicate
+ * of it, and neither is an identical network; removing one of two identical networks leaves the other. */
+static void test_networks_are_not_indexed_as_hosts(void **state) {
+    /* -2: the wrapper allocates an IPv4 part with a zero netmask, i.e. the network "<address>/0" */
+    expect_any(__wrap_OS_IsValidIP, ip_address);
+    expect_any(__wrap_OS_IsValidIP, final_ip);
+    will_return(__wrap_OS_IsValidIP, -2);
+    int first = OS_AddNewAgent(&keys, NULL, "NetAgent1", "10.1.0.0/0", NULL, 0);
+    assert_true(first >= 0);
+    char first_id[16];
+    snprintf(first_id, sizeof(first_id), "%s", keys.keyentries[first]->id);
+
+    assert_int_equal(OS_IsAllowedIP(&keys, "10.1.0.0"), -1);
+    assert_int_equal(OS_IsAllowedIP(&keys, "10.1.0.0/0"), -1);
+
+    expect_any(__wrap_OS_IsValidIP, ip_address);
+    expect_any(__wrap_OS_IsValidIP, final_ip);
+    will_return(__wrap_OS_IsValidIP, -2);
+    int second = OS_AddNewAgent(&keys, NULL, "NetAgent2", "10.1.0.0/0", NULL, 0);
+    assert_true(second >= 0);
+    char second_id[16];
+    snprintf(second_id, sizeof(second_id), "%s", keys.keyentries[second]->id);
+
+    /* A host with the network's base address is free to enroll, and is indexed on its own */
+    expect_any(__wrap_OS_IsValidIP, ip_address);
+    expect_any(__wrap_OS_IsValidIP, final_ip);
+    will_return(__wrap_OS_IsValidIP, -1);
+    int host = OS_AddNewAgent(&keys, NULL, "HostAgent", "10.1.0.0", NULL, 0);
+    assert_true(host >= 0);
+    char host_id[16];
+    snprintf(host_id, sizeof(host_id), "%s", keys.keyentries[host]->id);
+    assert_string_equal(keys.keyentries[OS_IsAllowedIP(&keys, "10.1.0.0")]->id, host_id);
+
+    /* Removing the networks never takes the host's entry out of the tree */
+    assert_true(OS_DeleteKey(&keys, second_id, 1) >= 0);
+    assert_true(OS_DeleteKey(&keys, first_id, 1) >= 0);
+    assert_string_equal(keys.keyentries[OS_IsAllowedIP(&keys, "10.1.0.0")]->id, host_id);
+
+    assert_true(OS_DeleteKey(&keys, host_id, 1) >= 0);
+    assert_int_equal(OS_IsAllowedIP(&keys, "10.1.0.0"), -1);
 }
 
 static void test_w_auth_validate_data_replace_agent(void **state) {
@@ -766,6 +810,7 @@ int main(void) {
         cmocka_unit_test(test_w_auth_validate_groups_invalid_characters),
         cmocka_unit_test(test_w_auth_validate_groups_special_characters),
         cmocka_unit_test_setup(test_w_auth_validate_data, setup_validate_force_disabled),
+        cmocka_unit_test(test_networks_are_not_indexed_as_hosts),
         cmocka_unit_test_setup(test_w_auth_validate_data_refused_name_removes_no_agent, setup_validate_force_enabled),
         cmocka_unit_test_setup(test_w_auth_validate_data_replace_agent, setup_validate_force_enabled),
         cmocka_unit_test_setup(test_w_auth_validate_data_same_holder_is_judged_and_removed_once, setup_validate_force_enabled),

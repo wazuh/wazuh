@@ -366,7 +366,7 @@ def test_get_cluster_items():
     expected = {
         "files": {
             "etc/": {
-                "permissions": 416,
+                "permissions": 432,
                 "source": "master",
                 "files": ["client.keys", "authd.pass", "enrollment_tokens.json"],
                 "recursive": False,

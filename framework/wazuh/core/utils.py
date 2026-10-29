@@ -1127,7 +1127,9 @@ def filter_array_by_query(q: str, input_array: typing.List) -> typing.List:
             The clause itself, field name, nested field names, operator and value.
         """
         try:
-            field_name, field_subnames, op, value = re_get_elements.match(and_clause).groups()
+            # The whole clause must be a term: a match would stop at the first character the value cannot hold
+            # and silently drop the rest (`name=default*anything` filtering by `default`).
+            field_name, field_subnames, op, value = re_get_elements.fullmatch(and_clause).groups()
         except AttributeError:
             raise WazuhError(1407, extra_message=f"Parameter 'q' is not valid: '{and_clause}'")
 
@@ -1289,6 +1291,22 @@ class WazuhDBBackend(AbstractDatabaseBackend):
 
 
 QUERY_OPERATORS = {"=": "=", "!=": "!=", "<": "<", ">": ">", "~": 'LIKE'}
+
+
+def escape_like(value) -> str:
+    """Escape the LIKE wildcards of a value, for a pattern that declares `ESCAPE '\\'`.
+
+    Parameters
+    ----------
+    value : str
+        Value to search for literally.
+
+    Returns
+    -------
+    str
+        The value with '\\', '%' and '_' escaped.
+    """
+    return str(value).replace('\\', '\\\\').replace('%', '\\%').replace('_', '\\_')
 QUERY_SEPARATORS = {',': 'OR', ';': 'AND', '': ''}
 # To correctly turn a query into SQL, a regex is used. This regex will extract all necessary information:
 # For example, the following regex -> (name!=wazuh;id>5),group=webserver <- would return 3 different matches:
@@ -1601,10 +1619,12 @@ class WazuhDBQuery(object):
             if q_filter['value'] is not None:
                 self.request[field_filter] = q_filter['value'] if field_name != "version" else re.sub(
                     r'([a-zA-Z])([v])', r'\1 \2', q_filter['value'])
-                if q_filter['operator'] == 'LIKE':
-                    self.request[field_filter] = "%{}%".format(self.request[field_filter])
                 self.query += '{} {} :{}'.format(self.fields[field_name].split(' as ')[0], q_filter['operator'],
                                                  field_filter)
+                if q_filter['operator'] == 'LIKE':
+                    # '~' is a substring match, as on the collections filtered in memory: '%' and '_' are literal
+                    self.request[field_filter] = "%{}%".format(escape_like(self.request[field_filter]))
+                    self.query += " ESCAPE '\\'"
                 if not field_filter.isdigit():
                     # filtering without being uppercase/lowercase sensitive
                     self.query += ' COLLATE NOCASE'

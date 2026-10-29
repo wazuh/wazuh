@@ -141,6 +141,51 @@ static const struct {
 // Dispatch local request. STATIC: the unit tests drive the token verbs and `add` through it.
 STATIC char* local_dispatch(const char *input);
 
+// local_add(), and whether to issue a re-enrollment secret: false for an enrollment a worker forwarded
+// from port 1515, whose protocol cannot deliver one (see the `legacy` argument in local_dispatch()).
+STATIC cJSON* local_add_ex(const char *id,
+                           const char *name,
+                           const char *ip,
+                           const char *groups,
+                           const char *key,
+                           const char *key_hash,
+                           authd_force_options_t *force_options,
+                           const char *source,
+                           bool issue_secret);
+
+/* Log a request the dispatcher refused, at the level of whose fault it is. ERROR only for this daemon
+ * failing (internal error, key generation, the master unreachable, a store or journal write); WARNING for
+ * a capacity limit the operator acts on; debug level for the re-enrollment verdicts, which anyone who can
+ * reach remoted's /enroll fires at will; INFO for every other refusal, which is the caller's (a bad
+ * request, a duplicate, an exhausted or revoked token, a write sent to a worker). */
+static void local_log_refusal(auth_local_err ierror) {
+    const int code = ERRORS[ierror].code;
+    const char *message = ERRORS[ierror].message;
+
+    switch (ierror) {
+    case EINTERNAL:
+    case EKEY:
+    case ENOMASTERCOMM:
+    case ETOKENSTOREFAILED:
+    case EIDENTITYUNRECORDED:
+        merror("Local request failed with error %d: %s.", code, message);
+        break;
+    case EAGLIM:
+    case EDELETEBACKLOG:
+        mwarn("Local request refused with error %d: %s.", code, message);
+        break;
+    case EREENROLLUNKNOWN:
+    case EREENROLLINVALID:
+    case EREENROLLSTALE:
+    case EREENROLLINPROGRESS:
+        mdebug1("Local request refused with error %d: %s.", code, message);
+        break;
+    default:
+        minfo("Local request refused with error %d: %s.", code, message);
+        break;
+    }
+}
+
 // Per-connection thread body: recv, dispatch, send, close. See run_local_server()'s comment on
 // why this now runs on its own detached thread instead of inline on the accept loop.
 static void* handle_local_client(void *arg);
@@ -279,6 +324,8 @@ static cJSON* local_token_revoke(cJSON *arguments, int *ierror);
 static cJSON* local_token_purge(cJSON *arguments, int *ierror);
 // Whether `text` has the shape of a token id: exactly ETOKEN_ID_CHARS canonical base64url chars.
 static int is_token_id(const char *text);
+// Optional boolean argument. 0 = absent, 1 = present (*out set), -1 = wrong type.
+static int get_optional_bool_arg(cJSON *arguments, const char *key, int *out);
 
 // Services one already-accepted connection: set the recv timeout, read one request, dispatch, send
 // the reply, close. Shared by the threaded path and run_local_server()'s at-the-cap inline
@@ -549,10 +596,16 @@ char* local_dispatch(const char *input) {
                 }
             }
 
+            // `legacy`: a worker forwarding a port-1515 enrollment. That protocol has no field for the
+            // re-enrollment secret, so the worker drops it: issuing one here would only store a secret
+            // nobody holds. A direct port-1515 enrollment stores none either.
+            int legacy = 0;
+
             if (get_optional_string_arg(arguments, "key_hash", &key_hash) < 0 ||
                 get_optional_string_arg(arguments, "key", &key) < 0 ||
                 get_optional_string_arg(arguments, "token_id", &token_id) < 0 ||
-                get_optional_string_arg(arguments, "source", &source) < 0) {
+                get_optional_string_arg(arguments, "source", &source) < 0 ||
+                get_optional_bool_arg(arguments, "legacy", &legacy) < 0) {
                 ierror = EJSON;
                 goto fail;
             }
@@ -680,7 +733,8 @@ char* local_dispatch(const char *input) {
                         goto fail;
                     }
                 }
-                response = local_add(id, name, ip, groups, key, key_hash, force ? &force_options : &config.force_options, source);
+                response = local_add_ex(id, name, ip, groups, key, key_hash, force ? &force_options : &config.force_options,
+                                        source, !legacy);
                 if (token_id) {
                     cJSON *err = response ? cJSON_GetObjectItem(response, "error") : NULL;
                     // Every path closes the reservation: committed when the agent was created, given
@@ -828,8 +882,8 @@ char* local_dispatch(const char *input) {
 
 fail:
     // No "ERROR" in the text: the logger already prints the level, and "ERROR: ERROR 9022: ..." read
-    // as a stutter.
-    merror("Local request failed with error %d: %s.", ERRORS[ierror].code, ERRORS[ierror].message);
+    // as a stutter. The level follows whose fault the refusal is, not the fact that it is one.
+    local_log_refusal(ierror);
     response = local_create_error_response(ERRORS[ierror].code, ERRORS[ierror].message);
     output = cJSON_PrintUnformatted(response);
     cJSON_Delete(response);
@@ -846,6 +900,18 @@ cJSON* local_add(const char *id,
                  const char *key_hash,
                  authd_force_options_t *force_options,
                  const char *source) {
+    return local_add_ex(id, name, ip, groups, key, key_hash, force_options, source, true);
+}
+
+STATIC cJSON* local_add_ex(const char *id,
+                           const char *name,
+                           const char *ip,
+                           const char *groups,
+                           const char *key,
+                           const char *key_hash,
+                           authd_force_options_t *force_options,
+                           const char *source,
+                           bool issue_secret) {
     int index;
     cJSON *response = NULL;
     int ierror;
@@ -978,11 +1044,8 @@ cJSON* local_add(const char *id,
         if (index = OS_IsAllowedIP(&keys, _ip), index >= 0) {
             ip_holder = keys.keyentries[index];
             if (OS_SUCCESS != w_auth_check_replace_agent(ip_holder, key_hash, force_options, &ip_result, &warn)) {
-                if (warn) {
-                    mwarn("Duplicate IP '%s', rejecting enrollment. %s", _ip, ip_result);
-                } else {
-                    minfo("Duplicate IP '%s', rejecting enrollment. %s", _ip, ip_result);
-                }
+                // Throttled, like the port-1515 refusal: a retrying agent repeats it at its own rate.
+                w_auth_log_client_rejection(!warn, "Duplicate IP '%s', rejecting enrollment. %s", _ip, ip_result);
                 ierror = EDUPIP;
                 goto fail;
             }
@@ -995,11 +1058,7 @@ cJSON* local_add(const char *id,
     if ((index = OS_IsAllowedName(&keys, name), index >= 0) && keys.keyentries[index] != ip_holder) {
         name_holder = keys.keyentries[index];
         if (OS_SUCCESS != w_auth_check_replace_agent(name_holder, key_hash, force_options, &name_result, &warn)) {
-            if (warn) {
-                mwarn("Duplicate name '%s', rejecting enrollment. %s", name, name_result);
-            } else {
-                minfo("Duplicate name '%s', rejecting enrollment. %s", name, name_result);
-            }
+            w_auth_log_client_rejection(!warn, "Duplicate name '%s', rejecting enrollment. %s", name, name_result);
             ierror = EDUPNAME;
             goto fail;
         }
@@ -1009,7 +1068,7 @@ cJSON* local_add(const char *id,
      * nothing to undo: it never goes to client.keys -- the writer persists it in global.db and this one
      * answer hands it to the agent -- and an agent without one could never re-enroll, so the enrollment
      * is refused the same way a failed key generation is (no weaker generator to fall back to). */
-    if (OS_NewReenrollSecret(reenroll_secret, sizeof(reenroll_secret)) != 0) {
+    if (issue_secret && OS_NewReenrollSecret(reenroll_secret, sizeof(reenroll_secret)) != 0) {
         ierror = EKEY;
         goto fail;
     }
@@ -1044,8 +1103,10 @@ cJSON* local_add(const char *id,
     char assigned_id[16] = {0};
     strncpy(assigned_id, keys.keyentries[index]->id, sizeof(assigned_id) - 1);
 
-    if (!identity_journal_append(assigned_id, name, _ip, keys.keyentries[index]->raw_key,
-                                 reenroll_secret, false, &journal_seq)) {
+    /* Without a secret there is nothing the agent could not get back by enrolling again, which is how
+     * the port-1515 path has always worked: no journal entry, as there. */
+    if (issue_secret && !identity_journal_append(assigned_id, name, _ip, keys.keyentries[index]->raw_key,
+                                                 reenroll_secret, false, &journal_seq)) {
         // Its own copy of the id: OS_DeleteKey() frees the entry this would otherwise point into.
         OS_DeleteKey(&keys, assigned_id, 1);
         ierror = EIDENTITYUNRECORDED;
@@ -1053,11 +1114,12 @@ cJSON* local_add(const char *id,
     }
 
     /* Add pending key to write */
-    add_insert(keys.keyentries[index], groups, reenroll_secret, journal_seq);
+    add_insert(keys.keyentries[index], groups, issue_secret ? reenroll_secret : NULL, journal_seq);
     write_pending = 1;
     w_cond_signal(&cond_pending);
 
-    response = local_create_agent_response(keys.keyentries[index]->id, name, _ip, keys.keyentries[index]->raw_key, reenroll_secret);
+    response = local_create_agent_response(keys.keyentries[index]->id, name, _ip, keys.keyentries[index]->raw_key,
+                                           issue_secret ? reenroll_secret : NULL);
     w_mutex_unlock(&mutex_keys);
     OPENSSL_cleanse(reenroll_secret, sizeof(reenroll_secret));
 

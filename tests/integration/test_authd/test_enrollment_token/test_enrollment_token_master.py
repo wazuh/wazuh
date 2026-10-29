@@ -122,7 +122,7 @@ def _case_socket_mint(sock, test_metadata, created_agents):
     Everything the answer reports is checked against the token itself: the pin is the same anchor in
     both spellings (64 hex characters and 43 base64url ones), the endpoint is the address that was
     asked for, and the key is the 32 bytes of identifier plus secret. The store must then exist,
-    hold the new id, and belong to the daemon user with mode 0640 -- the secrets in it have the same
+    hold the new id, and belong to the daemon user with mode 0660 -- the secrets in it have the same
     weight as the keys in client.keys.
     """
     data = _mint_over_socket(sock)
@@ -461,7 +461,7 @@ def test_enrollment_token_master(test_configuration, test_metadata, clean_enroll
     assertions:
         - A minted token decodes to version 1, the requested endpoint, one anchor and a 32 byte key
         - The pin authd reports in hexadecimal is the same anchor the token carries in base64url
-        - The store exists after the first mint, holds the new id, and is 0640 wazuh-manager:wazuh-manager
+        - The store exists after the first mint, holds the new id, and is 0660 wazuh-manager:wazuh-manager
         - The CLI prints the token alone on stdout and its metadata on stderr
         - Neither the listing nor '--show-token' ever echoes a secret or the key
         - An 'add' with a token counts one use in the store, and a revoked token is refused with 9022

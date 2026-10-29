@@ -38,7 +38,7 @@ namespace remoted::auth
     namespace
     {
         // Same rationale as passwordKeySource.cpp: loggerHelper.h stays out of the header.
-        constexpr auto TOKEN_KEY_SOURCE_LOGTAG {"wazuh-manager-remoted:tokenKeySource"};
+        constexpr auto TOKEN_KEY_SOURCE_LOGTAG {"wazuh-manager-remoted:token-key-source"};
 
         const LogFn& logFn()
         {

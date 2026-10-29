@@ -855,8 +855,18 @@ static void process_message(struct client *client) {
         if (config.worker_node) {
             minfo("Dispatching request to master node");
             // The force registration settings are ignored for workers. The master decides.
-            if (0 == w_request_agent_add_clustered(response, client->agentname, client->ip, client->centralized_group, key_hash, &client->new_id, &new_key, NULL, NULL, NULL, NULL, NULL, NULL, source, NULL)) {
+            int master_error_code = 0;
+            if (0 == w_request_agent_add_clustered(response, client->agentname, client->ip, client->centralized_group, key_hash, &client->new_id, &new_key, NULL, NULL, NULL, NULL, NULL, NULL, source, &master_error_code)) {
                 client->enrollment_ok = TRUE;
+            } else if (master_error_code > 0) {
+                /* The master's verdict, in the shape the local socket relays it ("Error <code>: <message>."),
+                 * throttled like this node's own client rejections: an agent retrying a refused enrollment
+                 * must not fill the log. */
+                const char *message = response;
+                if (!strncmp(message, "ERROR: ", 7)) {
+                    message += 7;
+                }
+                w_auth_log_client_rejection(false, "Error %d: %s.", master_error_code, message);
             }
         }
         else {

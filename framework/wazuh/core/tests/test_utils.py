@@ -6,6 +6,7 @@
 import datetime
 import os
 import re
+import sqlite3
 from collections.abc import KeysView
 from io import StringIO
 from shutil import copyfile
@@ -2396,6 +2397,64 @@ def test_filter_array_by_query_malformed_clause_is_reported_whatever_the_array_h
         utils.filter_array_by_query(q, array)
 
 
+@pytest.mark.parametrize('q', [
+    'name=default*anything',
+    'name=default$',
+    'name=default#x',
+    'name=default&x',
+    'name=default|x',
+    'name=a;name=default*',
+])
+def test_filter_array_by_query_value_with_unsupported_character_is_invalid(q):
+    """A value is never truncated at the first character the grammar does not accept: the clause is
+    reported invalid instead of filtering by the prefix before that character."""
+    with pytest.raises(exception.WazuhError, match='.* 1407 .*'):
+        utils.filter_array_by_query(q, [{'name': 'default'}, {'name': 'a'}])
+
+
+@pytest.mark.parametrize('value, expected', [
+    ('plain', 'plain'),
+    ('50%', '50\\%'),
+    ('a_b', 'a\\_b'),
+    ('c:\\temp', 'c:\\\\temp'),
+    ('\\%_', '\\\\\\%\\_'),
+])
+def test_escape_like(value, expected):
+    """escape_like escapes the escape character itself and both LIKE wildcards."""
+    assert utils.escape_like(value) == expected
+
+
+@pytest.mark.parametrize('value, stored, matches', [
+    ('a%b', ['a%b', 'axxb'], ['a%b']),
+    ('a_b', ['a_b', 'axb'], ['a_b']),
+    ('a\\b', ['a\\b', 'ab'], ['a\\b']),
+    ('A_B', ['a_b'], ['a_b']),
+])
+def test_escape_like_matches_literally_in_sqlite(value, stored, matches):
+    """The escaped pattern, with the ESCAPE clause the queries render, matches the value literally."""
+    conn = sqlite3.connect(':memory:')
+    conn.execute('CREATE TABLE t (v TEXT)')
+    conn.executemany('INSERT INTO t VALUES (?)', [(v,) for v in stored])
+    rows = conn.execute("SELECT v FROM t WHERE v LIKE ? ESCAPE '\\' COLLATE NOCASE",
+                        (f'%{utils.escape_like(value)}%',)).fetchall()
+    assert [row[0] for row in rows] == matches
+
+
+@patch('wazuh.core.utils.path.exists', return_value=True)
+@patch('wazuh.core.utils.WazuhDBBackend.connect_to_db')
+def test_WazuhDBQuery_protected_process_filter_like_escapes_wildcards(mock_conn_db, mock_exists):
+    """'~' renders a LIKE with an ESCAPE clause and an escaped value, so '%' and '_' are literal."""
+    query = utils.WazuhDBQuery(offset=0, limit=1, table='agent', sort=None, search=None, select=None,
+                               fields={'name': 'name'}, default_sort_field=None, query=None,
+                               backend=utils.WazuhDBBackend(agent_id=0), count=5, get_data=None)
+    query.query = ''
+
+    query._process_filter('name', 'name$0', {'value': '50%_off', 'operator': 'LIKE', 'field': 'name$0'})
+
+    assert query.query == "name LIKE :name$0 ESCAPE '\\' COLLATE NOCASE"
+    assert query.request['name$0'] == '%50\\%\\_off%'
+
+
 def test_filter_array_by_query_parses_each_clause_once():
     """Each clause is matched once, however many elements the array holds."""
     real_compile = re.compile
@@ -2409,7 +2468,7 @@ def test_filter_array_by_query_parses_each_clause_once():
         result = utils.filter_array_by_query('name=a;id=1,name=b', [{'name': 'c', 'id': '1'} for _ in range(50)])
 
     assert result == []
-    assert sum(regex.match.call_count for regex in compiled) == 3
+    assert sum(regex.fullmatch.call_count for regex in compiled) == 3
 
 
 def test_to_relative_path():

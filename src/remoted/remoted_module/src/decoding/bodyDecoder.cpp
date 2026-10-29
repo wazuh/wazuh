@@ -58,13 +58,13 @@ namespace
 namespace remoted::decoding
 {
 
-    ContentEncoding parseContentEncoding(std::string_view header)
+    ContentEncoding parseContentEncoding(std::optional<std::string_view> header)
     {
-        if (header.empty())
+        if (!header)
         {
             return ContentEncoding::None;
         }
-        if (ciEqualsAscii(header, "zstd"))
+        if (ciEqualsAscii(*header, "zstd"))
         {
             return ContentEncoding::Zstd;
         }

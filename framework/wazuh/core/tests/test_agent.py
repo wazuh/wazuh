@@ -366,6 +366,64 @@ def test_WazuhDBQueryAgents_group_filter_with_a_quote_is_exact(mock_socket_conn,
     assert [row[0] for row in rows] == expected
 
 
+VERSION_ROWS = [('000', 'Wazuh v5.0.0'), ('001', 'v5.0.0'), ('002', 'Wazuh v4.14.5'), ('003', 'v5.10.1'),
+                ('004', 'Wazuh v4.9.0'), ('005', None), ('006', 'N/A'), ('007', 'v5.0.0-rc2')]
+
+
+@pytest.mark.parametrize('q, expected', [
+    ('version<v5.0.0', ['002', '004']),
+    ('version<5.0.0', ['002', '004']),
+    ('version<Wazuh v5.0.0', ['002', '004']),
+    ('version>v4.14.5', ['000', '001', '003', '007']),
+    ('version>v4.9.0', ['000', '001', '002', '003', '007']),
+    ('version<v4.10.0', ['004']),
+    ('version>v5.9.0', ['003']),
+    ('version<v5', ['002', '004']),
+    ('version>v5.0', ['003']),
+    ('version<v5.0.0,version>v5.0.0', ['002', '003', '004']),
+    ('version>v4.14.5;id!=000', ['001', '003', '007']),
+])
+@patch('socket.socket.connect')
+def test_WazuhDBQueryAgents_version_ordering_is_semantic(mock_socket_conn, q, expected):
+    """'<' and '>' on version compare versions, whichever generation stored them: 4.x stores 'Wazuh v4.14.5',
+    5.x 'v5.0.0', and agents without a version never match."""
+    query_agent = WazuhDBQueryAgents(query=q)
+    query_agent.query = 'SELECT id FROM agent'
+    query_agent._add_filters_to_query()
+
+    conn = sqlite3.connect(':memory:')
+    conn.execute('CREATE TABLE agent (id TEXT, version TEXT)')
+    conn.executemany('INSERT INTO agent VALUES (?, ?)', VERSION_ROWS)
+    params = {k: v for k, v in query_agent.request.items() if f':{k}' in query_agent.query}
+    rows = conn.execute(f'{query_agent.query} ORDER BY id', params).fetchall()
+
+    assert [row[0] for row in rows] == expected
+
+
+@pytest.mark.parametrize('value', ['latest', 'v5.x', '5..0', ''])
+@patch('socket.socket.connect')
+def test_WazuhDBQueryAgents_version_ordering_rejects_a_non_version(mock_socket_conn, value):
+    """An operand that is not a version is a malformed query, not a text comparison."""
+    query_agent = WazuhDBQueryAgents()
+    query_agent.query = ''
+    with pytest.raises(WazuhError, match='.* 1407 .*'):
+        query_agent._process_filter('version', 'version$0', {'value': value, 'operator': '<'})
+
+
+@pytest.mark.parametrize('version, expected', [
+    ('v5.0.0', 5000000000000),
+    ('5.0.0', 5000000000000),
+    ('Wazuh v4.14.5', 4000014000005),
+    ('wazuh v4.14.5', 4000014000005),
+    ('v4.14', 4000014000000),
+    ('v4', 4000000000000),
+    ('v5.0.0-rc2', 5000000000000),
+])
+def test_version_order_key(version, expected):
+    """version_order_key accepts every form a stored version or a user operand takes."""
+    assert version_order_key(version) == expected
+
+
 @pytest.mark.parametrize('field_name, field_filter, q_filter', [
     ('group', 'field', {'value': '1', 'operator': '='}),
     ('group', 'test', {'value': '1', 'operator': '!='}),
@@ -410,7 +468,7 @@ def test_WazuhDBQueryAgents_process_filter(mock_socket_conn, field_name, field_f
         else:
             pytest.fail('Unexpected operator')
     else:
-        assert 'agentos_name LIKE :field COLLATE NOCASE' in query_agent.query, \
+        assert "agentos_name LIKE :field ESCAPE '\\' COLLATE NOCASE" in query_agent.query, \
             'Query returned does not match the expected one'
 
 

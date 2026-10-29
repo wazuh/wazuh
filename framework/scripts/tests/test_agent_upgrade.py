@@ -58,8 +58,10 @@ def test_get_script_arguments(mock_ArgumentParser):
     ({'version': 'Wazuh v4.2.1', 'id': '002', 'name': 'test'}, 1),
     ({}, 0)
 ])
-def test_list_outdated(capfd, api_response, total_affected_items):
-    """Check if expected message is printed in list_outdated function.
+@pytest.mark.asyncio
+async def test_list_outdated(capfd, api_response, total_affected_items):
+    """Check if expected message is printed in list_outdated function, which asks the master (a worker holds
+    no agent registry of its own).
 
     Parameters
     ----------
@@ -72,13 +74,22 @@ def test_list_outdated(capfd, api_response, total_affected_items):
     result.affected_items = [api_response]
     result.total_affected_items = total_affected_items
 
-    with patch('wazuh.agent.get_outdated_agents', return_value=result):
-        agent_upgrade.list_outdated()
+    with patch('scripts.agent_upgrade.cluster_utils.forward_function', return_value=result) as mock_forward:
+        await agent_upgrade.list_outdated()
+        mock_forward.assert_called_once_with(agent_upgrade.wazuh.agent.get_outdated_agents, f_kwargs={})
         out, err = capfd.readouterr()
         if total_affected_items:
             assert all(value in out for value in api_response.values())
         else:
             assert out == 'All agents are updated.\n'
+
+
+@pytest.mark.asyncio
+async def test_list_outdated_raises_the_master_error():
+    """An error the master answers is raised, never reported as 'All agents are updated.'."""
+    with patch('scripts.agent_upgrade.cluster_utils.forward_function', return_value=WazuhError(3020)):
+        with pytest.raises(WazuhError, match='.* 3020 .*'):
+            await agent_upgrade.list_outdated()
 
 
 def test_create_command():

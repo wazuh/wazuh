@@ -124,7 +124,7 @@ paths:
                   summary: Missing name field
                   value:
                     status: ERROR
-                    error: 'Invalid name name: Name cannot be empty'
+                    error: 'Invalid name: Name cannot be empty'
                 route_not_exist:
                   summary: Route does not exist
                   value:
@@ -205,7 +205,7 @@ paths:
                   summary: Name field is empty
                   value:
                     status: ERROR
-                    error: 'Invalid name name: Name cannot be empty'
+                    error: 'Invalid name: Name cannot be empty'
                 route_not_exist:
                   summary: Route does not exist
                   value:
@@ -244,7 +244,7 @@ paths:
                   summary: Name field is empty
                   value:
                     status: ERROR
-                    error: 'Invalid name name: Name cannot be empty'
+                    error: 'Invalid name: Name cannot be empty'
                 route_not_exist:
                   summary: Route does not exist
                   value:
@@ -337,6 +337,11 @@ paths:
                   value:
                     status: ERROR
                     error: Name cannot be empty
+                invalid_namespace:
+                  summary: The namespace ID is empty or malformed
+                  value:
+                    status: ERROR
+                    error: 'Invalid policy name: Invalid namespace ID: <id>'
                 session_already_exists:
                   summary: Session name already exists
                   value:
@@ -380,7 +385,7 @@ paths:
                   summary: Name cannot be empty
                   value:
                     status: ERROR
-                    error: 'Invalid name name: Name cannot be empty'
+                    error: 'Invalid name: Name cannot be empty'
                 session_not_exist:
                   summary: Session does not exist
                   value:
@@ -452,7 +457,7 @@ paths:
                   summary: Missing name field
                   value:
                     status: ERROR
-                    error: 'Invalid name name: Name cannot be empty'
+                    error: 'Invalid name: Name cannot be empty'
                 session_non_exist:
                   summary: Non-existent session
                   value:

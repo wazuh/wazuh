@@ -339,7 +339,9 @@ int wm_task_manager_read_json(const cJSON *section, wmodule *module) {
 
         if (item->valuedouble < 0 || item->valuedouble > (double)INT_MAX) {
             char *text = cJSON_PrintUnformatted(item);
-            merror("Invalid value for element '%s': %s is out of range (0 to %d); the module default applies.",
+            /* Not "the default applies": `-t` (and so every start through wazuh-manager-control)
+             * fails on it; only a daemon started by hand keeps the module default. */
+            merror("Invalid value for element '%s': %s is out of range (0 to %d); the value is refused.",
                    settings[i].key, text != NULL ? text : "(null)", INT_MAX);
             free(text);
             degraded = 1;

@@ -1169,6 +1169,8 @@ def test_handler_data_received_ko():
                 dispatch_mock.assert_not_called()
                 handler.transport.close.assert_called_once()
                 assert '3025' in handler.logger.error.call_args[0][0]
+                # The reason is logged here, so the server's connection_lost does not log a second line.
+                assert handler.close_reason_logged
 
     # Any other cluster error is still propagated
     with patch('wazuh.core.cluster.common.Handler.get_messages',

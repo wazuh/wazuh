@@ -473,4 +473,171 @@ TEST(ConfDropPrivileges, EnvOverride)
 
     unsetEnv("WAZUH_ENGINE_DROP_PRIVILEGES");
 }
+/************************************************************************
+ *                       Ranged units
+ ************************************************************************/
+TEST(ConfRange, AddUnitRejectsABadRange)
+{
+    conf::Conf conf(std::make_shared<conf::mocks::MockFileLoader>());
+
+    // Empty range
+    EXPECT_THROW(conf.addUnit<int>("TEST.RANGE_EMPTY", "TEST_ENV_RANGE_EMPTY", 5, conf::Range {10, 1}),
+                 std::logic_error);
+    // Negative bound for an unsigned unit
+    EXPECT_THROW(conf.addUnit<size_t>("TEST.RANGE_NEG", "TEST_ENV_RANGE_NEG", 5, conf::Range {-1, 10}),
+                 std::logic_error);
+    // Default outside the range
+    EXPECT_THROW(conf.addUnit<int>("TEST.RANGE_DEFAULT", "TEST_ENV_RANGE_DEFAULT", 50, conf::Range {0, 10}),
+                 std::logic_error);
+    // Valid
+    EXPECT_NO_THROW(conf.addUnit<int>("TEST.RANGE_OK", "TEST_ENV_RANGE_OK", 5, conf::Range {0, 10}));
+    ASSERT_TRUE(conf.getRange("TEST.RANGE_OK").has_value());
+    EXPECT_EQ(conf.getRange("TEST.RANGE_OK")->min, 0);
+    EXPECT_EQ(conf.getRange("TEST.RANGE_OK")->max, 10);
+    EXPECT_FALSE(conf.getRange("TEST.RANGE_UNKNOWN").has_value());
+}
+
+/**
+ * Parameters: file map, environment value ("" = unset), expected failure.
+ */
+class ConfRangeLoad : public ::testing::TestWithParam<std::tuple<conf::OptionMap, std::string, bool>>
+{
+protected:
+    void TearDown() override
+    {
+        unsetEnv("TEST_ENV_RANGED_INT");
+        unsetEnv("TEST_ENV_RANGED_SIZE");
+    }
+};
+
+// These tests load a file, so they run outside standalone mode, where load() skips the file loader. No
+// logging::testInit(): it sets standalone mode and primes isStandaloneModeEnable()'s cache for the process.
+TEST_P(ConfRangeLoad, LoadChecksTheEffectiveValue)
+{
+    unsetenv(base::process::ENV_ENGINE_STANDALONE);
+    const auto& [fileMap, envValue, expectThrow] = GetParam();
+
+    unsetEnv("TEST_ENV_RANGED_INT");
+    if (!envValue.empty())
+    {
+        setEnv("TEST_ENV_RANGED_INT", envValue);
+    }
+
+    conf::Conf conf(conf::mocks::createMockFileLoader(fileMap));
+    conf.addUnit<int>("TEST.RANGED_INT", "TEST_ENV_RANGED_INT", 0, conf::Range {0, 128});
+    conf.addUnit<size_t>("TEST.RANGED_SIZE", "TEST_ENV_RANGED_SIZE", 20, conf::Range {1, 3600});
+
+    if (expectThrow)
+    {
+        EXPECT_THROW(conf.load(), std::runtime_error);
+    }
+    else
+    {
+        EXPECT_NO_THROW(conf.load());
+    }
+}
+
+INSTANTIATE_TEST_SUITE_P(ConfRange,
+                         ConfRangeLoad,
+                         ::testing::Values(
+                             // Defaults are in range
+                             std::make_tuple(conf::OptionMap {}, "", false),
+                             // File values at the bounds
+                             std::make_tuple(conf::OptionMap {{"TEST.RANGED_INT", "0"}}, "", false),
+                             std::make_tuple(conf::OptionMap {{"TEST.RANGED_INT", "128"}}, "", false),
+                             std::make_tuple(conf::OptionMap {{"TEST.RANGED_SIZE", "1"}}, "", false),
+                             std::make_tuple(conf::OptionMap {{"TEST.RANGED_SIZE", "3600"}}, "", false),
+                             // File values outside
+                             std::make_tuple(conf::OptionMap {{"TEST.RANGED_INT", "999"}}, "", true),
+                             std::make_tuple(conf::OptionMap {{"TEST.RANGED_INT", "-1"}}, "", true),
+                             std::make_tuple(conf::OptionMap {{"TEST.RANGED_SIZE", "0"}}, "", true),
+                             std::make_tuple(conf::OptionMap {{"TEST.RANGED_SIZE", "3601"}}, "", true),
+                             // The environment wins over the file, in both directions
+                             std::make_tuple(conf::OptionMap {{"TEST.RANGED_INT", "999"}}, "64", false),
+                             std::make_tuple(conf::OptionMap {{"TEST.RANGED_INT", "64"}}, "999", true),
+                             // An environment value that does not parse falls back to the file value
+                             std::make_tuple(conf::OptionMap {{"TEST.RANGED_INT", "999"}}, "abc", true)));
+
+TEST(ConfRange, ErrorNamesTheKeySourceAndRange)
+{
+    unsetenv(base::process::ENV_ENGINE_STANDALONE);
+    unsetEnv("TEST_ENV_RANGED_MSG");
+
+    conf::Conf conf(conf::mocks::createMockFileLoader({{"TEST.RANGED_MSG", "999"}}));
+    conf.addUnit<int>("TEST.RANGED_MSG", "TEST_ENV_RANGED_MSG", 0, conf::Range {0, 128});
+
+    try
+    {
+        conf.load();
+        FAIL() << "load() accepted an out-of-range value";
+    }
+    catch (const std::runtime_error& e)
+    {
+        const std::string msg = e.what();
+        EXPECT_NE(msg.find("'TEST.RANGED_MSG'"), std::string::npos) << msg;
+        EXPECT_NE(msg.find("internal options file"), std::string::npos) << msg;
+        EXPECT_NE(msg.find("'999'"), std::string::npos) << msg;
+        EXPECT_NE(msg.find("0 to 128"), std::string::npos) << msg;
+    }
+}
+
+TEST(ConfRange, ErrorNamesTheEnvironmentVariable)
+{
+    unsetenv(base::process::ENV_ENGINE_STANDALONE);
+    setEnv("TEST_ENV_RANGED_MSG_ENV", "999");
+
+    conf::Conf conf(conf::mocks::createMockFileLoader({}));
+    conf.addUnit<int>("TEST.RANGED_MSG_ENV", "TEST_ENV_RANGED_MSG_ENV", 0, conf::Range {0, 128});
+
+    try
+    {
+        conf.load();
+        FAIL() << "load() accepted an out-of-range value";
+    }
+    catch (const std::runtime_error& e)
+    {
+        EXPECT_NE(std::string(e.what()).find("environment variable 'TEST_ENV_RANGED_MSG_ENV'"), std::string::npos)
+            << e.what();
+    }
+
+    unsetEnv("TEST_ENV_RANGED_MSG_ENV");
+}
+
+// The engine's own ranges: the documented bounds of the keys whose bad value used to stop only a start
+TEST(ConfRange, EngineKeysHaveTheirDocumentedRanges)
+{
+    conf::Conf conf(std::make_shared<conf::mocks::MockFileLoader>());
+
+    const auto expectRange = [&](std::string_view key, int64_t min, int64_t max)
+    {
+        const auto range = conf.getRange(key);
+        ASSERT_TRUE(range.has_value()) << key;
+        EXPECT_EQ(range->min, min) << key;
+        EXPECT_EQ(range->max, max) << key;
+    };
+
+    expectRange(conf::key::ORCHESTRATOR_THREADS, 0, 128);
+    expectRange(conf::key::INDEXER_BULK_MAX_BYTES, 64 * 1024, 100 * 1024 * 1024);
+    expectRange(conf::key::INDEXER_FLUSH_INTERVAL, 1, 3600);
+    expectRange(conf::key::INDEXER_LOGGER_QUEUE_SIZE, 1, 1024);
+    expectRange(conf::key::INDEXER_LOGGER_THREADS, 1, 16);
+    expectRange(conf::key::INDEXER_MAX_RETRY_DELAY, 1, 3600);
+    expectRange(conf::key::INDEXER_REQUEST_TIMEOUT, 0, 3600);
+    expectRange(conf::key::INDEXER_MONITORING_INTERVAL, 1, 3600);
+    expectRange(conf::key::CM_SYNC_RETRY_INTERVAL, 0, 3600);
+    expectRange(conf::key::EVENT_QUEUE_SIZE, 8192, std::numeric_limits<int>::max());
+    expectRange(conf::key::AGENT_METADATA_CACHE_TTL, 1, 86400);
+    expectRange(conf::key::SERVER_API_TIMEOUT, 1, std::numeric_limits<int>::max());
+    expectRange(conf::key::STREAMLOG_COMPRESSION_LEVEL, 1, 9);
+}
+
+TEST(ConfRange, OrchestratorThreadsOutOfRangeFailsTheLoad)
+{
+    unsetenv(base::process::ENV_ENGINE_STANDALONE);
+    unsetenv("WAZUH_ORCHESTRATOR_THREADS");
+
+    conf::Conf conf(conf::mocks::createMockFileLoader({{std::string(conf::key::ORCHESTRATOR_THREADS), "999"}}));
+    EXPECT_THROW(conf.load(), std::runtime_error);
+}
+
 } // namespace

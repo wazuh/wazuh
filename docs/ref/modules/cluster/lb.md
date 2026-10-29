@@ -69,8 +69,8 @@ master does and forwards the request over the cluster link, exactly as it does f
 identity creation stays master-owned without the balancer having to know which node is the master.
 
 The legacy response carries only id, name, IP and key, so **no agent enrolled over `1515` receives a
-re-enrollment secret**, whichever node served it: the master generates none on that channel, and a
-worker drops the one the master returns for the forwarded request. Routing `1515` to the master
+re-enrollment secret**, whichever node served it: the master generates none for a `1515` enrollment,
+whether it served the request itself or a worker forwarded it. Routing `1515` to the master
 alone therefore gains nothing and makes the master a single point of failure for legacy
 enrollment.
 
@@ -98,7 +98,8 @@ timeouts above that value, or the caller sees a timeout instead of the reason.
 | Enrollment over `1515` (legacy) | accepted anywhere | identity created on the master |
 | Minting enrollment tokens | — | **yes** |
 | Re-enrollment | accepted anywhere | the secret exists only on the master |
-| Group changes, agent deletion | — | **yes** (through the server API) |
+| Group changes | requested through the server API, or with `agent_groups` on any node (a worker forwards it) | applied on the master |
+| Agent deletion | — | **yes** (through the server API) |
 
 With the master down, existing agents are unaffected: events, `/control` and configuration
 downloads keep working against the workers. **Enrollment stops**, and so do group changes.
@@ -155,11 +156,13 @@ flowchart TB
 
 The full comparison of the two models (balancing granularity, filtering, mTLS, logging) is in
 [The two deployment models](../remoted/load-balancers/README.md#3-the-two-deployment-models). One
-difference matters here: a TCP front end balances **connections**, so an agent that keeps one
-connection open stays on one node for its lifetime, while an HTTP front end balances **requests**,
-so consecutive requests from the same agent land on different nodes. That choice changes how visible
-everything in [§7](#7-what-an-agent-observes-while-the-cluster-catches-up) is. Neither is wrong; the
-deployment has to know which one it picked.
+difference does **not** matter here, although it looks like it should: a TCP front end balances
+**connections** and an HTTP front end balances **requests**, but a 5.x agent opens a new TCP and TLS
+connection for every request (and remoted closes a connection left idle for 10 s), so under either
+model consecutive requests from the same agent land on different nodes. Plan for
+[§7](#7-what-an-agent-observes-while-the-cluster-catches-up) whichever model you pick. To keep an agent
+on one node, configure stickiness on the balancer (for example HAProxy's `balance source`); it narrows
+the windows of §7 but is not required, and agents behind one NAT address then all land on the same node.
 
 ---
 
@@ -263,6 +266,17 @@ Measured on a three-node cluster:
 | `/etc/wazuh-manager/enrollment_tokens.json` | 0.13 s | 7.2 – 13.1 s | `401`, code `token_unknown` |
 
 **The agent recovers on its own**, in every case, without intervention.
+
+The `client.keys` row is the one every new agent meets. For about 10 seconds after an enrollment (until the
+workers' next `client.keys` synchronization; up to about 13 s was measured), any request the balancer sends to a
+worker is answered `401 unknown_agent`, and because a 5.x agent opens a new connection per request, a `mode tcp`
+front end routes its requests to the workers in that window as readily as an HTTP one does (see
+[§5](#5-tls-choose-a-model-before-issuing-certificates)). The agent keeps its identity and retries; a real agent
+enrolled through a passthrough balancer was observed to settle without enrolling again. Nothing has to be
+configured for it. Source-address stickiness on the balancer (HAProxy `balance source`, NGINX
+`hash $remote_addr consistent`) is an optional mitigation: an agent pinned to one node stops alternating between
+nodes, which removes the [§7.2](#72-node-local-state-403-on-configuration-download) window after its first
+`/control`, but an agent pinned to a worker still waits out this one, since the identity is created on the master.
 
 What an operator actually sees is worse than one clean error, because a real agent enrolling through
 a balancer meets **three different failures in the same burst**:
@@ -551,7 +565,10 @@ curl --cacert root-ca.pem https://<agent-facing-address>:1517/wazuh-manager/
 ```
 
 The responses are identical from every node — there is no node identifier in the body or headers —
-so this confirms the front end works, not that every backend does. Check the backends individually,
+so this confirms the front end works, not that every backend does. Under passthrough the certificate
+does identify the node that answered, since each node presents its own leaf:
+`openssl s_client -connect <agent-facing-address>:1517 </dev/null 2>/dev/null | openssl x509 -noout -subject`
+prints that node's subject (repeat it to watch the balancer alternate). Check the backends individually,
 by their own addresses:
 
 ```bash
@@ -723,13 +740,13 @@ The configurations below balance the **legacy** channel only. They apply to a cl
 stream {
     upstream enrollment {
         server <MASTER_NODE_IP>:1515;
-        server <WORKER_NODE_IP>:1515;
-        server <WORKER_NODE_IP>:1515;
+        server <WORKER1_NODE_IP>:1515;
+        server <WORKER2_NODE_IP>:1515;
     }
     upstream agents {
         server <MASTER_NODE_IP>:1514;
-        server <WORKER_NODE_IP>:1514;
-        server <WORKER_NODE_IP>:1514;
+        server <WORKER1_NODE_IP>:1514;
+        server <WORKER2_NODE_IP>:1514;
     }
     server {
         listen 1515;
@@ -745,6 +762,12 @@ stream {
 ### HAProxy
 
 ```haproxy
+defaults
+    mode tcp
+    timeout connect 5s
+    timeout client  60s
+    timeout server  60s
+
 frontend enrollment
     bind :1515
     mode tcp
@@ -753,8 +776,8 @@ frontend enrollment
 backend enrollment_nodes
     mode tcp
     server master  <MASTER_NODE>:1515 check
-    server worker1 <WORKER_NODE>:1515 check
-    server worker2 <WORKER_NODE>:1515 check
+    server worker1 <WORKER1_NODE>:1515 check
+    server worker2 <WORKER2_NODE>:1515 check
 
 frontend agents
     bind :1514
@@ -765,9 +788,12 @@ backend agent_nodes
     mode tcp
     balance leastconn
     server master  <MASTER_NODE>:1514 check
-    server worker1 <WORKER_NODE>:1514 check
-    server worker2 <WORKER_NODE>:1514 check
+    server worker1 <WORKER1_NODE>:1514 check
+    server worker2 <WORKER2_NODE>:1514 check
 ```
+
+Keep the `defaults` timeouts: without them HAProxy warns at startup and never closes a dead connection. A 4.x
+agent sends a keep-alive every 10 seconds by default (`notify_time`), well inside the 60 s idle timeouts.
 
 Both examples send `1515` to every node: a worker forwards the enrollment to the master, so the
 master does not have to be the only backend (see [§2](#2-port-map)).

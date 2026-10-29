@@ -12,6 +12,7 @@
 
 #include <gtest/gtest.h>
 
+using remoted::http::findHeader;
 using remoted::http::headerValue;
 
 TEST(HeaderUtilsTest, FindsAnAlreadyLowercaseName)
@@ -52,4 +53,15 @@ TEST(HeaderUtilsTest, DoesNotMatchADifferentLengthName)
 {
     std::unordered_map<std::string, std::string> headers {{"authorization-extra", "value"}};
     EXPECT_EQ(headerValue(headers, "authorization"), "");
+}
+
+TEST(HeaderUtilsTest, FindHeaderTellsAnEmptyValueFromAnAbsentHeader)
+{
+    // `Content-Encoding:` sent with no value is still a header (answered 415), unlike no header at all.
+    std::unordered_map<std::string, std::string> headers {{"Content-Encoding", ""}};
+    const auto present = findHeader(headers, "content-encoding");
+    ASSERT_TRUE(present.has_value());
+    EXPECT_EQ(*present, "");
+    EXPECT_FALSE(findHeader(headers, "authorization").has_value());
+    EXPECT_EQ(headerValue(headers, "content-encoding"), "");
 }

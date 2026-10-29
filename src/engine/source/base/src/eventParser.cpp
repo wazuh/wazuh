@@ -37,12 +37,15 @@ Event parseLegacyEvent(std::string_view rawEvent, const json::Json& agentMetadat
     }
 
     // Extract the queue identifier. The indexer stores it as a signed byte, so a value above 0x7F would be decoded and
-    // then refused at indexing time, lost uncounted: refuse it here, where the drop is counted as malformed.
+    // then refused at indexing time, lost uncounted: refuse it here, where the drop is counted as malformed. 0x00 is
+    // no queue, refused as /logtest refuses queue 0, so both entry points accept the same range.
     const int queue = static_cast<unsigned char>(rawEvent[0]);
-    if (queue > MAX_QUEUE_ID)
+    if (queue < MIN_QUEUE_ID || queue > MAX_QUEUE_ID)
     {
-        throw std::runtime_error(fmt::format(
-            "Invalid format: queue identifier 0x{:02X} is not a 7-bit byte (0x00..0x{:02X})", queue, MAX_QUEUE_ID));
+        throw std::runtime_error(fmt::format("Invalid format: queue identifier 0x{:02X} is outside 0x{:02X}..0x{:02X}",
+                                             queue,
+                                             MIN_QUEUE_ID,
+                                             MAX_QUEUE_ID));
     }
     parseEvent->setInt(queue, EVENT_QUEUE_ID);
 

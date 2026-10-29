@@ -1102,20 +1102,23 @@ instead, so a test call can never delete content a route runs.
 >
 > - every event run against the session (`POST /logtest`, or a tester run on the internal API) is delivered
 >   through them — an indexer output writes a real document to its index, a file output appends a line to its
->   channel;
-> - building the policy (any validation of a policy with integrations, even with `load_in_tester: false`)
->   already creates a file output's channel directory `logs/<space>-<channel>/`, its store entry
->   `data/store/streamlog/<space>-<channel>/` and an open file in `wazuh-manager-analysisd`, and none of this
->   is removed with the session or its namespace. `<space>` is the caller's `space` value, so a validation
->   named after a production space writes into that space's channels.
+>   channel. A file output creates its channel (directory `logs/<space>-<channel>/`, store entry
+>   `data/store/streamlog/<space>-<channel>/`, an open file in `wazuh-manager-analysisd`) on the session's
+>   first event, and none of this is removed with the session or its namespace (the file stays open until the
+>   manager restarts). `<space>` is the caller's `space` value, so a session named after a production space
+>   writes into that space's channels;
+> - building the policy only to validate it (`load_in_tester: false`) checks a file output's channel name but
+>   creates nothing.
 >
 > The policies the Wazuh Indexer sends carry no `outputs`, so the dashboard's logtest writes nothing. When you
-> call the API by hand, leave `policy.outputs` empty. The Wazuh dashboard's logtest and its `test` session run
-> on the engine bundled with wazuh-indexer, not on this manager's engine: on the manager socket the `test` space
-> used by the [Public API Reference](public-api-reference.md) examples is an ordinary session name. Only when you
-> call the engine inside wazuh-indexer does loading or deleting `test` replace the session the dashboard's
-> logtest runs against; use another `space` name there. For the same reason, changes to this manager's engine
-> API reach dashboard users only through the wazuh-indexer package.
+> call the API by hand, leave `policy.outputs` empty. The Wazuh dashboard's logtest runs on the engine bundled
+> with wazuh-indexer, not on this manager's engine, against the session wazuh-indexer creates for each space:
+> it is named after the space (`standard`, for example) and described as `wazuh-indexer auto created session`.
+> On the manager socket the `test` space used by the [Public API Reference](public-api-reference.md) examples is
+> an ordinary session name. Only when you call the engine inside wazuh-indexer does loading or deleting a space
+> name wazuh-indexer uses (such as `standard`) replace the session the dashboard's logtest runs against; use a
+> name of your own there. For the same reason, changes to this manager's engine API reach dashboard users only
+> through the wazuh-indexer package.
 
 Because promotion always builds the whole space, removing content by promoting an empty or incomplete space
 is refused by the same checks. To stop using a space's content, disable the space's policy in the Wazuh

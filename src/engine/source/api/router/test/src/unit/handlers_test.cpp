@@ -221,8 +221,7 @@ INSTANTIATE_TEST_SUITE_P(
                 return req;
             },
             [](const std::shared_ptr<::router::IRouterAPI>& router) { return routeDelete(router); },
-            []()
-            { return userErrorResponse<eEngine::GenericStatus_Response>("Invalid name name: Name cannot be empty"); },
+            []() { return userErrorResponse<eEngine::GenericStatus_Response>("Invalid name: Name cannot be empty"); },
             [](auto&) {}),
         /***********************************************************************
          * RouteReload
@@ -284,8 +283,7 @@ INSTANTIATE_TEST_SUITE_P(
                 return req;
             },
             [](const std::shared_ptr<::router::IRouterAPI>& router) { return routeReload(router); },
-            []()
-            { return userErrorResponse<eEngine::GenericStatus_Response>("Invalid name name: Name cannot be empty"); },
+            []() { return userErrorResponse<eEngine::GenericStatus_Response>("Invalid name: Name cannot be empty"); },
             [](auto&) {}),
         /***********************************************************************
          * RoutePatchPriority
@@ -352,8 +350,7 @@ INSTANTIATE_TEST_SUITE_P(
                 return req;
             },
             [](const std::shared_ptr<::router::IRouterAPI>& router) { return routePatchPriority(router); },
-            []()
-            { return userErrorResponse<eEngine::GenericStatus_Response>("Invalid name name: Name cannot be empty"); },
+            []() { return userErrorResponse<eEngine::GenericStatus_Response>("Invalid name: Name cannot be empty"); },
             [](auto&) {})));
 
 // TODO: add separate tests for routeGet and tableGet

@@ -101,9 +101,11 @@ The body is a bare JSON array of group names, not an object.
 
 The agent id travels in the `X-Wazuh-Agent-Id` header because the router is exact-match and cannot
 carry it as a path segment. Without the header the route answers `400 Missing header:
-X-Wazuh-Agent-Id` without touching the database. The value must be decimal digits only (leading
-zeros allowed, as in `001`) within the signed 32-bit range; anything else — `abc`, `1abc`, `-1`, a
-space, an overflow — answers `400 Invalid header: X-Wazuh-Agent-Id must be a numeric agent id`,
+X-Wazuh-Agent-Id` without touching the database. A blank (empty or whitespace-only) value is not an id
+either, and usually gets that same `400 Missing header`: `curl -H 'X-Wazuh-Agent-Id: '`, for one, does
+not send a header whose value is blank. The value must be decimal digits only (leading
+zeros allowed, as in `001`) within the signed 32-bit range; anything else — `abc`, `1abc`, `-1`, an
+embedded space (`1 2`), an overflow — answers `400 Invalid header: X-Wazuh-Agent-Id must be a numeric agent id`,
 also without touching the database. Both rejections are logged as a `WARNING` under the
 `wazuh-manager-db` tag at most once per 90 seconds, with the count of requests the line stands for.
 

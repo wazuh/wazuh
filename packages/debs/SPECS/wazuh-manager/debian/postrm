@@ -60,8 +60,10 @@ case "$1" in
         # A failed or aborted upgrade leaves the old package installed and configured: its
         # configuration stays in place, untouched. Only a removal keeps it aside as .save.
         if [ "$1" != "failed-upgrade" ] && [ "$1" != "abort-upgrade" ]; then
-            # Back up the old configuration files as .save
-            if [ ! -d ${CONF_DIR}/shared/default ]; then
+            # Back up the old configuration files as .save. The directory for the shared agent.conf
+            # only where a configuration directory exists: a refused fresh install (abort-install on
+            # a host that never had the manager) leaves nothing behind.
+            if [ -d ${CONF_DIR} ] && [ ! -d ${CONF_DIR}/shared/default ]; then
                 mkdir -p ${CONF_DIR}/shared/default
             fi
 
@@ -98,18 +100,27 @@ case "$1" in
                 rm -rf ${DIR}/data
             fi
 
-            # Delete old .save
-            find ${CONF_DIR}/ -type f  -name "*save" -exec rm -f {} \;
+            # Only a removal replaces the .save set. abort-install and disappear run after a failed
+            # install or a takeover, often over the .save files an earlier `apt remove` kept (the CA
+            # key, local.env, client.keys, the certificates): dpkg has already taken back what the
+            # failed install unpacked, so there is nothing new to keep aside, and deleting the old
+            # .save files would lose the only copy of that installation.
+            if [ "$1" = "remove" ]; then
+                if [ -d ${CONF_DIR} ]; then
+                    # Delete old .save
+                    find ${CONF_DIR}/ -type f  -name "*save" -exec rm -f {} \;
 
-            # Rename the files. -name tests the basename only, so the agent groups under shared/ are
-            # renamed too, on purpose: dpkg has already deleted the package's own files there, and the
-            # rest are kept like every other file. Only a file whose own name contains "shared" keeps
-            # its name (the RPM's save_conf does the same).
-            find ${CONF_DIR}/ -type f ! -name "*shared*" -exec mv {} {}.save \;
+                    # Rename the files. -name tests the basename only, so the agent groups under
+                    # shared/ are renamed too, on purpose: dpkg has already deleted the package's own
+                    # files there, and the rest are kept like every other file. Only a file whose own
+                    # name contains "shared" keeps its name (the RPM's save_conf does the same).
+                    find ${CONF_DIR}/ -type f ! -name "*shared*" -exec mv {} {}.save \;
+                fi
 
-            if [ -d "${DIR}/api" ]; then
-                find "${DIR}/api/" -type f -name "*save" -exec rm -f {} \;
-                find "${DIR}/api/" -type f -exec mv {} {}.save \;
+                if [ -d "${DIR}/api" ]; then
+                    find "${DIR}/api/" -type f -name "*save" -exec rm -f {} \;
+                    find "${DIR}/api/" -type f -exec mv {} {}.save \;
+                fi
             fi
 
         fi
