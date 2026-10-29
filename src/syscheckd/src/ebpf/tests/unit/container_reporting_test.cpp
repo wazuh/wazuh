@@ -17,29 +17,7 @@
 extern "C" void container_reporting_test_host(int limit);
 extern "C" void container_reporting_test_row_limit(int limit);
 
-#include "container_instances_client.hpp"
-
-namespace fim_container_events
-{
-    std::map<std::string, bool> mergeAdmissionView(
-        const std::map<std::string, bool>& current,
-        const std::vector<wazuh::container_instances_client::ContainerRef>& refs,
-        bool complete);
-
-    void applyAdmittedSet(std::map<std::string, bool>& view,
-                          const std::set<std::string>& admitted,
-                          bool admittedKnown,
-                          bool complete);
-
-    enum class AdmissionPublish
-    {
-        nothing,
-        defer,
-        install
-    };
-
-    AdmissionPublish decideAdmissionPublish(bool changed, bool unpublished, bool released, bool complete);
-} // namespace fim_container_events
+#include "container_list_refresh.hpp"
 
 namespace
 {
@@ -245,6 +223,105 @@ TEST_F(ContainerReportingTest, AdmissionRetractsRetainsAndRestoresUnchangedRows)
         EXPECT_EQ(persisted[0], (std::pair<std::string, int> {"b:/etc/one", OPERATION_CREATE}));
         EXPECT_EQ(syncFlag("b", "/etc/one"), 1);
     }
+}
+
+/* The three rules above are only worth anything if the refresh actually
+ * applies them, and for a long time nothing checked that it did: the drain
+ * reads its list behind a pimpl with a live socket, so R1 shipped with the
+ * partial-listing rule written down and never reached. These drive the whole
+ * decision for one reply.
+ */
+TEST(ContainerListRefresh, AnUnansweredQueryChangesNothingAtAll)
+{
+    using wazuh::container_instances_client::ContainerDelta;
+    using fim_container_events::planListRefresh;
+
+    ContainerDelta delta; // available defaults to false
+    const auto plan = planListRefresh(delta, {{"a", true}});
+
+    EXPECT_FALSE(plan.act) << "an unanswered query is not an empty node";
+    EXPECT_TRUE(plan.containers.empty());
+    EXPECT_TRUE(plan.events.empty());
+}
+
+TEST(ContainerListRefresh, AFullListInstallsOnlyWhenItCoversEverything)
+{
+    using wazuh::container_instances_client::ContainerDelta;
+    using wazuh::container_instances_client::ContainerRef;
+    using fim_container_events::planListRefresh;
+
+    ContainerRef a;
+    a.containerId = "a";
+    a.cgroupId    = 11;
+    a.synced      = true;
+
+    ContainerDelta delta;
+    delta.available = true;
+    delta.deltaSupported = false; // an older server: the whole set, no cursor
+    delta.containers = {a};
+    delta.complete = true;
+
+    {
+        const auto plan = planListRefresh(delta, {{"a", true}, {"b", true}});
+        EXPECT_TRUE(plan.act);
+        EXPECT_TRUE(plan.installWholeList) << "a complete list may replace the map";
+        EXPECT_EQ(plan.containers, (std::vector<std::pair<std::uint64_t, std::string>> {{11, "a"}}));
+        EXPECT_EQ(plan.admissionView, (std::map<std::string, bool> {{"a", true}}))
+                << "b is absent from a complete list, so b is gone";
+    }
+
+    // The same reply, still resolving. Nothing may be removed on the strength
+    // of it -- not from the cgroup map, and not from admission.
+    delta.complete = false;
+    {
+        const auto plan = planListRefresh(delta, {{"a", true}, {"b", true}});
+        EXPECT_FALSE(plan.installWholeList) << "a partial list must upsert, never install";
+        ASSERT_EQ(plan.events.size(), 1U);
+        EXPECT_EQ(plan.events[0].container_id, "a");
+        EXPECT_EQ(plan.events[0].kind, fim_container_events::CgroupDeltaEvent::Kind::changed);
+        EXPECT_EQ(plan.admissionView, (std::map<std::string, bool> {{"a", true}, {"b", true}}))
+                << "b was merely not spoken about";
+        EXPECT_FALSE(plan.complete);
+    }
+}
+
+TEST(ContainerListRefresh, ADeltaMergesItsEventsAndThenTheAdmittedSet)
+{
+    using wazuh::container_instances_client::ContainerDelta;
+    using wazuh::container_instances_client::ContainerEventRef;
+    using fim_container_events::planListRefresh;
+
+    ContainerEventRef gone;
+    gone.containerId = "gone";
+    gone.kind = ContainerEventRef::Kind::removed;
+
+    ContainerEventRef fresh;
+    fresh.containerId = "fresh";
+    fresh.cgroupId = 22;
+    fresh.kind = ContainerEventRef::Kind::added;
+    fresh.synced = true;
+
+    ContainerDelta delta;
+    delta.available = true;
+    delta.deltaSupported = true;
+    delta.complete = true;
+    delta.events = {gone, fresh};
+
+    // "quiet" has no event of its own, and the connector has just readmitted it
+    // with the slot "gone" freed. Only the admitted set can say so.
+    delta.admittedKnown = true;
+    delta.admitted = {"fresh", "quiet"};
+
+    const auto plan = planListRefresh(delta, {{"gone", true}, {"quiet", false}});
+
+    EXPECT_TRUE(plan.act);
+    EXPECT_FALSE(plan.installWholeList) << "a delta describes transitions, it never replaces the map";
+    ASSERT_EQ(plan.events.size(), 2U);
+    EXPECT_EQ(plan.events[0].kind, fim_container_events::CgroupDeltaEvent::Kind::removed);
+    EXPECT_EQ(plan.events[1].kind, fim_container_events::CgroupDeltaEvent::Kind::added);
+
+    EXPECT_EQ(plan.admissionView, (std::map<std::string, bool> {{"fresh", true}, {"quiet", true}}))
+            << "the removal drops out, and the readmission arrives with no event of its own";
 }
 
 TEST(ContainerDrainAdmissionView, AnIncompleteListUpsertsAndACompleteOneReplaces)

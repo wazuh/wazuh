@@ -14,6 +14,7 @@
 #include "cgroup_container_map.hpp"
 #include "container_baseline_fim_bridge.h"
 #include "container_event_router.hpp"
+#include "container_list_refresh.hpp"
 #include "container_event_staging.hpp"
 #include "resolver_wait.hpp"
 #include "container_instances_client.hpp"
@@ -192,14 +193,6 @@ namespace fim_container_events
         }
     }
 
-    /* What to do with an admission view the drain has just recomputed. */
-    enum class AdmissionPublish
-    {
-        nothing, /* identical to what is already installed */
-        defer,   /* hold it: not safe to install, or not the whole node yet */
-        install
-    };
-
     /* Two reasons to hold an admission snapshot back, and one trap in holding it.
      *
      * not released  installing runs a reconciliation that reads and writes
@@ -230,6 +223,137 @@ namespace fim_container_events
         }
 
         return AdmissionPublish::install;
+    }
+
+    ListRefreshPlan planListRefresh(const wazuh::container_instances_client::ContainerDelta& delta,
+                                    const std::map<std::string, bool>& currentView)
+    {
+        ListRefreshPlan plan;
+        plan.complete = delta.complete;
+
+        /* unreachable: nothing was obtained. Change NOTHING -- install()
+         * replaces the positive map, so applying an empty list from a connector
+         * that simply did not answer would un-attribute every container at once
+         * and turn the next event from each into an escalation. */
+        if (!delta.available)
+        {
+            return plan;
+        }
+
+        plan.act = true;
+
+        /* deltas unsupported: an older container_instances, which ignored the
+         * cursor and answered with the set.
+         * resync required:    the cursor is from another store lifetime, or its
+         *                     position has been evicted. The set rides the same
+         *                     reply, so this costs no extra round trip. */
+        if (!delta.deltaSupported || delta.resyncRequired)
+        {
+            plan.installWholeList = delta.complete;
+            plan.containers.reserve(delta.containers.size());
+
+            if (!delta.complete)
+            {
+                plan.events.reserve(delta.containers.size());
+            }
+
+            for (const auto& ref : delta.containers)
+            {
+                plan.containers.emplace_back(ref.cgroupId, ref.containerId);
+
+                if (!delta.complete)
+                {
+                    /* applyDelta() withdraws whatever THIS container held before
+                     * applying the event, and touches no other container --
+                     * which is precisely the difference from install(), and the
+                     * whole reason a partial reply may be applied at all. */
+                    CgroupDeltaEvent upsert;
+                    upsert.kind             = CgroupDeltaEvent::Kind::changed;
+                    upsert.cgroup_id        = ref.cgroupId;
+                    upsert.container_id     = ref.containerId;
+                    upsert.extra_cgroup_ids = ref.extraCgroupIds;
+                    plan.events.push_back(std::move(upsert));
+                }
+
+                /* Every other cgroup the container occupies, as its own entry. A
+                 * container running an init system has one per unit, and the
+                 * kernel filter matches an event's cgroup id by equality -- so a
+                 * key that does not reach the allowlist is a unit whose file
+                 * events are discarded before anything downstream can see them.
+                 *
+                 * One entry per key rather than a key set in the map, because the
+                 * map is keyed by inode precisely because that is what every
+                 * event carries; attribution then needs no second lookup. */
+                for (const auto extra : ref.extraCgroupIds)
+                {
+                    plan.containers.emplace_back(extra, ref.containerId);
+                }
+            }
+
+            plan.admissionView = mergeAdmissionView(currentView, delta.containers, delta.complete);
+            return plan;
+        }
+
+        plan.events.reserve(delta.events.size());
+
+        for (const auto& event : delta.events)
+        {
+            CgroupDeltaEvent translated;
+            translated.container_id     = event.containerId;
+            translated.cgroup_id        = event.cgroupId;
+            translated.extra_cgroup_ids = event.extraCgroupIds;
+
+            switch (event.kind)
+            {
+                    using Kind = wazuh::container_instances_client::ContainerEventRef::Kind;
+
+                case Kind::added:
+                    translated.kind = CgroupDeltaEvent::Kind::added;
+                    break;
+
+                case Kind::removed:
+                    translated.kind = CgroupDeltaEvent::Kind::removed;
+                    break;
+
+                case Kind::changed:
+                default:
+                    translated.kind = CgroupDeltaEvent::Kind::changed;
+                    break;
+            }
+
+            plan.events.push_back(std::move(translated));
+        }
+
+        /* Merged into the view rather than rebuilt from it: a delta describes
+         * transitions, so a container it does not mention is unchanged, not
+         * gone. `added` and `changed` carry the connector's current answer for
+         * that container; `removed` carries no record, and a container that no
+         * longer exists needs no admission -- dropping it also keeps the view
+         * from growing without bound on a host that churns containers. */
+        std::map<std::string, bool> updated {currentView};
+
+        for (const auto& event : delta.events)
+        {
+            if (event.containerId.empty()) continue;
+
+            using Kind = wazuh::container_instances_client::ContainerEventRef::Kind;
+
+            if (event.kind == Kind::removed)
+            {
+                updated.erase(event.containerId);
+            }
+            else
+            {
+                updated[event.containerId] = event.synced;
+            }
+        }
+
+        /* ...and then the set, which is the only place an admission change with
+         * no event of its own can reach this view. */
+        applyAdmittedSet(updated, delta.admitted, delta.admittedKnown, delta.complete);
+
+        plan.admissionView = std::move(updated);
+        return plan;
     }
 
     struct ContainerEventDrain::Impl
@@ -568,84 +692,18 @@ namespace fim_container_events
         void refreshContainerList()
         {
             const auto delta = client.listContainersSince(cursor_epoch, cursor_seq);
+            const auto plan = planListRefresh(delta, admission_view);
 
-            if (!delta.available) return;
+            if (!plan.act) return;
 
-            if (!delta.deltaSupported || delta.resyncRequired)
-            {
-                applyFullList(delta.containers, delta.complete);
-            }
-            else
-            {
-                std::vector<CgroupDeltaEvent> events;
-                events.reserve(delta.events.size());
+            syncAllowlist(plan.installWholeList ? router.applyContainerList(plan.containers)
+                          : router.applyContainerDelta(plan.events));
+            publishAdmission(plan.admissionView, plan.complete);
 
-                for (const auto& event : delta.events)
-                {
-                    CgroupDeltaEvent translated;
-                    translated.container_id    = event.containerId;
-                    translated.cgroup_id       = event.cgroupId;
-                    translated.extra_cgroup_ids = event.extraCgroupIds;
-
-                    switch (event.kind)
-                    {
-                            using Kind = wazuh::container_instances_client::ContainerEventRef::Kind;
-
-                        case Kind::added:
-                            translated.kind = CgroupDeltaEvent::Kind::added;
-                            break;
-
-                        case Kind::removed:
-                            translated.kind = CgroupDeltaEvent::Kind::removed;
-                            break;
-
-                        case Kind::changed:
-                        default:
-                            translated.kind = CgroupDeltaEvent::Kind::changed;
-                            break;
-                    }
-
-                    events.push_back(std::move(translated));
-                }
-
-                syncAllowlist(router.applyContainerDelta(events));
-
-                /* Merged into the view rather than rebuilt from it: a delta
-                 * describes transitions, so a container it does not mention is
-                 * unchanged, not gone. `added` and `changed` carry the
-                 * connector's current answer for that container; `removed`
-                 * carries no record, and a container that no longer exists
-                 * needs no admission -- dropping it also keeps the view from
-                 * growing without bound on a host that churns containers. */
-                std::map<std::string, bool> updated{admission_view};
-
-                for (const auto& event : delta.events)
-                {
-                    if (event.containerId.empty()) continue;
-
-                    using Kind = wazuh::container_instances_client::ContainerEventRef::Kind;
-
-                    if (event.kind == Kind::removed)
-                    {
-                        updated.erase(event.containerId);
-                    }
-                    else
-                    {
-                        updated[event.containerId] = event.synced;
-                    }
-                }
-
-                /* ...and then the set, which is the only place an admission
-                 * change with no event of its own can reach this view. */
-                applyAdmittedSet(updated, delta.admitted, delta.admittedKnown, delta.complete);
-
-                publishAdmission(updated, delta.complete);
-            }
-
-            /* Advanced only after the events have been applied. A crash in between
-             * replays them, which is harmless — the map converges to the same place
+            /* Advanced only after the plan has been applied. A crash in between
+             * replays it, which is harmless — the map converges to the same place
              * and a repeated walk costs time, not correctness — whereas advancing
-             * first would drop them silently. */
+             * first would drop it silently. */
             cursor_epoch = delta.epoch;
             cursor_seq   = delta.seq;
         }
@@ -739,55 +797,6 @@ namespace fim_container_events
             }
 
             fim_container_set_admission(known.data(), known.size(), admitted.data(), admitted.size());
-        }
-
-        void applyFullList(const std::vector<wazuh::container_instances_client::ContainerRef>& refs, bool complete)
-        {
-            std::vector<std::pair<std::uint64_t, std::string>> containers;
-            containers.reserve(refs.size());
-
-            std::vector<CgroupDeltaEvent> upserts;
-
-            if (!complete)
-            {
-                upserts.reserve(refs.size());
-            }
-
-            for (const auto& ref : refs)
-            {
-                containers.emplace_back(ref.cgroupId, ref.containerId);
-
-                if (!complete)
-                {
-                    /* applyDelta() withdraws whatever THIS container held before
-                     * applying the event, and touches no other container -- which
-                     * is precisely the difference from install(). */
-                    CgroupDeltaEvent upsert;
-                    upsert.kind             = CgroupDeltaEvent::Kind::changed;
-                    upsert.cgroup_id        = ref.cgroupId;
-                    upsert.container_id     = ref.containerId;
-                    upsert.extra_cgroup_ids = ref.extraCgroupIds;
-                    upserts.push_back(std::move(upsert));
-                }
-
-                /* Every other cgroup the container occupies, as its own entry. A
-                 * container running an init system has one per unit, and the kernel
-                 * filter matches an event's cgroup id by equality — so a key that
-                 * does not reach the allowlist is a unit whose file events are
-                 * discarded before anything downstream can see them.
-                 *
-                 * One entry per key rather than a key set in the map, because the
-                 * map is keyed by inode precisely because that is what every event
-                 * carries; attribution then needs no second lookup. */
-                for (const auto extra : ref.extraCgroupIds)
-                {
-                    containers.emplace_back(extra, ref.containerId);
-                }
-            }
-
-            syncAllowlist(complete ? router.applyContainerList(containers)
-                          : router.applyContainerDelta(upserts));
-            publishAdmission(mergeAdmissionView(admission_view, refs, complete), complete);
         }
 
         /* Mirror a list refresh into the kernel filter.
