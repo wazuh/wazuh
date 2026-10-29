@@ -10,6 +10,7 @@ import contextlib
 import logging
 import os
 import signal
+import stat
 import sys
 
 from wazuh.core.utils import clean_pid_files
@@ -224,14 +225,50 @@ def get_script_arguments() -> argparse.Namespace:
     return parser
 
 
+def fix_cluster_log_ownership():
+    """Give an existing logs/cluster.log to wazuh-manager, mode 0660, as root.
+
+    A log an earlier run created as root could not be written after the privilege drop. logs/ is writable by the
+    wazuh-manager account, so the name may be a link (or hard link, FIFO) that account planted: the file is opened
+    without following a link, without waiting on a FIFO and without creating anything, and its owner and mode are
+    changed through the descriptor, only when it is a regular file with a single link.
+    """
+    flags = os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK | os.O_NOCTTY | os.O_CLOEXEC
+    try:
+        fd = os.open(f'{common.WAZUH_PATH}/logs/cluster.log', flags)
+    except OSError:
+        return
+    try:
+        st = os.fstat(fd)
+        if stat.S_ISREG(st.st_mode) and st.st_nlink == 1:
+            os.fchown(fd, common.wazuh_uid(), common.wazuh_gid())
+            os.fchmod(fd, 0o660)  # nosec B103
+    except OSError:
+        pass
+    finally:
+        os.close(fd)
+
+
+def drop_privileges():
+    """Switch to the wazuh-manager account, unless -r asked to run as root or the process is not root.
+
+    Done before anything else touches the installation: logs/ and queue/ are writable by that account, so whatever
+    the daemon opens or removes there as root could be redirected by a link it planted (the cluster log handler,
+    which keeps its descriptor after the drop, and the clean-up of queue/cluster among them). A process that is not
+    root has nothing to drop, and a -t run by such a user keeps working as it did when -t exited before the drop.
+    """
+    if args.root or os.geteuid() != 0:
+        return
+    fix_cluster_log_ownership()
+    # Clear root's supplementary groups first, or they survive the drop
+    os.setgroups([])
+    os.setgid(common.wazuh_gid())
+    os.setuid(common.wazuh_uid())
+
+
 def main():
     """Main function of the wazuh-manager-clusterd script in charge of starting the cluster process."""
     import wazuh.core.cluster.cluster
-
-    # Set correct permissions on cluster.log file
-    if os.path.exists(f'{common.WAZUH_PATH}/logs/cluster.log'):
-        os.chown(f'{common.WAZUH_PATH}/logs/cluster.log', common.wazuh_uid(), common.wazuh_gid())
-        os.chmod(f'{common.WAZUH_PATH}/logs/cluster.log', 0o660)  # nosec B103
 
     def configuration_error(error: Exception):
         """Log why the configuration was refused and exit 1; under -t, also say it on the terminal.
@@ -269,13 +306,6 @@ def main():
     if not args.foreground:
         pyDaemonModule.pyDaemon()
 
-    # Drop privileges to wazuh
-    if not args.root:
-        # Clear root's supplementary groups first, or they survive the drop
-        os.setgroups([])
-        os.setgid(common.wazuh_gid())
-        os.setuid(common.wazuh_uid())
-
     pid = os.getpid()
     pyDaemonModule.create_pid('wazuh-manager-clusterd', pid)
     if args.foreground:
@@ -307,6 +337,9 @@ if __name__ == '__main__':
     if args.version:
         print_version()
         sys.exit(0)
+
+    # Before the logger: its handler opens logs/cluster.log as soon as it is built
+    drop_privileges()
 
     # Set logger
     debug_mode_ = get_debug_level(args.debug_level)
