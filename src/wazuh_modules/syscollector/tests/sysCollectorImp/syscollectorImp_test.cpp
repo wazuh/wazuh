@@ -2516,6 +2516,76 @@ TEST_F(SyscollectorImpTest, invalidUtf8DoesNotAbortScan)
     EXPECT_EQ(inserted, expected);
 }
 
+TEST_F(SyscollectorImpTest, incompleteInterfaceDoesNotAbortNetworkScan)
+{
+    const auto spInfoWrapper{std::make_shared<SysInfoWrapper>()};
+
+    auto networks = nlohmann::json::parse(EXPECT_CALL_NETWORKS_JSON);
+    networks["iface"].insert(networks["iface"].begin(),
+                             R"({"IPv4":[{"address":"192.0.2.10","broadcast":"192.0.2.10","dhcp":"unknown","metric":"","netmask":"255.255.255.255"}]})"_json);
+    EXPECT_CALL(*spInfoWrapper, networks()).WillRepeatedly(Return(networks));
+
+    std::vector<std::string> inserted;
+    std::function<void(const std::string&)> callbackData
+    {
+        [&inserted](const std::string & data)
+        {
+            const auto delta = nlohmann::json::parse(data);
+            const auto& item {delta.at("data")};
+            inserted.push_back(delta.at("type").get<std::string>() + ":" +
+                               item.value("name", item.value("iface", "")) + ":" + item.value("address", item.value("type", "")));
+        }
+    };
+
+    std::vector<std::string> warnings;
+    std::function<void(const modules_log_level_t, const std::string&)> captureLog
+    {
+        [&warnings](const modules_log_level_t level, const std::string & log)
+        {
+            if (LOG_WARNING == level)
+            {
+                warnings.push_back(log);
+            }
+        }
+    };
+
+    std::thread t
+    {
+        [&spInfoWrapper, &callbackData, &captureLog]()
+        {
+            Syscollector::instance().init(spInfoWrapper,
+                                          callbackData,
+                                          reportFunction,
+                                          captureLog,
+                                          SYSCOLLECTOR_DB_PATH,
+                                          "",
+                                          "",
+                                          3600, true, false, false, true, false, false, false, false, false, false, false, false, false, true);
+        }
+    };
+
+    std::this_thread::sleep_for(std::chrono::seconds{2});
+    Syscollector::instance().destroy();
+
+    if (t.joinable())
+    {
+        t.join();
+    }
+
+    std::sort(inserted.begin(), inserted.end());
+    const std::vector<std::string> expected
+    {
+        "dbsync_network_address:enp4s0:192.168.153.1",
+        "dbsync_network_address:enp4s0:fe80::250:56ff:fec0:8",
+        "dbsync_network_iface:enp4s0:ethernet",
+        "dbsync_network_protocol:enp4s0:ipv4",
+        "dbsync_network_protocol:enp4s0:ipv6",
+    };
+    EXPECT_EQ(inserted, expected);
+    ASSERT_EQ(1u, warnings.size());
+    EXPECT_NE(std::string::npos, warnings[0].find("192.0.2.10"));
+}
+
 TEST_F(SyscollectorImpTest, destroyWaitsForSyncLoopCompletion)
 {
     auto spInfoWrapper

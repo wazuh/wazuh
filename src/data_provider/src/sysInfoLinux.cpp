@@ -24,6 +24,7 @@
 #include "networkUnixHelper.h"
 #include "networkHelper.h"
 #include "network/networkLinuxWrapper.h"
+#include "network/networkLinuxAddressResolver.h"
 #include "network/networkFamilyDataAFactory.h"
 #include "ports/portLinuxWrapper.h"
 #include "ports/portImpl.h"
@@ -408,13 +409,24 @@ nlohmann::json SysInfo::getNetworks() const
     std::map<std::string, std::vector<ifaddrs*>> networkInterfaces;
     Utils::NetworkUnixHelper::getNetworks(interfacesAddress, networkInterfaces);
 
-    for (const auto& interface : networkInterfaces)
+    IPv4AddressLinks addressLinks;
+
+    try
+    {
+        addressLinks = NetworkLinuxAddressResolver::resolveLinks(NetworkLinuxAddressResolver::dumpIPv4Addresses(), interfacesAddress.get());
+    }
+    catch (...)
+    {
+        // Without the dump, IPv4 entries keep being grouped by their label.
+    }
+
+    for (const auto& interface : NetworkLinuxAddressResolver::groupByLink(interfacesAddress.get(), networkInterfaces, addressLinks))
     {
         nlohmann::json ifaddr {};
 
         for (auto addr : interface.second)
         {
-            const auto networkInterfacePtr { FactoryNetworkFamilyCreator<OSPlatformType::LINUX>::create(std::make_shared<NetworkLinuxInterface>(addr)) };
+            const auto networkInterfacePtr { FactoryNetworkFamilyCreator<OSPlatformType::LINUX>::create(std::make_shared<NetworkLinuxInterface>(addr, interface.first)) };
 
             if (networkInterfacePtr)
             {
@@ -422,7 +434,11 @@ nlohmann::json SysInfo::getNetworks() const
             }
         }
 
-        networks["iface"].push_back(ifaddr);
+        // Only the link entry carries the interface data; a group without it cannot be reported.
+        if (ifaddr.contains("name"))
+        {
+            networks["iface"].push_back(ifaddr);
+        }
     }
 
     return networks;

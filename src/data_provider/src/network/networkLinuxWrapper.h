@@ -213,6 +213,7 @@ namespace NetDevFileFields
 class NetworkLinuxInterface final : public INetworkInterfaceWrapper
 {
         ifaddrs* m_interfaceAddress;
+        std::string m_interfaceName;
         std::string m_gateway;
         std::string m_metrics;
 
@@ -274,8 +275,10 @@ class NetworkLinuxInterface final : public INetworkInterfaceWrapper
         }
 
     public:
-        explicit NetworkLinuxInterface(ifaddrs* addrs)
+        // interfaceName is the link holding the entry; for IPv4 entries ifa_name is the address label.
+        NetworkLinuxInterface(ifaddrs* addrs, const std::string& interfaceName)
             : m_interfaceAddress{ addrs }
+            , m_interfaceName{ interfaceName }
             , m_gateway{UNKNOWN_VALUE}
         {
             if (!addrs)
@@ -317,7 +320,7 @@ class NetworkLinuxInterface final : public INetworkInterfaceWrapper
 
         std::string name() const override
         {
-            return m_interfaceAddress->ifa_name ? Utils::substrOnFirstOccurrence(m_interfaceAddress->ifa_name, ":") : "";
+            return m_interfaceName;
         }
 
         std::string adapter() const override
