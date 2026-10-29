@@ -198,14 +198,20 @@ connection from the same agent may take it over.
   agent may take a session over, whatever [`remoted.verify_msg_id`](#remotedverify_msg_id) says. A
   captured message replayed on a new connection decrypts, but its counters are equal to or older than
   the stored ones, so it is refused and its connection closed, however long the current session has
-  been idle; the agent's session, its idle time and its stored counters are left untouched. Remoted
+  been idle; the agent's session, its idle time and its stored counters are left untouched. The stored
+  counters are the ones in memory, and they survive a `client.keys` reload (an enrollment, a removal)
+  for every agent whose key and address did not change: the reload keeps the higher of them and of
+  the agent's `queue/rids/<id>` file, which is written only now and then (see
+  [`remoted.recv_counter_flush`](#remotedrecv_counter_flush)). A restart of remoted has only that file
+  to start from, so after a restart a message captured since the file's last write counts as newer
+  again. Remoted
   logs `Frame for agent ID '<id>' from '<ip>' is not newer than the last one accepted from that agent:
   it cannot take over the agent's current connection.`, throttled like the warning above. A real agent
   that reconnects is never affected: its counters only grow, and they are kept across its restarts in
   its own `queue/rids/sender_counter`. An agent whose counter was reset while it kept its key (its
   `sender_counter` deleted, or the same key imported again) cannot take over a stale session until that
-  session is closed; re-enroll it, or delete its `queue/rids/<id>` on the manager, to start its counters
-  again
+  session is closed; re-enroll it, or delete its `queue/rids/<id>` on the manager and restart the
+  manager, to start its counters again (a `client.keys` reload alone keeps the counters in memory)
 
 ---
 
@@ -872,6 +878,10 @@ to detect replayed messages.
   (see [`legacy.connection_overtake_time`](#legacyconnection_overtake_time)). It is not discarded, so
   a replayed message delivered on its own (over UDP, or on a new connection while the agent has no
   session) is still processed: set `1` where that matters.
+- **Note:** Either way, the counters compared against are the ones remoted holds in memory. A
+  `client.keys` reload keeps them for every agent whose key and address did not change (a new key
+  starts from its `queue/rids/<id>` file); only a restart of remoted falls back to that file, which
+  may lag behind (see [`remoted.recv_counter_flush`](#remotedrecv_counter_flush)).
 
 ### remoted.batch_events_per_agent_capacity
 
@@ -883,11 +893,17 @@ discarded until its share drains.
 
 ### remoted.recv_counter_flush
 
-Messages received from a legacy agent between two writes of its message counter to its RIDS file
-(`queue/rids/<id>`).
+Messages remoted accepts from legacy agents between two writes of a message counter to an agent's
+RIDS file (`queue/rids/<id>`).
 
 - **Default value:** `128`
 - **Allowed values:** Integer from `10` to `999999` (message count)
+- **Note:** The count is shared by **all** legacy agents, not kept per agent: every this-many
+  accepted messages, the counter of the agent whose message completes the count is written. With
+  many agents, one agent's file can therefore lag well behind its last message. Remoted works from
+  its in-memory counters, which a `client.keys` reload keeps, and reads the files back when it
+  starts (and, with [`remoted.verify_msg_id`](#remotedverify_msg_id) `1`, when a file is replaced),
+  so the lag matters only after a restart.
 
 ### remoted.comp_average_printout
 

@@ -69,7 +69,9 @@ When `Conf::get<T>(key)` is called:
 2. **File value**: If present in the loaded `OptionMap`, parse and return. If parsing fails, log a warning and fall through.
 3. **Default value**: Always succeeds — returns the hardcoded default.
 
-This means invalid environment variables or file values are gracefully degraded to the next source rather than causing errors at `get()` time.
+After a successful `load()` neither fallback can happen: `load()` refuses every environment variable and file value
+of a registered key that does not parse as the key's type (see [Validation](#validation)). The fallbacks remain
+only for a `get()` on a `Conf` that was never loaded.
 
 ### File Format
 
@@ -140,7 +142,7 @@ conf/
 | `Conf(shared_ptr<IFileLoader>)` | Construct and register all default configuration units |
 | `addUnit<T>(key, envName, default)` | Register a new typed configuration option (before `load()`) |
 | `addUnit<T>(key, envName, default, Range)` | Same, for an integer option with an inclusive allowed range; the default must be inside it |
-| `load()` | Load file configuration, validate types, then check every ranged option's effective value; can only be called once |
+| `load()` | Load file configuration, check the type of every environment and file value, then every ranged option's effective value; can only be called once |
 | `get<T>(key)` | Resolve the configuration value with env → file → default priority |
 | `getRange(key)` | The allowed range of a key, or `std::nullopt` |
 
@@ -160,14 +162,19 @@ All keys are `constexpr std::string_view` constants under the `conf::key` namesp
 
 ### Validation
 
-On `load()`, the file-loaded `OptionMap` is validated against the declared units. For each key present in the file:
+On `load()`, every registered unit checks its environment variable (when set) and its file value (when present)
+with the same parser `get<T>()` uses, for the unit's exact type `T`:
 
-- **INTEGER**: parsed with `std::stoll`, checked for trailing characters
+- **INTEGER**: `internal::parseInteger<T>()` (`std::from_chars`): decimal digits only, with a leading `-` for
+  `int`/`int64_t`; whitespace, `+`, trailing characters, a negative value for `size_t` and a value `T` cannot hold
+  are refused
 - **STRING**: always valid
 - **STRING_LIST**: bracket notation `[...]` is rejected
 - **BOOL**: must be `"true"` or `"false"` (case-insensitive)
 
-Invalid values cause `load()` to throw `std::runtime_error`, preventing the engine from starting with a misconfigured file.
+A value that does not parse makes `load()` throw `std::runtime_error`
+`Invalid value for key '<key>' from the <source>: '<value>'. Expected <type>.`, exactly as an out-of-range value
+does, instead of falling back to the next source: a start and `-t` both refuse it.
 
 Then, for every unit registered with a `Range`, `load()` resolves the effective value exactly as `get<T>()` does
 (environment variable, else file, else default) and throws `std::runtime_error` when it is outside the range:
@@ -181,7 +188,7 @@ A range is checked even when the module that reads the key is disabled.
 
 `UConf<T>::getEnvValue()` handles per-type parsing:
 
-- **Integers**: Uses `std::stoll`/`std::stoull` with strict validation (no whitespace, no trailing chars, range checks)
+- **Integers**: `internal::parseInteger<T>()`, the same strict parser the file values use
 - **Strings**: Direct passthrough
 - **String lists**: Comma-separated with backslash escaping (`\,` for literal commas); bracket notation rejected
 - **Booleans**: Case-insensitive `"true"`/`"false"`
@@ -195,12 +202,12 @@ A range is checked even when the module that reads the key is disabled.
 | Duplicate key or env name | `addUnit` throws `std::invalid_argument` |
 | `addUnit` after `load()` | Throws `std::logic_error` |
 | Double `load()` call | Throws `std::logic_error` |
-| Invalid file value type | `load()` throws `std::runtime_error` (`main.cpp` logs `Error loading configuration: …` and exits with failure; `-t` prints it to stderr and exits `1`) |
+| File or environment value that does not parse as the unit's type | `load()` throws `std::runtime_error` (`main.cpp` logs `Error loading configuration: …` and exits with failure; `-t` prints it to stderr and exits `1`) |
 | Effective value outside its range | `load()` throws `std::runtime_error`, handled as above |
 | Bad range at registration (empty, negative for `size_t`, default outside) | `addUnit` throws `std::logic_error` |
 | Missing or unreadable file | `FileLoader` logs a warning and returns an empty map |
-| Invalid env var at `get()` time | Warning logged, falls through to next source |
-| Invalid file value at `get()` time | Warning logged, falls through to default |
+| Invalid env var at `get()` time (only without `load()`) | Warning logged, falls through to next source |
+| Invalid file value at `get()` time (only without `load()`) | Warning logged, falls through to default |
 | Unknown key at `get()` time | Throws `std::runtime_error` |
 
 ## CMake Targets

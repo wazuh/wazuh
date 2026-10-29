@@ -180,7 +180,7 @@ constants of `framework/wazuh/core/cluster/`, not configuration:
 | Connections in total | 1024 | the new connection is closed (`Too many total connections`) |
 | Time to complete the handshake (`hello` accepted) | 30 s | the connection is closed (`handshake not completed within deadline`) |
 | Time to receive a payload whose header has arrived | 30 s | the connection is closed (`incomplete message payload not received within deadline`) |
-| Connections closed by the master before the handshake, in a row (worker side) | 3, then every 30 | WARNING on the worker suggesting a cluster key mismatch (`The master closed the connection before the handshake completed <n> times in a row`) |
+| Connections closed by the master before the handshake, in a row (worker side) | 3, then every 30 | WARNING on the worker suggesting a cluster key mismatch (`The master closed the connection before the handshake completed <n> times in a row`); the count spans the reconnections and restarts after a completed handshake or a restart of clusterd |
 | Size of one message, divided or not | 256 MiB | error 3050 |
 | Divided messages being received at once | 10 | error 3051 |
 

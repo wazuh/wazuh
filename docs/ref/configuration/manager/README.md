@@ -63,11 +63,12 @@ element is rejected as a duplicate.
     error 22), where the TLS files lie and what they hold (the
     credential check refuses a path outside `/etc/wazuh-manager/certs` for `remote.https.certificate`,
     `remote.https.key`, `remote.https.ca_certificate`, `auth.ssl_manager_cert` and `auth.ssl_manager_key`
-    (the `auth` pair only while authd is enabled) and the `indexer.ssl` files — `remote.https.ca` and
+    (the `auth` pair whatever `auth.disabled` says) and the `indexer.ssl` files — `remote.https.ca` and
     `auth.ssl_agent_ca` are not confined — and an expired or mismatched pair —
-    [Credentials](../../getting-started/credentials.md)), the internal options (read only by each daemon at
-    start), and what only a running system shows (an address this host does not have, a port another
-    program holds). The API's `PUT` runs the same `validate`, so it has the same limits.
+    [Credentials](../../getting-started/credentials.md)), the internal options (read by each daemon and
+    judged by its `-t`, with the exceptions listed below), and what only a running system shows (an
+    address this host does not have, a port another program holds). The API's `PUT` runs the same
+    `validate`, so it has the same limits.
     `wazuh-manager-control check` runs the whole pre-start sequence below — validation, credentials and
     every daemon's `-t` — without stopping or starting anything. Through those `-t` runs it also judges
     what the TLS files hold: `wazuh-manager-remoted -t` loads `remote.https.certificate` and `key` (and

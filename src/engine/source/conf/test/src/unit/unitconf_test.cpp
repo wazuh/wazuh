@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+#include <limits>
 #include <string>
 #include <tuple>
 #include <vector>
@@ -173,6 +174,40 @@ TEST(UConfGetEnv, EmptyEnv)
     auto conf = UConf<int>::make("TEST_EMPTY_ENV", 0);
     const auto envValue = conf->getEnvValue();
     EXPECT_FALSE(envValue.has_value());
+}
+
+// Testing size_t: a sign, whitespace or a value a size_t cannot hold is refused, never wrapped around
+TEST(UConfGetEnv, SizeT)
+{
+    auto conf = UConf<size_t>::make("TEST_ENV_SIZE_T", 0);
+
+    const auto expectValue = [&](const std::string& value, size_t expected)
+    {
+        setEnv("TEST_ENV_SIZE_T", value);
+        const auto envValue = conf->getEnvValue();
+        ASSERT_TRUE(envValue.has_value()) << value;
+        EXPECT_EQ(envValue.value(), expected) << value;
+    };
+    const auto expectThrow = [&](const std::string& value)
+    {
+        setEnv("TEST_ENV_SIZE_T", value);
+        EXPECT_THROW((conf->getEnvValue()), std::runtime_error) << value;
+    };
+
+    expectValue("0", 0);
+    expectValue("10", 10);
+    expectValue("18446744073709551615", std::numeric_limits<size_t>::max());
+    expectThrow("-1");
+    expectThrow("-0");
+    expectThrow("+1");
+    expectThrow(" 1");
+    expectThrow("1 ");
+    expectThrow("");
+    expectThrow("18446744073709551616");
+    expectThrow("1.0");
+    expectThrow("0x10");
+
+    unsetEnv("TEST_ENV_SIZE_T");
 }
 
 // Testing int with params

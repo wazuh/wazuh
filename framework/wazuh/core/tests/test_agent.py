@@ -179,7 +179,23 @@ def test_WazuhDBQueryAgents_add_search_to_query(mock_socket_conn):
     query_agent = WazuhDBQueryAgents(search={'value': 'test', 'negation': True})
     query_agent._add_search_to_query()
 
-    assert 'OR id LIKE :search_id)' in query_agent.query, 'Query returned does not match the expected one'
+    assert "OR id LIKE :search_id ESCAPE '\\')" in query_agent.query, 'Query returned does not match the expected one'
+
+
+@pytest.mark.parametrize('value, search, search_id', [
+    ('a_b', '%a\\_b%', 'a\\_b'),
+    ('50%', '%50\\%%', '50\\%'),
+    ('7', '%7%', 7),
+])
+@patch('socket.socket.connect')
+def test_WazuhDBQueryAgents_add_search_to_query_escapes_wildcards(mock_socket_conn, value, search, search_id):
+    """search on agents matches '%' and '_' literally, on every field and on the id."""
+    query_agent = WazuhDBQueryAgents(search={'value': value, 'negation': False})
+    query_agent._add_search_to_query()
+
+    assert query_agent.request['search'] == search
+    assert query_agent.request['search_id'] == search_id
+    assert "(name LIKE :search ESCAPE '\\' AND name IS NOT NULL)" in query_agent.query
 
 
 @pytest.mark.parametrize('negation', [True, False])
@@ -190,7 +206,7 @@ def test_WazuhDBQueryAgents_add_search_to_query_skips_internal_key(mock_socket_c
     query_agent._add_search_to_query()
 
     assert 'internal_key' not in query_agent.query, 'Search must not match on the agent key'
-    assert '(name LIKE :search AND name IS NOT NULL)' in query_agent.query
+    assert "(name LIKE :search ESCAPE '\\' AND name IS NOT NULL)" in query_agent.query
 
 
 @pytest.mark.parametrize('data', [

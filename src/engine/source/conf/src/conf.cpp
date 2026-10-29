@@ -169,87 +169,6 @@ Conf::Conf(std::shared_ptr<IFileLoader> fileLoader)
         key::API_RESOURCE_KVDB_PAYLOAD_MAX_BYTES, "WAZUH_SERVER_API_MAX_RESOURCE_KVDB_PAYLOAD_SIZE", 100'000);
 };
 
-void Conf::validate(const OptionMap& config) const
-{
-    for (const auto& [key, unit] : m_units)
-    {
-        auto it = config.find(key);
-        if (it == config.end())
-        {
-            continue; // The configuration is not set for this key, ignore it
-        }
-
-        const auto& valueStr = it->second;
-        const auto unitType = unit->getType();
-        switch (unitType)
-        {
-            case UnitConfType::INTEGER:
-            {
-                std::size_t pos = 0;
-                try
-                {
-                    auto v = std::stoll(valueStr, &pos);
-
-                    if (pos != valueStr.size())
-                    {
-                        throw std::runtime_error(fmt::format(
-                            "Invalid configuration type for key '{}'. Extra characters found in integer: '{}'.",
-                            key,
-                            valueStr.substr(pos)));
-                    }
-                }
-                catch (const std::invalid_argument& e)
-                {
-                    throw std::runtime_error(
-                        fmt::format("Invalid configuration type for key '{}'. Could not parse '{}'.", key, valueStr));
-                }
-                catch (const std::out_of_range& e)
-                {
-                    throw std::runtime_error(
-                        fmt::format("Invalid configuration type for key '{}'. Value out of range for integer: '{}'.",
-                                    key,
-                                    valueStr));
-                }
-
-                break;
-            }
-
-            case UnitConfType::STRING:
-            {
-                break;
-            }
-
-            case UnitConfType::STRING_LIST:
-            {
-                // Detect list-style formatting with brackets: [a,b]
-                if (valueStr.front() == '[' && valueStr.back() == ']')
-                {
-                    throw std::runtime_error(fmt::format(
-                        "Invalid configuration type for key '{}'. Bracket notation '[...]' is not allowed: '{}'.",
-                        key,
-                        valueStr));
-                }
-
-                break;
-            }
-
-            case UnitConfType::BOOL:
-            {
-                std::string lowerVal = valueStr;
-                std::transform(lowerVal.begin(), lowerVal.end(), lowerVal.begin(), ::tolower);
-                if (lowerVal != "true" && lowerVal != "false")
-                {
-                    throw std::runtime_error(fmt::format(
-                        "Invalid configuration type for key '{}'. Expected boolean, got '{}'.", key, valueStr));
-                }
-                break;
-            }
-
-            default: throw std::logic_error(fmt::format("Invalid configuration type for key '{}'.", key));
-        }
-    }
-}
-
 void Conf::load()
 {
     if (m_loaded)
@@ -261,9 +180,14 @@ void Conf::load()
     // Only load the internal configuration if we are not in standalone mode
     if (!base::process::isStandaloneModeEnable())
     {
-        auto fileConf = (*m_fileLoader)();
-        validate(fileConf);
-        m_fileConfig = std::move(fileConf);
+        m_fileConfig = (*m_fileLoader)();
+    }
+
+    // A value that does not parse as its key's type (a sign on an unsigned key, an overflow, trailing characters) is
+    // refused like an out-of-range one, whatever its source, instead of falling back to the next source
+    for (const auto& check : m_typeChecks)
+    {
+        check(*this);
     }
 
     // Ranges apply to the effective value, whatever its source: the single place a start and `-t` check them

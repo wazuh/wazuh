@@ -10,6 +10,7 @@
 # Drives the manager's wazuh-manager-control (wazuh-server.sh) start, restart and reload against a
 # throwaway install directory whose programs are stubs: each daemon starts a background sleep and
 # writes its pid file, as a daemon does once it is up, unless a fail-<daemon> file asks it to exit 1;
+# its -t passes unless a testfail-<daemon> file holds the output it prints on stderr before exiting 1;
 # wazuh-manager-conf accepts the configuration (a master, authd enabled); the bundled interpreter
 # answers the engine readiness probe; there is no credential resolver, so the credential steps are
 # skipped. Checks which daemons are left running when one of them does not start.
@@ -43,7 +44,11 @@ trap cleanup EXIT
 DAEMON_STUB='#!/bin/sh
 dir=$(cd "$(dirname "$0")/.." && pwd)
 name=$(basename "$0")
-[ "$1" = "-t" ] && exit 0
+if [ "$1" = "-t" ]; then
+    [ -f "${dir}/testfail-${name}" ] || exit 0
+    cat "${dir}/testfail-${name}" >&2
+    exit 1
+fi
 [ -f "${dir}/fail-${name}" ] && exit 1
 sleep 300 > /dev/null 2>&1 &
 echo $! > "${dir}/var/run/${name}-$!.pid"
@@ -184,6 +189,29 @@ control reload_fail start > /dev/null
 touch "${WORK}/reload_fail/fail-wazuh-manager-modulesd"
 check "reload fails when a daemon does not start" "1" "$(control reload_fail reload)"
 check "a failed reload leaves only remoted running" "wazuh-manager-remoted" "$(running reload_fail)"
+
+# A daemon's -t refuses the check that the service-control helper runs before an API restart: the
+# refusal and its reason (the last line of the test's output) reach the manager log, since the
+# helper's own output reaches no log.
+new_tree check_refused
+printf 'Error loading configuration: analysisd.orchestrator_threads out of range\n' \
+    > "${WORK}/check_refused/testfail-wazuh-manager-analysisd"
+check "check -j is refused by a daemon's -t" "1" "$(control check_refused -j check)"
+check "check -j prints the refusal" '{"error":20,"message":"wazuh-manager-analysisd: Configuration error."}' \
+    "$(cat "${WORK}/check_refused/out")"
+check "the refusal and its reason are logged" \
+    "wazuh-manager-control: ERROR: wazuh-manager-analysisd: Configuration error: Error loading configuration: analysisd.orchestrator_threads out of range" \
+    "$(sed 's/^[^ ]* [^ ]* //' "${WORK}/check_refused/logs/wazuh-manager.log")"
+check "check starts nothing" "" "$(running check_refused)"
+
+# A C daemon prints dated log lines: the last one is the reason, without its date.
+new_tree check_refused_c
+printf '2026/10/29 10:00:00 wazuh-manager-modulesd: INFO: Started.\n2026/10/29 10:00:00 wazuh-manager-modulesd: CRITICAL: (2302): Invalid definition for vulnerability-detection.scan_workers: 99.\n\n' \
+    > "${WORK}/check_refused_c/testfail-wazuh-manager-modulesd"
+check "check is refused by modulesd's -t" "1" "$(control check_refused_c check)"
+check "the last line of the test's output is logged, undated" \
+    "wazuh-manager-control: ERROR: wazuh-manager-modulesd: Configuration error: wazuh-manager-modulesd: CRITICAL: (2302): Invalid definition for vulnerability-detection.scan_workers: 99." \
+    "$(sed 's/^[^ ]* [^ ]* //' "${WORK}/check_refused_c/logs/wazuh-manager.log")"
 
 echo
 echo "${checks} checks, ${failures} failed"

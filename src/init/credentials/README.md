@@ -24,7 +24,7 @@ developer side.
 
 | ID | Requirement | Status |
 |----|-------------|--------|
-| RF-1 | Five modes: `--install`, `--upgrade` (both exit 0 whatever happens), `--prestart` and `--check` (exit 1 on any problem), `--clear`; one is required (D-23); exit 2 for usage errors (no mode included), a non-root caller, a held lock, an internal error. A certificate the resolver cannot parse, or a node name too long for a common name, is `INVALID`, never an internal error | kept |
+| RF-1 | Five modes: `--install`, `--upgrade` (both exit 0 whatever they report), `--prestart` and `--check` (exit 1 on any problem), `--clear`; one is required (D-23); every mode exits 2 for usage errors (no mode included), a non-root caller, a lock another run held for more than `LOCK_TIMEOUT` (60 s; the writing modes only), an internal error. A certificate the resolver cannot parse, or a node name too long for a common name, is `INVALID`, never an internal error | kept |
 | RF-2 | Values are looked up in the process environment, then `<CONF>/local.env`, then (indexer password only) `/etc/wazuh-indexer/export/credentials.env` | kept |
 | RF-3 | Server API passwords: supplied values are validated and never replaced by generated ones; on a master with no `rbac.db`, publish to `<CONF>/export/credentials.env` first, then seed through `rbac_control.py`; a worker seeds nothing | kept |
 | RF-4 | Indexer password stored in the keystore when absent; never generated, never published | kept |
@@ -92,7 +92,8 @@ flowchart TD
 ```
 
 Every step re-checks what it reads, and the problems are reported through one `Report`, which prints each line
-once. `--install` and `--upgrade` always exit 0; the start is where the verdict counts.
+once. `--install` and `--upgrade` exit 0 whatever they report (2 only for the RF-1 exceptions: usage, non-root,
+the lock held for more than 60 s, an internal error); the start is where the verdict counts.
 
 ## Layout
 
@@ -113,7 +114,7 @@ by both packages, run by `postinst`/`%post`, `install.sh` and `src/init/wazuh-se
 | remoted, authd, apid | `certs/remoted.pem`, `apid.pem`, `root-ca.pem`, or the names configured in `wazuh-manager.conf` and `api.yaml` (directly in `certs/`) | `root:wazuh-manager 0640`; the leaf, then its intermediates and optionally the root (what `--install` writes: leaf + CA); each daemon sends the whole file |
 | indexer connector, clusterd | `certs/indexer-ca.pem`, `indexer-connector.pem`, `indexer-connector-key.pem`; keystore `indexer` family | `root:wazuh-manager 0640` |
 | `wazuh-manager-control` | exit status and stderr of `--check` / `--prestart` | non-zero refuses the start; for `--check` the message follows the relayed lines, first match wins: `UNSAFE` → unsafe, `INVALID` → invalid (error 22), `MISSING` → unresolved (error 21), none of them → cannot check (error 22); `--prestart` → unresolved (error 21). Both steps are skipped when the program is missing or not executable |
-| DEB `postinst`, RPM `%post` | exit status and stderr of `--install` / `--upgrade`, and whether `export/credentials.env` exists afterwards | stderr is captured and relayed after stdout; on a fresh install the saved-password hint is printed only when the file exists, and a non-zero exit or any `MISSING`, `INVALID` or `UNSAFE` line prints that the resolution is incomplete and names `--install` as the command to repeat. The problem-line grammar is therefore read by two consumers |
+| DEB `postinst`, RPM `%post` | exit status and stderr of `--install` / `--upgrade`, and whether `export/credentials.env` exists afterwards | stderr is captured and relayed after stdout. Whenever the run resolved as an install (a fresh install, and on DEB a reinstall from the config-files state) the saved-password hint is printed only when the file exists, followed by the start hint; on every configure a non-zero exit or any `MISSING`, `INVALID` or `UNSAFE` line prints that the resolution is incomplete, then one next step: when a server pair is `MISSING` with the reason `no CA key to issue it`, stage `ca/root-ca.key` (or the pairs) and then `--install`; otherwise `--install` when the CA, the bundle or a server pair is missing, an entry is `INVALID`/`UNSAFE` or the exit was non-zero; else start the manager. The problem-line grammar, and that one reason text, are therefore read by two consumers |
 | the indexer (producer) | — | `/etc/wazuh-indexer/export/{credentials.env,ca.pem,manager-client.pem,manager-client-key.pem}`, root-owned, not group- or world-writable |
 
 ## Tests

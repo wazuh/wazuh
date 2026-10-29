@@ -29,7 +29,10 @@ sudo rpm -ivh wazuh-manager-*.rpm
 The package refuses to install, even as a fresh installation, on a host that still carries a pre-5.0
 manager: an `/etc/ossec-init.conf` of type `server` or `local` naming a version below 5, or a `/var/ossec`
 installation that reports itself a server (`wazuh-control info -t`) and whose `VERSION.json` names a version
-below 5. A 4.x agent on the same host does not block it. A 4.x manager is not upgraded in place: move to 5.0 as
+below 5. A 4.x agent on the same host does not trip that check, but its package blocks this one: the 4.x
+`wazuh-agent` DEB and RPM declare `Conflicts: wazuh-manager`, so `dpkg` and `rpm` refuse the manager package while
+it is installed. Upgrade the agent to 5.x first (its package no longer conflicts with the manager), or remove it.
+A 4.x manager is not upgraded in place: move to 5.0 as
 described in [Migrating a 4.x manager](../../guide/migration/manager-4x-to-5x.md).
 
 #### Installed layout
@@ -67,6 +70,8 @@ sudo WAZUH_REMOTE_HTTPS_BIND_ADDR='0.0.0.0' WAZUH_REMOTE_HTTPS_PORT='1517' rpm -
 
 > [!NOTE]
 > When using `sudo`, the variables must be placed after `sudo` (as in the examples above) so they reach the package scriptlets. An invalid value aborts a fresh installation with `ERROR: Invalid value '<value>' for installation variable <NAME>: <reason>`, before any configuration is written. A value that passes those checks is then validated with the generated file as a whole, and a fresh installation whose generated `wazuh-manager.conf` the validator refuses is aborted as well (`ERROR: the generated /etc/wazuh-manager/wazuh-manager.conf is not a valid manager configuration.` from the packages).
+>
+> An aborted package installation leaves the package's files in place but unconfigured. On DEB, `dpkg -l wazuh-manager` shows it half-configured (state `iF`); finish it by configuring it again with a valid value, or with the variable unset to take the default: `sudo WAZUH_REMOTE_HTTPS_PORT='1517' dpkg --configure wazuh-manager`. On RPM the transaction reports that the `%post` scriptlet failed; remove the package with `sudo rpm -e wazuh-manager` and install it again with valid values.
 >
 > The variables apply whenever the configuration file is generated. On a fresh installation that is `wazuh-manager.conf`. On an RPM upgrade nothing is generated, so the variables have no effect. On a DEB upgrade the active configuration is never modified, but the variables do shape the regenerated `wazuh-manager.conf.new`; see [Upgrade](../upgrade.md).
 
@@ -129,10 +134,13 @@ the password in `/etc/wazuh-manager/local.env`:
 sudo install -m 0640 -o root -g wazuh-manager ca.pem /etc/wazuh-manager/certs/indexer-ca.pem
 sudo install -m 0640 -o root -g wazuh-manager manager-client.pem /etc/wazuh-manager/certs/indexer-connector.pem
 sudo install -m 0640 -o root -g wazuh-manager manager-client-key.pem /etc/wazuh-manager/certs/indexer-connector-key.pem
-sudo install -m 0600 -o root -g root /dev/null /etc/wazuh-manager/local.env
+sudo sh -c 'umask 077; [ -e /etc/wazuh-manager/local.env ] || : > /etc/wazuh-manager/local.env'
 echo "WAZUH_INDEXER_MANAGER_PASSWORD='<the wazuh-manager password on the indexer>'" \
-    | sudo tee /etc/wazuh-manager/local.env > /dev/null
+    | sudo tee -a /etc/wazuh-manager/local.env > /dev/null
 ```
+
+The first command creates `local.env` (`root:root`, `0600`) only when it does not exist yet, and `tee -a`
+appends, so values already staged there are kept.
 
 The generated Server API passwords are published, readable by root only, in
 `/etc/wazuh-manager/export/credentials.env`; the dashboard on the same host reads its own from there.

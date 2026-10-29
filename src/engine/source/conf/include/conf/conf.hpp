@@ -2,7 +2,10 @@
 #ifndef _CONFIG_CONFIG_HPP
 #define _CONFIG_CONFIG_HPP
 
+#include <algorithm>
+#include <cstdlib>
 #include <functional>
+#include <limits>
 #include <memory>
 #include <optional>
 #include <sstream>
@@ -85,14 +88,8 @@ private:
     std::shared_ptr<IFileLoader> m_fileLoader;                                        ///< The API loader.
     std::unordered_map<std::string, Range> m_ranges;                                  ///< Range of each ranged unit.
     std::vector<std::function<void(const Conf&)>> m_rangeChecks; ///< One check per ranged unit, run by load().
-
-    /**
-     * @brief Validate the configuration
-     *
-     * Comparting the configuration types with the default value types.
-     * @throw std::runtime_error If the configuration is invalid.
-     */
-    void validate(const OptionMap& config) const;
+    /// One type check per unit, run by load() before the range checks.
+    std::vector<std::function<void(const Conf&)>> m_typeChecks;
 
 public:
     Conf() = delete;
@@ -107,8 +104,9 @@ public:
     /**
      * @brief Load the configuration from File and environment variables.
      *
-     * Checks the type of every file value of a registered key, then the effective value (environment variable,
-     * else file, else default) of every key registered with a range. The `-t` test and a start call it alike.
+     * Checks that the environment variable and the file value of every registered key parse as the key's type,
+     * then the effective value (environment variable, else file, else default) of every key registered with a
+     * range. The `-t` test and a start call it alike.
      *
      * @throw std::runtime_error If the configuration is invalid (a type or a range).
      * @throw std::runtime_error If cannot retrieve the configuration from the File.
@@ -152,6 +150,7 @@ public:
             }
         }
         m_units[key.data()] = internal::UConf<T>::make(env, defaultValue);
+        m_typeChecks.emplace_back([keyStr = std::string(key)](const Conf& conf) { conf.checkType<T>(keyStr); });
     }
 
     /**
@@ -263,6 +262,144 @@ private:
     }
 
     /**
+     * @brief Describe the values a unit of type T accepts, for an error message.
+     */
+    template<typename T>
+    static std::string expectedType()
+    {
+        if constexpr (std::is_same_v<T, int> || std::is_same_v<T, int64_t> || std::is_same_v<T, size_t>)
+        {
+            return fmt::format(
+                "an integer from {} to {}", std::numeric_limits<T>::min(), std::numeric_limits<T>::max());
+        }
+        else if constexpr (std::is_same_v<T, bool>)
+        {
+            return "'true' or 'false'";
+        }
+        else if constexpr (std::is_same_v<T, std::vector<std::string>>)
+        {
+            return "a comma-separated list without brackets";
+        }
+        else
+        {
+            return "a string";
+        }
+    }
+
+    /**
+     * @brief Parse a value of the configuration file as T.
+     *
+     * @throw std::runtime_error If the value does not parse as T.
+     */
+    template<typename T>
+    static T parseFileValue(std::string_view key, const std::string& rawValue)
+    {
+        if constexpr (std::is_same_v<T, std::string>)
+        {
+            return rawValue;
+        }
+        else if constexpr (std::is_same_v<T, bool>)
+        {
+            std::string lowerValue = rawValue;
+            std::transform(lowerValue.begin(),
+                           lowerValue.end(),
+                           lowerValue.begin(),
+                           [](unsigned char c) { return std::tolower(c); });
+
+            if (lowerValue != "true" && lowerValue != "false")
+            {
+                throw std::runtime_error("Expected 'true' or 'false' (case insensitive)");
+            }
+            return lowerValue == "true";
+        }
+        else if constexpr (std::is_same_v<T, int> || std::is_same_v<T, int64_t> || std::is_same_v<T, size_t>)
+        {
+            if (const auto value = internal::parseInteger<T>(rawValue))
+            {
+                return *value;
+            }
+            throw std::runtime_error(fmt::format(
+                "Invalid configuration type for key '{}'. Expected {}, got '{}'.", key, expectedType<T>(), rawValue));
+        }
+        else if constexpr (std::is_same_v<T, std::vector<std::string>>)
+        {
+            // Disallow bracket notation at the beginning and end (JSON style)
+            if (!rawValue.empty() && rawValue.front() == '[' && rawValue.back() == ']')
+            {
+                throw std::runtime_error(fmt::format("Invalid value for key '{}': bracket notation "
+                                                     "'[...]' is not allowed (value: '{}').",
+                                                     key,
+                                                     rawValue));
+            }
+
+            std::vector<std::string> result;
+            auto items = base::utils::string::splitEscaped(rawValue, ',', '\\');
+
+            for (auto& rawItem : items)
+            {
+                auto item = base::utils::string::trim(rawItem, " \t\r\n");
+                // Unescape characters
+                item = base::utils::string::unescapeString(item, '\\', ",\\", true);
+
+                result.emplace_back(std::move(item));
+            }
+
+            if (result.empty())
+            {
+                throw std::runtime_error(fmt::format("Invalid value for key '{}': empty list.", key));
+            }
+
+            return result;
+        }
+        else
+        {
+            throw std::runtime_error("The type is not supported.");
+        }
+    }
+
+    /**
+     * @brief Check that the environment variable and the file value of a key parse as its type.
+     *
+     * A value that does not parse is refused as an out-of-range one is, instead of falling back to the next source.
+     *
+     * @throw std::runtime_error Naming the key, the value, where it comes from and what the key accepts.
+     */
+    template<typename T>
+    void checkType(const std::string& key) const
+    {
+        const auto& unit = m_units.at(key);
+        const auto typeError = [&key](const std::string& source, const std::string& value)
+        {
+            return std::runtime_error(fmt::format(
+                "Invalid value for key '{}' from the {}: '{}'. Expected {}.", key, source, value, expectedType<T>()));
+        };
+
+        if (const char* envValue = std::getenv(unit->getEnv().c_str()))
+        {
+            try
+            {
+                static_cast<void>(unit->template getEnvValue<T>());
+            }
+            catch (const std::exception&)
+            {
+                throw typeError(fmt::format("environment variable '{}'", unit->getEnv()), envValue);
+            }
+        }
+
+        if (const auto it = m_fileConfig.find(key); it != m_fileConfig.end())
+        {
+            try
+            {
+                static_cast<void>(parseFileValue<T>(key, it->second));
+            }
+            catch (const std::exception&)
+            {
+                throw typeError("internal options file", it->second);
+            }
+        }
+    }
+
+    /**
      * @brief Check the effective value of a key against its range.
      *
      * @throw std::runtime_error Naming the key, the value, where it comes from and the allowed range.
@@ -337,154 +474,9 @@ private:
             const auto& rawValue = it->second;
             try
             {
-                if constexpr (std::is_same_v<T, std::string>)
-                {
-                    LOG_DEBUG("[{}] Using configuration key '{}' from file: '{}'", LOG_MODULE_NAME, key, rawValue);
-                    return {rawValue, Source::FILE};
-                }
-                else if constexpr (std::is_same_v<T, bool>)
-                {
-                    std::string lowerValue = rawValue;
-                    std::transform(lowerValue.begin(),
-                                   lowerValue.end(),
-                                   lowerValue.begin(),
-                                   [](unsigned char c) { return std::tolower(c); });
-
-                    if (lowerValue != "true" && lowerValue != "false")
-                    {
-                        throw std::runtime_error("Expected 'true' or 'false' (case insensitive)");
-                    }
-
-                    bool value = (lowerValue == "true");
-                    LOG_DEBUG("[{}] Using configuration key '{}' from file: '{}'", LOG_MODULE_NAME, key, value);
-                    return {value, Source::FILE};
-                }
-                else if constexpr (std::is_same_v<T, int>)
-                {
-                    std::size_t pos = 0;
-                    try
-                    {
-                        int value = std::stoi(rawValue, &pos);
-                        if (pos != rawValue.size())
-                        {
-                            throw std::runtime_error(
-                                fmt::format("Extra characters after int: '{}'", rawValue.substr(pos)));
-                        }
-                        LOG_DEBUG("[{}] Using configuration key '{}' from file: '{}'", LOG_MODULE_NAME, key, value);
-                        return {value, Source::FILE};
-                    }
-                    catch (const std::invalid_argument& e)
-                    {
-                        throw std::runtime_error(fmt::format("Invalid configuration type for key '{}'. "
-                                                             "Could not parse '{}'.",
-                                                             key,
-                                                             rawValue));
-                    }
-                    catch (const std::out_of_range& e)
-                    {
-                        throw std::runtime_error(fmt::format("Invalid configuration type for key '{}'. "
-                                                             "Value out of range for int: '{}'.",
-                                                             key,
-                                                             rawValue));
-                    }
-                }
-                else if constexpr (std::is_same_v<T, int64_t>)
-                {
-                    std::size_t pos = 0;
-                    try
-                    {
-                        int64_t value = std::stoll(rawValue, &pos);
-                        if (pos != rawValue.size())
-                        {
-                            throw std::runtime_error(
-                                fmt::format("Extra characters after int64: '{}'", rawValue.substr(pos)));
-                        }
-                        LOG_DEBUG("[{}] Using configuration key '{}' from file: '{}'", LOG_MODULE_NAME, key, value);
-                        return {value, Source::FILE};
-                    }
-                    catch (const std::invalid_argument& e)
-                    {
-                        throw std::runtime_error(fmt::format("Invalid configuration type for key '{}'. "
-                                                             "Could not parse '{}'.",
-                                                             key,
-                                                             rawValue));
-                    }
-                    catch (const std::out_of_range& e)
-                    {
-                        throw std::runtime_error(fmt::format("Invalid configuration type for key '{}'. "
-                                                             "Value out of range for int64: '{}'.",
-                                                             key,
-                                                             rawValue));
-                    }
-                }
-                else if constexpr (std::is_same_v<T, size_t>)
-                {
-                    if (!base::utils::string::isNumber(rawValue))
-                    {
-                        throw std::runtime_error(fmt::format("Invalid configuration type for key '{}'. "
-                                                             "Expected unsigned integer, got '{}'.",
-                                                             key,
-                                                             rawValue));
-                    }
-
-                    std::size_t pos = 0;
-                    try
-                    {
-                        size_t value = std::stoull(rawValue, &pos);
-                        if (pos != rawValue.size())
-                        {
-                            throw std::runtime_error(
-                                fmt::format("Extra characters after size_t: '{}'", rawValue.substr(pos)));
-                        }
-                        LOG_DEBUG("[{}] Using configuration key '{}' from file: '{}'", LOG_MODULE_NAME, key, value);
-                        return {value, Source::FILE};
-                    }
-                    catch (const std::invalid_argument& e)
-                    {
-                        throw std::runtime_error(fmt::format("Invalid configuration type for key '{}'. "
-                                                             "Could not parse '{}'.",
-                                                             key,
-                                                             rawValue));
-                    }
-                    catch (const std::out_of_range& e)
-                    {
-                        throw std::runtime_error(fmt::format("Invalid configuration type for key '{}'. "
-                                                             "Value out of range for size_t: '{}'.",
-                                                             key,
-                                                             rawValue));
-                    }
-                }
-                else if constexpr (std::is_same_v<T, std::vector<std::string>>)
-                {
-                    // Disallow bracket notation at the beginning and end (JSON style)
-                    if (rawValue.front() == '[' && rawValue.back() == ']')
-                    {
-                        throw std::runtime_error(fmt::format("Invalid value for key '{}': bracket notation "
-                                                             "'[...]' is not allowed (value: '{}').",
-                                                             key,
-                                                             rawValue));
-                    }
-
-                    std::vector<std::string> result;
-                    auto items = base::utils::string::splitEscaped(rawValue, ',', '\\');
-
-                    for (auto& rawItem : items)
-                    {
-                        auto item = base::utils::string::trim(rawItem, " \t\r\n");
-                        // Unescape characters
-                        item = base::utils::string::unescapeString(item, '\\', ",\\", true);
-
-                        result.emplace_back(std::move(item));
-                    }
-
-                    if (result.empty())
-                    {
-                        throw std::runtime_error(fmt::format("Invalid value for key '{}': empty list.", key));
-                    }
-
-                    return {result, Source::FILE};
-                }
-                throw std::runtime_error("The type is not supported.");
+                auto value = parseFileValue<T>(key, rawValue);
+                LOG_DEBUG("[{}] Using configuration key '{}' from file: '{}'", LOG_MODULE_NAME, key, rawValue);
+                return {std::move(value), Source::FILE};
             }
             catch (const std::exception& e)
             {

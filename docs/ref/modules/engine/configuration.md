@@ -33,15 +33,23 @@ comes from the `WAZUH_INDEXER_HOSTS` and `WAZUH_INDEXER_SSL_*` variables instead
 - File syntax: one `analysisd.<setting>=<value>` per line. A line starting with `#` is a comment, and an unescaped
   `#` ends the value (`\#` keeps it); surrounding quotes are removed. A list setting takes comma-separated values
   without brackets (`[a,b]` stops the engine at start-up).
+- When the file sets the same `analysisd.*` key more than once, the engine uses the **last** line. The C daemons
+  read their own keys from the same file the other way round: for them the **first** line wins. Keep one line
+  per key.
 - Lines whose key does not start with `analysisd.` are skipped silently (a line with no `=`, or with no `.` before
   it, logs `Invalid configuration line ignored: '<line>'`), and so is an `analysisd.*` key the engine does not know
   (a misspelled setting has no effect). A missing or unreadable file only logs the warning
   `Failed to load configuration: Cannot open configuration file: <path>`, and the defaults apply.
-- Boolean settings only accept `true`/`false` (case-insensitive). A value in the file that does not match the
-  setting's type (for example `analysisd.dumper_enabled=yes` or `analysisd.event_queue_size=10k`) stops the engine at
-  start-up with `Error loading configuration: Invalid configuration type for key '<key>'. …` in
-  `wazuh-manager.log`. An environment variable that cannot be converted is logged as a warning and the file value or
-  the default is used.
+- Boolean settings only accept `true`/`false` (case-insensitive). An integer setting accepts only decimal digits,
+  with a leading `-` for a signed one: whitespace, a `+` sign, a fraction or trailing characters are refused, and
+  so are a negative value for an unsigned setting and a value its type cannot hold. A value that does not match the
+  setting's type, in the file or in its environment variable (for example `analysisd.dumper_enabled=yes`,
+  `analysisd.event_queue_size=10k` or `analysisd.indexer_bulk_max_bytes=-1`), stops the engine at start-up with
+  `Error loading configuration: Invalid value for key '<key>' from the <source>: '<value>'. Expected <type>.` in
+  `wazuh-manager.log`, where `<source>` is `internal options file` or `environment variable '<variable>'` and
+  `<type>` is, for example, `an integer from 0 to 18446744073709551615` (an unsigned setting),
+  `an integer from -2147483648 to 2147483647` or `'true' or 'false'`. Neither source falls back to the next one: a
+  bad environment variable stops the start even when the file holds a valid value.
 - A setting with an allowed range (stated in its description below) is checked on its effective value, whatever
   its source: a value outside the range stops the engine at start-up with `Error loading configuration: Invalid
   value for key '<key>' from the <source>: '<value>'. Allowed range: <min> to <max>.`, where `<source>` is
@@ -89,7 +97,7 @@ These variables are read directly by the process, not through an `analysisd.*` s
 | Variable | Effect |
 |----------|--------|
 | `WAZUH_ENGINE_STANDALONE` | `true` (case-insensitive) runs the engine in standalone mode: no manager configuration, no internal options file, no privilege drop, no PID file, and default paths relative to the working directory. Any other value, or unset, is manager mode. |
-| `WAZUH_MANAGER_HOME` | Manager mode only: the home directory, used as is when not empty. Without it the home is the executable's directory cut at the first `/bin` (`/var/wazuh-manager`). When the result is not a directory the daemon writes `(1108): Unable to find Wazuh install directory. Export it to WAZUH_MANAGER_HOME environment variable.` to stderr and exits `1`. |
+| `WAZUH_MANAGER_HOME` | Manager mode only: the home directory, used as is when not empty. Without it the home is the executable's directory cut at the first `/bin` (`/var/wazuh-manager`). When the result is not a directory the daemon writes `<YYYY/MM/DD hh:mm:ss> wazuh-manager-analysisd: CRITICAL: (1108): Unable to find Wazuh install directory. Export it to WAZUH_MANAGER_HOME environment variable.` to stderr (no log file is written) and exits `1`. |
 | `WAZUH_MANAGER_FORCE_HOME` | Manager mode only: when defined (even empty) it is the home, unchecked, and takes priority over `WAZUH_MANAGER_HOME`. |
 | `WAZUH_STANDALONE_LOG_*` | Standalone mode only: log file path, rotation and compression of the standalone log. Listed in `src/engine/standalone/README.md`. |
 
@@ -475,8 +483,8 @@ messages listed in [Command-line options](#command-line-options). Look for the r
 grep wazuh-manager-analysisd /var/wazuh-manager/logs/wazuh-manager.log | grep -E "ERROR|CRITICAL|WARNING"
 ```
 
-- `Error loading configuration: Invalid configuration type for key …` or `Error loading configuration: Invalid value
-  for key '<key>' … Allowed range: …` — a bad `analysisd.*` value; fix the line in
+- `Error loading configuration: Invalid value for key '<key>' … Expected …` or `… Allowed range: …` — a bad
+  `analysisd.*` value (or `WAZUH_*` variable, named in the message); fix the line in
   `wazuh-manager-internal-options.conf`. `wazuh-manager-control check` (or `wazuh-manager-analysisd -t`) reports the
   same error without stopping the manager.
 - A permission error naming a path under `/var/wazuh-manager` — see

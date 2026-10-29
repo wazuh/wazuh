@@ -305,6 +305,7 @@ case "$1" in
     CRED_ERR=""
     CRED_INCOMPLETE="no"
     CRED_NEEDS_INSTALL="no"
+    CRED_NEEDS_CA_KEY="no"
     if [ -x ${DIR}/bin/wazuh-manager-resolve-credentials ]; then
         # A reinstall from the config-files state also passes the old version, but postrm renamed
         # every file in ${CONF_DIR} to *.save: with no server pair in place there is nothing to
@@ -328,6 +329,11 @@ case "$1" in
         if [ "${CRED_STATUS}" -ne 0 ] || printf '%s\n' "${CRED_ERR}" \
             | grep -q -E "^(INVALID|UNSAFE) |^MISSING ${CONF_DIR}/(ca/|certs/(root-ca|remoted|apid)\.pem)"; then
             CRED_NEEDS_INSTALL="yes"
+        fi
+        # A CA staged without its key: --install keeps it and cannot issue the server pairs, so
+        # repeating it changes nothing until the key (or the pairs) is staged.
+        if printf '%s\n' "${CRED_ERR}" | grep -q -E "^MISSING ${CONF_DIR}/certs/(remoted|apid)\.pem: no CA key"; then
+            CRED_NEEDS_CA_KEY="yes"
         fi
     fi
 
@@ -371,36 +377,46 @@ case "$1" in
         rm -rf ${WAZUH_GLOBAL_TMP_DIR}
     fi
 
-    # Next steps, last thing a fresh install prints (the indexer and the dashboard end the same way):
-    # the package neither starts nor enables the service, and nothing else says where the Server API
-    # passwords went. Only on a fresh install ($2 empty): an upgrade restarts a running manager by
-    # itself and finds the passwords already set. install.sh prints its own start hint, so this
-    # lives in the package only.
+    # Next steps, last thing a configure prints (the indexer and the dashboard end the same way): the
+    # package neither starts nor enables the service, and nothing else says where the Server API
+    # passwords went. Printed whenever this run resolved as an install: on a fresh install ($2 empty)
+    # and on a reinstall from the config-files state, where postrm renamed every file in ${CONF_DIR}
+    # to *.save, so the CA, the pairs and the passwords are new and the service is stopped (prerm). An
+    # upgrade restarts a running manager by itself and finds the passwords already set, so it prints
+    # only what is incomplete. install.sh prints its own start hint, so this lives in the package only.
     #
     # The password hint is printed only when the resolver published the file: a run stopped by an
     # unsafe or invalid entry writes nothing at all, and a configuration kept from an earlier install
     # may make this node a worker, which publishes nothing (the Server API runs on the master). When
     # the resolver reported a problem, the manager refuses to start until it is fixed. Only --install
     # issues the CA and the server pairs, so it is the command to repeat when one of those is
-    # missing or the run stopped early; what else is missing (the indexer's password and files) the
-    # start resolves, once supplied.
-    if [ -z "$2" ]; then
-        if [ -f "${CONF_DIR}/export/credentials.env" ]; then
-            echo "Server API passwords saved in ${CONF_DIR}/export/credentials.env (readable by root only)."
-        fi
+    # missing or the run stopped early -- once the CA key is in place, when the CA was staged without
+    # it; what else is missing (the indexer's password and files) the start resolves, once supplied.
+    print_credential_steps() {
         if [ "${CRED_INCOMPLETE}" = "yes" ]; then
             echo "Credential resolution is incomplete: the manager does not start until every MISSING, INVALID or UNSAFE entry reported above is resolved."
-            if [ "${CRED_NEEDS_INSTALL}" = "yes" ]; then
+            if [ "${CRED_NEEDS_CA_KEY}" = "yes" ]; then
+                echo "The CA in ${CONF_DIR}/ca has no key, so no server certificate could be issued. Stage its key as ${CONF_DIR}/ca/root-ca.key (owned by root, mode 0400 or 0600), then run: ${DIR}/bin/wazuh-manager-resolve-credentials --install -H ${DIR}"
+                echo "Or stage the server certificate pairs it reports missing in ${CONF_DIR}/certs, then start the manager."
+            elif [ "${CRED_NEEDS_INSTALL}" = "yes" ]; then
                 echo "Fix them, then run: ${DIR}/bin/wazuh-manager-resolve-credentials --install -H ${DIR}"
             else
                 echo "Supply them as each entry above says, then start the manager: the start completes them, no new --install is needed."
             fi
         fi
+    }
+    if [ -z "$2" ] || [ "${CRED_MODE}" = "--install" ]; then
+        if [ -f "${CONF_DIR}/export/credentials.env" ]; then
+            echo "Server API passwords saved in ${CONF_DIR}/export/credentials.env (readable by root only)."
+        fi
+        print_credential_steps
         if command -v systemctl > /dev/null 2>&1 && systemctl > /dev/null 2>&1; then
             echo "Start the manager and enable it at boot: systemctl enable --now wazuh-manager"
         else
             echo "Start the manager: service wazuh-manager start"
         fi
+    else
+        print_credential_steps
     fi
 
     ;;

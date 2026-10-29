@@ -271,9 +271,10 @@ The `client.keys` row is the one every new agent meets. For about 10 seconds aft
 workers' next `client.keys` synchronization; up to about 13 s was measured), any request the balancer sends to a
 worker is answered `401 unknown_agent`, and because a 5.x agent opens a new connection per request, a `mode tcp`
 front end routes its requests to the workers in that window as readily as an HTTP one does (see
-[§5](#5-tls-choose-a-model-before-issuing-certificates)). The agent keeps its identity and retries; a real agent
-enrolled through a passthrough balancer was observed to settle without enrolling again. Nothing has to be
-configured for it. Source-address stickiness on the balancer (HAProxy `balance source`, NGINX
+[§5](#5-tls-choose-a-model-before-issuing-certificates)). The agent recovers on its own once the key has
+arrived: by retrying, or, where it takes the `unknown_agent` answer for the loss of its identity, by enrolling
+again (see [Error responses](../remoted/https-events-api.md#error-responses)); an agent behind the balancer may
+therefore enroll twice. Nothing has to be configured for it. Source-address stickiness on the balancer (HAProxy `balance source`, NGINX
 `hash $remote_addr consistent`) is an optional mitigation: an agent pinned to one node stops alternating between
 nodes, which removes the [§7.2](#72-node-local-state-403-on-configuration-download) window after its first
 `/control`, but an agent pinned to a worker still waits out this one, since the identity is created on the master.
@@ -775,9 +776,9 @@ frontend enrollment
 
 backend enrollment_nodes
     mode tcp
-    server master  <MASTER_NODE>:1515 check
-    server worker1 <WORKER1_NODE>:1515 check
-    server worker2 <WORKER2_NODE>:1515 check
+    server master  <MASTER_NODE_IP>:1515 check
+    server worker1 <WORKER1_NODE_IP>:1515 check
+    server worker2 <WORKER2_NODE_IP>:1515 check
 
 frontend agents
     bind :1514
@@ -787,9 +788,9 @@ frontend agents
 backend agent_nodes
     mode tcp
     balance leastconn
-    server master  <MASTER_NODE>:1514 check
-    server worker1 <WORKER1_NODE>:1514 check
-    server worker2 <WORKER2_NODE>:1514 check
+    server master  <MASTER_NODE_IP>:1514 check
+    server worker1 <WORKER1_NODE_IP>:1514 check
+    server worker2 <WORKER2_NODE_IP>:1514 check
 ```
 
 Keep the `defaults` timeouts: without them HAProxy warns at startup and never closes a dead connection. A 4.x

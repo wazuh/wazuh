@@ -36,7 +36,8 @@ A newly enrolled agent is known to the master immediately and to the workers a f
 Requests routed to a worker in between are rejected. The measured windows, per replicated file, are
 in [§7.1 of the architecture page](lb.md#71-replicated-state-brief-401s-after-enrollment).
 
-The agent recovers unattended. A real agent enrolling through a balancer typically meets **three
+The agent recovers unattended, by retrying or, when it takes the `unknown_agent` answer for the loss
+of its identity, by enrolling again once more; neither needs action. A real agent enrolling through a balancer typically meets **three
 different errors in the same burst** — a `503`, a `401`, and possibly a TLS error under passthrough
 — all from the same cause.
 

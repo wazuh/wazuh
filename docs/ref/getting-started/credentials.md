@@ -258,8 +258,10 @@ The installer never fails the package transaction: what it cannot resolve at ins
 time you start the service, so the start is where the verdict counts. A DEB reinstall from the config-files state
 (after `apt remove`) runs as an install when `certs/remoted.pem` is missing.
 
-A fresh package install relays the resolver's problem lines after its progress lines and ends with its next
-steps, which follow what the resolver did rather than what it was asked: `Server API passwords saved in
+A package install relays the resolver's problem lines after its progress lines and ends with its next
+steps, which follow what the resolver did rather than what it was asked. A fresh install, and a DEB reinstall
+from the config-files state, prints them all, ending with how to start the service; an upgrade prints only the
+part about an incomplete resolution, since it restarts a manager that was running by itself. They are: `Server API passwords saved in
 /etc/wazuh-manager/export/credentials.env (readable by root only).` only when that file exists (a run stopped by
 an `UNSAFE` or `INVALID` entry writes nothing at all), then, when any `MISSING`,
 `INVALID` or `UNSAFE` line was reported or the resolver did not exit `0`, `Credential resolution is incomplete: the
@@ -267,7 +269,11 @@ manager does not start until every MISSING, INVALID or UNSAFE entry reported abo
 next. When the CA, the agents' bundle or a server pair is missing, an entry is `INVALID` or `UNSAFE`, or the
 resolver did not exit `0`, that is the command to repeat once they are fixed,
 `/var/wazuh-manager/bin/wazuh-manager-resolve-credentials --install -H /var/wazuh-manager` (as root): it is the
-only mode that issues what the install could not, and on material already in place it only validates. When only
+only mode that issues what the install could not, and on material already in place it only validates. When the
+CA was staged in `/etc/wazuh-manager/ca` without its key (`MISSING …/certs/remoted.pem: no CA key to issue it`),
+repeating `--install` changes nothing, so the next steps name the key instead: stage it as
+`/etc/wazuh-manager/ca/root-ca.key` (owned by root, mode `0400` or `0600`) and then run `--install`, or stage the
+server pairs it reports missing in `/etc/wazuh-manager/certs` and start the manager. When only
 what the manager consumes is missing (the indexer's password, CA or client pair), it says `Supply them as each
 entry above says, then start the manager: the start completes them, no new --install is needed.`
 

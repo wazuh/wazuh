@@ -24,6 +24,9 @@ registry `/etc/wazuh-manager/client.keys` and the group directories under `/etc/
   row is inserted. Every agent in `global.db` with no line in
   `client.keys` is deleted, together with its message-counter file `queue/rids/<id>` and its line in
   `queue/agents-timestamp`.
+  On a worker an agent's row can exist before its `client.keys` line arrives: the master's agent-groups
+  synchronization creates a missing agent with the name and registration IP the master holds. Such a row
+  is already present, so the reconciliation leaves it as it is, with the master's registration IP.
 - **Group reconciliation.** Every group in `global.db` whose directory under `/etc/wazuh-manager/shared/` no longer
   exists is deleted, and every directory under `/etc/wazuh-manager/shared/` not yet in `global.db` is inserted as a
   group.

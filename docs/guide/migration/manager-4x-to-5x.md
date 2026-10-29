@@ -116,21 +116,28 @@ Uninstall 4.x, then install 5.0 following [Installation](../../ref/getting-start
 The order is enforced. The DEB `preinst` and the RPM `%pre` refuse to install, fresh install or
 upgrade, while a 4.x manager is still on the host (an `/etc/ossec-init.conf` of type `server` or
 `local`, or a `/var/ossec` whose `bin/wazuh-control info -t` answers `server`), and `install.sh`
-refuses when the `wazuh-manager` installation it finds is older than 5.x. Nothing is changed. An
-upgrade of the old package is refused with the message below; a fresh package install beside a 4.x
-manager says instead `ERROR: A Wazuh manager older than 5.0 is installed on this host: Wazuh manager
-5.x can neither upgrade it nor be installed beside it.`, followed by the same lines:
+refuses when the `wazuh-manager` installation it finds is older than 5.x. Nothing is changed. The
+packages check the host before anything else, so an upgrade of the old `wazuh-manager` package and a
+fresh install beside a 4.x manager both print the same refusal:
 
 ```console
-ERROR: Upgrade from Wazuh manager versions prior to 5.x is not supported.
+==============================================================
+ERROR: A Wazuh manager older than 5.0 is installed on this host: Wazuh manager 5.x can neither upgrade it nor be installed beside it.
 
 Detected installed version: 4.14.0
 
 A clean installation of Wazuh manager 5.x is required.
 Refer to the 5.x migration guide for more information.
+==============================================================
 ```
 
-A 4.x **agent** on the same host does not block the installation.
+`install.sh` prints the same block with `ERROR: Upgrade from Wazuh manager versions prior to 5.x is not
+supported.` as its error line.
+
+A 4.x **agent** on the same host does not trip these checks, but its package does block the manager
+package: the 4.x `wazuh-agent` DEB and RPM declare `Conflicts: wazuh-manager`, so `dpkg` and `rpm` refuse to
+install the 5.0 `wazuh-manager` package while it is installed. Upgrade the agent to 5.x first (the 5.x agent
+package no longer conflicts with the manager), or remove it, then install the manager.
 
 ### Certificates and credentials
 
@@ -146,10 +153,13 @@ indexer kept from the 4.x deployment, write it to `local.env` after installing t
 start (the package leaves the manager stopped):
 
 ```bash
-sudo install -m 0600 -o root -g root /dev/null /etc/wazuh-manager/local.env
+sudo sh -c 'umask 077; [ -e /etc/wazuh-manager/local.env ] || : > /etc/wazuh-manager/local.env'
 printf "WAZUH_INDEXER_MANAGER_PASSWORD='%s'\n" '<the wazuh-manager password on the indexer>' \
-    | sudo tee /etc/wazuh-manager/local.env > /dev/null
+    | sudo tee -a /etc/wazuh-manager/local.env > /dev/null
 ```
+
+The first command creates `local.env` (`root:root`, `0600`) only when it does not exist yet, and `tee -a`
+appends, so values already staged there are kept.
 
 The value must pass the policy for supplied passwords: 12 to 64 characters, only from
 `A-Z a-z 0-9 . , _ + : @ % ^ = ~ -`, with at least one lowercase letter, one uppercase letter, one digit and one

@@ -137,6 +137,7 @@ protected:
         m_conf->addUnit("TEST.STRING", "TEST_ENV_STRING", std::string("test"));
         m_conf->addUnit("TEST.STRING_LIST", "TEST_ENV_STRING_LIST", std::vector<std::string> {"hello", "world"});
         m_conf->addUnit("TEST.BOOL", "TEST_ENV_BOOL", false);
+        m_conf->addUnit("TEST.SIZE", "TEST_ENV_SIZE", size_t {0});
     }
 
     void TearDown() override
@@ -176,6 +177,9 @@ INSTANTIATE_TEST_SUITE_P(
         std::make_tuple(conf::OptionMap {{"TEST.STRING_LIST", "hello, world"}}, false),
         std::make_tuple(conf::OptionMap {{"TEST.BOOL", "true"}}, false),
         std::make_tuple(conf::OptionMap {{"TEST.BOOL", "false"}}, false),
+        std::make_tuple(conf::OptionMap {{"TEST.INT", "-2147483648"}}, false),
+        std::make_tuple(conf::OptionMap {{"TEST.SIZE", "0"}}, false),
+        std::make_tuple(conf::OptionMap {{"TEST.SIZE", "18446744073709551615"}}, false),
 
         // Failure
         // Invalid int
@@ -184,12 +188,24 @@ INSTANTIATE_TEST_SUITE_P(
         std::make_tuple(conf::OptionMap {{"TEST.INT", "9223372036854775808"}}, true), // Out of range
         std::make_tuple(conf::OptionMap {{"TEST.INT", "true"}}, true),
         std::make_tuple(conf::OptionMap {{"TEST.INT", "10, 11"}}, true),
+        std::make_tuple(conf::OptionMap {{"TEST.INT", "2147483648"}}, true),  // Fits int64, not int
+        std::make_tuple(conf::OptionMap {{"TEST.INT", "-2147483649"}}, true), // Fits int64, not int
+        std::make_tuple(conf::OptionMap {{"TEST.INT", " 10"}}, true),         // Leading whitespace
+        std::make_tuple(conf::OptionMap {{"TEST.INT", "+10"}}, true),
+        std::make_tuple(conf::OptionMap {{"TEST.INT", ""}}, true),
         // Invalid int64
         std::make_tuple(conf::OptionMap {{"TEST.INT64", "invalid"}}, true),
         std::make_tuple(conf::OptionMap {{"TEST.INT64", "10.0"}}, true),
         std::make_tuple(conf::OptionMap {{"TEST.INT64", "9223372036854775808"}}, true), // Out of range
         std::make_tuple(conf::OptionMap {{"TEST.INT64", "true"}}, true),
         std::make_tuple(conf::OptionMap {{"TEST.INT64", "10, 11"}}, true),
+        std::make_tuple(conf::OptionMap {{"TEST.INT64", " -10"}}, true), // Leading whitespace
+        // Invalid size_t
+        std::make_tuple(conf::OptionMap {{"TEST.SIZE", "-1"}}, true), // Negative for an unsigned key
+        std::make_tuple(conf::OptionMap {{"TEST.SIZE", "-0"}}, true),
+        std::make_tuple(conf::OptionMap {{"TEST.SIZE", " 5"}}, true),
+        std::make_tuple(conf::OptionMap {{"TEST.SIZE", "18446744073709551616"}}, true), // Out of range
+        std::make_tuple(conf::OptionMap {{"TEST.SIZE", "5abc"}}, true),
         // Invalid string list
         std::make_tuple(conf::OptionMap {{"TEST.STRING_LIST", "[hello, world]"}}, true),
         // Invalid bool
@@ -213,7 +229,7 @@ INSTANTIATE_TEST_SUITE_P(
 
 enum class ExpFailType
 {
-    ON_FILE_LOAD, ///< Expected failure on load (Data validation)
+    ON_FILE_LOAD, ///< Expected failure on load (Data validation of the file and environment values)
     ON_GET,       ///< Expected failure on get (Data validation)
     NONE          ///< No expected failure
 };
@@ -303,9 +319,9 @@ INSTANTIATE_TEST_SUITE_P(
         std::make_tuple(10, conf::OptionMap {}, "20", 20, ExpFailType::NONE),
         std::make_tuple(10, conf::OptionMap {{"TEST", "20"}}, std::nullopt, 20, ExpFailType::NONE),
         std::make_tuple(10, conf::OptionMap {{"TEST", "20"}}, "30", 30, ExpFailType::NONE),
-        std::make_tuple(10, conf::OptionMap {}, "invalid", 10, ExpFailType::NONE),
-        std::make_tuple(10, conf::OptionMap {{"TEST", "20"}}, "invalid", 20, ExpFailType::NONE),
-        // Failure on load the configuration (Data validation)
+        // Failure on load the configuration (Data validation): an environment value that does not parse is refused
+        std::make_tuple(10, conf::OptionMap {}, "invalid", 10, ExpFailType::ON_FILE_LOAD),
+        std::make_tuple(10, conf::OptionMap {{"TEST", "20"}}, "invalid", 20, ExpFailType::ON_FILE_LOAD),
         std::make_tuple(10, conf::OptionMap {{"TEST", "invalid"}}, std::nullopt, 10, ExpFailType::ON_FILE_LOAD),
         std::make_tuple(10, conf::OptionMap {{"TEST", "false"}}, std::nullopt, 10, ExpFailType::ON_FILE_LOAD)
         // END
@@ -337,9 +353,9 @@ INSTANTIATE_TEST_SUITE_P(
                         std::nullopt,
                         9223372036854775807,
                         ExpFailType::NONE),
-        std::make_tuple(10, conf::OptionMap {}, "invalid", 10, ExpFailType::NONE),
-        std::make_tuple(10, conf::OptionMap {{"TEST", "20"}}, "invalid", 20, ExpFailType::NONE),
-        // Failure on load the configuration (Data validation)
+        // Failure on load the configuration (Data validation): an environment value that does not parse is refused
+        std::make_tuple(10, conf::OptionMap {}, "invalid", 10, ExpFailType::ON_FILE_LOAD),
+        std::make_tuple(10, conf::OptionMap {{"TEST", "20"}}, "invalid", 20, ExpFailType::ON_FILE_LOAD),
         std::make_tuple(10, conf::OptionMap {{"TEST", "invalid"}}, std::nullopt, 10, ExpFailType::ON_FILE_LOAD),
         std::make_tuple(10, conf::OptionMap {{"TEST", "false"}}, std::nullopt, 10, ExpFailType::ON_FILE_LOAD)
         // END
@@ -392,11 +408,12 @@ INSTANTIATE_TEST_SUITE_P(ConfPriorityStringList,
                                              R"(hello[],world)",
                                              std::vector<std::string> {"hello[]", "world"},
                                              ExpFailType::NONE),
+                             // Bracket notation in the environment fails the load
                              std::make_tuple(std::vector<std::string> {"hello", "world"},
                                              conf::OptionMap {},
                                              R"([hello,world])",
                                              std::vector<std::string> {"hello", "world"},
-                                             ExpFailType::NONE),
+                                             ExpFailType::ON_FILE_LOAD),
                              std::make_tuple(std::vector<std::string> {"hello", "world"},
                                              conf::OptionMap {{"TEST", "hello"}},
                                              std::nullopt,
@@ -423,9 +440,9 @@ INSTANTIATE_TEST_SUITE_P(
         std::make_tuple(false, conf::OptionMap {{"TEST", "true"}}, std::nullopt, true, ExpFailType::NONE),
         std::make_tuple(false, conf::OptionMap {{"TEST", "true"}}, "false", false, ExpFailType::NONE),
         std::make_tuple(true, conf::OptionMap {{"TEST", "true"}}, "false", false, ExpFailType::NONE),
-        std::make_tuple(false, conf::OptionMap {}, "invalid", false, ExpFailType::NONE),
-        std::make_tuple(false, conf::OptionMap {{"TEST", "true"}}, "invalid", true, ExpFailType::NONE),
-        // Failure on load the configuration (Data validation)
+        // Failure on load the configuration (Data validation): an environment value that does not parse is refused
+        std::make_tuple(false, conf::OptionMap {}, "invalid", false, ExpFailType::ON_FILE_LOAD),
+        std::make_tuple(false, conf::OptionMap {{"TEST", "true"}}, "invalid", true, ExpFailType::ON_FILE_LOAD),
         std::make_tuple(false, conf::OptionMap {{"TEST", "invalid"}}, std::nullopt, false, ExpFailType::ON_FILE_LOAD),
         std::make_tuple(false, conf::OptionMap {{"TEST", "10"}}, std::nullopt, false, ExpFailType::ON_FILE_LOAD),
         std::make_tuple(false, conf::OptionMap {{"TEST", "null"}}, std::nullopt, false, ExpFailType::ON_FILE_LOAD)
@@ -555,8 +572,14 @@ INSTANTIATE_TEST_SUITE_P(ConfRange,
                              // The environment wins over the file, in both directions
                              std::make_tuple(conf::OptionMap {{"TEST.RANGED_INT", "999"}}, "64", false),
                              std::make_tuple(conf::OptionMap {{"TEST.RANGED_INT", "64"}}, "999", true),
-                             // An environment value that does not parse falls back to the file value
-                             std::make_tuple(conf::OptionMap {{"TEST.RANGED_INT", "999"}}, "abc", true)));
+                             // An environment value that does not parse is refused, even over a valid file value
+                             std::make_tuple(conf::OptionMap {{"TEST.RANGED_INT", "999"}}, "abc", true),
+                             std::make_tuple(conf::OptionMap {{"TEST.RANGED_INT", "64"}}, "abc", true),
+                             std::make_tuple(conf::OptionMap {{"TEST.RANGED_INT", "64"}}, "2147483648", true),
+                             // A file value that does not parse is refused, not replaced by the in-range default
+                             std::make_tuple(conf::OptionMap {{"TEST.RANGED_SIZE", "-1"}}, "", true),
+                             std::make_tuple(conf::OptionMap {{"TEST.RANGED_SIZE", " 20"}}, "", true),
+                             std::make_tuple(conf::OptionMap {{"TEST.RANGED_INT", "64x"}}, "", true)));
 
 TEST(ConfRange, ErrorNamesTheKeySourceAndRange)
 {
@@ -637,6 +660,115 @@ TEST(ConfRange, OrchestratorThreadsOutOfRangeFailsTheLoad)
     unsetenv("WAZUH_ORCHESTRATOR_THREADS");
 
     conf::Conf conf(conf::mocks::createMockFileLoader({{std::string(conf::key::ORCHESTRATOR_THREADS), "999"}}));
+    EXPECT_THROW(conf.load(), std::runtime_error);
+}
+
+/************************************************************************
+ *                 Values that do not parse as their type
+ ************************************************************************/
+/**
+ * Load a Conf with one unsigned and one int unit, no range, outside standalone mode, and return the error of
+ * load() ("" when it accepts the values).
+ */
+std::string loadTypeError(const conf::OptionMap& fileMap)
+{
+    unsetenv(base::process::ENV_ENGINE_STANDALONE);
+
+    conf::Conf conf(conf::mocks::createMockFileLoader(fileMap));
+    conf.addUnit<size_t>("TEST.TYPE_SIZE", "TEST_ENV_TYPE_SIZE", 5);
+    conf.addUnit<int>("TEST.TYPE_INT", "TEST_ENV_TYPE_INT", 5);
+
+    try
+    {
+        conf.load();
+    }
+    catch (const std::runtime_error& e)
+    {
+        return e.what();
+    }
+    return "";
+}
+
+// The reported case: a negative value for an unsigned key used to fall back to the default with a warning
+TEST(ConfType, NegativeUnsignedFileValueFailsTheLoad)
+{
+    unsetEnv("TEST_ENV_TYPE_SIZE");
+    unsetEnv("TEST_ENV_TYPE_INT");
+
+    const auto msg = loadTypeError({{"TEST.TYPE_SIZE", "-1"}});
+    ASSERT_FALSE(msg.empty()) << "load() accepted a negative value for an unsigned key";
+    EXPECT_NE(msg.find("'TEST.TYPE_SIZE'"), std::string::npos) << msg;
+    EXPECT_NE(msg.find("internal options file"), std::string::npos) << msg;
+    EXPECT_NE(msg.find("'-1'"), std::string::npos) << msg;
+    EXPECT_NE(msg.find("Expected an integer from 0 to 18446744073709551615"), std::string::npos) << msg;
+}
+
+TEST(ConfType, SpacePrefixedFileValueFailsTheLoad)
+{
+    unsetEnv("TEST_ENV_TYPE_SIZE");
+    unsetEnv("TEST_ENV_TYPE_INT");
+
+    EXPECT_FALSE(loadTypeError({{"TEST.TYPE_SIZE", " 5"}}).empty());
+    EXPECT_FALSE(loadTypeError({{"TEST.TYPE_INT", " 5"}}).empty());
+}
+
+TEST(ConfType, OverflowingIntFileValueFailsTheLoad)
+{
+    unsetEnv("TEST_ENV_TYPE_SIZE");
+    unsetEnv("TEST_ENV_TYPE_INT");
+
+    const auto msg = loadTypeError({{"TEST.TYPE_INT", "2147483648"}});
+    ASSERT_FALSE(msg.empty()) << "load() accepted a value an int cannot hold";
+    EXPECT_NE(msg.find("'TEST.TYPE_INT'"), std::string::npos) << msg;
+    EXPECT_NE(msg.find("'2147483648'"), std::string::npos) << msg;
+    EXPECT_NE(msg.find("Expected an integer from -2147483648 to 2147483647"), std::string::npos) << msg;
+}
+
+// An environment value used to be converted without a sign check (unsigned) or skipped with a warning (int)
+TEST(ConfType, NegativeUnsignedEnvValueFailsTheLoad)
+{
+    setEnv("TEST_ENV_TYPE_SIZE", "-1");
+    unsetEnv("TEST_ENV_TYPE_INT");
+
+    const auto msg = loadTypeError({});
+    unsetEnv("TEST_ENV_TYPE_SIZE");
+
+    ASSERT_FALSE(msg.empty()) << "load() accepted a negative environment value for an unsigned key";
+    EXPECT_NE(msg.find("'TEST.TYPE_SIZE'"), std::string::npos) << msg;
+    EXPECT_NE(msg.find("environment variable 'TEST_ENV_TYPE_SIZE'"), std::string::npos) << msg;
+    EXPECT_NE(msg.find("'-1'"), std::string::npos) << msg;
+}
+
+TEST(ConfType, OverflowingIntEnvValueFailsTheLoad)
+{
+    unsetEnv("TEST_ENV_TYPE_SIZE");
+    setEnv("TEST_ENV_TYPE_INT", "2147483648");
+
+    const auto msg = loadTypeError({{"TEST.TYPE_INT", "7"}});
+    unsetEnv("TEST_ENV_TYPE_INT");
+
+    ASSERT_FALSE(msg.empty()) << "load() accepted an environment value an int cannot hold";
+    EXPECT_NE(msg.find("environment variable 'TEST_ENV_TYPE_INT'"), std::string::npos) << msg;
+}
+
+TEST(ConfType, ValidValuesLoad)
+{
+    unsetEnv("TEST_ENV_TYPE_SIZE");
+    setEnv("TEST_ENV_TYPE_INT", "-7");
+
+    const auto msg = loadTypeError({{"TEST.TYPE_SIZE", "0"}, {"TEST.TYPE_INT", "7"}});
+    unsetEnv("TEST_ENV_TYPE_INT");
+
+    EXPECT_TRUE(msg.empty()) << msg;
+}
+
+// The engine's own unsigned ranged key, as an operator would set it
+TEST(ConfType, EngineUnsignedKeyRefusesANegativeValue)
+{
+    unsetenv(base::process::ENV_ENGINE_STANDALONE);
+    unsetenv("WAZUH_INDEXER_BULK_MAX_BYTES");
+
+    conf::Conf conf(conf::mocks::createMockFileLoader({{std::string(conf::key::INDEXER_BULK_MAX_BYTES), "-1"}}));
     EXPECT_THROW(conf.load(), std::runtime_error);
 }
 

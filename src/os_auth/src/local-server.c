@@ -1323,7 +1323,9 @@ cJSON* local_add_clustered(const char *name, const char *ip, const char *groups,
     cJSON *response = NULL;
 
     mdebug2("add_clustered(%s)", name);
-    minfo("Dispatching enrollment request to master node");
+    // Debug: anyone who can reach the worker's enrollment endpoints fires it at will, and what matters is
+    // logged anyway: the master logs the agent it adds, and this node the master's refusal, below.
+    mdebug1("Dispatching enrollment request to master node");
 
     result = w_request_agent_add_clustered(err_response, name, ip, groups, key_hash,
                                             &new_id, &new_key, &new_secret, NULL, NULL, token_id, reenroll_kid, reenroll_bearer,

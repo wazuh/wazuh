@@ -18,7 +18,7 @@ Most `GET` endpoints that return a list accept these standard parameters (`prett
 | `wait_for_complete` | boolean | `false` | Disable the request timeout (`intervals.request_timeout`) |
 | `offset` | int | `0` | First element to return (max: 2,147,483,647) |
 | `limit` | int | `500` | Max elements to return (1 to 100,000) |
-| `search` | string | — | Free-text search (prefix `-` for complementary). It matches the **stored** value of each field, not the one a response renders: a 4.x agent's version is stored as `Wazuh v4.14.5`, so `search=wazuh` finds 4.x agents although responses show `v4.14.5` |
+| `search` | string | — | Free-text search (prefix `-` for complementary). It matches the **stored** value of each field, not the one a response renders: a 4.x agent's version is stored as `Wazuh v4.14.5`, so `search=wazuh` finds 4.x agents although responses show `v4.14.5`. The text is matched literally, as a substring and ignoring case: `%`, `_` and `\` are ordinary characters, not wildcards, so `search=web_01` does not match `webX01` |
 | `sort` | string | — | Sort by fields (comma-separated, dot notation for nested); one leading `+` (asc, default) or `-` (desc) applies to the whole list, e.g. `-name,id` |
 | `select` | string | — | Fields to return (comma-separated) |
 | `q` | string | — | Query filter (see [Query filter syntax](#query-filter-syntax)) |
@@ -511,6 +511,9 @@ Clauses can be grouped with parentheses: `(status=active,status=pending);os.plat
 A value holds letters, digits, spaces, `_ - . : ? \ / ' " = @ % < > { }`, `[ ]` and balanced parentheses, plus
 `+` on the collections filtered in memory and `$` on the agents collection. Any other character (`*`, `#`, `&`, `|`, `!`, ...) makes the clause invalid:
 error `1407`, on every collection — the value is never cut at that character and matched by what precedes it.
+A value needs at least one character outside parentheses: a value made only of a parenthesised group, such as
+`q=name=(web)`, reads the parentheses as grouping and is rejected with `1407`; `q=name=(web)x` and `q=name=a(web)` are
+accepted and match those literal names.
 
 ### Connectors
 
@@ -583,7 +586,7 @@ Errors follow a structured JSON response format.
 | 404       | Not Found         | Invalid endpoint, or the named resource does not exist: a group (`1710`), a file in a group (`1006`), a cluster node (`1730`), an enrollment token (`1767`) |
 | 405       | Method Not Allowed | Invalid HTTP method     |
 | 413       | Payload Too Large | Request body too large. The body carries `"error": 413` (the HTTP status, not an error code) |
-| 415       | Unsupported Media Type | A `Content-Type` the operation does not accept, or a body sent with no `Content-Type` at all (`6002`), on every operation that takes a body, the `run_as` login included. `PUT /cluster/{node_id}/configuration` accepts `application/octet-stream`, but a body with no `Content-Type` is still refused there, not read as one |
+| 415       | Unsupported Media Type | A body sent with no `Content-Type` at all carries error `6002`, on every operation that takes a body, the `run_as` login included; `PUT /cluster/{node_id}/configuration` accepts `application/octet-stream`, but a body with no `Content-Type` is still refused there, not read as one. A `Content-Type` the operation's specification does not list is refused earlier, by the request validator: the body has only `title` and `detail` (`Unsupported Media Type`), with no Wazuh error code |
 | 417       | Expectation Failed | An `Expect` header other than `100-continue` |
 | 429       | Too Many Requests | Rate limit exceeded (`6001` authenticated, `6005` unauthenticated), or too many logins already waiting for their password check (`6006`) |
 | 500       | Internal Error    | Check `logs/api.log`; also a request that exceeded `intervals.request_timeout` without `wait_for_complete=true` (`3021`), or a core daemon that is down (`1017`, below) |

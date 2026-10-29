@@ -1135,9 +1135,42 @@ def test_WazuhDBQuery_protected_add_search_to_query_skips_extra_fields(mock_sock
                                count=5, get_data=None, extra_fields={'secret'})
 
     query._add_search_to_query()
-    assert '(one LIKE :search AND one IS NOT NULL)' in query.query
-    assert '(two LIKE :search AND two IS NOT NULL)' in query.query
+    assert "(one LIKE :search ESCAPE '\\' AND one IS NOT NULL)" in query.query
+    assert "(two LIKE :search ESCAPE '\\' AND two IS NOT NULL)" in query.query
     assert 'secret_col' not in query.query
+
+
+@pytest.mark.parametrize('value, expected', [
+    ('plain', '%plain%'),
+    ('50%', '%50\\%%'),
+    ('a_b', '%a\\_b%'),
+    ('c:\\temp', '%c:\\\\temp%'),
+    ("it's", "%it's%"),
+])
+@patch('wazuh.core.utils.path.exists', return_value=True)
+@patch('glob.glob', return_value=True)
+@patch('wazuh.core.utils.WazuhDBBackend.connect_to_db')
+@patch('socket.socket.connect')
+def test_WazuhDBQuery_protected_add_search_to_query_matches_literally(mock_socket_conn, mock_conn_db, mock_glob,
+                                                                      mock_exists, value, expected):
+    """search escapes the LIKE wildcards and declares the escape character, so '%' and '_' match themselves."""
+    query = utils.WazuhDBQuery(offset=0, limit=1, table='agent', sort=None,
+                               search={"negation": False, "value": value}, select=None,
+                               filters=None, fields={'1': 'one'},
+                               default_sort_field=None, query=None,
+                               backend=utils.WazuhDBBackend(agent_id=1),
+                               count=5, get_data=None)
+
+    query._add_search_to_query()
+    assert query.request['search'] == expected
+    assert "one LIKE :search ESCAPE '\\'" in query.query
+
+    conn = sqlite3.connect(':memory:')
+    conn.execute('CREATE TABLE agent (one TEXT)')
+    conn.executemany('INSERT INTO agent VALUES (?)', [(value,), ('x' * len(value),), ('5005',), ('aXb',)])
+    clause = query.query[query.query.index(' (('):]
+    rows = conn.execute(f"SELECT one FROM agent WHERE 1 AND {clause}", query.request).fetchall()
+    assert [row[0] for row in rows] == [value]
 
 
 @pytest.mark.parametrize('selector_fields, error, expected_exception', [

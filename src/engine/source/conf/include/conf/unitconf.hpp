@@ -2,9 +2,12 @@
 #ifndef _CONFIG_UNITCONF_HPP
 #define _CONFIG_UNITCONF_HPP
 
+#include <charconv>
 #include <functional>
 #include <optional>
 #include <string>
+#include <string_view>
+#include <system_error>
 
 #include <fmt/format.h>
 
@@ -16,6 +19,32 @@ namespace conf::internal
 
 template<typename T>
 class UConf;
+
+/**
+ * @brief Parse an integer configuration value strictly as T.
+ *
+ * Only decimal digits are accepted, with a leading '-' for a signed T: whitespace, a '+' sign, a fraction, trailing
+ * characters, a negative value for an unsigned T and a value T cannot hold are all refused.
+ *
+ * @tparam T The integer type of the configuration (int, int64_t or size_t).
+ * @param value The raw value.
+ * @return std::optional<T> The value, or std::nullopt when it is not a T.
+ */
+template<typename T>
+std::optional<T> parseInteger(std::string_view value)
+{
+    static_assert(std::is_same_v<T, int> || std::is_same_v<T, int64_t> || std::is_same_v<T, size_t>,
+                  "Only integer configuration units are parsed as integers");
+
+    T number {};
+    const auto* const end = value.data() + value.size();
+    const auto [ptr, ec] = std::from_chars(value.data(), end, number);
+    if (value.empty() || ec != std::errc {} || ptr != end)
+    {
+        return std::nullopt;
+    }
+    return number;
+}
 
 enum class UnitConfType : int8_t
 {
@@ -162,80 +191,14 @@ public:
         }
         const auto value = std::string(pValue);
 
-        if constexpr (std::is_same_v<T, int> || std::is_same_v<T, int64_t>)
+        if constexpr (std::is_same_v<T, int> || std::is_same_v<T, int64_t> || std::is_same_v<T, size_t>)
         {
-            std::string::size_type pos;
-            try
+            if (const auto number = parseInteger<T>(value))
             {
-                // check for whitespace
-                if (std::any_of(value.begin(), value.end(), [](unsigned char c) { return std::isspace(c); }))
-                {
-                    throw std::runtime_error(
-                        fmt::format("Invalid number value for environment variable '{}' (value: '{}').", m_env, value));
-                }
-                // check for invalid characters
-                const auto number = std::stoll(value, &pos);
-                if (pos != value.size())
-                {
-                    throw std::runtime_error(
-                        fmt::format("Invalid number value for environment variable '{}' (value: '{}').", m_env, value));
-                }
-                if constexpr (std::is_same_v<T, int>)
-                {
-                    if (number < std::numeric_limits<int>::min() || number > std::numeric_limits<int>::max())
-                    {
-                        throw std::runtime_error(fmt::format(
-                            "Number value out of range for environment variable '{}' (value: '{}').", m_env, value));
-                    }
-                }
-                return static_cast<T>(number);
+                return number;
             }
-            catch (const std::invalid_argument& e)
-            {
-                throw std::runtime_error(
-                    fmt::format("Invalid number value for environment variable '{}' (value: '{}').", m_env, value));
-            }
-            catch (const std::out_of_range& e)
-            {
-                throw std::runtime_error(fmt::format(
-                    "Number value out of range for environment variable '{}' (value: '{}').", m_env, value));
-            }
-        }
-        else if constexpr (std::is_same_v<T, size_t>)
-        {
-            std::string::size_type pos;
-            try
-            {
-                // check for whitespace
-                if (std::any_of(value.begin(), value.end(), [](unsigned char c) { return std::isspace(c); }))
-                {
-                    throw std::runtime_error(
-                        fmt::format("Invalid number value for environment variable '{}' (value: '{}').", m_env, value));
-                }
-                // check for invalid characters
-                const auto number = std::stoull(value, &pos);
-                if (pos != value.size())
-                {
-                    throw std::runtime_error(
-                        fmt::format("Invalid number value for environment variable '{}' (value: '{}').", m_env, value));
-                }
-                if (number > std::numeric_limits<size_t>::max())
-                {
-                    throw std::runtime_error(fmt::format(
-                        "Number value out of range for environment variable '{}' (value: '{}').", m_env, value));
-                }
-                return static_cast<T>(number);
-            }
-            catch (const std::invalid_argument& e)
-            {
-                throw std::runtime_error(
-                    fmt::format("Invalid number value for environment variable '{}' (value: '{}').", m_env, value));
-            }
-            catch (const std::out_of_range& e)
-            {
-                throw std::runtime_error(fmt::format(
-                    "Number value out of range for environment variable '{}' (value: '{}').", m_env, value));
-            }
+            throw std::runtime_error(
+                fmt::format("Invalid number value for environment variable '{}' (value: '{}').", m_env, value));
         }
         else if constexpr (std::is_same_v<T, std::string>)
         {
@@ -244,7 +207,7 @@ public:
         else if constexpr (std::is_same_v<T, std::vector<std::string>>)
         {
             // Disallow bracket notation at the beginning and end (JSON style)
-            if (value.front() == '[' && value.back() == ']')
+            if (!value.empty() && value.front() == '[' && value.back() == ']')
             {
                 throw std::runtime_error(fmt::format("Invalid value for environment variable '{}': bracket notation "
                                                      "'[...]' is not allowed (value: '{}').",

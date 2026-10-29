@@ -308,16 +308,26 @@ def test_ac_connection_lost(cancel_tasks_mock):
                                                             f"Reconnecting...")
                 error_logger_mock.assert_not_called()
 
+@patch('wazuh.core.cluster.client.handshake_closed_count', 0)
 @patch('wazuh.core.cluster.client.AbstractClient._cancel_all_tasks')
 def test_ac_connection_lost_handshake_warning(cancel_tasks_mock):
-    """Check that repeated connections the master closes before the handshake log a throttled warning."""
-    manager = MagicMock()
-    manager.handshake_closed_count = 0
+    """Check that repeated connections the master closes before the handshake log a throttled warning.
+
+    clusterd builds a new client manager for every reconnection, so every attempt uses a different manager here: the
+    count must survive them.
+    """
     logger = logging.getLogger('test_ac_connection_lost_handshake_warning')
 
+    def new_handler():
+        with patch("asyncio.get_running_loop"):
+            manager = client.AbstractClientManager(configuration=configuration, cluster_items=cluster_items,
+                                                   performance_test=0, concurrency_test=0, file="", string=0,
+                                                   logger=logger)
+        return client.AbstractClient(loop=None, on_con_lost=FutureMock(), name="name", fernet_key=fernet_key,
+                                     logger=logger, manager=manager, cluster_items=cluster_items)
+
     def lose_connection(**attributes):
-        handler = client.AbstractClient(loop=None, on_con_lost=FutureMock(), name="name", fernet_key=fernet_key,
-                                        logger=logger, manager=manager, cluster_items=cluster_items)
+        handler = new_handler()
         for name, value in attributes.items():
             setattr(handler, name, value)
         handler.connection_lost(exc=None)
@@ -341,14 +351,13 @@ def test_ac_connection_lost_handshake_warning(cancel_tasks_mock):
         warning_mock.assert_called_once()
 
         # Closed after the handshake, or by this node with its reason already logged: not counted.
-        count = manager.handshake_closed_count
+        count = client.handshake_closed_count
         lose_connection(connected=True)
         lose_connection(close_reason_logged=True)
-        assert manager.handshake_closed_count == count
+        assert client.handshake_closed_count == count
 
-    # A successful handshake resets the count.
-    handler = client.AbstractClient(loop=None, on_con_lost=FutureMock(), name="name", fernet_key=fernet_key,
-                                    logger=logger, manager=manager, cluster_items=cluster_items)
+    # A successful handshake, on yet another manager, resets the count.
+    handler = new_handler()
     loop = asyncio.new_event_loop()
     try:
         future = loop.create_future()
@@ -357,7 +366,7 @@ def test_ac_connection_lost_handshake_warning(cancel_tasks_mock):
             handler.connection_result(future)
     finally:
         loop.close()
-    assert manager.handshake_closed_count == 0
+    assert client.handshake_closed_count == 0
 
 
 def test_ac_cancel_all_tasks():

@@ -183,10 +183,12 @@ any of the listed CAs.
 ```xml
 <indexer>
   <hosts>
-    <host>http://127.0.0.1:9200</host>
+    <host>http://INDEXER_HOST:9200</host>
   </hosts>
 </indexer>
 ```
+
+`INDEXER_HOST` is a placeholder for the indexer's address.
 
 Without `<ssl>` no CA file or client pair is required or imported, but the indexer password is still
 required in the keystore.
@@ -203,14 +205,16 @@ Validate the configuration, then the TLS files and their modes (as root):
 ```
 
 Check that the Indexer accepts the manager's certificate and credentials, using the same files and
-account the connector uses:
+account the connector uses. The command sends the indexer password, so send it only to a host this
+manager is configured for: take `<indexer>` from the output of
+`/var/wazuh-manager/bin/wazuh-manager-conf get indexer.hosts` rather than assuming the indexer is local.
 
 ```bash
 curl --cacert /etc/wazuh-manager/certs/indexer-ca.pem \
      --cert   /etc/wazuh-manager/certs/indexer-connector.pem \
      --key    /etc/wazuh-manager/certs/indexer-connector-key.pem \
      -u "wazuh-manager:$(/var/wazuh-manager/bin/wazuh-manager-keystore -f indexer -k password -g)" \
-     https://127.0.0.1:9200/_cluster/health
+     https://<indexer>:9200/_cluster/health
 ```
 
 The connector treats a node as available when its health is `green` or `yellow`.
@@ -228,6 +232,8 @@ grep -E "Indexer node|Health check failed|indexer credentials" /var/wazuh-manage
 | `Indexer node '<host>' is no longer available. Reason: <reason>` | The node stopped answering `green`/`yellow`; `<reason>` carries the cause above (for example `Unauthorized - Check indexer credentials`) |
 | `Indexer node '<host>' is available again.` | The node recovered |
 | `Indexer node '<host>' is throttling requests (<reason>); it stays in rotation and requests back off.` | The node answered `429` (for example a tripped circuit breaker) |
+| `Indexer node '<host>' accepts requests again.` | A throttled node answered `green`/`yellow` without `429` again |
+| `Indexer node '<host>' reports a PERMANENT circuit breaker (<reason>): heap usage is above the breaker limit; check the indexer heap sizing.` | WARNING: the node's `429` names a `PERMANENT` circuit breaker, which backing off does not clear; logged once per episode, while the node stays throttled |
 | `No indexer credentials found in the keystore. ...` | The keystore has no `username` or `password` |
 
 ---

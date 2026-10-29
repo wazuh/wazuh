@@ -132,7 +132,8 @@ static void test_local_add_clustered_success(void **state) {
     cJSON *data;
 
     expect_any_always(__wrap__mdebug2, formatted_msg);
-    expect_any_always(__wrap__minfo, formatted_msg);
+    // The dispatch line is debug, not info: any peer that reaches the worker's enrollment endpoints fires it.
+    expect_string(__wrap__mdebug1, formatted_msg, "Dispatching enrollment request to master node");
     expect_string(__wrap_w_request_agent_add_clustered, name, "agent1");
     expect_string(__wrap_w_request_agent_add_clustered, ip, "any");
     expect_value(__wrap_w_request_agent_add_clustered, token_id, NULL);
@@ -161,6 +162,7 @@ static void test_local_add_clustered_success(void **state) {
     cJSON_Delete(response);
 
     // ...and a master that sent none (an older master) leaves the field out, as before.
+    expect_string(__wrap__mdebug1, formatted_msg, "Dispatching enrollment request to master node");
     expect_string(__wrap_w_request_agent_add_clustered, name, "agent1");
     expect_string(__wrap_w_request_agent_add_clustered, ip, "any");
     expect_value(__wrap_w_request_agent_add_clustered, token_id, NULL);
@@ -184,7 +186,7 @@ static void test_local_add_clustered_business_rejection_preserves_master_code(vo
     cJSON *response;
 
     expect_any_always(__wrap__mdebug2, formatted_msg);
-    expect_any_always(__wrap__minfo, formatted_msg);
+    expect_string(__wrap__mdebug1, formatted_msg, "Dispatching enrollment request to master node");
     // Business rejections forwarded by the master (9008 EDUPNAME here) log at warning, not error.
     expect_any_always(__wrap__mwarn, formatted_msg);
     expect_string(__wrap_w_request_agent_add_clustered, name, "agent1");
@@ -219,13 +221,13 @@ static void test_local_add_clustered_reenrollment_refusal_logs_at_debug(void **s
     };
 
     expect_any_always(__wrap__mdebug2, formatted_msg);
-    expect_any_always(__wrap__minfo, formatted_msg);
 
     // The master's verdict on a re-enrollment bearer is logged at debug there, and the relay follows: one
     // line, at debug, and no warning (the parser's own line is the caller's to emit when it asks for the code).
     for (size_t i = 0; i < sizeof(codes) / sizeof(codes[0]); i++) {
         char expected[OS_SIZE_256];
         snprintf(expected, sizeof(expected), "Error %d: %s.", codes[i], messages[i] + 7);
+        expect_string(__wrap__mdebug1, formatted_msg, "Dispatching enrollment request to master node");
         expect_string(__wrap__mdebug1, formatted_msg, expected);
         expect_string(__wrap_w_request_agent_add_clustered, name, "agent1");
         expect_string(__wrap_w_request_agent_add_clustered, ip, "any");
@@ -250,7 +252,7 @@ static void test_local_add_clustered_transport_failure_maps_to_9016(void **state
     cJSON *response;
 
     expect_any_always(__wrap__mdebug2, formatted_msg);
-    expect_any_always(__wrap__minfo, formatted_msg);
+    expect_string(__wrap__mdebug1, formatted_msg, "Dispatching enrollment request to master node");
     expect_any_always(__wrap__merror, formatted_msg);
     expect_string(__wrap_w_request_agent_add_clustered, name, "agent1");
     expect_string(__wrap_w_request_agent_add_clustered, ip, "any");
@@ -1593,8 +1595,9 @@ static void test_add_on_worker_refuses_a_negated_ip(void **state) {
 
 static void test_add_with_token_on_worker_forwards_it(void **state) {
     (void)state;
+    EXPECT_LOG_DEBUG1(); // the dispatch line
     EXPECT_LOG_DEBUG2();
-    EXPECT_LOG_INFO();
+    EXPECT_LOG_INFO(); // the 9022 refusal, a caller fault
     config.worker_node = TRUE;
     expect_string(__wrap_w_request_agent_add_clustered, name, "wk-agent");
     expect_string(__wrap_w_request_agent_add_clustered, ip, "any");
@@ -1701,7 +1704,7 @@ static void test_add_logs_its_source_and_the_token_use_count(void **state) {
 static void test_add_on_worker_forwards_its_source(void **state) {
     (void)state;
     EXPECT_LOG_DEBUG2();
-    EXPECT_LOG_INFO();
+    expect_string(__wrap__mdebug1, formatted_msg, "Dispatching enrollment request to master node");
     config.worker_node = TRUE;
     expect_string(__wrap_w_request_agent_add_clustered, name, "wk-src-agent");
     expect_string(__wrap_w_request_agent_add_clustered, ip, "any");
@@ -2280,7 +2283,7 @@ static void test_reenroll_malformed_or_with_token_id_9027(void **state) {
 static void test_reenroll_on_worker_forwards_kid_and_bearer(void **state) {
     (void)state;
     EXPECT_LOG_DEBUG2();
-    EXPECT_LOG_INFO();
+    expect_string(__wrap__mdebug1, formatted_msg, "Dispatching enrollment request to master node");
     config.worker_node = TRUE;
     // The worker verifies nothing (it has no secret to verify against): kid and bearer travel verbatim, and
     // the master's rotated credentials come back as they are.

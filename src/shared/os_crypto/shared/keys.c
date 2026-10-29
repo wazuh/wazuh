@@ -13,8 +13,15 @@
 #include "md5_op.h"
 #include "bf_op.h"
 
+#ifdef WAZUH_UNIT_TESTING
+#define STATIC
+#else
+#define STATIC static
+#endif
+
 /* Prototypes */
 static void __memclear(char *id, char *name, char *ip, char *key, size_t size) __attribute((nonnull));
+STATIC void move_netdata(keystore *keys, const keystore *old_keys) __attribute((nonnull));
 
 static int pass_empty_keyfile = 0;
 
@@ -27,7 +34,18 @@ static void __memclear(char *id, char *name, char *ip, char *key, size_t size)
     memset(ip, '\0', size);
 }
 
-static void move_netdata(keystore *keys, const keystore *old_keys)
+/* Whether two entries hold the same key material (both NULL counts as equal) */
+static bool same_key_material(const char *a, const char *b)
+{
+    return (a == NULL || b == NULL) ? (a == b) : !strcmp(a, b);
+}
+
+/* Carry the runtime state of every agent that survived a client.keys reload with the same address to
+ * its reloaded entry. The message counters travel too, when the key is unchanged: the reload re-read
+ * them from the rids files, which are only flushed every few messages, so they may lag behind the ones
+ * in memory, and a frame captured before the reload would be ahead of them again. The higher of the two
+ * pairs is kept. A replaced key starts from the file's counters, since its agent starts a new sequence. */
+STATIC void move_netdata(keystore *keys, const keystore *old_keys)
 {
     unsigned int i;
     int keyid;
@@ -37,6 +55,17 @@ static void move_netdata(keystore *keys, const keystore *old_keys)
         keyid = OS_IsAllowedID(keys, old_keys->keyentries[i]->id);
 
         if (keyid >= 0 && !strcmp(keys->keyentries[keyid]->ip->ip, old_keys->keyentries[i]->ip->ip)) {
+            keyentry *entry = keys->keyentries[keyid];
+            const keyentry *old_entry = old_keys->keyentries[i];
+
+            if (same_key_material(entry->encryption_key, old_entry->encryption_key) &&
+                same_key_material(entry->raw_key, old_entry->raw_key) &&
+                (old_entry->global > entry->global ||
+                 (old_entry->global == entry->global && old_entry->local > entry->local))) {
+                entry->global = old_entry->global;
+                entry->local = old_entry->local;
+            }
+
             keys->keyentries[keyid]->rcvd = old_keys->keyentries[i]->rcvd;
             keys->keyentries[keyid]->sock = old_keys->keyentries[i]->sock;
             keys->keyentries[keyid]->crypto_method = old_keys->keyentries[i]->crypto_method;

@@ -293,11 +293,11 @@ class WazuhDBQueryAgents(WazuhDBQuery):
             del self.fields["id"]
             WazuhDBQuery._add_search_to_query(self)
             self.fields["id"] = "id"
-            self.query = self.query[:-1] + " OR id LIKE :search_id)"
+            self.query = self.query[:-1] + " OR id LIKE :search_id ESCAPE '\\')"
             self.request["search_id"] = (
                 int(self.search["value"])
                 if self.search["value"].isdigit()
-                else re.sub(f"[{self.special_characters}]", "_", self.search["value"])
+                else escape_like(self.search["value"])
             )
 
     def _format_data_into_dictionary(self) -> dict:

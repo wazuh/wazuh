@@ -1505,11 +1505,12 @@ class WazuhDBQuery(object):
     def _add_search_to_query(self):
         if self.search:
             self.query += " AND NOT" if bool(self.search['negation']) else ' AND'
+            # search is a literal substring match, as '~' in q: '%', '_' and the backslash are escaped
             self.query += " (" + " OR ".join(
-                f'({x.split(" as ")[0]} LIKE :search AND {x.split(" as ")[0]} IS NOT NULL)'
+                f'({x.split(" as ")[0]} LIKE :search ESCAPE \'\\\' AND {x.split(" as ")[0]} IS NOT NULL)'
                 for k, x in self.fields.items() if k not in self.extra_fields) + ')'
             self.query = self.query.replace('WHERE  AND', 'WHERE')
-            self.request['search'] = "%{0}%".format(re.sub(f"[{self.special_characters}]", '_', self.search['value']))
+            self.request['search'] = "%{0}%".format(escape_like(self.search['value']))
 
     def _parse_select_filter(self, select_fields):
 

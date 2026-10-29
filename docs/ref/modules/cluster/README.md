@@ -92,8 +92,9 @@ why: the master cannot decrypt its messages, logs `3025` (`Could not decrypt mes
 `cluster.log` and closes the connection. The worker logs `The master closed the connection` (INFO) on
 every attempt and, after 3 such attempts in a row that never completed the handshake (and every 30
 more after that), a WARNING: `The master closed the connection before the handshake completed <n> times
-in a row. Check that the cluster key of this node is the same as the master's …`. A worker that loses
-the connection retries every 10 seconds.
+in a row. Check that the cluster key of this node is the same as the master's …`. The count spans the
+reconnections and starts again from 0 after a handshake that completes, or when clusterd restarts. A
+worker that loses the connection retries every 10 seconds.
 
 On the master, a connection that closes before identifying itself (a port probe or a load-balancer
 health check, for instance) is logged at INFO as `Connection from <ip> closed before the handshake
@@ -157,7 +158,7 @@ command-line options, for running it by hand:
 | `-d` | Enable debug messages; repeat (`-dd`) for more verbosity |
 | `-V` | Print the version and exit |
 | `-r` | Run as root instead of dropping privileges to `wazuh-manager` |
-| `-t` | Read and check the cluster configuration, then exit (`0` when valid, `1` otherwise). A valid configuration prints nothing; a refused one prints `ERROR: <reason>` on standard error and also writes it to `logs/cluster.log` |
+| `-t` | Read and check the cluster configuration, then exit (`0` when valid, `1` otherwise). A valid configuration prints nothing; a refused one prints `ERROR: <reason>` on standard error, and also writes it to `logs/cluster.log` only when the file checked is the live configuration (a copy named with `-c` reports on standard error only) |
 | `-c <file>` | Configuration file to read the `<cluster>` section from (default `/etc/wazuh-manager/wazuh-manager.conf`) |
 | `-h` | Print the help and exit |
 
@@ -192,7 +193,7 @@ it works on any node (a worker forwards node and health queries to the master).
 | `-h`, `--help` | Print the help |
 
 `-a`, `-l`, `-i` and `-u` are mutually exclusive; with none of them the help is printed. A wrong combination of
-arguments (for example `-fs` without `-a`, or a status `-fs` does not know) prints the usage and the reason on standard error and exits
+arguments (for example `-fs` without `-a`, `-fn` without `-l` or `-i` or with no node name, or a status `-fs` does not know) prints the usage and the reason on standard error and exits
 `2`, before the cluster configuration is read. An error is
 printed as `Error <code>: <message>` (as `agent_groups` prints it), or `Internal error: <message>`,
 and the command exits `1`: a node named with `-fn` that is not connected gives

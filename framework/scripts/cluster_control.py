@@ -270,6 +270,12 @@ def main():
     if args.filter_status is not None and not args.list_agents:
         # An argument error like any other: argparse's usage on stderr and exit code 2.
         parser.error('argument -fs/--filter-agent-status: only allowed with -a/--list-agents')
+    if args.filter_node is not None:
+        # The agent list carries no node filter: refuse -fn there rather than list every agent and exit 0.
+        if not (args.list_nodes or args.health):
+            parser.error('argument -fn/--filter-node: only allowed with -l/--list-nodes or -i/--health')
+        if not args.filter_node:
+            parser.error('argument -fn/--filter-node: expected at least one node name')
     unknown_status = [status for status in args.filter_status or [] if status not in AGENT_STATUSES]
     if unknown_status:
         parser.error(f"argument -fs/--filter-agent-status: invalid status {', '.join(unknown_status)} "

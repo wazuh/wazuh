@@ -20,6 +20,11 @@ from wazuh.core.cluster.utils import context_tag
 HANDSHAKE_CLOSED_FIRST_WARNING = 3
 HANDSHAKE_CLOSED_WARNING_EVERY = 30
 
+# Consecutive connections the master closed before the handshake completed. It lives at module level because clusterd
+# builds a new client manager (Worker) for every reconnection, so a count kept on that object would restart at 0 on
+# every attempt and the warning would never be logged. A successful handshake resets it.
+handshake_closed_count = 0
+
 
 class AbstractClientManager:
     """
@@ -66,8 +71,6 @@ class AbstractClientManager:
         self.client = None
         self.extra_args = {}
         self.loop = asyncio.get_running_loop()
-        # Consecutive connections the master closed before the handshake completed.
-        self.handshake_closed_count = 0
 
     def add_tasks(self) -> List[Tuple[Awaitable[Any], Tuple]]:
         """Add client tasks to the task list.
@@ -181,8 +184,8 @@ class AbstractClient(common.Handler):
 
             self.logger.info("Successfully connected to master.")
             self.connected = True
-            if self.server is not None:
-                self.server.handshake_closed_count = 0
+            global handshake_closed_count
+            handshake_closed_count = 0
         except Exception as e:
             self.logger.error(f"Could not connect to master: {str(e)}.")
             self.close_reason_logged = True
@@ -241,10 +244,11 @@ class AbstractClient(common.Handler):
 
         The master gives no reason to a peer whose messages it cannot decrypt, so without this warning a node
         configured with a different cluster key would only log that the master closed the connection.
+        The count is kept at module level so it survives the new client manager clusterd builds on every
+        reconnection.
         """
-        if self.server is None:
-            return
-        self.server.handshake_closed_count = count = getattr(self.server, 'handshake_closed_count', 0) + 1
+        global handshake_closed_count
+        handshake_closed_count = count = handshake_closed_count + 1
         if count == HANDSHAKE_CLOSED_FIRST_WARNING or \
                 (count > HANDSHAKE_CLOSED_FIRST_WARNING and
                  (count - HANDSHAKE_CLOSED_FIRST_WARNING) % HANDSHAKE_CLOSED_WARNING_EVERY == 0):

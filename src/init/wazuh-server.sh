@@ -521,8 +521,19 @@ testconfig()
     # its own test refuses would otherwise surface as a manager that does not come back. A test's own
     # output goes to stderr, so that `-j` keeps writing a single JSON document to stdout.
     for i in ${CHECK_DAEMONS}; do
-        ${DIR}/bin/${i} -t ${DEBUG_CLI} 1>&2;
-        if [ $? != 0 ]; then
+        TEST_VERDICT=$(${DIR}/bin/${i} -t ${DEBUG_CLI} 2>&1)
+        TEST_RC=$?
+        if [ -n "${TEST_VERDICT}" ]; then
+            echo "${TEST_VERDICT}" >&2
+        fi
+        if [ ${TEST_RC} != 0 ]; then
+            # One line in the manager log, as validateconfig() and checkcredentials() leave: the refusal
+            # and the last line of the test's own output (the reason; a C daemon's date prefix dropped).
+            # Nothing else records it when the check runs from the service-control helper, whose
+            # output reaches no log.
+            TEST_REASON=$(printf '%s\n' "${TEST_VERDICT}" | sed -n '/[^[:space:]]/h; ${x;p;}' | \
+                sed 's/^[0-9]\{4\}\/[0-9]\{2\}\/[0-9]\{2\} [0-9]\{2\}:[0-9]\{2\}:[0-9]\{2\} //')
+            log_lines ERROR "${i}: Configuration error${TEST_REASON:+: ${TEST_REASON}}"
             refuse 20 "${i}: Configuration error"
             # Unconditionally on a start: the wipe at the top of this function already replaced the
             # old .restart guard's job, and keeping the guard here would leave a restart with a

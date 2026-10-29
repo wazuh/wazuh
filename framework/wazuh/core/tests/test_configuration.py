@@ -475,6 +475,11 @@ def test_upload_group_configuration(mock_open, mock_wazuh_uid, mock_wazuh_gid):
     # The generic line alone is kept, naming the group's file rather than the temporary one.
     ("2026/10/27 10:00:00 verify-agent-conf: ERROR: (1207): Localfile remote configuration in '{tmp}' is corrupted.\n",
      "Localfile remote configuration in 'default/agent.conf' is corrupted."),
+    # An unknown <agent_config> attribute: the tool fails on it and the API names the attribute and the group file.
+    ("2026/10/27 10:00:00 verify-agent-conf: ERROR: (1233): Invalid attribute 'bogus' in the configuration: "
+     "'{tmp}'.\n"
+     "2026/10/27 10:00:00 verify-agent-conf: ERROR: (1207): Syscheck remote configuration in '{tmp}' is corrupted.\n",
+     "Invalid attribute 'bogus' in the configuration: 'default/agent.conf'."),
 ])
 def test_upload_group_configuration_reports_the_reason(output, expected):
     """A refused group configuration names its real cause and the group's file, never the temporary file."""

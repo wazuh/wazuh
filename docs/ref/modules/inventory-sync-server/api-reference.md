@@ -396,10 +396,12 @@ route-specific payload — see [Test Tools](test-tools.md). The liveness probe w
 curl --unix-socket /var/wazuh-manager/queue/sockets/inventory-sync-http.sock http://localhost/
 ```
 
-A `/config` report, simulating what remoted forwards for an authenticated agent:
+A `/config` report, simulating what remoted forwards for an authenticated agent. The report replaces
+that agent's `wazuh-agent-config` document, so use an id no real agent has (`900` here, as the test
+tools do) and remove its documents afterwards with `send_delete_agent.py --agent-id 900`:
 
 ```bash
 curl --unix-socket /var/wazuh-manager/queue/sockets/inventory-sync-http.sock http://localhost/config \
-  -X POST -H "Content-Type: application/json" -H "x-wazuh-agent-id: 001" \
+  -X POST -H "Content-Type: application/json" -H "x-wazuh-agent-id: 900" \
   -d '{"modules":{"fim":{"frequency":43200},"logcollector":{"localfile":[{"file":"/var/log/syslog","logformat":"syslog"}]}}}'
 ```

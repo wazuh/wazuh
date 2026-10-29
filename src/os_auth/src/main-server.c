@@ -853,7 +853,9 @@ static void process_message(struct client *client) {
 
     if (OS_SUCCESS == auth_parse_result) {
         if (config.worker_node) {
-            minfo("Dispatching request to master node");
+            /* Debug, as on the local socket: any peer fires it at will, and what matters is logged
+             * anyway: the master logs the agent it adds, and this node the master's refusal, below. */
+            mdebug1("Dispatching request to master node");
             // The force registration settings are ignored for workers. The master decides.
             int master_error_code = 0;
             if (0 == w_request_agent_add_clustered(response, client->agentname, client->ip, client->centralized_group, key_hash, &client->new_id, &new_key, NULL, NULL, NULL, NULL, NULL, NULL, source, &master_error_code)) {
