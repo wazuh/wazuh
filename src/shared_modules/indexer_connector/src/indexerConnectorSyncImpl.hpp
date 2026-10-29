@@ -496,6 +496,50 @@ class IndexerConnectorSyncImpl final
         return !m_stopping.load();
     }
 
+    /// How much of the indexer's response body the search / update_by_query failure text carries.
+    /// OpenSearch puts the error type near the start of the body, so the type survives the cut.
+    static constexpr std::size_t MAX_FAILURE_BODY_LENGTH {256};
+
+    /// @brief True when the indexer answered "this index does not exist" rather than failing.
+    ///
+    /// The single definition of the rule: the HTTP status AND the error type must both say so, so a
+    /// body that merely quotes `index_not_found_exception` inside another error (a
+    /// `search_phase_execution_exception` with it as `caused_by`, a 500) is NOT a missing index.
+    /// Callers classify on it (the scanner's `IndexerErrorHelper` reads the same two facts back off
+    /// the exception), so it may not drift between the search and the update_by_query paths.
+    static bool isIndexNotFound(const long statusCode, const std::string& responseBody)
+    {
+        return statusCode == HTTP_NOT_FOUND && responseBody.find("index_not_found_exception") != std::string::npos;
+    }
+
+    /// @brief Build the failure text of the search / update_by_query error contract.
+    ///
+    /// The transport reduces every HTTP failure to "Client error"/"Server error", so without the
+    /// status and the (truncated) body the exception is undiagnosable AND unclassifiable -- callers
+    /// must be able to tell "no such index" (an empty dataset, e.g. no Windows agent ever synced a
+    /// hotfix) from a real outage. One definition for both paths: the shape is documented as a
+    /// contract in docs/ref/modules/indexer_connector/README.md.
+    ///
+    /// @param prefix What failed ("Search query failed", "Update by query failed").
+    /// @param error Transport error text.
+    /// @param statusCode HTTP status the indexer answered with.
+    /// @param responseBody Response body, truncated into the text when not empty.
+    /// @return std::string "<prefix> (status N): <error>[ - <body>]".
+    static std::string failureDetail(const std::string& prefix,
+                                     const std::string& error,
+                                     const long statusCode,
+                                     const std::string& responseBody)
+    {
+        std::string detail = prefix + " (status " + std::to_string(statusCode) + "): " + error;
+        if (!responseBody.empty())
+        {
+            detail += " - ";
+            detail += responseBody.substr(0, MAX_FAILURE_BODY_LENGTH);
+        }
+
+        return detail;
+    }
+
     void processBulk()
     {
         bool needToRetry = false;
@@ -1359,7 +1403,7 @@ public:
         };
 
         const auto onError =
-            [this, &needToRetry](const std::string& url, const long statusCode, const std::string& error)
+            [this, &needToRetry](const std::string& error, const long statusCode, const std::string& responseBody)
         {
             if (statusCode == HTTP_VERSION_CONFLICT)
             {
@@ -1387,11 +1431,39 @@ public:
                     statusCode,
                     error.c_str());
             }
+            else if (isRetryableServerError(statusCode))
+            {
+                // 502/503/504: the node is reshuffling, not refusing the update. `conflicts=proceed`
+                // plus the caller-side idempotency contract (a version gate, or a script that goes
+                // `ctx.op = 'noop'` when the document already matches) makes a re-run safe, exactly
+                // as for the transport retry above.
+                needToRetry = true;
+                LOGFN_DEBUG2(m_logFn,
+                             "Update by query: server unavailable (HTTP %ld), retrying with exponential backoff.",
+                             statusCode);
+            }
             else
             {
-                LOGFN_WARN(m_logFn, "Update by query failed: %s, status code: %ld.", error.c_str(), statusCode);
-                m_notify.clear();
-                throw IndexerConnectorException(error);
+                // Same rule as the search: a missing index is the caller's decision (for the VD an
+                // empty dataset), so it is logged at debug level; any other failure warns.
+                if (isIndexNotFound(statusCode, responseBody))
+                {
+                    LOGFN_DEBUG2(m_logFn, "Update by query failed: %s, status code: %ld.", error.c_str(), statusCode);
+                    // A no-op for the caller, so it may not drop the session's pending callbacks
+                    // (e.g. unlockAgent) the way a real failure does: the filtered-indices no-op
+                    // above keeps them for the same reason. The caller still gets the exception and
+                    // decides; its flush/invokePendingCallbacks then fires them.
+                    m_shouldNotifyAfterBulk = true;
+                }
+                else
+                {
+                    LOGFN_WARN(m_logFn, "Update by query failed: %s, status code: %ld.", error.c_str(), statusCode);
+                    m_notify.clear();
+                }
+                throw IndexerConnectorException(
+                    failureDetail("Update by query failed", error, statusCode, responseBody),
+                    IndexerConnectorException::Category::Other,
+                    statusCode);
             }
         };
 
@@ -1484,20 +1556,44 @@ public:
                 needToRetry = true;
                 LOGFN_DEBUG2(m_logFn, "Search query rate-limited (429), retrying with exponential backoff.");
             }
+            else if (statusCode <= 0)
+            {
+                // No HTTP response at all (timeout, connection refused, TLS failure): the transport
+                // reports these as a negative status. A search is a read, so re-running it is
+                // idempotent; failing here turns an indexer rolling restart into a lost caller
+                // operation -- for the VD, a whole scan including the new findings it had computed.
+                needToRetry = true;
+                LOGFN_DEBUG2(m_logFn,
+                             "Transport-level failure, no HTTP status received (code %ld): %s. Retrying search query.",
+                             statusCode,
+                             error.c_str());
+            }
+            else if (isRetryableServerError(statusCode))
+            {
+                // 502/503/504 are what a cluster answers while it reshuffles; the next attempt goes
+                // to another host (m_selector->getNext()). 500 stays out of this branch: it may be
+                // deterministic, and retrying it would only burn the budget.
+                needToRetry = true;
+                LOGFN_DEBUG2(m_logFn,
+                             "Search query: server unavailable (HTTP %ld), retrying with exponential backoff.",
+                             statusCode);
+            }
             else
             {
-                LOGFN_WARN(m_logFn, "Search query failed: %s, status code: %ld", error.c_str(), statusCode);
-                // The transport reduces every HTTP failure to "Client error"/"Server error", so
-                // without the status and (truncated) body the exception is undiagnosable AND
-                // unclassifiable -- callers must be able to tell "no such index" (an empty
-                // dataset, e.g. no Windows agent ever synced a hotfix) from a real outage.
-                std::string detail = "Search query failed (status " + std::to_string(statusCode) + "): " + error;
-                if (!responseBody.empty())
+                // A missing index is not an indexer failure: the caller owns the decision (for the
+                // VD it is an empty dataset), so it is logged at debug level instead of warning on
+                // every scan. Any other failure keeps the warning.
+                if (isIndexNotFound(statusCode, responseBody))
                 {
-                    detail += " - ";
-                    detail += responseBody.substr(0, 256);
+                    LOGFN_DEBUG2(m_logFn, "Search query failed: %s, status code: %ld", error.c_str(), statusCode);
                 }
-                throw IndexerConnectorException(detail);
+                else
+                {
+                    LOGFN_WARN(m_logFn, "Search query failed: %s, status code: %ld", error.c_str(), statusCode);
+                }
+                throw IndexerConnectorException(failureDetail("Search query failed", error, statusCode, responseBody),
+                                                IndexerConnectorException::Category::Other,
+                                                statusCode);
             }
         };
 
