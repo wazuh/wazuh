@@ -1246,6 +1246,22 @@ def test_handler_session_divided_before_handshake_refused():
     assert acceptor.received == []
 
 
+def test_handler_session_large_undivided_before_handshake_refused():
+    """A non-divided frame larger than a chunk, before the key is proven, is refused at its header: an
+    unauthenticated peer cannot make the event loop buffer and decrypt a single large frame."""
+    connector, acceptor = connected_pair()
+    assert acceptor.recv_seq == 0
+
+    header = struct.pack(acceptor.header_format, 8, cluster_common.MAX_CHUNK_SIZE + 1,
+                         b'sendsync'.ljust(acceptor.cmd_len))
+    acceptor.data_received(header)
+
+    acceptor.transport.close.assert_called_once()
+    assert '3063' in acceptor.logger.error.call_args[0][0]
+    assert acceptor.div_msg_box == {}
+    assert acceptor.received == []
+
+
 def test_handler_session_divided_chunk_too_large_refused():
     """After the handshake, a divided frame declaring more than MAX_CHUNK_SIZE is refused at its header."""
     connector, acceptor = connected_pair()

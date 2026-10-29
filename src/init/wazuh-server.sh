@@ -157,11 +157,17 @@ unlock()
 SERVICE_WRITE='import grp, os, pwd, stat, sys
 path, mode = sys.argv[1], sys.argv[2]
 if os.geteuid() == 0:
-    gid = grp.getgrnam("wazuh-manager").gr_gid
-    uid = pwd.getpwnam("wazuh-manager").pw_uid
-    os.setgroups([])
-    os.setresgid(gid, gid, gid)
-    os.setresuid(uid, uid, uid)
+    try:
+        gid = grp.getgrnam("wazuh-manager").gr_gid
+        uid = pwd.getpwnam("wazuh-manager").pw_uid
+    except KeyError:
+        # No service account (not a real install): nothing to drop to. O_NOFOLLOW and the
+        # regular-file check below still refuse a planted link or FIFO.
+        uid = gid = None
+    if uid is not None:
+        os.setgroups([])
+        os.setresgid(gid, gid, gid)
+        os.setresuid(uid, uid, uid)
 flags = os.O_WRONLY | os.O_CREAT | os.O_NOFOLLOW | os.O_NONBLOCK | os.O_NOCTTY | os.O_CLOEXEC
 flags |= os.O_APPEND if mode == "append" else os.O_TRUNC
 fd = os.open(path, flags, 0o660)

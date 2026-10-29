@@ -205,6 +205,9 @@ void test_DeletePID_failure(void **state)
     int ret = 0;
     struct stat stat_delete = { .st_mode = 0 };
 
+    // The mocked unlink() does not set errno; make the expected diagnostic deterministic.
+    errno = 0;
+
     expect_string(__wrap_unlink, file, "var/run/test-2345.pid");
     will_return(__wrap_unlink, 1);
 
@@ -383,6 +386,9 @@ void test_MergeAppendFile_open_fail(void **state) {
     int path_offset = -1;
     int ret;
 
+    // The mocked fopen() does not set errno; make the expected diagnostic deterministic.
+    errno = 0;
+
     expect_string(__wrap_fopen, path, file);
     expect_string(__wrap_fopen, mode, "r");
     will_return(__wrap_fopen, NULL);
@@ -399,6 +405,9 @@ void test_MergeAppendFile_fseek_fail(void **state) {
     char * file = "test.txt";
     int path_offset = -1;
     int ret;
+
+    // The mocked fseek() does not set errno; make the expected diagnostic deterministic.
+    errno = 0;
 
     expect_string(__wrap_fopen, path, file);
     expect_string(__wrap_fopen, mode, "r");
@@ -421,6 +430,9 @@ void test_MergeAppendFile_fseek2_fail(void **state) {
     char * file = "/test/shared/default/test.txt";
     int path_offset = -1;
     int ret;
+
+    // The mocked fseek() does not set errno; make the expected diagnostic deterministic.
+    errno = 0;
 
     expect_string(__wrap_fopen, path, file);
     expect_string(__wrap_fopen, mode, "r");

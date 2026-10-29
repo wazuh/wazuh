@@ -3,6 +3,7 @@
 
 #include <atomic>
 #include <cerrno>
+#include <cstdio>
 #include <cstring>
 #include <ctime>
 #include <mutex>
@@ -212,6 +213,14 @@ int vetLogFile(const base::logging::ManagerLogDeps& deps, int fd)
     if (deps.fstat(fd, &st) != 0 || !S_ISREG(st.st_mode) || st.st_nlink != 1)
     {
         (void)deps.close(fd);
+        // The engine runs with stderr on /dev/null, so warn once so a refused log is not a silent blackout.
+        static std::atomic_flag warned = ATOMIC_FLAG_INIT;
+        if (!warned.test_and_set())
+        {
+            (void)std::fprintf(stderr,
+                               "wazuh-engine: not writing a log file: it must be a lone regular file, "
+                               "not a symlink, FIFO, device or hard-linked file\n");
+        }
         return -1;
     }
     return fd;

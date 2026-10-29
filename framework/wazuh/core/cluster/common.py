@@ -685,19 +685,21 @@ class Handler(asyncio.Protocol):
             self.send_seq += 1
         return msg_list
 
-    def _check_divided_frame(self, size: int) -> None:
-        """Refuse a divided frame from a peer that has not proven the cluster key, or larger than a chunk.
+    def _check_incoming_frame(self, size: int, divided: bool) -> None:
+        """Refuse a frame a peer that has not proven the cluster key must not be allowed to send, or one too large.
 
-        A divided frame is a piece of one token, so it cannot be authenticated on its own: it is decrypted only once
-        the whole message is joined. A keyed connection therefore accepts one only after a whole message of this peer
-        was opened with the session key (the hello, on both sides, is never divided), so an unauthenticated peer
-        cannot make the event loop buffer and join chunks. No sender builds a chunk larger than request_chunk, which
-        MAX_CHUNK_SIZE bounds.
+        Until a whole message of this peer has decrypted under the session key (recv_seq advances only in _open), a
+        keyed connection accepts only the hello, which is a single small frame: it must not make the event loop
+        buffer and join a divided message, nor buffer and decrypt a single frame larger than one chunk. A divided
+        frame is a piece of one token and cannot be authenticated on its own; the hello, on both sides, is never
+        divided. No sender builds a frame larger than request_chunk, which MAX_CHUNK_SIZE bounds.
 
         Parameters
         ----------
         size : int
             Payload size declared in the frame header.
+        divided : bool
+            Whether the frame carries the division flag.
 
         Raises
         ------
@@ -705,9 +707,14 @@ class Handler(asyncio.Protocol):
             If the peer has not proven the key yet, or the frame is larger than MAX_CHUNK_SIZE.
         """
         if self.cluster_key is not None and self.recv_seq == 0:
-            raise exception.WazuhClusterError(3063, extra_message='divided message received before the handshake '
-                                                                  'completed')
-        if size > MAX_CHUNK_SIZE:
+            if divided:
+                raise exception.WazuhClusterError(3063, extra_message='divided message received before the handshake '
+                                                                      'completed')
+            if size > MAX_CHUNK_SIZE:
+                raise exception.WazuhClusterError(3063, extra_message=f'message of {size} bytes received before the '
+                                                                      f'handshake exceeds the maximum of '
+                                                                      f'{MAX_CHUNK_SIZE}')
+        if divided and size > MAX_CHUNK_SIZE:
             raise exception.WazuhClusterError(3063, extra_message=f'divided message chunk of {size} bytes exceeds '
                                                                   f'the maximum of {MAX_CHUNK_SIZE}')
 
@@ -726,8 +733,7 @@ class Handler(asyncio.Protocol):
                 self.in_buffer = self.in_msg.get_info_from_header(header=self.in_buffer,
                                                                   header_format=self.header_format,
                                                                   header_size=self.header_len)
-                if self.in_msg.flag_divided:
-                    self._check_divided_frame(self.in_msg.total)
+                self._check_incoming_frame(self.in_msg.total, bool(self.in_msg.flag_divided))
                 self.in_buffer = self.in_msg.receive_data(data=self.in_buffer)
                 # If payload bytes are still outstanding, arm the completion deadline so a
                 # peer that stops after the header cannot hold memory indefinitely.

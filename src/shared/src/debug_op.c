@@ -77,6 +77,16 @@ static FILE * open_log_file(const char * path) {
     }
 
     if (fd < 0) {
+        // EMLINK (a hard link) and EINVAL (not a regular file) mean the log was refused, not merely absent.
+        // A daemon has stderr on /dev/null, so warn once to stderr so the refusal is not a silent blackout.
+        if (errno == EMLINK || errno == EINVAL || errno == ELOOP) {
+            static int vet_warned = 0;
+            if (!vet_warned) {
+                vet_warned = 1;
+                (void)fprintf(stderr, "wazuh: not writing log '%s': %s; it must be a lone regular file, "
+                                      "not a symlink, FIFO or hard-linked file\n", path, strerror(errno));
+            }
+        }
         return NULL;
     }
 

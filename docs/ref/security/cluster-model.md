@@ -185,6 +185,7 @@ constants of `framework/wazuh/core/cluster/`, not configuration:
 | Divided messages being received at once | 10 | error 3051 |
 | Size of one frame of a divided message (senders use 5 MiB) | 10 MiB | error 3063, the connection is closed |
 | Divided message before the peer proved the key (a whole message of it decrypted) | none accepted | error 3063, the connection is closed at the first frame header |
+| Size of any frame before the peer proved the key (the hello is a single small frame) | 10 MiB | error 3063, the connection is closed at the frame header |
 
 ### What this does not provide
 
