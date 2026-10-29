@@ -42,6 +42,7 @@ The library defaults, which apply wherever a consumer does not override them:
 | URL, header name, header value, header count | 2048 bytes, 256 bytes, 8192 bytes, 32 |
 | Timeouts | head 10 s, body 30 s, response backstop 300 s, write 10 s, drain on stop 2 s |
 | Socket mode | `0660`, set explicitly after `bind()` |
+| `Expect: 100-continue` | not answered (`expectContinue` off); a consumer may turn it on |
 
 Every server logs the effective values once at start, at INFO, under its consumer's tag:
 `<name> server bound to '<socket>' (mode 0660, <n> I/O thread(s), …; timeouts s: header=… body=…
@@ -54,6 +55,7 @@ suppress another kind's first line):
 
 | Status | Meaning | Typical cause |
 |---|---|---|
+| `100` (interim) | `Expect: 100-continue` on a server with `expectContinue` on | Sent once the request is admitted and before the body arrives; a refused request gets its final status instead |
 | `400` | Malformed request | Broken client |
 | `404` | No route for that path | Routes are `method + exact path` — no patterns |
 | `405` + `Allow` | Path exists, wrong method | The `Allow` header lists what the route accepts |

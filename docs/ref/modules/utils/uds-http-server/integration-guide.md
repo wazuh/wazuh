@@ -44,6 +44,22 @@ you need the payload, drop it before replying if you are done with the bytes. A 
 that throws is answered `500`; a responder dropped without `send()` is answered `503`
 and logged as a handler bug.
 
+## Headers that must appear once
+
+`HttpRequest::headers` keeps the last value of a repeated name. If your contract needs
+exactly one occurrence of a header (an identity header, for example), check
+`HttpRequest::duplicateHeaders`, which lists the lower-cased names that appeared more than
+once, and refuse the request yourself.
+
+## `Expect: 100-continue`
+
+Off by default. Turn on `UdsHttpServerConfig::expectContinue` when your peers send the
+expectation — libcurl does for bodies above 1 MiB unless the client suppresses it with an
+empty `Expect:` header — or each such request waits out the client's own timeout (1 s in
+libcurl) before sending its body. The interim answer is written only after the request is
+admitted, so a request your caps or budget would refuse gets its final `413`/`503` before
+the body is sent.
+
 ## Route classes
 
 Declare each route's class with `RouteOptions`: **Data** (budget-charged, sheddable),
