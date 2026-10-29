@@ -290,6 +290,14 @@ namespace fim_container_events
                 return escalateDelta(m_map.applyDelta(events));
             }
 
+            /* Which containers the map currently holds cgroups for, so a caller
+             * applying a list it cannot install wholesale can say which of them
+             * have gone. */
+            std::set<std::string> mappedContainerIds() const
+            {
+                return m_map.mappedContainerIds();
+            }
+
             /* Apply one on-demand resolution.
              *
              * Deliberately NOT given the filtering treatment above: reaching here

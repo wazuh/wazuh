@@ -539,6 +539,30 @@ namespace fim_container_events
                 return m_container.size();
             }
 
+            /* Which containers this map currently attributes cgroups to.
+             *
+             * Distinct from containerCount(): one container occupies several
+             * cgroups when it runs an init system, so the count is of entries
+             * and this is of containers.
+             *
+             * For a caller that has to decide what is NO LONGER here. install()
+             * answers that by replacing the map, but it can only be used when
+             * every container's key is known; a caller holding a list that names
+             * every container but keys only some of them needs to name the
+             * departures itself. */
+            std::set<std::string> mappedContainerIds() const
+            {
+                std::lock_guard<std::mutex> lock(m_mutex);
+                std::set<std::string> ids;
+
+                for (const auto& [cgroup, container] : m_container)
+                {
+                    ids.insert(container);
+                }
+
+                return ids;
+            }
+
             std::size_t unresolvedCount() const
             {
                 std::lock_guard<std::mutex> lock(m_mutex);

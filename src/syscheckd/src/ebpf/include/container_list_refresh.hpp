@@ -32,6 +32,8 @@
  *     because the view it was compared against had already absorbed it
  *   - that deferral made permanent by a container nobody can key, which held
  *     the single completeness flag false for as long as it ran
+ *   - a resync that could not be installed wholesale leaving the cgroups of
+ *     departed containers in the map, and allowed in the kernel, for ever
  *
  * So the decision is a pure function over the reply and the current view, and
  * the drain is left executing a plan it did not have to think about.
@@ -88,9 +90,17 @@ namespace fim_container_events
         install
     };
 
-    /// @brief Decide one list reply's effects against the view the drain holds.
+    /// @brief Decide one list reply's effects against the state the drain holds.
+    ///
+    /// @param mappedContainers Which containers the cgroup map currently holds
+    ///        entries for. Needed because a reply that names every container but
+    ///        keys only some of them cannot be installed wholesale, and the
+    ///        departures then have to be named one by one -- without that, a
+    ///        container that went away while the cursor was invalid keeps its
+    ///        cgroups in the map, and allowed in the kernel, for ever.
     [[nodiscard]] ListRefreshPlan planListRefresh(const wazuh::container_instances_client::ContainerDelta& delta,
-                                                  const std::map<std::string, bool>& currentView);
+                                                  const std::map<std::string, bool>& currentView,
+                                                  const std::set<std::string>& mappedContainers = {});
 
     /// @brief The admission view a full list leaves behind.
     [[nodiscard]] std::map<std::string, bool> mergeAdmissionView(

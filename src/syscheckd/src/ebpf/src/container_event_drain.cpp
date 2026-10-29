@@ -237,7 +237,8 @@ namespace fim_container_events
     }
 
     ListRefreshPlan planListRefresh(const wazuh::container_instances_client::ContainerDelta& delta,
-                                    const std::map<std::string, bool>& currentView)
+                                    const std::map<std::string, bool>& currentView,
+                                    const std::set<std::string>& mappedContainers)
     {
         ListRefreshPlan plan;
         plan.complete = delta.complete;
@@ -304,6 +305,46 @@ namespace fim_container_events
                 for (const auto extra : ref.extraCgroupIds)
                 {
                     plan.containers.emplace_back(extra, ref.containerId);
+                }
+            }
+
+            /* install() would have removed what the list omits, but it cannot be
+             * used here: it replaces the map, and this reply has no cgroup id
+             * for the containers it could not key, so installing it would drop
+             * their entries and turn their next event into an escalation.
+             *
+             * Upserts alone never remove anything, though -- so a container
+             * that went away while the cursor was invalid kept its cgroups in
+             * the map, and allowed in the kernel, for as long as the node held
+             * one container nobody could key. The inode is then free for the
+             * kernel to hand to something else, and whatever lands on it is
+             * filed under a container that no longer exists.
+             *
+             * The reply does say which containers EXIST, so name the departures
+             * one by one. A `removed` event withdraws every cgroup that
+             * container held, which is what install() would have done for it.
+             * Only when the reply enumerates: without that there is no
+             * difference between "gone" and "not mentioned" (#37532). */
+            if (!plan.installWholeList && plan.enumerated)
+            {
+                std::set<std::string> present = delta.unkeyed;
+
+                for (const auto& ref : delta.containers)
+                {
+                    present.insert(ref.containerId);
+                }
+
+                for (const auto& containerId : mappedContainers)
+                {
+                    if (present.count(containerId) != 0)
+                    {
+                        continue;
+                    }
+
+                    CgroupDeltaEvent gone;
+                    gone.kind         = CgroupDeltaEvent::Kind::removed;
+                    gone.container_id = containerId;
+                    plan.events.push_back(std::move(gone));
                 }
             }
 
@@ -709,7 +750,7 @@ namespace fim_container_events
         void refreshContainerList()
         {
             const auto delta = client.listContainersSince(cursor_epoch, cursor_seq);
-            const auto plan = planListRefresh(delta, admission_view);
+            const auto plan = planListRefresh(delta, admission_view, router.mappedContainerIds());
 
             if (!plan.act) return;
 

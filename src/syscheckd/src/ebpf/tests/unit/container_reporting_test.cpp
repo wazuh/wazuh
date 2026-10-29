@@ -403,6 +403,116 @@ TEST(ContainerListRefresh, AnIncompleteReplyThatNamesWhatItCouldNotKeyStillDecid
             << "a connector too old to say what it could not key leaves nothing to go on";
 }
 
+// A resync that cannot be installed wholesale still has to say what has GONE.
+//
+// Upserts never remove anything, so a container that went away while the
+// cursor was invalid kept its cgroups in the map, and allowed in the kernel,
+// for as long as one container on the node could not be keyed. The kernel is
+// then free to hand that inode to something else, and whatever lands on it is
+// filed under a container that no longer exists (#37532).
+TEST(ContainerListRefresh, AnIncompleteResyncStillWithdrawsContainersThatHaveGone)
+{
+    using wazuh::container_instances_client::ContainerDelta;
+    using wazuh::container_instances_client::ContainerRef;
+    using fim_container_events::CgroupDeltaEvent;
+    using fim_container_events::planListRefresh;
+
+    ContainerRef alive;
+    alive.containerId = "alive";
+    alive.cgroupId = 11;
+    alive.synced = true;
+
+    ContainerDelta delta;
+    delta.available = true;
+    delta.deltaSupported = true;
+    delta.resyncRequired = true; // the cursor is from another store lifetime
+    delta.complete = false;      // ...and "stuck" cannot be keyed
+    delta.containers = {alive};
+    delta.unkeyedKnown = true;
+    delta.unkeyed = {"stuck"};
+
+    // The map still holds all three from before the cursor went bad.
+    const auto plan = planListRefresh(delta, {}, {"alive", "stuck", "gone"});
+
+    ASSERT_TRUE(plan.act);
+    ASSERT_FALSE(plan.installWholeList) << "there is no cgroup id for 'stuck' to install";
+
+    std::map<std::string, CgroupDeltaEvent::Kind> kinds;
+
+    for (const auto& event : plan.events)
+    {
+        kinds[event.container_id] = event.kind;
+    }
+
+    ASSERT_EQ(kinds.count("gone"), 1U) << "nothing else will ever withdraw it";
+    EXPECT_EQ(kinds["gone"], CgroupDeltaEvent::Kind::removed);
+
+    EXPECT_EQ(kinds.count("stuck"), 0U)
+            << "a container the resolver cannot key has not gone anywhere; withdrawing it "
+               "turns its next event into an escalation";
+    ASSERT_EQ(kinds.count("alive"), 1U);
+    EXPECT_EQ(kinds["alive"], CgroupDeltaEvent::Kind::changed);
+}
+
+// ...but only when the reply can say what it left out. Otherwise absence is
+// not evidence of anything, and this is the false delete R1 was about.
+TEST(ContainerListRefresh, AnUnenumeratedResyncWithdrawsNothing)
+{
+    using wazuh::container_instances_client::ContainerDelta;
+    using wazuh::container_instances_client::ContainerRef;
+    using fim_container_events::planListRefresh;
+
+    ContainerRef alive;
+    alive.containerId = "alive";
+    alive.cgroupId = 11;
+    alive.synced = true;
+
+    ContainerDelta delta;
+    delta.available = true;
+    delta.deltaSupported = false; // an older connector
+    delta.complete = false;
+    delta.containers = {alive};
+    delta.unkeyedKnown = false; // ...which cannot say what it could not key
+
+    const auto plan = planListRefresh(delta, {}, {"alive", "gone"});
+
+    ASSERT_TRUE(plan.act);
+    EXPECT_FALSE(plan.enumerated);
+
+    for (const auto& event : plan.events)
+    {
+        EXPECT_NE(event.container_id, "gone")
+                << "'gone' may simply be one the connector could not key and did not mention";
+    }
+}
+
+// A complete reply needs none of this: install() removes what the list omits,
+// which is the whole reason it may only be used when every key is known.
+TEST(ContainerListRefresh, ACompleteResyncLeavesTheRemovalsToInstall)
+{
+    using wazuh::container_instances_client::ContainerDelta;
+    using wazuh::container_instances_client::ContainerRef;
+    using fim_container_events::planListRefresh;
+
+    ContainerRef alive;
+    alive.containerId = "alive";
+    alive.cgroupId = 11;
+    alive.synced = true;
+
+    ContainerDelta delta;
+    delta.available = true;
+    delta.deltaSupported = false;
+    delta.complete = true;
+    delta.containers = {alive};
+    delta.unkeyedKnown = true;
+
+    const auto plan = planListRefresh(delta, {}, {"alive", "gone"});
+
+    ASSERT_TRUE(plan.act);
+    EXPECT_TRUE(plan.installWholeList);
+    EXPECT_TRUE(plan.events.empty()) << "install() replaces the map; naming departures too is noise";
+}
+
 TEST(ContainerDrainAdmissionView, AnIncompleteListUpsertsAndACompleteOneReplaces)
 {
     using wazuh::container_instances_client::ContainerRef;
