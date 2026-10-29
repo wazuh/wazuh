@@ -58,6 +58,7 @@ curl -LsO https://packages-dev.wazuh.com/pre-release/yum/wazuh-manager-{{VERSION
 curl -LsO https://packages-dev.wazuh.com/pre-release/wpk/linux/deb/amd64/wazuh_agent_v{{VERSION}}_linux_amd64.deb.wpk
 curl -LsO https://packages-dev.wazuh.com/pre-release/wpk/linux/rpm/x86_64/wazuh_agent_v{{VERSION}}_linux_x86_64.rpm.wpk
 curl -LsO https://packages-dev.wazuh.com/pre-release/wpk/macos/pkg/intel64/wazuh_agent_v{{VERSION}}_macos_intel64.pkg.wpk
+curl -LsO https://packages-dev.wazuh.com/pre-release/wpk/macos/pkg/arm64/wazuh_agent_v{{VERSION}}_macos_arm64.pkg.wpk
 curl -LsO https://packages-dev.wazuh.com/pre-release/wpk/windows/wazuh_agent_v{{VERSION}}_windows.wpk
 ```
 
