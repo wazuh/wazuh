@@ -36,7 +36,7 @@ All workflow results must have one of the following statuses:
 | :green_circle: | The **pipeline** has been executed successfully |
 | :red_circle: | The **pipeline** has failed or it has errors |
 
-Post in a comment the two tables that `runtests.py` prints at the end of the `Run ruleset integration tests` step: the coverage of rules and decoders, and the passed and failed tests of each `.ini` file. For a failed file, copy its entries from the `Failing tests summary` of the same log.
+Post in a comment the two tables that `runtests.py` prints at the end of the `Run ruleset integration tests` step: the coverage of rules and decoders, and the passed and failed tests of each `.ini` file. For a failed file, copy its entries from the `Failing tests summary` of the same log. Those entries do not name their file: add the `.ini` file name to each entry you copy.
 
 ## Conclusion
 List every new or known issue that appeared while testing this task, with its link, before closing this issue.
