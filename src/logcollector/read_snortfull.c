@@ -296,13 +296,14 @@ static void finish_read(read_state_t *state, bool alert_is_open, bool line_left_
 
 /* Read snort_full files */
 void *read_snortfull(logreader *lf, int *rc, int drop_it) {
-    alert_t alert = { ALERT_NONE, {0} };
+    alert_t alert; /* No initializer: GCC would keep a zeroed copy of it, 64 KB, in the binary */
     read_state_t state;
     char str[OS_MAX_LOG_SIZE] = {0};
     bool line_cut = false;       /* The last line read has no line end yet */
     bool header_unsaved = false; /* The hash could not be saved at the last line read, a header */
 
     *rc = 0;
+    alert.stage = ALERT_NONE; /* The header line starts the message */
     begin_read(&state, lf);
 
     while (can_read() && !line_limit_reached(state.lines, &alert) && fgets(str, sizeof(str), lf->fp)) {
