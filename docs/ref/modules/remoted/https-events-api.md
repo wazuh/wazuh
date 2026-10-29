@@ -1428,9 +1428,9 @@ configuration on every notify.
 
 Upgrade every node of a cluster before any agent. An agent that sends `{"resource_type": "config"}`
 to a 5.0.0 manager is answered `400` `Invalid request format`, because that manager requires a
-`resource_id`. The manager counts it in `remoted.download.rejected` and logs it at `debug2`; the
-agent logs it at `DEBUG1` and tries again on every notify, so the rejection is visible only in that
-counter and at those levels. An older agent (5.0.0 beta5 and rc1), which sends `resource_id`, keeps
+`resource_id`. The manager counts it in `remoted.download.rejected` and logs it at `debug2`. The
+agent logs a WARN, `The manager rejected the config download request`, once per advertised
+config hash, and tries again on every notify. An older agent (any 5.0.0 build, beta5 and rc1 included), which sends `resource_id`, keeps
 working against the manager that accepts both forms; a new agent is one that omits it.
 
 The master pushes group changes to the workers every 10 seconds, so for that long two nodes can

@@ -59,6 +59,7 @@ class ConfigFetcher final
         RetrySender m_sender;
         ISpoolFileFactory& m_spoolFactory;
         const LogFn m_logFn {HTTPS_CLIENT_LOGTAG};
+        std::string m_lastRejectedHash; ///< Last advertised hash whose download the manager rejected for good.
 };
 
 #endif // _HC_CONFIG_FETCHER_HPP

@@ -73,14 +73,29 @@ std::shared_ptr<SpoolFile> ConfigFetcher::fetch(const std::string& expectedHash,
 
     if (result.outcome != OutcomeClass::Ok)
     {
-        // A failed download is expected, self-correcting noise, not an operator-actionable
-        // event: it can legitimately happen whenever the manager's config_hash doesn't (yet)
-        // resolve to real content -- e.g. its "0" sentinel for "nothing resolved yet for this
-        // group set" right after a group membership change (confirmed with the manager team)
-        // -- and the next notify simply re-triggers it either way.
-        LOGFN_DEBUG1(m_logFn, "Config download failed (%s)%s; the next notify re-triggers it.",
-                     outcomeName(result.outcome),
-                     transportReason(result.response.curlError).c_str());
+        // A permanent rejection (a 400 the manager repeats for the same request) never clears
+        // by itself and leaves the startup gate closed on a fresh install, so it is logged at
+        // WARN, once per advertised hash. Any other failure is expected, self-correcting noise:
+        // it can legitimately happen whenever the manager's config_hash doesn't (yet) resolve
+        // to real content -- e.g. its "0" sentinel for "nothing resolved yet for this group
+        // set" right after a group membership change (confirmed with the manager team) -- and
+        // the next notify simply re-triggers it either way.
+        if (result.outcome == OutcomeClass::Permanent && expectedHash != m_lastRejectedHash)
+        {
+            m_lastRejectedHash = expectedHash;
+            LOGFN_WARN(m_logFn,
+                       "The manager rejected the config download request (%s); the shared "
+                       "configuration cannot be updated from it.",
+                       outcomeName(result.outcome));
+        }
+        else
+        {
+            LOGFN_DEBUG1(m_logFn,
+                         "Config download failed (%s)%s; the next notify re-triggers it.",
+                         outcomeName(result.outcome),
+                         transportReason(result.response.curlError).c_str());
+        }
+
         return nullptr;
     }
 

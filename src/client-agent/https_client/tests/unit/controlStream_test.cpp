@@ -992,6 +992,47 @@ TEST_F(ControlStreamTest, FailedDownloadRetriesOnTheNextNotify)
     EXPECT_EQ("abc", m_configHash.get());
 }
 
+TEST_F(ControlStreamTest, PermanentDownloadRejectionIsNotRetriedWithinANotify)
+{
+    // A 400 is Permanent: the same request would get the same answer, so the fetcher gives up
+    // after one attempt instead of spending DOWNLOAD_MAX_ATTEMPTS, and the next notify (same hash,
+    // nothing delivered) tries again. The WARN it raises once per advertised hash goes to the
+    // library's own log sink, which this executable cannot observe.
+    std::string notify = R"({"status":"ok","agent":{"groups":["default"],"config_hash":"ffff"}})";
+
+    int downloads = 0;
+    EXPECT_CALL(m_performer, perform(_))
+    .WillRepeatedly(Invoke(
+                        [&](const HttpRequestSpec & spec)
+    {
+        if (spec.target == "/download")
+        {
+            downloads++;
+            return response(TransportStatus::Ok, 400, R"({"error":"Invalid request format","code":400})");
+        }
+
+        if (bodyOf(spec).find("startup") != std::string::npos)
+        {
+            return response(TransportStatus::Ok, 200, "{}");
+        }
+
+        return response(TransportStatus::Ok, 200, notify);
+    }));
+    EXPECT_CALL(m_sink, onConfigDownloaded(_, _)).Times(0);
+
+    m_stream.step(m_waiter); // Startup.
+    m_stream.step(m_waiter); // Notify -> 400, one attempt.
+    EXPECT_EQ(1, downloads);
+
+    m_stream.step(m_waiter); // Notify, same hash -> tried again, still rejected.
+    EXPECT_EQ(2, downloads);
+
+    notify = R"({"status":"ok","agent":{"groups":["default"],"config_hash":"eeee"}})";
+    m_stream.step(m_waiter); // Notify, new hash -> tried again.
+    EXPECT_EQ(3, downloads);
+    EXPECT_EQ("abc", m_configHash.get()); // Never updated.
+}
+
 TEST_F(ControlStreamTest, DrainStepSendsBareShutdown)
 {
     // Even with a settings refresh armed and a task-bearing response, the

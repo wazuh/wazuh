@@ -17,9 +17,9 @@
 
 namespace remoted::control
 {
-    /// A group name as authd and the API accept it when they assign one to an agent: 1 to 255
-    /// bytes of [A-Za-z0-9._-], not "." or "..". It has no path separator, so a valid name is a
-    /// safe path component.
+    /// A group name as the API accepts it when it creates a group: 1 to 255 bytes of
+    /// [A-Za-z0-9._-], not "." or "..". It has no path separator, so a valid name is a safe path
+    /// component.
     bool isValidGroupName(std::string_view name);
 
     /// Path of the merged.mg an agent with these groups downloads, or "" when there is none.

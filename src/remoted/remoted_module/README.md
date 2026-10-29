@@ -2006,8 +2006,8 @@ before the pump runs; the per-chunk loop is deliberately uninstrumented) — cat
   node converges.
 
   An agent that sends the body without `resource_id` to a 5.0.0 manager gets `400` `Invalid request format`: the
-  manager counts `remoted.download.rejected` and logs at DEBUG2, and the agent logs the failure at
-  DEBUG1 only, so it never shows above that level and retries on each notify. Upgrade every cluster
+  manager counts `remoted.download.rejected` and logs at DEBUG2, and the agent logs a WARN once per
+  advertised config hash and retries on each notify. Upgrade every cluster
   node before any agent; the order and the symptoms are in
   [Upgrade order for configuration downloads](../../../docs/ref/modules/remoted/https-events-api.md#upgrade-order-for-configuration-downloads).
 - **Containment.** For `config`, the path is built from the derived groups, which

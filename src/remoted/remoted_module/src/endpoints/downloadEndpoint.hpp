@@ -113,19 +113,20 @@ namespace remoted::endpoints::download
      * served path is built from the agent's derived selector, whose names
      * remoted::control::resolveMergedConfigPath() validates again.
      *
-     * Only the single-group form is ever joined into a path; a multi-entry selector is HASHED
-     * (see remoted::control::resolveMergedConfigPath()), so the directory it names is hex by
-     * construction.
+     * A `resource_id` never reaches a path: it is only compared with the derived selector. The path
+     * is built by remoted::control::resolveMergedConfigPath() from the derived groups, a single
+     * group joined under the shared directory and several HASHED, so the directory they name is hex
+     * by construction.
      */
     bool isValidGroupSelector(std::string_view selector);
 
     /**
      * @brief Whether @p filename is a syntactically valid WPK filename.
      *
-     * Stricter than the group grammar, because this value IS joined into a path: non-empty, at most
-     * 255 bytes, `[A-Za-z0-9._-]` only, must not begin with `.`, and must end in `.wpk`. The
-     * character whitelist rules out `/`, `\`, NUL, encoded traversal and unicode lookalikes in one
-     * rule, rather than by enumerating attacks.
+     * Unlike a group name, this value IS joined into a path, so it is also held to a suffix and a
+     * leading-dot rule: non-empty, at most 255 bytes, `[A-Za-z0-9._-]` only, must not begin with
+     * `.`, and must end in `.wpk`. The character whitelist rules out `/`, `\`, NUL, encoded
+     * traversal and unicode lookalikes in one rule, rather than by enumerating attacks.
      */
     bool isValidWpkFilename(std::string_view filename);
 
