@@ -333,6 +333,21 @@ TEST(HttpServerConfigTest, MaxHandshakesPerSourceHonorsZeroOnlyWhenSet)
     EXPECT_EQ(buildHttpServerConfig(raw).maxHandshakesPerSource, 32U);
 }
 
+TEST(HttpServerConfigTest, ContentEncodingFollowsTheRemotedFlag)
+{
+    // The flag arrives resolved from remoted (default enabled, see secure.c); a hand-zeroed struct
+    // is the only way to see it off, and it must stay off rather than fall back to the C++ default.
+    auto raw = zeroedConfig();
+
+    raw.http_content_encoding_enabled = true;
+    EXPECT_TRUE(buildHttpServerConfig(raw).contentEncodingEnabled);
+
+    raw.http_content_encoding_enabled = false;
+    EXPECT_FALSE(buildHttpServerConfig(raw).contentEncodingEnabled);
+
+    EXPECT_TRUE(HttpServerConfig {}.contentEncodingEnabled) << "a directly built config keeps the documented default";
+}
+
 TEST(HttpServerConfigTest, StructValuesWin)
 {
     auto raw = zeroedConfig();

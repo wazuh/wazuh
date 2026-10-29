@@ -141,7 +141,8 @@ extern "C"
                                          ///< trade memory per in-flight transfer for fewer
                                          ///< read/write round trips, which is where the CPU per
                                          ///< byte goes.
-        /// Whether `Content-Encoding: zstd` request bodies are accepted
+        /// Whether `Content-Encoding: zstd` request bodies are accepted, and whether a `/download`
+        /// response is zstd-compressed for an agent that offers it
         /// (see remoted.http_content_encoding_enabled). Unlike the int fields here, this has no
         /// "unset" sentinel: getDefine_Int_default() always resolves the final 0/1 value (defaulting
         /// to enabled) on the C side, so this field always carries the real value.

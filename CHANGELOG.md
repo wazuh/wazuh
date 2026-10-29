@@ -6,6 +6,7 @@
 
 | Issue | Comment |
 |-------|---------|
+| [#38506](https://github.com/wazuh/wazuh/issues/38506) | Added zstd compression of the centralized configuration (`merged.mg`) served by `POST /download`. The manager compresses a response only when the agent offers `Accept-Encoding: zstd` and `remoted.http_content_encoding_enabled` is enabled, which now gates response compression as well as request-body decoding. WPK packages, error responses, agents that do not offer `zstd` and downloads for which the in-flight byte budget has no room for the compressor are served uncompressed, as before. |
 | [#39590](https://github.com/wazuh/wazuh/issues/39590) | Added entry and byte limits to the engine's agent metadata cache: `analysisd.agent_metadata_cache_max_entries` (default 50000) and `analysisd.agent_metadata_cache_max_bytes` (default 128 MiB of accounted bytes; `0` disables either). A header that does not fit is still parsed and used, but not retained; the cache never evicts another agent to make room. New metrics `agent.cache.bytes`, `agent.cache.max_entries`, `agent.cache.max_bytes`, `agent.cache.bypass.max_entries`, `agent.cache.bypass.max_bytes` and `agent.cache.rejected.identity`, and a throttled warning while the cache is full. |
 
 #### Changed

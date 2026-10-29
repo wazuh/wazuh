@@ -13,8 +13,10 @@
 #include "caPublicationRecord.hpp"
 #include "caRecordEvents.hpp"
 #include "common/logThrottle.hpp"
+#include "compressingResponder.hpp"
 #include "guardedTlsSocket.hpp"
 #include "handshakeLedger.hpp"
+#include "headerUtils.hpp"
 #include "httpServerConfig.hpp"
 #include "httpServerFactory.hpp"
 #include "inFlightBudget.hpp"
@@ -1380,6 +1382,7 @@ namespace remoted::http
                 const auto countAgainstBudget = route.countAgainstBudget;
                 const auto responseMode = route.mode;
                 const auto streamChunkSize = m_config.streamChunkSize;
+                const auto contentEncodingEnabled = m_config.contentEncodingEnabled;
 
                 // The pattern actually handed to the router is the route's logical path served
                 // under the global prefix. The "/" route (the health probe) is registered as the
@@ -1405,6 +1408,7 @@ namespace remoted::http
                      countAgainstBudget,
                      responseMode,
                      streamChunkSize,
+                     contentEncodingEnabled,
                      rejectedConnections](auto request, auto) -> restinio::request_handling_status_t
                     {
                         // Transport-level exception barrier, covering every registered route at
@@ -1483,6 +1487,16 @@ namespace remoted::http
                                 // only routes whose requests are tiny should ever stream.
                                 responder =
                                     std::make_shared<RestinioStreamableResponder>(request, streamGate, streamChunkSize);
+
+                                // Compression is negotiated per request and lives entirely here:
+                                // handlers and the auth gateway see an ordinary responder.
+                                if (contentEncodingEnabled &&
+                                    acceptsZstd(headerValue(context->request.headers, "accept-encoding")))
+                                {
+                                    responder = std::make_shared<CompressingResponder>(
+                                        std::move(responder),
+                                        [budget](std::size_t bytes) { return budget->tryReserveUncounted(bytes); });
+                                }
                             }
                             else
                             {

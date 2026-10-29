@@ -287,6 +287,8 @@ Notes:
 The request body MAY optionally be compressed with `Content-Encoding: zstd` (case-insensitive). No
 other value is accepted — **`gzip` is not supported.** Support can be turned off entirely with
 `remoted.http_content_encoding_enabled` (default: enabled) — see [Configuration](#configuration).
+The same option governs the one compressed **response**: a `config` download on
+[`POST /download`](#download-endpoint-post-download) (see [Responses](#responses-2)).
 
 Why zstd was chosen over gzip, with the benchmark behind it, and how the decoder's memory is
 reserved, are design records kept in the developer README
@@ -1355,6 +1357,24 @@ instead.
 
 **`200 OK`** — `Content-Type: application/octet-stream`, body sent with chunked transfer encoding in
 `remoted.http_stream_chunk_size` slices (default 64 KiB, see [Configuration](configuration.md)).
+
+**Compression.** A `config` download is sent as one zstd frame (level 3) with
+`Content-Encoding: zstd` when the request carries `Accept-Encoding: zstd` and
+`remoted.http_content_encoding_enabled` is on. The chunk size then bounds the compressed bytes of
+each chunk. Everything else is byte-for-byte what it was without the feature:
+
+- A request that does not offer `zstd` (no header, another coding, `zstd;q=0`). `*` and `identity`
+  are not interpreted: the agent has to name `zstd`.
+- A `wpk` download, which is already compressed, even when the agent offers `zstd`.
+- Every error body (`400`, `403`, `404`, `500`, `503`), which stays plain JSON.
+- A download for which the compressor's memory (about 3.6 MiB) does not fit in the in-flight byte
+  budget at that moment. There is no marker for this: the response simply has no
+  `Content-Encoding`, so a client must decode only when the header is present.
+
+`config_hash` is computed over the plain file, so the agent decompresses first and hashes after.
+A transfer that fails midway (the file changed under it) ends without the terminating chunk, as
+before; with compression the agent is left with a truncated zstd frame, which it cannot decode.
+There is no `Vary` header: the route is an authenticated `POST` and is not cacheable.
 
 ### Error handling
 

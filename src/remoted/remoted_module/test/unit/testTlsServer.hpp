@@ -185,15 +185,19 @@ namespace remoted::test
 
     /// Builds the authenticated request bytes an agent would put on the wire: protocol-version 1
     /// and a bearer token for kTestAgentId. The token binds identity only -- not the target, not
-    /// the body -- so the same helper serves every route.
-    inline std::string
-    signedRequest(const std::vector<std::uint8_t>& key, const std::string& target, const std::string& body)
+    /// the body -- so the same helper serves every route. @p extraHeaders is raw header lines, each
+    /// ending in CRLF (e.g. "Accept-Encoding: zstd\r\n").
+    inline std::string signedRequest(const std::vector<std::uint8_t>& key,
+                                     const std::string& target,
+                                     const std::string& body,
+                                     const std::string& extraHeaders = {})
     {
         std::string request = "POST " + target + " HTTP/1.1\r\n";
         request += "Host: 127.0.0.1\r\n";
         request += "protocol-version: 1\r\n";
         request += "Authorization: Bearer " + bearerToken(key) + "\r\n";
         request += "Content-Length: " + std::to_string(body.size()) + "\r\n";
+        request += extraHeaders;
         request += "Connection: close\r\n\r\n";
         request += body;
         return request;
@@ -304,9 +308,10 @@ namespace remoted::test
                                          const std::vector<std::uint8_t>& key,
                                          const std::string& target,
                                          const std::string& body,
-                                         std::size_t readLimit = 0)
+                                         std::size_t readLimit = 0,
+                                         const std::string& extraHeaders = {})
     {
-        return sendRawOverTls(port, signedRequest(key, target, body), readLimit);
+        return sendRawOverTls(port, signedRequest(key, target, body, extraHeaders), readLimit);
     }
 
     /// Sends a signed request and returns immediately, without reading any reply.

@@ -170,6 +170,7 @@ namespace
             streamed = true;
             status = response.status;
             headers = response.headers;
+            compressible = response.compressible;
             // chunkSize 0 means "use the server's configured size" (see StreamResponse); the real
             // transport substitutes HttpServerConfig::streamChunkSize there, so a double that
             // passed the 0 straight through would read nothing at all.
@@ -179,6 +180,7 @@ namespace
 
         bool answered {false};
         bool streamed {false};
+        bool compressible {true};  ///< What the handler said about compressing the stream.
         std::size_t chunkSize {0}; ///< The size actually used, after the 0 -> default substitution.
         int status {0};
         std::string body;
@@ -865,6 +867,7 @@ TEST(DownloadHandlerTest, StreamsTheResolvedFileAsAnOctetStream)
     ASSERT_EQ(responder->headers.size(), 1U);
     EXPECT_EQ(responder->headers.front().first, "Content-Type");
     EXPECT_EQ(responder->headers.front().second, "application/octet-stream");
+    EXPECT_TRUE(responder->compressible);
 }
 
 // The remoted.download.* family: each admission outcome lands in its own counter, and a started
@@ -969,6 +972,8 @@ TEST(DownloadHandlerTest, StreamsAStagedWpk)
     EXPECT_EQ(responder->status, 200);
     EXPECT_TRUE(responder->streamed);
     EXPECT_EQ(responder->body, contents);
+    // Already compressed: the transport must not spend CPU on it even if the client offers zstd.
+    EXPECT_FALSE(responder->compressible);
 }
 
 TEST(DownloadHandlerTest, AnswersFourHundredAndFourWhenTheResolvedFileIsMissing)

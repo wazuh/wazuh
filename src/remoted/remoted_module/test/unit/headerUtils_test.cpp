@@ -12,6 +12,7 @@
 
 #include <gtest/gtest.h>
 
+using remoted::http::acceptsZstd;
 using remoted::http::headerValue;
 
 TEST(HeaderUtilsTest, FindsAnAlreadyLowercaseName)
@@ -52,4 +53,85 @@ TEST(HeaderUtilsTest, DoesNotMatchADifferentLengthName)
 {
     std::unordered_map<std::string, std::string> headers {{"authorization-extra", "value"}};
     EXPECT_EQ(headerValue(headers, "authorization"), "");
+}
+
+TEST(AcceptsZstdTest, OffersZstd)
+{
+    EXPECT_TRUE(acceptsZstd("zstd"));
+}
+
+TEST(AcceptsZstdTest, IsCaseInsensitive)
+{
+    EXPECT_TRUE(acceptsZstd("ZSTD"));
+    EXPECT_TRUE(acceptsZstd("Zstd"));
+}
+
+TEST(AcceptsZstdTest, FindsZstdAmongOtherCodings)
+{
+    EXPECT_TRUE(acceptsZstd("gzip, zstd"));
+    EXPECT_TRUE(acceptsZstd("zstd,gzip"));
+    EXPECT_TRUE(acceptsZstd("  gzip ,\tzstd\t, br"));
+}
+
+TEST(AcceptsZstdTest, AbsentOrEmptyIsNotAnOffer)
+{
+    EXPECT_FALSE(acceptsZstd(""));
+    EXPECT_FALSE(acceptsZstd(" "));
+    EXPECT_FALSE(acceptsZstd(","));
+}
+
+TEST(AcceptsZstdTest, OtherCodingsAreNotAnOffer)
+{
+    EXPECT_FALSE(acceptsZstd("gzip"));
+    EXPECT_FALSE(acceptsZstd("gzip, deflate, br"));
+    EXPECT_FALSE(acceptsZstd("identity"));
+}
+
+TEST(AcceptsZstdTest, OnlyTheExactTokenCounts)
+{
+    EXPECT_FALSE(acceptsZstd("zstdx"));
+    EXPECT_FALSE(acceptsZstd("xzstd"));
+    EXPECT_FALSE(acceptsZstd("zst"));
+    EXPECT_FALSE(acceptsZstd("zstd2"));
+}
+
+TEST(AcceptsZstdTest, WildcardIsNotInterpreted)
+{
+    EXPECT_FALSE(acceptsZstd("*"));
+    EXPECT_FALSE(acceptsZstd("gzip, *;q=0.5"));
+}
+
+TEST(AcceptsZstdTest, HonoursAPositiveWeight)
+{
+    EXPECT_TRUE(acceptsZstd("zstd;q=1"));
+    EXPECT_TRUE(acceptsZstd("zstd;q=1.0"));
+    EXPECT_TRUE(acceptsZstd("zstd;q=0.5"));
+    EXPECT_TRUE(acceptsZstd("zstd;q=0.001"));
+    EXPECT_TRUE(acceptsZstd("gzip;q=0, zstd; q=0.8"));
+    EXPECT_TRUE(acceptsZstd("zstd ; Q=0.5"));
+}
+
+TEST(AcceptsZstdTest, AZeroWeightRefusesIt)
+{
+    EXPECT_FALSE(acceptsZstd("zstd;q=0"));
+    EXPECT_FALSE(acceptsZstd("zstd;q=0."));
+    EXPECT_FALSE(acceptsZstd("zstd;q=0.000"));
+    EXPECT_FALSE(acceptsZstd("gzip, zstd;q=0"));
+}
+
+TEST(AcceptsZstdTest, AMalformedWeightIsNotAnOffer)
+{
+    EXPECT_FALSE(acceptsZstd("zstd;q="));
+    EXPECT_FALSE(acceptsZstd("zstd;q=abc"));
+    EXPECT_FALSE(acceptsZstd("zstd;q=2"));
+    EXPECT_FALSE(acceptsZstd("zstd;q=1.5"));
+    EXPECT_FALSE(acceptsZstd("zstd;q=0.5555"));
+    EXPECT_FALSE(acceptsZstd("zstd;q=-1"));
+}
+
+TEST(AcceptsZstdTest, IgnoresParametersThatAreNotAWeight)
+{
+    EXPECT_TRUE(acceptsZstd("zstd;level=3"));
+    EXPECT_TRUE(acceptsZstd("zstd;level=3;q=0.5"));
+    EXPECT_FALSE(acceptsZstd("zstd;level=3;q=0"));
 }
