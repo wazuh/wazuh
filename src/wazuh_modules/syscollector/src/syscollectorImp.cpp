@@ -5936,7 +5936,7 @@ size_t Syscollector::promoteUnsyncedItems(const std::string& index,
 
     // No COUNT(sync=0) first: the LIMITed SELECT below already returns at most
     // what is withheld, and this runs once per container per index every scan
-    // under m_limitsMutex (#37532 / #9).
+    // under m_limitsMutex (#37532).
     const size_t toPromote = std::min<size_t>(maxToPromote, std::numeric_limits<uint32_t>::max());
 
     // Get ordering fields
@@ -6077,7 +6077,7 @@ void Syscollector::promoteItemsAfterScanLocked(LimitScope scope)
         {
             // Only containers with something withheld: promotion has nothing to
             // do for the rest, and walking every container cost two queries
-            // per container per index on each scan (#37532 / #9). A container
+            // per container per index on each scan (#37532). A container
             // with no backlog withholds nothing, so its saturation notice is
             // re-armed and will fire again once rows are actually held back.
             targets = containersWithRowsIn(tableName, true);
