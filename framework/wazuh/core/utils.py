@@ -1178,7 +1178,7 @@ def check_virustotal_integration(new_conf: Element):
                 raise WazuhError(1130, extra_message='integrations > virustotal')
 
 
-def load_wazuh_xml(xml_path, data=None):
+def load_wazuh_xml(xml_path, data=None, raw_entities=False):
     if not data:
         with open(xml_path) as f:
             try:
@@ -1194,6 +1194,10 @@ def load_wazuh_xml(xml_path, data=None):
 
     # Replace &lt; and &gt; currently present in the config
     data = data.replace('&lt;', '_custom_amp_lt_').replace('&gt;', '_custom_amp_gt_')
+
+    if raw_entities:
+        # os_xml does not decode entities, so '&amp;' has to stay text for a value to compare as the daemons read it
+        data = re.sub(r'&(amp|quot|apos);', r'&amp;\1;', data)
 
     custom_entities = {
         'backslash': '\\'
@@ -1222,7 +1226,15 @@ def load_wazuh_xml(xml_path, data=None):
                '\n'.join([f'<!ENTITY {name} "{value}">' for name, value in custom_entities.items()]) + \
                '\n]>\n'
 
-    return fromstring(f"{entities}<root_tag>{data}</root_tag>", forbid_entities=False)
+    root = fromstring(f"{entities}<root_tag>{data}</root_tag>", forbid_entities=False)
+    for element in root.iter():
+        # Once the namespace is dropped a prefixed tag would shadow a plain one with the same name
+        children = [child.tag for child in element]
+        if {tag.rpartition('}')[2] for tag in children if '}' in tag} & {tag for tag in children if '}' not in tag}:
+            raise ValueError(f"Namespaced and plain elements share a name inside '{element.tag}'")
+        element.tag = element.tag.rpartition('}')[2]
+
+    return root
 
 
 class WazuhVersion:
@@ -2194,29 +2206,35 @@ def validate_wazuh_xml(content: str, config_file: bool = False):
     WazuhError(1113)
         XML syntax error.
     """
+    # Text after the last terminator cannot close a comment; scanning it for each '<!' would be quadratic
+    end = max((i + len(token) for token in ('-->', '!>') if (i := content.rfind(token)) != -1), default=0)
+    uncommented = re.sub(r'<!.*?(?:-->|!>)', '', content[:end], flags=re.DOTALL) + content[end:]
+    # os_xml reads a '<' preceded by an odd number of backslashes as text
+    uncommented = re.sub(r'(?<!\\)((?:\\\\)*)\\<', r'\1\\&lt;', uncommented)
     # -- characters are not allowed in XML comments
     content = replace_in_comments(content, '--', '%wildcard%')
 
     # Create temporary file for parsing xml input
     try:
+        # Check the syntax of the text as it is uploaded, not only of the copy without comments
+        parseString(f'<root>{content}</root>'.replace('&', '&amp;'))
         # Beautify xml file and escape '&' character as it could come in some tag values unescaped
-        xml = parseString(f'<root>{content}</root>'.replace('&', '&amp;'))
+        xml = parseString(f'<root>{uncommented}</root>'.replace('&', '&amp;'))
         # Remove first line (XML specification: <? xmlversion="1.0" ?>), <root> and </root> tags, and empty lines
         indent = '  '  # indent parameter for toprettyxml function
         pretty_xml = '\n'.join(filter(lambda x: x.strip(), xml.toprettyxml(indent=indent).split('\n')[2:-2])) + '\n'
         # Revert xml.dom replacings
         # (https://github.com/python/cpython/blob/8e0418688906206fe59bd26344320c0fc026849e/Lib/xml/dom/minidom.py#L305)
-        pretty_xml = pretty_xml.replace("&amp;", "&").replace("&lt;", "<").replace("&quot;", "\"", ) \
-            .replace("&gt;", ">").replace('&apos;', "'")
+        pretty_xml = pretty_xml.replace("&lt;", "<").replace("&quot;", "\"", ).replace("&gt;", ">") \
+            .replace('&apos;', "'").replace("&amp;", "&")
         # Delete two first spaces of each line
         final_xml = re.sub(fr'^{indent}', '', pretty_xml, flags=re.MULTILINE)
-        final_xml = replace_in_comments(final_xml, '%wildcard%', '--')
 
         # Check xml format
-        incoming_xml = load_wazuh_xml(xml_path='', data=final_xml)
+        incoming_xml = load_wazuh_xml(xml_path='', data=final_xml, raw_entities=config_file)
         # Check if remote commands are allowed if it is a configuration file
         if config_file:
-            current_xml = load_wazuh_xml(xml_path=common.OSSEC_CONF)
+            current_xml = load_wazuh_xml(xml_path=common.OSSEC_CONF, raw_entities=True)
             check_remote_commands(incoming_xml, current_xml)
             check_agents_allow_higher_versions(incoming_xml, current_xml)
             check_virustotal_integration(incoming_xml)

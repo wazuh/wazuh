@@ -6,7 +6,10 @@
 import datetime
 import glob
 import os
+import time
 from collections.abc import KeysView
+from contextlib import nullcontext
+from copy import deepcopy
 from io import StringIO
 from requests import exceptions
 from shutil import copyfile, Error
@@ -2063,6 +2066,127 @@ def test_validate_wazuh_xml_ko(effect, expected_exception):
     with patch('wazuh.core.utils.load_wazuh_xml', side_effect=effect):
         with pytest.raises(WazuhException, match=f'.* {expected_exception} .*'):
             utils.validate_wazuh_xml(input_file)
+
+
+LOCALFILE_COMMAND = ('<localfile><log_format>command</log_format>'
+                     '<command>touch /tmp/pwn</command></localfile>')
+WODLE_COMMAND = '<wodle name="command"><command>touch /tmp/pwn</command></wodle>'
+
+
+@pytest.mark.parametrize('new_conf, error_code', [
+    (f'<ossec_config>{LOCALFILE_COMMAND}</ossec_config>', 1124),
+    (f'<ossec_config>{WODLE_COMMAND}</ossec_config>', 1124),
+    ('<ossec_config><localfile><log_format>comm<!--x-->and</log_format>'
+     '<command>touch /tmp/pwn</command></localfile></ossec_config>', 1124),
+    ('<ossec_config><localfile><log_format>command</log_format>'
+     '<command>touch<!--x--> /tmp/pwn</command></localfile></ossec_config>', 1124),
+    (f'<ossec_config xmlns="urn:x">{LOCALFILE_COMMAND}</ossec_config>', 1124),
+    ('<ossec_config><localfile xmlns="urn:x"><log_format>command</log_format>'
+     '<command>touch /tmp/pwn</command></localfile></ossec_config>', 1124),
+    ('<ossec_config><wodle name="command" xmlns="urn:x"><command>touch /tmp/pwn</command></wodle></ossec_config>',
+     1124),
+    (f'<ossec_config>\n&lt;!--\n{LOCALFILE_COMMAND}\n--&gt;\n</ossec_config>', 1124),
+    (f'<ossec_config><!-- x !> {LOCALFILE_COMMAND} <!-- y --></ossec_config>', 1124),
+    (f'<ossec_config><!--> {LOCALFILE_COMMAND} <!-- y --></ossec_config>', 1124),
+    (f'<ossec_config><!---> {LOCALFILE_COMMAND} <!-- y --></ossec_config>', 1124),
+    (f'<ossec_config><![CDATA[ !> {LOCALFILE_COMMAND} ]]></ossec_config>', 1113),
+    (f'<ossec_config><![CDATA[ <!-- !> {LOCALFILE_COMMAND} ]]> --></ossec_config>', 1113),
+    (f'<ossec_config><labels a="<!--x"/>{LOCALFILE_COMMAND}<!-- y -->"/></ossec_config>', 1113),
+    ('<ossec_config><localfile><log_format>command</log_format><command>touch /tmp/pwn</command>'
+     '\\<log_format>syslog\\</log_format></localfile></ossec_config>', 1124),
+    ('<ossec_config><wodle name="command">\\</wodle><command>touch /tmp/pwn</command>\\<wodle>\\<x/></wodle>'
+     '</ossec_config>', 1124),
+    ('<ossec_config xmlns:x="urn:x"><localfile><x:log_format>command</x:log_format>'
+     '<command>touch /tmp/pwn</command><log_format>syslog</log_format></localfile></ossec_config>', 1113),
+])
+def test_validate_wazuh_xml_remote_commands_ko(new_conf, error_code, tmp_path):
+    """Check commands are rejected whatever the way they are hidden from the XML parser of the API."""
+    original_conf = tmp_path / 'ossec.conf'
+    original_conf.write_text('<ossec_config><global><jsonout_output>yes</jsonout_output></global></ossec_config>')
+    api_conf = deepcopy(utils.configuration.api_conf)
+    api_conf['upload_configuration']['remote_commands'] = {'localfile': {'allow': False, 'exceptions': []},
+                                                           'wodle_command': {'allow': False, 'exceptions': []}}
+
+    with patch('wazuh.core.utils.configuration.api_conf', new=api_conf), \
+            patch('wazuh.core.utils.common.OSSEC_CONF', new=str(original_conf)):
+        with pytest.raises(exception.WazuhError, match=rf'.* {error_code} .*'):
+            utils.validate_wazuh_xml(new_conf, config_file=True)
+
+
+def test_validate_wazuh_xml_remote_commands(tmp_path):
+    """Check a configuration with comments, entities and no commands is still accepted."""
+    new_conf = """
+<!-- Global -- settings -->
+<ossec_config>
+  <global>
+    <jsonout_output>yes</jsonout_output> <!-- trailing -->
+  </global>
+  <labels
+    >
+    <label key="expression">a &lt; b &amp;&amp; c &gt; d</label>
+  </labels>
+  <localfile>
+    <log_format>syslog</log_format>
+    <location>/var/log/syslog</location>
+  </localfile>
+  <!--
+  <localfile>
+    <log_format>command</log_format>
+    <command>touch /tmp/pwn</command>
+  </localfile>
+  -->
+</ossec_config>
+"""
+    original_conf = tmp_path / 'ossec.conf'
+    original_conf.write_text('<ossec_config><global><jsonout_output>yes</jsonout_output></global></ossec_config>')
+    api_conf = deepcopy(utils.configuration.api_conf)
+    api_conf['upload_configuration']['remote_commands'] = {'localfile': {'allow': False, 'exceptions': []},
+                                                           'wodle_command': {'allow': False, 'exceptions': []}}
+
+    with patch('wazuh.core.utils.configuration.api_conf', new=api_conf), \
+            patch('wazuh.core.utils.common.OSSEC_CONF', new=str(original_conf)):
+        utils.validate_wazuh_xml(new_conf, config_file=True)
+
+
+@pytest.mark.parametrize('original_command, new_command, error_code', [
+    (None, 'cmd1 && cmd2', None),
+    (None, 'cmd1 &amp;&amp; cmd2', 1124),
+    ('cmd3 &amp; cmd4', 'cmd3 &amp; cmd4', None),
+    ('cmd3 &amp; cmd4', 'cmd3 & cmd4', 1124),
+])
+def test_validate_wazuh_xml_remote_commands_exceptions_are_raw(original_command, new_command, error_code, tmp_path):
+    """Check an entity in a command is not decoded, as the daemons read it, when matching the exceptions."""
+    def conf(command):
+        return ('<ossec_config><localfile><log_format>command</log_format>'
+                f'<command>{command}</command></localfile></ossec_config>' if command else '<ossec_config/>')
+
+    original_conf = tmp_path / 'ossec.conf'
+    original_conf.write_text(conf(original_command))
+    api_conf = deepcopy(utils.configuration.api_conf)
+    api_conf['upload_configuration']['remote_commands'] = {'localfile': {'allow': False, 'exceptions': ['cmd1 && cmd2']},
+                                                           'wodle_command': {'allow': False, 'exceptions': []}}
+
+    with patch('wazuh.core.utils.configuration.api_conf', new=api_conf), \
+            patch('wazuh.core.utils.common.OSSEC_CONF', new=str(original_conf)):
+        with pytest.raises(exception.WazuhError, match=rf'.* {error_code} .*') if error_code else nullcontext():
+            utils.validate_wazuh_xml(conf(new_command), config_file=True)
+
+
+def test_validate_wazuh_xml_unterminated_comments_are_linear():
+    """Check a long run of unterminated '<!' is rejected without the time growing quadratically."""
+    start = time.perf_counter()
+    with pytest.raises(exception.WazuhError, match=r'.* 1113 .*'):
+        utils.validate_wazuh_xml(f"<ossec_config>{'<!' * 40000}</ossec_config>")
+
+    assert time.perf_counter() - start < 2
+
+
+def test_load_wazuh_xml_ignores_namespaces():
+    """Check load_wazuh_xml keeps the tag names when a namespace is declared, as the os_xml library does."""
+    root = utils.load_wazuh_xml(None, '<ossec_config xmlns="urn:x"><localfile><log_format>syslog</log_format>'
+                                      '</localfile></ossec_config>')
+
+    assert [element.tag for element in root.iter()] == ['root_tag', 'ossec_config', 'localfile', 'log_format']
 
 
 @patch('wazuh.core.utils.full_copy')
