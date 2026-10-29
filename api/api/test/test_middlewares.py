@@ -34,7 +34,7 @@ from api.middlewares import charge_unauthenticated_request, charge_authenticated
     CheckExpectHeaderMiddleware, secure_headers, access_log, get_declared_content_length, read_capped_body, \
     CACHED_BODY_KEY, AUTH_CONTEXT_NOT_LOGGED
 from api.alogging import MAX_LOGGED_BODY_SIZE
-from api.api_exception import ExpectFailedException, PayloadTooLargeException
+from api.api_exception import BlockedIPException, ExpectFailedException, PayloadTooLargeException
 
 def build_request(path='/agents', method='POST', content_length=None, receive=None):
     """Build a real starlette request, so what the middlewares read from the socket is observable.
@@ -931,11 +931,11 @@ async def test_access_log(json_body, q_password, b_password, b_key, c_user,
             endpoint, mock_req.query_params, expected_body, 0.0, response.status_code,
             hash_auth_context=hash, headers=mock_req.headers
         )
-        if status_code == 403 and \
-            endpoint in {LOGIN_ENDPOINT, RUN_AS_LOGIN_ENDPOINT} and \
-                method in {'GET', 'POST'}:
-            mock_log_warning.assert_called_once_with(
-                f"IP blocked due to exceeded number of logins attempts: {mock_req.client.host}")
+        # A 403 on a login endpoint is not, by itself, a lockout: a `run_as`
+        # refusal (error 6004) used to be misreported as a block from here.
+        # The genuine lockout warning is issued by `CheckBlockedIP.dispatch`,
+        # so `access_log` must not warn for any of these cases.
+        mock_log_warning.assert_not_called()
 
 
 @pytest.mark.asyncio
@@ -1576,6 +1576,56 @@ async def test_check_block_ip_middleware(endpoint, method, call_check, mock_req)
             mock_block_ip.assert_called_once_with(mock_req)
         else:
             mock_block_ip.assert_not_called()
+        dispatch_mock.assert_awaited_once_with(mock_req)
+        assert ret_response == response
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("endpoint, method", [
+    (LOGIN_ENDPOINT, 'POST'),
+    (RUN_AS_LOGIN_ENDPOINT, 'POST'),
+])
+async def test_check_block_ip_middleware_logs_genuine_lockout_only(endpoint, method, mock_req):
+    """Test that a lockout refusal logs the block warning and still raises.
+
+    Regression guard for https://github.com/wazuh/wazuh/issues/40743: the
+    warning must be issued where the lockout refuses, not inferred from a
+    403 status in `access_log`, which every endpoint refusal also produces.
+    """
+    dispatch_mock = AsyncMock()
+    middleware = CheckBlockedIP(AsyncApp(__name__))
+    operation = MagicMock(name="operation")
+    operation.method = method
+    mock_req.url.path = endpoint
+    mock_req.method = method
+    mock_req.client.host = '192.0.2.1'
+
+    with TestContext(operation=operation), \
+        patch('api.middlewares.check_blocked_ip',
+              new=AsyncMock(side_effect=BlockedIPException(status=403))), \
+        patch('api.middlewares.logger.warning') as mock_log_warning:
+        with pytest.raises(BlockedIPException):
+            await middleware.dispatch(request=mock_req, call_next=dispatch_mock)
+        mock_log_warning.assert_called_once_with(
+            'IP blocked due to exceeded number of logins attempts: 192.0.2.1')
+        dispatch_mock.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_check_block_ip_middleware_no_warning_when_not_blocked(mock_req):
+    """Test that a login attempt the lockout admits logs no block warning."""
+    response = MagicMock()
+    dispatch_mock = AsyncMock(return_value=response)
+    middleware = CheckBlockedIP(AsyncApp(__name__))
+    operation = MagicMock(name="operation")
+    operation.method = 'POST'
+    mock_req.url.path = RUN_AS_LOGIN_ENDPOINT
+    mock_req.method = 'POST'
+
+    with TestContext(operation=operation), \
+        patch('api.middlewares.check_blocked_ip', new=AsyncMock()), \
+        patch('api.middlewares.logger.warning') as mock_log_warning:
+        ret_response = await middleware.dispatch(request=mock_req, call_next=dispatch_mock)
+        mock_log_warning.assert_not_called()
         dispatch_mock.assert_awaited_once_with(mock_req)
         assert ret_response == response
 
