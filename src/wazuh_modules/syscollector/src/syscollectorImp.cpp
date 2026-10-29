@@ -555,9 +555,8 @@ nlohmann::json Syscollector::getNetworkData()
                 // An incomplete interface is skipped so it does not abort the whole network scan.
                 try
                 {
-                    nlohmann::json ifaceRows = nlohmann::json::array();
-                    nlohmann::json protoRows = nlohmann::json::array();
-                    nlohmann::json addressRows = nlohmann::json::array();
+                    std::vector<nlohmann::json> protoRows;
+                    std::vector<nlohmann::json> addressRows;
 
                     // Split the resulting networks data into the specific DB tables
                     // "dbsync_network_iface" table data to update and notify
@@ -578,7 +577,6 @@ nlohmann::json Syscollector::getNetworkData()
                     ifaceTableData["rx_dropped"] = item.at("rx_dropped");
                     ifaceTableData["checksum"]   = getItemChecksum(ifaceTableData);
                     ifaceTableData["item_id"]    = getItemId(ifaceTableData, NETIFACE_ITEM_ID_FIELDS);
-                    ifaceRows.push_back(std::move(ifaceTableData));
 
                     if (item.find("IPv4") != item.end())
                     {
@@ -636,10 +634,7 @@ nlohmann::json Syscollector::getNetworkData()
                         }
                     }
 
-                    for (auto& row : ifaceRows)
-                    {
-                        ifaceTableDataList.push_back(std::move(row));
-                    }
+                    ifaceTableDataList.push_back(std::move(ifaceTableData));
 
                     for (auto& row : protoRows)
                     {
