@@ -40,11 +40,11 @@ two when you no longer need them. The user and the group are left untouched.
 Only the latest `.save` set survives. Each removal first deletes every `.save` file already in
 `/etc/wazuh-manager` and `/var/wazuh-manager/api`, then renames the current files. If you reinstall from
 this state, the new installation issues its own CA. A later `--remove` then replaces the earlier
-`ca/root-ca.key.save` with the new CA's key, with no warning. A reinstall that **fails** does the same before
-any new key exists: when dpkg rolls back a failed install (`postrm abort-install`, or `disappear`), the
-package script deletes the old `.save` set, `ca/root-ca.key.save` included, and renames whatever is left.
-Copy the `.save` files you need (at least `ca/root-ca.key.save` and `local.env.save`) out of
-`/etc/wazuh-manager` and `/var/wazuh-manager/api` before you reinstall.
+`ca/root-ca.key.save` with the new CA's key, with no warning. A reinstall that **fails** (dpkg rolls it back
+with `postrm abort-install`), or a package that takes over the manager's files (`disappear`), leaves the
+`.save` set as it was: only `--remove` deletes or renames `.save` files. Copy the `.save` files you need (at
+least `ca/root-ca.key.save` and `local.env.save`) out of `/etc/wazuh-manager` and `/var/wazuh-manager/api`
+before a reinstall that you will later remove again.
 
 ### Red Hat-based platforms
 

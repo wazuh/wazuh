@@ -139,7 +139,10 @@ Accept connections from agents running a Wazuh version higher than the manager.
 - **Note:** "Higher" means a higher major or minor version: an agent one patch release ahead (5.0.1
   against a 5.0.0 manager) is always accepted, on the HTTPS and the legacy paths alike. Enable when
   upgrading agents to a new minor or major before the manager
-- **Note:** Applies to an agent's `POST /control` `startup` and to 4.x keep-alives. It does **not**
+- **Note:** Applies to an agent's `POST /control` `startup` and to a 4.x agent's startup message
+  (`#!-agent startup`), which carries its version. A 4.x keep-alive is **not** checked: an agent
+  already connected keeps sending them whatever its version, and is checked again only on its next
+  startup. It does **not**
   govern enrollment: `POST /enroll` follows authd's own
   [`<auth><agents><allow_higher_versions>`](../authd/configuration.md#agents--allow_higher_versions),
   so the two must be raised together for a newer agent to both enroll and connect
@@ -191,6 +194,24 @@ connection from the same agent may take it over.
   disables overtaking altogether: the second connection is always refused and the warning is logged
   at once. The warning is throttled like the other rejections: at most one line every 90 seconds,
   ending in `(and <n> more like it in the last <s> s)`; the repeats in between go to debug level.
+- **Note:** Only a message whose counters are **ahead** of the last ones remoted accepted from that
+  agent may take a session over, whatever [`remoted.verify_msg_id`](#remotedverify_msg_id) says. A
+  captured message replayed on a new connection decrypts, but its counters are equal to or older than
+  the stored ones, so it is refused and its connection closed, however long the current session has
+  been idle; the agent's session, its idle time and its stored counters are left untouched. The stored
+  counters are the ones in memory, and they survive a `client.keys` reload (an enrollment, a removal)
+  for every agent whose key and address did not change: the reload keeps the higher of them and of
+  the agent's `queue/rids/<id>` file, which is written only now and then (see
+  [`remoted.recv_counter_flush`](#remotedrecv_counter_flush)). A restart of remoted has only that file
+  to start from, so after a restart a message captured since the file's last write counts as newer
+  again. Remoted
+  logs `Frame for agent ID '<id>' from '<ip>' is not newer than the last one accepted from that agent:
+  it cannot take over the agent's current connection.`, throttled like the warning above. A real agent
+  that reconnects is never affected: its counters only grow, and they are kept across its restarts in
+  its own `queue/rids/sender_counter`. An agent whose counter was reset while it kept its key (its
+  `sender_counter` deleted, or the same key imported again) cannot take over a stale session until that
+  session is closed; re-enroll it, or delete its `queue/rids/<id>` on the manager and restart the
+  manager, to start its counters again (a `client.keys` reload alone keeps the counters in memory)
 
 ---
 
@@ -384,15 +405,20 @@ protocol version.
 Maximum accepted HTTP request body size, enforced by the transport.
 
 - **Default value:** `10M` (10 MiB)
-- **Allowed values:** Positive byte count with an optional single-letter suffix (`B`, `K`, `M`, `G`, case-insensitive). `K`/`M`/`G` are binary multiples; a bare number is bytes. Suffixes such as `MB` are rejected.
+- **Allowed values:** Positive byte count with an optional single-letter suffix (`B`, `K`, `M`, `G`, case-insensitive), at most `1G` (1073741824 bytes; `1024M`, `1048576K`). `K`/`M`/`G` are binary multiples; a bare number is bytes. Suffixes such as `MB` are rejected.
 - **Effect:** Raising the limit admits larger wire bodies and increases potential memory use per connection;
   lowering it rejects larger requests at the transport. The authentication and shared-memory limits still apply.
+  While requests are read, the peak is roughly [`remoted.max_parallel_connections`](#remotedmax_parallel_connections)
+  (256 by default) times this value.
 - **Note:** Keep it **above** [`remoted.auth_max_body_size`](#remotedauth_max_body_size) (5 MiB by
   default). Breaching *this* cap is not a `413`: the parser fails on `Content-Length` and the
   connection is closed with no response at all, which an agent cannot tell apart from a network
   failure — so it never splits its batch and retries the same bytes indefinitely. The auth limit is
   what produces the `413` the agent acts on. Setting the two equal makes the closed connection the
-  only outcome, because the `Content-Length` check always fires first.
+  only outcome, because the `Content-Length` check always fires first. A value at or below it is
+  accepted, but both the configuration check (`wazuh-manager-remoted -t`, run by every start) and
+  remoted's start log a `WARNING`: `'remote.https.max_body_size' (<n> bytes) is not above
+  'remoted.auth_max_body_size' (<m> bytes): …`
 
 ### Rate limits of the unauthenticated routes
 
@@ -503,7 +529,12 @@ Three things to know before editing that file:
 - **It ships empty.** The installed template carries only comments, so every option below is
   serving its compiled-in default. Tuning one means adding the `name=value` line yourself.
 - **An out-of-range or non-numeric value is fatal**, not clamped: the daemon refuses to start and
-  logs which option it rejected. Keep the documented range in view when editing.
+  logs which option it rejected (`(2302)`). Every `remoted.*` option below is read by
+  `wazuh-manager-remoted -t` too, so `wazuh-manager-control check` refuses such a value before anything
+  stops (`remoted.debug` is skipped when `-d` is given, by `-t` and by the start alike).
+  `wazuh.thread_stack_size` is the exception: no `-t` reads it — see
+  [the manager internal options](../../configuration/manager/README.md).
+  Keep the documented range in view when editing.
   Put comments on separate lines beginning with `#`; an inline comment becomes part of the value.
 - **The file is per node and is never synchronized.** Nothing in a cluster propagates it, so a
   value set on one manager makes an agent's behavior depend on which node it lands on.
@@ -726,6 +757,8 @@ time are closed. Authenticated connections are never subject to it.
   which names the ID the message claims and is therefore logged at debug level only. A message whose
   checksum matches has proved the agent's key, so a malformed counter field after it is still an
   `ERROR` `(1403)` naming that agent
+- **Note:** Over TCP, each of those rejections also closes the connection at once (`TCP peer
+  disconnected [<socket>]` at debug level): a peer that sent one never waits for this timeout
 
 ### remoted.unauthenticated_max
 
@@ -844,6 +877,16 @@ to detect replayed messages.
 - **Note:** `1` requires `remoted.worker_pool` set to `1`; with more workers remoted refuses to
   start, because message order cannot be guaranteed. It checks only messages on the legacy (4.x)
   listener; HTTPS agents are authenticated per request with their bearer token.
+- **Note:** With `0` an older or repeated message is still accepted on the connection the agent is
+  using (with several workers, messages of one connection may be handled out of order), but it never
+  moves the stored counters back and never takes over the agent's session from another connection
+  (see [`legacy.connection_overtake_time`](#legacyconnection_overtake_time)). It is not discarded, so
+  a replayed message delivered on its own (over UDP, or on a new connection while the agent has no
+  session) is still processed: set `1` where that matters.
+- **Note:** Either way, the counters compared against are the ones remoted holds in memory. A
+  `client.keys` reload keeps them for every agent whose key and address did not change (a new key
+  starts from its `queue/rids/<id>` file); only a restart of remoted falls back to that file, which
+  may lag behind (see [`remoted.recv_counter_flush`](#remotedrecv_counter_flush)).
 
 ### remoted.batch_events_per_agent_capacity
 
@@ -855,11 +898,17 @@ discarded until its share drains.
 
 ### remoted.recv_counter_flush
 
-Messages received from a legacy agent between two writes of its message counter to its RIDS file
-(`queue/rids/<id>`).
+Messages remoted accepts from legacy agents between two writes of a message counter to an agent's
+RIDS file (`queue/rids/<id>`).
 
 - **Default value:** `128`
 - **Allowed values:** Integer from `10` to `999999` (message count)
+- **Note:** The count is shared by **all** legacy agents, not kept per agent: every this-many
+  accepted messages, the counter of the agent whose message completes the count is written. With
+  many agents, one agent's file can therefore lag well behind its last message. Remoted works from
+  its in-memory counters, which a `client.keys` reload keeps, and reads the files back when it
+  starts (and, with [`remoted.verify_msg_id`](#remotedverify_msg_id) `1`, when a file is replaced),
+  so the lag matters only after a restart.
 
 ### remoted.comp_average_printout
 

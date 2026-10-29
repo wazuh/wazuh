@@ -1,7 +1,7 @@
 {
     "files":{
         "etc/": {
-            "permissions": "0o640",
+            "permissions": "0o660",
             "source": "master",
             "files": ["client.keys", "authd.pass", "enrollment_tokens.json"],
             "recursive": false,

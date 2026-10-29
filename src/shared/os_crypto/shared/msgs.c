@@ -39,6 +39,10 @@
 #define GLOBAL_COUNTER_SIZE 10
 #define LOCAL_COUNTER_SIZE 4
 #define COUNTER_FORMAT_SIZE 1 /* For the ':' character */
+/* Whether a message's (global, local) counters are ahead of the ones stored for the agent */
+#define COUNTERS_AHEAD(msg_g, msg_l, entry) \
+    (((msg_g) > (entry)->global) || (((msg_g) == (entry)->global) && ((msg_l) > (entry)->local)))
+
 #define MSG_OVERHEAD (MD5_CHECKSUM_SIZE + RANDOM_DATA_SIZE + GLOBAL_COUNTER_SIZE + LOCAL_COUNTER_SIZE + 2 * COUNTER_FORMAT_SIZE)
 
 /* Prototypes */
@@ -160,7 +164,8 @@ void OS_StartCounter(keystore *keys)
     mdebug2("Stored counter.");
     keys->opened_fp_queue = linked_queue_init();
 
-    /* Get counter values */
+    /* Get counter values. On the manager RemotedConfig() has already read both (on the `-t` path too),
+     * so these reads only run on the agent; keep their ranges and defaults identical to that copy. */
     if (_s_recv_flush == 0) {
         _s_recv_flush = (unsigned int) getDefine_Int_default("remoted",
                         "recv_counter_flush",
@@ -329,6 +334,9 @@ int ReadSecMSG(keystore *keys, char *buffer, char *cleartext, int id, unsigned i
     unsigned int msg_local = 0;
     char *f_msg;
     crypt_method method;
+#ifndef CLIENT
+    bool stale = false;
+#endif
 
     w_mutex_lock(&keys->keyentries[id]->mutex);
 
@@ -451,6 +459,16 @@ int ReadSecMSG(keystore *keys, char *buffer, char *cleartext, int id, unsigned i
 
         /* Return the message if we don't need to verify the counter */
         if (!_s_verify_counter) {
+#ifndef CLIENT
+            /* The manager accepts the message, but an older or repeated one (a replay, or a frame a
+             * concurrent worker overtook) never rolls the stored counters back, and is reported as
+             * stale so that it cannot take over the agent's session. */
+            if (!COUNTERS_AHEAD(msg_global, msg_local, keys->keyentries[id])) {
+                stale = true;
+                *output = f_msg;
+                goto authenticated;
+            }
+#endif
             /* Update current counts */
             keys->keyentries[id]->global = msg_global;
             keys->keyentries[id]->local = msg_local;
@@ -530,9 +548,20 @@ int ReadSecMSG(keystore *keys, char *buffer, char *cleartext, int id, unsigned i
 
         /* Return the message if we don't need to verify the counter */
         if (!_s_verify_counter) {
+#ifndef CLIENT
+            /* As in the compressed format: a message not ahead of the stored counters is accepted as
+             * stale and leaves them as they are; one ahead advances them. */
+            if (!COUNTERS_AHEAD(msg_time, msg_count, keys->keyentries[id])) {
+                stale = true;
+            } else {
+                keys->keyentries[id]->global = msg_time;
+                keys->keyentries[id]->local = msg_count;
+            }
+#else
             /* Update current counts */
             keys->keyentries[id]->global = msg_time;
             keys->keyentries[id]->local = msg_local;
+#endif
 
             f_msg = strchr(f_msg, ':');
             if (f_msg) {
@@ -595,9 +624,12 @@ authenticated:
      * entry's mutex still held. Only the manager records the cipher, to answer the agent with it. */
 #ifndef CLIENT
     keys->keyentries[id]->crypto_method = method;
-#endif
+    w_mutex_unlock(&keys->keyentries[id]->mutex);
+    return stale ? KS_STALE : KS_VALID;
+#else
     w_mutex_unlock(&keys->keyentries[id]->mutex);
     return KS_VALID;
+#endif
 }
 
 /* Create an encrypted message

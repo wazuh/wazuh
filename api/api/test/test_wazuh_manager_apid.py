@@ -1129,7 +1129,10 @@ def test_test_config_refuses_a_missing_explicit_file(apid, tmp_path, capsys):
 @pytest.mark.parametrize('named', [True, False], ids=['-c file', 'no -c'])
 def test_test_config_reads_an_existing_file(apid, tmp_path, named):
     """An existing file, or none named at all, is read and passes when valid."""
-    apid.read_yaml_config = MagicMock()
+    apid.read_yaml_config = MagicMock(return_value={
+        'logs': {'max_size': {'enabled': False}},
+        'https': {'enabled': False},
+    })
     config = tmp_path / 'api.yaml'
     config.write_text('logs:\n  level: info\n')
     config_file = str(config) if named else None

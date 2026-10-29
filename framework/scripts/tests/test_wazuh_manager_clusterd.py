@@ -337,7 +337,7 @@ def test_main(print_mock, path_exists_mock, chown_mock, chmod_mock, setuid_mock,
         def error(self, msg):
             pass
 
-    args = Arguments(config_file='test', test_config=True, foreground=False, root=False)
+    args = Arguments(config_file=common.MANAGER_CONF, test_config=True, foreground=False, root=False)
     wazuh_manager_clusterd.main_logger = LoggerMock()
     wazuh_manager_clusterd.args = args
     wazuh_manager_clusterd.common = common
@@ -366,6 +366,18 @@ def test_main(print_mock, path_exists_mock, chown_mock, chmod_mock, setuid_mock,
                             chmod_mock.assert_called_with(f'{common.WAZUH_PATH}/logs/cluster.log', 432)
                             exit_mock.assert_called_once_with(1)
                             exit_mock.reset_mock()
+
+                            # A -t run on a copy prints its verdict but leaves the live cluster.log alone.
+                            args.config_file = '/tmp/copy-of-wazuh-manager.conf'
+                            with pytest.raises(SystemExit):
+                                wazuh_manager_clusterd.main()
+                            main_logger_mock.assert_not_called()
+                            print_mock.assert_called_once_with('ERROR: Error 3006 - Invalid configuration',
+                                                               file=sys.stderr)
+                            exit_mock.assert_called_once_with(1)
+                            print_mock.reset_mock()
+                            exit_mock.reset_mock()
+                            args.config_file = common.MANAGER_CONF
 
                         with patch('wazuh.core.cluster.cluster.check_cluster_config', side_effect=IndexError):
                             with pytest.raises(SystemExit):

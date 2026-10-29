@@ -33,7 +33,7 @@ namespace remoted::auth
     {
         // Same rationale as keystore.cpp: keeping loggerHelper.h out of the header avoids pulling
         // its DSO-hidden global into every translation unit that includes passwordKeySource.hpp.
-        constexpr auto PASSWORD_KEY_SOURCE_LOGTAG {"wazuh-manager-remoted:passwordKeySource"};
+        constexpr auto PASSWORD_KEY_SOURCE_LOGTAG {"wazuh-manager-remoted:password-key-source"};
 
         const LogFn& logFn()
         {

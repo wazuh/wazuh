@@ -102,6 +102,16 @@ struct Options
     std::exit(EXIT_SUCCESS);
 }
 
+/// The internal options file. Manager mode: in the fixed configuration directory. Standalone mode never reads the
+/// file (conf::Conf::load()); its path stays relative to the cwd.
+std::filesystem::path internalOptionsPath()
+{
+    return base::process::isStandaloneModeEnable()
+               ? base::process::getWazuhHome() / "etc/wazuh-manager-internal-options.conf"
+               : std::filesystem::path(std::string(base::managerConfig::MANAGER_CONF_DIR))
+                     / "wazuh-manager-internal-options.conf";
+}
+
 Options parseOptions(int argc, char* argv[])
 {
     Options opts;
@@ -178,13 +188,25 @@ int main(int argc, char* argv[])
         }
 
         // Manager configuration (/etc/wazuh-manager/wazuh-manager.conf; relative paths inside it resolve
-        // against the home). -t validates it, including the files it references; a normal start loads it
-        // once (no file checks) before the first log.
+        // against the home). -t validates it, including the files it references, and then the internal options;
+        // a normal start loads it once (no file checks) before the first log.
         if (opts.testConfig)
         {
             if (const auto error = base::managerConfig::validate(wazuhHome))
             {
                 fprintf(stderr, "Error loading configuration: %s\n", error->c_str());
+                return EXIT_FAILURE;
+            }
+
+            // Internal options: the same load a start does (environment > file > default), so a value of the
+            // wrong type or outside its range is refused here, before a restart stops the running daemon.
+            try
+            {
+                conf::Conf(std::make_shared<conf::FileLoader>(internalOptionsPath())).load();
+            }
+            catch (const std::exception& e)
+            {
+                fprintf(stderr, "Error loading configuration: %s\n", e.what());
                 return EXIT_FAILURE;
             }
             return EXIT_SUCCESS;
@@ -241,13 +263,8 @@ int main(int argc, char* argv[])
         base::process::goDaemon();
     }
 
-    // Load the configuration. Manager mode: the internal options live in the fixed configuration directory.
-    // Standalone mode never reads the file (conf::Conf::load()); its path stays relative to the cwd.
-    const auto confPath = base::process::isStandaloneModeEnable()
-                              ? base::process::getWazuhHome() / "etc/wazuh-manager-internal-options.conf"
-                              : std::filesystem::path(std::string(base::managerConfig::MANAGER_CONF_DIR))
-                                    / "wazuh-manager-internal-options.conf";
-    auto confManager = conf::Conf(std::make_shared<conf::FileLoader>(confPath));
+    // Load the configuration (types and ranges are checked here, as `-t` does)
+    auto confManager = conf::Conf(std::make_shared<conf::FileLoader>(internalOptionsPath()));
     try
     {
         confManager.load();
@@ -476,98 +493,19 @@ int main(int argc, char* argv[])
                 const auto maxQueueBytes = confManager.get<size_t>(conf::key::INDEXER_QUEUE_MAX_BYTES);
                 jsonCnf.setUint64(maxQueueBytes, "/max_queue_bytes");
 
-                constexpr size_t INDEXER_BULK_MAX_BYTES_MIN = size_t {0x1} << 16; // 64 KB
-                constexpr size_t INDEXER_BULK_MAX_BYTES_MAX = size_t {100} << 20; // 100 MB
-                const auto bulkMaxBytes = confManager.get<size_t>(conf::key::INDEXER_BULK_MAX_BYTES);
-                if (bulkMaxBytes < INDEXER_BULK_MAX_BYTES_MIN || bulkMaxBytes > INDEXER_BULK_MAX_BYTES_MAX)
-                {
-                    throw std::runtime_error(
-                        fmt::format("analysisd.indexer_bulk_max_bytes must be between {} and {} (got {})",
-                                    INDEXER_BULK_MAX_BYTES_MIN,
-                                    INDEXER_BULK_MAX_BYTES_MAX,
-                                    bulkMaxBytes));
-                }
-                jsonCnf.setUint64(bulkMaxBytes, "/bulk_max_bytes");
-
-                constexpr size_t INDEXER_FLUSH_INTERVAL_MAX = 3600;
-                const auto flushInterval = confManager.get<size_t>(conf::key::INDEXER_FLUSH_INTERVAL);
-                if (flushInterval == 0 || flushInterval > INDEXER_FLUSH_INTERVAL_MAX)
-                {
-                    throw std::runtime_error(
-                        fmt::format("analysisd.indexer_flush_interval must be between 1 and {} (got {})",
-                                    INDEXER_FLUSH_INTERVAL_MAX,
-                                    flushInterval));
-                }
-                jsonCnf.setUint64(flushInterval, "/flush_interval_seconds");
-
+                // The ranges of these settings are checked by confManager.load() (conf.cpp), as `-t` does
+                jsonCnf.setUint64(confManager.get<size_t>(conf::key::INDEXER_BULK_MAX_BYTES), "/bulk_max_bytes");
+                jsonCnf.setUint64(confManager.get<size_t>(conf::key::INDEXER_FLUSH_INTERVAL),
+                                  "/flush_interval_seconds");
                 // Error-logger sizing: bounded queue + thread count (only error responses are queued)
-                constexpr size_t INDEXER_LOGGER_QUEUE_SIZE_MAX = 1024;
-                const auto loggerQueueSize = confManager.get<size_t>(conf::key::INDEXER_LOGGER_QUEUE_SIZE);
-                if (loggerQueueSize == 0 || loggerQueueSize > INDEXER_LOGGER_QUEUE_SIZE_MAX)
-                {
-                    throw std::runtime_error(
-                        fmt::format("analysisd.indexer_logger_queue_size must be between 1 and {} (got {})",
-                                    INDEXER_LOGGER_QUEUE_SIZE_MAX,
-                                    loggerQueueSize));
-                }
-                jsonCnf.setUint64(loggerQueueSize, "/logger_queue_size");
-
-                constexpr size_t INDEXER_LOGGER_THREADS_MAX = 16;
-                const auto loggerThreads = confManager.get<size_t>(conf::key::INDEXER_LOGGER_THREADS);
-                if (loggerThreads == 0 || loggerThreads > INDEXER_LOGGER_THREADS_MAX)
-                {
-                    throw std::runtime_error(
-                        fmt::format("analysisd.indexer_logger_threads must be between 1 and {} (got {})",
-                                    INDEXER_LOGGER_THREADS_MAX,
-                                    loggerThreads));
-                }
-                jsonCnf.setUint64(loggerThreads, "/logger_threads");
-
-                constexpr size_t INDEXER_MAX_RETRY_DELAY_MAX = 3600;
-                const auto maxRetryDelay = confManager.get<size_t>(conf::key::INDEXER_MAX_RETRY_DELAY);
-                if (maxRetryDelay == 0 || maxRetryDelay > INDEXER_MAX_RETRY_DELAY_MAX)
-                {
-                    throw std::runtime_error(
-                        fmt::format("analysisd.indexer_max_retry_delay must be between 1 and {} (got {})",
-                                    INDEXER_MAX_RETRY_DELAY_MAX,
-                                    maxRetryDelay));
-                }
-                jsonCnf.setUint64(maxRetryDelay, "/max_retry_delay_seconds");
-
-                // 0 is legal and disables the per-request bound (the pre-fix behavior).
-                constexpr size_t INDEXER_REQUEST_TIMEOUT_MAX = 3600;
-                const auto requestTimeout = confManager.get<size_t>(conf::key::INDEXER_REQUEST_TIMEOUT);
-                if (requestTimeout > INDEXER_REQUEST_TIMEOUT_MAX)
-                {
-                    throw std::runtime_error(
-                        fmt::format("analysisd.indexer_request_timeout must be between 0 and {} (got {})",
-                                    INDEXER_REQUEST_TIMEOUT_MAX,
-                                    requestTimeout));
-                }
-                jsonCnf.setUint64(requestTimeout, "/request_timeout_seconds");
-
-                // 0 is NOT legal: a zero polling period turns the health-monitor thread into a busy loop.
-                constexpr size_t INDEXER_MONITORING_INTERVAL_MAX = 3600;
-                const auto monitoringInterval = confManager.get<size_t>(conf::key::INDEXER_MONITORING_INTERVAL);
-                if (monitoringInterval == 0 || monitoringInterval > INDEXER_MONITORING_INTERVAL_MAX)
-                {
-                    throw std::runtime_error(
-                        fmt::format("analysisd.indexer_monitoring_interval must be between 1 and {} (got {})",
-                                    INDEXER_MONITORING_INTERVAL_MAX,
-                                    monitoringInterval));
-                }
-                jsonCnf.setUint64(monitoringInterval, "/monitoring_interval_seconds");
-
-                // 0 is legal and disables the early content-sync retry.
-                constexpr size_t CM_SYNC_RETRY_INTERVAL_MAX = 3600;
-                const auto cmSyncRetryInterval = confManager.get<size_t>(conf::key::CM_SYNC_RETRY_INTERVAL);
-                if (cmSyncRetryInterval > CM_SYNC_RETRY_INTERVAL_MAX)
-                {
-                    throw std::runtime_error(
-                        fmt::format("analysisd.cm_sync_retry_interval must be between 0 and {} (got {})",
-                                    CM_SYNC_RETRY_INTERVAL_MAX,
-                                    cmSyncRetryInterval));
-                }
+                jsonCnf.setUint64(confManager.get<size_t>(conf::key::INDEXER_LOGGER_QUEUE_SIZE), "/logger_queue_size");
+                jsonCnf.setUint64(confManager.get<size_t>(conf::key::INDEXER_LOGGER_THREADS), "/logger_threads");
+                jsonCnf.setUint64(confManager.get<size_t>(conf::key::INDEXER_MAX_RETRY_DELAY),
+                                  "/max_retry_delay_seconds");
+                jsonCnf.setUint64(confManager.get<size_t>(conf::key::INDEXER_REQUEST_TIMEOUT),
+                                  "/request_timeout_seconds");
+                jsonCnf.setUint64(confManager.get<size_t>(conf::key::INDEXER_MONITORING_INTERVAL),
+                                  "/monitoring_interval_seconds");
 
                 const auto maxHitsPerRequest =
                     confManager.get<std::size_t>(conf::key::CMSYNC_INDEXER_CONNECTOR_SYNC_BATCH_SIZE);

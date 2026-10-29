@@ -638,17 +638,18 @@ CheckRemoteSize()
     [ -z "$2" ] && return 0
     SIZE_NUM=${2%%[!0-9]*}
     SIZE_UNIT=${2#"$SIZE_NUM"}
-    # Leading zeros aside, the digit count is capped per unit as the configuration schema does.
+    # Leading zeros aside, the value is capped at 1G (1073741824 bytes) in every unit, as the
+    # configuration schema does: the digit count first, so the numeric test never overflows.
     SIZE_DIGITS=${SIZE_NUM#"${SIZE_NUM%%[!0]*}"}
     case "$SIZE_UNIT" in
-        ''|[Bb]) SIZE_MAX_DIGITS=15 ;;
-        [Kk]) SIZE_MAX_DIGITS=12 ;;
-        [Mm]) SIZE_MAX_DIGITS=9 ;;
-        [Gg]) SIZE_MAX_DIGITS=6 ;;
+        ''|[Bb]) SIZE_LIMIT=1073741824 ;;
+        [Kk]) SIZE_LIMIT=1048576 ;;
+        [Mm]) SIZE_LIMIT=1024 ;;
+        [Gg]) SIZE_LIMIT=1 ;;
         *) RemoteVarError "$1" "$2" "expected a positive size with an optional unit (B, K, M, G)";;
     esac
-    if [ -z "$SIZE_DIGITS" ] || [ ${#SIZE_DIGITS} -gt $SIZE_MAX_DIGITS ]; then
-        RemoteVarError "$1" "$2" "expected a positive size with an optional unit (B, K, M, G) the configuration accepts"
+    if [ -z "$SIZE_DIGITS" ] || [ ${#SIZE_DIGITS} -gt ${#SIZE_LIMIT} ] || [ "$SIZE_DIGITS" -gt "$SIZE_LIMIT" ]; then
+        RemoteVarError "$1" "$2" "expected a positive size of at most 1G (1073741824 bytes) with an optional unit (B, K, M, G)"
     fi
 }
 
@@ -1485,8 +1486,8 @@ installGeoIP()
     echo "Installing GeoIP databases..."
 
     # Copy .mmdb files
-    ${INSTALL} -m 0660 -o ${WAZUH_USER} -g ${WAZUH_GROUP} "${GEOIP_SRC_PATH}/GeoLite2-ASN.mmdb" "${MMDB_PATH}/"
-    ${INSTALL} -m 0660 -o ${WAZUH_USER} -g ${WAZUH_GROUP} "${GEOIP_SRC_PATH}/GeoLite2-City.mmdb" "${MMDB_PATH}/"
+    ${INSTALL} -m 0640 -o ${WAZUH_USER} -g ${WAZUH_GROUP} "${GEOIP_SRC_PATH}/GeoLite2-ASN.mmdb" "${MMDB_PATH}/"
+    ${INSTALL} -m 0640 -o ${WAZUH_USER} -g ${WAZUH_GROUP} "${GEOIP_SRC_PATH}/GeoLite2-City.mmdb" "${MMDB_PATH}/"
 
     # Parse manifest.json without jq or python - using grep and sed
     ASN_MD5=$(grep -A 2 '"asn"' "${MANIFEST_FILE}" | grep '"md5"' | sed 's/.*"md5"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/')

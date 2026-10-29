@@ -125,6 +125,38 @@ TEST(RequestParserTest, ParsesPeerRequestOneByteAtATime)
     EXPECT_EQ("application/octet-stream", parser.request().headers.at("content-type"));
 }
 
+// An empty header value still ends its header: llhttp reports it as a zero-length value, so the next
+// field starts a new pair instead of being appended to the empty one's name. Fed whole and one byte
+// at a time, because the commit point is a callback boundary.
+TEST(RequestParserTest, EmptyHeaderValueDoesNotMergeWithNextHeader)
+{
+    const std::string request = "GET /status HTTP/1.1\r\n"
+                                "X-Empty:\r\n"
+                                "X-Next: v\r\n"
+                                "X-Blank:   \r\n"
+                                "Host: localhost\r\n"
+                                "\r\n";
+
+    std::vector<std::string> bytes;
+    for (const char c : request)
+    {
+        bytes.emplace_back(1, c);
+    }
+
+    for (const auto& chunks : {std::vector<std::string> {request}, bytes})
+    {
+        RequestParser parser {defaultLimits()};
+        ASSERT_EQ(Feed::Complete, feedChunks(parser, chunks));
+
+        const auto& headers = parser.request().headers;
+        EXPECT_EQ(4U, headers.size());
+        EXPECT_EQ("", headers.at("x-empty"));
+        EXPECT_EQ("v", headers.at("x-next"));
+        EXPECT_EQ("", headers.at("x-blank"));
+        EXPECT_EQ("localhost", headers.at("host"));
+    }
+}
+
 // The peer omits Content-Type when it is empty, so requiring it would reject legitimate traffic.
 TEST(RequestParserTest, ParsesRequestWithoutContentTypeHeader)
 {

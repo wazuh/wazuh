@@ -46,7 +46,7 @@ With the defaults (`analysisd.streamlog_base_path` = `<home>/logs/`, pattern `${
 | **Retention Policies** | Configurable limits on rotated file count (`maxFiles`) and total rotated size (`maxAccumulatedSize`). Oldest files are deleted first. |
 | **Crash Recovery** | The current file path and counter are persisted to the `store::IStore`; on restart, the file is resumed or a pending compression is scheduled. |
 | **Zero-Copy Enqueue** | Writers `std::move` messages into the queue — no copies on the hot path. |
-| **Lazy channels** | `ensureAndGetWriter()` creates a channel on first use under `<basePath>/<name>/` (it calls `isolatedBasePath()` itself); for an existing channel the `cfg` argument is ignored. |
+| **Lazy channels** | `ensureAndGetWriter()` creates a channel on first use under `<basePath>/<name>/` (it calls `isolatedBasePath()` itself); for an existing channel the `cfg` argument is ignored. `streamlog::validateChannelName()` (in `ilogger.hpp`) checks a name without creating anything: the builder's `file` output uses it for test-mode builds, which call `ensureAndGetWriter()` only on their first event, so validating a policy leaves no channel behind. |
 
 ---
 

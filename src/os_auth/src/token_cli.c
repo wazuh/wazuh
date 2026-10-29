@@ -18,6 +18,8 @@
 #include <string.h>
 #include <time.h>
 
+#include <openssl/x509v3.h>
+
 #include "shared.h"
 #include "os_net.h"
 #include "agent_op.h"
@@ -296,6 +298,20 @@ static int cli_check_error(const cJSON *response, FILE *err)
     return 1;
 }
 
+/* Whether the token address is an IP literal, judged as the mint judges it (a2i_IPADDRESS(), in
+ * enrollment_token_mint.c), so the CLI warns exactly when authd does. */
+static bool cli_address_is_ip_literal(const char *address)
+{
+    ASN1_OCTET_STRING *literal = a2i_IPADDRESS(address);
+
+    if (literal == NULL) {
+        return false;
+    }
+
+    ASN1_OCTET_STRING_free(literal);
+    return true;
+}
+
 static int cli_create(const token_cli_opts_t *opts, FILE *out, FILE *err)
 {
     cJSON *request = NULL;
@@ -385,6 +401,16 @@ static int cli_create(const token_cli_opts_t *opts, FILE *out, FILE *err)
     }
 
     fprintf(err, "credential: %s\n", opts->no_credential ? "no" : "yes");
+
+    /* The same warning authd logs on the mint, for the operator who is looking at this terminal rather
+     * than at wazuh-manager.log. */
+    if (cli_address_is_ip_literal(opts->address)) {
+        fprintf(err,
+                "WARNING: the token address '%s' is an IP address: the token stops working if the manager's "
+                "address changes. Use a DNS name if the manager's IP address can change.\n",
+                opts->address);
+    }
+
     result = 0;
 
 end:

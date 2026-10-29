@@ -2346,6 +2346,7 @@ def step_server_pairs(paths: Paths, certs: Dir, ca: CaState, lookup: Lookup, rep
                 _missing_pair(certs, pair, report)
         elif ca.kind != "signing":
             if pair.on:
+                # The DEB postinst and the RPM %post match "no CA key" to name the missing key in their next steps.
                 report.problem(MISSING, certs.child(pair.cert), f"no CA key to issue it; stage the pair or the CA in "
                                                                f"{os.path.join(paths.conf, CA_DIR)}")
         elif pair.kind not in to_issue:

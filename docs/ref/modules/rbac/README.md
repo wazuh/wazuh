@@ -100,7 +100,8 @@ Changing an agent's group needs **both** `agent:modify_group` over the agent and
 | `cluster:restart` | `node:id` | `PUT /cluster/restart`, `/cluster/reload` |
 
 See [Sensitive configuration values](../server-api/authentication.md#sensitive-configuration-values)
-for how `cluster:read_secrets` is checked.
+for how `cluster:read_secrets` is checked. It returns the cluster key in clear, which lets any host
+join the cluster: keep it out of custom roles and policies.
 
 ### Security
 

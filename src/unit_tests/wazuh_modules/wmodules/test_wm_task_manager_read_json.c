@@ -64,7 +64,7 @@ static void test_read_json_refuses_integer_above_int_max(void **state) {
                   "Cannot read the remote configuration; the agent upgrade delivery checks will be skipped.");
     expect_string(__wrap__merror, formatted_msg,
                   "Invalid value for element 'task_ttl': 3000000000 is out of range (0 to 2147483647); "
-                  "the module default applies.");
+                  "the value is refused.");
 
     assert_int_equal(wm_task_manager_read_json(section, &module), 1);
     assert_int_equal(data.task_ttl, 0);

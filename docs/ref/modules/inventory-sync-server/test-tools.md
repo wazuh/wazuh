@@ -87,7 +87,9 @@ sudo ./send_delete_agent.py --agent-id 900 --verify --witness 901
 ```
 
 Options: `--socket`, `--agent-id` (default `900`), `--timeout` (default 60 s — the deletion does
-indexer I/O), `--verify`, `--witness`, `--indexer` (default `https://127.0.0.1:9200`), `--cert` /
+indexer I/O), `--verify`, `--witness`, `--indexer` (default `https://127.0.0.1:9200`: pass `--indexer https://<indexer>:9200`
+with the host from `/var/wazuh-manager/bin/wazuh-manager-conf get indexer.hosts` unless the indexer runs on this host, so
+the indexer's admin client certificate is never presented to a local service that is not it), `--cert` /
 `--key` (default the indexer's `admin.pem` / `admin-key.pem` under `/etc/wazuh-indexer/certs/`),
 `--client-keys` (default `/etc/wazuh-manager/client.keys`), `--force`. It exits `0` on a `200` (with `--verify`, only when no document is left), `1` otherwise, and
 `2` when it refuses to run or cannot read the indexer.

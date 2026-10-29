@@ -16,6 +16,8 @@ using PublicProtocolHandler = std::function<base::Event(uint8_t, std::string&, s
 constexpr char EVENT_QUEUE_ID[] {"/wazuh/protocol/queue"};       ///< JSON pointer for the queue field.
 constexpr char EVENT_LOCATION_ID[] {"/wazuh/protocol/location"}; ///< JSON pointer for the location field.
 constexpr char EVENT_MESSAGE_ID[] {"/event/original"};           ///< JSON pointer for the original message field.
+/// Lowest queue identifier an event may carry: 0 is no queue (the `/logtest` route refuses it as missing).
+constexpr int MIN_QUEUE_ID {0x01};
 /// Highest queue identifier an event may carry: the indexer maps the queue field as a signed byte.
 constexpr int MAX_QUEUE_ID {0x7F};
 
@@ -25,8 +27,8 @@ constexpr int MAX_QUEUE_ID {0x7F};
  * @param event Wazuh message
  * @param agentMetadata Agent metadata information
  * @return Event Event object
- * @throw std::runtime_error if the message is not a valid Wazuh legacy message, including a queue byte above
- * MAX_QUEUE_ID
+ * @throw std::runtime_error if the message is not a valid Wazuh legacy message, including a queue byte outside
+ * MIN_QUEUE_ID..MAX_QUEUE_ID
  * @note The message must be in the format: "queue:location:message"
  */
 Event parseLegacyEvent(std::string_view event, const json::Json& agentMetadata);

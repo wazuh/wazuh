@@ -10,10 +10,11 @@ This guide describes how to migrate Wazuh agents from 4.X to 5.0.0, including:
 > [!IMPORTANT]
 > This page covers **agents** only. A Wazuh **manager** cannot be upgraded in place from 4.x: `install.sh`, the
 > DEB `preinst` and the RPM `%pre` all refuse a manager whose installed version is older than 5.x, and nothing
-> is changed:
+> is changed. The packages print the refusal below; `install.sh` prints the same block with
+> `ERROR: Upgrade from Wazuh manager versions prior to 5.x is not supported.` as its error line:
 >
 > ```console
-> ERROR: Upgrade from Wazuh manager versions prior to 5.x is not supported.
+> ERROR: A Wazuh manager older than 5.0 is installed on this host: Wazuh manager 5.x can neither upgrade it nor be installed beside it.
 >
 > Detected installed version: 4.14.0
 >

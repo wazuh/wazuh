@@ -125,7 +125,9 @@ class Body(Model):
     @classmethod
     def validate_content_type(cls, request, expected_content_type):
         """Raise 6002 (HTTP 415) unless the request mimetype is the expected one (a string) or one of the expected
-        ones (any other collection of strings). A request with no Content-Type has no mimetype and is refused too."""
+        ones (any other collection of strings). A request with no Content-Type is refused too: the header is read
+        raw, because the request object reports a missing one as `application/octet-stream`, which an operation
+        may accept."""
         expected = {expected_content_type} if isinstance(expected_content_type, str) else set(expected_content_type)
-        if request.mimetype not in expected:
+        if not request.headers.get('content-type', '').strip() or request.mimetype not in expected:
             raise_if_exc(WazuhUnsupportedMediaType(6002))

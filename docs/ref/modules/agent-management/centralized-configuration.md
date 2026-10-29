@@ -64,7 +64,12 @@ alternatives).
 | `name` | The agent's name |
 | `profile` | The agent's `<agent><config-profile>` in its local `ossec.conf` |
 
-`overwrite` is accepted and ignored; any other attribute is logged as an error and ignored.
+`overwrite` is accepted and ignored. Any other attribute is refused on the manager: `verify-agent-conf`
+prints `(1233): Invalid attribute '<name>' in the configuration: '<file>'.` and exits non-zero, and
+`PUT /groups/{group_id}/configuration` answers `400` with error `1114` naming the attribute, so the file is
+not stored. An agent that still receives such a block (a file placed in `/etc/wazuh-manager/shared/<group>/`
+by hand) logs the same error and does not treat the unknown attribute as a filter: it applies the block as
+if the attribute were absent (with no other attribute, on every agent of the group).
 
 ```xml
 <agent_config os="Linux">

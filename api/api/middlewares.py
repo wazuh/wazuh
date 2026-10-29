@@ -2,7 +2,6 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-import binascii
 import ipaddress
 import json
 import hashlib
@@ -14,7 +13,7 @@ import asyncio
 
 from typing import Optional
 
-from starlette.requests import Request
+from starlette.requests import ClientDisconnect, Request
 from starlette.responses import Response
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 from starlette.middleware.cors import CORSMiddleware
@@ -351,7 +350,7 @@ async def access_log(request: ConnexionRequest, response: Response, prev_time: t
     if body_read and (log_body or path == RUN_AS_LOGIN_ENDPOINT):
         try:
             body = await request.json()
-        except RecursionError:
+        except (ClientDisconnect, json.JSONDecodeError, RecursionError):
             body = {}
 
     # Neither the query nor the body is masked here. `custom_logging` redacts both, recursively
@@ -364,7 +363,12 @@ async def access_log(request: ConnexionRequest, response: Response, prev_time: t
         try:
             auth_type, user_passw = AbstractSecurityHandler.get_auth_header_value(request)
             if auth_type == 'basic':
-                user, _ = base64.b64decode(user_passw).decode("latin1").split(":", 1)
+                # A credential with no colon -- including a value that decodes to nothing, as
+                # non-alphabet characters are discarded -- names no user. connexion refuses it with a
+                # 401; it must not be turned into a 500 here, after the response was produced.
+                user, separator, _ = base64.b64decode(user_passw).decode("latin1").partition(":")
+                if not separator:
+                    user = UNKNOWN_USER_STRING
             elif auth_type == 'bearer':
                 s = jwt.decode(user_passw, generate_keypair()[1],
                             algorithms=[JWT_ALGORITHM],
@@ -376,7 +380,7 @@ async def access_log(request: ConnexionRequest, response: Response, prev_time: t
         # `WazuhInternalError` covers a keypair that could not be read (6003). This runs after the
         # response has already been produced, so a transient failure here must degrade the logged
         # username, never turn a served response into a 500.
-        except (KeyError, IndexError, binascii.Error, jwt.exceptions.PyJWTError, OAuthProblem,
+        except (KeyError, IndexError, ValueError, jwt.exceptions.PyJWTError, OAuthProblem,
                 WazuhInternalError):
             user = UNKNOWN_USER_STRING
 
@@ -879,7 +883,14 @@ class WazuhAccessLoggerMiddleware(BaseHTTPMiddleware):
         content_length = get_declared_content_length(request)
         if content_length is not None and 0 < content_length <= max_cached_body:
             # Related to https://github.com/wazuh/wazuh/issues/24060.
-            await request.body()
+            try:
+                await request.body()
+            except ClientDisconnect:
+                # Keep the request flowing through authentication and rate limiting even when the
+                # peer disappears before sending its declared body. BaseHTTPMiddleware replays this
+                # cached empty body downstream, so neither the endpoint nor access_log reads the
+                # disconnected receive channel again.
+                request._body = b''
 
         response = await call_next(request)
 

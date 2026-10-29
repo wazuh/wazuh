@@ -5,11 +5,43 @@
 
 #include <filesystem>
 #include <memory>
+#include <stdexcept>
 #include <string>
 #include <string_view>
 
 namespace streamlog
 {
+
+/**
+ * @brief Check a channel name against the channel naming rules, without creating anything.
+ *
+ * A name is valid when it is not empty, has at most 255 characters and only contains alphanumeric characters,
+ * underscores and dashes. `ensureAndGetWriter()` applies the same rule before it creates a channel.
+ *
+ * @param channelName The channel name to check.
+ * @throws std::runtime_error If the name breaks a rule.
+ */
+inline void validateChannelName(std::string_view channelName)
+{
+    if (channelName.empty())
+    {
+        throw std::runtime_error("Channel name cannot be empty");
+    }
+    if (channelName.length() > 255)
+    {
+        throw std::runtime_error("Channel name cannot exceed 255 characters");
+    }
+
+    for (const char c : channelName)
+    {
+        const bool valid =
+            (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '_' || c == '-';
+        if (!valid)
+        {
+            throw std::runtime_error("Channel name can only contain alphanumeric characters, underscores, and dashes");
+        }
+    }
+}
 
 /**
  * @brief Configuration for a single log channel's rotation and compression policy.

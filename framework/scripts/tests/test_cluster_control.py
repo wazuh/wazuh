@@ -260,7 +260,7 @@ async def test_main(get_cluster_status_mock, read_config_mock, check_cluster_con
             self.health = False
             self.usage = False
             self.debug = False
-            self.filter_node = False
+            self.filter_node = None  # argparse's default when -fn is not given
 
     class ExclusiveMock:
         """Auxiliary class."""
@@ -461,6 +461,28 @@ def test_main_exits_non_zero_on_internal_error(read_config_mock, check_cluster_c
 
     print_mock.assert_called_once_with('Internal error: boom')
     exit_mock.assert_called_once_with(1)
+
+
+@pytest.mark.parametrize('argv, reason', [
+    (['-a', '-fn', 'node01'], 'only allowed with -l/--list-nodes or -i/--health'),
+    (['-a', '-fn', 'unknown'], 'only allowed with -l/--list-nodes or -i/--health'),
+    (['-fn', 'node01'], 'only allowed with -l/--list-nodes or -i/--health'),
+    (['-u', '-fn', 'node01'], 'only allowed with -l/--list-nodes or -i/--health'),
+    (['-l', '-fn'], 'expected at least one node name'),
+    (['-i', '-fn'], 'expected at least one node name'),
+])
+@patch('scripts.cluster_control.asyncio.run')
+@patch('wazuh.core.cluster.utils.read_config', return_value='')
+def test_main_rejects_misplaced_node_filter(read_config_mock, asyncio_run_mock, argv, reason, capsys):
+    """-fn filters only -l and -i, and needs a node name: anything else is an argument error (exit code 2)."""
+    with patch('sys.argv', ['cluster_control', *argv]):
+        with pytest.raises(SystemExit) as exit_info:
+            cluster_control.main()
+
+    assert exit_info.value.code == 2
+    assert f'argument -fn/--filter-node: {reason}' in capsys.readouterr().err
+    read_config_mock.assert_not_called()
+    asyncio_run_mock.assert_not_called()
 
 
 @pytest.mark.parametrize('statuses', [['bogus'], ['active', 'bogus']])

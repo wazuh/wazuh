@@ -9,6 +9,9 @@
 #   host 31518 -> nginx   :1518  TLS termination      (per request)
 #   host 41517/41518/41519       straight to master / worker1 / worker2, no balancer
 #
+# A 5.x agent opens one connection per request, so its HTTPS traffic is spread per
+# request under both models; per connection matters only to a client that reuses one.
+#
 # Static addresses, because the listener certificates carry them as IP SANs.
 
 # The probe image is built separately; see the README. It mounts BOTH this directory's
@@ -114,8 +117,9 @@ services:
     depends_on: [wazuh-master, wazuh-worker1, wazuh-worker2]
 
   # ---- Real 4.x agent, legacy channel, through the same balancer ----------------
-  # Enrollment on 1515 reaches the master only; events on 1514 are spread across all
-  # three nodes. This is the mixed-fleet front end a migration actually needs.
+  # Enrollment on 1515 and events on 1514 are spread across all three nodes (a worker
+  # forwards the enrollment to the master). This is the mixed-fleet front end a
+  # migration actually needs.
   wazuh-agent4-a:
     image: lab-agent4:4.14.1
     hostname: wazuh-agent4-a
@@ -140,7 +144,7 @@ services:
   # verification_mode full is deliberate: it checks the hostname, which is what makes
   # the per-node SAN work of generate_certs.sh meaningful. Under passthrough the agent
   # validates the BACKEND leaf while dialling the balancer name, so every node's SAN
-  # has to carry that name (FINDINGS.md L-01).
+  # has to carry that name (the SAN rule, section 6 of docs/ref/modules/cluster/lb.md).
   wazuh-agent5-term:
     image: lab-agent5:branch
     hostname: wazuh-agent5-term

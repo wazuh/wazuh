@@ -115,6 +115,12 @@ cJSON* __wrap_wdb_get_distinct_agent_groups(__attribute__((unused)) int* sock)
     return mock_ptr_type(cJSON*);
 }
 
+time_t __wrap_get_agent_date_added(int agent_id)
+{
+    check_expected(agent_id);
+    return mock_type(time_t);
+}
+
 int __wrap_wdb_insert_agent(int id,
                             const char* name,
                             __attribute__((unused)) const char* ip,

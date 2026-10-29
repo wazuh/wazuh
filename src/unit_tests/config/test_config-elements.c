@@ -298,6 +298,58 @@ static void test_sca_deprecated_schedule_is_warning(void **state) {
 
 #ifndef TEST_AGENT_TARGET
 
+/* A group's agent.conf as the manager validates it: the root is <agent_config>,
+ * never the configuration root write_conf() adds. */
+static int write_agent_conf(const char *body) {
+    FILE *fp = fopen(TEST_CONF_PATH, "w");
+
+    if (!fp) {
+        return -1;
+    }
+
+    fputs(body, fp);
+    fclose(fp);
+
+    return 0;
+}
+
+/* On the manager an unknown <agent_config> attribute fails the read, so
+ * verify-agent-conf (and PUT /groups/{group_id}/configuration behind it) refuses
+ * the file instead of storing a block the agents would apply to every host. */
+static void test_agent_config_unknown_attribute_is_fatal(void **state) {
+    if (write_agent_conf("<agent_config bogus=\"1\"><localfile><log_format>syslog</log_format>"
+                         "<location>/var/log/test.log</location></localfile></agent_config>") != 0) {
+        fail();
+    }
+
+    expect_string(__wrap__merror, formatted_msg,
+                  "(1233): Invalid attribute 'bogus' in the configuration: 'test_config-elements.conf'.");
+
+    assert_int_equal(ReadConfig(CAGENT_CONFIG | CLOCALFILE, TEST_CONF_PATH, NULL, NULL), OS_INVALID);
+}
+
+/* The rejection is per attribute: a known one in front of the unknown one does not hide it. */
+static void test_agent_config_unknown_attribute_after_known_is_fatal(void **state) {
+    if (write_agent_conf("<agent_config name=\"web\" nmae=\"db\"></agent_config>") != 0) {
+        fail();
+    }
+
+    expect_string(__wrap__merror, formatted_msg,
+                  "(1233): Invalid attribute 'nmae' in the configuration: 'test_config-elements.conf'.");
+
+    assert_int_equal(ReadConfig(CAGENT_CONFIG | CLOCALFILE, TEST_CONF_PATH, NULL, NULL), OS_INVALID);
+}
+
+/* The four documented attributes stay accepted. */
+static void test_agent_config_known_attributes_are_valid(void **state) {
+    if (write_agent_conf("<agent_config name=\"web\" os=\"Linux\" profile=\"p1\" overwrite=\"yes\">"
+                         "</agent_config>") != 0) {
+        fail();
+    }
+
+    assert_int_equal(ReadConfig(CAGENT_CONFIG | CLOCALFILE, TEST_CONF_PATH, NULL, NULL), 0);
+}
+
 /* Read_Global_JSON(): the `global` section of the effective document (manager only). */
 static void test_Read_Global_JSON_accepts_int_and_duration(void **state) {
     _Config config = { .agents_disconnection_time = 900 };
@@ -353,6 +405,9 @@ int main(void) {
         cmocka_unit_test_teardown(test_sca_deprecated_schedule_is_warning, teardown_conf_file),
 #endif
 #ifndef TEST_AGENT_TARGET
+        cmocka_unit_test_teardown(test_agent_config_unknown_attribute_is_fatal, teardown_conf_file),
+        cmocka_unit_test_teardown(test_agent_config_unknown_attribute_after_known_is_fatal, teardown_conf_file),
+        cmocka_unit_test_teardown(test_agent_config_known_attributes_are_valid, teardown_conf_file),
         cmocka_unit_test(test_Read_Global_JSON_accepts_int_and_duration),
         cmocka_unit_test(test_Read_Global_JSON_absent_keeps_defaults),
         cmocka_unit_test(test_Read_Global_JSON_rejects_zero_disconnection_time),

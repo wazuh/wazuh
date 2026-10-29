@@ -415,6 +415,19 @@ int ReadConfig(int modules, const char *cfgfile, void *d1, void *d2)
                     } else {
                         merror(XML_INVATTR, node[i]->attributes[attrs],
                                cfgfile);
+#ifndef CLIENT
+                        /* On the manager this read only validates a group's agent.conf
+                         * (verify-agent-conf, behind PUT /groups/{group_id}/configuration).
+                         * An unknown attribute is not a filter the agent can evaluate: the
+                         * agent logs it and applies the block to every host, so a typo such
+                         * as <agent_config nmae="web"> would reach the whole fleet. Refuse
+                         * it here so the file is never stored. The agent-side read is left
+                         * unchanged. */
+                        OS_ClearNode(chld_node);
+                        OS_ClearNode(node);
+                        OS_ClearXML(&xml);
+                        return (OS_INVALID);
+#endif
                     }
                     attrs++;
                 }

@@ -316,8 +316,10 @@
                   "$ref": "#/definitions/size"
                 }
               ],
+              "maximum": 1073741824,
+              "pattern": "^0*(([1-9][0-9]{0,8}|10[0-6][0-9]{7}|107[0-2][0-9]{6}|1073[0-6][0-9]{5}|10737[0-3][0-9]{4}|1073740[0-9]{3}|1073741[0-7][0-9]{2}|10737418[01][0-9]|107374182[0-4])[bB]?|([1-9][0-9]{0,5}|10[0-3][0-9]{4}|104[0-7][0-9]{3}|1048[0-4][0-9]{2}|10485[0-6][0-9]|104857[0-6])[kK]|([1-9][0-9]{0,2}|10[01][0-9]|102[0-4])[mM]|1[gG])$",
               "default": "10M",
-              "description": "Maximum HTTP request body the transport accepts; a larger request is dropped without a response. Keep it above remoted.auth_max_body_size (internal option, 5 MiB by default)."
+              "description": "Maximum HTTP request body the transport accepts, at most 1G (1073741824 bytes); a larger request is dropped without a response. Keep it above remoted.auth_max_body_size (internal option, 5 MiB by default). Memory: request bodies are buffered whole while they are read, so the read-phase peak is about the number of concurrent connections (remoted.max_parallel_connections, internal option, 256 by default) times this value."
             },
             "dual_stack": {
               "type": "boolean",

@@ -62,7 +62,7 @@ the master to the workers:
 
 | Path | Files | Mode written on the worker |
 |---|---|---|
-| `/etc/wazuh-manager/` | `client.keys`, `authd.pass`, `enrollment_tokens.json` | `0640` |
+| `/etc/wazuh-manager/` | `client.keys`, `authd.pass`, `enrollment_tokens.json` | `0660` |
 | `/etc/wazuh-manager/shared/` | everything, recursively (group configuration) | `0660` |
 | `var/multigroups/` | `merged.mg`, recursively | `0660` |
 
@@ -86,9 +86,24 @@ cluster traffic is encrypted with per-connection keys derived from `<cluster><ke
 
 When a worker connects, the master refuses it if its node name is not made of letters, digits, `_`
 and `-` (error `3060`), is already connected (`3028`) or equals the master's own (`3029`), if its
-`<cluster><name>` differs (`3030`), or if its Wazuh version differs (`3031`). A worker whose key does
-not match cannot decrypt the master's messages (`3025`). A worker that loses the connection retries
-every 10 seconds.
+`<cluster><name>` differs (`3030`), or if its Wazuh version differs (`3031`); the worker logs each of
+these refusals as `Could not connect to master: <error>`. A worker whose key does not match is not told
+why: the master cannot decrypt its messages, logs `3025` (`Could not decrypt message`) in its own
+`cluster.log` and closes the connection. The worker logs `The master closed the connection` (INFO) on
+every attempt and, after 3 such attempts in a row that never completed the handshake (and every 30
+more after that), a WARNING: `The master closed the connection before the handshake completed <n> times
+in a row. Check that the cluster key of this node is the same as the master's …`. The count spans the
+reconnections and starts again from 0 after a handshake that completes, or when clusterd restarts. A
+worker that loses the connection retries every 10 seconds.
+
+On the master, a connection that closes before identifying itself (a port probe or a load-balancer
+health check, for instance) is logged at INFO as `Connection from <ip> closed before the handshake
+completed.` when it closes cleanly. One that resets the connection instead (a TCP RST: HAProxy
+`mode tcp` checks, port scanners, or a peer that closes with data still unread) is logged today as an
+ERROR, `Error during handshake with incoming connection: [Errno 104] Connection reset by peer.`,
+followed by a traceback; it is harmless and changes nothing on the master. When the master itself
+closed the connection (a refusal, a deadline, a message it cannot decrypt), only that reason is
+logged.
 
 Periodic tasks, with their intervals (internal, not configurable):
 
@@ -147,7 +162,7 @@ command-line options, for running it by hand:
 | `-d` | Enable debug messages; repeat (`-dd`) for more verbosity |
 | `-V` | Print the version and exit |
 | `-r` | Run as root instead of dropping privileges to `wazuh-manager` |
-| `-t` | Read and check the cluster configuration, then exit (`0` when valid, `1` otherwise). A valid configuration prints nothing; a refused one prints `ERROR: <reason>` on standard error and also writes it to `logs/cluster.log` |
+| `-t` | Read and check the cluster configuration, then exit (`0` when valid, `1` otherwise). A valid configuration prints nothing; a refused one prints `ERROR: <reason>` on standard error, and also writes it to `logs/cluster.log` only when the file checked is the live configuration (a copy named with `-c` reports on standard error only) |
 | `-c <file>` | Configuration file to read the `<cluster>` section from (default `/etc/wazuh-manager/wazuh-manager.conf`) |
 | `-h` | Print the help and exit |
 
@@ -182,11 +197,12 @@ it works on any node (a worker forwards node and health queries to the master).
 | `-h`, `--help` | Print the help |
 
 `-a`, `-l`, `-i` and `-u` are mutually exclusive; with none of them the help is printed. A wrong combination of
-arguments (for example `-fs` without `-a`, or a status `-fs` does not know) prints the usage and the reason on standard error and exits
+arguments (for example `-fs` without `-a`, `-fn` without `-l` or `-i` or with no node name, or a status `-fs` does not know) prints the usage and the reason on standard error and exits
 `2`, before the cluster configuration is read. An error is
 printed as `Error <code>: <message>` (as `agent_groups` prints it), or `Internal error: <message>`,
 and the command exits `1`: a node named with `-fn` that is not connected gives
-`Error 1730: Node does not exist`, with `-l` and `-i` alike. For example:
+`Error 1730: Node does not exist`, with `-l` and `-i` alike and on a worker too, which relays the
+master's answer at once. For example:
 
 ```bash
 /var/wazuh-manager/bin/cluster_control -l

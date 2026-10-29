@@ -64,8 +64,9 @@ defaults
 
     timeout connect 5s
 
-    # [!] Idle timeout on the connection FROM THE AGENT. Agents keep connections open
-    # between events, so this one will fire; the agent reconnects and resends.
+    # [!] Idle timeout on the connection FROM THE AGENT. A 5.x agent opens a new
+    # connection per request and closes it after the answer, so this rarely fires;
+    # when it does, the agent reconnects and resends.
     timeout client  60s
 
     # [!] How long to wait for the manager's answer. remoted gives itself 30 s per
@@ -90,8 +91,9 @@ frontend passthrough_in
 backend remoted_nodes_tcp
     mode tcp
 
-    # 'balance source' would pin each agent address to one manager; the default is
-    # round-robin over whole connections.
+    # The default is round-robin over connections. A 5.x agent opens one connection per
+    # request, so its requests alternate between managers just as under termination.
+    # 'balance source' pins each agent address to one manager instead (optional).
     server node1 10.0.0.11:1517 check
     server node2 10.0.0.12:1517 check
 
@@ -128,6 +130,11 @@ backend remoted_nodes_http
     # Informational. Safe to add: headers are not covered by the bearer token.
     http-request set-header X-Real-IP %[src]
     option forwardfor
+
+    # [!] Never send a request over a pooled idle connection: remoted closes one after
+    # 10 s idle (remoted.http_read_timeout), and HAProxy's pool does not close idle
+    # connections at a fixed age below that. See 3.7.
+    http-reuse never
 
     # [!] Retries. The default 'retry-on conn-failure' only retries what was never
     # delivered, which cannot duplicate anything. See 3.5 before widening it.
@@ -229,6 +236,17 @@ flowchart LR
 The limitation is remoted's, not HAProxy's: the health probe reports that the process is alive, not that the
 pipeline works. A manager whose analysis engine is down still answers `200` and stays in rotation.
 
+### 3.7. Backend connection reuse: `http-reuse never`
+
+remoted closes a backend connection left idle for 10 s (`remoted.http_read_timeout`). A request HAProxy sends
+over a pooled connection remoted is closing at that moment fails with `502`. HAProxy purges its pool of idle
+backend connections gradually (`pool-purge-delay`, 5 s by default, closes half of them at each pass), not at a
+fixed idle age, so a pooled connection can outlive remoted's 10 s. Set `http-reuse never` in the termination
+backend: every request opens its own
+TLS connection to remoted. It costs nothing with 5.x agents: under the default `http-reuse safe` only a client's
+second request on the same connection may reuse a pooled one, and a 5.x agent sends one request per connection.
+It does not apply to passthrough (`mode tcp`), where HAProxy keeps no pool.
+
 ## 4. Coming from NGINX
 
 | Concept | NGINX | HAProxy |
@@ -296,5 +314,5 @@ What each status code tells you:
 
 The load-balancer lab in the source tree runs one working configuration,
 `src/remoted/remoted_module/tools/load_balancer/base/haproxy/haproxy.cfg` (passthrough on 1517,
-termination on 1518, termination with a leaf from another CA on 1519, legacy 1514/1515, statistics
+termination on 1518, termination with a leaf from another CA on 1519, legacy 1514 and 1515 to every node, statistics
 on 8404).

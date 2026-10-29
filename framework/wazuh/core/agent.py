@@ -29,6 +29,7 @@ from wazuh.core.utils import (
     WazuhDBQuery,
     WazuhDBQueryGroupBy,
     WazuhDBBackend,
+    escape_like,
     validate_query,
     get_utc_now,
     get_date_from_timestamp,
@@ -71,6 +72,67 @@ GROUP_FILES_REQUIRED_FIELDS = ["filename"]
 # into a per-agent envelope this side can act on. Timing out here first would abandon a request the
 # manager was still correctly working on -- and leave its tasks created but unreported.
 UPGRADE_TIMEOUT = 240
+
+# An agent version as a `q` ordering operand: 'v5.0.0', '5.0.0' or 4.x's 'Wazuh v4.14.5', optionally
+# shortened to major or major.minor and with a pre-release suffix, which is ignored.
+_VERSION_OPERAND_REGEX = re.compile(r"^(?:wazuh\s*)?v?(\d+)(?:\.(\d+))?(?:\.(\d+))?(?:-[\w.]*)?$", re.IGNORECASE)
+# Weights that turn major.minor.patch into one integer ordered like the version.
+_VERSION_KEY_WEIGHTS = (1000000000000, 1000000, 1)
+
+
+def version_order_key(version: str) -> int:
+    """Turn a version given as a `q` ordering operand into the integer `version_order_sql` compares it with.
+
+    Parameters
+    ----------
+    version : str
+        Version, e.g. 'v5.0.0', '4.14.5' or 'Wazuh v4.14.5'.
+
+    Raises
+    ------
+    WazuhError(1407)
+        The value is not a version.
+
+    Returns
+    -------
+    int
+        Ordering key of the version.
+    """
+    match = _VERSION_OPERAND_REGEX.match(str(version).strip())
+    if not match:
+        raise WazuhError(
+            1407,
+            extra_message=f"'{version}' is not a version: use 'vX.Y.Z' to compare agent versions",
+        )
+    return sum(int(part or 0) * weight for part, weight in zip(match.groups(), _VERSION_KEY_WEIGHTS))
+
+
+def version_order_sql(column: str) -> tuple:
+    """Build the SQL that orders the agent versions stored in `column` as versions, not as text.
+
+    Agents store their version as 'v5.0.0' (5.x) or 'Wazuh v4.14.5' (4.x), so the text order puts every 4.x
+    agent after every 5.x one and 'v5.10.0' before 'v5.9.0'.
+
+    Parameters
+    ----------
+    column : str
+        Column holding the version.
+
+    Returns
+    -------
+    tuple
+        A condition true only for a stored 'X.Y.Z' version (a never-connected agent has none), and the
+        integer expression `version_order_key` returns for the same version.
+    """
+    bare = f"LTRIM(LOWER({column}), 'wazuh v')"
+    after_major = f"SUBSTR({bare}, INSTR({bare}, '.') + 1)"
+    after_minor = f"SUBSTR({after_major}, INSTR({after_major}, '.') + 1)"
+    weights = _VERSION_KEY_WEIGHTS
+    key = (
+        f"(CAST({bare} AS INTEGER) * {weights[0]} + CAST({after_major} AS INTEGER) * {weights[1]} + "
+        f"CAST({after_minor} AS INTEGER) * {weights[2]})"
+    )
+    return f"{bare} GLOB '[0-9]*.[0-9]*.[0-9]*'", key
 
 
 class WazuhDBQueryAgents(WazuhDBQuery):
@@ -231,11 +293,11 @@ class WazuhDBQueryAgents(WazuhDBQuery):
             del self.fields["id"]
             WazuhDBQuery._add_search_to_query(self)
             self.fields["id"] = "id"
-            self.query = self.query[:-1] + " OR id LIKE :search_id)"
+            self.query = self.query[:-1] + " OR id LIKE :search_id ESCAPE '\\')"
             self.request["search_id"] = (
                 int(self.search["value"])
                 if self.search["value"].isdigit()
-                else re.sub(f"[{self.special_characters}]", "_", self.search["value"])
+                else escape_like(self.search["value"])
             )
 
     def _format_data_into_dictionary(self) -> dict:
@@ -356,7 +418,12 @@ class WazuhDBQueryAgents(WazuhDBQuery):
         WazuhError(1409)
             If the operator of the filter is not valid.
         """
-        if field_name == "group" and q_filter["value"] is not None:
+        if field_name == "version" and q_filter["operator"] in ("<", ">") and q_filter["value"] is not None:
+            # Compared as versions: the stored text ('Wazuh v4.14.5', 'v5.0.0') does not order like one.
+            is_version, key = version_order_sql(self.fields[field_name])
+            self.query += f"{is_version} AND {key} {q_filter['operator']} :{field_filter}"
+            self.request[field_filter] = version_order_key(q_filter["value"])
+        elif field_name == "group" and q_filter["value"] is not None:
             valid_group_operators = {"=", "!=", "~"}
 
             # Group names are case-sensitive (two names that differ only in case are two groups), so '=' and '!='
@@ -370,8 +437,8 @@ class WazuhDBQueryAgents(WazuhDBQuery):
                 self.query += f"NOT instr(',' || {self.fields[field_name]} || ',', :{field_filter}) > 0"
                 self.request[field_filter] = f",{q_filter['value']},"
             elif q_filter["operator"] == "LIKE":
-                self.query += f"{self.fields[field_name]} LIKE :{field_filter}"
-                self.request[field_filter] = f"%{q_filter['value']}%"
+                self.query += f"{self.fields[field_name]} LIKE :{field_filter} ESCAPE '\\'"
+                self.request[field_filter] = f"%{escape_like(q_filter['value'])}%"
             else:
                 raise WazuhError(
                     1409,

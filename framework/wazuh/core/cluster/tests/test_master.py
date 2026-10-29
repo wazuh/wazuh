@@ -1022,11 +1022,36 @@ async def test_manager_handler_send_agent_groups_information(asyncwazuhdbconnect
 
     await master_handler.send_agent_groups_information("test_info")
     master_handler.agent_groups.sync.assert_called_once_with(
-        start_time=master_handler.send_agent_groups_status["date_start"], chunks="test_info")
+        start_time=datetime.strptime(master_handler.send_agent_groups_status["date_start"],
+                                     DECIMALS_DATE_FORMAT).replace(tzinfo=timezone.utc).timestamp(),
+        chunks="test_info")
 
     assert master_handler.task_loggers["Agent-groups send"]._info == ['Starting.']
     assert master_handler.task_loggers["Agent-groups send"]._error == [
         "Error sending agent-groups information to worker_test: object MagicMock can't be used in 'await' expression"]
+    # A failed send records no end and no chunks.
+    assert master_handler.send_agent_groups_status["date_end"] == DEFAULT_DATE
+    assert master_handler.send_agent_groups_status["n_synced_chunks"] == 0
+
+
+@pytest.mark.asyncio
+@freeze_time("2026-10-29 10:00:00")
+async def test_manager_handler_send_agent_groups_information_records_status():
+    """Check that the incremental agent-groups send records its end time and chunk count for the health check."""
+    master_handler = get_master_handler()
+    master_handler.name = "worker_test"
+    master_handler.task_loggers["Agent-groups send"] = MagicMock()
+    master_handler.agent_groups = MagicMock()
+    master_handler.agent_groups.sync = AsyncMock()
+
+    await master_handler.send_agent_groups_information(["chunk1", "chunk2"])
+
+    master_handler.agent_groups.sync.assert_awaited_once_with(
+        start_time=datetime(2026, 10, 29, 10, tzinfo=timezone.utc).timestamp(), chunks=["chunk1", "chunk2"])
+    assert master_handler.send_agent_groups_status == {'date_start': '2026-10-29T10:00:00.000000Z',
+                                                       'date_end': '2026-10-29T10:00:00.000000Z',
+                                                       'n_synced_chunks': 2}
+    master_handler.task_loggers["Agent-groups send"].error.assert_not_called()
 
 
 @pytest.mark.asyncio

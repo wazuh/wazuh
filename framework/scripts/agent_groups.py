@@ -282,7 +282,7 @@ async def create_group(group_id: str, quiet: bool = False):
 
 def usage():
     msg = """
-    {0} [ -l [ -g group_id ] | -c -g group_id | -a (-i agent_id -g group_id | -g group_id) [-q] [-f] | -s -i agent_id | -r (-g group_id | -i agent_id) [-q] ]
+    {0} [ -l [ -g group_id ] | -c -g group_id | -a -i agent_id -g group_id [-q] [-f] | -a -g group_id [-q] | -s -i agent_id | -r -i agent_id [-g group_id] [-q] | -r -g group_id [-q] | -u ]
 
     Usage:
     \t-l                                    # List all groups
@@ -310,6 +310,7 @@ def usage():
 
     \t-q, --quiet (no confirmation)
     \t-d, --debug
+    \t-u, --usage
     """.format(basename(argv[0]))
     print(msg)
 
@@ -395,6 +396,9 @@ async def main():
             invalid_option("Missing agent ID or group.")
     elif args.usage:
         usage()
+    # -g/-i name what an action works on: without one they would silently list every group
+    elif args.group_id or args.agent_id:
+        invalid_option("Missing action: -l, -c, -a, -s or -r.")
     # ./agent_groups.py
     else:
         await show_groups()

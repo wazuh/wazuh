@@ -112,8 +112,8 @@ not a limitation of any product.
 
 | | Passthrough | Termination |
 |---|---|---|
-| Balances per | whole connection | **individual request** |
-| Agent gets "stuck" to one manager | yes, while its connection lives | no |
+| Balances per | whole connection — in practice per request, since a 5.x agent opens a new connection for each | **individual request** |
+| Agent gets "stuck" to one manager | no, unless the balancer adds stickiness (for example `balance source`) | no |
 | Can filter / cap request sizes | ❌ | ✅ |
 | Per-request logs and metrics | ❌ | ✅ |
 | Certificate agents validate | every manager's leaf (one CA), each carrying the agent-facing name | **one**, the balancer's |
@@ -197,9 +197,10 @@ flowchart LR
     R -->|"③ request budget, 30 s"| E["engine"]
 ```
 
-* **①** Balancers close idle connections (60 s on an AWS ALB). Agents keep connections open between
-  events, so this will happen. The failure is clean and immediate at transport level, nothing was
-  consumed, and the agent simply reconnects and resends.
+* **①** Balancers close idle connections (60 s on an AWS ALB). A 5.x agent opens a new TCP and TLS
+  connection for every request and closes it after the answer, so this rarely fires. When it does,
+  the failure is clean and immediate at transport level, nothing was consumed, and the agent simply
+  reconnects and resends.
 * **②** Must be **above 30 s** (for example 60 s), remoted's own per-request budget. A shorter
   value cuts off requests that were still legitimately in progress — and, if the proxy then retries
   them on another manager, the same event can be processed twice. A value exactly equal races
@@ -211,7 +212,8 @@ One more clock runs on the backend connection itself: remoted closes an idle kee
 after `remoted.http_read_timeout` (10 s by default). It also closes the connection after a `404` for a
 path no route matches, the `403` of `verification_mode` `full`, and a `503` shed by its in-flight byte
 budget; every other answer leaves it open. Keep the proxy's idle time for reusable backend connections below 10 s (NGINX:
-`keepalive_timeout 5s;` in the `upstream`), or a request sent on a connection remoted has already
+`keepalive_timeout 5s;` in the `upstream`; HAProxy: `http-reuse never`, see
+[HAProxy 3.7](haproxy.md#37-backend-connection-reuse-http-reuse-never)), or a request sent on a connection remoted has already
 closed fails with `502`.
 
 ### 4.6. Health checks
@@ -369,10 +371,12 @@ the balancer preserves the client address at network level.
 > only what a proxy operator has to know.
 
 Under termination each request is routed independently, so **any manager can receive any request
-from any agent at any time**. Under passthrough the granularity is the **connection**, not the
-request: an agent that keeps one connection open stays on one node for its lifetime. Both models
-are supported; the deployment has to know which one it picked, because it decides how visible
-everything below is.
+from any agent at any time**. Under passthrough the granularity is the **connection**, but a 5.x
+agent opens a new connection for every request (and remoted closes one left idle for 10 s), so its
+consecutive requests also land on different nodes. Under either model, plan for every request of an
+agent reaching any node — including the first seconds after its enrollment, when a worker does not
+know it yet ([§7.1 of the cluster page](../../cluster/lb.md#71-replicated-state-brief-401s-after-enrollment)).
+Source-address stickiness on the balancer is an optional mitigation, not a requirement.
 
 Everything else about a balanced cluster is on the cluster pages, which own it:
 

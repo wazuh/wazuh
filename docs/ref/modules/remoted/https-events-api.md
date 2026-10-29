@@ -319,7 +319,8 @@ reserved, are design records kept in the developer README
 - A missing `Content-Encoding` header is treated exactly like today: the body is passed through
   unchanged.
 - Any `Content-Encoding` value other than `zstd` — including `gzip`, which was intentionally dropped
-  in favor of zstd-only support — is rejected with `415`. The same happens to `zstd` itself when
+  in favor of zstd-only support, and an empty value (`Content-Encoding:` with nothing after it), which
+  is a header naming no encoding rather than a missing one — is rejected with `415`. The same happens to `zstd` itself when
   `remoted.http_content_encoding_enabled` is disabled.
 - A `Content-Encoding: zstd` body that isn't a valid, complete zstd frame (bad magic, truncated,
   unreadable header) is rejected with `400`. Note the distinction from `413` above: `400` means the
@@ -343,6 +344,13 @@ deliberately coarser than the manager's own diagnosis (which stays in its log an
 | `token_unknown` / `token_expired` / `token_revoked` | `Bearer error="invalid_token", error_description="token_…"` | `POST /enroll` only: the enrollment token's own state | obtain a new token from the operator |
 | `enrollment_key_unavailable` | `Bearer` (no error code: the server could not judge the credential) | `POST /enroll` only, Password mode: the manager's enrollment password is not available on this node | retry later; nothing to fix on the agent |
 
+On a cluster, `unknown_agent` can also be **transient**: a worker answers it for an agent enrolled a
+few seconds earlier (on the master, or forwarded by any node), until the new `client.keys` reaches
+that worker through the cluster's integrity sync — about 10 seconds, occasionally a few more. An agent
+that lands on such a worker right after enrolling (for example behind a round-robin load balancer)
+recovers on its own once the key has arrived — by retrying, or, where it took the answer for the loss
+of its identity, by enrolling again; nothing has to be done on the manager.
+
 Everything below the `401` rows keeps a numeric `code` equal to the HTTP status.
 
 | Condition                                                                                                                                                                               | HTTP  | `error` message                             |
@@ -354,7 +362,7 @@ Everything below the `401` rows keeps a numeric `code` equal to the HTTP status.
 | Stale token: expired, older than the accepted age, or issued in the future (class `stale_token`)                                                                                        | `401` | `Invalid client authentication`             |
 | Bad signature, invalid token (grammar, header or claims), identity mismatch, peer address not allowed by the agent's `ip` column, unusable key (class `invalid_signature`)               | `401` | `Invalid client authentication`             |
 | Body exceeds the auth body limit (5 MiB) -- or, for `Content-Encoding: zstd`, the frame declares a window over 8 MiB, or the decoder's buffers or the decompressed output don't fit in the in-flight capacity free at that moment | `413` | `Request payload is too large`              |
-| `Content-Encoding` present but not (case-insensitively) `zstd`                                                                                                                          | `415` | `Unsupported Content-Encoding`              |
+| `Content-Encoding` present but not (case-insensitively) `zstd`, an empty value included                                                                                                 | `415` | `Unsupported Content-Encoding`              |
 | `Content-Encoding: zstd`, but the body isn't a valid/complete zstd frame                                                                                                                | `400` | `Malformed compressed body`                 |
 | H line repeats `wazuh`, `wazuh.agent` or `wazuh.agent.id` (names compared after JSON unescaping)                                                                                        | `400` | `Invalid event batch`                       |
 | Payload's `wazuh.agent.id` (H line) missing/malformed/non-numeric, `wazuh` or `wazuh.agent` not an object, or not byte-for-byte equal to the authenticated `agent-id` (zero padding included)  | `400` | `Invalid event batch`                       |
@@ -610,7 +618,7 @@ the throttled log line can only sample:
 Two more, about a registered address that no longer matches:
 
 - **`Rejected N request(s) … from an address the agent is not registered with`** (INFO) names the agent
-  id and the address it connected from, and is the line to look for when an agent that used to work
+  id (in its canonical form, `'006'`) and the address it connected from, and is the line to look for when an agent that used to work
   starts getting `401`s after its address changed. INFO rather than WARNING: the condition is a
   property of the agent's registration, not a fault on the manager side. Collapsed on the same
   90-second window as everything above.
@@ -1211,8 +1219,8 @@ replay store either: a captured token could be replayed inside its window, bound
 | --- | --- | --- |
 | `name` | yes | 2-128 chars, no leading `.`, charset `[A-Za-z0-9._-]` only — `OS_IsValidName()`, the same rule the legacy port-1515 path applies, so both enrollment paths accept exactly the same names. `authd`'s local socket separately enforces a looser *storage-safety* floor (no whitespace/control bytes, no leading `#`/`!`, ≤128 chars) for all of its callers, the API included; this endpoint holds the tighter line itself rather than relying on that floor. |
 | `version` | yes | Must be well formed — an optional `v`/`V`, one to four dot-separated numbers and an optional `-`/`+` suffix of letters, digits, `.` and `-`, 64 bytes at most — or the answer is `400` (port 1515 answers `ERROR: Invalid version` to the same values). Rejected if its major or minor is higher than the manager's (a higher patch alone is accepted, as on port 1515) unless `authd`'s own `<auth><agents><allow_higher_versions>` is `yes` (not `remote`'s, which governs `/control`; this keeps `/enroll` in step with port 1515) — `authd`'s local socket performs no version check of its own, so this endpoint enforces it. |
-| `groups` | no | Comma-separated, forwarded unchanged; `authd` drops repeated names. A list that names no group (`""`, `","`) is the same as no `groups` field: the agent joins `default`. Empty members next to real names (`"default,"`, `",default"`) are accepted and the agent's groups are recorded without them, whereas port 1515 refuses such a `G:` with `ERROR: Invalid group name`. |
-| `ip` | no | The grammar port 1515 accepts: an IPv4 or IPv6 address, optionally a network — `/<prefix>`, or for IPv4 a dotted mask (`10.5.0.0/255.255.0.0`) that is forwarded as its prefix length (`10.5.0.0/16`), the form the registry records either way. An empty prefix (`10.0.0.0/`), a prefix past 32/128, a non-contiguous mask and a leading `!` are `400`, and port 1515 refuses the same values (`ERROR: Invalid IP`). A full-length mask (`/32`, `/128`) names a single host: it is registered as the bare address, answered in that form, and refused with `409` when another agent already holds that address, exactly like the bare spelling. Networks (`10.5.0.0/16`) are never duplicates of one another, overlapping or not. Or one of two sentinels: `any` (no override), or `src` — mirrors legacy port 1515's own wire sentinel (an agent configured with its own client-side `use_source_ip` sends this instead of a literal address); see IP resolution below. |
+| `groups` | no | Comma-separated, forwarded unchanged; `authd` drops repeated names. A list that names no group (`""`, `","`) is the same as no `groups` field: the agent joins `default`. Empty members next to real names (`"default,"`, `",default"`) are accepted and the agent's groups are recorded without them, whereas port 1515 refuses such a `G:` with `ERROR: Invalid group name`, and refuses an empty `G:''` too (`ERROR: Invalid group name: Empty Group`) where this endpoint treats `""` as no groups. |
+| `ip` | no | The grammar port 1515 accepts: an IPv4 or IPv6 address, optionally a network — `/<prefix>`, or for IPv4 a dotted mask (`10.5.0.0/255.255.0.0`) that is forwarded as its prefix length (`10.5.0.0/16`), the form the registry records either way. An empty prefix (`10.0.0.0/`), a prefix past 32/128, a non-contiguous mask and a leading `!` are `400`, and port 1515 refuses the same values (`ERROR: Invalid IP`). A full-length mask (`/32`, `/128`) names a single host: it is registered as the bare address, answered in that form, and refused with `409` when another agent already holds that address, exactly like the bare spelling. Networks (`10.5.0.0/16`) are never duplicates of one another, overlapping or identical, and a host is never a duplicate of a network: an agent registered as `10.5.0.0` (or any other address in that range) is accepted next to one registered as `10.5.0.0/16`. Port 1515 applies the same rules. Or one of two sentinels: `any` (no override), or `src` — mirrors legacy port 1515's own wire sentinel (an agent configured with its own client-side `use_source_ip` sends this instead of a literal address); see IP resolution below. |
 | `key_hash` | no | Opaque hash of the agent's current key, if it has one — drives `authd`'s force/key-mismatch decision, same as port 1515's `K:` field. |
 
 `force`, `id`, and a raw `key` are never sent, even though `authd`'s local socket accepts all three
@@ -1260,7 +1268,7 @@ master node's `authd` predates it.
 | Re-enrollment refused by `authd` on the master (9026 unknown agent or no re-enrollment credential on record / 9027 invalid credential / 9028 outside the accepted time window) | `401` | The bearer travels to `authd` unverified, so its verdict is an authentication failure: mapped onto the classes `unknown_agent` / `invalid_signature` / `stale_token` respectively, with the same generic message and challenge — `authd`'s code and text never reach the wire. |
 | `authd` refused the use of a **verified** enrollment token: 9022 not found or revoked, 9023 expired, 9024 uses exhausted | `403` | `{"error":{"code":9022,"message":"Enrollment token not found or revoked"}}`, `{"error":{"code":9023,"message":"Enrollment token expired"}}`, `{"error":{"code":9024,"message":"Enrollment token uses exhausted"}}`. `403` rather than `401` because the bearer did verify — re-signing fixes nothing; the operator has to mint a new token. 9022/9023 are reachable only when this manager's replica lagged behind `authd`'s store (a revocation or expiry landing between the two checks, a worker copy not yet synchronized); 9024 is decided by `authd` alone, which owns the use counter. |
 | Body exceeds `remoted.auth_max_body_size` (5 MiB default) | `413` | Checked once the protocol version is accepted, BEFORE the bearer is checked (and before a credential check, in Open mode too) -- an oversized body is rejected without ever reaching `parseAndValidateBody()`'s own smaller (16 KiB) schema check. |
-| `Content-Encoding` other than `zstd` | `415` | `{"error":{"code":0,"message":"Unsupported Content-Encoding"}}`. Checked after the credential (and, for a request that verified no credential, after its rate limit), before the body is parsed. |
+| `Content-Encoding` other than `zstd`, an empty value included | `415` | `{"error":{"code":0,"message":"Unsupported Content-Encoding"}}`. Checked after the credential (and, for a request that verified no credential, after its rate limit), before the body is parsed. |
 | `Content-Encoding: zstd` but not a valid, complete frame | `400` | `{"error":{"code":0,"message":"Malformed compressed body"}}`. Same point as the `415`. |
 | Empty or over 16 KiB once decoded, malformed JSON, missing or invalid `name`/`version`, a non-string `groups`/`key_hash`, invalid `ip` | `400` | Rejected before `authd` is ever contacted. A zstd body that would decode past 16 KiB is a `413` instead. |
 | Agent version newer than allowed | `400` | See `version` in the request table above. The manager logs a throttled `WARNING` naming the agent, its address and both versions. |

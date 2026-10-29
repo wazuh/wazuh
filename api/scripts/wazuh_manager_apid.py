@@ -493,7 +493,27 @@ def test_config(config_file: str):
         # A file named on purpose must exist: reading a missing one gives the defaults, which would pass.
         if config_file is not None and not os.path.isfile(config_file):
             raise FileNotFoundError(f"'{config_file}' does not exist or is not a regular file")
-        read_yaml_config(config_file=config_file)
+        config = read_yaml_config(config_file=config_file)
+
+        # These checks previously ran only during API startup, after the configuration test had
+        # already returned success. Keep the test mode aligned with the values startup consumes.
+        if config['logs']['max_size']['enabled']:
+            from api.alogging import APILoggerSize
+            APILoggerSize(config['logs']['max_size']['size'])
+
+        if config['https']['enabled']:
+            import ssl
+            from api.api_exception import APIError
+
+            ciphers = config['https']['ssl_ciphers'] or DEFAULT_SSL_CIPHERS
+            context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
+            try:
+                context.set_ciphers(ciphers)
+            except ssl.SSLError as exc:
+                try:
+                    context.set_ciphers(ciphers.upper())
+                except ssl.SSLError:
+                    raise APIError(2003, details=f'No usable cipher in https.ssl_ciphers: {ciphers}') from exc
     except Exception as exc:
         print(f"Configuration not valid. ERROR: {exc}")
         sys.exit(1)

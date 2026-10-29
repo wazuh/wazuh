@@ -109,6 +109,12 @@ INSTANTIATE_TEST_SUITE_P(
         EventParserParam {"\x7F:loc:msg",
                           R"({})",
                           R"({"wazuh":{"protocol":{"queue":127,"location":"loc"}},"event":{"original":"msg"}})"},
+        // Lowest queue byte accepted
+        EventParserParam {"\x01:loc:msg",
+                          R"({})",
+                          R"({"wazuh":{"protocol":{"queue":1,"location":"loc"}},"event":{"original":"msg"}})"},
+        // Queue byte 0x00 is refused, as /logtest refuses queue 0
+        EventParserParam {std::string("\0:loc:msg", 9), R"({})", std::nullopt},
         // Queue bytes above 0x7F are refused
         EventParserParam {"\x80:loc:msg", R"({})", std::nullopt},
         EventParserParam {"\xC3:loc:msg", R"({})", std::nullopt},
@@ -179,7 +185,7 @@ TEST(EventParserReasonTest, MissingLocationSeparatorIsReported)
 TEST(EventParserReasonTest, QueueByteAbove7FIsReported)
 {
     const auto reason = legacyParseError("\xC3:location:message");
-    EXPECT_NE(reason.find("queue identifier 0xC3 is not a 7-bit byte"), std::string::npos) << reason;
+    EXPECT_NE(reason.find("queue identifier 0xC3 is outside 0x01..0x7F"), std::string::npos) << reason;
 }
 
 } // namespace

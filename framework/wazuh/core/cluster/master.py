@@ -726,8 +726,13 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         logger = self.task_loggers['Agent-groups send']
         try:
             logger.info("Starting.")
-            self.send_agent_groups_status['date_start'] = get_utc_now().strftime(DECIMALS_DATE_FORMAT)
-            await self.agent_groups.sync(start_time=self.send_agent_groups_status['date_start'], chunks=groups_info)
+            start_time = get_utc_now()
+            self.send_agent_groups_status['date_start'] = start_time.strftime(DECIMALS_DATE_FORMAT)
+            await self.agent_groups.sync(start_time=start_time.timestamp(), chunks=groups_info)
+            # Record the end of the send and its size the same way the full variant does, so the health check
+            # reports the incremental synchronization too.
+            self.send_agent_groups_status['date_end'] = get_utc_now().strftime(DECIMALS_DATE_FORMAT)
+            self.send_agent_groups_status['n_synced_chunks'] = len(groups_info)
         except Exception as e:
             logger.error(f'Error sending agent-groups information to {self.name}: {e}')
 

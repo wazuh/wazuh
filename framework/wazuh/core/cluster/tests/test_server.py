@@ -109,6 +109,7 @@ def test_AbstractServerHandler_connection_made(event_loop):
         # A rejected connection is not offered a session
         mock_transport.write.assert_not_called()
         assert rejected_handler._counted_connection is False
+        assert rejected_handler.close_reason_logged is True
         # Count must not have been incremented for the rejected connection.
         assert server_mock2.connection_counts["1.2.3.4"] == MAX_CONNECTIONS_PER_IP
         assert server_mock2.total_connections == 0
@@ -133,6 +134,7 @@ def test_AbstractServerHandler_connection_made_total_limit(event_loop):
 
         transport.close.assert_called_once()
         assert handler._counted_connection is False
+        assert handler.close_reason_logged is True
         # A source IP under its own limit must not be counted when the global limit is reached.
         assert server_mock.connection_counts == {}
         assert server_mock.total_connections == MAX_TOTAL_CONNECTIONS
@@ -165,10 +167,12 @@ def test_AbstractServerHandler_handshake_deadline(event_loop):
                                                         handler._close_on_handshake_deadline)
         assert handler._handshake_deadline is not None
 
-        # A connection with no completed handshake is closed when the deadline expires.
+        # A connection with no completed handshake is closed when the deadline expires, and the reason is logged.
+        assert not handler.close_reason_logged
         handler._close_on_handshake_deadline()
         transport.close.assert_called_once()
         assert handler._handshake_deadline is None
+        assert handler.close_reason_logged
 
         # A connection that completed the handshake is not closed.
         handler.name = "worker1"
@@ -319,10 +323,20 @@ async def test_AbstractServerHandler_connection_lost(event_loop):
     with patch("logging.getLogger", return_value=logger):
         abstract_server_handler = AbstractServerHandler(server="Test", loop=event_loop, fernet_key=fernet_key,
                                                         cluster_items={"test": "server"})
-        with patch.object(logger, "error") as mock_error_logger:
+        # A peer that closes before the handshake, with no reason logged by this side, is not an error.
+        abstract_server_handler.ip = "1.2.3.4"
+        with patch.object(logger, "error") as mock_error_logger, patch.object(logger, "info") as mock_info_logger:
             abstract_server_handler.connection_lost(exc=None)
-            mock_error_logger.assert_called_once_with("Error during handshake with incoming connection.",
-                                                      exc_info=False)
+            mock_error_logger.assert_not_called()
+            mock_info_logger.assert_called_once_with("Connection from 1.2.3.4 closed before the handshake completed.")
+
+        # When this side already logged why it closed the connection, nothing else is logged.
+        abstract_server_handler.close_reason_logged = True
+        with patch.object(logger, "error") as mock_error_logger, patch.object(logger, "info") as mock_info_logger:
+            abstract_server_handler.connection_lost(exc=None)
+            mock_error_logger.assert_not_called()
+            mock_info_logger.assert_not_called()
+        abstract_server_handler.close_reason_logged = False
 
         with patch.object(logger, "error") as mock_error_logger:
             abstract_server_handler.connection_lost(exc=Exception("Test_connection_lost"))

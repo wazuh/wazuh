@@ -123,6 +123,8 @@ sudo chown -R $(whoami):$(whoami) $BACKUP_DIR
 
 **Note**: `queue/keystore/` and `data/kvdb-ioc/` are key-value stores that the manager may be writing while the archive is created. Use Option 2 when their consistency matters.
 
+**Note**: on a running manager the `wazuh-state.tar.gz` command may exit `1` with `tar: data/…: file changed as we read it` (GNU tar), because the engine and the content updates keep writing under `data/`. The archive is still written and usable: tar exits `2` on a real error. List it to confirm (`tar -tzf $BACKUP_DIR/wazuh-state.tar.gz > /dev/null`, see [Backup Verification](#backup-verification)); a file that changed while it was read may be inconsistent, which is why Option 2 exists.
+
 **Option 2: Backup with manager stopped** (recommended for critical operations)
 
 This method ensures complete data consistency:
@@ -628,7 +630,7 @@ sudo tail -f /var/wazuh-manager/logs/cluster.log
 The procedures above assume a package or source installation: they need `tar`, `gzip` and `sqlite3` on the manager's host and control the service with `systemctl`. In a container deployment the service is the container, and the image may lack those tools; check what it carries:
 
 ```bash
-docker compose exec wazuh.manager sh -c 'command -v tar sqlite3 gzip'
+docker compose exec wazuh.manager sh -c 'for t in tar sqlite3 gzip; do command -v "$t" > /dev/null || echo "missing $t"; done'
 ```
 
 When it lacks any of them, use the procedure below. The paths inside the container are the same `/var/wazuh-manager` and `/etc/wazuh-manager`, so the set of paths to back up does not change. Drive the copy from the host instead, and stop the manager first so the databases are copied in a consistent state.

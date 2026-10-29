@@ -74,7 +74,7 @@ fi
 #
 # GUARDED BY THE SCHEMA ON PURPOSE: the option exists on the 5.0.0 branch but not in
 # every 5.0.0 package. Writing it blindly makes a slightly older build refuse to start
-# with error 1244 ("unknown option ... additionalProperties"). See FINDINGS.md L-02.
+# with error 1244 ("unknown option ... additionalProperties").
 if grep -q '"ca_certificate"' "$CONF_DIR/wazuh-manager.schema.json" 2>/dev/null; then
     if ! grep -q '<ca_certificate>' "$CONF"; then
         sed -i "s|\(<key>[^<]*remoted-key\.pem</key>\)|\1\n      <ca_certificate>$CONF_DIR/certs/root-ca.pem</ca_certificate>|" "$CONF"

@@ -205,7 +205,7 @@ it is the reference for the Python framework and the seed of the 5.0→5.1 conve
 |---|---|
 | file missing, unreadable or larger than 1 MiB | plain message, empty JSON pointer (`configuration file not found: <path>` only when the path does not exist; `configuration file cannot be read: <path>: <system error>` for any other access error, a directory included; `… larger than 1048576 bytes: …`). The CLI checks the file itself first and reports a missing one as `(1239): Configuration file not found: '<path>'.` and any other access error as `(1244): Invalid configuration at '/': configuration file cannot be read: <path>: <reason>.`; the C daemons render the loader's message under `(1244)` |
 | malformed XML, raw `&`, `--` in a comment, second root, wrong root | `invalid XML: … (line N)` / specific message with the line, empty JSON pointer |
-| schema / semantics | JSON pointer + violated keyword (`/remote/https/port: does not satisfy 'maximum' … [schema …]`). `bin/wazuh-manager-conf` renders it as `(1244): Invalid configuration at '<pointer>': <reason>.` (`'/'` for an empty pointer); the C daemons put the file path in the subject and `Error::what()` (`<pointer>: <reason>`) in the reason |
+| schema / semantics | JSON pointer + violated keyword (`/remote/https/port: does not satisfy 'maximum' … [schema …]`; the schema root shows as `[schema /]`). `bin/wazuh-manager-conf` renders it as `(1244): Invalid configuration at '<pointer>': <reason>.` (`'/'` for an empty pointer); the C daemons put the file path in the subject and `Error::what()` (`<pointer>: <reason>`) in the reason |
 
 ## License
 

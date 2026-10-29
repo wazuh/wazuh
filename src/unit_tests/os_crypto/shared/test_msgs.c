@@ -629,6 +629,69 @@ void test_ReadSecMSG_legacy_message_with_a_newer_counter_records_its_crypto_meth
     assert_accepted_with_method(1, true, W_METH_AES, W_METH_BLOWFISH);
 }
 
+/* With message-id verification off, a message not ahead of the stored counters (older, or a replay of the
+ * last one) is still accepted, but reported stale and the stored counters are not rolled back; one ahead
+ * advances them. One test per message format. */
+static void assert_counters_never_go_back(bool legacy) {
+    static char msg[OS_MAXSTR];
+    keystore *keys = one_agent_keystore(W_METH_BLOWFISH);
+    char *output = NULL;
+    size_t length;
+
+    keys->keyentries[0]->global = 100;
+    keys->keyentries[0]->local = 5;
+
+    /* Older */
+    length = legacy ? build_legacy_msg(99, 9, "old", msg) : build_compressed_msg(W_METH_BLOWFISH, 99, 9, "old", msg);
+    assert_int_equal(read_sec_msg(keys, msg, length, 0, &output), KS_STALE);
+    assert_string_equal(output, "old");
+    assert_int_equal(keys->keyentries[0]->global, 100);
+    assert_int_equal(keys->keyentries[0]->local, 5);
+
+    /* Equal: a replay of the last accepted message */
+    length = legacy ? build_legacy_msg(100, 5, "same", msg) : build_compressed_msg(W_METH_BLOWFISH, 100, 5, "same", msg);
+    assert_int_equal(read_sec_msg(keys, msg, length, 0, &output), KS_STALE);
+    assert_int_equal(keys->keyentries[0]->global, 100);
+    assert_int_equal(keys->keyentries[0]->local, 5);
+
+    /* Ahead: accepted as valid and recorded */
+    length = legacy ? build_legacy_msg(100, 6, "new", msg) : build_compressed_msg(W_METH_BLOWFISH, 100, 6, "new", msg);
+    assert_int_equal(read_sec_msg(keys, msg, length, 0, &output), KS_VALID);
+    assert_string_equal(output, "new");
+    assert_int_equal(keys->keyentries[0]->global, 100);
+    assert_int_equal(keys->keyentries[0]->local, 6);
+
+    free_one_agent_keystore(keys);
+}
+
+void test_ReadSecMSG_compressed_stale_message_keeps_counters(void **state) {
+    assert_counters_never_go_back(false);
+}
+
+void test_ReadSecMSG_legacy_stale_message_keeps_counters(void **state) {
+    assert_counters_never_go_back(true);
+}
+
+/* With verification on, a replayed message is still refused as a duplicate (unchanged semantics) */
+void test_ReadSecMSG_verify_on_refuses_replayed_message(void **state) {
+    static char msg[OS_MAXSTR];
+    keystore *keys = one_agent_keystore(W_METH_BLOWFISH);
+    char *output = NULL;
+    size_t length;
+
+    keys->keyentries[0]->global = 100;
+    keys->keyentries[0]->local = 5;
+
+    length = build_compressed_msg(W_METH_BLOWFISH, 100, 5, "same", msg);
+    expect_any(__wrap__mwarn, formatted_msg);
+    expect_any(__wrap__merror, formatted_msg);
+    assert_int_equal(read_sec_msg(keys, msg, length, 1, &output), KS_RIDS);
+    assert_int_equal(keys->keyentries[0]->global, 100);
+    assert_int_equal(keys->keyentries[0]->local, 5);
+
+    free_one_agent_keystore(keys);
+}
+
 int main(void)
 {
     const struct CMUnitTest tests[] = {
@@ -647,7 +710,10 @@ int main(void)
         cmocka_unit_test(test_ReadSecMSG_compressed_message_records_its_crypto_method),
         cmocka_unit_test(test_ReadSecMSG_compressed_message_with_a_newer_counter_records_its_crypto_method),
         cmocka_unit_test(test_ReadSecMSG_legacy_message_records_its_crypto_method),
-        cmocka_unit_test(test_ReadSecMSG_legacy_message_with_a_newer_counter_records_its_crypto_method)
+        cmocka_unit_test(test_ReadSecMSG_legacy_message_with_a_newer_counter_records_its_crypto_method),
+        cmocka_unit_test(test_ReadSecMSG_compressed_stale_message_keeps_counters),
+        cmocka_unit_test(test_ReadSecMSG_legacy_stale_message_keeps_counters),
+        cmocka_unit_test(test_ReadSecMSG_verify_on_refuses_replayed_message)
         };
     return cmocka_run_group_tests(tests, NULL, NULL);
 }

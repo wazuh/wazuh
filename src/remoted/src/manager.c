@@ -622,7 +622,12 @@ STATIC void c_group(const char *group, OSHash **_f_time, os_md5 *_merged_sum, ch
     if (!is_multigroup || create_merged) {
         if (create_merged) {
             if (disk_storage) {
-                if (finalfp = wfopen(merged_tmp, "w"), finalfp == NULL) {
+                /* merged.mg is 0660, the mode the cluster syncs it with */
+                int oldmask = umask(0007);
+                finalfp = wfopen(merged_tmp, "w");
+                umask(oldmask);
+
+                if (finalfp == NULL) {
                     merror("Unable to create merged file: '%s' due to [(%d)-(%s)].", merged_tmp, errno, strerror(errno));
                     return;
                 }
@@ -666,7 +671,11 @@ STATIC void c_group(const char *group, OSHash **_f_time, os_md5 *_merged_sum, ch
                 if (disk_storage) {
                     OS_MoveFile(merged_tmp, merged);
                 } else {
-                    if (finalfp = wfopen(merged, "w"), finalfp == NULL) {
+                    int oldmask = umask(0007);
+                    finalfp = wfopen(merged, "w");
+                    umask(oldmask);
+
+                    if (finalfp == NULL) {
                         merror("Unable to open file: '%s' due to [(%d)-(%s)].", merged, errno, strerror(errno));
                         os_free(finalbuf);
                         return;

@@ -1284,6 +1284,99 @@ void test_HandleSecureMessage_different_sock(void** state)
     batch_queue_free(events_queue);
 }
 
+/* A frame that decrypts but is not ahead of the stored counters (a replay) never takes over the
+ * agent's session, even when that session has been idle longer than the overtake window. */
+void test_HandleSecureMessage_stale_frame_does_not_take_over(void** state)
+{
+    rem_reject_log_reset(); // the warning is throttled per reason: start from a quiet log
+    char buffer[OS_MAXSTR + 1] = "!12!AAA";
+    message_t message = {.buffer = buffer, .size = 7, .sock = 1};
+    struct sockaddr_in peer_info;
+    w_indexed_queue_t * control_msg_queue = indexed_queue_init(10);
+    w_rr_queue_t * events_queue = batch_queue_init(10);
+    batch_queue_set_dispose(events_queue, (void (*)(void *))dispose_evt_item);
+
+    logr.connection_overtake_time = 60;
+
+    keyentry** keyentries;
+    os_calloc(1, sizeof(keyentry*), keyentries);
+    keys.keyentries = keyentries;
+
+    keyentry* key = NULL;
+    os_calloc(1, sizeof(keyentry), key);
+
+    key->id = strdup("001");
+    key->sock = 4;
+    key->keyid = 1;
+    key->rcvd = 100;         // idle beyond the window: a fresh frame would take over
+    key->conflict_ts = 0;
+
+    keys.keyentries[0] = key;
+
+    global_counter = 0;
+    current_ts = 200;
+
+    peer_info.sin_family = AF_INET;
+    peer_info.sin_addr.s_addr = inet_addr("127.0.0.1");
+    memcpy(&message.addr, &peer_info, sizeof(peer_info));
+
+    expect_function_call(__wrap_key_lock_read);
+
+    // OS_IsAllowedDynamicID
+    expect_string(__wrap_OS_IsAllowedDynamicID, id, "12");
+    expect_string(__wrap_OS_IsAllowedDynamicID, srcip, "127.0.0.1");
+    will_return(__wrap_OS_IsAllowedDynamicID, 0);
+
+    // ReadSecMSG: the frame authenticates, but its counters are not ahead of the stored ones
+    expect_value(__wrap_ReadSecMSG, keys, &keys);
+    expect_string(__wrap_ReadSecMSG, buffer, "AAA");
+    expect_value(__wrap_ReadSecMSG, id, 0);
+    expect_string(__wrap_ReadSecMSG, srcip, "127.0.0.1");
+    will_return(__wrap_ReadSecMSG, 3);
+    will_return(__wrap_ReadSecMSG, "AAA");
+    will_return(__wrap_ReadSecMSG, KS_STALE);
+
+    expect_string(__wrap__mwarn, formatted_msg,
+                  "Frame for agent ID '001' from '127.0.0.1' is not newer than the last one accepted from that agent: "
+                  "it cannot take over the agent's current connection.");
+
+    expect_function_call(__wrap_key_unlock);
+
+    expect_function_call(__wrap_key_lock_read);
+
+    // OS_DeleteSocket: only the replaying connection is closed
+    expect_value(__wrap_OS_DeleteSocket, sock, message.sock);
+    will_return(__wrap_OS_DeleteSocket, 0);
+
+    expect_function_call(__wrap_key_unlock);
+
+    // nb_close_socket
+    expect_value(__wrap_nb_close_socket, sock, message.sock);
+    will_return(__wrap_nb_close_socket, true);
+    expect_function_call(__wrap_rem_dec_tcp);
+
+    // rem_setCounter
+    expect_value(__wrap_rem_setCounter, fd, 1);
+    expect_value(__wrap_rem_setCounter, counter, 0);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "TCP peer disconnected [1]");
+
+    expect_function_call(__wrap_rem_inc_recv_unknown);
+
+    HandleSecureMessage(&message, control_msg_queue, events_queue);
+
+    // The session is untouched: same socket, same last-received time, no conflict recorded
+    assert_int_equal(key->sock, 4);
+    assert_int_equal(key->rcvd, 100);
+    assert_int_equal(key->conflict_ts, 0);
+
+    os_free(key->id);
+    os_free(key);
+    os_free(keyentries);
+    indexed_queue_free(control_msg_queue);
+    batch_queue_free(events_queue);
+}
+
 void test_HandleSecureMessage_different_sock_2(void** state)
 {
     rem_reject_log_reset(); // the warning is throttled per reason: start from a quiet log
@@ -3796,6 +3889,49 @@ void test_HandleSecureMessage_unregistered_id_names_no_agent(void** state)
     HandleSecureMessage(&message, NULL, NULL);
 }
 
+/* Over TCP, a frame claiming an unregistered ID closes its connection at once, like every other
+ * rejection before decryption, instead of leaving it to the unauthenticated timeout. */
+void test_HandleSecureMessage_unregistered_id_closes_tcp_connection(void** state)
+{
+    char buffer[OS_MAXSTR + 1] = "!009!payload";
+    message_t message = {.buffer = buffer, .size = 12, .sock = 7};
+    struct sockaddr_in peer_info = {0};
+
+    rem_reject_log_reset();
+    current_ts = 61;
+    global_counter = 0;
+
+    peer_info.sin_family = AF_INET;
+    peer_info.sin_addr.s_addr = 0x0100007F;
+    memcpy(&message.addr, &peer_info, sizeof(peer_info));
+
+    expect_function_call(__wrap_key_lock_read);
+    expect_string(__wrap_OS_IsAllowedDynamicID, id, "009");
+    expect_string(__wrap_OS_IsAllowedDynamicID, srcip, "127.0.0.1");
+    will_return(__wrap_OS_IsAllowedDynamicID, -1);
+    expect_function_call(__wrap_key_unlock);
+
+    expect_string(__wrap__mwarn,
+                  formatted_msg,
+                  "Message from '127.0.0.1' claims agent ID '009', which is not registered for that source address.");
+
+    // _close_sock
+    expect_value(__wrap_rem_setCounter, fd, 7);
+    expect_value(__wrap_rem_setCounter, counter, 0);
+    expect_function_call(__wrap_key_lock_read);
+    expect_value(__wrap_OS_DeleteSocket, sock, 7);
+    will_return(__wrap_OS_DeleteSocket, 0);
+    expect_function_call(__wrap_key_unlock);
+    expect_value(__wrap_nb_close_socket, sock, 7);
+    will_return(__wrap_nb_close_socket, true);
+    expect_function_call(__wrap_rem_dec_tcp);
+    expect_string(__wrap__mdebug1, formatted_msg, "TCP peer disconnected [7]");
+
+    expect_function_call(__wrap_rem_inc_recv_unknown);
+
+    HandleSecureMessage(&message, NULL, NULL);
+}
+
 /* An unterminated "!<id>!" header is a WARNING naming the source address only. */
 void test_HandleSecureMessage_unterminated_id_header(void** state)
 {
@@ -4097,6 +4233,32 @@ void test_handle_outgoing_data_to_tcp_socket_success(void** state)
 // remoted_module_https_config() uses. The "invalid value -> process exits" behavior
 // itself lives entirely in the real (unwrapped) getDefine_Int_default()/
 // parse_define_int_value() and is not reachable through this mock.
+
+/* remote.https.max_body_size at or below remoted.auth_max_body_size warns; above it, or 0 (the module's
+ * 10 MiB default), says nothing. */
+void test_w_remoted_check_body_caps(void** state)
+{
+    remoted_module_config_t rm_config;
+    memset(&rm_config, 0, sizeof(rm_config));
+    rm_config.auth_max_body_size = 5242880;
+
+    rm_config.http_max_body_size = 0;
+    w_remoted_check_body_caps(&rm_config);
+
+    rm_config.http_max_body_size = 10485760;
+    w_remoted_check_body_caps(&rm_config);
+
+    rm_config.http_max_body_size = 1024;
+    expect_string(__wrap__mwarn, formatted_msg,
+                  "'remote.https.max_body_size' (1024 bytes) is not above 'remoted.auth_max_body_size' (5242880 bytes): "
+                  "an agent request between the two is closed with no answer instead of being refused with 413, and the "
+                  "agent keeps resending it. Set 'remote.https.max_body_size' above 5242880 bytes.");
+    w_remoted_check_body_caps(&rm_config);
+
+    rm_config.http_max_body_size = 5242880;
+    expect_any(__wrap__mwarn, formatted_msg);
+    w_remoted_check_body_caps(&rm_config);
+}
 
 void test_remoted_module_https_config_defaults(void** state)
 {
@@ -4485,6 +4647,12 @@ void test_w_remoted_build_module_config_all_fields_populated(void** state)
     will_return(__wrap_getDefine_Int_default, 0);   // authd_response_timeout (0 = worker-aware default)
     will_return(__wrap_getDefine_Int_default, 256); // authd_max_queue_size
     will_return(__wrap_getDefine_Int_default, 8);   // authd_worker_threads
+
+    // max_body_size (12345) is not above auth_max_body_size (10485760): the configuration warns
+    expect_string(__wrap__mwarn, formatted_msg,
+                  "'remote.https.max_body_size' (12345 bytes) is not above 'remoted.auth_max_body_size' (10485760 "
+                  "bytes): an agent request between the two is closed with no answer instead of being refused with "
+                  "413, and the agent keeps resending it. Set 'remote.https.max_body_size' above 10485760 bytes.");
 
     remoted_module_config_t rm_config;
     w_remoted_build_module_config(&test_logr, &rm_config);
@@ -4990,6 +5158,7 @@ int main(void)
         cmocka_unit_test(test_HandleSecureMessage_NewMessage_NoShutdownMessage),
         cmocka_unit_test(test_HandleSecureMessage_OldMessage_NoShutdownMessage),
         cmocka_unit_test(test_HandleSecureMessage_different_sock),
+        cmocka_unit_test(test_HandleSecureMessage_stale_frame_does_not_take_over),
         cmocka_unit_test(test_HandleSecureMessage_different_sock_2),
         cmocka_unit_test(test_HandleSecureMessage_conflict_first_seen),
         cmocka_unit_test(test_HandleSecureMessage_conflict_persists),
@@ -5048,6 +5217,7 @@ int main(void)
         cmocka_unit_test(test_rem_log_rejected_frame_throttles_per_reason),
         cmocka_unit_test(test_rem_log_rejected_frame_summary_has_one_full_stop),
         cmocka_unit_test(test_HandleSecureMessage_unregistered_id_names_no_agent),
+        cmocka_unit_test(test_HandleSecureMessage_unregistered_id_closes_tcp_connection),
         cmocka_unit_test(test_HandleSecureMessage_unterminated_id_header),
         // Tests send_control_ack
         cmocka_unit_test(test_send_control_ack_queued),
@@ -5066,6 +5236,7 @@ int main(void)
         cmocka_unit_test(test_handle_outgoing_data_to_tcp_socket_case_1_EPIPE),
         cmocka_unit_test(test_handle_outgoing_data_to_tcp_socket_success),
         // Tests remoted_module_https_config
+        cmocka_unit_test(test_w_remoted_check_body_caps),
         cmocka_unit_test(test_remoted_module_https_config_defaults),
         cmocka_unit_test(test_remoted_module_https_config_custom_values),
         cmocka_unit_test(test_remoted_module_https_config_decoded_cap_below_wire_cap),

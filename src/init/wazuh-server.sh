@@ -521,8 +521,19 @@ testconfig()
     # its own test refuses would otherwise surface as a manager that does not come back. A test's own
     # output goes to stderr, so that `-j` keeps writing a single JSON document to stdout.
     for i in ${CHECK_DAEMONS}; do
-        ${DIR}/bin/${i} -t ${DEBUG_CLI} 1>&2;
-        if [ $? != 0 ]; then
+        TEST_VERDICT=$(${DIR}/bin/${i} -t ${DEBUG_CLI} 2>&1)
+        TEST_RC=$?
+        if [ -n "${TEST_VERDICT}" ]; then
+            echo "${TEST_VERDICT}" >&2
+        fi
+        if [ ${TEST_RC} != 0 ]; then
+            # One line in the manager log, as validateconfig() and checkcredentials() leave: the refusal
+            # and the last line of the test's own output (the reason; a C daemon's date prefix dropped).
+            # Nothing else records it when the check runs from the service-control helper, whose
+            # output reaches no log.
+            TEST_REASON=$(printf '%s\n' "${TEST_VERDICT}" | sed -n '/[^[:space:]]/h; ${x;p;}' | \
+                sed 's/^[0-9]\{4\}\/[0-9]\{2\}\/[0-9]\{2\} [0-9]\{2\}:[0-9]\{2\}:[0-9]\{2\} //')
+            log_lines ERROR "${i}: Configuration error${TEST_REASON:+: ${TEST_REASON}}"
             refuse 20 "${i}: Configuration error"
             # Unconditionally on a start: the wipe at the top of this function already replaced the
             # old .restart guard's job, and keeping the guard here would leave a restart with a
@@ -636,8 +647,10 @@ start_service()
         exit 1;
     fi
 
-    # We actually start them now.
+    # We actually start them now. STARTED lists the daemons this run brought up, so that a failure stops
+    # those and only those: a daemon that was already running stays.
     first=true
+    STARTED=""
     if [ $USE_JSON = true ]; then
         echo -n '{"error":0,"data":['
     fi
@@ -686,9 +699,23 @@ start_service()
                 echo "start" > ${DIR}/var/run/${i}.failed
                 rm -f ${DIR}/var/run/*.start
                 rm -f ${DIR}/var/run/.restart
+                # Leave the manager stopped, not half started: under the unit (KillMode=process) systemd
+                # kills only this script, so the daemons it already launched would keep running inside a
+                # failed unit -- authd answering enrollments, wazuh-db serving a manager that is down. Stop
+                # what this run started, the failed daemon included (it may have left a process behind);
+                # daemons that were already running (remoted across a reload) stay. With -j its report is
+                # dropped: the document above is the only one. stop_service() reuses $i, so it runs last.
+                DAEMONS="${STARTED} ${i}"
+                MAX_KILL_TRIES=10
+                if [ $USE_JSON = true ]; then
+                    stop_service > /dev/null 2>&1
+                else
+                    stop_service
+                fi
                 unlock;
                 exit 1;
             fi
+            STARTED="${STARTED} ${i}"
             if [ $USE_JSON = true ]; then
                 echo -n '{"daemon":"'${i}'","status":"running"}'
             else

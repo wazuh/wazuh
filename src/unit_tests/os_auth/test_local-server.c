@@ -132,7 +132,8 @@ static void test_local_add_clustered_success(void **state) {
     cJSON *data;
 
     expect_any_always(__wrap__mdebug2, formatted_msg);
-    expect_any_always(__wrap__minfo, formatted_msg);
+    // The dispatch line is debug, not info: any peer that reaches the worker's enrollment endpoints fires it.
+    expect_string(__wrap__mdebug1, formatted_msg, "Dispatching enrollment request to master node");
     expect_string(__wrap_w_request_agent_add_clustered, name, "agent1");
     expect_string(__wrap_w_request_agent_add_clustered, ip, "any");
     expect_value(__wrap_w_request_agent_add_clustered, token_id, NULL);
@@ -161,6 +162,7 @@ static void test_local_add_clustered_success(void **state) {
     cJSON_Delete(response);
 
     // ...and a master that sent none (an older master) leaves the field out, as before.
+    expect_string(__wrap__mdebug1, formatted_msg, "Dispatching enrollment request to master node");
     expect_string(__wrap_w_request_agent_add_clustered, name, "agent1");
     expect_string(__wrap_w_request_agent_add_clustered, ip, "any");
     expect_value(__wrap_w_request_agent_add_clustered, token_id, NULL);
@@ -184,7 +186,7 @@ static void test_local_add_clustered_business_rejection_preserves_master_code(vo
     cJSON *response;
 
     expect_any_always(__wrap__mdebug2, formatted_msg);
-    expect_any_always(__wrap__minfo, formatted_msg);
+    expect_string(__wrap__mdebug1, formatted_msg, "Dispatching enrollment request to master node");
     // Business rejections forwarded by the master (9008 EDUPNAME here) log at warning, not error.
     expect_any_always(__wrap__mwarn, formatted_msg);
     expect_string(__wrap_w_request_agent_add_clustered, name, "agent1");
@@ -219,13 +221,13 @@ static void test_local_add_clustered_reenrollment_refusal_logs_at_debug(void **s
     };
 
     expect_any_always(__wrap__mdebug2, formatted_msg);
-    expect_any_always(__wrap__minfo, formatted_msg);
 
     // The master's verdict on a re-enrollment bearer is logged at debug there, and the relay follows: one
     // line, at debug, and no warning (the parser's own line is the caller's to emit when it asks for the code).
     for (size_t i = 0; i < sizeof(codes) / sizeof(codes[0]); i++) {
         char expected[OS_SIZE_256];
         snprintf(expected, sizeof(expected), "Error %d: %s.", codes[i], messages[i] + 7);
+        expect_string(__wrap__mdebug1, formatted_msg, "Dispatching enrollment request to master node");
         expect_string(__wrap__mdebug1, formatted_msg, expected);
         expect_string(__wrap_w_request_agent_add_clustered, name, "agent1");
         expect_string(__wrap_w_request_agent_add_clustered, ip, "any");
@@ -250,7 +252,7 @@ static void test_local_add_clustered_transport_failure_maps_to_9016(void **state
     cJSON *response;
 
     expect_any_always(__wrap__mdebug2, formatted_msg);
-    expect_any_always(__wrap__minfo, formatted_msg);
+    expect_string(__wrap__mdebug1, formatted_msg, "Dispatching enrollment request to master node");
     expect_any_always(__wrap__merror, formatted_msg);
     expect_string(__wrap_w_request_agent_add_clustered, name, "agent1");
     expect_string(__wrap_w_request_agent_add_clustered, ip, "any");
@@ -658,6 +660,9 @@ static void expect_default_remote(void) {
 }
 
 static cJSON *dispatch(const char *request) {
+    // Client rejections are throttled per reason across the process: every request starts from a quiet
+    // log, so a refusal logs at the level its test expects rather than at debug as a repeat.
+    w_auth_client_rejection_log_reset();
     char *output = local_dispatch(request);
     assert_non_null(output);
     cJSON *response = cJSON_Parse(output);
@@ -888,7 +893,7 @@ static void test_token_create_embed_ca_refuses_a_bundle_too_large_to_embed(void 
 
 static void test_token_create_bad_arguments(void **state) {
     (void)state;
-    EXPECT_LOG_ERROR();
+    EXPECT_LOG_INFO(); // caller-fault refusals log at INFO
     // No address: 9004 No such argument. A wrongly typed optional: 9002 Parsing JSON input.
     cJSON *response = dispatch("{\"function\":\"token_create\",\"arguments\":{\"ttl\":60}}");
     assert_int_equal(response_error(response), 9004);
@@ -910,8 +915,8 @@ static void test_token_create_bad_arguments(void **state) {
 static void test_token_create_refuses_a_lifetime_out_of_range(void **state) {
     (void)state;
     EXPECT_LOG_WARN();
-    // The last case below is refused by the JSON layer instead, which reports with merror.
-    EXPECT_LOG_ERROR();
+    // The last case below is refused by the JSON layer instead, a caller fault logged at INFO.
+    EXPECT_LOG_INFO();
     int before = etoken_store_count();
     // 9223372036854774784 is the nearest double below 2^63: it passes get_optional_long_arg()'s
     // `> (double)LONG_MAX` check and converts to a long exactly, so `now + ttl` wrapped into a
@@ -1086,7 +1091,7 @@ static void test_token_create_bounds_the_free_text_it_persists(void **state) {
 
 static void test_token_verbs_on_worker_9015(void **state) {
     (void)state;
-    EXPECT_LOG_ERROR();
+    EXPECT_LOG_INFO(); // caller-fault refusals log at INFO
     config.worker_node = TRUE;
     // No __wrap_w_mconf_section expectation: a worker must refuse before reading anything.
     cJSON *response = dispatch("{\"function\":\"token_create\",\"arguments\":{\"address\":\"wazuh-1\"}}");
@@ -1178,7 +1183,6 @@ static void test_token_purge_all_and_default_scope(void **state) {
 static void test_token_purge_unknown_scope_is_refused(void **state) {
     (void)state;
     EXPECT_LOG_INFO();
-    EXPECT_LOG_ERROR();
     cJSON_Delete(mint("{\"address\":\"wazuh-1\"}"));
 
     int before = token_list_size();
@@ -1195,7 +1199,7 @@ static void test_token_purge_unknown_scope_is_refused(void **state) {
 
 static void test_token_purge_on_worker_9015(void **state) {
     (void)state;
-    EXPECT_LOG_ERROR();
+    EXPECT_LOG_INFO(); // caller-fault refusals log at INFO
     config.worker_node = TRUE;
     cJSON *response = dispatch("{\"function\":\"token_purge\",\"arguments\":{\"scope\":\"all\"}}");
     assert_int_equal(response_error(response), 9015);
@@ -1207,7 +1211,6 @@ static void test_token_list_and_revoke(void **state) {
     (void)state;
     EXPECT_LOG_INFO();
     EXPECT_LOG_DEBUG1();
-    EXPECT_LOG_ERROR();
     cJSON *minted = mint("{\"address\":\"wazuh-1\",\"description\":\"to revoke\"}");
     char id[ETOKEN_ID_CHARS + 1];
     strncpy(id, data_string(minted, "id"), sizeof(id) - 1);
@@ -1269,7 +1272,6 @@ static void test_add_with_token_consumes_and_releases(void **state) {
     EXPECT_LOG_INFO();
     EXPECT_LOG_DEBUG1();
     EXPECT_LOG_DEBUG2();
-    EXPECT_LOG_ERROR();
     cJSON *minted = mint("{\"address\":\"wazuh-1\",\"max_uses\":1}");
     char id[ETOKEN_ID_CHARS + 1];
     strncpy(id, data_string(minted, "id"), sizeof(id) - 1);
@@ -1387,7 +1389,6 @@ static void test_add_with_revoked_or_expired_token(void **state) {
     (void)state;
     EXPECT_LOG_INFO();
     EXPECT_LOG_DEBUG1();
-    EXPECT_LOG_ERROR();
     cJSON *minted = mint("{\"address\":\"wazuh-1\"}");
     char id[ETOKEN_ID_CHARS + 1];
     strncpy(id, data_string(minted, "id"), sizeof(id) - 1);
@@ -1482,6 +1483,37 @@ static void test_local_add_returns_and_queues_a_reenroll_secret(void **state) {
     cJSON_Delete(response);
 }
 
+// A worker forwarding a port-1515 enrollment marks it `legacy`: that protocol cannot deliver a
+// re-enrollment secret, so the master issues none -- none in the answer, none queued for global.db --
+// exactly like a direct port-1515 enrollment.
+static void test_local_add_legacy_forward_issues_no_reenroll_secret(void **state) {
+    (void)state;
+    EXPECT_LOG_INFO();
+    EXPECT_LOG_DEBUG2();
+    expect_any(__wrap_OS_IsValidIP, ip_address);
+    expect_any(__wrap_OS_IsValidIP, final_ip);
+    will_return(__wrap_OS_IsValidIP, -1);
+
+    cJSON *response = dispatch("{\"function\":\"add\",\"arguments\":{\"name\":\"legacy-agent\",\"ip\":\"any\","
+                               "\"source\":\"192.0.2.10\",\"legacy\":true}}");
+    assert_int_equal(response_error(response), 0);
+    assert_non_null(data_string(response, "key"));
+    assert_null(cJSON_GetObjectItem(cJSON_GetObjectItem(response, "data"), "reenroll_secret"));
+
+    struct keynode *node = queue_insert;
+    while (node && strcmp(node->name, "legacy-agent") != 0) {
+        node = node->next;
+    }
+    assert_non_null(node);
+    assert_null(node->reenroll_secret);
+    cJSON_Delete(response);
+
+    // A `legacy` that is not a boolean is a malformed request (a caller fault: INFO, expected above)
+    response = dispatch("{\"function\":\"add\",\"arguments\":{\"name\":\"legacy-agent-2\",\"ip\":\"any\",\"legacy\":\"yes\"}}");
+    assert_int_equal(response_error(response), 9002);
+    cJSON_Delete(response);
+}
+
 static void test_local_get_never_returns_the_secret(void **state) {
     (void)state;
     EXPECT_LOG_INFO();
@@ -1553,7 +1585,7 @@ static void test_local_add_refuses_a_negated_ip(void **state) {
 static void test_add_on_worker_refuses_a_negated_ip(void **state) {
     (void)state;
     EXPECT_LOG_WARN();
-    EXPECT_LOG_ERROR();
+    EXPECT_LOG_INFO(); // caller-fault refusals log at INFO
     config.worker_node = TRUE;
     cJSON *response = dispatch("{\"function\":\"add\",\"arguments\":{\"name\":\"wk-negated\",\"ip\":\"!10.31.0.5\"}}");
     assert_int_equal(response_error(response), 9006);
@@ -1563,9 +1595,9 @@ static void test_add_on_worker_refuses_a_negated_ip(void **state) {
 
 static void test_add_with_token_on_worker_forwards_it(void **state) {
     (void)state;
+    EXPECT_LOG_DEBUG1(); // the dispatch line
     EXPECT_LOG_DEBUG2();
-    EXPECT_LOG_INFO();
-    EXPECT_LOG_ERROR();
+    EXPECT_LOG_INFO(); // the 9022 refusal, a caller fault
     config.worker_node = TRUE;
     expect_string(__wrap_w_request_agent_add_clustered, name, "wk-agent");
     expect_string(__wrap_w_request_agent_add_clustered, ip, "any");
@@ -1660,8 +1692,9 @@ static void test_add_logs_its_source_and_the_token_use_count(void **state) {
     assert_int_equal(response_error(response), 0);
     cJSON_Delete(response);
 
-    // A source of the wrong type is a malformed request, like every other optional argument
-    EXPECT_LOG_ERROR();
+    // A source of the wrong type is a malformed request, like every other optional argument: a caller
+    // fault, logged at INFO
+    EXPECT_LOG_INFO();
     response = dispatch("{\"function\":\"add\",\"arguments\":{\"name\":\"typed-agent\",\"ip\":\"any\",\"source\":5}}");
     assert_int_equal(response_error(response), 9002);
     cJSON_Delete(response);
@@ -1671,7 +1704,7 @@ static void test_add_logs_its_source_and_the_token_use_count(void **state) {
 static void test_add_on_worker_forwards_its_source(void **state) {
     (void)state;
     EXPECT_LOG_DEBUG2();
-    EXPECT_LOG_INFO();
+    expect_string(__wrap__mdebug1, formatted_msg, "Dispatching enrollment request to master node");
     config.worker_node = TRUE;
     expect_string(__wrap_w_request_agent_add_clustered, name, "wk-src-agent");
     expect_string(__wrap_w_request_agent_add_clustered, ip, "any");
@@ -2212,7 +2245,7 @@ static void test_reenroll_duplicate_name_of_another_agent_9008(void **state) {
 
 static void test_reenroll_malformed_or_with_token_id_9027(void **state) {
     (void)state;
-    EXPECT_LOG_ERROR();
+    EXPECT_LOG_DEBUG1(); // re-enrollment verdicts log at debug level
     static const char *const requests[] = {
         // not an object
         "{\"function\":\"add\",\"arguments\":{\"name\":\"a\",\"ip\":\"any\",\"reenroll\":\"001\"}}",
@@ -2250,7 +2283,7 @@ static void test_reenroll_malformed_or_with_token_id_9027(void **state) {
 static void test_reenroll_on_worker_forwards_kid_and_bearer(void **state) {
     (void)state;
     EXPECT_LOG_DEBUG2();
-    EXPECT_LOG_INFO();
+    expect_string(__wrap__mdebug1, formatted_msg, "Dispatching enrollment request to master node");
     config.worker_node = TRUE;
     // The worker verifies nothing (it has no secret to verify against): kid and bearer travel verbatim, and
     // the master's rotated credentials come back as they are.
@@ -2280,7 +2313,7 @@ static void test_local_dispatch_unknown_function_is_9003(void **state) {
         "{\"function\":\"no_such_function\",\"arguments\":{\"id\":\"001\"}}",
         "{\"function\":\"issue_reenroll_secret\",\"arguments\":{\"id\":\"001\"}}",
     };
-    EXPECT_LOG_ERROR();
+    EXPECT_LOG_INFO(); // caller-fault refusals log at INFO
 
     for (size_t i = 0; i < sizeof(requests) / sizeof(requests[0]); i++) {
         cJSON *response = dispatch(requests[i]);
@@ -2337,6 +2370,7 @@ int main(void) {
         cmocka_unit_test(test_add_logs_its_source_and_the_token_use_count),
         cmocka_unit_test(test_add_on_worker_forwards_its_source),
         cmocka_unit_test(test_local_add_returns_and_queues_a_reenroll_secret),
+        cmocka_unit_test(test_local_add_legacy_forward_issues_no_reenroll_secret),
         cmocka_unit_test(test_local_add_stores_a_caller_supplied_id_in_its_canonical_spelling),
         cmocka_unit_test(test_local_get_never_returns_the_secret),
         cmocka_unit_test(test_local_add_with_an_empty_group_list_goes_to_default),

@@ -125,6 +125,14 @@ int RemotedConfig(const char *cfgfile, remoted *cfg)
     shared_reload_interval = getDefine_Int_default("remoted", "shared_reload", 1, 18000, 10);
     disk_storage = getDefine_Int_default("remoted", "disk_storage", 0, 1, 0);
     _s_verify_counter = getDefine_Int_default("remoted", "verify_msg_id", 0, 1, 0);
+    /* The message-counter options belong to OS_StartCounter() (msgs.c), which runs only once remoted has
+     * daemonized. Read them here, on the path `wazuh-remoted -t` also runs, so an out-of-range value
+     * (getDefine_Int_default() exits on one) fails the config test, and so `wazuh-manager-control check`
+     * and the start, instead of stopping remoted after the start was reported as successful.
+     * OS_StartCounter() keeps a counter that is already set, so remoted runs with these very values;
+     * the agent, which never calls RemotedConfig(), still has them read there. Same ranges and defaults. */
+    _s_recv_flush = (unsigned int)getDefine_Int_default("remoted", "recv_counter_flush", 10, 999999, 128);
+    _s_comp_print = (unsigned int)getDefine_Int_default("remoted", "comp_average_printout", 10, 999999, 19999);
     batch_events_capacity = (size_t)getDefine_Int_default("remoted", "batch_events_capacity", 0, 0x1<<20, 131072);
     batch_events_per_agent_capacity = (size_t)getDefine_Int_default("remoted", "batch_events_per_agent_capacity", 0, 0x1<<20, 131072);
     // Byte-capacity limits (0 = unlimited).  Values < 1 KiB are rejected at startup.

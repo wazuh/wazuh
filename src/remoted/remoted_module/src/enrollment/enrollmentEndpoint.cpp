@@ -600,8 +600,8 @@ namespace remoted::enrollment
             // Parsed here (before authentication), acted on only after it succeeds below -- same
             // ordering AuthGateway uses: nothing is decoded on behalf of an unauthenticated peer
             // (the bearer does not cover the body; the size cap is what authenticate() checks).
-            const auto contentEncoding =
-                remoted::decoding::parseContentEncoding(headerValue(request->headers, "content-encoding"));
+            const auto contentEncoding = remoted::decoding::parseContentEncoding(
+                remoted::http::findHeader(request->headers, "content-encoding"));
 
             const auto now = static_cast<std::int64_t>(std::time(nullptr));
             const auto decision = authenticator.authenticate(headerValue(request->headers, "protocol-version"),

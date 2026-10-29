@@ -452,3 +452,160 @@ async def test_LocalServerHandlerWorker_process_request(process_request_mock, ev
         assert results == (b"ok", b"Added request to sendsync requests queue")
         await asyncio.sleep(0.1)
         send_request_mock.assert_awaited_once_with(b"sendsync", b"test1 bye")
+
+
+def _done_future(event_loop, result=None, exception=None, cancel=False):
+    """Auxiliary function: a finished future with the given outcome."""
+    future = asyncio.Future(loop=event_loop)
+    if cancel:
+        future.cancel()
+    elif exception is not None:
+        future.set_exception(exception)
+    else:
+        future.set_result(result)
+    return future
+
+
+@pytest.mark.asyncio
+async def test_LocalServerHandler_relay_error(event_loop):
+    """Check that the error of a relayed request is extracted whether the peer answered with it or it was raised."""
+    not_found = WazuhResourceNotFound(1730)
+    assert LocalServerHandler.relay_error(_done_future(event_loop, result=b'{"items": []}')) is None
+    assert LocalServerHandler.relay_error(_done_future(event_loop, result=not_found)) is not_found
+    assert LocalServerHandler.relay_error(_done_future(event_loop, exception=not_found)) is not_found
+
+    error = LocalServerHandler.relay_error(_done_future(event_loop, exception=ValueError('boom')))
+    assert isinstance(error, WazuhInternalError) and error.code == 1000
+
+    error = LocalServerHandler.relay_error(_done_future(event_loop, cancel=True))
+    assert isinstance(error, WazuhClusterError) and error.code == 3020
+
+
+@pytest.mark.asyncio
+@patch("wazuh.core.cluster.local_server.LocalServerHandler.send_request", return_value=b'ok')
+async def test_LocalServerHandler_send_error_to_local_client(send_request_mock, event_loop):
+    """Check that a relay error is sent to the local client as an `err` reply it can decode and raise."""
+    logger = logging.getLogger('test_send_error_to_local_client')
+    lsh = LocalServerHandler(server=None, loop=event_loop, fernet_key=None, cluster_items={}, logger=logger)
+    with patch.object(lsh, 'send_res_callback') as send_res_callback_mock, \
+            patch.object(logger, 'debug') as debug_mock:
+        lsh.send_error_to_local_client(b'get_nodes', WazuhResourceNotFound(1730))
+        await wait_function_called(send_res_callback_mock)
+
+    debug_mock.assert_called_once()
+    send_request_mock.assert_awaited_once()
+    assert send_request_mock.await_args.kwargs['command'] == b'err'
+    received = json.loads(send_request_mock.await_args.kwargs['data'], object_hook=c_common.as_wazuh_object)
+    assert isinstance(received, WazuhResourceNotFound) and received.code == 1730
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize('in_command, res_command', [(b'get_nodes', b'control_res'), (b'get_health', b'control_res'),
+                                                     (b'dapi', b'dapi_res')])
+async def test_LocalServerHandlerWorker_get_api_response_ok(in_command, res_command, event_loop):
+    """Check that the master's answer is forwarded to the local client."""
+    lshw = LocalServerHandlerWorker(server=None, loop=event_loop, fernet_key=None, cluster_items={})
+    with patch.object(lshw, 'send_request', AsyncMock(return_value=b'ok')) as send_request_mock, \
+            patch.object(lshw, 'send_res_callback') as send_res_callback_mock, \
+            patch.object(lshw, 'send_error_to_local_client') as send_error_mock:
+        lshw.get_api_response(in_command, _done_future(event_loop, result=b'{"items": []}'))
+        await wait_function_called(send_res_callback_mock)
+
+    send_request_mock.assert_awaited_once_with(command=res_command, data=b'{"items": []}')
+    send_error_mock.assert_not_called()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize('outcome', [
+    {'result': WazuhResourceNotFound(1730)},
+    {'exception': WazuhClusterError(3020)},
+    {'exception': WazuhClusterError(3023)},
+])
+async def test_LocalServerHandlerWorker_get_api_response_error(outcome, event_loop):
+    """Check that an error answered by the master, or raised by the relay, reaches the local client at once."""
+    lshw = LocalServerHandlerWorker(server=None, loop=event_loop, fernet_key=None, cluster_items={})
+    error = outcome.get('result') or outcome.get('exception')
+    with patch.object(lshw, 'send_request', AsyncMock()) as send_request_mock, \
+            patch.object(lshw, 'send_error_to_local_client') as send_error_mock:
+        lshw.get_api_response(b'get_nodes', _done_future(event_loop, **outcome))
+
+    send_error_mock.assert_called_once_with(b'get_nodes', error)
+    send_request_mock.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_LocalServerHandlerWorker_send_request_to_master(event_loop):
+    """Check that a request is relayed to the master and its answer handed to get_api_response."""
+
+    class NodeMock:
+        def __init__(self):
+            self.client = None
+
+    class ServerMock:
+        def __init__(self):
+            self.node = NodeMock()
+
+    server_mock = ServerMock()
+    lshw = LocalServerHandlerWorker(server=server_mock, loop=event_loop, fernet_key=None, cluster_items={})
+    with pytest.raises(WazuhClusterError, match=".* 3023 .*"):
+        lshw.send_request_to_master(b'get_nodes', b'{}')
+
+    not_found = WazuhResourceNotFound(1730)
+    server_mock.node.client = MagicMock()
+    server_mock.node.client.send_request = AsyncMock(return_value=not_found)
+    with patch.object(lshw, 'get_api_response') as get_api_response_mock:
+        assert lshw.send_request_to_master(b'get_nodes', b'{}') == (b'ok', b'Sent request to master node')
+        await wait_function_called(get_api_response_mock)
+
+    server_mock.node.client.send_request.assert_awaited_once_with(b'get_nodes', b'{}')
+    in_command, future = get_api_response_mock.call_args.args
+    assert in_command == b'get_nodes' and future.result() is not_found
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize('outcome, expected', [
+    ({'result': b'Added request to API requests queue'}, None),
+    ({'result': WazuhClusterError(3022)}, WazuhClusterError),
+    ({'exception': WazuhClusterError(3020)}, WazuhClusterError),
+])
+async def test_LocalServerHandler_get_dapi_relay_response(outcome, expected, event_loop):
+    """Check that a DAPI request that could not be relayed is answered to the local client."""
+    lsh = LocalServerHandler(server=None, loop=event_loop, fernet_key=None, cluster_items={})
+    with patch.object(lsh, 'send_error_to_local_client') as send_error_mock:
+        lsh.get_dapi_relay_response(b'dapi', _done_future(event_loop, **outcome))
+
+    if expected is None:
+        send_error_mock.assert_not_called()
+    else:
+        send_error_mock.assert_called_once()
+        assert send_error_mock.call_args.args[0] == b'dapi'
+        assert isinstance(send_error_mock.call_args.args[1], expected)
+
+
+@pytest.mark.asyncio
+async def test_LocalServerHandlerWorker_dapi_relay_error(event_loop):
+    """Check that the worker answers the local client when the master refuses a relayed DAPI request."""
+
+    class NodeMock:
+        def __init__(self):
+            self.client = MagicMock()
+
+    class ServerMock:
+        def __init__(self):
+            self.node = NodeMock()
+
+    class LoggerMock:
+        def debug2(self, msg):
+            pass
+
+    server_mock = ServerMock()
+    refused = WazuhClusterError(3020)
+    server_mock.node.client.send_request = AsyncMock(side_effect=refused)
+    lshw = LocalServerHandlerWorker(server=server_mock, loop=event_loop, fernet_key=None, cluster_items={},
+                                    logger=LoggerMock())
+    lshw.name = "test1"
+    with patch.object(lshw, 'send_error_to_local_client') as send_error_mock:
+        assert lshw.process_request(command=b"dapi", data=b"bye") == (b"ok", b"Added request to API requests queue")
+        await wait_function_called(send_error_mock)
+
+    send_error_mock.assert_called_once_with(b'dapi', refused)

@@ -78,9 +78,13 @@ def get_script_arguments() -> argparse.Namespace:
     return parser
 
 
-def list_outdated():
-    """Print outdated agents."""
-    agents = wazuh.agent.get_outdated_agents()
+async def list_outdated():
+    """Print outdated agents.
+
+    The agent registry lives on the master, so a worker asks the master, as every other agent query does.
+    """
+    agents = await cluster_utils.forward_function(wazuh.agent.get_outdated_agents, f_kwargs={})
+    cluster_utils.raise_if_exc(agents)
     if agents.total_affected_items == 0:
         print("All agents are updated.")
     else:
@@ -161,7 +165,7 @@ async def main():
 
         # Check arguments
         if args.list_outdated:
-            list_outdated()
+            await list_outdated()
             exit(0)
 
         if not args.agents:

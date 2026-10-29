@@ -12,6 +12,7 @@
 #define _REMOTED_HTTP_SERVER_HEADER_UTILS_HPP
 
 #include <cctype>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <unordered_map>
@@ -34,10 +35,11 @@ namespace remoted::http
      *
      * @param headers   The request's header map, as delivered by the transport.
      * @param lowerName The header name to find, already lowercase.
-     * @return The header's value, or an empty string if absent.
+     * @return The header's value, or std::nullopt if absent -- so a header sent with an empty value
+     *         stays distinguishable from no header at all.
      */
-    inline std::string headerValue(const std::unordered_map<std::string, std::string>& headers,
-                                   std::string_view lowerName)
+    inline std::optional<std::string> findHeader(const std::unordered_map<std::string, std::string>& headers,
+                                                 std::string_view lowerName)
     {
         for (const auto& [name, value] : headers)
         {
@@ -59,7 +61,18 @@ namespace remoted::http
                 return value;
             }
         }
-        return {};
+        return std::nullopt;
+    }
+
+    /**
+     * @brief findHeader(), for a reader to whom an absent header and an empty one mean the same.
+     *
+     * @return The header's value, or an empty string if absent.
+     */
+    inline std::string headerValue(const std::unordered_map<std::string, std::string>& headers,
+                                   std::string_view lowerName)
+    {
+        return findHeader(headers, lowerName).value_or(std::string {});
     }
 
 } // namespace remoted::http

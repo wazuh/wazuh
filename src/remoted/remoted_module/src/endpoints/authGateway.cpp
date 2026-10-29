@@ -131,8 +131,8 @@ namespace remoted::endpoints
                     const std::string authorization = headerValue(request->headers, "authorization");
                     // Parsed once here, acted on only AFTER authentication succeeds (see below): an
                     // unauthenticated peer never reaches a decoder.
-                    const auto contentEncoding =
-                        remoted::decoding::parseContentEncoding(headerValue(request->headers, "content-encoding"));
+                    const auto contentEncoding = remoted::decoding::parseContentEncoding(
+                        remoted::http::findHeader(request->headers, "content-encoding"));
 
                     // Authentication is header-only: protocol-version, the bearer token, the key
                     // lookup + address rule, and the token's signature/claims/time policy. The body

@@ -32,9 +32,10 @@ MANAGER_CONF_DIR = '/etc/wazuh-manager'
 ENROLLMENT_TOKENS_PATH = os.path.join(MANAGER_CONF_DIR, 'enrollment_tokens.json')
 
 # authd writes the store after dropping privileges, and the secrets in it must never be world
-# readable: the daemon user owns it, group readable at most.
+# readable: the daemon user owns it, readable and writable by its group only (0660, the mode the
+# cluster syncs it with).
 STORE_OWNER = 'wazuh-manager'
-STORE_MODE = 0o640
+STORE_MODE = 0o660
 
 # The daemon binary doubles as the enrollment token CLI.
 AUTHD_BINARY_PATH = os.path.join(BIN_PATH, 'wazuh-manager-authd')

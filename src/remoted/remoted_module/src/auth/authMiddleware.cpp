@@ -247,17 +247,18 @@ namespace remoted::auth
         if (!agent->addressAllowed)
         {
             // INFO, not WARN: the condition is a property of the agent's registration, not a fault in
-            // the manager. Arguments stay allocation-free -- an integer and a view printed with "%.*s".
+            // the manager. Arguments stay allocation-free -- the id's canonical text ("006", as
+            // client.keys spells it) the kid already holds, and a view printed with "%.*s".
             if (const auto d = addressNotAllowedThrottle().record())
             {
                 LOGFN_INFO(logFn(),
                            "Rejected %llu request(s) %s coming from an address the agent is not "
-                           "registered with (most recently agent %u from '%.*s'). client.keys restricts that agent to "
-                           "a fixed address; re-enroll it with the address it actually connects from, or with 'any' if "
-                           "that address changes or the agent reaches the manager through a load balancer.",
+                           "registered with (most recently agent '%s' from '%.*s'). client.keys restricts that agent "
+                           "to a fixed address; re-enroll it with the address it actually connects from, or with 'any' "
+                           "if that address changes or the agent reaches the manager through a load balancer.",
                            static_cast<unsigned long long>(d.total),
                            d.period().c_str(),
-                           kid->numeric(),
+                           kid->text().c_str(),
                            static_cast<int>(peerIp.size()),
                            peerIp.data());
             }

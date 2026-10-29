@@ -22,11 +22,11 @@ The downloader selects its mode based on the cursor stored in the RocksDB databa
 
 Triggered on the first run or when no valid cursor exists. A stored cursor that is not an integer is logged as a warning (`stored cursor '<value>' is not a valid integer — falling back to initial load.`) and treated as absent. Downloads all documents from the index using a `match_all` query, sorted by `(offset ASC, _id ASC)` and paginated with PIT + `search_after`.
 
-If the index returns zero documents (not yet populated), or the download throws, the downloader retries the whole load from the beginning every 30 seconds until it gets data or a stop condition is signalled. The first two failed attempts log at debug level; from the third on, at warning level.
+If the index returns zero documents (not yet populated), or the download throws, the downloader retries the whole load from the beginning every 30 seconds (`Retrying initial full load (attempt <n>) ...`) until it gets data or a stop condition is signalled. A failed attempt logs its reason (`Initial load failed (<error>) — retrying in 30s.`) at info level for the first two attempts and at warning level from the third on; an empty index logs at debug level for the first two attempts, then at warning level. A failed page request does not get here unless it keeps failing: see [Page request retry](#page-request-retry).
 
 #### Incremental update (cursor stored)
 
-Triggered on subsequent runs. Downloads only documents whose `offset` field is strictly greater than the stored cursor, using a range query `{ "range": { "offset": { "gt": <lastCursor> } } }` with the same PIT + `search_after` pagination. An incremental update is always sequential, whatever `numSlices` says, and is not retried internally: an exception fails the run, and the next scheduled run resumes from the stored cursor.
+Triggered on subsequent runs. Downloads only documents whose `offset` field is strictly greater than the stored cursor, using a range query `{ "range": { "offset": { "gt": <lastCursor> } } }` with the same PIT + `search_after` pagination. An incremental update is always sequential, whatever `numSlices` says. Apart from the [page request retry](#page-request-retry), it is not retried internally: an exception fails the run, and the next scheduled run resumes from the stored cursor.
 
 If the range query returns zero documents, the completion signal carries `changed: false` (see [Completion signal](#completion-signal) below).
 
@@ -55,7 +55,7 @@ Each download cycle (initial or incremental) opens a single Point-In-Time on the
 ```
 createPointInTime(index, "5m")
   → while pages remain:
-      search(pit, pageSize, query, sort, searchAfter, sourceFilter)
+      search(pit, pageSize, query, sort, searchAfter, sourceFilter)   (retried, see below)
       → processPage() → fileProcessingCallback(json message)
       → if the callback answered "flushed": persistCursor(highestOffsetSeen)
       → at most once a minute: INFO "Download in progress — <n> documents so far, cursor '<c>', <s>s elapsed"
@@ -72,7 +72,7 @@ The `fileProcessingCallback` is serialized via a mutex (`m_callbackMutex`) so th
 createPointInTime(index, "5m")
   → spawn N threads, each with slice {id: i, max: N}:
       while pages remain in this slice:
-          search(pit, pageSize, query, sort, searchAfter, sourceFilter, slice)
+          search(pit, pageSize, query, sort, searchAfter, sourceFilter, slice)   (retried, see below)
           → lock(m_callbackMutex)
           → processPage() → fileProcessingCallback(json message)
           → at most once a minute per slice: INFO "Slice <i> (<i+1>/<n>) in progress — <n> documents so far, cursor '<c>', <s>s elapsed"
@@ -81,7 +81,15 @@ createPointInTime(index, "5m")
   → deletePointInTime(pit)
 ```
 
-A failed slice fails the whole load (`<n> slice(s) failed: <first error>`), which the initial load retries after 30 seconds. A stop request during a sliced load persists no cursor: a per-slice offset is not a safe resume point, so the next run performs the initial load again.
+A slice whose page request still fails after the [page request retry](#page-request-retry) fails the whole load (`<n> slice(s) failed: <first error>`, and `Slice <i> failed: <error> — the initial load will be retried` at warning level). The other slices stop at their next page (`Slice <i> (<i+1>/<n>) abandoned after another slice failed`) instead of finishing work that is discarded, and the initial load starts again from the beginning after 30 seconds. A stop request during a sliced load persists no cursor: a per-slice offset is not a safe resume point, so the next run performs the initial load again.
+
+#### Page request retry
+
+A page request (`search`) that throws is repeated from the same `search_after` position on the same PIT, up to 5 times, waiting 5, 10, 20, 40 and 60 seconds (`IndexerPageWalk::RetryPolicy` in [indexerPageWalk.hpp](../../src/components/indexerPageWalk.hpp)). Every retry logs `<who> page request failed (<error>) — retrying from the same position in <ms>ms (retry <k>/5).` at warning level, where `<who>` is `Slice <i> (<i+1>/<n>)` or `Download`. The connector already retries a 429 for a few seconds inside each request; this retry covers the longer episodes (an indexer circuit breaker answering 429 for minutes), which used to discard every slice's progress and restart the initial load from offset 0.
+
+- Repeating the request is safe: a failed request delivered nothing to the consumer, and the position is still valid in the PIT snapshot. The PIT stays alive while the other slices keep using it, and the 135-second window leaves room inside its 5-minute keep-alive when they have finished.
+- Only the request is retried: a consumer callback failure (`fileProcessingCallback returned failure`) is not, since the page may be half applied.
+- A stop request during the wait abandons the slice as an interrupted one.
 
 ### Source field filtering
 
@@ -94,7 +102,7 @@ The cursor is the highest `offset` seen, stored as a string in the `current_offs
 - **Sequential download:** after a page whose callback answered `"flushed"` (the consumer has durably written everything up to it), that page's cursor is persisted. A stop request leaves `context.data["cursor"]` at the last flushed cursor, so the next run resumes from data the consumer really holds.
 - **Sliced download:** the cursor is persisted only after every slice completed (see above).
 - **End of run:** `context.data["cursor"]` carries the final cursor, which `UpdateIndexerCursor` persists.
-- If the **Indexer** fails during an initial load, `initialLoad()` catches the exception, waits 30 seconds, and retries the full download from scratch. During an incremental update the exception fails the run.
+- If the **Indexer** keeps failing a page request after its retries during an initial load, `initialLoad()` catches the exception, waits 30 seconds, and retries the full download from scratch. During an incremental update the exception fails the run.
 - If the consumer rejects the completion signal, the cursor is reset to `"0"` (forcing an initial load) and the run starts again after 30 seconds.
 
 ### Completion signal

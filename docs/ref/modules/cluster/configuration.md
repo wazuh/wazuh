@@ -69,8 +69,10 @@ Defines the key used to encrypt the communication between the nodes. This key mu
 - **Default value:** None (required). The installer writes a random 32-character hexadecimal key
   into the generated configuration.
 - **Allowed values:** Letters and digits (`^[A-Za-z0-9]{32}$`)
-- **Note:** This key must be the same for all cluster nodes. A worker with a different key cannot
-  decrypt the master's messages (error `3025`, `Could not decrypt message`). Because every
+- **Note:** This key must be the same for all cluster nodes. The master cannot decrypt the messages of
+  a worker with a different key: the master logs error `3025` (`Could not decrypt message`) and closes
+  the connection, and the worker logs only that the master closed it, with a WARNING after 3 such
+  attempts in a row (see [How it works](README.md#how-it-works)). Because every
   installation generates its own random key, copy the master's `<key>` into each worker's
   configuration.
 
@@ -155,12 +157,16 @@ Standard master node configuration:
   <node_type>master</node_type>
   <key>9d273b53510fef702b54a92e9cffc82e</key>
   <port>1516</port>
-  <bind_addr>0.0.0.0</bind_addr>
+  <bind_addr>MASTER_NODE_IP</bind_addr>
   <nodes>
     <node>MASTER_NODE_IP</node>
   </nodes>
 </cluster>
 ```
+
+`MASTER_NODE_IP` is the master's address on the management network. Only the master listens on the cluster port,
+on `bind_addr`: avoid `0.0.0.0` on a host whose other interfaces face agents or users (see the
+[cluster security model](../../security/cluster-model.md#deployment-assumptions)).
 
 ### Worker Node
 

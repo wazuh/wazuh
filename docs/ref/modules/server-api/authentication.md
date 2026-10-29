@@ -133,6 +133,12 @@ a later `deny` over the node being served wins, and in `rbac_mode: black` the va
 clear unless a policy denies them, as everything else does in that mode. The default policy grants
 it over `node:id:*`, so an `administrator` sees them on every node.
 
+> **Warning:** a holder of `cluster:read_secrets` reads the **cluster key in clear** —
+> `GET /cluster/local/config` returns it in its `key` field, and the node-configuration reads return
+> it inside `<cluster>` — and with that key any host can join the cluster as a node. Keep the action
+> out of custom roles and policies: leave it to the built-in `secrets_read` policy, and grant that only
+> to the accounts that administer the cluster itself.
+
 The same action guards the **write** side of the cluster key. Knowing the key is what lets a host join
 the cluster as a peer, so being able to choose it is worth as much as being able to read it:
 `PUT /cluster/{node_id}/configuration` refuses a new `<cluster><key>` with error `1132` unless the
@@ -187,8 +193,8 @@ mask is not served.
 ## Rate Limiting & Brute-Force Protection
 
 - **Brute-force protection**: every request to `POST /security/user/authenticate` or `POST /security/user/authenticate/run_as` counts as a login attempt for its client IP and the user named in its Basic credentials, and a successful login gives its attempt back. When a user reaches `access.max_login_attempts` (50) failed attempts from one IP (an IPv6 client by its `/64`), its logins from that IP answer `403` with error `6000` until `access.block_time` (300 seconds) has passed since the first attempt counted. Other users logging in from the same IP are not affected until the IP reaches ten times `access.max_login_attempts` failed attempts across all users, which blocks it for every user. Failures for one account therefore do not lock the dashboard out; failures for `wazuh-internal-client` itself still do, from any client that shares its address. Keep untrusted processes off the dashboard host, and do not put a reverse proxy there that hides the client addresses from the API.
-- **Login queue**: password checks are bounded per API process by [`authentication_pool_size`](configuration.md#authentication_pool_size); a login that finds the queue full answers `429` with error `6006`.
-- **Request rate**: each client address may make `access.max_request_per_minute` (300) authenticated requests per minute, and `access.max_unauthenticated_request_per_minute` (10) unauthenticated or failed-authentication ones. Beyond them the API answers `429` with error `6001` or `6005`. See [Configuration](configuration.md#request-rate-limiting).
+- **Login queue**: password checks are bounded per API process by [`authentication_pool_size`](configuration.md#authentication_pool_size); a login that finds the queue full answers `429` with error `6006`, and one that waits in it longer than `intervals.request_timeout` answers `500` with error `3021`.
+- **Request rate**: each client address may make `access.max_request_per_minute` (300) authenticated requests per minute, and `access.max_unauthenticated_request_per_minute` (10) unauthenticated or failed-authentication ones. Beyond them the API answers `429` with error `6001` or `6005`. A request whose path or method matches no API operation never reaches authentication, so it counts as unauthenticated even when it carries a valid token. See [Configuration](configuration.md#request-rate-limiting).
 - The state is kept in memory by `api/api/middlewares.py`, so it is lost when `wazuh-manager-apid` restarts.
 
 ---

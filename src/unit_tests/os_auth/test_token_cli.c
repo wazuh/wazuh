@@ -211,6 +211,7 @@ static void test_create_sends_the_request_and_prints_only_the_token(void **state
     assert_non_null(strstr(s.err_buf, "expires: 2027-01-15T08:00:00Z (1800000000)\n"));
     assert_non_null(strstr(s.err_buf, "pin: " FROZEN_PIN_HEX "\n"));
     assert_non_null(strstr(s.err_buf, "credential: yes\n"));
+    assert_null(strstr(s.err_buf, "WARNING"));
     streams_free(&s);
 
     // Flags travel as JSON booleans; port and prefix only when given; no pin_hex with an embedded CA.
@@ -225,6 +226,9 @@ static void test_create_sends_the_request_and_prints_only_the_token(void **state
     assert_string_equal(s.out_buf, "T2\n");
     assert_null(strstr(s.err_buf, "pin:"));
     assert_non_null(strstr(s.err_buf, "credential: no\n"));
+    // An IP address as the token address: the mint's warning is repeated on stderr, never on stdout
+    assert_non_null(strstr(s.err_buf, "WARNING: the token address '127.0.0.1' is an IP address: the token stops "
+                                      "working if the manager's address changes."));
     streams_free(&s);
 }
 

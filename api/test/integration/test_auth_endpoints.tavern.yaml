@@ -393,6 +393,8 @@ marks:
       vals:
         - ["POST", "/groups", '{{"group_id": "tavern_no_ctype"}}']
         - ["PUT", "/groups/default/configuration", "x"]
+        # Accepts application/octet-stream, the type a request with no Content-Type is reported as
+        - ["PUT", "/cluster/master-node/configuration", "<wazuh_config/>"]
         - ["POST", "/security/users", '{{"username": "tavern_no_ctype", "password": "Tavern_NoCtype_1!"}}']
 
 stages:

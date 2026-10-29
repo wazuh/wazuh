@@ -114,7 +114,11 @@ the AWS and Google Cloud blocks as `verify-agent-conf:aws-s3`, `verify-agent-con
 Levels are `DEBUG`, `INFO`, `WARNING`, `ERROR` and `CRITICAL`; the engine
 (`wazuh-manager-analysisd`) writes its critical messages as `ERROR`. A daemon running in debug mode (`-d`,
 for example after `wazuh-manager-control enable debug` and a restart) adds
-`[<pid>] <file>:<line> at <function>():` after the tag.
+`[<pid>] <file>:<line> at <function>():` to the tag, before the level:
+
+```text
+2026/07/06 12:34:58 wazuh-manager-modulesd[23059] main.c:179 at main(): DEBUG: Created new thread for the 'control' module.
+```
 
 ### JSON
 

@@ -47,11 +47,18 @@ backup_upgrade_preserve() {
     fi
 }
 
+# print_unsupported_manager_upgrade VERSION [host]: the refusal of a manager older than 5.0, as the
+# package being upgraded or, with "host", anywhere on this host (a fresh install is refused beside it).
 print_unsupported_manager_upgrade() {
     DETECTED_VERSION="${1:-unknown}"
+    if [ "${2:-}" = "host" ]; then
+        UNSUPPORTED_REASON="A Wazuh manager older than 5.0 is installed on this host: Wazuh manager 5.x can neither upgrade it nor be installed beside it."
+    else
+        UNSUPPORTED_REASON="Upgrade from Wazuh manager versions prior to 5.x is not supported."
+    fi
     cat <<EOF >&2
 ==============================================================
-ERROR: Upgrade from Wazuh manager versions prior to 5.x is not supported.
+ERROR: ${UNSUPPORTED_REASON}
 
 Detected installed version: ${DETECTED_VERSION#v}
 
@@ -164,7 +171,7 @@ case "$1" in
         # HARD BLOCK: no 4.x manager may be replaced or sit beside this one, on an upgrade or
         # on a fresh install.
         if PRE5_VERSION=$(installed_pre5_version); then
-            print_unsupported_manager_upgrade "${PRE5_VERSION}"
+            print_unsupported_manager_upgrade "${PRE5_VERSION}" host
             exit 1
         fi
 

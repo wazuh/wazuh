@@ -248,11 +248,11 @@ the orphaned documents this feature exists to prevent.
 
 | Option | Default | Range | Meaning |
 | --- | --- | --- | --- |
-| `wazuh_modules.manager_task_delete_timeout` | 600 s | 1–7200 | Deadline on one deletion call, and the type's watchdog budget. Must exceed the scan timeout; otherwise the module refuses to start (`Task manager failed to start: manager_task_delete_timeout (<n>s) must exceed manager_task_vd_scan_timeout (<m>s): …`). This pair is checked at module start, not by `wazuh-manager-modulesd -t` |
+| `wazuh_modules.manager_task_delete_timeout` | 600 s | 1–7200 | Deadline on one deletion call, and the type's watchdog budget. Must exceed the scan timeout; otherwise `wazuh-manager-modulesd -t` refuses the configuration before start |
 | `wazuh_modules.manager_task_vd_scan_timeout` | 300 s | 1–3600 | Deadline on one scan call, and the type's watchdog budget |
 | `wazuh_modules.manager_task_max_pending_deletes` | 20000 | 0–1000000 | Admission bound on pending deletions. `0` removes the bound |
 | `wazuh_modules.manager_task_max_pending_scans` | 64 | 0–1000000 | Admission bound on pending on-demand scans. `0` removes the bound |
-| `wazuh_modules.manager_task_create_timeout` | 2 s | 1–60 | Deadline on the vulnerability scanner's own call to create a row; read by the scanner when it starts, not by this module, so an out-of-range value passes `wazuh-manager-modulesd -t` and stops modulesd at the scanner's start instead |
+| `wazuh_modules.manager_task_create_timeout` | 2 s | 1–60 | Deadline on the vulnerability scanner's own call to create a row; read by the scanner's configuration reader, not by this module; an out-of-range value fails `wazuh-manager-modulesd -t` all the same |
 
 The delete timeout must exceed the scan timeout because a scan holding an agent parks that agent's
 deletion behind it in the consumer's per-agent queue; with both deadlines equal, the deletion would

@@ -91,7 +91,7 @@ Require agents to provide a shared enrollment password.
 - **Allowed values:** `yes`, `no`
 - **Note:** The `-P` [command-line flag](README.md#command-line-options) forces this to `yes`; no flag turns it off.
 
-When enabled, the password is read from `/etc/wazuh-manager/authd.pass` (its first line). If the file does not exist, the master's `wazuh-manager-authd` generates a random password on start (32 bytes straight from the CSPRNG, written as 64 lowercase hexadecimal characters), stores it in that file with mode `0640`, and reuses it on later starts. It does so only while [`remote_enrollment`](#remote_enrollment) is `yes`: with it off no enrollment path needs the password. A password written by hand is not held to that format: a first line of 3 to 4095 characters, not all whitespace, is accepted (trailing CR/LF removed). If the file exists but is empty, too long or otherwise invalid, the master's `wazuh-manager-authd` does not start. In a cluster, the password belongs to the master and is distributed to the workers automatically; a worker rejects enrollment until it receives the file.
+When enabled, the password is read from `/etc/wazuh-manager/authd.pass` (its first line). If the file does not exist, the master's `wazuh-manager-authd` generates a random password on start (32 bytes straight from the CSPRNG, written as 64 lowercase hexadecimal characters), stores it in that file with mode `0660`, and reuses it on later starts. It does so only while [`remote_enrollment`](#remote_enrollment) is `yes`: with it off no enrollment path needs the password. A password written by hand is not held to that format: a first line of 3 to 4095 characters, not all whitespace, is accepted (trailing CR/LF removed). If the file exists but is empty, too long or otherwise invalid, the master's `wazuh-manager-authd` does not start. In a cluster, the password belongs to the master and is distributed to the workers automatically; a worker rejects enrollment until it receives the file.
 
 **Agent-side setup:** a 5.0 agent registers with an [enrollment token](README.md#enrollment-tokens), which carries its own credential, and `use_password` has no bearing on a token enrollment. It still sends a password over `POST /enroll` when the file named by [`<enrollment><authorization_pass_path>`](../client/configuration.md#authorization_pass_path) (default `etc/authd.pass`) exists and it holds no re-enrollment secret, but nothing writes the endpoint's default `etc/authd.pass` any more: `WAZUH_REGISTRATION_PASSWORD` was removed, a fresh 5.0 install never creates the file, and the 5.0 package upgrade deletes one left by a 4.x install. A path an operator names explicitly in `<enrollment><authorization_pass_path>` is theirs and is left alone.
 
@@ -264,7 +264,8 @@ Every option below is read once at start with a compiled-in default. Three thing
 - **The shipped file is empty.** It carries only comments, so tuning one of these means adding the
   `name=value` line yourself.
 - **An out-of-range or non-numeric value is fatal**, not clamped: the daemon refuses to start and
-  names the option it rejected.
+  names the option it rejected. `wazuh-manager-authd -t` reads every option below too, so
+  `wazuh-manager-control check` refuses such a value before anything stops.
   Put comments on separate lines beginning with `#`; an inline comment becomes part of the value.
 - **The file is per node and is never synchronized.** Nothing in a cluster propagates it.
 
@@ -295,7 +296,8 @@ wazuh_modules.manager_task_max_pending_deletes=20000
 ### authd.debug
 
 The daemon's debug level when it is started without `-d`: `1` is debug, `2` is verbose debug. It is
-not read when `-d` is given on the command line.
+not read when `-d` is given on the command line. Without `-d`, `wazuh-manager-authd -t` reads and
+range-checks it as the start does, but does not raise its own verbosity with it.
 
 - **Default value:** `0`
 - **Allowed values:** `0` to `2`

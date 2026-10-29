@@ -26,6 +26,9 @@ sqlite3 * wdb_global_pre(void **wdb_ctx)
     struct timeval diff;
     wdb_t * wdb;
 
+    /* The HTTP routes enter here instead of wdb_parse(): count them in the total as well, so the
+     * per-target counters never add up to more than "received". */
+    w_inc_queries_total();
     w_inc_global();
 
     gettimeofday(&begin, 0);

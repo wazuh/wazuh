@@ -312,8 +312,7 @@ INSTANTIATE_TEST_SUITE_P(
                 return req;
             },
             [](const std::shared_ptr<::router::ITesterAPI>& tester) { return sessionDelete(tester); },
-            []()
-            { return userErrorResponse<eEngine::GenericStatus_Response>("Invalid name name: Name cannot be empty"); },
+            []() { return userErrorResponse<eEngine::GenericStatus_Response>("Invalid name: Name cannot be empty"); },
             [](auto&) {}),
         /***********************************************************************
          * SessionReload
@@ -376,8 +375,7 @@ INSTANTIATE_TEST_SUITE_P(
                 return req;
             },
             [](const std::shared_ptr<::router::ITesterAPI>& tester) { return sessionReload(tester); },
-            []()
-            { return userErrorResponse<eEngine::GenericStatus_Response>("Invalid name name: Name cannot be empty"); },
+            []() { return userErrorResponse<eEngine::GenericStatus_Response>("Invalid name: Name cannot be empty"); },
             [](auto&) {})));
 
 // TODO: add separate tests for routeGet tableGet and runPost (need more than one mock)

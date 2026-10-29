@@ -658,6 +658,12 @@ int w_request_agent_add_clustered(char *err_response,
 
     cJSON* message = w_create_agent_add_payload(name, ip, groups, key_hash, *key, agent_id, force_options, token_id, reenroll_kid, reenroll_bearer, source);
 
+    // A caller that takes no re-enrollment secret back is a worker's port-1515 listener, whose protocol
+    // cannot deliver one: mark the request so that the master issues (and stores) none.
+    if (!reenroll_secret) {
+        cJSON_AddTrueToObject(cJSON_GetObjectItem(message, "arguments"), "legacy");
+    }
+
     cJSON* payload = w_create_sendsync_payload("authd", message);
     char* output = cJSON_PrintUnformatted(payload);
     cJSON_Delete(payload);

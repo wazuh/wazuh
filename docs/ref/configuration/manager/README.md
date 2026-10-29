@@ -61,10 +61,14 @@ element is rejected as a duplicate.
     to empty, so one set without the other passes `validate` and the API's `PUT`; the credential check refuses
     it at the next start with `INVALID indexer.ssl.<missing>: must be set together with indexer.ssl.<other>`,
     error 22), where the TLS files lie and what they hold (the
-    credential check refuses a path outside `/etc/wazuh-manager/certs`, an expired or mismatched pair —
-    [Credentials](../../getting-started/credentials.md)), the internal options (read only by each daemon at
-    start), and what only a running system shows (an address this host does not have, a port another
-    program holds). The API's `PUT` runs the same `validate`, so it has the same limits.
+    credential check refuses a path outside `/etc/wazuh-manager/certs` for `remote.https.certificate`,
+    `remote.https.key`, `remote.https.ca_certificate`, `auth.ssl_manager_cert` and `auth.ssl_manager_key`
+    (the `auth` pair whatever `auth.disabled` says) and the `indexer.ssl` files — `remote.https.ca` and
+    `auth.ssl_agent_ca` are not confined — and an expired or mismatched pair —
+    [Credentials](../../getting-started/credentials.md)), the internal options (read by each daemon and
+    judged by its `-t`, with the exceptions listed below), and what only a running system shows (an
+    address this host does not have, a port another program holds). The API's `PUT` runs the same
+    `validate`, so it has the same limits.
     `wazuh-manager-control check` runs the whole pre-start sequence below — validation, credentials and
     every daemon's `-t` — without stopping or starting anything. Through those `-t` runs it also judges
     what the TLS files hold: `wazuh-manager-remoted -t` loads `remote.https.certificate` and `key` (and
@@ -75,11 +79,13 @@ element is rejected as a duplicate.
     refused before anything stops.
   - What even `wazuh-manager-control check` does not judge, so that a value passes it and still stops a
     daemon at start:
-    - the engine's `analysisd.*` internal options: its `-t` returns before it reads the internal-options
-      file, so an out-of-range value stops `wazuh-manager-analysisd` before it writes its pid file
-      (`Failed to obtain PID for wazuh-manager-analysisd`);
     - `wazuh.thread_stack_size`: read only when a thread is created, which no `-t` does, so an
-      out-of-range value stops `wazuh-manager-remoted` or `wazuh-manager-modulesd` at start with `(2302)`;
+      out-of-range value stops `wazuh-manager-remoted` or `wazuh-manager-modulesd` at start with `(2302)`.
+      It is the only internal option of the C daemons left outside `-t`: every other one a daemon reads
+      (`remoted.*`, `authd.*`, `wazuh_db.*`, `wazuh_modules.*`, the module limits remoted reads) is read,
+      and range-checked, by that daemon's `-t`, so `check` refuses an out-of-range value before anything
+      stops. The one nuance is the debug level: with `-d` on the command line `remoted.debug`,
+      `authd.debug` and `wazuh_db.debug` are not read at all, by `-t` or by the start;
     - memory: `remote.legacy.queue_size` is judged by type and range (at most 134217728, which asks for
       1 GiB of queue slots at start), not against what the host can allocate — see the option in
       [the reference](reference.md);

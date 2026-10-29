@@ -23,8 +23,9 @@ For module overview and architecture, see [Server API Module](README.md).
 **XML Section:** None. **Internal Options:** None.
 
 Both YAML files are merged over built-in defaults (`api/api/configuration.py`) and validated against a
-JSON schema (`api/api/validator.py`) when `wazuh-manager-apid` starts: an unknown option or a value of
-the wrong type stops it with error `2000`. Every string value is lowercased except `https.key`,
+JSON schema (`api/api/validator.py`) when `wazuh-manager-apid` starts or runs `-t`: an unknown option or a value of
+the wrong type stops it with error `2000`. The `-t` check also validates the configured API log size
+and, when HTTPS is enabled, that the cipher list selects a usable cipher. Every string value is lowercased except `https.key`,
 `https.cert`, `https.ca` and `https.ssl_ciphers`, and the strings `yes`/`no` are read as booleans. A change to `api.yaml`
 takes effect when `wazuh-manager-apid` restarts: under systemd with
 `/var/wazuh-manager/bin/wazuh-manager-control check && systemctl restart wazuh-manager`, or with
@@ -119,6 +120,9 @@ Number of worker processes dedicated to authentication requests.
 - **Note:** At most `authentication_pool_size - 1` password checks (at least one) run at once, so with
   two or more workers one is always left for validating tokens. Once eight times that many logins are
   running or waiting, a further login is refused with `429` and error `6006` before its password is checked
+- **Note:** A login admitted to the queue still counts against `intervals.request_timeout`: under load, one
+  that waits longer than that for its password check answers `500` with error `3021` (a timeout, not a wrong
+  password). Retry it, or raise this pool size if it happens routinely
 
 ### intervals
 
@@ -198,7 +202,7 @@ Cross-origin resource sharing, applied with Starlette's `CORSMiddleware`.
 | `max_login_attempts` | `50` | Failed logins for one user from one client before that user is blocked from it (`403`, error `6000`). Ten times this many failures across all users block the client for every user |
 | `block_time` | `300` | Length, in seconds, of the window the failed logins are counted in, starting at the first one: a block lasts until that window ends |
 | `max_request_per_minute` | `300` | Authenticated requests per minute per client address (`429`, error `6001`); `0` disables it |
-| `max_unauthenticated_request_per_minute` | `10` | Unauthenticated or failed-authentication requests per minute per client address (`429`, error `6005`); `0` disables it |
+| `max_unauthenticated_request_per_minute` | `10` | Unauthenticated or failed-authentication requests per minute per client address (`429`, error `6005`); `0` disables it. A request whose path or method matches no API operation is never authenticated, so it is charged here even when it carries a valid token |
 
 The client address is always the TCP peer of the connection. The API ignores `X-Forwarded-For` and
 `X-Forwarded-Proto` from any peer, loopback included, so behind a reverse proxy every client shares
@@ -410,9 +414,11 @@ failed-authentication requests draw from a separate, much smaller allowance cont
 authenticated caller shares the same address with. Setting `max_unauthenticated_request_per_minute`
 to `0` disables only this sub-limit. Unlike `max_request_per_minute`, this value does not scale
 with deployment size in the table above — it bounds abuse/probing traffic rather than legitimate
-demand, so it stays at `10` regardless of deployment size. A request to a path or method the API
-does not expose is always billed to this smaller allowance, regardless of any credential it
-carries, since it never reaches the authentication step in the first place. An authenticated
+demand, so it stays at `10` regardless of deployment size. A request to a path the API does not
+expose (`404`) is always billed to this smaller allowance, regardless of any credential it
+carries, since it never reaches the authentication step in the first place. A method the API does
+not expose on an existing path (`405`) is refused before any rate limit is charged, so it is billed
+to neither allowance. An authenticated
 caller already over its `max_request_per_minute` ceiling is rejected before authentication runs,
 not after, so exceeding the ceiling does not itself cost the authentication step.
 

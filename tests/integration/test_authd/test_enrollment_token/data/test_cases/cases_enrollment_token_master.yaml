@@ -1,5 +1,5 @@
 - name: 'socket_mint'
-  description: 'token_create over auth.sock mints a token and persists it with the store 0640 wazuh-manager:wazuh-manager'
+  description: 'token_create over auth.sock mints a token and persists it with the store 0660 wazuh-manager:wazuh-manager'
   configuration_parameters:
   metadata:
     action: 'socket_mint'

@@ -91,7 +91,7 @@ fail the indexer's own `index.mapping.depth.limit`, which is much lower.
 
 | Header | Required | Meaning |
 |---|---|---|
-| `X-Wazuh-Agent-Id` | Yes for `/stateful`, `/stats` and `/config` | The agent identity remoted authenticated. Missing or empty is answered `400` on all three. It must be a canonical agent id — decimal digits that fit a 32-bit unsigned value, zero-padded to at least three characters (`001`, `1000`), the only form remoted forwards — or the answer is `400`. On `/stateful` the session's claimed `Start.agentid` must be that same string: another spelling of the same number (`1`, `0001`) is `400`, another agent's id is `403`. All three routes use it verbatim as `wazuh.agent.id`; `/stats` and `/config` also use it as the document `_id`, and `/stateful` as the middle segment of `{cluster}_{agent}_{id}`. **Ignored by both `_internal` routes**, which read their target from the body — their caller sends no headers of its own. |
+| `X-Wazuh-Agent-Id` | Yes for `/stateful`, `/stats` and `/config` | The agent identity remoted authenticated. Missing or empty is answered `400` on all three. It must be a canonical agent id — decimal digits that fit a 32-bit unsigned value, zero-padded to at least three characters (`001`, `1000`), the only form remoted forwards — or the answer is `400`. The value is compared as received: trailing whitespace is not trimmed, so `001 ` is `400` too. On `/stateful` the session's claimed `Start.agentid` must be that same string: another spelling of the same number (`1`, `0001`) is `400`, another agent's id is `403`. All three routes use it verbatim as `wazuh.agent.id`; `/stats` and `/config` also use it as the document `_id`, and `/stateful` as the middle segment of `{cluster}_{agent}_{id}`. **Ignored by both `_internal` routes**, which read their target from the body — their caller sends no headers of its own. |
 | `Content-Type` | No | Recorded, not interpreted. |
 
 ## Enrichment (`/stats` and `/config`)
@@ -396,10 +396,12 @@ route-specific payload — see [Test Tools](test-tools.md). The liveness probe w
 curl --unix-socket /var/wazuh-manager/queue/sockets/inventory-sync-http.sock http://localhost/
 ```
 
-A `/config` report, simulating what remoted forwards for an authenticated agent:
+A `/config` report, simulating what remoted forwards for an authenticated agent. The report replaces
+that agent's `wazuh-agent-config` document, so use an id no real agent has (`900` here, as the test
+tools do) and remove its documents afterwards with `send_delete_agent.py --agent-id 900`:
 
 ```bash
 curl --unix-socket /var/wazuh-manager/queue/sockets/inventory-sync-http.sock http://localhost/config \
-  -X POST -H "Content-Type: application/json" -H "x-wazuh-agent-id: 001" \
+  -X POST -H "Content-Type: application/json" -H "x-wazuh-agent-id: 900" \
   -d '{"modules":{"fim":{"frequency":43200},"logcollector":{"localfile":[{"file":"/var/log/syslog","logformat":"syslog"}]}}}'
 ```

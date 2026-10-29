@@ -173,9 +173,9 @@ For every option and default, see the [Task Manager Configuration Reference](con
 
 `<task-manager>` has these five options plus `<wpk_repository>`. Everything else is an internal
 option in the `wazuh_modules` namespace, resolved **before modulesd daemonizes**, so an out-of-range
-value fails `wazuh-manager-modulesd -t` rather than aborting a module thread later. (The one
-exception, `manager_task_create_timeout`, is read by the vulnerability scanner at its own start; see
-[Per-type bounds](manager-tasks.md#per-type-bounds).)
+value fails `wazuh-manager-modulesd -t` rather than aborting a module thread later. (One of them,
+`manager_task_create_timeout`, is read by the vulnerability scanner's configuration reader instead,
+with the same effect; see [Per-type bounds](manager-tasks.md#per-type-bounds).)
 
 ---
 

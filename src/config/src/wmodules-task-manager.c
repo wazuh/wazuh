@@ -159,6 +159,31 @@ static void wm_task_manager_read_tunables(wm_task_manager *data) {
     data->upgrade_versions_ttl = wm_task_manager_zeroable("upgrade_versions_ttl", 0, 86400);
 }
 
+/* Keep these defaults in sync with builtinTypes.cpp. The task manager resolves the absent-value
+ * sentinel to these values when it builds its registry; checking the effective pair here makes
+ * the same cross-option rule part of `wazuh-modulesd -t` instead of a failure in the module thread.
+ */
+#define WM_TASK_MANAGER_DEFAULT_VD_SCAN_TIMEOUT 300
+#define WM_TASK_MANAGER_DEFAULT_DELETE_TIMEOUT 600
+
+static int wm_task_manager_check_timeout_pair(const wm_task_manager *data) {
+    const int vd_scan_timeout = data->vd_scan_timeout > 0
+                                    ? data->vd_scan_timeout
+                                    : WM_TASK_MANAGER_DEFAULT_VD_SCAN_TIMEOUT;
+    const int delete_timeout = data->delete_timeout > 0
+                                   ? data->delete_timeout
+                                   : WM_TASK_MANAGER_DEFAULT_DELETE_TIMEOUT;
+
+    if (delete_timeout <= vd_scan_timeout) {
+        merror("Invalid task-manager timeout pair: manager_task_delete_timeout (%ds) must exceed "
+               "manager_task_vd_scan_timeout (%ds).",
+               delete_timeout, vd_scan_timeout);
+        return 1;
+    }
+
+    return 0;
+}
+
 /* Default instance of the module (default_modules[] in wmodules.c): the configuration itself comes from
  * /etc/wazuh-manager/wazuh-manager.conf through wm_task_manager_read_json(). `nodes` is unused (manager only). */
 int wm_task_manager_read(__attribute__((unused)) const OS_XML *xml, __attribute__((unused)) xml_node **nodes, wmodule *module) {
@@ -300,6 +325,7 @@ int wm_task_manager_read_json(const cJSON *section, wmodule *module) {
      * when a caller passes no document; the guard is defensive, not a "section removed" path. */
     int degraded = wm_task_manager_disconnection_time(&data->disconnection_time);
     degraded |= wm_task_manager_read_remoted(data);
+    degraded |= wm_task_manager_check_timeout_pair(data);
 
     if (section == NULL) {
         return degraded;
@@ -339,7 +365,9 @@ int wm_task_manager_read_json(const cJSON *section, wmodule *module) {
 
         if (item->valuedouble < 0 || item->valuedouble > (double)INT_MAX) {
             char *text = cJSON_PrintUnformatted(item);
-            merror("Invalid value for element '%s': %s is out of range (0 to %d); the module default applies.",
+            /* Not "the default applies": `-t` (and so every start through wazuh-manager-control)
+             * fails on it; only a daemon started by hand keeps the module default. */
+            merror("Invalid value for element '%s': %s is out of range (0 to %d); the value is refused.",
                    settings[i].key, text != NULL ? text : "(null)", INT_MAX);
             free(text);
             degraded = 1;

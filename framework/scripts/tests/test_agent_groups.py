@@ -309,7 +309,7 @@ async def test_create_group(print_mock):
 def test_usage(basename_mock, print_mock):
     """Test if the usage is being correctly printed."""
     msg = """
-    {0} [ -l [ -g group_id ] | -c -g group_id | -a (-i agent_id -g group_id | -g group_id) [-q] [-f] | -s -i agent_id | -r (-g group_id | -i agent_id) [-q] ]
+    {0} [ -l [ -g group_id ] | -c -g group_id | -a -i agent_id -g group_id [-q] [-f] | -a -g group_id [-q] | -s -i agent_id | -r -i agent_id [-g group_id] [-q] | -r -g group_id [-q] | -u ]
 
     Usage:
     \t-l                                    # List all groups
@@ -337,6 +337,7 @@ def test_usage(basename_mock, print_mock):
 
     \t-q, --quiet (no confirmation)
     \t-d, --debug
+    \t-u, --usage
     """.format(basename_mock.return_value)
 
     agent_groups.usage()
@@ -441,6 +442,15 @@ async def test_main(print_mock, usage_mock, show_groups_mock, show_agents_with_g
     agent_groups.args.group_id = 'group'
     await agent_groups.main()
     show_agents_with_group_mock.assert_called_once_with(agent_groups.args.group_id)
+
+    # -g group_id or -i agent_id without an action
+    for orphan in (Arguments(group_id='group'), Arguments(agent_id='001'), Arguments(group_id='group', quiet=True)):
+        agent_groups.args = orphan
+        show_groups_mock.reset_mock()
+        await agent_groups.main()
+        invalid_option_mock.assert_called_once_with('Missing action: -l, -c, -a, -s or -r.')
+        show_groups_mock.assert_not_called()
+        invalid_option_mock.reset_mock()
 
     # -c --list-files
     agent_groups.args = Arguments(list_files=True)

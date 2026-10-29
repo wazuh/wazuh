@@ -25,6 +25,7 @@
 
 int OS_IsAllowedID(keystore *keys, const char *id);
 int w_get_agent_net_protocol_from_keystore(keystore * keys, const char * agent_id);
+void move_netdata(keystore *keys, const keystore *old_keys);
 
 // Setup / Teardown
 
@@ -465,6 +466,111 @@ void test_w_get_key_hash_success(void **state){
     os_free(keys);
 }
 
+// Test move_netdata
+
+/* Agent 001 as a client.keys reload leaves it: the counters the reload read from its rids file, and
+ * its key material. */
+typedef struct {
+    keystore keys;
+    keyentry *entries[2];
+    keyentry entry;
+    os_ip ip;
+} netdata_store;
+
+static void netdata_store_init(netdata_store *store, const char *encryption_key, unsigned int global,
+                               unsigned int local, int sock)
+{
+    memset(store, 0, sizeof(*store));
+    store->ip.ip = "1.1.1.1";
+    store->entry.id = "001";
+    store->entry.ip = &store->ip;
+    store->entry.keyid = 0;
+    store->entry.encryption_key = (char *)encryption_key;
+    store->entry.global = global;
+    store->entry.local = local;
+    store->entry.sock = sock;
+    store->entries[0] = &store->entry;
+    store->keys.keyentries = store->entries;
+    store->keys.keysize = 1;
+    store->keys.keytree_id = (rb_tree *)1;
+    store->keys.keytree_sock = rbtree_init();
+}
+
+static void netdata_move(netdata_store *reloaded, netdata_store *old)
+{
+    expect_value(__wrap_rbtree_get, tree, reloaded->keys.keytree_id);
+    expect_string(__wrap_rbtree_get, key, "001");
+    will_return(__wrap_rbtree_get, &reloaded->entry);
+
+    move_netdata(&reloaded->keys, &old->keys);
+
+    rbtree_destroy(reloaded->keys.keytree_sock);
+    rbtree_destroy(old->keys.keytree_sock);
+}
+
+void test_move_netdata_carries_counters_ahead_of_rids(void **state)
+{
+    netdata_store old;
+    netdata_store reloaded;
+
+    /* In memory the agent reached 1000:20; the rids file was last flushed at 990:3. A frame captured at
+     * 995:0 would be ahead of the file's counters, but not of the carried ones. */
+    netdata_store_init(&old, "key-a", 1000, 20, 7);
+    netdata_store_init(&reloaded, "key-a", 990, 3, -1);
+
+    netdata_move(&reloaded, &old);
+
+    assert_int_equal(reloaded.entry.global, 1000);
+    assert_int_equal(reloaded.entry.local, 20);
+    assert_int_equal(reloaded.entry.sock, 7);
+}
+
+void test_move_netdata_carries_local_counter_ahead_of_rids(void **state)
+{
+    netdata_store old;
+    netdata_store reloaded;
+
+    netdata_store_init(&old, "key-a", 990, 20, 7);
+    netdata_store_init(&reloaded, "key-a", 990, 3, -1);
+
+    netdata_move(&reloaded, &old);
+
+    assert_int_equal(reloaded.entry.global, 990);
+    assert_int_equal(reloaded.entry.local, 20);
+}
+
+void test_move_netdata_keeps_rids_counters_ahead_of_memory(void **state)
+{
+    netdata_store old;
+    netdata_store reloaded;
+
+    netdata_store_init(&old, "key-a", 1000, 20, 7);
+    netdata_store_init(&reloaded, "key-a", 1001, 0, -1);
+
+    netdata_move(&reloaded, &old);
+
+    assert_int_equal(reloaded.entry.global, 1001);
+    assert_int_equal(reloaded.entry.local, 0);
+    assert_int_equal(reloaded.entry.sock, 7);
+}
+
+void test_move_netdata_replaced_key_keeps_rids_counters(void **state)
+{
+    netdata_store old;
+    netdata_store reloaded;
+
+    /* The agent enrolled again with a new key: it starts a new sequence, so the old counters must not
+     * hold its messages back. */
+    netdata_store_init(&old, "key-a", 1000, 20, 7);
+    netdata_store_init(&reloaded, "key-b", 0, 0, -1);
+
+    netdata_move(&reloaded, &old);
+
+    assert_int_equal(reloaded.entry.global, 0);
+    assert_int_equal(reloaded.entry.local, 0);
+    assert_int_equal(reloaded.entry.sock, 7);
+}
+
 int main(void)
 {
     const struct CMUnitTest tests[] = {
@@ -490,7 +596,12 @@ int main(void)
         // Test w_get_key_hash
         cmocka_unit_test(test_w_get_key_hash_empty_parameters),
         cmocka_unit_test(test_w_get_key_hash_empty_value),
-        cmocka_unit_test(test_w_get_key_hash_success)
+        cmocka_unit_test(test_w_get_key_hash_success),
+        // Test move_netdata
+        cmocka_unit_test(test_move_netdata_carries_counters_ahead_of_rids),
+        cmocka_unit_test(test_move_netdata_carries_local_counter_ahead_of_rids),
+        cmocka_unit_test(test_move_netdata_keeps_rids_counters_ahead_of_memory),
+        cmocka_unit_test(test_move_netdata_replaced_key_keeps_rids_counters)
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

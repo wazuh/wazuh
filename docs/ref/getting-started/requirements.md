@@ -35,11 +35,22 @@ heap must be large enough for the content the manager downloads from it. On a ho
 RAM, the indexer's default 1 GB heap was observed to trip its circuit breaker: the indexer answers `429`
 to the manager's content requests, some indicator-of-compromise types never finish loading into the engine, and
 the engine and the node keep reporting `ready: false`. Give the indexer a larger heap and the host the
-memory for it, following the indexer's own sizing guidance; the manager log shows the
-`Indexer node '<host>' is throttling requests` warning (see the
-[indexer connector](../modules/indexer_connector/configuration.md)) while it lasts.
+memory for it, following the indexer's own sizing guidance. When the breaker trips, the manager log shows the WARNING
+`Indexer node '<host>' reports a PERMANENT circuit breaker (…): heap usage is above the breaker limit; check the
+indexer heap sizing.`, after the INFO line `Indexer node '<host>' is throttling requests (…); it stays in rotation
+and requests back off.` (see the [indexer connector](../modules/indexer_connector/configuration.md)).
 
 The manager does not monitor its own host. To monitor it, install an agent on it (see [Monitoring the server host](installation.md#monitoring-the-server-host)) and add the agent usage below.
+
+#### Clusters
+
+Every manager node downloads the content and the vulnerability feed from the indexer on its own, so a cluster
+multiplies that load, and the nodes of a new cluster do it at the same time. With a 1 GB indexer heap, a two-node
+cluster hit the circuit breaker above, and each node's first vulnerability feed load took about 17.5 minutes, both
+nodes in parallel; until a node's feed is ready, its vulnerability results for packages and the operating system
+are not available. Do not run a cluster against an indexer with the default 1 GB heap: give it at least 4 GB (and
+the host the memory for it), more as nodes are added, and expect the first feed load to take tens of minutes per
+node.
 
 ## Agent
 
