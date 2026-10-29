@@ -493,11 +493,17 @@ class EXPORTED Syscollector final
          * same class of mistake as sweeping against an empty list, differing
          * only in being recoverable.
          */
-        /// @param listComplete Whether `discovered` is the whole node. False when the
-        ///        connector is still withholding running containers it cannot key yet,
-        ///        in which case absence from `discovered` must not be read as a loss of
-        ///        admission -- see the body.
-        void setAdmittedContainers(const std::map<std::string, bool>& discovered, bool listComplete = true);
+        /// @param unkeyed Containers the connector knows of but cannot attribute
+        ///        events to yet, so the cap never ranked them. They are absent from
+        ///        `discovered` for a reason that is not a refusal, and reading it as
+        ///        one retracts rows nothing decided to take away.
+        /// @param listEnumerates Whether `discovered` and `unkeyed` together name every
+        ///        container on the node. False only for a connector too old to report
+        ///        what it could not key; then absence from `discovered` says nothing
+        ///        and admission must be carried forward -- see the body.
+        void setAdmittedContainers(const std::map<std::string, bool>& discovered,
+                                   const std::set<std::string>& unkeyed = {},
+                                   bool listEnumerates = true);
 
         /// Discharges the retraction that setAdmittedContainers() recorded, once the
         /// pass has written its sync flags. Separate from it because the scan reports

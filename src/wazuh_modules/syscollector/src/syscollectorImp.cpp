@@ -2970,7 +2970,9 @@ void Syscollector::scanContainerBaseline(const std::vector<std::string>& only_th
 
     if (listed >= 0)
     {
-        setAdmittedContainers(discovered, listComplete != 0);
+        // Complete OR able to say what it could not key: either way the reply
+        // names every container that exists, which is all admission needs.
+        setAdmittedContainers(discovered, unkeyedIds, listComplete != 0 || listStatus.unkeyed_known != 0);
     }
 
     // Containers still in the DB but no longer known to container_instances
@@ -5129,7 +5131,9 @@ std::string Syscollector::scopeFilter(LimitScope scope, const std::string& conta
     return " AND container_id='" + containerId + "'";
 }
 
-void Syscollector::setAdmittedContainers(const std::map<std::string, bool>& discovered, bool listComplete)
+void Syscollector::setAdmittedContainers(const std::map<std::string, bool>& discovered,
+                                         const std::set<std::string>& unkeyed,
+                                         bool listEnumerates)
 {
     std::set<std::string> admitted;
 
@@ -5144,13 +5148,24 @@ void Syscollector::setAdmittedContainers(const std::map<std::string, bool>& disc
     std::lock_guard<std::mutex> lock(m_limitsMutex);
     m_containerAdmissionWithholding = (admitted.size() != discovered.size());
 
-    // A partial listing omits running containers the connector cannot key yet.
-    // Dropping those from the admitted set would read as a de-admission, retract
-    // rows the manager should keep, and re-admit them a cycle later -- the same
-    // false DELETE the stale sweep is held back to avoid. Carry them instead, and
-    // let the next complete listing be the one that may take admission away
-    // (#37532 / N5).
-    if (!listComplete)
+    // A container the connector cannot key was never ranked by the cap -- the cap
+    // ranks what the connector can publish -- so nothing refused it, and it is
+    // admitted. Folded in AFTER the withholding flag above, which must keep
+    // measuring what the cap actually turned down.
+    //
+    // Into the admitted set itself rather than a set beside it, because this set
+    // is also the memory of what was reporting: the loop below reads a loss of
+    // admission as "was in here, is not now". A container held outside it while
+    // unkeyed would, on becoming keyed AND refused, never be seen to lose
+    // anything, and its reported rows would stay on the manager unretracted.
+    admitted.insert(unkeyed.begin(), unkeyed.end());
+
+    // A connector too old to say what it could not key leaves absence from
+    // `discovered` meaning nothing at all. Dropping those containers from the
+    // admitted set would read as a de-admission, retract rows the manager should
+    // keep, and re-admit them a cycle later -- the same false DELETE the stale
+    // sweep is held back to avoid. Carry them instead (#37532).
+    if (!listEnumerates)
     {
         for (const auto& containerId : m_admittedContainers)
         {
@@ -5170,6 +5185,10 @@ void Syscollector::setAdmittedContainers(const std::map<std::string, bool>& disc
     // rows by the time this runs (#37532).
     for (const auto& containerId : m_admittedContainers)
     {
+        // `admitted` already holds the unkeyed ids, so a container that was
+        // reporting and whose record is merely being replaced -- a restart --
+        // is not read here as having lost admission. Retracting it there would
+        // send a DELETE for every row it holds and re-create them a cycle later.
         if (admitted.count(containerId) == 0)
         {
             m_pendingRetractions.insert(containerId);
@@ -5197,16 +5216,25 @@ void Syscollector::setAdmittedContainers(const std::map<std::string, bool>& disc
     // that no longer holds -- and then clear the latch, so nothing would retry.
     // The manager would keep documents for a container the agent has stopped
     // admitting.
-    // Only from a COMPLETE listing. The global pass decides by absence from the
-    // admitted set, so arming it against a partial one retracts every container
-    // the resolver has not keyed yet -- and then re-promotes each of them once it
-    // has, which is a DELETE+CREATE cycle on every restart. The carry-forward
-    // above cannot prevent that: at startup m_admittedContainers is empty, so
-    // there is nothing yet to carry (#37532 / R4).
+    // Only from a listing that ENUMERATES the node. The global pass decides by
+    // absence from the admitted set, so arming it against a listing that cannot
+    // say what it left out retracts every container the resolver has not keyed
+    // yet -- and then re-promotes each of them once it has, which is a
+    // DELETE+CREATE cycle on every restart. The carry-forward above cannot
+    // prevent that: at startup m_admittedContainers is empty, so there is
+    // nothing yet to carry (#37532).
+    //
+    // Deliberately NOT gated on the listing being keyed-complete. A container
+    // whose cgroup no process reports never resolves, so that flag stays false
+    // for as long as it runs and this pass would never arm at all -- leaving a
+    // container de-admitted while the agent was stopped reported on the manager
+    // for ever. Knowing WHICH containers were left out is what makes absence
+    // readable, and folding those ids into the admitted set above is what keeps
+    // the pass from retracting them.
     //
     // Deferring costs a cycle of rows left at sync=1, which is the reported
     // state they are already in.
-    if (listComplete && m_containerAdmissionWithholding && !m_admissionReconciled)
+    if (listEnumerates && m_containerAdmissionWithholding && !m_admissionReconciled)
     {
         m_globalReconcilePending = true;
     }
@@ -5241,7 +5269,24 @@ void Syscollector::retractDeAdmittedContainers()
     std::set<std::string> owed;
     owed.swap(m_pendingRetractions);
     m_globalReconcilePending = false;
-    m_admissionReconciled = true;
+
+    // ONLY the global pass may set this. It is what says "the stored sync flags
+    // have been checked against admission in this process", and a per-container
+    // retraction has checked one container's rows, not every container's.
+    //
+    // Setting it here regardless disarmed the restart pass before it ever ran.
+    // The way in is a DEPARTURE rather than a de-admission: a container the cap
+    // turns down leaves m_containerAdmissionWithholding set, which arms the
+    // global pass in the same call, but a container that simply stops owes a
+    // per-container retraction with nothing armed. One of those, before the cap
+    // ever bit, used to close the door for the life of the process -- and the
+    // rows the global pass exists for are exactly the ones nothing else can
+    // find: reported by a previous process, for a container this one has never
+    // admitted and so never watched lose anything (#37532).
+    if (globalPass)
+    {
+        m_admissionReconciled = true;
+    }
 
     // One scoped read per container that actually owes something. The global form
     // survives for the restart case alone: there the stored flags, not the admitted
@@ -5323,6 +5368,10 @@ bool Syscollector::isContainerAdmittedLocked(const std::string& containerId) con
         return true;
     }
 
+    // Holds the containers the cap admitted AND the ones it never ranked because
+    // the connector cannot key them; setAdmittedContainers() folds the second
+    // into the first. Only a container the cap considered and turned down is
+    // absent from here (#37532).
     return m_admittedContainers.count(containerId) != 0;
 }
 

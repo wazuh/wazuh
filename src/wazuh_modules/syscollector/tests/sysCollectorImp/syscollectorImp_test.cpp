@@ -7964,19 +7964,21 @@ TEST_F(SyscollectorImpTest, APartialListingAtStartupDoesNotArmTheGlobalReconcile
     module.m_admissionReconciled = false;
     module.m_containerAdmissionWithholding = false;
 
-    // A partial first listing, with the cap biting on what it did manage to
-    // report. The global pass decides by absence from the admitted set, so
-    // running it now would retract every container still being resolved -- and
-    // the carry-forward cannot help, because there is nothing yet to carry.
-    module.setAdmittedContainers({{"a", true}, {"b", false}}, /*listComplete=*/false);
+    // A first listing from a connector that cannot say what it left out, with
+    // the cap biting on what it did manage to report. The global pass decides
+    // by absence from the admitted set, so running it now would retract every
+    // container still being resolved -- and the carry-forward cannot help,
+    // because there is nothing yet to carry.
+    module.setAdmittedContainers({{"a", true}, {"b", false}}, {}, /*listEnumerates=*/false);
     EXPECT_FALSE(module.m_globalReconcilePending)
-            << "a partial listing must not authorise the global reconcile at startup";
+            << "a listing that cannot say what it omitted must not authorise the global reconcile";
     EXPECT_TRUE(module.m_pendingRetractions.empty());
 
-    // The first complete listing is what arms it.
-    module.setAdmittedContainers({{"a", true}, {"b", false}}, /*listComplete=*/true);
+    // A listing that names what it could not key arms it, complete or not: the
+    // pass needs to know which containers exist, not which ones are keyed.
+    module.setAdmittedContainers({{"a", true}, {"b", false}}, {"stuck"}, /*listEnumerates=*/true);
     EXPECT_TRUE(module.m_globalReconcilePending)
-            << "the restart reconcile is owed, just not against a partial view";
+            << "the restart reconcile is owed, just not against a view that cannot say what it omitted";
 
     module.destroy();
     module.m_admittedContainers.clear();
@@ -7985,6 +7987,262 @@ TEST_F(SyscollectorImpTest, APartialListingAtStartupDoesNotArmTheGlobalReconcile
     module.m_admissionKnown = false;
     module.m_admissionReconciled = false;
     module.m_containerAdmissionWithholding = false;
+}
+
+// The restart reconcile is owed ONCE PER PROCESS, and only the global pass
+// discharges it. An ordinary de-admission discharges a different obligation --
+// one container's rows -- and used to clear the latch anyway, so the pass that
+// checks the stored flags against admission never ran at all. Inventory for a
+// container de-admitted while the agent was stopped then sat on the manager for
+// the life of the installation (#37532).
+TEST_F(SyscollectorImpTest, APerContainerRetractionDoesNotDisarmTheRestartReconcile)
+{
+    const auto info = std::make_shared<MockSysInfo>();
+    EXPECT_CALL(*info, releaseThreadResources()).Times(testing::AnyNumber());
+    auto& module = Syscollector::instance();
+    module.init(
+        info,
+        reportFunction,
+    [](const std::string&, Operation_t, const std::string&, const std::string&, uint64_t) {},
+    logFunction,
+    SYSCOLLECTOR_DB_PATH,
+    "",
+    "",
+    3600,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false);
+
+    module.m_admittedContainers.clear();
+    module.m_pendingRetractions.clear();
+    module.m_globalReconcilePending = false;
+    module.m_admissionKnown = false;
+    module.m_admissionReconciled = false;
+    module.m_containerAdmissionWithholding = false;
+
+    // Two containers, both admitted: the cap is not biting, so nothing arms the
+    // global pass.
+    module.setAdmittedContainers({{"a", true}, {"b", true}});
+    ASSERT_FALSE(module.m_globalReconcilePending);
+    ASSERT_FALSE(module.m_admissionReconciled);
+
+    // b STOPS. That is a loss of admission by departure, and it is the only way
+    // to owe a per-container retraction without the cap biting -- a container
+    // the cap turns down leaves m_containerAdmissionWithholding set, which arms
+    // the global pass in the same call and makes the latch its business.
+    module.setAdmittedContainers({{"a", true}});
+    ASSERT_EQ(module.m_pendingRetractions.count("b"), 1u);
+    ASSERT_FALSE(module.m_globalReconcilePending) << "a departure is not the cap biting";
+
+    module.retractDeAdmittedContainers();
+
+    EXPECT_TRUE(module.m_pendingRetractions.empty()) << "the per-container obligation is discharged";
+    EXPECT_FALSE(module.m_admissionReconciled)
+            << "one container's rows were checked, not every container's: the restart pass is still owed";
+
+    // Now the cap starts biting on a container this process has never admitted,
+    // whose rows a PREVIOUS process may have reported. Nothing but the global
+    // pass can find those: the per-container path only knows containers it
+    // watched lose admission, and it never saw this one hold any.
+    module.setAdmittedContainers({{"a", true}, {"c", false}});
+    EXPECT_TRUE(module.m_globalReconcilePending) << "the restart reconcile must still be reachable";
+
+    // The global pass IS what discharges it, once.
+    module.retractDeAdmittedContainers();
+    EXPECT_TRUE(module.m_admissionReconciled);
+
+    module.setAdmittedContainers({{"a", true}, {"c", false}});
+    EXPECT_FALSE(module.m_globalReconcilePending) << "and once is all: a biting cap must not re-arm it";
+
+    module.destroy();
+    module.m_admittedContainers.clear();
+    module.m_pendingRetractions.clear();
+    module.m_globalReconcilePending = false;
+    module.m_admissionKnown = false;
+    module.m_admissionReconciled = false;
+    module.m_containerAdmissionWithholding = false;
+}
+
+// A container the connector cannot key was never ranked by the cap, so nothing
+// refused it. Reading its absence from the keyed list as a de-admission sends a
+// DELETE for every row it holds and re-creates them a cycle later -- and a
+// container being unkeyed is usually a container restarting.
+TEST_F(SyscollectorImpTest, AnUnkeyableContainerIsNotTreatedAsDeAdmitted)
+{
+    const auto info = std::make_shared<MockSysInfo>();
+    EXPECT_CALL(*info, releaseThreadResources()).Times(testing::AnyNumber());
+    auto& module = Syscollector::instance();
+    module.init(
+        info,
+        reportFunction,
+    [](const std::string&, Operation_t, const std::string&, const std::string&, uint64_t) {},
+    logFunction,
+    SYSCOLLECTOR_DB_PATH,
+    "",
+    "",
+    3600,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false);
+
+    module.m_admittedContainers.clear();
+    module.m_pendingRetractions.clear();
+    module.m_globalReconcilePending = false;
+    module.m_admissionKnown = false;
+    module.m_admissionReconciled = false;
+    module.m_containerAdmissionWithholding = false;
+
+    module.setAdmittedContainers({{"a", true}, {"flap", true}});
+    ASSERT_TRUE(module.isContainerAdmittedLocked("flap"));
+
+    // flap restarts: its record is replaced, so it leaves the keyed list and
+    // appears among the ids the connector could not key.
+    module.setAdmittedContainers({{"a", true}}, {"flap"}, /*listEnumerates=*/true);
+
+    EXPECT_TRUE(module.m_pendingRetractions.empty())
+            << "unkeyed is not refused, and retracting it withdraws every row the container holds";
+    EXPECT_TRUE(module.isContainerAdmittedLocked("flap"))
+            << "the cap ranks what the connector can publish; it never ranked this one";
+    EXPECT_EQ(module.m_admittedContainers.count("flap"), 1u)
+            << "and it stays in the set that remembers what was reporting, so a later refusal is "
+            "still seen as a loss";
+
+    // A container the cap genuinely turned down still reads as refused, which is
+    // the distinction the separate set exists to keep.
+    module.setAdmittedContainers({{"a", true}, {"b", false}}, {"flap"}, /*listEnumerates=*/true);
+    EXPECT_FALSE(module.isContainerAdmittedLocked("b"));
+    EXPECT_TRUE(module.isContainerAdmittedLocked("flap"));
+
+    module.destroy();
+    module.m_admittedContainers.clear();
+    module.m_pendingRetractions.clear();
+    module.m_globalReconcilePending = false;
+    module.m_admissionKnown = false;
+    module.m_admissionReconciled = false;
+    module.m_containerAdmissionWithholding = false;
+}
+
+// The restart reconcile catches rows a PREVIOUS process reported for a
+// container this one refuses, which nothing else can: the per-container path
+// only knows containers it watched lose admission, and it never watched this
+// one hold any.
+//
+// It used to be armed only by a KEYED-complete listing. A container whose cgroup
+// no process reports never resolves, so that flag stays false for as long as it
+// runs and the pass never armed at all -- inventory for a container de-admitted
+// while the agent was stopped stayed on the manager for the life of the
+// installation. Knowing WHICH containers were left out is what makes absence
+// readable, which is the same signal the stale sweep was given (#37532).
+TEST_F(SyscollectorImpTest, AnIncompleteListingThatNamesItsUnkeyedIdsStillArmsTheRestartReconcile)
+{
+#if defined(__linux__)
+    struct ResetHooks
+    {
+        ~ResetHooks()
+        {
+            containerScanHook = {};
+            containerListHook = {};
+            containerListComplete = true;
+            containerUnkeyedIds.clear();
+            containerUnkeyedKnown = true;
+        }
+    } resetHooks;
+    const auto info = std::make_shared<MockSysInfo>();
+    EXPECT_CALL(*info, releaseThreadResources()).Times(testing::AnyNumber());
+    auto& module = Syscollector::instance();
+    module.init(
+        info,
+        reportFunction,
+    [](const std::string&, Operation_t, const std::string&, const std::string&, uint64_t) {},
+    logFunction,
+    SYSCOLLECTOR_DB_PATH,
+    "",
+    "",
+    3600,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false);
+    module.m_containerBaseline = true;
+    module.m_containerRowsPurged = false;
+    module.m_containerDocumentCounts.clear();
+    module.m_containerDocumentLimits.clear();
+    module.m_knownContainerIds.clear();
+    module.m_admittedContainers.clear();
+    module.m_pendingRetractions.clear();
+    module.m_globalReconcilePending = false;
+    module.m_admissionKnown = false;
+    module.m_admissionReconciled = false;
+    module.m_containerAdmissionWithholding = false;
+
+    // The cap is biting -- "b" is refused -- and one container on the node can
+    // never be keyed, so no listing is ever complete again.
+    std::map<std::string, bool> admitted = {{"a", true}, {"b", false}};
+    containerListHook = [&](cb_container_id_sink_t sink, void* ctx)
+    {
+        for (const auto& [id, allowed] : admitted) sink(id.c_str(), allowed, ctx);
+
+        return static_cast<int>(admitted.size());
+    };
+    containerScanHook = [](cb_dbsync_row_sink_t, cb_container_status_sink_t, void*)
+    {
+        return 0;
+    };
+    containerUnkeyedIds = {"stuck"};
+    containerUnkeyedKnown = true;
+
+    module.runContainerBaselinePass();
+
+    EXPECT_TRUE(module.m_admissionReconciled)
+            << "the restart reconcile must arm and run against a listing that is not keyed-complete "
+            "but does say which containers it could not key";
+
+    module.destroy();
+    module.m_containerDocumentCounts.clear();
+    module.m_containerDocumentLimits.clear();
+    module.m_knownContainerIds.clear();
+    module.m_admittedContainers.clear();
+    module.m_pendingRetractions.clear();
+    module.m_globalReconcilePending = false;
+    module.m_admissionKnown = false;
+    module.m_admissionReconciled = false;
+    module.m_containerAdmissionWithholding = false;
+    module.m_containerRowsPurged = false;
+#else
+    GTEST_SKIP() << "Container baseline transport is Linux-only";
+#endif
 }
 
 TEST_F(SyscollectorImpTest, AnUnkeyableContainerKeepsItsRowsWithoutBlockingCleanup)

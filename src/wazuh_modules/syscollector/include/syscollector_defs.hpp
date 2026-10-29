@@ -96,7 +96,10 @@
     FRIEND_TEST(SyscollectorImpTest, SyncModule_VDGenericFailurePastToleranceLogsWarning);                             \
     FRIEND_TEST(SyscollectorImpTest, SweepContainerRowsNotInKeepsEverythingWhenThereAreNoContainerRows);               \
     FRIEND_TEST(SyscollectorImpTest, OrderingFieldsAreTableSpecificAndUnknownTablesHaveNone);                          \
-    FRIEND_TEST(SyscollectorImpTest, AnOrderByClauseSplitsEveryFieldAndCarriesTheDirection)
+    FRIEND_TEST(SyscollectorImpTest, AnOrderByClauseSplitsEveryFieldAndCarriesTheDirection);                           \
+    FRIEND_TEST(SyscollectorImpTest, APerContainerRetractionDoesNotDisarmTheRestartReconcile);                         \
+    FRIEND_TEST(SyscollectorImpTest, AnUnkeyableContainerIsNotTreatedAsDeAdmitted);                                    \
+    FRIEND_TEST(SyscollectorImpTest, AnIncompleteListingThatNamesItsUnkeyedIdsStillArmsTheRestartReconcile)
 #else
 #define SYSCOLLECTOR_FRIEND_TEST_DECLARATIONS
 #endif // SYSCOLLECTOR_UNIT_TESTING
