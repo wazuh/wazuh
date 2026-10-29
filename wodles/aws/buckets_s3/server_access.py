@@ -4,7 +4,6 @@
 
 import sys
 from os import path
-import botocore
 import re
 
 from aws_bucket import INVALID_CREDENTIALS_ERROR_CODE, INVALID_CREDENTIALS_ERROR_MESSAGE
@@ -12,6 +11,12 @@ from aws_bucket import INVALID_REQUEST_TIME_ERROR_CODE, INVALID_REQUEST_TIME_ERR
 from aws_bucket import THROTTLING_EXCEPTION_ERROR_CODE, THROTTLING_EXCEPTION_ERROR_MESSAGE
 from aws_bucket import UNKNOWN_ERROR_MESSAGE
 from aws_bucket import AWSCustomBucket
+# `botocore` must be imported after `aws_bucket`: importing it transitively runs
+# the `boto3` check in `wazuh_integration`, which exits with code 4 and the
+# "boto3 module is required" message when `boto3` is missing. Importing
+# `botocore` first dies with an uncaught `ModuleNotFoundError` instead, which
+# the manager then reports only as `Unknown error.`
+import botocore
 
 sys.path.insert(0, path.dirname(path.dirname(path.abspath(__file__))))
 import aws_tools
