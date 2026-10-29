@@ -61,6 +61,7 @@ def test_aws_sec_lake_message_processor(msg, expected):
             [
                 {
                     "ReceiptHandle": "h1",
+                    "MessageId": "m1",
                     "Body": {
                         "Records": [
                             {
@@ -74,6 +75,7 @@ def test_aws_sec_lake_message_processor(msg, expected):
                 },
                 {
                     "ReceiptHandle": "h2",
+                    "MessageId": "m2",
                     "Body": {
                         "Records": [
                             {
@@ -87,8 +89,8 @@ def test_aws_sec_lake_message_processor(msg, expected):
                 },
             ],
             [
-                {"route": {"log_path": "key1", "bucket_path": "name1"}, "handle": "h1"},
-                {"route": {"log_path": "key2", "bucket_path": "name2"}, "handle": "h2"},
+                {"route": {"log_path": "key1", "bucket_path": "name1"}, "handle": "h1", "message_id": "m1"},
+                {"route": {"log_path": "key2", "bucket_path": "name2"}, "handle": "h2", "message_id": "m2"},
             ],
         ),
         (
@@ -96,6 +98,7 @@ def test_aws_sec_lake_message_processor(msg, expected):
             [
                 {
                     "ReceiptHandle": "h1",
+                    "MessageId": "m1",
                     "Body": {
                         "detail": {
                             "object": {"key": "key1"},
@@ -103,11 +106,11 @@ def test_aws_sec_lake_message_processor(msg, expected):
                         }
                     },
                 },
-                {"ReceiptHandle": "h2", "Body": {"example": "some_value"}},
+                {"ReceiptHandle": "h2", "MessageId": "m2", "Body": {"example": "some_value"}},
             ],
             [
-                {"route": {"log_path": "key1", "bucket_path": "name1"}, "handle": "h1"},
-                {"raw_message": {"example": "some_value"}, "handle": "h2"},
+                {"route": {"log_path": "key1", "bucket_path": "name1"}, "handle": "h1", "message_id": "m1"},
+                {"raw_message": {"example": "some_value"}, "handle": "h2", "message_id": "m2"},
             ],
         ),
         (
@@ -115,6 +118,7 @@ def test_aws_sec_lake_message_processor(msg, expected):
             [
                 {
                     "ReceiptHandle": "h1",
+                    "MessageId": "m1",
                     "Body": {
                         "detail": {
                             "object": {"key": "key1"},
@@ -124,6 +128,7 @@ def test_aws_sec_lake_message_processor(msg, expected):
                 },
                 {
                     "ReceiptHandle": "h2",
+                    "MessageId": "m2",
                     "Body": {
                         "detail": {
                             "object": {"key": "key2"},
@@ -133,8 +138,8 @@ def test_aws_sec_lake_message_processor(msg, expected):
                 },
             ],
             [
-                {"route": {"log_path": "key1", "bucket_path": "name1"}, "handle": "h1"},
-                {"route": {"log_path": "key2", "bucket_path": "name2"}, "handle": "h2"},
+                {"route": {"log_path": "key1", "bucket_path": "name1"}, "handle": "h1", "message_id": "m1"},
+                {"route": {"log_path": "key2", "bucket_path": "name2"}, "handle": "h2", "message_id": "m2"},
             ],
         ),
         (
@@ -142,6 +147,7 @@ def test_aws_sec_lake_message_processor(msg, expected):
             [
                 {
                     "ReceiptHandle": "h1",
+                    "MessageId": "m1",
                     "Body": {
                         "Records": [
                             {
@@ -153,11 +159,11 @@ def test_aws_sec_lake_message_processor(msg, expected):
                         ]
                     },
                 },
-                {"ReceiptHandle": "h2", "Body": {"example": "some_value"}},
+                {"ReceiptHandle": "h2", "MessageId": "m2", "Body": {"example": "some_value"}},
             ],
             [
-                {"route": {"log_path": "key1", "bucket_path": "name1"}, "handle": "h1"},
-                {"raw_message": {"example": "some_value"}, "handle": "h2"},
+                {"route": {"log_path": "key1", "bucket_path": "name1"}, "handle": "h1", "message_id": "m1"},
+                {"raw_message": {"example": "some_value"}, "handle": "h2", "message_id": "m2"},
             ],
         ),
     ],
@@ -171,3 +177,73 @@ def test_extract_message_info(sqs_processor, sqs_messages, expected):
         sqs_messages[i]["Body"] = json.dumps(message["Body"])
     result = processor.extract_message_info(sqs_messages)
     assert result == expected
+
+
+def s3_notification(key, bucket="name"):
+    return {"Records": [{"s3": {"object": {"key": key}, "bucket": {"name": bucket}}}]}
+
+
+def sec_lake_notification(key, bucket="name"):
+    return {"detail": {"object": {"key": key}, "bucket": {"name": bucket}}}
+
+
+@pytest.mark.parametrize(
+    "msg",
+    [
+        [],
+        "x",
+        1,
+        None,
+        {"Records": []},
+        {"Records": {}},
+        {"Records": "abc"},
+        {"Records": [None]},
+        {"Records": [{"s3": []}]},
+        {"Service": "Amazon S3", "Event": "s3:TestEvent", "Bucket": "name"},
+        s3_notification(""),
+        s3_notification(123),
+        s3_notification("key", bucket=None),
+        s3_notification(["key"]),
+    ],
+)
+def test_aws_s3_message_processor_returns_raw_message_for_unexpected_formats(msg):
+    """Test AWSS3MessageProcessor parse_message returns the raw message, instead of raising, for any message that
+    is not a valid S3 object notification."""
+    assert sqs.AWSS3MessageProcessor().parse_message(msg) == {"raw_message": msg}
+
+
+@pytest.mark.parametrize(
+    "msg",
+    [
+        [],
+        "x",
+        None,
+        {"detail": []},
+        {"detail": "abc"},
+        {"detail": {"object": None, "bucket": {"name": "name"}}},
+        sec_lake_notification(""),
+        sec_lake_notification({"k": "v"}),
+        sec_lake_notification("key", bucket=""),
+    ],
+)
+def test_aws_sec_lake_message_processor_returns_raw_message_for_unexpected_formats(msg):
+    """Test AWSSSecLakeMessageProcessor parse_message returns the raw message, instead of raising, for any message
+    that is not a valid object notification."""
+    assert sqs.AWSSSecLakeMessageProcessor().parse_message(msg) == {"raw_message": msg}
+
+
+@pytest.mark.parametrize("body", ["x", "", "{", "[" * 100000 + "]" * 100000])
+def test_extract_message_info_keeps_processing_the_batch_after_an_invalid_body(body):
+    """Test extract_message_info returns the raw body of a message that is not JSON, or too deeply nested to parse,
+    and still parses the rest of the batch."""
+    sqs_messages = [
+        {"ReceiptHandle": "h1", "MessageId": "m1", "Body": body},
+        {"ReceiptHandle": "h2", "MessageId": "m2", "Body": json.dumps(s3_notification("key2"))},
+    ]
+
+    result = sqs.AWSS3MessageProcessor().extract_message_info(sqs_messages)
+
+    assert result == [
+        {"raw_message": body, "handle": "h1", "message_id": "m1"},
+        {"route": {"log_path": "key2", "bucket_path": "name"}, "handle": "h2", "message_id": "m2"},
+    ]

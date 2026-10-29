@@ -439,7 +439,7 @@ class WazuhIntegration:
                         io.TextIOWrapper(zipfile_object.open(zipfile_object.namelist()[0])) as f:
                     yield f
             elif log_key[-7:] == '.snappy':
-                aws_tools.error(f"Couldn't decompress the {log_key} file, snappy compression is not supported.")
+                aws_tools.error(f"Couldn't decompress the {log_key!r} file, snappy compression is not supported.")
                 if not self.skip_on_error:
                     sys.exit(8)
             else:

@@ -608,6 +608,21 @@ def test_wazuh_integration_decompress_file_reraises_corruption_when_skip_on_erro
             pass
 
 
+def test_wazuh_integration_decompress_file_prints_snappy_key_on_a_single_line(capsys):
+    """Test the error for a snappy file prints its key escaped, since each output line is sent to Wazuh as an event
+    and the key of a notified object may contain a new line."""
+    integration = utils.get_mocked_wazuh_integration()
+    integration.client = MagicMock()
+    integration.skip_on_error = False
+
+    with patch('io.BytesIO'), pytest.raises(SystemExit):
+        with integration.decompress_file(utils.TEST_BUCKET, 'a\n{"integration": "aws"}.snappy'):
+            pass
+    assert capsys.readouterr().out.splitlines() == [
+        "ERROR: Couldn't decompress the 'a\\n{\"integration\": \"aws\"}.snappy' file, snappy compression is not "
+        "supported."]
+
+
 @patch('io.BytesIO')
 def test_aws_wazuh_integration_decompress_file_handles_exceptions_when_decompress_fails(mock_io):
     """Test 'decompress_file' method handles exceptions raised when trying to decompress a file and

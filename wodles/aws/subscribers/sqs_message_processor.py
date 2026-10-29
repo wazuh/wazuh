@@ -19,16 +19,25 @@ class AWSQueueMessageProcessor:
         for mesg in sqs_messages:
             body = mesg['Body']
             msg_handle = mesg["ReceiptHandle"]
-            message = json.loads(body)
-
-            aws_tools.debug(f'The message is: {message}', 2)
-
-            message_information = self.parse_message(message)
-            messages.append({**message_information, "handle": msg_handle})
+            try:
+                message = json.loads(body)
+            except (ValueError, RecursionError):
+                message_information = {'raw_message': body}
+            else:
+                aws_tools.debug(f'The message is: {message}', 2)
+                message_information = self.parse_message(message)
+            messages.append({**message_information, "handle": msg_handle, "message_id": mesg.get("MessageId")})
         return messages
 
     def parse_message(self, message: dict) -> dict:
         raise NotImplementedError
+
+    @staticmethod
+    def build_route(message, log_path, bucket_path) -> dict:
+        """Return the route to the notified object, or the raw message if the key or bucket is not a valid name."""
+        if isinstance(log_path, str) and log_path and isinstance(bucket_path, str) and bucket_path:
+            return {"route": {"log_path": log_path, "bucket_path": bucket_path}}
+        return {'raw_message': message}
 
 
 class AWSS3MessageProcessor(AWSQueueMessageProcessor):
@@ -36,10 +45,9 @@ class AWSS3MessageProcessor(AWSQueueMessageProcessor):
         try:
             log_path = message["Records"][0]["s3"]["object"]["key"]
             bucket_path = message["Records"][0]["s3"]["bucket"]["name"]
-
-            return {"route": {"log_path": log_path, "bucket_path": bucket_path}}
-        except KeyError:
+        except (KeyError, IndexError, TypeError):
             return {'raw_message': message}
+        return self.build_route(message, log_path, bucket_path)
 
 
 class AWSSSecLakeMessageProcessor(AWSQueueMessageProcessor):
@@ -47,6 +55,6 @@ class AWSSSecLakeMessageProcessor(AWSQueueMessageProcessor):
         try:
             log_path = message["detail"]["object"]["key"]
             bucket_path = message["detail"]["bucket"]["name"]
-            return {"route": {"log_path": log_path, "bucket_path": bucket_path}}
-        except KeyError:
+        except (KeyError, TypeError):
             return {'raw_message': message}
+        return self.build_route(message, log_path, bucket_path)

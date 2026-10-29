@@ -127,18 +127,71 @@ class AWSSQSQueue(wazuh_integration.WazuhIntegration):
 
         return self.message_processor.extract_message_info(sqs_messages)
 
+    def process_message(self, message: dict) -> bool:
+        """Process a single parsed message and delete it from the queue unless it may succeed in a later run.
+
+        Messages that are not object notifications, or whose object does not exist, are deleted with a warning.
+        Other errors stop the module unless skip_on_error is set: then the message is deleted when its object cannot
+        be read or parsed, and kept for a later run when the error comes from AWS (e.g. access denied). Without
+        skip_on_error, any KeyError (e.g. a file missing an expected field) still keeps the message without stopping
+        the module, as before.
+
+        Parameters
+        ----------
+        message : dict
+            A message parsed by the message processor.
+
+        Returns
+        -------
+        bool
+            False if the message was kept in the queue after an error, True otherwise.
+        """
+        message_id = message.get('message_id')
+        if 'route' not in message:
+            raw_message = message.get('raw_message')
+            if isinstance(raw_message, dict) and raw_message.get('Event') == 's3:TestEvent':
+                aws_tools.debug(f'+++ Deleting S3 test event message {message_id} from the SQS queue', 1)
+            else:
+                print(f'WARNING: Deleting message {message_id} from the SQS queue: '
+                      f'it does not contain an object notification: {raw_message!r:.200}')
+                aws_tools.debug(f'+++ Deleted message content: {raw_message!r}', 2)
+            self.delete_message(message)
+            return True
+
+        route = message['route']
+        try:
+            self.bucket_handler.process_file(route)
+        except Exception as error:
+            if s3_log_handler.is_object_unavailable(error):
+                print(f'WARNING: Deleting message {message_id} from the SQS queue: object {route["log_path"]!r} '
+                      f'in bucket {route["bucket_path"]!r} is not available: {error!r}')
+                self.delete_message(message)
+                return True
+            if self.skip_on_error and not isinstance(error, (botocore.exceptions.ClientError,
+                                                             botocore.exceptions.BotoCoreError)):
+                aws_tools.error(f'Skipping message {message_id}: could not process object {route["log_path"]!r} '
+                                f'in bucket {route["bucket_path"]!r}: {error!r}')
+            elif self.skip_on_error or isinstance(error, KeyError):
+                aws_tools.error(f'Could not process message {message_id}, keeping it in the SQS queue for a later '
+                                f'run: {error!r}')
+                return False
+            else:
+                raise
+        self.delete_message(message)
+        return True
+
     def sync_events(self) -> None:
         """Get messages from the SQS queue, parse their events, send them to AnalysisD, and delete them from the queue.
         """
+        kept_ids = set()
         messages = self.get_messages()
         while messages:
+            if all(message.get('message_id') in kept_ids for message in messages):
+                # Only messages kept after an error in this run came back (visibility timeout shorter than the run)
+                break
             for message in messages:
-                try:
-                    self.bucket_handler.process_file(message["route"])
-                except KeyError:
-                    message_without_handle = {k: v for k, v in message.items() if k != 'handle'}
-                    aws_tools.debug(f"Processed message {message_without_handle} does not contain the expected format, "
-                                    f"omitting message.", 2)
+                if message.get('message_id') in kept_ids:
                     continue
-                self.delete_message(message)
+                if not self.process_message(message) and message.get('message_id') is not None:
+                    kept_ids.add(message['message_id'])
             messages = self.get_messages()

@@ -2,6 +2,7 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
+import contextlib
 import sys
 import os
 import io
@@ -10,6 +11,8 @@ from unittest.mock import patch, MagicMock, call
 import pytest
 import json
 import datetime
+
+import botocore
 
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '.'))
 import aws_utils as utils
@@ -106,7 +109,7 @@ def test_aws_sl_subscriber_bucket_obtain_logs_handles_exception(mock_wazuh_integ
     with pytest.raises(SystemExit) as e:
         instance.obtain_logs(utils.TEST_BUCKET, SAMPLE_PARQUET_KEY)
     assert e.value.code == utils.UNABLE_TO_FETCH_DELETE_FROM_QUEUE
-    assert f'ERROR: Could not get the parquet file {SAMPLE_PARQUET_KEY} in {utils.TEST_BUCKET}: expired token' \
+    assert f"ERROR: Could not get the parquet file '{SAMPLE_PARQUET_KEY}' in '{utils.TEST_BUCKET}': expired token" \
            in capsys.readouterr().out
 
 
@@ -332,17 +335,29 @@ def test_obtain_logs_processes_security_hub_events(content, expected_logs):
                 assert formatted_logs is not None
 
 
-def test_sec_hub_obtain_logs_handles_exception():
+@pytest.mark.parametrize('error', [json.JSONDecodeError('test', 'test', 1), AttributeError()])
+def test_sec_hub_obtain_logs_handles_exception(error):
     """Test 'obtain_logs' handles exceptions raised when failing to process JSON files."""
     with patch('s3_log_handler.wazuh_integration.WazuhIntegration.__init__'):
         with patch('s3_log_handler.AWSSubscriberBucket.decompress_file'):
-            with patch('s3_log_handler.AWSSubscriberBucket._json_event_generator', side_effect=[json.JSONDecodeError
-                                                                                                ('test', 'test', 1),
-                                                                                                AttributeError]):
+            with patch('s3_log_handler.AWSSubscriberBucket._json_event_generator', side_effect=error):
+                instance = s3_log_handler.AWSSecurityHubSubscriberBucket()
+                instance.skip_on_error = False
                 with pytest.raises(SystemExit) as e:
-                    s3_log_handler.AWSSecurityHubSubscriberBucket().obtain_logs(bucket=utils.TEST_BUCKET,
-                                                                                log_path=utils.TEST_LOG_KEY)
+                    instance.obtain_logs(bucket=utils.TEST_BUCKET, log_path=utils.TEST_LOG_KEY)
                 assert e.value.code == utils.PARSE_FILE_ERROR_CODE
+
+
+def test_sec_hub_obtain_logs_raises_parse_error_with_skip_on_error():
+    """Test 'obtain_logs' raises the parse error, instead of exiting, when skip_on_error is set."""
+    with patch('s3_log_handler.wazuh_integration.WazuhIntegration.__init__'):
+        with patch('s3_log_handler.AWSSubscriberBucket.decompress_file'):
+            with patch('s3_log_handler.AWSSubscriberBucket._json_event_generator',
+                       side_effect=json.JSONDecodeError('test', 'test', 1)):
+                instance = s3_log_handler.AWSSecurityHubSubscriberBucket()
+                instance.skip_on_error = True
+                with pytest.raises(json.JSONDecodeError):
+                    instance.obtain_logs(bucket=utils.TEST_BUCKET, log_path=utils.TEST_LOG_KEY)
 
 
 @pytest.mark.parametrize("discard_log", [True, False])
@@ -381,3 +396,110 @@ def test_sec_hub_process_file_sends_expected_messages(mock_debug, discard_log):
                         }
                         expected_msg['aws'].update(log)
                         log_handler.send_msg.assert_called_with(expected_msg)
+
+
+def client_error(code):
+    return botocore.exceptions.ClientError({'Error': {'Code': code, 'Message': 'message'}}, 'GetObject')
+
+
+@pytest.mark.parametrize('error, expected', [
+    (client_error('NoSuchKey'), True),
+    (client_error('NoSuchBucket'), True),
+    (client_error('InvalidBucketName'), True),
+    (client_error('KeyTooLongError'), True),
+    (botocore.exceptions.ParamValidationError(report='Invalid bucket name'), True),
+    (client_error('AccessDenied'), False),
+    (client_error('ExpiredToken'), False),
+    (botocore.exceptions.ClientError({}, 'GetObject'), False),
+    (botocore.exceptions.EndpointConnectionError(endpoint_url='https://s3'), False),
+    (ValueError('NoSuchKey'), False),
+])
+def test_is_object_unavailable(error, expected):
+    """Test 'is_object_unavailable' only matches errors meaning the notified bucket or key cannot be fetched by
+    retrying."""
+    assert s3_log_handler.is_object_unavailable(error) is expected
+
+
+@pytest.mark.parametrize('handler_class', [s3_log_handler.AWSSubscriberBucket,
+                                           s3_log_handler.AWSSecurityHubSubscriberBucket])
+@pytest.mark.parametrize('notified_key, object_key', [
+    ('red+flower.json', 'red flower.json'),
+    ('a%2Bb.json', 'a+b.json'),
+    ('dir/caf%C3%A9+1.json', 'dir/café 1.json'),
+    ('2024/01/01/file.json', '2024/01/01/file.json'),
+])
+def test_process_file_decodes_the_notified_key(handler_class, notified_key, object_key):
+    """Test 'process_file' decodes the key as S3 encodes it in event notifications, where a space becomes '+'."""
+    with patch('s3_log_handler.wazuh_integration.WazuhIntegration.__init__'):
+        handler = handler_class()
+    handler.obtain_logs = MagicMock(return_value=[{'field': 'value'}])
+    handler.event_should_be_skipped = MagicMock(return_value=False)
+    handler.discard_regex = re.compile('discard_regex')
+    handler.discard_field = 'discard_field'
+    handler.send_msg = MagicMock()
+
+    handler.process_file({'log_path': notified_key, 'bucket_path': utils.TEST_BUCKET})
+
+    handler.obtain_logs.assert_called_once_with(bucket=utils.TEST_BUCKET, log_path=object_key)
+    assert handler.send_msg.call_args.args[0]['aws']['log_info']['log_file'] == object_key
+
+
+@patch('wazuh_integration.WazuhIntegration.get_sts_client')
+def test_aws_sl_subscriber_bucket_obtain_logs_raises_with_skip_on_error(mock_sts_client):
+    """Test 'obtain_logs' raises the error, instead of exiting, when the file cannot be fetched and skip_on_error is
+    set."""
+    instance = utils.get_mocked_aws_sl_subscriber_bucket()
+    instance.skip_on_error = True
+    instance.client.get_object.side_effect = client_error('AccessDenied')
+
+    with pytest.raises(botocore.exceptions.ClientError):
+        instance.obtain_logs(utils.TEST_BUCKET, SAMPLE_PARQUET_KEY)
+
+
+@patch('wazuh_integration.WazuhIntegration.get_sts_client')
+def test_aws_sl_subscriber_bucket_obtain_logs_raises_when_object_is_unavailable(mock_sts_client):
+    """Test 'obtain_logs' raises the error, instead of exiting, when the notified file does not exist."""
+    instance = utils.get_mocked_aws_sl_subscriber_bucket()
+    instance.skip_on_error = False
+    instance.client.get_object.side_effect = client_error('NoSuchKey')
+
+    with pytest.raises(botocore.exceptions.ClientError):
+        instance.obtain_logs(utils.TEST_BUCKET, SAMPLE_PARQUET_KEY)
+
+
+class FailingSecondRead(io.StringIO):
+    """File whose second read fails, after the first one returned content that is neither JSON nor CSV."""
+    def __init__(self, content):
+        super().__init__(content)
+        self.reads = 0
+
+    def read(self, *args):
+        self.reads += 1
+        if self.reads > 1:
+            raise OSError('read error')
+        return super().read(*args)
+
+
+@pytest.mark.parametrize('skip_on_error', [True, False])
+@pytest.mark.parametrize('error', [MemoryError, OSError])
+def test_obtain_logs_handles_parse_errors(error, skip_on_error):
+    """Test AWSSubscriberBucket 'obtain_logs' exits when a CSV file does not fit in memory or a plain text file
+    cannot be read, or raises the error when skip_on_error is set."""
+    with patch('s3_log_handler.wazuh_integration.WazuhIntegration.__init__'):
+        handler = s3_log_handler.AWSSubscriberBucket()
+    handler.skip_on_error = skip_on_error
+    if error is MemoryError:
+        file = io.StringIO('Name, Age\nJohn, 30')
+        sniffer = patch('s3_log_handler.csv.Sniffer', side_effect=MemoryError)
+    else:
+        file = FailingSecondRead('line 1\nline 2')
+        sniffer = contextlib.nullcontext()
+
+    with patch('s3_log_handler.AWSSubscriberBucket.decompress_file', return_value=file), sniffer:
+        if skip_on_error:
+            with pytest.raises(error):
+                handler.obtain_logs(bucket=utils.TEST_BUCKET, log_path='file.log')
+        else:
+            with pytest.raises(SystemExit) as e:
+                handler.obtain_logs(bucket=utils.TEST_BUCKET, log_path='file.log')
+            assert e.value.code == utils.PARSE_FILE_ERROR_CODE
