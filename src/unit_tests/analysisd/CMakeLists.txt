@@ -131,7 +131,9 @@ LIST(APPEND analysisd_flags "${DEBUG_OP_WRAPPERS} -Wl,--wrap,RootcheckHotReload 
                             -Wl,--wrap,Lists_OP_LoadList -Wl,--wrap,Lists_OP_MakeAll -Wl,--wrap,Rules_OP_ReadRules     \
                             -Wl,--wrap,OS_ListLoadRules -Wl,--wrap,_setlevels -Wl,--wrap,AddHash_Rule                  \
                             -Wl,--wrap,Accumulate_Init -Wl,--wrap,OSStore_Free -Wl,--wrap,OSHash_Create                \
-                            -Wl,--wrap,OSHash_Free -Wl,--wrap,FTS_HotReload -Wl,--wrap,Read_Rules")
+                            -Wl,--wrap,OSHash_Free -Wl,--wrap,FTS_HotReload -Wl,--wrap,Read_Rules                     \
+                            -Wl,--wrap,pthread_rwlock_rdlock -Wl,--wrap,pthread_rwlock_wrlock                          \
+                            -Wl,--wrap,pthread_rwlock_unlock")
 
 LIST(APPEND analysisd_names "test_decoder_list")
 LIST(APPEND analysisd_flags "-Wl,--wrap,FreeDecoderInfo")
