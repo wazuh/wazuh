@@ -137,10 +137,21 @@ achieve leaves documents nothing will ever overwrite:
   warning names the attempts actually made against the allowance.
 - **Staged queries are dropped when a flush fails**, so a later flush cannot re-fire them after the
   caller already retried and succeeded (which would delete documents written in between).
-- HTTP-level `404` is tolerated (a missing index has nothing to delete), `429` is retried with the
-  same backoff as the bulk paths, and anything else — a request-level `409` included — fails the
-  flush: an unconfirmed delete is never reported as applied.
-- **`executeUpdateByQuery` follows the same contract**, conflict retry included: a `200` whose body
+- HTTP-level `404` is tolerated by delete-by-query (a missing index has nothing to delete, nothing is
+  thrown), `429` is retried with the same backoff as the bulk paths, and anything else — a
+  request-level `409` included — fails the flush: an unconfirmed delete is never reported as applied.
+- **`executeSearchQuery` and `executeUpdateByQuery` do not tolerate a `404`**: they still throw on any
+  failure. A `404` whose body is `index_not_found_exception` is logged at debug level 2 instead of a
+  warning, because the caller decides what a missing index means (for the vulnerability scanner it is an
+  empty dataset); every other failure (`403`, `5xx`, transport) keeps the connector's warning.
+- **Error contract of `executeSearchQuery` / `executeUpdateByQuery`**: the exception text is
+  `Search query failed (status N): <transport error> - <response body truncated to 256 bytes>` and
+  `Update by query failed (status N): <transport error> - <response body truncated to 256 bytes>`
+  respectively (the ` - <body>` suffix is present only when the response has a body: a transport failure
+  carries just the transport error), and `statusCode()` carries `N`. OpenSearch puts the error type (e.g.
+  `index_not_found_exception`) near the start of the body, so it survives the truncation; consumers such
+  as the scanner's `IndexerErrorHelper` rely on it.
+- **`executeUpdateByQuery` keeps the conflict retry** and also fails closed: a `200` whose body
   tallies `failures`, cannot be parsed, or lacks the `updated`/`total` counters fails the call
   instead of confirming it. Two callers share this path — the sync server's metadata/group
   reconciliation and the vulnerability scanner's `host.os` update against
