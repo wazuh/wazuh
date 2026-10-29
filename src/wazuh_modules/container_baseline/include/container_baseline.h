@@ -352,24 +352,49 @@ EXPORTED int cbaseline_list_containers(const char*            connector_socket_p
                                        cb_container_id_sink_t sink,
                                        void*                  user_data);
 
-/* As cbaseline_list_containers(), and additionally reports whether the list is
- * the WHOLE node. `out_complete` (optional) is set to 0 when the connector is
- * still withholding running containers its resolver has not keyed yet, and to 1
- * when the list omits nothing. It is always 0 on failure.
+/* Receives the id of a container that exists but has no attribution key yet. */
+typedef void (*cb_unkeyed_id_sink_t)(const char* container_id, void* user_data);
+
+/* What one list reply said about its own coverage. */
+typedef struct
+{
+    /* The keyed list covers every running container. 0 while the connector is
+     * still resolving, and always 0 on failure. */
+    int complete;
+
+    /* The connector reported WHICH containers it could not key. 0 means one too
+     * old to, and then `complete` is the only guard a caller has. */
+    int unkeyed_known;
+} cb_list_status_t;
+
+/* As cbaseline_list_containers(), and additionally reports the reply's coverage.
  *
- * IMPORTANT: a non-negative return says only that the connector answered. It
- * does NOT say the answer covered every container. The connector deliberately
- * omits a running container until it can key it, so during agent startup -- and
- * whenever a container's cgroup is momentarily unattributable -- "not resolved
- * yet" and "removed" are the same absence on the wire. A caller that deletes
- * rows for containers missing from this list MUST require a non-negative return
- * AND out_complete != 0, or it will delete a live container's stored state and
- * re-create it on the next cycle.
+ * A non-negative return says only that the connector answered. It does NOT say
+ * the answer covered every container: the connector deliberately omits a
+ * running container until it can key it, so "not resolved yet" and "removed"
+ * are the same absence from `sink`.
+ *
+ * Which of the two it is comes through `unkeyed_sink`, called once per
+ * container that exists without a key. The two questions a caller might be
+ * asking are answered separately on purpose:
+ *
+ *   "does this container exist?"   sink OR unkeyed_sink. A caller that deletes
+ *                                  rows on absence must keep both, and may then
+ *                                  act as soon as unkeyed_known is set -- it
+ *                                  does not need the list to be complete.
+ *   "what key does it have?"       sink alone, and only when complete. A
+ *                                  container with no key must not reach the
+ *                                  kernel filter or the admission snapshot.
+ *
+ * Conflating them is what let one permanently unkeyable container block stale
+ * cleanup for as long as it ran.
  */
 EXPORTED int cbaseline_list_containers_ex(const char*            connector_socket_path,
                                           cb_container_id_sink_t sink,
                                           void*                  user_data,
-                                          int*                   out_complete);
+                                          cb_unkeyed_id_sink_t   unkeyed_sink,
+                                          void*                  unkeyed_user_data,
+                                          cb_list_status_t*      out_status);
 
 #ifdef __cplusplus
 }

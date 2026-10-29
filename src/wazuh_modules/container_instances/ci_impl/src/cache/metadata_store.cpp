@@ -3,6 +3,8 @@
 #include "container_admission.hpp"
 #include "reconciler.hpp"
 
+#include <algorithm>
+#include <iterator>
 #include <mutex>
 #include <unordered_map>
 #include <unordered_set>
@@ -611,7 +613,7 @@ namespace
         return m_admitted;
     }
 
-    std::size_t MetadataStore::withheldFromListCount() const
+    std::set<std::string> MetadataStore::unkeyedContainerIds() const
     {
         std::shared_lock lock(m_mutex);
 
@@ -650,7 +652,10 @@ namespace
             }
         }
 
-        return known.size() - publishable.size();
+        std::set<std::string> unkeyed;
+        std::set_difference(
+            known.begin(), known.end(), publishable.begin(), publishable.end(), std::inserter(unkeyed, unkeyed.end()));
+        return unkeyed;
     }
 
     void MetadataStore::setSyncLimit(int limit)

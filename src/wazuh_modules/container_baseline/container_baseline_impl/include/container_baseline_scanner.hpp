@@ -270,11 +270,27 @@ using ContainerIdSink = std::function<void(const std::string&, bool)>;
 ///         failed query yields an empty list, and treating that as "nothing
 ///         exists" deletes every container's stored rows on a momentary
 ///         connector blip.
-/// @param complete Optional out-param: false when the connector is still
-///        withholding running containers its resolver has not keyed, so absence
-///        from this list does NOT mean removal. Callers that delete on absence
-///        must require both a non-negative return AND `complete`.
+/// @brief Receives the id of a container that exists but has no attribution key.
+using UnkeyedIdSink = std::function<void(const std::string&)>;
+
+/// @brief What one list reply said about its own coverage.
+struct ContainerListStatus
+{
+    /// The keyed list covers every running container. False while the resolver
+    /// is still working, so admission and the kernel filter must wait.
+    bool complete {false};
+
+    /// The connector reported which containers it could not key. False means a
+    /// connector too old to, and then `complete` is the only guard a caller has.
+    bool unkeyedKnown {false};
+};
+
+/// @param status Optional out-param describing the reply's coverage.
+/// @param unkeyedSink Optional: called with the id of every container that
+///        exists but is absent from the list for want of a key. A caller that
+///        deletes on absence must treat these as present -- they are not gone.
 int ListContainers(const std::string& connector_socket_path, const ContainerIdSink& sink,
-                   bool* complete = nullptr);
+                   ContainerListStatus* status = nullptr,
+                   const UnkeyedIdSink& unkeyedSink = {});
 
 } // namespace wazuh::container_baseline

@@ -45,7 +45,7 @@ namespace wazuh::container_instances
         [[nodiscard]] std::vector<ContainerRecordPtr> listContainers() const override;
         [[nodiscard]] std::set<std::string> admittedIds() const override;
 
-        [[nodiscard]] std::size_t withheldFromListCount() const override;
+        [[nodiscard]] std::set<std::string> unkeyedContainerIds() const override;
         void setSyncLimit(int limit) override;
 
         void applySnapshot(const SourceId& source,

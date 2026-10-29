@@ -31,6 +31,10 @@ namespace
     /* Whether the hooked listing claims to be the whole node. True is the
      * ordinary case; false models container_instances still resolving. */
     bool list_complete = true;
+
+    /* Containers the hooked connector knows of but cannot key. */
+    std::set<std::string> unkeyed;
+    bool unkeyed_known = true;
     bool reject_persistence = false;
     int file_size = 1;
 
@@ -46,6 +50,8 @@ namespace
                 listed = false;
                 connector_available = true;
                 list_complete = true;
+                unkeyed.clear();
+                unkeyed_known = true;
                 reject_persistence = false;
                 file_size = 1;
                 fim_db_init(FIM_DB_MEMORY, [](modules_log_level_t, const char*) {}, 1000, 0, nullptr);
@@ -115,23 +121,44 @@ extern "C" int __wrap_fim_container_baseline_available(const char*)
     return 1;
 }
 
-extern "C" int
-__wrap_cbaseline_list_containers_ex(const char*, cb_container_id_sink_t sink, void* ctx, int* out_complete)
+extern "C" int __wrap_cbaseline_list_containers_ex(const char*,
+                                                   cb_container_id_sink_t sink,
+                                                   void* ctx,
+                                                   cb_unkeyed_id_sink_t unkeyed_sink,
+                                                   void* unkeyed_ctx,
+                                                   cb_list_status_t* out_status)
 {
     EXPECT_FALSE(listed) << "reuse the warm-up-guarded listing";
     listed = true;
 
-    /* A listing that failed is never complete, matching the real shim. */
-    if (out_complete)
-        *out_complete = 0;
+    /* A listing that failed says nothing about its own coverage, matching the
+     * real shim. */
+    if (out_status)
+    {
+        out_status->complete = 0;
+        out_status->unkeyed_known = 0;
+    }
 
     if (!connector_available)
         return -1;
 
     for (const auto& [id, admitted] : admission) sink(id.c_str(), admitted, ctx);
 
-    if (out_complete)
-        *out_complete = list_complete ? 1 : 0;
+    if (unkeyed_known && unkeyed_sink)
+    {
+        for (const auto& id : unkeyed) unkeyed_sink(id.c_str(), unkeyed_ctx);
+    }
+
+    if (out_status)
+    {
+        /* A connector that reports WHICH containers it could not key cannot then
+         * disagree with itself about whether any exist -- the real one derives
+         * `withheld` from that very set. Derived here too, so no test can model
+         * a server that cannot exist. */
+        const bool complete = unkeyed_known ? unkeyed.empty() : list_complete;
+        out_status->complete = complete ? 1 : 0;
+        out_status->unkeyed_known = unkeyed_known ? 1 : 0;
+    }
 
     return static_cast<int>(admission.size());
 }
@@ -489,6 +516,33 @@ TEST_F(ContainerReportingTest, AnUnadmittedContainersModificationNeverDemotesARe
     EXPECT_EQ(fim_persist_baseline_row("b:/etc/two", OPERATION_MODIFY, "wazuh-states-fim-files", unreported, 2), 0)
             << "nothing is owed for a row the manager never saw";
     EXPECT_TRUE(persisted.empty());
+}
+
+TEST_F(ContainerReportingTest, AnUnkeyableContainerKeepsItsFimStateWithoutBlockingCleanup)
+{
+    files = {{"a", {"/etc/one"}}, {"ghost", {"/etc/one"}}, {"unkeyed", {"/etc/one"}}};
+    admission = {{"a", true}, {"ghost", true}, {"unkeyed", true}};
+    listed = false;
+    fim_run_container_baseline();
+    ASSERT_EQ(syncFlag("a", "/etc/one"), 1);
+    ASSERT_EQ(syncFlag("ghost", "/etc/one"), 1);
+    ASSERT_EQ(syncFlag("unkeyed", "/etc/one"), 1);
+
+    // ghost is gone. unkeyed is still running but the resolver cannot key it,
+    // so the connector names it apart from the list. The sweep must delete the
+    // first, keep the second, and RUN despite the list being partial.
+    admission = {{"a", true}};
+    files = {{"a", {"/etc/one"}}};
+    unkeyed = {"unkeyed"};
+    unkeyed_known = true;
+    listed = false;
+    fim_run_container_baseline();
+
+    EXPECT_EQ(syncFlag("a", "/etc/one"), 1);
+    EXPECT_EQ(syncFlag("unkeyed", "/etc/one"), 1)
+            << "a container nobody can key has not gone anywhere";
+    EXPECT_EQ(syncFlag("ghost", "/etc/one"), -1)
+            << "and it must not have kept the sweep from removing one that has";
 }
 
 TEST_F(ContainerReportingTest, FirstScanWithholdsAndUnavailableConnectorKeepsRows)

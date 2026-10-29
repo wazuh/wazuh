@@ -776,11 +776,27 @@ namespace
         std::set<std::string> known;
         std::set<std::string> admitted;
 
+        /// Containers that exist but have no attribution key yet, so `known`
+        /// omits them. They must survive a stale sweep and must NOT reach the
+        /// admission snapshot: existing and being identifiable are different
+        /// facts (#37532 / R8).
+        std::set<std::string> unkeyed;
+
         /// Whether `known` is the whole node. False when the connector is still
-        /// withholding running containers its resolver has not keyed, in which
-        /// case absence from `known` does not mean the container is gone.
+        /// withholding running containers its resolver has not keyed.
         bool complete {false};
+
+        /// Whether the connector reported `unkeyed` at all. False means one too
+        /// old to, and then `complete` is the only guard the sweep has.
+        bool unkeyedKnown {false};
     };
+
+    void container_unkeyed_sink(const char* container_id, void* user_data)
+    {
+        if (!container_id || !user_data) return;
+
+        static_cast<ContainerListing*>(user_data)->unkeyed.insert(container_id);
+    }
 
     void container_id_sink(const char* container_id, int synced, void* user_data)
     {
@@ -806,13 +822,18 @@ namespace
     ///         stale sweep may run.
     int refreshContainerAdmission(ContainerListing& listing)
     {
-        int listComplete = 0;
-        const int listed = cbaseline_list_containers_ex(
-                               CB_DEFAULT_CONNECTOR_SOCKET_PATH, container_id_sink, &listing, &listComplete);
+        cb_list_status_t listStatus {};
+        const int listed = cbaseline_list_containers_ex(CB_DEFAULT_CONNECTOR_SOCKET_PATH,
+                                                        container_id_sink,
+                                                        &listing,
+                                                        container_unkeyed_sink,
+                                                        &listing,
+                                                        &listStatus);
 
         if (listed < 0) return listed;
 
-        listing.complete = (listComplete != 0);
+        listing.complete = (listStatus.complete != 0);
+        listing.unkeyedKnown = (listStatus.unkeyed_known != 0);
 
         if (!listing.complete)
         {
@@ -1283,20 +1304,27 @@ extern "C" void fim_run_container_baseline(void)
             LogError("Container FIM baseline: container connector unavailable, "
                      "skipping stale-container cleanup to avoid false deletions.");
         }
-        else if (!listing.complete)
+        else if (!listing.complete && !listing.unkeyedKnown)
         {
-            // The connector answered but is still withholding running containers
-            // it cannot key yet. They are missing from `known` for want of an
-            // attribution key, not for want of a container, and this sweep
-            // deletes on absence -- it would wipe a live container's whole FIM
-            // baseline and re-seed it next cycle, the exact false-delete flood
-            // the unreachable branch above exists to prevent.
-            LogDebug("Container FIM baseline: container list still incomplete, "
-                     "skipping stale-container cleanup until every running container is resolved.");
+            // The connector answered, is still withholding running containers it
+            // cannot key -- and is too old to say which. They are missing from
+            // `known` for want of an attribution key, not for want of a
+            // container, and this sweep deletes on absence: it would wipe a live
+            // container's whole FIM baseline and re-seed it next cycle, the
+            // exact false-delete flood the unreachable branch above prevents.
+            LogWarn("Container FIM baseline: the container list is incomplete and this connector does not "
+                    "report which containers it could not identify; skipping stale-container cleanup until "
+                    "it does. FIM state for containers that no longer exist is retained meanwhile.");
         }
         else
         {
-            driver.sweepStale(known);
+            // Existence, not identifiability. A container the resolver cannot
+            // key is absent from `known` but has not gone anywhere, so it is
+            // kept -- which is what lets the sweep run at all while one of them
+            // is around (#37532 / R8).
+            std::set<std::string> present {known};
+            present.insert(listing.unkeyed.begin(), listing.unkeyed.end());
+            driver.sweepStale(present);
         }
 
         updateContainerReporting(true);

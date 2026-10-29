@@ -165,7 +165,9 @@ ContainerContextPtr ContextFromRecord(const nlohmann::json& data)
 // baseline to 1.
 std::vector<ContainerIdentity> DiscoverContainers(const std::string& socket_path,
                                                   bool* reachable = nullptr,
-                                                  bool* complete = nullptr)
+                                                  bool* complete = nullptr,
+                                                  std::set<std::string>* unkeyed = nullptr,
+                                                  bool* unkeyedKnown = nullptr)
 {
     wazuh::container_instances_client::ContainerInstancesClient client(socket_path);
     std::vector<ContainerIdentity> out;
@@ -193,7 +195,9 @@ std::vector<ContainerIdentity> DiscoverContainers(const std::string& socket_path
     {
         bool polled = false;
         bool answeredCompletely = false;
-        auto listed = client.listContainers(&polled, &answeredCompletely);
+        bool reportedUnkeyed = false;
+        std::set<std::string> unkeyedIds;
+        auto listed = client.listContainers(&polled, &answeredCompletely, &unkeyedIds, &reportedUnkeyed);
         if (polled)
         {
             answered = true;
@@ -202,6 +206,16 @@ std::vector<ContainerIdentity> DiscoverContainers(const std::string& socket_path
             if (complete != nullptr)
             {
                 *complete = answeredCompletely;
+            }
+
+            if (unkeyedKnown != nullptr)
+            {
+                *unkeyedKnown = reportedUnkeyed;
+            }
+
+            if (unkeyed != nullptr)
+            {
+                *unkeyed = std::move(unkeyedIds);
             }
         }
 
@@ -693,15 +707,28 @@ int RunSyscollectorDbsyncBaselineForContainers(const std::string&              c
     return RunSyscollectorDbsyncBaselineFrom([&selected]() { return selected; }, pids, sink, status_sink);
 }
 
-int ListContainers(const std::string& connector_socket_path, const ContainerIdSink& sink, bool* complete)
+int ListContainers(const std::string& connector_socket_path, const ContainerIdSink& sink,
+                   ContainerListStatus* status, const UnkeyedIdSink& unkeyedSink)
 {
     bool reachable = false;
     bool listIsComplete = false;
-    const auto identities = DiscoverContainers(connector_socket_path, &reachable, &listIsComplete);
+    bool reportedUnkeyed = false;
+    std::set<std::string> unkeyed;
+    const auto identities =
+        DiscoverContainers(connector_socket_path, &reachable, &listIsComplete, &unkeyed, &reportedUnkeyed);
 
-    if (complete != nullptr)
+    if (status != nullptr)
     {
-        *complete = listIsComplete;
+        status->complete = listIsComplete;
+        status->unkeyedKnown = reportedUnkeyed;
+    }
+
+    if (reachable && unkeyedSink)
+    {
+        for (const auto& id : unkeyed)
+        {
+            unkeyedSink(id);
+        }
     }
 
     // -1, not 0. Callers use this list as the authority on what still exists

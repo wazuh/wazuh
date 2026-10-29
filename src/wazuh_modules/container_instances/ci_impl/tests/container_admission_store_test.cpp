@@ -117,13 +117,14 @@ TEST(ContainerAdmissionStoreTest, WithheldCountsContainersTheListOmitsNotUnresol
     // Counting the unresolved RECORD rather than the omitted CONTAINER left
     // this at 1 while the container sat in the list, so every consumer that
     // waits for a complete list before cleaning up waited for ever.
-    EXPECT_EQ(store.withheldFromListCount(), 0U) << "a container that IS in the list is not withheld from it";
+    EXPECT_TRUE(store.unkeyedContainerIds().empty()) << "a container that IS in the list is not withheld from it";
 
     // A container no source can key is genuinely absent from the list, and must
     // still be counted.
     store.applySnapshot(kDocker, {resolved, MakeRecord("ghost", 0)}, {}, Now());
     EXPECT_EQ(ListedIds(store), (std::set<std::string> {"shared"}));
-    EXPECT_EQ(store.withheldFromListCount(), 1U);
+    EXPECT_EQ(store.unkeyedContainerIds(), (std::set<std::string> {"ghost"}))
+        << "and the sweeps need its id, not just a count, to keep its rows";
 }
 
 TEST(ContainerAdmissionStoreTest, WithheldContainersAreStillPublished)

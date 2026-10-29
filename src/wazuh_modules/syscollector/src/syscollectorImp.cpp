@@ -2929,12 +2929,25 @@ void Syscollector::scanContainerBaseline(const std::vector<std::string>& only_th
             (*ids)[containerId] = (synced != 0);
         }
     };
-    // listComplete, not just listed: the connector withholds a running container
-    // until its resolver can key it, so a successful reply can still omit one.
-    // Absence from a partial list is not removal (#37532 / N5).
-    int listComplete = 0;
-    const int listed =
-        cbaseline_list_containers_ex(CB_DEFAULT_CONNECTOR_SOCKET_PATH, idSink, &discovered, &listComplete);
+    // The connector withholds a running container until its resolver can key it,
+    // so a successful reply can still omit one -- absence from the keyed list is
+    // not removal (#37532 / N5). It reports those ids separately, which is what
+    // lets the sweep below answer "is this container gone?" without waiting for
+    // every container to be keyed (#37532 / R8).
+    std::set<std::string> unkeyedIds;
+    const auto unkeyedSink = [](const char* containerId, void* userData)
+    {
+        auto* ids = static_cast<std::set<std::string>*>(userData);
+
+        if (ids && containerId)
+        {
+            ids->insert(containerId);
+        }
+    };
+    cb_list_status_t listStatus {};
+    const int listed = cbaseline_list_containers_ex(
+                           CB_DEFAULT_CONNECTOR_SOCKET_PATH, idSink, &discovered, unkeyedSink, &unkeyedIds, &listStatus);
+    const int listComplete = listStatus.complete;
 
     // EVERY known container, admitted or not. The sweep below deletes what is
     // absent from this set, and a container whose rows are merely withheld has
@@ -2948,6 +2961,12 @@ void Syscollector::scanContainerBaseline(const std::vector<std::string>& only_th
     {
         discoveredIds.insert(entry.first);
     }
+
+    // A container the resolver cannot key is not a container that went away.
+    // The sweep deletes on absence from this set, and absence is the only thing
+    // it reads, so an unkeyable container belongs in it even though nothing
+    // else may act on it.
+    discoveredIds.insert(unkeyedIds.begin(), unkeyedIds.end());
 
     if (listed >= 0)
     {
@@ -2984,18 +3003,20 @@ void Syscollector::scanContainerBaseline(const std::vector<std::string>& only_th
                       "Container connector unavailable; skipping stale-container cleanup "
                       "to avoid deleting rows for containers that still exist.");
     }
-    else if (listComplete == 0)
+    else if (listStatus.unkeyed_known == 0 && listComplete == 0)
     {
-        // The connector answered, but said it is still withholding running
-        // containers its resolver has not keyed. Those are absent from
+        // The connector answered, said it is still withholding running
+        // containers -- and is too old to say WHICH. They are absent from
         // `discoveredIds` for want of an attribution key, not for want of a
-        // container, and this sweep deletes on absence. Same trade as the
-        // unreachable case above, for the same reason: a stale row costs one
-        // cycle of accuracy, deleting a live container's rows costs a
-        // false-delete flood plus a full re-seed.
-        m_logFunction(LOG_DEBUG,
-                      "Container list is still incomplete; skipping stale-container cleanup "
-                      "until the connector has resolved every running container.");
+        // container, and this sweep deletes on absence, so it has to wait.
+        //
+        // A connector that names them needs no wait: they are in the set above,
+        // and a container that can never be keyed no longer blocks cleanup for
+        // as long as it runs (#37532 / R8).
+        m_logFunction(LOG_WARNING,
+                      "Container list is incomplete and this connector does not report which containers "
+                      "it could not identify; skipping stale-container cleanup until it does. Rows for "
+                      "containers that no longer exist are retained meanwhile.");
     }
     else
     {

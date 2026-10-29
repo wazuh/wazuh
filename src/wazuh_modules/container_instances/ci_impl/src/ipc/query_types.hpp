@@ -103,10 +103,14 @@ namespace wazuh::container_instances
         /// wrong when no cap is configured.
         std::set<std::string> admitted;
 
-        /// How many running containers `containers` omits because the resolver has
-        /// not keyed them yet. Zero means the list is the whole node, which is what
-        /// a consumer needs before it may delete rows for anything absent from it.
-        std::size_t withheldFromList {0};
+        /// Which running containers `containers` omits because the resolver has
+        /// not keyed them yet. Empty means the list is the whole node.
+        ///
+        /// They exist, so a stale sweep must keep their rows; they have no
+        /// attribution key, so admission and the kernel filter must not act on
+        /// them. Two different questions, which is why the ids travel apart
+        /// from the list rather than in it.
+        std::set<std::string> unkeyedIds;
 
         std::optional<VerdictReason> reason; ///< notContainer.
         int retryAfterMs {0};                ///< pending.

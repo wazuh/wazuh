@@ -176,6 +176,18 @@ namespace wazuh::container_instances_client
         bool admittedKnown {false};
         std::set<std::string> admitted;
 
+        /// Containers that exist but have no attribution key yet, so the keyed
+        /// list above omits them.
+        ///
+        /// A consumer that deletes on absence must keep these: they are not
+        /// gone, they are unidentifiable. A consumer that needs the key -- the
+        /// kernel filter, admission -- must still leave them alone, which is
+        /// why they are here and not in `containers`. `unkeyedKnown` says the
+        /// server reported them at all; false means one too old to, and then
+        /// `complete` is the only guard left.
+        bool unkeyedKnown {false};
+        std::set<std::string> unkeyed;
+
         std::uint64_t epoch {0};
         std::uint64_t seq {0};
 
@@ -249,8 +261,14 @@ namespace wazuh::container_instances_client
         ///        derives DELETIONS from this list must check it: `reachable` only
         ///        says the connector answered, not that it answered about every
         ///        container, and at startup the two differ.
+        /// @param unkeyed Optional out-param, filled with the ids of containers
+        ///        that exist but are not in the list because they have no
+        ///        attribution key yet. @param unkeyedKnown says whether the
+        ///        server reported them at all.
         [[nodiscard]] std::vector<ContainerRef> listContainers(bool* reachable = nullptr,
-                                                               bool* complete = nullptr) const
+                                                               bool* complete = nullptr,
+                                                               std::set<std::string>* unkeyed = nullptr,
+                                                               bool* unkeyedKnown = nullptr) const
         {
             std::vector<ContainerRef> result;
 
@@ -262,6 +280,11 @@ namespace wazuh::container_instances_client
             if (complete != nullptr)
             {
                 *complete = false;
+            }
+
+            if (unkeyedKnown != nullptr)
+            {
+                *unkeyedKnown = false;
             }
 
             const auto reply = roundTrip(R"({"version":2,"op":"list"})");
@@ -296,6 +319,27 @@ namespace wazuh::container_instances_client
                 const auto withheldIt = parsed.find("withheld");
                 *complete = (withheldIt == parsed.end() || !withheldIt->is_number_unsigned() ||
                              withheldIt->get<std::uint64_t>() == 0);
+            }
+
+            const auto unkeyedIt = parsed.find("known_unkeyed");
+
+            if (unkeyedIt != parsed.end() && unkeyedIt->is_array())
+            {
+                if (unkeyedKnown != nullptr)
+                {
+                    *unkeyedKnown = true;
+                }
+
+                if (unkeyed != nullptr)
+                {
+                    for (const auto& id : *unkeyedIt)
+                    {
+                        if (id.is_string())
+                        {
+                            unkeyed->insert(id.get<std::string>());
+                        }
+                    }
+                }
             }
 
             for (const auto& item : *containersIt)
@@ -371,6 +415,21 @@ namespace wazuh::container_instances_client
             if (withheldIt != parsed.end() && withheldIt->is_number_unsigned())
             {
                 delta.complete = (withheldIt->get<std::uint64_t>() == 0);
+            }
+
+            const auto unkeyedIt = parsed.find("known_unkeyed");
+
+            if (unkeyedIt != parsed.end() && unkeyedIt->is_array())
+            {
+                delta.unkeyedKnown = true;
+
+                for (const auto& id : *unkeyedIt)
+                {
+                    if (id.is_string())
+                    {
+                        delta.unkeyed.insert(id.get<std::string>());
+                    }
+                }
             }
 
             const auto admittedIt = parsed.find("admitted");

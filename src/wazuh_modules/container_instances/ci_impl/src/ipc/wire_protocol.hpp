@@ -494,7 +494,20 @@ namespace wazuh::container_instances::wire
                     // above omits that many running containers the resolver has
                     // not keyed yet, so absence from it does not mean removal and
                     // a stale-row sweep must wait for a later reply.
-                    body["withheld"] = response.withheldFromList;
+                    body["withheld"] = response.unkeyedIds.size();
+
+                    // ...and WHICH ones, so the question a stale sweep actually
+                    // asks -- does this container still exist? -- can be answered
+                    // for a container the resolver cannot key. `withheld` alone
+                    // could only say "do not trust the list yet", which on a node
+                    // with one permanently unkeyable container means "never sweep
+                    // again" (#37532 / R8).
+                    auto unkeyed = nlohmann::json::array();
+                    for (const auto& id : response.unkeyedIds)
+                    {
+                        unkeyed.push_back(id);
+                    }
+                    body["known_unkeyed"] = std::move(unkeyed);
 
                     // The WHOLE admitted set, on every list reply including a
                     // delta one.

@@ -95,7 +95,7 @@ namespace wazuh::container_instances
                 // Read beside the admitted set, for the same reason: one decision
                 // per reply. A consumer that sweeps on absence needs to know this
                 // list is the whole node before it acts on what is missing from it.
-                response.withheldFromList = m_store.withheldFromListCount();
+                response.unkeyedIds = m_store.unkeyedContainerIds();
 
                 if (!request.since)
                 {

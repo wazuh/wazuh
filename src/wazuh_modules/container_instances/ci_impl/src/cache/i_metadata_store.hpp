@@ -94,17 +94,21 @@ namespace wazuh::container_instances
         /// a container from it would delete its rows rather than withhold them.
         [[nodiscard]] virtual std::set<std::string> admittedIds() const = 0;
 
-        /// How many running containers listContainers() is CURRENTLY withholding
-        /// because the resolver has not keyed them yet. Zero means the list is the
-        /// whole node.
+        /// Which running containers listContainers() is CURRENTLY withholding
+        /// because the resolver has not keyed them yet. Empty means the list is
+        /// the whole node.
         ///
-        /// The consumers' stale sweeps delete on absence from that list, so without
-        /// this they cannot tell "this container is gone" from "this container is
-        /// not resolved yet" -- and at startup, when the resolver is still walking,
-        /// the second reads exactly like the first. Publishing the count lets a
-        /// consumer hold its sweep for a cycle instead of deleting a live
-        /// container's rows and re-creating them on the next pass.
-        [[nodiscard]] virtual std::size_t withheldFromListCount() const = 0;
+        /// These containers EXIST; what is missing is an attribution key, which
+        /// is why listContainers() will not publish them -- a consumer handed a
+        /// key that is about to change acts on the wrong container. But a stale
+        /// sweep never asks for a key. It asks which containers exist, deletes
+        /// the rows of the rest, and absence from the keyed list is the only
+        /// answer it used to get. So a container nobody can key blocked cleanup
+        /// for as long as it ran.
+        ///
+        /// Publishing the ids separately answers the existence question without
+        /// answering the key question (#37532 / R8).
+        [[nodiscard]] virtual std::set<std::string> unkeyedContainerIds() const = 0;
 
         /// How many containers may report; <= 0 means unlimited, which is the
         /// shipped default. Pushed by the manager, so it changes at runtime.

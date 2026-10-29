@@ -40,6 +40,7 @@
     FRIEND_TEST(SyscollectorImpTest, RetractionIsScopedToTheContainersThatLostAdmission);                              \
     FRIEND_TEST(SyscollectorImpTest, APartialListingNeitherSweepsNorDeAdmits);                                         \
     FRIEND_TEST(SyscollectorImpTest, APartialListingAtStartupDoesNotArmTheGlobalReconcile);                            \
+    FRIEND_TEST(SyscollectorImpTest, AnUnkeyableContainerKeepsItsRowsWithoutBlockingCleanup);                          \
     FRIEND_TEST(SyscollectorIdentityTest, AbsentMarkerIsAdoptedWithoutResync);                                         \
     FRIEND_TEST(SyscollectorIdentityTest, UnchangedIdIsANoOp);                                                         \
     FRIEND_TEST(SyscollectorIdentityTest, UnknownIdIsANoOp);                                                           \

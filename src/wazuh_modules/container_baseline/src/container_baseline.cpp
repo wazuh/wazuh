@@ -286,28 +286,43 @@ extern "C" int cbaseline_lifecycle_since(const char*         connector_socket_pa
 extern "C" int cbaseline_list_containers_ex(const char*            connector_socket_path,
                                             cb_container_id_sink_t sink,
                                             void*                  user_data,
-                                            int*                   out_complete)
+                                            cb_unkeyed_id_sink_t   unkeyed_sink,
+                                            void*                  unkeyed_user_data,
+                                            cb_list_status_t*      out_status)
 {
-    if (out_complete != nullptr) *out_complete = 0;
+    if (out_status != nullptr)
+    {
+        out_status->complete = 0;
+        out_status->unkeyed_known = 0;
+    }
 
     // -1, not 0: "no socket configured" is no more an authorisation to delete
     // rows than "socket unreachable" is. See the header's contract.
     if (connector_socket_path == nullptr) return -1;
 
-    bool complete = false;
+    wazuh::container_baseline::ContainerListStatus status;
     const int listed = ListContainers(
         connector_socket_path,
         [sink, user_data](const std::string& containerId, bool synced) {
             if (sink == nullptr) return;
             sink(containerId.c_str(), synced ? 1 : 0, user_data);
         },
-        &complete);
+        &status,
+        [unkeyed_sink, unkeyed_user_data](const std::string& containerId) {
+            if (unkeyed_sink == nullptr) return;
+            unkeyed_sink(containerId.c_str(), unkeyed_user_data);
+        });
 
-    if (out_complete != nullptr) *out_complete = complete ? 1 : 0;
+    if (out_status != nullptr)
+    {
+        out_status->complete = status.complete ? 1 : 0;
+        out_status->unkeyed_known = status.unkeyedKnown ? 1 : 0;
+    }
+
     return listed;
 }
 
 extern "C" int cbaseline_list_containers(const char* connector_socket_path, cb_container_id_sink_t sink, void* user_data)
 {
-    return cbaseline_list_containers_ex(connector_socket_path, sink, user_data, nullptr);
+    return cbaseline_list_containers_ex(connector_socket_path, sink, user_data, nullptr, nullptr, nullptr);
 }
