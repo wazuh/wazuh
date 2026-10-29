@@ -383,6 +383,25 @@ if(NOT ${TARGET} STREQUAL "winagent")
   target_link_libraries(test_check_rc_if SYSCHECK_O ${TEST_DEPS} "${CHECK_RC_IF_FLAGS}")
   add_test(NAME test_check_rc_if COMMAND test_check_rc_if)
 
+  set(CHECK_RC_PORTS_FLAGS "-Wl,--wrap,socket \
+                             -Wl,--wrap,bind \
+                             -Wl,--wrap,close \
+                             -Wl,--wrap,system \
+                             -Wl,--wrap,is_program_available \
+                             -Wl,--wrap,notify_rk \
+                             -Wl,--wrap,_minfo \
+                             -Wl,--wrap,_mtdebug1 \
+                             -Wl,--wrap,_mtwarn \
+                             -Wl,--wrap,_mterror")
+
+  # ss is only considered on Linux
+  if(${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
+    add_executable(test_check_rc_ports test_check_rc_ports.c)
+    target_include_directories(test_check_rc_ports PRIVATE ${SRC_FOLDER}/rootcheck)
+    target_link_libraries(test_check_rc_ports SYSCHECK_O ${TEST_DEPS} "${CHECK_RC_PORTS_FLAGS}")
+    add_test(NAME test_check_rc_ports COMMAND test_check_rc_ports)
+  endif()
+
   set(COMMON_FLAGS "-Wl,--wrap,wopendir \
                     -Wl,--wrap,closedir \
                     -Wl,--wrap,w_stat \
