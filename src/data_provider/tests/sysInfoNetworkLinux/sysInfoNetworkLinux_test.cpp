@@ -238,6 +238,16 @@ TEST_F(SysInfoNetworkLinuxTest, Test_GatewayV6_NoGatewayFlag)
     EXPECT_EQ(" ", NetworkLinuxInterface::parseGatewayV6(table, "eth0"));
 }
 
+TEST_F(SysInfoNetworkLinuxTest, Test_GatewayV6_SourceSpecificRoute)
+{
+    const std::string table
+    {
+        "00000000000000000000000000000000 00 20010db8000000000000000000000000 40 fe800000000000000000000000000002 0000000a 00000001 00000000 00000003       d0\n"
+        "00000000000000000000000000000000 00 00000000000000000000000000000000 00 fe800000000000000000000000000001 00000400 00000001 00000000 00000003       d0\n"
+    };
+    EXPECT_EQ("fe80::1", NetworkLinuxInterface::parseGatewayV6(table, "d0"));
+}
+
 TEST_F(SysInfoNetworkLinuxTest, Test_GatewayV6_MalformedInput)
 {
     const std::string table

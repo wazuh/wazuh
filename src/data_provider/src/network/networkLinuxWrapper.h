@@ -416,6 +416,7 @@ class NetworkLinuxInterface final : public INetworkInterfaceWrapper
                         fields.at(GatewayV6FileFields::Iface).compare(ifName) == 0 &&
                         fields.at(GatewayV6FileFields::Destination).compare(ANY_ADDRESS) == 0 &&
                         fields.at(GatewayV6FileFields::DestinationPrefix).compare("00") == 0 &&
+                        fields.at(GatewayV6FileFields::SourcePrefix).compare("00") == 0 &&
                         fields.at(GatewayV6FileFields::NextHop).size() == IPV6_HEX_LENGTH &&
                         fields.at(GatewayV6FileFields::NextHop).compare(ANY_ADDRESS) != 0 &&
                         isHex(fields.at(GatewayV6FileFields::NextHop)) &&
