@@ -21,11 +21,15 @@ import aws_tools
 MAX_RECORD_RETENTION = 500
 DB_DATE_FORMAT = "%Y%m%d"
 DEFAULT_DATABASE_NAME = "s3_cloudtrail"
-# Date of the folder or name right after the full prefix of a key, as the markers are built. The month and day have
-# two digits, or a key such as 2026/9/9/ would sort after the logs of the following months
-KEY_DATE_REGEX = re.compile(r'(\d{4})[/-](\d{2})[/-](\d{2})(?!\d)')
+# Date of the folder or name right after the full prefix of a key, as the markers are built, with the separator of
+# each bucket type. The month and day have two digits, or a key such as 2026/9/9/ would sort after the logs of the
+# following months, and a key with the other separator would sort before or after all of them
+KEY_DATE_REGEX = re.compile(r'(\d{4})/(\d{2})/(\d{2})(?!\d)')
+KEY_DASH_DATE_REGEX = re.compile(r'(\d{4})-(\d{2})-(\d{2})(?!\d)')
 # The date of a key may be in a time zone ahead of UTC, such as the prefix of a Firehose stream
 MAX_KEY_DATE_UTC_OFFSET = timedelta(hours=14)
+# AWS refuses the requests signed more than 15 minutes away from its time, which bounds the clock of the manager
+MAX_CLOCK_SKEW = timedelta(minutes=15)
 
 RETRY_CONFIGURATION_URL = 'https://documentation.wazuh.com/current/amazon/services/prerequisites/' \
                           'considerations.html#Connection-configuration-for-retries'
@@ -150,6 +154,7 @@ class AWSBucket(wazuh_integration.WazuhAWSDatabase):
             WHERE
                 bucket_path=:bucket_path AND
                 aws_account_id=:aws_account_id AND
+                aws_region=:aws_region AND
                 log_key=:log_key;"""
 
         self.sql_find_first_key_processed = """
@@ -417,8 +422,7 @@ class AWSBucket(wazuh_integration.WazuhAWSDatabase):
         full_prefix = self.get_full_prefix(aws_account_id, aws_region)
         marker, invalid_keys = None, []
         for log_key, processed_date in rows:
-            # The processed date is the UTC time of the manager, which AWS requests keep within minutes of its own
-            if self.is_valid_marker(log_key, aws_account_id, aws_region, datetime.fromisoformat(processed_date)):
+            if self.is_valid_marker(log_key, aws_account_id, aws_region, self.get_written_date(processed_date)):
                 marker = log_key
                 break
             if log_key.startswith(full_prefix):
@@ -427,9 +431,27 @@ class AWSBucket(wazuh_integration.WazuhAWSDatabase):
         for log_key in invalid_keys:
             aws_tools.debug(f"+++ Removing the processed key that cannot be the marker: {log_key}", 1)
         self.db_cursor.executemany(self.sql_delete_processed_key.format(table_name=self.db_table_name), [
-            {'bucket_path': self.bucket_path, 'aws_account_id': aws_account_id, 'log_key': log_key}
+            {'bucket_path': self.bucket_path, 'aws_account_id': aws_account_id, 'aws_region': aws_region,
+             'log_key': log_key, **kwargs}
             for log_key in invalid_keys])
         return marker
+
+    @staticmethod
+    def get_written_date(processed_date: str) -> datetime:
+        """
+        Return the latest UTC time the object of a processed key can have been written at.
+
+        Parameters
+        ----------
+        processed_date : str
+            The processed date of the key, taken from the UTC time of the manager.
+
+        Returns
+        -------
+        datetime
+            The processed date plus the clock skew that AWS accepts in the requests of the manager.
+        """
+        return datetime.fromisoformat(processed_date) + MAX_CLOCK_SKEW
 
     def delete_keys_before_window(self, aws_account_id: str, aws_region: str, **kwargs):
         """
@@ -456,7 +478,8 @@ class AWSBucket(wazuh_integration.WazuhAWSDatabase):
                 'prefix': prefix,
                 **kwargs}).fetchall()]
         self.db_cursor.executemany(self.sql_delete_processed_key.format(table_name=self.db_table_name), [
-            {'bucket_path': self.bucket_path, 'aws_account_id': aws_account_id, 'log_key': key}
+            {'bucket_path': self.bucket_path, 'aws_account_id': aws_account_id, 'aws_region': aws_region,
+             'log_key': key, **kwargs}
             for key in keys[self.retain_db_records:] if window is None or key < window])
 
     def db_count_region(self, aws_account_id, aws_region):
@@ -823,7 +846,7 @@ class AWSBucket(wazuh_integration.WazuhAWSDatabase):
                             aws_tools.debug(f"++ File previously processed, but reparse flag set: {bucket_file['Key']}",
                                             1)
                         else:
-                            aws_tools.debug(f"++ Skipping previously processed file: {bucket_file['Key']}", 1)
+                            aws_tools.debug(f"++ Skipping previously processed file: {bucket_file['Key']}", 2)
                             continue
 
                     aws_tools.debug(f"++ Found new log: {bucket_file['Key']}", 2)
@@ -1015,6 +1038,13 @@ class AWSCustomBucket(AWSBucket):
                 log_key LIKE :prefix
             ORDER BY
                 log_key DESC;"""
+
+        self.sql_delete_processed_key = """
+            DELETE FROM {table_name}
+            WHERE
+                bucket_path=:bucket_path AND
+                aws_account_id=:aws_account_id AND
+                log_key=:log_key;"""
 
         self.sql_count_custom = """
             SELECT

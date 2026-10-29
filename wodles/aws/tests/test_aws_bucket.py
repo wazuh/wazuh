@@ -853,7 +853,7 @@ def test_aws_bucket_iter_files_in_bucket(mock_build_filter, mock_debug,
                         f"++ File previously processed, but reparse flag set: {bucket_file['Key']}",
                         1)
                 else:
-                    mock_debug.assert_any_call(f"++ Skipping previously processed file: {bucket_file['Key']}", 1)
+                    mock_debug.assert_any_call(f"++ Skipping previously processed file: {bucket_file['Key']}", 2)
                     continue
 
                 mock_debug.assert_any_call(f"++ Found new log: {bucket_file['Key']}", 2)
@@ -1489,7 +1489,7 @@ def fetch_layout_bucket(bucket, regions=(R,)) -> list:
 
 # Days of the logs of the tests of planted keys. A key of September with a single digit month sorts after them
 PLANTED_DAY_1, PLANTED_DAY_2 = date(2025, 10, 26), date(2025, 10, 27)
-PLANTED_KINDS = ['future', 'invalid', 'single_digit', 'no_date']
+PLANTED_KINDS = ['future', 'invalid', 'single_digit', 'other_separator', 'no_date']
 
 
 def get_planted_key(bucket, key_of_day, kind: str) -> str:
@@ -1499,12 +1499,15 @@ def get_planted_key(bucket, key_of_day, kind: str) -> str:
         return planted
     full_prefix = bucket.get_full_prefix(A, R)
     rest = planted[len(full_prefix):]
-    match = aws_bucket.KEY_DATE_REGEX.match(rest)
+    match = bucket.key_date_regex.match(rest)
     separator = rest[4]
     if kind == 'invalid':
         return f'{full_prefix}2026{separator}99{separator}99{rest[match.end():]}'
     if kind == 'single_digit':
         return f'{full_prefix}{PLANTED_DAY_1.year}{separator}9{separator}9{rest[match.end():]}'
+    if kind == 'other_separator':
+        other = '/' if separator == '-' else '-'
+        return f'{full_prefix}{PLANTED_DAY_1.strftime(f"%Y{other}%m{other}%d")}{rest[match.end():]}'
     # Without date, but with the name of a log so it can be marked as processed
     return f'{full_prefix}zzzz/{os.path.basename(planted)}'
 
@@ -1528,7 +1531,8 @@ def test_aws_bucket_planted_key_does_not_become_the_marker(custom_database, clas
     bucket.client.put(key_of_day(day_2, 'a'), day_2)
     with patch('aws_bucket.aws_tools.debug') as mock_debug:
         assert fetch_layout_bucket(bucket) == [key_of_day(day_1, 'b'), key_of_day(day_2, 'a')]
-    assert call_skipped(mock_debug, planted) or is_skipped_before(bucket, kind)
+    # A key sorting before the logs, such as one with a dash in a bucket type of slashes, is not listed at all
+    assert call_skipped(mock_debug, planted) or is_skipped_before(bucket, kind) or planted < key_of_day(day_1, 'a')
 
     bucket.client.put(key_of_day(day_2, 'b'), day_2)
     assert fetch_layout_bucket(bucket) == [key_of_day(day_2, 'b')]
@@ -1538,7 +1542,7 @@ def is_skipped_before(bucket, kind: str) -> bool:
     """Whether a planted key is skipped before checking if it can be the marker: without a date of two digit month and
     day, by the prefix check of the bucket types that have it, and without a valid date, by the date filter of AWS
     Config with only_logs_after."""
-    return (kind in ('no_date', 'single_digit') and bucket.check_prefix) or \
+    return (kind in ('no_date', 'single_digit', 'other_separator') and bucket.check_prefix) or \
         (kind != 'future' and isinstance(bucket, AWSConfigBucket))
 
 
@@ -1568,8 +1572,40 @@ def test_aws_bucket_marker_skips_planted_key_processed_by_older_versions(custom_
     bucket.client.put(key_of_day(day_1, 'a'), day_1)
     bucket.client.put(key_of_day(day_2, 'a'), day_2)
     assert fetch_layout_bucket(bucket) == [key_of_day(day_2, 'a')]
+    # Only the keys sorting after the marker are removed, the others cannot be the marker and the retention deletes them
     remaining = {row[0] for row in custom_database.execute(f'SELECT log_key FROM {bucket.db_table_name}')}
-    assert remaining == {key_of_day(day_1, 'a'), key_of_day(day_2, 'a')}
+    assert remaining == {key_of_day(day_1, 'a'), key_of_day(day_2, 'a')} | \
+        ({planted} if planted < key_of_day(day_1, 'a') else set())
+
+
+@pytest.mark.parametrize('class_, parameters, key_columns', [
+    (AWSCloudTrailBucket, {}, 'bucket_path=? AND aws_account_id=? AND aws_region=? AND log_key=?'),
+    (AWSVPCFlowBucket, {}, 'bucket_path=? AND aws_account_id=? AND aws_region=? AND flow_log_id=? AND log_key=?'),
+    (aws_bucket.AWSCustomBucket, {'prefix': 'custom/', 'db_table_name': None},
+     'bucket_path=? AND aws_account_id=? AND log_key=?'),
+])
+def test_aws_bucket_delete_processed_key_uses_the_primary_key(custom_database, class_, parameters, key_columns):
+    """Test the deletion of a processed key searches it with every column of the primary key of its table."""
+    bucket = get_layout_bucket(class_, parameters, custom_database, PLANTED_DAY_1)
+    plan = custom_database.execute(
+        f'EXPLAIN QUERY PLAN {bucket.sql_delete_processed_key.format(table_name=bucket.db_table_name)}', {
+            'bucket_path': 'b', 'aws_account_id': A, 'aws_region': R, 'flow_log_id': FLOW_LOG_ID, 'log_key': 'k'
+        }).fetchall()
+    assert f'({key_columns})' in plan[0][-1]
+
+
+def test_aws_bucket_get_last_key_processed_allows_the_clock_skew_of_the_manager(custom_database):
+    """Test a key dated the next day, written by S3 after 10:00 UTC and processed when the clock of the manager was
+    up to 15 minutes behind, is still the marker and is not removed."""
+    bucket = get_layout_bucket(aws_bucket.AWSCustomBucket, {'prefix': 'custom/', 'db_table_name': None},
+                               custom_database, PLANTED_DAY_1)
+    key = 'custom/2025/10/28/00/file'
+    custom_database.execute(bucket.sql_mark_complete.replace("DATETIME('now')", ':processed_date').format(
+        table_name=bucket.db_table_name), {'bucket_path': bucket.bucket_path, 'aws_account_id': A, 'log_key': key,
+                                           'processed_date': '2025-10-27 09:50:00', 'created_date': 20251028})
+
+    assert bucket.get_last_key_processed(A, R, 'custom/%') == key
+    assert bucket.get_written_date('2025-10-27 09:50:00') == datetime(2025, 10, 27, 10, 5)
 
 
 def test_aws_bucket_get_last_key_processed_keeps_keys_of_other_prefixes(custom_database):
@@ -1711,9 +1747,7 @@ def test_aws_bucket_db_maintenance_window_skips_planted_key(custom_database, cla
     ('2026/10/28/00/firehose-1', date(2026, 10, 28)),
     ('2026/1/6/ConfigHistory/file', None),
     ('2026/9/09/file', None),
-    ('2026-10-9/file', None),
-    ('2026-10-28/2026-10-28-00-00-abcd.csv.gz', date(2026, 10, 28)),
-    ('2026-10-28-12-00-00-F123456789012345', date(2026, 10, 28)),
+    ('2026-10-28/2026-10-28-00-00-abcd.csv.gz', None),
     ('9999/12/31/file', date(9999, 12, 31)),
     ('2026/99/99/file', None),
     ('2026/02/30/file', None),
@@ -1727,6 +1761,23 @@ def test_aws_bucket_get_key_date(key_suffix, expected_date):
     with patch('aws_bucket.AWSBucket.get_full_prefix', return_value='archive/2024/01/01/'):
         assert bucket.get_key_date(f'archive/2024/01/01/{key_suffix}', A, R) == expected_date
         assert bucket.get_key_date(f'other/{key_suffix}', A, R) is None
+
+
+@pytest.mark.parametrize('class_, parameters', [
+    (CiscoUmbrella, {'prefix': 'dnslogs/'}),
+    (AWSServerAccess, {'prefix': 'access/'}),
+])
+@pytest.mark.parametrize('key_suffix, expected_date', [
+    ('2026-10-28/2026-10-28-00-00-abcd.csv.gz', date(2026, 10, 28)),
+    ('2026-10-28-12-00-00-F123456789012345', date(2026, 10, 28)),
+    ('2026/10/28/x.csv.gz', None),
+    ('2026-10-9/x.csv.gz', None),
+])
+def test_aws_bucket_get_key_date_with_dashes(custom_database, class_, parameters, key_suffix, expected_date):
+    """Test 'get_key_date' of Cisco Umbrella and Server Access takes the date with the dashes they write, as a key
+    with slashes would sort after all of their logs."""
+    bucket = get_layout_bucket(class_, parameters, custom_database, PLANTED_DAY_1)
+    assert bucket.get_key_date(f'{parameters["prefix"]}{key_suffix}', A, R) == expected_date
 
 
 @pytest.mark.parametrize('key_suffix, expected_date', [

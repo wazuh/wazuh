@@ -100,6 +100,15 @@ class AWSVPCFlowBucket(AWSLogsBucket):
             ORDER BY
                 log_key DESC;"""
 
+        self.sql_delete_processed_key = """
+            DELETE FROM {table_name}
+            WHERE
+                bucket_path=:bucket_path AND
+                aws_account_id=:aws_account_id AND
+                aws_region=:aws_region AND
+                flow_log_id=:flow_log_id AND
+                log_key=:log_key;"""
+
         self.sql_count_region = """
             SELECT
                 count(*)

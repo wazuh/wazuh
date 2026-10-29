@@ -4,7 +4,6 @@
 
 import sys
 import csv
-from datetime import datetime
 from os import path
 from aws_bucket import AWSBucket, AWSCustomBucket
 
@@ -78,7 +77,7 @@ class AWSLBBucket(AWSCustomBucket):
             for index, (key, processed_date) in enumerate(rows):
                 region = key[len(service_prefix):].split('/', 1)[0] if key.startswith(service_prefix) else None
                 if region and region not in window_markers and \
-                        self.is_valid_marker(key, aws_account_id, region, datetime.fromisoformat(processed_date)):
+                        self.is_valid_marker(key, aws_account_id, region, self.get_written_date(processed_date)):
                     window_markers[region] = self.rewind_marker_to_day_folder(key, aws_account_id, region)
 
                 # Keys out of the service prefix belong to other buckets with the same path, which keep their own

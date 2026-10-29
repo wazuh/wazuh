@@ -5,7 +5,7 @@
 import csv
 import sys
 from os import path
-from aws_bucket import AWSCustomBucket
+from aws_bucket import AWSCustomBucket, KEY_DASH_DATE_REGEX
 
 sys.path.insert(0, path.dirname(path.dirname(path.abspath(__file__))))
 import aws_tools
@@ -18,6 +18,7 @@ class CiscoUmbrella(AWSCustomBucket):
         AWSCustomBucket.__init__(self, **kwargs)
         self.check_prefix = False
         self.date_format = '%Y-%m-%d'
+        self.key_date_regex = KEY_DASH_DATE_REGEX
 
     def load_information_from_file(self, log_key):
         """Load data from a Cisco Umbrella log file."""
