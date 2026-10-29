@@ -171,6 +171,7 @@ static bool line_limit_reached(int lines, const alert_t *alert) {
 /* Where the alert being assembled starts, to read it again if the read stops before its date line */
 typedef struct {
     int64_t position;
+    int lines;           /* Lines used before it */
     EVP_MD_CTX *context; /* Hash context at position. NULL if the file is not hashed */
 } alert_start_t;
 
@@ -212,7 +213,6 @@ static void restore_alert_start(alert_start_t *start, EVP_MD_CTX **context, int6
 
 /* Make the next read start at position */
 static void retry_from(logreader *lf, int64_t position) {
-    mdebug2("Message not complete from '%s'. Trying again.", lf->file);
     if (position >= 0) {
         w_fseek(lf->fp, position, SEEK_SET);
     }
@@ -224,6 +224,7 @@ typedef struct {
     EVP_MD_CTX *context;       /* Hash of the file up to position */
     bool has_hash;             /* False if the file has no hash state: only the position is kept */
     int64_t position;          /* End of the last line used */
+    int lines;                 /* Lines used */
     alert_start_t alert_start;
 } read_state_t;
 
@@ -233,7 +234,9 @@ static void begin_read(read_state_t *state, logreader *lf) {
     state->context = EVP_MD_CTX_new();
     state->position = w_ftell(lf->fp);
     state->has_hash = w_get_hash_context(lf, &state->context, state->position);
+    state->lines = 0;
     state->alert_start.position = state->position;
+    state->alert_start.lines = 0;
     state->alert_start.context = NULL;
 }
 
@@ -244,6 +247,7 @@ static void consume_line(read_state_t *state, const char *str) {
     } else {
         state->position = w_ftell(state->lf->fp);
     }
+    state->lines++;
 }
 
 /* Remember where the alert that starts with the line about to be hashed begins. Returns false if it could not */
@@ -253,6 +257,7 @@ static bool save_alert_start(read_state_t *state) {
                state->lf->file);
         return false;
     }
+    state->alert_start.lines = state->lines;
     return true;
 }
 
@@ -273,10 +278,11 @@ static void stop_on_bad_line(read_state_t *state) {
 }
 
 /* The next read starts at the alert still open or at the line left unread, if there is one, or after the
- * last line used */
+ * last line used. The lines read again then are not counted now */
 static void finish_read(read_state_t *state, bool alert_is_open, bool line_left_unread) {
     if (alert_is_open) {
         restore_alert_start(&state->alert_start, &state->context, &state->position);
+        state->lines = state->alert_start.lines;
     }
 
     /* Without an open alert, position is the start of the line left unread, which was not hashed */
@@ -293,26 +299,24 @@ void *read_snortfull(logreader *lf, int *rc, int drop_it) {
     alert_t alert = { ALERT_NONE, {0} };
     read_state_t state;
     char str[OS_MAX_LOG_SIZE] = {0};
-    int lines = 0;
-    bool line_left_unread = false;
+    bool line_cut = false;       /* The last line read has no line end yet */
+    bool header_unsaved = false; /* The hash could not be saved at the last line read, a header */
 
     *rc = 0;
     begin_read(&state, lf);
 
-    while (can_read() && !line_limit_reached(lines, &alert) && fgets(str, sizeof(str), lf->fp)) {
-
-        lines++;
+    while (can_read() && !line_limit_reached(state.lines, &alert) && fgets(str, sizeof(str), lf->fp)) {
 
         /* Read it again whole, once the writer finishes it */
         if (is_unfinished_line(lf, str)) {
-            line_left_unread = true;
+            line_cut = true;
             break;
         }
 
         if (is_alert_header(str)) {
             discard_open_alert(&alert, lf->file);
             if (!save_alert_start(&state)) {
-                line_left_unread = true;
+                header_unsaved = true;
                 break;
             }
         }
@@ -332,8 +336,12 @@ void *read_snortfull(logreader *lf, int *rc, int drop_it) {
         }
     }
 
-    finish_read(&state, alert.stage != ALERT_NONE, line_left_unread);
+    /* Both are read again once the writer finishes them */
+    if (line_cut || alert.stage != ALERT_NONE) {
+        mdebug2("Message not complete from '%s'. Trying again.", lf->file);
+    }
+    finish_read(&state, alert.stage != ALERT_NONE, line_cut || header_unsaved);
 
-    mdebug2("Read %d lines from %s", lines, lf->file);
+    mdebug2("Read %d lines from %s", state.lines, lf->file);
     return (NULL);
 }

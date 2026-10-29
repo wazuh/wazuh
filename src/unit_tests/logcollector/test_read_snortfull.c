@@ -300,12 +300,17 @@ static void expect_end_of_file(void) {
     will_return(__wrap_fgets, NULL);
 }
 
-/* Expect the reader to go back to pos, so the next read starts there */
-static void expect_rewind(int64_t pos) {
-    expect_string(__wrap__mdebug2, formatted_msg, "Message not complete from 'test.log'. Trying again.");
+/* Expect the reader to seek to pos, so the next read starts there */
+static void expect_seek(int64_t pos) {
     expect_any(__wrap_w_fseek, x);
     expect_value(__wrap_w_fseek, pos, pos);
     will_return(__wrap_w_fseek, 0);
+}
+
+/* Expect the reader to go back to pos to wait for the rest of a message */
+static void expect_rewind(int64_t pos) {
+    expect_string(__wrap__mdebug2, formatted_msg, "Message not complete from 'test.log'. Trying again.");
+    expect_seek(pos);
 }
 
 /* Expect the offset pos to be stored, with the hash of the bytes before it */
@@ -821,7 +826,7 @@ void test_read_snortfull_eof_after_header(void **state) {
 /**
  * Test: a complete alert, then the header and classification of the next one at the end of the file.
  * The first alert is queued; the reader goes back to the second alert's header, and the stored hash
- * covers the first alert only.
+ * covers the first alert only. The lines of the second alert, read again next time, are not counted as read.
  */
 void test_read_snortfull_eof_after_classification(void **state) {
     logreader lf = {0};
@@ -858,7 +863,7 @@ void test_read_snortfull_eof_after_classification(void **state) {
 
     expect_rewind((int64_t) strlen(first_alert));
     expect_stored_state((int64_t) strlen(first_alert), first_alert);
-    expect_any(__wrap__mdebug2, formatted_msg);
+    expect_string(__wrap__mdebug2, formatted_msg, "Read 5 lines from test.log");
 
     read_snortfull(&lf, &rc, 0);
 
@@ -1064,7 +1069,8 @@ void test_read_snortfull_unfinished_line_in_alert(void **state) {
 
 /**
  * Test: a complete alert, then the first bytes of the next header at the end of the file.
- * The first alert is queued and the reader goes back to the start of the unfinished line.
+ * The first alert is queued and the reader goes back to the start of the unfinished line, which is not counted
+ * as read.
  */
 void test_read_snortfull_unfinished_line_after_alert(void **state) {
     logreader lf = {0};
@@ -1094,7 +1100,7 @@ void test_read_snortfull_unfinished_line_after_alert(void **state) {
 
     expect_rewind((int64_t) strlen(alert));
     expect_stored_state((int64_t) strlen(alert), alert);
-    expect_any(__wrap__mdebug2, formatted_msg);
+    expect_string(__wrap__mdebug2, formatted_msg, "Read 3 lines from test.log");
 
     read_snortfull(&lf, &rc, 0);
 
@@ -1265,7 +1271,9 @@ void test_read_snortfull_hash_copy_fails_at_header(void **state) {
     expect_queued_message(MESSAGE("1001"));
     expect_line_left_unread(copy_line(HEADER("1002"), strlen(HEADER("1002"))));
     expect_string(__wrap__merror, formatted_msg, HASH_SAVE_ERROR);
-    expect_read_back_to((int64_t) strlen(ALERT("1001")));
+    expect_seek((int64_t) strlen(ALERT("1001")));
+    expect_kept_state((int64_t) strlen(ALERT("1001")));
+    expect_string(__wrap__mdebug2, formatted_msg, "Read 5 lines from test.log");
 
     read_snortfull(&lf, &rc, 0);
 
