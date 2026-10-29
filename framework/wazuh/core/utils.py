@@ -1178,7 +1178,7 @@ def check_virustotal_integration(new_conf: Element):
                 raise WazuhError(1130, extra_message='integrations > virustotal')
 
 
-def load_wazuh_xml(xml_path, data=None):
+def load_wazuh_xml(xml_path, data=None, raw_entities=False):
     if not data:
         with open(xml_path) as f:
             try:
@@ -1194,6 +1194,10 @@ def load_wazuh_xml(xml_path, data=None):
 
     # Replace &lt; and &gt; currently present in the config
     data = data.replace('&lt;', '_custom_amp_lt_').replace('&gt;', '_custom_amp_gt_')
+
+    if raw_entities:
+        # os_xml does not decode entities, so '&amp;' has to stay text for a value to compare as the daemons read it
+        data = re.sub(r'&(amp|quot|apos);', r'&amp;\1;', data)
 
     custom_entities = {
         'backslash': '\\'
@@ -2212,6 +2216,7 @@ def validate_wazuh_xml(content: str, config_file: bool = False):
 
     # Create temporary file for parsing xml input
     try:
+        # Check the syntax of the text as it is uploaded, not only of the copy without comments
         parseString(f'<root>{content}</root>'.replace('&', '&amp;'))
         # Beautify xml file and escape '&' character as it could come in some tag values unescaped
         xml = parseString(f'<root>{uncommented}</root>'.replace('&', '&amp;'))
@@ -2226,10 +2231,10 @@ def validate_wazuh_xml(content: str, config_file: bool = False):
         final_xml = re.sub(fr'^{indent}', '', pretty_xml, flags=re.MULTILINE)
 
         # Check xml format
-        incoming_xml = load_wazuh_xml(xml_path='', data=final_xml)
+        incoming_xml = load_wazuh_xml(xml_path='', data=final_xml, raw_entities=config_file)
         # Check if remote commands are allowed if it is a configuration file
         if config_file:
-            current_xml = load_wazuh_xml(xml_path=common.OSSEC_CONF)
+            current_xml = load_wazuh_xml(xml_path=common.OSSEC_CONF, raw_entities=True)
             check_remote_commands(incoming_xml, current_xml)
             check_agents_allow_higher_versions(incoming_xml, current_xml)
             check_virustotal_integration(incoming_xml)
