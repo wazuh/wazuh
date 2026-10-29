@@ -5,6 +5,7 @@
 
 import datetime
 import os
+import time
 from collections import OrderedDict
 from collections.abc import KeysView
 from copy import deepcopy
@@ -2360,6 +2361,12 @@ WODLE_COMMAND = '<wodle name="command"><command>touch /tmp/pwn</command></wodle>
     (f'<ossec_config><![CDATA[ !> {LOCALFILE_COMMAND} ]]></ossec_config>', 1113),
     (f'<ossec_config><![CDATA[ <!-- !> {LOCALFILE_COMMAND} ]]> --></ossec_config>', 1113),
     (f'<ossec_config><labels a="<!--x"/>{LOCALFILE_COMMAND}<!-- y -->"/></ossec_config>', 1113),
+    ('<ossec_config><localfile><log_format>command</log_format><command>touch /tmp/pwn</command>'
+     '\\<log_format>syslog\\</log_format></localfile></ossec_config>', 1124),
+    ('<ossec_config><wodle name="command">\\</wodle><command>touch /tmp/pwn</command>\\<wodle>\\<x/></wodle>'
+     '</ossec_config>', 1124),
+    ('<ossec_config xmlns:x="urn:x"><localfile><x:log_format>command</x:log_format>'
+     '<command>touch /tmp/pwn</command><log_format>syslog</log_format></localfile></ossec_config>', 1113),
 ])
 def test_validate_wazuh_xml_remote_commands_ko(new_conf, error_code, tmp_path):
     """Check commands are rejected whatever the way they are hidden from the XML parser of the API."""
@@ -2408,6 +2415,15 @@ def test_validate_wazuh_xml_remote_commands(tmp_path):
     with patch('wazuh.core.utils.configuration.api_conf', new=api_conf), \
             patch('wazuh.core.utils.common.OSSEC_CONF', new=str(original_conf)):
         utils.validate_wazuh_xml(new_conf, config_file=True)
+
+
+def test_validate_wazuh_xml_unterminated_comments_are_linear():
+    """Check a long run of unterminated '<!' is rejected without the time growing quadratically."""
+    start = time.perf_counter()
+    with pytest.raises(exception.WazuhError, match=r'.* 1113 .*'):
+        utils.validate_wazuh_xml(f"<ossec_config>{'<!' * 40000}</ossec_config>")
+
+    assert time.perf_counter() - start < 2
 
 
 def test_load_wazuh_xml_ignores_namespaces():
