@@ -42,6 +42,9 @@ void AgentdStart(int uid, int gid, const char *user, const char *group)
         goDaemon();
     }
 
+    /* After goDaemon(): threads don't survive its fork */
+    StartSIGShutdownThread();
+
     /* Set group ID */
     if (Privsep_SetGroup(gid) < 0) {
         merror_exit(SETGID_ERROR, group, errno, strerror(errno));
@@ -153,8 +156,9 @@ void AgentdStart(int uid, int gid, const char *user, const char *group)
     req_init();
     w_create_thread(req_receiver, NULL);
 
-    /* Send agent stopped message at exit */
+    /* Send agent stopped message at exit, and on a termination signal, which skips the atexit handlers */
     atexit(send_agent_stopped_message);
+    SetSIGShutdownFunc(send_agent_stopped_message);
 
     /* Send first notification */
     run_notify();
