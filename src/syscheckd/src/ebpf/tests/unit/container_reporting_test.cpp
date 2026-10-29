@@ -791,6 +791,47 @@ TEST_F(ContainerReportingTest, RestartSeedsBudgetFromStoredContainerFlags)
     EXPECT_EQ(syncFlag("a", "/etc/two"), 0);
 }
 
+// A retraction that cannot be persisted leaves the document on the manager and
+// the row at sync=1. That is the right state -- the next reconcile selects on
+// exactly that and retries -- but until then the agent's integrity checksum
+// covers content the manager does not have, and the repair is clearing and
+// re-sending the whole FIM index. Said out loud, because an operator watching
+// that happen has nothing else to connect it to (#37532).
+TEST_F(ContainerReportingTest, AFailedRetractionIsReportedAndRetried)
+{
+    files = {{"a", {"/etc/one"}}, {"b", {"/etc/one"}}};
+    admission = {{"a", true}, {"b", true}};
+    listed = false;
+    fim_run_container_baseline();
+    ASSERT_EQ(syncFlag("b", "/etc/one"), 1);
+
+    // b loses admission while persistence is refusing everything.
+    warnings.clear();
+    reject_persistence = true;
+    const char* known[] = {"a", "b"};
+    const char* onlyA[] = {"a"};
+    fim_container_set_admission(known, 2, onlyA, 1, NULL, 0);
+
+    EXPECT_EQ(syncFlag("b", "/etc/one"), 1)
+            << "the manager still holds the document, so the row must stay findable by the retraction";
+
+    ASSERT_FALSE(warnings.empty()) << "a document left on the manager must not be silent";
+    EXPECT_NE(warnings[0].find("could not withdraw"), std::string::npos);
+    EXPECT_NE(warnings[0].find('b'), std::string::npos);
+
+    // ...and the next reconcile finishes the job, because sync=1 is what it
+    // selects on.
+    warnings.clear();
+    reject_persistence = false;
+    persisted.clear();
+    fim_container_set_admission(known, 2, onlyA, 1, NULL, 0);
+
+    EXPECT_EQ(syncFlag("b", "/etc/one"), 0);
+    ASSERT_EQ(persisted.size(), 1u);
+    EXPECT_EQ(persisted[0], (std::pair<std::string, int> {"b:/etc/one", OPERATION_DELETE}));
+    EXPECT_TRUE(warnings.empty()) << "nothing is owed any more";
+}
+
 TEST_F(ContainerReportingTest, PersistenceFailureDoesNotMarkRowsAsReported)
 {
     reject_persistence = true;

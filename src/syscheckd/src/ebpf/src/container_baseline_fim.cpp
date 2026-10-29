@@ -1199,6 +1199,7 @@ namespace
                 continue;
             }
 
+            std::size_t unretracted = 0;
             const cJSON* row = nullptr;
             cJSON_ArrayForEach(row, rows.get())
             {
@@ -1230,10 +1231,37 @@ namespace
                 {
                     writeSyncFlag(row, promote ? 1 : 0);
                 }
+                else if (!promote)
+                {
+                    // A refused PROMOTION is the budget doing its job; a refused
+                    // RETRACTION is a document left on the manager that the agent
+                    // has decided it may no longer report.
+                    ++unretracted;
+                }
             }
 
             if (!promote)
+            {
+                // Said because the consequence is otherwise unattributable. The row
+                // keeps sync=1, so the agent's integrity checksum goes on covering
+                // content the manager does not have, and the mismatch is repaired by
+                // clearing and re-sending the whole FIM index. An operator seeing
+                // that has nothing else to connect it to (#37532).
+                //
+                // The row staying at sync=1 is also what gets it retried: the next
+                // reconcile selects on exactly that, and one runs on every admission
+                // change and every whole-node baseline.
+                if (unretracted != 0)
+                {
+                    LogWarn("Container FIM: could not withdraw %zu document(s) for container '%s'; the manager still "
+                            "holds them and they will be retried on the next baseline. Until then an integrity check "
+                            "may find a mismatch and resynchronise the whole index.",
+                            unretracted,
+                            container_id);
+                }
+
                 fim_container_doc_budget_release(container_id);
+            }
         }
     }
 

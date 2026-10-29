@@ -837,7 +837,18 @@ static int container_row_sync_flag(const cJSON* row, int operation)
          *
          * Leave the column alone instead. The reconciliation that follows the
          * de-admission still sees sync=1 and retracts the row properly, which
-         * is the DELETE that pairs the demotion. */
+         * is the DELETE that pairs the demotion.
+         *
+         * What this leaves behind, deliberately: between here and that
+         * retraction the stored row carries the new content while the manager
+         * still holds the old document, so the agent's integrity checksum
+         * covers something the manager does not have. The window is one
+         * reconcile pass -- a pass runs synchronously at the end of every
+         * fim_container_set_admission() and at every whole-node baseline, and
+         * selects on exactly the sync=1 this preserves -- and an integrity
+         * check that samples inside it resynchronises the whole index rather
+         * than getting a wrong answer. Paying that occasionally is the point:
+         * the alternative is a document stranded on the manager for good. */
         return (stored_sync == 1) ? FIM_CONTAINER_SYNC_UNCHANGED : 0;
     }
 
