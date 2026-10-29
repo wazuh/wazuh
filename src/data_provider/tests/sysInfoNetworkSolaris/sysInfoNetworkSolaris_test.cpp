@@ -37,6 +37,7 @@ class sysInfoNetworkSolarisWrapperMock : public INetworkInterfaceWrapper
         MOCK_METHOD( std::string, netmaskV6, (), (const, override));
         MOCK_METHOD( std::string, broadcastV6, (), (const, override));
         MOCK_METHOD( std::string, gateway, (), (const, override));
+        MOCK_METHOD( std::string, gatewayV6, (), (const, override));
         MOCK_METHOD( std::string, metrics, (), (const, override));
         MOCK_METHOD( std::string, metricsV6, (), (const, override));
         MOCK_METHOD( std::string, dhcp, (), (const, override));
@@ -122,6 +123,7 @@ TEST_F(SysInfoNetworkSolarisTest, Test_AF_UNSPEC)
     EXPECT_CALL(*mock, stats()).Times(1).WillOnce(Return(LinkStats{436300, 220902, 641204623, 12252455, 0, 0, 0, 0}));
     EXPECT_CALL(*mock, mtu()).Times(1).WillOnce(Return(1500u));
     EXPECT_CALL(*mock, gateway()).Times(1).WillOnce(Return("10.0.2.2"));
+    EXPECT_CALL(*mock, gatewayV6()).Times(1).WillOnce(Return("fe80::1"));
     EXPECT_NO_THROW(FactoryNetworkFamilyCreator<OSPlatformType::SOLARIS>::create(mock)->buildNetworkData(ifaddr));
 
     EXPECT_EQ("net0", ifaddr.at("name").get_ref<const std::string&>());
@@ -141,6 +143,7 @@ TEST_F(SysInfoNetworkSolarisTest, Test_AF_UNSPEC)
 
     EXPECT_EQ(1500u, ifaddr.at("mtu").get<uint32_t>());
     EXPECT_EQ("10.0.2.2", ifaddr.at("gateway").get_ref<const std::string&>());
+    EXPECT_EQ("fe80::1", ifaddr.at("gateway6").get_ref<const std::string&>());
 }
 
 TEST_F(SysInfoNetworkSolarisTest, Test_THROW_NULLPTR)

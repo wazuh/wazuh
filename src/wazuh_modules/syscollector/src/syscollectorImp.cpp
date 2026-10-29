@@ -606,7 +606,7 @@ nlohmann::json Syscollector::getNetworkData()
                     // "dbsync_network_protocol" table data to update and notify
                     nlohmann::json protoTableData {};
                     protoTableData["iface"]   = item.at("name");
-                    protoTableData["gateway"] = item.at("gateway");
+                    protoTableData["gateway"] = item.at("gateway6");
                     protoTableData["type"]    = IP_TYPE.at(IPV6);
                     protoTableData["dhcp"]    = item.at("IPv6").begin()->at("dhcp");
                     protoTableData["metric"]  = item.at("IPv6").begin()->at("metric");

@@ -90,6 +90,9 @@
                             "gateway": {
                                 "type": "string"
                             },
+                            "gateway6": {
+                                "type": "string"
+                            },
                             "mac": {
                                 "type": "string"
                             },
@@ -138,6 +141,7 @@
                         "required": [
                             "adapter",
                             "gateway",
+                            "gateway6",
                             "mac",
                             "mtu",
                             "name",

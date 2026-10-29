@@ -12,6 +12,9 @@
 #ifndef _NETWORK_BSD_WRAPPER_H
 #define _NETWORK_BSD_WRAPPER_H
 
+#include <algorithm>
+#include <cstddef>
+#include <cstring>
 #include <ifaddrs.h>
 #include <net/if.h>
 #include <net/if_types.h>
@@ -44,7 +47,126 @@ class NetworkBSDInterface final : public INetworkInterfaceWrapper
         ifaddrs* m_interfaceAddress;
         const std::string m_scanTime;
 
+        // Routing messages trim trailing zero bytes of a sockaddr, so a short one is padded with zeros
+        static sockaddr_storage paddedSockaddr(const sockaddr* address)
+        {
+            sockaddr_storage storage {};
+            std::memcpy(&storage, address, std::min<size_t>(address->sa_len, sizeof(storage)));
+            return storage;
+        }
+
+        static bool isUnspecified(const sockaddr_storage& storage, const int family)
+        {
+            if (AF_INET == family)
+            {
+                return INADDR_ANY == reinterpret_cast<const sockaddr_in*>(&storage)->sin_addr.s_addr;
+            }
+
+            if (AF_INET6 == family)
+            {
+                return IN6_IS_ADDR_UNSPECIFIED(&reinterpret_cast<const sockaddr_in6*>(&storage)->sin6_addr);
+            }
+
+            return false;
+        }
+
+        std::string gatewayByFamily(const int family) const
+        {
+            std::string retVal;
+            size_t tableSize { 0 };
+            int mib[] = { CTL_NET, AF_ROUTE, 0, AF_UNSPEC, NET_RT_FLAGS, RTF_UP | RTF_GATEWAY };
+            const auto sdl { reinterpret_cast<sockaddr_dl*>(m_interfaceAddress->ifa_addr) };
+
+            if (sdl && sysctl(mib, sizeof(mib) / sizeof(int), nullptr, &tableSize, nullptr, 0) == 0)
+            {
+                std::unique_ptr<char[]> table { std::make_unique<char[]>(tableSize) };
+
+                if (sysctl(mib, sizeof(mib) / sizeof(int), table.get(), &tableSize, nullptr, 0) == 0)
+                {
+                    retVal = parseGateway(table.get(), tableSize, sdl->sdl_index, family);
+                }
+            }
+
+            return retVal;
+        }
+
     public:
+        // Returns the gateway of the default route of the given family on the interface, from a routing table dump
+        static std::string parseGateway(const char* table, const size_t tableSize, const unsigned short ifIndex, const int family)
+        {
+            const char* const end { table + tableSize };
+
+            for (const char* p = table; p + sizeof(rt_msghdr) <= end;)
+            {
+                const auto msg { reinterpret_cast<const rt_msghdr*>(p) };
+
+                if (msg->rtm_msglen < sizeof(rt_msghdr) || p + msg->rtm_msglen > end)
+                {
+                    break;
+                }
+
+                const char* const msgEnd { p + msg->rtm_msglen };
+                p = msgEnd;
+
+                if ((msg->rtm_addrs & (RTA_DST | RTA_GATEWAY)) != (RTA_DST | RTA_GATEWAY) ||
+                        (msg->rtm_flags & (RTF_UP | RTF_GATEWAY)) != (RTF_UP | RTF_GATEWAY) ||
+                        (msg->rtm_flags & (RTF_REJECT | RTF_BLACKHOLE)) ||
+                        msg->rtm_index != ifIndex)
+                {
+                    continue;
+                }
+
+                // Addresses follow the header in RTA_* order: destination, gateway, netmask
+                const sockaddr* addresses[3] {};
+                const char* next { reinterpret_cast<const char*>(msg + 1) };
+                const auto count { (msg->rtm_addrs & RTA_NETMASK) ? 3 : 2 };
+                auto complete { true };
+
+                for (auto i = 0; i < count; ++i)
+                {
+                    const auto sa { reinterpret_cast<const sockaddr*>(next) };
+
+                    if (next + offsetof(sockaddr, sa_data) > msgEnd || next + sa->sa_len > msgEnd)
+                    {
+                        complete = false;
+                        break;
+                    }
+
+                    addresses[i] = sa;
+                    next += ROUNDUP(sa->sa_len);
+                }
+
+                if (!complete ||
+                        addresses[0]->sa_family != family ||
+                        !isUnspecified(paddedSockaddr(addresses[0]), family) ||
+                        (addresses[2] && !isUnspecified(paddedSockaddr(addresses[2]), family)) ||
+                        addresses[1]->sa_family != family)
+                {
+                    continue;
+                }
+
+                auto gateway { paddedSockaddr(addresses[1]) };
+
+                if (AF_INET == family)
+                {
+                    return Utils::NetworkHelper::IAddressToBinary(AF_INET, &reinterpret_cast<sockaddr_in*>(&gateway)->sin_addr);
+                }
+
+                auto& address { reinterpret_cast<sockaddr_in6*>(&gateway)->sin6_addr };
+
+                // The kernel embeds the scope id in bytes 2-3 of link-local addresses
+                if (IN6_IS_ADDR_LINKLOCAL(&address))
+                {
+                    address.s6_addr[2] = 0;
+                    address.s6_addr[3] = 0;
+                }
+
+                return Utils::NetworkHelper::IAddressToBinary(AF_INET6, &address);
+            }
+
+            return "";
+        }
+
         explicit NetworkBSDInterface(ifaddrs* addrs)
             : m_interfaceAddress{addrs}
         {
@@ -119,44 +241,12 @@ class NetworkBSDInterface final : public INetworkInterfaceWrapper
 
         std::string gateway() const override
         {
-            std::string retVal;
-            size_t tableSize { 0 };
-            int mib[] = { CTL_NET, AF_ROUTE, 0, AF_UNSPEC, NET_RT_FLAGS, RTF_UP | RTF_GATEWAY };
+            return gatewayByFamily(AF_INET);
+        }
 
-            if (sysctl(mib, sizeof(mib) / sizeof(int), nullptr, &tableSize, nullptr, 0) == 0)
-            {
-                std::unique_ptr<char[]> table { std::make_unique<char[]>(tableSize) };
-
-                if (sysctl(mib, sizeof(mib) / sizeof(int), table.get(), &tableSize, nullptr, 0) == 0)
-                {
-                    size_t messageLength { 0 };
-
-                    for (char* p = table.get(); p < table.get() + tableSize; p += messageLength)
-                    {
-                        auto msg { reinterpret_cast<rt_msghdr*>(p) };
-                        auto sa { reinterpret_cast<sockaddr*>(msg + 1) };
-                        auto sdl { reinterpret_cast<sockaddr_dl*>(m_interfaceAddress->ifa_addr) };
-
-                        if (sdl &&
-                                (msg->rtm_addrs & RTA_GATEWAY) == RTA_GATEWAY &&
-                                msg->rtm_index == sdl->sdl_index)
-                        {
-                            auto sock { reinterpret_cast<sockaddr*>(reinterpret_cast<char*>(sa) + ROUNDUP(sa->sa_len)) };
-
-                            if (sock && AF_INET == sock->sa_family)
-                            {
-                                retVal = Utils::NetworkHelper::IAddressToBinary(AF_INET, &reinterpret_cast<sockaddr_in*>(sock)->sin_addr);
-                            }
-
-                            break;
-                        }
-
-                        messageLength = msg->rtm_msglen;
-                    }
-                }
-            }
-
-            return retVal;
+        std::string gatewayV6() const override
+        {
+            return gatewayByFamily(AF_INET6);
         }
 
         std::string metrics() const override

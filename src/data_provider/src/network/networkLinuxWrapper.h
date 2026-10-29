@@ -12,7 +12,10 @@
 #ifndef _NETWORK_LINUX_WRAPPER_H
 #define _NETWORK_LINUX_WRAPPER_H
 
+#include <algorithm>
+#include <cctype>
 #include <ifaddrs.h>
+#include <netinet/in.h>
 #include <net/if_arp.h>
 #include <sys/socket.h>
 #include "inetworkWrapper.h"
@@ -138,6 +141,24 @@ namespace GatewayFileFields
         MTU,
         Window,
         IRTT,
+        Size
+    };
+}
+
+namespace GatewayV6FileFields
+{
+    enum
+    {
+        Destination,
+        DestinationPrefix,
+        Source,
+        SourcePrefix,
+        NextHop,
+        Metric,
+        RefCnt,
+        Use,
+        Flags,
+        Iface,
         Size
     };
 }
@@ -360,6 +381,63 @@ class NetworkLinuxInterface final : public INetworkInterfaceWrapper
         std::string gateway() const override
         {
             return m_gateway;
+        }
+
+        std::string gatewayV6() const override
+        {
+            return parseGatewayV6(Utils::getFileContent(std::string(WM_SYS_NET_DIR) + "ipv6_route"), this->name());
+        }
+
+        // Next hop of the ::/0 route of ifName in /proc/net/ipv6_route format
+        static std::string parseGatewayV6(const std::string& routeTable, const std::string& ifName)
+        {
+            constexpr auto IPV6_HEX_LENGTH { 32 };
+            constexpr auto RTF_UP_GATEWAY { 0x0003 };
+            const std::string ANY_ADDRESS(IPV6_HEX_LENGTH, '0');
+            const auto isHex
+            {
+                [](const std::string & value)
+                {
+                    return !value.empty() && std::all_of(value.begin(), value.end(), [](const unsigned char c)
+                    {
+                        return std::isxdigit(c) != 0;
+                    });
+                }
+            };
+            std::string retVal { UNKNOWN_VALUE };
+
+            for (auto& line : Utils::split(routeTable, '\n'))
+            {
+                Utils::replaceAll(line, "\t", " ");
+                line = Utils::trimRepeated(Utils::trim(line), ' ');
+                const auto fields { Utils::split(line, ' ') };
+
+                if (GatewayV6FileFields::Size == fields.size() &&
+                        fields.at(GatewayV6FileFields::Iface).compare(ifName) == 0 &&
+                        fields.at(GatewayV6FileFields::Destination).compare(ANY_ADDRESS) == 0 &&
+                        fields.at(GatewayV6FileFields::DestinationPrefix).compare("00") == 0 &&
+                        fields.at(GatewayV6FileFields::SourcePrefix).compare("00") == 0 &&
+                        fields.at(GatewayV6FileFields::NextHop).size() == IPV6_HEX_LENGTH &&
+                        fields.at(GatewayV6FileFields::NextHop).compare(ANY_ADDRESS) != 0 &&
+                        isHex(fields.at(GatewayV6FileFields::NextHop)) &&
+                        fields.at(GatewayV6FileFields::Flags).size() <= 8 &&
+                        isHex(fields.at(GatewayV6FileFields::Flags)) &&
+                        (std::stoul(fields.at(GatewayV6FileFields::Flags), nullptr, 16) & RTF_UP_GATEWAY) == RTF_UP_GATEWAY)
+                {
+                    const auto& nextHop { fields.at(GatewayV6FileFields::NextHop) };
+                    in6_addr address {};
+
+                    for (size_t i = 0; i < sizeof(address.s6_addr); ++i)
+                    {
+                        address.s6_addr[i] = static_cast<uint8_t>(std::stoul(nextHop.substr(i * 2, 2), nullptr, 16));
+                    }
+
+                    retVal = Utils::NetworkHelper::IAddressToBinary(AF_INET6, &address);
+                    break;
+                }
+            }
+
+            return retVal;
         }
 
         std::string metrics() const override
