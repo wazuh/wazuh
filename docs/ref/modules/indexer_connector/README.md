@@ -83,6 +83,27 @@ Both connectors retry transient failures using an exponential backoff with jitte
 - Async: any other per-item error is logged with its document and discarded.
 - Sync: delete-by-query has its own rules — see [Delete-by-query](#delete-by-query) below.
 
+**Search and update-by-query (sync).** `executeSearchQuery` — and so every page of
+`executeSearchQueryWithPagination` — and `executeUpdateByQuery` retry the same transient conditions as a
+sync `_bulk` flush, each drawing on the budget below:
+
+| Status of the `_search` / `_update_by_query` request | Behavior |
+|---|---|
+| 429, or no HTTP response (timeout, connection refused, TLS failure) | retried within the budget below |
+| 502 Bad Gateway, 503 Service Unavailable, 504 Gateway Timeout | retried within the budget below, each attempt against the next host (`m_selector->getNext()`) |
+| 404 with `index_not_found_exception` in the body | not retried: throws, logged at debug level 2 (the caller decides what a missing index means) |
+| 409 at the request level (`executeUpdateByQuery` only) | not retried: throws `Update by query version conflict` |
+| 500 and any other status | not retried: throws at once |
+
+- A search is a read, so re-running it is idempotent. An update-by-query is re-run under
+  `conflicts=proceed` plus the caller-side idempotency contract described in
+  [Delete-by-query](#delete-by-query); its own version-conflict allowance is separate from this budget.
+- 500 stays out of the retried set for the same reason as on `_bulk`: it may be deterministic, and
+  retrying it would only spend the budget.
+- Retried attempts are logged at debug level 2 and never warn. When the budget is spent the operation
+  throws `Search query retry budget exhausted` / `Update by query retry budget exhausted`
+  (`Category::RetryExhausted`, `statusCode() == 0`).
+
 **How the delay scales:**
 
 - **1st failure** - sleeps a random value between the base delay (`RetryDelay`, fixed at 1 second) and 1.5 times it, never above the cap - so the very first retry is never faster than configured, and connectors that failed in the same instant (one 429 seen by all of them) do not retry in lockstep.
@@ -104,7 +125,7 @@ failed attempts (default 5) and a wall-clock deadline of `max_retry_duration_sec
 per operation, whichever is spent first; the chunks of a `413` split draw from their flush's budget,
 so a split cannot multiply it. On exhaustion the operation throws instead of retrying —
 the batch is dropped and the caller retries by re-staging, the same contract as any other terminal
-failure. `0` disables the corresponding bound. Without the budget, a persistent 429 (or 502/503/504 on a bulk flush), or an
+failure. `0` disables the corresponding bound. Without the budget, a persistent 429 or 502/503/504, or an
 unreachable indexer blocks the flushing worker (and, in inventory sync, the shard behind it) forever,
 long after the caller's response window closed. The deadline only gates the sleeps: one in-flight
 request can still overshoot it by up to `request_timeout_seconds`. The indexer's `Retry-After`
@@ -140,10 +161,38 @@ achieve leaves documents nothing will ever overwrite:
   warning names the attempts actually made against the allowance.
 - **Staged queries are dropped when a flush fails**, so a later flush cannot re-fire them after the
   caller already retried and succeeded (which would delete documents written in between).
-- HTTP-level `404` is tolerated (a missing index has nothing to delete), `429` is retried with the
-  same backoff as the bulk paths, and anything else — a request-level `409` included — fails the
-  flush: an unconfirmed delete is never reported as applied.
-- **`executeUpdateByQuery` follows the same contract**, conflict retry included: a `200` whose body
+- HTTP-level `404` is tolerated by delete-by-query (a missing index has nothing to delete, nothing is
+  thrown), `429` is retried with the same backoff as the bulk paths, and anything else — a
+  request-level `409` included — fails the flush: an unconfirmed delete is never reported as applied.
+- **`executeSearchQuery` and `executeUpdateByQuery` do not tolerate a `404`**: they still throw on any
+  failure. A missing index is recognised from **both** facts together — status `404` **and**
+  `index_not_found_exception` in the body (`isIndexNotFound`) — so a `400`/`500` that merely carries the
+  type as `caused_by` is a real failure, not an empty dataset. A missing index is logged at debug level 2
+  instead of a warning, because the caller decides what it means (for the vulnerability scanner it is an
+  empty dataset); every other **non-retried** failure (`403`, `500`, any other 4xx) keeps the connector's
+  warning. The retried conditions (`429`, `502`/`503`/`504`, no HTTP response) never warn: each attempt is
+  logged at debug level 2, and a spent budget throws the retry-exhausted exception described below — see
+  [Retry and backoff behavior](#retry-and-backoff-behavior).
+- **A missing index on `executeUpdateByQuery` keeps the pending notify callbacks.** Nothing was written,
+  so the session that registered them is not broken: they still fire on the caller's
+  `invokePendingCallbacks()`, exactly as on the filtered-indices no-op. Dropping them would hang a session
+  on an update the caller treats as a no-op (the scanner's `host.os` refresh on a fresh install). Any
+  *other* failure still clears them — a failed write must never notify the session as if it had been
+  applied.
+- **Error contract of `executeSearchQuery` / `executeUpdateByQuery`**: the exception text is
+  `Search query failed (status N): <transport error> - <response body truncated to 256 bytes>` and
+  `Update by query failed (status N): <transport error> - <response body truncated to 256 bytes>`
+  respectively (the ` - <body>` suffix is present only when the response has a body: a transport failure
+  carries just the transport error), and `statusCode()` carries `N`. OpenSearch puts the error type (e.g.
+  `index_not_found_exception`) near the start of the body, so it survives the truncation; consumers such
+  as the scanner's `IndexerErrorHelper` rely on it. **A spent retry budget is the one failure that does not
+  take that shape**: it throws `Search query retry budget exhausted` / `Update by query retry budget
+  exhausted` under `Category::RetryExhausted`, with no status in the text and `statusCode() == 0`, and the
+  connector logs no warning for it (every attempt was logged at debug level 2). A consumer that classifies
+  by text must treat it as a failed read and must not look for a status in it. `executeUpdateByQuery` also
+  throws `Update by query version conflict` on a request-level `409`, which is a warning and is not
+  retried.
+- **`executeUpdateByQuery` keeps the conflict retry** and also fails closed: a `200` whose body
   tallies `failures`, cannot be parsed, or lacks the `updated`/`total` counters fails the call
   instead of confirming it. Two callers share this path — the sync server's metadata/group
   reconciliation and the vulnerability scanner's `host.os` update against
