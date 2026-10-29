@@ -341,10 +341,11 @@ int w_validate_group_name(const char *group, char *response) {
 
             /* Validate the individual group length */
             if (strlen(individual_group) > MAX_GROUP_NAME) {
-                free(multi_group_cpy);
                 if (response) {
                     snprintf(response, 2048, "ERROR: Invalid group name: %.255s... group is too large", individual_group);
                 }
+                /* individual_group points into multi_group_cpy, free it only after formatting */
+                free(multi_group_cpy);
                 return -7;
             }
 
