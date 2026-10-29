@@ -41,6 +41,10 @@ class AWSConfigBucket(aws_bucket.AWSLogsBucket):
             LIMIT 1;"""
         self._leading_zero_regex = re.compile(r'/(0)(?P<num>\d)')
         self._extract_date_regex = re.compile(r'\d{4}/\d{1,2}/\d{1,2}')
+        # AWS Config writes the month and day without leading zeros. Its marker is cut to the year folder, so a key
+        # of that year cannot keep the following ones from being listed
+        self.key_date_regex = re.compile(r'(\d{4})/(\d{1,2})/(\d{1,2})(?!\d)')
+        self.rewinds_marker = False
 
     def _format_created_date(self, date: str) -> str:
         """

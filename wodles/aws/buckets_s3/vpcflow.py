@@ -100,26 +100,6 @@ class AWSVPCFlowBucket(AWSLogsBucket):
             ORDER BY
                 log_key DESC;"""
 
-        self.sql_db_maintenance = """
-            DELETE FROM {table_name}
-            WHERE
-                bucket_path=:bucket_path AND
-                aws_account_id=:aws_account_id AND
-                aws_region=:aws_region AND
-                flow_log_id=:flow_log_id AND
-                log_key <= (SELECT log_key
-                    FROM
-                        {table_name}
-                    WHERE
-                        bucket_path=:bucket_path AND
-                        aws_account_id=:aws_account_id AND
-                        aws_region=:aws_region AND
-                        flow_log_id=:flow_log_id
-                    ORDER BY
-                        log_key DESC
-                    LIMIT 1
-                    OFFSET :retain_db_records);"""
-
         self.sql_count_region = """
             SELECT
                 count(*)
@@ -232,12 +212,7 @@ class AWSVPCFlowBucket(AWSLogsBucket):
         aws_tools.debug("+++ DB Maintenance", 1)
         try:
             if self.db_count_region(aws_account_id, aws_region, flow_log_id) > self.retain_db_records:
-                self.db_cursor.execute(self.sql_db_maintenance.format(table_name=self.db_table_name), {
-                    'bucket_path': self.bucket_path,
-                    'aws_account_id': aws_account_id,
-                    'aws_region': aws_region,
-                    'flow_log_id': flow_log_id,
-                    'retain_db_records': self.retain_db_records})
+                self.delete_keys_before_window(aws_account_id, aws_region, flow_log_id=flow_log_id)
         except Exception as e:
             aws_tools.error(f"Failed to execute DB cleanup - AWS Account ID: {aws_account_id}  Region: {aws_region}: {e}")
 

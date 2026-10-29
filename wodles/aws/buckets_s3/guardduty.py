@@ -2,7 +2,6 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-import re
 import sys
 from os import path
 import json
@@ -29,36 +28,6 @@ class AWSGuardDutyBucket(AWSCustomBucket):
             self.empty_bucket_message_template = AWSBucket.empty_bucket_message_template
         else:
             self.type = "GuardDutyKinesis"
-
-        # The table has no region column, so the keys of a region are the ones of its full prefix
-        self.sql_count_prefix = """
-            SELECT
-                count(*)
-            FROM
-                {table_name}
-            WHERE
-                bucket_path=:bucket_path AND
-                aws_account_id=:aws_account_id AND
-                log_key LIKE :prefix;"""
-
-        self.sql_db_maintenance_prefix = """
-            DELETE FROM {table_name}
-            WHERE
-                bucket_path=:bucket_path AND
-                aws_account_id=:aws_account_id AND
-                log_key LIKE :prefix AND
-                log_key <=
-                (SELECT log_key
-                    FROM
-                        {table_name}
-                    WHERE
-                        bucket_path=:bucket_path AND
-                        aws_account_id=:aws_account_id AND
-                        log_key LIKE :prefix
-                    ORDER BY
-                        log_key DESC
-                    LIMIT 1
-                    OFFSET :retain_db_records);"""
 
     def check_guardduty_type(self):
         try:
@@ -98,19 +67,6 @@ class AWSGuardDutyBucket(AWSCustomBucket):
             return cursor.fetchone()[0] > 0
         return AWSCustomBucket.already_processed(self, downloaded_file, aws_account_id, aws_region, **kwargs)
 
-    def build_s3_filter_args(self, aws_account_id, aws_region, iterating=False, custom_delimiter='', **kwargs):
-        filter_args = AWSCustomBucket.build_s3_filter_args(
-            self, aws_account_id, aws_region, iterating, custom_delimiter, **kwargs)
-
-        if self.type == "GuardDutyNative" and not iterating and 'StartAfter' in filter_args:
-            start_after = filter_args['StartAfter']
-            match = re.match(r'(.*?/GuardDuty/[^/]+/\d{4}/\d{2}/\d{2}/)', start_after)
-            if match:
-                filter_args['StartAfter'] = match.group(1)
-                aws_tools.debug(f"+++ GuardDuty: Rewound marker to day folder: {filter_args['StartAfter']}", 2)
-
-        return filter_args
-
     def iter_regions_and_accounts(self, account_id, regions):
         if self.type == "GuardDutyNative":
             AWSBucket.iter_regions_and_accounts(self, account_id, regions)
@@ -118,30 +74,6 @@ class AWSGuardDutyBucket(AWSCustomBucket):
             print(GUARDDUTY_DEPRECATED_MESSAGE.format(release="4.5", url=GUARDDUTY_URL))
             self.check_prefix = True
             AWSCustomBucket.iter_regions_and_accounts(self, account_id, regions)
-
-    def db_maintenance(self, aws_account_id=None, aws_region=None, **kwargs):
-        """Delete the processed keys beyond the retention.
-
-        The marker of a region is one of its own keys, so the retention of the native type applies to the keys of each
-        region. Otherwise, the regions whose keys sort first would lose all of them and process their files again.
-        """
-        if self.type != "GuardDutyNative":
-            AWSCustomBucket.db_maintenance(self, aws_account_id, **kwargs)
-            return
-
-        aws_tools.debug("+++ DB Maintenance", 1)
-        aws_account_id = aws_account_id if aws_account_id else self.aws_account_id
-        params = {
-            'bucket_path': self.bucket_path,
-            'aws_account_id': aws_account_id,
-            'prefix': f'{self.get_full_prefix(aws_account_id, aws_region)}%',
-            'retain_db_records': self.retain_db_records}
-        try:
-            if self.db_cursor.execute(self.sql_count_prefix.format(table_name=self.db_table_name),
-                                      params).fetchone()[0] > self.retain_db_records:
-                self.db_cursor.execute(self.sql_db_maintenance_prefix.format(table_name=self.db_table_name), params)
-        except Exception as e:
-            aws_tools.error(f"Failed to execute DB cleanup - AWS Account ID: {aws_account_id}  Region: {aws_region}: {e}")
 
     def send_event(self, event):
         # Send the message (splitted if it is necessary)
