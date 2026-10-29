@@ -35,6 +35,7 @@ All notable changes to this project will be documented in this file.
 - Fixed the Azure Storage integration stopping at a `json_file` blob that cannot be parsed, or whose records are not a list or include values that are not JSON objects, without processing the blobs after it. ([#40646](https://github.com/wazuh/wazuh/pull/40646))
 - Fixed the AWS module stopping when a fetch outlasted the session of the role in `iam_role_arn`, which the subscribers reported with an empty exit code 21 warning. The role is now assumed again before its session expires, and the warning includes the reason of the error. ([#40739](https://github.com/wazuh/wazuh/issues/40739))
 - Fixed the configuration upload validation to also apply the `upload_configuration.remote_commands` setting to the `prefilter_cmd` option of the `syscheck` section. ([#40791](https://github.com/wazuh/wazuh/pull/40791))
+- Fixed `wazuh-apid` and `wazuh-clusterd` killing their own freshly started process on startup when the kernel reused a PID recorded in a stale `.pid` file left by an unclean stop, such as a `docker restart`. A process is now only terminated when it was created before the stale file, never when it is the caller itself. Also fixed a child pidfile being matched by PID substring, which let a child with PID 16 remove the pidfile of PID 161. ([#40762](https://github.com/wazuh/wazuh/issues/40762))
 
 ### Agent
 

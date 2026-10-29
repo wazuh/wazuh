@@ -3,6 +3,9 @@
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 from unittest.mock import MagicMock, patch
+import logging
+import os
+
 import pytest
 
 from wazuh.core.pyDaemonModule import *
@@ -102,3 +105,21 @@ def test_delete_child_pids(mock_process, kill_effect, log_level, expected):
     else:
         logger.debug.assert_not_called()
         logger.error.assert_not_called()
+
+
+@patch('wazuh.core.pyDaemonModule.common.OS_PIDFILE_PATH', new='')
+@patch('wazuh.core.pyDaemonModule.psutil.Process')
+def test_delete_child_pids_matches_pid_exactly(mock_process):
+    """A child's pidfile is matched by its exact PID: killing PID 16 must not remove PID 161's file."""
+    with TemporaryDirectory() as tmpdirname:
+        for pid in (16, 161):
+            open(os.path.join(tmpdirname, f'wazuh-apid_auth-{pid}.pid'), 'w').close()
+        child = MagicMock(pid=16)
+        mock_process.return_value.children.return_value = [child]
+
+        with patch('wazuh.core.pyDaemonModule.common.WAZUH_PATH', new=tmpdirname):
+            delete_child_pids('wazuh-apid', 1234, logging.getLogger('test'))
+
+        child.kill.assert_called_once()
+        assert not os.path.exists(os.path.join(tmpdirname, 'wazuh-apid_auth-16.pid'))
+        assert os.path.exists(os.path.join(tmpdirname, 'wazuh-apid_auth-161.pid'))
