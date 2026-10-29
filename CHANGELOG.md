@@ -59,6 +59,7 @@ All notable changes to this project will be documented in this file.
 - Fixed `wazuh-syscheckd` crashing and leaving a core file when it is stopped or restarted during a FIM scan or synchronization. ([#40692](https://github.com/wazuh/wazuh/pull/40692))
 - Fixed the rootcheck hidden-port check being skipped on Linux hosts without `netstat`, such as a default RHEL 9 install. ([#40815](https://github.com/wazuh/wazuh/pull/40815))
 - Fixed `wazuh-agentd` and `wazuh-logcollector` crashing or leaving a stale PID file when they are stopped while working. ([#40816](https://github.com/wazuh/wazuh/pull/40816))
+- Fixed Syscollector reporting no network inventory on Linux while an IPv4 address carries a label other than `<interface>` or `<interface>:<suffix>`, such as keepalived's `label vip`, and reporting the address under the wrong interface when its label is another interface's name. ([#40912](https://github.com/wazuh/wazuh/issues/40912))
 
 ## [v4.14.10]
 
