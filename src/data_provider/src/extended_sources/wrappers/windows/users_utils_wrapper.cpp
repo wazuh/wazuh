@@ -12,6 +12,8 @@
 #include "encodingWindowsHelper.h"
 
 #include <iostream>
+#include <iterator>
+#include <map>
 #include <thread>
 
 namespace
@@ -22,6 +24,8 @@ namespace
         std::vector<User> cachedRoamingUsers;
         std::chrono::steady_clock::time_point cacheTimestamp{};
         bool cacheValid = false;
+        // Kept across cache refreshes to absorb the one second jitter of the password age
+        std::map<std::string, std::uint64_t> lastPasswordChange;
     };
 
     UsersCacheState& getCacheState()
@@ -29,15 +33,51 @@ namespace
         thread_local auto* state = new UsersCacheState();
         return *state;
     }
+
+    // Drops the history of the accounts that are gone, keeping it bounded by the current accounts
+    void prunePasswordChangeHistory(const std::set<std::string>& seenSids)
+    {
+        auto& history = getCacheState().lastPasswordChange;
+
+        for (auto it = history.begin(); it != history.end();)
+        {
+            it = seenSids.count(it->first) ? std::next(it) : history.erase(it);
+        }
+    }
 }
 
-UsersHelper::UsersHelper(std::shared_ptr<IWindowsApiWrapper> winapiWrapper)
+UsersHelper::UsersHelper(std::shared_ptr<IWindowsApiWrapper> winapiWrapper, std::function<std::time_t()> clock)
     : m_winapiWrapper(std::move(winapiWrapper))
+    , m_clock(std::move(clock))
 {
 }
 
 UsersHelper::UsersHelper()
-    : m_winapiWrapper(std::make_shared<WindowsApiWrapper>()) {}
+    : UsersHelper(std::make_shared<WindowsApiWrapper>()) {}
+
+std::uint64_t UsersHelper::getPasswordLastChange(const std::string& sid, DWORD passwordAge)
+{
+    // Windows reports an age of 0 for a password that was never set. Without a SID there is no key to keep
+    // the previous value under, so the jitter would change the value on every scan: report it as unknown.
+    if (passwordAge == 0 || sid.empty())
+    {
+        return 0;
+    }
+
+    const auto now = static_cast<std::uint64_t>(m_clock());
+    const std::uint64_t computed = now > passwordAge ? now - passwordAge : 0;
+
+    auto& previous = getCacheState().lastPasswordChange[sid];
+
+    const auto diff = computed > previous ? computed - previous : previous - computed;
+
+    if (previous == 0 || diff > s_passwordChangeTolerance)
+    {
+        previous = computed;
+    }
+
+    return previous;
+}
 
 std::string UsersHelper::getUserHomeDir(const std::string& sid)
 {
@@ -305,6 +345,9 @@ void UsersHelper::loadUsers(std::set<std::string>& processed_sids)
     DWORD resume_handle = 0;
     DWORD ret = 0;
     user_info_0_ptr users_info_buffer;
+    // SIDs whose password history is kept, and whether the enumeration saw every local account
+    std::set<std::string> seenSids;
+    bool localEnumComplete = true;
 
     do
     {
@@ -321,12 +364,14 @@ void UsersHelper::loadUsers(std::set<std::string>& processed_sids)
         if (ret != NERR_Success && ret != ERROR_MORE_DATA)
         {
             // std::cout << "NetUserEnum failed with return value " << ret;
+            localEnumComplete = false;
             break;
         }
 
         if (users_info_buffer == nullptr)
         {
             // std::cout << "NetUserEnum user buffer is null";
+            localEnumComplete = false;
             break;
         }
 
@@ -355,6 +400,10 @@ void UsersHelper::loadUsers(std::set<std::string>& processed_sids)
             std::string sid_string = psidToString(sid);
             processed_sids.insert(sid_string);
 
+            // Read the clock right after the age was obtained, before slower lookups add to the difference
+            new_user.password_last_change = getPasswordLastChange(sid_string, user_info_lvl4->usri4_password_age);
+            seenSids.insert(sid_string);
+
             new_user.username = Utils::EncodingWindowsHelper::wstringToStringUTF8(user_info_lvl4->usri4_name);
             new_user.uid = getRidFromSid(sid);
 
@@ -362,6 +411,7 @@ void UsersHelper::loadUsers(std::set<std::string>& processed_sids)
                from the first local group or the primary group id fails,
                then we use the uid of the user. */
             new_user.gid = getGidFromUsername(user_info_lvl4->usri4_name).value_or(new_user.uid);
+            new_user.full_name = Utils::EncodingWindowsHelper::wstringToStringUTF8(user_info_lvl4->usri4_full_name);
             new_user.description = Utils::EncodingWindowsHelper::wstringToStringUTF8(user_info_lvl4->usri4_comment);
             new_user.directory = getUserHomeDir(sid_string);
             new_user.type = "local";
@@ -390,6 +440,11 @@ void UsersHelper::loadUsers(std::set<std::string>& processed_sids)
     if (!opt_roaming_profile_sids.has_value())
     {
         // No roaming profiles, just mark cache as valid
+        if (localEnumComplete)
+        {
+            prunePasswordChangeHistory(seenSids);
+        }
+
         updateCacheTimestamp();
         return;
     }
@@ -450,19 +505,30 @@ void UsersHelper::loadUsers(std::set<std::string>& processed_sids)
                 new_user.gid = -1;
             }
 
-            // Also attempt to get the user account description comment. Move on if
-            // NetUserGetInfo returns an error, as it will for some system accounts.
-            DWORD basic_user_info_level = 2;
-            user_info_2_ptr user_info_lvl2;
+            // Also attempt to get the user account full name, description comment and password age.
+            // Move on if NetUserGetInfo returns an error, as it will for some system accounts. The
+            // lookup is by name on this machine, so a local account with the same name as the
+            // profile's domain account can answer it: only its own SID is accepted.
+            DWORD detailed_user_info_level = 4;
+            user_info_4_ptr user_info_lvl4;
             auto infoRet = m_winapiWrapper->NetUserGetInfoWrapper(
                                nullptr,
                                account_name,
-                               basic_user_info_level,
-                               reinterpret_cast<LPBYTE*>(user_info_lvl2.get_new_ptr()));
+                               detailed_user_info_level,
+                               reinterpret_cast<LPBYTE*>(user_info_lvl4.get_new_ptr()));
 
-            if (infoRet == NERR_Success && user_info_lvl2 != nullptr)
+            if (infoRet == NERR_Success && user_info_lvl4 != nullptr
+                    && psidToString(user_info_lvl4->usri4_user_sid) == profile_sid)
             {
-                new_user.description = Utils::EncodingWindowsHelper::wstringToStringUTF8(user_info_lvl2->usri2_comment);
+                new_user.password_last_change = getPasswordLastChange(profile_sid, user_info_lvl4->usri4_password_age);
+                new_user.full_name = Utils::EncodingWindowsHelper::wstringToStringUTF8(user_info_lvl4->usri4_full_name);
+                new_user.description = Utils::EncodingWindowsHelper::wstringToStringUTF8(user_info_lvl4->usri4_comment);
+                seenSids.insert(profile_sid);
+            }
+            else if (infoRet != NERR_Success)
+            {
+                // A failed lookup can be transient: keep the previous value for the next scan
+                seenSids.insert(profile_sid);
             }
 
             roamingUsers.push_back(std::move(new_user));
@@ -479,6 +545,11 @@ void UsersHelper::loadUsers(std::set<std::string>& processed_sids)
 
     // Cache roaming users
     cache.cachedRoamingUsers = roamingUsers;
+
+    if (localEnumComplete)
+    {
+        prunePasswordChangeHistory(seenSids);
+    }
 
     // Mark cache as valid and update timestamp
     updateCacheTimestamp();
@@ -602,6 +673,11 @@ void UsersHelper::updateCacheTimestamp()
     auto& cache = getCacheState();
     cache.cacheTimestamp = std::chrono::steady_clock::now();
     cache.cacheValid = true;
+}
+
+void UsersHelper::resetPasswordChangeHistory()
+{
+    getCacheState().lastPasswordChange.clear();
 }
 
 void UsersHelper::resetCache()

@@ -11,6 +11,7 @@
 
 #include <winsock2.h>
 #include <windows.h>
+#include <cstdint>
 #include <limits>
 #include <set>
 #include <memory>
@@ -24,15 +25,18 @@ struct User
     std::uint32_t gid{std::numeric_limits<std::uint32_t>::max()};
     std::string sid;
     std::string username;
+    std::string full_name;
     std::string description;
     std::string type;
     std::string directory;
+    std::uint64_t password_last_change{0};
 
     bool operator==(const User& other) const
     {
         return uid == other.uid && gid == other.gid && sid == other.sid &&
-               username == other.username && description == other.description &&
-               type == other.type && directory == other.directory;
+               username == other.username && full_name == other.full_name &&
+               description == other.description && type == other.type &&
+               directory == other.directory && password_last_change == other.password_last_change;
     }
 };
 
