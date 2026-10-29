@@ -131,6 +131,20 @@ def test_get_rules_files_file_param(mock_config, file_, func):
         assert d_files.total_affected_items == len(d_files.affected_items)
 
 
+@patch('wazuh.core.configuration.get_ossec_conf', return_value=rule_ossec_conf)
+def test_get_rules_files_filename_list(mock_config):
+    """Test that the rule files of a list of names are listed once and returned in the order of the list."""
+    filenames = ['0015-ossec_rules.xml', 'non_existing.xml', '0010-rules_config.xml']
+    expected = [item for name in filenames for item in rule.get_rules_files(filename=name).affected_items]
+
+    with patch('wazuh.core.rule.format_rule_decoder_file', wraps=rule.format_rule_decoder_file) as format_mock:
+        result = rule.get_rules_files(filename=filenames)
+
+    format_mock.assert_called_once()
+    assert [item['filename'] for item in result.affected_items] == ['0015-ossec_rules.xml', '0010-rules_config.xml']
+    assert result.affected_items == expected
+
+
 @patch('wazuh.core.configuration.get_ossec_conf', return_value=None)
 def test_failed_get_rules_file(mock_config):
     """

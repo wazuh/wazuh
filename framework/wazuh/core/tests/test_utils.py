@@ -5,6 +5,7 @@
 
 import datetime
 import os
+from collections import OrderedDict
 from collections.abc import KeysView
 from io import StringIO
 from requests import exceptions
@@ -337,6 +338,30 @@ def test_process_array(array, q, filters, limit, search_text, sort_by, select, d
                                  select=select, sort_by=sort_by, q=q, distinct=distinct)
 
     assert result == {'items': expected_items, 'totalItems': expected_total_items}
+
+
+@pytest.mark.parametrize('array, expected_indexes', [
+    ([], []),
+    (['framework', 'API', 'API'], [0, 1]),
+    # Dictionaries are equal regardless of the order of their keys
+    ([{'a': 1, 'b': 2}, {'b': 2, 'a': 1}, {'a': 1}], [0, 2]),
+    # Nested values; list order matters
+    ([{'x': [1, {'y': 2}]}, {'x': [1, {'y': 2}]}, {'x': [{'y': 2}, 1]}], [0, 2]),
+    # A list and a tuple are not equal
+    ([[1, 2], (1, 2), [1, 2], (1, 2)], [0, 1]),
+    # Numbers that compare equal are repeated items
+    ([1, 1.0, True, '1', 0, False, None], [0, 3, 4, 6]),
+    ([{'id': 1}, {'id': 1.0}, {'id': '1'}], [0, 2]),
+    # Unhashable values that cannot be turned into a key are compared by equality
+    ([{'a': {1, 2}}, {'a': {2, 1}}, {'a': {3}}], [0, 2]),
+    ([OrderedDict(a=1, b=2), OrderedDict(b=2, a=1), {'a': 1, 'b': 2}], [0, 1]),
+])
+def test_get_distinct_items(array, expected_indexes):
+    """Test that get_distinct_items keeps the first occurrence of each item, in order, comparing items by equality."""
+    result = utils.get_distinct_items(array)
+
+    assert len(result) == len(expected_indexes)
+    assert all(item is array[index] for item, index in zip(result, expected_indexes))
 
 
 @patch('wazuh.core.utils.len', return_value=1)
