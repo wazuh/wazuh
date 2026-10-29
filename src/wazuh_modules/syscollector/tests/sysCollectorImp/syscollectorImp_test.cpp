@@ -7893,6 +7893,66 @@ TEST_F(SyscollectorImpTest, APartialListingNeitherSweepsNorDeAdmits)
 #endif
 }
 
+TEST_F(SyscollectorImpTest, APartialListingAtStartupDoesNotArmTheGlobalReconcile)
+{
+    const auto info = std::make_shared<MockSysInfo>();
+    EXPECT_CALL(*info, releaseThreadResources()).Times(testing::AnyNumber());
+    auto& module = Syscollector::instance();
+    module.init(
+        info,
+        reportFunction,
+    [](const std::string&, Operation_t, const std::string&, const std::string&, uint64_t) {},
+    logFunction,
+    SYSCOLLECTOR_DB_PATH,
+    "",
+    "",
+    3600,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false);
+
+    // A cold process: nothing admitted yet, the stored flags never reconciled.
+    module.m_admittedContainers.clear();
+    module.m_pendingRetractions.clear();
+    module.m_globalReconcilePending = false;
+    module.m_admissionKnown = false;
+    module.m_admissionReconciled = false;
+    module.m_containerAdmissionWithholding = false;
+
+    // A partial first listing, with the cap biting on what it did manage to
+    // report. The global pass decides by absence from the admitted set, so
+    // running it now would retract every container still being resolved -- and
+    // the carry-forward cannot help, because there is nothing yet to carry.
+    module.setAdmittedContainers({{"a", true}, {"b", false}}, /*listComplete=*/false);
+    EXPECT_FALSE(module.m_globalReconcilePending)
+            << "a partial listing must not authorise the global reconcile at startup";
+    EXPECT_TRUE(module.m_pendingRetractions.empty());
+
+    // The first complete listing is what arms it.
+    module.setAdmittedContainers({{"a", true}, {"b", false}}, /*listComplete=*/true);
+    EXPECT_TRUE(module.m_globalReconcilePending)
+            << "the restart reconcile is owed, just not against a partial view";
+
+    module.destroy();
+    module.m_admittedContainers.clear();
+    module.m_pendingRetractions.clear();
+    module.m_globalReconcilePending = false;
+    module.m_admissionKnown = false;
+    module.m_admissionReconciled = false;
+    module.m_containerAdmissionWithholding = false;
+}
+
 TEST_F(SyscollectorImpTest, queryCommandGetVDFirstSyncCompletedDefaultsToFalse)
 {
     // No VD sync has run and no marker is present: expect vd_first_sync_completed == 0.

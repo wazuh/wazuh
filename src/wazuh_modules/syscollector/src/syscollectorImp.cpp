@@ -5176,7 +5176,16 @@ void Syscollector::setAdmittedContainers(const std::map<std::string, bool>& disc
     // that no longer holds -- and then clear the latch, so nothing would retry.
     // The manager would keep documents for a container the agent has stopped
     // admitting.
-    if (m_containerAdmissionWithholding && !m_admissionReconciled)
+    // Only from a COMPLETE listing. The global pass decides by absence from the
+    // admitted set, so arming it against a partial one retracts every container
+    // the resolver has not keyed yet -- and then re-promotes each of them once it
+    // has, which is a DELETE+CREATE cycle on every restart. The carry-forward
+    // above cannot prevent that: at startup m_admittedContainers is empty, so
+    // there is nothing yet to carry (#37532 / R4).
+    //
+    // Deferring costs a cycle of rows left at sync=1, which is the reported
+    // state they are already in.
+    if (listComplete && m_containerAdmissionWithholding && !m_admissionReconciled)
     {
         m_globalReconcilePending = true;
     }

@@ -620,24 +620,37 @@ namespace
         // run once -- the exact moment a consumer most needs a truthful answer.
         // The predicate is listContainers()' own, and must stay that way: this
         // number is only meaningful as the count of ids that call omits.
-        // A set, not a counter: a container reported through two sources
-        // (cri-dockerd publishes the same one through both APIs) is one member
-        // of the list, so it is one omission from it -- the same de-duplication
-        // listContainers() does with `seen`.
-        std::set<std::string> withheld;
+        // Withheld means OMITTED FROM THE LIST, which is a question about the
+        // container, not about any one record of it. A container reported
+        // through two sources (cri-dockerd publishes the same one through both
+        // APIs) is published when EITHER record is resolved, so counting the
+        // unresolved records left `withheld` above zero while the container sat
+        // in the list -- and a consumer that waits for a complete list before
+        // cleaning up then waits for ever (#37532 / R7).
+        //
+        // So: known ids, minus the ids at least one source can publish.
+        std::set<std::string> known;
+        std::set<std::string> publishable;
 
         for (const auto& [source, records] : m_bySource)
         {
             for (const auto& [containerId, record] : records)
             {
-                if (record && record->hostKey == 0 && isRunning(record->state))
+                if (!record)
                 {
-                    withheld.insert(containerId);
+                    continue; // listContainers() skips these outright.
+                }
+
+                known.insert(containerId);
+
+                if (!(record->hostKey == 0 && isRunning(record->state)))
+                {
+                    publishable.insert(containerId);
                 }
             }
         }
 
-        return withheld.size();
+        return known.size() - publishable.size();
     }
 
     void MetadataStore::setSyncLimit(int limit)
