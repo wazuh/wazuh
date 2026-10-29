@@ -78,6 +78,7 @@ function build() {
     cp -r ${SOURCES_PATH}/ruleset/sca/darwin ${INSTALLATION_SCRIPTS_DIR}/sca
     cp -r ${SOURCES_PATH}/ruleset/sca/generic ${INSTALLATION_SCRIPTS_DIR}/sca
     cp ${SOURCES_PATH}/etc/templates/config/generic/sca.files ${INSTALLATION_SCRIPTS_DIR}/sca/generic/
+    cp ${SOURCES_PATH}/etc/templates/config/darwin/sca.files ${INSTALLATION_SCRIPTS_DIR}/sca/darwin/
 
     for n in $(seq 15 25); do
         cp ${SOURCES_PATH}/etc/templates/config/darwin/$n/sca.files ${INSTALLATION_SCRIPTS_DIR}/sca/darwin/$n/
