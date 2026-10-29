@@ -98,8 +98,12 @@ worker that loses the connection retries every 10 seconds.
 
 On the master, a connection that closes before identifying itself (a port probe or a load-balancer
 health check, for instance) is logged at INFO as `Connection from <ip> closed before the handshake
-completed.`; when the master itself closed it (a refusal, a deadline, a message it cannot decrypt),
-only that reason is logged.
+completed.` when it closes cleanly. One that resets the connection instead (a TCP RST: HAProxy
+`mode tcp` checks, port scanners, or a peer that closes with data still unread) is logged today as an
+ERROR, `Error during handshake with incoming connection: [Errno 104] Connection reset by peer.`,
+followed by a traceback; it is harmless and changes nothing on the master. When the master itself
+closed the connection (a refusal, a deadline, a message it cannot decrypt), only that reason is
+logged.
 
 Periodic tasks, with their intervals (internal, not configurable):
 

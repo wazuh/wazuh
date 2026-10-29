@@ -36,7 +36,8 @@ from api.middlewares import charge_unauthenticated_request, charge_authenticated
     RUN_AS_LOGIN_ENDPOINT, AUTH_CONTEXT_MAX_PAYLOAD_SIZE, CheckAuthContextSizeMiddleware, CheckRateLimitsMiddleware, \
     CheckAuthenticatedRateLimitMiddleware, WazuhAccessLoggerMiddleware, CheckBlockedIP, SecureHeadersMiddleware, \
     CheckExpectHeaderMiddleware, secure_headers, access_log, get_declared_content_length, read_capped_body, \
-    CACHED_BODY_KEY, AUTH_CONTEXT_NOT_LOGGED, warn_rate_limited, RATE_LIMIT_WARNING_INTERVAL_SECONDS
+    CACHED_BODY_KEY, AUTH_CONTEXT_NOT_LOGGED, warn_rate_limited, RATE_LIMIT_WARNING_INTERVAL_SECONDS, \
+    RATE_LIMIT_CODE_KEY
 from api.alogging import MAX_LOGGED_BODY_SIZE
 from api.api_exception import ExpectFailedException, PayloadTooLargeException
 
@@ -1242,6 +1243,50 @@ async def test_access_log_ko(mock_req, exception):
             endpoint, mock_req.query_params, body, 0.0, response.status_code,
             hash_auth_context='', headers=mock_req.headers
         )
+
+
+@freeze_time(datetime(1970, 1, 1, 0, 0, 0))
+@pytest.mark.asyncio
+@pytest.mark.parametrize('authorization', [
+    'Basic YWJj',                                     # 'abc': no colon
+    'Basic ' + base64.b64encode(b'wazuh').decode(),   # a bare user name, no colon
+    'Basic !!!!',                                     # not base64: decodes to nothing
+    'Basic =',                                        # bad padding
+    'Basic ',                                         # empty value
+    'Basic',                                          # no value at all
+], ids=['no-colon', 'user-only', 'not-base64', 'bad-padding', 'empty', 'no-value'])
+@pytest.mark.parametrize('status_code', [401, 429])
+async def test_access_log_malformed_basic_credentials(authorization, status_code, mock_req):
+    """A Basic credential that names no user is logged as an unknown user, never raised.
+
+    `access_log` runs after connexion has refused the request (401), or after the unauthenticated
+    limit has (429): an exception here would replace that response with a 500 and drop the access
+    line, so a flood of such requests would go unthrottled.
+    """
+    response = MagicMock()
+    response.status_code = status_code
+
+    mock_req.json = AsyncMock(return_value={})
+    mock_req.query_params = {}
+    mock_req.method = 'GET'
+    mock_req.context = {}
+    mock_req.scope = {'path': '/agents', 'extensions': {RATE_LIMIT_CODE_KEY: 6005}}
+    mock_req.headers = {'Authorization': authorization}
+
+    with patch('api.middlewares.custom_logging') as mock_custom_logging, \
+        patch('api.middlewares.warn_rate_limited') as mock_warn_rate_limited:
+        await access_log(request=mock_req, response=response,
+                         prev_time=datetime(1970, 1, 1, 0, 0, 0).timestamp())
+
+    mock_custom_logging.assert_called_once_with(
+        UNKNOWN_USER_STRING, mock_req.client.host, 'GET', '/agents', {}, {}, 0.0, status_code,
+        hash_auth_context='', headers=mock_req.headers
+    )
+    if status_code == 429:
+        mock_warn_rate_limited.assert_called_once_with(mock_req.client.host, UNKNOWN_USER_STRING,
+                                                       authenticated=False)
+    else:
+        mock_warn_rate_limited.assert_not_called()
 
 
 @pytest.mark.asyncio

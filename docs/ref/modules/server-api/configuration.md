@@ -201,7 +201,7 @@ Cross-origin resource sharing, applied with Starlette's `CORSMiddleware`.
 | `max_login_attempts` | `50` | Failed logins for one user from one client before that user is blocked from it (`403`, error `6000`). Ten times this many failures across all users block the client for every user |
 | `block_time` | `300` | Length, in seconds, of the window the failed logins are counted in, starting at the first one: a block lasts until that window ends |
 | `max_request_per_minute` | `300` | Authenticated requests per minute per client address (`429`, error `6001`); `0` disables it |
-| `max_unauthenticated_request_per_minute` | `10` | Unauthenticated or failed-authentication requests per minute per client address (`429`, error `6005`); `0` disables it |
+| `max_unauthenticated_request_per_minute` | `10` | Unauthenticated or failed-authentication requests per minute per client address (`429`, error `6005`); `0` disables it. A request whose path or method matches no API operation is never authenticated, so it is charged here even when it carries a valid token |
 
 The client address is always the TCP peer of the connection. The API ignores `X-Forwarded-For` and
 `X-Forwarded-Proto` from any peer, loopback included, so behind a reverse proxy every client shares

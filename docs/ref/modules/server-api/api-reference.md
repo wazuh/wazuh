@@ -19,7 +19,7 @@ Most `GET` endpoints that return a list accept these standard parameters (`prett
 | `offset` | int | `0` | First element to return (max: 2,147,483,647) |
 | `limit` | int | `500` | Max elements to return (1 to 100,000) |
 | `search` | string | — | Free-text search (prefix `-` for complementary). It matches the **stored** value of each field, not the one a response renders: a 4.x agent's version is stored as `Wazuh v4.14.5`, so `search=wazuh` finds 4.x agents although responses show `v4.14.5`. The text is matched literally, as a substring and ignoring case: `%`, `_` and `\` are ordinary characters, not wildcards, so `search=web_01` does not match `webX01` |
-| `sort` | string | — | Sort by fields (comma-separated, dot notation for nested); one leading `+` (asc, default) or `-` (desc) applies to the whole list, e.g. `-name,id` |
+| `sort` | string | — | Sort by fields (comma-separated, dot notation for nested); one leading `+` (asc, default) or `-` (desc) applies to the whole list, e.g. `-name,id`. In a URL write the `+` as `%2B` (`sort=%2Bname`): a bare `+` in a query string decodes to a space, and `sort=+name` is refused with `400`, error `1403` |
 | `select` | string | — | Fields to return (comma-separated) |
 | `q` | string | — | Query filter (see [Query filter syntax](#query-filter-syntax)) |
 | `distinct` | boolean | `false` | Return distinct values |
@@ -360,7 +360,7 @@ Other MITRE endpoints: `/mitre/tactics`, `/mitre/groups`, `/mitre/software`, `/m
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | GET | `/agents` | List agents |
-| POST | `/agents` | Create agent |
+| POST | `/agents` | Create agent. authd issues and stores a re-enrollment secret for it, but the response carries only `id` and `key` and the secret is never returned, so an agent registered this way (or through the two `insert` routes below) cannot rotate its key by re-enrolling under its id |
 | DELETE | `/agents` | Delete agents |
 | POST | `/agents/insert` | Insert agent with key |
 | POST | `/agents/insert/quick` | Quick insertion |

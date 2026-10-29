@@ -80,7 +80,12 @@ element is rejected as a duplicate.
   - What even `wazuh-manager-control check` does not judge, so that a value passes it and still stops a
     daemon at start:
     - `wazuh.thread_stack_size`: read only when a thread is created, which no `-t` does, so an
-      out-of-range value stops `wazuh-manager-remoted` or `wazuh-manager-modulesd` at start with `(2302)`;
+      out-of-range value stops `wazuh-manager-remoted` or `wazuh-manager-modulesd` at start with `(2302)`.
+      It is the only internal option of the C daemons left outside `-t`: every other one a daemon reads
+      (`remoted.*`, `authd.*`, `wazuh_db.*`, `wazuh_modules.*`, the module limits remoted reads) is read,
+      and range-checked, by that daemon's `-t`, so `check` refuses an out-of-range value before anything
+      stops. The one nuance is the debug level: with `-d` on the command line `remoted.debug`,
+      `authd.debug` and `wazuh_db.debug` are not read at all, by `-t` or by the start;
     - memory: `remote.legacy.queue_size` is judged by type and range (at most 134217728, which asks for
       1 GiB of queue slots at start), not against what the host can allocate — see the option in
       [the reference](reference.md);

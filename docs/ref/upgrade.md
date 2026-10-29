@@ -76,7 +76,14 @@ File contents are preserved for the paths listed above. Ownership and modes depe
 
 **Seeing new defaults.** Because `/etc/wazuh-manager` and `data/*` are restored after the new files are installed, a file the new version ships under them that the previous installation also had — the configuration with its new default values, the engine outputs under `outputs/default/`, the metrics templates under `indexer-plugins/`, the engine store documents under `data/store/` — comes back with its previous content, so a change to it reaches fresh installations only. The `wazuh-manager.schema.json` copy is the exception: every installation and upgrade leaves the new version's copy (`root:wazuh-manager`, `0640`). On DEB manager upgrades a `wazuh-manager.conf.new` side-file is written alongside the live config so you can compare changes manually. It is generated as for a fresh installation, so it carries a newly generated random `<cluster><key>`: keep the live configuration's key when you adopt anything from it, since every node of a cluster must share the same key. On RPM no equivalent side-file is generated for the preserved paths; compare against the package defaults manually if needed.
 
-The `WAZUH_REMOTE_*` installation variables described in [Installation](getting-started/installation.md) also shape that `wazuh-manager.conf.new`, so an upgrade run with them exported produces a side-file that already carries those values. If one of them holds an invalid value the side-file is not written and the upgrade reports a warning and continues: the live configuration is preserved either way.
+The `WAZUH_REMOTE_*` installation variables described in [Installation](getting-started/installation.md) also shape that `wazuh-manager.conf.new`, so an upgrade run with them exported produces a side-file that already carries those values. If one of them holds an invalid value the side-file is not written and the upgrade continues after printing both
+
+```text
+ERROR: Invalid value '<value>' for installation variable <NAME>: <reason>
+WARNING: could not generate /etc/wazuh-manager/wazuh-manager.conf.new. The current configuration is unchanged.
+```
+
+The `ERROR:` line does not fail the upgrade: the live configuration is preserved either way.
 
 Note also the indexer connector's trust anchor: a fresh installation names `/etc/wazuh-manager/certs/indexer-ca.pem` in `<indexer><ssl><certificate_authorities>`, while a configuration preserved from an earlier 5.0 build still names `certs/root-ca.pem`, which is now the agents' CA bundle only. Change that `<ca>` to `/etc/wazuh-manager/certs/indexer-ca.pem` in the live configuration (see [Indexer trust](getting-started/credentials.md#indexer-trust)).
 

@@ -164,7 +164,8 @@ void OS_StartCounter(keystore *keys)
     mdebug2("Stored counter.");
     keys->opened_fp_queue = linked_queue_init();
 
-    /* Get counter values */
+    /* Get counter values. On the manager RemotedConfig() has already read both (on the `-t` path too),
+     * so these reads only run on the agent; keep their ranges and defaults identical to that copy. */
     if (_s_recv_flush == 0) {
         _s_recv_flush = (unsigned int) getDefine_Int_default("remoted",
                         "recv_counter_flush",

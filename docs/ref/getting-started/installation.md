@@ -69,7 +69,7 @@ sudo WAZUH_REMOTE_HTTPS_BIND_ADDR='0.0.0.0' WAZUH_REMOTE_HTTPS_PORT='1517' rpm -
 ```
 
 > [!NOTE]
-> When using `sudo`, the variables must be placed after `sudo` (as in the examples above) so they reach the package scriptlets. An invalid value aborts a fresh installation with `ERROR: Invalid value '<value>' for installation variable <NAME>: <reason>`, before any configuration is written. A value that passes those checks is then validated with the generated file as a whole, and a fresh installation whose generated `wazuh-manager.conf` the validator refuses is aborted as well (`ERROR: the generated /etc/wazuh-manager/wazuh-manager.conf is not a valid manager configuration.` from the packages).
+> When using `sudo`, the variables must be placed after `sudo` (as in the examples above) so they reach the package scriptlets. An invalid value aborts a fresh installation with `ERROR: Invalid value '<value>' for installation variable <NAME>: <reason>`, before the generated configuration is put in place. (On RPM no `wazuh-manager.conf` exists until then; on DEB the default `wazuh-manager.conf` the package ships stays in place, unused, while the package is half-configured, and is replaced once a configure succeeds.) A value that passes those checks is then validated with the generated file as a whole, and a fresh installation whose generated `wazuh-manager.conf` the validator refuses is aborted as well (`ERROR: the generated /etc/wazuh-manager/wazuh-manager.conf is not a valid manager configuration.` from the packages).
 >
 > An aborted package installation leaves the package's files in place but unconfigured. On DEB, `dpkg -l wazuh-manager` shows it half-configured (state `iF`); finish it by configuring it again with a valid value, or with the variable unset to take the default: `sudo WAZUH_REMOTE_HTTPS_PORT='1517' dpkg --configure wazuh-manager`. On RPM the transaction reports that the `%post` scriptlet failed; remove the package with `sudo rpm -e wazuh-manager` and install it again with valid values.
 >
@@ -267,8 +267,10 @@ install ends by printing where the Server API passwords are (only when it publis
 stopped by an unsafe or invalid entry writes nothing), whether the credential
 resolution is incomplete and what completes it — the command
 `/var/wazuh-manager/bin/wazuh-manager-resolve-credentials --install -H /var/wazuh-manager` (run as root) when
-the CA, the agents' bundle or a server pair is missing or an entry is invalid or unsafe, otherwise the start
-itself once the indexer's password and files are supplied — and the command to start the service (and to enable it at boot, when systemd is running).
+the CA, the agents' bundle or a server pair is missing or an entry is invalid or unsafe; when the CA was staged in
+`/etc/wazuh-manager/ca` without its key, staging that key as `/etc/wazuh-manager/ca/root-ca.key` (owned by root,
+mode `0400` or `0600`) before that command, or staging the missing server pairs in `/etc/wazuh-manager/certs` and
+starting the manager; otherwise the start itself once the indexer's password and files are supplied — and the command to start the service (and to enable it at boot, when systemd is running).
 
 Every start first validates the configuration file, then checks the credentials and certificates, the files the
 configuration names and each daemon's own test, and finally completes the passwords and the indexer credential;

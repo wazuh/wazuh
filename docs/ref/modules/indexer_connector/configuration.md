@@ -233,8 +233,14 @@ grep -E "Indexer node|Health check failed|indexer credentials" /var/wazuh-manage
 | `Indexer node '<host>' is available again.` | The node recovered |
 | `Indexer node '<host>' is throttling requests (<reason>); it stays in rotation and requests back off.` | The node answered `429` (for example a tripped circuit breaker) |
 | `Indexer node '<host>' accepts requests again.` | A throttled node answered `green`/`yellow` without `429` again |
-| `Indexer node '<host>' reports a PERMANENT circuit breaker (<reason>): heap usage is above the breaker limit; check the indexer heap sizing.` | WARNING: the node's `429` names a `PERMANENT` circuit breaker, which backing off does not clear; logged once per episode, while the node stays throttled |
+| `Indexer node '<host>' reports a PERMANENT circuit breaker (<reason>): heap usage is above the breaker limit; check the indexer heap sizing.` | WARNING: the node's `429` names a `PERMANENT` circuit breaker, which backing off does not clear; logged once per episode **per connector health monitor** (see below), while the node stays throttled |
 | `No indexer credentials found in the keystore. ...` | The keystore has no `username` or `password` |
+
+Every node-state line above is written by a connector's health monitor, once per state change, and a
+process can run several monitors: each connector that does not share another's session has its own
+(the Content Manager's sliced initial load alone runs `numSlices` + 1 of them while it downloads). One
+throttling or breaker episode can therefore appear as several identical lines within one monitoring
+interval, some with the same tag. They describe the same node state, not repeated episodes.
 
 ---
 

@@ -67,6 +67,9 @@ static int authd_test_tls_material(const char *home_path);
 /* Exit handler */
 static void cleanup();
 
+/* Read the authd.debug internal option and, on a start, apply it */
+static void authd_apply_debug_option(int cli_debug_level, int test_config);
+
 /* Shared variables */
 static char *authpass = NULL;
 static time_t authpass_mtime = 0;  /* shared between process_message and run_authpass_watcher */
@@ -93,6 +96,29 @@ pthread_mutex_t mutex_authpass = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t cond_pending = PTHREAD_COND_INITIALIZER;
 
 static int g_stopFD[2] = {-1, -1};
+
+/* authd.debug, the debug level a start without -d runs at. It is read on `-t` too: getDefine_Int_default()
+ * exits on an out-of-range value, so reading it only on the start path let `wazuh-manager-control check`
+ * and every -t pass a value that then failed the start itself. The test run only judges it; raising the
+ * verbosity stays a start's business, as before. A -d on the command line wins and skips the option, on
+ * both paths alike (the control script passes the same flags to each). Range and default unchanged. */
+static void authd_apply_debug_option(int cli_debug_level, int test_config)
+{
+    if (cli_debug_level != 0) {
+        return;
+    }
+
+    int debug_level = getDefine_Int_default("authd", "debug", 0, 2, 0);
+
+    if (test_config) {
+        return;
+    }
+
+    while (debug_level != 0) {
+        nowDebug();
+        debug_level--;
+    }
+}
 
 /* Print help statement */
 static void help_authd(char * home_path)
@@ -383,14 +409,7 @@ int main(int argc, char **argv)
         }
 
         /* Set the Debug level */
-        if (debug_level == 0 && test_config == 0) {
-            /* Get debug level */
-            debug_level = getDefine_Int_default("authd", "debug", 0, 2, 0);
-            while (debug_level != 0) {
-                nowDebug();
-                debug_level--;
-            }
-        }
+        authd_apply_debug_option(debug_level, test_config);
 
         // Return -1 if not configured
         if (authd_read_config(WAZUHCONF) < 0) {

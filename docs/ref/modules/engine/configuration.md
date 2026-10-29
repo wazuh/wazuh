@@ -41,8 +41,11 @@ comes from the `WAZUH_INDEXER_HOSTS` and `WAZUH_INDEXER_SSL_*` variables instead
   (a misspelled setting has no effect). A missing or unreadable file only logs the warning
   `Failed to load configuration: Cannot open configuration file: <path>`, and the defaults apply.
 - Boolean settings only accept `true`/`false` (case-insensitive). An integer setting accepts only decimal digits,
-  with a leading `-` for a signed one: whitespace, a `+` sign, a fraction or trailing characters are refused, and
-  so are a negative value for an unsigned setting and a value its type cannot hold. A value that does not match the
+  with a leading `-` for a signed one: a `+` sign, a fraction or trailing characters are refused, and so are a
+  negative value for an unsigned setting and a value its type cannot hold. Whitespace is refused where it is part
+  of the value: inside it (`1 0`), inside quotes (`" 10"`) or anywhere in an environment variable's value. Spaces
+  and tabs around a value in the file are not part of it: the line and the value are trimmed before the quotes are
+  removed, so `analysisd.event_queue_size = 10 ` reads as `10`. A value that does not match the
   setting's type, in the file or in its environment variable (for example `analysisd.dumper_enabled=yes`,
   `analysisd.event_queue_size=10k` or `analysisd.indexer_bulk_max_bytes=-1`), stops the engine at start-up with
   `Error loading configuration: Invalid value for key '<key>' from the <source>: '<value>'. Expected <type>.` in
@@ -112,7 +115,7 @@ All settings below go in `/etc/wazuh-manager/wazuh-manager-internal-options.conf
 
 | Setting | Env var | Description | Default | Mode |
 |:--|:--|:--|:--:|:--:|
-| `analysisd.debug` | `WAZUH_LOG_LEVEL` | Log verbosity for the manager-mode engine process: `0` info, `1` debug, `2` (or higher) trace. The `-d` command-line option overrides it. See [How to enable debug logging](README.md#how-to-enable-debug-logging). | `0` | manager |
+| `analysisd.debug` | `WAZUH_LOG_LEVEL` | Log verbosity for the manager-mode engine process: `0` info, `1` debug, `2` (or higher) trace. The value has no range check, so a negative one is accepted too and also means trace. The `-d` command-line option overrides it. See [How to enable debug logging](README.md#how-to-enable-debug-logging). | `0` | manager |
 | `analysisd.logging_level` | `WAZUH_STANDALONE_LOG_LEVEL` | Log verbosity for the standalone engine process, as a level name (`info`, `debug`, `trace`, ...). | `info` | standalone |
 
 ### Process

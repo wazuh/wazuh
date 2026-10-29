@@ -35,6 +35,7 @@ extern void sweep_idle_clients(void);
 extern int handle_ssl_read(struct client *client);
 extern void enqueue_pending_key(int ret, uint32_t index_client);
 extern int authd_test_tls_material(const char *home_path);
+extern void authd_apply_debug_option(int cli_debug_level, int test_config);
 
 /* Same minimal reimplementation of keys_init() as test_auth_add.c: it's a
  * file-local helper in auth.c with no header, so every test file that needs a
@@ -451,6 +452,48 @@ static void test_tls_material_skipped_without_legacy_listener(void ** state) {
     assert_int_equal(authd_test_tls_material("/var/wazuh-manager"), 0);
 }
 
+/* authd.debug: what the start reads, and with the same range and default, is what -t judges. */
+static void expect_authd_debug_read(int value) {
+    expect_string(__wrap_getDefine_Int_default, low_name, "debug");
+    expect_value(__wrap_getDefine_Int_default, min, 0);
+    expect_value(__wrap_getDefine_Int_default, max, 2);
+    expect_value(__wrap_getDefine_Int_default, default_val, 0);
+    will_return(__wrap_getDefine_Int_default, value);
+}
+
+/* The test run reads the option (an out-of-range value exits inside getDefine_Int_default(), so
+ * reading it is what makes -t refuse it) but leaves the verbosity alone. */
+static void test_debug_option_read_on_test_run(void ** state) {
+    (void) state;
+    const int before = isDebug();
+
+    expect_authd_debug_read(2);
+
+    authd_apply_debug_option(0, 1);
+
+    assert_int_equal(isDebug(), before);
+}
+
+/* A start reads the same option and applies it. */
+static void test_debug_option_read_and_applied_on_start(void ** state) {
+    (void) state;
+    const int before = isDebug();
+
+    expect_authd_debug_read(2);
+
+    authd_apply_debug_option(0, 0);
+
+    assert_int_equal(isDebug(), before + 2);
+}
+
+/* -d on the command line wins on both paths: the option is not read (no mock queued, so a read fails). */
+static void test_debug_option_skipped_with_cli_debug(void ** state) {
+    (void) state;
+
+    authd_apply_debug_option(1, 1);
+    authd_apply_debug_option(1, 0);
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test_teardown(test_handle_ssl_read_partial_record_waits_without_error, teardown_read_client),
@@ -469,6 +512,9 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_tls_material_key_as_ca_fails, setup_tls_material, teardown_tls_material),
         cmocka_unit_test_setup_teardown(test_tls_material_skipped_when_authd_disabled, setup_tls_material, teardown_tls_material),
         cmocka_unit_test_setup_teardown(test_tls_material_skipped_without_legacy_listener, setup_tls_material, teardown_tls_material),
+        cmocka_unit_test(test_debug_option_read_on_test_run),
+        cmocka_unit_test(test_debug_option_skipped_with_cli_debug),
+        cmocka_unit_test(test_debug_option_read_and_applied_on_start),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

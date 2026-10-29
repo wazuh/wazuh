@@ -188,7 +188,7 @@ wazuh-manager-authd -[VhdtfP] [-u user] [-g group] [-D dir] [-p port] [-c cipher
 | --- | --- | --- |
 | `-V` | Print the version and license, then exit. | — |
 | `-h` | Print the help message, then exit with status `1`. | — |
-| `-d` | Enable debug logging. Repeat it (`-dd`) to raise the level. When given (or with `-t`), `authd.debug` in the internal options is not read. | off |
+| `-d` | Enable debug logging. Repeat it (`-dd`) to raise the level. When given, `authd.debug` in the internal options is not read; without it, `-t` reads and range-checks `authd.debug` but does not apply it. | off |
 | `-t` | Read and validate `/etc/wazuh-manager/wazuh-manager.conf`, then exit `0` on success. Unlike a normal start, it also checks that the configured certificate and CA files exist (`auth.ssl_*` and `remote.https.*`). When the port-1515 listener would start (authd not disabled, `remote_enrollment` and `legacy_enrollment` on), it also loads `ssl_manager_cert`, `ssl_manager_key` and, when set, `ssl_agent_ca` exactly as the start does, so a file that is not a PEM certificate or key, or a key that does not match its certificate, fails the test. Nothing is bound or started. | — |
 | `-f` | Run in the foreground instead of daemonizing. **Also forces [`disabled`](configuration.md#disabled) to `no`**, so the daemon starts even when the configuration disables it. | off |
 | `-u <user>` | User the daemon switches to after startup. | `wazuh-manager` |

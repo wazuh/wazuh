@@ -217,7 +217,8 @@ A field absent from an entry is written as an empty string or `0`. Every applied
 Success answers an **empty body** with `200`, not a JSON document.
 
 A body that is not valid JSON, an entry without `id`, or a field of the wrong type is answered
-`400 Malformed request body` (`text/plain`). Numbers are converted rather than checked: in a numeric field
+`400 Malformed request body` (`text/plain`). A body that is valid JSON but not an object (`[]`, `"x"`, `5`), like an object
+without any of the three groups, is accepted as empty: nothing is written and the answer is `200`. Numbers are converted rather than checked: in a numeric field
 (`id` included) a fraction is truncated (`99999.5` reads as `99999`) and a boolean reads as `1` or `0`
 (`"id": true` addresses agent 1), so only a string, an array, an object or `null` there is the wrong type.
 A text field takes only a string. Every 400 is logged as one WARNING under the `wazuh-manager-db`

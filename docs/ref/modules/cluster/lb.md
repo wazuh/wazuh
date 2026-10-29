@@ -19,6 +19,11 @@ Related pages:
 * [Agent configuration](../client/configuration.md) — the `<agent>` block agents need.
 * [Cluster configuration](configuration.md).
 
+Placeholders in the commands and configuration on this page are upper case: `<AGENT_FACING_ADDRESS>`
+(and `<AGENT_FACING_NAME>`) is the address agents dial, `<MASTER_NODE_IP>`, `<WORKER1_NODE_IP>` and
+`<WORKER2_NODE_IP>` are each node's own address, and `<NODE>` names a node's certificate file.
+Lower-case `<…>` inside a quoted log line stands for a value the program prints there.
+
 > **Note:** `<cluster>` is part of the manager configuration schema: it is validated at startup and
 > every consumer receives the same effective section, with defaults applied. See
 > [Cluster Configuration](configuration.md).
@@ -190,7 +195,7 @@ certificate it checks belongs to whichever node answered. A node issued only wit
 refused by every agent that verifies, with a TLS error and **no HTTP status**.
 
 The same address is validated again when an enrollment token is minted:
-`wazuh-manager-authd --create-enrollment-token --address <host>` refuses a host the master's
+`wazuh-manager-authd --create-enrollment-token --address <AGENT_FACING_ADDRESS>` refuses an address the master's
 listener certificate does not name. So a missing SAN blocks token enrollment as well as reporting.
 
 > The agent-facing address belongs to no single node, so `wazuh-certs-tool` takes it separately:
@@ -263,7 +268,7 @@ Measured on a three-node cluster:
 |---|---|---|---|
 | `/etc/wazuh-manager/client.keys` | 0.04 s | 8.4 – 13.0 s | `401`, code `unknown_agent` |
 | `/etc/wazuh-manager/authd.pass` | immediately | ~23 s | `401`, code `enrollment_key_unavailable` |
-| `/etc/wazuh-manager/enrollment_tokens.json` | 0.13 s | 7.2 – 13.1 s | `401`, code `token_unknown` |
+| `/etc/wazuh-manager/enrollment_tokens.json` | 0.13 s | up to ~13 s | `401`, code `token_unknown` |
 
 **The agent recovers on its own**, in every case, without intervention.
 
@@ -395,7 +400,7 @@ the agent-facing address in the node's listener certificate by setting
 value **replaces** address discovery, so list the node's own names and addresses as well:
 
 ```bash
-WAZUH_MANAGER_REMOTED_CERT_SANS='DNS:<agent-facing name>,DNS:manager-1,IP:10.0.0.21'
+WAZUH_MANAGER_REMOTED_CERT_SANS='DNS:<AGENT_FACING_NAME>,DNS:manager-1,IP:10.0.0.21'
 ```
 
 This covers passthrough, where every node's certificate needs the agent-facing address. A
@@ -415,7 +420,7 @@ to carry the agent-facing address. That address belongs to no single node, so it
 command line rather than in `config.yml`:
 
 ```bash
-./wazuh-certs-tool.sh -A --agent-san <agent-facing address>
+./wazuh-certs-tool.sh -A --agent-san <AGENT_FACING_ADDRESS>
 ```
 
 `--agent-san` adds the address to the subject alternative name of every manager node's listener
@@ -453,9 +458,9 @@ nodes:
   load_balancer:
     - name: lb
       dns:
-        - "<agent-facing name>"
+        - "<AGENT_FACING_NAME>"
       ip:
-        - "<agent-facing address>"
+        - "<AGENT_FACING_ADDRESS>"
 ```
 
 `-A` issues it along with everything else. The manager leaves keep their own names, which is what
@@ -473,10 +478,10 @@ Then verify, because this is the step that catches the mistake:
 
 ```bash
 # The agent-facing address must appear here, on EVERY manager node.
-openssl x509 -in <node>.pem -noout -subject -ext subjectAltName
+openssl x509 -in <NODE>.pem -noout -subject -ext subjectAltName
 
 # Every leaf must chain to the one CA.
-openssl verify -CAfile root-ca.pem <node>.pem
+openssl verify -CAfile root-ca.pem <NODE>.pem
 
 # And the CA installed on the node must be the one that signs the listener it serves.
 openssl verify -CAfile /etc/wazuh-manager/certs/root-ca.pem \
@@ -488,7 +493,7 @@ will. Because every node answers identically, run this enough times to exercise 
 check each backend directly as well (see [§8.5](#85-verify-before-letting-agents-in)):
 
 ```bash
-curl --cacert root-ca.pem https://<agent-facing address>:1517/wazuh-manager/
+curl --cacert root-ca.pem https://<AGENT_FACING_ADDRESS>:1517/wazuh-manager/
 ```
 
 `curl` answering `no alternative certificate subject name matches target` here means a node is
@@ -559,7 +564,7 @@ cluster-specific requirements are:
 
 ```bash
 # Every node answers the liveness probe through the balancer.
-curl --cacert root-ca.pem https://<agent-facing-address>:1517/wazuh-manager/
+curl --cacert root-ca.pem https://<AGENT_FACING_ADDRESS>:1517/wazuh-manager/
 
 # The cluster is formed.
 /var/wazuh-manager/bin/cluster_control -l
@@ -568,12 +573,12 @@ curl --cacert root-ca.pem https://<agent-facing-address>:1517/wazuh-manager/
 The responses are identical from every node — there is no node identifier in the body or headers —
 so this confirms the front end works, not that every backend does. Under passthrough the certificate
 does identify the node that answered, since each node presents its own leaf:
-`openssl s_client -connect <agent-facing-address>:1517 </dev/null 2>/dev/null | openssl x509 -noout -subject`
+`openssl s_client -connect <AGENT_FACING_ADDRESS>:1517 </dev/null 2>/dev/null | openssl x509 -noout -subject`
 prints that node's subject (repeat it to watch the balancer alternate). Check the backends individually,
 by their own addresses:
 
 ```bash
-for n in <node1> <node2> <node3>; do
+for n in <MASTER_NODE_IP> <WORKER1_NODE_IP> <WORKER2_NODE_IP>; do
   echo -n "$n: "
   curl -s -o /dev/null -w '%{http_code}\n' --cacert root-ca.pem "https://$n:1517/wazuh-manager/"
 done

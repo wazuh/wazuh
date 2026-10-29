@@ -529,7 +529,12 @@ Three things to know before editing that file:
 - **It ships empty.** The installed template carries only comments, so every option below is
   serving its compiled-in default. Tuning one means adding the `name=value` line yourself.
 - **An out-of-range or non-numeric value is fatal**, not clamped: the daemon refuses to start and
-  logs which option it rejected. Keep the documented range in view when editing.
+  logs which option it rejected (`(2302)`). Every `remoted.*` option below is read by
+  `wazuh-manager-remoted -t` too, so `wazuh-manager-control check` refuses such a value before anything
+  stops (`remoted.debug` is skipped when `-d` is given, by `-t` and by the start alike).
+  `wazuh.thread_stack_size` is the exception: no `-t` reads it — see
+  [the manager internal options](../../configuration/manager/README.md).
+  Keep the documented range in view when editing.
   Put comments on separate lines beginning with `#`; an inline comment becomes part of the value.
 - **The file is per node and is never synchronized.** Nothing in a cluster propagates it, so a
   value set on one manager makes an agent's behavior depend on which node it lands on.

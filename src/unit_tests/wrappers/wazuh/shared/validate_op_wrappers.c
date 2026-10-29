@@ -59,6 +59,17 @@ int __wrap_getDefine_Int_default(const char *high_name,
         check_expected(default_val);
     }
 
+    // Options a daemon used to read only after its `-t` returned (remoted's message counters, authd's
+    // debug level): their tests pin which key is read with which range, on the path `-t` runs.
+    if ((!strcmp(high_name, "remoted") &&
+         (!strcmp(low_name, "recv_counter_flush") || !strcmp(low_name, "comp_average_printout"))) ||
+        (!strcmp(high_name, "authd") && !strcmp(low_name, "debug"))) {
+        check_expected(low_name);
+        check_expected(min);
+        check_expected(max);
+        check_expected(default_val);
+    }
+
     return mock();
 }
 

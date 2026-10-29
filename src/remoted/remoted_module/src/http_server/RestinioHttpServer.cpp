@@ -42,6 +42,7 @@
 #include <limits>
 #include <memory>
 #include <mutex>
+#include <optional>
 #include <stdexcept>
 #include <string>
 #include <string_view>
@@ -1094,6 +1095,11 @@ namespace
      * write callback always fires -- with an error if the connection died before the write could
      * run (see response_coordinator's cleanup and write_response_parts_impl) -- so the chain
      * always terminates and the source's descriptor is always released.
+     *
+     * The one exception is a server stop: a flush queued on the connection after its io_context
+     * stopped is never called, and the connection owns that callback while the builder here owns
+     * the connection -- a cycle nothing breaks. StreamRegistry::abortAll() breaks it by dropping
+     * the builder once no thread can run the pump any more.
      */
     class StreamPump final : public std::enable_shared_from_this<StreamPump>
     {
@@ -1115,6 +1121,15 @@ namespace
             schedule();
         }
 
+        /// Release the connection and the source of a transfer the server stopped under. Only
+        /// called once the io_context threads and the worker pool are drained, so nothing else can
+        /// be touching this pump.
+        void abort()
+        {
+            m_builder.reset();
+            m_source.reset();
+        }
+
     private:
         void schedule()
         {
@@ -1123,6 +1138,11 @@ namespace
 
         void pumpOnce()
         {
+            if (!m_builder || !m_source)
+            {
+                return; // aborted by a server stop
+            }
+
             std::string chunk;
 
             try
@@ -1135,7 +1155,7 @@ namespace
                     // End of stream: done() emits the terminating zero-length chunk, which is what
                     // tells the peer the body is COMPLETE. Reaching it is the only way a transfer
                     // is allowed to look successful.
-                    m_builder.done();
+                    m_builder->done();
                     return;
                 }
 
@@ -1157,7 +1177,7 @@ namespace
 
             try
             {
-                m_builder.append_chunk(std::move(chunk))
+                m_builder->append_chunk(std::move(chunk))
                     .flush(
                         [self = shared_from_this()](const asio::error_code& ec)
                         {
@@ -1183,10 +1203,50 @@ namespace
             }
         }
 
-        ChunkedBuilder m_builder;
+        std::optional<ChunkedBuilder> m_builder;
         std::shared_ptr<remoted::http::IByteSource> m_source;
         std::size_t m_chunkSize;
         asio::thread_pool* m_pool;
+    };
+
+    /**
+     * @brief The streamed transfers a listener has started, so its stop can end the ones a stopped
+     * io_context will never finish (see StreamPump). Weak references only: a transfer that ends
+     * normally frees its pump as before.
+     */
+    class StreamRegistry final
+    {
+    public:
+        void add(const std::shared_ptr<StreamPump>& pump)
+        {
+            std::lock_guard<std::mutex> lock {m_mutex};
+            m_pumps.erase(std::remove_if(m_pumps.begin(),
+                                         m_pumps.end(),
+                                         [](const std::weak_ptr<StreamPump>& entry) { return entry.expired(); }),
+                          m_pumps.end());
+            m_pumps.push_back(pump);
+        }
+
+        /// Call only after the io_context threads and the worker pool are drained.
+        void abortAll()
+        {
+            std::vector<std::weak_ptr<StreamPump>> pumps;
+            {
+                std::lock_guard<std::mutex> lock {m_mutex};
+                pumps.swap(m_pumps);
+            }
+            for (const auto& entry : pumps)
+            {
+                if (auto pump = entry.lock())
+                {
+                    pump->abort();
+                }
+            }
+        }
+
+    private:
+        std::mutex m_mutex;
+        std::vector<std::weak_ptr<StreamPump>> m_pumps;
     };
 
     /**
@@ -1203,10 +1263,12 @@ namespace
     public:
         RestinioStreamableResponder(restinio::request_handle_t request,
                                     asio::thread_pool& pool,
-                                    std::size_t defaultChunkSize)
+                                    std::size_t defaultChunkSize,
+                                    std::shared_ptr<StreamRegistry> streams)
             : m_request {std::move(request)}
             , m_pool {&pool}
             , m_defaultChunkSize {defaultChunkSize}
+            , m_streams {std::move(streams)}
         {
         }
 
@@ -1270,13 +1332,17 @@ namespace
             // (remoted.http_stream_chunk_size); an endpoint may still pin its own.
             const auto chunkSize = response.chunkSize != 0 ? response.chunkSize : m_defaultChunkSize;
 
-            std::make_shared<StreamPump>(std::move(builder), std::move(response.source), chunkSize, *m_pool)->start();
+            auto pump =
+                std::make_shared<StreamPump>(std::move(builder), std::move(response.source), chunkSize, *m_pool);
+            m_streams->add(pump);
+            pump->start();
         }
 
     private:
         restinio::request_handle_t m_request;
         asio::thread_pool* m_pool;
         std::size_t m_defaultChunkSize;
+        std::shared_ptr<StreamRegistry> m_streams;
         std::atomic_flag m_answered = ATOMIC_FLAG_INIT;
     };
 
@@ -1351,6 +1417,10 @@ namespace remoted::http
         /// would leave the old listener updating a ledger nobody reads. start() reset()s it instead.
         std::shared_ptr<HandshakeLedger> m_handshakeLedger {std::make_shared<HandshakeLedger>()};
 
+        /// Streamed transfers in flight, ended by stopAccepting() once nothing can run them (see
+        /// StreamPump). Allocated once and never replaced, like the ledger above.
+        std::shared_ptr<StreamRegistry> m_streams {std::make_shared<StreamRegistry>()};
+
         /// The ceiling the ledger's open connections are counted against (config.maxParallelConnections),
         /// captured at start() so diagnostics() can report the level AND its limit together.
         std::size_t m_maxConnections {0};
@@ -1393,6 +1463,7 @@ namespace remoted::http
                 const auto countAgainstBudget = route.countAgainstBudget;
                 const auto responseMode = route.mode;
                 const auto streamChunkSize = m_config.streamChunkSize;
+                auto streams = m_streams;
 
                 // The pattern actually handed to the router is the route's logical path served
                 // under the global prefix. The "/" route (the health probe) is registered as the
@@ -1425,6 +1496,7 @@ namespace remoted::http
                      countAgainstBudget,
                      responseMode,
                      streamChunkSize,
+                     streams,
                      rejectedConnections](auto request, auto) -> restinio::request_handling_status_t
                     {
                         // Transport-level exception barrier, covering every registered route at
@@ -1506,8 +1578,8 @@ namespace remoted::http
                                 // and creates the builder when it answers, which means RESTinio's
                                 // body buffer survives into the worker queue. Bounded by design:
                                 // only routes whose requests are tiny should ever stream.
-                                responder =
-                                    std::make_shared<RestinioStreamableResponder>(request, *pool, streamChunkSize);
+                                responder = std::make_shared<RestinioStreamableResponder>(
+                                    request, *pool, streamChunkSize, streams);
                             }
                             else
                             {
@@ -2047,6 +2119,11 @@ namespace remoted::http
             {
                 workerPool->join();
             }
+
+            // With the io_context threads stopped and the pool joined, nothing can run a pump any
+            // more: release the transfers whose last flush the stopped io_context will never call
+            // back, so they do not keep their connection and byte source alive forever.
+            m_impl->m_streams->abortAll();
 
             // LAST, with the monitor stopped and the worker pool joined, so no tick and no
             // GET /cacerts handler can still be delivering: from here on nobody would ever drain

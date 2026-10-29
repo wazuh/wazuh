@@ -264,7 +264,8 @@ Every option below is read once at start with a compiled-in default. Three thing
 - **The shipped file is empty.** It carries only comments, so tuning one of these means adding the
   `name=value` line yourself.
 - **An out-of-range or non-numeric value is fatal**, not clamped: the daemon refuses to start and
-  names the option it rejected.
+  names the option it rejected. `wazuh-manager-authd -t` reads every option below too, so
+  `wazuh-manager-control check` refuses such a value before anything stops.
   Put comments on separate lines beginning with `#`; an inline comment becomes part of the value.
 - **The file is per node and is never synchronized.** Nothing in a cluster propagates it.
 
@@ -295,7 +296,8 @@ wazuh_modules.manager_task_max_pending_deletes=20000
 ### authd.debug
 
 The daemon's debug level when it is started without `-d`: `1` is debug, `2` is verbose debug. It is
-not read when `-d` is given on the command line.
+not read when `-d` is given on the command line. Without `-d`, `wazuh-manager-authd -t` reads and
+range-checks it as the start does, but does not raise its own verbosity with it.
 
 - **Default value:** `0`
 - **Allowed values:** `0` to `2`
