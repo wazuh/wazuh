@@ -48,7 +48,7 @@ on:
         required: true
         default: 'main'
       build_run_id:
-        description: 'Run ID of the build workflow to download artifacts from (optional)'
+        description: 'Build run ID to download from (optional; default: latest successful build on base_branch)'
         required: false
         default: ''
       module_name:
@@ -91,7 +91,6 @@ jobs:
     env:
       BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
       BRANCH_BASE: ${{ inputs.base_branch || github.base_ref }}
-      BUILD_WORKFLOW: 5_builderpackage_agent-windows.yml
       AGENT_PACKAGE_REGEXP: wazuh-agent.*windows.*\.msi
       PR_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
     runs-on: windows-2025
@@ -127,6 +126,7 @@ jobs:
         uses: ./.github/actions/download_package
         with:
           build_run_id: ${{ inputs.build_run_id }}
+          base_branch: ${{ inputs.base_branch }}
           producer_workflow: 5_builderpackage_agent-windows
           name_regexp: ${{ env.AGENT_PACKAGE_REGEXP }}
           path: C:\wazuh-package\
