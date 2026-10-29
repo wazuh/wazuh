@@ -17,6 +17,16 @@
 extern "C" void container_reporting_test_host(int limit);
 extern "C" void container_reporting_test_row_limit(int limit);
 
+#include "container_instances_client.hpp"
+
+namespace fim_container_events
+{
+    std::map<std::string, bool> mergeAdmissionView(
+        const std::map<std::string, bool>& current,
+        const std::vector<wazuh::container_instances_client::ContainerRef>& refs,
+        bool complete);
+} // namespace fim_container_events
+
 namespace
 {
     std::map<std::string, bool> admission;
@@ -25,6 +35,10 @@ namespace
     std::vector<std::string> warnings;
     bool listed = false;
     bool connector_available = true;
+
+    /* Whether the hooked listing claims to be the whole node. True is the
+     * ordinary case; false models container_instances still resolving. */
+    bool list_complete = true;
     bool reject_persistence = false;
     int file_size = 1;
 
@@ -39,6 +53,7 @@ namespace
                 warnings.clear();
                 listed = false;
                 connector_available = true;
+                list_complete = true;
                 reject_persistence = false;
                 file_size = 1;
                 fim_db_init(FIM_DB_MEMORY, [](modules_log_level_t, const char*) {}, 1000, 0, nullptr);
@@ -105,15 +120,23 @@ extern "C" int __wrap_fim_container_baseline_available(const char*)
     return 1;
 }
 
-extern "C" int __wrap_cbaseline_list_containers(const char*, cb_container_id_sink_t sink, void* ctx)
+extern "C" int
+__wrap_cbaseline_list_containers_ex(const char*, cb_container_id_sink_t sink, void* ctx, int* out_complete)
 {
     EXPECT_FALSE(listed) << "reuse the warm-up-guarded listing";
     listed = true;
+
+    /* A listing that failed is never complete, matching the real shim. */
+    if (out_complete)
+        *out_complete = 0;
 
     if (!connector_available)
         return -1;
 
     for (const auto& [id, admitted] : admission) sink(id.c_str(), admitted, ctx);
+
+    if (out_complete)
+        *out_complete = list_complete ? 1 : 0;
 
     return static_cast<int>(admission.size());
 }
@@ -205,6 +228,74 @@ TEST_F(ContainerReportingTest, AdmissionRetractsRetainsAndRestoresUnchangedRows)
         EXPECT_EQ(persisted[0], (std::pair<std::string, int> {"b:/etc/one", OPERATION_CREATE}));
         EXPECT_EQ(syncFlag("b", "/etc/one"), 1);
     }
+}
+
+TEST(ContainerDrainAdmissionView, AnIncompleteListUpsertsAndACompleteOneReplaces)
+{
+    using wazuh::container_instances_client::ContainerRef;
+    using fim_container_events::mergeAdmissionView;
+
+    const std::map<std::string, bool> current = {{"a", true}, {"b", true}};
+
+    ContainerRef onlyA;
+    onlyA.containerId = "a";
+    onlyA.synced      = true;
+
+    // The connector is still resolving, so b is missing for want of a key, not
+    // because it stopped existing. Dropping it here installs an admission set
+    // without b, and the bridge reads anything absent as "not admitted" -- which
+    // retracts every one of b's reported rows while b is alive.
+    EXPECT_EQ(mergeAdmissionView(current, {onlyA}, false), (std::map<std::string, bool> {{"a", true}, {"b", true}}))
+            << "an incomplete list may not drop a container it never spoke about";
+
+    // The same list, now claiming to be the whole node: b really is gone.
+    EXPECT_EQ(mergeAdmissionView(current, {onlyA}, true), (std::map<std::string, bool> {{"a", true}}))
+            << "a complete list is the whole truth, so absence is removal";
+
+    // An incomplete list still applies what it DOES say, in both directions.
+    ContainerRef bWithheld;
+    bWithheld.containerId = "b";
+    bWithheld.synced      = false;
+    EXPECT_EQ(mergeAdmissionView(current, {bWithheld}, false),
+    (std::map<std::string, bool> {{"a", true}, {"b", false}}))
+            << "a container the partial list names is updated from it";
+}
+
+TEST_F(ContainerReportingTest, RunTimeAdmissionPromotesAndDoesNotOnlyRetract)
+{
+    container_reporting_test_host(0);
+    files = {{"a", {"/etc/one"}}, {"b", {"/etc/one"}}};
+    admission = {{"a", true}, {"b", false}};
+    listed = false;
+    fim_run_container_baseline();
+    EXPECT_EQ(syncFlag("a", "/etc/one"), 1);
+    ASSERT_EQ(syncFlag("b", "/etc/one"), 0) << "b is not admitted, so its row is withheld";
+
+    // b gains admission BETWEEN baselines, which is the drain's path: it installs
+    // the new set, and fim_container_set_admission() reconciles from there.
+    //
+    // That reconciliation used to retract and nothing else, so a container that
+    // gained admission at run time -- one that started after the agent, or one
+    // readmitted when another freed a slot under containers.synced_limit -- kept
+    // its rows at sync=0 until the next whole-node baseline.
+    persisted.clear();
+    const char* known[] = {"a", "b"};
+    const char* admitted[] = {"a", "b"};
+    fim_container_set_admission(known, 2, admitted, 2);
+
+    ASSERT_EQ(persisted.size(), 1u) << "the newly admitted container's row must be promoted now";
+    EXPECT_EQ(persisted[0], (std::pair<std::string, int> {"b:/etc/one", OPERATION_CREATE}));
+    EXPECT_EQ(syncFlag("b", "/etc/one"), 1);
+
+    // ...and the same path must still retract, which is all it used to do.
+    persisted.clear();
+    const char* onlyA[] = {"a"};
+    fim_container_set_admission(known, 2, onlyA, 1);
+
+    ASSERT_EQ(persisted.size(), 1u);
+    EXPECT_EQ(persisted[0], (std::pair<std::string, int> {"b:/etc/one", OPERATION_DELETE}));
+    EXPECT_EQ(syncFlag("b", "/etc/one"), 0);
+    EXPECT_EQ(syncFlag("a", "/etc/one"), 1);
 }
 
 TEST_F(ContainerReportingTest, FirstScanWithholdsAndUnavailableConnectorKeepsRows)

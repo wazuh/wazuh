@@ -1208,7 +1208,25 @@ extern "C" void fim_container_state_unlock(void)
 extern "C" void fim_container_reconcile_admission(void)
 {
     std::lock_guard<std::recursive_mutex> lock(container_state_mutex);
+
+    // BOTH directions, because admission moves both ways and this is the only
+    // place that sees it move at run time.
+    //
+    // updateContainerReporting() skips every container whose admission does not
+    // match its argument, so `false` reaches only containers that may no longer
+    // report and `true` only those that may again. With just the retraction, a
+    // container that GAINS admission between baselines -- one that starts after
+    // the agent, or one readmitted when another frees a slot under
+    // containers.synced_limit -- had its rows left at sync=0 with nothing to
+    // promote them until the next whole-node baseline. Paired with a retraction
+    // that could fire on a withheld list, a live container's FIM state left the
+    // manager and could not come back (#37532 / R2).
+    //
+    // Retract first: that releases the document budget of the containers that
+    // just lost admission, so the promotion below can spend what they freed in
+    // the same pass. The two passes touch disjoint sets of containers.
     updateContainerReporting(false);
+    updateContainerReporting(true);
 }
 
 extern "C" void fim_run_container_baseline(void)

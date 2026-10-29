@@ -110,6 +110,49 @@ namespace fim_container_events
 
     } // namespace
 
+    /* The admission view a list refresh leaves behind.
+     *
+     * Rebuilt rather than merged: a full list is the whole truth, so a container
+     * absent from it is gone, not unchanged.
+     *
+     * Unless it is NOT the whole truth. container_instances withholds a running
+     * container from the list until its resolver can key it, and says so with
+     * `withheld`. Treating such a list as authoritative is the worst of the three
+     * consumers' versions of the same mistake: it does not merely skip a sweep,
+     * it installs an admission set that omits a live container, and
+     * fim_container_set_admission() answers "not admitted" for anything missing
+     * -- which retracts every one of its sync=1 rows. On a modulesd restart,
+     * when the store is cold and the first list is mostly withheld, that is the
+     * whole node.
+     *
+     * So an incomplete list is a set of upserts: what it names is applied, what
+     * it omits is left exactly as it was. The caller does the same for the kernel
+     * filter, with applyContainerDelta() in place of applyContainerList()
+     * (#37532 / R1).
+     *
+     * Free and pure so the rule can be tested without a connector -- the absence
+     * of any seam here is why the drain kept reading a partial list as the whole
+     * node long after the other two consumers stopped. */
+    std::map<std::string, bool> mergeAdmissionView(
+        const std::map<std::string, bool>& current,
+        const std::vector<wazuh::container_instances_client::ContainerRef>& refs,
+        bool complete)
+    {
+        std::map<std::string, bool> refreshed;
+
+        if (!complete)
+        {
+            refreshed = current;
+        }
+
+        for (const auto& ref : refs)
+        {
+            refreshed[ref.containerId] = ref.synced;
+        }
+
+        return refreshed;
+    }
+
     struct ContainerEventDrain::Impl
     {
         explicit Impl(const DrainConfig& cfg)
@@ -451,7 +494,7 @@ namespace fim_container_events
 
             if (!delta.deltaSupported || delta.resyncRequired)
             {
-                applyFullList(delta.containers);
+                applyFullList(delta.containers, delta.complete);
             }
             else
             {
@@ -581,19 +624,34 @@ namespace fim_container_events
             fim_container_set_admission(known.data(), known.size(), admitted.data(), admitted.size());
         }
 
-        void applyFullList(const std::vector<wazuh::container_instances_client::ContainerRef>& refs)
+        void applyFullList(const std::vector<wazuh::container_instances_client::ContainerRef>& refs, bool complete)
         {
             std::vector<std::pair<std::uint64_t, std::string>> containers;
             containers.reserve(refs.size());
 
-            /* Rebuilt rather than merged: a full list is the whole truth, so a
-             * container absent from it is gone, not unchanged. */
-            std::map<std::string, bool> refreshed;
+            std::vector<CgroupDeltaEvent> upserts;
+
+            if (!complete)
+            {
+                upserts.reserve(refs.size());
+            }
 
             for (const auto& ref : refs)
             {
                 containers.emplace_back(ref.cgroupId, ref.containerId);
-                refreshed[ref.containerId] = ref.synced;
+
+                if (!complete)
+                {
+                    /* applyDelta() withdraws whatever THIS container held before
+                     * applying the event, and touches no other container -- which
+                     * is precisely the difference from install(). */
+                    CgroupDeltaEvent upsert;
+                    upsert.kind             = CgroupDeltaEvent::Kind::changed;
+                    upsert.cgroup_id        = ref.cgroupId;
+                    upsert.container_id     = ref.containerId;
+                    upsert.extra_cgroup_ids = ref.extraCgroupIds;
+                    upserts.push_back(std::move(upsert));
+                }
 
                 /* Every other cgroup the container occupies, as its own entry. A
                  * container running an init system has one per unit, and the kernel
@@ -610,8 +668,9 @@ namespace fim_container_events
                 }
             }
 
-            syncAllowlist(router.applyContainerList(containers));
-            publishAdmission(refreshed);
+            syncAllowlist(complete ? router.applyContainerList(containers)
+                          : router.applyContainerDelta(upserts));
+            publishAdmission(mergeAdmissionView(admission_view, refs, complete));
         }
 
         /* Mirror a list refresh into the kernel filter.
