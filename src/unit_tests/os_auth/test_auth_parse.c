@@ -19,6 +19,12 @@
 
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
 
+// Group names of 255 and 256 chars, for the oversized-group case
+#define GROUP_A16  "aaaaaaaaaaaaaaaa"
+#define GROUP_A255 GROUP_A16 GROUP_A16 GROUP_A16 GROUP_A16 GROUP_A16 GROUP_A16 GROUP_A16 GROUP_A16 \
+                   GROUP_A16 GROUP_A16 GROUP_A16 GROUP_A16 GROUP_A16 GROUP_A16 GROUP_A16 "aaaaaaaaaaaaaaa"
+#define GROUP_A256 GROUP_A255 "a"
+
 //Expected log messages to be checked on mocked log functions
 typedef struct _mocked_log {
     char* merror;
@@ -94,6 +100,7 @@ parse_evaluator parse_values_default_cfg [] = {
     { "OSSEC A:'agent3' G:'Group1,Group2' IP:'192.0.0.3' K:'ABC123", "192.0.0.1", NULL,           {NULL, NULL, NULL, NULL}, {OS_INVALID,"ERROR: Unterminated key field"}, {"Unterminated key field", NULL, NULL, "Received request for a new agent (agent3) from: 192.0.0.1", "Group(s) is: Group1,Group2"} },
     { "OSSEC A:'agent3' V:'v4.5.0", "192.0.0.1", NULL,                  {NULL, NULL, NULL, NULL}, {OS_INVALID,"ERROR: Unterminated version field"},    {"Unterminated version field", NULL, NULL, "Received request for a new agent (agent3) from: 192.0.0.1", NULL} },
     { "OSSEC A:'agent4' V:'v5.6.0'", "192.0.0.1", NULL,                 {NULL, NULL, NULL, NULL}, {OS_INVALID,"ERROR: Agent version must be lower or equal to manager version"},          {"Incompatible version for new agent from: 192.0.0.1", NULL, NULL, "Received request for a new agent (agent4) from: 192.0.0.1", NULL} },
+    { "OSSEC A:'agent12' G:'" GROUP_A256 ",Group2'", "192.0.0.1", NULL, {NULL, NULL, NULL, NULL}, {OS_INVALID,"ERROR: Invalid group name: " GROUP_A255 "... group is too large"}, {"Invalid group name: " GROUP_A255 "... ,", NULL, NULL, "Received request for a new agent (agent12) from: 192.0.0.1", NULL} },
 
     {0}
 };
