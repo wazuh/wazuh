@@ -402,6 +402,9 @@ static void expect_read_to_end(void) {
 #define MESSAGE(id)        "[**] [1:" id ":1] Alert " id " [**] [Classification: Misc activity] [Priority: 3] " \
                            "10.0.0.1 -> 10.0.0.2"
 
+#define DISCARD_WARNING    "Incomplete snort full alert discarded from 'test.log': a new alert starts before its " \
+                           "date line."
+
 /* Tests */
 
 /**
@@ -1269,6 +1272,64 @@ void test_read_snortfull_hash_copy_fails_at_header(void **state) {
     assert_int_equal(rc, 0);
 }
 
+/**
+ * Test: Snort stops after the first lines of an alert and writes whole alerts after it restarts.
+ * A header ends the alert still open, whether its header or its classification was the last line read: the
+ * open alert is discarded with a warning, and the one that starts at the header is sent.
+ */
+void test_read_snortfull_header_ends_open_alert(void **state) {
+    logreader lf = {0};
+    lf.file = "test.log";
+    lf.fp = (FILE *) 1;
+    int rc;
+
+    write_to_file(HEADER("1001") ALERT("1002") HEADER("1003") CLASSIFICATION ALERT("1004"));
+    expect_read_from(0);
+    expect_string(__wrap__mwarn, formatted_msg, DISCARD_WARNING);
+    expect_queued_message(MESSAGE("1002"));
+    expect_string(__wrap__mwarn, formatted_msg, DISCARD_WARNING);
+    expect_queued_message(MESSAGE("1004"));
+    expect_read_to_end();
+
+    read_snortfull(&lf, &rc, 0);
+
+    assert_int_equal(rc, 0);
+    assert_int_equal(kept_offset, (int64_t) strlen(written));
+}
+
+/**
+ * Test: a read ends inside an alert that the writer never finishes, and the next alert is written after it.
+ * The first read goes back to the open alert's header. The second reads it again, discards it at the next
+ * header and sends the next alert, so the alert after the unfinished one is not lost.
+ */
+void test_read_snortfull_unfinished_alert_then_whole_alert(void **state) {
+    logreader lf = {0};
+    lf.file = "test.log";
+    lf.fp = (FILE *) 1;
+    int rc;
+
+    write_to_file(ALERT("1001") HEADER("1002") CLASSIFICATION);
+    expect_read_from(0);
+    expect_queued_message(MESSAGE("1001"));
+    expect_read_back_to((int64_t) strlen(ALERT("1001")));
+
+    read_snortfull(&lf, &rc, 0);
+
+    assert_int_equal(rc, 0);
+    assert_int_equal(kept_offset, (int64_t) strlen(ALERT("1001")));
+
+    write_to_file(ALERT("1003"));
+    expect_read_from(kept_offset);
+    expect_string(__wrap__mwarn, formatted_msg, DISCARD_WARNING);
+    expect_queued_message(MESSAGE("1003"));
+    expect_read_to_end();
+
+    read_snortfull(&lf, &rc, 0);
+
+    assert_int_equal(rc, 0);
+    assert_int_equal(kept_offset, (int64_t) strlen(written));
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test(test_read_snortfull_complete_record),
@@ -1297,6 +1358,8 @@ int main(void) {
         cmocka_unit_test_teardown(test_read_snortfull_hash_copy_fails_at_header, test_teardown),
         cmocka_unit_test_teardown(test_read_snortfull_unknown_line_after_header, test_teardown),
         cmocka_unit_test_teardown(test_read_snortfull_unknown_line_after_classification, test_teardown),
+        cmocka_unit_test_teardown(test_read_snortfull_header_ends_open_alert, test_teardown),
+        cmocka_unit_test_teardown(test_read_snortfull_unfinished_alert_then_whole_alert, test_teardown),
     };
 
     return cmocka_run_group_tests(tests, group_setup, group_teardown);

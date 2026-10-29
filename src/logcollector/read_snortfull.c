@@ -130,6 +130,14 @@ static line_result_t add_line(alert_t *alert, const char *str) {
     }
 }
 
+/* A header ends the alert still open, which will never get its date line */
+static void discard_open_alert(alert_t *alert, const char *file) {
+    if (alert->stage != ALERT_NONE) {
+        mwarn("Incomplete snort full alert discarded from '%s': a new alert starts before its date line.", file);
+        alert->stage = ALERT_NONE;
+    }
+}
+
 /* Remove the line end. Returns false if the line has none */
 static bool strip_line_end(char *str) {
     char *end = strrchr(str, '\n');
@@ -292,7 +300,8 @@ void *read_snortfull(logreader *lf, int *rc, int drop_it) {
             break;
         }
 
-        if (alert.stage == ALERT_NONE && is_alert_header(str)) {
+        if (is_alert_header(str)) {
+            discard_open_alert(&alert, lf->file);
             if (!save_alert_start(&state)) {
                 *rc = -1;
                 line_left_unread = true;
