@@ -1334,7 +1334,7 @@ public:
         };
 
         const auto onError =
-            [this, &needToRetry](const std::string& url, const long statusCode, const std::string& error)
+            [this, &needToRetry](const std::string& error, const long statusCode, const std::string& responseBody)
         {
             if (statusCode == HTTP_VERSION_CONFLICT)
             {
@@ -1364,9 +1364,27 @@ public:
             }
             else
             {
-                LOGFN_WARN(m_logFn, "Update by query failed: %s, status code: %ld.", error.c_str(), statusCode);
+                // Same rule as the search: a missing index is the caller's decision (for the VD an
+                // empty dataset), so it is logged at debug level; any other failure warns.
+                if (statusCode == HTTP_NOT_FOUND && responseBody.find("index_not_found_exception") != std::string::npos)
+                {
+                    LOGFN_DEBUG2(m_logFn, "Update by query failed: %s, status code: %ld.", error.c_str(), statusCode);
+                }
+                else
+                {
+                    LOGFN_WARN(m_logFn, "Update by query failed: %s, status code: %ld.", error.c_str(), statusCode);
+                }
                 m_notify.clear();
-                throw IndexerConnectorException(error);
+                // `error` is only the transport's "Client error"/"Server error": carry the status and
+                // the (truncated) body so callers can classify the failure (a 404 keeps
+                // `index_not_found_exception`, which OpenSearch puts near the start of the body).
+                std::string detail = "Update by query failed (status " + std::to_string(statusCode) + "): " + error;
+                if (!responseBody.empty())
+                {
+                    detail += " - ";
+                    detail += responseBody.substr(0, 256);
+                }
+                throw IndexerConnectorException(detail, IndexerConnectorException::Category::Other, statusCode);
             }
         };
 
@@ -1461,7 +1479,17 @@ public:
             }
             else
             {
-                LOGFN_WARN(m_logFn, "Search query failed: %s, status code: %ld", error.c_str(), statusCode);
+                // A missing index is not an indexer failure: the caller owns the decision (for the
+                // VD it is an empty dataset), so it is logged at debug level instead of warning on
+                // every scan. Any other failure keeps the warning.
+                if (statusCode == HTTP_NOT_FOUND && responseBody.find("index_not_found_exception") != std::string::npos)
+                {
+                    LOGFN_DEBUG2(m_logFn, "Search query failed: %s, status code: %ld", error.c_str(), statusCode);
+                }
+                else
+                {
+                    LOGFN_WARN(m_logFn, "Search query failed: %s, status code: %ld", error.c_str(), statusCode);
+                }
                 // The transport reduces every HTTP failure to "Client error"/"Server error", so
                 // without the status and (truncated) body the exception is undiagnosable AND
                 // unclassifiable -- callers must be able to tell "no such index" (an empty
@@ -1472,7 +1500,7 @@ public:
                     detail += " - ";
                     detail += responseBody.substr(0, 256);
                 }
-                throw IndexerConnectorException(detail);
+                throw IndexerConnectorException(detail, IndexerConnectorException::Category::Other, statusCode);
             }
         };
 
