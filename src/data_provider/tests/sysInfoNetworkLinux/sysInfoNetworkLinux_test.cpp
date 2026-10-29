@@ -12,6 +12,7 @@
 #include "sysInfoNetworkLinux_test.h"
 #include "network/networkInterfaceLinux.h"
 #include "network/networkFamilyDataAFactory.h"
+#include "network/networkLinuxWrapper.h"
 
 void SysInfoNetworkLinuxTest::SetUp() {};
 
@@ -36,6 +37,7 @@ class SysInfoNetworkLinuxWrapperMock: public INetworkInterfaceWrapper
         MOCK_METHOD(std::string, netmaskV6, (), (const override));
         MOCK_METHOD(std::string, broadcastV6, (), (const override));
         MOCK_METHOD(std::string, gateway, (), (const override));
+        MOCK_METHOD(std::string, gatewayV6, (), (const override));
         MOCK_METHOD(std::string, metrics, (), (const override));
         MOCK_METHOD(std::string, metricsV6, (), (const override));
         MOCK_METHOD(std::string, dhcp, (), (const override));
@@ -123,6 +125,7 @@ TEST_F(SysInfoNetworkLinuxTest, Test_AF_PACKET)
     EXPECT_CALL(*mock, stats()).Times(1).WillOnce(Return(LinkStats{0, 1, 2, 3, 4, 5, 6, 7}));
     EXPECT_CALL(*mock, mtu()).Times(1).WillOnce(Return(1500));
     EXPECT_CALL(*mock, gateway()).Times(1).WillOnce(Return("10.2.2.50"));
+    EXPECT_CALL(*mock, gatewayV6()).Times(1).WillOnce(Return("fe80::1"));
 
     EXPECT_NO_THROW(FactoryNetworkFamilyCreator<OSPlatformType::LINUX>::create(mock)->buildNetworkData(ifaddr));
 
@@ -143,6 +146,7 @@ TEST_F(SysInfoNetworkLinuxTest, Test_AF_PACKET)
 
     EXPECT_EQ(1500u, ifaddr.at("mtu").get<uint32_t>());
     EXPECT_EQ("10.2.2.50", ifaddr.at("gateway").get_ref<const std::string&>());
+    EXPECT_EQ("fe80::1", ifaddr.at("gateway6").get_ref<const std::string&>());
 }
 
 TEST_F(SysInfoNetworkLinuxTest, Test_AF_UNSPEC_THROW_NULLPTR)
@@ -164,6 +168,7 @@ TEST_F(SysInfoNetworkLinuxTest, Test_Gateway_7546)
     EXPECT_CALL(*mock, stats()).Times(1).WillOnce(Return(LinkStats{0, 1, 2, 3, 4, 5, 6, 7}));
     EXPECT_CALL(*mock, mtu()).Times(1).WillOnce(Return(1500));
     EXPECT_CALL(*mock, gateway()).Times(1).WillOnce(Return("A12BA8C0")); // Gateway value in hexa: A12BA8C0
+    EXPECT_CALL(*mock, gatewayV6()).Times(1).WillOnce(Return("fe80::1"));
 
     EXPECT_NO_THROW(FactoryNetworkFamilyCreator<OSPlatformType::LINUX>::create(mock)->buildNetworkData(ifaddr));
 
@@ -183,4 +188,66 @@ TEST_F(SysInfoNetworkLinuxTest, Test_Gateway_7546)
     EXPECT_EQ(6, ifaddr.at("rx_dropped").get<int32_t>());
     EXPECT_EQ(1500, ifaddr.at("mtu").get<int32_t>());
     EXPECT_EQ("A12BA8C0", ifaddr.at("gateway").get_ref<const std::string&>());
+    EXPECT_EQ("fe80::1", ifaddr.at("gateway6").get_ref<const std::string&>());
+}
+
+// /proc/net/ipv6_route lines: a link route, reject routes on lo and an RA default route on eth0
+static const std::string IPV6_ROUTE_TABLE
+{
+    "fe800000000000000000000000000000 40 00000000000000000000000000000000 00 00000000000000000000000000000000 00000100 00000001 00000000 00000001     eth0\n"
+    "00000000000000000000000000000000 00 00000000000000000000000000000000 00 00000000000000000000000000000000 ffffffff 00000001 00000000 00200200       lo\n"
+    "00000000000000000000000000000000 00 00000000000000000000000000000000 00 fe800000000000000000000000000001 00000400 00000001 00000000 00450003     eth0\n"
+};
+
+TEST_F(SysInfoNetworkLinuxTest, Test_GatewayV6_DefaultRoute)
+{
+    EXPECT_EQ("fe80::1", NetworkLinuxInterface::parseGatewayV6(IPV6_ROUTE_TABLE, "eth0"));
+}
+
+TEST_F(SysInfoNetworkLinuxTest, Test_GatewayV6_NoDefaultRoute)
+{
+    const std::string table
+    {
+        "fe800000000000000000000000000000 40 00000000000000000000000000000000 00 00000000000000000000000000000000 00000100 00000001 00000000 00000001     eth0\n"
+        "00000000000000000000000000000000 00 00000000000000000000000000000000 00 00000000000000000000000000000000 ffffffff 00000001 00000000 00200200       lo\n"
+    };
+    EXPECT_EQ(" ", NetworkLinuxInterface::parseGatewayV6(table, "eth0"));
+    EXPECT_EQ(" ", NetworkLinuxInterface::parseGatewayV6(table, "lo"));
+}
+
+TEST_F(SysInfoNetworkLinuxTest, Test_GatewayV6_OtherInterface)
+{
+    EXPECT_EQ(" ", NetworkLinuxInterface::parseGatewayV6(IPV6_ROUTE_TABLE, "eth1"));
+}
+
+TEST_F(SysInfoNetworkLinuxTest, Test_GatewayV6_GlobalNextHop)
+{
+    const std::string table
+    {
+        "00000000000000000000000000000000 00 00000000000000000000000000000000 00 20010db8000000000000000000000001 00000400 00000001 00000000 00000003     ens5\n"
+    };
+    EXPECT_EQ("2001:db8::1", NetworkLinuxInterface::parseGatewayV6(table, "ens5"));
+}
+
+TEST_F(SysInfoNetworkLinuxTest, Test_GatewayV6_NoGatewayFlag)
+{
+    const std::string table
+    {
+        "00000000000000000000000000000000 00 00000000000000000000000000000000 00 fe800000000000000000000000000001 00000400 00000001 00000000 00000001     eth0\n"
+    };
+    EXPECT_EQ(" ", NetworkLinuxInterface::parseGatewayV6(table, "eth0"));
+}
+
+TEST_F(SysInfoNetworkLinuxTest, Test_GatewayV6_MalformedInput)
+{
+    const std::string table
+    {
+        "\n"
+        "garbage\n"
+        "00000000000000000000000000000000 00 00000000000000000000000000000000 00 fe80000000000000000000000000zz01 00000400 00000001 00000000 00000003     eth0\n"
+        "00000000000000000000000000000000 00 00000000000000000000000000000000 00 fe800000000000000000000000000001 00000400 00000001 00000000 1000000000000000003     eth0\n"
+    };
+    EXPECT_NO_THROW(NetworkLinuxInterface::parseGatewayV6(table, "eth0"));
+    EXPECT_EQ(" ", NetworkLinuxInterface::parseGatewayV6(table, "eth0"));
+    EXPECT_EQ(" ", NetworkLinuxInterface::parseGatewayV6("", "eth0"));
 }

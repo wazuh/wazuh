@@ -36,6 +36,7 @@ class SysInfoNetworkBSDWrapperMock: public INetworkInterfaceWrapper
         MOCK_METHOD(std::string, metrics, (), (const override));
         MOCK_METHOD(std::string, metricsV6, (), (const override));
         MOCK_METHOD(std::string, gateway, (), (const override));
+        MOCK_METHOD(std::string, gatewayV6, (), (const override));
         MOCK_METHOD(std::string, dhcp, (), (const override));
         MOCK_METHOD(uint32_t, mtu, (), (const override));
         MOCK_METHOD(LinkStats, stats, (), (const override));
@@ -119,6 +120,7 @@ TEST_F(SysInfoNetworkBSDTest, Test_AF_LINK)
     EXPECT_CALL(*mock, stats()).Times(1).WillOnce(Return(LinkStats{0, 1, 2, 3, 4, 5, 6, 7}));
     EXPECT_CALL(*mock, mtu()).Times(1).WillOnce(Return(1500));
     EXPECT_CALL(*mock, gateway()).Times(1).WillOnce(Return("8.8.4.4"));
+    EXPECT_CALL(*mock, gatewayV6()).Times(1).WillOnce(Return("fe80::1"));
     EXPECT_CALL(*mock, adapter()).Times(1).WillOnce(Return(""));
 
     EXPECT_NO_THROW(FactoryNetworkFamilyCreator<OSPlatformType::BSDBASED>::create(mock)->buildNetworkData(ifaddr));
@@ -139,6 +141,8 @@ TEST_F(SysInfoNetworkBSDTest, Test_AF_LINK)
     EXPECT_EQ(1500, ifaddr.at("mtu").get<int32_t>());
 
     EXPECT_EQ("8.8.4.4", ifaddr.at("gateway").get_ref<const std::string&>());
+
+    EXPECT_EQ("fe80::1", ifaddr.at("gateway6").get_ref<const std::string&>());
 }
 
 TEST_F(SysInfoNetworkBSDTest, Test_AF_UNSPEC_THROW_NULLPTR)

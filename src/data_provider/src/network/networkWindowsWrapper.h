@@ -203,12 +203,6 @@ class NetworkWindowsInterface final : public INetworkInterfaceWrapper
                                                                                 (reinterpret_cast<sockaddr_in*>(sockAddress))->sin_addr);
                         retVal += GATEWAY_SEPARATOR;
                     }
-                    else if (AF_INET6 == gatewayFamily)
-                    {
-                        retVal += Utils::NetworkWindowsHelper::IAddressToString(gatewayFamily,
-                                                                                (reinterpret_cast<sockaddr_in6*>(sockAddress))->sin6_addr);
-                        retVal += GATEWAY_SEPARATOR;
-                    }
 
                     gatewayAddress = gatewayAddress->Next;
                 }
@@ -241,6 +235,44 @@ class NetworkWindowsInterface final : public INetworkInterfaceWrapper
                     }
 
                     currentAdapterInfo = currentAdapterInfo->Next;
+                }
+            }
+
+            if (retVal.empty())
+            {
+                retVal = UNKNOWN_VALUE;
+            }
+            else
+            {
+                // Remove last GATEWAY_SEPARATOR (,)
+                retVal = retVal.substr(0, retVal.size() - 1);
+            }
+
+            return retVal;
+        }
+
+        std::string gatewayV6() const override
+        {
+            std::string retVal;
+            constexpr auto GATEWAY_SEPARATOR { "," };
+
+            // IPv6 gateways are not available under Windows XP
+            if (Utils::isVistaOrLater())
+            {
+                auto gatewayAddress { m_interfaceAddress->FirstGatewayAddress };
+
+                while (gatewayAddress)
+                {
+                    const auto sockAddress { gatewayAddress->Address.lpSockaddr };
+
+                    if (AF_INET6 == sockAddress->sa_family)
+                    {
+                        retVal += Utils::NetworkWindowsHelper::IAddressToString(AF_INET6,
+                                                                                (reinterpret_cast<sockaddr_in6*>(sockAddress))->sin6_addr);
+                        retVal += GATEWAY_SEPARATOR;
+                    }
+
+                    gatewayAddress = gatewayAddress->Next;
                 }
             }
 

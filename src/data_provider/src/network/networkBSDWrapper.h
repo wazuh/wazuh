@@ -12,6 +12,8 @@
 #ifndef _NETWORK_BSD_WRAPPER_H
 #define _NETWORK_BSD_WRAPPER_H
 
+#include <algorithm>
+#include <cstring>
 #include <ifaddrs.h>
 #include <net/if.h>
 #include <net/if_types.h>
@@ -43,6 +45,86 @@ class NetworkBSDInterface final : public INetworkInterfaceWrapper
 {
         ifaddrs* m_interfaceAddress;
         const std::string m_scanTime;
+
+        // Routing messages trim trailing zero bytes of a sockaddr, so a short one is padded with zeros
+        static bool isDefaultDestination(const sockaddr* destination, const int family)
+        {
+            sockaddr_storage storage {};
+            std::memcpy(&storage, destination, std::min<size_t>(destination->sa_len, sizeof(storage)));
+
+            if (AF_INET == family)
+            {
+                return AF_INET == destination->sa_family &&
+                       INADDR_ANY == reinterpret_cast<sockaddr_in*>(&storage)->sin_addr.s_addr;
+            }
+
+            if (AF_INET6 == family)
+            {
+                return AF_INET6 == destination->sa_family &&
+                       IN6_IS_ADDR_UNSPECIFIED(&reinterpret_cast<sockaddr_in6*>(&storage)->sin6_addr);
+            }
+
+            return false;
+        }
+
+        std::string gatewayByFamily(const int family) const
+        {
+            std::string retVal;
+            size_t tableSize { 0 };
+            int mib[] = { CTL_NET, AF_ROUTE, 0, AF_UNSPEC, NET_RT_FLAGS, RTF_UP | RTF_GATEWAY };
+            const auto sdl { reinterpret_cast<sockaddr_dl*>(m_interfaceAddress->ifa_addr) };
+
+            if (sdl && sysctl(mib, sizeof(mib) / sizeof(int), nullptr, &tableSize, nullptr, 0) == 0)
+            {
+                std::unique_ptr<char[]> table { std::make_unique<char[]>(tableSize) };
+
+                if (sysctl(mib, sizeof(mib) / sizeof(int), table.get(), &tableSize, nullptr, 0) == 0)
+                {
+                    for (char* p = table.get(); p < table.get() + tableSize; p += reinterpret_cast<rt_msghdr*>(p)->rtm_msglen)
+                    {
+                        const auto msg { reinterpret_cast<rt_msghdr*>(p) };
+                        const auto sa { reinterpret_cast<sockaddr*>(msg + 1) };
+
+                        if (0 == msg->rtm_msglen)
+                        {
+                            break;
+                        }
+
+                        if ((msg->rtm_addrs & (RTA_DST | RTA_GATEWAY)) != (RTA_DST | RTA_GATEWAY) ||
+                                msg->rtm_index != sdl->sdl_index ||
+                                !isDefaultDestination(sa, family))
+                        {
+                            continue;
+                        }
+
+                        // The first address is the destination, the gateway follows it
+                        const auto sock { reinterpret_cast<sockaddr*>(reinterpret_cast<char*>(sa) + ROUNDUP(sa->sa_len)) };
+
+                        if (AF_INET == family && AF_INET == sock->sa_family)
+                        {
+                            retVal = Utils::NetworkHelper::IAddressToBinary(AF_INET, &reinterpret_cast<sockaddr_in*>(sock)->sin_addr);
+                            break;
+                        }
+                        else if (AF_INET6 == family && AF_INET6 == sock->sa_family)
+                        {
+                            auto address { reinterpret_cast<sockaddr_in6*>(sock)->sin6_addr };
+
+                            // The kernel embeds the scope id in bytes 2-3 of link-local addresses
+                            if (IN6_IS_ADDR_LINKLOCAL(&address))
+                            {
+                                address.s6_addr[2] = 0;
+                                address.s6_addr[3] = 0;
+                            }
+
+                            retVal = Utils::NetworkHelper::IAddressToBinary(AF_INET6, &address);
+                            break;
+                        }
+                    }
+                }
+            }
+
+            return retVal;
+        }
 
     public:
         explicit NetworkBSDInterface(ifaddrs* addrs)
@@ -119,44 +201,12 @@ class NetworkBSDInterface final : public INetworkInterfaceWrapper
 
         std::string gateway() const override
         {
-            std::string retVal;
-            size_t tableSize { 0 };
-            int mib[] = { CTL_NET, AF_ROUTE, 0, AF_UNSPEC, NET_RT_FLAGS, RTF_UP | RTF_GATEWAY };
+            return gatewayByFamily(AF_INET);
+        }
 
-            if (sysctl(mib, sizeof(mib) / sizeof(int), nullptr, &tableSize, nullptr, 0) == 0)
-            {
-                std::unique_ptr<char[]> table { std::make_unique<char[]>(tableSize) };
-
-                if (sysctl(mib, sizeof(mib) / sizeof(int), table.get(), &tableSize, nullptr, 0) == 0)
-                {
-                    size_t messageLength { 0 };
-
-                    for (char* p = table.get(); p < table.get() + tableSize; p += messageLength)
-                    {
-                        auto msg { reinterpret_cast<rt_msghdr*>(p) };
-                        auto sa { reinterpret_cast<sockaddr*>(msg + 1) };
-                        auto sdl { reinterpret_cast<sockaddr_dl*>(m_interfaceAddress->ifa_addr) };
-
-                        if (sdl &&
-                                (msg->rtm_addrs & RTA_GATEWAY) == RTA_GATEWAY &&
-                                msg->rtm_index == sdl->sdl_index)
-                        {
-                            auto sock { reinterpret_cast<sockaddr*>(reinterpret_cast<char*>(sa) + ROUNDUP(sa->sa_len)) };
-
-                            if (sock && AF_INET == sock->sa_family)
-                            {
-                                retVal = Utils::NetworkHelper::IAddressToBinary(AF_INET, &reinterpret_cast<sockaddr_in*>(sock)->sin_addr);
-                            }
-
-                            break;
-                        }
-
-                        messageLength = msg->rtm_msglen;
-                    }
-                }
-            }
-
-            return retVal;
+        std::string gatewayV6() const override
+        {
+            return gatewayByFamily(AF_INET6);
         }
 
         std::string metrics() const override
