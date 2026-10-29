@@ -143,6 +143,25 @@ extern "C" int __wrap_cbaseline_list_containers(const char*, cb_container_id_sin
     return static_cast<int>(admission.size());
 }
 
+// The production side asks through the extended entry point, because it needs to
+// know whether the listing covered the whole node. Both have to be wrapped: the
+// plain one is what cbaseline_list_containers() resolves to, and leaving this one
+// unwrapped sends every listing to the real connector, which answers -1 here.
+extern "C" int
+__wrap_cbaseline_list_containers_ex(const char* socket, cb_container_id_sink_t sink, void* ctx, int* out_complete)
+{
+    const int listed_count = __wrap_cbaseline_list_containers(socket, sink, ctx);
+
+    if (out_complete != nullptr)
+    {
+        // A failed listing is never complete, matching the real shim. Otherwise
+        // these tests model a connector that has keyed everything it reports.
+        *out_complete = (listed_count >= 0) ? 1 : 0;
+    }
+
+    return listed_count;
+}
+
 extern "C" int __wrap_cbaseline_run_fim_dbsync(const char*,
                                                const cb_monitored_path_t*,
                                                int,
