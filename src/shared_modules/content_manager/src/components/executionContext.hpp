@@ -14,6 +14,7 @@
 #include "chainOfResponsability.hpp"
 #include "componentsHelper.hpp"
 #include "defs.h"
+#include "initialLoadState.hpp"
 #include "json.hpp"
 #include "sharedDefs.hpp"
 #include "stringHelper.h"
@@ -105,7 +106,7 @@ private:
     void createRocksDB(UpdaterBaseContext& context) const
     {
         // Create the database name. It will be the topic name with the prefix "updater_" and the suffix "_metadata".
-        const auto databaseName {"/updater_" + context.topicName + "_metadata"};
+        const auto databaseName {"/" + InitialLoadState::updaterDatabaseName(context.topicName)};
         const auto& databasePath {context.configData.at("databasePath").get_ref<std::string&>()};
 
         // Check if the output folder exists.
@@ -120,7 +121,8 @@ private:
 
         // Create database columns if necessary.
         const std::vector<std::string> COLUMNS {Components::Columns::CURRENT_OFFSET,
-                                                Components::Columns::DOWNLOADED_FILE_HASH};
+                                                Components::Columns::DOWNLOADED_FILE_HASH,
+                                                Components::Columns::INITIAL_LOAD_PENDING};
         for (const auto& columnName : COLUMNS)
         {
             if (!context.spRocksDB->columnExists(columnName))

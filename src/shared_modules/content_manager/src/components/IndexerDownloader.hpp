@@ -12,20 +12,26 @@
 #define _INDEXER_DOWNLOADER_HPP
 
 #include "componentsHelper.hpp"
-#include "indexerConnector.hpp"
+#include "indexerSearchClient.hpp"
+#include "initialLoadState.hpp"
 #include "sharedDefs.hpp"
 #include "updaterContext.hpp"
 #include "utils/chainOfResponsability.hpp"
 #include "utils/timeHelper.h"
+#include <algorithm>
 #include <atomic>
 #include <chrono>
+#include <cinttypes>
+#include <limits>
 #include <memory>
 #include <mutex>
 #include <optional>
+#include <stdexcept>
 #include <string>
 #include <string_view>
 #include <thread>
 #include <tuple>
+#include <utility>
 #include <vector>
 
 /**
@@ -72,12 +78,17 @@ private:
         Unknown
     };
 
-    static constexpr std::chrono::seconds INDEXER_RETRY_INTERVAL {30};
-
     /// Consecutive failures tolerated below WARNING before escalating (indexer settling after restart).
     static constexpr std::size_t INDEXER_WARN_AFTER_ATTEMPTS {3};
 
     nlohmann::json m_config;
+    IndexerSearchClientFactory m_clientFactory; ///< Builds the indexer client of every connection this component opens.
+    std::chrono::milliseconds m_retryInterval;  ///< Wait between initial-load attempts (30 s in production).
+
+    size_t retryIntervalSeconds() const
+    {
+        return static_cast<size_t>(std::chrono::duration_cast<std::chrono::seconds>(m_retryInterval).count());
+    }
     mutable std::mutex m_callbackMutex; ///< Serializes processPage calls across parallel slices.
 
     /**
@@ -361,7 +372,7 @@ private:
      *
      * @param outRawStatus If non-null, receives the raw status string for logging.
      */
-    ConsumerStatus readConsumerStatus(IndexerConnectorSync& syncConnector,
+    ConsumerStatus readConsumerStatus(IIndexerSearchClient& syncConnector,
                                       std::string_view consumerStatusIndex,
                                       std::string_view consumerStatusId,
                                       std::string* outRawStatus = nullptr) const
@@ -444,7 +455,8 @@ private:
             return false;
         }
 
-        IndexerConnectorSync syncConnector(m_config.at("indexer"), LoggingContext {WM_CONTENTUPDATER, {}});
+        const auto spClient = m_clientFactory(m_config.at("indexer"));
+        auto& syncConnector = *spClient;
 
         const auto pollSeconds = static_cast<size_t>(
             std::chrono::duration_cast<std::chrono::seconds>(CONSUMER_STATUS_POLL_INTERVAL).count());
@@ -589,7 +601,8 @@ private:
             nlohmann::json::array({"FEED-GLOBAL", "OSCPE-GLOBAL", "CNA-MAPPING-GLOBAL"});
 
         const auto& indexName = m_config.at("indexer").at("index").get_ref<const std::string&>();
-        IndexerConnectorSync syncConnector(m_config.at("indexer"), LoggingContext {WM_CONTENTUPDATER, {}});
+        const auto spClient = m_clientFactory(m_config.at("indexer"));
+        auto& syncConnector = *spClient;
 
         const auto pollSeconds =
             static_cast<size_t>(std::chrono::duration_cast<std::chrono::seconds>(POLL_INTERVAL).count());
@@ -778,6 +791,65 @@ private:
      * @return true if this call caused (or coincided with) a durable flush of the feed
      *         database, i.e. it is now safe to persist a cursor up to and including this page.
      */
+    /**
+     * @brief The initial-load marker: set while an initial load has started and its completion has not
+     *        been accepted, so that a restart in between resumes through the retrying initial-load
+     *        path from the persisted cursor instead of the incremental path (which does not retry).
+     */
+    static constexpr std::string_view INITIAL_LOAD_PENDING_KEY {InitialLoadState::PENDING_KEY};
+
+    bool isInitialLoadPending(const UpdaterContext& context) const
+    {
+        const auto& db = context.spUpdaterBaseContext->spRocksDB;
+        if (!db || !db->columnExists(Components::Columns::INITIAL_LOAD_PENDING))
+        {
+            return false;
+        }
+        std::string value;
+        return db->get(std::string {INITIAL_LOAD_PENDING_KEY}, value, Components::Columns::INITIAL_LOAD_PENDING);
+    }
+
+    void setInitialLoadPending(const UpdaterContext& context, const bool pending) const
+    {
+        const auto& db = context.spUpdaterBaseContext->spRocksDB;
+        if (!db)
+        {
+            return;
+        }
+        if (!db->columnExists(Components::Columns::INITIAL_LOAD_PENDING))
+        {
+            db->createColumn(Components::Columns::INITIAL_LOAD_PENDING);
+        }
+        if (pending)
+        {
+            db->put(std::string {INITIAL_LOAD_PENDING_KEY}, "1", Components::Columns::INITIAL_LOAD_PENDING);
+        }
+        else
+        {
+            db->delete_(std::string {INITIAL_LOAD_PENDING_KEY}, Components::Columns::INITIAL_LOAD_PENDING);
+        }
+    }
+
+    /**
+     * @brief The stored cursor when it is a usable resume point (a positive integer), else empty.
+     */
+    std::string getResumeCursor(const UpdaterContext& context) const
+    {
+        const auto stored = getStoredCursor(context);
+        if (stored.empty())
+        {
+            return {};
+        }
+        try
+        {
+            return std::stoull(stored) > 0 ? stored : std::string {};
+        }
+        catch (const std::exception&)
+        {
+            return {};
+        }
+    }
+
     bool processPage(UpdaterContext& context, const nlohmann::json& hits, const std::string& cursor) const
     {
         nlohmann::json message;
@@ -863,10 +935,11 @@ private:
 
         const auto& sourceFilter = getSourceFilter();
 
-        IndexerConnectorSync syncConnector(m_config.at("indexer"), LoggingContext {WM_CONTENTUPDATER, {}});
+        const auto spClient = m_clientFactory(m_config.at("indexer"));
+        auto& syncConnector = *spClient;
 
         auto pit = syncConnector.createPointInTime({indexName}, PIT_KEEP_ALIVE);
-        auto pitGuard = std::unique_ptr<PointInTime, std::function<void(PointInTime*)>>(
+        auto pitGuard = std::unique_ptr<SearchPit, std::function<void(SearchPit*)>>(
             &pit,
             [&syncConnector, escalateLogs](auto* p)
             {
@@ -987,10 +1060,11 @@ private:
 
         const auto& sourceFilter = getSourceFilter();
 
-        IndexerConnectorSync syncConnector(m_config.at("indexer"), LoggingContext {WM_CONTENTUPDATER, {}});
+        const auto spClient = m_clientFactory(m_config.at("indexer"));
+        auto& syncConnector = *spClient;
 
         auto pit = syncConnector.createPointInTime({indexName}, PIT_KEEP_ALIVE);
-        auto pitGuard = std::unique_ptr<PointInTime, std::function<void(PointInTime*)>>(
+        auto pitGuard = std::unique_ptr<SearchPit, std::function<void(SearchPit*)>>(
             &pit,
             [&syncConnector, escalateLogs](auto* p)
             {
@@ -1030,6 +1104,18 @@ private:
         std::atomic<size_t> totalProcessed {0};
         std::string maxCursor = startCursor;
         std::mutex cursorMutex;
+        // Resume bookkeeping, all under cursorMutex, which also covers each page delivery: the last
+        // offset each slice delivered and which slices ran out of documents. Every slice pages in
+        // offset order, so every document with an offset at or below the lowest unfinished frontier
+        // was delivered by every slice; once the consumer answers "flushed" that frontier is durable
+        // and becomes the cursor an interrupted load resumes from (a slice that was ahead re-reads at
+        // most what it read since the flush). Once a slice fails no other slice delivers: a consumer
+        // failure may have dropped pages it had accepted, which a later "flushed" would not cover.
+        const uint64_t startOffset = startCursor.empty() ? 0ULL : std::stoull(startCursor);
+        std::vector<uint64_t> sliceFrontier(numSlices, startOffset);
+        std::vector<bool> sliceFinished(numSlices, false);
+        bool attemptFailed = false;
+        uint64_t persistedOffset = startOffset;
         std::vector<std::thread> threads;
         std::vector<std::string> errors;
         std::mutex errorsMutex;
@@ -1045,12 +1131,14 @@ private:
             try
             {
                 // Each slice gets its own connector to avoid sharing HTTP state across threads.
-                IndexerConnectorSync sliceConnector(m_config.at("indexer"), LoggingContext {WM_CONTENTUPDATER, {}});
+                const auto spSliceClient = m_clientFactory(m_config.at("indexer"));
+                auto& sliceConnector = *spSliceClient;
 
                 const nlohmann::json sliceParam = {{"id", sliceId}, {"max", numSlices}};
                 std::optional<nlohmann::json> searchAfter = std::nullopt;
                 size_t sliceProcessed = 0;
                 std::string sliceCursor = startCursor;
+                bool abandoned = false;
                 auto t0 = std::chrono::steady_clock::now();
 
                 while (true)
@@ -1077,8 +1165,57 @@ private:
                         sliceCursor = std::to_string(lastHit.at("_source").at("offset").get<uint64_t>());
                     }
 
-                    processPage(context, hitArray, sliceCursor);
-                    sliceProcessed += hitArray.size();
+                    {
+                        // Delivery and bookkeeping in one critical section: otherwise another slice could
+                        // deliver an unflushed page and advance its frontier between this page's
+                        // "flushed" answer and the minimum computed from it.
+                        std::lock_guard<std::mutex> lock(cursorMutex);
+                        if (attemptFailed)
+                        {
+                            abandoned = true;
+                            break;
+                        }
+                        bool flushed = false;
+                        try
+                        {
+                            flushed = processPage(context, hitArray, sliceCursor);
+                        }
+                        catch (...)
+                        {
+                            attemptFailed = true;
+                            throw;
+                        }
+                        sliceProcessed += hitArray.size();
+                        if (!sliceCursor.empty())
+                        {
+                            sliceFrontier[sliceId] = std::stoull(sliceCursor);
+                        }
+                        if (flushed)
+                        {
+                            uint64_t safe = std::numeric_limits<uint64_t>::max();
+                            bool anyUnfinished = false;
+                            for (size_t i = 0; i < numSlices; ++i)
+                            {
+                                if (!sliceFinished[i])
+                                {
+                                    safe = std::min(safe, sliceFrontier[i]);
+                                    anyUnfinished = true;
+                                }
+                            }
+                            if (!anyUnfinished)
+                            {
+                                safe = *std::max_element(sliceFrontier.begin(), sliceFrontier.end());
+                            }
+                            if (safe > persistedOffset)
+                            {
+                                persistedOffset = safe;
+                                persistCursor(context, std::to_string(safe));
+                                logDebug2(WM_CONTENTUPDATER,
+                                          "IndexerDownloader: Safe resume point persisted at offset %" PRIu64 ".",
+                                          safe);
+                            }
+                        }
+                    }
 
                     if (hitArray.size() < pageSize)
                     {
@@ -1089,6 +1226,12 @@ private:
                 }
 
                 totalProcessed += sliceProcessed;
+
+                if (!abandoned && !context.spUpdaterBaseContext->spStopCondition->check())
+                {
+                    std::lock_guard<std::mutex> lock(cursorMutex);
+                    sliceFinished[sliceId] = true;
+                }
 
                 // Update global max cursor
                 {
@@ -1124,12 +1267,18 @@ private:
                         sliceId,
                         sliceId + 1,
                         numSlices,
-                        stopped ? "interrupted" : "complete",
+                        abandoned ? "abandoned after another slice failed"
+                        : stopped ? "interrupted"
+                                  : "complete",
                         sliceProcessed,
                         elapsed);
             }
             catch (const std::exception& e)
             {
+                {
+                    std::lock_guard<std::mutex> lock(cursorMutex);
+                    attemptFailed = true;
+                }
                 std::lock_guard<std::mutex> lock(errorsMutex);
                 errors.push_back("Slice " + std::to_string(sliceId) + ": " + e.what());
                 if (escalateLogs)
@@ -1162,15 +1311,16 @@ private:
         if (interrupted.load())
         {
             logInfo(WM_CONTENTUPDATER,
-                    "IndexerDownloader: Initial load interrupted by stop request — cursor not persisted, %zu "
-                    "documents processed this cycle will be re-fetched on the next initial load.",
-                    totalProcessed.load());
+                    "IndexerDownloader: Initial load interrupted by stop request — %zu documents processed this "
+                    "cycle; the next initial load resumes from offset %" PRIu64 ".",
+                    totalProcessed.load(),
+                    persistedOffset);
             return totalProcessed.load();
         }
 
-        // Persist cursor only after all slices complete
+        // The tail after the last "flushed" answer is durable only once the consumer has processed the
+        // completion: UpdateIndexerCursor stores this cursor after that, never before.
         context.data["cursor"] = maxCursor;
-        persistCursor(context, maxCursor);
 
         return totalProcessed.load();
     }
@@ -1186,7 +1336,6 @@ private:
      */
     size_t initialLoad(UpdaterContext& context) const
     {
-        const nlohmann::json query = {{"match_all", nlohmann::json::object()}};
         const size_t numSlices = m_config.at("indexer").value("numSlices", 2u);
         size_t attempt = 0;
 
@@ -1194,14 +1343,30 @@ private:
         {
             notifyUpdateStarted(context);
 
-            if (attempt == 0)
+            // Resume point: the cursor a previous attempt (or a previous run of this load) persisted
+            // on a "flushed" answer. Empty means nothing durable yet: read from the beginning.
+            const auto resumeFrom = getResumeCursor(context);
+            const nlohmann::json query =
+                resumeFrom.empty() ? nlohmann::json {{"match_all", nlohmann::json::object()}}
+                                   : nlohmann::json {{"range", {{"offset", {{"gt", std::stoull(resumeFrom)}}}}}};
+
+            if (attempt == 0 && resumeFrom.empty())
             {
                 logInfo(WM_CONTENTUPDATER, "IndexerDownloader: Starting initial full load (slices=%zu)", numSlices);
             }
+            else if (attempt == 0)
+            {
+                logInfo(WM_CONTENTUPDATER,
+                        "IndexerDownloader: Resuming initial full load from offset %s (slices=%zu)",
+                        resumeFrom.c_str(),
+                        numSlices);
+            }
             else
             {
-                logInfo(
-                    WM_CONTENTUPDATER, "IndexerDownloader: Retrying initial full load (attempt %zu) ...", attempt + 1);
+                logInfo(WM_CONTENTUPDATER,
+                        "IndexerDownloader: Retrying initial full load (attempt %zu) from offset %s ...",
+                        attempt + 1,
+                        resumeFrom.empty() ? "0" : resumeFrom.c_str());
             }
 
             // Stay at INFO/DEBUG for the first attempts, escalate to WARNING/ERROR afterwards.
@@ -1214,33 +1379,50 @@ private:
             {
                 if (numSlices > 1)
                 {
-                    totalProcessed = fetchWithSlicedPit(context, query, "", numSlices, escalate);
+                    totalProcessed = fetchWithSlicedPit(context, query, resumeFrom, numSlices, escalate);
                 }
                 else
                 {
-                    totalProcessed = fetchWithPit(context, query, "", escalate);
+                    totalProcessed = fetchWithPit(context, query, resumeFrom, escalate);
                 }
             }
             catch (const std::exception& e)
             {
                 exceptionOccurred = true;
+                // The reason is visible from the first attempt: an operator reading the log must not
+                // wait for the third failure to learn why the feed is not loading.
+                const auto nextResume = getResumeCursor(context);
                 if (escalate)
                 {
-                    logWarn(WM_CONTENTUPDATER,
-                            "IndexerDownloader: Initial load failed (%s) — retrying in %zus.",
-                            e.what(),
-                            static_cast<size_t>(INDEXER_RETRY_INTERVAL.count()));
+                    logWarn(
+                        WM_CONTENTUPDATER,
+                        "IndexerDownloader: Initial load attempt %zu failed (%s) — retrying in %zus from offset %s.",
+                        attempt + 1,
+                        e.what(),
+                        retryIntervalSeconds(),
+                        nextResume.empty() ? "0" : nextResume.c_str());
                 }
                 else
                 {
-                    logDebug2(WM_CONTENTUPDATER,
-                              "IndexerDownloader: Indexer not available yet (%s) — retrying in %zus "
-                              "(attempt %zu/%zu).",
-                              e.what(),
-                              static_cast<size_t>(INDEXER_RETRY_INTERVAL.count()),
-                              attempt + 1,
-                              INDEXER_WARN_AFTER_ATTEMPTS);
+                    logInfo(
+                        WM_CONTENTUPDATER,
+                        "IndexerDownloader: Initial load attempt %zu failed (%s) — retrying in %zus from offset %s.",
+                        attempt + 1,
+                        e.what(),
+                        retryIntervalSeconds(),
+                        nextResume.empty() ? "0" : nextResume.c_str());
                 }
+            }
+
+            if (totalProcessed == 0 && !exceptionOccurred && !resumeFrom.empty())
+            {
+                // Nothing after the resume point: the previous attempt had delivered everything before
+                // it failed (or the completion was accepted but not recorded). The load is complete.
+                context.data["cursor"] = resumeFrom;
+                logInfo(WM_CONTENTUPDATER,
+                        "IndexerDownloader: Initial load download phase complete — no documents after offset %s.",
+                        resumeFrom.c_str());
+                return 0;
             }
 
             if (totalProcessed > 0)
@@ -1262,14 +1444,14 @@ private:
                 {
                     logWarn(WM_CONTENTUPDATER,
                             "IndexerDownloader: Indexer index not ready (0 documents) — retrying in %zus.",
-                            static_cast<size_t>(INDEXER_RETRY_INTERVAL.count()));
+                            retryIntervalSeconds());
                 }
                 else
                 {
                     logDebug2(WM_CONTENTUPDATER,
                               "IndexerDownloader: Indexer index not ready yet (0 documents) — retrying in %zus "
                               "(attempt %zu/%zu).",
-                              static_cast<size_t>(INDEXER_RETRY_INTERVAL.count()),
+                              retryIntervalSeconds(),
                               attempt + 1,
                               INDEXER_WARN_AFTER_ATTEMPTS);
                 }
@@ -1278,8 +1460,7 @@ private:
             ++attempt;
 
             // waitFor returns true when spStopCondition is set (agent shutdown).
-            if (context.spUpdaterBaseContext->spStopCondition->waitFor(
-                    std::chrono::duration_cast<std::chrono::milliseconds>(INDEXER_RETRY_INTERVAL)))
+            if (context.spUpdaterBaseContext->spStopCondition->waitFor(m_retryInterval))
             {
                 logInfo(WM_CONTENTUPDATER, "IndexerDownloader: Stop requested during initial load retry — aborting.");
                 return 0;
@@ -1316,10 +1497,20 @@ public:
      * @brief Construct a new IndexerDownloader.
      *
      * @param config Full updater config JSON (must contain an "indexer" sub-object).
+     * @param clientFactory Builds the indexer client for every connection (one per slice worker).
+     * @param retryInterval Wait between initial-load attempts; tests shorten it.
      */
-    explicit IndexerDownloader(const nlohmann::json& config)
+    explicit IndexerDownloader(const nlohmann::json& config,
+                               IndexerSearchClientFactory clientFactory,
+                               std::chrono::milliseconds retryInterval = std::chrono::seconds {30})
         : m_config(config)
+        , m_clientFactory(std::move(clientFactory))
+        , m_retryInterval(retryInterval)
     {
+        if (!m_clientFactory)
+        {
+            throw std::invalid_argument("IndexerDownloader: a search client factory is required");
+        }
     }
 
     /**
@@ -1359,7 +1550,9 @@ public:
                 }
             }
 
-            const bool forceInitialLoad = lastCursor.empty();
+            // A pending marker means a previous initial load persisted a resume point and never had
+            // its completion accepted (stop, crash): continue it through the retrying path.
+            const bool forceInitialLoad = lastCursor.empty() || isInitialLoadPending(*context);
             if (!waitUntilConsumerReady(*context))
             {
                 break;
@@ -1373,6 +1566,7 @@ public:
             size_t totalProcessed = 0;
             if (forceInitialLoad)
             {
+                setInitialLoadPending(*context, true);
                 totalProcessed = initialLoad(*context);
             }
             else
@@ -1381,14 +1575,21 @@ public:
             }
 
             // If a shutdown was requested, skip the completion signal — no point reloading
-            // maps or triggering a rescan if the agent is going down.
+            // maps or triggering a rescan if the agent is going down. Without it the tail of this
+            // download is not durable, so its cursor must not reach UpdateIndexerCursor: the cursor
+            // persisted on the last "flushed" answer stays the resume point.
             if (context->spUpdaterBaseContext->spStopCondition->check())
             {
+                context->data.erase("cursor");
                 break;
             }
 
             if (sendCompletionSignal(*context, totalProcessed))
             {
+                if (forceInitialLoad)
+                {
+                    setInitialLoadPending(*context, false);
+                }
                 break;
             }
 
@@ -1400,20 +1601,19 @@ public:
                 logWarn(WM_CONTENTUPDATER,
                         "IndexerDownloader: downloaded feed is not ready after completion validation. "
                         "The stored cursor was invalidated and a full reload will be retried in %zus.",
-                        static_cast<size_t>(INDEXER_RETRY_INTERVAL.count()));
+                        retryIntervalSeconds());
             }
             else
             {
                 logDebug2(WM_CONTENTUPDATER,
                           "IndexerDownloader: downloaded feed not ready yet after completion validation — "
                           "invalidating cursor and retrying a full reload in %zus (attempt %zu/%zu).",
-                          static_cast<size_t>(INDEXER_RETRY_INTERVAL.count()),
+                          retryIntervalSeconds(),
                           completionFailures,
                           INDEXER_WARN_AFTER_ATTEMPTS);
             }
 
-            if (context->spUpdaterBaseContext->spStopCondition->waitFor(
-                    std::chrono::duration_cast<std::chrono::milliseconds>(INDEXER_RETRY_INTERVAL)))
+            if (context->spUpdaterBaseContext->spStopCondition->waitFor(m_retryInterval))
             {
                 logInfo(WM_CONTENTUPDATER,
                         "IndexerDownloader: Stop requested during completion validation retry — aborting.");

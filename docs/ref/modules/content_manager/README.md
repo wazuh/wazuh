@@ -29,7 +29,9 @@ Each update:
    - **Initial load** (no cursor): first waits until the global-map documents `FEED-GLOBAL`,
      `OSCPE-GLOBAL` and `CNA-MAPPING-GLOBAL` are present in `.wazuh-threatintel-vulnerabilities`
      (checked every 30 seconds), then downloads every document of the index. If the download fails
-     or the index returns no documents, it retries every 30 seconds.
+     or the index returns no documents, it retries every 30 seconds from the last cursor it persisted
+     (every failed attempt is logged with its reason and that offset). A manager restart during the
+     initial load continues it from that cursor as well.
    - **Incremental update** (cursor stored): downloads only the documents whose `offset` is greater
      than the cursor.
 3. **Downloads with a point-in-time (PIT) snapshot**, sorted by `offset` and `_id`, `pageSize`
@@ -39,9 +41,10 @@ Each update:
    as not usable, the stored cursor is invalidated and a full reload is retried after 30 seconds.
 5. **Stores the new cursor**, so the next update resumes from it.
 
-A stop of the manager during a download aborts it. The cursor already stored is kept for a sequential
-download; an interrupted parallel (sliced) initial load stores no cursor, so the next run starts the
-initial load again.
+A stop of the manager during a download aborts it. The cursor persisted so far is kept in both modes
+(a sequential download persists it on every flush of the consumer, a parallel one persists the lowest
+offset every slice has delivered at each flush), and an initial load left incomplete is marked as
+pending, so the next run continues it from that cursor instead of starting again.
 
 ## Configuration
 
@@ -64,11 +67,13 @@ places:
 
 | Path | Contents |
 |---|---|
-| `/var/wazuh-manager/queue/vd/vd_updater/rocksdb/updater_vulnerability_feed_manager_metadata/` | RocksDB database holding the cursor (`current_offset` column) |
+| `/var/wazuh-manager/queue/vd/vd_updater/rocksdb/updater_vulnerability_feed_manager_metadata/` | RocksDB database holding the cursor (`current_offset` column) and the marker of an initial load not yet completed (`initial_load_pending` column) |
 
 The Vulnerability Scanner deletes the whole `queue/vd/vd_updater/` directory when it finds its own
 feed database (`queue/vd/feed`) incomplete or unreadable at start, which forces the next update to be
-an initial load.
+an initial load. It keeps the directory when the database is incomplete only because an initial load
+was interrupted (the global maps sit near the end of the feed) and the database still holds the CVEs
+that load stored; that load then continues from its cursor.
 
 ## On-demand updates
 

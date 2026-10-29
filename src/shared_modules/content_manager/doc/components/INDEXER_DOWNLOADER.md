@@ -16,13 +16,13 @@ Every run loops until it completes, fails, or the stop condition is signalled:
 
 ### Modes of operation
 
-The downloader selects its mode based on the cursor stored in the RocksDB database (`CURRENT_OFFSET` column):
+The downloader selects its mode based on the cursor stored in the RocksDB database (`CURRENT_OFFSET` column) and on the initial-load marker (`initial_load_pending` column, key `pending`):
 
-#### Initial load (no cursor, or cursor == "0")
+#### Initial load (no cursor, cursor == "0", or the initial-load marker set)
 
-Triggered on the first run or when no valid cursor exists. A stored cursor that is not an integer is logged as a warning (`stored cursor '<value>' is not a valid integer — falling back to initial load.`) and treated as absent. Downloads all documents from the index using a `match_all` query, sorted by `(offset ASC, _id ASC)` and paginated with PIT + `search_after`.
+Triggered on the first run, when no valid cursor exists, or when a previous initial load persisted a resume point but never had its completion accepted (the marker is written when an initial load starts and deleted when the consumer accepts the completion signal). A stored cursor that is not an integer is logged as a warning (`stored cursor '<value>' is not a valid integer — falling back to initial load.`) and treated as absent. Downloads the documents of the index sorted by `(offset ASC, _id ASC)` and paginated with PIT + `search_after`: all of them with a `match_all` query when no cursor is stored, only those with `offset` greater than the stored cursor otherwise (`Resuming initial full load from offset <n>`).
 
-If the index returns zero documents (not yet populated), or the download throws, the downloader retries the whole load from the beginning every 30 seconds until it gets data or a stop condition is signalled. The first two failed attempts log at debug level; from the third on, at warning level.
+If the index returns zero documents (not yet populated) or the download throws, the downloader waits 30 seconds and tries again **from the last persisted cursor** (`Retrying initial full load (attempt <n>) from offset <m>`), until it gets data or a stop condition is signalled. Every failed attempt logs its reason and the resume offset: at info level for the first two, at warning level from the third on. A retry that finds no document after the stored cursor completes the load (the previous attempt had delivered everything).
 
 #### Incremental update (cursor stored)
 
@@ -72,27 +72,36 @@ createPointInTime(index, "5m")
   → spawn N threads, each with slice {id: i, max: N}:
       while pages remain in this slice:
           search(pit, pageSize, query, sort, searchAfter, sourceFilter, slice)
-          → lock(m_callbackMutex)
-          → processPage() → fileProcessingCallback(json message)
+          → lock(cursorMutex)  // held until the bookkeeping below is done
+          → processPage() → lock(m_callbackMutex) → fileProcessingCallback(json message)
+          → record the slice's last offset; if the callback answered "flushed",
+            persistCursor(lowest last offset among the slices still running)
   → join all threads
-  → if no slice failed and no stop was requested: persistCursor(max offset across all slices)
+  → if no slice failed and no stop was requested: context.data["cursor"] = max offset across all slices
   → deletePointInTime(pit)
 ```
 
-A failed slice fails the whole load (`<n> slice(s) failed: <first error>`), which the initial load retries after 30 seconds. A stop request during a sliced load persists no cursor: a per-slice offset is not a safe resume point, so the next run performs the initial load again.
+Every slice pages in `offset` order, so every document whose `offset` is at or below the lowest offset the unfinished slices have delivered was delivered by all of them; when the consumer answers `"flushed"` that offset is durable. The delivery and that bookkeeping run under one lock (`cursorMutex`): otherwise another slice could deliver a page the flush did not cover and advance its offset before the minimum is taken, and the persisted cursor would cover documents that are not durable yet. Searches stay outside the lock, so the slices still overlap their network I/O. That offset is persisted as the resume point (`Safe resume point persisted at offset <n>` at debug level). A failed slice fails the whole load (`<n> slice(s) failed: <first error>`) and the other slices stop delivering at once (`Slice <i> (<i+1>/<n>) abandoned after another slice failed`): a consumer failure may have dropped pages it had already accepted with its open write batch, and a later `"flushed"` from another slice would persist a cursor above them. The initial load retries after 30 seconds from that resume point: the slice that was ahead reads again at most what it had read since the last flush. A stop request keeps the last persisted resume point and the initial-load marker, so the next run continues the initial load from there.
 
 ### Source field filtering
 
 Each search request includes a `_source.excludes` filter (`getSourceFilter()`) that removes CVE5 fields not used by the scan pipeline (descriptions, references, credits, timeline, unused CVSS sub-fields, etc.). Excludes are used rather than includes because the non-CVE documents (`FEED-GLOBAL`, `OSCPE-GLOBAL`, `CNA-MAPPING-GLOBAL`, `TID-*`) do not share the CVE5 structure.
+
+### Why a resumed load is consistent
+
+- Within one attempt every slice reads the same point-in-time context: the indexer freezes the index view when the PIT is opened and every page request renews it, so a document cannot change between one slice and another, and the slices are disjoint partitions of that one view.
+- Across attempts a new PIT is opened, but the resume query is `offset > <persisted cursor>` and a document's `offset` is the offset of its last change in the CTI feed (the indexer's content manager records the highest offset of a snapshot as the consumer's `local_offset` and applies later changes by offset). A document delivered by every slice before the persisted cursor is either unchanged (same offset, not read again) or changed since (a higher offset, read again with its current content). Re-delivery overwrites by resource id, so a resumed attempt never leaves an older version behind. This is the same invariant the incremental update already relies on.
+- A snapshot swap on the indexer (alias moved to a rebuilt index) between two attempts keeps the invariant: the rebuilt index carries the same offsets for unchanged documents and higher ones for changed documents.
 
 ### Cursor persistence
 
 The cursor is the highest `offset` seen, stored as a string in the `current_offset` column of the updater RocksDB database:
 
 - **Sequential download:** after a page whose callback answered `"flushed"` (the consumer has durably written everything up to it), that page's cursor is persisted. A stop request leaves `context.data["cursor"]` at the last flushed cursor, so the next run resumes from data the consumer really holds.
-- **Sliced download:** the cursor is persisted only after every slice completed (see above).
-- **End of run:** `context.data["cursor"]` carries the final cursor, which `UpdateIndexerCursor` persists.
-- If the **Indexer** fails during an initial load, `initialLoad()` catches the exception, waits 30 seconds, and retries the full download from scratch. During an incremental update the exception fails the run.
+- **Sliced download:** on every `"flushed"` answer the lowest offset delivered by the slices still running is persisted (see above); the final cursor, the maximum across slices, is only placed in `context.data["cursor"]`.
+- **End of run:** `context.data["cursor"]` carries the final cursor, which `UpdateIndexerCursor` persists after the consumer has accepted the completion signal (a successful answer means the consumer has flushed the tail of the download, even when it is shutting down; the feed database runs without WAL). When a stop request arrives after the download and before the completion signal, the downloader removes `context.data["cursor"]`, so `UpdateIndexerCursor` cannot store the cursor of a tail that is not durable; the cursor persisted on the last `"flushed"` answer stays the resume point.
+- If the **Indexer** fails during an initial load, `initialLoad()` catches the exception, waits 30 seconds, and retries from the last persisted cursor (from the beginning when none was persisted yet). During an incremental update the exception fails the run.
+- The initial-load marker (`initial_load_pending` column) is set while an initial load runs and cleared once the consumer accepts its completion signal: a restart in between re-enters the initial load from the persisted cursor instead of the incremental update, which does not retry. A marker left behind by a crash after an accepted completion is harmless: the next run resumes from the final cursor, finds no document, sends the completion again (`changed = false`) and clears it. The column and key are public (`include/initialLoadState.hpp`, `InitialLoadState::isPending()`), so a consumer that clears the updater state at startup can keep it for a pending load: the Vulnerability Scanner does so when its feed database lacks global maps the interrupted load had not reached yet (they sit near the end of the feed in offset order), provided the feed database still holds CVE data; an emptied feed database is rebuilt from the beginning.
 - If the consumer rejects the completion signal, the cursor is reset to `"0"` (forcing an initial load) and the run starts again after 30 seconds.
 
 ### Completion signal
@@ -144,7 +153,7 @@ The `indexer` sub-object must be present under `configData` when `contentSource`
 | `consumerStatusIndex` | string | Index containing the consumer status document to poll before downloading (optional) |
 | `consumerStatusId` | string | Consumer status document id to poll before downloading (optional) |
 | `pageSize` | integer | Documents per page. Default: `100`; a `0` is replaced by `100` with a warning. The Vulnerability Scanner limits it to 1–10000 (`pageSize` of `<vulnerability-detection>`) |
-| `numSlices` | integer | Number of parallel PIT slices for the initial load. Default: `2`. `1` selects sequential mode. The Vulnerability Scanner limits it to 1–32 |
+| `numSlices` | integer | Number of parallel PIT slices for the initial load. Default: `2`. `1` selects sequential mode. Both modes resume an interrupted load from the last persisted cursor. The Vulnerability Scanner limits it to 1–32 |
 | `hosts` | array | Indexer host URLs (e.g. `["https://127.0.0.1:9200"]`) |
 | `ssl.certificate_authorities` | array | CA certificate paths |
 | `ssl.certificate` | string | Client certificate path (optional) |
@@ -189,6 +198,6 @@ The context fields related to this stage are:
   + `indexer`: Wazuh Indexer connection and index configuration (required).
 - `spRocksDB`: Used to read and persist the cursor (`CURRENT_OFFSET` column).
 - `spStopCondition`: Checked between pages and during every wait and retry loop to abort cleanly on shutdown.
-- `data["cursor"]`: Set to the highest offset seen after each cycle. Read by `UpdateIndexerCursor` to persist the final cursor value.
+- `data["cursor"]`: Set to the highest offset seen after each cycle, removed when a stop request skips the completion signal. Read by `UpdateIndexerCursor` to persist the final cursor value.
 - `fileProcessingCallback`: Called once per page with an `"indexer"` JSON object, and once at the end with an `"indexer_complete"` JSON object. Messages are passed as `nlohmann::json` to avoid overhead.
 - `updateCallbacks`: `onStart` at the start of every download attempt, `onFailure` after a failed initial-load attempt and after a rejected completion signal.
