@@ -2625,6 +2625,14 @@ void Syscollector::runContainerBaselinePass(bool delta_only)
     // Same order scan() uses: mark what passed, then fill any freed slots, then
     // drop the pointers, then delete the rows that failed validation.
     updateSyncFlagInDB(itemsToUpdateSync, 1);
+
+    // After the flags, and before the promotion that fills freed slots: the scan
+    // above reported this pass's rows against the admission the listing then
+    // replaced, so a container that lost admission mid-pass has rows that only
+    // became sync=1 on the line above. Retracting from inside the scan would not
+    // see them.
+    retractDeAdmittedContainers();
+
     promoteItemsAfterScan();
 
     m_failedItems = nullptr;
@@ -5106,10 +5114,27 @@ void Syscollector::setAdmittedContainers(const std::map<std::string, bool>& disc
     // re-read every container row of all thirteen tables on every single scan, under
     // m_limitsMutex, to find the nothing it found last time.
     //
-    // The obligation is remembered rather than acted on directly, because this runs
-    // after the admitted set has already been replaced: see m_admissionRetractionPending.
+    // The obligation is remembered rather than acted on here, and the caller
+    // discharges it once the pass has written its sync flags.
+    //
+    // This runs from inside the scan, BEFORE those flags are written: the scan
+    // reports a container's rows against the admission this call is about to
+    // replace, and queues their sync=1 for the end of the pass. Retracting from
+    // here would therefore read `WHERE sync=1` while this pass's rows are still
+    // 0 and miss exactly the rows that were just reported under an admission
+    // that no longer holds -- and then clear the latch, so nothing would retry.
+    // The manager would keep documents for a container the agent has stopped
+    // admitting.
     m_admissionRetractionPending =
         m_admissionRetractionPending || lostAdmission || (m_containerAdmissionWithholding && !m_admissionReconciled);
+}
+
+/// Sends the stateful DELETEs owed for containers that are no longer admitted, and
+/// demotes their rows. Call only after the pass has written its sync flags; see
+/// setAdmittedContainers() for why it cannot be done from there.
+void Syscollector::retractDeAdmittedContainers()
+{
+    std::lock_guard<std::mutex> lock(m_limitsMutex);
 
     if (!m_admissionRetractionPending || !m_spDBSync)
     {

@@ -495,6 +495,12 @@ class EXPORTED Syscollector final
          */
         void setAdmittedContainers(const std::map<std::string, bool>& discovered);
 
+        /// Discharges the retraction that setAdmittedContainers() recorded, once the
+        /// pass has written its sync flags. Separate from it because the scan reports
+        /// rows before those flags are written, so retracting any earlier reads
+        /// `WHERE sync=1` without this pass's rows in it.
+        void retractDeAdmittedContainers();
+
         /**
          * @brief Whether a container may report. Caller must hold m_limitsMutex.
          *
