@@ -328,7 +328,7 @@ TEST_F(HlpTestModeTest, ParserFailureWithTestModeTrace)
 // specificHLPBuilder's captured sourceValue is fully consumed by
 // hlp::parser::run before any mapper writes to the event (hlp.cpp:164-165),
 // and because json::Json::setString() itself copies the value into an
-// independent temporary rapidjson::Value before committing the overwrite
+// independent temporary json::Value before committing the overwrite
 // (json.cpp). Neither guarantee was covered by a test, so pin both here
 // against real, shipped parsers.
 class HlpAliasingTest : public BaseBuilderTest

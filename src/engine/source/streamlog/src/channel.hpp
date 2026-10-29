@@ -229,8 +229,9 @@ private:
             std::make_shared<std::atomic<ChannelState>>(ChannelState::Running)};
 
         // File path
-        std::filesystem::path currentFile; ///< Current log file being written to.
-        std::filesystem::path latestLink;  ///< Path to the latest log file link. (Hard link to currentFile)
+        mutable std::mutex currentFileMutex; ///< Guards currentFile between the worker thread and the readers.
+        std::filesystem::path currentFile;   ///< Current log file being written to.
+        std::filesystem::path latestLink;    ///< Path to the latest log file link. (Hard link to currentFile)
 
         // State and performance optimization
         std::chrono::system_clock::time_point lastRotation;              ///< The last time the log file was rotated.
@@ -446,7 +447,11 @@ public:
      * @brief Get the current file path being written to
      * @return The current log file path
      */
-    std::filesystem::path getCurrentFilePath() const { return m_stateData.currentFile; }
+    std::filesystem::path getCurrentFilePath() const
+    {
+        std::lock_guard<std::mutex> lock(m_stateData.currentFileMutex);
+        return m_stateData.currentFile;
+    }
 
     /**
      * @brief Gets the number of active writers for this channel

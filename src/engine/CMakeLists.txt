@@ -287,7 +287,27 @@ register_external_library(benchmark::benchmark   "${CMAKE_SOURCE_DIR}/external/b
 register_external_library(benchmark::benchmark_main "${CMAKE_SOURCE_DIR}/external/benchmark/src" "${CMAKE_SOURCE_DIR}/external/benchmark/build/src/libbenchmark_main.a")
 set_target_properties(benchmark_benchmark_main PROPERTIES INTERFACE_LINK_LIBRARIES "benchmark_benchmark")
 register_external_library(pugixml::pugixml       "${CMAKE_SOURCE_DIR}/external/pugixml/src" "${CMAKE_SOURCE_DIR}/external/pugixml/build/libpugixml.a")
-register_external_library(protobuf::libprotobuf  "${CMAKE_SOURCE_DIR}/external/protobuf/src" "${CMAKE_SOURCE_DIR}/external/protobuf/build/libprotobuf.a")
+# Under ThreadSanitizer the engine links a protobuf built with the sanitizer: the Map code it inlines and the
+# precompiled, uninstrumented library disagree on the table layout and crash. Built here, not in
+# external/CMakeLists.txt, whose text is an input of the dependency pool keys (packages/externals/deps.py).
+set(PROTOBUF_LIB_DIR "${CMAKE_SOURCE_DIR}/external/protobuf/build")
+if(ENGINE_ENABLE_TSAN)
+  set(PROTOBUF_LIB_DIR "${CMAKE_SOURCE_DIR}/external/protobuf/build-tsan")
+  include(ExternalProject)
+  ExternalProject_Add(
+    protobuf_tsan_external
+    SOURCE_DIR ${CMAKE_SOURCE_DIR}/external/protobuf
+    BINARY_DIR ${PROTOBUF_LIB_DIR}
+    CMAKE_ARGS -DCMAKE_BUILD_TYPE=Release -Dprotobuf_BUILD_TESTS=OFF
+               -DBUILD_SHARED_LIBS=OFF -DCMAKE_POSITION_INDEPENDENT_CODE=ON
+               "-DCMAKE_CXX_FLAGS=-fsanitize=thread -fno-omit-frame-pointer"
+    INSTALL_COMMAND ""
+    BUILD_BYPRODUCTS ${PROTOBUF_LIB_DIR}/libprotobuf.a)
+endif()
+register_external_library(protobuf::libprotobuf  "${CMAKE_SOURCE_DIR}/external/protobuf/src" "${PROTOBUF_LIB_DIR}/libprotobuf.a")
+if(TARGET protobuf_tsan_external)
+  add_dependencies(protobuf_libprotobuf protobuf_tsan_external)
+endif()
 set(PROTOBUF_DIR "${CMAKE_SOURCE_DIR}/external/protobuf")
 register_external_library(date::date             "${CMAKE_SOURCE_DIR}/external/date/include" "")
 register_external_library(date::date-tz          "${CMAKE_SOURCE_DIR}/external/date/include" "${CMAKE_SOURCE_DIR}/external/date/build/libdate-tz.a")

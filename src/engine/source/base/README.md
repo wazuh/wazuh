@@ -13,7 +13,7 @@ base/
 ├── CMakeLists.txt
 ├── README.md
 ├── include/base/
-│   ├── json.hpp                # base::json::Json, the JSON document type used across the engine
+│   ├── json.hpp                # base::json::Json, the JSON document type used across the engine (an allocation failure throws std::bad_alloc)
 │   ├── graph.hpp               # Graph type
 │   ├── expression.hpp          # Expression and formula types
 │   ├── eventParser.hpp         # Event parser
@@ -97,6 +97,7 @@ Where each contract is exercised:
 | User/group lookup and privilege drop | `LookupUid.*`, `LookupGid.*`, `DropToUser.*`, `DropToGroup.*`, `DropErrors.*` |
 | Manager home | `ManagerHome.*` (incl. the exits `ManagerHomeEnvNotDirectoryExits`, `ExeNotDirectoryExits`), `ManagerHomeAbsolute.*` |
 | Log sink | `ManagerLogSinkTest.*`, `ManagerLogSinkDeathTest.*` |
+| JSON allocation failure | `JsonAllocationInjectionTest.*` (`json::BaseAllocator::failAt` fails the n-th allocation; every mutation is swept through its allocation points and the document must stay usable), `JsonAllocationFailureTest.*` (`RLIMIT_AS` death tests, skipped under the sanitizers) |
 
 `ctest` discovers the cases with `gtest_discover_tests`; names are `<Suite>.<Test>`, without a binary prefix.
 
