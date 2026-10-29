@@ -444,9 +444,12 @@ static void *process_control() {
         }
 #endif
 
+#ifndef CLIENT
+        /* The agent's only client is agentd, which sends its command and closes at once. */
         if (OS_SetRecvTimeout(peer, WM_CONTROL_RECV_TIMEOUT_S, 0) < 0) {
             mtwarn(WM_CONTROL_LOGTAG, "Cannot set a receive timeout on a control socket client: %s", strerror(errno));
         }
+#endif
 
         os_calloc(OS_MAXSTR + 1, sizeof(char), buffer);
 
