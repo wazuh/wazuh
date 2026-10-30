@@ -12,7 +12,7 @@ connection, exact-match routing, no TLS, no keep-alive, no chunked encoding.
 
 ## Consumers
 
-Five servers, each on its own socket under `/var/wazuh-manager/queue/sockets/`:
+Six servers, each on its own socket under `/var/wazuh-manager/queue/sockets/`:
 
 | Consumer | Daemon | Socket | Routes | Transport settings |
 |---|---|---|---|---|
@@ -21,12 +21,14 @@ Five servers, each on its own socket under `/var/wazuh-manager/queue/sockets/`:
 | Vulnerability Scanner | `wazuh-manager-modulesd` | `vd-http.sock` | [Local HTTP API](../../vulnerability-scanner/api-reference.md#local-http-api-vd-httpsock) | Fixed in code: 2 I/O threads, 3600 s response backstop |
 | Wazuh DB | `wazuh-manager-db` | `wdb-http.sock` | [API reference](../../wazuh_db/api-reference.md) | Fixed in code: the library defaults |
 | Remoted admin socket | `wazuh-manager-remoted` | `remote-admin-http.sock` | `GET /`, `GET /metrics`, `GET /status`, `GET /tls` — [Local admin socket](../../remoted/README.md#local-admin-socket) | Fixed in code: 2 I/O threads, 64 connections, 16 reserved for control |
+| Engine event ingest | `wazuh-manager-analysisd` | `engine-ingest-http.sock` | `POST /events/enriched` — [events API reference](../../engine/api-events-reference.md) | Body cap, connections and in-flight byte budget: `analysisd.server_enriched_events_max_*` internal options — [configuration](../../engine/configuration.md#engine-api-server); `100 Continue` on; the rest fixed in code |
 
 This library has **no configuration of its own**. Each consumer sets the transport knobs
 (I/O threads, in-flight byte budget, connection caps, timeouts, reserved control
 connections) in code. Inventory Sync exposes most of them as internal options; Task
 Manager exposes its I/O thread count and sizes one route's body cap from
-`max_payload_bytes`. The other three consumers expose none.
+`max_payload_bytes`; the engine's event ingest exposes its body cap, connection cap and byte
+budget. The other three consumers expose none.
 
 The library defaults, which apply wherever a consumer does not override them:
 
@@ -116,7 +118,8 @@ that could not be written are logged only at debug level. The shutdown INFO line
 - [Integration Guide](integration-guide.md) — for module developers consuming the library.
 - [Metrics Library](../metrics/README.md) — Inventory Sync, Task Manager and the remoted
   admin socket publish this transport's `diagnostics()` as pull metrics; Vulnerability
-  Scanner and Wazuh DB do not.
+  Scanner and Wazuh DB do not. The engine publishes its ingest server's through its own
+  metrics library, as `server.ingest.*` ([engine metrics](../../engine/README.md#metrics)).
 
 ## Development
 

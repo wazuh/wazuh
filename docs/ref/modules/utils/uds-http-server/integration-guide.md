@@ -27,8 +27,8 @@ and, if your capacity knobs are internal options, the two hint fields
 ## Socket path
 
 No default; an empty path makes `start()` throw. Use a path relative to the installation
-directory, which is the working directory of every consumer daemon (all five sockets are
-`queue/sockets/<name>.sock`). A path that does not fit `sun_path` (107 characters) makes
+directory, which is the working directory of every consumer daemon (every consumer's socket
+is `queue/sockets/<name>.sock`; the engine takes an absolute path from its settings). A path that does not fit `sun_path` (107 characters) makes
 `start()` throw naming both. Pre-flight bind feasibility with `socketPathIsUsable()`
 (`socketPathCheck.hpp`) for fail-fast startups. The library never creates the parent
 directory, refuses to unlink a path that exists and is not a socket, replaces a stale
@@ -88,10 +88,10 @@ on a server that never started; the destructor calls `stop()`.
 
 The library does not depend on `wazuh_metrics`; it exposes a `diagnostics()` snapshot
 (budget available/in-flight bytes, in-flight requests, live sessions, sessions per route
-class, and cumulative transport-level 503s by cause: budget exhausted, session cap,
-shutdown, no response). These are relaxed atomic loads, callable at any point between
-construction and destruction. The 503 counters matter because those requests never reach
-a handler, so your endpoint metrics cannot see them. Publish those
+class, cumulative transport-level 503s by cause: budget exhausted, session cap,
+shutdown, no response, and cumulative 413s: `rejectedTooLarge`). These are relaxed atomic
+loads, callable at any point between construction and destruction. The 503 and 413 counters
+matter because those requests never reach a handler, so your endpoint metrics cannot see them. Publish those
 fields as pull metrics through your own `wazuh::metrics::IManager`. Mind the pull
 lifetime rule (pulls cannot be unregistered): capture a `weak_ptr` resolved under your
 own lock, register once, and let an expired target read as zeros — reference wiring:
