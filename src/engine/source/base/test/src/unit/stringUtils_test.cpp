@@ -373,3 +373,52 @@ TEST(TruncateForMessage, BoundsLongerValues)
               std::string(base::utils::string::MAX_ECHOED_INPUT_LENGTH, 'b') + "... (129 bytes)");
     EXPECT_EQ(base::utils::string::truncateForMessage("abcdef", 3), "abc... (6 bytes)");
 }
+
+TEST(HexToAscii, DecodesUpperCase)
+{
+    ASSERT_EQ(base::utils::string::hexToAscii("48656C6C6F20776F726C6421"), std::optional<std::string>("Hello world!"));
+}
+
+TEST(HexToAscii, DecodesLowerAndMixedCase)
+{
+    ASSERT_EQ(base::utils::string::hexToAscii("6b65793d226172742d7465737422"),
+              std::optional<std::string>("key=\"art-test\""));
+    ASSERT_EQ(base::utils::string::hexToAscii("4a4B"), std::optional<std::string>("JK"));
+}
+
+TEST(HexToAscii, EmptyDecodesToEmpty)
+{
+    ASSERT_EQ(base::utils::string::hexToAscii(""), std::optional<std::string>(""));
+}
+
+TEST(HexToAscii, DecodesAsciiControlBytes)
+{
+    ASSERT_EQ(base::utils::string::hexToAscii("00097F"), std::optional<std::string>(std::string("\0\t\x7f", 3)));
+}
+
+TEST(HexToAscii, RejectsOddLength)
+{
+    ASSERT_EQ(base::utils::string::hexToAscii("414"), std::nullopt);
+    ASSERT_EQ(base::utils::string::hexToAscii("A"), std::nullopt);
+}
+
+TEST(HexToAscii, RejectsNonHexCharacters)
+{
+    ASSERT_EQ(base::utils::string::hexToAscii("41G2"), std::nullopt);
+    ASSERT_EQ(base::utils::string::hexToAscii("/usr/bin/sudo"), std::nullopt);
+    ASSERT_EQ(base::utils::string::hexToAscii("0x41"), std::nullopt);
+}
+
+TEST(HexToAscii, RejectsSignAndWhitespace)
+{
+    ASSERT_EQ(base::utils::string::hexToAscii(" A"), std::nullopt);
+    ASSERT_EQ(base::utils::string::hexToAscii("+A"), std::nullopt);
+    ASSERT_EQ(base::utils::string::hexToAscii("-0"), std::nullopt);
+}
+
+TEST(HexToAscii, RejectsNonAsciiBytes)
+{
+    ASSERT_EQ(base::utils::string::hexToAscii("80"), std::nullopt);
+    ASSERT_EQ(base::utils::string::hexToAscii("FF"), std::nullopt);
+    ASSERT_EQ(base::utils::string::hexToAscii("cafe"), std::nullopt);
+}

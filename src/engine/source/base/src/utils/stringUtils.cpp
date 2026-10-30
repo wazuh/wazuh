@@ -229,4 +229,50 @@ bool haveUpperCaseCharacters(const std::string& str)
         std::begin(str), std::end(str), [](std::string::value_type character) { return std::isupper(character); });
 }
 
+std::optional<std::string> hexToAscii(std::string_view hex)
+{
+    if (hex.size() % 2 != 0)
+    {
+        return std::nullopt;
+    }
+
+    const auto hexValue = [](char c) -> int
+    {
+        if (c >= '0' && c <= '9')
+        {
+            return c - '0';
+        }
+        if (c >= 'a' && c <= 'f')
+        {
+            return c - 'a' + 10;
+        }
+        if (c >= 'A' && c <= 'F')
+        {
+            return c - 'A' + 10;
+        }
+        return -1;
+    };
+
+    std::string decoded;
+    decoded.reserve(hex.size() / 2);
+    for (std::size_t i = 0; i < hex.size(); i += 2)
+    {
+        const auto high = hexValue(hex[i]);
+        const auto low = hexValue(hex[i + 1]);
+        if (high < 0 || low < 0)
+        {
+            return std::nullopt;
+        }
+
+        const auto byte = (high << 4) | low;
+        if (byte > 0x7F)
+        {
+            return std::nullopt;
+        }
+        decoded.push_back(static_cast<char>(byte));
+    }
+
+    return decoded;
+}
+
 } // namespace base::utils::string
