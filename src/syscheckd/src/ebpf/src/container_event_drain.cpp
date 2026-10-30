@@ -357,15 +357,15 @@ namespace fim_container_events
              * container held, which is what install() would have done for it.
              * Only when the reply enumerates: without that there is no
              * difference between "gone" and "not mentioned" (#37532). */
+            std::set<std::string> present = delta.unkeyed;
+
+            for (const auto& ref : delta.containers)
+            {
+                present.insert(ref.containerId);
+            }
+
             if (!plan.installWholeList && plan.enumerated)
             {
-                std::set<std::string> present = delta.unkeyed;
-
-                for (const auto& ref : delta.containers)
-                {
-                    present.insert(ref.containerId);
-                }
-
                 for (const auto& containerId : mappedContainers)
                 {
                     if (present.count(containerId) != 0)
@@ -382,6 +382,38 @@ namespace fim_container_events
 
             plan.admissionView = mergeAdmissionView(currentView, delta.containers, delta.complete);
             foldUnkeyedIntoView(plan.admissionView, delta.unkeyed, delta.admitted, delta.admittedKnown);
+
+            /* ...and the same departures leave the admission view, for the same
+             * reason and with the same guard.
+             *
+             * A complete reply needs none of this: mergeAdmissionView() rebuilds
+             * the view from the reply alone and what is gone is simply not in it.
+             * An INCOMPLETE one merges, so it only ever adds -- and a container
+             * that went away while the cursor was invalid stayed in the view for
+             * the life of the process, because nothing else removes from it on
+             * this path. The delta path below erases on a `removed` event and
+             * says why: a view that only grows grows without bound on a host
+             * that churns containers.
+             *
+             * It is not only size. A departed container keeps answering
+             * fim_container_is_admitted(), so it holds its place in the set the
+             * drain publishes, and its id reads as known rather than unheard-of
+             * if the runtime ever reuses it (#37532). */
+            if (!delta.complete && plan.enumerated)
+            {
+                for (auto it = plan.admissionView.begin(); it != plan.admissionView.end();)
+                {
+                    if (present.count(it->first) == 0)
+                    {
+                        it = plan.admissionView.erase(it);
+                    }
+                    else
+                    {
+                        ++it;
+                    }
+                }
+            }
+
             applyAdmittedSet(plan.admissionView, delta.admitted, delta.admittedKnown, plan.enumerated);
             return plan;
         }

@@ -491,6 +491,75 @@ TEST(ContainerListRefresh, WithoutAnAdmittedSetAnUnkeyedContainerIsStillAdmitted
             << "no decision arrived, and silence is not a refusal";
 }
 
+// ...and it has to say so to the admission view as well as to the kernel.
+//
+// An incomplete resync MERGES, so on this path nothing ever removed from the
+// view. A container that went away while the cursor was invalid stayed in it
+// for the life of the process: the view grew without bound on a host that
+// churns containers, the departed container went on holding a place in the set
+// the drain publishes, and its id read as known rather than unheard-of if the
+// runtime handed it out again. The delta path has erased on `removed` all
+// along, for the same reasons (#37532).
+TEST(ContainerListRefresh, AnIncompleteResyncDropsDepartedContainersFromTheAdmissionView)
+{
+    using wazuh::container_instances_client::ContainerDelta;
+    using wazuh::container_instances_client::ContainerRef;
+    using fim_container_events::planListRefresh;
+
+    ContainerRef stillHere;
+    stillHere.containerId = "a";
+    stillHere.cgroupId = 11;
+    stillHere.synced = true;
+
+    ContainerDelta delta;
+    delta.available = true;
+    delta.deltaSupported = false; // a full list...
+    delta.complete = false;       // ...that cannot be installed wholesale
+    delta.containers = {stillHere};
+    delta.unkeyedKnown = true;
+    delta.unkeyed = {"stuck"};
+    delta.admittedKnown = true;
+    delta.admitted = {"a", "stuck"};
+
+    // "gone" was admitted when the cursor was last valid and is in no part of
+    // this reply.
+    const auto plan = planListRefresh(delta, {{"a", true}, {"gone", true}});
+
+    ASSERT_TRUE(plan.act);
+    ASSERT_TRUE(plan.enumerated);
+    EXPECT_EQ(plan.admissionView, (std::map<std::string, bool> {{"a", true}, {"stuck", true}}));
+    EXPECT_EQ(plan.admissionView.count("gone"), 0U) << "the reply names every container that exists, and not this one";
+}
+
+// ...but only when the reply can tell "gone" from "not mentioned". A connector
+// too old to name what it could not key leaves absence meaning nothing, and
+// dropping a container on that evidence retracts the rows of one that is
+// merely unresolved.
+TEST(ContainerListRefresh, AResyncThatCannotEnumerateKeepsEveryContainerItDoesNotMention)
+{
+    using wazuh::container_instances_client::ContainerDelta;
+    using wazuh::container_instances_client::ContainerRef;
+    using fim_container_events::planListRefresh;
+
+    ContainerRef stillHere;
+    stillHere.containerId = "a";
+    stillHere.cgroupId = 11;
+    stillHere.synced = true;
+
+    ContainerDelta delta;
+    delta.available = true;
+    delta.deltaSupported = false;
+    delta.complete = false;
+    delta.containers = {stillHere};
+    delta.unkeyedKnown = false; // an older container_instances
+
+    const auto plan = planListRefresh(delta, {{"a", true}, {"maybe", true}});
+
+    ASSERT_TRUE(plan.act);
+    ASSERT_FALSE(plan.enumerated);
+    EXPECT_EQ(plan.admissionView.count("maybe"), 1U) << "absence says nothing here, so it is not a departure";
+}
+
 // A resync that cannot be installed wholesale still has to say what has GONE.
 //
 // Upserts never remove anything, so a container that went away while the
