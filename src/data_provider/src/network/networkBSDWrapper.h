@@ -26,6 +26,12 @@
 #include <sys/param.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
+#ifdef __APPLE__
+#include <SystemConfiguration/SystemConfiguration.h>
+#include <vector>
+#endif
+#include <memory>
+#include <set>
 #include "inetworkWrapper.h"
 #include "networkHelper.h"
 #include "makeUnique.h"
@@ -46,6 +52,7 @@ class NetworkBSDInterface final : public INetworkInterfaceWrapper
 {
         ifaddrs* m_interfaceAddress;
         const std::string m_scanTime;
+        std::shared_ptr<const std::set<std::string>> m_dhcpLeaseInterfaces;
 
         // Routing messages trim trailing zero bytes of a sockaddr, so a short one is padded with zeros
         static sockaddr_storage paddedSockaddr(const sockaddr* address)
@@ -167,8 +174,113 @@ class NetworkBSDInterface final : public INetworkInterfaceWrapper
             return "";
         }
 
-        explicit NetworkBSDInterface(ifaddrs* addrs)
+#ifdef __APPLE__
+        // A DHCP lease is published under State:/Network/Service/<id>/DHCP next to State:/Network/Service/<id>/IPv4,
+        // which names the interface. services is the dictionary SCDynamicStoreCopyMultiple() returns for both keys.
+        static std::set<std::string> findDhcpLeaseInterfaces(CFDictionaryRef services)
+        {
+            std::set<std::string> retVal;
+            const std::string ipv4Suffix { "/IPv4" };
+            const std::string servicePrefix { "State:/Network/Service/" };
+            const auto count { CFDictionaryGetCount(services) };
+            std::vector<const void*> keys(static_cast<size_t>(count));
+            std::vector<const void*> values(static_cast<size_t>(count));
+            CFDictionaryGetKeysAndValues(services, keys.data(), values.data());
+
+            for (CFIndex i = 0; i < count; ++i)
+            {
+                char keyBuffer[256] {};
+                char nameBuffer[IFNAMSIZ] {};
+                const auto key { static_cast<CFStringRef>(keys[i]) };
+                const auto state { static_cast<CFDictionaryRef>(values[i]) };
+
+                if (CFGetTypeID(key) != CFStringGetTypeID() ||
+                        CFGetTypeID(state) != CFDictionaryGetTypeID() ||
+                        !CFStringGetCString(key, keyBuffer, sizeof(keyBuffer), kCFStringEncodingUTF8))
+                {
+                    continue;
+                }
+
+                const std::string keyName { keyBuffer };
+                const auto interfaceName { static_cast<CFStringRef>(CFDictionaryGetValue(state, kSCPropInterfaceName)) };
+
+                if (keyName.size() <= servicePrefix.size() + ipv4Suffix.size() ||
+                        keyName.compare(keyName.size() - ipv4Suffix.size(), ipv4Suffix.size(), ipv4Suffix) != 0 ||
+                        !interfaceName ||
+                        CFGetTypeID(interfaceName) != CFStringGetTypeID() ||
+                        !CFStringGetCString(interfaceName, nameBuffer, sizeof(nameBuffer), kCFStringEncodingUTF8))
+                {
+                    continue;
+                }
+
+                const auto dhcpKey { CFStringCreateWithCString(nullptr, (keyName.substr(0, keyName.size() - ipv4Suffix.size()) + "/DHCP").c_str(), kCFStringEncodingUTF8) };
+
+                if (dhcpKey)
+                {
+                    if (CFDictionaryContainsKey(services, dhcpKey))
+                    {
+                        retVal.insert(nameBuffer);
+                    }
+
+                    CFRelease(dhcpKey);
+                }
+            }
+
+            return retVal;
+        }
+
+        // Interfaces with a DHCP lease, read from the system configuration once for the whole scan.
+        static std::set<std::string> queryDhcpLeaseInterfaces()
+        {
+            std::set<std::string> retVal;
+            const auto store { SCDynamicStoreCreate(nullptr, CFSTR("wazuh-sysinfo"), nullptr, nullptr) };
+
+            if (!store)
+            {
+                return retVal;
+            }
+
+            const auto ipv4Pattern { SCDynamicStoreKeyCreateNetworkServiceEntity(nullptr, kSCDynamicStoreDomainState, kSCCompAnyRegex, kSCEntNetIPv4) };
+            const auto dhcpPattern { SCDynamicStoreKeyCreateNetworkServiceEntity(nullptr, kSCDynamicStoreDomainState, kSCCompAnyRegex, kSCEntNetDHCP) };
+
+            if (ipv4Pattern && dhcpPattern)
+            {
+                const void* patternValues[] { ipv4Pattern, dhcpPattern };
+                const auto patterns { CFArrayCreate(nullptr, patternValues, 2, &kCFTypeArrayCallBacks) };
+
+                if (patterns)
+                {
+                    const auto services { SCDynamicStoreCopyMultiple(store, nullptr, patterns) };
+
+                    if (services)
+                    {
+                        retVal = findDhcpLeaseInterfaces(services);
+                        CFRelease(services);
+                    }
+
+                    CFRelease(patterns);
+                }
+            }
+
+            if (ipv4Pattern)
+            {
+                CFRelease(ipv4Pattern);
+            }
+
+            if (dhcpPattern)
+            {
+                CFRelease(dhcpPattern);
+            }
+
+            CFRelease(store);
+            return retVal;
+        }
+#endif
+
+        // dhcpLeaseInterfaces are the interfaces with a DHCP lease, when the platform can tell.
+        explicit NetworkBSDInterface(ifaddrs* addrs, std::shared_ptr<const std::set<std::string>> dhcpLeaseInterfaces = nullptr)
             : m_interfaceAddress{addrs}
+            , m_dhcpLeaseInterfaces{ std::move(dhcpLeaseInterfaces) }
         {
             if (!addrs)
             {
@@ -261,6 +373,11 @@ class NetworkBSDInterface final : public INetworkInterfaceWrapper
 
         std::string dhcp() const override
         {
+            if (AF_INET == this->family() && m_dhcpLeaseInterfaces && m_dhcpLeaseInterfaces->count(this->name()))
+            {
+                return "enabled";
+            }
+
             return "unknown";
         }
 

@@ -301,3 +301,103 @@ TEST_F(SysInfoNetworkBSDTest, Test_ParseGateway_MalformedInput)
     reinterpret_cast<rt_msghdr*>(cut.data())->rtm_msglen -= 8;
     EXPECT_EQ("", NetworkBSDInterface::parseGateway(cut.data(), cut.size() - 8, 4, AF_INET6));
 }
+
+namespace
+{
+    // An IPv4 entry of an interface named name; sa_len is not read by dhcp().
+    struct FakeIPv4Entry
+    {
+        sockaddr_in address {};
+        ifaddrs entry {};
+        std::string name;
+
+        explicit FakeIPv4Entry(const std::string& ifName)
+            : name{ ifName }
+        {
+            address.sin_family = AF_INET;
+            entry.ifa_name = const_cast<char*>(name.c_str());
+            entry.ifa_addr = reinterpret_cast<sockaddr*>(&address);
+        }
+    };
+}
+
+TEST_F(SysInfoNetworkBSDTest, Test_DhcpEnabledOnlyForInterfacesWithALease)
+{
+    FakeIPv4Entry leased { "en0" };
+    FakeIPv4Entry fixed { "en1" };
+    const auto leases { std::make_shared<const std::set<std::string>>(std::set<std::string> { "en0" }) };
+
+    EXPECT_EQ("enabled", NetworkBSDInterface(&leased.entry, leases).dhcp());
+    EXPECT_EQ("unknown", NetworkBSDInterface(&fixed.entry, leases).dhcp());
+    EXPECT_EQ("unknown", NetworkBSDInterface(&leased.entry).dhcp());
+}
+
+TEST_F(SysInfoNetworkBSDTest, Test_DhcpIsUnknownForIPv6EvenOnALeasedInterface)
+{
+    sockaddr_in6 address {};
+    address.sin6_family = AF_INET6;
+    std::string name { "en0" };
+    ifaddrs entry {};
+    entry.ifa_name = name.data();
+    entry.ifa_addr = reinterpret_cast<sockaddr*>(&address);
+    const auto leases { std::make_shared<const std::set<std::string>>(std::set<std::string> { "en0" }) };
+
+    EXPECT_EQ("unknown", NetworkBSDInterface(&entry, leases).dhcp());
+}
+
+#ifdef __APPLE__
+namespace
+{
+    CFStringRef cfString(const char* value)
+    {
+        return CFStringCreateWithCString(nullptr, value, kCFStringEncodingUTF8);
+    }
+
+    void addService(CFMutableDictionaryRef services, const char* serviceId, const char* interfaceName, const bool withLease)
+    {
+        const std::string prefix { std::string { "State:/Network/Service/" } + serviceId };
+
+        const auto ipv4Key { cfString((prefix + "/IPv4").c_str()) };
+        const auto name { cfString(interfaceName) };
+        const auto ipv4State { CFDictionaryCreateMutable(nullptr, 0, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks) };
+        CFDictionarySetValue(ipv4State, kSCPropInterfaceName, name);
+        CFDictionarySetValue(services, ipv4Key, ipv4State);
+        CFRelease(ipv4State);
+        CFRelease(name);
+        CFRelease(ipv4Key);
+
+        if (withLease)
+        {
+            const auto dhcpKey { cfString((prefix + "/DHCP").c_str()) };
+            const auto dhcpState { CFDictionaryCreateMutable(nullptr, 0, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks) };
+            CFDictionarySetValue(services, dhcpKey, dhcpState);
+            CFRelease(dhcpState);
+            CFRelease(dhcpKey);
+        }
+    }
+}
+
+TEST_F(SysInfoNetworkBSDTest, Test_FindDhcpLeaseInterfaces)
+{
+    const auto services { CFDictionaryCreateMutable(nullptr, 0, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks) };
+    addService(services, "A", "en0", true);
+    addService(services, "B", "en1", false);
+    // A lease key of another service must not mark this interface.
+    addService(services, "C", "en2", false);
+    const auto strayKey { cfString("State:/Network/Service/D/DHCP") };
+    const auto strayState { CFDictionaryCreateMutable(nullptr, 0, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks) };
+    CFDictionarySetValue(services, strayKey, strayState);
+    CFRelease(strayState);
+    CFRelease(strayKey);
+
+    EXPECT_EQ(std::set<std::string> { "en0" }, NetworkBSDInterface::findDhcpLeaseInterfaces(services));
+    CFRelease(services);
+}
+
+TEST_F(SysInfoNetworkBSDTest, Test_FindDhcpLeaseInterfacesEmptyDictionary)
+{
+    const auto services { CFDictionaryCreateMutable(nullptr, 0, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks) };
+    EXPECT_TRUE(NetworkBSDInterface::findDhcpLeaseInterfaces(services).empty());
+    CFRelease(services);
+}
+#endif
