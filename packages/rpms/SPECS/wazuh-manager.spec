@@ -241,7 +241,13 @@ if ! is_pre5 "${OLD_VERSION}" && [ -f /var/ossec/VERSION.json ] && [ -x /var/oss
   OLD_VERSION=$(json_version /var/ossec/VERSION.json 2>/dev/null) || OLD_VERSION=""
 fi
 if is_pre5 "${OLD_VERSION}"; then
-  print_unsupported_manager_upgrade "${OLD_VERSION}" host
+  # An upgrade with no 5.x tree yet is an upgrade of the 4.x package itself: it gets the header
+  # every 5.x central component prints.
+  if [ "$1" -eq 2 ] && [ ! -e %{_localstatedir}/bin/wazuh-manager-control ]; then
+    print_unsupported_manager_upgrade "${OLD_VERSION}"
+  else
+    print_unsupported_manager_upgrade "${OLD_VERSION}" host
+  fi
   exit 1
 fi
 

@@ -168,16 +168,16 @@ undo_failed_upgrade_preserve() {
 case "$1" in
     install|upgrade)
 
-        # HARD BLOCK: no 4.x manager may be replaced or sit beside this one, on an upgrade or
-        # on a fresh install.
-        if PRE5_VERSION=$(installed_pre5_version); then
-            print_unsupported_manager_upgrade "${PRE5_VERSION}" host
+        # $2 contains the old version in upgrade scenarios. Checked before the host so that an
+        # upgrade of the 4.x package prints the header every 5.x central component prints.
+        if [ "$1" = "upgrade" ] && [ -n "$2" ] && is_pre5 "$2"; then
+            print_unsupported_manager_upgrade "$2"
             exit 1
         fi
 
-        # $2 contains the old version in upgrade scenarios
-        if [ "$1" = "upgrade" ] && [ -n "$2" ] && is_pre5 "$2"; then
-            print_unsupported_manager_upgrade "$2"
+        # HARD BLOCK: no 4.x manager may sit beside this one, on an upgrade or on a fresh install.
+        if PRE5_VERSION=$(installed_pre5_version); then
+            print_unsupported_manager_upgrade "${PRE5_VERSION}" host
             exit 1
         fi
 
