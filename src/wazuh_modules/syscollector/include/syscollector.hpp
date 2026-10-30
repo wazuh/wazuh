@@ -314,7 +314,7 @@ class EXPORTED Syscollector final
         void scanServices();
         void scanBrowserExtensions();
         /// @brief Baseline inventory for every container currently known to the
-        /// container-connector module (spike #37532, Option A: baseline through the
+        /// container-connector module (Option A: baseline through the
         /// host event flow). Rows are produced by the container_baseline module in
         /// dbsync_* column format and pushed through per-container scoped DBSync
         /// transactions, so the shared notifyChange/processEvent pipeline computes
@@ -458,7 +458,7 @@ class EXPORTED Syscollector final
          * with which rows survive decided by scan order and the promotion
          * query's ORDER BY. They therefore get separate limits and separate
          * counters, and every count/promote query is scoped to one of them
-         * (#37532 / #37534).
+         * (#37534).
          */
         enum class LimitScope
         {
@@ -470,7 +470,7 @@ class EXPORTED Syscollector final
          * @brief SQL predicate selecting one scope's rows, to be appended to an
          *        existing WHERE clause.
          *
-         * A container budget is PER CONTAINER (#37532 / O10), so a query that
+         * A container budget is PER CONTAINER, so a query that
          * spends one must name its container. Omitting the id selects every
          * container's rows, which is right for "how many container rows exist"
          * and wrong for anything that spends a budget.
@@ -686,7 +686,7 @@ class EXPORTED Syscollector final
          * `container_<dimension>` and host caps are not, so each pass takes the
          * keys belonging to its own scope and ignores the rest. Short names are
          * then normalised to sync index names and applied to that scope's
-         * budget (#37532 / O10).
+         * budget.
          */
         bool applyLimitsForScope(const nlohmann::json& limits, LimitScope scope);
 
@@ -904,7 +904,7 @@ class EXPORTED Syscollector final
         // The same two, for rows attributed to a container. Separate budget, so
         // container inventory cannot consume the host's — see LimitScope.
         std::map<std::string, size_t>                                            m_containerDocumentLimits;
-        // Counts key on the CONTAINER first: one budget each (#37532 / O10).
+        // Counts key on the CONTAINER first: one budget each.
         std::map<std::string, std::map<std::string, size_t>>                     m_containerDocumentCounts;
 
         // (container, index) pairs already reported as saturated, so the

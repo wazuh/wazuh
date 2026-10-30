@@ -65,7 +65,7 @@ std::pair<std::string, std::string> BuildFimFileJson(const FileBaselineRow& row)
 /// byte reproduction of Syscollector::ecsData()'s mapping (that method is
 /// private to the Syscollector class and its exact field contract for
 /// container-sourced rows is still pending #37203-4's schema decision — see the
-/// #37532 spike report). Wire this through the real ecsData() transform once
+/// spike report). Wire this through the real ecsData() transform once
 /// that schema is finalized, instead of relying on this approximation.
 std::pair<std::string, std::string> BuildProcessJson(const ProcessBaselineRow& row);
 

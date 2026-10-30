@@ -463,7 +463,7 @@ TEST(ContainerListRefresh, AnIncompleteReplyThatNamesWhatItCouldNotKeyStillDecid
 // where every container was KEYED. A node with one unkeyable container never
 // produces such a reply, so the drain went on republishing as admitted the
 // containers the baseline had already retracted, and their documents alternated
-// between CREATE and DELETE every cycle (#37532).
+// between CREATE and DELETE every cycle.
 TEST(ContainerListRefresh, AWithdrawalArrivesEvenWhileOneContainerCannotBeKeyed)
 {
     using wazuh::container_instances_client::ContainerDelta;
@@ -529,7 +529,7 @@ TEST(ContainerListRefresh, WithoutAnAdmittedSetAnUnkeyedContainerIsStillAdmitted
 // churns containers, the departed container went on holding a place in the set
 // the drain publishes, and its id read as known rather than unheard-of if the
 // runtime handed it out again. The delta path has erased on `removed` all
-// along, for the same reasons (#37532).
+// along, for the same reasons.
 TEST(ContainerListRefresh, AnIncompleteResyncDropsDepartedContainersFromTheAdmissionView)
 {
     using wazuh::container_instances_client::ContainerDelta;
@@ -596,7 +596,7 @@ TEST(ContainerListRefresh, AResyncThatCannotEnumerateKeepsEveryContainerItDoesNo
 // cursor was invalid kept its cgroups in the map, and allowed in the kernel,
 // for as long as one container on the node could not be keyed. The kernel is
 // then free to hand that inode to something else, and whatever lands on it is
-// filed under a container that no longer exists (#37532).
+// filed under a container that no longer exists.
 TEST(ContainerListRefresh, AnIncompleteResyncStillWithdrawsContainersThatHaveGone)
 {
     using wazuh::container_instances_client::ContainerDelta;
@@ -902,7 +902,7 @@ TEST_F(ContainerReportingTest, AnUnkeyableContainerKeepsItsFimStateWithoutBlocki
 // Treating it instead as unrankable -- admitting it because nothing had refused
 // it -- is what let the node report past containers.synced_limit, and since a
 // container is unkeyed for a while after every restart, that happened on every
-// restart (#37532).
+// restart.
 TEST_F(ContainerReportingTest, AContainerThatCannotBeKeyedIsRankedLikeAnyOther)
 {
     // "stuck" and "spare" both lack a key. The connector admitted the first and
@@ -930,7 +930,7 @@ TEST_F(ContainerReportingTest, AContainerThatCannotBeKeyedIsRankedLikeAnyOther)
 // connector could not key and the cap turned down must not get its rows
 // reported. The listing names it, so it survives the sweep -- withheld and
 // deleted are opposite outcomes and the distinction has to hold for a container
-// with no attribution key too (#37532).
+// with no attribution key too.
 TEST_F(ContainerReportingTest, ARefusedUnkeyedContainerIsWithheldButNotSweptAway)
 {
     admission = {{"a", true}};
@@ -956,7 +956,7 @@ TEST_F(ContainerReportingTest, ARefusedUnkeyedContainerIsWithheldButNotSweptAway
 // cgroup no process reports never resolves, so a listing that waits for every
 // container to be keyed is never complete again -- the snapshot was installed
 // once and then frozen, and every container that started afterwards was absent
-// from it and read as refused for the life of the process (#37532).
+// from it and read as refused for the life of the process.
 TEST_F(ContainerReportingTest, AnUnkeyableContainerDoesNotFreezeAdmissionForTheWholeNode)
 {
     files = {{"a", {"/etc/one"}}};
@@ -1018,7 +1018,7 @@ TEST_F(ContainerReportingTest, RestartSeedsBudgetFromStoredContainerFlags)
 // exactly that and retries -- but until then the agent's integrity checksum
 // covers content the manager does not have, and the repair is clearing and
 // re-sending the whole FIM index. Said out loud, because an operator watching
-// that happen has nothing else to connect it to (#37532).
+// that happen has nothing else to connect it to.
 TEST_F(ContainerReportingTest, AFailedRetractionIsReportedAndRetried)
 {
     files = {{"a", {"/etc/one"}}, {"b", {"/etc/one"}}};
@@ -1063,7 +1063,7 @@ TEST_F(ContainerReportingTest, AFailedRetractionIsReportedAndRetried)
 // sync-column write that failed all left a document behind and were reported as
 // none -- the warning did not fire at all when every failure was of that kind.
 // Counting down from the rows the query returned makes the number mean what it
-// says: documents the manager still holds (#37532).
+// says: documents the manager still holds.
 TEST_F(ContainerReportingTest, ARetractionThatIsNotRefusedButStillLeavesTheRowReportingIsCounted)
 {
     // Room for both of b's documents, so two of them are owed a withdrawal and
@@ -1155,7 +1155,7 @@ TEST_F(ContainerReportingTest, AFailedRetractionDoesNotHandBackTheBudgetItDidNot
 // runs a reconcile before the walk, and the walk changes which containers have
 // rows. The other two were adjacent -- the stale sweep read the ids, deleted
 // some of them, and the promotion pass right after asked for the same list
-// again. The sweep knows the answer, so it returns it (#37532).
+// again. The sweep knows the answer, so it returns it.
 TEST_F(ContainerReportingTest, AWholeNodeBaselineReadsTheContainerIdListTwiceNotThreeTimes)
 {
     files = {{"a", {"/etc/one"}}, {"b", {"/etc/one"}}};
@@ -1200,7 +1200,7 @@ TEST_F(ContainerReportingTest, ARowWithheldDuringTheWalkIsPromotedWhenADeleteFre
 // refuses every withheld row it is offered. Offering them anyway costs a query,
 // a parse, a normalisation and a schema validation each, on every reconcile --
 // and a reconcile runs on every admission change and every whole-node baseline,
-// so a node sitting at its ceiling pays that for ever to learn nothing (#37532).
+// so a node sitting at its ceiling pays that for ever to learn nothing.
 TEST_F(ContainerReportingTest, AFullBudgetIsNotOfferedItsWithheldRowsAgain)
 {
     container_reporting_test_host(2);

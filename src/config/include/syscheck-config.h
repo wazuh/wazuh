@@ -484,13 +484,13 @@ typedef struct _config {
 
     AgentSyncProtocolHandle *sync_handle;
     int file_limit;
-    /* Container FIM's own document budget (#37532 / O10). Separate from
+    /* Container FIM's own document budget. Separate from
      * file_limit because container rows and host rows share the file_entry
      * table and the FIM sync index: with one budget a node's containers spend
      * the agent's own allowance, and which rows survive is decided by walk
      * order. PER CONTAINER. 0 = unlimited. */
     int container_file_limit;
-    /* Rows ONE container may STORE in file_entry (#37532 / O10).
+    /* Rows ONE container may STORE in file_entry.
      *
      * A different layer from container_file_limit above, and the one that bounds
      * the database: a document budget gates the sync flag and the row is stored

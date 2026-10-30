@@ -1,6 +1,6 @@
 /*
  * Wazuh Syscheckd — unit tests for the eBPF drain's cgroup attribution map
- * (#37532 / #37396).
+ * (#37396).
  * Copyright (C) 2015, Wazuh Inc.
  *
  * This program is free software; you can redistribute it

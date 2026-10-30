@@ -377,7 +377,7 @@ static int cs_read_syscheck_block(const OS_XML* xml, xml_node* node, syscheck_co
         }
         else if (strcmp(children[i]->element, CS_XML_FILE_LIMIT) == 0)
         {
-            /* Rows ONE container may store (#37532 / O10). Spelled like the
+            /* Rows ONE container may store. Spelled like the
              * host's <syscheck><file_limit> because it is the same kind of
              * thing — a ceiling on the database, not on what is reported — and
              * it sits in the container block because it applies per container. */

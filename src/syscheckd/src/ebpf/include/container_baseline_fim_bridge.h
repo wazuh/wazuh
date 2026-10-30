@@ -86,7 +86,7 @@ int fim_container_baseline_row_limit(void);       /* per container */
 int fim_container_baseline_node_row_limit(void);  /* the whole file_entry table */
 
 /**
- * @brief Release a container's per-container document count (#37532 / O10).
+ * @brief Release a container's per-container document count.
  *
  * Called when a container's rows are swept. Without it the count map grows with
  * every container the node has ever run, and the released budget is never
@@ -160,7 +160,7 @@ void fim_container_state_lock(void);
 void fim_container_state_unlock(void);
 
 /**
- * @brief Record which containers may report to the manager (#37532).
+ * @brief Record which containers may report to the manager.
  *
  * A different question from the document budget above: that one bounds how much
  * one container reports, this one bounds how many containers report at all.

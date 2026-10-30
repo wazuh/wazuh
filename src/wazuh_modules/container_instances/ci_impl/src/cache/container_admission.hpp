@@ -19,7 +19,7 @@
 namespace wazuh::container_instances
 {
 
-    /* Which containers may report to the manager (#37532 / #40097 follow-up),
+    /* Which containers may report to the manager (#40097 follow-up),
      * kept apart from the store that applies it so it can be tested without a
      * snapshot, a socket or a clock.
      *

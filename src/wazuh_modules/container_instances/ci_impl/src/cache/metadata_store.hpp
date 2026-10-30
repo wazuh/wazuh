@@ -116,7 +116,7 @@ namespace wazuh::container_instances
         ///
         /// Holding the slot is also the point: an admitted container that
         /// restarts is not a departure, and dropping it from the ranking for the
-        /// length of its restart gave its slot away to the next id (#37532).
+        /// length of its restart gave its slot away to the next id.
         [[nodiscard]] std::set<std::string> knownIdsLocked() const;
 
         /// Re-runs the admission rule over every known container. Cheap and

@@ -587,7 +587,7 @@ TEST(ListContainers, TheWarmupRetryIsPaidOncePerProcessNotOnEveryCall)
 }
 
 // ---------------------------------------------------------------------------
-// Single-container baseline (#37532): the entry point the eBPF reconcile
+// Single-container baseline: the entry point the eBPF reconcile
 // consumer drives. Exercised through the *From seam, so none of this needs a
 // running connector or a real container.
 // ---------------------------------------------------------------------------

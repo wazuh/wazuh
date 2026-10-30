@@ -1,6 +1,6 @@
 /*
  * Wazuh container_instances — consumer side of the lifecycle notification
- * channel (#37532 / #37203).
+ * channel (#37203).
  * Copyright (C) 2015, Wazuh Inc.
  *
  * This program is free software; you can redistribute it

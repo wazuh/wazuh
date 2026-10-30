@@ -74,7 +74,7 @@ static void test_syscollector_limits_init_null(void **state) {
 
 /* sca_limits_init tests */
 
-/* Container-scope limit tests (#37532 / #37534 / O10).
+/* Container-scope limit tests (#37534 / O10).
  *
  * The container caps used to live in a struct and a namespace of their own and
  * to be ONE allowance shared by every container. Both are now wrong: they are

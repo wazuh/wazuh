@@ -562,7 +562,7 @@ STATIC char* build_limits_json(const module_limits_t *limits) {
         cJSON_AddNumberToObject(syscollector, "services", limits->syscollector.services);
         cJSON_AddNumberToObject(syscollector, "browser_extensions", limits->syscollector.browser_extensions);
         /* Per container, in the same object: one reply carries both scopes and
-         * the consumer splits them on the prefix (#37532 / O10). */
+         * the consumer splits them on the prefix. */
         cJSON_AddNumberToObject(syscollector, "container_processes", limits->syscollector.container_processes);
         cJSON_AddNumberToObject(syscollector, "container_ports", limits->syscollector.container_ports);
         cJSON_AddNumberToObject(syscollector, "container_packages", limits->syscollector.container_packages);

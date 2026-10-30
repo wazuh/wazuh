@@ -8014,7 +8014,7 @@ TEST_F(SyscollectorImpTest, APartialListingAtStartupDoesNotArmTheGlobalReconcile
 // one container's rows -- and used to clear the latch anyway, so the pass that
 // checks the stored flags against admission never ran at all. Inventory for a
 // container de-admitted while the agent was stopped then sat on the manager for
-// the life of the installation (#37532).
+// the life of the installation.
 TEST_F(SyscollectorImpTest, APerContainerRetractionDoesNotDisarmTheRestartReconcile)
 {
     const auto info = std::make_shared<MockSysInfo>();
@@ -8098,7 +8098,7 @@ TEST_F(SyscollectorImpTest, APerContainerRetractionDoesNotDisarmTheRestartReconc
 // its verdict arrives here through the same sink. Two things follow, and they
 // pull in opposite directions: a restart must not look like a departure, and
 // being unkeyed must not be a way past containers.synced_limit. Only the
-// connector's own answer gets both right (#37532).
+// connector's own answer gets both right.
 TEST_F(SyscollectorImpTest, AnUnkeyableContainerIsRankedLikeAnyOther)
 {
     const auto info = std::make_shared<MockSysInfo>();
@@ -8152,7 +8152,7 @@ TEST_F(SyscollectorImpTest, AnUnkeyableContainerIsRankedLikeAnyOther)
     // ...and when the cap DOES turn it down while it is still unkeyed, that is a
     // refusal like any other. This used to read as "never ranked" and admit it,
     // which let the node report one container past containers.synced_limit for
-    // the length of every restart (#37532).
+    // the length of every restart.
     module.setAdmittedContainers({{"a", true}, {"b", false}, {"flap", false}}, /*listEnumerates=*/true);
     EXPECT_FALSE(module.isContainerAdmittedLocked("b"));
     EXPECT_FALSE(module.isContainerAdmittedLocked("flap"))
@@ -8179,7 +8179,7 @@ TEST_F(SyscollectorImpTest, AnUnkeyableContainerIsRankedLikeAnyOther)
 // runs and the pass never armed at all -- inventory for a container de-admitted
 // while the agent was stopped stayed on the manager for the life of the
 // installation. Knowing WHICH containers were left out is what makes absence
-// readable, which is the same signal the stale sweep was given (#37532).
+// readable, which is the same signal the stale sweep was given.
 TEST_F(SyscollectorImpTest, AnIncompleteListingThatNamesItsUnkeyedIdsStillArmsTheRestartReconcile)
 {
 #if defined(__linux__)

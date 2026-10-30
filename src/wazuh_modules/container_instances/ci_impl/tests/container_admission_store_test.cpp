@@ -1,5 +1,5 @@
 /*
- * Wazuh container_instances — admission inside the metadata store (#37532).
+ * Wazuh container_instances — admission inside the metadata store.
  * Copyright (C) 2015, Wazuh Inc.
  *
  * This program is free software; you can redistribute it
@@ -135,8 +135,7 @@ TEST(ContainerAdmissionStoreTest, WithheldCountsContainersTheListOmitsNotUnresol
 // consumers keep the rows of every container in the list OR in the unkeyed
 // ids, and delete the rest -- so the two sets have to describe one instant. Read
 // one after the other they do not, and a container crossing between them while
-// the reads are in flight is in neither, which costs it every row it has
-// (#37532).
+// the reads are in flight is in neither, which costs it every row it has.
 TEST(ContainerAdmissionStoreTest, ARestartingContainerIsNeverAbsentFromBothSets)
 {
     auto store = MakeStore();
@@ -334,7 +333,7 @@ TEST(ContainerAdmissionStoreTest, ADepartedContainerHandsItsSlotOn)
 // which is the opposite of what the cap is for. One short is also temporary:
 // the slot comes into use as soon as the resolver keys the container. The case
 // that does not resolve itself is a container nothing can ever key, and the
-// "Reporting N of M" line names that cost rather than hiding it (#37532).
+// "Reporting N of M" line names that cost rather than hiding it.
 TEST(ContainerAdmissionStoreTest, AnUnresolvedRunningContainerCanHoldASlotItCannotYetUse)
 {
     auto store = MakeStore();

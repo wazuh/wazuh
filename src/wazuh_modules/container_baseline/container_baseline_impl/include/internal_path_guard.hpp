@@ -14,7 +14,7 @@ namespace wazuh::container_baseline {
 ///    caller-supplied path containing `..`."
 ///
 /// The per-container re-read entry point breaks that. It resolves a path the
-/// caller supplies, and in the eBPF consumer (#37532) that path arrives in a
+/// caller supplies, and in the eBPF consumer that path arrives in a
 /// kernel event emitted by a process running INSIDE the container — so it is
 /// chosen by whatever the container is running. A container that creates and
 /// touches `/etc/../../../../root/.ssh/id_rsa` would otherwise have the agent

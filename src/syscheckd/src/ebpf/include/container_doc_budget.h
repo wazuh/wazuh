@@ -11,7 +11,7 @@
 #define CONTAINER_DOC_BUDGET_H
 
 /* The container FIM document budget's decision rule, separated from the
- * globals and the mutex it runs against (#37532 / O10).
+ * globals and the mutex it runs against.
  *
  * It is here, pure and header-only, for the reason the staging buffer and the
  * reconcile plan are: a rule that lives inside a .c beside a process-global

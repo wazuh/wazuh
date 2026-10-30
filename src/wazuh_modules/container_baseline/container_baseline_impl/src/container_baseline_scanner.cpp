@@ -176,7 +176,7 @@ std::vector<ContainerIdentity> DiscoverContainers(const std::string& socket_path
 
     // ONE value, not four variables: a list from one poll carrying the
     // completeness flag and unkeyed ids of another is what let the caller sweep
-    // a container that had merely restarted. See PolledListing (#37532).
+    // a container that had merely restarted. See PolledListing.
     // Written through to the out-params once, at the end.
     using Listing = PolledListing<std::vector<wazuh::container_instances_client::ContainerRef>>;
 
@@ -754,7 +754,7 @@ int ListContainers(const std::string& connector_socket_path, const ContainerIdSi
     // comes from the connector's whole admitted set instead -- and it must come
     // from there rather than from each consumer's own guess. Every consumer
     // guessed "admitted", so a container reported outside the ceiling for as
-    // long as it stayed unkeyed, which is a window every restart opens (#37532).
+    // long as it stayed unkeyed, which is a window every restart opens.
     //
     // Not counted in the return value: that is the LIST's length, which callers
     // read back as how many containers the connector could key.

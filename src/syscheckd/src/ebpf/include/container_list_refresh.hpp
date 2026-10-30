@@ -65,7 +65,7 @@ namespace fim_container_events
         /// containers report, which is a question about ids -- so it belongs
         /// here and not in a category of its own. It must still stay out of
         /// `containers` and `events`: an id with no cgroup id cannot reach the
-        /// map (#37532).
+        /// map.
         std::map<std::string, bool> admissionView;
 
         /// Whether every container in the reply is KEYED. Gates the cgroup map
@@ -77,7 +77,7 @@ namespace fim_container_events
         /// Gates the admission snapshot, which decides who may report and never
         /// touches an attribution key. These were one flag until a container
         /// nobody could key held `complete` false for as long as it ran and
-        /// froze admission for the whole node (#37532).
+        /// froze admission for the whole node.
         bool enumerated {false};
     };
 

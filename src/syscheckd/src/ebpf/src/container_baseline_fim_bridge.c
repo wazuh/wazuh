@@ -559,7 +559,7 @@ void fim_compute_row_checksum(const char* row_json, char out_sha1[41])
 
 /* Per-container document counts: container id -> int*.
  *
- * PER CONTAINER is the decision (#37532 / O10), so the count has to be too. A
+ * PER CONTAINER is the decision, so the count has to be too. A
  * single total would let one container spend the rest's allowance and decide by
  * scan order which of them reported -- measured on a real node, one container
  * produced 25% of the node's rows.
@@ -798,7 +798,7 @@ int fim_container_is_admitted(const char* container_id)
      * cannot invent the decision it was not given. A container is unkeyed for a
      * while after every restart, so that let the node report one container past
      * containers.synced_limit on each one, and created its documents on the
-     * manager only to delete them again when its key came back (#37532).
+     * manager only to delete them again when its key came back.
      *
      * The not-told-yet case above remains fail-open: no decision has arrived at
      * all there, which is a different thing from one that says no. */
@@ -844,8 +844,7 @@ static int container_row_sync_flag(const cJSON* row, int operation)
          * budget never does this -- container_budget_decide() keeps a modified
          * reported row reported -- so this gate was the one way it could
          * happen, and admission now changes at run time from the resolver
-         * thread, so a file event lands inside that window routinely
-         * (#37532).
+         * thread, so a file event lands inside that window routinely.
          *
          * Leave the column alone instead. The reconciliation that follows the
          * de-admission still sees sync=1 and retracts the row properly, which

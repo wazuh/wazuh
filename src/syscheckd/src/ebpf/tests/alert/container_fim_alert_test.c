@@ -6,7 +6,7 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
  *
- * The container FIM stateless alert (#37532, WP2 of 14-spike-integration-plan).
+ * The container FIM stateless alert (WP2 of 14-spike-integration-plan).
  *
  * Container rows were persisted into wazuh-states-fim-files and never alerted
  * on, so a file changing inside a container produced no FIM alert at all. This

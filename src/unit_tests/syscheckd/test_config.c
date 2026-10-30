@@ -865,7 +865,7 @@ void test_fim_copy_directory_null(void **state) {
 void test_fim_copy_directory_return_dir_copied(void **state) {
     /* Zero-initialised, and it has to be: fim_copy_directory() reads every field
      * of what it is handed, and `container` joined directory_t after this test
-     * was written (#37532). Left to whatever the stack held, container.name came
+     * was written. Left to whatever the stack held, container.name came
      * out non-NULL and the copy strdup'd a garbage pointer -- an access violation
      * on Windows, and silently harmless on Linux only because the stack there
      * happened to be zero. Setting the fields one by one is what let a newly

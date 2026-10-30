@@ -336,7 +336,7 @@ static bool bridge_parse_fim_limits(const cJSON *limits_obj, fim_limits_t *fim)
     }
 
     /* Optional, and deliberately so: a manager that predates the per-container
-     * cap (#37532 / O10) sends "fim" without it, and failing the whole FIM block
+     * cap sends "fim" without it, and failing the whole FIM block
      * over a field it has never heard of would break every such pairing. */
     bridge_get_optional_int(module, "container_file", &fim->container_file);
 
@@ -353,7 +353,7 @@ static bool bridge_parse_syscollector_limits(const cJSON *limits_obj, syscollect
     }
 
     /* Optional, and deliberately so: a manager that predates the per-container
-     * caps (#37532 / O10) sends "syscollector" without them, and failing the
+     * caps sends "syscollector" without them, and failing the
      * whole block over fields it has never heard of would break every such
      * pairing. Unlimited is the behaviour those managers already produce. */
     bridge_get_optional_int(module, "container_processes", &syscollector->container_processes);

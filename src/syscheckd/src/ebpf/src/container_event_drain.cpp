@@ -1,6 +1,6 @@
 /*
  * Wazuh Syscheckd — the eBPF drain that feeds the container reconcile consumer
- * (#37532 / #37396).
+ * (#37396).
  * Copyright (C) 2015, Wazuh Inc.
  *
  * This program is free software; you can redistribute it
@@ -129,8 +129,7 @@ namespace fim_container_events
      *
      * So an incomplete list is a set of upserts: what it names is applied, what
      * it omits is left exactly as it was. The caller does the same for the kernel
-     * filter, with applyContainerDelta() in place of applyContainerList()
-     * (#37532).
+     * filter, with applyContainerDelta() in place of applyContainerList().
      *
      * Free and pure so the rule can be tested without a connector -- the absence
      * of any seam here is why the drain kept reading a partial list as the whole
@@ -162,7 +161,7 @@ namespace fim_container_events
      * readmit one because another freed a slot under containers.synced_limit,
      * and no event is journalled for it. A view merged from events alone
      * therefore keeps a readmitted container withheld, or keeps reporting one
-     * the cap has since pushed out (#37532).
+     * the cap has since pushed out.
      *
      * Positive always, negative only from a reply that ENUMERATES. Membership
      * in the set is the connector's own answer and can be taken at once;
@@ -179,8 +178,7 @@ namespace fim_container_events
      * seconds after it restarts -- held every withdrawal on this path for as
      * long as it stayed unkeyed: lower containers.synced_limit and the drain
      * went on republishing as admitted the containers the baseline had just
-     * retracted, which alternated their documents between CREATE and DELETE
-     * (#37532). */
+     * retracted, which alternated their documents between CREATE and DELETE. */
     void applyAdmittedSet(std::map<std::string, bool>& view,
                           const std::set<std::string>& admitted,
                           bool admittedKnown,
@@ -212,7 +210,7 @@ namespace fim_container_events
      * carry a `synced` flag, and the whole set is where their answer lives.
      * Keeping them beside the view as an unrankable third category is what let
      * a container report outside containers.synced_limit for as long as it was
-     * unkeyed, which is a window every restart opens (#37532).
+     * unkeyed, which is a window every restart opens.
      *
      * A server too old to send the set leaves no decision to read, and reading
      * silence as a refusal would retract live rows: admit them, as this did
@@ -245,7 +243,7 @@ namespace fim_container_events
      * What this deliberately does NOT wait for is every container to be KEYED.
      * It used to, and a container whose cgroup no process reports never is, so
      * the snapshot was never installed again and every container that started
-     * afterwards read as refused for the life of the process (#37532). An
+     * afterwards read as refused for the life of the process. An
      * unkeyed container has an id, which is all admission needs; only the
      * cgroup map needs the key.
      *
@@ -253,7 +251,7 @@ namespace fim_container_events
      * so "publish when it next CHANGES" silently means never on a quiet node --
      * the change has already been absorbed. `unpublished` is what remembers
      * that the installed snapshot is behind the view, so the next call that can
-     * install does, with or without a further change (#37532). */
+     * install does, with or without a further change. */
     AdmissionPublish decideAdmissionPublish(bool changed, bool unpublished, bool released, bool enumerated)
     {
         if (!changed && !unpublished)
@@ -356,7 +354,7 @@ namespace fim_container_events
              * one by one. A `removed` event withdraws every cgroup that
              * container held, which is what install() would have done for it.
              * Only when the reply enumerates: without that there is no
-             * difference between "gone" and "not mentioned" (#37532). */
+             * difference between "gone" and "not mentioned". */
             std::set<std::string> present = delta.unkeyed;
 
             for (const auto& ref : delta.containers)
@@ -398,7 +396,7 @@ namespace fim_container_events
              * It is not only size. A departed container keeps answering
              * fim_container_is_admitted(), so it holds its place in the set the
              * drain publishes, and its id reads as known rather than unheard-of
-             * if the runtime ever reuses it (#37532). */
+             * if the runtime ever reuses it. */
             if (!delta.complete && plan.enumerated)
             {
                 for (auto it = plan.admissionView.begin(); it != plan.admissionView.end();)
@@ -853,7 +851,7 @@ namespace fim_container_events
          *
          * Containers the connector could not key are in here too. The cap ranks
          * a container by its id, which is a fact that needs no attribution key,
-         * so there is no third state to keep beside the map (#37532). */
+         * so there is no third state to keep beside the map. */
         std::map<std::string, bool> admission_view;
 
         /* The installed snapshot is behind admission_view. See

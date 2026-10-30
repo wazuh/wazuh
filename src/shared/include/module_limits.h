@@ -17,7 +17,7 @@
 #define DEFAULT_FIM_REGISTRY_KEY_LIMIT                  0
 #define DEFAULT_FIM_REGISTRY_VALUE_LIMIT                0
 
-/* Container FIM's document budget, PER CONTAINER (#37532 / O10).
+/* Container FIM's document budget, PER CONTAINER.
  *
  * It lives in the fim namespace rather than one of its own because that is how
  * every other limit is spelled: fim.file_limit bounds the host, and
@@ -50,7 +50,7 @@
 #define DEFAULT_SYSCOLLECTOR_BROWSER_EXTENSIONS_LIMIT   0
 
 /* Syscollector container-inventory default values, PER CONTAINER
- * (#37532 / #37534 / O10).
+ * (#37534).
  *
  * Spelled container_<dimension> inside the syscollector namespace, like every
  * other limit, rather than in a namespace of their own.
@@ -84,7 +84,7 @@
 /* SCA default values */
 #define DEFAULT_SCA_CHECKS_LIMIT                        0
 
-/* How many containers may report to the manager at all (#37532).
+/* How many containers may report to the manager at all.
  *
  * A THIRD layer, above the two beside it. A row cap refuses the store; a
  * document cap gates the sync flag per dimension; this one decides, per
@@ -130,7 +130,7 @@ typedef struct syscollector_limits_t {
     int groups;
     int services;
     int browser_extensions;
-    /* Per container, not shared across them (#37532 / O10). Eleven, mirroring
+    /* Per container, not shared across them. Eleven, mirroring
      * CONTAINER_BASELINE_TABLES: no hotfixes (no Linux data source) and no
      * browser_extensions (no container scanner). */
     int container_processes;

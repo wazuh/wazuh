@@ -1,5 +1,5 @@
 /*
- * Wazuh container_baseline — the quiescence wait before a baseline (#37532).
+ * Wazuh container_baseline — the quiescence wait before a baseline.
  * Copyright (C) 2015, Wazuh Inc.
  *
  * This program is free software; you can redistribute it

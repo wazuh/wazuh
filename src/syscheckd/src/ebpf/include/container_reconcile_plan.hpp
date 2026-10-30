@@ -1,6 +1,6 @@
 /*
  * Wazuh Syscheckd — turning a staged batch into a reconcile action
- * (#37532 / #37396).
+ * (#37396).
  * Copyright (C) 2015, Wazuh Inc.
  *
  * This program is free software; you can redistribute it

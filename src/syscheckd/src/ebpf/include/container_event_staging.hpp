@@ -1,6 +1,6 @@
 /*
  * Wazuh Syscheckd — staging buffer between the eBPF drain and the container
- * reconcile consumer (#37532 / #37396).
+ * reconcile consumer (#37396).
  * Copyright (C) 2015, Wazuh Inc.
  *
  * This program is free software; you can redistribute it

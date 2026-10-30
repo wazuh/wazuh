@@ -3,7 +3,7 @@
 #include <gtest/gtest.h>
 
 /// Unlimited is the default and must stay entirely free of accounting: an agent
-/// whose manager predates O10 sends no budget, and must behave exactly as it did
+/// whose manager predates the container budget sends none, and must behave as it did
 /// before container FIM had one.
 TEST(ContainerDocBudget, AnUnsetBudgetReportsEverythingAndCountsNothing)
 {

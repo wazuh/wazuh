@@ -69,7 +69,7 @@ static cJSON* wm_container_instances_build_config(const wm_container_instances_t
     return config;
 }
 
-/* How many containers may report to the manager (#37532).
+/* How many containers may report to the manager.
  *
  * Read here rather than inside the module because this is modulesd, where
  * w_query_agentd already lives; the module itself is a shared object loaded by

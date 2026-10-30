@@ -65,7 +65,7 @@ int RemotedConfig(const char *cfgfile, remoted *cfg)
     /* Read module limits from internal_options.conf */
     /* FIM limits */
     manager_module_limits.fim.file = getDefine_Int_default("fim", "file_limit", 0, INT_MAX, 30000);
-    /* Per container, not shared across them (#37532 / O10). 30000 matches the
+    /* Per container, not shared across them. 30000 matches the
      * host cap beside it: a container gets the same allowance the endpoint
      * does, and nothing about running in a container makes its files less
      * worth reporting. Measured basis: a container monitoring 2,000 files
@@ -90,7 +90,7 @@ int RemotedConfig(const char *cfgfile, remoted *cfg)
     manager_module_limits.syscollector.services = getDefine_Int_default("syscollector", "services_limit", 0, INT_MAX, 30000);
     manager_module_limits.syscollector.browser_extensions = getDefine_Int_default("syscollector", "browser_extensions_limit", 0, INT_MAX, 30000);
 
-    /* Per container, not shared across them (#37532 / O10). 30000 matches the
+    /* Per container, not shared across them. 30000 matches the
      * host caps above, for the same reason. Measured basis: 96-133 inventory
      * rows per container across mixed images, so this is ~200x a realistic
      * container -- a guard against one pathological container rather than a
@@ -110,7 +110,7 @@ int RemotedConfig(const char *cfgfile, remoted *cfg)
     /* SCA limits */
     manager_module_limits.sca.checks = getDefine_Int_default("sca", "checks_limit", 0, INT_MAX, 30000);
 
-    /* How many containers report at all (#37532). The only limit here that
+    /* How many containers report at all. The only limit here that
      * defaults to 0, and deliberately: every other one bounds a quantity that
      * rarely reaches it, while this one binds as soon as it is set. Shipping a
      * number would make an upgrade stop showing containers an operator can see

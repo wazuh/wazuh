@@ -6,7 +6,7 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
  *
- * Option A: container FIM baseline through the host event flow (spike #37532).
+ * Option A: container FIM baseline through the host event flow.
  *
  * Rows are STREAMED into a per-container scoped DBSync transaction as they
  * arrive, rather than buffering the whole node's baseline in memory first: the
@@ -291,7 +291,7 @@ namespace
             /// The ceiling is measured against what the container HOLDS: the rows
             /// stored before this pass plus the new ones stored since. Counting only
             /// this pass let a capped pass, which kept its unrefreshed rows, be
-            /// followed by another that stored up to the limit again (#37532).
+            /// followed by another that stored up to the limit again.
             ///
             /// Two refusals are possible and they mean different things. The
             /// per-container cap is refused here, and only for a row the container
@@ -599,7 +599,7 @@ namespace
             ///         it costs nothing here because the sweep has already read
             ///         the ids and already knows which ones it deleted. That
             ///         query is a DISTINCT over every FIM row on the node, and
-            ///         the baseline ran three of them (#37532).
+            ///         the baseline ran three of them.
             std::optional<std::set<std::string>> sweepStale(const std::set<std::string>& known)
             {
                 finishCurrent(true);
@@ -805,7 +805,7 @@ namespace
         /// by the cap like any other container -- existence is what it bounds --
         /// so they also arrive through `known` and, when admitted, through
         /// `admitted`. They must never reach the cgroup map: existing and being
-        /// identifiable are different facts (#37532).
+        /// identifiable are different facts.
         std::set<std::string> unkeyed;
 
         /// Whether `known` is the whole node. False when the connector is still
@@ -829,7 +829,7 @@ namespace
     /// connector's own decision for each. `known` must hold them both: the
     /// bridge reads absence from it as "this snapshot predates the container"
     /// and retakes the listing, which for one that can never be keyed would
-    /// mean retaking it per batch (#37532).
+    /// mean retaking it per batch.
     void container_id_sink(const char* container_id, int synced, void* user_data)
     {
         if (!container_id || !user_data) return;
@@ -876,7 +876,7 @@ namespace
         // process reports never resolves, so `complete` stayed false for as
         // long as it ran, the snapshot was never replaced again, and every
         // container that started afterwards was absent from it and read as
-        // refused -- silent for the life of the process (#37532).
+        // refused -- silent for the life of the process.
         //
         // So install as soon as the connector has named what it could not key,
         // and let the unkeyed ids ride along as their own category.
@@ -886,7 +886,7 @@ namespace
             // container it omitted from one that is gone, so keep the previous
             // snapshot: before the first listing there is none and the bridge
             // is fail-open, which is the same safe direction. A container that
-            // appears meanwhile waits one cycle to be admitted (#37532).
+            // appears meanwhile waits one cycle to be admitted.
             return listed;
         }
 
@@ -1237,7 +1237,7 @@ namespace
             // learning that costs a query, a parse, a normalisation and a schema
             // validation per row, on every reconcile -- which is every admission
             // change and every whole-node baseline. A retraction is never
-            // skipped: it frees slots rather than spending them (#37532).
+            // skipped: it frees slots rather than spending them.
             if (promote && fim_container_doc_budget_has_headroom(container_id) == 0)
             {
                 continue;
@@ -1261,7 +1261,7 @@ namespace
             // the loop -- a row with no path, one that would not serialise, a
             // flag write that failed -- and each of those leaves a document on
             // the manager just as a refusal does, while reporting a smaller
-            // number or none at all (#37532).
+            // number or none at all.
             std::size_t unretracted = promote ? 0U : static_cast<std::size_t>(cJSON_GetArraySize(rows.get()));
             const cJSON* row = nullptr;
             cJSON_ArrayForEach(row, rows.get())
@@ -1305,7 +1305,7 @@ namespace
                 // keeps sync=1, so the agent's integrity checksum goes on covering
                 // content the manager does not have, and the mismatch is repaired by
                 // clearing and re-sending the whole FIM index. An operator seeing
-                // that has nothing else to connect it to (#37532).
+                // that has nothing else to connect it to.
                 //
                 // The row staying at sync=1 is also what gets it retried: the next
                 // reconcile selects on exactly that. What runs one is an admission
@@ -1353,7 +1353,7 @@ extern "C" void fim_container_reconcile_admission(void)
     // containers.synced_limit -- had its rows left at sync=0 with nothing to
     // promote them until the next whole-node baseline. Paired with a retraction
     // that could fire on a withheld list, a live container's FIM state left the
-    // manager and could not come back (#37532).
+    // manager and could not come back.
     //
     // Retract first: that releases the document budget of the containers that
     // just lost admission, so the promotion below can spend what they freed in
@@ -1456,7 +1456,7 @@ extern "C" void fim_run_container_baseline(void)
         // The ids come from the sweep when it ran, because it has just read
         // them and knows which ones it deleted; asking the database again would
         // be a third SELECT DISTINCT over every FIM row on the node in one
-        // baseline (#37532). The branches above that skip the sweep have to ask.
+        // baseline. The branches above that skip the sweep have to ask.
         if (!reporting)
         {
             reporting = distinctContainerIds();

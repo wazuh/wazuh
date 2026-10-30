@@ -1,5 +1,5 @@
 /*
- * Wazuh container_instances — container synchronization admission (#37532).
+ * Wazuh container_instances — container synchronization admission.
  * Copyright (C) 2015, Wazuh Inc.
  *
  * This program is free software; you can redistribute it

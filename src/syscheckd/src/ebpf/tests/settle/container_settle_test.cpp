@@ -6,7 +6,7 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
  *
- * D16's settle in the staging buffer (#37532, WP1 of 14-spike-integration-plan).
+ * D16's settle in the staging buffer (WP1 of 14-spike-integration-plan).
  *
  * RT_EV_FILE_OPEN fires on open-with-write-intent, so the event precedes the
  * modification: reconciling immediately re-reads the PRE-write file and stores

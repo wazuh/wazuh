@@ -526,7 +526,7 @@ int main(int argc, char **argv)
         // is exactly when this stays unregistered.
         fim_recovery_set_container_locking(fim_container_state_lock, fim_container_state_unlock);
 
-        // Subscribe BEFORE walking (#37396 / #37532). The drain stages container
+        // Subscribe BEFORE walking (#37396). The drain stages container
         // file events from here on, so a file changed while the walk is running
         // is reconciled afterwards instead of falling into the gap between "the
         // walk read this file" and "monitoring started". No-op when the eBPF

@@ -491,7 +491,7 @@ bool fetch_document_limits_from_agentd(){
     }
 
     /* Optional within the fim reply: a manager that predates the per-container
-     * cap (#37532 / O10) simply does not send it, and container FIM stays
+     * cap simply does not send it, and container FIM stays
      * unlimited, which is what it did before the cap existed. */
     cJSON* container_file = cJSON_GetObjectItem(root, "container_file");
     if (container_file && cJSON_IsNumber(container_file))

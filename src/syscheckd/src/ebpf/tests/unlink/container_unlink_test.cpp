@@ -6,7 +6,7 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
  *
- * D17's unlink half (#37532, WP3 of 14-spike-integration-plan).
+ * D17's unlink half (WP3 of 14-spike-integration-plan).
  *
  * RT_EV_FILE_UNLINK names the file the kernel removed. Staging it as an
  * ordinary changed path made the re-read find nothing and — correctly, under

@@ -13,7 +13,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 
-/* The two rules behind the per-container row ceiling (#37532 / O10), kept apart
+/* The two rules behind the per-container row ceiling, kept apart
  * from the transaction that applies them so they can be tested without a
  * database.
  *

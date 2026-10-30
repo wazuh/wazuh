@@ -2931,7 +2931,7 @@ void Syscollector::scanContainerBaseline(const std::vector<std::string>& only_th
     };
     // The connector withholds a running container until its resolver can key it,
     // so a successful reply can still omit one from the KEYED list -- absence
-    // from that is not removal (#37532). It names those ids anyway and
+    // from that is not removal. It names those ids anyway and
     // cbaseline_list_containers_ex() reports them through the id sink above with
     // the cap's decision for each, so `discovered` is every container that
     // exists and no separate unkeyed sink is needed here. listStatus.unkeyed_known
@@ -2949,7 +2949,7 @@ void Syscollector::scanContainerBaseline(const std::vector<std::string>& only_th
     // into "this is gone". That distinction is the whole reason the cap
     // withholds instead of shortening the list. `discovered` already holds the
     // unkeyed ids: cbaseline_list_containers_ex() reports them through the id
-    // sink as well, since the cap ranks them too (#37532).
+    // sink as well, since the cap ranks them too.
     std::set<std::string> discoveredIds;
 
     for (const auto& entry : discovered)
@@ -3003,7 +3003,7 @@ void Syscollector::scanContainerBaseline(const std::vector<std::string>& only_th
         //
         // A connector that names them needs no wait: they are in the set above,
         // and a container that can never be keyed no longer blocks cleanup for
-        // as long as it runs (#37532).
+        // as long as it runs.
         m_logFunction(LOG_WARNING,
                       "Container list is incomplete and this connector does not report which containers "
                       "it could not identify; skipping stale-container cleanup until it does. Rows for "
@@ -3020,7 +3020,7 @@ void Syscollector::scanContainerBaseline(const std::vector<std::string>& only_th
                   std::to_string(acc.partialContainers) + " partial scan(s), " +
                   std::to_string(staleCount) + " stale container(s) cleaned).");
 #else
-    // Container baseline acquisition (#37532) only runs on Linux - the same
+    // Container baseline acquisition only runs on Linux - the same
     // Linux-only constraint as container_instances and the eBPF module it
     // depends on.
     m_logFunction(LOG_DEBUG_VERBOSE, "Container baseline scan skipped (Linux-only feature).");
@@ -3085,7 +3085,7 @@ void Syscollector::scan()
     TRY_CATCH_TASK(scanServices);
     TRY_CATCH_TASK(scanBrowserExtensions);
 
-    // Container baseline (#37532) seeds a container's state the first time it
+    // Container baseline seeds a container's state the first time it
     // is seen (kept quiet — see scanContainerBaseline()'s per-container
     // notifyOverride) and computes real deltas against that seed afterwards,
     // via the same per-container scoped DBSync transactions host rows already
@@ -5092,7 +5092,7 @@ std::string Syscollector::scopeFilter(LimitScope scope, const std::string& conta
         return " AND container_id=''";
     }
 
-    // A budget is PER CONTAINER (#37532 / O10), so a scoped query names one.
+    // A budget is PER CONTAINER, so a scoped query names one.
     // Without an id the caller wants every container's rows — which is right
     // for "how many container rows exist at all" and wrong for anything that
     // spends a budget.
@@ -5139,7 +5139,7 @@ void Syscollector::setAdmittedContainers(const std::map<std::string, bool>& disc
     // `discovered` meaning nothing at all. Dropping those containers from the
     // admitted set would read as a de-admission, retract rows the manager should
     // keep, and re-admit them a cycle later -- the same false DELETE the stale
-    // sweep is held back to avoid. Carry them instead (#37532).
+    // sweep is held back to avoid. Carry them instead.
     if (!listEnumerates)
     {
         for (const auto& containerId : m_admittedContainers)
@@ -5157,7 +5157,7 @@ void Syscollector::setAdmittedContainers(const std::map<std::string, bool>& disc
     // of any size walks every reported container row to find the handful that moved
     // -- and usually finds none at all, because the commonest way to lose admission
     // is to stop existing, and the stale-container sweep has already deleted those
-    // rows by the time this runs (#37532).
+    // rows by the time this runs.
     for (const auto& containerId : m_admittedContainers)
     {
         // `admitted` already holds the unkeyed ids, so a container that was
@@ -5197,7 +5197,7 @@ void Syscollector::setAdmittedContainers(const std::map<std::string, bool>& disc
     // yet -- and then re-promotes each of them once it has, which is a
     // DELETE+CREATE cycle on every restart. The carry-forward above cannot
     // prevent that: at startup m_admittedContainers is empty, so there is
-    // nothing yet to carry (#37532).
+    // nothing yet to carry.
     //
     // Deliberately NOT gated on the listing being keyed-complete. A container
     // whose cgroup no process reports never resolves, so that flag stays false
@@ -5257,7 +5257,7 @@ void Syscollector::retractDeAdmittedContainers()
     // ever bit, used to close the door for the life of the process -- and the
     // rows the global pass exists for are exactly the ones nothing else can
     // find: reported by a previous process, for a container this one has never
-    // admitted and so never watched lose anything (#37532).
+    // admitted and so never watched lose anything.
     if (globalPass)
     {
         m_admissionReconciled = true;
@@ -5344,7 +5344,7 @@ bool Syscollector::isContainerAdmittedLocked(const std::string& containerId) con
     }
 
     // Membership, nothing else. The cap ranks every container the connector knows
-    // of, keyed or not, so absence from here is a refusal and not a gap (#37532).
+    // of, keyed or not, so absence from here is a refusal and not a gap.
     return m_admittedContainers.count(containerId) != 0;
 }
 
@@ -5656,8 +5656,8 @@ bool Syscollector::applyLimitsForScope(const nlohmann::json& limits, LimitScope 
         // Convert agentd short names to full index names
         nlohmann::json normalizedLimits = nlohmann::json::object();
 
-        // One reply carries both scopes, split on the "container_" prefix
-        // (#37532 / O10). A second query bought nothing: the two sets arrive
+        // One reply carries both scopes, split on the "container_" prefix.
+        // A second query bought nothing: the two sets arrive
         // from the same handshake and are applied in the same pass, and keeping
         // them apart meant an agcom module that could silently not exist.
         static const std::string CONTAINER_PREFIX {"container_"};
@@ -5881,7 +5881,7 @@ void Syscollector::initializeDocumentCounts()
                 }
             }
 
-            // One count per CONTAINER per index (#37532 / O10). Counting every
+            // One count per CONTAINER per index. Counting every
             // container's rows into one total would restore exactly the shared
             // budget this scope exists to end, and a restart would then hand a
             // busy container the whole allowance before any other was read.
@@ -5947,7 +5947,7 @@ bool Syscollector::checkDocumentLimit(const std::string& table,
                                 !data[CONTAINER_ID_COLUMN].get<std::string>().empty();
     const LimitScope scope = isContainerRow ? LimitScope::container : LimitScope::host;
     // Which container's budget this row spends. Empty for host rows, and the
-    // key the container counts are stored under (#37532 / O10).
+    // key the container counts are stored under.
     const std::string containerId =
         isContainerRow ? data[CONTAINER_ID_COLUMN].get<std::string>() : std::string {};
 
@@ -6061,7 +6061,7 @@ size_t Syscollector::promoteUnsyncedItems(const std::string& index,
 
     // No COUNT(sync=0) first: the LIMITed SELECT below already returns at most
     // what is withheld, and this runs once per container per index every scan
-    // under m_limitsMutex (#37532).
+    // under m_limitsMutex.
     const size_t toPromote = std::min<size_t>(maxToPromote, std::numeric_limits<uint32_t>::max());
 
     // Get ordering fields
@@ -6188,7 +6188,7 @@ void Syscollector::promoteItemsAfterScanLocked(LimitScope scope)
         }
 
         // One budget per container, so one promotion pass per container — and
-        // exactly one pass, with an empty id, for the host (#37532 / O10).
+        // exactly one pass, with an empty id, for the host.
         // Promoting the container population as a whole is what let one
         // container consume another's allowance, with value-ordered promotion
         // (package name, pid) deciding which rows survived.
@@ -6202,7 +6202,7 @@ void Syscollector::promoteItemsAfterScanLocked(LimitScope scope)
         {
             // Only containers with something withheld: promotion has nothing to
             // do for the rest, and walking every container cost two queries
-            // per container per index on each scan (#37532). A container
+            // per container per index on each scan. A container
             // with no backlog withholds nothing, so its saturation notice is
             // re-armed and will fire again once rows are actually held back.
             targets = containersWithRowsIn(tableName, true);

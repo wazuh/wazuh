@@ -15,7 +15,7 @@ extern "C" {
 #endif
 
 /**
- * @brief Run the container file baseline (spike #37532) for every container
+ * @brief Run the container file baseline for every container
  * currently known to the container-connector module, over every configured
  * `<container_security><syscheck><directories>` entry, and persist each resulting row
  * through the existing FIM sync-protocol handle (syscheck.sync_handle) — the

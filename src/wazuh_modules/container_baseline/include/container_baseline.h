@@ -7,7 +7,7 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
  *
- * Baseline acquisition for containerised workloads (spike #37532): a host-side
+ * Baseline acquisition for containerised workloads: a host-side
  * scan that seeds the initial FIM (file) and Syscollector (inventory) state for
  * a container, so the eBPF-driven change stream (#37396) has a known prior
  * state to diff against instead of only reporting activity after the fact.

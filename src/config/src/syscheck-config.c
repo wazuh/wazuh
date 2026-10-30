@@ -92,7 +92,7 @@ int initialize_syscheck_configuration(syscheck_config *syscheck) {
      * but it does mean the "database is N% full" warnings fire later than they
      * used to on an agent that runs no containers at all. */
     syscheck->file_entry_limit                = 300000;
-    /* Rows ONE container may store, per container (#37532 / O10). 30000 mirrors
+    /* Rows ONE container may store, per container. 30000 mirrors
      * the per-container document budget, so a container that may REPORT 30,000
      * files may also STORE them. ~15x a container monitoring 2,000 files, so it
      * guards against one pathological container rather than bounding a normal

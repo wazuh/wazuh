@@ -1,6 +1,6 @@
 /*
  * Wazuh Syscheckd — cgroup_id -> container_id attribution for the eBPF drain
- * (#37532 / #37396).
+ * (#37396).
  * Copyright (C) 2015, Wazuh Inc.
  *
  * This program is free software; you can redistribute it

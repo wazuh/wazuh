@@ -173,7 +173,7 @@ int RunFimDbsyncBaselineFrom(const ContainerDiscoverer&        discover,
 
 /// @brief FIM baseline for ONE container, over the paths the caller supplies.
 ///
-/// Serves both actions the eBPF reconcile consumer (#37532) needs, differing
+/// Serves both actions the eBPF reconcile consumer needs, differing
 /// only in what it passes as `paths`:
 ///   - re-walk a container: the configured monitored paths;
 ///   - re-read specific files: one MonitoredPath per file. No special mode is
@@ -297,9 +297,9 @@ struct ContainerListStatus
 /// about a container id and never about an attribution key, so leaving the
 /// unkeyed ones out of `sink` meant every caller had to supply an answer the
 /// connector had already given -- and each supplied "admitted", which let the
-/// node report past containers.synced_limit for the length of a restart
-/// (#37532). They are NOT included in the return count, which stays the length
-/// of the keyed list.
+/// node report past containers.synced_limit for the length of a restart.
+/// They are NOT included in the return count, which stays the length of the
+/// keyed list.
 int ListContainers(const std::string& connector_socket_path, const ContainerIdSink& sink,
                    ContainerListStatus* status = nullptr,
                    const UnkeyedIdSink& unkeyedSink = {});
@@ -314,7 +314,7 @@ int ListContainers(const std::string& connector_socket_path, const ContainerIdSi
 /// flag from the first, and an unkeyed set from the first -- and a container
 /// that restarted in between was in neither the list nor the unkeyed ids.
 /// Every consumer sweeps on exactly that pair, so it lost every FIM and
-/// inventory row it had (#37532).
+/// inventory row it had.
 ///
 /// Templated on the payload so this header needs none of the client's types.
 template <typename Payload>
@@ -334,7 +334,7 @@ struct PolledListing
     /// `synced` flag, so this is the only place its decision arrives --
     /// and it must arrive, because a consumer that has to guess guesses
     /// "admitted" and the cap then bounds nothing for the length of a
-    /// container restart (#37532).
+    /// container restart.
     std::set<std::string> admitted;
 
     bool complete {false};

@@ -1,5 +1,5 @@
-/* Throw-away spike harness for #37532 remaining collectors round 2 (protocols +
- * services + virtual hardware), driven by the #37532 review: replicate what host
+/* Throw-away spike harness for the remaining collectors, round 2 (protocols +
+ * services + virtual hardware), driven by review feedback: replicate what host
  * syscollector collects, but from the container.
  *
  * Same shape as m5_runner: a tiny runner around the real scanner code, no mocks.

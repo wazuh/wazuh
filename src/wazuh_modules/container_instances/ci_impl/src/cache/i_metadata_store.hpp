@@ -57,7 +57,7 @@ namespace wazuh::container_instances
     /// a container that is keyed when the first is taken and unkeyed when the
     /// second is -- a container restarting, which is when its records are
     /// replaced -- appears in NEITHER. The consumer then deletes every row it
-    /// has for a container that is simply starting again (#37532).
+    /// has for a container that is simply starting again.
     struct ListSnapshot
     {
         std::vector<ContainerRecordPtr> containers;
@@ -131,7 +131,7 @@ namespace wazuh::container_instances
         /// for as long as it ran.
         ///
         /// Publishing the ids separately answers the existence question without
-        /// answering the key question (#37532).
+        /// answering the key question.
         [[nodiscard]] virtual std::set<std::string> unkeyedContainerIds() const = 0;
 
         /// Everything a `list` reply needs, taken together under one lock.

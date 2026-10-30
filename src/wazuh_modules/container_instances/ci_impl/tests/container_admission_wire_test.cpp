@@ -1,5 +1,5 @@
 /*
- * Wazuh container_instances — publishing the admission decision (#37532).
+ * Wazuh container_instances — publishing the admission decision.
  * Copyright (C) 2015, Wazuh Inc.
  *
  * This program is free software; you can redistribute it
