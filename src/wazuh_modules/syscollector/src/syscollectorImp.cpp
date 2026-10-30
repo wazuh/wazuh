@@ -2549,16 +2549,33 @@ bool Syscollector::scanContainerBaselineDelta()
         return false;
     }
 
-    if (collected.rescan.empty() && collected.removed.empty())
-    {
-        return true; // nothing changed; the common case, and it costs one round trip
-    }
-
     if (!collected.rescan.empty())
     {
         // Same walk as a full pass, over fewer containers — and explicitly
         // without the absence sweep, which only a whole-node list can justify.
+        // It reads admission itself, so this branch needs nothing further.
         scanContainerBaseline(collected.rescan, /*sweep_absent=*/false);
+    }
+    else
+    {
+        // Nothing to re-walk, so nothing else on this tick would read the
+        // verdict -- and an admission shift journals no event, deliberately,
+        // so the delta that brought us here cannot carry one. Without this an
+        // operator lowering containers.synced_limit left the inventory of the
+        // containers it pushed out on the manager until the next whole-node
+        // pass.
+        //
+        // Both no-rescan branches, not just the empty one: a delta carrying
+        // only removals skips scanContainerBaseline() too.
+        std::map<std::string, bool> discovered;
+        bool listComplete = false;
+        bool unkeyedKnown = false;
+        pollContainerAdmission(discovered, listComplete, unkeyedKnown);
+    }
+
+    if (collected.rescan.empty() && collected.removed.empty())
+    {
+        return true; // nothing changed; the common case, and it costs one round trip
     }
 
     // Only on an explicit removal. Absence is never enough here: the delta
@@ -2920,27 +2937,9 @@ void Syscollector::scanContainerBaseline(const std::vector<std::string>& only_th
     // admission separately could straddle a reconcile and attribute one
     // container's verdict to another.
     std::map<std::string, bool> discovered;
-    const auto idSink = [](const char* containerId, int synced, void* userData)
-    {
-        auto* ids = static_cast<std::map<std::string, bool>*>(userData);
-
-        if (ids && containerId)
-        {
-            (*ids)[containerId] = (synced != 0);
-        }
-    };
-    // The connector withholds a running container until its resolver can key it,
-    // so a successful reply can still omit one from the KEYED list -- absence
-    // from that is not removal. It names those ids anyway and
-    // cbaseline_list_containers_ex() reports them through the id sink above with
-    // the cap's decision for each, so `discovered` is every container that
-    // exists and no separate unkeyed sink is needed here. listStatus.unkeyed_known
-    // still says whether the connector is capable of naming them at all, which
-    // is what the sweep below has to wait on.
-    cb_list_status_t listStatus {};
-    const int listed =
-        cbaseline_list_containers_ex(CB_DEFAULT_CONNECTOR_SOCKET_PATH, idSink, &discovered, &listStatus);
-    const int listComplete = listStatus.complete;
+    bool listComplete = false;
+    bool unkeyedKnown = false;
+    const int listed = pollContainerAdmission(discovered, listComplete, unkeyedKnown);
 
     // EVERY known container, admitted or not, keyed or not. The sweep below
     // deletes what is absent from this set, and a container whose rows are
@@ -2955,13 +2954,6 @@ void Syscollector::scanContainerBaseline(const std::vector<std::string>& only_th
     for (const auto& entry : discovered)
     {
         discoveredIds.insert(entry.first);
-    }
-
-    if (listed >= 0)
-    {
-        // Complete OR able to say what it could not key: either way the reply
-        // names every container that exists, which is all admission needs.
-        setAdmittedContainers(discovered, listComplete != 0 || listStatus.unkeyed_known != 0);
     }
 
     // Containers still in the DB but no longer known to container_instances
@@ -2994,7 +2986,7 @@ void Syscollector::scanContainerBaseline(const std::vector<std::string>& only_th
                       "Container connector unavailable; skipping stale-container cleanup "
                       "to avoid deleting rows for containers that still exist.");
     }
-    else if (listStatus.unkeyed_known == 0 && listComplete == 0)
+    else if (!unkeyedKnown && !listComplete)
     {
         // The connector answered, said it is still withholding running
         // containers -- and is too old to say WHICH. They are absent from
@@ -5118,6 +5110,56 @@ std::string Syscollector::scopeFilter(LimitScope scope, const std::string& conta
     }
 
     return " AND container_id='" + containerId + "'";
+}
+
+int Syscollector::pollContainerAdmission(std::map<std::string, bool>& discovered,
+                                         bool& listComplete,
+                                         bool& unkeyedKnown)
+{
+    listComplete = false;
+    unkeyedKnown = false;
+
+#ifdef __linux__
+    const auto idSink = [](const char* containerId, int synced, void* userData)
+    {
+        auto* ids = static_cast<std::map<std::string, bool>*>(userData);
+
+        if (ids && containerId)
+        {
+            (*ids)[containerId] = (synced != 0);
+        }
+    };
+
+    // The connector withholds a running container until its resolver can key it,
+    // so a successful reply can still omit one from the KEYED list -- absence
+    // from that is not removal. It names those ids anyway and
+    // cbaseline_list_containers_ex() reports them through the id sink above with
+    // the cap's decision for each, so `discovered` is every container that
+    // exists and no separate unkeyed sink is needed here. `unkeyed_known` still
+    // says whether the connector is capable of naming them at all, which is what
+    // a stale sweep has to wait on.
+    cb_list_status_t listStatus {};
+    const int listed =
+        cbaseline_list_containers_ex(CB_DEFAULT_CONNECTOR_SOCKET_PATH, idSink, &discovered, &listStatus);
+
+    listComplete = (listStatus.complete != 0);
+    unkeyedKnown = (listStatus.unkeyed_known != 0);
+
+    if (listed >= 0)
+    {
+        // Complete OR able to say what it could not key: either way the reply
+        // names every container that exists, which is all admission needs.
+        setAdmittedContainers(discovered, listComplete || unkeyedKnown);
+    }
+
+    return listed;
+#else
+    // The C API is Linux-only, the same constraint container_instances and the
+    // eBPF module it depends on already have. -1 is "could not be reached",
+    // which every caller already treats as "conclude nothing".
+    (void)discovered;
+    return -1;
+#endif
 }
 
 void Syscollector::setAdmittedContainers(const std::map<std::string, bool>& discovered, bool listEnumerates)

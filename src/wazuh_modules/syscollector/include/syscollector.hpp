@@ -502,6 +502,29 @@ class EXPORTED Syscollector final
          */
         void setAdmittedContainers(const std::map<std::string, bool>& discovered, bool listEnumerates = true);
 
+        /**
+         * @brief Ask container_instances what exists and who may report, and hand the
+         *        answer to setAdmittedContainers().
+         *
+         * Split out of scanContainerBaseline() because a pass that re-walks no
+         * container still has to read the verdict. An admission shift journals no
+         * lifecycle event -- deliberately, see MetadataStore::admittedIds() -- so a
+         * delta tick that finds nothing to rescan learns nothing about a cap the
+         * operator has just lowered, and the containers it pushed out went on
+         * reporting until the next whole-node pass.
+         *
+         * @param discovered   Filled with every container the connector knows of,
+         *                     mapped to whether it may report.
+         * @param listComplete Set to whether the reply keyed every running container.
+         * @param unkeyedKnown Set to whether the connector named the ones it could not
+         *                     key. Both are what a stale sweep has to wait on; this
+         *                     call does no sweeping of its own.
+         * @return The connector's return value: the number of containers it keyed, or
+         *         -1 when it could not be reached. Callers MUST check for -1 before
+         *         treating absence from `discovered` as removal.
+         */
+        int pollContainerAdmission(std::map<std::string, bool>& discovered, bool& listComplete, bool& unkeyedKnown);
+
         /// Discharges the retraction that setAdmittedContainers() recorded, once the
         /// pass has written its sync flags. Separate from it because the scan reports
         /// rows before those flags are written, so retracting any earlier reads

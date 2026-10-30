@@ -62,11 +62,28 @@ namespace
     // Which of those the cap refused. Empty means it admitted them all, which is
     // the ordinary case and what every test that predates the cap expects.
     std::set<std::string> containerUnkeyedRefused;
+
+    // What the lifecycle delta reports. Unset leaves the real call in place,
+    // which on a host with no connector answers CB_DELTA_UNAVAILABLE -- the
+    // answer every test that predates the delta path already got.
+    std::function<int(cb_lifecycle_sink_t, void*)> containerLifecycleHook;
 } // namespace
 
 extern "C" int
 __real_cbaseline_run_syscollector_dbsync(const char*, cb_dbsync_row_sink_t, cb_container_status_sink_t, void*);
 extern "C" int __real_cbaseline_list_containers_ex(const char*, cb_container_id_sink_t, void*, cb_list_status_t*);
+extern "C" int __real_cbaseline_lifecycle_since(
+    const char*, unsigned long long*, unsigned long long*, cb_lifecycle_sink_t, void*);
+
+extern "C" int __wrap_cbaseline_lifecycle_since(const char* socket,
+                                                unsigned long long* epoch,
+                                                unsigned long long* seq,
+                                                cb_lifecycle_sink_t sink,
+                                                void* ctx)
+{
+    return containerLifecycleHook ? containerLifecycleHook(sink, ctx)
+           : __real_cbaseline_lifecycle_since(socket, epoch, seq, sink, ctx);
+}
 
 extern "C" int __wrap_cbaseline_run_syscollector_dbsync(const char* socket,
                                                         cb_dbsync_row_sink_t sink,
@@ -7916,6 +7933,159 @@ TEST_F(SyscollectorImpTest, APartialListingNeitherSweepsNorDeAdmits)
     containerUnkeyedRefused.clear();
     module.runContainerBaselinePass();
     EXPECT_EQ(flags().count("b"), 0u) << "a complete listing is authoritative, so b really is gone";
+
+    module.destroy();
+    module.m_containerDocumentCounts.clear();
+    module.m_containerDocumentLimits.clear();
+    module.m_admittedContainers.clear();
+    module.m_knownContainerIds.clear();
+    module.m_pendingRetractions.clear();
+    module.m_globalReconcilePending = false;
+    module.m_admissionKnown = false;
+    module.m_admissionReconciled = false;
+    module.m_containerAdmissionWithholding = false;
+    module.m_containerRowsPurged = false;
+#else
+    GTEST_SKIP() << "Container baseline transport is Linux-only";
+#endif
+}
+
+// An admission shift journals no lifecycle event -- deliberately: a flag on the
+// record would make every slot that moved read as a container change. So the
+// delta stream cannot carry one, and a tick that finds nothing to re-walk used
+// to return before reading the verdict at all. Lower the cap and the inventory
+// of the containers it pushed out stayed on the manager until the next
+// whole-node pass, which on a configured interval can be an hour away.
+//
+// Two ticks do no re-walking, and only one of them is "nothing happened": a
+// delta carrying removals and no rescans skips scanContainerBaseline() too.
+TEST_F(SyscollectorImpTest, LoweringTheCapRetractsOnADeltaTickThatRewalksNothing)
+{
+#if defined(__linux__)
+    struct ResetHooks
+    {
+        ~ResetHooks()
+        {
+            containerScanHook = {};
+            containerListHook = {};
+            containerLifecycleHook = {};
+            containerListComplete = true;
+            containerUnkeyedIds.clear();
+            containerUnkeyedRefused.clear();
+            containerUnkeyedKnown = true;
+        }
+    } resetHooks;
+    const auto info = std::make_shared<MockSysInfo>();
+    EXPECT_CALL(*info, releaseThreadResources()).Times(testing::AnyNumber());
+    auto& module = Syscollector::instance();
+    std::vector<Operation_t> events;
+    module.init(
+        info,
+        reportFunction,
+        [&events](const std::string&, Operation_t op, const std::string&, const std::string&, uint64_t)
+    {
+        events.push_back(op);
+    },
+    logFunction,
+    SYSCOLLECTOR_DB_PATH,
+    "",
+    "",
+    3600,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false);
+    module.m_containerBaseline = true;
+    module.m_containerRowsPurged = false;
+    module.m_containerDocumentCounts.clear();
+    module.m_containerDocumentLimits.clear();
+    module.m_knownContainerIds.clear();
+    module.m_admittedContainers.clear();
+    module.m_pendingRetractions.clear();
+    module.m_globalReconcilePending = false;
+    module.m_admissionKnown = false;
+    module.m_admissionReconciled = false;
+
+    std::map<std::string, bool> admitted = {{"a", true}, {"b", true}};
+    const std::set<std::string> scanned = {"a", "b"};
+    containerListHook = [&](cb_container_id_sink_t sink, void* ctx)
+    {
+        for (const auto& [id, allowed] : admitted) sink(id.c_str(), allowed, ctx);
+
+        return static_cast<int>(admitted.size());
+    };
+    containerScanHook = [&](cb_dbsync_row_sink_t sink, cb_container_status_sink_t status, void* ctx)
+    {
+        for (const auto& id : scanned)
+        {
+            const nlohmann::json row = {{"container_id", id}, {"pid", "123"}, {"name", "worker"}};
+            sink(id.c_str(), PROCESSES_TABLE, row.dump().c_str(), ctx);
+            cb_container_status_t outcome {};
+            outcome.container_id = id.c_str();
+            status(&outcome, ctx);
+        }
+
+        return static_cast<int>(scanned.size());
+    };
+    auto flags = [&]()
+    {
+        std::map<std::string, int> rows;
+        auto query = SelectQuery::builder().table(PROCESSES_TABLE).columnList({"container_id", "sync"}).build();
+        module.m_spDBSync->selectRows(query.query(),
+                                      [&](ReturnTypeCallback, const nlohmann::json & row)
+        {
+            rows[row.at("container_id").get<std::string>()] = row.at("sync").get<int>();
+        });
+        return rows;
+    };
+
+    module.runContainerBaselinePass();
+    ASSERT_EQ(flags(), (std::map<std::string, int> {{"a", 1}, {"b", 1}}));
+
+    // Tick one: the delta is served and reports nothing at all. Meanwhile the
+    // operator lowered containers.synced_limit and the connector now refuses b.
+    containerLifecycleHook = [](cb_lifecycle_sink_t, void*)
+    {
+        return 0;
+    };
+    events.clear();
+    admitted["b"] = false;
+
+    module.runContainerBaselinePass(/*delta_only=*/true);
+
+    EXPECT_EQ(flags(), (std::map<std::string, int> {{"a", 1}, {"b", 0}}))
+            << "a container the cap pushed out must stop reporting on the tick that learns it";
+    EXPECT_GE(std::count(events.begin(), events.end(), OPERATION_DELETE), 1)
+            << "and the manager must be told, or it keeps documents the agent has stopped admitting";
+    EXPECT_EQ(module.m_admittedContainers.count("b"), 0u);
+
+    // Tick two: the delta carries a removal and no rescan, which takes the
+    // other branch that never reaches scanContainerBaseline(). The cap lets b
+    // back in; nothing may be left reporting the old answer.
+    containerLifecycleHook = [](cb_lifecycle_sink_t sink, void* ctx)
+    {
+        cb_lifecycle_event_t event {};
+        event.container_id = "gone";
+        event.kind = CB_LIFECYCLE_REMOVED;
+        sink(&event, ctx);
+        return 1;
+    };
+    admitted["b"] = true;
+
+    module.runContainerBaselinePass(/*delta_only=*/true);
+
+    EXPECT_EQ(module.m_admittedContainers.count("b"), 1u)
+            << "a removal-only delta re-walks nothing either, so it has to read the verdict too";
 
     module.destroy();
     module.m_containerDocumentCounts.clear();
