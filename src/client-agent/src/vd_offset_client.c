@@ -65,9 +65,56 @@
 #endif
 
 #ifndef WIN32
+/* A query that gets no answer is not an error by itself: agent-info answers from a single thread,
+ * and a query that has to wait for syscollector can take longer than VD_OFFSET_RECV_TIMEOUT_S. The
+ * work still completes on its side, and the next notify picks up its result. Each failure is
+ * therefore logged at debug level, and only an agent-info that stays silent is reported: one
+ * warning every VD_OFFSET_WARN_INTERVAL_S without a valid answer. */
+#define VD_OFFSET_WARN_INTERVAL_S 300
+
+/* Only touched from the HTTPS client's control thread, the one caller of both entry points. */
+static bool vd_offset_failing = false;
+static time_t vd_offset_failing_since;
+static time_t vd_offset_last_warned;
+
+static void vd_offset_report_no_response(ssize_t recv_len, int recv_errno) {
+    const time_t now = w_get_monotonic_time();
+
+    if (recv_len == -1 && (recv_errno == EAGAIN || recv_errno == EWOULDBLOCK)) {
+        mdebug1("vd_offset_client: agent-info did not answer within %d seconds; will retry next notify.",
+                VD_OFFSET_RECV_TIMEOUT_S);
+    } else if (recv_len == -1) {
+        mdebug1("vd_offset_client: no response from agent-info: %s (%d); will retry next notify.",
+                strerror(recv_errno), recv_errno);
+    } else {
+        mdebug1("vd_offset_client: no/invalid response from agent-info (recv_len=%zd); will retry next notify.",
+                recv_len);
+    }
+
+    if (!vd_offset_failing) {
+        vd_offset_failing = true;
+        vd_offset_failing_since = now;
+        vd_offset_last_warned = now;
+    } else if (now - vd_offset_last_warned >= VD_OFFSET_WARN_INTERVAL_S) {
+        mwarn("vd_offset_client: no valid response from agent-info for %ld seconds; "
+              "vulnerability rescan requests wait until it answers.",
+              (long)(now - vd_offset_failing_since));
+        vd_offset_last_warned = now;
+    }
+}
+
+static void vd_offset_report_response(void) {
+    if (vd_offset_failing) {
+        mdebug1("vd_offset_client: agent-info answered again after %ld seconds.",
+                (long)(w_get_monotonic_time() - vd_offset_failing_since));
+        vd_offset_failing = false;
+    }
+}
+
 static bool vd_offset_send_query(const char *query, char *response, size_t response_cap) {
     int sock = -1;
     ssize_t recv_len;
+    int recv_errno;
     int attempt;
 
     for (attempt = 0; attempt < VD_OFFSET_CONNECT_RETRIES; attempt++) {
@@ -98,13 +145,16 @@ static bool vd_offset_send_query(const char *query, char *response, size_t respo
     }
 
     recv_len = OS_RecvSecureTCP(sock, response, response_cap - 1);
+    /* Taken before close(), which may overwrite it. */
+    recv_errno = errno;
     close(sock);
 
     if (recv_len <= 0) {
-        merror("vd_offset_client: no/invalid response from agent-info (recv_len=%zd).", recv_len);
+        vd_offset_report_no_response(recv_len, recv_errno);
         return false;
     }
 
+    vd_offset_report_response();
     response[(size_t)recv_len < response_cap - 1 ? (size_t)recv_len : response_cap - 1] = '\0';
     return true;
 }
