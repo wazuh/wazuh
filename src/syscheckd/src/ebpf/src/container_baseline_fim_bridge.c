@@ -663,26 +663,28 @@ int fim_container_doc_budget_has_headroom(const char* container_id)
     return current < limit;
 }
 
-/* What one listing decided, in the three states a container can actually be
- * in. NULL means "not told yet", which reads as admit-everything -- see
- * fim_container_is_admitted().
+/* What one listing decided. NULL means "not told yet", which reads as
+ * admit-everything -- see fim_container_is_admitted().
  *
- * THREE sets rather than one, because absence from the admitted set has three
- * opposite causes and silencing a container is the wrong answer to two of them:
+ * TWO sets rather than one, because absence from the admitted set has two
+ * opposite causes and silencing a container is the wrong answer to one of them:
  *
  *   refused       the cap ranked it and said no. Stays withheld.
  *   not heard of  it started after the listing was taken. Not refused at all,
  *                 and reading it as refused is what left it silent for the life
  *                 of the process -- fim_container_admission_is_stale() spots
  *                 this and the caller retakes the listing.
- *   unrankable    the connector knows it exists but cannot key it, so it never
- *                 entered the ranking the cap applies. Nothing refused it
- *                 either, and waiting for it to be keyed before deciding
- *                 anything is what froze admission for the whole node.
  *
- * The last one is why a container nobody can key must still appear in `known`:
- * leaving it out would make every one of its row batches read as stale and
- * retake the listing, which is the cost the known set exists to avoid.
+ * A container the connector cannot key is NOT a third case. The cap ranks it
+ * like any other container -- that is a question about a container id, not
+ * about an attribution key -- so it arrives in `known` and either is or is not
+ * in `admitted`, and this file needs to know nothing more about it. Treating it
+ * as a third, unrankable state is what let one report outside the cap for the
+ * length of every restart.
+ *
+ * It must still reach `known`, though: leaving it out would make every one of
+ * its row batches read as stale and retake the listing, which is the cost the
+ * known set exists to avoid.
  *
  * Guarded by synced_docs_mutex, like the counts above, so a reconcile cannot
  * replace the sets while a row is being decided against them. */

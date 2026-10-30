@@ -5160,10 +5160,13 @@ void Syscollector::setAdmittedContainers(const std::map<std::string, bool>& disc
     // rows by the time this runs.
     for (const auto& containerId : m_admittedContainers)
     {
-        // `admitted` already holds the unkeyed ids, so a container that was
-        // reporting and whose record is merely being replaced -- a restart --
-        // is not read here as having lost admission. Retracting it there would
-        // send a DELETE for every row it holds and re-create them a cycle later.
+        // `discovered` carries the containers the connector could not key, with
+        // the verdict it reached for each, so a container that was reporting and
+        // whose record is merely being replaced -- a restart -- is not read here
+        // as having lost admission. The connector holds its slot across the
+        // restart; this reads its answer rather than guessing one. Retracting it
+        // would send a DELETE for every row it holds and re-create them a cycle
+        // later.
         if (admitted.count(containerId) == 0)
         {
             m_pendingRetractions.insert(containerId);

@@ -1183,6 +1183,11 @@ TEST_F(ContainerReportingTest, ARetractionThatIsNotRefusedButStillLeavesTheRowRe
     ASSERT_FALSE(warnings.empty()) << "two documents the agent believes it withdrew and has not";
     EXPECT_NE(warnings[0].find("could not withdraw 2 document(s)"), std::string::npos) << "got: " << warnings[0];
 
+    // And it names what actually retries it. The drain's scheduled poll does
+    // not: it installs an admission snapshot only when the view CHANGED, so a
+    // poll that finds nothing new runs no reconcile.
+    EXPECT_NE(warnings[0].find("next whole-node container baseline"), std::string::npos) << "got: " << warnings[0];
+
     // ...and the retry still works, because sync=1 is what the next reconcile
     // selects on.
     warnings.clear();

@@ -800,29 +800,23 @@ namespace
         std::set<std::string> known;
         std::set<std::string> admitted;
 
-        /// Containers that exist but have no attribution key yet, so the keyed
-        /// listing omits them. They must survive a stale sweep. They are ranked
-        /// by the cap like any other container -- existence is what it bounds --
-        /// so they also arrive through `known` and, when admitted, through
-        /// `admitted`. They must never reach the cgroup map: existing and being
-        /// identifiable are different facts.
-        std::set<std::string> unkeyed;
-
-        /// Whether `known` is the whole node. False when the connector is still
-        /// withholding running containers its resolver has not keyed.
+        /// Whether `known` is the whole node, keys and all. False when the
+        /// connector is still withholding running containers its resolver has
+        /// not keyed.
         bool complete {false};
 
-        /// Whether the connector reported `unkeyed` at all. False means one too
-        /// old to, and then `complete` is the only guard the sweep has.
+        /// Whether the connector named the containers it could not key. False
+        /// means one too old to, and then `complete` is the only guard the sweep
+        /// has.
+        ///
+        /// The ids themselves are not kept. They arrive through the SAME sink as
+        /// every other container, with the cap's verdict for each, so `known`
+        /// and `admitted` already hold them and this file has no question left
+        /// that a separate set would answer. Only the drain needs them apart,
+        /// and for a reason that does not apply here: it has to notice one
+        /// DEPARTING, which no event reports.
         bool unkeyedKnown {false};
     };
-
-    void container_unkeyed_sink(const char* container_id, void* user_data)
-    {
-        if (!container_id || !user_data) return;
-
-        static_cast<ContainerListing*>(user_data)->unkeyed.insert(container_id);
-    }
 
     /// Called for every container the connector knows of, keyed or not --
     /// ListContainers() feeds the unkeyed ones through here too, with the
@@ -855,12 +849,8 @@ namespace
     int refreshContainerAdmission(ContainerListing& listing)
     {
         cb_list_status_t listStatus {};
-        const int listed = cbaseline_list_containers_ex(CB_DEFAULT_CONNECTOR_SOCKET_PATH,
-                                                        container_id_sink,
-                                                        &listing,
-                                                        container_unkeyed_sink,
-                                                        &listing,
-                                                        &listStatus);
+        const int listed = cbaseline_list_containers_ex(
+            CB_DEFAULT_CONNECTOR_SOCKET_PATH, container_id_sink, &listing, nullptr, nullptr, &listStatus);
 
         if (listed < 0) return listed;
 
@@ -1309,14 +1299,22 @@ namespace
                 //
                 // The row staying at sync=1 is also what gets it retried: the next
                 // reconcile selects on exactly that. What runs one is an admission
-                // snapshot being installed, NOT the baseline's own tail, which only
-                // ever promotes -- so a listing the agent cannot take or cannot read
-                // is also a retraction that does not come round again.
+                // snapshot being INSTALLED, which is narrower than it sounds and
+                // narrower than this warning used to claim:
+                //
+                //   whole-node baseline  installs on every run, so this always
+                //                        comes round again there.
+                //   drain                installs only when the view CHANGED. Its
+                //                        scheduled poll finding nothing new
+                //                        installs nothing and retries nothing.
+                //
+                // The baseline's own tail is not a third: it only ever promotes.
                 if (unretracted != 0)
                 {
                     LogWarn("Container FIM: could not withdraw %zu document(s) for container '%s'; the manager still "
-                            "holds them and the agent will retry the next time it refreshes container admission. "
-                            "Until then an integrity check may find a mismatch and resynchronise the whole index.",
+                            "holds them and the agent will retry at the next whole-node container baseline, or "
+                            "sooner if container admission changes. Until then an integrity check may find a "
+                            "mismatch and resynchronise the whole index.",
                             unretracted,
                             container_id);
                 }

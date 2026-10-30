@@ -316,7 +316,8 @@ EXPORTED int cbaseline_lifecycle_since(const char*         connector_socket_path
                                        void*               user_data);
 
 /* Invoked once per container currently known to the container-connector
- * module, independent of whether it has a resolvable live PID right now.
+ * module, independent of whether it has a resolvable live PID right now, and
+ * independent of whether the connector has an attribution key for it.
  *
  * `synced` is that container's synchronization verdict: non-zero when it may
  * report to the manager, zero when its rows must be withheld. It is 1 when the
@@ -337,8 +338,10 @@ typedef void (*cb_container_id_sink_t)(const char* container_id, int synced, voi
  * their own database) MUST compare this list against the run_* functions'
  * output instead of treating "absent from a scan" as "removed".
  *
- * Returns the number of containers reported through `sink`, or -1 when the
- * connector could not be reached or answered malformed.
+ * Returns the number of containers the connector could KEY, or -1 when it
+ * could not be reached or answered malformed. cbaseline_list_containers_ex()
+ * additionally reports the unkeyed ones through `sink`, and those are not
+ * counted here.
  *
  * IMPORTANT: callers MUST check for -1 before using this list to authorise
  * deletions. A failed query reports zero containers, so treating the result as
@@ -378,16 +381,26 @@ typedef struct
  * container that exists without a key. The two questions a caller might be
  * asking are answered separately on purpose:
  *
- *   "does this container exist?"   sink OR unkeyed_sink. A caller that deletes
- *                                  rows on absence must keep both, and may then
- *                                  act as soon as unkeyed_known is set -- it
- *                                  does not need the list to be complete.
- *   "what key does it have?"       sink alone, and only when complete. A
- *                                  container with no key must not reach the
- *                                  kernel filter or the admission snapshot.
+ *   "does this container exist?"   `sink`, which is called for every container
+ *                                  the connector knows of, keyed or not. A
+ *                                  caller that deletes rows on absence may act
+ *                                  as soon as unkeyed_known is set -- it does
+ *                                  not need the list to be complete.
+ *   "what key does it have?"       `sink` again, but only for the containers
+ *                                  this reply could key, and only when
+ *                                  complete. A container with no key must not
+ *                                  reach the kernel filter.
  *
  * Conflating them is what let one permanently unkeyable container block stale
  * cleanup for as long as it ran.
+ *
+ * `unkeyed_sink` says WHICH of the ids `sink` reported have no key, for a
+ * caller that needs the distinction -- the cgroup map does, admission does not.
+ * Admission is a question about a container id and never about a key, so the
+ * unkeyed containers carry the connector's verdict through `sink` like every
+ * other container; leaving them out of it made each caller supply an answer of
+ * its own, and each supplied "admitted", which let the node report past
+ * containers.synced_limit for the length of every container restart.
  */
 EXPORTED int cbaseline_list_containers_ex(const char*            connector_socket_path,
                                           cb_container_id_sink_t sink,
