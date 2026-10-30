@@ -183,7 +183,7 @@ deliberate ways:
 | `use_http` | `/upgrade` | no | boolean; `http://` instead of `https://` when the repository names no scheme |
 | `force_upgrade` | `/upgrade` | no | boolean; lifts the version gates that can be forced ([Version constraints](agent-upgrades.md#version-constraints)) |
 | `package_type` | `/upgrade` | no | `rpm` or `deb` (anything else: error 3). Used only for a Linux target of v4.9.0 or later: for an agent that reports no package family; one that reports a different family keeps its own unless `force_upgrade` is set |
-| `file_path` | `/upgrade-custom` | yes | the WPK, which must resolve to a file directly inside `var/upgrade/`. Not checked at admission: an absent, empty or misplaced one answers each agent that passes the version and delivery checks with error 14 |
+| `file_path` | `/upgrade-custom` | yes | the WPK, which must resolve to a file directly inside `var/upgrade/`. Not checked at admission: an absent, empty or misplaced one answers each agent that passes the version and delivery checks with error 14. A file not linkable by the module is copied ([Per-task WPK files](agent-upgrades.md#per-task-wpk-files)) |
 | `installer` | `/upgrade-custom` | no | installer script name; defaults to `upgrade.bat` on Windows and `upgrade.sh` elsewhere |
 
 ### Response

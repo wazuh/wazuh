@@ -119,6 +119,35 @@ download the WPK.
 
 ---
 
+## Per-task WPK files
+
+For every `remote_upgrade` row the module creates `var/upgrade/tasks/<task_id>.wpk` as a hard link to
+the WPK, before the row is committed. The directory is created on demand. A 5.x agent is handed an
+identifier derived from this file rather than the WPK's real name, so the file is what a download
+resolves to. The task row keeps the real WPK name, which is what the 4.x delivery path reads.
+
+A hard link shares the WPK's inode, so a WPK under `var/upgrade/` is replaced by writing a new file
+and renaming it over the old one, never by rewriting it in place: a task linked to it would serve
+the new content until the task is removed.
+
+If `link()` fails (`EPERM` from `fs.protected_hardlinks` on a custom WPK owned by another user, such
+as one copied in by root; `EMLINK`; `EXDEV`), the module copies the WPK once per source WPK within the
+batch and links the remaining tasks to that copy. The disk cost is one extra WPK per source WPK and
+batch. The copy is logged at DEBUG1.
+
+If a task ends up with no file (link and copy both failed), the task is still created, its agent is
+sent the real WPK name, and the batch logs a warning:
+
+```
+N of M upgrade tasks have no per-task WPK file (K copies made); their agents will be sent the WPK file name instead. Last error: ...
+```
+
+The file lives as long as its row. A sweep deletes any `<task_id>.wpk` without a row, and leftover
+`.<name>.tmp` temporaries, when the module starts and after each retention pass. It never touches
+anything outside `var/upgrade/tasks/`, nor the WPKs in `var/upgrade/`.
+
+---
+
 ## After the task is stored
 
 The manager does **not** push WPK data to the agent, and does not connect to Remoted from the request
@@ -126,6 +155,10 @@ path. Delivery depends on the agent's version:
 
 - **5.x agents** pull the task from `POST /control` on their next poll, fetch the WPK with
   `POST /download` over the same HTTPS interface, and hand the file to their local upgrade module.
+  When the per-task file exists, `/control` replaces `wpk_file` in the copy it sends with an
+  identifier bound to that agent and task, and `/download` serves only that agent the task's file.
+  Otherwise the agent receives the real WPK name, which is still served from `var/upgrade/` to every
+  agent that authenticates (see [`remoted`](../remoted/README.md)). The stored row is unchanged.
 - **Agents below v5.0.0** are served by `remoted`'s own task-polling thread, which pushes the WPK
   over the agent's existing session. See
   [`remoted.legacy_task_polling_interval`](../remoted/configuration.md).

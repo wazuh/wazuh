@@ -1289,6 +1289,28 @@ between the two hosts is compensated for here.
   credential `authd` verifies on the master included (`authd` reads the same option). Widening it
   also widens the replay window of a captured token (this profile has no replay store).
 
+#### remoted.wpk_id_ttl
+
+Lifetime (seconds) of the signed identifier that replaces a WPK file name in a `remote_upgrade` task
+delivered by `POST /control`. The identifier expires `wpk_id_ttl` seconds after it is issued, and
+`POST /download` answers the uniform 404 for an expired one. The default covers the agent's download
+retry budget with its default settings (480 s at most) plus clock drift between nodes.
+
+- **Default value:** `600`
+- **Allowed values:** Integer from `60` to `3600` (a value outside the range keeps remoted from
+  starting)
+- **Note:** The identifier is a MAC under a key derived from `cluster.key` (`<cluster><key>` in
+  `wazuh-manager.conf`), derived once when remoted starts and never logged. Without a usable key (not
+  exactly 32 alphanumeric characters) no identifier is issued: remoted logs, at INFO,
+  `WPK download identifiers disabled: no usable cluster key.`, tasks are delivered with the real file
+  name and `POST /download` answers 404 to every `wpk1.` identifier.
+- **Note:** In a cluster an identifier is redeemed on any node that shares the same `cluster.key` and
+  has the task's file under `var/upgrade/tasks/`; a node without the file answers 404.
+- **Note:** `cluster.key` is read once per process: rotating it invalidates the identifiers already
+  issued and requires you to restart every node.
+- **Note:** Rejected identifiers are counted in
+  [`remoted.download.wpk_id.rejected`](metrics.md#downloads--remoteddownload).
+
 #### remoted.auth_max_body_size
 
 Hard cap on the authenticated request body size, in bytes (checked by the auth middleware,
