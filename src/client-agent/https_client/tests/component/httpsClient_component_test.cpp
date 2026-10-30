@@ -150,8 +150,9 @@ TEST_F(ComponentTest, ResponseStreamsToAFileThroughTheRealCurlPath)
 
 TEST_F(ComponentTest, ResponseSizeCapAbortsAnOversizedTransfer)
 {
-    // The echo returns the request body; capping the response below it makes the
-    // file-write trampoline abort the transfer instead of writing unbounded.
+    // The echo returns the request body with its Content-Length; capping the response
+    // below it makes curl's own cap (CURLOPT_MAXFILESIZE_LARGE) turn the reply away
+    // before the file-write trampoline sees a byte, instead of writing unbounded.
     const std::string body(4096, 'x');
     const std::string path = ::testing::TempDir() + "hc_component_capped.tmp";
 
@@ -166,7 +167,8 @@ TEST_F(ComponentTest, ResponseSizeCapAbortsAnOversizedTransfer)
     spec.headers = {headers->protocolVersion, headers->authorization};
 
     const auto response = m_performer.perform(spec);
-    EXPECT_NE(TransportStatus::Ok, response.status); // The cap aborted the write.
+    EXPECT_NE(TransportStatus::Ok, response.status); // The cap aborted the transfer.
+    EXPECT_EQ(0u, response.curlError.rfind("(63)", 0)) << response.curlError; // CURLE_FILESIZE_EXCEEDED.
     std::remove(path.c_str());
 }
 
