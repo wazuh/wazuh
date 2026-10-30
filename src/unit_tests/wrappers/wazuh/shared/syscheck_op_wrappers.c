@@ -120,20 +120,25 @@ void expect_get_registry_permissions(cJSON *permissions, DWORD retval) {
     will_return(__wrap_get_registry_permissions, retval);
 }
 
-void __wrap_expand_wildcard_registers(char *entry, char **paths) {
+int __wrap_expand_wildcard_registers(char *entry, char **paths, int arch) {
     char **matches;
 
     check_expected(entry);
+    check_expected(arch);
 
     matches = mock_type(char **);
     for (int i = 0; matches != NULL && matches[i] != NULL; i++) {
         paths[i] = strdup(matches[i]);
     }
+
+    return mock();
 }
 
-void expect_expand_wildcard_registers(const char *entry, char **matches) {
+void expect_expand_wildcard_registers(const char *entry, int arch, char **matches, int status) {
     expect_string(__wrap_expand_wildcard_registers, entry, entry);
+    expect_value(__wrap_expand_wildcard_registers, arch, arch);
     will_return(__wrap_expand_wildcard_registers, matches);
+    will_return(__wrap_expand_wildcard_registers, status);
 }
 
 #else

@@ -77,6 +77,10 @@ extern const char *SYSCHECK_EVENT_STRINGS[];
 #define STR_HKEY_USERS                          "HKEY_USERS"
 #define check_wildcard(x)                       strchr(x,'*') || strchr(x,'?')
 
+/* Results of a registry wildcard expansion */
+#define FIM_REG_EXPAND_TRUNCATED                0x1     /* More matches than the expansion can hold */
+#define FIM_REG_EXPAND_FAILED                   0x2     /* A key could not be listed */
+
 /* Fields for paths */
 typedef struct _reg_path_struct {
     char* path;
@@ -458,9 +462,11 @@ HKEY w_switch_root_key(char* str_rootkey);
  *
  * @param [in] root_key HKEY that represents the root key.
  * @param [in] str_subkey String that represents the main subkey, this could be NULL.
+ * @param [in] arch ARCH_32BIT or ARCH_64BIT, the registry view to list.
+ * @param [out] failed Set to 1 when the subkeys could not be listed completely. A missing key is not a failure.
  * @retval A non empty array of string on success.
  */
-char** w_list_all_keys(HKEY root_key, char* str_subkey);
+char** w_list_all_keys(HKEY root_key, char* str_subkey, int arch, int *failed);
 
 /**
  * @brief Generate all valid paths that contains a * or ? (Windows)
@@ -468,9 +474,10 @@ char** w_list_all_keys(HKEY root_key, char* str_subkey);
  * @param [in] array_struct Array of all possible paths.
  * @param [out] array_struct Array of paths with tag checked in 1 and has_wildcard in 0.
  * @param [in] max_items Number of slots of array_struct that can be filled.
- * @retval 1 if some matches were discarded because the array was full, 0 otherwise.
+ * @param [in] arch ARCH_32BIT or ARCH_64BIT, the registry view to list.
+ * @retval FIM_REG_EXPAND_* flags, 0 if every match was added.
  */
-int w_expand_by_wildcard(reg_path_struct **array_struct, char wildcard_chr, int max_items);
+int w_expand_by_wildcard(reg_path_struct **array_struct, char wildcard_chr, int max_items, int arch);
 
 
 /**
@@ -486,8 +493,10 @@ char* get_subkey(char* key);
  *
  * @param [in] entry Raw entry read from config file.
  * @param [out] paths Array of paths expanded with tag checked in 1 and has_wildcard in 0.
+ * @param [in] arch ARCH_32BIT or ARCH_64BIT, the registry view to expand in.
+ * @retval FIM_REG_EXPAND_* flags, 0 if the expansion is complete.
  */
-void expand_wildcard_registers(char* entry, char** paths);
+int expand_wildcard_registers(char* entry, char** paths, int arch);
 
 #endif
 
