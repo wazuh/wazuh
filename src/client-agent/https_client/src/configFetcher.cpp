@@ -64,6 +64,9 @@ std::shared_ptr<SpoolFile> ConfigFetcher::fetch(const std::string& expectedHash,
     spec.responseFilePath = spool->path();
     spec.maxResponseBytes = CONFIG_MAX_DOWNLOAD_BYTES;
     spec.timeoutMs = m_config.statefulTimeoutMs; // The large-transfer class.
+    // Offer zstd (#38514): libcurl decodes the reply, so the cap above and the hash check below
+    // both see the plain bytes. A manager that doesn't compress just answers plain.
+    spec.acceptEncoding = "zstd";
 
     // Operational visibility (send-time debug log, mirroring controlStream.cpp's
     // sendStartup()/sendNotify()/sendShutdown()): confirms the download was

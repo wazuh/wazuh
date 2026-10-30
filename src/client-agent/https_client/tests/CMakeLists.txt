@@ -86,6 +86,9 @@ if(NOT CMAKE_SYSTEM_NAME STREQUAL "Windows")
     optimized gtest
     optimized gmock
     https_client
+    # The libcurl https_client itself loads, so configDownload_component_test can ask that same
+    # library whether it was built with zstd.
+    wazuhext
     ext_zstd
     # The fake manager authenticates requests with the manager's own shared verifier
     # (shared_modules/utils/jwt/: jwt-cpp + rapidjson, both header-only).
