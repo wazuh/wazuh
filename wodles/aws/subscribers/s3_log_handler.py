@@ -6,6 +6,7 @@ import csv
 import io
 import json
 import re
+import socket
 import sys
 
 from os import path
@@ -26,6 +27,7 @@ import wazuh_integration
 
 # After wazuh_integration, which checks that boto3 is installed
 import botocore
+import urllib3
 
 UNAVAILABLE_OBJECT_ERROR_CODES = ('NoSuchKey', 'NoSuchBucket', 'InvalidBucketName', 'KeyTooLongError')
 
@@ -49,6 +51,25 @@ def is_object_unavailable(error: Exception) -> bool:
         return True
     return isinstance(error, botocore.exceptions.ClientError) and \
         error.response.get('Error', {}).get('Code') in UNAVAILABLE_OBJECT_ERROR_CODES
+
+
+def is_retryable_error(error: Exception) -> bool:
+    """Determine if an error comes from AWS or from the connection to it, so the object may be processed later.
+
+    Older botocore versions do not wrap the urllib3 errors raised while reading the object.
+
+    Parameters
+    ----------
+    error : Exception
+        Error raised while fetching or processing the object.
+
+    Returns
+    -------
+    bool
+        Whether the error may not happen in a later run.
+    """
+    return isinstance(error, (botocore.exceptions.ClientError, botocore.exceptions.BotoCoreError,
+                              urllib3.exceptions.HTTPError, ConnectionError, TimeoutError, socket.timeout))
 
 
 class AWSS3LogHandler:
@@ -212,8 +233,6 @@ class AWSSubscriberBucket(wazuh_integration.WazuhIntegration, AWSS3LogHandler):
                                      source='custom') for row in reader]
                     except MemoryError:
                         aws_tools.error(f"The size of the {log_path!r} file exceeds the available memory.")
-                        if not self.skip_on_error:
-                            sys.exit(9)
                         raise
                 else:
                     aws_tools.debug("+++ Data in the file does not seem to be CSV. Trying with plain text.", 2)
@@ -221,8 +240,6 @@ class AWSSubscriberBucket(wazuh_integration.WazuhIntegration, AWSS3LogHandler):
                         return [dict(full_log=event, source="custom") for event in f.read().splitlines()]
                     except OSError:
                         aws_tools.error(f"Data in the file does not seem to be plain text either.")
-                        if not self.skip_on_error:
-                            sys.exit(9)
                         raise
 
     def process_file(self, message_body: dict) -> None:
@@ -311,20 +328,14 @@ class AWSSLSubscriberBucket(wazuh_integration.WazuhIntegration, AWSS3LogHandler)
         events : list
             Events contained inside the parquet file.
         """
-        aws_tools.debug(f'Processing file {log_path} in {bucket}', 2)
+        aws_tools.debug(f'Processing file {log_path!r} in {bucket!r}', 2)
         events = []
-        try:
-            raw_parquet = io.BytesIO(self.client.get_object(Bucket=bucket, Key=log_path)['Body'].read())
-        except Exception as e:
-            if self.skip_on_error or is_object_unavailable(e):
-                raise
-            aws_tools.error(f'Could not get the parquet file {log_path!r} in {bucket!r}: {e}')
-            sys.exit(21)
+        raw_parquet = io.BytesIO(self.client.get_object(Bucket=bucket, Key=log_path)['Body'].read())
         pfile = pq.ParquetFile(raw_parquet)
         for i in pfile.iter_batches():
             for j in i.to_pylist():
                 events.append(json.dumps(j, default=str))
-        aws_tools.debug(f'Found {len(events)} events in file {log_path}', 2)
+        aws_tools.debug(f'Found {len(events)} events in file {log_path!r}', 2)
         return events
 
     def process_file(self, message_body: dict) -> None:
@@ -397,8 +408,6 @@ class AWSSecurityHubSubscriberBucket(AWSSubscriberBucket):
 
             except (json.JSONDecodeError, AttributeError):
                 aws_tools.error(f"Data in the file does not contain JSON objects.")
-                if not self.skip_on_error:
-                    sys.exit(9)
                 raise
 
     def process_file(self, message_body: dict) -> None:

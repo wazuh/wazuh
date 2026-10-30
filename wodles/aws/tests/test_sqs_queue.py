@@ -19,6 +19,9 @@ import sqs_queue
 import sqs_message_processor
 
 import botocore
+import gzip
+import socket
+import urllib3
 
 SAMPLE_RAW_MESSAGE = {'Messages': [{'MessageId': 'string', 'ReceiptHandle': 'string', 'MD5OfBody': 'string',
                                     'Body': '{"detail": {"bucket": {"name": "example-bucket"},"object": {"key": '
@@ -59,6 +62,8 @@ def test_aws_sqs_queue_initializes_properly(mock_wazuh_integration, mock_get_sqs
     assert integration.iam_role_arn == kwargs['iam_role_arn']
     mock_get_sqs_url.assert_called_once()
     mock_bucket_log_handler_init.assert_called_once()
+    # The handler raises the errors of a file instead of exiting, so the queue decides what to do with the message
+    assert mock_bucket_log_handler_init.call_args.kwargs['skip_on_error'] is True
 
 
 # both configs must omit the owner id when resolving the queue URL
@@ -192,7 +197,7 @@ def test_aws_sqs_queue_process_message_deletes_message_without_notification(raw_
     message = {'raw_message': raw_message, 'handle': 'h1', 'message_id': 'm1'}
 
     with patch('sqs_queue.AWSSQSQueue.delete_message') as mock_delete:
-        assert instance.process_message(message)
+        assert instance.process_message(message) is None
 
     mock_delete.assert_called_once_with(message)
     instance.bucket_handler.process_file.assert_not_called()
@@ -220,7 +225,7 @@ def test_aws_sqs_queue_process_message_deletes_s3_test_event_without_warning(cap
     message = {'raw_message': S3_TEST_EVENT, 'handle': 'h1', 'message_id': 'm1'}
 
     with patch('sqs_queue.AWSSQSQueue.delete_message') as mock_delete:
-        assert instance.process_message(message)
+        assert instance.process_message(message) is None
 
     mock_delete.assert_called_once_with(message)
     assert 'WARNING' not in capsys.readouterr().out
@@ -231,7 +236,7 @@ def test_aws_sqs_queue_process_message_deletes_processed_message():
     instance = get_queue()
 
     with patch('sqs_queue.AWSSQSQueue.delete_message') as mock_delete:
-        assert instance.process_message(VALID_MESSAGE)
+        assert instance.process_message(VALID_MESSAGE) is None
 
     instance.bucket_handler.process_file.assert_called_once_with(ROUTE)
     mock_delete.assert_called_once_with(VALID_MESSAGE)
@@ -248,49 +253,41 @@ def test_aws_sqs_queue_process_message_deletes_message_when_object_is_unavailabl
     instance.bucket_handler.process_file.side_effect = error
 
     with patch('sqs_queue.AWSSQSQueue.delete_message') as mock_delete:
-        assert instance.process_message(VALID_MESSAGE)
+        assert instance.process_message(VALID_MESSAGE) is None
 
     mock_delete.assert_called_once_with(VALID_MESSAGE)
     assert capsys.readouterr().out.startswith(
         "WARNING: Deleting message m1 from the SQS queue: object 'key' in bucket 'bucket' is not available: ")
 
 
-@pytest.mark.parametrize('error', [client_error('AccessDenied'),
-                                   botocore.exceptions.EndpointConnectionError(endpoint_url='https://s3'),
-                                   ValueError('invalid content'), IndexError('list index out of range')])
-def test_aws_sqs_queue_process_message_raises_without_skip_on_error(error):
-    """Test 'process_message' keeps the message and lets the error stop the module when skip_on_error is not set."""
-    instance = get_queue(skip_on_error=False)
-    instance.bucket_handler.process_file.side_effect = error
-
-    with patch('sqs_queue.AWSSQSQueue.delete_message') as mock_delete, pytest.raises(type(error)):
-        instance.process_message(VALID_MESSAGE)
-
-    mock_delete.assert_not_called()
+CONTENT_ERRORS = [ValueError('invalid content'), KeyError('detail'), IndexError('list index out of range'),
+                  EOFError('Compressed file ended before the end-of-stream marker was reached'), MemoryError(),
+                  gzip.BadGzipFile('Not a gzipped file'), RuntimeError("generator didn't yield")]
+RETRYABLE_ERRORS = [client_error('AccessDenied'), client_error('SlowDown'),
+                    botocore.exceptions.EndpointConnectionError(endpoint_url='https://s3'),
+                    urllib3.exceptions.ProtocolError('Connection broken'), ConnectionResetError(104, 'reset'),
+                    socket.timeout('timed out')]
 
 
-@pytest.mark.parametrize('skip_on_error, error', [
-    (True, client_error('AccessDenied')),
-    (True, client_error('SlowDown')),
-    (True, botocore.exceptions.EndpointConnectionError(endpoint_url='https://s3')),
-    (False, KeyError('detail')),
-])
+@pytest.mark.parametrize('skip_on_error, error', [(False, error) for error in RETRYABLE_ERRORS + CONTENT_ERRORS] +
+                                                 [(True, error) for error in RETRYABLE_ERRORS])
 def test_aws_sqs_queue_process_message_keeps_message_for_a_later_run(skip_on_error, error, capsys):
-    """Test 'process_message' keeps the message for a later run when AWS fails to provide the object and
-    skip_on_error is set, and, as before skip_on_error was honored, when the file misses an expected field."""
+    """Test 'process_message' keeps the message for a later run, without stopping the module, when its object
+    cannot be fetched or processed, unless skip_on_error is set and the error does not come from AWS or the
+    connection to it."""
     instance = get_queue(skip_on_error=skip_on_error)
     instance.bucket_handler.process_file.side_effect = error
 
     with patch('sqs_queue.AWSSQSQueue.delete_message') as mock_delete:
-        assert not instance.process_message(VALID_MESSAGE)
+        assert instance.process_message(VALID_MESSAGE) is error
 
     mock_delete.assert_not_called()
     assert capsys.readouterr().out.startswith(
-        'ERROR: Could not process message m1, keeping it in the SQS queue for a later run: ')
+        "ERROR: Could not process object 'key' in bucket 'bucket', keeping message m1 in the SQS queue for a later "
+        "run: ")
 
 
-@pytest.mark.parametrize('error', [ValueError('invalid content'), KeyError('detail'), MemoryError(),
-                                   RuntimeError("generator didn't yield")])
+@pytest.mark.parametrize('error', CONTENT_ERRORS)
 def test_aws_sqs_queue_process_message_deletes_message_on_content_error_with_skip_on_error(error, capsys):
     """Test 'process_message' skips and deletes the message when its object cannot be read or parsed and
     skip_on_error is set."""
@@ -298,7 +295,7 @@ def test_aws_sqs_queue_process_message_deletes_message_on_content_error_with_ski
     instance.bucket_handler.process_file.side_effect = error
 
     with patch('sqs_queue.AWSSQSQueue.delete_message') as mock_delete:
-        assert instance.process_message(VALID_MESSAGE)
+        assert instance.process_message(VALID_MESSAGE) is None
 
     mock_delete.assert_called_once_with(VALID_MESSAGE)
     assert capsys.readouterr().out.startswith(
@@ -348,20 +345,23 @@ def test_aws_sqs_queue_sync_events_processes_the_rest_of_the_batch_after_invalid
            ['h0', 'h1', 'h2', 'h3', 'h4']
 
 
-def test_aws_sqs_queue_sync_events_stops_when_only_kept_messages_come_back():
+def test_aws_sqs_queue_sync_events_stops_when_only_kept_messages_come_back(capsys):
     """Test 'sync_events' ends when a message kept after an error comes back in the same run, instead of retrying
-    it while the visibility timeout is shorter than the receive wait."""
+    it while the visibility timeout is shorter than the receive wait, and exits with an error code."""
     instance = get_queue(skip_on_error=True)
     instance.message_processor = sqs_message_processor.AWSS3MessageProcessor()
     instance.bucket_handler.process_file.side_effect = client_error('AccessDenied')
     batch = {'Messages': [sqs_message(s3_notification('key'), 1)]}
     instance.client.receive_message.side_effect = [batch, batch, batch, {}]
 
-    instance.sync_events()
+    with pytest.raises(SystemExit) as e:
+        instance.sync_events()
 
+    assert e.value.code == utils.UNEXPECTED_ERROR_WORKING_WITH_S3
     instance.bucket_handler.process_file.assert_called_once_with(ROUTE)
     instance.client.delete_message.assert_not_called()
     assert instance.client.receive_message.call_count == 2
+    assert capsys.readouterr().out.endswith('ERROR: 1 message(s) were kept in the SQS queue for a later run\n')
 
 
 def test_aws_sqs_queue_sync_events_skips_kept_messages_mixed_with_new_ones():
@@ -374,8 +374,125 @@ def test_aws_sqs_queue_sync_events_skips_kept_messages_mixed_with_new_ones():
     instance.client.receive_message.side_effect = [{'Messages': [kept]}, {'Messages': [kept, new]},
                                                    {'Messages': [kept]}, {}]
 
-    instance.sync_events()
+    with pytest.raises(SystemExit):
+        instance.sync_events()
 
     assert [c.args[0]['log_path'] for c in instance.bucket_handler.process_file.call_args_list] == ['key', 'new']
     assert [c.kwargs['ReceiptHandle'] for c in instance.client.delete_message.call_args_list] == ['h2']
     assert instance.client.receive_message.call_count == 3
+
+
+@pytest.mark.parametrize('skip_on_error', [True, False])
+def test_aws_sqs_queue_sync_events_processes_the_queue_before_reporting_kept_messages(skip_on_error):
+    """Test 'sync_events' processes the rest of the queue after a message kept after an error, and then exits with
+    an error code."""
+    instance = get_queue(skip_on_error=skip_on_error)
+    instance.message_processor = sqs_message_processor.AWSS3MessageProcessor()
+    instance.bucket_handler.process_file.side_effect = [client_error('AccessDenied'), None]
+    batch = [sqs_message(s3_notification('key'), 1), sqs_message(s3_notification('new'), 2)]
+    instance.client.receive_message.side_effect = [{'Messages': batch}, {}]
+
+    with pytest.raises(SystemExit) as e:
+        instance.sync_events()
+
+    assert e.value.code == utils.UNEXPECTED_ERROR_WORKING_WITH_S3
+    assert [c.args[0]['log_path'] for c in instance.bucket_handler.process_file.call_args_list] == ['key', 'new']
+    assert [c.kwargs['ReceiptHandle'] for c in instance.client.delete_message.call_args_list] == ['h2']
+
+
+def test_aws_sqs_queue_sync_events_does_not_exit_when_no_message_was_kept():
+    """Test 'sync_events' ends normally when every message was processed or deleted, even if some were skipped."""
+    instance = get_queue(skip_on_error=True)
+    instance.message_processor = sqs_message_processor.AWSS3MessageProcessor()
+    instance.bucket_handler.process_file.side_effect = [ValueError('invalid content'), None]
+    batch = [sqs_message(s3_notification('key'), 1), sqs_message('x', 2), sqs_message(s3_notification('new'), 3)]
+    instance.client.receive_message.side_effect = [{'Messages': batch}, {}]
+
+    instance.sync_events()
+
+    assert [c.kwargs['ReceiptHandle'] for c in instance.client.delete_message.call_args_list] == ['h1', 'h2', 'h3']
+
+
+def test_aws_sqs_queue_sync_events_ends_with_kept_messages_without_id():
+    """Test 'sync_events' ends when the messages without an ID kept after an error come back."""
+    instance = get_queue(skip_on_error=True)
+    instance.bucket_handler.process_file.side_effect = client_error('AccessDenied')
+    batch = [{'route': ROUTE, 'handle': 'h1', 'message_id': None}]
+
+    with patch('sqs_queue.AWSSQSQueue.get_messages', side_effect=[batch, batch, batch, []]) as mock_get, \
+            pytest.raises(SystemExit):
+        instance.sync_events()
+
+    instance.bucket_handler.process_file.assert_called_once_with(ROUTE)
+    assert mock_get.call_count == 2
+
+
+@pytest.mark.parametrize('skip_on_error', [True, False])
+def test_aws_sqs_queue_sync_events_stops_after_a_batch_of_aws_errors_in_a_row(skip_on_error, capsys):
+    """Test 'sync_events' stops the run once AWS failed to provide the objects of MAX_CONSECUTIVE_AWS_ERRORS messages in
+    a row, as that points to a problem with every message, instead of receiving the whole queue on every run."""
+    instance = get_queue(skip_on_error=skip_on_error)
+    instance.message_processor = sqs_message_processor.AWSS3MessageProcessor()
+    instance.bucket_handler.process_file.side_effect = client_error('AccessDenied')
+    batches = [{'Messages': [sqs_message(s3_notification(f'key{n}'), n) for n in range(b * 10, b * 10 + 10)]}
+               for b in range(3)]
+    instance.client.receive_message.side_effect = batches + [{}]
+
+    with pytest.raises(SystemExit) as e:
+        instance.sync_events()
+
+    assert e.value.code == utils.UNEXPECTED_ERROR_WORKING_WITH_S3
+    assert instance.bucket_handler.process_file.call_count == sqs_queue.MAX_CONSECUTIVE_AWS_ERRORS
+    assert instance.client.receive_message.call_count == 1
+    assert capsys.readouterr().out.endswith(
+        'ERROR: Stopping after AWS failed to provide the objects of 10 messages in a row\n')
+
+
+def test_aws_sqs_queue_sync_events_does_not_stop_for_files_that_cannot_be_processed():
+    """Test the files that cannot be read or parsed do not stop the run, even many in a row, as they do not point to a
+    problem with every message: the rest of the queue is processed and the run exits with an error code."""
+    instance = get_queue(skip_on_error=False)
+    instance.message_processor = sqs_message_processor.AWSS3MessageProcessor()
+    instance.bucket_handler.process_file.side_effect = [EOFError('truncated')] * 12 + [None]
+    batch = [sqs_message(s3_notification(f'key{n}'), n) for n in range(13)]
+    instance.client.receive_message.side_effect = [{'Messages': batch[:10]}, {'Messages': batch[10:]}, {}]
+
+    with pytest.raises(SystemExit) as e:
+        instance.sync_events()
+
+    assert e.value.code == utils.UNEXPECTED_ERROR_WORKING_WITH_S3
+    assert instance.bucket_handler.process_file.call_count == 13
+    assert [c.kwargs['ReceiptHandle'] for c in instance.client.delete_message.call_args_list] == ['h12']
+
+
+def test_aws_sqs_queue_sync_events_does_not_reset_the_count_on_messages_that_are_not_notifications():
+    """Test a message that is not an object notification, which does not reach AWS, does not restart the count of
+    AWS errors in a row."""
+    instance = get_queue(skip_on_error=False)
+    instance.message_processor = sqs_message_processor.AWSS3MessageProcessor()
+    instance.bucket_handler.process_file.side_effect = client_error('AccessDenied')
+    batch = [sqs_message(s3_notification(f'key{n}'), n) for n in range(9)] + [sqs_message('x', 9),
+                                                                             sqs_message(s3_notification('key10'), 10)]
+    instance.client.receive_message.side_effect = [{'Messages': batch[:10]}, {'Messages': batch[10:]}, {}]
+
+    with pytest.raises(SystemExit):
+        instance.sync_events()
+
+    assert instance.bucket_handler.process_file.call_count == 10
+    assert instance.client.receive_message.call_count == 2
+
+
+def test_aws_sqs_queue_sync_events_counts_aws_errors_in_a_row_from_the_last_object_provided():
+    """Test a processed message restarts the count of AWS errors in a row, so isolated errors do not stop the run."""
+    instance = get_queue(skip_on_error=False)
+    instance.message_processor = sqs_message_processor.AWSS3MessageProcessor()
+    failure = client_error('AccessDenied')
+    instance.bucket_handler.process_file.side_effect = [failure] * 9 + [None] + [failure] * 9
+    batch = [sqs_message(s3_notification(f'key{n}'), n) for n in range(19)]
+    instance.client.receive_message.side_effect = [{'Messages': batch[:10]}, {'Messages': batch[10:]}, {}]
+
+    with pytest.raises(SystemExit):
+        instance.sync_events()
+
+    assert instance.bucket_handler.process_file.call_count == 19
+    assert [c.kwargs['ReceiptHandle'] for c in instance.client.delete_message.call_args_list] == ['h9']

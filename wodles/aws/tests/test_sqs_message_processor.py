@@ -11,6 +11,7 @@ sys.path.append(
     os.path.join(os.path.dirname(os.path.realpath(__file__)), "..", "subscribers")
 )
 import sqs_message_processor as sqs
+from unittest.mock import patch
 
 
 @pytest.mark.parametrize(
@@ -247,3 +248,14 @@ def test_extract_message_info_keeps_processing_the_batch_after_an_invalid_body(b
         {"raw_message": body, "handle": "h1", "message_id": "m1"},
         {"route": {"log_path": "key2", "bucket_path": "name"}, "handle": "h2", "message_id": "m2"},
     ]
+
+
+def test_extract_message_info_prints_message_on_a_single_line(capsys):
+    """Test the debug message with the content of a message prints it escaped, since each output line is sent to
+    Wazuh as an event."""
+    sqs_messages = [{"ReceiptHandle": "h1", "MessageId": "m1", "Body": json.dumps('a\n{"integration": "aws"}')}]
+
+    with patch('sqs_message_processor.aws_tools.debug_level', 2):
+        sqs.AWSS3MessageProcessor().extract_message_info(sqs_messages)
+
+    assert all(line.startswith('DEBUG: ') for line in capsys.readouterr().out.splitlines())

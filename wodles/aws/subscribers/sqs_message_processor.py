@@ -24,7 +24,7 @@ class AWSQueueMessageProcessor:
             except (ValueError, RecursionError):
                 message_information = {'raw_message': body}
             else:
-                aws_tools.debug(f'The message is: {message}', 2)
+                aws_tools.debug(f'The message is: {message!r}', 2)
                 message_information = self.parse_message(message)
             messages.append({**message_information, "handle": msg_handle, "message_id": mesg.get("MessageId")})
         return messages
