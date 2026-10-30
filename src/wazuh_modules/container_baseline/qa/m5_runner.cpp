@@ -1,4 +1,4 @@
-/* Throw-away spike harness for #37532 remaining collectors (OS identity +
+/* Throw-away spike harness for the remaining collectors (OS identity +
  * network interfaces/addresses baseline).
  *
  * Same shape as m4_runner: a tiny runner around the real scanner code, no

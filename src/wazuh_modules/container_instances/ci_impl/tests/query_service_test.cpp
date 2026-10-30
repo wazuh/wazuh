@@ -1,5 +1,5 @@
 /*
- * Wazuh container_instances — query service refusal path (#37532 / #37203).
+ * Wazuh container_instances — query service refusal path (#37203).
  * Copyright (C) 2015, Wazuh Inc.
  *
  * This program is free software; you can redistribute it

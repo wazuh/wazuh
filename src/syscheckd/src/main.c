@@ -22,7 +22,9 @@
 #include "startup_gate_op.h"
 #ifdef __linux__
 #include "container_baseline_fim.h"
+#include "container_baseline_fim_bridge.h"
 #include "container_baseline_host_api.h"
+#include "recovery.h"
 #endif
 
 #ifndef WIN32
@@ -506,15 +508,25 @@ int main(int argc, char **argv)
         // both the walk and the event consumer, which share these.
         const fim_container_host_api_t container_host_api = {
             .config = &syscheck,
+            .synced_docs_mutex = &synced_docs_mutex,
             .rate_limit = check_max_fps,
             .attributes_json = fim_attributes_json,
             .calculate_dbsync_difference = fim_calculate_dbsync_difference,
             .send_event = send_syscheck_msg,
+            .send_log = send_log_msg,
             .validate_and_persist = validate_and_persist_fim_event,
         };
         fim_container_baseline_set_host_api(&container_host_api);
+        fim_recovery_set_container_row_handler(fim_container_recover_row);
 
-        // Subscribe BEFORE walking (#37396 / #37532). The drain stages container
+        // Registered together with the handler, and only here: recovery runs on the
+        // sync thread while the container walk and the reconcile consumer run on
+        // theirs, and nothing else stops the two writing the same container's rows
+        // at once. With container monitoring off there is no second writer, which
+        // is exactly when this stays unregistered.
+        fim_recovery_set_container_locking(fim_container_state_lock, fim_container_state_unlock);
+
+        // Subscribe BEFORE walking (#37396). The drain stages container
         // file events from here on, so a file changed while the walk is running
         // is reconciled afterwards instead of falling into the gap between "the
         // walk read this file" and "monitoring started". No-op when the eBPF

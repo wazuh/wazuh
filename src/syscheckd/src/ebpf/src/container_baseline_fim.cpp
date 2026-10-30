@@ -6,7 +6,7 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
  *
- * Option A: container FIM baseline through the host event flow (spike #37532).
+ * Option A: container FIM baseline through the host event flow.
  *
  * Rows are STREAMED into a per-container scoped DBSync transaction as they
  * arrive, rather than buffering the whole node's baseline in memory first: the
@@ -30,6 +30,8 @@
  */
 
 #include "container_baseline_fim.h"
+
+#include "container_row_budget.h"
 #include "container_baseline.h"
 #include "container_baseline_fim_bridge.h"
 #include "container_event_drain.hpp"
@@ -43,651 +45,1353 @@
 #include <climits>
 #include <cstdio>
 #include <cstdlib>
+#include <map>
 #include <memory>
+#include <mutex>
+#include <optional>
 #include <set>
 #include <string>
+#include <unordered_set>
 #include <vector>
 
-namespace {
-
-/// Plain pass-through for a message that needs no formatting. Preferred over
-/// the templates below by overload resolution, so a literal message skips
-/// snprintf entirely — no 512-byte truncation, and no -Wformat-security
-/// diagnostic for a "format" string that was never a format string.
-void LogDebug(const char* msg)
+namespace
 {
-    fim_container_baseline_log_debug(msg);
-}
 
-void LogWarn(const char* msg)
-{
-    fim_container_baseline_log_warn(msg);
-}
+    std::recursive_mutex container_state_mutex;
 
-void LogError(const char* msg)
-{
-    fim_container_baseline_log_error(msg);
-}
-
-/// printf-style wrapper over the bridge's logging shims.
-template <typename... Args>
-void LogDebug(const char* fmt, Args... args)
-{
-    char buffer[512];
-    std::snprintf(buffer, sizeof(buffer), fmt, args...);
-    fim_container_baseline_log_debug(buffer);
-}
-
-template <typename... Args>
-void LogError(const char* fmt, Args... args)
-{
-    char buffer[512];
-    std::snprintf(buffer, sizeof(buffer), fmt, args...);
-    fim_container_baseline_log_error(buffer);
-}
-
-struct ContainerTxnCtx {
-    std::string container_id;
-    /// cb_fim_origin_t: what the stateless alert reports as its "mode".
-    int origin{CB_FIM_ORIGIN_SCAN};
-};
-
-// C-compatible txn callback — called by DBSync for INSERTED / MODIFIED / DELETED.
-void container_txn_callback(ReturnTypeCallback result_type, const cJSON* result_json, void* user_data)
-{
-    if (!result_json || !user_data) return;
-    auto* ctx = static_cast<ContainerTxnCtx*>(user_data);
-
-    const cJSON* row_data = result_json;
-    const cJSON* old_data  = nullptr;
-    Operation_t op;
-
-    switch (result_type) {
-        case INSERTED:
-            op = OPERATION_CREATE;
-            break;
-        case MODIFIED:
-            row_data = cJSON_GetObjectItem(result_json, "new");
-            if (!row_data) return;
-            // DBSync's "old" object carries exactly the columns that changed,
-            // which is what the alert's changed_fields is derived from.
-            old_data = cJSON_GetObjectItem(result_json, "old");
-            op = OPERATION_MODIFY;
-            break;
-        case DELETED:
-            op = OPERATION_DELETE;
-            break;
-        case DB_ERROR:
-            LogDebug("Container FIM baseline: DBSync reported an error for container '%s'.",
-                    ctx->container_id.c_str());
-            return;
-        default:
-            return;
+    /// Plain pass-through for a message that needs no formatting. Preferred over
+    /// the templates below by overload resolution, so a literal message skips
+    /// snprintf entirely — no 512-byte truncation, and no -Wformat-security
+    /// diagnostic for a "format" string that was never a format string.
+    void LogDebug(const char* msg)
+    {
+        fim_container_baseline_log_debug(msg);
     }
 
-    const cJSON* path_json = cJSON_GetObjectItem(row_data, "path");
-    if (!path_json || !cJSON_IsString(path_json)) return;
+    void LogWarn(const char* msg)
+    {
+        fim_container_baseline_log_warn(msg);
+    }
 
-    const cJSON* version_json = cJSON_GetObjectItem(row_data, "version");
-    const uint64_t version = version_json
-        ? static_cast<uint64_t>(cJSON_GetNumberValue(version_json))
-        : 1;
+    void LogError(const char* msg)
+    {
+        fim_container_baseline_log_error(msg);
+    }
 
-    const std::string id = ctx->container_id + ":" + cJSON_GetStringValue(path_json);
+    /// printf-style wrapper over the bridge's logging shims.
+    template <typename... Args>
+    void LogDebug(const char* fmt, Args... args)
+    {
+        char buffer[512];
+        std::snprintf(buffer, sizeof(buffer), fmt, args...);
+        fim_container_baseline_log_debug(buffer);
+    }
 
-    // The alert first, then the stateful document — the same order file.c uses,
-    // so a consumer reading both sees the notification no later than the state
-    // it describes.
-    fim_send_container_stateless_event(row_data, old_data, static_cast<int>(op), ctx->origin);
+    template <typename... Args>
+    void LogWarn(const char* fmt, Args... args)
+    {
+        char buffer[512];
+        std::snprintf(buffer, sizeof(buffer), fmt, args...);
+        fim_container_baseline_log_warn(buffer);
+    }
 
-    char* row_str = cJSON_PrintUnformatted(row_data);
-    if (!row_str) return;
-    fim_persist_baseline_row(id.c_str(), static_cast<int>(op), "wazuh-states-fim-files", row_str, version);
-    free(row_str);
-}
+    template <typename... Args>
+    void LogError(const char* fmt, Args... args)
+    {
+        char buffer[512];
+        std::snprintf(buffer, sizeof(buffer), fmt, args...);
+        fim_container_baseline_log_error(buffer);
+    }
 
-/// Owns one container's scoped transaction for its lifetime.
-///
-/// The handle must be closed exactly once on every path, including an
-/// exception: fim_db_transaction_deleted_rows() is what closes it in the happy
-/// case, so a throw between start and that call previously leaked the handle
-/// (there was no RAII and no catch anywhere in this file, so the exception also
-/// escaped into syscheckd's main()).
-class ScopedContainerTxn {
-    public:
-        ScopedContainerTxn(const std::string& container_id, int origin)
-            : m_ctx{container_id, origin}
+    using JsonPtr = std::unique_ptr<cJSON, decltype(&cJSON_Delete)>;
+
+    /// Every container id that holds a row in file_entry, or nothing when the
+    /// query failed -- which is not the same answer as "no containers", and no
+    /// caller may confuse them: one authorises deletions, the other must not.
+    ///
+    /// One parse, because both callers were doing their own and the cJSON array
+    /// is easy to read a little differently each time -- a null valuestring, an
+    /// empty string and a non-string element are all things the query can
+    /// produce and all things a second copy of this loop can forget.
+    std::optional<std::set<std::string>> distinctContainerIds()
+    {
+        JsonPtr ids {fim_db_get_distinct_container_ids(FIMDB_FILE_TABLE_NAME), cJSON_Delete};
+
+        // Not an array is not an empty node either. cJSON_ArrayForEach() walks
+        // an object's MEMBERS just as happily as an array's elements, so
+        // without this a malformed reply would be read as a list of container
+        // ids -- and one of the two callers deletes the rows of every container
+        // absent from what it is given.
+        if (!ids || !cJSON_IsArray(ids.get()))
         {
-            nlohmann::json txn_json;
-            txn_json["tables"] = nlohmann::json::array({"file_entry"});
-            txn_json["scope"]  = {{"column", FIMDB_FILE_CONTAINER_ID_COLUMN},
-                                  {"value",  container_id}};
-            const std::string txn_str = txn_json.dump();
+            return std::nullopt;
+        }
 
-            m_txn = fim_db_transaction_start(txn_str.c_str(), container_txn_callback, &m_ctx);
+        std::set<std::string> out;
+        const cJSON* id_json = nullptr;
+        cJSON_ArrayForEach(id_json, ids.get())
+        {
+            const char* container_id = cJSON_GetStringValue(id_json);
 
-            if (!m_txn) {
-                LogDebug("Container FIM baseline: could not start a transaction for container '%s'.",
-                        container_id.c_str());
+            if (container_id && *container_id)
+            {
+                out.insert(container_id);
             }
         }
 
-        ~ScopedContainerTxn()
+        return out;
+    }
+
+    struct ContainerTxnCtx
+    {
+        std::string container_id;
+        /// cb_fim_origin_t: what the stateless alert reports as its "mode".
+        int origin{CB_FIM_ORIGIN_SCAN};
+        std::map<std::string, std::pair<uint64_t, int>> pending_sync {};
+    };
+
+    /// @return whether the column now holds @p sync. A caller that is WITHDRAWING
+    ///         documents has to know: the row still reports if this failed, and
+    ///         the count it reports to the operator must say so.
+    bool writeSyncFlag(const cJSON* row, int sync)
+    {
+        pending_sync_item_t item {};
+        item.json = const_cast<cJSON*>(row);
+        item.sync_value = sync;
+
+        if (fim_db_set_sync_flag(const_cast<char*>(FIMDB_FILE_TABLE_NAME), &item, sync) != 0)
         {
-            // Only reached if finish() was not called (i.e. an exception unwound
-            // past it); close without delete detection so a half-finished scan
-            // cannot delete rows.
-            if (m_txn) {
-                fim_db_transaction_close(m_txn);
-                m_txn = nullptr;
-            }
+            LogError("Container FIM: could not persist a reporting flag.");
+            return false;
         }
 
-        ScopedContainerTxn(const ScopedContainerTxn&) = delete;
-        ScopedContainerTxn& operator=(const ScopedContainerTxn&) = delete;
+        return true;
+    }
 
-        [[nodiscard]] bool valid() const { return m_txn != nullptr; }
-
-        void syncRow(const std::string& row_json)
+    void flushSyncFlags(ContainerTxnCtx& ctx)
+    {
+        for (const auto& [path, update] : ctx.pending_sync)
         {
-            if (!m_txn) return;
+            const auto& [version, sync] = update;
+            std::unique_ptr<cJSON, decltype(&cJSON_Delete)> json {cJSON_CreateObject(), cJSON_Delete};
 
-            if (fim_db_transaction_sync_row_json(m_txn, "file_entry", row_json.c_str()) != FIMDB_OK) {
-                LogDebug("Container FIM baseline: failed to sync a row for container '%s'.",
-                        m_ctx.container_id.c_str());
+            if (!json || !cJSON_AddStringToObject(json.get(), "path", path.c_str()) ||
+                    !cJSON_AddStringToObject(json.get(), "container_id", ctx.container_id.c_str()) ||
+                    !cJSON_AddNumberToObject(json.get(), "version", static_cast<double>(version)))
+            {
+                LogError("Container FIM: could not allocate a pending reporting flag.");
+                continue;
             }
+
+            writeSyncFlag(json.get(), sync);
         }
 
-        /// @param detect_deletions false for an incomplete scan: the rows this
-        ///        transaction did NOT refresh are missing because the walk was
-        ///        capped or a path was unreadable, not because the files are gone.
-        void finish(bool detect_deletions)
-        {
-            if (!m_txn) return;
+        ctx.pending_sync.clear();
+    }
 
-            if (detect_deletions) {
-                if (fim_db_transaction_deleted_rows(m_txn, container_txn_callback, &m_ctx) != FIMDB_OK) {
-                    LogDebug("Container FIM baseline: delete detection failed for container '%s'.",
-                            m_ctx.container_id.c_str());
+    // C-compatible txn callback — called by DBSync for INSERTED / MODIFIED / DELETED.
+    void container_txn_callback(ReturnTypeCallback result_type, const cJSON* result_json, void* user_data)
+    {
+        if (!result_json || !user_data) return;
+
+        auto* ctx = static_cast<ContainerTxnCtx*>(user_data);
+
+        const cJSON* row_data = result_json;
+        const cJSON* old_data  = nullptr;
+        Operation_t op;
+
+        switch (result_type)
+        {
+            case INSERTED:
+                op = OPERATION_CREATE;
+                break;
+
+            case MODIFIED:
+                row_data = cJSON_GetObjectItem(result_json, "new");
+
+                if (!row_data) return;
+
+                // DBSync's "old" object carries exactly the columns that changed,
+                // which is what the alert's changed_fields is derived from.
+                old_data = cJSON_GetObjectItem(result_json, "old");
+                op = OPERATION_MODIFY;
+                break;
+
+            case DELETED:
+                op = OPERATION_DELETE;
+                break;
+
+            case DB_ERROR:
+                LogDebug("Container FIM baseline: DBSync reported an error for container '%s'.",
+                         ctx->container_id.c_str());
+                return;
+
+            default:
+                return;
+        }
+
+        const cJSON* path_json = cJSON_GetObjectItem(row_data, "path");
+
+        if (!path_json || !cJSON_IsString(path_json)) return;
+
+        const cJSON* version_json = cJSON_GetObjectItem(row_data, "version");
+        const uint64_t version = version_json
+                                 ? static_cast<uint64_t>(cJSON_GetNumberValue(version_json))
+                                 : 1;
+
+        const std::string id = ctx->container_id + ":" + cJSON_GetStringValue(path_json);
+
+        // The alert first, then the stateful document — the same order file.c uses,
+        // so a consumer reading both sees the notification no later than the state
+        // it describes.
+        fim_send_container_stateless_event(row_data, old_data, static_cast<int>(op), ctx->origin);
+
+        char* row_str = cJSON_PrintUnformatted(row_data);
+
+        if (!row_str) return;
+
+        const int sync =
+            fim_persist_baseline_row(id.c_str(), static_cast<int>(op), "wazuh-states-fim-files", row_str, version);
+        const cJSON* stored_sync = cJSON_GetObjectItem(row_data, "sync");
+        const int previous_sync = cJSON_IsNumber(stored_sync) ? stored_sync->valueint : 0;
+
+        if (op != OPERATION_DELETE && sync >= 0 && sync != previous_sync)
+        {
+            ctx->pending_sync[cJSON_GetStringValue(path_json)] = {version, sync};
+        }
+        else if (op == OPERATION_DELETE)
+        {
+            ctx->pending_sync.erase(cJSON_GetStringValue(path_json));
+        }
+
+        free(row_str);
+    }
+
+    /// Owns one container's scoped transaction for its lifetime.
+    ///
+    /// The handle must be closed exactly once on every path, including an
+    /// exception: fim_db_transaction_deleted_rows() is what closes it in the happy
+    /// case, so a throw between start and that call previously leaked the handle
+    /// (there was no RAII and no catch anywhere in this file, so the exception also
+    /// escaped into syscheckd's main()).
+    class ScopedContainerTxn
+    {
+        public:
+            ScopedContainerTxn(const std::string& container_id, int origin)
+                : m_ctx {container_id, origin}
+                , m_limit {fim_container_baseline_row_limit()}
+            {
+                fim_container_doc_budget_initialize(container_id.c_str());
+
+                if (m_limit > 0)
+                {
+                    loadStoredPaths();
                 }
-            } else {
-                fim_db_transaction_close(m_txn);
+
+                nlohmann::json txn_json;
+                txn_json["tables"] = nlohmann::json::array({"file_entry"});
+                txn_json["scope"]  = {{"column", FIMDB_FILE_CONTAINER_ID_COLUMN},
+                    {"value",  container_id}
+                };
+                const std::string txn_str = txn_json.dump();
+
+                m_txn = fim_db_transaction_start(txn_str.c_str(), container_txn_callback, &m_ctx);
+
+                if (!m_txn)
+                {
+                    LogDebug("Container FIM baseline: could not start a transaction for container '%s'.",
+                             container_id.c_str());
+                }
             }
 
-            m_txn = nullptr; // closed either way
-        }
-
-    private:
-        ContainerTxnCtx m_ctx;
-        TXN_HANDLE      m_txn{nullptr};
-};
-
-/// Streams the baseline into per-container transactions.
-class BaselineDriver {
-    public:
-        /// `may_detect_deletions` is D15 (12-blocking-decisions.md) reaching the
-        /// database. A path reconcile re-reads a handful of named files, so the
-        /// rows it produces are a subset of the container's files BY DESIGN, not
-        /// by accident — and delete detection over a subset deletes everything
-        /// else the container owns. The whole-node and per-container walks pass
-        /// true and stay gated on `partial` as before.
-        ///
-        /// `origin` (cb_fim_origin_t) is what this run's alerts report as their
-        /// FIM "mode": a walk is a scan, a reconcile is whodata-driven.
-        explicit BaselineDriver(bool may_detect_deletions = true, int origin = CB_FIM_ORIGIN_SCAN)
-            : m_may_delete(may_detect_deletions)
-            , m_origin(origin)
-        {
-        }
-
-        void onRow(const char* container_id, const char* row_json)
-        {
-            if (!container_id || !row_json) return;
-
-            auto row = nlohmann::json::parse(row_json, nullptr, false);
-            if (row.is_discarded()) {
-                LogDebug("Container FIM baseline: discarded a malformed row for container '%s'.",
-                        container_id);
-                ++m_malformed_rows;
-                return;
+            ~ScopedContainerTxn()
+            {
+                // Only reached if finish() was not called (i.e. an exception unwound
+                // past it); close without delete detection so a half-finished scan
+                // cannot delete rows.
+                if (m_txn)
+                {
+                    fim_db_transaction_close(m_txn);
+                    m_txn = nullptr;
+                    flushSyncFlags(m_ctx);
+                }
             }
 
-            // Stable checksum so DBSync can detect row-level changes between runs.
-            //
-            // The container-scope columns are excluded deliberately:
-            // container_id is part of the row's primary key already, and
-            // container_json is a copy of the container's metadata blob. With
-            // the blob inside the digest, editing one label changed the checksum
-            // of every file row of that container and re-emitted the whole file
-            // set as MODIFIED — a metadata edit reported as file changes.
-            auto checksumInput = row;
-            checksumInput.erase("container_id");
-            checksumInput.erase("container_json");
-            const std::string dump = checksumInput.dump();
-            char sha1[41] = {0};
-            fim_compute_row_checksum(dump.c_str(), sha1);
-            row["checksum"] = std::string(sha1);
+            ScopedContainerTxn(const ScopedContainerTxn&) = delete;
+            ScopedContainerTxn& operator=(const ScopedContainerTxn&) = delete;
 
-            if (!m_may_delete) {
-                // A path reconcile persists row by row, outside any
-                // transaction. It must not open a container-scoped one: closing
-                // that runs deleteRowsByStatusField() unconditionally, so
-                // re-reading one named file DELETED every other row of the
-                // container -- C27. may_detect_deletions == false suppresses the
-                // DELETED callbacks and nothing else. Measured on a live agent:
-                // modifying f1 alerted "modified", modifying f2 then alerted
-                // "added" because f1's reconcile had removed f2's row, and 1 of
-                // 5 rows survived three single-file changes (D18).
-                syncRowDirect(container_id, row);
-                return;
+            [[nodiscard]] bool valid() const
+            {
+                return m_txn != nullptr;
             }
 
-            beginContainer(container_id);
-            if (!m_txn || !m_txn->valid()) return;
+            /// Stores one row, subject to this container's own row ceiling.
+            ///
+            /// The ceiling is measured against what the container HOLDS: the rows
+            /// stored before this pass plus the new ones stored since. Counting only
+            /// this pass let a capped pass, which kept its unrefreshed rows, be
+            /// followed by another that stored up to the limit again.
+            ///
+            /// Two refusals are possible and they mean different things. The
+            /// per-container cap is refused here, and only for a row the container
+            /// does not hold yet, so it never stops a stored row from being
+            /// refreshed. The NODE ceiling is refused by dbsync underneath (max_rows
+            /// on file_entry), and used to be swallowed by the LogDebug below —
+            /// measured on a real node, 8,643 rows were refused that way while the
+            /// scan reported "0 partial scan(s)". That one can hit any row, so it
+            /// leaves the row set incomplete; rowsBlockingDeletes() carries it.
+            bool syncRow(const nlohmann::json& row)
+            {
+                if (!m_txn) return false;
 
-            m_txn->syncRow(row.dump());
-            ++m_rows;
-        }
+                const auto path_it = row.find("path");
+                const std::string path = (path_it != row.end() && path_it->is_string()) ? path_it->get<std::string>() : "";
+                const bool stored = m_stored_known && m_stored.count(path) != 0;
 
-        void onStatus(const cb_container_status_t& status)
-        {
-            if (!status.container_id) return;
+                if (!container_row_admitted(m_limit, m_stored_known ? m_held : m_synced, stored))
+                {
+                    ++m_capped;
+                    return false;
+                }
 
-            const std::string id{status.container_id};
-            m_scanned.insert(id);
+                if (fim_db_transaction_sync_row_json(m_txn, "file_entry", row.dump().c_str()) != FIMDB_OK)
+                {
+                    ++m_unstored;
+                    LogDebug("Container FIM baseline: failed to sync a row for container '%s'.",
+                             m_ctx.container_id.c_str());
+                    return false;
+                }
 
-            if (!m_may_delete) {
-                // Nothing to close: a path reconcile never opened a
-                // transaction, and it has no ageing-out to do -- its rows are a
-                // subset of the container's files by design (D15), so "not
-                // refreshed" carries no information about the rest.
-                return;
+                ++m_synced;
+
+                if (m_stored_known && !stored)
+                {
+                    m_stored.insert(path);
+                    ++m_held;
+                }
+
+                return true;
             }
 
-            // A complete scan that produced no rows still needs a transaction,
-            // so previously-stored rows for this container age out as DELETED.
-            beginContainer(id);
-
-            const bool partial = status.partial != 0;
-
-            if (partial) {
-                // D17: each reason is named, because they are not equally
-                // actionable — a row cap clears itself next cycle, an
-                // unreadable rootfs is usually a PID that exited, and a
-                // rejected path means something handed us a path we would not
-                // walk.
-                LogDebug("Container FIM baseline: incomplete scan for container '%s' "
-                        "(row cap: %s, rootfs unreadable: %s, path rejected: %s); "
-                        "skipping delete detection to avoid false FIM deletions.",
-                        status.container_id,
-                        status.row_cap_hit ? "yes" : "no",
-                        status.rootfs_unreadable ? "yes" : "no",
-                        status.paths_rejected ? "yes" : "no");
-                ++m_partial;
+            [[nodiscard]] size_t rowsSynced() const
+            {
+                return m_synced;
+            }
+            [[nodiscard]] size_t rowsRefused() const
+            {
+                return m_capped + m_unstored;
             }
 
-            if (status.roots_missing > 0) {
-                // NOT a reason to suppress: the walk looked and the root is not
-                // in this image, which is a fact about the container. Treating
-                // it as incompleteness is C24 — the condition is static, so the
-                // suppression never lifted and that container's deletions were
-                // never reported at all. Still worth saying out loud, because a
-                // configured directory no image contains is usually a mistake.
-                LogDebug("Container FIM baseline: %d of %d configured director%s absent from container "
-                         "'%s' image; delete detection proceeds over the %d that resolved.",
-                         status.roots_missing,
-                         status.roots_missing + status.roots_scanned,
-                         (status.roots_missing + status.roots_scanned) == 1 ? "y is" : "ies are",
-                         status.container_id,
-                         status.roots_scanned);
+            /// Refusals after which delete detection would remove files that still
+            /// exist. Without the stored path set, the cap cannot tell a refresh from
+            /// a new row, so its refusals count too.
+            [[nodiscard]] size_t rowsBlockingDeletes() const
+            {
+                return m_unstored + (m_stored_known ? 0 : m_capped);
             }
 
-            finishCurrent(m_may_delete && !partial);
-        }
+            /// @param detect_deletions false for an incomplete scan: the rows this
+            ///        transaction did NOT refresh are missing because the walk was
+            ///        capped or a path was unreadable, not because the files are gone.
+            void finish(bool detect_deletions)
+            {
+                if (!m_txn) return;
 
-        /// Containers still holding rows in the DB but no longer known to
-        /// container_instances at all. A container that is merely STOPPED is
-        /// still known and must be left alone — its rows are the state to
-        /// resume diffing against when it restarts.
-        void sweepStale(const std::set<std::string>& known)
-        {
-            finishCurrent(true);
-
-            cJSON* db_ids = fim_db_get_distinct_container_ids("file_entry");
-            if (!db_ids) {
-                LogDebug("Container FIM baseline: could not read container ids from the database; "
-                        "skipping the stale-container sweep.");
-                return;
-            }
-
-            std::set<std::string> stale;
-
-            if (cJSON_IsArray(db_ids)) {
-                cJSON* item = nullptr;
-                cJSON_ArrayForEach(item, db_ids) {
-                    if (!cJSON_IsString(item) || !item->valuestring || item->valuestring[0] == '\0') continue;
-
-                    const std::string id{item->valuestring};
-                    if (known.find(id) == known.end()) {
-                        stale.insert(id);
+                if (detect_deletions)
+                {
+                    if (fim_db_transaction_deleted_rows(m_txn, container_txn_callback, &m_ctx) != FIMDB_OK)
+                    {
+                        LogDebug("Container FIM baseline: delete detection failed for container '%s'.",
+                                 m_ctx.container_id.c_str());
                     }
                 }
-            }
-            cJSON_Delete(db_ids);
+                else
+                {
+                    fim_db_transaction_close(m_txn);
+                }
 
-            for (const auto& id : stale) {
-                LogDebug("Container FIM baseline: container '%s' is gone; ageing out its FIM rows.",
-                        id.c_str());
-                ScopedContainerTxn txn{id, m_origin};
-                txn.finish(true); // no rows synced -> every stored row becomes DELETED
-            }
-
-            m_stale = stale.size();
-        }
-
-        [[nodiscard]] size_t rows() const { return m_rows; }
-        [[nodiscard]] size_t scanned() const { return m_scanned.size(); }
-        [[nodiscard]] size_t partial() const { return m_partial; }
-        [[nodiscard]] size_t stale() const { return m_stale; }
-        [[nodiscard]] size_t malformedRows() const { return m_malformed_rows; }
-
-    private:
-        /// One row, no transaction, no scope, no status field: the row is
-        /// compared against its stored self and nothing else is touched.
-        void syncRowDirect(const std::string& container_id, const nlohmann::json& row)
-        {
-            m_direct_ctx.container_id = container_id;
-            m_direct_ctx.origin       = m_origin;
-
-            if (fim_db_container_file_sync(row.dump().c_str(), container_txn_callback, &m_direct_ctx) != FIMDB_OK) {
-                LogDebug("Container FIM reconcile: failed to persist a row for container '%s'.",
-                        container_id.c_str());
-                return;
+                m_txn = nullptr; // closed either way
+                flushSyncFlags(m_ctx);
             }
 
-            ++m_rows;
-        }
+        private:
+            /// Read before the scoped transaction opens, like the document count.
+            void loadStoredPaths()
+            {
+                std::unique_ptr<cJSON, decltype(&cJSON_Delete)> paths
+                {
+                    fim_db_get_container_paths(m_ctx.container_id.c_str()), cJSON_Delete};
 
-        void beginContainer(const std::string& container_id)
+                if (!paths)
+                {
+                    LogWarn("Container FIM baseline: could not read the rows stored for container '%s'; "
+                            "its row limit counts this pass only, and suppresses delete detection when it bites.",
+                            m_ctx.container_id.c_str());
+                    return;
+                }
+
+                const cJSON* item = nullptr;
+                cJSON_ArrayForEach(item, paths.get())
+                {
+                    if (cJSON_IsString(item) && item->valuestring)
+                    {
+                        m_stored.insert(item->valuestring);
+                    }
+                }
+                m_held = m_stored.size();
+                m_stored_known = true;
+            }
+
+            ContainerTxnCtx m_ctx;
+            const int m_limit;
+            TXN_HANDLE m_txn {nullptr};
+            std::unordered_set<std::string> m_stored;
+            bool m_stored_known {false};
+            std::size_t m_held {0};
+            std::size_t m_synced {0};
+            std::size_t m_capped {0};
+            std::size_t m_unstored {0};
+    };
+
+    /// Streams the baseline into per-container transactions.
+    class BaselineDriver
+    {
+        public:
+            /// `may_detect_deletions` is D15 (12-blocking-decisions.md) reaching the
+            /// database. A path reconcile re-reads a handful of named files, so the
+            /// rows it produces are a subset of the container's files BY DESIGN, not
+            /// by accident — and delete detection over a subset deletes everything
+            /// else the container owns. The whole-node and per-container walks pass
+            /// true and stay gated on `partial` as before.
+            ///
+            /// `origin` (cb_fim_origin_t) is what this run's alerts report as their
+            /// FIM "mode": a walk is a scan, a reconcile is whodata-driven.
+            explicit BaselineDriver(bool may_detect_deletions = true, int origin = CB_FIM_ORIGIN_SCAN)
+                : m_may_delete(may_detect_deletions)
+                , m_origin(origin)
+            {
+            }
+
+            void onRow(const char* container_id, const char* row_json)
+            {
+                if (!container_id || !row_json) return;
+
+                auto row = nlohmann::json::parse(row_json, nullptr, false);
+
+                if (row.is_discarded())
+                {
+                    LogDebug("Container FIM baseline: discarded a malformed row for container '%s'.",
+                             container_id);
+                    ++m_malformed_rows;
+                    return;
+                }
+
+                // Stable checksum so DBSync can detect row-level changes between runs.
+                //
+                // The container-scope columns are excluded deliberately:
+                // container_id is part of the row's primary key already, and
+                // container_json is a copy of the container's metadata blob. With
+                // the blob inside the digest, editing one label changed the checksum
+                // of every file row of that container and re-emitted the whole file
+                // set as MODIFIED — a metadata edit reported as file changes.
+                auto checksumInput = row;
+                checksumInput.erase("container_id");
+                checksumInput.erase("container_json");
+                const std::string dump = checksumInput.dump();
+                char sha1[41] = {0};
+                fim_compute_row_checksum(dump.c_str(), sha1);
+                row["checksum"] = std::string(sha1);
+
+                if (!m_may_delete)
+                {
+                    // A path reconcile persists row by row, outside any
+                    // transaction. It must not open a container-scoped one: closing
+                    // that runs deleteRowsByStatusField() unconditionally, so
+                    // re-reading one named file DELETED every other row of the
+                    // container -- C27. may_detect_deletions == false suppresses the
+                    // DELETED callbacks and nothing else. Measured on a live agent:
+                    // modifying f1 alerted "modified", modifying f2 then alerted
+                    // "added" because f1's reconcile had removed f2's row, and 1 of
+                    // 5 rows survived three single-file changes (D18).
+                    syncRowDirect(container_id, row);
+                    return;
+                }
+
+                beginContainer(container_id);
+
+                if (!m_txn || !m_txn->valid()) return;
+
+                // m_rows counts rows the database KEPT, not rows handed to it.
+                // Counting the latter is what let a baseline report 100,063 rows
+                // while the table held 91,420 -- the shortfall appeared in no
+                // counter and no log line (23.4). A total that cannot be wrong in
+                // that direction is the whole point of reporting one.
+                if (m_txn->syncRow(row))
+                {
+                    ++m_rows;
+                }
+                else
+                {
+                    ++m_refused;
+                }
+            }
+
+            void onStatus(const cb_container_status_t& status)
+            {
+                if (!status.container_id) return;
+
+                const std::string id{status.container_id};
+                m_scanned.insert(id);
+
+                if (!m_may_delete)
+                {
+                    // Nothing to close: a path reconcile never opened a
+                    // transaction, and it has no ageing-out to do -- its rows are a
+                    // subset of the container's files by design (D15), so "not
+                    // refreshed" carries no information about the rest.
+                    return;
+                }
+
+                // A complete scan that produced no rows still needs a transaction,
+                // so previously-stored rows for this container age out as DELETED.
+                beginContainer(id);
+
+                // status.partial is the WALKER's verdict, reached before a single
+                // row touches the database. A row the database refused is just as
+                // missing, and until now nothing carried that back: measured on a
+                // real node, 8,643 rows were refused while every scan in the window
+                // reported "0 partial scan(s)". Suppressing deletions on it is D11
+                // rule 4 — never let a partial view delete.
+                const bool current = m_txn && m_current == id;
+                const std::size_t refused = current ? m_txn->rowsRefused() : 0;
+                const std::size_t blocking = current ? m_txn->rowsBlockingDeletes() : 0;
+                const bool partial = container_scan_is_partial(status.partial != 0, blocking);
+
+                if (blocking > 0)
+                {
+                    LogWarn("Container FIM baseline: container '%s' stored %zu row(s) and %zu were refused "
+                            "(per-container limit %d, node limit %d). Its file state is incomplete, so "
+                            "delete detection is suppressed for it this pass.",
+                            id.c_str(),
+                            m_txn ? m_txn->rowsSynced() : 0,
+                            refused,
+                            fim_container_baseline_row_limit(),
+                            fim_container_baseline_node_row_limit());
+                }
+                else if (refused > 0)
+                {
+                    // Every refused row is one the container never stored, so files
+                    // that vanished still age out and free room for the next pass.
+                    LogWarn("Container FIM baseline: container '%s' is at its limit of %d stored row(s); "
+                            "%zu new file(s) were not stored. Stored files are still refreshed and deletions "
+                            "still detected.",
+                            id.c_str(),
+                            fim_container_baseline_row_limit(),
+                            refused);
+                }
+
+                if (partial)
+                {
+                    // D17: each reason is named, because they are not equally
+                    // actionable — a row cap clears itself next cycle, an
+                    // unreadable rootfs is usually a PID that exited, and a
+                    // rejected path means something handed us a path we would not
+                    // walk.
+                    LogDebug("Container FIM baseline: incomplete scan for container '%s' "
+                             "(row cap: %s, rootfs unreadable: %s, path rejected: %s); "
+                             "skipping delete detection to avoid false FIM deletions.",
+                             status.container_id,
+                             status.row_cap_hit ? "yes" : "no",
+                             status.rootfs_unreadable ? "yes" : "no",
+                             status.paths_rejected ? "yes" : "no");
+                    ++m_partial;
+                }
+
+                if (status.roots_missing > 0)
+                {
+                    // NOT a reason to suppress: the walk looked and the root is not
+                    // in this image, which is a fact about the container. Treating
+                    // it as incompleteness is C24 — the condition is static, so the
+                    // suppression never lifted and that container's deletions were
+                    // never reported at all. Still worth saying out loud, because a
+                    // configured directory no image contains is usually a mistake.
+                    LogDebug("Container FIM baseline: %d of %d configured director%s absent from container "
+                             "'%s' image; delete detection proceeds over the %d that resolved.",
+                             status.roots_missing,
+                             status.roots_missing + status.roots_scanned,
+                             (status.roots_missing + status.roots_scanned) == 1 ? "y is" : "ies are",
+                             status.container_id,
+                             status.roots_scanned);
+                }
+
+                finishCurrent(m_may_delete && !partial);
+            }
+
+            /// Containers still holding rows in the DB but no longer known to
+            /// container_instances at all. A container that is merely STOPPED is
+            /// still known and must be left alone — its rows are the state to
+            /// resume diffing against when it restarts.
+            ///
+            /// @return the ids that still hold rows once the sweep has run, or
+            ///         nothing when the id query failed. This is the same answer
+            ///         a SELECT DISTINCT would give immediately afterwards, and
+            ///         it costs nothing here because the sweep has already read
+            ///         the ids and already knows which ones it deleted. That
+            ///         query is a DISTINCT over every FIM row on the node, and
+            ///         the baseline ran three of them.
+            std::optional<std::set<std::string>> sweepStale(const std::set<std::string>& known)
+            {
+                finishCurrent(true);
+
+                const auto db_ids = distinctContainerIds();
+
+                if (!db_ids)
+                {
+                    LogDebug("Container FIM baseline: could not read container ids from the database; "
+                             "skipping the stale-container sweep.");
+                    return std::nullopt;
+                }
+
+                std::set<std::string> stale;
+                std::set<std::string> surviving;
+
+                for (const auto& id : *db_ids)
+                {
+                    // The listing precedes the walk; a container discovered
+                    // during it is still live even if absent from that snapshot.
+                    if (known.find(id) == known.end() && m_scanned.find(id) == m_scanned.end())
+                    {
+                        stale.insert(id);
+                    }
+                    else
+                    {
+                        surviving.insert(id);
+                    }
+                }
+
+                for (const auto& id : stale)
+                {
+                    LogDebug("Container FIM baseline: container '%s' is gone; ageing out its FIM rows.",
+                             id.c_str());
+                    ScopedContainerTxn txn{id, m_origin};
+                    txn.finish(true); // no rows synced -> every stored row becomes DELETED
+
+                    // After the rows are gone, not before: the DELETEs above run
+                    // through container_txn_callback and decrement the very count
+                    // being released, so releasing first would drop a map entry
+                    // that the sweep then re-creates and leaves non-zero.
+                    fim_container_doc_budget_release(id.c_str());
+                }
+
+                m_stale = stale.size();
+
+                // Every stale container's rows are gone now, so this is exactly
+                // what the table holds.
+                return surviving;
+            }
+
+            [[nodiscard]] size_t rows() const
+            {
+                return m_rows;
+            }
+            [[nodiscard]] size_t refused() const
+            {
+                return m_refused;
+            }
+            [[nodiscard]] size_t scanned() const
+            {
+                return m_scanned.size();
+            }
+            [[nodiscard]] size_t partial() const
+            {
+                return m_partial;
+            }
+            [[nodiscard]] size_t stale() const
+            {
+                return m_stale;
+            }
+            [[nodiscard]] size_t malformedRows() const
+            {
+                return m_malformed_rows;
+            }
+
+        private:
+            /// One row, no transaction, no scope, no status field: the row is
+            /// compared against its stored self and nothing else is touched.
+            void syncRowDirect(const std::string& container_id, const nlohmann::json& row)
+            {
+                m_direct_ctx.container_id = container_id;
+                m_direct_ctx.origin       = m_origin;
+
+                if (!directRowAdmitted(container_id, row))
+                {
+                    ++m_refused;
+                    return;
+                }
+
+                fim_container_doc_budget_initialize(container_id.c_str());
+
+                if (fim_db_container_file_sync(row.dump().c_str(), container_txn_callback, &m_direct_ctx) != FIMDB_OK)
+                {
+                    LogDebug("Container FIM reconcile: failed to persist a row for container '%s'.",
+                             container_id.c_str());
+                    return;
+                }
+
+                flushSyncFlags(m_direct_ctx);
+                ++m_rows;
+            }
+
+            /// The row ceiling on the reconcile path, which stores rows between
+            /// baselines and used to bypass it entirely. A failed lookup admits the
+            /// row: the node-wide ceiling still bounds the table.
+            static bool directRowAdmitted(const std::string& container_id, const nlohmann::json& row)
+            {
+                const int limit = fim_container_baseline_row_limit();
+                const auto path = row.find("path");
+
+                if (limit <= 0 || path == row.end() || !path->is_string())
+                {
+                    return true;
+                }
+
+                const int stored =
+                    fim_db_count_container_rows(container_id.c_str(), path->get_ref<const std::string&>().c_str());
+
+                if (stored != 0)
+                {
+                    return true;
+                }
+
+                const int held = fim_db_count_container_rows(container_id.c_str(), nullptr);
+                return held < 0 || container_row_admitted(limit, static_cast<size_t>(held), false);
+            }
+
+            void beginContainer(const std::string& container_id)
+            {
+                if (m_txn && m_current == container_id) return;
+
+                // The scanner emits a container's rows contiguously, so a different
+                // id means the previous container is done.
+                finishCurrent(true);
+
+                m_current = container_id;
+                m_txn     = std::make_unique<ScopedContainerTxn>(container_id, m_origin);
+            }
+
+            void finishCurrent(bool detect_deletions)
+            {
+                if (!m_txn) return;
+
+                m_txn->finish(detect_deletions);
+                m_txn.reset();
+                m_current.clear();
+            }
+
+            const bool                           m_may_delete{true};
+            const int                            m_origin{CB_FIM_ORIGIN_SCAN};
+            ContainerTxnCtx                      m_direct_ctx{};
+            std::unique_ptr<ScopedContainerTxn> m_txn;
+            std::string                          m_current;
+            std::set<std::string>                m_scanned;
+            size_t                               m_rows{0};     // stored
+            size_t                               m_refused{0};  // offered and turned away
+            size_t                               m_partial{0};
+            size_t                               m_stale{0};
+            size_t                               m_malformed_rows{0};
+    };
+
+    void dbsync_sink(const char* container_id, const char* /*table*/, const char* row_json, void* user_data)
+    {
+        if (!user_data) return;
+
+        static_cast<BaselineDriver*>(user_data)->onRow(container_id, row_json);
+    }
+
+    void status_sink(const cb_container_status_t* status, void* user_data)
+    {
+        if (!status || !user_data) return;
+
+        // FIM baselines files only, so the netns flags carry no information here;
+        // they are reported by the Syscollector consumer, which does collect
+        // network-namespace-scoped rows.
+        static_cast<BaselineDriver*>(user_data)->onStatus(*status);
+    }
+
+    /// Collects every known container and, separately, the ones allowed to report.
+    ///
+    /// Both halves come from one reply deliberately. `known` is what authorises
+    /// deletions, so it must hold EVERY container -- a withheld one has not been
+    /// removed, and leaving it out would delete the rows the cap is holding back.
+    /// `admitted` is the subset whose rows may still be offered upward.
+    struct ContainerListing
+    {
+        std::set<std::string> known;
+        std::set<std::string> admitted;
+
+        /// Whether `known` is the whole node, keys and all. False when the
+        /// connector is still withholding running containers its resolver has
+        /// not keyed.
+        bool complete {false};
+
+        /// Whether the connector named the containers it could not key. False
+        /// means one too old to, and then `complete` is the only guard the sweep
+        /// has.
+        ///
+        /// The ids themselves are not kept. They arrive through the SAME sink as
+        /// every other container, with the cap's verdict for each, so `known`
+        /// and `admitted` already hold them and this file has no question left
+        /// that a separate set would answer. Only the drain needs them apart,
+        /// and for a reason that does not apply here: it has to notice one
+        /// DEPARTING, which no event reports.
+        bool unkeyedKnown {false};
+    };
+
+    /// Called for every container the connector knows of, keyed or not --
+    /// ListContainers() feeds the unkeyed ones through here too, with the
+    /// connector's own decision for each. `known` must hold them both: the
+    /// bridge reads absence from it as "this snapshot predates the container"
+    /// and retakes the listing, which for one that can never be keyed would
+    /// mean retaking it per batch.
+    void container_id_sink(const char* container_id, int synced, void* user_data)
+    {
+        if (!container_id || !user_data) return;
+
+        auto* listing = static_cast<ContainerListing*>(user_data);
+        listing->known.insert(container_id);
+
+        if (synced != 0)
         {
-            if (m_txn && m_current == container_id) return;
-
-            // The scanner emits a container's rows contiguously, so a different
-            // id means the previous container is done.
-            finishCurrent(true);
-
-            m_current = container_id;
-            m_txn     = std::make_unique<ScopedContainerTxn>(container_id, m_origin);
-        }
-
-        void finishCurrent(bool detect_deletions)
-        {
-            if (!m_txn) return;
-
-            m_txn->finish(detect_deletions);
-            m_txn.reset();
-            m_current.clear();
-        }
-
-        const bool                           m_may_delete{true};
-        const int                            m_origin{CB_FIM_ORIGIN_SCAN};
-        ContainerTxnCtx                      m_direct_ctx{};
-        std::unique_ptr<ScopedContainerTxn> m_txn;
-        std::string                          m_current;
-        std::set<std::string>                m_scanned;
-        size_t                               m_rows{0};
-        size_t                               m_partial{0};
-        size_t                               m_stale{0};
-        size_t                               m_malformed_rows{0};
-};
-
-void dbsync_sink(const char* container_id, const char* /*table*/, const char* row_json, void* user_data)
-{
-    if (!user_data) return;
-    static_cast<BaselineDriver*>(user_data)->onRow(container_id, row_json);
-}
-
-void status_sink(const cb_container_status_t* status, void* user_data)
-{
-    if (!status || !user_data) return;
-
-    // FIM baselines files only, so the netns flags carry no information here;
-    // they are reported by the Syscollector consumer, which does collect
-    // network-namespace-scoped rows.
-    static_cast<BaselineDriver*>(user_data)->onStatus(*status);
-}
-
-void container_id_sink(const char* container_id, void* user_data)
-{
-    if (!container_id || !user_data) return;
-    static_cast<std::set<std::string>*>(user_data)->insert(container_id);
-}
-
-
-/// Is `path` inside the configured monitored path `root`?
-///
-/// This is the prefix filter C22 makes necessary. An `ATTR` event on a
-/// container's rootfs also arrives under a HOST path
-/// (/var/lib/containerd/.../snapshots/117/fs/tmp/x), attributed to the
-/// container's cgroup; resolving that under /proc/<pid>/root would look for a
-/// file that does not exist inside the container. Requiring a staged path to sit
-/// under something the operator actually configured discards those, because no
-/// realistic configuration monitors the runtime's snapshot directory.
-bool PathIsUnder(const std::string& path, const char* root)
-{
-    if (root == nullptr || root[0] == '\0') return false;
-
-    const std::string prefix{root};
-
-    if (prefix == "/") return path.size() > 1 && path[0] == '/';
-    if (path.size() < prefix.size()) return false;
-    if (path.compare(0, prefix.size(), prefix) != 0) return false;
-
-    // Exactly the configured entry, or a child of it. The length check is what
-    // stops "/etc" matching "/etcpasswd".
-    return path.size() == prefix.size() || path[prefix.size()] == '/';
-}
-
-/// Turns the staged paths into one zero-recursion MonitoredPath each, keeping
-/// the hash policy of whichever configured entry contains them.
-///
-/// `storage` owns the strings, because cb_monitored_path_t holds a borrowed
-/// const char*.
-std::vector<cb_monitored_path_t> SelectReconcilePaths(const std::vector<std::string>& staged,
-                                                       const cb_monitored_path_t*      configured,
-                                                       size_t                          configured_count,
-                                                       std::vector<std::string>&       storage)
-{
-    std::vector<cb_monitored_path_t> selected;
-
-    storage.reserve(staged.size());
-    selected.reserve(staged.size());
-
-    for (const auto& path : staged) {
-        for (size_t i = 0; i < configured_count; ++i) {
-            if (!PathIsUnder(path, configured[i].internal_path)) continue;
-
-            storage.push_back(path);
-
-            cb_monitored_path_t entry = configured[i];
-            entry.internal_path   = storage.back().c_str();
-            entry.recursion_level = 0;  // this one file, not a tree
-            entry.max_files       = 1;
-            selected.push_back(entry);
-            break;
+            listing->admitted.insert(container_id);
         }
     }
 
-    return selected;
-}
+    /// Takes one container listing and installs it as the admission snapshot.
+    ///
+    /// The snapshot is only replaced when the connector actually answered: a
+    /// failed listing reports no containers, and applying that would withhold
+    /// every container's rows over a momentary blip.
+    ///
+    /// @return cbaseline_list_containers()' own count, negative when it could
+    ///         not be asked. That, AND listing.complete, is what says whether a
+    ///         stale sweep may run.
+    int refreshContainerAdmission(ContainerListing& listing)
+    {
+        cb_list_status_t listStatus {};
+        const int listed =
+            cbaseline_list_containers_ex(CB_DEFAULT_CONNECTOR_SOCKET_PATH, container_id_sink, &listing, &listStatus);
 
-/// Removes the rows for paths the kernel reported unlinked (D17).
-///
-/// Deliberately NOT a scoped transaction with delete detection: that deletes
-/// every row the transaction did not refresh, and this batch names a handful of
-/// files. fim_db_container_get_path() reads each named row, reports it through
-/// the same container_txn_callback every other change goes through — so the
-/// stateless alert and the stateful DELETE document are built by one code path,
-/// with the row's real checksum and document version — and then removes it.
-///
-/// A path with no stored row produces nothing at all, which is the ordinary
-/// case: most files unlinked inside a container were never baselined.
-void DeleteUnlinkedPaths(const fim_container_events::ReconcileRequest& request,
-                          const cb_monitored_path_t*                    configured,
-                          size_t                                        configured_count)
-{
-    // The same prefix filter a re-read applies, and for the same reason (C22):
-    // an event can carry a HOST-form path for a file inside a container's
-    // snapshot directory. Deleting on one of those would remove a row for a
-    // file that is perfectly fine.
-    size_t deleted = 0;
-    size_t skipped = 0;
+        if (listed < 0) return listed;
 
-    ContainerTxnCtx ctx{request.container_id, CB_FIM_ORIGIN_EVENT};
+        listing.complete = (listStatus.complete != 0);
+        listing.unkeyedKnown = (listStatus.unkeyed_known != 0);
 
-    callback_context_t callback{};
-    callback.callback_txn = container_txn_callback;
-    callback.context      = &ctx;
+        // What the snapshot needs is every container that EXISTS, by id -- it
+        // decides who may report, and that question never touches an
+        // attribution key. `complete` answers a different one: whether every
+        // container in the list is keyed, which is what the cgroup map needs.
+        //
+        // Gating on `complete` conflated the two. A container whose cgroup no
+        // process reports never resolves, so `complete` stayed false for as
+        // long as it ran, the snapshot was never replaced again, and every
+        // container that started afterwards was absent from it and read as
+        // refused -- silent for the life of the process.
+        //
+        // So install as soon as the connector has named what it could not key,
+        // and let the unkeyed ids ride along as their own category.
+        if (!listing.complete && !listing.unkeyedKnown)
+        {
+            // An older connector that reports neither. Nothing distinguishes a
+            // container it omitted from one that is gone, so keep the previous
+            // snapshot: before the first listing there is none and the bridge
+            // is fail-open, which is the same safe direction. A container that
+            // appears meanwhile waits one cycle to be admitted.
+            return listed;
+        }
 
-    for (const auto& path : request.paths) {
-        bool under_configured_root = false;
+        std::vector<const char*> known;
+        std::vector<const char*> admitted;
+        known.reserve(listing.known.size());
+        admitted.reserve(listing.admitted.size());
 
-        for (size_t i = 0; i < configured_count; ++i) {
-            if (PathIsUnder(path, configured[i].internal_path)) {
-                under_configured_root = true;
+        for (const auto& id : listing.known)
+        {
+            known.push_back(id.c_str());
+        }
+
+        for (const auto& id : listing.admitted)
+        {
+            admitted.push_back(id.c_str());
+        }
+
+        fim_container_set_admission(known.data(), known.size(), admitted.data(), admitted.size());
+
+        return listed;
+    }
+
+    /// Is `path` inside the configured monitored path `root`?
+    ///
+    /// This is the prefix filter C22 makes necessary. An `ATTR` event on a
+    /// container's rootfs also arrives under a HOST path
+    /// (/var/lib/containerd/.../snapshots/117/fs/tmp/x), attributed to the
+    /// container's cgroup; resolving that under /proc/<pid>/root would look for a
+    /// file that does not exist inside the container. Requiring a staged path to sit
+    /// under something the operator actually configured discards those, because no
+    /// realistic configuration monitors the runtime's snapshot directory.
+    bool PathIsUnder(const std::string& path, const char* root)
+    {
+        if (root == nullptr || root[0] == '\0') return false;
+
+        const std::string prefix{root};
+
+        if (prefix == "/") return path.size() > 1 && path[0] == '/';
+
+        if (path.size() < prefix.size()) return false;
+
+        if (path.compare(0, prefix.size(), prefix) != 0) return false;
+
+        // Exactly the configured entry, or a child of it. The length check is what
+        // stops "/etc" matching "/etcpasswd".
+        return path.size() == prefix.size() || path[prefix.size()] == '/';
+    }
+
+    /// Turns the staged paths into one zero-recursion MonitoredPath each, keeping
+    /// the hash policy of whichever configured entry contains them.
+    ///
+    /// `storage` owns the strings, because cb_monitored_path_t holds a borrowed
+    /// const char*.
+    std::vector<cb_monitored_path_t> SelectReconcilePaths(const std::vector<std::string>& staged,
+                                                          const cb_monitored_path_t*      configured,
+                                                          size_t                          configured_count,
+                                                          std::vector<std::string>&       storage)
+    {
+        std::vector<cb_monitored_path_t> selected;
+
+        storage.reserve(staged.size());
+        selected.reserve(staged.size());
+
+        for (const auto& path : staged)
+        {
+            for (size_t i = 0; i < configured_count; ++i)
+            {
+                if (!PathIsUnder(path, configured[i].internal_path)) continue;
+
+                storage.push_back(path);
+
+                cb_monitored_path_t entry = configured[i];
+                entry.internal_path   = storage.back().c_str();
+                entry.recursion_level = 0;  // this one file, not a tree
+                entry.max_files       = 1;
+                selected.push_back(entry);
                 break;
             }
         }
 
-        if (!under_configured_root) {
-            ++skipped;
-            continue;
+        return selected;
+    }
+
+    /// Removes the rows for paths the kernel reported unlinked (D17).
+    ///
+    /// Deliberately NOT a scoped transaction with delete detection: that deletes
+    /// every row the transaction did not refresh, and this batch names a handful of
+    /// files. fim_db_container_get_path() reads each named row, reports it through
+    /// the same container_txn_callback every other change goes through — so the
+    /// stateless alert and the stateful DELETE document are built by one code path,
+    /// with the row's real checksum and document version — and then removes it.
+    ///
+    /// A path with no stored row produces nothing at all, which is the ordinary
+    /// case: most files unlinked inside a container were never baselined.
+    void DeleteUnlinkedPaths(const fim_container_events::ReconcileRequest& request,
+                             const cb_monitored_path_t*                    configured,
+                             size_t                                        configured_count)
+    {
+        // The same prefix filter a re-read applies, and for the same reason (C22):
+        // an event can carry a HOST-form path for a file inside a container's
+        // snapshot directory. Deleting on one of those would remove a row for a
+        // file that is perfectly fine.
+        size_t deleted = 0;
+        size_t skipped = 0;
+
+        ContainerTxnCtx ctx{request.container_id, CB_FIM_ORIGIN_EVENT};
+
+        callback_context_t callback{};
+        callback.callback_txn = container_txn_callback;
+        callback.context      = &ctx;
+
+        for (const auto& path : request.paths)
+        {
+            bool under_configured_root = false;
+
+            for (size_t i = 0; i < configured_count; ++i)
+            {
+                if (PathIsUnder(path, configured[i].internal_path))
+                {
+                    under_configured_root = true;
+                    break;
+                }
+            }
+
+            if (!under_configured_root)
+            {
+                ++skipped;
+                continue;
+            }
+
+            if (fim_db_container_get_path(path.c_str(),
+                                          request.container_id.c_str(),
+                                          callback,
+                                          /*to_delete=*/true) == FIMDB_OK)
+            {
+                ++deleted;
+            }
         }
 
-        if (fim_db_container_get_path(path.c_str(),
-                                      request.container_id.c_str(),
-                                      callback,
-                                      /*to_delete=*/true) == FIMDB_OK) {
-            ++deleted;
+        LogDebug("Container FIM reconcile: %zu unlinked path(s) for container '%s' — %zu row(s) deleted, "
+                 "%zu outside a configured directory, %zu not stored.",
+                 request.paths.size(), request.container_id.c_str(), deleted, skipped,
+                 request.paths.size() - deleted - skipped);
+    }
+
+    /// Acts on one batch from the eBPF drain. Runs on the consumer thread, so
+    /// nothing here may throw out of it.
+    void ReconcileBatch(const fim_container_events::ReconcileRequest& request)
+    {
+        std::lock_guard<std::recursive_mutex> lock(container_state_mutex);
+        using fim_container_events::ReconcileMode;
+
+        if (request.mode == ReconcileMode::rebaselineAll)
+        {
+            // Loss nobody could attribute. The whole-node walk already knows how to
+            // do this safely, including the reachability gate on its stale sweep.
+            LogDebug("Container FIM reconcile: unattributable event loss; re-baselining every container.");
+            fim_run_container_baseline();
+            return;
         }
-    }
 
-    LogDebug("Container FIM reconcile: %zu unlinked path(s) for container '%s' — %zu row(s) deleted, "
-             "%zu outside a configured directory, %zu not stored.",
-             request.paths.size(), request.container_id.c_str(), deleted, skipped,
-             request.paths.size() - deleted - skipped);
-}
+        if (request.container_id.empty()) return;
 
-/// Acts on one batch from the eBPF drain. Runs on the consumer thread, so
-/// nothing here may throw out of it.
-void ReconcileBatch(const fim_container_events::ReconcileRequest& request)
-{
-    using fim_container_events::ReconcileMode;
+        cb_monitored_path_t* paths      = nullptr;
+        size_t               path_count = 0;
 
-    if (request.mode == ReconcileMode::rebaselineAll) {
-        // Loss nobody could attribute. The whole-node walk already knows how to
-        // do this safely, including the reachability gate on its stale sweep.
-        LogDebug("Container FIM reconcile: unattributable event loss; re-baselining every container.");
-        fim_run_container_baseline();
-        return;
-    }
+        if (fim_collect_container_monitored_paths(&paths, &path_count) != 0) return;
 
-    if (request.container_id.empty()) return;
+        if (!paths || path_count == 0U) return;
 
-    cb_monitored_path_t* paths      = nullptr;
-    size_t               path_count = 0;
+        if (request.mode == ReconcileMode::deletePaths)
+        {
+            DeleteUnlinkedPaths(request, paths, path_count);
+            fim_free_container_monitored_paths(paths);
+            return;
+        }
 
-    if (fim_collect_container_monitored_paths(&paths, &path_count) != 0) return;
-    if (!paths || path_count == 0U) return;
+        // The admission snapshot is taken once, by the startup walk. A container
+        // created after it is in neither of its sets, which the storage path can
+        // only read as "may not report" -- so every row below would be stored
+        // sync=0 and stay that way for the life of the process, since nothing
+        // else retakes the listing. That is silence under the DEFAULT config,
+        // where no cap is configured at all.
+        //
+        // Ask again for exactly that container, and only for it: once refreshed
+        // it is known whether or not it was admitted, so a container the cap
+        // genuinely refuses does not re-ask on its next batch.
+        if (fim_container_admission_is_stale(request.container_id.c_str()))
+        {
+            ContainerListing refreshed;
 
-    if (request.mode == ReconcileMode::deletePaths) {
-        DeleteUnlinkedPaths(request, paths, path_count);
-        fim_free_container_monitored_paths(paths);
-        return;
-    }
-
-    try {
-        if (request.mode == ReconcileMode::rewalkContainer) {
-            // A walk sees whole directories, so it can tell a deleted file from
-            // an unreadable one: delete detection is allowed, still gated on the
-            // scan being reported complete.
-            BaselineDriver driver{/*may_detect_deletions=*/true, CB_FIM_ORIGIN_EVENT};
-
-            const int outcome = cbaseline_run_fim_dbsync_container(CB_DEFAULT_CONNECTOR_SOCKET_PATH,
-                                                                    request.container_id.c_str(),
-                                                                    paths,
-                                                                    static_cast<int>(path_count),
-                                                                    dbsync_sink,
-                                                                    status_sink,
-                                                                    fim_container_baseline_rate_limit,
-                                                                    &driver);
-
-            if (outcome < 0) {
-                LogDebug("Container FIM reconcile: connector unavailable while re-walking container "
-                         "'%s'; its rows are kept and the next event or scheduled baseline retries.",
+            if (refreshContainerAdmission(refreshed) < 0)
+            {
+                // Withheld for now rather than reported regardless: the next event
+                // for this container asks again, and the cap is not something to
+                // override because one listing failed.
+                LogDebug("Container FIM reconcile: could not refresh admission for the new container '%s'; "
+                         "its rows stay withheld until a listing succeeds.",
                          request.container_id.c_str());
-            } else {
-                LogDebug("Container FIM reconcile: re-walked container '%s' (%d), %zu row(s).",
-                         request.container_id.c_str(), outcome, driver.rows());
-            }
-        } else {
-            std::vector<std::string>       storage;
-            const auto selected = SelectReconcilePaths(request.paths, paths, path_count, storage);
-
-            if (selected.empty()) {
-                // Everything staged for this container fell outside the
-                // configured paths — C22 host-form paths, or activity in a
-                // directory nobody asked to monitor. Nothing to do, and
-                // certainly nothing to delete.
-                LogDebug("Container FIM reconcile: none of the %zu changed path(s) for container '%s' "
-                         "are under a configured container directory; nothing to reconcile.",
-                         request.paths.size(), request.container_id.c_str());
-            } else {
-                // D15: NEVER delete from a path reconcile. Its rows are a subset
-                // of the container's files by design, and delete detection over a
-                // subset would delete everything not named in this batch.
-                BaselineDriver driver{/*may_detect_deletions=*/false, CB_FIM_ORIGIN_EVENT};
-
-                cbaseline_run_fim_dbsync_container(CB_DEFAULT_CONNECTOR_SOCKET_PATH,
-                                                   request.container_id.c_str(),
-                                                   selected.data(),
-                                                   static_cast<int>(selected.size()),
-                                                   dbsync_sink,
-                                                   status_sink,
-                                                   fim_container_baseline_rate_limit,
-                                                   &driver);
-
-                LogDebug("Container FIM reconcile: re-read %zu path(s) for container '%s', %zu row(s).",
-                         selected.size(), request.container_id.c_str(), driver.rows());
             }
         }
-    } catch (const std::exception& err) {
-        LogError("Container FIM reconcile failed: %s", err.what());
-    } catch (...) {
-        LogError("Container FIM reconcile failed with an unknown error.");
-    }
 
-    fim_free_container_monitored_paths(paths);
-}
+        try
+        {
+            if (request.mode == ReconcileMode::rewalkContainer)
+            {
+                // A walk sees whole directories, so it can tell a deleted file from
+                // an unreadable one: delete detection is allowed, still gated on the
+                // scan being reported complete.
+                BaselineDriver driver{/*may_detect_deletions=*/true, CB_FIM_ORIGIN_EVENT};
+
+                const int outcome = cbaseline_run_fim_dbsync_container(CB_DEFAULT_CONNECTOR_SOCKET_PATH,
+                                                                       request.container_id.c_str(),
+                                                                       paths,
+                                                                       static_cast<int>(path_count),
+                                                                       dbsync_sink,
+                                                                       status_sink,
+                                                                       fim_container_baseline_rate_limit,
+                                                                       &driver);
+
+                if (outcome < 0)
+                {
+                    LogDebug("Container FIM reconcile: connector unavailable while re-walking container "
+                             "'%s'; its rows are kept and the next event or scheduled baseline retries.",
+                             request.container_id.c_str());
+                }
+                else
+                {
+                    LogDebug("Container FIM reconcile: re-walked container '%s' (%d), %zu row(s).",
+                             request.container_id.c_str(), outcome, driver.rows());
+                }
+            }
+            else
+            {
+                std::vector<std::string>       storage;
+                const auto selected = SelectReconcilePaths(request.paths, paths, path_count, storage);
+
+                if (selected.empty())
+                {
+                    // Everything staged for this container fell outside the
+                    // configured paths — C22 host-form paths, or activity in a
+                    // directory nobody asked to monitor. Nothing to do, and
+                    // certainly nothing to delete.
+                    LogDebug("Container FIM reconcile: none of the %zu changed path(s) for container '%s' "
+                             "are under a configured container directory; nothing to reconcile.",
+                             request.paths.size(), request.container_id.c_str());
+                }
+                else
+                {
+                    // D15: NEVER delete from a path reconcile. Its rows are a subset
+                    // of the container's files by design, and delete detection over a
+                    // subset would delete everything not named in this batch.
+                    BaselineDriver driver{/*may_detect_deletions=*/false, CB_FIM_ORIGIN_EVENT};
+
+                    cbaseline_run_fim_dbsync_container(CB_DEFAULT_CONNECTOR_SOCKET_PATH,
+                                                       request.container_id.c_str(),
+                                                       selected.data(),
+                                                       static_cast<int>(selected.size()),
+                                                       dbsync_sink,
+                                                       status_sink,
+                                                       fim_container_baseline_rate_limit,
+                                                       &driver);
+
+                    LogDebug("Container FIM reconcile: re-read %zu path(s) for container '%s', %zu row(s).",
+                             selected.size(), request.container_id.c_str(), driver.rows());
+
+                    if (driver.refused() > 0)
+                    {
+                        LogWarn("Container FIM reconcile: container '%s' is at its limit of %d stored row(s); "
+                                "%zu new file(s) were not stored.",
+                                request.container_id.c_str(),
+                                fim_container_baseline_row_limit(),
+                                driver.refused());
+                    }
+                }
+            }
+        }
+        catch (const std::exception& err)
+        {
+            LogError("Container FIM reconcile failed: %s", err.what());
+        }
+        catch (...)
+        {
+            LogError("Container FIM reconcile failed with an unknown error.");
+        }
+
+        fim_container_doc_budget_report();
+        fim_free_container_monitored_paths(paths);
+    }
 
 } // namespace
 
+namespace
+{
+
+    /// @param ids The distinct container ids in file_entry. Passed in rather
+    ///        than read here because a reconcile runs this twice, in opposite
+    ///        directions, over one and the same set -- and that query is a
+    ///        SELECT DISTINCT over every FIM row on the node.
+    void updateContainerReporting(bool promote, const std::set<std::string>& ids)
+    {
+        for (const auto& id : ids)
+        {
+            const char* container_id = id.c_str();
+
+            if (!*container_id)
+                continue;
+
+            const bool admitted = fim_container_is_admitted(container_id) != 0;
+
+            if (admitted != promote)
+                continue;
+
+            fim_container_doc_budget_initialize(container_id);
+
+            // Nothing to gain from re-offering withheld rows to a budget that
+            // is full: container_budget_decide() refuses every one of them, and
+            // learning that costs a query, a parse, a normalisation and a schema
+            // validation per row, on every reconcile -- which is every admission
+            // change and every whole-node baseline. A retraction is never
+            // skipped: it frees slots rather than spending them.
+            if (promote && fim_container_doc_budget_has_headroom(container_id) == 0)
+            {
+                continue;
+            }
+
+            JsonPtr rows {fim_db_get_container_rows(container_id, promote ? 0 : 1), cJSON_Delete};
+
+            if (!rows)
+            {
+                LogError("Container FIM: could not read reporting rows for container '%s'.", container_id);
+                continue;
+            }
+
+            // Counted DOWN from every row the query returned, not up from the
+            // ones that were refused.
+            //
+            // On this direction the query selects sync=1, so each row is a
+            // document the manager holds and that the agent has decided it may
+            // no longer report; it stays held unless the column is cleared
+            // below. Counting the refusals alone missed every other way out of
+            // the loop -- a row with no path, one that would not serialise, a
+            // flag write that failed -- and each of those leaves a document on
+            // the manager just as a refusal does, while reporting a smaller
+            // number or none at all.
+            std::size_t unretracted = promote ? 0U : static_cast<std::size_t>(cJSON_GetArraySize(rows.get()));
+            const cJSON* row = nullptr;
+            cJSON_ArrayForEach(row, rows.get())
+            {
+                const char* path = cJSON_GetStringValue(cJSON_GetObjectItem(row, "path"));
+
+                if (!path)
+                {
+                    LogError("Container FIM: reporting row for '%s' has no path.", container_id);
+                    continue;
+                }
+
+                const auto version = static_cast<uint64_t>(cJSON_GetNumberValue(cJSON_GetObjectItem(row, "version")));
+                const std::string id = std::string(container_id) + ":" + path;
+                std::unique_ptr<char, decltype(&free)> plain {cJSON_PrintUnformatted(row), free};
+
+                if (!plain)
+                {
+                    LogError("Container FIM: could not serialize reporting row '%s'.", id.c_str());
+                    continue;
+                }
+
+                const int granted = fim_persist_baseline_row(id.c_str(),
+                                                             promote ? OPERATION_CREATE : OPERATION_DELETE,
+                                                             "wazuh-states-fim-files",
+                                                             plain.get(),
+                                                             version);
+
+                // A refused PROMOTION is the budget doing its job; a refused
+                // RETRACTION is a document left on the manager, and so is every
+                // other way this row can fail to have its column cleared.
+                if (granted >= 0 && (!promote || granted > 0) && writeSyncFlag(row, promote ? 1 : 0) && !promote)
+                {
+                    --unretracted;
+                }
+            }
+
+            if (!promote)
+            {
+                // Said because the consequence is otherwise unattributable. The row
+                // keeps sync=1, so the agent's integrity checksum goes on covering
+                // content the manager does not have, and the mismatch is repaired by
+                // clearing and re-sending the whole FIM index. An operator seeing
+                // that has nothing else to connect it to.
+                //
+                // The row staying at sync=1 is also what gets it retried: the next
+                // reconcile selects on exactly that. What runs one is an admission
+                // snapshot being INSTALLED, which is narrower than it sounds and
+                // narrower than this warning used to claim:
+                //
+                //   whole-node baseline  installs on every run, so this always
+                //                        comes round again there.
+                //   drain                installs only when the view CHANGED. Its
+                //                        scheduled poll finding nothing new
+                //                        installs nothing and retries nothing.
+                //
+                // The baseline's own tail is not a third: it only ever promotes.
+                if (unretracted != 0)
+                {
+                    LogWarn("Container FIM: could not withdraw %zu document(s) for container '%s'; the manager still "
+                            "holds them and the agent will retry at the next whole-node container baseline, or "
+                            "sooner if container admission changes. Until then an integrity check may find a "
+                            "mismatch and resynchronise the whole index.",
+                            unretracted,
+                            container_id);
+                }
+
+                fim_container_doc_budget_release(container_id);
+            }
+        }
+    }
+
+} // namespace
+
+extern "C" void fim_container_state_lock(void)
+{
+    container_state_mutex.lock();
+}
+
+extern "C" void fim_container_state_unlock(void)
+{
+    container_state_mutex.unlock();
+}
+
+extern "C" void fim_container_reconcile_admission(void)
+{
+    std::lock_guard<std::recursive_mutex> lock(container_state_mutex);
+
+    // BOTH directions, because admission moves both ways and this is the only
+    // place that sees it move at run time.
+    //
+    // updateContainerReporting() skips every container whose admission does not
+    // match its argument, so `false` reaches only containers that may no longer
+    // report and `true` only those that may again. With just the retraction, a
+    // container that GAINS admission between baselines -- one that starts after
+    // the agent, or one readmitted when another frees a slot under
+    // containers.synced_limit -- had its rows left at sync=0 with nothing to
+    // promote them until the next whole-node baseline. Paired with a retraction
+    // that could fire on a withheld list, a live container's FIM state left the
+    // manager and could not come back.
+    //
+    // Retract first: that releases the document budget of the containers that
+    // just lost admission, so the promotion below can spend what they freed in
+    // the same pass. The two passes touch disjoint sets of containers.
+    const auto ids = distinctContainerIds();
+
+    if (!ids)
+    {
+        LogError("Container FIM: could not read containers for reporting reconciliation.");
+        return;
+    }
+
+    updateContainerReporting(false, *ids);
+    updateContainerReporting(true, *ids);
+}
+
 extern "C" void fim_run_container_baseline(void)
 {
+    std::lock_guard<std::recursive_mutex> lock(container_state_mutex);
     cb_monitored_path_t* paths = nullptr;
     size_t path_count = 0;
 
     if (fim_collect_container_monitored_paths(&paths, &path_count) != 0) return;
+
     if (!paths || path_count == 0U) return;
 
-    if (!fim_container_baseline_available(CB_DEFAULT_CONNECTOR_SOCKET_PATH)) {
+    if (!fim_container_baseline_available(CB_DEFAULT_CONNECTOR_SOCKET_PATH))
+    {
         fim_free_container_monitored_paths(paths);
         return;
     }
 
     // Nothing below may throw into main(): this runs on syscheckd's main
     // thread, which has no handler of its own.
-    try {
+    try
+    {
+        ContainerListing listing;
+        const int listed = refreshContainerAdmission(listing);
+        const std::set<std::string>& known = listing.known;
+
         BaselineDriver driver;
 
         // check_max_fps() is FIM's own files-per-second token bucket, driven by
@@ -707,34 +1411,83 @@ extern "C" void fim_run_container_baseline(void)
         // this distinction a container restart would delete all of its FIM
         // state and re-create it — a false-positive flood on exactly the event
         // that must be reported accurately.
-        std::set<std::string> known;
-        const int listed = cbaseline_list_containers(CB_DEFAULT_CONNECTOR_SOCKET_PATH, container_id_sink, &known);
-
         // A negative count means the connector never answered, so `known` is
         // empty for want of an answer rather than for want of containers.
         // Sweeping against it would delete every container's FIM state. Skip
         // the sweep and keep the rows: a stale row costs one cycle of accuracy,
         // whereas deleting a live container's whole baseline costs a
         // false-delete flood plus a full re-seed.
-        if (listed < 0) {
+        std::optional<std::set<std::string>> reporting;
+
+        if (listed < 0)
+        {
             LogError("Container FIM baseline: container connector unavailable, "
                      "skipping stale-container cleanup to avoid false deletions.");
-        } else {
-            driver.sweepStale(known);
+        }
+        else if (!listing.complete && !listing.unkeyedKnown)
+        {
+            // The connector answered, is still withholding running containers it
+            // cannot key -- and is too old to say which. They are missing from
+            // `known` for want of an attribution key, not for want of a
+            // container, and this sweep deletes on absence: it would wipe a live
+            // container's whole FIM baseline and re-seed it next cycle, the
+            // exact false-delete flood the unreachable branch above prevents.
+            LogWarn("Container FIM baseline: the container list is incomplete and this connector does not "
+                    "report which containers it could not identify; skipping stale-container cleanup until "
+                    "it does. FIM state for containers that no longer exist is retained meanwhile.");
+        }
+        else
+        {
+            reporting = driver.sweepStale(known);
         }
 
-        if (driver.malformedRows() > 0) {
+        // One more promotion pass, and it is not the one the admission install
+        // at the top of this function already ran.
+        //
+        // The walk between them reports a container's DELETIONS through the same
+        // budget as its insertions, so a row withheld early because the budget
+        // was full can become grantable once a later delete in the same
+        // container frees the slot. Nothing offers it again within the walk --
+        // container_budget_decide() sees each row once, in order -- so this is
+        // where it gets its second chance.
+        //
+        // The ids come from the sweep when it ran, because it has just read
+        // them and knows which ones it deleted; asking the database again would
+        // be a third SELECT DISTINCT over every FIM row on the node in one
+        // baseline. The branches above that skip the sweep have to ask.
+        if (!reporting)
+        {
+            reporting = distinctContainerIds();
+        }
+
+        if (reporting)
+        {
+            updateContainerReporting(true, *reporting);
+        }
+        else
+        {
+            LogError("Container FIM: could not read containers for reporting reconciliation.");
+        }
+
+        if (driver.malformedRows() > 0)
+        {
             LogDebug("Container FIM baseline: discarded %zu malformed row(s).", driver.malformedRows());
         }
 
         fim_report_container_baseline_result(baselined,
                                              driver.rows(),
+                                             driver.refused(),
                                              driver.partial(),
                                              driver.stale(),
-                                             known.size());
-    } catch (const std::exception& err) {
+                                             known.size(),
+                                             known.size() - listing.admitted.size());
+    }
+    catch (const std::exception& err)
+    {
         LogError("Container FIM baseline failed: %s", err.what());
-    } catch (...) {
+    }
+    catch (...)
+    {
         LogError("Container FIM baseline failed with an unknown error.");
     }
 
@@ -766,19 +1519,25 @@ extern "C" void fim_container_events_start(void)
     // A daemonised agent's CWD is not its install directory, so the engine's
     // CWD-relative fallback would not find the object.
     char resolved[PATH_MAX] = {0};
-    if (fim_container_baseline_abspath(CB_RT_BPF_OBJECT_PATH, resolved, sizeof(resolved)) == 0) {
+
+    if (fim_container_baseline_abspath(CB_RT_BPF_OBJECT_PATH, resolved, sizeof(resolved)) == 0)
+    {
         config.bpf_object_path = resolved;
     }
 
     // Likewise for libbpf itself: no agent binary carries an RPATH, so without
     // an explicit path the engine binds whatever libbpf the host provides.
     char resolved_libbpf[PATH_MAX] = {0};
-    if (fim_container_baseline_abspath(CB_RT_LIBBPF_PATH, resolved_libbpf, sizeof(resolved_libbpf)) == 0) {
+
+    if (fim_container_baseline_abspath(CB_RT_LIBBPF_PATH, resolved_libbpf, sizeof(resolved_libbpf)) == 0)
+    {
         config.libbpf_path = resolved_libbpf;
     }
 
-    try {
-        if (!fim_container_events::ContainerEventDrain::instance().start(config, ReconcileBatch)) {
+    try
+    {
+        if (!fim_container_events::ContainerEventDrain::instance().start(config, ReconcileBatch))
+        {
             // A WARNING, not a debug line, and only reachable once we know the
             // operator asked for container FIM. Without the drain there is no
             // change detection at all: fim_run_container_baseline() is called
@@ -795,9 +1554,13 @@ extern "C" void fim_container_events_start(void)
                     "directories are configured, so this is a degradation, not a no-op.");
             return;
         }
-    } catch (const std::exception& err) {
+    }
+    catch (const std::exception& err)
+    {
         LogError("Container eBPF drain failed to start: %s", err.what());
-    } catch (...) {
+    }
+    catch (...)
+    {
         LogError("Container eBPF drain failed to start with an unknown error.");
     }
 }

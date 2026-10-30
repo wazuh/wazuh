@@ -84,21 +84,40 @@ namespace wazuh::container_instances
                 response.listReply = true;
                 response.connectorName = m_connectorName;
 
-                if (!request.since)
+                // ONE read for the whole reply. Not three accessors in a row:
+                // a consumer sweeps the rows of every container absent from
+                // both the list and the unkeyed ids, so the two sets have to be
+                // taken at the same instant or a container moving between them
+                // -- which is a container restarting -- falls out of both and
+                // has everything deleted. Per-record reads would be worse
+                // still, shipping a reply that admits a container under one key
+                // and withholds it under another.
+                // The only tick the settle grace gets. The store is handed a
+                // TimePoint by every mutator and holds no clock of its own, so
+                // on a node whose snapshots have stopped this is what expires
+                // the deadline -- and a consumer asking for the list is the
+                // only moment the verdict has to exist.
+                m_store.settleAdmissionIfDue(std::chrono::steady_clock::now());
+
+                auto snapshot = m_store.listSnapshot(request.since);
+                response.admitted = std::move(snapshot.admitted);
+                response.admissionKnown = snapshot.admissionKnown;
+                response.unkeyedIds = std::move(snapshot.unkeyed);
+
+                if (!snapshot.delta)
                 {
                     // No cursor: the reply this op has always given.
-                    response.containers = m_store.listContainers();
+                    response.containers = std::move(snapshot.containers);
                     return response;
                 }
-
-                auto delta = m_store.lifecycleSince(*request.since);
 
                 // On resync the journal hands back the full set, which goes out
                 // through `containers` — the key every client already reads —
                 // so recovery needs no second call and no special case beyond
                 // noticing the flag.
-                response.containers = delta.resyncRequired ? delta.containers : std::vector<ContainerRecordPtr> {};
-                response.delta = std::move(delta);
+                response.containers = snapshot.delta->resyncRequired ? std::move(snapshot.containers)
+                                                                     : std::vector<ContainerRecordPtr> {};
+                response.delta = std::move(*snapshot.delta);
 
                 return response;
             }

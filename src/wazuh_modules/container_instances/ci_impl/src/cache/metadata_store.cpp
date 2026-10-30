@@ -1,7 +1,10 @@
 #include "metadata_store.hpp"
 
+#include "container_admission.hpp"
 #include "reconciler.hpp"
 
+#include <algorithm>
+#include <iterator>
 #include <mutex>
 #include <unordered_map>
 #include <unordered_set>
@@ -140,6 +143,11 @@ namespace wazuh::container_instances
     std::vector<ContainerRecordPtr> MetadataStore::listContainers() const
     {
         std::shared_lock lock(m_mutex);
+        return listContainersLocked();
+    }
+
+    std::vector<ContainerRecordPtr> MetadataStore::listContainersLocked() const
+    {
         std::vector<ContainerRecordPtr> result;
         std::unordered_set<std::string> seen;
         std::size_t withheld = 0;
@@ -391,6 +399,19 @@ namespace
 
         m_lastReconcile = now;
 
+        // This source has now said what it holds, even if that is nothing. An
+        // authoritative empty enumeration is an answer; an empty store that has
+        // enumerated nothing is not, and before this the two looked alike.
+        m_enumeratedSources.insert(source);
+        armOrExpireSettleDeadlineLocked(now);
+
+        // After the sweeps, not before: a container still inside its removal
+        // grace is still visible and still holds its slot, and one erased above
+        // has just freed its slot for whoever was waiting. Recomputing earlier
+        // would hand a slot to a newcomer a beat before the departure that
+        // freed it, and hand it back on the next pass.
+        recomputeAdmittedLocked();
+
         // Released before the notify on purpose: an observer's natural first
         // move is to read the store back, which would deadlock under this lock,
         // and a slow one would stall every reader for as long as it ran.
@@ -467,11 +488,41 @@ namespace
         }
 
         const auto canonicalKey = record.hostKey;
+
+        // Read before the insert, and both of them: admission is a function of
+        // (known, visible, admitted, limit), so this resolve can only move it
+        // by changing one of the first two.
+        const bool wasKnown = knownToAnySourceLocked(containerId);
+        const bool wasVisible = visibleRecordLocked(containerId) != nullptr;
+
         insertResolvedLocked(source, std::move(record));
 
         if (observedKey != 0 && observedKey != canonicalKey)
         {
             indexAliasLocked(source, containerId, observedKey);
+        }
+
+        // The cold path can publish a container that was not visible a moment
+        // ago, so it can also fill a free slot. Without this a container first
+        // seen through an on-demand resolve would stay unadmitted until the
+        // next unrelated reconcile, for the same reason the notify below exists.
+        //
+        // The ordinary resolve is neither of those: it re-files a container
+        // that already existed and was already publishable, which cannot move
+        // anyone's admission. Skipping the recompute there is worth a guard
+        // because the recompute walks every record of every source and builds
+        // several id sets, under the exclusive lock, and this path runs once
+        // per cold-path event.
+        //
+        // "Already known" is checked as well as visibility: invisible before
+        // and invisible after also describes a container discovered by this
+        // very call, which DOES change `known`. And the shortcut is taken only
+        // once admission is settled -- before that the recompute is what
+        // evaluates the barrier, and skipping it would leave the verdict
+        // withheld through a resolve that completed the picture.
+        if (!m_admissionSettled || !wasKnown || wasVisible != (visibleRecordLocked(containerId) != nullptr))
+        {
+            recomputeAdmittedLocked();
         }
 
         // The cold path publishes containers too — one first seen through an
@@ -589,6 +640,293 @@ namespace
             }
         }
         sourceIt->second.erase(it);
+    }
+
+    std::set<std::string> MetadataStore::admittedIds() const
+    {
+        std::shared_lock lock(m_mutex);
+        return m_admitted;
+    }
+
+    ListSnapshot MetadataStore::listSnapshot(const std::optional<LifecycleCursor>& since) const
+    {
+        // ONE lock for the whole reply. These are views of the same instant and
+        // a consumer acts on how they relate -- a container absent from the
+        // list and from the unkeyed ids is one it deletes the rows of. Taken
+        // under separate locks, a container being replaced between two reads is
+        // in neither, and the consumer deletes everything it holds for a
+        // container that is merely restarting.
+        std::shared_lock lock(m_mutex);
+
+        ListSnapshot snapshot {
+            listContainersLocked(), m_admitted, unkeyedContainerIdsLocked(), m_admissionSettled, std::nullopt};
+
+        if (since)
+        {
+            // The resync set the journal attaches is the list we just built, so
+            // the two cannot disagree about which containers exist.
+            snapshot.delta = m_journal.since(*since, snapshot.containers);
+        }
+
+        return snapshot;
+    }
+
+    std::set<std::string> MetadataStore::unkeyedContainerIds() const
+    {
+        std::shared_lock lock(m_mutex);
+        return unkeyedContainerIdsLocked();
+    }
+
+    MetadataStore::ContainerIdSets MetadataStore::containerIdSetsLocked() const
+    {
+        // ONE walk, and one copy of the predicate.
+        //
+        // Three places used to walk m_bySource deciding the same thing in the
+        // same words -- this, the admission rule's id set, and listContainers()
+        // -- which is three places for "a running record with no key is not
+        // published yet" to drift apart. It is the rule the whole withheld/
+        // unkeyed distinction rests on, so it gets one home.
+        //
+        // Withheld means OMITTED FROM THE LIST, which is a question about the
+        // container and not about any one record of it. A container reported
+        // through two sources (cri-dockerd publishes the same one through both
+        // APIs) is published when EITHER record is resolved, so counting the
+        // unresolved RECORDS left `withheld` above zero while the container sat
+        // in the list -- and a consumer that waits for a complete list before
+        // cleaning up then waits for ever.
+        ContainerIdSets sets;
+
+        for (const auto& [source, records] : m_bySource)
+        {
+            for (const auto& [containerId, record] : records)
+            {
+                if (!record)
+                {
+                    continue; // listContainers() skips these outright.
+                }
+
+                sets.known.insert(containerId);
+
+                if (!(record->hostKey == 0 && isRunning(record->state)))
+                {
+                    sets.visible.insert(containerId);
+                }
+            }
+        }
+
+        return sets;
+    }
+
+    std::set<std::string> MetadataStore::unkeyedContainerIdsLocked() const
+    {
+        // Counted here rather than read off m_withheldReported, which is a
+        // "last value logged" marker and is SIZE_MAX until listContainers() has
+        // run once -- the exact moment a consumer most needs a truthful answer.
+        //
+        // So: known ids, minus the ids at least one source can publish.
+        const auto sets = containerIdSetsLocked();
+
+        std::set<std::string> unkeyed;
+        std::set_difference(sets.known.begin(),
+                            sets.known.end(),
+                            sets.visible.begin(),
+                            sets.visible.end(),
+                            std::inserter(unkeyed, unkeyed.end()));
+        return unkeyed;
+    }
+
+    void MetadataStore::setExpectedSources(std::size_t count)
+    {
+        std::unique_lock lock(m_mutex);
+        m_expectedSources = count;
+
+        // Opting in is what turns the barrier on. Left alone the store settles
+        // from the start, which is what every caller that configures no source
+        // -- the tests, and a build with no connector enabled -- already had.
+        m_admissionSettled = (count == 0);
+    }
+
+    void MetadataStore::armOrExpireSettleDeadlineLocked(TimePoint now)
+    {
+        if (!m_settleDeadline)
+        {
+            m_settleDeadline = now + ADMISSION_SETTLE_GRACE;
+            return;
+        }
+
+        if (!m_admissionSettled && now >= *m_settleDeadline)
+        {
+            // The node never came fully into view. Decide on what there is:
+            // withholding for ever would mean the cap never applies at all,
+            // which is worse than applying it to an incomplete picture.
+            m_admissionSettled = true;
+            m_lifecycleDirty = true;
+        }
+    }
+
+    void MetadataStore::settleAdmissionIfDue(TimePoint now)
+    {
+        {
+            std::unique_lock lock(m_mutex);
+
+            const bool wasSettled = m_admissionSettled;
+            armOrExpireSettleDeadlineLocked(now);
+
+            if (m_admissionSettled == wasSettled)
+            {
+                return;
+            }
+
+            recomputeAdmittedLocked();
+        }
+
+        notifyLifecycleUnlocked();
+    }
+
+    void MetadataStore::setSyncLimit(int limit)
+    {
+        {
+            std::unique_lock lock(m_mutex);
+
+            if (m_syncLimit == limit)
+            {
+                return;
+            }
+
+            m_syncLimit = limit;
+            recomputeAdmittedLocked();
+        }
+
+        // This call changes admission and NOTHING else, so it is the one place
+        // where the recompute above is the only thing a consumer has to hear
+        // about. Without the notify an operator lowering containers.synced_limit
+        // waited for the drain's next scheduled poll -- up to
+        // resolver_interval_ms, 5 s by default -- before the containers it
+        // pushed out stopped reporting.
+        notifyLifecycleUnlocked();
+    }
+
+    void MetadataStore::recomputeAdmittedLocked()
+    {
+        const auto sets = containerIdSetsLocked();
+
+        if (!m_admissionSettled)
+        {
+            // Two conditions, and neither implies the other. A source that has
+            // not enumerated contributes no containers, so the node looks
+            // smaller than it is; a source that has may still be waiting on
+            // keys, so `visible` is a subset of what will publish. Ranking
+            // under either one freezes whoever arrived first, because
+            // incumbency is sticky.
+            //
+            // `sets.known == sets.visible` on its own is NOT the question it
+            // looks like: both sets are built from the records already in
+            // m_bySource, so an empty store satisfies it trivially -- and
+            // setSyncLimit() runs from the facade constructor, before a single
+            // connector thread starts.
+            if (m_enumeratedSources.size() < m_expectedSources || sets.known != sets.visible)
+            {
+                return;
+            }
+
+            m_admissionSettled = true;
+
+            // Unknown -> known is a transition in its own right, and the set
+            // comparison below cannot see it: settling to an empty admitted set
+            // leaves the contents unchanged while flipping every consumer from
+            // "report everything" to "report nothing".
+            m_lifecycleDirty = true;
+        }
+
+        auto admitted = admitContainers(sets.known, sets.visible, m_admitted, m_syncLimit);
+
+        // An admission shift is a change consumers must hear about, and it is
+        // not always accompanied by one they would hear about anyway.
+        //
+        // The journal records VISIBILITY transitions, so it says nothing when a
+        // container the resolver cannot key gains or loses admission, and
+        // nothing at all when the operator moves the cap. Those changes reached
+        // the drain only on its next scheduled poll, up to resolver_interval_ms
+        // later, while the containers involved went on reporting -- or went on
+        // not reporting -- for that whole window.
+        //
+        // Marked here rather than journalled as an event, for the reason
+        // admittedIds() gives: an admission flag on the record would make
+        // recordEquals() read every shift as a container change. This only says
+        // "there is something new to fetch"; the whole admitted set rides the
+        // next reply either way.
+        if (admitted != m_admitted)
+        {
+            m_lifecycleDirty = true;
+        }
+
+        m_admitted = std::move(admitted);
+
+        // Say how many are NOT reporting, on change rather than per pass.
+        //
+        // An analyst shown ten containers when fifty exist, with nothing saying
+        // so, is being told something false about coverage -- and silence here
+        // is indistinguishable from a node that really runs ten. This is the
+        // only place that knows both numbers.
+        //
+        // Counted over VISIBLE containers, because this line names
+        // containers.synced_limit as the cause and only a container that could
+        // have published can be turned down by it. Counting over `known`
+        // charged the cap for containers the resolver had not keyed yet: with
+        // the limit at 5 and three containers one of which has no key, it
+        // reported "1 withheld by containers.synced_limit=5" -- a limit that
+        // was holding nothing back, and an operator who raises it sees no
+        // change. Those containers have their own line in listContainersLocked(),
+        // and the word "resolved" in the message is what keeps the two readable
+        // side by side: "Reporting 3 of 3" on a node running five is not a wrong
+        // number, but without it an operator reads it as full coverage.
+        //
+        // A set difference rather than subtracting sizes: an incumbent that
+        // lost its key is in `m_admitted` and NOT in `visible`, so the
+        // subtraction can go below zero and wrap.
+        std::set<std::string> refused;
+        std::set_difference(sets.visible.begin(),
+                            sets.visible.end(),
+                            m_admitted.begin(),
+                            m_admitted.end(),
+                            std::inserter(refused, refused.end()));
+
+        const std::size_t withheld = refused.size();
+
+        if (m_withheldFromSyncReported == withheld || !m_logger)
+        {
+            return;
+        }
+
+        m_withheldFromSyncReported = withheld;
+
+        if (withheld == 0)
+        {
+            m_logger(LogLevel::debug, "Every container is reporting to the manager; none withheld by the limit.");
+        }
+        else
+        {
+            m_logger(LogLevel::info,
+                     "Reporting " + std::to_string(sets.visible.size() - withheld) + " of " +
+                         std::to_string(sets.visible.size()) + " resolved container(s) to the manager; " +
+                         std::to_string(withheld) +
+                         " withheld by containers.synced_limit=" + std::to_string(m_syncLimit) +
+                         ". The withheld containers are still monitored and their data is still stored locally -- "
+                         "it is not sent. Raise the limit to report more.");
+        }
+    }
+
+    bool MetadataStore::knownToAnySourceLocked(const std::string& containerId) const
+    {
+        for (const auto& [source, records] : m_bySource)
+        {
+            if (records.count(containerId) != 0)
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     ContainerRecordPtr MetadataStore::visibleRecordLocked(const std::string& containerId) const
@@ -710,25 +1048,7 @@ namespace
     LifecycleDelta MetadataStore::lifecycleSince(const LifecycleCursor& from) const
     {
         std::shared_lock lock(m_mutex);
-
-        // listContainers() would take the lock again; build the resync set here
-        // under the one we already hold.
-        std::vector<ContainerRecordPtr> current;
-        std::unordered_set<std::string> seen;
-
-        for (const auto& [source, records] : m_bySource)
-        {
-            for (const auto& [containerId, record] : records)
-            {
-                if (!record || (record->hostKey == 0 && isRunning(record->state)) || !seen.insert(containerId).second)
-                {
-                    continue;
-                }
-                current.push_back(record);
-            }
-        }
-
-        return m_journal.since(from, current);
+        return m_journal.since(from, listContainersLocked());
     }
 
     LifecycleCursor MetadataStore::lifecycleCursor() const

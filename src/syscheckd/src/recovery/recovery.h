@@ -49,6 +49,49 @@ typedef bool (*SynchronizeModuleCallback)(void);
 #endif
 
 /**
+ * @brief Re-sends one reported container file row during a recovery resync.
+ *
+ * @param row The file_entry row, as read from the database (container_id non-empty).
+ * @return 1 when the row was queued, 0 when it was skipped (not covered by the container
+ *         configuration, or its container is withheld), -1 on error.
+ */
+typedef int (*fim_recovery_container_row_handler_t)(const cJSON* row);
+
+/**
+ * @brief Registers how recovery re-sends container file rows.
+ *
+ * A container row is identified, shaped and admitted by the container FIM layer, which recovery
+ * cannot link against directly. Until a handler is registered -- container file monitoring is
+ * off -- container rows are skipped as orphans: nothing is configured to monitor them.
+ *
+ * @param handler The handler, or NULL to clear it.
+ */
+EXPORTED void fim_recovery_set_container_row_handler(fim_recovery_container_row_handler_t handler);
+
+/**
+ * @brief Takes, or releases, the lock serialising container FIM state.
+ */
+typedef void (*fim_recovery_container_lock_t)(void);
+
+/**
+ * @brief Registers how recovery excludes the container FIM layer while it touches a container row.
+ *
+ * Recovery runs on the sync thread, under FIM's scan and realtime mutexes. The container layer
+ * takes neither: its walks and reconciles run on the drain's own threads under a lock of their
+ * own, so without this the two write the same container's rows at the same time -- and a
+ * single-row write landing inside one of those walks' open scoped transactions is how 502 of 504
+ * rows went missing on a real node.
+ *
+ * A pair rather than one call around the whole resync: the lock is taken per row, so a walk
+ * waits for the row in flight instead of for the entire table.
+ *
+ * @param lock   Taken before a container row is handled, or NULL to clear.
+ * @param unlock Released after. Both or neither; passing one alone clears both.
+ */
+EXPORTED void fim_recovery_set_container_locking(fim_recovery_container_lock_t lock,
+                                                 fim_recovery_container_lock_t unlock);
+
+/**
  * @brief Persists a table's contents in memory and triggers a full resync
  * @param table_name The table to resync
  * @param handle Sync Protocol handle

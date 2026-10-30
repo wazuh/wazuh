@@ -5,6 +5,7 @@
 #include "json.hpp"
 
 #include <optional>
+#include <set>
 #include <string>
 #include <string_view>
 #include <variant>
@@ -235,7 +236,18 @@ namespace wazuh::container_instances::wire
     }
 
     /// Docker records omit the Kubernetes-only keys entirely (absent, not null).
-    [[nodiscard]] inline nlohmann::json recordToJson(const ContainerRecord& record, KeyKind keyKind)
+    ///
+    /// `admitted` is the synchronization decision for this reply, or null when
+    /// the caller has none to give. Null OMITS the `synced` key rather than
+    /// defaulting it, for the same reason `cgroup_id` is omitted below: a
+    /// consumer that reads a key it was handed treats it as an answer, and the
+    /// only honest thing to say on a reply that never consulted the decision is
+    /// nothing. Only `list` replies carry it — every consumer takes admission
+    /// from the list, and a `resolve` exists to attribute one event to one
+    /// container, which is a question about identity rather than reporting.
+    [[nodiscard]] inline nlohmann::json recordToJson(const ContainerRecord& record,
+                                                     KeyKind keyKind,
+                                                     const std::set<std::string>* admitted = nullptr)
     {
         nlohmann::json data;
         data["runtime"] = (record.runtime == ContainerRuntime::kubernetes) ? "kubernetes" : "docker";
@@ -292,6 +304,11 @@ namespace wazuh::container_instances::wire
             }
 
             data["extra_cgroup_ids"] = std::move(extraKeys);
+        }
+
+        if (admitted != nullptr)
+        {
+            data["synced"] = admitted->count(record.containerId) != 0;
         }
 
         if (record.runtime == ContainerRuntime::kubernetes)
@@ -362,7 +379,10 @@ namespace wazuh::container_instances::wire
 
     /// Adds the delta keys to a `list` reply. Everything here is additive: a
     /// client that does not know these keys reads the reply exactly as before.
-    inline void serialiseDelta(const LifecycleDelta& delta, nlohmann::json& body, KeyKind keyKind)
+    inline void serialiseDelta(const LifecycleDelta& delta,
+                               nlohmann::json& body,
+                               KeyKind keyKind,
+                               const std::set<std::string>* admitted = nullptr)
     {
         // The cursor to come back with. Decimal strings for the 2^53 reason
         // above; its presence is also how a client detects that this server
@@ -402,7 +422,7 @@ namespace wazuh::container_instances::wire
             }
             if (event.record)
             {
-                entry["data"] = recordToJson(*event.record, keyKind);
+                entry["data"] = recordToJson(*event.record, keyKind, admitted);
             }
 
             events.push_back(std::move(entry));
@@ -457,6 +477,13 @@ namespace wazuh::container_instances::wire
                 // they were told) and logged a fault that was not occurring.
                 // C28. Not emitted for a `status` reply, which shares this
                 // branch but says nothing about the container set.
+                // Null while the store has no verdict, which omits `synced`
+                // from every record and the whole set below. A reply that says
+                // nothing about admission is the one a connector older than the
+                // decision sends, and every consumer already keeps reporting on
+                // it; an empty set would instead read as "refuse everything".
+                const std::set<std::string>* admittedOrNone = response.admissionKnown ? &response.admitted : nullptr;
+
                 if (response.listReply)
                 {
                     auto containers = nlohmann::json::array();
@@ -464,15 +491,58 @@ namespace wazuh::container_instances::wire
                     {
                         if (record)
                         {
-                            containers.push_back(recordToJson(*record, response.keyKind));
+                            containers.push_back(recordToJson(*record, response.keyKind, admittedOrNone));
                         }
                     }
                     body["containers"] = std::move(containers);
+
+                    // Additive, like the delta keys: a client that does not read
+                    // this key behaves exactly as before. Non-zero says the list
+                    // above omits that many running containers the resolver has
+                    // not keyed yet, so absence from it does not mean removal and
+                    // a stale-row sweep must wait for a later reply.
+                    body["withheld"] = response.unkeyedIds.size();
+
+                    // ...and WHICH ones, so the question a stale sweep actually
+                    // asks -- does this container still exist? -- can be answered
+                    // for a container the resolver cannot key. `withheld` alone
+                    // could only say "do not trust the list yet", which on a node
+                    // with one permanently unkeyable container means "never sweep
+                    // again".
+                    auto unkeyed = nlohmann::json::array();
+                    for (const auto& id : response.unkeyedIds)
+                    {
+                        unkeyed.push_back(id);
+                    }
+                    body["known_unkeyed"] = std::move(unkeyed);
+
+                    // The WHOLE admitted set, on every list reply including a
+                    // delta one.
+                    //
+                    // Admission is deliberately not a field on the record and
+                    // not a lifecycle event -- see admittedIds(), which explains
+                    // that journalling it would make every admission shift look
+                    // like a container change. The consequence is that a delta
+                    // reply only tells a consumer about containers that HAVE an
+                    // event, while recomputeAdmittedLocked() moves admission for
+                    // containers that have none: readmit one because another
+                    // freed a slot, and the only notice of it is here. Sending
+                    // the set is what keeps "a separate query" from meaning "a
+                    // question the delta stream can never answer".
+                    if (admittedOrNone != nullptr)
+                    {
+                        auto admittedIds = nlohmann::json::array();
+                        for (const auto& id : response.admitted)
+                        {
+                            admittedIds.push_back(id);
+                        }
+                        body["admitted"] = std::move(admittedIds);
+                    }
                 }
 
                 if (response.delta)
                 {
-                    serialiseDelta(*response.delta, body, response.keyKind);
+                    serialiseDelta(*response.delta, body, response.keyKind, admittedOrNone);
                 }
                 break;
             }

@@ -103,6 +103,29 @@ cJSON* buildRegistryValueStatefulEvent(const char* path, char* value, cJSON* val
 }
 #endif // WIN32
 
+static fim_recovery_container_row_handler_t container_row_handler = NULL;
+
+void fim_recovery_set_container_row_handler(fim_recovery_container_row_handler_t handler) {
+    container_row_handler = handler;
+}
+
+static fim_recovery_container_lock_t container_lock = NULL;
+static fim_recovery_container_lock_t container_unlock = NULL;
+
+void fim_recovery_set_container_locking(fim_recovery_container_lock_t lock,
+                                        fim_recovery_container_lock_t unlock) {
+    /* Both or neither. Half a pair is worse than none: taking a lock nothing
+     * releases stops the container layer for good. */
+    if (lock == NULL || unlock == NULL) {
+        container_lock = NULL;
+        container_unlock = NULL;
+        return;
+    }
+
+    container_lock = lock;
+    container_unlock = unlock;
+}
+
 bool fim_recovery_persist_table_and_resync(char* table_name, AgentSyncProtocolHandle* handle, const OSList *directories_list,
                                            const char* retry_note){
     int increase_result = fim_db_increase_each_entry_version(table_name);
@@ -110,7 +133,9 @@ bool fim_recovery_persist_table_and_resync(char* table_name, AgentSyncProtocolHa
         merror("Failed to increase version for each entry in %s; %s", table_name, retry_note);
         return false;
     }
-    // Get all synced items from the table
+    // sync=1 is the authoritative set of documents currently reported to the manager.
+    // Container FIM writes this flag after a successful report, so recovery restores
+    // admitted container rows while leaving rows withheld by the reporting limit out.
     cJSON* items = fim_db_get_every_element(table_name, "WHERE sync=1");
     if (!items) {
         merror("Failed to retrieve elements from table: %s; %s", table_name, retry_note);
@@ -181,6 +206,64 @@ bool fim_recovery_persist_table_and_resync(char* table_name, AgentSyncProtocolHa
         char* value = NULL;
 #endif
         if (strcmp(table_name, FIMDB_FILE_TABLE_NAME) == 0) {
+            // A container row is not a host row with a prefix. The host directory list does
+            // not cover it, so the orphan guard below dropped every one of them, and the host
+            // builder lacks its container block and its unhashed container_id:path id. Hand it
+            // to the layer that sent it in the first place.
+            const char* container_id = cJSON_GetStringValue(cJSON_GetObjectItem(item_copy, "container_id"));
+            if (container_id && *container_id) {
+                int queued = 0;
+
+                /* Around BOTH writes below, for the whole of this row. The handler
+                 * charges the container's document budget and hands the document to
+                 * the manager, and the demote after it updates file_entry; the
+                 * container layer does the same things from its own threads, under
+                 * this same lock, and holds it across walks that keep a scoped
+                 * transaction open. Taking it per row rather than per table lets
+                 * such a walk wait for one row instead of for the whole resync. */
+                if (container_lock) {
+                    container_lock();
+                }
+
+                if (!container_row_handler) {
+                    mdebug2("Skipping recovery of container file (container monitoring is off): %s:%s",
+                            container_id, path);
+                } else {
+                    queued = container_row_handler(item_copy);
+                    if (queued < 0) {
+                        merror("Failed to recover container file %s:%s", container_id, path);
+                    }
+                }
+
+                if (queued <= 0) {
+                    // The DataClean above removed this row's document from the manager and
+                    // nothing here put it back, so sync=1 is no longer true. It is also not
+                    // harmless: the integrity checksum covers the sync=1 rows and is compared
+                    // against a manager that no longer holds this one, so it mismatches, which
+                    // orders a full resync, which reaches this same line and skips the row
+                    // again -- every integrity_interval, for as long as the agent runs. Unlike
+                    // an orphaned HOST path, nothing else ever clears it: handle_orphaned_delete
+                    // runs on the scheduled scan, and with container monitoring off there is no
+                    // container scan to run it.
+                    //
+                    // Demoting also leaves the row where the ordinary promotion pass can report
+                    // it again if container monitoring comes back.
+                    pending_sync_item_t demoted = {.json = item_copy, .sync_value = 0};
+
+                    if (fim_db_set_sync_flag(table_name, &demoted, 0) != 0) {
+                        mdebug1("Could not clear the reporting flag of container file %s:%s; the next "
+                                "integrity check will order another resync.",
+                                container_id, path);
+                    }
+                }
+
+                if (container_unlock) {
+                    container_unlock();
+                }
+
+                cJSON_Delete(item_copy);
+                continue;
+            }
             id_str = strdup(path);
         }
 #ifdef WIN32

@@ -171,19 +171,19 @@ TEST_F(DBTestFixture, TestFimDBWithUTF8Path)
         "size":4925, "uid":"0", "owner":"utf8User", "version":1, "sync":0}]
     })"_json;
 
-    EXPECT_NO_THROW(
-    {
-        const auto fileUTF8 {std::make_unique<FileItem>(utf8_insert["data"].front())};
-        auto result = fim_db_file_update(fileUTF8->toFimEntry(), callback_data_added);
-        ASSERT_EQ(result, FIMDB_OK);
+EXPECT_NO_THROW(
+{
+    const auto fileUTF8 {std::make_unique<FileItem>(utf8_insert["data"].front())};
+    auto result = fim_db_file_update(fileUTF8->toFimEntry(), callback_data_added);
+    ASSERT_EQ(result, FIMDB_OK);
 
-        callback_context_t callback_data;
-        callback_data.callback = callBackTestFIMEntry;
-        callback_data.context = fileUTF8->toFimEntry();
+    callback_context_t callback_data;
+    callback_data.callback = callBackTestFIMEntry;
+    callback_data.context = fileUTF8->toFimEntry();
 
-        result = fim_db_get_path("/tmp/naïve.txt", callback_data, false);
-        ASSERT_EQ(result, FIMDB_OK);
-    });
+    result = fim_db_get_path("/tmp/naïve.txt", callback_data, false);
+    ASSERT_EQ(result, FIMDB_OK);
+});
 }
 
 TEST_F(DBTestFixture, TestFimDBGetCountFileEntry)
@@ -586,9 +586,9 @@ TEST_F(DBTestFixture, TestFimDBGetPathWithSpecialCharsInPath)
         callback_data.context = fileFIMTest->toFimEntry();
 
         result = fim_db_get_path(
-                     "/tmp/evil\"UNION SELECT 1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17--",
-                     callback_data,
-                     false);
+            "/tmp/evil\"UNION SELECT 1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17--",
+            callback_data,
+            false);
         ASSERT_EQ(result, FIMDB_OK);
     });
 }
@@ -607,8 +607,8 @@ TEST_F(DBTestFixture, TestFimDBGetPathWithSpecialCharsReturnsNoExtraRows)
         callback_data.context = nullptr;
 
         result = fim_db_get_path(
-                     "\" UNION SELECT path,checksum,device,inode,size,permissions,attributes,uid,gid,owner,group_,hash_md5,hash_sha1,hash_sha256,mtime,version,sync FROM file_entry--",
-                     callback_data, false);
+            "\" UNION SELECT path,checksum,device,inode,size,permissions,attributes,uid,gid,owner,group_,hash_md5,hash_sha1,hash_sha256,mtime,version,sync FROM file_entry--",
+            callback_data, false);
         ASSERT_EQ(result, FIMDB_ERR);
     });
 }
@@ -627,8 +627,8 @@ TEST_F(DBTestFixture, TestFimDBPatternSearchWithSpecialCharsInPath)
         callback_data.context = nullptr;
 
         result = fim_db_file_pattern_search(
-                     "\" UNION SELECT path FROM file_entry--",
-                     callback_data);
+            "\" UNION SELECT path FROM file_entry--",
+            callback_data);
         ASSERT_EQ(result, FIMDB_OK);
     });
 }
@@ -651,8 +651,8 @@ TEST_F(DBTestFixture, TestFimDBDeletePathWithSpecialCharsInPath)
         callback_data.context = nullptr;
 
         result = fim_db_get_path(
-                     "/tmp/evil\"UNION SELECT 1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17--",
-                     callback_data, true);
+            "/tmp/evil\"UNION SELECT 1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17--",
+            callback_data, true);
         ASSERT_EQ(result, FIMDB_OK);
 
         count = fim_db_get_count_file_entry();

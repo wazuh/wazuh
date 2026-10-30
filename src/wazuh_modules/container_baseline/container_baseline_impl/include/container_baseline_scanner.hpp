@@ -5,6 +5,8 @@
 
 #include <cstdint>
 #include <functional>
+#include <optional>
+#include <set>
 #include <string>
 #include <vector>
 
@@ -171,7 +173,7 @@ int RunFimDbsyncBaselineFrom(const ContainerDiscoverer&        discover,
 
 /// @brief FIM baseline for ONE container, over the paths the caller supplies.
 ///
-/// Serves both actions the eBPF reconcile consumer (#37532) needs, differing
+/// Serves both actions the eBPF reconcile consumer needs, differing
 /// only in what it passes as `paths`:
 ///   - re-walk a container: the configured monitored paths;
 ///   - re-read specific files: one MonitoredPath per file. No special mode is
@@ -247,7 +249,14 @@ int RunSyscollectorDbsyncBaselineForContainers(const std::string&              c
                                                 const DbsyncRowSink&            sink,
                                                 const ContainerStatusSink&      status_sink = {});
 
-using ContainerIdSink = std::function<void(const std::string&)>;
+/// Reports one known container and whether it may report to the manager.
+///
+/// The admission flag rides this sink rather than a second query because the
+/// two must be read from the SAME reply: a caller that listed containers and
+/// then asked separately about admission could be handed a decision taken
+/// after a reconcile that changed the set, and would attribute one container's
+/// verdict to another.
+using ContainerIdSink = std::function<void(const std::string&, bool)>;
 
 /// @brief Lists every container currently known to container_instances,
 /// independent of whether it has a resolvable live PID right now — unlike the
@@ -263,6 +272,139 @@ using ContainerIdSink = std::function<void(const std::string&)>;
 ///         failed query yields an empty list, and treating that as "nothing
 ///         exists" deletes every container's stored rows on a momentary
 ///         connector blip.
-int ListContainers(const std::string& connector_socket_path, const ContainerIdSink& sink);
+/// @brief What one list reply said about its own coverage.
+struct ContainerListStatus
+{
+    /// The keyed list covers every running container. False while the resolver
+    /// is still working, so admission and the kernel filter must wait.
+    bool complete {false};
+
+    /// The connector reported which containers it could not key. False means a
+    /// connector too old to, and then `complete` is the only guard a caller has.
+    bool unkeyedKnown {false};
+};
+
+/// @param status Optional out-param describing the reply's coverage.
+///
+/// `sink` is called for every container the connector knows of, including the
+/// ones it could not key -- those come after the listed ones, each with the
+/// connector's own admission decision. Admission is a question about a
+/// container id and never about an attribution key, so reporting them through a
+/// sink of their own meant every caller had to supply an answer the connector
+/// had already given, and each supplied "admitted", which let the node report
+/// past containers.synced_limit for the length of a restart. A caller that
+/// deletes on absence therefore needs nothing but this sink: the unkeyed
+/// containers are in it, and they are not gone.
+///
+/// They are NOT included in the return count, which stays the length of the
+/// keyed list.
+int ListContainers(const std::string& connector_socket_path, const ContainerIdSink& sink,
+                   ContainerListStatus* status = nullptr);
+
+/// One answer from the connector, kept whole.
+///
+/// The ids, the coverage flags and the payload all describe THIS answer and no
+/// other. They are one value because holding them in separate variables is
+/// exactly what went wrong: the quiescence retry below replaced the list on
+/// each disagreeing poll and left the flags and the unkeyed ids behind from the
+/// first one. The caller then had a list from the last poll, a completeness
+/// flag from the first, and an unkeyed set from the first -- and a container
+/// that restarted in between was in neither the list nor the unkeyed ids.
+/// Every consumer sweeps on exactly that pair, so it lost every FIM and
+/// inventory row it had.
+///
+/// Templated on the payload so this header needs none of the client's types.
+template <typename Payload>
+struct PolledListing
+{
+    Payload payload {};
+
+    /// Ids the connector could key, which is what `payload` describes.
+    std::set<std::string> ids;
+
+    /// Ids it knows of but could not key. They EXIST; only an attribution key
+    /// is missing.
+    std::set<std::string> unkeyed;
+
+    /// The connector's whole admitted set, keyed containers and unkeyed ones
+    /// alike. An unkeyed container has no record in `payload` to carry a
+    /// `synced` flag, so this is the only place its decision arrives --
+    /// and it must arrive, because a consumer that has to guess guesses
+    /// "admitted" and the cap then bounds nothing for the length of a
+    /// container restart.
+    std::set<std::string> admitted;
+
+    bool complete {false};
+    bool unkeyedKnown {false};
+
+    /// Whether the connector sent `admitted` at all. False means one too old to,
+    /// and then `admitted` is empty and says nothing: fall back to admitting the
+    /// unkeyed ids, which is where this started.
+    bool admittedKnown {false};
+
+    /// Every container this answer says exists. What "the node's containers"
+    /// means to a caller that sweeps on absence -- and what quiescence is
+    /// waiting to see settle, because a container restarting leaves `ids` for
+    /// `unkeyed` rather than leaving the node.
+    [[nodiscard]] std::set<std::string> settledIds() const
+    {
+        std::set<std::string> all = ids;
+        all.insert(unkeyed.begin(), unkeyed.end());
+        return all;
+    }
+};
+
+/// Poll until two consecutive answers name the same containers.
+///
+/// `poll` returns nothing when the connector did not answer, which ends the
+/// wait without disturbing `listing`: a failed poll is not an empty node. Any
+/// answer replaces `listing` whole, so the caller cannot end up holding half of
+/// one reply and half of another.
+///
+/// @return whether two consecutive answers agreed. False means the attempts ran
+///         out while containers were still appearing and disappearing; the
+///         caller proceeds with the last answer and re-checks next time rather
+///         than blocking.
+template <typename Payload>
+bool SettleContainerListing(PolledListing<Payload>& listing,
+                            int attempts,
+                            const std::function<std::optional<PolledListing<Payload>>()>& poll,
+                            const std::function<void()>& betweenPolls = {})
+{
+    auto lastIds = listing.settledIds();
+
+    for (int attempt = 1; attempt <= attempts; ++attempt)
+    {
+        if (betweenPolls)
+        {
+            betweenPolls();
+        }
+
+        auto next = poll();
+
+        if (!next)
+        {
+            // The connector went away mid-check. Keep the last answer it did
+            // give rather than adopting a failed poll's empty one.
+            return false;
+        }
+
+        auto nextIds = next->settledIds();
+
+        // Adopted BEFORE the comparison decides anything, and whole. Adopting
+        // only on the disagreeing path left the caller holding the
+        // second-to-last answer on the settled path.
+        listing = std::move(*next);
+
+        if (nextIds == lastIds)
+        {
+            return true;
+        }
+
+        lastIds = std::move(nextIds);
+    }
+
+    return false;
+}
 
 } // namespace wazuh::container_baseline

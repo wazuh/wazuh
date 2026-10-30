@@ -10,6 +10,9 @@
 #include "container_baseline_fim_bridge.h"
 #include "container_baseline_host_api.h"
 
+#include "container_doc_budget.h"
+
+#include "db.h"
 #include "file.h"
 #include "shared.h"
 #include "syscheck.h"
@@ -38,6 +41,23 @@ void fim_container_baseline_set_host_api(const fim_container_host_api_t* api)
 static const syscheck_config* host_config(void)
 {
     return g_host.config;
+}
+
+/* The daemon's synced-document lock. Container counts share it with the host's
+ * on purpose, so this must be the daemon's own mutex; before registration there
+ * is nothing to share with and nothing running that could race. */
+static void synced_docs_lock(void)
+{
+    if (g_host.synced_docs_mutex != NULL) {
+        w_mutex_lock(g_host.synced_docs_mutex);
+    }
+}
+
+static void synced_docs_unlock(void)
+{
+    if (g_host.synced_docs_mutex != NULL) {
+        w_mutex_unlock(g_host.synced_docs_mutex);
+    }
 }
 
 static void copy_if_present(cJSON* source, cJSON* target, const char* source_key, const char* target_key)
@@ -323,6 +343,21 @@ void fim_free_container_monitored_paths(cb_monitored_path_t* paths)
 #define CONTAINER_BASELINE_SOCKET_WAIT_TOTAL_MS 5000
 #define CONTAINER_BASELINE_SOCKET_POLL_INTERVAL_MS 200
 
+static size_t container_docs_refused = 0;
+
+void fim_container_doc_budget_report(void)
+{
+    synced_docs_lock();
+    const size_t refused = container_docs_refused;
+    container_docs_refused = 0;
+    synced_docs_unlock();
+    if (refused > 0) {
+        mwarn("Container FIM: %zu reporting attempt(s) withheld by fim.container_file_limit. "
+              "Their file state remains stored locally; reporting resumes when space is available.",
+              refused);
+    }
+}
+
 int fim_container_baseline_available(const char* socket_path)
 {
     if (socket_path == NULL) {
@@ -344,11 +379,109 @@ int fim_container_baseline_available(const char* socket_path)
     return 1;
 }
 
-void fim_report_container_baseline_result(int baselined, size_t rows, size_t partial, size_t stale, size_t known)
+void fim_report_container_baseline_result(int baselined,
+                                          size_t rows,
+                                          size_t refused,
+                                          size_t partial,
+                                          size_t stale,
+                                          size_t known,
+                                          size_t withheld)
 {
-    minfo("Container FIM baseline finished: %d container(s) scanned, %zu row(s), %zu partial scan(s), "
-          "%zu stale container(s) cleaned, %zu container(s) known.",
-          baselined, rows, partial, stale, known);
+    minfo("Container FIM baseline finished: %d container(s) scanned, %zu row(s) stored, "
+          "%zu row(s) refused, %zu partial scan(s), %zu stale container(s) cleaned, "
+          "%zu container(s) known.",
+          baselined, rows, refused, partial, stale, known);
+
+    fim_container_doc_budget_report();
+
+    if (refused > 0) {
+        /* The number an operator needs to act on, at a level they will see.
+         * A row that was offered and turned away is file state the manager will
+         * never receive, and the only previous trace of it was this same line
+         * reporting the rows OFFERED as though they had all been kept. */
+        mwarn("Container FIM: %zu row(s) could not be stored and will not reach the manager. "
+              "Raise <container_security><syscheck><file_limit> for a single container's share, "
+              "or <syscheck><file_limit><entries> for the agent's whole file database.",
+              refused);
+
+        /* Upward, following the only pattern that exists for telling a manager
+         * an agent is saturated -- fim_check_db_state()'s "wazuh: FIM DB:"
+         * message on LOCALFILE_MQ (fim_scan.c).
+         *
+         * Worth knowing before relying on it: that pattern has NO decoder or
+         * rule in this repository, so this reaches the manager's archives and
+         * nothing acts on it. Making it actionable is ruleset work on the
+         * server side, not something the agent can do alone. It is sent anyway
+         * because an operator grepping archives can find it, and because a
+         * saturated agent that says nothing upward is how this defect went
+         * unnoticed in the first place. */
+        cJSON* event = cJSON_CreateObject();
+
+        if (event != NULL) {
+            cJSON_AddStringToObject(event, "fim_db_table", "file_entry");
+            cJSON_AddStringToObject(event, "scope", "container");
+            cJSON_AddStringToObject(event, "alert_type", "rows_refused");
+            cJSON_AddNumberToObject(event, "rows_refused", (double)refused);
+            cJSON_AddNumberToObject(event, "rows_stored", (double)rows);
+            cJSON_AddNumberToObject(event, "container_file_entry_limit",
+                                    fim_container_baseline_row_limit());
+            cJSON_AddNumberToObject(event, "file_entry_limit",
+                                    fim_container_baseline_node_row_limit());
+
+            char* plain = cJSON_PrintUnformatted(event);
+
+            if (plain != NULL) {
+                char alert_msg[OS_SIZE_256];
+                snprintf(alert_msg, OS_SIZE_256, "wazuh: FIM DB: %s", plain);
+                if (g_host.send_log != NULL) {
+                    g_host.send_log(alert_msg);
+                }
+                os_free(plain);
+            }
+
+            cJSON_Delete(event);
+        }
+    }
+
+    if (withheld > 0) {
+        /* Which containers the manager is NOT being told about. Silence here
+         * reads, to anyone looking at the dashboard, exactly like a node that
+         * runs only the containers it can see -- so the count has to be said
+         * out loud even though nothing is wrong. */
+        minfo("Container FIM: %zu of %zu container(s) are reporting; %zu withheld by containers.synced_limit. "
+              "The withheld containers are still monitored and their file state is still stored locally -- "
+              "it is not sent to the manager. Raise the limit to report more.",
+              known - withheld, known, withheld);
+
+        /* Upward, in the same envelope and with the same caveat as the refusal
+         * above: no decoder or rule exists for it in this repository, so it
+         * reaches archives and nothing acts on it. Sent because an agent whose
+         * coverage is deliberately partial should not be the only thing that
+         * knows. */
+        cJSON* event = cJSON_CreateObject();
+
+        if (event != NULL) {
+            cJSON_AddStringToObject(event, "fim_db_table", "file_entry");
+            cJSON_AddStringToObject(event, "scope", "container");
+            cJSON_AddStringToObject(event, "alert_type", "containers_withheld");
+            cJSON_AddNumberToObject(event, "containers_withheld", (double)withheld);
+            cJSON_AddNumberToObject(event, "containers_reporting", (double)(known - withheld));
+            cJSON_AddNumberToObject(event, "containers_known", (double)known);
+
+            char* plain = cJSON_PrintUnformatted(event);
+
+            if (plain != NULL) {
+                char alert_msg[OS_SIZE_256];
+                snprintf(alert_msg, OS_SIZE_256, "wazuh: FIM DB: %s", plain);
+                if (g_host.send_log != NULL) {
+                    g_host.send_log(alert_msg);
+                }
+                os_free(plain);
+            }
+
+            cJSON_Delete(event);
+        }
+    }
 
     if (partial > 0) {
         mdebug1("Container FIM baseline: %zu container(s) had an incomplete scan; delete detection was "
@@ -394,6 +527,16 @@ int fim_container_baseline_abspath(const char* relative, char* out, size_t out_s
     return 0;
 }
 
+int fim_container_baseline_row_limit(void)
+{
+    return (host_config() != NULL) ? host_config()->container_file_entry_limit : 0;
+}
+
+int fim_container_baseline_node_row_limit(void)
+{
+    return (host_config() != NULL) ? host_config()->file_entry_limit : 0;
+}
+
 void fim_container_baseline_rate_limit(void)
 {
     if (g_host.rate_limit == NULL) {
@@ -414,12 +557,383 @@ void fim_compute_row_checksum(const char* row_json, char out_sha1[41])
     OS_SHA1_Str(row_json, (ssize_t)strlen(row_json), out_sha1);
 }
 
-void fim_persist_baseline_row(const char* id, int operation, const char* index, const char* json, uint64_t version)
+/* Per-container document counts: container id -> int*.
+ *
+ * PER CONTAINER is the decision, so the count has to be too. A
+ * single total would let one container spend the rest's allowance and decide by
+ * scan order which of them reported -- measured on a real node, one container
+ * produced 25% of the node's rows.
+ *
+ * Guarded by synced_docs_mutex, the same lock the host counters use, so the two
+ * populations cannot interleave an update. */
+static OSHash* container_doc_counts = NULL;
+
+/* Returns the container's count slot, creating it at zero, or NULL if it could
+ * not be created. Caller holds synced_docs_mutex. */
+static int* container_doc_count_slot(const char* container_id)
 {
+    if (container_doc_counts == NULL) {
+        container_doc_counts = OSHash_Create();
+        if (container_doc_counts == NULL) {
+            return NULL;
+        }
+        OSHash_SetFreeDataPointer(container_doc_counts, free);
+    }
+
+    int* slot = (int*)OSHash_Get(container_doc_counts, container_id);
+    if (slot != NULL) {
+        return slot;
+    }
+
+    os_calloc(1, sizeof(int), slot);
+    if (OSHash_Add(container_doc_counts, container_id, slot) != 2) {
+        os_free(slot);
+        return NULL;
+    }
+    return slot;
+}
+
+void fim_container_doc_budget_release(const char* container_id)
+{
+    if (container_id == NULL || *container_id == '\0') {
+        return;
+    }
+
+    synced_docs_lock();
+    if (container_doc_counts != NULL) {
+        int* slot = (int*)OSHash_Delete(container_doc_counts, container_id);
+        os_free(slot);
+    }
+    synced_docs_unlock();
+}
+
+void fim_container_doc_budget_initialize(const char* container_id)
+{
+    synced_docs_lock();
+    const int initialized = container_doc_counts != NULL && OSHash_Get(container_doc_counts, container_id) != NULL;
+    synced_docs_unlock();
+    if (initialized) {
+        return;
+    }
+
+    /* Read before opening a scoped transaction, never from its row callback. */
+    const int count = fim_db_count_synced_container_docs(container_id);
+    if (count < 0) {
+        merror("Container FIM: could not initialize document count for '%s'.", container_id);
+        return;
+    }
+
+    synced_docs_lock();
+    if (container_doc_counts != NULL && OSHash_Get(container_doc_counts, container_id) != NULL) {
+        synced_docs_unlock();
+        return;
+    }
+    int* slot = container_doc_count_slot(container_id);
+    if (slot != NULL) {
+        *slot = count;
+    } else {
+        merror("Container FIM: could not initialize document count for '%s'.", container_id);
+    }
+    synced_docs_unlock();
+}
+
+int fim_container_doc_budget_has_headroom(const char* container_id)
+{
+    if (container_id == NULL || *container_id == '\0') {
+        return 1;
+    }
+
+    const int limit = (host_config() != NULL) ? host_config()->container_file_limit : 0;
+
+    if (limit <= 0) {
+        return 1; /* Unlimited: every withheld row can still be granted. */
+    }
+
+    synced_docs_lock();
+    const int* slot = (container_doc_counts != NULL)
+                      ? (const int*)OSHash_Get(container_doc_counts, container_id)
+                      : NULL;
+    /* No counter yet means nothing has been counted, which is headroom. Fail
+     * OPEN for the same reason every other unknown here does: the cost of
+     * being wrong is one wasted pass, and the cost the other way is a row that
+     * could report and never gets offered the chance. */
+    const int current = (slot != NULL) ? *slot : 0;
+    synced_docs_unlock();
+
+    return current < limit;
+}
+
+/* What one listing decided. NULL means "not told yet", which reads as
+ * admit-everything -- see fim_container_is_admitted().
+ *
+ * TWO sets rather than one, because absence from the admitted set has two
+ * opposite causes and silencing a container is the wrong answer to one of them:
+ *
+ *   refused       the cap ranked it and said no. Stays withheld.
+ *   not heard of  it started after the listing was taken. Not refused at all,
+ *                 and reading it as refused is what left it silent for the life
+ *                 of the process -- fim_container_admission_is_stale() spots
+ *                 this and the caller retakes the listing.
+ *
+ * A container the connector cannot key is NOT a third case. The cap ranks it
+ * like any other container -- that is a question about a container id, not
+ * about an attribution key -- so it arrives in `known` and either is or is not
+ * in `admitted`, and this file needs to know nothing more about it. Treating it
+ * as a third, unrankable state is what let one report outside the cap for the
+ * length of every restart.
+ *
+ * It must still reach `known`, though: leaving it out would make every one of
+ * its row batches read as stale and retake the listing, which is the cost the
+ * known set exists to avoid.
+ *
+ * Guarded by synced_docs_mutex, like the counts above, so a reconcile cannot
+ * replace the sets while a row is being decided against them. */
+static OSHash* container_admitted = NULL;
+static OSHash* container_known = NULL;
+static int container_admission_known = 0;
+
+/* A set of container ids, or NULL when it could not be built. */
+static OSHash* container_id_set(const char** container_ids, size_t count)
+{
+    OSHash* set = OSHash_Create();
+    if (set == NULL) {
+        return NULL;
+    }
+    OSHash_SetFreeDataPointer(set, free);
+
+    for (size_t i = 0; i < count; ++i) {
+        if (container_ids[i] == NULL || *container_ids[i] == '\0') {
+            continue;
+        }
+
+        int* marker = NULL;
+        os_calloc(1, sizeof(int), marker);
+        *marker = 1;
+        if (OSHash_Add(set, container_ids[i], marker) != 2) {
+            os_free(marker);
+        }
+    }
+
+    return set;
+}
+
+void fim_container_set_admission(const char** known_ids,
+                                 size_t known_count,
+                                 const char** admitted_ids,
+                                 size_t admitted_count)
+{
+    if ((known_ids == NULL && known_count > 0) || (admitted_ids == NULL && admitted_count > 0)) {
+        return;
+    }
+
+    OSHash* known_set = container_id_set(known_ids, known_count);
+    OSHash* admitted_set = container_id_set(admitted_ids, admitted_count);
+
+    if (known_set == NULL || admitted_set == NULL) {
+        /* Fail OPEN. A set we could not build is not grounds for silencing
+         * every container -- the same reasoning as the count slot below.
+         * Both or neither: a known set without its admitted set would read
+         * every container as refused. */
+        merror("Container FIM: could not build the admitted container set; retaining previous admission.");
+        if (known_set != NULL) {
+            OSHash_Free(known_set);
+        }
+        if (admitted_set != NULL) {
+            OSHash_Free(admitted_set);
+        }
+        return;
+    }
+
+    synced_docs_lock();
+    OSHash* previous_known = container_known;
+    OSHash* previous_admitted = container_admitted;
+    container_known = known_set;
+    container_admitted = admitted_set;
+    container_admission_known = 1;
+    synced_docs_unlock();
+
+    if (previous_known != NULL) {
+        OSHash_Free(previous_known);
+    }
+    if (previous_admitted != NULL) {
+        OSHash_Free(previous_admitted);
+    }
+
+    fim_container_reconcile_admission();
+}
+
+void fim_container_set_admitted(const char** container_ids, size_t count)
+{
+    /* Everything this caller knows of, it admits. */
+    fim_container_set_admission(container_ids, count, container_ids, count);
+}
+
+int fim_container_admission_is_stale(const char* container_id)
+{
+    if (container_id == NULL || *container_id == '\0') {
+        return 0; /* Not a container row; no admission to be stale about. */
+    }
+
+    synced_docs_lock();
+    /* Before the first listing nothing is stale: everything reports already,
+     * so there is no silence to break. */
+    const int stale = container_admission_known != 0 && container_known != NULL
+                      && OSHash_Get(container_known, container_id) == NULL;
+    synced_docs_unlock();
+
+    return stale;
+}
+
+int fim_container_is_admitted(const char* container_id)
+{
+    if (container_id == NULL || *container_id == '\0') {
+        return 1; /* Not a container row; nothing to withhold. */
+    }
+
+    synced_docs_lock();
+    /* Membership, nothing else.
+     *
+     * `admitted` is the connector's decision over every container it knows of,
+     * keyed or not, so absence from it is a refusal and not a gap. This used to
+     * read a container the resolver could not key as unranked and admit it --
+     * because the connector ranked only what it could publish, and a consumer
+     * cannot invent the decision it was not given. A container is unkeyed for a
+     * while after every restart, so that let the node report one container past
+     * containers.synced_limit on each one, and created its documents on the
+     * manager only to delete them again when its key came back.
+     *
+     * The not-told-yet case above remains fail-open: no decision has arrived at
+     * all there, which is a different thing from one that says no. */
+    const int admitted = (container_admission_known == 0 || container_admitted == NULL)
+                         ? 1
+                         : (OSHash_Get(container_admitted, container_id) != NULL);
+    synced_docs_unlock();
+
+    return admitted;
+}
+
+/* Applies container_budget_decide() to one row, owning the lock and the count
+ * it decides against. The rule itself lives in container_doc_budget.h so it can
+ * be tested without a daemon; this is only the plumbing. */
+static int container_row_sync_flag(const cJSON* row, int operation)
+{
+    const cJSON* id_json = cJSON_GetObjectItem(row, "container_id");
+    const int has_container = (id_json != NULL && cJSON_IsString(id_json)
+                               && id_json->valuestring != NULL && *id_json->valuestring != '\0');
+
+    /* Whether this container may report AT ALL, which is a different question
+     * from how much it may report -- and it is asked first, because it holds
+     * even when no document limit is configured. Putting it after the limit
+     * check below would make the container cap silently depend on
+     * container_file_limit being set, which is not what configures it.
+     *
+     * Deletes are exempt: container_budget_decide() answers a delete with the
+     * row's own stored flag, so a row the manager never saw still reports no
+     * deletion, and one it did see is still withdrawn. Suppressing that would
+     * strand the row on the manager with nothing left to remove it. */
+    const cJSON* sync_json = cJSON_GetObjectItem(row, "sync");
+    const int stored_sync = cJSON_IsNumber(sync_json) ? sync_json->valueint : 0;
+
+    if (has_container && operation != OPERATION_DELETE
+            && !fim_container_is_admitted(id_json->valuestring)) {
+        /* Withhold the document -- but a row the manager ALREADY holds may not
+         * be demoted on the strength of this check.
+         *
+         * Returning 0 writes that 0 to the stored column, and it is a 1 -> 0
+         * with no DELETE behind it: updateContainerReporting() retracts by
+         * selecting sync=1, so the row drops out of the only query that could
+         * ever withdraw it and the manager keeps the document for good. The
+         * budget never does this -- container_budget_decide() keeps a modified
+         * reported row reported -- so this gate was the one way it could
+         * happen, and admission now changes at run time from the resolver
+         * thread, so a file event lands inside that window routinely.
+         *
+         * Leave the column alone instead. The reconciliation that follows the
+         * de-admission still sees sync=1 and retracts the row properly, which
+         * is the DELETE that pairs the demotion.
+         *
+         * What this leaves behind, deliberately: between here and that
+         * retraction the stored row carries the new content while the manager
+         * still holds the old document, so the agent's integrity checksum
+         * covers something the manager does not have. The window is one
+         * reconcile pass -- a pass runs synchronously at the end of every
+         * fim_container_set_admission() and at every whole-node baseline, and
+         * selects on exactly the sync=1 this preserves -- and an integrity
+         * check that samples inside it resynchronises the whole index rather
+         * than getting a wrong answer. Paying that occasionally is the point:
+         * the alternative is a document stranded on the manager for good. */
+        return (stored_sync == 1) ? FIM_CONTAINER_SYNC_UNCHANGED : 0;
+    }
+
+    const int limit = (host_config() != NULL) ? host_config()->container_file_limit : 0;
+
+    if (has_container && operation == OPERATION_DELETE && stored_sync == 0) {
+        return 0;
+    }
+
+    if (limit <= 0) {
+        return 1; /* Unlimited: today's behaviour, and the default. */
+    }
+
+    if (!has_container) {
+        /* No container to charge it to. Report it rather than withhold it: a row
+         * we cannot attribute is not evidence that a budget was exceeded. */
+        return 1;
+    }
+
+    /* The stored row's own flag, where DBSync gave us one: absent on a fresh
+     * insert, present on rows a scoped transaction reports as deleted. */
+    /* Check-then-apply must be atomic for the same reason it must be on the
+     * host path: the scheduled baseline and an event-driven reconcile reach
+     * this concurrently. */
+    synced_docs_lock();
+    int* slot = container_doc_count_slot(id_json->valuestring);
+    int granted = 1;
+
+    if (slot != NULL) {
+        const container_budget_decision_t decision =
+            container_budget_decide(limit, *slot, stored_sync,
+                                    operation == OPERATION_DELETE);
+        *slot += decision.count_delta;
+        if (*slot < 0) {
+            *slot = 0;
+        }
+        granted = decision.sync_flag;
+        if (!granted && operation != OPERATION_DELETE) {
+            ++container_docs_refused;
+        }
+    }
+    /* slot == NULL means the table could not be grown. Fail OPEN: a counter we
+     * could not keep is not grounds for withholding a container's state. */
+    synced_docs_unlock();
+
+    return granted;
+}
+
+int fim_persist_baseline_row(const char* id, int operation, const char* index, const char* json, uint64_t version)
+{
+    if (g_host.validate_and_persist == NULL) {
+        merror("Container FIM: persistence API is not registered.");
+        return -1;
+    }
     cJSON* msg = cJSON_Parse(json);
     if (msg == NULL) {
         mdebug1("Container FIM baseline: dropping row '%s' - failed to parse JSON.", id);
-        return;
+        return -1;
+    }
+
+    /* BEFORE normalisation: the stored row's own "sync" column is what the
+     * accounting reads, and normalisation reshapes the row for the schema. */
+    const int sync_flag = container_row_sync_flag(msg, operation);
+
+    /* The integrity check compares the agent's checksum over the stored rows'
+     * "checksum" column with the manager's over each document's
+     * checksum.hash.sha1, so the document must carry the row checksum, as host
+     * FIM documents do. Normalisation deletes it, so keep a copy first. */
+    char* row_checksum = NULL;
+    const char* stored_checksum = cJSON_GetStringValue(cJSON_GetObjectItem(msg, "checksum"));
+    if (stored_checksum != NULL && *stored_checksum != '\0') {
+        os_strdup(stored_checksum, row_checksum);
     }
 
     normalize_container_fim_row(msg);
@@ -443,31 +957,12 @@ void fim_persist_baseline_row(const char* id, int operation, const char* index, 
             }
         }
 
-        if (hash_obj != NULL) {
-            const char* sha1_value = NULL;
-
-            cJSON* top_sha1 = cJSON_GetObjectItem(msg, "hash_sha1");
-            if (top_sha1 != NULL && cJSON_IsString(top_sha1) && top_sha1->valuestring != NULL) {
-                sha1_value = top_sha1->valuestring;
-            } else {
-                cJSON* file_obj = cJSON_GetObjectItem(msg, "file");
-                if (file_obj != NULL && cJSON_IsObject(file_obj)) {
-                    cJSON* file_hash_obj = cJSON_GetObjectItem(file_obj, "hash");
-                    if (file_hash_obj != NULL && cJSON_IsObject(file_hash_obj)) {
-                        cJSON* file_sha1 = cJSON_GetObjectItem(file_hash_obj, "sha1");
-                        if (file_sha1 != NULL && cJSON_IsString(file_sha1) && file_sha1->valuestring != NULL) {
-                            sha1_value = file_sha1->valuestring;
-                        }
-                    }
-                }
-            }
-
-            if (sha1_value != NULL) {
-                cJSON_DeleteItemFromObject(hash_obj, "sha1");
-                cJSON_AddStringToObject(hash_obj, "sha1", sha1_value);
-            }
+        if (hash_obj != NULL && row_checksum != NULL) {
+            cJSON_DeleteItemFromObject(hash_obj, "sha1");
+            cJSON_AddStringToObject(hash_obj, "sha1", row_checksum);
         }
     }
+    os_free(row_checksum);
 
     cJSON* state_obj = cJSON_GetObjectItem(msg, "state");
     if (state_obj == NULL || !cJSON_IsObject(state_obj)) {
@@ -488,24 +983,98 @@ void fim_persist_baseline_row(const char* id, int operation, const char* index, 
 
     char item_desc[128];
     snprintf(item_desc, sizeof(item_desc), "container FIM baseline row %s", id ? id : "<null>");
-    if (g_host.validate_and_persist == NULL) {
-        // The call below is followed by cJSON_Delete(msg); returning here skips it.
+    /* Not "was it persisted": validate_and_persist() returns whether the document
+     * passed its index schema, and a row the budget withheld passes and returns
+     * true. False means the document was rejected, which is the one case where the
+     * decision below must not be written back. */
+    const bool validated = g_host.validate_and_persist(msg,
+                                                       id,
+                                                       (Operation_t)operation,
+                                                       index,
+                                                       version,
+                                                       item_desc,
+                                                       false,
+                                                       NULL,
+                                                       NULL,
+                                                       sync_flag);
+
+    if (!validated) {
+        /* The schema failure itself is already logged, with its errors, by
+         * validate_and_persist(). What is not logged anywhere else is that the
+         * budget charged for a row the manager never saw, so say that and undo it:
+         * a slot spent on a rejected document is a slot the cap can never return. */
+        cJSON* original = cJSON_Parse(json);
+        const cJSON* stored = cJSON_GetObjectItem(original, "sync");
+        const int previous_sync = cJSON_IsNumber(stored) ? stored->valueint : 0;
+        const char* container_id = cJSON_GetStringValue(cJSON_GetObjectItem(original, "container_id"));
+        mdebug1("Container FIM: returning the budget charged for rejected row '%s'.", id);
+        if (container_id && host_config() && host_config()->container_file_limit > 0) {
+            const int delta = operation == OPERATION_DELETE ? (previous_sync ? -1 : 0)
+                              : (sync_flag && !previous_sync ? 1 : 0);
+            synced_docs_lock();
+            int* slot = container_doc_counts ? OSHash_Get(container_doc_counts, container_id) : NULL;
+            if (slot) {
+                *slot -= delta;
+            }
+            synced_docs_unlock();
+        }
+        cJSON_Delete(original);
         cJSON_Delete(msg);
-        return;
+        return -1;
     }
 
-    g_host.validate_and_persist(msg,
-                                id,
-                                (Operation_t)operation,
-                                index,
-                                version,
-                                item_desc,
-                                false,
-                                NULL,
-                                NULL,
-                                1);
-
     cJSON_Delete(msg);
+    return sync_flag;
+}
+
+int fim_container_recover_row(const cJSON* row)
+{
+    const char* container_id = cJSON_GetStringValue(cJSON_GetObjectItem(row, "container_id"));
+    const char* path = cJSON_GetStringValue(cJSON_GetObjectItem(row, "path"));
+    const cJSON* version = cJSON_GetObjectItem(row, "version");
+
+    if (container_id == NULL || *container_id == '\0' || path == NULL || !cJSON_IsNumber(version)) {
+        mdebug1("Container FIM recovery: skipping a row with missing fields.");
+        return -1;
+    }
+
+    /* The counterpart of recovery's host orphan guard, resolved against the
+     * container list for the reason fim_container_configuration_directory()
+     * gives. */
+    if (fim_container_configuration_directory(path) == NULL) {
+        mdebug2("Container FIM recovery: skipping '%s:%s', no longer covered by the container configuration.",
+                container_id, path);
+        return 0;
+    }
+
+    char* json = cJSON_PrintUnformatted(row);
+    if (json == NULL) {
+        return -1;
+    }
+
+    const size_t id_len = strlen(container_id) + strlen(path) + 2;
+    char* id = NULL;
+    os_calloc(id_len, sizeof(char), id);
+    snprintf(id, id_len, "%s:%s", container_id, path);
+
+    /* A sync=1 row is a refresh to the document budget, so re-sending it
+     * charges nothing; a container that lost admission is still withheld. */
+    const int result = fim_persist_baseline_row(id,
+                                                OPERATION_CREATE,
+                                                "wazuh-states-fim-files",
+                                                json,
+                                                (uint64_t)cJSON_GetNumberValue(version));
+    os_free(id);
+    cJSON_free(json);
+
+    /* Recovery is the one caller for which "withheld" does NOT mean the manager
+     * may still hold the document: it re-sends into an index the manager has
+     * just cleared, so a row withheld here is a row the manager does not have,
+     * and sync=0 is simply the truth. FIM_CONTAINER_SYNC_UNCHANGED exists to
+     * protect a document that is still out there, which on this path there is
+     * not -- and passing it up would make recovery log a failure and demote the
+     * row anyway, for a case that is neither a failure nor a surprise. */
+    return (result == FIM_CONTAINER_SYNC_UNCHANGED) ? 0 : result;
 }
 
 /* Host FIM's own alert vocabulary. Duplicated from file.c's static table

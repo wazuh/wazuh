@@ -34,10 +34,12 @@ int fim_container_baseline_available(const char* socket_path);
  * actually baselined (see cbaseline_run_fim_dbsync()'s return value contract),
  * plus how much of it was usable. */
 void fim_report_container_baseline_result(int baselined,
-                                          size_t rows,
+                                          size_t rows,     /* STORED, not offered */
+                                          size_t refused,  /* offered and turned away */
                                           size_t partial,
                                           size_t stale,
-                                          size_t known);
+                                          size_t known,
+                                          size_t withheld); /* known but not allowed to report */
 
 /* Logging shims. The C++ driver deliberately does not include shared.h (whose
  * macros clash with the C++ headers it needs), so it routes its messages
@@ -74,11 +76,198 @@ int fim_container_baseline_abspath(const char* relative, char* out, size_t out_s
  * included it would take the symbol with C++ linkage and fail to link. */
 void fim_container_baseline_rate_limit(void);
 
-void fim_persist_baseline_row(const char* id,
-                              int operation,
-                              const char* index,
-                              const char* json,
-                              uint64_t version);
+/* The two row ceilings, read from the daemon's live configuration.
+ *
+ * Shims for the same reason the logging ones are: the C++ driver cannot include
+ * syscheck.h, and this library no longer reads the daemon's configuration
+ * directly -- it is handed it. Both return 0, meaning unlimited, before the
+ * host API is registered. */
+int fim_container_baseline_row_limit(void);       /* per container */
+int fim_container_baseline_node_row_limit(void);  /* the whole file_entry table */
+
+/**
+ * @brief Release a container's per-container document count.
+ *
+ * Called when a container's rows are swept. Without it the count map grows with
+ * every container the node has ever run, and the released budget is never
+ * returned -- on a churning node that is a slow leak toward a cap that reports
+ * no space while holding none.
+ *
+ * @param container_id The container whose count to drop. NULL/empty is a no-op.
+ */
+void fim_container_doc_budget_release(const char* container_id);
+
+/**
+ * @brief Seed a container's document count from what it has already reported.
+ *
+ * The count lives in memory, so without this a restart hands every container a
+ * fresh budget while its rows are still on the manager, and the cap bounds
+ * nothing across the restarts an agent actually performs.
+ *
+ * Reads the database, so it must be called BEFORE opening a scoped transaction
+ * for that container, never from a row callback inside one. Already-seeded
+ * containers are a no-op, so a caller may call it on every pass.
+ *
+ * @param container_id The container whose count to seed.
+ */
+void fim_container_doc_budget_initialize(const char* container_id);
+
+/**
+ * @brief Report, once per pass, what the document budget withheld.
+ *
+ * A budget that silently drops reports is indistinguishable from a quiet node,
+ * which is how the original scope-blind fill stayed invisible (23.4). Logs
+ * nothing when nothing was refused, and clears the tally either way.
+ */
+/**
+ * @brief Whether a withheld row of this container could be reported now.
+ *
+ * Non-zero when the container-scope budget is unlimited or has a slot free, so
+ * the promotion pass has something to gain by reading its withheld rows. Zero
+ * means every one of them would be refused, and reading them costs a query, a
+ * parse, a normalisation and a schema validation each to learn nothing.
+ *
+ * Call after fim_container_doc_budget_initialize(), which is what seeds the
+ * count this reads.
+ */
+int fim_container_doc_budget_has_headroom(const char* container_id);
+
+void fim_container_doc_budget_report(void);
+
+/**
+ * @brief Withdraw from the manager the rows of containers that may no longer report.
+ *
+ * Their rows stay in the local database and keep being walked: this retracts the
+ * manager's copy only, so re-admission can report them again without re-reading
+ * the filesystem. Called when the admitted set changes.
+ */
+void fim_container_reconcile_admission(void);
+
+/**
+ * @brief Take and release the lock that serialises container FIM state.
+ *
+ * Everything that walks containers, sweeps them or reconciles their reporting
+ * holds this for the whole of its work, open scoped transactions included. A
+ * writer that does not take it can land a single-row write in the middle of
+ * one of those transactions, which is how a baseline once lost 502 of the 504
+ * rows it had just read on a real node.
+ *
+ * Exposed as a plain pair because the one caller that needs it -- recovery --
+ * is C, deliberately does not link this library, and reaches both through
+ * function pointers it is handed at startup.
+ */
+void fim_container_state_lock(void);
+void fim_container_state_unlock(void);
+
+/**
+ * @brief Record which containers may report to the manager.
+ *
+ * A different question from the document budget above: that one bounds how much
+ * one container reports, this one bounds how many containers report at all.
+ * A container left out of this set still exists, is still walked, and keeps its
+ * stored rows -- only its reporting stops.
+ *
+ * Call ONLY when the connector actually answered. A failed query lists no
+ * containers, and applying that would withhold every container's rows on a
+ * momentary blip. Until the first call, everything reports.
+ *
+ * @param container_ids Ids allowed to report. Copied; the caller keeps ownership.
+ * @param count         How many. Zero is a real answer -- no container reports.
+ */
+void fim_container_set_admitted(const char** container_ids, size_t count);
+
+/**
+ * @brief Install a listing's admission answer: what it knew, and what of that
+ *        it admitted.
+ *
+ * Both sets come from ONE listing on purpose. Admission is read per row on the
+ * storage path, so a row decided between two separate calls would be weighed
+ * against a known set from one listing and an admitted set from another.
+ *
+ * Call ONLY when the connector actually answered -- see
+ * fim_container_set_admitted(), which is this with the two sets equal.
+ *
+ * @param known_ids      Every container the listing reported, admitted or not,
+ *                       including the ones it could not key.
+ * @param known_count    How many.
+ * @param admitted_ids   The subset allowed to report. Copied; caller keeps
+ *                       ownership. This is the connector's decision over the
+ *                       WHOLE known set: a container it could not key belongs
+ *                       here when the cap admitted it, and its absence is a
+ *                       refusal like any other.
+ * @param admitted_count How many. Zero is a real answer -- no container reports.
+ */
+void fim_container_set_admission(const char** known_ids,
+                                 size_t known_count,
+                                 const char** admitted_ids,
+                                 size_t admitted_count);
+
+/**
+ * @brief Whether a container may report. Non-zero when it may.
+ *
+ * True for every container until fim_container_set_admitted() has been called,
+ * so an agent that has not reached the connector keeps reporting rather than
+ * going silently quiet.
+ *
+ * After that it is membership of the admitted set and nothing else. A container
+ * the connector could not key is ranked like any other, so it reads false when
+ * the cap turned it down -- see fim_container_set_admission().
+ */
+int fim_container_is_admitted(const char* container_id);
+
+/**
+ * @brief Whether the admission snapshot predates this container. Non-zero when it does.
+ *
+ * A container created after the snapshot was taken is in neither set, and
+ * fim_container_is_admitted() cannot tell that from the cap having refused it:
+ * both read as "may not report". Left alone it stores every row sync=0 for the
+ * life of the process, because nothing else retakes the listing.
+ *
+ * Ask this before storing a container's rows; when it says yes, take a fresh
+ * listing and install it. Once installed the container is known either way, so
+ * this costs one listing per container, not one per batch.
+ */
+int fim_container_admission_is_stale(const char* container_id);
+
+/**
+ * @brief The stored sync column must be left exactly as it is.
+ *
+ * Returned when a row is withheld for a reason that says nothing about whether
+ * the manager already holds it. Negative, so the existing `>= 0` guards every
+ * caller already applies before writing the column do the right thing with it.
+ */
+#define FIM_CONTAINER_SYNC_UNCHANGED (-2)
+
+/**
+ * @brief Build one container row's stateful document and offer it to the manager.
+ *
+ * @return The reporting decision -- 1 reported, 0 withheld by the budget -- which
+ *         the caller writes back to the row's sync column once the transaction
+ *         holding it has closed. -1 when the document could not be built or did
+ *         not validate, and FIM_CONTAINER_SYNC_UNCHANGED when the column must be
+ *         left alone; in neither case may anything be written back.
+ */
+int fim_persist_baseline_row(const char* id,
+                             int operation,
+                             const char* index,
+                             const char* json,
+                             uint64_t version);
+
+/**
+ * @brief Re-send one reported container row during a FIM recovery resync.
+ *
+ * Recovery clears the manager's FIM index and re-sends every sync=1 row. A
+ * container row has to come back exactly as the live path sent it: under the
+ * unhashed container_id:path id, as the normalised document with its container
+ * block, and only while its container is admitted. It is skipped when no
+ * <container_security><syscheck> directory covers its path any more.
+ *
+ * Registered with fim_recovery_set_container_row_handler(), so recovery does
+ * not link against this library.
+ *
+ * @return 1 queued, 0 skipped (not covered, or withheld), -1 on error.
+ */
+int fim_container_recover_row(const cJSON* row);
 
 /* Where a reconciled row came from, which is what the alert's "mode" field
  * reports.
@@ -88,7 +277,8 @@ void fim_persist_baseline_row(const char* id,
  * shims), and hard-coding that enum's numeric values on this side of the
  * boundary would rot silently if it ever gained a member. The bridge does the
  * mapping. */
-typedef enum {
+typedef enum
+{
     CB_FIM_ORIGIN_SCAN  = 0, /* whole-node or per-container walk -> "scheduled" */
     CB_FIM_ORIGIN_EVENT = 1  /* driven by an eBPF file event     -> "whodata"   */
 } cb_fim_origin_t;

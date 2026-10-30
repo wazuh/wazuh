@@ -9,6 +9,7 @@
 #include <cstdint>
 #include <functional>
 #include <optional>
+#include <set>
 #include <string>
 #include <unordered_set>
 #include <vector>
@@ -43,6 +44,38 @@ namespace wazuh::container_instances
         std::size_t pending {0};
         std::size_t verdicts {0};
         std::optional<TimePoint> lastReconcile;
+    };
+
+    /// Everything one `list` reply says, taken together.
+    ///
+    /// The three sets below answer one question between them -- which
+    /// containers exist, which of those can be attributed, and which of THOSE
+    /// may report -- and a consumer reads them as one answer: it sweeps the
+    /// rows of every container absent from `containers` and `unkeyed` alike.
+    ///
+    /// Read one at a time they are three answers taken at three instants, and
+    /// a container that is keyed when the first is taken and unkeyed when the
+    /// second is -- a container restarting, which is when its records are
+    /// replaced -- appears in NEITHER. The consumer then deletes every row it
+    /// has for a container that is simply starting again.
+    struct ListSnapshot
+    {
+        std::vector<ContainerRecordPtr> containers;
+        std::set<std::string> admitted;
+        std::set<std::string> unkeyed;
+
+        /// Whether `admitted` is an answer at all. FALSE while the store has
+        /// not yet seen the whole node -- a source that has not enumerated, or
+        /// a resolver still working -- and then the reply must omit the set
+        /// rather than ship an empty one, which every consumer reads as "refuse
+        /// everything". Omission is the path a connector older than the
+        /// decision already produces, so no consumer needs a new branch.
+        bool admissionKnown {true};
+
+        /// Set only when a cursor was supplied. On resync it carries the whole
+        /// current set, which is `containers` -- the same vector, from the same
+        /// instant, rather than a second list built a moment later.
+        std::optional<LifecycleDelta> delta;
     };
 
     /// Concurrent metadata cache. Threading contract:
@@ -80,6 +113,56 @@ namespace wazuh::container_instances
                                                                 const std::string& containerName) const = 0;
         [[nodiscard]] virtual StoreStats stats() const = 0;
         [[nodiscard]] virtual std::vector<ContainerRecordPtr> listContainers() const = 0;
+
+        /// Which containers may report to the manager, a subset of the ids
+        /// listContainers() publishes.
+        ///
+        /// Deliberately a SEPARATE query rather than a field on the record.
+        /// recordEquals() compares every field, so an admission flag living on
+        /// the record would make each admission shift look like a container
+        /// change and journal a `changed` event for a container that did not
+        /// change. It is also why listContainers() still returns everything: the
+        /// consumers' stale sweeps delete on absence from that list, so dropping
+        /// a container from it would delete its rows rather than withhold them.
+        [[nodiscard]] virtual std::set<std::string> admittedIds() const = 0;
+
+        /// Which running containers listContainers() is CURRENTLY withholding
+        /// because the resolver has not keyed them yet. Empty means the list is
+        /// the whole node.
+        ///
+        /// These containers EXIST; what is missing is an attribution key, which
+        /// is why listContainers() will not publish them -- a consumer handed a
+        /// key that is about to change acts on the wrong container. But a stale
+        /// sweep never asks for a key. It asks which containers exist, deletes
+        /// the rows of the rest, and absence from the keyed list is the only
+        /// answer it used to get. So a container nobody can key blocked cleanup
+        /// for as long as it ran.
+        ///
+        /// Publishing the ids separately answers the existence question without
+        /// answering the key question.
+        [[nodiscard]] virtual std::set<std::string> unkeyedContainerIds() const = 0;
+
+        /// Everything a `list` reply needs, taken together under one lock.
+        ///
+        /// `since` asks for the lifecycle delta as well, from the same instant.
+        /// The separate accessors remain for callers that genuinely want one of
+        /// them; anything that acts on the RELATIONSHIP between them must use
+        /// this, because reading them one at a time lets a container fall
+        /// between two of the sets -- see ListSnapshot.
+        [[nodiscard]] virtual ListSnapshot listSnapshot(const std::optional<LifecycleCursor>& since) const = 0;
+
+        /// How many containers may report; <= 0 means unlimited, which is the
+        /// shipped default. Pushed by the manager, so it changes at runtime.
+        virtual void setSyncLimit(int limit) = 0;
+
+        /// Arm the admission settle deadline, and settle if it has passed.
+        ///
+        /// The store holds no clock of its own -- every mutator is handed a
+        /// TimePoint -- and the grace must still expire on a node whose
+        /// snapshots have stopped. Callers that read admission call this first
+        /// with the current time: that is the only tick the verdict needs,
+        /// since nothing else is waiting on it.
+        virtual void settleAdmissionIfDue(TimePoint now) = 0;
 
         /// Transitions of the listContainers() set after `from`.
         ///

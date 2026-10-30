@@ -12,6 +12,7 @@
 #include <cstring>
 #include <json.hpp>
 #include <optional>
+#include <set>
 #include <string>
 #include <utility>
 #include <vector>
@@ -72,6 +73,23 @@ namespace wazuh::container_instances_client
         /// so on a 100-container node this is the difference between 101
         /// connections and 1.
         nlohmann::json record;
+
+        /// Whether this container may report to the manager.
+        ///
+        /// TRUE by default, and that default is load-bearing in two directions.
+        /// A server older than the key says nothing, and must read as "report
+        /// everything" — the alternative silently stops a working agent from
+        /// reporting at all. A `resolve` reply also says nothing, because
+        /// admission is a question about reporting and a resolve asks about
+        /// identity; read this from a `list` reply, which is where every
+        /// consumer already gets its container set.
+        ///
+        /// A container with `synced == false` still EXISTS and must still be
+        /// counted as known. Dropping it from the caller's known set is not a
+        /// smaller version of withholding it — the stale sweeps delete on
+        /// absence from that set, so it would delete the container's rows
+        /// instead of holding them back.
+        bool synced {true};
     };
 
     /// One transition of the published container set.
@@ -110,6 +128,15 @@ namespace wazuh::container_instances_client
 
         /// Absent for removals.
         nlohmann::json record;
+
+        /// Whether this container may report to the manager, as
+        /// ContainerRef::synced -- read from this event's `data`, which the
+        /// producer builds with the same serialiser as a `list` entry.
+        ///
+        /// TRUE by default, for ContainerRef::synced's reason and one more: a
+        /// removal carries no `data`, so there is nothing to read and nothing
+        /// to decide -- a removed container reports nothing either way.
+        bool synced {true};
     };
 
     /// Reply to a cursor read. The three unhappy outcomes are deliberately
@@ -127,6 +154,39 @@ namespace wazuh::container_instances_client
         bool available {false};
         bool deltaSupported {false};
         bool resyncRequired {false};
+
+        /// Whether `containers` is the whole node. False when the server says it is
+        /// still withholding running containers its resolver has not keyed.
+        ///
+        /// Defaults to true, and stays true when the server does not send the key,
+        /// so an older connector reads exactly as it did before. A caller that
+        /// deletes rows for containers absent from the list MUST check this: at
+        /// startup "not resolved yet" and "gone" look identical on the wire, and
+        /// acting on the second deletes a live container's state.
+        bool complete {true};
+
+        /// Every container the server currently admits, as of this reply.
+        ///
+        /// Admission is not carried by the lifecycle stream -- a container
+        /// readmitted because another freed a slot has no event of its own -- so
+        /// a consumer that tracks admission from events alone goes stale the
+        /// moment a cap starts binding. `admittedKnown` says the server sent it;
+        /// false means a server too old to, and the caller must then keep doing
+        /// whatever it did before rather than read the empty set as "nobody".
+        bool admittedKnown {false};
+        std::set<std::string> admitted;
+
+        /// Containers that exist but have no attribution key yet, so the keyed
+        /// list above omits them.
+        ///
+        /// A consumer that deletes on absence must keep these: they are not
+        /// gone, they are unidentifiable. A consumer that needs the key -- the
+        /// kernel filter, admission -- must still leave them alone, which is
+        /// why they are here and not in `containers`. `unkeyedKnown` says the
+        /// server reported them at all; false means one too old to, and then
+        /// `complete` is the only guard left.
+        bool unkeyedKnown {false};
+        std::set<std::string> unkeyed;
 
         std::uint64_t epoch {0};
         std::uint64_t seq {0};
@@ -194,13 +254,51 @@ namespace wazuh::container_instances_client
         ///        list would then delete every stored row the moment the
         ///        connector blips. Callers that only iterate what they got can
         ///        keep ignoring it.
-        [[nodiscard]] std::vector<ContainerRef> listContainers(bool* reachable = nullptr) const
+        /// @param complete Optional out-param, set to false when the server says it
+        ///        is still withholding running containers its resolver has not keyed.
+        ///        Set to true for any well-formed reply that does not say so,
+        ///        including one from a server too old to know the key. A caller that
+        ///        derives DELETIONS from this list must check it: `reachable` only
+        ///        says the connector answered, not that it answered about every
+        ///        container, and at startup the two differ.
+        /// @param unkeyed Optional out-param, filled with the ids of containers
+        ///        that exist but are not in the list because they have no
+        ///        attribution key yet. @param unkeyedKnown says whether the
+        ///        server reported them at all.
+        /// @param admitted Optional out-param, filled with the server's WHOLE
+        ///        admitted set: every container id it allows to report, keyed or
+        ///        not. Each listed record also carries ContainerRef::synced, but
+        ///        a container in @param unkeyed has no record to carry it, and
+        ///        this is the only place its decision appears. @param
+        ///        admittedKnown says whether the server sent the set at all; when
+        ///        it did not, the set is empty and means nothing.
+        [[nodiscard]] std::vector<ContainerRef> listContainers(bool* reachable = nullptr,
+                                                               bool* complete = nullptr,
+                                                               std::set<std::string>* unkeyed = nullptr,
+                                                               bool* unkeyedKnown = nullptr,
+                                                               std::set<std::string>* admitted = nullptr,
+                                                               bool* admittedKnown = nullptr) const
         {
             std::vector<ContainerRef> result;
+
+            if (admittedKnown != nullptr)
+            {
+                *admittedKnown = false;
+            }
 
             if (reachable != nullptr)
             {
                 *reachable = false;
+            }
+
+            if (complete != nullptr)
+            {
+                *complete = false;
+            }
+
+            if (unkeyedKnown != nullptr)
+            {
+                *unkeyedKnown = false;
             }
 
             const auto reply = roundTrip(R"({"version":2,"op":"list"})");
@@ -222,10 +320,61 @@ namespace wazuh::container_instances_client
             }
 
             // From here the reply is a well-formed `ok` list: an empty array now
-            // means "no containers", which is authoritative.
+            // means "no containers", which is authoritative -- as far as it goes.
             if (reachable != nullptr)
             {
                 *reachable = true;
+            }
+
+            if (complete != nullptr)
+            {
+                // Absent key means a server from before this existed, which only
+                // ever sent complete lists.
+                const auto withheldIt = parsed.find("withheld");
+                *complete = (withheldIt == parsed.end() || !withheldIt->is_number_unsigned() ||
+                             withheldIt->get<std::uint64_t>() == 0);
+            }
+
+            const auto unkeyedIt = parsed.find("known_unkeyed");
+
+            if (unkeyedIt != parsed.end() && unkeyedIt->is_array())
+            {
+                if (unkeyedKnown != nullptr)
+                {
+                    *unkeyedKnown = true;
+                }
+
+                if (unkeyed != nullptr)
+                {
+                    for (const auto& id : *unkeyedIt)
+                    {
+                        if (id.is_string())
+                        {
+                            unkeyed->insert(id.get<std::string>());
+                        }
+                    }
+                }
+            }
+
+            const auto admittedIt = parsed.find("admitted");
+
+            if (admittedIt != parsed.end() && admittedIt->is_array())
+            {
+                if (admittedKnown != nullptr)
+                {
+                    *admittedKnown = true;
+                }
+
+                if (admitted != nullptr)
+                {
+                    for (const auto& id : *admittedIt)
+                    {
+                        if (id.is_string())
+                        {
+                            admitted->insert(id.get<std::string>());
+                        }
+                    }
+                }
             }
 
             for (const auto& item : *containersIt)
@@ -270,6 +419,19 @@ namespace wazuh::container_instances_client
                 return delta;
             }
 
+            return parseListReply(parsed);
+        }
+
+        /// Reads a `list` reply already fetched and parsed as JSON.
+        ///
+        /// Split out from listContainersSince() so the wire contract can be
+        /// checked against the producer's own serialiser without a socket:
+        /// this is the only reader of these keys, and nothing reached it
+        /// before.
+        [[nodiscard]] static ContainerDelta parseListReply(const nlohmann::json& parsed)
+        {
+            ContainerDelta delta;
+
             const auto containersIt = parsed.find("containers");
             if (containersIt == parsed.end() || !containersIt->is_array())
             {
@@ -277,8 +439,48 @@ namespace wazuh::container_instances_client
             }
 
             // A well-formed `ok` list reply: whatever else is true, the
-            // connector answered and its view is authoritative.
+            // connector answered.
             delta.available = true;
+
+            // ...but answering is not the same as answering completely. Absent
+            // key means a server from before this existed, which only ever sent
+            // complete lists, so the default stands.
+            const auto withheldIt = parsed.find("withheld");
+
+            if (withheldIt != parsed.end() && withheldIt->is_number_unsigned())
+            {
+                delta.complete = (withheldIt->get<std::uint64_t>() == 0);
+            }
+
+            const auto unkeyedIt = parsed.find("known_unkeyed");
+
+            if (unkeyedIt != parsed.end() && unkeyedIt->is_array())
+            {
+                delta.unkeyedKnown = true;
+
+                for (const auto& id : *unkeyedIt)
+                {
+                    if (id.is_string())
+                    {
+                        delta.unkeyed.insert(id.get<std::string>());
+                    }
+                }
+            }
+
+            const auto admittedIt = parsed.find("admitted");
+
+            if (admittedIt != parsed.end() && admittedIt->is_array())
+            {
+                delta.admittedKnown = true;
+
+                for (const auto& id : *admittedIt)
+                {
+                    if (id.is_string())
+                    {
+                        delta.admitted.insert(id.get<std::string>());
+                    }
+                }
+            }
 
             for (const auto& item : *containersIt)
             {
@@ -337,6 +539,12 @@ namespace wazuh::container_instances_client
                 if (const auto data = item.find("data"); data != item.end() && data->is_object())
                 {
                     event.extraCgroupIds = parseDecimalU64Array(*data, "extra_cgroup_ids");
+
+                    if (const auto synced = data->find("synced");
+                        synced != data->end() && synced->is_boolean())
+                    {
+                        event.synced = synced->get<bool>();
+                    }
                 }
 
                 if (event.containerId.empty())
@@ -568,6 +776,10 @@ namespace wazuh::container_instances_client
                 ref.cgroupId = parseDecimalU64(*it);
             }
             ref.extraCgroupIds = parseDecimalU64Array(item, "extra_cgroup_ids");
+            if (const auto it = item.find("synced"); it != item.end() && it->is_boolean())
+            {
+                ref.synced = it->get<bool>();
+            }
             if (ref.containerId.empty())
             {
                 return std::nullopt;

@@ -79,6 +79,10 @@ namespace wazuh::container_instances
                 throw std::runtime_error("container_instances: a kubernetes or docker section is required");
             }
 
+            // Absent means unlimited, which is both the default and what every
+            // manager that predates this key implies by saying nothing.
+            config.syncedContainerLimit = configuration.value("synced_container_limit", 0);
+
             return config;
         }
 
@@ -96,6 +100,32 @@ namespace wazuh::container_instances
             , m_transport(m_logger)
         {
             logCgroupHostMode(m_logger);
+
+            // Before the cap, and before any connector runs. The store cannot
+            // work out how many sources will enumerate this node, and until it
+            // knows it cannot tell "nobody has reported yet" from "this is the
+            // whole node" -- which is the difference between withholding the
+            // admission verdict and freezing an arbitrary one.
+            //
+            // Ordered ahead of setSyncLimit() deliberately: that call
+            // recomputes admission, and with no barrier configured it would
+            // settle the verdict here, against an empty store, before a single
+            // container existed.
+            m_store.setExpectedSources(static_cast<std::size_t>(config.kubernetes.has_value()) +
+                                       static_cast<std::size_t>(config.docker.has_value()));
+
+            // Before any connector runs, so the first snapshot is decided
+            // against the real cap instead of admitting everything and then
+            // withdrawing most of it one reconcile later.
+            m_store.setSyncLimit(config.syncedContainerLimit);
+
+            if (config.syncedContainerLimit > 0)
+            {
+                m_logger(LogLevel::info,
+                         "At most " + std::to_string(config.syncedContainerLimit) +
+                             " container(s) will report to the manager; the rest stay visible locally but are "
+                             "withheld. Raise containers.synced_limit to report more.");
+            }
 
             std::vector<RefresherBinding> refreshers;
             std::string connectorNames;

@@ -65,18 +65,6 @@ std::atomic<bool> g_warmupWindowClosed{false};
 constexpr int kQuiescenceRetryAttempts = 5;
 std::atomic<bool> g_containersStable{false};
 
-std::unordered_set<std::string>
-ContainerIdSet(const std::vector<wazuh::container_instances_client::ContainerRef>& refs)
-{
-    std::unordered_set<std::string> ids;
-    ids.reserve(refs.size());
-    for (const auto& ref : refs)
-    {
-        ids.insert(ref.containerId);
-    }
-    return ids;
-}
-
 /// Parses one container_instances record (see wire_protocol.hpp's
 /// recordToJson()) into the shared runtime context. Pod/namespace/node/
 /// annotations/owner_refs are only ever present when the module reports
@@ -163,7 +151,13 @@ ContainerContextPtr ContextFromRecord(const nlohmann::json& data)
 // connect/send/recv/close against a 2-worker server with a 1 s timeout, so
 // dropping the follow-ups takes a 100-container node from 101 connections per
 // baseline to 1.
-std::vector<ContainerIdentity> DiscoverContainers(const std::string& socket_path, bool* reachable = nullptr)
+std::vector<ContainerIdentity> DiscoverContainers(const std::string& socket_path,
+                                                  bool* reachable = nullptr,
+                                                  bool* complete = nullptr,
+                                                  std::set<std::string>* unkeyed = nullptr,
+                                                  bool* unkeyedKnown = nullptr,
+                                                  std::set<std::string>* admitted = nullptr,
+                                                  bool* admittedKnown = nullptr)
 {
     wazuh::container_instances_client::ContainerInstancesClient client(socket_path);
     std::vector<ContainerIdentity> out;
@@ -173,8 +167,41 @@ std::vector<ContainerIdentity> DiscoverContainers(const std::string& socket_path
         *reachable = false;
     }
 
-    std::vector<wazuh::container_instances_client::ContainerRef> refs;
+    // Pessimistic until a reply says otherwise, exactly like `reachable`: an
+    // unanswered query is not a complete list of nothing.
+    if (complete != nullptr)
+    {
+        *complete = false;
+    }
+
+    // ONE value, not four variables: a list from one poll carrying the
+    // completeness flag and unkeyed ids of another is what let the caller sweep
+    // a container that had merely restarted. See PolledListing.
+    // Written through to the out-params once, at the end.
+    using Listing = PolledListing<std::vector<wazuh::container_instances_client::ContainerRef>>;
+
+    Listing listing;
     bool answered = false;
+
+    const std::function<std::optional<Listing>()> poll = [&client]() -> std::optional<Listing>
+    {
+        Listing answer;
+        bool polled = false;
+        answer.payload = client.listContainers(
+            &polled, &answer.complete, &answer.unkeyed, &answer.unkeyedKnown, &answer.admitted, &answer.admittedKnown);
+
+        if (!polled)
+        {
+            return std::nullopt;
+        }
+
+        for (const auto& ref : answer.payload)
+        {
+            answer.ids.insert(ref.containerId);
+        }
+
+        return answer;
+    };
 
     // Phase 1 — get an answer, and give a still-warming connector time to have
     // something to report.
@@ -182,12 +209,10 @@ std::vector<ContainerIdentity> DiscoverContainers(const std::string& socket_path
     const int attempts = warmupWindow ? kListRetryAttempts : 1;
     for (int attempt = 1; attempt <= attempts; ++attempt)
     {
-        bool polled = false;
-        auto listed = client.listContainers(&polled);
-        if (polled)
+        if (auto answer = poll())
         {
             answered = true;
-            refs = std::move(listed);
+            listing = std::move(*answer);
         }
 
         // Two different reasons to poll again, and they must not be conflated:
@@ -201,7 +226,7 @@ std::vector<ContainerIdentity> DiscoverContainers(const std::string& socket_path
         // `answered` gates the caller's stale sweep (see the header), and an
         // empty list from a connector that has answered is still authoritative
         // once the warm-up window has closed.
-        if ((answered && !refs.empty()) || attempt == attempts)
+        if ((answered && !listing.payload.empty()) || attempt == attempts)
         {
             break;
         }
@@ -215,40 +240,18 @@ std::vector<ContainerIdentity> DiscoverContainers(const std::string& socket_path
         *reachable = answered;
     }
 
-    if (!refs.empty())
+    if (!listing.payload.empty())
     {
         g_everSawContainers.store(true);
     }
 
-    // Phase 2 — quiescence. Only meaningful once there is a list to compare.
-    if (!refs.empty() && !g_containersStable.load())
+    // Phase 2 — quiescence. Only meaningful once there is something to compare,
+    // and an unkeyed container counts: it is a container, and on this path it
+    // is usually one that has just restarted.
+    if (!listing.settledIds().empty() && !g_containersStable.load())
     {
-        auto lastIds = ContainerIdSet(refs);
-        bool stable = false;
-
-        for (int attempt = 1; attempt <= kQuiescenceRetryAttempts; ++attempt)
-        {
-            std::this_thread::sleep_for(kListRetryDelay);
-
-            bool polled = false;
-            auto nextRefs = client.listContainers(&polled);
-            if (!polled)
-            {
-                // The connector went away mid-check. Keep the last list that it
-                // did answer with rather than adopting a failed poll's empty
-                // one, and leave the latch clear so the next run re-checks.
-                break;
-            }
-
-            auto nextIds = ContainerIdSet(nextRefs);
-            if (nextIds == lastIds)
-            {
-                stable = true;
-                break;
-            }
-            refs = std::move(nextRefs);
-            lastIds = std::move(nextIds);
-        }
+        const bool stable = SettleContainerListing<std::vector<wazuh::container_instances_client::ContainerRef>>(
+            listing, kQuiescenceRetryAttempts, poll, [] { std::this_thread::sleep_for(kListRetryDelay); });
 
         if (stable)
         {
@@ -261,15 +264,40 @@ std::vector<ContainerIdentity> DiscoverContainers(const std::string& socket_path
         // accepting a possibly-incomplete list for the rest of the process.
     }
 
-    out.reserve(refs.size());
-    for (const auto& ref : refs)
+    if (complete != nullptr)
+    {
+        *complete = listing.complete;
+    }
+
+    if (unkeyedKnown != nullptr)
+    {
+        *unkeyedKnown = listing.unkeyedKnown;
+    }
+
+    if (unkeyed != nullptr)
+    {
+        *unkeyed = std::move(listing.unkeyed);
+    }
+
+    if (admittedKnown != nullptr)
+    {
+        *admittedKnown = listing.admittedKnown;
+    }
+
+    if (admitted != nullptr)
+    {
+        *admitted = std::move(listing.admitted);
+    }
+
+    out.reserve(listing.payload.size());
+    for (const auto& ref : listing.payload)
     {
         ContainerContextPtr ctx;
         if (ref.record.is_object())
         {
             ctx = ContextFromRecord(ref.record);
         }
-        out.push_back(ContainerIdentity{ref.containerId, std::move(ctx)});
+        out.push_back(ContainerIdentity{ref.containerId, std::move(ctx), ref.synced});
     }
     return out;
 }
@@ -678,10 +706,23 @@ int RunSyscollectorDbsyncBaselineForContainers(const std::string&              c
     return RunSyscollectorDbsyncBaselineFrom([&selected]() { return selected; }, pids, sink, status_sink);
 }
 
-int ListContainers(const std::string& connector_socket_path, const ContainerIdSink& sink)
+int ListContainers(const std::string& connector_socket_path, const ContainerIdSink& sink,
+                   ContainerListStatus* status)
 {
     bool reachable = false;
-    const auto identities = DiscoverContainers(connector_socket_path, &reachable);
+    bool listIsComplete = false;
+    bool reportedUnkeyed = false;
+    bool reportedAdmitted = false;
+    std::set<std::string> unkeyed;
+    std::set<std::string> admitted;
+    const auto identities = DiscoverContainers(
+        connector_socket_path, &reachable, &listIsComplete, &unkeyed, &reportedUnkeyed, &admitted, &reportedAdmitted);
+
+    if (status != nullptr)
+    {
+        status->complete = listIsComplete;
+        status->unkeyedKnown = reportedUnkeyed;
+    }
 
     // -1, not 0. Callers use this list as the authority on what still exists
     // and delete the rows of everything absent from it, so an unreachable
@@ -696,8 +737,35 @@ int ListContainers(const std::string& connector_socket_path, const ContainerIdSi
     int count = 0;
 
     for (const auto& identity : identities) {
-        sink(identity.container_id);
+        sink(identity.container_id, identity.synced);
         ++count;
+    }
+
+    // An unkeyed container is a container, and the cap ranks it like any other.
+    // It has no record in the list to carry a `synced` flag, so its decision
+    // comes from the connector's whole admitted set instead -- and it must come
+    // from there rather than from each consumer's own guess. Every consumer
+    // guessed "admitted", so a container reported outside the ceiling for as
+    // long as it stayed unkeyed, which is a window every restart opens.
+    //
+    // Not counted in the return value: that is the LIST's length, which callers
+    // read back as how many containers the connector could key.
+    if (reportedAdmitted)
+    {
+        for (const auto& id : unkeyed)
+        {
+            sink(id, admitted.count(id) != 0 ? 1 : 0);
+        }
+    }
+    else
+    {
+        // A connector too old to send the set. Nothing here can say whether it
+        // refused these, and reading silence as a refusal would retract a live
+        // container's rows; admit them, as every consumer used to.
+        for (const auto& id : unkeyed)
+        {
+            sink(id, 1);
+        }
     }
 
     return count;

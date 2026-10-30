@@ -602,7 +602,7 @@ void test_getSyscheckConfig_no_directories(void **state)
     cJSON *file_limit_enabled = cJSON_GetObjectItem(file_limit, "enabled");
     assert_string_equal(cJSON_GetStringValue(file_limit_enabled), "yes");
     cJSON *file_limit_entries = cJSON_GetObjectItem(file_limit, "entries");
-    assert_int_equal(file_limit_entries->valueint, 100000);
+    assert_int_equal(file_limit_entries->valueint, 300000);
 
     cJSON *registry_limit = cJSON_GetObjectItem(sys_items, "registry_limit");
     cJSON *registry_limit_enabled = cJSON_GetObjectItem(registry_limit, "enabled");
@@ -865,7 +865,7 @@ void test_fim_copy_directory_null(void **state) {
 void test_fim_copy_directory_return_dir_copied(void **state) {
     /* Zero-initialised, and it has to be: fim_copy_directory() reads every field
      * of what it is handed, and `container` joined directory_t after this test
-     * was written (#37532). Left to whatever the stack held, container.name came
+     * was written. Left to whatever the stack held, container.name came
      * out non-NULL and the copy strdup'd a garbage pointer -- an access violation
      * on Windows, and silently harmless on Linux only because the stack there
      * happened to be zero. Setting the fields one by one is what let a newly

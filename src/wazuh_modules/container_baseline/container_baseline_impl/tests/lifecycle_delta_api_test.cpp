@@ -1,6 +1,6 @@
 /*
  * Wazuh container_baseline — lifecycle delta and per-container scan C API
- * (#37532 / #37203 O3, O14).
+ * (#37203 O3, O14).
  * Copyright (C) 2015, Wazuh Inc.
  *
  * This program is free software; you can redistribute it

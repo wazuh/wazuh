@@ -1,4 +1,4 @@
-/* Throw-away spike harness for #37532 M4 (users/groups + packages baseline).
+/* Throw-away spike harness for M4 (users/groups + packages baseline).
  *
  * Mirrors the ipc-test-evidence.md approach: a tiny runner around the real
  * scanner code, no mocks. Takes a container id, resolves a live PID exactly

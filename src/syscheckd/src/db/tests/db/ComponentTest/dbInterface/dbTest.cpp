@@ -49,23 +49,23 @@ void transaction_callback(ReturnTypeCallback resultType, const cJSON* result_jso
         "uid":  "0",
         "owner":    "fakeUser"
     }])"_json;
-    const cJSON* dbsync_event = NULL;
-    cJSON* json_path = NULL;
-    ASSERT_EQ(INSERTED, resultType);
-    ASSERT_EQ(FIM_ADD, event_data->event->type);
+const cJSON* dbsync_event = NULL;
+cJSON* json_path = NULL;
+ASSERT_EQ(INSERTED, resultType);
+ASSERT_EQ(FIM_ADD, event_data->event->type);
 
-    if (cJSON_IsArray(result_json))
+if (cJSON_IsArray(result_json))
+{
+    if (dbsync_event = cJSON_GetArrayItem(result_json, 0), dbsync_event != NULL)
     {
-        if (dbsync_event = cJSON_GetArrayItem(result_json, 0), dbsync_event != NULL)
-        {
-            dbsync_event = result_json;
+        dbsync_event = result_json;
 
-            if (json_path = cJSON_GetObjectItem(dbsync_event, "path"), json_path != NULL)
-            {
-                ASSERT_EQ(cJSON_GetStringValue(json_path), expectedValue.at("path"));
-            }
+        if (json_path = cJSON_GetObjectItem(dbsync_event, "path"), json_path != NULL)
+        {
+            ASSERT_EQ(cJSON_GetStringValue(json_path), expectedValue.at("path"));
         }
     }
+}
 }
 
 TEST_F(DBTestFixture, TestFimDBInit)
@@ -75,6 +75,40 @@ TEST_F(DBTestFixture, TestFimDBInit)
         const auto fileFIMTest {std::make_unique<FileItem>(insertFileStatement)};
         ASSERT_EQ(fim_db_file_update(fileFIMTest->toFimEntry(), callback_data_added), FIMDB_OK);
     });
+}
+
+TEST_F(DBTestFixture, ContainerSyncFlagsAndCountsAreScopedByPrimaryKey)
+{
+    for (const std::string id :
+            {"", "a", "a'b"
+            })
+    {
+        auto row = insertFileStatement;
+        row["container_id"] = id;
+        row["sync"] = 0;
+        ASSERT_EQ(fim_db_container_file_sync(
+        row.dump().c_str(), [](ReturnTypeCallback, const cJSON*, void*) {}, nullptr),
+        FIMDB_OK);
+        pending_sync_item_t item {};
+        item.json = cJSON_Parse(row.dump().c_str());
+        ASSERT_NE(item.json, nullptr);
+        EXPECT_EQ(fim_db_set_sync_flag(const_cast<char*>(FIMDB_FILE_TABLE_NAME), &item, 1), 0);
+        cJSON_Delete(item.json);
+    }
+    EXPECT_EQ(fim_db_count_synced_docs(FIMDB_FILE_TABLE_NAME), 1);
+    EXPECT_EQ(fim_db_count_synced_container_docs("a"), 1);
+    EXPECT_EQ(fim_db_count_synced_container_docs("a'b"), 1);
+    EXPECT_EQ(fim_db_count_synced_container_docs("missing"), 0);
+    EXPECT_EQ(fim_db_count_container_rows("a'b", nullptr), 1);
+    EXPECT_EQ(fim_db_count_container_rows("a'b", insertFileStatement["path"].get<std::string>().c_str()), 1);
+    EXPECT_EQ(fim_db_count_container_rows("a'b", "/missing'path"), 0);
+    EXPECT_EQ(fim_db_count_container_rows("", nullptr), -1);
+    cJSON* paths = fim_db_get_container_paths("a'b");
+    ASSERT_NE(paths, nullptr);
+    ASSERT_EQ(cJSON_GetArraySize(paths), 1);
+    EXPECT_STREQ(cJSON_GetArrayItem(paths, 0)->valuestring, insertFileStatement["path"].get<std::string>().c_str());
+    cJSON_Delete(paths);
+    EXPECT_EQ(fim_db_get_container_paths(nullptr), nullptr);
 }
 
 TEST_F(DBTestFixture, TestTransactionsFile)

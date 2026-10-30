@@ -1,6 +1,6 @@
 /*
  * Wazuh Syscheckd — unit tests for the eBPF drain's cgroup attribution map
- * (#37532 / #37396).
+ * (#37396).
  * Copyright (C) 2015, Wazuh Inc.
  *
  * This program is free software; you can redistribute it
@@ -32,15 +32,15 @@ using namespace fim_container_events;
 namespace
 {
 
-bool Contains(const std::vector<std::uint64_t>& haystack, std::uint64_t needle)
-{
-    return std::find(haystack.begin(), haystack.end(), needle) != haystack.end();
-}
+    bool Contains(const std::vector<std::uint64_t>& haystack, std::uint64_t needle)
+    {
+        return std::find(haystack.begin(), haystack.end(), needle) != haystack.end();
+    }
 
-bool Contains(const std::vector<std::string>& haystack, const std::string& needle)
-{
-    return std::find(haystack.begin(), haystack.end(), needle) != haystack.end();
-}
+    bool Contains(const std::vector<std::string>& haystack, const std::string& needle)
+    {
+        return std::find(haystack.begin(), haystack.end(), needle) != haystack.end();
+    }
 
 } // namespace
 
@@ -363,6 +363,7 @@ TEST(CgroupContainerMapTest, PendingSetOverflowIsSurfacedExactlyOnce)
     {
         map.classify(id);
     }
+
     ASSERT_FALSE(map.takeUnknownOverflow());
 
     map.classify(5);
@@ -384,6 +385,7 @@ TEST(CgroupContainerMapTest, NegativeCacheIsDroppedWholeWhenFullAndStaysCorrect)
     {
         map.noteNotContainer(id);
     }
+
     ASSERT_EQ(4u, map.notContainerCount());
 
     map.noteNotContainer(5);
@@ -406,20 +408,20 @@ TEST(CgroupContainerMapTest, ClassifyStaysConsistentWhileInstallRunsConcurrently
 
     std::thread reader(
         [&map, &stop, &wrong]
+    {
+        while (!stop.load())
         {
-            while (!stop.load())
-            {
-                const auto resolution = map.classify(10);
+            const auto resolution = map.classify(10);
 
-                // The only two legal observations are "container-x" and, for the
-                // instant install() has cleared the map, unknown. Any other
-                // container id would be a torn read.
-                if (resolution.klass == CgroupClass::container && resolution.container_id != "container-x")
-                {
-                    ++wrong;
-                }
+            // The only two legal observations are "container-x" and, for the
+            // instant install() has cleared the map, unknown. Any other
+            // container id would be a torn read.
+            if (resolution.klass == CgroupClass::container && resolution.container_id != "container-x")
+            {
+                ++wrong;
             }
-        });
+        }
+    });
 
     for (int i = 0; i < 2000; ++i)
     {
@@ -443,15 +445,15 @@ TEST(CgroupContainerMapTest, ConcurrentDrainAndResolverAgreeOnEveryCgroup)
     // Drain: classifies a rotating set of cgroups, queueing whatever misses.
     std::thread drain(
         [&map, &stop]
+    {
+        while (!stop.load())
         {
-            while (!stop.load())
+            for (std::uint64_t id = 1; id <= kCgroups; ++id)
             {
-                for (std::uint64_t id = 1; id <= kCgroups; ++id)
-                {
-                    map.classify(id);
-                }
+                map.classify(id);
             }
-        });
+        }
+    });
 
     // Resolver: half are containers, half are host cgroups.
     unsigned long resolved = 0;
@@ -468,6 +470,7 @@ TEST(CgroupContainerMapTest, ConcurrentDrainAndResolverAgreeOnEveryCgroup)
             {
                 map.noteNotContainer(id);
             }
+
             ++resolved;
         }
     }
@@ -506,20 +509,20 @@ TEST(CgroupContainerMapTest, ConcurrentDrainAndResolverAgreeOnEveryCgroup)
 namespace
 {
 
-CgroupDeltaEvent Added(std::uint64_t cgroup, const std::string& id)
-{
-    return CgroupDeltaEvent {CgroupDeltaEvent::Kind::added, cgroup, id};
-}
+    CgroupDeltaEvent Added(std::uint64_t cgroup, const std::string& id)
+    {
+        return CgroupDeltaEvent {CgroupDeltaEvent::Kind::added, cgroup, id};
+    }
 
-CgroupDeltaEvent Changed(std::uint64_t cgroup, const std::string& id)
-{
-    return CgroupDeltaEvent {CgroupDeltaEvent::Kind::changed, cgroup, id};
-}
+    CgroupDeltaEvent Changed(std::uint64_t cgroup, const std::string& id)
+    {
+        return CgroupDeltaEvent {CgroupDeltaEvent::Kind::changed, cgroup, id};
+    }
 
-CgroupDeltaEvent Removed(std::uint64_t cgroup, const std::string& id)
-{
-    return CgroupDeltaEvent {CgroupDeltaEvent::Kind::removed, cgroup, id};
-}
+    CgroupDeltaEvent Removed(std::uint64_t cgroup, const std::string& id)
+    {
+        return CgroupDeltaEvent {CgroupDeltaEvent::Kind::removed, cgroup, id};
+    }
 
 } // namespace
 
@@ -629,11 +632,14 @@ TEST(CgroupContainerMapTest, ApplyDeltaConvergesToTheSameMapAsInstall)
 
     viaInstall.install({{70, "a"}, {73, "b"}});
 
-    for (const std::uint64_t inode : {70ULL, 71ULL, 72ULL, 73ULL})
+    for (const std::uint64_t inode :
+            {
+                70ULL, 71ULL, 72ULL, 73ULL
+            })
     {
         EXPECT_EQ(viaInstall.classify(inode).klass, viaDelta.classify(inode).klass) << "inode " << inode;
         EXPECT_EQ(viaInstall.classify(inode).container_id, viaDelta.classify(inode).container_id)
-            << "inode " << inode;
+                << "inode " << inode;
     }
 
     EXPECT_EQ(viaInstall.containerCount(), viaDelta.containerCount());

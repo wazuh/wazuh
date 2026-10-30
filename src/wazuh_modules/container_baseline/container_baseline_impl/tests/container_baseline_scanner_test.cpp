@@ -542,7 +542,7 @@ TEST(BaselineOrchestrator, ContainerWhoseEveryPidIsGoneIsTreatedAsUnscanned)
 TEST(ListContainers, UnreachableConnectorReportsFailureNotAnEmptyNode)
 {
     int sinkCalls = 0;
-    const auto sink = [&sinkCalls](const std::string&) { ++sinkCalls; };
+    const auto sink = [&sinkCalls](const std::string&, bool) { ++sinkCalls; };
 
     // A path with no listener: indistinguishable, at the wire level, from a
     // connector that is starting up, restarting, or wedged.
@@ -555,14 +555,14 @@ TEST(ListContainers, UnreachableConnectorReportsFailureNotAnEmptyNode)
 
 TEST(ListContainers, EmptySocketPathReportsFailure)
 {
-    const auto sink = [](const std::string&) {};
+    const auto sink = [](const std::string&, bool) {};
 
     EXPECT_LT(wazuh::container_baseline::ListContainers("", sink), 0);
 }
 
 TEST(ListContainers, TheWarmupRetryIsPaidOncePerProcessNotOnEveryCall)
 {
-    const auto sink = [](const std::string&) {};
+    const auto sink = [](const std::string&, bool) {};
     const char* socket = "/tmp/container-baseline-test-no-such-socket.sock";
 
     // Discovery retries a missing or still-warming connector for up to
@@ -587,7 +587,7 @@ TEST(ListContainers, TheWarmupRetryIsPaidOncePerProcessNotOnEveryCall)
 }
 
 // ---------------------------------------------------------------------------
-// Single-container baseline (#37532): the entry point the eBPF reconcile
+// Single-container baseline: the entry point the eBPF reconcile
 // consumer drives. Exercised through the *From seam, so none of this needs a
 // running connector or a real container.
 // ---------------------------------------------------------------------------

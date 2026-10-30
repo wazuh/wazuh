@@ -484,6 +484,26 @@ typedef struct _config {
 
     AgentSyncProtocolHandle *sync_handle;
     int file_limit;
+    /* Container FIM's own document budget. Separate from
+     * file_limit because container rows and host rows share the file_entry
+     * table and the FIM sync index: with one budget a node's containers spend
+     * the agent's own allowance, and which rows survive is decided by walk
+     * order. PER CONTAINER. 0 = unlimited. */
+    int container_file_limit;
+    /* Rows ONE container may STORE in file_entry.
+     *
+     * A different layer from container_file_limit above, and the one that bounds
+     * the database: a document budget gates the sync flag and the row is stored
+     * either way, so it cannot stop the table filling. Measured on a real node,
+     * 50 containers filled the shared 100,000-row table, 4 of them ended up with
+     * no rows at all, and which ones was decided by walk order.
+     *
+     * The node-wide ceiling is file_entry_limit, enforced by dbsync. This is the
+     * per-container one, enforced above it, and its real value is that a refusal
+     * here can be attributed to a container -- which is what lets that
+     * container's scan be marked partial so its deletions are suppressed.
+     * PER CONTAINER. 0 = unlimited. */
+    int container_file_entry_limit;
     int registry_key_limit;
     int registry_value_limit;
 } syscheck_config;

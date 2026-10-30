@@ -7,7 +7,7 @@
  * Foundation.
  *
  * D17: telling "the root is not in this image" apart from "the root could not
- * be examined" (#37532, WP3 of 14-spike-integration-plan).
+ * be examined" (WP3 of 14-spike-integration-plan).
  *
  * WalkContainerPath() used to set one flag, root_missing, for ANY failure to
  * lstat the configured root. The consumer folded it into `partial`, which

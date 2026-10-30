@@ -57,8 +57,10 @@ BRIDGE := ../../src/container_baseline_fim_bridge.c
 # whose shape drifts from a host FIM alert is exactly what this test exists to
 # catch. Archive linking is per-object, so run_check.o — send_syscheck_msg(),
 # validate_and_persist_fim_event(), check_max_fps() — is NOT pulled in, and the
-# test's own stubs for those three stand.
-LIBS := -lsyscheckd_lib -lwazuh -lwazuhext -lpthread -ldl
+# test's own stubs for those three stand. The bridge also calls into libfimebpf
+# (admission) and libfimdb (container document counts).
+# Against a TEST=yes build the archive is gcov-instrumented: make check EXTRA_LIBS=--coverage
+LIBS := -lsyscheckd_lib -lfimebpf -lfimdb -lwazuh -lwazuhext -lpthread -ldl $(EXTRA_LIBS)
 
 # Compiled as C, linked with the C++ driver: libsyscheckd_lib.a carries C++
 # objects, so the link needs libstdc++.
