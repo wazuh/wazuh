@@ -13,6 +13,7 @@
 #include <sys/resource.h>
 
 #include <agentcache/agentMetadataCache.hpp>
+#include <api/event/ingestServer.hpp>
 #include <api/handlers.hpp>
 #include <api/status/handlers.hpp>
 #include <base/eventParser.hpp>
@@ -41,6 +42,7 @@
 #include <geo/downloader.hpp>
 #include <geo/manager.hpp>
 #include <httpsrv/server.hpp>
+#include <httpsrv/udsServer.hpp>
 #include <iockvdb/helpers.hpp>
 #include <iockvdb/manager.hpp>
 #include <iocsync/iocsync.hpp>
@@ -319,7 +321,7 @@ int main(int argc, char* argv[])
     std::shared_ptr<dumper::Dumper> dumper;
     std::shared_ptr<raweventindexer::RawEventIndexer> rawEventIndexer;
     std::shared_ptr<confremote::ConfRemoteManager> remoteConf;
-    std::shared_ptr<httpsrv::Server> engineRemoteServer;
+    std::shared_ptr<httpsrv::UdsServer> engineRemoteServer;
     std::shared_ptr<cm::store::CMStore> cmStore;
     std::shared_ptr<cm::crud::ICrudService> cmCrudService;
     std::shared_ptr<cm::sync::CMSync> cmSyncService;
@@ -866,9 +868,12 @@ int main(int argc, char* argv[])
         // HTTP enriched events server
         if (enableProcessing)
         {
-            engineRemoteServer = std::make_shared<httpsrv::Server>("Event services", 0, false);
-            // Every cache setting is validated here, before the ingest server below starts listening: a
-            // bad value must stop start-up before any batch is accepted, not after.
+            // Every cache and ingest setting is validated here, before the ingest server below starts
+            // listening: a bad value must stop start-up before any batch is accepted, not after.
+            const auto ingestLimits = api::event::validateIngestLimits(
+                {confManager.get<std::size_t>(conf::key::SERVER_ENRICHED_EVENTS_MAX_BODY_BYTES),
+                 confManager.get<std::size_t>(conf::key::SERVER_ENRICHED_EVENTS_MAX_CONNECTIONS),
+                 confManager.get<std::size_t>(conf::key::SERVER_ENRICHED_EVENTS_MAX_INFLIGHT_BYTES)});
             agentMetadataCacheCleanInterval = agentcache::validateCleanInterval(
                 confManager.get<std::size_t>(conf::key::AGENT_METADATA_CACHE_CLEAN_INTERVAL));
             agentMetadataCache = std::make_shared<agentcache::AgentMetadataCache>(
@@ -879,13 +884,16 @@ int main(int argc, char* argv[])
             // Register retained cache usage and configured limits.
             agentcache::registerCacheMetrics(agentMetadataCache);
 
-            exitHandler.add([engineRemoteServer]() { engineRemoteServer->stop(); });
+            engineRemoteServer = api::event::makeIngestServer(orchestrator, dumper, agentMetadataCache, ingestLimits);
+            exitHandler.add(
+                [engineRemoteServer]()
+                {
+                    if (engineRemoteServer->isRunning())
+                    {
+                        engineRemoteServer->shutdown();
+                    }
+                });
 
-            engineRemoteServer->addRoute(httpsrv::Method::POST,
-                                         "/events/enriched",
-                                         api::event::handlers::pushEvent(orchestrator, dumper, agentMetadataCache));
-
-            // starting in a new thread
             engineRemoteServer->start(confManager.get<std::string>(conf::key::SERVER_ENRICHED_EVENTS_SOCKET));
 
             LOG_INFO("Remote engine's server initialized and started");
@@ -1015,7 +1023,7 @@ int main(int argc, char* argv[])
                 if (g_shutdown_requested)
                 {
                     LOG_INFO("Shutdown requested (signal: {}), stopping the engine", g_shutdown_requested);
-                    engineRemoteServer->stop();
+                    engineRemoteServer->shutdown(httpsrv::DEFAULT_SHUTDOWN_DEADLINE);
                 }
             }
             engineRemoteServer.reset();
