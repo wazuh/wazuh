@@ -706,22 +706,54 @@ namespace
 
     void MetadataStore::setSyncLimit(int limit)
     {
-        std::unique_lock lock(m_mutex);
-
-        if (m_syncLimit == limit)
         {
-            return;
+            std::unique_lock lock(m_mutex);
+
+            if (m_syncLimit == limit)
+            {
+                return;
+            }
+
+            m_syncLimit = limit;
+            recomputeAdmittedLocked();
         }
 
-        m_syncLimit = limit;
-        recomputeAdmittedLocked();
+        // This call changes admission and NOTHING else, so it is the one place
+        // where the recompute above is the only thing a consumer has to hear
+        // about. Without the notify an operator lowering containers.synced_limit
+        // waited for the drain's next scheduled poll -- up to
+        // resolver_interval_ms, 5 s by default -- before the containers it
+        // pushed out stopped reporting.
+        notifyLifecycleUnlocked();
     }
 
     void MetadataStore::recomputeAdmittedLocked()
     {
         const auto sets = containerIdSetsLocked();
         const auto& known = sets.known;
-        m_admitted = admitContainers(known, sets.visible, m_admitted, m_syncLimit);
+        auto admitted = admitContainers(known, sets.visible, m_admitted, m_syncLimit);
+
+        // An admission shift is a change consumers must hear about, and it is
+        // not always accompanied by one they would hear about anyway.
+        //
+        // The journal records VISIBILITY transitions, so it says nothing when a
+        // container the resolver cannot key gains or loses admission, and
+        // nothing at all when the operator moves the cap. Those changes reached
+        // the drain only on its next scheduled poll, up to resolver_interval_ms
+        // later, while the containers involved went on reporting -- or went on
+        // not reporting -- for that whole window.
+        //
+        // Marked here rather than journalled as an event, for the reason
+        // admittedIds() gives: an admission flag on the record would make
+        // recordEquals() read every shift as a container change. This only says
+        // "there is something new to fetch"; the whole admitted set rides the
+        // next reply either way.
+        if (admitted != m_admitted)
+        {
+            m_lifecycleDirty = true;
+        }
+
+        m_admitted = std::move(admitted);
 
         // Say how many are NOT reporting, on change rather than per pass.
         //

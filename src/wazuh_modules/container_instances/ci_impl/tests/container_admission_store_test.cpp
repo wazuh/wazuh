@@ -417,3 +417,70 @@ TEST(ContainerAdmissionStoreTest, ARestartingContainerKeepsItsSlotWhileItHasNoKe
     store.applySnapshot(kDocker, Snapshot({"a", "b"}), {}, Now());
     EXPECT_EQ(store.admittedIds(), (std::set<std::string> {"b"}));
 }
+
+// An admission shift wakes consumers, even when nothing became visible or
+// stopped being visible.
+//
+// The journal records VISIBILITY transitions, so it has nothing to say about a
+// container the resolver cannot key gaining or losing admission, and nothing at
+// all about the operator moving the cap. Those changes reached the drain only
+// on its next scheduled poll -- up to resolver_interval_ms, 5 s by default --
+// and the containers involved went on reporting, or went on not reporting, for
+// that whole window.
+TEST(ContainerAdmissionStoreTest, LoweringTheLimitWakesConsumersAtOnce)
+{
+    auto store = MakeStore();
+    int calls = 0;
+    store.setOnLifecycleChange([&](LifecycleCursor) { ++calls; });
+
+    store.applySnapshot(kDocker, Snapshot({"a", "b"}), {}, Now());
+    ASSERT_EQ(1, calls) << "the snapshot itself is one signal";
+
+    // Nothing appeared and nothing left. Only the cap moved, and it pushed "b"
+    // out: a consumer that is not told goes on reporting it.
+    store.setSyncLimit(1);
+
+    EXPECT_EQ(store.admittedIds(), (std::set<std::string> {"a"}));
+    EXPECT_EQ(2, calls) << "an admission change is a change";
+
+    // ...and a limit that changes nothing stays silent, or a quiet node would
+    // wake its consumers for no reason.
+    store.setSyncLimit(1);
+    EXPECT_EQ(2, calls);
+
+    store.setSyncLimit(5);
+    EXPECT_EQ(3, calls) << "raising it readmits 'b', which is equally worth hearing";
+}
+
+// The reviewer's case: a container whose admission changes while it has NO key.
+//
+// It is invisible to listContainers() at that moment, so no visibility
+// transition describes what happened to it, and the journal is silent. It is
+// still a container that was reporting and now may not, and every consumer has
+// to be told before it sends another of its documents.
+TEST(ContainerAdmissionStoreTest, AnUnkeyedIncumbentLosingAdmissionStillSignals)
+{
+    auto store = MakeStore();
+    store.setSyncLimit(2);
+
+    int calls = 0;
+    store.setOnLifecycleChange([&](LifecycleCursor) { ++calls; });
+
+    store.applySnapshot(kDocker, Snapshot({"a", "b"}), {}, Now());
+    ASSERT_EQ(store.admittedIds(), (std::set<std::string> {"a", "b"}));
+
+    // "b" restarts: no key for the moment, so it leaves the list but keeps its
+    // slot. That much IS a visibility transition and signals on its own.
+    store.applySnapshot(kDocker, {MakeRecord("a", InodeFor("a")), MakeRecord("b", 0)}, {}, Now());
+    ASSERT_EQ(ListedIds(store), (std::set<std::string> {"a"}));
+    ASSERT_EQ(store.admittedIds(), (std::set<std::string> {"a", "b"}));
+    const int beforeCap = calls;
+
+    // Now the cap pushes it out while it is still unkeyed. Nothing about its
+    // visibility changed -- it was already invisible -- so this is the signal
+    // that did not exist.
+    store.setSyncLimit(1);
+
+    EXPECT_EQ(store.admittedIds(), (std::set<std::string> {"a"}));
+    EXPECT_EQ(calls, beforeCap + 1);
+}
