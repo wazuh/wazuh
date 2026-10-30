@@ -198,3 +198,23 @@ TEST_F(IngestServerTest, ExpectContinueIsAnswered)
     EXPECT_EQ("HTTP/1.1 100 Continue\r\n\r\n", interim);
     EXPECT_EQ(200, statusOf(final)) << final;
 }
+
+// The values themselves are covered by httpsrv's metric tests; fastmetrics keeps the first registration of a
+// name, so in this binary they follow the first ingest server a test created.
+TEST_F(IngestServerTest, PublishesItsMetricsUnderServerIngest)
+{
+    for (const auto* suffix : {"inflight.bytes",
+                               "inflight.requests",
+                               "sessions",
+                               "queue.depth",
+                               "running",
+                               "shed.budget",
+                               "shed.connections",
+                               "shed.executor_full",
+                               "shed.shutdown",
+                               "handler_errors",
+                               "rejected.too_large"})
+    {
+        EXPECT_TRUE(fastmetrics::manager().exists(std::string {"server.ingest."} + suffix)) << suffix;
+    }
+}
