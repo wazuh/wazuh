@@ -1089,6 +1089,50 @@ TEST_F(ContainerReportingTest, ARetractionThatIsNotRefusedButStillLeavesTheRowRe
     EXPECT_TRUE(warnings.empty()) << "nothing is owed any more";
 }
 
+// The retraction loop releases the document budget whatever happened, so a
+// container whose rows stayed at sync=1 has its counter deleted while the
+// manager still holds those documents. That looks like a way past the cap, and
+// it is not: fim_container_doc_budget_release() drops a CACHE, and every path
+// that spends budget calls fim_container_doc_budget_initialize() first, which
+// recounts sync=1 rows straight from the database. An unretracted row is still
+// sync=1, so it is still counted.
+//
+// Pinned because nothing else states it. The protection is one initialize call
+// on each spending path, it is invisible from the release site, and removing
+// the one in updateContainerReporting() lets this container report
+// container_file_limit MORE documents on top of the ones already out there.
+TEST_F(ContainerReportingTest, AFailedRetractionDoesNotHandBackTheBudgetItDidNotRecover)
+{
+    container_reporting_test_host(2);
+
+    files = {{"a", {"/etc/one"}}, {"b", {"/etc/one", "/etc/two"}}};
+    admission = {{"a", true}, {"b", true}};
+    listed = false;
+    fim_run_container_baseline();
+    ASSERT_EQ(syncFlag("b", "/etc/one"), 1);
+    ASSERT_EQ(syncFlag("b", "/etc/two"), 1) << "b has spent both of its two documents";
+
+    // b loses admission and NOTHING can be withdrawn. Both documents stay on
+    // the manager; the budget is released anyway.
+    reject_persistence = true;
+    const char* known[] = {"a", "b"};
+    const char* onlyA[] = {"a"};
+    fim_container_set_admission(known, 2, onlyA, 1);
+    reject_persistence = false;
+    ASSERT_EQ(syncFlag("b", "/etc/one"), 1);
+    ASSERT_EQ(syncFlag("b", "/etc/two"), 1);
+
+    // b is admitted again and has grown a third file.
+    files["b"].push_back("/etc/three");
+    admission = {{"a", true}, {"b", true}};
+    listed = false;
+    persisted.clear();
+    fim_run_container_baseline();
+
+    EXPECT_EQ(syncFlag("b", "/etc/three"), 0)
+            << "b already holds two documents on the manager, which is its whole allowance";
+}
+
 // Once a container has spent its document budget, container_budget_decide()
 // refuses every withheld row it is offered. Offering them anyway costs a query,
 // a parse, a normalisation and a schema validation each, on every reconcile --
