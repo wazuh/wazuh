@@ -100,3 +100,22 @@ bool w_hotreload_ruleset_load_config(OS_XML * xml, XML_NODE conf_section_nodes, 
  * for querying to wazuh-db.
  */
 void w_hotreload_drain_queues();
+
+/**
+ * @brief Pop a decoded event for rule matching, preventing a hot reload until it is processed
+ *
+ * Takes the rule matching lock as reader before popping the event, so the ruleset cannot be
+ * switched or freed while the event is matched. If no event arrives before the timeout, the lock
+ * is released so that a pending hot reload can proceed.
+ * @param queue Queue of decoded events
+ * @param timeout Maximum time to wait for an event, in seconds
+ * @return The event, with the lock held, or NULL (lock released) if no event arrived
+ */
+struct _Eventinfo * w_hotreload_process_event_pop(w_queue_t * queue, time_t timeout);
+
+/**
+ * @brief Release the rule matching lock taken by w_hotreload_process_event_pop()
+ *
+ * Must be called once the event returned by w_hotreload_process_event_pop() has been processed.
+ */
+void w_hotreload_process_event_done(void);
