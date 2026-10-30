@@ -308,6 +308,27 @@ TEST(ConfigDownloadComponentTest, AStreamCutBeforeItsLastChunkIsDiscarded)
     EXPECT_EQ(0u, downloader.filesLeft());
 }
 
+// A decompression bomb: a few KiB of zstd that expand past the 64 MiB config cap
+// (CONFIG_MAX_DOWNLOAD_BYTES). The cap counts decoded bytes, and it's curl's own (63) that stops
+// the transfer, before the file sink's backstop would (23).
+TEST(ConfigDownloadComponentTest, AFrameThatExpandsPastTheCapIsStoppedThere)
+{
+    const std::string blob(64ULL * 1024 * 1024 + 1, 'x');
+    const uint16_t port = DOWNLOAD_PORT + 6;
+    auto manager = downloadManager(port, blob, DownloadReply::Zstd);
+    Downloader downloader {port};
+
+    EXPECT_EQ(nullptr, downloader.fetchConfig(blob));
+    ASSERT_EQ(2u, downloader.attempts().size());
+
+    for (const auto& attempt : downloader.attempts())
+    {
+        EXPECT_TRUE(curlErrorIs(attempt, "63")) << attempt.curlError;
+    }
+
+    EXPECT_EQ(0u, downloader.filesLeft());
+}
+
 TEST(ConfigDownloadComponentTest, TheWpkDownloadOffersNoEncoding)
 {
     const uint16_t port = DOWNLOAD_PORT + 5;
