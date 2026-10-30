@@ -46,18 +46,8 @@ namespace
     constexpr uint16_t DOWNLOAD_PORT = 24940; // Owns 24940-24948; see facadeE2e's port map.
     const std::string KEY_HEX = "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f";
 
-    /// About 256 KiB of merged.mg-like text: two zstd blocks, so half a frame still decodes to something.
-    std::string configBlob()
-    {
-        std::string blob = "#merged.mg\n<agent_config>\n";
-
-        for (int line = 0; blob.size() < 256 * 1024; line++)
-        {
-            blob += "  <localfile><location>/var/log/app-" + std::to_string(line) + ".log</location></localfile>\n";
-        }
-
-        return blob + "</agent_config>\n";
-    }
+    /// Two zstd blocks, so half a frame still decodes to something.
+    constexpr size_t CONFIG_BYTES = 256 * 1024;
 
     /// FakeManager takes fourteen positional arguments before the one this suite cares about.
     FakeManager downloadManager(uint16_t port, const std::string& blob, DownloadReply reply)
@@ -222,7 +212,7 @@ TEST(ConfigDownloadComponentTest, TheAgentsLibcurlDecodesZstd)
 
 TEST(ConfigDownloadComponentTest, AZstdReplyIsDecodedAndDeliveredByteForByte)
 {
-    const std::string blob = configBlob();
+    const std::string blob = mergedConfigText(CONFIG_BYTES);
     const uint16_t port = DOWNLOAD_PORT;
     auto manager = downloadManager(port, blob, DownloadReply::Zstd);
     Downloader downloader {port};
@@ -239,7 +229,7 @@ TEST(ConfigDownloadComponentTest, AZstdReplyIsDecodedAndDeliveredByteForByte)
 // remoted.http_content_encoding_enabled is off: the offer is ignored and the reply goes plain.
 TEST(ConfigDownloadComponentTest, APlainReplyToTheOfferIsDeliveredUnchanged)
 {
-    const std::string blob = configBlob();
+    const std::string blob = mergedConfigText(CONFIG_BYTES);
     const uint16_t port = DOWNLOAD_PORT + 1;
     auto manager = downloadManager(port, blob, DownloadReply::Plain);
     Downloader downloader {port};
@@ -256,7 +246,7 @@ TEST(ConfigDownloadComponentTest, APlainReplyToTheOfferIsDeliveredUnchanged)
 // transport failure, and nothing is left in the spool directory.
 TEST(ConfigDownloadComponentTest, ACorruptFrameIsDiscardedAfterOneRetry)
 {
-    const std::string blob = configBlob();
+    const std::string blob = mergedConfigText(CONFIG_BYTES);
     const uint16_t port = DOWNLOAD_PORT + 2;
     auto manager = downloadManager(port, blob, DownloadReply::ZstdCorrupt);
     Downloader downloader {port};
@@ -276,7 +266,7 @@ TEST(ConfigDownloadComponentTest, ACorruptFrameIsDiscardedAfterOneRetry)
 // successful transfer of a shorter config. Only config_hash stands between it and the agent.
 TEST(ConfigDownloadComponentTest, ATruncatedFrameIsCaughtByTheConfigHash)
 {
-    const std::string blob = configBlob();
+    const std::string blob = mergedConfigText(CONFIG_BYTES);
     const uint16_t port = DOWNLOAD_PORT + 3;
     auto manager = downloadManager(port, blob, DownloadReply::ZstdTruncatedFrame);
     Downloader downloader {port};
@@ -291,7 +281,7 @@ TEST(ConfigDownloadComponentTest, ATruncatedFrameIsCaughtByTheConfigHash)
 // #40900's manager ends a stream whose source failed without the terminating chunk.
 TEST(ConfigDownloadComponentTest, AStreamCutBeforeItsLastChunkIsDiscarded)
 {
-    const std::string blob = configBlob();
+    const std::string blob = mergedConfigText(CONFIG_BYTES);
     const uint16_t port = DOWNLOAD_PORT + 4;
     auto manager = downloadManager(port, blob, DownloadReply::ZstdUnterminated);
     Downloader downloader {port};
@@ -332,7 +322,7 @@ TEST(ConfigDownloadComponentTest, AFrameThatExpandsPastTheCapIsStoppedThere)
 TEST(ConfigDownloadComponentTest, TheWpkDownloadOffersNoEncoding)
 {
     const uint16_t port = DOWNLOAD_PORT + 5;
-    auto manager = downloadManager(port, configBlob(), DownloadReply::Zstd);
+    auto manager = downloadManager(port, mergedConfigText(CONFIG_BYTES), DownloadReply::Zstd);
     Downloader downloader {port};
 
     EXPECT_EQ(nullptr, downloader.fetchWpk()); // The fake serves no WPK: a 404, after the header is seen.

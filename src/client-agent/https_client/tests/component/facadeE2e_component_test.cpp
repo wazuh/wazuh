@@ -726,14 +726,7 @@ TEST_F(FacadeE2eTest, ZstdEncodedConfigIsDecodedAndDeliveredOnce)
     // (#38514): one zstd frame, chunked. The consumer has to get the plain merged.mg, exactly once,
     // with nothing in the facade knowing the bytes were ever encoded.
     const uint16_t port = TLS_PORT + 12;
-    std::string blob = "#merged.mg v3\n<agent_config>\n";
-
-    for (int line = 0; line < 2000; line++)
-    {
-        blob += "  <localfile><location>/var/log/app-" + std::to_string(line) + ".log</location></localfile>\n";
-    }
-
-    blob += "</agent_config>\n";
+    const std::string blob = mergedConfigText(128 * 1024);
     FakeManager manager {port, KEY_HEX, /*tls=*/true, /*settingsFlipAfter=*/0, blob, 0, 0, {}, {}, 0, 0, {}, 0, {},
                          DownloadOptions {DownloadReply::Zstd}};
 

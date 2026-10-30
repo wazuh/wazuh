@@ -79,6 +79,20 @@ namespace fake_download
     }
 } // namespace fake_download
 
+/// merged.mg-like text of at least minBytes, one <localfile> per line. zstd blocks are 128 KiB, so
+/// the size decides how many whole blocks half a frame still holds.
+inline std::string mergedConfigText(size_t minBytes)
+{
+    std::string text = "#merged.mg\n<agent_config>\n";
+
+    for (int line = 0; text.size() < minBytes; line++)
+    {
+        text += "  <localfile><location>/var/log/app-" + std::to_string(line) + ".log</location></localfile>\n";
+    }
+
+    return text + "</agent_config>\n";
+}
+
 /// Whether an Accept-Encoding value lists zstd: comma-separated codings, compared case-insensitively.
 /// q-values aren't looked at (#40900 reads q=0 as "not offered"); the agent only ever sends a bare "zstd".
 inline bool offersZstd(const std::string& acceptEncoding)
