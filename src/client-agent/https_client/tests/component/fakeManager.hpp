@@ -12,6 +12,7 @@
 #define _HC_FAKE_MANAGER_HPP
 
 #include "digest.hpp"
+#include "fakeDownloadReply.hpp"
 #include "jwt/enrollKeyDerivation.hpp"
 #include "jwt/jwtEnrollTokenVerifier.hpp"
 #include "jwt/jwtKeyDecoder.hpp"
@@ -159,6 +160,10 @@ class FakeManager final
         /// caBundle: the CA-rotation surface (#39321) -- what notify advertises
         /// and what /cacerts serves. Defaults leave both routes exactly as the
         /// bootstrap suite has always seen them.
+        /// download: how /download answers a config request that offered zstd
+        /// (#38514, fakeDownloadReply.hpp). The default answers plain, as before.
+        /// Every /download records the Accept-Encoding it carried, for
+        /// GET /peek/download-accept-encoding.
         FakeManager(uint16_t port,
                     const std::string& keyHex,
                     bool tls = false,
@@ -172,7 +177,8 @@ class FakeManager final
                     int scanVdRejectFirstNAttempts = 0,
                     std::string enrollPassword = {},
                     int enrollForcedStatus = 0,
-                    CaBundleOptions caBundle = {})
+                    CaBundleOptions caBundle = {},
+                    DownloadOptions download = {})
             : m_port(port)
             , m_keyHex(keyHex)
             , m_tls(tls)
@@ -187,6 +193,7 @@ class FakeManager final
             , m_enrollPassword(std::move(enrollPassword))
             , m_enrollForcedStatus(enrollForcedStatus)
             , m_caBundle(caBundle)
+            , m_download(download)
         {
             // Generated BEFORE fork(), deliberately: the server runs in a child
             // process that shares no memory with the test, so a certificate made
@@ -305,6 +312,7 @@ class FakeManager final
             const uint64_t vdFeedOffset = m_vdFeedOffset;
             const int scanVdRejectFirstNAttempts = m_scanVdRejectFirstNAttempts;
             const CaBundleOptions caBundle = m_caBundle;
+            const DownloadOptions download = m_download;
             const std::string configHash =
                 configBlob.empty() ? std::string {} :
                 sha256Hex(configBlob.data(), configBlob.size());
@@ -517,14 +525,28 @@ class FakeManager final
                                      "application/json");
             });
 
+            // The Accept-Encoding of the last /download, "<absent>" when it carried none, so a test can
+            // check the config fetcher offers zstd and the WPK fetcher doesn't (#38514).
+            auto downloadAcceptEncoding = std::make_shared<std::string>();
+            auto downloadMutex = std::make_shared<std::mutex>();
+
             server.Post(
                 "/download",
-                [verify, refuseAuth, configBlob](const httplib::Request & request, httplib::Response & response)
+                [verify, refuseAuth, configBlob, download, downloadAcceptEncoding,
+                         downloadMutex](const httplib::Request & request, httplib::Response & response)
             {
                 if (!verify("/download", request))
                 {
                     refuseAuth(response);
                     return;
+                }
+
+                const bool hasAcceptEncoding = request.has_header("Accept-Encoding");
+                const std::string acceptEncoding = request.get_header_value("Accept-Encoding");
+
+                {
+                    std::lock_guard<std::mutex> lock(*downloadMutex);
+                    *downloadAcceptEncoding = hasAcceptEncoding ? acceptEncoding : "<absent>";
                 }
 
                 if (configBlob.empty() || request.body.find("\"resource_type\":\"config\"") == std::string::npos)
@@ -544,28 +566,51 @@ class FakeManager final
                     return;
                 }
 
+                const auto body = std::make_shared<const DownloadBody>(
+                                      shapeDownloadBody(configBlob, download.reply, offersZstd(acceptEncoding)));
+
+                if (body->zstdEncoded)
+                {
+                    response.set_header("Content-Encoding", "zstd");
+                }
+
                 // Chunked transfer on purpose (#37733 5.2.3): the client's
                 // decode + stream-to-file path is exercised for real.
                 response.status = 200;
                 response.set_chunked_content_provider("application/octet-stream",
-                                                      [configBlob](size_t offset, httplib::DataSink & sink)
+                                                      [body](size_t offset, httplib::DataSink & sink)
                 {
                     constexpr size_t CHUNK = 16 * 1024;
-                    const size_t remaining = configBlob.size() - offset;
+                    const size_t remaining = body->bytes.size() - offset;
                     const size_t count = remaining < CHUNK ? remaining : CHUNK;
 
                     if (count > 0)
                     {
-                        sink.write(configBlob.data() + offset, count);
+                        sink.write(body->bytes.data() + offset, count);
                     }
 
-                    if (offset + count >= configBlob.size())
+                    if (offset + count >= body->bytes.size())
                     {
+                        // A false return drops the connection without the terminating chunk,
+                        // which is how #40900's manager ends a stream whose source failed.
+                        if (!body->terminated)
+                        {
+                            return false;
+                        }
+
                         sink.done();
                     }
 
                     return true;
                 });
+            });
+
+            server.Get("/peek/download-accept-encoding",
+                       [downloadAcceptEncoding, downloadMutex](const httplib::Request&, httplib::Response & response)
+            {
+                std::lock_guard<std::mutex> lock(*downloadMutex);
+                response.status = downloadAcceptEncoding->empty() ? 204 : 200;
+                response.set_content(*downloadAcceptEncoding, "text/plain");
             });
 
             // Records every /control request TYPE the fork child actually saw
@@ -1104,6 +1149,7 @@ class FakeManager final
         std::string m_enrollPassword;
         int m_enrollForcedStatus {0};
         CaBundleOptions m_caBundle {};
+        DownloadOptions m_download {};
         /// The certificate GET /cacerts serves, minted before fork() so both
         /// processes hold the same bytes. See the constructor.
         std::string m_cacertsPem;
