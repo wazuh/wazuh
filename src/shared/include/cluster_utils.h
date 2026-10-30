@@ -24,4 +24,7 @@ char* get_node_name(void);
 // Returns the name of the manager in cluster. The memory should be freed by the caller.
 char* get_cluster_name(void);
 
+// Returns the cluster key (cluster.key), or NULL when it is not configured. The memory should be freed by the caller.
+char* get_cluster_key(void);
+
 #endif

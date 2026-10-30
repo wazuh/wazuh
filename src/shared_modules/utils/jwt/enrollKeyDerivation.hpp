@@ -12,13 +12,14 @@
 
 /// @file enrollKeyDerivation.hpp
 /// HKDF-SHA256 of an enrollment secret into a `wazuh-enroll+jwt` HS256 key (jwtEnrollProfileV1.hpp).
-/// One construction, three `info` labels -- the domain separator that keeps the three keys unrelated
+/// One construction, four `info` labels -- the domain separator that keeps the four keys unrelated
 /// even when fed the same bytes:
 ///   deriveEnrollKey(password)        "WAZUH-ENROLL-JWT-KEY"   -- the shared key (no `kid`); manager
 ///                                    (PasswordKeySource) and agent (EnrollSigner) share it, so the two
 ///                                    can never drift. Unchanged since #38582.
 ///   deriveEnrollTokenKey(secret16)   "WAZUH-ENROLL-TOKEN-KEY" -- `kid` = enrollment token id (#38993)
 ///   deriveReenrollKey(secret32)      "WAZUH-REENROLL-KEY"     -- `kid` = canonical agent id (#38993)
+///   deriveWpkIdKey(clusterKey)       "WAZUH-WPK-ID-KEY"       -- signs WPK download identifiers (remoted)
 /// authd replicates the token derivation in C (src/shared/src/enrollment_token.c); the frozen vectors
 /// (testVectors.hpp, jwt_vectors.json) pin that both sides agree byte for byte.
 /// OpenSSL 3 EVP_KDF; header-only like the rest of this library.
@@ -49,6 +50,7 @@ namespace jwt_profile::v1::enroll
         static_assert(kHkdfInfoLabel.size() < kMaxInfoBytes);
         static_assert(kHkdfTokenInfoLabel.size() < kMaxInfoBytes);
         static_assert(kHkdfReenrollInfoLabel.size() < kMaxInfoBytes);
+        static_assert(kHkdfWpkIdInfoLabel.size() < kMaxInfoBytes);
 
         /// @brief HKDF-SHA256(IKM = ikm, salt = 32 x 0x00, info = infoLabel || kHkdfInfoVersion, L = 32).
         /// nullopt for an empty IKM (a KDF over empty IKM must never yield a "valid" key) or on any
@@ -124,6 +126,18 @@ namespace jwt_profile::v1::enroll
         }
         return detail::deriveHkdf(
             reinterpret_cast<const std::uint8_t*>(password.data()), password.size(), kHkdfInfoLabel);
+    }
+
+    /// @brief Derives the key that signs WPK download identifiers from the cluster key. nullopt for an
+    /// empty cluster key or on any provider failure -- fail closed, never throws.
+    inline std::optional<SecureBytes> deriveWpkIdKey(std::string_view clusterKey) noexcept
+    {
+        if (clusterKey.empty())
+        {
+            return std::nullopt;
+        }
+        return detail::deriveHkdf(
+            reinterpret_cast<const std::uint8_t*>(clusterKey.data()), clusterKey.size(), kHkdfWpkIdInfoLabel);
     }
 
     /// @brief Derives the HS256 key of an enrollment token from its 16-byte secret (the second half

@@ -3701,7 +3701,7 @@ void test_remoted_module_https_config_defaults(void** state)
 
     // __wrap_getDefine_Int_default is a plain FIFO mock(), so these MUST stay in the same order
     // as the getDefine_Int_default() calls in remoted_module_https_config(): 14 http_*, then
-    // 6 memory-management, then 7 downstream_*, then 4 auth_*. Adding an option there without
+    // 6 memory-management, then 7 downstream_*, then 2 jwt_*, wpk_id_ttl and 2 auth_*. Adding an option there without
     // adding a value here makes the queue run dry and cmocka aborts the test.
     // http_*
     will_return(__wrap_getDefine_Int_default, 0); // http_io_threads (0 = auto, cpp_get_nproc())
@@ -3739,6 +3739,10 @@ void test_remoted_module_https_config_defaults(void** state)
     // jwt_* / auth_*
     will_return(__wrap_getDefine_Int_default, 60); // jwt_max_age
     will_return(__wrap_getDefine_Int_default, 30); // jwt_clock_skew
+    expect_value(__wrap_getDefine_Int_default, min, 60);
+    expect_value(__wrap_getDefine_Int_default, max, 3600);
+    expect_value(__wrap_getDefine_Int_default, default_val, 600);
+    will_return(__wrap_getDefine_Int_default, 600); // wpk_id_ttl
     will_return(__wrap_getDefine_Int_default, 5242880); // auth_max_body_size
     will_return(__wrap_getDefine_Int_default, 33554432); // auth_max_decoded_body_size
 
@@ -3778,6 +3782,7 @@ void test_remoted_module_https_config_defaults(void** state)
     assert_int_equal(rm_config.jwt_max_age, 60);
     assert_int_equal(rm_config.jwt_clock_skew, 30);
     assert_int_equal(rm_config.jwt_clock_skew_set, 1);
+    assert_int_equal(rm_config.wpk_id_ttl, 600);
     assert_int_equal(rm_config.auth_max_body_size, 5242880);
     assert_int_equal(rm_config.auth_max_decoded_body_size, 33554432);
     assert_true(rm_config.http_content_encoding_enabled);
@@ -3827,6 +3832,10 @@ void test_remoted_module_https_config_custom_values(void** state)
     // jwt_* / auth_* (in-range, non-default values: the profile caps jwt_max_age and skew at 43200)
     will_return(__wrap_getDefine_Int_default, 45); // jwt_max_age
     will_return(__wrap_getDefine_Int_default, 20); // jwt_clock_skew
+    expect_value(__wrap_getDefine_Int_default, min, 60);
+    expect_value(__wrap_getDefine_Int_default, max, 3600);
+    expect_value(__wrap_getDefine_Int_default, default_val, 600);
+    will_return(__wrap_getDefine_Int_default, 900); // wpk_id_ttl
     will_return(__wrap_getDefine_Int_default, 31457280);
     will_return(__wrap_getDefine_Int_default, 67108864); // auth_max_decoded_body_size
 
@@ -3866,6 +3875,7 @@ void test_remoted_module_https_config_custom_values(void** state)
     assert_int_equal(rm_config.jwt_max_age, 45);
     assert_int_equal(rm_config.jwt_clock_skew, 20);
     assert_int_equal(rm_config.jwt_clock_skew_set, 1);
+    assert_int_equal(rm_config.wpk_id_ttl, 900);
     assert_int_equal(rm_config.auth_max_body_size, 31457280);
     assert_int_equal(rm_config.auth_max_decoded_body_size, 67108864);
     assert_false(rm_config.http_content_encoding_enabled);
@@ -3890,6 +3900,10 @@ void test_remoted_module_https_config_decoded_cap_below_wire_cap(void** state)
     }
     will_return(__wrap_getDefine_Int_default, 60);       // jwt_max_age
     will_return(__wrap_getDefine_Int_default, 30);       // jwt_clock_skew
+    expect_value(__wrap_getDefine_Int_default, min, 60);
+    expect_value(__wrap_getDefine_Int_default, max, 3600);
+    expect_value(__wrap_getDefine_Int_default, default_val, 600);
+    will_return(__wrap_getDefine_Int_default, 600);      // wpk_id_ttl
     will_return(__wrap_getDefine_Int_default, 8388608);  // auth_max_body_size: 8 MiB
     will_return(__wrap_getDefine_Int_default, 2097152);  // auth_max_decoded_body_size: 2 MiB
 
@@ -3901,6 +3915,7 @@ void test_remoted_module_https_config_decoded_cap_below_wire_cap(void** state)
     remoted_module_https_config(&rm_config);
 
     assert_int_equal(rm_config.auth_max_body_size, 8388608);
+    assert_int_equal(rm_config.wpk_id_ttl, 600);
     assert_int_equal(rm_config.auth_max_decoded_body_size, 8388608);
 }
 
@@ -4069,6 +4084,10 @@ void test_w_remoted_build_module_config_all_fields_populated(void** state)
     // jwt_* / auth_*
     will_return(__wrap_getDefine_Int_default, 60); // jwt_max_age
     will_return(__wrap_getDefine_Int_default, 30); // jwt_clock_skew
+    expect_value(__wrap_getDefine_Int_default, min, 60);
+    expect_value(__wrap_getDefine_Int_default, max, 3600);
+    expect_value(__wrap_getDefine_Int_default, default_val, 600);
+    will_return(__wrap_getDefine_Int_default, 600); // wpk_id_ttl
     will_return(__wrap_getDefine_Int_default, 10485760);
     will_return(__wrap_getDefine_Int_default, 33554432); // auth_max_decoded_body_size
 
@@ -4451,6 +4470,10 @@ void test_w_remoted_build_module_config_null_https_strings_leave_buffers_empty(v
     will_return(__wrap_getDefine_Int_default, 10485760);
     will_return(__wrap_getDefine_Int_default, 300);
     will_return(__wrap_getDefine_Int_default, 30);
+    expect_value(__wrap_getDefine_Int_default, min, 60);
+    expect_value(__wrap_getDefine_Int_default, max, 3600);
+    expect_value(__wrap_getDefine_Int_default, default_val, 600);
+    will_return(__wrap_getDefine_Int_default, 600); // wpk_id_ttl
     will_return(__wrap_getDefine_Int_default, 10485760);
     will_return(__wrap_getDefine_Int_default, 33554432); // auth_max_decoded_body_size
 
