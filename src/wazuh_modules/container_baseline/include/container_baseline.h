@@ -355,9 +355,6 @@ EXPORTED int cbaseline_list_containers(const char*            connector_socket_p
                                        cb_container_id_sink_t sink,
                                        void*                  user_data);
 
-/* Receives the id of a container that exists but has no attribution key yet. */
-typedef void (*cb_unkeyed_id_sink_t)(const char* container_id, void* user_data);
-
 /* What one list reply said about its own coverage. */
 typedef struct
 {
@@ -377,9 +374,8 @@ typedef struct
  * running container until it can key it, so "not resolved yet" and "removed"
  * are the same absence from `sink`.
  *
- * Which of the two it is comes through `unkeyed_sink`, called once per
- * container that exists without a key. The two questions a caller might be
- * asking are answered separately on purpose:
+ * Which of the two it is comes from `out_status` and `sink` together. The two
+ * questions a caller might be asking are answered separately on purpose:
  *
  *   "does this container exist?"   `sink`, which is called for every container
  *                                  the connector knows of, keyed or not. A
@@ -394,19 +390,16 @@ typedef struct
  * Conflating them is what let one permanently unkeyable container block stale
  * cleanup for as long as it ran.
  *
- * `unkeyed_sink` says WHICH of the ids `sink` reported have no key, for a
- * caller that needs the distinction -- the cgroup map does, admission does not.
- * Admission is a question about a container id and never about a key, so the
- * unkeyed containers carry the connector's verdict through `sink` like every
- * other container; leaving them out of it made each caller supply an answer of
- * its own, and each supplied "admitted", which let the node report past
- * containers.synced_limit for the length of every container restart.
+ * One sink for both, because admission is a question about a container id and
+ * never about an attribution key: the unkeyed containers carry the connector's
+ * verdict like every other container. Reporting them separately made each
+ * caller supply an answer of its own, and each supplied "admitted", which let
+ * the node report past containers.synced_limit for the length of every
+ * container restart.
  */
 EXPORTED int cbaseline_list_containers_ex(const char*            connector_socket_path,
                                           cb_container_id_sink_t sink,
                                           void*                  user_data,
-                                          cb_unkeyed_id_sink_t   unkeyed_sink,
-                                          void*                  unkeyed_user_data,
                                           cb_list_status_t*      out_status);
 
 #ifdef __cplusplus

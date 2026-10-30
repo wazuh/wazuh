@@ -707,7 +707,7 @@ int RunSyscollectorDbsyncBaselineForContainers(const std::string&              c
 }
 
 int ListContainers(const std::string& connector_socket_path, const ContainerIdSink& sink,
-                   ContainerListStatus* status, const UnkeyedIdSink& unkeyedSink)
+                   ContainerListStatus* status)
 {
     bool reachable = false;
     bool listIsComplete = false;
@@ -722,14 +722,6 @@ int ListContainers(const std::string& connector_socket_path, const ContainerIdSi
     {
         status->complete = listIsComplete;
         status->unkeyedKnown = reportedUnkeyed;
-    }
-
-    if (reachable && unkeyedSink)
-    {
-        for (const auto& id : unkeyed)
-        {
-            unkeyedSink(id);
-        }
     }
 
     // -1, not 0. Callers use this list as the authority on what still exists

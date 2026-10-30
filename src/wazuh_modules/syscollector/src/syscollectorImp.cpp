@@ -2938,8 +2938,8 @@ void Syscollector::scanContainerBaseline(const std::vector<std::string>& only_th
     // still says whether the connector is capable of naming them at all, which
     // is what the sweep below has to wait on.
     cb_list_status_t listStatus {};
-    const int listed = cbaseline_list_containers_ex(
-                           CB_DEFAULT_CONNECTOR_SOCKET_PATH, idSink, &discovered, nullptr, nullptr, &listStatus);
+    const int listed =
+        cbaseline_list_containers_ex(CB_DEFAULT_CONNECTOR_SOCKET_PATH, idSink, &discovered, &listStatus);
     const int listComplete = listStatus.complete;
 
     // EVERY known container, admitted or not, keyed or not. The sweep below

@@ -878,8 +878,8 @@ namespace
     int refreshContainerAdmission(ContainerListing& listing)
     {
         cb_list_status_t listStatus {};
-        const int listed = cbaseline_list_containers_ex(
-            CB_DEFAULT_CONNECTOR_SOCKET_PATH, container_id_sink, &listing, nullptr, nullptr, &listStatus);
+        const int listed =
+            cbaseline_list_containers_ex(CB_DEFAULT_CONNECTOR_SOCKET_PATH, container_id_sink, &listing, &listStatus);
 
         if (listed < 0) return listed;
 

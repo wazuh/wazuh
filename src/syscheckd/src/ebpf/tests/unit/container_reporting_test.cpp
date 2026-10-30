@@ -187,8 +187,6 @@ extern "C" int __wrap_fim_container_baseline_available(const char*)
 extern "C" int __wrap_cbaseline_list_containers_ex(const char*,
                                                    cb_container_id_sink_t sink,
                                                    void* ctx,
-                                                   cb_unkeyed_id_sink_t unkeyed_sink,
-                                                   void* unkeyed_ctx,
                                                    cb_list_status_t* out_status)
 {
     EXPECT_FALSE(listed) << "reuse the warm-up-guarded listing";
@@ -209,13 +207,10 @@ extern "C" int __wrap_cbaseline_list_containers_ex(const char*,
 
     if (unkeyed_known)
     {
-        /* Exactly what the real shim does: the unkeyed ids go through the
-         * unkeyed sink for the sweep AND through the id sink with the cap's
-         * decision, because the cap ranks them too. */
+        /* Exactly what the real shim does: the unkeyed ids go through the id
+         * sink with the cap's decision, because the cap ranks them too. */
         for (const auto& id : unkeyed)
         {
-            if (unkeyed_sink) unkeyed_sink(id.c_str(), unkeyed_ctx);
-
             sink(id.c_str(), unkeyed_refused.count(id) == 0 ? 1 : 0, ctx);
         }
     }

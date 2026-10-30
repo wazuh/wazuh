@@ -286,8 +286,6 @@ extern "C" int cbaseline_lifecycle_since(const char*         connector_socket_pa
 extern "C" int cbaseline_list_containers_ex(const char*            connector_socket_path,
                                             cb_container_id_sink_t sink,
                                             void*                  user_data,
-                                            cb_unkeyed_id_sink_t   unkeyed_sink,
-                                            void*                  unkeyed_user_data,
                                             cb_list_status_t*      out_status)
 {
     if (out_status != nullptr)
@@ -307,11 +305,7 @@ extern "C" int cbaseline_list_containers_ex(const char*            connector_soc
             if (sink == nullptr) return;
             sink(containerId.c_str(), synced ? 1 : 0, user_data);
         },
-        &status,
-        [unkeyed_sink, unkeyed_user_data](const std::string& containerId) {
-            if (unkeyed_sink == nullptr) return;
-            unkeyed_sink(containerId.c_str(), unkeyed_user_data);
-        });
+        &status);
 
     if (out_status != nullptr)
     {
@@ -324,5 +318,5 @@ extern "C" int cbaseline_list_containers_ex(const char*            connector_soc
 
 extern "C" int cbaseline_list_containers(const char* connector_socket_path, cb_container_id_sink_t sink, void* user_data)
 {
-    return cbaseline_list_containers_ex(connector_socket_path, sink, user_data, nullptr, nullptr, nullptr);
+    return cbaseline_list_containers_ex(connector_socket_path, sink, user_data, nullptr);
 }

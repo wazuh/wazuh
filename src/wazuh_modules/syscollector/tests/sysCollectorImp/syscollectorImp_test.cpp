@@ -54,8 +54,8 @@ namespace
     bool containerListComplete {true};
 
     // Containers the hooked connector knows of but cannot key. Reported through
-    // the unkeyed sink AND the id sink, exactly as the real one does: the cap
-    // ranks them like any other container, so each carries a verdict.
+    // the id sink exactly as the real one does: the cap ranks them like any
+    // other container, so each carries a verdict.
     std::set<std::string> containerUnkeyedIds;
     bool containerUnkeyedKnown {true};
 
@@ -66,8 +66,7 @@ namespace
 
 extern "C" int
 __real_cbaseline_run_syscollector_dbsync(const char*, cb_dbsync_row_sink_t, cb_container_status_sink_t, void*);
-extern "C" int __real_cbaseline_list_containers_ex(
-    const char*, cb_container_id_sink_t, void*, cb_unkeyed_id_sink_t, void*, cb_list_status_t*);
+extern "C" int __real_cbaseline_list_containers_ex(const char*, cb_container_id_sink_t, void*, cb_list_status_t*);
 
 extern "C" int __wrap_cbaseline_run_syscollector_dbsync(const char* socket,
                                                         cb_dbsync_row_sink_t sink,
@@ -81,30 +80,20 @@ extern "C" int __wrap_cbaseline_run_syscollector_dbsync(const char* socket,
 extern "C" int __wrap_cbaseline_list_containers_ex(const char* socket,
                                                    cb_container_id_sink_t sink,
                                                    void* ctx,
-                                                   cb_unkeyed_id_sink_t unkeyedSink,
-                                                   void* unkeyedCtx,
                                                    cb_list_status_t* outStatus)
 {
     if (!containerListHook)
     {
-        return __real_cbaseline_list_containers_ex(socket, sink, ctx, unkeyedSink, unkeyedCtx, outStatus);
+        return __real_cbaseline_list_containers_ex(socket, sink, ctx, outStatus);
     }
 
     const int listed = containerListHook(sink, ctx);
 
-    if (listed >= 0 && containerUnkeyedKnown)
+    if (listed >= 0 && containerUnkeyedKnown && sink != nullptr)
     {
         for (const auto& id : containerUnkeyedIds)
         {
-            if (unkeyedSink != nullptr)
-            {
-                unkeyedSink(id.c_str(), unkeyedCtx);
-            }
-
-            if (sink != nullptr)
-            {
-                sink(id.c_str(), containerUnkeyedRefused.count(id) == 0 ? 1 : 0, ctx);
-            }
+            sink(id.c_str(), containerUnkeyedRefused.count(id) == 0 ? 1 : 0, ctx);
         }
     }
 

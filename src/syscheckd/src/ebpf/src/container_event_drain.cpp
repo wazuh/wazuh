@@ -859,12 +859,11 @@ namespace fim_container_events
         void refreshContainerList()
         {
             const auto delta = client.listContainersSince(cursor_epoch, cursor_seq);
-            const auto plan =
-                planListRefresh(delta, admission_view, router.mappedContainerIds(), admission_unkeyed);
+            auto plan = planListRefresh(delta, admission_view, router.mappedContainerIds(), admission_unkeyed);
 
             if (!plan.act) return;
 
-            admission_unkeyed = plan.unkeyed;
+            admission_unkeyed = std::move(plan.unkeyed);
 
             syncAllowlist(plan.installWholeList ? router.applyContainerList(plan.containers)
                           : router.applyContainerDelta(plan.events));

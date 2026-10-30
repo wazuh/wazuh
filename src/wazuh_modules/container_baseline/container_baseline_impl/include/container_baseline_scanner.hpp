@@ -272,9 +272,6 @@ using ContainerIdSink = std::function<void(const std::string&, bool)>;
 ///         failed query yields an empty list, and treating that as "nothing
 ///         exists" deletes every container's stored rows on a momentary
 ///         connector blip.
-/// @brief Receives the id of a container that exists but has no attribution key.
-using UnkeyedIdSink = std::function<void(const std::string&)>;
-
 /// @brief What one list reply said about its own coverage.
 struct ContainerListStatus
 {
@@ -288,21 +285,21 @@ struct ContainerListStatus
 };
 
 /// @param status Optional out-param describing the reply's coverage.
-/// @param unkeyedSink Optional: called with the id of every container that
-///        exists but is absent from the list for want of a key. A caller that
-///        deletes on absence must treat these as present -- they are not gone.
 ///
-/// `sink` is called for those unkeyed containers too, after the listed ones and
-/// with the connector's own admission decision for each. Admission is a question
-/// about a container id and never about an attribution key, so leaving the
-/// unkeyed ones out of `sink` meant every caller had to supply an answer the
-/// connector had already given -- and each supplied "admitted", which let the
-/// node report past containers.synced_limit for the length of a restart.
+/// `sink` is called for every container the connector knows of, including the
+/// ones it could not key -- those come after the listed ones, each with the
+/// connector's own admission decision. Admission is a question about a
+/// container id and never about an attribution key, so reporting them through a
+/// sink of their own meant every caller had to supply an answer the connector
+/// had already given, and each supplied "admitted", which let the node report
+/// past containers.synced_limit for the length of a restart. A caller that
+/// deletes on absence therefore needs nothing but this sink: the unkeyed
+/// containers are in it, and they are not gone.
+///
 /// They are NOT included in the return count, which stays the length of the
 /// keyed list.
 int ListContainers(const std::string& connector_socket_path, const ContainerIdSink& sink,
-                   ContainerListStatus* status = nullptr,
-                   const UnkeyedIdSink& unkeyedSink = {});
+                   ContainerListStatus* status = nullptr);
 
 /// One answer from the connector, kept whole.
 ///
