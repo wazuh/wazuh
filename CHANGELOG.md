@@ -7,6 +7,7 @@
 | Issue | Comment |
 |-------|---------|
 | [#39590](https://github.com/wazuh/wazuh/issues/39590) | Added entry and byte limits to the engine's agent metadata cache: `analysisd.agent_metadata_cache_max_entries` (default 50000) and `analysisd.agent_metadata_cache_max_bytes` (default 128 MiB of accounted bytes; `0` disables either). A header that does not fit is still parsed and used, but not retained; the cache never evicts another agent to make room. New metrics `agent.cache.bytes`, `agent.cache.max_entries`, `agent.cache.max_bytes`, `agent.cache.bypass.max_entries`, `agent.cache.bypass.max_bytes` and `agent.cache.rejected.identity`, and a throttled warning while the cache is full. |
+| [#38483](https://github.com/wazuh/wazuh/issues/38483) | Added signed identifiers for WPK downloads: `POST /control` hands a 5.x agent a `remote_upgrade` task whose `wpk_file` is an identifier bound to that agent, the task and an expiry, and `POST /download` serves the task's package only to that agent until the identifier expires (`remoted.wpk_id_ttl`, 600 s by default). The Task Manager keeps a per-task file under `var/upgrade/tasks/`, a hard link to the package or a copy when linking is refused, for the life of the task. Plain package names are still served to any authenticated agent. |
 
 #### Changed
 
