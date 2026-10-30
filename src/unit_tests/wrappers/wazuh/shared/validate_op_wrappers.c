@@ -39,7 +39,8 @@ int __wrap_getDefine_Int_default(const char *high_name,
     // passed in, since clamp/reject behavior lives in the real (unmocked)
     // getDefine_Int_default, not in this wrapper.
     if (!strcmp(low_name, "legacy_task_polling_interval") ||
-        (!strcmp(high_name, "remoted") && !strcmp(low_name, "rlimit_nofile"))) {
+        (!strcmp(high_name, "remoted") &&
+         (!strcmp(low_name, "rlimit_nofile") || !strcmp(low_name, "wpk_id_ttl")))) {
         check_expected(min);
         check_expected(max);
         check_expected(default_val);

@@ -27,12 +27,20 @@ Examples:
   python3 send_download.py --resource-type wpk --resource-id pkg.wpk
   python3 send_download.py --simulate 20 --repeat 5   # 20 concurrent simulated agents
   python3 send_download.py --simulate 8 --watch-rss   # + RSS/CPU/fd/throughput report
+  python3 send_download.py --self-test                # codec vectors, no network
+  python3 send_download.py --mint --task-id <uuid>    # print a signed WPK id (agent 001)
+  python3 send_download.py --mint --task-id <uuid> --subject 7 --ttl 60 --cluster-key-file key.txt
+  python3 send_download.py --wpk-id-scenarios --task-id <uuid> --plain-wpk pkg.wpk
 """
 import argparse
+import base64
 import concurrent.futures
 import hashlib
+import hmac
+import json
 import os
 import re
+import struct
 import subprocess
 import sys
 import threading
@@ -60,7 +68,94 @@ class ManagerPaths:
         self.shared_dir = "/etc/wazuh-manager/shared"
         self.multigroups_dir = f"{self.home}/var/multigroups"
         self.wpk_dir = f"{self.home}/var/upgrade"
+        self.wpk_tasks_dir = f"{self.home}/var/upgrade/tasks"
 
+
+
+# --- Signed WPK download identifier ------------------------------------------------------------
+# Same construction as auth/wpkId.cpp:
+#   K   = HKDF-SHA256(IKM = cluster.key, salt = 32 x 0x00, info = "WAZUH-WPK-ID-KEY" || 0x01, L = 32)
+#   S   = subject (4, big endian) || exp (4, big endian) || task_id (16)
+#   tag = HMAC-SHA256(K, "WAZUH-WPK-ID\n1\n" || S)[:16]
+#   id  = "wpk1." + base64url_nopad(S || tag) + ".wpk"
+
+WPK_ID_LABEL = b"WAZUH-WPK-ID-KEY"
+WPK_ID_VERSION = b"\x01"
+WPK_ID_DOMAIN = b"WAZUH-WPK-ID\n1\n"
+TASK_ID_RE = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$")
+CLUSTER_KEY_RE = re.compile(r"^[A-Za-z0-9]{32}$")
+
+# Not a secret: a well-formed key that differs from the node's, to mint an id the node must reject.
+OTHER_CLUSTER_KEY = "ABCDEFGHIJKLMNOPQRSTUVWXYZ012345"
+
+# (name, cluster_key, subject, task_id, now, ttl, expected id)
+WPK_ID_VECTORS = [
+    ("V1", "0123456789abcdefABCDEFGHIJKLMNOP", 1, "815a10ac-7b2e-a8a8-e137-f3edd8046a38", 1793098550, 600,
+     "wpk1.AAAAAWrghY6BWhCsey6oqOE38-3YBGo4YuKOMLVYGj_34xXog1CLbA.wpk"),
+    ("V2", "zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz", 4294967295, "ffffffff-ffff-ffff-ffff-ffffffffffff", 0, 60,
+     "wpk1._____wAAADz_____________________A5mFj1hzUINXzjIh8PmNSQ.wpk"),
+    ("V3", "fd3350b86d239654e34866ab3c4988a8", 1234, "2d6a55b2-b99f-d3df-f07e-e64d2f08dc54", 2000000000, 3600,
+     "wpk1.AAAE0nc1ohAtalWyuZ_T3_B-5k0vCNxUa38xACSwPHMeWjwiHoBtfQ.wpk"),
+]
+
+
+def derive_wpk_id_key(cluster_key: str) -> bytes:
+    if not CLUSTER_KEY_RE.match(cluster_key):
+        raise ValueError("cluster key must match ^[A-Za-z0-9]{32}$")
+    prk = hmac.new(b"\x00" * 32, cluster_key.encode(), hashlib.sha256).digest()
+    return hmac.new(prk, WPK_ID_LABEL + WPK_ID_VERSION + b"\x01", hashlib.sha256).digest()
+
+
+def parse_task_id(text: str) -> bytes:
+    if not TASK_ID_RE.match(text):
+        raise ValueError("task id must be 8-4-4-4-12 lowercase hex")
+    return bytes.fromhex(text.replace("-", ""))
+
+
+def mint_wpk_id(cluster_key: str, subject: int, task_id: str, now: int, ttl: int) -> str:
+    key = derive_wpk_id_key(cluster_key)
+    claims = struct.pack(">II", subject, now + ttl) + parse_task_id(task_id)
+    tag = hmac.new(key, WPK_ID_DOMAIN + claims, hashlib.sha256).digest()[:16]
+    return "wpk1." + base64.urlsafe_b64encode(claims + tag).rstrip(b"=").decode() + ".wpk"
+
+
+def self_test() -> int:
+    failed = 0
+    for name, cluster_key, subject, task_id, now, ttl, expected in WPK_ID_VECTORS:
+        got = mint_wpk_id(cluster_key, subject, task_id, now, ttl)
+        ok = got == expected
+        failed += not ok
+        print(f"[{'PASS' if ok else 'FAIL'}] {name}: {got if ok else f'got {got}, expected {expected}'}")
+    offenders = plain_wpk_200_rows()
+    failed += bool(offenders)
+    print(f"[{'FAIL' if offenders else 'PASS'}] no_200_for_non_identifier_wpk: "
+          f"{offenders if offenders else 'every 200 wpk row carries a wpk1 identifier'}")
+    return 1 if failed else 0
+
+
+def plain_wpk_200_rows():
+    """Names of scenarios expecting 200 for a `wpk` whose resource_id is not a `wpk1.<...>.wpk` id."""
+    key = "0123456789abcdefghijklmnopqrstuv"
+    task_id = "00000000-0000-4000-8000-000000000000"
+    rows = (build_scenarios("group", "unknown-group", "other-group", "package.wpk")
+            + build_wpk_id_scenarios(key, 1, task_id, 600, "/nonexistent", "package.wpk", now=1700000000))
+    offenders = []
+    for name, expected, body, *_ in rows:
+        try:
+            request = json.loads(body)
+        except ValueError:
+            continue
+        if (expected == 200 and isinstance(request, dict) and request.get("resource_type") == "wpk"
+                and not re.fullmatch(r"wpk1\.[A-Za-z0-9_-]+\.wpk", str(request.get("resource_id")))):
+            offenders.append(name)
+    return offenders
+
+
+def tamper_wpk_id(wpk_id: str) -> str:
+    """Changes one character in the middle of the base64url body to a different alphabet member."""
+    body = wpk_id[len("wpk1."):-len(".wpk")]
+    mid = len(body) // 2
+    return "wpk1." + body[:mid] + ("A" if body[mid] != "A" else "B") + body[mid + 1:] + ".wpk"
 
 
 # --- Global endpoint prefix (<remote><https><global_prefix>) ---------------------------------
@@ -102,6 +197,41 @@ def global_prefix_from_conf(conf_path: str = DEFAULT_MANAGER_CONF) -> str:
         return ""
     tag = re.search(r"<global_prefix>(.*?)</global_prefix>", block.group(1), re.S)
     return tag.group(1).strip() if tag else ""
+
+
+def cluster_key_from_conf(conf_path: str = DEFAULT_MANAGER_CONF) -> str:
+    """Reads <cluster><key> out of the manager's configuration.
+
+    XML comments are stripped first and the search is scoped to the <cluster> block, so a
+    commented-out block or a <key> elsewhere in the file cannot be picked up. Raises
+    ValueError unless the result matches ^[A-Za-z0-9]{32}$; the key is never part of the message.
+    """
+    try:
+        with open(conf_path, "r") as handle:
+            text = handle.read()
+    except OSError as error:
+        raise ValueError(f"cannot read {conf_path}: {error.strerror}")
+    text = re.sub(r"<!--.*?-->", "", text, flags=re.S)
+    block = re.search(r"<cluster>(.*?)</cluster>", text, re.S)
+    tag = re.search(r"<key>(.*?)</key>", block.group(1), re.S) if block else None
+    key = tag.group(1).strip() if tag else ""
+    if not CLUSTER_KEY_RE.match(key):
+        raise ValueError(f"no usable <cluster><key> (32 alphanumeric characters) in {conf_path}")
+    return key
+
+
+def read_cluster_key(key_file, conf_path: str = DEFAULT_MANAGER_CONF) -> str:
+    """The key from the first line of --cluster-key-file when given, else from the manager's conf."""
+    if key_file is None:
+        return cluster_key_from_conf(conf_path)
+    try:
+        with open(key_file, "r") as handle:
+            key = handle.readline().strip()
+    except OSError as error:
+        raise ValueError(f"cannot read {key_file}: {error.strerror}")
+    if not CLUSTER_KEY_RE.match(key):
+        raise ValueError(f"first line of {key_file} is not a 32 alphanumeric character key")
+    return key
 
 
 def resolve_global_prefix(cli_value, conf_path: str = DEFAULT_MANAGER_CONF) -> str:
@@ -341,8 +471,9 @@ class ProcWatcher:
 # One case this script cannot stage by itself: an agent with no registry entry at all (it
 # never sent /control/startup, or its entry was evicted). Reproduce it by restarting remoted
 # and running send_download.py BEFORE send_control.py -- the answer must be 403, not 200.
-# `wpk` requests are deliberately NOT authorized (their authority is the pending upgrade
-# task, which /control does not carry), which is why valid_wpk below still expects 200.
+# `wpk` requests are authorized by the identifier itself: a `wpk1.<...>.wpk` id carries the agent,
+# the task and an expiry under a MAC (--wpk-id-scenarios, --mint). A flat WPK name is no longer
+# served, which is why plain_wpk_rejected below expects 404.
 
 def build_scenarios(group, unknown_group, other_group, wpk_name):
     scenarios = [
@@ -379,15 +510,46 @@ def build_scenarios(group, unknown_group, other_group, wpk_name):
 
     scenarios += [
         ("missing_wpk_is_404", 404, request_body("wpk", "definitely-not-staged.wpk")),
-        ("valid_wpk", 200, request_body("wpk", wpk_name)),
+        ("plain_wpk_rejected", 404, request_body("wpk", wpk_name)),
     ]
+    return scenarios
+
+
+def build_wpk_id_scenarios(cluster_key, agent_id, task_id, ttl, tasks_dir, plain_wpk, now=None):
+    """A valid id is served with the task file's content; every other form is a 404.
+
+    The 404 rows also pass when identifiers are disabled or the task file is missing, so they are
+    conclusive only when the valid-id row passes."""
+    now = int(time.time()) if now is None else now
+    subject = int(agent_id)
+    if cluster_key == OTHER_CLUSTER_KEY:
+        raise ValueError("the node's cluster key equals the fixed alternative key; M2 would not be a negative")
+    task_file = f"{tasks_dir}/{task_id}.wpk"
+    want = sha256_file(task_file)
+    reason = f"cannot read {task_file}"
+    valid = mint_wpk_id(cluster_key, subject, task_id, now, ttl)
+    scenarios = [
+        ("M1_valid_id", 200, request_body("wpk", valid), (want, reason)),
+        ("M2_other_cluster_key", 404,
+         request_body("wpk", mint_wpk_id(OTHER_CLUSTER_KEY, subject, task_id, now, ttl))),
+        ("M3_expired", 404,
+         request_body("wpk", mint_wpk_id(cluster_key, subject, task_id, int(time.time()) - ttl - 1, ttl))),
+        ("M4_other_agent", 404,
+         request_body("wpk", mint_wpk_id(cluster_key, subject + 1, task_id, now, ttl))),
+        ("M5_tampered", 404, request_body("wpk", tamper_wpk_id(valid))),
+        ("M6_plain_task_name", 404, request_body("wpk", f"{task_id}.wpk")),
+    ]
+    if plain_wpk:
+        scenarios.append(("M7_plain_wpk_name", 404, request_body("wpk", plain_wpk)))
+    else:
+        print("WARNING: --plain-wpk not given; M7_plain_wpk_name is SKIPPED.\n")
     return scenarios
 
 
 def run_scenarios(base_url, agent_id, agent_key, scenarios):
     print(f"Running {len(scenarios)} scenarios against {base_url} (agent {agent_id})\n")
     passed = 0
-    for name, expected, body in scenarios:
+    for name, expected, body, *rest in scenarios:
         result = post_download(base_url, agent_id, agent_key, body)
         if result.error:
             print(f"[FAIL] {name}: expected {expected}, request failed: {result.error}")
@@ -401,6 +563,19 @@ def run_scenarios(base_url, agent_id, agent_key, scenarios):
                 ok = False
                 extra += " <-- NOT CHUNKED"
                 passed -= 1
+            if rest and ok:
+                # rest[0] = sha256 of the file the body must equal, or a reason it is unavailable
+                want, reason = rest[0]
+                if want is None:
+                    ok = False
+                    passed -= 1
+                    extra += f" <-- cannot check content: {reason}"
+                elif want != result.sha256:
+                    ok = False
+                    passed -= 1
+                    extra += f" <-- sha256 differs from the task file ({want[:16]}...)"
+                else:
+                    extra += ", sha256 = task file"
         print(f"[{'PASS' if ok else 'FAIL'}] {name}: expected {expected}, got {result.status}"
               f"{extra}{(' -- ' + result.text) if result.text else ''}")
     print(f"\n{passed}/{len(scenarios)} scenarios passed.")
@@ -495,6 +670,7 @@ def resolve_expectations(paths, agents, selectors):
 
 
 def main():
+    global GLOBAL_PREFIX
     parser = argparse.ArgumentParser(description=__doc__,
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--url", default="https://127.0.0.1:9443", help="Base URL of the HTTPS server.")
@@ -534,8 +710,48 @@ def main():
                              "is absent from a stock install, in which case that scenario is "
                              "skipped with a warning rather than passing for the wrong reason.")
     parser.add_argument("--wpk", default=None, help="WPK filename staged under var/upgrade.")
+    parser.add_argument("--self-test", action="store_true",
+                        help="Check the signed-id codec against fixed vectors; needs no network.")
+    parser.add_argument("--mint", action="store_true",
+                        help="Print a signed WPK id for --task-id and exit.")
+    parser.add_argument("--wpk-id-scenarios", action="store_true",
+                        help="Run the signed-id matrix (valid, other key, expired, other agent, tampered, "
+                             "flat task name, flat WPK name) for --task-id.")
+    parser.add_argument("--task-id", default=None, help="Task id, 8-4-4-4-12 lowercase hex.")
+    parser.add_argument("--ttl", type=int, default=600, help="Identifier lifetime in seconds.")
+    parser.add_argument("--now", type=int, default=None, help="Issue time (UNIX seconds) for --mint; default: now.")
+    parser.add_argument("--subject", type=int, default=None, help="Agent id numeric value for --mint; default: --agent-id.")
+    parser.add_argument("--cluster-key-file", default=None,
+                        help="File whose first line is the cluster key, instead of <cluster><key> in "
+                             + DEFAULT_MANAGER_CONF + ". The key is never printed.")
+    parser.add_argument("--plain-wpk", default=None,
+                        help="Flat WPK name under var/upgrade; no longer served, so it only feeds the 404 row.")
     args = parser.parse_args()
-    global GLOBAL_PREFIX
+
+    if args.self_test:
+        return self_test()
+
+    if args.mint or args.wpk_id_scenarios:
+        if not args.task_id:
+            raise SystemExit("--task-id is required")
+        try:
+            cluster_key = read_cluster_key(args.cluster_key_file)
+            parse_task_id(args.task_id)
+            if args.mint:
+                subject = args.subject if args.subject is not None else int(args.agent_id)
+                now = args.now if args.now is not None else int(time.time())
+                print(mint_wpk_id(cluster_key, subject, args.task_id, now, args.ttl))
+                return 0
+            paths = ManagerPaths(args.manager_home)
+            scenarios = build_wpk_id_scenarios(cluster_key, args.agent_id, args.task_id, args.ttl,
+                                               paths.wpk_tasks_dir, args.plain_wpk)
+        except ValueError as error:
+            raise SystemExit(f"error: {error}")
+        GLOBAL_PREFIX = resolve_global_prefix(args.global_prefix)
+        agent_key = read_agent_key(args.agent_id, paths.client_keys)
+        print("The 404 rows are conclusive only if M1_valid_id passes.\n")
+        return 0 if run_scenarios(args.url, args.agent_id, agent_key, scenarios) else 1
+
     GLOBAL_PREFIX = resolve_global_prefix(args.global_prefix)
     if args.global_prefix is None and GLOBAL_PREFIX:
         print(f"Global prefix not given; using '{GLOBAL_PREFIX}' from {DEFAULT_MANAGER_CONF}")

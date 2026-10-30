@@ -538,6 +538,61 @@ namespace task_manager::storage
                              });
     }
 
+    std::unordered_set<std::string> SqliteTaskStore::agentTaskIds(const std::string& taskType)
+    {
+        return inRead(
+            [&](Session& session)
+            {
+                std::unordered_set<std::string> ids;
+                auto& statement {session.stmt(Stmt::AgentTaskIdsByType)};
+                statement.bind(1, taskType);
+                while (statement.step() == SQLITE_ROW)
+                {
+                    ids.insert(statement.value<std::string>(0));
+                }
+                return ids;
+            });
+    }
+
+    std::vector<AgentTask> SqliteTaskStore::pendingAgentTasksByType(const std::string& taskType)
+    {
+        return inRead(
+            [&](Session& session)
+            {
+                std::vector<AgentTask> tasks;
+                auto& statement {session.stmt(Stmt::AgentTaskPendingByType)};
+                statement.bind(1, taskType);
+                while (statement.step() == SQLITE_ROW)
+                {
+                    AgentTask task;
+                    task.taskId = statement.value<std::string>(0);
+                    task.agentId = statement.value<std::string>(1);
+                    task.taskType = statement.value<std::string>(2);
+                    task.payload = statement.value<std::string>(3);
+                    task.createTime = static_cast<Timestamp>(statement.value<std::int64_t>(4));
+                    tasks.push_back(std::move(task));
+                }
+                return tasks;
+            });
+    }
+
+    std::int64_t SqliteTaskStore::expireAgentTasksById(const std::vector<std::string>& taskIds)
+    {
+        return inTransaction(false,
+                             [&](Session& session)
+                             {
+                                 std::int64_t expired {0};
+                                 for (const auto& taskId : taskIds)
+                                 {
+                                     auto& statement {session.stmt(Stmt::AgentTaskExpireById)};
+                                     statement.bind(1, taskId);
+                                     statement.step();
+                                     expired += session.connection.changes();
+                                 }
+                                 return expired;
+                             });
+    }
+
     // ---- manager tasks -----------------------------------------------------------------------
 
     CreateManagerTaskOutcome SqliteTaskStore::createManagerTask(const CreateManagerTaskRequest& request)

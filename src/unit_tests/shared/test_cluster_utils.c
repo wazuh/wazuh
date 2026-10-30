@@ -97,6 +97,21 @@ static void test_get_names_from_section_and_undefined(void **state) {
     free(node_name);
 }
 
+static void test_get_cluster_key(void **state) {
+    (void) state;
+
+    s_cluster_json = "{\"name\":\"wazuh\",\"key\":\"0123456789abcdefABCDEFGHIJKLMNOP\"}";
+    char *key = get_cluster_key();
+    assert_string_equal(key, "0123456789abcdefABCDEFGHIJKLMNOP");
+    free(key);
+
+    s_cluster_json = "{\"name\":\"wazuh\"}";
+    assert_null(get_cluster_key());
+
+    s_cluster_json = NULL;
+    assert_null(get_cluster_key());
+}
+
 static void test_hook_without_provider_is_null(void **state) {
     (void) state;
 
@@ -114,6 +129,7 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_w_is_worker_master_worker_and_no_section, setup_provider, teardown_provider),
         cmocka_unit_test_setup_teardown(test_w_is_single_node_follows_node_type, setup_provider, teardown_provider),
         cmocka_unit_test_setup_teardown(test_get_names_from_section_and_undefined, setup_provider, teardown_provider),
+        cmocka_unit_test_setup_teardown(test_get_cluster_key, setup_provider, teardown_provider),
         cmocka_unit_test_setup_teardown(test_hook_without_provider_is_null, setup_provider, teardown_provider),
     };
     return cmocka_run_group_tests(tests, NULL, NULL);

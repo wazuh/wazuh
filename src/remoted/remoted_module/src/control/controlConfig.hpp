@@ -11,6 +11,7 @@
 #ifndef _REMOTED_CONTROL_CONFIG_HPP
 #define _REMOTED_CONTROL_CONFIG_HPP
 
+#include "auth/wpkId.hpp"
 #include "common/installPaths.hpp"
 #include "json.hpp"
 #include "remoted_module.h"
@@ -79,6 +80,11 @@ namespace remoted::control
         uint32_t tmMaxQueueSize = kTaskMaxQueueSize;
         uint32_t keepaliveThrottleSec = kKeepaliveThrottleSec;
         uint32_t registryEvictionTtlSec = kRegistryEvictionTtlSec;
+
+        /// Signs the `wpk_file` of remote_upgrade tasks; with no codec the real file name is sent.
+        remoted::auth::WpkIdHandling wpkIds;
+        /// Where the task manager keeps one file per remote_upgrade task (`<task_id>.wpk`).
+        std::string wpkTasksDir = paths::kWpkTasksDir;
 
         /// Where the CA bundle's published generation comes from on the notify path (RF-3): the
         /// facade binds it to the HTTPS listener's CaCertificateSource through

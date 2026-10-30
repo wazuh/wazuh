@@ -42,6 +42,8 @@ namespace remoted::endpoints::download
     constexpr auto METRIC_DOWNLOAD_BYTES_TOTAL {"remoted.download.bytes.total"};
     constexpr auto METRIC_DOWNLOAD_UNAVAILABLE {"remoted.download.unavailable"};
     constexpr auto METRIC_DOWNLOAD_NO_ROW {"remoted.download.no_row"};
+    constexpr auto METRIC_DOWNLOAD_WPK_ID_SERVED {"remoted.download.wpk_id.served"};
+    constexpr auto METRIC_DOWNLOAD_WPK_ID_REJECTED {"remoted.download.wpk_id.rejected"};
 
     /**
      * @brief The /download counter set, pre-resolved from one manager.
@@ -60,7 +62,7 @@ namespace remoted::endpoints::download
                                                                ///< authorization decision and the only
                                                                ///< operator-facing signal for it (the denial itself
                                                                ///< is logged at debug only).
-        std::shared_ptr<wazuh::metrics::ICounter> notFound;    ///< 404s: the group/WPK doesn't exist
+        std::shared_ptr<wazuh::metrics::ICounter> notFound;    ///< 404s: the group doesn't exist
                                                                ///< (config drift -> agent retry storms).
         std::shared_ptr<wazuh::metrics::ICounter> openError;   ///< 500s: the file exists but won't open.
         std::shared_ptr<wazuh::metrics::ICounter> started;     ///< Transfers whose stream was started.
@@ -78,6 +80,12 @@ namespace remoted::endpoints::download
                                                                ///< for the agent (not yet synchronized). Same
                                                                ///< answer as `unavailable`, counted apart: a
                                                                ///< missing row is not a failed lookup.
+
+        /// Signed WPK identifiers redeemed.
+        std::shared_ptr<wazuh::metrics::ICounter> wpkIdServed;
+        /// 404s for a signed WPK identifier that did not verify or has no task file; the agent cannot
+        /// tell these from a missing WPK.
+        std::shared_ptr<wazuh::metrics::ICounter> wpkIdRejected;
     };
 
     /// Resolves the remoted.download.* family on @p manager (creating it on first call; totals
@@ -90,7 +98,7 @@ namespace remoted::endpoints::download
             manager.getOrCreateCounter(
                 METRIC_DOWNLOAD_DENIED, "403 denials: the requested resource is not the agent's own", "count"),
             manager.getOrCreateCounter(
-                METRIC_DOWNLOAD_NOT_FOUND, "404s: the requested group/WPK does not exist", "count"),
+                METRIC_DOWNLOAD_NOT_FOUND, "404s: the requested group does not exist", "count"),
             manager.getOrCreateCounter(
                 METRIC_DOWNLOAD_OPEN_ERROR, "500s: the located resource could not be opened", "count"),
             manager.getOrCreateCounter(METRIC_DOWNLOAD_STARTED, "Streamed transfers started", "count"),
@@ -101,7 +109,10 @@ namespace remoted::endpoints::download
                                        "count"),
             manager.getOrCreateCounter(METRIC_DOWNLOAD_NO_ROW,
                                        "503s: the local wazuh-db has no row for the agent (not yet synchronized)",
-                                       "count")};
+                                       "count"),
+            manager.getOrCreateCounter(METRIC_DOWNLOAD_WPK_ID_SERVED, "Signed WPK identifiers redeemed", "count"),
+            manager.getOrCreateCounter(
+                METRIC_DOWNLOAD_WPK_ID_REJECTED, "404s: signed WPK identifiers refused", "count")};
     }
 
     // const&: called from the endpoint's value-capturing (non-mutable) lambda; add() mutates
@@ -125,6 +136,20 @@ namespace remoted::endpoints::download
         if (m.notFound)
         {
             m.notFound->add();
+        }
+    }
+    inline void incWpkIdServed(const DownloadMetrics& m)
+    {
+        if (m.wpkIdServed)
+        {
+            m.wpkIdServed->add();
+        }
+    }
+    inline void incWpkIdRejected(const DownloadMetrics& m)
+    {
+        if (m.wpkIdRejected)
+        {
+            m.wpkIdRejected->add();
         }
     }
     inline void incOpenError(const DownloadMetrics& m)

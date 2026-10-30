@@ -336,6 +336,18 @@ namespace task_manager::schedule
         // shrink -- and truncates the WAL the compaction itself wrote.
         compact();
         checkpointWal();
+
+        if (m_options.afterRetention)
+        {
+            try
+            {
+                m_options.afterRetention();
+            }
+            catch (const std::exception& exception)
+            {
+                LOGFN_ERROR(schedulerLogFn(), "Post-retention hook failed: %s", exception.what());
+            }
+        }
     }
 
     void Scheduler::compact()

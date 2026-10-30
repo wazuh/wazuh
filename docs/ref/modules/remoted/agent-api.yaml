@@ -728,7 +728,8 @@ paths:
         | --- | --- | --- |
         | `config` | one group name | `/etc/wazuh-manager/shared/<group>/merged.mg` |
         | `config` | several, comma-separated | `var/multigroups/<sha256(resource_id)[0..32)>/merged.mg` |
-        | `wpk` | a package filename | `var/upgrade/<filename>` |
+        | `wpk` | a signed identifier, `wpk1.<54 base64url characters>.wpk` | `var/upgrade/tasks/<task_id>.wpk` |
+        | `wpk` | a package filename | nothing: rejected with `404` |
 
         The comma-separated form is wazuh's multigroup selector: it lets an agent in several groups
         fetch its **effective** configuration, and needs no database lookup because the directory
@@ -744,10 +745,15 @@ paths:
         row for is never served `default`: like a database that does not answer in time, it is
         `503`, and the agent retries. The comparison is exact, multigroup order included.
 
-        **`wpk` downloads are not authorized this way.** A package's authority is the agent's
-        pending upgrade task, which `/control` does not carry, so any authenticated agent may still
-        fetch a staged package; stock packages are signature-verified by the agent against
-        `wpk_root.pem` before installing.
+        **A `wpk` download is authorized by a signed identifier.** `/control` replaces the `wpk_file`
+        of a `remote_upgrade` task with `wpk1.<unpadded base64url of 40 bytes>.wpk` (63 characters):
+        the agent's numeric id, the expiry, the task id and a truncated HMAC-SHA256 under a key
+        derived from `cluster.key`. `/download` serves `var/upgrade/tasks/<task_id>.wpk` only when
+        the MAC verifies, the identifier was issued to the authenticated agent and it has not
+        expired. Every failure (bad MAC, another agent's identifier, expired, malformed, task file
+        absent or not a regular file) is the same `404` as a WPK that does not exist, with the same
+        body. A plain package name is never served: it is answered with the same `404` before any
+        filesystem access.
 
         A failed transfer is a truncation, never a short success: the terminating chunk is withheld
         so the agent retries rather than installing an incomplete file. The descriptor is re-`fstat`ed
@@ -765,6 +771,9 @@ paths:
                 value: { resource_type: config, resource_id: "default,web-servers" }
               wpk:
                 value: { resource_type: wpk, resource_id: wazuh_agent_v5.0.0_linux_x86_64.wpk }
+              wpkIdentifier:
+                summary: The identifier /control delivered in the task's wpk_file
+                value: { resource_type: wpk, resource_id: "wpk1.AAAAAWrghY6BWhCsey6oqOE38-3YBGo4YuKOMLVYGj_34xXog1CLbA.wpk" }
       responses:
         "200":
           description: |
@@ -811,7 +820,8 @@ paths:
         "404":
           description: |
             Absent, not a regular file, or `O_NOFOLLOW` refused a symlink -- deliberately
-            indistinguishable to the agent.
+            indistinguishable to the agent. A `wpk1.` identifier that fails verification for this
+            agent, has expired, or whose task file is unavailable gets this same response.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/ErrorResponse" }
@@ -821,7 +831,9 @@ paths:
         "413": { $ref: "#/components/responses/PayloadTooLarge" }
         "415": { $ref: "#/components/responses/UnsupportedContentEncoding" }
         "500":
-          description: An unexpected `errno` while opening or stat-ing the resource.
+          description: |
+            An unexpected `errno` while opening or stat-ing the resource, including the task file of
+            a valid identifier, or a handler failure.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/ErrorResponse" }
@@ -1630,7 +1642,8 @@ components:
             the whole selector is capped at 4096 bytes.
 
             For `wpk`: a filename of at most 255 bytes that must not begin with a dot, must end in
-            `.wpk`, and draws from the stricter `a-z A-Z 0-9 . _ -`.
+            `.wpk`, and draws from the stricter `a-z A-Z 0-9 . _ -`. A name of the form `wpk1.….wpk`
+            is a signed identifier, not a filename.
           example: web-servers
 
     ScanVdRequest:

@@ -16,6 +16,7 @@
 #include <cstdint>
 #include <optional>
 #include <string>
+#include <unordered_set>
 #include <vector>
 
 namespace task_manager::storage
@@ -196,6 +197,16 @@ namespace task_manager::storage
 
         /// @return Rows removed.
         virtual std::int64_t deleteOldAgentTasks(Timestamp before) = 0;
+
+        /// @return Ids of every agent task of @p taskType, whatever its status.
+        virtual std::unordered_set<std::string> agentTaskIds(const std::string& taskType) = 0;
+
+        /// @return Every pending agent task of @p taskType, payload included.
+        virtual std::vector<AgentTask> pendingAgentTasksByType(const std::string& taskType) = 0;
+
+        /// @brief Expire the given agent tasks that are still pending, in one transaction.
+        /// @return Rows expired.
+        virtual std::int64_t expireAgentTasksById(const std::vector<std::string>& taskIds) = 0;
 
         // ---- manager tasks -------------------------------------------------------------------
 

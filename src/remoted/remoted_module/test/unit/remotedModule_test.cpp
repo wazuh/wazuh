@@ -208,6 +208,13 @@ namespace
         return cfg;
     }
 
+    /// Copy of every line recorded so far.
+    std::vector<LogRecorder::Line> recordedLines()
+    {
+        std::lock_guard<std::mutex> lock {LogRecorder::mutex()};
+        return LogRecorder::lines();
+    }
+
     // A "CA" that does NOT carry CA:TRUE, signing the leaf anyway -- same `openssl` CLI recipe as
     // testTlsServer.hpp's generateCaSignedCertificate(), except the CA gets an explicit
     // `basicConstraints=critical,CA:FALSE`. `openssl x509 -req -CA` does not itself check the
@@ -322,6 +329,41 @@ TEST_F(RemotedModuleTest, StartAndStop)
     remoted_module_start(testLogCallback, &cfg);
     remoted_module_stop();
     EXPECT_GT(g_logCalls.load(), 0);
+}
+
+// A valid cluster key enables the WPK identifier codec, and the key never reaches the log.
+TEST_F(RemotedModuleTest, WpkIdCodecEnabledWithValidKey)
+{
+    constexpr auto clusterKey = "0123456789abcdefABCDEFGHIJKLMNOP";
+    TempTlsFiles tls;
+    auto cfg = makeConfig(tls);
+    std::snprintf(cfg.cluster_key, sizeof(cfg.cluster_key), "%s", clusterKey);
+    remoted_module_start(testLogCallback, &cfg);
+    remoted_module_stop();
+
+    for (const auto& line : recordedLines())
+    {
+        EXPECT_EQ(line.message.find("WPK download identifiers disabled"), std::string::npos) << line.message;
+        EXPECT_EQ(line.message.find(clusterKey), std::string::npos) << line.message;
+    }
+}
+
+// Without a cluster key the codec stays off and start() warns once.
+TEST_F(RemotedModuleTest, WpkIdCodecDisabledWithoutKey)
+{
+    constexpr auto clusterKey = "0123456789abcdefABCDEFGHIJKLMNOP";
+    TempTlsFiles tls;
+    const auto cfg = makeConfig(tls);
+    remoted_module_start(testLogCallback, &cfg);
+    remoted_module_stop();
+
+    bool disabledLogged = false;
+    for (const auto& line : recordedLines())
+    {
+        disabledLogged |= line.message == "WPK download identifiers disabled: no usable cluster key; 5.x agents cannot download WPK packages.";
+        EXPECT_EQ(line.message.find(clusterKey), std::string::npos) << line.message;
+    }
+    EXPECT_TRUE(disabledLogged);
 }
 
 // With global_prefix set through the C ABI, every public route moves under it: the health

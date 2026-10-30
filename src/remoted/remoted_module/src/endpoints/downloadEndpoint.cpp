@@ -11,6 +11,7 @@
 #include "downloadEndpoint.hpp"
 #include "common/logThrottle.hpp"
 
+#include "jwt/canonicalAgentId.hpp"
 #include "loggerHelper.h"
 
 #include <rapidjson/document.h>
@@ -22,6 +23,7 @@
 #include <unistd.h>
 
 #include <cerrno>
+#include <chrono>
 #include <cstdlib>
 #include <cstring>
 #include <stdexcept>
@@ -126,6 +128,12 @@ namespace
                 return LocateError::NotFound;
             default: return LocateError::Internal;
         }
+    }
+
+    std::int64_t wallClockSeconds()
+    {
+        return std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch())
+            .count();
     }
 } // namespace
 
@@ -344,12 +352,10 @@ namespace remoted::endpoints::download
 
     LocateResult locateResource(const DownloadRequest& request, const ResourcePaths& paths)
     {
-        // Safe to join directly: the grammars have already rejected any name containing a
-        // separator, equal to "." or "..", or beginning with a dot, and openRegularFile()'s
-        // O_NOFOLLOW stops the single remaining component being a symlink.
-        if (request.type == ResourceType::Wpk)
+        // A WPK is served only from a verified identifier, never from a name resolved here.
+        if (request.type != ResourceType::Config)
         {
-            return LocateResult {joinPath(paths.wpkDir, request.resourceId), LocateError::None};
+            return LocateResult {"", LocateError::NotFound};
         }
 
         // Several groups -> the effective (multigroup) configuration, whose directory is the hash
@@ -546,16 +552,17 @@ namespace remoted::endpoints::download
             return instance;
         }
 
-        // Everything after authorization: locate, open, stream. Runs on the HTTP worker for a fresh
+        // Everything after authorization: open, stream. Runs on the HTTP worker for a fresh
         // registry hit or a WPK, and on a lookup worker when the verdict needed wazuh-db --
         // IHttpResponder is thread-safe and exactly-once, and the payload is already released.
+        // @p isWpkId: @p located is the task file of a verified identifier.
         void serve(const DownloadRequest& downloadRequest,
                    const std::string& agentId,
-                   const ResourcePaths& paths,
+                   const LocateResult& located,
+                   bool isWpkId,
                    const DownloadMetrics& metrics,
                    const std::shared_ptr<remoted::http::IHttpResponder>& responder)
         {
-            const auto located = locateResource(downloadRequest, paths);
 
             // Opened BEFORE the response starts: once a 200 and a chunk are on the wire the status
             // can no longer be corrected, so a missing file has to be discovered here to be a clean
@@ -577,9 +584,19 @@ namespace remoted::endpoints::download
                                 agentId.c_str(),
                                 std::strerror(openErrno));
                 }
+                else if (isWpkId)
+                {
+                    incWpkIdRejected(metrics);
+                    LOGFN_DEBUG2(logFn(),
+                                 "Rejected WPK id '%s' from agent '%s': task file '%s' is unavailable: %s.",
+                                 downloadRequest.resourceId.c_str(),
+                                 agentId.c_str(),
+                                 located.path.c_str(),
+                                 std::strerror(openErrno));
+                }
                 else
                 {
-                    // 404s: the group/WPK the agent keeps asking for doesn't exist -- the config
+                    // 404s: the group the agent keeps asking for doesn't exist -- the config
                     // drift that turns into an agent retry storm, visible here as a rate.
                     incNotFound(metrics);
                     LOGFN_DEBUG2(logFn(),
@@ -603,6 +620,10 @@ namespace remoted::endpoints::download
             // Counted at start (bytes = the size being offered), BEFORE the pump runs: the
             // per-chunk loop stays uninstrumented by design (see downloadMetrics.hpp).
             incStarted(metrics, (*source)->size());
+            if (isWpkId)
+            {
+                incWpkIdServed(metrics);
+            }
 
             remoted::http::StreamResponse response;
             response.status = 200;
@@ -613,12 +634,16 @@ namespace remoted::endpoints::download
         }
     } // namespace
 
-    remoted::endpoints::AuthenticatedHandler
-    makeHandler(ResourcePaths paths, DownloadMetrics metrics, std::shared_ptr<const IAgentGroupSource> groups)
+    remoted::endpoints::AuthenticatedHandler makeHandler(ResourcePaths paths,
+                                                         DownloadMetrics metrics,
+                                                         std::shared_ptr<const IAgentGroupSource> groups,
+                                                         remoted::auth::WpkIdHandling wpkIds)
     {
-        return [paths = std::move(paths), metrics = std::move(metrics), groups = std::move(groups)](
-                   std::shared_ptr<const remoted::auth::AuthenticatedRequest> request,
-                   std::shared_ptr<remoted::http::IHttpResponder> responder)
+        return [paths = std::move(paths),
+                metrics = std::move(metrics),
+                groups = std::move(groups),
+                wpkIds = std::move(wpkIds)](std::shared_ptr<const remoted::auth::AuthenticatedRequest> request,
+                                            std::shared_ptr<remoted::http::IHttpResponder> responder)
         {
             auto parsed = parseRequest(request->payload.bytes());
 
@@ -640,11 +665,61 @@ namespace remoted::endpoints::download
             request->payload.release();
             request.reset();
 
-            // WPK requests are deliberately not authorized here: their authority is the agent's
-            // pending upgrade task, which /control does not carry (see the header's note).
+            // A signed WPK id is served only to the agent it was issued to and before it expires;
+            // every way it can fail answers the same 404 as an absent WPK, so an agent cannot tell
+            // a forged or foreign id from a missing file. A plain WPK name is never served: it gets
+            // that same 404 without touching the filesystem.
             if (downloadRequest.type != ResourceType::Config)
             {
-                serve(downloadRequest, agentId, paths, metrics, responder);
+                if (!remoted::auth::looksLikeWpkId(downloadRequest.resourceId))
+                {
+                    LOGFN_DEBUG2(logFn(),
+                                 "Rejected WPK request '%s' from agent '%s': plain WPK names are not served.",
+                                 downloadRequest.resourceId.c_str(),
+                                 agentId.c_str());
+                    incWpkIdRejected(metrics);
+                    responder->send(errorResponseFor(LocateError::NotFound));
+                    return;
+                }
+
+                const char* cause = nullptr;
+                const auto agent = jwt_profile::v1::CanonicalAgentId::parse(agentId);
+                std::optional<remoted::auth::TaskIdBytes> taskId;
+
+                if (!agent.has_value())
+                {
+                    cause = "unparseable agent id";
+                }
+                else if (wpkIds.codec == nullptr)
+                {
+                    cause = "identifiers are disabled";
+                }
+                else
+                {
+                    const auto now = wpkIds.now ? wpkIds.now() : wallClockSeconds();
+                    taskId = wpkIds.codec->verify(downloadRequest.resourceId, agent->numeric(), now);
+                    if (!taskId.has_value())
+                    {
+                        cause = "it does not verify for this agent or has expired";
+                    }
+                }
+
+                if (cause != nullptr)
+                {
+                    LOGFN_DEBUG2(logFn(),
+                                 "Rejected WPK id '%s' from agent '%s': %s.",
+                                 downloadRequest.resourceId.c_str(),
+                                 agentId.c_str(),
+                                 cause);
+                    incWpkIdRejected(metrics);
+                    responder->send(errorResponseFor(LocateError::NotFound));
+                    return;
+                }
+
+                const LocateResult located {
+                    joinPath(paths.wpkTasksDir, remoted::auth::formatTaskId(*taskId) + WPK_EXTENSION),
+                    LocateError::None};
+                serve(downloadRequest, agentId, located, true, metrics, responder);
                 return;
             }
 
@@ -718,7 +793,7 @@ namespace remoted::endpoints::download
                     return;
                 }
 
-                serve(downloadRequest, agentId, paths, metrics, responder);
+                serve(downloadRequest, agentId, locateResource(downloadRequest, paths), false, metrics, responder);
             };
 
             if (groups == nullptr)

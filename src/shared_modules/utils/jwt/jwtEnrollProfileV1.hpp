@@ -50,6 +50,8 @@ namespace jwt_profile::v1::enroll
     constexpr std::string_view kHkdfTokenInfoLabel = "WAZUH-ENROLL-TOKEN-KEY";
     /// `kid` = re-enrolling agent: HKDF `info` label of the key derived from its reenroll_secret.
     constexpr std::string_view kHkdfReenrollInfoLabel = "WAZUH-REENROLL-KEY";
+    /// HKDF `info` label of the key that signs WPK download identifiers, derived from the cluster key.
+    constexpr std::string_view kHkdfWpkIdInfoLabel = "WAZUH-WPK-ID-KEY";
     /// Enrollment token id and secret; the token's `key` field is id || secret (32 bytes, 43 base64url chars).
     constexpr std::size_t kTokenIdBytes = 16;
     constexpr std::size_t kTokenSecretBytes = 16;

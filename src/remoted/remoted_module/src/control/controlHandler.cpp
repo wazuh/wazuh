@@ -17,9 +17,12 @@
 #include <atomic>
 #include <chrono>
 #include <condition_variable>
+#include <fcntl.h>
 #include <functional>
 #include <mutex>
+#include <optional>
 #include <string>
+#include <sys/stat.h>
 #include <thread>
 #include <utility>
 
@@ -592,6 +595,71 @@ namespace remoted::control
             callback(httpResp);
         }
 
+        /// The payload to send for @p task: a copy with `wpk_file` replaced by a signed identifier
+        /// when the task is a remote_upgrade whose per-task file exists, the stored payload otherwise.
+        nlohmann::json deliveredPayload(AgentId id, const Task& task)
+        {
+            if (task.type != "remote_upgrade" || !task.payload.is_object())
+            {
+                return task.payload;
+            }
+            const auto wpkFile = task.payload.find("wpk_file");
+            if (wpkFile == task.payload.end() || !wpkFile->is_string())
+            {
+                return task.payload;
+            }
+
+            const char* reason = nullptr;
+            const auto& codec = m_config.wpkIds.codec;
+            const auto taskId = remoted::auth::parseTaskId(task.id);
+            std::optional<std::string> sealed;
+            if (!codec)
+            {
+                reason = "identifiers are disabled";
+            }
+            else if (!taskId)
+            {
+                reason = "task id is not a UUID";
+            }
+            else
+            {
+                // task.id passed parseTaskId, so it cannot carry a path separator.
+                const std::string taskFile = m_config.wpkTasksDir + "/" + task.id + ".wpk";
+                struct stat st;
+                if (::fstatat(AT_FDCWD, taskFile.c_str(), &st, AT_SYMLINK_NOFOLLOW) != 0 || !S_ISREG(st.st_mode))
+                {
+                    reason = "no regular task file";
+                }
+                else
+                {
+                    const std::int64_t now =
+                        m_config.wpkIds.now ? m_config.wpkIds.now() : static_cast<std::int64_t>(getWallSec());
+                    sealed = codec->issue(id, *taskId, now);
+                    if (!sealed)
+                    {
+                        reason = "identifier could not be issued";
+                    }
+                }
+            }
+
+            if (!sealed)
+            {
+                LOGFN_WARN(
+                    logFn(),
+                    "Agent %u: task '%s' has no WPK download identifier (%s); the agent cannot download its WPK.",
+                    id,
+                    task.id.c_str(),
+                    reason);
+                incWpkIdFallback(m_metrics);
+                return task.payload;
+            }
+
+            nlohmann::json payload = task.payload;
+            payload["wpk_file"] = std::move(*sealed);
+            incWpkIdIssued(m_metrics);
+            return payload;
+        }
+
         void processNotify(AgentId id,
                            std::shared_ptr<const AgentEntry> entry,
                            const NotifyData& data,
@@ -722,7 +790,7 @@ namespace remoted::control
                         nlohmann::json taskJson;
                         taskJson["task_id"] = task.id;
                         taskJson["task_type"] = task.type;
-                        taskJson["payload"] = task.payload;
+                        taskJson["payload"] = deliveredPayload(id, task);
                         tasksJson.push_back(std::move(taskJson));
                     }
                     response["tasks"] = std::move(tasksJson);

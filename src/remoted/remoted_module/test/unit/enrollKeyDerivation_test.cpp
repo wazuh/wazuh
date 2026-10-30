@@ -94,3 +94,13 @@ TEST(EnrollKeyDerivation, WrongSizedSecretsYieldNoKey)
     EXPECT_FALSE(enroll::deriveReenrollKey(SecureBytes {}).has_value());
     EXPECT_TRUE(enroll::deriveEnrollTokenKey(SecureBytes(16)).has_value()); // all-zero secret is still a secret
 }
+
+TEST(EnrollKeyDerivation, DerivesWpkIdKeyVector)
+{
+    // Same HKDF construction with info = "WAZUH-WPK-ID-KEY" || 0x01, checked against `openssl kdf`.
+    const auto key = enroll::deriveWpkIdKey("0123456789abcdefABCDEFGHIJKLMNOP");
+    ASSERT_TRUE(key.has_value());
+    EXPECT_TRUE(*key == fromHex("7e81235eb4189848df43b13814ceb6fba15ce9a1b034f64cb70d9658a391dad9"));
+
+    EXPECT_FALSE(enroll::deriveWpkIdKey("").has_value());
+}

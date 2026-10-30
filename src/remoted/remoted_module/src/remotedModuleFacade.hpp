@@ -17,6 +17,7 @@
 #include <cstdarg>
 #include <cstdint>
 #include <cstdio>
+#include <cstring>
 #include <functional>
 #include <memory>
 #include <mutex>
@@ -29,6 +30,7 @@
 #include "auth/keystore.hpp"
 #include "auth/passwordKeySource.hpp"
 #include "auth/tokenKeySource.hpp"
+#include "auth/wpkId.hpp"
 #include "common/installPaths.hpp"
 #include "common/requestOutcomeMetrics.hpp"
 #include "common/vdClient.hpp"
@@ -76,6 +78,8 @@
 #include <uds_http_server/udsHttpServerFactory.hpp>
 #include <wazuh_metrics/jsonDump.hpp>
 #include <wazuh_metrics/manager.hpp>
+
+#include <openssl/crypto.h>
 
 constexpr auto REMOTED_MODULE_LOGTAG {"wazuh-manager-remoted:communication"}; ///< Tag used for remoted module logging.
 
@@ -195,6 +199,20 @@ public:
                    m_config.cluster_name,
                    m_config.worker_node ? "true" : "false");
 
+        // The key lives on only inside the codec: m_config keeps no copy of it.
+        auto wpkIdCodec = remoted::auth::WpkIdCodec::fromClusterKey(
+            std::string_view(m_config.cluster_key, strnlen(m_config.cluster_key, sizeof(m_config.cluster_key))),
+            remoted::auth::effectiveWpkIdTtl(m_config.wpk_id_ttl));
+        OPENSSL_cleanse(m_config.cluster_key, sizeof(m_config.cluster_key));
+        if (wpkIdCodec)
+        {
+            m_wpkIdCodec = std::make_shared<const remoted::auth::WpkIdCodec>(std::move(*wpkIdCodec));
+        }
+        else
+        {
+            LOGFN_WARN(moduleLogFn(), "WPK download identifiers disabled: no usable cluster key; 5.x agents cannot download WPK packages.");
+        }
+
         // Logged here and rethrown, NOT swallowed into a retry: a failure to start (e.g.
         // missing/unreadable certificate or key) must still reach the caller as an exception, but
         // without this log line it would otherwise crash the process with nothing but a bare
@@ -207,6 +225,7 @@ public:
         catch (const std::exception& e)
         {
             LOGFN_ERROR(moduleLogFn(), "remoted HTTP server failed to start: %s", e.what());
+            m_wpkIdCodec.reset();
             throw;
         }
         LOGFN_INFO(moduleLogFn(), "remoted HTTP server started.");
@@ -229,6 +248,7 @@ public:
         {
             LOGFN_ERROR(moduleLogFn(), "Could not launch the remoted module worker thread: %s.", e.what());
             resetHttpServerStack();
+            m_wpkIdCodec.reset();
             throw;
         }
 
@@ -352,6 +372,7 @@ public:
             // (unlike ControlHandler above) -- reset here anyway, alongside every other
             // per-request handler object, once stopAccepting() guarantees nothing can still call in.
             m_enrollmentAuthenticator.reset();
+            m_wpkIdCodec.reset();
 
             // Phase 2: abort in-flight downstream UDS sessions (no new completions can arrive).
             // m_authdClient->stop() belongs in this phase for the same reason: it fails any
@@ -764,10 +785,13 @@ private:
         // string /control hands it as config_token -- and anything else is 403 (#38683). A fresh
         // registry entry answers with no wazuh-db round trip; a missing, expired or never
         // established one is looked up in the local wazuh-db asynchronously (#39147): a row is
-        // served; no row and a failed lookup are both 503. WPK requests are NOT authorized here:
-        // their authority is the pending upgrade task, which /control does not carry. What
-        // contains those remains the resource-id grammars plus O_NOFOLLOW, and the packages are
-        // signature-verified by the agent against wpk_root.pem.
+        // served; no row and a failed lookup are both 503. A WPK requested by a signed identifier
+        // (the wpk_file /control sealed into this agent's remote_upgrade task) is served from that
+        // task's own file only to the agent it was issued to and before it expires. A plain WPK
+        // name is never served: it gets the same 404 as an absent WPK. Every package is also
+        // signature-verified by the agent against wpk_root.pem. The handler keeps its own reference
+        // to the codec, so the derived key outlives stop()'s phase 1b reset until the route table
+        // is released.
         //
         // The lookup is shared: the route's source holds it until phase 4 releases the route
         // table (it must outlive any handler still inside lookup()); m_registryLookup is kept only
@@ -783,7 +807,8 @@ private:
                 {},
                 m_downloadMetrics,
                 std::make_shared<remoted::control::RegistryAgentGroupSource>(
-                    agentRegistry, m_registryLookup, controlConfig.groupsRefreshIntervalSec)),
+                    agentRegistry, m_registryLookup, controlConfig.groupsRefreshIntervalSec),
+                remoted::auth::WpkIdHandling {m_wpkIdCodec, {}}),
             remoted::http::ResponseMode::Streamable);
 
         // The CA generation an agent is told about on every notify (RF-3). Same weak server pointer
@@ -822,6 +847,8 @@ private:
 
             return descriptor.generation;
         };
+
+        controlConfig.wpkIds = remoted::auth::WpkIdHandling {m_wpkIdCodec, {}};
 
         auto vdClient = std::make_shared<remoted::common::VdClient>();
         m_controlHandler = std::make_unique<remoted::control::ControlHandler>(
@@ -2001,6 +2028,10 @@ private:
     bool m_running {false};              ///< Whether the worker is active.
     std::thread m_worker;                ///< The C++ thread launched for remoted.
     remoted_module_config_t m_config {}; ///< Copy of the caller's configuration.
+
+    /// Issues and verifies WPK download identifiers; empty when no usable cluster key was configured.
+    /// Shared with the /control and /download handlers, which each keep their own reference.
+    std::shared_ptr<const remoted::auth::WpkIdCodec> m_wpkIdCodec;
 
     /// HTTPS transport (behind our interface). shared_ptr (not unique_ptr) solely so the
     /// transport-diagnostics pulls can hold a weak_ptr that expires when stop() resets it --

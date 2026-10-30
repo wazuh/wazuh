@@ -139,7 +139,6 @@ TEST_F(InstallPathsTest, DownloadResourcePathsUseThem)
 
     EXPECT_EQ(resourcePaths.sharedDir, paths::kSharedDir);
     EXPECT_EQ(resourcePaths.multigroupsDir, paths::kMultigroupsDir);
-    EXPECT_EQ(resourcePaths.wpkDir, paths::kWpkDir);
 }
 
 TEST_F(InstallPathsTest, VdClientDefaultReachesRelativeSocket)

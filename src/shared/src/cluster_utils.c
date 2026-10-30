@@ -88,4 +88,17 @@ char *get_cluster_name(void) {
     return dup_or_undefined("name");
 }
 
+char *get_cluster_key(void) {
+    cJSON *cluster = cluster_section();
+    const char *value = string_item(cluster, "key");
+    char *result = value != NULL ? strdup(value) : NULL;
+
+    // The section is this call's own copy: wipe the key before it is freed.
+    if (value != NULL) {
+        memset_secure((char *)value, 0, strlen(value));
+    }
+    cJSON_Delete(cluster);
+    return result;
+}
+
 #endif /* CLIENT */

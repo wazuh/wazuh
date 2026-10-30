@@ -9,6 +9,7 @@
  */
 
 #include "shared.h"
+#include <openssl/crypto.h>
 #include "bulk.h"
 #include "agent_metadata_db.h"
 #include "os_net.h"
@@ -392,6 +393,7 @@ STATIC void remoted_module_https_config(remoted_module_config_t *rm_config) {
     rm_config->jwt_max_age = getDefine_Int_default("remoted", "jwt_max_age", 1, 43200, 60);
     rm_config->jwt_clock_skew = getDefine_Int_default("remoted", "jwt_clock_skew", 0, 43200, 30);
     rm_config->jwt_clock_skew_set = 1;
+    rm_config->wpk_id_ttl = getDefine_Int_default("remoted", "wpk_id_ttl", 60, 3600, 600);
     rm_config->auth_max_body_size = getDefine_Int_default("remoted", "auth_max_body_size", 1048576, 67108864, 5242880);
     // The cap on a zstd body once decoded. Larger than the wire cap on purpose: the agent sizes its
     // batches BEFORE compressing them, and a VD-first session carries a whole package list.
@@ -752,7 +754,19 @@ void HandleSecure()
             os_free(rm_cluster_name);
         }
 
+        // A key of any other length stays out: truncating it would yield a key no other node shares.
+        char *rm_cluster_key = get_cluster_key();
+        if (rm_cluster_key) {
+            size_t rm_cluster_key_len = strlen(rm_cluster_key);
+            if (rm_cluster_key_len == sizeof(rm_config.cluster_key) - 1) {
+                memcpy(rm_config.cluster_key, rm_cluster_key, rm_cluster_key_len + 1);
+            }
+            OPENSSL_cleanse(rm_cluster_key, rm_cluster_key_len);
+            os_free(rm_cluster_key);
+        }
+
         remoted_module_start(mtLoggingFunctionsWrapper, &rm_config);
+        OPENSSL_cleanse(rm_config.cluster_key, sizeof(rm_config.cluster_key));
         atexit(remoted_module_stop);
     }
 

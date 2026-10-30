@@ -22,6 +22,8 @@
 #include <set>
 #include <stdexcept>
 #include <thread>
+#include <unordered_set>
+#include <utility>
 #include <vector>
 
 using namespace task_manager;
@@ -451,6 +453,78 @@ TEST_F(StoreTest, AgentTasksDoAgeOutWhilePendingUnlikeManagerTasks)
 
     EXPECT_EQ(m_store->expireAgentTasks(5000), 1);
     EXPECT_TRUE(m_store->takePendingAgentTasks("001", 10).empty());
+}
+
+TEST_F(StoreTest, AgentTaskIdsListsOnlyThatType)
+{
+    for (const auto& [id, type] : {std::pair<const char*, const char*> {"u1", "remote_upgrade"},
+                                   {"u2", "remote_upgrade"},
+                                   {"r1", "agent_restart"}})
+    {
+        AgentTask task;
+        task.taskId = id;
+        task.agentId = "001";
+        task.taskType = type;
+        task.payload = "{}";
+        task.createTime = 1000;
+        ASSERT_TRUE(m_store->createAgentTask(task));
+    }
+
+    EXPECT_EQ(m_store->agentTaskIds("remote_upgrade"), (std::unordered_set<std::string> {"u1", "u2"}));
+    EXPECT_EQ(m_store->agentTaskIds("agent_restart"), (std::unordered_set<std::string> {"r1"}));
+    EXPECT_TRUE(m_store->agentTaskIds("unknown").empty());
+}
+
+TEST_F(StoreTest, PendingByTypeAndExpireById)
+{
+    const auto add = [this](const char* id, const char* agent, const char* type)
+    {
+        AgentTask task;
+        task.taskId = id;
+        task.agentId = agent;
+        task.taskType = type;
+        task.payload = std::string {R"({"wpk_file":")"} + id + R"("})";
+        task.createTime = 1000;
+        ASSERT_TRUE(m_store->createAgentTask(task));
+    };
+    add("u1", "001", "remote_upgrade");
+    add("u2", "002", "remote_upgrade");
+    add("u3", "003", "remote_upgrade");
+    add("u4", "004", "remote_upgrade");
+    add("r1", "005", "agent_restart");
+    // u3 becomes delivered and u4 expired, so neither is pending any more.
+    ASSERT_EQ(m_store->takePendingAgentTasks("003", 10).size(), 1U);
+    ASSERT_EQ(m_store->expireAgentTasksById({"u4"}), 1);
+
+    const auto idsOf = [](const std::vector<AgentTask>& tasks)
+    {
+        std::set<std::string> ids;
+        for (const auto& task : tasks)
+        {
+            ids.insert(task.taskId);
+        }
+        return ids;
+    };
+
+    const auto pending {m_store->pendingAgentTasksByType("remote_upgrade")};
+    EXPECT_EQ(idsOf(pending), (std::set<std::string> {"u1", "u2"}));
+    for (const auto& task : pending)
+    {
+        EXPECT_EQ(task.taskType, "remote_upgrade");
+        EXPECT_EQ(task.payload, std::string {R"({"wpk_file":")"} + task.taskId + R"("})");
+        EXPECT_EQ(task.agentId, task.taskId == "u1" ? "001" : "002");
+        EXPECT_EQ(task.createTime, 1000);
+    }
+    EXPECT_EQ(idsOf(m_store->pendingAgentTasksByType("agent_restart")), (std::set<std::string> {"r1"}));
+    EXPECT_TRUE(m_store->pendingAgentTasksByType("unknown").empty());
+
+    // Only the pending ids among those given are expired: a delivered row, an expired one, an id
+    // of another type and an unknown id are all left alone or not counted.
+    EXPECT_EQ(m_store->expireAgentTasksById({"u1", "u3", "u4", "r1", "nope"}), 2);
+    EXPECT_EQ(idsOf(m_store->pendingAgentTasksByType("remote_upgrade")), (std::set<std::string> {"u2"}));
+    EXPECT_TRUE(m_store->pendingAgentTasksByType("agent_restart").empty());
+    EXPECT_EQ(m_store->expireAgentTasksById({}), 0);
+    EXPECT_EQ(m_store->agentTaskIds("remote_upgrade").size(), 4U);
 }
 
 // ---- schedules -------------------------------------------------------------------------------

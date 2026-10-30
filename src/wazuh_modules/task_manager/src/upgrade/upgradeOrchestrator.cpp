@@ -21,6 +21,7 @@
 #include <json.hpp>
 
 #include <map>
+#include <numeric>
 #include <utility>
 
 namespace
@@ -387,35 +388,73 @@ namespace task_manager::upgrade
             rowOwners.push_back(index);
         }
 
-        // Evicted BEFORE the write, and for every row rather than only the ones reported created.
-        //
-        // BEFORE, because a poll racing this write must not be answered "nothing pending" from an
-        // entry this batch is about to invalidate. FOR EVERY ROW, because a duplicate id means the
-        // row is already there and still pending -- the agent needs to see it either way. The API's
-        // bulk create makes the same two choices.
-        //
-        // Getting this wrong does not merely delay a task: the pending-tasks route skips the
-        // database entirely for an agent recorded as empty, and nothing else evicts that entry --
-        // no TTL, no sweep. The upgrade would stay invisible until a restart and then expire.
-        for (const auto& row : rows)
-        {
-            m_pendingCache.invalidate(row.agentId);
-        }
+        // One flag per row, never resized: a row whose WPK file was not prepared is never offered to
+        // the store, and a prepared row the store did not create is told apart from it.
+        std::vector<bool> staged(rows.size(), false);
+        std::vector<bool> stored(rows.size(), false);
+        const auto commit {
+            [this, &rows, &staged, &stored](const std::vector<std::size_t>& indices)
+            {
+                std::vector<AgentTask> subset;
+                subset.reserve(indices.size());
+                for (const auto index : indices)
+                {
+                    staged[index] = true;
+                    subset.push_back(rows[index]);
+                }
 
-        std::vector<bool> stored;
-        if (!rows.empty())
+                // Evicted BEFORE the write, and for every row offered rather than only the ones reported
+                // created.
+                //
+                // BEFORE, because a poll racing this write must not be answered "nothing pending" from an
+                // entry this batch is about to invalidate. FOR EVERY ROW, because a duplicate id means the
+                // row is already there and still pending -- the agent needs to see it either way. The API's
+                // bulk create makes the same two choices.
+                //
+                // Getting this wrong does not merely delay a task: the pending-tasks route skips the
+                // database entirely for an agent recorded as empty, and nothing else evicts that entry --
+                // no TTL, no sweep. The upgrade would stay invisible until a restart and then expire.
+                for (const auto& row : subset)
+                {
+                    m_pendingCache.invalidate(row.agentId);
+                }
+
+                if (!subset.empty())
+                {
+                    try
+                    {
+                        // ONE transaction, one fsync -- against 500 committed transactions and 500 HTTP
+                        // round trips before. Every other route blocks on the store mutex for the few
+                        // milliseconds this takes, rather than five hundred separate times.
+                        const auto created {m_store.createAgentTasks(subset)};
+                        for (std::size_t position = 0; position < indices.size() && position < created.size();
+                             ++position)
+                        {
+                            stored[indices[position]] = created[position];
+                        }
+                    }
+                    catch (const std::exception& exception)
+                    {
+                        LOGFN_ERROR(upgradeLogFn(), "Could not store the upgrade tasks: %s", exception.what());
+                    }
+                }
+            }};
+
+        if (m_options.taskLinks != nullptr && !rows.empty())
         {
-            try
+            std::vector<TaskLink> links;
+            links.reserve(rows.size());
+            for (std::size_t row = 0; row < rows.size(); ++row)
             {
-                // ONE transaction, one fsync -- against 500 committed transactions and 500 HTTP
-                // round trips before. Every other route blocks on the store mutex for the few
-                // milliseconds this takes, rather than five hundred separate times.
-                stored = m_store.createAgentTasks(rows);
+                links.push_back({rows[row].taskId, candidates[rowOwners[row]].wpkFile});
             }
-            catch (const std::exception& exception)
-            {
-                LOGFN_ERROR(upgradeLogFn(), "Could not store the upgrade tasks: %s", exception.what());
-            }
+            m_options.taskLinks->linkAndCommit(links, commit);
+        }
+        else
+        {
+            std::vector<std::size_t> all(rows.size());
+            std::iota(all.begin(), all.end(), std::size_t {0});
+            commit(all);
         }
 
         for (std::size_t index = 0; index < candidates.size(); ++index)
@@ -425,11 +464,15 @@ namespace task_manager::upgrade
 
         for (std::size_t row = 0; row < rowOwners.size(); ++row)
         {
-            // A rollback fails EVERY row, so each of them reports TaskManagerCommunication -- the
+            // A rollback fails EVERY offered row, so each of them reports TaskManagerCommunication -- the
             // one code the Server API reacts to by halving the chunk and retrying, which turns a
-            // store hiccup into an automatic smaller attempt instead of a dead request.
-            const bool ok {row < stored.size() && stored[row]};
-            if (!ok)
+            // store hiccup into an automatic smaller attempt instead of a dead request. A row whose file
+            // could not be prepared would fail the same way on retry, so it reports its own code.
+            if (!staged[row])
+            {
+                outcomes[rowOwners[row]].error = UpgradeError::WpkStagingFailed;
+            }
+            else if (!stored[row])
             {
                 outcomes[rowOwners[row]].error = UpgradeError::TaskManagerCommunication;
             }

@@ -11,6 +11,8 @@
 #include "remotedModule.hpp"
 #include "remotedModuleFacade.hpp"
 
+#include <openssl/crypto.h>
+
 namespace Log
 {
     // Single definition of the DSO-global log sink used by loggerHelper.h.
@@ -57,6 +59,15 @@ extern "C"
         {
             config = *configuration;
         }
+        // Wipes this copy's cluster key on every way out, the exception included.
+        struct ClusterKeyWiper
+        {
+            remoted_module_config_t& config;
+            ~ClusterKeyWiper()
+            {
+                OPENSSL_cleanse(config.cluster_key, sizeof(config.cluster_key));
+            }
+        } clusterKeyWiper {config};
 
         RemotedModule::instance().start(
             [callbackLog](const int logLevel,

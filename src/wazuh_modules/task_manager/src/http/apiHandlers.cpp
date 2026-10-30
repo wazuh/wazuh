@@ -12,6 +12,7 @@
 
 #include "model/taskId.hpp"
 #include "taskManagerLog.hpp"
+#include "upgrade/upgradeOrchestrator.hpp"
 
 #include <cstddef>
 #include <ctime>
@@ -170,6 +171,15 @@ namespace task_manager::http
         if (!taskType.has_value() || taskType->empty())
         {
             return ApiResponse::error(400, "parsing_error", "task_type is required");
+        }
+        // An upgrade row needs its per-task WPK file staged before it exists; only the upgrade
+        // routes do that.
+        if (*taskType == upgrade::REMOTE_UPGRADE_TASK_TYPE)
+        {
+            return ApiResponse::error(400,
+                                      "parsing_error",
+                                      "remote_upgrade tasks are created by /v1/agents/upgrade and "
+                                      "/v1/agents/upgrade-custom");
         }
 
         const auto createTime {optionalTime(body, "create_time")};

@@ -427,6 +427,8 @@ version gates are listed under
 **WPK downloads fail.** Confirm outbound HTTPS access to `<wpk_repository>`, or place the WPK under
 `/var/wazuh-manager/var/upgrade/` and use the custom-upgrade endpoint. A custom WPK **must** be
 inside that directory; anything else is refused with *The WPK file does not exist*.
+A custom WPK copied in by root cannot be hard-linked under `fs.protected_hardlinks`, so the module
+copies it; see [Per-task WPK files](agent-upgrades.md#per-task-wpk-files).
 
 *A missing CA bundle fails every repository request, by design* (peer verification is never
 disabled; see [The WPK file](agent-upgrades.md#the-wpk-file)). The module says so once at start-up,

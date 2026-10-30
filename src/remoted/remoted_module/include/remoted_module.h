@@ -106,6 +106,8 @@ extern "C"
                                          ///< not an internal option. <=0 -> module default.
         bool worker_node;                ///< true if this manager is a cluster worker node.
         char cluster_name[256];          ///< Cluster name.
+        char cluster_key[33];            ///< Cluster key (cluster.key): 32 characters of [A-Za-z0-9], NUL-terminated.
+                                         ///< Empty -> WPK download identifiers disabled.
         char certificate_path[512];      ///< TLS certificate chain (PEM) path (empty -> module default).
         char private_key_path[512];      ///< TLS private key (PEM) path (empty -> module default).
         int io_threads;                  ///< HTTPS I/O threads. <=0 -> module default (see remoted.http_io_threads).
@@ -180,6 +182,8 @@ extern "C"
                                       ///< remoted.jwt_max_age, 1..43200 (profile ceiling; default 60); <=0 -> module
                                       ///< default. The token's declared lifetime (exp - iat) is a fixed 60 s, NOT
                                       ///< configurable.
+        int wpk_id_ttl;               ///< Lifetime of an issued WPK download identifier, seconds.
+                                      ///< remoted.wpk_id_ttl, 60..3600 (default 600); <=0 -> module default.
         int jwt_clock_skew;           ///< Tolerated agent/manager clock difference, seconds, both directions.
                                       ///< remoted.jwt_clock_skew, 0..43200 (profile ceiling; default 30). Zero is a
                                       ///< VALID setting ("no tolerance"), so this field is only read when

@@ -199,7 +199,7 @@ The agent-facing task payload contains four fields:
 
 | Field         | Purpose                                                                                 |
 | ------------- | --------------------------------------------------------------------------------------- |
-| `wpk_file`    | WPK filename the agent must download from the manager                                   |
+| `wpk_file`    | WPK filename the agent must download from the manager; a 5.x agent receives a signed identifier instead, bound to that agent and task (see [Per-task WPK files](../../ref/modules/task_manager/agent-upgrades.md#per-task-wpk-files)) |
 | `wpk_sha1`    | SHA-1 the agent must reproduce before running the installer                             |
 | `installer`   | Installer script inside the WPK (`upgrade.sh` on Linux/macOS, `upgrade.bat` on Windows) |
 | `wpk_version` | Version the WPK installs. Consulted only by the legacy delivery path, to decide whether to send the manager's CA (see [Trust anchor delivery](#trust-anchor-delivery-to-legacy-agents)). Empty on the custom-WPK path, where the file name is not authoritative about what it installs |

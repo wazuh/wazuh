@@ -24,6 +24,7 @@
 #include "taskManagerLog.hpp"
 #include "task_manager.h"
 #include "upgrade/httpWpkRepository.hpp"
+#include "upgrade/taskLinks.hpp"
 #include "upgrade/upgradeApi.hpp"
 #include "upgrade/upgradeOrchestrator.hpp"
 #include "upgrade/upgradeService.hpp"
@@ -145,6 +146,25 @@ namespace task_manager
             storeOptions.dbPath = config.db_path;
             m_store = std::make_unique<storage::SqliteTaskStore>(std::move(storeOptions));
 
+            m_taskLinks = std::make_unique<upgrade::TaskLinks>(stringOr(config.upgrade_dir, "var/upgrade/"), *m_store);
+            try
+            {
+                m_taskLinks->backfill();
+            }
+            catch (const std::exception& exception)
+            {
+                LOGFN_ERROR(moduleLogFn(), "Startup backfill of the upgrade task files failed: %s", exception.what());
+            }
+            try
+            {
+                m_taskLinks->sweep();
+            }
+            catch (const std::exception& exception)
+            {
+                // Not fatal: the sweep after the next retention pass removes what this one left.
+                LOGFN_ERROR(moduleLogFn(), "Startup sweep of the upgrade task files failed: %s", exception.what());
+            }
+
             const auto localConfig {buildLocalConfig(config)};
             m_registry = std::make_unique<registry::TaskRegistry>(
                 registry::buildBuiltinRegistry(config, *m_hostOps, localConfig));
@@ -184,6 +204,10 @@ namespace task_manager
             schedulerOptions.historyPerSchedule = valueOr(config.history_per_schedule, 20);
             schedulerOptions.maxRows = valueOr(config.max_rows, 100000);
             schedulerOptions.sizeRotationEnabled = sizeRotationEnabled;
+            schedulerOptions.afterRetention = [this]
+            {
+                m_taskLinks->sweep();
+            };
 
             m_scheduler = std::make_unique<schedule::Scheduler>(*m_store,
                                                                 *m_executor,
@@ -320,6 +344,7 @@ namespace task_manager
             m_sweeper.reset();
             m_executor.reset();
             m_registry.reset();
+            m_taskLinks.reset();
             m_store.reset();
             m_metrics.reset();
             m_metricsManager.reset();
@@ -406,6 +431,7 @@ namespace task_manager
             orchestratorOptions.upgradeDir = wpkOptions.upgradeDir;
             orchestratorOptions.batchDeadline = std::chrono::seconds {valueOr(config.upgrade_batch_deadline, 180)};
             orchestratorOptions.maxAgents = static_cast<std::size_t>(valueOr(config.upgrade_max_agents, 500));
+            orchestratorOptions.taskLinks = m_taskLinks.get();
             // The SAME PendingCache the pending-tasks route reads. A separate one would let an
             // upgrade task be written while the route still believes the agent has nothing.
             m_upgradeOrchestrator = std::make_unique<upgrade::UpgradeOrchestrator>(
@@ -571,6 +597,7 @@ namespace task_manager
         std::shared_ptr<wazuh::metrics::Manager> m_metricsManager;
         std::shared_ptr<metrics::TaskMetrics> m_metrics;
         std::unique_ptr<storage::SqliteTaskStore> m_store;
+        std::unique_ptr<upgrade::TaskLinks> m_taskLinks;
         std::unique_ptr<registry::TaskRegistry> m_registry;
         std::unique_ptr<execution::Executor> m_executor;
         std::unique_ptr<execution::Sweeper> m_sweeper;

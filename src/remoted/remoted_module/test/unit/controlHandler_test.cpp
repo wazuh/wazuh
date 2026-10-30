@@ -14,6 +14,7 @@
  * or the task manager.
  */
 
+#include "auth/wpkId.hpp"
 #include "common/vdClient.hpp"
 #include "control/agentRegistry.hpp"
 #include "control/controlConfig.hpp"
@@ -1710,4 +1711,210 @@ TEST(ControlHandlerTest, AnOlderDownloadLookupNeverOverwritesANotifyRead)
     const auto entry = h.registry->get(1);
     EXPECT_EQ(entry->groups, std::vector<std::string> {"g-new"}) << "the older read overwrote the notify's";
     EXPECT_EQ(entry->groupsSeq, stored->groupsSeq);
+}
+
+// =============================================================================
+// remote_upgrade wpk_file sealing
+// =============================================================================
+
+namespace
+{
+    constexpr const char* kUpgradeTaskId = "815a10ac-7b2e-a8a8-e137-f3edd8046a38";
+    constexpr std::uint32_t kUpgradeAgent = 7;
+    constexpr std::int64_t kUpgradeNow = 1793098550;
+
+    std::shared_ptr<const remoted::auth::WpkIdCodec> makeUpgradeCodec()
+    {
+        auto codec = remoted::auth::WpkIdCodec::fromClusterKey("0123456789abcdefABCDEFGHIJKLMNOP", 600s);
+        return codec ? std::make_shared<const remoted::auth::WpkIdCodec>(std::move(*codec)) : nullptr;
+    }
+
+    nlohmann::json upgradePayload()
+    {
+        return {{"wpk_file", "wazuh_agent_v5.1.0.wpk"}, {"wpk_sha1", "0123456789abcdef"}, {"installer", "upgrade.sh"}};
+    }
+
+    // Wires a handler that serves a single task, with signing on (or off) and the task files
+    // under <env>/tasks. `now` is the clock the handler signs with.
+    struct UpgradeFixture
+    {
+        std::string taskType;
+        nlohmann::json payload;
+        std::unique_ptr<HandlerFixture> h;
+
+        UpgradeFixture(std::string type,
+                       nlohmann::json taskPayload,
+                       std::string taskId,
+                       bool withCodec = true,
+                       std::optional<std::int64_t> now = kUpgradeNow)
+            : taskType(std::move(type))
+            , payload(std::move(taskPayload))
+        {
+            auto wdb = std::make_shared<WdbRouter>();
+            wdb->onSelectAgentGroup([](const std::string&) { return "ok [{\"group\":\"default\"}]"; });
+            h = std::make_unique<HandlerFixture>(
+                wdb,
+                [this, taskId = std::move(taskId)](const std::string&) -> std::string
+                {
+                    nlohmann::json j;
+                    j["tasks"] = nlohmann::json::array();
+                    j["tasks"].push_back({{"task_id", taskId}, {"task_type", taskType}, {"payload", payload}});
+                    return j.dump();
+                },
+                [withCodec, now](Config& c)
+                {
+                    c.wpkTasksDir = (fs::path(c.sharedGroupsRoot).parent_path() / "tasks").string();
+                    if (withCodec)
+                    {
+                        c.wpkIds.codec = makeUpgradeCodec();
+                    }
+                    if (now)
+                    {
+                        c.wpkIds.now = [now = *now]
+                        {
+                            return now;
+                        };
+                    }
+                });
+            fs::create_directories(h->cfg.wpkTasksDir);
+        }
+
+        void putTaskFile(const std::string& taskId) const
+        {
+            std::ofstream(fs::path(h->cfg.wpkTasksDir) / (taskId + ".wpk")) << "wpk";
+        }
+
+        nlohmann::json notifyTask()
+        {
+            NotifyData data;
+            data.version = "5.0.0";
+            Waiter<HttpResponse> w;
+            h->handler->handleNotify(kUpgradeAgent, data, [&](const HttpResponse& r) { w.complete(r); });
+            EXPECT_TRUE(w.wait(3000ms));
+            EXPECT_EQ(w.value.status, 200);
+            const auto j = nlohmann::json::parse(w.value.body);
+            EXPECT_EQ(j["tasks"].size(), 1U);
+            return j["tasks"].at(0);
+        }
+
+        std::uint64_t issued() const
+        {
+            return h->metrics.wpkIdIssued->get();
+        }
+        std::uint64_t fallback() const
+        {
+            return h->metrics.wpkIdFallback->get();
+        }
+    };
+
+    void expectRealName(UpgradeFixture& f)
+    {
+        const auto task = f.notifyTask();
+        EXPECT_EQ(task["payload"], upgradePayload());
+        EXPECT_EQ(f.issued(), 0U);
+        EXPECT_EQ(f.fallback(), 1U);
+    }
+} // namespace
+
+TEST(ControlHandlerTest, SealsRemoteUpgradeWhenTheTaskFileExists)
+{
+    UpgradeFixture f("remote_upgrade", upgradePayload(), kUpgradeTaskId);
+    f.putTaskFile(kUpgradeTaskId);
+
+    const auto task = f.notifyTask();
+    EXPECT_EQ(task["task_id"], kUpgradeTaskId);
+    EXPECT_EQ(task["task_type"], "remote_upgrade");
+
+    const auto wpkFile = task["payload"]["wpk_file"].get<std::string>();
+    EXPECT_NE(wpkFile, "wazuh_agent_v5.1.0.wpk");
+    EXPECT_TRUE(remoted::auth::looksLikeWpkId(wpkFile));
+
+    const auto codec = makeUpgradeCodec();
+    ASSERT_NE(codec, nullptr);
+    const auto verified = codec->verify(wpkFile, kUpgradeAgent, kUpgradeNow);
+    ASSERT_TRUE(verified.has_value());
+    EXPECT_EQ(remoted::auth::formatTaskId(*verified), kUpgradeTaskId);
+    EXPECT_FALSE(codec->verify(wpkFile, kUpgradeAgent + 1, kUpgradeNow).has_value());
+
+    EXPECT_EQ(task["payload"]["wpk_sha1"], "0123456789abcdef");
+    EXPECT_EQ(task["payload"]["installer"], "upgrade.sh");
+    EXPECT_EQ(f.issued(), 1U);
+    EXPECT_EQ(f.fallback(), 0U);
+}
+
+TEST(ControlHandlerTest, SealsWithTheProductionClock)
+{
+    UpgradeFixture f("remote_upgrade", upgradePayload(), kUpgradeTaskId, true, std::nullopt);
+    f.putTaskFile(kUpgradeTaskId);
+
+    const auto task = f.notifyTask();
+    const auto wpkFile = task["payload"]["wpk_file"].get<std::string>();
+    ASSERT_TRUE(remoted::auth::looksLikeWpkId(wpkFile));
+
+    const auto codec = makeUpgradeCodec();
+    ASSERT_NE(codec, nullptr);
+    const auto now = static_cast<std::int64_t>(std::time(nullptr));
+    EXPECT_TRUE(codec->verify(wpkFile, kUpgradeAgent, now).has_value());
+    EXPECT_FALSE(codec->verify(wpkFile, kUpgradeAgent, now + 601).has_value());
+    EXPECT_EQ(f.issued(), 1U);
+}
+
+TEST(ControlHandlerTest, KeepsTheRealNameWithoutTaskFile)
+{
+    UpgradeFixture f("remote_upgrade", upgradePayload(), kUpgradeTaskId);
+    expectRealName(f);
+}
+
+TEST(ControlHandlerTest, KeepsTheRealNameWithoutCodec)
+{
+    UpgradeFixture f("remote_upgrade", upgradePayload(), kUpgradeTaskId, false);
+    f.putTaskFile(kUpgradeTaskId);
+    expectRealName(f);
+}
+
+TEST(ControlHandlerTest, KeepsTheRealNameWithUnparseableTaskId)
+{
+    UpgradeFixture f("remote_upgrade", upgradePayload(), "T1");
+    f.putTaskFile("T1");
+    expectRealName(f);
+}
+
+TEST(ControlHandlerTest, KeepsTheRealNameWhenTaskFileIsASymlink)
+{
+    UpgradeFixture f("remote_upgrade", upgradePayload(), kUpgradeTaskId);
+    const auto target = fs::path(f.h->cfg.wpkTasksDir) / "target.bin";
+    std::ofstream(target) << "wpk";
+    fs::create_symlink(target, fs::path(f.h->cfg.wpkTasksDir) / (std::string(kUpgradeTaskId) + ".wpk"));
+    expectRealName(f);
+}
+
+TEST(ControlHandlerTest, KeepsTheRealNameWhenIssueFails)
+{
+    UpgradeFixture f("remote_upgrade", upgradePayload(), kUpgradeTaskId, true, -1);
+    f.putTaskFile(kUpgradeTaskId);
+    expectRealName(f);
+}
+
+TEST(ControlHandlerTest, KeepsPayloadWhenWpkFileIsNotAString)
+{
+    auto payload = upgradePayload();
+    payload["wpk_file"] = 42;
+    UpgradeFixture f("remote_upgrade", payload, kUpgradeTaskId);
+    f.putTaskFile(kUpgradeTaskId);
+
+    const auto task = f.notifyTask();
+    EXPECT_EQ(task["payload"], payload);
+    EXPECT_EQ(f.issued(), 0U);
+    EXPECT_EQ(f.fallback(), 0U);
+}
+
+TEST(ControlHandlerTest, LeavesOtherTaskTypesUntouched)
+{
+    UpgradeFixture f("restart", upgradePayload(), kUpgradeTaskId);
+    f.putTaskFile(kUpgradeTaskId);
+
+    const auto task = f.notifyTask();
+    EXPECT_EQ(task["payload"], upgradePayload());
+    EXPECT_EQ(f.issued(), 0U);
+    EXPECT_EQ(f.fallback(), 0U);
 }
