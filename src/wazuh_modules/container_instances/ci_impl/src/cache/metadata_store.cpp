@@ -399,6 +399,12 @@ namespace
 
         m_lastReconcile = now;
 
+        // This source has now said what it holds, even if that is nothing. An
+        // authoritative empty enumeration is an answer; an empty store that has
+        // enumerated nothing is not, and before this the two looked alike.
+        m_enumeratedSources.insert(source);
+        armOrExpireSettleDeadlineLocked(now);
+
         // After the sweeps, not before: a container still inside its removal
         // grace is still visible and still holds its slot, and one erased above
         // has just freed its slot for whoever was waiting. Recomputing earlier
@@ -628,7 +634,8 @@ namespace
         // container that is merely restarting.
         std::shared_lock lock(m_mutex);
 
-        ListSnapshot snapshot {listContainersLocked(), m_admitted, unkeyedContainerIdsLocked(), std::nullopt};
+        ListSnapshot snapshot {
+            listContainersLocked(), m_admitted, unkeyedContainerIdsLocked(), m_admissionSettled, std::nullopt};
 
         if (since)
         {
@@ -704,6 +711,54 @@ namespace
         return unkeyed;
     }
 
+    void MetadataStore::setExpectedSources(std::size_t count)
+    {
+        std::unique_lock lock(m_mutex);
+        m_expectedSources = count;
+
+        // Opting in is what turns the barrier on. Left alone the store settles
+        // from the start, which is what every caller that configures no source
+        // -- the tests, and a build with no connector enabled -- already had.
+        m_admissionSettled = (count == 0);
+    }
+
+    void MetadataStore::armOrExpireSettleDeadlineLocked(TimePoint now)
+    {
+        if (!m_settleDeadline)
+        {
+            m_settleDeadline = now + ADMISSION_SETTLE_GRACE;
+            return;
+        }
+
+        if (!m_admissionSettled && now >= *m_settleDeadline)
+        {
+            // The node never came fully into view. Decide on what there is:
+            // withholding for ever would mean the cap never applies at all,
+            // which is worse than applying it to an incomplete picture.
+            m_admissionSettled = true;
+            m_lifecycleDirty = true;
+        }
+    }
+
+    void MetadataStore::settleAdmissionIfDue(TimePoint now)
+    {
+        {
+            std::unique_lock lock(m_mutex);
+
+            const bool wasSettled = m_admissionSettled;
+            armOrExpireSettleDeadlineLocked(now);
+
+            if (m_admissionSettled == wasSettled)
+            {
+                return;
+            }
+
+            recomputeAdmittedLocked();
+        }
+
+        notifyLifecycleUnlocked();
+    }
+
     void MetadataStore::setSyncLimit(int limit)
     {
         {
@@ -730,6 +785,35 @@ namespace
     void MetadataStore::recomputeAdmittedLocked()
     {
         const auto sets = containerIdSetsLocked();
+
+        if (!m_admissionSettled)
+        {
+            // Two conditions, and neither implies the other. A source that has
+            // not enumerated contributes no containers, so the node looks
+            // smaller than it is; a source that has may still be waiting on
+            // keys, so `visible` is a subset of what will publish. Ranking
+            // under either one freezes whoever arrived first, because
+            // incumbency is sticky.
+            //
+            // `sets.known == sets.visible` on its own is NOT the question it
+            // looks like: both sets are built from the records already in
+            // m_bySource, so an empty store satisfies it trivially -- and
+            // setSyncLimit() runs from the facade constructor, before a single
+            // connector thread starts.
+            if (m_enumeratedSources.size() < m_expectedSources || sets.known != sets.visible)
+            {
+                return;
+            }
+
+            m_admissionSettled = true;
+
+            // Unknown -> known is a transition in its own right, and the set
+            // comparison below cannot see it: settling to an empty admitted set
+            // leaves the contents unchanged while flipping every consumer from
+            // "report everything" to "report nothing".
+            m_lifecycleDirty = true;
+        }
+
         auto admitted = admitContainers(sets.known, sets.visible, m_admitted, m_syncLimit);
 
         // An admission shift is a change consumers must hear about, and it is

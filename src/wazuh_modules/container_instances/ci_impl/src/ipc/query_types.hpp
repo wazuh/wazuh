@@ -103,6 +103,13 @@ namespace wazuh::container_instances
         /// wrong when no cap is configured.
         std::set<std::string> admitted;
 
+        /// Whether `admitted` is an answer. FALSE while the store cannot yet
+        /// see the whole node, and then the serialiser omits the set and every
+        /// per-record flag rather than shipping an empty one -- which reads as
+        /// "refuse everything", the opposite of what withholding a verdict
+        /// means. See MetadataStore::m_admissionSettled.
+        bool admissionKnown {true};
+
         /// Which running containers `containers` omits because the resolver has
         /// not keyed them yet. Empty means the list is the whole node.
         ///

@@ -477,6 +477,13 @@ namespace wazuh::container_instances::wire
                 // they were told) and logged a fault that was not occurring.
                 // C28. Not emitted for a `status` reply, which shares this
                 // branch but says nothing about the container set.
+                // Null while the store has no verdict, which omits `synced`
+                // from every record and the whole set below. A reply that says
+                // nothing about admission is the one a connector older than the
+                // decision sends, and every consumer already keeps reporting on
+                // it; an empty set would instead read as "refuse everything".
+                const std::set<std::string>* admittedOrNone = response.admissionKnown ? &response.admitted : nullptr;
+
                 if (response.listReply)
                 {
                     auto containers = nlohmann::json::array();
@@ -484,7 +491,7 @@ namespace wazuh::container_instances::wire
                     {
                         if (record)
                         {
-                            containers.push_back(recordToJson(*record, response.keyKind, &response.admitted));
+                            containers.push_back(recordToJson(*record, response.keyKind, admittedOrNone));
                         }
                     }
                     body["containers"] = std::move(containers);
@@ -522,17 +529,20 @@ namespace wazuh::container_instances::wire
                     // freed a slot, and the only notice of it is here. Sending
                     // the set is what keeps "a separate query" from meaning "a
                     // question the delta stream can never answer".
-                    auto admittedIds = nlohmann::json::array();
-                    for (const auto& id : response.admitted)
+                    if (admittedOrNone != nullptr)
                     {
-                        admittedIds.push_back(id);
+                        auto admittedIds = nlohmann::json::array();
+                        for (const auto& id : response.admitted)
+                        {
+                            admittedIds.push_back(id);
+                        }
+                        body["admitted"] = std::move(admittedIds);
                     }
-                    body["admitted"] = std::move(admittedIds);
                 }
 
                 if (response.delta)
                 {
-                    serialiseDelta(*response.delta, body, response.keyKind, &response.admitted);
+                    serialiseDelta(*response.delta, body, response.keyKind, admittedOrNone);
                 }
                 break;
             }

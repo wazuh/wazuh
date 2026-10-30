@@ -92,8 +92,16 @@ namespace wazuh::container_instances
                 // has everything deleted. Per-record reads would be worse
                 // still, shipping a reply that admits a container under one key
                 // and withholds it under another.
+                // The only tick the settle grace gets. The store is handed a
+                // TimePoint by every mutator and holds no clock of its own, so
+                // on a node whose snapshots have stopped this is what expires
+                // the deadline -- and a consumer asking for the list is the
+                // only moment the verdict has to exist.
+                m_store.settleAdmissionIfDue(std::chrono::steady_clock::now());
+
                 auto snapshot = m_store.listSnapshot(request.since);
                 response.admitted = std::move(snapshot.admitted);
+                response.admissionKnown = snapshot.admissionKnown;
                 response.unkeyedIds = std::move(snapshot.unkeyed);
 
                 if (!snapshot.delta)

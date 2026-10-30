@@ -101,6 +101,19 @@ namespace wazuh::container_instances
         {
             logCgroupHostMode(m_logger);
 
+            // Before the cap, and before any connector runs. The store cannot
+            // work out how many sources will enumerate this node, and until it
+            // knows it cannot tell "nobody has reported yet" from "this is the
+            // whole node" -- which is the difference between withholding the
+            // admission verdict and freezing an arbitrary one.
+            //
+            // Ordered ahead of setSyncLimit() deliberately: that call
+            // recomputes admission, and with no barrier configured it would
+            // settle the verdict here, against an empty store, before a single
+            // container existed.
+            m_store.setExpectedSources(static_cast<std::size_t>(config.kubernetes.has_value()) +
+                                       static_cast<std::size_t>(config.docker.has_value()));
+
             // Before any connector runs, so the first snapshot is decided
             // against the real cap instead of admitting everything and then
             // withdrawing most of it one reconcile later.

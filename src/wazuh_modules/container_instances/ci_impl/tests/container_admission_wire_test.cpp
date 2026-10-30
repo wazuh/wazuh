@@ -226,3 +226,41 @@ TEST(ContainerAdmissionWireTest, ADeltaEventWithoutTheKeyStaysSynced)
     ASSERT_EQ(1U, parsed.events.size());
     EXPECT_TRUE(parsed.events[0].synced) << "absent must read as 'may report'";
 }
+
+/* A store that cannot yet see the whole node has no verdict, and a reply must
+ * say so by SILENCE -- no `admitted` key, no per-record `synced`. An empty
+ * `admitted` array would say the opposite of what is meant: every consumer
+ * reads absence from that set as a refusal, so the agent would stop reporting
+ * every container for the length of the settle window.
+ *
+ * Silence is already the path against a connector older than the decision, so
+ * no consumer needs a branch it does not already have.
+ */
+TEST(ContainerAdmissionWireTest, AReplyWithNoVerdictOmitsTheSetAndEveryRecordFlag)
+{
+    QueryResponse response;
+    response.status = QueryResponse::Status::ok;
+    response.listReply = true;
+    response.admissionKnown = false;
+    response.admitted = {"a"}; // whatever the store happens to hold is not an answer yet
+    response.containers = {std::make_shared<const ContainerRecord>(MakeRecord("a")),
+                           std::make_shared<const ContainerRecord>(MakeRecord("b"))};
+
+    const auto parsed = nlohmann::json::parse(wire::serializeResponse(response));
+
+    EXPECT_FALSE(parsed.contains("admitted")) << "an empty or partial set reads as a refusal";
+
+    ASSERT_EQ(2U, parsed["containers"].size());
+    for (const auto& record : parsed["containers"])
+    {
+        EXPECT_FALSE(record.contains("synced")) << "including the one the store happens to hold";
+    }
+
+    const auto read = wazuh::container_instances_client::ContainerInstancesClient::parseListReply(parsed);
+    EXPECT_FALSE(read.admittedKnown);
+
+    for (const auto& ref : read.containers)
+    {
+        EXPECT_TRUE(ref.synced) << "and the client keeps reporting, as against a server too old to decide";
+    }
+}

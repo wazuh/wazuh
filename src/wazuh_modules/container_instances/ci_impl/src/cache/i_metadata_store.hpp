@@ -64,6 +64,14 @@ namespace wazuh::container_instances
         std::set<std::string> admitted;
         std::set<std::string> unkeyed;
 
+        /// Whether `admitted` is an answer at all. FALSE while the store has
+        /// not yet seen the whole node -- a source that has not enumerated, or
+        /// a resolver still working -- and then the reply must omit the set
+        /// rather than ship an empty one, which every consumer reads as "refuse
+        /// everything". Omission is the path a connector older than the
+        /// decision already produces, so no consumer needs a new branch.
+        bool admissionKnown {true};
+
         /// Set only when a cursor was supplied. On resync it carries the whole
         /// current set, which is `containers` -- the same vector, from the same
         /// instant, rather than a second list built a moment later.
@@ -146,6 +154,15 @@ namespace wazuh::container_instances
         /// How many containers may report; <= 0 means unlimited, which is the
         /// shipped default. Pushed by the manager, so it changes at runtime.
         virtual void setSyncLimit(int limit) = 0;
+
+        /// Arm the admission settle deadline, and settle if it has passed.
+        ///
+        /// The store holds no clock of its own -- every mutator is handed a
+        /// TimePoint -- and the grace must still expire on a node whose
+        /// snapshots have stopped. Callers that read admission call this first
+        /// with the current time: that is the only tick the verdict needs,
+        /// since nothing else is waiting on it.
+        virtual void settleAdmissionIfDue(TimePoint now) = 0;
 
         /// Transitions of the listContainers() set after `from`.
         ///
