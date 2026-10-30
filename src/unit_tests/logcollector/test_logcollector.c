@@ -43,6 +43,8 @@ void w_initialize_file_status();
 int w_update_hash_node(char * path, int64_t pos);
 int w_set_to_last_line_read(logreader *lf);
 void free_files_status_data(os_file_status_t *data);
+void w_set_file_head(const char * path, os_file_status_t * data, const os_file_status_t * old);
+bool w_file_head_changed(const char * path);
 
 // Auxiliar structs
 typedef struct test_logcollector_s {
@@ -354,6 +356,10 @@ void test_w_update_file_status_fail_update_add_table_hash(void ** state) {
     expect_value(__wrap_OS_SHA1_Stream, buf, NULL);
     will_return(__wrap_OS_SHA1_Stream, "a7a899f25aeda32989d1029839ef2e594835c211");
 
+    expect_any(__wrap_OSHash_Get_ex, self);
+    expect_string(__wrap_OSHash_Get_ex, key, path);
+    will_return(__wrap_OSHash_Get_ex, NULL);
+
     will_return(__wrap_OSHash_Update_ex, 0);
 
     OSHash_Add_ex_check_data = 0;
@@ -374,6 +380,10 @@ void test_w_update_file_status_update_fail_add_OK(void ** state) {
 
     expect_value(__wrap_OS_SHA1_Stream, buf, NULL);
     will_return(__wrap_OS_SHA1_Stream, "a7a899f25aeda32989d1029839ef2e594835c211");
+
+    expect_any(__wrap_OSHash_Get_ex, self);
+    expect_string(__wrap_OSHash_Get_ex, key, path);
+    will_return(__wrap_OSHash_Get_ex, NULL);
 
     will_return(__wrap_OSHash_Update_ex, 0);
 
@@ -406,11 +416,84 @@ void test_w_update_file_status_update_OK(void ** state) {
     expect_value(__wrap_OS_SHA1_Stream, buf, NULL);
     will_return(__wrap_OS_SHA1_Stream, "a7a899f25aeda32989d1029839ef2e594835c211");
 
+    expect_any(__wrap_OSHash_Get_ex, self);
+    expect_string(__wrap_OSHash_Get_ex, key, path);
+    will_return(__wrap_OSHash_Get_ex, NULL);
+
     will_return(__wrap_OSHash_Update_ex, 1);
 
     int retval = w_update_file_status(path, pos, context);
 
     assert_int_equal(retval,0);;
+}
+
+/* w_set_file_head */
+void test_w_set_file_head_inherit(void ** state) {
+    os_file_status_t old = { .head_offset = FILE_HEAD_SIZE, .head_hash = "32bb98743e298dee0a654a654765c765d765ae80" };
+    os_file_status_t data = { .offset = FILE_HEAD_SIZE * 2, .hash = "a7a899f25aeda32989d1029839ef2e594835c211" };
+
+    w_set_file_head("test/test.log", &data, &old);
+
+    assert_int_equal(data.head_offset, FILE_HEAD_SIZE);
+    assert_string_equal(data.head_hash, old.head_hash);
+}
+
+void test_w_set_file_head_offset_in_head(void ** state) {
+    os_file_status_t old = { .head_offset = 10, .head_hash = "32bb98743e298dee0a654a654765c765d765ae80" };
+    os_file_status_t data = { .offset = 100, .hash = "a7a899f25aeda32989d1029839ef2e594835c211" };
+
+    w_set_file_head("test/test.log", &data, &old);
+
+    assert_int_equal(data.head_offset, 100);
+    assert_string_equal(data.head_hash, data.hash);
+}
+
+void test_w_set_file_head_offset_past_head(void ** state) {
+    os_file_status_t data = { .offset = FILE_HEAD_SIZE + 1, .hash = "a7a899f25aeda32989d1029839ef2e594835c211" };
+
+    expect_string(__wrap_OS_SHA1_File_Nbytes, fname, "test/test.log");
+    expect_value(__wrap_OS_SHA1_File_Nbytes, mode, OS_BINARY);
+    expect_value(__wrap_OS_SHA1_File_Nbytes, nbytes, FILE_HEAD_SIZE);
+    will_return(__wrap_OS_SHA1_File_Nbytes, "32bb98743e298dee0a654a654765c765d765ae80");
+    will_return(__wrap_OS_SHA1_File_Nbytes, 0);
+
+    w_set_file_head("test/test.log", &data, NULL);
+
+    assert_int_equal(data.head_offset, FILE_HEAD_SIZE);
+    assert_string_equal(data.head_hash, "32bb98743e298dee0a654a654765c765d765ae80");
+}
+
+/* w_file_head_changed */
+void test_w_file_head_changed(void ** state) {
+    os_file_status_t data = { .head_offset = 100, .head_hash = "32bb98743e298dee0a654a654765c765d765ae80" };
+
+    expect_any(__wrap_OSHash_Get_ex, self);
+    expect_string(__wrap_OSHash_Get_ex, key, "test/test.log");
+    will_return(__wrap_OSHash_Get_ex, &data);
+
+    expect_string(__wrap_OS_SHA1_File_Nbytes, fname, "test/test.log");
+    expect_value(__wrap_OS_SHA1_File_Nbytes, mode, OS_BINARY);
+    expect_value(__wrap_OS_SHA1_File_Nbytes, nbytes, 100);
+    will_return(__wrap_OS_SHA1_File_Nbytes, "a7a899f25aeda32989d1029839ef2e594835c211");
+    will_return(__wrap_OS_SHA1_File_Nbytes, 0);
+
+    assert_true(w_file_head_changed("test/test.log"));
+}
+
+void test_w_file_head_changed_same(void ** state) {
+    os_file_status_t data = { .head_offset = 100, .head_hash = "32bb98743e298dee0a654a654765c765d765ae80" };
+
+    expect_any(__wrap_OSHash_Get_ex, self);
+    expect_string(__wrap_OSHash_Get_ex, key, "test/test.log");
+    will_return(__wrap_OSHash_Get_ex, &data);
+
+    expect_string(__wrap_OS_SHA1_File_Nbytes, fname, "test/test.log");
+    expect_value(__wrap_OS_SHA1_File_Nbytes, mode, OS_BINARY);
+    expect_value(__wrap_OS_SHA1_File_Nbytes, nbytes, 100);
+    will_return(__wrap_OS_SHA1_File_Nbytes, "32bb98743e298dee0a654a654765c765d765ae80");
+    will_return(__wrap_OS_SHA1_File_Nbytes, 0);
+
+    assert_false(w_file_head_changed("test/test.log"));
 }
 
 /* w_set_to_pos */
@@ -3198,6 +3281,13 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_w_update_file_status_fail_update_add_table_hash, setup_local_hashmap, teardown_local_hashmap),
         cmocka_unit_test_setup_teardown(test_w_update_file_status_update_fail_add_OK, setup_local_hashmap, teardown_local_hashmap),
         cmocka_unit_test_setup_teardown(test_w_update_file_status_update_OK, setup_local_hashmap, teardown_local_hashmap),
+        // Test w_set_file_head
+        cmocka_unit_test(test_w_set_file_head_inherit),
+        cmocka_unit_test(test_w_set_file_head_offset_in_head),
+        cmocka_unit_test(test_w_set_file_head_offset_past_head),
+        // Test w_file_head_changed
+        cmocka_unit_test(test_w_file_head_changed),
+        cmocka_unit_test(test_w_file_head_changed_same),
 
         // Test w_set_to_pos
         cmocka_unit_test_setup_teardown(test_w_set_to_pos_localfile_NULL, setup_local_hashmap, teardown_local_hashmap),
