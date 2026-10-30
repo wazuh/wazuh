@@ -26,6 +26,19 @@
       ]
     },
     {
+      "name": "Brotli",
+      "dependency": "brotli",
+      "artefacts": [
+        "manager",
+        "standalone"
+      ],
+      "readme_license": "MIT License",
+      "dir": "brotli",
+      "files": [
+        "brotli/LICENSE"
+      ]
+    },
+    {
       "name": "bzip2",
       "dependency": "bzip2",
       "artefacts": [

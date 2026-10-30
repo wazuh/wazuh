@@ -6,6 +6,7 @@
 
 | Issue | Comment |
 |-------|---------|
+| [#38944](https://github.com/wazuh/wazuh/issues/38944) | Built the Linux curl dependency with Brotli support and made the HTTP client's `Accept-Encoding` configurable per request (`ConfigurationParameters::acceptEncoding`; default: every encoding the linked curl decodes). |
 | [#39590](https://github.com/wazuh/wazuh/issues/39590) | Added entry and byte limits to the engine's agent metadata cache: `analysisd.agent_metadata_cache_max_entries` (default 50000) and `analysisd.agent_metadata_cache_max_bytes` (default 128 MiB of accounted bytes; `0` disables either). A header that does not fit is still parsed and used, but not retained; the cache never evicts another agent to make room. New metrics `agent.cache.bytes`, `agent.cache.max_entries`, `agent.cache.max_bytes`, `agent.cache.bypass.max_entries`, `agent.cache.bypass.max_bytes` and `agent.cache.rejected.identity`, and a throttled warning while the cache is full. |
 
 #### Changed
