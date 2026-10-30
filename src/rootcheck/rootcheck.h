@@ -125,6 +125,23 @@ void check_rc_pids(void);
 /* Verify if "pid" is in the proc directory */
 int check_rc_readproc(int pid);
 
+/* Results of probing one PID: first pass (*0) and re-check (*1) */
+typedef struct rc_pid_probes_t {
+    int kill0;
+    int gsid0;
+    int gpid0;
+    int ps0;            /* -1 when ps is not available */
+    int kill1;
+    int gsid1;
+    int gpid1;
+    int proc_stat;
+    int proc_read;
+    int proc_opendir;
+} rc_pid_probes_t;
+
+/* Alert on a PID whose probes disagree. Returns 1 if an alert was sent */
+int check_rc_pid_report(pid_t pid, const rc_pid_probes_t *probes, int (*is_thread)(int pid));
+
 void check_rc_ports(void);
 void check_open_ports(void);
 void check_rc_if(void);
