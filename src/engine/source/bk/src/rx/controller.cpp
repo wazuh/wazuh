@@ -6,10 +6,6 @@
 
 namespace bk::rx
 {
-class Controller::TracerImpl final : public detail::Tracer
-{
-};
-
 Controller::Controller(const base::Expression& expression,
                        const std::unordered_set<std::string>& traceables,
                        const std::function<void()>& endCallback)
@@ -21,7 +17,7 @@ Controller::Controller(const base::Expression& expression,
     m_policyOutput = builder.build(expression, traces, m_traceables, m_policySubject.get_observable());
     for (auto& [name, trace] : traces)
     {
-        m_traces.emplace(name, std::static_pointer_cast<TracerImpl>(trace));
+        m_traces.emplace(name, trace);
     }
     if (endCallback != nullptr)
     {

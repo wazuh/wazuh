@@ -2,6 +2,7 @@
 #ifndef _BK_RX_TRACER_HPP
 #define _BK_RX_TRACER_HPP
 
+#include <cassert>
 #include <memory>
 #include <shared_mutex>
 #include <string>
@@ -20,7 +21,6 @@ using Publisher = Subscriber; ///< Publisher is a Subscriber callback used to em
 class Tracer : public std::enable_shared_from_this<Tracer>
 {
 private:
-    std::string m_name;                                         ///< Name of the trace
     std::unordered_map<Subscription, Subscriber> m_subscribers; ///< subscription id -> subscriber map
 
     Subscription m_nextSubId {0};                      ///< Next subscription id
@@ -30,13 +30,6 @@ private:
 
 public:
     virtual ~Tracer() = default;
-
-    /**
-     * @brief Get the name of the trace.
-     *
-     * @return const std::string& The name of the trace.
-     */
-    inline const std::string& name() const { return m_name; }
 
     /**
      * @brief Subscribe `subscriber` to the trace.
@@ -78,6 +71,15 @@ public:
         return [thisPtr = this->weak_from_this()](const std::string& message, bool success)
         {
             auto thisShared = thisPtr.lock();
+            // Unreachable while the Tracer lives in the Controller's m_traces map: it is already
+            // owned by a shared_ptr when publisher() is called, and the map outlives the executor.
+            // Guarded anyway: dereferencing a null lock() would be undefined behaviour, and a future
+            // ownership change must fail loudly in Debug instead of silently dropping traces.
+            assert(thisShared && "Tracer destroyed before its publisher");
+            if (!thisShared)
+            {
+                return;
+            }
             std::shared_lock lock {thisShared->m_subscribersMutex};
             for (const auto& [_, subscriber] : thisShared->m_subscribers)
             {

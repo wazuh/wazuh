@@ -269,6 +269,18 @@ endif()
 message("PATH: ${CMAKE_SOURCE_DIR}")
 register_external_library(fmt::fmt               "${CMAKE_SOURCE_DIR}/external/fmt/include" "${CMAKE_SOURCE_DIR}/external/fmt/build/libfmt.a")
 register_external_library(spdlog::spdlog         "${CMAKE_SOURCE_DIR}/external/spdlog/include" "${CMAKE_SOURCE_DIR}/external/spdlog/build/libspdlog.a")
+
+# spdlog ships its own bundled fmt (10.2.1) while the engine links external/fmt (8.1.1), and both use
+# the same include guards (FMT_CORE_H_, FMT_FORMAT_H_...): whichever is included first silently voids
+# the other. Since `namespace spdlog` is not versioned and the engine uses spdlog header-only, the same
+# spdlog class then gets defined over fmt::v8 in some translation units and over fmt::v10 in others,
+# with identical mangled names -- an ODR violation that UBSAN reports as a vptr error (issue #40192).
+# SPDLOG_FMT_EXTERNAL makes spdlog's headers include <fmt/core.h>, so every engine TU uses external/fmt.
+# It goes on the imported target (spdlog_spdlog), never on the spdlog::spdlog ALIAS:
+# target_compile_definitions() on an ALIAS is a CMake error.
+# NOTE: with this macro, <spdlog/fmt/std.h> would resolve to <fmt/std.h>, which does not exist in
+# fmt 8.1.1. No engine TU includes it today; one that did would fail to compile with a confusing error.
+target_compile_definitions(spdlog_spdlog INTERFACE SPDLOG_FMT_EXTERNAL)
 register_external_library(yaml-cpp::yaml-cpp     "${CMAKE_SOURCE_DIR}/external/yaml-cpp/include" "${CMAKE_SOURCE_DIR}/external/yaml-cpp/build/libyaml-cpp.a")
 register_external_library(RapidJSON::RapidJSON   "${CMAKE_SOURCE_DIR}/external/rapidjson/include" "")
 register_external_library(RxCpp::RxCpp           "${CMAKE_SOURCE_DIR}/external/RxCpp/Rx/v2/src/" "")
