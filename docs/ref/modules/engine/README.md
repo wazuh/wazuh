@@ -2527,6 +2527,96 @@ Total number of events received by the server.
 
 ---
 
+The `server.ingest.*` metrics describe the event ingest server (`engine-ingest-http.sock`). The counters are cumulative since the daemon started; the others are current levels. Every `503` and `413` on that socket is counted here, including the ones answered before the request reaches the event handler.
+
+##### `server.ingest.inflight.bytes`
+
+Bytes of request bodies the ingest server has admitted and not yet answered (the in-flight byte budget in use; limit `analysisd.server_enriched_events_max_inflight_bytes`).
+
+**Used for:** sizing the in-flight byte budget; a value near the limit precedes `shed.budget`.
+
+---
+
+##### `server.ingest.inflight.requests`
+
+Requests holding a share of the in-flight byte budget.
+
+**Used for:** load at a glance, together with `sessions`.
+
+---
+
+##### `server.ingest.sessions`
+
+Open connections on the ingest socket, including those still sending their request (limit `analysisd.server_enriched_events_max_connections`).
+
+**Used for:** sizing the connection cap; a value near the limit precedes `shed.connections`.
+
+---
+
+##### `server.ingest.queue.depth`
+
+Admitted requests waiting for a handler thread.
+
+**Used for:** seeing whether the handler pool keeps up; a growing value precedes `shed.executor_full`.
+
+---
+
+##### `server.ingest.running`
+
+Requests being handled right now (at most the handler pool size).
+
+**Used for:** handler pool saturation.
+
+---
+
+##### `server.ingest.shed.budget`
+
+Cumulative `503` answers because the in-flight byte budget was exhausted.
+
+**Used for:** detecting budget-driven shedding; producers retry these.
+
+---
+
+##### `server.ingest.shed.connections`
+
+Cumulative `503` answers because the connection cap was reached.
+
+**Used for:** detecting connection-cap shedding.
+
+---
+
+##### `server.ingest.shed.executor_full`
+
+Cumulative `503 {"error":"Server busy","code":503}` answers because every handler thread was busy and the queue was full.
+
+**Used for:** detecting handler-pool saturation.
+
+---
+
+##### `server.ingest.shed.shutdown`
+
+Cumulative `503` answers given while the daemon was stopping.
+
+**Used for:** accounting for requests refused during a stop.
+
+---
+
+##### `server.ingest.handler_errors`
+
+Cumulative `500 Internal server error` answers because the event handler raised an unexpected error. The handler's own JSON `500` (event processing unavailable) is not counted here.
+
+**Used for:** detecting internal failures on the ingest path.
+
+---
+
+##### `server.ingest.rejected.too_large`
+
+Cumulative `413` answers: the request declared (or sent) a body larger than `analysisd.server_enriched_events_max_body_bytes`.
+
+**Used for:** detecting producers whose batches exceed the cap; they must split them, a retry fails again.
+
+---
+
 #### Agent cache metrics
 
 These metrics track the agent metadata cache, which deduplicates the per-batch agent header JSON and reuses previously validated (trusted id, exact header bytes) pairs.
