@@ -484,3 +484,47 @@ TEST(ContainerAdmissionStoreTest, AnUnkeyedIncumbentLosingAdmissionStillSignals)
     EXPECT_EQ(store.admittedIds(), (std::set<std::string> {"a"}));
     EXPECT_EQ(calls, beforeCap + 1);
 }
+
+// The line that names containers.synced_limit must only fire when that limit
+// is what held a container back.
+//
+// It counted every known container that was not admitted, which includes ones
+// the resolver has not keyed yet. With the limit at 5 and three containers, one
+// of them unkeyed, it said "1 withheld by containers.synced_limit=5" -- a limit
+// holding nothing back, and an operator who raises it sees no change.
+TEST(ContainerAdmissionStoreTest, TheWithheldLineBlamesTheLimitOnlyWhenTheLimitBinds)
+{
+    std::vector<std::string> messages;
+    MetadataStore store {[&](LogLevel level, const std::string& text)
+                         {
+                             if (level == LogLevel::info)
+                             {
+                                 messages.push_back(text);
+                             }
+                         }};
+
+    store.setSyncLimit(5);
+
+    // Three containers, one with no key. Two slots of five are in use and
+    // nothing has been turned down.
+    store.applySnapshot(
+        kDocker, {MakeRecord("a", 0), MakeRecord("m", InodeFor("m")), MakeRecord("n", InodeFor("n"))}, {}, Now());
+
+    ASSERT_EQ(store.admittedIds(), (std::set<std::string> {"m", "n"}));
+
+    for (const auto& text : messages)
+    {
+        EXPECT_EQ(text.find("withheld by containers.synced_limit"), std::string::npos)
+            << "the limit is 5 and three containers exist; it held nothing back. Got: " << text;
+    }
+
+    // Lower it so it really does bind, and the line must appear -- and count
+    // only the container that could have published and was refused.
+    messages.clear();
+    store.setSyncLimit(1);
+
+    ASSERT_EQ(store.admittedIds().size(), 1U);
+    ASSERT_EQ(messages.size(), 1U);
+    EXPECT_NE(messages[0].find("Reporting 1 of 2 container(s)"), std::string::npos) << "got: " << messages[0];
+    EXPECT_NE(messages[0].find("1 withheld by containers.synced_limit=1"), std::string::npos) << "got: " << messages[0];
+}

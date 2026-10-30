@@ -178,6 +178,27 @@ TEST(ContainerAdmissionTest, AnIncumbentKeepsItsSlotWhileItHasNoKey)
     EXPECT_EQ(admitContainers(known, known, ids({"b"}), 1), ids({"b"}));
 }
 
+// The deliberate limit of the rule, pinned so it cannot be tightened by
+// accident. An incumbent that becomes unkeyable and NEVER comes back keeps its
+// slot for as long as it exists, publishing nothing.
+//
+// That is the price of deciding incumbency by existence, and it is the right
+// side of the trade: from here a container that will never be keyed again and
+// one that is three seconds into a restart look identical, and treating either
+// as a departure hands its slot away and withdraws every document it holds.
+// Only the runtime removing it frees the slot -- see the test below.
+TEST(ContainerAdmissionTest, AnIncumbentThatNeverRegainsAKeyKeepsItsSlot)
+{
+    const auto known = ids({"a", "b"});
+    const auto visible = ids({"a"}); // "b" has no key, and will not get one
+
+    EXPECT_EQ(admitContainers(known, visible, ids({"b"}), 1), ids({"b"}));
+
+    // Still true however many times the rule runs: it is not a decision that
+    // decays, and "a" never takes the slot while "b" exists.
+    EXPECT_EQ(admitContainers(known, visible, admitContainers(known, visible, ids({"b"}), 1), 1), ids({"b"}));
+}
+
 TEST(ContainerAdmissionTest, AContainerThatLeavesFreesItsSlotEvenIfItWasNeverPublishable)
 {
     // Gone from `known` is gone, whether or not it ever had a key. Otherwise a

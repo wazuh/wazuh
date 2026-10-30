@@ -730,8 +730,7 @@ namespace
     void MetadataStore::recomputeAdmittedLocked()
     {
         const auto sets = containerIdSetsLocked();
-        const auto& known = sets.known;
-        auto admitted = admitContainers(known, sets.visible, m_admitted, m_syncLimit);
+        auto admitted = admitContainers(sets.known, sets.visible, m_admitted, m_syncLimit);
 
         // An admission shift is a change consumers must hear about, and it is
         // not always accompanied by one they would hear about anyway.
@@ -761,7 +760,27 @@ namespace
         // so, is being told something false about coverage -- and silence here
         // is indistinguishable from a node that really runs ten. This is the
         // only place that knows both numbers.
-        const std::size_t withheld = known.size() - m_admitted.size();
+        //
+        // Counted over VISIBLE containers, because this line names
+        // containers.synced_limit as the cause and only a container that could
+        // have published can be turned down by it. Counting over `known`
+        // charged the cap for containers the resolver had not keyed yet: with
+        // the limit at 5 and three containers one of which has no key, it
+        // reported "1 withheld by containers.synced_limit=5" -- a limit that
+        // was holding nothing back, and an operator who raises it sees no
+        // change. Those containers have their own line in listContainersLocked().
+        //
+        // A set difference rather than subtracting sizes: an incumbent that
+        // lost its key is in `m_admitted` and NOT in `visible`, so the
+        // subtraction can go below zero and wrap.
+        std::set<std::string> refused;
+        std::set_difference(sets.visible.begin(),
+                            sets.visible.end(),
+                            m_admitted.begin(),
+                            m_admitted.end(),
+                            std::inserter(refused, refused.end()));
+
+        const std::size_t withheld = refused.size();
 
         if (m_withheldFromSyncReported == withheld || !m_logger)
         {
@@ -777,8 +796,9 @@ namespace
         else
         {
             m_logger(LogLevel::info,
-                     "Reporting " + std::to_string(m_admitted.size()) + " of " + std::to_string(known.size()) +
-                         " container(s) to the manager; " + std::to_string(withheld) +
+                     "Reporting " + std::to_string(sets.visible.size() - withheld) + " of " +
+                         std::to_string(sets.visible.size()) + " container(s) to the manager; " +
+                         std::to_string(withheld) +
                          " withheld by containers.synced_limit=" + std::to_string(m_syncLimit) +
                          ". The withheld containers are still monitored and their data is still stored locally -- "
                          "it is not sent. Raise the limit to report more.");
