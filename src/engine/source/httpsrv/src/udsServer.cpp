@@ -4,12 +4,14 @@
 #include <atomic>
 #include <cstdint>
 #include <exception>
+#include <functional>
 #include <future>
 #include <limits>
 #include <stdexcept>
 #include <utility>
 
 #include <base/logging.hpp>
+#include <fastmetrics/registry.hpp>
 #include <uds_http_server/IUdsHttpServer.hpp>
 #include <uds_http_server/udsHttpServerFactory.hpp>
 
@@ -337,7 +339,35 @@ UdsServerStats UdsServer::stats() const
     stats.shedExecutorFull = m_impl->shedExecutorFull.load(std::memory_order_relaxed);
     stats.shedShutdown = m_impl->shedShutdown.load(std::memory_order_relaxed) + transport.rejectedShutdown;
     stats.handlerErrors = m_impl->handlerErrors.load(std::memory_order_relaxed);
+    stats.rejectedTooLarge = transport.rejectedTooLarge;
     return stats;
+}
+
+void registerMetrics(const std::weak_ptr<UdsServer>& server, const std::string& instance)
+{
+    namespace names = fastmetrics::names;
+    const auto publish = [&](const char* suffix, std::size_t UdsServerStats::* field)
+    {
+        fastmetrics::registerPullMetric(names::server_metric(instance, suffix),
+                                        std::function<uint64_t()>(
+                                            [server, field]() -> uint64_t
+                                            {
+                                                const auto alive = server.lock();
+                                                return alive ? static_cast<uint64_t>(alive->stats().*field) : 0;
+                                            }));
+    };
+
+    publish(names::SERVER_INFLIGHT_BYTES, &UdsServerStats::inFlightBytes);
+    publish(names::SERVER_INFLIGHT_REQUESTS, &UdsServerStats::inFlightRequests);
+    publish(names::SERVER_SESSIONS, &UdsServerStats::sessions);
+    publish(names::SERVER_QUEUE_DEPTH, &UdsServerStats::queueDepth);
+    publish(names::SERVER_RUNNING, &UdsServerStats::running);
+    publish(names::SERVER_SHED_BUDGET, &UdsServerStats::shedBudget);
+    publish(names::SERVER_SHED_CONNECTIONS, &UdsServerStats::shedSessions);
+    publish(names::SERVER_SHED_EXECUTOR_FULL, &UdsServerStats::shedExecutorFull);
+    publish(names::SERVER_SHED_SHUTDOWN, &UdsServerStats::shedShutdown);
+    publish(names::SERVER_HANDLER_ERRORS, &UdsServerStats::handlerErrors);
+    publish(names::SERVER_REJECTED_TOO_LARGE, &UdsServerStats::rejectedTooLarge);
 }
 
 void shutdownAll(const std::vector<UdsServer*>& servers, std::chrono::milliseconds deadline)

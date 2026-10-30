@@ -37,6 +37,7 @@ target_link_libraries(httpsrv
 
     PRIVATE
     wazuh_uds_http_server
+    fastmetrics::fastmetrics
 )
 
 # Tests
