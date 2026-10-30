@@ -150,7 +150,7 @@ extern "C"
          */
         int upgrade_enabled;                  ///< <task-manager><upgrade_enabled>. 0 refuses every agent.
         char wpk_repository[PATH_MAX];        ///< <task-manager><wpk_repository>, or empty.
-        char upgrade_dir[PATH_MAX];           ///< Absolute var/upgrade/. Custom WPKs must live here.
+        char upgrade_dir[PATH_MAX];           ///< Relative var/upgrade/. Custom WPKs must live here.
         char manager_version[64];             ///< __wazuh_version, which the .so cannot link.
         int upgrade_workers;                  ///< Concurrent upgrade BATCHES, not agents.
         int upgrade_queue_depth;              ///< Queued batches before a request is shed.

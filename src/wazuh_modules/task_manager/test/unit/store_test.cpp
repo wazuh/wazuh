@@ -22,6 +22,8 @@
 #include <set>
 #include <stdexcept>
 #include <thread>
+#include <unordered_set>
+#include <utility>
 #include <vector>
 
 using namespace task_manager;
@@ -451,6 +453,26 @@ TEST_F(StoreTest, AgentTasksDoAgeOutWhilePendingUnlikeManagerTasks)
 
     EXPECT_EQ(m_store->expireAgentTasks(5000), 1);
     EXPECT_TRUE(m_store->takePendingAgentTasks("001", 10).empty());
+}
+
+TEST_F(StoreTest, AgentTaskIdsListsOnlyThatType)
+{
+    for (const auto& [id, type] : {std::pair<const char*, const char*> {"u1", "remote_upgrade"},
+                                   {"u2", "remote_upgrade"},
+                                   {"r1", "agent_restart"}})
+    {
+        AgentTask task;
+        task.taskId = id;
+        task.agentId = "001";
+        task.taskType = type;
+        task.payload = "{}";
+        task.createTime = 1000;
+        ASSERT_TRUE(m_store->createAgentTask(task));
+    }
+
+    EXPECT_EQ(m_store->agentTaskIds("remote_upgrade"), (std::unordered_set<std::string> {"u1", "u2"}));
+    EXPECT_EQ(m_store->agentTaskIds("agent_restart"), (std::unordered_set<std::string> {"r1"}));
+    EXPECT_TRUE(m_store->agentTaskIds("unknown").empty());
 }
 
 // ---- schedules -------------------------------------------------------------------------------

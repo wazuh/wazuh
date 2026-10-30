@@ -387,35 +387,54 @@ namespace task_manager::upgrade
             rowOwners.push_back(index);
         }
 
-        // Evicted BEFORE the write, and for every row rather than only the ones reported created.
-        //
-        // BEFORE, because a poll racing this write must not be answered "nothing pending" from an
-        // entry this batch is about to invalidate. FOR EVERY ROW, because a duplicate id means the
-        // row is already there and still pending -- the agent needs to see it either way. The API's
-        // bulk create makes the same two choices.
-        //
-        // Getting this wrong does not merely delay a task: the pending-tasks route skips the
-        // database entirely for an agent recorded as empty, and nothing else evicts that entry --
-        // no TTL, no sweep. The upgrade would stay invisible until a restart and then expire.
-        for (const auto& row : rows)
-        {
-            m_pendingCache.invalidate(row.agentId);
-        }
-
         std::vector<bool> stored;
-        if (!rows.empty())
+        const auto commit {
+            [this, &rows, &stored]()
+            {
+                // Evicted BEFORE the write, and for every row rather than only the ones reported created.
+                //
+                // BEFORE, because a poll racing this write must not be answered "nothing pending" from an
+                // entry this batch is about to invalidate. FOR EVERY ROW, because a duplicate id means the
+                // row is already there and still pending -- the agent needs to see it either way. The API's
+                // bulk create makes the same two choices.
+                //
+                // Getting this wrong does not merely delay a task: the pending-tasks route skips the
+                // database entirely for an agent recorded as empty, and nothing else evicts that entry --
+                // no TTL, no sweep. The upgrade would stay invisible until a restart and then expire.
+                for (const auto& row : rows)
+                {
+                    m_pendingCache.invalidate(row.agentId);
+                }
+
+                if (!rows.empty())
+                {
+                    try
+                    {
+                        // ONE transaction, one fsync -- against 500 committed transactions and 500 HTTP
+                        // round trips before. Every other route blocks on the store mutex for the few
+                        // milliseconds this takes, rather than five hundred separate times.
+                        stored = m_store.createAgentTasks(rows);
+                    }
+                    catch (const std::exception& exception)
+                    {
+                        LOGFN_ERROR(upgradeLogFn(), "Could not store the upgrade tasks: %s", exception.what());
+                    }
+                }
+            }};
+
+        if (m_options.taskLinks != nullptr && !rows.empty())
         {
-            try
+            std::vector<TaskLink> links;
+            links.reserve(rows.size());
+            for (std::size_t row = 0; row < rows.size(); ++row)
             {
-                // ONE transaction, one fsync -- against 500 committed transactions and 500 HTTP
-                // round trips before. Every other route blocks on the store mutex for the few
-                // milliseconds this takes, rather than five hundred separate times.
-                stored = m_store.createAgentTasks(rows);
+                links.push_back({rows[row].taskId, candidates[rowOwners[row]].wpkFile});
             }
-            catch (const std::exception& exception)
-            {
-                LOGFN_ERROR(upgradeLogFn(), "Could not store the upgrade tasks: %s", exception.what());
-            }
+            m_options.taskLinks->linkAndCommit(links, commit);
+        }
+        else
+        {
+            commit();
         }
 
         for (std::size_t index = 0; index < candidates.size(); ++index)

@@ -538,6 +538,22 @@ namespace task_manager::storage
                              });
     }
 
+    std::unordered_set<std::string> SqliteTaskStore::agentTaskIds(const std::string& taskType)
+    {
+        return inRead(
+            [&](Session& session)
+            {
+                std::unordered_set<std::string> ids;
+                auto& statement {session.stmt(Stmt::AgentTaskIdsByType)};
+                statement.bind(1, taskType);
+                while (statement.step() == SQLITE_ROW)
+                {
+                    ids.insert(statement.value<std::string>(0));
+                }
+                return ids;
+            });
+    }
+
     // ---- manager tasks -----------------------------------------------------------------------
 
     CreateManagerTaskOutcome SqliteTaskStore::createManagerTask(const CreateManagerTaskRequest& request)

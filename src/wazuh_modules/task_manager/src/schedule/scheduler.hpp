@@ -21,6 +21,7 @@
 #include <atomic>
 #include <chrono>
 #include <condition_variable>
+#include <functional>
 #include <memory>
 #include <mutex>
 #include <thread>
@@ -66,6 +67,9 @@ namespace task_manager::schedule
             int deadLetterRetentionDays {30};
             int historyPerSchedule {20};
             int maxRows {100000};
+
+            /// @brief Runs at the end of every retention pass, once its rows are gone. May be empty.
+            std::function<void()> afterRetention;
         };
 
         Scheduler(storage::ITaskStore& store,

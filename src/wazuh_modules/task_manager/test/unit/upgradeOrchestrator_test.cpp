@@ -15,8 +15,11 @@
 
 #include <gtest/gtest.h>
 
+#include <filesystem>
+#include <iterator>
 #include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 
 using namespace task_manager;
@@ -606,4 +609,53 @@ TEST_F(OrchestratorTest, ACustomInstallerOverridesThePlatformDefault)
     const auto tasks {m_store->takePendingAgentTasks("001", 10)};
     ASSERT_EQ(tasks.size(), 1U);
     EXPECT_EQ(nlohmann::json::parse(tasks[0].payload).at("installer"), "my-installer.sh");
+}
+
+TEST_F(OrchestratorTest, PersistLinksStoredRows)
+{
+    namespace fs = std::filesystem;
+    const std::string repoWpk {"wazuh_agent_v5.0.0_linux_amd64.deb.wpk"};
+    const std::string customWpk {"wazuh_agent_v5.0.0_linux_x86_64.wpk"};
+    const std::string tasksDir {m_dir.path() + "tasks/"};
+    for (int index = 1; index <= 4; ++index)
+    {
+        m_hostOps.agentRows[index] = ubuntuRow();
+    }
+    scriptRepo("linux/deb/amd64/", repoWpk);
+    m_dir.writeFile(customWpk, CONTENT);
+
+    ASSERT_EQ(m_orchestrator->process(requestFor({4}), permissive(), m_stop).front().error, UpgradeError::Success);
+    EXPECT_FALSE(fs::exists(tasksDir));
+
+    TaskLinks links {m_dir.path(), *m_store};
+    UpgradeOrchestrator::Options options;
+    options.managerVersion = "v5.0.0";
+    options.upgradeDir = m_dir.path();
+    options.taskLinks = &links;
+    UpgradeOrchestrator linked {m_hostOps, *m_store, m_pendingCache, *m_wpkCache, *m_versionsCache, options};
+
+    for (const auto& outcome : linked.process(requestFor({1, 2}), permissive(), m_stop))
+    {
+        EXPECT_EQ(outcome.error, UpgradeError::Success);
+    }
+
+    UpgradeCustomRequest custom;
+    custom.requestTime = REQUEST_TIME;
+    custom.filePath = m_dir.path() + customWpk;
+    custom.agentIds = {3};
+    ASSERT_EQ(linked.process(custom, permissive(), m_stop).front().error, UpgradeError::Success);
+
+    const std::vector<std::pair<std::string, std::string>> expected {
+        {"001", repoWpk}, {"002", repoWpk}, {"003", customWpk}};
+    for (const auto& [agentId, wpkFile] : expected)
+    {
+        const auto tasks {m_store->takePendingAgentTasks(agentId, 10)};
+        ASSERT_EQ(tasks.size(), 1U);
+        const auto link {tasksDir + tasks[0].taskId + ".wpk"};
+        ASSERT_TRUE(fs::exists(link)) << agentId;
+        EXPECT_TRUE(fs::equivalent(link, m_dir.path() + wpkFile)) << agentId;
+    }
+
+    // Agent 004's row was stored without TaskLinks, so it has no file.
+    EXPECT_EQ(std::distance(fs::directory_iterator {tasksDir}, fs::directory_iterator {}), 3);
 }

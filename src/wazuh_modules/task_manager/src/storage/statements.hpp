@@ -38,6 +38,7 @@ namespace task_manager::storage
         AgentTaskMarkDelivered,
         AgentTaskExpire,
         AgentTaskDeleteOld,
+        AgentTaskIdsByType,
 
         // ---- manager tasks: create and claim ------------------------------------------------
         MtFindPendingByAgent,
@@ -117,6 +118,11 @@ namespace task_manager::storage
         /* AgentTaskDeleteOld -- the cutoff binds twice, once per branch. */
         "DELETE FROM TASKS WHERE (STATUS = 'expired' AND CREATE_TIME < ?) "
         "OR (STATUS = 'delivered' AND DELIVERY_TIME < ?);",
+
+        /* AgentTaskIdsByType -- every status, so a row keeps its per-task file until retention
+           deletes it. A full scan: TASKS has no TASK_TYPE index and this runs once per retention
+           pass. */
+        "SELECT TASK_ID FROM TASKS WHERE TASK_TYPE = ?;",
 
         // -------------------------------------------------------------------------------------
         // Manager tasks: create and claim

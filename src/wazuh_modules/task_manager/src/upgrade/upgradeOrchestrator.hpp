@@ -19,6 +19,7 @@
 #include "requestParser.hpp"
 #include "responseBuilder.hpp"
 #include "storage/iTaskStore.hpp"
+#include "taskLinks.hpp"
 #include "versionsCache.hpp"
 #include "wpkCache.hpp"
 
@@ -78,6 +79,8 @@ namespace task_manager::upgrade
              * the remaining agents are failed immediately with the same error they would have got.
              */
             int agentInfoFailureLimit {5};
+            /// @brief Gives every stored row its `tasks/<task_id>.wpk` before the commit. Null skips it.
+            TaskLinks* taskLinks {nullptr};
         };
 
         /**
