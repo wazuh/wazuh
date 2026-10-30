@@ -110,7 +110,10 @@ namespace
         std::map<std::string, std::pair<uint64_t, int>> pending_sync {};
     };
 
-    void writeSyncFlag(const cJSON* row, int sync)
+    /// @return whether the column now holds @p sync. A caller that is WITHDRAWING
+    ///         documents has to know: the row still reports if this failed, and
+    ///         the count it reports to the operator must say so.
+    bool writeSyncFlag(const cJSON* row, int sync)
     {
         pending_sync_item_t item {};
         item.json = const_cast<cJSON*>(row);
@@ -119,7 +122,10 @@ namespace
         if (fim_db_set_sync_flag(const_cast<char*>(FIMDB_FILE_TABLE_NAME), &item, sync) != 0)
         {
             LogError("Container FIM: could not persist a reporting flag.");
+            return false;
         }
+
+        return true;
     }
 
     void flushSyncFlags(ContainerTxnCtx& ctx)
@@ -1201,7 +1207,18 @@ namespace
                 continue;
             }
 
-            std::size_t unretracted = 0;
+            // Counted DOWN from every row the query returned, not up from the
+            // ones that were refused.
+            //
+            // On this direction the query selects sync=1, so each row is a
+            // document the manager holds and that the agent has decided it may
+            // no longer report; it stays held unless the column is cleared
+            // below. Counting the refusals alone missed every other way out of
+            // the loop -- a row with no path, one that would not serialise, a
+            // flag write that failed -- and each of those leaves a document on
+            // the manager just as a refusal does, while reporting a smaller
+            // number or none at all (#37532).
+            std::size_t unretracted = promote ? 0U : static_cast<std::size_t>(cJSON_GetArraySize(rows.get()));
             const cJSON* row = nullptr;
             cJSON_ArrayForEach(row, rows.get())
             {
@@ -1229,16 +1246,12 @@ namespace
                                                              plain.get(),
                                                              version);
 
-                if (granted >= 0 && (!promote || granted > 0))
+                // A refused PROMOTION is the budget doing its job; a refused
+                // RETRACTION is a document left on the manager, and so is every
+                // other way this row can fail to have its column cleared.
+                if (granted >= 0 && (!promote || granted > 0) && writeSyncFlag(row, promote ? 1 : 0) && !promote)
                 {
-                    writeSyncFlag(row, promote ? 1 : 0);
-                }
-                else if (!promote)
-                {
-                    // A refused PROMOTION is the budget doing its job; a refused
-                    // RETRACTION is a document left on the manager that the agent
-                    // has decided it may no longer report.
-                    ++unretracted;
+                    --unretracted;
                 }
             }
 
@@ -1251,13 +1264,15 @@ namespace
                 // that has nothing else to connect it to (#37532).
                 //
                 // The row staying at sync=1 is also what gets it retried: the next
-                // reconcile selects on exactly that, and one runs on every admission
-                // change and every whole-node baseline.
+                // reconcile selects on exactly that. What runs one is an admission
+                // snapshot being installed, NOT the baseline's own tail, which only
+                // ever promotes -- so a listing the agent cannot take or cannot read
+                // is also a retraction that does not come round again.
                 if (unretracted != 0)
                 {
                     LogWarn("Container FIM: could not withdraw %zu document(s) for container '%s'; the manager still "
-                            "holds them and they will be retried on the next baseline. Until then an integrity check "
-                            "may find a mismatch and resynchronise the whole index.",
+                            "holds them and the agent will retry the next time it refreshes container admission. "
+                            "Until then an integrity check may find a mismatch and resynchronise the whole index.",
                             unretracted,
                             container_id);
                 }

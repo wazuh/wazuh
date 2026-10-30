@@ -41,6 +41,11 @@ namespace
      * empty means it admitted them all, which is the ordinary case. */
     std::set<std::string> unkeyed_refused;
     bool reject_persistence = false;
+
+    /* Makes the sync-column write fail while persistence keeps succeeding. The
+     * row is then offered, accepted by the manager -- and still left at sync=1,
+     * which is a document the agent believes it withdrew and has not. */
+    bool reject_sync_flag_write = false;
     std::size_t persist_attempts = 0;
     int file_size = 1;
 
@@ -60,6 +65,7 @@ namespace
                 unkeyed_known = true;
                 unkeyed_refused.clear();
                 reject_persistence = false;
+                reject_sync_flag_write = false;
                 persist_attempts = 0;
                 file_size = 1;
                 fim_db_init(FIM_DB_MEMORY, [](modules_log_level_t, const char*) {}, 1000, 0, nullptr);
@@ -104,6 +110,16 @@ extern "C" bool container_reporting_test_persist(const char* id, int operation, 
         persisted.emplace_back(id, operation);
 
     return true;
+}
+
+extern "C" int __real_fim_db_set_sync_flag(char* table_name, pending_sync_item_t* item, int sync_value);
+
+extern "C" int __wrap_fim_db_set_sync_flag(char* table_name, pending_sync_item_t* item, int sync_value)
+{
+    if (reject_sync_flag_write)
+        return -1;
+
+    return __real_fim_db_set_sync_flag(table_name, item, sync_value);
 }
 
 extern "C" void __wrap__mdebug1(const char*, int, const char*, const char*, ...) {}
@@ -1021,6 +1037,55 @@ TEST_F(ContainerReportingTest, AFailedRetractionIsReportedAndRetried)
     EXPECT_EQ(syncFlag("b", "/etc/one"), 0);
     ASSERT_EQ(persisted.size(), 1u);
     EXPECT_EQ(persisted[0], (std::pair<std::string, int> {"b:/etc/one", OPERATION_DELETE}));
+    EXPECT_TRUE(warnings.empty()) << "nothing is owed any more";
+}
+
+// A refused offer is not the only way a document is left on the manager, and it
+// was the only one counted.
+//
+// The warning exists so an operator can connect a coming index resynchronisation
+// to its cause, and the number in it is the whole of that signal. Counting only
+// the refusals meant a row that would not serialise, a row with no path, or a
+// sync-column write that failed all left a document behind and were reported as
+// none -- the warning did not fire at all when every failure was of that kind.
+// Counting down from the rows the query returned makes the number mean what it
+// says: documents the manager still holds (#37532).
+TEST_F(ContainerReportingTest, ARetractionThatIsNotRefusedButStillLeavesTheRowReportingIsCounted)
+{
+    // Room for both of b's documents, so two of them are owed a withdrawal and
+    // the count has something to be wrong about.
+    container_reporting_test_host(5);
+
+    files = {{"a", {"/etc/one"}}, {"b", {"/etc/one", "/etc/two"}}};
+    admission = {{"a", true}, {"b", true}};
+    listed = false;
+    fim_run_container_baseline();
+    ASSERT_EQ(syncFlag("b", "/etc/one"), 1);
+    ASSERT_EQ(syncFlag("b", "/etc/two"), 1);
+
+    // b loses admission. The manager ACCEPTS both withdrawals -- nothing is
+    // refused -- but the column that records them cannot be written.
+    warnings.clear();
+    persisted.clear();
+    reject_sync_flag_write = true;
+    const char* known[] = {"a", "b"};
+    const char* onlyA[] = {"a"};
+    fim_container_set_admission(known, 2, onlyA, 1);
+
+    EXPECT_EQ(syncFlag("b", "/etc/one"), 1) << "the column was not written, so the row still reports";
+    EXPECT_EQ(syncFlag("b", "/etc/two"), 1);
+
+    ASSERT_FALSE(warnings.empty()) << "two documents the agent believes it withdrew and has not";
+    EXPECT_NE(warnings[0].find("could not withdraw 2 document(s)"), std::string::npos) << "got: " << warnings[0];
+
+    // ...and the retry still works, because sync=1 is what the next reconcile
+    // selects on.
+    warnings.clear();
+    reject_sync_flag_write = false;
+    fim_container_set_admission(known, 2, onlyA, 1);
+
+    EXPECT_EQ(syncFlag("b", "/etc/one"), 0);
+    EXPECT_EQ(syncFlag("b", "/etc/two"), 0);
     EXPECT_TRUE(warnings.empty()) << "nothing is owed any more";
 }
 
