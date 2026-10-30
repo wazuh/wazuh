@@ -229,26 +229,35 @@ bool haveUpperCaseCharacters(const std::string& str)
         std::begin(str), std::end(str), [](std::string::value_type character) { return std::isupper(character); });
 }
 
-std::optional<std::string> hexToAscii(std::string_view hex)
+namespace
+{
+/**
+ * @brief Decode a string of hexadecimal digit pairs into raw bytes.
+ *
+ * @param hex Hexadecimal digits.
+ * @param upperCaseOnly When true, the letters 'a'-'f' are rejected.
+ * @return std::optional<std::string> The decoded bytes, or std::nullopt on an odd length or a non hexadecimal digit.
+ */
+std::optional<std::string> hexToBytes(std::string_view hex, bool upperCaseOnly)
 {
     if (hex.size() % 2 != 0)
     {
         return std::nullopt;
     }
 
-    const auto hexValue = [](char c) -> int
+    const auto hexValue = [upperCaseOnly](char c) -> int
     {
         if (c >= '0' && c <= '9')
         {
             return c - '0';
         }
-        if (c >= 'a' && c <= 'f')
-        {
-            return c - 'a' + 10;
-        }
         if (c >= 'A' && c <= 'F')
         {
             return c - 'A' + 10;
+        }
+        if (!upperCaseOnly && c >= 'a' && c <= 'f')
+        {
+            return c - 'a' + 10;
         }
         return -1;
     };
@@ -263,16 +272,91 @@ std::optional<std::string> hexToAscii(std::string_view hex)
         {
             return std::nullopt;
         }
-
-        const auto byte = (high << 4) | low;
-        if (byte > 0x7F)
-        {
-            return std::nullopt;
-        }
-        decoded.push_back(static_cast<char>(byte));
+        decoded.push_back(static_cast<char>((high << 4) | low));
     }
 
     return decoded;
+}
+} // namespace
+
+std::optional<std::string> hexToAscii(std::string_view hex)
+{
+    auto decoded = hexToBytes(hex, false);
+    if (decoded
+        && std::any_of(decoded->cbegin(), decoded->cend(), [](char c) { return static_cast<unsigned char>(c) > 0x7F; }))
+    {
+        return std::nullopt;
+    }
+    return decoded;
+}
+
+std::optional<std::string> hexToUtf8(std::string_view hex, bool upperCaseOnly)
+{
+    auto decoded = hexToBytes(hex, upperCaseOnly);
+    if (decoded && !isValidUtf8(*decoded))
+    {
+        return std::nullopt;
+    }
+    return decoded;
+}
+
+bool isValidUtf8(std::string_view str)
+{
+    const auto size = str.size();
+    std::size_t i = 0;
+    while (i < size)
+    {
+        const auto lead = static_cast<unsigned char>(str[i]);
+        if (lead <= 0x7F)
+        {
+            ++i;
+            continue;
+        }
+
+        // Number of continuation bytes and the allowed range of the first one (RFC 3629: no overlong forms, no
+        // surrogates, nothing above U+10FFFF)
+        std::size_t continuation = 0;
+        unsigned char low = 0x80;
+        unsigned char high = 0xBF;
+        if (lead >= 0xC2 && lead <= 0xDF)
+        {
+            continuation = 1;
+        }
+        else if (lead >= 0xE0 && lead <= 0xEF)
+        {
+            continuation = 2;
+            low = (lead == 0xE0) ? 0xA0 : 0x80;
+            high = (lead == 0xED) ? 0x9F : 0xBF;
+        }
+        else if (lead >= 0xF0 && lead <= 0xF4)
+        {
+            continuation = 3;
+            low = (lead == 0xF0) ? 0x90 : 0x80;
+            high = (lead == 0xF4) ? 0x8F : 0xBF;
+        }
+        else
+        {
+            return false;
+        }
+
+        if (size - i <= continuation)
+        {
+            return false;
+        }
+        for (std::size_t j = 1; j <= continuation; ++j)
+        {
+            const auto byte = static_cast<unsigned char>(str[i + j]);
+            if (byte < low || byte > high)
+            {
+                return false;
+            }
+            low = 0x80;
+            high = 0xBF;
+        }
+        i += continuation + 1;
+    }
+
+    return true;
 }
 
 } // namespace base::utils::string

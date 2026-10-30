@@ -271,6 +271,30 @@ bool haveUpperCaseCharacters(const std::string& str);
  */
 std::optional<std::string> hexToAscii(std::string_view hex);
 
+/**
+ * @brief Decode a string of hexadecimal digits (base 16) into a UTF-8 string.
+ *
+ * The input is valid when it has an even number of characters, every character is a hexadecimal digit and the decoded
+ * bytes are well-formed UTF-8 (see isValidUtf8). An empty input is valid and decodes to an empty string. Signs,
+ * whitespace and a "0x" prefix are not accepted.
+ *
+ * @param hex String of hexadecimal digits, e.g. "636166C3A9".
+ * @param upperCaseOnly When true, only the digits [0-9A-F] are accepted (a lower-case letter makes the input invalid).
+ * @return std::optional<std::string> The decoded string (e.g. "café"), or std::nullopt when the input is not valid.
+ */
+std::optional<std::string> hexToUtf8(std::string_view hex, bool upperCaseOnly = false);
+
+/**
+ * @brief Check whether a byte sequence is well-formed UTF-8 (RFC 3629).
+ *
+ * Overlong encodings, UTF-16 surrogates (U+D800-U+DFFF), code points above U+10FFFF and truncated sequences are
+ * rejected. ASCII control bytes, including NUL, are valid.
+ *
+ * @param str Byte sequence to check.
+ * @return true if every byte belongs to a well-formed UTF-8 sequence.
+ */
+bool isValidUtf8(std::string_view str);
+
 } // namespace base::utils::string
 
 #endif // _STRING_UTILS_H
