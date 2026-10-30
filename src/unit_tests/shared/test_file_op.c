@@ -2600,6 +2600,32 @@ void test_w_fopen_vetted_follow_missing_file(void **state) {
     assert_vetted_rejected(path, ENOENT);
 }
 
+void test_is_ascii_utf8_text_file(void **state) {
+    char path[PATH_MAX + 1];
+
+    nofollow_create_file("regular", "content");
+    nofollow_path(path, "regular");
+
+    assert_int_equal(is_ascii_utf8(path, 10, 1400), 0);
+}
+
+void test_is_ascii_utf8_fifo_rejected_without_blocking(void **state) {
+    char path[PATH_MAX + 1];
+    char msg[PATH_MAX + 64];
+
+    nofollow_path(path, "fifo");
+    assert_int_equal(mkfifo(path, 0640), 0);
+    if (geteuid() == 0) {
+        assert_int_equal(chown(path, 1000, (gid_t) -1), 0);
+    }
+    assert_int_equal(__real_chmod(nofollow_dir, 0777), 0);
+
+    snprintf(msg, sizeof(msg), "(1963): Unable to open file '%s'.", path);
+    expect_string(__wrap__mdebug1, formatted_msg, msg);
+
+    assert_int_equal(is_ascii_utf8(path, 10, 1400), 1);
+}
+
 void test_w_fopen_vetted_follow_fifo_rejected_without_blocking(void **state) {
     char path[PATH_MAX + 1];
 
@@ -3202,6 +3228,8 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_w_fopen_vetted_follow_directory_rejected, setup_nofollow, teardown_vetted),
         cmocka_unit_test_setup_teardown(test_w_fopen_vetted_follow_missing_file, setup_nofollow, teardown_vetted),
         cmocka_unit_test_setup_teardown(test_w_fopen_vetted_follow_fifo_rejected_without_blocking, setup_nofollow, teardown_vetted),
+        cmocka_unit_test_setup_teardown(test_is_ascii_utf8_text_file, setup_nofollow, teardown_vetted),
+        cmocka_unit_test_setup_teardown(test_is_ascii_utf8_fifo_rejected_without_blocking, setup_nofollow, teardown_vetted),
         cmocka_unit_test_setup_teardown(test_w_fopen_vetted_follow_fifo_in_root_only_dir_accepted, setup_nofollow, teardown_vetted),
         cmocka_unit_test_setup_teardown(test_w_fopen_vetted_follow_owner_fifo_in_own_dir_rejected, setup_nofollow, teardown_vetted),
         cmocka_unit_test_setup_teardown(test_w_fopen_vetted_follow_fifo_component_rejected_without_blocking, setup_nofollow, teardown_vetted),
