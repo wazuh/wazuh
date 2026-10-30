@@ -17,7 +17,10 @@
 #include "customDeleter.hpp"
 #include <algorithm>
 #include <atomic>
+#include <cerrno>
+#include <cstring>
 #include <filesystem>
+#include <string>
 #include <vector>
 
 template<typename F, typename G, F func1, G func2>
@@ -48,6 +51,26 @@ namespace Utils
     class ArchiveHelper
     {
     private:
+        /**
+         * @brief Builds the message for a failed write: libarchive's text followed by the errno text when it provides a
+         * real errno.
+         *
+         * @param archiveWrite Archive writer that failed.
+         * @return Error message.
+         */
+        static std::string writeErrorMessage(struct archive* archiveWrite)
+        {
+            const auto* errMsg = archive_error_string(archiveWrite);
+            std::string message {"Error writing decompressed data: "};
+            message += errMsg ? errMsg : "Unknown error";
+            if (const auto err = archive_errno(archiveWrite); err > 0)
+            {
+                message += ": ";
+                message += std::strerror(err);
+            }
+            return message;
+        }
+
         static void
         copyData(struct archive* archiveRead, struct archive* archiveWrite, const std::atomic<bool>& forceStop)
         {
@@ -71,7 +94,7 @@ namespace Utils
 
                 if (archive_write_data_block(archiveWrite, buff, size, offset) != ARCHIVE_OK)
                 {
-                    throw std::runtime_error(archive_error_string(archiveWrite));
+                    throw std::runtime_error(writeErrorMessage(archiveWrite));
                 }
             }
         }
@@ -148,14 +171,14 @@ namespace Utils
 
                     if (archive_write_header(archiveWrite.get(), entry) != ARCHIVE_OK)
                     {
-                        throw std::runtime_error(archive_error_string(archiveWrite.get()));
+                        throw std::runtime_error(writeErrorMessage(archiveWrite.get()));
                     }
 
                     copyData(archiveRead.get(), archiveWrite.get(), forceStop);
                     retVal = archive_write_finish_entry(archiveWrite.get());
                     if (retVal != ARCHIVE_OK)
                     {
-                        throw std::runtime_error(archive_error_string(archiveWrite.get()));
+                        throw std::runtime_error(writeErrorMessage(archiveWrite.get()));
                     }
                 }
             }
