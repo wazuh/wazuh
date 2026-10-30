@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
 import os
+import pwd
 import shutil
 import argparse
 import subprocess
@@ -20,6 +21,7 @@ def setup_engine(engine_src_dir, environment_dir):
 
     dirs_to_create = [
         os.path.join(environment_dir, 'queue/sockets'),
+        os.path.join(environment_dir, 'queue/keystore'),
         os.path.join(environment_dir, 'kvdb'),
         os.path.join(environment_dir, 'logs'),
         os.path.join(environment_dir, 'outputs'),  # For CM/CTI output files
@@ -54,6 +56,27 @@ def setup_engine(engine_src_dir, environment_dir):
     if not keystore_bin.exists():
         print(f"Error: {keystore_bin} not exists, compile the manager first")
         exit(1)
+
+    # Run as root, the keystore binary switches to the wazuh-manager account before it opens the
+    # database, so the directory it writes into has to belong to that user; a sandbox created by
+    # root is not writable by it. Where that account does not exist the binary keeps its
+    # privileges, and a non-root sandbox already belongs to the caller.
+    if os.geteuid() == 0:
+        try:
+            runtime_user = pwd.getpwnam('wazuh-manager')
+        except KeyError:
+            runtime_user = None
+
+        if runtime_user is not None:
+            keystore_dir = os.path.join(environment_dir, 'queue/keystore')
+            # follow_symlinks=False only covers the last component: with <env>/queue itself a symlink the
+            # chown would land on whatever it points at, so the resolved path is checked against the sandbox.
+            sandbox = os.path.realpath(environment_dir)
+            if os.path.commonpath([sandbox, os.path.realpath(keystore_dir)]) != sandbox:
+                print(f"Error: {keystore_dir} resolves outside {sandbox}, refusing to change its owner")
+                exit(1)
+            os.chown(keystore_dir, runtime_user.pw_uid, runtime_user.pw_gid, follow_symlinks=False)
+
     for key, value in (('username', 'test-user'), ('password', 'test-password')):
         subprocess.run([str(keystore_bin), '-f', 'indexer', '-k', key], input=value, text=True, check=True,
                        env={**os.environ, 'WAZUH_MANAGER_HOME': environment_dir})
