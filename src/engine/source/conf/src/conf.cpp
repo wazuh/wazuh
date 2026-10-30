@@ -118,6 +118,14 @@ Conf::Conf(std::shared_ptr<IFileLoader> fileLoader)
     addUnit<std::string>(key::SERVER_ENRICHED_EVENTS_SOCKET,
                          "WAZUH_SERVER_ENRICHED_EVENTS_SOCKET",
                          (wazuhRoot / "queue/sockets/engine-ingest-http.sock").c_str());
+    // Ingest server limits (validated, with their ranges, before the server listens)
+    addUnit<size_t>(key::SERVER_ENRICHED_EVENTS_MAX_BODY_BYTES,
+                    "WAZUH_SERVER_ENRICHED_EVENTS_MAX_BODY_BYTES",
+                    67108864); // 64 MiB
+    addUnit<size_t>(key::SERVER_ENRICHED_EVENTS_MAX_CONNECTIONS, "WAZUH_SERVER_ENRICHED_EVENTS_MAX_CONNECTIONS", 1024);
+    addUnit<size_t>(key::SERVER_ENRICHED_EVENTS_MAX_INFLIGHT_BYTES,
+                    "WAZUH_SERVER_ENRICHED_EVENTS_MAX_INFLIGHT_BYTES",
+                    268435456); // 256 MiB
 
     // Enable or disable server event processing
     addUnit<bool>(key::SERVER_ENABLE_EVENT_PROCESSING, "WAZUH_SERVER_ENABLE_EVENT_PROCESSING", true);
