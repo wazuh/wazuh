@@ -16,7 +16,6 @@
 
 /* Read json files */
 void *read_json(logreader *lf, int *rc, int drop_it) {
-    int __ms = 0;
     int __ms_reported = 0;
     int i;
     char *jsonParsed;
@@ -64,10 +63,60 @@ void *read_json(logreader *lf, int *rc, int drop_it) {
          */
         else if (rbytes == OS_MAXSTR - OS_LOG_HEADER - 1) {
             /* Message size > maximum allowed */
+            EVP_MD_CTX *line_context = NULL;
+
             if (is_valid_context_file) {
+                line_context = EVP_MD_CTX_new();
+                EVP_MD_CTX_copy(line_context, context);
                 OS_SHA1_Stream_Bytes(context, str, (size_t) rbytes);
             }
-            __ms = 1;
+
+            /* Discard the rest of the line now, before any continue below can skip it */
+            char rest[OS_SIZE_1024];
+            int64_t rest_offset = offset + rbytes;
+            int64_t rest_bytes;
+
+            while (fgets(rest, sizeof(rest), lf->fp) != NULL) {
+                rest_bytes = w_ftell(lf->fp) - rest_offset;
+
+                /* Flow control */
+                if (rest_bytes <= 0) {
+                    break;
+                }
+
+                if (is_valid_context_file) {
+                    OS_SHA1_Stream_Bytes(context, rest, (size_t) rest_bytes);
+                }
+
+                rest_offset += rest_bytes;
+
+                if (rest[rest_bytes - 1] == '\n') {
+                    break;
+                }
+            }
+
+            if (feof(lf->fp)) {
+                /* The line is not complete yet: read it again next time */
+                mdebug2("Message not complete from '%s'. Trying again: '%.*s'...", lf->file, sample_log_length, str);
+                if (current_position >= 0) {
+                    w_fseek(lf->fp, current_position, SEEK_SET);
+                }
+                if (line_context != NULL) {
+                    EVP_MD_CTX_copy(context, line_context);
+                }
+                EVP_MD_CTX_free(line_context);
+                break;
+            }
+
+            EVP_MD_CTX_free(line_context);
+            rbytes = rest_offset - offset;
+
+            if (!__ms_reported) {
+                merror("Large message size from file '%s' (length = " FTELL_TT "): '%.*s'...", lf->file, FTELL_INT64 rbytes, sample_log_length, str);
+                __ms_reported = 1;
+            } else {
+                mdebug2("Large message size from file '%s' (length = " FTELL_TT "): '%.*s'...", lf->file, FTELL_INT64 rbytes, sample_log_length, str);
+            }
         } else if (feof(lf->fp)) {
             /* Message not complete. Return. */
             mdebug2("Message not complete from '%s'. Trying again: '%.*s'%s", lf->file, sample_log_length, str, rbytes > sample_log_length ? "..." : "");
@@ -125,37 +174,6 @@ void *read_json(logreader *lf, int *rc, int drop_it) {
             w_msg_hash_queues_push(jsonParsed, lf->file, strlen(jsonParsed) + 1, lf->log_target, LOCALFILE_MQ);
         }
         free(jsonParsed);
-        /* Incorrect message size */
-        if (__ms) {
-            // strlen(str) >= (OS_MAXSTR - OS_LOG_HEADER - 2)
-            // truncate str before logging to ossec.log
-
-            if (!__ms_reported) {
-                merror("Large message size from file '%s' (length = " FTELL_TT "): '%.*s'...", lf->file, FTELL_INT64 rbytes, sample_log_length, str);
-                __ms_reported = 1;
-            } else {
-                mdebug2("Large message size from file '%s' (length = " FTELL_TT "): '%.*s'...", lf->file, FTELL_INT64 rbytes, sample_log_length, str);
-            }
-
-            for (offset += rbytes; fgets(str, OS_MAXSTR - 2, lf->fp) != NULL; offset += rbytes) {
-                rbytes = w_ftell(lf->fp) - offset;
-
-                /* Flow control */
-                if (rbytes <= 0) {
-                    break;
-                }
-
-                if (is_valid_context_file) {
-                    OS_SHA1_Stream_Bytes(context, str, (size_t) rbytes);
-                }
-
-                /* Get the last occurrence of \n */
-                if (str[rbytes - 1] == '\n') {
-                    break;
-                }
-            }
-            __ms = 0;
-        }
 
         current_position = w_ftell(lf->fp);
     }
