@@ -608,6 +608,8 @@ namespace remoted::endpoints::download
             response.status = 200;
             response.headers.emplace_back("Content-Type", "application/octet-stream");
             response.source = std::move(*source);
+            // A WPK is already compressed: never spend CPU on it, even if the client offers zstd.
+            response.compressible = downloadRequest.type == ResourceType::Config;
 
             responder->stream(std::move(response));
         }

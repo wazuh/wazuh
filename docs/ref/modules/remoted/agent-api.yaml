@@ -716,6 +716,7 @@ paths:
       parameters:
         - $ref: "#/components/parameters/ProtocolVersion"
         - $ref: "#/components/parameters/ContentEncoding"
+        - $ref: "#/components/parameters/AcceptEncoding"
       description: |
         Serves the two files an agent pulls from the manager: its centralized configuration
         (`merged.mg`) and a WPK upgrade package. The only route that answers with a **streamed**
@@ -749,8 +750,17 @@ paths:
         fetch a staged package; stock packages are signature-verified by the agent against
         `wpk_root.pem` before installing.
 
+        **Compression.** A `config` download is sent as a single zstd frame (level 3) with
+        `Content-Encoding: zstd` when the request offers `zstd` in `Accept-Encoding` and
+        `remoted.http_content_encoding_enabled` is on. A `wpk` download, every error body and any
+        request that does not offer `zstd` are sent exactly as without the feature. So is a download
+        for which the compressor's memory (about 3.6 MiB) does not fit in the in-flight byte budget
+        at that moment, with no marker: decode only when the response carries `Content-Encoding`.
+        `config_hash` is computed over the plain file; the agent decompresses first, then hashes.
+
         A failed transfer is a truncation, never a short success: the terminating chunk is withheld
-        so the agent retries rather than installing an incomplete file. The descriptor is re-`fstat`ed
+        so the agent retries rather than installing an incomplete file. With compression the agent
+        is left with a truncated zstd frame. The descriptor is re-`fstat`ed
         after every chunk, and a size or mtime change aborts the transfer rather than serving a
         mixture of two versions.
       requestBody:
@@ -769,6 +779,14 @@ paths:
         "200":
           description: |
             The resource, streamed with chunked transfer encoding.
+          headers:
+            Content-Encoding:
+              description: |
+                `zstd` when the body is a zstd frame (a `config` download the agent offered `zstd`
+                for). Absent when the body is the file itself.
+              schema:
+                type: string
+                enum: ["zstd"]
           content:
             application/octet-stream:
               schema: { type: string, format: binary }
@@ -1461,6 +1479,17 @@ components:
       schema:
         type: string
         enum: ["zstd"]
+      example: "zstd"
+    AcceptEncoding:
+      name: Accept-Encoding
+      in: header
+      required: false
+      description: |
+        Offer to receive the response zstd-compressed. Honored only by `POST /download`, for a
+        `config` resource, and only when `zstd` is named (case-insensitive, `q=0` meaning no): `*`
+        and `identity` are not interpreted. Omit the header to receive the file itself.
+      schema:
+        type: string
       example: "zstd"
 
   schemas:

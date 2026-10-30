@@ -10,10 +10,11 @@
 
 #include "bodyDecoder.hpp"
 
+#include "common/contentEncoding.hpp"
 #include "common/zstdDecoder.hpp"
+#include "http_server/headerUtils.hpp"
 #include "http_server/inFlightBudget.hpp"
 
-#include <cctype>
 #include <cstddef>
 #include <memory>
 #include <optional>
@@ -24,24 +25,6 @@
 
 namespace
 {
-    // Case-insensitive value comparison. HTTP token values like "zstd" are conventionally lowercase,
-    // but nothing guarantees a client sends them that way.
-    bool ciEqualsAscii(std::string_view a, std::string_view b)
-    {
-        if (a.size() != b.size())
-        {
-            return false;
-        }
-        for (std::size_t i = 0; i < a.size(); ++i)
-        {
-            if (std::tolower(static_cast<unsigned char>(a[i])) != std::tolower(static_cast<unsigned char>(b[i])))
-            {
-                return false;
-            }
-        }
-        return true;
-    }
-
     // Keep-alive for a decoded body: the bytes plus the reservation charging them against the
     // in-flight budget, so both are released together (RAII) when the Payload holding them is
     // dropped. Bundling them is what ties "these bytes are in memory" to "these bytes are charged".
@@ -64,7 +47,7 @@ namespace remoted::decoding
         {
             return ContentEncoding::None;
         }
-        if (ciEqualsAscii(header, "zstd"))
+        if (remoted::http::equalsIgnoreCase(header, remoted::common::kZstdContentEncoding))
         {
             return ContentEncoding::Zstd;
         }

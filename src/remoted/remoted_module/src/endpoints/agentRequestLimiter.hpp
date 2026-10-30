@@ -12,6 +12,7 @@
 #define _REMOTED_ENDPOINTS_AGENT_REQUEST_LIMITER_HPP
 
 #include "http_server/IHttpServer.hpp"
+#include "http_server/holdingByteSource.hpp"
 
 #include <algorithm>
 #include <atomic>
@@ -304,31 +305,9 @@ namespace remoted::endpoints
         std::uint64_t m_rejectedTotal {0};
     };
 
-    /**
-     * @brief Stream source that holds an agent's Slot for as long as the transport holds it.
-     *
-     * The transport's pump is the source's only owner and drops it when the transfer ends --
-     * finished, failed, peer gone, or the server torn down -- so the slot lives exactly as long as
-     * the download, however slowly the agent reads it.
-     */
-    class AdmittedByteSource final : public remoted::http::IByteSource
-    {
-    public:
-        AdmittedByteSource(std::shared_ptr<remoted::http::IByteSource> inner, AgentRequestLimiter::Slot slot)
-            : m_inner {std::move(inner)}
-            , m_slot {std::move(slot)}
-        {
-        }
-
-        std::size_t read(char* buffer, std::size_t capacity) override
-        {
-            return m_inner->read(buffer, capacity);
-        }
-
-    private:
-        std::shared_ptr<remoted::http::IByteSource> m_inner;
-        AgentRequestLimiter::Slot m_slot;
-    };
+    /// Stream source that holds an agent's Slot for as long as the transport holds it, so the slot
+    /// lives exactly as long as the download, however slowly the agent reads it.
+    using AdmittedByteSource = remoted::http::HoldingByteSource<AgentRequestLimiter::Slot>;
 
     /**
      * @brief Responder decorator that holds an agent's Slot until the reply leaves.

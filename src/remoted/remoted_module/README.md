@@ -30,6 +30,8 @@ remoted_module/
 │   │   └── tokenKeySource.hpp/.cpp     # /etc/wazuh-manager/enrollment_tokens.json -> per-token HKDF keys (read-only replica of authd's store)
 │   ├── common/                     # ns remoted::common — leaf utilities with no layer of their own:
 │   │                               #   logThrottle.hpp (rate-limited logging), zstdDecoder.hpp/.cpp,
+│   │                               #   zstdEncoder.hpp/.cpp (streaming zstd-3 compressor for responses),
+│   │                               #   contentEncoding.hpp (the "zstd" wire token, spelled once),
 │   │                               #   vdClient.hpp/.cpp (cached VD feed-offset UDS client, see below),
 │   │                               #   requestOutcomeMetrics.hpp (per-endpoint responses.* + latency),
 │   │                               #   installPaths.hpp (socket and data paths, relative to the home;
@@ -102,6 +104,14 @@ src/http_server/
 ├── IHttpServer.hpp          # neutral interface + types (Method/HttpRequest/HttpResponse/
 │                            #   IHttpResponder/HttpServerConfig). No transport types leak here.
 ├── inFlightBudget.hpp       # global in-flight byte budget + RAII Reservation (backpressure/503)
+├── holdingByteSource.hpp    # HoldingByteSource<Token>: forwards a source and keeps a token (an agent's slot,
+│                            #   a budget reservation) alive until the transport drops it
+├── responseEncoding.hpp     # IResponseEncoding (a content coding a streamed body can be sent in: token,
+│                            #   memoryRequired(), wrap(); the counterpart of IBodyDecoder) and the codec-
+│                            #   neutral factory behind the transport's hook (see "Streamed responses")
+├── zstdResponseEncoding.hpp # ZstdResponseEncoding + makeZstdStreamTransformFactory(): the ONLY file that
+│                            #   ties the response path to zstd
+├── zstdCompressingByteSource.hpp/.cpp # the IByteSource that yields a source's bytes as one zstd frame
 ├── tlsCertificateStatus.hpp/.cpp # served-leaf expiry + chain verdict + TlsCertificateMonitor (pure
 │                            #   functions over X509); re-exports ca_bundle's X509Ptr,
 │                            #   serializeCertificates() and leafChainsToAnyCa() into remoted::http
@@ -114,7 +124,8 @@ src/http_server/
 ├── caRecordEvents.hpp/.cpp  # CaRecordEvent derivation + the bounded CaRecordEventMailbox
 ├── fileRead.hpp/.cpp        # bounded, injectable POSIX read + failure cause
 ├── endpointRateLimiter.hpp/.cpp # token bucket per endpoint (GET /cacerts, POST /enroll)
-├── headerUtils.hpp          # case-insensitive header lookup
+├── headerUtils.hpp          # case-insensitive header lookup + equalsIgnoreCase() + acceptsEncoding()
+│                            #   (does an Accept-Encoding offer a given coding)
 ├── httpServerConfig.hpp/.cpp# buildHttpServerConfig(): C-ABI struct -> HttpServerConfig (+ fallbacks)
 ├── httpServerFactory.hpp    # makeHttpServer() -> the single transport swap point
 ├── handshakeLedger.hpp/.cpp # connections holding a slot, which are mid-handshake and from where; the
@@ -1960,6 +1971,65 @@ before the pump runs; the per-chunk loop is deliberately uninstrumented) — cat
   a truncated file that looks complete. RESTinio always fires the write callback (with
   `write_was_not_executed` if the connection died first), so an aborted transfer always releases its
   descriptor — verified: 25 mid-transfer disconnects left the fd count unchanged.
+- **Content coding is negotiated per request, behind one hook.** A `config` download is sent as one
+  zstd frame (level 3) when the request offers `zstd` in `Accept-Encoding` and
+  `remoted.http_content_encoding_enabled` is on (the same gate as request-body decoding). The
+  transport knows nothing about codings. The route lambda in `RestinioHttpServer::buildRouter()` is
+  where the request headers are at hand before the handler runs, so it calls
+  `HttpServerConfig::streamTransformFactory` (an empty `std::function` by default) for every
+  request to a `Streamable` route, handing it the request and a `ReserveBytesFn` over the in-flight
+  budget, and keeps the `StreamTransform` it returns (or none) in the request's responder. When the
+  handler streams, the responder applies that transform to the `StreamResponse`, right before the
+  chunked builder is created. `buildHttpServerConfig()` installs `makeZstdStreamTransformFactory()`
+  there when the flag is on, so the flag is decided in one tested place. Handlers and the auth
+  gateway never see any of it. The source the transform wraps is already
+  `AdmittedByteSource(FileByteSource)`, which is what lets the agent's slot live exactly as long as
+  the encoded transfer.
+  - **A transform, not a responder decorator.** Encoding only changes what `stream()` carries (a
+    header and the source), so it is a function over the response and not a wrapper of the whole
+    `IHttpResponder`. That is what makes `send()` untouched by construction, and it avoids a trap of
+    the decorator form: `IHttpResponder::stream()` defaults to a `500`, so a wrapper that forgot to
+    forward it would break every download silently.
+  - **The codec is an interface, not a callable.** The same choice `IBodyDecoder` made for the
+    request side: `IResponseEncoding` (token, `memoryRequired()`, `wrap()`), implemented only by
+    `ZstdResponseEncoding`. `makeResponseEncodingFactory()` takes the codings in server preference
+    order and picks the first one the client offers, so another coding means one new class and one
+    more entry where the factory is built. `common/contentEncoding.hpp` holds the `"zstd"` token
+    that the request decoder, the `Accept-Encoding` negotiation and the `Content-Encoding` header
+    all use, and `headerUtils.hpp`'s `equalsIgnoreCase()` is the one case-insensitive comparison
+    both directions share.
+  - **A codec never has to keep the reservation.** `wrap()` takes only the inner source;
+    `makeEncodingTransform()` reserves `memoryRequired()` and ties the reservation to the encoded
+    source with `HoldingByteSource` (the same class that holds an agent's slot), so no encoding can
+    get the accounting wrong by forgetting it. The token is declared before the inner source, so
+    the encoder's memory is freed before its charge is released.
+  - **A failing factory or transform degrades, it does not fail the request.** The transform runs
+    on a copy of the response: if it throws, or leaves no source, the original goes out as the
+    handler built it (a plain body) and the failure is logged, throttled. A factory that throws
+    just gives no transform. The transform exists to add something optional; without this RESTinio
+    would turn the exception into a `501`.
+  - **`send()` never goes through it**, so a `400`/`403`/`404`/`500` body is plain JSON, byte for
+    byte what it was without the feature. A stream is encoded unless the response says
+    `StreamResponse::compressible == false` (the download handler sets it for a WPK, which is
+    already compressed) or the compressor's memory cannot be reserved.
+  - **The compressor is charged to the in-flight byte budget**, through the same
+    `tryReserveUncounted()` the request-side decoder uses: `ZSTD_estimateCStreamSize(3)` plus one
+    input staging buffer, about 3.6 MiB, held by `ZstdCompressingByteSource` and released when the
+    transfer drops it. A refused reservation is served plain with no `Content-Encoding`: every
+    client has to cope with a plain body anyway, so degrading costs nothing and needs no new status.
+  - **Zero is still the only end-of-stream.** `ZstdCompressingByteSource::read()` keeps pulling from
+    the inner source until it has compressed bytes to return, because zstd can swallow several
+    input slices before emitting any output, and the pump emits the terminating chunk on a 0. An
+    exception from the inner source (the file changed mid-transfer, including on the read that
+    would have reported the end) crosses the wrapper before the frame is closed, so the agent is
+    left with a truncated frame it cannot decode.
+  - **Integrity is unchanged.** `config_hash` is still over the plain file (`HashCache` is
+    untouched); the agent decompresses first and hashes after. `http_stream_chunk_size` bounds the
+    compressed bytes per chunk (`Content-Encoding` is applied before `Transfer-Encoding`).
+  - **Not done on purpose:** no minimum size (the frame overhead is tens of bytes and small files
+    compress in microseconds, so a threshold would only add a knob), no cache of compressed blobs,
+    no `Vary` (an authenticated `POST` is not cacheable), and `*`/`identity` in `Accept-Encoding`
+    are not interpreted: the agent has to name `zstd`.
 - **`resource_id` is what the agent asks for, and the manager serves exactly that.** A `config`
   request names either one group (`/etc/wazuh-manager/shared/<group>/merged.mg`) or several, comma-separated —
   wazuh's own multigroup form — which resolves to `var/multigroups/<sha256(resource_id)[:32]>/merged.mg`.
@@ -1998,7 +2068,8 @@ before the pump runs; the per-chunk loop is deliberately uninstrumented) — cat
 ```
 src/decoding/
 ├── iBodyDecoder.hpp     # ContentEncoding enum + parseContentEncoding() + the IBodyDecoder interface
-└── bodyDecoder.hpp/.cpp # BodyDecoder: the ONLY place in the module that knows compression exists
+└── bodyDecoder.hpp/.cpp # BodyDecoder: the ONLY place that DEcompresses a request body (response
+                         #   compression is the transport's: see "Streamed responses")
 ```
 
 Split interface/implementation the same way `auth/` does (`IAgentKeystore` + `Keystore`), so the
@@ -2981,6 +3052,25 @@ until the payload dies, and a `413` there is never counted as a budget shed) and
 the 8 MiB ceiling is refused without consulting the budget at all; an empty first frame followed by
 a 128 MiB-window frame, two valid frames back to back, and a skippable frame before or after the real
 one are all refused, with only the first frame's window ever reserved).
+
+Response compression (`/download`): `zstdEncoder_test.cpp` (round trip against `zstdDecode()`, a
+frame finished through a one-byte output buffer, an unfinished frame is not decodable),
+`zstdCompressingByteSource_test.cpp` (never a 0 before the frame is complete, whatever the buffer
+and the inner slice size; an inner failure mid-stream or in place of the end leaves a truncated
+frame), `holdingByteSource_test.cpp` (the token is held until the source is dropped, and
+released after the inner source), `responseEncoding_test.cpp` (a not-compressible or refused-
+reservation stream is left untouched, with no `Content-Encoding`; the transform and
+`makeResponseEncodingFactory()` are exercised with a fake coding too, one that never touches a
+reservation and is still charged for the whole transfer, so the codec-neutrality is tested, along
+with the server's preference order and a `wrap()` that throws),
+`headerUtils_test.cpp` (`acceptsEncoding()`: case, lists, `q=0`, malformed weights,
+`*`/`identity`, any token), `httpServer_test.cpp` (`HttpServerStreamTransformTest`: the factory
+sees the request headers and its transform reaches the wire, is never called for a buffered route,
+and a throwing factory, a transform that throws after changing the response and one that leaves no
+source all degrade to the response the handler built) and `compressedDownloadE2E_test.cpp` (real TLS, real `AuthGateway` and
+`/download` handler: offered, not offered, gate off, WPK, error bodies byte-identical, no room for
+a compressor, the budget charged during the transfer and released after, an aborted transfer with
+no terminating chunk).
 
 Control-plane coverage: `controlEndpoint_test.cpp` (empty/oversized bodies, non-JSON, non-object
 roots and non-numeric/negative/trailing-garbage agent ids each get their own `400` code, all

@@ -15,6 +15,7 @@
 #include "http_server/caPublicationRecord.hpp"
 #include "http_server/caRecordEvents.hpp"
 #include "http_server/certificateDescriptor.hpp"
+#include "http_server/headerUtils.hpp"
 #include "http_server/httpServerConfig.hpp"
 #include "http_server/httpServerFactory.hpp"
 #include "http_server/tlsCertificateStatus.hpp"
@@ -59,6 +60,7 @@
 #include <iterator>
 #include <limits>
 #include <memory>
+#include <mutex>
 #include <optional>
 #include <stdexcept>
 #include <string>
@@ -331,6 +333,22 @@ TEST(HttpServerConfigTest, MaxHandshakesPerSourceHonorsZeroOnlyWhenSet)
 
     raw.max_handshakes_per_source_set = 0; // a value without the flag is not a setting
     EXPECT_EQ(buildHttpServerConfig(raw).maxHandshakesPerSource, 32U);
+}
+
+TEST(HttpServerConfigTest, TheResponseEncodingFactoryFollowsTheRemotedFlag)
+{
+    // The flag arrives resolved from remoted (default enabled, see secure.c); a hand-zeroed struct
+    // is the only way to see it off, and it must stay off rather than fall back to a default.
+    auto raw = zeroedConfig();
+
+    raw.http_content_encoding_enabled = true;
+    EXPECT_TRUE(static_cast<bool>(buildHttpServerConfig(raw).streamTransformFactory));
+
+    raw.http_content_encoding_enabled = false;
+    EXPECT_FALSE(static_cast<bool>(buildHttpServerConfig(raw).streamTransformFactory));
+
+    EXPECT_FALSE(static_cast<bool>(HttpServerConfig {}.streamTransformFactory))
+        << "a directly built config transforms nothing";
 }
 
 TEST(HttpServerConfigTest, StructValuesWin)
@@ -3488,4 +3506,228 @@ TEST(HttpServerTest, TlsInventoryFollowsTheCaFileButNotTheLeafFile)
     EXPECT_EQ(server->tlsInventory().ca.lastReadFailure->consecutive, 2U);
 
     server->stop();
+}
+
+// ---------------------------------------------------------------------------
+// The stream transform hook (HttpServerConfig::streamTransformFactory)
+// ---------------------------------------------------------------------------
+
+namespace
+{
+    RouteHandler streamsHello()
+    {
+        return [](std::shared_ptr<const HttpRequest>, std::shared_ptr<IHttpResponder> responder)
+        {
+            StreamResponse response;
+            response.source = std::make_shared<BufferByteSource>("hello");
+            responder->stream(std::move(response));
+        };
+    }
+
+    /// A real TLS server with one streamable route (`/stream`, answers "hello") and one buffered
+    /// route (`/plain`), started with whatever factory a test hands it.
+    class HttpServerStreamTransformTest : public ::testing::Test
+    {
+    protected:
+        struct Streamed
+        {
+            std::string head;
+            std::string body;
+            bool complete {false};
+        };
+
+        void SetUp() override
+        {
+            m_cert = remoted::test::generateTestCertificate("rmt_stream_transform");
+            if (!m_cert)
+            {
+                GTEST_SKIP() << "openssl not available to generate a test certificate";
+            }
+            m_cleanup = std::make_unique<remoted::test::ScratchFileCleanup>(
+                std::vector<std::string> {m_cert->certPath, m_cert->keyPath});
+
+            m_server = makeHttpServer();
+            m_server->addRoute(
+                Method::Post, "/stream", streamsHello(), /*countAgainstBudget=*/true, ResponseMode::Streamable);
+            m_server->addRoute(Method::Post,
+                               "/plain",
+                               [](std::shared_ptr<const HttpRequest>, std::shared_ptr<IHttpResponder> responder)
+                               { responder->send(HttpResponse::json(200, R"({"ok":true})")); });
+        }
+
+        void TearDown() override
+        {
+            if (m_server)
+            {
+                m_server->stop();
+            }
+        }
+
+        void start(StreamTransformFactory factory = {})
+        {
+            m_config.caPublicationRecordPath = "";
+            m_config.port = static_cast<std::uint16_t>(31000 + (::getpid() % 4000));
+            m_config.certificatePath = m_cert->certPath;
+            m_config.privateKeyPath = m_cert->keyPath;
+            m_config.streamTransformFactory = std::move(factory);
+            m_server->start(m_config);
+        }
+
+        std::string request(const std::string& target = "/stream")
+        {
+            return remoted::test::sendSignedRequest(
+                m_config.port, remoted::test::testAgentKey(), target, "{}", 0, "Accept-Encoding: x-test\r\n");
+        }
+
+        Streamed stream()
+        {
+            Streamed streamed;
+            const auto raw = request();
+            if (raw.empty())
+            {
+                return streamed;
+            }
+            auto [head, body] = remoted::test::splitResponse(raw);
+            streamed.head = std::move(head);
+            std::vector<std::size_t> sizes;
+            streamed.body = remoted::test::decodeChunked(body, sizes, streamed.complete);
+            return streamed;
+        }
+
+        std::unique_ptr<IHttpServer> m_server;
+        HttpServerConfig m_config;
+        std::optional<remoted::test::TestCertificate> m_cert;
+        std::unique_ptr<remoted::test::ScratchFileCleanup> m_cleanup;
+    };
+} // namespace
+
+TEST_F(HttpServerStreamTransformTest, TheFactorySeesTheRequestAndItsTransformReachesTheWire)
+{
+    std::mutex mutex;
+    std::string seenOffer;
+    std::atomic_bool reserved {false};
+
+    start(
+        [&](const HttpRequest& request, const ReserveBytesFn& reserve) -> StreamTransform
+        {
+            {
+                const std::lock_guard<std::mutex> lock {mutex};
+                seenOffer = headerValue(request.headers, "accept-encoding");
+            }
+            reserved = reserve(1024).has_value();
+            return [](StreamResponse& response)
+            {
+                response.headers.emplace_back("X-Transformed", "1");
+                response.source = std::make_shared<BufferByteSource>("transformed");
+            };
+        });
+
+    const auto streamed = stream();
+
+    EXPECT_TRUE(headerPresent(streamed.head, "x-transformed: 1")) << streamed.head;
+    EXPECT_EQ(streamed.body, "transformed") << "the source the transform installed is the one that is sent";
+    EXPECT_TRUE(streamed.complete);
+
+    const std::lock_guard<std::mutex> lock {mutex};
+    EXPECT_EQ(seenOffer, "x-test");
+    EXPECT_TRUE(reserved.load()) << "the transport hands the factory a working reserve function";
+}
+
+TEST_F(HttpServerStreamTransformTest, TheFactoryIsNeverCalledForARouteThatCannotStream)
+{
+    std::atomic_int calls {0};
+    start(
+        [&calls](const HttpRequest&, const ReserveBytesFn&) -> StreamTransform
+        {
+            ++calls;
+            return {};
+        });
+
+    const auto raw = request("/plain");
+
+    ASSERT_FALSE(raw.empty());
+    EXPECT_NE(raw.find("200 OK"), std::string::npos) << raw;
+    EXPECT_EQ(calls.load(), 0) << "a buffered route has nothing to transform";
+}
+
+TEST_F(HttpServerStreamTransformTest, WithoutAFactoryTheResponseIsExactlyWhatTheHandlerBuilt)
+{
+    start();
+
+    const auto streamed = stream();
+
+    EXPECT_FALSE(headerPresent(streamed.head, "content-encoding")) << streamed.head;
+    EXPECT_EQ(streamed.body, "hello");
+    EXPECT_TRUE(streamed.complete);
+}
+
+TEST_F(HttpServerStreamTransformTest, AFactoryThatChoosesNothingLeavesTheResponseAlone)
+{
+    start([](const HttpRequest&, const ReserveBytesFn&) -> StreamTransform { return {}; });
+
+    const auto streamed = stream();
+
+    EXPECT_EQ(streamed.body, "hello");
+    EXPECT_TRUE(streamed.complete);
+}
+
+TEST_F(HttpServerStreamTransformTest, AFactoryThatThrowsGivesNoTransformAndTheTransferStillWorks)
+{
+    start([](const HttpRequest&, const ReserveBytesFn&) -> StreamTransform
+          { throw std::runtime_error("the factory failed"); });
+
+    // Twice: one failure must not leave the server unable to serve the next request.
+    for (int i = 0; i < 2; ++i)
+    {
+        const auto streamed = stream();
+
+        EXPECT_NE(streamed.head.find(" 200 "), std::string::npos) << streamed.head;
+        EXPECT_EQ(streamed.body, "hello");
+        EXPECT_TRUE(streamed.complete);
+    }
+}
+
+TEST_F(HttpServerStreamTransformTest, ATransformThatThrowsAfterChangingTheResponseSendsItAsTheHandlerBuiltIt)
+{
+    start(
+        [](const HttpRequest&, const ReserveBytesFn&) -> StreamTransform
+        {
+            return [](StreamResponse& response)
+            {
+                // Changed first, then fails: none of it may reach the wire.
+                response.headers.emplace_back("X-Half-Done", "1");
+                response.source = std::make_shared<BufferByteSource>("half done");
+                throw std::runtime_error("the transform failed");
+            };
+        });
+
+    for (int i = 0; i < 2; ++i)
+    {
+        const auto streamed = stream();
+
+        EXPECT_NE(streamed.head.find(" 200 "), std::string::npos) << streamed.head;
+        EXPECT_FALSE(headerPresent(streamed.head, "x-half-done")) << streamed.head;
+        EXPECT_EQ(streamed.body, "hello");
+        EXPECT_TRUE(streamed.complete);
+    }
+}
+
+TEST_F(HttpServerStreamTransformTest, ATransformThatLeavesNoSourceSendsTheResponseAsTheHandlerBuiltIt)
+{
+    start(
+        [](const HttpRequest&, const ReserveBytesFn&) -> StreamTransform
+        {
+            return [](StreamResponse& response)
+            {
+                response.headers.emplace_back("X-Broken", "1");
+                response.source.reset();
+            };
+        });
+
+    const auto streamed = stream();
+
+    EXPECT_NE(streamed.head.find(" 200 "), std::string::npos) << streamed.head;
+    EXPECT_FALSE(headerPresent(streamed.head, "x-broken")) << streamed.head;
+    EXPECT_EQ(streamed.body, "hello");
+    EXPECT_TRUE(streamed.complete);
 }

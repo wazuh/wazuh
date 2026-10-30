@@ -1153,10 +1153,16 @@ Bytes per chunk when streaming a response body (`POST /download`).
 
 #### remoted.http_content_encoding_enabled
 
-Whether the HTTPS listener accepts request bodies compressed with `Content-Encoding: zstd`. When
-disabled, a request carrying that header is rejected with `415 Unsupported Content-Encoding`, the
-same as any unrecognized encoding. Bodies sent without a `Content-Encoding` header are unaffected
-either way.
+Whether the HTTPS listener uses zstd content encoding, in both directions:
+
+- **Requests.** Bodies compressed with `Content-Encoding: zstd` are accepted. When disabled, a
+  request carrying that header is rejected with `415 Unsupported Content-Encoding`, the same as any
+  unrecognized encoding.
+- **`POST /download` responses.** A `config` download is compressed with zstd (level 3) when the
+  agent offers it with `Accept-Encoding: zstd`. When disabled, it is always sent uncompressed.
+
+Bodies sent without a `Content-Encoding` header, and responses to agents that do not offer `zstd`,
+are unaffected either way.
 
 Unlike the numeric options above, this is a boolean: it has no "unset" sentinel, so a value absent
 from the configuration file resolves to the default (enabled) on the C side before it reaches the
@@ -1164,6 +1170,10 @@ module.
 
 - **Default value:** `1` (enabled)
 - **Allowed values:** `0` (disabled) or `1` (enabled)
+- **Note:** A compressed download reserves about 3.6 MiB of the in-flight byte budget
+  (`remoted.max_inflight_bytes`) for the compressor, from its first byte until the transfer ends.
+  When that does not fit at that moment the response is sent uncompressed, so under memory
+  pressure agents get the same body they would get from a manager with this option disabled.
 
 #### remoted.downstream_connect_timeout
 

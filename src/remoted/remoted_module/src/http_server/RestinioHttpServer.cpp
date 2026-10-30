@@ -1026,6 +1026,30 @@ namespace
     }
 
     /**
+     * @brief Reports a StreamTransformFactory or StreamTransform that failed, throttled, at WARN.
+     *
+     * The response is sent as the handler built it, so the cost of the failure is a plain response
+     * rather than a failed download. Throttled for the same reason as warnStreamAborted(): a
+     * transform that fails will fail on every request, and one line each would flood the log.
+     *
+     * @param reason Exception text; passed as an ARGUMENT, never as the format string.
+     */
+    void warnStreamTransformFailed(const char* reason)
+    {
+        static remoted::common::LogThrottle throttle;
+
+        if (const auto failed = throttle.record())
+        {
+            LOGFN_WARN(logFn(),
+                       "The stream transform failed %llu time(s) in the last %d s; those responses were served "
+                       "without it. Last reason: %s",
+                       static_cast<unsigned long long>(failed.total),
+                       remoted::common::LogThrottle::kDefaultWindowSeconds,
+                       reason);
+        }
+    }
+
+    /**
      * @brief Drives a chunked transfer: read a chunk on a worker, write it, repeat.
      *
      * The alternation is the whole point. read() blocks on disk, so it must not run on an I/O
@@ -1186,10 +1210,12 @@ namespace
     public:
         RestinioStreamableResponder(restinio::request_handle_t request,
                                     std::shared_ptr<StreamPoolGate> poolGate,
-                                    std::size_t defaultChunkSize)
+                                    std::size_t defaultChunkSize,
+                                    remoted::http::StreamTransform transform)
             : m_request {std::move(request)}
             , m_poolGate {std::move(poolGate)}
             , m_defaultChunkSize {defaultChunkSize}
+            , m_transform {std::move(transform)}
         {
         }
 
@@ -1249,6 +1275,8 @@ namespace
                 return;
             }
 
+            applyTransform(response);
+
             auto builder = m_request->create_response<restinio::chunked_output_t>(restinio::http_status_line_t {
                 restinio::http_status_code_t {static_cast<std::uint16_t>(response.status)},
                 reasonPhrase(response.status)});
@@ -1272,9 +1300,41 @@ namespace
         }
 
     private:
+        /// Runs the transform the request's factory chose, on a copy: if it throws, or leaves no
+        /// source, the response goes out exactly as the handler built it. Never throws, so the
+        /// response is always sent: this runs after the answer is claimed, and a throw here would
+        /// leave the request unanswered.
+        void applyTransform(remoted::http::StreamResponse& response) const
+        {
+            if (!m_transform)
+            {
+                return;
+            }
+            try
+            {
+                auto transformed = response;
+                m_transform(transformed);
+                if (transformed.source == nullptr)
+                {
+                    warnStreamTransformFailed("the transform left no byte source");
+                    return;
+                }
+                response = std::move(transformed);
+            }
+            catch (const std::exception& e)
+            {
+                warnStreamTransformFailed(e.what());
+            }
+            catch (...)
+            {
+                warnStreamTransformFailed("non-standard exception");
+            }
+        }
+
         restinio::request_handle_t m_request;
         std::shared_ptr<StreamPoolGate> m_poolGate;
         std::size_t m_defaultChunkSize;
+        remoted::http::StreamTransform m_transform;
         std::atomic_flag m_answered = ATOMIC_FLAG_INIT;
     };
 
@@ -1380,6 +1440,7 @@ namespace remoted::http
                 const auto countAgainstBudget = route.countAgainstBudget;
                 const auto responseMode = route.mode;
                 const auto streamChunkSize = m_config.streamChunkSize;
+                const auto streamTransformFactory = m_config.streamTransformFactory;
 
                 // The pattern actually handed to the router is the route's logical path served
                 // under the global prefix. The "/" route (the health probe) is registered as the
@@ -1405,6 +1466,7 @@ namespace remoted::http
                      countAgainstBudget,
                      responseMode,
                      streamChunkSize,
+                     streamTransformFactory,
                      rejectedConnections](auto request, auto) -> restinio::request_handling_status_t
                     {
                         // Transport-level exception barrier, covering every registered route at
@@ -1481,8 +1543,34 @@ namespace remoted::http
                                 // and creates the builder when it answers, which means RESTinio's
                                 // body buffer survives into the worker queue. Bounded by design:
                                 // only routes whose requests are tiny should ever stream.
-                                responder =
-                                    std::make_shared<RestinioStreamableResponder>(request, streamGate, streamChunkSize);
+
+                                // The one place the request's headers are at hand before the handler
+                                // runs, so a transport-level concern that depends on the request
+                                // (response content-coding) chooses its transform here, through the
+                                // hook. Only the choice is made now; the responder applies the
+                                // transform when the handler streams, and handlers and the auth
+                                // gateway see an ordinary responder.
+                                remoted::http::StreamTransform transform;
+                                if (streamTransformFactory)
+                                {
+                                    try
+                                    {
+                                        transform = streamTransformFactory(
+                                            context->request,
+                                            [budget](std::size_t bytes) { return budget->tryReserveUncounted(bytes); });
+                                    }
+                                    catch (const std::exception& e)
+                                    {
+                                        warnStreamTransformFailed(e.what());
+                                    }
+                                    catch (...)
+                                    {
+                                        warnStreamTransformFailed("non-standard exception");
+                                    }
+                                }
+
+                                responder = std::make_shared<RestinioStreamableResponder>(
+                                    request, streamGate, streamChunkSize, std::move(transform));
                             }
                             else
                             {

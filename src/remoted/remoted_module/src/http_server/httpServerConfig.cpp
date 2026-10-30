@@ -9,6 +9,7 @@
  */
 
 #include "httpServerConfig.hpp"
+#include "zstdResponseEncoding.hpp"
 
 #include "managerConfDir.hpp"
 #include "proc.hpp"
@@ -188,6 +189,12 @@ namespace remoted::http
                 : std::max<std::size_t>(static_cast<std::size_t>(cpp_get_nproc()), MIN_CONCURRENT_ACCEPTS);
         result.bufferSize = resolveUnsigned(config.http_buffer_size, DEFAULT_BUFFER_SIZE);
         result.streamChunkSize = resolveUnsigned(config.http_stream_chunk_size, DEFAULT_STREAM_CHUNK_SIZE);
+
+        // The same gate as request-body decoding: with it off a streamed response is never encoded.
+        if (config.http_content_encoding_enabled)
+        {
+            result.streamTransformFactory = makeZstdStreamTransformFactory();
+        }
 
         // Memory-management knobs come from remoted's config struct (a positive value wins),
         // otherwise the built-in default -- deliberately NOT env-driven. The transport clamps the
