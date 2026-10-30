@@ -74,6 +74,9 @@ static void expect_find_first_file_tag(const wchar_t *file_path, const char *nam
     }
 
     will_return(wrap_FindFirstFile, handle);
+    if (handle == INVALID_HANDLE_VALUE) {
+        will_return(wrap_FindFirstFile, ERROR_FILE_NOT_FOUND);
+    }
 }
 
 static void expect_find_first_file(const wchar_t *file_path, const char *name, DWORD attrs, HANDLE handle) {
@@ -1644,9 +1647,11 @@ void test_cldir_ex_ignore_win_delete_failure(void **state) {
 }
 
 void test_cldir_ex_ignore_win_find_failure(void **state) {
-    expect_find_first_file(L"C:\\shared\\*", NULL, 0, INVALID_HANDLE_VALUE);
+    expect_string(wrap_FindFirstFile, lpFileName, L"C:\\shared\\*");
+    will_return(wrap_FindFirstFile, NULL);
+    will_return(wrap_FindFirstFile, INVALID_HANDLE_VALUE);
+    will_return(wrap_FindFirstFile, ERROR_PATH_NOT_FOUND);
     errno = 0;
-    SetLastError(ERROR_PATH_NOT_FOUND);
 
     assert_int_equal(cldir_ex_ignore("C:\\shared", NULL), -1);
     assert_int_equal(errno, ENOENT);

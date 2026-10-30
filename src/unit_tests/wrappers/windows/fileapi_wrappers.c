@@ -164,7 +164,13 @@ HANDLE wrap_FindFirstFile(LPCWSTR lpFileName,  LPWIN32_FIND_DATAW lpFindFileData
         lpFindFileData->dwReserved0 = lpFindFileData->dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT ? mock_type(DWORD) : 0;
     }
 
-    return mock_type(HANDLE);
+    HANDLE ret = mock_type(HANDLE);
+
+    // A failed call also takes its last error
+    if (ret == INVALID_HANDLE_VALUE) {
+        SetLastError(mock_type(DWORD));
+    }
+    return ret;
 }
 
 BOOL wrap_FindNextFile(HANDLE hFindFile, LPWIN32_FIND_DATAW lpFindFileData) {

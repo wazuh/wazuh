@@ -3248,6 +3248,7 @@ static void test_fim_directory_opendir_error(void **state) {
     expect_memory(wrap_FindFirstFile, lpFileName, L"test\\*", (wcslen(L"test\\*") + 1) * sizeof(wchar_t));
     will_return(wrap_FindFirstFile, NULL);
     will_return(wrap_FindFirstFile, INVALID_HANDLE_VALUE);
+    will_return(wrap_FindFirstFile, ERROR_ACCESS_DENIED);
     will_return(__wrap_win_strerror, "Permission denied");
 #else
     will_return(__wrap_opendir, 0);
