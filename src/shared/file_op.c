@@ -2284,6 +2284,11 @@ static int cldir_ex_ignore_recursive(const char * name, const char * base_dir, c
         }
     } while (FindNextFileW(hFind, &fd));
 
+    // A listing that stops early must not read as a clean directory
+    if (result == 0 && GetLastError() != ERROR_NO_MORE_FILES) {
+        result = cldir_win_error();
+    }
+
     FindClose(hFind);
     return result;
 }

@@ -172,7 +172,14 @@ BOOL wrap_FindNextFile(HANDLE hFindFile, LPWIN32_FIND_DATAW lpFindFileData) {
         MultiByteToWideChar(CP_UTF8, 0, file_name, -1, lpFindFileData->cFileName, MAX_PATH);
         lpFindFileData->dwFileAttributes = mock_type(DWORD);
     }
-    return mock_type(BOOL);
+
+    BOOL ret = mock_type(BOOL);
+
+    // The end of a listing, as the real call reports it
+    if (!ret) {
+        SetLastError(ERROR_NO_MORE_FILES);
+    }
+    return ret;
 }
 
 UINT wrap_GetDriveTypeA(LPCSTR lpRootPathName) {
