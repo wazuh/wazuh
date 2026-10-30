@@ -7488,7 +7488,6 @@ TEST_F(SyscollectorImpTest, ContainerBaselineAdmissionAndCleanup)
             containerListHook = {};
             containerListComplete = true;
             containerUnkeyedIds.clear();
-    containerUnkeyedRefused.clear();
             containerUnkeyedRefused.clear();
             containerUnkeyedKnown = true;
         }
@@ -7645,7 +7644,6 @@ TEST_F(SyscollectorImpTest, RetractionSeesRowsReportedInTheSamePass)
             containerListHook = {};
             containerListComplete = true;
             containerUnkeyedIds.clear();
-    containerUnkeyedRefused.clear();
             containerUnkeyedRefused.clear();
             containerUnkeyedKnown = true;
         }
@@ -7825,7 +7823,6 @@ TEST_F(SyscollectorImpTest, APartialListingNeitherSweepsNorDeAdmits)
             containerListHook = {};
             containerListComplete = true;
             containerUnkeyedIds.clear();
-    containerUnkeyedRefused.clear();
             containerUnkeyedRefused.clear();
             containerUnkeyedKnown = true;
         }
@@ -8191,7 +8188,6 @@ TEST_F(SyscollectorImpTest, AnIncompleteListingThatNamesItsUnkeyedIdsStillArmsTh
             containerListHook = {};
             containerListComplete = true;
             containerUnkeyedIds.clear();
-    containerUnkeyedRefused.clear();
             containerUnkeyedRefused.clear();
             containerUnkeyedKnown = true;
         }
@@ -8283,7 +8279,6 @@ TEST_F(SyscollectorImpTest, AnUnkeyableContainerKeepsItsRowsWithoutBlockingClean
             containerListHook = {};
             containerListComplete = true;
             containerUnkeyedIds.clear();
-    containerUnkeyedRefused.clear();
             containerUnkeyedRefused.clear();
             containerUnkeyedKnown = true;
         }
