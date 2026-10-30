@@ -1301,9 +1301,10 @@ retry budget with its default settings (480 s at most) plus clock drift between 
   starting)
 - **Note:** The identifier is a MAC under a key derived from `cluster.key` (`<cluster><key>` in
   `wazuh-manager.conf`), derived once when remoted starts and never logged. Without a usable key (not
-  exactly 32 alphanumeric characters) no identifier is issued: remoted logs, at INFO,
-  `WPK download identifiers disabled: no usable cluster key.`, tasks are delivered with the real file
-  name and `POST /download` answers 404 to every `wpk1.` identifier.
+  exactly 32 alphanumeric characters) no identifier is issued: remoted logs, at WARNING,
+  `WPK download identifiers disabled: no usable cluster key; 5.x agents cannot download WPK packages.`,
+  tasks are delivered with the real file name, which the agent cannot download, and `POST /download`
+  answers 404 to every `wpk` request.
 - **Note:** In a cluster an identifier is redeemed on any node that shares the same `cluster.key` and
   has the task's file under `var/upgrade/tasks/`; a node without the file answers 404.
 - **Note:** `cluster.key` is read once per process: rotating it invalidates the identifiers already

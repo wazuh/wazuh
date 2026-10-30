@@ -118,7 +118,7 @@ request/response contracts in [HTTPS Agent API](https-events-api.md); machine-re
 | `POST /stateless` | Event batches (H/E wire format) | Engine, `POST /events/enriched` |
 | `POST /stateful` | Whole inventory sync sessions, relayed opaquely | Inventory Sync Server |
 | `POST /control` | `startup` / `notify` / `shutdown`; returns limits, groups, change-detection hashes and pending tasks | wazuh-db, task-manager |
-| `POST /download` | Centralized configuration (`merged.mg`) and WPK packages (by signed identifier or plain name); the one streamed response | filesystem |
+| `POST /download` | Centralized configuration (`merged.mg`) and WPK packages (by signed identifier only); the one streamed response | filesystem |
 | `POST /stats` | Agent-reported module statistics | Inventory Sync Server |
 | `POST /config` | Agent-reported configuration | Inventory Sync Server |
 | `POST /scan/vd` | On-demand Vulnerability Detection re-scan | vulnerability_scanner |

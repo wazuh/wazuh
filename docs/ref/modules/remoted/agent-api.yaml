@@ -729,7 +729,7 @@ paths:
         | `config` | one group name | `/etc/wazuh-manager/shared/<group>/merged.mg` |
         | `config` | several, comma-separated | `var/multigroups/<sha256(resource_id)[0..32)>/merged.mg` |
         | `wpk` | a signed identifier, `wpk1.<54 base64url characters>.wpk` | `var/upgrade/tasks/<task_id>.wpk` |
-        | `wpk` | a package filename | `var/upgrade/<filename>` |
+        | `wpk` | a package filename | nothing: rejected with `404` |
 
         The comma-separated form is wazuh's multigroup selector: it lets an agent in several groups
         fetch its **effective** configuration, and needs no database lookup because the directory
@@ -752,8 +752,8 @@ paths:
         the MAC verifies, the identifier was issued to the authenticated agent and it has not
         expired. Every failure (bad MAC, another agent's identifier, expired, malformed, task file
         absent or not a regular file) is the same `404` as a WPK that does not exist, with the same
-        body. A plain package name is still served to any agent with a valid bearer token, for the
-        agents and tasks that receive no identifier; it cannot reach the per-task directory.
+        body. A plain package name is never served: it is answered with the same `404` before any
+        filesystem access.
 
         A failed transfer is a truncation, never a short success: the terminating chunk is withheld
         so the agent retries rather than installing an incomplete file. The descriptor is re-`fstat`ed

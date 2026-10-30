@@ -828,7 +828,8 @@ sequenceDiagram
      signed identifier (`wpk1.….wpk`, see [WPK identifiers](#wpk-identifiers)) in `wpk_file` instead
      of the file name, but only when a codec exists and the regular file
      `var/upgrade/tasks/<task_id>.wpk` is present (no symlink followed). Otherwise the real name is
-     delivered, `remoted.control.wpk_id.fallback` is counted and the reason is logged at DEBUG1.
+     delivered, `remoted.control.wpk_id.fallback` is counted and the reason is logged at WARNING
+     (`Agent %u: task '%s' has no WPK download identifier (%s); the agent cannot download its WPK.`).
      Only the copy sent changes: the `tasks.db` row keeps the real name, which is what the 4.x
      agent path reads
    - Reads this node's current Vulnerability Detection feed offset via `VdClient` (cached, see
@@ -1129,7 +1130,7 @@ facade's shared `wazuh_metrics` registry (`shared_modules/metrics`) via `makeCon
 - `remoted.control.wpk_id.issued` — a `remote_upgrade` task delivered with a signed WPK identifier
   in `wpk_file`
 - `remoted.control.wpk_id.fallback` — a `remote_upgrade` task delivered with the real `wpk_file`
-  name (identifiers disabled, or no per-task file)
+  name (identifiers disabled, or no per-task file); the agent cannot download that name
 - `remoted.control.registry.agents` — pull metric over `AgentRegistry::size()` (registered by
   the facade; weak target, quiesces to 0 once the control plane is torn down)
 - `remoted.control.registry.push.{invalidated,skipped}` — per-agent outcomes of the membership
@@ -1977,8 +1978,8 @@ before the pump runs; the per-chunk loop is deliberately uninstrumented) — cat
   request names either one group (`/etc/wazuh-manager/shared/<group>/merged.mg`) or several, comma-separated —
   wazuh's own multigroup form — which resolves to `var/multigroups/<sha256(resource_id)[:32]>/merged.mg`.
   A `wpk` request names either a signed identifier (`wpk1.….wpk`), which resolves to
-  `var/upgrade/tasks/<task_id>.wpk`, or a plain filename, which gets `var/upgrade/<filename>`. The
-  multigroup form is what lets an agent in several groups fetch its *effective* configuration rather than one member
+  `var/upgrade/tasks/<task_id>.wpk`, or a plain filename, which is rejected with the uniform `404`
+  before any filesystem access. The multigroup form is what lets an agent in several groups fetch its *effective* configuration rather than one member
   group's, and it needs no database: the selector is hashed exactly as wazuh-db names the directory.
   A `config` request is authorized against the requesting agent's own groups: `resource_id` must
   equal `makeConfigToken(toGroupsCsv(entry->groups))` for that agent's registry entry -- the same
@@ -2002,7 +2003,7 @@ before the pump runs; the per-chunk loop is deliberately uninstrumented) — cat
 - **Containment differs per form.** The multigroup selector is *hashed, never joined*, so it cannot
   traverse by construction. The single-group and WPK forms **do** join agent input into a path, so
   there the grammars are the boundary: no `/`, not `.` or `..`, no leading dot, and for a WPK a
-  `.wpk` suffix, so a plain WPK name never reaches `var/upgrade/tasks/`. With no separator admitted,
+  `.wpk` suffix; a plain WPK name is rejected before the path is built. With no separator admitted,
   the joined path has exactly one component below the base directory, and `openRegularFile()`'s
   `O_NOFOLLOW` stops that component being a symlink. Loosening either grammar would break that and
   require a `realpath()` containment check instead.
@@ -2010,7 +2011,7 @@ before the pump runs; the per-chunk loop is deliberately uninstrumented) — cat
 ### WPK identifiers
 
 `/control` hands an upgrade task's agent a signed identifier instead of the WPK file name, and
-`/download` redeems it. The wire format, the uniform `404`, the plain names still served and the
+`/download` redeems it. The wire format, the uniform `404`, the rejection of plain names and the
 cluster behaviour are in
 [Download endpoint](../../../docs/ref/modules/remoted/https-events-api.md#download-endpoint-post-download);
 the expiry is [`remoted.wpk_id_ttl`](../../../docs/ref/modules/remoted/configuration.md#remotedwpk_id_ttl).
@@ -2019,8 +2020,9 @@ The code is `src/auth/wpkId.hpp/.cpp`.
 - **MAC.** The first 16 bytes of `HMAC-SHA256(K, "WAZUH-WPK-ID\n1\n" || agent id || expiry || task id)`.
 - **Key.** `K` is HKDF-SHA256 of `cluster.key` (salt of 32 zero bytes, info `WAZUH-WPK-ID-KEY` ||
   `0x01`), derived once when remoted starts and never logged. Without a usable `cluster.key` remoted
-  logs, at INFO, `WPK download identifiers disabled: no usable cluster key.` `cluster.key` is read
-  once per process, so rotating it requires a restart of every node.
+  logs, at WARNING,
+  `WPK download identifiers disabled: no usable cluster key; 5.x agents cannot download WPK packages.`
+  `cluster.key` is read once per process, so rotating it requires a restart of every node.
 - **Redemption.** The task file `var/upgrade/tasks/<task_id>.wpk` is opened with `O_NOFOLLOW`. Every
   rejection counts `remoted.download.wpk_id.rejected` (not `not_found`) and logs its cause at DEBUG2;
   success counts `remoted.download.wpk_id.served` besides `started`. A valid identifier whose task
@@ -2593,7 +2595,7 @@ linked into the settings' own documentation — is the official docs page:
 | `remoted.http.<stateless\|stateful\|stats\|config\|enroll\|cacerts>.responses.{2xx,400,403,409,413,429,500,503,other}` | WHAT each endpoint answered agents (some cells structurally zero per endpoint — kept so the vocabulary is uniform; `/cacerts`'s 404 lands in `other`) | the single place each response is sent: the forwarder's delivery task, the limiter-shed 503 in `forward()`, or the handler's own pre-forward 400. `/enroll` and `/cacerts` are not forwarded, so they count through a `MeteredResponder` wrapper instead (`common/requestOutcomeMetrics.hpp`; the description carries the route's method, `GET` for `/cacerts`) — one wrap covers `/enroll`'s five inline answers AND the one authd's callback delivers on another thread |
 | `remoted.http.<stateless\|stateful\|enroll>.latency` (histograms, µs) | end-to-end time; sizes `remoted.http_worker_threads` / `remoted.downstream_stateful_response_timeout` / the `authd_*` timeouts | stamped once in the auth gateway (`AuthenticatedRequest::receivedAt`), observed on the forwarder's post-processing pool. `/enroll` has no gateway, so `MeteredResponder` times it from handler entry. `/stats`/`/config` deliberately have none (same downstream as `/stateful`, no new answer) |
 | `remoted.forwarder.error.{connect, connect_timeout, write_timeout, response_timeout, transport, protocol, response_too_large}` + `downstream_5xx` + `route_mismatch` | WHY the 503s: which timeout knob, transport vs protocol, a downstream 5xx, or a route contract mismatch. Aggregate across services — the per-endpoint 503 cells already say which path | the forwarder's classification branches, next to the throttles that log the same cause |
-| `remoted.download.{rejected, denied, not_found, open_error, started, bytes.total, unavailable, no_row, wpk_id.served, wpk_id.rejected}`, `remoted.download.lookups` (pull) | group/WPK drift (404 retry storms) and offered transfer volume, plus `denied` — the 403 authorization signal (`resource_id` is not the requesting agent's own selector). It is the ONLY operator-facing signal for a denial, since the event itself is logged at debug; distinct from `rejected` (malformed request), from `not_found` (an *entitled* request whose file is not on disk) and from the two 503s, `unavailable` (the fallback lookup failed) and `no_row` (the local wazuh-db has no row for the agent yet) | `downloadEndpoint` admission + stream start (the per-chunk pump is deliberately uninstrumented) |
+| `remoted.download.{rejected, denied, not_found, open_error, started, bytes.total, unavailable, no_row, wpk_id.served, wpk_id.rejected}`, `remoted.download.lookups` (pull) | group drift (404 retry storms) and offered transfer volume, plus `denied` — the 403 authorization signal (`resource_id` is not the requesting agent's own selector). It is the ONLY operator-facing signal for a denial, since the event itself is logged at debug; distinct from `rejected` (malformed request), from `not_found` (an *entitled* request whose file is not on disk) and from the two 503s, `unavailable` (the fallback lookup failed) and `no_row` (the local wazuh-db has no row for the agent yet) | `downloadEndpoint` admission + stream start (the per-chunk pump is deliberately uninstrumented) |
 | `remoted.cacerts.{served, not_found, ca_mismatch, rate_limited}` | WHY `GET /cacerts` answered what it did: CA handed out, no CA file to hand out, refused because the served leaf does not chain to any CA of the bundle (`ca_mismatch`: a signature alone is not enough, C33), or refused by the route's rate limit before the CA was even read | `cacertsEndpoint` (`endpoints/cacertsMetrics.hpp`), one counter per branch; `rate_limited` is bumped by the gate (`endpoints/rateLimitGate.cpp`), which runs before the handler |
 | `remoted.server.tls.{cert_expiry_days, ca_matches_leaf}` (pulls; `cert_expiry_days` is the catalog's one **Double**, via `registerPullMetricDouble()` — negative once expired) | is the listener certificate about to expire; does it CHAIN to `remote.https.ca_certificate` (0 when it does not — including a CA that signs it but is expired, not a CA, or under another subject — or when the last successful read yielded no certificate; a read that fails after a good one keeps that bundle's verdict) | `IHttpServer::certificateStatus()`: `cert_expiry_days` from the transport's `TlsCertificateMonitor` snapshot (evaluated at start and every 24 h); `ca_matches_leaf` re-read from the same `CaCertificateSource` `/cacerts` answers from, on every scrape; registered by `registerPublicTransportDiagnostics()` on the same weak target as the budget pulls, so both read 0 while the listener is down |
 | `remoted.server.budget.{available.bytes, inflight.bytes, inflight.requests, rejected.total}` (pulls) | is `remoted.max_inflight_bytes` sized right; how much did the byte budget shed | `IHttpServer::diagnostics()` over the transport's `InFlightBudget` |
@@ -3272,7 +3274,7 @@ the agent's groups; pass `--resource-id` with the `agent.config_token` returned 
 
 ```bash
 python3 tools/send_download.py --url https://127.0.0.1:1517                         # config for an agent whose selector is default
-python3 tools/send_download.py --url https://127.0.0.1:1517 --resource-type wpk --resource-id wazuh_agent_v5.0.0_linux_x86_64.wpk   # replace with a staged filename
+python3 tools/send_download.py --url https://127.0.0.1:1517 --resource-type wpk --resource-id wazuh_agent_v5.0.0_linux_x86_64.wpk   # plain name -> 404
 python3 tools/send_download.py --self-test                                          # WPK identifier codec vectors, no network
 python3 tools/send_download.py --mint --task-id <task_id>                           # print an identifier for a task
 python3 tools/send_download.py --url https://127.0.0.1:1517 --wpk-id-scenarios --task-id <task_id> --plain-wpk <file>   # identifier matrix
@@ -3287,11 +3289,12 @@ python3 tools/send_download.py --url https://127.0.0.1:1517 --simulate 8 --repea
 `--mint` reads the key from `<cluster><key>` in `/etc/wazuh-manager/wazuh-manager.conf` (or
 `--cluster-key-file`) and takes `--ttl`, `--now` and `--subject`. `--wpk-id-scenarios` expects a valid
 identifier to give 200 with the same content as the task file, and another key, an expired
-identifier, another agent, a tampered one and the plain `<task_id>.wpk` name to give 404, while a
-real plain name gives 200.
+identifier, another agent, a tampered one, the plain `<task_id>.wpk` name and any other plain
+name to give 404.
 
-`--wpk` selects the successful WPK case in `--all` only; a single WPK request requires
-`--resource-id`. `--all` also requires a staged WPK and the requested configuration file, and skips
+`--wpk` names the plain-name case in `--all`, which must answer 404; staging that WPK under
+`var/upgrade/` proves the rejection does not depend on the file being absent. A single WPK request
+requires `--resource-id`. `--all` also requires the requested configuration file, and skips
 the other-existing-group scenario if that group has no local `merged.mg`. `--simulate N` uses up
 to N agents already in `client.keys`; it does not enroll agents or assign their groups.
 

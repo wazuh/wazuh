@@ -1309,7 +1309,7 @@ limit, so an oversized or deeply nested blob costs nothing proportional to its s
 | `config` | one group name | `/etc/wazuh-manager/shared/<group>/merged.mg` |
 | `config` | several group names, comma-separated | `var/multigroups/<sha256(resource_id)[0..32)>/merged.mg` |
 | `wpk` | a signed identifier, `wpk1.<54 base64url characters>.wpk` | `var/upgrade/tasks/<task_id>.wpk`, for the agent and task the identifier was issued for |
-| `wpk` | a package filename | `var/upgrade/<filename>` |
+| `wpk` | a package filename | nothing: rejected with `404` |
 
 The comma-separated form is wazuh's own multigroup selector, and it is what lets an agent in several
 groups fetch its **effective** configuration rather than one member group's. It needs no database
@@ -1358,12 +1358,13 @@ Accepted identifiers:
 > cannot tell a forged or foreign identifier from an absent file. The cause is logged at DEBUG2 and
 > counted in `remoted.download.wpk_id.rejected`.
 >
-> Plain package names are still served to any agent with a valid bearer token, for the agents and
-> tasks that receive no identifier (for example a task whose per-task file could not be created).
-> They never reach `var/upgrade/tasks/`, because their grammar admits no `/`. A later release will
-> retire that path for `wpk`.
+> A plain package name is never served: the request is answered with the same `404` before any
+> filesystem access, counted in `remoted.download.wpk_id.rejected` and logged at DEBUG2. A task
+> without an identifier (identifiers disabled or no per-task file) is delivered with its real name,
+> which the agent cannot download; `/control` logs a WARNING for it.
 >
-> Without a usable `cluster.key` no identifier is issued and `/control` delivers the real file name.
+> Without a usable `cluster.key` no identifier is issued and `/control` delivers the real file name,
+> which the agent cannot download.
 > In a cluster an identifier is redeemed on any node with the same `cluster.key` that has the task's
 > file; a node without it answers `404`. Rotating `cluster.key` invalidates the identifiers already
 > issued.
@@ -1693,7 +1694,7 @@ selector defaults to `default`; it does not discover the agent's groups:
 # fetch selector default for agent 001 -> 200 + streamed body (requires matching /control state)
 python3 send_download.py --url https://127.0.0.1:1517 --agent-id 001
 
-# a staged WPK package by plain name
+# a WPK package by plain name -> 404
 python3 send_download.py --url https://127.0.0.1:1517 --resource-type wpk --resource-id wazuh_agent_v5.0.0_linux_x86_64.wpk
 
 # the WPK identifier codec's vectors, no network
@@ -1704,7 +1705,7 @@ python3 send_download.py --self-test
 python3 send_download.py --mint --task-id <task_id>
 
 # identifier scenarios for a task: valid -> 200 with the task file's content; another key, expired,
-# another agent, tampered, the plain <task_id>.wpk -> 404; a real plain name -> 200
+# another agent, tampered, the plain <task_id>.wpk or any other plain name -> 404
 python3 send_download.py --url https://127.0.0.1:1517 --wpk-id-scenarios --task-id <task_id> --plain-wpk <file>
 
 # run every success/failure scenario (bad type, rejected identifier, unknown group -> 403, ...)
@@ -1718,7 +1719,8 @@ python3 send_download.py --url https://127.0.0.1:1517 --simulate 50 --repeat 4 -
 
 Use the `agent.config_token` from `/control` as `--resource-id` when the selector is not `default`.
 Simulated agents must already exist and have matching `/control` registry groups. For `--all`,
-stage a WPK first; `--wpk` chooses that scenario's filename and is not used by a single download.
+`--wpk` names the plain-name case, which must answer 404 (stage that WPK so the case proves the
+rejection does not depend on the file being absent); it is not used by a single download.
 `--wpk-id-scenarios` needs the task file under `var/upgrade/tasks/` (a pending `remote_upgrade` row).
 
 `src/remoted/remoted_module/tools/send_agent_json.py` covers the two reporting routes, `POST /stats`
