@@ -71,13 +71,13 @@ namespace remoted::endpoints::download
      *
      * A plain value rather than an interface: the only thing a test needs to vary is where the
      * files live. Defaults are the production locations (remoted::paths), relative to the installation
-     * directory that is remoted's cwd: `SHAREDCFG_DIR`, `MULTIGROUPS_DIR` and `LEGACY_TASK_WPK_DEFAULT_PATH`.
+     * directory that is remoted's cwd: `SHAREDCFG_DIR`, `MULTIGROUPS_DIR` and the task manager's per-task WPK
+     * directory.
      */
     struct ResourcePaths
     {
         std::string sharedDir {paths::kSharedDir};
         std::string multigroupsDir {paths::kMultigroupsDir};
-        std::string wpkDir {paths::kWpkDir};
         std::string wpkTasksDir {paths::kWpkTasksDir};
     };
 
@@ -165,31 +165,29 @@ namespace remoted::endpoints::download
     };
 
     /**
-     * @brief Resolve a verified request to the file to serve.
+     * @brief Resolve a verified config request to the file to serve.
      *
      * `resource_id` names what the agent is asking for and the manager serves exactly that:
      *   - Config, one group   -> `<sharedDir>/<resourceId>/merged.mg`
      *   - Config, several     -> `<multigroupsDir>/<sha256(resourceId)[0..32)>/merged.mg`
-     *   - Wpk                 -> `<wpkDir>/<resourceId>`
+     *
+     * WPK requests never reach this function: makeHandler() serves a signed identifier from its
+     * task's file under `wpkTasksDir` and rejects a plain WPK name before any filesystem access.
+     * A WPK request passed here anyway gets `NotFound`.
      *
      * The multigroup form is what lets an agent in several groups fetch its EFFECTIVE configuration
      * rather than one member group's. The selector is hashed, never joined, so it needs no database
      * and cannot traverse.
      *
-     * The single-group and WPK forms join agent-supplied input into a path, so containment rests on
-     * the grammars in isValidGroupSelector()/isValidWpkFilename(): no `/`, no `.`/`..`, no leading
-     * dot. That is what stops the agent-supplied component from naming anything outside the base
-     * directory, and loosening either grammar to admit a separator would break it and require a
-     * realpath() containment check instead.
+     * The single-group form joins agent-supplied input into a path, so containment rests on the
+     * grammar in isValidGroupSelector(): no `/`, no `.`/`..`, no leading dot. That is what stops the
+     * agent-supplied component from naming anything outside the base directory, and loosening the
+     * grammar to admit a separator would break it and require a realpath() containment check instead.
      *
-     * `O_NOFOLLOW` (openRegularFile()) covers only the FINAL component of the path, which differs
-     * per form:
-     *   - Wpk           -> `<wpkDir>/<resourceId>`, one agent-supplied component, and it is the one
-     *                      opened, so O_NOFOLLOW applies to it directly.
-     *   - Config        -> `<sharedDir>/<group>/merged.mg`. The component opened is `merged.mg`
-     *                      (manager-owned); the agent-supplied `<group>` is an intermediate
-     *                      DIRECTORY, which O_NOFOLLOW does not check. A symlinked group directory
-     *                      would therefore be followed.
+     * `O_NOFOLLOW` (openRegularFile()) covers only the FINAL component of the path. In
+     * `<sharedDir>/<group>/merged.mg` the component opened is `merged.mg` (manager-owned); the
+     * agent-supplied `<group>` is an intermediate DIRECTORY, which O_NOFOLLOW does not check. A
+     * symlinked group directory would therefore be followed.
      *
      * That last case is not agent-exploitable -- planting it requires write access to the manager's
      * own /etc/wazuh-manager/shared, at which point the configuration being served is already the attacker's --

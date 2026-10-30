@@ -145,6 +145,26 @@ TEST(WpkIdTest, RejectsOtherSubject)
     EXPECT_FALSE(codecV2.verify(kV2.id, 0xFFFFFF00u, kV2.now).has_value());
 }
 
+TEST(WpkIdTest, RoundTripsTheSubjectExtremes)
+{
+    const auto codec = makeCodec(kV1);
+    const auto task = taskOf(kV1);
+    constexpr std::uint32_t kMax = std::numeric_limits<std::uint32_t>::max();
+
+    const auto low = codec.issue(0, task, kV1.now);
+    const auto high = codec.issue(kMax, task, kV1.now);
+    ASSERT_TRUE(low.has_value());
+    ASSERT_TRUE(high.has_value());
+
+    EXPECT_TRUE(codec.verify(*low, 0, kV1.now).has_value());
+    EXPECT_FALSE(codec.verify(*low, 1, kV1.now).has_value());
+    EXPECT_FALSE(codec.verify(*low, kMax, kV1.now).has_value());
+
+    EXPECT_TRUE(codec.verify(*high, kMax, kV1.now).has_value());
+    EXPECT_FALSE(codec.verify(*high, kMax - 1, kV1.now).has_value());
+    EXPECT_FALSE(codec.verify(*high, 0, kV1.now).has_value());
+}
+
 TEST(WpkIdTest, RejectsAtAndAfterExpiry)
 {
     const auto codec = makeCodec(kV1);

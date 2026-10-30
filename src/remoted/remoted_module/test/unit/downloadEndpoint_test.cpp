@@ -21,6 +21,8 @@
 #include <cerrno>
 #include <chrono>
 #include <cstring>
+#include <ctime>
+#include <filesystem>
 #include <fstream>
 #include <functional>
 #include <memory>
@@ -342,7 +344,6 @@ namespace
         dir.makeDir("upgrade/tasks");
         dir.writeFile(std::string {"upgrade/tasks/"} + WPK_TASK_ID + ".wpk", taskFileContents);
         ResourcePaths paths;
-        paths.wpkDir = dir.path() + "/upgrade";
         paths.wpkTasksDir = dir.path() + "/upgrade/tasks";
         return paths;
     }
@@ -607,25 +608,27 @@ TEST(DownloadLocateTest, AMultigroupSelectorResolvesUnderVarMultigroups)
     EXPECT_EQ(result.path, "var/multigroups/97d668590155b0b50fb09c254d636adc/merged.mg");
 }
 
+TEST(DownloadLocateTest, AWpkIsNeverLocated)
+{
+    DownloadRequest request;
+    request.type = ResourceType::Wpk;
+    request.resourceId = "pkg.wpk";
+
+    const auto result = locateResource(request, {});
+
+    EXPECT_EQ(result.error, LocateError::NotFound);
+    EXPECT_TRUE(result.path.empty());
+}
+
 TEST(DownloadLocateTest, HonoursInjectedBaseDirectories)
 {
     ResourcePaths paths;
     paths.sharedDir = "/tmp/shared";
     paths.multigroupsDir = "/tmp/multigroups";
-    paths.wpkDir = "/tmp/upgrade";
 
     EXPECT_EQ(locateResource(configRequest("a"), paths).path, "/tmp/shared/a/merged.mg");
     EXPECT_EQ(locateResource(configRequest("a,b"), paths).path,
               "/tmp/multigroups/" + multigroupDirName("a,b") + "/merged.mg");
-    EXPECT_EQ(locateResource(DownloadRequest {ResourceType::Wpk, "p.wpk"}, paths).path, "/tmp/upgrade/p.wpk");
-}
-
-TEST(DownloadLocateTest, WpkResolvesUnderTheUpgradeDirectory)
-{
-    const auto result = locateResource(DownloadRequest {ResourceType::Wpk, "wazuh_agent_v5.0.1_linux_x86_64.wpk"}, {});
-
-    EXPECT_EQ(result.error, LocateError::None);
-    EXPECT_EQ(result.path, "var/upgrade/wazuh_agent_v5.0.1_linux_x86_64.wpk");
 }
 
 TEST(DownloadLocateTest, HostileGroupNamesNeverReachLocateResource)
@@ -1002,23 +1005,6 @@ TEST(DownloadHandlerTest, StreamsTheGroupTheAgentNamed)
     EXPECT_EQ(runHandler(R"({"resource_type":"config","resource_id":"databases"})", paths)->body, "DATABASES CONFIG");
 }
 
-TEST(DownloadHandlerTest, StreamsAStagedWpk)
-{
-    TempDir dir;
-    dir.makeDir("upgrade");
-    const std::string contents(200000, '\x7f'); // spans several chunks
-    dir.writeFile("upgrade/pkg.wpk", contents);
-
-    ResourcePaths paths;
-    paths.wpkDir = dir.path() + "/upgrade";
-
-    const auto responder = runHandler(R"({"resource_type":"wpk","resource_id":"pkg.wpk"})", paths);
-
-    EXPECT_EQ(responder->status, 200);
-    EXPECT_TRUE(responder->streamed);
-    EXPECT_EQ(responder->body, contents);
-}
-
 TEST(DownloadHandlerTest, AnswersFourHundredAndFourWhenTheResolvedFileIsMissing)
 {
     // Discovered before any byte is written, which is what makes a clean 404 possible at all.
@@ -1159,20 +1145,62 @@ TEST(DownloadHandlerTest, MetricsCountDenialsSeparatelyFromParseRejections)
     EXPECT_EQ(metrics.started->get(), 0U);
 }
 
-TEST(DownloadHandlerTest, PlainWpkNamesAreStillServed)
+TEST(DownloadHandlerTest, PlainWpkNamesAreRejected)
 {
-    // Plain WPK names are still served without authorization.
     TempDir dir;
-    dir.makeDir("upgrade");
-    dir.writeFile("upgrade/pkg.wpk", "package\n");
+    dir.makeDir("var");
+    dir.makeDir("var/upgrade");
+    const auto wpk = dir.writeFile("var/upgrade/pkg.wpk", "package\n");
 
-    ResourcePaths paths;
-    paths.wpkDir = dir.path() + "/upgrade";
+    // The rejected name would resolve under var/upgrade relative to remoted's cwd; restored even if
+    // the handler throws, so no later test runs inside a removed directory.
+    struct CwdGuard
+    {
+        std::filesystem::path original {std::filesystem::current_path()};
+        ~CwdGuard()
+        {
+            std::error_code ec;
+            std::filesystem::current_path(original, ec);
+        }
+    } cwdGuard;
+    std::filesystem::current_path(dir.path());
 
-    const auto responder = runHandlerAs(R"({"resource_type":"wpk","resource_id":"pkg.wpk"})", std::nullopt, paths);
+    wazuh::metrics::Manager manager;
+    const auto metrics = makeDownloadMetrics(manager);
 
-    EXPECT_EQ(responder->status, 200);
-    EXPECT_EQ(responder->body, "package\n");
+    const auto exists = std::filesystem::exists(wpk);
+    const auto missing = runHandlerAs(wpkBody("missing.wpk"), std::nullopt, {}, {}, "001", metrics);
+    const auto rejectedBefore = metrics.wpkIdRejected->get();
+    const auto responder = runHandlerAs(wpkBody("pkg.wpk"), std::nullopt, {}, {}, "001", metrics);
+
+    EXPECT_TRUE(exists);
+    EXPECT_EQ(responder->status, 404);
+    EXPECT_FALSE(responder->streamed);
+    EXPECT_EQ(responder->body, missing->body);
+    EXPECT_EQ(metrics.wpkIdRejected->get(), rejectedBefore + 1U);
+    EXPECT_EQ(metrics.started->get(), 0U);
+}
+
+TEST(DownloadHandlerTest, ProductionClockServesAFreshIdAndRejectsAnOldOne)
+{
+    TempDir dir;
+    const auto paths = taskPaths(dir, "task package\n");
+
+    auto codec = remoted::auth::WpkIdCodec::fromClusterKey(WPK_CLUSTER_KEY, WPK_TTL);
+    ASSERT_TRUE(codec.has_value());
+    const remoted::auth::WpkIdHandling handling {std::make_shared<const remoted::auth::WpkIdCodec>(std::move(*codec)),
+                                                 {}};
+
+    const auto fresh = handling.codec->issue(1, wpkTaskIdBytes(), static_cast<std::int64_t>(std::time(nullptr)));
+    const auto old = handling.codec->issue(1, wpkTaskIdBytes(), 0);
+    ASSERT_TRUE(fresh.has_value());
+    ASSERT_TRUE(old.has_value());
+
+    const auto served = runHandlerAs(wpkBody(*fresh), std::nullopt, paths, handling);
+    EXPECT_EQ(served->status, 200);
+    EXPECT_EQ(served->body, "task package\n");
+
+    EXPECT_EQ(runHandlerAs(wpkBody(*old), std::nullopt, paths, handling)->status, 404);
 }
 
 // -----------------------------------------------------------------------------
@@ -1283,20 +1311,14 @@ TEST(DownloadHandlerTest, AnswersServiceUnavailableForASupersededLookup)
 
 TEST(DownloadHandlerTest, WpkRequestsNeverResolve)
 {
-    TempDir dir;
-    dir.makeDir("upgrade");
-    dir.writeFile("upgrade/pkg.wpk", "package\n");
-    ResourcePaths paths;
-    paths.wpkDir = dir.path() + "/upgrade";
     const auto source = std::make_shared<FakeAgentGroupSource>(std::nullopt);
     auto responder = std::make_shared<RecordingResponder>();
     auto body = std::make_shared<std::string>(R"({"resource_type":"wpk","resource_id":"pkg.wpk"})");
 
-    makeHandler(paths, {}, source)(authenticatedRequest(body), responder);
+    makeHandler({}, {}, source)(authenticatedRequest(body), responder);
 
     EXPECT_EQ(source->calls.load(), 0); // no group lookup, no wazuh-db round trip, for a WPK
-    EXPECT_EQ(responder->status, 200);
-    EXPECT_EQ(responder->body, "package\n");
+    EXPECT_EQ(responder->status, 404);
 }
 
 TEST(DownloadHandlerTest, WpkIdServesTheTaskFile)
