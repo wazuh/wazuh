@@ -13,8 +13,9 @@ import aws_tools
 
 # Name of a bucket, not an ARN, as S3 writes it in its notifications; legacy buckets may have upper case and underscores
 BUCKET_NAME_REGEX = re.compile(r'[A-Za-z0-9._-]{1,255}')
-# Directory buckets do not send S3 event notifications, and botocore builds their endpoint from their name
-DIRECTORY_BUCKET_SUFFIXES = ('--x-s3', '--xa-s3')
+# Suffixes that no general purpose bucket can have: they are reserved for directory buckets, which do not send S3 event
+# notifications, and for aliases and other kinds of buckets. botocore builds the endpoint of some of them from the name.
+RESERVED_BUCKET_SUFFIXES = ('--x-s3', '--xa-s3', '--op-s3', '--ol-s3', '-s3alias', '.mrap', '--table-s3')
 
 
 class AWSQueueMessageProcessor:
@@ -42,7 +43,7 @@ class AWSQueueMessageProcessor:
     def build_route(message, log_path, bucket_path) -> dict:
         """Return the route to the notified object, or the raw message if the key or bucket is not a valid name."""
         if isinstance(log_path, str) and log_path and isinstance(bucket_path, str) and \
-                BUCKET_NAME_REGEX.fullmatch(bucket_path) and not bucket_path.endswith(DIRECTORY_BUCKET_SUFFIXES):
+                BUCKET_NAME_REGEX.fullmatch(bucket_path) and not bucket_path.endswith(RESERVED_BUCKET_SUFFIXES):
             return {"route": {"log_path": log_path, "bucket_path": bucket_path}}
         return {'raw_message': message}
 

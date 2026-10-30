@@ -210,6 +210,12 @@ def sec_lake_notification(key, bucket="name"):
         s3_notification("key", bucket="x" * 256),
         s3_notification("key", bucket="bucket--use1-az4--x-s3"),
         s3_notification("key", bucket="bucket--usw2-lax1-az1--xa-s3"),
+        s3_notification("key", bucket="myaccesspoint-o01ac5d28a6a232904e8xz5w8ijx1qzlbp3i3kuse10--op-s3"),
+        s3_notification("key", bucket="aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa--op-s3"),
+        s3_notification("key", bucket="my-ap--ol-s3"),
+        s3_notification("key", bucket="my-access-point-abcdefghijk-s3alias"),
+        s3_notification("key", bucket="mfzwi23gnjvgw.mrap"),
+        s3_notification("key", bucket="my-table-bucket--table-s3"),
     ],
 )
 def test_aws_s3_message_processor_returns_raw_message_for_unexpected_formats(msg):
@@ -266,8 +272,8 @@ def test_extract_message_info_prints_message_on_a_single_line(capsys):
     assert all(line.startswith('DEBUG: ') for line in capsys.readouterr().out.splitlines())
 
 
-@pytest.mark.parametrize("bucket", ["my-bucket", "my.bucket.example.com", "Legacy_Bucket", "x" * 255,
-                                    "my-access-point-abcdefghijk-s3alias", "my-ap--ol-s3"])
+@pytest.mark.parametrize("bucket", ["my-bucket", "my.bucket.example.com", "Legacy_Bucket", "x" * 255, "my--bucket",
+                                    "bucket-s3", "bucket-111122223333-us-west-2-an"])
 def test_build_route_accepts_bucket_names(bucket):
     """Test the route keeps the bucket names S3 writes in its notifications, including legacy names."""
     assert sqs.AWSS3MessageProcessor().parse_message(s3_notification("key", bucket=bucket)) == \

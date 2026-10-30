@@ -509,15 +509,21 @@ def test_aws_subscriber_bucket_obtain_logs_raises_for_snappy_files():
 
 @pytest.mark.parametrize('error, expected', [
     (botocore.exceptions.EndpointConnectionError(endpoint_url='https://s3'), True),
-    (botocore.exceptions.NoCredentialsError(), True),
+    (botocore.exceptions.ConnectTimeoutError(endpoint_url='https://s3'), True),
+    (botocore.exceptions.ReadTimeoutError(endpoint_url='https://s3'), True),
+    (botocore.exceptions.ConnectionClosedError(endpoint_url='https://s3'), True),
     (urllib3.exceptions.ProtocolError('Connection broken'), True),
     (ConnectionResetError(104, 'reset'), True),
     (socket.timeout('timed out'), True),
     (client_error('AccessDenied'), False),
     (client_error('ExpiredToken'), False),
+    (botocore.exceptions.EndpointResolutionError(msg='Unrecognized hardware type'), False),
+    (botocore.exceptions.ParamValidationError(report='Invalid bucket name'), False),
+    (botocore.exceptions.NoCredentialsError(), False),
     (ValueError('invalid content'), False),
 ])
 def test_is_unanswered_error(error, expected):
-    """Test 'is_unanswered_error' matches the requests that got no answer from AWS, and not the answers from AWS,
-    which may depend on the bucket named in the message, nor the errors of the content of a file."""
+    """Test 'is_unanswered_error' matches the requests that were sent and got no answer from AWS, and not the answers
+    from AWS nor the errors raised before sending the request, which may depend on the bucket named in the message,
+    nor the errors of the content of a file."""
     assert s3_log_handler.is_unanswered_error(error) is expected

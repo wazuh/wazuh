@@ -538,3 +538,21 @@ def test_aws_sqs_queue_sync_events_stops_at_the_next_receive_when_the_credential
 
     assert e.value.code == utils.UNABLE_TO_FETCH_DELETE_FROM_QUEUE
     assert instance.bucket_handler.process_file.call_count == 10
+
+
+def test_aws_sqs_queue_sync_events_does_not_stop_for_errors_before_sending_the_request():
+    """Test the errors raised before sending the request, such as resolving the endpoint, do not stop the run, even
+    many in a row, as they may depend on the bucket named in each message."""
+    instance = get_queue(skip_on_error=False)
+    instance.message_processor = sqs_message_processor.AWSS3MessageProcessor()
+    error = botocore.exceptions.EndpointResolutionError(msg='Unrecognized hardware type')
+    instance.bucket_handler.process_file.side_effect = [error] * 12 + [None]
+    batch = [sqs_message(s3_notification(f'key{n}'), n) for n in range(13)]
+    instance.client.receive_message.side_effect = [{'Messages': batch[:10]}, {'Messages': batch[10:]}, {}]
+
+    with pytest.raises(SystemExit) as e:
+        instance.sync_events()
+
+    assert e.value.code == utils.UNEXPECTED_ERROR_WORKING_WITH_S3
+    assert instance.bucket_handler.process_file.call_count == 13
+    assert [c.kwargs['ReceiptHandle'] for c in instance.client.delete_message.call_args_list] == ['h12']

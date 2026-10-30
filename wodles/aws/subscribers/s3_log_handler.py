@@ -73,10 +73,11 @@ def is_retryable_error(error: Exception) -> bool:
 
 
 def is_unanswered_error(error: Exception) -> bool:
-    """Determine if a request for an object got no answer from AWS, e.g. because of the network, the endpoint or the
-    local credentials.
+    """Determine if a request for an object was sent and got no answer from AWS, e.g. because of the network or the
+    endpoint.
 
-    Unlike an answer from AWS, such as AccessDenied, it does not depend on the bucket named in the message.
+    Unlike an answer from AWS, such as AccessDenied, or an error raised before sending the request, such as one
+    resolving the endpoint, it does not depend on the bucket named in the message.
 
     Parameters
     ----------
@@ -88,7 +89,8 @@ def is_unanswered_error(error: Exception) -> bool:
     bool
         Whether the request got no answer from AWS.
     """
-    return is_retryable_error(error) and not isinstance(error, botocore.exceptions.ClientError)
+    return isinstance(error, (botocore.exceptions.ConnectionError, botocore.exceptions.HTTPClientError,
+                              urllib3.exceptions.HTTPError, ConnectionError, TimeoutError, socket.timeout))
 
 
 class AWSS3LogHandler:
