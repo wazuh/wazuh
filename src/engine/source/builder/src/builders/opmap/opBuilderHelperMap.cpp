@@ -1088,14 +1088,64 @@ MapOp opBuilderHelperStringFromArray(const std::vector<OpArg>& opArgs, const std
     };
 }
 
-// field: +decode_base16/$<hex_reference>
-// The reference can be a string or an array (each valid hexadecimal string element is decoded).
+namespace
+{
+constexpr auto DECODE_BASE16_QUOTED_MODE = "quoted";
+
+/**
+ * @brief Decode one value in the 'quoted' mode of decode_base16 (auditd EXECVE arguments).
+ *
+ * auditd writes an argument between double quotes unless it contains a double quote, a byte below 0x21 or above 0x7E;
+ * then it writes the bytes in upper-case hexadecimal without quotes. So a quoted value is text and only an unquoted
+ * value can be hexadecimal.
+ *
+ * @param value Raw value, quotes included.
+ * @return std::string The text between the quotes for a quoted value; the decoded UTF-8 text for an unquoted value of
+ * upper-case hexadecimal digits that decodes to valid UTF-8; the value unchanged otherwise.
+ */
+std::string decodeQuotedValue(std::string_view value)
+{
+    if (value.size() >= 2 && value.front() == '"' && value.back() == '"')
+    {
+        return std::string(value.substr(1, value.size() - 2));
+    }
+
+    if (!value.empty())
+    {
+        if (auto decoded = base::utils::string::hexToUtf8(value, true))
+        {
+            return std::move(decoded.value());
+        }
+    }
+
+    return std::string(value);
+}
+} // namespace
+
+// field: decode_base16($<hex_reference>[, 'quoted'])
+// Without the mode the reference must be a string of hexadecimal digits that decodes to ASCII.
+// With the 'quoted' mode the reference can be a string or an array, and each value is decoded by its quoting
+// (see decodeQuotedValue); the operation does not fail on the values.
 MapOp opBuilderHelperStringFromHexa(const std::vector<OpArg>& opArgs, const std::shared_ptr<const IBuildCtx>& buildCtx)
 {
     // Assert expected number of parameters
-    builder::builders::utils::assertSize(opArgs, 1);
-    // Check Array reference parameter
-    builder::builders::utils::assertRef(opArgs);
+    builder::builders::utils::assertSize(opArgs, 1, 2);
+    // Parameter type check
+    builder::builders::utils::assertRef(opArgs, 0);
+
+    bool quotedMode = false;
+    if (opArgs.size() == 2)
+    {
+        builder::builders::utils::assertValue(opArgs, 1);
+        const auto& modeValue = std::static_pointer_cast<Value>(opArgs[1])->value();
+        std::string mode;
+        if (modeValue.getString(mode) != json::RetGet::Success || mode != DECODE_BASE16_QUOTED_MODE)
+        {
+            throw std::runtime_error(
+                fmt::format("Expected the mode '{}' but got '{}'", DECODE_BASE16_QUOTED_MODE, modeValue.str()));
+        }
+        quotedMode = true;
+    }
 
     const auto hexRef = *std::static_pointer_cast<Reference>(opArgs[0]);
     if (buildCtx->validator().hasField(hexRef.dotPath()))
@@ -1116,7 +1166,10 @@ MapOp opBuilderHelperStringFromHexa(const std::vector<OpArg>& opArgs, const std:
 
     const std::string failureTrace1 {fmt::format(TRACE_REFERENCE_NOT_FOUND, traceName, hexRef.dotPath())};
     const std::string failureTrace2 {
-        fmt::format("[{}] -> Failure: Parameter '{}' type is neither string nor array", traceName, hexRef.dotPath())};
+        quotedMode ? fmt::format("[{}] -> Failure: Parameter '{}' type is neither string nor array",
+                                 traceName,
+                                 hexRef.dotPath())
+                   : fmt::format(TRACE_REFERENCE_TYPE_IS_NOT, traceName, hexRef.dotPath()) + "string"};
     const std::string failureTrace3 {
         fmt::format("[{}] -> Failure: Hexa string has not an even quantity of digits", traceName)};
     const std::string failureTrace4 {
@@ -1128,43 +1181,36 @@ MapOp opBuilderHelperStringFromHexa(const std::vector<OpArg>& opArgs, const std:
             sourceField = hexRef.jsonPath(),
             sourceFieldPP = json::PointerPath(hexRef.jsonPath())](base::ConstEvent event) -> MapResult
     {
-        // Getting string field from a reference
-        if (!event->exists(sourceField))
+        std::string_view strHex;
+        const auto ret = event->getString(strHex, sourceFieldPP);
+        if (ret == json::RetGet::NotFound)
         {
             RETURN_FAILURE(isTestMode, json::Json {}, failureTrace1);
         }
 
-        std::string refStrHEX;
-        if (auto ret = event->getString(refStrHEX, sourceFieldPP); ret != json::RetGet::Success)
+        if (quotedMode)
         {
-            if (ret == json::RetGet::NotFound)
+            json::Json result;
+            if (ret == json::RetGet::Success)
             {
-                RETURN_FAILURE(isTestMode, json::Json {}, failureTrace1);
+                result.setString(decodeQuotedValue(strHex));
+                RETURN_SUCCESS(isTestMode, result, successTrace);
             }
 
-            // Array reference: decode each valid hexadecimal string element, keep the rest unchanged
             auto elements = event->getArray(sourceField);
             if (!elements)
             {
                 RETURN_FAILURE(isTestMode, json::Json {}, failureTrace2);
             }
 
-            json::Json result;
+            // Each string element is decoded by its quoting; any other element is copied unchanged
             result.setArray();
             for (const auto& element : elements.value())
             {
                 std::string_view strElement;
-                std::optional<std::string> decoded;
                 if (element.getString(strElement) == json::RetGet::Success)
                 {
-                    decoded = base::utils::string::hexToAscii(strElement);
-                }
-
-                if (decoded)
-                {
-                    json::Json jDecoded;
-                    jDecoded.setString(decoded.value());
-                    result.appendJson(jDecoded);
+                    result.appendString(decodeQuotedValue(strElement));
                 }
                 else
                 {
@@ -1175,12 +1221,17 @@ MapOp opBuilderHelperStringFromHexa(const std::vector<OpArg>& opArgs, const std:
             RETURN_SUCCESS(isTestMode, result, successTrace);
         }
 
-        if (refStrHEX.length() % 2 != 0)
+        if (ret != json::RetGet::Success)
+        {
+            RETURN_FAILURE(isTestMode, json::Json {}, failureTrace2);
+        }
+
+        if (strHex.length() % 2 != 0)
         {
             RETURN_FAILURE(isTestMode, json::Json {}, failureTrace3);
         }
 
-        const auto strASCII = base::utils::string::hexToAscii(refStrHEX);
+        auto strASCII = base::utils::string::hexToAscii(strHex);
         if (!strASCII)
         {
             RETURN_FAILURE(isTestMode, json::Json {}, failureTrace4);
@@ -2083,6 +2134,99 @@ MapOp opBuilderHelperRegexExtract(const std::vector<OpArg>& opArgs, const std::s
         }
 
         RETURN_FAILURE(isTestMode, json::Json {}, failureTrace3);
+    };
+}
+
+// field: regex_extract_all($<string_reference>, 'regex')
+MapOp opBuilderHelperRegexExtractAll(const std::vector<OpArg>& opArgs, const std::shared_ptr<const IBuildCtx>& buildCtx)
+{
+    // Assert expected number of parameters
+    builder::builders::utils::assertSize(opArgs, 2);
+    // Parameter type check
+    builder::builders::utils::assertRef(opArgs, 0);
+    builder::builders::utils::assertValue(opArgs, 1);
+
+    // Get regex
+    std::string regexStr;
+    if (std::static_pointer_cast<Value>(opArgs[1])->value().getString(regexStr) != json::RetGet::Success)
+    {
+        throw std::runtime_error(fmt::format("Expected 'string' parameter but got type '{}'",
+                                             std::static_pointer_cast<Value>(opArgs[1])->value().typeName()));
+    }
+
+    auto regex = std::make_shared<RE2>(regexStr);
+    if (!regex->ok())
+    {
+        throw std::runtime_error(fmt::format("Invalid regex: {}", regex->error()));
+    }
+    if (regex->NumberOfCapturingGroups() < 1)
+    {
+        throw std::runtime_error(fmt::format("The regex '{}' has no capturing group", regexStr));
+    }
+
+    // Get field reference
+    const auto refField = *std::static_pointer_cast<Reference>(opArgs[0]);
+    if (buildCtx->validator().hasField(refField.dotPath()))
+    {
+        auto jType = buildCtx->validator().getJsonType(refField.dotPath());
+        if (jType != json::Json::Type::String)
+        {
+            throw std::runtime_error(fmt::format("Expected 'string' reference but got reference '{}' of type '{}'",
+                                                 refField.dotPath(),
+                                                 json::Json::typeToStr(jType)));
+        }
+    }
+
+    // Tracing
+    const auto name = buildCtx->context().opName;
+    const auto successTrace = fmt::format(TRACE_SUCCESS, name);
+    const auto failureTrace1 = fmt::format(TRACE_REFERENCE_NOT_FOUND, name, refField.dotPath());
+    const auto failureTrace2 = fmt::format(TRACE_REFERENCE_TYPE_IS_NOT, name, refField.dotPath()) + "string";
+    const auto failureTrace3 = fmt::format("[{}] -> Failure: Regex did not match", name);
+
+    // Return Op
+    return [=, isTestMode = buildCtx->isTestMode(), refFieldPP = json::PointerPath(refField.jsonPath())](
+               base::ConstEvent event) -> MapResult
+    {
+        std::string_view input;
+        if (auto ret = event->getString(input, refFieldPP); ret != json::RetGet::Success)
+        {
+            RETURN_FAILURE(isTestMode, json::Json {}, ret == json::RetGet::NotFound ? failureTrace1 : failureTrace2);
+        }
+
+        const absl::string_view text(input.data(), input.size());
+        std::array<absl::string_view, 2> groups;
+        json::Json result;
+        result.setArray();
+        bool matched = false;
+        std::size_t pos = 0;
+        while (pos <= text.size() && regex->Match(text, pos, text.size(), RE2::UNANCHORED, groups.data(), 2))
+        {
+            matched = true;
+            // An optional group that did not take part in the match yields an empty string
+            result.appendString(std::string_view(groups[1].data(), groups[1].size()));
+
+            const auto matchEnd = static_cast<std::size_t>(groups[0].data() - text.data()) + groups[0].size();
+            if (!groups[0].empty())
+            {
+                pos = matchEnd;
+                continue;
+            }
+
+            // Empty match: move past the next character (a whole UTF-8 sequence) so the loop always advances
+            pos = matchEnd + 1;
+            while (pos < text.size() && (static_cast<unsigned char>(text[pos]) & 0xC0) == 0x80)
+            {
+                ++pos;
+            }
+        }
+
+        if (!matched)
+        {
+            RETURN_FAILURE(isTestMode, json::Json {}, failureTrace3);
+        }
+
+        RETURN_SUCCESS(isTestMode, result, successTrace);
     };
 }
 

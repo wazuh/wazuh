@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 #include "builders/baseBuilders_test.hpp"
 
+#include "builders/baseHelper.hpp"
 #include "builders/opmap/opBuilderHelperMap.hpp"
+#include "valueValidators.hpp"
 
 using namespace builder::builders;
 
@@ -177,6 +179,13 @@ INSTANTIATE_TEST_SUITE_P(
         MapT({makeValue(R"("48656C6C6F20776F726C6421")")}, opBuilderHelperStringFromHexa, FAILURE()),
         MapT({makeRef("ref")}, opBuilderHelperStringFromHexa, SUCCESS(customRefExpected())),
         MapT({makeRef("ref"), makeRef("ref")}, opBuilderHelperStringFromHexa, FAILURE()),
+        MapT({makeRef("ref"), makeValue(R"("quoted")")}, opBuilderHelperStringFromHexa, SUCCESS(customRefExpected())),
+        MapT({makeRef("ref"), makeValue(R"("QUOTED")")}, opBuilderHelperStringFromHexa, FAILURE()),
+        MapT({makeRef("ref"), makeValue(R"("auditd")")}, opBuilderHelperStringFromHexa, FAILURE()),
+        MapT({makeRef("ref"), makeValue(R"(1)")}, opBuilderHelperStringFromHexa, FAILURE()),
+        MapT({makeRef("ref"), makeValue(R"("quoted")"), makeValue(R"("quoted")")},
+             opBuilderHelperStringFromHexa,
+             FAILURE()),
         MapT({makeRef("ref")}, opBuilderHelperStringFromHexa, SUCCESS(jTypeRefExpected(json::Json::Type::String))),
         MapT({makeRef("ref")}, opBuilderHelperStringFromHexa, FAILURE(jTypeRefExpected(json::Json::Type::Number))),
         MapT({makeRef("ref")}, opBuilderHelperStringFromHexa, FAILURE(jTypeRefExpected(json::Json::Type::Boolean))),
@@ -375,37 +384,83 @@ INSTANTIATE_TEST_SUITE_P(
              opBuilderHelperStringFromHexa,
              {makeRef("ref")},
              SUCCESS(customRefExpected(json::Json(R"("")")))),
-        /*** String from Hexa: array reference ***/
-        MapT(R"({"ref": ["48656C6C6F", "776F726C6421", "6b65793d226172742d7465737422"]})",
+        /*** String from Hexa: an array needs the 'quoted' mode ***/
+        MapT(R"({"ref": ["48656C6C6F", "776F726C6421"]})",
              opBuilderHelperStringFromHexa,
              {makeRef("ref")},
-             SUCCESS(customRefExpected(json::Json(R"(["Hello", "world!", "key=\"art-test\""])")))),
-        MapT(R"({"ref": ["/usr/bin/sudo", "grep", "6B65793D226172742D7465737422", "/var/log/audit/audit.log"]})",
+             FAILURE(customRefExpected())),
+        MapT(R"({"ref": []})", opBuilderHelperStringFromHexa, {makeRef("ref")}, FAILURE(customRefExpected())),
+        MapT(R"({"ref": [1, 2, 3]})", opBuilderHelperStringFromHexa, {makeRef("ref")}, FAILURE(customRefExpected())),
+        /*** String from Hexa: 'quoted' mode, array reference ***/
+        // auditd EXECVE arguments of the issue: quoted values are text, the unquoted one is hexadecimal
+        MapT(
+            R"({"ref": ["\"/usr/bin/sudo\"", "\"grep\"", "6B65793D226172742D7465737422", "\"/var/log/audit/audit.log\""]})",
+            opBuilderHelperStringFromHexa,
+            {makeRef("ref"), makeValue(R"("quoted")")},
+            SUCCESS(customRefExpected(
+                json::Json(R"(["/usr/bin/sudo", "grep", "key=\"art-test\"", "/var/log/audit/audit.log"])")))),
+        // Quoted values that are also valid hexadecimal stay text (review H-1)
+        MapT(R"({"ref": ["\"sleep\"", "\"10\""]})",
              opBuilderHelperStringFromHexa,
-             {makeRef("ref")},
-             SUCCESS(customRefExpected(
-                 json::Json(R"(["/usr/bin/sudo", "grep", "key=\"art-test\"", "/var/log/audit/audit.log"])")))),
-        MapT(R"({"ref": ["/usr/bin/sudo", "grep", "-r", "key"]})",
+             {makeRef("ref"), makeValue(R"("quoted")")},
+             SUCCESS(customRefExpected(json::Json(R"(["sleep", "10"])")))),
+        MapT(R"({"ref": ["\"chmod\"", "\"0755\"", "\"/tmp/f\""]})",
              opBuilderHelperStringFromHexa,
-             {makeRef("ref")},
-             SUCCESS(customRefExpected(json::Json(R"(["/usr/bin/sudo", "grep", "-r", "key"])")))),
+             {makeRef("ref"), makeValue(R"("quoted")")},
+             SUCCESS(customRefExpected(json::Json(R"(["chmod", "0755", "/tmp/f"])")))),
+        MapT(R"({"ref": ["\"kill\"", "\"-9\"", "\"1234\""]})",
+             opBuilderHelperStringFromHexa,
+             {makeRef("ref"), makeValue(R"("quoted")")},
+             SUCCESS(customRefExpected(json::Json(R"(["kill", "-9", "1234"])")))),
+        MapT(R"({"ref": ["\"3c3e\"", "\"00\"", "\"\"", "\"\"\""]})",
+             opBuilderHelperStringFromHexa,
+             {makeRef("ref"), makeValue(R"("quoted")")},
+             SUCCESS(customRefExpected(json::Json(R"(["3c3e", "00", "", "\""])")))),
+        // UTF-8 argument (review M-1): "café" is written as hexadecimal by auditd
+        MapT(R"({"ref": ["\"touch\"", "636166C3A9"]})",
+             opBuilderHelperStringFromHexa,
+             {makeRef("ref"), makeValue(R"("quoted")")},
+             SUCCESS(customRefExpected(json::Json(R"(["touch", "café"])")))),
+        // Unquoted values decoded only when they are upper-case hexadecimal that decodes to valid UTF-8
+        MapT(
+            R"j({"ref": ["2F746D702F612062", "0A", "3c3e", "636166c3a9", "CAFE", "C0AF", "414", "41G2", "", "\"", "(null)"]})j",
+            opBuilderHelperStringFromHexa,
+            {makeRef("ref"), makeValue(R"("quoted")")},
+            SUCCESS(customRefExpected(json::Json(
+                R"j(["/tmp/a b", "\n", "3c3e", "636166c3a9", "CAFE", "C0AF", "414", "41G2", "", "\"", "(null)"])j")))),
         MapT(R"({"ref": []})",
              opBuilderHelperStringFromHexa,
-             {makeRef("ref")},
+             {makeRef("ref"), makeValue(R"("quoted")")},
              SUCCESS(customRefExpected(json::Json(R"([])")))),
-        MapT(R"({"ref": [1, 2, 3]})",
+        MapT(R"({"ref": [1, "\"4142\"", "4142", true, null, {"a": "4142"}, ["4142"], 2.5]})",
              opBuilderHelperStringFromHexa,
-             {makeRef("ref")},
-             SUCCESS(customRefExpected(json::Json(R"([1, 2, 3])")))),
-        MapT(R"({"ref": [1, "4142", true, null, {"a": "4142"}, ["4142"], 2.5]})",
+             {makeRef("ref"), makeValue(R"("quoted")")},
+             SUCCESS(customRefExpected(json::Json(R"([1, "4142", "AB", true, null, {"a": "4142"}, ["4142"], 2.5])")))),
+        /*** String from Hexa: 'quoted' mode, string reference ***/
+        MapT(R"({"ref": "\"1234\""})",
              opBuilderHelperStringFromHexa,
-             {makeRef("ref")},
-             SUCCESS(customRefExpected(json::Json(R"([1, "AB", true, null, {"a": "4142"}, ["4142"], 2.5])")))),
-        // Not decoded: empty, odd length, non hexadecimal digit, sign, space, non-ASCII byte
-        MapT(R"({"ref": ["", "414", "41G2", "+1", " A", "FF", "cafe", "4142"]})",
+             {makeRef("ref"), makeValue(R"("quoted")")},
+             SUCCESS(customRefExpected(json::Json(R"("1234")")))),
+        MapT(R"({"ref": "636166C3A9"})",
              opBuilderHelperStringFromHexa,
-             {makeRef("ref")},
-             SUCCESS(customRefExpected(json::Json(R"(["", "414", "41G2", "+1", " A", "FF", "cafe", "AB"])")))),
+             {makeRef("ref"), makeValue(R"("quoted")")},
+             SUCCESS(customRefExpected(json::Json(R"("café")")))),
+        MapT(R"({"ref": "CAFE"})",
+             opBuilderHelperStringFromHexa,
+             {makeRef("ref"), makeValue(R"("quoted")")},
+             SUCCESS(customRefExpected(json::Json(R"("CAFE")")))),
+        MapT(R"({"ref": 1})",
+             opBuilderHelperStringFromHexa,
+             {makeRef("ref"), makeValue(R"("quoted")")},
+             FAILURE(customRefExpected())),
+        MapT(R"({"ref": {"a": "41"}})",
+             opBuilderHelperStringFromHexa,
+             {makeRef("ref"), makeValue(R"("quoted")")},
+             FAILURE(customRefExpected())),
+        MapT(R"({"other": "41"})",
+             opBuilderHelperStringFromHexa,
+             {makeRef("ref"), makeValue(R"("quoted")")},
+             FAILURE(customRefExpected())),
         /*** Hex to Number*/
         MapT(R"({"ref": "48656C"})",
              opBuilderHelperHexToNumber,
@@ -425,3 +480,101 @@ INSTANTIATE_TEST_SUITE_P(
         MapT(R"({"ref": null})", opBuilderHelperHexToNumber, {makeRef("ref")}, FAILURE(customRefExpected()))),
     testNameFormatter<MapOperationTest>("StrTransform"));
 } // namespace mapoperatestest
+
+namespace decodebase16test
+{
+// decode_base16 run in test mode, to check the trace of every outcome
+class DecodeBase16Test : public BaseBuilderTest
+{
+protected:
+    void SetUp() override
+    {
+        BaseBuilderTest::SetUp();
+        mocks->context.opName = "decode_base16";
+        ON_CALL(*mocks->ctx, isTestMode()).WillByDefault(testing::Return(true));
+        ON_CALL(*mocks->validator, hasField(testing::_)).WillByDefault(testing::Return(false));
+    }
+
+    MapResult run(const std::string& input, bool quoted)
+    {
+        auto op = opBuilderHelperStringFromHexa(args(quoted), mocks->ctx);
+        return op(std::make_shared<json::Json>(input.c_str()));
+    }
+
+    static std::vector<OpArg> args(bool quoted)
+    {
+        if (quoted)
+        {
+            return {makeRef("ref"), makeValue(R"("quoted")")};
+        }
+        return {makeRef("ref")};
+    }
+};
+
+TEST_F(DecodeBase16Test, Traces)
+{
+    struct Case
+    {
+        std::string input;
+        bool quoted;
+        bool success;
+        std::string trace;
+    };
+    const std::vector<Case> cases {
+        {R"({"ref": "4142"})", false, true, "[decode_base16] -> Success"},
+        {R"({"other": "4142"})", false, false, "[decode_base16] -> Failure: Parameter 'ref' reference not found"},
+        {R"({"ref": ["4142"]})", false, false, "[decode_base16] -> Failure: Parameter 'ref' type is not string"},
+        {R"({"ref": 1})", false, false, "[decode_base16] -> Failure: Parameter 'ref' type is not string"},
+        {R"({"ref": "414"})",
+         false,
+         false,
+         "[decode_base16] -> Failure: Hexa string has not an even quantity of digits"},
+        {R"({"ref": "41G2"})",
+         false,
+         false,
+         "[decode_base16] -> Failure: Hexa string has a non hexadecimal digit or a non ASCII byte"},
+        {R"({"ref": "CAFE"})",
+         false,
+         false,
+         "[decode_base16] -> Failure: Hexa string has a non hexadecimal digit or a non ASCII byte"},
+        {R"({"ref": ["\"a\"", "CAFE"]})", true, true, "[decode_base16] -> Success"},
+        {R"({"ref": "CAFE"})", true, true, "[decode_base16] -> Success"},
+        {R"({"other": []})", true, false, "[decode_base16] -> Failure: Parameter 'ref' reference not found"},
+        {R"({"ref": 1})", true, false, "[decode_base16] -> Failure: Parameter 'ref' type is neither string nor array"},
+        {R"({"ref": {"a": "41"}})",
+         true,
+         false,
+         "[decode_base16] -> Failure: Parameter 'ref' type is neither string nor array"},
+    };
+
+    for (const auto& c : cases)
+    {
+        SCOPED_TRACE(c.input + (c.quoted ? " (quoted)" : ""));
+        auto result = run(c.input, c.quoted);
+        EXPECT_EQ(result.success(), c.success);
+        EXPECT_EQ(result.trace(), c.trace);
+    }
+}
+
+TEST_F(DecodeBase16Test, QuotedModeOnKeywordTarget)
+{
+    // A keyword target such as process.args gets the string validator wrapped with asArray() at runtime: an array
+    // result with a non-string element fails the whole operation and the target is not set
+    Reference target("process.args");
+    schemf::ValidationResult valResult(schemf::asArray(schemf::validators::getStringValidator()));
+    auto wrapped = runType(MapBuilder(opBuilderHelperStringFromHexa), target, valResult);
+    auto transform = mapToTransform(std::get<MapBuilder>(wrapped), target);
+    auto op = transform(target, args(true), mocks->ctx);
+
+    auto event = std::make_shared<json::Json>(R"({"ref": ["\"sleep\"", "\"10\"", "636166C3A9"]})");
+    auto result = op(event);
+    ASSERT_TRUE(result.success()) << result.trace();
+    EXPECT_EQ(event->getJson("/process/args").value(), json::Json(R"(["sleep", "10", "café"])"));
+
+    event = std::make_shared<json::Json>(R"({"ref": ["\"kill\"", 9]})");
+    result = op(event);
+    ASSERT_FALSE(result.success());
+    EXPECT_THAT(result.trace(), testing::HasSubstr("schema validation failed"));
+    EXPECT_FALSE(event->exists("/process/args"));
+}
+} // namespace decodebase16test
