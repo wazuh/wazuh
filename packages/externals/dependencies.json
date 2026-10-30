@@ -311,7 +311,8 @@
       "links": [
         "openssl",
         "zlib",
-        "brotli"
+        "brotli",
+        "zstd"
       ],
       "cpe": "cpe:2.3:a:haxx:curl:*:*:*:*:*:*:*:*",
       "purl": "pkg:github/curl/curl@curl-8_20_0",
