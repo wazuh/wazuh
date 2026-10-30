@@ -38,6 +38,8 @@ BOOL __wrap_utf8_ReplaceFile(const char* old_name, const char* new_name, const c
 
 BOOL __wrap_utf8_DeleteFile(const char* utf8_path);
 
+BOOL __wrap_utf8_RemoveDirectory(const char* utf8_path);
+
 DWORD __wrap_utf8_GetFileAttributes(const char* utf8_path);
 
 char* __wrap_utf8_GetShortPathName(const char* utf8_path);

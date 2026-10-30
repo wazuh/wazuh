@@ -163,6 +163,18 @@ BOOL utf8_DeleteFile(const char* utf8_path) {
     return ok;
 }
 
+BOOL utf8_RemoveDirectory(const char* utf8_path) {
+    wchar_t *wpath = auto_to_wide(utf8_path);
+    if (!wpath) {
+        return FALSE;
+    }
+
+    BOOL ok = RemoveDirectoryW(wpath);
+
+    os_free(wpath);
+    return ok;
+}
+
 DWORD utf8_GetFileAttributes(const char *utf8_path) {
     wchar_t *wpath = auto_to_wide(utf8_path);
     if (!wpath) {

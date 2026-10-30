@@ -1498,6 +1498,105 @@ void test_wopendir_network_path(void **state) {
     assert_int_equal(errno, EACCES);
 }
 
+/* Non-ASCII entries come back from FindFirstFileW as UTF-8, so they match the ignore list. */
+void test_cldir_ex_ignore_win_utf8_names(void **state) {
+    const char *ignore[] = { "caf\xc3\xa9.txt", NULL };
+
+    expect_find_first_file(L"C:\\shared\\*", ".", FILE_ATTRIBUTE_DIRECTORY, (HANDLE) 1);
+    expect_find_next_file((HANDLE) 1, "..", FILE_ATTRIBUTE_DIRECTORY, TRUE);
+    expect_find_next_file((HANDLE) 1, "caf\xc3\xa9.txt", FILE_ATTRIBUTE_NORMAL, TRUE);
+    expect_find_next_file((HANDLE) 1, "\xc3\xbcn\xc3\xaf" "code-\xc3\xb1.txt", FILE_ATTRIBUTE_NORMAL, TRUE);
+    expect_string(__wrap_utf8_DeleteFile, utf8_path, "C:\\shared/\xc3\xbcn\xc3\xaf" "code-\xc3\xb1.txt");
+    will_return(__wrap_utf8_DeleteFile, TRUE);
+    expect_find_next_file((HANDLE) 1, NULL, 0, FALSE);
+
+    assert_int_equal(cldir_ex_ignore("C:\\shared", ignore), 0);
+}
+
+/* A name that is not valid UTF-8 is created through the ANSI code page, so it is compared the same way. */
+void test_cldir_ex_ignore_win_ansi_name(void **state) {
+    const char *ignore[] = { "caf\xe9.txt", NULL };
+    wchar_t wide[16];
+    char on_disk[32];
+
+    MultiByteToWideChar(CP_ACP, 0, ignore[0], -1, wide, 16);
+    WideCharToMultiByte(CP_UTF8, 0, wide, -1, on_disk, sizeof(on_disk), NULL, NULL);
+
+    expect_find_first_file(L"C:\\shared\\*", on_disk, FILE_ATTRIBUTE_NORMAL, (HANDLE) 1);
+    expect_find_next_file((HANDLE) 1, NULL, 0, FALSE);
+
+    assert_int_equal(cldir_ex_ignore("C:\\shared", ignore), 0);
+}
+
+void test_cldir_ex_ignore_win_remove_directory(void **state) {
+    const char *ignore[] = { "keep.txt", NULL };
+
+    expect_find_first_file(L"C:\\shared\\*", "sub", FILE_ATTRIBUTE_DIRECTORY, (HANDLE) 1);
+    expect_find_first_file(L"C:\\shared/sub\\*", "keep.txt", FILE_ATTRIBUTE_NORMAL, (HANDLE) 2);
+    expect_string(__wrap_utf8_DeleteFile, utf8_path, "C:\\shared/sub/keep.txt");
+    will_return(__wrap_utf8_DeleteFile, TRUE);
+    expect_find_next_file((HANDLE) 2, NULL, 0, FALSE);
+    expect_string(__wrap_utf8_RemoveDirectory, utf8_path, "C:\\shared/sub");
+    will_return(__wrap_utf8_RemoveDirectory, TRUE);
+    expect_find_next_file((HANDLE) 1, NULL, 0, FALSE);
+
+    assert_int_equal(cldir_ex_ignore("C:\\shared", ignore), 0);
+}
+
+void test_cldir_ex_ignore_win_preserve_subdirectory_file(void **state) {
+    const char *ignore[] = { "sub/keep.txt", NULL };
+
+    expect_find_first_file(L"C:\\shared\\*", "sub", FILE_ATTRIBUTE_DIRECTORY, (HANDLE) 1);
+    expect_find_first_file(L"C:\\shared/sub\\*", "keep.txt", FILE_ATTRIBUTE_NORMAL, (HANDLE) 2);
+    expect_find_next_file((HANDLE) 2, "stale.txt", FILE_ATTRIBUTE_NORMAL, TRUE);
+    expect_string(__wrap_utf8_DeleteFile, utf8_path, "C:\\shared/sub/stale.txt");
+    will_return(__wrap_utf8_DeleteFile, TRUE);
+    expect_find_next_file((HANDLE) 2, NULL, 0, FALSE);
+    expect_string(__wrap_utf8_RemoveDirectory, utf8_path, "C:\\shared/sub");
+    will_return(__wrap_utf8_RemoveDirectory, FALSE);
+    expect_find_next_file((HANDLE) 1, NULL, 0, FALSE);
+
+    assert_int_equal(cldir_ex_ignore("C:\\shared", ignore), 0);
+}
+
+/* A junction is removed itself, without cleaning the directory it points to. */
+void test_cldir_ex_ignore_win_reparse_point_not_followed(void **state) {
+    expect_find_first_file(L"C:\\shared\\*", "link", FILE_ATTRIBUTE_DIRECTORY | FILE_ATTRIBUTE_REPARSE_POINT,
+                           (HANDLE) 1);
+    expect_string(__wrap_utf8_RemoveDirectory, utf8_path, "C:\\shared/link");
+    will_return(__wrap_utf8_RemoveDirectory, TRUE);
+    expect_find_next_file((HANDLE) 1, NULL, 0, FALSE);
+
+    assert_int_equal(cldir_ex_ignore("C:\\shared", NULL), 0);
+}
+
+void test_cldir_ex_ignore_win_delete_failure(void **state) {
+    expect_find_first_file(L"C:\\shared\\*", "locked.txt", FILE_ATTRIBUTE_NORMAL, (HANDLE) 1);
+    expect_string(__wrap_utf8_DeleteFile, utf8_path, "C:\\shared/locked.txt");
+    will_return(__wrap_utf8_DeleteFile, FALSE);
+
+    assert_int_equal(cldir_ex_ignore("C:\\shared", NULL), -1);
+}
+
+void test_cldir_ex_ignore_win_find_failure(void **state) {
+    expect_find_first_file(L"C:\\shared\\*", NULL, 0, INVALID_HANDLE_VALUE);
+    errno = 0;
+    SetLastError(ERROR_PATH_NOT_FOUND);
+
+    assert_int_equal(cldir_ex_ignore("C:\\shared", NULL), -1);
+    assert_int_equal(errno, ENOENT);
+}
+
+void test_cldir_ex_ignore_win_network_path(void **state) {
+    errno = 0;
+
+    expect_string(__wrap__mwarn, formatted_msg,
+                  "(9800): File access denied. Network path usage is not allowed: 'Z:\\shared'.");
+
+    assert_int_equal(cldir_ex_ignore("Z:\\shared", NULL), -1);
+    assert_int_equal(errno, EACCES);
+}
+
 void test_w_stat_local_path(void **state) {
     errno = 0;
     char *path = "C:\\file.txt";
@@ -3266,6 +3365,14 @@ int main(void) {
         cmocka_unit_test(test_wCreateProcessW_conversion_failure),
         cmocka_unit_test(test_wopendir_local_path),
         cmocka_unit_test(test_wopendir_network_path),
+        cmocka_unit_test(test_cldir_ex_ignore_win_utf8_names),
+        cmocka_unit_test(test_cldir_ex_ignore_win_ansi_name),
+        cmocka_unit_test(test_cldir_ex_ignore_win_remove_directory),
+        cmocka_unit_test(test_cldir_ex_ignore_win_preserve_subdirectory_file),
+        cmocka_unit_test(test_cldir_ex_ignore_win_reparse_point_not_followed),
+        cmocka_unit_test(test_cldir_ex_ignore_win_delete_failure),
+        cmocka_unit_test(test_cldir_ex_ignore_win_find_failure),
+        cmocka_unit_test(test_cldir_ex_ignore_win_network_path),
         cmocka_unit_test(test_w_stat_local_path),
         cmocka_unit_test(test_w_stat_network_path),
         cmocka_unit_test(test_w_stat64_local_path),
