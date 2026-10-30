@@ -2,7 +2,7 @@
 
 ## Overview
 
-The **httpsrv** module provides an HTTP server over Unix Domain Sockets (UDS) for the Wazuh engine's internal API. Built on top of [cpp-httplib](https://github.com/yhirose/cpp-httplib), it handles route registration, request dispatching, payload size enforcement, and lifecycle management (start/stop with optional background thread). The engine runs up to two server instances: one for API services (management, metrics, geo, etc.) and, when event processing is enabled, one for event ingestion.
+The **httpsrv** module provides an HTTP server over Unix Domain Sockets (UDS) for the Wazuh engine's internal API. Built on top of [cpp-httplib](https://github.com/yhirose/cpp-httplib), it handles route registration, request dispatching, payload size enforcement, and lifecycle management (start/stop with optional background thread). The engine runs up to two server instances: the API server (management, metrics, geo, etc.) on this cpp-httplib `Server`, and, when event processing is enabled, the event ingest server on `UdsServer` (see below), which runs on the manager's shared HTTP-over-UDS transport.
 
 ## Architecture
 
@@ -110,7 +110,7 @@ Server(const std::string& id, size_t payloadMaxBytes = 0, bool enableDetailedLog
 
 | Parameter | Description |
 |-----------|-------------|
-| `id` | String identifier for log messages and the server thread name (e.g., `"API services"`, `"Event services"`) |
+| `id` | String identifier for log messages and the server thread name (e.g., `"API services"`) |
 | `payloadMaxBytes` | Maximum request body size in bytes. `0` = unlimited (`getPayloadMaxBytes()` returns it) |
 | `enableDetailedLogging` | If `true`, logs full request method/path/body and response status. If `false`, logs only that a request was received |
 
@@ -130,8 +130,8 @@ The engine creates up to two server instances in `main.cpp`:
 
 | Instance | ID | Socket key | Payload Limit | Logging | Purpose |
 |----------|-----|--------|---------------|---------|---------|
-| `apiServer` | `"API services"` | `conf::key::SERVER_API_SOCKET` (`engine-api-http.sock`) | `analysisd.server_api_payload_max_bytes` (a negative value is logged and treated as `0`) | Detailed | Management API (routes, metrics, geo, content, etc.) |
-| `engineRemoteServer` | `"Event services"` | `conf::key::SERVER_ENRICHED_EVENTS_SOCKET` (`engine-ingest-http.sock`) | Unlimited (`0`) | Minimal | Event ingestion (`/events/enriched`); created only when `analysisd.server_enable_event_processing` is true |
+| `apiServer` (`httpsrv::Server`) | `"API services"` | `conf::key::SERVER_API_SOCKET` (`engine-api-http.sock`) | `analysisd.server_api_payload_max_bytes` (a negative value is logged and treated as `0`) | Detailed | Management API (routes, metrics, geo, content, etc.) |
+| `engineRemoteServer` (`httpsrv::UdsServer`) | `"Event ingest"` | `conf::key::SERVER_ENRICHED_EVENTS_SOCKET` (`engine-ingest-http.sock`) | `analysisd.server_enriched_events_max_body_bytes` (64 MiB), plus a connection cap and an in-flight byte budget | Minimal | Event ingestion (`/events/enriched`), built by `api::event::makeIngestServer()`; created only when `analysisd.server_enable_event_processing` is true |
 
 ## API Route Registration
 
@@ -179,7 +179,13 @@ header). It coexists with the cpp-httplib `httpsrv::Server` while the engine mov
   An executor always **joins** its workers, even past the deadline (with a WARN), so a slow
   handler can never run into a destroyed dependency.
 - **Stats** (`stats()`): in-flight bytes/requests and sessions from the transport, queue depth,
-  running handlers, and `503`/`500` counters by cause.
+  running handlers, `503`/`500` counters by cause and the transport's `413`s.
+- **Metrics** (`registerMetrics(weakServer, instance)`): publishes `stats()` as eleven fastmetrics pull
+  metrics named `server.<instance>.<suffix>` (`metric_names.hpp`: `server_metric()` and the
+  `SERVER_*` suffixes). They hold a weak reference and read 0 once the server is gone. fastmetrics keeps
+  the first registration of a name, so register each instance name once per process. The ingest
+  server registers `"ingest"`; the operator catalog is in the engine book's
+  [Metrics](../../../../docs/ref/modules/engine/README.md#metrics).
 - `Options`: name and log tag, `maxConnections`, `maxInFlightBytes` (0 = transport default),
   `maxBodySize`, executor size, `expectContinue` (answer `Expect: 100-continue` once admitted),
   `detailedLogging` (one TRACE line per request, no bodies). I/O threads, timeouts and the `0660`
@@ -193,12 +199,15 @@ header). It coexists with the cpp-httplib `httpsrv::Server` while the engine mov
 | `httplib` | header-only (`httplib.h`), reached through the `eMessages` link | HTTP server implementation |
 | `eMessages` | `eMessages` (public) | Protobuf definitions (transitive) |
 | `uds_http_server` | `wazuh_uds_http_server` (**private**, registered by an `if(NOT TARGET)` guard) | Transport of `UdsServer` |
+| `fastmetrics` | `fastmetrics::fastmetrics` (**private**) | `registerMetrics()` |
 
 `api::adapter` links `httpsrv`; the engine executable links it directly (`src/engine/CMakeLists.txt`).
 
 ## Configuration
 
-The module reads no setting; `main.cpp` passes the socket paths and the payload limit. The keys
+The module reads no setting; `main.cpp` passes the socket paths and the API payload limit, and
+`api::event::makeIngestServer()` sizes the ingest server from the three
+`analysisd.server_enriched_events_max_*` keys (validated before the socket is bound). The keys
 (`analysisd.server_api_socket`, `analysisd.server_api_payload_max_bytes`,
 `analysisd.server_enriched_events_socket`, `analysisd.server_enable_event_processing`; registered in
 `conf/src/conf.cpp`) and their defaults — `/var/wazuh-manager/queue/sockets/engine-api-http.sock` and
@@ -223,22 +232,18 @@ api::router::handlers::registerHandlers(orchestrator, cmStore, apiServer);
 // 3. Start API server (threaded)
 apiServer->start(confManager.get<std::string>(conf::key::SERVER_API_SOCKET));
 
-// 4. Only when analysisd.server_enable_event_processing is true:
-//    event server (unlimited payload, minimal logging) and its shutdown hook
-engineRemoteServer = std::make_shared<httpsrv::Server>("Event services", 0, false);
-exitHandler.add([engineRemoteServer]() { engineRemoteServer->stop(); });
+// 4. Only when analysisd.server_enable_event_processing is true: the event ingest server on the
+//    shared transport (route /events/enriched, its executor and its server.ingest.* metrics),
+//    and its exit hook
+engineRemoteServer = api::event::makeIngestServer(orchestrator, dumper, agentMetadataCache, ingestLimits);
+exitHandler.add([engineRemoteServer]() { if (engineRemoteServer->isRunning()) engineRemoteServer->shutdown(); });
 
-// 5. Register event ingestion route
-engineRemoteServer->addRoute(httpsrv::Method::POST,
-                             "/events/enriched",
-                             api::event::handlers::pushEvent(orchestrator, dumper, agentMetadataCache));
-
-// 6. Start event server (threaded)
+// 5. Start it
 engineRemoteServer->start(confManager.get<std::string>(conf::key::SERVER_ENRICHED_EVENTS_SOCKET));
 ```
 
-The main thread then polls `engineRemoteServer->isRunning()` every 100 ms and stops it when a shutdown
-signal arrives.
+The main thread then polls `engineRemoteServer->isRunning()` every 100 ms and, when a shutdown signal
+arrives, calls `shutdown(DEFAULT_SHUTDOWN_DEADLINE)` (stop accepting, drain for up to 10 s, stop).
 
 ## Thread Safety
 
@@ -258,7 +263,7 @@ httpsrv/
 ├── include/httpsrv/
 │   ├── server.hpp                                   # Server class declaration (httplib wrapper)
 │   ├── boundedExecutor.hpp                          # Fixed worker pool with a bounded queue
-│   └── udsServer.hpp                                # UdsServer, shutdownAll()
+│   └── udsServer.hpp                                # UdsServer, shutdownAll(), registerMetrics()
 ├── src/
 │   ├── server.cpp                                   # Server implementation (bind, listen, route dispatch, logging)
 │   ├── boundedExecutor.cpp
@@ -270,7 +275,8 @@ httpsrv/
     ├── unit/
     │   ├── server_test.cpp                          # Unit tests (create, start/stop, socket paths, addRoute)
     │   ├── boundedExecutor_test.cpp                 # Queue bound, admission, drain deadline, join
-    │   └── udsServer_test.cpp                       # UdsServer over a real socket
+    │   ├── udsServer_test.cpp                       # UdsServer over a real socket
+    │   └── udsServerMetrics_test.cpp                # registerMetrics(): names, values, server gone
     └── component/
         └── server_test.cpp                          # Component tests over a real UDS client (routes, payload limits)
 ```
@@ -292,6 +298,7 @@ httpsrv/
 | `IsRunning` | `isRunning()` before and after start |
 | `BoundedExecutorTest.*` | Every job runs once; full queue and closed admission refuse; the drain runs queued jobs, rejects the unstarted ones at the deadline and reports running ones; the destructor joins a job that outlived the deadline |
 | `UdsServerTest.*` | Neutral request/response round trip; a repeated header counted as 2; executor full ⇒ `503` busy; handler throw ⇒ `500` text; a running reply delivered within the deadline; unstarted requests ⇒ shutdown `503`; `shutdownAll()` stops every server; socket mode `0660`; a path that is not a socket refused (and kept); `expectContinue` reaches the wire |
+| `UdsServerMetricsTest.*` | The eleven `server.<instance>.*` names registered; the values follow `stats()` (running, queue depth, executor-full `503`, `413`); every metric reads 0 once the server is destroyed |
 
 ### Component Tests (`httpsrv_ctest`)
 
