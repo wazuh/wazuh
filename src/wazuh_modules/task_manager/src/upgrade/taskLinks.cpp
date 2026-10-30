@@ -10,7 +10,10 @@
 
 #include "taskLinks.hpp"
 
+#include "fileHash.hpp"
 #include "taskManagerLog.hpp"
+
+#include <json.hpp>
 
 #include <dirent.h>
 #include <fcntl.h>
@@ -20,9 +23,11 @@
 #include <cerrno>
 #include <cstring>
 #include <memory>
+#include <optional>
 #include <regex>
 #include <stdexcept>
 #include <unordered_map>
+#include <unordered_set>
 #include <utility>
 #include <vector>
 
@@ -149,18 +154,12 @@ namespace
     }
 
     /**
-     * @brief Copies @p source to `<tasksFd>/<fileName>` through `.<taskId>.tmp`, so the task file
-     *        never exists half written.
+     * @brief Copies what @p input reads, from its current offset, to `<tasksFd>/<fileName>` through
+     *        `.<taskId>.tmp`, so the task file never exists half written.
      * @return 0, or the errno of the step that failed.
      */
-    int copyInto(const std::string& source, const int tasksFd, const std::string& taskId, const std::string& fileName)
+    int copyFdInto(const int input, const int tasksFd, const std::string& taskId, const std::string& fileName)
     {
-        const Fd input {::open(source.c_str(), O_RDONLY | O_NOFOLLOW | O_CLOEXEC)};
-        if (!input)
-        {
-            return errno;
-        }
-
         const auto tmpName {"." + taskId + TMP_SUFFIX};
         const auto createTmp {
             [&]
@@ -178,7 +177,7 @@ namespace
             return errno;
         }
 
-        auto error {copyContents(input.get(), output.get())};
+        auto error {copyContents(input, output.get())};
         // Durable before it becomes visible under its final name.
         if (error == 0 && ::fsync(output.get()) != 0)
         {
@@ -199,14 +198,49 @@ namespace
         }
         return error;
     }
+
+    /// @brief copyFdInto() from the file at @p source, opened without following a symlink.
+    int copyInto(const std::string& source, const int tasksFd, const std::string& taskId, const std::string& fileName)
+    {
+        const Fd input {::open(source.c_str(), O_RDONLY | O_NOFOLLOW | O_CLOEXEC)};
+        if (!input)
+        {
+            return errno;
+        }
+        return copyFdInto(input.get(), tasksFd, taskId, fileName);
+    }
+
+    /// @brief Best effort: a failure leaves the entry to the filesystem's own write-back.
+    void syncDirectory(const std::string& path, const std::function<int(int)>& sync)
+    {
+        const Fd dir {::open(path.c_str(), O_RDONLY | O_DIRECTORY | O_CLOEXEC)};
+        if (dir)
+        {
+            sync(dir.get());
+        }
+    }
+
+    bool sameFile(const struct stat& left, const struct stat& right)
+    {
+        return left.st_dev == right.st_dev && left.st_ino == right.st_ino;
+    }
+
+    /// @brief A plain file name directly under the upgrade directory: no separator, no NUL, not
+    ///        hidden (which also rules out `.` and `..`).
+    bool isPlainFileName(const std::string& name)
+    {
+        return !name.empty() && name.front() != '.' && name.find('/') == std::string::npos &&
+               name.find('\0') == std::string::npos;
+    }
 } // namespace
 
 namespace task_manager::upgrade
 {
-    TaskLinks::TaskLinks(std::string upgradeDir, storage::ITaskStore& store, LinkAt linkAt)
+    TaskLinks::TaskLinks(std::string upgradeDir, storage::ITaskStore& store, LinkAt linkAt, Fsync fsync)
         : m_upgradeDir {std::move(upgradeDir)}
         , m_store {store}
         , m_linkAt {linkAt ? std::move(linkAt) : LinkAt {::linkat}}
+        , m_fsync {fsync ? std::move(fsync) : Fsync {::fsync}}
     {
         if (!m_upgradeDir.empty() && m_upgradeDir.back() != '/')
         {
@@ -214,18 +248,26 @@ namespace task_manager::upgrade
         }
     }
 
-    LinkStats TaskLinks::linkAndCommit(const std::vector<TaskLink>& rows, const std::function<void()>& commit)
+    LinkStats TaskLinks::linkAndCommit(const std::vector<TaskLink>& rows, const Commit& commit)
     {
         std::lock_guard lock {m_mutex};
         LinkStats stats;
+        stats.staged.assign(rows.size(), false);
 
         const auto tasksDir {m_upgradeDir + TASKS_DIR};
         Fd tasksFd;
-        if (::mkdir(tasksDir.c_str(), 0770) == 0 || errno == EEXIST)
+        if (::mkdir(tasksDir.c_str(), 0770) == 0)
+        {
+            // A new tasks/ entry must survive a crash as much as the files written into it.
+            syncDirectory(m_upgradeDir, m_fsync);
+            tasksFd = Fd {::open(tasksDir.c_str(), O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC)};
+        }
+        else if (errno == EEXIST)
         {
             tasksFd = Fd {::open(tasksDir.c_str(), O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC)};
         }
 
+        std::vector<std::size_t> staged;
         if (!tasksFd)
         {
             stats.lastErrno = errno;
@@ -233,11 +275,15 @@ namespace task_manager::upgrade
         }
         else
         {
+            const auto dirFd {tasksFd.get()};
             // Per source WPK, not per call: one batch can mix deb, rpm and msi packages.
             std::unordered_map<std::string, std::string> copies;
+            // Read only when a task file name is already taken.
+            std::optional<std::unordered_set<std::string>> taskIds;
 
-            for (const auto& row : rows)
+            for (std::size_t index = 0; index < rows.size(); ++index)
             {
+                const auto& row {rows[index]};
                 const auto fileName {row.taskId + TASK_FILE_SUFFIX};
                 // Same shape the sweep accepts, which also keeps the name inside tasks/.
                 if (!isTaskFileName(fileName))
@@ -249,25 +295,95 @@ namespace task_manager::upgrade
                 }
                 const auto copy {copies.find(row.wpkFile)};
                 const auto source {m_upgradeDir + row.wpkFile};
+                const auto linkTo {
+                    [&](const std::string& target)
+                    {
+                        const auto linked {copy != copies.end()
+                                               ? m_linkAt(dirFd, copy->second.c_str(), dirFd, target.c_str(), 0)
+                                               : m_linkAt(AT_FDCWD, source.c_str(), dirFd, target.c_str(), 0)};
+                        return linked == 0 ? 0 : errno;
+                    }};
 
-                const auto linked {
-                    copy != copies.end()
-                        ? m_linkAt(tasksFd.get(), copy->second.c_str(), tasksFd.get(), fileName.c_str(), 0)
-                        : m_linkAt(AT_FDCWD, source.c_str(), tasksFd.get(), fileName.c_str(), 0)};
-                if (linked == 0 || errno == EEXIST)
+                auto error {linkTo(fileName)};
+                if (error == EEXIST)
+                {
+                    struct stat existing {};
+                    struct stat origin {};
+
+                    if (::fstatat(dirFd, fileName.c_str(), &existing, AT_SYMLINK_NOFOLLOW) != 0)
+                    {
+                        error = errno;
+                    }
+                    else if (S_ISREG(existing.st_mode) &&
+                             ((::fstatat(AT_FDCWD, source.c_str(), &origin, AT_SYMLINK_NOFOLLOW) == 0 &&
+                               sameFile(existing, origin)) ||
+                              (copy != copies.end() &&
+                               ::fstatat(dirFd, copy->second.c_str(), &origin, AT_SYMLINK_NOFOLLOW) == 0 &&
+                               sameFile(existing, origin))))
+                    {
+                        error = 0;
+                    }
+                    else
+                    {
+                        if (!taskIds)
+                        {
+                            try
+                            {
+                                taskIds = m_store.agentTaskIds(TASK_TYPE);
+                            }
+                            catch (const std::exception& exception)
+                            {
+                                LOGFN_DEBUG1(upgradeLogFn(), "Cannot read the upgrade task ids: %s", exception.what());
+                            }
+                        }
+
+                        if (!taskIds)
+                        {
+                            // Without the ids an orphan cannot be told from the file of a stored row.
+                            error = EIO;
+                        }
+                        else if (taskIds->count(row.taskId) != 0)
+                        {
+                            // The file of a stored row is never replaced: an agent may be downloading it.
+                            // The store reports the id as existing.
+                            error = S_ISREG(existing.st_mode) ? 0 : EEXIST;
+                        }
+                        else if (S_ISDIR(existing.st_mode) && ::unlinkat(dirFd, fileName.c_str(), AT_REMOVEDIR) != 0)
+                        {
+                            // renameat() cannot replace a directory; a non-empty one stays.
+                            error = errno;
+                        }
+                        else
+                        {
+                            // An orphan: replaced in one step, through a temporary.
+                            const auto tmpName {"." + row.taskId + TMP_SUFFIX};
+                            ::unlinkat(dirFd, tmpName.c_str(), 0);
+                            error = linkTo(tmpName);
+                            if (error == 0 && ::renameat(dirFd, tmpName.c_str(), dirFd, fileName.c_str()) != 0)
+                            {
+                                error = errno;
+                                ::unlinkat(dirFd, tmpName.c_str(), 0);
+                            }
+                        }
+                    }
+                }
+
+                if (error == 0)
                 {
                     ++stats.linked;
+                    stats.staged[index] = true;
                     continue;
                 }
 
-                auto error {errno};
-                // A copy that hits the link limit itself is replaced by a fresh one.
+                // A copy that hits the link limit itself is replaced by a fresh one. The copy also
+                // replaces an orphan, through its own temporary.
                 if (linkRefused(error))
                 {
-                    error = copyInto(source, tasksFd.get(), row.taskId, fileName);
+                    error = copyInto(source, dirFd, row.taskId, fileName);
                     if (error == 0)
                     {
                         ++stats.copied;
+                        stats.staged[index] = true;
                         copies[row.wpkFile] = fileName;
                         LOGFN_DEBUG1(upgradeLogFn(),
                                      "Task %s: copied '%s' because it could not be hard-linked.",
@@ -285,20 +401,222 @@ namespace task_manager::upgrade
                              row.wpkFile.c_str(),
                              std::strerror(error));
             }
+
+            for (std::size_t index = 0; index < rows.size(); ++index)
+            {
+                if (stats.staged[index])
+                {
+                    staged.push_back(index);
+                }
+            }
+
+            // A file whose directory entry is not durable could vanish after the row is committed.
+            // Files of rows left uncommitted are removed by the next sweep.
+            if (!staged.empty() && m_fsync(dirFd) != 0)
+            {
+                stats.lastErrno = errno;
+                stats.failed = rows.size();
+                stats.staged.assign(rows.size(), false);
+                staged.clear();
+            }
         }
 
         if (stats.failed > 0)
         {
             LOGFN_WARN(upgradeLogFn(),
-                       "%zu of %zu upgrade tasks have no per-task WPK file (%zu copies made); their agents "
-                       "will be sent the WPK file name instead. Last error: %s",
+                       "%zu of %zu upgrade tasks were not created because their per-task WPK file could not be "
+                       "prepared (%zu copies made). Last error: %s",
                        stats.failed,
                        rows.size(),
                        stats.copied,
                        std::strerror(stats.lastErrno));
         }
 
-        commit();
+        commit(staged);
+        return stats;
+    }
+
+    BackfillStats TaskLinks::backfill()
+    {
+        std::lock_guard lock {m_mutex};
+        BackfillStats stats;
+
+        const auto rows {m_store.pendingAgentTasksByType(TASK_TYPE)};
+        if (rows.empty())
+        {
+            return stats;
+        }
+
+        const auto tasksDir {m_upgradeDir + TASKS_DIR};
+        Fd tasksFd;
+        if (::mkdir(tasksDir.c_str(), 0770) == 0)
+        {
+            // A new tasks/ entry must survive a crash as much as the files written into it.
+            syncDirectory(m_upgradeDir, m_fsync);
+            tasksFd = Fd {::open(tasksDir.c_str(), O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC)};
+        }
+        else if (errno == EEXIST)
+        {
+            tasksFd = Fd {::open(tasksDir.c_str(), O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC)};
+        }
+        if (!tasksFd)
+        {
+            throw std::runtime_error("Cannot open '" + tasksDir + "': " + std::strerror(errno));
+        }
+        const auto dirFd {tasksFd.get()};
+
+        // One per WPK name: opened and hashed once however many rows share it.
+        struct Source
+        {
+            bool opened {false};
+            Fd fd;
+            struct stat info {};
+            std::optional<std::string> sha1;
+            // Set when the WPK could not be read for a reason that may not last (EMFILE, EIO...):
+            // its rows stay pending rather than expire, which cannot be undone.
+            bool transient {false};
+        };
+        std::unordered_map<std::string, Source> sources;
+        std::vector<std::string> rejected;
+        std::size_t deferred {0};
+
+        const auto reject {[&](const AgentTask& row, const char* reason)
+                           {
+                               rejected.push_back(row.taskId);
+                               LOGFN_DEBUG1(upgradeLogFn(), "Task %s: %s.", row.taskId.c_str(), reason);
+                           }};
+
+        for (const auto& row : rows)
+        {
+            const auto fileName {row.taskId + TASK_FILE_SUFFIX};
+            if (!isTaskFileName(fileName))
+            {
+                reject(row, "not a task id");
+                continue;
+            }
+
+            struct stat existing {};
+
+            if (::fstatat(dirFd, fileName.c_str(), &existing, AT_SYMLINK_NOFOLLOW) == 0)
+            {
+                if (!S_ISREG(existing.st_mode))
+                {
+                    reject(row, "its task file is not a regular file");
+                }
+                continue;
+            }
+            if (errno != ENOENT)
+            {
+                LOGFN_DEBUG1(upgradeLogFn(),
+                             "Cannot check '%s/%s': %s",
+                             tasksDir.c_str(),
+                             fileName.c_str(),
+                             std::strerror(errno));
+                continue;
+            }
+
+            const auto payload = nlohmann::json::parse(row.payload, nullptr, false);
+            if (!payload.is_object())
+            {
+                reject(row, "unreadable payload");
+                continue;
+            }
+            const auto wpkFile {payload.find("wpk_file")};
+            const auto wpkSha1 {payload.find("wpk_sha1")};
+            if (wpkFile == payload.end() || !wpkFile->is_string() || wpkSha1 == payload.end() || !wpkSha1->is_string())
+            {
+                reject(row, "no wpk_file or wpk_sha1 in its payload");
+                continue;
+            }
+            const auto& name {wpkFile->get_ref<const std::string&>()};
+            if (!isPlainFileName(name))
+            {
+                reject(row, "its WPK is not a file directly under the upgrade directory");
+                continue;
+            }
+
+            auto& source {sources[name]};
+            if (!source.opened)
+            {
+                source.opened = true;
+                // O_NONBLOCK: a FIFO under that name must not block the module's start.
+                source.fd = Fd {::open((m_upgradeDir + name).c_str(), O_RDONLY | O_NOFOLLOW | O_NONBLOCK | O_CLOEXEC)};
+                if (!source.fd)
+                {
+                    source.transient = errno != ENOENT && errno != ELOOP && errno != ENOTDIR;
+                }
+                else if (::fstat(source.fd.get(), &source.info) != 0)
+                {
+                    source.transient = true;
+                }
+                else if (S_ISREG(source.info.st_mode))
+                {
+                    source.sha1 = sha1OfFd(source.fd.get());
+                    source.transient = !source.sha1.has_value();
+                }
+            }
+            if (source.transient)
+            {
+                ++deferred;
+                LOGFN_DEBUG1(upgradeLogFn(), "Task %s: its WPK cannot be read now, left pending.", row.taskId.c_str());
+                continue;
+            }
+            if (!source.sha1 || !sha1Equals(*source.sha1, wpkSha1->get_ref<const std::string&>()))
+            {
+                reject(row, "its WPK is missing or changed");
+                continue;
+            }
+
+            bool copied {false};
+            auto error {m_linkAt(AT_FDCWD, (m_upgradeDir + name).c_str(), dirFd, fileName.c_str(), 0) == 0 ? 0 : errno};
+            if (linkRefused(error))
+            {
+                // Copied from the descriptor that was hashed, not from the name, which may have changed.
+                copied = true;
+                error = ::lseek(source.fd.get(), 0, SEEK_SET) == 0
+                            ? copyFdInto(source.fd.get(), dirFd, row.taskId, fileName)
+                            : errno;
+            }
+            if (error != 0)
+            {
+                reject(row, "its task file could not be created");
+                continue;
+            }
+
+            // The name was linked, not the descriptor: a link must be the very file hashed, and a copy
+            // at least as long.
+            struct stat result {};
+
+            if (::fstatat(dirFd, fileName.c_str(), &result, AT_SYMLINK_NOFOLLOW) != 0 || !S_ISREG(result.st_mode) ||
+                result.st_size != source.info.st_size || (!copied && !sameFile(result, source.info)))
+            {
+                ::unlinkat(dirFd, fileName.c_str(), 0);
+                reject(row, "its WPK changed while its task file was created");
+                continue;
+            }
+            ++stats.staged;
+        }
+
+        // The rows stay pending either way: a file lost to a crash is given again on the next start.
+        if (stats.staged > 0 && m_fsync(dirFd) != 0)
+        {
+            LOGFN_WARN(upgradeLogFn(), "Cannot sync '%s': %s", tasksDir.c_str(), std::strerror(errno));
+        }
+
+        if (!rejected.empty())
+        {
+            stats.expired = static_cast<std::size_t>(m_store.expireAgentTasksById(rejected));
+        }
+
+        if (stats.staged > 0 || stats.expired > 0 || deferred > 0)
+        {
+            LOGFN_WARN(upgradeLogFn(),
+                       "%zu pending upgrade tasks given a WPK file, %zu expired because their WPK is missing or "
+                       "changed, %zu left pending because their WPK cannot be read now",
+                       stats.staged,
+                       stats.expired,
+                       deferred);
+        }
         return stats;
     }
 

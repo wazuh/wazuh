@@ -149,6 +149,14 @@ namespace task_manager
             m_taskLinks = std::make_unique<upgrade::TaskLinks>(stringOr(config.upgrade_dir, "var/upgrade/"), *m_store);
             try
             {
+                m_taskLinks->backfill();
+            }
+            catch (const std::exception& exception)
+            {
+                LOGFN_ERROR(moduleLogFn(), "Startup backfill of the upgrade task files failed: %s", exception.what());
+            }
+            try
+            {
                 m_taskLinks->sweep();
             }
             catch (const std::exception& exception)
