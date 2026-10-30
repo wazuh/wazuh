@@ -1034,6 +1034,303 @@ static void test_fim_registry_scan_RegQueryInfoKey_fail(void **state) {
     fim_registry_scan();
 }
 
+static registry_t *create_registry_array(int size) {
+    registry_t *array = calloc(size + 1, sizeof(registry_t));
+
+    assert_non_null(array);
+    return array;
+}
+
+static registry_t *add_registry_pattern(const char *pattern) {
+    syscheck.registry_wildcards = create_registry_array(1);
+    syscheck.registry_wildcards[0].entry = strdup(pattern);
+    syscheck.registry_wildcards[0].arch = ARCH_64BIT;
+    syscheck.registry_wildcards[0].opts = CHECK_REGISTRY_ALL;
+    return &syscheck.registry_wildcards[0];
+}
+
+static int teardown_registry_wildcards(void **state) {
+    free_registry_array(syscheck.registry);
+    free_registry_array(syscheck.registry_wildcards);
+    syscheck.registry = default_config;
+    syscheck.registry_wildcards = NULL;
+    return 0;
+}
+
+static int teardown_registry_no_patterns(void **state) {
+    one_entry_config[0].is_expanded = 0;
+    syscheck.registry = default_config;
+    return 0;
+}
+
+static void test_fim_registry_update_wildcards_no_patterns(void **state) {
+    syscheck.registry = one_entry_config;
+    syscheck.registry_wildcards = NULL;
+    syscheck.registry[0].is_expanded = 1;
+
+    fim_registry_update_wildcards();
+    fim_registry_remove_unexpanded();
+
+    // Nothing is touched without wildcards
+    assert_int_equal(syscheck.registry[0].is_expanded, 1);
+    assert_non_null(syscheck.registry[0].entry);
+}
+
+static void test_fim_registry_update_wildcards_adds_new_keys(void **state) {
+    char *matches[] = { "HKEY_LOCAL_MACHINE\\Software\\fim17-wild\\branch",
+                        "HKEY_LOCAL_MACHINE\\Software\\fim17-wild\\late",
+                        NULL };
+    char optstr[1024];
+    char expected_msg[OS_SIZE_2048];
+
+    syscheck.registry = create_registry_array(1);
+    syscheck.registry[0].entry = strdup(matches[0]);
+    syscheck.registry[0].arch = ARCH_64BIT;
+    syscheck.registry[0].wildcard = 1;
+
+    registry_t *pattern = add_registry_pattern("HKEY_LOCAL_MACHINE\\Software\\fim17-w?ld\\*");
+    pattern->recursion_level = 3;
+    pattern->diff_size_limit = 50;
+    pattern->tag = strdup("fim17");
+
+    snprintf(expected_msg, sizeof(expected_msg), FIM_MONITORING_REGISTRY, matches[1], " [x64]",
+             syscheck_opts2str(optstr, sizeof(optstr), CHECK_REGISTRY_ALL));
+
+    expect_any_always(__wrap__mdebug1, formatted_msg);
+    expect_any_always(__wrap__mdebug2, formatted_msg);
+    expect_expand_wildcard_registers(pattern->entry, ARCH_64BIT, matches, 0);
+    expect_string(__wrap__minfo, formatted_msg, expected_msg);
+
+    fim_registry_update_wildcards();
+
+    assert_string_equal(syscheck.registry[0].entry, matches[0]);
+    assert_int_equal(syscheck.registry[0].is_expanded, 1);
+
+    assert_string_equal(syscheck.registry[1].entry, matches[1]);
+    assert_int_equal(syscheck.registry[1].arch, ARCH_64BIT);
+    assert_int_equal(syscheck.registry[1].opts, CHECK_REGISTRY_ALL);
+    assert_int_equal(syscheck.registry[1].recursion_level, 3);
+    assert_int_equal(syscheck.registry[1].diff_size_limit, 50);
+    assert_string_equal(syscheck.registry[1].tag, "fim17");
+    assert_int_equal(syscheck.registry[1].wildcard, 1);
+    assert_int_equal(syscheck.registry[1].is_expanded, 1);
+
+    assert_null(syscheck.registry[2].entry);
+}
+
+static void test_fim_registry_update_wildcards_keeps_explicit_entry(void **state) {
+    char *matches[] = { "HKEY_LOCAL_MACHINE\\Software\\Explicit", NULL };
+
+    syscheck.registry = create_registry_array(1);
+    syscheck.registry[0].entry = strdup("hkey_local_machine\\software\\explicit");
+    syscheck.registry[0].arch = ARCH_64BIT;
+    syscheck.registry[0].opts = CHECK_SIZE;
+
+    registry_t *pattern = add_registry_pattern("HKEY_LOCAL_MACHINE\\Software\\*");
+
+    expect_any_always(__wrap__mdebug1, formatted_msg);
+    expect_any_always(__wrap__mdebug2, formatted_msg);
+    expect_expand_wildcard_registers(pattern->entry, ARCH_64BIT, matches, 0);
+
+    fim_registry_update_wildcards();
+    fim_registry_remove_unexpanded();
+
+    // The explicit entry keeps its own options and is never removed
+    assert_string_equal(syscheck.registry[0].entry, "hkey_local_machine\\software\\explicit");
+    assert_int_equal(syscheck.registry[0].opts, CHECK_SIZE);
+    assert_int_equal(syscheck.registry[0].wildcard, 0);
+    assert_null(syscheck.registry[1].entry);
+}
+
+static void test_fim_registry_update_wildcards_invalid_root(void **state) {
+    syscheck.registry = create_registry_array(0);
+    add_registry_pattern("HKEY_CURRENT_USER\\Software\\*");
+
+    expect_any_always(__wrap__mdebug1, formatted_msg);
+
+    // No expectation for expand_wildcard_registers: the pattern must not be expanded
+    fim_registry_update_wildcards();
+
+    assert_null(syscheck.registry[0].entry);
+}
+
+static void test_fim_registry_update_wildcards_failed_expansion(void **state) {
+    char *matches[] = { NULL };
+
+    syscheck.registry = create_registry_array(2);
+    syscheck.registry[0].entry = strdup("HKEY_LOCAL_MACHINE\\Software\\fim17-wild\\kept");
+    syscheck.registry[0].arch = ARCH_64BIT;
+    syscheck.registry[0].wildcard = 1;
+    syscheck.registry[1].entry = strdup("HKEY_LOCAL_MACHINE\\Software\\fim17-wild\\gone");
+    syscheck.registry[1].arch = ARCH_64BIT;
+    syscheck.registry[1].wildcard = 1;
+
+    registry_t *pattern = add_registry_pattern("HKEY_LOCAL_MACHINE\\Software\\fim17-w?ld\\*");
+
+    expect_any_always(__wrap__mdebug1, formatted_msg);
+    expect_any_always(__wrap__mdebug2, formatted_msg);
+
+    // First scan: the listing fails, so each entry is kept unless its key is gone
+    expect_expand_wildcard_registers(pattern->entry, ARCH_64BIT, matches, FIM_REG_EXPAND_FAILED);
+    expect_RegOpenKeyExW_call(HKEY_LOCAL_MACHINE, L"Software\\fim17-wild\\kept", 0, KEY_READ | KEY_WOW64_64KEY, NULL,
+                              ERROR_ACCESS_DENIED);
+    expect_RegOpenKeyExW_call(HKEY_LOCAL_MACHINE, L"Software\\fim17-wild\\gone", 0, KEY_READ | KEY_WOW64_64KEY, NULL,
+                              ERROR_FILE_NOT_FOUND);
+    expect_string(__wrap__mwarn, formatted_msg,
+                  "(6963): Could not list every key matching the registry wildcard "
+                  "'HKEY_LOCAL_MACHINE\\Software\\fim17-w?ld\\*'. Its monitored keys are kept until they are removed.");
+
+    fim_registry_update_wildcards();
+
+    assert_int_equal(syscheck.registry[0].is_expanded, 1);
+    assert_int_equal(syscheck.registry[1].is_expanded, 0);
+
+    fim_registry_remove_unexpanded();
+
+    assert_string_equal(syscheck.registry[0].entry, "HKEY_LOCAL_MACHINE\\Software\\fim17-wild\\kept");
+    assert_null(syscheck.registry[1].entry);
+
+    // Second scan with the same failure: the warning is not repeated
+    expect_expand_wildcard_registers(pattern->entry, ARCH_64BIT, matches, FIM_REG_EXPAND_FAILED);
+    expect_RegOpenKeyExW_call(HKEY_LOCAL_MACHINE, L"Software\\fim17-wild\\kept", 0, KEY_READ | KEY_WOW64_64KEY, NULL,
+                              ERROR_SUCCESS);
+
+    fim_registry_update_wildcards();
+
+    assert_int_equal(syscheck.registry[0].is_expanded, 1);
+}
+
+static void test_fim_registry_update_wildcards_truncated_expansion(void **state) {
+    char *matches[] = { "HKEY_LOCAL_MACHINE\\Software\\fim17-wild\\new", NULL };
+
+    syscheck.registry = create_registry_array(1);
+    syscheck.registry[0].entry = strdup("HKEY_LOCAL_MACHINE\\Software\\fim17-wild\\over");
+    syscheck.registry[0].arch = ARCH_64BIT;
+    syscheck.registry[0].wildcard = 1;
+
+    registry_t *pattern = add_registry_pattern("HKEY_LOCAL_MACHINE\\Software\\fim17-w?ld\\*");
+
+    expect_any_always(__wrap__mdebug1, formatted_msg);
+    expect_any_always(__wrap__mdebug2, formatted_msg);
+    expect_any(__wrap__minfo, formatted_msg);
+    expect_expand_wildcard_registers(pattern->entry, ARCH_64BIT, matches, FIM_REG_EXPAND_TRUNCATED);
+    expect_RegOpenKeyExW_call(HKEY_LOCAL_MACHINE, L"Software\\fim17-wild\\over", 0, KEY_READ | KEY_WOW64_64KEY, NULL,
+                              ERROR_SUCCESS);
+    expect_string(__wrap__mwarn, formatted_msg,
+                  "(6962): Registry wildcard 'HKEY_LOCAL_MACHINE\\Software\\fim17-w?ld\\*' matches more than 8191 "
+                  "keys. New keys over the limit are not monitored.");
+
+    fim_registry_update_wildcards();
+
+    // The matches found are added and the existing key over the limit is kept
+    assert_int_equal(syscheck.registry[0].is_expanded, 1);
+    assert_string_equal(syscheck.registry[1].entry, "HKEY_LOCAL_MACHINE\\Software\\fim17-wild\\new");
+    assert_int_equal(pattern->expand_status, FIM_REG_EXPAND_TRUNCATED);
+}
+
+static void test_fim_registry_update_wildcards_32bit_view(void **state) {
+    char *matches[] = { "HKEY_LOCAL_MACHINE\\Software\\Vendor32", NULL };
+
+    // A 64-bit entry for the same path is a different key
+    syscheck.registry = create_registry_array(1);
+    syscheck.registry[0].entry = strdup(matches[0]);
+    syscheck.registry[0].arch = ARCH_64BIT;
+
+    registry_t *pattern = add_registry_pattern("HKEY_LOCAL_MACHINE\\Software\\Vendor*");
+    pattern->arch = ARCH_32BIT;
+
+    expect_any_always(__wrap__mdebug1, formatted_msg);
+    expect_any_always(__wrap__mdebug2, formatted_msg);
+    expect_any(__wrap__minfo, formatted_msg);
+    expect_expand_wildcard_registers(pattern->entry, ARCH_32BIT, matches, 0);
+
+    fim_registry_update_wildcards();
+
+    assert_int_equal(syscheck.registry[0].arch, ARCH_64BIT);
+    assert_int_equal(syscheck.registry[0].wildcard, 0);
+    assert_string_equal(syscheck.registry[1].entry, matches[0]);
+    assert_int_equal(syscheck.registry[1].arch, ARCH_32BIT);
+    assert_int_equal(syscheck.registry[1].wildcard, 1);
+    assert_null(syscheck.registry[2].entry);
+}
+
+static void test_fim_registry_update_wildcards_duplicate_match(void **state) {
+    char *matches[] = { "HKEY_LOCAL_MACHINE\\Software\\fim17-wild\\late",
+                        "HKEY_LOCAL_MACHINE\\SOFTWARE\\fim17-wild\\late",
+                        NULL };
+
+    syscheck.registry = create_registry_array(0);
+    registry_t *pattern = add_registry_pattern("HKEY_LOCAL_MACHINE\\Software\\fim17-w?ld\\*");
+
+    expect_any_always(__wrap__mdebug1, formatted_msg);
+    expect_any_always(__wrap__mdebug2, formatted_msg);
+    expect_any(__wrap__minfo, formatted_msg);
+    expect_expand_wildcard_registers(pattern->entry, ARCH_64BIT, matches, 0);
+
+    fim_registry_update_wildcards();
+
+    assert_string_equal(syscheck.registry[0].entry, matches[0]);
+    assert_null(syscheck.registry[1].entry);
+}
+
+static void test_fim_registry_remove_unexpanded(void **state) {
+    syscheck.registry = create_registry_array(4);
+    syscheck.registry[0].entry = strdup("HKEY_LOCAL_MACHINE\\Software\\Explicit");
+    syscheck.registry[1].entry = strdup("HKEY_LOCAL_MACHINE\\Software\\fim17-wild\\branch");
+    syscheck.registry[1].wildcard = 1;
+    syscheck.registry[1].is_expanded = 1;
+    syscheck.registry[2].entry = strdup("HKEY_LOCAL_MACHINE\\Software\\fim17-wild\\gone");
+    syscheck.registry[2].arch = ARCH_64BIT;
+    syscheck.registry[2].tag = strdup("fim17");
+    syscheck.registry[2].wildcard = 1;
+    syscheck.registry[3].entry = strdup("HKEY_LOCAL_MACHINE\\Software\\fim17-wild\\late");
+    syscheck.registry[3].wildcard = 1;
+    syscheck.registry[3].is_expanded = 1;
+
+    add_registry_pattern("HKEY_LOCAL_MACHINE\\Software\\fim17-w?ld\\*");
+
+    expect_string(__wrap__mdebug2, formatted_msg,
+                  "(6377): Removing registry entry 'HKEY_LOCAL_MACHINE\\Software\\fim17-wild\\gone' [x64], it no "
+                  "longer matches its wildcard.");
+
+    fim_registry_remove_unexpanded();
+
+    assert_string_equal(syscheck.registry[0].entry, "HKEY_LOCAL_MACHINE\\Software\\Explicit");
+    assert_string_equal(syscheck.registry[1].entry, "HKEY_LOCAL_MACHINE\\Software\\fim17-wild\\branch");
+    assert_string_equal(syscheck.registry[2].entry, "HKEY_LOCAL_MACHINE\\Software\\fim17-wild\\late");
+    assert_null(syscheck.registry[3].entry);
+}
+
+static void test_fim_registry_scan_wildcard_key_removed(void **state) {
+    char *matches[] = { NULL };
+    TXN_HANDLE mock_handle;
+
+    syscheck.registry = create_registry_array(1);
+    syscheck.registry[0].entry = strdup("HKEY_LOCAL_MACHINE\\Software\\fim17-wild\\gone");
+    syscheck.registry[0].arch = ARCH_64BIT;
+    syscheck.registry[0].opts = CHECK_REGISTRY_ALL;
+    syscheck.registry[0].wildcard = 1;
+
+    registry_t *pattern = add_registry_pattern("HKEY_LOCAL_MACHINE\\Software\\fim17-w?ld\\*");
+
+    will_return(__wrap_fim_db_transaction_start, mock_handle);
+    will_return(__wrap_fim_db_transaction_start, mock_handle);
+    expect_string(__wrap__mdebug1, formatted_msg, FIM_WINREGISTRY_START);
+    expect_string(__wrap__mdebug1, formatted_msg, FIM_WILDCARDS_REGISTERS_START);
+    expect_any_always(__wrap__mdebug2, formatted_msg);
+    expect_expand_wildcard_registers(pattern->entry, ARCH_64BIT, matches, 0);
+    expect_string(__wrap__mdebug1, formatted_msg, FIM_WILDCARDS_REGISTERS_FINALIZE);
+
+    // The key is not opened: its rows are reported by the deleted rows of the transactions
+    expect_function_call(__wrap_fim_db_transaction_deleted_rows);
+    expect_function_call(__wrap_fim_db_transaction_deleted_rows);
+    expect_string(__wrap__mdebug1, formatted_msg, FIM_WINREGISTRY_ENDED);
+
+    fim_registry_scan();
+
+    assert_null(syscheck.registry[0].entry);
+}
+
 static void test_fim_registry_key_transaction_callback_empty_changed_attributes(){
     _base_line = 1;
     event_data_t event_data = {.mode = FIM_SCHEDULED};
@@ -1820,6 +2117,18 @@ int main(void) {
         cmocka_unit_test(test_fim_registry_scan_regular_scan),
         cmocka_unit_test(test_fim_registry_scan_RegOpenKeyExW_fail),
         cmocka_unit_test(test_fim_registry_scan_RegQueryInfoKey_fail),
+        cmocka_unit_test_teardown(test_fim_registry_scan_wildcard_key_removed, teardown_registry_wildcards),
+
+        /* registry wildcards tests */
+        cmocka_unit_test_teardown(test_fim_registry_update_wildcards_no_patterns, teardown_registry_no_patterns),
+        cmocka_unit_test_teardown(test_fim_registry_update_wildcards_adds_new_keys, teardown_registry_wildcards),
+        cmocka_unit_test_teardown(test_fim_registry_update_wildcards_keeps_explicit_entry, teardown_registry_wildcards),
+        cmocka_unit_test_teardown(test_fim_registry_update_wildcards_invalid_root, teardown_registry_wildcards),
+        cmocka_unit_test_teardown(test_fim_registry_update_wildcards_failed_expansion, teardown_registry_wildcards),
+        cmocka_unit_test_teardown(test_fim_registry_update_wildcards_truncated_expansion, teardown_registry_wildcards),
+        cmocka_unit_test_teardown(test_fim_registry_update_wildcards_32bit_view, teardown_registry_wildcards),
+        cmocka_unit_test_teardown(test_fim_registry_update_wildcards_duplicate_match, teardown_registry_wildcards),
+        cmocka_unit_test_teardown(test_fim_registry_remove_unexpanded, teardown_registry_wildcards),
 
         /* fim registry key transaction callback tests */
         cmocka_unit_test(test_fim_registry_key_transaction_callback_empty_changed_attributes),

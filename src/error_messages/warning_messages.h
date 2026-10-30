@@ -79,6 +79,8 @@
 #define FIM_FULL_EBPF_KERNEL_QUEUE              "(6958): Internal ebpf queue for kernel events is full. Too many eBPF events from system files. Next scheduled scan will recover lost data."
 #define FIM_ERROR_EBPF_HEALTHCHECK              "(6959): The eBPF healthcheck has failed. Switching all whodata eBPF configuration to audit."
 #define FIM_WARN_INODE_WRONG_TYPE               "(6960): Inode field received with a wrong type, it must be a string."
+#define FIM_WARN_REG_WILDCARD_LIMIT             "(6962): Registry wildcard '%s' matches more than %d keys. New keys over the limit are not monitored."
+#define FIM_WARN_REG_WILDCARD_LIST              "(6963): Could not list every key matching the registry wildcard '%s'. Its monitored keys are kept until they are removed."
 #define FIM_WARN_WHODATA_PROVIDER_UNSUPPORTED   "(6967): The whodata 'provider' option is only available on Linux. Ignoring it."
 
 /* Monitord warning messages */

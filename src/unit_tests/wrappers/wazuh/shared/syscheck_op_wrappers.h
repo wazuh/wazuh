@@ -68,6 +68,16 @@ DWORD __wrap_get_registry_permissions(__attribute__((unused)) HKEY hndl, cJSON *
  */
 void expect_get_registry_permissions(cJSON *permissions, DWORD retval);
 
+/**
+ * @brief Mock calls to expand_wildcard_registers, copying a NULL terminated list of matches into paths
+ */
+int __wrap_expand_wildcard_registers(char *entry, char **paths, int arch);
+
+/**
+ * @brief This function loads the expect and will return of the function expand_wildcard_registers
+ */
+void expect_expand_wildcard_registers(const char *entry, int arch, char **matches, int status);
+
 #else
 /**
  * @brief This function loads the expect and will return of the function get_user

@@ -4615,7 +4615,10 @@ void test_w_list_all_keys_subkey_notnull(void** state) {
     expect_RegEnumKeyEx_call("DEVICEMAP", 10, ERROR_SUCCESS);
     expect_RegEnumKeyEx_call("RESOURCEMAP", 12, ERROR_SUCCESS);
 
-    char** query_result = w_list_all_keys(root_key, subkey);
+    int failed = 0;
+    char** query_result = w_list_all_keys(root_key, subkey, ARCH_64BIT, &failed);
+
+    assert_int_equal(failed, 0);
 
     for (int idx = 0; idx < 4; idx++) {
         assert_string_equal(query_result[idx], result[idx]);
@@ -4647,12 +4650,70 @@ void test_w_list_all_keys_subkey_null(void** state) {
     expect_RegEnumKeyEx_call("SOFTWARE", 9, ERROR_SUCCESS);
     expect_RegEnumKeyEx_call("SYSTEM", 7, ERROR_SUCCESS);
 
-    char** query_result = w_list_all_keys(root_key, subkey);
+    int failed = 0;
+    char** query_result = w_list_all_keys(root_key, subkey, ARCH_64BIT, &failed);
+
+    assert_int_equal(failed, 0);
 
     for (int idx = 0; idx < 6; idx++) {
         assert_string_equal(query_result[idx], result[idx]);
         os_free(query_result[idx]);
     }
+}
+
+void test_w_list_all_keys_32bit_view(void** state) {
+    FILETIME last_write_time = { 0, 1000 };
+    int failed = 0;
+
+    expect_RegOpenKeyEx_call(HKEY_LOCAL_MACHINE, "SOFTWARE", 0, KEY_READ | KEY_WOW64_32KEY, NULL, ERROR_SUCCESS);
+    expect_RegQueryInfoKey_call(1, 0, &last_write_time, ERROR_SUCCESS);
+    expect_RegEnumKeyEx_call("Vendor32", 9, ERROR_SUCCESS);
+
+    char** query_result = w_list_all_keys(HKEY_LOCAL_MACHINE, "SOFTWARE", ARCH_32BIT, &failed);
+
+    assert_int_equal(failed, 0);
+    assert_string_equal(query_result[0], "Vendor32");
+    assert_null(query_result[1]);
+    free_strarray(query_result);
+}
+
+void test_w_list_all_keys_missing_key(void** state) {
+    int failed = 0;
+
+    expect_RegOpenKeyEx_call(HKEY_LOCAL_MACHINE, "SOFTWARE\\Missing", 0, KEY_READ | KEY_WOW64_64KEY, NULL,
+                             ERROR_FILE_NOT_FOUND);
+
+    // A missing key has no subkeys, it is not a failure
+    assert_null(w_list_all_keys(HKEY_LOCAL_MACHINE, "SOFTWARE\\Missing", ARCH_64BIT, &failed));
+    assert_int_equal(failed, 0);
+}
+
+void test_w_list_all_keys_open_error(void** state) {
+    int failed = 0;
+
+    expect_RegOpenKeyEx_call(HKEY_LOCAL_MACHINE, "SOFTWARE\\Denied", 0, KEY_READ | KEY_WOW64_64KEY, NULL,
+                             ERROR_ACCESS_DENIED);
+
+    assert_null(w_list_all_keys(HKEY_LOCAL_MACHINE, "SOFTWARE\\Denied", ARCH_64BIT, &failed));
+    assert_int_equal(failed, 1);
+}
+
+void test_w_list_all_keys_enum_error(void** state) {
+    FILETIME last_write_time = { 0, 1000 };
+    int failed = 0;
+
+    expect_RegOpenKeyEx_call(HKEY_LOCAL_MACHINE, "SOFTWARE", 0, KEY_READ | KEY_WOW64_64KEY, NULL, ERROR_SUCCESS);
+    expect_RegQueryInfoKey_call(2, 0, &last_write_time, ERROR_SUCCESS);
+    expect_RegEnumKeyEx_call("First", 6, ERROR_NO_MORE_ITEMS);
+    expect_RegEnumKeyEx_call("Second", 7, ERROR_SUCCESS);
+
+    char** query_result = w_list_all_keys(HKEY_LOCAL_MACHINE, "SOFTWARE", ARCH_64BIT, &failed);
+
+    // The keys listed are kept together and the listing is reported as incomplete
+    assert_int_equal(failed, 1);
+    assert_string_equal(query_result[0], "Second");
+    assert_null(query_result[1]);
+    free_strarray(query_result);
 }
 
 void test_w_switch_root_key(void** state) {
@@ -4715,7 +4776,7 @@ void test_expand_wildcard_registers_star_only(void **state){
     expect_RegEnumKeyEx_call("SOFTWARE", 9, ERROR_SUCCESS);
     expect_RegEnumKeyEx_call("SYSTEM", 7, ERROR_SUCCESS);
 
-    expand_wildcard_registers(entry, paths);
+    expand_wildcard_registers(entry, paths, ARCH_64BIT);
 
     int i = 0;
     while(*paths != NULL){
@@ -4744,7 +4805,7 @@ void test_expand_wildcard_registers_invalid_path(void **state){
     expect_RegEnumKeyEx_call("SOFTWARE", 9, ERROR_SUCCESS);
     expect_RegEnumKeyEx_call("SYSTEM", 7, ERROR_SUCCESS);
 
-    expand_wildcard_registers(entry, paths);
+    expand_wildcard_registers(entry, paths, ARCH_64BIT);
 
     assert_null(*paths);
     os_free(paths);
@@ -4817,7 +4878,7 @@ void test_w_expand_by_wildcard_long_path_result(void **state) {
     expect_RegQueryInfoKey_call(1, 0, &last_write_time, ERROR_SUCCESS);
     expect_RegEnumKeyEx_call("BCD00000000", 12, ERROR_SUCCESS);
 
-    expand_wildcard_registers(entry, paths);
+    expand_wildcard_registers(entry, paths, ARCH_64BIT);
 
     assert_non_null(*orig_paths);
     assert_true(strlen(*orig_paths) > 256);
@@ -4825,6 +4886,37 @@ void test_w_expand_by_wildcard_long_path_result(void **state) {
 
     os_free(*orig_paths);
     os_free(orig_paths);
+}
+
+/* w_expand_by_wildcard: the matches that do not fit in max_items are discarded,
+ * so the vector keeps its NULL terminator. */
+void test_w_expand_by_wildcard_max_items(void **state) {
+    reg_path_struct **vector = NULL;
+    os_calloc(4, sizeof(reg_path_struct *), vector);
+    os_calloc(1, sizeof(reg_path_struct), vector[0]);
+    os_strdup("HKEY_LOCAL_MACHINE\\*", vector[0]->path);
+    vector[0]->has_wildcard = 1;
+
+    FILETIME last_write_time = { 0, 1000 };
+
+    expect_RegOpenKeyEx_call(HKEY_LOCAL_MACHINE, "", 0, KEY_READ | KEY_WOW64_64KEY, NULL, ERROR_SUCCESS);
+    expect_RegQueryInfoKey_call(3, 0, &last_write_time, ERROR_SUCCESS);
+    expect_RegEnumKeyEx_call("HARDWARE", 9, ERROR_SUCCESS);
+    expect_RegEnumKeyEx_call("SAM", 4, ERROR_SUCCESS);
+    expect_RegEnumKeyEx_call("SOFTWARE", 9, ERROR_SUCCESS);
+
+    assert_int_equal(w_expand_by_wildcard(vector, '*', 3, ARCH_64BIT), FIM_REG_EXPAND_TRUNCATED);
+
+    assert_int_equal(vector[0]->checked, 1);
+    assert_string_equal(vector[1]->path, "HKEY_LOCAL_MACHINE\\HARDWARE");
+    assert_string_equal(vector[2]->path, "HKEY_LOCAL_MACHINE\\SAM");
+    assert_null(vector[3]);
+
+    for (int i = 0; vector[i]; i++) {
+        os_free(vector[i]->path);
+        os_free(vector[i]);
+    }
+    os_free(vector);
 }
 
 #endif
@@ -5087,6 +5179,10 @@ int main(int argc, char *argv[]) {
         cmocka_unit_test(test_w_is_still_a_wildcard),
         cmocka_unit_test(test_w_list_all_keys_subkey_notnull),
         cmocka_unit_test(test_w_list_all_keys_subkey_null),
+        cmocka_unit_test(test_w_list_all_keys_32bit_view),
+        cmocka_unit_test(test_w_list_all_keys_missing_key),
+        cmocka_unit_test(test_w_list_all_keys_open_error),
+        cmocka_unit_test(test_w_list_all_keys_enum_error),
         cmocka_unit_test(test_w_switch_root_key),
         cmocka_unit_test(test_expand_wildcard_registers_star_only),
         cmocka_unit_test(test_expand_wildcard_registers_invalid_path),
@@ -5096,6 +5192,7 @@ int main(int argc, char *argv[]) {
         cmocka_unit_test(test_get_subkey_null),
         cmocka_unit_test(test_get_subkey_long_subkey),
         cmocka_unit_test(test_w_expand_by_wildcard_long_path_result),
+        cmocka_unit_test(test_w_expand_by_wildcard_max_items),
 #endif
     };
     return cmocka_run_group_tests(tests, NULL, NULL);

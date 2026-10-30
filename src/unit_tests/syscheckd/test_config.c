@@ -326,6 +326,49 @@ void test_Read_Syscheck_Config_diff_nodiff_mixed(void **state)
     assert_null(syscheck.nodiff_regex[3]);
 }
 
+#ifdef TEST_WINAGENT
+void test_Read_Syscheck_Config_registry_wildcards(void **state)
+{
+    (void) state;
+
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+
+    expect_any_always(__wrap__mdebug1, formatted_msg);
+
+    assert_int_equal(Read_Syscheck_Config("test_syscheck_registry_wildcards.conf"), 0);
+
+    // The wildcard is kept as a pattern per arch, and only the explicit entry is in the registry list
+    assert_non_null(syscheck.registry_wildcards);
+    assert_string_equal(syscheck.registry_wildcards[0].entry, "HKEY_LOCAL_MACHINE\\Software\\fim17-w?ld\\*");
+    assert_int_equal(syscheck.registry_wildcards[0].arch, ARCH_64BIT);
+    assert_string_equal(syscheck.registry_wildcards[0].tag, "fim17");
+    assert_int_equal(syscheck.registry_wildcards[0].diff_size_limit, syscheck.file_size_limit);
+    assert_string_equal(syscheck.registry_wildcards[1].entry, "HKEY_LOCAL_MACHINE\\Software\\fim17-w?ld\\*");
+    assert_int_equal(syscheck.registry_wildcards[1].arch, ARCH_32BIT);
+    assert_null(syscheck.registry_wildcards[2].entry);
+
+    assert_string_equal(syscheck.registry[0].entry, "HKEY_LOCAL_MACHINE\\Software\\Explicit");
+    assert_int_equal(syscheck.registry[0].arch, ARCH_32BIT);
+    assert_int_equal(syscheck.registry[0].wildcard, 0);
+    assert_null(syscheck.registry[1].entry);
+}
+
+void test_Test_Syscheck_registry_wildcards(void **state)
+{
+    (void) state;
+
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+    expect_any_always(__wrap__mdebug1, formatted_msg);
+
+    // Initializes and frees a configuration on the stack, as for a shared configuration pushed by the manager
+    assert_int_equal(Test_Syscheck("test_syscheck_registry_wildcards.conf"), 0);
+}
+#endif
+
 void test_read_data_unit_short_values(void **state)
 {
     (void) state;
@@ -965,6 +1008,10 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_Read_Syscheck_Config_unparsed, setup_read_config, restart_syscheck),
         cmocka_unit_test_setup_teardown(test_Read_Syscheck_Config_invalid_diff_limit, setup_read_config, restart_syscheck),
         cmocka_unit_test_setup_teardown(test_Read_Syscheck_Config_diff_nodiff_mixed, setup_read_config, restart_syscheck),
+#ifdef TEST_WINAGENT
+        cmocka_unit_test_setup_teardown(test_Read_Syscheck_Config_registry_wildcards, setup_read_config, restart_syscheck),
+        cmocka_unit_test_setup_teardown(test_Test_Syscheck_registry_wildcards, setup_read_config, restart_syscheck),
+#endif
         cmocka_unit_test(test_read_data_unit_short_values),
         cmocka_unit_test_setup_teardown(test_getSyscheckConfig, setup_read_config, restart_syscheck),
         cmocka_unit_test_setup_teardown(test_getSyscheckConfig_no_audit, setup_read_config, restart_syscheck),
