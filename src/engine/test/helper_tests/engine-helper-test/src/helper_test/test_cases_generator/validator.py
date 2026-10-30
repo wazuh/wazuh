@@ -6,6 +6,16 @@ from helper_test.definition_types.utils import *
 from pathlib import Path
 
 
+# Python type of an expected value for each output type name
+PYTHON_TYPE_OF_OUTPUT = {
+    "string": str,
+    "number": (int, float),
+    "boolean": bool,
+    "array": list,
+    "object": dict,
+}
+
+
 class Validator:
     def __init__(self, parser: Parser):
         """
@@ -183,6 +193,14 @@ class Validator:
         """
         if self.parser.get_helper_type() == "map":
             output = self.parser.get_output()
+            if isinstance(output["type"], list):
+                # Several output types (e.g. string or array): the expected value must match one of them
+                allowed = tuple(PYTHON_TYPE_OF_OUTPUT.get(t, object) for t in output["type"])
+                for test in self.parser.get_tests() or []:
+                    if "expected" in test and not isinstance(test["expected"], allowed):
+                        sys.exit(
+                            f"Helper {self.parser.get_name()}: expected type '{type(test['expected'])}' is not one of the output types {output['type']}")
+                return
             new_type_ = convert_string_to_type(output["type"])
             new_subset = convert_string_to_subset(output.get("subset"))
             if not isinstance(new_type_, list):

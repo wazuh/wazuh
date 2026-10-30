@@ -8611,20 +8611,28 @@ field: decode_base16(hex)
 
 | parameter | Type | Source | Accepted values |
 | --------- | ---- | ------ | --------------- |
-| hex | string | reference | Any hexadecimal |
+| hex | string, array | reference | Any value of the listed types |
 
 
 ## Outputs
 
 | Type | Possible values |
 | ---- | --------------- |
-| string | Any string |
+| [string, array] | - |
 
 
 ## Description
 
 The operation transforms a string of hexa digits into an ASCII string. The result of the operation is mapped to “field”.
 If the “field” already exists, then it will be replaced. In case of errors “field” will not be modified.
+A string is valid when it has an even number of hexadecimal digits ([0-9A-Fa-f]) and every decoded byte is ASCII
+(0x00-0x7F); otherwise the operation fails.
+The reference can also be an array. Then “field” receives an array of the same length where every string element
+that is valid hexadecimal is decoded and every other element (plain text, invalid hexadecimal, non-ASCII result,
+non-string) is kept unchanged; the operation does not fail on them. An empty array produces an empty array.
+The helper cannot tell plain text that happens to be valid hexadecimal (for example "1234" or "4142") from an encoded
+value: such an element is decoded. Use the array form only on values that a source encodes in hexadecimal, such as
+the unquoted auditd EXECVE arguments.
 
 
 ## Keywords
@@ -8659,6 +8667,345 @@ normalize:
 {
   "hex": "48656C6C6F20776F726C6421",
   "target_field": "Hello world!"
+}
+```
+
+*The operation was successful*
+
+### Example 2
+
+Convert base 16 to ASCII
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: decode_base16($hex)
+```
+
+#### Input Event
+
+```json
+{
+  "hex": "48656C6C6F20776F726C64"
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "hex": "48656C6C6F20776F726C64",
+  "target_field": "Hello world"
+}
+```
+
+*The operation was successful*
+
+### Example 3
+
+Fail on an odd number of hexadecimal digits
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: decode_base16($hex)
+```
+
+#### Input Event
+
+```json
+{
+  "hex": "48656C6C6F20776F726C6"
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "hex": "48656C6C6F20776F726C6"
+}
+```
+
+*The operation was performed with errors*
+
+### Example 4
+
+Fail on a character that is not a hexadecimal digit
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: decode_base16($hex)
+```
+
+#### Input Event
+
+```json
+{
+  "hex": "48656C6C6G"
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "hex": "48656C6C6G"
+}
+```
+
+*The operation was performed with errors*
+
+### Example 5
+
+Fail when a decoded byte is not ASCII
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: decode_base16($hex)
+```
+
+#### Input Event
+
+```json
+{
+  "hex": "CAFE"
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "hex": "CAFE"
+}
+```
+
+*The operation was performed with errors*
+
+### Example 6
+
+Decode only the hexadecimal elements of an array (auditd EXECVE arguments)
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: decode_base16($hex)
+```
+
+#### Input Event
+
+```json
+{
+  "hex": [
+    "/usr/bin/sudo",
+    "grep",
+    "6B65793D226172742D7465737422",
+    "/var/log/audit/audit.log"
+  ]
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "hex": [
+    "/usr/bin/sudo",
+    "grep",
+    "6B65793D226172742D7465737422",
+    "/var/log/audit/audit.log"
+  ],
+  "target_field": [
+    "/usr/bin/sudo",
+    "grep",
+    "key=\"art-test\"",
+    "/var/log/audit/audit.log"
+  ]
+}
+```
+
+*The operation was successful*
+
+### Example 7
+
+Decode an array whose elements are all hexadecimal
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: decode_base16($hex)
+```
+
+#### Input Event
+
+```json
+{
+  "hex": [
+    "2F746D702F612062",
+    "6B65793D226172742D7465737422"
+  ]
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "hex": [
+    "2F746D702F612062",
+    "6B65793D226172742D7465737422"
+  ],
+  "target_field": [
+    "/tmp/a b",
+    "key=\"art-test\""
+  ]
+}
+```
+
+*The operation was successful*
+
+### Example 8
+
+Keep an array without valid hexadecimal elements unchanged
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: decode_base16($hex)
+```
+
+#### Input Event
+
+```json
+{
+  "hex": [
+    "/usr/bin/sudo",
+    "grep",
+    "-r",
+    "CAFE",
+    "41G2"
+  ]
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "hex": [
+    "/usr/bin/sudo",
+    "grep",
+    "-r",
+    "CAFE",
+    "41G2"
+  ],
+  "target_field": [
+    "/usr/bin/sudo",
+    "grep",
+    "-r",
+    "CAFE",
+    "41G2"
+  ]
+}
+```
+
+*The operation was successful*
+
+### Example 9
+
+An empty array produces an empty array
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: decode_base16($hex)
+```
+
+#### Input Event
+
+```json
+{
+  "hex": []
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "hex": [],
+  "target_field": []
+}
+```
+
+*The operation was successful*
+
+### Example 10
+
+Keep the elements that are not strings unchanged
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: decode_base16($hex)
+```
+
+#### Input Event
+
+```json
+{
+  "hex": [
+    1,
+    "4142",
+    true,
+    {
+      "key": "4142"
+    }
+  ]
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "hex": [
+    1,
+    "4142",
+    true,
+    {
+      "key": "4142"
+    }
+  ],
+  "target_field": [
+    1,
+    "AB",
+    true,
+    {
+      "key": "4142"
+    }
+  ]
 }
 ```
 
