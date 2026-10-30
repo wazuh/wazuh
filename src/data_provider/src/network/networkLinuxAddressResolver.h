@@ -13,6 +13,7 @@
 #define _NETWORK_LINUX_ADDRESS_RESOLVER_H
 
 #include <cerrno>
+#include <fcntl.h>
 #include <ifaddrs.h>
 #include <linux/netlink.h>
 #include <linux/rtnetlink.h>
@@ -30,6 +31,11 @@
 #include <vector>
 #include "stringHelper.h"
 #include "networkHelper.h"
+
+// Missing from older kernel headers; kernels that predate it never set it.
+#ifndef NLM_F_DUMP_INTR
+#define NLM_F_DUMP_INTR 0x10
+#endif
 
 // The kernel flags a dump when the addresses change while it runs; it is worth asking again.
 class NetlinkDumpInterrupted final : public std::runtime_error
@@ -59,14 +65,24 @@ class NetworkLinuxAddressResolver final
         {
                 int m_fd;
 
+#ifdef SOCK_CLOEXEC
+                static constexpr int CLOEXEC_FLAG { SOCK_CLOEXEC };
+#else
+                static constexpr int CLOEXEC_FLAG { 0 };
+#endif
+
             public:
                 NetlinkSocket()
-                    : m_fd{ socket(AF_NETLINK, SOCK_RAW | SOCK_CLOEXEC, NETLINK_ROUTE) }
+                    : m_fd{ socket(AF_NETLINK, SOCK_RAW | CLOEXEC_FLAG, NETLINK_ROUTE) }
                 {
                     if (m_fd < 0)
                     {
                         throw std::runtime_error { "Cannot open netlink socket" };
                     }
+
+#ifndef SOCK_CLOEXEC
+                    fcntl(m_fd, F_SETFD, FD_CLOEXEC);
+#endif
                 }
 
                 ~NetlinkSocket()
