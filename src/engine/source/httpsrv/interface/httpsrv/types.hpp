@@ -12,6 +12,12 @@
 #include <unordered_set>
 #include <utility>
 
+// <arpa/nameser_compat.h> (reached through <resolv.h>) defines `DELETE` as `ns_uop_delete`. Undefine it so
+// Method::DELETE keeps its name whatever was included before this header.
+#ifdef DELETE
+#undef DELETE
+#endif
+
 namespace httpsrv
 {
 

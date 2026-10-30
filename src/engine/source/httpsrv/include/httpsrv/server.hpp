@@ -28,6 +28,12 @@
 
 #include <httplib.h>
 
+// httplib.h includes <resolv.h>, whose <arpa/nameser_compat.h> defines `DELETE` as `ns_uop_delete`; left
+// defined, it renames httpsrv::Method::DELETE in every translation unit that includes this header.
+#ifdef DELETE
+#undef DELETE
+#endif
+
 #include <httpsrv/iserver.hpp>
 
 namespace httpsrv
