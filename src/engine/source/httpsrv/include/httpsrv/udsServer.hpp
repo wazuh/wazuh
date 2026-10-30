@@ -51,6 +51,7 @@ struct UdsServerStats
     std::size_t shedExecutorFull {0}; ///< 503: the executor queue was full.
     std::size_t shedShutdown {0};     ///< 503: the server was stopping.
     std::size_t handlerErrors {0};    ///< 500: a handler threw.
+    std::size_t rejectedTooLarge {0}; ///< 413: the body exceeded the route or server cap.
 };
 
 /**
@@ -121,6 +122,20 @@ private:
  */
 void shutdownAll(const std::vector<UdsServer*>& servers,
                  std::chrono::milliseconds deadline = DEFAULT_SHUTDOWN_DEADLINE);
+
+/**
+ * @brief Publishes a server's stats() as fastmetrics pull metrics named server.<instance>.<suffix>
+ * (in-flight bytes and requests, sessions, queue depth, running handlers, 503s by cause, handler
+ * errors, 413s).
+ *
+ * The metrics hold only a weak reference: once the server is destroyed they read 0. The fastmetrics
+ * manager must already be registered, and it keeps the first registration of a name: call this once
+ * per instance name and process.
+ *
+ * @param server Server to observe.
+ * @param instance Middle segment of every name ("ingest", "api").
+ */
+void registerMetrics(const std::weak_ptr<UdsServer>& server, const std::string& instance);
 
 } // namespace httpsrv
 

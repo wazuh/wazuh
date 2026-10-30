@@ -72,6 +72,7 @@ std::shared_ptr<httpsrv::UdsServer> makeIngestServer(const std::shared_ptr<::rou
                      INGEST_ROUTE,
                      handlers::pushEvent(orchestrator, dumper, std::move(agentMetadataCache)),
                      route);
+    httpsrv::registerMetrics(server, "ingest");
     return server;
 }
 
