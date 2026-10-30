@@ -102,28 +102,30 @@ namespace wazuh::container_instances
         [[nodiscard]] std::vector<ContainerRecordPtr> listContainersLocked() const;
         [[nodiscard]] std::set<std::string> unkeyedContainerIdsLocked() const;
 
-        /// Every container id this store knows of, ordered: what listContainers()
-        /// publishes plus what unkeyedContainerIds() reports.
+        /// The two id sets the admission rule needs, from ONE walk of m_bySource.
         ///
-        /// EXISTENCE, not visibility. The cap bounds how many containers the node
-        /// reports on, and a container the resolver has not keyed is one of them:
-        /// no consumer can be told it is refused, so every consumer reports it.
-        /// Ranking only the visible ones therefore did not bound anything — it
-        /// handed the unkeyed ones a free pass outside the ceiling, and since a
-        /// container is unkeyed for a while after every restart, the node
-        /// exceeded the cap once per restart and the restarted container was
-        /// created on the manager and deleted again when its key came back.
+        /// `known` is every container this store knows of; `visible` is the
+        /// subset listContainers() publishes, which is `known` minus the running
+        /// records the resolver has not keyed yet.
         ///
-        /// Holding the slot is also the point: an admitted container that
-        /// restarts is not a departure, and dropping it from the ranking for the
-        /// length of its restart gave its slot away to the next id.
-        [[nodiscard]] std::set<std::string> knownIdsLocked() const;
+        /// Both, because admitContainers() needs both and for opposite reasons:
+        /// incumbency is decided over what EXISTS, so a container that restarts
+        /// does not lose its slot while it has no key, and free slots are filled
+        /// from what can be PUBLISHED, so a container nothing can ever key never
+        /// takes one it cannot use. See its header for what each half prevents.
+        struct ContainerIdSets
+        {
+            std::set<std::string> known;
+            std::set<std::string> visible;
+        };
+
+        [[nodiscard]] ContainerIdSets containerIdSetsLocked() const;
 
         /// Re-runs the admission rule over every known container. Cheap and
         /// idempotent, so it is called after any batch that can change what
         /// exists rather than tracked incrementally — the rule is a pure
-        /// function of (known, admitted, limit), and recomputing it is how a
-        /// slot freed by a departure is handed on in the same pass.
+        /// function of (known, visible, admitted, limit), and recomputing it is
+        /// how a slot freed by a departure is handed on in the same pass.
         void recomputeAdmittedLocked();
 
         /// Appends the transition between two visibility states, dropping the

@@ -322,57 +322,59 @@ TEST(ContainerAdmissionStoreTest, ADepartedContainerHandsItsSlotOn)
     EXPECT_EQ(ListedIds(store), (std::set<std::string> {"b", "c"}));
 }
 
-// The price of ranking by existence, written down because it is a real cost and
-// not an oversight: an unresolved container can hold a slot it cannot yet use.
-// It publishes nothing while it has no key, so for that moment the node reports
-// one container fewer than the limit allows.
+// The slot goes to a container that can use it, and is handed over without a
+// recompute changing its mind about who exists.
 //
-// Taken deliberately. The alternative is to leave it out of the ranking, and
-// then no consumer has a decision to apply to it, so every consumer reports it
-// and the node runs OVER the limit instead -- unbounded rather than one short,
-// which is the opposite of what the cap is for. One short is also temporary:
-// the slot comes into use as soon as the resolver keys the container. The case
-// that does not resolve itself is a container nothing can ever key, and the
-// "Reporting N of M" line names that cost rather than hiding it.
-TEST(ContainerAdmissionStoreTest, AnUnresolvedRunningContainerCanHoldASlotItCannotYetUse)
+// This used to assert the opposite -- that an unresolved container holds a slot
+// it cannot yet use -- and that was written down as a deliberate cost of
+// ranking by existence. It was not a cost worth paying: a container nothing can
+// ever key held a slot for the life of the process, and the node reported one
+// container fewer than the limit allows with the "Reporting N of M" line as the
+// only evidence. Filling free slots from what can be PUBLISHED removes the cost
+// without giving back the overshoot that ranking by visibility alone caused,
+// because incumbency is still decided over what EXISTS.
+TEST(ContainerAdmissionStoreTest, AnUnresolvedRunningContainerDoesNotHoldASlotItCannotUse)
 {
     auto store = MakeStore();
     store.setSyncLimit(1);
 
-    // hostKey 0 on a running container means the resolver has not keyed it yet,
-    // and "a" sorts below "visible", so it takes the only slot.
+    // hostKey 0 on a running container means the resolver has not keyed it yet.
+    // "a" sorts below "visible" and would take the only slot if free slots were
+    // filled from everything that exists.
     auto snapshot = Snapshot({"visible"});
     snapshot.push_back(MakeRecord("a", 0));
 
     store.applySnapshot(kDocker, snapshot, {}, Now());
 
-    EXPECT_EQ(store.admittedIds(), (std::set<std::string> {"a"}));
+    EXPECT_EQ(store.admittedIds(), (std::set<std::string> {"visible"}))
+        << "the only container that can publish gets the only slot";
     EXPECT_EQ(ListedIds(store), (std::set<std::string> {"visible"}));
 
-    // ...and it is handed over the moment the resolver catches up, because the
-    // ranking never had to change its mind about who exists.
+    // "a" resolves. It does NOT evict the incumbent -- that is stickiness, and
+    // it is what keeps a busy node from trading one container's documents for
+    // another's every time the resolver catches up.
     store.applySnapshot(kDocker, Snapshot({"a", "visible"}), {}, Now());
-    EXPECT_EQ(store.admittedIds(), (std::set<std::string> {"a"}));
+    EXPECT_EQ(store.admittedIds(), (std::set<std::string> {"visible"}));
     EXPECT_EQ(ListedIds(store), (std::set<std::string> {"a", "visible"}));
 }
 
-// The cap bounds how many containers the node REPORTS ON. That is a question
-// about container ids, and a container the resolver has not keyed yet is one of
-// them -- it exists, consumers know of it, and no consumer can be told it is
-// refused unless the ranking considered it.
+// A container the resolver has never keyed takes no slot, and is still REFUSED
+// rather than undecided.
 //
-// Ranking only the published containers therefore did not bound anything. An
-// unkeyed container was absent from the ranking, so it was in nobody's admitted
-// set, so every consumer read "no decision" and reported it. The node ran at
-// limit + 1.
-TEST(ContainerAdmissionStoreTest, AnUnresolvedContainerIsRankedByTheCapLikeAnyOther)
+// Both halves matter and they are easy to confuse. Refused is what the consumers
+// need: absence from the admitted set is the only way they can be told, and
+// while the ranking skipped unkeyed containers entirely they read "no decision"
+// and reported them, so the node ran over the cap for the length of every
+// restart. Taking a slot is what they must NOT do: a container with no key
+// publishes nothing, so a slot it holds is a slot the node cannot use.
+TEST(ContainerAdmissionStoreTest, AnUnresolvedContainerTakesNoSlotAndIsStillRefused)
 {
     auto store = MakeStore();
     store.setSyncLimit(2);
 
     // "a" is running and the resolver has no key for it yet. It sorts below both
-    // keyed containers, so a ranking that weighs it takes a different decision
-    // from one that does not -- which is what makes this test say anything.
+    // keyed containers, so a rule that filled free slots from everything that
+    // exists would hand it one.
     ContainerRecord unresolved = MakeRecord("a", 0);
 
     store.applySnapshot(
@@ -381,11 +383,12 @@ TEST(ContainerAdmissionStoreTest, AnUnresolvedContainerIsRankedByTheCapLikeAnyOt
     EXPECT_EQ(store.unkeyedContainerIds(), (std::set<std::string> {"a"}));
     EXPECT_EQ(ListedIds(store), (std::set<std::string> {"m", "n"})) << "still withheld from the list";
 
-    // Two slots, three containers, and the ranking weighed all three. So "n" is
-    // REFUSED and says so, instead of the cap quietly becoming a cap on the
-    // keyed ones alone while "a" reports outside it.
-    EXPECT_EQ(store.admittedIds(), (std::set<std::string> {"a", "m"}));
-    EXPECT_EQ(store.admittedIds().count("n"), 0U);
+    // Both slots go to containers that can use them.
+    EXPECT_EQ(store.admittedIds(), (std::set<std::string> {"m", "n"}));
+
+    // ...and "a" is absent from that set, which is how every consumer is told it
+    // may not report. Not being keyable is not a free pass past the cap.
+    EXPECT_EQ(store.admittedIds().count("a"), 0U);
 }
 
 // The other half, and it pulls the opposite way: a container that restarts is

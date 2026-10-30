@@ -45,22 +45,22 @@ TEST(ContainerAdmissionTest, UnlimitedAdmitsEverything)
     const auto known = ids({"a", "b", "c"});
 
     // 0 is the shipped default: a cap nobody configured must change nothing.
-    EXPECT_EQ(admitContainers(known, NONE, 0), known);
-    EXPECT_EQ(admitContainers(known, NONE, -1), known);
+    EXPECT_EQ(admitContainers(known, known, NONE, 0), known);
+    EXPECT_EQ(admitContainers(known, known, NONE, -1), known);
 }
 
 TEST(ContainerAdmissionTest, ColdStartTakesTheLowestIds)
 {
     const auto known = ids({"e", "c", "a", "d", "b"});
 
-    EXPECT_EQ(admitContainers(known, NONE, 3), ids({"a", "b", "c"}));
+    EXPECT_EQ(admitContainers(known, known, NONE, 3), ids({"a", "b", "c"}));
 }
 
 TEST(ContainerAdmissionTest, LimitAboveTheContainerCountAdmitsAll)
 {
     const auto known = ids({"a", "b"});
 
-    EXPECT_EQ(admitContainers(known, NONE, 10), known);
+    EXPECT_EQ(admitContainers(known, known, NONE, 10), known);
 }
 
 /* THE case. A newcomer sorting below every incumbent must not displace one.
@@ -74,7 +74,7 @@ TEST(ContainerAdmissionTest, AnIncumbentIsNotEvictedByALowerId)
     const auto admitted = ids({"b", "c"});
     const auto known = ids({"a", "b", "c"});
 
-    EXPECT_EQ(admitContainers(known, admitted, 2), admitted);
+    EXPECT_EQ(admitContainers(known, known, admitted, 2), admitted);
 }
 
 TEST(ContainerAdmissionTest, AFreedSlotGoesToTheLowestWaitingId)
@@ -83,7 +83,7 @@ TEST(ContainerAdmissionTest, AFreedSlotGoesToTheLowestWaitingId)
     // "c" is gone; "a" and "d" have been waiting.
     const auto known = ids({"a", "b", "d"});
 
-    EXPECT_EQ(admitContainers(known, admitted, 2), ids({"a", "b"}));
+    EXPECT_EQ(admitContainers(known, known, admitted, 2), ids({"a", "b"}));
 }
 
 TEST(ContainerAdmissionTest, ADepartedIncumbentIsDropped)
@@ -93,7 +93,7 @@ TEST(ContainerAdmissionTest, ADepartedIncumbentIsDropped)
 
     // The result is always a subset of what exists, so a stale id can never
     // keep a slot a live container could use.
-    EXPECT_EQ(admitContainers(known, admitted, 5), ids({"a"}));
+    EXPECT_EQ(admitContainers(known, known, admitted, 5), ids({"a"}));
 }
 
 TEST(ContainerAdmissionTest, LoweringTheCapKeepsTheLowestIncumbents)
@@ -103,8 +103,8 @@ TEST(ContainerAdmissionTest, LoweringTheCapKeepsTheLowestIncumbents)
 
     // Trimmed to the same survivors a cold start at this limit would pick, so
     // the cap does not depend on how it was reached.
-    EXPECT_EQ(admitContainers(known, admitted, 2), ids({"a", "b"}));
-    EXPECT_EQ(admitContainers(known, admitted, 2), admitContainers(known, NONE, 2));
+    EXPECT_EQ(admitContainers(known, known, admitted, 2), ids({"a", "b"}));
+    EXPECT_EQ(admitContainers(known, known, admitted, 2), admitContainers(known, known, NONE, 2));
 }
 
 TEST(ContainerAdmissionTest, RaisingTheCapFillsFromTheWaitingIds)
@@ -112,7 +112,7 @@ TEST(ContainerAdmissionTest, RaisingTheCapFillsFromTheWaitingIds)
     const auto admitted = ids({"b"});
     const auto known = ids({"a", "b", "c", "d"});
 
-    EXPECT_EQ(admitContainers(known, admitted, 3), ids({"a", "b", "c"}));
+    EXPECT_EQ(admitContainers(known, known, admitted, 3), ids({"a", "b", "c"}));
 }
 
 TEST(ContainerAdmissionTest, TheDecisionIsReproducible)
@@ -120,8 +120,8 @@ TEST(ContainerAdmissionTest, TheDecisionIsReproducible)
     const auto known = ids({"f", "a", "e", "b", "d", "c"});
 
     // Same inputs, same answer — on this agent, on another, and after a restart.
-    EXPECT_EQ(admitContainers(known, NONE, 3), admitContainers(known, NONE, 3));
-    EXPECT_EQ(admitContainers(known, NONE, 3), ids({"a", "b", "c"}));
+    EXPECT_EQ(admitContainers(known, known, NONE, 3), admitContainers(known, known, NONE, 3));
+    EXPECT_EQ(admitContainers(known, known, NONE, 3), ids({"a", "b", "c"}));
 }
 
 TEST(ContainerAdmissionTest, SteadyStateDoesNotChurn)
@@ -130,11 +130,11 @@ TEST(ContainerAdmissionTest, SteadyStateDoesNotChurn)
 
     // Feeding the decision back in must be a fixed point, or every pass would
     // re-decide and every re-decision would move rows.
-    auto admitted = admitContainers(known, NONE, 2);
+    auto admitted = admitContainers(known, known, NONE, 2);
 
     for (int pass = 0; pass < 5; ++pass)
     {
-        const auto next = admitContainers(known, admitted, 2);
+        const auto next = admitContainers(known, known, admitted, 2);
         EXPECT_EQ(next, admitted);
         admitted = next;
     }
@@ -142,6 +142,55 @@ TEST(ContainerAdmissionTest, SteadyStateDoesNotChurn)
 
 TEST(ContainerAdmissionTest, AnEmptyNodeAdmitsNothing)
 {
-    EXPECT_TRUE(admitContainers(NONE, NONE, 5).empty());
-    EXPECT_TRUE(admitContainers(NONE, ids({"a"}), 5).empty());
+    EXPECT_TRUE(admitContainers(NONE, NONE, NONE, 5).empty());
+    EXPECT_TRUE(admitContainers(NONE, NONE, ids({"a"}), 5).empty());
+}
+
+// The two sets answer two different questions, and the rule reads each for the
+// half it decides. INCUMBENCY over what exists; NEW SLOTS from what can be
+// published.
+TEST(ContainerAdmissionTest, AnUnpublishableContainerNeverTakesAFreeSlot)
+{
+    // "a" exists but the resolver cannot key it, so it publishes nothing. It
+    // sorts lowest, so a rule that filled from `known` would hand it the slot
+    // and the node would report one container fewer than the limit allows --
+    // for as long as that container runs.
+    const auto known = ids({"a", "m", "n"});
+    const auto visible = ids({"m", "n"});
+
+    EXPECT_EQ(admitContainers(known, visible, NONE, 2), ids({"m", "n"}));
+    EXPECT_EQ(admitContainers(known, visible, NONE, 1), ids({"m"}));
+}
+
+TEST(ContainerAdmissionTest, AnIncumbentKeepsItsSlotWhileItHasNoKey)
+{
+    // "b" was admitted and is now restarting: still known, not publishable for
+    // the moment. Filling from `visible` must not be read as a departure --
+    // "a" sorts below it and would take the slot, which withdraws every
+    // document "b" holds and creates "a"'s in their place, once per restart.
+    const auto known = ids({"a", "b"});
+    const auto restarting = ids({"a"});
+
+    EXPECT_EQ(admitContainers(known, restarting, ids({"b"}), 1), ids({"b"}));
+
+    // ...and when its key comes back it is still the incumbent, so nothing
+    // moved on the manager at all.
+    EXPECT_EQ(admitContainers(known, known, ids({"b"}), 1), ids({"b"}));
+}
+
+TEST(ContainerAdmissionTest, AContainerThatLeavesFreesItsSlotEvenIfItWasNeverPublishable)
+{
+    // Gone from `known` is gone, whether or not it ever had a key. Otherwise a
+    // node that churns unkeyable containers decays towards admitting nothing.
+    EXPECT_EQ(admitContainers(ids({"a", "b"}), ids({"a", "b"}), ids({"z"}), 1), ids({"a"}));
+}
+
+TEST(ContainerAdmissionTest, NoLimitAdmitsEverythingThatExistsKeyedOrNot)
+{
+    // The shipped default. `visible` is not consulted: nothing is being ranked,
+    // so nothing can be refused, and an unkeyed container reports as soon as it
+    // can publish rather than waiting for a recompute.
+    const auto known = ids({"a", "m", "n"});
+
+    EXPECT_EQ(admitContainers(known, ids({"m"}), NONE, 0), known);
 }

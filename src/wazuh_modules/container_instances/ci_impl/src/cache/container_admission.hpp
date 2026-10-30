@@ -40,13 +40,17 @@ namespace wazuh::container_instances
     /**
      * @brief Decide which containers may synchronize with the manager.
      *
-     * @param known    Every container that currently exists. Not filtered, not
-     *                 truncated -- see the note above on why.
+     * @param known    Every container that currently exists, whether or not the
+     *                  resolver has keyed it. Not filtered, not truncated -- see
+     *                  the note above on why.
+     * @param visible  The subset the connector can publish. A container the
+     *                 resolver has not keyed is absent from this and present in
+     *                 @p known.
      * @param admitted The previous decision, so incumbents can keep their slots.
      * @param limit    Containers that may report; <= 0 means unlimited.
      * @return The new admitted set, a subset of @p known.
      *
-     * Two properties, and both are load-bearing:
+     * Three properties, and all of them are load-bearing:
      *
      * STICKY. An admitted container keeps its slot until it genuinely leaves
      * `known`. A new container never evicts an incumbent, so a steady node never
@@ -63,8 +67,31 @@ namespace wazuh::container_instances
      * resets on restart, and it is absent entirely for a stopped Kubernetes
      * container. Lowest-id is arbitrary, but it is arbitrary in a way that is
      * reproducible, which walk order is not.
+     *
+     * INCUMBENCY BY EXISTENCE, NEW SLOTS BY VISIBILITY. The two sets answer two
+     * different questions and neither one answers both:
+     *
+     *   rank `visible` alone   a container that restarts has no key for a moment,
+     *                          leaves the ranking, and hands its slot to the next
+     *                          id -- so every restart withdraws a container's
+     *                          documents from the manager and creates another's.
+     *                          Worse, nothing then refuses the restarting one, so
+     *                          every consumer reports it and the node runs over
+     *                          the cap for the length of the restart.
+     *   rank `known` alone     a container the resolver can never key takes a slot
+     *                          it can never use. It publishes nothing, so the node
+     *                          reports one container fewer than the limit allows,
+     *                          for as long as that container runs.
+     *
+     * Holding incumbents from `known` and filling from `visible` answers both: a
+     * restart keeps what it already had, and a container that has never been
+     * publishable cannot take anything new. A container admitted while visible
+     * that then becomes permanently unkeyed does keep its slot -- that is
+     * indistinguishable from a restart, and treating it as a departure is the
+     * first failure above.
      */
     [[nodiscard]] inline std::set<std::string> admitContainers(const std::set<std::string>& known,
+                                                               const std::set<std::string>& visible,
                                                                const std::set<std::string>& admitted,
                                                                int limit)
     {
@@ -75,8 +102,9 @@ namespace wazuh::container_instances
 
         const auto ceiling = static_cast<std::size_t>(limit);
 
-        // Incumbents that still exist. Anything in `admitted` but no longer in
-        // `known` has been removed by the runtime, and its slot is free.
+        // Incumbents that still EXIST -- keyed or not. Anything in `admitted` but
+        // no longer in `known` has been removed by the runtime, and its slot is
+        // free. A container that is merely unkeyed has not been removed.
         std::set<std::string> result;
         std::set_intersection(admitted.begin(),
                               admitted.end(),
@@ -94,9 +122,10 @@ namespace wazuh::container_instances
             result.erase(first, result.end());
         }
 
-        // Fill what is left in ascending id order. `known` is ordered, so this
-        // takes the lowest ids not already held.
-        for (const auto& containerId : known)
+        // Fill what is left in ascending id order, from what can actually be
+        // PUBLISHED. `visible` is ordered, so this takes the lowest ids not
+        // already held.
+        for (const auto& containerId : visible)
         {
             if (result.size() >= ceiling)
             {

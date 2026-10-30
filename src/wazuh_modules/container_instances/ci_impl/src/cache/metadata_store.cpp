@@ -646,24 +646,24 @@ namespace
         return unkeyedContainerIdsLocked();
     }
 
-    std::set<std::string> MetadataStore::unkeyedContainerIdsLocked() const
+    MetadataStore::ContainerIdSets MetadataStore::containerIdSetsLocked() const
     {
-        // Counted here rather than read off m_withheldReported, which is a
-        // "last value logged" marker and is SIZE_MAX until listContainers() has
-        // run once -- the exact moment a consumer most needs a truthful answer.
-        // The predicate is listContainers()' own, and must stay that way: this
-        // number is only meaningful as the count of ids that call omits.
+        // ONE walk, and one copy of the predicate.
+        //
+        // Three places used to walk m_bySource deciding the same thing in the
+        // same words -- this, the admission rule's id set, and listContainers()
+        // -- which is three places for "a running record with no key is not
+        // published yet" to drift apart. It is the rule the whole withheld/
+        // unkeyed distinction rests on, so it gets one home.
+        //
         // Withheld means OMITTED FROM THE LIST, which is a question about the
-        // container, not about any one record of it. A container reported
+        // container and not about any one record of it. A container reported
         // through two sources (cri-dockerd publishes the same one through both
         // APIs) is published when EITHER record is resolved, so counting the
-        // unresolved records left `withheld` above zero while the container sat
+        // unresolved RECORDS left `withheld` above zero while the container sat
         // in the list -- and a consumer that waits for a complete list before
         // cleaning up then waits for ever.
-        //
-        // So: known ids, minus the ids at least one source can publish.
-        std::set<std::string> known;
-        std::set<std::string> publishable;
+        ContainerIdSets sets;
 
         for (const auto& [source, records] : m_bySource)
         {
@@ -674,18 +674,33 @@ namespace
                     continue; // listContainers() skips these outright.
                 }
 
-                known.insert(containerId);
+                sets.known.insert(containerId);
 
                 if (!(record->hostKey == 0 && isRunning(record->state)))
                 {
-                    publishable.insert(containerId);
+                    sets.visible.insert(containerId);
                 }
             }
         }
 
+        return sets;
+    }
+
+    std::set<std::string> MetadataStore::unkeyedContainerIdsLocked() const
+    {
+        // Counted here rather than read off m_withheldReported, which is a
+        // "last value logged" marker and is SIZE_MAX until listContainers() has
+        // run once -- the exact moment a consumer most needs a truthful answer.
+        //
+        // So: known ids, minus the ids at least one source can publish.
+        const auto sets = containerIdSetsLocked();
+
         std::set<std::string> unkeyed;
-        std::set_difference(
-            known.begin(), known.end(), publishable.begin(), publishable.end(), std::inserter(unkeyed, unkeyed.end()));
+        std::set_difference(sets.known.begin(),
+                            sets.known.end(),
+                            sets.visible.begin(),
+                            sets.visible.end(),
+                            std::inserter(unkeyed, unkeyed.end()));
         return unkeyed;
     }
 
@@ -702,29 +717,11 @@ namespace
         recomputeAdmittedLocked();
     }
 
-    std::set<std::string> MetadataStore::knownIdsLocked() const
-    {
-        std::set<std::string> known;
-
-        for (const auto& [source, records] : m_bySource)
-        {
-            for (const auto& [containerId, record] : records)
-            {
-                if (!record)
-                {
-                    continue; // listContainers() skips these outright.
-                }
-                known.insert(containerId);
-            }
-        }
-
-        return known;
-    }
-
     void MetadataStore::recomputeAdmittedLocked()
     {
-        const auto known = knownIdsLocked();
-        m_admitted = admitContainers(known, m_admitted, m_syncLimit);
+        const auto sets = containerIdSetsLocked();
+        const auto& known = sets.known;
+        m_admitted = admitContainers(known, sets.visible, m_admitted, m_syncLimit);
 
         // Say how many are NOT reporting, on change rather than per pass.
         //
