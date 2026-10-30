@@ -82,6 +82,7 @@ This documentation provides an overview of the auxiliary functions available. Au
 - [join](#join)
 - [network_community_id](#network_community_id)
 - [regex_extract](#regex_extract)
+- [regex_extract_all](#regex_extract_all)
 - [sha1](#sha1)
 - [syslog_extract_facility](#syslog_extract_facility)
 - [syslog_extract_severity](#syslog_extract_severity)
@@ -8604,7 +8605,7 @@ normalize:
 
 ```
 
-field: decode_base16(hex)
+field: decode_base16(hex, [mode])
 ```
 
 ## Arguments
@@ -8612,19 +8613,31 @@ field: decode_base16(hex)
 | parameter | Type | Source | Accepted values |
 | --------- | ---- | ------ | --------------- |
 | hex | string | reference | Any hexadecimal |
+| mode (optional) | string | value | quoted |
 
 
 ## Outputs
 
 | Type | Possible values |
 | ---- | --------------- |
-| string | Any string |
+| [string, array] | - |
 
 
 ## Description
 
 The operation transforms a string of hexa digits into an ASCII string. The result of the operation is mapped to “field”.
 If the “field” already exists, then it will be replaced. In case of errors “field” will not be modified.
+Without a mode, the reference must be a string with an even number of hexadecimal digits ([0-9A-Fa-f]) where every
+decoded byte is ASCII (0x00-0x7F); otherwise the operation fails. An array reference fails too.
+The optional mode `quoted` decodes raw auditd values, for example the EXECVE arguments collected with
+regex_extract_all. auditd writes an argument between double quotes unless it contains a double quote, a space, a
+control character or a non-ASCII byte; then it writes the bytes in upper-case hexadecimal without quotes. In this
+mode the reference can be a string or an array, and each value is handled by its quoting: a value between double
+quotes loses the quotes and is kept as text (so "10" or "1234" stay text); an unquoted value of upper-case
+hexadecimal digits that decodes to valid UTF-8 is decoded; any other value (lower-case hexadecimal, invalid UTF-8,
+other text, an element that is not a string) is kept unchanged. The mode does not fail on the values, and an empty
+array produces an empty array. When “field” is a keyword field such as process.args, an element that is not a
+string fails the schema validation of “field” and the whole operation fails.
 
 
 ## Keywords
@@ -8659,6 +8672,455 @@ normalize:
 {
   "hex": "48656C6C6F20776F726C6421",
   "target_field": "Hello world!"
+}
+```
+
+*The operation was successful*
+
+### Example 2
+
+Convert base 16 to ASCII
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: decode_base16($hex)
+```
+
+#### Input Event
+
+```json
+{
+  "hex": "48656C6C6F20776F726C64"
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "hex": "48656C6C6F20776F726C64",
+  "target_field": "Hello world"
+}
+```
+
+*The operation was successful*
+
+### Example 3
+
+Fail on an odd number of hexadecimal digits
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: decode_base16($hex)
+```
+
+#### Input Event
+
+```json
+{
+  "hex": "48656C6C6F20776F726C6"
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "hex": "48656C6C6F20776F726C6"
+}
+```
+
+*The operation was performed with errors*
+
+### Example 4
+
+Fail on a character that is not a hexadecimal digit
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: decode_base16($hex)
+```
+
+#### Input Event
+
+```json
+{
+  "hex": "48656C6C6G"
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "hex": "48656C6C6G"
+}
+```
+
+*The operation was performed with errors*
+
+### Example 5
+
+Fail when a decoded byte is not ASCII
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: decode_base16($hex)
+```
+
+#### Input Event
+
+```json
+{
+  "hex": "CAFE"
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "hex": "CAFE"
+}
+```
+
+*The operation was performed with errors*
+
+### Example 6
+
+Fail on an array reference without the quoted mode
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: decode_base16($hex)
+```
+
+#### Input Event
+
+```json
+{
+  "hex": [
+    "48656C6C6F",
+    "776F726C6421"
+  ]
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "hex": [
+    "48656C6C6F",
+    "776F726C6421"
+  ]
+}
+```
+
+*The operation was performed with errors*
+
+### Example 7
+
+Fail on a reference that is neither a string nor an array, also with the quoted mode
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: decode_base16($hex, 'quoted')
+```
+
+#### Input Event
+
+```json
+{
+  "hex": {
+    "key": "4142"
+  }
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "hex": {
+    "key": "4142"
+  }
+}
+```
+
+*The operation was performed with errors*
+
+### Example 8
+
+Strip the quotes of the quoted auditd arguments and decode the unquoted hexadecimal one
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: decode_base16($hex, 'quoted')
+```
+
+#### Input Event
+
+```json
+{
+  "hex": [
+    "\"/usr/bin/sudo\"",
+    "\"grep\"",
+    "6B65793D226172742D7465737422",
+    "\"/var/log/audit/audit.log\""
+  ]
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "hex": [
+    "\"/usr/bin/sudo\"",
+    "\"grep\"",
+    "6B65793D226172742D7465737422",
+    "\"/var/log/audit/audit.log\""
+  ],
+  "target_field": [
+    "/usr/bin/sudo",
+    "grep",
+    "key=\"art-test\"",
+    "/var/log/audit/audit.log"
+  ]
+}
+```
+
+*The operation was successful*
+
+### Example 9
+
+Keep quoted arguments as text even when they look hexadecimal
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: decode_base16($hex, 'quoted')
+```
+
+#### Input Event
+
+```json
+{
+  "hex": [
+    "\"kill\"",
+    "\"-9\"",
+    "\"1234\"",
+    "\"10\"",
+    "\"0755\""
+  ]
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "hex": [
+    "\"kill\"",
+    "\"-9\"",
+    "\"1234\"",
+    "\"10\"",
+    "\"0755\""
+  ],
+  "target_field": [
+    "kill",
+    "-9",
+    "1234",
+    "10",
+    "0755"
+  ]
+}
+```
+
+*The operation was successful*
+
+### Example 10
+
+Decode an unquoted hexadecimal argument to UTF-8
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: decode_base16($hex, 'quoted')
+```
+
+#### Input Event
+
+```json
+{
+  "hex": [
+    "\"touch\"",
+    "636166C3A9"
+  ]
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "hex": [
+    "\"touch\"",
+    "636166C3A9"
+  ],
+  "target_field": [
+    "touch",
+    "caf\u00e9"
+  ]
+}
+```
+
+*The operation was successful*
+
+### Example 11
+
+Keep lower-case hexadecimal, invalid UTF-8 and other unquoted values unchanged
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: decode_base16($hex, 'quoted')
+```
+
+#### Input Event
+
+```json
+{
+  "hex": [
+    "3c3e",
+    "CAFE",
+    "(null)",
+    ""
+  ]
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "hex": [
+    "3c3e",
+    "CAFE",
+    "(null)",
+    ""
+  ],
+  "target_field": [
+    "3c3e",
+    "CAFE",
+    "(null)",
+    ""
+  ]
+}
+```
+
+*The operation was successful*
+
+### Example 12
+
+Keep the elements that are not strings unchanged
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: decode_base16($hex, 'quoted')
+```
+
+#### Input Event
+
+```json
+{
+  "hex": [
+    1,
+    "\"4142\"",
+    "4142",
+    true
+  ]
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "hex": [
+    1,
+    "\"4142\"",
+    "4142",
+    true
+  ],
+  "target_field": [
+    1,
+    "4142",
+    "AB",
+    true
+  ]
+}
+```
+
+*The operation was successful*
+
+### Example 13
+
+Apply the quoted mode to a string reference
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: decode_base16($hex, 'quoted')
+```
+
+#### Input Event
+
+```json
+{
+  "hex": "\"1234\""
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "hex": "\"1234\"",
+  "target_field": "1234"
 }
 ```
 
@@ -11685,6 +12147,156 @@ normalize:
 ```json
 {
   "fieldToMatch": "ye pcre2"
+}
+```
+
+*The operation was performed with errors*
+
+
+
+---
+# regex_extract_all
+
+## Signature
+
+```
+
+field: regex_extract_all(fieldToMatch, regex)
+```
+
+## Arguments
+
+| parameter | Type | Source | Accepted values |
+| --------- | ---- | ------ | --------------- |
+| fieldToMatch | string | reference | Any string |
+| regex | string | value | Any regex |
+
+
+## Outputs
+
+| Type | Possible values |
+| ---- | --------------- |
+| array | Any array |
+
+
+## Description
+
+Matches the regex against the “fieldToMatch” string as many times as it can, from left to right and without
+overlapping, and maps to “field” the array of the first capturing group of every match, in order and without any
+change to the captured text. The regex must have at least one capturing group; the other groups are ignored, and
+an optional first group that does not take part in a match yields an empty string.
+If “fieldToMatch” is not found or is not a string, or if the regex does not match, nothing is performed.
+If the operation executes successfully the field is overridden, if it does not exist, it is created.
+Example: the auditd EXECVE arguments, raw and in order, with the regex `(?:^|\s)a\d+=(\S+)`; quoted values keep
+their quotes, so decode_base16 with the mode `quoted` can tell text from hexadecimal. Arguments that auditd splits
+in chunks (`aN_len=` and `aN[i]=`) are not matched by that regex.
+Keep in mind that we need to escape reserved Yaml characters depending on the string input mode of Yaml.
+RE2 syntax: https://github.com/google/re2/wiki/Syntax
+This helper function is used in the map stage
+
+
+## Keywords
+
+- `undefined` 
+
+## Examples
+
+### Example 1
+
+Collect the raw auditd EXECVE arguments, quotes included
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: regex_extract_all($fieldToMatch, '(?:^|\\s)a\\d+=(\\S+)')
+```
+
+#### Input Event
+
+```json
+{
+  "fieldToMatch": "type=EXECVE msg=audit(1730000000.123:42): argc=4 a0=\"/usr/bin/sudo\" a1=\"grep\" a2=6B65793D226172742D7465737422 a3=\"/var/log/audit/audit.log\""
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "fieldToMatch": "type=EXECVE msg=audit(1730000000.123:42): argc=4 a0=\"/usr/bin/sudo\" a1=\"grep\" a2=6B65793D226172742D7465737422 a3=\"/var/log/audit/audit.log\"",
+  "target_field": [
+    "\"/usr/bin/sudo\"",
+    "\"grep\"",
+    "6B65793D226172742D7465737422",
+    "\"/var/log/audit/audit.log\""
+  ]
+}
+```
+
+*The operation was successful*
+
+### Example 2
+
+Keep the first group of every match, an empty capture included
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: regex_extract_all($fieldToMatch, 'k\\d=(\\w*);?')
+```
+
+#### Input Event
+
+```json
+{
+  "fieldToMatch": "k1=v1;k2=;k3=v3"
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "fieldToMatch": "k1=v1;k2=;k3=v3",
+  "target_field": [
+    "v1",
+    "",
+    "v3"
+  ]
+}
+```
+
+*The operation was successful*
+
+### Example 3
+
+Fail when the regex does not match
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: regex_extract_all($fieldToMatch, '(?:^|\\s)a\\d+=(\\S+)')
+```
+
+#### Input Event
+
+```json
+{
+  "fieldToMatch": "argc=0"
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "fieldToMatch": "argc=0"
 }
 ```
 

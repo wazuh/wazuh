@@ -373,3 +373,115 @@ TEST(TruncateForMessage, BoundsLongerValues)
               std::string(base::utils::string::MAX_ECHOED_INPUT_LENGTH, 'b') + "... (129 bytes)");
     EXPECT_EQ(base::utils::string::truncateForMessage("abcdef", 3), "abc... (6 bytes)");
 }
+
+TEST(HexToAscii, DecodesUpperCase)
+{
+    ASSERT_EQ(base::utils::string::hexToAscii("48656C6C6F20776F726C6421"), std::optional<std::string>("Hello world!"));
+}
+
+TEST(HexToAscii, DecodesLowerAndMixedCase)
+{
+    ASSERT_EQ(base::utils::string::hexToAscii("6b65793d226172742d7465737422"),
+              std::optional<std::string>("key=\"art-test\""));
+    ASSERT_EQ(base::utils::string::hexToAscii("4a4B"), std::optional<std::string>("JK"));
+}
+
+TEST(HexToAscii, EmptyDecodesToEmpty)
+{
+    ASSERT_EQ(base::utils::string::hexToAscii(""), std::optional<std::string>(""));
+}
+
+TEST(HexToAscii, DecodesAsciiControlBytes)
+{
+    ASSERT_EQ(base::utils::string::hexToAscii("00097F"), std::optional<std::string>(std::string("\0\t\x7f", 3)));
+}
+
+TEST(HexToAscii, RejectsOddLength)
+{
+    ASSERT_EQ(base::utils::string::hexToAscii("414"), std::nullopt);
+    ASSERT_EQ(base::utils::string::hexToAscii("A"), std::nullopt);
+}
+
+TEST(HexToAscii, RejectsNonHexCharacters)
+{
+    ASSERT_EQ(base::utils::string::hexToAscii("41G2"), std::nullopt);
+    ASSERT_EQ(base::utils::string::hexToAscii("/usr/bin/sudo"), std::nullopt);
+    ASSERT_EQ(base::utils::string::hexToAscii("0x41"), std::nullopt);
+}
+
+TEST(HexToAscii, RejectsSignAndWhitespace)
+{
+    ASSERT_EQ(base::utils::string::hexToAscii(" A"), std::nullopt);
+    ASSERT_EQ(base::utils::string::hexToAscii("+A"), std::nullopt);
+    ASSERT_EQ(base::utils::string::hexToAscii("-0"), std::nullopt);
+}
+
+TEST(HexToAscii, RejectsNonAsciiBytes)
+{
+    ASSERT_EQ(base::utils::string::hexToAscii("80"), std::nullopt);
+    ASSERT_EQ(base::utils::string::hexToAscii("FF"), std::nullopt);
+    ASSERT_EQ(base::utils::string::hexToAscii("cafe"), std::nullopt);
+}
+
+TEST(HexToUtf8, DecodesAsciiAndMultiByteSequences)
+{
+    ASSERT_EQ(base::utils::string::hexToUtf8("6B65793D226172742D7465737422"),
+              std::optional<std::string>("key=\"art-test\""));
+    ASSERT_EQ(base::utils::string::hexToUtf8("636166C3A9"), std::optional<std::string>("caf\xC3\xA9"));
+    ASSERT_EQ(base::utils::string::hexToUtf8("E282AC"), std::optional<std::string>("\xE2\x82\xAC"));
+    ASSERT_EQ(base::utils::string::hexToUtf8("F09F9880"), std::optional<std::string>("\xF0\x9F\x98\x80"));
+    ASSERT_EQ(base::utils::string::hexToUtf8("2F746D702F612062"), std::optional<std::string>("/tmp/a b"));
+}
+
+TEST(HexToUtf8, EmptyDecodesToEmpty)
+{
+    ASSERT_EQ(base::utils::string::hexToUtf8(""), std::optional<std::string>(""));
+    ASSERT_EQ(base::utils::string::hexToUtf8("", true), std::optional<std::string>(""));
+}
+
+TEST(HexToUtf8, CaseSelection)
+{
+    ASSERT_EQ(base::utils::string::hexToUtf8("636166c3a9"), std::optional<std::string>("caf\xC3\xA9"));
+    ASSERT_EQ(base::utils::string::hexToUtf8("636166C3A9", true), std::optional<std::string>("caf\xC3\xA9"));
+    ASSERT_EQ(base::utils::string::hexToUtf8("636166c3a9", true), std::nullopt);
+    ASSERT_EQ(base::utils::string::hexToUtf8("3c3e", true), std::nullopt);
+}
+
+TEST(HexToUtf8, RejectsMalformedHex)
+{
+    ASSERT_EQ(base::utils::string::hexToUtf8("414"), std::nullopt);
+    ASSERT_EQ(base::utils::string::hexToUtf8("41G2"), std::nullopt);
+    ASSERT_EQ(base::utils::string::hexToUtf8(" A"), std::nullopt);
+    ASSERT_EQ(base::utils::string::hexToUtf8("0x41"), std::nullopt);
+}
+
+TEST(HexToUtf8, RejectsInvalidUtf8)
+{
+    ASSERT_EQ(base::utils::string::hexToUtf8("CAFE"), std::nullopt);     // 0xCA 0xFE: bad continuation
+    ASSERT_EQ(base::utils::string::hexToUtf8("FF"), std::nullopt);       // never valid in UTF-8
+    ASSERT_EQ(base::utils::string::hexToUtf8("636166C3"), std::nullopt); // truncated sequence
+    ASSERT_EQ(base::utils::string::hexToUtf8("C0AF"), std::nullopt);     // overlong '/'
+}
+
+TEST(IsValidUtf8, AcceptsWellFormed)
+{
+    EXPECT_TRUE(base::utils::string::isValidUtf8(""));
+    EXPECT_TRUE(base::utils::string::isValidUtf8(std::string("a\0b\x7F", 4)));
+    EXPECT_TRUE(base::utils::string::isValidUtf8("caf\xC3\xA9"));
+    EXPECT_TRUE(base::utils::string::isValidUtf8("\xE0\xA0\x80"));     // U+0800
+    EXPECT_TRUE(base::utils::string::isValidUtf8("\xED\x9F\xBF"));     // U+D7FF
+    EXPECT_TRUE(base::utils::string::isValidUtf8("\xF4\x8F\xBF\xBF")); // U+10FFFF
+}
+
+TEST(IsValidUtf8, RejectsMalformed)
+{
+    EXPECT_FALSE(base::utils::string::isValidUtf8("\x80"));             // lone continuation byte
+    EXPECT_FALSE(base::utils::string::isValidUtf8("\xC1\xBF"));         // overlong two-byte form
+    EXPECT_FALSE(base::utils::string::isValidUtf8("\xE0\x9F\xBF"));     // overlong three-byte form
+    EXPECT_FALSE(base::utils::string::isValidUtf8("\xED\xA0\x80"));     // surrogate U+D800
+    EXPECT_FALSE(base::utils::string::isValidUtf8("\xF0\x8F\xBF\xBF")); // overlong four-byte form
+    EXPECT_FALSE(base::utils::string::isValidUtf8("\xF4\x90\x80\x80")); // above U+10FFFF
+    EXPECT_FALSE(base::utils::string::isValidUtf8("\xF5\x80\x80\x80")); // invalid lead byte
+    EXPECT_FALSE(base::utils::string::isValidUtf8("\xE2\x82"));         // truncated
+    EXPECT_FALSE(base::utils::string::isValidUtf8("\xC3\x28"));         // bad continuation
+}

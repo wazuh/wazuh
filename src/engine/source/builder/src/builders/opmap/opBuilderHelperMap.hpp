@@ -100,11 +100,17 @@ MapOp opBuilderHelperStringFromArray(const std::vector<OpArg>& opArgs,
 
 /**
  * @brief Transforms a string of hexa digits into an ASCII string
- * i.e: 'targetField: +decode_base16/48656C6C6F20776F726C6421' then 'targetField' would be
+ * i.e: 'targetField: decode_base16($ref)' with ref '48656C6C6F20776F726C6421' then 'targetField' would be
  * 'Hello world!'
- * @param opArgs Vector of operation arguments containing numeric values to be converted.
+ *
+ * Without a mode the reference must be a string accepted by base::utils::string::hexToAscii, otherwise the operation
+ * fails. With the optional mode 'quoted' (decode_base16($ref, 'quoted')) the reference can be a string or an array of
+ * raw auditd values: a value between double quotes loses its quotes and is kept as text, an unquoted value of
+ * upper-case hexadecimal digits that decodes to valid UTF-8 is decoded, and any other value (and any non-string
+ * element) is kept unchanged. The 'quoted' mode never fails on the values; an empty array yields an empty array.
+ * @param opArgs Reference to decode and, optionally, the mode value 'quoted'.
  * @param buildCtx Shared pointer to the build context used for the conversion operation.
- * @throw std::runtime_error if the parameter is not a reference
+ * @throw std::runtime_error if the first parameter is not a reference or the mode is not 'quoted'
  * @return base::Expression
  */
 MapOp opBuilderHelperStringFromHexa(const std::vector<OpArg>& opArgs, const std::shared_ptr<const IBuildCtx>& buildCtx);
@@ -348,6 +354,21 @@ TransformOp opBuilderHelperDiscardEvents(const Reference& targetField,
  * @throw std::runtime_error if the parameter is the regex is invalid.
  */
 MapOp opBuilderHelperRegexExtract(const std::vector<OpArg>& opArgs, const std::shared_ptr<const IBuildCtx>& buildCtx);
+
+/**
+ * @brief Builds the regex extract all operation.
+ * Maps into a field the array of the first capturing group of every non-overlapping match of the regex in the string
+ * reference, in order and without any change to the captured text. An optional group that does not take part in a
+ * match yields an empty string. The operation fails when the reference is missing or not a string, or when the regex
+ * does not match.
+ *
+ * @param opArgs Reference to a string and the regex value.
+ * @param buildCtx Shared pointer to the build context.
+ * @return MapOp The `regex_extract_all` operation.
+ * @throw std::runtime_error if the regex is invalid or has no capturing group.
+ */
+MapOp opBuilderHelperRegexExtractAll(const std::vector<OpArg>& opArgs,
+                                     const std::shared_ptr<const IBuildCtx>& buildCtx);
 
 //*************************************************
 //*           Array tranform                      *

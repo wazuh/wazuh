@@ -202,6 +202,9 @@ void registerOpBuilders(const std::shared_ptr<Registry>& registry, const builder
         {schemf::JTypeToken::create(json::Json::Type::Number), builders::getOpBuilderHelperCalc(false)});
     registry->template add<builders::OpBuilderEntry>(
         "regex_extract", {schemf::JTypeToken::create(json::Json::Type::String), builders::opBuilderHelperRegexExtract});
+    registry->template add<builders::OpBuilderEntry>(
+        "regex_extract_all",
+        {schemf::JTypeToken::create(json::Json::Type::String), builders::opBuilderHelperRegexExtractAll});
     // Map helpers: Hash functions
     registry->template add<builders::OpBuilderEntry>(
         "sha1", {schemf::JTypeToken::create(json::Json::Type::String), builders::opBuilderHelperHashSHA1});
