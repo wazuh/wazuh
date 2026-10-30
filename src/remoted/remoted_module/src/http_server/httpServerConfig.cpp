@@ -193,7 +193,7 @@ namespace remoted::http
         // The same gate as request-body decoding: with it off a streamed response is never encoded.
         if (config.http_content_encoding_enabled)
         {
-            result.decorateStreamResponder = makeZstdResponseDecorator();
+            result.streamTransformFactory = makeZstdStreamTransformFactory();
         }
 
         // Memory-management knobs come from remoted's config struct (a positive value wins),

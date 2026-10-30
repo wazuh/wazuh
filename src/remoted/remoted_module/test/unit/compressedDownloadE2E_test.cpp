@@ -236,7 +236,7 @@ namespace
             config.caPublicationRecordPath = "";
             if (contentEncodingEnabled)
             {
-                config.decorateStreamResponder = remoted::http::makeZstdResponseDecorator();
+                config.streamTransformFactory = remoted::http::makeZstdStreamTransformFactory();
             }
             ASSERT_NO_THROW(m_server->start(config));
         }
@@ -453,7 +453,7 @@ TEST_F(CompressedDownloadE2ETest, TheCompressorIsChargedToTheBudgetWhileTheTrans
     config.certificatePath = m_cert->certPath;
     config.privateKeyPath = m_cert->keyPath;
     config.caPublicationRecordPath = "";
-    config.decorateStreamResponder = remoted::http::makeZstdResponseDecorator();
+    config.streamTransformFactory = remoted::http::makeZstdStreamTransformFactory();
     ASSERT_NO_THROW(m_server->start(config));
     const auto before = m_server->diagnostics().budgetAvailableBytes;
 
@@ -516,7 +516,7 @@ TEST_F(CompressedDownloadE2ETest, ASourceThatFailsMidTransferLeavesATruncatedFra
     config.certificatePath = m_cert->certPath;
     config.privateKeyPath = m_cert->keyPath;
     config.caPublicationRecordPath = "";
-    config.decorateStreamResponder = remoted::http::makeZstdResponseDecorator();
+    config.streamTransformFactory = remoted::http::makeZstdStreamTransformFactory();
     config.writeTimeoutSec = 2;
     config.requestTimeoutSec = 2;
     ASSERT_NO_THROW(m_server->start(config));

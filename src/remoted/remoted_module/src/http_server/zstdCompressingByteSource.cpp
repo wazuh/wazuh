@@ -16,10 +16,8 @@
 namespace remoted::http
 {
 
-    ZstdCompressingByteSource::ZstdCompressingByteSource(std::shared_ptr<IByteSource> inner,
-                                                         InFlightBudget::Reservation reservation)
+    ZstdCompressingByteSource::ZstdCompressingByteSource(std::shared_ptr<IByteSource> inner)
         : m_inner {std::move(inner)}
-        , m_reservation {std::move(reservation)}
         , m_staging(remoted::common::ZstdEncoder::inputSize(), '\0')
     {
     }

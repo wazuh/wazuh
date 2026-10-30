@@ -11,7 +11,6 @@
 #include "common/zstdDecoder.hpp"
 #include "common/zstdEncoder.hpp"
 #include "http_server/IHttpServer.hpp"
-#include "http_server/inFlightBudget.hpp"
 #include "http_server/zstdCompressingByteSource.hpp"
 #include "zstdTestHelper.hpp"
 
@@ -33,7 +32,6 @@ using remoted::common::zstdDecode;
 using remoted::common::ZstdDecodeError;
 using remoted::common::ZstdEncoder;
 using remoted::http::IByteSource;
-using remoted::http::InFlightBudget;
 using remoted::http::ZstdCompressingByteSource;
 using remoted::testutil::alwaysReserve;
 using remoted::testutil::configLikeText;
@@ -111,10 +109,9 @@ namespace
         }
     }
 
-    std::shared_ptr<ZstdCompressingByteSource> compressing(std::shared_ptr<IByteSource> inner,
-                                                           InFlightBudget::Reservation reservation = {})
+    std::shared_ptr<ZstdCompressingByteSource> compressing(std::shared_ptr<IByteSource> inner)
     {
-        return std::make_shared<ZstdCompressingByteSource>(std::move(inner), std::move(reservation));
+        return std::make_shared<ZstdCompressingByteSource>(std::move(inner));
     }
 
     std::string decodeOrFail(const std::string& frame)
@@ -289,30 +286,6 @@ TEST(ZstdCompressingByteSource, AFailureInPlaceOfEndOfStreamNeverCompletesTheFra
         ASSERT_TRUE(std::holds_alternative<ZstdDecodeError>(result)) << "a complete frame left before the failure";
         EXPECT_EQ(std::get<ZstdDecodeError>(result), ZstdDecodeError::Malformed);
     }
-}
-
-TEST(ZstdCompressingByteSource, HoldsItsReservationForTheLifeOfTheTransfer)
-{
-    InFlightBudget budget {64U * 1024U * 1024U};
-    const auto before = budget.availableBytes();
-    auto reservation = budget.tryReserveUncounted(ZstdEncoder::memoryRequired());
-    ASSERT_TRUE(reservation.has_value());
-    EXPECT_EQ(budget.availableBytes(), before - ZstdEncoder::memoryRequired());
-
-    auto source = compressing(std::make_shared<SliceSource>(configLikeText(100000), 4096), std::move(*reservation));
-
-    // Still charged while the body is being produced, and after the last byte, until the transfer
-    // drops the source.
-    std::string buffer(4096, '\0');
-    ASSERT_GT(source->read(buffer.data(), buffer.size()), 0U);
-    EXPECT_EQ(budget.availableBytes(), before - ZstdEncoder::memoryRequired());
-    while (source->read(buffer.data(), buffer.size()) != 0)
-    {
-    }
-    EXPECT_EQ(budget.availableBytes(), before - ZstdEncoder::memoryRequired());
-
-    source.reset();
-    EXPECT_EQ(budget.availableBytes(), before);
 }
 
 TEST(ZstdCompressingByteSource, ReleasesTheInnerSourceWithItself)

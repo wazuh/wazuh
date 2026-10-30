@@ -13,7 +13,6 @@
 
 #include "common/contentEncoding.hpp"
 #include "common/zstdEncoder.hpp"
-#include "compressingResponder.hpp"
 #include "responseEncoding.hpp"
 #include "zstdCompressingByteSource.hpp"
 
@@ -41,17 +40,16 @@ namespace remoted::http
             return remoted::common::ZstdEncoder::memoryRequired();
         }
 
-        std::shared_ptr<IByteSource> wrap(std::shared_ptr<IByteSource> inner,
-                                          InFlightBudget::Reservation reservation) const override
+        std::shared_ptr<IByteSource> wrap(std::shared_ptr<IByteSource> inner) const override
         {
-            return std::make_shared<ZstdCompressingByteSource>(std::move(inner), std::move(reservation));
+            return std::make_shared<ZstdCompressingByteSource>(std::move(inner));
         }
     };
 
-    /// The decorator remoted installs: zstd is the only response coding the manager offers today.
-    inline StreamResponderDecorator makeZstdResponseDecorator()
+    /// The factory remoted installs: zstd is the only response coding the manager offers today.
+    inline StreamTransformFactory makeZstdStreamTransformFactory()
     {
-        return makeResponseEncodingDecorator({std::make_shared<const ZstdResponseEncoding>()});
+        return makeResponseEncodingFactory({std::make_shared<const ZstdResponseEncoding>()});
     }
 
 } // namespace remoted::http

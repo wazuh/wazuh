@@ -223,25 +223,37 @@ namespace remoted::http
      * @brief Reserves @p bytes against the in-flight byte budget, for as long as the returned token
      *        is kept alive; nullopt when they do not fit right now.
      *
-     * The transport hands one to a StreamResponderDecorator so the decorator can charge memory it
-     * allocates for a transfer (see IHttpServer::tryReserveInFlightBytes()) without knowing the budget.
+     * The transport hands one to a StreamTransformFactory so the transform it returns can charge
+     * memory it allocates for a transfer (see IHttpServer::tryReserveInFlightBytes()) without
+     * knowing the budget.
      */
     using ReserveBytesFn = std::function<std::optional<InFlightBudget::Reservation>(std::size_t bytes)>;
 
     /**
-     * @brief Hook the transport calls once per request to a Streamable route, on the I/O thread and
-     *        before the handler is queued, to wrap the responder the handler will receive.
+     * @brief Rewrites a streamed response just before the transport sends it.
      *
-     * It sees the request's headers (the neutral copy, body included) and the transport's own
-     * responder, and returns the responder to hand down: the argument itself to leave the request
-     * alone, or a decorator over it. This is how a transport-level concern that depends on the
-     * request (response content-coding negotiation) gets in without the transport knowing about it,
-     * the way HttpServerConfig::onCaRecordReady keeps the CA record out of it. Must be cheap and
-     * must not block. If it throws, the request is served without it (the failure is logged,
-     * throttled): a hook exists to add something optional, so its failure must not fail the request.
+     * Receives the response by reference and may change its headers and wrap its source. It has to
+     * leave a usable response, one whose source is still set. If it throws, or leaves none, the
+     * transport discards what it did and sends the response as the handler built it, and logs the
+     * failure (throttled): a transform exists to add something optional, so its failure must not
+     * fail the transfer.
      */
-    using StreamResponderDecorator = std::function<std::shared_ptr<IHttpResponder>(
-        const HttpRequest& request, std::shared_ptr<IHttpResponder> responder, const ReserveBytesFn& reserve)>;
+    using StreamTransform = std::function<void(StreamResponse& response)>;
+
+    /**
+     * @brief Hook the transport calls once per request to a Streamable route, on the I/O thread and
+     *        before the handler is queued, to choose the transform applied to the response that
+     *        request's handler streams.
+     *
+     * It sees the request's headers (the neutral copy, body included) and returns the transform, or
+     * an empty function when it has nothing to do. Only the choice is made here, so it must be cheap
+     * and must not block; the transform itself runs later, on the worker that answers. This is how a
+     * transport-level concern that depends on the request (response content-coding negotiation) gets
+     * in without the transport knowing about it, the way HttpServerConfig::onCaRecordReady keeps the
+     * CA record out of it. If it throws, the request gets no transform (logged, throttled).
+     */
+    using StreamTransformFactory =
+        std::function<StreamTransform(const HttpRequest& request, const ReserveBytesFn& reserve)>;
 
     /**
      * @brief Client-certificate verification strictness for the HTTPS listener.
@@ -322,11 +334,11 @@ namespace remoted::http
         /// Bytes per chunk for a streamed response body. Per in-flight transfer, so the worst-case
         /// cost is this times the number of simultaneous streams. See remoted.http_stream_chunk_size.
         std::size_t streamChunkSize {64U * 1024U};
-        /// Optional hook applied to the responder of every Streamable route (see
-        /// StreamResponderDecorator). Empty: handlers get the transport's own responder. remoted
-        /// installs the response content-coding decorator here when
+        /// Optional hook choosing, per request to a Streamable route, a transform applied to the
+        /// streamed response (see StreamTransformFactory). Empty: responses go out as the handler
+        /// built them. remoted installs the response content-coding factory here when
         /// remoted.http_content_encoding_enabled is on (see buildHttpServerConfig()).
-        StreamResponderDecorator decorateStreamResponder {};
+        StreamTransformFactory streamTransformFactory {};
         /// Max in-flight (unprocessed) request payload bytes before new requests get 503. 0 disables the limit.
         std::size_t maxInFlightBytes {256U * 1024U * 1024U};
         /// Max simultaneous TCP connections (bounds the read-phase peak: maxParallelConnections * maxBodySize).

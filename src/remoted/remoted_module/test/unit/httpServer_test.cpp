@@ -335,20 +335,20 @@ TEST(HttpServerConfigTest, MaxHandshakesPerSourceHonorsZeroOnlyWhenSet)
     EXPECT_EQ(buildHttpServerConfig(raw).maxHandshakesPerSource, 32U);
 }
 
-TEST(HttpServerConfigTest, TheResponseEncodingHookFollowsTheRemotedFlag)
+TEST(HttpServerConfigTest, TheResponseEncodingFactoryFollowsTheRemotedFlag)
 {
     // The flag arrives resolved from remoted (default enabled, see secure.c); a hand-zeroed struct
     // is the only way to see it off, and it must stay off rather than fall back to a default.
     auto raw = zeroedConfig();
 
     raw.http_content_encoding_enabled = true;
-    EXPECT_TRUE(static_cast<bool>(buildHttpServerConfig(raw).decorateStreamResponder));
+    EXPECT_TRUE(static_cast<bool>(buildHttpServerConfig(raw).streamTransformFactory));
 
     raw.http_content_encoding_enabled = false;
-    EXPECT_FALSE(static_cast<bool>(buildHttpServerConfig(raw).decorateStreamResponder));
+    EXPECT_FALSE(static_cast<bool>(buildHttpServerConfig(raw).streamTransformFactory));
 
-    EXPECT_FALSE(static_cast<bool>(HttpServerConfig {}.decorateStreamResponder))
-        << "a directly built config decorates nothing";
+    EXPECT_FALSE(static_cast<bool>(HttpServerConfig {}.streamTransformFactory))
+        << "a directly built config transforms nothing";
 }
 
 TEST(HttpServerConfigTest, StructValuesWin)
@@ -3509,35 +3509,11 @@ TEST(HttpServerTest, TlsInventoryFollowsTheCaFileButNotTheLeafFile)
 }
 
 // ---------------------------------------------------------------------------
-// The stream-responder decorator hook (HttpServerConfig::decorateStreamResponder)
+// The stream transform hook (HttpServerConfig::streamTransformFactory)
 // ---------------------------------------------------------------------------
 
 namespace
 {
-    /// Marks whatever a handler streams, to prove the hook's responder is the one the handler gets.
-    class MarkingResponder final : public IHttpResponder
-    {
-    public:
-        explicit MarkingResponder(std::shared_ptr<IHttpResponder> inner)
-            : m_inner {std::move(inner)}
-        {
-        }
-
-        void send(HttpResponse response) override
-        {
-            m_inner->send(std::move(response));
-        }
-
-        void stream(StreamResponse response) override
-        {
-            response.headers.emplace_back("X-Decorated", "1");
-            m_inner->stream(std::move(response));
-        }
-
-    private:
-        std::shared_ptr<IHttpResponder> m_inner;
-    };
-
     RouteHandler streamsHello()
     {
         return [](std::shared_ptr<const HttpRequest>, std::shared_ptr<IHttpResponder> responder)
@@ -3547,168 +3523,211 @@ namespace
             responder->stream(std::move(response));
         };
     }
+
+    /// A real TLS server with one streamable route (`/stream`, answers "hello") and one buffered
+    /// route (`/plain`), started with whatever factory a test hands it.
+    class HttpServerStreamTransformTest : public ::testing::Test
+    {
+    protected:
+        struct Streamed
+        {
+            std::string head;
+            std::string body;
+            bool complete {false};
+        };
+
+        void SetUp() override
+        {
+            m_cert = remoted::test::generateTestCertificate("rmt_stream_transform");
+            if (!m_cert)
+            {
+                GTEST_SKIP() << "openssl not available to generate a test certificate";
+            }
+            m_cleanup = std::make_unique<remoted::test::ScratchFileCleanup>(
+                std::vector<std::string> {m_cert->certPath, m_cert->keyPath});
+
+            m_server = makeHttpServer();
+            m_server->addRoute(
+                Method::Post, "/stream", streamsHello(), /*countAgainstBudget=*/true, ResponseMode::Streamable);
+            m_server->addRoute(Method::Post,
+                               "/plain",
+                               [](std::shared_ptr<const HttpRequest>, std::shared_ptr<IHttpResponder> responder)
+                               { responder->send(HttpResponse::json(200, R"({"ok":true})")); });
+        }
+
+        void TearDown() override
+        {
+            if (m_server)
+            {
+                m_server->stop();
+            }
+        }
+
+        void start(StreamTransformFactory factory = {})
+        {
+            m_config.caPublicationRecordPath = "";
+            m_config.port = static_cast<std::uint16_t>(31000 + (::getpid() % 4000));
+            m_config.certificatePath = m_cert->certPath;
+            m_config.privateKeyPath = m_cert->keyPath;
+            m_config.streamTransformFactory = std::move(factory);
+            m_server->start(m_config);
+        }
+
+        std::string request(const std::string& target = "/stream")
+        {
+            return remoted::test::sendSignedRequest(
+                m_config.port, remoted::test::testAgentKey(), target, "{}", 0, "Accept-Encoding: x-test\r\n");
+        }
+
+        Streamed stream()
+        {
+            Streamed streamed;
+            const auto raw = request();
+            if (raw.empty())
+            {
+                return streamed;
+            }
+            auto [head, body] = remoted::test::splitResponse(raw);
+            streamed.head = std::move(head);
+            std::vector<std::size_t> sizes;
+            streamed.body = remoted::test::decodeChunked(body, sizes, streamed.complete);
+            return streamed;
+        }
+
+        std::unique_ptr<IHttpServer> m_server;
+        HttpServerConfig m_config;
+        std::optional<remoted::test::TestCertificate> m_cert;
+        std::unique_ptr<remoted::test::ScratchFileCleanup> m_cleanup;
+    };
 } // namespace
 
-TEST(HttpServerStreamDecoratorTest, SeesTheRequestHeadersAndItsResponderIsTheOneTheHandlerGets)
+TEST_F(HttpServerStreamTransformTest, TheFactorySeesTheRequestAndItsTransformReachesTheWire)
 {
-    auto certOpt = remoted::test::generateTestCertificate("rmt_stream_decorator");
-    if (!certOpt)
-    {
-        GTEST_SKIP() << "openssl not available to generate a test certificate";
-    }
-    remoted::test::ScratchFileCleanup cleanup {{certOpt->certPath, certOpt->keyPath}};
-
-    auto server = makeHttpServer();
-    server->addRoute(Method::Post, "/stream", streamsHello(), /*countAgainstBudget=*/true, ResponseMode::Streamable);
-
     std::mutex mutex;
     std::string seenOffer;
     std::atomic_bool reserved {false};
 
-    HttpServerConfig config;
-    config.caPublicationRecordPath = "";
-    config.port = static_cast<std::uint16_t>(32000 + (::getpid() % 1000));
-    config.certificatePath = certOpt->certPath;
-    config.privateKeyPath = certOpt->keyPath;
-    config.decorateStreamResponder = [&](const HttpRequest& request,
-                                         std::shared_ptr<IHttpResponder> responder,
-                                         const ReserveBytesFn& reserve) -> std::shared_ptr<IHttpResponder>
-    {
+    start(
+        [&](const HttpRequest& request, const ReserveBytesFn& reserve) -> StreamTransform
         {
-            const std::lock_guard<std::mutex> lock {mutex};
-            seenOffer = headerValue(request.headers, "accept-encoding");
-        }
-        reserved = reserve(1024).has_value();
-        return std::make_shared<MarkingResponder>(std::move(responder));
-    };
-    server->start(config);
+            {
+                const std::lock_guard<std::mutex> lock {mutex};
+                seenOffer = headerValue(request.headers, "accept-encoding");
+            }
+            reserved = reserve(1024).has_value();
+            return [](StreamResponse& response)
+            {
+                response.headers.emplace_back("X-Transformed", "1");
+                response.source = std::make_shared<BufferByteSource>("transformed");
+            };
+        });
 
-    const auto raw = remoted::test::sendSignedRequest(
-        config.port, remoted::test::testAgentKey(), "/stream", "{}", 0, "Accept-Encoding: x-test\r\n");
-    server->stop();
+    const auto streamed = stream();
 
-    ASSERT_FALSE(raw.empty());
-    const auto [head, body] = remoted::test::splitResponse(raw);
-    EXPECT_TRUE(headerPresent(head, "x-decorated: 1")) << head;
-
-    std::vector<std::size_t> sizes;
-    bool complete = false;
-    EXPECT_EQ(remoted::test::decodeChunked(body, sizes, complete), "hello");
-    EXPECT_TRUE(complete);
+    EXPECT_TRUE(headerPresent(streamed.head, "x-transformed: 1")) << streamed.head;
+    EXPECT_EQ(streamed.body, "transformed") << "the source the transform installed is the one that is sent";
+    EXPECT_TRUE(streamed.complete);
 
     const std::lock_guard<std::mutex> lock {mutex};
     EXPECT_EQ(seenOffer, "x-test");
-    EXPECT_TRUE(reserved.load()) << "the transport hands the hook a working reserve function";
+    EXPECT_TRUE(reserved.load()) << "the transport hands the factory a working reserve function";
 }
 
-TEST(HttpServerStreamDecoratorTest, IsNeverCalledForARouteThatCannotStream)
+TEST_F(HttpServerStreamTransformTest, TheFactoryIsNeverCalledForARouteThatCannotStream)
 {
-    auto certOpt = remoted::test::generateTestCertificate("rmt_stream_decorator_buffered");
-    if (!certOpt)
-    {
-        GTEST_SKIP() << "openssl not available to generate a test certificate";
-    }
-    remoted::test::ScratchFileCleanup cleanup {{certOpt->certPath, certOpt->keyPath}};
-
-    auto server = makeHttpServer();
-    server->addRoute(Method::Post,
-                     "/plain",
-                     [](std::shared_ptr<const HttpRequest>, std::shared_ptr<IHttpResponder> responder)
-                     { responder->send(HttpResponse::json(200, R"({"ok":true})")); });
-
     std::atomic_int calls {0};
-    HttpServerConfig config;
-    config.caPublicationRecordPath = "";
-    config.port = static_cast<std::uint16_t>(33000 + (::getpid() % 1000));
-    config.certificatePath = certOpt->certPath;
-    config.privateKeyPath = certOpt->keyPath;
-    config.decorateStreamResponder =
-        [&calls](const HttpRequest&, std::shared_ptr<IHttpResponder> responder, const ReserveBytesFn&)
-    {
-        ++calls;
-        return responder;
-    };
-    server->start(config);
+    start(
+        [&calls](const HttpRequest&, const ReserveBytesFn&) -> StreamTransform
+        {
+            ++calls;
+            return {};
+        });
 
-    const auto raw = remoted::test::sendSignedRequest(
-        config.port, remoted::test::testAgentKey(), "/plain", "{}", 0, "Accept-Encoding: x-test\r\n");
-    server->stop();
+    const auto raw = request("/plain");
 
     ASSERT_FALSE(raw.empty());
     EXPECT_NE(raw.find("200 OK"), std::string::npos) << raw;
-    EXPECT_EQ(calls.load(), 0) << "a buffered route has nothing to decorate";
+    EXPECT_EQ(calls.load(), 0) << "a buffered route has nothing to transform";
 }
 
-TEST(HttpServerStreamDecoratorTest, ARequestWithoutAHookIsServedByTheTransportsOwnResponder)
+TEST_F(HttpServerStreamTransformTest, WithoutAFactoryTheResponseIsExactlyWhatTheHandlerBuilt)
 {
-    auto certOpt = remoted::test::generateTestCertificate("rmt_stream_no_decorator");
-    if (!certOpt)
-    {
-        GTEST_SKIP() << "openssl not available to generate a test certificate";
-    }
-    remoted::test::ScratchFileCleanup cleanup {{certOpt->certPath, certOpt->keyPath}};
+    start();
 
-    auto server = makeHttpServer();
-    server->addRoute(Method::Post, "/stream", streamsHello(), /*countAgainstBudget=*/true, ResponseMode::Streamable);
+    const auto streamed = stream();
 
-    HttpServerConfig config;
-    config.caPublicationRecordPath = "";
-    config.port = static_cast<std::uint16_t>(34000 + (::getpid() % 1000));
-    config.certificatePath = certOpt->certPath;
-    config.privateKeyPath = certOpt->keyPath;
-    server->start(config);
-
-    const auto raw = remoted::test::sendSignedRequest(
-        config.port, remoted::test::testAgentKey(), "/stream", "{}", 0, "Accept-Encoding: zstd\r\n");
-    server->stop();
-
-    ASSERT_FALSE(raw.empty());
-    const auto [head, body] = remoted::test::splitResponse(raw);
-    EXPECT_FALSE(headerPresent(head, "content-encoding")) << head;
-    std::vector<std::size_t> sizes;
-    bool complete = false;
-    EXPECT_EQ(remoted::test::decodeChunked(body, sizes, complete), "hello");
+    EXPECT_FALSE(headerPresent(streamed.head, "content-encoding")) << streamed.head;
+    EXPECT_EQ(streamed.body, "hello");
+    EXPECT_TRUE(streamed.complete);
 }
 
-TEST(HttpServerStreamDecoratorTest, AHookThatThrowsDegradesToAnUndecoratedResponse)
+TEST_F(HttpServerStreamTransformTest, AFactoryThatChoosesNothingLeavesTheResponseAlone)
 {
-    auto certOpt = remoted::test::generateTestCertificate("rmt_stream_decorator_throws");
-    if (!certOpt)
-    {
-        GTEST_SKIP() << "openssl not available to generate a test certificate";
-    }
-    remoted::test::ScratchFileCleanup cleanup {{certOpt->certPath, certOpt->keyPath}};
+    start([](const HttpRequest&, const ReserveBytesFn&) -> StreamTransform { return {}; });
 
-    auto server = makeHttpServer();
-    server->addRoute(Method::Post, "/stream", streamsHello(), /*countAgainstBudget=*/true, ResponseMode::Streamable);
+    const auto streamed = stream();
 
-    HttpServerConfig config;
-    config.caPublicationRecordPath = "";
-    config.port = static_cast<std::uint16_t>(35000 + (::getpid() % 1000));
-    config.certificatePath = certOpt->certPath;
-    config.privateKeyPath = certOpt->keyPath;
-    config.decorateStreamResponder = [](const HttpRequest&,
-                                        std::shared_ptr<IHttpResponder>,
-                                        const ReserveBytesFn&) -> std::shared_ptr<IHttpResponder>
-    {
-        throw std::runtime_error("the hook failed");
-    };
-    server->start(config);
+    EXPECT_EQ(streamed.body, "hello");
+    EXPECT_TRUE(streamed.complete);
+}
 
-    // Twice: the failure of one request must not leave the server unable to serve the next.
+TEST_F(HttpServerStreamTransformTest, AFactoryThatThrowsGivesNoTransformAndTheTransferStillWorks)
+{
+    start([](const HttpRequest&, const ReserveBytesFn&) -> StreamTransform
+          { throw std::runtime_error("the factory failed"); });
+
+    // Twice: one failure must not leave the server unable to serve the next request.
     for (int i = 0; i < 2; ++i)
     {
-        const auto raw = remoted::test::sendSignedRequest(
-            config.port, remoted::test::testAgentKey(), "/stream", "{}", 0, "Accept-Encoding: x-test\r\n");
+        const auto streamed = stream();
 
-        ASSERT_FALSE(raw.empty()) << "no answer at all to a request whose hook threw";
-        const auto [head, body] = remoted::test::splitResponse(raw);
-        EXPECT_NE(head.find(" 200 "), std::string::npos) << head;
-        EXPECT_FALSE(headerPresent(head, "x-decorated")) << head;
-        std::vector<std::size_t> sizes;
-        bool complete = false;
-        EXPECT_EQ(remoted::test::decodeChunked(body, sizes, complete), "hello");
-        EXPECT_TRUE(complete);
+        EXPECT_NE(streamed.head.find(" 200 "), std::string::npos) << streamed.head;
+        EXPECT_EQ(streamed.body, "hello");
+        EXPECT_TRUE(streamed.complete);
     }
-    server->stop();
+}
+
+TEST_F(HttpServerStreamTransformTest, ATransformThatThrowsAfterChangingTheResponseSendsItAsTheHandlerBuiltIt)
+{
+    start(
+        [](const HttpRequest&, const ReserveBytesFn&) -> StreamTransform
+        {
+            return [](StreamResponse& response)
+            {
+                // Changed first, then fails: none of it may reach the wire.
+                response.headers.emplace_back("X-Half-Done", "1");
+                response.source = std::make_shared<BufferByteSource>("half done");
+                throw std::runtime_error("the transform failed");
+            };
+        });
+
+    for (int i = 0; i < 2; ++i)
+    {
+        const auto streamed = stream();
+
+        EXPECT_NE(streamed.head.find(" 200 "), std::string::npos) << streamed.head;
+        EXPECT_FALSE(headerPresent(streamed.head, "x-half-done")) << streamed.head;
+        EXPECT_EQ(streamed.body, "hello");
+        EXPECT_TRUE(streamed.complete);
+    }
+}
+
+TEST_F(HttpServerStreamTransformTest, ATransformThatLeavesNoSourceSendsTheResponseAsTheHandlerBuiltIt)
+{
+    start(
+        [](const HttpRequest&, const ReserveBytesFn&) -> StreamTransform
+        {
+            return [](StreamResponse& response)
+            {
+                response.headers.emplace_back("X-Broken", "1");
+                response.source.reset();
+            };
+        });
+
+    const auto streamed = stream();
+
+    EXPECT_NE(streamed.head.find(" 200 "), std::string::npos) << streamed.head;
+    EXPECT_FALSE(headerPresent(streamed.head, "x-broken")) << streamed.head;
+    EXPECT_EQ(streamed.body, "hello");
+    EXPECT_TRUE(streamed.complete);
 }

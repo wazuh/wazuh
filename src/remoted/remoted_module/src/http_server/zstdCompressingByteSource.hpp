@@ -13,7 +13,6 @@
 
 #include "IHttpServer.hpp"
 #include "common/zstdEncoder.hpp"
-#include "inFlightBudget.hpp"
 
 #include <cstddef>
 #include <memory>
@@ -28,14 +27,11 @@ namespace remoted::http
      * The inner source's failure semantics are preserved on purpose: an exception from it (the file
      * changed mid-transfer) propagates out of read(), the pump withholds the terminating chunk, and
      * the peer is left with a truncated frame it cannot decode.
-     *
-     * Holds the in-flight budget reservation covering the compressor, so the memory stays charged
-     * for exactly as long as the transfer owns this source.
      */
     class ZstdCompressingByteSource final : public IByteSource
     {
     public:
-        ZstdCompressingByteSource(std::shared_ptr<IByteSource> inner, InFlightBudget::Reservation reservation);
+        explicit ZstdCompressingByteSource(std::shared_ptr<IByteSource> inner);
 
         /**
          * @brief Produce the next slice of the frame.
@@ -52,7 +48,6 @@ namespace remoted::http
 
     private:
         std::shared_ptr<IByteSource> m_inner;
-        InFlightBudget::Reservation m_reservation;
         remoted::common::ZstdEncoder m_encoder;
         std::string m_staging;         ///< Plain bytes read from the inner source, not yet consumed.
         std::size_t m_stagedPos {0};   ///< Next unconsumed byte of m_staging.
