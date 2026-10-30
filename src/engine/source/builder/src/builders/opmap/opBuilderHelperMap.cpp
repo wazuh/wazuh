@@ -1089,6 +1089,7 @@ MapOp opBuilderHelperStringFromArray(const std::vector<OpArg>& opArgs, const std
 }
 
 // field: +decode_base16/$<hex_reference>
+// The reference can be a string or an array (each valid hexadecimal string element is decoded).
 MapOp opBuilderHelperStringFromHexa(const std::vector<OpArg>& opArgs, const std::shared_ptr<const IBuildCtx>& buildCtx)
 {
     // Assert expected number of parameters
@@ -1114,11 +1115,12 @@ MapOp opBuilderHelperStringFromHexa(const std::vector<OpArg>& opArgs, const std:
     const std::string successTrace {fmt::format(TRACE_SUCCESS, traceName)};
 
     const std::string failureTrace1 {fmt::format(TRACE_REFERENCE_NOT_FOUND, traceName, hexRef.dotPath())};
-    const std::string failureTrace2 {fmt::format(TRACE_REFERENCE_TYPE_IS_NOT, "array", traceName, hexRef.dotPath())};
+    const std::string failureTrace2 {
+        fmt::format("[{}] -> Failure: Parameter '{}' type is neither string nor array", traceName, hexRef.dotPath())};
     const std::string failureTrace3 {
         fmt::format("[{}] -> Failure: Hexa string has not an even quantity of digits", traceName)};
-    const std::string failureTrace4 {fmt::format("{} -> Failure: ", traceName)};
-    const auto failureTrace5 = fmt::format("{} -> Found non ascii character", traceName);
+    const std::string failureTrace4 {
+        fmt::format("[{}] -> Failure: Hexa string has a non hexadecimal digit or a non ASCII byte", traceName)};
 
     // Return Op
     return [=,
@@ -1126,8 +1128,6 @@ MapOp opBuilderHelperStringFromHexa(const std::vector<OpArg>& opArgs, const std:
             sourceField = hexRef.jsonPath(),
             sourceFieldPP = json::PointerPath(hexRef.jsonPath())](base::ConstEvent event) -> MapResult
     {
-        std::string strHex {};
-
         // Getting string field from a reference
         if (!event->exists(sourceField))
         {
@@ -1137,45 +1137,57 @@ MapOp opBuilderHelperStringFromHexa(const std::vector<OpArg>& opArgs, const std:
         std::string refStrHEX;
         if (auto ret = event->getString(refStrHEX, sourceFieldPP); ret != json::RetGet::Success)
         {
-            RETURN_FAILURE(isTestMode, json::Json {}, ret == json::RetGet::NotFound ? failureTrace1 : failureTrace2);
+            if (ret == json::RetGet::NotFound)
+            {
+                RETURN_FAILURE(isTestMode, json::Json {}, failureTrace1);
+            }
+
+            // Array reference: decode each valid hexadecimal string element, keep the rest unchanged
+            auto elements = event->getArray(sourceField);
+            if (!elements)
+            {
+                RETURN_FAILURE(isTestMode, json::Json {}, failureTrace2);
+            }
+
+            json::Json result;
+            result.setArray();
+            for (const auto& element : elements.value())
+            {
+                std::string_view strElement;
+                std::optional<std::string> decoded;
+                if (element.getString(strElement) == json::RetGet::Success)
+                {
+                    decoded = base::utils::string::hexToAscii(strElement);
+                }
+
+                if (decoded)
+                {
+                    json::Json jDecoded;
+                    jDecoded.setString(decoded.value());
+                    result.appendJson(jDecoded);
+                }
+                else
+                {
+                    result.appendJson(element);
+                }
+            }
+
+            RETURN_SUCCESS(isTestMode, result, successTrace);
         }
 
-        strHex = refStrHEX;
-
-        const auto lenHex = strHex.length();
-
-        if (lenHex % 2)
+        if (refStrHEX.length() % 2 != 0)
         {
             RETURN_FAILURE(isTestMode, json::Json {}, failureTrace3);
         }
 
-        std::string strASCII {};
-        strASCII.resize(lenHex / 2);
-
-        for (int iHex = 0, iASCII = 0; iHex < lenHex; iHex += 2, iASCII++)
+        const auto strASCII = base::utils::string::hexToAscii(refStrHEX);
+        if (!strASCII)
         {
-            char* err = nullptr;
-
-            std::string byte = strHex.substr(iHex, 2);
-            char chr = (char)strtol(byte.c_str(), &err, 16); // BASE: 16 (Hexa)
-
-            if (err != nullptr && *err != 0)
-            {
-                RETURN_FAILURE(isTestMode,
-                               json::Json {},
-                               failureTrace4 + fmt::format("Character '{}' is not a valid hexa digit", err));
-            }
-
-            if (chr < 0 || chr > 127)
-            {
-                RETURN_FAILURE(isTestMode, json::Json {}, failureTrace5);
-            }
-
-            strASCII[iASCII] = chr;
+            RETURN_FAILURE(isTestMode, json::Json {}, failureTrace4);
         }
 
         json::Json result;
-        result.setString(strASCII);
+        result.setString(strASCII.value());
 
         RETURN_SUCCESS(isTestMode, result, successTrace);
     };

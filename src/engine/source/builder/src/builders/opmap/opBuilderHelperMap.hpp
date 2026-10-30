@@ -102,6 +102,11 @@ MapOp opBuilderHelperStringFromArray(const std::vector<OpArg>& opArgs,
  * @brief Transforms a string of hexa digits into an ASCII string
  * i.e: 'targetField: +decode_base16/48656C6C6F20776F726C6421' then 'targetField' would be
  * 'Hello world!'
+ *
+ * If the reference is an array, the result is an array of the same length where each string element that
+ * base::utils::string::hexToAscii accepts (even number of hexadecimal digits, ASCII bytes) is decoded, and every other
+ * element (plain text, invalid hexadecimal, non-ASCII result, non-string) is copied unchanged. An empty array yields an
+ * empty array.
  * @param opArgs Vector of operation arguments containing numeric values to be converted.
  * @param buildCtx Shared pointer to the build context used for the conversion operation.
  * @throw std::runtime_error if the parameter is not a reference
