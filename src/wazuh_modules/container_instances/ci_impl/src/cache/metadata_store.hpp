@@ -102,15 +102,27 @@ namespace wazuh::container_instances
         [[nodiscard]] std::vector<ContainerRecordPtr> listContainersLocked() const;
         [[nodiscard]] std::set<std::string> unkeyedContainerIdsLocked() const;
 
-        /// Every id listContainers() would publish, ordered. The admission rule
-        /// is fed from visibility rather than existence so that a running record
-        /// the resolver has not keyed yet cannot hold a slot it is not using.
-        [[nodiscard]] std::set<std::string> visibleIdsLocked() const;
+        /// Every container id this store knows of, ordered: what listContainers()
+        /// publishes plus what unkeyedContainerIds() reports.
+        ///
+        /// EXISTENCE, not visibility. The cap bounds how many containers the node
+        /// reports on, and a container the resolver has not keyed is one of them:
+        /// no consumer can be told it is refused, so every consumer reports it.
+        /// Ranking only the visible ones therefore did not bound anything — it
+        /// handed the unkeyed ones a free pass outside the ceiling, and since a
+        /// container is unkeyed for a while after every restart, the node
+        /// exceeded the cap once per restart and the restarted container was
+        /// created on the manager and deleted again when its key came back.
+        ///
+        /// Holding the slot is also the point: an admitted container that
+        /// restarts is not a departure, and dropping it from the ranking for the
+        /// length of its restart gave its slot away to the next id (#37532).
+        [[nodiscard]] std::set<std::string> knownIdsLocked() const;
 
-        /// Re-runs the admission rule over the current visible set. Cheap and
-        /// idempotent, so it is called after any batch that can change
-        /// visibility rather than tracked incrementally — the rule is a pure
-        /// function of (visible, admitted, limit), and recomputing it is how a
+        /// Re-runs the admission rule over every known container. Cheap and
+        /// idempotent, so it is called after any batch that can change what
+        /// exists rather than tracked incrementally — the rule is a pure
+        /// function of (known, admitted, limit), and recomputing it is how a
         /// slot freed by a departure is handed on in the same pass.
         void recomputeAdmittedLocked();
 

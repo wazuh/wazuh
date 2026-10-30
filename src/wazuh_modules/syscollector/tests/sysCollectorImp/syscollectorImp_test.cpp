@@ -54,9 +54,14 @@ namespace
     bool containerListComplete {true};
 
     // Containers the hooked connector knows of but cannot key. Reported through
-    // the unkeyed sink, exactly as the real one does.
+    // the unkeyed sink AND the id sink, exactly as the real one does: the cap
+    // ranks them like any other container, so each carries a verdict.
     std::set<std::string> containerUnkeyedIds;
     bool containerUnkeyedKnown {true};
+
+    // Which of those the cap refused. Empty means it admitted them all, which is
+    // the ordinary case and what every test that predates the cap expects.
+    std::set<std::string> containerUnkeyedRefused;
 } // namespace
 
 extern "C" int
@@ -87,11 +92,19 @@ extern "C" int __wrap_cbaseline_list_containers_ex(const char* socket,
 
     const int listed = containerListHook(sink, ctx);
 
-    if (listed >= 0 && containerUnkeyedKnown && unkeyedSink != nullptr)
+    if (listed >= 0 && containerUnkeyedKnown)
     {
         for (const auto& id : containerUnkeyedIds)
         {
-            unkeyedSink(id.c_str(), unkeyedCtx);
+            if (unkeyedSink != nullptr)
+            {
+                unkeyedSink(id.c_str(), unkeyedCtx);
+            }
+
+            if (sink != nullptr)
+            {
+                sink(id.c_str(), containerUnkeyedRefused.count(id) == 0 ? 1 : 0, ctx);
+            }
         }
     }
 
@@ -7475,6 +7488,8 @@ TEST_F(SyscollectorImpTest, ContainerBaselineAdmissionAndCleanup)
             containerListHook = {};
             containerListComplete = true;
             containerUnkeyedIds.clear();
+    containerUnkeyedRefused.clear();
+            containerUnkeyedRefused.clear();
             containerUnkeyedKnown = true;
         }
     } resetHooks;
@@ -7630,6 +7645,8 @@ TEST_F(SyscollectorImpTest, RetractionSeesRowsReportedInTheSamePass)
             containerListHook = {};
             containerListComplete = true;
             containerUnkeyedIds.clear();
+    containerUnkeyedRefused.clear();
+            containerUnkeyedRefused.clear();
             containerUnkeyedKnown = true;
         }
     } resetHooks;
@@ -7808,6 +7825,8 @@ TEST_F(SyscollectorImpTest, APartialListingNeitherSweepsNorDeAdmits)
             containerListHook = {};
             containerListComplete = true;
             containerUnkeyedIds.clear();
+    containerUnkeyedRefused.clear();
+            containerUnkeyedRefused.clear();
             containerUnkeyedKnown = true;
         }
     } resetHooks;
@@ -7908,6 +7927,7 @@ TEST_F(SyscollectorImpTest, APartialListingNeitherSweepsNorDeAdmits)
 
     // The same absence, now from a listing that claims to be the whole node.
     containerUnkeyedIds.clear();
+    containerUnkeyedRefused.clear();
     module.runContainerBaselinePass();
     EXPECT_EQ(flags().count("b"), 0u) << "a complete listing is authoritative, so b really is gone";
 
@@ -7969,14 +7989,14 @@ TEST_F(SyscollectorImpTest, APartialListingAtStartupDoesNotArmTheGlobalReconcile
     // by absence from the admitted set, so running it now would retract every
     // container still being resolved -- and the carry-forward cannot help,
     // because there is nothing yet to carry.
-    module.setAdmittedContainers({{"a", true}, {"b", false}}, {}, /*listEnumerates=*/false);
+    module.setAdmittedContainers({{"a", true}, {"b", false}}, /*listEnumerates=*/false);
     EXPECT_FALSE(module.m_globalReconcilePending)
             << "a listing that cannot say what it omitted must not authorise the global reconcile";
     EXPECT_TRUE(module.m_pendingRetractions.empty());
 
     // A listing that names what it could not key arms it, complete or not: the
     // pass needs to know which containers exist, not which ones are keyed.
-    module.setAdmittedContainers({{"a", true}, {"b", false}}, {"stuck"}, /*listEnumerates=*/true);
+    module.setAdmittedContainers({{"a", true}, {"b", false}, {"stuck", true}}, /*listEnumerates=*/true);
     EXPECT_TRUE(module.m_globalReconcilePending)
             << "the restart reconcile is owed, just not against a view that cannot say what it omitted";
 
@@ -8074,11 +8094,12 @@ TEST_F(SyscollectorImpTest, APerContainerRetractionDoesNotDisarmTheRestartReconc
     module.m_containerAdmissionWithholding = false;
 }
 
-// A container the connector cannot key was never ranked by the cap, so nothing
-// refused it. Reading its absence from the keyed list as a de-admission sends a
-// DELETE for every row it holds and re-creates them a cycle later -- and a
-// container being unkeyed is usually a container restarting.
-TEST_F(SyscollectorImpTest, AnUnkeyableContainerIsNotTreatedAsDeAdmitted)
+// A container the connector cannot key is ranked by the cap like any other, and
+// its verdict arrives here through the same sink. Two things follow, and they
+// pull in opposite directions: a restart must not look like a departure, and
+// being unkeyed must not be a way past containers.synced_limit. Only the
+// connector's own answer gets both right (#37532).
+TEST_F(SyscollectorImpTest, AnUnkeyableContainerIsRankedLikeAnyOther)
 {
     const auto info = std::make_shared<MockSysInfo>();
     EXPECT_CALL(*info, releaseThreadResources()).Times(testing::AnyNumber());
@@ -8117,23 +8138,27 @@ TEST_F(SyscollectorImpTest, AnUnkeyableContainerIsNotTreatedAsDeAdmitted)
     module.setAdmittedContainers({{"a", true}, {"flap", true}});
     ASSERT_TRUE(module.isContainerAdmittedLocked("flap"));
 
-    // flap restarts: its record is replaced, so it leaves the keyed list and
-    // appears among the ids the connector could not key.
-    module.setAdmittedContainers({{"a", true}}, {"flap"}, /*listEnumerates=*/true);
+    // flap restarts: its cgroup inode changes, so it leaves the KEYED list for a
+    // moment and the connector names it among the ids it could not key. It is
+    // still ranked -- the cap bounds container ids, not attribution keys -- so
+    // it arrives here through the same sink, holding its slot.
+    module.setAdmittedContainers({{"a", true}, {"flap", true}}, /*listEnumerates=*/true);
 
     EXPECT_TRUE(module.m_pendingRetractions.empty())
-            << "unkeyed is not refused, and retracting it withdraws every row the container holds";
-    EXPECT_TRUE(module.isContainerAdmittedLocked("flap"))
-            << "the cap ranks what the connector can publish; it never ranked this one";
-    EXPECT_EQ(module.m_admittedContainers.count("flap"), 1u)
-            << "and it stays in the set that remembers what was reporting, so a later refusal is "
-            "still seen as a loss";
-
-    // A container the cap genuinely turned down still reads as refused, which is
-    // the distinction the separate set exists to keep.
-    module.setAdmittedContainers({{"a", true}, {"b", false}}, {"flap"}, /*listEnumerates=*/true);
-    EXPECT_FALSE(module.isContainerAdmittedLocked("b"));
+            << "a restart is not a departure: nothing refused it, so nothing is withdrawn";
     EXPECT_TRUE(module.isContainerAdmittedLocked("flap"));
+    EXPECT_EQ(module.m_admittedContainers.count("flap"), 1u);
+
+    // ...and when the cap DOES turn it down while it is still unkeyed, that is a
+    // refusal like any other. This used to read as "never ranked" and admit it,
+    // which let the node report one container past containers.synced_limit for
+    // the length of every restart (#37532).
+    module.setAdmittedContainers({{"a", true}, {"b", false}, {"flap", false}}, /*listEnumerates=*/true);
+    EXPECT_FALSE(module.isContainerAdmittedLocked("b"));
+    EXPECT_FALSE(module.isContainerAdmittedLocked("flap"))
+            << "not being keyable is not a free pass past the cap";
+    EXPECT_EQ(module.m_pendingRetractions.count("flap"), 1u)
+            << "and its reported rows are owed a withdrawal, like any other de-admission";
 
     module.destroy();
     module.m_admittedContainers.clear();
@@ -8166,6 +8191,8 @@ TEST_F(SyscollectorImpTest, AnIncompleteListingThatNamesItsUnkeyedIdsStillArmsTh
             containerListHook = {};
             containerListComplete = true;
             containerUnkeyedIds.clear();
+    containerUnkeyedRefused.clear();
+            containerUnkeyedRefused.clear();
             containerUnkeyedKnown = true;
         }
     } resetHooks;
@@ -8256,6 +8283,8 @@ TEST_F(SyscollectorImpTest, AnUnkeyableContainerKeepsItsRowsWithoutBlockingClean
             containerListHook = {};
             containerListComplete = true;
             containerUnkeyedIds.clear();
+    containerUnkeyedRefused.clear();
+            containerUnkeyedRefused.clear();
             containerUnkeyedKnown = true;
         }
     } resetHooks;
@@ -8350,6 +8379,7 @@ TEST_F(SyscollectorImpTest, AnUnkeyableContainerKeepsItsRowsWithoutBlockingClean
 
     // A connector too old to name them leaves the sweep no choice but to wait.
     containerUnkeyedIds.clear();
+    containerUnkeyedRefused.clear();
     containerUnkeyedKnown = false;
     containerListComplete = false;
     admitted.erase("unkeyed");

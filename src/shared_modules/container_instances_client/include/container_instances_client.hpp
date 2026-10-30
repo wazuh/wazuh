@@ -265,12 +265,26 @@ namespace wazuh::container_instances_client
         ///        that exist but are not in the list because they have no
         ///        attribution key yet. @param unkeyedKnown says whether the
         ///        server reported them at all.
+        /// @param admitted Optional out-param, filled with the server's WHOLE
+        ///        admitted set: every container id it allows to report, keyed or
+        ///        not. Each listed record also carries ContainerRef::synced, but
+        ///        a container in @param unkeyed has no record to carry it, and
+        ///        this is the only place its decision appears. @param
+        ///        admittedKnown says whether the server sent the set at all; when
+        ///        it did not, the set is empty and means nothing.
         [[nodiscard]] std::vector<ContainerRef> listContainers(bool* reachable = nullptr,
                                                                bool* complete = nullptr,
                                                                std::set<std::string>* unkeyed = nullptr,
-                                                               bool* unkeyedKnown = nullptr) const
+                                                               bool* unkeyedKnown = nullptr,
+                                                               std::set<std::string>* admitted = nullptr,
+                                                               bool* admittedKnown = nullptr) const
         {
             std::vector<ContainerRef> result;
+
+            if (admittedKnown != nullptr)
+            {
+                *admittedKnown = false;
+            }
 
             if (reachable != nullptr)
             {
@@ -337,6 +351,27 @@ namespace wazuh::container_instances_client
                         if (id.is_string())
                         {
                             unkeyed->insert(id.get<std::string>());
+                        }
+                    }
+                }
+            }
+
+            const auto admittedIt = parsed.find("admitted");
+
+            if (admittedIt != parsed.end() && admittedIt->is_array())
+            {
+                if (admittedKnown != nullptr)
+                {
+                    *admittedKnown = true;
+                }
+
+                if (admitted != nullptr)
+                {
+                    for (const auto& id : *admittedIt)
+                    {
+                        if (id.is_string())
+                        {
+                            admitted->insert(id.get<std::string>());
                         }
                     }
                 }

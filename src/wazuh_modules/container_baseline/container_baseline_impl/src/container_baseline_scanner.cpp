@@ -155,7 +155,9 @@ std::vector<ContainerIdentity> DiscoverContainers(const std::string& socket_path
                                                   bool* reachable = nullptr,
                                                   bool* complete = nullptr,
                                                   std::set<std::string>* unkeyed = nullptr,
-                                                  bool* unkeyedKnown = nullptr)
+                                                  bool* unkeyedKnown = nullptr,
+                                                  std::set<std::string>* admitted = nullptr,
+                                                  bool* admittedKnown = nullptr)
 {
     wazuh::container_instances_client::ContainerInstancesClient client(socket_path);
     std::vector<ContainerIdentity> out;
@@ -185,7 +187,8 @@ std::vector<ContainerIdentity> DiscoverContainers(const std::string& socket_path
     {
         Listing answer;
         bool polled = false;
-        answer.payload = client.listContainers(&polled, &answer.complete, &answer.unkeyed, &answer.unkeyedKnown);
+        answer.payload = client.listContainers(
+            &polled, &answer.complete, &answer.unkeyed, &answer.unkeyedKnown, &answer.admitted, &answer.admittedKnown);
 
         if (!polled)
         {
@@ -274,6 +277,16 @@ std::vector<ContainerIdentity> DiscoverContainers(const std::string& socket_path
     if (unkeyed != nullptr)
     {
         *unkeyed = std::move(listing.unkeyed);
+    }
+
+    if (admittedKnown != nullptr)
+    {
+        *admittedKnown = listing.admittedKnown;
+    }
+
+    if (admitted != nullptr)
+    {
+        *admitted = std::move(listing.admitted);
     }
 
     out.reserve(listing.payload.size());
@@ -699,9 +712,11 @@ int ListContainers(const std::string& connector_socket_path, const ContainerIdSi
     bool reachable = false;
     bool listIsComplete = false;
     bool reportedUnkeyed = false;
+    bool reportedAdmitted = false;
     std::set<std::string> unkeyed;
-    const auto identities =
-        DiscoverContainers(connector_socket_path, &reachable, &listIsComplete, &unkeyed, &reportedUnkeyed);
+    std::set<std::string> admitted;
+    const auto identities = DiscoverContainers(
+        connector_socket_path, &reachable, &listIsComplete, &unkeyed, &reportedUnkeyed, &admitted, &reportedAdmitted);
 
     if (status != nullptr)
     {
@@ -732,6 +747,33 @@ int ListContainers(const std::string& connector_socket_path, const ContainerIdSi
     for (const auto& identity : identities) {
         sink(identity.container_id, identity.synced);
         ++count;
+    }
+
+    // An unkeyed container is a container, and the cap ranks it like any other.
+    // It has no record in the list to carry a `synced` flag, so its decision
+    // comes from the connector's whole admitted set instead -- and it must come
+    // from there rather than from each consumer's own guess. Every consumer
+    // guessed "admitted", so a container reported outside the ceiling for as
+    // long as it stayed unkeyed, which is a window every restart opens (#37532).
+    //
+    // Not counted in the return value: that is the LIST's length, which callers
+    // read back as how many containers the connector could key.
+    if (reportedAdmitted)
+    {
+        for (const auto& id : unkeyed)
+        {
+            sink(id, admitted.count(id) != 0 ? 1 : 0);
+        }
+    }
+    else
+    {
+        // A connector too old to send the set. Nothing here can say whether it
+        // refused these, and reading silence as a refusal would retract a live
+        // container's rows; admit them, as every consumer used to.
+        for (const auto& id : unkeyed)
+        {
+            sink(id, 1);
+        }
     }
 
     return count;

@@ -2930,31 +2930,26 @@ void Syscollector::scanContainerBaseline(const std::vector<std::string>& only_th
         }
     };
     // The connector withholds a running container until its resolver can key it,
-    // so a successful reply can still omit one -- absence from the keyed list is
-    // not removal (#37532). It reports those ids separately, which is what
-    // lets the sweep below answer "is this container gone?" without waiting for
-    // every container to be keyed (#37532).
-    std::set<std::string> unkeyedIds;
-    const auto unkeyedSink = [](const char* containerId, void* userData)
-    {
-        auto* ids = static_cast<std::set<std::string>*>(userData);
-
-        if (ids && containerId)
-        {
-            ids->insert(containerId);
-        }
-    };
+    // so a successful reply can still omit one from the KEYED list -- absence
+    // from that is not removal (#37532). It names those ids anyway and
+    // cbaseline_list_containers_ex() reports them through the id sink above with
+    // the cap's decision for each, so `discovered` is every container that
+    // exists and no separate unkeyed sink is needed here. listStatus.unkeyed_known
+    // still says whether the connector is capable of naming them at all, which
+    // is what the sweep below has to wait on.
     cb_list_status_t listStatus {};
     const int listed = cbaseline_list_containers_ex(
-                           CB_DEFAULT_CONNECTOR_SOCKET_PATH, idSink, &discovered, unkeyedSink, &unkeyedIds, &listStatus);
+                           CB_DEFAULT_CONNECTOR_SOCKET_PATH, idSink, &discovered, nullptr, nullptr, &listStatus);
     const int listComplete = listStatus.complete;
 
-    // EVERY known container, admitted or not. The sweep below deletes what is
-    // absent from this set, and a container whose rows are merely withheld has
-    // not been removed -- leaving it out here would delete the very rows the
-    // cap is holding back, turning "do not report this yet" into "this is
-    // gone". That distinction is the whole reason the cap withholds instead of
-    // shortening the list.
+    // EVERY known container, admitted or not, keyed or not. The sweep below
+    // deletes what is absent from this set, and a container whose rows are
+    // merely withheld has not been removed -- leaving it out here would delete
+    // the very rows the cap is holding back, turning "do not report this yet"
+    // into "this is gone". That distinction is the whole reason the cap
+    // withholds instead of shortening the list. `discovered` already holds the
+    // unkeyed ids: cbaseline_list_containers_ex() reports them through the id
+    // sink as well, since the cap ranks them too (#37532).
     std::set<std::string> discoveredIds;
 
     for (const auto& entry : discovered)
@@ -2962,17 +2957,11 @@ void Syscollector::scanContainerBaseline(const std::vector<std::string>& only_th
         discoveredIds.insert(entry.first);
     }
 
-    // A container the resolver cannot key is not a container that went away.
-    // The sweep deletes on absence from this set, and absence is the only thing
-    // it reads, so an unkeyable container belongs in it even though nothing
-    // else may act on it.
-    discoveredIds.insert(unkeyedIds.begin(), unkeyedIds.end());
-
     if (listed >= 0)
     {
         // Complete OR able to say what it could not key: either way the reply
         // names every container that exists, which is all admission needs.
-        setAdmittedContainers(discovered, unkeyedIds, listComplete != 0 || listStatus.unkeyed_known != 0);
+        setAdmittedContainers(discovered, listComplete != 0 || listStatus.unkeyed_known != 0);
     }
 
     // Containers still in the DB but no longer known to container_instances
@@ -5131,9 +5120,7 @@ std::string Syscollector::scopeFilter(LimitScope scope, const std::string& conta
     return " AND container_id='" + containerId + "'";
 }
 
-void Syscollector::setAdmittedContainers(const std::map<std::string, bool>& discovered,
-                                         const std::set<std::string>& unkeyed,
-                                         bool listEnumerates)
+void Syscollector::setAdmittedContainers(const std::map<std::string, bool>& discovered, bool listEnumerates)
 {
     std::set<std::string> admitted;
 
@@ -5147,18 +5134,6 @@ void Syscollector::setAdmittedContainers(const std::map<std::string, bool>& disc
 
     std::lock_guard<std::mutex> lock(m_limitsMutex);
     m_containerAdmissionWithholding = (admitted.size() != discovered.size());
-
-    // A container the connector cannot key was never ranked by the cap -- the cap
-    // ranks what the connector can publish -- so nothing refused it, and it is
-    // admitted. Folded in AFTER the withholding flag above, which must keep
-    // measuring what the cap actually turned down.
-    //
-    // Into the admitted set itself rather than a set beside it, because this set
-    // is also the memory of what was reporting: the loop below reads a loss of
-    // admission as "was in here, is not now". A container held outside it while
-    // unkeyed would, on becoming keyed AND refused, never be seen to lose
-    // anything, and its reported rows would stay on the manager unretracted.
-    admitted.insert(unkeyed.begin(), unkeyed.end());
 
     // A connector too old to say what it could not key leaves absence from
     // `discovered` meaning nothing at all. Dropping those containers from the
@@ -5368,10 +5343,8 @@ bool Syscollector::isContainerAdmittedLocked(const std::string& containerId) con
         return true;
     }
 
-    // Holds the containers the cap admitted AND the ones it never ranked because
-    // the connector cannot key them; setAdmittedContainers() folds the second
-    // into the first. Only a container the cap considered and turned down is
-    // absent from here (#37532).
+    // Membership, nothing else. The cap ranks every container the connector knows
+    // of, keyed or not, so absence from here is a refusal and not a gap (#37532).
     return m_admittedContainers.count(containerId) != 0;
 }
 

@@ -164,18 +164,27 @@ namespace fim_container_events
      * therefore keeps a readmitted container withheld, or keeps reporting one
      * the cap has since pushed out (#37532).
      *
-     * Positive always, negative only from a complete reply. Membership in the
-     * set is the connector's own answer and can be taken at once; absence from
-     * it means "not admitted" ONLY when the reply covered every container, for
-     * the same reason the sweeps wait -- on a partial reply an unresolved
-     * container is missing from `admitted` for want of a key, and reading that
-     * as a withdrawal retracts a live container's rows -- the same false
-     * withdrawal a partial FULL LIST causes, reached through the delta
-     * path instead. */
+     * Positive always, negative only from a reply that ENUMERATES. Membership
+     * in the set is the connector's own answer and can be taken at once;
+     * absence from it means "not admitted" only once the reply has named every
+     * container that exists, because until then absence is indistinguishable
+     * from a container the reply did not get to and withdrawing it would
+     * retract a live container's rows.
+     *
+     * Enumerating is not the same as having keyed them all. The connector ranks
+     * a container it cannot key along with the rest and names it in
+     * `known_unkeyed`, so a reply that carries that key has accounted for every
+     * container even though `complete` is false. Gating this on `complete`
+     * meant a single container nobody can key -- or any container for the
+     * seconds after it restarts -- held every withdrawal on this path for as
+     * long as it stayed unkeyed: lower containers.synced_limit and the drain
+     * went on republishing as admitted the containers the baseline had just
+     * retracted, which alternated their documents between CREATE and DELETE
+     * (#37532). */
     void applyAdmittedSet(std::map<std::string, bool>& view,
                           const std::set<std::string>& admitted,
                           bool admittedKnown,
-                          bool complete)
+                          bool enumerated)
     {
         if (!admittedKnown)
         {
@@ -188,10 +197,34 @@ namespace fim_container_events
             {
                 isAdmitted = true;
             }
-            else if (complete)
+            else if (enumerated)
             {
                 isAdmitted = false;
             }
+        }
+    }
+
+    /* Put the containers the connector could not key into the view, with the
+     * decision it made about them.
+     *
+     * They are containers, so the cap ranks them, so they are in `admitted` or
+     * refused like anything else -- they simply have no record in the reply to
+     * carry a `synced` flag, and the whole set is where their answer lives.
+     * Keeping them beside the view as an unrankable third category is what let
+     * a container report outside containers.synced_limit for as long as it was
+     * unkeyed, which is a window every restart opens (#37532).
+     *
+     * A server too old to send the set leaves no decision to read, and reading
+     * silence as a refusal would retract live rows: admit them, as this did
+     * before the set existed. */
+    void foldUnkeyedIntoView(std::map<std::string, bool>& view,
+                             const std::set<std::string>& unkeyed,
+                             const std::set<std::string>& admitted,
+                             bool admittedKnown)
+    {
+        for (const auto& containerId : unkeyed)
+        {
+            view[containerId] = !admittedKnown || admitted.count(containerId) != 0;
         }
     }
 
@@ -247,7 +280,6 @@ namespace fim_container_events
          * second is what admission needs. A connector too old to report its
          * unkeyed ids leaves `complete` as the only evidence either way. */
         plan.enumerated = delta.complete || delta.unkeyedKnown;
-        plan.unkeyed = delta.unkeyed;
 
         /* unreachable: nothing was obtained. Change NOTHING -- install()
          * replaces the positive map, so applying an empty list from a connector
@@ -349,6 +381,8 @@ namespace fim_container_events
             }
 
             plan.admissionView = mergeAdmissionView(currentView, delta.containers, delta.complete);
+            foldUnkeyedIntoView(plan.admissionView, delta.unkeyed, delta.admitted, delta.admittedKnown);
+            applyAdmittedSet(plan.admissionView, delta.admitted, delta.admittedKnown, plan.enumerated);
             return plan;
         }
 
@@ -406,9 +440,13 @@ namespace fim_container_events
             }
         }
 
+        /* ...then the containers no event can describe, because the connector
+         * cannot key them... */
+        foldUnkeyedIntoView(updated, delta.unkeyed, delta.admitted, delta.admittedKnown);
+
         /* ...and then the set, which is the only place an admission change with
          * no event of its own can reach this view. */
-        applyAdmittedSet(updated, delta.admitted, delta.admittedKnown, delta.complete);
+        applyAdmittedSet(updated, delta.admitted, delta.admittedKnown, plan.enumerated);
 
         plan.admissionView = std::move(updated);
         return plan;
@@ -756,7 +794,7 @@ namespace fim_container_events
 
             syncAllowlist(plan.installWholeList ? router.applyContainerList(plan.containers)
                           : router.applyContainerDelta(plan.events));
-            publishAdmission(plan.admissionView, plan.unkeyed, plan.enumerated);
+            publishAdmission(plan.admissionView, plan.enumerated);
 
             /* Advanced only after the plan has been applied. A crash in between
              * replays it, which is harmless — the map converges to the same place
@@ -779,13 +817,12 @@ namespace fim_container_events
          * A map rather than two sets because the distinction that matters is
          * per container: present-and-false (the cap refused it) must not be
          * confused with absent (never heard of), which is exactly what
-         * fim_container_admission_is_stale() exists to tell apart. */
+         * fim_container_admission_is_stale() exists to tell apart.
+         *
+         * Containers the connector could not key are in here too. The cap ranks
+         * a container by its id, which is a fact that needs no attribution key,
+         * so there is no third state to keep beside the map (#37532). */
         std::map<std::string, bool> admission_view;
-
-        /* The third state, kept out of the map above on purpose: the connector
-         * knows these exist but cannot key them, so the cap never ranked them
-         * and present-and-false would be a refusal that was never decided. */
-        std::set<std::string> admission_unkeyed;
 
         /* The installed snapshot is behind admission_view. See
          * decideAdmissionPublish() for why a "publish on change" rule alone
@@ -812,13 +849,10 @@ namespace fim_container_events
          * installs admission from it, so nothing is lost by waiting: the view is
          * still tracked meanwhile, and the first change AFTER release publishes
          * it. */
-        void publishAdmission(const std::map<std::string, bool>& updated,
-                              const std::set<std::string>& unkeyedIds,
-                              bool enumerated)
+        void publishAdmission(const std::map<std::string, bool>& updated, bool enumerated)
         {
-            const bool changed = (updated != admission_view) || (unkeyedIds != admission_unkeyed);
+            const bool changed = (updated != admission_view);
             admission_view = updated;
-            admission_unkeyed = unkeyedIds;
 
             const auto decision =
                 decideAdmissionPublish(changed, admission_unpublished, staging.released(), enumerated);
@@ -855,10 +889,14 @@ namespace fim_container_events
 
             std::vector<const char*> known;
             std::vector<const char*> admitted;
-            std::vector<const char*> unkeyed;
-            known.reserve(admission_view.size() + admission_unkeyed.size());
-            unkeyed.reserve(admission_unkeyed.size());
+            known.reserve(admission_view.size());
 
+            /* The view holds the containers the connector could not key as
+             * well, so they reach the known set here like any other. The bridge
+             * reads absence from it as "the snapshot predates this container"
+             * and retakes the listing to settle it; for one that can never be
+             * keyed that would be a listing per batch, for an answer that would
+             * not change. */
             for (const auto& [id, is_admitted] : admission_view)
             {
                 known.push_back(id.c_str());
@@ -869,18 +907,7 @@ namespace fim_container_events
                 }
             }
 
-            /* Known as well as unkeyed. The bridge reads absence from the known
-             * set as "the snapshot predates this container" and retakes the
-             * listing to settle it; for one that can never be keyed that would
-             * be a listing per batch, for an answer that would not change. */
-            for (const auto& id : admission_unkeyed)
-            {
-                known.push_back(id.c_str());
-                unkeyed.push_back(id.c_str());
-            }
-
-            fim_container_set_admission(
-                known.data(), known.size(), admitted.data(), admitted.size(), unkeyed.data(), unkeyed.size());
+            fim_container_set_admission(known.data(), known.size(), admitted.data(), admitted.size());
         }
 
         /* Mirror a list refresh into the kernel filter.

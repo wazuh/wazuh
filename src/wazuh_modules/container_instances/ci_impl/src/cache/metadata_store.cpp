@@ -702,29 +702,29 @@ namespace
         recomputeAdmittedLocked();
     }
 
-    std::set<std::string> MetadataStore::visibleIdsLocked() const
+    std::set<std::string> MetadataStore::knownIdsLocked() const
     {
-        std::set<std::string> visible;
+        std::set<std::string> known;
 
         for (const auto& [source, records] : m_bySource)
         {
             for (const auto& [containerId, record] : records)
             {
-                if (!record || (record->hostKey == 0 && isRunning(record->state)))
+                if (!record)
                 {
-                    continue; // Running but unresolved: not published yet.
+                    continue; // listContainers() skips these outright.
                 }
-                visible.insert(containerId);
+                known.insert(containerId);
             }
         }
 
-        return visible;
+        return known;
     }
 
     void MetadataStore::recomputeAdmittedLocked()
     {
-        const auto visible = visibleIdsLocked();
-        m_admitted = admitContainers(visible, m_admitted, m_syncLimit);
+        const auto known = knownIdsLocked();
+        m_admitted = admitContainers(known, m_admitted, m_syncLimit);
 
         // Say how many are NOT reporting, on change rather than per pass.
         //
@@ -732,7 +732,7 @@ namespace
         // so, is being told something false about coverage -- and silence here
         // is indistinguishable from a node that really runs ten. This is the
         // only place that knows both numbers.
-        const std::size_t withheld = visible.size() - m_admitted.size();
+        const std::size_t withheld = known.size() - m_admitted.size();
 
         if (m_withheldFromSyncReported == withheld || !m_logger)
         {
@@ -748,7 +748,7 @@ namespace
         else
         {
             m_logger(LogLevel::info,
-                     "Reporting " + std::to_string(m_admitted.size()) + " of " + std::to_string(visible.size()) +
+                     "Reporting " + std::to_string(m_admitted.size()) + " of " + std::to_string(known.size()) +
                          " container(s) to the manager; " + std::to_string(withheld) +
                          " withheld by containers.synced_limit=" + std::to_string(m_syncLimit) +
                          ". The withheld containers are still monitored and their data is still stored locally -- "

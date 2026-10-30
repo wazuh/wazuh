@@ -777,11 +777,11 @@ namespace
         std::set<std::string> admitted;
 
         /// Containers that exist but have no attribution key yet, so the keyed
-        /// listing omits them. They must survive a stale sweep, and they reach
-        /// the admission snapshot as their own category -- known to exist, and
-        /// ranked by nothing, because the cap ranks what the connector can
-        /// publish. They must never reach `admitted` or the cgroup map:
-        /// existing and being identifiable are different facts (#37532).
+        /// listing omits them. They must survive a stale sweep. They are ranked
+        /// by the cap like any other container -- existence is what it bounds --
+        /// so they also arrive through `known` and, when admitted, through
+        /// `admitted`. They must never reach the cgroup map: existing and being
+        /// identifiable are different facts (#37532).
         std::set<std::string> unkeyed;
 
         /// Whether `known` is the whole node. False when the connector is still
@@ -800,6 +800,12 @@ namespace
         static_cast<ContainerListing*>(user_data)->unkeyed.insert(container_id);
     }
 
+    /// Called for every container the connector knows of, keyed or not --
+    /// ListContainers() feeds the unkeyed ones through here too, with the
+    /// connector's own decision for each. `known` must hold them both: the
+    /// bridge reads absence from it as "this snapshot predates the container"
+    /// and retakes the listing, which for one that can never be keyed would
+    /// mean retaking it per batch (#37532).
     void container_id_sink(const char* container_id, int synced, void* user_data)
     {
         if (!container_id || !user_data) return;
@@ -862,10 +868,8 @@ namespace
 
         std::vector<const char*> known;
         std::vector<const char*> admitted;
-        std::vector<const char*> unkeyed;
-        known.reserve(listing.known.size() + listing.unkeyed.size());
+        known.reserve(listing.known.size());
         admitted.reserve(listing.admitted.size());
-        unkeyed.reserve(listing.unkeyed.size());
 
         for (const auto& id : listing.known)
         {
@@ -877,17 +881,7 @@ namespace
             admitted.push_back(id.c_str());
         }
 
-        // Known as well as unkeyed: the bridge treats absence from `known` as
-        // "this snapshot predates the container" and retakes the listing, which
-        // for one that can never be keyed would mean retaking it per batch.
-        for (const auto& id : listing.unkeyed)
-        {
-            known.push_back(id.c_str());
-            unkeyed.push_back(id.c_str());
-        }
-
-        fim_container_set_admission(
-            known.data(), known.size(), admitted.data(), admitted.size(), unkeyed.data(), unkeyed.size());
+        fim_container_set_admission(known.data(), known.size(), admitted.data(), admitted.size());
 
         return listed;
     }
@@ -1385,13 +1379,7 @@ extern "C" void fim_run_container_baseline(void)
         }
         else
         {
-            // Existence, not identifiability. A container the resolver cannot
-            // key is absent from `known` but has not gone anywhere, so it is
-            // kept -- which is what lets the sweep run at all while one of them
-            // is around (#37532).
-            std::set<std::string> present {known};
-            present.insert(listing.unkeyed.begin(), listing.unkeyed.end());
-            driver.sweepStale(present);
+            driver.sweepStale(known);
         }
 
         {

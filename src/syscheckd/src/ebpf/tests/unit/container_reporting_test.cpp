@@ -35,6 +35,11 @@ namespace
     /* Containers the hooked connector knows of but cannot key. */
     std::set<std::string> unkeyed;
     bool unkeyed_known = true;
+
+    /* Which of those the cap refused. The connector ranks them like any other
+     * container, so the shim reports each one's decision through the id sink;
+     * empty means it admitted them all, which is the ordinary case. */
+    std::set<std::string> unkeyed_refused;
     bool reject_persistence = false;
     std::size_t persist_attempts = 0;
     int file_size = 1;
@@ -53,6 +58,7 @@ namespace
                 list_complete = true;
                 unkeyed.clear();
                 unkeyed_known = true;
+                unkeyed_refused.clear();
                 reject_persistence = false;
                 persist_attempts = 0;
                 file_size = 1;
@@ -151,9 +157,17 @@ extern "C" int __wrap_cbaseline_list_containers_ex(const char*,
 
     for (const auto& [id, admitted] : admission) sink(id.c_str(), admitted, ctx);
 
-    if (unkeyed_known && unkeyed_sink)
+    if (unkeyed_known)
     {
-        for (const auto& id : unkeyed) unkeyed_sink(id.c_str(), unkeyed_ctx);
+        /* Exactly what the real shim does: the unkeyed ids go through the
+         * unkeyed sink for the sweep AND through the id sink with the cap's
+         * decision, because the cap ranks them too. */
+        for (const auto& id : unkeyed)
+        {
+            if (unkeyed_sink) unkeyed_sink(id.c_str(), unkeyed_ctx);
+
+            sink(id.c_str(), unkeyed_refused.count(id) == 0 ? 1 : 0, ctx);
+        }
     }
 
     if (out_status)
@@ -381,6 +395,8 @@ TEST(ContainerListRefresh, AnIncompleteReplyThatNamesWhatItCouldNotKeyStillDecid
     delta.containers = {keyed};
     delta.unkeyedKnown = true;
     delta.unkeyed = {"stuck"};
+    delta.admittedKnown = true;
+    delta.admitted = {"a"}; // ...and the cap ranked "stuck" and turned it down
 
     const auto plan = planListRefresh(delta, {});
 
@@ -388,10 +404,9 @@ TEST(ContainerListRefresh, AnIncompleteReplyThatNamesWhatItCouldNotKeyStillDecid
     EXPECT_FALSE(plan.complete) << "there is no cgroup id to put in the map for 'stuck'";
     EXPECT_TRUE(plan.enumerated) << "but the reply does name every container that exists";
     EXPECT_FALSE(plan.installWholeList);
-    EXPECT_EQ(plan.unkeyed, (std::set<std::string> {"stuck"}));
 
-    EXPECT_EQ(plan.admissionView, (std::map<std::string, bool> {{"a", true}}))
-            << "an unkeyed id is not an admission answer in either direction";
+    EXPECT_EQ(plan.admissionView, (std::map<std::string, bool> {{"a", true}, {"stuck", false}}))
+            << "an unkeyed container is ranked like any other, so its refusal is an answer";
 
     for (const auto& [cgroup, id] : plan.containers)
     {
@@ -408,6 +423,72 @@ TEST(ContainerListRefresh, AnIncompleteReplyThatNamesWhatItCouldNotKeyStillDecid
     EXPECT_EQ(decideAdmissionPublish(true, false, true, plan.enumerated), AdmissionPublish::install);
     EXPECT_EQ(decideAdmissionPublish(true, false, true, false), AdmissionPublish::defer)
             << "a connector too old to say what it could not key leaves nothing to go on";
+}
+
+// Lowering containers.synced_limit must reach this path, and one container
+// nobody can key used to stop it.
+//
+// The whole admitted set is the only place a withdrawal with no event of its
+// own can arrive, and absence from it was read as a refusal only on a reply
+// where every container was KEYED. A node with one unkeyable container never
+// produces such a reply, so the drain went on republishing as admitted the
+// containers the baseline had already retracted, and their documents alternated
+// between CREATE and DELETE every cycle (#37532).
+TEST(ContainerListRefresh, AWithdrawalArrivesEvenWhileOneContainerCannotBeKeyed)
+{
+    using wazuh::container_instances_client::ContainerDelta;
+    using fim_container_events::planListRefresh;
+
+    ContainerDelta delta;
+    delta.available = true;
+    delta.deltaSupported = true;
+    delta.complete = false; // 'stuck' has no key and never will
+    delta.unkeyedKnown = true;
+    delta.unkeyed = {"stuck"};
+    delta.admittedKnown = true;
+    delta.admitted = {"a"}; // the operator lowered the limit; 'b' lost its slot
+
+    // No event names 'b': admission moves without one, which is why the set is
+    // sent at all.
+    const auto plan = planListRefresh(delta, {{"a", true}, {"b", true}});
+
+    ASSERT_TRUE(plan.act);
+    EXPECT_FALSE(plan.complete);
+    EXPECT_TRUE(plan.enumerated) << "the reply still names every container that exists";
+    EXPECT_FALSE(plan.admissionView.at("b")) << "the withdrawal must not wait for 'stuck' to be keyed";
+    EXPECT_TRUE(plan.admissionView.at("a"));
+}
+
+// The one case where a consumer still has to supply the answer, because the
+// connector gave none. A build too old to send the admitted set says nothing
+// about the containers it could not key, and reading silence as a refusal
+// retracts every row a live container holds -- so they are admitted, which is
+// where the three-state reading came from in the first place.
+TEST(ContainerListRefresh, WithoutAnAdmittedSetAnUnkeyedContainerIsStillAdmitted)
+{
+    using wazuh::container_instances_client::ContainerDelta;
+    using wazuh::container_instances_client::ContainerRef;
+    using fim_container_events::planListRefresh;
+
+    ContainerRef keyed;
+    keyed.containerId = "a";
+    keyed.cgroupId = 11;
+    keyed.synced = true;
+
+    ContainerDelta delta;
+    delta.available = true;
+    delta.deltaSupported = false;
+    delta.complete = false;
+    delta.containers = {keyed};
+    delta.unkeyedKnown = true;
+    delta.unkeyed = {"stuck"};
+    delta.admittedKnown = false; // an older container_instances
+
+    const auto plan = planListRefresh(delta, {});
+
+    ASSERT_TRUE(plan.act);
+    EXPECT_EQ(plan.admissionView, (std::map<std::string, bool> {{"a", true}, {"stuck", true}}))
+            << "no decision arrived, and silence is not a refusal";
 }
 
 // A resync that cannot be installed wholesale still has to say what has GONE.
@@ -642,7 +723,7 @@ TEST_F(ContainerReportingTest, RunTimeAdmissionPromotesAndDoesNotOnlyRetract)
     persisted.clear();
     const char* known[] = {"a", "b"};
     const char* admitted[] = {"a", "b"};
-    fim_container_set_admission(known, 2, admitted, 2, NULL, 0);
+    fim_container_set_admission(known, 2, admitted, 2);
 
     ASSERT_EQ(persisted.size(), 1u) << "the newly admitted container's row must be promoted now";
     EXPECT_EQ(persisted[0], (std::pair<std::string, int> {"b:/etc/one", OPERATION_CREATE}));
@@ -651,7 +732,7 @@ TEST_F(ContainerReportingTest, RunTimeAdmissionPromotesAndDoesNotOnlyRetract)
     // ...and the same path must still retract, which is all it used to do.
     persisted.clear();
     const char* onlyA[] = {"a"};
-    fim_container_set_admission(known, 2, onlyA, 1, NULL, 0);
+    fim_container_set_admission(known, 2, onlyA, 1);
 
     ASSERT_EQ(persisted.size(), 1u);
     EXPECT_EQ(persisted[0], (std::pair<std::string, int> {"b:/etc/one", OPERATION_DELETE}));
@@ -667,7 +748,7 @@ TEST_F(ContainerReportingTest, AnUnadmittedContainersModificationNeverDemotesARe
     // resolver thread, so a file event for b can land at any moment after this.
     const char* known[] = {"a", "b"};
     const char* onlyA[] = {"a"};
-    fim_container_set_admission(known, 2, onlyA, 1, NULL, 0);
+    fim_container_set_admission(known, 2, onlyA, 1);
     persisted.clear();
 
     // A row the manager ALREADY holds (sync=1), modified while b is withheld.
@@ -714,27 +795,62 @@ TEST_F(ContainerReportingTest, AnUnkeyableContainerKeepsItsFimStateWithoutBlocki
             << "and it must not have kept the sweep from removing one that has";
 }
 
-// Absence from the admitted set has three causes, and only one of them is a
-// refusal. The cap ranks the containers the connector can publish, so one it
-// cannot key was never ranked at all -- reading that as "refused" withheld a
-// container's documents on the strength of a decision nobody took (#37532).
-TEST_F(ContainerReportingTest, AContainerThatCannotBeKeyedIsNotARefusedContainer)
+// The cap bounds how many containers report, which is a question about ids and
+// never about an attribution key. So a container the connector cannot key is
+// ranked like any other, and its answer arrives the same way: in the admitted
+// set, or absent from it.
+//
+// Treating it instead as unrankable -- admitting it because nothing had refused
+// it -- is what let the node report past containers.synced_limit, and since a
+// container is unkeyed for a while after every restart, that happened on every
+// restart (#37532).
+TEST_F(ContainerReportingTest, AContainerThatCannotBeKeyedIsRankedLikeAnyOther)
 {
-    const char* known[] = {"a", "b", "stuck"};
-    const char* admitted[] = {"a"};
-    const char* unkeyedIds[] = {"stuck"};
-    fim_container_set_admission(known, 3, admitted, 1, unkeyedIds, 1);
+    // "stuck" and "spare" both lack a key. The connector admitted the first and
+    // refused the second; the bridge must repeat both answers rather than
+    // inventing one.
+    const char* known[] = {"a", "b", "spare", "stuck"};
+    const char* admitted[] = {"a", "stuck"};
+    fim_container_set_admission(known, 4, admitted, 2);
 
     EXPECT_NE(fim_container_is_admitted("a"), 0);
     EXPECT_EQ(fim_container_is_admitted("b"), 0) << "the cap ranked it and said no";
-    EXPECT_NE(fim_container_is_admitted("stuck"), 0)
-            << "the cap never ranked it: it ranks what the connector can publish";
+    EXPECT_NE(fim_container_is_admitted("stuck"), 0) << "unkeyed, and the cap admitted it";
+    EXPECT_EQ(fim_container_is_admitted("spare"), 0)
+            << "unkeyed and refused: not being keyable is not a free pass past the cap";
 
-    // And it is KNOWN, so a batch of its rows does not re-ask for a listing
+    // And both are KNOWN, so a batch of their rows does not re-ask for a listing
     // that would answer the same way -- for a container that can never be
     // keyed, that is one listing per batch, for ever.
     EXPECT_EQ(fim_container_admission_is_stale("stuck"), 0);
+    EXPECT_EQ(fim_container_admission_is_stale("spare"), 0);
     EXPECT_NE(fim_container_admission_is_stale("nobody"), 0) << "created after the snapshot: re-ask";
+}
+
+// End to end through the baseline, not just the predicate: a container the
+// connector could not key and the cap turned down must not get its rows
+// reported. The listing names it, so it survives the sweep -- withheld and
+// deleted are opposite outcomes and the distinction has to hold for a container
+// with no attribution key too (#37532).
+TEST_F(ContainerReportingTest, ARefusedUnkeyedContainerIsWithheldButNotSweptAway)
+{
+    admission = {{"a", true}};
+    unkeyed = {"spare"};
+    unkeyed_refused = {"spare"};
+    unkeyed_known = true;
+    files = {{"a", {"/etc/one"}}, {"spare", {"/etc/one"}}};
+
+    fim_run_container_baseline();
+
+    EXPECT_EQ(syncFlag("a", "/etc/one"), 1);
+    EXPECT_EQ(syncFlag("spare", "/etc/one"), 0)
+            << "the cap ranked it and said no; not being keyable is not a way round that";
+    EXPECT_NE(syncFlag("spare", "/etc/one"), -1) << "and its row is still there: refused is not removed";
+
+    // A DECIDED refusal, not an unheard-of container. The listing named it, so
+    // the bridge has an answer for its next batch of rows; without that every
+    // batch re-takes the listing to be told the same thing.
+    EXPECT_EQ(fim_container_admission_is_stale("spare"), 0);
 }
 
 // The whole point of splitting the two questions apart. A container whose
@@ -817,7 +933,7 @@ TEST_F(ContainerReportingTest, AFailedRetractionIsReportedAndRetried)
     reject_persistence = true;
     const char* known[] = {"a", "b"};
     const char* onlyA[] = {"a"};
-    fim_container_set_admission(known, 2, onlyA, 1, NULL, 0);
+    fim_container_set_admission(known, 2, onlyA, 1);
 
     EXPECT_EQ(syncFlag("b", "/etc/one"), 1)
             << "the manager still holds the document, so the row must stay findable by the retraction";
@@ -831,7 +947,7 @@ TEST_F(ContainerReportingTest, AFailedRetractionIsReportedAndRetried)
     warnings.clear();
     reject_persistence = false;
     persisted.clear();
-    fim_container_set_admission(known, 2, onlyA, 1, NULL, 0);
+    fim_container_set_admission(known, 2, onlyA, 1);
 
     EXPECT_EQ(syncFlag("b", "/etc/one"), 0);
     ASSERT_EQ(persisted.size(), 1u);
@@ -866,7 +982,7 @@ TEST_F(ContainerReportingTest, AFullBudgetIsNotOfferedItsWithheldRowsAgain)
     // row cannot be granted and must not be read.
     persist_attempts = 0;
     const char* known[] = {"a"};
-    fim_container_set_admission(known, 1, known, 1, NULL, 0);
+    fim_container_set_admission(known, 1, known, 1);
 
     EXPECT_EQ(persist_attempts, 0u) << "a full budget refuses every withheld row; reading them learns nothing";
 
@@ -875,7 +991,7 @@ TEST_F(ContainerReportingTest, AFullBudgetIsNotOfferedItsWithheldRowsAgain)
     fim_container_doc_budget_release("a");
     container_reporting_test_host(10);
     persist_attempts = 0;
-    fim_container_set_admission(known, 1, known, 1, NULL, 0);
+    fim_container_set_admission(known, 1, known, 1);
 
     EXPECT_GT(persist_attempts, 0u) << "with room again, the withheld row must get its chance";
     EXPECT_EQ(syncFlag("a", "/etc/three"), 1);

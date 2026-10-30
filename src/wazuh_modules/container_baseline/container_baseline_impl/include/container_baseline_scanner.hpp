@@ -291,6 +291,15 @@ struct ContainerListStatus
 /// @param unkeyedSink Optional: called with the id of every container that
 ///        exists but is absent from the list for want of a key. A caller that
 ///        deletes on absence must treat these as present -- they are not gone.
+///
+/// `sink` is called for those unkeyed containers too, after the listed ones and
+/// with the connector's own admission decision for each. Admission is a question
+/// about a container id and never about an attribution key, so leaving the
+/// unkeyed ones out of `sink` meant every caller had to supply an answer the
+/// connector had already given -- and each supplied "admitted", which let the
+/// node report past containers.synced_limit for the length of a restart
+/// (#37532). They are NOT included in the return count, which stays the length
+/// of the keyed list.
 int ListContainers(const std::string& connector_socket_path, const ContainerIdSink& sink,
                    ContainerListStatus* status = nullptr,
                    const UnkeyedIdSink& unkeyedSink = {});
@@ -320,8 +329,21 @@ struct PolledListing
     /// is missing.
     std::set<std::string> unkeyed;
 
+    /// The connector's whole admitted set, keyed containers and unkeyed ones
+    /// alike. An unkeyed container has no record in `payload` to carry a
+    /// `synced` flag, so this is the only place its decision arrives --
+    /// and it must arrive, because a consumer that has to guess guesses
+    /// "admitted" and the cap then bounds nothing for the length of a
+    /// container restart (#37532).
+    std::set<std::string> admitted;
+
     bool complete {false};
     bool unkeyedKnown {false};
+
+    /// Whether the connector sent `admitted` at all. False means one too old to,
+    /// and then `admitted` is empty and says nothing: fall back to admitting the
+    /// unkeyed ids, which is where this started.
+    bool admittedKnown {false};
 
     /// Every container this answer says exists. What "the node's containers"
     /// means to a caller that sweeps on absence -- and what quiescence is

@@ -59,15 +59,14 @@ namespace fim_container_events
         /// or one upsert per container of a partial full list.
         std::vector<CgroupDeltaEvent> events;
 
-        /// The admission view this reply leaves behind: the containers it could
-        /// key, and whether the cap admitted each. Never holds an unkeyed id.
+        /// The admission view this reply leaves behind: every container it
+        /// named, keyed or not, and whether the cap admitted each. A container
+        /// with no attribution key is still ranked -- the cap bounds how many
+        /// containers report, which is a question about ids -- so it belongs
+        /// here and not in a category of its own. It must still stay out of
+        /// `containers` and `events`: an id with no cgroup id cannot reach the
+        /// map (#37532).
         std::map<std::string, bool> admissionView;
-
-        /// Containers the connector knows of but cannot key, so the cap never
-        /// ranked them. Kept apart from `admissionView` because "refused" and
-        /// "never ranked" are opposite answers, and apart from `containers`
-        /// and `events` because an id with no cgroup id must not reach the map.
-        std::set<std::string> unkeyed;
 
         /// Whether every container in the reply is KEYED. Gates the cgroup map
         /// only: install() removes what the list omits, and an unkeyed

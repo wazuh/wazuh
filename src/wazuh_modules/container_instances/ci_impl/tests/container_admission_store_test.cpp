@@ -323,20 +323,95 @@ TEST(ContainerAdmissionStoreTest, ADepartedContainerHandsItsSlotOn)
     EXPECT_EQ(ListedIds(store), (std::set<std::string> {"b", "c"}));
 }
 
-TEST(ContainerAdmissionStoreTest, AnUnresolvedRunningContainerHoldsNoSlot)
+// The price of ranking by existence, written down because it is a real cost and
+// not an oversight: an unresolved container can hold a slot it cannot yet use.
+// It publishes nothing while it has no key, so for that moment the node reports
+// one container fewer than the limit allows.
+//
+// Taken deliberately. The alternative is to leave it out of the ranking, and
+// then no consumer has a decision to apply to it, so every consumer reports it
+// and the node runs OVER the limit instead -- unbounded rather than one short,
+// which is the opposite of what the cap is for. One short is also temporary:
+// the slot comes into use as soon as the resolver keys the container. The case
+// that does not resolve itself is a container nothing can ever key, and the
+// "Reporting N of M" line names that cost rather than hiding it (#37532).
+TEST(ContainerAdmissionStoreTest, AnUnresolvedRunningContainerCanHoldASlotItCannotYetUse)
 {
     auto store = MakeStore();
     store.setSyncLimit(1);
 
-    // hostKey 0 on a running container means the resolver has not keyed it yet.
-    // listContainers() withholds those, so admission must not count them --
-    // otherwise a container nobody can see yet holds the only slot and the one
-    // that IS visible reports nothing.
+    // hostKey 0 on a running container means the resolver has not keyed it yet,
+    // and "a" sorts below "visible", so it takes the only slot.
     auto snapshot = Snapshot({"visible"});
-    auto unresolved = MakeRecord("unresolved", 0);
-    snapshot.push_back(unresolved);
+    snapshot.push_back(MakeRecord("a", 0));
 
     store.applySnapshot(kDocker, snapshot, {}, Now());
 
-    EXPECT_EQ(store.admittedIds(), (std::set<std::string> {"visible"}));
+    EXPECT_EQ(store.admittedIds(), (std::set<std::string> {"a"}));
+    EXPECT_EQ(ListedIds(store), (std::set<std::string> {"visible"}));
+
+    // ...and it is handed over the moment the resolver catches up, because the
+    // ranking never had to change its mind about who exists.
+    store.applySnapshot(kDocker, Snapshot({"a", "visible"}), {}, Now());
+    EXPECT_EQ(store.admittedIds(), (std::set<std::string> {"a"}));
+    EXPECT_EQ(ListedIds(store), (std::set<std::string> {"a", "visible"}));
+}
+
+// The cap bounds how many containers the node REPORTS ON. That is a question
+// about container ids, and a container the resolver has not keyed yet is one of
+// them -- it exists, consumers know of it, and no consumer can be told it is
+// refused unless the ranking considered it.
+//
+// Ranking only the published containers therefore did not bound anything. An
+// unkeyed container was absent from the ranking, so it was in nobody's admitted
+// set, so every consumer read "no decision" and reported it. The node ran at
+// limit + 1.
+TEST(ContainerAdmissionStoreTest, AnUnresolvedContainerIsRankedByTheCapLikeAnyOther)
+{
+    auto store = MakeStore();
+    store.setSyncLimit(2);
+
+    // "a" is running and the resolver has no key for it yet. It sorts below both
+    // keyed containers, so a ranking that weighs it takes a different decision
+    // from one that does not -- which is what makes this test say anything.
+    ContainerRecord unresolved = MakeRecord("a", 0);
+
+    store.applySnapshot(
+        kDocker, {unresolved, MakeRecord("m", InodeFor("m")), MakeRecord("n", InodeFor("n"))}, {}, Now());
+
+    EXPECT_EQ(store.unkeyedContainerIds(), (std::set<std::string> {"a"}));
+    EXPECT_EQ(ListedIds(store), (std::set<std::string> {"m", "n"})) << "still withheld from the list";
+
+    // Two slots, three containers, and the ranking weighed all three. So "n" is
+    // REFUSED and says so, instead of the cap quietly becoming a cap on the
+    // keyed ones alone while "a" reports outside it.
+    EXPECT_EQ(store.admittedIds(), (std::set<std::string> {"a", "m"}));
+    EXPECT_EQ(store.admittedIds().count("n"), 0U);
+}
+
+// The other half, and it pulls the opposite way: a container that restarts is
+// not a container that left. Its cgroup inode changes, so it is unkeyed for a
+// moment -- and a ranking built from the published list treats that moment as a
+// departure, hands the slot to the next id, and refuses the container when its
+// key comes back. Its documents are created on the manager and deleted again on
+// every restart.
+TEST(ContainerAdmissionStoreTest, ARestartingContainerKeepsItsSlotWhileItHasNoKey)
+{
+    auto store = MakeStore();
+    store.setSyncLimit(1);
+
+    store.applySnapshot(kDocker, Snapshot({"b"}), {}, Now());
+    ASSERT_EQ(store.admittedIds(), (std::set<std::string> {"b"}));
+
+    // "b" restarts and "a" shows up meanwhile. "a" sorts lower, so a ranking
+    // that has dropped "b" would hand it the only slot.
+    ContainerRecord restarting = MakeRecord("b", 0);
+    store.applySnapshot(kDocker, {MakeRecord("a", InodeFor("a")), restarting}, {}, Now());
+
+    EXPECT_EQ(store.admittedIds(), (std::set<std::string> {"b"})) << "a restart is not a departure";
+
+    // And when its key comes back it is still the incumbent, so nothing was
+    // withdrawn and nothing re-created.
+    store.applySnapshot(kDocker, Snapshot({"a", "b"}), {}, Now());
+    EXPECT_EQ(store.admittedIds(), (std::set<std::string> {"b"}));
 }
