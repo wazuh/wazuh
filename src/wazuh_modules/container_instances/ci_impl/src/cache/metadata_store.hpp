@@ -114,6 +114,11 @@ namespace wazuh::container_instances
         /// Visibility, not existence — that distinction is the whole contract.
         [[nodiscard]] ContainerRecordPtr visibleRecordLocked(const std::string& containerId) const;
 
+        /// Whether any source holds a record for this id. Existence across all
+        /// of them, where recordLocked() answers for one. A hash lookup per
+        /// source, against the two full id sets containerIdSetsLocked() builds.
+        [[nodiscard]] bool knownToAnySourceLocked(const std::string& containerId) const;
+
         /// listContainers() and unkeyedContainerIds() with the lock already
         /// held, so listSnapshot() can take all three at one instant. The
         /// mutex is a shared_mutex, so a second shared acquisition on this

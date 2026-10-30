@@ -722,3 +722,34 @@ TEST(ContainerAdmissionStoreTest, SettlingWithNothingAdmittedStillWakesConsumers
     EXPECT_TRUE(store.admittedIds().empty());
     EXPECT_EQ(1, calls) << "a consumer still reporting everything has to hear that the verdict landed";
 }
+
+// The cold path discovers containers too, and the recompute it triggers is not
+// free: it walks every record of every source and builds several id sets, under
+// the exclusive lock, once per cold-path event. The ordinary resolve re-files a
+// container that already existed and was already publishable, and that cannot
+// move anyone's admission -- so it skips the walk.
+//
+// What it must NOT skip is a container this very call discovered. Comparing
+// visibility alone does not tell the two apart: "invisible before, invisible
+// after" describes an unchanged unkeyed container AND a brand new one, and
+// since a free slot now goes to a container with no key, the new one has to be
+// ranked.
+TEST(ContainerAdmissionStoreTest, AContainerFirstSeenThroughAResolveIsStillRanked)
+{
+    auto store = MakeStore();
+    store.setSyncLimit(3);
+
+    store.applySnapshot(kDocker, Snapshot({"m"}), {}, Now());
+    ASSERT_EQ(store.admittedIds(), (std::set<std::string> {"m"}));
+
+    // Running, and no key yet -- so it is invisible before this call and
+    // invisible after it, and only its EXISTENCE is new.
+    store.upsertResolved(kDocker, MakeRecord("a", 0));
+
+    EXPECT_EQ(store.admittedIds(), (std::set<std::string> {"a", "m"}))
+        << "a free slot goes to it, and nothing else would rank it until the next unrelated reconcile";
+
+    // ...and a resolve that re-files what is already there changes nothing.
+    store.upsertResolved(kDocker, MakeRecord("m", InodeFor("m")));
+    EXPECT_EQ(store.admittedIds(), (std::set<std::string> {"a", "m"}));
+}

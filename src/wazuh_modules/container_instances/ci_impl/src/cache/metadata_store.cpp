@@ -488,6 +488,13 @@ namespace
         }
 
         const auto canonicalKey = record.hostKey;
+
+        // Read before the insert, and both of them: admission is a function of
+        // (known, visible, admitted, limit), so this resolve can only move it
+        // by changing one of the first two.
+        const bool wasKnown = knownToAnySourceLocked(containerId);
+        const bool wasVisible = visibleRecordLocked(containerId) != nullptr;
+
         insertResolvedLocked(source, std::move(record));
 
         if (observedKey != 0 && observedKey != canonicalKey)
@@ -499,7 +506,24 @@ namespace
         // ago, so it can also fill a free slot. Without this a container first
         // seen through an on-demand resolve would stay unadmitted until the
         // next unrelated reconcile, for the same reason the notify below exists.
-        recomputeAdmittedLocked();
+        //
+        // The ordinary resolve is neither of those: it re-files a container
+        // that already existed and was already publishable, which cannot move
+        // anyone's admission. Skipping the recompute there is worth a guard
+        // because the recompute walks every record of every source and builds
+        // several id sets, under the exclusive lock, and this path runs once
+        // per cold-path event.
+        //
+        // "Already known" is checked as well as visibility: invisible before
+        // and invisible after also describes a container discovered by this
+        // very call, which DOES change `known`. And the shortcut is taken only
+        // once admission is settled -- before that the recompute is what
+        // evaluates the barrier, and skipping it would leave the verdict
+        // withheld through a resolve that completed the picture.
+        if (!m_admissionSettled || !wasKnown || wasVisible != (visibleRecordLocked(containerId) != nullptr))
+        {
+            recomputeAdmittedLocked();
+        }
 
         // The cold path publishes containers too — one first seen through an
         // on-demand resolve is as new to consumers as one the connector found,
@@ -890,6 +914,19 @@ namespace
                          ". The withheld containers are still monitored and their data is still stored locally -- "
                          "it is not sent. Raise the limit to report more.");
         }
+    }
+
+    bool MetadataStore::knownToAnySourceLocked(const std::string& containerId) const
+    {
+        for (const auto& [source, records] : m_bySource)
+        {
+            if (records.count(containerId) != 0)
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     ContainerRecordPtr MetadataStore::visibleRecordLocked(const std::string& containerId) const
