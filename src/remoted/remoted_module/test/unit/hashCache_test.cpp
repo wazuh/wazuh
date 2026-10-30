@@ -136,11 +136,18 @@ TEST(HashCacheTest, GetMergedMgPathMultiGroupIsStableForSameCsv)
 // getMergedMgPath: whitelist + safety rejections.
 // -----------------------------------------------------------------------------
 
-TEST(HashCacheTest, GetMergedMgPathRejectsEmpty)
+TEST(HashCacheTest, GetMergedMgPathEmptyIsDefault)
 {
     TempDirs dirs;
     HashCache cache(makeConfig(dirs));
-    EXPECT_EQ(cache.getMergedMgPath(""), "");
+    EXPECT_EQ(cache.getMergedMgPath(""), dirs.shared() + "/default/merged.mg");
+}
+
+TEST(HashCacheTest, GetMergedMgPathRejectsATrailingEmptyEntry)
+{
+    TempDirs dirs;
+    HashCache cache(makeConfig(dirs));
+    EXPECT_EQ(cache.getMergedMgPath("a,"), "");
 }
 
 TEST(HashCacheTest, GetMergedMgPathRejectsDotOrDotDot)

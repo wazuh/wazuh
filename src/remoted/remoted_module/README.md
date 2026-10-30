@@ -420,7 +420,8 @@ src/endpoints/
 ├── configEndpoint.hpp/.cpp   # /config policy: near-duplicate of statsEndpoint, on purpose
 ├── controlEndpoint.hpp/.cpp  # /control JSON dispatch to control::ControlHandler (see below)
 ├── scanVdEndpoint.hpp/.cpp   # /scan/vd JSON dispatch to scanvd::ScanVdHandler (see below)
-├── downloadEndpoint.hpp/.cpp # /download policy: request grammar + resource resolution + file streaming
+├── downloadEndpoint.hpp/.cpp # /download policy: request grammar, WPK resolution by resource_id (a config path is
+│                             #   derived from the agent's groups), file streaming
 ├── downloadMetrics.hpp       # remoted.download.* name catalog
 ├── iAgentGroupSource.hpp     # interface: the selector an authenticated agent may download
 ├── cacertsEndpoint.hpp/.cpp  # GET /cacerts: the CA the listener cert chains to, certificates only (no auth)
@@ -704,8 +705,10 @@ src/control/
 ├── metrics.hpp               # ControlMetrics (remoted.control.* registry handles + wdb latency histogram)
 ├── controlHandler.hpp/.cpp   # ControlHandler: core business logic for all three message types
 ├── agentRegistry.hpp/.cpp    # AgentRegistry: thread-safe sharded map (agent metadata cache + eviction)
-├── groupSelector.hpp         # toGroupsCsv()/makeConfigToken(): the group selector /control hands the
-│                             #   agent as config_token, shared so /download resolves the same string
+├── groupConfigPath.hpp/.cpp  # shared path of an agent's groups: isValidGroupName() and
+│                             #   resolveMergedConfigPath(), used by /control and by /download
+├── groupSelector.hpp         # toGroupsCsv()/makeConfigToken(): the group selector (CSV of the agent's
+│                             #   groups) that /control publishes as config_token and /download derives
 ├── registryAgentGroupSource.hpp/.cpp # RegistryAgentGroupSource: IAgentGroupSource over the registry
 │                             #   (answers "which selector may this agent download?", nullopt = deny)
 ├── wazuhDBClient.hpp/.cpp    # WazuhDBClient: async client to wazuh-db over wdb.sock, length-prefixed
@@ -817,11 +820,11 @@ sequenceDiagram
      necessarily agent-independent)
    - Calculates `config_hash` (SHA256 of agent's `merged.mg` shared config file); the literal `"0"`
      when the selector resolves to no file or it cannot be hashed -- never absent, never empty
-   - Mints `config_token` (`makeConfigToken()`), the `resource_id` the agent must send to
-     `/download` for that config. Opaque to the agent by contract -- it relays the value verbatim
-     and never parses it, which is what lets this change without an agent change. Derived from the
-     same groups CSV `config_hash` was computed over, so the two can never name different files;
-     today that means its value *is* the group selector. Never empty (`"default"` when the CSV is)
+   - Mints `config_token` (`makeConfigToken()`): the group selector, informational only. A 5.x agent
+     ignores it and `/download` derives the same selector from the agent's groups (see
+     [Streamed responses](#streamed-responses--post-download)); an older agent still sends it back as
+     `resource_id`. Derived from the same groups CSV `config_hash` was computed over, so the two can
+     never name different files. Never empty (`"default"` when the CSV is)
    - Queries task-manager for pending tasks (`status='pending'`); if found, marks as `delivered` (local only, no cluster broadcast)
    - Reads this node's current Vulnerability Detection feed offset via `VdClient` (cached, see
      `common/vdClient.hpp` below) and includes it as `vd_feed_offset` — always present; the last
@@ -852,7 +855,7 @@ sequenceDiagram
      }
      ```
    - **With tasks**: same shape, `tasks` populated -- `[{"task_id":"...","task_type":"active_response","payload":{...}}]`
-   - **Agent behavior**: compares `settings_hash` (if different → new startup), compares `config_hash` (if different → downloads `merged.mg` via `/download`, sending `config_token` back as the `resource_id`), processes tasks, compares `vd_feed_offset`
+   - **Agent behavior**: compares `settings_hash` (if different → new startup), compares `config_hash` (if different → downloads `merged.mg` via `/download`, naming only `{"resource_type":"config"}`), processes tasks, compares `vd_feed_offset`
      against its stored value (if strictly higher → request a re-scan via `POST /scan/vd`, see below)
    - **Design note**: Version is NOT validated on notify (only on startup) to keep the hot path fast
 
@@ -1027,7 +1030,7 @@ objects (id, type, payload JSON). Uses the same bounded queue + deadline + error
 
 #### MergedMgWatcher (`mergedMgWatcher.hpp/.cpp`)
 
-Watches `merged.mg` inside each group directory of `/etc/wazuh-manager/shared/` and `var/multigroups/<sha256(resource_id)[:32]>/` (the first 32 hex characters of the SHA-256 of the group selector) for changes to detect group shared file updates, using **inotify
+Watches `merged.mg` inside each group directory of `/etc/wazuh-manager/shared/` and `var/multigroups/<sha256(csv)[:32]>/` (the first 32 hex characters of the SHA-256 of the group CSV of the agent, in the manager's order) for changes to detect group shared file updates, using **inotify
 exclusively**: it opens an `inotify_init1(IN_NONBLOCK | IN_CLOEXEC)` fd, watches the shared-groups
 and multigroups roots for `IN_CREATE | IN_MOVED_TO | IN_DELETE | IN_MOVED_FROM` (new/removed group
 dirs) and each group dir for `IN_CLOSE_WRITE | IN_MOVED_TO` (a finished rewrite or an atomic
@@ -1960,38 +1963,61 @@ before the pump runs; the per-chunk loop is deliberately uninstrumented) — cat
   a truncated file that looks complete. RESTinio always fires the write callback (with
   `write_was_not_executed` if the connection died first), so an aborted transfer always releases its
   descriptor — verified: 25 mid-transfer disconnects left the fd count unchanged.
-- **`resource_id` is what the agent asks for, and the manager serves exactly that.** A `config`
-  request names either one group (`/etc/wazuh-manager/shared/<group>/merged.mg`) or several, comma-separated —
-  wazuh's own multigroup form — which resolves to `var/multigroups/<sha256(resource_id)[:32]>/merged.mg`.
-  A `wpk` request names a filename and gets `var/upgrade/<filename>`. The multigroup form is what
-  lets an agent in several groups fetch its *effective* configuration rather than one member
-  group's, and it needs no database: the selector is hashed exactly as wazuh-db names the directory.
-  A `config` request is authorized against the requesting agent's own groups: `resource_id` must
-  equal `makeConfigToken(toGroupsCsv(entry->groups))` for that agent's registry entry -- the same
-  string `/control` handed it as `config_token` -- and anything else is **403**, decided before the
-  path is resolved. The groups come from the registry `/control` maintains
-  (`control/registryAgentGroupSource.hpp`): an entry established less than
-  `remoted.control_groups_refresh_interval` ago answers without querying wazuh-db. Anything else —
+- **A `config` download names no resource: the manager derives it from the agent's groups.** The
+  request is `{"resource_type":"config"}`. A request that also carries `resource_id` (the form older
+  agents still send) is accepted only if it equals the derived selector, and anything else is
+  **403**; the value is compared, never used to build a path. A `wpk` request is the only one
+  resolved by `resource_id`: a filename that gets `var/upgrade/<filename>`, and a `wpk` without
+  `resource_id` is a **400**. Request shapes, status codes and the error bodies are in the
+  [HTTPS Agent API](../../../docs/ref/modules/remoted/https-events-api.md#download-endpoint-post-download); this section
+  covers how the handler decides them.
+  `parseRequest()` accepts one or two members (`resource_type`, plus `resource_id` when sent): a single
+  member that is not `resource_type: config`, an empty object, a second member that is not `resource_id`, and three or more members
+  answer `400` `Invalid request format`; an unknown type with a `resource_id` answers `400`
+  `Invalid resource type`; a `resource_id` outside its grammar answers `400`
+  `Invalid resource identifier`. For `config` that grammar is a group name or a comma-separated list
+  of them, each `[A-Za-z0-9._-]`, 1 to 255 bytes, never `.` or `..` (`isValidGroupName()`, the
+  grammar `/control` resolves `config_hash` with). The 4096-byte cap
+  (`MAX_MULTIGROUP_SELECTOR_SIZE`) applies only to a `resource_id` sent in the request, whose whole
+  body is capped at 4 KiB; the derived selector has no such cap.
+  The selector comes from the registry `/control` maintains (`control/registryAgentGroupSource.hpp`,
+  `makeConfigToken(toGroupsCsv(entry->groups))`, the string `/control` publishes as `config_token`):
+  an entry established less than `remoted.control_groups_refresh_interval` ago answers without
+  querying wazuh-db. Anything else —
   no entry (a node the agent never sent `/control` to, a restarted remoted), an expired one, or one
   whose membership is not established (`groupsRefreshedAtSec == 0`: what `/control/shutdown` leaves
   for an unknown agent, or what a push or a "no row" answer invalidated) — is looked up in the local
   wazuh-db **asynchronously** by `RegistryLookup`, without holding the HTTP worker: a row is the answer
   (and is cached; no groups is `default`), while no row — never "default" — and a lookup that fails or
   times out are both **503** `dependency_unavailable` (counted as `remoted.download.no_row` and
-  `remoted.download.unavailable`). **403** is only a selector that is not the agent's membership. The
-  body is released before that wait. A `wpk` request is
-  **not** authorized here: its authority is the agent's pending upgrade task, which `/control` does
-  not carry.
+  `remoted.download.unavailable`). The body is released before that wait. **403** is a `Deny`
+  verdict, an empty selector, or a `resource_id` that differs from the derived selector; it is
+  decided before the path is resolved. The path is then
+  `resolveMergedConfigPath()` over the derived groups, the function `/control` uses for
+  `config_hash`: one group is `/etc/wazuh-manager/shared/<group>/merged.mg`, several are
+  `var/multigroups/<sha256(csv)[:32]>/merged.mg` with the CSV in the manager's order, and none is
+  `default`. No path, or no `merged.mg` on disk, is **404**. A `wpk` request is **not** authorized
+  here: its authority is the agent's pending upgrade task, which `/control` does not carry.
 
-  The agent never picks the value it sends: it relays the `config_token` `/control` handed it (see
-  the notify response above), so `/control` must report `config_hash` over the file this resolves to
-  for the token it handed that agent, or that agent re-downloads on every notify.
-- **Containment differs per form.** The multigroup selector is *hashed, never joined*, so it cannot
-  traverse by construction. The single-group and WPK forms **do** join agent input into a path, so
-  there the grammars are the boundary: no `/`, not `.` or `..`, no leading dot, and for a WPK a
-  `.wpk` suffix. With no separator admitted, the joined path has exactly one component below the
-  base directory, and `openRegularFile()`'s `O_NOFOLLOW` stops that component being a symlink.
-  Loosening either grammar would break that and require a `realpath()` containment check instead.
+  Because both `/control` and `/download` resolve the same groups with the same function,
+  `config_hash` and the file served are the same file for the same selector; the agent verifies the
+  downloaded bytes against the hash it advertised and discards a mismatch, so a node whose groups
+  lag the one that announced the hash makes the agent repeat the download on each notify until the
+  node converges.
+
+  An agent that sends the body without `resource_id` to a 5.0.0 manager gets `400` `Invalid request format`: the
+  manager counts `remoted.download.rejected` and logs at DEBUG2, and the agent logs a WARN once per
+  advertised config hash and retries on each notify. Upgrade every cluster
+  node before any agent; the order and the symptoms are in
+  [Upgrade order for configuration downloads](../../../docs/ref/modules/remoted/https-events-api.md#upgrade-order-for-configuration-downloads).
+- **Containment.** For `config`, the path is built from the derived groups, which
+  `resolveMergedConfigPath()` validates with `isValidGroupName()` (no `/`, not `.` or `..`); a
+  `resource_id` the agent sends is only compared with the selector, so it cannot reach a path. A WPK
+  filename is joined into `var/upgrade/`, so its grammar is the boundary there: no `/`, not `.` or
+  `..`, no leading dot, and a `.wpk` suffix. With no separator admitted, the joined path has exactly
+  one component below the base directory, and `openRegularFile()`'s `O_NOFOLLOW` stops that component
+  being a symlink. Loosening either grammar would break that and require a `realpath()` containment
+  check instead.
 
 ## Body decoding (`src/decoding/`)
 
@@ -2557,7 +2583,7 @@ linked into the settings' own documentation — is the official docs page:
 | `remoted.http.<stateless\|stateful\|stats\|config\|enroll\|cacerts>.responses.{2xx,400,403,409,413,429,500,503,other}` | WHAT each endpoint answered agents (some cells structurally zero per endpoint — kept so the vocabulary is uniform; `/cacerts`'s 404 lands in `other`) | the single place each response is sent: the forwarder's delivery task, the limiter-shed 503 in `forward()`, or the handler's own pre-forward 400. `/enroll` and `/cacerts` are not forwarded, so they count through a `MeteredResponder` wrapper instead (`common/requestOutcomeMetrics.hpp`; the description carries the route's method, `GET` for `/cacerts`) — one wrap covers `/enroll`'s five inline answers AND the one authd's callback delivers on another thread |
 | `remoted.http.<stateless\|stateful\|enroll>.latency` (histograms, µs) | end-to-end time; sizes `remoted.http_worker_threads` / `remoted.downstream_stateful_response_timeout` / the `authd_*` timeouts | stamped once in the auth gateway (`AuthenticatedRequest::receivedAt`), observed on the forwarder's post-processing pool. `/enroll` has no gateway, so `MeteredResponder` times it from handler entry. `/stats`/`/config` deliberately have none (same downstream as `/stateful`, no new answer) |
 | `remoted.forwarder.error.{connect, connect_timeout, write_timeout, response_timeout, transport, protocol, response_too_large}` + `downstream_5xx` + `route_mismatch` | WHY the 503s: which timeout knob, transport vs protocol, a downstream 5xx, or a route contract mismatch. Aggregate across services — the per-endpoint 503 cells already say which path | the forwarder's classification branches, next to the throttles that log the same cause |
-| `remoted.download.{rejected, denied, not_found, open_error, started, bytes.total, unavailable, no_row}`, `remoted.download.lookups` (pull) | group/WPK drift (404 retry storms) and offered transfer volume, plus `denied` — the 403 authorization signal (`resource_id` is not the requesting agent's own selector). It is the ONLY operator-facing signal for a denial, since the event itself is logged at debug; distinct from `rejected` (malformed request), from `not_found` (an *entitled* request whose file is not on disk) and from the two 503s, `unavailable` (the fallback lookup failed) and `no_row` (the local wazuh-db has no row for the agent yet) | `downloadEndpoint` admission + stream start (the per-chunk pump is deliberately uninstrumented) |
+| `remoted.download.{rejected, denied, not_found, open_error, started, bytes.total, unavailable, no_row}`, `remoted.download.lookups` (pull) | group/WPK drift (404 retry storms) and offered transfer volume, plus `denied` — the 403 authorization signal (a `resource_id` that is not the requesting agent's own selector, a `Deny` verdict or an empty selector). It is the ONLY operator-facing signal for a denial, since the event itself is logged at debug; distinct from `rejected` (malformed request), from `not_found` (an *entitled* request whose file is not on disk) and from the two 503s, `unavailable` (the fallback lookup failed) and `no_row` (the local wazuh-db has no row for the agent yet) | `downloadEndpoint` admission + stream start (the per-chunk pump is deliberately uninstrumented) |
 | `remoted.cacerts.{served, not_found, ca_mismatch, rate_limited}` | WHY `GET /cacerts` answered what it did: CA handed out, no CA file to hand out, refused because the served leaf does not chain to any CA of the bundle (`ca_mismatch`: a signature alone is not enough, C33), or refused by the route's rate limit before the CA was even read | `cacertsEndpoint` (`endpoints/cacertsMetrics.hpp`), one counter per branch; `rate_limited` is bumped by the gate (`endpoints/rateLimitGate.cpp`), which runs before the handler |
 | `remoted.server.tls.{cert_expiry_days, ca_matches_leaf}` (pulls; `cert_expiry_days` is the catalog's one **Double**, via `registerPullMetricDouble()` — negative once expired) | is the listener certificate about to expire; does it CHAIN to `remote.https.ca_certificate` (0 when it does not — including a CA that signs it but is expired, not a CA, or under another subject — or when the last successful read yielded no certificate; a read that fails after a good one keeps that bundle's verdict) | `IHttpServer::certificateStatus()`: `cert_expiry_days` from the transport's `TlsCertificateMonitor` snapshot (evaluated at start and every 24 h); `ca_matches_leaf` re-read from the same `CaCertificateSource` `/cacerts` answers from, on every scrape; registered by `registerPublicTransportDiagnostics()` on the same weak target as the budget pulls, so both read 0 while the listener is down |
 | `remoted.server.budget.{available.bytes, inflight.bytes, inflight.requests, rejected.total}` (pulls) | is `remoted.max_inflight_bytes` sized right; how much did the byte budget shed | `IHttpServer::diagnostics()` over the transport's `InFlightBudget` |
@@ -2986,7 +3012,7 @@ Control-plane coverage: `controlEndpoint_test.cpp` (empty/oversized bodies, non-
 roots and non-numeric/negative/trailing-garbage agent ids each get their own `400` code, all
 aggregated into `remoted.control.rejected`), `controlHandler_test.cpp` (a malformed version answers
 `400` *and* writes `status_code` with the version sentinelized; `config_token` is the wdb-ordered
-multigroup CSV naming the same `merged.mg` that `config_hash` was computed over; a wazuh-db failure
+multigroup CSV (informational: the agent does not send it) naming the same `merged.mg` that `config_hash` was computed over; a wazuh-db failure
 answers `503 dependency_unavailable` naming `wazuh-db` rather than silently falling back to
 "default"; every membership `/control` stores is stamped, so a `/download` lookup issued before a
 startup or notify read and answered after it answers with that read instead of overwriting it),
@@ -3001,17 +3027,23 @@ caches the answer),
 derived from real os-release strings like `15-SP7`, `12 (bookworm)`, `2023` and `9.4 (Plow)`; latency observed only on successful round trips),
 `taskClient_test.cpp` (the request body is the zero-padded agent id with no `action` member; a
 stall maps to `Timeout`, not `Io`; the destructor drains), `hashCache_test.cpp` (the multigroup
-`sha256[:32]` directory rule, and **an empty hash is never cached** — the fresh-install poisoning
+`sha256[:32]` directory rule through `getMergedMgPath()`, and **an empty hash is never cached** — the fresh-install poisoning
 bug), `mergedMgWatcher_test.cpp` (fires for `merged.mg` only — never `agent.conf`/`shared.conf` —
 including arrival by rename, and auto-watches group directories created after startup),
 `groupSelector_test.cpp` (the CSV is joined verbatim in wdb order, duplicates and empties included,
-because that exact string *is* the hashed directory name) and
+because that exact string is what `/download` compares and derives), `groupConfigPath_test.cpp`
+(`GroupConfigPathTest`: the shared path of an agent's groups, the strict group grammar, and the
+multigroup `sha256[:32]` directory rule, which this file pins) and
 `registryAgentGroupSource_test.cpp` (fails closed for malformed ids, unknown agents and a null
 registry, and refuses an entry with no `groupsRefreshedAtSec` — so a `/control/shutdown`-minted
 entry can never claim `default`).
 
 `/download` and `/stateful`: `downloadEndpoint_test.cpp` (the group and WPK grammars reject
-traversal; `FileByteSource` aborts when the file is truncated, grows, or is rewritten at the same
+traversal; `DownloadParseRequestTest` accepts a `config` request without `resource_id` and rejects a
+`wpk` one, a `config` one with another second member, and an empty or out-of-grammar `resource_id`
+with distinct codes; `DownloadHandlerTest` serves the derived selector, single and multigroup, without
+a `resource_id`, answers `404` when it has no path, denies an empty or `Deny` verdict, and answers the
+same `403` and `503` as the form that sends one; `FileByteSource` aborts when the file is truncated, grows, or is rewritten at the same
 length; a denied group returns an **identical** `403` whether or not it exists, so there is no
 enumeration oracle; WPKs are deliberately not authorized here) and `statefulEndpoint_test.cpp` (the
 sync socket, the `X-Wazuh-Agent-Id` taken from the verified token, the dedicated deadline, contract
@@ -3228,21 +3260,29 @@ chunked and compares the received SHA-256 with the local file when readable. It 
 `Content-Length` but does not assert its absence. A single WPK request checks the status;
 `--all` also requires chunked transfer on successful responses, but does not compare file hashes.
 Simulation checks chunking and compares configuration hashes when local files are readable.
-The expected configuration path comes from `resource_id`,
-without consulting the manager's database. For success, each agent must first have a `/control`
-registry entry with matching groups. The default selector is literally `default`, not a lookup of
-the agent's groups; pass `--resource-id` with the `agent.config_token` returned by `/control`.
+A `config` request carries `{"resource_type":"config"}`, the body the agent sends;
+`--send-resource-id` adds `resource_id`, the form older agents send, to the single download and to
+`--simulate`. A `wpk` request always carries `resource_id`. `--resource-id` (for `config`, `default`
+unless given) and `--selectors` (for `--simulate`) are the selector the manager must derive for that
+agent, that is, the groups it belongs to: they only compute the expected path and hash, the tool still
+does not read the manager's database, and with `--send-resource-id` that same value is what is sent.
+The simulated agent must be in `client.keys` and have a `/control` registry entry or a wazuh-db row,
+because the manager derives the selector from its own data; `--all` also needs a staged `.wpk`.
 
 ```bash
 python3 tools/send_download.py --url https://127.0.0.1:1517                         # config for an agent whose selector is default
+python3 tools/send_download.py --url https://127.0.0.1:1517 --resource-id web-servers --send-resource-id   # the older form, with resource_id
 python3 tools/send_download.py --url https://127.0.0.1:1517 --resource-type wpk --resource-id wazuh_agent_v5.0.0_linux_x86_64.wpk   # replace with a staged filename
-python3 tools/send_download.py --url https://127.0.0.1:1517 --all                   # every scenario: bad type, rejected identifier,
-                                                        #   unknown group -> 403, another agent's
-                                                        #   selector -> 403
+python3 tools/send_download.py --url https://127.0.0.1:1517 --all                   # every scenario, with and without resource_id
 python3 tools/send_download.py --url https://127.0.0.1:1517 --simulate 8 --repeat 20 --watch-rss   # concurrency + memory check
-# options: --url (default https://127.0.0.1:9443), --manager-home, --resource-id, --selectors,
+# options: --url (default https://127.0.0.1:9443), --manager-home, --resource-id, --send-resource-id, --selectors,
 #          --unknown-group, --other-group, --agent-id, --global-prefix
 ```
+
+`--all` runs 26 scenarios (25 when the group of `--other-group` does not exist on the manager).
+`valid_config` sends `resource_id` (the older form, 200) and `valid_config_without_resource_id` sends
+`{"resource_type":"config"}` (200); `wpk_without_resource_id`, `config_with_unknown_second_member` and
+`invalid_id_outside_group_grammar` are the three `400` cases of the request grammar.
 
 `--wpk` selects the successful WPK case in `--all` only; a single WPK request requires
 `--resource-id`. `--all` also requires a staged WPK and the requested configuration file, and skips

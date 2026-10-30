@@ -44,11 +44,10 @@ namespace
     }
 
     /// The agent's groups, comma-joined in the exact order the manager reports them
-    /// (never re-sorted -- see groupsCsv() below for why order matters) and, unlike
-    /// groupsCsv(), left EMPTY when the agent has none. Empty is meaningful to
-    /// downstream consumers (agcom.c: "Empty agent_groups is allowed - fallback to
-    /// merge.mg will be used"), so this must not carry /download's own "default"
-    /// substitution.
+    /// (never re-sorted: the manager keys a multi-group agent by all its groups in that
+    /// order) and left EMPTY when the agent has none. Empty is meaningful to downstream
+    /// consumers (agcom.c: "Empty agent_groups is allowed - fallback to merge.mg will be
+    /// used"), so it must never be replaced by a placeholder group.
     std::string rawGroupsCsv(const nlohmann::json& agent)
     {
         const auto groups = agent.find("groups");
@@ -76,25 +75,6 @@ namespace
         }
 
         return csv;
-    }
-
-    /// FALLBACK ONLY -- the /download config resource_id now comes from the manager, in
-    /// agent.config_token (see handleNotifyBody()). This reconstructs the selector the way
-    /// the agent had to before that field existed, and is used only when a manager does not
-    /// report one, so such a manager keeps working byte-for-byte as it did.
-    ///
-    /// The manager's own config_hash (controlHandler.cpp's toGroupsCsv) and merged.mg
-    /// resolution (hashCache.cpp's getMergedMgPath) both key a multi-group agent by ALL its
-    /// groups, comma-joined, in the exact order it reports them -- never just the first.
-    /// Preserving that same order (as reported here, not re-sorted) is what reproduces the
-    /// manager's own CSV byte-for-byte; the download endpoint natively accepts this selector
-    /// (downloadEndpoint.cpp's isValidGroupSelector). Unlike rawGroupsCsv(), "no groups
-    /// reported" falls back to "default" here: /download needs some group to ask for, and
-    /// every agent is implicitly in it.
-    std::string groupsCsv(const nlohmann::json& agent)
-    {
-        const std::string csv = rawGroupsCsv(agent);
-        return csv.empty() ? "default" : csv;
     }
 
     /// The Notify batch after dedup: fresh, identifiable tasks only.
@@ -464,17 +444,10 @@ void ControlStream::handleNotifyBody(const std::string& body, Waiter& waiter)
         // gate waits on the manager-validated configuration and, when the
         // hashes already agree, no download fires to tell it so.
         m_sink.onManagerConfigHash(managerHash);
+        maybeDownloadConfig(managerHash, waiter);
 
-        // The manager names the configuration resource; the agent never derives it. The token
-        // is OPAQUE here -- passed to /download verbatim, never parsed, never re-joined, never
-        // "default"-substituted -- so the manager can change what it addresses (and how) with
-        // no agent change at all. groupsCsv() is the pre-config_token path, kept only so a
-        // manager that reports no token behaves exactly as it did before the field existed.
-        const std::string configToken = jsonField(*agent, "config_token");
-        maybeDownloadConfig(managerHash, configToken.empty() ? groupsCsv(*agent) : configToken, waiter);
-
-        // Deliberately NOT the token: this is the agent's group identity (agcom's gethandshake,
-        // /stats and /config tagging), which stays the manager-reported group list itself.
+        // The agent's group identity (agcom's gethandshake, /stats and /config tagging) is
+        // the manager-reported group list itself.
         maybeReportAgentGroups(rawGroupsCsv(*agent));
     }
 
@@ -541,8 +514,7 @@ void ControlStream::maybeRequestVdRescan(uint64_t offset, Waiter& waiter)
     }
 }
 
-void ControlStream::maybeDownloadConfig(const std::string& managerHash, const std::string& resourceId,
-                                        Waiter& waiter)
+void ControlStream::maybeDownloadConfig(const std::string& managerHash, Waiter& waiter)
 {
     const std::string localHash = m_configHash.get();
 
@@ -556,9 +528,8 @@ void ControlStream::maybeDownloadConfig(const std::string& managerHash, const st
     }
 
     LOGFN_DEBUG1(m_logFn, "Manager config hash %s differs from the local one (%s); downloading "
-                 "the new configuration (resource '%s').", managerHash.c_str(), localHash.c_str(),
-                 resourceId.c_str());
-    auto file = m_fetcher.fetch(managerHash, resourceId, waiter);
+                 "the new configuration.", managerHash.c_str(), localHash.c_str());
+    auto file = m_fetcher.fetch(managerHash, waiter);
 
     if (!file)
     {

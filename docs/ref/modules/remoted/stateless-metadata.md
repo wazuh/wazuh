@@ -43,8 +43,8 @@ appear in subsequent legacy event headers. The manager's group/configuration dis
 separate path; no fixed end-to-end propagation bound follows from this cache.
 
 A 5.x agent learns about a group change differently: `POST /control` (`notify`) returns a
-`config_hash` and a `config_token`, and a changed hash is what makes the agent fetch the new
-configuration over `POST /download`.
+`config_hash` and a `config_token`; when the hash changes, the agent downloads the new
+configuration with `POST /download`, without naming a resource.
 
 ## Performance
 

@@ -344,8 +344,8 @@ typedef struct hc_callbacks_t
     /// doesn't republish identity data on every Notify for nothing. Empty is a
     /// valid, meaningful value (no groups), not a placeholder for "default": no
     /// fallback is substituted here. This is the agent's group IDENTITY, and it is
-    /// unrelated to the configuration download, which the manager addresses on its
-    /// own with the opaque agent.config_token.
+    /// unrelated to the configuration download, whose request names no resource:
+    /// the manager derives it from the authenticated agent.
     void (*on_agent_groups)(const char* groups_csv, void* user_data);
 
     /// Install @p pem as the agent's trust store, recording @p generation with it, or refuse.

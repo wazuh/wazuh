@@ -99,7 +99,7 @@ Response:
 {
   "agent": {
     "groups": ["default"],
-    "config_token": "<opaque /download resource_id>",
+    "config_token": "<group selector; 5.x agents ignore it>",
     "config_hash": "<sha or \"0\">"
   },
   "settings_hash": "<sha256 hex>",

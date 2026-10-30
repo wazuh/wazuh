@@ -45,11 +45,9 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
-// The config_token every notify reports, and the only resource_id /download will serve.
-// Deliberately NOT the group name, even though the real 5.0 manager currently mints the group
-// selector (controlHandler.cpp's makeConfigToken): the token is opaque to the agent, so a
-// value the agent could not have derived from agent.groups is what proves it really came
-// through the notify rather than being reconstructed locally.
+// The config_token every notify reports. The real 5.0 manager still publishes it
+// (controlHandler.cpp's makeConfigToken), but the agent ignores it: /download is served only
+// for the exact body {"resource_type":"config"}, so the token is never part of a request.
 inline constexpr auto FAKE_MANAGER_CONFIG_TOKEN {"cfg-token-abc123"};
 
 // Mirrors the real manager's HashCache::getSettingsHash() (remoted_module/src/
@@ -124,10 +122,10 @@ class FakeManager final
         /// body (and the settings_hash reported by notify) switches to v2, so
         /// a client detects the change and refreshes its startup data.
         /// configBlob non-empty: /download serves it (chunked octet-stream)
-        /// and every notify reports agent.config_hash = MD5(configBlob), so a
+        /// and every notify reports agent.config_hash = SHA-256(configBlob), so a
         /// client whose local hash differs downloads it. Those notifies also
-        /// carry agent.config_token = FAKE_MANAGER_CONFIG_TOKEN, and /download
-        /// serves nothing else, so the client must relay the token verbatim.
+        /// carry agent.config_token = FAKE_MANAGER_CONFIG_TOKEN, which the client
+        /// ignores: /download serves only the exact body {"resource_type":"config"}.
         /// statelessMaxBody > 0: a /stateless POST whose body exceeds it gets
         /// 413, so the client must split and resend smaller (#37835).
         /// rotateKeyAfterNotifies > 0 with rotatedKeyHex set: after that many
@@ -533,12 +531,10 @@ class FakeManager final
                     return;
                 }
 
-                // Only the token this manager handed out in its notify is served, exactly as
-                // the real one resolves a resource_id it minted. An agent that derived the
-                // selector itself instead of relaying config_token gets a 404 here, so the
-                // E2E download tests fail rather than silently pass on a lucky guess.
-                if (request.body.find(std::string {R"("resource_id":")"} +
-                                      FAKE_MANAGER_CONFIG_TOKEN + R"(")") == std::string::npos)
+                // The agent names no resource: the real manager resolves the config from the
+                // authenticated agent. The body must be exactly the literal, so any extra
+                // member (a resource_id, a token) gets a 404 and the E2E download tests fail.
+                if (request.body != R"({"resource_type":"config"})")
                 {
                     response.status = 404;
                     return;

@@ -734,21 +734,17 @@ A group change therefore does **not** move `settings_hash`. Groups are delivered
 `agent.groups` of this same response, and a group change surfaces to the agent as a `config_hash`
 mismatch, since it resolves to a different `merged.mg`.
 
-Alongside the hash, the response carries the identifier the agent must use to actually fetch that
-file:
+Alongside the hash, the response carries a second field about that file:
 
-- **`config_token`** — the `resource_id` to send to [`/download`](#download-endpoint-post-download)
-  for `resource_type: "config"`. It is **opaque to the agent**: the agent passes it through
-  verbatim and must never parse, reorder, split or substitute anything into it. The manager
-  guarantees it resolves to the very same `merged.mg` that `config_hash` was computed over, so the
-  two can never disagree. Currently its value *is* the agent's group selector — the same
-  comma-joined CSV documented under `/download` below — but that is an implementation detail of
-  this manager version, not part of the contract: the whole point of the field is that a later
-  manager can change what it addresses, and how, without any agent change.
+- **`config_token`** — the agent's group selector: the comma-joined CSV of its groups in the
+  manager's order, or `default` when it has none. The manager keeps publishing it, but a 5.x agent
+  ignores it: a [`/download`](#download-endpoint-post-download) request for `resource_type: "config"`
+  names no resource, and the manager derives the same selector for the requesting agent. An older
+  agent still sends the value back as `resource_id`.
 
-An agent must therefore **not** rebuild the selector from `agent.groups` itself. `agent.groups` is
-the agent's group *identity* (it is what tags the events the agent emits); `config_token` is what
-names its configuration.
+`agent.groups` is the agent's group *identity* (it is what tags the events the agent emits); the
+configuration it is served is the one the manager resolves from those groups, which is the file
+`config_hash` was computed over.
 
 The manager throttles wazuh-db writes per agent (`remoted.control_keepalive_throttle`, default 60s —
 see [Configuration](configuration.md#remotedcontrol_keepalive_throttle)): when the window has expired,
@@ -773,7 +769,8 @@ returns `200` with an empty `tasks` array.
 
 The agent compares the received hashes against its local copies: if `settings_hash` differs, it
 sends a new `startup` request; if `config_hash` differs, it downloads the new `merged.mg` file via
-`/download`, using the response's `agent.config_token` as the request's `resource_id`.
+`/download`, without naming a resource (`{"resource_type": "config"}`). A cluster must be upgraded
+in the order given under [Upgrade order for configuration downloads](#upgrade-order-for-configuration-downloads).
 
 The response also carries `vd_feed_offset`: this node's current Vulnerability Detection feed
 offset, always present (0 if the feed has never completed an update, or if the VD module is
@@ -826,8 +823,7 @@ Every field above is **always present**, `tasks` included — it is an empty arr
 no work to hand over, never an absent key. `config_hash` is likewise always a string: when the agent's
 selector resolves to no `merged.mg`, or the file cannot be hashed, the manager sends the literal `"0"`
 rather than omitting the field or sending an empty string. `config_token` is always a **non-empty**
-string, including in that unresolved case — the agent still needs something to name on `/download`,
-and the next notify re-triggers the attempt.
+string, including in that unresolved case, and the next notify re-triggers the download attempt.
 
 **`ca_generation` (issue #39319, RF-3) is present too, but it is the one field whose value may be
 `null`, and it is not interchangeable across its three states.** It carries the generation the CA bundle
@@ -1280,7 +1276,7 @@ are the exception to the "always nested" rule above, not a second business-error
 
 `/download` serves the two files an agent has to pull from the manager: its **centralized
 configuration** (`merged.mg`, fetched when `/control`'s `config_hash` stops matching what the agent
-holds, and named by the `config_token` that same response carried) and a **WPK upgrade package**
+holds, and resolved by the manager from the requesting agent's own groups) and a **WPK upgrade package**
 (fetched when a `remote_upgrade` task is dispatched). It replaces the legacy push, where the manager
 wrote both down the agent's persistent TCP connection; with stateless HTTPS there is no connection
 to push into, so the agent pulls instead.
@@ -1291,6 +1287,15 @@ one chunk is resident at a time and a worker slot is held only for the duration 
 
 ### Request
 
+A configuration download names no resource:
+
+```json
+{"resource_type": "config"}
+```
+
+The form older agents send adds a `resource_id`, which must equal the selector the manager derives
+for the requesting agent:
+
 ```json
 {
   "resource_type": "config",
@@ -1298,44 +1303,51 @@ one chunk is resident at a time and a worker slot is held only for the duration 
 }
 ```
 
-Exactly two members, both strings — an unknown extra member is a rejection, not something skipped,
-so a field a newer agent adds can never be silently ignored by an older manager. The body is capped
-at **4 KiB** before parsing (a real request is about 80 bytes), well below the authenticated-body
-limit, so an oversized or deeply nested blob costs nothing proportional to its size.
+A `wpk` request always carries `resource_id`, the package filename. Members are strings, and an
+unknown member is a rejection, not something skipped, so a field a newer agent adds can never be
+silently ignored by an older manager. The body is capped at **4 KiB** before parsing (a real request
+is under 100 bytes), well below the authenticated-body limit, so an oversized or deeply nested
+blob costs nothing proportional to its size. With a `resource_id` that leaves about 4053 bytes for
+the selector; a longer one is answered `400` `Invalid request format`, not `Invalid resource
+identifier`.
 
 | `resource_type` | `resource_id` | Resolves to |
 | --- | --- | --- |
-| `config` | one group name | `/etc/wazuh-manager/shared/<group>/merged.mg` |
-| `config` | several group names, comma-separated | `var/multigroups/<sha256(resource_id)[0..32)>/merged.mg` |
+| `config` | absent | the selector the manager derives for the requesting agent, resolved as in the next two rows |
+| `config` | the derived selector, one group name | `/etc/wazuh-manager/shared/<group>/merged.mg` |
+| `config` | the derived selector, several group names, comma-separated | `var/multigroups/<sha256(selector)[0..32)>/merged.mg` |
 | `wpk` | a package filename | `var/upgrade/<filename>` |
 
-The comma-separated form is wazuh's own multigroup selector, and it is what lets an agent in several
-groups fetch its **effective** configuration rather than one member group's. It needs no database
-lookup: the directory name is the first **32 hex characters** (the first sixteen digest bytes) of the
-SHA-256 of the selector verbatim, exactly how wazuh-db names the directory (`WDB_GROUP_HASH_SIZE`).
+An agent with no groups derives `default`. The comma-separated form is wazuh's own multigroup
+selector, and it is what lets an agent in several groups fetch its **effective** configuration rather
+than one member group's: the directory name is the first **32 hex characters** (the first sixteen
+digest bytes) of the SHA-256 of the selector, with the groups in the manager's order, exactly how
+wazuh-db names the directory (`WDB_GROUP_HASH_SIZE`). `/download` and `config_hash` resolve the path
+with the same function, so they always name the same file for a given set of groups.
 
 Accepted identifiers:
 
-- **Group name** — non-empty, at most 255 bytes, not exactly `.` or `..`, and drawn from wazuh's own
-  group-name set (`a-z A-Z 0-9 . : ; _ - = + ! @ ( )`; note the absence of `/`). In a multigroup
-  selector every entry must be valid on its own, which is what rejects a leading, trailing or
-  doubled comma. The whole selector is capped at 4096 bytes.
+- **Group name** — non-empty, at most 255 bytes, not exactly `.` or `..`, and drawn from
+  `A-Za-z0-9._-`. In a `resource_id` that holds several groups every entry must be valid on its own,
+  which is what rejects a leading, trailing or doubled comma. A selector derived by the manager
+  has no cap of its own: it holds as many groups as an agent can belong to (up to 128).
 - **WPK filename** — non-empty, at most 255 bytes, must **not** begin with a dot, must end in
-  `.wpk`, and is drawn from a stricter set (`a-z A-Z 0-9 . _ -`).
+  `.wpk`, and is drawn from the same set (`A-Za-z0-9._-`).
 
-> **A `config` download is authorized against the requesting agent's own groups.** `resource_id`
-> must equal the selector `/control` handed that agent as `config_token` — the same string
-> `config_hash` was computed over — and anything else is answered `403`. The manager resolves that
-> selector from the agent registry `/control` maintains, without querying wazuh-db, while the
-> agent's membership there is fresh (established within `remoted.control_groups_refresh_interval`).
+> **A `config` download is authorized against the requesting agent's own groups.** The manager
+> derives the selector for the requesting agent and, if the request carries a `resource_id` that is
+> not that selector, answers `403`; a request without `resource_id` cannot name anyone else's
+> configuration, and an empty derived selector is also answered `403`. The manager takes the groups
+> from the agent registry `/control` maintains, without querying wazuh-db, while the agent's
+> membership there is fresh (established within `remoted.control_groups_refresh_interval`).
 > Otherwise — the agent never sent `/control` to this node, the manager restarted, the entry expired
 > or was never established — the manager reads the membership from the node's local
 > `wazuh-manager-db` first, asynchronously: an agent that database has no row for is **not served**
 > (never `default`) but answered `503`, as when the database does not answer in time — the agent
 > retries until its row reaches this node.
 >
-> The comparison is exact, including the order of a multigroup CSV: `a,b` and `b,a` name different
-> merged files, and only one of them is the file `config_hash` refers to.
+> The comparison of a `resource_id` is exact, including the order of a multigroup CSV: `a,b` and
+> `b,a` name different merged files, and only one of them is the file `config_hash` refers to.
 >
 > **`wpk` downloads are not covered.** A package's authority is the agent's pending upgrade task,
 > which `/control` does not carry, so any authenticated agent can still fetch any *staged* package.
@@ -1344,9 +1356,11 @@ Accepted identifiers:
 > operator-built custom packages are the exception to that reasoning. Closing this properly means
 > task-based authorization and is tracked separately.
 
-Containment differs per form, by design. The multigroup selector is **hashed, never joined**, so it
-cannot traverse by construction. The single-group and WPK forms *do* join agent input into a path, so
-there the grammars are the boundary: with no separator admitted, the joined path has exactly one
+Containment differs per type, by design. For `config` the path is built from the groups the manager
+derived, each validated by the function that `config_hash` also uses (no `/`, and neither `.` nor
+`..`); a `resource_id` the agent sends is only compared with the selector and never reaches a path.
+A multigroup selector is hashed, never joined. The `wpk` type *does* join the filename into a path,
+so there its grammar is the boundary: with no separator admitted, the joined path has exactly one
 component below its base directory, and the open is `O_NOFOLLOW` so that component cannot be a
 symlink. Loosening either grammar would break that and require a `realpath()` containment check
 instead.
@@ -1360,12 +1374,13 @@ instead.
 
 | Condition | HTTP | `error` message |
 | --- | --- | --- |
-| Body empty, over 4 KiB, not a JSON object, wrong member count, or a non-string member | `400` | `Invalid request format` |
-| `resource_type` is neither `config` nor `wpk` | `400` | `Invalid resource type` |
+| Body empty, over 4 KiB, not a JSON object, or a non-string member | `400` | `Invalid request format` |
+| An empty object, a single member that is not `resource_type: config`, `resource_type: wpk` without `resource_id`, two members that are not `resource_type` and `resource_id`, or three or more members | `400` | `Invalid request format` |
+| `resource_type` is neither `config` nor `wpk`, with a `resource_id` | `400` | `Invalid resource type` |
 | `resource_id` fails the grammar for its type | `400` | `Invalid resource identifier` |
-| `resource_type: config` and `resource_id` is not the requesting agent's own selector | `403` | `Forbidden` |
+| `resource_type: config` and `resource_id` is not the requesting agent's own selector, or the derived selector is empty | `403` | `Forbidden` |
 | `resource_type: config` and the agent's membership could not be read from `wazuh-manager-db` in time, or it has no row for the agent | `503` | `dependency_unavailable` (with `dependency: wazuh-db`) |
-| Resource absent, not a regular file, or `O_NOFOLLOW` rejected a symlink | `404` | `Resource not found` |
+| Resource absent, not a regular file, or `O_NOFOLLOW` rejected a symlink; for `config`, also a derived selector that resolves to no path or to a missing `merged.mg` | `404` | `Resource not found` |
 | Unexpected `errno` while opening or stat-ing | `500` | `Internal server error` |
 
 The `403` is decided **before** the path is resolved, so a group the agent is not in reads exactly
@@ -1400,16 +1415,43 @@ rename, not a tighter check here.
 
 ### Coupling with `/control`
 
-An agent does not choose the `resource_id` for a `config` request: it sends back, verbatim, the
-`agent.config_token` `/control` gave it on the notify that reported the mismatching `config_hash`
-(see [Notify](#notify-keepalive)). Today that token's value *is* the group selector documented
-above, which is why the two sections describe the same identifier — but the token is the contract
-and the selector is the current implementation of it.
+An agent does not choose what a `config` request names: the manager derives the selector from the
+agent's groups, and `/control` reports the `config_hash` of the file that selector resolves to (see
+[Notify](#notify-keepalive)). Both routes resolve the path with the same function.
 
 That makes the invariant the manager's to keep: `/control` must report `config_hash` over the file
-that `/download` resolves to **for the token it hands that agent**. If the two disagree — a hash over
-one member group's `merged.mg` while the agent is given a multigroup selector, say — the agent
-re-downloads its configuration on every notify.
+that `/download` resolves to **for that agent**. If the two disagree — a hash over one member
+group's `merged.mg` while `/download` serves the multigroup file, say — the agent re-downloads its
+configuration on every notify.
+
+### Upgrade order for configuration downloads
+
+Upgrade every node of a cluster before any agent. An agent that sends `{"resource_type": "config"}`
+to a 5.0.0 manager is answered `400` `Invalid request format`, because that manager requires a
+`resource_id`. The manager counts it in `remoted.download.rejected` and logs it at `debug2`. The
+agent logs a WARN, `The manager rejected the config download request`, once per advertised
+config hash, and tries again on every notify. An older agent (any 5.0.0 build, beta5 and rc1 included), which sends `resource_id`, keeps
+working against the manager that accepts both forms; a new agent is one that omits it.
+
+The master pushes group changes to the workers every 10 seconds, so for that long two nodes can
+derive different selectors for the same agent. Three cases end with the agent discarding what it
+downloaded:
+
+- A new agent reaches a node that has not yet received a change: it is answered `200` with the
+  previous `merged.mg`.
+- The hash the agent was told came from a node that was behind and the download reaches an updated
+  node: it is answered `200` with the new `merged.mg`.
+- An agent is added to a group other than `default` while the worker still sees it in `default`.
+
+In each case, if the notify and the download reached different nodes, the agent logs the warning
+`Downloaded config hash ... does not match the advertised ... discarding it` and repeats the download
+on every notify until the node converges. If both reached the same node that is behind, the hash
+matches and the agent applies, without a warning, the configuration of the groups that node sees,
+until the node converges. A node that is
+behind, where the agent's previous group no longer exists, answers `404` `Resource not found`; the
+agent logs it at `DEBUG1`, with no warning. A mismatch caused by this lag does not increment
+`remoted.download.denied`, which counts a `resource_id` that is not the agent's own, a `Deny`
+verdict and an empty selector.
 
 ## Reporting endpoints (`POST /stats` and `POST /config`)
 
@@ -1662,8 +1704,12 @@ python3 send_scan_vd.py --url https://127.0.0.1:1517 --all
 # options: --url (default https://127.0.0.1:9443), --agent-id, --client-keys
 ```
 
-`src/remoted/remoted_module/tools/send_download.py` exercises `POST /download`. Its configuration
-selector defaults to `default`; it does not discover the agent's groups:
+`src/remoted/remoted_module/tools/send_download.py` exercises `POST /download`. A `config` request
+carries `{"resource_type":"config"}`, the form the agent sends; `--send-resource-id` adds the
+`resource_id` older agents send, in a single download and in `--simulate`. A `wpk` request always
+carries it. `--resource-id` and `--selectors` are the selector the manager must derive for that agent,
+that is, its groups: they only compute the expected path and hash, and the tool does not read the
+database. The selector defaults to `default`:
 
 ```bash
 # fetch selector default for agent 001 -> 200 + streamed body (requires matching /control state)
@@ -1678,12 +1724,18 @@ python3 send_download.py --url https://127.0.0.1:1517 --all
 # concurrency + memory check: N agents downloading at once, sampling remoted's RSS
 python3 send_download.py --url https://127.0.0.1:1517 --simulate 50 --repeat 4 --selectors 'default;web,prod' --watch-rss
 # options: --url (default https://127.0.0.1:9443), --manager-home, --resource-id, --unknown-group,
-#          --other-group (default databases), --selectors, --simulate N, --repeat, --watch-rss
+#          --other-group (default databases), --selectors, --send-resource-id, --simulate N,
+#          --repeat, --watch-rss
 ```
 
-Use the `agent.config_token` from `/control` as `--resource-id` when the selector is not `default`.
-Simulated agents must already exist and have matching `/control` registry groups. For `--all`,
-stage a WPK first; `--wpk` chooses that scenario's filename and is not used by a single download.
+`--all` runs 26 scenarios, or 25 when the group named by `--other-group` does not exist on the
+manager. It includes `valid_config`, which sends `resource_id` (200), and
+`valid_config_without_resource_id` (200), and three `400` scenarios: `wpk_without_resource_id`,
+`config_with_unknown_second_member` and `invalid_id_outside_group_grammar`. Pass the agent's groups
+as `--resource-id` when they are not `default`. The simulated agent must exist in `client.keys` and
+have a `/control` state or a wazuh-db row, since the manager derives the selector from its own data.
+For `--all`, stage a WPK first; `--wpk` chooses that scenario's filename and is not used by a single
+download.
 
 `src/remoted/remoted_module/tools/send_agent_json.py` covers the two reporting routes, `POST /stats`
 and `POST /config`, with the same bearer:

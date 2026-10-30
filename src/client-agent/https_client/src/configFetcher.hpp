@@ -46,11 +46,12 @@ class ConfigFetcher final
                       AuthGate& authGate,
                       CompressionGate& compressionGate);
 
-        /// Downloads the config named by `resourceId` -- the manager's own
-        /// agent.config_token, used verbatim and never interpreted here --
-        /// expecting the given SHA-256. Returns the verified spool file
-        /// (deleted on drop) or nullptr on any failure, already logged.
-        std::shared_ptr<SpoolFile> fetch(const std::string& expectedHash, const std::string& resourceId, Waiter& waiter);
+        /// Downloads this agent's configuration, expecting the given SHA-256.
+        /// The request names no resource ({"resource_type":"config"}): the
+        /// manager derives it from the authenticated agent. Returns the
+        /// verified spool file (deleted on drop) or nullptr on any failure,
+        /// already logged.
+        std::shared_ptr<SpoolFile> fetch(const std::string& expectedHash, Waiter& waiter);
 
     private:
         const ModuleConfig& m_config;
@@ -58,6 +59,7 @@ class ConfigFetcher final
         RetrySender m_sender;
         ISpoolFileFactory& m_spoolFactory;
         const LogFn m_logFn {HTTPS_CLIENT_LOGTAG};
+        std::string m_lastRejectedHash; ///< Last advertised hash whose download the manager rejected for good.
 };
 
 #endif // _HC_CONFIG_FETCHER_HPP

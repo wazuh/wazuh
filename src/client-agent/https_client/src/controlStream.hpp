@@ -136,11 +136,9 @@ class ControlStream final
         void dispatchUpgradeTask(const NotifyTask& task, Waiter& waiter);
         void maybeArmSettingsRefresh(const std::string& incoming);
         void updateProducerPause(OutcomeClass outcome);
-        /// resourceId is the manager-supplied agent.config_token, passed to /download verbatim
-        /// (opaque to the agent). Falls back to the group selector only for a manager that
-        /// reports no token -- see handleNotifyBody().
-        void maybeDownloadConfig(const std::string& managerHash, const std::string& resourceId,
-                                 Waiter& waiter);
+        /// Downloads the configuration when managerHash is resolved (non-empty, not "0") and
+        /// differs from the local hash.
+        void maybeDownloadConfig(const std::string& managerHash, Waiter& waiter);
         void maybeReportAgentGroups(const std::string& csv);
         /// Rule 3 of #39321 applied to one notify: arms a refresh when the advertised
         /// publication is one this agent should adopt. std::nullopt means the field was absent.
@@ -195,7 +193,7 @@ class ControlStream final
         bool m_settingsLoopWarned {false};
 
         /// The agent.groups CSV last reported to the sink (Startup or Notify), raw
-        /// (no "default" fallback -- that substitution is /download's alone). Unset
+        /// (no "default" fallback: empty when the agent has no groups). Unset
         /// until the first Startup/Notify with a groups field; compared against on
         /// every Notify so onAgentGroups() only fires on an actual change.
         bool m_groupsReported {false};

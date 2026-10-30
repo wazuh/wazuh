@@ -759,11 +759,11 @@ private:
         // carry over too -- desirable for observability.
         auto controlConfig = remoted::control::buildControlConfig(m_config);
 
-        // resource_id is what the agent requests, but it is not taken on trust: a config download
-        // is served only when it equals the selector this agent's own groups produce -- the same
-        // string /control hands it as config_token -- and anything else is 403 (#38683). A fresh
-        // registry entry answers with no wazuh-db round trip; a missing, expired or never
-        // established one is looked up in the local wazuh-db asynchronously (#39147): a row is
+        // A config download is served from the selector this agent's own groups produce -- the same
+        // string /control hands it as config_token. A resource_id in the request is optional and is
+        // not taken on trust: when present it must equal that selector, and anything else is 403
+        // (#38683). A fresh registry entry answers with no wazuh-db round trip; a missing, expired or
+        // never established one is looked up in the local wazuh-db asynchronously (#39147): a row is
         // served; no row and a failed lookup are both 503. WPK requests are NOT authorized here:
         // their authority is the pending upgrade task, which /control does not carry. What
         // contains those remains the resource-id grammars plus O_NOFOLLOW, and the packages are

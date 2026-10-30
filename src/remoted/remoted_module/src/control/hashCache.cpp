@@ -9,6 +9,8 @@
  */
 
 #include "hashCache.hpp"
+#include "groupConfigPath.hpp"
+#include "groupSelector.hpp"
 #include "json.hpp"
 #include "mergedMgWatcher.hpp"
 #include <array>
@@ -29,30 +31,6 @@ namespace remoted::control
     {
         constexpr std::array<char, 16> kHexDigits {
             '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f'};
-
-        // Hex characters in a multigroup directory name. Must equal wazuh-db's
-        // WDB_GROUP_HASH_SIZE (32): the first sixteen SHA-256 digest bytes.
-        constexpr std::size_t kMultigroupHashHexChars {32};
-
-        // A group name is safe iff it matches [A-Za-z0-9._-]+ and is not "." or "..".
-        // This mirrors what the framework enforces on group creation.
-        bool isSafeGroupToken(std::string_view token)
-        {
-            if (token.empty() || token == "." || token == "..")
-            {
-                return false;
-            }
-            for (unsigned char c : token)
-            {
-                const bool ok = (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') ||
-                                c == '.' || c == '_' || c == '-';
-                if (!ok)
-                {
-                    return false;
-                }
-            }
-            return true;
-        }
 
         std::string toHex(const unsigned char* bytes, size_t len)
         {
@@ -124,43 +102,8 @@ namespace remoted::control
 
         std::string getMergedMgPath(const std::string& groupsCsv) const
         {
-            if (groupsCsv.empty())
-            {
-                return {};
-            }
-
-            // Single group: <sharedGroupsRoot>/<group>/merged.mg.
-            if (groupsCsv.find(',') == std::string::npos)
-            {
-                if (!isSafeGroupToken(groupsCsv))
-                {
-                    return {};
-                }
-                return m_config.sharedGroupsRoot + "/" + groupsCsv + "/merged.mg";
-            }
-
-            // Multigroup: <multiGroupsRoot>/<sha256(csv)[:32]>/merged.mg.
-            // Every token must be safe; the CSV must not contain "..".
-            size_t start = 0;
-            while (start < groupsCsv.size())
-            {
-                size_t comma = groupsCsv.find(',', start);
-                size_t end = (comma == std::string::npos) ? groupsCsv.size() : comma;
-                if (!isSafeGroupToken(std::string_view(groupsCsv).substr(start, end - start)))
-                {
-                    return {};
-                }
-                if (comma == std::string::npos)
-                    break;
-                start = comma + 1;
-            }
-
-            std::string hash = sha256Hex(groupsCsv);
-            if (hash.size() < kMultigroupHashHexChars)
-            {
-                return {};
-            }
-            return m_config.multiGroupsRoot + "/" + hash.substr(0, kMultigroupHashHexChars) + "/merged.mg";
+            return resolveMergedConfigPath(
+                fromGroupsCsv(groupsCsv), m_config.sharedGroupsRoot, m_config.multiGroupsRoot);
         }
 
         std::string getSettingsHash()
