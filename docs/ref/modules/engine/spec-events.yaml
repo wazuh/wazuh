@@ -68,6 +68,10 @@ paths:
         Producers use `application/x-ndjson` or `application/x-wev1`; the engine does not use
         Content-Type to select the parser. The existing JSON nesting limit still applies.
 
+        The server answers one request per connection (`Connection: close`) and does not accept chunked
+        bodies. A producer that sends `Expect: 100-continue` receives an interim `100 Continue` once the
+        batch is admitted, or the final `413`/`503` instead, before it sends the body.
+
         ## Wire Format
 
         ```
@@ -191,8 +195,37 @@ paths:
                   value: {"error":"NDJson parser error, Invalid header format, expected 'H {json}'","code":400}
                 missingEventMarker:
                   value: {"error":"NDJson parser error, Expected 'E ' at event start","code":400}
+        "404":
+          description: No route for the target path (`{"error":"Unknown endpoint","code":404}`).
+        "405":
+          description: The path exists with another method; the `Allow` header lists it (`{"error":"Method not allowed for this endpoint","code":405}`).
+        "411":
+          description: |
+            `Transfer-Encoding: chunked`. Bodies are delimited by `Content-Length` only, so the server can
+            size the batch before reading it.
+        "413":
+          description: |
+            The declared `Content-Length` is over `analysisd.server_enriched_events_max_body_bytes` (or over the
+            whole in-flight budget). Sent before the body is read; the producer splits the batch.
+        "431":
+          description: Too many headers or a header too large.
+        "503":
+          description: |
+            The batch was not admitted and nothing was enqueued; the producer may retry. Causes: the in-flight
+            byte budget (`analysisd.server_enriched_events_max_inflight_bytes`) or the connection cap
+            (`analysisd.server_enriched_events_max_connections`) is reached, every ingest worker is busy and the
+            queue is full, or the engine is stopping.
+          content:
+            application/json:
+              examples:
+                busy:
+                  value: {"error":"Server busy","code":503}
+                shuttingDown:
+                  value: {"error":"Server shutting down","code":503}
         "500":
-          description: Internal server error.
+          description: |
+            Internal server error: the router is unavailable (JSON body below), or the handler failed
+            unexpectedly (`text/plain` body `Internal server error`).
           content:
             application/json:
               schema:
