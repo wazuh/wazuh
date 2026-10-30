@@ -49,6 +49,8 @@ namespace remoted::control
     constexpr auto METRIC_PUSH_INVALIDATED {"remoted.control.registry.push.invalidated"};
     constexpr auto METRIC_PUSH_SKIPPED {"remoted.control.registry.push.skipped"};
     constexpr auto METRIC_PUSH_REJECTED {"remoted.control.registry.push.rejected"};
+    constexpr auto METRIC_WPK_ID_ISSUED {"remoted.control.wpk_id.issued"};
+    constexpr auto METRIC_WPK_ID_FALLBACK {"remoted.control.wpk_id.fallback"};
 
     /**
      * @brief The /control counter set, pre-resolved from one manager.
@@ -76,6 +78,10 @@ namespace remoted::control
         /// node's replica. Disjoint from wdbError, which counts lookups that FAILED. Appended last:
         /// the struct is brace-initialized positionally by makeControlMetrics().
         std::shared_ptr<wazuh::metrics::ICounter> noRow;
+        /// remote_upgrade tasks sent with a signed identifier.
+        std::shared_ptr<wazuh::metrics::ICounter> wpkIdIssued;
+        /// remote_upgrade tasks sent with the real file name.
+        std::shared_ptr<wazuh::metrics::ICounter> wpkIdFallback;
     };
 
     /// Resolves the remoted.control.* family on @p manager (creating it on first call; totals
@@ -93,7 +99,11 @@ namespace remoted::control
                 METRIC_REJECTED, "400 rejections: malformed /control body/JSON/agent-id/type", "count"),
             manager.getOrCreateHistogram(METRIC_WDB_LATENCY, "Successful wazuh-db round-trip time", "microseconds"),
             manager.getOrCreateCounter(
-                METRIC_NO_ROW, "503s: the local wazuh-db has no row for the agent (not yet synchronized)", "count")};
+                METRIC_NO_ROW, "503s: the local wazuh-db has no row for the agent (not yet synchronized)", "count"),
+            manager.getOrCreateCounter(
+                METRIC_WPK_ID_ISSUED, "remote_upgrade tasks delivered with a signed WPK identifier", "count"),
+            manager.getOrCreateCounter(
+                METRIC_WPK_ID_FALLBACK, "remote_upgrade tasks delivered with the real WPK file name", "count")};
     }
 
     /**
@@ -136,6 +146,20 @@ namespace remoted::control
         if (m.startup)
         {
             m.startup->add();
+        }
+    }
+    inline void incWpkIdIssued(ControlMetrics& m)
+    {
+        if (m.wpkIdIssued)
+        {
+            m.wpkIdIssued->add();
+        }
+    }
+    inline void incWpkIdFallback(ControlMetrics& m)
+    {
+        if (m.wpkIdFallback)
+        {
+            m.wpkIdFallback->add();
         }
     }
     inline void incNotify(ControlMetrics& m)

@@ -289,14 +289,62 @@ namespace
         return responder;
     }
 
-    /// Same, with an explicit group source -- the authorization cases.
-    std::shared_ptr<RecordingResponder>
-    runHandlerAs(const std::string& bodyText, std::optional<std::string> ownSelector, ResourcePaths paths = {})
+    /// Same, with an explicit group source -- the authorization cases. @p wpkIds, @p agentId and
+    /// @p metrics default to "identifiers disabled", agent 001 and no counting.
+    std::shared_ptr<RecordingResponder> runHandlerAs(const std::string& bodyText,
+                                                     std::optional<std::string> ownSelector,
+                                                     ResourcePaths paths = {},
+                                                     remoted::auth::WpkIdHandling wpkIds = {},
+                                                     const std::string& agentId = "001",
+                                                     DownloadMetrics metrics = {})
     {
         auto responder = std::make_shared<RecordingResponder>();
         auto body = std::make_shared<std::string>(bodyText);
-        makeHandler(std::move(paths), {}, sourceFor(std::move(ownSelector)))(authenticatedRequest(body), responder);
+        makeHandler(std::move(paths), std::move(metrics), sourceFor(std::move(ownSelector)), std::move(wpkIds))(
+            authenticatedRequest(body, agentId), responder);
         return responder;
+    }
+
+    constexpr auto WPK_CLUSTER_KEY {"0123456789abcdefABCDEFGHIJKLMNOP"};
+    constexpr auto WPK_TASK_ID {"815a10ac-7b2e-a8a8-e137-f3edd8046a38"};
+    constexpr std::int64_t WPK_NOW {1793098550};
+    constexpr std::chrono::seconds WPK_TTL {600};
+
+    remoted::auth::TaskIdBytes wpkTaskIdBytes()
+    {
+        return *remoted::auth::parseTaskId(WPK_TASK_ID);
+    }
+
+    /// A real codec and a frozen clock.
+    remoted::auth::WpkIdHandling wpkIdHandling(std::int64_t now = WPK_NOW)
+    {
+        auto codec = remoted::auth::WpkIdCodec::fromClusterKey(WPK_CLUSTER_KEY, WPK_TTL);
+        return remoted::auth::WpkIdHandling {std::make_shared<const remoted::auth::WpkIdCodec>(std::move(*codec)),
+                                             [now] { return now; }};
+    }
+
+    /// An identifier for @p subject, issued at WPK_NOW with the codec above.
+    std::string issueWpkId(std::uint32_t subject)
+    {
+        return *wpkIdHandling().codec->issue(subject, wpkTaskIdBytes(), WPK_NOW);
+    }
+
+    std::string wpkBody(const std::string& resourceId)
+    {
+        return R"({"resource_type":"wpk","resource_id":")" + resourceId + R"("})";
+    }
+
+    /// Lays out `<dir>/tasks/<task_id>.wpk` and returns the paths pointing at it.
+    ResourcePaths taskPaths(TempDir& dir, const std::string& taskFileContents)
+    {
+        // The production layout: the per-task directory lives inside the WPK directory.
+        dir.makeDir("upgrade");
+        dir.makeDir("upgrade/tasks");
+        dir.writeFile(std::string {"upgrade/tasks/"} + WPK_TASK_ID + ".wpk", taskFileContents);
+        ResourcePaths paths;
+        paths.wpkDir = dir.path() + "/upgrade";
+        paths.wpkTasksDir = dir.path() + "/upgrade/tasks";
+        return paths;
     }
 
     DownloadRequest configRequest(std::string group)
@@ -1111,11 +1159,9 @@ TEST(DownloadHandlerTest, MetricsCountDenialsSeparatelyFromParseRejections)
     EXPECT_EQ(metrics.started->get(), 0U);
 }
 
-TEST(DownloadHandlerTest, WpkRequestsAreNotAuthorizedAgainstGroups)
+TEST(DownloadHandlerTest, PlainWpkNamesAreStillServed)
 {
-    // Pins the deliberate scope limit: a WPK's authority is the agent's pending upgrade task, which
-    // /control does not carry, so this check does not apply to it. Changing this is a separate
-    // decision, not a bug fix.
+    // Plain WPK names are still served without authorization.
     TempDir dir;
     dir.makeDir("upgrade");
     dir.writeFile("upgrade/pkg.wpk", "package\n");
@@ -1251,4 +1297,142 @@ TEST(DownloadHandlerTest, WpkRequestsNeverResolve)
     EXPECT_EQ(source->calls.load(), 0); // no group lookup, no wazuh-db round trip, for a WPK
     EXPECT_EQ(responder->status, 200);
     EXPECT_EQ(responder->body, "package\n");
+}
+
+TEST(DownloadHandlerTest, WpkIdServesTheTaskFile)
+{
+    TempDir dir;
+    const auto paths = taskPaths(dir, "task package\n");
+    wazuh::metrics::Manager manager;
+    const auto metrics = makeDownloadMetrics(manager);
+
+    const auto responder = runHandlerAs(wpkBody(issueWpkId(1)), std::nullopt, paths, wpkIdHandling(), "001", metrics);
+
+    EXPECT_EQ(responder->status, 200);
+    EXPECT_EQ(responder->body, "task package\n");
+    EXPECT_EQ(metrics.wpkIdServed->get(), 1U);
+    EXPECT_EQ(metrics.started->get(), 1U);
+    EXPECT_EQ(metrics.wpkIdRejected->get(), 0U);
+}
+
+TEST(DownloadHandlerTest, WpkIdFailuresAreUniform404)
+{
+    TempDir dir;
+    const auto paths = taskPaths(dir, "task package\n");
+    TempDir emptyDir;
+    const auto emptyPaths = taskPaths(emptyDir, "");
+    ::unlink((emptyDir.path() + "/upgrade/tasks/" + WPK_TASK_ID + ".wpk").c_str());
+
+    wazuh::metrics::Manager manager;
+    const auto metrics = makeDownloadMetrics(manager);
+
+    // What an agent sees for a WPK that does not exist: every identifier failure must match it.
+    const auto missing = runHandlerAs(wpkBody("missing.wpk"), std::nullopt, paths);
+    ASSERT_EQ(missing->status, 404);
+
+    const auto validId = issueWpkId(1);
+    auto tampered = validId;
+    const auto tagPos = std::string_view {"wpk1."}.size() + 40; // inside the tag, not its last character
+    tampered[tagPos] = tampered[tagPos] == 'A' ? 'B' : 'A';
+
+    const auto agentMismatch = runHandlerAs(wpkBody(validId), std::nullopt, paths, wpkIdHandling(), "002", metrics);
+    const auto expired =
+        runHandlerAs(wpkBody(validId), std::nullopt, paths, wpkIdHandling(WPK_NOW + WPK_TTL.count()), "001", metrics);
+    const auto badTag = runHandlerAs(wpkBody(tampered), std::nullopt, paths, wpkIdHandling(), "001", metrics);
+    const auto shortId = runHandlerAs(wpkBody("wpk1.short.wpk"), std::nullopt, paths, wpkIdHandling(), "001", metrics);
+    const auto noTaskFile = runHandlerAs(wpkBody(validId), std::nullopt, emptyPaths, wpkIdHandling(), "001", metrics);
+
+    for (const auto& responder : {agentMismatch, expired, badTag, shortId, noTaskFile})
+    {
+        EXPECT_EQ(responder->status, 404);
+        EXPECT_EQ(responder->body, missing->body);
+    }
+    EXPECT_EQ(metrics.wpkIdRejected->get(), 5U);
+    EXPECT_EQ(metrics.notFound->get(), 0U);
+    EXPECT_EQ(metrics.wpkIdServed->get(), 0U);
+}
+
+TEST(DownloadHandlerTest, WpkIdWithUnparseableAgentIdIs404)
+{
+    TempDir dir;
+    const auto paths = taskPaths(dir, "task package\n");
+    wazuh::metrics::Manager manager;
+    const auto metrics = makeDownloadMetrics(manager);
+
+    for (const auto* agentId : {"abc", "4294967296"})
+    {
+        const auto responder =
+            runHandlerAs(wpkBody(issueWpkId(1)), std::nullopt, paths, wpkIdHandling(), agentId, metrics);
+        EXPECT_EQ(responder->status, 404) << agentId;
+    }
+    EXPECT_EQ(metrics.wpkIdRejected->get(), 2U);
+    EXPECT_EQ(metrics.wpkIdServed->get(), 0U);
+}
+
+TEST(DownloadHandlerTest, WpkIdWithoutCodecIs404)
+{
+    TempDir dir;
+    const auto paths = taskPaths(dir, "task package\n");
+    const auto id = issueWpkId(1);
+    // A plain file named like the id must not be served either.
+    dir.writeFile("upgrade/" + id, "plain package\n");
+
+    const auto responder = runHandlerAs(wpkBody(id), std::nullopt, paths);
+
+    EXPECT_EQ(responder->status, 404);
+}
+
+TEST(DownloadHandlerTest, WpkIdNeverFallsBackToAPlainName)
+{
+    TempDir dir;
+    const auto paths = taskPaths(dir, "task package\n");
+    auto tampered = issueWpkId(1);
+    const auto tagPos = std::string_view {"wpk1."}.size() + 40;
+    tampered[tagPos] = tampered[tagPos] == 'A' ? 'B' : 'A';
+    dir.writeFile("upgrade/" + tampered, "plain file\n");
+
+    const auto responder = runHandlerAs(wpkBody(tampered), std::nullopt, paths, wpkIdHandling());
+
+    EXPECT_EQ(responder->status, 404);
+}
+
+TEST(DownloadHandlerTest, SymlinkedTaskFileIs404)
+{
+    TempDir dir;
+    const auto paths = taskPaths(dir, "task package\n");
+    const auto taskFile = dir.path() + "/upgrade/tasks/" + WPK_TASK_ID + ".wpk";
+    const auto target = dir.writeFile("real.wpk", "elsewhere\n");
+    ASSERT_EQ(::unlink(taskFile.c_str()), 0);
+    ASSERT_EQ(::symlink(target.c_str(), taskFile.c_str()), 0);
+    dir.track(std::string {"upgrade/tasks/"} + WPK_TASK_ID + ".wpk");
+
+    const auto responder = runHandlerAs(wpkBody(issueWpkId(1)), std::nullopt, paths, wpkIdHandling());
+
+    EXPECT_EQ(responder->status, 404);
+}
+
+TEST(DownloadHandlerTest, TaskFileThatIsADirectoryIs404)
+{
+    TempDir dir;
+    const auto paths = taskPaths(dir, "");
+    const auto taskFile = dir.path() + "/upgrade/tasks/" + WPK_TASK_ID + ".wpk";
+    ASSERT_EQ(::unlink(taskFile.c_str()), 0);
+    dir.makeDir(std::string {"upgrade/tasks/"} + WPK_TASK_ID + ".wpk");
+
+    const auto responder = runHandlerAs(wpkBody(issueWpkId(1)), std::nullopt, paths, wpkIdHandling());
+
+    EXPECT_EQ(responder->status, 404);
+}
+
+TEST(DownloadHandlerTest, TaskFilesAreNotReachableByPlainName)
+{
+    TempDir dir;
+    const auto paths = taskPaths(dir, "task package\n");
+
+    const auto byName = runHandlerAs(wpkBody(std::string {WPK_TASK_ID} + ".wpk"), std::nullopt, paths, wpkIdHandling());
+    const auto byPath = runHandlerAs(
+        wpkBody(std::string {"var/upgrade/tasks/"} + WPK_TASK_ID + ".wpk"), std::nullopt, paths, wpkIdHandling());
+
+    EXPECT_EQ(byName->status, 404);
+    EXPECT_EQ(byPath->status, 400);
 }

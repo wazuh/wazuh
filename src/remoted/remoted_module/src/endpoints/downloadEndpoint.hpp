@@ -11,6 +11,7 @@
 #ifndef _REMOTED_ENDPOINTS_DOWNLOAD_ENDPOINT_HPP
 #define _REMOTED_ENDPOINTS_DOWNLOAD_ENDPOINT_HPP
 
+#include "auth/wpkId.hpp"              // WpkIdHandling
 #include "common/installPaths.hpp"     // remoted::paths
 #include "downloadMetrics.hpp"         // DownloadMetrics
 #include "endpoint.hpp"                // AuthenticatedHandler
@@ -77,6 +78,7 @@ namespace remoted::endpoints::download
         std::string sharedDir {paths::kSharedDir};
         std::string multigroupsDir {paths::kMultigroupsDir};
         std::string wpkDir {paths::kWpkDir};
+        std::string wpkTasksDir {paths::kWpkTasksDir};
     };
 
     /**
@@ -334,9 +336,15 @@ namespace remoted::endpoints::download
      * default: a config download is authorized against it, so silently defaulting it would mean
      * "serve anything to anyone". A null pointer, and an agent the source does not know, are both
      * DENIED (403) -- there is no fallback to the id the request itself carries.
+     *
+     * @param wpkIds Redeems signed WPK ids (`wpk1.<...>.wpk`): one verifies only for the agent it was
+     * issued to and before it expires, and is served from its task's own file. Every failure, and
+     * an id-shaped name when no codec is set, answers the same 404 as an absent WPK.
      */
-    remoted::endpoints::AuthenticatedHandler
-    makeHandler(ResourcePaths paths, DownloadMetrics metrics, std::shared_ptr<const IAgentGroupSource> groups);
+    remoted::endpoints::AuthenticatedHandler makeHandler(ResourcePaths paths,
+                                                         DownloadMetrics metrics,
+                                                         std::shared_ptr<const IAgentGroupSource> groups,
+                                                         remoted::auth::WpkIdHandling wpkIds = {});
 
 } // namespace remoted::endpoints::download
 

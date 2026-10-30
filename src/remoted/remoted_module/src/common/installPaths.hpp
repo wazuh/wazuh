@@ -38,6 +38,8 @@ namespace remoted::paths
     inline constexpr const char* kMultigroupsDir = "var/multigroups";
     /// WPK packages served to agents for upgrades.
     inline constexpr const char* kWpkDir = "var/upgrade";
+    /// Per-task WPK files the task manager keeps, served only to the agent a signed identifier names.
+    inline constexpr const char* kWpkTasksDir = "var/upgrade/tasks";
 } // namespace remoted::paths
 
 #endif // _REMOTED_COMMON_INSTALL_PATHS_HPP

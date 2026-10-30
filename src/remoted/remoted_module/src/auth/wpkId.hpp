@@ -15,6 +15,8 @@
 #include <array>
 #include <chrono>
 #include <cstdint>
+#include <functional>
+#include <memory>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -68,6 +70,14 @@ namespace remoted::auth
 
         jwt_profile::v1::SecureBytes m_key;
         std::chrono::seconds m_ttl;
+    };
+
+    /// @brief What /control and /download need to issue and redeem identifiers. Each holder keeps
+    /// its own reference to the codec, so it outlives whichever of them runs last.
+    struct WpkIdHandling
+    {
+        std::shared_ptr<const WpkIdCodec> codec; ///< Empty: identifiers disabled.
+        std::function<std::int64_t()> now;       ///< Empty: the wall clock.
     };
 
 } // namespace remoted::auth

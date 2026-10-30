@@ -59,11 +59,13 @@ TEST(ControlMetricsTest, MakeRegistersFamilyAtZero)
                              METRIC_TASK_FETCH_ERROR,
                              METRIC_REJECTED,
                              METRIC_WDB_LATENCY,
-                             METRIC_NO_ROW})
+                             METRIC_NO_ROW,
+                             METRIC_WPK_ID_ISSUED,
+                             METRIC_WPK_ID_FALLBACK})
     {
         EXPECT_TRUE(manager.exists(name)) << name;
     }
-    EXPECT_EQ(manager.count(), 9U);
+    EXPECT_EQ(manager.count(), 11U);
     EXPECT_EQ(m.startup->get(), 0U);
     EXPECT_EQ(m.taskFetchError->get(), 0U);
     EXPECT_EQ(m.rejected->get(), 0U);
@@ -104,6 +106,11 @@ TEST(ControlMetricsTest, IncHelpersEachTouchOneCounter)
     incNoRow(m);
     EXPECT_EQ(valueOf(METRIC_NO_ROW), 1U);
     EXPECT_EQ(valueOf(METRIC_WDB_ERROR), 1U); // a missing row is not a failed round trip
+    incWpkIdIssued(m);
+    EXPECT_EQ(valueOf(METRIC_WPK_ID_ISSUED), 1U);
+    EXPECT_EQ(valueOf(METRIC_WPK_ID_FALLBACK), 0U);
+    incWpkIdFallback(m);
+    EXPECT_EQ(valueOf(METRIC_WPK_ID_FALLBACK), 1U);
 
     // The histogram helper records exactly one observation with the given value -- and, like
     // every helper here, is a safe no-op on the null object.
@@ -114,6 +121,8 @@ TEST(ControlMetricsTest, IncHelpersEachTouchOneCounter)
     ControlMetrics nullObject;
     incRejected(nullObject);
     incNoRow(nullObject);
+    incWpkIdIssued(nullObject);
+    incWpkIdFallback(nullObject);
     observeWdbLatency(nullObject, 1U); // not crashing IS the contract
 }
 
