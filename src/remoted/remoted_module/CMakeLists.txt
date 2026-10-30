@@ -49,6 +49,13 @@ endif()
 target_link_libraries(remoted_module PRIVATE pthread ext_restinio ext_rapidjson ext_zstd ext_jwt_cpp
                                              wazuh_metrics wazuh_uds_http_server ca_bundle)
 
+# The vendored asio compiled in this module's own TUs (RESTinio, the UDS client) would otherwise export
+# its template instantiations and GNU-unique statics, which every DSO embedding asio in the same process
+# binds to. --exclude-libs cannot reach them (no archive) and -fvisibility=hidden alone does not either
+# (asio/detail/push_options.hpp pushes default visibility), so the version script localizes them by name.
+target_link_options(remoted_module PRIVATE "LINKER:--version-script=${CMAKE_CURRENT_SOURCE_DIR}/remoted_module.map")
+set_property(TARGET remoted_module APPEND PROPERTY LINK_DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/remoted_module.map)
+
 set_target_properties(remoted_module PROPERTIES BUILD_RPATH_USE_ORIGIN TRUE
                                                 BUILD_RPATH "$ORIGIN/../lib")
 
