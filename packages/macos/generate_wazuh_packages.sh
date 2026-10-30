@@ -25,6 +25,7 @@ DEBUG="no"                            # Enables debug symbols while compiling.
 CHECKSUM="no"                         # Enables the checksum generation.
 IS_STAGE="no"                         # Enables release package naming.
 MAKE_COMPILATION="yes"                # Set whether or not to compile the code
+INSTALL_DEPS="no"                     # Install the dependencies and exit.
 CERT_APPLICATION_ID=""                # Apple Developer ID certificate to sign Apps and binaries.
 CERT_INSTALLER_ID=""                  # Apple Developer ID certificate to sign pkg.
 KEYCHAIN=""                           # Keychain where the Apple Developer ID certificate is.
@@ -218,7 +219,7 @@ function help() {
     echo "    --is_stage                    [Optional] Use release name in package"
     echo "    -nc, --not-compile            [Optional] Set whether or not to compile the code."
     echo "    -h, --help                    [  Util  ] Show this help."
-    echo "    -i, --install-deps            [  Util  ] Install build dependencies."
+    echo "    -i, --install-deps            [  Util  ] Install build dependencies. With --not-compile, only the packaging ones."
     echo "    -x, --install-xcode           [  Util  ] Install X-Code and brew. Can't be executed as root."
     echo "    -v, --verbose                 [  Util  ] Show additional information during the package generation."
     echo "  Signing options:"
@@ -265,6 +266,10 @@ function install_deps() {
         else
             echo "Something went wrong installing Munkipkg."
         fi
+    fi
+
+    if [ "${MAKE_COMPILATION}" = "no" ]; then
+        exit 0
     fi
 
     # Disable automatic cleanup to avoid Homebrew post-installation errors
@@ -398,7 +403,8 @@ function main() {
             help 0
             ;;
         "-i"|"--install-deps")
-            install_deps
+            INSTALL_DEPS="yes"
+            shift 1
             ;;
         "-x"|"--install-xcode")
             install_xcode
@@ -498,6 +504,10 @@ function main() {
 
     if [ ${VERBOSE} = "yes" ]; then
         set -ex
+    fi
+
+    if [ "${INSTALL_DEPS}" = "yes" ]; then
+        install_deps
     fi
 
     testdep
