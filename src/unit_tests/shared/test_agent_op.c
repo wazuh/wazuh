@@ -35,6 +35,7 @@ extern cJSON* w_create_agent_remove_payload(const char *id, const int purge);
 extern cJSON* w_create_sendsync_payload(const char *daemon_name, cJSON *message);
 extern int w_parse_agent_add_response(const char* buffer, char *err_response, char* id, char* key, const int json_format, const int exit_on_error);
 extern int w_parse_agent_remove_response(const char* buffer, char *err_response, const int json_format, const int exit_on_error);
+extern char *w_get_agent_profile_from_config(OS_XML *xml);
 
 static void test_create_agent_add_payload(void **state) {
     char* agent = "agent1";
@@ -615,6 +616,75 @@ static void test_os_write_agent_info_no_success(void **state) {
     assert_int_equal(ret, 0);
 }
 
+/* os_read_agent_profile */
+
+static char *get_profile_from_string(const char *config) {
+    OS_XML xml;
+    char *profile;
+
+    assert_int_equal(OS_ReadXMLString(config, &xml), 0);
+    profile = w_get_agent_profile_from_config(&xml);
+    OS_ClearXML(&xml);
+
+    return profile;
+}
+
+static void test_w_get_agent_profile_from_config_set(void **state) {
+    char *profile = get_profile_from_string(
+        "<ossec_config><client><server><address>1.1.1.1</address></server>"
+        "<config-profile>profA,profB</config-profile></client></ossec_config>");
+
+    assert_string_equal(profile, "profA,profB");
+    free(profile);
+}
+
+static void test_w_get_agent_profile_from_config_not_set(void **state) {
+    char *profile = get_profile_from_string(
+        "<ossec_config><client><server><address>1.1.1.1</address></server></client>"
+        "<labels><label key=\"config-profile\">profA</label></labels></ossec_config>");
+
+    assert_string_equal(profile, "-");
+    free(profile);
+}
+
+static void test_w_get_agent_profile_from_config_empty(void **state) {
+    char *profile = get_profile_from_string(
+        "<ossec_config><client><config-profile></config-profile></client></ossec_config>");
+
+    assert_string_equal(profile, "");
+    free(profile);
+}
+
+static void test_w_get_agent_profile_from_config_last_wins(void **state) {
+    char *profile = get_profile_from_string(
+        "<ossec_config><client><config-profile>profA</config-profile></client></ossec_config>"
+        "<ossec_config><client><config-profile>profB</config-profile></client>"
+        "<client><notify_time>10</notify_time></client></ossec_config>");
+
+    assert_string_equal(profile, "profB");
+    free(profile);
+}
+
+static void test_os_read_agent_profile_no_config(void **state) {
+    char message[OS_MAXSTR];
+
+    test_mode = 1;
+
+    expect_string(__wrap__mdebug2, formatted_msg, "Calling os_read_agent_profile().");
+    expect_string(__wrap_wfopen, path, OSSECCONF);
+    expect_string(__wrap_wfopen, mode, "r");
+    will_return(__wrap_wfopen, NULL);
+
+    snprintf(message, sizeof(message), "(1226): Error reading XML file '%s': XMLERR: File '%s' not found. (line 0).",
+             OSSECCONF, OSSECCONF);
+    expect_string(__wrap__merror, formatted_msg, message);
+
+    char *profile = os_read_agent_profile();
+
+    test_mode = 0;
+    assert_null(profile);
+}
+
 /* w_validate_group_name */
 
 #define GROUP_RESPONSE_SIZE OS_SIZE_2048
@@ -871,6 +941,11 @@ int main(void) {
         cmocka_unit_test(test_parse_agent_add_response),
         cmocka_unit_test(test_os_write_agent_info_success),
         cmocka_unit_test(test_os_write_agent_info_no_success),
+        cmocka_unit_test(test_w_get_agent_profile_from_config_set),
+        cmocka_unit_test(test_w_get_agent_profile_from_config_not_set),
+        cmocka_unit_test(test_w_get_agent_profile_from_config_empty),
+        cmocka_unit_test(test_w_get_agent_profile_from_config_last_wins),
+        cmocka_unit_test(test_os_read_agent_profile_no_config),
         #ifndef WIN32
         cmocka_unit_test(test_create_agent_remove_payload),
         cmocka_unit_test(test_create_sendsync_payload),

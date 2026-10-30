@@ -203,6 +203,34 @@ char *os_read_agent_id()
     return (NULL);
 }
 
+/* Get the <config-profile> of the agent from a parsed ossec.conf.
+ * If it is set more than once, the last value wins, as when the client configuration is read.
+ * Returns "-" if it is not set, the value the agent info file holds in that case.
+ */
+static char *w_get_agent_profile_from_config(OS_XML *xml)
+{
+    const char *xml_profile[] = {"ossec_config", "client", "config-profile", NULL};
+    char **profiles = OS_GetContents(xml, xml_profile);
+    char *profile = NULL;
+    size_t i;
+
+    if (profiles) {
+        for (i = 0; profiles[i]; i++);
+
+        if (i > 0) {
+            os_strdup(profiles[i - 1], profile);
+        }
+
+        free_strarray(profiles);
+    }
+
+    if (!profile) {
+        os_strdup("-", profile);
+    }
+
+    return profile;
+}
+
 /*  Read the agent profile name for the current agent
  *  Returns NULL on error
  *
@@ -212,40 +240,28 @@ char *os_read_agent_id()
  *  The profile name is set in the agent's etc/ossec.conf file
  *  It is matched with the ossec manager's agent.conf file to read
  *  configuration only applicable to this profile name.
+ *  It is read from ossec.conf itself rather than from the agent info file, which only
+ *  gets the profile of a new configuration once the agent has loaded its keys.
  */
 char *os_read_agent_profile()
 {
-    char buf[1024 + 1];
-    FILE *fp;
+    OS_XML xml;
+    char *profile;
 
     mdebug2("Calling os_read_agent_profile().");
-    fp = wfopen(AGENT_INFO_FILE, "r");
 
-    if (!fp) {
-        merror(FOPEN_ERROR, AGENT_INFO_FILE, errno, strerror(errno));
+    if (OS_ReadXML(OSSECCONF, &xml) < 0) {
+        merror(XML_ERROR, OSSECCONF, xml.err, xml.err_line);
+        OS_ClearXML(&xml);
         return (NULL);
     }
 
-    buf[1024] = '\0';
+    profile = w_get_agent_profile_from_config(&xml);
+    OS_ClearXML(&xml);
 
-    /* Get profile */
-    if (fgets(buf, 1024, fp) && fgets(buf, 1024, fp) &&
-            fgets(buf, 1024, fp) && fgets(buf, 1024, fp)) {
-        char *ret = NULL;
+    mdebug2("os_read_agent_profile() = [%s]", profile);
 
-        /* Trim the /n and/or /r at the end of the string */
-        os_trimcrlf(buf);
-
-        os_strdup(buf, ret);
-        mdebug2("os_read_agent_profile() = [%s]", ret);
-
-        fclose(fp);
-
-        return (ret);
-    }
-
-    fclose(fp);
-    return (NULL);
+    return (profile);
 }
 
 /* Write the agent info to the queue, for the other processes to read

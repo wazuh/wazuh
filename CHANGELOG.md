@@ -65,6 +65,7 @@ All notable changes to this project will be documented in this file.
 - Fixed `wazuh-agentd` and `wazuh-logcollector` crashing or leaving a stale PID file when they are stopped while working. ([#40816](https://github.com/wazuh/wazuh/pull/40816))
 - Fixed Syscollector reporting no network inventory on Linux while an IPv4 address carries a label other than `<interface>` or `<interface>:<suffix>`, such as keepalived's `label vip`, and reporting the address under the wrong interface when its label is another interface's name. ([#40916](https://github.com/wazuh/wazuh/pull/40916))
 - Fixed `wazuh-logcollector` dropping a `snort-full` alert when a read stopped before the alert's date line. ([#40671](https://github.com/wazuh/wazuh/issues/40671))
+- Fixed the agent applying the `agent.conf` blocks of the previous `<config-profile>` until a second restart after the profile was changed. On Linux this affected the labels and client buffer of `wazuh-agentd`; on Windows it affected the whole agent. ([#40930](https://github.com/wazuh/wazuh/pull/40930))
 
 ## [v4.14.10]
 
