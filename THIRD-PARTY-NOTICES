@@ -8,12 +8,12 @@ which artefact carries it.
 
 Contents
 
-  1. abseil-cpp 20240116.3 (Apache-2.0)
+  1. abseil-cpp 20250127.2 (Apache-2.0)
   2. asio 1.38.2 (BSL-1.0)
   3. bzip2 1.0.8 (bzip2-1.0.6)
   4. cJSON 1.7.18 (MIT)
   5. concurrentqueue 1.0.4 (BSD-2-Clause OR BSL-1.0)
-  6. cpp-httplib 0.25.0 (MIT)
+  6. cpp-httplib 0.51.0 (MIT)
   7. cPython 3.12.14 (PSF-2.0)
   8. aiohappyeyeballs 2.6.1 (PSF-2.0)
   9. aiohttp 3.14.3 (Apache-2.0 AND MIT)
@@ -119,7 +119,7 @@ Contents
 109. zstd 1.5.7 (BSD-3-Clause)
 
 ==============================================================================
-abseil-cpp 20240116.3
+abseil-cpp 20250127.2
 ==============================================================================
 License:     Apache-2.0
 Homepage:    https://github.com/abseil/abseil-cpp
@@ -522,7 +522,7 @@ ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 
 ==============================================================================
-cpp-httplib 0.25.0
+cpp-httplib 0.51.0
 ==============================================================================
 License:     MIT
 Homepage:    https://github.com/yhirose/cpp-httplib

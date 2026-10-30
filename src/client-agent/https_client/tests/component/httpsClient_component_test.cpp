@@ -310,7 +310,7 @@ TEST_F(ComponentTest, StatefulSessionCompressesToASmallerWireSizeAndDecompresses
 
     EXPECT_EQ(200, response.httpCode);
     // The fake manager reports the *inflated* size the way the real manager
-    // would see it -- decoded by cpp-httplib itself (0.25.0 in the manager tree,
+    // would see it -- decoded by cpp-httplib itself (0.51.0 in the manager tree,
     // with CPPHTTPLIB_ZSTD_SUPPORT) or by the fake's own zstd pass (0.10.9 in
     // agent builds hands the frame over untouched) -- so this proves the
     // smaller wire body inflated back to the full session on every CI leg.
