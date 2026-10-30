@@ -162,6 +162,27 @@ TEST(ContainerAdmissionTest, AnUnpublishableContainerNeverTakesAFreeSlot)
     EXPECT_EQ(admitContainers(known, visible, NONE, 1), ids({"m"}));
 }
 
+TEST(ContainerAdmissionTest, AnUnkeyedContainerTakesAFreeSlotNobodyElseWants)
+{
+    // Same three containers as the test above, and the cap no longer binds.
+    // Refusing "a" here buys nothing: no publishable container wants the third
+    // slot. What it costs is a retract-and-recreate cycle on every agent
+    // restart, because the seconds before the resolver keys a container are the
+    // ordinary state at startup, not an exception.
+    const auto known = ids({"a", "m", "n"});
+    const auto visible = ids({"m", "n"});
+
+    EXPECT_EQ(admitContainers(known, visible, NONE, 3), known);
+
+    // A slot free above what exists is still only three containers admitted.
+    EXPECT_EQ(admitContainers(known, visible, NONE, 10), known);
+
+    // The order holds where it matters: give the cap one slot fewer than there
+    // are containers and the publishable ones still take them all, even though
+    // "a" sorts below both.
+    EXPECT_EQ(admitContainers(known, visible, NONE, 2), ids({"m", "n"}));
+}
+
 TEST(ContainerAdmissionTest, AnIncumbentKeepsItsSlotWhileItHasNoKey)
 {
     // "b" was admitted and is now restarting: still known, not publishable for

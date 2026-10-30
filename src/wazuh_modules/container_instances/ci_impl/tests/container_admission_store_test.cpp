@@ -510,7 +510,9 @@ TEST(ContainerAdmissionStoreTest, TheWithheldLineBlamesTheLimitOnlyWhenTheLimitB
     store.applySnapshot(
         kDocker, {MakeRecord("a", 0), MakeRecord("m", InodeFor("m")), MakeRecord("n", InodeFor("n"))}, {}, Now());
 
-    ASSERT_EQ(store.admittedIds(), (std::set<std::string> {"m", "n"}));
+    // "a" takes the third slot: nothing publishable wants it, and refusing it
+    // would retract its rows for the seconds until the resolver keys it.
+    ASSERT_EQ(store.admittedIds(), (std::set<std::string> {"a", "m", "n"}));
 
     for (const auto& text : messages)
     {
