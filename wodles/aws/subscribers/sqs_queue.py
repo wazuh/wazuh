@@ -17,9 +17,10 @@ import wazuh_integration
 sys.path.insert(0, path.dirname(path.dirname(path.abspath(__file__))))
 import aws_tools
 
-# A batch of objects in a row that AWS fails to provide points to a problem with every message, such as the
-# permissions of the role
-MAX_CONSECUTIVE_AWS_ERRORS = 10
+# A batch of requests in a row without an answer from AWS points to a problem with every message, such as the network or
+# the endpoint. An answer from AWS, such as AccessDenied, may depend on the bucket named in the message, so it does not
+# count.
+MAX_CONSECUTIVE_UNANSWERED_REQUESTS = 10
 
 
 class AWSSQSQueue(wazuh_integration.WazuhIntegration):
@@ -185,11 +186,12 @@ class AWSSQSQueue(wazuh_integration.WazuhIntegration):
         """Get messages from the SQS queue, parse their events, send them to AnalysisD, and delete them from the queue.
 
         When a message was kept in the queue after an error, exit with an error code once the rest of the queue has
-        been processed, or as soon as AWS failed to provide the objects of MAX_CONSECUTIVE_AWS_ERRORS messages in a
-        row. A message that is not an object notification does not count, as it does not reach AWS.
+        been processed, or as soon as the requests for the objects of MAX_CONSECUTIVE_UNANSWERED_REQUESTS messages in a
+        row got no answer from AWS. A message that is not an object notification does not count, as it does not reach
+        AWS.
         """
         kept_ids = set()
-        kept = consecutive_aws_errors = 0
+        kept = consecutive_unanswered = 0
         messages = self.get_messages()
         while messages:
             # A kept message comes back in the same run when the visibility timeout is shorter than the run
@@ -201,14 +203,14 @@ class AWSSQSQueue(wazuh_integration.WazuhIntegration):
                 if error is not None:
                     kept_ids.add(message.get('message_id'))
                     kept += 1
-                if error is not None and s3_log_handler.is_retryable_error(error):
-                    consecutive_aws_errors += 1
-                    if consecutive_aws_errors == MAX_CONSECUTIVE_AWS_ERRORS:
-                        aws_tools.error(f'Stopping after AWS failed to provide the objects of {consecutive_aws_errors} '
-                                        f'messages in a row')
+                if error is not None and s3_log_handler.is_unanswered_error(error):
+                    consecutive_unanswered += 1
+                    if consecutive_unanswered == MAX_CONSECUTIVE_UNANSWERED_REQUESTS:
+                        aws_tools.error(f'Stopping after the requests for the objects of {consecutive_unanswered} '
+                                        f'messages in a row got no answer from AWS')
                         sys.exit(7)
                 elif 'route' in message:
-                    consecutive_aws_errors = 0
+                    consecutive_unanswered = 0
             messages = self.get_messages()
         if kept:
             aws_tools.error(f'{kept} message(s) were kept in the SQS queue for a later run')

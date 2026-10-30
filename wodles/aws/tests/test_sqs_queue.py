@@ -427,13 +427,17 @@ def test_aws_sqs_queue_sync_events_ends_with_kept_messages_without_id():
     assert mock_get.call_count == 2
 
 
+UNANSWERED = botocore.exceptions.EndpointConnectionError(endpoint_url='https://s3')
+
+
 @pytest.mark.parametrize('skip_on_error', [True, False])
-def test_aws_sqs_queue_sync_events_stops_after_a_batch_of_aws_errors_in_a_row(skip_on_error, capsys):
-    """Test 'sync_events' stops the run once AWS failed to provide the objects of MAX_CONSECUTIVE_AWS_ERRORS messages in
-    a row, as that points to a problem with every message, instead of receiving the whole queue on every run."""
+def test_aws_sqs_queue_sync_events_stops_after_a_batch_of_unanswered_requests_in_a_row(skip_on_error, capsys):
+    """Test 'sync_events' stops the run once the requests for the objects of MAX_CONSECUTIVE_UNANSWERED_REQUESTS
+    messages in a row got no answer from AWS, as that points to a problem with every message, instead of receiving
+    the whole queue on every run."""
     instance = get_queue(skip_on_error=skip_on_error)
     instance.message_processor = sqs_message_processor.AWSS3MessageProcessor()
-    instance.bucket_handler.process_file.side_effect = client_error('AccessDenied')
+    instance.bucket_handler.process_file.side_effect = UNANSWERED
     batches = [{'Messages': [sqs_message(s3_notification(f'key{n}'), n) for n in range(b * 10, b * 10 + 10)]}
                for b in range(3)]
     instance.client.receive_message.side_effect = batches + [{}]
@@ -442,10 +446,30 @@ def test_aws_sqs_queue_sync_events_stops_after_a_batch_of_aws_errors_in_a_row(sk
         instance.sync_events()
 
     assert e.value.code == utils.UNEXPECTED_ERROR_WORKING_WITH_S3
-    assert instance.bucket_handler.process_file.call_count == sqs_queue.MAX_CONSECUTIVE_AWS_ERRORS
+    assert instance.bucket_handler.process_file.call_count == sqs_queue.MAX_CONSECUTIVE_UNANSWERED_REQUESTS
     assert instance.client.receive_message.call_count == 1
     assert capsys.readouterr().out.endswith(
-        'ERROR: Stopping after AWS failed to provide the objects of 10 messages in a row\n')
+        'ERROR: Stopping after the requests for the objects of 10 messages in a row got no answer from AWS\n')
+
+
+@pytest.mark.parametrize('error', [client_error('AccessDenied'), client_error('ExpiredToken'),
+                                   client_error('AllAccessDisabled')])
+def test_aws_sqs_queue_sync_events_does_not_stop_for_answers_from_aws(error):
+    """Test the errors answered by AWS do not stop the run, even many in a row, as they may depend on the bucket named
+    in each message: the rest of the queue is processed and the run exits with an error code."""
+    instance = get_queue(skip_on_error=True)
+    instance.message_processor = sqs_message_processor.AWSS3MessageProcessor()
+    instance.bucket_handler.process_file.side_effect = [error] * 12 + [None]
+    batch = [sqs_message(s3_notification(f'key{n}', bucket='foreign-bucket'), n) for n in range(12)]
+    batch.append(sqs_message(s3_notification('key'), 12))
+    instance.client.receive_message.side_effect = [{'Messages': batch[:10]}, {'Messages': batch[10:]}, {}]
+
+    with pytest.raises(SystemExit) as e:
+        instance.sync_events()
+
+    assert e.value.code == utils.UNEXPECTED_ERROR_WORKING_WITH_S3
+    assert instance.bucket_handler.process_file.call_count == 13
+    assert [c.kwargs['ReceiptHandle'] for c in instance.client.delete_message.call_args_list] == ['h12']
 
 
 def test_aws_sqs_queue_sync_events_does_not_stop_for_files_that_cannot_be_processed():
@@ -467,10 +491,10 @@ def test_aws_sqs_queue_sync_events_does_not_stop_for_files_that_cannot_be_proces
 
 def test_aws_sqs_queue_sync_events_does_not_reset_the_count_on_messages_that_are_not_notifications():
     """Test a message that is not an object notification, which does not reach AWS, does not restart the count of
-    AWS errors in a row."""
+    requests without an answer in a row."""
     instance = get_queue(skip_on_error=False)
     instance.message_processor = sqs_message_processor.AWSS3MessageProcessor()
-    instance.bucket_handler.process_file.side_effect = client_error('AccessDenied')
+    instance.bucket_handler.process_file.side_effect = UNANSWERED
     batch = [sqs_message(s3_notification(f'key{n}'), n) for n in range(9)] + [sqs_message('x', 9),
                                                                              sqs_message(s3_notification('key10'), 10)]
     instance.client.receive_message.side_effect = [{'Messages': batch[:10]}, {'Messages': batch[10:]}, {}]
@@ -482,12 +506,12 @@ def test_aws_sqs_queue_sync_events_does_not_reset_the_count_on_messages_that_are
     assert instance.client.receive_message.call_count == 2
 
 
-def test_aws_sqs_queue_sync_events_counts_aws_errors_in_a_row_from_the_last_object_provided():
-    """Test a processed message restarts the count of AWS errors in a row, so isolated errors do not stop the run."""
+def test_aws_sqs_queue_sync_events_counts_unanswered_requests_in_a_row_from_the_last_object_provided():
+    """Test a processed message restarts the count of requests without an answer in a row, so isolated errors do not
+    stop the run."""
     instance = get_queue(skip_on_error=False)
     instance.message_processor = sqs_message_processor.AWSS3MessageProcessor()
-    failure = client_error('AccessDenied')
-    instance.bucket_handler.process_file.side_effect = [failure] * 9 + [None] + [failure] * 9
+    instance.bucket_handler.process_file.side_effect = [UNANSWERED] * 9 + [None] + [UNANSWERED] * 9
     batch = [sqs_message(s3_notification(f'key{n}'), n) for n in range(19)]
     instance.client.receive_message.side_effect = [{'Messages': batch[:10]}, {'Messages': batch[10:]}, {}]
 
@@ -496,3 +520,21 @@ def test_aws_sqs_queue_sync_events_counts_aws_errors_in_a_row_from_the_last_obje
 
     assert instance.bucket_handler.process_file.call_count == 19
     assert [c.kwargs['ReceiptHandle'] for c in instance.client.delete_message.call_args_list] == ['h9']
+
+
+def test_aws_sqs_queue_sync_events_stops_at_the_next_receive_when_the_credentials_fail():
+    """Test a failure of the credentials, which the queue shares with the buckets, stops the run when the next batch is
+    received, without the count of requests without an answer."""
+    instance = get_queue(skip_on_error=False)
+    instance.message_processor = sqs_message_processor.AWSS3MessageProcessor()
+    instance.bucket_handler.process_file.side_effect = client_error('ExpiredToken')
+    batches = [{'Messages': [sqs_message(s3_notification(f'key{n}'), n) for n in range(10)]},
+               botocore.exceptions.ClientError({'Error': {'Code': 'ExpiredToken', 'Message': 'expired'}},
+                                               'ReceiveMessage')]
+    instance.client.receive_message.side_effect = batches
+
+    with pytest.raises(SystemExit) as e:
+        instance.sync_events()
+
+    assert e.value.code == utils.UNABLE_TO_FETCH_DELETE_FROM_QUEUE
+    assert instance.bucket_handler.process_file.call_count == 10

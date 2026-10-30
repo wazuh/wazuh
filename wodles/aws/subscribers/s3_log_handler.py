@@ -72,6 +72,25 @@ def is_retryable_error(error: Exception) -> bool:
                               urllib3.exceptions.HTTPError, ConnectionError, TimeoutError, socket.timeout))
 
 
+def is_unanswered_error(error: Exception) -> bool:
+    """Determine if a request for an object got no answer from AWS, e.g. because of the network, the endpoint or the
+    local credentials.
+
+    Unlike an answer from AWS, such as AccessDenied, it does not depend on the bucket named in the message.
+
+    Parameters
+    ----------
+    error : Exception
+        Error raised while fetching or processing the object.
+
+    Returns
+    -------
+    bool
+        Whether the request got no answer from AWS.
+    """
+    return is_retryable_error(error) and not isinstance(error, botocore.exceptions.ClientError)
+
+
 class AWSS3LogHandler:
     def obtain_logs(self, bucket: str, log_path: str) -> list:
         """Fetch a file from a bucket and obtain a list of events from it.

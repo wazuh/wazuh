@@ -505,3 +505,19 @@ def test_aws_subscriber_bucket_obtain_logs_raises_for_snappy_files():
 
     with pytest.raises(RuntimeError):
         handler.obtain_logs(bucket=utils.TEST_BUCKET, log_path='file.snappy')
+
+
+@pytest.mark.parametrize('error, expected', [
+    (botocore.exceptions.EndpointConnectionError(endpoint_url='https://s3'), True),
+    (botocore.exceptions.NoCredentialsError(), True),
+    (urllib3.exceptions.ProtocolError('Connection broken'), True),
+    (ConnectionResetError(104, 'reset'), True),
+    (socket.timeout('timed out'), True),
+    (client_error('AccessDenied'), False),
+    (client_error('ExpiredToken'), False),
+    (ValueError('invalid content'), False),
+])
+def test_is_unanswered_error(error, expected):
+    """Test 'is_unanswered_error' matches the requests that got no answer from AWS, and not the answers from AWS,
+    which may depend on the bucket named in the message, nor the errors of the content of a file."""
+    assert s3_log_handler.is_unanswered_error(error) is expected
