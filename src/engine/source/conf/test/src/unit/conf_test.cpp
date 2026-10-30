@@ -506,6 +506,31 @@ TEST(ConfTest, AgentCacheDefaultsAndOverrides)
     EXPECT_EQ(defaults.get<size_t>(conf::key::AGENT_METADATA_CACHE_MAX_BYTES), 16384u);
 }
 
+TEST(ConfTest, IngestServerDefaultsAndOverrides)
+{
+    SKIP_UNLESS_FILE_IS_LOADED();
+    logging::testInit();
+    ScopedEnv bodyEnv("WAZUH_SERVER_ENRICHED_EVENTS_MAX_BODY_BYTES");
+    ScopedEnv connectionsEnv("WAZUH_SERVER_ENRICHED_EVENTS_MAX_CONNECTIONS");
+    ScopedEnv budgetEnv("WAZUH_SERVER_ENRICHED_EVENTS_MAX_INFLIGHT_BYTES");
+    conf::Conf defaults(std::make_shared<conf::mocks::MockFileLoader>());
+    EXPECT_EQ(defaults.get<size_t>(conf::key::SERVER_ENRICHED_EVENTS_MAX_BODY_BYTES), 67108864u);
+    EXPECT_EQ(defaults.get<size_t>(conf::key::SERVER_ENRICHED_EVENTS_MAX_CONNECTIONS), 1024u);
+    EXPECT_EQ(defaults.get<size_t>(conf::key::SERVER_ENRICHED_EVENTS_MAX_INFLIGHT_BYTES), 268435456u);
+
+    conf::Conf configured(conf::mocks::createMockFileLoader(
+        {{std::string(conf::key::SERVER_ENRICHED_EVENTS_MAX_BODY_BYTES), "33554432"},
+         {std::string(conf::key::SERVER_ENRICHED_EVENTS_MAX_CONNECTIONS), "2048"},
+         {std::string(conf::key::SERVER_ENRICHED_EVENTS_MAX_INFLIGHT_BYTES), "536870912"}}));
+    configured.load();
+    EXPECT_EQ(configured.get<size_t>(conf::key::SERVER_ENRICHED_EVENTS_MAX_BODY_BYTES), 33554432u);
+    EXPECT_EQ(configured.get<size_t>(conf::key::SERVER_ENRICHED_EVENTS_MAX_CONNECTIONS), 2048u);
+    EXPECT_EQ(configured.get<size_t>(conf::key::SERVER_ENRICHED_EVENTS_MAX_INFLIGHT_BYTES), 536870912u);
+    setEnv("WAZUH_SERVER_ENRICHED_EVENTS_MAX_CONNECTIONS", "4096");
+    EXPECT_EQ(configured.get<size_t>(conf::key::SERVER_ENRICHED_EVENTS_MAX_CONNECTIONS), 4096u)
+        << "the environment wins over the file";
+}
+
 TEST(ConfTest, AgentCacheZeroLimits)
 {
     SKIP_UNLESS_FILE_IS_LOADED();
