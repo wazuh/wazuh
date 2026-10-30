@@ -65,6 +65,7 @@ void *read_multiline(logreader *lf, int *rc, int drop_it) {
         rbytes = w_ftell(lf->fp) - offset;
         lines++;
         linesgot++;
+        bool line_dropped = false;
 
         /* Flow control */
         if (rbytes <= 0) {
@@ -82,12 +83,8 @@ void *read_multiline(logreader *lf, int *rc, int drop_it) {
             if ((int64_t)strlen(str) != rbytes - 1)
             {
                 mdebug2("Line in '%s' contains some zero-bytes (valid=" FTELL_TT " / total=" FTELL_TT "). Dropping line.", lf->file, FTELL_INT64 strlen(str), FTELL_INT64 rbytes - 1);
-                /* Keep the rewind point at the start of a group still being collected */
-                if (buffer[0] == '\0') {
-                    current_position = offset + rbytes;
-                    multiline_mark_group(group_context, context, &group_pending);
-                }
-                continue;
+                /* The line still belongs to its group: it adds no text, but it can complete the group */
+                line_dropped = true;
             }
         }
 
@@ -156,17 +153,19 @@ void *read_multiline(logreader *lf, int *rc, int drop_it) {
 #endif
 
         /* Add to buffer */
-        buffer_size = strlen(buffer);
-        if (buffer[0] != '\0' && buffer_size < sizeof(buffer) - 1) {
-            buffer[buffer_size] = ' ';
-            buffer_size++;
-        }
+        if (!line_dropped) {
+            buffer_size = strlen(buffer);
+            if (buffer[0] != '\0' && buffer_size < sizeof(buffer) - 1) {
+                buffer[buffer_size] = ' ';
+                buffer_size++;
+            }
 
-        size = snprintf(buffer + buffer_size, sizeof(buffer) - buffer_size, "%s", str);
-        group_length += rbytes;
+            size = snprintf(buffer + buffer_size, sizeof(buffer) - buffer_size, "%s", str);
+            group_length += rbytes;
 
-        if ((size_t)size >= sizeof(buffer) - buffer_size) {
-            group_truncated = true;
+            if ((size_t)size >= sizeof(buffer) - buffer_size) {
+                group_truncated = true;
+            }
         }
 
         if (linesgot < lf->linecount) {
@@ -174,8 +173,8 @@ void *read_multiline(logreader *lf, int *rc, int drop_it) {
         }
         linesgot = 0;
 
-        /* Check ignore and restrict log regex, if configured. */
-        if (drop_it == 0 && !check_ignore_and_restrict(lf->regex_ignore, lf->regex_restrict, buffer)) {
+        /* A group whose lines were all dropped has nothing to send. Check ignore and restrict log regex, if configured. */
+        if (group_length > 0 && drop_it == 0 && !check_ignore_and_restrict(lf->regex_ignore, lf->regex_restrict, buffer)) {
             /* Send message to queue */
             mdebug2("Reading message: '%.*s'%s", sample_log_length, buffer, strlen(buffer) > (size_t)sample_log_length ? "..." : "");
             w_msg_hash_queues_push(buffer, lf->file, strlen(buffer) + 1, lf->log_target, LOCALFILE_MQ);
