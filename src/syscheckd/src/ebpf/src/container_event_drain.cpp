@@ -269,7 +269,8 @@ namespace fim_container_events
 
     ListRefreshPlan planListRefresh(const wazuh::container_instances_client::ContainerDelta& delta,
                                     const std::map<std::string, bool>& currentView,
-                                    const std::set<std::string>& mappedContainers)
+                                    const std::set<std::string>& mappedContainers,
+                                    const std::set<std::string>& previousUnkeyed)
     {
         ListRefreshPlan plan;
         plan.complete = delta.complete;
@@ -278,6 +279,19 @@ namespace fim_container_events
          * second is what admission needs. A connector too old to report its
          * unkeyed ids leaves `complete` as the only evidence either way. */
         plan.enumerated = delta.complete || delta.unkeyedKnown;
+
+        /* Handed straight back so the caller can compare against it next time.
+         * Only when the reply can enumerate: otherwise the set is empty for
+         * want of a connector that reports it, not for want of containers, and
+         * keeping the previous one is what stops that reading as a departure. */
+        if (plan.enumerated)
+        {
+            plan.unkeyed = delta.unkeyed;
+        }
+        else
+        {
+            plan.unkeyed = previousUnkeyed;
+        }
 
         /* unreachable: nothing was obtained. Change NOTHING -- install()
          * replaces the positive map, so applying an empty list from a connector
@@ -453,6 +467,33 @@ namespace fim_container_events
          * longer exists needs no admission -- dropping it also keeps the view
          * from growing without bound on a host that churns containers. */
         std::map<std::string, bool> updated {currentView};
+
+        /* Retire the unkeyed containers this reply no longer names.
+         *
+         * An unkeyed container reaches the view from the LIST side, through
+         * foldUnkeyedIntoView() below, and no event can ever take it out again:
+         * the store erases a record that never had a key WITHOUT journalling,
+         * because a container that was never published has no visibility
+         * transition for consumers to act on, so no `removed` is emitted. The
+         * id therefore sat in the view for the life of the process -- the
+         * unbounded growth an incomplete resync used to have, reached by the
+         * other path, and with the same consequence beyond size: a departed
+         * container goes on answering fim_container_is_admitted() and its id
+         * reads as known rather than unheard-of if the runtime reuses it.
+         *
+         * Before the events, not after: one that has merely been KEYED since
+         * the last reply is named by this one, so its event puts it straight
+         * back with an attribution key this time. */
+        if (plan.enumerated)
+        {
+            for (const auto& containerId : previousUnkeyed)
+            {
+                if (delta.unkeyed.count(containerId) == 0)
+                {
+                    updated.erase(containerId);
+                }
+            }
+        }
 
         for (const auto& event : delta.events)
         {
@@ -818,9 +859,12 @@ namespace fim_container_events
         void refreshContainerList()
         {
             const auto delta = client.listContainersSince(cursor_epoch, cursor_seq);
-            const auto plan = planListRefresh(delta, admission_view, router.mappedContainerIds());
+            const auto plan =
+                planListRefresh(delta, admission_view, router.mappedContainerIds(), admission_unkeyed);
 
             if (!plan.act) return;
+
+            admission_unkeyed = plan.unkeyed;
 
             syncAllowlist(plan.installWholeList ? router.applyContainerList(plan.containers)
                           : router.applyContainerDelta(plan.events));
@@ -853,6 +897,16 @@ namespace fim_container_events
          * a container by its id, which is a fact that needs no attribution key,
          * so there is no third state to keep beside the map. */
         std::map<std::string, bool> admission_view;
+
+        /* Which of those had no key as of the last reply.
+         *
+         * Not a third admission state -- the map above decides them like any
+         * other container. This is the only record of how they got INTO it,
+         * and the only way one of them can be seen to leave: they arrive from
+         * the connector's unkeyed set rather than from an event, and the store
+         * erases a never-keyed record without journalling, so no `removed` is
+         * ever emitted for one. */
+        std::set<std::string> admission_unkeyed;
 
         /* The installed snapshot is behind admission_view. See
          * decideAdmissionPublish() for why a "publish on change" rule alone

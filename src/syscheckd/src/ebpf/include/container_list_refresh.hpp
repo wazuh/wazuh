@@ -79,6 +79,21 @@ namespace fim_container_events
         /// nobody could key held `complete` false for as long as it ran and
         /// froze admission for the whole node.
         bool enumerated {false};
+
+        /// The containers this reply says exist without a key, for the caller to
+        /// hand back on the next refresh.
+        ///
+        /// They enter `admissionView` from the LIST side, and nothing on the
+        /// event side ever takes them out: the store erases an unkeyed record
+        /// without journalling, because a container that was never published
+        /// has no visibility transition to report, so no `removed` ever arrives.
+        /// Comparing what was unkeyed last time against what is unkeyed now is
+        /// the only way the drain learns one of them is gone.
+        ///
+        /// Only meaningful when `enumerated`; the caller keeps its previous set
+        /// otherwise, since a reply that cannot name what it could not key
+        /// cannot say one has departed either.
+        std::set<std::string> unkeyed;
     };
 
     /// What to do with an admission view the drain has just recomputed.
@@ -97,9 +112,14 @@ namespace fim_container_events
     ///        departures then have to be named one by one -- without that, a
     ///        container that went away while the cursor was invalid keeps its
     ///        cgroups in the map, and allowed in the kernel, for ever.
+    /// @param previousUnkeyed What the last reply said was unkeyed, as returned
+    ///        in ListRefreshPlan::unkeyed. An id that was unkeyed and is not any
+    ///        more has either been keyed -- in which case this reply names it --
+    ///        or gone, and this is the only evidence of the second case.
     [[nodiscard]] ListRefreshPlan planListRefresh(const wazuh::container_instances_client::ContainerDelta& delta,
                                                   const std::map<std::string, bool>& currentView,
-                                                  const std::set<std::string>& mappedContainers = {});
+                                                  const std::set<std::string>& mappedContainers = {},
+                                                  const std::set<std::string>& previousUnkeyed = {});
 
     /// @brief The admission view a full list leaves behind.
     [[nodiscard]] std::map<std::string, bool> mergeAdmissionView(

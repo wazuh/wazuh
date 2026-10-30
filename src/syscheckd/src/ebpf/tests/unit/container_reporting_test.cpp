@@ -561,6 +561,97 @@ TEST(ContainerListRefresh, AnIncompleteResyncDropsDepartedContainersFromTheAdmis
     EXPECT_EQ(plan.admissionView.count("gone"), 0U) << "the reply names every container that exists, and not this one";
 }
 
+// A container that is deleted while it never had a key leaves the drain's view
+// only if the drain notices it has stopped being unkeyed.
+//
+// It got in from the LIST side, through the connector's unkeyed set, and no
+// event will ever take it out: the store erases a record that never had a key
+// without journalling it, because a container that was never published has no
+// visibility transition to report. So the id sat in the admission view for the
+// life of the process -- unbounded growth on a node that churns containers the
+// resolver cannot key, plus a departed container still answering
+// fim_container_is_admitted() and still reading as known if its id comes round
+// again.
+TEST(ContainerListRefresh, AnUnkeyedContainerThatDisappearsLeavesTheAdmissionView)
+{
+    using wazuh::container_instances_client::ContainerDelta;
+    using fim_container_events::planListRefresh;
+
+    ContainerDelta delta;
+    delta.available = true;
+    delta.deltaSupported = true;
+    delta.complete = false;
+    delta.unkeyedKnown = true;
+    delta.unkeyed = {"stuck"}; // "gone" was unkeyed last time and is not named now
+    delta.admittedKnown = true;
+    delta.admitted = {"a", "stuck"};
+
+    const auto plan = planListRefresh(
+        delta, {{"a", true}, {"gone", true}, {"stuck", true}}, {}, /*previousUnkeyed=*/{"gone", "stuck"});
+
+    ASSERT_TRUE(plan.act);
+    EXPECT_EQ(plan.admissionView, (std::map<std::string, bool> {{"a", true}, {"stuck", true}}));
+    EXPECT_EQ(plan.admissionView.count("gone"), 0U) << "no event retracts it, so the unkeyed set has to";
+
+    // ...and the caller is handed what to compare against next time.
+    EXPECT_EQ(plan.unkeyed, (std::set<std::string> {"stuck"}));
+}
+
+// The same id leaving the unkeyed set because it was KEYED is not a departure,
+// and the reply that says so names it. Retiring happens before the events are
+// applied so the event puts it straight back, this time with a cgroup id.
+TEST(ContainerListRefresh, AnUnkeyedContainerThatGetsAKeyStaysInTheView)
+{
+    using wazuh::container_instances_client::ContainerDelta;
+    using wazuh::container_instances_client::ContainerEventRef;
+    using fim_container_events::planListRefresh;
+
+    ContainerEventRef keyed;
+    keyed.containerId = "late";
+    keyed.cgroupId = 77;
+    keyed.kind = ContainerEventRef::Kind::changed;
+    keyed.synced = true;
+
+    ContainerDelta delta;
+    delta.available = true;
+    delta.deltaSupported = true;
+    delta.complete = true;
+    delta.unkeyedKnown = true;
+    delta.unkeyed = {}; // "late" has a key now
+    delta.admittedKnown = true;
+    delta.admitted = {"late"};
+    delta.events = {keyed};
+
+    const auto plan = planListRefresh(delta, {{"late", true}}, {}, /*previousUnkeyed=*/{"late"});
+
+    ASSERT_TRUE(plan.act);
+    EXPECT_EQ(plan.admissionView.count("late"), 1U) << "keyed, not gone -- and the reply says which";
+    EXPECT_TRUE(plan.admissionView.at("late"));
+    EXPECT_TRUE(plan.unkeyed.empty());
+}
+
+// A reply that cannot say what it could not key cannot say one has gone either.
+// Carrying the previous set forward is what stops the next enumerating reply
+// reading a container it never heard about as a departure.
+TEST(ContainerListRefresh, AReplyThatCannotEnumerateRetiresNothingAndKeepsTheUnkeyedSet)
+{
+    using wazuh::container_instances_client::ContainerDelta;
+    using fim_container_events::planListRefresh;
+
+    ContainerDelta delta;
+    delta.available = true;
+    delta.deltaSupported = true;
+    delta.complete = false;
+    delta.unkeyedKnown = false; // an older container_instances
+
+    const auto plan = planListRefresh(delta, {{"stuck", true}}, {}, /*previousUnkeyed=*/{"stuck"});
+
+    ASSERT_TRUE(plan.act);
+    ASSERT_FALSE(plan.enumerated);
+    EXPECT_EQ(plan.admissionView.count("stuck"), 1U) << "absence says nothing here";
+    EXPECT_EQ(plan.unkeyed, (std::set<std::string> {"stuck"})) << "and the set is carried, not cleared";
+}
+
 // ...but only when the reply can tell "gone" from "not mentioned". A connector
 // too old to name what it could not key leaves absence meaning nothing, and
 // dropping a container on that evidence retracts the rows of one that is
