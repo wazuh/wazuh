@@ -161,6 +161,7 @@ target_link_options(container_reporting_test PRIVATE
     -Wl,--wrap=cbaseline_list_containers_ex
     -Wl,--wrap=cbaseline_run_fim_dbsync
     -Wl,--wrap=fim_db_set_sync_flag
+    -Wl,--wrap=fim_db_get_distinct_container_ids
     -Wl,--wrap=_mdebug1
     -Wl,--wrap=_minfo
     -Wl,--wrap=_mwarn

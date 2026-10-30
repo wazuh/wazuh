@@ -46,6 +46,11 @@ namespace
      * row is then offered, accepted by the manager -- and still left at sync=1,
      * which is a document the agent believes it withdrew and has not. */
     bool reject_sync_flag_write = false;
+
+    /* How many SELECT DISTINCT container_id over file_entry one operation
+     * costs. The query walks every FIM row on the node, so the count is the
+     * point, not an implementation detail. */
+    std::size_t distinct_id_queries = 0;
     std::size_t persist_attempts = 0;
     int file_size = 1;
 
@@ -66,6 +71,7 @@ namespace
                 unkeyed_refused.clear();
                 reject_persistence = false;
                 reject_sync_flag_write = false;
+                distinct_id_queries = 0;
                 persist_attempts = 0;
                 file_size = 1;
                 fim_db_init(FIM_DB_MEMORY, [](modules_log_level_t, const char*) {}, 1000, 0, nullptr);
@@ -110,6 +116,14 @@ extern "C" bool container_reporting_test_persist(const char* id, int operation, 
         persisted.emplace_back(id, operation);
 
     return true;
+}
+
+extern "C" cJSON* __real_fim_db_get_distinct_container_ids(const char* table_name);
+
+extern "C" cJSON* __wrap_fim_db_get_distinct_container_ids(const char* table_name)
+{
+    ++distinct_id_queries;
+    return __real_fim_db_get_distinct_container_ids(table_name);
 }
 
 extern "C" int __real_fim_db_set_sync_flag(char* table_name, pending_sync_item_t* item, int sync_value);
@@ -1131,6 +1145,55 @@ TEST_F(ContainerReportingTest, AFailedRetractionDoesNotHandBackTheBudgetItDidNot
 
     EXPECT_EQ(syncFlag("b", "/etc/three"), 0)
             << "b already holds two documents on the manager, which is its whole allowance";
+}
+
+// A whole-node baseline asked the database three separate times which
+// containers hold FIM rows, and that query is a SELECT DISTINCT over every row
+// on the node.
+//
+// One of the three is unavoidable: installing the admission snapshot at the top
+// runs a reconcile before the walk, and the walk changes which containers have
+// rows. The other two were adjacent -- the stale sweep read the ids, deleted
+// some of them, and the promotion pass right after asked for the same list
+// again. The sweep knows the answer, so it returns it (#37532).
+TEST_F(ContainerReportingTest, AWholeNodeBaselineReadsTheContainerIdListTwiceNotThreeTimes)
+{
+    files = {{"a", {"/etc/one"}}, {"b", {"/etc/one"}}};
+    admission = {{"a", true}, {"b", true}};
+    listed = false;
+    distinct_id_queries = 0;
+
+    fim_run_container_baseline();
+
+    EXPECT_EQ(distinct_id_queries, 2u)
+            << "one for the admission reconcile before the walk, one for the sweep after it";
+}
+
+// ...and the pass the sweep feeds still has to run. It is not a repeat of the
+// reconcile at the top: the walk between them charges a container's DELETIONS
+// to the same budget as its insertions, so a row withheld early because the
+// budget was full becomes grantable once a later delete frees the slot, and
+// nothing offers it again inside the walk.
+TEST_F(ContainerReportingTest, ARowWithheldDuringTheWalkIsPromotedWhenADeleteFreesItsSlot)
+{
+    container_reporting_test_host(2);
+
+    // Two files fill the budget exactly.
+    files = {{"a", {"/etc/keep", "/etc/going"}}};
+    admission = {{"a", true}};
+    listed = false;
+    fim_run_container_baseline();
+    ASSERT_EQ(syncFlag("a", "/etc/keep"), 1);
+    ASSERT_EQ(syncFlag("a", "/etc/going"), 1);
+
+    // /etc/going is removed and /etc/new appears in the same walk. The slot the
+    // delete frees is what lets /etc/new report.
+    files["a"] = {"/etc/keep", "/etc/new"};
+    listed = false;
+    fim_run_container_baseline();
+
+    EXPECT_EQ(syncFlag("a", "/etc/keep"), 1);
+    EXPECT_EQ(syncFlag("a", "/etc/new"), 1) << "the departed file's slot was freed in the same baseline";
 }
 
 // Once a container has spent its document budget, container_budget_decide()

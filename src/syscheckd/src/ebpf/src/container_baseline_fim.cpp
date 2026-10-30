@@ -48,6 +48,7 @@
 #include <map>
 #include <memory>
 #include <mutex>
+#include <optional>
 #include <set>
 #include <string>
 #include <unordered_set>
@@ -591,7 +592,15 @@ namespace
             /// container_instances at all. A container that is merely STOPPED is
             /// still known and must be left alone — its rows are the state to
             /// resume diffing against when it restarts.
-            void sweepStale(const std::set<std::string>& known)
+            ///
+            /// @return the ids that still hold rows once the sweep has run, or
+            ///         nothing when the id query failed. This is the same answer
+            ///         a SELECT DISTINCT would give immediately afterwards, and
+            ///         it costs nothing here because the sweep has already read
+            ///         the ids and already knows which ones it deleted. That
+            ///         query is a DISTINCT over every FIM row on the node, and
+            ///         the baseline ran three of them (#37532).
+            std::optional<std::set<std::string>> sweepStale(const std::set<std::string>& known)
             {
                 finishCurrent(true);
 
@@ -601,10 +610,11 @@ namespace
                 {
                     LogDebug("Container FIM baseline: could not read container ids from the database; "
                              "skipping the stale-container sweep.");
-                    return;
+                    return std::nullopt;
                 }
 
                 std::set<std::string> stale;
+                std::set<std::string> surviving;
 
                 if (cJSON_IsArray(db_ids))
                 {
@@ -620,6 +630,10 @@ namespace
                         if (known.find(id) == known.end() && m_scanned.find(id) == m_scanned.end())
                         {
                             stale.insert(id);
+                        }
+                        else
+                        {
+                            surviving.insert(id);
                         }
                     }
                 }
@@ -641,6 +655,10 @@ namespace
                 }
 
                 m_stale = stale.size();
+
+                // Every stale container's rows are gone now, so this is exactly
+                // what the table holds.
+                return surviving;
             }
 
             [[nodiscard]] size_t rows() const
@@ -1167,18 +1185,44 @@ namespace
 
     using JsonPtr = std::unique_ptr<cJSON, decltype(&cJSON_Delete)>;
 
+    /// Every container id that holds a row in file_entry, or nothing when the
+    /// query failed -- which is not the same answer as "no containers", and the
+    /// callers must not confuse them.
+    std::optional<std::set<std::string>> distinctContainerIds()
+    {
+        JsonPtr ids {fim_db_get_distinct_container_ids(FIMDB_FILE_TABLE_NAME), cJSON_Delete};
+
+        if (!ids)
+        {
+            return std::nullopt;
+        }
+
+        std::set<std::string> out;
+        const cJSON* id_json = nullptr;
+        cJSON_ArrayForEach(id_json, ids.get())
+        {
+            const char* container_id = cJSON_GetStringValue(id_json);
+
+            if (container_id && *container_id)
+            {
+                out.insert(container_id);
+            }
+        }
+
+        return out;
+    }
+
     /// @param ids The distinct container ids in file_entry. Passed in rather
     ///        than read here because a reconcile runs this twice, in opposite
     ///        directions, over one and the same set -- and that query is a
     ///        SELECT DISTINCT over every FIM row on the node.
-    void updateContainerReporting(bool promote, const cJSON* ids)
+    void updateContainerReporting(bool promote, const std::set<std::string>& ids)
     {
-        const cJSON* id_json = nullptr;
-        cJSON_ArrayForEach(id_json, ids)
+        for (const auto& id : ids)
         {
-            const char* container_id = cJSON_GetStringValue(id_json);
+            const char* container_id = id.c_str();
 
-            if (!container_id || !*container_id)
+            if (!*container_id)
                 continue;
 
             const bool admitted = fim_container_is_admitted(container_id) != 0;
@@ -1314,7 +1358,7 @@ extern "C" void fim_container_reconcile_admission(void)
     // Retract first: that releases the document budget of the containers that
     // just lost admission, so the promotion below can spend what they freed in
     // the same pass. The two passes touch disjoint sets of containers.
-    JsonPtr ids {fim_db_get_distinct_container_ids(FIMDB_FILE_TABLE_NAME), cJSON_Delete};
+    const auto ids = distinctContainerIds();
 
     if (!ids)
     {
@@ -1322,8 +1366,8 @@ extern "C" void fim_container_reconcile_admission(void)
         return;
     }
 
-    updateContainerReporting(false, ids.get());
-    updateContainerReporting(true, ids.get());
+    updateContainerReporting(false, *ids);
+    updateContainerReporting(true, *ids);
 }
 
 extern "C" void fim_run_container_baseline(void)
@@ -1375,6 +1419,8 @@ extern "C" void fim_run_container_baseline(void)
         // the sweep and keep the rows: a stale row costs one cycle of accuracy,
         // whereas deleting a live container's whole baseline costs a
         // false-delete flood plus a full re-seed.
+        std::optional<std::set<std::string>> reporting;
+
         if (listed < 0)
         {
             LogError("Container FIM baseline: container connector unavailable, "
@@ -1394,20 +1440,35 @@ extern "C" void fim_run_container_baseline(void)
         }
         else
         {
-            driver.sweepStale(known);
+            reporting = driver.sweepStale(known);
         }
 
+        // One more promotion pass, and it is not the one the admission install
+        // at the top of this function already ran.
+        //
+        // The walk between them reports a container's DELETIONS through the same
+        // budget as its insertions, so a row withheld early because the budget
+        // was full can become grantable once a later delete in the same
+        // container frees the slot. Nothing offers it again within the walk --
+        // container_budget_decide() sees each row once, in order -- so this is
+        // where it gets its second chance.
+        //
+        // The ids come from the sweep when it ran, because it has just read
+        // them and knows which ones it deleted; asking the database again would
+        // be a third SELECT DISTINCT over every FIM row on the node in one
+        // baseline (#37532). The branches above that skip the sweep have to ask.
+        if (!reporting)
         {
-            JsonPtr ids {fim_db_get_distinct_container_ids(FIMDB_FILE_TABLE_NAME), cJSON_Delete};
+            reporting = distinctContainerIds();
+        }
 
-            if (ids)
-            {
-                updateContainerReporting(true, ids.get());
-            }
-            else
-            {
-                LogError("Container FIM: could not read containers for reporting reconciliation.");
-            }
+        if (reporting)
+        {
+            updateContainerReporting(true, *reporting);
+        }
+        else
+        {
+            LogError("Container FIM: could not read containers for reporting reconciliation.");
         }
 
         if (driver.malformedRows() > 0)
