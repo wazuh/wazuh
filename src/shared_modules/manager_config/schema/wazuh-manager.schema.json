@@ -310,6 +310,12 @@
               "default": "TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256",
               "description": "TLS 1.3 cipher suites the HTTPS listener negotiates, at most 255 characters."
             },
+            "groups": {
+              "type": "string",
+              "pattern": "^(X25519|X448|P-256|P-384|P-521|secp256r1|secp384r1|secp521r1|ffdhe2048|ffdhe3072|ffdhe4096|ffdhe6144|ffdhe8192|brainpoolP256r1tls13|brainpoolP384r1tls13|brainpoolP512r1tls13|X25519MLKEM768|SecP256r1MLKEM768|SecP384r1MLKEM1024|MLKEM512|MLKEM768|MLKEM1024)(:(X25519|X448|P-256|P-384|P-521|secp256r1|secp384r1|secp521r1|ffdhe2048|ffdhe3072|ffdhe4096|ffdhe6144|ffdhe8192|brainpoolP256r1tls13|brainpoolP384r1tls13|brainpoolP512r1tls13|X25519MLKEM768|SecP256r1MLKEM768|SecP384r1MLKEM1024|MLKEM512|MLKEM768|MLKEM1024))*$",
+              "maxLength": 255,
+              "description": "TLS key exchange groups the HTTPS listener negotiates, in order of preference: colon-separated names, each one of X25519, X448, P-256, P-384, P-521, secp256r1, secp384r1, secp521r1, ffdhe2048, ffdhe3072, ffdhe4096, ffdhe6144, ffdhe8192, brainpoolP256r1tls13, brainpoolP384r1tls13, brainpoolP512r1tls13, X25519MLKEM768, SecP256r1MLKEM768, SecP384r1MLKEM1024, MLKEM512, MLKEM768, MLKEM1024, at most 255 characters. Absent: the groups of the TLS library, or those its configuration file (OPENSSL_CONF) sets."
+            },
             "max_body_size": {
               "allOf": [
                 {

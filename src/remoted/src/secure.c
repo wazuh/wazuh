@@ -634,6 +634,10 @@ STATIC void w_remoted_build_module_config(const remoted *logr, remoted_module_co
         snprintf(rm_config->ciphers, sizeof(rm_config->ciphers), "%s", logr->https.ciphers);
     }
 
+    if (logr->https.groups) {
+        snprintf(rm_config->groups, sizeof(rm_config->groups), "%s", logr->https.groups);
+    }
+
     /* Built for '-t' and for the start alike, so both report it */
     w_remoted_check_body_caps(rm_config);
 }

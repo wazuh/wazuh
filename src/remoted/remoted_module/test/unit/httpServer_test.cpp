@@ -260,6 +260,8 @@ TEST(HttpServerConfigTest, DefaultsWhenEmpty)
     EXPECT_EQ(config.caPath, "/etc/wazuh-manager/certs/root-ca.pem");
     EXPECT_EQ(config.caCertificatePath, "/etc/wazuh-manager/certs/root-ca.pem");
     EXPECT_EQ(config.ciphers, "TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256");
+    // No module default: the TLS library's groups, or what OPENSSL_CONF sets, apply.
+    EXPECT_EQ(config.groups, "");
     EXPECT_EQ(config.verificationMode, ClientVerificationMode::None);
     // Unset, not Disabled: buildHttpServerConfig() intentionally leaves this distinct
     // from an explicit "no" so RestinioHttpServer::start()'s "dual_stack only applies to
@@ -358,6 +360,7 @@ TEST(HttpServerConfigTest, StructValuesWin)
     std::snprintf(raw.global_prefix, sizeof(raw.global_prefix), "/wazuh-manager/");
     std::snprintf(raw.ca_path, sizeof(raw.ca_path), "/custom/ca.pem");
     std::snprintf(raw.ciphers, sizeof(raw.ciphers), "HIGH:!ADH");
+    std::snprintf(raw.groups, sizeof(raw.groups), "X25519:P-256");
 
     const auto config = buildHttpServerConfig(raw);
 
@@ -384,6 +387,7 @@ TEST(HttpServerConfigTest, StructValuesWin)
     EXPECT_EQ(config.globalPrefix, "/wazuh-manager/");
     EXPECT_EQ(config.caPath, "/custom/ca.pem");
     EXPECT_EQ(config.ciphers, "HIGH:!ADH");
+    EXPECT_EQ(config.groups, "X25519:P-256");
     EXPECT_EQ(config.verificationMode, ClientVerificationMode::Certificate);
 }
 
@@ -528,6 +532,51 @@ TEST(HttpServerTest, StartWithValidTls13CiphersuitesDoesNotThrowFromCipherSetup)
     }
 
     EXPECT_NO_THROW(server->stop());
+}
+
+// The groups are set on the context that both the start and the configuration test build, after the
+// certificate and key are known to be readable, so these cases need real key material.
+TEST(HttpServerTest, ValidateTlsMaterialRefusesGroupsTheLibraryRejects)
+{
+    auto certOpt = remoted::test::generateTestCertificate("rmt_groups_bad");
+    if (!certOpt)
+    {
+        GTEST_SKIP() << "openssl not available to generate a test certificate";
+    }
+    remoted::test::ScratchFileCleanup cleanup {{certOpt->certPath, certOpt->keyPath}};
+
+    HttpServerConfig config;
+    config.certificatePath = certOpt->certPath;
+    config.privateKeyPath = certOpt->keyPath;
+    config.groups = "X25519:NOT-A-GROUP";
+
+    try
+    {
+        remoted::http::validateTlsMaterial(config);
+        FAIL() << "Expected validateTlsMaterial() to refuse an unknown key exchange group";
+    }
+    catch (const std::exception& e)
+    {
+        EXPECT_NE(std::string {e.what()}.find("key exchange groups 'X25519:NOT-A-GROUP'"), std::string::npos)
+            << e.what();
+    }
+}
+
+TEST(HttpServerTest, ValidateTlsMaterialAcceptsSupportedGroups)
+{
+    auto certOpt = remoted::test::generateTestCertificate("rmt_groups_ok");
+    if (!certOpt)
+    {
+        GTEST_SKIP() << "openssl not available to generate a test certificate";
+    }
+    remoted::test::ScratchFileCleanup cleanup {{certOpt->certPath, certOpt->keyPath}};
+
+    HttpServerConfig config;
+    config.certificatePath = certOpt->certPath;
+    config.privateKeyPath = certOpt->keyPath;
+    config.groups = "X25519:P-256:P-384:P-521";
+
+    EXPECT_NO_THROW(remoted::http::validateTlsMaterial(config));
 }
 
 TEST(HttpServerTest, StopWithoutStartIsSafe)

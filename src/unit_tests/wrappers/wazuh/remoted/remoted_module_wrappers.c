@@ -57,3 +57,8 @@ int __wrap_remoted_module_validate_tls(__attribute__((unused)) const remoted_mod
 
     return result;
 }
+
+int __wrap_remoted_module_init_tls_library(void) {
+    // No call path under test branches on it beyond logging: succeed without a queued value.
+    return 0;
+}

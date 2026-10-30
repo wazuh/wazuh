@@ -300,6 +300,7 @@ static int wm_task_manager_read_remoted(wm_task_manager *data) {
     os_free(remoted_config.https.ca);
     os_free(remoted_config.https.ca_certificate);
     os_free(remoted_config.https.ciphers);
+    os_free(remoted_config.https.groups);
 
     return read ? 0 : 1;
 }

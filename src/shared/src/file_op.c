@@ -655,18 +655,23 @@ float DirSize(const char *path) {
 
 int CreatePID(const char *name, int pid)
 {
-    char file[256];
+    char filename[256];
+    char file[sizeof(OS_PIDFILE) + sizeof(filename)];
     FILE *fp;
 
-    snprintf(file, 255, "%s/%s-%d.pid", OS_PIDFILE, name, pid);
+    snprintf(filename, sizeof(filename), "%s-%d.pid", name, pid);
+    snprintf(file, sizeof(file), "%s/%s", OS_PIDFILE, filename);
 
-    fp = wfopen(file, "a");
+    /* var/run is writable by the service account, so the name may be a link, hard link or FIFO that account
+     * planted, and a daemon may create its pid file before it drops privileges: the file is opened without
+     * following a link, only a lone regular file is written, and its mode is set through the descriptor. */
+    fp = w_fopen_nofollow(OS_PIDFILE, filename, "a");
     if (!fp) {
         return (-1);
     }
 
     fprintf(fp, "%d\n", pid);
-    if (chmod(file, 0640) != 0) {
+    if (fchmod(fileno(fp), 0640) != 0) {
         merror(CHMOD_ERROR, file, errno, strerror(errno));
         fclose(fp);
         return (-1);

@@ -114,6 +114,23 @@ class Manager:
         self.home = os.path.join(base, "home")
         for sub in ("bin", "var/run", "logs", "tmp", "queue/sockets", "framework/python/bin"):
             os.makedirs(os.path.join(self.home, sub))
+        # On a real install logs/ and var/run/ belong to the service account, and service_write drops to it
+        # before writing. Mirror that when the suite runs as root and the account exists, so the drop can
+        # create its files; without the account (e.g. a bare CI runner) service_write writes without dropping.
+        if os.geteuid() == 0:
+            try:
+                import grp
+                import pwd
+                uid = pwd.getpwnam("wazuh-manager").pw_uid
+                gid = grp.getgrnam("wazuh-manager").gr_gid
+            except KeyError:
+                uid = gid = None
+            if uid is not None:
+                # The account must reach and write logs/ and var/run/ after the drop: make the scratch base
+                # traversable (not listable, so the short socket path stays private) and give it those dirs.
+                os.chmod(self.base, 0o711)
+                for sub in ("logs", "var/run", "tmp"):
+                    os.chown(os.path.join(self.home, sub), uid, gid)
         os.symlink(sys.executable, os.path.join(self.home, "framework/python/bin/python3"))
         shutil.copy(SCRIPT, self.control)
         os.chmod(self.control, 0o750)

@@ -537,7 +537,7 @@ ships next to it in the book.
 Every setting of this listener is documented once, in the [Configuration Reference](configuration.md):
 
 - the user-facing `<remote><https>` options — bind address, port, `global_prefix`, `max_body_size`,
-  the certificate, key and CA paths, `verification_mode`, `ciphers`, `dual_stack` and the two rate
+  the certificate, key and CA paths, `verification_mode`, `ciphers`, `groups`, `dual_stack` and the two rate
   limits — in [HTTPS Configuration](configuration.md#https-configuration). There is no `enabled`
   toggle: the listener always starts, and remoted refuses to start without its certificate and key;
 - the `remoted.*` internal options (`/etc/wazuh-manager/wazuh-manager-internal-options.conf`) —

@@ -350,7 +350,9 @@ src/http_server/
     2. `<remote><https>` settings, wired from the parsed config in `secure.c`'s
        `w_remoted_build_module_config()`: `port`, `bind_address`, `global_prefix`,
        `http_max_body_size`, `ca_path`, `ca_certificate_path` (the CA published on `/cacerts`),
-       `ciphers`, `verification_mode`, `dual_stack`, and the two rate limits `enroll_rate_limit` /
+       `ciphers`, `groups` (TLS key exchange groups; empty leaves OpenSSL's, or what `OPENSSL_CONF` sets,
+       loaded before the privilege drop by `remoted_module_init_tls_library()`), `verification_mode`,
+       `dual_stack`, and the two rate limits `enroll_rate_limit` /
        `cacerts_rate_limit` with their `rate_limit_set` flag (see `rateLimitGate` below).
        `certificate_path`/`private_key_path` are file paths (not PEM content) opened by the
        module itself, after `remoted` has already dropped root privileges (`Privsep_SetUser()`)

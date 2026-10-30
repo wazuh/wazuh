@@ -37,7 +37,7 @@ credential resolver (`src/init/credentials/wazuh-manager-resolve-credentials.py`
 ## Design decisions
 
 - **Schema as the single source of truth** (`schema/wazuh-manager.schema.json`): types, ranges, enums, defaults and
-  descriptions of the 69 leaf options (the count `managerConfig_test.cpp`'s leaf guard pins) — byte-identical to the
+  descriptions of the 70 leaf options (the count `managerConfig_test.cpp`'s leaf guard pins) — byte-identical to the
   YAML PoC's schema, so the 5.1 XML→YAML conversion is a backend swap. Draft-04 because it is what rapidjson's
   validator implements and what the Python framework uses (`jsonschema.Draft4Validator`). Definitions (`duration`,
   `size`, `port`…) are reused through `allOf: [{$ref}]`.

@@ -310,12 +310,8 @@ def test_get_script_arguments(argument_parser_mock):
 @patch('scripts.wazuh_manager_clusterd.os.setgroups')
 @patch('scripts.wazuh_manager_clusterd.os.setgid')
 @patch('scripts.wazuh_manager_clusterd.os.setuid')
-@patch('scripts.wazuh_manager_clusterd.os.chmod')
-@patch('scripts.wazuh_manager_clusterd.os.chown')
-@patch('scripts.wazuh_manager_clusterd.os.path.exists', return_value=True)
 @patch('builtins.print')
-def test_main(print_mock, path_exists_mock, chown_mock, chmod_mock, setuid_mock, setgid_mock, setgroups_mock,
-              getpid_mock, exit_mock):
+def test_main(print_mock, setuid_mock, setgid_mock, setgroups_mock, getpid_mock, exit_mock):
     """Check and set the behavior of wazuh_manager_clusterd main function."""
     import wazuh.core.cluster.utils as cluster_utils
     from wazuh.core import common, pyDaemonModule
@@ -360,10 +356,6 @@ def test_main(print_mock, path_exists_mock, chown_mock, chmod_mock, setuid_mock,
                                                                file=sys.stderr)
                             print_mock.reset_mock()
                             main_logger_mock.reset_mock()
-                            path_exists_mock.assert_any_call(f'{common.WAZUH_PATH}/logs/cluster.log')
-                            chown_mock.assert_called_with(f'{common.WAZUH_PATH}/logs/cluster.log', 'uid_test',
-                                                          'gid_test')
-                            chmod_mock.assert_called_with(f'{common.WAZUH_PATH}/logs/cluster.log', 432)
                             exit_mock.assert_called_once_with(1)
                             exit_mock.reset_mock()
 
@@ -412,9 +404,10 @@ def test_main(print_mock, path_exists_mock, chown_mock, chmod_mock, setuid_mock,
                                                     clean_up_mock.assert_called_once()
                                                     clean_pid_files_mock.assert_called_once_with('wazuh-manager-clusterd')
                                                     pyDaemon_mock.assert_called_once()
-                                                    setgroups_mock.assert_called_once_with([])
-                                                    setuid_mock.assert_called_once_with('uid_test')
-                                                    setgid_mock.assert_called_once_with('gid_test')
+                                                    # The drop happens before main(), in drop_privileges().
+                                                    setgroups_mock.assert_not_called()
+                                                    setuid_mock.assert_not_called()
+                                                    setgid_mock.assert_not_called()
                                                     getpid_mock.assert_called()
                                                     create_pid_mock.assert_called_once_with('wazuh-manager-clusterd', 543)
                                                     delete_pid_mock.assert_called_once_with('wazuh-manager-clusterd', 543)
@@ -437,3 +430,90 @@ def test_main(print_mock, path_exists_mock, chown_mock, chmod_mock, setuid_mock,
                                                         main_logger_mock.assert_any_call(
                                                             "Directory '/tmp' needs read, write & execution "
                                                             "permission for 'wazuh-manager' user")
+
+@pytest.fixture
+def cluster_log_home(tmp_path):
+    """Installation tree with logs/, set as WAZUH_PATH, with the current user standing in for wazuh-manager."""
+    import os
+    from wazuh.core import common
+
+    (tmp_path / 'logs').mkdir()
+    with patch.object(wazuh_manager_clusterd, 'common', common, create=True), \
+            patch.object(common, 'WAZUH_PATH', str(tmp_path)), \
+            patch.object(common, 'wazuh_uid', return_value=os.getuid()), \
+            patch.object(common, 'wazuh_gid', return_value=os.getgid()):
+        yield tmp_path
+
+
+def test_fix_cluster_log_ownership(cluster_log_home):
+    """Check that an existing cluster.log is given mode 0660 through its descriptor."""
+    import os
+
+    log = cluster_log_home / 'logs' / 'cluster.log'
+    log.write_text('previous\n')
+    os.chmod(log, 0o600)
+
+    wazuh_manager_clusterd.fix_cluster_log_ownership()
+
+    assert os.stat(log).st_mode & 0o7777 == 0o660
+    assert log.read_text() == 'previous\n'
+
+
+def test_fix_cluster_log_ownership_missing(cluster_log_home):
+    """Check that a missing cluster.log is not created."""
+    wazuh_manager_clusterd.fix_cluster_log_ownership()
+
+    assert not (cluster_log_home / 'logs' / 'cluster.log').exists()
+
+
+@pytest.mark.parametrize('link', ['symlink', 'hardlink'])
+def test_fix_cluster_log_ownership_link_not_followed(cluster_log_home, link):
+    """Check that a link planted at logs/cluster.log leaves its target's owner and mode alone."""
+    import os
+
+    victim = cluster_log_home / 'victim'
+    victim.write_text('victim\n')
+    os.chmod(victim, 0o600)
+    log = cluster_log_home / 'logs' / 'cluster.log'
+    if link == 'symlink':
+        log.symlink_to(victim)
+    else:
+        os.link(victim, log)
+
+    with patch('scripts.wazuh_manager_clusterd.os.fchown') as fchown_mock:
+        wazuh_manager_clusterd.fix_cluster_log_ownership()
+        fchown_mock.assert_not_called()
+
+    assert os.stat(victim).st_mode & 0o7777 == 0o600
+
+
+@pytest.mark.parametrize('root, euid, dropped', [(False, 0, True), (True, 0, False), (False, 1000, False)])
+@patch('scripts.wazuh_manager_clusterd.fix_cluster_log_ownership')
+@patch('scripts.wazuh_manager_clusterd.os.setgroups')
+@patch('scripts.wazuh_manager_clusterd.os.setgid')
+@patch('scripts.wazuh_manager_clusterd.os.setuid')
+def test_drop_privileges(setuid_mock, setgid_mock, setgroups_mock, fix_log_mock, root, euid, dropped):
+    """Check that the privileges are dropped, after the log fix-up, only for a root run without -r."""
+    from wazuh.core import common
+
+    class Arguments:
+        def __init__(self, root):
+            self.root = root
+
+    with patch.object(wazuh_manager_clusterd, 'args', Arguments(root), create=True), \
+            patch.object(wazuh_manager_clusterd, 'common', common, create=True), \
+            patch.object(common, 'wazuh_uid', return_value='uid_test'), \
+            patch.object(common, 'wazuh_gid', return_value='gid_test'), \
+            patch('scripts.wazuh_manager_clusterd.os.geteuid', return_value=euid):
+        wazuh_manager_clusterd.drop_privileges()
+
+    if dropped:
+        fix_log_mock.assert_called_once_with()
+        setgroups_mock.assert_called_once_with([])
+        setgid_mock.assert_called_once_with('gid_test')
+        setuid_mock.assert_called_once_with('uid_test')
+    else:
+        fix_log_mock.assert_not_called()
+        setgroups_mock.assert_not_called()
+        setgid_mock.assert_not_called()
+        setuid_mock.assert_not_called()

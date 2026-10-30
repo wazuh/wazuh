@@ -400,6 +400,27 @@ protocol version.
   such as `HIGH:!ADH`) is rejected by the configuration validator, instead of the listener failing
   to start at runtime.
 
+### https.groups
+
+Key exchange groups the HTTPS listener offers in the TLS 1.3 handshake, in order of preference
+(`SSL_CTX_set1_groups_list()` naming scheme). Use it to exclude, for example, the finite-field
+(`ffdhe*`) or the hybrid post-quantum (`*MLKEM*`) groups.
+
+- **Default value:** not set: the listener uses the groups of its TLS library (OpenSSL 3.6), or the
+  ones its configuration file sets. That file is the one `OPENSSL_CONF` names in the service
+  environment (a systemd drop-in with `Environment=OPENSSL_CONF=…`), read by root when remoted
+  starts, before it drops to the `wazuh-manager` account; a `Groups` line under `system_default`
+  applies to this listener as it does to the API. An explicit `https.groups` overrides it.
+- **Allowed values:** colon-separated names, each one of `X25519`, `X448`, `P-256`, `P-384`,
+  `P-521`, `secp256r1`, `secp384r1`, `secp521r1`, `ffdhe2048`, `ffdhe3072`, `ffdhe4096`,
+  `ffdhe6144`, `ffdhe8192`, `brainpoolP256r1tls13`, `brainpoolP384r1tls13`, `brainpoolP512r1tls13`,
+  `X25519MLKEM768`, `SecP256r1MLKEM768`, `SecP384r1MLKEM1024`, `MLKEM512`, `MLKEM768` and
+  `MLKEM1024`, spelled as shown; at most 255 characters. OpenSSL's list syntax (`DEFAULT`, `?`,
+  `-`, `/`) is not accepted. Any other name is rejected by the configuration validator, and a name
+  the library cannot use makes `wazuh-manager-remoted -t` and the start fail with `Unable to
+  configure the requested TLS key exchange groups '<value>'`.
+- **Example:** `<groups>X25519:P-256:P-384:P-521</groups>`
+
 ### https.max_body_size
 
 Maximum accepted HTTP request body size, enforced by the transport.

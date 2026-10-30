@@ -780,6 +780,14 @@ namespace
             throw std::runtime_error("Unable to configure the requested TLS 1.3 ciphersuite list");
         }
 
+        // The schema admits only names OpenSSL 3.5 and later knows; this also refuses one the library in use
+        // does not support, at -t as at the start, instead of a listener that never negotiates it.
+        if (!config.groups.empty() && SSL_CTX_set1_groups_list(context.native_handle(), config.groups.c_str()) != 1)
+        {
+            throw std::runtime_error("Unable to configure the requested TLS key exchange groups '" + config.groups +
+                                     "'");
+        }
+
         // Each failure names its file, as loadClientCaFile() does: asio's own message names only the
         // OpenSSL call ("use_certificate_chain_file: no start line").
         try

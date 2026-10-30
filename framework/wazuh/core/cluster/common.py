@@ -685,6 +685,39 @@ class Handler(asyncio.Protocol):
             self.send_seq += 1
         return msg_list
 
+    def _check_incoming_frame(self, size: int, divided: bool) -> None:
+        """Refuse a frame a peer that has not proven the cluster key must not be allowed to send, or one too large.
+
+        Until a whole message of this peer has decrypted under the session key (recv_seq advances only in _open), a
+        keyed connection accepts only the hello, which is a single small frame: it must not make the event loop
+        buffer and join a divided message, nor buffer and decrypt a single frame larger than one chunk. A divided
+        frame is a piece of one token and cannot be authenticated on its own; the hello, on both sides, is never
+        divided. No sender builds a frame larger than request_chunk, which MAX_CHUNK_SIZE bounds.
+
+        Parameters
+        ----------
+        size : int
+            Payload size declared in the frame header.
+        divided : bool
+            Whether the frame carries the division flag.
+
+        Raises
+        ------
+        WazuhClusterError(3063)
+            If the peer has not proven the key yet, or the frame is larger than MAX_CHUNK_SIZE.
+        """
+        if self.cluster_key is not None and self.recv_seq == 0:
+            if divided:
+                raise exception.WazuhClusterError(3063, extra_message='divided message received before the handshake '
+                                                                      'completed')
+            if size > MAX_CHUNK_SIZE:
+                raise exception.WazuhClusterError(3063, extra_message=f'message of {size} bytes received before the '
+                                                                      f'handshake exceeds the maximum of '
+                                                                      f'{MAX_CHUNK_SIZE}')
+        if divided and size > MAX_CHUNK_SIZE:
+            raise exception.WazuhClusterError(3063, extra_message=f'divided message chunk of {size} bytes exceeds '
+                                                                  f'the maximum of {MAX_CHUNK_SIZE}')
+
     def msg_parse(self) -> bool:
         """Parse an incoming message.
 
@@ -700,6 +733,7 @@ class Handler(asyncio.Protocol):
                 self.in_buffer = self.in_msg.get_info_from_header(header=self.in_buffer,
                                                                   header_format=self.header_format,
                                                                   header_size=self.header_len)
+                self._check_incoming_frame(self.in_msg.total, bool(self.in_msg.flag_divided))
                 self.in_buffer = self.in_msg.receive_data(data=self.in_buffer)
                 # If payload bytes are still outstanding, arm the completion deadline so a
                 # peer that stops after the header cannot hold memory indefinitely.
@@ -1038,16 +1072,15 @@ class Handler(asyncio.Protocol):
                     current_size = len(self.div_msg_box.get(counter, b''))
                     if current_size + len(payload) > MAX_TOTAL_SIZE:
                         raise WazuhClusterError(3050, extra_message=str(current_size + len(payload)))
-                    try:
-                        self.div_msg_box[counter] = self.div_msg_box[counter] + payload
-                    except KeyError:
-                        self.div_msg_box[counter] = payload
+                    # Extended in place: concatenating would copy the whole accumulated message on every chunk,
+                    # which is quadratic in the number of chunks.
+                    self.div_msg_box.setdefault(counter, bytearray()).extend(payload)
 
                 else:
                     # If the message is the last part of a division, join it.
                     if counter in self.div_msg_box:
-                        payload = self.div_msg_box[counter] + payload
-                        del self.div_msg_box[counter]
+                        self.div_msg_box[counter].extend(payload)
+                        payload = self.div_msg_box.pop(counter)
                         # Decrypt the joined payload
                         payload = self._open(bytes(payload), counter, command)
                     # If the message is the response of a previously sent request.

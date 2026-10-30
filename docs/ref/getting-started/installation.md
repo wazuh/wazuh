@@ -86,6 +86,7 @@ sudo WAZUH_REMOTE_HTTPS_BIND_ADDR='0.0.0.0' WAZUH_REMOTE_HTTPS_PORT='1517' rpm -
 | `WAZUH_REMOTE_HTTPS_CA` | `remote.https.ca` | not set |
 | `WAZUH_REMOTE_HTTPS_VERIFICATION_MODE` | `remote.https.verification_mode` | not set (`certificate` when `WAZUH_REMOTE_HTTPS_CA` is set, `none` otherwise) |
 | `WAZUH_REMOTE_HTTPS_CIPHERS` | `remote.https.ciphers` | not set (library default) |
+| `WAZUH_REMOTE_HTTPS_GROUPS` | `remote.https.groups` | not set (the TLS library's groups, or those `OPENSSL_CONF` sets) |
 | `WAZUH_REMOTE_HTTPS_MAX_BODY_SIZE` | `remote.https.max_body_size` | not set (`10M`, 10 MiB) |
 | `WAZUH_REMOTE_HTTPS_DUAL_STACK` | `remote.https.dual_stack` | not set (`no`) |
 | `WAZUH_REMOTE_LEGACY_ENABLED` | `remote.legacy.enabled` | `yes` |

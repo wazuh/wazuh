@@ -251,6 +251,50 @@ endif()
 add_subdirectory(external)
 # deps-recipe: end
 
+# Compiler hardening of the manager's own binaries and shared libraries, the engine included: stack protector,
+# _FORTIFY_SOURCE=2, PIE and full RELRO (the protections #38571 gave the 4.x Makefile build).
+#
+# - After add_subdirectory(external) and outside the deps-recipe blocks, so the external dependencies (and
+#   libwazuhext, a pool artifact) build as before and no pool key changes.
+# - Through add_compile_options() and the linker flag variables, which every subdirectory inherits, rather than
+#   CMAKE_POSITION_INDEPENDENT_CODE: CMake passes -pie for it only under policy CMP0083, which the 3.12.4 minimum
+#   and the subdirectories that declare an older minimum leave OLD. The package builders' GCC is not configured
+#   with --enable-default-pie, so without -pie every executable is EXEC.
+# - Production builds only, as in 4.x: _FORTIFY_SOURCE needs optimisation (not Debug), the sanitizers bring their
+#   own instrumentation, the unit tests set _FORTIFY_SOURCE=0, and the test builds link googletest, which the
+#   external build does not compile as position-independent code.
+# - No PIE on 32-bit x86, as in 4.x.
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux"
+   AND NOT IS_AGENT
+   AND NOT CMAKE_BUILD_TYPE STREQUAL "Debug"
+   AND NOT UNIT_TEST
+   AND NOT WAZUH_ENGINE_TEST
+   AND NOT ENGINE_BUILD_TEST
+   AND NOT ENGINE_BUILD_BENCHMARK
+   AND NOT FSANITIZE
+   AND NOT TSANITIZE)
+  include(CheckCCompilerFlag)
+  check_c_compiler_flag(-fstack-protector-strong WAZUH_HAVE_STACK_PROTECTOR_STRONG)
+  if(WAZUH_HAVE_STACK_PROTECTOR_STRONG)
+    add_compile_options(-fstack-protector-strong)
+  else()
+    add_compile_options(-fstack-protector)
+  endif()
+  # -U first: some compilers predefine _FORTIFY_SOURCE, and redefining it warns.
+  add_compile_options(-U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=2)
+  set(WAZUH_HARDENING_LDFLAGS "-Wl,-z,relro -Wl,-z,now")
+  set(WAZUH_HARDENING_PIE "")
+  if(NOT CMAKE_SYSTEM_PROCESSOR MATCHES "^(i[3-6]86|x86)$")
+    add_compile_options(-fPIC)
+    string(APPEND CMAKE_EXE_LINKER_FLAGS " -pie")
+    set(WAZUH_HARDENING_PIE ", PIE")
+  endif()
+  string(APPEND CMAKE_EXE_LINKER_FLAGS " ${WAZUH_HARDENING_LDFLAGS}")
+  string(APPEND CMAKE_SHARED_LINKER_FLAGS " ${WAZUH_HARDENING_LDFLAGS}")
+  string(APPEND CMAKE_MODULE_LINKER_FLAGS " ${WAZUH_HARDENING_LDFLAGS}")
+  message(STATUS "Compiler hardening: stack protector, _FORTIFY_SOURCE=2, full RELRO${WAZUH_HARDENING_PIE}")
+endif()
+
 # Common modules (all targets)
 add_subdirectory(config)
 add_subdirectory(shared)

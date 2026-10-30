@@ -15,6 +15,8 @@
 
 #include <cstdio>
 
+#include <openssl/ssl.h>
+
 namespace Log
 {
     // Single definition of the DSO-global log sink used by loggerHelper.h.
@@ -163,6 +165,13 @@ extern "C"
         }
 
         return -1;
+    }
+
+    int remoted_module_init_tls_library(void)
+    {
+        // OPENSSL_INIT_LOAD_CONFIG reads OPENSSL_CONF (or the default file) now, with the caller's privileges; a
+        // later implicit initialisation by the listener's first context is then a no-op.
+        return OPENSSL_init_ssl(OPENSSL_INIT_LOAD_CONFIG, nullptr) == 1 ? 0 : -1;
     }
 
 #ifdef __cplusplus

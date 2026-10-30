@@ -595,11 +595,47 @@ def clean_up(node_name=""):
 
     Optionally, it cleans all temporary files of node node_name.
 
+    queue/ and queue/cluster/ are writable by the wazuh-manager account, so any directory on the way may have been
+    replaced by a link. safe_join() only checks the name lexically, so the directory is reached one component at a
+    time below the installation directory without following a link (a link there is refused, not emptied), and its
+    entries are removed through its descriptor: a link inside it is unlinked, never followed.
+
     Parameters
     ----------
     node_name : str
         Name of the node to clean up.
     """
+
+    def open_directory_nofollow(rm_path):
+        """Open rm_path, below the installation directory, without following a link at any component under it.
+
+        Parameters
+        ----------
+        rm_path : str
+            Directory to open, inside common.WAZUH_PATH.
+
+        Returns
+        -------
+        int or None
+            Descriptor of the directory, or None when it does not exist.
+        """
+        flags = os.O_RDONLY | os.O_DIRECTORY | os.O_CLOEXEC
+        components = [c for c in path.relpath(rm_path, common.WAZUH_PATH).split(os.sep) if c not in ('', '.')]
+        dir_fd = os.open(common.WAZUH_PATH, flags)
+        try:
+            for component in components:
+                next_fd = os.open(component, flags | os.O_NOFOLLOW, dir_fd=dir_fd)
+                os.close(dir_fd)
+                dir_fd = next_fd
+        except FileNotFoundError:
+            os.close(dir_fd)
+            return None
+        except OSError as e:
+            os.close(dir_fd)
+            if e.errno in (errno.ELOOP, errno.ENOTDIR):
+                raise WazuhInternalError(3003, extra_message=f"'{rm_path}' is not a directory (a link is not followed)")
+            raise
+        return dir_fd
 
     def remove_directory_contents(local_rm_path):
         """Remove files and directories found in local_rm_path.
@@ -609,22 +645,27 @@ def clean_up(node_name=""):
         local_rm_path : str
             Directory whose content to delete.
         """
-        if not path.exists(local_rm_path):
+        dir_fd = open_directory_nofollow(local_rm_path)
+        if dir_fd is None:
             logger.debug(f"Nothing to remove in '{local_rm_path}'.")
             return
 
-        for f in listdir(local_rm_path):
-            if f == os.path.basename(common.AR_BOOKMARK_FILEPATH):
-                continue
-            f_path = path.join(local_rm_path, f)
-            try:
-                if path.isdir(f_path):
-                    shutil.rmtree(f_path)
-                else:
-                    remove(f_path)
-            except Exception as err:
-                logger.error(f"Error removing '{f_path}': '{err}'.")
-                continue
+        try:
+            with os.scandir(dir_fd) as entries:
+                names = [(entry.name, entry.is_dir(follow_symlinks=False)) for entry in entries]
+            for name, is_dir in names:
+                if name == os.path.basename(common.AR_BOOKMARK_FILEPATH):
+                    continue
+                try:
+                    if is_dir:
+                        shutil.rmtree(name, dir_fd=dir_fd)
+                    else:
+                        os.unlink(name, dir_fd=dir_fd)
+                except Exception as err:
+                    logger.error(f"Error removing '{path.join(local_rm_path, name)}': '{err}'.")
+                    continue
+        finally:
+            os.close(dir_fd)
 
     try:
         cluster_base = path.join(common.WAZUH_PATH, 'queue', 'cluster')

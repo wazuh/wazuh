@@ -42,12 +42,13 @@ Behaviour:
 
 - **One `write()` per destination.** Each line is composed in memory and written with a single `write()` per destination, under one process-wide mutex. A short write drops the rest of that line; it is not retried.
 - **Files opened per line with `O_APPEND`.** A rotation (rename) of the file is picked up by the next line.
+- **Only a lone regular file is written.** `logs/` is writable by the `wazuh-manager` account and the engine logs as root until it drops privileges, so the name is opened with `O_NOFOLLOW | O_NONBLOCK` and the descriptor must be a regular file with one link, the rule the C logger applies through `w_openat_nofollow_vetted()`. A symlink, hard link, FIFO or device at the name drops the line for that destination.
 - **New files.** Created with mode 0660. The group is set to `wazuh-manager` (via `base::process::lookupGid`) only when running as root; if the lookup fails, the file keeps the group of its creator. A failing `fchmod` or `fchown` does not prevent the line from being written.
 - **Never throws, preserves `errno`.** The caller's `errno` is restored after every call.
 - **No-op before `initManager()`.** Unit tests and `main()` before the call write nothing and touch no file.
 - **Immortal state.** The options, dependencies and mutex are allocated once and never destroyed, so late lines (exit handlers, late threads) never touch a destroyed mutex.
 - **Fork safety.** The mutex crosses the `fork()` calls of `goDaemon()` only because, in manager mode, no other thread exists yet: `main.cpp` calls `initManager()` before `goDaemon()`.
-- **Injection.** `ManagerLogDeps` holds the system calls (`open`, `write`, `fchown`, ...) and clock/pid/root/group lookups; an empty member means the real call.
+- **Injection.** `ManagerLogDeps` holds the system calls (`open`, `fstat`, `write`, `fchown`, ...) and clock/pid/root/group lookups; an empty member means the real call.
 
 ## Process Helpers
 
