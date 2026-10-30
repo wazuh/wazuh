@@ -158,8 +158,26 @@ BOOL utf8_DeleteFile(const char* utf8_path) {
     }
 
     BOOL ok = DeleteFileW(wpath);
+    DWORD error = GetLastError();
 
     os_free(wpath);
+    // Callers map the failure reason to errno
+    SetLastError(error);
+    return ok;
+}
+
+BOOL utf8_RemoveDirectory(const char* utf8_path) {
+    wchar_t *wpath = auto_to_wide(utf8_path);
+    if (!wpath) {
+        return FALSE;
+    }
+
+    BOOL ok = RemoveDirectoryW(wpath);
+    DWORD error = GetLastError();
+
+    os_free(wpath);
+    // Callers map the failure reason to errno
+    SetLastError(error);
     return ok;
 }
 

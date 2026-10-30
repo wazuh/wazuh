@@ -52,23 +52,54 @@ static int teardown_group(void **state) {
 
 #define N_PATHS 5
 
-static void expect_find_first_file(const wchar_t *file_path, const char *name, DWORD attrs, HANDLE handle) {
+#ifndef IO_REPARSE_TAG_MOUNT_POINT
+#define IO_REPARSE_TAG_MOUNT_POINT 0xA0000003L
+#endif
+#ifndef IO_REPARSE_TAG_SYMLINK
+#define IO_REPARSE_TAG_SYMLINK 0xA000000CL
+#endif
+#ifndef IO_REPARSE_TAG_CLOUD
+#define IO_REPARSE_TAG_CLOUD 0x9000001AL
+#endif
+
+static void expect_find_first_file_tag(const wchar_t *file_path, const char *name, DWORD attrs, DWORD tag,
+                                       HANDLE handle) {
     expect_string(wrap_FindFirstFile, lpFileName, file_path);
     will_return(wrap_FindFirstFile, name);
     if (name != NULL) {
         will_return(wrap_FindFirstFile, attrs);
+        if (attrs & FILE_ATTRIBUTE_REPARSE_POINT) {
+            will_return(wrap_FindFirstFile, tag);
+        }
     }
 
     will_return(wrap_FindFirstFile, handle);
+    if (handle == INVALID_HANDLE_VALUE) {
+        will_return(wrap_FindFirstFile, ERROR_FILE_NOT_FOUND);
+    }
 }
 
-static void expect_find_next_file(HANDLE handle, const char *name, DWORD attrs, BOOL ret) {
+static void expect_find_first_file(const wchar_t *file_path, const char *name, DWORD attrs, HANDLE handle) {
+    expect_find_first_file_tag(file_path, name, attrs, IO_REPARSE_TAG_MOUNT_POINT, handle);
+}
+
+static void expect_find_next_file_error(HANDLE handle, const char *name, DWORD attrs, BOOL ret, DWORD error) {
     expect_value(wrap_FindNextFile, hFindFile, handle);
     will_return(wrap_FindNextFile, name);
     if (name != NULL) {
         will_return(wrap_FindNextFile, attrs);
+        if (attrs & FILE_ATTRIBUTE_REPARSE_POINT) {
+            will_return(wrap_FindNextFile, IO_REPARSE_TAG_MOUNT_POINT);
+        }
     }
     will_return(wrap_FindNextFile, ret);
+    if (!ret) {
+        will_return(wrap_FindNextFile, error);
+    }
+}
+
+static void expect_find_next_file(HANDLE handle, const char *name, DWORD attrs, BOOL ret) {
+    expect_find_next_file_error(handle, name, attrs, ret, ERROR_NO_MORE_FILES);
 }
 
 static int teardown_win32_wildcards(void **state) {
@@ -1498,6 +1529,154 @@ void test_wopendir_network_path(void **state) {
     assert_int_equal(errno, EACCES);
 }
 
+/* Non-ASCII entries come back from FindFirstFileW as UTF-8, so they match the ignore list. */
+void test_cldir_ex_ignore_win_utf8_names(void **state) {
+    const char *ignore[] = { "caf\xc3\xa9.txt", NULL };
+
+    expect_find_first_file(L"C:\\shared\\*", ".", FILE_ATTRIBUTE_DIRECTORY, (HANDLE) 1);
+    expect_find_next_file((HANDLE) 1, "..", FILE_ATTRIBUTE_DIRECTORY, TRUE);
+    expect_find_next_file((HANDLE) 1, "caf\xc3\xa9.txt", FILE_ATTRIBUTE_NORMAL, TRUE);
+    expect_find_next_file((HANDLE) 1, "\xc3\xbcn\xc3\xaf" "code-\xc3\xb1.txt", FILE_ATTRIBUTE_NORMAL, TRUE);
+    expect_string(__wrap_utf8_DeleteFile, utf8_path, "C:\\shared/\xc3\xbcn\xc3\xaf" "code-\xc3\xb1.txt");
+    will_return(__wrap_utf8_DeleteFile, TRUE);
+    expect_find_next_file((HANDLE) 1, NULL, 0, FALSE);
+
+    assert_int_equal(cldir_ex_ignore("C:\\shared", ignore), 0);
+}
+
+/* A name that is not valid UTF-8 is created through the ANSI code page, so it is compared the same way. */
+void test_cldir_ex_ignore_win_ansi_name(void **state) {
+    const char *ignore[] = { "caf\xe9.txt", NULL };
+    wchar_t wide[16];
+    char on_disk[32];
+
+    MultiByteToWideChar(CP_ACP, 0, ignore[0], -1, wide, 16);
+    WideCharToMultiByte(CP_UTF8, 0, wide, -1, on_disk, sizeof(on_disk), NULL, NULL);
+
+    expect_find_first_file(L"C:\\shared\\*", on_disk, FILE_ATTRIBUTE_NORMAL, (HANDLE) 1);
+    expect_find_next_file((HANDLE) 1, NULL, 0, FALSE);
+
+    assert_int_equal(cldir_ex_ignore("C:\\shared", ignore), 0);
+}
+
+void test_cldir_ex_ignore_win_remove_directory(void **state) {
+    const char *ignore[] = { "keep.txt", NULL };
+
+    expect_find_first_file(L"C:\\shared\\*", "sub", FILE_ATTRIBUTE_DIRECTORY, (HANDLE) 1);
+    expect_find_first_file(L"C:\\shared/sub\\*", "keep.txt", FILE_ATTRIBUTE_NORMAL, (HANDLE) 2);
+    expect_string(__wrap_utf8_DeleteFile, utf8_path, "C:\\shared/sub/keep.txt");
+    will_return(__wrap_utf8_DeleteFile, TRUE);
+    expect_find_next_file((HANDLE) 2, NULL, 0, FALSE);
+    expect_string(__wrap_utf8_RemoveDirectory, utf8_path, "C:\\shared/sub");
+    will_return(__wrap_utf8_RemoveDirectory, TRUE);
+    expect_find_next_file((HANDLE) 1, NULL, 0, FALSE);
+
+    assert_int_equal(cldir_ex_ignore("C:\\shared", ignore), 0);
+}
+
+void test_cldir_ex_ignore_win_preserve_subdirectory_file(void **state) {
+    const char *ignore[] = { "sub/keep.txt", NULL };
+
+    expect_find_first_file(L"C:\\shared\\*", "sub", FILE_ATTRIBUTE_DIRECTORY, (HANDLE) 1);
+    expect_find_first_file(L"C:\\shared/sub\\*", "keep.txt", FILE_ATTRIBUTE_NORMAL, (HANDLE) 2);
+    expect_find_next_file((HANDLE) 2, "stale.txt", FILE_ATTRIBUTE_NORMAL, TRUE);
+    expect_string(__wrap_utf8_DeleteFile, utf8_path, "C:\\shared/sub/stale.txt");
+    will_return(__wrap_utf8_DeleteFile, TRUE);
+    expect_find_next_file((HANDLE) 2, NULL, 0, FALSE);
+    expect_string(__wrap_utf8_RemoveDirectory, utf8_path, "C:\\shared/sub");
+    will_return(__wrap_utf8_RemoveDirectory, FALSE);
+    expect_find_next_file((HANDLE) 1, NULL, 0, FALSE);
+
+    assert_int_equal(cldir_ex_ignore("C:\\shared", ignore), 0);
+}
+
+/* A junction is removed itself, without cleaning the directory it points to. */
+void test_cldir_ex_ignore_win_reparse_point_not_followed(void **state) {
+    expect_find_first_file(L"C:\\shared\\*", "link", FILE_ATTRIBUTE_DIRECTORY | FILE_ATTRIBUTE_REPARSE_POINT,
+                           (HANDLE) 1);
+    expect_string(__wrap_utf8_RemoveDirectory, utf8_path, "C:\\shared/link");
+    will_return(__wrap_utf8_RemoveDirectory, TRUE);
+    expect_find_next_file((HANDLE) 1, NULL, 0, FALSE);
+
+    assert_int_equal(cldir_ex_ignore("C:\\shared", NULL), 0);
+}
+
+/* Other reparse points hold their own content, so it is removed before the directory. */
+void test_cldir_ex_ignore_win_cloud_placeholder_cleaned(void **state) {
+    expect_find_first_file_tag(L"C:\\shared\\*", "cloud", FILE_ATTRIBUTE_DIRECTORY | FILE_ATTRIBUTE_REPARSE_POINT,
+                               IO_REPARSE_TAG_CLOUD, (HANDLE) 1);
+    expect_find_first_file(L"C:\\shared/cloud\\*", "file.txt", FILE_ATTRIBUTE_NORMAL, (HANDLE) 2);
+    expect_string(__wrap_utf8_DeleteFile, utf8_path, "C:\\shared/cloud/file.txt");
+    will_return(__wrap_utf8_DeleteFile, TRUE);
+    expect_find_next_file((HANDLE) 2, NULL, 0, FALSE);
+    expect_string(__wrap_utf8_RemoveDirectory, utf8_path, "C:\\shared/cloud");
+    will_return(__wrap_utf8_RemoveDirectory, TRUE);
+    expect_find_next_file((HANDLE) 1, NULL, 0, FALSE);
+
+    assert_int_equal(cldir_ex_ignore("C:\\shared", NULL), 0);
+}
+
+/* A name of MAX_PATH - 20 CJK characters takes three UTF-8 bytes each, beyond PATH_MAX. */
+void test_cldir_ex_ignore_win_long_utf8_name(void **state) {
+    char stale[(MAX_PATH - 20) * 3 + 1] = "";
+    char kept[sizeof(stale)] = "";
+    char stale_path[sizeof(stale) + 16];
+    const char *ignore[] = { kept, NULL };
+
+    for (int i = 0; i < MAX_PATH - 20; i++) {
+        strcat(stale, "\xe6\x97\xa5");
+        strcat(kept, "\xe6\x9c\xac");
+    }
+    snprintf(stale_path, sizeof(stale_path), "C:\\shared/%s", stale);
+
+    expect_find_first_file(L"C:\\shared\\*", kept, FILE_ATTRIBUTE_NORMAL, (HANDLE) 1);
+    expect_find_next_file((HANDLE) 1, stale, FILE_ATTRIBUTE_NORMAL, TRUE);
+    expect_string(__wrap_utf8_DeleteFile, utf8_path, stale_path);
+    will_return(__wrap_utf8_DeleteFile, TRUE);
+    expect_find_next_file((HANDLE) 1, NULL, 0, FALSE);
+
+    assert_int_equal(cldir_ex_ignore("C:\\shared", ignore), 0);
+}
+
+void test_cldir_ex_ignore_win_delete_failure(void **state) {
+    expect_find_first_file(L"C:\\shared\\*", "locked.txt", FILE_ATTRIBUTE_NORMAL, (HANDLE) 1);
+    expect_string(__wrap_utf8_DeleteFile, utf8_path, "C:\\shared/locked.txt");
+    will_return(__wrap_utf8_DeleteFile, FALSE);
+
+    assert_int_equal(cldir_ex_ignore("C:\\shared", NULL), -1);
+}
+
+void test_cldir_ex_ignore_win_find_failure(void **state) {
+    expect_string(wrap_FindFirstFile, lpFileName, L"C:\\shared\\*");
+    will_return(wrap_FindFirstFile, NULL);
+    will_return(wrap_FindFirstFile, INVALID_HANDLE_VALUE);
+    will_return(wrap_FindFirstFile, ERROR_PATH_NOT_FOUND);
+    errno = 0;
+
+    assert_int_equal(cldir_ex_ignore("C:\\shared", NULL), -1);
+    assert_int_equal(errno, ENOENT);
+}
+
+/* A listing that stops on an error other than its end reports it. */
+void test_cldir_ex_ignore_win_find_next_failure(void **state) {
+    expect_find_first_file(L"C:\\shared\\*", "keep.txt", FILE_ATTRIBUTE_NORMAL, (HANDLE) 1);
+    expect_find_next_file_error((HANDLE) 1, NULL, 0, FALSE, ERROR_ACCESS_DENIED);
+    errno = 0;
+
+    assert_int_equal(cldir_ex_ignore("C:\\shared", (const char *[]){ "keep.txt", NULL }), -1);
+    assert_int_equal(errno, EACCES);
+}
+
+void test_cldir_ex_ignore_win_network_path(void **state) {
+    errno = 0;
+
+    expect_string(__wrap__mwarn, formatted_msg,
+                  "(9800): File access denied. Network path usage is not allowed: 'Z:\\shared'.");
+
+    assert_int_equal(cldir_ex_ignore("Z:\\shared", NULL), -1);
+    assert_int_equal(errno, EACCES);
+}
+
 void test_w_stat_local_path(void **state) {
     errno = 0;
     char *path = "C:\\file.txt";
@@ -1594,12 +1773,6 @@ void test_w_win_owner_trusted(void **state) {
 }
 
 // Reaches the one-level reparse-target parser in file_op.c with crafted FSCTL_GET_REPARSE_POINT buffers.
-#ifndef IO_REPARSE_TAG_MOUNT_POINT
-#define IO_REPARSE_TAG_MOUNT_POINT 0xA0000003L
-#endif
-#ifndef IO_REPARSE_TAG_SYMLINK
-#define IO_REPARSE_TAG_SYMLINK 0xA000000CL
-#endif
 #ifndef SYMLINK_FLAG_RELATIVE
 #define SYMLINK_FLAG_RELATIVE 1
 #endif
@@ -3266,6 +3439,17 @@ int main(void) {
         cmocka_unit_test(test_wCreateProcessW_conversion_failure),
         cmocka_unit_test(test_wopendir_local_path),
         cmocka_unit_test(test_wopendir_network_path),
+        cmocka_unit_test(test_cldir_ex_ignore_win_utf8_names),
+        cmocka_unit_test(test_cldir_ex_ignore_win_ansi_name),
+        cmocka_unit_test(test_cldir_ex_ignore_win_remove_directory),
+        cmocka_unit_test(test_cldir_ex_ignore_win_preserve_subdirectory_file),
+        cmocka_unit_test(test_cldir_ex_ignore_win_reparse_point_not_followed),
+        cmocka_unit_test(test_cldir_ex_ignore_win_cloud_placeholder_cleaned),
+        cmocka_unit_test(test_cldir_ex_ignore_win_long_utf8_name),
+        cmocka_unit_test(test_cldir_ex_ignore_win_delete_failure),
+        cmocka_unit_test(test_cldir_ex_ignore_win_find_failure),
+        cmocka_unit_test(test_cldir_ex_ignore_win_find_next_failure),
+        cmocka_unit_test(test_cldir_ex_ignore_win_network_path),
         cmocka_unit_test(test_w_stat_local_path),
         cmocka_unit_test(test_w_stat_network_path),
         cmocka_unit_test(test_w_stat64_local_path),
