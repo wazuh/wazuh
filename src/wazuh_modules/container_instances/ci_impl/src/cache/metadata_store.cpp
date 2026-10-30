@@ -852,7 +852,10 @@ namespace
         // the limit at 5 and three containers one of which has no key, it
         // reported "1 withheld by containers.synced_limit=5" -- a limit that
         // was holding nothing back, and an operator who raises it sees no
-        // change. Those containers have their own line in listContainersLocked().
+        // change. Those containers have their own line in listContainersLocked(),
+        // and the word "resolved" in the message is what keeps the two readable
+        // side by side: "Reporting 3 of 3" on a node running five is not a wrong
+        // number, but without it an operator reads it as full coverage.
         //
         // A set difference rather than subtracting sizes: an incumbent that
         // lost its key is in `m_admitted` and NOT in `visible`, so the
@@ -881,7 +884,7 @@ namespace
         {
             m_logger(LogLevel::info,
                      "Reporting " + std::to_string(sets.visible.size() - withheld) + " of " +
-                         std::to_string(sets.visible.size()) + " container(s) to the manager; " +
+                         std::to_string(sets.visible.size()) + " resolved container(s) to the manager; " +
                          std::to_string(withheld) +
                          " withheld by containers.synced_limit=" + std::to_string(m_syncLimit) +
                          ". The withheld containers are still monitored and their data is still stored locally -- "

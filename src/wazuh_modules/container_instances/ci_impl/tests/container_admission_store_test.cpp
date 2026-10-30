@@ -538,7 +538,7 @@ TEST(ContainerAdmissionStoreTest, TheWithheldLineBlamesTheLimitOnlyWhenTheLimitB
 
     ASSERT_EQ(store.admittedIds().size(), 1U);
     ASSERT_EQ(messages.size(), 1U);
-    EXPECT_NE(messages[0].find("Reporting 1 of 2 container(s)"), std::string::npos) << "got: " << messages[0];
+    EXPECT_NE(messages[0].find("Reporting 1 of 2 resolved container(s)"), std::string::npos) << "got: " << messages[0];
     EXPECT_NE(messages[0].find("1 withheld by containers.synced_limit=1"), std::string::npos) << "got: " << messages[0];
 }
 

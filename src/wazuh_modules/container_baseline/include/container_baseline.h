@@ -374,21 +374,18 @@ typedef struct
  * running container until it can key it, so "not resolved yet" and "removed"
  * are the same absence from `sink`.
  *
- * Which of the two it is comes from `out_status` and `sink` together. The two
- * questions a caller might be asking are answered separately on purpose:
+ * Which of the two it is comes from `out_status` and `sink` together:
  *
  *   "does this container exist?"   `sink`, which is called for every container
  *                                  the connector knows of, keyed or not. A
  *                                  caller that deletes rows on absence may act
  *                                  as soon as unkeyed_known is set -- it does
  *                                  not need the list to be complete.
- *   "what key does it have?"       `sink` again, but only for the containers
- *                                  this reply could key, and only when
- *                                  complete. A container with no key must not
- *                                  reach the kernel filter.
+ *   "may it report?"               `sink` again, in the `synced` argument, for
+ *                                  the same every container.
  *
- * Conflating them is what let one permanently unkeyable container block stale
- * cleanup for as long as it ran.
+ * Conflating existence with keying is what let one permanently unkeyable
+ * container block stale cleanup for as long as it ran.
  *
  * One sink for both, because admission is a question about a container id and
  * never about an attribution key: the unkeyed containers carry the connector's
@@ -396,6 +393,13 @@ typedef struct
  * caller supply an answer of its own, and each supplied "admitted", which let
  * the node report past containers.synced_limit for the length of every
  * container restart.
+ *
+ * WHICH containers the reply could key is NOT answerable through this API, and
+ * no caller of it needs to be: `sink` carries an id and a verdict, never a key.
+ * `complete` and `unkeyed_known` say in aggregate whether any are missing and
+ * whether the connector is able to name them, which is all a stale sweep has to
+ * know. A caller that needs the keys themselves -- the kernel filter -- reads
+ * the records through the C++ connector client instead, where they live.
  */
 EXPORTED int cbaseline_list_containers_ex(const char*            connector_socket_path,
                                           cb_container_id_sink_t sink,
