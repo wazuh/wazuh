@@ -13,6 +13,10 @@
 #include "archiveHelper.hpp"
 #include <filesystem>
 #include <fstream>
+#ifndef _WIN32
+#include <csignal>
+#include <sys/resource.h>
+#endif
 
 const auto BASE_PATH {std::filesystem::current_path() / "input_files/archiveHelper/"};
 const auto OUTPUT_DIR_PATH {std::filesystem::current_path() / "output_dir"};
@@ -249,3 +253,53 @@ TEST(ArchiveHelperTest, SuccessfulDecompressionExtractOnly)
     EXPECT_STREQ(decompressedFile1.c_str(), originalFile1.c_str());
     EXPECT_TRUE(std::filesystem::remove_all(OUTPUT_DIR_PATH));
 }
+
+#ifndef _WIN32
+// Lowers RLIMIT_FSIZE and ignores SIGXFSZ, so a write past the limit fails with EFBIG; restores both on exit.
+class FileSizeLimitGuard final
+{
+    rlimit m_previousLimit {};
+    struct sigaction m_previousAction {};
+
+public:
+    explicit FileSizeLimitGuard(rlim_t limit)
+    {
+        struct sigaction ignore {};
+        ignore.sa_handler = SIG_IGN;
+        sigaction(SIGXFSZ, &ignore, &m_previousAction);
+        getrlimit(RLIMIT_FSIZE, &m_previousLimit);
+        rlimit newLimit {limit, m_previousLimit.rlim_max};
+        setrlimit(RLIMIT_FSIZE, &newLimit);
+    }
+
+    ~FileSizeLimitGuard()
+    {
+        setrlimit(RLIMIT_FSIZE, &m_previousLimit);
+        sigaction(SIGXFSZ, &m_previousAction, nullptr);
+    }
+};
+
+TEST(ArchiveHelperTest, WriteFailureReportsErrnoReason)
+{
+    const bool stop = false;
+    try
+    {
+        // Both extracted files are larger than 1 KiB.
+        FileSizeLimitGuard guard(1024);
+        rlimit current {};
+        ASSERT_EQ(0, getrlimit(RLIMIT_FSIZE, &current));
+        ASSERT_EQ(1024u, current.rlim_cur);
+        Utils::ArchiveHelper::decompress(COMPRESSED_MULTIPLE_FILES_PATH, stop, OUTPUT_DIR_PATH.string());
+        FAIL() << "Expected std::runtime_error";
+    }
+    catch (const std::runtime_error& e)
+    {
+        EXPECT_STREQ("Error writing decompressed data: File too large", e.what());
+    }
+    catch (...)
+    {
+        FAIL() << "Expected std::runtime_error";
+    }
+    std::filesystem::remove_all(OUTPUT_DIR_PATH);
+}
+#endif
