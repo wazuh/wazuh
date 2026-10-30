@@ -151,20 +151,17 @@ BOOL wrap_GetFileTime(HANDLE     hFile,
     return mock_type(BOOL);
 }
 
-// Reparse points also take their reparse tag
-static void fill_find_data(const char *file_name, LPWIN32_FIND_DATAW lpFindFileData) {
-    MultiByteToWideChar(CP_UTF8, 0, file_name, -1, lpFindFileData->cFileName, MAX_PATH);
-    lpFindFileData->dwFileAttributes = mock_type(DWORD);
-    lpFindFileData->dwReserved0 = lpFindFileData->dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT ? mock_type(DWORD) : 0;
-}
-
+// mock_type() keys on __func__, so the find data is filled inside each wrapper.
+// Reparse points also take their reparse tag.
 HANDLE wrap_FindFirstFile(LPCWSTR lpFileName,  LPWIN32_FIND_DATAW lpFindFileData) {
     char *file_name;
     check_expected(lpFileName);
 
     file_name = mock_type(char *);
     if (file_name != NULL) {
-        fill_find_data(file_name, lpFindFileData);
+        MultiByteToWideChar(CP_UTF8, 0, file_name, -1, lpFindFileData->cFileName, MAX_PATH);
+        lpFindFileData->dwFileAttributes = mock_type(DWORD);
+        lpFindFileData->dwReserved0 = lpFindFileData->dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT ? mock_type(DWORD) : 0;
     }
 
     return mock_type(HANDLE);
@@ -175,7 +172,9 @@ BOOL wrap_FindNextFile(HANDLE hFindFile, LPWIN32_FIND_DATAW lpFindFileData) {
     check_expected(hFindFile);
     file_name = mock_type(char *);
     if (file_name != NULL) {
-        fill_find_data(file_name, lpFindFileData);
+        MultiByteToWideChar(CP_UTF8, 0, file_name, -1, lpFindFileData->cFileName, MAX_PATH);
+        lpFindFileData->dwFileAttributes = mock_type(DWORD);
+        lpFindFileData->dwReserved0 = lpFindFileData->dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT ? mock_type(DWORD) : 0;
     }
 
     BOOL ret = mock_type(BOOL);
