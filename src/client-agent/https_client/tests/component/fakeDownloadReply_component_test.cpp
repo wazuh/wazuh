@@ -27,18 +27,8 @@
 
 namespace
 {
-    /// About 1 MiB over eight zstd blocks, so half a frame still holds whole blocks to decode.
-    std::string configBlob()
-    {
-        std::string blob;
-
-        for (int line = 0; blob.size() < 1024 * 1024; line++)
-        {
-            blob += "<localfile><location>/var/log/app-" + std::to_string(line) + ".log</location></localfile>\n";
-        }
-
-        return blob;
-    }
+    /// Eight zstd blocks, so half a frame still holds whole blocks to decode.
+    constexpr size_t CONFIG_BYTES = 1024 * 1024;
 
     /// What a decoder fed `frame` gives back, or nullopt when it reports an error.
     std::optional<std::string> decodeLikeCurl(const std::string& frame)
@@ -86,7 +76,7 @@ TEST(FakeDownloadReplyTest, OffersZstdReadsTheCodingList)
 
 TEST(FakeDownloadReplyTest, ARequestThatDidNotOfferZstdGetsThePlainBlobWhateverTheReply)
 {
-    const std::string blob = configBlob();
+    const std::string blob = mergedConfigText(CONFIG_BYTES);
 
     for (const auto reply :
             {
@@ -103,7 +93,7 @@ TEST(FakeDownloadReplyTest, ARequestThatDidNotOfferZstdGetsThePlainBlobWhateverT
 
 TEST(FakeDownloadReplyTest, APlainReplyStaysPlainWhenZstdWasOffered)
 {
-    const std::string blob = configBlob();
+    const std::string blob = mergedConfigText(CONFIG_BYTES);
     const DownloadBody body = shapeDownloadBody(blob, DownloadReply::Plain, /*offeredZstd=*/true);
 
     EXPECT_EQ(blob, body.bytes);
@@ -112,7 +102,7 @@ TEST(FakeDownloadReplyTest, APlainReplyStaysPlainWhenZstdWasOffered)
 
 TEST(FakeDownloadReplyTest, AZstdReplyIsOneFrameThatDecodesBackToTheBlob)
 {
-    const std::string blob = configBlob();
+    const std::string blob = mergedConfigText(CONFIG_BYTES);
     const DownloadBody body = shapeDownloadBody(blob, DownloadReply::Zstd, /*offeredZstd=*/true);
 
     EXPECT_TRUE(body.zstdEncoded);
@@ -124,7 +114,7 @@ TEST(FakeDownloadReplyTest, AZstdReplyIsOneFrameThatDecodesBackToTheBlob)
 
 TEST(FakeDownloadReplyTest, ACorruptReplyFailsToDecode)
 {
-    const DownloadBody body = shapeDownloadBody(configBlob(), DownloadReply::ZstdCorrupt, /*offeredZstd=*/true);
+    const DownloadBody body = shapeDownloadBody(mergedConfigText(CONFIG_BYTES), DownloadReply::ZstdCorrupt, /*offeredZstd=*/true);
 
     EXPECT_TRUE(body.zstdEncoded);
     EXPECT_FALSE(decodeLikeCurl(body.bytes).has_value());
@@ -132,7 +122,7 @@ TEST(FakeDownloadReplyTest, ACorruptReplyFailsToDecode)
 
 TEST(FakeDownloadReplyTest, ATruncatedReplyDecodesWithoutErrorToAShorterPrefix)
 {
-    const std::string blob = configBlob();
+    const std::string blob = mergedConfigText(CONFIG_BYTES);
     const DownloadBody body = shapeDownloadBody(blob, DownloadReply::ZstdTruncatedFrame, /*offeredZstd=*/true);
     const auto decoded = decodeLikeCurl(body.bytes);
 
@@ -145,7 +135,7 @@ TEST(FakeDownloadReplyTest, ATruncatedReplyDecodesWithoutErrorToAShorterPrefix)
 
 TEST(FakeDownloadReplyTest, AnUnterminatedReplyIsAWholeFrameWhoseStreamStopsEarly)
 {
-    const std::string blob = configBlob();
+    const std::string blob = mergedConfigText(CONFIG_BYTES);
     const DownloadBody body = shapeDownloadBody(blob, DownloadReply::ZstdUnterminated, /*offeredZstd=*/true);
 
     EXPECT_FALSE(body.terminated);
