@@ -80,10 +80,14 @@ and `504` when a handler has not answered within the transport's 300 s response 
 | Field | Required | Rule |
 |---|---|---|
 | `agent_id` | yes | non-empty string |
-| `task_type` | yes | non-empty string |
+| `task_type` | yes | non-empty string; `remote_upgrade` is rejected (see below) |
 | `create_time` | yes | number, Unix seconds, within `[now - 1 year, now + 60 s]` — otherwise `Timestamp is too old (>1 year)` / `Timestamp is in the future` |
 | `payload` | yes | any JSON value; stored serialized, capped at `max_payload_bytes` |
 | `source_id` | no | string; part of the task id derivation — **an absent `source_id` and an empty one produce the same id** |
+
+A `task_type` of `remote_upgrade` is answered `400` `parsing_error` with the message
+`remote_upgrade tasks are created by /v1/agents/upgrade and /v1/agents/upgrade-custom`: an upgrade row
+needs its per-task WPK file, which only the upgrade routes prepare.
 
 Answers `200` `{"task_id": "<id>"}`. The id is derived deterministically from `source_id`, `agent_id`,
 `task_type` and `create_time`, so repeating a create is idempotent: an existing id is success, not an
@@ -93,7 +97,9 @@ error. A create evicts the agent from the negative poll cache before answering.
 
 `{"tasks": [ <entry>, … ]}`, each entry shaped like a `POST /v1/tasks` body. **Every entry is validated
 before any is written**: one malformed entry fails the whole request with that entry's `400`, and
-nothing is stored. The rows are then written in one transaction.
+nothing is stored. An entry with `task_type` `remote_upgrade` is such a malformed entry: the whole
+request is answered `400` `parsing_error` with the message above. The rows are then written in one
+transaction.
 
 Answers `200` `{"results": [{"agent_id", "task_id", "created"}, …]}`, one per entry in order. An id
 that already exists counts as `"created": true` — ids are deterministic, so a repeat is the same task.
@@ -219,8 +225,9 @@ without an `agent`. The per-agent codes:
 | 16 | 1826 | `The manager's HTTPS verification_mode is not 'none'; …` |
 | 17 | 1827 | `Upgrade procedure could not start` — the answer to every agent while `<upgrade_enabled>` is `no`, and to an unexpected error while admitting the request |
 | 18 | 1828 | `The agent is below v5.0.0 and the manager's legacy delivery (remote.legacy.enabled) is disabled; …` |
+| 19 | 1829 | `Could not prepare the WPK file for this upgrade task` |
 
-The Server API (`PUT /agents/upgrade`, `PUT /agents/upgrade_custom`) reports 6 to 16 and 18 per agent:
+The Server API (`PUT /agents/upgrade`, `PUT /agents/upgrade_custom`) reports 6 to 16, 18 and 19 per agent:
 each such agent is a failed item carrying the code and message above, and the agents whose task was
 created in the same answer stay in `affected_items`. The request-level and node-level codes — 1 to 3,
 error 2 for a request over `upgrade_max_agents`, 4 once the halve-and-retry is down to a single agent,
