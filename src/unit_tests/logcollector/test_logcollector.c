@@ -354,6 +354,10 @@ void test_w_update_file_status_fail_update_add_table_hash(void ** state) {
     expect_value(__wrap_OS_SHA1_Stream, buf, NULL);
     will_return(__wrap_OS_SHA1_Stream, "a7a899f25aeda32989d1029839ef2e594835c211");
 
+    expect_any(__wrap_OSHash_Get_ex, self);
+    expect_string(__wrap_OSHash_Get_ex, key, path);
+    will_return(__wrap_OSHash_Get_ex, NULL);
+
     will_return(__wrap_OSHash_Update_ex, 0);
 
     OSHash_Add_ex_check_data = 0;
@@ -374,6 +378,10 @@ void test_w_update_file_status_update_fail_add_OK(void ** state) {
 
     expect_value(__wrap_OS_SHA1_Stream, buf, NULL);
     will_return(__wrap_OS_SHA1_Stream, "a7a899f25aeda32989d1029839ef2e594835c211");
+
+    expect_any(__wrap_OSHash_Get_ex, self);
+    expect_string(__wrap_OSHash_Get_ex, key, path);
+    will_return(__wrap_OSHash_Get_ex, NULL);
 
     will_return(__wrap_OSHash_Update_ex, 0);
 
@@ -405,6 +413,10 @@ void test_w_update_file_status_update_OK(void ** state) {
 
     expect_value(__wrap_OS_SHA1_Stream, buf, NULL);
     will_return(__wrap_OS_SHA1_Stream, "a7a899f25aeda32989d1029839ef2e594835c211");
+
+    expect_any(__wrap_OSHash_Get_ex, self);
+    expect_string(__wrap_OSHash_Get_ex, key, path);
+    will_return(__wrap_OSHash_Get_ex, NULL);
 
     will_return(__wrap_OSHash_Update_ex, 1);
 
