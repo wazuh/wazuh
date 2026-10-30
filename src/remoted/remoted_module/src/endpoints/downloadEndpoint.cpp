@@ -352,12 +352,10 @@ namespace remoted::endpoints::download
 
     LocateResult locateResource(const DownloadRequest& request, const ResourcePaths& paths)
     {
-        // Safe to join directly: the grammars have already rejected any name containing a
-        // separator, equal to "." or "..", or beginning with a dot, and openRegularFile()'s
-        // O_NOFOLLOW stops the single remaining component being a symlink.
-        if (request.type == ResourceType::Wpk)
+        // A WPK is served only from a verified identifier, never from a name resolved here.
+        if (request.type != ResourceType::Config)
         {
-            return LocateResult {joinPath(paths.wpkDir, request.resourceId), LocateError::None};
+            return LocateResult {"", LocateError::NotFound};
         }
 
         // Several groups -> the effective (multigroup) configuration, whose directory is the hash
@@ -598,7 +596,7 @@ namespace remoted::endpoints::download
                 }
                 else
                 {
-                    // 404s: the group/WPK the agent keeps asking for doesn't exist -- the config
+                    // 404s: the group the agent keeps asking for doesn't exist -- the config
                     // drift that turns into an agent retry storm, visible here as a rate.
                     incNotFound(metrics);
                     LOGFN_DEBUG2(logFn(),
@@ -669,18 +667,21 @@ namespace remoted::endpoints::download
 
             // A signed WPK id is served only to the agent it was issued to and before it expires;
             // every way it can fail answers the same 404 as an absent WPK, so an agent cannot tell
-            // a forged or foreign id from a missing file. Plain WPK names are still served
-            // unauthorized, and cannot reach the per-task directory: their grammar admits no '/'.
+            // a forged or foreign id from a missing file. A plain WPK name is never served: it gets
+            // that same 404 without touching the filesystem.
             if (downloadRequest.type != ResourceType::Config)
             {
                 if (!remoted::auth::looksLikeWpkId(downloadRequest.resourceId))
                 {
-                    serve(downloadRequest, agentId, locateResource(downloadRequest, paths), false, metrics, responder);
+                    LOGFN_DEBUG2(logFn(),
+                                 "Rejected WPK request '%s' from agent '%s': plain WPK names are not served.",
+                                 downloadRequest.resourceId.c_str(),
+                                 agentId.c_str());
+                    incWpkIdRejected(metrics);
+                    responder->send(errorResponseFor(LocateError::NotFound));
                     return;
                 }
 
-                // Never falls back to the plain-name path, even without a codec: an id-shaped name
-                // is never a real WPK filename.
                 const char* cause = nullptr;
                 const auto agent = jwt_profile::v1::CanonicalAgentId::parse(agentId);
                 std::optional<remoted::auth::TaskIdBytes> taskId;

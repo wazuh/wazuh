@@ -210,7 +210,7 @@ public:
         }
         else
         {
-            LOGFN_INFO(moduleLogFn(), "WPK download identifiers disabled: no usable cluster key.");
+            LOGFN_WARN(moduleLogFn(), "WPK download identifiers disabled: no usable cluster key; 5.x agents cannot download WPK packages.");
         }
 
         // Logged here and rethrown, NOT swallowed into a retry: a failure to start (e.g.
@@ -788,7 +788,7 @@ private:
         // served; no row and a failed lookup are both 503. A WPK requested by a signed identifier
         // (the wpk_file /control sealed into this agent's remote_upgrade task) is served from that
         // task's own file only to the agent it was issued to and before it expires. A plain WPK
-        // name is still served under the resource-id grammar plus O_NOFOLLOW, and every package is
+        // name is never served: it gets the same 404 as an absent WPK. Every package is also
         // signature-verified by the agent against wpk_root.pem. The handler keeps its own reference
         // to the codec, so the derived key outlives stop()'s phase 1b reset until the route table
         // is released.

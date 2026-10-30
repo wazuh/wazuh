@@ -348,7 +348,7 @@ TEST_F(RemotedModuleTest, WpkIdCodecEnabledWithValidKey)
     }
 }
 
-// Without a cluster key the codec stays off and start() says so once, at INFO.
+// Without a cluster key the codec stays off and start() warns once.
 TEST_F(RemotedModuleTest, WpkIdCodecDisabledWithoutKey)
 {
     constexpr auto clusterKey = "0123456789abcdefABCDEFGHIJKLMNOP";
@@ -360,7 +360,7 @@ TEST_F(RemotedModuleTest, WpkIdCodecDisabledWithoutKey)
     bool disabledLogged = false;
     for (const auto& line : recordedLines())
     {
-        disabledLogged |= line.message == "WPK download identifiers disabled: no usable cluster key.";
+        disabledLogged |= line.message == "WPK download identifiers disabled: no usable cluster key; 5.x agents cannot download WPK packages.";
         EXPECT_EQ(line.message.find(clusterKey), std::string::npos) << line.message;
     }
     EXPECT_TRUE(disabledLogged);

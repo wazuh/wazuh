@@ -1746,7 +1746,7 @@ namespace
                        nlohmann::json taskPayload,
                        std::string taskId,
                        bool withCodec = true,
-                       std::int64_t now = kUpgradeNow)
+                       std::optional<std::int64_t> now = kUpgradeNow)
             : taskType(std::move(type))
             , payload(std::move(taskPayload))
         {
@@ -1768,10 +1768,13 @@ namespace
                     {
                         c.wpkIds.codec = makeUpgradeCodec();
                     }
-                    c.wpkIds.now = [now]
+                    if (now)
                     {
-                        return now;
-                    };
+                        c.wpkIds.now = [now = *now]
+                        {
+                            return now;
+                        };
+                    }
                 });
             fs::create_directories(h->cfg.wpkTasksDir);
         }
@@ -1837,6 +1840,23 @@ TEST(ControlHandlerTest, SealsRemoteUpgradeWhenTheTaskFileExists)
     EXPECT_EQ(task["payload"]["installer"], "upgrade.sh");
     EXPECT_EQ(f.issued(), 1U);
     EXPECT_EQ(f.fallback(), 0U);
+}
+
+TEST(ControlHandlerTest, SealsWithTheProductionClock)
+{
+    UpgradeFixture f("remote_upgrade", upgradePayload(), kUpgradeTaskId, true, std::nullopt);
+    f.putTaskFile(kUpgradeTaskId);
+
+    const auto task = f.notifyTask();
+    const auto wpkFile = task["payload"]["wpk_file"].get<std::string>();
+    ASSERT_TRUE(remoted::auth::looksLikeWpkId(wpkFile));
+
+    const auto codec = makeUpgradeCodec();
+    ASSERT_NE(codec, nullptr);
+    const auto now = static_cast<std::int64_t>(std::time(nullptr));
+    EXPECT_TRUE(codec->verify(wpkFile, kUpgradeAgent, now).has_value());
+    EXPECT_FALSE(codec->verify(wpkFile, kUpgradeAgent, now + 601).has_value());
+    EXPECT_EQ(f.issued(), 1U);
 }
 
 TEST(ControlHandlerTest, KeepsTheRealNameWithoutTaskFile)

@@ -37,6 +37,7 @@ import base64
 import concurrent.futures
 import hashlib
 import hmac
+import json
 import os
 import re
 import struct
@@ -125,7 +126,29 @@ def self_test() -> int:
         ok = got == expected
         failed += not ok
         print(f"[{'PASS' if ok else 'FAIL'}] {name}: {got if ok else f'got {got}, expected {expected}'}")
+    offenders = plain_wpk_200_rows()
+    failed += bool(offenders)
+    print(f"[{'FAIL' if offenders else 'PASS'}] no_200_for_non_identifier_wpk: "
+          f"{offenders if offenders else 'every 200 wpk row carries a wpk1 identifier'}")
     return 1 if failed else 0
+
+
+def plain_wpk_200_rows():
+    """Names of scenarios expecting 200 for a `wpk` whose resource_id is not a `wpk1.<...>.wpk` id."""
+    key = "0123456789abcdefghijklmnopqrstuv"
+    task_id = "00000000-0000-4000-8000-000000000000"
+    rows = (build_scenarios("group", "unknown-group", "other-group", "package.wpk")
+            + build_wpk_id_scenarios(key, 1, task_id, 600, "/nonexistent", "package.wpk", now=1700000000))
+    offenders = []
+    for name, expected, body, *_ in rows:
+        try:
+            request = json.loads(body)
+        except ValueError:
+            continue
+        if (expected == 200 and isinstance(request, dict) and request.get("resource_type") == "wpk"
+                and not re.fullmatch(r"wpk1\.[A-Za-z0-9_-]+\.wpk", str(request.get("resource_id")))):
+            offenders.append(name)
+    return offenders
 
 
 def tamper_wpk_id(wpk_id: str) -> str:
@@ -449,9 +472,8 @@ class ProcWatcher:
 # never sent /control/startup, or its entry was evicted). Reproduce it by restarting remoted
 # and running send_download.py BEFORE send_control.py -- the answer must be 403, not 200.
 # `wpk` requests are authorized by the identifier itself: a `wpk1.<...>.wpk` id carries the agent,
-# the task and an expiry under a MAC (--wpk-id-scenarios, --mint). Flat WPK names are still served
-# to every agent with a valid bearer token, for agents and tasks that receive no id, which is why
-# valid_wpk below still expects 200.
+# the task and an expiry under a MAC (--wpk-id-scenarios, --mint). A flat WPK name is no longer
+# served, which is why plain_wpk_rejected below expects 404.
 
 def build_scenarios(group, unknown_group, other_group, wpk_name):
     scenarios = [
@@ -488,7 +510,7 @@ def build_scenarios(group, unknown_group, other_group, wpk_name):
 
     scenarios += [
         ("missing_wpk_is_404", 404, request_body("wpk", "definitely-not-staged.wpk")),
-        ("valid_wpk", 200, request_body("wpk", wpk_name)),
+        ("plain_wpk_rejected", 404, request_body("wpk", wpk_name)),
     ]
     return scenarios
 
@@ -518,7 +540,7 @@ def build_wpk_id_scenarios(cluster_key, agent_id, task_id, ttl, tasks_dir, plain
         ("M6_plain_task_name", 404, request_body("wpk", f"{task_id}.wpk")),
     ]
     if plain_wpk:
-        scenarios.append(("M7_plain_wpk_name", 200, request_body("wpk", plain_wpk)))
+        scenarios.append(("M7_plain_wpk_name", 404, request_body("wpk", plain_wpk)))
     else:
         print("WARNING: --plain-wpk not given; M7_plain_wpk_name is SKIPPED.\n")
     return scenarios
@@ -703,7 +725,7 @@ def main():
                         help="File whose first line is the cluster key, instead of <cluster><key> in "
                              + DEFAULT_MANAGER_CONF + ". The key is never printed.")
     parser.add_argument("--plain-wpk", default=None,
-                        help="Real flat WPK name under var/upgrade, for the plain-name row.")
+                        help="Flat WPK name under var/upgrade; no longer served, so it only feeds the 404 row.")
     args = parser.parse_args()
 
     if args.self_test:

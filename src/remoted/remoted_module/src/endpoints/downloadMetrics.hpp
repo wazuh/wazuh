@@ -62,7 +62,7 @@ namespace remoted::endpoints::download
                                                                ///< authorization decision and the only
                                                                ///< operator-facing signal for it (the denial itself
                                                                ///< is logged at debug only).
-        std::shared_ptr<wazuh::metrics::ICounter> notFound;    ///< 404s: the group/WPK doesn't exist
+        std::shared_ptr<wazuh::metrics::ICounter> notFound;    ///< 404s: the group doesn't exist
                                                                ///< (config drift -> agent retry storms).
         std::shared_ptr<wazuh::metrics::ICounter> openError;   ///< 500s: the file exists but won't open.
         std::shared_ptr<wazuh::metrics::ICounter> started;     ///< Transfers whose stream was started.
@@ -98,7 +98,7 @@ namespace remoted::endpoints::download
             manager.getOrCreateCounter(
                 METRIC_DOWNLOAD_DENIED, "403 denials: the requested resource is not the agent's own", "count"),
             manager.getOrCreateCounter(
-                METRIC_DOWNLOAD_NOT_FOUND, "404s: the requested group/WPK does not exist", "count"),
+                METRIC_DOWNLOAD_NOT_FOUND, "404s: the requested group does not exist", "count"),
             manager.getOrCreateCounter(
                 METRIC_DOWNLOAD_OPEN_ERROR, "500s: the located resource could not be opened", "count"),
             manager.getOrCreateCounter(METRIC_DOWNLOAD_STARTED, "Streamed transfers started", "count"),

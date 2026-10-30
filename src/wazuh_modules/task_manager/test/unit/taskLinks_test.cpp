@@ -362,7 +362,7 @@ TEST_F(TaskLinksTest, StaleTmpDoesNotBlockTheCopy)
 
 TEST_F(TaskLinksTest, TotalFailureCommitsNothing)
 {
-    // The WPK does not exist, so the link is refused and the copy has no source either.
+    // The WPK does not exist: the origin check fails before any link or copy is attempted.
     const std::vector<TaskLink> rows {{taskId(1), "missing.wpk"}, {taskId(2), "missing.wpk"}};
     auto links {makeLinks(refuse("missing.wpk", EPERM))};
 
@@ -379,7 +379,7 @@ TEST_F(TaskLinksTest, TotalFailureCommitsNothing)
     EXPECT_TRUE(staged.empty());
     EXPECT_EQ(stats.staged, (std::vector<bool> {false, false}));
     EXPECT_EQ(stats.failed, rows.size());
-    EXPECT_NE(stats.lastErrno, 0);
+    EXPECT_EQ(stats.lastErrno, ENOENT);
     EXPECT_TRUE(!fs::exists(tasksDir()) || namesIn(tasksDir()).empty());
 }
 
@@ -517,8 +517,8 @@ TEST_F(TaskLinksTest, RetentionThenSweep)
 TEST_F(TaskLinksTest, ARowWithoutAFileIsNotCommitted)
 {
     makeWpk("agent.wpk", "WPK-A");
-    // A directory as origin: the link is refused and the copy then fails reading it (EISDIR),
-    // whatever the user or the permissions.
+    // A directory as origin is refused by the origin check (EISDIR), whatever the user or the
+    // permissions.
     fs::create_directory(m_upgradeDir / "dir.wpk");
     const std::vector<TaskLink> rows {{taskId(1), "agent.wpk"}, {taskId(2), "dir.wpk"}, {taskId(3), "agent.wpk"}};
     auto links {makeLinks(refuse("dir.wpk", EPERM))};
@@ -531,6 +531,55 @@ TEST_F(TaskLinksTest, ARowWithoutAFileIsNotCommitted)
     EXPECT_EQ(stats.failed, 1U);
     EXPECT_EQ(stats.lastErrno, EISDIR);
     EXPECT_EQ(namesIn(tasksDir()), (std::set<std::string> {taskId(1) + ".wpk", taskId(3) + ".wpk"}));
+}
+
+TEST_F(TaskLinksTest, ACopyIsMode0660AndRefusesASymlinkedSource)
+{
+    makeWpk("agent.wpk", "WPK-A");
+    const auto target {m_root / "target.wpk"};
+    writeFile(target, "OUTSIDE");
+    fs::create_symlink(target, m_upgradeDir / "link.wpk");
+    const std::vector<TaskLink> rows {{taskId(1), "agent.wpk"}, {taskId(2), "link.wpk"}};
+    auto links {makeLinks(
+        [](int, const char*, int, const char*, int)
+        {
+            errno = EPERM;
+            return -1;
+        })};
+
+    std::vector<std::size_t> committed;
+    const auto old {::umask(0)};
+    const auto stats {links->linkAndCommit(rows, [&](const std::vector<std::size_t>& staged) { committed = staged; })};
+    ::umask(old);
+
+    EXPECT_EQ(committed, (std::vector<std::size_t> {0}));
+    EXPECT_EQ(stats.staged, (std::vector<bool> {true, false}));
+    EXPECT_EQ(stats.failed, 1U);
+    EXPECT_EQ(slurp(taskFile(taskId(1))), "WPK-A");
+    struct stat st {};
+    ASSERT_EQ(::stat(taskFile(taskId(1)).c_str(), &st), 0);
+    EXPECT_EQ(st.st_mode & 07777, 0660U);
+    EXPECT_FALSE(fs::exists(taskFile(taskId(2))));
+    EXPECT_EQ(namesIn(tasksDir()), std::set<std::string> {taskId(1) + ".wpk"});
+}
+
+TEST_F(TaskLinksTest, ASymlinkedWpkIsNotLinked)
+{
+    const auto target {m_root / "target.wpk"};
+    writeFile(target, "OUTSIDE");
+    fs::create_symlink(target, m_upgradeDir / "link.wpk");
+    auto links {makeLinks()};
+
+    std::vector<std::size_t> committed {99};
+    const auto stats {links->linkAndCommit({{taskId(1), "link.wpk"}},
+                                           [&](const std::vector<std::size_t>& staged) { committed = staged; })};
+
+    EXPECT_TRUE(committed.empty());
+    EXPECT_EQ(stats.staged, (std::vector<bool> {false}));
+    EXPECT_EQ(stats.failed, 1U);
+    EXPECT_EQ(stats.lastErrno, ELOOP);
+    EXPECT_FALSE(fs::exists(taskFile(taskId(1))));
+    EXPECT_TRUE(!fs::exists(tasksDir()) || namesIn(tasksDir()).empty());
 }
 
 TEST_F(TaskLinksTest, AFailedDirectoryFsyncStagesNothing)

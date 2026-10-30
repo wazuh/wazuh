@@ -644,11 +644,12 @@ namespace remoted::control
 
             if (!sealed)
             {
-                LOGFN_DEBUG1(logFn(),
-                             "Agent %u: task '%s' delivered with the real WPK file name: %s.",
-                             id,
-                             task.id.c_str(),
-                             reason);
+                LOGFN_WARN(
+                    logFn(),
+                    "Agent %u: task '%s' has no WPK download identifier (%s); the agent cannot download its WPK.",
+                    id,
+                    task.id.c_str(),
+                    reason);
                 incWpkIdFallback(m_metrics);
                 return task.payload;
             }

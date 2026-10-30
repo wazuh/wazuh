@@ -304,6 +304,35 @@ namespace task_manager::upgrade
                         return linked == 0 ? 0 : errno;
                     }};
 
+                if (copy == copies.end())
+                {
+                    // linkat() without flags links a symlink itself, and /download refuses one.
+                    // A swap to a symlink after this check only makes that download fail (O_NOFOLLOW).
+                    struct stat origin {};
+
+                    int notRegular {0};
+                    if (::fstatat(AT_FDCWD, source.c_str(), &origin, AT_SYMLINK_NOFOLLOW) != 0)
+                    {
+                        notRegular = errno;
+                    }
+                    else if (!S_ISREG(origin.st_mode))
+                    {
+                        notRegular = S_ISDIR(origin.st_mode) ? EISDIR : S_ISLNK(origin.st_mode) ? ELOOP : EINVAL;
+                    }
+
+                    if (notRegular != 0)
+                    {
+                        ++stats.failed;
+                        stats.lastErrno = notRegular;
+                        LOGFN_DEBUG1(upgradeLogFn(),
+                                     "Task %s: no per-task file for '%s': %s",
+                                     row.taskId.c_str(),
+                                     row.wpkFile.c_str(),
+                                     std::strerror(notRegular));
+                        continue;
+                    }
+                }
+
                 auto error {linkTo(fileName)};
                 if (error == EEXIST)
                 {
