@@ -1,9 +1,14 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 #include <gtest/gtest.h>
 
+#include <algorithm>
 #include <atomic>
+#include <cctype>
 #include <chrono>
+#include <functional>
 #include <thread>
+#include <tuple>
+#include <utility>
 #include <vector>
 
 #include <api/event/identityWarningGate.hpp>
@@ -12,7 +17,6 @@
 #include <memory>
 #include <string>
 
-#include <api/adapter/baseHandler_test.hpp>
 #include <api/event/handlers.hpp>
 #include <api/event/ndJsonParser.hpp>
 #include <base/json.hpp>
@@ -21,8 +25,6 @@
 #include <fastmetrics/registry.hpp>
 #include <router/mockRouter.hpp>
 
-using namespace api::adapter;
-using namespace api::test;
 using namespace api::event;
 using namespace api::event::handlers;
 using namespace router::mocks;
@@ -68,17 +70,83 @@ std::string makeBadRequestBodyFromParser(std::string_view body)
         return makeBadRequestBody(e.what());
     }
 }
-} // namespace
 
-using EventHandlerTest = BaseHandlerTest<::router::IRouterAPI, MockRouterAPI>;
+/// Builds a request the way the transport hands it over: header names lower-cased, a repeated name
+/// keeping its last value and listed in repeatedHeaders.
+struct RequestBuilder
+{
+    std::vector<std::pair<std::string, std::string>> headers;
+    std::string body;
+
+    RequestBuilder() = default;
+    RequestBuilder(std::initializer_list<std::pair<std::string, std::string>> list, std::string requestBody = {})
+        : headers {list}
+        , body {std::move(requestBody)}
+    {
+    }
+
+    operator httpsrv::Request() const
+    {
+        auto request = httpsrv::Request::fromOwned(httpsrv::Method::POST, "/events/enriched", body);
+        for (const auto& [name, value] : headers)
+        {
+            std::string lowered {name};
+            std::transform(
+                lowered.begin(), lowered.end(), lowered.begin(), [](unsigned char c) { return std::tolower(c); });
+            if (request.headers.count(lowered) != 0)
+            {
+                request.repeatedHeaders.insert(lowered);
+            }
+            request.headers.insert_or_assign(lowered, value);
+        }
+        return request;
+    }
+};
+
+using Headers = std::vector<std::pair<std::string, std::string>>;
+
+using ReqGetter = std::function<httpsrv::Request()>;
+using ResGetter = std::function<httpsrv::Response()>;
+using HandlerGetter = std::function<httpsrv::RouteHandler(const std::shared_ptr<::router::IRouterAPI>&)>;
+using Mocker = std::function<void(MockRouterAPI&)>;
+using HandlerT = std::tuple<ReqGetter, HandlerGetter, ResGetter, Mocker>;
+
+class EventHandlerTest : public ::testing::TestWithParam<HandlerT>
+{
+protected:
+    std::shared_ptr<MockRouterAPI> m_mockHandler;
+    std::shared_ptr<::router::IRouterAPI> m_iHandler;
+
+    void SetUp() override
+    {
+        logging::testInit();
+        m_mockHandler = std::make_shared<MockRouterAPI>();
+        m_iHandler = m_mockHandler;
+    }
+};
+} // namespace
 
 TEST_P(EventHandlerTest, Handler)
 {
     auto [reqGetter, handlerGetter, resGetter, mocker] = GetParam();
-    handlerTest(reqGetter, handlerGetter, resGetter, m_iHandler, m_mockHandler, mocker);
-}
+    const auto request = reqGetter();
+    const auto expected = resGetter();
+    httpsrv::RouteHandler routeHandler;
+    ASSERT_NO_THROW(routeHandler = handlerGetter(m_iHandler));
+    mocker(*m_mockHandler);
 
-using HandlerT = Params<::router::IRouterAPI, MockRouterAPI>;
+    httpsrv::Response response;
+    ASSERT_NO_THROW(routeHandler(request, response));
+    EXPECT_EQ(response.status, expected.status);
+    EXPECT_EQ(response.body, expected.body);
+
+    // Once the router is gone the handler answers 500 instead of failing.
+    m_iHandler.reset();
+    m_mockHandler.reset();
+    httpsrv::Response expired;
+    ASSERT_NO_THROW(routeHandler(request, expired));
+    EXPECT_EQ(expired.status, 500);
+}
 
 // Valid NDJson payloads:
 //  - First line: H {json}\n
@@ -99,9 +167,9 @@ INSTANTIATE_TEST_SUITE_P(Api,
                              HandlerT(
                                  []()
                                  {
-                                     httplib::Request req;
-                                     req.headers.emplace("X-Wazuh-Agent-Id", "000");
-                                     req.headers.emplace("Content-Type", "plain/text");
+                                     RequestBuilder req;
+                                     req.headers.emplace_back("X-Wazuh-Agent-Id", "000");
+                                     req.headers.emplace_back("Content-Type", "plain/text");
                                      req.body = std::string("H ") + HDR1 + "\n" + "E " + EV1 + "\n";
                                      return req;
                                  },
@@ -113,8 +181,8 @@ INSTANTIATE_TEST_SUITE_P(Api,
                                  },
                                  []()
                                  {
-                                     httplib::Response res;
-                                     res.status = httplib::StatusCode::OK_200;
+                                     httpsrv::Response res;
+                                     res.status = 200;
                                      return res;
                                  },
                                  [](auto& mock) { EXPECT_CALL(mock, postEvent(testing::_)); }),
@@ -123,9 +191,9 @@ INSTANTIATE_TEST_SUITE_P(Api,
                              HandlerT(
                                  []()
                                  {
-                                     httplib::Request req;
-                                     req.headers.emplace("X-Wazuh-Agent-Id", "000");
-                                     req.headers.emplace("Content-Type", "application/json");
+                                     RequestBuilder req;
+                                     req.headers.emplace_back("X-Wazuh-Agent-Id", "000");
+                                     req.headers.emplace_back("Content-Type", "application/json");
                                      req.body = "event"; // invalid: missing newline after header
                                      return req;
                                  },
@@ -136,11 +204,11 @@ INSTANTIATE_TEST_SUITE_P(Api,
                                  },
                                  []()
                                  {
-                                     httplib::Response res;
-                                     res.status = httplib::StatusCode::BadRequest_400;
+                                     httpsrv::Response res;
+                                     res.status = 400;
 
                                      const std::string expectedBody = makeBadRequestBodyFromParser("event");
-                                     res.set_content(expectedBody, "application/json");
+                                     res.setContent(expectedBody, "application/json");
 
                                      return res;
                                  },
@@ -150,9 +218,9 @@ INSTANTIATE_TEST_SUITE_P(Api,
                              HandlerT(
                                  []()
                                  {
-                                     httplib::Request req;
-                                     req.headers.emplace("X-Wazuh-Agent-Id", "000");
-                                     req.headers.emplace("Content-Type", "plain/text");
+                                     RequestBuilder req;
+                                     req.headers.emplace_back("X-Wazuh-Agent-Id", "000");
+                                     req.headers.emplace_back("Content-Type", "plain/text");
                                      req.body = std::string("H ") + HDR1 + "\n" + "E " + EV1 + "\n" + "E " + EV2 + "\n";
                                      return req;
                                  },
@@ -163,8 +231,8 @@ INSTANTIATE_TEST_SUITE_P(Api,
                                  },
                                  []()
                                  {
-                                     httplib::Response res;
-                                     res.status = httplib::StatusCode::OK_200;
+                                     httpsrv::Response res;
+                                     res.status = 200;
                                      return res;
                                  },
                                  [](auto& mock) { EXPECT_CALL(mock, postEvent(testing::_)).Times(2); }),
@@ -173,9 +241,9 @@ INSTANTIATE_TEST_SUITE_P(Api,
                              HandlerT(
                                  []()
                                  {
-                                     httplib::Request req;
-                                     req.headers.emplace("X-Wazuh-Agent-Id", "000");
-                                     req.headers.emplace("Content-Type", "plain/text");
+                                     RequestBuilder req;
+                                     req.headers.emplace_back("X-Wazuh-Agent-Id", "000");
+                                     req.headers.emplace_back("Content-Type", "plain/text");
                                      req.body =
                                          std::string("H ") + HDR1 + "\n" + "H " + HDR1 + "\n" + "E " + EV1 + "\n";
                                      return req;
@@ -187,13 +255,13 @@ INSTANTIATE_TEST_SUITE_P(Api,
                                  },
                                  []()
                                  {
-                                     httplib::Response res;
-                                     res.status = httplib::StatusCode::BadRequest_400;
+                                     httpsrv::Response res;
+                                     res.status = 400;
 
                                      const std::string badBody =
                                          std::string("H ") + HDR1 + "\n" + "H " + HDR1 + "\n" + "E " + EV1 + "\n";
                                      const std::string expectedBody = makeBadRequestBodyFromParser(badBody);
-                                     res.set_content(expectedBody, "application/json");
+                                     res.setContent(expectedBody, "application/json");
 
                                      return res;
                                  },
@@ -203,9 +271,9 @@ INSTANTIATE_TEST_SUITE_P(Api,
                              HandlerT(
                                  []()
                                  {
-                                     httplib::Request req;
-                                     req.headers.emplace("X-Wazuh-Agent-Id", "000");
-                                     req.headers.emplace("Content-Type", "plain/text");
+                                     RequestBuilder req;
+                                     req.headers.emplace_back("X-Wazuh-Agent-Id", "000");
+                                     req.headers.emplace_back("Content-Type", "plain/text");
                                      req.body = std::string("H ") + HDR1 + "\n" + "E " + EV1 + "\n";
                                      return req;
                                  },
@@ -222,15 +290,15 @@ INSTANTIATE_TEST_SUITE_P(Api,
 
                                      // inner handler stores only weak_ptr, so keep dump alive by capturing it
                                      auto inner = pushEvent(orchestrator, dumper, makeAgentMetadataCache());
-                                     return [dumper, inner](const httplib::Request& req, httplib::Response& res) mutable
+                                     return [dumper, inner](const httpsrv::Request& req, httpsrv::Response& res) mutable
                                      {
                                          inner(req, res);
                                      };
                                  },
                                  []()
                                  {
-                                     httplib::Response res;
-                                     res.status = httplib::StatusCode::OK_200;
+                                     httpsrv::Response res;
+                                     res.status = 200;
                                      return res;
                                  },
                                  [](auto& mock) { EXPECT_CALL(mock, postEvent(testing::_)); }),
@@ -239,9 +307,9 @@ INSTANTIATE_TEST_SUITE_P(Api,
                              HandlerT(
                                  []()
                                  {
-                                     httplib::Request req;
-                                     req.headers.emplace("X-Wazuh-Agent-Id", "000");
-                                     req.headers.emplace("Content-Type", "plain/text");
+                                     RequestBuilder req;
+                                     req.headers.emplace_back("X-Wazuh-Agent-Id", "000");
+                                     req.headers.emplace_back("Content-Type", "plain/text");
                                      req.body = std::string("H ") + HDR1 + "\n" + "E " + EV1 + "\n" + "E " + EV2 + "\n";
                                      return req;
                                  },
@@ -252,8 +320,8 @@ INSTANTIATE_TEST_SUITE_P(Api,
                                  },
                                  []()
                                  {
-                                     httplib::Response res;
-                                     res.status = httplib::StatusCode::OK_200;
+                                     httpsrv::Response res;
+                                     res.status = 200;
                                      return res;
                                  },
                                  [](auto& mock) { EXPECT_CALL(mock, postEvent(testing::_)).Times(2); })));
@@ -263,7 +331,7 @@ class EventIdentityTest : public ::testing::Test
 protected:
     std::shared_ptr<testing::NiceMock<MockRouterAPI>> router = std::make_shared<testing::NiceMock<MockRouterAPI>>();
     std::shared_ptr<agentcache::AgentMetadataCache> cache = makeAgentMetadataCache();
-    api::adapter::RouteHandler handler;
+    httpsrv::RouteHandler handler;
     std::shared_ptr<fastmetrics::ICounter> rejected;
 
     void SetUp() override
@@ -278,17 +346,17 @@ protected:
         return "H {\"wazuh\":{\"agent\":{\"id\":\"" + std::string(id) + "\"}}}\nE 1:syslog:hello\n";
     }
 
-    httplib::Response send(const httplib::Headers& headers, std::string body = batch())
+    httpsrv::Response send(const Headers& headers, std::string body = batch())
     {
-        httplib::Request request;
+        RequestBuilder request;
         request.headers = headers;
         request.body = std::move(body);
-        httplib::Response response;
+        httpsrv::Response response;
         handler(request, response);
         return response;
     }
 
-    void expectIdentityRejection(const httplib::Headers& headers, std::string body = batch())
+    void expectIdentityRejection(const Headers& headers, std::string body = batch())
     {
         const auto before = rejected->get();
         const auto size = cache->size();
@@ -502,13 +570,13 @@ TEST(EventHandlerErrorBodyTest, BadRequestBodyEscapesQuotes)
 
     auto handler = pushEvent(orchestrator, dumper, makeAgentMetadataCache());
 
-    httplib::Request req;
-    req.headers.emplace("X-Wazuh-Agent-Id", "000");
+    RequestBuilder req;
+    req.headers.emplace_back("X-Wazuh-Agent-Id", "000");
     req.body = std::string("H ") + HDR1 + "\n" + "E " + EV1 + "\n";
-    httplib::Response res;
+    httpsrv::Response res;
     handler(req, res);
 
-    EXPECT_EQ(res.status, httplib::StatusCode::BadRequest_400);
+    EXPECT_EQ(res.status, 400);
 
     json::Json body;
     ASSERT_NO_THROW(body = json::Json {res.body.c_str()});
@@ -526,16 +594,16 @@ TEST(EventHandlerErrorLogTest, RejectedBatchWarningIsThrottled)
     auto dumper = std::make_shared<testing::NiceMock<dumper::mocks::MockDumper>>();
     auto handler = pushEvent(orchestrator, dumper, makeAgentMetadataCache());
 
-    httplib::Request req;
-    req.headers.emplace("X-Wazuh-Agent-Id", "001");
+    RequestBuilder req;
+    req.headers.emplace_back("X-Wazuh-Agent-Id", "001");
     req.body = "event"; // invalid: missing newline after header
 
     testing::internal::CaptureStderr();
     for (int i = 0; i < 5; ++i)
     {
-        httplib::Response res;
+        httpsrv::Response res;
         handler(req, res);
-        EXPECT_EQ(res.status, httplib::StatusCode::BadRequest_400);
+        EXPECT_EQ(res.status, 400);
     }
     const auto logs = testing::internal::GetCapturedStderr();
 
