@@ -32,6 +32,7 @@ class MockWindowsApiWrapper : public IWindowsApiWrapper
         MOCK_METHOD(bool, LookupAccountNameWWrapper, (LPCWSTR, LPCWSTR, PSID, LPDWORD, LPWSTR, LPDWORD, PSID_NAME_USE), (override));
         MOCK_METHOD(void, FreeSidWrapper, (LPVOID), (override));
         MOCK_METHOD(DWORD, NetUserGetLocalGroupsWrapper, (LPCWSTR, LPCWSTR, DWORD, DWORD, LPBYTE*, DWORD, LPDWORD, LPDWORD), (override));
+        MOCK_METHOD(DWORD, NetUserGetGroupsWrapper, (LPCWSTR, LPCWSTR, DWORD, LPBYTE*, DWORD, LPDWORD, LPDWORD), (override));
         MOCK_METHOD(PUCHAR, GetSidSubAuthorityCountWrapper, (PSID), (override));
         MOCK_METHOD(PDWORD, GetSidSubAuthorityWrapper, (PSID, DWORD), (override));
         MOCK_METHOD(LSTATUS, RegEnumKeyWWrapper, (HKEY, DWORD, LPWSTR, DWORD), (override));
@@ -405,6 +406,62 @@ TEST_F(UserGroupsProviderWindowsTest, GetGroupNamesByUidSingleUid)
 
     EXPECT_THAT(result.get<std::vector<std::string>>(),
                 ::testing::UnorderedElementsAre("groupA", "groupB"));
+}
+
+TEST_F(UserGroupsProviderWindowsTest, GroupNamesMergeLocalAndGlobalDomainGroups)
+{
+    User testUser{};
+    testUser.uid = 1000;
+    testUser.username = "testuser";
+    std::vector<User> localUsers = { testUser };
+
+    EXPECT_CALL(*usersHelper, processLocalAccounts(::testing::_))
+    .WillOnce(::testing::Return(localUsers));
+
+    EXPECT_CALL(*groupsHelper, processLocalGroups())
+    .WillOnce(::testing::Return(std::vector<Group> {}));
+
+    // Local machine groups: a broad group that every domain user belongs to on a DC.
+    static std::wstring localName = L"Users";
+    auto localBuffer = std::make_shared<std::vector<LOCALGROUP_USERS_INFO_0>>(1);
+    (*localBuffer)[0].lgrui0_name = const_cast<LPWSTR>(localName.c_str());
+
+    EXPECT_CALL(*winapiWrapper,
+                NetUserGetLocalGroupsWrapper(::testing::_, ::testing::StrEq(L"testuser"),
+                                             0, 1, ::testing::_, MAX_PREFERRED_LENGTH,
+                                             ::testing::_, ::testing::_))
+    .WillOnce([localBuffer](LPCWSTR, LPCWSTR, DWORD, DWORD, LPBYTE * buf, DWORD, LPDWORD ng, LPDWORD tg)
+    {
+        *buf = reinterpret_cast<LPBYTE>(localBuffer->data());
+        *ng = 1;
+        *tg = 1;
+        return NERR_Success;
+    });
+
+    // Global/domain groups: the user's actual AD memberships. "Users" repeats the local
+    // group and must be de-duplicated in the merged result.
+    static std::wstring globalName1 = L"Domain Admins";
+    static std::wstring globalName2 = L"Users";
+    auto globalBuffer = std::make_shared<std::vector<GROUP_USERS_INFO_0>>(2);
+    (*globalBuffer)[0].grui0_name = const_cast<LPWSTR>(globalName1.c_str());
+    (*globalBuffer)[1].grui0_name = const_cast<LPWSTR>(globalName2.c_str());
+
+    EXPECT_CALL(*winapiWrapper,
+                NetUserGetGroupsWrapper(::testing::_, ::testing::StrEq(L"testuser"),
+                                        0, ::testing::_, MAX_PREFERRED_LENGTH,
+                                        ::testing::_, ::testing::_))
+    .WillOnce([globalBuffer](LPCWSTR, LPCWSTR, DWORD, LPBYTE * buf, DWORD, LPDWORD ng, LPDWORD tg)
+    {
+        *buf = reinterpret_cast<LPBYTE>(globalBuffer->data());
+        *ng = 2;
+        *tg = 2;
+        return NERR_Success;
+    });
+
+    auto result = provider->getGroupNamesByUid({1000});
+
+    EXPECT_THAT(result.get<std::vector<std::string>>(),
+                ::testing::UnorderedElementsAre("Users", "Domain Admins"));
 }
 
 TEST_F(UserGroupsProviderWindowsTest, GetGroupNamesByUidMultipleUids)
