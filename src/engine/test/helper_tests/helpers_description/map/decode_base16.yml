@@ -5,14 +5,17 @@ metadata:
   description: |
     The operation transforms a string of hexa digits into an ASCII string. The result of the operation is mapped to “field”.
     If the “field” already exists, then it will be replaced. In case of errors “field” will not be modified.
-    A string is valid when it has an even number of hexadecimal digits ([0-9A-Fa-f]) and every decoded byte is ASCII
-    (0x00-0x7F); otherwise the operation fails.
-    The reference can also be an array. Then “field” receives an array of the same length where every string element
-    that is valid hexadecimal is decoded and every other element (plain text, invalid hexadecimal, non-ASCII result,
-    non-string) is kept unchanged; the operation does not fail on them. An empty array produces an empty array.
-    The helper cannot tell plain text that happens to be valid hexadecimal (for example "1234" or "4142") from an encoded
-    value: such an element is decoded. Use the array form only on values that a source encodes in hexadecimal, such as
-    the unquoted auditd EXECVE arguments.
+    Without a mode, the reference must be a string with an even number of hexadecimal digits ([0-9A-Fa-f]) where every
+    decoded byte is ASCII (0x00-0x7F); otherwise the operation fails. An array reference fails too.
+    The optional mode `quoted` decodes raw auditd values, for example the EXECVE arguments collected with
+    regex_extract_all. auditd writes an argument between double quotes unless it contains a double quote, a space, a
+    control character or a non-ASCII byte; then it writes the bytes in upper-case hexadecimal without quotes. In this
+    mode the reference can be a string or an array, and each value is handled by its quoting: a value between double
+    quotes loses the quotes and is kept as text (so "10" or "1234" stay text); an unquoted value of upper-case
+    hexadecimal digits that decodes to valid UTF-8 is decoded; any other value (lower-case hexadecimal, invalid UTF-8,
+    other text, an element that is not a string) is kept unchanged. The mode does not fail on the values, and an empty
+    array produces an empty array. When “field” is a keyword field such as process.args, an element that is not a
+    string fails the schema validation of “field” and the whole operation fails.
   keywords:
     - undefined
 
@@ -24,14 +27,22 @@ is_variadic: False
 # Arguments expected by the helper function
 arguments:
   hex:
-    type:
-      - string
-      - array
+    type: string # an array is accepted only with the quoted mode (see the description)
     generate: hexadecimal
     source: reference # Includes only references (their names start with $)
+  mode:
+    type: string
+    source: value # Includes only values
+    optional: true # without it, the reference must be a hexadecimal string
+    restrictions:
+      allowed:
+        - quoted
 
+# The generated reference type cases cannot express that an array succeeds with the quoted mode;
+# the tests below and the builder unit tests cover the reference types
 skipped:
   - success_cases
+  - different_type
 
 output:
   type:
@@ -62,27 +73,47 @@ test:
     should_pass: false
     description: Fail when a decoded byte is not ASCII
   - arguments:
-      hex: ["/usr/bin/sudo", "grep", "6B65793D226172742D7465737422", "/var/log/audit/audit.log"]
+      hex: ["48656C6C6F", "776F726C6421"]
+    should_pass: false
+    description: Fail on an array reference without the quoted mode
+  - arguments:
+      hex: {"key": "4142"}
+      mode: quoted
+    should_pass: false
+    description: Fail on a reference that is neither a string nor an array, also with the quoted mode
+  - arguments:
+      hex: ['"/usr/bin/sudo"', '"grep"', "6B65793D226172742D7465737422", '"/var/log/audit/audit.log"']
+      mode: quoted
     should_pass: true
     expected: ["/usr/bin/sudo", "grep", "key=\"art-test\"", "/var/log/audit/audit.log"]
-    description: Decode only the hexadecimal elements of an array (auditd EXECVE arguments)
+    description: Strip the quotes of the quoted auditd arguments and decode the unquoted hexadecimal one
   - arguments:
-      hex: ["2F746D702F612062", "6B65793D226172742D7465737422"]
+      hex: ['"kill"', '"-9"', '"1234"', '"10"', '"0755"']
+      mode: quoted
     should_pass: true
-    expected: ["/tmp/a b", "key=\"art-test\""]
-    description: Decode an array whose elements are all hexadecimal
+    expected: ["kill", "-9", "1234", "10", "0755"]
+    description: Keep quoted arguments as text even when they look hexadecimal
   - arguments:
-      hex: ["/usr/bin/sudo", "grep", "-r", "CAFE", "41G2"]
+      hex: ['"touch"', "636166C3A9"]
+      mode: quoted
     should_pass: true
-    expected: ["/usr/bin/sudo", "grep", "-r", "CAFE", "41G2"]
-    description: Keep an array without valid hexadecimal elements unchanged
+    expected: ["touch", "café"]
+    description: Decode an unquoted hexadecimal argument to UTF-8
   - arguments:
-      hex: []
+      hex: ["3c3e", "CAFE", "(null)", ""]
+      mode: quoted
     should_pass: true
-    expected: []
-    description: An empty array produces an empty array
+    expected: ["3c3e", "CAFE", "(null)", ""]
+    description: Keep lower-case hexadecimal, invalid UTF-8 and other unquoted values unchanged
   - arguments:
-      hex: [1, "4142", true, {"key": "4142"}]
+      hex: [1, '"4142"', "4142", true]
+      mode: quoted
     should_pass: true
-    expected: [1, "AB", true, {"key": "4142"}]
+    expected: [1, "4142", "AB", true]
     description: Keep the elements that are not strings unchanged
+  - arguments:
+      hex: '"1234"'
+      mode: quoted
+    should_pass: true
+    expected: "1234"
+    description: Apply the quoted mode to a string reference
