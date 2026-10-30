@@ -43,6 +43,7 @@ void *read_multiline(logreader *lf, int *rc, int drop_it) {
     int64_t rbytes = 0;
     int64_t group_length = 0;
     bool group_truncated = false;
+    bool group_has_text = false;
 
     *rc = 0;
 
@@ -61,7 +62,8 @@ void *read_multiline(logreader *lf, int *rc, int drop_it) {
         EVP_MD_CTX_copy(group_context, context);
     }
 
-    for (offset = w_ftell(lf->fp); can_read() && (!maximum_lines || lines < maximum_lines) && offset >= 0 && fgets(str, OS_MAX_LOG_SIZE, lf->fp); offset += rbytes) {
+    /* Past the line limit, only the open group is read to its end, so a group is never split across reads */
+    for (offset = w_ftell(lf->fp); can_read() && (!maximum_lines || lines < maximum_lines || linesgot > 0) && offset >= 0 && fgets(str, OS_MAX_LOG_SIZE, lf->fp); offset += rbytes) {
         rbytes = w_ftell(lf->fp) - offset;
         lines++;
         linesgot++;
@@ -152,8 +154,11 @@ void *read_multiline(logreader *lf, int *rc, int drop_it) {
         }
 #endif
 
+        group_length += rbytes;
+
         /* Add to buffer */
         if (!line_dropped) {
+            group_has_text = true;
             buffer_size = strlen(buffer);
             if (buffer[0] != '\0' && buffer_size < sizeof(buffer) - 1) {
                 buffer[buffer_size] = ' ';
@@ -161,7 +166,6 @@ void *read_multiline(logreader *lf, int *rc, int drop_it) {
             }
 
             size = snprintf(buffer + buffer_size, sizeof(buffer) - buffer_size, "%s", str);
-            group_length += rbytes;
 
             if ((size_t)size >= sizeof(buffer) - buffer_size) {
                 group_truncated = true;
@@ -174,7 +178,7 @@ void *read_multiline(logreader *lf, int *rc, int drop_it) {
         linesgot = 0;
 
         /* A group whose lines were all dropped has nothing to send. Check ignore and restrict log regex, if configured. */
-        if (group_length > 0 && drop_it == 0 && !check_ignore_and_restrict(lf->regex_ignore, lf->regex_restrict, buffer)) {
+        if (group_has_text && drop_it == 0 && !check_ignore_and_restrict(lf->regex_ignore, lf->regex_restrict, buffer)) {
             /* Send message to queue */
             mdebug2("Reading message: '%.*s'%s", sample_log_length, buffer, strlen(buffer) > (size_t)sample_log_length ? "..." : "");
             w_msg_hash_queues_push(buffer, lf->file, strlen(buffer) + 1, lf->log_target, LOCALFILE_MQ);
@@ -193,6 +197,7 @@ void *read_multiline(logreader *lf, int *rc, int drop_it) {
         buffer[0] = '\0';
         group_length = 0;
         group_truncated = false;
+        group_has_text = false;
 
 
         current_position = w_ftell(lf->fp);
@@ -201,17 +206,12 @@ void *read_multiline(logreader *lf, int *rc, int drop_it) {
 
     /* Lines of a group that is not complete yet were hashed beyond the stored offset */
     if (group_pending) {
-        if (maximum_lines && lines >= maximum_lines && !rewound) {
-            /* Stopped by the line limit: the stored offset covers the lines already read */
-            current_position = w_ftell(lf->fp);
-        } else {
-            /* Stopped at the end of the file: the group is read again, from its first line, next time */
-            if (!rewound && current_position >= 0) {
-                w_fseek(lf->fp, current_position, SEEK_SET);
-            }
-            if (group_context != NULL) {
-                EVP_MD_CTX_copy(context, group_context);
-            }
+        /* The group is read again, from its first line, next time */
+        if (!rewound && current_position >= 0) {
+            w_fseek(lf->fp, current_position, SEEK_SET);
+        }
+        if (group_context != NULL) {
+            EVP_MD_CTX_copy(context, group_context);
         }
     }
     EVP_MD_CTX_free(group_context);
