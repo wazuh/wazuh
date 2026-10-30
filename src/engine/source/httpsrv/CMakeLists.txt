@@ -52,6 +52,7 @@ add_executable(httpsrv_utest
     ${UNIT_SRC_DIR}/server_test.cpp
     ${UNIT_SRC_DIR}/boundedExecutor_test.cpp
     ${UNIT_SRC_DIR}/udsServer_test.cpp
+    ${UNIT_SRC_DIR}/udsServerMetrics_test.cpp
 )
 target_include_directories(httpsrv_utest
     PRIVATE
@@ -60,6 +61,7 @@ target_include_directories(httpsrv_utest
 target_link_libraries(httpsrv_utest
     PRIVATE
     httpsrv
+    fastmetrics::fastmetrics
     GTest::gtest_main
 )
 gtest_discover_tests(httpsrv_utest)
