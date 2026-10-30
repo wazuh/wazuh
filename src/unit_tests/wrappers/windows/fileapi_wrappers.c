@@ -151,14 +151,20 @@ BOOL wrap_GetFileTime(HANDLE     hFile,
     return mock_type(BOOL);
 }
 
+// Reparse points also take their reparse tag
+static void fill_find_data(const char *file_name, LPWIN32_FIND_DATAW lpFindFileData) {
+    MultiByteToWideChar(CP_UTF8, 0, file_name, -1, lpFindFileData->cFileName, MAX_PATH);
+    lpFindFileData->dwFileAttributes = mock_type(DWORD);
+    lpFindFileData->dwReserved0 = lpFindFileData->dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT ? mock_type(DWORD) : 0;
+}
+
 HANDLE wrap_FindFirstFile(LPCWSTR lpFileName,  LPWIN32_FIND_DATAW lpFindFileData) {
     char *file_name;
     check_expected(lpFileName);
 
     file_name = mock_type(char *);
     if (file_name != NULL) {
-        MultiByteToWideChar(CP_UTF8, 0, file_name, -1, lpFindFileData->cFileName, MAX_PATH);
-        lpFindFileData->dwFileAttributes = mock_type(DWORD);
+        fill_find_data(file_name, lpFindFileData);
     }
 
     return mock_type(HANDLE);
@@ -169,15 +175,14 @@ BOOL wrap_FindNextFile(HANDLE hFindFile, LPWIN32_FIND_DATAW lpFindFileData) {
     check_expected(hFindFile);
     file_name = mock_type(char *);
     if (file_name != NULL) {
-        MultiByteToWideChar(CP_UTF8, 0, file_name, -1, lpFindFileData->cFileName, MAX_PATH);
-        lpFindFileData->dwFileAttributes = mock_type(DWORD);
+        fill_find_data(file_name, lpFindFileData);
     }
 
     BOOL ret = mock_type(BOOL);
 
-    // The end of a listing, as the real call reports it
+    // ERROR_NO_MORE_FILES is the end of a listing
     if (!ret) {
-        SetLastError(ERROR_NO_MORE_FILES);
+        SetLastError(mock_type(DWORD));
     }
     return ret;
 }

@@ -52,23 +52,51 @@ static int teardown_group(void **state) {
 
 #define N_PATHS 5
 
-static void expect_find_first_file(const wchar_t *file_path, const char *name, DWORD attrs, HANDLE handle) {
+#ifndef IO_REPARSE_TAG_MOUNT_POINT
+#define IO_REPARSE_TAG_MOUNT_POINT 0xA0000003L
+#endif
+#ifndef IO_REPARSE_TAG_SYMLINK
+#define IO_REPARSE_TAG_SYMLINK 0xA000000CL
+#endif
+#ifndef IO_REPARSE_TAG_CLOUD
+#define IO_REPARSE_TAG_CLOUD 0x9000001AL
+#endif
+
+static void expect_find_first_file_tag(const wchar_t *file_path, const char *name, DWORD attrs, DWORD tag,
+                                       HANDLE handle) {
     expect_string(wrap_FindFirstFile, lpFileName, file_path);
     will_return(wrap_FindFirstFile, name);
     if (name != NULL) {
         will_return(wrap_FindFirstFile, attrs);
+        if (attrs & FILE_ATTRIBUTE_REPARSE_POINT) {
+            will_return(wrap_FindFirstFile, tag);
+        }
     }
 
     will_return(wrap_FindFirstFile, handle);
 }
 
-static void expect_find_next_file(HANDLE handle, const char *name, DWORD attrs, BOOL ret) {
+static void expect_find_first_file(const wchar_t *file_path, const char *name, DWORD attrs, HANDLE handle) {
+    expect_find_first_file_tag(file_path, name, attrs, IO_REPARSE_TAG_MOUNT_POINT, handle);
+}
+
+static void expect_find_next_file_error(HANDLE handle, const char *name, DWORD attrs, BOOL ret, DWORD error) {
     expect_value(wrap_FindNextFile, hFindFile, handle);
     will_return(wrap_FindNextFile, name);
     if (name != NULL) {
         will_return(wrap_FindNextFile, attrs);
+        if (attrs & FILE_ATTRIBUTE_REPARSE_POINT) {
+            will_return(wrap_FindNextFile, IO_REPARSE_TAG_MOUNT_POINT);
+        }
     }
     will_return(wrap_FindNextFile, ret);
+    if (!ret) {
+        will_return(wrap_FindNextFile, error);
+    }
+}
+
+static void expect_find_next_file(HANDLE handle, const char *name, DWORD attrs, BOOL ret) {
+    expect_find_next_file_error(handle, name, attrs, ret, ERROR_NO_MORE_FILES);
 }
 
 static int teardown_win32_wildcards(void **state) {
@@ -1570,6 +1598,43 @@ void test_cldir_ex_ignore_win_reparse_point_not_followed(void **state) {
     assert_int_equal(cldir_ex_ignore("C:\\shared", NULL), 0);
 }
 
+/* Other reparse points hold their own content, so it is removed before the directory. */
+void test_cldir_ex_ignore_win_cloud_placeholder_cleaned(void **state) {
+    expect_find_first_file_tag(L"C:\\shared\\*", "cloud", FILE_ATTRIBUTE_DIRECTORY | FILE_ATTRIBUTE_REPARSE_POINT,
+                               IO_REPARSE_TAG_CLOUD, (HANDLE) 1);
+    expect_find_first_file(L"C:\\shared/cloud\\*", "file.txt", FILE_ATTRIBUTE_NORMAL, (HANDLE) 2);
+    expect_string(__wrap_utf8_DeleteFile, utf8_path, "C:\\shared/cloud/file.txt");
+    will_return(__wrap_utf8_DeleteFile, TRUE);
+    expect_find_next_file((HANDLE) 2, NULL, 0, FALSE);
+    expect_string(__wrap_utf8_RemoveDirectory, utf8_path, "C:\\shared/cloud");
+    will_return(__wrap_utf8_RemoveDirectory, TRUE);
+    expect_find_next_file((HANDLE) 1, NULL, 0, FALSE);
+
+    assert_int_equal(cldir_ex_ignore("C:\\shared", NULL), 0);
+}
+
+/* A name of MAX_PATH - 20 CJK characters takes three UTF-8 bytes each, beyond PATH_MAX. */
+void test_cldir_ex_ignore_win_long_utf8_name(void **state) {
+    char stale[(MAX_PATH - 20) * 3 + 1] = "";
+    char kept[sizeof(stale)] = "";
+    char stale_path[sizeof(stale) + 16];
+    const char *ignore[] = { kept, NULL };
+
+    for (int i = 0; i < MAX_PATH - 20; i++) {
+        strcat(stale, "\xe6\x97\xa5");
+        strcat(kept, "\xe6\x9c\xac");
+    }
+    snprintf(stale_path, sizeof(stale_path), "C:\\shared/%s", stale);
+
+    expect_find_first_file(L"C:\\shared\\*", kept, FILE_ATTRIBUTE_NORMAL, (HANDLE) 1);
+    expect_find_next_file((HANDLE) 1, stale, FILE_ATTRIBUTE_NORMAL, TRUE);
+    expect_string(__wrap_utf8_DeleteFile, utf8_path, stale_path);
+    will_return(__wrap_utf8_DeleteFile, TRUE);
+    expect_find_next_file((HANDLE) 1, NULL, 0, FALSE);
+
+    assert_int_equal(cldir_ex_ignore("C:\\shared", ignore), 0);
+}
+
 void test_cldir_ex_ignore_win_delete_failure(void **state) {
     expect_find_first_file(L"C:\\shared\\*", "locked.txt", FILE_ATTRIBUTE_NORMAL, (HANDLE) 1);
     expect_string(__wrap_utf8_DeleteFile, utf8_path, "C:\\shared/locked.txt");
@@ -1585,6 +1650,16 @@ void test_cldir_ex_ignore_win_find_failure(void **state) {
 
     assert_int_equal(cldir_ex_ignore("C:\\shared", NULL), -1);
     assert_int_equal(errno, ENOENT);
+}
+
+/* A listing that stops on an error other than its end reports it. */
+void test_cldir_ex_ignore_win_find_next_failure(void **state) {
+    expect_find_first_file(L"C:\\shared\\*", "keep.txt", FILE_ATTRIBUTE_NORMAL, (HANDLE) 1);
+    expect_find_next_file_error((HANDLE) 1, NULL, 0, FALSE, ERROR_ACCESS_DENIED);
+    errno = 0;
+
+    assert_int_equal(cldir_ex_ignore("C:\\shared", (const char *[]){ "keep.txt", NULL }), -1);
+    assert_int_equal(errno, EACCES);
 }
 
 void test_cldir_ex_ignore_win_network_path(void **state) {
@@ -1693,12 +1768,6 @@ void test_w_win_owner_trusted(void **state) {
 }
 
 // Reaches the one-level reparse-target parser in file_op.c with crafted FSCTL_GET_REPARSE_POINT buffers.
-#ifndef IO_REPARSE_TAG_MOUNT_POINT
-#define IO_REPARSE_TAG_MOUNT_POINT 0xA0000003L
-#endif
-#ifndef IO_REPARSE_TAG_SYMLINK
-#define IO_REPARSE_TAG_SYMLINK 0xA000000CL
-#endif
 #ifndef SYMLINK_FLAG_RELATIVE
 #define SYMLINK_FLAG_RELATIVE 1
 #endif
@@ -3370,8 +3439,11 @@ int main(void) {
         cmocka_unit_test(test_cldir_ex_ignore_win_remove_directory),
         cmocka_unit_test(test_cldir_ex_ignore_win_preserve_subdirectory_file),
         cmocka_unit_test(test_cldir_ex_ignore_win_reparse_point_not_followed),
+        cmocka_unit_test(test_cldir_ex_ignore_win_cloud_placeholder_cleaned),
+        cmocka_unit_test(test_cldir_ex_ignore_win_long_utf8_name),
         cmocka_unit_test(test_cldir_ex_ignore_win_delete_failure),
         cmocka_unit_test(test_cldir_ex_ignore_win_find_failure),
+        cmocka_unit_test(test_cldir_ex_ignore_win_find_next_failure),
         cmocka_unit_test(test_cldir_ex_ignore_win_network_path),
         cmocka_unit_test(test_w_stat_local_path),
         cmocka_unit_test(test_w_stat_network_path),
