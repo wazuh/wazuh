@@ -103,6 +103,45 @@ namespace
         fim_container_baseline_log_error(buffer);
     }
 
+    using JsonPtr = std::unique_ptr<cJSON, decltype(&cJSON_Delete)>;
+
+    /// Every container id that holds a row in file_entry, or nothing when the
+    /// query failed -- which is not the same answer as "no containers", and no
+    /// caller may confuse them: one authorises deletions, the other must not.
+    ///
+    /// One parse, because both callers were doing their own and the cJSON array
+    /// is easy to read a little differently each time -- a null valuestring, an
+    /// empty string and a non-string element are all things the query can
+    /// produce and all things a second copy of this loop can forget.
+    std::optional<std::set<std::string>> distinctContainerIds()
+    {
+        JsonPtr ids {fim_db_get_distinct_container_ids(FIMDB_FILE_TABLE_NAME), cJSON_Delete};
+
+        // Not an array is not an empty node either. cJSON_ArrayForEach() walks
+        // an object's MEMBERS just as happily as an array's elements, so
+        // without this a malformed reply would be read as a list of container
+        // ids -- and one of the two callers deletes the rows of every container
+        // absent from what it is given.
+        if (!ids || !cJSON_IsArray(ids.get()))
+        {
+            return std::nullopt;
+        }
+
+        std::set<std::string> out;
+        const cJSON* id_json = nullptr;
+        cJSON_ArrayForEach(id_json, ids.get())
+        {
+            const char* container_id = cJSON_GetStringValue(id_json);
+
+            if (container_id && *container_id)
+            {
+                out.insert(container_id);
+            }
+        }
+
+        return out;
+    }
+
     struct ContainerTxnCtx
     {
         std::string container_id;
@@ -604,7 +643,7 @@ namespace
             {
                 finishCurrent(true);
 
-                cJSON* db_ids = fim_db_get_distinct_container_ids("file_entry");
+                const auto db_ids = distinctContainerIds();
 
                 if (!db_ids)
                 {
@@ -616,29 +655,19 @@ namespace
                 std::set<std::string> stale;
                 std::set<std::string> surviving;
 
-                if (cJSON_IsArray(db_ids))
+                for (const auto& id : *db_ids)
                 {
-                    cJSON* item = nullptr;
-                    cJSON_ArrayForEach(item, db_ids)
+                    // The listing precedes the walk; a container discovered
+                    // during it is still live even if absent from that snapshot.
+                    if (known.find(id) == known.end() && m_scanned.find(id) == m_scanned.end())
                     {
-                        if (!cJSON_IsString(item) || !item->valuestring || item->valuestring[0] == '\0') continue;
-
-                        const std::string id{item->valuestring};
-
-                        // The listing precedes the walk; a container discovered
-                        // during it is still live even if absent from that snapshot.
-                        if (known.find(id) == known.end() && m_scanned.find(id) == m_scanned.end())
-                        {
-                            stale.insert(id);
-                        }
-                        else
-                        {
-                            surviving.insert(id);
-                        }
+                        stale.insert(id);
+                    }
+                    else
+                    {
+                        surviving.insert(id);
                     }
                 }
-
-                cJSON_Delete(db_ids);
 
                 for (const auto& id : stale)
                 {
@@ -1172,35 +1201,6 @@ namespace
 
 namespace
 {
-
-    using JsonPtr = std::unique_ptr<cJSON, decltype(&cJSON_Delete)>;
-
-    /// Every container id that holds a row in file_entry, or nothing when the
-    /// query failed -- which is not the same answer as "no containers", and the
-    /// callers must not confuse them.
-    std::optional<std::set<std::string>> distinctContainerIds()
-    {
-        JsonPtr ids {fim_db_get_distinct_container_ids(FIMDB_FILE_TABLE_NAME), cJSON_Delete};
-
-        if (!ids)
-        {
-            return std::nullopt;
-        }
-
-        std::set<std::string> out;
-        const cJSON* id_json = nullptr;
-        cJSON_ArrayForEach(id_json, ids.get())
-        {
-            const char* container_id = cJSON_GetStringValue(id_json);
-
-            if (container_id && *container_id)
-            {
-                out.insert(container_id);
-            }
-        }
-
-        return out;
-    }
 
     /// @param ids The distinct container ids in file_entry. Passed in rather
     ///        than read here because a reconcile runs this twice, in opposite

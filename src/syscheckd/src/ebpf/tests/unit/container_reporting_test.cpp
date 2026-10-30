@@ -51,6 +51,12 @@ namespace
      * costs. The query walks every FIM row on the node, so the count is the
      * point, not an implementation detail. */
     std::size_t distinct_id_queries = 0;
+
+    /* Makes that query answer with a cJSON OBJECT instead of an array, which is
+     * what a malformed reply looks like. cJSON_ArrayForEach() walks an object's
+     * members just as happily, so the shape has to be checked rather than
+     * assumed. */
+    bool distinct_ids_malformed = false;
     std::size_t persist_attempts = 0;
     int file_size = 1;
 
@@ -72,6 +78,7 @@ namespace
                 reject_persistence = false;
                 reject_sync_flag_write = false;
                 distinct_id_queries = 0;
+                distinct_ids_malformed = false;
                 persist_attempts = 0;
                 file_size = 1;
                 fim_db_init(FIM_DB_MEMORY, [](modules_log_level_t, const char*) {}, 1000, 0, nullptr);
@@ -123,6 +130,19 @@ extern "C" cJSON* __real_fim_db_get_distinct_container_ids(const char* table_nam
 extern "C" cJSON* __wrap_fim_db_get_distinct_container_ids(const char* table_name)
 {
     ++distinct_id_queries;
+
+    if (distinct_ids_malformed)
+    {
+        /* Member VALUES that are real container ids, because
+         * cJSON_GetStringValue() reads the value and not the name -- so an
+         * unguarded walk of this object yields ids that exist and acts on
+         * them. */
+        cJSON* object = cJSON_CreateObject();
+        cJSON_AddStringToObject(object, "first", "a");
+        cJSON_AddStringToObject(object, "second", "b");
+        return object;
+    }
+
     return __real_fim_db_get_distinct_container_ids(table_name);
 }
 
@@ -1290,6 +1310,34 @@ TEST_F(ContainerReportingTest, ARowWithheldDuringTheWalkIsPromotedWhenADeleteFre
 
     EXPECT_EQ(syncFlag("a", "/etc/keep"), 1);
     EXPECT_EQ(syncFlag("a", "/etc/new"), 1) << "the departed file's slot was freed in the same baseline";
+}
+
+// A reply that is not an array is not an empty node, and must not be read as a
+// list of container ids.
+//
+// cJSON_ArrayForEach() walks an object's MEMBERS as readily as an array's
+// elements, so a malformed answer would have produced ids taken from member
+// names -- and the stale sweep deletes the rows of every container absent from
+// what it is given. Nothing is swept on evidence this bad.
+TEST_F(ContainerReportingTest, AMalformedContainerIdReplySweepsNothing)
+{
+    files = {{"a", {"/etc/one"}}, {"b", {"/etc/one"}}};
+    admission = {{"a", true}, {"b", true}};
+    listed = false;
+    fim_run_container_baseline();
+    ASSERT_EQ(syncFlag("a", "/etc/one"), 1);
+    ASSERT_EQ(syncFlag("b", "/etc/one"), 1);
+
+    // Both containers go away, so a working sweep would delete both. The query
+    // that says which containers hold rows answers with an object instead.
+    distinct_ids_malformed = true;
+    admission.clear();
+    files.clear();
+    listed = false;
+    fim_run_container_baseline();
+
+    EXPECT_NE(syncFlag("a", "/etc/one"), -1) << "a malformed reply authorises no deletion";
+    EXPECT_NE(syncFlag("b", "/etc/one"), -1);
 }
 
 // Once a container has spent its document budget, container_budget_decide()
