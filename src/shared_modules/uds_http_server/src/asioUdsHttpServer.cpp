@@ -329,6 +329,8 @@ namespace wazuh::uds_http
             std::atomic<std::size_t> budgetRejected {0};
             std::atomic<std::size_t> sessionCapRejected {0};
             std::atomic<std::size_t> noResponseRejected {0};
+            /// 413s, whichever cap decided them (route/class cap or the parser's own).
+            std::atomic<std::size_t> tooLargeRejected {0};
 
             std::atomic_bool accepting {false};
 
@@ -635,6 +637,10 @@ namespace wazuh::uds_http
                                        m_parser.rejectStatus(),
                                        requestPath().c_str());
                         }
+                        if (m_parser.rejectStatus() == 413)
+                        {
+                            m_state->tooLargeRejected.fetch_add(1, std::memory_order_relaxed);
+                        }
                         deliver(errorResponse(m_parser.rejectStatus(), rejectMessage(m_parser.rejectStatus())));
                         return;
                     case RequestParser::Feed::ProtocolError:
@@ -744,6 +750,7 @@ namespace wazuh::uds_http
                                    bodyCap,
                                    route->path.c_str());
                     }
+                    m_state->tooLargeRejected.fetch_add(1, std::memory_order_relaxed);
                     deliver(classBodyCapResponse(cls));
                     return RequestParser::Feed::Incomplete;
                 }
@@ -2254,6 +2261,7 @@ namespace wazuh::uds_http
         snapshot.rejectedSessionCap = state.sessionCapRejected.load(std::memory_order_relaxed);
         snapshot.rejectedShutdown = state.shutdownRejected.load(std::memory_order_relaxed);
         snapshot.rejectedNoResponse = state.noResponseRejected.load(std::memory_order_relaxed);
+        snapshot.rejectedTooLarge = state.tooLargeRejected.load(std::memory_order_relaxed);
         return snapshot;
     }
 
