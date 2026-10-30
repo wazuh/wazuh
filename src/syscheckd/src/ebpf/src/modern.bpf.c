@@ -18,6 +18,7 @@
 #define FMODE_CREATED                   0x4000
 #define O_CREAT                         0100
 #define O_ACCMODE                       00000003
+#define ATTR_FILE                       (1 << 13)
 
 /* These define general path extraction and buffer limits. */
 #define LIMIT_PATH_SIZE(x)              ((x) & (MAX_PATH_LEN - 1))
@@ -31,11 +32,20 @@
 /* Always-inline attribute for helper functions. */
 #define statfunc static inline
 
+#define OP_OPEN    1
+#define OP_PENDING 2
+#define OP_DONE    3
+
 /*
 * Used to hold all file-related event information
 * when writing to the ring buffer.
+*
+* filename, cwd and parent_cwd are stored back to back in paths, each one
+* NUL-terminated, and only the used part of paths is sent.
 */
 struct file_event {
+    __u32 op;
+    __u32 tid;
     __u32 pid;
     __u32 ppid;
     __u32 uid;
@@ -45,10 +55,15 @@ struct file_event {
     __u64 inode;
     __u64 dev;
     char comm[TASK_COMM_LEN];
-    char filename[MAX_PATH_LEN];
-    char cwd[MAX_PATH_LEN];
-    char parent_cwd[MAX_PATH_LEN];
     char parent_name[TASK_COMM_LEN];
+    char paths[3 * MAX_PATH_LEN];
+};
+
+/* Sent by the exit probes when a held operation ends. */
+struct op_done {
+    __u32 op;
+    __u32 tid;
+    __s64 ret;
 };
 
 /*
@@ -67,6 +82,16 @@ struct {
     __uint(type, BPF_MAP_TYPE_RINGBUF);
     __uint(max_entries, 1 << 23);
 } rb SEC(".maps");
+
+/*
+* Per-CPU array used to build each event before it is copied to the ring buffer.
+*/
+struct {
+    __uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
+    __type(key, u32);
+    __type(value, struct file_event);
+    __uint(max_entries, 1);
+} event_heap SEC(".maps");
 
 /*
 * Per-CPU array used for storing paths during path reconstruction.
@@ -107,6 +132,45 @@ struct {
     __type(value, u64);
     __uint(max_entries, 1 << 14);
 } write_mnt_map SEC(".maps");
+
+/*
+* Threads with an OP_PENDING event waiting for its OP_DONE, keyed by
+* pid_tgid. Set when the event is sent and cleared by the exit probe.
+*/
+struct {
+    __uint(type, BPF_MAP_TYPE_LRU_HASH);
+    __type(key, u64);
+    __type(value, u32);
+    __uint(max_entries, 1 << 14);
+} inflight_map SEC(".maps");
+
+/*
+* Directories FIM monitors with whodata, filled by user space. Events for
+* other paths are dropped before they reach the ring buffer. Prefixes are
+* truncated to the LPM trie key limit, so the match is a superset that
+* user space narrows down.
+*/
+#define MAX_DIR_PREFIX_LEN 256
+
+struct dir_prefix {
+    __u32 prefixlen;
+    char path[MAX_DIR_PREFIX_LEN];
+};
+
+struct {
+    __uint(type, BPF_MAP_TYPE_LPM_TRIE);
+    __type(key, struct dir_prefix);
+    __type(value, u8);
+    __uint(max_entries, 1 << 14);
+    __uint(map_flags, BPF_F_NO_PREALLOC);
+} monitored_dirs SEC(".maps");
+
+struct {
+    __uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
+    __type(key, u32);
+    __type(value, struct dir_prefix);
+    __uint(max_entries, 1);
+} dir_prefix_heap SEC(".maps");
 
 // Kernel version check
 extern int LINUX_KERNEL_VERSION __kconfig;
@@ -315,9 +379,10 @@ statfunc void get_inode_dev(struct inode *inode_ptr, __u64 *inode, __u64 *dev) {
 
 /*
 * Retrieves the current working directory path for the given task_struct.
-* Stores the resulting path in 'dest' on success.
+* Stores the resulting path in 'dest' on success and returns its length,
+* including the NUL.
 */
-statfunc int get_task_cwd(char *dest, int size, struct task_struct *task) {
+statfunc long get_task_cwd(char *dest, int size, struct task_struct *task) {
     if (!task)
         return -1;
 
@@ -334,24 +399,63 @@ statfunc int get_task_cwd(char *dest, int size, struct task_struct *task) {
     if (get_path_str_from_path(&cwd_path, &pwd, buf) < 0)
         return -1;
 
-    bpf_probe_read_kernel_str(dest, size, (const char *)cwd_path);
-    return 0;
+    return bpf_probe_read_kernel_str(dest, size, (const char *)cwd_path);
 }
 
 /*
-* Reserves space in the ring buffer for a file_event struct,
-* populates it with file info, and submits it to user space.
+* Appends the cwd of task to evt->paths at off, or an empty string if it
+* cannot be read. Returns the offset after it.
+*/
+statfunc __u32 append_task_cwd(struct file_event *evt, __u32 off, struct task_struct *task)
+{
+    if (off > 2 * MAX_PATH_LEN)
+        return off;
+
+    long len = task ? get_task_cwd(&evt->paths[off], MAX_PATH_LEN, task) : -1;
+    if (len <= 0) {
+        evt->paths[off] = '\0';
+        len = 1;
+    }
+    return off + len;
+}
+
+/* Returns true if filename starts with a monitored directory prefix. */
+statfunc bool is_monitored(const char *filename)
+{
+    struct dir_prefix *key = bpf_map_lookup_elem(&dir_prefix_heap, &(u32){0});
+    if (!key)
+        return false;
+
+    long len = bpf_probe_read_kernel_str(key->path, sizeof(key->path), filename);
+    if (len <= 0)
+        return false;
+
+    key->prefixlen = (len - 1) * 8;
+    return bpf_map_lookup_elem(&monitored_dirs, key) != NULL;
+}
+
+/*
+* Builds a file_event in event_heap with file info and copies its used
+* part to the ring buffer.
 */
 statfunc void submit_event(const char *filename,
                            __u64 ino,
-                           __u64 dev)
+                           __u64 dev,
+                           __u32 op)
 {
-    struct file_event *evt = bpf_ringbuf_reserve(&rb, sizeof(*evt), 0);
+    if (!is_monitored(filename))
+        return;
+
+    struct file_event *evt = bpf_map_lookup_elem(&event_heap, &(u32){0});
     if (!evt)
         return;
 
     /* Read current task to fill metadata */
     struct task_struct *current_task = (struct task_struct *)bpf_get_current_task();
+    u64 id = bpf_get_current_pid_tgid();
+
+    evt->op = op;
+    evt->tid = id;
 
     /* PID and UID/GID */
     evt->pid = BPF_CORE_READ(current_task, tgid);
@@ -377,7 +481,10 @@ statfunc void submit_event(const char *filename,
     bpf_probe_read_kernel_str(evt->comm, TASK_COMM_LEN, (const char *)BPF_CORE_READ(current_task, comm));
 
     /* Copy the path/filename */
-    bpf_probe_read_kernel_str(evt->filename, MAX_PATH_LEN, filename);
+    long len = bpf_probe_read_kernel_str(evt->paths, MAX_PATH_LEN, filename);
+    if (len <= 0)
+        return;
+    __u32 off = len;
 
     /* Inode and device */
     evt->inode = ino;
@@ -389,12 +496,10 @@ statfunc void submit_event(const char *filename,
      * section, leaving the BPF object internally corrupted and causing a
      * crash on subsequent load.  The effect is identical: both approaches
      * write a single null byte to the first element of the destination. */
-    evt->cwd[0]         = '\0';
-    evt->parent_cwd[0]  = '\0';
     evt->parent_name[0] = '\0';
 
     /* Get process cwd */
-    get_task_cwd(evt->cwd, MAX_PATH_LEN, current_task);
+    off = append_task_cwd(evt, off, current_task);
 
     /* Parent process info */
     evt->ppid = 0;
@@ -404,11 +509,46 @@ statfunc void submit_event(const char *filename,
 
         bpf_probe_read_kernel_str(evt->parent_name, TASK_COMM_LEN,
                                   (const char *)BPF_CORE_READ(parent_task, comm));
-
-        get_task_cwd(evt->parent_cwd, MAX_PATH_LEN, parent_task);
     }
+    off = append_task_cwd(evt, off, parent_task);
 
-    bpf_ringbuf_submit(evt, 0);
+    __u64 size = offsetof(struct file_event, paths) + off;
+    if (size > sizeof(*evt) || bpf_ringbuf_output(&rb, evt, size, 0))
+        return;
+
+    if (op != OP_OPEN)
+        bpf_map_update_elem(&inflight_map, &id, &op, BPF_ANY);
+}
+
+/* Sends OP_DONE if the current thread has an event waiting for it. */
+statfunc int submit_done(long ret)
+{
+    u64 id = bpf_get_current_pid_tgid();
+    if (!bpf_map_lookup_elem(&inflight_map, &id))
+        return 0;
+
+    bpf_map_delete_elem(&inflight_map, &id);
+    struct op_done done = { .op = OP_DONE, .tid = id, .ret = ret };
+    bpf_ringbuf_output(&rb, &done, sizeof(done), 0);
+    return 0;
+}
+
+SEC("kretprobe/notify_change")
+int kretprobe__notify_change(struct pt_regs *ctx)
+{
+    return submit_done(PT_REGS_RC(ctx));
+}
+
+SEC("kretprobe/vfs_unlink")
+int kretprobe__vfs_unlink(struct pt_regs *ctx)
+{
+    return submit_done(PT_REGS_RC(ctx));
+}
+
+SEC("kretprobe/vfs_rename")
+int kretprobe__vfs_rename(struct pt_regs *ctx)
+{
+    return submit_done(PT_REGS_RC(ctx));
 }
 
 /*
@@ -475,7 +615,7 @@ int kprobe__vfs_open(struct pt_regs *ctx)
     get_inode_dev(d_inode, &inode, &dev);
 
     /* Report file creation event. */
-    submit_event((const char *)full_path, inode, dev);
+    submit_event((const char *)full_path, inode, dev, OP_OPEN);
     return 0;
 }
 
@@ -506,6 +646,15 @@ int kprobe__mnt_want_write(struct pt_regs *ctx)
 {
     u64 id = bpf_get_current_pid_tgid();
     u64 mnt = PT_REGS_PARM1(ctx);
+    bpf_map_update_elem(&write_mnt_map, &id, &mnt, BPF_ANY);
+    return 0;
+}
+
+SEC("kprobe/mnt_want_write_file")
+int kprobe__mnt_want_write_file(struct pt_regs *ctx)
+{
+    u64 id = bpf_get_current_pid_tgid();
+    u64 mnt = (u64)BPF_CORE_READ((struct file *)PT_REGS_PARM1(ctx), f_path.mnt);
     bpf_map_update_elem(&write_mnt_map, &id, &mnt, BPF_ANY);
     return 0;
 }
@@ -549,8 +698,11 @@ int kprobe__security_inode_setattr(struct pt_regs *ctx)
      * of the kernel version.
      */
     struct dentry *dentry = resolve_dentry((struct dentry *)PT_REGS_PARM1_CORE(ctx));
-    if (!dentry)
+    struct iattr *attr = (struct iattr *)PT_REGS_PARM2_CORE(ctx);
+    if (!dentry) {
         dentry = resolve_dentry((struct dentry *)PT_REGS_PARM2_CORE(ctx));
+        attr = (struct iattr *)PT_REGS_PARM3_CORE(ctx);
+    }
     if (!dentry)
         return 0;
 
@@ -571,6 +723,9 @@ int kprobe__security_inode_setattr(struct pt_regs *ctx)
         .dentry = dentry,
         .mnt    = get_write_mnt(BPF_CORE_READ(d_inode, i_sb))
     };
+    // If ia_file is ever removed from struct iattr, guard this with bpf_core_field_exists()
+    if (BPF_CORE_READ(attr, ia_valid) & ATTR_FILE)
+        path.mnt = BPF_CORE_READ(attr, ia_file, f_path.mnt);
 
     struct buffer *string_buf = bpf_map_lookup_elem(&heaps_map, &(u32){0});
     if (!string_buf)
@@ -585,7 +740,7 @@ int kprobe__security_inode_setattr(struct pt_regs *ctx)
     get_inode_dev(d_inode, &inode, &dev);
 
     // Submit event
-    submit_event((const char *)full_path, inode, dev);
+    submit_event((const char *)full_path, inode, dev, OP_PENDING);
 
     return 0;
 }
@@ -648,7 +803,7 @@ int kprobe__vfs_unlink(struct pt_regs *ctx)
     __u64 inode = 0, dev = 0;
     get_inode_dev(d_inode, &inode, &dev);
 
-    submit_event((const char *)full_path, inode, dev);
+    submit_event((const char *)full_path, inode, dev, OP_PENDING);
     return 0;
 }
 
@@ -729,7 +884,7 @@ statfunc int vfs_rename_event(struct pt_regs *ctx, bool old)
     };
 
     if (get_path_str_from_path(&full_path, &path, string_buf) >= 0)
-        submit_event((const char *)full_path, inode, dev);
+        submit_event((const char *)full_path, inode, dev, OP_PENDING);
 
     return 0;
 }
@@ -816,7 +971,7 @@ int BPF_PROG(file_open_dpath, struct file *file)
     __u64 inode = 0, dev = 0;
     get_inode_dev(f_inode, &inode, &dev);
 
-    submit_event((const char *)full_path, inode, dev);
+    submit_event((const char *)full_path, inode, dev, OP_OPEN);
     return 0;
 }
 
@@ -838,7 +993,7 @@ int BPF_PROG(file_open_walk, struct file *file)
     __u64 inode = 0, dev = 0;
     get_inode_dev(f_inode, &inode, &dev);
 
-    submit_event((const char *)full_path, inode, dev);
+    submit_event((const char *)full_path, inode, dev, OP_OPEN);
     return 0;
 }
 
@@ -905,7 +1060,7 @@ int BPF_PROG(path_unlink_dpath, struct path *path, struct dentry *dentry)
     __u64 inode = 0, dev = 0;
     get_inode_dev(d_inode, &inode, &dev);
 
-    submit_event((const char *)full_path, inode, dev);
+    submit_event((const char *)full_path, inode, dev, OP_PENDING);
     return 0;
 }
 
@@ -944,7 +1099,7 @@ int BPF_PROG(path_unlink_walk, struct path *path, struct dentry *dentry)
     __u64 inode = 0, dev = 0;
     get_inode_dev(d_inode, &inode, &dev);
 
-    submit_event((const char *)full_path, inode, dev);
+    submit_event((const char *)full_path, inode, dev, OP_PENDING);
     return 0;
 }
 
@@ -1015,7 +1170,7 @@ statfunc int path_rename_dpath_event(struct path *dir, struct dentry *dentry,
         if (file_name_ptr) {
             ret = concat_strings_bpf(&full_path, dir_path, file_name_ptr, string_buf);
             if (ret >= 0)
-                submit_event((const char *)full_path, inode, dev);
+                submit_event((const char *)full_path, inode, dev, OP_PENDING);
         }
     }
 
@@ -1065,7 +1220,7 @@ statfunc int path_rename_walk_event(struct path *dir, struct dentry *dentry,
 
     u8 *full_path = NULL;
     if (get_path_str_from_path(&full_path, &path, string_buf) >= 0)
-        submit_event((const char *)full_path, inode, dev);
+        submit_event((const char *)full_path, inode, dev, OP_PENDING);
 
     return 0;
 }

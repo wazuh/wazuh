@@ -542,6 +542,9 @@ time_t fim_scan() {
     w_mutex_lock(&syscheck.fim_scan_mutex);
 
     update_wildcards_config();
+#if defined(__linux__) && defined(ENABLE_AUDIT)
+    fim_ebpf_update_dirs();
+#endif
 
     w_rwlock_rdlock(&syscheck.directories_lock);
     OSList_foreach(node_it, syscheck.directories) {

@@ -20,8 +20,8 @@ protected:
 };
 
 TEST_F(HealthcheckEventTest, TestEventReceivedWhenFileNameContainsEBPF_HC_FILE) {
-    file_event e;
-    snprintf(e.filename, sizeof(e.filename), "%s", EBPF_HC_FILE);
+    file_event e {};
+    snprintf(e.paths, sizeof(e.paths), "%s", EBPF_HC_FILE);
 
     healthcheck_event(nullptr, &e, sizeof(e));
 
@@ -30,8 +30,8 @@ TEST_F(HealthcheckEventTest, TestEventReceivedWhenFileNameContainsEBPF_HC_FILE) 
 
 
 TEST_F(HealthcheckEventTest, TestEventNotReceivedWhenFileNameDoesNotContainEBPF_HC_FILE) {
-    file_event e;
-    strcpy(e.filename, "testing.txt");
+    file_event e {};
+    strcpy(e.paths, "testing.txt");
 
     healthcheck_event(nullptr, &e, sizeof(e));
 

@@ -731,6 +731,9 @@ static void *symlink_checker_thread(__attribute__((unused)) void * data) {
         }
 
         w_rwlock_unlock(&syscheck.directories_lock);
+#if defined(__linux__) && defined(ENABLE_AUDIT)
+        fim_ebpf_update_dirs();
+#endif
         w_mutex_unlock(&syscheck.fim_scan_mutex);
         mdebug1(FIM_LINKCHECK_FINALIZE);
     }
