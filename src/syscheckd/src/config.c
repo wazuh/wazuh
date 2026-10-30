@@ -13,10 +13,6 @@
 #include "../config/config.h"
 #include "../rootcheck/rootcheck.h"
 
-#ifdef WIN32
-static registry_t REGISTRY_EMPTY[] = { { NULL, 0, 0, 512, 0, NULL, NULL, NULL} };
-#endif
-
 
 int Read_Syscheck_Config(const char *cfgfile)
 {
@@ -77,7 +73,8 @@ int Read_Syscheck_Config(const char *cfgfile)
        syscheck.registry though... That's a different story.
      */
     if (!syscheck.registry) {
-            syscheck.registry = REGISTRY_EMPTY;
+        // Heap allocated: wildcard expansion can grow it during the scans
+        os_calloc(1, sizeof(registry_t), syscheck.registry);
     } else {
         int it = 0;
         while (syscheck.registry[it].entry) {
@@ -87,7 +84,17 @@ int Read_Syscheck_Config(const char *cfgfile)
             it++;
         }
     }
-    if ((OSList_GetFirstNode(syscheck.directories) == NULL) && (syscheck.registry[0].entry == NULL && syscheck.wildcards == NULL)) {
+    if (syscheck.registry_wildcards) {
+        int it = 0;
+        while (syscheck.registry_wildcards[it].entry) {
+            if (syscheck.registry_wildcards[it].diff_size_limit == -1) {
+                syscheck.registry_wildcards[it].diff_size_limit = syscheck.file_size_limit;
+            }
+            it++;
+        }
+    }
+    if ((OSList_GetFirstNode(syscheck.directories) == NULL) && (syscheck.registry[0].entry == NULL && syscheck.wildcards == NULL &&
+                                                               syscheck.registry_wildcards == NULL)) {
         return (1);
     }
     syscheck.max_fd_win_rt = (unsigned int) getDefine_Int("syscheck", "max_fd_win_rt", 1, 1024);
@@ -304,6 +311,7 @@ cJSON *getSyscheckConfig(void) {
 #ifdef WIN32
     cJSON_AddNumberToObject(syscfg, "windows_audit_interval", syscheck.wdata.interval_scan);
 
+    w_rwlock_rdlock(&syscheck.registry_lock);
     if (syscheck.registry) {
         cJSON *rg = cJSON_CreateArray();
 
@@ -352,6 +360,7 @@ cJSON *getSyscheckConfig(void) {
         }
         cJSON_AddItemToObject(syscfg, "registry", rg);
     }
+    w_rwlock_unlock(&syscheck.registry_lock);
 
     if (syscheck.key_ignore) {
         cJSON *rgi = cJSON_CreateArray();

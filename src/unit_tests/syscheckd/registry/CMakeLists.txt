@@ -25,7 +25,8 @@ target_link_libraries(test_registry "${DEBUG_OP_WRAPPERS} \
                                      -Wl,--wrap=fim_db_get_count_file_entry -Wl,--wrap=fim_run_integrity -Wl,--wrap=fim_db_transaction_start \
                                      -Wl,--wrap=fim_db_transaction_sync_row -Wl,--wrap=fim_db_transaction_deleted_rows \
                                      -Wl,--wrap=is_fim_shutdown -Wl,--wrap=_imp__dbsync_initialize \
-                                     -Wl,--wrap=_imp__rsync_initialize -Wl,--wrap=fim_db_teardown")
+                                     -Wl,--wrap=_imp__rsync_initialize -Wl,--wrap=fim_db_teardown \
+                                     -Wl,--wrap=expand_wildcard_registers")
 
 if(${TARGET} STREQUAL "winagent")
     target_link_libraries(test_registry fimdb)

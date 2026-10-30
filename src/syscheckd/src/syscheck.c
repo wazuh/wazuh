@@ -23,6 +23,9 @@
 // fim_scan_mutex is initialized here: the shutdown handler can use it before fim_initialize() runs
 syscheck_config syscheck = {
     .fim_scan_mutex = PTHREAD_MUTEX_INITIALIZER,
+#ifdef WIN32
+    .registry_lock = PTHREAD_RWLOCK_INITIALIZER,
+#endif
 };
 int sys_debug_level;
 int audit_queue_full_reported = 0;

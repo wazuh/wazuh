@@ -4827,6 +4827,37 @@ void test_w_expand_by_wildcard_long_path_result(void **state) {
     os_free(orig_paths);
 }
 
+/* w_expand_by_wildcard: the matches that do not fit in max_items are discarded,
+ * so the vector keeps its NULL terminator. */
+void test_w_expand_by_wildcard_max_items(void **state) {
+    reg_path_struct **vector = NULL;
+    os_calloc(4, sizeof(reg_path_struct *), vector);
+    os_calloc(1, sizeof(reg_path_struct), vector[0]);
+    os_strdup("HKEY_LOCAL_MACHINE\\*", vector[0]->path);
+    vector[0]->has_wildcard = 1;
+
+    FILETIME last_write_time = { 0, 1000 };
+
+    expect_RegOpenKeyEx_call(HKEY_LOCAL_MACHINE, "", 0, KEY_READ | KEY_WOW64_64KEY, NULL, ERROR_SUCCESS);
+    expect_RegQueryInfoKey_call(3, 0, &last_write_time, ERROR_SUCCESS);
+    expect_RegEnumKeyEx_call("HARDWARE", 9, ERROR_SUCCESS);
+    expect_RegEnumKeyEx_call("SAM", 4, ERROR_SUCCESS);
+    expect_RegEnumKeyEx_call("SOFTWARE", 9, ERROR_SUCCESS);
+
+    assert_int_equal(w_expand_by_wildcard(vector, '*', 3), 1);
+
+    assert_int_equal(vector[0]->checked, 1);
+    assert_string_equal(vector[1]->path, "HKEY_LOCAL_MACHINE\\HARDWARE");
+    assert_string_equal(vector[2]->path, "HKEY_LOCAL_MACHINE\\SAM");
+    assert_null(vector[3]);
+
+    for (int i = 0; vector[i]; i++) {
+        os_free(vector[i]->path);
+        os_free(vector[i]);
+    }
+    os_free(vector);
+}
+
 #endif
 
 
@@ -5096,6 +5127,7 @@ int main(int argc, char *argv[]) {
         cmocka_unit_test(test_get_subkey_null),
         cmocka_unit_test(test_get_subkey_long_subkey),
         cmocka_unit_test(test_w_expand_by_wildcard_long_path_result),
+        cmocka_unit_test(test_w_expand_by_wildcard_max_items),
 #endif
     };
     return cmocka_run_group_tests(tests, NULL, NULL);

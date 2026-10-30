@@ -1212,6 +1212,7 @@ void expand_wildcard_registers(char* entry, char** paths) {
     first_e->checked        = 0;
     *aux_vector             = first_e;
     current_position        = aux_vector; //Save the current pointer for future iteration
+    int truncated           = 0;
 
     // ----- Begin expansion path section -----
     // New algorithm form proposal
@@ -1219,18 +1220,24 @@ void expand_wildcard_registers(char* entry, char** paths) {
     while (w_is_still_a_wildcard(current_position)) {
         char* pos_qk = strchr((*current_position)->path, '?');
         char* pos_sr = strchr((*current_position)->path, '*');
+        // Keep the last slot of the vector as its NULL terminator
+        int max_items = OS_SIZE_8192 - 1 - (int)(current_position - aux_vector);
         if (pos_qk != NULL && pos_sr != NULL) {
             if (pos_qk < pos_sr) {
-                w_expand_by_wildcard(current_position, '?');
+                truncated |= w_expand_by_wildcard(current_position, '?', max_items);
             } else {
-                w_expand_by_wildcard(current_position, '*');
+                truncated |= w_expand_by_wildcard(current_position, '*', max_items);
             }
         } else if (pos_sr != NULL) {
-            w_expand_by_wildcard(current_position, '*');
+            truncated |= w_expand_by_wildcard(current_position, '*', max_items);
         } else if (pos_qk != NULL) {
-            w_expand_by_wildcard(current_position, '?');
+            truncated |= w_expand_by_wildcard(current_position, '?', max_items);
         }
         current_position++;
+    }
+
+    if (truncated) {
+        mwarn(FIM_WARN_REG_WILDCARD_LIMIT, entry, OS_SIZE_8192 - 1);
     }
 
     // ----- End expansion path section -----
@@ -1359,7 +1366,8 @@ char** w_list_all_keys(HKEY root_key, char* str_subkey) {
     return key_list;
 }
 
-void w_expand_by_wildcard(reg_path_struct **array_struct, char wildcard_chr) {
+int w_expand_by_wildcard(reg_path_struct **array_struct, char wildcard_chr, int max_items) {
+    int truncated = 0;
     // ----- Begin setup variables section -----
     char* wildcard_str          = NULL;
     os_calloc(2, sizeof(char), wildcard_str);
@@ -1441,6 +1449,11 @@ void w_expand_by_wildcard(reg_path_struct **array_struct, char wildcard_chr) {
                 while (*query_keys != NULL) {
                     //Use Windows API and check wildcar coincidences.
                     if (PathMatchSpecA(*query_keys, matcher)) {
+                        if (first_empty >= max_items) {
+                            truncated = 1;
+                            break;
+                        }
+
                         // ----- Begin final path variable section -----
 
                         char* full_path = NULL;
@@ -1486,6 +1499,10 @@ void w_expand_by_wildcard(reg_path_struct **array_struct, char wildcard_chr) {
             if (query_keys) {
                 //Itarate over string vector.
                 while (*query_keys != NULL) {
+                    if (first_empty >= max_items) {
+                        truncated = 1;
+                        break;
+                    }
 
                     // ----- Begin final path variable section -----
 
@@ -1529,6 +1546,8 @@ void w_expand_by_wildcard(reg_path_struct **array_struct, char wildcard_chr) {
     os_free(subkey);
     free_strarray(first_position);
     os_free(matcher);
+
+    return truncated;
 }
 
 #endif /* # else (ifndef WIN32) */
