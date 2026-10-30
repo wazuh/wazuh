@@ -4598,7 +4598,7 @@ paths:
       tags:
         - Agents
       summary: "Upgrade agents"
-      description: "Upgrade agents using a WPK file from online repository. When upgrading more than 3000 agents at the same time, it's highly recommended to use the parameter `wait_for_complete` set to `true` to avoid a possible API timeout An agent the manager cannot upgrade (errors 1816 to 1826 and 1828: unsupported platform or version, repository or WPK problems, and the like) is reported in `failed_items` with the reason, while the tasks created for the other agents are still returned in `affected_items`."
+      description: "Upgrade agents using a WPK file from online repository. When upgrading more than 3000 agents at the same time, it's highly recommended to use the parameter `wait_for_complete` set to `true` to avoid a possible API timeout An agent the manager cannot upgrade (errors 1816 to 1826, 1828 and 1829: unsupported platform or version, repository or WPK problems, and the like) is reported in `failed_items` with the reason, while the tasks created for the other agents are still returned in `affected_items`."
       operationId: api.controllers.agent_controller.put_upgrade_agents
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/agent:upgrade'
@@ -4657,7 +4657,7 @@ paths:
       tags:
         - Agents
       summary: "Upgrade agents custom"
-      description: "Upgrade the agents using a local WPK file. When upgrading more than 3000 agents at the same time, it's highly recommended to use the parameter `wait_for_complete` set to `true` to avoid a possible API timeout An agent the manager cannot upgrade (errors 1816 to 1826 and 1828: unsupported platform or version, repository or WPK problems, and the like) is reported in `failed_items` with the reason, while the tasks created for the other agents are still returned in `affected_items`."
+      description: "Upgrade the agents using a local WPK file. When upgrading more than 3000 agents at the same time, it's highly recommended to use the parameter `wait_for_complete` set to `true` to avoid a possible API timeout An agent the manager cannot upgrade (errors 1816 to 1826, 1828 and 1829: unsupported platform or version, repository or WPK problems, and the like) is reported in `failed_items` with the reason, while the tasks created for the other agents are still returned in `affected_items`."
       operationId: api.controllers.agent_controller.put_upgrade_custom_agents
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/agent:upgrade'

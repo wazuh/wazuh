@@ -12,11 +12,13 @@
 
 #include "hashHelper.h"
 
+#include <fcntl.h>
 #include <sys/stat.h>
+#include <unistd.h>
 
 #include <array>
 #include <cctype>
-#include <cstdio>
+#include <cerrno>
 
 namespace
 {
@@ -43,12 +45,19 @@ namespace task_manager::upgrade
 
     std::optional<std::string> sha1OfFile(const std::string& path)
     {
-        std::FILE* file {std::fopen(path.c_str(), "rb")};
-        if (file == nullptr)
+        const int fd {::open(path.c_str(), O_RDONLY | O_NONBLOCK | O_CLOEXEC)};
+        if (fd < 0)
         {
             return std::nullopt;
         }
 
+        auto digest {sha1OfFd(fd)};
+        ::close(fd);
+        return digest;
+    }
+
+    std::optional<std::string> sha1OfFd(const int fd)
+    {
         std::string digest;
 
         try
@@ -58,23 +67,21 @@ namespace task_manager::upgrade
 
             for (;;)
             {
-                const auto read {std::fread(block.data(), 1, block.size(), file)};
-                if (read > 0)
+                const auto got {::read(fd, block.data(), block.size())};
+                if (got == 0)
                 {
-                    hash.update(block.data(), read);
-                }
-
-                if (read < block.size())
-                {
-                    // Short read: end of file, or an I/O error that must not be reported as a
-                    // successful digest of a truncated file.
-                    if (std::ferror(file) != 0)
-                    {
-                        std::fclose(file);
-                        return std::nullopt;
-                    }
                     break;
                 }
+                if (got < 0)
+                {
+                    if (errno == EINTR)
+                    {
+                        continue;
+                    }
+                    // Never report a digest of a truncated read.
+                    return std::nullopt;
+                }
+                hash.update(block.data(), static_cast<std::size_t>(got));
             }
 
             const auto bytes {hash.hash()};
@@ -87,11 +94,9 @@ namespace task_manager::upgrade
         }
         catch (...)
         {
-            std::fclose(file);
             return std::nullopt;
         }
 
-        std::fclose(file);
         return digest;
     }
 

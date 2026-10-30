@@ -40,7 +40,7 @@ namespace task_manager::upgrade
      *    "message":"Success"}
      *
      * framework/wazuh/agent.py turns each data entry into `1810 + error` and lifts `message`
-     * verbatim, because none of 1810..1828 has an entry in exception.py. Key order, key names and
+     * verbatim, because none of 1810..1829 has an entry in exception.py. Key order, key names and
      * the presence of the redundant top-level `message` are all part of the contract that keeps the
      * existing tavern suites passing unmodified.
      *

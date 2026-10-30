@@ -1546,7 +1546,7 @@ def test_agent_upgrade_agents(mock_socket, mock_wdb, mock_client_keys, agent_set
 
 @pytest.mark.parametrize('socket_error, error_code', [
     (7, 1817), (8, 1818), (9, 1819), (10, 1820), (11, 1821), (12, 1822), (13, 1823), (14, 1824), (15, 1825),
-    (16, 1826), (18, 1828)
+    (16, 1826), (18, 1828), (19, 1829)
 ])
 @patch('wazuh.agent.get_agents_info', return_value=set(full_agent_list))
 @patch('wazuh.core.common.CLIENT_KEYS', new=os.path.join(test_agent_path, 'client.keys'))
@@ -1587,10 +1587,11 @@ def test_agent_upgrade_agents_reports_mixed_outcomes_per_agent(mock_socket, mock
 
 def test_agent_upgrade_error_codes_match_task_manager_per_agent_verdicts():
     """The per-agent list is exactly the Task Manager's per-agent and per-package-group verdicts (socket errors
-    7 to 16, and 18), each as 1810 + the socket error; request- and node-level errors stay out of it."""
+    7 to 16, 18 and 19), each as 1810 + the socket error; request- and node-level errors stay out of it."""
     from wazuh.agent import ERROR_CODES_UPGRADE_SOCKET
 
-    assert sorted(ERROR_CODES_UPGRADE_SOCKET) == [1810 + error for error in (7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 18)]
+    assert sorted(ERROR_CODES_UPGRADE_SOCKET) == [
+        1810 + error for error in (7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 18, 19)]
 
 
 @pytest.mark.parametrize('socket_error', [17])

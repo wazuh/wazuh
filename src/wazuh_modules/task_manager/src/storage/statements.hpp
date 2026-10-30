@@ -39,6 +39,8 @@ namespace task_manager::storage
         AgentTaskExpire,
         AgentTaskDeleteOld,
         AgentTaskIdsByType,
+        AgentTaskPendingByType,
+        AgentTaskExpireById,
 
         // ---- manager tasks: create and claim ------------------------------------------------
         MtFindPendingByAgent,
@@ -123,6 +125,13 @@ namespace task_manager::storage
            deletes it. A full scan: TASKS has no TASK_TYPE index and this runs once per retention
            pass. */
         "SELECT TASK_ID FROM TASKS WHERE TASK_TYPE = ?;",
+
+        /* AgentTaskPendingByType -- a full scan like the one above; runs once per start. */
+        "SELECT TASK_ID, AGENT_ID, TASK_TYPE, PAYLOAD, CREATE_TIME FROM TASKS "
+        "WHERE TASK_TYPE = ? AND STATUS = 'pending';",
+
+        /* AgentTaskExpireById -- a row delivered meanwhile keeps its status. */
+        "UPDATE TASKS SET STATUS = 'expired' WHERE TASK_ID = ? AND STATUS = 'pending';",
 
         // -------------------------------------------------------------------------------------
         // Manager tasks: create and claim

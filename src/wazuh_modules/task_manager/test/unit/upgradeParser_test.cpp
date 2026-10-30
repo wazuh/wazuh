@@ -269,7 +269,7 @@ TEST(UpgradeParser, TheCustomBodyHasNoForceOrVersion)
 TEST(UpgradeResponse, MatchesTheRetiredEnvelopeByteForByte)
 {
     // THE CONTRACT TEST. framework/wazuh/agent.py turns each data entry into `1810 + error` and
-    // lifts `message` verbatim, because none of 1810..1828 exists in exception.py. Key names, key
+    // lifts `message` verbatim, because none of 1810..1829 exists in exception.py. Key names, key
     // ORDER and the redundant top-level `message` are all part of what the existing tavern suites
     // assert, and they must keep passing unmodified.
     const std::vector<AgentOutcome> outcomes {{4, UpgradeError::Success, ""}, {5, UpgradeError::UrlNotFound, ""}};
@@ -325,4 +325,5 @@ TEST(UpgradeResponse, TheNumericValuesAreFrozen)
     EXPECT_EQ(errorValue(UpgradeError::UnknownError), 17);
     // Appended AFTER UnknownError precisely so that value never moved.
     EXPECT_EQ(errorValue(UpgradeError::LegacyDeliveryDisabled), 18);
+    EXPECT_EQ(errorValue(UpgradeError::WpkStagingFailed), 19);
 }

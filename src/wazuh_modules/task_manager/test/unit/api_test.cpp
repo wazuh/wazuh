@@ -227,6 +227,25 @@ TEST_F(ApiTest, ABulkRequestWithOneBadEntryWritesNothing)
     EXPECT_TRUE(m_api->takePendingAgentTasks(nlohmann::json {{"agent_id", "001"}}).body["tasks"].empty());
 }
 
+TEST_F(ApiTest, RejectsRemoteUpgradeOnGenericTasks)
+{
+    const auto single {m_api->createAgentTask(agentTaskBody("001", "remote_upgrade"))};
+    EXPECT_EQ(single.status, 400);
+    EXPECT_EQ(single.body["error"], "parsing_error");
+
+    const auto bulk {m_api->createAgentTasksBulk(nlohmann::json {
+        {"tasks", nlohmann::json::array({agentTaskBody("002"), agentTaskBody("003", "remote_upgrade")})}})};
+    EXPECT_EQ(bulk.status, 400);
+    EXPECT_EQ(bulk.body["error"], "parsing_error");
+
+    for (const auto* agentId : {"001", "002", "003"})
+    {
+        EXPECT_TRUE(m_api->takePendingAgentTasks(nlohmann::json {{"agent_id", agentId}}).body["tasks"].empty())
+            << agentId;
+    }
+    EXPECT_TRUE(m_store->agentTaskIds("remote_upgrade").empty());
+}
+
 // ---- manager tasks -----------------------------------------------------------------------------
 
 namespace

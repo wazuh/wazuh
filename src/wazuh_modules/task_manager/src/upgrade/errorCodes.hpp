@@ -20,11 +20,10 @@ namespace task_manager::upgrade
      * @brief Per-agent result of an upgrade request.
      *
      * THE NUMERIC VALUES ARE WIRE FORMAT. The Server API turns each one into an exception code by
-     * adding 1810 (framework/wazuh/agent.py), and three of those codes are then classified by
-     * literal value: ERROR_CODES_UPGRADE_SOCKET = [1819, 1820, 1821, 1822, 1823, 1828],
-     * ERROR_CODES_UPGRADE_SOCKET_BAD_REQUEST = [1824, 1826], and 1816 is reported per agent but
-     * dropped by a cluster merge for an agent another node answered. None of
-     * the 1810..1828 range has an entry in framework/wazuh/core/exception.py, so the human-readable
+     * adding 1810 (framework/wazuh/agent.py), which classifies those codes by literal value in
+     * ERROR_CODES_UPGRADE_SOCKET and ERROR_CODES_UPGRADE_SOCKET_BAD_REQUEST, and 1816 is reported per
+     * agent but dropped by a cluster merge for an agent another node answered. None of
+     * the 1810..1829 range has an entry in framework/wazuh/core/exception.py, so the human-readable
      * text the user sees is the MESSAGES string below, lifted verbatim off the wire.
      *
      * So: append only, never reorder, and never edit a message without accepting that the change is
@@ -51,11 +50,12 @@ namespace task_manager::upgrade
         WpkSha1DoesNotMatch = 15,
         HttpsVerificationModeUnsafe = 16,
         UnknownError = 17,
-        LegacyDeliveryDisabled = 18
+        LegacyDeliveryDisabled = 18,
+        WpkStagingFailed = 19
     };
 
     /// @brief One past the highest valid UpgradeError, for bounds checks and array sizing.
-    constexpr std::size_t UPGRADE_ERROR_COUNT {19};
+    constexpr std::size_t UPGRADE_ERROR_COUNT {20};
 
     /**
      * @brief The message for each code, byte-identical to upgrade_error_codes[] in the retired
@@ -85,7 +85,8 @@ namespace task_manager::upgrade
         "reconnect. Use the force option to proceed anyway.",
         "Upgrade procedure could not start",
         "The agent is below v5.0.0 and the manager's legacy delivery (remote.legacy.enabled) is "
-        "disabled; the upgrade task could never be delivered."};
+        "disabled; the upgrade task could never be delivered.",
+        "Could not prepare the WPK file for this upgrade task"};
 
     /**
      * @brief The wire value of a code.

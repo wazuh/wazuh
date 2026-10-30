@@ -48,6 +48,9 @@ namespace task_manager::upgrade
      */
     std::optional<std::string> sha1OfFile(const std::string& path);
 
+    /// @brief SHA-1 of what @p fd reads from its current offset to the end; @p fd is not closed.
+    std::optional<std::string> sha1OfFd(int fd);
+
     /// @brief Case-insensitive digest comparison.
     bool sha1Equals(const std::string& left, const std::string& right);
 } // namespace task_manager::upgrade
