@@ -169,6 +169,7 @@ TEST_F(ComponentTest, ResponseSizeCapAbortsAnOversizedTransfer)
     const auto response = m_performer.perform(spec);
     EXPECT_NE(TransportStatus::Ok, response.status); // The cap aborted the transfer.
     EXPECT_EQ(0u, response.curlError.rfind("(63)", 0)) << response.curlError; // CURLE_FILESIZE_EXCEEDED.
+    EXPECT_EQ(0, std::ifstream(path, std::ios::binary | std::ios::ate).tellg()); // Turned away, not cut at 1024.
     std::remove(path.c_str());
 }
 
