@@ -18,6 +18,8 @@ namespace
     constexpr std::string_view SPACE {" \t\r\n"};
     constexpr std::string_view STATUS_PREFIX {"HTTP/"};
     constexpr std::string_view CONTENT_ENCODING_PREFIX {"Content-Encoding:"};
+    /// A coding is a short token: past this, a refused value is the peer's noise, not information.
+    constexpr size_t REFUSAL_EXCERPT {64};
 
     std::string_view trimmed(std::string_view text)
     {
@@ -86,6 +88,27 @@ namespace
         }
     }
 
+    /// `value` as a log line may show it: at most REFUSAL_EXCERPT bytes, each byte outside printable
+    /// ASCII as \xHH, and "..." when cut, since a peer can fill a header with terminal escapes.
+    std::string printable(std::string_view value)
+    {
+        static constexpr char HEX[] = "0123456789abcdef";
+        std::string shown;
+
+        for (const unsigned char byte : value.substr(0, REFUSAL_EXCERPT))
+        {
+            if (byte >= 0x20 && byte < 0x7f)
+            {
+                shown += static_cast<char>(byte);
+            }
+            else
+            {
+                shown += {'\\', 'x', HEX[byte >> 4], HEX[byte & 0x0f]};
+            }
+        }
+
+        return value.size() > REFUSAL_EXCERPT ? shown + "..." : shown;
+    }
 } // namespace
 
 bool ContentCodingGuard::admitHeader(std::string_view line) noexcept
@@ -148,7 +171,7 @@ void ContentCodingGuard::noteRefused(std::string_view value) noexcept
 
     try
     {
-        m_refusalNote = "; refused Content-Encoding '" + std::string {trimmed(value)} + "': more than one coding";
+        m_refusalNote = "; refused Content-Encoding '" + printable(trimmed(value)) + "': more than one coding";
     }
     catch (...)
     {

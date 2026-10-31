@@ -106,6 +106,17 @@ TEST(ContentCodingGuardTest, IgnoresTheCodingsOfAResponseWithoutABody)
     }
 }
 
+// A peer can fill the header with terminal escapes, and the note ends up in the agent's log.
+TEST(ContentCodingGuardTest, TheRefusalNoteShowsAShortPrintableExcerpt)
+{
+    ContentCodingGuard guard;
+    const std::string value = "zstd, \x1b[2J\x07" + std::string(200, 'A');
+
+    EXPECT_FALSE(admitReply(guard, {"HTTP/1.1 200 OK", "Content-Encoding: " + value}));
+    EXPECT_EQ("; refused Content-Encoding 'zstd, \\x1b[2J\\x07" + std::string(53, 'A') + "...': more than one coding",
+              guard.refusalNote());
+}
+
 TEST(ContentCodingGuardTest, EmptyListsNameNoCoding)
 {
     ContentCodingGuard guard;

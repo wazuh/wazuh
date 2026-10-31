@@ -35,8 +35,8 @@ class ContentCodingGuard final
         /// Whether admitHeader() refused the reply.
         bool refused() const noexcept;
 
-        /// Says what was refused, for a log line ("; refused Content-Encoding '...': ...").
-        /// Empty while nothing was refused.
+        /// Says what was refused, for a log line ("; refused Content-Encoding '...': ..."), with the
+        /// peer's bytes cut short and escaped. Empty while nothing was refused.
         const std::string& refusalNote() const;
 
     private:
