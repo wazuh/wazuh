@@ -1159,4 +1159,14 @@ class FakeManager final
         std::string m_tlsKeyPem;
 };
 
+/// The Accept-Encoding a TLS FakeManager saw on its last /download: "<absent>" for none,
+/// "<peek failed>" when it couldn't be asked.
+inline std::string fakeManagerDownloadAcceptEncoding(uint16_t port)
+{
+    httplib::Client peek {std::string {"https://127.0.0.1:"} + std::to_string(port)};
+    peek.enable_server_certificate_verification(false);
+    const auto result = peek.Get("/peek/download-accept-encoding");
+    return result ? result->body : std::string {"<peek failed>"};
+}
+
 #endif // _HC_FAKE_MANAGER_HPP

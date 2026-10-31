@@ -729,7 +729,10 @@ TEST_F(FacadeE2eTest, ZstdEncodedConfigIsDecodedAndDeliveredOnce)
     // with nothing in the facade knowing the bytes were ever encoded.
     const uint16_t port = TLS_PORT + 12;
     const std::string blob = mergedConfigText(128 * 1024);
-    FakeManager manager {port, KEY_HEX, /*tls=*/true, /*settingsFlipAfter=*/0, blob, 0, 0, {}, {}, 0, 0, {}, 0, {},
+    FakeManager manager {port, KEY_HEX, /*tls=*/true, /*settingsFlipAfter=*/0, /*configBlob=*/blob,
+                         /*statelessMaxBody=*/0, /*rotateKeyAfterNotifies=*/0, /*rotatedKeyHex=*/{},
+                         /*statefulHoldFile=*/{}, /*vdFeedOffset=*/0, /*scanVdRejectFirstNAttempts=*/0,
+                         /*enrollPassword=*/{}, /*enrollForcedStatus=*/0, /*caBundle=*/{},
                          DownloadOptions {DownloadReply::Zstd}};
 
     ConfigRecorder recorder;
@@ -749,11 +752,7 @@ TEST_F(FacadeE2eTest, ZstdEncodedConfigIsDecodedAndDeliveredOnce)
     EXPECT_EQ(1, recorder.count.load());
     hc_destroy(handle);
 
-    httplib::Client peek {std::string {"https://127.0.0.1:"} + std::to_string(port)};
-    peek.enable_server_certificate_verification(false);
-    const auto offered = peek.Get("/peek/download-accept-encoding");
-    ASSERT_TRUE(offered);
-    EXPECT_EQ("zstd", offered->body); // So the reply really was the encoded one.
+    EXPECT_EQ("zstd", fakeManagerDownloadAcceptEncoding(port)); // So the reply really was the encoded one.
 
     std::lock_guard<std::mutex> lock(recorder.mutex);
     EXPECT_TRUE(recorder.content == blob) << "delivered " << recorder.content.size() << " of " << blob.size() << " bytes";

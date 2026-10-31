@@ -52,7 +52,11 @@ namespace
     /// FakeManager takes fourteen positional arguments before the one this suite cares about.
     FakeManager downloadManager(uint16_t port, const std::string& blob, DownloadReply reply)
     {
-        return FakeManager {port, KEY_HEX, /*tls=*/true, 0, blob, 0, 0, {}, {}, 0, 0, {}, 0, {}, DownloadOptions {reply}};
+        return FakeManager {port, KEY_HEX, /*tls=*/true, /*settingsFlipAfter=*/0, /*configBlob=*/blob,
+                            /*statelessMaxBody=*/0, /*rotateKeyAfterNotifies=*/0, /*rotatedKeyHex=*/{},
+                            /*statefulHoldFile=*/{}, /*vdFeedOffset=*/0, /*scanVdRejectFirstNAttempts=*/0,
+                            /*enrollPassword=*/{}, /*enrollForcedStatus=*/0, /*caBundle=*/{},
+                            DownloadOptions {reply}};
     }
 
     ModuleConfig downloadConfig(uint16_t port)
@@ -118,15 +122,6 @@ namespace
 
         closedir(handle);
         return count;
-    }
-
-    /// The Accept-Encoding the fake manager saw on its last /download ("<absent>" for none).
-    std::string acceptEncodingSeenBy(uint16_t port)
-    {
-        httplib::Client peek {std::string {"https://127.0.0.1:"} + std::to_string(port)};
-        peek.enable_server_certificate_verification(false);
-        const auto result = peek.Get("/peek/download-accept-encoding");
-        return result ? result->body : std::string {"<peek failed>"};
     }
 
     /// Both /download fetchers on the real curl path, the shared signer and a spool directory of
@@ -221,7 +216,7 @@ TEST(ConfigDownloadComponentTest, AZstdReplyIsDecodedAndDeliveredByteForByte)
 
     ASSERT_NE(nullptr, file);
     EXPECT_TRUE(readFile(file->path()) == blob) << "the spooled file differs from the served config";
-    EXPECT_EQ("zstd", acceptEncodingSeenBy(port));
+    EXPECT_EQ("zstd", fakeManagerDownloadAcceptEncoding(port));
     EXPECT_EQ(1u, downloader.attempts().size());
 }
 
@@ -238,7 +233,7 @@ TEST(ConfigDownloadComponentTest, APlainReplyToTheOfferIsDeliveredUnchanged)
 
     ASSERT_NE(nullptr, file);
     EXPECT_TRUE(readFile(file->path()) == blob) << "the spooled file differs from the served config";
-    EXPECT_EQ("zstd", acceptEncodingSeenBy(port));
+    EXPECT_EQ("zstd", fakeManagerDownloadAcceptEncoding(port));
 }
 
 // curl rejects the frame (61) only after every decoded byte reached the file, so what keeps the
@@ -350,5 +345,5 @@ TEST(ConfigDownloadComponentTest, TheWpkDownloadOffersNoEncoding)
     Downloader downloader {port};
 
     EXPECT_EQ(nullptr, downloader.fetchWpk()); // The fake serves no WPK: a 404, after the header is seen.
-    EXPECT_EQ("<absent>", acceptEncodingSeenBy(port));
+    EXPECT_EQ("<absent>", fakeManagerDownloadAcceptEncoding(port));
 }
