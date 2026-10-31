@@ -1673,11 +1673,13 @@ set(WAZUHEXT_WHOLE_LIBS
     ext_pcre2)
 
 # Add curl on supported platforms. zstd is curl's decoder for zstd replies
-# (#38514). It goes after the whole-archive group, so only the objects curl
-# needs are pulled in, and it stays out of the export table (--exclude-libs
-# below): https_client and remoted link their own zstd, and a ZSTD_* exported
-# from here clashes with it on MinGW (https_client/CMakeLists.txt). macOS
-# loads it whole (-all_load is global), which two-level namespaces tolerate.
+# (#38514). On Linux and Windows it goes after the whole-archive group, so only
+# the objects curl needs are pulled in, and it stays out of the export table
+# (--exclude-libs below): https_client and remoted link their own zstd, and a
+# ZSTD_* exported from here clashes with it on MinGW
+# (https_client/CMakeLists.txt). On macOS -all_load is global, so all of zstd
+# is loaded and exported, and https_client binds to this copy instead of its
+# own; both come from the same libzstd.a.
 set(WAZUHEXT_CURL_DEPS)
 if(IS_LINUX
    OR IS_DARWIN
