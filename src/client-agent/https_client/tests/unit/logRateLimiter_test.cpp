@@ -112,3 +112,9 @@ TEST(LogRateLimiterTest, ResetMakesTheNextOccurrenceEmitImmediately)
     EXPECT_EQ(decision.suppressed, 0U);
     EXPECT_EQ(decision.total, 1U);
 }
+
+TEST(LogRateLimiterTest, SuppressedNoteCountsWhatTheLineStandsFor)
+{
+    EXPECT_EQ("", suppressedNote(LogRateLimiter::Decision {true, 0, 1}));
+    EXPECT_EQ(" (3 more suppressed in the last 90s)", suppressedNote(LogRateLimiter::Decision {true, 3, 4}));
+}

@@ -132,11 +132,7 @@ void ConfigFetcher::warnUndecodable(const std::string& resourceId, const HttpRes
         return;
     }
 
-    const std::string suffix = decision.suppressed > 0
-                               ? " (" + std::to_string(decision.suppressed) + " more in the last " +
-                               std::to_string(LogRateLimiter::kDefaultWindowSeconds) + "s)"
-                               : std::string();
     LOGFN_WARN(m_logFn, "Config download for resource '%s' could not be decoded%s; "
                "the next notify retries it%s.", resourceId.c_str(),
-               transportReason(response.curlError).c_str(), suffix.c_str());
+               transportReason(response.curlError).c_str(), suppressedNote(decision).c_str());
 }

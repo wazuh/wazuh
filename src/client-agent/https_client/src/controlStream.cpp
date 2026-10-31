@@ -718,13 +718,8 @@ void ControlStream::updateProducerPause(OutcomeClass outcome)
             // reader still having the one-time startup INFO line in view to know which manager
             // is being rejected.
             const std::string url = m_config.baseUrl() + prefixedTarget(m_config.serverEndpoint, "/control");
-            const std::string suffix = decision.suppressed > 0
-                                       ? " (" + std::to_string(decision.suppressed) +
-                                       " more suppressed in the last " +
-                                       std::to_string(LogRateLimiter::kDefaultWindowSeconds) + "s)"
-                                       : std::string();
             LOGFN_WARN(m_logFn, "Could not verify the manager's certificate at '%s': %s%s",
-                       url.c_str(), m_lastCurlError.c_str(), suffix.c_str());
+                       url.c_str(), m_lastCurlError.c_str(), suppressedNote(decision).c_str());
         }
     }
 
