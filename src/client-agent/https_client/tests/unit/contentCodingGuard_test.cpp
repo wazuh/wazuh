@@ -159,6 +159,22 @@ TEST(ContentCodingGuardTest, TheRefusalNoteShowsAShortPrintableExcerpt)
               guard.refusalNote());
 }
 
+// curl maps "none" to its identity writer, and a token of control bytes names nothing: neither
+// costs a window, so neither counts.
+TEST(ContentCodingGuardTest, CountsOnlyWhatCurlTurnsIntoADecoder)
+{
+    for (const auto* value :
+            {"none, zstd", "NONE, zstd", "zstd, \x01", "zstd, \x80"
+            })
+    {
+        ContentCodingGuard guard;
+        EXPECT_TRUE(admitReply(guard, {"HTTP/1.1 200 OK", std::string {"Content-Encoding: "} + value})) << value;
+    }
+
+    ContentCodingGuard twice;
+    EXPECT_FALSE(admitReply(twice, {"HTTP/1.1 200 OK", "Content-Encoding: zstd,\x01\x02 ,zstd"}));
+}
+
 TEST(ContentCodingGuardTest, EmptyListsNameNoCoding)
 {
     ContentCodingGuard guard;

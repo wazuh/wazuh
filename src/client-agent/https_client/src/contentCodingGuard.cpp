@@ -29,6 +29,22 @@ namespace
                text.substr(begin, text.find_last_not_of(SPACE) - begin + 1);
     }
 
+    /// A coding as curl names it (content_encoding.c, Curl_build_unencoding_stack): without the bytes
+    /// around it that can't belong to a token. curl trims control bytes and spaces, so a token made
+    /// only of them names nothing; a byte past ASCII never names a coding curl decodes.
+    std::string_view codingName(std::string_view token)
+    {
+        const auto outside = [](char byte)
+        {
+            const auto value = static_cast<unsigned char>(byte);
+            return value <= 0x20 || value >= 0x7f;
+        };
+        const auto begin = std::find_if_not(token.begin(), token.end(), outside);
+        const auto end = std::find_if_not(token.rbegin(), token.rend(), outside).base();
+        return begin < end ? token.substr(static_cast<size_t>(begin - token.begin()), static_cast<size_t>(end - begin)) :
+               std::string_view {};
+    }
+
     /// Header names and codings are case-insensitive tokens (RFC 9110 5.1, 8.4.1).
     bool sameToken(std::string_view left, std::string_view right)
     {
@@ -83,7 +99,7 @@ namespace
         for (;;)
         {
             const auto comma = list.find(',');
-            const auto coding = trimmed(list.substr(0, comma));
+            const auto coding = codingName(list.substr(0, comma));
 
             if (!coding.empty() && !visit(coding))
             {
@@ -186,7 +202,8 @@ bool ContentCodingGuard::admitCodings(std::string_view value) noexcept
 
 bool ContentCodingGuard::admitCoding(std::string_view coding) noexcept
 {
-    return sameToken(coding, "identity") || ++m_codings == 1;
+    // curl's identity writer, under either name, passes the body through: it costs no window.
+    return sameToken(coding, "identity") || sameToken(coding, "none") || ++m_codings == 1;
 }
 
 void ContentCodingGuard::noteRefused(std::string_view value) noexcept
