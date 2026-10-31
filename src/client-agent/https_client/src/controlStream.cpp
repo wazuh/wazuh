@@ -719,7 +719,7 @@ void ControlStream::updateProducerPause(OutcomeClass outcome)
             // is being rejected.
             const std::string url = m_config.baseUrl() + prefixedTarget(m_config.serverEndpoint, "/control");
             LOGFN_WARN(m_logFn, "Could not verify the manager's certificate at '%s': %s%s",
-                       url.c_str(), m_lastCurlError.c_str(), suppressedNote(decision).c_str());
+                       url.c_str(), m_lastCurlError.c_str(), m_certVerificationLimiter.suppressedNote(decision).c_str());
         }
     }
 

@@ -113,8 +113,13 @@ TEST(LogRateLimiterTest, ResetMakesTheNextOccurrenceEmitImmediately)
     EXPECT_EQ(decision.total, 1U);
 }
 
-TEST(LogRateLimiterTest, SuppressedNoteCountsWhatTheLineStandsFor)
+TEST(LogRateLimiterTest, SuppressedNoteCountsWhatTheLineStandsForOverItsOwnWindow)
 {
-    EXPECT_EQ("", suppressedNote(LogRateLimiter::Decision {true, 0, 1}));
-    EXPECT_EQ(" (3 more suppressed in the last 90s)", suppressedNote(LogRateLimiter::Decision {true, 3, 4}));
+    FakeClock clock;
+    const LogRateLimiter byDefault {clock};
+    const LogRateLimiter halfMinute {clock, std::chrono::seconds {30}};
+
+    EXPECT_EQ("", byDefault.suppressedNote(LogRateLimiter::Decision {true, 0, 1}));
+    EXPECT_EQ(" (3 more suppressed in the last 90s)", byDefault.suppressedNote(LogRateLimiter::Decision {true, 3, 4}));
+    EXPECT_EQ(" (3 more suppressed in the last 30s)", halfMinute.suppressedNote(LogRateLimiter::Decision {true, 3, 4}));
 }

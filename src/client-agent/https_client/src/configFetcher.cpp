@@ -134,5 +134,5 @@ void ConfigFetcher::warnUndecodable(const std::string& resourceId, const HttpRes
 
     LOGFN_WARN(m_logFn, "Config download for resource '%s' could not be decoded%s; "
                "the next notify retries it%s.", resourceId.c_str(),
-               transportReason(response.curlError).c_str(), suppressedNote(decision).c_str());
+               transportReason(response.curlError).c_str(), m_undecodableLimiter.suppressedNote(decision).c_str());
 }

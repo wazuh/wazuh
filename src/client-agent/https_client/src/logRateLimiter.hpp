@@ -105,6 +105,16 @@ class LogRateLimiter final
             m_pending = 0;
         }
 
+        /// The suffix a line this limits carries for what it stands for: " (N more suppressed in the
+        /// last W s)", W being this limiter's window, or nothing when it stands for itself alone.
+        std::string suppressedNote(const Decision& decision) const
+        {
+            return decision.suppressed > 0
+                   ? " (" + std::to_string(decision.suppressed) + " more suppressed in the last " +
+                   std::to_string(std::chrono::duration_cast<std::chrono::seconds>(m_window).count()) + "s)"
+                   : std::string();
+        }
+
     private:
         IClock& m_clock;
         const std::chrono::nanoseconds m_window;
@@ -112,15 +122,5 @@ class LogRateLimiter final
         std::chrono::steady_clock::time_point m_lastEmit {};
         std::uint64_t m_pending {0};
 };
-
-/// The suffix a line limited with the default window carries for what it stands for: " (N more
-/// suppressed in the last 90s)", or nothing when it stands for itself alone.
-inline std::string suppressedNote(const LogRateLimiter::Decision& decision)
-{
-    return decision.suppressed > 0
-           ? " (" + std::to_string(decision.suppressed) + " more suppressed in the last " +
-           std::to_string(LogRateLimiter::kDefaultWindowSeconds) + "s)"
-           : std::string();
-}
 
 #endif // _HC_LOG_RATE_LIMITER_HPP
