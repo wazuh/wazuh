@@ -67,6 +67,11 @@ namespace fake_download
         }
         while (!ZSTD_isError(left) && in.pos < in.size);
 
+        if (ZSTD_isError(left))
+        {
+            return {}; // Ending a frame on a context that failed is undefined.
+        }
+
         left = ZSTD_compressStream2(cctx.get(), &out, &in, ZSTD_e_end);
         frame.resize(left == 0 ? out.pos : 0); // The bound always fits a whole frame.
         return frame;
