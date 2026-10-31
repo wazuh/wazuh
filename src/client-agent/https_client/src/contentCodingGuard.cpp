@@ -115,9 +115,9 @@ namespace
         }
     }
 
-    /// `value` as a log line may show it: at most REFUSAL_EXCERPT bytes, each byte outside printable
+    /// `value` as a refusal note may show it: at most REFUSAL_EXCERPT bytes, each byte outside printable
     /// ASCII as \xHH, and "..." when cut, since a peer can fill a header with terminal escapes.
-    std::string printable(std::string_view value)
+    std::string refusalExcerpt(std::string_view value)
     {
         static constexpr char HEX[] = "0123456789abcdef";
         std::string shown;
@@ -212,7 +212,7 @@ void ContentCodingGuard::noteRefused(std::string_view value) noexcept
 
     try
     {
-        m_refusalNote = "; refused Content-Encoding '" + printable(trimmed(value)) + "': more than one coding";
+        m_refusalNote = "; refused Content-Encoding '" + refusalExcerpt(trimmed(value)) + "': more than one coding";
     }
     catch (...)
     {
