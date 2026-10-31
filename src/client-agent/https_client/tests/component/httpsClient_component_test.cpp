@@ -152,7 +152,7 @@ TEST_F(ComponentTest, ResponseSizeCapAbortsAnOversizedTransfer)
 {
     // The echo returns the request body with its Content-Length; capping the response
     // below it makes curl's own cap (CURLOPT_MAXFILESIZE_LARGE) turn the reply away
-    // before the file-write trampoline sees a byte, instead of writing unbounded.
+    // before the file sink sees a byte, instead of writing unbounded.
     const std::string body(4096, 'x');
     const std::string path = ::testing::TempDir() + "hc_component_capped.tmp";
 
