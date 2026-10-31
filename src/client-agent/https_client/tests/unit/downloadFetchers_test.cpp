@@ -255,8 +255,10 @@ namespace
                 };
             }
 
+            /// One fetch() that runs its retry, as the control thread does when it isn't stopping.
             std::shared_ptr<SpoolFile> fetch(const std::string& expectedHash = "0123abcd")
             {
+                m_waiter.script({true});
                 return m_configFetcher.fetch(expectedHash, "cfg-token", m_waiter);
             }
 
@@ -305,6 +307,17 @@ TEST_F(ConfigDownloadLogTest, ARefusedCodingIsWarnedAboutWithTheRefusal)
     const auto warnings = loggedAt(WARNING_LEVEL, UNDECODABLE_WARNING);
     ASSERT_EQ(1u, warnings.size());
     EXPECT_NE(std::string::npos, warnings.front().find("refused Content-Encoding 'zstd, zstd'")) << warnings.front();
+}
+
+// Stopping during the wait before the retry isn't a decoding problem to warn about.
+TEST_F(ConfigDownloadLogTest, AShutdownBeforeTheRetryIsNotWarnedAbout)
+{
+    answer(UNDECODABLE);
+
+    m_configFetcher.fetch("0123abcd", "cfg-token", m_waiter); // The waiter says stop.
+
+    EXPECT_TRUE(loggedAt(WARNING_LEVEL, UNDECODABLE_WARNING).empty());
+    EXPECT_FALSE(loggedAt(DEBUG_LEVEL, "failed (Interrupted)").empty());
 }
 
 // The next notify usually fixes these, so they stay out of the default log level.
