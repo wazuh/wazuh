@@ -12,11 +12,12 @@
 
 #include <algorithm>
 #include <cctype>
-#include <utility>
 
 namespace
 {
     constexpr std::string_view SPACE {" \t\r\n"};
+    constexpr std::string_view STATUS_PREFIX {"HTTP/"};
+    constexpr std::string_view CONTENT_ENCODING_PREFIX {"Content-Encoding:"};
 
     std::string_view trimmed(std::string_view text)
     {
@@ -25,13 +26,40 @@ namespace
                text.substr(begin, text.find_last_not_of(SPACE) - begin + 1);
     }
 
-    /// Codings are case-insensitive tokens (RFC 9110 8.4.1).
-    bool sameCoding(std::string_view left, std::string_view right)
+    /// Header names and codings are case-insensitive tokens (RFC 9110 5.1, 8.4.1).
+    bool sameToken(std::string_view left, std::string_view right)
     {
         return std::equal(left.begin(), left.end(), right.begin(), right.end(), [](char a, char b)
         {
             return std::tolower(static_cast<unsigned char>(a)) == std::tolower(static_cast<unsigned char>(b));
         });
+    }
+
+    bool startsWith(std::string_view line, std::string_view prefix, bool ignoreCase)
+    {
+        return line.size() > prefix.size() &&
+               (ignoreCase ? sameToken(line.substr(0, prefix.size()), prefix) : line.substr(0, prefix.size()) == prefix);
+    }
+
+    /// The status code of an HTTP/1.x status line ("HTTP/1.1 103 Early Hints"), or 0.
+    long statusCode(std::string_view statusLine)
+    {
+        const auto space = statusLine.find(' ');
+        const auto digits = space == std::string_view::npos ? std::string_view {} :
+                            statusLine.substr(space + 1, 3);
+        long code = 0;
+
+        for (const char digit : digits)
+        {
+            if (!std::isdigit(static_cast<unsigned char>(digit)))
+            {
+                return 0;
+            }
+
+            code = code * 10 + (digit - '0');
+        }
+
+        return digits.size() == 3 ? code : 0;
     }
 
     /// Calls `visit` with every non-empty coding of a comma-separated list, until it returns false.
@@ -57,15 +85,45 @@ namespace
             list.remove_prefix(comma + 1);
         }
     }
+
 } // namespace
 
-ContentCodingGuard::ContentCodingGuard(std::string offered)
-    : m_offered(std::move(offered))
+bool ContentCodingGuard::admitHeader(std::string_view line) noexcept
 {
+    if (startsWith(line, STATUS_PREFIX, false))
+    {
+        startResponse(line);
+        return true;
+    }
+
+    return !startsWith(line, CONTENT_ENCODING_PREFIX, true) ||
+           admitCodings(line.substr(CONTENT_ENCODING_PREFIX.size()));
 }
 
-bool ContentCodingGuard::admit(std::string_view value)
+bool ContentCodingGuard::refused() const noexcept
 {
+    return m_refused;
+}
+
+const std::string& ContentCodingGuard::refusalNote() const
+{
+    return m_refusalNote;
+}
+
+void ContentCodingGuard::startResponse(std::string_view statusLine) noexcept
+{
+    const long code = statusCode(statusLine);
+    m_bodyless = (code >= 100 && code < 200) || code == 204 || code == 304;
+    m_codings = 0;
+}
+
+bool ContentCodingGuard::admitCodings(std::string_view value) noexcept
+{
+    if (m_bodyless)
+    {
+        return true;
+    }
+
     const bool admitted = everyCoding(value, [this](std::string_view coding)
     {
         return admitCoding(coding);
@@ -73,26 +131,27 @@ bool ContentCodingGuard::admit(std::string_view value)
 
     if (!admitted)
     {
-        m_refused = std::string {trimmed(value)};
+        noteRefused(value);
     }
 
     return admitted;
 }
 
-const std::string& ContentCodingGuard::refused() const
+bool ContentCodingGuard::admitCoding(std::string_view coding) noexcept
 {
-    return m_refused;
+    return sameToken(coding, "identity") || ++m_codings == 1;
 }
 
-bool ContentCodingGuard::admitCoding(std::string_view coding)
+void ContentCodingGuard::noteRefused(std::string_view value) noexcept
 {
-    return sameCoding(coding, "identity") || (offers(coding) && ++m_codings == 1);
-}
+    m_refused = true;
 
-bool ContentCodingGuard::offers(std::string_view coding) const
-{
-    return !everyCoding(m_offered, [coding](std::string_view offered)
+    try
     {
-        return !sameCoding(offered, coding);
-    });
+        m_refusalNote = "; refused Content-Encoding '" + std::string {trimmed(value)} + "': more than one coding";
+    }
+    catch (...)
+    {
+        m_refusalNote.clear(); // LCOV_EXCL_LINE: allocation failure; refused() still says so.
+    }
 }

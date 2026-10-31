@@ -78,8 +78,8 @@ struct HeaderCapture
     /// Left at 0 when the header is absent, which is what a manager predating #39321 sends and
     /// is never adopted either way.
     std::int64_t* caGeneration {nullptr};
-    /// When set, every Content-Encoding line goes through it, and one it refuses aborts the
-    /// transfer before any of the body arrives (#38514). Left unset when nothing was offered.
+    /// When set, every header line goes through it, and a reply it refuses is aborted before any
+    /// of the body arrives (#38514). Left unset when nothing was offered.
     ContentCodingGuard* contentCoding {nullptr};
 };
 

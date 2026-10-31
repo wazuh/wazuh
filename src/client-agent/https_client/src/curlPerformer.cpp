@@ -30,16 +30,6 @@ namespace
 {
     using FilePtr = std::unique_ptr<std::FILE, decltype(&std::fclose)>;
 
-    /// Names the coding ContentCodingGuard refused after curl's own text for the aborted header,
-    /// which says only that writing it failed.
-    void noteRefusedCoding(HttpResponse& response, const std::string& refused, const std::string& offered)
-    {
-        if (!refused.empty())
-        {
-            response.curlError += "; refused Content-Encoding '" + refused + "' (offered '" + offered + "')";
-        }
-    }
-
     /// Whether trying the verify_mode=system fallback anchor could fix this failure: the
     /// peer's chain did not verify for a trust reason. Excluded, since another anchor cannot
     /// fix them: hostname/date failures (kind != None), failures before any certificate was
@@ -191,7 +181,7 @@ HttpResponse CurlPerformer::attemptOnce(const HttpRequestSpec& spec, bool useFal
     // complete file.
     const FilePtr responseGuard {responseFile, std::fclose};
 
-    ContentCodingGuard contentCoding {spec.acceptEncoding};
+    ContentCodingGuard contentCoding;
 
     if (!configureRequest(*handle, spec, response, contentCoding))
     {
@@ -210,8 +200,8 @@ HttpResponse CurlPerformer::attemptOnce(const HttpRequestSpec& spec, bool useFal
     response.curlError = handle->curlError();
     response.tlsFailure = handle->tlsFailureDetail();
     response.caFileLoadFailed = handle->caFileLoadFailed();
-    response.contentDecodingFailed = handle->contentDecodingFailed() || !contentCoding.refused().empty();
-    noteRefusedCoding(response, contentCoding.refused(), spec.acceptEncoding);
+    response.contentDecodingFailed = handle->contentDecodingFailed() || contentCoding.refused();
+    response.curlError += contentCoding.refusalNote(); // curl's own text only says the header write failed.
     return response;
 }
 

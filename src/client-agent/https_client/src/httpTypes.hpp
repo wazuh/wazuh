@@ -187,8 +187,11 @@ struct HttpRequestSpec
     ///< leaves libcurl's default (non-JSON endpoints).
     std::vector<std::string> headers;  ///< Extra headers (auth headers included).
     std::string acceptEncoding;        ///< When non-empty: sent as Accept-Encoding, and libcurl
-    ///< decodes the reply -- in any coding it was built with, not
-    ///< only these. Empty sends no header and decodes nothing.
+    ///< decodes a reply in one coding, any it was built with; one
+    ///< naming more is refused (contentDecodingFailed). A reply cut
+    ///< short in a properly ended body decodes to a prefix without
+    ///< error, so the caller verifies what it got. Empty sends no
+    ///< header and decodes nothing.
     const uint8_t* body {nullptr};     ///< In-memory body (nullptr when file-backed).
     size_t bodyLength {0};
     std::string bodyFilePath;          ///< When non-empty: stream the body from this file.
@@ -245,9 +248,10 @@ struct HttpResponse
     /// after startup (config.c parses it only once) stops the agent with a named reason
     /// instead of being retried forever as if it were a network failure.
     bool caFileLoadFailed {false};
-    /// The reply's Content-Encoding couldn't be decoded, or wasn't one the request offered
-    /// (#38514). A decoder doesn't fix itself on a retry, so callers can tell it apart from a
-    /// network failure in what they log.
+    /// The reply's Content-Encoding couldn't be decoded, or named more than one coding (#38514).
+    /// It usually comes back the same on the next attempt, so callers can tell it apart from a
+    /// network failure in what they log. RetrySender still retries it like any transport failure:
+    /// a manager short of memory for its encoder answers the retry plain.
     bool contentDecodingFailed {false};
 };
 

@@ -333,8 +333,8 @@ TEST(CurlPerformerTest, TheReplyCodingIsCheckedOnlyWhenOneWasOffered)
     }
 }
 
-// The header callback aborts a reply coded other than as offered; the attempt then says so, and
-// counts as a decoding failure rather than a network one.
+// The header callback aborts a reply coded more than once; the attempt then says so, and counts as
+// a decoding failure rather than a network one.
 TEST(CurlPerformerTest, ARefusedReplyCodingFailsTheAttemptAsADecodingFailure)
 {
     auto mock = std::make_unique<NiceMock<MockCurlHandle>>();
@@ -349,7 +349,7 @@ TEST(CurlPerformerTest, ARefusedReplyCodingFailsTheAttemptAsADecodingFailure)
     EXPECT_CALL(*handle, captureResponseHeaders(_)).WillOnce(DoAll(SaveArg<0>(&capture), Return(true)));
     EXPECT_CALL(*handle, perform()).WillOnce(Invoke([&capture]
     {
-        EXPECT_FALSE(capture.contentCoding->admit("zstd, zstd"));
+        EXPECT_FALSE(capture.contentCoding->admitHeader("Content-Encoding: zstd, zstd\r\n"));
         return TransportStatus::OtherError;
     }));
     EXPECT_CALL(*handle, curlError()).WillOnce(Return("(23) Failed writing header"));
@@ -358,7 +358,7 @@ TEST(CurlPerformerTest, ARefusedReplyCodingFailsTheAttemptAsADecodingFailure)
     const auto response = performer.perform(spec);
 
     EXPECT_TRUE(response.contentDecodingFailed);
-    EXPECT_EQ("(23) Failed writing header; refused Content-Encoding 'zstd, zstd' (offered 'zstd')",
+    EXPECT_EQ("(23) Failed writing header; refused Content-Encoding 'zstd, zstd': more than one coding",
               response.curlError);
 }
 

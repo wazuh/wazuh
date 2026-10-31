@@ -16,33 +16,39 @@
 #include <string_view>
 
 /**
- * @brief Holds a reply to one of the codings its request offered (#38514).
+ * @brief Holds a reply to a single content coding (#38514).
  *
- * Once CURLOPT_ACCEPT_ENCODING is set, libcurl decodes any coding it was built with, offered or
- * not, and stacks one decoder per coding the reply lists, each zstd decoder with its own window
- * of up to 128 MiB. Fed the reply's Content-Encoding lines, this admits a single offered coding
- * ("identity" aside), so one reply costs at most one decoder.
+ * Once CURLOPT_ACCEPT_ENCODING is set, libcurl builds one decoder per coding a reply's
+ * Content-Encoding lines list (up to four), and each zstd decoder gets its own window of up to
+ * 128 MiB once the body arrives. Shown the reply's header lines, this admits one coding for the
+ * final response ("identity" aside) and refuses a second, so one reply costs at most one window;
+ * a refused line has already had its decoders built, without windows. Like curl, it ignores the
+ * codings of a response that carries no body (1xx, 204, 304).
  */
 class ContentCodingGuard final
 {
     public:
-        /// @param offered The request's Accept-Encoding, a comma-separated list of codings.
-        explicit ContentCodingGuard(std::string offered);
+        /// Shows it one header line as curl hands it over, CRLF included.
+        /// @return false once the final response has named a second coding.
+        bool admitHeader(std::string_view line) noexcept;
 
-        /// Feeds the value of one Content-Encoding header line.
-        /// @return false once the reply has named a second coding, or one that wasn't offered.
-        bool admit(std::string_view value);
+        /// Whether admitHeader() refused the reply.
+        bool refused() const noexcept;
 
-        /// The Content-Encoding value admit() refused, empty while it refused none.
-        const std::string& refused() const;
+        /// Says what was refused, for a log line ("; refused Content-Encoding '...': ...").
+        /// Empty while nothing was refused.
+        const std::string& refusalNote() const;
 
     private:
-        bool admitCoding(std::string_view coding);
-        bool offers(std::string_view coding) const;
+        void startResponse(std::string_view statusLine) noexcept;
+        bool admitCodings(std::string_view value) noexcept;
+        bool admitCoding(std::string_view coding) noexcept;
+        void noteRefused(std::string_view value) noexcept;
 
-        std::string m_offered;
+        bool m_bodyless {false};
         size_t m_codings {0};
-        std::string m_refused;
+        bool m_refused {false};
+        std::string m_refusalNote;
 };
 
 #endif // _HC_CONTENT_CODING_GUARD_HPP

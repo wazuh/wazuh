@@ -12,65 +12,103 @@
 
 #include <gtest/gtest.h>
 
-TEST(ContentCodingGuardTest, AdmitsTheOfferedCodingAsCurlHandsItOver)
-{
-    ContentCodingGuard guard {"zstd"};
+#include <initializer_list>
+#include <string>
 
-    EXPECT_TRUE(guard.admit(" zstd\r\n"));
-    EXPECT_TRUE(guard.refused().empty());
+namespace
+{
+    /// Shows `guard` a reply's header lines as curl hands them over; false at the first refused one.
+    bool admitReply(ContentCodingGuard& guard, std::initializer_list<std::string> lines)
+    {
+        for (const auto& line : lines)
+        {
+            if (!guard.admitHeader(line + "\r\n"))
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+} // namespace
+
+TEST(ContentCodingGuardTest, AdmitsOneCoding)
+{
+    ContentCodingGuard guard;
+
+    EXPECT_TRUE(admitReply(guard, {"HTTP/1.1 200 OK", "Content-Encoding: zstd", "Content-Type: application/octet-stream"}));
+    EXPECT_FALSE(guard.refused());
+    EXPECT_TRUE(guard.refusalNote().empty());
 }
 
-TEST(ContentCodingGuardTest, ComparesCodingsCaseInsensitively)
+// Not only the offered one: curl decodes a single gzip error page with a window of its own size,
+// and refusing it would hide the 503 it carries.
+TEST(ContentCodingGuardTest, AdmitsOneCodingThatWasNotOffered)
 {
-    ContentCodingGuard guard {"zstd"};
+    ContentCodingGuard guard;
 
-    EXPECT_TRUE(guard.admit("ZStd"));
+    EXPECT_TRUE(admitReply(guard, {"HTTP/1.1 503 Service Unavailable", "Retry-After: 30", "Content-Encoding: gzip"}));
 }
 
-TEST(ContentCodingGuardTest, AdmitsIdentityAlongsideTheOfferedCoding)
+TEST(ContentCodingGuardTest, ReadsHeaderNamesAndCodingsCaseInsensitively)
 {
-    ContentCodingGuard guard {"zstd"};
+    ContentCodingGuard guard;
 
-    EXPECT_TRUE(guard.admit("identity"));
-    EXPECT_TRUE(guard.admit("identity, zstd"));
+    EXPECT_FALSE(admitReply(guard, {"HTTP/1.1 200 OK", "content-encoding: ZStd,\tzstd"}));
 }
 
-TEST(ContentCodingGuardTest, RefusesACodingThatWasNotOffered)
+TEST(ContentCodingGuardTest, AdmitsIdentityAlongsideTheCoding)
 {
-    ContentCodingGuard guard {"zstd"};
+    ContentCodingGuard guard;
 
-    EXPECT_FALSE(guard.admit(" gzip\r\n"));
-    EXPECT_EQ("gzip", guard.refused());
+    EXPECT_TRUE(admitReply(guard, {"HTTP/1.1 200 OK", "Content-Encoding: identity", "Content-Encoding: identity, zstd"}));
 }
 
 // curl would stack one zstd decoder, with its own window, per listed coding.
-TEST(ContentCodingGuardTest, RefusesTheSameCodingListedTwice)
+TEST(ContentCodingGuardTest, RefusesASecondCodingOnTheSameLine)
 {
-    ContentCodingGuard guard {"zstd"};
+    ContentCodingGuard guard;
 
-    EXPECT_FALSE(guard.admit("zstd, zstd"));
-    EXPECT_EQ("zstd, zstd", guard.refused());
+    EXPECT_FALSE(admitReply(guard, {"HTTP/1.1 200 OK", "Content-Encoding: zstd, zstd"}));
+    EXPECT_TRUE(guard.refused());
+    EXPECT_EQ("; refused Content-Encoding 'zstd, zstd': more than one coding", guard.refusalNote());
 }
 
-TEST(ContentCodingGuardTest, CountsCodingsAcrossHeaderLines)
+TEST(ContentCodingGuardTest, RefusesASecondCodingOnALaterLine)
 {
-    ContentCodingGuard guard {"zstd"};
+    ContentCodingGuard guard;
 
-    EXPECT_TRUE(guard.admit("zstd"));
-    EXPECT_FALSE(guard.admit("zstd"));
+    EXPECT_FALSE(admitReply(guard, {"HTTP/1.1 200 OK", "Content-Encoding: zstd", "Content-Encoding: gzip"}));
+    EXPECT_EQ("; refused Content-Encoding 'gzip': more than one coding", guard.refusalNote());
 }
 
-TEST(ContentCodingGuardTest, AdmitsAnyOneCodingOfAnOfferedList)
+// curl ignores the codings of a 1xx and builds the final response's decoders afresh (RFC 8297:
+// hints must not affect how the final response is processed).
+TEST(ContentCodingGuardTest, IgnoresTheCodingsOfAnInformationalResponse)
 {
-    ContentCodingGuard guard {"gzip, zstd"};
+    ContentCodingGuard guard;
 
-    EXPECT_TRUE(guard.admit("zstd"));
+    EXPECT_TRUE(admitReply(guard,
+    {
+        "HTTP/1.1 103 Early Hints", "Content-Encoding: br, zstd",
+        "HTTP/1.1 200 OK", "Content-Encoding: zstd"
+    }));
+}
+
+TEST(ContentCodingGuardTest, IgnoresTheCodingsOfAResponseWithoutABody)
+{
+    for (const auto* status :
+            {"HTTP/1.1 204 No Content", "HTTP/1.1 304 Not Modified"
+            })
+    {
+        ContentCodingGuard guard;
+        EXPECT_TRUE(admitReply(guard, {status, "Content-Encoding: zstd, zstd"})) << status;
+    }
 }
 
 TEST(ContentCodingGuardTest, EmptyListsNameNoCoding)
 {
-    ContentCodingGuard guard {"zstd"};
+    ContentCodingGuard guard;
 
-    EXPECT_TRUE(guard.admit(" ,, "));
-    EXPECT_TRUE(guard.admit("zstd"));
+    EXPECT_TRUE(admitReply(guard, {"HTTP/1.1 200 OK", "Content-Encoding: ,, ", "Content-Encoding:", "Content-Encoding: zstd"}));
 }
