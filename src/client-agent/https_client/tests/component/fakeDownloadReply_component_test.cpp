@@ -109,6 +109,8 @@ TEST(FakeDownloadReplyTest, AZstdReplyIsOneFrameThatDecodesBackToTheBlob)
     EXPECT_TRUE(body.terminated);
     EXPECT_LT(body.bytes.size(), blob.size() / 10);
     EXPECT_EQ(ZSTD_findFrameCompressedSize(body.bytes.data(), body.bytes.size()), body.bytes.size());
+    // #40900 streams the frame, so its header never carries the size.
+    EXPECT_EQ(ZSTD_CONTENTSIZE_UNKNOWN, ZSTD_getFrameContentSize(body.bytes.data(), body.bytes.size()));
     expectDecodesTo(blob, body.bytes);
 }
 

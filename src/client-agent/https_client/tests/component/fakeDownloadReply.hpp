@@ -47,8 +47,10 @@ struct DownloadBody
 
 namespace fake_download
 {
-    /// One level-3 frame streamed with ZSTD_e_end, as #40900's encoder does, so the header carries
-    /// no content size. withChecksum adds the optional XXH64 trailer, which nothing else here uses.
+    /// One level-3 frame streamed the way #40900's encoder streams it: the input goes in with
+    /// ZSTD_e_continue and only then is the frame ended, so zstd never learns the size up front
+    /// and the header carries none. withChecksum adds the optional XXH64 trailer, which nothing
+    /// else here uses.
     inline std::string zstdFrame(const std::string& plain, bool withChecksum)
     {
         const std::unique_ptr<ZSTD_CCtx, size_t (*)(ZSTD_CCtx*)> cctx {ZSTD_createCCtx(), ZSTD_freeCCtx};
@@ -57,7 +59,15 @@ namespace fake_download
         std::string frame(ZSTD_compressBound(plain.size()), '\0');
         ZSTD_inBuffer in {plain.data(), plain.size(), 0};
         ZSTD_outBuffer out {frame.data(), frame.size(), 0};
-        const size_t left = ZSTD_compressStream2(cctx.get(), &out, &in, ZSTD_e_end);
+        size_t left = 0;
+
+        do
+        {
+            left = ZSTD_compressStream2(cctx.get(), &out, &in, ZSTD_e_continue);
+        }
+        while (!ZSTD_isError(left) && in.pos < in.size);
+
+        left = ZSTD_compressStream2(cctx.get(), &out, &in, ZSTD_e_end);
         frame.resize(left == 0 ? out.pos : 0); // The bound always fits a whole frame.
         return frame;
     }
