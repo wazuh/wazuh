@@ -1422,9 +1422,9 @@ TEST_F(ControlStreamTest, CertVerificationFailureStillPausesProducersAfterThresh
     // fields a real chain/CA-trust rejection carries (isCertificateVerificationFailure()'s
     // own predicate is unit-tested directly in outcomeClassifier_test.cpp). The new,
     // independent WARNING this also drives (updateProducerPause(), logged straight through
-    // LOGFN_WARN -- not through the mock sink, so its text can't be asserted from this
-    // binary) must coexist with the pre-existing threshold/latch bookkeeping below without
-    // disturbing it: this is what this test actually asserts.
+    // LOGFN_WARN -- not through the mock sink, so this test doesn't assert its text) must
+    // coexist with the pre-existing threshold/latch bookkeeping below without disturbing it:
+    // this is what this test actually asserts.
     const std::string curlError = "(60) SSL certificate problem: unable to get local issuer certificate";
     HttpResponse certFailure = response(TransportStatus::TlsFail, 0, {}, {}, curlError);
     certFailure.tlsFailure.depth0VerificationFailed = true;

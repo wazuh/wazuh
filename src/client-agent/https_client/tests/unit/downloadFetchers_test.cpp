@@ -16,7 +16,9 @@
  */
 
 #include "configFetcher.hpp"
+#include "digest.hpp"
 #include "fakeSysSeams.hpp"
+#include "https_client.h"
 #include "jwtSigner.hpp"
 #include "keyProvider.hpp"
 #include "mockCallbackSink.hpp"
@@ -26,10 +28,21 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include <algorithm>
+#include <chrono>
+#include <cstdarg>
+#include <cstdio>
 #include <cstring>
+#include <fstream>
+#include <functional>
+#include <mutex>
+#include <string>
+#include <utility>
+#include <vector>
 
 using ::testing::_;
 using ::testing::DoAll;
+using ::testing::Invoke;
 using ::testing::NiceMock;
 using ::testing::Return;
 using ::testing::SaveArg;
@@ -116,3 +129,173 @@ TEST_F(DownloadFetchersTest, TheWpkDownloadOffersNoEncoding)
     EXPECT_EQ("/download", sent.target);
     EXPECT_TRUE(sent.acceptEncoding.empty());
 }
+
+namespace
+{
+    // LOGLEVEL_WARNING / LOGLEVEL_DEBUG as the agent defines them (loggerHelper.h).
+    constexpr int WARNING_LEVEL {2};
+    constexpr int DEBUG_LEVEL {0};
+
+    /// The module's log lines while captureModuleLog() is the agent's log callback. A C log
+    /// callback carries no user data, so they live here.
+    struct ModuleLog
+    {
+        std::mutex mutex;
+        std::vector<std::pair<int, std::string>> lines;
+    };
+
+    ModuleLog g_moduleLog;
+
+    void captureModuleLog(const int level, const char*, const char*, const int, const char*, const char* message,
+                          va_list args)
+    {
+        char line[1024];
+        std::vsnprintf(line, sizeof(line), message, args);
+        const std::lock_guard<std::mutex> lock(g_moduleLog.mutex);
+        g_moduleLog.lines.emplace_back(level, line);
+    }
+
+    /// Points the module's log at captureModuleLog() through an hc_enroll() its transport check
+    /// rejects before any network I/O: the one entry point that installs a callback without a
+    /// running handle. The module keeps forwarding to it until another call installs another.
+    void captureTheModuleLog()
+    {
+        hc_config_t config {};
+        std::strncpy(config.server_host, "127.0.0.1", sizeof(config.server_host) - 1);
+        config.server_port = 9;
+        config.verify_mode = HC_VERIFY_FULL;
+        hc_enroll_request_t request {};
+        request.log = captureModuleLog;
+        hc_enroll_result_t result {};
+        hc_enroll(&config, &request, &result);
+
+        const std::lock_guard<std::mutex> lock(g_moduleLog.mutex);
+        g_moduleLog.lines.clear(); // The enrollment's own rejection.
+    }
+
+    std::vector<std::string> loggedAt(int level, const std::string& needle)
+    {
+        const std::lock_guard<std::mutex> lock(g_moduleLog.mutex);
+        std::vector<std::string> found;
+
+        for (const auto& [lineLevel, text] : g_moduleLog.lines)
+        {
+            if (lineLevel == level && text.find(needle) != std::string::npos)
+            {
+                found.push_back(text);
+            }
+        }
+
+        return found;
+    }
+
+    HttpResponse failedAttempt(TransportStatus status, std::string curlError, bool decodingFailed)
+    {
+        HttpResponse response;
+        response.status = status;
+        response.curlError = std::move(curlError);
+        response.contentDecodingFailed = decodingFailed;
+        return response;
+    }
+
+    const HttpResponse UNDECODABLE = failedAttempt(TransportStatus::OtherError, "(61) Unrecognized content encoding type", true);
+
+    constexpr auto UNDECODABLE_WARNING = "could not be decoded";
+
+    /// What ConfigFetcher logs about failed config downloads.
+    class ConfigDownloadLogTest : public DownloadFetchersTest
+    {
+        protected:
+            void SetUp() override
+            {
+                captureTheModuleLog();
+                EXPECT_CALL(m_performer, perform(_)).WillRepeatedly(Invoke([this](const HttpRequestSpec & spec)
+                {
+                    return m_reply(spec);
+                }));
+            }
+
+            void answer(const HttpResponse& response)
+            {
+                m_reply = [response](const HttpRequestSpec&)
+                {
+                    return response;
+                };
+            }
+
+            /// A 200 that writes `merged` where the fetcher spools the download.
+            void deliver(const std::string& merged)
+            {
+                m_reply = [merged](const HttpRequestSpec & spec)
+                {
+                    std::ofstream {spec.responseFilePath, std::ios::binary} << merged;
+                    HttpResponse response;
+                    response.status = TransportStatus::Ok;
+                    response.httpCode = 200;
+                    return response;
+                };
+            }
+
+            std::shared_ptr<SpoolFile> fetch(const std::string& expectedHash = "0123abcd")
+            {
+                return m_configFetcher.fetch(expectedHash, "cfg-token", m_waiter);
+            }
+
+            std::function<HttpResponse(const HttpRequestSpec&)> m_reply;
+    };
+} // namespace
+
+// It comes back the same on every notify, so one line per window, counting the ones it stands for.
+TEST_F(ConfigDownloadLogTest, AnUndecodableDownloadWarnsOncePerWindow)
+{
+    answer(UNDECODABLE);
+
+    fetch();
+    fetch();
+    EXPECT_EQ(1u, loggedAt(WARNING_LEVEL, UNDECODABLE_WARNING).size());
+
+    m_clock.advance(std::chrono::seconds {91});
+    fetch();
+    const auto warnings = loggedAt(WARNING_LEVEL, UNDECODABLE_WARNING);
+    ASSERT_EQ(2u, warnings.size());
+    EXPECT_NE(std::string::npos, warnings.back().find("(1 more suppressed in the last 90s)")) << warnings.back();
+}
+
+// After a download that worked, a decoding failure is a new incident, reported at once.
+TEST_F(ConfigDownloadLogTest, ADeliveredDownloadReArmsTheWarning)
+{
+    const std::string merged = "#merged.mg\n";
+
+    answer(UNDECODABLE);
+    fetch();
+    deliver(merged);
+    EXPECT_NE(nullptr, fetch(sha256Hex(merged.data(), merged.size())));
+    answer(UNDECODABLE);
+    fetch();
+
+    EXPECT_EQ(2u, loggedAt(WARNING_LEVEL, UNDECODABLE_WARNING).size());
+}
+
+TEST_F(ConfigDownloadLogTest, ARefusedCodingIsWarnedAboutWithTheRefusal)
+{
+    answer(failedAttempt(TransportStatus::OtherError,
+                         "(23) Failed writing header; refused Content-Encoding 'zstd, zstd': more than one coding", true));
+
+    fetch();
+
+    const auto warnings = loggedAt(WARNING_LEVEL, UNDECODABLE_WARNING);
+    ASSERT_EQ(1u, warnings.size());
+    EXPECT_NE(std::string::npos, warnings.front().find("refused Content-Encoding 'zstd, zstd'")) << warnings.front();
+}
+
+// The next notify usually fixes these, so they stay out of the default log level.
+TEST_F(ConfigDownloadLogTest, OtherFailedDownloadsStayAtDebugLevel)
+{
+    answer(failedAttempt(TransportStatus::Timeout, "(28) Operation timed out", false));
+
+    fetch();
+
+    EXPECT_TRUE(loggedAt(WARNING_LEVEL, UNDECODABLE_WARNING).empty());
+    EXPECT_FALSE(loggedAt(DEBUG_LEVEL, "Config download for resource 'cfg-token' failed").empty());
+}
+

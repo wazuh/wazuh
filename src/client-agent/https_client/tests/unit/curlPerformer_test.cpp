@@ -1636,8 +1636,8 @@ TEST(CurlPerformerTest, SystemModeDoesNotLatchTheFallbackWhenNoBudgetRemainsRega
 }
 
 // m_noFallbackAnchorWarned gates the WARN only, never the outcome: a later call still makes its
-// own single attempt and returns the same failure. The WARN itself is not assertable here --
-// main.cpp leaves Log::GLOBAL_LOG_FUNCTION unset, so every LOGFN_* is a no-op in this binary.
+// own single attempt and returns the same failure. The WARN itself isn't asserted here (see
+// downloadFetchers_test.cpp's ConfigDownloadLogTest for capturing the module's log).
 TEST(CurlPerformerTest, SystemModeStillDoesNotRetryOnLaterCallsWithoutAFallbackPathConfigured)
 {
     auto config = makeConfig(HC_VERIFY_SYSTEM); // systemFallbackCaPath left empty.
