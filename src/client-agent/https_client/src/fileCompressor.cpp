@@ -53,6 +53,14 @@ std::optional<std::pair<std::unique_ptr<SpoolFile>, uint64_t>> ZstdFileCompresso
         return std::nullopt;
     }
 
+    // Declared before `dest`, so destroyed after it: whichever way this returns, the FILE* is
+    // closed BEFORE the temp file is removed. Windows refuses to delete a file that still has an
+    // open handle (createExclusiveTempFile opens _SH_DENYRW, which never grants FILE_SHARE_DELETE),
+    // so removing it while the FILE* was still open left the temp file in the spool directory
+    // permanently -- notably once per agent shutdown that aborted a /stateful session
+    // compression. POSIX unlinks an open file happily, which is why only Windows leaked.
+    SpoolFile compressed {destPath};
+
 #ifdef WIN32
     FilePtr dest {_fdopen(destFd, "wb"), std::fclose};
 #else
@@ -62,27 +70,14 @@ std::optional<std::pair<std::unique_ptr<SpoolFile>, uint64_t>> ZstdFileCompresso
     if (!dest)
     {
         closeExclusiveTempFile(destFd); // fdopen() failed: the fd is still ours to close.
-        (void)std::remove(destPath.c_str());
         return std::nullopt; // LCOV_EXCL_LINE: fdopen() on a just-opened fd doesn't fail in practice.
     }
-
-    // Every failure from here on must close `dest` BEFORE removing it: Windows refuses to delete a
-    // file that still has an open handle (createExclusiveTempFile opens _SH_DENYRW, which never
-    // grants FILE_SHARE_DELETE), so returning while the FILE* was still open left the temp file in
-    // the spool directory permanently -- notably once per agent shutdown that aborted a /stateful
-    // session compression. POSIX unlinks an open file happily, which is why only Windows leaked.
-    const auto fail = [&dest, &destPath]() -> std::optional<std::pair<std::unique_ptr<SpoolFile>, uint64_t>>
-    {
-        dest.reset();
-        (void)std::remove(destPath.c_str());
-        return std::nullopt;
-    };
 
     ZSTD_CCtx* cctx = ZSTD_createCCtx();
 
     if (cctx == nullptr)
     {
-        return fail(); // LCOV_EXCL_LINE: allocation failure only.
+        return std::nullopt; // LCOV_EXCL_LINE: allocation failure only.
     }
 
     const CCtxGuard guard {cctx};
@@ -90,7 +85,7 @@ std::optional<std::pair<std::unique_ptr<SpoolFile>, uint64_t>> ZstdFileCompresso
     if (ZSTD_isError(ZSTD_CCtx_setParameter(cctx, ZSTD_c_compressionLevel, kCompressionLevel)) ||
             ZSTD_isError(ZSTD_CCtx_setPledgedSrcSize(cctx, sourceSize)))
     {
-        return fail(); // LCOV_EXCL_LINE: cannot fail on a freshly created CCtx.
+        return std::nullopt; // LCOV_EXCL_LINE: cannot fail on a freshly created CCtx.
     }
 
     std::array<uint8_t, FILE_CHUNK> inChunk {};
@@ -119,7 +114,7 @@ std::optional<std::pair<std::unique_ptr<SpoolFile>, uint64_t>> ZstdFileCompresso
     {
         if (abortFlag != nullptr && abortFlag->load())
         {
-            return fail();
+            return std::nullopt;
         }
 
         ZSTD_inBuffer input {inChunk.data(), bytesRead, 0};
@@ -131,14 +126,14 @@ std::optional<std::pair<std::unique_ptr<SpoolFile>, uint64_t>> ZstdFileCompresso
 
             if (ZSTD_isError(ret) || !flushOutput(output))
             {
-                return fail();
+                return std::nullopt;
             }
         }
     }
 
     if (std::ferror(source.get()))
     {
-        return fail();
+        return std::nullopt;
     }
 
     // Flush the frame epilogue: feed no more input, ZSTD_e_end, until zstd
@@ -155,7 +150,7 @@ std::optional<std::pair<std::unique_ptr<SpoolFile>, uint64_t>> ZstdFileCompresso
 
         if (ZSTD_isError(remaining) || !flushOutput(output))
         {
-            return fail();
+            return std::nullopt;
         }
     }
     while (remaining != 0);
@@ -168,10 +163,8 @@ std::optional<std::pair<std::unique_ptr<SpoolFile>, uint64_t>> ZstdFileCompresso
     // real session -- caught only by the manager rejecting the frame, if at all.
     if (std::fclose(dest.release()) != 0)
     {
-        // LCOV_EXCL_START: needs a genuinely full filesystem, not reproducible in the unit tests.
-        return fail(); // Already released above, so fail() only removes the temp file.
-        // LCOV_EXCL_STOP
+        return std::nullopt; // LCOV_EXCL_LINE: needs a genuinely full filesystem, not reproducible in the unit tests.
     }
 
-    return std::make_pair(std::make_unique<SpoolFile>(destPath), compressedSize);
+    return std::make_pair(std::make_unique<SpoolFile>(std::move(compressed)), compressedSize);
 }
