@@ -59,7 +59,7 @@ std::optional<std::pair<std::unique_ptr<SpoolFile>, uint64_t>> ZstdFileCompresso
     // so removing it while the FILE* was still open left the temp file in the spool directory
     // permanently -- notably once per agent shutdown that aborted a /stateful session
     // compression. POSIX unlinks an open file happily, which is why only Windows leaked.
-    SpoolFile compressed {destPath};
+    SpoolFile compressed {std::move(destPath)};
 
 #ifdef WIN32
     FilePtr dest {_fdopen(destFd, "wb"), std::fclose};
