@@ -81,12 +81,12 @@ TEST(FakeDownloadReplyTest, ARequestThatDidNotOfferZstdGetsThePlainBlobWhateverT
     for (const auto reply :
             {
                 DownloadReply::Plain, DownloadReply::Zstd, DownloadReply::ZstdCorrupt,
-                DownloadReply::ZstdTruncatedFrame, DownloadReply::ZstdUnterminated
+                DownloadReply::ZstdTruncatedFrame, DownloadReply::ZstdUnterminated, DownloadReply::ZstdStacked
             })
     {
         const DownloadBody body = shapeDownloadBody(blob, reply, /*offeredZstd=*/false);
         EXPECT_EQ(blob, body.bytes);
-        EXPECT_FALSE(body.zstdEncoded);
+        EXPECT_TRUE(body.contentEncoding.empty());
         EXPECT_TRUE(body.terminated);
     }
 }
@@ -97,7 +97,7 @@ TEST(FakeDownloadReplyTest, APlainReplyStaysPlainWhenZstdWasOffered)
     const DownloadBody body = shapeDownloadBody(blob, DownloadReply::Plain, /*offeredZstd=*/true);
 
     EXPECT_EQ(blob, body.bytes);
-    EXPECT_FALSE(body.zstdEncoded);
+    EXPECT_TRUE(body.contentEncoding.empty());
 }
 
 TEST(FakeDownloadReplyTest, AZstdReplyIsOneFrameThatDecodesBackToTheBlob)
@@ -105,7 +105,7 @@ TEST(FakeDownloadReplyTest, AZstdReplyIsOneFrameThatDecodesBackToTheBlob)
     const std::string blob = mergedConfigText(CONFIG_BYTES);
     const DownloadBody body = shapeDownloadBody(blob, DownloadReply::Zstd, /*offeredZstd=*/true);
 
-    EXPECT_TRUE(body.zstdEncoded);
+    EXPECT_EQ("zstd", body.contentEncoding);
     EXPECT_TRUE(body.terminated);
     EXPECT_LT(body.bytes.size(), blob.size() / 10);
     EXPECT_EQ(ZSTD_findFrameCompressedSize(body.bytes.data(), body.bytes.size()), body.bytes.size());
@@ -116,7 +116,7 @@ TEST(FakeDownloadReplyTest, ACorruptReplyFailsToDecode)
 {
     const DownloadBody body = shapeDownloadBody(mergedConfigText(CONFIG_BYTES), DownloadReply::ZstdCorrupt, /*offeredZstd=*/true);
 
-    EXPECT_TRUE(body.zstdEncoded);
+    EXPECT_EQ("zstd", body.contentEncoding);
     EXPECT_FALSE(decodeLikeCurl(body.bytes).has_value());
 }
 
@@ -140,4 +140,15 @@ TEST(FakeDownloadReplyTest, AnUnterminatedReplyIsAWholeFrameWhoseStreamStopsEarl
 
     EXPECT_FALSE(body.terminated);
     expectDecodesTo(blob, body.bytes);
+}
+
+TEST(FakeDownloadReplyTest, AStackedReplyIsAFrameInsideAFrameLabelledTwice)
+{
+    const std::string blob = mergedConfigText(CONFIG_BYTES);
+    const DownloadBody body = shapeDownloadBody(blob, DownloadReply::ZstdStacked, /*offeredZstd=*/true);
+    const auto inner = decodeLikeCurl(body.bytes);
+
+    EXPECT_EQ("zstd, zstd", body.contentEncoding);
+    ASSERT_TRUE(inner.has_value());
+    expectDecodesTo(blob, *inner);
 }

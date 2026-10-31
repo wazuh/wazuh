@@ -19,14 +19,15 @@
 #include <string>
 
 /// How the fake manager's /download answers a config request it serves (#38514): the shapes
-/// PR #40900's manager puts on the wire, and the ways such a reply arrives broken.
+/// PR #40900's manager puts on the wire, and the ways such a reply arrives broken or hostile.
 enum class DownloadReply
 {
     Plain,              ///< A manager without #40900, or with remoted.http_content_encoding_enabled off.
     Zstd,               ///< One level-3 frame, chunked: what #40900 sends when the agent offers zstd.
     ZstdCorrupt,        ///< That frame with a checksum that doesn't match: rejected after its last byte.
     ZstdTruncatedFrame, ///< The first half of the frame, then a clean terminating chunk.
-    ZstdUnterminated    ///< The whole frame, but the stream stops before its terminating chunk.
+    ZstdUnterminated,   ///< The whole frame, but the stream stops before its terminating chunk.
+    ZstdStacked         ///< That frame zstd-encoded again and labelled "zstd, zstd": two decoders.
 };
 
 /// The /download knobs, grouped like CaBundleOptions rather than as more positional arguments.
@@ -40,8 +41,8 @@ struct DownloadOptions
 struct DownloadBody
 {
     std::string bytes;
-    bool zstdEncoded {false}; ///< Send Content-Encoding: zstd.
-    bool terminated {true};   ///< false: stop the chunked stream before its terminating chunk.
+    std::string contentEncoding; ///< Sent as Content-Encoding when non-empty.
+    bool terminated {true};      ///< false: stop the chunked stream before its terminating chunk.
 };
 
 namespace fake_download
@@ -120,7 +121,7 @@ inline DownloadBody shapeDownloadBody(const std::string& plain, DownloadReply re
         return DownloadBody {plain};
     }
 
-    DownloadBody body {fake_download::zstdFrame(plain, reply == DownloadReply::ZstdCorrupt), true};
+    DownloadBody body {fake_download::zstdFrame(plain, reply == DownloadReply::ZstdCorrupt), "zstd"};
 
     if (reply == DownloadReply::ZstdCorrupt)
     {
@@ -129,6 +130,11 @@ inline DownloadBody shapeDownloadBody(const std::string& plain, DownloadReply re
     else if (reply == DownloadReply::ZstdTruncatedFrame)
     {
         body.bytes.resize(body.bytes.size() / 2);
+    }
+    else if (reply == DownloadReply::ZstdStacked)
+    {
+        body.bytes = fake_download::zstdFrame(body.bytes, false);
+        body.contentEncoding = "zstd, zstd";
     }
 
     body.terminated = reply != DownloadReply::ZstdUnterminated;

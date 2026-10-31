@@ -15,6 +15,7 @@
  */
 
 #include "curlHandle.hpp"
+#include "contentCodingGuard.hpp"
 #include "moduleLog.hpp"
 #include "responseSinks.hpp"
 #include "tlsCertDiagnostics.hpp"
@@ -26,6 +27,7 @@
 #include <cstring>
 #include <map>
 #include <mutex>
+#include <string_view>
 #include <vector>
 
 #include <strings.h>
@@ -123,6 +125,20 @@ namespace
         return index;
     }
 
+    /// curl has built the reply's decoders by the time it hands their header line over, but no
+    /// body byte has arrived, so none of them holds a window yet: refusing here costs nothing.
+    bool admitContentCoding(ContentCodingGuard& guard, const char* value, size_t length)
+    {
+        try
+        {
+            return guard.admit(std::string_view {value, length});
+        }
+        catch (...)
+        {
+            return false; // LCOV_EXCL_LINE: allocation failure aborts the transfer.
+        }
+    }
+
     size_t headerTrampoline(char* data, size_t size, size_t nmemb, void* userData)
     {
         const size_t total = size * nmemb;
@@ -131,6 +147,14 @@ namespace
         constexpr size_t datePrefixLength = 5;        // "Date:"
 
         constexpr size_t caGenerationPrefixLength = 20; // "Wazuh-CA-Generation:"
+        constexpr size_t contentEncodingPrefixLength = 17; // "Content-Encoding:"
+
+        if (capture->contentCoding != nullptr && total > contentEncodingPrefixLength &&
+                strncasecmp(data, "Content-Encoding:", contentEncodingPrefixLength) == 0)
+        {
+            return admitContentCoding(*capture->contentCoding, data + contentEncodingPrefixLength,
+                                      total - contentEncodingPrefixLength) ? total : 0;
+        }
 
         if (total > retryAfterPrefixLength && strncasecmp(data, "Retry-After:", retryAfterPrefixLength) == 0)
         {

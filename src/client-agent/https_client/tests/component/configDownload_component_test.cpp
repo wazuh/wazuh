@@ -262,6 +262,27 @@ TEST(ConfigDownloadComponentTest, ACorruptFrameIsDiscardedAfterOneRetry)
     EXPECT_EQ(0u, downloader.filesLeft());
 }
 
+// A reply labelled with a coding twice would get one decoder, and one window of up to 128 MiB,
+// per label. The agent refuses it at the header, before any of the body, and says why.
+TEST(ConfigDownloadComponentTest, AReplyCodedTwiceIsRefusedBeforeItsBody)
+{
+    const std::string blob = mergedConfigText(CONFIG_BYTES);
+    const uint16_t port = DOWNLOAD_PORT + 7;
+    auto manager = downloadManager(port, blob, DownloadReply::ZstdStacked);
+    Downloader downloader {port};
+
+    EXPECT_EQ(nullptr, downloader.fetchConfig(blob));
+    ASSERT_EQ(2u, downloader.attempts().size());
+
+    for (const auto& attempt : downloader.attempts())
+    {
+        EXPECT_NE(std::string::npos, attempt.curlError.find("refused Content-Encoding 'zstd, zstd'"))
+                << attempt.curlError;
+    }
+
+    EXPECT_EQ(0u, downloader.filesLeft());
+}
+
 // curl doesn't check that a frame ended: half a frame inside a properly terminated body is a
 // successful transfer of a shorter config. Only config_hash stands between it and the agent.
 TEST(ConfigDownloadComponentTest, ATruncatedFrameIsCaughtByTheConfigHash)

@@ -569,9 +569,9 @@ class FakeManager final
                 const auto body = std::make_shared<const DownloadBody>(
                                       shapeDownloadBody(configBlob, download.reply, offersZstd(acceptEncoding)));
 
-                if (body->zstdEncoded)
+                if (!body->contentEncoding.empty())
                 {
-                    response.set_header("Content-Encoding", "zstd");
+                    response.set_header("Content-Encoding", body->contentEncoding);
                 }
 
                 // Chunked transfer on purpose (#37733 5.2.3): the client's

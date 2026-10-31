@@ -9,6 +9,7 @@
  */
 
 #include "curlPerformer.hpp"
+#include "contentCodingGuard.hpp"
 
 #include <chrono>
 #include <cstdint>
@@ -28,6 +29,16 @@
 namespace
 {
     using FilePtr = std::unique_ptr<std::FILE, decltype(&std::fclose)>;
+
+    /// Names the coding ContentCodingGuard refused after curl's own text for the aborted header,
+    /// which says only that writing it failed.
+    void noteRefusedCoding(HttpResponse& response, const std::string& refused, const std::string& offered)
+    {
+        if (!refused.empty())
+        {
+            response.curlError += "; refused Content-Encoding '" + refused + "' (offered '" + offered + "')";
+        }
+    }
 
     /// Whether trying the verify_mode=system fallback anchor could fix this failure: the
     /// peer's chain did not verify for a trust reason. Excluded, since another anchor cannot
@@ -180,7 +191,9 @@ HttpResponse CurlPerformer::attemptOnce(const HttpRequestSpec& spec, bool useFal
     // complete file.
     const FilePtr responseGuard {responseFile, std::fclose};
 
-    if (!configureRequest(*handle, spec, response))
+    ContentCodingGuard contentCoding {spec.acceptEncoding};
+
+    if (!configureRequest(*handle, spec, response, contentCoding))
     {
         return response;
     }
@@ -197,6 +210,7 @@ HttpResponse CurlPerformer::attemptOnce(const HttpRequestSpec& spec, bool useFal
     response.curlError = handle->curlError();
     response.tlsFailure = handle->tlsFailureDetail();
     response.caFileLoadFailed = handle->caFileLoadFailed();
+    noteRefusedCoding(response, contentCoding.refused(), spec.acceptEncoding);
     return response;
 }
 
@@ -511,7 +525,7 @@ bool CurlPerformer::configureResponseSink(ICurlHandle& handle, const HttpRequest
 }
 
 bool CurlPerformer::configureRequest(ICurlHandle& handle, const HttpRequestSpec& spec,
-                                     HttpResponse& response) const
+                                     HttpResponse& response, ContentCodingGuard& contentCoding) const
 {
     handle.setOptionString(CurlOption::Url, m_config.baseUrl() + spec.target);
 
@@ -539,6 +553,7 @@ bool CurlPerformer::configureRequest(ICurlHandle& handle, const HttpRequestSpec&
     capture.retryAfter = &response.retryAfterSeconds;
     capture.serverDate = &response.serverDateSeconds;
     capture.caGeneration = &response.caGeneration;
+    capture.contentCoding = spec.acceptEncoding.empty() ? nullptr : &contentCoding;
 
     if (!handle.captureResponseHeaders(capture))
     {

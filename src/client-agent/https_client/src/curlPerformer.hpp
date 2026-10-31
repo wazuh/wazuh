@@ -60,8 +60,9 @@ class CurlPerformer final : public IHttpPerformer
         /// @return false if capturing Retry-After or wiring the abort flag was
         ///         rejected by the handle; the caller must not proceed to
         ///         perform() in that case.
+        /// @param contentCoding Holds the reply to spec.acceptEncoding; wired only when that is set.
         bool configureRequest(ICurlHandle& handle, const HttpRequestSpec& spec,
-                              HttpResponse& response) const;
+                              HttpResponse& response, ContentCodingGuard& contentCoding) const;
 
         /// @return false as soon as one option is rejected; the caller must not
         ///         perform the request, because a TLS option that did not apply

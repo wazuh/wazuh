@@ -14,6 +14,7 @@
  * the abort wiring are asserted as exact option calls with zero network.
  */
 
+#include "contentCodingGuard.hpp"
 #include "curlPerformer.hpp"
 #include "fakeSysSeams.hpp"
 #include "mockCurlHandle.hpp"
@@ -304,6 +305,59 @@ TEST(CurlPerformerTest, NoAcceptEncodingWhenUnset)
 
     auto performer = makePerformer(makeConfig(HC_VERIFY_NONE), std::move(mock));
     performer.perform(spec);
+}
+
+// With an offer, the header capture holds the reply to it; without one, curl decodes nothing, so
+// there is nothing to hold.
+TEST(CurlPerformerTest, TheReplyCodingIsCheckedOnlyWhenOneWasOffered)
+{
+    for (const std::string offered :
+            {"zstd", ""
+            })
+    {
+        auto mock = std::make_unique<NiceMock<MockCurlHandle>>();
+        auto* handle = mock.get();
+        allowOtherOptions(*handle);
+
+        HttpRequestSpec spec;
+        spec.target = "/download";
+        spec.acceptEncoding = offered;
+
+        HeaderCapture capture;
+        EXPECT_CALL(*handle, captureResponseHeaders(_)).WillOnce(DoAll(SaveArg<0>(&capture), Return(true)));
+        EXPECT_CALL(*handle, perform()).WillOnce(Return(TransportStatus::Ok));
+
+        auto performer = makePerformer(makeConfig(HC_VERIFY_NONE), std::move(mock));
+        performer.perform(spec);
+        EXPECT_EQ(offered.empty(), capture.contentCoding == nullptr) << "offered '" << offered << "'";
+    }
+}
+
+// The header callback aborts a reply coded other than as offered; the attempt then says why.
+TEST(CurlPerformerTest, ARefusedReplyCodingFailsTheAttemptAsADecodingFailure)
+{
+    auto mock = std::make_unique<NiceMock<MockCurlHandle>>();
+    auto* handle = mock.get();
+    allowOtherOptions(*handle);
+
+    HttpRequestSpec spec;
+    spec.target = "/download";
+    spec.acceptEncoding = "zstd";
+
+    HeaderCapture capture;
+    EXPECT_CALL(*handle, captureResponseHeaders(_)).WillOnce(DoAll(SaveArg<0>(&capture), Return(true)));
+    EXPECT_CALL(*handle, perform()).WillOnce(Invoke([&capture]
+    {
+        EXPECT_FALSE(capture.contentCoding->admit("zstd, zstd"));
+        return TransportStatus::OtherError;
+    }));
+    EXPECT_CALL(*handle, curlError()).WillOnce(Return("(23) Failed writing header"));
+
+    auto performer = makePerformer(makeConfig(HC_VERIFY_NONE), std::move(mock));
+    const auto response = performer.perform(spec);
+
+    EXPECT_EQ("(23) Failed writing header; refused Content-Encoding 'zstd, zstd' (offered 'zstd')",
+              response.curlError);
 }
 
 // A curl that rejects the option still sends the request: without the offer the manager answers
