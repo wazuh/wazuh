@@ -134,8 +134,9 @@ namespace
 
         constexpr size_t caGenerationPrefixLength = 20; // "Wazuh-CA-Generation:"
 
-        // curl has built a line's decoders by the time it hands the line over, but no body byte
-        // has arrived, so none of them holds a window yet: refusing the reply here costs nothing.
+        // curl has built a line's decoders by the time it hands the line over, but a decoder only
+        // takes its window from the body, which comes after the headers: refusing the reply here
+        // costs nothing. (Chunked trailers come after the body; the guard lets them through.)
         if (capture->contentCoding != nullptr && !capture->contentCoding->admitHeader(std::string_view {data, total}))
         {
             return 0;
