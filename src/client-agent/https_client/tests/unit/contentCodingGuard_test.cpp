@@ -110,8 +110,23 @@ TEST(ContentCodingGuardTest, ReadsTheStatusCodeWhereCurlDoes)
     ContentCodingGuard tabbed;
     EXPECT_FALSE(admitReply(tabbed, {"HTTP/1.1\t200 204 x", "Content-Encoding: zstd, zstd"}));
 
-    ContentCodingGuard indented;
-    EXPECT_TRUE(admitReply(indented, {" HTTP/1.1 204 No Content", "Content-Encoding: zstd, zstd"}));
+    ContentCodingGuard tabbedNoContent;
+    EXPECT_TRUE(admitReply(tabbedNoContent, {"HTTP/1.1\t204 No Content", "Content-Encoding: zstd, zstd"}));
+}
+
+// Anything curl doesn't read as HTTP/1.x it reports as a 200, which has a body: so does the guard.
+TEST(ContentCodingGuardTest, AStatusLineItCannotReadHasABody)
+{
+    for (const auto* status :
+            {"HTTP/2 204", "http/1.1 204 No Content", "HTTP/1.1  204 No Content"
+            })
+    {
+        ContentCodingGuard guard;
+        EXPECT_FALSE(admitReply(guard, {status, "Content-Encoding: zstd, zstd"})) << status;
+    }
+
+    ContentCodingGuard afterHints;
+    EXPECT_FALSE(admitReply(afterHints, {"HTTP/1.1 103 Early Hints", "", "http/1.1 200 OK", "Content-Encoding: zstd, zstd"}));
 }
 
 // curl builds no decoder from a chunked trailer, which arrives after the body.

@@ -44,13 +44,10 @@ namespace
     }
 
     /// The status code of a status line read the way curl 8.20 reads it (http.c, http_rw_hd):
-    /// blanks, "HTTP/1.0" or "HTTP/1.1", one space or tab, three digits. 0 for anything else.
-    long statusCode(std::string_view statusLine)
+    /// "HTTP/1.0" or "HTTP/1.1", one space or tab, three digits. 0 for anything else, which curl
+    /// either refuses or reports as a 200: a response with a body either way.
+    long statusCode(std::string_view line)
     {
-        const auto start = statusLine.find_first_not_of(BLANK);
-        const auto line = start == std::string_view::npos ? std::string_view {} :
-                          statusLine.substr(start);
-
         if (line.size() < 12 || line.substr(0, HTTP1_PREFIX.size()) != HTTP1_PREFIX || (line[7] != '0' && line[7] != '1') ||
                 BLANK.find(line[8]) == std::string_view::npos)
         {
