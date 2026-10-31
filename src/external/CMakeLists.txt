@@ -1677,9 +1677,9 @@ set(WAZUHEXT_WHOLE_LIBS
 # the objects curl needs are pulled in, and it stays out of the export table
 # (--exclude-libs below): https_client and remoted link their own zstd, and a
 # ZSTD_* exported from here clashes with it on MinGW
-# (https_client/CMakeLists.txt). On macOS -all_load is global, so all of zstd
-# is loaded and exported, and https_client binds to this copy instead of its
-# own; both come from the same libzstd.a.
+# (https_client/CMakeLists.txt). On macOS -all_load (global) loads all of zstd
+# and nothing hides it, so it is all exported, and https_client binds to this
+# copy instead of its own; both come from the same libzstd.a.
 set(WAZUHEXT_CURL_DEPS)
 if(IS_LINUX
    OR IS_DARWIN
