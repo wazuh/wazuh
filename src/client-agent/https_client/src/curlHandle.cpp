@@ -420,6 +420,7 @@ namespace
                 m_tlsCapture = TlsVerifyCapture {};
                 m_tlsFailureDetail = TlsFailureDetail {};
                 m_caFileLoadFailed = false;
+                m_contentDecodingFailed = false;
 
                 // Installed unconditionally, not just when trustSelfSignedRoot() is called
                 // (verify_mode=system's applyTrustAnchors() never calls it): the diagnostics
@@ -483,6 +484,7 @@ namespace
                     // failure. See HttpResponse::caFileLoadFailed (httpTypes.hpp) for why this
                     // needs its own signal rather than folding into that classification.
                     m_caFileLoadFailed = (code == CURLE_SSL_CACERT_BADFILE);
+                    m_contentDecodingFailed = (code == CURLE_BAD_CONTENT_ENCODING);
 
                     // Narrowed from the generic TlsFail above: a hostname mismatch or a
                     // certificate-date problem is reported at normal level, unlike every other
@@ -582,6 +584,11 @@ namespace
                 return m_caFileLoadFailed;
             }
 
+            bool contentDecodingFailed() override
+            {
+                return m_contentDecodingFailed;
+            }
+
         private:
             /// curl's own cap on the response, alongside the sinks' (which stay as the backstop):
             /// it turns away a reply whose Content-Length is already over the cap before reading
@@ -633,6 +640,8 @@ namespace
             ///< sslCtxSetupTrampoline().
             bool m_caFileLoadFailed {false}; ///< Set in perform() on CURLE_SSL_CACERT_BADFILE;
             ///< reset at the top of every perform() like the other per-attempt state below.
+            bool m_contentDecodingFailed {false}; ///< Set in perform() on CURLE_BAD_CONTENT_ENCODING;
+            ///< reset at the top of every perform() like m_caFileLoadFailed.
             TlsVerifyCapture m_tlsCapture {}; ///< Filled by tlsVerifyCaptureTrampoline() during
             ///< perform(); reset at the top of every perform() (one CurlHandle is never reused
             ///< across requests, but resetting costs nothing and removes the assumption).

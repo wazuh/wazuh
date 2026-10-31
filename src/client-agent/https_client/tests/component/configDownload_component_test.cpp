@@ -257,6 +257,7 @@ TEST(ConfigDownloadComponentTest, ACorruptFrameIsDiscardedAfterOneRetry)
     for (const auto& attempt : downloader.attempts())
     {
         EXPECT_TRUE(curlErrorIs(attempt, "61")) << attempt.curlError;
+        EXPECT_TRUE(attempt.contentDecodingFailed);
     }
 
     EXPECT_EQ(0u, downloader.filesLeft());
@@ -276,6 +277,7 @@ TEST(ConfigDownloadComponentTest, AReplyCodedTwiceIsRefusedBeforeItsBody)
 
     for (const auto& attempt : downloader.attempts())
     {
+        EXPECT_TRUE(attempt.contentDecodingFailed);
         EXPECT_NE(std::string::npos, attempt.curlError.find("refused Content-Encoding 'zstd, zstd'"))
                 << attempt.curlError;
     }
@@ -314,6 +316,7 @@ TEST(ConfigDownloadComponentTest, AStreamCutBeforeItsLastChunkIsDiscarded)
     {
         // 18 on a clean close; 56 when OpenSSL 3 sees the socket close without close_notify.
         EXPECT_TRUE(curlErrorIs(attempt, "18") || curlErrorIs(attempt, "56")) << attempt.curlError;
+        EXPECT_FALSE(attempt.contentDecodingFailed); // A network failure, not a decoding one.
     }
 
     EXPECT_EQ(0u, downloader.filesLeft());

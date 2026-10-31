@@ -14,6 +14,7 @@
 #include "backoff.hpp"
 #include "iHttpPerformer.hpp"
 #include "iSigner.hpp"
+#include "logRateLimiter.hpp"
 #include "moduleConfig.hpp"
 #include "moduleLog.hpp"
 #include "retrySender.hpp"
@@ -53,10 +54,14 @@ class ConfigFetcher final
         std::shared_ptr<SpoolFile> fetch(const std::string& expectedHash, const std::string& resourceId, Waiter& waiter);
 
     private:
+        void logFailedDownload(const std::string& resourceId, const RetrySender::Result& result);
+        void warnUndecodable(const std::string& resourceId, const HttpResponse& response);
+
         const ModuleConfig& m_config;
         Backoff m_backoff;
         RetrySender m_sender;
         ISpoolFileFactory& m_spoolFactory;
+        LogRateLimiter m_undecodableLimiter;
         const LogFn m_logFn {HTTPS_CLIENT_LOGTAG};
 };
 

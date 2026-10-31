@@ -210,6 +210,7 @@ HttpResponse CurlPerformer::attemptOnce(const HttpRequestSpec& spec, bool useFal
     response.curlError = handle->curlError();
     response.tlsFailure = handle->tlsFailureDetail();
     response.caFileLoadFailed = handle->caFileLoadFailed();
+    response.contentDecodingFailed = handle->contentDecodingFailed() || !contentCoding.refused().empty();
     noteRefusedCoding(response, contentCoding.refused(), spec.acceptEncoding);
     return response;
 }

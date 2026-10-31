@@ -333,7 +333,8 @@ TEST(CurlPerformerTest, TheReplyCodingIsCheckedOnlyWhenOneWasOffered)
     }
 }
 
-// The header callback aborts a reply coded other than as offered; the attempt then says why.
+// The header callback aborts a reply coded other than as offered; the attempt then says so, and
+// counts as a decoding failure rather than a network one.
 TEST(CurlPerformerTest, ARefusedReplyCodingFailsTheAttemptAsADecodingFailure)
 {
     auto mock = std::make_unique<NiceMock<MockCurlHandle>>();
@@ -356,8 +357,26 @@ TEST(CurlPerformerTest, ARefusedReplyCodingFailsTheAttemptAsADecodingFailure)
     auto performer = makePerformer(makeConfig(HC_VERIFY_NONE), std::move(mock));
     const auto response = performer.perform(spec);
 
+    EXPECT_TRUE(response.contentDecodingFailed);
     EXPECT_EQ("(23) Failed writing header; refused Content-Encoding 'zstd, zstd' (offered 'zstd')",
               response.curlError);
+}
+
+TEST(CurlPerformerTest, ACodingCurlCouldNotDecodeIsADecodingFailure)
+{
+    auto mock = std::make_unique<NiceMock<MockCurlHandle>>();
+    auto* handle = mock.get();
+    allowOtherOptions(*handle);
+
+    HttpRequestSpec spec;
+    spec.target = "/download";
+    spec.acceptEncoding = "zstd";
+
+    EXPECT_CALL(*handle, perform()).WillOnce(Return(TransportStatus::OtherError));
+    EXPECT_CALL(*handle, contentDecodingFailed()).WillOnce(Return(true));
+
+    auto performer = makePerformer(makeConfig(HC_VERIFY_NONE), std::move(mock));
+    EXPECT_TRUE(performer.perform(spec).contentDecodingFailed);
 }
 
 // A curl that rejects the option still sends the request: without the offer the manager answers

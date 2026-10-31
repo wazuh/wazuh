@@ -245,6 +245,10 @@ struct HttpResponse
     /// after startup (config.c parses it only once) stops the agent with a named reason
     /// instead of being retried forever as if it were a network failure.
     bool caFileLoadFailed {false};
+    /// The reply's Content-Encoding couldn't be decoded, or wasn't one the request offered
+    /// (#38514). A decoder doesn't fix itself on a retry, so callers can tell it apart from a
+    /// network failure in what they log.
+    bool contentDecodingFailed {false};
 };
 
 /// Name of a TransportStatus, for the printer below and for logs, on the same reasoning as

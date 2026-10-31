@@ -18,6 +18,7 @@
 
 #include "fakeManager.hpp"
 #include "https_client.h"
+#include "loggerHelper.h"
 #include "syncIntake.hpp"
 
 #include <gtest/gtest.h>
@@ -25,6 +26,7 @@
 #include <algorithm>
 #include <atomic>
 #include <chrono>
+#include <cstdarg>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -37,8 +39,8 @@
 
 namespace
 {
-    // Every test here binds TLS_PORT + n for n in 0..12 (the fixture itself takes the base), so
-    // this owns 24900-24912. Two constraints, both learned the hard way:
+    // Every test here binds TLS_PORT + n for n in 0..13 (the fixture itself takes the base), so
+    // this owns 24900-24913. Two constraints, both learned the hard way:
     //
     // 1. Keep clear of the other component files' fixed ports -- httpsClient 24853,
     //    tlsVerification 24857-24869, enroll 24870-24874, cacerts 24880-24882, fakeManager
@@ -755,6 +757,87 @@ TEST_F(FacadeE2eTest, ZstdEncodedConfigIsDecodedAndDeliveredOnce)
 
     std::lock_guard<std::mutex> lock(recorder.mutex);
     EXPECT_TRUE(recorder.content == blob) << "delivered " << recorder.content.size() << " of " << blob.size() << " bytes";
+}
+
+namespace
+{
+    /// The module's WARNING lines, while recordWarning() is its hc_callbacks_t::log. A C log callback
+    /// carries no user data, so they live here.
+    struct WarningLog
+    {
+        std::mutex mutex;
+        std::vector<std::string> lines;
+    };
+
+    WarningLog g_warnings;
+
+    void recordWarning(int level, const char*, const char*, int, const char*, const char* message, va_list args)
+    {
+        if (level != Log::LOGLEVEL_WARNING)
+        {
+            return;
+        }
+
+        char line[1024];
+        std::vsnprintf(line, sizeof(line), message, args);
+        const std::lock_guard<std::mutex> lock(g_warnings.mutex);
+        g_warnings.lines.emplace_back(line);
+    }
+
+    bool warned(const std::string& needle, int timeoutMs)
+    {
+        const int deadline = scaledTimeout(timeoutMs);
+
+        for (int elapsed = 0; elapsed < deadline; elapsed += 20)
+        {
+            {
+                const std::lock_guard<std::mutex> lock(g_warnings.mutex);
+
+                if (std::any_of(g_warnings.lines.begin(), g_warnings.lines.end(),
+                                [&needle](const std::string & line)
+            {
+                return line.find(needle) != std::string::npos;
+                }))
+                {
+                    return true;
+                }
+            }
+
+            std::this_thread::sleep_for(std::chrono::milliseconds {20});
+        }
+
+        return false;
+    }
+} // namespace
+
+TEST_F(FacadeE2eTest, AConfigTheAgentCannotDecodeIsReportedAsAWarning)
+{
+    // Unlike the failed downloads that stay at debug level, a reply this agent can't decode comes
+    // back the same on every notify (#38514), so the operator has to hear about it.
+    const uint16_t port = TLS_PORT + 13;
+    const std::string blob = mergedConfigText(128 * 1024);
+    FakeManager manager {port, KEY_HEX, /*tls=*/true, /*settingsFlipAfter=*/0, /*configBlob=*/blob,
+                         /*statelessMaxBody=*/0, /*rotateKeyAfterNotifies=*/0, /*rotatedKeyHex=*/{},
+                         /*statefulHoldFile=*/{}, /*vdFeedOffset=*/0, /*scanVdRejectFirstNAttempts=*/0,
+                         /*enrollPassword=*/{}, /*enrollForcedStatus=*/0, /*caBundle=*/{},
+                         DownloadOptions {DownloadReply::ZstdCorrupt}};
+
+    ConfigRecorder recorder;
+    hc_config_t config = tlsConfig();
+    config.server_port = port;
+    std::strncpy(config.config_checksum, "0000-local-out-of-date", sizeof(config.config_checksum) - 1);
+    hc_callbacks_t callbacks {};
+    callbacks.on_config_downloaded = onConfigDownloaded;
+    callbacks.user_data = &recorder;
+    callbacks.log = recordWarning;
+
+    hc_handle* handle = hc_create(&config, &callbacks);
+    ASSERT_NE(nullptr, handle);
+    ASSERT_TRUE(hc_start(handle));
+
+    EXPECT_TRUE(warned("could not be decoded: (61)", 5000));
+    hc_destroy(handle);
+    EXPECT_EQ(0, recorder.count.load()); // Nothing undecodable is delivered.
 }
 
 namespace

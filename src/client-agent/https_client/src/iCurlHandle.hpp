@@ -152,6 +152,11 @@ class ICurlHandle
         /// other failure. See HttpResponse::caFileLoadFailed (httpTypes.hpp) for why this
         /// is kept separate from tlsFailureDetail().
         virtual bool caFileLoadFailed() = 0;
+
+        /// Whether the last perform() failed because libcurl couldn't decode the reply's
+        /// Content-Encoding (CURLE_BAD_CONTENT_ENCODING): a corrupt frame, or a coding it wasn't
+        /// built with. False after a success and after any other failure.
+        virtual bool contentDecodingFailed() = 0;
 };
 
 using CurlHandleFactory = std::function<std::unique_ptr<ICurlHandle>()>;
