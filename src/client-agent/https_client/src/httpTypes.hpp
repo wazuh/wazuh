@@ -186,6 +186,9 @@ struct HttpRequestSpec
     std::string contentType;           ///< Emitted as Content-Type when non-empty; empty
     ///< leaves libcurl's default (non-JSON endpoints).
     std::vector<std::string> headers;  ///< Extra headers (auth headers included).
+    std::string acceptEncoding;        ///< When non-empty: sent as Accept-Encoding, and libcurl
+    ///< decodes the reply -- in any coding it was built with, not
+    ///< only these. Empty sends no header and decodes nothing.
     const uint8_t* body {nullptr};     ///< In-memory body (nullptr when file-backed).
     size_t bodyLength {0};
     std::string bodyFilePath;          ///< When non-empty: stream the body from this file.

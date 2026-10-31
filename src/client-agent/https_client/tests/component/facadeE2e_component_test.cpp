@@ -37,12 +37,13 @@
 
 namespace
 {
-    // Every test here binds TLS_PORT + n for n in 0..11 (the fixture itself takes the base), so
-    // this owns 24900-24911. Two constraints, both learned the hard way:
+    // Every test here binds TLS_PORT + n for n in 0..12 (the fixture itself takes the base), so
+    // this owns 24900-24912. Two constraints, both learned the hard way:
     //
     // 1. Keep clear of the other component files' fixed ports -- httpsClient 24853,
     //    tlsVerification 24857-24869, enroll 24870-24874, cacerts 24880-24882, fakeManager
-    //    24890, caRefresh 24930-24938 -- because they all run in ONE gtest binary. A base of
+    //    24890, caRefresh 24930-24938, configDownload 24940-24948 -- because they all run in ONE
+    //    gtest binary. A base of
     //    44861 covered 44861-44872 and collided with four of them.
     // 2. Stay BELOW the ephemeral range (net.ipv4.ip_local_port_range, 32768-60999 on the CI
     //    image). A fixed listener port inside that range is racing every outbound connection the
@@ -717,6 +718,43 @@ TEST_F(FacadeE2eTest, ConfigMismatchDownloadsOverTlsAndDeliversOnce)
     std::lock_guard<std::mutex> lock(recorder.mutex);
     EXPECT_EQ(blob, recorder.content);    // Byte-exact through chunked TLS.
     EXPECT_EQ(64u, recorder.hash.size()); // A SHA-256 hex.
+}
+
+TEST_F(FacadeE2eTest, ZstdEncodedConfigIsDecodedAndDeliveredOnce)
+{
+    // The same path as above with the reply #40900's manager sends when the agent offers zstd
+    // (#38514): one zstd frame, chunked. The consumer has to get the plain merged.mg, exactly once,
+    // with nothing in the facade knowing the bytes were ever encoded.
+    const uint16_t port = TLS_PORT + 12;
+    const std::string blob = mergedConfigText(128 * 1024);
+    FakeManager manager {port, KEY_HEX, /*tls=*/true, /*settingsFlipAfter=*/0, blob, 0, 0, {}, {}, 0, 0, {}, 0, {},
+                         DownloadOptions {DownloadReply::Zstd}};
+
+    ConfigRecorder recorder;
+    hc_config_t config = tlsConfig();
+    config.server_port = port;
+    std::strncpy(config.config_checksum, "0000-local-out-of-date", sizeof(config.config_checksum) - 1);
+    hc_callbacks_t callbacks {};
+    callbacks.on_config_downloaded = onConfigDownloaded;
+    callbacks.user_data = &recorder;
+
+    hc_handle* handle = hc_create(&config, &callbacks);
+    ASSERT_NE(nullptr, handle);
+    ASSERT_TRUE(hc_start(handle));
+
+    ASSERT_TRUE(waitFor(recorder.count, 1, 5000)); // Downloaded, decoded + delivered.
+    std::this_thread::sleep_for(std::chrono::milliseconds {2500});
+    EXPECT_EQ(1, recorder.count.load());
+    hc_destroy(handle);
+
+    httplib::Client peek {std::string {"https://127.0.0.1:"} + std::to_string(port)};
+    peek.enable_server_certificate_verification(false);
+    const auto offered = peek.Get("/peek/download-accept-encoding");
+    ASSERT_TRUE(offered);
+    EXPECT_EQ("zstd", offered->body); // So the reply really was the encoded one.
+
+    std::lock_guard<std::mutex> lock(recorder.mutex);
+    EXPECT_TRUE(recorder.content == blob) << "delivered " << recorder.content.size() << " of " << blob.size() << " bytes";
 }
 
 namespace

@@ -527,6 +527,13 @@ bool CurlPerformer::configureRequest(ICurlHandle& handle, const HttpRequestSpec&
 
     handle.appendHeader("Expect:"); // Disable 100-continue; keep a fixed Content-Length.
 
+    // Not fail-closed like the TLS options: if curl rejects it, no Accept-Encoding goes out and
+    // the manager answers plain, which the caller handles anyway.
+    if (!spec.acceptEncoding.empty())
+    {
+        handle.setOptionString(CurlOption::AcceptEncoding, spec.acceptEncoding);
+    }
+
     // One HEADERFUNCTION slot per handle, so every captured header shares this struct.
     HeaderCapture capture;
     capture.retryAfter = &response.retryAfterSeconds;

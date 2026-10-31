@@ -35,6 +35,7 @@
 
 | Issue | Comment |
 |-------|---------|
+| [#38514](https://github.com/wazuh/wazuh/issues/38514) | Added zstd decoding of `POST /download` configuration responses: the agent offers `Accept-Encoding: zstd` and libcurl decodes the reply. |
 
 #### Changed
 

@@ -81,7 +81,8 @@ namespace
             {CurlOption::SslOptions, CURLOPT_SSL_OPTIONS},
             {CurlOption::FollowLocation, CURLOPT_FOLLOWLOCATION},
             {CurlOption::NoSignal, CURLOPT_NOSIGNAL},
-            {CurlOption::SuppressConnectHeaders, CURLOPT_SUPPRESS_CONNECT_HEADERS}
+            {CurlOption::SuppressConnectHeaders, CURLOPT_SUPPRESS_CONNECT_HEADERS},
+            {CurlOption::AcceptEncoding, CURLOPT_ACCEPT_ENCODING}
         };
         return *map;
     }
@@ -410,16 +411,18 @@ namespace
             bool captureResponseBody(std::string* output, uint64_t maxBytes) override
             {
                 m_bodySink = BodySink {output, maxBytes};
-                return curl_easy_setopt(m_handle, CURLOPT_WRITEFUNCTION, writeTrampoline) == CURLE_OK &&
+                return limitDownload(maxBytes) &&
+                       curl_easy_setopt(m_handle, CURLOPT_WRITEFUNCTION, writeTrampoline) == CURLE_OK &&
                        curl_easy_setopt(m_handle, CURLOPT_WRITEDATA, &m_bodySink) == CURLE_OK;
             }
 
             bool captureResponseToFile(std::FILE* file, uint64_t maxBytes) override
             {
-                // Chunked transfer decoding is native curl; the trampoline
-                // receives decoded bytes and enforces maxBytes.
+                // curl undoes the chunked transfer and any Content-Encoding before the
+                // trampoline, so both caps count the bytes that reach the file.
                 m_fileSink = FileSink {file, 0, maxBytes};
-                return curl_easy_setopt(m_handle, CURLOPT_WRITEFUNCTION, fileWriteTrampoline) == CURLE_OK &&
+                return limitDownload(maxBytes) &&
+                       curl_easy_setopt(m_handle, CURLOPT_WRITEFUNCTION, fileWriteTrampoline) == CURLE_OK &&
                        curl_easy_setopt(m_handle, CURLOPT_WRITEDATA, &m_fileSink) == CURLE_OK;
             }
 
@@ -618,6 +621,16 @@ namespace
             }
 
         private:
+            /// curl's own cap on the response, alongside the sinks' (which stay as the backstop):
+            /// it turns away a reply whose Content-Length is already over the cap before reading
+            /// any of it, and since 8.20 it counts decoded bytes too, so a small zstd frame that
+            /// expands past the cap stops there. curl_off_t, not long: 32 bits on the Windows agent.
+            bool limitDownload(uint64_t maxBytes)
+            {
+                return maxBytes == 0 || // 0 = unlimited, as for the sinks.
+                       curl_easy_setopt(m_handle, CURLOPT_MAXFILESIZE_LARGE, static_cast<curl_off_t>(maxBytes)) == CURLE_OK;
+            }
+
             /// Installs the combined CURLOPT_SSL_CTX_FUNCTION (sslCtxSetupTrampoline) and its
             /// CURLOPT_SSL_CTX_DATA (this), idempotently -- both trustSelfSignedRoot() and
             /// perform() call this, and setting the same function pointer and userptr twice on

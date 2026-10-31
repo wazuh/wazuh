@@ -48,7 +48,8 @@ enum class CurlOption
     /// in curlHandle.cpp does not distinguish which hop a header block came
     /// from), undermining the clock-skew correction's premise of trusting
     /// only whoever completed the TLS handshake to the manager.
-    SuppressConnectHeaders
+    SuppressConnectHeaders,
+    AcceptEncoding  ///< string, offered codings; libcurl then decodes the reply body
 };
 
 /// Value for CurlOption::SslVersion: refuse to negotiate below TLS 1.3.

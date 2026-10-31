@@ -269,6 +269,63 @@ TEST(CurlPerformerTest, NoContentTypeWhenUnset)
     performer.perform(spec);
 }
 
+// The offer goes through curl's own option, never a hand-written header: libcurl only decodes a
+// reply when CURLOPT_ACCEPT_ENCODING is set (#38514).
+TEST(CurlPerformerTest, AcceptEncodingIsHandedToCurlWhenSet)
+{
+    auto mock = std::make_unique<NiceMock<MockCurlHandle>>();
+    auto* handle = mock.get();
+    allowOtherOptions(*handle);
+
+    HttpRequestSpec spec;
+    spec.target = "/download";
+    spec.acceptEncoding = "zstd";
+
+    EXPECT_CALL(*handle, setOptionString(CurlOption::AcceptEncoding, "zstd"));
+    EXPECT_CALL(*handle, appendHeader(::testing::StartsWith("Accept-Encoding:"))).Times(0);
+    EXPECT_CALL(*handle, perform()).WillOnce(Return(TransportStatus::Ok));
+
+    auto performer = makePerformer(makeConfig(HC_VERIFY_NONE), std::move(mock));
+    performer.perform(spec);
+}
+
+// ...and left alone otherwise, so every other request neither offers a coding nor decodes one.
+TEST(CurlPerformerTest, NoAcceptEncodingWhenUnset)
+{
+    auto mock = std::make_unique<NiceMock<MockCurlHandle>>();
+    auto* handle = mock.get();
+    allowOtherOptions(*handle);
+
+    HttpRequestSpec spec;
+    spec.target = "/download";
+
+    EXPECT_CALL(*handle, setOptionString(CurlOption::AcceptEncoding, _)).Times(0);
+    EXPECT_CALL(*handle, perform()).WillOnce(Return(TransportStatus::Ok));
+
+    auto performer = makePerformer(makeConfig(HC_VERIFY_NONE), std::move(mock));
+    performer.perform(spec);
+}
+
+// A curl that rejects the option still sends the request: without the offer the manager answers
+// plain, so failing it would only lose a download that would have worked.
+TEST(CurlPerformerTest, RejectedAcceptEncodingStillPerforms)
+{
+    auto mock = std::make_unique<NiceMock<MockCurlHandle>>();
+    auto* handle = mock.get();
+    allowOtherOptions(*handle);
+
+    HttpRequestSpec spec;
+    spec.target = "/download";
+    spec.acceptEncoding = "zstd";
+
+    EXPECT_CALL(*handle, setOptionString(CurlOption::AcceptEncoding, "zstd")).WillOnce(Return(false));
+    EXPECT_CALL(*handle, perform()).WillOnce(Return(TransportStatus::Ok));
+    EXPECT_CALL(*handle, responseCode()).WillOnce(Return(200));
+
+    auto performer = makePerformer(makeConfig(HC_VERIFY_NONE), std::move(mock));
+    EXPECT_EQ(TransportStatus::Ok, performer.perform(spec).status);
+}
+
 // A GET spec must map to CURLOPT_HTTPGET and carry no body at all -- neither
 // Post nor PostFields/PostFieldSize -- unlike every pre-existing spec, which
 // defaults to Post (MemoryBodyMapsToExactOptions above already pins that

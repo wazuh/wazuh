@@ -41,9 +41,9 @@ target_link_libraries(manager_certs_core PUBLIC ca_bundle)
 
 # --from-master's transport (src/commands/masterTransport.cpp), and nothing more than it needs
 # (C38d/P27): `ext_curl` is an IMPORTED STATIC target with no INTERFACE_LINK_LIBRARIES of its own
-# (src/external/CMakeLists.txt:357-360), so a consumer has to name curl's own dependencies --
-# `ssl`/`crypto` (the GLOBAL aliases of openssl_ssl/openssl_crypto, :106,115) and `ext_zlib` (:157),
-# because this leg configures curl --with-openssl --with-zlib (:296-320). Deliberately NOT
+# (the curl block of src/external/CMakeLists.txt), so a consumer has to name curl's own dependencies --
+# `ssl`/`crypto` (the GLOBAL aliases of openssl_ssl/openssl_crypto), `ext_zlib` and `ext_zstd`,
+# because this leg configures curl --with-openssl --with-zlib --with-zstd. Deliberately NOT
 # `wazuhext`, which would drag sqlite, yaml, pcre2 and bzip2 into a CLI (task_manager's
 # CMakeLists.txt:66-72 is the antipattern), and deliberately not a bare -lcurl either
 # (http-request's :70,76-80): this binary must use the vendored 8.20, not the host's.
@@ -53,7 +53,7 @@ target_link_libraries(manager_certs_core PUBLIC ca_bundle)
 # archives its own dependencies drag in, which links fine with the devcontainer's linker and fails
 # with the package build's -- the quartet and its order come from src/external/CMakeLists.txt, which
 # bundles these same two archives into libwazuhext.
-target_link_libraries(manager_certs_core PRIVATE ext_curl ssl crypto ext_zlib rt dl m pthread)
+target_link_libraries(manager_certs_core PRIVATE ext_curl ssl crypto ext_zlib ext_zstd rt dl m pthread)
 
 # bin/wazuh-manager-certs: inspect / check, and the four writing commands (add / remove /
 # prune-expired / stamp); --from-master lands in a later stage. Installed by InstallLocal(), like
