@@ -90,9 +90,36 @@ TEST(ContentCodingGuardTest, IgnoresTheCodingsOfAnInformationalResponse)
 
     EXPECT_TRUE(admitReply(guard,
     {
-        "HTTP/1.1 103 Early Hints", "Content-Encoding: br, zstd",
+        "HTTP/1.1 103 Early Hints", "Content-Encoding: br, zstd", "",
         "HTTP/1.1 200 OK", "Content-Encoding: zstd"
     }));
+}
+
+// Only the first line of a block is a status line, for curl as for the guard: a header that reads
+// like one must not end the response and reset the count.
+TEST(ContentCodingGuardTest, AHeaderThatReadsLikeAStatusLineIsJustAHeader)
+{
+    ContentCodingGuard guard;
+
+    EXPECT_FALSE(admitReply(guard, {"HTTP/1.1 200 OK", "HTTP/1.1 204: x", "Content-Encoding: zstd, zstd"}));
+}
+
+// curl takes the code right after "HTTP/1.x" and one space or tab, and skips leading blanks.
+TEST(ContentCodingGuardTest, ReadsTheStatusCodeWhereCurlDoes)
+{
+    ContentCodingGuard tabbed;
+    EXPECT_FALSE(admitReply(tabbed, {"HTTP/1.1\t200 204 x", "Content-Encoding: zstd, zstd"}));
+
+    ContentCodingGuard indented;
+    EXPECT_TRUE(admitReply(indented, {" HTTP/1.1 204 No Content", "Content-Encoding: zstd, zstd"}));
+}
+
+// curl builds no decoder from a chunked trailer, which arrives after the body.
+TEST(ContentCodingGuardTest, IgnoresTheTrailersAfterTheBody)
+{
+    ContentCodingGuard guard;
+
+    EXPECT_TRUE(admitReply(guard, {"HTTP/1.1 200 OK", "Content-Encoding: zstd", "", "Content-Encoding: zstd, gzip"}));
 }
 
 TEST(ContentCodingGuardTest, IgnoresTheCodingsOfAResponseWithoutABody)

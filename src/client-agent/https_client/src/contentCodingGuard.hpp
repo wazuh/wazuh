@@ -22,8 +22,9 @@
  * Content-Encoding lines list (up to four), and each zstd decoder gets its own window of up to
  * 128 MiB once the body arrives. Shown the reply's header lines, this admits one coding for the
  * final response ("identity" aside) and refuses a second, so one reply costs at most one window;
- * a refused line has already had its decoders built, without windows. Like curl, it ignores the
- * codings of a response that carries no body (1xx, 204, 304).
+ * a refused line has already had its decoders built, without windows. Like curl, it reads only the
+ * first line of a header block as a status line, ignores the codings of a response that carries no
+ * body (1xx, 204, 304), and builds nothing from the trailers that follow a chunked body.
  */
 class ContentCodingGuard final
 {
@@ -45,6 +46,16 @@ class ContentCodingGuard final
         bool admitCoding(std::string_view coding) noexcept;
         void noteRefused(std::string_view value) noexcept;
 
+        /// Where the next header line falls: a block's status line, one of its headers, or a trailer.
+        enum class Expecting
+        {
+            StatusLine,
+            Headers,
+            Trailers
+        };
+
+        Expecting m_expecting {Expecting::StatusLine};
+        bool m_informational {false};
         bool m_bodyless {false};
         size_t m_codings {0};
         bool m_refused {false};

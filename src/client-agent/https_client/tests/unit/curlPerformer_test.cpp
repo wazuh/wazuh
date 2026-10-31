@@ -349,6 +349,7 @@ TEST(CurlPerformerTest, ARefusedReplyCodingFailsTheAttemptAsADecodingFailure)
     EXPECT_CALL(*handle, captureResponseHeaders(_)).WillOnce(DoAll(SaveArg<0>(&capture), Return(true)));
     EXPECT_CALL(*handle, perform()).WillOnce(Invoke([&capture]
     {
+        EXPECT_TRUE(capture.contentCoding->admitHeader("HTTP/1.1 200 OK\r\n"));
         EXPECT_FALSE(capture.contentCoding->admitHeader("Content-Encoding: zstd, zstd\r\n"));
         return TransportStatus::OtherError;
     }));

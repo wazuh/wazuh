@@ -16,7 +16,8 @@
 namespace
 {
     constexpr std::string_view SPACE {" \t\r\n"};
-    constexpr std::string_view STATUS_PREFIX {"HTTP/"};
+    constexpr std::string_view BLANK {" \t"};
+    constexpr std::string_view HTTP1_PREFIX {"HTTP/1."};
     constexpr std::string_view CONTENT_ENCODING_PREFIX {"Content-Encoding:"};
     /// A coding is a short token: past this, a refused value is the peer's noise, not information.
     constexpr size_t REFUSAL_EXCERPT {64};
@@ -37,21 +38,28 @@ namespace
         });
     }
 
-    bool startsWith(std::string_view line, std::string_view prefix, bool ignoreCase)
+    bool startsWithIgnoringCase(std::string_view line, std::string_view prefix)
     {
-        return line.size() > prefix.size() &&
-               (ignoreCase ? sameToken(line.substr(0, prefix.size()), prefix) : line.substr(0, prefix.size()) == prefix);
+        return line.size() > prefix.size() && sameToken(line.substr(0, prefix.size()), prefix);
     }
 
-    /// The status code of an HTTP/1.x status line ("HTTP/1.1 103 Early Hints"), or 0.
+    /// The status code of a status line read the way curl 8.20 reads it (http.c, http_rw_hd):
+    /// blanks, "HTTP/1.0" or "HTTP/1.1", one space or tab, three digits. 0 for anything else.
     long statusCode(std::string_view statusLine)
     {
-        const auto space = statusLine.find(' ');
-        const auto digits = space == std::string_view::npos ? std::string_view {} :
-                            statusLine.substr(space + 1, 3);
+        const auto start = statusLine.find_first_not_of(BLANK);
+        const auto line = start == std::string_view::npos ? std::string_view {} :
+                          statusLine.substr(start);
+
+        if (line.size() < 12 || line.substr(0, HTTP1_PREFIX.size()) != HTTP1_PREFIX || (line[7] != '0' && line[7] != '1') ||
+                BLANK.find(line[8]) == std::string_view::npos)
+        {
+            return 0;
+        }
+
         long code = 0;
 
-        for (const char digit : digits)
+        for (const char digit : line.substr(9, 3))
         {
             if (!std::isdigit(static_cast<unsigned char>(digit)))
             {
@@ -61,7 +69,13 @@ namespace
             code = code * 10 + (digit - '0');
         }
 
-        return digits.size() == 3 ? code : 0;
+        return code;
+    }
+
+    /// The empty line that ends a header block, as curl tells it apart (http.c, http_rw_hd).
+    bool endsBlock(std::string_view line)
+    {
+        return line.empty() || line.front() == '\r' || line.front() == '\n';
     }
 
     /// Calls `visit` with every non-empty coding of a comma-separated list, until it returns false.
@@ -113,13 +127,24 @@ namespace
 
 bool ContentCodingGuard::admitHeader(std::string_view line) noexcept
 {
-    if (startsWith(line, STATUS_PREFIX, false))
+    if (m_expecting == Expecting::Trailers)
+    {
+        return true; // curl builds no decoder from a chunked trailer.
+    }
+
+    if (endsBlock(line))
+    {
+        m_expecting = m_informational ? Expecting::StatusLine : Expecting::Trailers;
+        return true;
+    }
+
+    if (m_expecting == Expecting::StatusLine)
     {
         startResponse(line);
         return true;
     }
 
-    return !startsWith(line, CONTENT_ENCODING_PREFIX, true) ||
+    return !startsWithIgnoringCase(line, CONTENT_ENCODING_PREFIX) ||
            admitCodings(line.substr(CONTENT_ENCODING_PREFIX.size()));
 }
 
@@ -136,8 +161,10 @@ const std::string& ContentCodingGuard::refusalNote() const
 void ContentCodingGuard::startResponse(std::string_view statusLine) noexcept
 {
     const long code = statusCode(statusLine);
-    m_bodyless = (code >= 100 && code < 200) || code == 204 || code == 304;
+    m_informational = code >= 100 && code < 200;
+    m_bodyless = m_informational || code == 204 || code == 304;
     m_codings = 0;
+    m_expecting = Expecting::Headers;
 }
 
 bool ContentCodingGuard::admitCodings(std::string_view value) noexcept
