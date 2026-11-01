@@ -33,6 +33,7 @@
 #include <cstdio>
 #include <cstring>
 #include <ctime>
+#include <functional>
 #include <future>
 #include <map>
 #include <mutex>
@@ -44,6 +45,26 @@
 #include <thread>
 #include <utility>
 #include <vector>
+
+namespace wazuh::uds_http::detail
+{
+    /**
+     * @brief Test seam for the interim "100 Continue" write.
+     *
+     * @param startWrite Starts the write; it posts onto the session strand, so it may be called from any
+     *                   thread.
+     * @return true when the seam took @p startWrite and will call it later, false to write at once.
+     *
+     * This weak definition is the production one and always writes at once. The unit tests link a strong
+     * definition (test/unit/testHooks.cpp) that can hold the write in flight, which is the only way to
+     * drive a final response into the parked path; nothing else defines it.
+     */
+    __attribute__((weak)) bool interceptInterimWrite(const std::function<void()>& startWrite)
+    {
+        (void)startWrite;
+        return false;
+    }
+} // namespace wazuh::uds_http::detail
 
 namespace
 {
@@ -849,29 +870,38 @@ namespace wazuh::uds_http
                 static constexpr std::string_view INTERIM {"HTTP/1.1 100 Continue\r\n\r\n"};
                 m_interimWriting = true;
                 auto self = shared_from_this();
-                asio::async_write(m_socket,
-                                  asio::buffer(INTERIM.data(), INTERIM.size()),
-                                  asio::bind_executor(m_strand,
-                                                      [self](const std::error_code& ec, std::size_t)
-                                                      {
-                                                          self->m_interimWriting = false;
-                                                          if (ec)
+                auto startWrite = [self]()
+                {
+                    asio::async_write(self->m_socket,
+                                      asio::buffer(INTERIM.data(), INTERIM.size()),
+                                      asio::bind_executor(self->m_strand,
+                                                          [self](const std::error_code& ec, std::size_t)
                                                           {
-                                                              // The peer is gone; nothing can be answered.
-                                                              self->m_parkedResponse.reset();
-                                                              self->m_finished = true;
-                                                              self->m_timer.cancel();
-                                                              self->closeSocket();
-                                                              self->unregisterSelf();
-                                                              return;
-                                                          }
-                                                          if (self->m_parkedResponse)
-                                                          {
-                                                              auto parked = std::move(*self->m_parkedResponse);
-                                                              self->m_parkedResponse.reset();
-                                                              self->deliver(std::move(parked));
-                                                          }
-                                                      }));
+                                                              self->m_interimWriting = false;
+                                                              if (ec)
+                                                              {
+                                                                  // The peer is gone; nothing can be answered.
+                                                                  self->m_parkedResponse.reset();
+                                                                  self->m_finished = true;
+                                                                  self->m_timer.cancel();
+                                                                  self->closeSocket();
+                                                                  self->unregisterSelf();
+                                                                  return;
+                                                              }
+                                                              if (self->m_parkedResponse)
+                                                              {
+                                                                  auto parked = std::move(*self->m_parkedResponse);
+                                                                  self->m_parkedResponse.reset();
+                                                                  self->deliver(std::move(parked));
+                                                              }
+                                                          }));
+                };
+                if (wazuh::uds_http::detail::interceptInterimWrite([self, startWrite]()
+                                                                   { asio::post(self->m_strand, startWrite); }))
+                {
+                    return;
+                }
+                startWrite();
             }
 
             const Route* matchRoute()
