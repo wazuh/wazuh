@@ -218,3 +218,36 @@ TEST_F(IngestServerTest, PublishesItsMetricsUnderServerIngest)
         EXPECT_TRUE(fastmetrics::manager().exists(std::string {"server.ingest."} + suffix)) << suffix;
     }
 }
+
+// With the in-flight budget equal to the body cap (the smallest valid pair), a batch of exactly the cap
+// is accepted: the transport's per-request overhead must not lower the limit below the configured one.
+TEST(IngestServerLimitsTest, ABatchOfExactlyTheBodyCapIsAcceptedWhenTheBudgetEqualsIt)
+{
+    logging::testInit();
+    const IngestLimits limits {32 * MIB, 1024, 32 * MIB};
+    auto router = std::make_shared<testing::NiceMock<MockRouterAPI>>();
+    auto server = makeIngestServer(router,
+                                   std::make_shared<testing::NiceMock<dumper::mocks::MockDumper>>(),
+                                   std::make_shared<agentcache::AgentMetadataCache>(std::chrono::seconds {300}),
+                                   validateIngestLimits(limits));
+    const auto path = socketPath();
+    server->start(path);
+
+    // One header line, then 1 KiB event lines, the last one padded so the body is exactly the cap.
+    std::string body = "H {\"wazuh\":{\"agent\":{\"id\":\"001\"}}}\n";
+    const std::string prefix = "E 1:syslog:";
+    const std::string line = prefix + std::string(1024 - prefix.size() - 1, 'x') + "\n";
+    while (body.size() + 2 * line.size() <= limits.maxBodyBytes)
+    {
+        body += line;
+    }
+    body += prefix + std::string(limits.maxBodyBytes - body.size() - prefix.size() - 1, 'x') + "\n";
+    ASSERT_EQ(limits.maxBodyBytes, body.size());
+
+    const auto atTheCap = roundTrip(path, head(body.size()) + body);
+    const auto overTheCap = roundTrip(path, head(limits.maxBodyBytes + 1));
+    server->shutdown(std::chrono::seconds {1});
+
+    EXPECT_EQ(200, statusOf(atTheCap)) << atTheCap.substr(0, 200);
+    EXPECT_EQ(413, statusOf(overTheCap)) << overTheCap.substr(0, 200);
+}
