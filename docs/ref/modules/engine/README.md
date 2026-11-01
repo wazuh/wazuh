@@ -2579,7 +2579,7 @@ Cumulative `503` answers because the in-flight byte budget was exhausted.
 
 ##### `server.ingest.shed.connections`
 
-Cumulative `503` answers because the connection cap was reached.
+Cumulative `503` answers because no connection slot was free: the server-wide limit (`analysisd.server_enriched_events_max_connections`) was already reached when the connection was accepted, or the share of it open to event batches was full.
 
 **Used for:** detecting connection-cap shedding.
 

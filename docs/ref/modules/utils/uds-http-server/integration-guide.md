@@ -89,7 +89,7 @@ on a server that never started; the destructor calls `stop()`.
 The library does not depend on `wazuh_metrics`; it exposes a `diagnostics()` snapshot
 (budget available/in-flight bytes, in-flight requests, live sessions, sessions per route
 class, cumulative transport-level 503s by cause: budget exhausted, session cap,
-shutdown, no response, and cumulative 413s: `rejectedTooLarge`). These are relaxed atomic
+connection cap (the server-wide limit, refused at accept), shutdown, no response, and cumulative 413s: `rejectedTooLarge`). These are relaxed atomic
 loads, callable at any point between construction and destruction. The 503 and 413 counters
 matter because those requests never reach a handler, so your endpoint metrics cannot see them. Publish those
 fields as pull metrics through your own `wazuh::metrics::IManager`. Mind the pull
