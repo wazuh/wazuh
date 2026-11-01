@@ -887,6 +887,7 @@ async def test_access_log(json_body, q_password, b_password, b_key, c_user,
     mock_blacke2b = MagicMock()
     mock_blacke2b.return_value.hexdigest.return_value = f"blackeb2 {hash}"
     with TestContext(operation=operation), \
+        patch('api.middlewares.ip_block', new={'ip'}), \
         patch('api.middlewares.custom_logging') as mock_custom_logging, \
         patch('hashlib.blake2b', mock_blacke2b), \
         patch('api.middlewares.base64.b64decode', return_value=sec_header[1].encode("latin1") \
@@ -936,6 +937,25 @@ async def test_access_log(json_body, q_password, b_password, b_key, c_user,
                 method in {'GET', 'POST'}:
             mock_log_warning.assert_called_once_with(
                 f"IP blocked due to exceeded number of logins attempts: {mock_req.client.host}")
+
+
+@pytest.mark.asyncio
+async def test_access_log_403_without_ip_block_does_not_warn(mock_req):
+    """A refused login or run_as (403) must not log 'IP blocked' unless the client
+    key is actually in ip_block."""
+    response = MagicMock()
+    response.status_code = 403
+    mock_req.method = 'POST'
+    mock_req.scope = {'path': RUN_AS_LOGIN_ENDPOINT}
+    mock_req.context = {'user': 'wazuh'}
+    mock_req.headers = {}
+    mock_req.query_params = {}
+    mock_req.json = AsyncMock(return_value={})
+    with patch('api.middlewares.ip_block', new=set()), \
+            patch('api.middlewares.custom_logging'), \
+            patch('api.middlewares.logger.warning') as mock_log_warning:
+        await access_log(request=mock_req, response=response, prev_time=0.0)
+    mock_log_warning.assert_not_called()
 
 
 @pytest.mark.asyncio
