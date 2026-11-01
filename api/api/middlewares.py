@@ -315,7 +315,7 @@ async def access_log(request: ConnexionRequest, response: Response, prev_time: t
                    hash_auth_context=hash_auth_context, headers=headers)
     if response.status_code == 403 and \
         path in {LOGIN_ENDPOINT, RUN_AS_LOGIN_ENDPOINT} and \
-            method in {'GET', 'POST'}:
+            method in {'GET', 'POST'} and get_client_key(host) in ip_block:
         logger.warning(f'IP blocked due to exceeded number of logins attempts: {host}')
     if response.status_code == 429:
         logger.warning(f'Maximum number of requests per minute reached. IP: {host}. User: {user}.')
