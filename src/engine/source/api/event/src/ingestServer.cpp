@@ -60,6 +60,7 @@ std::shared_ptr<httpsrv::UdsServer> makeIngestServer(const std::shared_ptr<::rou
     options.logTag = "wazuh-manager-analysisd:ingest-server";
     options.maxConnections = limits.maxConnections;
     options.maxInFlightBytes = limits.maxInFlightBytes;
+    options.maxBodySize = limits.maxBodyBytes;
     options.executorThreads = std::max<std::size_t>(2, cpp_get_nproc() / 4);
     options.executorQueue = limits.maxConnections;
     options.expectContinue = true;
