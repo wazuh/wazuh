@@ -860,7 +860,7 @@ def upload_group_configuration(group_id: str, file_content: str) -> str:
             output_regex = re.findall(pattern=r"\d{4}\/\d{2}\/\d{2} \d{2}:\d{2}:\d{2} verify-agent-conf: ERROR: "
                                               r"\(\d+\): ([\w \/ \_ \- \. ' :]+)", string=e.output.decode())
             if output_regex:
-                raise WazuhError(1114, ' '.join(output_regex))
+                raise WazuhError(1114, ' '.join(output_regex).replace(tmp_file_path, 'agent.conf'))
             else:
                 raise WazuhError(1115, e.output.decode())
         except Exception as e:
