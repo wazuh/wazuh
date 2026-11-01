@@ -70,6 +70,7 @@ the knobs, and those are documented on the consumer's own pages.
 | No dynamic route registration | Routes are immutable after `start()`, which is what makes the hot-path table scan lock-free. The one seemingly-dynamic consumer (content updates on demand) is dynamic at the handler level, not the route level |
 | Identity via config, not template/macros | The extraction requirement was byte-identical logs for the first consumer; a handful of `%s` templates plus injected strings achieves it with zero per-consumer builds |
 | `diagnostics()` instead of built-in metrics | Keeps the library free of the metrics dependency; each consumer publishes through its own `wazuh::metrics::IManager` as pull metrics |
+| A second, instrumented archive (`wazuh_uds_http_server_tsan`) under the engine's ThreadSanitizer build (`ENGINE_ENABLE_TSAN`) | TSAN only sees the synchronization of instrumented code: the plain archive linked into the instrumented engine makes it report races in asio's strand and scheduler that do not exist. The engine (`httpsrv`) links the instrumented copy; every other consumer keeps the plain archive, since it is not built with the sanitizer and could not link an instrumented one. Both come from one CMake function, so their settings cannot drift |
 
 ## Architecture
 
