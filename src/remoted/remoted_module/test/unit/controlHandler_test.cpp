@@ -571,8 +571,8 @@ TEST(ControlHandlerTest, NotifyReturnsGroupsSettingsHashAndTasks)
     EXPECT_EQ(j["agent"]["groups"][0], "default");
     // No merged.mg file exists in the group dir, so config_hash must be "0".
     EXPECT_EQ(j["agent"]["config_hash"], "0");
-    // config_token is always present and never empty, even when nothing resolved: the agent
-    // needs some resource to name on /download, and the next notify re-triggers the download.
+    // config_token is always present and never empty, even when nothing resolved, and the
+    // next notify re-triggers the download.
     EXPECT_EQ(j["agent"]["config_token"], "default");
     EXPECT_TRUE(j.contains("settings_hash"));
     EXPECT_EQ(j["settings_hash"].get<std::string>().size(), 64U); // sha256 hex
@@ -639,7 +639,34 @@ TEST(ControlHandlerTest, NotifyReturnsRealConfigHashWhenMergedMgExists)
     EXPECT_EQ(j["agent"]["config_token"], "default");
 }
 
-// The token is what /download resolves, and config_hash is what the agent verifies the bytes
+// The file exists, so only the group-name grammar can keep config_hash at "0": /download would
+// refuse the same name, and the hash must not promise bytes it will never serve.
+TEST(ControlHandlerTest, PublishesHashZeroWhenAGroupIsOutsideTheGrammar)
+{
+    auto wdb = std::make_shared<WdbRouter>();
+    wdb->onSelectAgentGroup([](const std::string&) { return "ok [{\"group\":\"a:b\"}]"; });
+    HandlerFixture h(wdb, [](const std::string&) { return "{\"tasks\":[]}"; });
+
+    const auto mergedMg = h.env.base / "shared" / "a:b" / "merged.mg";
+    fs::create_directories(mergedMg.parent_path());
+    {
+        std::ofstream f(mergedMg, std::ios::binary);
+        f << "hello";
+    }
+
+    NotifyData data;
+    data.version = "5.0.0";
+    Waiter<HttpResponse> w;
+    h.handler->handleNotify(1, data, [&](const HttpResponse& r) { w.complete(r); });
+    ASSERT_TRUE(w.wait(3000ms));
+    EXPECT_EQ(w.value.status, 200);
+
+    auto j = nlohmann::json::parse(w.value.body);
+    EXPECT_EQ(j["agent"]["config_hash"], "0");
+    EXPECT_EQ(j["agent"]["config_token"], "a:b");
+}
+
+// The token is the selector /download derives for the agent, and config_hash is what the agent verifies the bytes
 // against, so the two must always describe the SAME merged.mg. For a multigroup agent that
 // means the token has to carry every group, comma-joined in wdb's order -- the same CSV the
 // multigroups directory name is hashed from -- and must never be re-sorted or truncated to

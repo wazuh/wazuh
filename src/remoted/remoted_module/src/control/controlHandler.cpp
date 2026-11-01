@@ -696,9 +696,9 @@ namespace remoted::control
                     nlohmann::json response;
                     response["agent"]["groups"] = refreshedEntry->groups;
                     response["agent"]["config_hash"] = configHash;
-                    // Derived from the very same CSV mergedPath (and therefore configHash) came
-                    // from, so the resource the agent asks for can never drift from the hash it
-                    // was told to expect.
+                    // The selector /download derives for this agent, built from the very same CSV
+                    // mergedPath (and therefore configHash) came from, so the file it serves can
+                    // never drift from the hash the agent was told to expect.
                     response["agent"]["config_token"] = makeConfigToken(groupsCsv);
                     response["settings_hash"] = m_hashCache->getSettingsHash();
 

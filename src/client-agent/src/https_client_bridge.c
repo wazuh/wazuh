@@ -401,9 +401,9 @@ static void bridge_apply_cluster_identity(const cJSON *root)
     mdebug1("https_client: cluster identity -> name='%s'.", agent_cluster_name);
 }
 
-/* agent_groups: HTTPS nests the array under "agent":{"groups":[...]} (see
- * ControlStream's groupsCsv(), which reads the same object for /download's
- * resource_id) rather than start_agent.c's flat "agent_groups" array.
+/* agent_groups: HTTPS nests the array under "agent":{"groups":[...]}
+ * (ControlStream's rawGroupsCsv() reads it) rather than start_agent.c's flat
+ * "agent_groups" array.
  * Builds the same CSV shape agent_agent_groups already holds for legacy. */
 static void bridge_apply_agent_groups(const cJSON *root)
 {
@@ -1131,9 +1131,9 @@ static void bridge_on_manager_config_hash(const char *config_hash, void *user_da
  * metadata this republishes -- would go stale forever after the first Startup.
  * Unlike bridge_apply_agent_groups() (Startup-only, walks a cJSON array), this
  * takes the plain CSV the module already built (ControlStream's rawGroupsCsv())
- * -- the RAW value, not /download's "default"-substituted one: empty is
- * meaningful here (see agcom.c's own comment on an empty agent_groups falling
- * back to merged.mg) and must be preserved as empty, not turned into "default".
+ * -- the RAW value: empty is meaningful here (see agcom.c's own comment on an
+ * empty agent_groups falling back to merged.mg) and must be preserved as empty,
+ * not turned into "default".
  * Compares before writing so an unchanged report (the module already dedupes,
  * this is defense in depth) doesn't pay for a metadata republish. */
 /**

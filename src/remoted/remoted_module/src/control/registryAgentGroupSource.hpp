@@ -36,7 +36,8 @@ namespace remoted::control
      *
      * Lives in control/ (which owns the registry) and is consumed through
      * remoted::endpoints::IAgentGroupSource, so the dependency runs endpoints -> interface <-
-     * control and never the other way.
+     * control and never the other way, apart from the pure group helpers (groupConfigPath.hpp,
+     * groupSelector.hpp).
      */
     class RegistryAgentGroupSource : public remoted::endpoints::IAgentGroupSource
     {

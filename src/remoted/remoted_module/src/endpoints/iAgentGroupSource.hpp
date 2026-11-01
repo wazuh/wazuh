@@ -36,9 +36,9 @@ namespace remoted::endpoints
      * @brief Tells an endpoint which shared-configuration resource an authenticated agent may ask
      *        for.
      *
-     * The answer is the selector /control hands that agent as `config_token`, so an endpoint can
-     * authorize a download by string comparison. Kept as an interface (rather than a direct
-     * dependency on the agent registry) so the endpoint layer never sees where the groups come
+     * The answer is the selector /control hands that agent as `config_token`: the endpoint builds
+     * the path from it and compares it with a `resource_id` only when the request carries one. Kept as an interface
+     * (rather than a direct dependency on the agent registry) so the endpoint layer never sees where the groups come
      * from, and so its tests need no control-plane collaborator.
      */
     class IAgentGroupSource
