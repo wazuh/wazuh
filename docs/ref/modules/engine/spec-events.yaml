@@ -189,8 +189,8 @@ paths:
             size the batch before reading it.
         "413":
           description: |
-            The declared `Content-Length` is over `analysisd.server_enriched_events_max_body_bytes` (or over the
-            whole in-flight budget). Sent before the body is read; the producer splits the batch.
+            The declared `Content-Length` is over `analysisd.server_enriched_events_max_body_bytes`. Sent before
+            the body is read; the producer splits the batch.
         "431":
           description: Too many headers or a header too large.
         "503":
