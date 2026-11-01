@@ -333,7 +333,7 @@ UdsServerStats UdsServer::stats() const
     stats.inFlightRequests = transport.budgetInFlightCount;
     stats.sessions = transport.liveSessions;
     stats.shedBudget = transport.rejectedBudgetExhausted;
-    stats.shedSessions = transport.rejectedSessionCap;
+    stats.shedSessions = transport.rejectedSessionCap + transport.rejectedConnectionCap;
     stats.queueDepth = m_impl->executor->depth();
     stats.running = m_impl->executor->running();
     stats.shedExecutorFull = m_impl->shedExecutorFull.load(std::memory_order_relaxed);
