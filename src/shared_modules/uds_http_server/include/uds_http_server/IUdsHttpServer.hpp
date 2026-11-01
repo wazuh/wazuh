@@ -350,6 +350,9 @@ namespace wazuh::uds_http
         std::size_t rejectedSessionCap {0};      ///< A per-class session cap was already reached.
         std::size_t rejectedShutdown {0};        ///< Answered because the server was already stopping.
         std::size_t rejectedNoResponse {0};      ///< A handler dropped the request without answering.
+        /// The server-wide limit (maxConnections) was already reached when the connection was
+        /// accepted: answered before its request is read, so no route class is known yet.
+        std::size_t rejectedConnectionCap {0};
         /// Cumulative 413s: the declared or received body exceeded the route, class or parser cap.
         /// Not a 503 -- the peer is wrong and must split -- but invisible to endpoint metrics too.
         std::size_t rejectedTooLarge {0};

@@ -349,6 +349,7 @@ namespace wazuh::uds_http
             /// The other transport-level 503s, counted for the reason TransportDiagnostics gives.
             std::atomic<std::size_t> budgetRejected {0};
             std::atomic<std::size_t> sessionCapRejected {0};
+            std::atomic<std::size_t> connectionCapRejected {0};
             std::atomic<std::size_t> noResponseRejected {0};
             /// 413s, whichever cap decided them (route/class cap or the parser's own).
             std::atomic<std::size_t> tooLargeRejected {0};
@@ -1584,6 +1585,7 @@ namespace wazuh::uds_http
             if (live > state->config.maxConnections)
             {
                 state->liveSessions.fetch_sub(1, std::memory_order_relaxed);
+                state->connectionCapRejected.fetch_add(1, std::memory_order_relaxed);
                 // A rollback is progress too: stop() waits on this counter, and without the wake it
                 // sits out its whole window whenever the cap was hit as the server was going down.
                 state->noteProgress();
@@ -2289,6 +2291,7 @@ namespace wazuh::uds_http
         }
         snapshot.rejectedBudgetExhausted = state.budgetRejected.load(std::memory_order_relaxed);
         snapshot.rejectedSessionCap = state.sessionCapRejected.load(std::memory_order_relaxed);
+        snapshot.rejectedConnectionCap = state.connectionCapRejected.load(std::memory_order_relaxed);
         snapshot.rejectedShutdown = state.shutdownRejected.load(std::memory_order_relaxed);
         snapshot.rejectedNoResponse = state.noResponseRejected.load(std::memory_order_relaxed);
         snapshot.rejectedTooLarge = state.tooLargeRejected.load(std::memory_order_relaxed);
