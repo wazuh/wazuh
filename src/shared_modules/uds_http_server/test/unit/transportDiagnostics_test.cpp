@@ -109,9 +109,40 @@ TEST(TransportDiagnosticsTest, AllZeroBeforeStart)
     EXPECT_EQ(0U, snapshot.liveSessions);
     EXPECT_EQ(0U, snapshot.rejectedBudgetExhausted);
     EXPECT_EQ(0U, snapshot.rejectedSessionCap);
+    EXPECT_EQ(0U, snapshot.rejectedConnectionCap);
     EXPECT_EQ(0U, snapshot.rejectedShutdown);
     EXPECT_EQ(0U, snapshot.rejectedNoResponse);
     EXPECT_EQ(0U, snapshot.rejectedTooLarge);
+}
+
+/// The server-wide connection limit is enforced at accept, before a request (and so a route class) is
+/// known: connections that never send their head fill it, and the next one is refused there. That 503
+/// is counted apart from the per-class session cap, which never saw a request.
+TEST(TransportDiagnosticsTest, TheConnectionCapRejectIsCounted)
+{
+    const auto path = uniqueSocketPath("diag_conn_cap");
+    auto config = configFor(path);
+    config.maxConnections = 2;
+    config.headerTimeoutSec = 10;
+    auto server = makeUdsHttpServer();
+    server->addRoute(Method::Post,
+                     "/r",
+                     [](std::shared_ptr<const HttpRequest>, std::shared_ptr<IHttpResponder> responder)
+                     { responder->send(HttpResponse::json(200, "{}")); });
+    server->start(config);
+
+    OpenConnection first {path, ""};
+    OpenConnection second {path, ""};
+    ASSERT_TRUE(waitUntil([&] { return server->diagnostics().liveSessions == 2; }));
+
+    const auto refused = sendRaw(path, peerRequest("POST", "/r", "x"));
+
+    EXPECT_EQ(503, refused.status);
+    const auto snapshot = server->diagnostics();
+    EXPECT_EQ(1U, snapshot.rejectedConnectionCap);
+    EXPECT_EQ(0U, snapshot.rejectedSessionCap);
+    EXPECT_EQ(0U, snapshot.rejectedBudgetExhausted);
+    server->stop();
 }
 
 /// A 413 is decided from the declared length before any handler runs, so the endpoint never sees it:
