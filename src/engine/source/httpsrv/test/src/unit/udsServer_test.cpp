@@ -203,6 +203,38 @@ TEST(UdsServerTest, ExecutorFullAnswers503Busy)
     server.shutdown(1s);
 }
 
+// Connections that never send their request fill the server-wide limit; the next one is refused at
+// accept, before any route class is known, and still counts as a connection shed.
+TEST(UdsServerTest, ConnectionCapRejectCountsAsAConnectionShed)
+{
+    const auto path = socketPath("cap");
+    auto opts = options();
+    opts.maxConnections = 2;
+    UdsServer server {opts};
+    server.addRoute(Method::POST, "/events", [](const Request&, Response&) {});
+    server.start(path);
+
+    const int first = connectTo(path);
+    const int second = connectTo(path);
+    ASSERT_GE(first, 0);
+    ASSERT_GE(second, 0);
+    const auto deadline = std::chrono::steady_clock::now() + 5s;
+    while (server.stats().sessions < 2 && std::chrono::steady_clock::now() < deadline)
+    {
+        std::this_thread::sleep_for(1ms);
+    }
+    ASSERT_EQ(2U, server.stats().sessions);
+
+    const auto refused = roundTrip(path, post(path, "/events", "x"));
+
+    EXPECT_EQ(503, statusOf(refused));
+    EXPECT_EQ(1U, server.stats().shedSessions);
+    EXPECT_EQ(0U, server.stats().shedBudget);
+    ::close(first);
+    ::close(second);
+    server.shutdown(1s);
+}
+
 TEST(UdsServerTest, HandlerExceptionAnswers500Text)
 {
     const auto path = socketPath("throw");
