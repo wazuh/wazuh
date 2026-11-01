@@ -16,6 +16,14 @@ if(NOT TARGET wazuh_uds_http_server)
                    ${CMAKE_BINARY_DIR}/shared_modules/uds_http_server EXCLUDE_FROM_ALL)
 endif()
 
+# Under ThreadSanitizer the engine links the transport's instrumented copy (see
+# shared_modules/uds_http_server/CMakeLists.txt): with the plain archive TSAN reports false races.
+if(ENGINE_ENABLE_TSAN)
+  set(HTTPSRV_UDS_TRANSPORT wazuh_uds_http_server_tsan)
+else()
+  set(HTTPSRV_UDS_TRANSPORT wazuh_uds_http_server)
+endif()
+
 add_library(httpsrv STATIC
     ${SRC_DIR}/server.cpp
     ${SRC_DIR}/boundedExecutor.cpp
@@ -36,7 +44,7 @@ target_link_libraries(httpsrv
     eMessages
 
     PRIVATE
-    wazuh_uds_http_server
+    ${HTTPSRV_UDS_TRANSPORT}
     fastmetrics::fastmetrics
 )
 
