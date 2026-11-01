@@ -4,7 +4,12 @@
 
 import sys
 from os import path
-import botocore
+try:
+    import botocore
+except ImportError:
+    print('ERROR: boto3 module is required.')
+    sys.exit(4)
+
 import re
 
 from aws_bucket import INVALID_CREDENTIALS_ERROR_CODE, INVALID_CREDENTIALS_ERROR_MESSAGE

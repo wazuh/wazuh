@@ -557,3 +557,24 @@ def test_aws_cloudwatchlogs_get_log_streams_logs_error_on_endpoint_connection_er
 
     assert result == []
     mock_error.assert_called_once_with(str(err))
+
+
+def test_cloudwatchlogs_import_error_exits_4():
+    """Importing cloudwatchlogs without botocore prints an error and exits with code 4."""
+    import builtins
+    import runpy
+    real_import = builtins.__import__
+
+    def mock_import(name, *args, **kwargs):
+        if name == 'botocore' or name.startswith('botocore.'):
+            raise ImportError
+        return real_import(name, *args, **kwargs)
+
+    module_path = os.path.realpath(os.path.join(os.path.dirname(__file__), '..', 'services', 'cloudwatchlogs.py'))
+    with patch('builtins.__import__', side_effect=mock_import), \
+            patch('builtins.print') as mock_print, \
+            pytest.raises(SystemExit) as e:
+        runpy.run_path(module_path, run_name='cloudwatchlogs_import_error_test')
+
+    assert e.value.code == 4
+    mock_print.assert_any_call('ERROR: boto3 module is required.')

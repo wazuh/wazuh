@@ -2,9 +2,14 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-import botocore
 import sys
 from os import path
+
+try:
+    import botocore
+except ImportError:
+    print('ERROR: boto3 module is required.')
+    sys.exit(4)
 
 sys.path.append(path.join(path.dirname(path.realpath(__file__)), '..', 'subscribers'))
 import s3_log_handler

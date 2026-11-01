@@ -7,7 +7,11 @@ import re
 import sqlite3
 import sys
 
-import botocore
+try:
+    import botocore
+except ImportError:
+    print('ERROR: boto3 module is required.')
+    sys.exit(4)
 from datetime import datetime
 from datetime import timezone
 from os import path
