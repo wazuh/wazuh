@@ -845,6 +845,12 @@ namespace
         /// and for a reason that does not apply here: it has to notice one
         /// DEPARTING, which no event reports.
         bool unkeyedKnown {false};
+
+        /// The connector has a verdict coming but has not reached it, which
+        /// forces both flags above to false. Carried on the listing rather
+        /// than read back from the bridge: this is a property of THIS reply,
+        /// and asking afterwards would answer about whatever reply came last.
+        bool settling {false};
     };
 
     /// Called for every container the connector knows of, keyed or not --
@@ -900,6 +906,7 @@ namespace
         // flag the previous run gave it.
         if (listStatus.admission_pending != 0)
         {
+            listing.settling = true;
             fim_container_set_admission_pending(1);
             return listed;
         }
@@ -1454,6 +1461,16 @@ extern "C" void fim_run_container_baseline(void)
         {
             LogError("Container FIM baseline: container connector unavailable, "
                      "skipping stale-container cleanup to avoid false deletions.");
+        }
+        else if (!listing.complete && !listing.unkeyedKnown && listing.settling)
+        {
+            // The connector is still settling, which forces both flags to 0 and
+            // so lands here looking exactly like a version mismatch. It is not
+            // one, and it happens on every agent restart: warning about it
+            // taught operators to ignore the message below, which means a real
+            // one.
+            LogDebug("Container FIM baseline: the container connector is still settling; deferring "
+                     "stale-container cleanup until it has a verdict.");
         }
         else if (!listing.complete && !listing.unkeyedKnown)
         {

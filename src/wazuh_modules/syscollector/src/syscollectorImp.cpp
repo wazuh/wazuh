@@ -2989,6 +2989,22 @@ void Syscollector::scanContainerBaseline(const std::vector<std::string>& only_th
                       "Container connector unavailable; skipping stale-container cleanup "
                       "to avoid deleting rows for containers that still exist.");
     }
+    else if (!unkeyedKnown && !listComplete && m_admissionPending)
+    {
+        // The connector is still settling, which forces both flags to 0 and so
+        // lands here looking exactly like a version mismatch. It is not one,
+        // and it happens on every agent restart: warning about it taught
+        // operators to ignore the one message below that means a real one.
+        //
+        // Read without m_limitsMutex, unlike isContainerAdmittedLocked(). The
+        // only writer is pollContainerAdmission(), reached from this function
+        // and from the lifecycle-delta path, and syncLoop() dispatches both on
+        // one thread -- the notify thread only sets a flag and wakes it. A lock
+        // here would guard a value this thread wrote itself.
+        m_logFunction(LOG_DEBUG,
+                      "Container connector is still settling; deferring stale-container cleanup until it has "
+                      "a verdict.");
+    }
     else if (!unkeyedKnown && !listComplete)
     {
         // The connector answered, said it is still withholding running

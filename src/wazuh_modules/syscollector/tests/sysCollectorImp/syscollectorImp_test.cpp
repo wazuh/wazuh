@@ -8119,7 +8119,7 @@ TEST_F(SyscollectorImpTest, LoweringTheCapRetractsOnADeltaTickThatRewalksNothing
 #endif
 }
 
-// V1, syscollector half. The window after the connector restarts, in which it
+// The window after the connector restarts, in which it
 // has a verdict coming but has not reached it.
 //
 // The reply then carries no per-container decision at all, and the `synced`
@@ -8150,6 +8150,7 @@ TEST_F(SyscollectorImpTest, APendingVerdictLeavesTheStoredAdmissionAlone)
     EXPECT_CALL(*info, releaseThreadResources()).Times(testing::AnyNumber());
     auto& module = Syscollector::instance();
     std::vector<Operation_t> events;
+    LogCapture logCapture;
     module.init(
         info,
         reportFunction,
@@ -8157,7 +8158,10 @@ TEST_F(SyscollectorImpTest, APendingVerdictLeavesTheStoredAdmissionAlone)
     {
         events.push_back(op);
     },
-    logFunction,
+    [&logCapture](modules_log_level_t level, const std::string & log)
+    {
+        logCapture.capture(level, log);
+    },
     SYSCOLLECTOR_DB_PATH,
     "",
     "",
@@ -8240,7 +8244,15 @@ TEST_F(SyscollectorImpTest, APendingVerdictLeavesTheStoredAdmissionAlone)
     admitted["b"] = true;
     events.clear();
 
+    logCapture.clear();
     module.runContainerBaselinePass();
+
+    // A settling connector forces `complete` and `unkeyed_known` to 0, which is
+    // indistinguishable from a connector too old to report what it could not
+    // key -- and that one deserves a warning while this one does not. Warning
+    // on every agent restart is what taught operators to ignore it.
+    EXPECT_FALSE(logCapture.contains(LOG_WARNING, "could not identify"))
+            << "a connector that is merely settling is not a version mismatch";
 
     EXPECT_EQ(module.m_admittedContainers.count("b"), 0u)
             << "a default is not a decision; the stored refusal stands";

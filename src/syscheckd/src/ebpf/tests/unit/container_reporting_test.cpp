@@ -837,7 +837,7 @@ TEST(ContainerDrainAdmissionView, AnIncompleteListUpsertsAndACompleteOneReplaces
             << "a container the partial list names is updated from it";
 }
 
-// V1. The window after an agent restart, during which the connector has a
+// The window after an agent restart, during which the connector has a
 // verdict coming but has not reached it.
 //
 // The reply then carries no per-record `synced` at all -- and ContainerRef and
@@ -1527,7 +1527,7 @@ TEST_F(ContainerReportingTest, AFailedListingLeavesTheAdmissionSnapshotAlone)
     EXPECT_EQ(fim_container_admission_is_stale("b"), 0) << "the previous answer stands";
 }
 
-// W1/W2. The connector and both consumers share a process, so the agent
+// The connector and both consumers share a process, so the agent
 // restart that opens the connector's settling window starts the consumers from
 // scratch too -- with nothing installed, and with the rows the cap refused last
 // run still at sync=0 in the database.

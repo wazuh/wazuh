@@ -903,7 +903,7 @@ namespace fim_container_events
 
             syncAllowlist(plan.installWholeList ? router.applyContainerList(plan.containers)
                           : router.applyContainerDelta(plan.events));
-            publishAdmission(plan.admissionView, plan.enumerated);
+            publishAdmission(plan.admissionView, plan.enumerated, delta.admissionPending);
 
             /* Advanced only after the plan has been applied. A crash in between
              * replays it, which is harmless — the map converges to the same place
@@ -968,7 +968,7 @@ namespace fim_container_events
          * installs admission from it, so nothing is lost by waiting: the view is
          * still tracked meanwhile, and the first change AFTER release publishes
          * it. */
-        void publishAdmission(const std::map<std::string, bool>& updated, bool enumerated)
+        void publishAdmission(const std::map<std::string, bool>& updated, bool enumerated, bool settling)
         {
             const bool changed = (updated != admission_view);
             admission_view = updated;
@@ -988,10 +988,14 @@ namespace fim_container_events
                  * install admission in the meantime, and no longer can -- it
                  * refuses the same reply for the same reason this does.
                  *
-                 * Reaching this at all now means a connector too old to say
-                 * what it could not key, so it is a version mismatch rather
-                 * than something that clears on its own. */
-                if (!enumerated && staging.released() && !admission_deferral_logged)
+                 * Reaching this means a connector too old to say what it could
+                 * not key, so it is a version mismatch rather than something
+                 * that clears on its own -- which is exactly why `settling` is
+                 * excluded. A connector that reports `admission_pending` is
+                 * current and IS about to clear on its own, and warning about a
+                 * version mismatch on every agent restart taught operators to
+                 * ignore the one message that means a real one. */
+                if (!enumerated && !settling && staging.released() && !admission_deferral_logged)
                 {
                     admission_deferral_logged = true;
                     LogWarn("Container FIM: holding the admission snapshot because the container connector does "
