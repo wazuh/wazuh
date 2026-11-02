@@ -910,7 +910,7 @@ def test_verify_lock_needs_both_the_lock_and_the_inventory(tmp_path):
 
 
 def subset(*names):
-    """The real entries named plus the ones they link (curl links brotli), so their keys match src/deps.lock.mk."""
+    """The real entries named plus the ones they link (curl links brotli and zstd), so their keys match src/deps.lock.mk."""
     document = copy.deepcopy(deps.load(deps.DEFAULT_INVENTORY))
     entries = {e["name"]: e for e in document["entries"]}
     wanted, pending = set(names), list(names)
@@ -934,12 +934,12 @@ def tree(root):
 def test_mirror_local_and_pool(tmp_path):
     document = subset("curl", "openssl", "zlib")
     refs = pool_tree(tmp_path / "local", {"curl": platform_files("curl")}, document)
-    pool_tree(tmp_path / "pool", {n: platform_files(n) for n in ("brotli", "openssl", "zlib")}, document)
+    pool_tree(tmp_path / "pool", {n: platform_files(n) for n in ("brotli", "openssl", "zlib", "zstd")}, document)
     dest = tmp_path / "dest"
     missing = deps.mirror(document, dest, tmp_path / "local", (tmp_path / "pool").as_uri(), "agent", "linux/amd64")
     assert missing == []
     assert tree(dest / refs["curl"]) == tree(tmp_path / "local" / refs["curl"])
-    for name in ("brotli", "openssl", "zlib"):
+    for name in ("brotli", "openssl", "zlib", "zstd"):
         assert tree(dest / refs[name]) == [f"linux/amd64/{name}.tar.gz", "manifest.json", f"sources/{name}.tar.gz"]
         assert (dest / refs[name] / f"sources/{name}.tar.gz").read_bytes() == f"{name} sources\n".encode()
         manifest = json.loads((dest / refs[name] / "manifest.json").read_text())
@@ -949,7 +949,7 @@ def test_mirror_local_and_pool(tmp_path):
 def test_mirror_missing(tmp_path):
     document = subset("curl", "openssl", "zlib")
     refs = pool_tree(tmp_path / "local", {"curl": platform_files("curl")}, document)
-    pool_tree(tmp_path / "pool", {n: platform_files(n) for n in ("brotli", "zlib")}, document)
+    pool_tree(tmp_path / "pool", {n: platform_files(n) for n in ("brotli", "zlib", "zstd")}, document)
     missing = deps.mirror(document, tmp_path / "dest", tmp_path / "local", (tmp_path / "pool").as_uri(), "agent",
                           "linux/amd64")
     assert missing == [refs["openssl"]]
@@ -2396,7 +2396,8 @@ def test_manifest_pool(tmp_path):
     assert deps.manifest_pool(document, tmp_path, "c" * 40, "123", run_platforms=["linux/amd64"]) == []
     result = json.loads((tmp_path / refs["curl"] / "manifest.json").read_text())
     assert (result["schema"], result["ref"], result["inputs_hash"]) == (2, refs["curl"], deps.keys(document)["curl"][1])
-    assert result["links"] == {"brotli": refs["brotli"], "openssl": refs["openssl"], "zlib": refs["zlib"]}
+    assert result["links"] == {"brotli": refs["brotli"], "openssl": refs["openssl"], "zlib": refs["zlib"],
+                              "zstd": refs["zstd"]}
     assert result["files"] == {"linux/amd64/curl.tar.gz": hashlib.sha256(b"b").hexdigest(),
                                "sources/curl.tar.gz": hashlib.sha256(b"s").hexdigest()}
     assert (result["wazuh_commit"], result["workflow_run"], result["entry"]["name"]) == ("c" * 40, "123", "curl")
@@ -2636,7 +2637,7 @@ def test_consolidate_without_legs(consolidate_repo, tmp_path):
 def test_mirror_twice_and_unserved_file(tmp_path):
     d = subset("curl", "openssl", "zlib")
     pool_tree(tmp_path / "local", {"curl": platform_files("curl")}, d)
-    pool_tree(tmp_path / "pool", {n: platform_files(n) for n in ("brotli", "openssl", "zlib")}, d)
+    pool_tree(tmp_path / "pool", {n: platform_files(n) for n in ("brotli", "openssl", "zlib", "zstd")}, d)
     args = (tmp_path / "local", (tmp_path / "pool").as_uri(), "agent", "linux/amd64")
     assert deps.mirror(d, tmp_path / "dest", *args) == []
     assert deps.mirror(d, tmp_path / "dest", *args) == []
@@ -2739,7 +2740,7 @@ def test_mirror_retries(tmp_path, monkeypatch):
     import http.server
     document = subset("curl", "openssl", "zlib")
     root = tmp_path / "pool"
-    refs = pool_tree(root, {n: platform_files(n) for n in ("brotli", "curl", "zlib")}, document)
+    refs = pool_tree(root, {n: platform_files(n) for n in ("brotli", "curl", "zlib", "zstd")}, document)
     flaky = {f"/{refs['zlib']}/manifest.json", f"/{refs['zlib']}/sources/zlib.tar.gz"}
     hits = {}
 
