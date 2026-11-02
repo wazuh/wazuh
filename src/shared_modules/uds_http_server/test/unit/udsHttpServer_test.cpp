@@ -1243,6 +1243,28 @@ TEST(UdsHttpServerTest, ExpectContinueOnOversizeAnswers413WithoutInterim)
     EXPECT_EQ(std::string::npos, result.raw.find("100 Continue"));
 }
 
+TEST(UdsHttpServerTest, ExpectContinueCustomTooLargeComesWithout100)
+{
+    const auto path = uniqueSocketPath("ex413c");
+    auto config = configFor(path);
+    config.expectContinue = true;
+    auto server = makeUdsHttpServer();
+    wazuh::uds_http::RouteOptions options {wazuh::uds_http::RouteClass::Data};
+    options.maxBodyBytes = 16;
+    options.payloadTooLargeBody = "Too big.";
+    server->addRoute(Method::Post, "/events", bodyEchoHandler(), options);
+    server->start(config);
+
+    const auto result =
+        sendHeadThenBody(path, headExpecting("/events", 1024, "100-continue"), "", std::chrono::milliseconds {300});
+
+    ASSERT_TRUE(result.connected);
+    EXPECT_EQ(0U, result.beforeBody.rfind("HTTP/1.1 413 ", 0)) << result.beforeBody;
+    EXPECT_EQ(std::string::npos, result.raw.find("100 Continue"));
+    EXPECT_EQ(std::string::npos, result.raw.find("HTTP/1.1 ", 1)) << "exactly one status line:\n" << result.raw;
+    EXPECT_NE(std::string::npos, result.raw.find("\r\n\r\nToo big.")) << result.raw;
+}
+
 TEST(UdsHttpServerTest, ExpectContinueOnBudgetExhaustedAnswers503WithoutInterim)
 {
     const auto path = uniqueSocketPath("ex503");
