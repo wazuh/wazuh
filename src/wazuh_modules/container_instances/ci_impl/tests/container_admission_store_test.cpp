@@ -505,6 +505,39 @@ TEST(ContainerAdmissionStoreTest, AColdPathResolveLiftsAWrittenOffContainerAtOnc
     EXPECT_TRUE(store.unkeyedContainerIds().empty());
 }
 
+// A spell ends wherever visibility changes, including on a path with no
+// snapshot behind it.
+//
+// "b" is unkeyed for a while, resolves through the on-demand path, then loses
+// its key again. Ending spells only inside applySnapshot() left the old start
+// time and count in place, so the FIRST snapshot of the new spell wrote "b"
+// off -- it was already past the grace and already at two snapshots. On
+// Kubernetes, where snapshots can be minutes apart, this is easy to hit.
+TEST(ContainerAdmissionStoreTest, AResolveBetweenSnapshotsEndsTheUnkeyedSpell)
+{
+    auto store = MakeStore();
+    store.setSyncLimit(1);
+
+    const auto start = Now();
+    store.applySnapshot(kDocker, Snapshot({"b"}), {}, start);
+    ASSERT_EQ(store.admittedIds(), (std::set<std::string> {"b"}));
+
+    // Two snapshots of a long unkeyed spell, with "a" waiting for the slot.
+    const auto unkeyed = []
+    { return std::vector<ContainerRecord> {MakeRecord("a", InodeFor("a")), MakeRecord("b", 0)}; };
+    store.applySnapshot(kDocker, unkeyed(), {}, start + std::chrono::seconds {1});
+    store.applySnapshot(kDocker, unkeyed(), {}, start + UNKEYED_WRITE_OFF_GRACE + std::chrono::seconds {1});
+    ASSERT_EQ(store.admittedIds(), (std::set<std::string> {"b"})) << "two snapshots is not three";
+
+    // An on-demand resolve, with no snapshot behind it, and then the key is
+    // lost again. This is snapshot one of a BRAND NEW spell.
+    store.upsertResolved(kDocker, MakeRecord("b", InodeFor("b")));
+    store.applySnapshot(kDocker, unkeyed(), {}, start + UNKEYED_WRITE_OFF_GRACE + std::chrono::seconds {2});
+
+    EXPECT_EQ(store.admittedIds(), (std::set<std::string> {"b"}))
+        << "the old spell's clock and count must not carry into the new one";
+}
+
 // V2: the leftover slot, and the fact that resolving the container that wants
 // it used to make no difference.
 //

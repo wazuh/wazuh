@@ -773,21 +773,9 @@ namespace
     {
         const auto sets = containerIdSetsLocked();
 
-        for (auto it = m_unkeyedSince.begin(); it != m_unkeyedSince.end();)
-        {
-            // Published, or gone. Either way the spell is over, and the entry
-            // goes rather than being frozen: a container that resolves after
-            // being written off is back at its normal rank immediately, and one
-            // that goes unkeyed again starts its tally from zero rather than
-            // being written off on the first snapshot of the new spell.
-            //
-            // Across every source, unlike the tally below: visibility is a
-            // question about the container, and one source keying it ends the
-            // spell however many others still cannot.
-            const bool stillUnkeyed = sets.known.count(it->first) != 0 && sets.visible.count(it->first) == 0;
-            it = stillUnkeyed ? std::next(it) : m_unkeyedSince.erase(it);
-        }
-
+        // Spells END in recomputeAdmittedLocked(), not here. This runs only on
+        // a snapshot, and visibility also changes on the cold-path resolve.
+        //
         // THIS source's records only. The count is meant to say "the resolver
         // has been asked again and still cannot key this container", and only
         // the source that owns a container re-scans it. Walking every known id
@@ -812,6 +800,11 @@ namespace
 
         for (const auto& [containerId, spell] : m_unkeyedSince)
         {
+            if (sets.visible.count(containerId) != 0)
+            {
+                continue; // Publishing again; the recompute below ends its spell.
+            }
+
             // Both, and the AND is the point -- see UNKEYED_WRITE_OFF_SNAPSHOTS.
             // The count proves the resolver really has been asked again; the
             // duration stops a burst of snapshots from writing a container off
@@ -879,6 +872,30 @@ namespace
         for (auto it = m_everPublished.begin(); it != m_everPublished.end();)
         {
             it = (sets.known.count(*it) != 0) ? std::next(it) : m_everPublished.erase(it);
+        }
+
+        // End the unkeyed spell of anything that publishes now or has left.
+        // Here rather than beside the tally in updateUnkeyedWriteOffLocked(),
+        // because that runs only on a snapshot while the cold-path resolve
+        // changes visibility without one: a container resolved on demand and
+        // then unkeyed again before the next snapshot carried the OLD spell's
+        // start time and count, and was written off on the first snapshot of
+        // the new one. On Kubernetes, where snapshots can be minutes apart,
+        // that is an easy sequence to hit.
+        //
+        // Across every source, unlike the tally: visibility is a question about
+        // the container, and one source keying it ends the spell however many
+        // others still cannot.
+        for (auto it = m_unkeyedSince.begin(); it != m_unkeyedSince.end();)
+        {
+            if (sets.known.count(it->first) != 0 && sets.visible.count(it->first) == 0)
+            {
+                ++it;
+                continue;
+            }
+
+            m_writtenOffUnkeyed.erase(it->first);
+            it = m_unkeyedSince.erase(it);
         }
 
         if (!m_admissionSettled)

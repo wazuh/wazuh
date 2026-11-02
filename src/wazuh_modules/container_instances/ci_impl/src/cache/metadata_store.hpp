@@ -244,8 +244,10 @@ namespace wazuh::container_instances
 
         /// How long each running, unkeyed container has been that way, and
         /// across how many snapshots of its own source. Entries appear when a
-        /// container is known and not visible, and are erased the moment it
-        /// publishes or leaves.
+        /// container is known and not visible, and are erased by
+        /// recomputeAdmittedLocked() the moment it publishes or leaves -- there
+        /// rather than beside the tally, so a cold-path resolve ends a spell
+        /// too.
         struct UnkeyedSpell
         {
             TimePoint since;
