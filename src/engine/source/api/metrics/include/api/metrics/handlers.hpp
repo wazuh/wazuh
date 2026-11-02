@@ -53,10 +53,16 @@ inline void registerHandlers(const std::shared_ptr<fastmetrics::IManager>& metri
                              const std::string& daemonName,
                              const std::string& uptimeISO)
 {
-    server->addRoute(httpsrv::Method::POST, "/metrics/enable", enableMetric(metricsManager));
-    server->addRoute(httpsrv::Method::POST, "/metrics/get", getMetric(metricsManager));
-    server->addRoute(httpsrv::Method::POST, "/metrics/list", listMetrics(metricsManager));
-    server->addRoute(httpsrv::Method::POST, "/metrics/dump", dumpMetrics(metricsManager, daemonName, uptimeISO));
+    // Liveness routes answered on the I/O thread (they only touch the in-memory registry), so metrics stay
+    // readable while long API requests hold every worker.
+    httpsrv::RouteOptions liveness;
+    liveness.cls = httpsrv::RouteClass::Liveness;
+    liveness.runInline = true;
+    server->addRoute(httpsrv::Method::POST, "/metrics/enable", enableMetric(metricsManager), liveness);
+    server->addRoute(httpsrv::Method::POST, "/metrics/get", getMetric(metricsManager), liveness);
+    server->addRoute(httpsrv::Method::POST, "/metrics/list", listMetrics(metricsManager), liveness);
+    server->addRoute(
+        httpsrv::Method::POST, "/metrics/dump", dumpMetrics(metricsManager, daemonName, uptimeISO), liveness);
 }
 
 } // namespace api::metrics::handlers
