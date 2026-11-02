@@ -186,38 +186,65 @@ TEST(ContainerAdmissionTest, AnUnkeyedContainerTakesAFreeSlotNobodyElseWants)
 TEST(ContainerAdmissionTest, AnIncumbentKeepsItsSlotWhileItHasNoKey)
 {
     // "b" was admitted and is now restarting: still known, not publishable for
-    // the moment. Filling from `visible` must not be read as a departure --
-    // "a" sorts below it and would take the slot, which withdraws every
-    // document "b" holds and creates "a"'s in their place, once per restart.
+    // the moment, and it HAS published before. Filling from `visible` must not
+    // be read as a departure -- "a" sorts below it and would take the slot,
+    // which withdraws every document "b" holds and creates "a"'s in their
+    // place, once per restart.
     const auto known = ids({"a", "b"});
     const auto restarting = ids({"a"});
 
-    EXPECT_EQ(admitContainers(known, restarting, ids({"b"}), 1), ids({"b"}));
+    EXPECT_EQ(admitContainers(known, restarting, ids({"b"}), 1, /*publishedBefore=*/ids({"b"})), ids({"b"}));
 
     // ...and when its key comes back it is still the incumbent, so nothing
     // moved on the manager at all.
-    EXPECT_EQ(admitContainers(known, known, ids({"b"}), 1), ids({"b"}));
+    EXPECT_EQ(admitContainers(known, known, ids({"b"}), 1, ids({"b"})), ids({"b"}));
 }
 
-// The deliberate limit of the rule, pinned so it cannot be tightened by
-// accident. An incumbent that becomes unkeyable and NEVER comes back keeps its
-// slot for as long as it exists, publishing nothing.
+// The other half of the same question, and the answer is the opposite one.
 //
-// That is the price of deciding incumbency by existence, and it is the right
-// side of the trade: from here a container that will never be keyed again and
-// one that is three seconds into a restart look identical, and treating either
-// as a departure hands its slot away and withdraws every document it holds.
-// Only the runtime removing it frees the slot -- see the test below.
-TEST(ContainerAdmissionTest, AnIncumbentThatNeverRegainsAKeyKeepsItsSlot)
+// "b" holds a slot it took when the slot was free and nothing else wanted it
+// -- it has never been keyed, so it has never published a document. Protecting
+// it costs exactly what the protection above buys: "a" can publish, wants the
+// slot, and used to be refused for ever. Nothing but removal, a cap increase or
+// a shrink corrected it, and resolving "a" -- the obvious thing an operator
+// would try -- did not.
+TEST(ContainerAdmissionTest, AnIncumbentThatNeverPublishedYieldsToAContainerThatCan)
 {
     const auto known = ids({"a", "b"});
-    const auto visible = ids({"a"}); // "b" has no key, and will not get one
+    const auto visible = ids({"a"});
 
-    EXPECT_EQ(admitContainers(known, visible, ids({"b"}), 1), ids({"b"}));
+    EXPECT_EQ(admitContainers(known, visible, ids({"b"}), 1, /*publishedBefore=*/NONE), ids({"a"}));
+}
 
-    // Still true however many times the rule runs: it is not a decision that
-    // decays, and "a" never takes the slot while "b" exists.
-    EXPECT_EQ(admitContainers(known, visible, admitContainers(known, visible, ids({"b"}), 1), 1), ids({"b"}));
+// Protection is bounded, not permanent. "b" published once and has been unkeyed
+// ever since; the caller has counted the snapshots and the seconds and stopped
+// expecting a key. Without the write-off "b" holds the node's only slot for the
+// life of the process while publishing nothing.
+TEST(ContainerAdmissionTest, AWrittenOffIncumbentYieldsEvenThoughItPublishedBefore)
+{
+    const auto known = ids({"a", "b"});
+    const auto visible = ids({"a"});
+
+    // Up to the threshold the incumbent is protected...
+    EXPECT_EQ(admitContainers(known, visible, ids({"b"}), 1, ids({"b"})), ids({"b"}));
+
+    // ...and past it the slot goes to the container that can use it.
+    EXPECT_EQ(admitContainers(known, visible, ids({"b"}), 1, ids({"b"}), /*writtenOff=*/ids({"b"})), ids({"a"}));
+}
+
+// Written off means LAST, not banned. Nothing else wants the second slot, and
+// refusing "b" there would buy nothing while costing a retract-and-recreate
+// cycle the moment its key finally arrives.
+TEST(ContainerAdmissionTest, AWrittenOffContainerStillTakesASlotNobodyElseWants)
+{
+    const auto known = ids({"a", "b"});
+    const auto visible = ids({"a"});
+
+    EXPECT_EQ(admitContainers(known, visible, ids({"b"}), 2, ids({"b"}), ids({"b"})), known);
+
+    // And with no limit at all the write-off is not consulted, like everything
+    // else on this path.
+    EXPECT_EQ(admitContainers(known, visible, NONE, 0, NONE, ids({"b"})), known);
 }
 
 TEST(ContainerAdmissionTest, AContainerThatLeavesFreesItsSlotEvenIfItWasNeverPublishable)

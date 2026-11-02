@@ -405,6 +405,11 @@ namespace
         m_enumeratedSources.insert(source);
         armOrExpireSettleDeadlineLocked(now);
 
+        // Before the recompute and after the sweeps, for the same reason the
+        // recompute is: a container erased above is no longer unkeyed, it is
+        // gone, and its tally must not survive to be read as evidence.
+        updateUnkeyedWriteOffLocked(source, now);
+
         // After the sweeps, not before: a container still inside its removal
         // grace is still visible and still holds its slot, and one erased above
         // has just freed its slot for whoever was waiting. Recomputing earlier
@@ -764,6 +769,60 @@ namespace
         }
     }
 
+    void MetadataStore::updateUnkeyedWriteOffLocked(const SourceId& source, TimePoint now)
+    {
+        const auto sets = containerIdSetsLocked();
+
+        for (auto it = m_unkeyedSince.begin(); it != m_unkeyedSince.end();)
+        {
+            // Published, or gone. Either way the spell is over, and the entry
+            // goes rather than being frozen: a container that resolves after
+            // being written off is back at its normal rank immediately, and one
+            // that goes unkeyed again starts its tally from zero rather than
+            // being written off on the first snapshot of the new spell.
+            //
+            // Across every source, unlike the tally below: visibility is a
+            // question about the container, and one source keying it ends the
+            // spell however many others still cannot.
+            const bool stillUnkeyed = sets.known.count(it->first) != 0 && sets.visible.count(it->first) == 0;
+            it = stillUnkeyed ? std::next(it) : m_unkeyedSince.erase(it);
+        }
+
+        // THIS source's records only. The count is meant to say "the resolver
+        // has been asked again and still cannot key this container", and only
+        // the source that owns a container re-scans it. Walking every known id
+        // instead let a node running both runtimes write off a Kubernetes
+        // container on three Docker reconciles -- ten seconds apart, and not
+        // one of them a retry of that container.
+        for (const auto& [containerId, record] : m_bySource[source])
+        {
+            if (!record || sets.visible.count(containerId) != 0)
+            {
+                continue;
+            }
+
+            auto& spell = m_unkeyedSince.try_emplace(containerId, UnkeyedSpell {now, 0}).first->second;
+            ++spell.snapshots;
+        }
+
+        // Judged over the whole tally, not just this source's share, so a
+        // container already past both thresholds does not fall out of the set
+        // whenever some other source reconciles.
+        m_writtenOffUnkeyed.clear();
+
+        for (const auto& [containerId, spell] : m_unkeyedSince)
+        {
+            // Both, and the AND is the point -- see UNKEYED_WRITE_OFF_SNAPSHOTS.
+            // The count proves the resolver really has been asked again; the
+            // duration stops a burst of snapshots from writing a container off
+            // within a second of discovering it.
+            if (spell.snapshots >= UNKEYED_WRITE_OFF_SNAPSHOTS && now - spell.since >= UNKEYED_WRITE_OFF_GRACE)
+            {
+                m_writtenOffUnkeyed.insert(containerId);
+            }
+        }
+    }
+
     void MetadataStore::settleAdmissionIfDue(TimePoint now)
     {
         {
@@ -810,6 +869,18 @@ namespace
     {
         const auto sets = containerIdSetsLocked();
 
+        // Provenance, maintained here because every path that can change what
+        // is published ends in a recompute -- the snapshot, the cold-path
+        // resolve and the removal sweeps alike. Above the settle barrier's
+        // early return on purpose: a container that publishes during the
+        // startup window has proved it can, and that is the whole claim.
+        m_everPublished.insert(sets.visible.begin(), sets.visible.end());
+
+        for (auto it = m_everPublished.begin(); it != m_everPublished.end();)
+        {
+            it = (sets.known.count(*it) != 0) ? std::next(it) : m_everPublished.erase(it);
+        }
+
         if (!m_admissionSettled)
         {
             // Two conditions, and neither implies the other. A source that has
@@ -838,7 +909,8 @@ namespace
             m_lifecycleDirty = true;
         }
 
-        auto admitted = admitContainers(sets.known, sets.visible, m_admitted, m_syncLimit);
+        auto admitted =
+            admitContainers(sets.known, sets.visible, m_admitted, m_syncLimit, m_everPublished, m_writtenOffUnkeyed);
 
         // An admission shift is a change consumers must hear about, and it is
         // not always accompanied by one they would hear about anyway.

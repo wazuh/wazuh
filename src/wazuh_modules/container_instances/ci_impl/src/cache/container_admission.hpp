@@ -48,13 +48,24 @@ namespace wazuh::container_instances
      *                 @p known.
      * @param admitted The previous decision, so incumbents can keep their slots.
      * @param limit    Containers that may report; <= 0 means unlimited.
+     * @param publishedBefore  Containers that have been in @p visible at least
+     *                     once since the caller first saw them. An incumbent in
+     *                     this set that is absent from @p visible now is
+     *                     restart-shaped; one that is not has never published
+     *                     anything and is holding a slot it took for free.
+     *                     Empty -- the default -- means "no incumbent has ever
+     *                     published", which demotes every withheld incumbent.
+     * @param writtenOff   Containers that have been running and unkeyed for
+     *                     long enough, and across enough snapshots, that the
+     *                     caller has stopped expecting a key. They are ranked
+     *                     last rather than banned; see the WRITE-OFF paragraph.
      * @return The new admitted set, a subset of @p known.
      *
      * Three properties, and all of them are load-bearing:
      *
-     * STICKY. An admitted container keeps its slot until it genuinely leaves
-     * `known`. A new container never evicts an incumbent, so a steady node never
-     * churns. The alternative -- ranking the whole set every pass -- looks
+     * STICKY, FOR A CONTAINER THAT HAS PUBLISHED. An admitted container keeps
+     * its slot until it genuinely leaves `known`. A new container never evicts
+     * an incumbent, so a steady node never churns. The alternative -- ranking the whole set every pass -- looks
      * simpler and is not: container ids are random hex, so a new container sorts
      * below the incumbent Nth roughly N/M of the time, and each time it does the
      * manager is told to delete one container's rows and create another's. At
@@ -108,26 +119,44 @@ namespace wazuh::container_instances
      * on a node whose lowest-id container happened to be unkeyed, keep exactly
      * the container that reports nothing and refuse both that could.
      *
-     * What the ordering does NOT do is outrank an incumbent. It decides between
-     * NEWCOMERS contesting a free slot; an unkeyed container already holding one
-     * keeps it against a visible newcomer, both before and after this rule. Two
-     * ways to reach that state, and neither is separable from a restart without a
-     * per-container clock this layer does not have:
+     * PROVENANCE DECIDES WHICH INCUMBENTS ARE PROTECTED. Two different things
+     * used to look alike here, because both are "admitted and currently not in
+     * `visible`":
      *
-     *   admitted while visible, then permanently unkeyed
-     *   admitted into a leftover slot, never keyed at all
+     *   admitted while visible, then unkeyed   a restart, or a re-resolve. It
+     *                                          has documents on the manager
+     *                                          already, and taking its slot
+     *                                          withdraws them and creates
+     *                                          another container's.
+     *   admitted into a leftover slot,         it has never published anything.
+     *   never keyed at all                     Its slot was free when it took
+     *                                          it; it is not free now.
      *
-     * Both are indistinguishable from a container that is merely restarting, and
-     * treating them as departures is the first failure above. The cost is one
-     * slot, and the "withheld by containers.synced_limit" line in the store will
-     * attribute it to the limit -- which is true, in that raising the limit does
-     * release the containers it is holding back, but it does not name the slot
-     * that is going unused. Nothing on this path can name it either.
+     * @p publishedBefore separates them, and only the first is protected. The
+     * second is ranked BELOW a visible newcomer, so resolving the container
+     * that wants the slot is enough to get it -- which it was not before:
+     * incumbency held, and only removal, a cap increase or a shrink corrected
+     * it.
+     *
+     * WRITE-OFF. A protected incumbent is protected for a bounded time, not for
+     * ever. A container the resolver can never key again would otherwise hold
+     * its slot for the life of the process, publishing nothing; the caller
+     * decides when to stop waiting and names it in @p writtenOff. A written-off
+     * container is not refused -- it is simply last in line, so it still fills
+     * a slot nothing else wants, and it is restored to its normal rank the
+     * moment a key arrives. The write-off therefore only bites when the cap
+     * actually binds.
+     *
+     * The judgement is the caller's because it needs a clock and a count of
+     * snapshots, and this function has neither -- deliberately, so it stays
+     * testable without either.
      */
     [[nodiscard]] inline std::set<std::string> admitContainers(const std::set<std::string>& known,
                                                                const std::set<std::string>& visible,
                                                                const std::set<std::string>& admitted,
-                                                               int limit)
+                                                               int limit,
+                                                               const std::set<std::string>& publishedBefore = {},
+                                                               const std::set<std::string>& writtenOff = {})
     {
         if (limit <= 0)
         {
@@ -153,6 +182,25 @@ namespace wazuh::container_instances
                               visible.end(),
                               std::inserter(publishingIncumbents, publishingIncumbents.end()));
 
+        // Incumbents still worth protecting: not written off. Held apart from
+        // `incumbents` so the written-off ones can still be offered a slot
+        // nothing else wants, in the last pass.
+        std::set<std::string> livingIncumbents;
+        std::set_difference(incumbents.begin(),
+                            incumbents.end(),
+                            writtenOff.begin(),
+                            writtenOff.end(),
+                            std::inserter(livingIncumbents, livingIncumbents.end()));
+
+        // ...and of those, the ones that have published at least once. This is
+        // the set that outranks a visible newcomer; the rest do not.
+        std::set<std::string> provenIncumbents;
+        std::set_intersection(livingIncumbents.begin(),
+                              livingIncumbents.end(),
+                              publishedBefore.begin(),
+                              publishedBefore.end(),
+                              std::inserter(provenIncumbents, provenIncumbents.end()));
+
         std::set<std::string> result;
 
         const auto take = [&](const std::set<std::string>& candidates)
@@ -172,9 +220,10 @@ namespace wazuh::container_instances
         // takes the lowest ids it has left, and a container already held is
         // re-inserted into a set that has it -- a no-op that costs a lookup.
         take(publishingIncumbents); // holding a slot and using it
-        take(incumbents);           // holding a slot; a restart looks like this
-        take(visible);              // new, and able to publish
-        take(known);                // new, and not keyed yet
+        take(provenIncumbents);     // has published before; a restart looks like this
+        take(visible);              // keyed now, and wants a slot
+        take(livingIncumbents);     // holding a slot it took for free
+        take(known);                // anything else that exists, written off included
 
         return result;
     }

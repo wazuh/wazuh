@@ -27,6 +27,26 @@ namespace wazuh::container_instances
     /// agent.
     inline constexpr auto ADMISSION_SETTLE_GRACE = std::chrono::seconds {30};
 
+    /// When the store stops expecting a key for a running container, and so
+    /// stops protecting the admission slot it may be holding.
+    ///
+    /// Both conditions, because either one alone is wrong on one of the two
+    /// runtimes. Docker re-resolves a quiet host every ten seconds
+    /// (DockerConnector::m_idleReconcileInterval); Kubernetes has no idle
+    /// rescan at all and reconciles on watch events, so a quiet namespace may
+    /// go minutes between snapshots. A count alone would mean half a minute
+    /// there and a quarter of an hour here; a duration alone would write a
+    /// container off on Kubernetes having retried it exactly once, which is
+    /// evidence of nothing.
+    ///
+    /// Counted and timed from the moment the container became running and
+    /// unkeyed, and reset the instant it publishes. A written-off container is
+    /// still listed, still monitored and still admitted when a slot is going
+    /// spare -- see admitContainers(); all the write-off does is stop it
+    /// outranking a container that can publish.
+    inline constexpr std::size_t UNKEYED_WRITE_OFF_SNAPSHOTS {3};
+    inline constexpr auto UNKEYED_WRITE_OFF_GRACE = std::chrono::seconds {120};
+
     /// Concurrent cache + resolution state machine (design doc §8).
     ///
     /// Verdict-permanence contract: a verdict is never re-evaluated while its
@@ -161,6 +181,12 @@ namespace wazuh::container_instances
         /// all.
         void armOrExpireSettleDeadlineLocked(TimePoint now);
 
+        /// Advances the running-and-unkeyed tally for @p source and refreshes
+        /// the written-off set. Called from applySnapshot() only: the two
+        /// thresholds count snapshots, and a store nobody is enumerating has no
+        /// new evidence to write anything off with.
+        void updateUnkeyedWriteOffLocked(const SourceId& source, TimePoint now);
+
         /// Appends the transition between two visibility states, dropping the
         /// ones no consumer acts on.
         void journalTransitionLocked(const std::string& containerId,
@@ -199,6 +225,39 @@ namespace wazuh::container_instances
         /// and written down rather than discovered.
         std::set<std::string> m_admitted;
         int m_syncLimit {0};
+
+        /// Containers that have appeared in the published list at least once
+        /// since this store first saw them. This is the whole of the provenance
+        /// admission needs: an incumbent in here that is withheld now may have
+        /// documents on the manager already, so taking its slot withdraws them;
+        /// one that is not has never published anything and is holding a slot it
+        /// took because nothing else wanted it.
+        ///
+        /// Published, not keyed, because that is what the protection is for. A
+        /// stopped container with no key is published -- isRunning() is half the
+        /// withholding predicate -- and it has documents like any other.
+        ///
+        /// Pruned to `known` on every recompute, so a container that leaves and
+        /// comes back under the same id starts again. Correct: the removal took
+        /// its documents with it.
+        std::set<std::string> m_everPublished;
+
+        /// How long each running, unkeyed container has been that way, and
+        /// across how many snapshots of its own source. Entries appear when a
+        /// container is known and not visible, and are erased the moment it
+        /// publishes or leaves.
+        struct UnkeyedSpell
+        {
+            TimePoint since;
+            std::size_t snapshots {0};
+        };
+
+        std::unordered_map<std::string, UnkeyedSpell> m_unkeyedSince;
+
+        /// The subset of m_unkeyedSince past both thresholds, kept as a set so
+        /// recomputeAdmittedLocked() -- which has no clock -- can read the
+        /// judgement without making it.
+        std::set<std::string> m_writtenOffUnkeyed;
 
         /// Whether m_admitted is an answer yet, and the two conditions that
         /// make it one.

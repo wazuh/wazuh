@@ -33,6 +33,7 @@
 #include <set>
 #include <string>
 #include <thread>
+#include <vector>
 
 using namespace wazuh::container_instances;
 
@@ -438,6 +439,179 @@ TEST(ContainerAdmissionStoreTest, ARestartingContainerKeepsItsSlotWhileItHasNoKe
 // on its next scheduled poll -- up to resolver_interval_ms, 5 s by default --
 // and the containers involved went on reporting, or went on not reporting, for
 // that whole window.
+// Another source reconciling is not a retry of THIS container.
+//
+// A node running both runtimes gets a Docker snapshot every ten seconds and a
+// Kubernetes one only when the watch says something. Counting every snapshot
+// against every unkeyed container wrote a Kubernetes container off in half a
+// minute, on three Docker reconciles, not one of which asked the resolver about
+// it again.
+TEST(ContainerAdmissionStoreTest, ASnapshotFromAnotherSourceDoesNotAdvanceTheTally)
+{
+    auto store = MakeStore();
+    store.setSyncLimit(1);
+
+    const auto start = Now();
+    store.applySnapshot(kCri, Snapshot({"b"}), {}, start);
+    ASSERT_EQ(store.admittedIds(), (std::set<std::string> {"b"}));
+
+    // "b" loses its key, so it is protected as a restart would be, and "a"
+    // turns up on the other source wanting the only slot.
+    store.applySnapshot(kDocker, Snapshot({"a"}), {}, start);
+    store.applySnapshot(kCri, {MakeRecord("b", 0)}, {}, start + std::chrono::seconds {1});
+
+    // Docker now reconciles for ten minutes. None of it is a retry of "b".
+    for (int i = 1; i <= 20; ++i)
+    {
+        store.applySnapshot(kDocker, Snapshot({"a"}), {}, start + std::chrono::seconds {30 * i});
+    }
+
+    EXPECT_EQ(store.admittedIds(), (std::set<std::string> {"b"}))
+        << "b was never re-enumerated, so nothing has been learned about it";
+
+    // Its own source enumerates again, past the grace. Now it is written off
+    // and the slot goes to the container that can publish.
+    const auto past = start + std::chrono::seconds {601};
+    for (int i = 0; i < 2; ++i)
+    {
+        store.applySnapshot(kCri, {MakeRecord("b", 0)}, {}, past + std::chrono::seconds {i});
+    }
+
+    EXPECT_EQ(store.admittedIds(), (std::set<std::string> {"a"}));
+}
+
+// The cold path resolves a container without a snapshot, so it leaves the tally
+// untouched. That must not keep a container ranked last once it can publish.
+TEST(ContainerAdmissionStoreTest, AColdPathResolveLiftsAWrittenOffContainerAtOnce)
+{
+    auto store = MakeStore();
+    store.setSyncLimit(1);
+
+    const auto start = Now();
+    store.applySnapshot(kDocker, {MakeRecord("b", 0)}, {}, start);
+
+    const auto past = start + UNKEYED_WRITE_OFF_GRACE + std::chrono::seconds {1};
+    for (int i = 0; i < 3; ++i)
+    {
+        store.applySnapshot(kDocker, {MakeRecord("b", 0)}, {}, past + std::chrono::seconds {i});
+    }
+    ASSERT_EQ(store.admittedIds(), (std::set<std::string> {"b"})) << "written off, and still holding a free slot";
+
+    // An on-demand resolve, with no snapshot behind it.
+    store.upsertResolved(kDocker, MakeRecord("b", InodeFor("b")));
+
+    EXPECT_EQ(store.admittedIds(), (std::set<std::string> {"b"}))
+        << "it publishes now, so the stale mark must not cost it the slot";
+    EXPECT_TRUE(store.unkeyedContainerIds().empty());
+}
+
+// V2: the leftover slot, and the fact that resolving the container that wants
+// it used to make no difference.
+//
+// "b" is running and unkeyed when the limit is applied, so it takes the only
+// slot -- correctly, nothing else wants it. Then "a" resolves. "b" has never
+// published a document, so it is holding a slot it cannot use against a
+// container that can, and incumbency used to keep it there until removal, a cap
+// increase or a shrink.
+TEST(ContainerAdmissionStoreTest, AnUnkeyedIncumbentYieldsItsLeftoverSlotWhenAContainerResolves)
+{
+    auto store = MakeStore();
+    store.setSyncLimit(1);
+
+    store.applySnapshot(kDocker, {MakeRecord("b", 0)}, {}, Now());
+    ASSERT_EQ(store.admittedIds(), (std::set<std::string> {"b"})) << "nothing else wants the slot yet";
+
+    store.applySnapshot(kDocker, {MakeRecord("a", InodeFor("a")), MakeRecord("b", 0)}, {}, Now());
+
+    EXPECT_EQ(store.admittedIds(), (std::set<std::string> {"a"}))
+        << "a slot taken for free is not held against a container that can publish";
+}
+
+// U3, which was an accepted limitation until this round: an incumbent that
+// published and then lost its key for good held its slot for the life of the
+// process. Two thresholds free it, and BOTH are required -- see
+// UNKEYED_WRITE_OFF_SNAPSHOTS for why either alone is wrong on one runtime.
+TEST(ContainerAdmissionStoreTest, AnIncumbentUnkeyedPastBothThresholdsLosesItsSlot)
+{
+    auto store = MakeStore();
+    store.setSyncLimit(1);
+
+    const auto start = Now();
+    store.applySnapshot(kDocker, Snapshot({"b"}), {}, start);
+    ASSERT_EQ(store.admittedIds(), (std::set<std::string> {"b"}));
+
+    // "b" loses its key and "a" shows up able to publish. "b" has published
+    // before, so it is protected -- that is the restart case, and taking its
+    // slot here would withdraw every document it holds.
+    const auto unkeyed = []
+    { return std::vector<ContainerRecord> {MakeRecord("a", InodeFor("a")), MakeRecord("b", 0)}; };
+
+    store.applySnapshot(kDocker, unkeyed(), {}, start + std::chrono::seconds {1});
+    EXPECT_EQ(store.admittedIds(), (std::set<std::string> {"b"})) << "one snapshot in, this still looks like a restart";
+
+    store.applySnapshot(kDocker, unkeyed(), {}, start + UNKEYED_WRITE_OFF_GRACE + std::chrono::seconds {1});
+    EXPECT_EQ(store.admittedIds(), (std::set<std::string> {"b"}))
+        << "long enough, but only two snapshots: the resolver has barely been asked again";
+
+    store.applySnapshot(kDocker, unkeyed(), {}, start + UNKEYED_WRITE_OFF_GRACE + std::chrono::seconds {2});
+    EXPECT_EQ(store.admittedIds(), (std::set<std::string> {"a"}))
+        << "three snapshots and past the grace: the slot goes to the container that can use it";
+
+    // Still listed, still monitored. The write-off moves a container down the
+    // ranking; it does not delete anything.
+    EXPECT_EQ(store.unkeyedContainerIds(), (std::set<std::string> {"b"}));
+}
+
+// The count alone must not write a container off. On a busy Docker host the
+// idle reconcile is ten seconds and an event burst is faster still, so three
+// snapshots can land inside a few seconds of first seeing a container -- which
+// is the ordinary state at startup, not evidence of anything.
+TEST(ContainerAdmissionStoreTest, ThreeQuickSnapshotsDoNotWriteAContainerOff)
+{
+    auto store = MakeStore();
+    store.setSyncLimit(1);
+
+    const auto start = Now();
+    store.applySnapshot(kDocker, Snapshot({"b"}), {}, start);
+
+    for (int i = 1; i <= 5; ++i)
+    {
+        store.applySnapshot(
+            kDocker, {MakeRecord("a", InodeFor("a")), MakeRecord("b", 0)}, {}, start + std::chrono::seconds {i});
+    }
+
+    EXPECT_EQ(store.admittedIds(), (std::set<std::string> {"b"}))
+        << "five snapshots inside five seconds is not two minutes of waiting";
+}
+
+// And a container that resolves after being written off is back at its normal
+// rank at once, rather than carrying the mark until something else moves.
+TEST(ContainerAdmissionStoreTest, AWrittenOffContainerThatResolvesIsRankedNormallyAgain)
+{
+    auto store = MakeStore();
+    store.setSyncLimit(2);
+
+    const auto start = Now();
+    store.applySnapshot(kDocker, Snapshot({"b"}), {}, start);
+
+    const auto past = start + UNKEYED_WRITE_OFF_GRACE + std::chrono::seconds {1};
+    for (int i = 0; i < 3; ++i)
+    {
+        store.applySnapshot(kDocker, {MakeRecord("b", 0)}, {}, past + std::chrono::seconds {i});
+    }
+
+    // Written off, and still admitted: nothing else wants the slot.
+    ASSERT_EQ(store.admittedIds(), (std::set<std::string> {"b"}));
+
+    // Now the cap binds and two containers resolve. A written-off "b" would be
+    // ranked last and lose its slot; a re-keyed one is an ordinary incumbent.
+    store.setSyncLimit(1);
+    store.applySnapshot(
+        kDocker, {MakeRecord("a", InodeFor("a")), MakeRecord("b", InodeFor("b"))}, {}, past + std::chrono::seconds {4});
+
+    EXPECT_EQ(store.admittedIds(), (std::set<std::string> {"b"})) << "publishing again restores the incumbency";
+}
+
 TEST(ContainerAdmissionStoreTest, LoweringTheLimitWakesConsumersAtOnce)
 {
     auto store = MakeStore();
