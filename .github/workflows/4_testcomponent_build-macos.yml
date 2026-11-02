@@ -8,13 +8,13 @@ on:
       - ".github/workflows/4_testcomponent_build-macos.yml"
 
 jobs:
-  build-sonoma:
+  build-sequoia:
     if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
-    runs-on: macos-14
+    runs-on: macos-15
     steps:
       - name: Checkout Repo
         uses: actions/checkout@v3
-      - name: Build wazuh agent for macOS 14
+      - name: Build wazuh agent for macOS 15
         run: |
           make deps -C src TARGET=agent -j3
           make -C src TARGET=agent -j3

@@ -14,7 +14,7 @@ on:
 jobs:
   build:
     if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
-    runs-on: macos-14
+    runs-on: macos-15
     steps:
       - name: Checkout Repo
         uses: actions/checkout@v3
@@ -34,7 +34,7 @@ jobs:
           API_URL="https://api.github.com/repos/macports/macports-base/releases/latest"
           last_macport=$(curl -s -H "Accept: application/vnd.github+json" \
                             -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
-                            "$API_URL" | jq -r '.assets[] | select(.name | endswith("Sonoma.pkg")).browser_download_url')
+                            "$API_URL" | jq -r '.assets[] | select(.name | endswith("Sequoia.pkg")).browser_download_url')
           wget $last_macport
           sudo installer -pkg $(basename $last_macport) -target /
           rm -rf $(basename $last_macport)
