@@ -13,6 +13,9 @@
 #define STATE_A_H
 
 #define ASYS_MAX_NUM_AGENTS_STATS 75
+#define EPS_HISTORY_SECONDS 3600
+#define EPS_EPISODES_MAX 10
+#define EPS_EPISODE_CLOSE_SECONDS 5
 
 #include <stdint.h>
 #include "../wazuh_db/helpers/wdb_global_helpers.h"
@@ -108,7 +111,36 @@ typedef struct _eps_state_t {
     uint64_t events_dropped;
     uint64_t events_dropped_not_eps;
     uint64_t seconds_over_limit;
+    uint64_t seconds_with_drops;
 } eps_state_t;
+
+typedef struct _eps_sample_t {
+    time_t timestamp;
+    unsigned int received;
+    unsigned int admitted;
+    unsigned int dropped;
+} eps_sample_t;
+
+typedef struct _eps_episode_t {
+    time_t start;
+    time_t end;
+    uint64_t dropped;
+    unsigned int peak_received;
+} eps_episode_t;
+
+typedef struct _eps_history_t {
+    eps_sample_t samples[EPS_HISTORY_SECONDS];
+    unsigned int next;
+    unsigned int count;
+    uint64_t last_received;
+    uint64_t last_dropped;
+    eps_episode_t episodes[EPS_EPISODES_MAX];
+    unsigned int episodes_next;
+    unsigned int episodes_count;
+    eps_episode_t current;
+    bool episode_open;
+    unsigned int seconds_without_drops;
+} eps_history_t;
 
 typedef struct _analysisd_state_t {
     uint64_t uptime;
@@ -497,6 +529,13 @@ void w_inc_eps_seconds_over_limit();
  * @param credits Credits from previous interval
  */
 void w_set_available_credits_prev(unsigned int credits);
+
+/**
+ * @brief Store the events received, admitted and dropped in the last second and track drop episodes
+ * @param now Time of the sample
+ * @param admitted Events admitted by the EPS limiter in the last second
+ */
+void w_eps_sample_second(time_t now, unsigned int admitted);
 
 /**
  * @brief Create a JSON object with all the analysisd state information

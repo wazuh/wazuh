@@ -104,6 +104,18 @@ bool limit_reached(unsigned int *value) {
     return false;
 }
 
+unsigned int get_eps_consumed_credits(void) {
+    unsigned int consumed = 0;
+
+    if (limits.enabled) {
+        w_mutex_lock(&limit_eps_mutex);
+        consumed = limits.circ_buf[limits.current_cell];
+        w_mutex_unlock(&limit_eps_mutex);
+    }
+
+    return consumed;
+}
+
 STATIC void generate_eps_credits(unsigned int credits) {
     for(unsigned int i = 0; i < credits; i++) {
         sem_post(&credits_eps_semaphore);
