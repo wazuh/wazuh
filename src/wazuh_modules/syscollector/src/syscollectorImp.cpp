@@ -2575,7 +2575,10 @@ bool Syscollector::scanContainerBaselineDelta()
 
     if (collected.rescan.empty() && collected.removed.empty())
     {
-        return true; // nothing changed; the common case, and it costs one round trip
+        // Nothing changed; the common case. Two round trips, not one: the
+        // lifecycle delta that got us here, and the admission poll above, which
+        // no other call on this tick would make.
+        return true;
     }
 
     // Only on an explicit removal. Absence is never enough here: the delta
