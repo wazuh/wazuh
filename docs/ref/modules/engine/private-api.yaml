@@ -7,6 +7,15 @@ info:
     Every route is served on the engine API socket, `/var/wazuh-manager/queue/sockets/engine-api-http.sock`,
     and takes `POST`. Request bodies are JSON; unknown fields are ignored, and an empty body is read as an empty
     request. Responses carry a JSON body labelled `Content-Type: application/json`.
+    A body larger than `analysisd.server_api_payload_max_bytes` (default `0`, unlimited) is answered with
+    HTTP 413 and a plain-text message.
+
+    The server answers some requests before they reach the route's handler, with a JSON body
+    `{"error":"<message>","code":<status>}` (`TransportError`): `404` (unknown path), `405` with an `Allow` header
+    (known path, other method), `411` (chunked body), `414` (target too long), `431` (headers too large), `400`
+    (malformed HTTP) and `504` (no answer within 300 s). Every route can also answer `413` (body over its cap,
+    decided from `Content-Length` before the body is read) and `503` (busy, at its connection limit, or stopping).
+    The server closes the connection after each response and answers `Expect: 100-continue` with `100 Continue`.
   version: 1.0.0
 servers:
 - url: http+unix:/var/wazuh-manager/queue/sockets/engine-api-http.sock
@@ -96,8 +105,12 @@ paths:
                   value:
                     status: ERROR
                     error: The name of the route is already in use
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge_413'
         '500':
           $ref: '#/components/responses/InternalServerError_500'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable_503'
   /_internal/router/route/delete:
     post:
       tags:
@@ -130,8 +143,12 @@ paths:
                   value:
                     status: ERROR
                     error: The route not exist
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge_413'
         '500':
           $ref: '#/components/responses/InternalServerError_500'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable_503'
   /_internal/router/route/get:
     post:
       tags:
@@ -177,8 +194,12 @@ paths:
                   value:
                     status: ERROR
                     error: The route not exist
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge_413'
         '500':
           $ref: '#/components/responses/InternalServerError_500'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable_503'
   /_internal/router/route/reload:
     post:
       tags:
@@ -216,8 +237,12 @@ paths:
                   value:
                     status: ERROR
                     error: "Failed to reload the route: Failed to create environment with policy 'standard': <details>"
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge_413'
         '500':
           $ref: '#/components/responses/InternalServerError_500'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable_503'
   /_internal/router/route/patchPriority:
     post:
       tags:
@@ -265,8 +290,12 @@ paths:
                   value:
                     status: ERROR
                     error: Failed to change the priority, it is already in use
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge_413'
         '500':
           $ref: '#/components/responses/InternalServerError_500'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable_503'
   /_internal/router/table/get:
     post:
       tags:
@@ -297,8 +326,12 @@ paths:
                   uptime: 3600
         '400':
           $ref: '#/components/responses/BadRequest_400'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge_413'
         '500':
           $ref: '#/components/responses/InternalServerError_500'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable_503'
   /_internal/tester/session/post:
     post:
       tags:
@@ -352,8 +385,12 @@ paths:
                   value:
                     status: ERROR
                     error: "Failed to create the testing environment: Policy 'standard' has no assets"
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge_413'
         '500':
           $ref: '#/components/responses/InternalServerError_500'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable_503'
   /_internal/tester/session/delete:
     post:
       tags:
@@ -386,8 +423,12 @@ paths:
                   value:
                     status: ERROR
                     error: The 'testing' environment does not exist.
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge_413'
         '500':
           $ref: '#/components/responses/InternalServerError_500'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable_503'
   /_internal/tester/session/get:
     post:
       tags:
@@ -424,8 +465,12 @@ paths:
                   value:
                     status: ERROR
                     error: The 'testing' environment does not exist.
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge_413'
         '500':
           $ref: '#/components/responses/InternalServerError_500'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable_503'
   /_internal/tester/session/reload:
     post:
       tags:
@@ -463,8 +508,12 @@ paths:
                   value:
                     status: ERROR
                     error: "Failed to create the 'testing' environment: <details>"
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge_413'
         '500':
           $ref: '#/components/responses/InternalServerError_500'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable_503'
   /_internal/tester/run/post:
     post:
       tags:
@@ -610,8 +659,12 @@ paths:
                   value:
                     status: ERROR
                     error: Timeout waiting for ingestTest
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge_413'
         '500':
           $ref: '#/components/responses/InternalServerError_500'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable_503'
   /_internal/tester/table/get:
     post:
       tags:
@@ -633,8 +686,12 @@ paths:
                 $ref: '#/components/schemas/TesterTableGet_Response'
         '400':
           $ref: '#/components/responses/BadRequest_400'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge_413'
         '500':
           $ref: '#/components/responses/InternalServerError_500'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable_503'
   /_internal/geo/db/get:
     post:
       tags:
@@ -698,8 +755,12 @@ paths:
                   value:
                     status: ERROR
                     error: IP cannot be empty
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge_413'
         '500':
           $ref: '#/components/responses/InternalServerError_500'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable_503'
   /_internal/geo/db/list:
     post:
       tags:
@@ -745,8 +806,12 @@ paths:
                     entries: []
         '400':
           $ref: '#/components/responses/BadRequest_400'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge_413'
         '500':
           $ref: '#/components/responses/InternalServerError_500'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable_503'
   /_internal/event-dumper/activate:
     post:
       tags:
@@ -764,8 +829,12 @@ paths:
           $ref: '#/components/responses/GenericSuccess_200'
         '400':
           $ref: '#/components/responses/BadRequest_400'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge_413'
         '500':
           $ref: '#/components/responses/InternalServerError_500'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable_503'
   /_internal/event-dumper/deactivate:
     post:
       tags:
@@ -783,8 +852,12 @@ paths:
           $ref: '#/components/responses/GenericSuccess_200'
         '400':
           $ref: '#/components/responses/BadRequest_400'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge_413'
         '500':
           $ref: '#/components/responses/InternalServerError_500'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable_503'
   /_internal/event-dumper/status:
     post:
       tags:
@@ -817,8 +890,12 @@ paths:
                     active: false
         '400':
           $ref: '#/components/responses/BadRequest_400'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge_413'
         '500':
           $ref: '#/components/responses/InternalServerError_500'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable_503'
   /_internal/raweventindexer/status:
     post:
       tags:
@@ -851,8 +928,12 @@ paths:
                     enabled: false
         '400':
           $ref: '#/components/responses/BadRequest_400'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge_413'
         '500':
           $ref: '#/components/responses/InternalServerError_500'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable_503'
   /_internal/content/namespace/list:
     post:
       tags:
@@ -879,8 +960,12 @@ paths:
                 - custom
         '400':
           $ref: '#/components/responses/BadRequest_400'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge_413'
         '500':
           $ref: '#/components/responses/InternalServerError_500'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable_503'
   /_internal/content/namespace/create:
     post:
       tags:
@@ -898,8 +983,12 @@ paths:
           $ref: '#/components/responses/GenericSuccess_200'
         '400':
           $ref: '#/components/responses/BadRequest_400'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge_413'
         '500':
           $ref: '#/components/responses/InternalServerError_500'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable_503'
   /_internal/content/namespace/delete:
     post:
       tags:
@@ -917,8 +1006,12 @@ paths:
           $ref: '#/components/responses/GenericSuccess_200'
         '400':
           $ref: '#/components/responses/BadRequest_400'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge_413'
         '500':
           $ref: '#/components/responses/InternalServerError_500'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable_503'
   /_internal/content/namespace/import:
     post:
       tags:
@@ -940,8 +1033,12 @@ paths:
           $ref: '#/components/responses/GenericSuccess_200'
         '400':
           $ref: '#/components/responses/BadRequest_400'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge_413'
         '500':
           $ref: '#/components/responses/InternalServerError_500'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable_503'
   /_internal/content/policy/upsert:
     post:
       tags:
@@ -959,8 +1056,12 @@ paths:
           $ref: '#/components/responses/GenericSuccess_200'
         '400':
           $ref: '#/components/responses/BadRequest_400'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge_413'
         '500':
           $ref: '#/components/responses/InternalServerError_500'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable_503'
   /_internal/content/policy/delete:
     post:
       tags:
@@ -978,8 +1079,12 @@ paths:
           $ref: '#/components/responses/GenericSuccess_200'
         '400':
           $ref: '#/components/responses/BadRequest_400'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge_413'
         '500':
           $ref: '#/components/responses/InternalServerError_500'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable_503'
   /_internal/content/list:
     post:
       tags:
@@ -1003,8 +1108,12 @@ paths:
                 $ref: '#/components/schemas/resourceList_Response'
         '400':
           $ref: '#/components/responses/BadRequest_400'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge_413'
         '500':
           $ref: '#/components/responses/InternalServerError_500'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable_503'
   /_internal/content/get:
     post:
       tags:
@@ -1030,8 +1139,12 @@ paths:
                 $ref: '#/components/schemas/resourceGet_Response'
         '400':
           $ref: '#/components/responses/BadRequest_400'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge_413'
         '500':
           $ref: '#/components/responses/InternalServerError_500'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable_503'
   /_internal/content/upsert:
     post:
       tags:
@@ -1049,8 +1162,12 @@ paths:
           $ref: '#/components/responses/GenericSuccess_200'
         '400':
           $ref: '#/components/responses/BadRequest_400'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge_413'
         '500':
           $ref: '#/components/responses/InternalServerError_500'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable_503'
   /_internal/content/delete:
     post:
       tags:
@@ -1068,10 +1185,27 @@ paths:
           $ref: '#/components/responses/GenericSuccess_200'
         '400':
           $ref: '#/components/responses/BadRequest_400'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge_413'
         '500':
           $ref: '#/components/responses/InternalServerError_500'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable_503'
 components:
   schemas:
+    TransportError:
+      type: object
+      description: Body of the answers the server gives before a handler runs.
+      properties:
+        error:
+          type: string
+          description: What was refused.
+        code:
+          type: integer
+          description: The HTTP status, repeated.
+      required:
+      - error
+      - code
     ReturnStatus:
       type: string
       enum:
@@ -1619,6 +1753,60 @@ components:
           type: object
           description: Resource payload as a JSON object
   responses:
+    PayloadTooLarge_413:
+      description: |
+        Payload Too Large. The declared body (`Content-Length`) exceeds `analysisd.server_api_payload_max_bytes`
+        (4096 bytes on `GET /status` and `POST /metrics/*`); the body is not read. Split or shrink the request:
+        a retry fails again.
+      content:
+        text/plain:
+          schema:
+            type: string
+          example: 'Payload too large. Max allowed: 1024 bytes (1 KiB).'
+    ServiceUnavailable_503:
+      description: |
+        Service Unavailable, answered before the handler runs: every request worker is busy and the queue is full
+        (`Server busy`), the server is at its connection limit, or the engine is stopping. Retry later.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/TransportError'
+          examples:
+            busy:
+              summary: Every worker busy and the queue full
+              value:
+                error: Server busy
+                code: 503
+            stopping:
+              summary: The engine is stopping
+              value:
+                error: Server shutting down
+                code: 503
+            connections:
+              summary: Connection limit reached
+              value:
+                error: Too many concurrent connections
+                code: 503
+    TransportError:
+      description: |
+        Answered by the server before the request reaches a handler: `404` unknown path, `405` known path with
+        another method (with an `Allow` header), `411` chunked body, `414` target too long, `431` headers too large,
+        `400` malformed HTTP, `504` no answer within 300 s.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/TransportError'
+          examples:
+            unknown_path:
+              summary: Unknown path
+              value:
+                error: Unknown endpoint
+                code: 404
+            wrong_method:
+              summary: Known path, other method
+              value:
+                error: Method not allowed for this endpoint
+                code: 405
     InternalServerError_500:
       description: |
         Internal Server Error. A handler whose backing component is gone answers with a JSON `Response`

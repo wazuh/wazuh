@@ -9,6 +9,13 @@ info:
     read as an empty request. Responses carry a JSON body labelled `Content-Type: application/json`.
     A body larger than `analysisd.server_api_payload_max_bytes` (default `0`, unlimited) is answered with
     HTTP 413 and a plain-text message.
+
+    The server answers some requests before they reach the route's handler, with a JSON body
+    `{"error":"<message>","code":<status>}` (`TransportError`): `404` (unknown path), `405` with an `Allow` header
+    (known path, other method), `411` (chunked body), `414` (target too long), `431` (headers too large), `400`
+    (malformed HTTP) and `504` (no answer within 300 s). Every route can also answer `413` (body over its cap,
+    decided from `Content-Length` before the body is read) and `503` (busy, at its connection limit, or stopping).
+    The server closes the connection after each response and answers `Expect: 100-continue` with `100 Continue`.
   version: 1.0.0
 servers:
 - url: http+unix:/var/wazuh-manager/queue/sockets/engine-api-http.sock
@@ -185,6 +192,8 @@ paths:
                         status: ready
                         hash: "geo1hash2asn0"
                         last_successful_update: 1750066800
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge_413'
         '500':
           description: A status provider (content sync, IOC sync or geo manager) is unavailable.
           content:
@@ -192,6 +201,8 @@ paths:
               schema:
                 type: string
               example: Internal Server Error
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable_503'
   /content/validate/policy:
     post:
       tags:
@@ -417,8 +428,12 @@ paths:
                   value:
                     status: ERROR
                     error: 'Cleanup: failed deleting namespace ''<name>'': <details>'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge_413'
         '500':
           $ref: '#/components/responses/InternalServerError_500'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable_503'
   /logtest:
     post:
       tags:
@@ -704,8 +719,12 @@ paths:
                   value:
                     status: ERROR
                     error: Timeout waiting for ingestTest
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge_413'
         '500':
           $ref: '#/components/responses/InternalServerError_500'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable_503'
     delete:
       tags:
       - Logtest
@@ -764,8 +783,12 @@ paths:
                   value:
                     status: ERROR
                     error: 'Cleanup: failed deleting session ''<name>'': <details>'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge_413'
         '500':
           $ref: '#/components/responses/InternalServerError_500'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable_503'
   /content/ioc/update:
     post:
       tags:
@@ -834,6 +857,8 @@ paths:
                   value:
                     status: ERROR
                     error: 'Failed to schedule IOC sync task: <details>'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge_413'
         '500':
           description: Internal Server Error
           content:
@@ -851,6 +876,8 @@ paths:
                   value:
                     status: ERROR
                     error: Scheduler is not available
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable_503'
   /content/ioc/state:
     get:
       tags:
@@ -919,6 +946,10 @@ paths:
                     hash: ''
                     updating: false
                     lastError: Store is not available
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge_413'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable_503'
   /content/validate/resource:
     post:
       tags:
@@ -1044,7 +1075,9 @@ paths:
                     status: ERROR
                     error: "Failed to validate resource of type 'integration': Integration category is not valid: ossec"
         '413':
-          description: Payload Too Large. The body exceeds the limit for its type.
+          description: |
+            Payload Too Large. The handler's JSON when the body exceeds the limit for its resource type; the
+            server's plain text (`PayloadTooLarge_413`) when it exceeds `analysisd.server_api_payload_max_bytes`.
           content:
             application/json:
               schema:
@@ -1060,8 +1093,14 @@ paths:
                   value:
                     status: ERROR
                     error: Request body exceeds maximum allowed document size of 100000 bytes
+            text/plain:
+              schema:
+                type: string
+              example: 'Payload too large. Max allowed: 1024 bytes (1 KiB).'
         '500':
           $ref: '#/components/responses/InternalServerError_500'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable_503'
   /metrics/enable:
     post:
       tags:
@@ -1137,8 +1176,12 @@ paths:
                   value:
                     status: ERROR
                     error: Field 'instrumentName' is required
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge_413'
         '500':
           $ref: '#/components/responses/InternalServerError_500'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable_503'
   /metrics/get:
     post:
       tags:
@@ -1209,8 +1252,12 @@ paths:
                   value:
                     status: ERROR
                     error: Field 'instrumentName' is required
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge_413'
         '500':
           $ref: '#/components/responses/InternalServerError_500'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable_503'
   /metrics/list:
     post:
       tags:
@@ -1300,8 +1347,12 @@ paths:
                   value:
                     status: ERROR
                     error: No metrics registered
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge_413'
         '500':
           $ref: '#/components/responses/InternalServerError_500'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable_503'
   /metrics/dump:
     post:
       tags:
@@ -1410,10 +1461,27 @@ paths:
                         type: counter
                         enabled: true
                         value: 40
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge_413'
         '500':
           $ref: '#/components/responses/InternalServerError_500'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable_503'
 components:
   schemas:
+    TransportError:
+      type: object
+      description: Body of the answers the server gives before a handler runs.
+      properties:
+        error:
+          type: string
+          description: What was refused.
+        code:
+          type: integer
+          description: The HTTP status, repeated.
+      required:
+      - error
+      - code
     ReturnStatus:
       type: string
       enum:
@@ -1812,6 +1880,60 @@ components:
               $ref: '#/components/schemas/SpaceMetrics'
             description: Per-space metrics grouped by space name
   responses:
+    PayloadTooLarge_413:
+      description: |
+        Payload Too Large. The declared body (`Content-Length`) exceeds `analysisd.server_api_payload_max_bytes`
+        (4096 bytes on `GET /status` and `POST /metrics/*`); the body is not read. Split or shrink the request:
+        a retry fails again.
+      content:
+        text/plain:
+          schema:
+            type: string
+          example: 'Payload too large. Max allowed: 1024 bytes (1 KiB).'
+    ServiceUnavailable_503:
+      description: |
+        Service Unavailable, answered before the handler runs: every request worker is busy and the queue is full
+        (`Server busy`), the server is at its connection limit, or the engine is stopping. Retry later.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/TransportError'
+          examples:
+            busy:
+              summary: Every worker busy and the queue full
+              value:
+                error: Server busy
+                code: 503
+            stopping:
+              summary: The engine is stopping
+              value:
+                error: Server shutting down
+                code: 503
+            connections:
+              summary: Connection limit reached
+              value:
+                error: Too many concurrent connections
+                code: 503
+    TransportError:
+      description: |
+        Answered by the server before the request reaches a handler: `404` unknown path, `405` known path with
+        another method (with an `Allow` header), `411` chunked body, `414` target too long, `431` headers too large,
+        `400` malformed HTTP, `504` no answer within 300 s.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/TransportError'
+          examples:
+            unknown_path:
+              summary: Unknown path
+              value:
+                error: Unknown endpoint
+                code: 404
+            wrong_method:
+              summary: Known path, other method
+              value:
+                error: Method not allowed for this endpoint
+                code: 405
     InternalServerError_500:
       description: |
         Internal Server Error. A handler whose backing component is gone answers with a JSON `Response`
