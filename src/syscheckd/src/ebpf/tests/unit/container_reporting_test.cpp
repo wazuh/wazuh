@@ -837,6 +837,50 @@ TEST(ContainerDrainAdmissionView, AnIncompleteListUpsertsAndACompleteOneReplaces
             << "a container the partial list names is updated from it";
 }
 
+// V1. The window after an agent restart, during which the connector has a
+// verdict coming but has not reached it.
+//
+// The reply then carries no per-record `synced` at all -- and ContainerRef and
+// ContainerEventRef both default it to TRUE, deliberately, so a connector too
+// old to decide keeps everything reporting. Taking that default here wrote
+// "admitted" over refusals the connector was about to re-issue: on a modulesd
+// restart the drain re-admitted the containers the cap had pushed out, their
+// documents were created on the manager, and settlement deleted them again a
+// few seconds later.
+TEST(ContainerDrainAdmissionView, APendingVerdictFreezesWhatIsKnownAndHoldsBackWhatIsNot)
+{
+    using wazuh::container_instances_client::ContainerRef;
+    using fim_container_events::mergeAdmissionView;
+
+    // b was refused by the cap before the restart; c is brand new.
+    const std::map<std::string, bool> current = {{"a", true}, {"b", false}};
+
+    ContainerRef a;
+    a.containerId = "a";
+    // Not set by the parser, because the reply omits the key while pending.
+    // This is the default that used to leak through.
+    a.synced = true;
+
+    ContainerRef b;
+    b.containerId = "b";
+    b.synced      = true;
+
+    ContainerRef c;
+    c.containerId = "c";
+    c.synced      = true;
+
+    const auto frozen = mergeAdmissionView(current, {a, b, c}, /*complete=*/false, /*admissionPending=*/true);
+
+    EXPECT_EQ(frozen,
+    (std::map<std::string, bool> {{"a", true}, {"b", false}, {"c", false}}))
+            << "b keeps its refusal, and c waits rather than reporting on a default nobody decided";
+
+    // And once the verdict lands the same reply is applied in full, including
+    // the promotion of c. Freezing is for the window, not a new policy.
+    const auto settled = mergeAdmissionView(frozen, {a, b, c}, /*complete=*/true, /*admissionPending=*/false);
+    EXPECT_EQ(settled, (std::map<std::string, bool> {{"a", true}, {"b", true}, {"c", true}}));
+}
+
 TEST(ContainerDrainAdmissionView, TheAdmittedSetReachesContainersWithNoEventOfTheirOwn)
 {
     using fim_container_events::applyAdmittedSet;

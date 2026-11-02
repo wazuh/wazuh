@@ -134,10 +134,43 @@ namespace fim_container_events
      * Free and pure so the rule can be tested without a connector -- the absence
      * of any seam here is why the drain kept reading a partial list as the whole
      * node long after the other two consumers stopped. */
+    /* Record one container's admission, unless the connector has not decided.
+     *
+     * Every path into the view goes through here, because every one of them
+     * carries a flag that DEFAULTS TO TRUE when the reply says nothing:
+     * ContainerRef::synced, ContainerEventRef::synced, and the fold of the
+     * admitted set. While the verdict is pending the reply deliberately says
+     * nothing on all three, so taking the defaults writes "admitted" over
+     * refusals the connector is about to re-issue -- which is what made a
+     * modulesd restart re-admit containers it had correctly refused, create
+     * their documents on the manager, and delete them again seconds later.
+     *
+     * Pending therefore FREEZES what is already known and holds anything new at
+     * not-admitted. Both halves matter: keeping a stored decision is what stops
+     * the restart churn, and holding a newcomer back is what stops the node
+     * reporting past containers.synced_limit for the length of the window.
+     * Erring towards not-admitted is the recoverable direction -- a container
+     * held back for a few seconds is promoted when the verdict lands, while one
+     * let through has already had its documents created. */
+    void setAdmission(std::map<std::string, bool>& view,
+                      const std::string& containerId,
+                      bool admitted,
+                      bool admissionPending)
+    {
+        if (admissionPending)
+        {
+            view.emplace(containerId, false); /* Only if absent; never overwrites. */
+            return;
+        }
+
+        view[containerId] = admitted;
+    }
+
     std::map<std::string, bool> mergeAdmissionView(
         const std::map<std::string, bool>& current,
         const std::vector<wazuh::container_instances_client::ContainerRef>& refs,
-        bool complete)
+        bool complete,
+        bool admissionPending)
     {
         std::map<std::string, bool> refreshed;
 
@@ -148,7 +181,7 @@ namespace fim_container_events
 
         for (const auto& ref : refs)
         {
-            refreshed[ref.containerId] = ref.synced;
+            setAdmission(refreshed, ref.containerId, ref.synced, admissionPending);
         }
 
         return refreshed;
@@ -218,11 +251,12 @@ namespace fim_container_events
     void foldUnkeyedIntoView(std::map<std::string, bool>& view,
                              const std::set<std::string>& unkeyed,
                              const std::set<std::string>& admitted,
-                             bool admittedKnown)
+                             bool admittedKnown,
+                             bool admissionPending)
     {
         for (const auto& containerId : unkeyed)
         {
-            view[containerId] = !admittedKnown || admitted.count(containerId) != 0;
+            setAdmission(view, containerId, !admittedKnown || admitted.count(containerId) != 0, admissionPending);
         }
     }
 
@@ -392,8 +426,10 @@ namespace fim_container_events
                 }
             }
 
-            plan.admissionView = mergeAdmissionView(currentView, delta.containers, delta.complete);
-            foldUnkeyedIntoView(plan.admissionView, delta.unkeyed, delta.admitted, delta.admittedKnown);
+            plan.admissionView =
+                mergeAdmissionView(currentView, delta.containers, delta.complete, delta.admissionPending);
+            foldUnkeyedIntoView(
+                plan.admissionView, delta.unkeyed, delta.admitted, delta.admittedKnown, delta.admissionPending);
 
             /* ...and the same departures leave the admission view, for the same
              * reason and with the same guard.
@@ -507,13 +543,13 @@ namespace fim_container_events
             }
             else
             {
-                updated[event.containerId] = event.synced;
+                setAdmission(updated, event.containerId, event.synced, delta.admissionPending);
             }
         }
 
         /* ...then the containers no event can describe, because the connector
          * cannot key them... */
-        foldUnkeyedIntoView(updated, delta.unkeyed, delta.admitted, delta.admittedKnown);
+        foldUnkeyedIntoView(updated, delta.unkeyed, delta.admitted, delta.admittedKnown, delta.admissionPending);
 
         /* ...and then the set, which is the only place an admission change with
          * no event of its own can reach this view. */

@@ -122,10 +122,18 @@ namespace fim_container_events
                                                   const std::set<std::string>& previousUnkeyed = {});
 
     /// @brief The admission view a full list leaves behind.
+    ///
+    /// @param admissionPending The connector WILL decide admission but has not
+    ///        yet. While it is set the reply carries no per-record `synced` at
+    ///        all, and ContainerRef::synced defaults to TRUE -- so applying it
+    ///        writes an admission nobody decided over one that was. A stored
+    ///        decision is therefore kept untouched and a container seen for the
+    ///        first time is held NOT admitted until a real verdict arrives.
     [[nodiscard]] std::map<std::string, bool> mergeAdmissionView(
         const std::map<std::string, bool>& current,
         const std::vector<wazuh::container_instances_client::ContainerRef>& refs,
-        bool complete);
+        bool complete,
+        bool admissionPending = false);
 
     /// @brief Fold the connector's whole admitted set into a view built from events.
     void applyAdmittedSet(std::map<std::string, bool>& view,
