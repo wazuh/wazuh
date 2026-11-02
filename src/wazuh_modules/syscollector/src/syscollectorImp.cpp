@@ -1111,7 +1111,7 @@ void Syscollector::syncLoop(std::unique_lock<std::mutex>& lock)
         sync();
     }
 
-    while (!m_cv.wait_for(lock, std::chrono::seconds{m_intervalValue}, [&]()
+    while (!m_cv.wait_for(lock, std::chrono::seconds{m_intervalValue}, [&]() -> bool
 {
     return m_stopping;
 }))
