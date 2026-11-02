@@ -79,10 +79,8 @@ INSTANTIATE_TEST_SUITE_P(
         CmCrudHandlerT(
             []()
             {
-                httplib::Request req;
-                req.body = "not json proto request";
-                req.set_header("Content-Type", "text/plain");
-                return req;
+                return httpsrv::Request::fromOwned(
+                    httpsrv::Method::POST, "/", "not json proto request", {{"Content-Type", "text/plain"}});
             },
             [](const std::shared_ptr<cm::crud::ICrudService>& crud) { return namespaceList(crud); },
             []() { return userErrorResponse<eContent::namespaceGet_Response>(kParseErrorMsg); },
@@ -116,10 +114,8 @@ INSTANTIATE_TEST_SUITE_P(
         CmCrudHandlerT(
             []()
             {
-                httplib::Request req;
-                req.body = "not json proto request";
-                req.set_header("Content-Type", "text/plain");
-                return req;
+                return httpsrv::Request::fromOwned(
+                    httpsrv::Method::POST, "/", "not json proto request", {{"Content-Type", "text/plain"}});
             },
             [](const std::shared_ptr<cm::crud::ICrudService>& crud) { return namespaceCreate(crud); },
             []() { return userErrorResponse<eEngine::GenericStatus_Response>(kParseErrorMsg); },
@@ -153,10 +149,8 @@ INSTANTIATE_TEST_SUITE_P(
         CmCrudHandlerT(
             []()
             {
-                httplib::Request req;
-                req.body = "not json proto request";
-                req.set_header("Content-Type", "text/plain");
-                return req;
+                return httpsrv::Request::fromOwned(
+                    httpsrv::Method::POST, "/", "not json proto request", {{"Content-Type", "text/plain"}});
             },
             [](const std::shared_ptr<cm::crud::ICrudService>& crud) { return namespaceDelete(crud); },
             []() { return userErrorResponse<eEngine::GenericStatus_Response>(kParseErrorMsg); },
@@ -197,10 +191,8 @@ INSTANTIATE_TEST_SUITE_P(
         CmCrudHandlerT(
             []()
             {
-                httplib::Request req;
-                req.body = "not json proto request";
-                req.set_header("Content-Type", "text/plain");
-                return req;
+                return httpsrv::Request::fromOwned(
+                    httpsrv::Method::POST, "/", "not json proto request", {{"Content-Type", "text/plain"}});
             },
             [](const std::shared_ptr<cm::crud::ICrudService>& crud) { return policyUpsert(crud); },
             []() { return userErrorResponse<eEngine::GenericStatus_Response>(kParseErrorMsg); },
@@ -234,10 +226,8 @@ INSTANTIATE_TEST_SUITE_P(
         CmCrudHandlerT(
             []()
             {
-                httplib::Request req;
-                req.body = "not json proto request";
-                req.set_header("Content-Type", "text/plain");
-                return req;
+                return httpsrv::Request::fromOwned(
+                    httpsrv::Method::POST, "/", "not json proto request", {{"Content-Type", "text/plain"}});
             },
             [](const std::shared_ptr<cm::crud::ICrudService>& crud) { return policyDelete(crud); },
             []() { return userErrorResponse<eEngine::GenericStatus_Response>(kParseErrorMsg); },
@@ -286,10 +276,8 @@ INSTANTIATE_TEST_SUITE_P(
         CmCrudHandlerT(
             []()
             {
-                httplib::Request req;
-                req.body = "not json proto request";
-                req.set_header("Content-Type", "text/plain");
-                return req;
+                return httpsrv::Request::fromOwned(
+                    httpsrv::Method::POST, "/", "not json proto request", {{"Content-Type", "text/plain"}});
             },
             [](const std::shared_ptr<cm::crud::ICrudService>& crud) { return resourceList(crud); },
             []() { return userErrorResponse<eContent::resourceList_Response>(kParseErrorMsg); },
@@ -364,10 +352,8 @@ INSTANTIATE_TEST_SUITE_P(
         CmCrudHandlerT(
             []()
             {
-                httplib::Request req;
-                req.body = "not json proto request";
-                req.set_header("Content-Type", "text/plain");
-                return req;
+                return httpsrv::Request::fromOwned(
+                    httpsrv::Method::POST, "/", "not json proto request", {{"Content-Type", "text/plain"}});
             },
             [](const std::shared_ptr<cm::crud::ICrudService>& crud) { return resourceGet(crud); },
             []() { return userErrorResponse<eContent::resourceGet_Response>(kParseErrorMsg); },
@@ -411,10 +397,8 @@ INSTANTIATE_TEST_SUITE_P(
         CmCrudHandlerT(
             []()
             {
-                httplib::Request req;
-                req.body = "not json proto request";
-                req.set_header("Content-Type", "text/plain");
-                return req;
+                return httpsrv::Request::fromOwned(
+                    httpsrv::Method::POST, "/", "not json proto request", {{"Content-Type", "text/plain"}});
             },
             [](const std::shared_ptr<cm::crud::ICrudService>& crud) { return resourceUpsert(crud); },
             []() { return userErrorResponse<eEngine::GenericStatus_Response>(kParseErrorMsg); },
@@ -473,10 +457,8 @@ INSTANTIATE_TEST_SUITE_P(
         CmCrudHandlerT(
             []()
             {
-                httplib::Request req;
-                req.body = "not json proto request";
-                req.set_header("Content-Type", "text/plain");
-                return req;
+                return httpsrv::Request::fromOwned(
+                    httpsrv::Method::POST, "/", "not json proto request", {{"Content-Type", "text/plain"}});
             },
             [](const std::shared_ptr<cm::crud::ICrudService>& crud) { return resourceDelete(crud); },
             []() { return userErrorResponse<eEngine::GenericStatus_Response>(kParseErrorMsg); },
@@ -611,10 +593,8 @@ INSTANTIATE_TEST_SUITE_P(
         CmCrudHandlerT(
             []()
             {
-                httplib::Request req;
-                req.body = "not json proto request";
-                req.set_header("Content-Type", "text/plain");
-                return req;
+                return httpsrv::Request::fromOwned(
+                    httpsrv::Method::POST, "/", "not json proto request", {{"Content-Type", "text/plain"}});
             },
             [](const std::shared_ptr<cm::crud::ICrudService>& crud) { return resourceValidate(crud, 20'000, 100'000); },
             []() { return userErrorResponse<eEngine::GenericStatus_Response>(kParseErrorMsg); },
@@ -628,16 +608,14 @@ INSTANTIATE_TEST_SUITE_P(
         CmCrudHandlerT(
             []()
             {
-                httplib::Request req;
-                req.body = std::string(100001, 'X');
-                req.set_header("Content-Type", "plain/text");
-                return req;
+                return httpsrv::Request::fromOwned(
+                    httpsrv::Method::POST, "/", std::string(100001, 'X'), {{"Content-Type", "plain/text"}});
             },
             [](const std::shared_ptr<cm::crud::ICrudService>& crud) { return resourceValidate(crud, 20'000, 100'000); },
             []()
             {
                 auto resp = userErrorResponse<eEngine::GenericStatus_Response>(kBodyOverAbsoluteLimitMsg);
-                resp.status = httplib::StatusCode::PayloadTooLarge_413;
+                resp.status = 413;
                 return resp;
             },
             [](auto& mock) { EXPECT_CALL(mock, validateResource(::testing::_, ::testing::_)).Times(0); }),
@@ -659,7 +637,7 @@ INSTANTIATE_TEST_SUITE_P(
             []()
             {
                 auto resp = userErrorResponse<eEngine::GenericStatus_Response>(kBodyOverTypeLimitMsg);
-                resp.status = httplib::StatusCode::PayloadTooLarge_413;
+                resp.status = 413;
                 return resp;
             },
             [](auto& mock) { EXPECT_CALL(mock, validateResource(::testing::_, ::testing::_)).Times(0); }),
@@ -763,15 +741,16 @@ std::string policyJson(bool enabled, bool withIntegration)
                        withIntegration ? fmt::format("\"{}\"", kIntegUuid) : "");
 }
 
-httplib::Request policyValidateRequest(bool loadInTester, bool enabled, bool withIntegration, const std::string& space)
+httpsrv::Request policyValidateRequest(bool loadInTester, bool enabled, bool withIntegration, const std::string& space)
 {
-    httplib::Request req;
-    req.body = fmt::format(R"({{"load_in_tester":{},"space":"{}","full_policy":{{"policy":{},"resources":{{}}}}}})",
-                           loadInTester ? "true" : "false",
-                           space,
-                           policyJson(enabled, withIntegration));
-    req.set_header("Content-Type", "plain/text");
-    return req;
+    return httpsrv::Request::fromOwned(
+        httpsrv::Method::POST,
+        "/",
+        fmt::format(R"({{"load_in_tester":{},"space":"{}","full_policy":{{"policy":{},"resources":{{}}}}}})",
+                    loadInTester ? "true" : "false",
+                    space,
+                    policyJson(enabled, withIntegration)),
+        {{"Content-Type", "plain/text"}});
 }
 
 cm::store::dataType::Policy policyOf(bool enabled, bool withIntegration)
@@ -809,14 +788,14 @@ protected:
         m_tester = std::make_shared<::tester::mocks::MockTesterAPI>();
     }
 
-    httplib::Response run(const httplib::Request& req)
+    httpsrv::Response run(const httpsrv::Request& req)
     {
-        httplib::Response res;
+        httpsrv::Response res;
         policyValidate(m_crud, m_tester)(req, res);
         return res;
     }
 
-    static void expectOk(const httplib::Response& res)
+    static void expectOk(const httpsrv::Response& res)
     {
         eEngine::GenericStatus_Response protoRes;
         protoRes.set_status(eEngine::ReturnStatus::OK);
@@ -825,7 +804,7 @@ protected:
         EXPECT_EQ(res.body, expected.body);
     }
 
-    static void expectError(const httplib::Response& res, const std::string& message)
+    static void expectError(const httpsrv::Response& res, const std::string& message)
     {
         const auto expected = userErrorResponse<eEngine::GenericStatus_Response>(message);
         EXPECT_EQ(res.status, expected.status);

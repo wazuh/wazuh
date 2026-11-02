@@ -47,10 +47,8 @@ INSTANTIATE_TEST_SUITE_P(
         DumperHandlerT(
             []()
             {
-                httplib::Request req;
-                req.body = "not json proto request";
-                req.set_header("Content-Type", "text/plain");
-                return req;
+                return httpsrv::Request::fromOwned(
+                    httpsrv::Method::POST, "/", "not json proto request", {{"Content-Type", "text/plain"}});
             },
             [](const std::shared_ptr<::dumper::IDumper>& dumper) { return activateDumper(dumper); },
             []()
@@ -82,10 +80,8 @@ INSTANTIATE_TEST_SUITE_P(
         DumperHandlerT(
             []()
             {
-                httplib::Request req;
-                req.body = "not json proto request";
-                req.set_header("Content-Type", "text/plain");
-                return req;
+                return httpsrv::Request::fromOwned(
+                    httpsrv::Method::POST, "/", "not json proto request", {{"Content-Type", "text/plain"}});
             },
             [](const std::shared_ptr<::dumper::IDumper>& dumper) { return deactivateDumper(dumper); },
             []()
@@ -118,10 +114,8 @@ INSTANTIATE_TEST_SUITE_P(
         DumperHandlerT(
             []()
             {
-                httplib::Request req;
-                req.body = "not json proto request";
-                req.set_header("Content-Type", "text/plain");
-                return req;
+                return httpsrv::Request::fromOwned(
+                    httpsrv::Method::POST, "/", "not json proto request", {{"Content-Type", "text/plain"}});
             },
             [](const std::shared_ptr<::dumper::IDumper>& dumper) { return getDumperStatus(dumper); },
             []()

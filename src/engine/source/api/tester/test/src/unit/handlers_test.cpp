@@ -32,14 +32,14 @@ namespace
     return ::router::test::Entry {post};
 }
 
-httplib::Response makeOkResponse()
+httpsrv::Response makeOkResponse()
 {
     eEngine::GenericStatus_Response protoRes;
     protoRes.set_status(eEngine::ReturnStatus::OK);
     return userResponse<eEngine::GenericStatus_Response>(protoRes);
 }
 
-httplib::Response makeRunPostSuccessResponse(const std::string& jsonBody = R"({})", bool validOutput = true)
+httpsrv::Response makeRunPostSuccessResponse(const std::string& jsonBody = R"({})", bool validOutput = true)
 {
     eEngine::tester::RunPost_Response protoRes;
     protoRes.set_status(eEngine::ReturnStatus::OK);
@@ -69,7 +69,7 @@ struct LogtestDeleteCase
 {
     std::string name;
     std::function<void(MockTesterAPI&, cm::store::MockICMstore&)> mocker;
-    std::function<httplib::Response()> expectedResponse;
+    std::function<httpsrv::Response()> expectedResponse;
 };
 
 struct LogtestPostCase
@@ -77,7 +77,7 @@ struct LogtestPostCase
     std::string name;
     std::function<eEngine::tester::PublicRunPost_Request()> makeReq;
     std::function<void(MockTesterAPI&)> mocker;
-    std::function<httplib::Response()> expectedResponse;
+    std::function<httpsrv::Response()> expectedResponse;
     std::function<std::shared_ptr<schemf::IValidator>()> makeSchema;
 };
 
@@ -165,10 +165,8 @@ INSTANTIATE_TEST_SUITE_P(
         HandlerT(
             []()
             {
-                httplib::Request req;
-                req.body = "not json proto request";
-                req.set_header("Content-Type", "text/plain");
-                return req;
+                return httpsrv::Request::fromOwned(
+                    httpsrv::Method::POST, "/", "not json proto request", {{"Content-Type", "text/plain"}});
             },
             [](const std::shared_ptr<::router::ITesterAPI>& tester) { return sessionPost(tester); },
             []()
@@ -184,10 +182,8 @@ INSTANTIATE_TEST_SUITE_P(
             {
                 json::Json jsonReq;
                 jsonReq.setObject();
-                httplib::Request req;
-                req.body = jsonReq.str();
-                req.set_header("Content-Type", "plain/text");
-                return req;
+                return httpsrv::Request::fromOwned(
+                    httpsrv::Method::POST, "/", jsonReq.str(), {{"Content-Type", "plain/text"}});
             },
             [](const std::shared_ptr<::router::ITesterAPI>& tester) { return sessionPost(tester); },
             []() { return userErrorResponse<eEngine::GenericStatus_Response>("Missing /session"); },
@@ -199,10 +195,8 @@ INSTANTIATE_TEST_SUITE_P(
                 json::Json jsonReq;
                 jsonReq.setObject("/session");
                 jsonReq.setInt(10, "/route/lifetime");
-                httplib::Request req;
-                req.body = jsonReq.str();
-                req.set_header("Content-Type", "plain/text");
-                return req;
+                return httpsrv::Request::fromOwned(
+                    httpsrv::Method::POST, "/", jsonReq.str(), {{"Content-Type", "plain/text"}});
             },
             [](const std::shared_ptr<::router::ITesterAPI>& tester) { return sessionPost(tester); },
             []()
@@ -219,10 +213,8 @@ INSTANTIATE_TEST_SUITE_P(
                 jsonReq.setObject("/session");
                 jsonReq.setString("not-valid", "/session/namespaceId");
                 jsonReq.setInt(10, "/session/lifetime");
-                httplib::Request req;
-                req.body = jsonReq.str();
-                req.set_header("Content-Type", "plain/text");
-                return req;
+                return httpsrv::Request::fromOwned(
+                    httpsrv::Method::POST, "/", jsonReq.str(), {{"Content-Type", "plain/text"}});
             },
             [](const std::shared_ptr<::router::ITesterAPI>& tester) { return sessionPost(tester); },
             []()
@@ -287,10 +279,8 @@ INSTANTIATE_TEST_SUITE_P(
         HandlerT(
             []()
             {
-                httplib::Request req;
-                req.body = "not json proto request";
-                req.set_header("Content-Type", "text/plain");
-                return req;
+                return httpsrv::Request::fromOwned(
+                    httpsrv::Method::POST, "/", "not json proto request", {{"Content-Type", "text/plain"}});
             },
             [](const std::shared_ptr<::router::ITesterAPI>& tester) { return sessionDelete(tester); },
             []()
@@ -306,10 +296,8 @@ INSTANTIATE_TEST_SUITE_P(
             {
                 json::Json jsonReq;
                 jsonReq.setObject();
-                httplib::Request req;
-                req.body = jsonReq.str();
-                req.set_header("Content-Type", "plain/text");
-                return req;
+                return httpsrv::Request::fromOwned(
+                    httpsrv::Method::POST, "/", jsonReq.str(), {{"Content-Type", "plain/text"}});
             },
             [](const std::shared_ptr<::router::ITesterAPI>& tester) { return sessionDelete(tester); },
             []()
@@ -351,10 +339,8 @@ INSTANTIATE_TEST_SUITE_P(
         HandlerT(
             []()
             {
-                httplib::Request req;
-                req.body = "not json proto request";
-                req.set_header("Content-Type", "text/plain");
-                return req;
+                return httpsrv::Request::fromOwned(
+                    httpsrv::Method::POST, "/", "not json proto request", {{"Content-Type", "text/plain"}});
             },
             [](const std::shared_ptr<::router::ITesterAPI>& tester) { return sessionReload(tester); },
             []()
@@ -370,10 +356,8 @@ INSTANTIATE_TEST_SUITE_P(
             {
                 json::Json jsonReq;
                 jsonReq.setObject();
-                httplib::Request req;
-                req.body = jsonReq.str();
-                req.set_header("Content-Type", "plain/text");
-                return req;
+                return httpsrv::Request::fromOwned(
+                    httpsrv::Method::POST, "/", jsonReq.str(), {{"Content-Type", "plain/text"}});
             },
             [](const std::shared_ptr<::router::ITesterAPI>& tester) { return sessionReload(tester); },
             []()
@@ -399,7 +383,7 @@ TEST_P(LogtestPostTest, Handler)
     auto protoReq = testCase.makeReq();
     auto req = createRequest<eEngine::tester::PublicRunPost_Request>(protoReq);
 
-    httplib::Response res;
+    httpsrv::Response res;
     handler(req, res);
 
     auto expected = testCase.expectedResponse();
@@ -711,7 +695,7 @@ eEngine::tester::Result_Validation runOutputValidation(const std::string& output
     protoReq.set_trace_level("NONE");
     protoReq.set_space("test-session");
 
-    httplib::Response res;
+    httpsrv::Response res;
     publicRunPost(tester, base::eventParsers::parsePublicEvent, schema)(
         createRequest<eEngine::tester::PublicRunPost_Request>(protoReq), res);
 
@@ -1099,7 +1083,7 @@ eEngine::tester::Result_Validation runPrivateOutputValidation(const std::string&
     protoReq.set_event("1:/var/log/test:some event");
     protoReq.set_trace_level(eEngine::tester::TraceLevel::NONE);
 
-    httplib::Response res;
+    httpsrv::Response res;
     runPost(tester, base::eventParsers::parseLegacyEvent, schema)(
         createRequest<eEngine::tester::RunPost_Request>(protoReq), res);
 
@@ -1168,13 +1152,13 @@ TEST(RunPostTimeout, UsesConfiguredTestTimeout)
     protoReq.set_event("1:/var/log/test:some event");
     protoReq.set_trace_level(eEngine::tester::TraceLevel::NONE);
 
-    httplib::Response res;
+    httpsrv::Response res;
     const auto start = std::chrono::steady_clock::now();
     runPost(tester, base::eventParsers::parseLegacyEvent, makeSchemaMock({}))(
         createRequest<eEngine::tester::RunPost_Request>(protoReq), res);
     const auto elapsed = std::chrono::steady_clock::now() - start;
 
-    EXPECT_EQ(res.status, httplib::StatusCode::BadRequest_400);
+    EXPECT_EQ(res.status, 400);
     EXPECT_NE(res.body.find("Timeout waiting for ingestTest"), std::string::npos);
     // Far below the former hard-coded 5 s wait
     EXPECT_LT(elapsed, std::chrono::seconds(4));
@@ -1197,7 +1181,7 @@ TEST_P(LogtestDeleteTest, Handler)
     testCase.mocker(*tester, *store);
 
     auto handler = logtestDelete(tester, store);
-    httplib::Response res;
+    httpsrv::Response res;
     handler(req, res);
 
     auto expected = testCase.expectedResponse();
@@ -1290,7 +1274,7 @@ TEST(LogtestDeleteMissingSpace, MissingSpaceReturnsError)
     auto req = createRequest<eEngine::tester::LogtestDelete_Request>(protoReq);
 
     auto handler = logtestDelete(tester, store);
-    httplib::Response res;
+    httpsrv::Response res;
     handler(req, res);
 
     auto expected = userErrorResponse<eEngine::GenericStatus_Response>("space is required and cannot be empty");

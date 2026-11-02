@@ -70,7 +70,7 @@ TEST_P(GeoHandlerTest, Handler)
     ASSERT_NO_THROW(routeHandler = handlerGetter(m_iHandler));
 
     mocker(*m_mockHandler);
-    httplib::Response response;
+    httpsrv::Response response;
     ASSERT_NO_THROW(routeHandler(request, response));
 
     EXPECT_EQ(response.status, expectedResponse.status);
@@ -78,7 +78,7 @@ TEST_P(GeoHandlerTest, Handler)
     // Check if this is a GetDb request by looking at the request body
     bool isGetDbRequest = request.body.find("\"ip\"") != std::string::npos;
 
-    if (isGetDbRequest && response.status == httplib::StatusCode::OK_200)
+    if (isGetDbRequest && response.status == 200)
     {
         // For GetDb responses, compare protobuf messages to avoid key ordering issues
         EXPECT_TRUE(compareProtoResponses<eEngine::geo::DbGet_Response>(response.body, expectedResponse.body))
@@ -93,7 +93,7 @@ TEST_P(GeoHandlerTest, Handler)
     // Expired handler test
     m_iHandler.reset();
     m_mockHandler.reset();
-    httplib::Response expiredResponse;
+    httpsrv::Response expiredResponse;
     ASSERT_NO_THROW(routeHandler(request, expiredResponse));
     auto expectedExpiredResponse =
         internalErrorResponse<eEngine::GenericStatus_Response>("Error: Handler is not initialized");
@@ -149,10 +149,8 @@ INSTANTIATE_TEST_SUITE_P(
         HandlerT(
             []()
             {
-                httplib::Request req;
-                req.body = "not json proto request";
-                req.set_header("Content-Type", "text/plain");
-                return req;
+                return httpsrv::Request::fromOwned(
+                    httpsrv::Method::POST, "/", "not json proto request", {{"Content-Type", "text/plain"}});
             },
             [](const std::shared_ptr<::geo::IManager>& geoManager) { return listDb(geoManager); },
             []()
@@ -292,10 +290,8 @@ INSTANTIATE_TEST_SUITE_P(
         HandlerT(
             []()
             {
-                httplib::Request req;
-                req.body = "not json proto request";
-                req.set_header("Content-Type", "text/plain");
-                return req;
+                return httpsrv::Request::fromOwned(
+                    httpsrv::Method::POST, "/", "not json proto request", {{"Content-Type", "text/plain"}});
             },
             [](const std::shared_ptr<::geo::IManager>& geoManager) { return getDb(geoManager); },
             []()

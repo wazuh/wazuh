@@ -2,6 +2,8 @@
 #include <gtest/gtest.h>
 
 #include <filesystem>
+#include <optional>
+#include <string>
 #include <thread>
 
 #include <base/behaviour.hpp>
@@ -77,6 +79,51 @@ TEST_F(ServerTest, ServerStop)
     ASSERT_NO_THROW(m_srv->stop());
 }
 
+TEST_F(ServerTest, BridgedRouteSeesTheNeutralRequest)
+{
+    struct Seen
+    {
+        std::string target;
+        std::string body;
+        std::optional<std::string> header;
+        std::size_t repeatedCount {0};
+        std::size_t singleCount {0};
+    } seen;
+
+    m_srv->template addRoute<httpsrv::Request, httpsrv::Response>(
+        httpsrv::Method::POST,
+        "/x",
+        [&seen](const httpsrv::Request& req, httpsrv::Response& res)
+        {
+            seen.target = req.target;
+            seen.body = std::string {req.body};
+            if (const auto value = req.header("X-TEST"))
+            {
+                seen.header = std::string {*value};
+            }
+            seen.repeatedCount = req.headerCount("x-dup");
+            seen.singleCount = req.headerCount("x-test");
+            res.status = 201;
+            res.setContent("created", "application/x-test");
+        });
+    m_srv->start(getSocketPath("test.sock"));
+
+    httplib::Client cli(getSocketPath("test.sock").string(), true);
+    cli.set_address_family(AF_UNIX);
+    const httplib::Headers headers {{"X-Test", "A"}, {"X-Dup", "1"}, {"X-Dup", "2"}};
+    const auto res = cli.Post("/x?a=1", headers, R"({"k":1})", "application/json");
+
+    ASSERT_TRUE(res);
+    EXPECT_EQ(res->status, 201);
+    EXPECT_EQ(res->body, "created");
+    EXPECT_EQ(res->get_header_value("Content-Type"), "application/x-test");
+    EXPECT_EQ(seen.target, "/x?a=1");
+    EXPECT_EQ(seen.body, R"({"k":1})");
+    EXPECT_EQ(seen.header, "A");
+    EXPECT_EQ(seen.repeatedCount, 2U);
+    EXPECT_EQ(seen.singleCount, 1U);
+}
+
 /*******************************************************************************
  * Server Httplib route tests
  ******************************************************************************/
@@ -113,10 +160,10 @@ public:
     auto getDefHandler()
     {
 
-        return [](const httplib::Request&, httplib::Response& res)
+        return [](const httpsrv::Request&, httpsrv::Response& res)
         {
             res.status = 200;
-            res.set_content("OK", "text/plain");
+            res.setContent("OK", "text/plain");
         };
     }
 };
@@ -133,7 +180,7 @@ TEST_P(RouteTest, AddRouteNotStarted)
 
     auto fn = [srv = m_srv, method, route, handler]()
     {
-        srv->template addRoute<httplib::Request, httplib::Response>(method, route, handler);
+        srv->template addRoute<httpsrv::Request, httpsrv::Response>(method, route, handler);
     };
 
     ASSERT_NO_THROW(fn());
@@ -147,7 +194,7 @@ TEST_P(RouteTest, AddRouteStarted)
 
     auto fn = [srv = m_srv, method, route, handler]()
     {
-        srv->template addRoute<httplib::Request, httplib::Response>(method, route, handler);
+        srv->template addRoute<httpsrv::Request, httpsrv::Response>(method, route, handler);
     };
 
     m_srv->start(getSocketPath("test.sock"));
@@ -163,7 +210,7 @@ TEST_P(RouteTest, AddRouteTwiceNotStarted)
 
     auto fn = [srv = m_srv, method, route, handler]()
     {
-        srv->template addRoute<httplib::Request, httplib::Response>(method, route, handler);
+        srv->template addRoute<httpsrv::Request, httpsrv::Response>(method, route, handler);
     };
 
     ASSERT_NO_THROW(fn());
@@ -178,7 +225,7 @@ TEST_P(RouteTest, AddRouteTwiceStarted)
 
     auto fn = [srv = m_srv, method, route, handler]()
     {
-        srv->template addRoute<httplib::Request, httplib::Response>(method, route, handler);
+        srv->template addRoute<httpsrv::Request, httpsrv::Response>(method, route, handler);
     };
 
     m_srv->start(getSocketPath("test.sock"));
@@ -195,7 +242,7 @@ TEST_P(RouteTest, Serve)
 
     auto fn = [srv = m_srv, method, route, handler]()
     {
-        srv->template addRoute<httplib::Request, httplib::Response>(method, route, handler);
+        srv->template addRoute<httpsrv::Request, httpsrv::Response>(method, route, handler);
     };
 
     m_srv->start(getSocketPath("test.sock"));
@@ -223,7 +270,7 @@ TEST_P(RouteTest, NotStartedNotServed)
 
     auto fn = [srv = m_srv, method, route, handler]()
     {
-        srv->template addRoute<httplib::Request, httplib::Response>(method, route, handler);
+        srv->template addRoute<httpsrv::Request, httpsrv::Response>(method, route, handler);
     };
 
     ASSERT_NO_THROW(fn());
@@ -244,19 +291,19 @@ TEST_P(RouteTest, ServeIgnoredOverride)
     auto [method, route, cliReq] = GetParam();
 
     auto handler = getDefHandler();
-    auto overrideHandler = [](const httplib::Request&, httplib::Response& res)
+    auto overrideHandler = [](const httpsrv::Request&, httpsrv::Response& res)
     {
         res.status = 200;
-        res.set_content("OVERRIDE", "text/plain");
+        res.setContent("OVERRIDE", "text/plain");
     };
 
     auto fn = [srv = m_srv, method, route, handler]()
     {
-        srv->template addRoute<httplib::Request, httplib::Response>(method, route, handler);
+        srv->template addRoute<httpsrv::Request, httpsrv::Response>(method, route, handler);
     };
     auto overrideFn = [srv = m_srv, method, route, overrideHandler]()
     {
-        srv->template addRoute<httplib::Request, httplib::Response>(method, route, overrideHandler);
+        srv->template addRoute<httpsrv::Request, httpsrv::Response>(method, route, overrideHandler);
     };
 
     m_srv->start(getSocketPath("test.sock"));
@@ -280,14 +327,14 @@ TEST_P(RouteTest, ServeIgnoredOverride)
 TEST_P(RouteTest, ServeUnhandledException)
 {
     auto [method, route, cliReq] = GetParam();
-    auto handler = [](const httplib::Request&, httplib::Response&)
+    auto handler = [](const httpsrv::Request&, httpsrv::Response&)
     {
         throw std::runtime_error("Test");
     };
 
     auto fn = [srv = m_srv, method, route, handler]()
     {
-        srv->template addRoute<httplib::Request, httplib::Response>(method, route, handler);
+        srv->template addRoute<httpsrv::Request, httpsrv::Response>(method, route, handler);
     };
 
     m_srv->start(getSocketPath("test.sock"));
@@ -326,15 +373,15 @@ TEST_P(BodyRouteTest, PayloadAtLimitIsAccepted)
     std::atomic<int> handlerCalls {0};
     std::atomic<size_t> receivedSize {0};
 
-    auto handler = [&](const httplib::Request& req, httplib::Response& res)
+    auto handler = [&](const httpsrv::Request& req, httpsrv::Response& res)
     {
         handlerCalls++;
         receivedSize = req.body.size();
         res.status = 200;
-        res.set_content("OK", "text/plain");
+        res.setContent("OK", "text/plain");
     };
 
-    m_srv->template addRoute<httplib::Request, httplib::Response>(method, route, handler);
+    m_srv->template addRoute<httpsrv::Request, httpsrv::Response>(method, route, handler);
     m_srv->start(getSocketPath("test.sock"));
 
     httplib::Client cli(getSocketPath("test.sock").string(), true);
@@ -377,14 +424,14 @@ TEST_P(BodyRouteTest, PayloadOverLimitReturns413)
 
     std::atomic<int> handlerCalls {0};
 
-    auto handler = [&](const httplib::Request&, httplib::Response& res)
+    auto handler = [&](const httpsrv::Request&, httpsrv::Response& res)
     {
         handlerCalls++;
         res.status = 200;
-        res.set_content("OK", "text/plain");
+        res.setContent("OK", "text/plain");
     };
 
-    m_srv->template addRoute<httplib::Request, httplib::Response>(method, route, handler);
+    m_srv->template addRoute<httpsrv::Request, httpsrv::Response>(method, route, handler);
     m_srv->start(getSocketPath("test.sock"));
 
     httplib::Client cli(getSocketPath("test.sock").string(), true);
@@ -432,15 +479,15 @@ TEST_P(BodyRouteTest, PayloadUnlimitedAcceptsLargePayload)
     std::atomic<int> handlerCalls {0};
     std::atomic<size_t> receivedSize {0};
 
-    auto handler = [&](const httplib::Request& req, httplib::Response& res)
+    auto handler = [&](const httpsrv::Request& req, httpsrv::Response& res)
     {
         handlerCalls++;
         receivedSize = req.body.size();
         res.status = 200;
-        res.set_content("OK", "text/plain");
+        res.setContent("OK", "text/plain");
     };
 
-    m_srv->template addRoute<httplib::Request, httplib::Response>(method, route, handler);
+    m_srv->template addRoute<httpsrv::Request, httpsrv::Response>(method, route, handler);
     m_srv->start(getSocketPath("test.sock"));
 
     httplib::Client cli(getSocketPath("test.sock").string(), true);
@@ -483,14 +530,14 @@ TEST_P(BodyRouteTest, HandlerCustom413BodyIsPreserved)
     m_srv = std::make_shared<httpsrv::Server>("test", kLimitBytes);
 
     std::atomic<int> handlerCalls {0};
-    auto handler = [&](const httplib::Request&, httplib::Response& res)
+    auto handler = [&](const httpsrv::Request&, httpsrv::Response& res)
     {
         handlerCalls++;
-        res.status = httplib::StatusCode::PayloadTooLarge_413;
-        res.set_content(kCustomBody, "application/json");
+        res.status = 413;
+        res.setContent(kCustomBody, "application/json");
     };
 
-    m_srv->template addRoute<httplib::Request, httplib::Response>(method, route, handler);
+    m_srv->template addRoute<httpsrv::Request, httpsrv::Response>(method, route, handler);
     m_srv->start(getSocketPath("test.sock"));
 
     httplib::Client cli(getSocketPath("test.sock").string(), true);
