@@ -13,6 +13,7 @@
 #include <string>
 #include <thread>
 
+#include <base/logging.hpp>
 #include <fastmetrics/registry.hpp>
 #include <httpsrv/udsServer.hpp>
 
@@ -25,7 +26,8 @@ using httpsrv::UdsServerOptions;
 
 namespace
 {
-// The fastmetrics manager is a process-wide singleton: register it once for this binary.
+// The fastmetrics manager is a process-wide singleton: register it once for this binary, at load time, so every
+// suite of the binary that registers metrics finds it whatever order or filter the tests run with.
 struct FastMetricsInit
 {
     FastMetricsInit() { fastmetrics::registerManager(); }
@@ -109,9 +111,14 @@ double metric(const std::string& instance, const char* suffix)
     const auto found = fastmetrics::manager().get(fastmetrics::names::server_metric(instance, suffix));
     return found ? found->value() : -1.0;
 }
+class UdsServerMetricsTest : public ::testing::Test
+{
+protected:
+    void SetUp() override { logging::testInit(); }
+};
 } // namespace
 
-TEST(UdsServerMetricsTest, RegistersEveryMetricUnderTheInstance)
+TEST_F(UdsServerMetricsTest, RegistersEveryMetricUnderTheInstance)
 {
     auto server = std::make_shared<UdsServer>(options(1, 1));
 
@@ -125,7 +132,7 @@ TEST(UdsServerMetricsTest, RegistersEveryMetricUnderTheInstance)
     }
 }
 
-TEST(UdsServerMetricsTest, MetricsFollowTheServerStats)
+TEST_F(UdsServerMetricsTest, MetricsFollowTheServerStats)
 {
     const auto path = socketPath("follow");
     std::promise<void> release;
@@ -174,7 +181,7 @@ TEST(UdsServerMetricsTest, MetricsFollowTheServerStats)
     server->shutdown(1s);
 }
 
-TEST(UdsServerMetricsTest, MetricsReadZeroOnceTheServerIsGone)
+TEST_F(UdsServerMetricsTest, MetricsReadZeroOnceTheServerIsGone)
 {
     const auto path = socketPath("gone");
     auto server = std::make_shared<UdsServer>(options(1, 1));

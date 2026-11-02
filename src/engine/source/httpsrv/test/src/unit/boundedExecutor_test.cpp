@@ -7,6 +7,7 @@
 #include <thread>
 #include <vector>
 
+#include <base/logging.hpp>
 #include <httpsrv/boundedExecutor.hpp>
 
 using httpsrv::BoundedExecutor;
@@ -27,9 +28,15 @@ struct Gate
     void open() { promise.set_value(); }
     void wait() const { future.wait(); }
 };
+
+class BoundedExecutorTest : public ::testing::Test
+{
+protected:
+    void SetUp() override { logging::testInit(); }
+};
 } // namespace
 
-TEST(BoundedExecutorTest, RunsEverySubmittedJobOnce)
+TEST_F(BoundedExecutorTest, RunsEverySubmittedJobOnce)
 {
     std::atomic<int> ran {0};
     {
@@ -43,7 +50,7 @@ TEST(BoundedExecutorTest, RunsEverySubmittedJobOnce)
     EXPECT_EQ(50, ran.load());
 }
 
-TEST(BoundedExecutorTest, RefusesWhenTheQueueIsFull)
+TEST_F(BoundedExecutorTest, RefusesWhenTheQueueIsFull)
 {
     Gate gate;
     std::atomic<bool> started {false};
@@ -70,7 +77,7 @@ TEST(BoundedExecutorTest, RefusesWhenTheQueueIsFull)
     gate.open();
 }
 
-TEST(BoundedExecutorTest, RefusesAfterAdmissionCloses)
+TEST_F(BoundedExecutorTest, RefusesAfterAdmissionCloses)
 {
     BoundedExecutor executor {"test", 1, 8};
     executor.closeAdmission();
@@ -79,7 +86,7 @@ TEST(BoundedExecutorTest, RefusesAfterAdmissionCloses)
 }
 
 // Closing admission is not cancelling: what was queued still runs if it can before the deadline.
-TEST(BoundedExecutorTest, DrainRunsQueuedJobsBeforeTheDeadline)
+TEST_F(BoundedExecutorTest, DrainRunsQueuedJobsBeforeTheDeadline)
 {
     std::atomic<int> ran {0};
     BoundedExecutor executor {"test", 2, 64};
@@ -101,7 +108,7 @@ TEST(BoundedExecutorTest, DrainRunsQueuedJobsBeforeTheDeadline)
     EXPECT_EQ(0U, report.abandoned);
 }
 
-TEST(BoundedExecutorTest, DrainRejectsUnstartedJobsAtTheDeadline)
+TEST_F(BoundedExecutorTest, DrainRejectsUnstartedJobsAtTheDeadline)
 {
     Gate gate;
     std::atomic<bool> started {false};
@@ -136,7 +143,7 @@ TEST(BoundedExecutorTest, DrainRejectsUnstartedJobsAtTheDeadline)
 
 // A job that outlives the deadline is reported, and the executor still waits for it on destruction:
 // its owner may destroy what the job uses right after the executor is gone.
-TEST(BoundedExecutorTest, DrainReportsAbandonedJobsAndTheDestructorJoinsThem)
+TEST_F(BoundedExecutorTest, DrainReportsAbandonedJobsAndTheDestructorJoinsThem)
 {
     std::atomic<bool> started {false};
     std::atomic<bool> finished {false};
