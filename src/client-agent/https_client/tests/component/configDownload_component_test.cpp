@@ -24,6 +24,7 @@
 #include "jwtSigner.hpp"
 #include "keyProvider.hpp"
 #include "moduleConfig.hpp"
+#include "outcomeClassifier.hpp"
 #include "spoolFile.hpp"
 #include "sysSeams.hpp"
 #include "wpkFetcher.hpp"
@@ -50,13 +51,17 @@ namespace
     constexpr size_t CONFIG_BYTES = 256 * 1024;
 
     /// FakeManager takes fourteen positional arguments before the one this suite cares about.
-    FakeManager downloadManager(uint16_t port, const std::string& blob, DownloadReply reply)
+    FakeManager downloadManager(uint16_t port, const std::string& blob, const DownloadOptions& download)
     {
         return FakeManager {port, KEY_HEX, /*tls=*/true, /*settingsFlipAfter=*/0, /*configBlob=*/blob,
                             /*statelessMaxBody=*/0, /*rotateKeyAfterNotifies=*/0, /*rotatedKeyHex=*/{},
                             /*statefulHoldFile=*/{}, /*vdFeedOffset=*/0, /*scanVdRejectFirstNAttempts=*/0,
-                            /*enrollPassword=*/{}, /*enrollForcedStatus=*/0, /*caBundle=*/{},
-                            DownloadOptions {reply}};
+                            /*enrollPassword=*/{}, /*enrollForcedStatus=*/0, /*caBundle=*/{}, download};
+    }
+
+    FakeManager downloadManager(uint16_t port, const std::string& blob, DownloadReply reply)
+    {
+        return downloadManager(port, blob, DownloadOptions {reply});
     }
 
     ModuleConfig downloadConfig(uint16_t port)
@@ -287,6 +292,33 @@ TEST(ConfigDownloadComponentTest, AReplyCodedTwiceIsRefusedBeforeItsBody)
         EXPECT_TRUE(attempt.contentDecodingFailed);
         EXPECT_NE(std::string::npos, attempt.curlError.find("refused Content-Encoding 'zstd, zstd'"))
                 << attempt.curlError;
+    }
+
+    EXPECT_EQ(0u, downloader.filesLeft());
+}
+
+// An error page in a coding curl can't decode, as a proxy's gzip page is to the Windows agent's
+// curl: the 503 and its Retry-After still decide what happens next, not the coding.
+TEST(ConfigDownloadComponentTest, AnUndecodableErrorPageKeepsItsStatusAndRetryAfter)
+{
+    const std::string blob = mergedConfigText(CONFIG_BYTES);
+    const uint16_t port = DOWNLOAD_PORT + 8;
+    DownloadOptions download;
+    download.errorStatus = 503;
+    download.retryAfterSeconds = 1;
+    download.errorPageCoding = "compress"; // A registered coding no curl build decodes.
+    auto manager = downloadManager(port, blob, download);
+    Downloader downloader {port};
+
+    EXPECT_EQ(nullptr, downloader.fetchConfig(blob));
+    ASSERT_EQ(2u, downloader.attempts().size());
+
+    for (const auto& attempt : downloader.attempts())
+    {
+        EXPECT_TRUE(curlErrorIs(attempt, "61")) << attempt.curlError;
+        EXPECT_EQ(503, attempt.httpCode);
+        EXPECT_EQ(1, attempt.retryAfterSeconds);
+        EXPECT_EQ(OutcomeClass::BackPressure, classifyOutcome(attempt));
     }
 
     EXPECT_EQ(0u, downloader.filesLeft());

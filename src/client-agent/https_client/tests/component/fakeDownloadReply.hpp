@@ -35,6 +35,13 @@ struct DownloadOptions
 {
     /// Applies only when the request offered zstd; otherwise the body goes plain, as #40900 does.
     DownloadReply reply {DownloadReply::Plain};
+    /// Non-zero: a config request gets this status and an error page instead of the config.
+    int errorStatus {0};
+    /// Sent as Retry-After alongside errorStatus when positive.
+    int retryAfterSeconds {0};
+    /// Sent as the error page's Content-Encoding when non-empty, e.g. a coding curl can't decode,
+    /// which is what a proxy's gzip page is to the Windows agent's curl (built without zlib).
+    std::string errorPageCoding;
 };
 
 /// One /download body as it goes on the wire.

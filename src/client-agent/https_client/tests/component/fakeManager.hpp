@@ -77,6 +77,25 @@ inline std::string fakeManagerSettingsHash(const std::string& startupBody)
     return sha256Hex(body.data(), body.size());
 }
 
+/// /download's error page when DownloadOptions::errorStatus is set. Sent as octet-stream, which
+/// httplib never compresses on its own, so errorPageCoding is the only coding on it.
+inline void answerDownloadError(const DownloadOptions& download, httplib::Response& response)
+{
+    response.status = download.errorStatus;
+
+    if (download.retryAfterSeconds > 0)
+    {
+        response.set_header("Retry-After", std::to_string(download.retryAfterSeconds));
+    }
+
+    if (!download.errorPageCoding.empty())
+    {
+        response.set_header("Content-Encoding", download.errorPageCoding);
+    }
+
+    response.set_content("Service Unavailable", "application/octet-stream");
+}
+
 /**
  * @brief Shapes the CA-rotation surface of the fake manager (#39321): what every notify
  *        advertises, and what GET /cacerts answers with.
@@ -563,6 +582,12 @@ class FakeManager final
                                       FAKE_MANAGER_CONFIG_TOKEN + R"(")") == std::string::npos)
                 {
                     response.status = 404;
+                    return;
+                }
+
+                if (download.errorStatus != 0)
+                {
+                    answerDownloadError(download, response);
                     return;
                 }
 

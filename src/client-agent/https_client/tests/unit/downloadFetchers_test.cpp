@@ -246,6 +246,32 @@ TEST_F(ConfigDownloadLogTest, AShutdownBeforeTheRetryIsNotWarnedAbout)
     EXPECT_FALSE(loggedAt(DEBUG_LEVEL, "failed (Interrupted)").empty());
 }
 
+// A gzip error page on Windows, whose curl has no zlib: the 404 is what happened, not the coding.
+TEST_F(ConfigDownloadLogTest, AnUndecodableErrorReplyIsLoggedByItsStatus)
+{
+    auto notFound = UNDECODABLE;
+    notFound.httpCode = 404;
+    answer(notFound);
+
+    fetch();
+
+    EXPECT_TRUE(loggedAt(WARNING_LEVEL, UNDECODABLE_WARNING).empty());
+    EXPECT_FALSE(loggedAt(DEBUG_LEVEL, "failed (RouteNotFound)").empty());
+}
+
+TEST_F(ConfigDownloadLogTest, AnUndecodable503StillDefersTheRetryByItsRetryAfter)
+{
+    auto unavailable = UNDECODABLE;
+    unavailable.httpCode = 503;
+    unavailable.retryAfterSeconds = 120;
+    answer(unavailable);
+
+    fetch();
+
+    ASSERT_FALSE(m_waiter.requestedDelays().empty());
+    EXPECT_EQ(std::chrono::milliseconds {120000}, m_waiter.requestedDelays().front());
+}
+
 // The next notify usually fixes these, so they stay out of the default log level.
 TEST_F(ConfigDownloadLogTest, OtherFailedDownloadsStayAtDebugLevel)
 {

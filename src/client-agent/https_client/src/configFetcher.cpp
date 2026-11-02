@@ -104,8 +104,9 @@ std::shared_ptr<SpoolFile> ConfigFetcher::fetch(const std::string& expectedHash,
 
 void ConfigFetcher::logFailedDownload(const std::string& resourceId, const RetrySender::Result& result)
 {
-    // Interrupted keeps the last attempt's response, but the agent is stopping, not retrying.
-    if (result.outcome != OutcomeClass::Interrupted && result.response.contentDecodingFailed)
+    // Only a 2xx that couldn't be decoded ends here as Unreachable: an error reply is judged by its
+    // status (classifyOutcome()), and a stop during the wait before the retry is Interrupted.
+    if (result.outcome == OutcomeClass::Unreachable && result.response.contentDecodingFailed)
     {
         warnUndecodable(resourceId, result.response);
         return;

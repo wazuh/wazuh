@@ -250,8 +250,9 @@ struct HttpResponse
     bool caFileLoadFailed {false};
     /// The reply's Content-Encoding couldn't be decoded, or named more than one coding (#38514).
     /// It usually comes back the same on the next attempt, so callers can tell it apart from a
-    /// network failure in what they log. RetrySender still retries it like any transport failure:
-    /// a manager short of memory for its encoder answers the retry plain.
+    /// network failure in what they log. On a 2xx, RetrySender still retries it like any transport
+    /// failure: a manager short of memory for its encoder answers the retry plain. An error reply
+    /// is judged by its status instead (classifyOutcome()).
     bool contentDecodingFailed {false};
 };
 
