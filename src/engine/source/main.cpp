@@ -41,7 +41,7 @@
 #include <geo/downloader.hpp>
 #include <geo/manager.hpp>
 #include <httpsrv/apiServer.hpp>
-#include <httpsrv/udsServer.hpp>
+#include <httpsrv/server.hpp>
 #include <iockvdb/helpers.hpp>
 #include <iockvdb/manager.hpp>
 #include <iocsync/iocsync.hpp>
@@ -283,11 +283,11 @@ int main(int argc, char* argv[])
     std::shared_ptr<scheduler::Scheduler> scheduler;
     std::shared_ptr<streamlog::LogManager> streamLogger;
     std::shared_ptr<wiconnector::WIndexerConnector> indexerConnector;
-    std::shared_ptr<httpsrv::UdsServer> apiServer;
+    std::shared_ptr<httpsrv::Server> apiServer;
     std::shared_ptr<dumper::Dumper> dumper;
     std::shared_ptr<raweventindexer::RawEventIndexer> rawEventIndexer;
     std::shared_ptr<confremote::ConfRemoteManager> remoteConf;
-    std::shared_ptr<httpsrv::UdsServer> engineRemoteServer;
+    std::shared_ptr<httpsrv::Server> engineRemoteServer;
     std::shared_ptr<cm::store::CMStore> cmStore;
     std::shared_ptr<cm::crud::ICrudService> cmCrudService;
     std::shared_ptr<cm::sync::CMSync> cmSyncService;

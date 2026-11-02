@@ -7,7 +7,7 @@
 #include <string>
 
 #include <httpsrv/irouteregistrar.hpp>
-#include <httpsrv/udsServer.hpp>
+#include <httpsrv/server.hpp>
 
 namespace httpsrv
 {
@@ -27,7 +27,7 @@ std::string payloadTooLargeText(std::size_t maxBytes);
  * (no API route charges it, so the request body is bounded only by the route caps), interim
  * "100 Continue" answers, and its stats published as server.api.* metrics.
  */
-std::shared_ptr<UdsServer> makeApiServer();
+std::shared_ptr<Server> makeApiServer();
 
 /**
  * @brief Registers the API modules' routes on the API server with the API's body limits.
@@ -42,12 +42,12 @@ public:
      * @param server The API server the routes go to.
      * @param payloadMaxBytes analysisd.server_api_payload_max_bytes; 0 means unlimited.
      */
-    ApiRouteRegistrar(std::shared_ptr<UdsServer> server, std::size_t payloadMaxBytes);
+    ApiRouteRegistrar(std::shared_ptr<Server> server, std::size_t payloadMaxBytes);
 
     void addRoute(Method method, const std::string& path, RouteHandler handler, RouteOptions options = {}) override;
 
 private:
-    std::shared_ptr<UdsServer> m_server;
+    std::shared_ptr<Server> m_server;
     std::size_t m_payloadMaxBytes;
 };
 

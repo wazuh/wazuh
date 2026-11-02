@@ -7,7 +7,7 @@
 
 #include <agentcache/agentMetadataCache.hpp>
 #include <dumper/idumper.hpp>
-#include <httpsrv/udsServer.hpp>
+#include <httpsrv/server.hpp>
 #include <router/iapi.hpp>
 
 namespace api::event
@@ -41,7 +41,7 @@ IngestLimits validateIngestLimits(const IngestLimits& limits);
  * handlers with a queue as long as the connection cap, interim "100 Continue" answers, and the settings that raise
  * the budget and the connection cap named in the transport's 503 log lines.
  */
-httpsrv::UdsServerOptions ingestServerOptions(const IngestLimits& limits);
+httpsrv::ServerOptions ingestServerOptions(const IngestLimits& limits);
 
 /**
  * @brief Builds (without starting) the server for POST /events/enriched.
@@ -50,10 +50,10 @@ httpsrv::UdsServerOptions ingestServerOptions(const IngestLimits& limits);
  * before it is read); "Expect: 100-continue" is answered once a request is admitted; the executor
  * runs max(2, nproc/4) handlers with a queue as long as the connection cap.
  */
-std::shared_ptr<httpsrv::UdsServer> makeIngestServer(const std::shared_ptr<::router::IRouterAPI>& orchestrator,
-                                                     const std::shared_ptr<::dumper::IDumper>& dumper,
-                                                     std::shared_ptr<agentcache::AgentMetadataCache> agentMetadataCache,
-                                                     const IngestLimits& limits);
+std::shared_ptr<httpsrv::Server> makeIngestServer(const std::shared_ptr<::router::IRouterAPI>& orchestrator,
+                                                  const std::shared_ptr<::dumper::IDumper>& dumper,
+                                                  std::shared_ptr<agentcache::AgentMetadataCache> agentMetadataCache,
+                                                  const IngestLimits& limits);
 
 } // namespace api::event
 

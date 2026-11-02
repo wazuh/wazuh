@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-#include <httpsrv/udsServer.hpp>
+#include <httpsrv/server.hpp>
 
 #include <atomic>
 #include <cstdint>
@@ -128,9 +128,9 @@ uds::HttpResponse toTransport(Response in)
 }
 } // namespace
 
-struct UdsServer::Impl
+struct Server::Impl
 {
-    explicit Impl(UdsServerOptions opts)
+    explicit Impl(ServerOptions opts)
         : options {std::move(opts)}
         , executor {std::make_unique<BoundedExecutor>(options.name, options.executorThreads, options.executorQueue)}
         , transport {uds::makeUdsHttpServer()}
@@ -140,7 +140,7 @@ struct UdsServer::Impl
     // Declaration order is destruction order reversed: the transport goes first (no new request
     // can reach the executor), then the executor (its destructor joins every worker), and the
     // counters the jobs touch outlive both.
-    UdsServerOptions options;
+    ServerOptions options;
     std::atomic<std::size_t> shedExecutorFull {0};
     std::atomic<std::size_t> shedShutdown {0};
     std::atomic<std::size_t> handlerErrors {0};
@@ -246,12 +246,12 @@ struct UdsServer::Impl
     }
 };
 
-UdsServer::UdsServer(UdsServerOptions options)
+Server::Server(ServerOptions options)
     : m_impl {std::make_unique<Impl>(std::move(options))}
 {
 }
 
-UdsServer::~UdsServer()
+Server::~Server()
 {
     if (m_impl->running.load())
     {
@@ -259,7 +259,7 @@ UdsServer::~UdsServer()
     }
 }
 
-void UdsServer::addRoute(Method method, const std::string& path, RouteHandler handler, RouteOptions options)
+void Server::addRoute(Method method, const std::string& path, RouteHandler handler, RouteOptions options)
 {
     uds::RouteOptions routeOptions;
     routeOptions.cls = toTransport(options.cls);
@@ -271,7 +271,7 @@ void UdsServer::addRoute(Method method, const std::string& path, RouteHandler ha
         toTransport(method), path, m_impl->adapt(std::move(handler), options.runInline), routeOptions);
 }
 
-void UdsServer::start(const std::filesystem::path& socketPath)
+void Server::start(const std::filesystem::path& socketPath)
 {
     const auto& options = m_impl->options;
     uds::UdsHttpServerConfig config;
@@ -300,39 +300,39 @@ void UdsServer::start(const std::filesystem::path& socketPath)
     m_impl->running.store(true);
 }
 
-bool UdsServer::isRunning() const
+bool Server::isRunning() const
 {
     return m_impl->running.load();
 }
 
-void UdsServer::stopAccepting()
+void Server::stopAccepting()
 {
     m_impl->transport->stopAccepting();
 }
 
-void UdsServer::closeAdmission()
+void Server::closeAdmission()
 {
     m_impl->executor->closeAdmission();
 }
 
-ShutdownReport UdsServer::drainUntil(std::chrono::steady_clock::time_point deadline)
+ShutdownReport Server::drainUntil(std::chrono::steady_clock::time_point deadline)
 {
     const auto drained = m_impl->executor->drainUntil(deadline);
     return ShutdownReport {drained.completed, drained.rejected, drained.abandoned};
 }
 
-void UdsServer::waitForHandlers()
+void Server::waitForHandlers()
 {
     m_impl->executor->join();
 }
 
-void UdsServer::stop()
+void Server::stop()
 {
     m_impl->transport->stop();
     m_impl->running.store(false);
 }
 
-ShutdownReport UdsServer::shutdown(std::chrono::milliseconds deadline)
+ShutdownReport Server::shutdown(std::chrono::milliseconds deadline)
 {
     const auto until = std::chrono::steady_clock::now() + deadline;
     stopAccepting();
@@ -349,10 +349,10 @@ ShutdownReport UdsServer::shutdown(std::chrono::milliseconds deadline)
     return report;
 }
 
-UdsServerStats UdsServer::stats() const
+ServerStats Server::stats() const
 {
     const auto transport = m_impl->transport->diagnostics();
-    UdsServerStats stats;
+    ServerStats stats;
     stats.inFlightBytes = transport.budgetInFlightBytes;
     stats.inFlightRequests = transport.budgetInFlightCount;
     stats.sessions = transport.liveSessions;
@@ -367,10 +367,10 @@ UdsServerStats UdsServer::stats() const
     return stats;
 }
 
-void registerMetrics(const std::weak_ptr<UdsServer>& server, const std::string& instance)
+void registerMetrics(const std::weak_ptr<Server>& server, const std::string& instance)
 {
     namespace names = fastmetrics::names;
-    const auto publish = [&](const char* suffix, std::size_t UdsServerStats::* field)
+    const auto publish = [&](const char* suffix, std::size_t ServerStats::* field)
     {
         fastmetrics::registerPullMetric(names::server_metric(instance, suffix),
                                         std::function<uint64_t()>(
@@ -381,20 +381,20 @@ void registerMetrics(const std::weak_ptr<UdsServer>& server, const std::string& 
                                             }));
     };
 
-    publish(names::SERVER_INFLIGHT_BYTES, &UdsServerStats::inFlightBytes);
-    publish(names::SERVER_INFLIGHT_REQUESTS, &UdsServerStats::inFlightRequests);
-    publish(names::SERVER_SESSIONS, &UdsServerStats::sessions);
-    publish(names::SERVER_QUEUE_DEPTH, &UdsServerStats::queueDepth);
-    publish(names::SERVER_RUNNING, &UdsServerStats::running);
-    publish(names::SERVER_SHED_BUDGET, &UdsServerStats::shedBudget);
-    publish(names::SERVER_SHED_CONNECTIONS, &UdsServerStats::shedSessions);
-    publish(names::SERVER_SHED_EXECUTOR_FULL, &UdsServerStats::shedExecutorFull);
-    publish(names::SERVER_SHED_SHUTDOWN, &UdsServerStats::shedShutdown);
-    publish(names::SERVER_HANDLER_ERRORS, &UdsServerStats::handlerErrors);
-    publish(names::SERVER_REJECTED_TOO_LARGE, &UdsServerStats::rejectedTooLarge);
+    publish(names::SERVER_INFLIGHT_BYTES, &ServerStats::inFlightBytes);
+    publish(names::SERVER_INFLIGHT_REQUESTS, &ServerStats::inFlightRequests);
+    publish(names::SERVER_SESSIONS, &ServerStats::sessions);
+    publish(names::SERVER_QUEUE_DEPTH, &ServerStats::queueDepth);
+    publish(names::SERVER_RUNNING, &ServerStats::running);
+    publish(names::SERVER_SHED_BUDGET, &ServerStats::shedBudget);
+    publish(names::SERVER_SHED_CONNECTIONS, &ServerStats::shedSessions);
+    publish(names::SERVER_SHED_EXECUTOR_FULL, &ServerStats::shedExecutorFull);
+    publish(names::SERVER_SHED_SHUTDOWN, &ServerStats::shedShutdown);
+    publish(names::SERVER_HANDLER_ERRORS, &ServerStats::handlerErrors);
+    publish(names::SERVER_REJECTED_TOO_LARGE, &ServerStats::rejectedTooLarge);
 }
 
-void shutdownAll(const std::vector<UdsServer*>& servers, std::chrono::milliseconds deadline)
+void shutdownAll(const std::vector<Server*>& servers, std::chrono::milliseconds deadline)
 {
     const auto until = std::chrono::steady_clock::now() + deadline;
 

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-#ifndef _HTTPSRV_UDS_SERVER_HPP
-#define _HTTPSRV_UDS_SERVER_HPP
+#ifndef _HTTPSRV_SERVER_HPP
+#define _HTTPSRV_SERVER_HPP
 
 #include <chrono>
 #include <cstddef>
@@ -19,12 +19,12 @@ namespace httpsrv
 constexpr std::chrono::seconds DEFAULT_SHUTDOWN_DEADLINE {10};
 
 /**
- * @brief Settings of one UdsServer.
+ * @brief Settings of one Server.
  *
  * I/O threads, timeouts and the socket mode (0660) are the transport's defaults on purpose; only
  * what an engine server needs to size is exposed.
  */
-struct UdsServerOptions
+struct ServerOptions
 {
     std::string name;   ///< Shown in log lines ("<name> server ...").
     std::string logTag; ///< Tag of the transport's own log lines.
@@ -47,9 +47,9 @@ struct UdsServerOptions
 };
 
 /**
- * @brief Counters and gauges of one UdsServer, for metrics.
+ * @brief Counters and gauges of one Server, for metrics.
  */
-struct UdsServerStats
+struct ServerStats
 {
     std::size_t inFlightBytes {0};    ///< Bytes reserved by admitted requests.
     std::size_t inFlightRequests {0}; ///< Requests holding a reservation.
@@ -84,14 +84,14 @@ struct ShutdownReport
  *
  * Routes are registered before start(). The object is one-shot: start() once, stop once.
  */
-class UdsServer : public IRouteRegistrar
+class Server : public IRouteRegistrar
 {
 public:
-    explicit UdsServer(UdsServerOptions options);
-    ~UdsServer() override;
+    explicit Server(ServerOptions options);
+    ~Server() override;
 
-    UdsServer(const UdsServer&) = delete;
-    UdsServer& operator=(const UdsServer&) = delete;
+    Server(const Server&) = delete;
+    Server& operator=(const Server&) = delete;
 
     /**
      * @brief Registers a route. Must be called before start().
@@ -121,7 +121,7 @@ public:
      */
     ShutdownReport shutdown(std::chrono::milliseconds deadline = DEFAULT_SHUTDOWN_DEADLINE);
 
-    UdsServerStats stats() const;
+    ServerStats stats() const;
 
 private:
     struct Impl;
@@ -133,8 +133,7 @@ private:
  * executor closes admission, all drain in parallel up to one deadline, and only then is each
  * transport stopped. Null entries are skipped.
  */
-void shutdownAll(const std::vector<UdsServer*>& servers,
-                 std::chrono::milliseconds deadline = DEFAULT_SHUTDOWN_DEADLINE);
+void shutdownAll(const std::vector<Server*>& servers, std::chrono::milliseconds deadline = DEFAULT_SHUTDOWN_DEADLINE);
 
 /**
  * @brief Publishes a server's stats() as fastmetrics pull metrics named server.<instance>.<suffix>
@@ -148,8 +147,8 @@ void shutdownAll(const std::vector<UdsServer*>& servers,
  * @param server Server to observe.
  * @param instance Middle segment of every name ("ingest", "api").
  */
-void registerMetrics(const std::weak_ptr<UdsServer>& server, const std::string& instance);
+void registerMetrics(const std::weak_ptr<Server>& server, const std::string& instance);
 
 } // namespace httpsrv
 
-#endif // _HTTPSRV_UDS_SERVER_HPP
+#endif // _HTTPSRV_SERVER_HPP

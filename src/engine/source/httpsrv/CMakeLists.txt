@@ -8,7 +8,7 @@ target_include_directories(httpsrv_ihttpsrv INTERFACE ${IFACE_DIR})
 target_link_libraries(httpsrv_ihttpsrv INTERFACE base)
 add_library(httpsrv::ihttpsrv ALIAS httpsrv_ihttpsrv)
 
-# UdsServer runs on the manager's shared HTTP-over-UDS transport. Guarded add_subdirectory, as every
+# httpsrv::Server runs on the manager's shared HTTP-over-UDS transport. Guarded add_subdirectory, as every
 # consumer does, so the engine does not depend on which module registers the target first; asio and
 # llhttp stay PRIVATE inside the archive.
 if(NOT TARGET wazuh_uds_http_server)
@@ -26,7 +26,7 @@ endif()
 
 add_library(httpsrv STATIC
     ${SRC_DIR}/boundedExecutor.cpp
-    ${SRC_DIR}/udsServer.cpp
+    ${SRC_DIR}/server.cpp
     ${SRC_DIR}/apiServer.cpp
 )
 target_include_directories(httpsrv
@@ -57,8 +57,8 @@ set(UNIT_SRC_DIR ${TEST_SRC_DIR}/unit)
 
 add_executable(httpsrv_utest
     ${UNIT_SRC_DIR}/boundedExecutor_test.cpp
-    ${UNIT_SRC_DIR}/udsServer_test.cpp
-    ${UNIT_SRC_DIR}/udsServerMetrics_test.cpp
+    ${UNIT_SRC_DIR}/server_test.cpp
+    ${UNIT_SRC_DIR}/serverMetrics_test.cpp
     ${UNIT_SRC_DIR}/apiServer_test.cpp
 )
 target_include_directories(httpsrv_utest
