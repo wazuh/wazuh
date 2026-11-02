@@ -14,7 +14,9 @@
 #include <future>
 #include <string>
 #include <thread>
+#include <vector>
 
+#include <base/logging.hpp>
 #include <httpsrv/udsServer.hpp>
 
 using namespace std::chrono_literals;
@@ -26,7 +28,7 @@ using httpsrv::UdsServerOptions;
 
 namespace
 {
-std::string socketPath(const char* tag)
+std::string uniqueSocketPath(const char* tag)
 {
     static std::atomic<int> counter {0};
     return "/tmp/httpsrv_" + std::string {tag} + "_" + std::to_string(::getpid()) + "_"
@@ -105,9 +107,34 @@ bool hasHeader(const std::string& response, const std::string& line)
 {
     return response.find("\r\n" + line + "\r\n") != std::string::npos;
 }
+class UdsServerTest : public ::testing::Test
+{
+protected:
+    void SetUp() override { logging::testInit(); }
+
+    void TearDown() override
+    {
+        // A server removes its own socket on stop; this only cleans up after a test that failed early.
+        for (const auto& path : m_paths)
+        {
+            std::error_code ignored;
+            std::filesystem::remove(path, ignored);
+        }
+    }
+
+    /// A socket path unique to this test run, removed after the test.
+    std::string socketPath(const char* tag)
+    {
+        m_paths.push_back(uniqueSocketPath(tag));
+        return m_paths.back();
+    }
+
+private:
+    std::vector<std::string> m_paths;
+};
 } // namespace
 
-TEST(UdsServerTest, RoundTripCarriesNeutralRequestAndResponse)
+TEST_F(UdsServerTest, RoundTripCarriesNeutralRequestAndResponse)
 {
     const auto path = socketPath("rt");
     Method seenMethod {Method::GET};
@@ -140,7 +167,7 @@ TEST(UdsServerTest, RoundTripCarriesNeutralRequestAndResponse)
     EXPECT_EQ("Value", seenHeader) << "header lookup is case-insensitive";
 }
 
-TEST(UdsServerTest, HeaderCountSeesARepeatedHeader)
+TEST_F(UdsServerTest, HeaderCountSeesARepeatedHeader)
 {
     const auto path = socketPath("dup");
     std::size_t repeated {0};
@@ -163,7 +190,7 @@ TEST(UdsServerTest, HeaderCountSeesARepeatedHeader)
     EXPECT_EQ(1U, single);
 }
 
-TEST(UdsServerTest, ExecutorFullAnswers503Busy)
+TEST_F(UdsServerTest, ExecutorFullAnswers503Busy)
 {
     const auto path = socketPath("busy");
     std::promise<void> release;
@@ -205,7 +232,7 @@ TEST(UdsServerTest, ExecutorFullAnswers503Busy)
 
 // Connections that never send their request fill the server-wide limit; the next one is refused at
 // accept, before any route class is known, and still counts as a connection shed.
-TEST(UdsServerTest, ConnectionCapRejectCountsAsAConnectionShed)
+TEST_F(UdsServerTest, ConnectionCapRejectCountsAsAConnectionShed)
 {
     const auto path = socketPath("cap");
     auto opts = options();
@@ -235,7 +262,7 @@ TEST(UdsServerTest, ConnectionCapRejectCountsAsAConnectionShed)
     server.shutdown(1s);
 }
 
-TEST(UdsServerTest, HandlerExceptionAnswers500Text)
+TEST_F(UdsServerTest, HandlerExceptionAnswers500Text)
 {
     const auto path = socketPath("throw");
     UdsServer server {options()};
@@ -252,7 +279,7 @@ TEST(UdsServerTest, HandlerExceptionAnswers500Text)
     EXPECT_EQ(1U, stats.handlerErrors);
 }
 
-TEST(UdsServerTest, ShutdownDeliversARunningReplyWithinTheDeadline)
+TEST_F(UdsServerTest, ShutdownDeliversARunningReplyWithinTheDeadline)
 {
     const auto path = socketPath("slow");
     std::atomic<bool> started {false};
@@ -281,7 +308,7 @@ TEST(UdsServerTest, ShutdownDeliversARunningReplyWithinTheDeadline)
     EXPECT_EQ(0U, report.abandoned);
 }
 
-TEST(UdsServerTest, ShutdownAnswersUnstartedRequests503AtTheDeadline)
+TEST_F(UdsServerTest, ShutdownAnswersUnstartedRequests503AtTheDeadline)
 {
     const auto path = socketPath("unstarted");
     std::promise<void> release;
@@ -321,7 +348,7 @@ TEST(UdsServerTest, ShutdownAnswersUnstartedRequests503AtTheDeadline)
     EXPECT_EQ(1U, report.abandoned);
 }
 
-TEST(UdsServerTest, ShutdownAllStopsAcceptingOnEveryServerFirst)
+TEST_F(UdsServerTest, ShutdownAllStopsAcceptingOnEveryServerFirst)
 {
     const auto pathA = socketPath("allA");
     const auto pathB = socketPath("allB");
@@ -340,7 +367,7 @@ TEST(UdsServerTest, ShutdownAllStopsAcceptingOnEveryServerFirst)
     EXPECT_EQ(0, statusOf(roundTrip(pathB, post(pathB, "/x", ""))));
 }
 
-TEST(UdsServerTest, SocketIsCreatedWithMode0660)
+TEST_F(UdsServerTest, SocketIsCreatedWithMode0660)
 {
     const auto path = socketPath("mode");
     UdsServer server {options()};
@@ -355,7 +382,7 @@ TEST(UdsServerTest, SocketIsCreatedWithMode0660)
 }
 
 // A typo in the configured path must never delete an operator's file: only a socket is replaced.
-TEST(UdsServerTest, StartRefusesAPathThatIsNotASocket)
+TEST_F(UdsServerTest, StartRefusesAPathThatIsNotASocket)
 {
     const auto path = socketPath("file");
     {
@@ -370,7 +397,7 @@ TEST(UdsServerTest, StartRefusesAPathThatIsNotASocket)
     std::filesystem::remove(path);
 }
 
-TEST(UdsServerTest, ExpectContinueOptionReachesTheWire)
+TEST_F(UdsServerTest, ExpectContinueOptionReachesTheWire)
 {
     const auto path = socketPath("expect");
     auto opts = options();

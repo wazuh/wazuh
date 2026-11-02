@@ -9,6 +9,7 @@
 #include <cstring>
 #include <stdexcept>
 #include <string>
+#include <tuple>
 
 #include <api/event/ingestServer.hpp>
 #include <base/logging.hpp>
@@ -100,6 +101,9 @@ protected:
     std::shared_ptr<httpsrv::UdsServer> server;
     std::string path = socketPath();
 
+    /// The limits the server is built with; a derived fixture overrides them.
+    virtual IngestLimits limits() const { return IngestLimits {}; }
+
     void SetUp() override
     {
         // The fastmetrics manager is registered once for this binary (handlers_test.cpp).
@@ -107,7 +111,7 @@ protected:
         server = makeIngestServer(router,
                                   std::make_shared<testing::NiceMock<dumper::mocks::MockDumper>>(),
                                   std::make_shared<agentcache::AgentMetadataCache>(std::chrono::seconds {300}),
-                                  validateIngestLimits(IngestLimits {}));
+                                  validateIngestLimits(limits()));
         server->start(path);
     }
 
@@ -119,34 +123,62 @@ protected:
         }
     }
 };
+
+/// A body cap equal to the in-flight budget: the smallest budget validation accepts for that cap.
+class IngestServerLimitsTest : public IngestServerTest
+{
+protected:
+    IngestLimits limits() const override { return IngestLimits {32 * MIB, 1024, 32 * MIB}; }
+};
+
+/// Case name, limits to validate, and the internal option the error must name (empty: the limits are valid).
+using LimitsCase = std::tuple<std::string, IngestLimits, std::string>;
+
+class IngestLimitsTest : public ::testing::TestWithParam<LimitsCase>
+{
+};
+
+constexpr auto MAX_BODY_KEY = "analysisd.server_enriched_events_max_body_bytes";
+constexpr auto MAX_CONNECTIONS_KEY = "analysisd.server_enriched_events_max_connections";
+constexpr auto MAX_INFLIGHT_KEY = "analysisd.server_enriched_events_max_inflight_bytes";
 } // namespace
 
-TEST(IngestLimitsTest, RejectsEachOutOfRangeValueNamingTheKey)
+TEST_P(IngestLimitsTest, ValidatesEachRangeNamingTheKey)
 {
-    const auto rejects = [](IngestLimits limits, const std::string& key)
+    const auto& limits = std::get<1>(GetParam());
+    const auto& key = std::get<2>(GetParam());
+    if (key.empty())
     {
-        try
-        {
-            validateIngestLimits(limits);
-            ADD_FAILURE() << "accepted an out-of-range " << key;
-        }
-        catch (const std::invalid_argument& e)
-        {
-            EXPECT_NE(std::string {e.what()}.find(key), std::string::npos) << e.what();
-        }
-    };
-
-    EXPECT_NO_THROW(validateIngestLimits(IngestLimits {}));
-    EXPECT_NO_THROW(validateIngestLimits(IngestLimits {32 * MIB, 16, 32 * MIB}));
-    EXPECT_NO_THROW(validateIngestLimits(IngestLimits {1024 * MIB, 65536, 8192 * MIB}));
-
-    rejects({32 * MIB - 1, 1024, 256 * MIB}, "analysisd.server_enriched_events_max_body_bytes");
-    rejects({1024 * MIB + 1, 1024, 2048 * MIB}, "analysisd.server_enriched_events_max_body_bytes");
-    rejects({64 * MIB, 15, 256 * MIB}, "analysisd.server_enriched_events_max_connections");
-    rejects({64 * MIB, 65537, 256 * MIB}, "analysisd.server_enriched_events_max_connections");
-    rejects({64 * MIB, 1024, 64 * MIB - 1}, "analysisd.server_enriched_events_max_inflight_bytes");
-    rejects({64 * MIB, 1024, 8192 * MIB + 1}, "analysisd.server_enriched_events_max_inflight_bytes");
+        EXPECT_NO_THROW(validateIngestLimits(limits));
+        return;
+    }
+    try
+    {
+        validateIngestLimits(limits);
+        ADD_FAILURE() << "accepted an out-of-range " << key;
+    }
+    catch (const std::invalid_argument& e)
+    {
+        EXPECT_NE(std::string {e.what()}.find(key), std::string::npos) << e.what();
+    }
 }
+
+INSTANTIATE_TEST_SUITE_P(
+    Ranges,
+    IngestLimitsTest,
+    ::testing::Values(
+        // Valid: the defaults, every minimum, every maximum.
+        LimitsCase {"Defaults", IngestLimits {}, ""},
+        LimitsCase {"Minimums", IngestLimits {32 * MIB, 16, 32 * MIB}, ""},
+        LimitsCase {"Maximums", IngestLimits {1024 * MIB, 65536, 8192 * MIB}, ""},
+        // One value just out of its range; the error names that option.
+        LimitsCase {"BodyBelowMinimum", IngestLimits {32 * MIB - 1, 1024, 256 * MIB}, MAX_BODY_KEY},
+        LimitsCase {"BodyAboveMaximum", IngestLimits {1024 * MIB + 1, 1024, 2048 * MIB}, MAX_BODY_KEY},
+        LimitsCase {"ConnectionsBelowMinimum", IngestLimits {64 * MIB, 15, 256 * MIB}, MAX_CONNECTIONS_KEY},
+        LimitsCase {"ConnectionsAboveMaximum", IngestLimits {64 * MIB, 65537, 256 * MIB}, MAX_CONNECTIONS_KEY},
+        LimitsCase {"InFlightBelowBodyCap", IngestLimits {64 * MIB, 1024, 64 * MIB - 1}, MAX_INFLIGHT_KEY},
+        LimitsCase {"InFlightAboveMaximum", IngestLimits {64 * MIB, 1024, 8192 * MIB + 1}, MAX_INFLIGHT_KEY}),
+    [](const ::testing::TestParamInfo<LimitsCase>& info) { return std::get<0>(info.param); });
 
 TEST_F(IngestServerTest, AcceptsABatchOnTheSocket)
 {
@@ -221,32 +253,23 @@ TEST_F(IngestServerTest, PublishesItsMetricsUnderServerIngest)
 
 // With the in-flight budget equal to the body cap (the smallest valid pair), a batch of exactly the cap
 // is accepted: the transport's per-request overhead must not lower the limit below the configured one.
-TEST(IngestServerLimitsTest, ABatchOfExactlyTheBodyCapIsAcceptedWhenTheBudgetEqualsIt)
+TEST_F(IngestServerLimitsTest, ABatchOfExactlyTheBodyCapIsAcceptedWhenTheBudgetEqualsIt)
 {
-    logging::testInit();
-    const IngestLimits limits {32 * MIB, 1024, 32 * MIB};
-    auto router = std::make_shared<testing::NiceMock<MockRouterAPI>>();
-    auto server = makeIngestServer(router,
-                                   std::make_shared<testing::NiceMock<dumper::mocks::MockDumper>>(),
-                                   std::make_shared<agentcache::AgentMetadataCache>(std::chrono::seconds {300}),
-                                   validateIngestLimits(limits));
-    const auto path = socketPath();
-    server->start(path);
+    const auto cap = limits().maxBodyBytes;
 
     // One header line, then 1 KiB event lines, the last one padded so the body is exactly the cap.
     std::string body = "H {\"wazuh\":{\"agent\":{\"id\":\"001\"}}}\n";
     const std::string prefix = "E 1:syslog:";
     const std::string line = prefix + std::string(1024 - prefix.size() - 1, 'x') + "\n";
-    while (body.size() + 2 * line.size() <= limits.maxBodyBytes)
+    while (body.size() + 2 * line.size() <= cap)
     {
         body += line;
     }
-    body += prefix + std::string(limits.maxBodyBytes - body.size() - prefix.size() - 1, 'x') + "\n";
-    ASSERT_EQ(limits.maxBodyBytes, body.size());
+    body += prefix + std::string(cap - body.size() - prefix.size() - 1, 'x') + "\n";
+    ASSERT_EQ(cap, body.size());
 
     const auto atTheCap = roundTrip(path, head(body.size()) + body);
-    const auto overTheCap = roundTrip(path, head(limits.maxBodyBytes + 1));
-    server->shutdown(std::chrono::seconds {1});
+    const auto overTheCap = roundTrip(path, head(cap + 1));
 
     EXPECT_EQ(200, statusOf(atTheCap)) << atTheCap.substr(0, 200);
     EXPECT_EQ(413, statusOf(overTheCap)) << overTheCap.substr(0, 200);
